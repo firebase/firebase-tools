@@ -22,7 +22,7 @@ const defaultPollerOptions = {
   masterTimeout: 150000,
 };
 
-export interface RetryFunctionParams {
+export interface TaskParams {
   projectId: string;
   runtime: string;
   sourceUrl: string;
@@ -32,7 +32,7 @@ export interface RetryFunctionParams {
 }
 
 export function createFunctionTask(
-  params: RetryFunctionParams,
+  params: TaskParams,
   fn: CloudFunctionTrigger,
   onPoll?: (op: any) => any
 ): () => Promise<CloudFunctionTrigger> {
@@ -93,7 +93,7 @@ export function createFunctionTask(
 }
 
 export function updateFunctionTask(
-  params: RetryFunctionParams,
+  params: TaskParams,
   fn: CloudFunctionTrigger,
   onPoll?: (op: any) => any
 ): () => Promise<CloudFunctionTrigger> {
@@ -141,7 +141,7 @@ export function updateFunctionTask(
   };
 }
 
-export function deleteFunctionTask(params: RetryFunctionParams, fnName: string) {
+export function deleteFunctionTask(params: TaskParams, fnName: string) {
   return async () => {
     utils.logBullet(
       clc.bold.cyan("functions: ") +
@@ -167,7 +167,7 @@ export function deleteFunctionTask(params: RetryFunctionParams, fnName: string) 
 }
 
 export function upsertScheduleTask(
-  params: RetryFunctionParams,
+  params: TaskParams,
   fn: CloudFunctionTrigger,
   appEngineLocation: string
 ): () => Promise<any> {
@@ -209,7 +209,7 @@ export function deleteScheduleTask(fnName: string, appEngineLocation: string): (
  * @param queue
  */
 export function runRegionalFunctionDeployment(
-  params: RetryFunctionParams,
+  params: TaskParams,
   regionalDeployment: RegionalDeployment,
   queue: Queue<() => Promise<any>, void>
 ): Promise<void> {
@@ -258,9 +258,9 @@ export function runRegionalFunctionDeployment(
 }
 
 function finishRegionalFunctionDeployment(
-  params: RetryFunctionParams,
+  params: TaskParams,
   regionalDeployment: RegionalDeployment,
-  queue: Queue<()=>Promise<any>, void>
+  queue: Queue<() => Promise<any>, void>
 ): void {
   for (const fn of regionalDeployment.functionsToCreate) {
     queue

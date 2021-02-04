@@ -77,9 +77,9 @@ export class ErrorHandler {
       for (const failedDep of failedIamCalls) {
         logger.info(`\t${failedDep.functionName}`);
       }
-      logger.info("\n\nUnauithorized users will not be able access this function.");
+      logger.info("\n\nUnauthorized users will not be able access this function.");
       logger.info(
-        "\n\nThis may be caused by an organization policy that restrict Network Access on your project."
+        "\n\nThis may be caused by an organization policy that restricts Network Access on your project."
       );
     }
 

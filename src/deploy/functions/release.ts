@@ -30,11 +30,11 @@ export async function release(context: any, options: any, payload: any) {
     context.existingFunctions,
     context.filters
   );
-  const cloudFunctionsQueue = new Queue<() => Promise<CloudFunctionTrigger|void>, void>({});
+  const cloudFunctionsQueue = new Queue<() => Promise<CloudFunctionTrigger | void>, void>({});
   const schedulerQueue = new Queue<() => Promise<any>, void>({});
   const regionPromises = [];
 
-  const retryFuncParams: tasks.RetryFunctionParams = {
+  const taskParams: tasks.TaskParams = {
     projectId,
     sourceUrl,
     runtime: context.runtimeChoice,
@@ -50,7 +50,7 @@ export async function release(context: any, options: any, payload: any) {
   if (shouldDeleteFunctions) {
     for (const fnName of fullDeployment.functionsToDelete) {
       cloudFunctionsQueue
-        .run(tasks.deleteFunctionTask(retryFuncParams, fnName))
+        .run(tasks.deleteFunctionTask(taskParams, fnName))
         .then(() => {
           helper.printSuccess(fnName, "delete");
         })
@@ -72,12 +72,12 @@ export async function release(context: any, options: any, payload: any) {
   for (const regionalDeployment of fullDeployment.regionalDeployments) {
     // Run the create and update function calls for the region.
     regionPromises.push(
-      tasks.runRegionalFunctionDeployment(retryFuncParams, regionalDeployment, cloudFunctionsQueue)
+      tasks.runRegionalFunctionDeployment(taskParams, regionalDeployment, cloudFunctionsQueue)
     );
 
     // Add scheduler creates and updates to their queue.
     for (const fn of regionalDeployment.schedulesToUpsert) {
-      const task = tasks.upsertScheduleTask(retryFuncParams, fn, appEngineLocation);
+      const task = tasks.upsertScheduleTask(taskParams, fn, appEngineLocation);
       schedulerQueue
         .run(task)
         .then(() => {
@@ -100,25 +100,20 @@ export async function release(context: any, options: any, payload: any) {
   }
 
   // Once everything has been added to queues, starting processing.
-  const queuePromises = [cloudFunctionsQueue.wait(), schedulerQueue.wait()]; 
+  // Note: We need to set up these wait before calling process and close.
+  const queuePromises = [cloudFunctionsQueue.wait(), schedulerQueue.wait()];
   cloudFunctionsQueue.process();
   schedulerQueue.process();
   schedulerQueue.close();
 
   // Wait until the second round of creates/updates are added to the queue before closing it.
-  await Promise.all(regionPromises)
+  await Promise.all(regionPromises);
   cloudFunctionsQueue.close();
 
   // Wait for the first function in each region to be deployed, and all the other calls to be queued,
   // then close the queue.
   // Wait for all of the deployments to complete.
   await Promise.all(queuePromises);
-  // TODO: We should also await the scheduler queue. However, for reasons I don't understand,
-  // awaiting 2 queues makes it so none of the code below this executes.
-  // If I remove either queue, it works correctly.
-  // Not sure if this is a bug with queue or if I'm doing something subtly incorrect, but functions deploys are ~2 orders of magnitude longer
-  // than schedule deployments, and there are no deployments that contain only calls to scheduler, so this works for now.
-  // await schedulerQueue.wait();
   helper.logAndTrackDeployStats(cloudFunctionsQueue);
   errorHandler.printWarnings();
   errorHandler.printErrors();
