@@ -5,8 +5,20 @@ import * as api from "../api";
 import { FirebaseError } from "../error";
 import * as logger from "../logger";
 import * as utils from "../utils";
-import { Operation } from "../functionsDeployHelper";
 import { CloudFunctionTrigger } from "../deploy/functions/deploymentPlanner";
+
+interface Operation {
+  name: string;
+  type: string;
+  funcName: string;
+  done: boolean;
+  eventType?: string;
+  trigger?: {
+    eventTrigger?: any;
+    httpsTrigger?: any;
+  };
+  error?: { code: number; message: string };
+}
 
 export const API_VERSION = "v1";
 
@@ -318,30 +330,4 @@ export async function listFunctions(
 export async function listAllFunctions(projectId: string): Promise<CloudFunctionTrigger[]> {
   // "-" instead of a region string lists functions in all regions
   return listFunctions(projectId, "-");
-}
-
-// TODO: Get rid of this once we refactor functions-delete.js
-/**
- * Checks if an Operation has completed.
- * @param operation The Operation to check.
- */
-export async function checkOperation(operation: Operation) {
-  const res = await api.request("GET", "/" + API_VERSION + "/" + operation.name, {
-    auth: true,
-    origin: api.functionsOrigin,
-  });
-  try {
-    if (res.body.done) {
-      operation.done = true;
-    }
-    if (_.has(res.body, "error")) {
-      operation.error = res.body.error;
-    }
-    return operation;
-  } catch (err) {
-    logger.debug("[functions] failed to get status of operation: " + operation.name);
-    logger.debug("[functions] " + err.message);
-    operation.error = err;
-    throw new FirebaseError(err.message);
-  }
 }

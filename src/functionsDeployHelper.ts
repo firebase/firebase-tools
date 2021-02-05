@@ -7,25 +7,8 @@ import * as track from "./track";
 import * as utils from "./utils";
 import * as cloudfunctions from "./gcp/cloudfunctions";
 import { Job } from "./gcp/cloudscheduler";
-import * as pollOperations from "./pollOperations";
 import { CloudFunctionTrigger } from "./deploy/functions/deploymentPlanner";
 import Queue from "./throttler/queue";
-
-// TODO(joehan): Get rid of this once we refactor functions-delete.js
-export interface Operation {
-  name: string;
-  type: string;
-  funcName: string;
-  done: boolean;
-  eventType?: string;
-  trigger?: {
-    eventTrigger?: any;
-    httpsTrigger?: any;
-  };
-  retryFunction?: () => Promise<any>;
-  triggerUrl?: string;
-  error?: { code: number; message: string };
-}
 
 export function functionMatchesAnyGroup(fnName: string, filterGroups: string[][]) {
   if (!filterGroups.length) {
@@ -191,65 +174,6 @@ export function toJob(fn: CloudFunctionTrigger, appEngineLocation: string, proje
       },
     },
   });
-}
-
-// TODO(joehan): Get rid of this once we refactor functions-delete.js
-export function pollDeploys(
-  operations: Operation[],
-  printSuccess: (op: Operation) => void,
-  printFail: (op: Operation) => void,
-  printTooManyOps: (projectId: string) => void,
-  projectId: string
-) {
-  let interval;
-  // Poll less frequently when there are many operations to avoid hitting read quota.
-  // See "Read requests" quota at https://cloud.google.com/console/apis/api/cloudfunctions/quotas
-  if (_.size(operations) > 90) {
-    printTooManyOps(projectId);
-    return Promise.resolve([]);
-  } else if (_.size(operations) > 40) {
-    interval = 10 * 1000;
-  } else if (_.size(operations) > 15) {
-    interval = 5 * 1000;
-  } else {
-    interval = 2 * 1000;
-  }
-  const pollFunction = cloudfunctions.checkOperation;
-
-  const retryCondition = function (result: Operation) {
-    // The error codes from a Google.LongRunning operation follow google.rpc.Code format.
-
-    const retryableCodes = [
-      1, // cancelled by client
-      4, // deadline exceeded
-      10, // aborted (typically due to concurrency issue)
-      14, // unavailable
-    ];
-
-    if (_.includes(retryableCodes, result.error?.code)) {
-      return true;
-    }
-    return false;
-  };
-
-  try {
-    return pollOperations.pollAndRetry(
-      operations,
-      pollFunction,
-      interval,
-      printSuccess,
-      printFail,
-      retryCondition
-    );
-  } catch (err) {
-    utils.logWarning(
-      clc.bold.yellow("functions:") + " failed to get status of all the deployments"
-    );
-    logger.info(
-      "You can check on their status at " + utils.consoleUrl(projectId, "/functions/logs")
-    );
-    throw new FirebaseError("Failed to get status of functions deployments.");
-  }
 }
 
 export function logAndTrackDeployStats(queue: Queue<any, any>) {
