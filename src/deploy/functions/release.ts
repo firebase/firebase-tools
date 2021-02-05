@@ -49,14 +49,8 @@ export async function release(context: any, options: any, payload: any) {
   );
   if (shouldDeleteFunctions) {
     for (const fnName of fullDeployment.functionsToDelete) {
-      cloudFunctionsQueue
-        .run(tasks.deleteFunctionTask(taskParams, fnName))
-        .then(() => {
-          helper.printSuccess(fnName, "delete");
-        })
-        .catch((err) => {
-          errorHandler.record("error", fnName, "delete", err.message || "");
-        });
+      const task = tasks.deleteFunctionTask(taskParams, fnName);
+      cloudFunctionsQueue.run(task);
     }
   } else {
     // If we shouldn't delete functions, don't clean up their schedules either
@@ -78,25 +72,12 @@ export async function release(context: any, options: any, payload: any) {
     // Add scheduler creates and updates to their queue.
     for (const fn of regionalDeployment.schedulesToUpsert) {
       const task = tasks.upsertScheduleTask(taskParams, fn, appEngineLocation);
-      schedulerQueue
-        .run(task)
-        .then(() => {
-          helper.printSuccess(fn.name, "upsert schedule");
-        })
-        .catch((err) => {
-          errorHandler.record("error", fn.name, "upsert schedule", err.message || "");
-        });
+      schedulerQueue.run(task);
     }
   }
   for (const fnName of fullDeployment.schedulesToDelete) {
-    schedulerQueue
-      .run(tasks.deleteScheduleTask(fnName, appEngineLocation))
-      .then(() => {
-        helper.printSuccess(fnName, "delete schedule");
-      })
-      .catch((err) => {
-        errorHandler.record("error", fnName, "delete schedule", err.message || "");
-      });
+    const task = tasks.deleteScheduleTask(taskParams, fnName, appEngineLocation);
+    schedulerQueue.run(task);
   }
 
   // Once everything has been added to queues, starting processing.
