@@ -6,6 +6,7 @@ import { ErrorHandler } from "./deploy/functions/errorHandler";
 
 export async function deleteFunctions(
   functionsNamesToDelete: string[],
+  scheduledFunctionNamesToDelete: string[],
   projectId: string,
   appEngineLocation: string
 ): Promise<void> {
@@ -20,29 +21,11 @@ export async function deleteFunctions(
   };
   functionsNamesToDelete.forEach((fnName) => {
     const deleteFunctionTask = tasks.deleteFunctionTask(taskParams, fnName);
-    cloudFunctionsQueue
-      .run(deleteFunctionTask)
-      .then(() => {
-        helper.printSuccess(fnName, "delete");
-      })
-      .catch((err) => {
-        errorHandler.record("error", fnName, "delete", err.message || "");
-      });
-
-    const deleteSchedulerTask = tasks.deleteScheduleTask(fnName, appEngineLocation);
-    schedulerQueue
-      .run(deleteSchedulerTask)
-      .then(() => {
-        helper.printSuccess(fnName, "delete schedule");
-      })
-      .catch((err) => {
-        // if err.status is 403, the project doesnt have the api enabled
-        // and there are no schedules to delete, so catch the error.
-        console.log(err);
-        if (err.context?.response?.statusCode !== 403) {
-          errorHandler.record("error", fnName, "delete schedule", err.message || "");
-        }
-      });
+    cloudFunctionsQueue.run(deleteFunctionTask);
+  });
+  scheduledFunctionNamesToDelete.forEach((fnName) => {
+    const deleteSchedulerTask = tasks.deleteScheduleTask(taskParams, fnName, appEngineLocation);
+    schedulerQueue.run(deleteSchedulerTask);
   });
   const queuePromises = [cloudFunctionsQueue.wait(), schedulerQueue.wait()];
 
@@ -53,6 +36,6 @@ export async function deleteFunctions(
 
   await Promise.all(queuePromises);
 
-  helper.logAndTrackDeployStats;
+  helper.logAndTrackDeployStats(cloudFunctionsQueue);
   errorHandler.printErrors();
 }

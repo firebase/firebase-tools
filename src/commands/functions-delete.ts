@@ -36,10 +36,9 @@ module.exports = new Command("functions:delete [filters...]")
     const config = await functionsConfig.getFirebaseConfig(options);
     const appEngineLocation = functionsConfig.getAppEngineLocation(config);
     const existingFns = await cloudfunctions.listAllFunctions(projectId);
-    const allFnNames = _.map(existingFns, "name");
-    const functionsToDelete = allFnNames.filter((fnName) => {
-      const regionMatches = options.region ? helper.getRegion(fnName) === options.region : true;
-      const nameMatches = helper.functionMatchesAnyGroup(fnName, filterChunks);
+    const functionsToDelete = existingFns.filter((fn) => {
+      const regionMatches = options.region ? helper.getRegion(fn.name) === options.region : true;
+      const nameMatches = helper.functionMatchesAnyGroup(fn.name, filterChunks);
       return regionMatches && nameMatches;
     });
     if (functionsToDelete.length === 0) {
@@ -50,9 +49,17 @@ module.exports = new Command("functions:delete [filters...]")
         { exit: 1 }
       );
     }
+
+    const scheduledFnNamesToDelete = functionsToDelete
+      .filter((fn) => {
+        return fn.labels?.["deployment-scheduled"] === "true";
+      })
+      .map((fn) => fn.name);
+    const fnNamesToDelete = functionsToDelete.map((fn) => fn.name);
+
     let confirmDeletion = false;
     if (!options.force) {
-      const deleteList = functionsToDelete
+      const deleteList = fnNamesToDelete
         .map((func) => {
           return "\t" + helper.getFunctionLabel(func);
         })
@@ -72,5 +79,10 @@ module.exports = new Command("functions:delete [filters...]")
     if (!confirmDeletion && !options.force) {
       return utils.reject("Command aborted.", { exit: 1 });
     }
-    return await deleteFunctions(functionsToDelete, projectId, appEngineLocation);
+    return await deleteFunctions(
+      fnNamesToDelete,
+      scheduledFnNamesToDelete,
+      projectId,
+      appEngineLocation
+    );
   });
