@@ -1,7 +1,3 @@
-"use strict";
-
-import * as _ from "lodash";
-
 import { Command } from "../command";
 import * as clc from "cli-color";
 import * as cloudfunctions from "../gcp/cloudfunctions";
@@ -13,7 +9,7 @@ import { prompt } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 
-module.exports = new Command("functions:delete [filters...]")
+export default new Command("functions:delete [filters...]")
   .description("delete one or more Cloud Functions by name or group name.")
   .option(
     "--region <region>",
