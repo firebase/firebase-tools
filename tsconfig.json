@@ -6,6 +6,7 @@
     "strict": true,
     "outDir": "lib",
     "removeComments": true,
+    "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
     "target": "es2017",
     "sourceMap": true,
