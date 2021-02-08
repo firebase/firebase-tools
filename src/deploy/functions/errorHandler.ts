@@ -40,11 +40,11 @@ export class ErrorHandler {
     if (this.errors.length === 0) {
       return;
     }
-    logger.info("\n\nFunctions deploy had errors with the following functions:");
+    logger.info("\nFunctions deploy had errors with the following functions:");
     for (const failedDep of this.errors) {
       logger.info(`\t${failedDep.functionName}`);
     }
-    logger.info("\n\nTo try redeploying those functions, run:");
+    logger.info("\nTo try redeploying those functions, run:");
     logger.info(
       "    " +
         clc.bold("firebase deploy --only ") +
@@ -56,7 +56,7 @@ export class ErrorHandler {
         ) +
         clc.bold('"')
     );
-    logger.info("\n\nTo continue deploying other features (such as database), run:");
+    logger.info("\nTo continue deploying other features (such as database), run:");
     logger.info("    " + clc.bold("firebase deploy --except functions"));
     // Print all the original messages at debug level.
     for (const failedDep of this.errors) {
@@ -73,13 +73,13 @@ export class ErrorHandler {
     }
     const failedIamCalls = this.warnings.filter((e) => e.operationType === "make public");
     if (failedIamCalls.length) {
-      logger.info("\n\nUnable to set publicly accessible IAM policy on the following functions:");
+      logger.info("\nUnable to set publicly accessible IAM policy on the following functions:");
       for (const failedDep of failedIamCalls) {
         logger.info(`\t${failedDep.functionName}`);
       }
-      logger.info("\n\nUnauthorized users will not be able access this function.");
+      logger.info("\nUnauthorized users will not be able access this function.");
       logger.info(
-        "\n\nThis may be caused by an organization policy that restricts Network Access on your project."
+        "\nThis may be caused by an organization policy that restricts Network Access on your project."
       );
     }
 

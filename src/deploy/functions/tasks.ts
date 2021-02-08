@@ -228,10 +228,7 @@ export function deleteScheduleTask(
 }
 
 /**
- *
- * @param params
- * @param regionalDeployment
- * @param queue
+ * Adds tasks to execute all function creates and updates for a region to the provided queue.
  */
 export function runRegionalFunctionDeployment(
   params: TaskParams,
