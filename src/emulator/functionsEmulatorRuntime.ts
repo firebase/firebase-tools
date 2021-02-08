@@ -531,14 +531,17 @@ async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
             "runtime-status",
             "The Firebase Authentication emulator is running, but your 'firebase-admin' dependency is below version 9.3.0, so calls to Firebase Authentication will affect production."
           ).log();
-        }
-
-        const auth = defaultApp.auth();
-        if (typeof (auth as any).setJwtVerificationEnabled === "function") {
-          logDebug("auth.setJwtVerificationEnabled(false)", {});
-          (auth as any).setJwtVerificationEnabled(false);
-        } else {
-          logDebug("auth.setJwtVerificationEnabled not available", {});
+        } else if (compareVersionStrings(adminResolution.version, "9.4.2") <= 0) {
+          // Between firebase-admin versions 9.3.0 and 9.4.2 (inclusive) we used the
+          // "auth.setJwtVerificationEnabled" hack to disable JWT verification while emulating.
+          // See: https://github.com/firebase/firebase-admin-node/pull/1148
+          const auth = defaultApp.auth();
+          if (typeof (auth as any).setJwtVerificationEnabled === "function") {
+            logDebug("auth.setJwtVerificationEnabled(false)", {});
+            (auth as any).setJwtVerificationEnabled(false);
+          } else {
+            logDebug("auth.setJwtVerificationEnabled not available", {});
+          }
         }
       }
 
