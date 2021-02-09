@@ -79,9 +79,7 @@ export function createFunctionTask(
       if (eventType === "https") {
         try {
           await cloudfunctions.setIamPolicy({
-            functionName: fn.name,
-            projectId: params.projectId,
-            region: helper.getRegion(fn.name),
+            name: fn.name,
             policy: cloudfunctions.DEFAULT_PUBLIC_POLICY,
           });
         } catch (err) {

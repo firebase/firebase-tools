@@ -132,15 +132,11 @@ export async function createFunction(options: any): Promise<Operation> {
 }
 
 /**
- * @param projectId Project that owns the Function.
- * @param region Region in which the Function exists.
- * @param functionName Name of the Function.
+ * @param name Fully qualified name of the Function.
  * @param policy The [policy](https://cloud.google.com/functions/docs/reference/rest/v1/projects.locations.functions/setIamPolicy) to set.
  */
 interface IamOptions {
-  projectId: string;
-  region: string;
-  functionName: string;
+  name: string;
   policy: any; // TODO: Type this?
 }
 
@@ -149,8 +145,7 @@ interface IamOptions {
  * @param options The Iam options to set.
  */
 export async function setIamPolicy(options: IamOptions) {
-  const name = `projects/${options.projectId}/locations/${options.region}/functions/${options.functionName}`;
-  const endpoint = `/${API_VERSION}/${name}:setIamPolicy`;
+  const endpoint = `/${API_VERSION}/${options.name}:setIamPolicy`;
 
   try {
     await api.request("POST", endpoint, {
@@ -162,10 +157,9 @@ export async function setIamPolicy(options: IamOptions) {
       origin: api.functionsOrigin,
     });
   } catch (err) {
-    throw new FirebaseError(
-      `Failed to set the IAM Policy on the function ${options.functionName}`,
-      { original: err }
-    );
+    throw new FirebaseError(`Failed to set the IAM Policy on the function ${options.name}`, {
+      original: err,
+    });
   }
 }
 
