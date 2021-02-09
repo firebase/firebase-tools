@@ -110,6 +110,9 @@ export async function createFunction(options: any): Promise<Operation> {
   if (options.serviceAccountEmail) {
     data.serviceAccountEmail = options.serviceAccountEmail;
   }
+  if (options.sourceToken) {
+    data.sourceToken = options.sourceToken;
+  }
   try {
     const res = await api.request("POST", endpoint, {
       auth: true,
@@ -220,6 +223,10 @@ export async function updateFunction(options: any): Promise<Operation> {
   if (options.serviceAccountEmail) {
     data.serviceAccountEmail = options.serviceAccountEmail;
     masks.push("serviceAccountEmail");
+  }
+  if (options.sourceToken) {
+    data.sourceToken = options.sourceToken;
+    masks.push("sourceToken");
   }
   if (options.trigger.eventTrigger) {
     masks = _.concat(
