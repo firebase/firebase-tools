@@ -52,7 +52,7 @@ export function createFunctionTask(
         projectId: params.projectId,
         region: helper.getRegion(fn.name),
         eventType: eventType,
-        functionName: helper.getFunctionName(fn.name),
+        functionName: helper.getFunctionId(fn.name),
         entryPoint: fn.entryPoint,
         trigger: helper.getFunctionTrigger(fn),
         labels: Object.assign({}, deploymentTool.labels(), fn.labels),
@@ -118,7 +118,7 @@ export function updateFunctionTask(
         projectId: params.projectId,
         region: helper.getRegion(fn.name),
         eventType: eventType,
-        functionName: helper.getFunctionName(fn.name),
+        functionName: helper.getFunctionId(fn.name),
         entryPoint: fn.entryPoint,
         trigger: helper.getFunctionTrigger(fn),
         labels: Object.assign({}, deploymentTool.labels(), fn.labels),
@@ -272,6 +272,7 @@ function finishRegionalFunctionDeployment(
   regionalDeployment: RegionalDeployment,
   queue: Queue<() => Promise<any>, void>
 ): void {
+  params.sourceToken = regionalDeployment.sourceToken;
   for (const fn of regionalDeployment.functionsToCreate) {
     queue.run(createFunctionTask(params, fn));
   }

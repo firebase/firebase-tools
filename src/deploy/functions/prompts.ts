@@ -1,6 +1,6 @@
 import * as clc from "cli-color";
 
-import { getFunctionLabel, getFunctionName, getRegion } from "../../functionsDeployHelper";
+import { getFunctionLabel, getFunctionId, getRegion } from "../../functionsDeployHelper";
 import { CloudFunctionTrigger } from "./deploymentPlanner";
 import { FirebaseError } from "../../error";
 import { promptOnce } from "../../prompt";
@@ -80,7 +80,7 @@ export async function promptForFunctionDeletion(
     const deleteCommands = functionsToDelete
       .map((func) => {
         return (
-          "\tfirebase functions:delete " + getFunctionName(func) + " --region " + getRegion(func)
+          "\tfirebase functions:delete " + getFunctionId(func) + " --region " + getRegion(func)
         );
       })
       .join("\n");

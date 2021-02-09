@@ -54,7 +54,7 @@ module.exports = function (functionsToDelete, projectId, appEngineLocation) {
   deletes = _.map(functionsToDelete, function (name) {
     const scheduleName = helper.getScheduleName(name, appEngineLocation);
     const topicName = helper.getTopicName(name);
-    const functionName = helper.getFunctionName(name);
+    const functionName = helper.getFunctionId(name);
     return {
       name: name,
       retryFunction: function () {
