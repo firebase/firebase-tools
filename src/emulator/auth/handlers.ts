@@ -50,9 +50,9 @@ export function registerHandlers(
         }
         try {
           const resp = setAccountInfoImpl(state, {
+            email: oob.email,
             oobCode,
           });
-          console.log(resp);
           const email = resp.email;
           return res.status(200).json({
             authEmulator: { success: `The email has been successfully reset.`, email },
