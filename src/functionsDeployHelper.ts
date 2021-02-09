@@ -6,10 +6,12 @@ import * as logger from "./logger";
 import * as track from "./track";
 import * as utils from "./utils";
 import * as cloudfunctions from "./gcp/cloudfunctions";
+import { Job } from "./gcp/cloudscheduler";
 import * as pollOperations from "./pollOperations";
 import { CloudFunctionTrigger } from "./deploy/functions/deploymentPlanner";
+import Queue from "./throttler/queue";
 
-// TODO: Get rid of this when switching to use operation-poller.
+// TODO(joehan): Get rid of this once we refactor functions-delete.js
 export interface Operation {
   name: string;
   type: string;
@@ -97,13 +99,13 @@ export function logFilters(
   let list;
   if (existingNames.length > 0) {
     list = _.map(existingNames, (name) => {
-      return getFunctionName(name) + "(" + getRegion(name) + ")";
+      return getFunctionId(name) + "(" + getRegion(name) + ")";
     }).join(", ");
     utils.logBullet(clc.bold.cyan("functions: ") + "current functions in project: " + list);
   }
   if (releaseNames.length > 0) {
     list = _.map(releaseNames, (name) => {
-      return getFunctionName(name) + "(" + getRegion(name) + ")";
+      return getFunctionId(name) + "(" + getRegion(name) + ")";
     }).join(", ");
     utils.logBullet(clc.bold.cyan("functions: ") + "uploading functions in project: " + list);
   }
@@ -143,7 +145,7 @@ export function getFunctionTrigger(functionInfo: CloudFunctionTrigger) {
   throw new FirebaseError("Could not parse function trigger, unknown trigger type.");
 }
 
-export function getFunctionName(fullName: string): string {
+export function getFunctionId(fullName: string): string {
   return fullName.split("/")[5];
 }
 
@@ -176,9 +178,22 @@ export function getRegion(fullName: string): string {
 }
 
 export function getFunctionLabel(fullName: string): string {
-  return getFunctionName(fullName) + "(" + getRegion(fullName) + ")";
+  return getFunctionId(fullName) + "(" + getRegion(fullName) + ")";
 }
 
+export function toJob(fn: CloudFunctionTrigger, appEngineLocation: string, projectId: string): Job {
+  return Object.assign(fn.schedule as { schedule: string }, {
+    name: getScheduleName(fn.name, appEngineLocation),
+    pubsubTarget: {
+      topicName: getTopicName(fn.name),
+      attributes: {
+        scheduled: "true",
+      },
+    },
+  });
+}
+
+// TODO(joehan): Get rid of this once we refactor functions-delete.js
 export function pollDeploys(
   operations: Operation[],
   printSuccess: (op: Operation) => void,
@@ -235,4 +250,45 @@ export function pollDeploys(
     );
     throw new FirebaseError("Failed to get status of functions deployments.");
   }
+}
+
+export function logAndTrackDeployStats(queue: Queue<any, any>) {
+  const stats = queue.stats();
+  logger.debug(`Total Function Deployment time: ${stats.elapsed}`);
+  logger.debug(`${stats.total} Functions Deployed`);
+  logger.debug(`${stats.errored} Functions Errored`);
+  logger.debug(`Average Function Deployment time: ${stats.avg}`);
+  if (stats.total > 0) {
+    track("Functions Deploy (Result)", "failure", stats.errored);
+    track("Functions Deploy (Result)", "success", stats.success);
+  }
+  // TODO: Track other stats here - maybe time of full deployment?
+}
+
+export function printSuccess(funcName: string, type: string) {
+  utils.logSuccess(
+    clc.bold.green("functions[" + getFunctionLabel(funcName) + "]: ") +
+      "Successful " +
+      type +
+      " operation. "
+  );
+}
+
+export async function printTriggerUrls(projectId: string, sourceUrl: string) {
+  const functions = await cloudfunctions.listAllFunctions(projectId);
+  const httpsFunctions = functions.filter((fn) => {
+    return fn.sourceUploadUrl === sourceUrl && fn.httpsTrigger;
+  });
+  if (httpsFunctions.length === 0) {
+    return;
+  }
+
+  httpsFunctions.forEach((httpsFunc) => {
+    logger.info(
+      clc.bold("Function URL"),
+      `(${getFunctionId(httpsFunc.name)}):`,
+      httpsFunc.httpsTrigger?.url
+    );
+  });
+  return;
 }

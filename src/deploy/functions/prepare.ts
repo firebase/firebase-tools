@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import * as clc from "cli-color";
 
 import * as ensureApiEnabled from "../../ensureApiEnabled";
@@ -34,11 +33,11 @@ export async function prepare(context: any, options: any, payload: any): Promise
     ensureApiEnabled.check(projectId, "runtimeconfig.googleapis.com", "runtimeconfig", true),
     checkRuntimeDependencies(projectId, context.runtimeChoice),
   ]);
-  _.set(context, "runtimeConfigEnabled", checkAPIsEnabled[1]);
+  context.runtimeConfigEnabled = checkAPIsEnabled[1];
 
-  // Get the Firebase Config.
+  // Get the Firebase Config, and set it on each function in the deployment.
   const firebaseConfig = await functionsConfig.getFirebaseConfig(options);
-  _.set(context, "firebaseConfig", firebaseConfig);
+  context.firebaseConfig = firebaseConfig;
 
   // Prepare the functions directory for upload, and set context.triggers.
   logBullet(
@@ -48,16 +47,31 @@ export async function prepare(context: any, options: any, payload: any): Promise
       " directory for uploading..."
   );
   const source = await prepareFunctionsUpload(context, options);
-  _.set(context, "functionsSource", source);
+  context.functionsSource = source;
 
-  // Get a list of CloudFunctionTriggers, with duplicates for each region.
+  // Get a list of CloudFunctionTriggers, and set default environment variables on each.
+  const defaultEnvVariables = {
+    FIREBASE_CONFIG: JSON.stringify(context.firebaseConfig),
+  };
+  const functions = options.config.get("functions.triggers");
+  functions.forEach((fn: CloudFunctionTrigger) => {
+    fn.environmentVariables = defaultEnvVariables;
+  });
+
+  // Check if we are deploying any scheduled functions - if so, check the necessary APIs.
+  const includesScheduledFunctions = functions.some((fn: CloudFunctionTrigger) => fn.schedule);
+  if (includesScheduledFunctions) {
+    await Promise.all([
+      ensureApiEnabled.ensure(projectId, "cloudscheduler.googleapis.com", "scheduler", false),
+      ensureApiEnabled.ensure(projectId, "pubsub.googleapis.com", "pubsub", false),
+    ]);
+  }
+
+  // Build a regionMap, and duplicate functions for each region they are being deployed to.
   payload.functions = {};
   // TODO: Make byRegion an implementation detail of deploymentPlanner
   // and only store a flat array of Functions in payload.
-  payload.functions.byRegion = functionsByRegion(
-    projectId,
-    options.config.get("functions.triggers")
-  );
+  payload.functions.byRegion = functionsByRegion(projectId, functions);
   payload.functions.triggers = allFunctions(payload.functions.byRegion);
 
   // Validate the function code that is being deployed.

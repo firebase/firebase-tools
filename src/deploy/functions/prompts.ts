@@ -1,10 +1,11 @@
 import * as clc from "cli-color";
 
-import { getFunctionLabel } from "../../functionsDeployHelper";
+import { getFunctionLabel, getFunctionId, getRegion } from "../../functionsDeployHelper";
 import { CloudFunctionTrigger } from "./deploymentPlanner";
 import { FirebaseError } from "../../error";
 import { promptOnce } from "../../prompt";
 import * as utils from "../../utils";
+import * as logger from "../../logger";
 
 /**
  * Checks if a deployment will create any functions with a failure policy.
@@ -52,4 +53,59 @@ export async function promptForFailurePolicies(
   if (!proceed) {
     throw new FirebaseError("Deployment canceled.", { exit: 1 });
   }
+}
+
+/**
+ * Checks if a deployment will delete any functions.
+ * If there are any, prompts the user if they should be deleted or not.
+ * @param options
+ * @param functions A list of functions to be deleted.
+ */
+export async function promptForFunctionDeletion(
+  functionsToDelete: string[],
+  force: boolean,
+  nonInteractive: boolean
+): Promise<boolean> {
+  let shouldDeleteFns = true;
+  if (functionsToDelete.length === 0 || force) {
+    return true;
+  }
+  const deleteList = functionsToDelete
+    .map((funcName) => {
+      return "\t" + getFunctionLabel(funcName);
+    })
+    .join("\n");
+
+  if (nonInteractive) {
+    const deleteCommands = functionsToDelete
+      .map((func) => {
+        return (
+          "\tfirebase functions:delete " + getFunctionId(func) + " --region " + getRegion(func)
+        );
+      })
+      .join("\n");
+
+    throw new FirebaseError(
+      "The following functions are found in your project but do not exist in your local source code:\n" +
+        deleteList +
+        "\n\nAborting because deletion cannot proceed in non-interactive mode. To fix, manually delete the functions by running:\n" +
+        clc.bold(deleteCommands)
+    );
+  } else {
+    logger.info(
+      "\nThe following functions are found in your project but do not exist in your local source code:\n" +
+        deleteList +
+        "\n\nIf you are renaming a function or changing its region, it is recommended that you create the new " +
+        "function first before deleting the old one to prevent event loss. For more info, visit " +
+        clc.underline("https://firebase.google.com/docs/functions/manage-functions#modify" + "\n")
+    );
+    shouldDeleteFns = await promptOnce({
+      type: "confirm",
+      name: "confirm",
+      default: false,
+      message:
+        "Would you like to proceed with deletion? Selecting no will continue the rest of the deployments.",
+    });
+  }
+  return shouldDeleteFns;
 }

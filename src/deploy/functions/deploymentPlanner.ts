@@ -34,7 +34,6 @@ export interface RegionMap {
 export interface RegionalDeployment {
   region: string;
   sourceToken?: string;
-  firstFunctionDeployment?: () => any;
   functionsToCreate: CloudFunctionTrigger[];
   functionsToUpdate: CloudFunctionTrigger[];
   schedulesToUpsert: CloudFunctionTrigger[];

@@ -15,12 +15,15 @@ export interface OperationPollerOptions {
 const DEFAULT_INITIAL_BACKOFF_DELAY_MILLIS = 250;
 const DEFAULT_MASTER_TIMEOUT_MILLIS = 30000;
 
-interface OperationResult<T> {
+export interface OperationResult<T> {
   done?: boolean;
   response?: T;
   error?: {
     message: string;
     code: number;
+  };
+  metadata?: {
+    [key: string]: any;
   };
 }
 
