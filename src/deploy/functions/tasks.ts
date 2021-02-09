@@ -24,8 +24,8 @@ const defaultPollerOptions = {
 
 export interface TaskParams {
   projectId: string;
-  runtime: string;
-  sourceUrl: string;
+  runtime?: string;
+  sourceUrl?: string;
   sourceToken?: string;
   timer: DeploymentTimer;
   errorHandler: ErrorHandler;
@@ -40,7 +40,7 @@ export function createFunctionTask(
     utils.logBullet(
       clc.bold.cyan("functions: ") +
         "creating " +
-        getHumanFriendlyRuntimeName(params.runtime) +
+        getHumanFriendlyRuntimeName(params.runtime!) +
         " function " +
         clc.bold(helper.getFunctionLabel(fn.name)) +
         "..."
@@ -104,7 +104,7 @@ export function updateFunctionTask(
     utils.logBullet(
       clc.bold.cyan("functions: ") +
         "updating " +
-        getHumanFriendlyRuntimeName(params.runtime) +
+        getHumanFriendlyRuntimeName(params.runtime!) +
         " function " +
         clc.bold(helper.getFunctionLabel(fn.name)) +
         "..."
