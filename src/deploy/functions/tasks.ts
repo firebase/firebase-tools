@@ -7,7 +7,7 @@ import { cloudfunctions, cloudscheduler } from "../../gcp";
 import * as deploymentTool from "../../deploymentTool";
 import * as helper from "../../functionsDeployHelper";
 import { RegionalDeployment } from "./deploymentPlanner";
-import { OperationPollerOptions, pollOperation } from "../../operation-poller";
+import { OperationResult, OperationPollerOptions, pollOperation } from "../../operation-poller";
 import { functionsOrigin } from "../../api";
 import Queue from "../../throttler/queue";
 import { getHumanFriendlyRuntimeName } from "../../parseRuntimeAndValidateSDK";
@@ -19,7 +19,7 @@ import { ErrorHandler } from "./errorHandler";
 const defaultPollerOptions = {
   apiOrigin: functionsOrigin,
   apiVersion: cloudfunctions.API_VERSION,
-  masterTimeout: 150000,
+  masterTimeout: 180000, // 180000ms = 3 minutes
 };
 
 export interface TaskParams {
@@ -34,7 +34,7 @@ export interface TaskParams {
 export function createFunctionTask(
   params: TaskParams,
   fn: CloudFunctionTrigger,
-  onPoll?: (op: any) => any
+  onPoll?: (op: OperationResult<CloudFunctionTrigger>) => void
 ): () => Promise<CloudFunctionTrigger | void> {
   return async () => {
     utils.logBullet(
@@ -100,7 +100,7 @@ export function createFunctionTask(
 export function updateFunctionTask(
   params: TaskParams,
   fn: CloudFunctionTrigger,
-  onPoll?: (op: any) => any
+  onPoll?: (op: OperationResult<CloudFunctionTrigger>) => void
 ): () => Promise<CloudFunctionTrigger | void> {
   return async () => {
     utils.logBullet(
@@ -211,6 +211,7 @@ export function deleteScheduleTask(
       // If the job has already been deleted, don't throw an error.
       if (err.status !== 404) {
         params.errorHandler.record("error", fnName, "delete schedule", err.message || "");
+        return;
       }
       logger.debug(`Scheduler job ${jobName} not found.`);
     }
@@ -221,6 +222,7 @@ export function deleteScheduleTask(
       // If the topic has already been deleted, don't throw an error.
       if (err.status !== 404) {
         params.errorHandler.record("error", fnName, "delete schedule", err.message || "");
+        return;
       }
       logger.debug(`Scheduler topic ${topicName} not found.`);
     }

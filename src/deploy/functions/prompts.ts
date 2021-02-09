@@ -54,6 +54,7 @@ export async function promptForFailurePolicies(
     throw new FirebaseError("Deployment canceled.", { exit: 1 });
   }
 }
+
 /**
  * Checks if a deployment will delete any functions.
  * If there are any, prompts the user if they should be deleted or not.

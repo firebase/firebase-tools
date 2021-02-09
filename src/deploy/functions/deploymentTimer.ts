@@ -1,5 +1,6 @@
 import * as logger from "../../logger";
 import * as track from "../../track";
+
 interface Timing {
   type?: string;
   t0?: [number, number]; // [seconds, nanos]
