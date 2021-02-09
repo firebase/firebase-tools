@@ -1,2 +1,1 @@
-- Adds support for uploading Android App Bundles (AABs) to App Distribution.
-- Adds support for batchDelete in Auth Emulator (#3091).
+- Fixes issue where proxied requests to dynamic content through the Hosting emulator would return unexpected `location` headers. (#3097)
