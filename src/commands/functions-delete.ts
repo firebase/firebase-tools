@@ -39,9 +39,9 @@ export default new Command("functions:delete [filters...]")
     });
     if (functionsToDelete.length === 0) {
       return utils.reject(
-        "The specified filters do not match any existing functions in project " +
-          clc.bold(projectId) +
-          ".",
+        `The specified filters do not match any existing functions in project ${clc.bold(
+          projectId
+        )}.`,
         { exit: 1 }
       );
     }
