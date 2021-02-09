@@ -48,21 +48,12 @@ export function registerHandlers(
             authEmulator: EXPIRED_LINK_ERROR,
           });
         }
-        if (!req.query.oldEmail) {
-          return res.status(400).json({
-            authEmulator: {
-              error: "missing oldEmail query parameter",
-              instructions: `To reset the email for ${oob.email}, you must provide the original email to reset the user information.`,
-              instructions2:
-                "Please modify the URL to specify the email to reset to, such as ...&oldEmail=YOUR_OLD_EMAIL",
-            },
-          });
-        }
         try {
-          const { email } = setAccountInfoImpl(state, {
-            email: req.query.oldEmail as string,
+          const resp = setAccountInfoImpl(state, {
             oobCode,
           });
+          console.log(resp);
+          const email = resp.email;
           return res.status(200).json({
             authEmulator: { success: `The email has been successfully reset.`, email },
           });

@@ -18,6 +18,7 @@ import { Emulators } from "../types";
 import { EmulatorLogger } from "../emulatorLogger";
 import {
   ProjectState,
+  OobRequestType,
   UserInfo,
   ProviderUserInfo,
   PROVIDER_PASSWORD,
@@ -25,6 +26,7 @@ import {
   PROVIDER_PHONE,
   SIGNIN_METHOD_EMAIL_LINK,
   PROVIDER_CUSTOM,
+  OobRecord,
 } from "./state";
 
 import * as schema from "./schema";
@@ -739,49 +741,23 @@ function sendOobCode(
     );
   }
 
-  const { oobCode, oobLink } = state.createOob(email, reqBody.requestType, (oobCode) => {
-    // TODO: Support custom handler links.
-    const url = authEmulatorUrl(ctx.req as express.Request);
-    url.pathname = "/emulator/action";
-    url.searchParams.set("mode", mode);
-    url.searchParams.set("lang", "en");
-    url.searchParams.set("oobCode", oobCode);
-
-    // This doesn't matter for now, since any API key works for defaultProject.
-    // TODO: What if reqBody.targetProjectId is set?
-    url.searchParams.set("apiKey", "fake-api-key");
-
-    if (reqBody.continueUrl) {
-      url.searchParams.set("continueUrl", reqBody.continueUrl);
-    }
-
-    return url.toString();
+  const url = authEmulatorUrl(ctx.req as express.Request);
+  const { oobRecord, maybeMessage } = createOobRecord(state, email, url, {
+    requestType: reqBody.requestType,
+    mode,
+    continueUrl: reqBody.continueUrl,
   });
 
   if (reqBody.returnOobLink) {
     return {
       kind: "identitytoolkit#GetOobConfirmationCodeResponse",
       email,
-      oobCode,
-      oobLink,
+      oobCode: oobRecord.oobCode,
+      oobLink: oobRecord.oobLink,
     };
   } else {
-    // Print out a developer-friendly log containing the link, in lieu of
-    // sending a real email out to the email address.
-    let message: string | undefined;
-    switch (reqBody.requestType) {
-      case "EMAIL_SIGNIN":
-        message = `To sign in as ${email}, follow this link: ${oobLink}`;
-        break;
-      case "PASSWORD_RESET":
-        message = `To reset the password for ${email}, follow this link: ${oobLink}&newPassword=NEW_PASSWORD_HERE`;
-        break;
-      case "VERIFY_EMAIL":
-        message = `To verify the email address ${email}, follow this link: ${oobLink}`;
-        break;
-    }
-    if (message) {
-      EmulatorLogger.forEmulator(Emulators.AUTH).log("BULLET", message);
+    if (maybeMessage) {
+      EmulatorLogger.forEmulator(Emulators.AUTH).log("BULLET", maybeMessage);
     }
 
     return {
@@ -901,14 +877,11 @@ export function setAccountInfoImpl(
       }
       case "RECOVER_EMAIL": {
         state.deleteOobCode(reqBody.oobCode);
-        // TODO: Ask if this is needed for RECOVER_EMAIL.
-        // signInProvider = PROVIDER_PASSWORD;
-        const maybeUser = state.getUserByEmail(oob.email);
+        const maybeUser = state.getUserByInitialEmail(oob.email);
         assert(maybeUser, "INVALID_OOB_CODE");
         user = maybeUser;
-        assert(reqBody.email, "INVALID_EMAIL");
-        assert(isValidEmailAddress(reqBody.email), "INVALID_EMAIL");
-        if (reqBody.email !== user.email) {
+        // TODO: Make the check that the new email and init email are diff when sending out the OOB in first place.
+        if (oob.email !== user.email) {
           updates.email = reqBody.email;
         }
         break;
@@ -939,9 +912,12 @@ export function setAccountInfoImpl(
         updates.email = newEmail;
         // TODO: Set verified if email is verified by IDP linked to account.
         updates.emailVerified = false;
-        if (user.email) {
-          // If user email is present, then send a reset OOB.
-          sendOobForEmailReset(state, user.email, newEmail, emulatorUrl);
+        if (user.email && !user.initialEmail) {
+          updates.initialEmail = user.email;
+        }
+        const initialEmail = user.initialEmail ?? updates.initialEmail;
+        if (initialEmail && newEmail !== initialEmail) {
+          sendOobForEmailReset(state, initialEmail, emulatorUrl);
         }
       }
     }
@@ -1041,29 +1017,70 @@ export function setAccountInfoImpl(
   });
 }
 
-function sendOobForEmailReset(state: ProjectState, oldEmail: string, newEmail: string, url: URL) {
+function sendOobForEmailReset(state: ProjectState, initialEmail: string, url: URL) {
   const mode: string = "recoverEmail";
+  const { oobRecord, maybeMessage } = createOobRecord(state, initialEmail, url, {
+    requestType: "RECOVER_EMAIL",
+    mode,
+  });
 
-  // Encode the new email with the OOB code. The old email is received as a URL parameter.
-  const { oobCode, oobLink } = state.createOob(newEmail, "RECOVER_EMAIL", (oobCode) => {
-    // TODO: Support custom handler links.
+  // Print out a developer-friendly log
+  assert(maybeMessage, "Internal asertion error: No message to be logged for RECOVER_EMAIL");
+  EmulatorLogger.forEmulator(Emulators.AUTH).log("BULLET", maybeMessage!);
+}
+
+function createOobRecord(
+  state: ProjectState,
+  email: string,
+  url: URL,
+  params: {
+    requestType: OobRequestType;
+    mode: string;
+    continueUrl?: string;
+  }
+): {
+  oobRecord: OobRecord;
+  maybeMessage?: string;
+} {
+  // Encode the old email with the OOB code. The new email is stored in the UserInfo object.
+  const oobRecord = state.createOob(email, params.requestType, (oobCode) => {
     url.pathname = "/emulator/action";
-    url.searchParams.set("mode", mode);
+    url.searchParams.set("mode", params.mode);
     url.searchParams.set("lang", "en");
     url.searchParams.set("oobCode", oobCode);
-    url.searchParams.set("oldEmail", oldEmail);
+    // TODO: Support custom handler links.
 
     // This doesn't matter for now, since any API key works for defaultProject.
     // TODO: What if reqBody.targetProjectId is set?
     url.searchParams.set("apiKey", "fake-api-key");
-    // No continue URL for reset email.
+
+    if (params.continueUrl) {
+      url.searchParams.set("continueUrl", params.continueUrl);
+    }
+
     return url.toString();
   });
 
-  // Print out a developer-friendly log containing the link, in lieu of
+  // Generate a developer-friendly log containing the link, in lieu of
   // sending a real email out to the email address.
-  const message = `To reset your email address to ${oldEmail}, follow this link: ${oobLink}`;
-  EmulatorLogger.forEmulator(Emulators.AUTH).log("BULLET", message);
+  let maybeMessage: string | undefined;
+  const oobLink = oobRecord.oobLink;
+  switch (params.requestType) {
+    case "EMAIL_SIGNIN":
+      maybeMessage = `To sign in as ${email}, follow this link: ${oobLink}`;
+      break;
+    case "PASSWORD_RESET":
+      maybeMessage = `To reset the password for ${email}, follow this link: ${oobLink}&newPassword=NEW_PASSWORD_HERE`;
+      break;
+    case "VERIFY_EMAIL":
+      maybeMessage = `To verify the email address ${email}, follow this link: ${oobLink}`;
+      break;
+    case "RECOVER_EMAIL":
+      maybeMessage = `To reset your email address to ${email}, follow this link: ${oobLink}`;
+      break;
+  }
+
+  return { oobRecord, maybeMessage };
 }
 
 function signInWithCustomToken(
