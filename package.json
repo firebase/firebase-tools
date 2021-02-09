@@ -32,7 +32,8 @@
   "files": [
     "lib",
     "templates",
-    "standalone"
+    "standalone",
+    "scripts/functions"
   ],
   "repository": {
     "type": "git",

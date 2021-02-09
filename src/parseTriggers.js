@@ -6,7 +6,7 @@ var path = require("path");
 
 var _ = require("lodash");
 
-var TRIGGER_PARSER = path.resolve(__dirname, "./triggerParser.js");
+var TRIGGER_PARSER = path.resolve(__dirname, "../scripts/functions/triggerParser.js");
 
 /**
  * Removes any inspect options (`inspect` or `inspect-brk`) from options so the forked process is able to run (otherwise
@@ -59,7 +59,7 @@ module.exports = function (projectId, sourceDir, configValues, firebaseConfig) {
         reject(
           new FirebaseError(
             "There was an unknown problem while trying to parse function triggers. " +
-              "Please ensure you are using Node.js v6 or greater.",
+              "Please ensure you are using Node.js v7 or greater.",
             { exit: 2 }
           )
         );
