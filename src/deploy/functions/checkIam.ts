@@ -53,7 +53,7 @@ export async function checkServiceAccountIam(projectId: string): Promise<void> {
  */
 export async function checkHttpIam(context: any, options: any, payload: any): Promise<void> {
   const functionsInfo = payload.functions.triggers;
-  const filterGroups = context.filters;
+  const filterGroups = context.filters || getFilterGroups(options);
 
   const httpFunctionNames: string[] = functionsInfo
     .filter((f: CloudFunctionTrigger) => has(f, "httpsTrigger"))

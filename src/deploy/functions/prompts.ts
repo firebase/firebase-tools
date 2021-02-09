@@ -1,6 +1,6 @@
 import * as clc from "cli-color";
 
-import { getFunctionLabel, getFunctionName, getRegion } from "../../functionsDeployHelper";
+import { getFunctionLabel, getFunctionId, getRegion } from "../../functionsDeployHelper";
 import { CloudFunctionTrigger } from "./deploymentPlanner";
 import { FirebaseError } from "../../error";
 import { promptOnce } from "../../prompt";
@@ -54,6 +54,7 @@ export async function promptForFailurePolicies(
     throw new FirebaseError("Deployment canceled.", { exit: 1 });
   }
 }
+
 /**
  * Checks if a deployment will delete any functions.
  * If there are any, prompts the user if they should be deleted or not.
@@ -79,7 +80,7 @@ export async function promptForFunctionDeletion(
     const deleteCommands = functionsToDelete
       .map((func) => {
         return (
-          "\tfirebase functions:delete " + getFunctionName(func) + " --region " + getRegion(func)
+          "\tfirebase functions:delete " + getFunctionId(func) + " --region " + getRegion(func)
         );
       })
       .join("\n");

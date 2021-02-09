@@ -40,28 +40,30 @@ export class ErrorHandler {
     if (this.errors.length === 0) {
       return;
     }
-    logger.info("\n\nFunctions deploy had errors with the following functions:");
-    for (const failedDep of this.errors) {
-      logger.info(`\t${failedDep.functionName}`);
+    logger.info("\nFunctions deploy had errors with the following functions:");
+    for (const failedDeployment of this.errors) {
+      logger.info(`\t${failedDeployment.functionName}`);
     }
-    logger.info("\n\nTo try redeploying those functions, run:");
+    logger.info("\nTo try redeploying those functions, run:");
     logger.info(
       "    " +
         clc.bold("firebase deploy --only ") +
         clc.bold('"') +
         clc.bold(
           this.errors
-            .map((failedDep) => `functions:${failedDep.functionName.replace(/-/g, ".")}`)
+            .map(
+              (failedDeployment) => `functions:${failedDeployment.functionName.replace(/-/g, ".")}`
+            )
             .join(",")
         ) +
         clc.bold('"')
     );
-    logger.info("\n\nTo continue deploying other features (such as database), run:");
+    logger.info("\nTo continue deploying other features (such as database), run:");
     logger.info("    " + clc.bold("firebase deploy --except functions"));
     // Print all the original messages at debug level.
-    for (const failedDep of this.errors) {
+    for (const failedDeployment of this.errors) {
       logger.debug(
-        `\tError during ${failedDep.operationType} for ${failedDep.functionName}: ${failedDep.message}`
+        `\tError during ${failedDeployment.operationType} for ${failedDeployment.functionName}: ${failedDeployment.message}`
       );
     }
     throw new FirebaseError("Functions did not deploy properly.");
@@ -73,20 +75,22 @@ export class ErrorHandler {
     }
     const failedIamCalls = this.warnings.filter((e) => e.operationType === "make public");
     if (failedIamCalls.length) {
-      logger.info("\n\nUnable to set publicly accessible IAM policy on the following functions:");
+      logger.info("\nUnable to set publicly accessible IAM policy on the following functions:");
       for (const failedDep of failedIamCalls) {
         logger.info(`\t${failedDep.functionName}`);
       }
-      logger.info("\n\nUnauthorized users will not be able access this function.");
+      logger.info("\nUnauthenticated users will not be able access this function.");
+      logger.info("\nSome common causes of this:");
       logger.info(
-        "\n\nThis may be caused by an organization policy that restricts Network Access on your project."
+        "\n- You may not have the roles/functions.admin IAM role. Note that roles/functions.developer does not allow you to change IAM policies."
       );
+      logger.info("\n- An organization policy that restricts Network Access on your project.");
     }
 
     // Print all the original messages at debug level.
-    for (const failedDep of this.warnings) {
+    for (const failedDeployment of this.warnings) {
       logger.debug(
-        `\tWarning during${failedDep.operationType} for ${failedDep.functionName}: ${failedDep.message}`
+        `\tWarning during${failedDeployment.operationType} for ${failedDeployment.functionName}: ${failedDeployment.message}`
       );
     }
   }

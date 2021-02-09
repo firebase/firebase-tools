@@ -1,6 +1,6 @@
 import * as clc from "cli-color";
 
-import { ensure, check } from "../../ensureApiEnabled";
+import * as ensureApiEnabled from "../../ensureApiEnabled";
 import * as functionsConfig from "../../functionsConfig";
 import * as getProjectId from "../../getProjectId";
 import { logBullet } from "../../utils";
@@ -29,8 +29,8 @@ export async function prepare(context: any, options: any, payload: any): Promise
 
   // Check that all necessary APIs are enabled.
   const checkAPIsEnabled = await Promise.all([
-    ensure(options.project, "cloudfunctions.googleapis.com", "functions"),
-    check(projectId, "runtimeconfig.googleapis.com", "runtimeconfig", true),
+    ensureApiEnabled.ensure(options.project, "cloudfunctions.googleapis.com", "functions"),
+    ensureApiEnabled.check(projectId, "runtimeconfig.googleapis.com", "runtimeconfig", true),
     checkRuntimeDependencies(projectId, context.runtimeChoice),
   ]);
   context.runtimeConfigEnabled = checkAPIsEnabled[1];
@@ -62,8 +62,8 @@ export async function prepare(context: any, options: any, payload: any): Promise
   const includesScheduledFunctions = functions.some((fn: CloudFunctionTrigger) => fn.schedule);
   if (includesScheduledFunctions) {
     await Promise.all([
-      ensure(projectId, "cloudscheduler.googleapis.com", "scheduler", false),
-      ensure(projectId, "pubsub.googleapis.com", "pubsub", false),
+      ensureApiEnabled.ensure(projectId, "cloudscheduler.googleapis.com", "scheduler", false),
+      ensureApiEnabled.ensure(projectId, "pubsub.googleapis.com", "pubsub", false),
     ]);
   }
 

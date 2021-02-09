@@ -82,13 +82,13 @@ export function logFilters(
   let list;
   if (existingNames.length > 0) {
     list = _.map(existingNames, (name) => {
-      return getFunctionName(name) + "(" + getRegion(name) + ")";
+      return getFunctionId(name) + "(" + getRegion(name) + ")";
     }).join(", ");
     utils.logBullet(clc.bold.cyan("functions: ") + "current functions in project: " + list);
   }
   if (releaseNames.length > 0) {
     list = _.map(releaseNames, (name) => {
-      return getFunctionName(name) + "(" + getRegion(name) + ")";
+      return getFunctionId(name) + "(" + getRegion(name) + ")";
     }).join(", ");
     utils.logBullet(clc.bold.cyan("functions: ") + "uploading functions in project: " + list);
   }
@@ -128,7 +128,7 @@ export function getFunctionTrigger(functionInfo: CloudFunctionTrigger) {
   throw new FirebaseError("Could not parse function trigger, unknown trigger type.");
 }
 
-export function getFunctionName(fullName: string): string {
+export function getFunctionId(fullName: string): string {
   return fullName.split("/")[5];
 }
 
@@ -161,7 +161,7 @@ export function getRegion(fullName: string): string {
 }
 
 export function getFunctionLabel(fullName: string): string {
-  return getFunctionName(fullName) + "(" + getRegion(fullName) + ")";
+  return getFunctionId(fullName) + "(" + getRegion(fullName) + ")";
 }
 
 export function toJob(fn: CloudFunctionTrigger, appEngineLocation: string, projectId: string): Job {
@@ -210,7 +210,7 @@ export async function printTriggerUrls(projectId: string, sourceUrl: string) {
   httpsFunctions.forEach((httpsFunc) => {
     logger.info(
       clc.bold("Function URL"),
-      `(${getFunctionName(httpsFunc.name)}):`,
+      `(${getFunctionId(httpsFunc.name)}):`,
       httpsFunc.httpsTrigger?.url
     );
   });
