@@ -36,6 +36,6 @@ export async function deleteFunctions(
 
   await Promise.all(queuePromises);
 
-  helper.logAndTrackDeployStats(cloudFunctionsQueue);
+  helper.logAndTrackDeployStats(cloudFunctionsQueue, errorHandler);
   errorHandler.printErrors();
 }

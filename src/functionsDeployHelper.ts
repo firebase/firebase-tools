@@ -9,6 +9,7 @@ import * as cloudfunctions from "./gcp/cloudfunctions";
 import { Job } from "./gcp/cloudscheduler";
 import { CloudFunctionTrigger } from "./deploy/functions/deploymentPlanner";
 import Queue from "./throttler/queue";
+import { ErrorHandler } from "./deploy/functions/errorHandler";
 
 export function functionMatchesAnyGroup(fnName: string, filterGroups: string[][]) {
   if (!filterGroups.length) {
@@ -176,11 +177,11 @@ export function toJob(fn: CloudFunctionTrigger, appEngineLocation: string, proje
   });
 }
 
-export function logAndTrackDeployStats(queue: Queue<any, any>) {
+export function logAndTrackDeployStats(queue: Queue<any, any>, errorHandler: ErrorHandler) {
   const stats = queue.stats();
   logger.debug(`Total Function Deployment time: ${stats.elapsed}`);
   logger.debug(`${stats.total} Functions Deployed`);
-  logger.debug(`${stats.errored} Functions Errored`);
+  logger.debug(`${errorHandler.errors.length} Functions Errored`);
   logger.debug(`Average Function Deployment time: ${stats.avg}`);
   if (stats.total > 0) {
     track("Functions Deploy (Result)", "failure", stats.errored);
