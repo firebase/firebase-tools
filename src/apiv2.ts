@@ -1,6 +1,6 @@
 import { AbortSignal } from "abort-controller";
 import { Readable } from "stream";
-import { URLSearchParams } from "url";
+import { parse, URLSearchParams } from "url";
 import * as ProxyAgent from "proxy-agent";
 import AbortController from "abort-controller";
 import fetch, { HeadersInit, Response, RequestInit, Headers } from "node-fetch";
@@ -19,6 +19,7 @@ interface BaseRequestOptions<T> extends VerbOptions<T> {
   body?: T | string | NodeJS.ReadableStream;
   responseType?: "json" | "stream";
   redirect?: "error" | "follow" | "manual";
+  compress?: boolean;
 }
 
 interface RequestOptionsWithSignal<T> extends BaseRequestOptions<T> {
@@ -187,6 +188,7 @@ export class Client {
    * // typeof res.body === ResourceType
    *
    * @param reqOptions request options.
+   * @return the response.
    */
   async request<ReqT, ResT>(reqOptions: ClientRequestOptions<ReqT>): Promise<ClientResponse<ResT>> {
     // All requests default to JSON content types.
@@ -245,7 +247,12 @@ export class Client {
     if (!reqOptions.headers) {
       reqOptions.headers = new Headers();
     }
-    const token = await this.getAccessToken();
+    let token: string;
+    if (isLocalInsecureRequest(this.opts.urlPrefix)) {
+      token = "owner";
+    } else {
+      token = await this.getAccessToken();
+    }
     reqOptions.headers.set("Authorization", `Bearer ${token}`);
     return reqOptions;
   }
@@ -291,6 +298,7 @@ export class Client {
       headers: options.headers,
       method: options.method,
       redirect: options.redirect,
+      compress: options.compress,
     };
 
     if (this.opts.proxy) {
@@ -404,6 +412,11 @@ export class Client {
     }
     logger.debug(`<<< [apiv2][body] ${options.method} ${logURL} ${logBody}`);
   }
+}
+
+function isLocalInsecureRequest(urlPrefix: string): boolean {
+  const u = parse(urlPrefix);
+  return u.protocol === "http:";
 }
 
 function bodyToString(body: unknown): string {

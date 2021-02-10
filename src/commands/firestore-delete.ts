@@ -56,15 +56,14 @@ module.exports = new Command("firestore:delete [path]")
   .description("Delete data from Cloud Firestore.")
   .option(
     "-r, --recursive",
-    "Recursive. Delete all documents and subcollections. " +
-      "Any action which would result in the deletion of child documents will fail if " +
-      "this argument is not passed. May not be passed along with --shallow."
+    "Recursive. Delete all documents and subcollections at and under the " +
+      "specified level. May not be passed along with --shallow."
   )
   .option(
     "--shallow",
-    "Shallow. Delete only parent documents and ignore documents in " +
-      "subcollections. Any action which would orphan documents will fail if this argument " +
-      "is not passed. May not be passed along with -r."
+    "Shallow. Delete only documents at the specified level and ignore documents in " +
+      "subcollections. This action can potentially orphan documents nested in " +
+      "subcollections. May not be passed along with -r."
   )
   .option(
     "--all-collections",

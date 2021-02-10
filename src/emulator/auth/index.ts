@@ -73,6 +73,12 @@ export class AuthEmulator implements EmulatorInstance {
         },
         configPath
       );
+    } else {
+      logger.logLabeled(
+        "WARN",
+        "auth",
+        `Skipped importing config because ${configPath} does not exist.`
+      );
     }
 
     const accountsPath = path.join(authExportDir, "accounts.json");
@@ -94,6 +100,12 @@ export class AuthEmulator implements EmulatorInstance {
         accountsPath,
         // Ignore the error when there are no users. No action needed.
         { ignoreErrors: ["MISSING_USER_ACCOUNT"] }
+      );
+    } else {
+      logger.logLabeled(
+        "WARN",
+        "auth",
+        `Skipped importing accounts because ${accountsPath} does not exist.`
       );
     }
   }

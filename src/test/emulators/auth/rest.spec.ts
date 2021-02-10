@@ -37,6 +37,21 @@ describeAuthEmulator("REST API mapping", ({ authApi }) => {
         expect(res.body.oobLink).to.include("mode=signIn");
       });
   });
+
+  it("should convert numbers to strings for type:string fields", async () => {
+    // validSince should be an int64-formatted string, but Node.js Admin SDK
+    // sends it as a plain number (without quotes).
+    const validSince = 1611780718;
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .set("Authorization", "Bearer owner")
+      .send({ localId: "nosuch", validSince })
+      .then((res) => {
+        expectStatusCode(400, res);
+        // It should pass JSON schema validation and get into handler logic.
+        expect(res.body.error.message).to.equal("USER_NOT_FOUND");
+      });
+  });
 });
 
 describeAuthEmulator("authentication", ({ authApi }) => {

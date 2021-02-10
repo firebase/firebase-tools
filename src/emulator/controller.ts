@@ -598,7 +598,7 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
     EmulatorLogger.forEmulator(Emulators.HUB).logLabeled(
       "WARN",
       "emulators",
-      "The Emulator UI requires a project ID to start. Configure your default project with 'firebase use' or pass the ---project flag."
+      "The Emulator UI requires a project ID to start. Configure your default project with 'firebase use' or pass the --project flag."
     );
   }
 

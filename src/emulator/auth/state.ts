@@ -160,7 +160,7 @@ export class ProjectState {
       this.localIdForPhoneNumber.set(user.phoneNumber, user.localId);
       upsertProviders.push({
         providerId: PROVIDER_PHONE,
-        federatedId: user.phoneNumber,
+        phoneNumber: user.phoneNumber,
         rawId: user.phoneNumber,
       });
     } else {
