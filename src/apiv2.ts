@@ -11,7 +11,10 @@ import { FirebaseError } from "./error";
 import * as logger from "./logger";
 import * as responseToError from "./responseToError";
 
-import { version as CLI_VERSION } from "../package.json";
+// Using import would require resolveJsonModule, which seems to break the
+// build/output format.
+const pkg = require("../package.json");
+const CLI_VERSION: string = pkg.CLI_VERSION;
 
 export type HttpMethod = "GET" | "PUT" | "POST" | "DELETE" | "PATCH";
 
