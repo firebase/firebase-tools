@@ -50,7 +50,6 @@ export function registerHandlers(
         }
         try {
           const resp = setAccountInfoImpl(state, {
-            email: oob.email,
             oobCode,
           });
           const email = resp.email;

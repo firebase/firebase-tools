@@ -919,7 +919,9 @@ export function setAccountInfoImpl(
         user = maybeUser;
         // TODO: Make the check that the new email and init email are diff when sending out the OOB in first place.
         if (oob.email !== user.email) {
-          updates.email = reqBody.email;
+          updates.email = oob.email;
+          // Consider email verified, since this flow is initiated from the user's email
+          updates.emailVerified = true;
         }
         break;
       }
