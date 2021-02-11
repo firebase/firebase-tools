@@ -397,9 +397,14 @@ var logout = function (refreshToken) {
     });
 };
 
+function getRefreshToken() {
+  return _.get(configstore.get("tokens"), "refresh_token");
+}
+
 var auth = {
   login: login,
   getAccessToken: getAccessToken,
+  getRefreshToken: getRefreshToken,
   logout: logout,
 };
 
