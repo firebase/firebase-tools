@@ -1,5 +1,3 @@
-"use strict";
-
 import * as clc from "cli-color";
 import * as fs from "fs";
 import * as jwt from "jsonwebtoken";
@@ -53,7 +51,7 @@ interface GitHubAuthResponse {
 
 // Typescript emulates modules, which have constant exports. We can
 // overcome this by casting to any
-// Should be fixable after https://github.com/http-party/node-portfinder/pull/115
+// TODO fix after https://github.com/http-party/node-portfinder/pull/115
 (portfinder as any).basePort = 9005;
 
 function open(url: string) {
@@ -96,7 +94,7 @@ function getCallbackUrl(port?: number) {
   return "http://localhost:" + port;
 }
 
-function queryParamString(args: Object) {
+function queryParamString(args: { [key: string]: string | undefined }) {
   const tokens: string[] = [];
   for (const [key, value] of Object.entries(args)) {
     if (typeof value === "string") {
@@ -106,7 +104,7 @@ function queryParamString(args: Object) {
   return tokens.join("&");
 }
 
-function getLoginUrl(callbackUrl: string, userHint?: string | null) {
+function getLoginUrl(callbackUrl: string, userHint?: string) {
   return (
     api.authOrigin +
     "/o/oauth2/auth?" +
@@ -199,7 +197,7 @@ async function respondWithFile(
   req.socket.destroy();
 }
 
-async function loginWithoutLocalhost(userHint?: string | null): Promise<UserCredentials> {
+async function loginWithoutLocalhost(userHint?: string): Promise<UserCredentials> {
   const callbackUrl = getCallbackUrl();
   const authUrl = getLoginUrl(callbackUrl, userHint);
 
@@ -227,10 +225,7 @@ async function loginWithoutLocalhost(userHint?: string | null): Promise<UserCred
   };
 }
 
-async function loginWithLocalhostGoogle(
-  port: number,
-  userHint?: string | null
-): Promise<UserCredentials> {
+async function loginWithLocalhostGoogle(port: number, userHint?: string): Promise<UserCredentials> {
   const callbackUrl = getCallbackUrl(port);
   const authUrl = getLoginUrl(callbackUrl, userHint);
   const successTemplate = "../templates/loginSuccess.html";
@@ -312,10 +307,7 @@ async function loginWithLocalhost<ResultType>(
   });
 }
 
-export async function loginGoogle(
-  localhost: boolean,
-  userHint?: string | null
-): Promise<UserCredentials> {
+export async function loginGoogle(localhost: boolean, userHint?: string): Promise<UserCredentials> {
   if (localhost) {
     const port = await getPort();
     try {
