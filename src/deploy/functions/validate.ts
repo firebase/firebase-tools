@@ -86,18 +86,25 @@ export function checkForInvalidChangeOfTrigger(
   fn: CloudFunctionTrigger,
   exFn: CloudFunctionTrigger
 ) {
-  let shouldThrow = false;
   if (fn.httpsTrigger && !exFn.httpsTrigger) {
-    shouldThrow = true;
-  }
-  if (fn.eventTrigger?.service != exFn.eventTrigger?.service) {
-    shouldThrow = true;
-  }
-  if (shouldThrow) {
     throw new FirebaseError(
       `[${getFunctionLabel(
         fn.name
-      )}] Change of function trigger type or event provider is not allowed.`
+      )}] Changing from a background triggered function to an HTTPS function is not allowed. Please delete your function and create a new one instead.`
+    );
+  }
+  if (!fn.httpsTrigger && exFn.httpsTrigger) {
+    throw new FirebaseError(
+      `[${getFunctionLabel(
+        fn.name
+      )}] Changing from an HTTPS function to an background triggered function is not allowed. Please delete your function and create a new one instead.`
+    );
+  }
+  if (fn.eventTrigger?.service != exFn.eventTrigger?.service) {
+    throw new FirebaseError(
+      `[${getFunctionLabel(
+        fn.name
+      )}] Changing to a different type of background trigger is not allowed. Please delete your function and create a new one instead.`
     );
   }
 }
