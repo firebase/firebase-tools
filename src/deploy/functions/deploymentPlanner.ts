@@ -1,5 +1,6 @@
 import * as deploymentTool from "../../deploymentTool";
 import { functionMatchesAnyGroup, getTopicName } from "../../functionsDeployHelper";
+import { checkForInvalidChangeOfTrigger } from "./validate";
 
 // TODO: Better name for this?
 // It's really a CloudFuntion, not just a trigger,
@@ -144,6 +145,8 @@ export function createDeploymentPlan(
       }
 
       if (matchingExistingFunction) {
+        // Check if this is an invalid change of trigger type.
+        checkForInvalidChangeOfTrigger(fn, matchingExistingFunction);
         regionalDeployment.functionsToUpdate.push(fn);
         existingFnsCopy = existingFnsCopy.filter((exFn: CloudFunctionTrigger) => {
           return exFn.name !== fn.name;

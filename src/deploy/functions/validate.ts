@@ -6,6 +6,8 @@ import * as logger from "../../logger";
 import * as projectPath from "../../projectPath";
 import * as fsutils from "../../fsutils";
 import { RUNTIME_NOT_SET } from "../../parseRuntimeAndValidateSDK";
+import { getFunctionLabel } from "../../functionsDeployHelper";
+import { CloudFunctionTrigger } from "./deploymentPlanner";
 
 // have to require this because no @types/cjson available
 // tslint:disable-next-line
@@ -80,6 +82,25 @@ export function packageJsonIsValid(
   }
 }
 
+export function checkForInvalidChangeOfTrigger(
+  fn: CloudFunctionTrigger,
+  exFn: CloudFunctionTrigger
+) {
+  let shouldThrow = false;
+  if (fn.httpsTrigger && !exFn.httpsTrigger) {
+    shouldThrow = true;
+  }
+  if (fn.eventTrigger?.service != exFn.eventTrigger?.service) {
+    shouldThrow = true;
+  }
+  if (shouldThrow) {
+    throw new FirebaseError(
+      `[${getFunctionLabel(
+        fn.name
+      )}] Change of function trigger type or event provider is not allowed.`
+    );
+  }
+}
 /**
  * Asserts that functions source directory exists and source file is present.
  * @param data Object representing package.json file.

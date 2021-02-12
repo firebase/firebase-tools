@@ -1,6 +1,7 @@
 import * as clc from "cli-color";
 
 import * as logger from "../../logger";
+import { getFunctionId, getFunctionLabel } from "../../functionsDeployHelper";
 import { FirebaseError } from "../../error";
 
 type OperationType =
@@ -42,7 +43,7 @@ export class ErrorHandler {
     }
     logger.info("\nFunctions deploy had errors with the following functions:");
     for (const failedDeployment of this.errors) {
-      logger.info(`\t${failedDeployment.functionName}`);
+      logger.info(`\t${getFunctionLabel(failedDeployment.functionName)}`);
     }
     logger.info("\nTo try redeploying those functions, run:");
     logger.info(
@@ -52,7 +53,8 @@ export class ErrorHandler {
         clc.bold(
           this.errors
             .map(
-              (failedDeployment) => `functions:${failedDeployment.functionName.replace(/-/g, ".")}`
+              (failedDeployment) =>
+                `functions:${getFunctionId(failedDeployment.functionName).replace(/-/g, ".")}`
             )
             .join(",")
         ) +
