@@ -36,7 +36,7 @@ interface TokensWithTTL extends Tokens {
 }
 
 interface UserCredentials {
-  user: string | { [key: string]: any };
+  user: string | { [key: string]: unknown };
   tokens: TokensWithExpiration;
   scopes: string[];
 }
@@ -52,9 +52,9 @@ interface GitHubAuthResponse {
 // Typescript emulates modules, which have constant exports. We can
 // overcome this by casting to any
 // TODO fix after https://github.com/http-party/node-portfinder/pull/115
-(portfinder as any).basePort = 9005;
+((portfinder as unknown) as { basePort: number }).basePort = 9005;
 
-function open(url: string) {
+function open(url: string): void {
   opn(url).catch((err) => {
     logger.debug("Unable to open URL: " + err.stack);
   });
@@ -87,11 +87,11 @@ const getPort = portfinder.getPortPromise;
 // in-memory cache, so we have it for successive calls
 let lastAccessToken: TokensWithExpiration | undefined;
 
-function getCallbackUrl(port?: number) {
+function getCallbackUrl(port?: number): string {
   if (typeof port === "undefined") {
     return "urn:ietf:wg:oauth:2.0:oob";
   }
-  return "http://localhost:" + port;
+  return `http://localhost:${port}`;
 }
 
 function queryParamString(args: { [key: string]: string | undefined }) {
@@ -137,7 +137,11 @@ async function getTokensFromAuthorizationCode(code: string, callbackUrl: string)
       },
     });
   } catch (err) {
-    logger.debug("Token Fetch Error:", err.stack);
+    if (err instanceof Error) {
+      logger.debug("Token Fetch Error:", err.stack || "");
+    } else {
+      logger.debug("Token Fetch Error");
+    }
     throw invalidCredentialError();
   }
   if (!res?.body?.access_token && !res?.body?.refresh_token) {
