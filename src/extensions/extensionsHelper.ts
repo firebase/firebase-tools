@@ -144,7 +144,7 @@ export function populateDefaultParams(paramVars: any, paramSpec: any): any {
     if (!paramVars[env.param]) {
       if (env.default) {
         newParams[env.param] = env.default;
-      } else {
+      } else if (env.required) {
         throw new FirebaseError(
           `${env.param} has not been set in the given params file` +
             " and there is no default available. Please set this variable before installing again."
