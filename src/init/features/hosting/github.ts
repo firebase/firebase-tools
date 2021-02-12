@@ -7,7 +7,7 @@ import * as path from "path";
 import * as sodium from "tweetsodium";
 
 import { Setup } from "../..";
-import { login } from "../../../auth";
+import { loginGithub } from "../../../auth";
 import { dirExistsSync } from "../../../fsutils";
 import {
   createServiceAccount,
@@ -506,7 +506,7 @@ async function getRepoDetails(repo: string, ghAccessToken: string) {
 }
 
 async function signInWithGitHub() {
-  return await login(true, null, "GITHUB");
+  return await loginGithub();
 }
 
 async function createServiceAccountAndKeyWithRetry(
