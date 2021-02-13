@@ -1,6 +1,6 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
-import logger = require("../logger");
+import { logger } from "../logger";
 import * as _features from "./features";
 import * as utils from "../utils";
 

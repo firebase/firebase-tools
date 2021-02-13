@@ -3,7 +3,7 @@ import { Constants } from "./constants";
 import { SPLAT } from "triple-beam";
 import * as WebSocket from "ws";
 import * as TransportStream from "winston-transport";
-import logger = require("../logger");
+import { logger } from "../logger";
 const ansiStrip = require("cli-color/strip");
 
 export interface LoggingEmulatorArgs {
