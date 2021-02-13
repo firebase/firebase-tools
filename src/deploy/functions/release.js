@@ -9,7 +9,7 @@ var _ = require("lodash");
 
 var { FirebaseError } = require("../../error");
 var gcp = require("../../gcp");
-var logger = require("../../logger");
+const { logger } = require("../../logger");
 var track = require("../../track");
 var utils = require("../../utils");
 var helper = require("../../functionsDeployHelper");

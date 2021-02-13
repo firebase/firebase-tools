@@ -3,7 +3,7 @@
 var { Command } = require("../command");
 var clc = require("cli-color");
 var utils = require("../utils");
-var logger = require("../logger");
+const { logger } = require("../logger");
 var auth = require("../auth");
 
 module.exports = new Command("login:ci")

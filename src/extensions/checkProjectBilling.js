@@ -6,7 +6,7 @@ const opn = require("open");
 
 const cloudbilling = require("../gcp/cloudbilling");
 const { FirebaseError } = require("../error");
-const logger = require("../logger");
+const { logger } = require("../logger");
 const extensionsHelper = require("./extensionsHelper");
 const prompt = require("../prompt");
 const utils = require("../utils");

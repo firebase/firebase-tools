@@ -4,7 +4,7 @@ var _ = require("lodash");
 var clc = require("cli-color");
 
 var { FirebaseError } = require("./error");
-var logger = require("./logger");
+const { logger } = require("./logger");
 var track = require("./track");
 var utils = require("./utils");
 var cloudfunctions = require("./gcp/cloudfunctions");

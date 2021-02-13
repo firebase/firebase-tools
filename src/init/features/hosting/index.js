@@ -6,7 +6,7 @@ const fs = require("fs");
 const { Client } = require("../../../apiv2");
 const { initGitHub } = require("./github");
 const { prompt } = require("../../../prompt");
-const logger = require("../../../logger");
+const { logger } = require("../../../logger");
 
 const INDEX_TEMPLATE = fs.readFileSync(
   __dirname + "/../../../../templates/init/hosting/index.html",
