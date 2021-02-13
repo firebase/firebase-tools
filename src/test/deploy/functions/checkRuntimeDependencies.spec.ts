@@ -2,7 +2,7 @@ import * as sinon from "sinon";
 import * as nock from "nock";
 import { expect } from "chai";
 
-import * as logger from "../../../logger";
+import { logger } from "../../../logger";
 import { configstore } from "../../../configstore";
 import * as api from "../../../api";
 import { checkRuntimeDependencies } from "../../../deploy/functions/checkRuntimeDependencies";

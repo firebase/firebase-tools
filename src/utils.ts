@@ -11,7 +11,7 @@ const ansiStrip = require("cli-color/strip") as (input: string) => string;
 
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
-import * as logger from "./logger";
+import { logger } from "./logger";
 import { LogDataOrUndefined } from "./emulator/loggingEmulator";
 import { Socket } from "net";
 

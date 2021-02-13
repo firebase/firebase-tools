@@ -2,7 +2,7 @@ import * as fs from "fs-extra";
 import { FirebaseError } from "../error";
 import * as crypto from "crypto";
 import { AppDistributionApp } from "./client";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import * as pathUtil from "path";
 
 export enum DistributionFileType {

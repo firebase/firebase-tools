@@ -4,7 +4,7 @@ import * as ProgressBar from "progress";
 import * as apiv2 from "../apiv2";
 import * as firestore from "../gcp/firestore";
 import { FirebaseError } from "../error";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import * as utils from "../utils";
 import { firestoreOriginOrEmulator } from "../api";
 

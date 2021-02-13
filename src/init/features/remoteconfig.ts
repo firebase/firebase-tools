@@ -1,4 +1,4 @@
-import * as logger from "../../logger";
+import { logger } from "../../logger";
 import { promptOnce } from "../../prompt";
 import fsutils = require("../../fsutils");
 import clc = require("cli-color");

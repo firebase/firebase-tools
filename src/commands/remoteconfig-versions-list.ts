@@ -1,4 +1,4 @@
-import * as logger from "../logger";
+import { logger } from "../logger";
 import * as rcVersion from "../remoteconfig/versionslist";
 import { Command } from "../command";
 import getProjectId = require("../getProjectId");

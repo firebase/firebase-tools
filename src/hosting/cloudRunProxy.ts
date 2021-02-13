@@ -3,7 +3,7 @@ import { get } from "lodash";
 
 import { errorRequestHandler, proxyRequestHandler } from "./proxy";
 import * as getProjectId from "../getProjectId";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { cloudRunApiOrigin, request as apiRequest } from "../api";
 
 export interface CloudRunProxyOptions {

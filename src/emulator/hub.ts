@@ -5,7 +5,7 @@ import * as path from "path";
 import * as bodyParser from "body-parser";
 
 import * as utils from "../utils";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { Constants } from "./constants";
 import { Emulators, EmulatorInstance, EmulatorInfo } from "./types";
 import { HubExport } from "./hubExport";

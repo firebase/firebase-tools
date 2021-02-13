@@ -6,7 +6,7 @@ import { EmulatedTriggerType } from "../../src/emulator/functionsEmulatorShared"
 import { FunctionsEmulator, InvokeRuntimeOpts } from "../../src/emulator/functionsEmulator";
 import { RuntimeWorker } from "../../src/emulator/functionsRuntimeWorker";
 import { TIMEOUT_LONG, MODULE_ROOT } from "./fixtures";
-import * as logger from "../../src/logger";
+import { logger } from "../../src/logger";
 
 if ((process.env.DEBUG || "").toLowerCase().indexOf("spec") >= 0) {
   // tslint:disable-next-line:no-var-requires

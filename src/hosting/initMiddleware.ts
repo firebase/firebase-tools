@@ -4,7 +4,7 @@ import { RequestHandler } from "express";
 
 import { Client } from "../apiv2";
 import { TemplateServerResponse } from "./implicitInit";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import * as utils from "../utils";
 
 const SDK_PATH_REGEXP = /^\/__\/firebase\/([^/]+)\/([^/]+)$/;

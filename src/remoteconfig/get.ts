@@ -1,5 +1,5 @@
 import * as api from "../api";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { FirebaseError } from "../error";
 import { RemoteConfigTemplate } from "./interfaces";
 

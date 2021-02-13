@@ -1,5 +1,5 @@
 import { Command } from "../command";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import { requirePermissions } from "../requirePermissions";
 import * as metadata from "../database/metadata";

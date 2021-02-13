@@ -2,7 +2,7 @@ import { FirebaseError } from "../../error";
 import * as _ from "lodash";
 import * as path from "path";
 import * as clc from "cli-color";
-import * as logger from "../../logger";
+import { logger } from "../../logger";
 import * as projectPath from "../../projectPath";
 import * as fsutils from "../../fsutils";
 import { RUNTIME_NOT_SET } from "../../parseRuntimeAndValidateSDK";

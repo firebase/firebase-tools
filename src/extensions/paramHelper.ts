@@ -5,7 +5,7 @@ import * as dotenv from "dotenv";
 import * as fs from "fs-extra";
 
 import { FirebaseError } from "../error";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import * as extensionsApi from "./extensionsApi";
 import {
   getFirebaseProjectParams,

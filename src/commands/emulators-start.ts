@@ -1,7 +1,7 @@
 import { Command } from "../command";
 import * as controller from "../emulator/controller";
 import * as commandUtils from "../emulator/commandUtils";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { EmulatorRegistry } from "../emulator/registry";
 import { Emulators, EMULATORS_SUPPORTED_BY_UI } from "../emulator/types";
 import * as clc from "cli-color";

@@ -8,7 +8,7 @@ import { FirebaseError } from "../error";
 import * as utils from "../utils";
 import * as extensionsUtils from "../extensions/utils";
 import { listExtensions } from "../extensions/extensionsApi";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { requireAuth } from "../requireAuth";
 
 /**

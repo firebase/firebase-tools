@@ -1,5 +1,5 @@
 import * as api from "../api";
-import * as logger from "../logger";
+import { logger } from "../logger";
 
 /**
  * Determine the Firestore database type for a given project. One of:
