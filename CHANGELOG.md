@@ -1,3 +1,4 @@
 - Fixes issue where proxied requests to dynamic content through the Hosting emulator would return unexpected `location` headers. (#3097)
 - Fixes issue where optional extension parameters could not be omitted. (#3126)
+- Fixes issue where deploying Cloud Functions for Firebase fails on Node.js v15. (#3120)
 - Fixes issue where hosting emulator would connect to 0.0.0.0 for emulators. (#3121)
