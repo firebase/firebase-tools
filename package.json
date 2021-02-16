@@ -83,7 +83,6 @@
     "@google-cloud/pubsub": "^2.7.0",
     "@types/archiver": "^5.1.0",
     "@types/filesize": "^5.0.0",
-    "JSONStream": "^1.2.1",
     "abort-controller": "^3.0.0",
     "archiver": "^5.0.0",
     "body-parser": "^1.19.0",
