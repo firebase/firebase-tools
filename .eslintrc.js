@@ -57,7 +57,7 @@ module.exports = {
         "no-constant-condition": "warn", // TODO(bkendall): remove, allow to error.
         "no-fallthrough": "warn", // TODO(bkendall): remove, allow to error.
         "no-unused-vars": "warn", // TODO(bkendall): remove, allow to error.
-        camelcase: "warn", // TODO(bkendall): remove, allow to error.
+        camelcase: ["warn", { ignoreDestructuring: true }], // TODO(bkendall): remove, allow to error.
       },
     },
     {
