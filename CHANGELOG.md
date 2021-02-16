@@ -2,3 +2,4 @@
 - Fixes issue where optional extension parameters could not be omitted. (#3126)
 - Fixes issue where deploying Cloud Functions for Firebase fails on Node.js v15. (#3120)
 - Fixes issue where hosting emulator would connect to 0.0.0.0 for emulators. (#3121)
+- Improves perfomance and reliability of Cloud Functions for Firebase deployments. (#3132)
