@@ -99,5 +99,24 @@ describe("OperationPoller", () => {
       expect(error).to.be.instanceOf(TimeoutError);
       nock.cleanAll();
     });
+
+    it("should call onPoll each time the operation is polled", async () => {
+      const opResult = { done: true, response: "completed" };
+      nock(TEST_ORIGIN).get(FULL_RESOURCE_NAME).reply(200, { done: false });
+      nock(TEST_ORIGIN).get(FULL_RESOURCE_NAME).reply(200, opResult);
+      const onPollSpy = sinon.spy((op: any) => {
+        return;
+      });
+      pollerOptions.onPoll = onPollSpy;
+
+      console.log(nock.pendingMocks());
+      const res = await pollOperation<string>(pollerOptions);
+
+      expect(res).to.deep.equal("completed");
+      expect(onPollSpy).to.have.been.calledTwice;
+      expect(onPollSpy).to.have.been.calledWith({ done: false });
+      expect(onPollSpy).to.have.been.calledWith(opResult);
+      expect(nock.isDone()).to.be.true;
+    });
   });
 });

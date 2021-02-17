@@ -60,7 +60,7 @@ module.exports = new Command("login")
     // the authorization callback couldn't redirect to localhost.
     const useLocalhost = isCloudEnvironment() ? false : options.localhost;
 
-    const result = await auth.login(useLocalhost, _.get(user, "email"));
+    const result = await auth.loginGoogle(useLocalhost, _.get(user, "email"));
     configstore.set("user", result.user);
     configstore.set("tokens", result.tokens);
     // store login scopes in case mandatory scopes grow over time
@@ -69,7 +69,16 @@ module.exports = new Command("login")
     configstore.delete("session");
 
     logger.info();
-    utils.logSuccess("Success! Logged in as " + clc.bold(result.user.email));
+    if (typeof result.user !== "string") {
+      utils.logSuccess("Success! Logged in as " + clc.bold(result.user.email));
+    } else {
+      // Shouldn't really happen, but the JWT library that parses our results may
+      // return a string
+      logger.debug(
+        "Unexpected string for UserCredentials.user. Maybe an auth response JWT didn't parse right?"
+      );
+      utils.logSuccess("Success! Logged in");
+    }
 
     return auth;
   });
