@@ -193,7 +193,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
         expect(res.body.error.message).equals("EMAIL_NOT_FOUND");
       });
 
-    // An oob is sent to the oldEmail
+    // An oob is sent to oldEmail
     const oobs = await inspectOobs(authApi());
     expect(oobs).to.have.length(1);
     expect(oobs[0].email).to.equal(oldEmail);
@@ -337,6 +337,23 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
     expect(await inspectOobs(authApi())).to.have.length(0);
     const info = await getAccountInfoByIdToken(authApi(), idToken);
     expect(info.initialEmail).to.be.undefined;
+  });
+
+  it("should not update email if user is disabled", async () => {
+    const user = { email: "bob@example.com", password: "notasecret" };
+    const newEmail = "alice@example.com";
+    const { localId, idToken } = await registerUser(authApi(), user);
+    await updateAccountByLocalId(authApi(), localId, { disableUser: true });
+
+    // Try to update the email once.
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .query({ key: "fake-api-key" })
+      .send({ idToken, email: newEmail })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("USER_DISABLED");
+      });
   });
 
   it("should update phoneNumber if specified", async () => {
