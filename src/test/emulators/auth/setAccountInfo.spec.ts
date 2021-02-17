@@ -237,11 +237,11 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       .send({ idToken, email: newEmail })
       .then((res) => {
         expectStatusCode(200, res);
+        expect(res.body.email).to.equal(newEmail);
       });
 
-    // The returned oobCode can be redeemed to recover the email.
+    // Verify that the initial email has been set.
     const info = await getAccountInfoByIdToken(authApi(), idToken);
-    expect(info.email).to.equal(newEmail);
     expect(info.initialEmail).to.equal(oldEmail);
   });
 
@@ -345,7 +345,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
     const { localId, idToken } = await registerUser(authApi(), user);
     await updateAccountByLocalId(authApi(), localId, { disableUser: true });
 
-    // Try to update the email once.
+    // Try to update the email.
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:update")
       .query({ key: "fake-api-key" })

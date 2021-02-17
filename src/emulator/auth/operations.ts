@@ -208,7 +208,7 @@ function lookup(
 
   if (ctx.security?.Oauth2) {
     if (reqBody.initialEmail) {
-      // TODO: This is now possible. Add this.
+      // TODO: This is now possible. See ProjectState.getUserByInitialEmail.
       throw new NotImplementedError("Lookup by initialEmail is not implemented.");
     }
     for (const localId of reqBody.localId ?? []) {
@@ -1041,11 +1041,11 @@ export function setAccountInfoImpl(
   });
 
   // Only initiate the recover email OOB flow for non-anonymous users
-  if (isEmailUpdate && signInProvider !== PROVIDER_ANONYMOUS) {
+  if (signInProvider !== PROVIDER_ANONYMOUS && user.initialEmail && isEmailUpdate) {
     if (!emulatorUrl) {
       throw new Error("Internal assertion error: missing emulatorUrl param");
     }
-    sendOobForEmailReset(state, user.initialEmail!, emulatorUrl);
+    sendOobForEmailReset(state, user.initialEmail, emulatorUrl);
   }
 
   return redactPasswordHash({

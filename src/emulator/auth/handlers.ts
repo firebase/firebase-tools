@@ -43,7 +43,7 @@ export function registerHandlers(
         if (oob?.requestType !== "RECOVER_EMAIL") {
           return res.status(400).json({
             authEmulator: {
-              error: `Requested mode does not match the OOB code.`,
+              error: `Requested mode does not match the OOB code provided.`,
               instructions: RETRY_INSTRUCTIONS,
             },
           });
