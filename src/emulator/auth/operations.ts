@@ -208,6 +208,7 @@ function lookup(
 
   if (ctx.security?.Oauth2) {
     if (reqBody.initialEmail) {
+      // TODO: This is now possible. Add this.
       throw new NotImplementedError("Lookup by initialEmail is not implemented.");
     }
     for (const localId of reqBody.localId ?? []) {
@@ -779,7 +780,7 @@ function sendOobCode(
   }
 
   const url = authEmulatorUrl(ctx.req as express.Request);
-  const { oobRecord, maybeMessage } = createOobRecord(state, email, url, {
+  const oobRecord = createOobRecord(state, email, url, {
     requestType: reqBody.requestType,
     mode,
     continueUrl: reqBody.continueUrl,
@@ -793,9 +794,7 @@ function sendOobCode(
       oobLink: oobRecord.oobLink,
     };
   } else {
-    if (maybeMessage) {
-      EmulatorLogger.forEmulator(Emulators.AUTH).log("BULLET", maybeMessage);
-    }
+    logOobMessage(reqBody.requestType, oobRecord.oobLink, email);
 
     return {
       kind: "identitytoolkit#GetOobConfirmationCodeResponse",
@@ -916,8 +915,9 @@ export function setAccountInfoImpl(
         state.deleteOobCode(reqBody.oobCode);
         const maybeUser = state.getUserByInitialEmail(oob.email);
         assert(maybeUser, "INVALID_OOB_CODE");
+        // Assert that we don't have any user with this initialEmail
+        assert(!state.getUserByEmail(oob.email), "EMAIL_EXISTS");
         user = maybeUser;
-        // TODO: Make the check that the new email and init email are diff when sending out the OOB in first place.
         if (oob.email !== user.email) {
           updates.email = oob.email;
           // Consider email verified, since this flow is initiated from the user's email
@@ -942,7 +942,7 @@ export function setAccountInfoImpl(
     if (reqBody.email) {
       assert(isValidEmailAddress(reqBody.email), "INVALID_EMAIL");
       if (!emulatorUrl) {
-        throw new Error("Internal assertion error: Emulator URL invalid");
+        throw new Error("Internal assertion error: missing emulatorUrl param");
       }
 
       const newEmail = canonicalizeEmailAddress(reqBody.email);
@@ -951,12 +951,15 @@ export function setAccountInfoImpl(
         updates.email = newEmail;
         // TODO: Set verified if email is verified by IDP linked to account.
         updates.emailVerified = false;
-        if (user.email && !user.initialEmail) {
-          updates.initialEmail = user.email;
-        }
-        const initialEmail = user.initialEmail ?? updates.initialEmail;
-        if (initialEmail && newEmail !== initialEmail) {
-          sendOobForEmailReset(state, initialEmail, emulatorUrl);
+        // Only initiate recover flow if the user is not anonymous.
+        if (signInProvider !== PROVIDER_ANONYMOUS) {
+          if (user.email && !user.initialEmail) {
+            updates.initialEmail = user.email;
+          }
+          const initialEmail = user.initialEmail ?? updates.initialEmail;
+          if (initialEmail && newEmail !== initialEmail) {
+            sendOobForEmailReset(state, initialEmail, emulatorUrl);
+          }
         }
       }
     }
@@ -1057,15 +1060,15 @@ export function setAccountInfoImpl(
 }
 
 function sendOobForEmailReset(state: ProjectState, initialEmail: string, url: URL) {
-  const mode: string = "recoverEmail";
-  const { oobRecord, maybeMessage } = createOobRecord(state, initialEmail, url, {
-    requestType: "RECOVER_EMAIL",
-    mode,
+  const MODE: string = "recoverEmail";
+  const RECOVER_EMAIL_REQUEST_TYPE: OobRequestType = "RECOVER_EMAIL";
+  const oobRecord = createOobRecord(state, initialEmail, url, {
+    requestType: RECOVER_EMAIL_REQUEST_TYPE,
+    mode: MODE,
   });
 
   // Print out a developer-friendly log
-  assert(maybeMessage, "Internal asertion error: No message to be logged for RECOVER_EMAIL");
-  EmulatorLogger.forEmulator(Emulators.AUTH).log("BULLET", maybeMessage!);
+  logOobMessage(RECOVER_EMAIL_REQUEST_TYPE, oobRecord.oobLink, initialEmail);
 }
 
 function createOobRecord(
@@ -1077,10 +1080,7 @@ function createOobRecord(
     mode: string;
     continueUrl?: string;
   }
-): {
-  oobRecord: OobRecord;
-  maybeMessage?: string;
-} {
+): OobRecord {
   // Encode the old email with the OOB code. The new email is stored in the UserInfo object.
   const oobRecord = state.createOob(email, params.requestType, (oobCode) => {
     url.pathname = "/emulator/action";
@@ -1100,11 +1100,14 @@ function createOobRecord(
     return url.toString();
   });
 
+  return oobRecord;
+}
+
+function logOobMessage(requestType: OobRequestType, oobLink: string, email: string) {
   // Generate a developer-friendly log containing the link, in lieu of
   // sending a real email out to the email address.
   let maybeMessage: string | undefined;
-  const oobLink = oobRecord.oobLink;
-  switch (params.requestType) {
+  switch (requestType) {
     case "EMAIL_SIGNIN":
       maybeMessage = `To sign in as ${email}, follow this link: ${oobLink}`;
       break;
@@ -1119,7 +1122,9 @@ function createOobRecord(
       break;
   }
 
-  return { oobRecord, maybeMessage };
+  if (maybeMessage) {
+    EmulatorLogger.forEmulator(Emulators.AUTH).log("BULLET", maybeMessage);
+  }
 }
 
 function signInWithCustomToken(

@@ -130,7 +130,6 @@ export class ProjectState {
       throw new Error(`Internal assertion error: trying to update nonexistent user: ${localId}`);
     }
     const oldEmail = user.email;
-    const oldInitialEmail = user.initialEmail;
     const oldPhoneNumber = user.phoneNumber;
     for (const field of Object.keys(fields) as (keyof typeof fields)[]) {
       mirrorFieldTo(user, field, fields);
@@ -155,7 +154,7 @@ export class ProjectState {
       deleteProviders.push(PROVIDER_PASSWORD);
     }
 
-    if (!oldInitialEmail && user.initialEmail) {
+    if (user.initialEmail) {
       this.localIdForInitialEmail.set(user.initialEmail, user.localId);
     }
 

@@ -37,15 +37,15 @@ export function registerHandlers(
 
     switch (mode) {
       case "recoverEmail": {
-        const EXPIRED_LINK_ERROR = {
-          error: `Your request to revert your email has expired or the link has already been used.`,
-          instructions:
-            "Try reverting using this link again. If you're still unsuccessful. You can edit the email in the Emulator UI.",
-        };
         const oob = state.validateOobCode(oobCode);
+        const RETRY_INSTRUCTIONS =
+          "If you're trying to test the reverting email flow, try changing the email again to generate a new link.";
         if (oob?.requestType !== "RECOVER_EMAIL") {
           return res.status(400).json({
-            authEmulator: EXPIRED_LINK_ERROR,
+            authEmulator: {
+              error: `Requested mode does not match the OOB code.`,
+              instructions: RETRY_INSTRUCTIONS,
+            },
           });
         }
         try {
@@ -62,7 +62,10 @@ export function registerHandlers(
             (e instanceof BadRequestError && e.message === "INVALID_OOB_CODE")
           ) {
             return res.status(400).json({
-              authEmulator: EXPIRED_LINK_ERROR,
+              authEmulator: {
+                error: `Your request to revert your email has expired or the link has already been used.`,
+                instructions: RETRY_INSTRUCTIONS,
+              },
             });
           } else {
             throw e;
