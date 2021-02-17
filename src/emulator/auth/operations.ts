@@ -794,7 +794,7 @@ function sendOobCode(
       oobLink: oobRecord.oobLink,
     };
   } else {
-    logOobMessage(reqBody.requestType, oobRecord.oobLink, email);
+    logOobMessage(oobRecord);
 
     return {
       kind: "identitytoolkit#GetOobConfirmationCodeResponse",
@@ -1064,15 +1064,14 @@ export function setAccountInfoImpl(
 }
 
 function sendOobForEmailReset(state: ProjectState, initialEmail: string, url: URL) {
-  const MODE: string = "recoverEmail";
   const RECOVER_EMAIL_REQUEST_TYPE: OobRequestType = "RECOVER_EMAIL";
   const oobRecord = createOobRecord(state, initialEmail, url, {
     requestType: RECOVER_EMAIL_REQUEST_TYPE,
-    mode: MODE,
+    mode: "recoverEmail",
   });
 
   // Print out a developer-friendly log
-  logOobMessage(RECOVER_EMAIL_REQUEST_TYPE, oobRecord.oobLink, initialEmail);
+  logOobMessage(oobRecord);
 }
 
 function createOobRecord(
@@ -1107,11 +1106,14 @@ function createOobRecord(
   return oobRecord;
 }
 
-function logOobMessage(requestType: OobRequestType, oobLink: string, email: string) {
+function logOobMessage(oobRecord: OobRecord) {
+  const oobLink = oobRecord.oobLink;
+  const email = oobRecord.email;
+
   // Generate a developer-friendly log containing the link, in lieu of
   // sending a real email out to the email address.
   let maybeMessage: string | undefined;
-  switch (requestType) {
+  switch (oobRecord.requestType) {
     case "EMAIL_SIGNIN":
       maybeMessage = `To sign in as ${email}, follow this link: ${oobLink}`;
       break;
