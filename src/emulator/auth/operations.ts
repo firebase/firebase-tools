@@ -894,6 +894,7 @@ export function setAccountInfoImpl(
   const updates: Omit<Partial<UserInfo>, "localId" | "providerUserInfo"> = {};
   let user: UserInfo;
   let signInProvider: string | undefined;
+  let isEmailUpdate: boolean = false;
 
   if (reqBody.oobCode) {
     const oob = state.validateOobCode(reqBody.oobCode);
@@ -941,9 +942,6 @@ export function setAccountInfoImpl(
 
     if (reqBody.email) {
       assert(isValidEmailAddress(reqBody.email), "INVALID_EMAIL");
-      if (!emulatorUrl) {
-        throw new Error("Internal assertion error: missing emulatorUrl param");
-      }
 
       const newEmail = canonicalizeEmailAddress(reqBody.email);
       if (newEmail !== user.email) {
@@ -951,15 +949,13 @@ export function setAccountInfoImpl(
         updates.email = newEmail;
         // TODO: Set verified if email is verified by IDP linked to account.
         updates.emailVerified = false;
-        // Only initiate recover flow if the user is not anonymous.
-        if (signInProvider !== PROVIDER_ANONYMOUS) {
-          if (user.email && !user.initialEmail) {
-            updates.initialEmail = user.email;
-          }
-          const initialEmail = user.initialEmail ?? updates.initialEmail;
-          if (initialEmail && newEmail !== initialEmail) {
-            sendOobForEmailReset(state, initialEmail, emulatorUrl);
-          }
+        isEmailUpdate = true;
+        // Only update initial email if the user is not anonymous and does not have an initial email.
+        // We need to check for an anonymous user through the signIn provider, rather than relying
+        // on an empty user.email field, because it is possible for an anonymous user to update their
+        // email address through the SetAccountInfo endpoint.
+        if (signInProvider !== PROVIDER_ANONYMOUS && user.email && !user.initialEmail) {
+          updates.initialEmail = user.email;
         }
       }
     }
@@ -1043,6 +1039,14 @@ export function setAccountInfoImpl(
   user = state.updateUserByLocalId(user.localId, updates, {
     deleteProviders: reqBody.deleteProvider,
   });
+
+  // Only initiate the recover email OOB flow for non-anonymous users
+  if (isEmailUpdate && signInProvider !== PROVIDER_ANONYMOUS) {
+    if (!emulatorUrl) {
+      throw new Error("Internal assertion error: missing emulatorUrl param");
+    }
+    sendOobForEmailReset(state, user.initialEmail!, emulatorUrl);
+  }
 
   return redactPasswordHash({
     kind: "identitytoolkit#SetAccountInfoResponse",
