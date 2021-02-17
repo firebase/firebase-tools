@@ -1085,7 +1085,6 @@ function createOobRecord(
     continueUrl?: string;
   }
 ): OobRecord {
-  // Encode the old email with the OOB code. The new email is stored in the UserInfo object.
   const oobRecord = state.createOob(email, params.requestType, (oobCode) => {
     url.pathname = "/emulator/action";
     url.searchParams.set("mode", params.mode);
