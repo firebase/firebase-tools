@@ -3,7 +3,8 @@ import { bold } from "cli-color";
 
 import { logger } from "../../logger";
 import * as track from "../../track";
-import { getReleaseNames, getFunctionsInfo, getFilterGroups } from "../../functionsDeployHelper";
+import { getReleaseNames, getFilterGroups } from "../../functionsDeployHelper";
+import { CloudFunctionTrigger } from "./deploymentPlanner";
 import { FirebaseError } from "../../error";
 import { testIamPermissions, testResourceIamPermissions } from "../../gcp/iam";
 
@@ -50,18 +51,13 @@ export async function checkServiceAccountIam(projectId: string): Promise<void> {
  * @param options The command-wide options object.
  * @param payload The deploy payload.
  */
-export async function checkHttpIam(
-  context: { projectId: string; existingFunctions: { name: string }[] },
-  options: unknown,
-  payload: { functions: { triggers: { name: string; httpsTrigger?: {} }[] } }
-): Promise<void> {
-  const triggers = payload.functions.triggers;
-  const functionsInfo = getFunctionsInfo(triggers, context.projectId);
-  const filterGroups = getFilterGroups(options);
+export async function checkHttpIam(context: any, options: any, payload: any): Promise<void> {
+  const functionsInfo = payload.functions.triggers;
+  const filterGroups = context.filters || getFilterGroups(options);
 
   const httpFunctionNames: string[] = functionsInfo
-    .filter((f) => has(f, "httpsTrigger"))
-    .map((f) => f.name);
+    .filter((f: CloudFunctionTrigger) => has(f, "httpsTrigger"))
+    .map((f: CloudFunctionTrigger) => f.name);
   const httpFunctionFullNames: string[] = getReleaseNames(httpFunctionNames, [], filterGroups);
   const existingFunctionFullNames: string[] = context.existingFunctions.map(
     (f: { name: string }) => f.name

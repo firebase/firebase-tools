@@ -5,6 +5,7 @@ import * as projectPath from "../../../projectPath";
 import { FirebaseError } from "../../../error";
 import * as sinon from "sinon";
 import { RUNTIME_NOT_SET } from "../../../parseRuntimeAndValidateSDK";
+import { CloudFunctionTrigger } from "../../../deploy/functions/deploymentPlanner";
 
 // have to require this because no @types/cjson available
 // tslint:disable-next-line
@@ -80,6 +81,125 @@ describe("validate", () => {
       expect(() => {
         validate.functionNamesAreValid(properNames);
       }).to.throw(FirebaseError);
+    });
+  });
+
+  describe("checkForInvalidChangeOfTrigger", () => {
+    it("should throw if a https function would be changed into an event triggered function", () => {
+      const fn: CloudFunctionTrigger = {
+        name: "projects/proj/locations/us-central1/functions/my-func",
+        labels: {},
+        environmentVariables: {},
+        entryPoint: ".",
+        eventTrigger: {
+          service: "foo",
+        },
+      };
+      const exFn: CloudFunctionTrigger = {
+        name: "projects/proj/locations/us-central1/functions/my-func",
+        labels: {},
+        environmentVariables: {},
+        entryPoint: ".",
+        httpsTrigger: {},
+      };
+
+      expect(() => {
+        validate.checkForInvalidChangeOfTrigger(fn, exFn);
+      }).to.throw();
+    });
+
+    it("should throw if a event triggered function would be changed into an https function", () => {
+      const fn: CloudFunctionTrigger = {
+        name: "projects/proj/locations/us-central1/functions/my-func",
+        labels: {},
+        environmentVariables: {},
+        entryPoint: ".",
+        httpsTrigger: {},
+      };
+      const exFn: CloudFunctionTrigger = {
+        name: "projects/proj/locations/us-central1/functions/my-func",
+        labels: {},
+        environmentVariables: {},
+        entryPoint: ".",
+        eventTrigger: {
+          service: "foo",
+        },
+      };
+
+      expect(() => {
+        validate.checkForInvalidChangeOfTrigger(fn, exFn);
+      }).to.throw();
+    });
+
+    it("should throw if a event triggered function would have its service changed", () => {
+      const fn: CloudFunctionTrigger = {
+        name: "projects/proj/locations/us-central1/functions/my-func",
+        labels: {},
+        environmentVariables: {},
+        entryPoint: ".",
+        eventTrigger: {
+          service: "bar",
+        },
+      };
+      const exFn: CloudFunctionTrigger = {
+        name: "projects/proj/locations/us-central1/functions/my-func",
+        labels: {},
+        environmentVariables: {},
+        entryPoint: ".",
+        eventTrigger: {
+          service: "foo",
+        },
+      };
+
+      expect(() => {
+        validate.checkForInvalidChangeOfTrigger(fn, exFn);
+      }).to.throw();
+    });
+
+    it("should not throw if a event triggered function keeps the same trigger", () => {
+      const fn: CloudFunctionTrigger = {
+        name: "projects/proj/locations/us-central1/functions/my-func",
+        labels: {},
+        environmentVariables: {},
+        entryPoint: ".",
+        eventTrigger: {
+          service: "foo",
+        },
+      };
+      const exFn: CloudFunctionTrigger = {
+        name: "projects/proj/locations/us-central1/functions/my-func",
+        labels: {},
+        environmentVariables: {},
+        entryPoint: ".",
+        eventTrigger: {
+          service: "foo",
+        },
+      };
+
+      expect(() => {
+        validate.checkForInvalidChangeOfTrigger(fn, exFn);
+      }).not.to.throw();
+    });
+
+    it("should not throw if a https function stays as a https function", () => {
+      const fn: CloudFunctionTrigger = {
+        name: "projects/proj/locations/us-central1/functions/my-func",
+        labels: {},
+        environmentVariables: {},
+        entryPoint: ".",
+        httpsTrigger: {},
+      };
+      const exFn: CloudFunctionTrigger = {
+        name: "projects/proj/locations/us-central1/functions/my-func",
+        labels: {},
+        environmentVariables: {},
+        entryPoint: ".",
+        httpsTrigger: {},
+      };
+
+      expect(() => {
+        validate.checkForInvalidChangeOfTrigger(fn, exFn);
+      }).not.to.throw();
     });
   });
 
