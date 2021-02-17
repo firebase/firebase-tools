@@ -40,7 +40,7 @@ export async function doSetup(setup: RemoteConfigSetup, config: Config): Promise
       default: false,
     });
     if (!overwrite) {
-      return
+      return;
     }
   }
   setup.config.remoteconfig.template = jsonFilePath;
