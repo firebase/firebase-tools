@@ -1064,9 +1064,8 @@ export function setAccountInfoImpl(
 }
 
 function sendOobForEmailReset(state: ProjectState, initialEmail: string, url: URL) {
-  const RECOVER_EMAIL_REQUEST_TYPE: OobRequestType = "RECOVER_EMAIL";
   const oobRecord = createOobRecord(state, initialEmail, url, {
-    requestType: RECOVER_EMAIL_REQUEST_TYPE,
+    requestType: "RECOVER_EMAIL",
     mode: "recoverEmail",
   });
 
