@@ -1,0 +1,1 @@
+- Fixes issue where OOB flow is not initiated after updating a user's email (#3096)
