@@ -19,7 +19,7 @@ import { ErrorHandler } from "./errorHandler";
 const defaultPollerOptions = {
   apiOrigin: functionsOrigin,
   apiVersion: cloudfunctions.API_VERSION,
-  masterTimeout: 300000, // 300000ms = 5 minutes
+  masterTimeout: 900000, // 900000ms = 15 minutes
 };
 
 export interface TaskParams {
