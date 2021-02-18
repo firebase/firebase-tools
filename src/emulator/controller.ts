@@ -39,6 +39,7 @@ import { promptOnce } from "../prompt";
 import * as rimraf from "rimraf";
 import { FLAG_EXPORT_ON_EXIT_NAME } from "./commandUtils";
 import { fileExistsSync } from "../fsutils";
+import { getDefaultDatabaseInstance } from "../getDefaultDatabaseInstance";
 
 async function getAndCheckAddress(emulator: Emulators, options: any): Promise<Address> {
   let host = Constants.normalizeHost(
@@ -493,6 +494,16 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
       projectId,
       auto_download: true,
     };
+
+    // Try to fetch the default RTDB instance for a project, but don't hard-fail if we
+    // can't because the user may be using a fake project.
+    try {
+      if (!options.instance) {
+        options.instance = await getDefaultDatabaseInstance(options);
+      }
+    } catch (e) {
+      databaseLogger.log("DEBUG", `Failed to retrieve default database instance: ${JSON.stringify(e)}`);
+    }
 
     const rc = dbRulesConfig.normalizeRulesConfig(
       dbRulesConfig.getRulesConfig(projectId, options),

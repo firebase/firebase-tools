@@ -1,1 +1,2 @@
 - Fixes issue where OOB flow is not initiated after updating a user's email (#3096)
+- Fixes issue where rules are not applied to the default emulated Realtime Database instance (#3124)
