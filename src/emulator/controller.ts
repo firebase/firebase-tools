@@ -502,7 +502,10 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
         options.instance = await getDefaultDatabaseInstance(options);
       }
     } catch (e) {
-      databaseLogger.log("DEBUG", `Failed to retrieve default database instance: ${JSON.stringify(e)}`);
+      databaseLogger.log(
+        "DEBUG",
+        `Failed to retrieve default database instance: ${JSON.stringify(e)}`
+      );
     }
 
     const rc = dbRulesConfig.normalizeRulesConfig(
