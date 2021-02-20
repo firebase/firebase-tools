@@ -41,7 +41,9 @@ export default new Command("hosting:clone <source> <targetChannel>")
     }
 
     targetChannelId = normalizeName(targetChannelId);
-    sourceChannelId = normalizeName(sourceChannelId);
+    if (sourceChannelId) {
+      sourceChannelId = normalizeName(sourceChannelId);
+    }
 
     const equalSiteIds = sourceSiteId == targetSiteId;
     const equalChannelIds = sourceChannelId == targetChannelId;
