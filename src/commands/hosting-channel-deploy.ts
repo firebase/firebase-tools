@@ -28,7 +28,16 @@ interface ChannelInfo {
   target: string | null;
   site: string;
   url: string;
+  version: string;
   expireTime: string;
+}
+
+interface DeployResult {
+  hosting: {
+    [site: string]: {
+      [key: string]: string;
+    };
+  };
 }
 
 export default new Command("hosting:channel:deploy [channelId]")
@@ -91,7 +100,13 @@ export default new Command("hosting:channel:deploy [channelId]")
 
       const sites: ChannelInfo[] = normalizedHostingConfigs(options, {
         resolveTargets: true,
-      }).map((cfg) => ({ site: cfg.site, target: cfg.target, url: "", expireTime: "" }));
+      }).map((cfg) => ({
+        site: cfg.site,
+        target: cfg.target,
+        url: "",
+        version: "",
+        expireTime: "",
+      }));
 
       await Promise.all(
         sites.map(async (siteInfo) => {
@@ -127,20 +142,27 @@ export default new Command("hosting:channel:deploy [channelId]")
         })
       );
 
-      await deploy(["hosting"], options, { hostingChannel: channelId });
+      const results = (await deploy(["hosting"], options, {
+        hostingChannel: channelId,
+      })) as DeployResult;
 
       logger.info();
       await syncAuthState(projectId, sites);
       const deploys: { [key: string]: ChannelInfo } = {};
+      const siteDetails = results.hosting;
       sites.forEach((d) => {
-        deploys[d.target || d.site] = d;
+        const siteKey = d.target || d.site;
+        if (siteDetails && siteKey in siteDetails) {
+          d.version = siteDetails[siteKey]["version"];
+        }
+        deploys[siteKey] = d;
         let expires = "";
         if (d.expireTime) {
           expires = `[expires ${bold(datetimeString(new Date(d.expireTime)))}]`;
         }
         logLabeledSuccess(
           LOG_TAG,
-          `Channel URL (${bold(d.site || d.target)}): ${d.url} ${expires}`
+          `Channel URL (${bold(siteKey)}): ${d.url} ${expires} ${d.version}`
         );
       });
       return deploys;
