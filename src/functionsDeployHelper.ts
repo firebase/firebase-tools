@@ -184,8 +184,8 @@ export function logAndTrackDeployStats(queue: Queue<any, any>, errorHandler: Err
   logger.debug(`${errorHandler.errors.length} Functions Errored`);
   logger.debug(`Average Function Deployment time: ${stats.avg}`);
   if (stats.total > 0) {
-    track("Functions Deploy (Result)", "failure", stats.errored);
-    track("Functions Deploy (Result)", "success", stats.success);
+    track("Functions Deploy (Result)", "failure", errorHandler.errors.length);
+    track("Functions Deploy (Result)", "success", stats.total - errorHandler.errors.length);
   }
   // TODO: Track other stats here - maybe time of full deployment?
 }
