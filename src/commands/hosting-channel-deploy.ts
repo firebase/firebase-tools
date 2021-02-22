@@ -160,9 +160,13 @@ export default new Command("hosting:channel:deploy [channelId]")
         if (d.expireTime) {
           expires = `[expires ${bold(datetimeString(new Date(d.expireTime)))}]`;
         }
+        let version = "";
+        if (d.version) {
+          version = `[version ${bold(d.version)}]`;
+        }
         logLabeledSuccess(
           LOG_TAG,
-          `Channel URL (${bold(siteKey)}): ${d.url} ${expires} ${d.version}`
+          `Channel URL (${bold(siteKey)}): ${d.url} ${expires} ${version}`
         );
       });
       return deploys;
