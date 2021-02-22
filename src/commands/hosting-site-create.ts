@@ -44,7 +44,7 @@ export default new Command("hosting:site:create [siteName]")
       try {
         site = await createSite(projectId, siteName, appId);
       } catch (e) {
-        if (e.status == 409) {
+        if (e.status === 409) {
           throw new FirebaseError(
             `Site ${bold(siteName)} already exists on project ${bold(projectId)}. Deploy to ${bold(
               siteName
