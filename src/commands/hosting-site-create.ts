@@ -3,6 +3,7 @@ import { bold, yellow } from "cli-color";
 import { logLabeledSuccess } from "../utils";
 import { Command } from "../command";
 import { createSite } from "../hosting/api";
+import { promptOnce } from "../prompt";
 import { FirebaseError } from "../error";
 import { requirePermissions } from "../requirePermissions";
 import * as getProjectId from "../getProjectId";
