@@ -2,3 +2,4 @@
 - Fixes issue where rules are not applied to the default emulated Realtime Database instance (#3124)
 - Adds `setup:emulators:ui` command to download the Emulators UI (#3152)
 - Fixes issue causing timeout errors for eventually successful functions deploys (#3147)
+- Fixes issue where adding a field to an empty document in Firestore Emulator UI fails
