@@ -420,7 +420,7 @@ export async function getSite(project: string, site: string): Promise<Site> {
  * Create a Hosting site.
  * @param project project name or number.
  * @param site the site name to create.
- * @param appId the Firebase Web App AppID
+ * @param appId the Firebase Web Application ID
  * @return site information.
  */
 export async function createSite(project: string, site: string, appId = ""): Promise<Site> {
