@@ -22,7 +22,7 @@ export default new Command("hosting:site:list")
     }
 
     logger.info();
-    logger.info(`Channels for site ${bold(projectId)}`);
+    logger.info(`Sites for project ${bold(projectId)}`);
     logger.info();
     logger.info(table.toString());
   });

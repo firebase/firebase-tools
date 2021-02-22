@@ -420,12 +420,13 @@ export async function getSite(project: string, site: string): Promise<Site> {
  * Create a Hosting site.
  * @param project project name or number.
  * @param site the site name to create.
+ * @param appId the Firebase Web App AppID
  * @return site information.
  */
-export async function createSite(project: string, site: string): Promise<Site> {
-  const res = await apiClient.post<unknown, Site>(
+export async function createSite(project: string, site: string, appId = ""): Promise<Site> {
+  const res = await apiClient.post<{ appId: string }, Site>(
     `/projects/${project}/sites`,
-    {},
+    { appId: appId },
     { queryParams: { site_id: site } }
   );
   return res.body;
