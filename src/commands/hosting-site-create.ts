@@ -68,7 +68,9 @@ export default new Command("hosting:site:create [siteName]")
       }
       logLabeledSuccess(LOG_TAG, `Site URL: ${site.defaultUrl}`);
       logger.info();
-      logger.info(`To deploy to this site, use \`firebase deploy --only hosting:${siteName}\`.`);
+      logger.info(
+        `To deploy to this site, use ${yellow(`firebase deploy --only hosting:${siteName}`)}.`
+      );
       return site;
     }
   );
