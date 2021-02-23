@@ -54,8 +54,8 @@ export interface UploadStatusResponse {
 
 /** Enum for app_view parameter for getApp requests */
 export enum AppView {
-  BASIC,
-  FULL,
+  BASIC = "BASIC",
+  FULL = "FULL",
 }
 
 /**
