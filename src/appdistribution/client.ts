@@ -17,6 +17,13 @@ export interface AppDistributionApp {
   bundleId: string;
   contactEmail: string;
   aabState: AabState;
+  aabCertificate: AabCertificate | null;
+}
+
+export interface AabCertificate {
+  certificateHashMd5: string;
+  certificateHashSha1: string;
+  certificateHashSha256: string;
 }
 
 export enum UploadStatus {
@@ -25,7 +32,7 @@ export enum UploadStatus {
   ERROR = "ERROR",
 }
 
-/** Enumn representing the App Bundles state for the App */
+/** Enum representing the App Bundles state for the App */
 export enum AabState {
   AAB_STATE_UNSPECIFIED = "AAB_STATE_UNSPECIFIED",
   ACTIVE = "ACTIVE",
@@ -45,6 +52,12 @@ export interface UploadStatusResponse {
   };
 }
 
+/** Enum for app_view parameter for getApp requests */
+export enum AppView {
+  BASIC,
+  FULL,
+}
+
 /**
  * Proxies HTTPS requests to the App Distribution server backend.
  */
@@ -54,11 +67,7 @@ export class AppDistributionClient {
 
   constructor(private readonly appId: string) {}
 
-  async getApp(
-    distributionFileType: DistributionFileType = DistributionFileType.APK
-  ): Promise<AppDistributionApp> {
-    utils.logBullet(`getting app details (Distribution type: ${distributionFileType})...`);
-    const appView = distributionFileType == DistributionFileType.AAB ? "FULL" : "BASIC";
+  async getApp(appView: AppView = AppView.BASIC): Promise<AppDistributionApp> {
     const apiResponse = await api.request("GET", `/v1alpha/apps/${this.appId}?appView=${appView}`, {
       origin: api.appDistributionOrigin,
       auth: true,
