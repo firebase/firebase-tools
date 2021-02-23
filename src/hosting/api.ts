@@ -30,7 +30,7 @@ enum ReleaseType {
   SITE_DISABLE = "SITE_DISABLE",
 }
 
-interface Release {
+export interface Release {
   // The unique identifier for the release, in the format:
   // <code>sites/<var>site-name</var>/releases/<var>releaseID</var></code>
   readonly name: string;

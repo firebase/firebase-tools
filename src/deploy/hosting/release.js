@@ -45,6 +45,7 @@ module.exports = function (context, options) {
       );
       logger.debug("[hosting] release:", releaseResult.body);
       utils.logLabeledSuccess("hosting[" + deploy.site + "]", "release complete");
+      deploy.release = releaseResult.body;
     })
   );
 };

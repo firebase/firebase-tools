@@ -10,6 +10,7 @@ import {
   addAuthDomains,
   cleanAuthState,
   normalizeName,
+  Release,
 } from "../hosting/api";
 import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs";
 import { requirePermissions } from "../requirePermissions";
@@ -35,7 +36,7 @@ interface ChannelInfo {
 interface DeployResult {
   hosting: {
     [site: string]: {
-      [key: string]: string;
+      release: Release;
     };
   };
 }
@@ -149,19 +150,18 @@ export default new Command("hosting:channel:deploy [channelId]")
       logger.info();
       await syncAuthState(projectId, sites);
       const deploys: { [key: string]: ChannelInfo } = {};
-      const siteDetails = results.hosting;
       sites.forEach((d) => {
         const siteKey = d.target || d.site;
-        if (siteDetails && siteKey in siteDetails) {
-          d.version = siteDetails[siteKey]["version"];
-        }
         deploys[siteKey] = d;
         let expires = "";
         if (d.expireTime) {
           expires = `[expires ${bold(datetimeString(new Date(d.expireTime)))}]`;
         }
+        const siteResult = results.hosting[siteKey];
         let version = "";
-        if (d.version) {
+        if (siteResult) {
+          const versionName: string = siteResult.release.version.name;
+          d.version = versionName.replace(`sites/${d.site}/versions/`, "");
           version = `[version ${bold(d.version)}]`;
         }
         logLabeledSuccess(

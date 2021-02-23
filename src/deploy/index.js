@@ -109,8 +109,7 @@ var deploy = function (targetNames, options, customContext = {}) {
         });
         var siteDetails = {};
         context.hosting.deploys.forEach((deploy) => {
-          var version = deploy.version.replace(`sites/${deploy.site}/versions/`, "");
-          siteDetails[deploy.site] = { version };
+          siteDetails[deploy.site] = { release: deploy.release };
         });
         return { hosting: siteDetails };
       }
