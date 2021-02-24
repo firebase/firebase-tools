@@ -13,7 +13,7 @@ const LOG_TAG = "hosting:site";
 
 export default new Command("hosting:site:create [siteName]")
   .description("create a Firebase Hosting site")
-  .option("--app <appId>", "specify an existing Firebase Web App AppID")
+  .option("--app <appId>", "specify an existing Firebase Web App ID")
   .before(requirePermissions, ["firebasehosting.sites.update"])
   .action(
     async (
