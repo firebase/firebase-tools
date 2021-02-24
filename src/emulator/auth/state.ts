@@ -21,6 +21,8 @@ export class ProjectState {
   private userIdForProviderRawId: Map<string, Map<string, string>> = new Map();
   private refreshTokens: Map<string, RefreshTokenRecord> = new Map();
   private refreshTokensForLocalId: Map<string, Set<string>> = new Map();
+  private mfaEnrollmentIdsForLocalId: Map<string, Set<string>> = new Map();
+  private localIdForMfaEnrollmentId: Map<string, string> = new Map();
   private oobs: Map<string, OobRecord> = new Map();
   private verificationCodes: Map<string, PhoneVerificationRecord> = new Map();
   private temporaryProofs: Map<string, TemporaryProofRecord> = new Map();
@@ -171,8 +173,28 @@ export class ProjectState {
     } else {
       deleteProviders.push(PROVIDER_PHONE);
     }
+    if (user.mfaInfo) {
+      this.updateMfaEnrollments(user);
+    } else {
+      this.mfaEnrollmentIdsForLocalId.delete(user.localId);
+    }
 
     return this.updateUserProviderInfo(user, upsertProviders, deleteProviders);
+  }
+
+  private updateMfaEnrollments(user: UserInfo): UserInfo {
+    for (const factor of user.mfaInfo ?? []) {
+      const allowUpdate = !!factor.mfaEnrollmentId;
+      const mfaEnrollmentId = factor.mfaEnrollmentId ?? randomId(28);
+      const enrollments = this.mfaEnrollmentIdsForLocalId.get(user.localId) ?? new Set();
+      if (!(enrollments.add(mfaEnrollmentId) || allowUpdate)) {
+        throw new Error("New MfaEnrollmentId wasn't unique.");
+      }
+      this.mfaEnrollmentIdsForLocalId.set(user.localId, enrollments);
+      this.localIdForMfaEnrollmentId.set(mfaEnrollmentId, user.localId);
+      factor.mfaEnrollmentId = mfaEnrollmentId;
+    }
+    return user;
   }
 
   private updateUserProviderInfo(
@@ -414,6 +436,8 @@ export class ProjectState {
     this.userIdForProviderRawId.clear();
     this.refreshTokens.clear();
     this.refreshTokensForLocalId.clear();
+    this.mfaEnrollmentIdsForLocalId.clear();
+    this.localIdForMfaEnrollmentId.clear();
 
     // We do not clear OOBs / phone verification codes since some of those may
     // still be valid (e.g. email link / phone sign-in may still create a new
@@ -490,6 +514,15 @@ export class ProjectState {
 
     if (user.phoneNumber) {
       this.localIdForPhoneNumber.delete(user.phoneNumber);
+    }
+
+    if (user.mfaInfo) {
+      for (const factor of user.mfaInfo) {
+        if (factor.mfaEnrollmentId) {
+          this.localIdForMfaEnrollmentId.delete(factor.mfaEnrollmentId);
+        }
+      }
+      this.mfaEnrollmentIdsForLocalId.delete(user.localId);
     }
 
     for (const info of user.providerUserInfo ?? []) {

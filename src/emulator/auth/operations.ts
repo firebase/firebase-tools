@@ -166,6 +166,9 @@ function signUp(
     updates.passwordUpdatedAt = Date.now();
     updates.validSince = toUnixTimestamp(new Date()).toString();
   }
+  if (reqBody.mfaInfo) {
+    updates.mfaInfo = reqBody.mfaInfo;
+  }
   let user: UserInfo | undefined;
   if (reqBody.idToken) {
     ({ user } = parseIdToken(state, reqBody.idToken));

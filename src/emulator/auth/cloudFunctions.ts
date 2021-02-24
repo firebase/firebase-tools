@@ -77,6 +77,7 @@ export class AuthCloudFunction {
       customClaims: JSON.parse(user.customAttributes || "{}"),
       providerData: user.providerUserInfo,
       tenantId: user.tenantId,
+      mfaInfo: user.mfaInfo,
     };
   }
 }
@@ -99,4 +100,5 @@ type UserInfoPayload = {
   phoneNumber?: string;
   customClaims?: object;
   tenantId?: string;
+  mfaInfo?: object;
 };

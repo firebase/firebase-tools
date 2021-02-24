@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import { FirebaseJwtPayload } from "../../../emulator/auth/operations";
-import { TEST_PHONE_NUMBER } from "./helpers";
+import { getAccountInfoByLocalId, TEST_PHONE_NUMBER } from "./helpers";
 import { describeAuthEmulator } from "./setup";
 import {
   expectStatusCode,
@@ -394,5 +394,30 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
         expectStatusCode(400, res);
         expect(res.body.error.message).to.equal("INVALID_PHONE_NUMBER : Invalid format.");
       });
+  });
+
+  it("should create new account with multi factor info when authenticated", async () => {
+    const phoneNumber = TEST_PHONE_NUMBER;
+    const displayName = "Alice";
+    const mfaInfo = { displayName, phoneInfo: phoneNumber };
+
+    const localId = await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
+      .set("Authorization", "Bearer owner")
+      .send({ phoneNumber, displayName, mfaInfo: [mfaInfo] })
+      .query({ key: "fake-api-key" })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.localId).to.be.a("string").and.not.empty;
+        return res.body.localId as string;
+      });
+
+    const info = await getAccountInfoByLocalId(authApi(), localId);
+    expect(info.mfaInfo).to.have.length(1);
+    const savedMfaInfo = info.mfaInfo?.pop();
+    expect(savedMfaInfo).to.include(mfaInfo);
+    expect(savedMfaInfo?.phoneInfo).to.equal(phoneNumber);
+    expect(savedMfaInfo?.displayName).to.equal(displayName);
+    expect(savedMfaInfo?.mfaEnrollmentId).to.be.a("string").and.not.empty;
   });
 });
