@@ -168,8 +168,8 @@ module.exports = new Command("appdistribution:distribute <distribution-file>")
             "generates a new test certificate. All AAB uploads are re-signed with this test " +
             "certificate. Use the certificate fingerprints below to register your app " +
             "signing key with API providers, such as Google Sign-In and Google Maps.\n" +
-            `MD-1 certificate fingerprint: ${updatedApp.aabCertificate.certificateHashMd5}` +
-            `SHA-1 certificate fingerprint: ${updatedApp.aabCertificate.certificateHashSha1}` +
+            `MD-1 certificate fingerprint: ${updatedApp.aabCertificate.certificateHashMd5}\n` +
+            `SHA-1 certificate fingerprint: ${updatedApp.aabCertificate.certificateHashSha1}\n` +
             `SHA-256 certificate fingerprint: ${updatedApp.aabCertificate.certificateHashSha256}`
         );
       }

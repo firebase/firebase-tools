@@ -1,7 +1,7 @@
 import * as _ from "lodash";
 import * as api from "../api";
 import * as utils from "../utils";
-import { Distribution, DistributionFileType } from "./distribution";
+import { Distribution } from "./distribution";
 import { FirebaseError } from "../error";
 
 // tslint:disable-next-line:no-var-requires
