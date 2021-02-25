@@ -36,6 +36,42 @@ export function registerHandlers(
     const state = getProjectStateByApiKey(apiKey);
 
     switch (mode) {
+      case "recoverEmail": {
+        const oob = state.validateOobCode(oobCode);
+        const RETRY_INSTRUCTIONS =
+          "If you're trying to test the reverting email flow, try changing the email again to generate a new link.";
+        if (oob?.requestType !== "RECOVER_EMAIL") {
+          return res.status(400).json({
+            authEmulator: {
+              error: `Requested mode does not match the OOB code provided.`,
+              instructions: RETRY_INSTRUCTIONS,
+            },
+          });
+        }
+        try {
+          const resp = setAccountInfoImpl(state, {
+            oobCode,
+          });
+          const email = resp.email;
+          return res.status(200).json({
+            authEmulator: { success: `The email has been successfully reset.`, email },
+          });
+        } catch (e) {
+          if (
+            e instanceof NotImplementedError ||
+            (e instanceof BadRequestError && e.message === "INVALID_OOB_CODE")
+          ) {
+            return res.status(400).json({
+              authEmulator: {
+                error: `Your request to revert your email has expired or the link has already been used.`,
+                instructions: RETRY_INSTRUCTIONS,
+              },
+            });
+          } else {
+            throw e;
+          }
+        }
+      }
       case "resetPassword": {
         const oob = state.validateOobCode(oobCode);
         if (oob?.requestType !== "PASSWORD_RESET") {

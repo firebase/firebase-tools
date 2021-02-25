@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "9.4.0",
+  "version": "9.5.0",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -82,7 +82,7 @@
   "dependencies": {
     "@google-cloud/pubsub": "^2.7.0",
     "@types/archiver": "^5.1.0",
-    "@types/filesize": "^5.0.0",
+    "JSONStream": "^1.2.1",
     "abort-controller": "^3.0.0",
     "archiver": "^5.0.0",
     "body-parser": "^1.19.0",
@@ -106,7 +106,6 @@
     "inquirer": "~6.3.1",
     "js-yaml": "^3.13.1",
     "jsonschema": "^1.0.2",
-    "JSONStream": "^1.2.1",
     "jsonwebtoken": "^8.2.1",
     "leven": "^3.1.0",
     "lodash": "^4.17.19",
