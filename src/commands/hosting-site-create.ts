@@ -11,24 +11,24 @@ import * as logger from "../logger";
 
 const LOG_TAG = "hosting:site";
 
-export default new Command("hosting:site:create [siteName]")
+export default new Command("hosting:site:create [siteId]")
   .description("create a Firebase Hosting site")
   .option("--app <appId>", "specify an existing Firebase Web App ID")
   .before(requirePermissions, ["firebasehosting.sites.update"])
   .action(
     async (
-      siteName: string,
+      siteId: string,
       options: any // eslint-disable-line @typescript-eslint/no-explicit-any
     ): Promise<Site> => {
       const projectId = getProjectId(options);
       const appId = options.app;
-      if (!siteName) {
+      if (!siteId) {
         if (options.nonInteractive) {
           throw new FirebaseError(
-            `"siteName" argument must be provided in a non-interactive environment`
+            `"siteId" argument must be provided in a non-interactive environment`
           );
         }
-        siteName = await promptOnce(
+        siteId = await promptOnce(
           {
             type: "input",
             message: "Please provide a URL-friendly name for the site:",
@@ -36,19 +36,19 @@ export default new Command("hosting:site:create [siteName]")
           } // Prevents an empty string from being submitted!
         );
       }
-      if (!siteName) {
-        throw new FirebaseError(`"siteName" must not be empty`);
+      if (!siteId) {
+        throw new FirebaseError(`"siteId" must not be empty`);
       }
 
       let site: Site;
       try {
-        site = await createSite(projectId, siteName, appId);
+        site = await createSite(projectId, siteId, appId);
       } catch (e) {
         if (e.status === 409) {
           throw new FirebaseError(
-            `Site ${bold(siteName)} already exists on project ${bold(projectId)}. Deploy to ${bold(
-              siteName
-            )} with: ${yellow(`firebase deploy --only hosting:${siteName}`)}`,
+            `Site ${bold(siteId)} already exists on project ${bold(projectId)}. Deploy to ${bold(
+              siteId
+            )} with: ${yellow(`firebase deploy --only hosting:${siteId}`)}`,
             { original: e }
           );
         }
@@ -58,18 +58,18 @@ export default new Command("hosting:site:create [siteName]")
       logger.info();
       logLabeledSuccess(
         LOG_TAG,
-        `Site ${bold(siteName)} has been created in project ${bold(projectId)}.`
+        `Site ${bold(siteId)} has been created in project ${bold(projectId)}.`
       );
       if (appId) {
         logLabeledSuccess(
           LOG_TAG,
-          `Site ${bold(siteName)} has been linked to web app ${bold(appId)}`
+          `Site ${bold(siteId)} has been linked to web app ${bold(appId)}`
         );
       }
       logLabeledSuccess(LOG_TAG, `Site URL: ${site.defaultUrl}`);
       logger.info();
       logger.info(
-        `To deploy to this site, use ${yellow(`firebase deploy --only hosting:${siteName}`)}.`
+        `To deploy to this site, use ${yellow(`firebase deploy --only hosting:${siteId}`)}.`
       );
       return site;
     }

@@ -7,16 +7,16 @@ import * as getProjectId from "../getProjectId";
 import * as logger from "../logger";
 import { FirebaseError } from "../error";
 
-export default new Command("hosting:site:get <siteName>")
+export default new Command("hosting:site:get <siteId>")
   .description("print info about a Firebase Hosting site")
   .before(requirePermissions, ["firebasehosting.sites.get"])
   .action(
-    async (siteName: string, options): Promise<Site> => {
+    async (siteId: string, options): Promise<Site> => {
       const projectId = getProjectId(options);
-      if (!siteName) {
-        throw new FirebaseError("<siteName> must be specified");
+      if (!siteId) {
+        throw new FirebaseError("<siteId> must be specified");
       }
-      const site = await getSite(projectId, siteName);
+      const site = await getSite(projectId, siteId);
       const table = new Table();
       table.push(["Name:", site.name.split("/").pop()]);
       table.push(["Default URL:", site.defaultUrl]);
