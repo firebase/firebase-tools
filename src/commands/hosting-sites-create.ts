@@ -46,9 +46,7 @@ export default new Command("hosting:sites:create [siteId]")
       } catch (e) {
         if (e.status === 409) {
           throw new FirebaseError(
-            `Site ${bold(siteId)} already exists on project ${bold(projectId)}. Deploy to ${bold(
-              siteId
-            )} with: ${yellow(`firebase deploy --only hosting:${siteId}`)}`,
+            `Site ${bold(siteId)} already exists on project ${bold(projectId)}.`,
             { original: e }
           );
         }
@@ -69,7 +67,7 @@ export default new Command("hosting:sites:create [siteId]")
       logLabeledSuccess(LOG_TAG, `Site URL: ${site.defaultUrl}`);
       logger.info();
       logger.info(
-        `To deploy to this site, use ${yellow(`firebase deploy --only hosting:${siteId}`)}.`
+        `To deploy to this site, follow the guide at https://firebase.google.com/docs/hosting/multisites.`
       );
       return site;
     }

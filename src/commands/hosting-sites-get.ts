@@ -18,7 +18,7 @@ export default new Command("hosting:sites:get <siteId>")
       }
       const site = await getSite(projectId, siteId);
       const table = new Table();
-      table.push(["Name:", site.name.split("/").pop()]);
+      table.push(["Site ID:", site.name.split("/").pop()]);
       table.push(["Default URL:", site.defaultUrl]);
       table.push(["App ID:", site.appId || ""]);
       // table.push(["Labels:", JSON.stringify(site.labels)]);
