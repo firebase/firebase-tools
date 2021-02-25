@@ -7,7 +7,7 @@ import { requirePermissions } from "../requirePermissions";
 import * as getProjectId from "../getProjectId";
 import * as logger from "../logger";
 
-const TABLE_HEAD = ["Site ID", "Default URL", "Created At", "App ID (if set)"];
+const TABLE_HEAD = ["Site ID", "Default URL", "App ID (if set)"];
 
 export default new Command("hosting:site:list")
   .description("list Firebase Hosting sites")
