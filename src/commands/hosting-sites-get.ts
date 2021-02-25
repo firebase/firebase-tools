@@ -7,7 +7,7 @@ import * as getProjectId from "../getProjectId";
 import * as logger from "../logger";
 import { FirebaseError } from "../error";
 
-export default new Command("hosting:site:get <siteId>")
+export default new Command("hosting:sites:get <siteId>")
   .description("print info about a Firebase Hosting site")
   .before(requirePermissions, ["firebasehosting.sites.get"])
   .action(

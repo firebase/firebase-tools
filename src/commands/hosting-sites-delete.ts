@@ -9,9 +9,9 @@ import { requirePermissions } from "../requirePermissions";
 import * as getProjectId from "../getProjectId";
 import * as requireConfig from "../requireConfig";
 
-const LOG_TAG = "hosting:site";
+const LOG_TAG = "hosting:sites";
 
-export default new Command("hosting:site:delete <siteId>")
+export default new Command("hosting:sites:delete <siteId>")
   .description("delete a Firebase Hosting site")
   .option("-f, --force", "delete without confirmation")
   .before(requireConfig)

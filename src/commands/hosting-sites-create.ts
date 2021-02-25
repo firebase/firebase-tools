@@ -9,9 +9,9 @@ import { requirePermissions } from "../requirePermissions";
 import * as getProjectId from "../getProjectId";
 import * as logger from "../logger";
 
-const LOG_TAG = "hosting:site";
+const LOG_TAG = "hosting:sites";
 
-export default new Command("hosting:site:create [siteId]")
+export default new Command("hosting:sites:create [siteId]")
   .description("create a Firebase Hosting site")
   .option("--app <appId>", "specify an existing Firebase Web App ID")
   .before(requirePermissions, ["firebasehosting.sites.update"])
