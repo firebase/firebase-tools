@@ -45,12 +45,17 @@ describe("promptForFailurePolicies", () => {
   });
 
   it("should not prompt if all functions with failure policies already had failure policies", async () => {
+    // Note: local definitions of function triggers use a top-level "failurePolicy" but
+    // the API returns eventTrigger.failurePolicy.
     const func: any = {
       name: "projects/a/locations/b/functions/c",
       entryPoint: "",
       labels: {},
       environmentVariables: {},
       failurePolicy: {},
+      eventTrigger: {
+        failurePolicy: {},
+      },
     };
     existingFunctions = [func];
     const options = {};

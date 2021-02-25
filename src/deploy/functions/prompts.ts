@@ -28,13 +28,14 @@ export async function promptForFailurePolicies(
     return;
   }
 
-  // N.B. Because context is an any, we need to store it in a temporary. This
-  // lets us do a 'for of' loop later with typeinfo.
-  const existingFunctions = await gcp.cloudfunctions.listAllFunctions(context.projectId);
-  context.existingFunctions = existingFunctions;
-  const existingFailurePolicyFunctions = existingFunctions.filter((fn: CloudFunctionTrigger) => {
-    return !!fn?.eventTrigger?.failurePolicy;
-  });
+  context.existingFunctions =
+    (context.existingFunctions as CloudFunctionTrigger[]) ||
+    (await gcp.cloudfunctions.listAllFunctions(context.projectId));
+  const existingFailurePolicyFunctions = context.existingFunctions.filter(
+    (fn: CloudFunctionTrigger) => {
+      return !!fn?.eventTrigger?.failurePolicy;
+    }
+  );
   const newFailurePolicyFunctions = failurePolicyFunctions.filter((fn: CloudFunctionTrigger) => {
     for (const existing of existingFailurePolicyFunctions) {
       if (existing.name === fn.name) {
