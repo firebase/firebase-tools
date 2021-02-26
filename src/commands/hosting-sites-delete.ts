@@ -51,7 +51,7 @@ export default new Command("hosting:sites:delete <siteId>")
       await deleteSite(projectId, siteId);
       logLabeledSuccess(
         LOG_TAG,
-        `Successfully deleted site ${bold(siteId)} for project ${bold(projectId)}`
+        `Successfully deleted site ${bold(siteId)} from project ${bold(projectId)}`
       );
     }
   );

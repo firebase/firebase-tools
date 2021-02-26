@@ -31,7 +31,7 @@ export default new Command("hosting:sites:create [siteId]")
         siteId = await promptOnce(
           {
             type: "input",
-            message: "Please provide a URL-friendly name for the site:",
+            message: "Please provide a uniqueURL-friendly name for the site:",
             validate: (s) => s.length > 0,
           } // Prevents an empty string from being submitted!
         );
@@ -46,7 +46,7 @@ export default new Command("hosting:sites:create [siteId]")
       } catch (e) {
         if (e.status === 409) {
           throw new FirebaseError(
-            `Site ${bold(siteId)} already exists on project ${bold(projectId)}.`,
+            `Site ${bold(siteId)} already exists in project ${bold(projectId)}.`,
             { original: e }
           );
         }
