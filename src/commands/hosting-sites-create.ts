@@ -31,7 +31,7 @@ export default new Command("hosting:sites:create [siteId]")
         siteId = await promptOnce(
           {
             type: "input",
-            message: "Please provide a uniqueURL-friendly name for the site:",
+            message: "Please provide an unique, URL-friendly id for the site (<id>.web.app):",
             validate: (s) => s.length > 0,
           } // Prevents an empty string from being submitted!
         );
