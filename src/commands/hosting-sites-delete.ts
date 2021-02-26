@@ -1,5 +1,4 @@
 import { bold, underline } from "cli-color";
-
 import { Command } from "../command";
 import { logLabeledSuccess } from "../utils";
 import { getSite, deleteSite } from "../hosting/api";
@@ -8,6 +7,7 @@ import { FirebaseError } from "../error";
 import { requirePermissions } from "../requirePermissions";
 import * as getProjectId from "../getProjectId";
 import * as requireConfig from "../requireConfig";
+import * as logger from "../logger";
 
 const LOG_TAG = "hosting:sites";
 
@@ -25,13 +25,19 @@ export default new Command("hosting:sites:delete <siteId>")
       if (!siteId) {
         throw new FirebaseError("siteId is required");
       }
+      logger.info(
+        `Deleting a site is a permanent action. If you delete a site, Firebase doesn't maintain records of deployed files or deployment history, and the site ${underline(
+          siteId
+        )} cannot be reactivated by you or anyone else.`
+      );
+      logger.info();
 
       let confirmed = Boolean(options.force);
       if (!confirmed) {
         confirmed = await promptOnce({
-          message: `Are you sure you want to delete the Hosting Site ${underline(
+          message: `Are you sure you want to delete the Hosting site ${underline(
             siteId
-          )} for project ${underline(projectId)}?`,
+          )} for project ${underline(projectId)}? `,
           type: "confirm",
           default: false,
         });
