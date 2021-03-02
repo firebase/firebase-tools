@@ -245,6 +245,16 @@ describe("validate", () => {
       }).to.throw(FirebaseError, "does not exist, can't deploy");
     });
 
+    it("should throw error if script with protected name is defined", () => {
+      cjsonLoadStub.returns({ name: "my-project", scripts: { prepare: "my-script" } });
+      fileExistsStub.withArgs("sourceDir/package.json").returns(true);
+      fileExistsStub.withArgs("sourceDir/index.js").returns(true);
+
+      expect(() => {
+        validate.packageJsonIsValid("sourceDirName", "sourceDir", "projectDir", true);
+      }).to.throw(FirebaseError, "contains script with protected name");
+    });
+
     it("should not throw error if runtime is set in the config and the engines field is not set", () => {
       cjsonLoadStub.returns({ name: "my-project" });
       fileExistsStub.withArgs("sourceDir/package.json").returns(true);

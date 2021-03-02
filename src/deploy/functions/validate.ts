@@ -72,6 +72,7 @@ export function packageJsonIsValid(
     data = cjson.load(packageJsonFile);
     logger.debug("> [functions] package.json contents:", JSON.stringify(data, null, 2));
     assertFunctionsSourcePresent(data, sourceDir, projectDir);
+    checkForProtectedNpmScriptNames(data);
   } catch (e) {
     const msg = `There was an error reading ${sourceDirName}${path.sep}package.json:\n\n ${e.message}`;
     throw new FirebaseError(msg);
@@ -123,6 +124,23 @@ function assertFunctionsSourcePresent(data: any, sourceDir: string, projectDir: 
       indexJsFile
     )} does not exist, can't deploy Cloud Functions`;
     throw new FirebaseError(msg);
+  }
+}
+
+/**
+ * Asserts that package.json does not include any scripts with invalid names
+ * @param data Object representing package.json file.
+ * @throws { FirebaseError } package.json must not contain scripts with protected names
+ */
+function checkForProtectedNpmScriptNames(data: any): void {
+  const protectedScriptNames = ["prepare"];
+  if (Object.prototype.hasOwnProperty.call(data, "scripts")) {
+    for (const scriptName of protectedScriptNames) {
+      if (Object.prototype.hasOwnProperty.call(data.scripts, scriptName)) {
+        const msg = `package.json contains script with protected name ${scriptName}`;
+        throw new FirebaseError(msg);
+      }
+    }
   }
 }
 
