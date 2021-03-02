@@ -67,7 +67,7 @@ export class AppDistributionClient {
 
   constructor(private readonly appId: string) {}
 
-  async getApp(appView: AppView = AppView.BASIC): Promise<AppDistributionApp> {
+  async getApp(appView = AppView.BASIC): Promise<AppDistributionApp> {
     const apiResponse = await api.request("GET", `/v1alpha/apps/${this.appId}?appView=${appView}`, {
       origin: api.appDistributionOrigin,
       auth: true,
