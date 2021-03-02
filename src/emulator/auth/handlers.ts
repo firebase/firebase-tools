@@ -268,7 +268,7 @@ export function registerHandlers(
       authEvent: authEvent || {},
     }, function(responses) {
       if (!responses || !responses.length ||
-          responses[responses.length - 1].status !== 'ACK') {
+          !responses[responses.length - 1].status === 'ACK') {
         return alert("Auth Emulator Internal Error: Sending authEvent failed.");
       }
     }, gapi.iframes.CROSS_ORIGIN_IFRAMES_FILTER);
