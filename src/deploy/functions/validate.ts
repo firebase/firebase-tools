@@ -134,9 +134,9 @@ function assertFunctionsSourcePresent(data: any, sourceDir: string, projectDir: 
  */
 function checkForProtectedNpmScriptNames(data: any): void {
   const protectedScriptNames = ["prepare"];
-  if (Object.prototype.hasOwnProperty.call(data, "scripts")) {
+  if (data?.scripts) {
     for (const scriptName of protectedScriptNames) {
-      if (Object.prototype.hasOwnProperty.call(data.scripts, scriptName)) {
+      if (data.scripts.[scriptName]) {
         const msg = `package.json contains script with protected name ${scriptName}`;
         throw new FirebaseError(msg);
       }
