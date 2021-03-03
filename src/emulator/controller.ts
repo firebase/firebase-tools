@@ -174,8 +174,12 @@ export function filterEmulatorTargets(options: any): Emulators[] {
     return options.config.has(e) || options.config.has(`emulators.${e}`);
   });
 
-  if (options.only) {
-    targets = _.intersection(targets, options.only.split(","));
+  const onlyOptions: string = options.only;
+  if (onlyOptions) {
+    const only = onlyOptions.split(",").map((o) => {
+      return o.split(":")[0];
+    });
+    targets = _.intersection(targets, only as Emulators[]);
   }
 
   return targets;
@@ -321,8 +325,11 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
     "emulators",
     `Starting emulators: ${targets.join(", ")}`
   );
-  if (options.only) {
-    const requested: string[] = options.only.split(",");
+  const onlyOptions: string = options.only;
+  if (onlyOptions) {
+    const requested: string[] = onlyOptions.split(",").map((o) => {
+      return o.split(":")[0];
+    });
     const ignored = _.difference(requested, targets);
 
     for (const name of ignored) {
