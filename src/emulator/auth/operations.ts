@@ -18,6 +18,7 @@ import { Emulators } from "../types";
 import { EmulatorLogger } from "../emulatorLogger";
 import {
   ProjectState,
+  OobRequestType,
   UserInfo,
   ProviderUserInfo,
   PROVIDER_PASSWORD,
@@ -25,6 +26,7 @@ import {
   PROVIDER_PHONE,
   SIGNIN_METHOD_EMAIL_LINK,
   PROVIDER_CUSTOM,
+  OobRecord,
 } from "./state";
 
 import * as schema from "./schema";
@@ -206,6 +208,7 @@ function lookup(
 
   if (ctx.security?.Oauth2) {
     if (reqBody.initialEmail) {
+      // TODO: This is now possible. See ProjectState.getUserByInitialEmail.
       throw new NotImplementedError("Lookup by initialEmail is not implemented.");
     }
     for (const localId of reqBody.localId ?? []) {
@@ -776,50 +779,22 @@ function sendOobCode(
     );
   }
 
-  const { oobCode, oobLink } = state.createOob(email, reqBody.requestType, (oobCode) => {
-    // TODO: Support custom handler links.
-    const url = authEmulatorUrl(ctx.req as express.Request);
-    url.pathname = "/emulator/action";
-    url.searchParams.set("mode", mode);
-    url.searchParams.set("lang", "en");
-    url.searchParams.set("oobCode", oobCode);
-
-    // This doesn't matter for now, since any API key works for defaultProject.
-    // TODO: What if reqBody.targetProjectId is set?
-    url.searchParams.set("apiKey", "fake-api-key");
-
-    if (reqBody.continueUrl) {
-      url.searchParams.set("continueUrl", reqBody.continueUrl);
-    }
-
-    return url.toString();
+  const url = authEmulatorUrl(ctx.req as express.Request);
+  const oobRecord = createOobRecord(state, email, url, {
+    requestType: reqBody.requestType,
+    mode,
+    continueUrl: reqBody.continueUrl,
   });
 
   if (reqBody.returnOobLink) {
     return {
       kind: "identitytoolkit#GetOobConfirmationCodeResponse",
       email,
-      oobCode,
-      oobLink,
+      oobCode: oobRecord.oobCode,
+      oobLink: oobRecord.oobLink,
     };
   } else {
-    // Print out a developer-friendly log containing the link, in lieu of
-    // sending a real email out to the email address.
-    let message: string | undefined;
-    switch (reqBody.requestType) {
-      case "EMAIL_SIGNIN":
-        message = `To sign in as ${email}, follow this link: ${oobLink}`;
-        break;
-      case "PASSWORD_RESET":
-        message = `To reset the password for ${email}, follow this link: ${oobLink}&newPassword=NEW_PASSWORD_HERE`;
-        break;
-      case "VERIFY_EMAIL":
-        message = `To verify the email address ${email}, follow this link: ${oobLink}`;
-        break;
-    }
-    if (message) {
-      EmulatorLogger.forEmulator(Emulators.AUTH).log("BULLET", message);
-    }
+    logOobMessage(oobRecord);
 
     return {
       kind: "identitytoolkit#GetOobConfirmationCodeResponse",
@@ -860,7 +835,11 @@ function setAccountInfo(
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1SetAccountInfoRequest"],
   ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitV1SetAccountInfoResponse"] {
-  return setAccountInfoImpl(state, reqBody, { privileged: !!ctx.security?.Oauth2 });
+  const url = authEmulatorUrl(ctx.req as express.Request);
+  return setAccountInfoImpl(state, reqBody, {
+    privileged: !!ctx.security?.Oauth2,
+    emulatorUrl: url,
+  });
 }
 
 /**
@@ -869,12 +848,13 @@ function setAccountInfo(
  * @param state the current project state
  * @param reqBody request with fields to update
  * @param privileged whether request is OAuth2 authenticated. Affects validation
+ * @param emulatorUrl url to the auth emulator instance. Needed for sending OOB link for email reset
  * @return the HTTP response body
  */
 export function setAccountInfoImpl(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1SetAccountInfoRequest"],
-  { privileged = false }: { privileged?: boolean } = {}
+  { privileged = false, emulatorUrl = undefined }: { privileged?: boolean; emulatorUrl?: URL } = {}
 ): Schemas["GoogleCloudIdentitytoolkitV1SetAccountInfoResponse"] {
   // TODO: Implement these.
   const unimplementedFields: (keyof typeof reqBody)[] = [
@@ -914,22 +894,40 @@ export function setAccountInfoImpl(
   const updates: Omit<Partial<UserInfo>, "localId" | "providerUserInfo"> = {};
   let user: UserInfo;
   let signInProvider: string | undefined;
+  let isEmailUpdate: boolean = false;
 
   if (reqBody.oobCode) {
     const oob = state.validateOobCode(reqBody.oobCode);
     assert(oob, "INVALID_OOB_CODE");
-    if (oob.requestType !== "VERIFY_EMAIL") {
-      throw new NotImplementedError(oob.requestType);
-    }
-    state.deleteOobCode(reqBody.oobCode);
-
-    signInProvider = PROVIDER_PASSWORD;
-    const maybeUser = state.getUserByEmail(oob.email);
-    assert(maybeUser, "INVALID_OOB_CODE");
-    user = maybeUser;
-    updates.emailVerified = true;
-    if (oob.email !== user.email) {
-      updates.email = oob.email;
+    switch (oob.requestType) {
+      case "VERIFY_EMAIL": {
+        state.deleteOobCode(reqBody.oobCode);
+        signInProvider = PROVIDER_PASSWORD;
+        const maybeUser = state.getUserByEmail(oob.email);
+        assert(maybeUser, "INVALID_OOB_CODE");
+        user = maybeUser;
+        updates.emailVerified = true;
+        if (oob.email !== user.email) {
+          updates.email = oob.email;
+        }
+        break;
+      }
+      case "RECOVER_EMAIL": {
+        state.deleteOobCode(reqBody.oobCode);
+        const maybeUser = state.getUserByInitialEmail(oob.email);
+        assert(maybeUser, "INVALID_OOB_CODE");
+        // Assert that we don't have any user with this initialEmail
+        assert(!state.getUserByEmail(oob.email), "EMAIL_EXISTS");
+        user = maybeUser;
+        if (oob.email !== user.email) {
+          updates.email = oob.email;
+          // Consider email verified, since this flow is initiated from the user's email
+          updates.emailVerified = true;
+        }
+        break;
+      }
+      default:
+        throw new NotImplementedError(oob.requestType);
     }
   } else {
     if (reqBody.idToken) {
@@ -944,12 +942,21 @@ export function setAccountInfoImpl(
 
     if (reqBody.email) {
       assert(isValidEmailAddress(reqBody.email), "INVALID_EMAIL");
+
       const newEmail = canonicalizeEmailAddress(reqBody.email);
       if (newEmail !== user.email) {
         assert(!state.getUserByEmail(newEmail), "EMAIL_EXISTS");
         updates.email = newEmail;
         // TODO: Set verified if email is verified by IDP linked to account.
         updates.emailVerified = false;
+        isEmailUpdate = true;
+        // Only update initial email if the user is not anonymous and does not have an initial email.
+        // We need to check for an anonymous user through the signIn provider, rather than relying
+        // on an empty user.email field, because it is possible for an anonymous user to update their
+        // email address through the SetAccountInfo endpoint.
+        if (signInProvider !== PROVIDER_ANONYMOUS && user.email && !user.initialEmail) {
+          updates.initialEmail = user.email;
+        }
       }
     }
     if (reqBody.password) {
@@ -1033,6 +1040,14 @@ export function setAccountInfoImpl(
     deleteProviders: reqBody.deleteProvider,
   });
 
+  // Only initiate the recover email OOB flow for non-anonymous users
+  if (signInProvider !== PROVIDER_ANONYMOUS && user.initialEmail && isEmailUpdate) {
+    if (!emulatorUrl) {
+      throw new Error("Internal assertion error: missing emulatorUrl param");
+    }
+    sendOobForEmailReset(state, user.initialEmail, emulatorUrl);
+  }
+
   return redactPasswordHash({
     kind: "identitytoolkit#SetAccountInfoResponse",
     localId: user.localId,
@@ -1046,6 +1061,74 @@ export function setAccountInfoImpl(
 
     ...(updates.validSince && signInProvider ? issueTokens(state, user, signInProvider) : {}),
   });
+}
+
+function sendOobForEmailReset(state: ProjectState, initialEmail: string, url: URL) {
+  const oobRecord = createOobRecord(state, initialEmail, url, {
+    requestType: "RECOVER_EMAIL",
+    mode: "recoverEmail",
+  });
+
+  // Print out a developer-friendly log
+  logOobMessage(oobRecord);
+}
+
+function createOobRecord(
+  state: ProjectState,
+  email: string,
+  url: URL,
+  params: {
+    requestType: OobRequestType;
+    mode: string;
+    continueUrl?: string;
+  }
+): OobRecord {
+  const oobRecord = state.createOob(email, params.requestType, (oobCode) => {
+    url.pathname = "/emulator/action";
+    url.searchParams.set("mode", params.mode);
+    url.searchParams.set("lang", "en");
+    url.searchParams.set("oobCode", oobCode);
+    // TODO: Support custom handler links.
+
+    // This doesn't matter for now, since any API key works for defaultProject.
+    // TODO: What if reqBody.targetProjectId is set?
+    url.searchParams.set("apiKey", "fake-api-key");
+
+    if (params.continueUrl) {
+      url.searchParams.set("continueUrl", params.continueUrl);
+    }
+
+    return url.toString();
+  });
+
+  return oobRecord;
+}
+
+function logOobMessage(oobRecord: OobRecord) {
+  const oobLink = oobRecord.oobLink;
+  const email = oobRecord.email;
+
+  // Generate a developer-friendly log containing the link, in lieu of
+  // sending a real email out to the email address.
+  let maybeMessage: string | undefined;
+  switch (oobRecord.requestType) {
+    case "EMAIL_SIGNIN":
+      maybeMessage = `To sign in as ${email}, follow this link: ${oobLink}`;
+      break;
+    case "PASSWORD_RESET":
+      maybeMessage = `To reset the password for ${email}, follow this link: ${oobLink}&newPassword=NEW_PASSWORD_HERE`;
+      break;
+    case "VERIFY_EMAIL":
+      maybeMessage = `To verify the email address ${email}, follow this link: ${oobLink}`;
+      break;
+    case "RECOVER_EMAIL":
+      maybeMessage = `To reset your email address to ${email}, follow this link: ${oobLink}`;
+      break;
+  }
+
+  if (maybeMessage) {
+    EmulatorLogger.forEmulator(Emulators.AUTH).log("BULLET", maybeMessage);
+  }
 }
 
 function signInWithCustomToken(

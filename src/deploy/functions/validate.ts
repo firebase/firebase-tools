@@ -6,6 +6,8 @@ import * as logger from "../../logger";
 import * as projectPath from "../../projectPath";
 import * as fsutils from "../../fsutils";
 import { RUNTIME_NOT_SET } from "../../parseRuntimeAndValidateSDK";
+import { getFunctionLabel } from "../../functionsDeployHelper";
+import { CloudFunctionTrigger } from "./deploymentPlanner";
 
 // have to require this because no @types/cjson available
 // tslint:disable-next-line
@@ -80,6 +82,32 @@ export function packageJsonIsValid(
   }
 }
 
+export function checkForInvalidChangeOfTrigger(
+  fn: CloudFunctionTrigger,
+  exFn: CloudFunctionTrigger
+) {
+  if (fn.httpsTrigger && !exFn.httpsTrigger) {
+    throw new FirebaseError(
+      `[${getFunctionLabel(
+        fn.name
+      )}] Changing from a background triggered function to an HTTPS function is not allowed. Please delete your function and create a new one instead.`
+    );
+  }
+  if (!fn.httpsTrigger && exFn.httpsTrigger) {
+    throw new FirebaseError(
+      `[${getFunctionLabel(
+        fn.name
+      )}] Changing from an HTTPS function to an background triggered function is not allowed. Please delete your function and create a new one instead.`
+    );
+  }
+  if (fn.eventTrigger?.service != exFn.eventTrigger?.service) {
+    throw new FirebaseError(
+      `[${getFunctionLabel(
+        fn.name
+      )}] Changing to a different type of background trigger is not allowed. Please delete your function and create a new one instead.`
+    );
+  }
+}
 /**
  * Asserts that functions source directory exists and source file is present.
  * @param data Object representing package.json file.
