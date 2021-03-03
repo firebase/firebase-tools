@@ -87,5 +87,5 @@ export async function prepare(context: any, options: any, payload: any): Promise
   const localFnsInRelease = payload.functions.triggers.filter((fn: CloudFunctionTrigger) => {
     return functionMatchesAnyGroup(fn.name, context.filters);
   });
-  await promptForFailurePolicies(options, localFnsInRelease);
+  await promptForFailurePolicies(context, options, localFnsInRelease);
 }
