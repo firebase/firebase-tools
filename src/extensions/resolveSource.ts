@@ -32,6 +32,7 @@ export interface RegistryEntry {
   versions: { [key: string]: string };
   updateWarnings?: { [key: string]: UpdateWarning[] };
   audience?: string;
+  publisher: string;
 }
 
 export interface UpdateWarning {
