@@ -6,6 +6,7 @@ import * as tmp from "tmp";
 
 import {
   AppDistributionClient,
+  AppView,
   UploadStatus,
   UploadStatusResponse,
 } from "../../appdistribution/client";
@@ -58,30 +59,21 @@ describe("distribution", () => {
       expect(nock.isDone()).to.be.true;
     });
 
-    it("requests basic appView when the distribution is an APK", async () => {
+    it("requests basic appView", async () => {
       nock(api.appDistributionOrigin)
         .get(`/v1alpha/apps/${appId}`)
         .query({ appView: appViewBasic })
         .reply(200, {});
-      await expect(appDistributionClient.getApp(DistributionFileType.APK)).to.be.fulfilled;
+      await expect(appDistributionClient.getApp(AppView.BASIC)).to.be.fulfilled;
       expect(nock.isDone()).to.be.true;
     });
 
-    it("requests basic appView when the distribution is an IPA", async () => {
-      nock(api.appDistributionOrigin)
-        .get(`/v1alpha/apps/${appId}`)
-        .query({ appView: appViewBasic })
-        .reply(200, {});
-      await expect(appDistributionClient.getApp(DistributionFileType.IPA)).to.be.fulfilled;
-      expect(nock.isDone()).to.be.true;
-    });
-
-    it("requests full appView when the distribution is an AAB", async () => {
+    it("requests full appView", async () => {
       nock(api.appDistributionOrigin)
         .get(`/v1alpha/apps/${appId}`)
         .query({ appView: appViewFull })
         .reply(200, {});
-      await expect(appDistributionClient.getApp(DistributionFileType.AAB)).to.be.fulfilled;
+      await expect(appDistributionClient.getApp(AppView.FULL)).to.be.fulfilled;
       expect(nock.isDone()).to.be.true;
     });
 
