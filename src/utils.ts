@@ -89,7 +89,7 @@ export function getDatabaseViewDataUrl(
   pathname: string
 ): string {
   const urlObj = new url.URL(origin);
-  if (urlObj.hostname.includes("firebase")) {
+  if (urlObj.hostname.includes("firebaseio") || urlObj.hostname.includes("firebasedatabase")) {
     return consoleUrl(project, `/database/${namespace}/data${pathname}`);
   }
   // TODO(samstern): View in Emulator UI
@@ -106,7 +106,7 @@ export function addDatabaseNamespace(origin: string, namespace: string): string 
   if (urlObj.hostname.includes(namespace)) {
     return urlObj.href;
   }
-  if (urlObj.hostname.includes("firebase")) {
+  if (urlObj.hostname.includes("firebaseio") || urlObj.hostname.includes("firebasedatabase")) {
     return addSubdomain(origin, namespace);
   }
   urlObj.searchParams.set("ns", namespace);
