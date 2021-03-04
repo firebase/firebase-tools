@@ -26,7 +26,8 @@ async function uploadSource(context: any): Promise<void> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function deploy(context: any, options: any, payload: any): Promise<void> {
   if (options.config.get("functions")) {
-    context.existingFunctions = await gcp.cloudfunctions.listAllFunctions(context.projectId);
+    context.existingFunctions =
+      context.existingFunctions || (await gcp.cloudfunctions.listAllFunctions(context.projectId));
 
     await checkHttpIam(context, options, payload);
 
