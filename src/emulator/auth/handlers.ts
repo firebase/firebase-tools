@@ -232,7 +232,7 @@ export function registerHandlers(
       }
       var authEvent = e.data.data.authEvent;
       if (parentContainer) {
-        sendAuthEvent(parentContainer, authEvent);
+        sendAuthEvent(authEvent);
       } else {
         // Store it first, and initFrameMessaging() below will pick it up.
         sessionStorage['firebase:redirectEvent:' + storageKey] =
@@ -249,25 +249,23 @@ export function registerHandlers(
       return { status: 'ACK', webStorageSupport: true };
     }, gapi.iframes.CROSS_ORIGIN_IFRAMES_FILTER);
 
+    var authEvent = null;
     var storedEvent = sessionStorage['firebase:redirectEvent:' + storageKey];
     if (storedEvent) {
-      var authEvent = null;
       try {
         authEvent = JSON.parse(storedEvent);
       } catch (_) {
         return alert('Auth Emulator Internal Error: Invalid stored event.');
       }
-      if (authEvent) {
-        sendAuthEvent(parentContainer, authEvent);
-      }
-      delete sessionStorage['firebase:redirectEvent:' + storageKey];
     }
+    sendAuthEvent(authEvent);
+    delete sessionStorage['firebase:redirectEvent:' + storageKey];
   }
 
-  function sendAuthEvent(parentContainer, authEvent) {
+  function sendAuthEvent(authEvent) {
     parentContainer.send('authEvent', {
       type: 'authEvent',
-      authEvent: authEvent,
+      authEvent: authEvent || { type: 'unknown', error: { code: 'auth/no-auth-event' } },
     }, function(responses) {
       if (!responses || !responses.length ||
           !responses[responses.length - 1].status === 'ACK') {
