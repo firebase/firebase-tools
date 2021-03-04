@@ -265,7 +265,7 @@ export function registerHandlers(
   function sendAuthEvent(authEvent) {
     parentContainer.send('authEvent', {
       type: authEvent ? 'authEvent' : 'unknown',
-      authEvent: authEvent,
+      authEvent: authEvent || {},
       error: authEvent ? undefined : {code: 'auth/no-auth-event'},
     }, function(responses) {
       if (!responses || !responses.length ||
