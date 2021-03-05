@@ -14,6 +14,7 @@ import {
   updateAccountByLocalId,
   getSigninMethods,
   signInWithEmailLink,
+  inspectOobs,
   expectIdTokenExpired,
 } from "./helpers";
 
@@ -146,7 +147,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
     expect(await getSigninMethods(authApi(), email)).not.to.contain(["password"]);
   });
 
-  it("should allow changing email of an existing user", async () => {
+  it("should allow changing email of an existing user, and send out an oob to reset the email", async () => {
     const oldEmail = "alice@example.com";
     const password = "notasecret";
     const newEmail = "bob@example.com";
@@ -191,6 +192,12 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
         expectStatusCode(400, res);
         expect(res.body.error.message).equals("EMAIL_NOT_FOUND");
       });
+
+    // An oob is sent to oldEmail
+    const oobs = await inspectOobs(authApi());
+    expect(oobs).to.have.length(1);
+    expect(oobs[0].email).to.equal(oldEmail);
+    expect(oobs[0].requestType).to.equal("RECOVER_EMAIL");
   });
 
   it("should disallow setting email to same as an existing user", async () => {
@@ -215,6 +222,137 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       .then((res) => {
         expectStatusCode(400, res);
         expect(res.body.error).to.have.property("message").equals("EMAIL_EXISTS");
+      });
+  });
+
+  it("should set initialEmail for the user, after updating email", async () => {
+    const oldEmail = "alice@example.com";
+    const password = "notasecret";
+    const newEmail = "bob@example.com";
+    const { idToken } = await registerUser(authApi(), { email: oldEmail, password });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .query({ key: "fake-api-key" })
+      .send({ idToken, email: newEmail })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.email).to.equal(newEmail);
+      });
+
+    // Verify that the initial email has been set.
+    const info = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(info.initialEmail).to.equal(oldEmail);
+  });
+
+  it("should reset email when OOB flow is initiated, after updating user email", async () => {
+    const oldEmail = "alice@example.com";
+    const password = "notasecret";
+    const newEmail = "bob@example.com";
+    const { idToken } = await registerUser(authApi(), { email: oldEmail, password });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .query({ key: "fake-api-key" })
+      .send({ idToken, email: newEmail })
+      .then((res) => {
+        expectStatusCode(200, res);
+      });
+
+    // An oob is sent to the oldEmail
+    const oobs = await inspectOobs(authApi());
+    expect(oobs).to.have.length(1);
+    expect(oobs[0].email).to.equal(oldEmail);
+    expect(oobs[0].requestType).to.equal("RECOVER_EMAIL");
+
+    // The returned oobCode can be redeemed to verify the email.
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .query({ key: "fake-api-key" })
+      // OOB code is enough, no idToken needed.
+      .send({ oobCode: oobs[0].oobCode })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.email).to.equal(oldEmail);
+        // Email is verified since this flow can only be initiated through a link sent to the user's email.
+        expect(res.body.emailVerified).to.equal(true);
+      });
+
+    // oobCode is removed after redeemed.
+    const oobs2 = await inspectOobs(authApi());
+    expect(oobs2).to.have.length(0);
+  });
+
+  it("should disallow resetting an email if another user exists with the same email", async () => {
+    const userBob = { email: "bob@example.com", password: "notasecret" };
+    const userOtherBob = { email: "bob@example.com", password: "notasecreteither" };
+    const bobNewEmail = "bob_new@example.com";
+
+    // Register first user
+    const { idToken } = await registerUser(authApi(), userBob);
+
+    // Update first user's email
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .send({ idToken, email: bobNewEmail })
+      .query({ key: "fake-api-key" })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.email).to.equal(bobNewEmail);
+      });
+
+    // Register second user with the same email as the first user's initialEmail
+    await registerUser(authApi(), userOtherBob);
+
+    // Try to reset the first user's email.
+    const oobs = await inspectOobs(authApi());
+    expect(oobs).to.have.length(1);
+    expect(oobs[0].requestType).to.equal("RECOVER_EMAIL");
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .send({ oobCode: oobs[0].oobCode })
+      .query({ key: "fake-api-key" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("EMAIL_EXISTS");
+      });
+  });
+
+  it("should not set initial email or send OOB when anon user updates email", async () => {
+    const { idToken } = await registerAnonUser(authApi());
+    const email = "alice@example.com";
+
+    // Update the email once.
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .query({ key: "fake-api-key" })
+      .send({ idToken, email })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.email).to.equal(email);
+      });
+
+    // No OOB code should be sent.
+    expect(await inspectOobs(authApi())).to.have.length(0);
+    const info = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(info.initialEmail).to.be.undefined;
+  });
+
+  it("should not update email if user is disabled", async () => {
+    const user = { email: "bob@example.com", password: "notasecret" };
+    const newEmail = "alice@example.com";
+    const { localId, idToken } = await registerUser(authApi(), user);
+    await updateAccountByLocalId(authApi(), localId, { disableUser: true });
+
+    // Try to update the email.
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .query({ key: "fake-api-key" })
+      .send({ idToken, email: newEmail })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("USER_DISABLED");
       });
   });
 

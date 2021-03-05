@@ -7,6 +7,7 @@ import {
   AabState,
   AppDistributionApp,
   AppDistributionClient,
+  AppView,
   UploadStatus,
 } from "../appdistribution/client";
 import { FirebaseError } from "../error";
@@ -81,7 +82,11 @@ module.exports = new Command("appdistribution:distribute <distribution-file>")
     let app: AppDistributionApp;
 
     try {
-      app = await requests.getApp(distribution.distributionFileType());
+      const appView =
+        distribution.distributionFileType() === DistributionFileType.AAB
+          ? AppView.FULL
+          : AppView.BASIC;
+      app = await requests.getApp(appView);
     } catch (err) {
       if (err.status === 404) {
         throw new FirebaseError(
@@ -150,6 +155,23 @@ module.exports = new Command("appdistribution:distribute <distribution-file>")
         utils.logSuccess("uploaded distribution successfully!");
       } catch (err) {
         throw new FirebaseError(`failed to upload distribution. ${err.message}`, { exit: 1 });
+      }
+    }
+
+    // If this is an app bundle and the certificate was originally blank fetch the updated
+    // certificate and print
+    if (distribution.distributionFileType() === DistributionFileType.AAB && !app.aabCertificate) {
+      const updatedApp = await requests.getApp();
+      if (updatedApp.aabCertificate) {
+        utils.logBullet(
+          "After you upload an AAB for the first time, App Distribution " +
+            "generates a new test certificate. All AAB uploads are re-signed with this test " +
+            "certificate. Use the certificate fingerprints below to register your app " +
+            "signing key with API providers, such as Google Sign-In and Google Maps.\n" +
+            `MD-1 certificate fingerprint: ${updatedApp.aabCertificate.certificateHashMd5}\n` +
+            `SHA-1 certificate fingerprint: ${updatedApp.aabCertificate.certificateHashSha1}\n` +
+            `SHA-256 certificate fingerprint: ${updatedApp.aabCertificate.certificateHashSha256}`
+        );
       }
     }
 

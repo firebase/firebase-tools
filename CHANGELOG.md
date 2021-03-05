@@ -1,0 +1,2 @@
+- Deploying a function with a retry policy will no longer prompt if the function already had a retry policy
+- Fixes issue where the Firebase Hosting emulator would fail to start with `--only` filters using targets (#2820).

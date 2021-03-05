@@ -96,7 +96,7 @@ export async function release(context: any, options: any, payload: any) {
   // Wait for all of the deployments to complete.
   await Promise.all(queuePromises);
   helper.logAndTrackDeployStats(cloudFunctionsQueue, errorHandler);
+  helper.printTriggerUrls(projectId, sourceUrl);
   errorHandler.printWarnings();
   errorHandler.printErrors();
-  return helper.printTriggerUrls(projectId, sourceUrl);
 }
