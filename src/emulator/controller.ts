@@ -39,6 +39,7 @@ import { promptOnce } from "../prompt";
 import * as rimraf from "rimraf";
 import { FLAG_EXPORT_ON_EXIT_NAME } from "./commandUtils";
 import { fileExistsSync } from "../fsutils";
+import { getDefaultDatabaseInstance } from "../getDefaultDatabaseInstance";
 
 async function getAndCheckAddress(emulator: Emulators, options: any): Promise<Address> {
   let host = Constants.normalizeHost(
@@ -173,8 +174,12 @@ export function filterEmulatorTargets(options: any): Emulators[] {
     return options.config.has(e) || options.config.has(`emulators.${e}`);
   });
 
-  if (options.only) {
-    targets = _.intersection(targets, options.only.split(","));
+  const onlyOptions: string = options.only;
+  if (onlyOptions) {
+    const only = onlyOptions.split(",").map((o) => {
+      return o.split(":")[0];
+    });
+    targets = _.intersection(targets, only as Emulators[]);
   }
 
   return targets;
@@ -320,8 +325,11 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
     "emulators",
     `Starting emulators: ${targets.join(", ")}`
   );
-  if (options.only) {
-    const requested: string[] = options.only.split(",");
+  const onlyOptions: string = options.only;
+  if (onlyOptions) {
+    const requested: string[] = onlyOptions.split(",").map((o) => {
+      return o.split(":")[0];
+    });
     const ignored = _.difference(requested, targets);
 
     for (const name of ignored) {
@@ -493,6 +501,19 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
       projectId,
       auto_download: true,
     };
+
+    // Try to fetch the default RTDB instance for a project, but don't hard-fail if we
+    // can't because the user may be using a fake project.
+    try {
+      if (!options.instance) {
+        options.instance = await getDefaultDatabaseInstance(options);
+      }
+    } catch (e) {
+      databaseLogger.log(
+        "DEBUG",
+        `Failed to retrieve default database instance: ${JSON.stringify(e)}`
+      );
+    }
 
     const rc = dbRulesConfig.normalizeRulesConfig(
       dbRulesConfig.getRulesConfig(projectId, options),
