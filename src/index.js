@@ -12,6 +12,7 @@ program.option(
   "-P, --project <alias_or_project_id>",
   "the Firebase project to use for this command"
 );
+program.option("--account <email>", "the Google account to use for authorization");
 program.option("-j, --json", "output JSON instead of text, also triggers non-interactive mode");
 program.option("--token <token>", "supply an auth token for this command");
 program.option("--non-interactive", "error out of the command instead of waiting for prompts");

@@ -20,11 +20,30 @@ import * as scopes from "./scopes";
 // When we actually refresh from the server we should always have
 // these optional fields, but when a user passes --token we may
 // only have access_token.
-interface Tokens {
+export interface Tokens {
   id_token?: string;
   access_token: string;
   refresh_token?: string;
   scopes?: string[];
+}
+
+export interface User {
+  email: string;
+
+  iss?: string;
+  azp?: string;
+  aud?: string;
+  sub?: number;
+  hd?: string;
+  email_verified?: boolean;
+  at_hash?: string;
+  iat?: number;
+  exp?: number;
+}
+
+export interface Account {
+  user: User;
+  tokens: Tokens;
 }
 
 interface TokensWithExpiration extends Tokens {
@@ -36,7 +55,7 @@ interface TokensWithTTL extends Tokens {
 }
 
 interface UserCredentials {
-  user: string | { [key: string]: unknown };
+  user: string | User;
   tokens: TokensWithExpiration;
   scopes: string[];
 }
@@ -53,6 +72,94 @@ interface GitHubAuthResponse {
 // overcome this by casting to any
 // TODO fix after https://github.com/http-party/node-portfinder/pull/115
 ((portfinder as unknown) as { basePort: number }).basePort = 9005;
+
+/**
+ * Global auth scope because many parts of the CLI assume they can access user/tokens
+ * without 'options' context.
+ */
+let _account: Account | undefined = undefined;
+
+export function getGlobalDefaultAccount(): Account | undefined {
+  const user = configstore.get("user") as User | undefined;
+  const tokens = configstore.get("tokens") as Tokens | undefined;
+
+  // TODO: Is there ever a case where only User or Tokens is defined
+  //       and we want to accept that?
+  if (!user || !tokens) {
+    return undefined;
+  }
+
+  return {
+    user,
+    tokens,
+  };
+}
+
+export function getProjectDefaultAccount(projectDir?: string | null): Account | undefined {
+  if (!projectDir) {
+    return getGlobalDefaultAccount();
+  }
+
+  const activeAccounts = configstore.get("activeAccounts") || {};
+  const email: string | undefined = activeAccounts[projectDir];
+
+  if (!email) {
+    return getGlobalDefaultAccount();
+  }
+
+  const allAccounts = getAllAccounts();
+  return allAccounts.find((a) => a.user.email === email);
+}
+
+export function getAdditionalAccounts(): Account[] {
+  return configstore.get("additionalAccounts") || [];
+}
+
+export function getAllAccounts(): Account[] {
+  const res: Account[] = [];
+
+  const defaultUser = getGlobalDefaultAccount();
+  if (defaultUser) {
+    res.push(defaultUser);
+  }
+
+  res.push(...getAdditionalAccounts());
+
+  return res;
+}
+
+/**
+ * Global function to determine the account, user and tokens to use for
+ * the scope of this command.
+ */
+export function setupAccount(options?: {
+  account?: string;
+  projectRoot?: string;
+}): Account | undefined {
+  const account = options?.account;
+  const defaultUser = getProjectDefaultAccount(options?.projectRoot);
+
+  // Default to single-account behavior
+  if (!account) {
+    _account = defaultUser;
+    return _account;
+  }
+
+  // Ensure that the user exists if specified
+  if (!defaultUser) {
+    throw new FirebaseError(`Account ${account} not found, have you run "firebase login"?`);
+  }
+
+  const matchingAccount = getAllAccounts().find((a) => a.user.email === account);
+  if (matchingAccount) {
+    _account = matchingAccount;
+    return _account;
+  }
+
+  throw new FirebaseError(
+    `Account ${account} not found, run "firebase login:list" to see existing accounts or "firebase login:add" to add a new one`
+  );
+}
 
 function open(url: string): void {
   opn(url).catch((err) => {
@@ -223,7 +330,7 @@ async function loginWithoutLocalhost(userHint?: string): Promise<UserCredentials
   // getTokensFromAuthorizationCode doesn't handle the --token case, so we know
   // that we'll have a valid id_token.
   return {
-    user: jwt.decode(tokens.id_token!)!,
+    user: jwt.decode(tokens.id_token!) as User,
     tokens: tokens,
     scopes: SCOPES,
   };
@@ -243,7 +350,7 @@ async function loginWithLocalhostGoogle(port: number, userHint?: string): Promis
   // getTokensFromAuthoirzationCode doesn't handle the --token case, so we know we'll
   // always have an id_token.
   return {
-    user: jwt.decode(tokens.id_token!)!,
+    user: jwt.decode(tokens.id_token!) as User,
     tokens: tokens,
     scopes: tokens.scopes!,
   };
@@ -394,7 +501,8 @@ async function refreshTokens(
       res.body
     );
 
-    const currentRefreshToken = configstore.get("tokens")?.refresh_token;
+    // TODO: This needs to be multi-user friendly
+    const currentRefreshToken = _account?.tokens?.refresh_token;
     if (refreshToken === currentRefreshToken) {
       configstore.set("tokens", lastAccessToken);
     }

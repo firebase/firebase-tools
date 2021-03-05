@@ -8,6 +8,7 @@ import { FirebaseError } from "./error";
 import * as logger from "./logger";
 import * as utils from "./utils";
 import * as scopes from "./scopes";
+import { Tokens, User } from "./auth";
 
 const AUTH_ERROR_MESSAGE = `Command requires authentication, please run ${clc.bold(
   "firebase login"
@@ -48,8 +49,8 @@ export async function requireAuth(options: any): Promise<void> {
   api.setScopes([scopes.CLOUD_PLATFORM, scopes.FIREBASE_PLATFORM]);
   options.authScopes = api.getScopes();
 
-  const tokens = configstore.get("tokens");
-  const user = configstore.get("user");
+  const tokens = options.tokens as Tokens | undefined;
+  const user = options.user as User | undefined;
 
   let tokenOpt = utils.getInheritedOption(options, "token");
   if (tokenOpt) {
