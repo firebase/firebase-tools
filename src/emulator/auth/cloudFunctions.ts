@@ -67,7 +67,7 @@ export class AuthCloudFunction {
       email: user.email,
       emailVerified: user.emailVerified,
       displayName: user.displayName,
-      photoURL: user.photoUrl,
+      photoUrl: user.photoUrl,
       phoneNumber: user.phoneNumber,
       disabled: user.disabled,
       metadata: {
@@ -89,7 +89,7 @@ type UserInfoPayload = {
   email?: string;
   emailVerified?: boolean;
   displayName?: string;
-  photoURL?: string;
+  photoUrl?: string;
   disabled?: boolean;
   metadata: {
     creationTime?: string;
