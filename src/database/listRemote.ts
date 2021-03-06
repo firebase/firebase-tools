@@ -24,7 +24,7 @@ export class RTDBListRemote implements ListRemote {
   private apiClient: Client;
 
   constructor(private instance: string, private host: string) {
-    const url = new URL(`${utils.addSubdomain(this.host, this.instance)}`);
+    const url = new URL(utils.getDatabaseUrl(this.host, this.instance, "/"));
     this.apiClient = new Client({ urlPrefix: url.origin, auth: true });
   }
 
@@ -34,7 +34,7 @@ export class RTDBListRemote implements ListRemote {
     startAfter?: string,
     timeout?: number
   ): Promise<string[]> {
-    const url = new URL(`${utils.addSubdomain(this.host, this.instance)}${path}.json`);
+    const url = new URL(utils.getDatabaseUrl(this.host, this.instance, path + ".json"));
 
     const params: any = {
       shallow: true,
