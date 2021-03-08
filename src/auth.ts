@@ -14,6 +14,7 @@ import { FirebaseError } from "./error";
 import * as logger from "./logger";
 import { prompt } from "./prompt";
 import * as scopes from "./scopes";
+import { clearCredentials } from "./defaultCredentials";
 
 /* eslint-disable camelcase */
 // The wire protocol for an access token returned by Google.
@@ -455,15 +456,44 @@ function haveValidTokens(refreshToken: string, authScopes: string[]) {
   return hasTokens && hasSameScopes && !isExpired;
 }
 
-function logoutCurrentSession(refreshToken: string) {
-  const tokens = configstore.get("tokens");
-  const currentToken = tokens?.refresh_token;
-  if (refreshToken === currentToken) {
+function deleteAccount(account: Account) {
+  // Check the globald default user
+  const defaultAccount = getGlobalDefaultAccount();
+  if (account.user.email === defaultAccount?.user.email) {
     configstore.delete("user");
     configstore.delete("tokens");
     configstore.delete("usage");
     configstore.delete("analytics-uuid");
   }
+
+  // Check all additional users
+  const additionalAccounts = getAdditionalAccounts();
+  const remainingAccounts = additionalAccounts.filter(a => a.user.email !== account.user.email);
+  configstore.set("additionalAccounts", remainingAccounts);
+
+  // Clear any matching project defaults
+  const activeAccounts = configstore.get("activeAccounts") || {};
+  for (const projectDir of Object.keys(activeAccounts)) {
+    const projectAccount = activeAccounts[projectDir];
+    if (projectAccount === account.user.email) {
+      delete activeAccounts[projectDir];
+    }
+  }
+  configstore.set("activeAccounts", activeAccounts);
+}
+
+function findAccountByRefreshToken(refreshToken: string): Account | undefined {
+  return getAllAccounts().find(a => a.tokens.refresh_token === refreshToken);
+}
+
+function logoutCurrentSession(refreshToken: string) {
+  const account = findAccountByRefreshToken(refreshToken);
+  if (!account) {
+    return;
+  }
+
+  clearCredentials(account);
+  deleteAccount(account);
 }
 
 async function refreshTokens(

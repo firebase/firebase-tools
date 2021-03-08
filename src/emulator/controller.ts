@@ -40,6 +40,7 @@ import * as rimraf from "rimraf";
 import { FLAG_EXPORT_ON_EXIT_NAME } from "./commandUtils";
 import { fileExistsSync } from "../fsutils";
 import { getDefaultDatabaseInstance } from "../getDefaultDatabaseInstance";
+import { getProjectDefaultAccount } from "../auth";
 
 async function getAndCheckAddress(emulator: Emulators, options: any): Promise<Address> {
   let host = Constants.normalizeHost(
@@ -413,9 +414,11 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
       );
     }
 
+    const account = getProjectDefaultAccount(options.projectRoot);
     const functionsEmulator = new FunctionsEmulator({
       projectId,
       functionsDir,
+      account,
       host: functionsAddr.host,
       port: functionsAddr.port,
       debugPort: inspectFunctions,

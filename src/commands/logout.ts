@@ -9,9 +9,7 @@ import * as utils from "../utils";
 import * as api from "../api";
 import * as auth from "../auth";
 import * as _ from "lodash";
-import { clearCredentials } from "../defaultCredentials";
 import { User, Tokens } from "../auth";
-import { clean } from "semver";
 
 module.exports = new Command("logout [email]")
   .description("log the CLI out of Firebase")
@@ -28,7 +26,6 @@ module.exports = new Command("logout [email]")
 
     if (token) {
       try {
-        clearCredentials();
         await auth.logout(token);
       } catch (e) {
         utils.logWarning("Invalid refresh token, did not need to deauthorize");
