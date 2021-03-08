@@ -468,7 +468,7 @@ function deleteAccount(account: Account) {
 
   // Check all additional users
   const additionalAccounts = getAdditionalAccounts();
-  const remainingAccounts = additionalAccounts.filter(a => a.user.email !== account.user.email);
+  const remainingAccounts = additionalAccounts.filter((a) => a.user.email !== account.user.email);
   configstore.set("additionalAccounts", remainingAccounts);
 
   // Clear any matching project defaults
@@ -483,7 +483,7 @@ function deleteAccount(account: Account) {
 }
 
 function findAccountByRefreshToken(refreshToken: string): Account | undefined {
-  return getAllAccounts().find(a => a.tokens.refresh_token === refreshToken);
+  return getAllAccounts().find((a) => a.tokens.refresh_token === refreshToken);
 }
 
 function logoutCurrentSession(refreshToken: string) {

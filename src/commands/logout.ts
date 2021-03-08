@@ -1,7 +1,6 @@
 "use strict";
 
 import { Command } from "../command";
-import { configstore } from "../configstore";
 import * as logger from "../logger";
 import * as clc from "cli-color";
 
@@ -9,40 +8,52 @@ import * as utils from "../utils";
 import * as api from "../api";
 import * as auth from "../auth";
 import * as _ from "lodash";
-import { User, Tokens } from "../auth";
 
 module.exports = new Command("logout [email]")
   .description("log the CLI out of Firebase")
   .action(async (email: string | undefined, options: any) => {
-    // TODO: When no email, log out of all accounts
-    // TODO: When email, log out of just one account
+    const globalToken = utils.getInheritedOption(options, "token") as string | undefined;
 
-    const user = configstore.get("user") as User | undefined;
-    const tokens = configstore.get("tokens") as Tokens | undefined;
-    const currentToken = tokens?.refresh_token;
+    const allAccounts = auth.getAllAccounts();
+    if (allAccounts.length === 0 && !globalToken) {
+      logger.info("No need to logout, not logged in");
+      return;
+    }
 
-    const token = utils.getInheritedOption(options, "token") || currentToken;
-    api.setRefreshToken(token);
+    const accountsToLogOut = email
+      ? allAccounts.filter((a) => a.user.email === email)
+      : allAccounts;
 
-    if (token) {
-      try {
-        await auth.logout(token);
-      } catch (e) {
-        utils.logWarning("Invalid refresh token, did not need to deauthorize");
+    if (email && accountsToLogOut.length === 0) {
+      utils.logWarning(`No account matches ${email}, can't log out.`);
+      return;
+    }
+
+    for (const account of accountsToLogOut) {
+      const token = account.tokens.refresh_token;
+
+      if (token) {
+        api.setRefreshToken(token);
+        try {
+          await auth.logout(token);
+        } catch (e) {
+          utils.logWarning(
+            `Invalid refresh token for ${account.user.email}, did not need to deauthorize`
+          );
+        }
+
+        utils.logSuccess(`Logged out from ${clc.bold(account.user.email)}`);
       }
     }
 
-    if (token || user || tokens) {
-      let msg = "Logged out";
-      if (token === currentToken) {
-        if (user) {
-          msg += " from " + clc.bold(user.email);
-        }
-      } else {
-        msg += ' token "' + clc.bold(token) + '"';
+    if (globalToken) {
+      api.setRefreshToken(globalToken);
+      try {
+        await auth.logout(globalToken);
+      } catch (e) {
+        utils.logWarning("Invalid refresh token, did not need to deauthorize");
       }
-      utils.logSuccess(msg);
-    } else {
-      logger.info("No need to logout, not logged in");
+
+      utils.logSuccess(`Logged out from token "${clc.bold(globalToken)}"`);
     }
   });
