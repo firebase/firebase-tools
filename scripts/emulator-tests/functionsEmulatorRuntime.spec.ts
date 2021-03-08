@@ -19,6 +19,7 @@ const DO_NOTHING = () => {
 const functionsEmulator = new FunctionsEmulator({
   projectId: "fake-project-id",
   functionsDir: MODULE_ROOT,
+  account: undefined,
 });
 functionsEmulator.nodeBinary = process.execPath;
 
