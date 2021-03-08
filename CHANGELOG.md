@@ -1,6 +1,0 @@
-- Fixes issue where proxied requests to dynamic content through the Hosting emulator would return unexpected `location` headers. (#3097)
-- Fixes issue where optional extension parameters could not be omitted. (#3126)
-- Fixes issues with initializing Remote Config (#3137)
-- Deploying a function with a retry policy will no longer prompt if the function already had a retry policy (firebase-functions#798)
-- Fixes issue where the Firebase Hosting emulator would fail to start with `--only` filters using targets (#2820).
-- Fixes issue where `database:remove` fails for large nodes (#3186, #3193).
