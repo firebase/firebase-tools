@@ -482,6 +482,21 @@ function deleteAccount(account: Account) {
   configstore.set("activeAccounts", activeAccounts);
 }
 
+function updateAccount(account: Account) {
+  const defaultAccount = getGlobalDefaultAccount();
+  if (account.user.email === defaultAccount?.user.email) {
+    configstore.set("user", account.user);
+    configstore.set("tokens", account.tokens);
+  }
+
+  const additionalAccounts = getAdditionalAccounts();
+  const accountIndex = additionalAccounts.findIndex(a => a.user.email === account.user.email);
+  if (accountIndex >= 0) {
+    additionalAccounts.splice(accountIndex, 1, account);
+    configstore.set("additionalAccounts", additionalAccounts);
+  }
+}
+
 function findAccountByRefreshToken(refreshToken: string): Account | undefined {
   return getAllAccounts().find((a) => a.tokens.refresh_token === refreshToken);
 }
@@ -531,11 +546,12 @@ async function refreshTokens(
       res.body
     );
 
-    // TODO: This needs to be multi-user friendly
-    const currentRefreshToken = _account?.tokens?.refresh_token;
-    if (refreshToken === currentRefreshToken) {
-      configstore.set("tokens", lastAccessToken);
+    const account = findAccountByRefreshToken(refreshToken);
+    if (account && lastAccessToken) {
+      account.tokens = lastAccessToken;
+      updateAccount(account);
     }
+
     return lastAccessToken!;
   } catch (err) {
     if (err?.context?.body?.error === "invalid_scope") {
