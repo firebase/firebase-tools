@@ -490,7 +490,7 @@ function updateAccount(account: Account) {
   }
 
   const additionalAccounts = getAdditionalAccounts();
-  const accountIndex = additionalAccounts.findIndex(a => a.user.email === account.user.email);
+  const accountIndex = additionalAccounts.findIndex((a) => a.user.email === account.user.email);
   if (accountIndex >= 0) {
     additionalAccounts.splice(accountIndex, 1, account);
     configstore.set("additionalAccounts", additionalAccounts);
