@@ -58,7 +58,7 @@ export async function requireAuth(options: any): Promise<void> {
   } else if (process.env.FIREBASE_TOKEN) {
     logger.debug("> authorizing via FIREBASE_TOKEN environment variable");
   } else if (user) {
-    logger.debug("> authorizing via signed-in user");
+    logger.debug(`> authorizing via signed-in user (${user.email})`);
   } else {
     try {
       return await autoAuth(options, options.authScopes);

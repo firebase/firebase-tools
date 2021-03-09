@@ -250,10 +250,16 @@ export class Command {
       validateProjectId(options.project);
     }
 
-    const account = setupAccount(options);
-    if (account) {
-      options.user = account.user;
-      options.tokens = account.tokens;
+    const account = getInheritedOption(options, "account");
+    const projectRoot = options.projectRoot;
+    const activeAccount = setupAccount({
+      account,
+      projectRoot
+    });
+
+    if (activeAccount) {
+      options.user = activeAccount.user;
+      options.tokens = activeAccount.tokens;
     }
   }
 
