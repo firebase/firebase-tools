@@ -23,8 +23,6 @@ module.exports = new Command("login:add [email]")
     }
 
     const account = auth.getGlobalDefaultAccount();
-    const additionalAccounts = auth.getAdditionalAccounts();
-    const allAccounts = auth.getAllAccounts();
 
     // "login" asks for the data collection preference, we only want to do that in one place
     if (!account) {
@@ -48,32 +46,11 @@ module.exports = new Command("login:add [email]")
     // the authorization callback couldn't redirect to localhost.
     const useLocalhost = isCloudEnvironment() ? false : options.localhost;
 
-    // Log the user in using the passed email as a hint
-    const result = await auth.loginGoogle(useLocalhost, email);
-
-    // The JWT library can technically return a string, even though it never should.
-    if (typeof result.user === "string") {
-      throw new FirebaseError("Failed to parse auth response, see debug log.", { exit: 1 });
+    const newAccount = await auth.loginAdditionalAccount(useLocalhost, email);
+    if (newAccount) {
+      logger.info();
+      utils.logSuccess("Success! Added account " + clc.bold(newAccount.user.email));
     }
-
-    if (email && result.user.email !== email) {
-      utils.logWarning(`Chosen account ${result.user.email} does not match account hint ${email}`);
-    }
-
-    const resultMatch = allAccounts.find((a) => a.user.email === email);
-    if (resultMatch) {
-      utils.logWarning(`Already logged in as ${email}, nothing to do`);
-      return auth;
-    }
-
-    additionalAccounts.push({
-      user: result.user,
-      tokens: result.tokens,
-    });
-    configstore.set("additionalAccounts", additionalAccounts);
-
-    logger.info();
-    utils.logSuccess("Success! Added account " + clc.bold(result.user.email));
 
     return auth;
   });

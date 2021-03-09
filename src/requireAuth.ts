@@ -8,7 +8,7 @@ import { FirebaseError } from "./error";
 import * as logger from "./logger";
 import * as utils from "./utils";
 import * as scopes from "./scopes";
-import { Tokens, User } from "./auth";
+import { Tokens, User, setRefreshToken, setActiveAccount } from "./auth";
 
 const AUTH_ERROR_MESSAGE = `Command requires authentication, please run ${clc.bold(
   "firebase login"
@@ -73,8 +73,7 @@ export async function requireAuth(options: any): Promise<void> {
   tokenOpt = tokenOpt || process.env.FIREBASE_TOKEN;
 
   if (tokenOpt) {
-    api.setRefreshToken(tokenOpt);
-    apiv2.setRefreshToken(tokenOpt);
+    setRefreshToken(tokenOpt);
     return;
   }
 
@@ -82,8 +81,5 @@ export async function requireAuth(options: any): Promise<void> {
     throw new FirebaseError(AUTH_ERROR_MESSAGE);
   }
 
-  options.user = user;
-  options.tokens = tokens;
-  api.setRefreshToken(tokens.refresh_token);
-  apiv2.setRefreshToken(tokens.refresh_token);
+  setActiveAccount(options, { user, tokens });
 }

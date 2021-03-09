@@ -10,7 +10,7 @@ import { configstore } from "./configstore";
 import { detectProjectRoot } from "./detectProjectRoot";
 import track = require("./track");
 import clc = require("cli-color");
-import { setupAccount } from "./auth";
+import { selectAccount, setActiveAccount } from "./auth";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ActionFunction = (...args: any[]) => any;
@@ -252,14 +252,13 @@ export class Command {
 
     const account = getInheritedOption(options, "account");
     const projectRoot = options.projectRoot;
-    const activeAccount = setupAccount({
+    const activeAccount = selectAccount({
       account,
-      projectRoot
+      projectRoot,
     });
 
     if (activeAccount) {
-      options.user = activeAccount.user;
-      options.tokens = activeAccount.tokens;
+      setActiveAccount(options, activeAccount);
     }
   }
 

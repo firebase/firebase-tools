@@ -13,6 +13,7 @@ var logger = require("../logger");
 var { prompt, promptOnce } = require("../prompt");
 var { requireAuth } = require("../requireAuth");
 var utils = require("../utils");
+const { getAllAccounts } = require("../auth");
 
 var TEMPLATE_ROOT = path.resolve(__dirname, "../../templates/");
 var BANNER_TEXT = fs.readFileSync(path.join(TEMPLATE_ROOT, "banner.txt"), "utf8");
@@ -150,7 +151,16 @@ module.exports = new Command("init [feature]")
               clc.bold("firebase init [feature_name]")
           );
         }
+
+        // Always set up project
         setup.features.unshift("project");
+
+        // If there is more than one account, add an account choice phase
+        const allAccounts = getAllAccounts();
+        if (allAccounts.length > 1) {
+          setup.features.unshift("account");
+        }
+
         return init(setup, config, options);
       })
       .then(function () {

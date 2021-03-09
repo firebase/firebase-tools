@@ -147,6 +147,7 @@ async function selectProjectInteractively(
   }
   if (nextPageToken) {
     // Prompt user for project ID if we can't list all projects in 1 page
+    logger.debug(`Found ${projects.length} projects, selecting via prompt`);
     return selectProjectByPrompting();
   }
   return selectProjectFromList(projects);

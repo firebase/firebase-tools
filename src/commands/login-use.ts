@@ -25,10 +25,7 @@ module.exports = new Command("login:use <email>")
       throw new FirebaseError("Could not determine active Firebase project directory", { exit: 1 });
     }
 
-    const activeAccounts: Record<string, string> = configstore.get("activeAccounts") || {};
-    activeAccounts[projectDir] = email;
-    configstore.set("activeAccounts", activeAccounts);
-
+    auth.setProjectAccount(projectDir, email);
     utils.logSuccess(`Set default account ${email} for current project directory.`);
 
     return auth;

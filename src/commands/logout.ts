@@ -33,7 +33,7 @@ module.exports = new Command("logout [email]")
       const token = account.tokens.refresh_token;
 
       if (token) {
-        api.setRefreshToken(token);
+        auth.setRefreshToken(token);
         try {
           await auth.logout(token);
         } catch (e) {
@@ -47,7 +47,7 @@ module.exports = new Command("logout [email]")
     }
 
     if (globalToken) {
-      api.setRefreshToken(globalToken);
+      auth.setRefreshToken(globalToken);
       try {
         await auth.logout(globalToken);
       } catch (e) {

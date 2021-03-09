@@ -15,7 +15,7 @@ module.exports = new Command("login:list")
     const allAccounts = auth.getAllAccounts();
 
     if (!user) {
-      utils.logWarning(`No authorized accounts, run "login"`);
+      utils.logWarning(`No authorized accounts, run "firebase login"`);
       return;
     }
 

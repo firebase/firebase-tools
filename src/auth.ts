@@ -9,9 +9,11 @@ import * as url from "url";
 import * as util from "util";
 
 import * as api from "./api";
+import * as apiv2 from "./apiv2";
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
 import * as logger from "./logger";
+import * as utils from "./utils";
 import { prompt } from "./prompt";
 import * as scopes from "./scopes";
 import { clearCredentials } from "./defaultCredentials";
@@ -129,11 +131,27 @@ export function getAllAccounts(): Account[] {
   return res;
 }
 
+export function setActiveAccount(options: any, account: Account) {
+  _account = account;
+
+  if (account.tokens.refresh_token) {
+    setRefreshToken(account.tokens.refresh_token);
+  }
+
+  options.user = account.user;
+  options.tokens = account.tokens;
+}
+
+export function setRefreshToken(token: string) {
+  api.setRefreshToken(token);
+  apiv2.setRefreshToken(token);
+}
+
 /**
  * Global function to determine the account, user and tokens to use for
  * the scope of this command.
  */
-export function setupAccount(options?: {
+export function selectAccount(options?: {
   account?: string;
   projectRoot?: string;
 }): Account | undefined {
@@ -142,8 +160,7 @@ export function setupAccount(options?: {
 
   // Default to single-account behavior
   if (!account) {
-    _account = defaultUser;
-    return _account;
+    return defaultUser;
   }
 
   // Ensure that the user exists if specified
@@ -153,13 +170,57 @@ export function setupAccount(options?: {
 
   const matchingAccount = getAllAccounts().find((a) => a.user.email === account);
   if (matchingAccount) {
-    _account = matchingAccount;
-    return _account;
+    return matchingAccount;
   }
 
   throw new FirebaseError(
     `Account ${account} not found, run "firebase login:list" to see existing accounts or "firebase login:add" to add a new one`
   );
+}
+
+/**
+ * Add an additional account to the login list.
+ * @param useLocalhost should the flow be interactive or code-based?
+ * @param email an optional hint to use for the google account picker
+ */
+export async function loginAdditionalAccount(useLocalhost: boolean, email?: string) {
+  // Log the user in using the passed email as a hint
+  const result = await loginGoogle(useLocalhost, email);
+
+  // The JWT library can technically return a string, even though it never should.
+  if (typeof result.user === "string") {
+    throw new FirebaseError("Failed to parse auth response, see debug log.", { exit: 1 });
+  }
+
+  if (email && result.user.email !== email) {
+    utils.logWarning(`Chosen account ${result.user.email} does not match account hint ${email}`);
+  }
+
+  const allAccounts = getAllAccounts();
+  const resultMatch = allAccounts.find((a) => a.user.email === email);
+  if (resultMatch) {
+    utils.logWarning(`Already logged in as ${email}, nothing to do`);
+    return;
+  }
+
+  const newAccount = {
+    user: result.user,
+    tokens: result.tokens,
+  };
+
+  const additionalAccounts = getAdditionalAccounts();
+  additionalAccounts.push(newAccount);
+
+  configstore.set("additionalAccounts", additionalAccounts);
+
+  return newAccount;
+}
+
+export function setProjectAccount(projectDir: string, email: string) {
+  logger.debug(`setProjectAccount(${projectDir}, ${email})`);
+  const activeAccounts: Record<string, string> = configstore.get("activeAccounts") || {};
+  activeAccounts[projectDir] = email;
+  configstore.set("activeAccounts", activeAccounts);
 }
 
 function open(url: string): void {
@@ -435,6 +496,10 @@ export async function loginGoogle(localhost: boolean, userHint?: string): Promis
 export async function loginGithub(): Promise<string> {
   const port = await getPort();
   return loginWithLocalhostGitHub(port);
+}
+
+export function findAccountByEmail(email: string): Account | undefined {
+  return getAllAccounts().find((a) => a.user.email === email);
 }
 
 function haveValidTokens(refreshToken: string, authScopes: string[]) {
