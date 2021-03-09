@@ -4,7 +4,7 @@ import * as sinon from "sinon";
 import * as auth from "../auth";
 import { configstore } from "../configstore";
 
-describe.only("multiAuth", () => {
+describe("multiAuth", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
 
   let fakeConfigStore: any = {};
@@ -100,7 +100,7 @@ describe.only("multiAuth", () => {
 
     const additionalAccounts: auth.Account[] = [additionalUser1, additionalUser2];
 
-    const activeProjects = {
+    const activeAccounts = {
       "/path/project1": "test1@test.com",
     };
 
@@ -108,7 +108,7 @@ describe.only("multiAuth", () => {
       configstore.set("user", defaultAccount.user);
       configstore.set("tokens", defaultAccount.tokens);
       configstore.set("additionalAccounts", additionalAccounts);
-      configstore.set("activeProjects", activeProjects);
+      configstore.set("activeAccounts", activeAccounts);
     });
 
     it("returns global default account", () => {
