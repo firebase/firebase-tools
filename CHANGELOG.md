@@ -1,0 +1,1 @@
+- Adds support for multiple accounts via new commands `login:use`, `login:add` and `login:list`.
