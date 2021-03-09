@@ -251,6 +251,8 @@ export class Command {
     }
 
     const account = getInheritedOption(options, "account");
+    options.account = account;
+
     const projectRoot = options.projectRoot;
     const activeAccount = selectAccount(account, projectRoot);
 
