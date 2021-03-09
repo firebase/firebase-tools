@@ -77,11 +77,9 @@ interface GitHubAuthResponse {
 ((portfinder as unknown) as { basePort: number }).basePort = 9005;
 
 /**
- * Global auth scope because many parts of the CLI assume they can access user/tokens
- * without 'options' context.
+ * Get the global default account. Before multi-auth was implemented
+ * this was the only account.
  */
-let _account: Account | undefined = undefined;
-
 export function getGlobalDefaultAccount(): Account | undefined {
   const user = configstore.get("user") as User | undefined;
   const tokens = configstore.get("tokens") as Tokens | undefined;
@@ -98,6 +96,10 @@ export function getGlobalDefaultAccount(): Account | undefined {
   };
 }
 
+/**
+ * Get the default account associated with a project directory, or the global default.
+ * @param projectDir the Firebase project directory.
+ */
 export function getProjectDefaultAccount(projectDir?: string | null): Account | undefined {
   if (!projectDir) {
     return getGlobalDefaultAccount();
@@ -114,10 +116,16 @@ export function getProjectDefaultAccount(projectDir?: string | null): Account | 
   return allAccounts.find((a) => a.user.email === email);
 }
 
+/**
+ * Get all authenticated accounts _besides_ the default account.
+ */
 export function getAdditionalAccounts(): Account[] {
   return configstore.get("additionalAccounts") || [];
 }
 
+/**
+ * Get all authenticated accounts.
+ */
 export function getAllAccounts(): Account[] {
   const res: Account[] = [];
 
@@ -131,9 +139,13 @@ export function getAllAccounts(): Account[] {
   return res;
 }
 
+/**
+ * Set the globally active account. Modifies the options object
+ * and sets global refresh token state.
+ * @param options options object.
+ * @param account account to make active.
+ */
 export function setActiveAccount(options: any, account: Account) {
-  _account = account;
-
   if (account.tokens.refresh_token) {
     setRefreshToken(account.tokens.refresh_token);
   }
@@ -142,21 +154,23 @@ export function setActiveAccount(options: any, account: Account) {
   options.tokens = account.tokens;
 }
 
+/**
+ * Set the global refresh token in both api and apiv2.
+ * @param token refresh token string
+ */
 export function setRefreshToken(token: string) {
   api.setRefreshToken(token);
   apiv2.setRefreshToken(token);
 }
 
 /**
- * Global function to determine the account, user and tokens to use for
- * the scope of this command.
+ * Select the right account to use based on the --account flag and the
+ * project defaults.
+ * @param account the --account flag, if passed.
+ * @param projectRoot the Firebase project root directory, if known.
  */
-export function selectAccount(options?: {
-  account?: string;
-  projectRoot?: string;
-}): Account | undefined {
-  const account = options?.account;
-  const defaultUser = getProjectDefaultAccount(options?.projectRoot);
+export function selectAccount(account?: string, projectRoot?: string): Account | undefined {
+  const defaultUser = getProjectDefaultAccount(projectRoot);
 
   // Default to single-account behavior
   if (!account) {
@@ -216,6 +230,12 @@ export async function loginAdditionalAccount(useLocalhost: boolean, email?: stri
   return newAccount;
 }
 
+/**
+ * Set the default account to use with a Firebase project directory. Writes
+ * the setting to disk.
+ * @param projectDir the Firebase project directory.
+ * @param email email of the account.
+ */
 export function setProjectAccount(projectDir: string, email: string) {
   logger.debug(`setProjectAccount(${projectDir}, ${email})`);
   const activeAccounts: Record<string, string> = configstore.get("activeAccounts") || {};
