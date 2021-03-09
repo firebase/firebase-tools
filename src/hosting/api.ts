@@ -171,6 +171,17 @@ interface LongRunningOperation<T> {
   readonly metadata: T | undefined;
 }
 
+export type Site = {
+  // Fully qualified name of the site.
+  name: string;
+
+  readonly defaultUrl: string;
+
+  readonly appId: string;
+
+  labels: { [key: string]: string };
+};
+
 /**
  * normalizeName normalizes a name given to it. Most useful for normalizing
  * user provided names. This removes any `/`, ':', '_', or '#' characters and
@@ -350,6 +361,99 @@ export async function createRelease(
     queryParams: { versionName: version },
   });
   return res.body;
+}
+
+/**
+ * List the Hosting sites for a given project.
+ * @param project project name or number.
+ * @return list of Sites.
+ */
+export async function listSites(project: string): Promise<Site[]> {
+  const sites: Site[] = [];
+  let nextPageToken = "";
+  for (;;) {
+    try {
+      const res = await apiClient.get<{ sites: Site[]; nextPageToken?: string }>(
+        `/projects/${project}/sites`,
+        { queryParams: { pageToken: nextPageToken, pageSize: 10 } }
+      );
+      const c = res.body?.sites;
+      if (c) {
+        sites.push(...c);
+      }
+      nextPageToken = res.body?.nextPageToken || "";
+      if (!nextPageToken) {
+        return sites;
+      }
+    } catch (e) {
+      if (e.status === 404) {
+        throw new FirebaseError(`could not find sites for project "${project}"`, {
+          original: e,
+        });
+      }
+      throw e;
+    }
+  }
+}
+
+/**
+ * Get a Hosting site.
+ * @param project project name or number.
+ * @param site site name.
+ * @return site information.
+ */
+export async function getSite(project: string, site: string): Promise<Site> {
+  try {
+    const res = await apiClient.get<Site>(`/projects/${project}/sites/${site}`);
+    return res.body;
+  } catch (e) {
+    if (e.status === 404) {
+      throw new FirebaseError(`could not find site "${site}" for project "${project}"`, {
+        original: e,
+      });
+    }
+    throw e;
+  }
+}
+
+/**
+ * Create a Hosting site.
+ * @param project project name or number.
+ * @param site the site name to create.
+ * @param appId the Firebase Web App ID (https://firebase.google.com/docs/projects/learn-more#config-files-objects)
+ * @return site information.
+ */
+export async function createSite(project: string, site: string, appId = ""): Promise<Site> {
+  const res = await apiClient.post<{ appId: string }, Site>(
+    `/projects/${project}/sites`,
+    { appId: appId },
+    { queryParams: { site_id: site } }
+  );
+  return res.body;
+}
+
+/**
+ * Update a Hosting site.
+ * @param project project name or number.
+ * @param site the site to update.
+ * @param fields the fields to update.
+ * @return site information.
+ */
+export async function updateSite(project: string, site: Site, fields: string[]): Promise<Site> {
+  const res = await apiClient.patch<Site, Site>(`/projects/${project}/sites/${site.name}`, site, {
+    queryParams: { updateMask: fields.join(",") },
+  });
+  return res.body;
+}
+
+/**
+ * Delete a Hosting site.
+ * @param project project name or number.
+ * @param site the site to update.
+ * @return nothing.
+ */
+export async function deleteSite(project: string, site: string): Promise<void> {
+  await apiClient.delete<void>(`/projects/${project}/sites/${site}`);
 }
 
 /**

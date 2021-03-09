@@ -113,9 +113,8 @@ export default new Command("hosting:channel:deploy [channelId]")
         sites.map(async (siteInfo) => {
           const site = siteInfo.site;
           let chan = await getChannel(projectId, site, channelId);
-          logger.debug("[hosting] found existing channel for site", site, chan);
-
           if (chan) {
+            logger.debug("[hosting] found existing channel for site", site, chan);
             const channelExpires = Boolean(chan.expireTime);
             if (!channelExpires && options.expires) {
               // If the channel doesn't expire, but the user provided a TTL, update the channel.

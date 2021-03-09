@@ -62,7 +62,7 @@ export default new Command("hosting:channel:create [channelId]")
       try {
         channel = await createChannel(projectId, site, channelId, expireTTL);
       } catch (e) {
-        if (e.status == 409) {
+        if (e.status === 409) {
           throw new FirebaseError(
             `Channel ${bold(channelId)} already exists on site ${bold(site)}. Deploy to ${bold(
               channelId
@@ -102,7 +102,7 @@ export default new Command("hosting:channel:create [channelId]")
       logLabeledSuccess(LOG_TAG, `Channel URL: ${channel.url}`);
       logger.info();
       logger.info(
-        `To deploy to this channel, use \`firebase hosting:channel:deploy ${channelId}\`.`
+        `To deploy to this channel, use ${yellow(`firebase hosting:channel:deploy ${channelId}`)}.`
       );
 
       return channel;
