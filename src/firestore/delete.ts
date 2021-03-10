@@ -13,6 +13,12 @@ import { firestoreOriginOrEmulator } from "../api";
 // value expressed in that format.
 const MIN_ID = "__id-9223372036854775808__";
 
+// For document format see:
+// https://firebase.google.com/docs/firestore/reference/rest/v1/Document
+type Document = {
+  name: string;
+};
+
 export class FirestoreDelete {
   /**
    * Progress bar shared among all instances of the class because when firestore:delete
@@ -257,6 +263,9 @@ export class FirestoreDelete {
   /**
    * Query for a batch of 'descendants' of a given path.
    *
+   * For RPC documentation see:
+   * https://firebase.google.com/docs/firestore/reference/rest/v1/projects.databases.documents/runQuery
+   *
    * For document format see:
    * https://firebase.google.com/docs/firestore/reference/rest/v1/Document
    *
@@ -269,22 +278,23 @@ export class FirestoreDelete {
     allDescendants: boolean,
     batchSize: number,
     startAfter?: string
-  ): Promise<any[]> {
+  ): Promise<Document[]> {
     const url = this.parent + ":runQuery";
     const body = this.isDocumentPath
       ? this.docDescendantsQuery(allDescendants, batchSize, startAfter)
       : this.collectionDescendantsQuery(allDescendants, batchSize, startAfter);
 
-    return this.apiClient.post<any, Array<{ document?: any }>>(url, body).then((res) => {
+    return this.apiClient.post<any, Array<{ document?: Document }>>(url, body).then((res) => {
       // Return the 'document' property for each element in the response,
       // where it exists.
-      return res.body
-        .filter((x) => {
-          return x.document;
-        })
-        .map((x) => {
-          return x.document;
-        });
+      const docs: Document[] = [];
+      for (const x of res.body) {
+        if (x.document) {
+          docs.push(x.document);
+        }
+      }
+
+      return docs;
     });
   }
 
@@ -295,7 +305,7 @@ export class FirestoreDelete {
    * @return a promise for the entire operation.
    */
   private recursiveBatchDelete() {
-    let queue: any[] = [];
+    let queue: Document[] = [];
     let numDocsDeleted = 0;
     let numPendingDeletes = 0;
     let pagesRemaining = true;
@@ -303,7 +313,7 @@ export class FirestoreDelete {
     let lastDocName: string | undefined = undefined;
 
     const retried: { [name: string]: boolean } = {};
-    let failures: any[] = [];
+    const failures: string[] = [];
     let fetchFailures = 0;
 
     const queueLoop = () => {
@@ -324,7 +334,7 @@ export class FirestoreDelete {
         pageIncoming = true;
 
         this.getDescendantBatch(this.allDescendants, this.readBatchSize, lastDocName)
-          .then((docs: any[]) => {
+          .then((docs) => {
             fetchFailures = 0;
             pageIncoming = false;
 
@@ -336,13 +346,13 @@ export class FirestoreDelete {
             queue = queue.concat(docs);
             lastDocName = docs[docs.length - 1].name;
           })
-          .catch((e) => {
+          .catch((e: unknown) => {
             logger.debug("Failed to fetch page after " + lastDocName, e);
             pageIncoming = false;
 
             fetchFailures++;
             if (fetchFailures === 3) {
-              failures.push(e);
+              failures.push("Failed to fetch documents to delete >= 3 times.");
             }
           });
       }
@@ -364,11 +374,14 @@ export class FirestoreDelete {
       }
 
       // At this point we want to delete another batch
-      const toDelete: any[] = [];
+      const toDelete: Document[] = [];
       const numToDelete = Math.min(this.deleteBatchSize, queue.length);
 
       for (let i = 0; i < numToDelete; i++) {
-        toDelete.push(queue.shift());
+        const d = queue.shift();
+        if (d) {
+          toDelete.push(d);
+        }
       }
 
       numPendingDeletes++;
@@ -412,16 +425,19 @@ export class FirestoreDelete {
             // Retry each doc up to one time
             toDelete.forEach((doc) => {
               if (retried[doc.name]) {
-                logger.debug("Failed to delete doc " + doc.name + " multiple times.");
-                failures.push(doc.name);
+                const message = `Failed to delete doc ${doc.name} multiple times.`;
+                logger.debug(message);
+                failures.push(message);
               } else {
                 retried[doc.name] = true;
                 queue.push(doc);
               }
             });
           } else {
-            logger.debug("Fatal error deleting docs ", e);
-            failures = failures.concat(toDelete);
+            const docIds = toDelete.map((d) => d.name).join(", ");
+            const msg = `Fatal error deleting docs ${docIds}`;
+            logger.debug(msg, e);
+            failures.push(msg);
           }
 
           numPendingDeletes--;
@@ -438,8 +454,8 @@ export class FirestoreDelete {
           if (failures.length === 0) {
             resolve();
           } else {
-            const docIds = failures.map((d) => d.name).join(", ");
-            reject(new FirebaseError("Failed to delete documents " + docIds, { exit: 1 }));
+            const errorDescription = failures.join(", ");
+            reject(new FirebaseError(`Deletion failed. Errors: ${errorDescription}.`, { exit: 1 }));
           }
         }
       }, 0);
@@ -482,7 +498,7 @@ export class FirestoreDelete {
    *
    * @return a promise for all of the operations combined.
    */
-  public deleteDatabase(): Promise<any[]> {
+  public deleteDatabase(): Promise<Document[]> {
     return firestore
       .listCollectionIds(this.project)
       .catch((err) => {
@@ -514,7 +530,7 @@ export class FirestoreDelete {
    * @return a promise that retruns true if the path has children and false otherwise.
    */
   public checkHasChildren(): Promise<boolean> {
-    return this.getDescendantBatch(true, 1).then((docs: any[]) => {
+    return this.getDescendantBatch(true, 1).then((docs) => {
       return docs.length > 0;
     });
   }
