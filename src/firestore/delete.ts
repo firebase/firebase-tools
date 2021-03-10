@@ -498,7 +498,7 @@ export class FirestoreDelete {
    *
    * @return a promise for all of the operations combined.
    */
-  public deleteDatabase(): Promise<Document[]> {
+  public deleteDatabase(): Promise<any[]> {
     return firestore
       .listCollectionIds(this.project)
       .catch((err) => {
