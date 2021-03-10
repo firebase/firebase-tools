@@ -1,0 +1,1 @@
+- Adds `hosting:sites:<create|get|list|delete>` commands to allow managing Hosting Sites.
