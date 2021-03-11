@@ -876,9 +876,9 @@ export class FunctionsEmulator implements EmulatorInstance {
     return this.workerPool.submitWork(frb.triggerId, frb, opts);
   }
 
-  disableBackgroundTriggers() {
+  async disableBackgroundTriggers() {
     Object.values(this.triggers).forEach((record) => {
-      if (record.def.eventTrigger) {
+      if (record.def.eventTrigger && record.enabled) {
         this.logger.logLabeled(
           "BULLET",
           `functions[${record.def.entryPoint}]`,
@@ -887,6 +887,8 @@ export class FunctionsEmulator implements EmulatorInstance {
         record.enabled = false;
       }
     });
+
+    await this.workQueue.flush();
   }
 
   async reloadTriggers() {

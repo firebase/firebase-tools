@@ -1,0 +1,1 @@
+- Fixes extra logging and race conditions when disabling emulated background functions.
