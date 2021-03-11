@@ -167,7 +167,29 @@ function signUp(
     updates.validSince = toUnixTimestamp(new Date()).toString();
   }
   if (reqBody.mfaInfo) {
-    updates.mfaInfo = reqBody.mfaInfo;
+    const mfaInfo = [];
+    for (const factor of reqBody.mfaInfo) {
+      // the node SDK validation asserts the absence of a uid on create requests prior to submitting any API requests.
+      // e.g., `Error: "uid" is not supported when adding second factors via "createUser()"`
+      assert(
+        !Object.prototype.hasOwnProperty.call(factor, "mfaEnrollmentId"),
+        "UNEXPECTED_PARAMETER : mfaEnrollmentId"
+      );
+      assert(
+        factor.phoneInfo && isValidPhoneNumber(factor.phoneInfo),
+        "INVALID_MFA_PHONE_NUMBER : Invalid format."
+      );
+      const mfaEnrollmentId = randomId(28);
+      assert(
+        state.validateMfaEnrollmentIdForCreate(mfaEnrollmentId),
+        "INVALID_MFA_ID : enrollment ID was not unique."
+      );
+      mfaInfo.push({
+        ...factor,
+        mfaEnrollmentId,
+      });
+    }
+    updates.mfaInfo = mfaInfo;
   }
   let user: UserInfo | undefined;
   if (reqBody.idToken) {
@@ -975,6 +997,31 @@ export function setAccountInfoImpl(
 
     if (reqBody.password || reqBody.validSince || updates.email) {
       updates.validSince = toUnixTimestamp(new Date()).toString();
+    }
+
+    // if the user has MFA info, update it, otherwise if specified but empty, delete it...
+    if (reqBody.mfa) {
+      if (reqBody.mfa.enrollments && reqBody.mfa.enrollments.length > 0) {
+        const mfaInfo = [];
+        for (const enrolledFactor of reqBody.mfa.enrollments) {
+          assert(
+            enrolledFactor.phoneInfo && isValidPhoneNumber(enrolledFactor.phoneInfo),
+            "INVALID_MFA_PHONE_NUMBER : Invalid format."
+          );
+          assert(
+            enrolledFactor.mfaEnrollmentId,
+            "INVALID_MFA_ID : Must specify non-null mfaEnrollmentId on update."
+          );
+          assert(
+            state.validateMfaEnrollmentIdForUpdate(enrolledFactor.mfaEnrollmentId, user),
+            "INVALID_MFA_ID : enrollment ID was not unique."
+          );
+          mfaInfo.push({ ...enrolledFactor });
+        }
+        updates.mfaInfo = mfaInfo;
+      } else {
+        updates.mfaInfo = undefined;
+      }
     }
 
     // Copy profile properties to updates, if they're specified.

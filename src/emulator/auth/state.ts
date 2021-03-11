@@ -174,7 +174,7 @@ export class ProjectState {
       deleteProviders.push(PROVIDER_PHONE);
     }
     if (user.mfaInfo) {
-      this.updateMfaEnrollments(user);
+      this.updateMfaEnrollments(user, user.mfaInfo);
     } else {
       this.mfaEnrollmentIdsForLocalId.delete(user.localId);
     }
@@ -182,17 +182,45 @@ export class ProjectState {
     return this.updateUserProviderInfo(user, upsertProviders, deleteProviders);
   }
 
-  private updateMfaEnrollments(user: UserInfo): UserInfo {
-    for (const factor of user.mfaInfo ?? []) {
-      const allowUpdate = !!factor.mfaEnrollmentId;
-      const mfaEnrollmentId = factor.mfaEnrollmentId ?? randomId(28);
-      const enrollments = this.mfaEnrollmentIdsForLocalId.get(user.localId) ?? new Set();
-      if (!(enrollments.add(mfaEnrollmentId) || allowUpdate)) {
-        throw new Error("New MfaEnrollmentId wasn't unique.");
+  /**
+   * Validates a new MFA enrollment ID, checking that the enrollment
+   * ID is not already in use for a different user.
+   *
+   * @param mfaEnrollmentId the proposed MFA enrollment ID
+   */
+  validateMfaEnrollmentIdForCreate(mfaEnrollmentId: string): boolean {
+    const localId = this.localIdForMfaEnrollmentId.get(mfaEnrollmentId);
+    return !localId;
+  }
+
+  /**
+   * Validates an MFA enrollment ID being updated, checking either that
+   * the ID does not already exist, or that the ID exists and is being
+   * used by the current user.
+   *
+   * @param mfaEnrollmentId the proposed MFA enrollment ID
+   * @param user the user being updated
+   */
+  validateMfaEnrollmentIdForUpdate(mfaEnrollmentId: string, user: UserInfo): boolean {
+    const localId = this.localIdForMfaEnrollmentId.get(mfaEnrollmentId);
+    // if the ID is in use for another user, it is invalid. otherwise, we'll allow an update
+    // even if the user is doing something sketchy like swapping the ID's on various
+    // existing enrolled factors.
+    return !localId || localId === user.localId;
+  }
+
+  private updateMfaEnrollments(
+    user: UserInfo,
+    mfaInfo: Schemas["GoogleCloudIdentitytoolkitV1MfaEnrollment"][]
+  ): UserInfo {
+    for (const factor of mfaInfo) {
+      if (!factor.mfaEnrollmentId) {
+        throw new Error("MFA Factor Must Have an Enrollment ID");
       }
+      const enrollments = this.mfaEnrollmentIdsForLocalId.get(user.localId) ?? new Set();
+      enrollments.add(factor.mfaEnrollmentId);
       this.mfaEnrollmentIdsForLocalId.set(user.localId, enrollments);
-      this.localIdForMfaEnrollmentId.set(mfaEnrollmentId, user.localId);
-      factor.mfaEnrollmentId = mfaEnrollmentId;
+      this.localIdForMfaEnrollmentId.set(factor.mfaEnrollmentId, user.localId);
     }
     return user;
   }

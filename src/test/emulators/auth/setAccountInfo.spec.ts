@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import { FirebaseJwtPayload } from "../../../emulator/auth/operations";
 import { ProviderUserInfo, PROVIDER_PASSWORD, PROVIDER_PHONE } from "../../../emulator/auth/state";
-import { TEST_PHONE_NUMBER } from "./helpers";
+import { registerMfaUser, TEST_PHONE_NUMBER } from "./helpers";
 import { describeAuthEmulator } from "./setup";
 import {
   expectStatusCode,
@@ -17,6 +17,7 @@ import {
   inspectOobs,
   expectIdTokenExpired,
 } from "./helpers";
+import { randomId } from "../../../emulator/auth/utils";
 
 describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
   it("should allow updating and deleting displayName and photoUrl", async () => {
@@ -412,6 +413,416 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
         expect(res.body.error)
           .to.have.property("message")
           .equals("INVALID_PHONE_NUMBER : Invalid format.");
+      });
+  });
+
+  it("should allow creating MFA info", async () => {
+    const user = { email: "bob@example.com", password: "notasecret" };
+    const { localId, idToken } = await registerUser(authApi(), user);
+
+    const mfaInfo = {
+      mfaEnrollmentId: randomId(28),
+      displayName: "Cell Phone",
+      phoneInfo: TEST_PHONE_NUMBER,
+    };
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .set("Authorization", "Bearer owner")
+      .send({
+        localId,
+        mfa: {
+          enrollments: [mfaInfo],
+        },
+      })
+      .then((res) => expectStatusCode(200, res));
+
+    const info = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(info.mfaInfo).to.have.length(1);
+    const updated = info.mfaInfo?.pop();
+    expect(updated?.displayName).to.eq(mfaInfo.displayName);
+    expect(updated?.phoneInfo).to.eq(mfaInfo.phoneInfo);
+    expect(updated?.mfaEnrollmentId).to.eq(mfaInfo.mfaEnrollmentId);
+  });
+
+  it("should allow adding a second MFA factor", async () => {
+    const mfaInfo = {
+      displayName: "Cell Phone",
+      phoneInfo: TEST_PHONE_NUMBER,
+    };
+    const user = { email: "bob@example.com", password: "notasecret", mfaInfo: [mfaInfo] };
+    const { localId, idToken } = await registerMfaUser(authApi(), user);
+    let info = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(info.mfaInfo).to.have.length(1);
+    const savedMfaInfo = info.mfaInfo![0];
+    const secondMfaFactor = {
+      displayName: "Second MFA Factor",
+      phoneInfo: TEST_PHONE_NUMBER,
+      mfaEnrollmentId: randomId(28),
+    };
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .set("Authorization", "Bearer owner")
+      .send({
+        localId,
+        mfa: {
+          enrollments: [savedMfaInfo, secondMfaFactor],
+        },
+      })
+      .then((res) => expectStatusCode(200, res));
+
+    info = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(info.mfaInfo).to.have.length(2);
+    for (const mfaFactor of info.mfaInfo!) {
+      if (mfaFactor.mfaEnrollmentId === savedMfaInfo.mfaEnrollmentId) {
+        expect(savedMfaInfo.displayName).to.eq(mfaFactor.displayName);
+        expect(savedMfaInfo.phoneInfo).to.eq(mfaFactor.phoneInfo);
+        expect(savedMfaInfo.mfaEnrollmentId).to.eq(mfaFactor.mfaEnrollmentId);
+      } else {
+        expect(secondMfaFactor.displayName).to.eq(mfaFactor.displayName);
+        expect(secondMfaFactor.phoneInfo).to.eq(mfaFactor.phoneInfo);
+        expect(secondMfaFactor.mfaEnrollmentId).to.eq(mfaFactor.mfaEnrollmentId);
+      }
+    }
+  });
+
+  it("should allow changing the MFA phone number", async () => {
+    let mfaInfo: any = {
+      displayName: "Cell Phone",
+      phoneInfo: TEST_PHONE_NUMBER,
+    };
+    const user = { email: "bob@example.com", password: "notasecret", mfaInfo: [mfaInfo] };
+    const { localId, idToken } = await registerMfaUser(authApi(), user);
+    let info = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(info.mfaInfo).to.have.length(1);
+    mfaInfo = info.mfaInfo!.pop();
+    expect(mfaInfo?.mfaEnrollmentId).to.be.a("string").and.not.empty;
+    mfaInfo.displayName = "New Display Name";
+    mfaInfo.phoneInfo = "+15555550101";
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .set("Authorization", "Bearer owner")
+      .send({
+        localId,
+        mfa: {
+          enrollments: [mfaInfo],
+        },
+      })
+      .then((res) => expectStatusCode(200, res));
+
+    info = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(info.mfaInfo).to.have.length(1);
+    const updated = info.mfaInfo?.pop();
+    expect(updated?.displayName).to.eq("New Display Name");
+    expect(updated?.phoneInfo).to.eq("+15555550101");
+    expect(updated?.mfaEnrollmentId).to.eq(mfaInfo.mfaEnrollmentId);
+  });
+
+  it("should allow changing the MFA enrollment ID", async () => {
+    let mfaInfo: any = {
+      displayName: "Cell Phone",
+      phoneInfo: TEST_PHONE_NUMBER,
+    };
+    const user = { email: "bob@example.com", password: "notasecret", mfaInfo: [mfaInfo] };
+    const { localId, idToken } = await registerMfaUser(authApi(), user);
+    let info = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(info.mfaInfo).to.have.length(1);
+    mfaInfo = info.mfaInfo!.pop();
+    expect(mfaInfo?.mfaEnrollmentId).to.be.a("string").and.not.empty;
+
+    const newEnrollmentId = randomId(28);
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .set("Authorization", "Bearer owner")
+      .send({
+        localId,
+        mfa: {
+          enrollments: [{ ...mfaInfo, mfaEnrollmentId: newEnrollmentId }],
+        },
+      })
+      .then((res) => expectStatusCode(200, res));
+
+    info = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(info.mfaInfo).to.have.length(1);
+    const updated = info.mfaInfo?.pop();
+    expect(updated?.displayName).to.eq(mfaInfo.displayName);
+    expect(updated?.phoneInfo).to.eq(mfaInfo.phoneInfo);
+    expect(updated?.mfaEnrollmentId).not.to.eq(mfaInfo.mfaEnrollmentId);
+    expect(updated?.mfaEnrollmentId).to.eq(newEnrollmentId);
+  });
+
+  it("should overwrite existing MFA info", async () => {
+    const mfaInfo: any = {
+      displayName: "Cell Phone",
+      phoneInfo: TEST_PHONE_NUMBER,
+    };
+    const user = {
+      email: "bob@example.com",
+      password: "notasecret",
+      mfaInfo: [mfaInfo, mfaInfo, mfaInfo],
+    };
+    const { localId, idToken } = await registerMfaUser(authApi(), user);
+    let info = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(info.mfaInfo).to.have.length(3);
+
+    const newMfaInfo = {
+      displayName: "New New",
+      phoneInfo: "+12813308004",
+      mfaEnrollmentId: randomId(28),
+    };
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .set("Authorization", "Bearer owner")
+      .send({
+        localId,
+        mfa: {
+          enrollments: [newMfaInfo],
+        },
+      })
+      .then((res) => expectStatusCode(200, res));
+
+    info = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(info.mfaInfo).to.have.length(1);
+    const updated = info.mfaInfo?.pop();
+    expect(updated?.phoneInfo).to.eq(newMfaInfo.phoneInfo);
+    expect(updated?.displayName).to.eq(newMfaInfo.displayName);
+    expect(updated?.mfaEnrollmentId).to.eq(newMfaInfo.mfaEnrollmentId);
+    for (const { mfaEnrollmentId } of info.mfaInfo ?? []) {
+      expect(updated?.mfaEnrollmentId).not.to.eq(mfaEnrollmentId);
+    }
+  });
+
+  it("should remove MFA info with an empty enrollments array", async () => {
+    const mfaInfo: any = {
+      displayName: "Cell Phone",
+      phoneInfo: TEST_PHONE_NUMBER,
+    };
+    const user = {
+      email: "bob@example.com",
+      password: "notasecret",
+      mfaInfo: [mfaInfo, mfaInfo, mfaInfo],
+    };
+    const { localId, idToken } = await registerMfaUser(authApi(), user);
+    let info = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(info.mfaInfo).to.have.length(3);
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .set("Authorization", "Bearer owner")
+      .send({
+        localId,
+        mfa: {
+          enrollments: [],
+        },
+      })
+      .then((res) => expectStatusCode(200, res));
+
+    info = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(info.mfaInfo).to.be.undefined;
+  });
+
+  it("should remove MFA info with an undefined enrollments array", async () => {
+    const mfaInfo: any = {
+      displayName: "Cell Phone",
+      phoneInfo: TEST_PHONE_NUMBER,
+    };
+    const user = {
+      email: "bob@example.com",
+      password: "notasecret",
+      mfaInfo: [mfaInfo, mfaInfo, mfaInfo],
+    };
+    const { localId, idToken } = await registerMfaUser(authApi(), user);
+    let info = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(info.mfaInfo).to.have.length(3);
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .set("Authorization", "Bearer owner")
+      .send({
+        localId,
+        mfa: {
+          enrollments: undefined,
+        },
+      })
+      .then((res) => expectStatusCode(200, res));
+
+    info = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(info.mfaInfo).to.be.undefined;
+  });
+
+  it("should error if mfaEnrollmentId is absent", async () => {
+    const mfaInfo: any = {
+      displayName: "Cell Phone",
+      phoneInfo: TEST_PHONE_NUMBER,
+    };
+    const user = { email: "bob@example.com", password: "notasecret", mfaInfo: [mfaInfo] };
+    const { localId, idToken } = await registerMfaUser(authApi(), user);
+    const info = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(info.mfaInfo).to.have.length(1);
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .set("Authorization", "Bearer owner")
+      .send({
+        localId,
+        mfa: {
+          enrollments: [mfaInfo],
+        },
+      })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.eq(
+          "INVALID_MFA_ID : Must specify non-null mfaEnrollmentId on update."
+        );
+      });
+  });
+
+  it("should error if mfaEnrollmentId is in use by another user", async () => {
+    const mfaInfo: any = {
+      displayName: "Cell Phone",
+      phoneInfo: TEST_PHONE_NUMBER,
+    };
+    const bobUser = { email: "bob@example.com", password: "notasecret", mfaInfo: [mfaInfo] };
+    const aliceUser = { email: "alice@example.com", password: "notasecret", mfaInfo: [mfaInfo] };
+    const { localId: bobLocalId, idToken: bobIdToken } = await registerMfaUser(authApi(), bobUser);
+    const bobInfo = await getAccountInfoByIdToken(authApi(), bobIdToken);
+    expect(bobInfo.mfaInfo).to.have.length(1);
+
+    const { localId: aliceLocalId, idToken: aliceIdToken } = await registerMfaUser(
+      authApi(),
+      aliceUser
+    );
+    const aliceInfo = await getAccountInfoByIdToken(authApi(), aliceIdToken);
+    expect(aliceInfo.mfaInfo).to.have.length(1);
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .set("Authorization", "Bearer owner")
+      .send({
+        localId: bobLocalId,
+        mfa: {
+          enrollments: [
+            {
+              ...bobInfo.mfaInfo![0],
+              mfaEnrollmentId: aliceInfo.mfaInfo![0].mfaEnrollmentId,
+            },
+          ],
+        },
+      })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.eq("INVALID_MFA_ID : enrollment ID was not unique.");
+      });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .set("Authorization", "Bearer owner")
+      .send({
+        localId: aliceLocalId,
+        mfa: {
+          enrollments: [
+            {
+              ...aliceInfo.mfaInfo![0],
+              mfaEnrollmentId: bobInfo.mfaInfo![0].mfaEnrollmentId,
+            },
+          ],
+        },
+      })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.eq("INVALID_MFA_ID : enrollment ID was not unique.");
+      });
+  });
+
+  it("should error if phone number for MFA is invalid", async () => {
+    const mfaInfo: any = {
+      displayName: "Cell Phone",
+      phoneInfo: TEST_PHONE_NUMBER,
+    };
+    const user = { email: "bob@example.com", password: "notasecret", mfaInfo: [mfaInfo] };
+    const { localId, idToken } = await registerMfaUser(authApi(), user);
+    const info = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(info.mfaInfo).to.have.length(1);
+    const mfaInfoForUpdate = { ...info.mfaInfo?.pop() };
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .set("Authorization", "Bearer owner")
+      .send({
+        localId,
+        mfa: {
+          enrollments: [
+            {
+              ...mfaInfoForUpdate,
+              phoneInfo: undefined,
+            },
+          ],
+        },
+      })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.eq("INVALID_MFA_PHONE_NUMBER : Invalid format.");
+      });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .set("Authorization", "Bearer owner")
+      .send({
+        localId,
+        mfa: {
+          enrollments: [
+            {
+              ...mfaInfoForUpdate,
+              phoneInfo: "5555550100" /* no country code... */,
+            },
+          ],
+        },
+      })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.eq("INVALID_MFA_PHONE_NUMBER : Invalid format.");
+      });
+  });
+
+  it("should error if user for MFA update is not found", async () => {
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .set("Authorization", "Bearer owner")
+      .send({
+        localId: randomId(28),
+        mfa: {
+          enrollments: [
+            {
+              displayName: "Cell Phone",
+              phoneInfo: TEST_PHONE_NUMBER,
+              mfaEnrollmentId: randomId(28),
+            },
+          ],
+        },
+      })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.eq("USER_NOT_FOUND");
+      });
+  });
+
+  it("should error if enrollments is not an array or undefined", async () => {
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .set("Authorization", "Bearer owner")
+      .send({
+        localId: randomId(28),
+        mfa: {
+          enrollments: null,
+        },
+      })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.eq(
+          "Invalid JSON payload received. /mfa/enrollments should be array"
+        );
       });
   });
 
