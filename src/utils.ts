@@ -89,15 +89,11 @@ export function getDatabaseViewDataUrl(
   pathname: string
 ): string {
   const urlObj = new url.URL(origin);
-  if (
-    urlObj.hostname.includes("firebaseio.com") ||
-    urlObj.hostname.includes("firebasedatabase.app")
-  ) {
+  if (urlObj.hostname.includes("firebaseio") || urlObj.hostname.includes("firebasedatabase")) {
     return consoleUrl(project, `/database/${namespace}/data${pathname}`);
-  } else {
-    // TODO(samstern): View in Emulator UI
-    return getDatabaseUrl(origin, namespace, pathname + ".json");
   }
+  // TODO(samstern): View in Emulator UI
+  return getDatabaseUrl(origin, namespace, pathname + ".json");
 }
 
 /**
@@ -110,15 +106,11 @@ export function addDatabaseNamespace(origin: string, namespace: string): string 
   if (urlObj.hostname.includes(namespace)) {
     return urlObj.href;
   }
-  if (
-    urlObj.hostname.includes("firebaseio.com") ||
-    urlObj.hostname.includes("firebasedatabase.app")
-  ) {
+  if (urlObj.hostname.includes("firebaseio") || urlObj.hostname.includes("firebasedatabase")) {
     return addSubdomain(origin, namespace);
-  } else {
-    urlObj.searchParams.set("ns", namespace);
-    return urlObj.href;
   }
+  urlObj.searchParams.set("ns", namespace);
+  return urlObj.href;
 }
 
 /**

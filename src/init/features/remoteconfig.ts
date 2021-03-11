@@ -1,4 +1,3 @@
-import * as logger from "../../logger";
 import { promptOnce } from "../../prompt";
 import fsutils = require("../../fsutils");
 import clc = require("cli-color");
@@ -40,13 +39,10 @@ export async function doSetup(setup: RemoteConfigSetup, config: Config): Promise
       message: msg,
       default: false,
     });
-    if (overwrite == true) {
-      setup.config.remoteconfig.template = jsonFilePath;
-      logger.info(setup.config.remoteconfig.template);
-    } else {
-      setup.config.remoteconfig.template = jsonFilePath;
+    if (!overwrite) {
+      return;
     }
   }
   setup.config.remoteconfig.template = jsonFilePath;
-  config.writeProjectFile(setup.config.remoteconfig.template, "");
+  config.writeProjectFile(setup.config.remoteconfig.template, "{}");
 }

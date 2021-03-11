@@ -1,0 +1,2 @@
+- Adds `hosting:sites:<create|get|list|delete>` commands to allow managing Hosting Sites.
+- Fixes extra logging and race conditions when disabling emulated background functions.
