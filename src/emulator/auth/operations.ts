@@ -1206,6 +1206,11 @@ function signInWithCustomToken(
       throw new Error(`Internal assertion error: trying to create duplicate localId: ${localId}`);
     }
   }
+
+  if (user.mfaInfo) {
+    throw new NotImplementedError("MFA Login not yet implemented.");
+  }
+
   return {
     kind: "identitytoolkit#VerifyCustomTokenResponse",
     isNewUser,
@@ -1249,6 +1254,10 @@ function signInWithEmailLink(
     assert(!user.disabled, "USER_DISABLED");
     assert(!userFromIdToken || userFromIdToken.localId === user.localId, "EMAIL_EXISTS");
     user = state.updateUserByLocalId(user.localId, updates);
+  }
+
+  if (user.mfaInfo) {
+    throw new NotImplementedError("MFA Login not yet implemented.");
   }
 
   const tokens = issueTokens(state, user, PROVIDER_PASSWORD);
@@ -1388,6 +1397,10 @@ function signInWithIdp(
     );
   }
 
+  if (user.mfaInfo) {
+    throw new NotImplementedError("MFA Login not yet implemented.");
+  }
+
   if (user.email === response.email) {
     response.emailVerified = user.emailVerified;
   }
@@ -1416,6 +1429,10 @@ function signInWithPassword(
   assert(!user.disabled, "USER_DISABLED");
   assert(user.passwordHash && user.salt, "INVALID_PASSWORD");
   assert(user.passwordHash === hashPassword(reqBody.password, user.salt), "INVALID_PASSWORD");
+
+  if (user.mfaInfo) {
+    throw new NotImplementedError("MFA Login not yet implemented.");
+  }
 
   const tokens = issueTokens(state, user, PROVIDER_PASSWORD);
 
@@ -1478,6 +1495,10 @@ function signInWithPhoneNumber(
       throw new BadRequestError("PHONE_NUMBER_EXISTS");
     }
     user = state.updateUserByLocalId(user.localId, updates);
+  }
+
+  if (user.mfaInfo) {
+    throw new NotImplementedError("MFA Login not yet implemented.");
   }
 
   const tokens = issueTokens(state, user, PROVIDER_PHONE);

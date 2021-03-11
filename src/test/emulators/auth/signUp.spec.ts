@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import { FirebaseJwtPayload } from "../../../emulator/auth/operations";
-import { getAccountInfoByLocalId, TEST_PHONE_NUMBER } from "./helpers";
+import { getAccountInfoByLocalId, registerMfaUser, TEST_PHONE_NUMBER } from "./helpers";
 import { describeAuthEmulator } from "./setup";
 import {
   expectStatusCode,
@@ -397,27 +397,19 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
   });
 
   it("should create new account with multi factor info when authenticated", async () => {
-    const phoneNumber = TEST_PHONE_NUMBER;
-    const displayName = "Alice";
-    const mfaInfo = { displayName, phoneInfo: phoneNumber };
-
-    const localId = await authApi()
-      .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
-      .set("Authorization", "Bearer owner")
-      .send({ phoneNumber, displayName, mfaInfo: [mfaInfo] })
-      .query({ key: "fake-api-key" })
-      .then((res) => {
-        expectStatusCode(200, res);
-        expect(res.body.localId).to.be.a("string").and.not.empty;
-        return res.body.localId as string;
-      });
+    const mfaInfo = { displayName: "Cell Phone", phoneInfo: TEST_PHONE_NUMBER };
+    const user = { email: "alice@example.com", password: "notasecret", mfaInfo: [mfaInfo] };
+    const localId = await registerMfaUser(authApi(), user).then(({ localId }) => {
+      expect(localId).to.be.a("string").and.not.empty;
+      return localId;
+    });
 
     const info = await getAccountInfoByLocalId(authApi(), localId);
     expect(info.mfaInfo).to.have.length(1);
     const savedMfaInfo = info.mfaInfo?.pop();
     expect(savedMfaInfo).to.include(mfaInfo);
-    expect(savedMfaInfo?.phoneInfo).to.equal(phoneNumber);
-    expect(savedMfaInfo?.displayName).to.equal(displayName);
+    expect(savedMfaInfo?.phoneInfo).to.equal(mfaInfo.phoneInfo);
+    expect(savedMfaInfo?.displayName).to.equal(mfaInfo.displayName);
     expect(savedMfaInfo?.mfaEnrollmentId).to.be.a("string").and.not.empty;
   });
 });

@@ -2,7 +2,13 @@ import { expect } from "chai";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import { FirebaseJwtPayload } from "../../../emulator/auth/operations";
 import { describeAuthEmulator } from "./setup";
-import { expectStatusCode, registerUser, updateAccountByLocalId } from "./helpers";
+import {
+  expectStatusCode,
+  registerMfaUser,
+  registerUser,
+  TEST_PHONE_NUMBER,
+  updateAccountByLocalId,
+} from "./helpers";
 
 describeAuthEmulator("accounts:signInWithPassword", ({ authApi }) => {
   it("should issue tokens when email and password are valid", async () => {
@@ -103,6 +109,25 @@ describeAuthEmulator("accounts:signInWithPassword", ({ authApi }) => {
       .then((res) => {
         expectStatusCode(400, res);
         expect(res.body.error.message).to.equal("USER_DISABLED");
+      });
+  });
+
+  it("should error if user has MFA", async () => {
+    const user = {
+      email: "alice@example.com",
+      password: "notasecret",
+      mfaInfo: [{ displayName: "Cell Phone", phoneInfo: TEST_PHONE_NUMBER }],
+    };
+    const { localId } = await registerMfaUser(authApi(), user);
+    expect(localId).to.be.a("string").and.not.empty;
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword")
+      .query({ key: "fake-api-key" })
+      .send({ email: user.email, password: user.password })
+      .then((res) => {
+        expectStatusCode(501, res);
+        expect(res.body.error.message).to.equal("MFA Login not yet implemented.");
       });
   });
 });
