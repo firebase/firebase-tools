@@ -54,7 +54,7 @@ function expandErrors(logger: winston.Logger): winston.Logger {
     ...meta: any[]
   ): winston.Logger {
     if (message && message instanceof Error) {
-      message = message.stack || message.name;
+      message = message.stack || message.message;
       return oldLogFunc(levelOrEntry as string, message, ...meta);
     }
     // Overloads are weird in TypeScript. This method works so long as the original
@@ -68,7 +68,7 @@ function expandErrors(logger: winston.Logger): winston.Logger {
 function annotateDebugLines(logger: winston.Logger): winston.Logger {
   const debug: winston.LeveledLogMethod = logger.debug.bind(logger);
   const newDebug: winston.LeveledLogMethod = function (
-    message: string | any | object,
+    message: string | any,
     ...meta: any[]
   ): winston.Logger {
     if (typeof message === "string") {
