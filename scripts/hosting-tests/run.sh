@@ -77,7 +77,7 @@ echo "Tested local hosting emulator."
 
 echo "Testing hosting deployment..."
 firebase deploy --only hosting --project "${FBTOOLS_TARGET_PROJECT}"
-sleep 5
+sleep 12
 VALUE="$(curl https://${FBTOOLS_TARGET_PROJECT}.web.app/${TARGET_FILE})"
 test "${DATE}" = "${VALUE}" || (echo "Expected ${VALUE} to equal ${DATE}." && false)
 
@@ -125,14 +125,14 @@ echo "Initialized second temp directory."
 
 echo "Testing hosting deployment by target..."
 firebase deploy --only hosting:customtarget --project "${FBTOOLS_TARGET_PROJECT}"
-sleep 5
+sleep 12
 VALUE="$(curl https://${FBTOOLS_TARGET_PROJECT}.web.app/${TARGET_FILE})"
 test "${DATE}" = "${VALUE}" || (echo "Expected ${VALUE} to equal ${DATE}." && false)
 echo "Tested hosting deployment by target."
 
 echo "Testing hosting channel deployment by target..."
 firebase hosting:channel:deploy mychannel --only customtarget --project "${FBTOOLS_TARGET_PROJECT}" --json | tee output.json
-sleep 5
+sleep 12
 CHANNEL_URL=$(cat output.json | jq -r ".result.customtarget.url")
 VALUE="$(curl ${CHANNEL_URL}/${TARGET_FILE})"
 test "${DATE}" = "${VALUE}" || (echo "Expected ${VALUE} to equal ${DATE}." && false)

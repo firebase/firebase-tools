@@ -41,7 +41,8 @@ export function getRulesConfig(projectId: string, options: any): RulesInstanceCo
 
   if (!Array.isArray(dbConfig)) {
     if (dbConfig && dbConfig.rules) {
-      return [{ rules: dbConfig.rules, instance: options.instance || options.project }];
+      const instance = options.instance || `${options.project}-default-rtdb`;
+      return [{ rules: dbConfig.rules, instance }];
     } else {
       logger.debug("Possibly invalid database config: ", JSON.stringify(dbConfig));
       return [];

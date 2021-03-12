@@ -19,7 +19,7 @@ import { ErrorHandler } from "./errorHandler";
 const defaultPollerOptions = {
   apiOrigin: functionsOrigin,
   apiVersion: cloudfunctions.API_VERSION,
-  masterTimeout: 300000, // 300000ms = 5 minutes
+  masterTimeout: 25 * 60000, // 25 minutes is the maximum build time for a function
 };
 
 export interface TaskParams {

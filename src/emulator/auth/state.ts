@@ -15,6 +15,7 @@ export const SIGNIN_METHOD_EMAIL_LINK = "emailLink";
 export class ProjectState {
   private users: Map<string, UserInfo> = new Map();
   private localIdForEmail: Map<string, string> = new Map();
+  private localIdForInitialEmail: Map<string, string> = new Map();
   private localIdForPhoneNumber: Map<string, string> = new Map();
   private localIdsForProviderEmail: Map<string, Set<string>> = new Map();
   private userIdForProviderRawId: Map<string, Map<string, string>> = new Map();
@@ -153,6 +154,10 @@ export class ProjectState {
       deleteProviders.push(PROVIDER_PASSWORD);
     }
 
+    if (user.initialEmail) {
+      this.localIdForInitialEmail.set(user.initialEmail, user.localId);
+    }
+
     if (oldPhoneNumber && oldPhoneNumber !== user.phoneNumber) {
       this.localIdForPhoneNumber.delete(oldPhoneNumber);
     }
@@ -228,6 +233,14 @@ export class ProjectState {
 
   getUserByEmail(email: string): UserInfo | undefined {
     const localId = this.localIdForEmail.get(email);
+    if (!localId) {
+      return undefined;
+    }
+    return this.getUserByLocalIdAssertingExists(localId);
+  }
+
+  getUserByInitialEmail(initialEmail: string): UserInfo | undefined {
+    const localId = this.localIdForInitialEmail.get(initialEmail);
     if (!localId) {
       return undefined;
     }
@@ -471,6 +484,10 @@ export class ProjectState {
       this.localIdForEmail.delete(user.email);
     }
 
+    if (user.initialEmail) {
+      this.localIdForInitialEmail.delete(user.initialEmail);
+    }
+
     if (user.phoneNumber) {
       this.localIdForPhoneNumber.delete(user.phoneNumber);
     }
@@ -501,7 +518,7 @@ interface RefreshTokenRecord {
   extraClaims: Record<string, unknown>;
 }
 
-type OobRequestType = NonNullable<
+export type OobRequestType = NonNullable<
   Schemas["GoogleCloudIdentitytoolkitV1GetOobCodeRequest"]["requestType"]
 >;
 

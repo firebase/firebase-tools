@@ -104,7 +104,7 @@ export class EmulatorHub implements EmulatorInstance {
       }
     });
 
-    this.hub.put(EmulatorHub.PATH_DISABLE_FUNCTIONS, (req, res) => {
+    this.hub.put(EmulatorHub.PATH_DISABLE_FUNCTIONS, async (req, res) => {
       utils.logLabeledBullet(
         "emulators",
         `Disabling Cloud Functions triggers, non-HTTP functions will not execute.`
@@ -117,7 +117,7 @@ export class EmulatorHub implements EmulatorInstance {
       }
 
       const emu = instance as FunctionsEmulator;
-      emu.disableBackgroundTriggers();
+      await emu.disableBackgroundTriggers();
       res.status(200).json({ enabled: false });
     });
 
