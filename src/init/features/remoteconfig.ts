@@ -39,17 +39,8 @@ export async function doSetup(setup: RemoteConfigSetup, config: Config): Promise
       message: msg,
       default: false,
     });
-<<<<<<< HEAD
-    // TODO(github.com/firebase/firebase-tools/issues/3137)
-    // We should abort if the user chooses not to overwrite.
-    if (overwrite == true) {
-      setup.config.remoteconfig.template = jsonFilePath;
-    } else {
-      setup.config.remoteconfig.template = jsonFilePath;
-=======
     if (!overwrite) {
       return;
->>>>>>> origin/master
     }
   }
   setup.config.remoteconfig.template = jsonFilePath;
