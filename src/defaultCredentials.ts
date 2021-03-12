@@ -3,7 +3,7 @@ import * as path from "path";
 
 import * as api from "./api";
 import { configstore } from "./configstore";
-import * as logger from "./logger";
+import { logger } from "./logger";
 
 // Interface for a valid JSON refresh token credential, so the
 // fields must be snake_case not camelCase.

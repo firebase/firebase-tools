@@ -7,7 +7,7 @@ import { URL } from "url";
 
 import { Client, HttpMethod } from "../apiv2";
 import { FirebaseError } from "../error";
-import * as logger from "../logger";
+import { logger } from "../logger";
 
 const REQUIRED_VARY_VALUES = ["Accept-Encoding", "Authorization", "Cookie"];
 

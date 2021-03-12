@@ -5,7 +5,7 @@ import * as marked from "marked";
 import { Param, ParamOption, ParamType } from "./extensionsApi";
 import { logPrefix, substituteParams } from "./extensionsHelper";
 import { convertExtensionOptionToLabeledList, onceWithJoin } from "./utils";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { promptOnce } from "../prompt";
 import * as utils from "../utils";
 

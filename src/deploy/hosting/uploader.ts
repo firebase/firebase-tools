@@ -10,7 +10,7 @@ import { Client } from "../../apiv2";
 import { Queue } from "../../throttler/queue";
 import { hostingApiOrigin } from "../../api";
 import * as hashcache from "./hashcache";
-import * as logger from "../../logger";
+import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 
 const MIN_UPLOAD_TIMEOUT = 30000; // 30s

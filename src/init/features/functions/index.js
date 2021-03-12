@@ -4,7 +4,7 @@ var clc = require("cli-color");
 
 var _ = require("lodash");
 
-var logger = require("../../../logger");
+const { logger } = require("../../../logger");
 var { prompt } = require("../../../prompt");
 var enableApi = require("../../../ensureApiEnabled").enable;
 var { requirePermissions } = require("../../../requirePermissions");

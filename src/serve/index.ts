@@ -1,6 +1,6 @@
 import { EmulatorServer } from "../emulator/emulatorServer";
 import * as _ from "lodash";
-import * as logger from "../logger";
+import { logger } from "../logger";
 
 const { FunctionsServer } = require("./functions");
 

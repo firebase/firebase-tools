@@ -7,7 +7,7 @@ var getProjectId = require("../getProjectId");
 var { requirePermissions } = require("../requirePermissions");
 var runtimeconfig = require("../gcp/runtimeconfig");
 var functionsConfig = require("../functionsConfig");
-var logger = require("../logger");
+const { logger } = require("../logger");
 
 module.exports = new Command("functions:config:legacy")
   .description("get legacy functions config variables")

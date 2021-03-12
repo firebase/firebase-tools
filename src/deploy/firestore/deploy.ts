@@ -3,7 +3,7 @@ import * as clc from "cli-color";
 
 import { FirebaseError } from "../../error";
 import { FirestoreIndexes } from "../../firestore/indexes";
-import logger = require("../../logger");
+import { logger } from "../../logger";
 import utils = require("../../utils");
 import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
 

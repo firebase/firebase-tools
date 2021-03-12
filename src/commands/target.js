@@ -4,7 +4,7 @@ var _ = require("lodash");
 var clc = require("cli-color");
 
 var { Command } = require("../command");
-var logger = require("../logger");
+const { logger } = require("../logger");
 var requireConfig = require("../requireConfig");
 var utils = require("../utils");
 

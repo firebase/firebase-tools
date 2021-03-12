@@ -4,7 +4,7 @@ import * as childProcess from "child_process";
 import * as controller from "../emulator/controller";
 import * as Config from "../config";
 import * as utils from "../utils";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import * as path from "path";
 import { Constants } from "./constants";
 import { requireAuth } from "../requireAuth";

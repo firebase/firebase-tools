@@ -7,7 +7,7 @@ import * as http from "http";
 import * as jwt from "jsonwebtoken";
 
 import * as api from "../api";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import * as track from "../track";
 import { Constants } from "./constants";
 import {

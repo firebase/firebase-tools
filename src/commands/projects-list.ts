@@ -5,7 +5,7 @@ import Table = require("cli-table");
 import { Command } from "../command";
 import { FirebaseProjectMetadata, listFirebaseProjects } from "../management/projects";
 import { requireAuth } from "../requireAuth";
-import * as logger from "../logger";
+import { logger } from "../logger";
 
 const NOT_SPECIFIED = clc.yellow("[Not specified]");
 

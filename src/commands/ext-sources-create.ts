@@ -1,7 +1,7 @@
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import * as getProjectId from "../getProjectId";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import {
   createSourceFromLocation,
   ensureExtensionsApiEnabled,

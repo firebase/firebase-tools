@@ -1,4 +1,4 @@
-import * as logger from "./logger";
+import { logger } from "./logger";
 import { getFirebaseProject } from "./management/projects";
 
 /**

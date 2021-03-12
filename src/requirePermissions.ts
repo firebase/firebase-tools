@@ -1,7 +1,7 @@
 import { bold } from "cli-color";
 import getProjectId = require("./getProjectId");
 import { requireAuth } from "./requireAuth";
-import { debug } from "./logger";
+import { logger } from "./logger";
 import { FirebaseError } from "./error";
 import { testIamPermissions } from "./gcp/iam";
 
@@ -21,7 +21,7 @@ export async function requirePermissions(options: any, permissions: string[] = [
 
   await requireAuth(options);
 
-  debug(
+  logger.debug(
     `[iam] checking project ${projectId} for permissions ${JSON.stringify(requiredPermissions)}`
   );
 
@@ -35,7 +35,7 @@ export async function requirePermissions(options: any, permissions: string[] = [
       );
     }
   } catch (err) {
-    debug(`[iam] error while checking permissions, command may fail: ${err}`);
+    logger.debug(`[iam] error while checking permissions, command may fail: ${err}`);
     return;
   }
 }

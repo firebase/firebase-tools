@@ -5,7 +5,7 @@ import * as semver from "semver";
 import * as spawn from "cross-spawn";
 
 import * as utils from "./utils";
-import * as logger from "./logger";
+import { logger } from "./logger";
 
 interface NpmListResult {
   name: string;

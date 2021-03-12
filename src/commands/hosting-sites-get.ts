@@ -4,7 +4,7 @@ import { Command } from "../command";
 import { Site, getSite } from "../hosting/api";
 import { requirePermissions } from "../requirePermissions";
 import * as getProjectId from "../getProjectId";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { FirebaseError } from "../error";
 
 export default new Command("hosting:sites:get <siteId>")

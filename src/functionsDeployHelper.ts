@@ -2,7 +2,7 @@ import * as _ from "lodash";
 import * as clc from "cli-color";
 
 import { FirebaseError } from "./error";
-import * as logger from "./logger";
+import { logger } from "./logger";
 import * as track from "./track";
 import * as utils from "./utils";
 import * as cloudfunctions from "./gcp/cloudfunctions";
