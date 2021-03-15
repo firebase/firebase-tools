@@ -7,7 +7,7 @@ import * as getProjectId from "../getProjectId";
 import { logPrefix } from "../extensions/extensionsHelper";
 import { listExtensions } from "../extensions/listExtensions";
 import { requirePermissions } from "../requirePermissions";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import * as utils from "../utils";
 import { CommanderStatic } from "commander";
 

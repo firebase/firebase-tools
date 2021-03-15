@@ -13,7 +13,7 @@ import { logPrefix } from "../extensions/extensionsHelper";
 import * as paramHelper from "../extensions/paramHelper";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
-import * as logger from "../logger";
+import { logger } from "../logger";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),

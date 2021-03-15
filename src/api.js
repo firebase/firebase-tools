@@ -7,7 +7,7 @@ var url = require("url");
 
 var { Constants } = require("./emulator/constants");
 var { FirebaseError } = require("./error");
-var logger = require("./logger");
+const { logger } = require("./logger");
 var responseToError = require("./responseToError");
 var scopes = require("./scopes");
 var utils = require("./utils");

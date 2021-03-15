@@ -1,5 +1,5 @@
 import { Command } from "../command";
-import logger = require("../logger");
+import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 import { Emulators } from "../emulator/types";

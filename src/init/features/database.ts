@@ -1,7 +1,7 @@
 import * as clc from "cli-color";
 import * as api from "../../api";
 import { prompt, promptOnce } from "../../prompt";
-import * as logger from "../../logger";
+import { logger } from "../../logger";
 import * as utils from "../../utils";
 import * as fsutils from "../../fsutils";
 import Config = require("../../config");

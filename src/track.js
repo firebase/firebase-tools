@@ -6,7 +6,7 @@ var _ = require("lodash");
 var { configstore } = require("./configstore");
 var pkg = require("../package.json");
 var uuid = require("uuid");
-var logger = require("./logger");
+const { logger } = require("./logger");
 
 var anonId = configstore.get("analytics-uuid");
 if (!anonId) {

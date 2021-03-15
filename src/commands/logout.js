@@ -2,7 +2,7 @@
 
 var { Command } = require("../command");
 var { configstore } = require("../configstore");
-var logger = require("../logger");
+const { logger } = require("../logger");
 var clc = require("cli-color");
 
 var utils = require("../utils");

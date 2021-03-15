@@ -1,5 +1,5 @@
 import * as api from "../api";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import * as utils from "../utils";
 
 export interface DatabaseInstance {

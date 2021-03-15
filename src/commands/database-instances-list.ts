@@ -3,7 +3,7 @@ import Table = require("cli-table");
 import * as clc from "cli-color";
 import * as ora from "ora";
 
-import logger = require("../logger");
+import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
 import { getProjectNumber } from "../getProjectNumber";
 import firedata = require("../gcp/firedata");

@@ -1,7 +1,7 @@
 import api = require("../api");
 import { FirebaseError } from "../error";
 import { ListVersionsResult } from "./interfaces";
-import * as logger from "../logger";
+import { logger } from "../logger";
 
 const TIMEOUT = 30000;
 

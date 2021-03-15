@@ -9,7 +9,7 @@ var _ = require("lodash");
 var { Command } = require("../command");
 var accountImporter = require("../accountImporter");
 var getProjectId = require("../getProjectId");
-var logger = require("../logger");
+const { logger } = require("../logger");
 var { requirePermissions } = require("../requirePermissions");
 var utils = require("../utils");
 

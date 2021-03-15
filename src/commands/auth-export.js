@@ -7,7 +7,7 @@ var os = require("os");
 var { Command } = require("../command");
 var accountExporter = require("../accountExporter");
 var getProjectId = require("../getProjectId");
-var logger = require("../logger");
+const { logger } = require("../logger");
 var { requirePermissions } = require("../requirePermissions");
 
 var MAX_BATCH_SIZE = 1000;

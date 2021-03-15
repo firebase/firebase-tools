@@ -8,7 +8,7 @@ var _ = require("lodash");
 var readline = require("readline");
 
 var { FirebaseError } = require("./error");
-var logger = require("./logger");
+const { logger } = require("./logger");
 
 var DATA_LINE_REGEX = /^data: /;
 

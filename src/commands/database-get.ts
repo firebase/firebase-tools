@@ -9,7 +9,7 @@ import { populateInstanceDetails } from "../management/database";
 import { printNoticeIfEmulated } from "../emulator/commandUtils";
 import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api";
 import { requirePermissions } from "../requirePermissions";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import * as responseToError from "../responseToError";
 import * as utils from "../utils";

@@ -8,7 +8,7 @@ var { getFirebaseProject, listFirebaseProjects } = require("../management/projec
 var { prompt } = require("../prompt");
 var { requireAuth } = require("../requireAuth");
 var { validateProjectId } = require("../command");
-var logger = require("../logger");
+const { logger } = require("../logger");
 var utils = require("../utils");
 
 var listAliases = function (options) {

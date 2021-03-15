@@ -7,7 +7,7 @@ const clc = require("cli-color");
 const childProcess = require("child_process");
 const { FirebaseError } = require("../error");
 const getProjectId = require("../getProjectId");
-const logger = require("../logger");
+const { logger } = require("../logger");
 const path = require("path");
 
 function runCommand(command, childOptions) {

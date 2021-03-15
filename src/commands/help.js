@@ -4,7 +4,7 @@
 var { Command } = require("../command");
 
 var clc = require("cli-color");
-var logger = require("../logger");
+const { logger } = require("../logger");
 var utils = require("../utils");
 
 module.exports = new Command("help [command]")

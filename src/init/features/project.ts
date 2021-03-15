@@ -11,7 +11,7 @@ import {
   PROJECTS_CREATE_QUESTIONS,
   promptAvailableProjectId,
 } from "../../management/projects";
-import * as logger from "../../logger";
+import { logger } from "../../logger";
 import { prompt, promptOnce } from "../../prompt";
 import * as utils from "../../utils";
 

@@ -5,7 +5,7 @@ import * as api from "./api";
 import * as apiv2 from "./apiv2";
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
-import * as logger from "./logger";
+import { logger } from "./logger";
 import * as utils from "./utils";
 import * as scopes from "./scopes";
 

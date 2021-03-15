@@ -3,7 +3,7 @@
 const { Uploader } = require("./uploader");
 const { detectProjectRoot } = require("../../detectProjectRoot");
 var { listFiles } = require("../../listFiles");
-var logger = require("../../logger");
+const { logger } = require("../../logger");
 var track = require("../../track");
 var utils = require("../../utils");
 

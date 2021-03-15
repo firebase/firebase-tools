@@ -2,7 +2,7 @@ import { firebaseApiOrigin } from "../api";
 import * as apiv2 from "../apiv2";
 import { configstore } from "../configstore";
 import { FirebaseError } from "../error";
-import * as logger from "../logger";
+import { logger } from "../logger";
 
 export type AdminSdkConfig = {
   projectId: string;

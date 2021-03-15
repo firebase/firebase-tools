@@ -1,7 +1,7 @@
 import * as api from "../api";
 import { endpoint } from "../utils";
 import { difference } from "lodash";
-import { debug } from "../logger";
+import { logger } from "../logger";
 
 const API_VERSION = "v1";
 
@@ -172,7 +172,7 @@ export async function testResourceIamPermissions(
   permissions: string[]
 ): Promise<TestIamResult> {
   if (process.env.FIREBASE_SKIP_INFORMATIONAL_IAM) {
-    debug(
+    logger.debug(
       "[iam] skipping informational check of permissions",
       JSON.stringify(permissions),
       "on resource",
