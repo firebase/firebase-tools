@@ -4,7 +4,7 @@ import * as _ from "lodash";
 import * as clc from "cli-color";
 
 import * as api from "../api";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import * as operationPoller from "../operation-poller";
 import { FirebaseError } from "../error";
 

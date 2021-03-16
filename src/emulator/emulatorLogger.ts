@@ -1,7 +1,7 @@
 import * as clc from "cli-color";
 
 import * as utils from "../utils";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { EmulatorLog, Emulators } from "./types";
 import { tryParse } from "../utils";
 import { LogData } from "./loggingEmulator";

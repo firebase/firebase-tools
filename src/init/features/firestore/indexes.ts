@@ -5,7 +5,7 @@ import { FirebaseError } from "../../../error";
 import iv2 = require("../../../firestore/indexes");
 import fsutils = require("../../../fsutils");
 import { prompt, promptOnce } from "../../../prompt";
-import logger = require("../../../logger");
+import { logger } from "../../../logger";
 
 const indexes = new iv2.FirestoreIndexes();
 

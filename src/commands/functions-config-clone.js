@@ -7,7 +7,7 @@ var functionsConfigClone = require("../functionsConfigClone");
 var getProjectId = require("../getProjectId");
 var { requirePermissions } = require("../requirePermissions");
 var utils = require("../utils");
-var logger = require("../logger");
+const { logger } = require("../logger");
 
 module.exports = new Command("functions:config:clone")
   .description("clone environment config from another project")

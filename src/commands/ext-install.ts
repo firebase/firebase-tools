@@ -34,7 +34,7 @@ import {
 import { getRandomString } from "../extensions/utils";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { promptOnce } from "../prompt";
 import { previews } from "../previews";
 

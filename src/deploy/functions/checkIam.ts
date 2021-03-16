@@ -1,7 +1,7 @@
 import { has, last } from "lodash";
 import { bold } from "cli-color";
 
-import { debug } from "../../logger";
+import { logger } from "../../logger";
 import * as track from "../../track";
 import { getReleaseNames, getFilterGroups } from "../../functionsDeployHelper";
 import { CloudFunctionTrigger } from "./deploymentPlanner";
@@ -27,7 +27,7 @@ export async function checkServiceAccountIam(projectId: string): Promise<void> {
     );
     passed = iamResult.passed;
   } catch (err) {
-    debug("[functions] service account IAM check errored, deploy may fail:", err);
+    logger.debug("[functions] service account IAM check errored, deploy may fail:", err);
     // we want to fail this check open and not rethrow since it's informational only
     return;
   }
@@ -71,7 +71,7 @@ export async function checkHttpIam(context: any, options: any, payload: any): Pr
     return;
   }
 
-  debug(
+  logger.debug(
     "[functions] found",
     newHttpFunctions.length,
     "new HTTP functions, testing setIamPolicy permission..."
@@ -82,7 +82,10 @@ export async function checkHttpIam(context: any, options: any, payload: any): Pr
     const iamResult = await testIamPermissions(context.projectId, [PERMISSION]);
     passed = iamResult.passed;
   } catch (e) {
-    debug("[functions] failed http create setIamPolicy permission check. deploy may fail:", e);
+    logger.debug(
+      "[functions] failed http create setIamPolicy permission check. deploy may fail:",
+      e
+    );
     // fail open since this is an informational check
     return;
   }
@@ -99,5 +102,5 @@ export async function checkHttpIam(context: any, options: any, payload: any): Pr
         `\n\nTo address this error, please ask a project Owner to assign your account the "Cloud Functions Admin" role at the following URL:\n\nhttps://console.cloud.google.com/iam-admin/iam?project=${context.projectId}`
     );
   }
-  debug("[functions] found setIamPolicy permission, proceeding with deploy");
+  logger.debug("[functions] found setIamPolicy permission, proceeding with deploy");
 }

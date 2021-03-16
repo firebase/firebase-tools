@@ -6,7 +6,7 @@ import { ExtensionInstance, listInstances } from "./extensionsApi";
 import { logPrefix } from "./extensionsHelper";
 import * as utils from "../utils";
 import * as extensionsUtils from "./utils";
-import * as logger from "../logger";
+import { logger } from "../logger";
 
 /**
  * Lists the extensions installed under a project

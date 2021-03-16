@@ -3,7 +3,7 @@
 var _ = require("lodash");
 var { Command } = require("../command");
 var getProjectId = require("../getProjectId");
-var logger = require("../logger");
+const { logger } = require("../logger");
 var { requirePermissions } = require("../requirePermissions");
 var functionsConfig = require("../functionsConfig");
 

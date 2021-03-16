@@ -6,15 +6,21 @@ import { EmulatedTriggerType } from "../../src/emulator/functionsEmulatorShared"
 import { FunctionsEmulator, InvokeRuntimeOpts } from "../../src/emulator/functionsEmulator";
 import { RuntimeWorker } from "../../src/emulator/functionsRuntimeWorker";
 import { TIMEOUT_LONG, MODULE_ROOT } from "./fixtures";
-import * as logger from "../../src/logger";
+import { logger } from "../../src/logger";
+import * as winston from "winston";
+import * as logform from "logform";
 
 if ((process.env.DEBUG || "").toLowerCase().indexOf("spec") >= 0) {
-  // tslint:disable-next-line:no-var-requires
-  logger.add(require("winston").transports.Console, {
-    level: "debug",
-    showLevel: false,
-    colorize: true,
-  });
+  const dropLogLevels = (info: logform.TransformableInfo) => info.message;
+  logger.add(
+    new winston.transports.Console({
+      level: "debug",
+      format: logform.format.combine(
+        logform.format.colorize(),
+        logform.format.printf(dropLogLevels)
+      ),
+    })
+  );
 }
 
 const functionsEmulator = new FunctionsEmulator({

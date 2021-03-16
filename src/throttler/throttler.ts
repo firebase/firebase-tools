@@ -1,4 +1,4 @@
-import * as logger from "../logger";
+import { logger } from "../logger";
 import RetriesExhaustedError from "./errors/retries-exhausted-error";
 import TimeoutError from "./errors/timeout-error";
 import TaskError from "./errors/task-error";

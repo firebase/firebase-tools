@@ -9,7 +9,7 @@ import { requireHostingSite } from "../requireHostingSite";
 import { requirePermissions } from "../requirePermissions";
 import * as getProjectId from "../getProjectId";
 import * as requireConfig from "../requireConfig";
-import logger from "../logger";
+import { logger } from "../logger";
 
 export default new Command("hosting:channel:delete <channelId>")
   .description("delete a Firebase Hosting channel")

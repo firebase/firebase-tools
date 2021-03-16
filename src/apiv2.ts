@@ -8,7 +8,7 @@ import util from "util";
 
 import * as auth from "./auth";
 import { FirebaseError } from "./error";
-import * as logger from "./logger";
+import { logger } from "./logger";
 import * as responseToError from "./responseToError";
 
 // Using import would require resolveJsonModule, which seems to break the

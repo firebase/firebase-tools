@@ -9,7 +9,7 @@ import * as tmp from "tmp";
 import { FirebaseError } from "./error";
 import * as functionsConfig from "./functionsConfig";
 import * as getProjectId from "./getProjectId";
-import * as logger from "./logger";
+import { logger } from "./logger";
 import * as utils from "./utils";
 import * as parseTriggers from "./parseTriggers";
 import * as fsAsync from "./fsAsync";

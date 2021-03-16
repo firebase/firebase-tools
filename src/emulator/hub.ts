@@ -5,7 +5,7 @@ import * as path from "path";
 import * as bodyParser from "body-parser";
 
 import * as utils from "../utils";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { Constants } from "./constants";
 import { Emulators, EmulatorInstance, EmulatorInfo } from "./types";
 import { HubExport } from "./hubExport";
@@ -104,7 +104,7 @@ export class EmulatorHub implements EmulatorInstance {
       }
     });
 
-    this.hub.put(EmulatorHub.PATH_DISABLE_FUNCTIONS, (req, res) => {
+    this.hub.put(EmulatorHub.PATH_DISABLE_FUNCTIONS, async (req, res) => {
       utils.logLabeledBullet(
         "emulators",
         `Disabling Cloud Functions triggers, non-HTTP functions will not execute.`
@@ -117,7 +117,7 @@ export class EmulatorHub implements EmulatorInstance {
       }
 
       const emu = instance as FunctionsEmulator;
-      emu.disableBackgroundTriggers();
+      await emu.disableBackgroundTriggers();
       res.status(200).json({ enabled: false });
     });
 

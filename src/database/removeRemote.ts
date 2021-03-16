@@ -1,6 +1,6 @@
 import { Client } from "../apiv2";
 import { URL } from "url";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import * as utils from "../utils";
 
 export interface RemoveRemote {

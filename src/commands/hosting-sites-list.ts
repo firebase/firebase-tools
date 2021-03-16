@@ -5,7 +5,7 @@ import { Command } from "../command";
 import { Site, listSites } from "../hosting/api";
 import { requirePermissions } from "../requirePermissions";
 import * as getProjectId from "../getProjectId";
-import * as logger from "../logger";
+import { logger } from "../logger";
 
 const TABLE_HEAD = ["Site ID", "Default URL", "App ID (if set)"];
 

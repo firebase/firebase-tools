@@ -1,7 +1,7 @@
 import { Command } from "../command";
 import * as clc from "cli-color";
 import * as fsi from "../firestore/indexes";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
 import { Emulators } from "../emulator/types";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";

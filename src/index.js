@@ -3,7 +3,7 @@
 var program = require("commander");
 var pkg = require("../package.json");
 var clc = require("cli-color");
-var logger = require("./logger");
+const { logger } = require("./logger");
 var { setupLoggers } = require("./utils");
 var leven = require("leven");
 
