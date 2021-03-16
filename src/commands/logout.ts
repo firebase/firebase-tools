@@ -1,5 +1,5 @@
 import { Command } from "../command";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import * as clc from "cli-color";
 
 import * as utils from "../utils";

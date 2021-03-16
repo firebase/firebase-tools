@@ -1,6 +1,6 @@
 import { User } from "../auth";
 import { Command } from "../command";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import * as utils from "../utils";
 import * as auth from "../auth";
 
