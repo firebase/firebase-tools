@@ -542,7 +542,7 @@ function haveValidTokens(refreshToken: string, authScopes: string[]) {
 }
 
 function deleteAccount(account: Account) {
-  // Check the globald default user
+  // Check the global default user
   const defaultAccount = getGlobalDefaultAccount();
   if (account.user.email === defaultAccount?.user.email) {
     configstore.delete("user");
@@ -557,7 +557,7 @@ function deleteAccount(account: Account) {
   configstore.set("additionalAccounts", remainingAccounts);
 
   // Clear any matching project defaults
-  const activeAccounts = configstore.get("activeAccounts") || {};
+  const activeAccounts: Record<string, string> = configstore.get("activeAccounts") || {};
   for (const projectDir of Object.keys(activeAccounts)) {
     const projectAccount = activeAccounts[projectDir];
     if (projectAccount === account.user.email) {

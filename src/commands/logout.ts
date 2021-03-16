@@ -1,13 +1,9 @@
-"use strict";
-
 import { Command } from "../command";
 import * as logger from "../logger";
 import * as clc from "cli-color";
 
 import * as utils from "../utils";
-import * as api from "../api";
 import * as auth from "../auth";
-import * as _ from "lodash";
 
 module.exports = new Command("logout [email]")
   .description("log the CLI out of Firebase")

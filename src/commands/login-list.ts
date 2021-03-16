@@ -1,11 +1,7 @@
-import * as _ from "lodash";
-import * as clc from "cli-color";
-
 import { User } from "../auth";
 import { Command } from "../command";
 import * as logger from "../logger";
 import * as utils from "../utils";
-
 import * as auth from "../auth";
 
 module.exports = new Command("login:list")
@@ -30,5 +26,5 @@ module.exports = new Command("login:list")
       }
     }
 
-    return auth;
+    return allAccounts;
   });

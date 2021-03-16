@@ -1,10 +1,5 @@
-import * as _ from "lodash";
-import * as clc from "cli-color";
-
 import { Command } from "../command";
-import { configstore } from "../configstore";
 import * as utils from "../utils";
-
 import * as auth from "../auth";
 import { FirebaseError } from "../error";
 
@@ -28,5 +23,5 @@ module.exports = new Command("login:use <email>")
     auth.setProjectAccount(projectDir, email);
     utils.logSuccess(`Set default account ${email} for current project directory.`);
 
-    return auth;
+    return email;
   });

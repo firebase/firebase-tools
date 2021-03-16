@@ -1,15 +1,10 @@
-import * as _ from "lodash";
 import * as clc from "cli-color";
 
-import { User, Account } from "../auth";
 import { Command } from "../command";
 import * as logger from "../logger";
-import { configstore } from "../configstore";
 import * as utils from "../utils";
 import { FirebaseError } from "../error";
-
 import * as auth from "../auth";
-import { isCloudEnvironment } from "../utils";
 
 module.exports = new Command("login:add [email]")
   .description("authorize the CLI for an additional account")
@@ -44,7 +39,7 @@ module.exports = new Command("login:add [email]")
     // Default to using the authorization code flow when the end
     // user is within a cloud-based environment, and therefore,
     // the authorization callback couldn't redirect to localhost.
-    const useLocalhost = isCloudEnvironment() ? false : options.localhost;
+    const useLocalhost = utils.isCloudEnvironment() ? false : options.localhost;
 
     const newAccount = await auth.loginAdditionalAccount(useLocalhost, email);
     if (newAccount) {
@@ -52,5 +47,5 @@ module.exports = new Command("login:add [email]")
       utils.logSuccess("Success! Added account " + clc.bold(newAccount.user.email));
     }
 
-    return auth;
+    return newAccount;
   });

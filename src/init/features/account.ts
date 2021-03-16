@@ -59,7 +59,7 @@ async function promptForAccount() {
  * @param options Command line options.
  */
 export async function doSetup(setup: any, config: any, options: any): Promise<void> {
-  let account: Account | undefined = undefined;
+  let account: Account | undefined;
 
   if (options.account) {
     account = findAccountByEmail(options.account);
