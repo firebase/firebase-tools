@@ -101,7 +101,7 @@ function credFilePath(user: User): string | undefined {
 }
 
 function userEmailSlug(user: User): string {
-  const email = user.email ? user.email : "unknown_user";
+  const email = user.email || "unknown_user";
   const slug = email.replace("@", "_").replace(".", "_");
 
   return slug;
