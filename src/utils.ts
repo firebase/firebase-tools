@@ -11,7 +11,7 @@ const ansiStrip = require("cli-color/strip") as (input: string) => string;
 
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
-import * as logger from "./logger";
+import { logger, LogLevel } from "./logger";
 import { LogDataOrUndefined } from "./emulator/loggingEmulator";
 import { Socket } from "net";
 
@@ -126,7 +126,7 @@ export function addSubdomain(origin: string, subdomain: string): string {
  */
 export function logSuccess(
   message: string,
-  type = "info",
+  type: LogLevel = "info",
   data: LogDataOrUndefined = undefined
 ): void {
   logger[type](clc.green.bold(`${SUCCESS_CHAR} `), message, data);
@@ -138,7 +138,7 @@ export function logSuccess(
 export function logLabeledSuccess(
   label: string,
   message: string,
-  type = "info",
+  type: LogLevel = "info",
   data: LogDataOrUndefined = undefined
 ): void {
   logger[type](clc.green.bold(`${SUCCESS_CHAR}  ${label}:`), message, data);
@@ -149,7 +149,7 @@ export function logLabeledSuccess(
  */
 export function logBullet(
   message: string,
-  type = "info",
+  type: LogLevel = "info",
   data: LogDataOrUndefined = undefined
 ): void {
   logger[type](clc.cyan.bold("i "), message, data);
@@ -161,7 +161,7 @@ export function logBullet(
 export function logLabeledBullet(
   label: string,
   message: string,
-  type = "info",
+  type: LogLevel = "info",
   data: LogDataOrUndefined = undefined
 ): void {
   logger[type](clc.cyan.bold(`i  ${label}:`), message, data);
@@ -172,7 +172,7 @@ export function logLabeledBullet(
  */
 export function logWarning(
   message: string,
-  type = "warn",
+  type: LogLevel = "warn",
   data: LogDataOrUndefined = undefined
 ): void {
   logger[type](clc.yellow.bold(`${WARNING_CHAR} `), message, data);
@@ -184,7 +184,7 @@ export function logWarning(
 export function logLabeledWarning(
   label: string,
   message: string,
-  type = "warn",
+  type: LogLevel = "warn",
   data: LogDataOrUndefined = undefined
 ): void {
   logger[type](clc.yellow.bold(`${WARNING_CHAR}  ${label}:`), message, data);

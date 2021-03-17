@@ -3,7 +3,7 @@ import * as clc from "cli-color";
 
 import * as api from "../api";
 import { FirebaseError } from "../error";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import * as utils from "../utils";
 import { CloudFunctionTrigger } from "../deploy/functions/deploymentPlanner";
 
@@ -125,6 +125,9 @@ export async function createFunction(options: any): Promise<Operation> {
   if (options.sourceToken) {
     data.sourceToken = options.sourceToken;
   }
+  if (options.ingressSettings) {
+    data.ingressSettings = options.ingressSettings;
+  }
   try {
     const res = await api.request("POST", endpoint, {
       auth: true,
@@ -233,6 +236,10 @@ export async function updateFunction(options: any): Promise<Operation> {
   if (options.sourceToken) {
     data.sourceToken = options.sourceToken;
     masks.push("sourceToken");
+  }
+  if (options.ingressSettings) {
+    data.ingressSettings = options.ingressSettings;
+    masks.push("ingressSettings");
   }
   if (options.trigger.eventTrigger) {
     masks = _.concat(

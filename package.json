@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "9.6.0",
+  "version": "9.6.1",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -96,6 +96,7 @@
     "cross-spawn": "^7.0.1",
     "csv-streamify": "^3.0.4",
     "dotenv": "^6.1.0",
+    "exegesis": "^2.5.6",
     "exegesis-express": "^2.0.0",
     "exit-code": "^1.0.2",
     "express": "^4.16.4",
@@ -134,6 +135,7 @@
     "update-notifier": "^4.1.0",
     "uuid": "^3.0.0",
     "winston": "^3.0.0",
+    "winston-transport": "^4.4.0",
     "ws": "^7.2.3"
   },
   "devDependencies": {
@@ -184,7 +186,6 @@
     "eslint-config-prettier": "^7.1.0",
     "eslint-plugin-jsdoc": "^30.7.13",
     "eslint-plugin-prettier": "^3.3.1",
-    "exegesis": "^2.5.6",
     "firebase": "^7.24.0",
     "firebase-admin": "^9.4.2",
     "firebase-functions": "^3.11.0",
@@ -201,7 +202,6 @@
     "supertest": "^3.3.0",
     "swagger2openapi": "^6.0.3",
     "ts-node": "^9.1.1",
-    "typescript": "^3.9.5",
-    "winston-transport": "^4.4.0"
+    "typescript": "^3.9.5"
   }
 }

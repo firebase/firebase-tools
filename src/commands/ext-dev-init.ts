@@ -8,7 +8,7 @@ import { Command } from "../command";
 import * as Config from "../config";
 import { FirebaseError } from "../error";
 import { promptOnce } from "../prompt";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import * as npmDependencies from "../init/features/functions/npm-dependencies";
 marked.setOptions({
   renderer: new TerminalRenderer(),

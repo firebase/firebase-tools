@@ -4,7 +4,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 import * as Config from "../config";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import * as track from "../track";
 import * as utils from "../utils";
 import { EmulatorRegistry } from "./registry";

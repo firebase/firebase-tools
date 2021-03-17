@@ -6,7 +6,7 @@ import {
   getFunctionRegion,
 } from "./functionsEmulatorShared";
 import * as utils from "../utils";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { FirebaseError } from "../error";
 import { LegacyEvent } from "./events/types";
 

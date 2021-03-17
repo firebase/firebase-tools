@@ -6,7 +6,7 @@ import { FirebaseError } from "../../error";
 import { promptOnce } from "../../prompt";
 import * as gcp from "../../gcp";
 import * as utils from "../../utils";
-import * as logger from "../../logger";
+import { logger } from "../../logger";
 
 /**
  * Checks if a deployment will create any functions with a failure policy.

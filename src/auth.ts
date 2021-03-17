@@ -11,7 +11,7 @@ import * as util from "util";
 import * as api from "./api";
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
-import * as logger from "./logger";
+import { logger } from "./logger";
 import { prompt } from "./prompt";
 import * as scopes from "./scopes";
 
