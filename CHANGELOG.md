@@ -1,1 +1,1 @@
-- Add missing JSON.stringify in database:settings:set (#3217)
+- Fixes issue where `database:settings:set` would cause an error with valid input (#3217).
