@@ -351,7 +351,7 @@ export class FirestoreDelete {
             pageIncoming = false;
 
             fetchFailures++;
-            if (fetchFailures === 3) {
+            if (fetchFailures >= 3) {
               failures.push("Failed to fetch documents to delete >= 3 times.");
             }
           });
