@@ -5,7 +5,7 @@ import { expect, AssertionError } from "chai";
 import { IdpJwtPayload } from "../../../emulator/auth/operations";
 import { OobRecord, PhoneVerificationRecord, UserInfo } from "../../../emulator/auth/state";
 import { TestAgent, PROJECT_ID } from "./setup";
-import { components } from "../../../emulator/auth/schema";
+import { MfaEnrollments } from "../../../emulator/auth/types";
 
 export { PROJECT_ID };
 export const TEST_PHONE_NUMBER = "+15555550100";
@@ -88,7 +88,7 @@ export function registerUser(
     email: string;
     password: string;
     displayName?: string;
-    mfaInfo?: components["schemas"]["GoogleCloudIdentitytoolkitV1MfaEnrollment"][];
+    mfaInfo?: MfaEnrollments;
   }
 ): Promise<{ idToken: string; localId: string; refreshToken: string; email: string }> {
   return testAgent
