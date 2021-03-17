@@ -1,0 +1,1 @@
+- Add missing JSON.stringify in database:settings:set (#3217)
