@@ -66,6 +66,7 @@ export function createFunctionTask(
         vpcConnector: fn.vpcConnector,
         vpcConnectorEgressSettings: fn.vpcConnectorEgressSettings,
         serviceAccountEmail: fn.serviceAccountEmail,
+        ingressSettings: fn.ingressSettings,
       });
       const pollerOptions: OperationPollerOptions = Object.assign(
         {
@@ -130,6 +131,7 @@ export function updateFunctionTask(
         vpcConnector: fn.vpcConnector,
         vpcConnectorEgressSettings: fn.vpcConnectorEgressSettings,
         serviceAccountEmail: fn.serviceAccountEmail,
+        ingressSettings: fn.ingressSettings,
       });
       const pollerOptions: OperationPollerOptions = Object.assign(
         {
