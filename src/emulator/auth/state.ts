@@ -6,13 +6,9 @@ import {
   isValidPhoneNumber,
 } from "./utils";
 import { MakeRequired } from "./utils";
-
-import * as schema from "./schema";
 import { AuthCloudFunction } from "./cloudFunctions";
 import { assert } from "./errors";
-type Schemas = schema.components["schemas"];
-type MfaEnrollment = Schemas["GoogleCloudIdentitytoolkitV1MfaEnrollment"];
-type MfaEnrollments = MfaEnrollment[];
+import { MfaEnrollments, Schemas } from "./types";
 
 export const PROVIDER_PASSWORD = "password";
 export const PROVIDER_PHONE = "phone";
@@ -183,8 +179,8 @@ export class ProjectState {
     }
 
     // if MFA info is specified on the user, ensure MFA data is valid before returning.
-    // callers are expected to have called `validateMfaEnrollments` prior to creating
-    // or updating the user.
+    // callers are expected to have called `validateMfaEnrollments` prior to having called
+    // this method.
     if (user.mfaInfo) {
       this.validateMfaEnrollments(user.mfaInfo);
     }
@@ -196,22 +192,35 @@ export class ProjectState {
    * Validates a collection of MFA Enrollments. If all data is valid, returns the data
    * unmodified to the caller.
    *
-   * @param enrollments the MFA Enrollments to validate. each enrollment must have a valid phone number, a non-null enrollment ID,
+   * @param enrollments the MFA Enrollments to validate. each enrollment must have a valid and unique phone number, a non-null enrollment ID,
    * and the enrollment ID must be unique across all other enrollments in the array.
    * @returns the validated MFA Enrollments passed to this method
    * @throws BadRequestError if the phone number is absent or invalid
    * @throws BadRequestError if the MFA Enrollment ID is absent
    * @throws BadRequestError if the MFA Enrollment ID is duplicated in the provided array
+   * @throws BadRequestError if any of the phone numbers are duplicated. callers should de-duplicate phone numbers
+   * prior to calling this validation method, as the real API is lenient and removes duplicates from requests
+   * for well-formed create/update requests.
    */
   validateMfaEnrollments(enrollments: MfaEnrollments): MfaEnrollments {
-    const enrollmentIds = new Set();
+    const phoneNumbers: Set<string> = new Set<string>();
+    const enrollmentIds: Set<string> = new Set<string>();
     for (const enrollment of enrollments) {
       assert(
         enrollment.phoneInfo && isValidPhoneNumber(enrollment.phoneInfo),
         "INVALID_MFA_PHONE_NUMBER : Invalid format."
       );
-      assert(enrollment.mfaEnrollmentId, "INVALID_MFA_ID : mfaEnrollmentId must be defined.");
-      assert(enrollmentIds.add(enrollment.mfaEnrollmentId), "DUPLICATE_MFA_ENROLLMENT_ID");
+      assert(
+        enrollment.mfaEnrollmentId,
+        "INVALID_MFA_ENROLLMENT_ID : mfaEnrollmentId must be defined."
+      );
+      assert(!enrollmentIds.has(enrollment.mfaEnrollmentId), "DUPLICATE_MFA_ENROLLMENT_ID");
+      assert(
+        !phoneNumbers.has(enrollment.phoneInfo),
+        "INTERNAL_ERROR : MFA Enrollment Phone Numbers must be unique."
+      );
+      phoneNumbers.add(enrollment.phoneInfo);
+      enrollmentIds.add(enrollment.mfaEnrollmentId);
     }
     return enrollments;
   }

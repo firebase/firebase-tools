@@ -28,9 +28,7 @@ import {
   PROVIDER_CUSTOM,
   OobRecord,
 } from "./state";
-
-import * as schema from "./schema";
-export type Schemas = schema.components["schemas"];
+import { MfaEnrollments, CreateMfaEnrollmentsRequest, Schemas, MfaEnrollment } from "./types";
 
 /**
  * Create a map from IDs to operations handlers suitable for exegesis.
@@ -167,18 +165,10 @@ function signUp(
     updates.validSince = toUnixTimestamp(new Date()).toString();
   }
   if (reqBody.mfaInfo) {
-    const mfaInfo = [];
-    const enrollmentIds = new Set<string>();
-    for (const factor of reqBody.mfaInfo) {
-      const mfaEnrollmentId = newRandomId(28, enrollmentIds);
-      mfaInfo.push({
-        displayName: factor.displayName,
-        phoneInfo: factor.phoneInfo,
-        mfaEnrollmentId,
-      });
-      enrollmentIds.add(mfaEnrollmentId);
-    }
-    updates.mfaInfo = state.validateMfaEnrollments(mfaInfo);
+    // on create, supply a function that creates a new enrollment ID per unique factor
+    updates.mfaInfo = getMfaEnrollmentsFromRequest(state, reqBody.mfaInfo, (_, ids) =>
+      newRandomId(28, ids)
+    );
   }
   let user: UserInfo | undefined;
   if (reqBody.idToken) {
@@ -199,7 +189,6 @@ function signUp(
   return {
     kind: "identitytoolkit#SignupNewUserResponse",
     localId: user.localId,
-
     displayName: user.displayName,
     email: user.email,
     ...(provider ? issueTokens(state, user, provider) : {}),
@@ -993,8 +982,16 @@ export function setAccountInfoImpl(
     // clear any existing MFA data for the user. if no `mfa` key is specified, MFA is left unchanged.
     if (reqBody.mfa) {
       if (reqBody.mfa.enrollments && reqBody.mfa.enrollments.length > 0) {
-        const mfaInfo = [...reqBody.mfa.enrollments];
-        updates.mfaInfo = state.validateMfaEnrollments(mfaInfo);
+        // on update, MFA enrollment ID must be specified, and we use the uid defined on each factor
+        // in our ID generating function.
+        updates.mfaInfo = getMfaEnrollmentsFromRequest(
+          state,
+          reqBody.mfa.enrollments,
+          ({ mfaEnrollmentId }) => {
+            assert(mfaEnrollmentId, "INVALID_MFA_ENROLLMENT_ID : mfaEnrollmentId must be defined.");
+            return mfaEnrollmentId;
+          }
+        );
       } else {
         updates.mfaInfo = undefined;
       }
@@ -1829,6 +1826,30 @@ function newRandomId(length: number, existingIds?: Set<string>): string {
     "INTERNAL_ERROR : Failed to generate a random ID after 10 attempts",
     "INTERNAL"
   );
+}
+
+function getMfaEnrollmentsFromRequest(
+  state: ProjectState,
+  request: MfaEnrollments,
+  getEnrollmentId: (enrollment: MfaEnrollment, enrollmentIds: Set<string>) => string
+): MfaEnrollments {
+  const enrollments: MfaEnrollments = [];
+  const phoneNumbers: Set<string> = new Set<string>();
+  const enrollmentIds: Set<string> = new Set<string>();
+  for (const enrollment of request) {
+    assert(
+      enrollment.phoneInfo && isValidPhoneNumber(enrollment.phoneInfo),
+      "INVALID_MFA_PHONE_NUMBER : Invalid format."
+    );
+    if (!phoneNumbers.has(enrollment.phoneInfo)) {
+      const mfaEnrollmentId = getEnrollmentId(enrollment, enrollmentIds);
+      assert(!enrollmentIds.has(mfaEnrollmentId), "DUPLICATE_MFA_ENROLLMENT_ID");
+      enrollments.push({ ...enrollment, mfaEnrollmentId });
+      phoneNumbers.add(enrollment.phoneInfo);
+      enrollmentIds.add(mfaEnrollmentId);
+    }
+  }
+  return state.validateMfaEnrollments(enrollments);
 }
 
 function getNormalizedUri(reqBody: {
