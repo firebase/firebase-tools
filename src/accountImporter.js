@@ -8,6 +8,7 @@ const { logger } = require("./logger");
 var utils = require("./utils");
 var { FirebaseError } = require("./error");
 
+// TODO: support for MFA at runtime was added in PR #3173, but this importer currently ignores `mfaInfo` and loses the data on import.
 var ALLOWED_JSON_KEYS = [
   "localId",
   "email",

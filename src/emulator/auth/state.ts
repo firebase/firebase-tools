@@ -1,9 +1,18 @@
-import { randomBase64UrlStr, randomId, mirrorFieldTo, randomDigits } from "./utils";
+import {
+  randomBase64UrlStr,
+  randomId,
+  mirrorFieldTo,
+  randomDigits,
+  isValidPhoneNumber,
+} from "./utils";
 import { MakeRequired } from "./utils";
 
 import * as schema from "./schema";
 import { AuthCloudFunction } from "./cloudFunctions";
+import { assert } from "./errors";
 type Schemas = schema.components["schemas"];
+type MfaEnrollment = Schemas["GoogleCloudIdentitytoolkitV1MfaEnrollment"];
+type MfaEnrollments = MfaEnrollment[];
 
 export const PROVIDER_PASSWORD = "password";
 export const PROVIDER_PHONE = "phone";
@@ -21,8 +30,6 @@ export class ProjectState {
   private userIdForProviderRawId: Map<string, Map<string, string>> = new Map();
   private refreshTokens: Map<string, RefreshTokenRecord> = new Map();
   private refreshTokensForLocalId: Map<string, Set<string>> = new Map();
-  private mfaEnrollmentIdsForLocalId: Map<string, Set<string>> = new Map();
-  private localIdForMfaEnrollmentId: Map<string, string> = new Map();
   private oobs: Map<string, OobRecord> = new Map();
   private verificationCodes: Map<string, PhoneVerificationRecord> = new Map();
   private temporaryProofs: Map<string, TemporaryProofRecord> = new Map();
@@ -133,6 +140,7 @@ export class ProjectState {
     }
     const oldEmail = user.email;
     const oldPhoneNumber = user.phoneNumber;
+
     for (const field of Object.keys(fields) as (keyof typeof fields)[]) {
       mirrorFieldTo(user, field, fields);
     }
@@ -173,56 +181,39 @@ export class ProjectState {
     } else {
       deleteProviders.push(PROVIDER_PHONE);
     }
+
+    // if MFA info is specified on the user, ensure MFA data is valid before returning.
+    // callers are expected to have called `validateMfaEnrollments` prior to creating
+    // or updating the user.
     if (user.mfaInfo) {
-      this.updateMfaEnrollments(user, user.mfaInfo);
-    } else {
-      this.mfaEnrollmentIdsForLocalId.delete(user.localId);
+      this.validateMfaEnrollments(user.mfaInfo);
     }
 
     return this.updateUserProviderInfo(user, upsertProviders, deleteProviders);
   }
 
   /**
-   * Validates a new MFA enrollment ID, checking that the enrollment
-   * ID is not already in use for a different user.
+   * Validates a collection of MFA Enrollments. If all data is valid, returns the data
+   * unmodified to the caller.
    *
-   * @param mfaEnrollmentId the proposed MFA enrollment ID
+   * @param enrollments the MFA Enrollments to validate. each enrollment must have a valid phone number, a non-null enrollment ID,
+   * and the enrollment ID must be unique across all other enrollments in the array.
+   * @returns the validated MFA Enrollments passed to this method
+   * @throws BadRequestError if the phone number is absent or invalid
+   * @throws BadRequestError if the MFA Enrollment ID is absent
+   * @throws BadRequestError if the MFA Enrollment ID is duplicated in the provided array
    */
-  validateMfaEnrollmentIdForCreate(mfaEnrollmentId: string): boolean {
-    const localId = this.localIdForMfaEnrollmentId.get(mfaEnrollmentId);
-    return !localId;
-  }
-
-  /**
-   * Validates an MFA enrollment ID being updated, checking either that
-   * the ID does not already exist, or that the ID exists and is being
-   * used by the current user.
-   *
-   * @param mfaEnrollmentId the proposed MFA enrollment ID
-   * @param user the user being updated
-   */
-  validateMfaEnrollmentIdForUpdate(mfaEnrollmentId: string, user: UserInfo): boolean {
-    const localId = this.localIdForMfaEnrollmentId.get(mfaEnrollmentId);
-    // if the ID is in use for another user, it is invalid. otherwise, we'll allow an update
-    // even if the user is doing something sketchy like swapping the ID's on various
-    // existing enrolled factors.
-    return !localId || localId === user.localId;
-  }
-
-  private updateMfaEnrollments(
-    user: UserInfo,
-    mfaInfo: Schemas["GoogleCloudIdentitytoolkitV1MfaEnrollment"][]
-  ): UserInfo {
-    for (const factor of mfaInfo) {
-      if (!factor.mfaEnrollmentId) {
-        throw new Error("MFA Factor Must Have an Enrollment ID");
-      }
-      const enrollments = this.mfaEnrollmentIdsForLocalId.get(user.localId) ?? new Set();
-      enrollments.add(factor.mfaEnrollmentId);
-      this.mfaEnrollmentIdsForLocalId.set(user.localId, enrollments);
-      this.localIdForMfaEnrollmentId.set(factor.mfaEnrollmentId, user.localId);
+  validateMfaEnrollments(enrollments: MfaEnrollments): MfaEnrollments {
+    const enrollmentIds = new Set();
+    for (const enrollment of enrollments) {
+      assert(
+        enrollment.phoneInfo && isValidPhoneNumber(enrollment.phoneInfo),
+        "INVALID_MFA_PHONE_NUMBER : Invalid format."
+      );
+      assert(enrollment.mfaEnrollmentId, "INVALID_MFA_ID : mfaEnrollmentId must be defined.");
+      assert(enrollmentIds.add(enrollment.mfaEnrollmentId), "DUPLICATE_MFA_ENROLLMENT_ID");
     }
-    return user;
+    return enrollments;
   }
 
   private updateUserProviderInfo(
@@ -464,8 +455,6 @@ export class ProjectState {
     this.userIdForProviderRawId.clear();
     this.refreshTokens.clear();
     this.refreshTokensForLocalId.clear();
-    this.mfaEnrollmentIdsForLocalId.clear();
-    this.localIdForMfaEnrollmentId.clear();
 
     // We do not clear OOBs / phone verification codes since some of those may
     // still be valid (e.g. email link / phone sign-in may still create a new
@@ -542,15 +531,6 @@ export class ProjectState {
 
     if (user.phoneNumber) {
       this.localIdForPhoneNumber.delete(user.phoneNumber);
-    }
-
-    if (user.mfaInfo) {
-      for (const factor of user.mfaInfo) {
-        if (factor.mfaEnrollmentId) {
-          this.localIdForMfaEnrollmentId.delete(factor.mfaEnrollmentId);
-        }
-      }
-      this.mfaEnrollmentIdsForLocalId.delete(user.localId);
     }
 
     for (const info of user.providerUserInfo ?? []) {

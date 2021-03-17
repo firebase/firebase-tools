@@ -1,7 +1,6 @@
 import { expect } from "chai";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import { FirebaseJwtPayload } from "../../../emulator/auth/operations";
-import { registerMfaUser, TEST_PHONE_NUMBER } from "./helpers";
 import { describeAuthEmulator } from "./setup";
 import {
   expectStatusCode,
@@ -9,6 +8,9 @@ import {
   signInWithPhoneNumber,
   updateAccountByLocalId,
   inspectVerificationCodes,
+  registerUser,
+  TEST_MFA_INFO,
+  TEST_PHONE_NUMBER,
 } from "./helpers";
 
 describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
@@ -253,10 +255,9 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
     const user = {
       email: "alice@example.com",
       password: "notasecret",
-      mfaInfo: [{ displayName: "Cell Phone", phoneInfo: TEST_PHONE_NUMBER }],
+      mfaInfo: [TEST_MFA_INFO],
     };
-    const { localId, idToken } = await registerMfaUser(authApi(), user);
-    expect(localId).to.be.a("string").and.not.empty;
+    const { localId, idToken } = await registerUser(authApi(), user);
 
     const phoneNumber = TEST_PHONE_NUMBER;
     const sessionInfo = await authApi()

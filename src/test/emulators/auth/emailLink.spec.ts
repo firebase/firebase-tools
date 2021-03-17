@@ -1,7 +1,6 @@
 import { expect } from "chai";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import { FirebaseJwtPayload } from "../../../emulator/auth/operations";
-import { registerMfaUser, TEST_PHONE_NUMBER } from "./helpers";
 import { describeAuthEmulator } from "./setup";
 import {
   expectStatusCode,
@@ -11,6 +10,8 @@ import {
   getSigninMethods,
   inspectOobs,
   createEmailSignInOob,
+  TEST_PHONE_NUMBER,
+  TEST_MFA_INFO,
 } from "./helpers";
 
 describeAuthEmulator("email link sign-in", ({ authApi }) => {
@@ -206,10 +207,9 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
     const user = {
       email: "alice@example.com",
       password: "notasecret",
-      mfaInfo: [{ displayName: "Cell Phone", phoneInfo: TEST_PHONE_NUMBER }],
+      mfaInfo: [TEST_MFA_INFO],
     };
-    const { localId, idToken, email } = await registerMfaUser(authApi(), user);
-    expect(localId).to.be.a("string").and.not.empty;
+    const { idToken, email } = await registerUser(authApi(), user);
     const { oobCode } = await createEmailSignInOob(authApi(), email);
 
     await authApi()

@@ -9,6 +9,10 @@ import { components } from "../../../emulator/auth/schema";
 
 export { PROJECT_ID };
 export const TEST_PHONE_NUMBER = "+15555550100";
+export const TEST_MFA_INFO = {
+  displayName: "Cell Phone",
+  phoneInfo: TEST_PHONE_NUMBER,
+};
 export const FAKE_GOOGLE_ACCOUNT = {
   displayName: "Example User",
   email: "example@gmail.com",
@@ -80,7 +84,12 @@ export function fakeClaims(input: Partial<IdpJwtPayload> & { sub: string }): Idp
 
 export function registerUser(
   testAgent: TestAgent,
-  user: { email: string; password: string; displayName?: string }
+  user: {
+    email: string;
+    password: string;
+    displayName?: string;
+    mfaInfo?: components["schemas"]["GoogleCloudIdentitytoolkitV1MfaEnrollment"][];
+  }
 ): Promise<{ idToken: string; localId: string; refreshToken: string; email: string }> {
   return testAgent
     .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
@@ -110,29 +119,6 @@ export function registerAnonUser(
         idToken: res.body.idToken,
         localId: res.body.localId,
         refreshToken: res.body.refreshToken,
-      };
-    });
-}
-
-export function registerMfaUser(
-  testAgent: TestAgent,
-  user: {
-    email: string;
-    password: string;
-    mfaInfo: components["schemas"]["GoogleCloudIdentitytoolkitV1MfaEnrollment"][];
-  }
-): Promise<{ idToken: string; localId: string; refreshToken: string; email: string }> {
-  return testAgent
-    .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
-    .send(user)
-    .query({ key: "fake-api-key" })
-    .then((res) => {
-      expectStatusCode(200, res);
-      return {
-        idToken: res.body.idToken,
-        localId: res.body.localId,
-        refreshToken: res.body.refreshToken,
-        email: res.body.email,
       };
     });
 }

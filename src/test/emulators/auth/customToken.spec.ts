@@ -8,8 +8,8 @@ import {
   getAccountInfoByIdToken,
   updateAccountByLocalId,
   signInWithEmailLink,
-  registerMfaUser,
-  TEST_PHONE_NUMBER,
+  registerUser,
+  TEST_MFA_INFO,
 } from "./helpers";
 
 describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
@@ -238,10 +238,9 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
     const user = {
       email: "alice@example.com",
       password: "notasecret",
-      mfaInfo: [{ displayName: "Cell Phone", phoneInfo: TEST_PHONE_NUMBER }],
+      mfaInfo: [TEST_MFA_INFO],
     };
-    const { localId } = await registerMfaUser(authApi(), user);
-    expect(localId).to.be.a("string").and.not.empty;
+    const { localId } = await registerUser(authApi(), user);
 
     const claims = { abc: "def", ultimate: { answer: 42 } };
     const token = JSON.stringify({ uid: localId, claims });

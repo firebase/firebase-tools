@@ -2,7 +2,6 @@ import { expect } from "chai";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import { FirebaseJwtPayload } from "../../../emulator/auth/operations";
 import { ProviderUserInfo, PROVIDER_PASSWORD, PROVIDER_PHONE } from "../../../emulator/auth/state";
-import { registerMfaUser, TEST_PHONE_NUMBER } from "./helpers";
 import { describeAuthEmulator } from "./setup";
 import {
   expectStatusCode,
@@ -16,6 +15,8 @@ import {
   signInWithEmailLink,
   inspectOobs,
   expectIdTokenExpired,
+  TEST_PHONE_NUMBER,
+  TEST_MFA_INFO,
 } from "./helpers";
 import { randomId } from "../../../emulator/auth/utils";
 
@@ -419,12 +420,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
   it("should allow creating MFA info", async () => {
     const user = { email: "bob@example.com", password: "notasecret" };
     const { localId, idToken } = await registerUser(authApi(), user);
-
-    const mfaInfo = {
-      mfaEnrollmentId: randomId(28),
-      displayName: "Cell Phone",
-      phoneInfo: TEST_PHONE_NUMBER,
-    };
+    const mfaEnrollmentId = randomId(28);
 
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:update")
@@ -432,29 +428,30 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       .send({
         localId,
         mfa: {
-          enrollments: [mfaInfo],
+          enrollments: [
+            {
+              ...TEST_MFA_INFO,
+              mfaEnrollmentId,
+            },
+          ],
         },
       })
       .then((res) => expectStatusCode(200, res));
 
     const info = await getAccountInfoByIdToken(authApi(), idToken);
     expect(info.mfaInfo).to.have.length(1);
-    const updated = info.mfaInfo?.pop();
-    expect(updated?.displayName).to.eq(mfaInfo.displayName);
-    expect(updated?.phoneInfo).to.eq(mfaInfo.phoneInfo);
-    expect(updated?.mfaEnrollmentId).to.eq(mfaInfo.mfaEnrollmentId);
+    const updated = info.mfaInfo![0];
+    expect(updated.displayName).to.eq(TEST_MFA_INFO.displayName);
+    expect(updated.phoneInfo).to.eq(TEST_MFA_INFO.phoneInfo);
+    expect(updated.mfaEnrollmentId).to.eq(mfaEnrollmentId);
   });
 
   it("should allow adding a second MFA factor", async () => {
-    const mfaInfo = {
-      displayName: "Cell Phone",
-      phoneInfo: TEST_PHONE_NUMBER,
-    };
-    const user = { email: "bob@example.com", password: "notasecret", mfaInfo: [mfaInfo] };
-    const { localId, idToken } = await registerMfaUser(authApi(), user);
-    let info = await getAccountInfoByIdToken(authApi(), idToken);
-    expect(info.mfaInfo).to.have.length(1);
-    const savedMfaInfo = info.mfaInfo![0];
+    const user = { email: "bob@example.com", password: "notasecret", mfaInfo: [TEST_MFA_INFO] };
+    const { localId, idToken } = await registerUser(authApi(), user);
+    const savedUserInfo = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(savedUserInfo.mfaInfo).to.have.length(1);
+    const savedMfaInfo = savedUserInfo.mfaInfo![0];
     const secondMfaFactor = {
       displayName: "Second MFA Factor",
       phoneInfo: TEST_PHONE_NUMBER,
@@ -472,9 +469,9 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       })
       .then((res) => expectStatusCode(200, res));
 
-    info = await getAccountInfoByIdToken(authApi(), idToken);
-    expect(info.mfaInfo).to.have.length(2);
-    for (const mfaFactor of info.mfaInfo!) {
+    const updatedUserInfo = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(updatedUserInfo.mfaInfo).to.have.length(2);
+    for (const mfaFactor of updatedUserInfo.mfaInfo!) {
       if (mfaFactor.mfaEnrollmentId === savedMfaInfo.mfaEnrollmentId) {
         expect(savedMfaInfo.displayName).to.eq(mfaFactor.displayName);
         expect(savedMfaInfo.phoneInfo).to.eq(mfaFactor.phoneInfo);
@@ -488,18 +485,14 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
   });
 
   it("should allow changing the MFA phone number", async () => {
-    let mfaInfo: any = {
-      displayName: "Cell Phone",
-      phoneInfo: TEST_PHONE_NUMBER,
-    };
-    const user = { email: "bob@example.com", password: "notasecret", mfaInfo: [mfaInfo] };
-    const { localId, idToken } = await registerMfaUser(authApi(), user);
-    let info = await getAccountInfoByIdToken(authApi(), idToken);
-    expect(info.mfaInfo).to.have.length(1);
-    mfaInfo = info.mfaInfo!.pop();
-    expect(mfaInfo?.mfaEnrollmentId).to.be.a("string").and.not.empty;
-    mfaInfo.displayName = "New Display Name";
-    mfaInfo.phoneInfo = "+15555550101";
+    const user = { email: "bob@example.com", password: "notasecret", mfaInfo: [TEST_MFA_INFO] };
+    const { localId, idToken } = await registerUser(authApi(), user);
+    const savedUserInfo = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(savedUserInfo.mfaInfo).to.have.length(1);
+    const savedMfaInfo = savedUserInfo.mfaInfo![0];
+    expect(savedMfaInfo?.mfaEnrollmentId).to.be.a("string").and.not.empty;
+    savedMfaInfo.displayName = "New Display Name";
+    savedMfaInfo.phoneInfo = "+15555550101";
 
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:update")
@@ -507,30 +500,26 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       .send({
         localId,
         mfa: {
-          enrollments: [mfaInfo],
+          enrollments: [savedMfaInfo],
         },
       })
       .then((res) => expectStatusCode(200, res));
 
-    info = await getAccountInfoByIdToken(authApi(), idToken);
-    expect(info.mfaInfo).to.have.length(1);
-    const updated = info.mfaInfo?.pop();
-    expect(updated?.displayName).to.eq("New Display Name");
-    expect(updated?.phoneInfo).to.eq("+15555550101");
-    expect(updated?.mfaEnrollmentId).to.eq(mfaInfo.mfaEnrollmentId);
+    const updatedUserInfo = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(updatedUserInfo.mfaInfo).to.have.length(1);
+    const updatedMfaInfo = updatedUserInfo.mfaInfo![0];
+    expect(updatedMfaInfo?.displayName).to.eq("New Display Name");
+    expect(updatedMfaInfo?.phoneInfo).to.eq("+15555550101");
+    expect(updatedMfaInfo?.mfaEnrollmentId).to.eq(savedMfaInfo.mfaEnrollmentId);
   });
 
   it("should allow changing the MFA enrollment ID", async () => {
-    let mfaInfo: any = {
-      displayName: "Cell Phone",
-      phoneInfo: TEST_PHONE_NUMBER,
-    };
-    const user = { email: "bob@example.com", password: "notasecret", mfaInfo: [mfaInfo] };
-    const { localId, idToken } = await registerMfaUser(authApi(), user);
-    let info = await getAccountInfoByIdToken(authApi(), idToken);
-    expect(info.mfaInfo).to.have.length(1);
-    mfaInfo = info.mfaInfo!.pop();
-    expect(mfaInfo?.mfaEnrollmentId).to.be.a("string").and.not.empty;
+    const user = { email: "bob@example.com", password: "notasecret", mfaInfo: [TEST_MFA_INFO] };
+    const { localId, idToken } = await registerUser(authApi(), user);
+    const savedUserInfo = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(savedUserInfo.mfaInfo).to.have.length(1);
+    const savedMfaInfo = savedUserInfo.mfaInfo![0];
+    expect(savedMfaInfo.mfaEnrollmentId).to.be.a("string").and.not.empty;
 
     const newEnrollmentId = randomId(28);
     await authApi()
@@ -539,33 +528,30 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       .send({
         localId,
         mfa: {
-          enrollments: [{ ...mfaInfo, mfaEnrollmentId: newEnrollmentId }],
+          enrollments: [{ ...savedMfaInfo, mfaEnrollmentId: newEnrollmentId }],
         },
       })
       .then((res) => expectStatusCode(200, res));
 
-    info = await getAccountInfoByIdToken(authApi(), idToken);
-    expect(info.mfaInfo).to.have.length(1);
-    const updated = info.mfaInfo?.pop();
-    expect(updated?.displayName).to.eq(mfaInfo.displayName);
-    expect(updated?.phoneInfo).to.eq(mfaInfo.phoneInfo);
-    expect(updated?.mfaEnrollmentId).not.to.eq(mfaInfo.mfaEnrollmentId);
-    expect(updated?.mfaEnrollmentId).to.eq(newEnrollmentId);
+    const updatedUserInfo = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(updatedUserInfo.mfaInfo).to.have.length(1);
+    const updatedMfaInfo = updatedUserInfo.mfaInfo![0];
+    expect(updatedMfaInfo.displayName).to.eq(savedMfaInfo.displayName);
+    expect(updatedMfaInfo.phoneInfo).to.eq(savedMfaInfo.phoneInfo);
+    expect(updatedMfaInfo.mfaEnrollmentId).not.to.eq(savedMfaInfo.mfaEnrollmentId);
+    expect(updatedMfaInfo.mfaEnrollmentId).to.eq(newEnrollmentId);
   });
 
   it("should overwrite existing MFA info", async () => {
-    const mfaInfo: any = {
-      displayName: "Cell Phone",
-      phoneInfo: TEST_PHONE_NUMBER,
-    };
     const user = {
       email: "bob@example.com",
       password: "notasecret",
-      mfaInfo: [mfaInfo, mfaInfo, mfaInfo],
+      mfaInfo: [TEST_MFA_INFO, TEST_MFA_INFO, TEST_MFA_INFO],
     };
-    const { localId, idToken } = await registerMfaUser(authApi(), user);
-    let info = await getAccountInfoByIdToken(authApi(), idToken);
-    expect(info.mfaInfo).to.have.length(3);
+    const { localId, idToken } = await registerUser(authApi(), user);
+    const savedUserInfo = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(savedUserInfo.mfaInfo).to.have.length(3);
+    const oldEnrollmentIds = savedUserInfo.mfaInfo!.map((_) => _.mfaEnrollmentId);
 
     const newMfaInfo = {
       displayName: "New New",
@@ -583,30 +569,24 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       })
       .then((res) => expectStatusCode(200, res));
 
-    info = await getAccountInfoByIdToken(authApi(), idToken);
-    expect(info.mfaInfo).to.have.length(1);
-    const updated = info.mfaInfo?.pop();
-    expect(updated?.phoneInfo).to.eq(newMfaInfo.phoneInfo);
-    expect(updated?.displayName).to.eq(newMfaInfo.displayName);
-    expect(updated?.mfaEnrollmentId).to.eq(newMfaInfo.mfaEnrollmentId);
-    for (const { mfaEnrollmentId } of info.mfaInfo ?? []) {
-      expect(updated?.mfaEnrollmentId).not.to.eq(mfaEnrollmentId);
-    }
+    const updatedUserInfo = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(updatedUserInfo.mfaInfo).to.have.length(1);
+    const updatedMfaInfo = updatedUserInfo.mfaInfo![0];
+    expect(updatedMfaInfo.phoneInfo).to.eq(newMfaInfo.phoneInfo);
+    expect(updatedMfaInfo.displayName).to.eq(newMfaInfo.displayName);
+    expect(updatedMfaInfo.mfaEnrollmentId).to.eq(newMfaInfo.mfaEnrollmentId);
+    expect(oldEnrollmentIds).not.to.include(updatedMfaInfo.mfaEnrollmentId);
   });
 
   it("should remove MFA info with an empty enrollments array", async () => {
-    const mfaInfo: any = {
-      displayName: "Cell Phone",
-      phoneInfo: TEST_PHONE_NUMBER,
-    };
     const user = {
       email: "bob@example.com",
       password: "notasecret",
-      mfaInfo: [mfaInfo, mfaInfo, mfaInfo],
+      mfaInfo: [TEST_MFA_INFO, TEST_MFA_INFO, TEST_MFA_INFO],
     };
-    const { localId, idToken } = await registerMfaUser(authApi(), user);
-    let info = await getAccountInfoByIdToken(authApi(), idToken);
-    expect(info.mfaInfo).to.have.length(3);
+    const { localId, idToken } = await registerUser(authApi(), user);
+    const savedUserInfo = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(savedUserInfo.mfaInfo).to.have.length(3);
 
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:update")
@@ -619,23 +599,19 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       })
       .then((res) => expectStatusCode(200, res));
 
-    info = await getAccountInfoByIdToken(authApi(), idToken);
-    expect(info.mfaInfo).to.be.undefined;
+    const updatedUserInfo = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(updatedUserInfo.mfaInfo).to.be.undefined;
   });
 
   it("should remove MFA info with an undefined enrollments array", async () => {
-    const mfaInfo: any = {
-      displayName: "Cell Phone",
-      phoneInfo: TEST_PHONE_NUMBER,
-    };
     const user = {
       email: "bob@example.com",
       password: "notasecret",
-      mfaInfo: [mfaInfo, mfaInfo, mfaInfo],
+      mfaInfo: [TEST_MFA_INFO, TEST_MFA_INFO, TEST_MFA_INFO],
     };
-    const { localId, idToken } = await registerMfaUser(authApi(), user);
-    let info = await getAccountInfoByIdToken(authApi(), idToken);
-    expect(info.mfaInfo).to.have.length(3);
+    const { localId, idToken } = await registerUser(authApi(), user);
+    const savedUserInfo = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(savedUserInfo.mfaInfo).to.have.length(3);
 
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:update")
@@ -648,19 +624,13 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       })
       .then((res) => expectStatusCode(200, res));
 
-    info = await getAccountInfoByIdToken(authApi(), idToken);
-    expect(info.mfaInfo).to.be.undefined;
+    const updatedUserInfo = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(updatedUserInfo.mfaInfo).to.be.undefined;
   });
 
   it("should error if mfaEnrollmentId is absent", async () => {
-    const mfaInfo: any = {
-      displayName: "Cell Phone",
-      phoneInfo: TEST_PHONE_NUMBER,
-    };
-    const user = { email: "bob@example.com", password: "notasecret", mfaInfo: [mfaInfo] };
-    const { localId, idToken } = await registerMfaUser(authApi(), user);
-    const info = await getAccountInfoByIdToken(authApi(), idToken);
-    expect(info.mfaInfo).to.have.length(1);
+    const user = { email: "bob@example.com", password: "notasecret", mfaInfo: [TEST_MFA_INFO] };
+    const { localId } = await registerUser(authApi(), user);
 
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:update")
@@ -668,34 +638,30 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       .send({
         localId,
         mfa: {
-          enrollments: [mfaInfo],
+          enrollments: [TEST_MFA_INFO],
         },
       })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error.message).to.eq(
-          "INVALID_MFA_ID : Must specify non-null mfaEnrollmentId on update."
-        );
+        expect(res.body.error.message).to.eq("INVALID_MFA_ID : mfaEnrollmentId must be defined.");
       });
   });
 
-  it("should error if mfaEnrollmentId is in use by another user", async () => {
-    const mfaInfo: any = {
-      displayName: "Cell Phone",
-      phoneInfo: TEST_PHONE_NUMBER,
+  it("does not require MFA Enrollment ID uniqueness across users", async () => {
+    const bobUser = { email: "bob@example.com", password: "notasecret", mfaInfo: [TEST_MFA_INFO] };
+    const aliceUser = {
+      email: "alice@example.com",
+      password: "notasecret",
+      mfaInfo: [TEST_MFA_INFO],
     };
-    const bobUser = { email: "bob@example.com", password: "notasecret", mfaInfo: [mfaInfo] };
-    const aliceUser = { email: "alice@example.com", password: "notasecret", mfaInfo: [mfaInfo] };
-    const { localId: bobLocalId, idToken: bobIdToken } = await registerMfaUser(authApi(), bobUser);
+    const { localId: bobLocalId, idToken: bobIdToken } = await registerUser(authApi(), bobUser);
     const bobInfo = await getAccountInfoByIdToken(authApi(), bobIdToken);
     expect(bobInfo.mfaInfo).to.have.length(1);
 
-    const { localId: aliceLocalId, idToken: aliceIdToken } = await registerMfaUser(
-      authApi(),
-      aliceUser
-    );
+    const { idToken: aliceIdToken } = await registerUser(authApi(), aliceUser);
     const aliceInfo = await getAccountInfoByIdToken(authApi(), aliceIdToken);
     expect(aliceInfo.mfaInfo).to.have.length(1);
+    const aliceEnrollmentId = aliceInfo.mfaInfo![0].mfaEnrollmentId;
 
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:update")
@@ -706,46 +672,25 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
           enrollments: [
             {
               ...bobInfo.mfaInfo![0],
-              mfaEnrollmentId: aliceInfo.mfaInfo![0].mfaEnrollmentId,
+              mfaEnrollmentId: aliceEnrollmentId,
             },
           ],
         },
       })
       .then((res) => {
-        expectStatusCode(400, res);
-        expect(res.body.error.message).to.eq("INVALID_MFA_ID : enrollment ID was not unique.");
+        expectStatusCode(200, res);
       });
 
-    await authApi()
-      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
-      .set("Authorization", "Bearer owner")
-      .send({
-        localId: aliceLocalId,
-        mfa: {
-          enrollments: [
-            {
-              ...aliceInfo.mfaInfo![0],
-              mfaEnrollmentId: bobInfo.mfaInfo![0].mfaEnrollmentId,
-            },
-          ],
-        },
-      })
-      .then((res) => {
-        expectStatusCode(400, res);
-        expect(res.body.error.message).to.eq("INVALID_MFA_ID : enrollment ID was not unique.");
-      });
+    const updatedBobInfo = await getAccountInfoByIdToken(authApi(), bobIdToken);
+    expect(updatedBobInfo.mfaInfo![0].mfaEnrollmentId).to.equal(aliceEnrollmentId);
   });
 
   it("should error if phone number for MFA is invalid", async () => {
-    const mfaInfo: any = {
-      displayName: "Cell Phone",
-      phoneInfo: TEST_PHONE_NUMBER,
-    };
-    const user = { email: "bob@example.com", password: "notasecret", mfaInfo: [mfaInfo] };
-    const { localId, idToken } = await registerMfaUser(authApi(), user);
+    const user = { email: "bob@example.com", password: "notasecret", mfaInfo: [TEST_MFA_INFO] };
+    const { localId, idToken } = await registerUser(authApi(), user);
     const info = await getAccountInfoByIdToken(authApi(), idToken);
     expect(info.mfaInfo).to.have.length(1);
-    const mfaInfoForUpdate = { ...info.mfaInfo?.pop() };
+    const mfaInfoForUpdate = { ...info.mfaInfo![0] };
 
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:update")
@@ -795,8 +740,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
         mfa: {
           enrollments: [
             {
-              displayName: "Cell Phone",
-              phoneInfo: TEST_PHONE_NUMBER,
+              ...TEST_MFA_INFO,
               mfaEnrollmentId: randomId(28),
             },
           ],

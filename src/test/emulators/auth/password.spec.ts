@@ -4,8 +4,8 @@ import { FirebaseJwtPayload } from "../../../emulator/auth/operations";
 import { describeAuthEmulator } from "./setup";
 import {
   expectStatusCode,
-  registerMfaUser,
   registerUser,
+  TEST_MFA_INFO,
   TEST_PHONE_NUMBER,
   updateAccountByLocalId,
 } from "./helpers";
@@ -116,10 +116,9 @@ describeAuthEmulator("accounts:signInWithPassword", ({ authApi }) => {
     const user = {
       email: "alice@example.com",
       password: "notasecret",
-      mfaInfo: [{ displayName: "Cell Phone", phoneInfo: TEST_PHONE_NUMBER }],
+      mfaInfo: [TEST_MFA_INFO],
     };
-    const { localId } = await registerMfaUser(authApi(), user);
-    expect(localId).to.be.a("string").and.not.empty;
+    await registerUser(authApi(), user);
 
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword")

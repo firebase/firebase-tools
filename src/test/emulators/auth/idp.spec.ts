@@ -2,12 +2,6 @@ import { expect } from "chai";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import { FirebaseJwtPayload } from "../../../emulator/auth/operations";
 import { PROVIDER_PASSWORD, SIGNIN_METHOD_EMAIL_LINK } from "../../../emulator/auth/state";
-import {
-  TEST_PHONE_NUMBER,
-  FAKE_GOOGLE_ACCOUNT,
-  REAL_GOOGLE_ACCOUNT,
-  registerMfaUser,
-} from "./helpers";
 import { describeAuthEmulator } from "./setup";
 import {
   expectStatusCode,
@@ -21,6 +15,10 @@ import {
   signInWithEmailLink,
   updateProjectConfig,
   fakeClaims,
+  TEST_PHONE_NUMBER,
+  FAKE_GOOGLE_ACCOUNT,
+  REAL_GOOGLE_ACCOUNT,
+  TEST_MFA_INFO,
 } from "./helpers";
 
 // Many JWT fields from IDPs use snake_case and we need to match that.
@@ -674,9 +672,9 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
     const user = {
       email: "alice@example.com",
       password: "notasecret",
-      mfaInfo: [{ displayName: "Cell Phone", phoneInfo: TEST_PHONE_NUMBER }],
+      mfaInfo: [TEST_MFA_INFO],
     };
-    const { idToken } = await registerMfaUser(authApi(), user);
+    const { idToken } = await registerUser(authApi(), user);
 
     const claims = fakeClaims({
       sub: "123456789012345678901",

@@ -1,17 +1,19 @@
 import { expect } from "chai";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import { FirebaseJwtPayload } from "../../../emulator/auth/operations";
-import { getAccountInfoByLocalId, registerMfaUser, TEST_PHONE_NUMBER } from "./helpers";
 import { describeAuthEmulator } from "./setup";
 import {
   expectStatusCode,
   getAccountInfoByIdToken,
+  getAccountInfoByLocalId,
   registerUser,
   signInWithFakeClaims,
   registerAnonUser,
   signInWithPhoneNumber,
   updateAccountByLocalId,
   getSigninMethods,
+  TEST_PHONE_NUMBER,
+  TEST_MFA_INFO,
 } from "./helpers";
 import { randomId } from "../../../emulator/auth/utils";
 
@@ -398,67 +400,47 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
   });
 
   it("should create new account with multi factor info", async () => {
-    const mfaInfo = { displayName: "Cell Phone", phoneInfo: TEST_PHONE_NUMBER };
-    const user = { email: "alice@example.com", password: "notasecret", mfaInfo: [mfaInfo] };
-    const localId = await registerMfaUser(authApi(), user).then(({ localId }) => {
-      expect(localId).to.be.a("string").and.not.empty;
-      return localId;
-    });
-
+    const user = { email: "alice@example.com", password: "notasecret", mfaInfo: [TEST_MFA_INFO] };
+    const { localId } = await registerUser(authApi(), user);
     const info = await getAccountInfoByLocalId(authApi(), localId);
     expect(info.mfaInfo).to.have.length(1);
-    const savedMfaInfo = info.mfaInfo?.pop();
-    expect(savedMfaInfo).to.include(mfaInfo);
-    expect(savedMfaInfo?.phoneInfo).to.equal(mfaInfo.phoneInfo);
-    expect(savedMfaInfo?.displayName).to.equal(mfaInfo.displayName);
+    const savedMfaInfo = info.mfaInfo![0];
+    expect(savedMfaInfo).to.include(TEST_MFA_INFO);
     expect(savedMfaInfo?.mfaEnrollmentId).to.be.a("string").and.not.empty;
   });
 
   it("should create new account with multiple second factors", async () => {
-    const mfaInfo = { displayName: "Cell Phone", phoneInfo: TEST_PHONE_NUMBER };
     const user = {
       email: "alice@example.com",
       password: "notasecret",
-      mfaInfo: [mfaInfo, mfaInfo, mfaInfo],
+      mfaInfo: [TEST_MFA_INFO, TEST_MFA_INFO, TEST_MFA_INFO],
     };
-    const localId = await registerMfaUser(authApi(), user).then(({ localId }) => {
-      expect(localId).to.be.a("string").and.not.empty;
-      return localId;
-    });
-
+    const { localId } = await registerUser(authApi(), user);
     const info = await getAccountInfoByLocalId(authApi(), localId);
     expect(info.mfaInfo).to.have.length(3);
-    for (const savedMfaInfo of info.mfaInfo ?? []) {
-      expect(savedMfaInfo).to.include(mfaInfo);
-      expect(savedMfaInfo?.phoneInfo).to.equal(mfaInfo.phoneInfo);
-      expect(savedMfaInfo?.displayName).to.equal(mfaInfo.displayName);
+    for (const savedMfaInfo of info.mfaInfo!) {
+      expect(savedMfaInfo).to.include(TEST_MFA_INFO);
       expect(savedMfaInfo?.mfaEnrollmentId).to.be.a("string").and.not.empty;
     }
     // each factor should have a unique id...
-    expect(info.mfaInfo![0].mfaEnrollmentId).not.to.eq(info.mfaInfo![1].mfaEnrollmentId);
-    expect(info.mfaInfo![1].mfaEnrollmentId).not.to.eq(info.mfaInfo![2].mfaEnrollmentId);
-    expect(info.mfaInfo![0].mfaEnrollmentId).not.to.eq(info.mfaInfo![2].mfaEnrollmentId);
+    expect(new Set(info.mfaInfo!.map((_) => _.mfaEnrollmentId))).to.have.length(3);
   });
 
   it("does not require a display name for multi factor info", async () => {
     const mfaInfo = { phoneInfo: TEST_PHONE_NUMBER };
     const user = { email: "alice@example.com", password: "notasecret", mfaInfo: [mfaInfo] };
-    const localId = await registerMfaUser(authApi(), user).then(({ localId }) => {
-      expect(localId).to.be.a("string").and.not.empty;
-      return localId;
-    });
+    const { localId } = await registerUser(authApi(), user);
 
     const info = await getAccountInfoByLocalId(authApi(), localId);
     expect(info.mfaInfo).to.have.length(1);
-    const savedMfaInfo = info.mfaInfo?.pop();
+    const savedMfaInfo = info.mfaInfo![0];
     expect(savedMfaInfo).to.include(mfaInfo);
-    expect(savedMfaInfo?.phoneInfo).to.equal(mfaInfo.phoneInfo);
     expect(savedMfaInfo?.mfaEnrollmentId).to.be.a("string").and.not.empty;
     expect(savedMfaInfo?.displayName).to.be.undefined;
   });
 
   it("should error if multi factor phone number is invalid", async () => {
-    const mfaInfo = { displayName: "Cell Phone", phoneInfo: "5555550100" /* no country code */ };
+    const mfaInfo = { phoneInfo: "5555550100" /* no country code */ };
     const user = { email: "alice@example.com", password: "notasecret", mfaInfo: [mfaInfo] };
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
@@ -470,20 +452,18 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
       });
   });
 
-  it("should error if a multi factor enrollment ID is provided on create", async () => {
+  it("should ignore if a multi factor enrollment ID is provided on create", async () => {
     const mfaInfo = {
-      displayName: "Cell Phone",
-      phoneInfo: TEST_PHONE_NUMBER,
+      ...TEST_MFA_INFO,
       mfaEnrollmentId: randomId(28),
     };
     const user = { email: "alice@example.com", password: "notasecret", mfaInfo: [mfaInfo] };
-    await authApi()
-      .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
-      .set("Authorization", "Bearer owner")
-      .send(user)
-      .then((res) => {
-        expectStatusCode(400, res);
-        expect(res.body.error.message).to.equal("UNEXPECTED_PARAMETER : mfaEnrollmentId");
-      });
+    const { localId } = await registerUser(authApi(), user);
+    const info = await getAccountInfoByLocalId(authApi(), localId);
+    expect(info.mfaInfo).to.have.length(1);
+    const savedMfaInfo = info.mfaInfo![0];
+    expect(savedMfaInfo?.phoneInfo).to.equal(mfaInfo.phoneInfo);
+    expect(savedMfaInfo?.mfaEnrollmentId).not.to.eq(mfaInfo.mfaEnrollmentId);
+    expect(savedMfaInfo?.displayName).to.equal(mfaInfo.displayName);
   });
 });
