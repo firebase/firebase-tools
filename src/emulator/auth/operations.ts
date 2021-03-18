@@ -165,10 +165,9 @@ function signUp(
     updates.validSince = toUnixTimestamp(new Date()).toString();
   }
   if (reqBody.mfaInfo) {
-    // on create, supply a function that creates a new enrollment ID per unique factor
-    updates.mfaInfo = getMfaEnrollmentsFromRequest(state, reqBody.mfaInfo, (_, ids) =>
-      newRandomId(28, ids)
-    );
+    updates.mfaInfo = getMfaEnrollmentsFromRequest(state, reqBody.mfaInfo, {
+      generateEnrollmentIds: true,
+    });
   }
   let user: UserInfo | undefined;
   if (reqBody.idToken) {
@@ -982,16 +981,7 @@ export function setAccountInfoImpl(
     // clear any existing MFA data for the user. if no `mfa` key is specified, MFA is left unchanged.
     if (reqBody.mfa) {
       if (reqBody.mfa.enrollments && reqBody.mfa.enrollments.length > 0) {
-        // on update, MFA enrollment ID must be specified, and we use the uid defined on each factor
-        // in our ID generating function.
-        updates.mfaInfo = getMfaEnrollmentsFromRequest(
-          state,
-          reqBody.mfa.enrollments,
-          ({ mfaEnrollmentId }) => {
-            assert(mfaEnrollmentId, "INVALID_MFA_ENROLLMENT_ID : mfaEnrollmentId must be defined.");
-            return mfaEnrollmentId;
-          }
-        );
+        updates.mfaInfo = getMfaEnrollmentsFromRequest(state, reqBody.mfa.enrollments);
       } else {
         updates.mfaInfo = undefined;
       }
@@ -1831,7 +1821,7 @@ function newRandomId(length: number, existingIds?: Set<string>): string {
 function getMfaEnrollmentsFromRequest(
   state: ProjectState,
   request: MfaEnrollments,
-  getEnrollmentId: (enrollment: MfaEnrollment, enrollmentIds: Set<string>) => string
+  options?: { generateEnrollmentIds: boolean }
 ): MfaEnrollments {
   const enrollments: MfaEnrollments = [];
   const phoneNumbers: Set<string> = new Set<string>();
@@ -1842,7 +1832,10 @@ function getMfaEnrollmentsFromRequest(
       "INVALID_MFA_PHONE_NUMBER : Invalid format."
     );
     if (!phoneNumbers.has(enrollment.phoneInfo)) {
-      const mfaEnrollmentId = getEnrollmentId(enrollment, enrollmentIds);
+      const mfaEnrollmentId = options?.generateEnrollmentIds
+        ? newRandomId(28, enrollmentIds)
+        : enrollment.mfaEnrollmentId;
+      assert(mfaEnrollmentId, "INVALID_MFA_ENROLLMENT_ID : mfaEnrollmentId must be defined.");
       assert(!enrollmentIds.has(mfaEnrollmentId), "DUPLICATE_MFA_ENROLLMENT_ID");
       enrollments.push({ ...enrollment, mfaEnrollmentId });
       phoneNumbers.add(enrollment.phoneInfo);

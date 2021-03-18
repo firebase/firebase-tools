@@ -15,10 +15,12 @@ import {
   signInWithEmailLink,
   inspectOobs,
   expectIdTokenExpired,
-  TEST_PHONE_NUMBER,
   TEST_MFA_INFO,
+  TEST_PHONE_NUMBER,
+  TEST_PHONE_NUMBER_2,
+  TEST_PHONE_NUMBER_3,
+  TEST_INVALID_PHONE_NUMBER,
 } from "./helpers";
-import { randomId } from "../../../emulator/auth/utils";
 
 describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
   it("should allow updating and deleting displayName and photoUrl", async () => {
@@ -420,7 +422,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
   it("should allow creating MFA info", async () => {
     const user = { email: "bob@example.com", password: "notasecret" };
     const { localId, idToken } = await registerUser(authApi(), user);
-    const mfaEnrollmentId = randomId(28);
+    const mfaEnrollmentId = "thisShouldBeIgnored1";
 
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:update")
@@ -454,8 +456,8 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
     const savedMfaInfo = savedUserInfo.mfaInfo![0];
     const secondMfaFactor = {
       displayName: "Second MFA Factor",
-      phoneInfo: "+12813308004",
-      mfaEnrollmentId: randomId(28),
+      phoneInfo: TEST_PHONE_NUMBER_2,
+      mfaEnrollmentId: "thisShouldBeIgnored1",
     };
 
     await authApi()
@@ -517,7 +519,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
     const savedMfaInfo = savedUserInfo.mfaInfo![0];
     expect(savedMfaInfo.mfaEnrollmentId).to.be.a("string").and.not.empty;
 
-    const newEnrollmentId = randomId(28);
+    const newEnrollmentId = "thisShouldBeIgnored1";
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:update")
       .set("Authorization", "Bearer owner")
@@ -542,7 +544,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
     const user = {
       email: "bob@example.com",
       password: "notasecret",
-      mfaInfo: [TEST_MFA_INFO, { ...TEST_MFA_INFO, phoneInfo: "+12813308004" }],
+      mfaInfo: [TEST_MFA_INFO, { ...TEST_MFA_INFO, phoneInfo: TEST_PHONE_NUMBER_3 }],
     };
     const { localId, idToken } = await registerUser(authApi(), user);
     const savedUserInfo = await getAccountInfoByIdToken(authApi(), idToken);
@@ -551,8 +553,8 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
 
     const newMfaInfo = {
       displayName: "New New",
-      phoneInfo: "+12813308005",
-      mfaEnrollmentId: randomId(28),
+      phoneInfo: TEST_PHONE_NUMBER_3,
+      mfaEnrollmentId: "thisShouldBeIgnored1",
     };
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:update")
@@ -648,7 +650,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
   it("should de-duplicate MFA factors with the same phone number", async () => {
     const user = { email: "bob@example.com", password: "notasecret" };
     const { localId, idToken } = await registerUser(authApi(), user);
-    const mfaEnrollmentId = randomId(28);
+    const mfaEnrollmentId = "thisShouldBeIgnored1";
 
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:update")
@@ -699,15 +701,15 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
           enrollments: [
             {
               ...TEST_MFA_INFO,
-              mfaEnrollmentId: randomId(28),
+              mfaEnrollmentId: "thisShouldBeIgnored2",
             },
             {
               ...TEST_MFA_INFO,
-              mfaEnrollmentId: randomId(28),
+              mfaEnrollmentId: "thisShouldBeIgnored3",
             },
             {
               ...TEST_MFA_INFO,
-              mfaEnrollmentId: randomId(28),
+              mfaEnrollmentId: "thisShouldBeIgnored4",
             },
           ],
         },
@@ -729,23 +731,23 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
           enrollments: [
             {
               ...TEST_MFA_INFO,
-              mfaEnrollmentId: randomId(28),
+              mfaEnrollmentId: "thisShouldBeIgnored5",
             },
             {
               ...TEST_MFA_INFO,
-              mfaEnrollmentId: randomId(28),
+              mfaEnrollmentId: "thisShouldBeIgnored6",
             },
             {
               ...TEST_MFA_INFO,
-              mfaEnrollmentId: randomId(28),
+              mfaEnrollmentId: "thisShouldBeIgnored7",
             },
             {
-              phoneInfo: "+12813308004",
-              mfaEnrollmentId: randomId(28),
+              phoneInfo: TEST_PHONE_NUMBER_2,
+              mfaEnrollmentId: "thisShouldBeIgnored8",
             },
             {
-              phoneInfo: "+12813308004",
-              mfaEnrollmentId: randomId(28),
+              phoneInfo: TEST_PHONE_NUMBER_2,
+              mfaEnrollmentId: "thisShouldBeIgnored9",
             },
           ],
         },
@@ -758,20 +760,20 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       if (mfaInfo.phoneInfo === TEST_MFA_INFO.phoneInfo) {
         expect(mfaInfo).to.include(TEST_MFA_INFO);
       } else {
-        expect(mfaInfo.phoneInfo).to.eq("+12813308004");
+        expect(mfaInfo.phoneInfo).to.eq(TEST_PHONE_NUMBER_2);
       }
       expect(mfaInfo.mfaEnrollmentId).to.be.a("string").and.not.empty;
       expect(mfaInfo.mfaEnrollmentId).not.to.eq(mfaEnrollmentId);
     }
   });
 
-  it("should error if MFA Enrollment ID is Duplicated For Different Phone Numbers", async () => {
+  it("should error if MFA Enrollment ID is duplicated for different phone numbers", async () => {
     const { localId } = await registerUser(authApi(), {
       email: "bob@example.com",
       password: "notasecret",
     });
 
-    const mfaEnrollmentId = randomId(28);
+    const mfaEnrollmentId = "thisShouldBeIgnored1";
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:update")
       .set("Authorization", "Bearer owner")
@@ -784,7 +786,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
               mfaEnrollmentId,
             },
             {
-              phoneInfo: "+12813308004",
+              phoneInfo: TEST_PHONE_NUMBER_2,
               mfaEnrollmentId,
             },
           ],
@@ -869,7 +871,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
           enrollments: [
             {
               ...mfaInfoForUpdate,
-              phoneInfo: "5555550100" /* no country code... */,
+              phoneInfo: TEST_INVALID_PHONE_NUMBER,
             },
           ],
         },
@@ -885,12 +887,12 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       .post("/identitytoolkit.googleapis.com/v1/accounts:update")
       .set("Authorization", "Bearer owner")
       .send({
-        localId: randomId(28),
+        localId: "anything",
         mfa: {
           enrollments: [
             {
               ...TEST_MFA_INFO,
-              mfaEnrollmentId: randomId(28),
+              mfaEnrollmentId: "anything",
             },
           ],
         },
@@ -906,7 +908,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       .post("/identitytoolkit.googleapis.com/v1/accounts:update")
       .set("Authorization", "Bearer owner")
       .send({
-        localId: randomId(28),
+        localId: "anything",
         mfa: {
           enrollments: null,
         },

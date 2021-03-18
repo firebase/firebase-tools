@@ -9,10 +9,13 @@ import { MfaEnrollments } from "../../../emulator/auth/types";
 
 export { PROJECT_ID };
 export const TEST_PHONE_NUMBER = "+15555550100";
+export const TEST_PHONE_NUMBER_2 = "+15555550101";
+export const TEST_PHONE_NUMBER_3 = "+15555550102";
 export const TEST_MFA_INFO = {
   displayName: "Cell Phone",
   phoneInfo: TEST_PHONE_NUMBER,
 };
+export const TEST_INVALID_PHONE_NUMBER = "5555550100"; /* no country code */
 export const FAKE_GOOGLE_ACCOUNT = {
   displayName: "Example User",
   email: "example@gmail.com",

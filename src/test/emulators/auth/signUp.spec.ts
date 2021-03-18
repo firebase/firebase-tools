@@ -12,10 +12,11 @@ import {
   signInWithPhoneNumber,
   updateAccountByLocalId,
   getSigninMethods,
-  TEST_PHONE_NUMBER,
   TEST_MFA_INFO,
+  TEST_PHONE_NUMBER,
+  TEST_PHONE_NUMBER_2,
+  TEST_INVALID_PHONE_NUMBER,
 } from "./helpers";
-import { randomId } from "../../../emulator/auth/utils";
 
 describeAuthEmulator("accounts:signUp", ({ authApi }) => {
   it("should throw error if no email provided", async () => {
@@ -392,7 +393,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
       .set("Authorization", "Bearer owner")
-      .send({ phoneNumber: "5555550100" /* no country code */ })
+      .send({ phoneNumber: TEST_INVALID_PHONE_NUMBER })
       .then((res) => {
         expectStatusCode(400, res);
         expect(res.body.error.message).to.equal("INVALID_PHONE_NUMBER : Invalid format.");
@@ -413,14 +414,14 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
     const user = {
       email: "alice@example.com",
       password: "notasecret",
-      mfaInfo: [TEST_MFA_INFO, { ...TEST_MFA_INFO, phoneInfo: "+12813308004" }],
+      mfaInfo: [TEST_MFA_INFO, { ...TEST_MFA_INFO, phoneInfo: TEST_PHONE_NUMBER_2 }],
     };
     const { localId } = await registerUser(authApi(), user);
     const info = await getAccountInfoByLocalId(authApi(), localId);
     expect(info.mfaInfo).to.have.length(2);
     for (const savedMfaInfo of info.mfaInfo!) {
       if (savedMfaInfo.phoneInfo !== TEST_MFA_INFO.phoneInfo) {
-        expect(savedMfaInfo.phoneInfo).to.eq("+12813308004");
+        expect(savedMfaInfo.phoneInfo).to.eq(TEST_PHONE_NUMBER_2);
       } else {
         expect(savedMfaInfo).to.include(TEST_MFA_INFO);
       }
@@ -447,7 +448,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
         TEST_MFA_INFO,
         TEST_MFA_INFO,
         TEST_MFA_INFO,
-        { ...TEST_MFA_INFO, phoneInfo: "+12813308004" },
+        { ...TEST_MFA_INFO, phoneInfo: TEST_PHONE_NUMBER_2 },
       ],
     };
     const { localId: bobLocalId } = await registerUser(authApi(), bob);
@@ -455,7 +456,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
     expect(bobInfo.mfaInfo).to.have.length(2);
     for (const savedMfaInfo of bobInfo.mfaInfo!) {
       if (savedMfaInfo.phoneInfo !== TEST_MFA_INFO.phoneInfo) {
-        expect(savedMfaInfo.phoneInfo).to.eq("+12813308004");
+        expect(savedMfaInfo.phoneInfo).to.eq(TEST_PHONE_NUMBER_2);
       } else {
         expect(savedMfaInfo).to.include(TEST_MFA_INFO);
       }
@@ -477,7 +478,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
   });
 
   it("should error if multi factor phone number is invalid", async () => {
-    const mfaInfo = { phoneInfo: "5555550100" /* no country code */ };
+    const mfaInfo = { phoneInfo: TEST_INVALID_PHONE_NUMBER };
     const user = { email: "alice@example.com", password: "notasecret", mfaInfo: [mfaInfo] };
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
@@ -490,8 +491,8 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
   });
 
   it("should ignore if multi factor enrollment ID is specified on create", async () => {
-    const mfaEnrollmentId1 = randomId(28);
-    const mfaEnrollmentId2 = randomId(28);
+    const mfaEnrollmentId1 = "thisShouldBeIgnored1";
+    const mfaEnrollmentId2 = "thisShouldBeIgnored2";
     const user = {
       email: "alice@example.com",
       password: "notasecret",
