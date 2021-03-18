@@ -1,0 +1,1 @@
+- Fixes an issue where `ext:dev:init` failed when Typescript was chosen.
