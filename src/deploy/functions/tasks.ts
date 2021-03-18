@@ -90,6 +90,11 @@ export function createFunctionTask(
       helper.printSuccess(fn.name, "create");
       return operationResult;
     } catch (err) {
+      logger.debug("hi its joe", err);
+      if (err.original?.context?.response?.statusCode === 429) {
+        // Throw quota errors so that throttler retries them.
+        throw err;
+      }
       params.errorHandler.record("error", fn.name, "create", err.message || "");
     }
   };
@@ -144,6 +149,10 @@ export function updateFunctionTask(
       helper.printSuccess(fn.name, "update");
       return operationResult;
     } catch (err) {
+      if (err.original?.context?.response?.statusCode === 429) {
+        // Throw quota errors so that throttler retries them.
+        throw err;
+      }
       params.errorHandler.record("error", fn.name, "update", err.message || "");
     }
   };

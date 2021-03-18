@@ -39,15 +39,10 @@ export const DEFAULT_PUBLIC_POLICY = {
  * @param err The error returned from the operation.
  */
 function functionsOpLogReject(funcName: string, type: string, err: any): void {
-  utils.logWarning(clc.bold.yellow("functions:") + " failed to " + type + " function " + funcName);
-  if (err?.context?.response?.statusCode === 429) {
-    logger.debug(err.message);
-    logger.info(
-      "You have exceeded your deployment quota, please deploy your functions in batches by using the --only flag, " +
-        "and wait a few minutes before deploying again. Go to https://firebase.google.com/docs/cli/#partial_deploys to learn more."
-    );
-  } else {
-    logger.info(err.message);
+  logger.debug(err.message);
+  if (err?.context?.response?.statusCode !== 429) {
+    // Don't print out quota errors becuase we retry them.
+    utils.logWarning(clc.bold.yellow("functions:") + " failed to " + type + " function " + funcName);
   }
   throw new FirebaseError(`Failed to ${type} function ${funcName}`, {
     original: err,

@@ -30,7 +30,14 @@ export async function release(context: any, options: any, payload: any) {
     context.existingFunctions,
     context.filters
   );
-  const cloudFunctionsQueue = new Queue<() => Promise<CloudFunctionTrigger | void>, void>({});
+
+  // This queue will be used to retry quota errors.
+  // The main quotas that can be exceeded are per 1 minute quotas,
+  // so we start with a larger backoff to reduce the liklihood of retries.
+  const cloudFunctionsQueue = new Queue<() => Promise<CloudFunctionTrigger | void>, void>({
+    retries: 10,
+    backoff: 10000, 
+  });
   const schedulerQueue = new Queue<() => Promise<any>, void>({});
   const regionPromises = [];
 
@@ -95,6 +102,7 @@ export async function release(context: any, options: any, payload: any) {
   // then close the queue.
   // Wait for all of the deployments to complete.
   await Promise.all(queuePromises);
+  console.log(cloudFunctionsQueue.stats());
   helper.logAndTrackDeployStats(cloudFunctionsQueue, errorHandler);
   helper.printTriggerUrls(projectId, sourceUrl);
   errorHandler.printWarnings();
