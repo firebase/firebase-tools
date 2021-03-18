@@ -422,7 +422,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
   it("should allow creating MFA info", async () => {
     const user = { email: "bob@example.com", password: "notasecret" };
     const { localId, idToken } = await registerUser(authApi(), user);
-    const mfaEnrollmentId = "thisShouldBeIgnored1";
+    const mfaEnrollmentId = "enrollmentId1";
 
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:update")
@@ -457,7 +457,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
     const secondMfaFactor = {
       displayName: "Second MFA Factor",
       phoneInfo: TEST_PHONE_NUMBER_2,
-      mfaEnrollmentId: "thisShouldBeIgnored1",
+      mfaEnrollmentId: "enrollmentId2",
     };
 
     await authApi()
@@ -519,7 +519,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
     const savedMfaInfo = savedUserInfo.mfaInfo![0];
     expect(savedMfaInfo.mfaEnrollmentId).to.be.a("string").and.not.empty;
 
-    const newEnrollmentId = "thisShouldBeIgnored1";
+    const newEnrollmentId = "newEnrollmentId";
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:update")
       .set("Authorization", "Bearer owner")
@@ -554,7 +554,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
     const newMfaInfo = {
       displayName: "New New",
       phoneInfo: TEST_PHONE_NUMBER_3,
-      mfaEnrollmentId: "thisShouldBeIgnored1",
+      mfaEnrollmentId: "newEnrollmentId",
     };
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:update")
@@ -650,7 +650,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
   it("should de-duplicate MFA factors with the same phone number", async () => {
     const user = { email: "bob@example.com", password: "notasecret" };
     const { localId, idToken } = await registerUser(authApi(), user);
-    const mfaEnrollmentId = "thisShouldBeIgnored1";
+    const mfaEnrollmentId = "enrollmentId1";
 
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:update")
@@ -701,15 +701,15 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
           enrollments: [
             {
               ...TEST_MFA_INFO,
-              mfaEnrollmentId: "thisShouldBeIgnored2",
+              mfaEnrollmentId: "enrollmentId2",
             },
             {
               ...TEST_MFA_INFO,
-              mfaEnrollmentId: "thisShouldBeIgnored3",
+              mfaEnrollmentId: "enrollmentId3",
             },
             {
               ...TEST_MFA_INFO,
-              mfaEnrollmentId: "thisShouldBeIgnored4",
+              mfaEnrollmentId: "enrollmentId4",
             },
           ],
         },
@@ -731,23 +731,23 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
           enrollments: [
             {
               ...TEST_MFA_INFO,
-              mfaEnrollmentId: "thisShouldBeIgnored5",
+              mfaEnrollmentId: "enrollmentId5",
             },
             {
               ...TEST_MFA_INFO,
-              mfaEnrollmentId: "thisShouldBeIgnored6",
+              mfaEnrollmentId: "enrollmentId6",
             },
             {
               ...TEST_MFA_INFO,
-              mfaEnrollmentId: "thisShouldBeIgnored7",
+              mfaEnrollmentId: "enrollmentId7",
             },
             {
               phoneInfo: TEST_PHONE_NUMBER_2,
-              mfaEnrollmentId: "thisShouldBeIgnored8",
+              mfaEnrollmentId: "enrollmentId8",
             },
             {
               phoneInfo: TEST_PHONE_NUMBER_2,
-              mfaEnrollmentId: "thisShouldBeIgnored9",
+              mfaEnrollmentId: "enrollmentId9",
             },
           ],
         },
@@ -773,7 +773,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       password: "notasecret",
     });
 
-    const mfaEnrollmentId = "thisShouldBeIgnored1";
+    const mfaEnrollmentId = "duplicateMfaEnrollmentId ";
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:update")
       .set("Authorization", "Bearer owner")
