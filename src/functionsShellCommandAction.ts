@@ -22,7 +22,7 @@ import { findAvailablePort } from "./emulator/portUtils";
 
 const serveFunctions = new FunctionsServer();
 
-module.exports = async (options: any) => {
+export default async (options: any) => {
   if (options.port) {
     options.port = parseInt(options.port, 10);
   }
@@ -53,11 +53,10 @@ module.exports = async (options: any) => {
       "functions",
       `You are already running the Cloud Functions emulator on port ${functionsInfo.port}. Running the emulator and the Functions shell simultaenously can result in unexpected behavior.`
     );
-  } else {
+  } else if (!options.port) {
     // If the user did not pass in any port and the functions emulator is not already running, we can
     // use the port defined for the Functions emulator in their firebase.json
-    options.port =
-      options.port || options.config.get(Constants.getPortKey(Emulators.FUNCTIONS), undefined);
+    options.port = options.config.get(Constants.getPortKey(Emulators.FUNCTIONS), undefined);
   }
 
   // If the port was not set by the --port flag or determined from 'firebase.json', just scan
