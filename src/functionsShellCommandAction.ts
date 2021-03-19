@@ -22,7 +22,7 @@ import { findAvailablePort } from "./emulator/portUtils";
 
 const serveFunctions = new FunctionsServer();
 
-export default async (options: any) => {
+export const actionFunction = async (options: any) => {
   if (options.port) {
     options.port = parseInt(options.port, 10);
   }

@@ -2,7 +2,7 @@
 
 var { Command } = require("../command");
 var { requirePermissions } = require("../requirePermissions");
-var action = require("../functionsShellCommandAction");
+var { actionFunction } = require("../functionsShellCommandAction");
 var requireConfig = require("../requireConfig");
 var commandUtils = require("../emulator/commandUtils");
 
@@ -12,4 +12,4 @@ module.exports = new Command("functions:shell")
   .option(commandUtils.FLAG_INSPECT_FUNCTIONS, commandUtils.DESC_INSPECT_FUNCTIONS)
   .before(requireConfig)
   .before(requirePermissions)
-  .action(action);
+  .action(actionFunction);
