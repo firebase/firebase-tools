@@ -1,3 +1,4 @@
+import * as cors from "cors";
 import * as express from "express";
 import * as exegesisExpress from "exegesis-express";
 import { ValidationError } from "exegesis/lib/errors";
@@ -118,20 +119,9 @@ export async function createApp(
 ): Promise<express.Express> {
   const app = express();
   app.set("json spaces", 2);
-
-  // Allow all origins and headers for CORS requests to Auth Emulator.
-  // This is safe since Auth Emulator does not use cookies.
-  app.use((req, res, next) => {
-    res.set("Access-Control-Allow-Origin", "*");
-    res.set("Access-Control-Allow-Headers", "*");
-    res.set("Access-Control-Allow-Methods", "GET, HEAD, POST, PUT, DELETE, OPTIONS, PATCH");
-    if (req.method === "OPTIONS") {
-      // This is a CORS preflight request. Just handle it.
-      res.end();
-    } else {
-      next();
-    }
-  });
+  // Enable CORS for all APIs, all origins (reflected), and all headers (reflected).
+  // This is similar to production behavior. Safe since all APIs are cookieless.
+  app.use(cors({ origin: true }));
 
   app.get("/", (req, res) => {
     return res.json({
