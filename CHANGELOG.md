@@ -1,2 +1,3 @@
 - Fixes an issue where `ext:dev:init` failed when Typescript was chosen.
 - Add support for reading/writing mfaInfo field in Auth Emulator (#3173).
+- Fixes port conflict issues with `functions:shell` (#3210).
