@@ -321,9 +321,7 @@ export async function createApp(
   return app;
 
   function getProjectIdByApiKey(apiKey: string): string {
-    /* unused */ apiKey;
-    // We treat any non-empty string as a valid key for the default projectId.
-    return defaultProjectId;
+    return apiKey;
   }
 
   function getProjectStateById(projectId: string): ProjectState {
