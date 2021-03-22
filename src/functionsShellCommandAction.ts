@@ -1,11 +1,7 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
-
-"use strict";
-
 import * as clc from "cli-color";
 import * as repl from "repl";
 import * as _ from "lodash";
-
 import * as request from "request";
 import * as util from "util";
 
@@ -84,13 +80,13 @@ export const actionFunction = async (options: any) => {
       }
 
       const initializeContext = (context: any) => {
-        _.forEach(emulator.triggers, (trigger) => {
-          if (_.includes(emulator.emulatedFunctions, trigger.name)) {
+        for (const trigger of emulator.triggers) {
+          if (emulator.emulatedFunctions.includes(trigger.name)) {
             const localFunction = new LocalFunction(trigger, emulator.urls, emulator);
             const triggerNameDotNotation = trigger.name.replace(/-/g, ".");
             _.set(context, triggerNameDotNotation, localFunction.call);
           }
-        });
+        }
         context.help =
           "Instructions for the Functions Shell can be found at: " +
           "https://firebase.google.com/docs/functions/local-emulator";
