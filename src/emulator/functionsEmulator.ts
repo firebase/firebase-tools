@@ -67,7 +67,7 @@ const DATABASE_PATH_PATTERN = new RegExp("^projects/[^/]+/instances/([^/]+)/refs
 export interface FunctionsEmulatorArgs {
   projectId: string;
   functionsDir: string;
-  account: Account | undefined;
+  account?: Account;
   port?: number;
   host?: string;
   quiet?: boolean;

@@ -203,7 +203,7 @@ export async function loginAdditionalAccount(useLocalhost: boolean, email?: stri
 
   // The JWT library can technically return a string, even though it never should.
   if (typeof result.user === "string") {
-    throw new FirebaseError("Failed to parse auth response, see debug log.", { exit: 1 });
+    throw new FirebaseError("Failed to parse auth response, see debug log.");
   }
 
   if (email && result.user.email !== email) {
@@ -558,8 +558,7 @@ function deleteAccount(account: Account) {
 
   // Clear any matching project defaults
   const activeAccounts: Record<string, string> = configstore.get("activeAccounts") || {};
-  for (const projectDir of Object.keys(activeAccounts)) {
-    const projectAccount = activeAccounts[projectDir];
+  for (const [projectDir, projectAccount] of Object.entries(activeAccounts)) {
     if (projectAccount === account.user.email) {
       delete activeAccounts[projectDir];
     }

@@ -4,7 +4,7 @@ import * as sinon from "sinon";
 import * as auth from "../auth";
 import { configstore } from "../configstore";
 
-describe("multiAuth", () => {
+describe("auth", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
 
   let fakeConfigStore: any = {};

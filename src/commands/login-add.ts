@@ -14,7 +14,7 @@ module.exports = new Command("login:add [email]")
   )
   .action(async (email: string | undefined, options: any) => {
     if (options.nonInteractive) {
-      throw new FirebaseError("Cannot run login:add in non-interactive mode.", { exit: 1 });
+      throw new FirebaseError(`Cannot run "${clc.bold("login:add")}" in non-interactive mode.`);
     }
 
     const account = auth.getGlobalDefaultAccount();
@@ -22,8 +22,9 @@ module.exports = new Command("login:add [email]")
     // "login" asks for the data collection preference, we only want to do that in one place
     if (!account) {
       throw new FirebaseError(
-        "No existing accounts found, please run login to add your first account",
-        { exit: 1 }
+        `No existing accounts found, please run "${clc.bold(
+          "firebase login"
+        )}" to add your first account`
       );
     }
 
@@ -31,8 +32,9 @@ module.exports = new Command("login:add [email]")
     const hintUser = auth.getAllAccounts().find((a) => a.user.email === email);
     if (email && hintUser) {
       throw new FirebaseError(
-        `Already signed in as ${email}, use login --reauth to reauthenticate.`,
-        { exit: 1 }
+        `Already signed in as ${email}, use "${clc.bold(
+          "firebase login --reauth"
+        )}" to reauthenticate.`
       );
     }
 
