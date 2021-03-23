@@ -623,6 +623,22 @@ export async function instanceIdExists(projectId: string, instanceId: string): P
   return true;
 }
 
+export function isUrlPath(extInstallPath: string): boolean {
+  return urlRegex.test(extInstallPath);
+}
+
+export function isLocalPath(extInstallPath: string): boolean {
+  return (
+    extInstallPath.startsWith("~/") ||
+    extInstallPath.startsWith("./") ||
+    extInstallPath.startsWith("../")
+  );
+}
+
+export function isLocalOrURLPath(extInstallPath: string): boolean {
+  return isLocalPath(extInstallPath) || isUrlPath(extInstallPath);
+}
+
 /**
  * Given an update source, return where the update source came from.
  * @param sourceOrVersion path to a source or reference to a source version
@@ -640,10 +656,10 @@ export async function getSourceOrigin(sourceOrVersion: string): Promise<SourceOr
     return SourceOrigin.OFFICIAL_EXTENSION_VERSION;
   }
   // First, check if the input matches a local or URL first.
-  if (fs.existsSync(sourceOrVersion)) {
+  if (isLocalPath(sourceOrVersion)) {
     return SourceOrigin.LOCAL;
   }
-  if (urlRegex.test(sourceOrVersion)) {
+  if (isUrlPath(sourceOrVersion)) {
     return SourceOrigin.URL;
   }
   // Next, check if the source matches an extension in the official extensions registry (registry.json).

@@ -34,6 +34,11 @@ export async function getExistingSourceOrigin(
   if (instance && instance.config.extensionRef) {
     return SourceOrigin.PUBLISHED_EXTENSION;
   }
+  // TODO: Deprecate this once official extensions are fully using the Registry.
+  // This logic will try to resolve the source with the Registry File. This allows us to use the old update flow
+  // of official => officical extensions, if the extension_ref is not filled out.
+  // After the migration is complete, all instances will have extension_ref filled out (except instances of local/URL sources).
+  // Once that we happens, we can deprecate this whole try-catch block and assume it is a url/local source.
   let existingSourceOrigin: SourceOrigin;
   try {
     const registryEntry = await resolveSource.resolveRegistryEntry(extensionName);
@@ -121,13 +126,13 @@ export async function warningUpdateToOtherSource(
 export async function displayChanges(
   spec: extensionsApi.ExtensionSpec,
   newSpec: extensionsApi.ExtensionSpec,
-  published = false
+  isOfficial = true
 ): Promise<void> {
   logger.info(
     "This update contains the following changes (in green and red). " +
       "If at any point you choose not to continue, the extension will not be updated and the changes will be discarded:\n"
   );
-  displayUpdateChangesNoInput(spec, newSpec, published);
+  displayUpdateChangesNoInput(spec, newSpec, isOfficial);
   await displayUpdateChangesRequiringConfirmation(spec, newSpec);
 }
 
@@ -145,9 +150,9 @@ export async function retryUpdate(): Promise<boolean> {
 /**
  * @param projectId Id of the project containing the instance to update
  * @param instanceId Id of the instance to update
- * @param source A ExtensionSource to update to
- * @param params A new set of params to set on the instance
- * @param billingRequired Whether the extension requires billing
+ * @param extRef Extension reference
+ * @param source An ExtensionSource to update to (if extRef is not passed in)
+ * @param params Actual fields to update
  */
 
 export interface UpdateOptions {
@@ -282,14 +287,12 @@ export async function updateToVersionFromPublisherSource(
   existingSource: string
 ): Promise<string> {
   let source;
+  const refObj = extensionsApi.parseRef(extVersionRef);
+  const version = refObj.version;
+  const extension = await extensionsApi.getExtension(`${refObj.publisherId}/${refObj.extensionId}`);
   try {
     source = await extensionsApi.getExtensionVersion(extVersionRef);
   } catch (err) {
-    const refObj = extensionsApi.parseRef(extVersionRef);
-    const version = refObj.version;
-    const extension = await extensionsApi.getExtension(
-      `${refObj.publisherId}/${refObj.extensionId}`
-    );
     throw new FirebaseError(
       `Could not find source '${clc.bold(extVersionRef)}' because (${clc.bold(
         version
@@ -298,10 +301,32 @@ export async function updateToVersionFromPublisherSource(
       )}).`
     );
   }
+  let registryEntry;
+  let sourceType;
+  try {
+    // Double check that both publisher and extension ID match
+    // If the publisher and extension ID both match, we know it's an official extension (i.e. it's specifically listed in our Registry File)
+    // Otherwise, it's simply a published extension in the Registry
+    registryEntry = await resolveSource.resolveRegistryEntry(existingSpec.name);
+    sourceType = registryEntry.publisher === refObj.publisherId ? "official" : "published";
+  } catch (err) {
+    sourceType = "published";
+  }
   utils.logLabeledBullet(
     logPrefix,
-    `${clc.bold("You are updating this extension instance to a published source.")}`
+    `${clc.bold(`You are updating this extension instance to a ${sourceType} source.`)}`
   );
+  if (registryEntry) {
+    // Do not allow user to "downgrade" to a version lower than the minimum required version.
+    const minVer = resolveSource.getMinRequiredVersion(registryEntry);
+    if (minVer && semver.gt(minVer, source.spec.version)) {
+      throw new FirebaseError(
+        `The version you are trying to update to (${clc.bold(
+          source.spec.version
+        )}) is less than the minimum version required (${clc.bold(minVer)}) to use this extension.`
+      );
+    }
+  }
   await showUpdateVersionInfo(instanceId, existingSpec.version, source.spec.version, extVersionRef);
   const warning =
     "All the instance's extension-specific resources and logic will be overwritten to use the source code and files from the published extension.\n\n";
@@ -316,6 +341,13 @@ export async function updateToVersionFromPublisherSource(
     warning,
     SourceOrigin.PUBLISHED_EXTENSION
   );
+  if (registryEntry) {
+    await resolveSource.promptForUpdateWarnings(
+      registryEntry,
+      existingSpec.version,
+      source.spec.version
+    );
+  }
   return source.name;
 }
 

@@ -14,7 +14,7 @@ const SPEC = {
   name: "test",
   displayName: "Old",
   description: "descriptive",
-  version: "0.1.0",
+  version: "0.2.0",
   license: "MIT",
   apis: [
     { apiName: "api1", reason: "" },
@@ -35,6 +35,8 @@ const SPEC = {
   params: [],
 };
 
+const OLD_SPEC = Object.assign({}, SPEC, { version: "0.1.0" });
+
 const SOURCE = {
   name: "projects/firebasemods/sources/new-test-source",
   packageUri: "https://firebase-fake-bucket.com",
@@ -54,7 +56,6 @@ const EXTENSION_VERSION = {
 const EXTENSION = {
   name: "publishers/test-publisher/extensions/test",
   ref: "test-publisher/test",
-  spec: SPEC,
   state: "PUBLISHED",
   createTime: "2020-06-30T00:21:06.722782Z",
   latestVersion: "0.2.0",
@@ -456,8 +457,8 @@ describe("updateHelper", () => {
         updateHelper.updateToVersionFromRegistry(
           "test-project",
           "test-instance",
-          SPEC,
-          SPEC.name,
+          OLD_SPEC,
+          OLD_SPEC.name,
           "0.1.2"
         )
       ).to.be.rejectedWith(FirebaseError, "Update cancelled.");
@@ -524,7 +525,7 @@ describe("updateHelper", () => {
       promptStub.resolves(false);
       registryEntryStub.resolves(REGISTRY_ENTRY);
       await expect(
-        updateHelper.updateFromRegistry("test-project", "test-instance", SPEC, SPEC.name)
+        updateHelper.updateFromRegistry("test-project", "test-instance", OLD_SPEC, OLD_SPEC.name)
       ).to.be.rejectedWith(FirebaseError, "Update cancelled.");
     });
   });

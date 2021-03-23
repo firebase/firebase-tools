@@ -74,7 +74,7 @@ export function displayExtInfo(
 export function displayUpdateChangesNoInput(
   spec: extensionsApi.ExtensionSpec,
   newSpec: extensionsApi.ExtensionSpec,
-  published = false
+  isOfficial = true
 ): string[] {
   const lines: string[] = [];
   if (spec.displayName !== newSpec.displayName) {
@@ -104,7 +104,7 @@ export function displayUpdateChangesNoInput(
     );
   }
 
-  if (published) {
+  if (!isOfficial) {
     if (spec.sourceUrl !== newSpec.sourceUrl) {
       lines.push(
         "",
