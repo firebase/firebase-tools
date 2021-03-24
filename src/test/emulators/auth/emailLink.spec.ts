@@ -1,7 +1,6 @@
 import { expect } from "chai";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import { FirebaseJwtPayload } from "../../../emulator/auth/operations";
-import { TEST_PHONE_NUMBER } from "./helpers";
 import { describeAuthEmulator } from "./setup";
 import {
   expectStatusCode,
@@ -11,6 +10,8 @@ import {
   getSigninMethods,
   inspectOobs,
   createEmailSignInOob,
+  TEST_PHONE_NUMBER,
+  TEST_MFA_INFO,
 } from "./helpers";
 
 describeAuthEmulator("email link sign-in", ({ authApi }) => {
@@ -199,6 +200,25 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
       .then((res) => {
         expectStatusCode(400, res);
         expect(res.body.error).to.have.property("message").equals("USER_DISABLED");
+      });
+  });
+
+  it("should error if user has MFA", async () => {
+    const user = {
+      email: "alice@example.com",
+      password: "notasecret",
+      mfaInfo: [TEST_MFA_INFO],
+    };
+    const { idToken, email } = await registerUser(authApi(), user);
+    const { oobCode } = await createEmailSignInOob(authApi(), email);
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithEmailLink")
+      .query({ key: "fake-api-key" })
+      .send({ email, oobCode, idToken })
+      .then((res) => {
+        expectStatusCode(501, res);
+        expect(res.body.error.message).to.equal("MFA Login not yet implemented.");
       });
   });
 });

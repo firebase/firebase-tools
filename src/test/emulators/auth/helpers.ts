@@ -5,9 +5,17 @@ import { expect, AssertionError } from "chai";
 import { IdpJwtPayload } from "../../../emulator/auth/operations";
 import { OobRecord, PhoneVerificationRecord, UserInfo } from "../../../emulator/auth/state";
 import { TestAgent, PROJECT_ID } from "./setup";
+import { MfaEnrollments } from "../../../emulator/auth/types";
 
 export { PROJECT_ID };
 export const TEST_PHONE_NUMBER = "+15555550100";
+export const TEST_PHONE_NUMBER_2 = "+15555550101";
+export const TEST_PHONE_NUMBER_3 = "+15555550102";
+export const TEST_MFA_INFO = {
+  displayName: "Cell Phone",
+  phoneInfo: TEST_PHONE_NUMBER,
+};
+export const TEST_INVALID_PHONE_NUMBER = "5555550100"; /* no country code */
 export const FAKE_GOOGLE_ACCOUNT = {
   displayName: "Example User",
   email: "example@gmail.com",
@@ -79,7 +87,12 @@ export function fakeClaims(input: Partial<IdpJwtPayload> & { sub: string }): Idp
 
 export function registerUser(
   testAgent: TestAgent,
-  user: { email: string; password: string; displayName?: string }
+  user: {
+    email: string;
+    password: string;
+    displayName?: string;
+    mfaInfo?: MfaEnrollments;
+  }
 ): Promise<{ idToken: string; localId: string; refreshToken: string; email: string }> {
   return testAgent
     .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
