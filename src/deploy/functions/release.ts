@@ -35,8 +35,11 @@ export async function release(context: any, options: any, payload: any) {
   // The main quotas that can be exceeded are per 1 minute quotas,
   // so we start with a larger backoff to reduce the liklihood of retries.
   const cloudFunctionsQueue = new Queue<() => Promise<CloudFunctionTrigger | void>, void>({
-    retries: 10,
-    backoff: 10000, 
+    retries: 20,
+    backoff: 20000, 
+    concurrency: 40,
+    maxBackoff: 40000,
+    name: "cloudFunctionsDeployment",
   });
   const schedulerQueue = new Queue<() => Promise<any>, void>({});
   const regionPromises = [];

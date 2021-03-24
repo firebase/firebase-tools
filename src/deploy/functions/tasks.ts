@@ -83,19 +83,18 @@ export function createFunctionTask(
             policy: cloudfunctions.DEFAULT_PUBLIC_POLICY,
           });
         } catch (err) {
-          params.errorHandler.record("warning", fn.name, "make public", err.message);
+          params.errorHandler.record("warning", fn.name, "make public", err.original.message);
         }
       }
       params.timer.endTimer(fn.name);
       helper.printSuccess(fn.name, "create");
       return operationResult;
     } catch (err) {
-      logger.debug("hi its joe", err);
       if (err.original?.context?.response?.statusCode === 429) {
         // Throw quota errors so that throttler retries them.
         throw err;
       }
-      params.errorHandler.record("error", fn.name, "create", err.message || "");
+      params.errorHandler.record("error", fn.name, "create", err.original.message || "");
     }
   };
 }
@@ -153,7 +152,7 @@ export function updateFunctionTask(
         // Throw quota errors so that throttler retries them.
         throw err;
       }
-      params.errorHandler.record("error", fn.name, "update", err.message || "");
+      params.errorHandler.record("error", fn.name, "update", err.original.message || "");
     }
   };
 }
@@ -183,7 +182,11 @@ export function deleteFunctionTask(params: TaskParams, fnName: string) {
       helper.printSuccess(fnName, "delete");
       return operationResult;
     } catch (err) {
-      params.errorHandler.record("error", fnName, "delete", err.message || "");
+      if (err.original?.context?.response?.statusCode === 429) {
+        // Throw quota errors so that throttler retries them.
+        throw err;
+      }
+      params.errorHandler.record("error", fnName, "delete", err.original.message || "");
     }
   };
 }
@@ -199,7 +202,7 @@ export function upsertScheduleTask(
       await cloudscheduler.createOrReplaceJob(job);
       helper.printSuccess(fn.name, "upsert schedule");
     } catch (err) {
-      params.errorHandler.record("error", fn.name, "upsert schedule", err.message || "");
+      params.errorHandler.record("error", fn.name, "upsert schedule", err.original.message || "");
     }
   };
 }
@@ -217,7 +220,7 @@ export function deleteScheduleTask(
     } catch (err) {
       // If the job has already been deleted, don't throw an error.
       if (err.status !== 404) {
-        params.errorHandler.record("error", fnName, "delete schedule", err.message || "");
+        params.errorHandler.record("error", fnName, "delete schedule", err.original.message || "");
         return;
       }
       logger.debug(`Scheduler job ${jobName} not found.`);
@@ -228,7 +231,7 @@ export function deleteScheduleTask(
     } catch (err) {
       // If the topic has already been deleted, don't throw an error.
       if (err.status !== 404) {
-        params.errorHandler.record("error", fnName, "delete schedule", err.message || "");
+        params.errorHandler.record("error", fnName, "delete schedule", err.original.message || "");
         return;
       }
       logger.debug(`Scheduler topic ${topicName} not found.`);

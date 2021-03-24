@@ -25,6 +25,7 @@ export class ErrorHandler {
   warnings: ErrorInfo[] = [];
 
   record(level: Level, functionName: string, operationType: OperationType, message: string): void {
+    console.log("recording ", message)
     const info: ErrorInfo = {
       functionName,
       operationType,
