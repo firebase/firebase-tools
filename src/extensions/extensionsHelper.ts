@@ -561,7 +561,7 @@ export async function confirmExtensionVersion(
     `You are about to publish version ${clc.green(versionId)} of ${clc.green(
       `${publisherId}/${extensionId}`
     )} to Firebase's registry of extensions.\n\n` +
-    "Once an extension version is published, it cannot be changed. If you wish to make changes after publishing, you will need to publish a new version. If you are a member of the Extensions EAP group, your published extensions will only be accessible to other members of the EAP group.\n\n" +
+    "Once an extension version is published, it cannot be changed. If you wish to make changes after publishing, you will need to publish a new version.\n\n" +
     "Do you wish to continue?";
   return await promptOnce({
     type: "confirm",

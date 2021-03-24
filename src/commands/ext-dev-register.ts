@@ -25,7 +25,7 @@ export default new Command("ext:dev:register")
     const msg =
       "What would you like to register as your publisher ID? " +
       "This value identifies you in Firebase's registry of extensions as the author of your extensions. " +
-      "Examples: my-company-name, MyGitHubUsername. If you are a member of the Extensions EAP group, your published extensions will only be accessible to other members of the EAP group. \n\n" +
+      "Examples: my-company-name, MyGitHubUsername.\n\n" +
       "You can only do this once for each project.";
     const publisherId = await promptOnce({
       name: "publisherId",
