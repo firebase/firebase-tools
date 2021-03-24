@@ -16,9 +16,14 @@ module.exports = new Command("ext:dev:unpublish <extensionRef>")
   .before(requireAuth)
   .action(async (extensionRef: string) => {
     const { publisherId, extensionId, version } = parseRef(extensionRef);
-    const message =
-      "If you unpublish this extension, developers won't be able to install it. For developers who currently have this extension installed, it will continue to run and will appear as unpublished when listed in the Firebase console or Firebase CLI.";
-    utils.logLabeledWarning(logPrefix, message);
+    utils.logLabeledWarning(
+      logPrefix,
+      "If you unpublish this extension, developers won't be able to install it. For developers who currently have this extension installed, it will continue to run and will appear as unpublished when listed in the Firebase console or Firebase CLI."
+    );
+    utils.logLabeledWarning(
+      "This is a permanent action",
+      `Once unpublished, you may never use the extension name '${clc.bold(extensionId)}' again.`
+    );
     if (version) {
       throw new FirebaseError(
         `Unpublishing a single version is not currently supported. You can only unpublish ${clc.bold(
