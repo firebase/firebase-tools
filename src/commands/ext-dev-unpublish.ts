@@ -6,6 +6,7 @@ import { promptOnce } from "../prompt";
 import * as clc from "cli-color";
 import { requireAuth } from "../requireAuth";
 import { FirebaseError } from "../error";
+import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 
 module.exports = new Command("ext:dev:unpublish <extensionRef>")
   .description("unpublish an extension")
@@ -14,6 +15,7 @@ module.exports = new Command("ext:dev:unpublish <extensionRef>")
       "Specify the extension you want to unpublish using the format '<publisherId>/<extensionId>."
   )
   .before(requireAuth)
+  .before(checkMinRequiredVersion, "extDevMinVersion")
   .action(async (extensionRef: string) => {
     const { publisherId, extensionId, version } = parseRef(extensionRef);
     utils.logLabeledWarning(
