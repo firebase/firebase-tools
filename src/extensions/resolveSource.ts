@@ -6,9 +6,10 @@ import * as api from "../api";
 import { FirebaseError } from "../error";
 import * as logger from "../logger";
 import { promptOnce } from "../prompt";
+import { Audience } from "../extensions/extensionsHelper";
 
 const EXTENSIONS_REGISTRY_ENDPOINT = "/extensions.json";
-const AUDIENCE_WARNING_MESSAGES: { [key: string]: string } = {
+const AUDIENCE_WARNING_MESSAGES: { [key in Audience]: string | null } = {
   "open-alpha": marked(
     `${clc.bold("Important")}: This extension is part of the ${clc.bold(
       "preliminary-release program"
@@ -24,6 +25,8 @@ const AUDIENCE_WARNING_MESSAGES: { [key: string]: string } = {
       "experimental"
     )} and may not be production-ready. Its functionality might change in backward-incompatible ways before its official release, or it may be discontinued. Learn more: https://github.com/FirebaseExtended/experimental-extensions`
   ),
+  beta: null,
+  eap: null,
 };
 
 export interface RegistryEntry {
@@ -154,10 +157,10 @@ export async function promptForUpdateWarnings(
  * Checks the audience field of a RegistryEntry, displays a warning text
  * for closed and open alpha extensions, and prompts the user to accept.
  */
-export async function promptForAudienceConsent(registryEntry: RegistryEntry): Promise<boolean> {
+export async function promptForAudienceConsent(audience: Audience): Promise<boolean> {
   let consent = true;
-  if (registryEntry.audience && AUDIENCE_WARNING_MESSAGES[registryEntry.audience]) {
-    logger.info(AUDIENCE_WARNING_MESSAGES[registryEntry.audience]);
+  if (AUDIENCE_WARNING_MESSAGES[audience]) {
+    logger.info(AUDIENCE_WARNING_MESSAGES[audience]);
     consent = await promptOnce({
       type: "confirm",
       message: "Do you acknowledge the status of this extension?",

@@ -483,7 +483,8 @@ export async function getExtensionVersion(ref: string): Promise<ExtensionVersion
           `  -The name of the extension version '${clc.bold(
             `${extensionId}@${version}`
           )}' doesn't exist or could be misspelled\n` +
-          `Please correct the extension reference and try again.`
+          `Please correct the extension reference and try again.`,
+        { status: err.status }
       );
     } else if (err instanceof FirebaseError) {
       throw err;
@@ -626,12 +627,15 @@ export async function unpublishExtension(ref: string): Promise<void> {
       throw new FirebaseError(
         `You are not the owner of extension '${clc.bold(
           ref
-        )}' and don’t have the correct permissions to unpublish this extension.`
+        )}' and don’t have the correct permissions to unpublish this extension.`,
+        { status: err.status }
       );
     } else if (err instanceof FirebaseError) {
       throw err;
     }
-    throw new FirebaseError(`Error occurred unpublishing extension '${ref}': ${err}`);
+    throw new FirebaseError(`Error occurred unpublishing extension '${ref}': ${err}`, {
+      status: err.status,
+    });
   }
 }
 
@@ -661,12 +665,15 @@ export async function getExtension(ref: string): Promise<Extension> {
           `  -The name of the extension '${clc.bold(
             extensionId
           )}' doesn't exist or could be misspelled\n` +
-          `Please correct the extension reference and try again.`
+          `Please correct the extension reference and try again.`,
+        { status: err.status }
       );
     } else if (err instanceof FirebaseError) {
       throw err;
     }
-    throw new FirebaseError(`Failed to query the extension '${clc.bold(ref)}': ${err}`);
+    throw new FirebaseError(`Failed to query the extension '${clc.bold(ref)}': ${err}`, {
+      status: err.status,
+    });
   }
 }
 

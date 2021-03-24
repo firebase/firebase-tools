@@ -31,6 +31,14 @@ import { promptOnce } from "../prompt";
 import * as logger from "../logger";
 import { envOverride } from "../utils";
 
+export enum Audience {
+  EAP = "eap",
+  EXPERIMENTAL = "experimental",
+  CLOSED_ALPHA = "closed-alpha",
+  OPEN_ALPHA = "open-alpha",
+  BETA = "beta",
+}
+
 /**
  * SpecParamType represents the exact strings that the extensions
  * backend expects for each param type in the extensionYaml.
