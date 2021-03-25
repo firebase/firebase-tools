@@ -27,7 +27,8 @@
     "test:emulator": "./scripts/emulator-tests/run.sh",
     "test:extensions-emulator": "./scripts/extensions-emulator-tests/run.sh",
     "test:hosting": "./scripts/hosting-tests/run.sh",
-    "test:triggers-end-to-end": "./scripts/triggers-end-to-end-tests/run.sh"
+    "test:triggers-end-to-end": "./scripts/triggers-end-to-end-tests/run.sh",
+    "test:storage-emulator-integration": "./scripts/storage-emulator-integration/run.sh"
   },
   "files": [
     "lib",
@@ -101,6 +102,7 @@
     "exegesis-express": "^2.0.0",
     "exit-code": "^1.0.2",
     "express": "^4.16.4",
+    "fast-crc32c": "^2.0.0",
     "filesize": "^6.1.0",
     "fs-extra": "^0.23.1",
     "glob": "^7.1.2",
@@ -108,7 +110,7 @@
     "inquirer": "~6.3.1",
     "js-yaml": "^3.13.1",
     "jsonschema": "^1.0.2",
-    "jsonwebtoken": "^8.2.1",
+    "jsonwebtoken": "^8.5.1",
     "leven": "^3.1.0",
     "lodash": "^4.17.19",
     "marked": "^0.7.0",
@@ -165,6 +167,7 @@
     "@types/node-fetch": "^2.5.7",
     "@types/plist": "^3.0.1",
     "@types/progress": "^2.0.3",
+    "@types/puppeteer": "^5.4.2",
     "@types/request": "^2.48.1",
     "@types/rimraf": "^2.0.3",
     "@types/semver": "^6.0.0",

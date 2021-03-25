@@ -100,6 +100,7 @@ async function downloadToTmp(remoteUrl: string): Promise<string> {
   const res = await c.request<void, NodeJS.ReadableStream>({
     method: "GET",
     path: u.pathname,
+    queryParams: u.searchParams,
     responseType: "stream",
     resolveOnHTTPError: true,
   });
