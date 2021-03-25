@@ -6,6 +6,7 @@ interface PreviewFlags {
   ext: boolean;
   extdev: boolean;
   rtdbmanagement: boolean;
+  storageemulator: boolean;
 }
 
 export const previews: PreviewFlags = Object.assign(
@@ -15,6 +16,7 @@ export const previews: PreviewFlags = Object.assign(
     ext: false,
     extdev: false,
     rtdbmanagement: false,
+    storageemulator: false,
   },
   configstore.get("previews")
 );

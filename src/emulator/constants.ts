@@ -12,6 +12,7 @@ const DEFAULT_PORTS: { [s in Emulators]: number } = {
   pubsub: 8085,
   database: 9000,
   auth: 9099,
+  storage: 9199,
 };
 
 export const FIND_AVAILBLE_PORT_BY_DEFAULT: Record<Emulators, boolean> = {
@@ -24,6 +25,7 @@ export const FIND_AVAILBLE_PORT_BY_DEFAULT: Record<Emulators, boolean> = {
   database: false,
   pubsub: false,
   auth: false,
+  storage: false,
 };
 
 export const EMULATOR_DESCRIPTION: Record<Emulators, string> = {
@@ -36,6 +38,7 @@ export const EMULATOR_DESCRIPTION: Record<Emulators, string> = {
   database: "Database Emulator",
   pubsub: "Pub/Sub Emulator",
   auth: "Authentication Emulator",
+  storage: "Storage Emulator",
 };
 
 const DEFAULT_HOST = "localhost";
