@@ -40,7 +40,7 @@ function createFakeResourceMetadata(params: {
   };
 }
 
-describe("Storage Rules", function () {
+describe.skip("Storage Rules", function () {
   let runtime: StorageRulesRuntime;
 
   // eslint-disable-next-line @typescript-eslint/no-invalid-this
