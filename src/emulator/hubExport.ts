@@ -3,7 +3,7 @@ import * as fs from "fs";
 import * as http from "http";
 
 import * as api from "../api";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { IMPORT_EXPORT_EMULATORS, Emulators, ALL_EMULATORS } from "./types";
 import { EmulatorRegistry } from "./registry";
 import { FirebaseError } from "../error";

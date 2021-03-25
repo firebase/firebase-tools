@@ -7,7 +7,7 @@ import * as http from "http";
 import * as jwt from "jsonwebtoken";
 
 import * as api from "../api";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import * as track from "../track";
 import { Constants } from "./constants";
 import {
@@ -876,9 +876,9 @@ export class FunctionsEmulator implements EmulatorInstance {
     return this.workerPool.submitWork(frb.triggerId, frb, opts);
   }
 
-  disableBackgroundTriggers() {
+  async disableBackgroundTriggers() {
     Object.values(this.triggers).forEach((record) => {
-      if (record.def.eventTrigger) {
+      if (record.def.eventTrigger && record.enabled) {
         this.logger.logLabeled(
           "BULLET",
           `functions[${record.def.entryPoint}]`,
@@ -887,6 +887,8 @@ export class FunctionsEmulator implements EmulatorInstance {
         record.enabled = false;
       }
     });
+
+    await this.workQueue.flush();
   }
 
   async reloadTriggers() {

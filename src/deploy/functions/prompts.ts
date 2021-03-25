@@ -4,8 +4,9 @@ import { getFunctionLabel, getFunctionId, getRegion } from "../../functionsDeplo
 import { CloudFunctionTrigger } from "./deploymentPlanner";
 import { FirebaseError } from "../../error";
 import { promptOnce } from "../../prompt";
+import * as gcp from "../../gcp";
 import * as utils from "../../utils";
-import * as logger from "../../logger";
+import { logger } from "../../logger";
 
 /**
  * Checks if a deployment will create any functions with a failure policy.
@@ -14,6 +15,7 @@ import * as logger from "../../logger";
  * @param functions A list of all functions in the deployment
  */
 export async function promptForFailurePolicies(
+  context: any,
   options: any,
   functions: CloudFunctionTrigger[]
 ): Promise<void> {
@@ -25,21 +27,47 @@ export async function promptForFailurePolicies(
   if (failurePolicyFunctions.length === 0) {
     return;
   }
-  const failurePolicyFunctionLabels = failurePolicyFunctions.map((fn: CloudFunctionTrigger) => {
-    return getFunctionLabel(fn.name);
+
+  context.existingFunctions =
+    (context.existingFunctions as CloudFunctionTrigger[]) ||
+    (await gcp.cloudfunctions.listAllFunctions(context.projectId));
+  const existingFailurePolicyFunctions = context.existingFunctions.filter(
+    (fn: CloudFunctionTrigger) => {
+      return !!fn?.eventTrigger?.failurePolicy;
+    }
+  );
+  const newFailurePolicyFunctions = failurePolicyFunctions.filter((fn: CloudFunctionTrigger) => {
+    for (const existing of existingFailurePolicyFunctions) {
+      if (existing.name === fn.name) {
+        return false;
+      }
+    }
+    return true;
   });
-  const retryMessage =
-    "The following functions will be retried in case of failure: " +
-    clc.bold(failurePolicyFunctionLabels.join(", ")) +
+
+  if (newFailurePolicyFunctions.length == 0) {
+    return;
+  }
+
+  const newFailurePolicyFunctionLabels = newFailurePolicyFunctions.map(
+    (fn: CloudFunctionTrigger) => {
+      return getFunctionLabel(fn.name);
+    }
+  );
+
+  const warnMessage =
+    "The following functions will newly be retried in case of failure: " +
+    clc.bold(newFailurePolicyFunctionLabels.join(", ")) +
     ". " +
     "Retried executions are billed as any other execution, and functions are retried repeatedly until they either successfully execute or the maximum retry period has elapsed, which can be up to 7 days. " +
     "For safety, you might want to ensure that your functions are idempotent; see https://firebase.google.com/docs/functions/retries to learn more.";
 
-  utils.logLabeledWarning("functions", retryMessage);
+  utils.logLabeledWarning("functions", warnMessage);
 
   if (options.force) {
     return;
-  } else if (options.nonInteractive) {
+  }
+  if (options.nonInteractive) {
     throw new FirebaseError("Pass the --force option to deploy functions with a failure policy", {
       exit: 1,
     });

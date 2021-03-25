@@ -15,7 +15,7 @@ import {
   deleteServiceAccount,
 } from "../../../gcp/iam";
 import { addServiceAccountToRoles, firebaseRoles } from "../../../gcp/resourceManager";
-import * as logger from "../../../logger";
+import { logger } from "../../../logger";
 import { prompt } from "../../../prompt";
 import { logBullet, logLabeledBullet, logSuccess, reject } from "../../../utils";
 import { githubApiOrigin, githubClientId } from "../../../api";

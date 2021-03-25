@@ -1,6 +1,6 @@
 const fs = require("fs-extra");
 const path = require("path");
-const logger = require("../../logger");
+const { logger } = require("../../logger");
 
 function cachePath(cwd, name) {
   return path.resolve(cwd, ".firebase/hosting." + name + ".cache");

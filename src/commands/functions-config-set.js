@@ -5,7 +5,7 @@ var clc = require("cli-color");
 var { Command } = require("../command");
 var getProjectId = require("../getProjectId");
 var { requirePermissions } = require("../requirePermissions");
-var logger = require("../logger");
+const { logger } = require("../logger");
 var utils = require("../utils");
 var functionsConfig = require("../functionsConfig");
 

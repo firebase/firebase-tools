@@ -7,7 +7,7 @@ import { resolveRegistryEntry } from "../extensions/resolveSource";
 import * as extensionsApi from "../extensions/extensionsApi";
 import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper";
 import { isLocalExtension, getLocalExtensionSpec } from "../extensions/localHelper";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 

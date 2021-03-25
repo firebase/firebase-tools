@@ -2,7 +2,7 @@
 
 var path = require("path");
 var api = require("../api");
-var logger = require("../logger");
+const { logger } = require("../logger");
 var { FirebaseError } = require("../error");
 
 function _getDefaultBucket(projectId) {

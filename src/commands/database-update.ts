@@ -11,7 +11,7 @@ import { printNoticeIfEmulated } from "../emulator/commandUtils";
 import { promptOnce } from "../prompt";
 import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api";
 import { requirePermissions } from "../requirePermissions";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import * as utils from "../utils";
 

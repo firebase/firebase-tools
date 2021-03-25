@@ -1,6 +1,6 @@
 "use strict";
 
-var logger = require("../logger");
+const { logger } = require("../logger");
 var api = require("../api");
 var clc = require("cli-color");
 var _ = require("lodash");

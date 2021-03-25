@@ -4,7 +4,7 @@ import * as marked from "marked";
 import * as semver from "semver";
 import * as api from "../api";
 import { FirebaseError } from "../error";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { promptOnce } from "../prompt";
 import { Audience } from "../extensions/extensionsHelper";
 

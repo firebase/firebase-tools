@@ -3,7 +3,7 @@
 var api = require("../api");
 
 var utils = require("../utils");
-var logger = require("../logger");
+const { logger } = require("../logger");
 var _ = require("lodash");
 
 var API_VERSION = "v1beta1";

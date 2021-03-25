@@ -1,7 +1,7 @@
 import * as rcGet from "../remoteconfig/get";
 import { Command } from "../command";
 import { requireAuth } from "../requireAuth";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { RemoteConfigTemplate } from "../remoteconfig/interfaces";
 import getProjectId = require("../getProjectId");
 import { requirePermissions } from "../requirePermissions";

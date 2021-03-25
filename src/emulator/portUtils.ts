@@ -2,7 +2,7 @@ import * as pf from "portfinder";
 import * as tcpport from "tcp-port-used";
 
 import { FirebaseError } from "../error";
-import * as logger from "../logger";
+import { logger } from "../logger";
 
 // See:
 // - https://stackoverflow.com/questions/4313403/why-do-browsers-block-some-ports

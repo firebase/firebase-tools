@@ -1,27 +1,27 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
+import * as clc from "cli-color";
+import * as repl from "repl";
+import * as _ from "lodash";
+import * as request from "request";
+import * as util from "util";
 
-"use strict";
-
-var clc = require("cli-color");
-var repl = require("repl");
-var _ = require("lodash");
-
-var request = require("request");
-var util = require("util");
-
-var { FunctionsServer } = require("./serve/functions");
-var LocalFunction = require("./localFunction");
-var utils = require("./utils");
-var logger = require("./logger");
-var shell = require("./emulator/functionsEmulatorShell");
-var commandUtils = require("./emulator/commandUtils");
-var { EMULATORS_SUPPORTED_BY_FUNCTIONS } = require("./emulator/types");
-var { EmulatorHubClient } = require("./emulator/hubClient");
+import { FunctionsServer } from "./serve/functions";
+import * as LocalFunction from "./localFunction";
+import * as utils from "./utils";
+import { logger } from "./logger";
+import * as shell from "./emulator/functionsEmulatorShell";
+import * as commandUtils from "./emulator/commandUtils";
+import { EMULATORS_SUPPORTED_BY_FUNCTIONS, EmulatorInfo, Emulators } from "./emulator/types";
+import { EmulatorHubClient } from "./emulator/hubClient";
+import { Constants } from "./emulator/constants";
+import { findAvailablePort } from "./emulator/portUtils";
 
 const serveFunctions = new FunctionsServer();
 
-module.exports = async function (options) {
-  options.port = parseInt(options.port, 10);
+export const actionFunction = async (options: any) => {
+  if (options.port) {
+    options.port = parseInt(options.port, 10);
+  }
 
   let debugPort = undefined;
   if (options.inspectFunctions) {
@@ -29,8 +29,8 @@ module.exports = async function (options) {
   }
 
   const hubClient = new EmulatorHubClient(options.project);
-  /** @type {Record<string,object>} */
-  let remoteEmulators = {};
+
+  let remoteEmulators: Record<string, EmulatorInfo> = {};
   if (hubClient.foundHub()) {
     remoteEmulators = await hubClient.getEmulators();
     logger.debug("Running emulators: ", remoteEmulators);
@@ -43,16 +43,34 @@ module.exports = async function (options) {
     (e) => remoteEmulators[e] === undefined
   );
 
+  const functionsInfo = remoteEmulators[Emulators.FUNCTIONS];
+  if (functionsInfo) {
+    utils.logLabeledWarning(
+      "functions",
+      `You are already running the Cloud Functions emulator on port ${functionsInfo.port}. Running the emulator and the Functions shell simultaenously can result in unexpected behavior.`
+    );
+  } else if (!options.port) {
+    // If the user did not pass in any port and the functions emulator is not already running, we can
+    // use the port defined for the Functions emulator in their firebase.json
+    options.port = options.config.get(Constants.getPortKey(Emulators.FUNCTIONS), undefined);
+  }
+
+  // If the port was not set by the --port flag or determined from 'firebase.json', just scan
+  // up from 5000
+  if (!options.port) {
+    options.port = await findAvailablePort("localhost", 5000);
+  }
+
   return serveFunctions
     .start(options, {
       quiet: true,
       remoteEmulators,
       debugPort,
     })
-    .then(function () {
+    .then(() => {
       return serveFunctions.connect();
     })
-    .then(function () {
+    .then(() => {
       const instance = serveFunctions.get();
       const emulator = new shell.FunctionsEmulatorShell(instance);
 
@@ -61,14 +79,14 @@ module.exports = async function (options) {
         process.exit();
       }
 
-      var initializeContext = function (context) {
-        _.forEach(emulator.triggers, function (trigger) {
-          if (_.includes(emulator.emulatedFunctions, trigger.name)) {
-            var localFunction = new LocalFunction(trigger, emulator.urls, emulator);
-            var triggerNameDotNotation = trigger.name.replace(/-/g, ".");
+      const initializeContext = (context: any) => {
+        for (const trigger of emulator.triggers) {
+          if (emulator.emulatedFunctions.includes(trigger.name)) {
+            const localFunction = new LocalFunction(trigger, emulator.urls, emulator);
+            const triggerNameDotNotation = trigger.name.replace(/-/g, ".");
             _.set(context, triggerNameDotNotation, localFunction.call);
           }
-        });
+        }
         context.help =
           "Instructions for the Functions Shell can be found at: " +
           "https://firebase.google.com/docs/functions/local-emulator";
@@ -90,7 +108,7 @@ module.exports = async function (options) {
         )}`
       );
 
-      var writer = function (output) {
+      const writer = (output: any) => {
         // Prevent full print out of Request object when a request is made
         // @ts-ignore
         if (output instanceof request.Request) {
@@ -99,9 +117,9 @@ module.exports = async function (options) {
         return util.inspect(output);
       };
 
-      var prompt = "firebase > ";
+      const prompt = "firebase > ";
 
-      var replServer = repl.start({
+      const replServer = repl.start({
         prompt: prompt,
         writer: writer,
         useColors: true,
@@ -109,8 +127,8 @@ module.exports = async function (options) {
       initializeContext(replServer.context);
       replServer.on("reset", initializeContext);
 
-      return new Promise(function (resolve) {
-        replServer.on("exit", function () {
+      return new Promise((resolve) => {
+        replServer.on("exit", () => {
           return serveFunctions.stop().then(resolve).catch(resolve);
         });
       });

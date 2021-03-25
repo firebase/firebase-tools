@@ -2,7 +2,7 @@ import * as clc from "cli-color";
 import * as semver from "semver";
 
 import { FirebaseError } from "../error";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import * as resolveSource from "./resolveSource";
 import * as extensionsApi from "./extensionsApi";
 import { promptOnce } from "../prompt";

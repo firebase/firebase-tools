@@ -6,7 +6,7 @@ import TerminalRenderer = require("marked-terminal");
 import * as extensionsApi from "./extensionsApi";
 import * as utils from "../utils";
 import { logPrefix } from "./extensionsHelper";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { FirebaseError } from "../error";
 import { promptOnce } from "../prompt";
 

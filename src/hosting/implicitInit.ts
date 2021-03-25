@@ -4,7 +4,7 @@ import * as fs from "fs";
 
 import { fetchWebSetup, getCachedWebSetup } from "../fetchWebSetup";
 import * as utils from "../utils";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { EmulatorRegistry } from "../emulator/registry";
 import { EMULATORS_SUPPORTED_BY_USE_EMULATOR, Address, Emulators } from "../emulator/types";
 
