@@ -22,21 +22,39 @@ const defaultPollerOptions = {
   masterTimeout: 25 * 60000, // 25 minutes is the maximum build time for a function
 };
 
+export type OperationType = "create"
+  | "update"
+  | "delete"
+  | "upsert schedule"
+  | "delete schedule"
+  | "make public";
+
+
+export interface DeploymentTask {
+  (): Promise<any>,
+  functionName: string,
+  operationType: OperationType,
+}
+
 export interface TaskParams {
   projectId: string;
   runtime?: string;
   sourceUrl?: string;
   sourceToken?: string;
-  timer: DeploymentTimer;
   errorHandler: ErrorHandler;
 }
+
+/**
+ * Cloud Functions Deployments Tasks and Handler
+ */
+
 
 export function createFunctionTask(
   params: TaskParams,
   fn: CloudFunctionTrigger,
   onPoll?: (op: OperationResult<CloudFunctionTrigger>) => void
-): () => Promise<CloudFunctionTrigger | void> {
-  return async () => {
+): DeploymentTask {
+  const task: DeploymentTask = async () => {
     utils.logBullet(
       clc.bold.cyan("functions: ") +
         "creating " +
@@ -45,66 +63,58 @@ export function createFunctionTask(
         clc.bold(helper.getFunctionLabel(fn.name)) +
         "..."
     );
-    params.timer.startTimer(fn.name, "create");
     const eventType = fn.eventTrigger ? fn.eventTrigger.eventType : "https";
-    try {
-      const createRes = await cloudfunctions.createFunction({
-        projectId: params.projectId,
-        region: helper.getRegion(fn.name),
-        eventType: eventType,
-        functionName: helper.getFunctionId(fn.name),
-        entryPoint: fn.entryPoint,
-        trigger: helper.getFunctionTrigger(fn),
-        labels: Object.assign({}, deploymentTool.labels(), fn.labels),
-        sourceUploadUrl: params.sourceUrl,
-        sourceToken: params.sourceToken,
-        runtime: params.runtime,
-        availableMemoryMb: fn.availableMemoryMb,
-        timeout: fn.timeout,
-        maxInstances: fn.maxInstances,
-        environmentVariables: fn.environmentVariables,
-        vpcConnector: fn.vpcConnector,
-        vpcConnectorEgressSettings: fn.vpcConnectorEgressSettings,
-        serviceAccountEmail: fn.serviceAccountEmail,
-      });
-      const pollerOptions: OperationPollerOptions = Object.assign(
-        {
-          pollerName: `create-${fn.name}`,
-          operationResourceName: createRes.name,
-          onPoll,
-        },
-        defaultPollerOptions
-      );
-      const operationResult = await pollOperation<CloudFunctionTrigger>(pollerOptions);
-      if (eventType === "https") {
-        try {
-          await cloudfunctions.setIamPolicy({
-            name: fn.name,
-            policy: cloudfunctions.DEFAULT_PUBLIC_POLICY,
-          });
-        } catch (err) {
-          params.errorHandler.record("warning", fn.name, "make public", err.original.message);
-        }
+    const createRes = await cloudfunctions.createFunction({
+      projectId: params.projectId,
+      region: helper.getRegion(fn.name),
+      eventType: eventType,
+      functionName: helper.getFunctionId(fn.name),
+      entryPoint: fn.entryPoint,
+      trigger: helper.getFunctionTrigger(fn),
+      labels: Object.assign({}, deploymentTool.labels(), fn.labels),
+      sourceUploadUrl: params.sourceUrl,
+      sourceToken: params.sourceToken,
+      runtime: params.runtime,
+      availableMemoryMb: fn.availableMemoryMb,
+      timeout: fn.timeout,
+      maxInstances: fn.maxInstances,
+      environmentVariables: fn.environmentVariables,
+      vpcConnector: fn.vpcConnector,
+      vpcConnectorEgressSettings: fn.vpcConnectorEgressSettings,
+      serviceAccountEmail: fn.serviceAccountEmail,
+    });
+    const pollerOptions: OperationPollerOptions = Object.assign(
+      {
+        pollerName: `create-${fn.name}`,
+        operationResourceName: createRes.name,
+        onPoll,
+      },
+      defaultPollerOptions
+    );
+    const operationResult = await pollOperation<CloudFunctionTrigger>(pollerOptions);
+    if (eventType === "https") {
+      try {
+        await cloudfunctions.setIamPolicy({
+          name: fn.name,
+          policy: cloudfunctions.DEFAULT_PUBLIC_POLICY,
+        });
+      } catch (err) {
+        params.errorHandler.record("warning", fn.name, "make public", err.original.message);
       }
-      params.timer.endTimer(fn.name);
-      helper.printSuccess(fn.name, "create");
-      return operationResult;
-    } catch (err) {
-      if (err.original?.context?.response?.statusCode === 429) {
-        // Throw quota errors so that throttler retries them.
-        throw err;
-      }
-      params.errorHandler.record("error", fn.name, "create", err.original.message || "");
     }
+    return operationResult;
   };
+  task.functionName = fn.name;
+  task.operationType = "create";
+  return task;
 }
 
 export function updateFunctionTask(
   params: TaskParams,
   fn: CloudFunctionTrigger,
   onPoll?: (op: OperationResult<CloudFunctionTrigger>) => void
-): () => Promise<CloudFunctionTrigger | void> {
-  return async () => {
+): DeploymentTask {
+  const task: DeploymentTask = async () => {
     utils.logBullet(
       clc.bold.cyan("functions: ") +
         "updating " +
@@ -113,130 +123,84 @@ export function updateFunctionTask(
         clc.bold(helper.getFunctionLabel(fn.name)) +
         "..."
     );
-    params.timer.startTimer(fn.name, "update");
     const eventType = fn.eventTrigger ? fn.eventTrigger.eventType : "https";
-    try {
-      const updateRes = await cloudfunctions.updateFunction({
-        projectId: params.projectId,
-        region: helper.getRegion(fn.name),
-        eventType: eventType,
-        functionName: helper.getFunctionId(fn.name),
-        entryPoint: fn.entryPoint,
-        trigger: helper.getFunctionTrigger(fn),
-        labels: Object.assign({}, deploymentTool.labels(), fn.labels),
-        sourceUploadUrl: params.sourceUrl,
-        sourceToken: params.sourceToken,
-        runtime: params.runtime,
-        availableMemoryMb: fn.availableMemoryMb,
-        timeout: fn.timeout,
-        maxInstances: fn.maxInstances,
-        environmentVariables: fn.environmentVariables,
-        vpcConnector: fn.vpcConnector,
-        vpcConnectorEgressSettings: fn.vpcConnectorEgressSettings,
-        serviceAccountEmail: fn.serviceAccountEmail,
-      });
-      const pollerOptions: OperationPollerOptions = Object.assign(
-        {
-          pollerName: `update-${fn.name}`,
-          operationResourceName: updateRes.name,
-          onPoll,
-        },
-        defaultPollerOptions
-      );
-      const operationResult = await pollOperation<CloudFunctionTrigger>(pollerOptions);
-      params.timer.endTimer(fn.name);
-      helper.printSuccess(fn.name, "update");
-      return operationResult;
-    } catch (err) {
-      if (err.original?.context?.response?.statusCode === 429) {
-        // Throw quota errors so that throttler retries them.
-        throw err;
-      }
-      params.errorHandler.record("error", fn.name, "update", err.original.message || "");
-    }
+    const updateRes = await cloudfunctions.updateFunction({
+      projectId: params.projectId,
+      region: helper.getRegion(fn.name),
+      eventType: eventType,
+      functionName: helper.getFunctionId(fn.name),
+      entryPoint: fn.entryPoint,
+      trigger: helper.getFunctionTrigger(fn),
+      labels: Object.assign({}, deploymentTool.labels(), fn.labels),
+      sourceUploadUrl: params.sourceUrl,
+      sourceToken: params.sourceToken,
+      runtime: params.runtime,
+      availableMemoryMb: fn.availableMemoryMb,
+      timeout: fn.timeout,
+      maxInstances: fn.maxInstances,
+      environmentVariables: fn.environmentVariables,
+      vpcConnector: fn.vpcConnector,
+      vpcConnectorEgressSettings: fn.vpcConnectorEgressSettings,
+      serviceAccountEmail: fn.serviceAccountEmail,
+    });
+    const pollerOptions: OperationPollerOptions = Object.assign(
+      {
+        pollerName: `update-${fn.name}`,
+        operationResourceName: updateRes.name,
+        onPoll,
+      },
+      defaultPollerOptions
+    );
+    const operationResult = await pollOperation<CloudFunctionTrigger>(pollerOptions);
+    return operationResult;
   };
+  task.functionName = fn.name;
+  task.operationType = "update";
+  return task;
 }
 
-export function deleteFunctionTask(params: TaskParams, fnName: string) {
-  return async () => {
+export function deleteFunctionTask(params: TaskParams, fnName: string): DeploymentTask {
+  const task: DeploymentTask = async () => {
     utils.logBullet(
       clc.bold.cyan("functions: ") +
         "deleting function " +
         clc.bold(helper.getFunctionLabel(fnName)) +
         "..."
     );
-    params.timer.startTimer(fnName, "delete");
+    const deleteRes = await cloudfunctions.deleteFunction({
+      functionName: fnName,
+    });
+    const pollerOptions: OperationPollerOptions = Object.assign(
+      {
+        pollerName: `delete-${fnName}`,
+        operationResourceName: deleteRes.name,
+      },
+      defaultPollerOptions
+    );
+    return await pollOperation<void>(pollerOptions);
+  };
+  task.functionName = fnName;
+  task.operationType = "delete";
+  return task;
+}
+
+export function functionsDeploymentHandler(timer: DeploymentTimer, errorHandler: ErrorHandler): (task: DeploymentTask) => Promise<any | undefined> {
+  return async (task: DeploymentTask) => {
+    let result;
     try {
-      const deleteRes = await cloudfunctions.deleteFunction({
-        functionName: fnName,
-      });
-      const pollerOptions: OperationPollerOptions = Object.assign(
-        {
-          pollerName: `delete-${fnName}`,
-          operationResourceName: deleteRes.name,
-        },
-        defaultPollerOptions
-      );
-      const operationResult = await pollOperation<void>(pollerOptions);
-      params.timer.endTimer(fnName);
-      helper.printSuccess(fnName, "delete");
-      return operationResult;
+      timer.startTimer(task.functionName, task.operationType);
+      result = await task();
+      helper.printSuccess(task.functionName, task.operationType);
     } catch (err) {
       if (err.original?.context?.response?.statusCode === 429) {
         // Throw quota errors so that throttler retries them.
         throw err;
       }
-      params.errorHandler.record("error", fnName, "delete", err.original.message || "");
+      errorHandler.record("error", task.functionName, task.operationType, err.original.message || "");
     }
-  };
-}
-
-export function upsertScheduleTask(
-  params: TaskParams,
-  fn: CloudFunctionTrigger,
-  appEngineLocation: string
-): () => Promise<any> {
-  return async () => {
-    const job = helper.toJob(fn, appEngineLocation, params.projectId);
-    try {
-      await cloudscheduler.createOrReplaceJob(job);
-      helper.printSuccess(fn.name, "upsert schedule");
-    } catch (err) {
-      params.errorHandler.record("error", fn.name, "upsert schedule", err.original.message || "");
-    }
-  };
-}
-
-export function deleteScheduleTask(
-  params: TaskParams,
-  fnName: string,
-  appEngineLocation: string
-): () => Promise<void> {
-  return async () => {
-    const jobName = helper.getScheduleName(fnName, appEngineLocation);
-    const topicName = helper.getTopicName(fnName);
-    try {
-      await cloudscheduler.deleteJob(jobName);
-    } catch (err) {
-      // If the job has already been deleted, don't throw an error.
-      if (err.status !== 404) {
-        params.errorHandler.record("error", fnName, "delete schedule", err.original.message || "");
-        return;
-      }
-      logger.debug(`Scheduler job ${jobName} not found.`);
-    }
-    try {
-      await deleteTopic(topicName);
-      helper.printSuccess(fnName, "delete schedule");
-    } catch (err) {
-      // If the topic has already been deleted, don't throw an error.
-      if (err.status !== 404) {
-        params.errorHandler.record("error", fnName, "delete schedule", err.original.message || "");
-        return;
-      }
-      logger.debug(`Scheduler topic ${topicName} not found.`);
-    }
-  };
+    timer.endTimer(task.functionName);
+    return result;
+  }
 }
 
 /**
@@ -245,7 +209,7 @@ export function deleteScheduleTask(
 export function runRegionalFunctionDeployment(
   params: TaskParams,
   regionalDeployment: RegionalDeployment,
-  queue: Queue<() => Promise<any>, void>
+  queue: Queue<DeploymentTask, void>
 ): Promise<void> {
   // Build an onPoll function to check for sourceToken and queue up the rest of the deployment.
   const onPollFn = (op: any) => {
@@ -280,7 +244,7 @@ export function runRegionalFunctionDeployment(
 function finishRegionalFunctionDeployment(
   params: TaskParams,
   regionalDeployment: RegionalDeployment,
-  queue: Queue<() => Promise<any>, void>
+  queue: Queue<DeploymentTask, void>
 ): void {
   params.sourceToken = regionalDeployment.sourceToken;
   for (const fn of regionalDeployment.functionsToCreate) {
@@ -288,5 +252,57 @@ function finishRegionalFunctionDeployment(
   }
   for (const fn of regionalDeployment.functionsToUpdate) {
     queue.run(updateFunctionTask(params, fn));
+  }
+}
+
+/**
+ * Cloud Scheduler Deployments Tasks and Handler
+ */
+
+export function upsertScheduleTask(
+  params: TaskParams,
+  fn: CloudFunctionTrigger,
+  appEngineLocation: string
+): DeploymentTask {
+  const task: DeploymentTask = async () => {
+    const job = helper.toJob(fn, appEngineLocation, params.projectId);
+    return await cloudscheduler.createOrReplaceJob(job);
+  };
+  task.functionName = fn.name;
+  task.operationType = "upsert schedule";
+  return task;
+}
+
+export function deleteScheduleTask(
+  params: TaskParams,
+  fnName: string,
+  appEngineLocation: string
+): DeploymentTask {
+  const task: DeploymentTask = async () => {
+    const jobName = helper.getScheduleName(fnName, appEngineLocation);
+    const topicName = helper.getTopicName(fnName);
+    await cloudscheduler.deleteJob(jobName);
+    await deleteTopic(topicName);
+  };
+  task.functionName = fnName;
+  task.operationType = "delete schedule";
+  return task;
+}
+
+export function schedulerDeploymentHandler(errorHandler: ErrorHandler): (task: DeploymentTask) => Promise<any | undefined> {
+  return async (task: DeploymentTask) => {
+    let result;
+    try {
+      result = await task();
+      helper.printSuccess(task.functionName, task.operationType)
+    } catch (err) {
+      if (err.status === 429) {
+        // Throw quota errors so that throttler retries them.
+        throw err;
+      } else if (err.status !== 404) {
+        // Ignore 404 errors from scheduler calls since they may be deleted out of band.
+        errorHandler.record("error", task.functionName, task.operationType, err.original.message || "");
+      }
+    }
   }
 }

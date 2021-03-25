@@ -5,7 +5,7 @@ import * as clc from "cli-color";
 
 import * as utils from "../../utils";
 import * as helper from "../../functionsDeployHelper";
-import { CloudFunctionTrigger, createDeploymentPlan } from "./deploymentPlanner";
+import { createDeploymentPlan } from "./deploymentPlanner";
 import * as tasks from "./tasks";
 import { getAppEngineLocation } from "../../functionsConfig";
 import { promptForFunctionDeletion } from "./prompts";
@@ -34,21 +34,23 @@ export async function release(context: any, options: any, payload: any) {
   // This queue will be used to retry quota errors.
   // The main quotas that can be exceeded are per 1 minute quotas,
   // so we start with a larger backoff to reduce the liklihood of retries.
-  const cloudFunctionsQueue = new Queue<() => Promise<CloudFunctionTrigger | void>, void>({
+  const cloudFunctionsQueue = new Queue<tasks.DeploymentTask, void>({
     retries: 20,
     backoff: 20000, 
     concurrency: 40,
     maxBackoff: 40000,
+    handler: tasks.functionsDeploymentHandler(timer, errorHandler),
     name: "cloudFunctionsDeployment",
   });
-  const schedulerQueue = new Queue<() => Promise<any>, void>({});
+  const schedulerQueue = new Queue<tasks.DeploymentTask, void>({
+    handler: tasks.schedulerDeploymentHandler(errorHandler),
+  });
   const regionPromises = [];
 
   const taskParams: tasks.TaskParams = {
     projectId,
     sourceUrl,
     runtime: context.runtimeChoice,
-    timer,
     errorHandler,
   };
 
