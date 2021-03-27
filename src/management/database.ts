@@ -4,7 +4,7 @@
  */
 
 import * as api from "../api";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import * as utils from "../utils";
 import { FirebaseError } from "../error";
 import { Constants } from "../emulator/constants";

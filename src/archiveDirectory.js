@@ -11,7 +11,7 @@ const tmp = require("tmp");
 const { listFiles } = require("./listFiles");
 const { FirebaseError } = require("./error");
 const fsAsync = require("./fsAsync");
-const logger = require("./logger");
+const { logger } = require("./logger");
 const utils = require("./utils");
 
 /**

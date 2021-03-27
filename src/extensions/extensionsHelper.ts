@@ -28,7 +28,7 @@ import {
 } from "./extensionsApi";
 import { getLocalExtensionSpec } from "./localHelper";
 import { promptOnce } from "../prompt";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { envOverride } from "../utils";
 
 /**

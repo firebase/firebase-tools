@@ -3,7 +3,7 @@ import clc = require("cli-color");
 import fs = require("fs");
 
 import gcp = require("./gcp");
-import logger = require("./logger");
+import { logger } from "./logger";
 import { FirebaseError } from "./error";
 import utils = require("./utils");
 

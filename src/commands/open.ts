@@ -5,7 +5,7 @@ import * as open from "open";
 import { FirebaseError } from "../error";
 import * as api from "../api";
 import { Command } from "../command";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { promptOnce } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 import { requireDatabaseInstance } from "../requireDatabaseInstance";

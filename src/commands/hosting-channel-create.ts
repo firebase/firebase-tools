@@ -8,7 +8,7 @@ import { logLabeledSuccess, datetimeString, logLabeledWarning, consoleUrl } from
 import { promptOnce } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 import * as getProjectId from "../getProjectId";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import * as requireConfig from "../requireConfig";
 import * as marked from "marked";
 import { requireHostingSite } from "../requireHostingSite";

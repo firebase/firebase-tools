@@ -1,7 +1,6 @@
 import { expect } from "chai";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import { FirebaseJwtPayload } from "../../../emulator/auth/operations";
-import { TEST_PHONE_NUMBER } from "./helpers";
 import { describeAuthEmulator } from "./setup";
 import {
   expectStatusCode,
@@ -9,6 +8,9 @@ import {
   signInWithPhoneNumber,
   updateAccountByLocalId,
   inspectVerificationCodes,
+  registerUser,
+  TEST_MFA_INFO,
+  TEST_PHONE_NUMBER,
 } from "./helpers";
 
 describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
@@ -246,6 +248,37 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
       .then((res) => {
         expectStatusCode(400, res);
         expect(res.body.error).to.have.property("message").equals("USER_DISABLED");
+      });
+  });
+
+  it("should error if user has MFA", async () => {
+    const user = {
+      email: "alice@example.com",
+      password: "notasecret",
+      mfaInfo: [TEST_MFA_INFO],
+    };
+    const { localId, idToken } = await registerUser(authApi(), user);
+
+    const phoneNumber = TEST_PHONE_NUMBER;
+    const sessionInfo = await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode")
+      .query({ key: "fake-api-key" })
+      .send({ phoneNumber, recaptchaToken: "ignored" })
+      .then((res) => {
+        expectStatusCode(200, res);
+        return res.body.sessionInfo;
+      });
+
+    const codes = await inspectVerificationCodes(authApi());
+    const code = codes[0].code;
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPhoneNumber")
+      .query({ key: "fake-api-key" })
+      .send({ sessionInfo, code, idToken })
+      .then((res) => {
+        expectStatusCode(501, res);
+        expect(res.body.error.message).to.equal("MFA Login not yet implemented.");
       });
   });
 

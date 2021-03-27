@@ -1,6 +1,6 @@
 const api = require("../../api");
 const utils = require("../../utils");
-const logger = require("../../logger");
+const { logger } = require("../../logger");
 
 module.exports = function (context, options) {
   if (!context.hosting || !context.hosting.deploys) {

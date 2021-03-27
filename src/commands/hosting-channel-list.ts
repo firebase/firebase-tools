@@ -5,7 +5,7 @@ import { Channel, listChannels } from "../hosting/api";
 import { Command } from "../command";
 import { requirePermissions } from "../requirePermissions";
 import * as getProjectId from "../getProjectId";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import * as requireConfig from "../requireConfig";
 import { datetimeString } from "../utils";
 import { requireHostingSite } from "../requireHostingSite";

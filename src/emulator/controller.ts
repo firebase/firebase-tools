@@ -4,7 +4,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 import * as Config from "../config";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import * as track from "../track";
 import * as utils from "../utils";
 import { EmulatorRegistry } from "./registry";
@@ -39,6 +39,7 @@ import { promptOnce } from "../prompt";
 import * as rimraf from "rimraf";
 import { FLAG_EXPORT_ON_EXIT_NAME } from "./commandUtils";
 import { fileExistsSync } from "../fsutils";
+import { StorageEmulator } from "./storage";
 import { getDefaultDatabaseInstance } from "../getDefaultDatabaseInstance";
 
 async function getAndCheckAddress(emulator: Emulators, options: any): Promise<Address> {
@@ -119,6 +120,10 @@ async function getAndCheckAddress(emulator: Emulators, options: any): Promise<Ad
   return { host, port };
 }
 
+/**
+ * Starts a specific emulator instance
+ * @param instance
+ */
 export async function startEmulator(instance: EmulatorInstance): Promise<void> {
   const name = instance.getName();
 
@@ -169,6 +174,10 @@ export async function cleanShutdown(): Promise<void> {
   await EmulatorRegistry.stopAll();
 }
 
+/**
+ * Filters a list of emulators to only those specified in the config
+ * @param options
+ */
 export function filterEmulatorTargets(options: any): Emulators[] {
   let targets = ALL_SERVICE_EMULATORS.filter((e) => {
     return options.config.has(e) || options.config.has(`emulators.${e}`);
@@ -185,13 +194,18 @@ export function filterEmulatorTargets(options: any): Emulators[] {
   return targets;
 }
 
+/**
+ * Returns whether or not a specific emulator should start based on configuration and dependencies.
+ * @param options
+ * @param name
+ */
 export function shouldStart(options: any, name: Emulators): boolean {
   if (name === Emulators.HUB) {
     // The hub only starts if we know the project ID.
     return !!options.project;
   }
   const targets = filterEmulatorTargets(options);
-  const emulatorInTargets = targets.indexOf(name) >= 0;
+  const emulatorInTargets = targets.includes(name);
 
   if (name === Emulators.UI) {
     if (options.ui) {
@@ -206,7 +220,7 @@ export function shouldStart(options: any, name: Emulators): boolean {
     // Emulator UI only starts if we know the project ID AND at least one
     // emulator supported by Emulator UI is launching.
     return (
-      !!options.project && targets.some((target) => EMULATORS_SUPPORTED_BY_UI.indexOf(target) >= 0)
+      !!options.project && targets.some((target) => EMULATORS_SUPPORTED_BY_UI.includes(target))
     );
   }
 
@@ -334,7 +348,7 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
 
     for (const name of ignored) {
       if (isEmulator(name)) {
-        EmulatorLogger.forEmulator(name as Emulators).logLabeled(
+        EmulatorLogger.forEmulator(name).logLabeled(
           "WARN",
           name,
           `Not starting the ${clc.bold(name)} emulator, make sure you have run ${clc.bold(
@@ -600,6 +614,25 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
       auto_download: true,
     });
     await startEmulator(pubsubEmulator);
+  }
+
+  if (shouldStart(options, Emulators.STORAGE)) {
+    const storageAddr = await getAndCheckAddress(Emulators.STORAGE, options);
+    const storageConfig = options.config.data.storage;
+
+    if (!storageConfig?.rules) {
+      throw new FirebaseError(
+        "Cannot start the Storage emulator without rules file specified in firebase.json: run 'firebase init' and set up your Storage configuration"
+      );
+    }
+
+    const storageEmulator = new StorageEmulator({
+      host: storageAddr.host,
+      port: storageAddr.port,
+      projectId,
+      rules: options.config.path(storageConfig.rules),
+    });
+    await startEmulator(storageEmulator);
   }
 
   // Hosting emulator needs to start after all of the others so that we can detect

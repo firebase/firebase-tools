@@ -4,7 +4,7 @@ import fs = require("fs");
 import gcp = require("../../../gcp");
 import fsutils = require("../../../fsutils");
 import { prompt, promptOnce } from "../../../prompt";
-import logger = require("../../../logger");
+import { logger } from "../../../logger";
 import utils = require("../../../utils");
 
 const DEFAULT_RULES_FILE = "firestore.rules";

@@ -100,13 +100,11 @@ module.exports = function (client) {
   client.hosting.channel.open = loadCommand("hosting-channel-open");
   client.hosting.clone = loadCommand("hosting-clone");
   client.hosting.disable = loadCommand("hosting-disable");
-  if (previews.hostingsites) {
-    client.hosting.sites = {};
-    client.hosting.sites.create = loadCommand("hosting-sites-create");
-    client.hosting.sites.delete = loadCommand("hosting-sites-delete");
-    client.hosting.sites.get = loadCommand("hosting-sites-get");
-    client.hosting.sites.list = loadCommand("hosting-sites-list");
-  }
+  client.hosting.sites = {};
+  client.hosting.sites.create = loadCommand("hosting-sites-create");
+  client.hosting.sites.delete = loadCommand("hosting-sites-delete");
+  client.hosting.sites.get = loadCommand("hosting-sites-get");
+  client.hosting.sites.list = loadCommand("hosting-sites-list");
   client.init = loadCommand("init");
   client.login = loadCommand("login");
   client.login.ci = loadCommand("login-ci");
@@ -127,6 +125,11 @@ module.exports = function (client) {
   client.setup.emulators.database = loadCommand("setup-emulators-database");
   client.setup.emulators.firestore = loadCommand("setup-emulators-firestore");
   client.setup.emulators.pubsub = loadCommand("setup-emulators-pubsub");
+
+  if (previews.storageemulator) {
+    client.setup.emulators.storage = loadCommand("setup-emulators-storage");
+  }
+
   client.setup.emulators.ui = loadCommand("setup-emulators-ui");
   client.target = loadCommand("target");
   client.target.apply = loadCommand("target-apply");
