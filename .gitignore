@@ -22,3 +22,7 @@ scripts/*.json
 
 lib/
 dev/
+
+# tab-completion-stuff
+command-signatures.json
+completion.sh
