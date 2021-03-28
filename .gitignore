@@ -26,3 +26,4 @@ dev/
 # tab-completion-stuff
 command-signatures.json
 completion.sh
+completion.fish
