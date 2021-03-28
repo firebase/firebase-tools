@@ -1,5 +1,5 @@
 import * as fs from "fs";
-import { Command } from "./command";
+import { Command } from "../src/command";
 
 interface CommandDescriptor {
   name: string;
@@ -19,7 +19,7 @@ async function extractCommandSignatures(): Promise<void> {
 
   // Import each command and store its signature in commandSignatures
   for (const commandFile of fs.readdirSync("./src/commands")) {
-    const command = (await import("./commands/" + commandFile.replace(/.ts$/, ""))) as Command;
+    const command = (await import("../src/commands/" + commandFile.replace(/.ts$/, ""))) as Command;
 
     if (!command["name"]) {
       continue;
@@ -100,7 +100,9 @@ ${commandSignatures
   .filter((item) => item)
   .join("\n")}
 `;
-  const bashTemplate = fs.readFileSync("completion_template.sh").toString();
+  const bashTemplate = fs
+    .readFileSync("scripts/completion-templates/completion_template.sh")
+    .toString();
   fs.writeFileSync("completion.sh", bashTemplate.replace(/\n# DECLARATIONS\n/g, bashDeclarations));
 
   // Generate fish completion file from its template, providing database variables
@@ -157,7 +159,9 @@ set ACCEPTS_FILE ${commandSignatures
     .filter((item) => item)
     .join(" ")}
 `;
-  const fishTemplate = fs.readFileSync("completion_template.fish").toString();
+  const fishTemplate = fs
+    .readFileSync("scripts/completion-templates/completion_template.fish")
+    .toString();
   fs.writeFileSync(
     "completion.fish",
     fishTemplate.replace(/\n# DECLARATIONS\n/g, fishDeclarations)
