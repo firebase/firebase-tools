@@ -18,7 +18,6 @@ var PACKAGE_NO_LINTING_TEMPLATE = fs.readFileSync(
   "utf8"
 );
 var ESLINT_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_eslintrc"), "utf8");
-var GITIGNORE_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_gitignore"), "utf8");
 
 module.exports = function (setup, config) {
   return prompt(setup.functions, [
@@ -42,9 +41,6 @@ module.exports = function (setup, config) {
     })
     .then(function () {
       return config.askWriteProjectFile("functions/index.js", INDEX_TEMPLATE);
-    })
-    .then(function () {
-      return config.askWriteProjectFile("functions/.gitignore", GITIGNORE_TEMPLATE);
     })
     .then(function () {
       return npmDependencies.askInstallDependencies(setup.functions, config);

@@ -90,10 +90,6 @@ async function javascriptSelected(config: Config): Promise<void> {
     path.join(TEMPLATE_ROOT, "javascript", "package.nolint.json"),
     "utf8"
   );
-  const gitignoreTemplate = fs.readFileSync(
-    path.join(TEMPLATE_ROOT, "javascript", "_gitignore"),
-    "utf8"
-  );
   const eslintTemplate = fs.readFileSync(
     path.join(FUNCTIONS_ROOT, "javascript", "_eslintrc"),
     "utf8"
@@ -116,7 +112,6 @@ async function javascriptSelected(config: Config): Promise<void> {
   } else {
     await config.askWriteProjectFile("functions/package.json", packageNoLintingTemplate);
   }
-  await config.askWriteProjectFile("functions/.gitignore", gitignoreTemplate);
 }
 
 /**
