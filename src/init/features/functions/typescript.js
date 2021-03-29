@@ -20,7 +20,6 @@ var ESLINT_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_eslintrc"), "ut
 var TSCONFIG_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "tsconfig.json"), "utf8");
 var TSCONFIG_DEV_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "tsconfig.dev.json"), "utf8");
 var INDEX_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "index.ts"), "utf8");
-var GITIGNORE_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_gitignore"), "utf8");
 
 module.exports = function (setup, config) {
   return prompt(setup.functions, [
@@ -56,9 +55,6 @@ module.exports = function (setup, config) {
     })
     .then(function () {
       return config.askWriteProjectFile("functions/src/index.ts", INDEX_TEMPLATE);
-    })
-    .then(function () {
-      return config.askWriteProjectFile("functions/.gitignore", GITIGNORE_TEMPLATE);
     })
     .then(function () {
       return npmDependencies.askInstallDependencies(setup.functions, config);

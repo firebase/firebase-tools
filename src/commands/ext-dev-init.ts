@@ -43,10 +43,6 @@ async function typescriptSelected(config: Config): Promise<void> {
     "utf8"
   );
   const indexTemplate = fs.readFileSync(path.join(TEMPLATE_ROOT, "typescript", "index.ts"), "utf8");
-  const gitignoreTemplate = fs.readFileSync(
-    path.join(TEMPLATE_ROOT, "typescript", "_gitignore"),
-    "utf8"
-  );
   const eslintTemplate = fs.readFileSync(
     path.join(FUNCTIONS_ROOT, "typescript", "_eslintrc"),
     "utf8"
@@ -73,7 +69,6 @@ async function typescriptSelected(config: Config): Promise<void> {
   if (lint) {
     await config.askWriteProjectFile("functions/tsconfig.dev.json", tsconfigDevTemplate);
   }
-  await config.askWriteProjectFile("functions/.gitignore", gitignoreTemplate);
 }
 
 /**

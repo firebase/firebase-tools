@@ -17,6 +17,13 @@ firebase-debug.*.log*
 # it commented so all members can deploy to the same project(s) in .firebaserc.
 # .firebaserc
 
+# Compiled JavaScript files
+functions/lib/**/*.js
+functions/lib/**/*.js.map
+
+# TypeScript v1 declaration files
+typings/
+
 # Runtime data
 pids
 *.pid
