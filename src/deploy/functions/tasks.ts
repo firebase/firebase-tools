@@ -64,7 +64,6 @@ export function createFunctionTask(
         "..."
     );
     const eventType = fn.eventTrigger ? fn.eventTrigger.eventType : "https";
-<<<<<<< HEAD
     const createRes = await cloudfunctions.createFunction({
       projectId: params.projectId,
       region: helper.getRegion(fn.name),
@@ -102,47 +101,6 @@ export function createFunctionTask(
         });
       } catch (err) {
         params.errorHandler.record("warning", fn.name, "make public", err.original.message);
-=======
-    try {
-      const createRes = await cloudfunctions.createFunction({
-        projectId: params.projectId,
-        region: helper.getRegion(fn.name),
-        eventType: eventType,
-        functionName: helper.getFunctionId(fn.name),
-        entryPoint: fn.entryPoint,
-        trigger: helper.getFunctionTrigger(fn),
-        labels: Object.assign({}, deploymentTool.labels(), fn.labels),
-        sourceUploadUrl: params.sourceUrl,
-        sourceToken: params.sourceToken,
-        runtime: params.runtime,
-        availableMemoryMb: fn.availableMemoryMb,
-        timeout: fn.timeout,
-        maxInstances: fn.maxInstances,
-        environmentVariables: fn.environmentVariables,
-        vpcConnector: fn.vpcConnector,
-        vpcConnectorEgressSettings: fn.vpcConnectorEgressSettings,
-        serviceAccountEmail: fn.serviceAccountEmail,
-        ingressSettings: fn.ingressSettings,
-      });
-      const pollerOptions: OperationPollerOptions = Object.assign(
-        {
-          pollerName: `create-${fn.name}`,
-          operationResourceName: createRes.name,
-          onPoll,
-        },
-        defaultPollerOptions
-      );
-      const operationResult = await pollOperation<CloudFunctionTrigger>(pollerOptions);
-      if (eventType === "https") {
-        try {
-          await cloudfunctions.setIamPolicy({
-            name: fn.name,
-            policy: cloudfunctions.DEFAULT_PUBLIC_POLICY,
-          });
-        } catch (err) {
-          params.errorHandler.record("warning", fn.name, "make public", err.message);
-        }
->>>>>>> public/master
       }
     }
     return operationResult;
