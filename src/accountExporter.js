@@ -8,6 +8,7 @@ var api = require("./api");
 var utils = require("./utils");
 var { FirebaseError } = require("./error");
 
+// TODO: support for MFA at runtime was added in PR #3173, but this exporter currently ignores `mfaInfo` and loses the data on export.
 var EXPORTED_JSON_KEYS = [
   "localId",
   "email",

@@ -879,9 +879,11 @@ async function processBackground(
 
   // This is due to the fact that the Firestore emulator sends payloads in a newer
   // format than production firestore.
-  if (context.resource && context.resource.name) {
-    logDebug("ProcessBackground: lifting resource.name from resource", context.resource);
-    context.resource = context.resource.name;
+  if (!proto.eventType || !proto.eventType.startsWith("google.storage")) {
+    if (context.resource && context.resource.name) {
+      logDebug("ProcessBackground: lifting resource.name from resource", context.resource);
+      context.resource = context.resource.name;
+    }
   }
 
   await runBackground({ data, context }, trigger.getRawFunction());

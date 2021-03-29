@@ -122,6 +122,9 @@ export async function createFunction(options: any): Promise<Operation> {
   if (options.sourceToken) {
     data.sourceToken = options.sourceToken;
   }
+  if (options.ingressSettings) {
+    data.ingressSettings = options.ingressSettings;
+  }
   try {
     const res = await api.request("POST", endpoint, {
       auth: true,
@@ -230,6 +233,10 @@ export async function updateFunction(options: any): Promise<Operation> {
   if (options.sourceToken) {
     data.sourceToken = options.sourceToken;
     masks.push("sourceToken");
+  }
+  if (options.ingressSettings) {
+    data.ingressSettings = options.ingressSettings;
+    masks.push("ingressSettings");
   }
   if (options.trigger.eventTrigger) {
     masks = _.concat(
