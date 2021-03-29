@@ -427,7 +427,7 @@ describe("updateHelper", () => {
     it("should return the correct source name for a valid published source", async () => {
       promptStub.resolves(true);
       registryEntryStub.resolves(REGISTRY_ENTRY);
-      const name = await updateHelper.updateToVersionFromRegistry(
+      const name = await updateHelper.updateToVersionFromRegistryFile(
         "test-project",
         "test-instance",
         SPEC,
@@ -441,7 +441,7 @@ describe("updateHelper", () => {
       promptStub.resolves(true);
       registryEntryStub.throws("Unable to find extension source");
       await expect(
-        updateHelper.updateToVersionFromRegistry(
+        updateHelper.updateToVersionFromRegistryFile(
           "test-project",
           "test-instance",
           SPEC,
@@ -454,7 +454,7 @@ describe("updateHelper", () => {
     it("should not update if the update warning is not confirmed", async () => {
       promptStub.resolves(false);
       await expect(
-        updateHelper.updateToVersionFromRegistry(
+        updateHelper.updateToVersionFromRegistryFile(
           "test-project",
           "test-instance",
           OLD_SPEC,
@@ -466,7 +466,7 @@ describe("updateHelper", () => {
 
     it("should not update if version given less than min version required", async () => {
       await expect(
-        updateHelper.updateToVersionFromRegistry(
+        updateHelper.updateToVersionFromRegistryFile(
           "test-project",
           "test-instance",
           SPEC,
@@ -504,7 +504,7 @@ describe("updateHelper", () => {
 
     it("should return the correct source name for a valid published source", async () => {
       promptStub.resolves(true);
-      const name = await updateHelper.updateFromRegistry(
+      const name = await updateHelper.updateFromRegistryFile(
         "test-project",
         "test-instance",
         SPEC,
@@ -517,7 +517,7 @@ describe("updateHelper", () => {
       promptStub.resolves(true);
       registryEntryStub.throws("Unable to find extension source");
       await expect(
-        updateHelper.updateFromRegistry("test-project", "test-instance", SPEC, SPEC.name)
+        updateHelper.updateFromRegistryFile("test-project", "test-instance", SPEC, SPEC.name)
       ).to.be.rejectedWith(FirebaseError, "Cannot find the latest version of this extension.");
     });
 
@@ -525,7 +525,12 @@ describe("updateHelper", () => {
       promptStub.resolves(false);
       registryEntryStub.resolves(REGISTRY_ENTRY);
       await expect(
-        updateHelper.updateFromRegistry("test-project", "test-instance", OLD_SPEC, OLD_SPEC.name)
+        updateHelper.updateFromRegistryFile(
+          "test-project",
+          "test-instance",
+          OLD_SPEC,
+          OLD_SPEC.name
+        )
       ).to.be.rejectedWith(FirebaseError, "Update cancelled.");
     });
   });

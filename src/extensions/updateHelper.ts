@@ -12,6 +12,7 @@ import {
   displayUpdateChangesNoInput,
   displayUpdateChangesRequiringConfirmation,
   getConsent,
+  displayExtInfo,
 } from "./displayExtensionInfo";
 
 function invalidSourceErrMsgTemplate(instanceId: string, source: string): string {
@@ -198,6 +199,7 @@ export async function updateFromLocalSource(
   existingSpec: extensionsApi.ExtensionSpec,
   existingSource: string
 ): Promise<string> {
+  displayExtInfo(instanceId, "", existingSpec, false);
   let source;
   try {
     source = await createSourceFromLocation(projectId, localSource);
@@ -243,6 +245,7 @@ export async function updateFromUrlSource(
   existingSpec: extensionsApi.ExtensionSpec,
   existingSource: string
 ): Promise<string> {
+  displayExtInfo(instanceId, "", existingSpec, false);
   let source;
   try {
     source = await createSourceFromLocation(projectId, urlSource);
@@ -289,6 +292,7 @@ export async function updateToVersionFromPublisherSource(
   let source;
   const refObj = extensionsApi.parseRef(extVersionRef);
   const version = refObj.version;
+  displayExtInfo(instanceId, refObj.publisherId, existingSpec, true);
   const extension = await extensionsApi.getExtension(`${refObj.publisherId}/${refObj.extensionId}`);
   try {
     source = await extensionsApi.getExtensionVersion(extVersionRef);
@@ -381,7 +385,7 @@ export async function updateFromPublisherSource(
  * @param existingSource name of existing instance source
  * @param version Version to update the instance to
  */
-export async function updateToVersionFromRegistry(
+export async function updateToVersionFromRegistryFile(
   projectId: string,
   instanceId: string,
   existingSpec: extensionsApi.ExtensionSpec,
@@ -401,6 +405,7 @@ export async function updateToVersionFromRegistry(
       `Cannot find the latest version of this extension. To update this instance to a local source or URL source, run "firebase ext:update ${instanceId} <localSourceOrURL>".`
     );
   }
+  displayExtInfo(instanceId, registryEntry.publisher, existingSpec, true);
   utils.logLabeledBullet(
     logPrefix,
     clc.bold("You are updating this extension instance to an official source.")
@@ -443,11 +448,17 @@ export async function updateToVersionFromRegistry(
  * @param existingSpec ExtensionSpec of the existing instance source
  * @param existingSource name of existing instance source
  */
-export async function updateFromRegistry(
+export async function updateFromRegistryFile(
   projectId: string,
   instanceId: string,
   existingSpec: extensionsApi.ExtensionSpec,
   existingSource: string
 ): Promise<string> {
-  return updateToVersionFromRegistry(projectId, instanceId, existingSpec, existingSource, "latest");
+  return updateToVersionFromRegistryFile(
+    projectId,
+    instanceId,
+    existingSpec,
+    existingSource,
+    "latest"
+  );
 }

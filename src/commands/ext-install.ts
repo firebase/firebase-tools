@@ -197,7 +197,7 @@ async function confirmInstallBySource(
         )}':\n ${err.message}`
     );
   }
-  displayExtInfo(extensionName, source.spec);
+  displayExtInfo(extensionName, "", source.spec);
   const confirm = await confirmInstallInstance();
   if (!confirm) {
     throw new FirebaseError("Install cancelled.");
@@ -230,7 +230,7 @@ async function confirmInstallByReference(
   } catch (err) {
     throw installError(err, options.extensionName);
   }
-  displayExtInfo(options.extensionName, extVersion.spec, true);
+  displayExtInfo(options.extensionName, ref.publisherId, extVersion.spec, true);
   const confirm = await confirmInstallInstance();
   if (!confirm) {
     throw new FirebaseError("Install cancelled.");

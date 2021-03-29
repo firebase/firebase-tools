@@ -25,8 +25,8 @@ import {
   retryUpdate,
   updateFromLocalSource,
   updateFromUrlSource,
-  updateFromRegistry,
-  updateToVersionFromRegistry,
+  updateFromRegistryFile,
+  updateToVersionFromRegistryFile,
   updateToVersionFromPublisherSource,
   updateFromPublisherSource,
   getExistingSourceOrigin,
@@ -35,7 +35,6 @@ import * as getProjectId from "../getProjectId";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import { previews } from "../previews";
-import { displayExtInfo } from "../extensions/displayExtensionInfo";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -146,7 +145,6 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         SourceOrigin.PUBLISHED_EXTENSION,
         SourceOrigin.PUBLISHED_EXTENSION_VERSION,
       ].includes(newSourceOrigin);
-      displayExtInfo(instanceId, existingSpec, isPublished);
 
       // TODO: remove "falls through" once producer and registry experience are released
       switch (newSourceOrigin) {
@@ -175,7 +173,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
             break;
           }
         case SourceOrigin.OFFICIAL_EXTENSION_VERSION:
-          newSourceName = await updateToVersionFromRegistry(
+          newSourceName = await updateToVersionFromRegistryFile(
             projectId,
             instanceId,
             existingSpec,
@@ -184,7 +182,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
           );
           break;
         case SourceOrigin.OFFICIAL_EXTENSION:
-          newSourceName = await updateFromRegistry(
+          newSourceName = await updateFromRegistryFile(
             projectId,
             instanceId,
             existingSpec,

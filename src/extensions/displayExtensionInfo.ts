@@ -26,14 +26,15 @@ const deletionColor = clc.red;
  */
 export function displayExtInfo(
   extensionName: string,
+  publisher: string,
   spec: extensionsApi.ExtensionSpec,
   published = false
 ): string[] {
   const lines = [];
   lines.push(`**Name**: ${spec.displayName}`);
-  const url = spec.author?.url;
-  const urlMarkdown = url ? `(**[${url}](${url})**)` : "";
-  lines.push(`**Author**: ${spec.author?.authorName} ${urlMarkdown}`);
+  if (publisher) {
+    lines.push(`**Publisher**: ${publisher}`);
+  }
   if (spec.description) {
     lines.push(`**Description**: ${spec.description}`);
   }

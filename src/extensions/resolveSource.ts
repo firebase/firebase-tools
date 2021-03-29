@@ -160,7 +160,7 @@ export async function promptForUpdateWarnings(
 export async function promptForAudienceConsent(audience: Audience): Promise<boolean> {
   let consent = true;
   if (AUDIENCE_WARNING_MESSAGES[audience]) {
-    logger.info(AUDIENCE_WARNING_MESSAGES[audience]);
+    logger.info(AUDIENCE_WARNING_MESSAGES[audience] || "");
     consent = await promptOnce({
       type: "confirm",
       message: "Do you acknowledge the status of this extension?",
