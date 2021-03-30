@@ -39,13 +39,11 @@ export const DEFAULT_PUBLIC_POLICY = {
  * @param err The error returned from the operation.
  */
 function functionsOpLogReject(funcName: string, type: string, err: any): void {
-  logger.debug(err.message);
   if (err?.context?.response?.statusCode === 429) {
-    // Don't print out quota errors becuase we retry them.
     utils.logWarning(
       `${clc.bold.yellow(
         "functions:"
-      )} got "Quota Exceeded" error while trying to ${type} ${funcName}. Waiting to rety...`
+      )} got "Quota Exceeded" error while trying to ${type} ${funcName}. Waiting to retry...`
     );
   } else {
     utils.logWarning(

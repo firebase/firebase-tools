@@ -47,6 +47,7 @@ export class OperationPoller<T> {
     const { response, error } = await queue.run(this.getPollingTask(options), masterTimeout);
     queue.close();
     if (error) {
+      console.log("caught this:", error);
       throw error instanceof FirebaseError
         ? error
         : new FirebaseError(error.message, { status: error.code });

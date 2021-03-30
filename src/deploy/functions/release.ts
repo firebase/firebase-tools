@@ -31,16 +31,15 @@ export async function release(context: any, options: any, payload: any) {
     context.filters
   );
 
-  // This queue will be used to retry quota errors.
+  // This queue needs to retry quota errors.
   // The main quotas that can be exceeded are per 1 minute quotas,
-  // so we start with a larger backoff to reduce the liklihood of retries.
+  // so we start with a larger backoff to reduce the liklihood of extra retries.
   const cloudFunctionsQueue = new Queue<tasks.DeploymentTask, void>({
-    retries: 20,
-    backoff: 10000,
+    retries: 30,
+    backoff: 20000,
     concurrency: 40,
-    maxBackoff: 30000,
+    maxBackoff: 40000,
     handler: tasks.functionsDeploymentHandler(timer, errorHandler),
-    name: "cloudFunctionsDeployment",
   });
   const schedulerQueue = new Queue<tasks.DeploymentTask, void>({
     handler: tasks.schedulerDeploymentHandler(errorHandler),
@@ -106,7 +105,11 @@ export async function release(context: any, options: any, payload: any) {
   // Wait for the first function in each region to be deployed, and all the other calls to be queued,
   // then close the queue.
   // Wait for all of the deployments to complete.
-  await Promise.all(queuePromises);
+  try {
+    await Promise.all(queuePromises);
+  } catch(err) {
+    console.log(err);
+  }
   helper.logAndTrackDeployStats(cloudFunctionsQueue, errorHandler);
   helper.printTriggerUrls(projectId, sourceUrl);
   errorHandler.printWarnings();

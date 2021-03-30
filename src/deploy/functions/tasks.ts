@@ -196,15 +196,17 @@ export function functionsDeploymentHandler(
       result = await task();
       helper.printSuccess(task.functionName, task.operationType);
     } catch (err) {
+      console.log("inside handler err catch:", err);
       if (err.original?.context?.response?.statusCode === 429) {
         // Throw quota errors so that throttler retries them.
         throw err;
       }
+      console.log("about to record:", err);
       errorHandler.record(
         "error",
         task.functionName,
         task.operationType,
-        err.original.message || ""
+        err.original?.message || ""
       );
     }
     timer.endTimer(task.functionName);
