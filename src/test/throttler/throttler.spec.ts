@@ -3,7 +3,7 @@ import { expect } from "chai";
 
 import Queue from "../../throttler/queue";
 import Stack from "../../throttler/stack";
-import { Throttler, ThrottlerOptions } from "../../throttler/throttler";
+import { Throttler, ThrottlerOptions, timeToWait } from "../../throttler/throttler";
 import TaskError from "../../throttler/errors/task-error";
 import TimeoutError from "../../throttler/errors/timeout-error";
 import RetriesExhaustedError from "../../throttler/errors/retries-exhausted-error";
@@ -399,6 +399,28 @@ describe("Throttler", () => {
   });
   describe("Stack", () => {
     throttlerTest(Stack);
+  });
+});
+
+describe("timeToWait", () => {
+  it("Should wait the base delay on the first attempt", () => {
+    const retryCount = 0;
+    const delay = 100;
+    const maxDelay = 1000;
+    expect(timeToWait(retryCount, delay, maxDelay)).to.equal(delay);
+  });
+  it("Should back off exponentially", () => {
+    const delay = 100;
+    const maxDelay = 1000;
+    expect(timeToWait(1, delay, maxDelay)).to.equal(delay * 2);
+    expect(timeToWait(2, delay, maxDelay)).to.equal(delay * 4);
+    expect(timeToWait(3, delay, maxDelay)).to.equal(delay * 8);
+  });
+  it("Should not wait longer than maxDelay", () => {
+    const retryCount = 2;
+    const delay = 300;
+    const maxDelay = 400;
+    expect(timeToWait(retryCount, delay, maxDelay)).to.equal(maxDelay);
   });
 });
 

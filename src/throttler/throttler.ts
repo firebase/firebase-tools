@@ -5,9 +5,13 @@ import TaskError from "./errors/task-error";
 
 function backoff(retryNumber: number, delay: number, maxDelay: number): Promise<void> {
   return new Promise((resolve: () => void) => {
-    const timeToWait = Math.min(delay * Math.pow(2, retryNumber), maxDelay);
-    setTimeout(resolve, timeToWait);
+    setTimeout(resolve, timeToWait(retryNumber, delay, maxDelay));
   });
+}
+
+// Exported for unit testing.
+export function timeToWait(retryNumber: number, delay: number, maxDelay: number): number {
+  return Math.min(delay * Math.pow(2, retryNumber), maxDelay);
 }
 
 function DEFAULT_HANDLER<R>(task: any): Promise<R> {
