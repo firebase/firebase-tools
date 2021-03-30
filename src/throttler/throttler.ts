@@ -261,7 +261,7 @@ export abstract class Throttler<T, R> {
     const t0 = Date.now();
     let result;
     try {
-      if ((this.name = "cloudFunctionsDeployment")) result = await this.handler(taskData.task);
+      result = await this.handler(taskData.task);
     } catch (err) {
       if (taskData.retryCount === this.retries) {
         throw new RetriesExhaustedError(this.taskName(cursorIndex), this.retries, err);
