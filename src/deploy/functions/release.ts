@@ -107,10 +107,17 @@ export async function release(context: any, options: any, payload: any) {
   // Wait for all of the deployments to complete.
   try {
     await Promise.all(queuePromises);
-  } catch(err) {
-    utils.reject(`Exceeded maximum retries while deploying functions.`, {
-      original: err,
-    })
+  } catch (err) {
+    utils.reject(
+      "Exceeded maximum retries while deploying functions. " +
+        "If you are deploying a large number of functions, " +
+        "please deploy your functions in batches by using the --only flag, " +
+        "and wait a few minutes before deploying again. " +
+        "Go to https://firebase.google.com/docs/cli/#partial_deploys to learn more.",
+      {
+        original: err,
+      }
+    );
   }
   helper.logAndTrackDeployStats(cloudFunctionsQueue, errorHandler);
   helper.printTriggerUrls(projectId, sourceUrl);
