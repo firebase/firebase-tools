@@ -5,7 +5,7 @@ import TaskError from "./errors/task-error";
 
 function backoff(retryNumber: number, delay: number, maxDelay: number): Promise<void> {
   return new Promise((resolve: () => void) => {
-    let timeToWait = Math.min(delay * Math.pow(2, retryNumber), maxDelay)
+    const timeToWait = Math.min(delay * Math.pow(2, retryNumber), maxDelay)
     setTimeout(resolve, timeToWait);
   });
 }
@@ -70,7 +70,7 @@ export abstract class Throttler<T, R> {
   avg: number = 0;
   retries: number = 0;
   backoff: number = 200;
-  maxBackoff: number = 30000; // 30 seconds
+  maxBackoff: number = 60000; // 1 minute
   closed: boolean = false;
   finished: boolean = false;
   startTime: number = 0;

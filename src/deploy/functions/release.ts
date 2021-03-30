@@ -107,7 +107,6 @@ export async function release(context: any, options: any, payload: any) {
   // then close the queue.
   // Wait for all of the deployments to complete.
   await Promise.all(queuePromises);
-  console.log(cloudFunctionsQueue.stats());
   helper.logAndTrackDeployStats(cloudFunctionsQueue, errorHandler);
   helper.printTriggerUrls(projectId, sourceUrl);
   errorHandler.printWarnings();

@@ -76,7 +76,7 @@ export class OperationPoller<T> {
         options.onPoll(res.body);
       }
       if (!res.body.done) {
-        throw new Error("");
+        throw new Error("Polling incomplete, should trigger retry with backoff");
       }
       return res.body;
     };
