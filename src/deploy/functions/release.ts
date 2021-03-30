@@ -108,7 +108,9 @@ export async function release(context: any, options: any, payload: any) {
   try {
     await Promise.all(queuePromises);
   } catch(err) {
-    console.log(err);
+    utils.reject(`Exceeded maximum retries while deploying functions.`, {
+      original: err,
+    })
   }
   helper.logAndTrackDeployStats(cloudFunctionsQueue, errorHandler);
   helper.printTriggerUrls(projectId, sourceUrl);
