@@ -36,9 +36,9 @@ export async function release(context: any, options: any, payload: any) {
   // so we start with a larger backoff to reduce the liklihood of retries.
   const cloudFunctionsQueue = new Queue<tasks.DeploymentTask, void>({
     retries: 20,
-    backoff: 20000, 
+    backoff: 10000,
     concurrency: 40,
-    maxBackoff: 40000,
+    maxBackoff: 30000,
     handler: tasks.functionsDeploymentHandler(timer, errorHandler),
     name: "cloudFunctionsDeployment",
   });

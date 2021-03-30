@@ -42,9 +42,15 @@ function functionsOpLogReject(funcName: string, type: string, err: any): void {
   logger.debug(err.message);
   if (err?.context?.response?.statusCode === 429) {
     // Don't print out quota errors becuase we retry them.
-    utils.logWarning(`${clc.bold.yellow("functions:")} got "Quota Exceeded" error while trying to ${type} ${funcName}. Waiting to rety...`);
+    utils.logWarning(
+      `${clc.bold.yellow(
+        "functions:"
+      )} got "Quota Exceeded" error while trying to ${type} ${funcName}. Waiting to rety...`
+    );
   } else {
-    utils.logWarning(clc.bold.yellow("functions:") + " failed to " + type + " function " + funcName);
+    utils.logWarning(
+      clc.bold.yellow("functions:") + " failed to " + type + " function " + funcName
+    );
   }
   throw new FirebaseError(`Failed to ${type} function ${funcName}`, {
     original: err,

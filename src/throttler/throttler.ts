@@ -5,7 +5,7 @@ import TaskError from "./errors/task-error";
 
 function backoff(retryNumber: number, delay: number, maxDelay: number): Promise<void> {
   return new Promise((resolve: () => void) => {
-    const timeToWait = Math.min(delay * Math.pow(2, retryNumber), maxDelay)
+    const timeToWait = Math.min(delay * Math.pow(2, retryNumber), maxDelay);
     setTimeout(resolve, timeToWait);
   });
 }
@@ -261,8 +261,7 @@ export abstract class Throttler<T, R> {
     const t0 = Date.now();
     let result;
     try {
-      if (this.name = "cloudFunctionsDeployment")
-      result = await this.handler(taskData.task);
+      if ((this.name = "cloudFunctionsDeployment")) result = await this.handler(taskData.task);
     } catch (err) {
       if (taskData.retryCount === this.retries) {
         throw new RetriesExhaustedError(this.taskName(cursorIndex), this.retries, err);

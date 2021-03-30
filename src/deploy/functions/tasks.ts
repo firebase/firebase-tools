@@ -22,18 +22,18 @@ const defaultPollerOptions = {
   masterTimeout: 25 * 60000, // 25 minutes is the maximum build time for a function
 };
 
-export type OperationType = "create"
+export type OperationType =
+  | "create"
   | "update"
   | "delete"
   | "upsert schedule"
   | "delete schedule"
   | "make public";
 
-
 export interface DeploymentTask {
-  (): Promise<any>,
-  functionName: string,
-  operationType: OperationType,
+  (): Promise<any>;
+  functionName: string;
+  operationType: OperationType;
 }
 
 export interface TaskParams {
@@ -47,7 +47,6 @@ export interface TaskParams {
 /**
  * Cloud Functions Deployments Tasks and Handler
  */
-
 
 export function createFunctionTask(
   params: TaskParams,
@@ -186,7 +185,10 @@ export function deleteFunctionTask(params: TaskParams, fnName: string): Deployme
   return task;
 }
 
-export function functionsDeploymentHandler(timer: DeploymentTimer, errorHandler: ErrorHandler): (task: DeploymentTask) => Promise<any | undefined> {
+export function functionsDeploymentHandler(
+  timer: DeploymentTimer,
+  errorHandler: ErrorHandler
+): (task: DeploymentTask) => Promise<any | undefined> {
   return async (task: DeploymentTask) => {
     let result;
     try {
@@ -198,11 +200,16 @@ export function functionsDeploymentHandler(timer: DeploymentTimer, errorHandler:
         // Throw quota errors so that throttler retries them.
         throw err;
       }
-      errorHandler.record("error", task.functionName, task.operationType, err.original.message || "");
+      errorHandler.record(
+        "error",
+        task.functionName,
+        task.operationType,
+        err.original.message || ""
+      );
     }
     timer.endTimer(task.functionName);
     return result;
-  }
+  };
 }
 
 /**
@@ -291,20 +298,27 @@ export function deleteScheduleTask(
   return task;
 }
 
-export function schedulerDeploymentHandler(errorHandler: ErrorHandler): (task: DeploymentTask) => Promise<any | undefined> {
+export function schedulerDeploymentHandler(
+  errorHandler: ErrorHandler
+): (task: DeploymentTask) => Promise<any | undefined> {
   return async (task: DeploymentTask) => {
     let result;
     try {
       result = await task();
-      helper.printSuccess(task.functionName, task.operationType)
+      helper.printSuccess(task.functionName, task.operationType);
     } catch (err) {
       if (err.status === 429) {
         // Throw quota errors so that throttler retries them.
         throw err;
       } else if (err.status !== 404) {
         // Ignore 404 errors from scheduler calls since they may be deleted out of band.
-        errorHandler.record("error", task.functionName, task.operationType, err.original.message || "");
+        errorHandler.record(
+          "error",
+          task.functionName,
+          task.operationType,
+          err.original.message || ""
+        );
       }
     }
-  }
+  };
 }
