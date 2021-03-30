@@ -403,20 +403,22 @@ describe("Throttler", () => {
 });
 
 describe("timeToWait", () => {
-  it("Should wait the base delay on the first attempt", () => {
+  it("should wait the base delay on the first attempt", () => {
     const retryCount = 0;
     const delay = 100;
     const maxDelay = 1000;
     expect(timeToWait(retryCount, delay, maxDelay)).to.equal(delay);
   });
-  it("Should back off exponentially", () => {
+
+  it("should back off exponentially", () => {
     const delay = 100;
     const maxDelay = 1000;
     expect(timeToWait(1, delay, maxDelay)).to.equal(delay * 2);
     expect(timeToWait(2, delay, maxDelay)).to.equal(delay * 4);
     expect(timeToWait(3, delay, maxDelay)).to.equal(delay * 8);
   });
-  it("Should not wait longer than maxDelay", () => {
+
+  it("should not wait longer than maxDelay", () => {
     const retryCount = 2;
     const delay = 300;
     const maxDelay = 400;
