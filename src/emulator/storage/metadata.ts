@@ -3,7 +3,7 @@ import * as crypto from "crypto";
 import { EmulatorRegistry } from "../registry";
 import { Emulators } from "../types";
 import { StorageCloudFunctions } from "./cloudFunctions";
-const crc32c = require("fast-crc32c");
+import { crc32c } from "./crc";
 
 type RulesResourceMetadataOverrides = {
   [Property in keyof RulesResourceMetadata]?: RulesResourceMetadata[Property];
@@ -48,7 +48,7 @@ export class StoredFileMetadata {
     this.storageClass = "STANDARD";
     this.downloadTokens = "";
     this.etag = "someETag";
-    this.crc32c = crc32c.calculate(bytes);
+    this.crc32c = `${crc32c(bytes)}`;
     this.contentDisposition = "inline";
     this.updated = this.timeCreated;
     this.contentType = contentType;
