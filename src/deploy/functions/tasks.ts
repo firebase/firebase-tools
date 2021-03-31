@@ -40,7 +40,6 @@ export interface TaskParams {
   projectId: string;
   runtime?: string;
   sourceUrl?: string;
-  sourceToken?: string;
   errorHandler: ErrorHandler;
 }
 
@@ -51,6 +50,7 @@ export interface TaskParams {
 export function createFunctionTask(
   params: TaskParams,
   fn: CloudFunctionTrigger,
+  sourceToken?: string,
   onPoll?: (op: OperationResult<CloudFunctionTrigger>) => void
 ): DeploymentTask {
   const task: DeploymentTask = async () => {
@@ -72,7 +72,7 @@ export function createFunctionTask(
       trigger: helper.getFunctionTrigger(fn),
       labels: Object.assign({}, deploymentTool.labels(), fn.labels),
       sourceUploadUrl: params.sourceUrl,
-      sourceToken: params.sourceToken,
+      sourceToken: sourceToken,
       runtime: params.runtime,
       availableMemoryMb: fn.availableMemoryMb,
       timeout: fn.timeout,
@@ -112,6 +112,7 @@ export function createFunctionTask(
 export function updateFunctionTask(
   params: TaskParams,
   fn: CloudFunctionTrigger,
+  sourceToken?: string,
   onPoll?: (op: OperationResult<CloudFunctionTrigger>) => void
 ): DeploymentTask {
   const task: DeploymentTask = async () => {
@@ -133,7 +134,7 @@ export function updateFunctionTask(
       trigger: helper.getFunctionTrigger(fn),
       labels: Object.assign({}, deploymentTool.labels(), fn.labels),
       sourceUploadUrl: params.sourceUrl,
-      sourceToken: params.sourceToken,
+      sourceToken: sourceToken,
       runtime: params.runtime,
       availableMemoryMb: fn.availableMemoryMb,
       timeout: fn.timeout,
@@ -239,11 +240,11 @@ export function runRegionalFunctionDeployment(
   // Choose a first function to deploy.
   if (regionalDeployment.functionsToCreate.length) {
     const firstFn = regionalDeployment.functionsToCreate.shift()!;
-    const task = createFunctionTask(params, firstFn!, onPollFn);
+    const task = createFunctionTask(params, firstFn!, /* sourceToken= */ undefined, onPollFn);
     return queue.run(task);
   } else if (regionalDeployment.functionsToUpdate.length) {
     const firstFn = regionalDeployment.functionsToUpdate.shift()!;
-    const task = updateFunctionTask(params, firstFn!, onPollFn);
+    const task = updateFunctionTask(params, firstFn!, /* sourceToken= */ undefined, onPollFn);
     return queue.run(task);
   }
   // If there are no functions to create or update in this region, no need to do anything.
@@ -255,12 +256,11 @@ function finishRegionalFunctionDeployment(
   regionalDeployment: RegionalDeployment,
   queue: Queue<DeploymentTask, void>
 ): void {
-  params.sourceToken = regionalDeployment.sourceToken;
   for (const fn of regionalDeployment.functionsToCreate) {
-    queue.run(createFunctionTask(params, fn));
+    queue.run(createFunctionTask(params, fn, regionalDeployment.sourceToken));
   }
   for (const fn of regionalDeployment.functionsToUpdate) {
-    queue.run(updateFunctionTask(params, fn));
+    queue.run(updateFunctionTask(params, fn, regionalDeployment.sourceToken));
   }
 }
 
@@ -312,12 +312,7 @@ export function schedulerDeploymentHandler(
         throw err;
       } else if (err.status !== 404) {
         // Ignore 404 errors from scheduler calls since they may be deleted out of band.
-        errorHandler.record(
-          "error",
-          task.functionName,
-          task.operationType,
-          err.original.message || ""
-        );
+        errorHandler.record("error", task.functionName, task.operationType, err.message || "");
       }
     }
   };
