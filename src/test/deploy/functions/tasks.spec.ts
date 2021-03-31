@@ -11,13 +11,16 @@ describe("Function Deployment tasks", () => {
     const sandbox = sinon.createSandbox();
     let timerStub: sinon.SinonStubbedInstance<DeploymentTimer>;
     let errorHandlerStub: sinon.SinonStubbedInstance<ErrorHandler>;
+
     beforeEach(() => {
       timerStub = sandbox.createStubInstance(DeploymentTimer);
       errorHandlerStub = sandbox.createStubInstance(ErrorHandler);
     });
+
     afterEach(() => {
       sandbox.restore();
     });
+
     it("should execute the task and time it", async () => {
       const testTask: any = sinon.spy();
       const functionName = "myFunc";
@@ -25,7 +28,6 @@ describe("Function Deployment tasks", () => {
       testTask.operationType = "create";
 
       const handler = tasks.functionsDeploymentHandler(timerStub, errorHandlerStub);
-
       await handler(testTask);
 
       expect(timerStub.startTimer).to.have.been.calledWith(functionName);
@@ -80,7 +82,6 @@ describe("Function Deployment tasks", () => {
       testTask.operationType = "create";
 
       const handler = tasks.functionsDeploymentHandler(timerStub, errorHandlerStub);
-
       await handler(testTask);
 
       expect(timerStub.startTimer).to.have.been.calledWith(functionName);
@@ -93,12 +94,15 @@ describe("Function Deployment tasks", () => {
   describe("schedulerDeploymentHandler", () => {
     const sandbox = sinon.createSandbox();
     let errorHandlerStub: sinon.SinonStubbedInstance<ErrorHandler>;
+
     beforeEach(() => {
       errorHandlerStub = sandbox.createStubInstance(ErrorHandler);
     });
+
     afterEach(() => {
       sandbox.restore();
     });
+    
     it("should execute the task", async () => {
       const testTask: any = sinon.spy();
       const functionName = "myFunc";
@@ -106,7 +110,6 @@ describe("Function Deployment tasks", () => {
       testTask.operationType = "upsert schedule";
 
       const handler = tasks.schedulerDeploymentHandler(errorHandlerStub);
-
       await handler(testTask);
 
       expect(testTask).to.have.been.called;
@@ -124,7 +127,6 @@ describe("Function Deployment tasks", () => {
       testTask.operationType = "upsert schedule";
 
       const handler = tasks.schedulerDeploymentHandler(errorHandlerStub);
-
       await expect(handler(testTask)).to.eventually.be.rejected;
 
       expect(testTask).to.have.been.called;
@@ -142,7 +144,6 @@ describe("Function Deployment tasks", () => {
       testTask.operationType = "upsert schedule";
 
       const handler = tasks.schedulerDeploymentHandler(errorHandlerStub);
-
       await handler(testTask);
 
       expect(testTask).to.have.been.called;
@@ -160,7 +161,6 @@ describe("Function Deployment tasks", () => {
       testTask.operationType = "upsert schedule";
 
       const handler = tasks.schedulerDeploymentHandler(errorHandlerStub);
-
       await handler(testTask);
 
       expect(testTask).to.have.been.called;
