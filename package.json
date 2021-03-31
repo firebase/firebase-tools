@@ -120,7 +120,7 @@
     "node-fetch": "^2.6.1",
     "open": "^6.3.0",
     "ora": "^3.4.0",
-    "plist": "^3.0.1",
+    "plist": "^3.0.2",
     "portfinder": "^1.0.23",
     "progress": "^2.0.3",
     "proxy-agent": "^4.0.0",
