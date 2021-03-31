@@ -475,17 +475,7 @@ export async function getExtensionVersion(ref: string): Promise<ExtensionVersion
     return res.body;
   } catch (err) {
     if (err.status === 404) {
-      throw new FirebaseError(
-        `The extension reference '${clc.bold(
-          ref
-        )}' doesn't exist. This could happen for two reasons:\n` +
-          `  -The publisher ID '${clc.bold(publisherId)}' doesn't exist or could be misspelled\n` +
-          `  -The name of the extension version '${clc.bold(
-            `${extensionId}@${version}`
-          )}' doesn't exist or could be misspelled\n` +
-          `Please correct the extension reference and try again.`,
-        { status: err.status }
-      );
+      throw refNotFoundError(publisherId, extensionId, version);
     } else if (err instanceof FirebaseError) {
       throw err;
     }
@@ -657,17 +647,7 @@ export async function getExtension(ref: string): Promise<Extension> {
     return res.body;
   } catch (err) {
     if (err.status === 404) {
-      throw new FirebaseError(
-        `The extension reference '${clc.bold(
-          ref
-        )}' doesn't exist. This could happen for two reasons:\n` +
-          `  -The publisher ID '${clc.bold(publisherId)}' doesn't exist or could be misspelled\n` +
-          `  -The name of the extension '${clc.bold(
-            extensionId
-          )}' doesn't exist or could be misspelled\n` +
-          `Please correct the extension reference and try again.`,
-        { status: err.status }
-      );
+      throw refNotFoundError(publisherId, extensionId);
     } else if (err instanceof FirebaseError) {
       throw err;
     }
@@ -675,6 +655,28 @@ export async function getExtension(ref: string): Promise<Extension> {
       status: err.status,
     });
   }
+}
+
+function refNotFoundError(
+  publisherId: string,
+  extensionId: string,
+  versionId?: string
+): FirebaseError {
+  const versionRef = `${publisherId}/${extensionId}@${versionId}`;
+  const extensionRef = `${publisherId}/${extensionId}`;
+  return new FirebaseError(
+    `The extension reference '${clc.bold(
+      versionId ? versionRef : extensionRef
+    )}' doesn't exist. This could happen for two reasons:\n` +
+      `  -The publisher ID '${clc.bold(publisherId)}' doesn't exist or could be misspelled\n` +
+      `  -The name of the ${versionId ? "extension version" : "extension"} '${clc.bold(
+        versionId ? `${extensionId}@${versionId}` : extensionId
+      )}' doesn't exist or could be misspelled\n\n` +
+      `Please correct the extension reference and try again. If you meant to specify a local source, please provide a relative path prefixed with '${clc.bold(
+        "./"
+      )}', '${clc.bold("../")}', or '${clc.bold("~/")}'.`,
+    { status: 404 }
+  );
 }
 
 /**
