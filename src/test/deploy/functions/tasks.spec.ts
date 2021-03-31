@@ -102,7 +102,7 @@ describe("Function Deployment tasks", () => {
     afterEach(() => {
       sandbox.restore();
     });
-    
+
     it("should execute the task", async () => {
       const testTask: any = sinon.spy();
       const functionName = "myFunc";
