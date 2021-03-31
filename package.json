@@ -102,7 +102,6 @@
     "exegesis-express": "^2.0.0",
     "exit-code": "^1.0.2",
     "express": "^4.16.4",
-    "fast-crc32c": "^2.0.0",
     "filesize": "^6.1.0",
     "fs-extra": "^0.23.1",
     "glob": "^7.1.2",
