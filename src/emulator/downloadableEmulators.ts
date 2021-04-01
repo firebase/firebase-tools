@@ -39,8 +39,8 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
     },
   },
   firestore: {
-    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.11.12.jar"),
-    version: "1.11.12",
+    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.11.13.jar"),
+    version: "1.11.13",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
