@@ -1,2 +1,4 @@
-- Fixes native module issues by removing `fast-crc32c` (#3247, #3239)
-- Adds retries on Quota Exceeded errors during functions deployment (#2606, #1372)
+- Fixes native module issues by removing `fast-crc32c` (#3247, #3239).
+- Adds retries on Quota Exceeded errors during functions deployment (#2606, #1372).
+- Update to Cloud Firestore emulator v1.11.13 which includes a bug fix for documents which are created and deleted in a single transaction.
+- Fixes an edge case with nextPageToken in batchGet in Auth Emulator (#3231).
