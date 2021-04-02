@@ -449,7 +449,7 @@ function batchGet(
   let newPageToken: string | undefined = undefined;
 
   // As a non-standard behavior, passing in limit=-1 will return all users.
-  if (limit >= 0 && users.length > limit) {
+  if (limit >= 0 && users.length >= limit) {
     users.length = limit;
     if (users.length) {
       newPageToken = users[users.length - 1].localId;
