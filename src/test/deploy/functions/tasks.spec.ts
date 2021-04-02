@@ -22,16 +22,19 @@ describe("Function Deployment tasks", () => {
     });
 
     it("should execute the task and time it", async () => {
-      const testTask: any = sinon.spy();
+      const run = sinon.spy();
       const functionName = "myFunc";
-      testTask.functionName = functionName;
-      testTask.operationType = "create";
+      const testTask: tasks.DeploymentTask = {
+        run,
+        functionName: functionName,
+        operationType: "create",
+      };
 
       const handler = tasks.functionsDeploymentHandler(timerStub, errorHandlerStub);
       await handler(testTask);
 
       expect(timerStub.startTimer).to.have.been.calledWith(functionName);
-      expect(testTask).to.have.been.called;
+      expect(run).to.have.been.called;
       expect(timerStub.endTimer).to.have.been.calledWith(functionName);
       expect(errorHandlerStub.record).not.to.have.been.called;
     });
@@ -46,25 +49,28 @@ describe("Function Deployment tasks", () => {
           },
         },
       };
-      const testTask: any = sinon.spy(() => {
+      const run = sinon.spy(() => {
         throw new FirebaseError("an error occurred", {
           original: originalError,
         });
       });
       const functionName = "myFunc";
-      testTask.functionName = functionName;
-      testTask.operationType = "create";
+      const testTask: tasks.DeploymentTask = {
+        run,
+        functionName: functionName,
+        operationType: "create",
+      };
 
       const handler = tasks.functionsDeploymentHandler(timerStub, errorHandlerStub);
 
       await expect(handler(testTask)).to.eventually.be.rejected;
 
-      expect(testTask).to.have.been.called;
+      expect(run).to.have.been.called;
       expect(errorHandlerStub.record).not.to.have.been.called;
     });
     it("should handle other errors", async () => {
       const originalError = {
-        name: "Something else",
+        name: "Some Other Error",
         message: "an error occurred",
         context: {
           response: {
@@ -72,20 +78,23 @@ describe("Function Deployment tasks", () => {
           },
         },
       };
-      const testTask: any = sinon.spy(() => {
+      const run = sinon.spy(() => {
         throw new FirebaseError("an error occurred", {
           original: originalError,
         });
       });
       const functionName = "myFunc";
-      testTask.functionName = functionName;
-      testTask.operationType = "create";
+      const testTask: tasks.DeploymentTask = {
+        run,
+        functionName: functionName,
+        operationType: "create",
+      };
 
       const handler = tasks.functionsDeploymentHandler(timerStub, errorHandlerStub);
       await handler(testTask);
 
       expect(timerStub.startTimer).to.have.been.calledWith(functionName);
-      expect(testTask).to.have.been.called;
+      expect(run).to.have.been.called;
       expect(timerStub.endTimer).to.have.been.calledWith(functionName);
       expect(errorHandlerStub.record).to.have.been.calledWith("error", functionName, "create");
     });
@@ -104,66 +113,75 @@ describe("Function Deployment tasks", () => {
     });
 
     it("should execute the task", async () => {
-      const testTask: any = sinon.spy();
-      const functionName = "myFunc";
-      testTask.functionName = functionName;
-      testTask.operationType = "upsert schedule";
+      const run = sinon.spy();
+      const testTask: tasks.DeploymentTask = {
+        run,
+        functionName: "myFunc",
+        operationType: "upsert schedule",
+      };
 
       const handler = tasks.schedulerDeploymentHandler(errorHandlerStub);
       await handler(testTask);
 
-      expect(testTask).to.have.been.called;
+      expect(run).to.have.been.called;
       expect(errorHandlerStub.record).not.to.have.been.called;
     });
 
     it("should throw quota errors", async () => {
-      const testTask: any = sinon.spy(() => {
+      const run = sinon.spy(() => {
         throw new FirebaseError("an error occurred", {
           status: 429,
         });
       });
-      const functionName = "myFunc";
-      testTask.functionName = functionName;
-      testTask.operationType = "upsert schedule";
+      const testTask: tasks.DeploymentTask = {
+        run,
+        functionName: "myFunc",
+        operationType: "upsert schedule",
+      };
 
       const handler = tasks.schedulerDeploymentHandler(errorHandlerStub);
       await expect(handler(testTask)).to.eventually.be.rejected;
 
-      expect(testTask).to.have.been.called;
+      expect(run).to.have.been.called;
       expect(errorHandlerStub.record).not.to.have.been.called;
     });
 
     it("should ignore 404 errors", async () => {
-      const testTask: any = sinon.spy(() => {
+      const run = sinon.spy(() => {
         throw new FirebaseError("an error occurred", {
           status: 404,
         });
       });
-      const functionName = "myFunc";
-      testTask.functionName = functionName;
-      testTask.operationType = "upsert schedule";
+      const testTask: tasks.DeploymentTask = {
+        run,
+        functionName: "myFunc",
+        operationType: "upsert schedule",
+      };
 
       const handler = tasks.schedulerDeploymentHandler(errorHandlerStub);
       await handler(testTask);
 
-      expect(testTask).to.have.been.called;
+      expect(run).to.have.been.called;
       expect(errorHandlerStub.record).not.to.have.been.called;
     });
 
     it("should handle other errors", async () => {
-      const testTask: any = sinon.spy(() => {
+      const run = sinon.spy(() => {
         throw new FirebaseError("an error occurred", {
           status: 500,
         });
       });
       const functionName = "myFunc";
-      testTask.functionName = functionName;
-      testTask.operationType = "upsert schedule";
+      const testTask: tasks.DeploymentTask = {
+        run,
+        functionName: functionName,
+        operationType: "upsert schedule",
+      };
 
       const handler = tasks.schedulerDeploymentHandler(errorHandlerStub);
       await handler(testTask);
 
-      expect(testTask).to.have.been.called;
+      expect(run).to.have.been.called;
       expect(errorHandlerStub.record).to.have.been.calledWith(
         "error",
         functionName,

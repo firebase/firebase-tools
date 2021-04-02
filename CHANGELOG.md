@@ -1,1 +1,2 @@
 - Fixes native module issues by removing `fast-crc32c` (#3247, #3239)
+- Adds retries on Quota Exceeded errors during functions deployment (#2606, #1372)

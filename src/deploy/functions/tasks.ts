@@ -14,6 +14,7 @@ import { getHumanFriendlyRuntimeName } from "../../parseRuntimeAndValidateSDK";
 import { deleteTopic } from "../../gcp/pubsub";
 import { DeploymentTimer } from "./deploymentTimer";
 import { ErrorHandler } from "./errorHandler";
+import { result } from "lodash";
 
 // TODO: Tune this for better performance.
 const defaultPollerOptions = {
@@ -31,7 +32,7 @@ export type OperationType =
   | "make public";
 
 export interface DeploymentTask {
-  (): Promise<any>;
+  run: () => Promise<any>;
   functionName: string;
   operationType: OperationType;
 }
@@ -53,7 +54,7 @@ export function createFunctionTask(
   sourceToken?: string,
   onPoll?: (op: OperationResult<CloudFunctionTrigger>) => void
 ): DeploymentTask {
-  const task: DeploymentTask = async () => {
+  const run = async () => {
     utils.logBullet(
       clc.bold.cyan("functions: ") +
         "creating " +
@@ -104,9 +105,11 @@ export function createFunctionTask(
     }
     return operationResult;
   };
-  task.functionName = fn.name;
-  task.operationType = "create";
-  return task;
+  return {
+    run,
+    functionName: fn.name,
+    operationType: "create",
+  };
 }
 
 export function updateFunctionTask(
@@ -115,7 +118,7 @@ export function updateFunctionTask(
   sourceToken?: string,
   onPoll?: (op: OperationResult<CloudFunctionTrigger>) => void
 ): DeploymentTask {
-  const task: DeploymentTask = async () => {
+  const run = async () => {
     utils.logBullet(
       clc.bold.cyan("functions: ") +
         "updating " +
@@ -156,13 +159,15 @@ export function updateFunctionTask(
     const operationResult = await pollOperation<CloudFunctionTrigger>(pollerOptions);
     return operationResult;
   };
-  task.functionName = fn.name;
-  task.operationType = "update";
-  return task;
+  return {
+    run,
+    functionName: fn.name,
+    operationType: "update",
+  };
 }
 
 export function deleteFunctionTask(params: TaskParams, fnName: string): DeploymentTask {
-  const task: DeploymentTask = async () => {
+  const run = async () => {
     utils.logBullet(
       clc.bold.cyan("functions: ") +
         "deleting function " +
@@ -181,9 +186,11 @@ export function deleteFunctionTask(params: TaskParams, fnName: string): Deployme
     );
     return await pollOperation<void>(pollerOptions);
   };
-  task.functionName = fnName;
-  task.operationType = "delete";
-  return task;
+  return {
+    run,
+    functionName: fnName,
+    operationType: "delete",
+  };
 }
 
 export function functionsDeploymentHandler(
@@ -194,7 +201,7 @@ export function functionsDeploymentHandler(
     let result;
     try {
       timer.startTimer(task.functionName, task.operationType);
-      result = await task();
+      result = await task.run();
       helper.printSuccess(task.functionName, task.operationType);
     } catch (err) {
       if (err.original?.context?.response?.statusCode === 429) {
@@ -273,13 +280,15 @@ export function upsertScheduleTask(
   fn: CloudFunctionTrigger,
   appEngineLocation: string
 ): DeploymentTask {
-  const task: DeploymentTask = async () => {
+  const run = async () => {
     const job = helper.toJob(fn, appEngineLocation, params.projectId);
     return await cloudscheduler.createOrReplaceJob(job);
   };
-  task.functionName = fn.name;
-  task.operationType = "upsert schedule";
-  return task;
+  return {
+    run,
+    functionName: fn.name,
+    operationType: "upsert schedule",
+  };
 }
 
 export function deleteScheduleTask(
@@ -287,15 +296,17 @@ export function deleteScheduleTask(
   fnName: string,
   appEngineLocation: string
 ): DeploymentTask {
-  const task: DeploymentTask = async () => {
+  const run = async () => {
     const jobName = helper.getScheduleName(fnName, appEngineLocation);
     const topicName = helper.getTopicName(fnName);
     await cloudscheduler.deleteJob(jobName);
     await deleteTopic(topicName);
   };
-  task.functionName = fnName;
-  task.operationType = "delete schedule";
-  return task;
+  return {
+    run,
+    functionName: fnName,
+    operationType: "delete schedule",
+  };
 }
 
 export function schedulerDeploymentHandler(
@@ -304,7 +315,7 @@ export function schedulerDeploymentHandler(
   return async (task: DeploymentTask) => {
     let result;
     try {
-      result = await task();
+      result = await task.run();
       helper.printSuccess(task.functionName, task.operationType);
     } catch (err) {
       if (err.status === 429) {
@@ -315,5 +326,6 @@ export function schedulerDeploymentHandler(
         errorHandler.record("error", task.functionName, task.operationType, err.message || "");
       }
     }
+    return result;
   };
 }
