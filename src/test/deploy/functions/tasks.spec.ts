@@ -68,7 +68,7 @@ describe("Function Deployment tasks", () => {
       expect(run).to.have.been.called;
       expect(errorHandlerStub.record).not.to.have.been.called;
     });
-    
+
     it("should handle other errors", async () => {
       const originalError = {
         name: "Some Other Error",
