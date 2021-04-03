@@ -10,7 +10,6 @@ import {
   addAuthDomains,
   cleanAuthState,
   normalizeName,
-  Release,
 } from "../hosting/api";
 import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs";
 import { requirePermissions } from "../requirePermissions";
@@ -31,14 +30,6 @@ interface ChannelInfo {
   url: string;
   version: string;
   expireTime: string;
-}
-
-interface DeployResult {
-  hosting: {
-    [site: string]: {
-      release: Release;
-    };
-  };
 }
 
 export default new Command("hosting:channel:deploy [channelId]")
@@ -142,9 +133,23 @@ export default new Command("hosting:channel:deploy [channelId]")
         })
       );
 
-      const results = (await deploy(["hosting"], options, {
-        hostingChannel: channelId,
-      })) as DeployResult;
+      const { hosting } = await deploy(["hosting"], options, { hostingChannel: channelId });
+
+      // The version names are returned in the hosting key of the deploy result.
+      //
+      // If there is only one element it is returned as a string, otherwise it
+      // is an array of strings. Not sure why it's done that way, but that's
+      // something we can't change because it is in the deploy output in json.
+      //
+      // The code below turns it back to an array of version names.
+      const versionNames: Array<string> = [];
+      if (typeof hosting === "string") {
+        versionNames.push(hosting);
+      } else if (Array.isArray(hosting)) {
+        hosting.forEach((version) => {
+          versionNames.push(version);
+        });
+      }
 
       logger.info();
       await syncAuthState(projectId, sites);
@@ -156,17 +161,15 @@ export default new Command("hosting:channel:deploy [channelId]")
         if (d.expireTime) {
           expires = `[expires ${bold(datetimeString(new Date(d.expireTime)))}]`;
         }
-        const siteResult = results.hosting[siteKey];
+        const versionName = versionNames.find((v) => {
+          return v.startsWith(`sites/${d.site}/versions/`);
+        });
         let version = "";
-        if (siteResult) {
-          const versionName: string = siteResult.release.version.name;
+        if (versionName) {
           d.version = versionName.replace(`sites/${d.site}/versions/`, "");
-          version = `[version ${bold(d.version)}]`;
+          version = ` [version ${bold(d.version)}]`;
         }
-        logLabeledSuccess(
-          LOG_TAG,
-          `Channel URL (${bold(siteKey)}): ${d.url} ${expires} ${version}`
-        );
+        logLabeledSuccess(LOG_TAG, `Channel URL (${bold(siteKey)}): ${d.url} ${expires}${version}`);
       });
       return deploys;
     }

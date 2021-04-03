@@ -107,11 +107,8 @@ var deploy = function (targetNames, options, customContext = {}) {
         _.each(context.hosting.deploys, function (deploy) {
           logger.info(clc.bold("Hosting URL:"), utils.addSubdomain(api.hostingOrigin, deploy.site));
         });
-        var siteDetails = {};
-        context.hosting.deploys.forEach((deploy) => {
-          siteDetails[deploy.site] = { release: deploy.release };
-        });
-        return { hosting: siteDetails };
+        const versionNames = context.hosting.deploys.map((deploy) => deploy.version);
+        return { hosting: versionNames.length === 1 ? versionNames[0] : versionNames };
       }
     });
 };
