@@ -155,21 +155,24 @@ export default new Command("hosting:channel:deploy [channelId]")
       await syncAuthState(projectId, sites);
       const deploys: { [key: string]: ChannelInfo } = {};
       sites.forEach((d) => {
-        const siteKey = d.target || d.site;
-        deploys[siteKey] = d;
+        deploys[d.target || d.site] = d;
         let expires = "";
         if (d.expireTime) {
           expires = `[expires ${bold(datetimeString(new Date(d.expireTime)))}]`;
         }
+        const versionPrefix = `sites/${d.target || d.site}/versions/`;
         const versionName = versionNames.find((v) => {
-          return v.startsWith(`sites/${d.site}/versions/`);
+          return v.startsWith(versionPrefix);
         });
         let version = "";
         if (versionName) {
-          d.version = versionName.replace(`sites/${d.site}/versions/`, "");
+          d.version = versionName.replace(versionPrefix, "");
           version = ` [version ${bold(d.version)}]`;
         }
-        logLabeledSuccess(LOG_TAG, `Channel URL (${bold(siteKey)}): ${d.url} ${expires}${version}`);
+        logLabeledSuccess(
+          LOG_TAG,
+          `Channel URL (${bold(d.site || d.target)}): ${d.url} ${expires}${version}`
+        );
       });
       return deploys;
     }
