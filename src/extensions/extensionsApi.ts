@@ -394,8 +394,7 @@ async function patchInstance(
   return pollRes;
 }
 
-function populateResourceProperties(source: ExtensionSource): void {
-  const spec: ExtensionSpec = source.spec;
+function populateResourceProperties(spec: ExtensionSpec): void {
   if (spec) {
     spec.resources.forEach((r) => {
       try {
@@ -435,7 +434,9 @@ export async function createSource(
     operationResourceName: createRes.body.name,
     masterTimeout: 600000,
   });
-  populateResourceProperties(pollRes);
+  if (pollRes.spec) {
+    populateResourceProperties(pollRes.spec);
+  }
   return pollRes;
 }
 
@@ -450,7 +451,9 @@ export function getSource(sourceName: string): Promise<ExtensionSource> {
       origin: api.extensionsOrigin,
     })
     .then((res) => {
-      populateResourceProperties(res.body);
+      if (res.body.spec) {
+        populateResourceProperties(res.body.spec);
+      }
       return res.body;
     });
 }
@@ -472,6 +475,9 @@ export async function getExtensionVersion(ref: string): Promise<ExtensionVersion
         origin: api.extensionsOrigin,
       }
     );
+    if (res.body.spec) {
+      populateResourceProperties(res.body.spec);
+    }
     return res.body;
   } catch (err) {
     if (err.status === 404) {

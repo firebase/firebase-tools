@@ -30,6 +30,7 @@ import {
   updateToVersionFromPublisherSource,
   updateFromPublisherSource,
   getExistingSourceOrigin,
+  inferUpdateSource,
 } from "../extensions/updateHelper";
 import * as getProjectId from "../getProjectId";
 import { requirePermissions } from "../requirePermissions";
@@ -117,13 +118,11 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
       const existingParams = _.get(existingInstance, "config.params");
       const existingSource = _.get(existingInstance, "config.source.name");
 
-      // Infer updateSource if instance is from the registry
-      if (existingInstance.config.extensionRef && !updateSource) {
-        updateSource = `${existingInstance.config.extensionRef}@latest`;
-      } else if (existingInstance.config.extensionRef && semver.valid(updateSource)) {
-        updateSource = `${existingInstance.config.extensionRef}@${updateSource}`;
+      if (existingInstance.config.extensionRef) {
+        // User may provide abbreviated syntax in the update command (for example, providing no update source or just a semver)
+        // Decipher the explicit update source from the abbreviated syntax.
+        updateSource = inferUpdateSource(updateSource, existingInstance.config.extensionRef);
       }
-
       let newSourceName: string;
       const existingSourceOrigin = await getExistingSourceOrigin(
         projectId,
@@ -138,14 +137,6 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
           `Cannot update from a(n) ${existingSourceOrigin} to a(n) ${newSourceOrigin}. Please provide a new source that is a(n) ${existingSourceOrigin} and try again.`
         );
       }
-
-      const isPublished = [
-        SourceOrigin.OFFICIAL_EXTENSION,
-        SourceOrigin.OFFICIAL_EXTENSION_VERSION,
-        SourceOrigin.PUBLISHED_EXTENSION,
-        SourceOrigin.PUBLISHED_EXTENSION_VERSION,
-      ].includes(newSourceOrigin);
-
       // TODO: remove "falls through" once producer and registry experience are released
       switch (newSourceOrigin) {
         case SourceOrigin.LOCAL:

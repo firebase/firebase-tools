@@ -6,7 +6,14 @@ import { logger } from "../logger";
 import * as resolveSource from "./resolveSource";
 import * as extensionsApi from "./extensionsApi";
 import { promptOnce } from "../prompt";
-import { createSourceFromLocation, logPrefix, SourceOrigin, urlRegex } from "./extensionsHelper";
+import * as marked from "marked";
+import {
+  createSourceFromLocation,
+  logPrefix,
+  SourceOrigin,
+  urlRegex,
+  isLocalOrURLPath,
+} from "./extensionsHelper";
 import * as utils from "../utils";
 import {
   displayUpdateChangesNoInput,
@@ -86,33 +93,34 @@ async function showUpdateVersionInfo(
 
 /**
  * Prints out warning messages and requires user to consent before continuing with update.
- * @param projectId name of the project
- * @param instanceId name of the instance
- * @param extensionName name of the extension being updated
- * @param existingSource current source of the extension instance
- * @param nextSourceOrigin new source of the extension instance (to be updated to)
- * @param warning source origin specific warning message
- * @param additionalMsg any additional warnings associated with this update
+ * @param sourceOrigin source origin
  */
-export async function warningUpdateToOtherSource(
-  existingSourceOrigin: SourceOrigin,
-  warning: string,
-  nextSourceOrigin: SourceOrigin,
-  additionalMsg?: string
-): Promise<void> {
-  let msg = warning;
-  let joinText = "";
-  if (existingSourceOrigin === nextSourceOrigin) {
-    joinText = "also ";
+export async function warningUpdateToOtherSource(sourceOrigin: SourceOrigin): Promise<void> {
+  let targetText;
+  if (
+    [
+      SourceOrigin.PUBLISHED_EXTENSION,
+      SourceOrigin.PUBLISHED_EXTENSION_VERSION,
+      SourceOrigin.OFFICIAL_EXTENSION,
+      SourceOrigin.OFFICIAL_EXTENSION_VERSION,
+    ].includes(sourceOrigin)
+  ) {
+    targetText = "published extension";
+  } else if (sourceOrigin === SourceOrigin.LOCAL) {
+    targetText = "local directory";
+  } else if (sourceOrigin === SourceOrigin.URL) {
+    targetText = "URL";
   }
-  msg +=
-    `The current source for this instance is a(n) ${existingSourceOrigin}. The new source for this instance will ${joinText}be a(n) ${nextSourceOrigin}.\n\n` +
-    `${additionalMsg || ""}`;
-  const updateWarning = {
-    from: existingSourceOrigin,
-    description: msg,
-  };
-  return await resolveSource.confirmUpdateWarning(updateWarning);
+  const warning = `All the instance's resources and logic will be overwritten to use the source code and files from the ${targetText}.\n`;
+  logger.info(marked(warning));
+  const continueUpdate = await promptOnce({
+    type: "confirm",
+    message: "Do you wish to continue with this update?",
+    default: false,
+  });
+  if (!continueUpdate) {
+    throw new FirebaseError(`Update cancelled.`, { exit: 2 });
+  }
 }
 
 /**
@@ -211,22 +219,7 @@ export async function updateFromLocalSource(
     `${clc.bold("You are updating this extension instance to a local source.")}`
   );
   await showUpdateVersionInfo(instanceId, existingSpec.version, source.spec.version, localSource);
-  const warning =
-    "All the instance's extension-specific resources and logic will be overwritten to use the source code and files from the local directory.\n\n";
-  const additionalMsg =
-    "After updating from a local source, this instance cannot be updated in the future to use a published source from Firebase's registry of extensions.";
-  const existingSourceOrigin = await getExistingSourceOrigin(
-    projectId,
-    instanceId,
-    existingSpec.name,
-    existingSource
-  );
-  await module.exports.warningUpdateToOtherSource(
-    existingSourceOrigin,
-    warning,
-    SourceOrigin.LOCAL,
-    additionalMsg
-  );
+  await warningUpdateToOtherSource(SourceOrigin.LOCAL);
   return source.name;
 }
 
@@ -257,22 +250,7 @@ export async function updateFromUrlSource(
     `${clc.bold("You are updating this extension instance to a URL source.")}`
   );
   await showUpdateVersionInfo(instanceId, existingSpec.version, source.spec.version, urlSource);
-  const warning =
-    "All the instance's extension-specific resources and logic will be overwritten to use the source code and files from the URL.\n\n";
-  const additionalMsg =
-    "After updating from a URL source, this instance cannot be updated in the future to use a published source from Firebase's registry of extensions.";
-  const existingSourceOrigin = await getExistingSourceOrigin(
-    projectId,
-    instanceId,
-    existingSpec.name,
-    existingSource
-  );
-  await module.exports.warningUpdateToOtherSource(
-    existingSourceOrigin,
-    warning,
-    SourceOrigin.URL,
-    additionalMsg
-  );
+  await warningUpdateToOtherSource(SourceOrigin.URL);
   return source.name;
 }
 
@@ -306,19 +284,22 @@ export async function updateToVersionFromPublisherSource(
     );
   }
   let registryEntry;
-  let sourceType;
+  let sourceOrigin;
   try {
     // Double check that both publisher and extension ID match
     // If the publisher and extension ID both match, we know it's an official extension (i.e. it's specifically listed in our Registry File)
     // Otherwise, it's simply a published extension in the Registry
     registryEntry = await resolveSource.resolveRegistryEntry(existingSpec.name);
-    sourceType = registryEntry.publisher === refObj.publisherId ? "official" : "published";
+    sourceOrigin =
+      registryEntry.publisher === refObj.publisherId
+        ? SourceOrigin.OFFICIAL_EXTENSION
+        : SourceOrigin.PUBLISHED_EXTENSION;
   } catch (err) {
-    sourceType = "published";
+    sourceOrigin = SourceOrigin.PUBLISHED_EXTENSION;
   }
   utils.logLabeledBullet(
     logPrefix,
-    `${clc.bold(`You are updating this extension instance to a ${sourceType} source.`)}`
+    `${clc.bold(`You are updating this extension instance to a(n) ${sourceOrigin}.`)}`
   );
   if (registryEntry) {
     // Do not allow user to "downgrade" to a version lower than the minimum required version.
@@ -332,19 +313,7 @@ export async function updateToVersionFromPublisherSource(
     }
   }
   await showUpdateVersionInfo(instanceId, existingSpec.version, source.spec.version, extVersionRef);
-  const warning =
-    "All the instance's extension-specific resources and logic will be overwritten to use the source code and files from the published extension.\n\n";
-  const existingSourceOrigin = await getExistingSourceOrigin(
-    projectId,
-    instanceId,
-    existingSpec.name,
-    existingSource
-  );
-  await module.exports.warningUpdateToOtherSource(
-    existingSourceOrigin,
-    warning,
-    SourceOrigin.PUBLISHED_EXTENSION
-  );
+  await warningUpdateToOtherSource(SourceOrigin.PUBLISHED_EXTENSION);
   if (registryEntry) {
     await resolveSource.promptForUpdateWarnings(
       registryEntry,
@@ -424,19 +393,7 @@ export async function updateToVersionFromRegistryFile(
   }
   const targetVersion = resolveSource.getTargetVersion(registryEntry, version);
   await showUpdateVersionInfo(instanceId, existingSpec.version, targetVersion);
-  const warning =
-    "All the instance's extension-specific resources and logic will be overwritten to use the source code and files from the latest released version.\n\n";
-  const existingSourceOrigin = await getExistingSourceOrigin(
-    projectId,
-    instanceId,
-    existingSpec.name,
-    existingSource
-  );
-  await module.exports.warningUpdateToOtherSource(
-    existingSourceOrigin,
-    warning,
-    SourceOrigin.OFFICIAL_EXTENSION
-  );
+  await warningUpdateToOtherSource(SourceOrigin.OFFICIAL_EXTENSION);
   await resolveSource.promptForUpdateWarnings(registryEntry, existingSpec.version, targetVersion);
   return resolveSource.resolveSourceUrl(registryEntry, existingSpec.name, targetVersion);
 }
@@ -461,4 +418,22 @@ export async function updateFromRegistryFile(
     existingSource,
     "latest"
   );
+}
+
+export function inferUpdateSource(updateSource: string, existingRef: string): string {
+  if (!updateSource) {
+    return `${existingRef}@latest`;
+  }
+  if (semver.valid(updateSource)) {
+    return `${existingRef}@${updateSource}`;
+  }
+  if (!isLocalOrURLPath(updateSource) && updateSource.split("/").length < 2) {
+    return updateSource.includes("@")
+      ? `firebase/${updateSource}`
+      : `firebase/${updateSource}@latest`;
+  }
+  if (!isLocalOrURLPath(updateSource) && !updateSource.includes("@")) {
+    return `${updateSource}@latest`;
+  }
+  return updateSource;
 }
