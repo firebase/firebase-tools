@@ -206,26 +206,27 @@ export async function loginAdditionalAccount(useLocalhost: boolean, email?: stri
     throw new FirebaseError("Failed to parse auth response, see debug log.");
   }
 
-  if (email && result.user.email !== email) {
-    utils.logWarning(`Chosen account ${result.user.email} does not match account hint ${email}`);
+  const resultEmail = result.user.email;
+  if (email && resultEmail !== email) {
+    utils.logWarning(`Chosen account ${resultEmail} does not match account hint ${email}`);
   }
 
   const allAccounts = getAllAccounts();
-  const resultMatch = allAccounts.find((a) => a.user.email === email);
-  if (resultMatch) {
-    utils.logWarning(`Already logged in as ${email}, nothing to do`);
-    return;
-  }
 
   const newAccount = {
     user: result.user,
     tokens: result.tokens,
   };
 
-  const additionalAccounts = getAdditionalAccounts();
-  additionalAccounts.push(newAccount);
-
-  configstore.set("additionalAccounts", additionalAccounts);
+  const existingAccount = allAccounts.find((a) => a.user.email === resultEmail);
+  if (existingAccount) {
+    utils.logWarning(`Already logged in as ${resultEmail}.`);
+    updateAccount(newAccount);
+  } else {
+    const additionalAccounts = getAdditionalAccounts();
+    additionalAccounts.push(newAccount);
+    configstore.set("additionalAccounts", additionalAccounts);
+  }
 
   return newAccount;
 }

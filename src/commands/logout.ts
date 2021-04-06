@@ -31,7 +31,7 @@ module.exports = new Command("logout [email]")
 
     // If they are logging out of their primary account, choose one to
     // replace it.
-    const logoutDefault = email && defaultAccount?.user.email;
+    const logoutDefault = email === defaultAccount?.user.email;
     let newDefaultAccount: auth.Account | undefined = undefined;
     if (logoutDefault && additionalAccounts.length > 0) {
       if (additionalAccounts.length === 1) {
