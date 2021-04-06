@@ -26,6 +26,7 @@ export interface FrameworkOptions {
     functions: ConnectionInfo;
     pubsub: ConnectionInfo;
     auth: ConnectionInfo;
+    storage: ConnectionInfo;
   };
 }
 
@@ -40,6 +41,8 @@ export class TriggerEndToEndTest {
   pubsubEmulatorPort = 0;
   authEmulatorHost = "localhost";
   authEmulatorPort = 0;
+  storageEmulatorHost = "localhost";
+  storageEmulatorPort = 0;
   allEmulatorsStarted = false;
   rtdbTriggerCount = 0;
   firestoreTriggerCount = 0;
@@ -58,6 +61,7 @@ export class TriggerEndToEndTest {
       this.functionsEmulatorPort = config.emulators.functions?.port;
       this.pubsubEmulatorPort = config.emulators.pubsub?.port;
       this.authEmulatorPort = config.emulators.auth?.port;
+      this.storageEmulatorPort = config.emulators.storage?.port;
     }
   }
 

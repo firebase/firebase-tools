@@ -475,6 +475,9 @@ export class FunctionsEmulator implements EmulatorInstance {
           case Constants.SERVICE_AUTH:
             added = this.addAuthTrigger(this.args.projectId, key, definition.eventTrigger);
             break;
+          case Constants.SERVICE_STORAGE:
+            added = this.addStorageTrigger(this.args.projectId, key, definition.eventTrigger);
+            break;
           default:
             this.logger.log("DEBUG", `Unsupported trigger: ${JSON.stringify(definition)}`);
             break;
@@ -628,6 +631,16 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   addAuthTrigger(projectId: string, key: string, eventTrigger: EventTrigger): boolean {
     logger.debug(`addAuthTrigger`, JSON.stringify({ eventTrigger }));
+
+    const eventTriggerId = `${projectId}:${eventTrigger.eventType}`;
+    const triggers = this.multicastTriggers[eventTriggerId] || [];
+    triggers.push(key);
+    this.multicastTriggers[eventTriggerId] = triggers;
+    return true;
+  }
+
+  addStorageTrigger(projectId: string, key: string, eventTrigger: EventTrigger): boolean {
+    logger.debug(`addStorageTrigger`, JSON.stringify({ eventTrigger }));
 
     const eventTriggerId = `${projectId}:${eventTrigger.eventType}`;
     const triggers = this.multicastTriggers[eventTriggerId] || [];

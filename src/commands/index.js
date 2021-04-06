@@ -128,6 +128,11 @@ module.exports = function (client) {
   client.setup.emulators.database = loadCommand("setup-emulators-database");
   client.setup.emulators.firestore = loadCommand("setup-emulators-firestore");
   client.setup.emulators.pubsub = loadCommand("setup-emulators-pubsub");
+
+  if (previews.storageemulator) {
+    client.setup.emulators.storage = loadCommand("setup-emulators-storage");
+  }
+
   client.setup.emulators.ui = loadCommand("setup-emulators-ui");
   client.target = loadCommand("target");
   client.target.apply = loadCommand("target-apply");

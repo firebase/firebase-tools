@@ -1,5 +1,5 @@
-- Fixes an issue where `ext:dev:init` failed when Typescript was chosen.
-- Add support for reading/writing mfaInfo field in Auth Emulator (#3173).
-- Work around CORS issues with jsdom in Auth Emulator and Emulator Hub (#3224).
-- Fixes port conflict issues with `functions:shell` (#3210).
+- Fixes native module issues by removing `fast-crc32c` (#3247, #3239)
+- Update to Cloud Firestore emulator v1.11.13 which includes a bug fix for documents which are created and deleted in a single transaction.
+- Fixes an edge case with nextPageToken in batchGet in Auth Emulator (#3231).
+- Removes unused dependencies (#3252).
 - Adds support for multiple accounts via new commands `login:use`, `login:add` and `login:list`.
