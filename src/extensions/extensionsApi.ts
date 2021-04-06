@@ -7,6 +7,7 @@ import * as api from "../api";
 import { logger } from "../logger";
 import * as operationPoller from "../operation-poller";
 import { FirebaseError } from "../error";
+import { RegistryLaunchStage, Visibility } from "../extensions/extensionsHelper";
 
 const VERSION = "v1beta";
 const PAGE_SIZE_MAX = 100;
@@ -15,7 +16,8 @@ const refRegex = new RegExp(/^([^/@\n]+)\/{1}([^/@\n]+)(@{1}([a-z0-9.-]+)|)$/);
 export interface Extension {
   name: string;
   ref: string;
-  state: "STATE_UNSPECIFIED" | "PUBLISHED";
+  visibility: Visibility;
+  registryLaunchStage: RegistryLaunchStage;
   createTime: string;
   latestVersion?: string;
   latestVersionCreateTime?: string;
@@ -25,7 +27,6 @@ export interface ExtensionVersion {
   name: string;
   ref: string;
   spec: ExtensionSpec;
-  state?: "STATE_UNSPECIFIED" | "PUBLISHED";
   hash: string;
   createTime?: string;
 }

@@ -13,7 +13,7 @@ import { Command } from "../command";
 import { FirebaseError } from "../error";
 import * as getProjectId from "../getProjectId";
 import * as extensionsApi from "../extensions/extensionsApi";
-import { promptForAudienceConsent, resolveRegistryEntry } from "../extensions/resolveSource";
+import { promptForLaunchStageConsent } from "../extensions/resolveSource";
 import * as paramHelper from "../extensions/paramHelper";
 import {
   confirmInstallInstance,
@@ -25,7 +25,6 @@ import {
   promptForRepeatInstance,
   promptForValidInstanceId,
   isLocalOrURLPath,
-  Audience,
 } from "../extensions/extensionsHelper";
 import { getRandomString } from "../extensions/utils";
 import { requirePermissions } from "../requirePermissions";
@@ -139,20 +138,6 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
   }
 }
 
-// @TODO(b/181749427): This logic looks for the audience field inside the Registry File.
-// This logic needs to be updated once audience becomes a field from the API.
-async function inferAudience(extensionId: string, publisherId?: string): Promise<Audience> {
-  try {
-    const registryEntry = await resolveRegistryEntry(extensionId);
-    if (publisherId && publisherId !== registryEntry.publisher) {
-      return Audience.EAP;
-    }
-    return (registryEntry.audience || Audience.EAP) as Audience;
-  } catch (err) {
-    return Audience.EAP;
-  }
-}
-
 async function confirmInstallBySource(
   projectId: string,
   extensionName: string
@@ -187,18 +172,17 @@ async function confirmInstallByReference(
   }
   // Get the correct version for a given extension reference from the Registry API.
   const ref = extensionsApi.parseRef(extensionName);
-  await extensionsApi.getExtension(`${ref.publisherId}/${ref.extensionId}`);
+  const extension = await extensionsApi.getExtension(`${ref.publisherId}/${ref.extensionId}`);
   if (!ref.version) {
     extensionName = `${extensionName}@latest`;
   }
-  const audience = await inferAudience(ref.extensionId, ref.publisherId);
   const extVersion = await extensionsApi.getExtensionVersion(extensionName);
   displayExtInfo(extensionName, ref.publisherId, extVersion.spec, true);
   const confirm = await confirmInstallInstance();
   if (!confirm) {
     throw new FirebaseError("Install cancelled.");
   }
-  const audienceConsent = await promptForAudienceConsent(audience);
+  const audienceConsent = await promptForLaunchStageConsent(extension.registryLaunchStage);
   if (!audienceConsent) {
     throw new FirebaseError("Install cancelled.");
   }

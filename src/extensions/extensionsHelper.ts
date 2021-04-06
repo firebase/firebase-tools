@@ -31,12 +31,17 @@ import { promptOnce } from "../prompt";
 import { logger } from "../logger";
 import { envOverride } from "../utils";
 
-export enum Audience {
-  EAP = "eap",
-  EXPERIMENTAL = "experimental",
-  CLOSED_ALPHA = "closed-alpha",
-  OPEN_ALPHA = "open-alpha",
-  BETA = "beta",
+export enum RegistryLaunchStage {
+  EXPERIMENTAL = "EXPERIMENTAL",
+  BETA = "BETA",
+  GA = "GA",
+  DEPRECATED = "DEPRECATED",
+  REGISTRY_LAUNCH_STAGE_UNSPECIFIED = "REGISTRY_LAUNCH_STAGE_UNSPECIFIED",
+}
+
+export enum Visibility {
+  UNLISTED = "unlisted",
+  PUBLIC = "public",
 }
 
 /**

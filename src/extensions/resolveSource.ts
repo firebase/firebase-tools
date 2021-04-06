@@ -6,27 +6,21 @@ import * as api from "../api";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { promptOnce } from "../prompt";
-import { Audience } from "../extensions/extensionsHelper";
+import { RegistryLaunchStage } from "../extensions/extensionsHelper";
 
 const EXTENSIONS_REGISTRY_ENDPOINT = "/extensions.json";
-const AUDIENCE_WARNING_MESSAGES: { [key in Audience]: string | null } = {
-  "open-alpha": marked(
-    `${clc.bold("Important")}: This extension is part of the ${clc.bold(
-      "preliminary-release program"
-    )} for extensions.\n Its functionality might change in backward-incompatible ways before its official release. Learn more: https://github.com/firebase/extensions/tree/master/.preliminary-release-extensions`
-  ),
-  "closed-alpha": marked(
-    `${clc.yellow.bold("Important")}: This extension is part of the ${clc.bold(
-      "Firebase Alpha program"
-    )}.\n This extension is strictly confidential, and its functionality might change in backward-incompatible ways before its official, public release. Learn more: https://dev-partners.googlesource.com/samples/firebase/extensions-alpha/+/refs/heads/master/README.md`
-  ),
-  experimental: marked(
+// @TODO(b/184601300): Remove null type as an option in LAUNCH_STAGE_WARNING_MESSAGES, and leave the value
+// as undefined for stages where there is no explicit warning.
+const LAUNCH_STAGE_WARNING_MESSAGES: { [key in RegistryLaunchStage]: string | null } = {
+  EXPERIMENTAL: marked(
     `${clc.yellow.bold("Important")}: This extension is ${clc.bold(
       "experimental"
     )} and may not be production-ready. Its functionality might change in backward-incompatible ways before its official release, or it may be discontinued. Learn more: https://github.com/FirebaseExtended/experimental-extensions`
   ),
-  beta: null,
-  eap: null,
+  BETA: null,
+  DEPRECATED: null,
+  GA: null,
+  REGISTRY_LAUNCH_STAGE_UNSPECIFIED: null,
 };
 
 export interface RegistryEntry {
@@ -154,13 +148,15 @@ export async function promptForUpdateWarnings(
 }
 
 /**
- * Checks the audience field of a RegistryEntry, displays a warning text
+ * Checks the launch stage field of a RegistryEntry, displays a warning text
  * for closed and open alpha extensions, and prompts the user to accept.
  */
-export async function promptForAudienceConsent(audience: Audience): Promise<boolean> {
+export async function promptForLaunchStageConsent(
+  launchStage: RegistryLaunchStage
+): Promise<boolean> {
   let consent = true;
-  if (AUDIENCE_WARNING_MESSAGES[audience]) {
-    logger.info(AUDIENCE_WARNING_MESSAGES[audience] || "");
+  if (LAUNCH_STAGE_WARNING_MESSAGES[launchStage]) {
+    logger.info(LAUNCH_STAGE_WARNING_MESSAGES[launchStage] || "");
     consent = await promptOnce({
       type: "confirm",
       message: "Do you acknowledge the status of this extension?",
