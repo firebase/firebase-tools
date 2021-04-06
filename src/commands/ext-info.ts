@@ -39,8 +39,7 @@ export default new Command("ext:info <extensionName>")
         }
       } else {
         const [name, version] = extensionName.split("@");
-        const registryEntry = await resolveRegistryEntry(name);
-        extensionName = `${registryEntry.publisher}/${name}@${version || "latest"}`;
+        extensionName = `firebase/${name}@${version || "latest"}`;
       }
       const version = await extensionsApi.getExtensionVersion(extensionName);
       spec = version.spec;
