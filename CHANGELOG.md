@@ -1,7 +1,0 @@
-- Fixes native module issues by removing `fast-crc32c` (#3247, #3239).
-- Adds retries on Quota Exceeded errors during functions deployment (#2606, #1372).
-- Fixes Firestore Emulator wrong behavior for documents which are created and deleted in a single transaction.
-- Fixes header parsing in Firestore Emulator causing permission denined errors with JS SDK v8.3.2 (#3258).
-- Fixes an edge case with nextPageToken in batchGet in Auth Emulator (#3231).
-- Removes unused dependencies (#3252).
-- Adds support for multiple accounts via new commands `login:use`, `login:add` and `login:list`.
