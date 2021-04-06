@@ -8,11 +8,12 @@ import { FirebaseError } from "../../../error";
 
 describe("Function Deployment tasks", () => {
   describe("functionsDeploymentHandler", () => {
-    const sandbox = sinon.createSandbox();
+    let sandbox: sinon.SinonSandbox;
     let timerStub: sinon.SinonStubbedInstance<DeploymentTimer>;
     let errorHandlerStub: sinon.SinonStubbedInstance<ErrorHandler>;
 
     beforeEach(() => {
+      sandbox = sinon.createSandbox();
       timerStub = sandbox.createStubInstance(DeploymentTimer);
       errorHandlerStub = sandbox.createStubInstance(ErrorHandler);
     });
