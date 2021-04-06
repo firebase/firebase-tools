@@ -38,7 +38,7 @@ describe("firestore", () => {
 
       const setup = { config: {}, projectId: "my-project-123", projectLocation: "us-central1" };
 
-      await firestore.doSetup(setup, {});
+      await firestore.doSetup(setup, {}, {});
 
       expect(requirePermissionsStub).to.have.been.calledOnce;
       expect(initRulesStub).to.have.been.calledOnce;
@@ -49,7 +49,7 @@ describe("firestore", () => {
     it("should error when cloud resource location is not set", async () => {
       const setup = { config: {}, projectId: "my-project-123" };
 
-      await expect(firestore.doSetup(setup, {})).to.eventually.be.rejectedWith(
+      await expect(firestore.doSetup(setup, {}, {})).to.eventually.be.rejectedWith(
         FirebaseError,
         "Cloud resource location is not set"
       );
@@ -60,7 +60,7 @@ describe("firestore", () => {
 
       const setup = { config: {}, projectId: "my-project-123" };
 
-      await expect(firestore.doSetup(setup, {})).to.eventually.be.rejectedWith(
+      await expect(firestore.doSetup(setup, {}, {})).to.eventually.be.rejectedWith(
         FirebaseError,
         "It looks like you haven't used Cloud Firestore"
       );
@@ -72,7 +72,7 @@ describe("firestore", () => {
 
       const setup = { config: {}, projectId: "my-project-123" };
 
-      await expect(firestore.doSetup(setup, {})).to.eventually.be.rejectedWith(
+      await expect(firestore.doSetup(setup, {}, {})).to.eventually.be.rejectedWith(
         FirebaseError,
         "It looks like this project is using Cloud Datastore or Cloud Firestore in Datastore mode."
       );

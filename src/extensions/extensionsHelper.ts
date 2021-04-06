@@ -39,7 +39,7 @@ import { envOverride } from "../utils";
  */
 export enum SpecParamType {
   SELECT = "select",
-  MULTISELECT = "multiselect",
+  MULTISELECT = "multiSelect",
   STRING = "string",
 }
 
