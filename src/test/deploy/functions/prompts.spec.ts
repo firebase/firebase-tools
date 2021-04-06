@@ -6,16 +6,27 @@ import * as functionPrompts from "../../../deploy/functions/prompts";
 import { FirebaseError } from "../../../error";
 import { CloudFunctionTrigger } from "../../../deploy/functions/deploymentPlanner";
 import * as gcp from "../../../gcp";
+import * as gcf from "../../../gcp/cloudfunctions";
 
 describe("promptForFailurePolicies", () => {
   let promptStub: sinon.SinonStub;
   let listAllFunctionsStub: sinon.SinonStub;
-  let existingFunctions: CloudFunctionTrigger[] = [];
+  let existingFunctions: Omit<gcf.CloudFunction, gcf.OutputOnlyFields>[] = [];
 
   beforeEach(() => {
     promptStub = sinon.stub(prompt, "promptOnce");
     listAllFunctionsStub = sinon.stub(gcp.cloudfunctions, "listAllFunctions").callsFake(() => {
-      return Promise.resolve(existingFunctions);
+      return Promise.resolve(
+        existingFunctions.map((f) => {
+          return {
+            ...f,
+            status: "ACTIVE",
+            buildId: "1",
+            versionId: 1,
+            updateTime: new Date(),
+          };
+        })
+      );
     });
   });
 
@@ -87,11 +98,12 @@ describe("promptForFailurePolicies", () => {
   });
 
   it("should propmt if an existing function adds a failure policy", async () => {
-    const func: CloudFunctionTrigger = {
+    const func = {
       name: "projects/a/locations/b/functions/c",
       entryPoint: "",
       labels: {},
       environmentVariables: {},
+      runtime: "nodejs14" as gcf.Runtime,
     };
     existingFunctions = [func];
     const newFunc = Object.assign({}, func, { failurePolicy: {} });

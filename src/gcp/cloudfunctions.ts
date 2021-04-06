@@ -5,7 +5,20 @@ import * as api from "../api";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import * as utils from "../utils";
-import { CloudFunctionTrigger } from "../deploy/functions/deploymentPlanner";
+import { Runtime } from "inspector";
+import * as proto from "./proto";
+
+export const API_VERSION = "v1";
+
+export const DEFAULT_PUBLIC_POLICY = {
+  version: 3,
+  bindings: [
+    {
+      role: "roles/cloudfunctions.invoker",
+      members: ["allUsers"],
+    },
+  ],
+};
 
 interface Operation {
   name: string;
@@ -20,17 +33,126 @@ interface Operation {
   error?: { code: number; message: string };
 }
 
-export const API_VERSION = "v1";
+export interface HttpsTrigger {
+  // output only
+  url?: string;
+  securityLevel?: SecurityLevel;
+}
 
-export const DEFAULT_PUBLIC_POLICY = {
-  version: 3,
-  bindings: [
-    {
-      role: "roles/cloudfunctions.invoker",
-      members: ["allUsers"],
-    },
-  ],
-};
+export interface EventTrigger {
+  eventType: string;
+  resource: string;
+  service?: string;
+  failurePolicy?: FailurePolicy;
+}
+
+export interface CorsPolicy {
+  allowOrigin: string[];
+  allowMethods?: string[];
+  allowHeaders?: string[];
+  exposeHeaders?: string[];
+}
+
+export interface SecretEnvVar {
+  key: string;
+  projectId: string;
+  secret: string;
+  version: string;
+}
+
+export interface SecretVolume {
+  mountPath: string;
+  projectId: string;
+  secret: string;
+  versions: {
+    version: string;
+    path: string;
+  }[];
+}
+
+export type Runtime = "nodejs6" | "nodejs8" | "nodejs10" | "nodejs12" | "nodejs14";
+export type CloudFunctionStatus =
+  | "ACTIVE"
+  | "OFFLINE"
+  | "DEPLOY_IN_PROGRESS"
+  | "DELETE_IN_PROGRESS"
+  | "UNKNOWN";
+export type SecurityLevel = "SECURE_ALWAYS" | "SECURE_OPTIONAL";
+
+export interface FailurePolicy {
+  // oneof action
+  retry?: {};
+  // end oneof action
+}
+
+export interface CloudFunction {
+  name: string;
+  description?: string;
+
+  // oneof source_code
+  sourceArchiveUrl?: string;
+  sourceRepository?: {
+    url: string;
+    deployedUrl: string;
+  };
+  sourceUploadUrl?: string;
+  // end oneof source_code
+
+  // oneof trigger
+  httpsTrigger?: HttpsTrigger;
+  eventTrigger?: EventTrigger;
+  // end oneof trigger;
+
+  entryPoint: string;
+  runtime: Runtime;
+  // Seconds. Default = 60
+  timeout?: proto.Duration;
+
+  // Default 256
+  availableMemoryMb?: number;
+
+  // Default <projectID>@appspot.gserviceaccount.com
+  serviceAccountEmail?: string;
+
+  labels?: Record<string, string>;
+  environmentVariables?: Record<string, string>;
+  buildEnvironmentVariables?: Record<string, string>;
+
+  network?: string;
+  maxInstances?: number;
+  minInstances?: number;
+
+  corsPolicy?: CorsPolicy;
+  vpcConnector?: string;
+  vpcConnectorEgressSettings?: "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC";
+  ingressSettings?: "ALLOW_ALL" | "ALLOW_INTERNAL_ONLY" | "ALLOW_INTERNAL_AND_GCLB";
+
+  kmsKeyName?: string;
+  buildWorkerPool?: string;
+  secretEnvironmentVariables?: SecretEnvVar[];
+  secretVolumes?: SecretVolume[];
+  sourceToken?: string;
+
+  // Output parameters
+  status: CloudFunctionStatus;
+  buildId: string;
+  updateTime: Date;
+  versionId: number;
+}
+
+export type OutputOnlyFields = "status" | "buildId" | "updateTime" | "versionId";
+
+function validateFunction(func: CloudFunction) {
+  proto.assertOneOf(
+    "Cloud Function",
+    func,
+    "sourceCode",
+    "sourceArchiveUrl",
+    "sourceRepository",
+    "sourceUploadUrl"
+  );
+  proto.assertOneOf("Cloud Function", func, "trigger", "httpsTrigger", "eventTrigger");
+}
 
 /**
  * Logs an error from a failed function deployment.
@@ -91,7 +213,7 @@ export async function createFunction(options: any): Promise<Operation> {
   const fullFuncName = location + "/functions/" + options.functionName;
   const endpoint = "/" + API_VERSION + "/" + location + "/functions";
 
-  const data: CloudFunctionTrigger = {
+  const data: Partial<CloudFunction> = {
     sourceUploadUrl: options.sourceUploadUrl,
     name: fullFuncName,
     entryPoint: options.entryPoint,
@@ -187,7 +309,7 @@ export async function updateFunction(options: any): Promise<Operation> {
   const fullFuncName = location + "/functions/" + options.functionName;
   const endpoint = "/" + API_VERSION + "/" + fullFuncName;
 
-  const data: CloudFunctionTrigger = _.assign(
+  const data: CloudFunction = _.assign(
     {
       sourceUploadUrl: options.sourceUploadUrl,
       name: fullFuncName,
@@ -301,10 +423,7 @@ export async function deleteFunction(options: any): Promise<Operation> {
  * @param projectId the Id of the project to check.
  * @param region the region to check in.
  */
-export async function listFunctions(
-  projectId: string,
-  region: string
-): Promise<CloudFunctionTrigger[]> {
+export async function listFunctions(projectId: string, region: string): Promise<CloudFunction[]> {
   const endpoint =
     "/" + API_VERSION + "/projects/" + projectId + "/locations/" + region + "/functions";
   try {
@@ -335,7 +454,7 @@ export async function listFunctions(
  * List all existing Cloud Functions in a project.
  * @param projectId the Id of the project to check.
  */
-export async function listAllFunctions(projectId: string): Promise<CloudFunctionTrigger[]> {
+export async function listAllFunctions(projectId: string): Promise<CloudFunction[]> {
   // "-" instead of a region string lists functions in all regions
   return listFunctions(projectId, "-");
 }
