@@ -186,6 +186,13 @@ async function confirmInstallByReference(
   if (!audienceConsent) {
     throw new FirebaseError("Install cancelled.");
   }
+  const eapPublisherConsent = await askUserForConsent.checkAndPromptForEapPublisher(
+    ref.publisherId,
+    extVersion.spec?.sourceUrl
+  );
+  if (!eapPublisherConsent) {
+    throw new FirebaseError("Install cancelled.");
+  }
   return extVersion;
 }
 

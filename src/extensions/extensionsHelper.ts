@@ -709,10 +709,11 @@ export async function getSourceOrigin(sourceOrVersion: string): Promise<SourceOr
 /**
  * Confirm if the user wants to install instance of an extension.
  */
-export async function confirmInstallInstance(): Promise<string> {
+export async function confirmInstallInstance(defaultOption?: boolean): Promise<boolean> {
   const message = `Would you like to continue installing this extension?`;
   return await promptOnce({
     type: "confirm",
     message,
+    default: defaultOption,
   });
 }

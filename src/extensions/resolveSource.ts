@@ -186,3 +186,25 @@ export async function getExtensionRegistry(
   }
   return extensions;
 }
+
+/**
+ * Fetches a list all publishers that appear in the v1 registry.
+ */
+export async function getTrustedPublishers(): Promise<string[]> {
+  let registry: { [key: string]: RegistryEntry };
+  try {
+    registry = await getExtensionRegistry();
+  } catch (err) {
+    logger.debug(
+      "Couldn't get extensions registry, assuming no trusted publishers except Firebase."
+    );
+    return ["firebase "];
+  }
+  const publisherIds = new Set<string>();
+
+  // eslint-disable-next-line guard-for-in
+  for (const entry in registry) {
+    publisherIds.add(registry[entry].publisher);
+  }
+  return Array.from(publisherIds);
+}
