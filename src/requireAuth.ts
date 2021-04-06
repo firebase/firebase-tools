@@ -3,7 +3,6 @@ import * as clc from "cli-color";
 
 import * as api from "./api";
 import * as apiv2 from "./apiv2";
-import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
 import { logger } from "./logger";
 import * as utils from "./utils";
