@@ -243,6 +243,21 @@ export function setProjectAccount(projectDir: string, email: string) {
   configstore.set("activeAccounts", activeAccounts);
 }
 
+/**
+ * Set the global default account.
+ */
+export function setGlobalDefaultAccount(account: Account) {
+  configstore.set("user", account.user);
+  configstore.set("tokens", account.tokens);
+
+  const additionalAccounts = getAdditionalAccounts();
+  const index = additionalAccounts.findIndex((a) => a.user.email === account.user.email);
+  if (index >= 0) {
+    additionalAccounts.splice(index, 1);
+    configstore.set("additionalAccounts", additionalAccounts);
+  }
+}
+
 function open(url: string): void {
   opn(url).catch((err) => {
     logger.debug("Unable to open URL: " + err.stack);
