@@ -5,7 +5,6 @@ import * as api from "../api";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import * as utils from "../utils";
-import { Runtime } from "inspector";
 import * as proto from "./proto";
 
 export const API_VERSION = "v1";
@@ -35,7 +34,7 @@ interface Operation {
 
 export interface HttpsTrigger {
   // output only
-  url?: string;
+  readonly url?: string;
   securityLevel?: SecurityLevel;
 }
 
@@ -131,13 +130,16 @@ export interface CloudFunction {
   buildWorkerPool?: string;
   secretEnvironmentVariables?: SecretEnvVar[];
   secretVolumes?: SecretVolume[];
+
+  // Input-only parameter. Source token originally comes from the Operation
+  // of another Create/Update function call.
   sourceToken?: string;
 
   // Output parameters
-  status: CloudFunctionStatus;
-  buildId: string;
-  updateTime: Date;
-  versionId: number;
+  readonly status: CloudFunctionStatus;
+  readonly buildId: string;
+  readonly updateTime: Date;
+  readonly versionId: number;
 }
 
 export type OutputOnlyFields = "status" | "buildId" | "updateTime" | "versionId";

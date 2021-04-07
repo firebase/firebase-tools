@@ -31,7 +31,7 @@ export function assertOneOf<T>(typename: string, obj: T, oneof: string, ...field
 
 // Utility function to help copy fields from type A to B.
 // As a safety net, catches typos or fields that aren't named the same
-// in A an B, but cannot verify that both Src and Dest have the same type for the same field.
+// in A and B, but cannot verify that both Src and Dest have the same type for the same field.
 export function copyIfPresent<Src, Dest>(
   dest: Dest,
   src: Src,
