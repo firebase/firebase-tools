@@ -113,6 +113,7 @@
     "lodash": "^4.17.19",
     "marked": "^0.7.0",
     "marked-terminal": "^3.3.0",
+    "mime": "^2.5.2",
     "minimatch": "^3.0.4",
     "morgan": "^1.10.0",
     "node-fetch": "^2.6.1",
