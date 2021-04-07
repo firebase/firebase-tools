@@ -30,7 +30,7 @@ export async function promptForFailurePolicies(
 
   context.existingFunctions =
     (context.existingFunctions as CloudFunctionTrigger[]) ||
-    (await gcp.cloudfunctions.listAllFunctions(context.projectId));
+    (await gcp.cloudfunctions.listAllFunctions(context.projectId)).functions;
   const existingFailurePolicyFunctions = context.existingFunctions.filter(
     (fn: CloudFunctionTrigger) => {
       return !!fn?.eventTrigger?.failurePolicy;

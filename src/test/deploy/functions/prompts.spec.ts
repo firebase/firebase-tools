@@ -11,13 +11,16 @@ import * as gcf from "../../../gcp/cloudfunctions";
 describe("promptForFailurePolicies", () => {
   let promptStub: sinon.SinonStub;
   let listAllFunctionsStub: sinon.SinonStub;
-  let existingFunctions: Omit<gcf.CloudFunction, gcf.OutputOnlyFields>[] = [];
+  let existingFunctions: {
+    unreachable: string[];
+    functions: Omit<gcf.CloudFunction, gcf.OutputOnlyFields>[];
+  } = { unreachable: [], functions: [] };
 
   beforeEach(() => {
     promptStub = sinon.stub(prompt, "promptOnce");
     listAllFunctionsStub = sinon.stub(gcp.cloudfunctions, "listAllFunctions").callsFake(() => {
-      return Promise.resolve(
-        existingFunctions.map((f) => {
+      return Promise.resolve({
+        functions: existingFunctions.functions.map((f) => {
           return {
             ...f,
             status: "ACTIVE",
@@ -25,15 +28,16 @@ describe("promptForFailurePolicies", () => {
             versionId: 1,
             updateTime: new Date(),
           };
-        })
-      );
+        }),
+        unreachable: [],
+      });
     });
   });
 
   afterEach(() => {
     promptStub.restore();
     listAllFunctionsStub.restore();
-    existingFunctions = [];
+    existingFunctions = { unreachable: [], functions: [] };
   });
 
   it("should prompt if there are new functions with failure policies", async () => {
@@ -68,7 +72,7 @@ describe("promptForFailurePolicies", () => {
         failurePolicy: {},
       },
     };
-    existingFunctions = [func];
+    existingFunctions = { functions: [func], unreachable: [] };
     const options = {};
     const context = {};
 
@@ -105,7 +109,7 @@ describe("promptForFailurePolicies", () => {
       environmentVariables: {},
       runtime: "nodejs14" as gcf.Runtime,
     };
-    existingFunctions = [func];
+    existingFunctions = { functions: [func], unreachable: [] };
     const newFunc = Object.assign({}, func, { failurePolicy: {} });
     const options = {};
     const context = {};

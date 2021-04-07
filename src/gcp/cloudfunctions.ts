@@ -426,7 +426,13 @@ export async function deleteFunction(options: any): Promise<Operation> {
  * @param projectId the Id of the project to check.
  * @param region the region to check in.
  */
-export async function listFunctions(projectId: string, region: string): Promise<CloudFunction[]> {
+export async function listFunctions(
+  projectId: string,
+  region: string
+): Promise<{
+  unreachable: string[];
+  functions: CloudFunction[];
+}> {
   const endpoint =
     "/" + API_VERSION + "/projects/" + projectId + "/locations/" + region + "/functions";
   try {
@@ -435,17 +441,17 @@ export async function listFunctions(projectId: string, region: string): Promise<
       origin: api.functionsOrigin,
     });
     if (res.body.unreachable && res.body.unreachable.length > 0) {
-      throw new FirebaseError(
-        "Some Cloud Functions regions were unreachable, please try again later.",
-        { exit: 2 }
-      );
+      logger.debug(`[functions] unable to reach the following regions: ${res.body.unreachable}`);
     }
 
     const functionsList = res.body.functions || [];
     _.forEach(functionsList, (f) => {
       f.functionName = f.name.substring(f.name.lastIndexOf("/") + 1);
     });
-    return functionsList;
+    return {
+      unreachable: res.body.unreachable,
+      functions: functionsList,
+    };
   } catch (err) {
     logger.debug("[functions] failed to list functions for " + projectId);
     logger.debug("[functions] " + err.message);
@@ -457,7 +463,12 @@ export async function listFunctions(projectId: string, region: string): Promise<
  * List all existing Cloud Functions in a project.
  * @param projectId the Id of the project to check.
  */
-export async function listAllFunctions(projectId: string): Promise<CloudFunction[]> {
+export async function listAllFunctions(
+  projectId: string
+): Promise<{
+  unreachable: string[];
+  functions: CloudFunction[];
+}> {
   // "-" instead of a region string lists functions in all regions
   return listFunctions(projectId, "-");
 }
