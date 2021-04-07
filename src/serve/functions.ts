@@ -3,6 +3,7 @@ import { FunctionsEmulator, FunctionsEmulatorArgs } from "../emulator/functionsE
 import { EmulatorServer } from "../emulator/emulatorServer";
 import { parseRuntimeVersion } from "../emulator/functionsEmulatorUtils";
 import * as getProjectId from "../getProjectId";
+import { getProjectDefaultAccount } from "../auth";
 
 // TODO(samstern): It would be better to convert this to an EmulatorServer
 // but we don't have the "options" object until start() is called.
@@ -21,6 +22,7 @@ export class FunctionsServer {
       options.config.projectDir,
       options.config.get("functions.source")
     );
+    const account = getProjectDefaultAccount(options.config.projectDir);
     const nodeMajorVersion = parseRuntimeVersion(options.config.get("functions.runtime"));
 
     // Normally, these two fields are included in args (and typed as such).
@@ -29,6 +31,7 @@ export class FunctionsServer {
     const args: FunctionsEmulatorArgs = {
       projectId,
       functionsDir,
+      account,
       nodeMajorVersion,
       ...partialArgs,
     };

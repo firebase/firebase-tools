@@ -5,7 +5,7 @@ import * as clc from "cli-color";
 
 import * as utils from "../../utils";
 import * as helper from "../../functionsDeployHelper";
-import { CloudFunctionTrigger, createDeploymentPlan } from "./deploymentPlanner";
+import { createDeploymentPlan } from "./deploymentPlanner";
 import * as tasks from "./tasks";
 import { getAppEngineLocation } from "../../functionsConfig";
 import { promptForFunctionDeletion } from "./prompts";
@@ -30,15 +30,26 @@ export async function release(context: any, options: any, payload: any) {
     context.existingFunctions,
     context.filters
   );
-  const cloudFunctionsQueue = new Queue<() => Promise<CloudFunctionTrigger | void>, void>({});
-  const schedulerQueue = new Queue<() => Promise<any>, void>({});
+
+  // This queue needs to retry quota errors.
+  // The main quotas that can be exceeded are per 1 minute quotas,
+  // so we start with a larger backoff to reduce the liklihood of extra retries.
+  const cloudFunctionsQueue = new Queue<tasks.DeploymentTask, void>({
+    retries: 30,
+    backoff: 20000,
+    concurrency: 40,
+    maxBackoff: 40000,
+    handler: tasks.functionsDeploymentHandler(timer, errorHandler),
+  });
+  const schedulerQueue = new Queue<tasks.DeploymentTask, void>({
+    handler: tasks.schedulerDeploymentHandler(errorHandler),
+  });
   const regionPromises = [];
 
   const taskParams: tasks.TaskParams = {
     projectId,
     sourceUrl,
     runtime: context.runtimeChoice,
-    timer,
     errorHandler,
   };
 
@@ -94,7 +105,20 @@ export async function release(context: any, options: any, payload: any) {
   // Wait for the first function in each region to be deployed, and all the other calls to be queued,
   // then close the queue.
   // Wait for all of the deployments to complete.
-  await Promise.all(queuePromises);
+  try {
+    await Promise.all(queuePromises);
+  } catch (err) {
+    utils.reject(
+      "Exceeded maximum retries while deploying functions. " +
+        "If you are deploying a large number of functions, " +
+        "please deploy your functions in batches by using the --only flag, " +
+        "and wait a few minutes before deploying again. " +
+        "Go to https://firebase.google.com/docs/cli/#partial_deploys to learn more.",
+      {
+        original: err,
+      }
+    );
+  }
   helper.logAndTrackDeployStats(cloudFunctionsQueue, errorHandler);
   helper.printTriggerUrls(projectId, sourceUrl);
   errorHandler.printWarnings();

@@ -1,1 +1,0 @@
-- Fixes native module issues by removing `fast-crc32c` (#3247, #3239)
