@@ -179,7 +179,7 @@ The Firebase CLI can use one of four authentication methods listed in descending
 
 By default `firebase login` sets a single global account for use on all projects.
 If you have multiple Google accounts which you use for Firebase projects you can
-authorize multople accounts and use them on a per-project or per-command basis.
+authorize multiple accounts and use them on a per-project or per-command basis.
 
 To authorize an additonal account for use with the CLI, run `firebase login:add`.
 You can view the list of authorized accounts with `firebase login:list`.
