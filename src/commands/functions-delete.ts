@@ -35,7 +35,9 @@ export default new Command("functions:delete [filters...]")
     if (res.unreachable) {
       utils.logLabeledWarning(
         "functions",
-        `Unable to reach the following Cloud Functions regions: ${res.unreachable}. Cloud Functions in these regions will not be deleted.`
+        `Unable to reach the following Cloud Functions regions:\n${res.unreachable.join(
+          "\n"
+        )}\nCloud Functions in these regions will not be deleted.`
       );
     }
     const functionsToDelete = res.functions.filter((fn) => {
