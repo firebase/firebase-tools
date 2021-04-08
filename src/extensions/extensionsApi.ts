@@ -2,7 +2,7 @@ import * as semver from "semver";
 import * as yaml from "js-yaml";
 import * as _ from "lodash";
 import * as clc from "cli-color";
-
+import * as marked from "marked";
 import * as api from "../api";
 import { logger } from "../logger";
 import * as operationPoller from "../operation-poller";
@@ -679,9 +679,13 @@ function refNotFoundError(
       `  -The name of the ${versionId ? "extension version" : "extension"} '${clc.bold(
         versionId ? `${extensionId}@${versionId}` : extensionId
       )}' doesn't exist or could be misspelled\n\n` +
-      `Please correct the extension reference and try again. If you meant to specify a local source, please provide a relative path prefixed with '${clc.bold(
+      `Please correct the extension reference and try again. If you meant to install an extension from a local source, please provide a relative path prefixed with '${clc.bold(
         "./"
-      )}', '${clc.bold("../")}', or '${clc.bold("~/")}'.`,
+      )}', '${clc.bold("../")}', or '${clc.bold(
+        "~/"
+      )}'. Learn more about local extension installation at ${marked(
+        "[https://firebase.google.com/docs/extensions/alpha/install-extensions_community#install](https://firebase.google.com/docs/extensions/alpha/install-extensions_community#install)."
+      )}`,
     { status: 404 }
   );
 }
