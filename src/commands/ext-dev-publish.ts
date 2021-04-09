@@ -1,11 +1,19 @@
-import { Command } from "../command";
-import { publishExtensionVersionFromLocalSource } from "../extensions/extensionsHelper";
-import { parseRef } from "../extensions/extensionsApi";
-
-import { findExtensionYaml } from "../extensions/localHelper";
-import { requireAuth } from "../requireAuth";
 import * as clc from "cli-color";
+import * as marked from "marked";
+import TerminalRenderer = require("marked-terminal");
+
+import { Command } from "../command";
+import { publishExtensionVersionFromLocalSource, logPrefix } from "../extensions/extensionsHelper";
+import { parseRef } from "../extensions/extensionsApi";
+import { findExtensionYaml } from "../extensions/localHelper";
+import { consoleInstallLink } from "../extensions/publishHelpers";
+import { requireAuth } from "../requireAuth";
 import { FirebaseError } from "../error";
+import * as utils from "../utils";
+
+marked.setOptions({
+  renderer: new TerminalRenderer(),
+});
 
 /**
  * Command for publishing an extension version.
@@ -40,5 +48,8 @@ export default new Command("ext:dev:publish <extensionRef>")
       extensionId,
       extensionYamlDirectory
     );
+    if (res) {
+      utils.logLabeledBullet(logPrefix, marked(`[Install Link](${consoleInstallLink(res.ref)})`));
+    }
     return res;
   });
