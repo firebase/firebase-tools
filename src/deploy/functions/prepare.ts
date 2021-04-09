@@ -112,5 +112,5 @@ export async function prepare(context: any, options: any, payload: any): Promise
     }
   }
   context.existingFunctions = res.functions;
-  await promptForFailurePolicies(context, options, localFnsInRelease);
+  await promptForFailurePolicies(options, localFnsInRelease, context.existingFunctions);
 }
