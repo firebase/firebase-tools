@@ -147,6 +147,11 @@ export function createDeploymentPlan(
       if (matchingExistingFunction) {
         // Check if this is an invalid change of trigger type.
         checkForInvalidChangeOfTrigger(fn, matchingExistingFunction);
+        // Preserve existing environment variables.
+        fn.environmentVariables = {
+          ...matchingExistingFunction.environmentVariables,
+          ...fn.environmentVariables,
+        };
         regionalDeployment.functionsToUpdate.push(fn);
         existingFnsCopy = existingFnsCopy.filter((exFn: CloudFunctionTrigger) => {
           return exFn.name !== fn.name;
