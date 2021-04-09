@@ -7,6 +7,7 @@ import { getReleaseNames, getFilterGroups } from "../../functionsDeployHelper";
 import { CloudFunctionTrigger } from "./deploymentPlanner";
 import { FirebaseError } from "../../error";
 import { testIamPermissions, testResourceIamPermissions } from "../../gcp/iam";
+import * as args from "./args";
 
 const PERMISSION = "cloudfunctions.functions.setIamPolicy";
 
@@ -51,15 +52,19 @@ export async function checkServiceAccountIam(projectId: string): Promise<void> {
  * @param options The command-wide options object.
  * @param payload The deploy payload.
  */
-export async function checkHttpIam(context: any, options: any, payload: any): Promise<void> {
-  const functionsInfo = payload.functions.triggers;
+export async function checkHttpIam(
+  context: args.Context,
+  options: args.Options,
+  payload: args.Payload
+): Promise<void> {
+  const functionsInfo = payload.functions!.triggers;
   const filterGroups = context.filters || getFilterGroups(options);
 
   const httpFunctionNames: string[] = functionsInfo
     .filter((f: CloudFunctionTrigger) => has(f, "httpsTrigger"))
     .map((f: CloudFunctionTrigger) => f.name);
   const httpFunctionFullNames: string[] = getReleaseNames(httpFunctionNames, [], filterGroups);
-  const existingFunctionFullNames: string[] = context.existingFunctions.map(
+  const existingFunctionFullNames: string[] = context.existingFunctions!.map(
     (f: { name: string }) => f.name
   );
 

@@ -7,6 +7,8 @@ import { promptOnce } from "../../prompt";
 import * as gcp from "../../gcp";
 import * as utils from "../../utils";
 import { logger } from "../../logger";
+import * as args from "./args";
+import * as gcf from "../../gcp/cloudfunctions";
 
 /**
  * Checks if a deployment will create any functions with a failure policy.
@@ -15,8 +17,8 @@ import { logger } from "../../logger";
  * @param functions A list of all functions in the deployment
  */
 export async function promptForFailurePolicies(
-  context: any,
-  options: any,
+  context: args.Context,
+  options: args.Options,
   functions: CloudFunctionTrigger[]
 ): Promise<void> {
   // Collect all the functions that have a retry policy
@@ -29,11 +31,10 @@ export async function promptForFailurePolicies(
   }
 
   context.existingFunctions =
-    (context.existingFunctions as CloudFunctionTrigger[]) ||
-    (await gcp.cloudfunctions.listAllFunctions(context.projectId));
+    context.existingFunctions || (await gcp.cloudfunctions.listAllFunctions(context.projectId));
   const existingFailurePolicyFunctions = context.existingFunctions.filter(
-    (fn: CloudFunctionTrigger) => {
-      return !!fn?.eventTrigger?.failurePolicy;
+    (fn: gcf.CloudFunction) => {
+      return !!fn.eventTrigger?.failurePolicy;
     }
   );
   const newFailurePolicyFunctions = failurePolicyFunctions.filter((fn: CloudFunctionTrigger) => {

@@ -9,11 +9,16 @@ import { functionMatchesAnyGroup, getFilterGroups } from "../../functionsDeployH
 import { CloudFunctionTrigger, functionsByRegion, allFunctions } from "./deploymentPlanner";
 import { promptForFailurePolicies } from "./prompts";
 import { prepareFunctionsUpload } from "../../prepareFunctionsUpload";
+import * as args from "./args";
 
 import * as validate from "./validate";
 import { checkRuntimeDependencies } from "./checkRuntimeDependencies";
 
-export async function prepare(context: any, options: any, payload: any): Promise<void> {
+export async function prepare(
+  context: args.Context,
+  options: args.Options,
+  payload: args.Payload
+): Promise<void> {
   if (!options.config.has("functions")) {
     return;
   }
@@ -31,7 +36,7 @@ export async function prepare(context: any, options: any, payload: any): Promise
   const checkAPIsEnabled = await Promise.all([
     ensureApiEnabled.ensure(options.project, "cloudfunctions.googleapis.com", "functions"),
     ensureApiEnabled.check(projectId, "runtimeconfig.googleapis.com", "runtimeconfig", true),
-    checkRuntimeDependencies(projectId, context.runtimeChoice),
+    checkRuntimeDependencies(projectId, context.runtimeChoice!),
   ]);
   context.runtimeConfigEnabled = checkAPIsEnabled[1];
 
@@ -68,11 +73,13 @@ export async function prepare(context: any, options: any, payload: any): Promise
   }
 
   // Build a regionMap, and duplicate functions for each region they are being deployed to.
-  payload.functions = {};
   // TODO: Make byRegion an implementation detail of deploymentPlanner
   // and only store a flat array of Functions in payload.
-  payload.functions.byRegion = functionsByRegion(projectId, functions);
-  payload.functions.triggers = allFunctions(payload.functions.byRegion);
+  const byRegion = functionsByRegion(projectId, functions);
+  payload.functions = {
+    byRegion,
+    triggers: allFunctions(byRegion),
+  };
 
   // Validate the function code that is being deployed.
   validate.functionsDirectoryExists(options, sourceDirName);

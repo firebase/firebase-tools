@@ -15,11 +15,12 @@ const cjson = require("cjson");
 
 /**
  * Check that functions directory exists.
- * @param options options object.
+ * @param options options object. In prod is an args.Options; in tests can just be {cwd: string}
  * @param sourceDirName Relative path to source directory.
  * @throws { FirebaseError } Functions directory must exist.
  */
-export function functionsDirectoryExists(options: object, sourceDirName: string): void {
+export function functionsDirectoryExists(options: { cwd: string }, sourceDirName: string): void {
+  // Note(inlined): What's the difference between this and options.config.path(sourceDirName)?
   if (!fsutils.dirExistsSync(projectPath.resolveProjectPath(options, sourceDirName))) {
     const msg =
       `could not deploy functions because the ${clc.bold('"' + sourceDirName + '"')} ` +
