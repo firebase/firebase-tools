@@ -98,8 +98,8 @@ export async function prepare(context: any, options: any, payload: any): Promise
     );
     if (unreachableRegionsInDeployment) {
       throw new FirebaseError(
-        "The following Cloud Functions regions are currently unreachable:\n" +
-          unreachableRegionsInDeployment.join("\n") +
+        "The following Cloud Functions regions are currently unreachable:\n\t" +
+          unreachableRegionsInDeployment.join("\n\t") +
           "\nThis deployment contains functions in those regions. Please try again in a few minutes, or exclude these regions from your deployment."
       );
     } else {
