@@ -31,8 +31,16 @@ export default new Command("functions:delete [filters...]")
     });
     const config = await functionsConfig.getFirebaseConfig(options);
     const appEngineLocation = functionsConfig.getAppEngineLocation(config);
-    const existingFns = await cloudfunctions.listAllFunctions(projectId);
-    const functionsToDelete = existingFns.filter((fn) => {
+    const res = await cloudfunctions.listAllFunctions(projectId);
+    if (res.unreachable) {
+      utils.logLabeledWarning(
+        "functions",
+        `Unable to reach the following Cloud Functions regions:\n${res.unreachable.join(
+          "\n"
+        )}\nCloud Functions in these regions will not be deleted.`
+      );
+    }
+    const functionsToDelete = res.functions.filter((fn) => {
       const regionMatches = options.region ? helper.getRegion(fn.name) === options.region : true;
       const nameMatches = helper.functionMatchesAnyGroup(fn.name, filterChunks);
       return regionMatches && nameMatches;

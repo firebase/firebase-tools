@@ -211,8 +211,8 @@ export function printSuccess(funcName: string, type: string) {
 }
 
 export async function printTriggerUrls(projectId: string, sourceUrl: string) {
-  const functions = await cloudfunctions.listAllFunctions(projectId);
-  const httpsFunctions = functions.filter((fn) => {
+  const res = await cloudfunctions.listAllFunctions(projectId);
+  const httpsFunctions = res.functions.filter((fn) => {
     return fn.sourceUploadUrl === sourceUrl && fn.httpsTrigger;
   });
   if (httpsFunctions.length === 0) {
