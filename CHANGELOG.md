@@ -1,1 +1,0 @@
-- Migrates Firebase Extensions commands to use registry API.
