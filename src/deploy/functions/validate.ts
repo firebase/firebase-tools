@@ -19,7 +19,10 @@ const cjson = require("cjson");
  * @param sourceDirName Relative path to source directory.
  * @throws { FirebaseError } Functions directory must exist.
  */
-export function functionsDirectoryExists(options: { cwd: string }, sourceDirName: string): void {
+export function functionsDirectoryExists(
+  options: { cwd: string; configPath?: string },
+  sourceDirName: string
+): void {
   // Note(inlined): What's the difference between this and options.config.path(sourceDirName)?
   if (!fsutils.dirExistsSync(projectPath.resolveProjectPath(options, sourceDirName))) {
     const msg =

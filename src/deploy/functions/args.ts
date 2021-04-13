@@ -17,10 +17,11 @@ export interface Payload {
 export interface Options {
   cwd: string;
   configPath: string;
-  // Why is there options.project and context.projectId?
-  project: string;
+
+  // OMITTED: project. Use context.projectId instead
 
   only: string;
+
   // defined in /config.js
   config: {
     // Note: it might be worth defining overloads for config values we use in

@@ -36,8 +36,13 @@ export async function prepare(
 
   // Check that all necessary APIs are enabled.
   const checkAPIsEnabled = await Promise.all([
-    ensureApiEnabled.ensure(options.project, "cloudfunctions.googleapis.com", "functions"),
-    ensureApiEnabled.check(projectId, "runtimeconfig.googleapis.com", "runtimeconfig", true),
+    ensureApiEnabled.ensure(projectId, "cloudfunctions.googleapis.com", "functions"),
+    ensureApiEnabled.check(
+      projectId,
+      "runtimeconfig.googleapis.com",
+      "runtimeconfig",
+      /* silent=*/ true
+    ),
     checkRuntimeDependencies(projectId, context.runtimeChoice!),
   ]);
   context.runtimeConfigEnabled = checkAPIsEnabled[1];
