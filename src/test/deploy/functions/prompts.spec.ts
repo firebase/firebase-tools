@@ -10,29 +10,14 @@ import * as gcf from "../../../gcp/cloudfunctions";
 
 describe("promptForFailurePolicies", () => {
   let promptStub: sinon.SinonStub;
-  let listAllFunctionsStub: sinon.SinonStub;
-  let existingFunctions: Omit<gcf.CloudFunction, gcf.OutputOnlyFields>[] = [];
+  let existingFunctions: gcf.CloudFunction[];
 
   beforeEach(() => {
     promptStub = sinon.stub(prompt, "promptOnce");
-    listAllFunctionsStub = sinon.stub(gcp.cloudfunctions, "listAllFunctions").callsFake(() => {
-      return Promise.resolve(
-        existingFunctions.map((f) => {
-          return {
-            ...f,
-            status: "ACTIVE",
-            buildId: "1",
-            versionId: 1,
-            updateTime: new Date(),
-          };
-        })
-      );
-    });
   });
 
   afterEach(() => {
     promptStub.restore();
-    listAllFunctionsStub.restore();
     existingFunctions = [];
   });
 
@@ -47,11 +32,9 @@ describe("promptForFailurePolicies", () => {
       },
     ];
     const options = {};
-    const context = {};
     promptStub.resolves(true);
 
-    await expect(functionPrompts.promptForFailurePolicies(context, options, funcs)).not.to.be
-      .rejected;
+    await expect(functionPrompts.promptForFailurePolicies(options, funcs, [])).not.to.be.rejected;
     expect(promptStub).to.have.been.calledOnce;
   });
 
@@ -70,10 +53,9 @@ describe("promptForFailurePolicies", () => {
     };
     existingFunctions = [func];
     const options = {};
-    const context = {};
 
-    await expect(functionPrompts.promptForFailurePolicies(context, options, [func])).to.eventually
-      .be.fulfilled;
+    await expect(functionPrompts.promptForFailurePolicies(options, [func], existingFunctions)).to
+      .eventually.be.fulfilled;
     expect(promptStub).to.not.have.been.called;
   });
 
@@ -88,11 +70,10 @@ describe("promptForFailurePolicies", () => {
       },
     ];
     const options = {};
-    const context = {};
     promptStub.resolves(false);
 
     await expect(
-      functionPrompts.promptForFailurePolicies(context, options, funcs)
+      functionPrompts.promptForFailurePolicies(options, funcs, [])
     ).to.eventually.be.rejectedWith(FirebaseError, /Deployment canceled/);
     expect(promptStub).to.have.been.calledOnce;
   });
@@ -105,13 +86,20 @@ describe("promptForFailurePolicies", () => {
       environmentVariables: {},
       runtime: "nodejs14" as gcf.Runtime,
     };
-    existingFunctions = [func];
+    existingFunctions = [
+      Object.assign({}, func, {
+        status: "ACTIVE" as gcf.CloudFunctionStatus,
+        buildId: "",
+        versionId: 1,
+        updateTime: new Date(10),
+      }),
+    ];
     const newFunc = Object.assign({}, func, { failurePolicy: {} });
     const options = {};
     const context = {};
     promptStub.resolves(true);
 
-    await expect(functionPrompts.promptForFailurePolicies(context, options, [newFunc])).to
+    await expect(functionPrompts.promptForFailurePolicies(options, [newFunc], existingFunctions)).to
       .eventually.be.fulfilled;
     expect(promptStub).to.have.been.calledOnce;
   });
@@ -131,7 +119,7 @@ describe("promptForFailurePolicies", () => {
     promptStub.resolves(false);
 
     await expect(
-      functionPrompts.promptForFailurePolicies(context, options, funcs)
+      functionPrompts.promptForFailurePolicies(options, funcs, existingFunctions)
     ).to.eventually.be.rejectedWith(FirebaseError, /Deployment canceled/);
     expect(promptStub).to.have.been.calledOnce;
   });
@@ -146,10 +134,9 @@ describe("promptForFailurePolicies", () => {
       },
     ];
     const options = {};
-    const context = {};
     promptStub.resolves();
 
-    await expect(functionPrompts.promptForFailurePolicies(context, options, funcs)).to.eventually.be
+    await expect(functionPrompts.promptForFailurePolicies(options, funcs, [])).to.eventually.be
       .fulfilled;
     expect(promptStub).not.to.have.been.called;
   });
@@ -166,9 +153,10 @@ describe("promptForFailurePolicies", () => {
     ];
     const options = { nonInteractive: true };
 
-    await expect(
-      functionPrompts.promptForFailurePolicies(context, options, funcs)
-    ).to.be.rejectedWith(FirebaseError, /--force option/);
+    await expect(functionPrompts.promptForFailurePolicies(options, funcs, [])).to.be.rejectedWith(
+      FirebaseError,
+      /--force option/
+    );
     expect(promptStub).not.to.have.been.called;
   });
 
@@ -184,7 +172,7 @@ describe("promptForFailurePolicies", () => {
     ];
     const options = { nonInteractive: true, force: true };
 
-    await expect(functionPrompts.promptForFailurePolicies(context, options, funcs)).to.eventually.be
+    await expect(functionPrompts.promptForFailurePolicies(options, funcs, [])).to.eventually.be
       .fulfilled;
     expect(promptStub).not.to.have.been.called;
   });
