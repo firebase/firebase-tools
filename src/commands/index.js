@@ -77,6 +77,7 @@ module.exports = function (client) {
     client.ext.dev.emulators.exec = loadCommand("ext-dev-emulators-exec");
     client.ext.dev.unpublish = loadCommand("ext-dev-unpublish");
     client.ext.dev.publish = loadCommand("ext-dev-publish");
+    client.ext.dev.delete = loadCommand("ext-dev-extension-delete");
   }
   client.firestore = {};
   client.firestore.delete = loadCommand("firestore-delete");

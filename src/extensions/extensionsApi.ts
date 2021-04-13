@@ -583,6 +583,8 @@ export async function publishExtensionVersion(
     throw new FirebaseError(`ExtensionVersion ref "${ref}" must supply a version.`);
   }
 
+  // TODO(b/185176470): Publishing an extension with a previously deleted name will return 409.
+  // Need to surface a better error, potentially by calling getExtension.
   const publishRes = await api.request(
     "POST",
     `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}/versions:publish`,
@@ -606,6 +608,7 @@ export async function publishExtensionVersion(
 }
 
 /**
+ * @deprecated This endpoint is replaced with deleteExtension.
  * @param ref user-friendly identifier for the Extension (publisher-id/extension-id)
  */
 export async function unpublishExtension(ref: string): Promise<void> {
@@ -631,6 +634,41 @@ export async function unpublishExtension(ref: string): Promise<void> {
       throw err;
     }
     throw new FirebaseError(`Error occurred unpublishing extension '${ref}': ${err}`, {
+      status: err.status,
+    });
+  }
+}
+
+/**
+ * Delete a published extension.
+ * This will also mark the name as reserved to prevent future usages.
+ * @param ref user-friendly identifier for the Extension (publisher-id/extension-id)
+ */
+export async function deleteExtension(ref: string): Promise<void> {
+  const { publisherId, extensionId, version } = parseRef(ref);
+  if (version) {
+    throw new FirebaseError(`Extension reference "${ref}" must not contain a version.`);
+  }
+  const url = `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}`;
+  try {
+    await api.request("DELETE", url, {
+      auth: true,
+      origin: api.extensionsOrigin,
+    });
+  } catch (err) {
+    if (err.status === 403) {
+      throw new FirebaseError(
+        `You are not the owner of extension '${clc.bold(
+          ref
+        )}' and don’t have the correct permissions to delete this extension.`,
+        { status: err.status }
+      );
+    } else if (err.status === 404) {
+      throw new FirebaseError(`Extension ${clc.bold(ref)} was not found.`);
+    } else if (err instanceof FirebaseError) {
+      throw err;
+    }
+    throw new FirebaseError(`Error occurred delete extension '${ref}': ${err}`, {
       status: err.status,
     });
   }
