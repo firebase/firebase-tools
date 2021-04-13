@@ -4,19 +4,20 @@ import * as sinon from "sinon";
 import * as helper from "../functionsDeployHelper";
 import * as prompt from "../prompt";
 import { FirebaseError } from "../error";
+import * as args from "../deploy/functions/args";
 
 describe("functionsDeployHelper", () => {
   describe("getFilterGroups", () => {
     it("should parse multiple filters", () => {
       const options = {
         only: "functions:myFunc,functions:myOtherFunc",
-      };
+      } as args.Options;
       expect(helper.getFilterGroups(options)).to.deep.equal([["myFunc"], ["myOtherFunc"]]);
     });
     it("should parse nested filters", () => {
       const options = {
         only: "functions:groupA.myFunc",
-      };
+      } as args.Options;
       expect(helper.getFilterGroups(options)).to.deep.equal([["groupA", "myFunc"]]);
     });
   });

@@ -4,6 +4,7 @@ import { logger } from "../../logger";
 import * as utils from "../../utils";
 import { CloudFunctionTrigger } from "./deploymentPlanner";
 import { cloudfunctions, cloudscheduler } from "../../gcp";
+import { Runtime } from "../../gcp/cloudfunctions";
 import * as deploymentTool from "../../deploymentTool";
 import * as helper from "../../functionsDeployHelper";
 import { RegionalDeployment } from "./deploymentPlanner";
@@ -39,7 +40,7 @@ export interface DeploymentTask {
 
 export interface TaskParams {
   projectId: string;
-  runtime?: string;
+  runtime?: Runtime;
   sourceUrl?: string;
   errorHandler: ErrorHandler;
 }
