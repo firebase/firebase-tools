@@ -10,13 +10,21 @@ export async function deleteFunctions(
   projectId: string,
   appEngineLocation: string
 ): Promise<void> {
-  const cloudFunctionsQueue = new Queue<() => Promise<void>, void>({});
-  const schedulerQueue = new Queue<() => Promise<void>, void>({});
   const timer = new DeploymentTimer();
   const errorHandler = new ErrorHandler();
+  const cloudFunctionsQueue = new Queue<tasks.DeploymentTask, void>({
+    handler: tasks.functionsDeploymentHandler(timer, errorHandler),
+    retries: 30,
+    backoff: 10000,
+    concurrency: 40,
+    maxBackoff: 40000,
+  });
+  const schedulerQueue = new Queue<tasks.DeploymentTask, void>({
+    handler: tasks.schedulerDeploymentHandler(errorHandler),
+  });
+
   const taskParams = {
     projectId,
-    timer,
     errorHandler,
   };
   functionsNamesToDelete.forEach((fnName) => {

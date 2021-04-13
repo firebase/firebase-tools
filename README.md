@@ -46,15 +46,18 @@ Below is a brief list of the available commands and their function:
 
 ### Configuration Commands
 
-| Command      | Description                                                                                                                                     |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| **login**    | Authenticate to your Firebase account. Requires access to a web browser.                                                                        |
-| **logout**   | Sign out of the Firebase CLI.                                                                                                                   |
-| **login:ci** | Generate an authentication token for use in non-interactive environments.                                                                       |
-| **use**      | Set active Firebase project, manage project aliases.                                                                                            |
-| **open**     | Quickly open a browser to relevant project resources.                                                                                           |
-| **init**     | Setup a new Firebase project in the current directory. This command will create a `firebase.json` configuration file in your current directory. |
-| **help**     | Display help information about the CLI or specific commands.                                                                                    |
+| Command        | Description                                                                                                                                     |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| **login**      | Authenticate to your Firebase account. Requires access to a web browser.                                                                        |
+| **logout**     | Sign out of the Firebase CLI.                                                                                                                   |
+| **login:ci**   | Generate an authentication token for use in non-interactive environments.                                                                       |
+| **login:add**  | Authorize the CLI for an additional account.                                                                                                    |
+| **login:list** | List authorized CLI accounts.                                                                                                                   |
+| **login:use**  | Set the default account to use for this project                                                                                                 |
+| **use**        | Set active Firebase project, manage project aliases.                                                                                            |
+| **open**       | Quickly open a browser to relevant project resources.                                                                                           |
+| **init**       | Setup a new Firebase project in the current directory. This command will create a `firebase.json` configuration file in your current directory. |
+| **help**       | Display help information about the CLI or specific commands.                                                                                    |
 
 Append `--no-localhost` to login (i.e., `firebase login --no-localhost`) to copy and paste code instead of starting a local server for authentication. A use case might be if you SSH into an instance somewhere and you need to authenticate to Firebase on that machine.
 
@@ -171,6 +174,25 @@ The Firebase CLI can use one of four authentication methods listed in descending
 - **Local Login** - run `firebase login` to log in to the CLI directly as yourself. The CLI will cache an authorized user credential on your machine.
 - **Service Account** - set the `GOOGLE_APPLICATION_CREDENTIALS` environment variable to point to the path of a JSON service account key file.
 - **Application Default Credentials** - if you use the `gcloud` CLI and log in with `gcloud auth application-default login`, the Firebase CLI will use them if none of the above credentials are present.
+
+### Multiple Accounts
+
+By default `firebase login` sets a single global account for use on all projects.
+If you have multiple Google accounts which you use for Firebase projects you can
+authorize multiple accounts and use them on a per-project or per-command basis.
+
+To authorize an additonal account for use with the CLI, run `firebase login:add`.
+You can view the list of authorized accounts with `firebase login:list`.
+
+To set the default account for a specific Firebase project directory, run
+`firebase login:use` from within the directory and select the desired account.
+To check the default account for a directory, run `firebase login:list` and the
+default account for the current context will be listed first.
+
+To set the account for a specific command invocation, use the `--account` flag
+with any command. For example `firebase --account=user@domain.com deploy`. The
+specified account must have already been added to the Firebase CLI using
+`firebase login:add`.
 
 ### Cloud Functions Emulator
 

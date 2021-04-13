@@ -4,7 +4,7 @@ import { getFunctionLabel, getFunctionId, getRegion } from "../../functionsDeplo
 import { CloudFunctionTrigger } from "./deploymentPlanner";
 import { FirebaseError } from "../../error";
 import { promptOnce } from "../../prompt";
-import * as gcp from "../../gcp";
+import { CloudFunction } from "../../gcp/cloudfunctions";
 import * as utils from "../../utils";
 import { logger } from "../../logger";
 
@@ -15,9 +15,9 @@ import { logger } from "../../logger";
  * @param functions A list of all functions in the deployment
  */
 export async function promptForFailurePolicies(
-  context: any,
   options: any,
-  functions: CloudFunctionTrigger[]
+  functions: CloudFunctionTrigger[],
+  existingFunctions: CloudFunction[]
 ): Promise<void> {
   // Collect all the functions that have a retry policy
   const failurePolicyFunctions = functions.filter((fn: CloudFunctionTrigger) => {
@@ -28,14 +28,9 @@ export async function promptForFailurePolicies(
     return;
   }
 
-  context.existingFunctions =
-    (context.existingFunctions as CloudFunctionTrigger[]) ||
-    (await gcp.cloudfunctions.listAllFunctions(context.projectId));
-  const existingFailurePolicyFunctions = context.existingFunctions.filter(
-    (fn: CloudFunctionTrigger) => {
-      return !!fn?.eventTrigger?.failurePolicy;
-    }
-  );
+  const existingFailurePolicyFunctions = existingFunctions.filter((fn: CloudFunction) => {
+    return !!fn?.eventTrigger?.failurePolicy;
+  });
   const newFailurePolicyFunctions = failurePolicyFunctions.filter((fn: CloudFunctionTrigger) => {
     for (const existing of existingFailurePolicyFunctions) {
       if (existing.name === fn.name) {

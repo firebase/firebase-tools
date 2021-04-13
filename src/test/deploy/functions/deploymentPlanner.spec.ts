@@ -505,6 +505,7 @@ describe("deploymentPlanner", () => {
       };
       expect(deploymentPlan).to.deep.equal(expected);
     });
+
     it("should only create, update, and delete matching functions if filters are passed in.", () => {
       const regionMap: deploymentPlanner.RegionMap = {
         "us-east1": [
@@ -583,6 +584,76 @@ describe("deploymentPlanner", () => {
         ],
         functionsToDelete: ["projects/a/locations/us-east1/functions/group-c"],
         schedulesToDelete: ["projects/a/locations/us-east1/functions/group-c"],
+      };
+      expect(deploymentPlan).to.deep.equal(expected);
+    });
+
+    it("should preserve existing environment variables", () => {
+      const regionMap: deploymentPlanner.RegionMap = {
+        "us-east1": [
+          {
+            name: "projects/a/locations/us-east1/functions/a",
+            labels: {},
+            environmentVariables: {},
+            entryPoint: "",
+          },
+        ],
+        "us-west1": [
+          {
+            name: "projects/a/locations/us-west1/functions/b",
+            labels: {},
+            environmentVariables: {},
+            entryPoint: "",
+          },
+        ],
+      };
+      const existingFunctions: deploymentPlanner.CloudFunctionTrigger[] = [
+        {
+          name: "projects/a/locations/us-west1/functions/b",
+          labels: {},
+          environmentVariables: { FOO: "bar" },
+          entryPoint: "",
+        },
+      ];
+      const filters: string[][] = [];
+
+      const deploymentPlan = deploymentPlanner.createDeploymentPlan(
+        regionMap,
+        existingFunctions,
+        filters
+      );
+
+      const expected: deploymentPlanner.DeploymentPlan = {
+        regionalDeployments: [
+          {
+            region: "us-east1",
+            functionsToCreate: [
+              {
+                name: "projects/a/locations/us-east1/functions/a",
+                labels: {},
+                environmentVariables: {},
+                entryPoint: "",
+              },
+            ],
+            functionsToUpdate: [],
+            schedulesToUpsert: [],
+          },
+          {
+            region: "us-west1",
+            functionsToCreate: [],
+            functionsToUpdate: [
+              {
+                name: "projects/a/locations/us-west1/functions/b",
+                labels: {},
+                environmentVariables: { FOO: "bar" },
+                entryPoint: "",
+              },
+            ],
+            schedulesToUpsert: [],
+          },
+        ],
+        functionsToDelete: [],
+        schedulesToDelete: [],
       };
       expect(deploymentPlan).to.deep.equal(expected);
     });

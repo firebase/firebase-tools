@@ -52,7 +52,7 @@ export enum Visibility {
  */
 export enum SpecParamType {
   SELECT = "select",
-  MULTISELECT = "multiselect",
+  MULTISELECT = "multiSelect",
   STRING = "string",
 }
 

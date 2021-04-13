@@ -3,15 +3,17 @@ import * as clc from "cli-color";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
 import * as functionsConfig from "../../functionsConfig";
 import * as getProjectId from "../../getProjectId";
-import { logBullet } from "../../utils";
+import { logBullet, logLabeledWarning } from "../../utils";
 import { getRuntimeChoice } from "../../parseRuntimeAndValidateSDK";
 import { functionMatchesAnyGroup, getFilterGroups } from "../../functionsDeployHelper";
 import { CloudFunctionTrigger, functionsByRegion, allFunctions } from "./deploymentPlanner";
 import { promptForFailurePolicies } from "./prompts";
 import { prepareFunctionsUpload } from "../../prepareFunctionsUpload";
+import * as gcp from "../../gcp";
 
 import * as validate from "./validate";
 import { checkRuntimeDependencies } from "./checkRuntimeDependencies";
+import { FirebaseError } from "../../error";
 
 export async function prepare(context: any, options: any, payload: any): Promise<void> {
   if (!options.config.has("functions")) {
@@ -87,5 +89,28 @@ export async function prepare(context: any, options: any, payload: any): Promise
   const localFnsInRelease = payload.functions.triggers.filter((fn: CloudFunctionTrigger) => {
     return functionMatchesAnyGroup(fn.name, context.filters);
   });
-  await promptForFailurePolicies(context, options, localFnsInRelease);
+
+  const res = await gcp.cloudfunctions.listAllFunctions(context.projectId);
+  if (res.unreachable) {
+    const regionsInDeployment = Object.keys(payload.functions.byRegion);
+    const unreachableRegionsInDeployment = regionsInDeployment.filter((region) =>
+      res.unreachable.includes(region)
+    );
+    if (unreachableRegionsInDeployment) {
+      throw new FirebaseError(
+        "The following Cloud Functions regions are currently unreachable:\n\t" +
+          unreachableRegionsInDeployment.join("\n\t") +
+          "\nThis deployment contains functions in those regions. Please try again in a few minutes, or exclude these regions from your deployment."
+      );
+    } else {
+      logLabeledWarning(
+        "functions",
+        "The following Cloud Functions regions are currently unreachable:\n" +
+          res.unreachable.join("\n") +
+          "\nCloud Functions in these regions won't be deleted."
+      );
+    }
+  }
+  context.existingFunctions = res.functions;
+  await promptForFailurePolicies(options, localFnsInRelease, context.existingFunctions);
 }

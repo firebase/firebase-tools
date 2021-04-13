@@ -28,8 +28,8 @@ module.exports = new Command("login")
       );
     }
 
-    const user = configstore.get("user");
-    const tokens = configstore.get("tokens");
+    const user = options.user as auth.User | undefined;
+    const tokens = options.tokens as auth.Tokens | undefined;
 
     if (user && tokens && !options.reauth) {
       logger.info("Already logged in as", clc.bold(user.email));

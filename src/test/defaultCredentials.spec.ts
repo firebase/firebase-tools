@@ -7,6 +7,7 @@ import * as os from "os";
 import * as api from "../api";
 import { configstore } from "../configstore";
 import * as defaultCredentials from "../defaultCredentials";
+import { Account, getGlobalDefaultAccount } from "../auth";
 
 describe("defaultCredentials", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
@@ -22,6 +23,7 @@ describe("defaultCredentials", () => {
 
   let configStub: sinon.SinonStub;
   let oldHome: any;
+  let account: Account;
 
   beforeEach(() => {
     oldHome = process.env.HOME;
@@ -38,6 +40,8 @@ describe("defaultCredentials", () => {
         return FAKE_USER;
       }
     });
+
+    account = getGlobalDefaultAccount()!;
   });
 
   afterEach(() => {
@@ -45,15 +49,8 @@ describe("defaultCredentials", () => {
     sandbox.restore();
   });
 
-  it("does not create a credential file when there are no tokens in the config", async () => {
-    configStub.returns(undefined);
-
-    const credPath = await defaultCredentials.getCredentialPathAsync();
-    expect(credPath).to.be.undefined;
-  });
-
   it("creates a credential file when there are tokens in the config", async () => {
-    const credPath = await defaultCredentials.getCredentialPathAsync();
+    const credPath = await defaultCredentials.getCredentialPathAsync(account);
     expect(credPath)
       .to.be.a("string")
       .that.satisfies((x: string) => {
@@ -70,15 +67,15 @@ describe("defaultCredentials", () => {
   });
 
   it("can clear credentials", async () => {
-    const credPath = await defaultCredentials.getCredentialPathAsync();
+    const credPath = await defaultCredentials.getCredentialPathAsync(account);
     expect(fs.existsSync(credPath!)).to.be.true;
 
-    defaultCredentials.clearCredentials();
+    defaultCredentials.clearCredentials(account);
     expect(fs.existsSync(credPath!)).to.be.false;
   });
 
   it("includes the users email in the path", async () => {
-    const credPath = await defaultCredentials.getCredentialPathAsync();
+    const credPath = await defaultCredentials.getCredentialPathAsync(account);
     const baseName = path.basename(credPath!);
 
     expect(baseName).to.eq("user_domain_com_application_default_credentials.json");

@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 import * as api from "./api";
-import { configstore } from "./configstore";
+import { Tokens, User, Account } from "./auth";
 import { logger } from "./logger";
 
 // Interface for a valid JSON refresh token credential, so the
@@ -17,14 +17,14 @@ interface RefreshTokenCredential {
 /**
  * Get a path to the application default credentials JSON file.
  */
-export async function getCredentialPathAsync(): Promise<string | undefined> {
-  const filePath = credFilePath();
+export async function getCredentialPathAsync(account: Account): Promise<string | undefined> {
+  const filePath = credFilePath(account.user);
   if (!filePath) {
     logger.debug("defaultcredentials: could not create path to default credentials file.");
     return undefined;
   }
 
-  const cred = getCredential();
+  const cred = getCredential(account.tokens);
   if (!cred) {
     logger.debug("defaultcredentials: no credential available.");
     return undefined;
@@ -47,8 +47,8 @@ export async function getCredentialPathAsync(): Promise<string | undefined> {
 /**
  * Delete the credentials, to be used when logging out.
  */
-export function clearCredentials(): void {
-  const filePath = credFilePath();
+export function clearCredentials(account: Account): void {
+  const filePath = credFilePath(account.user);
   if (!filePath) {
     return;
   }
@@ -60,9 +60,8 @@ export function clearCredentials(): void {
   fs.unlinkSync(filePath);
 }
 
-function getCredential(): RefreshTokenCredential | undefined {
-  const tokens = configstore.get("tokens");
-  if (tokens && tokens.refresh_token) {
+function getCredential(tokens: Tokens): RefreshTokenCredential | undefined {
+  if (tokens.refresh_token) {
     return {
       client_id: api.clientId,
       client_secret: api.clientSecret,
@@ -72,7 +71,7 @@ function getCredential(): RefreshTokenCredential | undefined {
   }
 }
 
-function credFilePath(): string | undefined {
+function credFilePath(user: User): string | undefined {
   // This logic is stolen from firebase-admin-node:
   // https://github.com/firebase/firebase-admin-node/blob/0f6c02e3377c3337e4f206e176b2d96ec6dd6c3c/src/auth/credential.ts#L36
   let configDir = undefined;
@@ -98,12 +97,11 @@ function credFilePath(): string | undefined {
     fs.mkdirSync(fbtConfigDir);
   }
 
-  return path.join(fbtConfigDir, `${userEmailSlug()}_application_default_credentials.json`);
+  return path.join(fbtConfigDir, `${userEmailSlug(user)}_application_default_credentials.json`);
 }
 
-function userEmailSlug(): string {
-  const user = configstore.get("user");
-  const email = user && user.email ? user.email : "unknown_user";
+function userEmailSlug(user: User): string {
+  const email = user.email || "unknown_user";
   const slug = email.replace("@", "_").replace(".", "_");
 
   return slug;

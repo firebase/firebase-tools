@@ -9,22 +9,44 @@ import * as url from "url";
 import * as util from "util";
 
 import * as api from "./api";
+import * as apiv2 from "./apiv2";
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
+import * as utils from "./utils";
 import { logger } from "./logger";
 import { prompt } from "./prompt";
 import * as scopes from "./scopes";
+import { clearCredentials } from "./defaultCredentials";
 
 /* eslint-disable camelcase */
 // The wire protocol for an access token returned by Google.
 // When we actually refresh from the server we should always have
 // these optional fields, but when a user passes --token we may
 // only have access_token.
-interface Tokens {
+export interface Tokens {
   id_token?: string;
   access_token: string;
   refresh_token?: string;
   scopes?: string[];
+}
+
+export interface User {
+  email: string;
+
+  iss?: string;
+  azp?: string;
+  aud?: string;
+  sub?: number;
+  hd?: string;
+  email_verified?: boolean;
+  at_hash?: string;
+  iat?: number;
+  exp?: number;
+}
+
+export interface Account {
+  user: User;
+  tokens: Tokens;
 }
 
 interface TokensWithExpiration extends Tokens {
@@ -36,7 +58,7 @@ interface TokensWithTTL extends Tokens {
 }
 
 interface UserCredentials {
-  user: string | { [key: string]: unknown };
+  user: string | User;
   tokens: TokensWithExpiration;
   scopes: string[];
 }
@@ -53,6 +75,189 @@ interface GitHubAuthResponse {
 // overcome this by casting to any
 // TODO fix after https://github.com/http-party/node-portfinder/pull/115
 ((portfinder as unknown) as { basePort: number }).basePort = 9005;
+
+/**
+ * Get the global default account. Before multi-auth was implemented
+ * this was the only account.
+ */
+export function getGlobalDefaultAccount(): Account | undefined {
+  const user = configstore.get("user") as User | undefined;
+  const tokens = configstore.get("tokens") as Tokens | undefined;
+
+  // TODO: Is there ever a case where only User or Tokens is defined
+  //       and we want to accept that?
+  if (!user || !tokens) {
+    return undefined;
+  }
+
+  return {
+    user,
+    tokens,
+  };
+}
+
+/**
+ * Get the default account associated with a project directory, or the global default.
+ * @param projectDir the Firebase project directory.
+ */
+export function getProjectDefaultAccount(projectDir?: string | null): Account | undefined {
+  if (!projectDir) {
+    return getGlobalDefaultAccount();
+  }
+
+  const activeAccounts = configstore.get("activeAccounts") || {};
+  const email: string | undefined = activeAccounts[projectDir];
+
+  if (!email) {
+    return getGlobalDefaultAccount();
+  }
+
+  const allAccounts = getAllAccounts();
+  return allAccounts.find((a) => a.user.email === email);
+}
+
+/**
+ * Get all authenticated accounts _besides_ the default account.
+ */
+export function getAdditionalAccounts(): Account[] {
+  return configstore.get("additionalAccounts") || [];
+}
+
+/**
+ * Get all authenticated accounts.
+ */
+export function getAllAccounts(): Account[] {
+  const res: Account[] = [];
+
+  const defaultUser = getGlobalDefaultAccount();
+  if (defaultUser) {
+    res.push(defaultUser);
+  }
+
+  res.push(...getAdditionalAccounts());
+
+  return res;
+}
+
+/**
+ * Set the globally active account. Modifies the options object
+ * and sets global refresh token state.
+ * @param options options object.
+ * @param account account to make active.
+ */
+export function setActiveAccount(options: any, account: Account) {
+  if (account.tokens.refresh_token) {
+    setRefreshToken(account.tokens.refresh_token);
+  }
+
+  options.user = account.user;
+  options.tokens = account.tokens;
+}
+
+/**
+ * Set the global refresh token in both api and apiv2.
+ * @param token refresh token string
+ */
+export function setRefreshToken(token: string) {
+  api.setRefreshToken(token);
+  apiv2.setRefreshToken(token);
+}
+
+/**
+ * Select the right account to use based on the --account flag and the
+ * project defaults.
+ * @param account the --account flag, if passed.
+ * @param projectRoot the Firebase project root directory, if known.
+ */
+export function selectAccount(account?: string, projectRoot?: string): Account | undefined {
+  const defaultUser = getProjectDefaultAccount(projectRoot);
+
+  // Default to single-account behavior
+  if (!account) {
+    return defaultUser;
+  }
+
+  // Ensure that the user exists if specified
+  if (!defaultUser) {
+    throw new FirebaseError(`Account ${account} not found, have you run "firebase login"?`);
+  }
+
+  const matchingAccount = getAllAccounts().find((a) => a.user.email === account);
+  if (matchingAccount) {
+    return matchingAccount;
+  }
+
+  throw new FirebaseError(
+    `Account ${account} not found, run "firebase login:list" to see existing accounts or "firebase login:add" to add a new one`
+  );
+}
+
+/**
+ * Add an additional account to the login list.
+ * @param useLocalhost should the flow be interactive or code-based?
+ * @param email an optional hint to use for the google account picker
+ */
+export async function loginAdditionalAccount(useLocalhost: boolean, email?: string) {
+  // Log the user in using the passed email as a hint
+  const result = await loginGoogle(useLocalhost, email);
+
+  // The JWT library can technically return a string, even though it never should.
+  if (typeof result.user === "string") {
+    throw new FirebaseError("Failed to parse auth response, see debug log.");
+  }
+
+  const resultEmail = result.user.email;
+  if (email && resultEmail !== email) {
+    utils.logWarning(`Chosen account ${resultEmail} does not match account hint ${email}`);
+  }
+
+  const allAccounts = getAllAccounts();
+
+  const newAccount = {
+    user: result.user,
+    tokens: result.tokens,
+  };
+
+  const existingAccount = allAccounts.find((a) => a.user.email === resultEmail);
+  if (existingAccount) {
+    utils.logWarning(`Already logged in as ${resultEmail}.`);
+    updateAccount(newAccount);
+  } else {
+    const additionalAccounts = getAdditionalAccounts();
+    additionalAccounts.push(newAccount);
+    configstore.set("additionalAccounts", additionalAccounts);
+  }
+
+  return newAccount;
+}
+
+/**
+ * Set the default account to use with a Firebase project directory. Writes
+ * the setting to disk.
+ * @param projectDir the Firebase project directory.
+ * @param email email of the account.
+ */
+export function setProjectAccount(projectDir: string, email: string) {
+  logger.debug(`setProjectAccount(${projectDir}, ${email})`);
+  const activeAccounts: Record<string, string> = configstore.get("activeAccounts") || {};
+  activeAccounts[projectDir] = email;
+  configstore.set("activeAccounts", activeAccounts);
+}
+
+/**
+ * Set the global default account.
+ */
+export function setGlobalDefaultAccount(account: Account) {
+  configstore.set("user", account.user);
+  configstore.set("tokens", account.tokens);
+
+  const additionalAccounts = getAdditionalAccounts();
+  const index = additionalAccounts.findIndex((a) => a.user.email === account.user.email);
+  if (index >= 0) {
+    additionalAccounts.splice(index, 1);
+    configstore.set("additionalAccounts", additionalAccounts);
+  }
+}
 
 function open(url: string): void {
   opn(url).catch((err) => {
@@ -223,7 +428,7 @@ async function loginWithoutLocalhost(userHint?: string): Promise<UserCredentials
   // getTokensFromAuthorizationCode doesn't handle the --token case, so we know
   // that we'll have a valid id_token.
   return {
-    user: jwt.decode(tokens.id_token!)!,
+    user: jwt.decode(tokens.id_token!) as User,
     tokens: tokens,
     scopes: SCOPES,
   };
@@ -243,7 +448,7 @@ async function loginWithLocalhostGoogle(port: number, userHint?: string): Promis
   // getTokensFromAuthoirzationCode doesn't handle the --token case, so we know we'll
   // always have an id_token.
   return {
-    user: jwt.decode(tokens.id_token!)!,
+    user: jwt.decode(tokens.id_token!) as User,
     tokens: tokens,
     scopes: tokens.scopes!,
   };
@@ -329,6 +534,10 @@ export async function loginGithub(): Promise<string> {
   return loginWithLocalhostGitHub(port);
 }
 
+export function findAccountByEmail(email: string): Account | undefined {
+  return getAllAccounts().find((a) => a.user.email === email);
+}
+
 function haveValidTokens(refreshToken: string, authScopes: string[]) {
   if (!lastAccessToken?.access_token) {
     const tokens = configstore.get("tokens");
@@ -348,15 +557,58 @@ function haveValidTokens(refreshToken: string, authScopes: string[]) {
   return hasTokens && hasSameScopes && !isExpired;
 }
 
-function logoutCurrentSession(refreshToken: string) {
-  const tokens = configstore.get("tokens");
-  const currentToken = tokens?.refresh_token;
-  if (refreshToken === currentToken) {
+function deleteAccount(account: Account) {
+  // Check the global default user
+  const defaultAccount = getGlobalDefaultAccount();
+  if (account.user.email === defaultAccount?.user.email) {
     configstore.delete("user");
     configstore.delete("tokens");
     configstore.delete("usage");
     configstore.delete("analytics-uuid");
   }
+
+  // Check all additional users
+  const additionalAccounts = getAdditionalAccounts();
+  const remainingAccounts = additionalAccounts.filter((a) => a.user.email !== account.user.email);
+  configstore.set("additionalAccounts", remainingAccounts);
+
+  // Clear any matching project defaults
+  const activeAccounts: Record<string, string> = configstore.get("activeAccounts") || {};
+  for (const [projectDir, projectAccount] of Object.entries(activeAccounts)) {
+    if (projectAccount === account.user.email) {
+      delete activeAccounts[projectDir];
+    }
+  }
+  configstore.set("activeAccounts", activeAccounts);
+}
+
+function updateAccount(account: Account) {
+  const defaultAccount = getGlobalDefaultAccount();
+  if (account.user.email === defaultAccount?.user.email) {
+    configstore.set("user", account.user);
+    configstore.set("tokens", account.tokens);
+  }
+
+  const additionalAccounts = getAdditionalAccounts();
+  const accountIndex = additionalAccounts.findIndex((a) => a.user.email === account.user.email);
+  if (accountIndex >= 0) {
+    additionalAccounts.splice(accountIndex, 1, account);
+    configstore.set("additionalAccounts", additionalAccounts);
+  }
+}
+
+function findAccountByRefreshToken(refreshToken: string): Account | undefined {
+  return getAllAccounts().find((a) => a.tokens.refresh_token === refreshToken);
+}
+
+function logoutCurrentSession(refreshToken: string) {
+  const account = findAccountByRefreshToken(refreshToken);
+  if (!account) {
+    return;
+  }
+
+  clearCredentials(account);
+  deleteAccount(account);
 }
 
 async function refreshTokens(
@@ -394,10 +646,12 @@ async function refreshTokens(
       res.body
     );
 
-    const currentRefreshToken = configstore.get("tokens")?.refresh_token;
-    if (refreshToken === currentRefreshToken) {
-      configstore.set("tokens", lastAccessToken);
+    const account = findAccountByRefreshToken(refreshToken);
+    if (account && lastAccessToken) {
+      account.tokens = lastAccessToken;
+      updateAccount(account);
     }
+
     return lastAccessToken!;
   } catch (err) {
     if (err?.context?.body?.error === "invalid_scope") {
