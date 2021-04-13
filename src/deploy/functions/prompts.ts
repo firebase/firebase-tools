@@ -7,6 +7,8 @@ import { promptOnce } from "../../prompt";
 import { CloudFunction } from "../../gcp/cloudfunctions";
 import * as utils from "../../utils";
 import { logger } from "../../logger";
+import * as args from "./args";
+import * as gcf from "../../gcp/cloudfunctions";
 
 /**
  * Checks if a deployment will create any functions with a failure policy.
@@ -15,7 +17,7 @@ import { logger } from "../../logger";
  * @param functions A list of all functions in the deployment
  */
 export async function promptForFailurePolicies(
-  options: any,
+  options: args.Options,
   functions: CloudFunctionTrigger[],
   existingFunctions: CloudFunction[]
 ): Promise<void> {
