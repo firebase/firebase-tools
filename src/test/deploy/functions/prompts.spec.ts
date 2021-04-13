@@ -5,7 +5,6 @@ import * as prompt from "../../../prompt";
 import * as functionPrompts from "../../../deploy/functions/prompts";
 import { FirebaseError } from "../../../error";
 import { CloudFunctionTrigger } from "../../../deploy/functions/deploymentPlanner";
-import * as gcp from "../../../gcp";
 import * as gcf from "../../../gcp/cloudfunctions";
 import * as args from "../../../deploy/functions/args";
 
@@ -17,30 +16,15 @@ const SAMPLE_OPTIONS: args.Options = ({
 
 describe("promptForFailurePolicies", () => {
   let promptStub: sinon.SinonStub;
-  let listAllFunctionsStub: sinon.SinonStub;
-  let existingFunctions: Omit<gcf.CloudFunction, gcf.OutputOnlyFields>[] = [];
+  let existingFunctions: gcf.CloudFunction[];
 
   beforeEach(() => {
     promptStub = sinon.stub(prompt, "promptOnce");
-    listAllFunctionsStub = sinon.stub(gcp.cloudfunctions, "listAllFunctions").callsFake(() => {
-      return Promise.resolve(
-        existingFunctions.map((f) => {
-          return {
-            ...f,
-            status: "ACTIVE",
-            buildId: "1",
-            versionId: 1,
-            updateTime: new Date(),
-          };
-        })
-      );
-    });
+    existingFunctions = [];
   });
 
   afterEach(() => {
     promptStub.restore();
-    listAllFunctionsStub.restore();
-    existingFunctions = [];
   });
 
   // Note: Context is used for caching values, so it must be reset between each test.
@@ -63,8 +47,8 @@ describe("promptForFailurePolicies", () => {
     ];
     promptStub.resolves(true);
 
-    await expect(functionPrompts.promptForFailurePolicies(newContext(), SAMPLE_OPTIONS, funcs)).not
-      .to.be.rejected;
+    await expect(functionPrompts.promptForFailurePolicies(SAMPLE_OPTIONS, funcs, [])).not.to.be
+      .rejected;
     expect(promptStub).to.have.been.calledOnce;
   });
 
@@ -84,10 +68,11 @@ describe("promptForFailurePolicies", () => {
       },
       runtime: "nodejs14" as gcf.Runtime,
     };
-    existingFunctions = [func];
+    existingFunctions = [func as any];
 
-    await expect(functionPrompts.promptForFailurePolicies(newContext(), SAMPLE_OPTIONS, [func])).to
-      .eventually.be.fulfilled;
+    await expect(
+      functionPrompts.promptForFailurePolicies(SAMPLE_OPTIONS, [func], existingFunctions)
+    ).to.eventually.be.fulfilled;
     expect(promptStub).to.not.have.been.called;
   });
 
@@ -104,7 +89,7 @@ describe("promptForFailurePolicies", () => {
     promptStub.resolves(false);
 
     await expect(
-      functionPrompts.promptForFailurePolicies(newContext(), SAMPLE_OPTIONS, funcs)
+      functionPrompts.promptForFailurePolicies(SAMPLE_OPTIONS, funcs, [])
     ).to.eventually.be.rejectedWith(FirebaseError, /Deployment canceled/);
     expect(promptStub).to.have.been.calledOnce;
   });
@@ -117,12 +102,20 @@ describe("promptForFailurePolicies", () => {
       environmentVariables: {},
       runtime: "nodejs14" as gcf.Runtime,
     };
-    existingFunctions = [func];
+    existingFunctions = [
+      Object.assign({}, func, {
+        status: "ACTIVE" as gcf.CloudFunctionStatus,
+        buildId: "",
+        versionId: 1,
+        updateTime: new Date(10),
+      }),
+    ];
     const newFunc = Object.assign({}, func, { failurePolicy: {} });
     promptStub.resolves(true);
 
-    await expect(functionPrompts.promptForFailurePolicies(newContext(), SAMPLE_OPTIONS, [newFunc]))
-      .to.eventually.be.fulfilled;
+    await expect(
+      functionPrompts.promptForFailurePolicies(SAMPLE_OPTIONS, [newFunc], existingFunctions)
+    ).to.eventually.be.fulfilled;
     expect(promptStub).to.have.been.calledOnce;
   });
 
@@ -141,7 +134,7 @@ describe("promptForFailurePolicies", () => {
     promptStub.resolves(false);
 
     await expect(
-      functionPrompts.promptForFailurePolicies(newContext(), SAMPLE_OPTIONS, funcs)
+      functionPrompts.promptForFailurePolicies(SAMPLE_OPTIONS, funcs, existingFunctions)
     ).to.eventually.be.rejectedWith(FirebaseError, /Deployment canceled/);
     expect(promptStub).to.have.been.calledOnce;
   });
@@ -157,8 +150,8 @@ describe("promptForFailurePolicies", () => {
     ];
     promptStub.resolves();
 
-    await expect(functionPrompts.promptForFailurePolicies(newContext(), SAMPLE_OPTIONS, funcs)).to
-      .eventually.be.fulfilled;
+    await expect(functionPrompts.promptForFailurePolicies(SAMPLE_OPTIONS, funcs, [])).to.eventually
+      .be.fulfilled;
     expect(promptStub).not.to.have.been.called;
   });
 
@@ -174,9 +167,10 @@ describe("promptForFailurePolicies", () => {
     ];
     const options = { ...SAMPLE_OPTIONS, nonInteractive: true };
 
-    await expect(
-      functionPrompts.promptForFailurePolicies(newContext(), options, funcs)
-    ).to.be.rejectedWith(FirebaseError, /--force option/);
+    await expect(functionPrompts.promptForFailurePolicies(options, funcs, [])).to.be.rejectedWith(
+      FirebaseError,
+      /--force option/
+    );
     expect(promptStub).not.to.have.been.called;
   });
 
@@ -192,8 +186,8 @@ describe("promptForFailurePolicies", () => {
     ];
     const options = { ...SAMPLE_OPTIONS, nonInteractive: true, force: true };
 
-    await expect(functionPrompts.promptForFailurePolicies(newContext(), options, funcs)).to
-      .eventually.be.fulfilled;
+    await expect(functionPrompts.promptForFailurePolicies(options, funcs, [])).to.eventually.be
+      .fulfilled;
     expect(promptStub).not.to.have.been.called;
   });
 });

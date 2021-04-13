@@ -421,12 +421,12 @@ export async function deleteFunction(options: any): Promise<Operation> {
   }
 }
 
-/**
- * List all existing Cloud Functions in a project and region.
- * @param projectId the Id of the project to check.
- * @param region the region to check in.
- */
-export async function listFunctions(projectId: string, region: string): Promise<CloudFunction[]> {
+export type ListFunctionsResponse = {
+  unreachable: string[];
+  functions: CloudFunction[];
+};
+
+async function list(projectId: string, region: string): Promise<ListFunctionsResponse> {
   const endpoint =
     "/" + API_VERSION + "/projects/" + projectId + "/locations/" + region + "/functions";
   try {
@@ -435,9 +435,8 @@ export async function listFunctions(projectId: string, region: string): Promise<
       origin: api.functionsOrigin,
     });
     if (res.body.unreachable && res.body.unreachable.length > 0) {
-      throw new FirebaseError(
-        "Some Cloud Functions regions were unreachable, please try again later.",
-        { exit: 2 }
+      logger.debug(
+        `[functions] unable to reach the following regions: ${res.body.unreachable.join(", ")}`
       );
     }
 
@@ -445,7 +444,10 @@ export async function listFunctions(projectId: string, region: string): Promise<
     _.forEach(functionsList, (f) => {
       f.functionName = f.name.substring(f.name.lastIndexOf("/") + 1);
     });
-    return functionsList;
+    return {
+      unreachable: res.body.unreachable,
+      functions: functionsList,
+    };
   } catch (err) {
     logger.debug("[functions] failed to list functions for " + projectId);
     logger.debug("[functions] " + err.message);
@@ -454,10 +456,20 @@ export async function listFunctions(projectId: string, region: string): Promise<
 }
 
 /**
+ * List all existing Cloud Functions in a project and region.
+ * @param projectId the Id of the project to check.
+ * @param region the region to check in.
+ */
+export async function listFunctions(projectId: string, region: string): Promise<CloudFunction[]> {
+  const res = await list(projectId, region);
+  return res.functions;
+}
+
+/**
  * List all existing Cloud Functions in a project.
  * @param projectId the Id of the project to check.
  */
-export async function listAllFunctions(projectId: string): Promise<CloudFunction[]> {
+export async function listAllFunctions(projectId: string): Promise<ListFunctionsResponse> {
   // "-" instead of a region string lists functions in all regions
-  return listFunctions(projectId, "-");
+  return list(projectId, "-");
 }

@@ -34,9 +34,6 @@ export async function deploy(
     return;
   }
 
-  context.existingFunctions =
-    context.existingFunctions || (await gcp.cloudfunctions.listAllFunctions(context.projectId));
-
   await checkHttpIam(context, options, payload);
 
   if (!context.functionsSource) {
