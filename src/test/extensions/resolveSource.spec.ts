@@ -8,6 +8,7 @@ const testRegistryEntry = {
   labels: {
     latest: "0.2.0",
   },
+  publisher: "firebase",
   versions: {
     "0.1.0": "projects/firebasemods/sources/2kd",
     "0.1.1": "projects/firebasemods/sources/xyz",

@@ -6,6 +6,7 @@ import { promptOnce } from "../prompt";
 import * as clc from "cli-color";
 import { requireAuth } from "../requireAuth";
 import { FirebaseError } from "../error";
+import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 
 module.exports = new Command("ext:dev:unpublish <extensionRef>")
   .description("unpublish an extension")
@@ -14,11 +15,17 @@ module.exports = new Command("ext:dev:unpublish <extensionRef>")
       "Specify the extension you want to unpublish using the format '<publisherId>/<extensionId>."
   )
   .before(requireAuth)
+  .before(checkMinRequiredVersion, "extDevMinVersion")
   .action(async (extensionRef: string) => {
     const { publisherId, extensionId, version } = parseRef(extensionRef);
-    const message =
-      "If you unpublish this extension, developers won't be able to install it. For developers who currently have this extension installed, it will continue to run and will appear as unpublished when listed in the Firebase console or Firebase CLI.";
-    utils.logLabeledWarning(logPrefix, message);
+    utils.logLabeledWarning(
+      logPrefix,
+      "If you unpublish this extension, developers won't be able to install it. For developers who currently have this extension installed, it will continue to run and will appear as unpublished when listed in the Firebase console or Firebase CLI."
+    );
+    utils.logLabeledWarning(
+      "This is a permanent action",
+      `Once unpublished, you may never use the extension name '${clc.bold(extensionId)}' again.`
+    );
     if (version) {
       throw new FirebaseError(
         `Unpublishing a single version is not currently supported. You can only unpublish ${clc.bold(

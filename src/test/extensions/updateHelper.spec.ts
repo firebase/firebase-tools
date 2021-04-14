@@ -14,7 +14,7 @@ const SPEC = {
   name: "test",
   displayName: "Old",
   description: "descriptive",
-  version: "0.1.0",
+  version: "0.2.0",
   license: "MIT",
   apis: [
     { apiName: "api1", reason: "" },
@@ -35,6 +35,8 @@ const SPEC = {
   params: [],
 };
 
+const OLD_SPEC = Object.assign({}, SPEC, { version: "0.1.0" });
+
 const SOURCE = {
   name: "projects/firebasemods/sources/new-test-source",
   packageUri: "https://firebase-fake-bucket.com",
@@ -54,7 +56,6 @@ const EXTENSION_VERSION = {
 const EXTENSION = {
   name: "publishers/test-publisher/extensions/test",
   ref: "test-publisher/test",
-  spec: SPEC,
   state: "PUBLISHED",
   createTime: "2020-06-30T00:21:06.722782Z",
   latestVersion: "0.2.0",
@@ -426,7 +427,7 @@ describe("updateHelper", () => {
     it("should return the correct source name for a valid published source", async () => {
       promptStub.resolves(true);
       registryEntryStub.resolves(REGISTRY_ENTRY);
-      const name = await updateHelper.updateToVersionFromRegistry(
+      const name = await updateHelper.updateToVersionFromRegistryFile(
         "test-project",
         "test-instance",
         SPEC,
@@ -440,7 +441,7 @@ describe("updateHelper", () => {
       promptStub.resolves(true);
       registryEntryStub.throws("Unable to find extension source");
       await expect(
-        updateHelper.updateToVersionFromRegistry(
+        updateHelper.updateToVersionFromRegistryFile(
           "test-project",
           "test-instance",
           SPEC,
@@ -453,11 +454,11 @@ describe("updateHelper", () => {
     it("should not update if the update warning is not confirmed", async () => {
       promptStub.resolves(false);
       await expect(
-        updateHelper.updateToVersionFromRegistry(
+        updateHelper.updateToVersionFromRegistryFile(
           "test-project",
           "test-instance",
-          SPEC,
-          SPEC.name,
+          OLD_SPEC,
+          OLD_SPEC.name,
           "0.1.2"
         )
       ).to.be.rejectedWith(FirebaseError, "Update cancelled.");
@@ -465,7 +466,7 @@ describe("updateHelper", () => {
 
     it("should not update if version given less than min version required", async () => {
       await expect(
-        updateHelper.updateToVersionFromRegistry(
+        updateHelper.updateToVersionFromRegistryFile(
           "test-project",
           "test-instance",
           SPEC,
@@ -503,7 +504,7 @@ describe("updateHelper", () => {
 
     it("should return the correct source name for a valid published source", async () => {
       promptStub.resolves(true);
-      const name = await updateHelper.updateFromRegistry(
+      const name = await updateHelper.updateFromRegistryFile(
         "test-project",
         "test-instance",
         SPEC,
@@ -516,7 +517,7 @@ describe("updateHelper", () => {
       promptStub.resolves(true);
       registryEntryStub.throws("Unable to find extension source");
       await expect(
-        updateHelper.updateFromRegistry("test-project", "test-instance", SPEC, SPEC.name)
+        updateHelper.updateFromRegistryFile("test-project", "test-instance", SPEC, SPEC.name)
       ).to.be.rejectedWith(FirebaseError, "Cannot find the latest version of this extension.");
     });
 
@@ -524,8 +525,41 @@ describe("updateHelper", () => {
       promptStub.resolves(false);
       registryEntryStub.resolves(REGISTRY_ENTRY);
       await expect(
-        updateHelper.updateFromRegistry("test-project", "test-instance", SPEC, SPEC.name)
+        updateHelper.updateFromRegistryFile(
+          "test-project",
+          "test-instance",
+          OLD_SPEC,
+          OLD_SPEC.name
+        )
       ).to.be.rejectedWith(FirebaseError, "Update cancelled.");
     });
+  });
+});
+
+describe("inferUpdateSource", () => {
+  it("should infer update source from ref without version", () => {
+    const result = updateHelper.inferUpdateSource("", "firebase/storage-resize-images");
+    expect(result).to.equal("firebase/storage-resize-images@latest");
+  });
+
+  it("should infer update source from ref with just version", () => {
+    const result = updateHelper.inferUpdateSource("0.1.2", "firebase/storage-resize-images");
+    expect(result).to.equal("firebase/storage-resize-images@0.1.2");
+  });
+
+  it("should infer update source from ref and extension name", () => {
+    const result = updateHelper.inferUpdateSource(
+      "storage-resize-images",
+      "firebase/storage-resize-images"
+    );
+    expect(result).to.equal("firebase/storage-resize-images@latest");
+  });
+
+  it("should infer update source if it is a ref distinct from the input ref", () => {
+    const result = updateHelper.inferUpdateSource(
+      "notfirebase/storage-resize-images",
+      "firebase/storage-resize-images"
+    );
+    expect(result).to.equal("notfirebase/storage-resize-images@latest");
   });
 });

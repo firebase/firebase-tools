@@ -777,6 +777,7 @@ describe("extensionsHelper", () => {
         "0.1.0": "projects/test-proj/sources/def456",
         "0.1.1": testOnePlatformSourceName,
       },
+      publisher: "firebase",
     };
     const testSource: ExtensionSource = {
       name: "test",

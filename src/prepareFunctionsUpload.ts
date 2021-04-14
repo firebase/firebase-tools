@@ -13,17 +13,22 @@ import { logger } from "./logger";
 import * as utils from "./utils";
 import * as parseTriggers from "./parseTriggers";
 import * as fsAsync from "./fsAsync";
+import * as args from "./deploy/functions/args";
 
 const CONFIG_DEST_FILE = ".runtimeconfig.json";
 
-async function getFunctionsConfig(context: any): Promise<{ [key: string]: any }> {
-  let config = {};
+async function getFunctionsConfig(context: args.Context): Promise<{ [key: string]: any }> {
+  let config: Record<string, any> = {};
   if (context.runtimeConfigEnabled) {
     try {
-      config = await functionsConfig.materializeAll(context.firebaseConfig.projectId);
+      config = await functionsConfig.materializeAll(context.firebaseConfig!.projectId);
     } catch (err) {
       logger.debug(err);
-      const errorCode = _.get(err, "context.response.statusCode");
+      let errorCode = err?.context?.response?.statusCode;
+      if (!errorCode) {
+        logger.debug("Got unexpected error from Runtime Config; it has no status code:", err);
+        errorCode = 500;
+      }
       if (errorCode === 500 || errorCode === 503) {
         throw new FirebaseError(
           "Cloud Runtime Config is currently experiencing issues, " +
@@ -36,8 +41,7 @@ async function getFunctionsConfig(context: any): Promise<{ [key: string]: any }>
     }
   }
 
-  const firebaseConfig = _.get(context, "firebaseConfig");
-  _.set(config, "firebase", firebaseConfig);
+  config.firebase = context.firebaseConfig;
   return config;
 }
 
@@ -49,7 +53,7 @@ async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream) {
   });
 }
 
-async function packageSource(options: any, sourceDir: string, configValues: any) {
+async function packageSource(options: args.Options, sourceDir: string, configValues: any) {
   const tmpFile = tmp.fileSync({ prefix: "firebase-functions-", postfix: ".zip" }).name;
   const fileStream = fs.createWriteStream(tmpFile, {
     flags: "w",
@@ -105,7 +109,7 @@ async function packageSource(options: any, sourceDir: string, configValues: any)
   };
 }
 
-export async function prepareFunctionsUpload(context: any, options: any) {
+export async function prepareFunctionsUpload(context: args.Context, options: args.Options) {
   const sourceDir = options.config.path(options.config.get("functions.source"));
   const configValues = await getFunctionsConfig(context);
   const triggers = await parseTriggers(getProjectId(options), sourceDir, configValues);
