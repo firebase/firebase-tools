@@ -63,11 +63,11 @@ export function renameIfPresent<Src, Dest>(
 
 export function fieldMasks(
   object: Record<string, any>,
-  includeEmptyValues: boolean = false
+  includeNullOrUndefinedValues: boolean = false
 ): string[] {
   const masks: string[] = [];
   for (const key of Object.keys(object)) {
-    fieldMasksHelper(key, object[key], includeEmptyValues, masks);
+    fieldMasksHelper(key, object[key], includeNullOrUndefinedValues, masks);
   }
   return masks;
 }
@@ -75,11 +75,11 @@ export function fieldMasks(
 function fieldMasksHelper(
   prefix: string,
   cursor: any,
-  includeEmptyValues: boolean,
+  includeNullOrUndefinedValues: boolean,
   masks: string[]
 ) {
   if (cursor === null || typeof cursor === "undefined") {
-    if (includeEmptyValues) {
+    if (includeNullOrUndefinedValues) {
       masks.push(prefix);
     }
     return;
@@ -98,6 +98,6 @@ function fieldMasksHelper(
   }
 
   for (const key of cursorKeys) {
-    fieldMasksHelper(`${prefix}.${key}`, cursor[key], includeEmptyValues, masks);
+    fieldMasksHelper(`${prefix}.${key}`, cursor[key], includeNullOrUndefinedValues, masks);
   }
 }

@@ -99,14 +99,16 @@ describe("proto", () => {
       expect(proto.fieldMasks(obj).sort()).to.deep.equal(["number", "string", "array"].sort());
     });
 
-    it("should respect includeEmptyValues", () => {
+    it("should respect includeNullOrUndefinedValues", () => {
       const obj = {
         present: "foo",
         empty: undefined,
       };
 
-      expect(proto.fieldMasks(obj, /* includeEmptyValues=*/ false)).to.deep.equal(["present"]);
-      expect(proto.fieldMasks(obj, /* includeEmptyValues=*/ true).sort()).to.deep.equal(
+      expect(proto.fieldMasks(obj, /* includeNullOrUndefinedValues=*/ false)).to.deep.equal([
+        "present",
+      ]);
+      expect(proto.fieldMasks(obj, /* includeNullOrUndefinedValues=*/ true).sort()).to.deep.equal(
         ["present", "empty"].sort()
       );
     });
