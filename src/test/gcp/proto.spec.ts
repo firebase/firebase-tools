@@ -17,10 +17,12 @@ describe("proto", () => {
   describe("copyIfPresent", () => {
     interface DestType {
       foo?: string;
+      baz?: string;
     }
     interface SrcType {
       foo?: string;
       bar?: string;
+      baz?: string;
     }
     it("should copy present fields", () => {
       const dest: DestType = {};
@@ -36,11 +38,11 @@ describe("proto", () => {
       expect("foo" in dest).to.be.false;
     });
 
-    it("should support transformations", () => {
+    it("should support variadic params", () => {
       const dest: DestType = {};
-      const src: SrcType = { foo: "baz" };
-      proto.copyIfPresent(dest, src, "foo", (str) => str + " transformed");
-      expect(dest.foo).to.equal("baz transformed");
+      const src: SrcType = { foo: "baz", baz: "quz" };
+      proto.copyIfPresent(dest, src, "foo", "baz");
+      expect(dest).to.deep.equal(src);
     });
 
     // Compile-time check for type safety net
@@ -99,18 +101,14 @@ describe("proto", () => {
       expect(proto.fieldMasks(obj).sort()).to.deep.equal(["number", "string", "array"].sort());
     });
 
-    it("should respect includeNullOrUndefinedValues", () => {
+    it("should handle empty values", () => {
       const obj = {
-        present: "foo",
-        empty: undefined,
+        undefined: undefined,
+        null: null,
+        empty: {},
       };
 
-      expect(proto.fieldMasks(obj, /* includeNullOrUndefinedValues=*/ false)).to.deep.equal([
-        "present",
-      ]);
-      expect(proto.fieldMasks(obj, /* includeNullOrUndefinedValues=*/ true).sort()).to.deep.equal(
-        ["present", "empty"].sort()
-      );
+      expect(proto.fieldMasks(obj).sort()).to.deep.equal(["undefined", "null", "empty"].sort());
     });
 
     it("should nest into objects", () => {

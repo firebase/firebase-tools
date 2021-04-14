@@ -35,15 +35,14 @@ export function assertOneOf<T>(typename: string, obj: T, oneof: string, ...field
 export function copyIfPresent<Src, Dest>(
   dest: Dest,
   src: Src,
-  field: keyof Src & keyof Dest,
-  converter: (from: any) => any = (from: any) => {
-    return from;
-  }
+  ...fields: (keyof Src & keyof Dest)[]
 ) {
-  if (typeof src[field] === "undefined") {
-    return;
+  for (const field of fields) {
+    if (typeof src[field] === "undefined") {
+      continue;
+    }
+    dest[field] = src[field] as any;
   }
-  dest[field] = converter(src[field]);
 }
 
 export function renameIfPresent<Src, Dest>(
@@ -61,43 +60,29 @@ export function renameIfPresent<Src, Dest>(
   dest[destField] = converter(src[srcField]);
 }
 
-export function fieldMasks(
-  object: Record<string, any>,
-  includeNullOrUndefinedValues: boolean = false
-): string[] {
+export function fieldMasks(object: Record<string, any>): string[] {
   const masks: string[] = [];
   for (const key of Object.keys(object)) {
-    fieldMasksHelper(key, object[key], includeNullOrUndefinedValues, masks);
+    fieldMasksHelper(key, object[key], masks);
   }
   return masks;
 }
 
-function fieldMasksHelper(
-  prefix: string,
-  cursor: any,
-  includeNullOrUndefinedValues: boolean,
-  masks: string[]
-) {
-  if (cursor === null || typeof cursor === "undefined") {
-    if (includeNullOrUndefinedValues) {
-      masks.push(prefix);
-    }
-    return;
-  }
-  if (typeof cursor !== "object" || Array.isArray(cursor)) {
+function fieldMasksHelper(prefix: string, cursor: any, masks: string[]) {
+  if (cursor === null || typeof cursor !== "object" || Array.isArray(cursor)) {
     masks.push(prefix);
     return;
   }
 
   const cursorKeys = Object.keys(cursor);
   // An empty object (e.g. CloudFunction.httpsTrigger) is an explicit object.
-  // This is needed for OneOf<A, protobuf.Empty>
+  // This is needed for protobuf.Empty
   if (cursorKeys.length === 0) {
     masks.push(prefix);
     return;
   }
 
   for (const key of cursorKeys) {
-    fieldMasksHelper(`${prefix}.${key}`, cursor[key], includeNullOrUndefinedValues, masks);
+    fieldMasksHelper(`${prefix}.${key}`, cursor[key], masks);
   }
 }
