@@ -129,7 +129,7 @@ export async function startEmulator(instance: EmulatorInstance): Promise<void> {
   const name = instance.getName();
 
   // Log the command for analytics
-  track("emulators:start", name);
+  track("emulator:boot", name);
 
   await EmulatorRegistry.start(instance);
 }

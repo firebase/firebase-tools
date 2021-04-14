@@ -6,6 +6,7 @@ import { EmulatorRegistry } from "../emulator/registry";
 import { Emulators, EMULATORS_SUPPORTED_BY_UI } from "../emulator/types";
 import * as clc from "cli-color";
 import { Constants } from "../emulator/constants";
+import * as track from "../track";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const Table = require("cli-table");
@@ -105,6 +106,12 @@ Issues? Report them at ${stylizeLink(
       "https://github.com/firebase/firebase-tools/issues"
     )} and attach the *-debug.log files.
  `);
+
+    // Log the command for analytics, we report the emulator as "hub"
+    // since we originally mistakenly reported emulators:start events
+    // for each emulator, by reporting the "hub" we ensure that our
+    // historical data can still be viewed.
+    track("emulators:start", "hub");
 
     // Add this line above once connect page is implemented
     // It is now safe to connect your app. Instructions: http://${uiInfo?.host}:${uiInfo?.port}/connect
