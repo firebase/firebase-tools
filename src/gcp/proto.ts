@@ -60,3 +60,44 @@ export function renameIfPresent<Src, Dest>(
   }
   dest[destField] = converter(src[srcField]);
 }
+
+export function fieldMasks(
+  object: Record<string, any>,
+  includeEmptyValues: boolean = false
+): string[] {
+  const masks: string[] = [];
+  for (const key of Object.keys(object)) {
+    fieldMasksHelper(key, object[key], includeEmptyValues, masks);
+  }
+  return masks;
+}
+
+function fieldMasksHelper(
+  prefix: string,
+  cursor: any,
+  includeEmptyValues: boolean,
+  masks: string[]
+) {
+  if (cursor === null || typeof cursor === "undefined") {
+    if (includeEmptyValues) {
+      masks.push(prefix);
+    }
+    return;
+  }
+  if (typeof cursor !== "object" || Array.isArray(cursor)) {
+    masks.push(prefix);
+    return;
+  }
+
+  const cursorKeys = Object.keys(cursor);
+  // An empty object (e.g. CloudFunction.httpsTrigger) is an explicit object.
+  // This is needed for OneOf<A, protobuf.Empty>
+  if (cursorKeys.length === 0) {
+    masks.push(prefix);
+    return;
+  }
+
+  for (const key of cursorKeys) {
+    fieldMasksHelper(`${prefix}.${key}`, cursor[key], includeEmptyValues, masks);
+  }
+}

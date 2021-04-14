@@ -88,4 +88,46 @@ describe("proto", () => {
     // proto.renameIfPresent(dest, src, "destFoo", "srcccFoo");
     // proto.renameIfPresent(dest, src, "desFoo", "srcFoo");
   });
+
+  describe("fieldMasks", () => {
+    it("should copy simple fields", () => {
+      const obj = {
+        number: 1,
+        string: "foo",
+        array: ["hello", "world"],
+      };
+      expect(proto.fieldMasks(obj).sort()).to.deep.equal(["number", "string", "array"].sort());
+    });
+
+    it("should respect includeEmptyValues", () => {
+      const obj = {
+        present: "foo",
+        empty: undefined,
+      };
+
+      expect(proto.fieldMasks(obj, /* includeEmptyValues=*/ false)).to.deep.equal(["present"]);
+      expect(proto.fieldMasks(obj, /* includeEmptyValues=*/ true).sort()).to.deep.equal(
+        ["present", "empty"].sort()
+      );
+    });
+
+    it("should nest into objects", () => {
+      const obj = {
+        top: "level",
+        nested: {
+          key: "value",
+        },
+      };
+      expect(proto.fieldMasks(obj).sort()).to.deep.equal(["top", "nested.key"].sort());
+    });
+
+    it("should include empty objects", () => {
+      const obj = {
+        failurePolicy: {
+          retry: {},
+        },
+      };
+      expect(proto.fieldMasks(obj)).to.deep.equal(["failurePolicy.retry"]);
+    });
+  });
 });
