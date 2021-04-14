@@ -143,6 +143,7 @@ describe("Backend", () => {
         eventTrigger: {
           eventType: "google.pubsub.topic.publish",
           resource: "projects/p/topics/t",
+          failurePolicy: undefined,
         },
       };
       expect(backend.toGCFv1Function(eventFunction, UPLOAD_URL)).to.deep.equal(eventGcfFunction);

@@ -4,6 +4,7 @@ import * as cloudscheduler from "../../gcp/cloudscheduler";
 import * as utils from "../../utils";
 import { FirebaseError } from "../../error";
 import { Context } from "./args";
+import { cloudfunctions } from "../../gcp";
 
 export interface ScheduleRetryConfig {
   retryCount?: number;
@@ -26,7 +27,7 @@ export interface ScheduleSpec {
   project: string;
   // Note: schedule is missing in the existingBackend because we
   // don't actually spend the API call looking up the schedule;
-  // we just infer it from function labels.
+  // we just infer identifiers from function labels.
   schedule?: string;
   timeZone?: string;
   retryConfig?: ScheduleRetryConfig;
@@ -172,9 +173,12 @@ export function toGCFv1Function(
       resource: cloudFunction.trigger.eventFilters.resource,
       // Service is unnecessary and deprecated
     };
-    if (cloudFunction.trigger.retry) {
-      gcfFunction.eventTrigger.failurePolicy = { retry: {} };
-    }
+
+    // For field masks to pick up a deleted failure policy we must inject an undefined
+    // when retry is false
+    gcfFunction.eventTrigger.failurePolicy = cloudFunction.trigger.retry
+      ? { retry: {} }
+      : undefined;
   } else {
     gcfFunction.httpsTrigger = {
       securityLevel: cloudFunction.trigger.httpsOnly ? "SECURE_ALWAYS" : "SECURE_OPTIONAL",
@@ -189,14 +193,18 @@ export function toGCFv1Function(
     proto.durationFromSeconds
   );
   proto.renameIfPresent(gcfFunction, cloudFunction, "serviceAccountEmail", "serviceAccount");
-  proto.copyIfPresent(gcfFunction, cloudFunction, "availableMemoryMb");
-  proto.copyIfPresent(gcfFunction, cloudFunction, "minInstances");
-  proto.copyIfPresent(gcfFunction, cloudFunction, "maxInstances");
-  proto.copyIfPresent(gcfFunction, cloudFunction, "vpcConnector");
-  proto.copyIfPresent(gcfFunction, cloudFunction, "vpcConnectorEgressSettings");
-  proto.copyIfPresent(gcfFunction, cloudFunction, "ingressSettings");
-  proto.copyIfPresent(gcfFunction, cloudFunction, "labels");
-  proto.copyIfPresent(gcfFunction, cloudFunction, "environmentVariables");
+  proto.copyIfPresent(
+    gcfFunction,
+    cloudFunction,
+    "availableMemoryMb",
+    "minInstances",
+    "maxInstances",
+    "vpcConnector",
+    "vpcConnectorEgressSettings",
+    "ingressSettings",
+    "labels",
+    "environmentVariables"
+  );
 
   return gcfFunction;
 }
@@ -238,14 +246,18 @@ export function fromGCFv1Function(gcfFunction: gcf.CloudFunction): FunctionSpec 
     proto.secondsFromDuration
   );
   proto.renameIfPresent(cloudFunction, gcfFunction, "serviceAccount", "serviceAccountEmail");
-  proto.copyIfPresent(cloudFunction, gcfFunction, "availableMemoryMb");
-  proto.copyIfPresent(cloudFunction, gcfFunction, "minInstances");
-  proto.copyIfPresent(cloudFunction, gcfFunction, "maxInstances");
-  proto.copyIfPresent(cloudFunction, gcfFunction, "vpcConnector");
-  proto.copyIfPresent(cloudFunction, gcfFunction, "vpcConnectorEgressSettings");
-  proto.copyIfPresent(cloudFunction, gcfFunction, "ingressSettings");
-  proto.copyIfPresent(cloudFunction, gcfFunction, "labels");
-  proto.copyIfPresent(cloudFunction, gcfFunction, "environmentVariables");
+  proto.copyIfPresent(
+    cloudFunction,
+    gcfFunction,
+    "availableMemoryMb",
+    "minInstances",
+    "maxInstances",
+    "vpcConnector",
+    "vpcConnectorEgressSettings",
+    "ingressSettings",
+    "labels",
+    "environmentVariables"
+  );
 
   return cloudFunction;
 }
