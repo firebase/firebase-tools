@@ -1,0 +1,1 @@
+- Include `appId` in web app configuration when using the Hosting emulator (#2798).
