@@ -29,6 +29,7 @@ interface Site {
 
 interface ListSitesResponse {
   sites: Site[];
+  nextPageToken: string;
 }
 
 const apiClient = new Client({ urlPrefix: firebaseApiOrigin, auth: true, apiVersion: "v1beta1" });
@@ -58,6 +59,24 @@ export function getCachedWebSetup(options: any): WebConfig | undefined {
 }
 
 /**
+ * Recursively list all hosting sites for a given project.
+ */
+async function listAllSites(projectId: string, nextPageToken?: string): Promise<Site[]> {
+  const queryParams: Record<string, string> = nextPageToken ? { pageToken: nextPageToken } : {};
+  const res = await hostingApiClient.get<ListSitesResponse>(`/projects/${projectId}/sites`, {
+    queryParams,
+  });
+
+  const sites = res.body.sites;
+  if (res.body.nextPageToken) {
+    const remainder = await listAllSites(projectId, res.body.nextPageToken);
+    return [...sites, ...remainder];
+  }
+
+  return sites;
+}
+
+/**
  * TODO: deprecate this function in favor of `getAppConfig()` in `/src/management/apps.ts`
  * @param options CLI options.
  * @return web app configuration.
@@ -68,8 +87,8 @@ export async function fetchWebSetup(options: any): Promise<WebConfig> {
   // Try to determine the appId from the default Hosting site, if it is linked.
   let hostingAppId: string | undefined = undefined;
   try {
-    const sites = await hostingApiClient.get<ListSitesResponse>(`/projects/${projectId}/sites`);
-    const defaultSite = sites.body.sites.find((s) => s.type === "DEFAULT_SITE");
+    const sites = await listAllSites(projectId);
+    const defaultSite = sites.find((s) => s.type === "DEFAULT_SITE");
     if (defaultSite && defaultSite.appId) {
       hostingAppId = defaultSite.appId;
     }
