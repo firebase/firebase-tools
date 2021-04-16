@@ -79,13 +79,13 @@ export interface FunctionSpec {
   labels?: Record<string, string>;
   environmentVariables?: Record<string, string>;
   availableMemoryMb?: MemoryOptions;
-  timeoutSeconds?: number;
+  timeout?: proto.Duration;
   maxInstances?: number;
   minInstances?: number;
   vpcConnector?: string;
   vpcConnectorEgressSettings?: VpcEgressSettings;
   ingressSettings?: IngressSettings;
-  serviceAccount?: "default" | string;
+  serviceAccountEmail?: "default" | string;
 }
 
 // Note(inlined): I'd like to put topics in here explicitly, but I'd first have to
@@ -98,12 +98,14 @@ export interface Backend {
   topics: PubSubSpec[];
 }
 
-export const EMPTY: Backend = Object.freeze({
-  requiredAPIs: {},
-  cloudFunctions: [],
-  schedules: [],
-  topics: [],
-});
+export function empty(): Backend {
+  return {
+    requiredAPIs: {},
+    cloudFunctions: [],
+    schedules: [],
+    topics: [],
+  };
+}
 
 export function isEmptyBackend(backend: Backend) {
   return (
@@ -156,7 +158,7 @@ export function toGCFv1Function(
 ): Omit<gcf.CloudFunction, gcf.OutputOnlyFields> {
   if (cloudFunction.apiVersion != 1) {
     throw new FirebaseError(
-      "Trying to create CloudFunction with wrong API. This should never happen"
+      "Trying to create a v1 CloudFunction with v2 API. This should never happen"
     );
   }
 
@@ -185,17 +187,11 @@ export function toGCFv1Function(
     };
   }
 
-  proto.renameIfPresent(
-    gcfFunction,
-    cloudFunction,
-    "timeout",
-    "timeoutSeconds",
-    proto.durationFromSeconds
-  );
-  proto.renameIfPresent(gcfFunction, cloudFunction, "serviceAccountEmail", "serviceAccount");
   proto.copyIfPresent(
     gcfFunction,
     cloudFunction,
+    "serviceAccountEmail",
+    "timeout",
     "availableMemoryMb",
     "minInstances",
     "maxInstances",
@@ -238,18 +234,12 @@ export function fromGCFv1Function(gcfFunction: gcf.CloudFunction): FunctionSpec 
     entryPoint: gcfFunction.entryPoint,
     runtime: gcfFunction.runtime,
   };
-  proto.renameIfPresent(
-    cloudFunction,
-    gcfFunction,
-    "timeoutSeconds",
-    "timeout",
-    proto.secondsFromDuration
-  );
-  proto.renameIfPresent(cloudFunction, gcfFunction, "serviceAccount", "serviceAccountEmail");
   proto.copyIfPresent(
     cloudFunction,
     gcfFunction,
+    "serviceAccountEmail",
     "availableMemoryMb",
+    "timeout",
     "minInstances",
     "maxInstances",
     "vpcConnector",
@@ -335,7 +325,7 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
   ctx.unreachableRegions.gcfv1 = [...unreachable];
 }
 
-// TODO(inilned): This is just copying existing functionality. Should we complciate
+// TODO(inlined): This is just copying existing functionality. Should we complicate
 // this to handle filters and region options?
 export async function checkAvailability(context: Context, want: Backend) {
   const ctx = context as Context & PrivateContextFields;

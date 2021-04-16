@@ -1,10 +1,11 @@
 import { expect } from "chai";
+import * as sinon from "sinon";
+
+import { FirebaseError } from "../../../error";
+import * as args from "../../../deploy/functions/args";
 import * as backend from "../../../deploy/functions/backend";
 import * as gcf from "../../../gcp/cloudfunctions";
-import * as sinon from "sinon";
 import * as utils from "../../../utils";
-import * as args from "../../../deploy/functions/args";
-import { FirebaseError } from "../../../error";
 
 describe("Backend", () => {
   const FUNCTION_SPEC: backend.FunctionSpec = {
@@ -62,28 +63,28 @@ describe("Backend", () => {
     });
 
     it("isEmptyBackend", () => {
-      expect(backend.isEmptyBackend(backend.EMPTY)).to.be.true;
+      expect(backend.isEmptyBackend(backend.empty())).to.be.true;
       expect(
         backend.isEmptyBackend({
-          ...backend.EMPTY,
+          ...backend.empty(),
           requiredAPIs: { foo: "foo.googleapis.com" },
         })
       ).to.be.false;
       expect(
         backend.isEmptyBackend({
-          ...backend.EMPTY,
+          ...backend.empty(),
           cloudFunctions: [FUNCTION_SPEC],
         })
       ).to.be.false;
       expect(
         backend.isEmptyBackend({
-          ...backend.EMPTY,
+          ...backend.empty(),
           schedules: [SCHEDULE],
         })
       ).to.be.false;
       expect(
         backend.isEmptyBackend({
-          ...backend.EMPTY,
+          ...backend.empty(),
           topics: [TOPIC],
         })
       ).to.be.false;
@@ -158,6 +159,8 @@ describe("Backend", () => {
         vpcConnector: "connector",
         vpcConnectorEgressSettings: "ALL_TRAFFIC",
         ingressSettings: "ALLOW_ALL",
+        timeout: "15s",
+        serviceAccountEmail: "inlined@google.com",
         labels: {
           foo: "bar",
         },
@@ -184,6 +187,8 @@ describe("Backend", () => {
         vpcConnectorEgressSettings: "ALL_TRAFFIC",
         ingressSettings: "ALLOW_ALL",
         availableMemoryMb: 128,
+        timeout: "15s",
+        serviceAccountEmail: "inlined@google.com",
       };
 
       expect(backend.toGCFv1Function(fullFunction, UPLOAD_URL)).to.deep.equal(fullGcfFunction);
@@ -199,8 +204,6 @@ describe("Backend", () => {
           },
           retry: true,
         },
-        timeoutSeconds: 15,
-        serviceAccount: "inlined@google.com",
       };
 
       const complexGcfFunction: Omit<gcf.CloudFunction, gcf.OutputOnlyFields> = {
@@ -213,8 +216,6 @@ describe("Backend", () => {
             retry: {},
           },
         },
-        timeout: "15s",
-        serviceAccountEmail: "inlined@google.com",
       };
 
       expect(backend.toGCFv1Function(complexFunction, UPLOAD_URL)).to.deep.equal(
@@ -287,6 +288,8 @@ describe("Backend", () => {
         vpcConnector: "connector",
         vpcConnectorEgressSettings: "ALL_TRAFFIC",
         ingressSettings: "ALLOW_ALL",
+        serviceAccountEmail: "inlined@google.com",
+        timeout: "15s",
         labels: {
           foo: "bar",
         },
@@ -313,16 +316,12 @@ describe("Backend", () => {
       expect(
         backend.fromGCFv1Function({
           ...HAVE_CLOUD_FUNCTION,
-          serviceAccountEmail: "inlined@google.com",
-          timeout: "15s",
           httpsTrigger: {
             securityLevel: "SECURE_OPTIONAL",
           },
         })
       ).to.deep.equal({
         ...FUNCTION_SPEC,
-        serviceAccount: "inlined@google.com",
-        timeoutSeconds: 15,
         trigger: {
           httpsOnly: false,
         },
@@ -412,7 +411,7 @@ describe("Backend", () => {
         unreachableRegions = ["region"];
 
         const secondBackend = await backend.existingBackend(context);
-        backend.checkAvailability(context, backend.EMPTY);
+        backend.checkAvailability(context, backend.empty());
 
         expect(firstBackend).to.deep.equal(secondBackend);
       });
@@ -429,7 +428,7 @@ describe("Backend", () => {
         const have = await backend.existingBackend(newContext());
 
         expect(have).to.deep.equal({
-          ...backend.EMPTY,
+          ...backend.empty(),
           cloudFunctions: [FUNCTION_SPEC],
         });
       });
@@ -486,20 +485,20 @@ describe("Backend", () => {
 
     describe("checkAvailability", () => {
       it("should do nothing when regions are all avalable", async () => {
-        await backend.checkAvailability(newContext(), backend.EMPTY);
+        await backend.checkAvailability(newContext(), backend.empty());
         expect(logLabeledWarning).to.not.have.been.called;
       });
 
       it("should warn if an unused backend is unavailable", async () => {
         unreachableRegions = ["region"];
-        await backend.checkAvailability(newContext(), backend.EMPTY);
+        await backend.checkAvailability(newContext(), backend.empty());
         expect(logLabeledWarning).to.have.been.called;
       });
 
       it("should throw if a needed region is unavailable", async () => {
         unreachableRegions = ["region"];
         const want = {
-          ...backend.EMPTY,
+          ...backend.empty(),
           cloudFunctions: [FUNCTION_SPEC],
         };
         await expect(backend.checkAvailability(newContext(), want)).to.eventually.be.rejectedWith(
