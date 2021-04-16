@@ -14,7 +14,7 @@ describe("Backend", () => {
     region: "region",
     project: "project",
     trigger: {
-      httpsOnly: true,
+      allowInsecure: false,
     },
     entryPoint: "function",
     runtime: "nodejs14",
@@ -51,7 +51,7 @@ describe("Backend", () => {
   describe("Helper functions", () => {
     it("isEventTrigger", () => {
       const httpsTrigger: backend.HttpsTrigger = {
-        httpsOnly: true,
+        allowInsecure: false,
       };
       expect(backend.isEventTrigger(httpsTrigger)).to.be.false;
       const eventTrigger: backend.EventTrigger = {
@@ -307,7 +307,7 @@ describe("Backend", () => {
         ...FUNCTION_SPEC,
         ...extraFields,
         trigger: {
-          httpsOnly: false,
+          allowInsecure: true,
         },
       });
     });
@@ -323,7 +323,7 @@ describe("Backend", () => {
       ).to.deep.equal({
         ...FUNCTION_SPEC,
         trigger: {
-          httpsOnly: false,
+          allowInsecure: true,
         },
       });
     });

@@ -38,7 +38,7 @@ export interface ScheduleSpec {
 }
 
 export interface HttpsTrigger {
-  httpsOnly: boolean;
+  allowInsecure: boolean;
 }
 
 export type EventFilterKey = "resource";
@@ -183,7 +183,7 @@ export function toGCFv1Function(
       : undefined;
   } else {
     gcfFunction.httpsTrigger = {
-      securityLevel: cloudFunction.trigger.httpsOnly ? "SECURE_ALWAYS" : "SECURE_OPTIONAL",
+      securityLevel: cloudFunction.trigger.allowInsecure ? "SECURE_OPTIONAL" : "SECURE_ALWAYS",
     };
   }
 
@@ -213,8 +213,8 @@ export function fromGCFv1Function(gcfFunction: gcf.CloudFunction): FunctionSpec 
   let trigger: EventTrigger | HttpsTrigger;
   if (gcfFunction.httpsTrigger) {
     trigger = {
-      // Note: default (empty) value intentionally means false
-      httpsOnly: gcfFunction.httpsTrigger.securityLevel === "SECURE_ALWAYS",
+      // Note: default (empty) value intentionally means true
+      allowInsecure: gcfFunction.httpsTrigger.securityLevel !== "SECURE_ALWAYS",
     };
   } else {
     trigger = {
