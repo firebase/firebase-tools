@@ -17,10 +17,12 @@ describe("proto", () => {
   describe("copyIfPresent", () => {
     interface DestType {
       foo?: string;
+      baz?: string;
     }
     interface SrcType {
       foo?: string;
       bar?: string;
+      baz?: string;
     }
     it("should copy present fields", () => {
       const dest: DestType = {};
@@ -36,11 +38,11 @@ describe("proto", () => {
       expect("foo" in dest).to.be.false;
     });
 
-    it("should support transformations", () => {
+    it("should support variadic params", () => {
       const dest: DestType = {};
-      const src: SrcType = { foo: "baz" };
-      proto.copyIfPresent(dest, src, "foo", (str) => str + " transformed");
-      expect(dest.foo).to.equal("baz transformed");
+      const src: SrcType = { foo: "baz", baz: "quz" };
+      proto.copyIfPresent(dest, src, "foo", "baz");
+      expect(dest).to.deep.equal(src);
     });
 
     // Compile-time check for type safety net
@@ -87,5 +89,45 @@ describe("proto", () => {
     // These line should fail to compile when uncommented
     // proto.renameIfPresent(dest, src, "destFoo", "srcccFoo");
     // proto.renameIfPresent(dest, src, "desFoo", "srcFoo");
+  });
+
+  describe("fieldMasks", () => {
+    it("should copy simple fields", () => {
+      const obj = {
+        number: 1,
+        string: "foo",
+        array: ["hello", "world"],
+      };
+      expect(proto.fieldMasks(obj).sort()).to.deep.equal(["number", "string", "array"].sort());
+    });
+
+    it("should handle empty values", () => {
+      const obj = {
+        undefined: undefined,
+        null: null,
+        empty: {},
+      };
+
+      expect(proto.fieldMasks(obj).sort()).to.deep.equal(["undefined", "null", "empty"].sort());
+    });
+
+    it("should nest into objects", () => {
+      const obj = {
+        top: "level",
+        nested: {
+          key: "value",
+        },
+      };
+      expect(proto.fieldMasks(obj).sort()).to.deep.equal(["top", "nested.key"].sort());
+    });
+
+    it("should include empty objects", () => {
+      const obj = {
+        failurePolicy: {
+          retry: {},
+        },
+      };
+      expect(proto.fieldMasks(obj)).to.deep.equal(["failurePolicy.retry"]);
+    });
   });
 });
