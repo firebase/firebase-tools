@@ -66,7 +66,7 @@ describe("fetchWebSetup module", () => {
 
     it("should return a fake config for a demo project id", async () => {
       const projectId = "demo-project-1234";
-      await expect(fetchWebSetup({ project: projectId })).to.eventually.equal({
+      await expect(fetchWebSetup({ project: projectId })).to.eventually.deep.equal({
         projectId: "demo-project-1234",
         databaseURL: "https://demo-project-1234.firebaseio.com",
         storageBucket: "demo-project-1234.appspot.com",
