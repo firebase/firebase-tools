@@ -19,7 +19,7 @@ export interface PubSubSpec {
   project: string;
 
   // What we're actually planning to invoke with this topic
-  targetService: FunctionSpec;
+  targetService: TargetIds;
 }
 
 export interface ScheduleSpec {
@@ -34,7 +34,7 @@ export interface ScheduleSpec {
   transport: "pubsub" | "https";
 
   // What we're actually planning to invoke with this schedule
-  targetService: FunctionSpec;
+  targetService: TargetIds;
 }
 
 export interface HttpsTrigger {
@@ -65,13 +65,26 @@ export function isEventTrigger(trigger: HttpsTrigger | EventTrigger): trigger is
 export type VpcEgressSettings = "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC";
 export type IngressSettings = "ALLOW_ALL" | "ALLOW_INTERNAL_ONLY" | "ALLOW_INTERNAL_AND_GCLB";
 export type MemoryOptions = 128 | 256 | 512 | 1024 | 2048 | 4096;
-export type Runtime = "nodejs6" | "nodejs8" | "nodejs10" | "nodejs12" | "nodejs14";
 
-export interface FunctionSpec {
-  apiVersion: 1 | 2;
+export type Runtime = "nodejs10" | "nodejs12" | "nodejs14";
+const RUNTIMES: string[] = ["nodejs10", "nodejs12", "nodejs14"];
+
+export function isValidRuntime(runtime: string): runtime is Runtime {
+  return RUNTIMES.includes(runtime);
+}
+
+// Subset of FunctionSpec needed for simple labling, tracking, comparing, etc.
+// May eventually be replaced with something like a "ServiceName" that can hold
+// a v1 function, v2 function, or Service/Revision. Not getting ahead of ourselves
+// though.
+export interface TargetIds {
   id: string;
   region: string;
   project: string;
+}
+
+export interface FunctionSpec extends TargetIds {
+  apiVersion: 1 | 2;
   entryPoint: string;
   trigger: HttpsTrigger | EventTrigger;
   runtime: Runtime;
@@ -118,13 +131,15 @@ export function isEmptyBackend(backend: Backend) {
 
 export type RuntimeConfigValues = Record<string, any>;
 
-export function functionName(cloudFunction: FunctionSpec) {
+export function functionName(cloudFunction: TargetIds) {
   return `projects/${cloudFunction.project}/locations/${cloudFunction.region}/functions/${cloudFunction.id}`;
 }
 
 // Curried function that's useful in filters. Compares fields in decreasing entropy order
 // to short circuit early (not like there's much point in optimizing JS...)
-export const sameFunctionName = (func: FunctionSpec) => (test: FunctionSpec) => {
+export const sameFunctionName = (func: TargetIds) => (
+  test: TargetIds
+) => {
   return func.id === test.id && func.region === test.region && func.project == test.project;
 };
 
@@ -148,7 +163,7 @@ export function topicName(topic: { project: string; id: string }) {
  ** If you change this pattern, Firebase console will stop displaying schedule descriptions
  ** and schedules created under the old pattern will no longer be cleaned up correctly
  */
-export function scheduleIdForScheduledFunction(cloudFunction: FunctionSpec) {
+export function scheduleIdForFunction(cloudFunction: TargetIds) {
   return `firebase-schedule-${cloudFunction.id}-${cloudFunction.region}`;
 }
 
@@ -308,17 +323,25 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
     ctx.existingBackend.cloudFunctions.push(specFunction);
     const isScheduled = apiFunction.labels?.["deployment-scheduled"] === "true";
     if (isScheduled) {
-      const id = scheduleIdForScheduledFunction(specFunction);
+      const id = scheduleIdForFunction(specFunction);
       ctx.existingBackend.schedules.push({
         id,
         project: specFunction.project,
         transport: "pubsub",
-        targetService: specFunction,
+        targetService: {
+          id: specFunction.id,
+          region: specFunction.region,
+          project: specFunction.project,
+        },
       });
       ctx.existingBackend.topics.push({
         id,
         project: specFunction.project,
-        targetService: specFunction,
+        targetService: {
+          id: specFunction.id,
+          region: specFunction.region,
+          project: specFunction.project,
+        },
       });
     }
   }

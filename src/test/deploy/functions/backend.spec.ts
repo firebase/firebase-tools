@@ -8,11 +8,15 @@ import * as gcf from "../../../gcp/cloudfunctions";
 import * as utils from "../../../utils";
 
 describe("Backend", () => {
-  const FUNCTION_SPEC: backend.FunctionSpec = {
-    apiVersion: 1,
+  const FUNCTION_NAME: backend.FunctionNameComponents = {
     id: "id",
     region: "region",
     project: "project",
+  };
+
+  const FUNCTION_SPEC: backend.FunctionSpec = {
+    apiVersion: 1,
+    ...FUNCTION_NAME,
     trigger: {
       allowInsecure: false,
     },
@@ -39,13 +43,13 @@ describe("Backend", () => {
     project: "project",
     schedule: "every 1 minutes",
     transport: "pubsub",
-    targetService: FUNCTION_SPEC,
+    targetService: FUNCTION_NAME,
   };
 
   const TOPIC: backend.PubSubSpec = {
     id: backend.scheduleIdForScheduledFunction(FUNCTION_SPEC),
     project: "project",
-    targetService: FUNCTION_SPEC,
+    targetService: FUNCTION_NAME,
   };
 
   describe("Helper functions", () => {
@@ -463,7 +467,7 @@ describe("Backend", () => {
         };
         const schedule: backend.ScheduleSpec = {
           ...SCHEDULE,
-          targetService: functionSpec,
+          targetService: FUNCTION_NAME,
         };
         // We don't actually make an API call to cloud scheduler,
         // so we don't have the real schedule.
@@ -476,7 +480,7 @@ describe("Backend", () => {
           topics: [
             {
               ...TOPIC,
-              targetService: functionSpec,
+              targetService: FUNCTION_NAME,
             },
           ],
         });
