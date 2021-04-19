@@ -8,7 +8,7 @@ import * as gcf from "../../../gcp/cloudfunctions";
 import * as utils from "../../../utils";
 
 describe("Backend", () => {
-  const FUNCTION_NAME: backend.FunctionNameComponents = {
+  const FUNCTION_NAME: backend.TargetIds = {
     id: "id",
     region: "region",
     project: "project",
@@ -39,7 +39,7 @@ describe("Backend", () => {
   };
 
   const SCHEDULE: backend.ScheduleSpec = {
-    id: backend.scheduleIdForScheduledFunction(FUNCTION_SPEC),
+    id: backend.scheduleIdForFunction(FUNCTION_SPEC),
     project: "project",
     schedule: "every 1 minutes",
     transport: "pubsub",
@@ -47,7 +47,7 @@ describe("Backend", () => {
   };
 
   const TOPIC: backend.PubSubSpec = {
-    id: backend.scheduleIdForScheduledFunction(FUNCTION_SPEC),
+    id: backend.scheduleIdForFunction(FUNCTION_SPEC),
     project: "project",
     targetService: FUNCTION_NAME,
   };

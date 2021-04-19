@@ -5,6 +5,7 @@ import * as utils from "../../utils";
 import { FirebaseError } from "../../error";
 import { Context } from "./args";
 import { cloudfunctions } from "../../gcp";
+import { logger } from "../../logger";
 
 export interface ScheduleRetryConfig {
   retryCount?: number;
@@ -137,9 +138,7 @@ export function functionName(cloudFunction: TargetIds) {
 
 // Curried function that's useful in filters. Compares fields in decreasing entropy order
 // to short circuit early (not like there's much point in optimizing JS...)
-export const sameFunctionName = (func: TargetIds) => (
-  test: TargetIds
-) => {
+export const sameFunctionName = (func: TargetIds) => (test: TargetIds) => {
   return func.id === test.id && func.region === test.region && func.project == test.project;
 };
 
@@ -240,6 +239,13 @@ export function fromGCFv1Function(gcfFunction: gcf.CloudFunction): FunctionSpec 
       retry: !!gcfFunction.eventTrigger!.failurePolicy?.retry,
     };
   }
+
+  if (!isValidRuntime(gcfFunction.runtime)) {
+      logger.debug("GCFv1 function has a deprecated runtime. We are force-casting it " +
+                   "into a valid FunctionSpec which is not expected to cause issues " +
+                   "but breaks the type system", gcfFunction);
+  }
+
   const cloudFunction: FunctionSpec = {
     apiVersion: 1,
     id,
@@ -247,7 +253,7 @@ export function fromGCFv1Function(gcfFunction: gcf.CloudFunction): FunctionSpec 
     region,
     trigger,
     entryPoint: gcfFunction.entryPoint,
-    runtime: gcfFunction.runtime,
+    runtime: gcfFunction.runtime as Runtime,
   };
   proto.copyIfPresent(
     cloudFunction,
