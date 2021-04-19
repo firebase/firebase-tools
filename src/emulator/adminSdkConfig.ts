@@ -3,6 +3,7 @@ import * as apiv2 from "../apiv2";
 import { configstore } from "../configstore";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
+import { Constants } from "./constants";
 
 export type AdminSdkConfig = {
   projectId: string;
@@ -33,6 +34,11 @@ export function constructDefaultAdminSdkConfig(projectId: string): AdminSdkConfi
 export async function getProjectAdminSdkConfigOrCached(
   projectId: string
 ): Promise<AdminSdkConfig | undefined> {
+  // When using the emulators with a fake project Id, use a fake project config.
+  if (Constants.isFakeProject(projectId)) {
+    return constructDefaultAdminSdkConfig(projectId);
+  }
+
   try {
     const config = await getProjectAdminSdkConfig(projectId);
     setCacheAdminSdkConfig(projectId, config);
@@ -46,7 +52,7 @@ export async function getProjectAdminSdkConfigOrCached(
 /**
  * Gets the Admin SDK configuration associated with a project.
  */
-export async function getProjectAdminSdkConfig(projectId: string): Promise<AdminSdkConfig> {
+async function getProjectAdminSdkConfig(projectId: string): Promise<AdminSdkConfig> {
   const apiClient = new apiv2.Client({
     auth: true,
     apiVersion: "v1beta1",

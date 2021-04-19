@@ -44,6 +44,10 @@ export const EMULATOR_DESCRIPTION: Record<Emulators, string> = {
 const DEFAULT_HOST = "localhost";
 
 export class Constants {
+  // GCP projects cannot start with 'demo' so we use 'demo-' as a prefix to denote
+  // an intentionally fake project.
+  static FAKE_PROJECT_ID_PREFIX = "demo-";
+
   static DEFAULT_DATABASE_EMULATOR_NAMESPACE = "fake-server";
 
   // Environment variable to override SDK/CLI to point at the Firestore emulator.
@@ -123,5 +127,9 @@ export class Constants {
 
     const u = url.parse(normalized);
     return u.hostname || DEFAULT_HOST;
+  }
+
+  static isFakeProject(projectId?: string): boolean {
+    return !!projectId && projectId.startsWith(this.FAKE_PROJECT_ID_PREFIX);
   }
 }
