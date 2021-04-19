@@ -3,7 +3,6 @@ import { configstore } from "./configstore";
 import { firebaseApiOrigin, hostingApiOrigin } from "./api";
 import * as getProjectId from "./getProjectId";
 import { logger } from "./logger";
-import { project } from "./init/features";
 import { Constants } from "./emulator/constants";
 
 export interface WebConfig {
