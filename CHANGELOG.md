@@ -1,1 +1,2 @@
 - Include `appId` in web app configuration when using the Hosting emulator (#2798).
+- Add support for emulating the `demo-*` project ID namespace with fake Admin and Web SDK configurations.
