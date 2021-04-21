@@ -8,7 +8,7 @@ import { logPrefix } from "./extensionsHelper";
 import * as prompt from "../prompt";
 import * as utils from "../utils";
 
-const ADD_BILLING_ACCOUNT ="Add new billing account"
+const ADD_BILLING_ACCOUNT = "Add new billing account";
 /**
  * Logs to console if setting up billing was successful.
  */
