@@ -40,12 +40,11 @@ describe("checkProjectBilling", () => {
 
     checkBillingEnabledStub.resolves(true);
 
-    const enabled = await checkProjectBilling.isBillingEnabled(projectId);
+    const enabled = await cloudbilling.checkBillingEnabled(projectId);
     if (!enabled) {
       await checkProjectBilling.enableBilling(projectId, extensionName);
     }
 
-    expect(checkBillingEnabledStub.calledWith(projectId));
     expect(listBillingAccountsStub.notCalled);
     expect(setBillingAccountStub.notCalled);
     expect(promptOnceStub.notCalled);
@@ -67,12 +66,11 @@ describe("checkProjectBilling", () => {
     setBillingAccountStub.resolves(true);
     promptOnceStub.resolves("test-account");
 
-    const enabled = await checkProjectBilling.isBillingEnabled(projectId);
+    const enabled = await cloudbilling.checkBillingEnabled(projectId);
     if (!enabled) {
       await checkProjectBilling.enableBilling(projectId, extensionName);
     }
 
-    expect(checkBillingEnabledStub.calledWith(projectId));
     expect(listBillingAccountsStub.calledOnce);
     expect(setBillingAccountStub.calledOnce);
     expect(setBillingAccountStub.calledWith(projectId, "test-cloud-billing-account-name"));
@@ -87,12 +85,11 @@ describe("checkProjectBilling", () => {
     listBillingAccountsStub.resolves([]);
     promptOnceStub.resolves();
 
-    const enabled = await checkProjectBilling.isBillingEnabled(projectId);
+    const enabled = await cloudbilling.checkBillingEnabled(projectId);
     if (!enabled) {
       await checkProjectBilling.enableBilling(projectId, extensionName);
     }
 
-    expect(checkBillingEnabledStub.calledWith(projectId));
     expect(listBillingAccountsStub.calledOnce);
     expect(setBillingAccountStub.notCalled);
     expect(checkBillingEnabledStub.callCount).to.equal(2);

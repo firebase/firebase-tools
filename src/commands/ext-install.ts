@@ -7,7 +7,8 @@ import TerminalRenderer = require("marked-terminal");
 import * as askUserForConsent from "../extensions/askUserForConsent";
 import { displayExtInfo } from "../extensions/displayExtensionInfo";
 import { displayNode10CreateBillingNotice } from "../extensions/billingMigrationHelper";
-import { isBillingEnabled, enableBilling } from "../extensions/checkProjectBilling";
+import { enableBilling } from "../extensions/checkProjectBilling";
+import { checkBillingEnabled } from "../gcp/cloudbilling";
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
@@ -57,7 +58,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
   );
   try {
     if (spec.billingRequired) {
-      const enabled = await isBillingEnabled(projectId);
+      const enabled = await checkBillingEnabled(projectId);
       if (!enabled) {
         await displayNode10CreateBillingNotice(spec, false);
         await enableBilling(projectId, spec.displayName || spec.name);

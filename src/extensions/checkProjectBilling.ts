@@ -105,15 +105,6 @@ async function setUpBillingAccount(projectId: string, extensionName: string) {
 }
 
 /**
- * Checks whether billing is enabled on the given project.
- * @param {string} projectId
- * @returns {Promise<boolean>} True if billing is enabled
- */
-export async function isBillingEnabled(projectId: string): Promise<boolean> {
-  return cloudbilling.checkBillingEnabled(projectId);
-}
-
-/**
  * Sets up billing for the given project.
  * @param {string} projectId
  * @param {string} extensionName
