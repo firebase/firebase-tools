@@ -1,1 +1,2 @@
 - Include `appId` in web app configuration when using the Hosting emulator (#2798).
+- Update Cloud Firestore emulator to v1.11.15 which fixes unexpected PERMISSION_DENIED errors when headers are empty (#3258)
