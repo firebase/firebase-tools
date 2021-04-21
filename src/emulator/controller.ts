@@ -336,11 +336,11 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
   hubLogger.logLabeled("BULLET", "emulators", `Starting emulators: ${targets.join(", ")}`);
 
   const projectId: string | undefined = getProjectId(options, true);
-  if (Constants.isFakeProject(projectId)) {
+  if (Constants.isDemoProject(projectId)) {
     hubLogger.logLabeled(
       "BULLET",
       "emulators",
-      `Detected fake project ID "${projectId}", emulated services will use a demo configuration and non-emulated services will fail.`
+      `Detected demo project ID "${projectId}", emulated services will use a demo configuration and attempts to access non-emulated services for this project will fail.`
     );
   }
 
@@ -422,7 +422,7 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
     const emulatorsNotRunning = ALL_SERVICE_EMULATORS.filter((e) => {
       return e !== Emulators.FUNCTIONS && !shouldStart(options, e);
     });
-    if (emulatorsNotRunning.length > 0 && !Constants.isFakeProject(projectId)) {
+    if (emulatorsNotRunning.length > 0 && !Constants.isDemoProject(projectId)) {
       functionsLogger.logLabeled(
         "WARN",
         "functions",

@@ -35,7 +35,7 @@ export async function getProjectAdminSdkConfigOrCached(
   projectId: string
 ): Promise<AdminSdkConfig | undefined> {
   // When using the emulators with a fake project Id, use a fake project config.
-  if (Constants.isFakeProject(projectId)) {
+  if (Constants.isDemoProject(projectId)) {
     return constructDefaultAdminSdkConfig(projectId);
   }
 

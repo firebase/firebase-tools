@@ -99,7 +99,7 @@ export async function fetchWebSetup(options: any): Promise<WebConfig> {
   const projectId = getProjectId(options, false);
 
   // When using the emulators with a fake project ID, use a fake web config
-  if (Constants.isFakeProject(projectId)) {
+  if (Constants.isDemoProject(projectId)) {
     return constructDefaultWebSetup(projectId);
   }
 

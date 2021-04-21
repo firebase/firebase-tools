@@ -129,7 +129,7 @@ export class Constants {
     return u.hostname || DEFAULT_HOST;
   }
 
-  static isFakeProject(projectId?: string): boolean {
+  static isDemoProject(projectId?: string): boolean {
     return !!projectId && projectId.startsWith(this.FAKE_PROJECT_ID_PREFIX);
   }
 }
