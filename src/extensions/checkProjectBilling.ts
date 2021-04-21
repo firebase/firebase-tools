@@ -8,6 +8,7 @@ import { logPrefix } from "./extensionsHelper";
 import * as prompt from "../prompt";
 import * as utils from "../utils";
 
+const ADD_BILLING_ACCOUNT ="Add new billing account"
 /**
  * Logs to console if setting up billing was successful.
  */
@@ -53,7 +54,7 @@ async function chooseBillingAccount(
   accounts: cloudbilling.BillingAccount[]
 ): Promise<void> {
   const choices = accounts.map((m) => m.displayName);
-  choices.push("Add new billing account");
+  choices.push(ADD_BILLING_ACCOUNT);
 
   const answer = await prompt.promptOnce({
     name: "billing",
@@ -66,7 +67,7 @@ Please select the one that you would like to associate with this project:`,
   });
 
   let billingEnabled: boolean;
-  if (answer === "Add new billing account") {
+  if (answer === ADD_BILLING_ACCOUNT) {
     const billingURL = `https://console.cloud.google.com/billing/linkedaccount?project=${projectId}`;
     billingEnabled = await openBillingAccount(projectId, billingURL, true);
   } else {
