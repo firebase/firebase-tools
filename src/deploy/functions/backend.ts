@@ -4,7 +4,6 @@ import * as cloudscheduler from "../../gcp/cloudscheduler";
 import * as utils from "../../utils";
 import { FirebaseError } from "../../error";
 import { Context } from "./args";
-import { cloudfunctions } from "../../gcp";
 import { logger } from "../../logger";
 
 /** Retry settings for a ScheduleSpec. */
