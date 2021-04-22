@@ -372,6 +372,13 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
   if (shouldStart(options, Emulators.HUB)) {
     const hubAddr = await getAndCheckAddress(Emulators.HUB, options);
     const hub = new EmulatorHub({ projectId, ...hubAddr });
+
+    // Log the command for analytics, we only report this for "hub"
+    // since we originally mistakenly reported emulators:start events
+    // for each emulator, by reporting the "hub" we ensure that our
+    // historical data can still be viewed.
+    track("emulators:start", "hub");
+    
     await startEmulator(hub);
   }
 
