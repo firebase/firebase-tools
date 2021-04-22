@@ -382,7 +382,6 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
     // for each emulator, by reporting the "hub" we ensure that our
     // historical data can still be viewed.
     track("emulators:start", "hub");
-    
     await startEmulator(hub);
   }
 
