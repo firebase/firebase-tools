@@ -3,6 +3,7 @@ import { configstore } from "./configstore";
 import { firebaseApiOrigin, hostingApiOrigin } from "./api";
 import * as getProjectId from "./getProjectId";
 import { logger } from "./logger";
+import { Constants } from "./emulator/constants";
 
 export interface WebConfig {
   projectId: string;
@@ -77,12 +78,30 @@ async function listAllSites(projectId: string, nextPageToken?: string): Promise<
 }
 
 /**
+ * Construct a fake configuration based on the project ID.
+ */
+function constructDefaultWebSetup(projectId: string): WebConfig {
+  return {
+    projectId,
+    databaseURL: `https://${projectId}.firebaseio.com`,
+    storageBucket: `${projectId}.appspot.com`,
+    apiKey: "fake-api-key",
+    authDomain: `${projectId}.firebaseapp.com`,
+  };
+}
+
+/**
  * TODO: deprecate this function in favor of `getAppConfig()` in `/src/management/apps.ts`
  * @param options CLI options.
  * @return web app configuration.
  */
 export async function fetchWebSetup(options: any): Promise<WebConfig> {
   const projectId = getProjectId(options, false);
+
+  // When using the emulators with a fake project ID, use a fake web config
+  if (Constants.isDemoProject(projectId)) {
+    return constructDefaultWebSetup(projectId);
+  }
 
   // Try to determine the appId from the default Hosting site, if it is linked.
   let hostingAppId: string | undefined = undefined;

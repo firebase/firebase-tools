@@ -327,19 +327,23 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
   const targets = filterEmulatorTargets(options);
   options.targets = targets;
 
-  const projectId: string | undefined = getProjectId(options, true);
-
   if (targets.length === 0) {
     throw new FirebaseError(
       `No emulators to start, run ${clc.bold("firebase init emulators")} to get started.`
     );
   }
+  const hubLogger = EmulatorLogger.forEmulator(Emulators.HUB);
+  hubLogger.logLabeled("BULLET", "emulators", `Starting emulators: ${targets.join(", ")}`);
 
-  EmulatorLogger.forEmulator(Emulators.HUB).logLabeled(
-    "BULLET",
-    "emulators",
-    `Starting emulators: ${targets.join(", ")}`
-  );
+  const projectId: string | undefined = getProjectId(options, true);
+  if (Constants.isDemoProject(projectId)) {
+    hubLogger.logLabeled(
+      "BULLET",
+      "emulators",
+      `Detected demo project ID "${projectId}", emulated services will use a demo configuration and attempts to access non-emulated services for this project will fail.`
+    );
+  }
+
   const onlyOptions: string = options.only;
   if (onlyOptions) {
     const requested: string[] = onlyOptions.split(",").map((o) => {
@@ -392,7 +396,7 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
     if (foundMetadata) {
       exportMetadata = foundMetadata;
     } else {
-      EmulatorLogger.forEmulator(Emulators.HUB).logLabeled(
+      hubLogger.logLabeled(
         "WARN",
         "emulators",
         `Could not find import/export metadata file, ${clc.bold("skipping data import!")}`
@@ -425,7 +429,7 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
     const emulatorsNotRunning = ALL_SERVICE_EMULATORS.filter((e) => {
       return e !== Emulators.FUNCTIONS && !shouldStart(options, e);
     });
-    if (emulatorsNotRunning.length > 0) {
+    if (emulatorsNotRunning.length > 0 && !Constants.isDemoProject(projectId)) {
       functionsLogger.logLabeled(
         "WARN",
         "functions",
@@ -659,7 +663,7 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
   }
 
   if (showUI && !shouldStart(options, Emulators.UI)) {
-    EmulatorLogger.forEmulator(Emulators.HUB).logLabeled(
+    hubLogger.logLabeled(
       "WARN",
       "emulators",
       "The Emulator UI requires a project ID to start. Configure your default project with 'firebase use' or pass the --project flag."
