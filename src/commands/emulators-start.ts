@@ -6,7 +6,6 @@ import { EmulatorRegistry } from "../emulator/registry";
 import { Emulators, EMULATORS_SUPPORTED_BY_UI } from "../emulator/types";
 import * as clc from "cli-color";
 import { Constants } from "../emulator/constants";
-import * as track from "../track";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const Table = require("cli-table");
