@@ -31,6 +31,19 @@ import { promptOnce } from "../prompt";
 import { logger } from "../logger";
 import { envOverride } from "../utils";
 
+export enum RegistryLaunchStage {
+  EXPERIMENTAL = "EXPERIMENTAL",
+  BETA = "BETA",
+  GA = "GA",
+  DEPRECATED = "DEPRECATED",
+  REGISTRY_LAUNCH_STAGE_UNSPECIFIED = "REGISTRY_LAUNCH_STAGE_UNSPECIFIED",
+}
+
+export enum Visibility {
+  UNLISTED = "unlisted",
+  PUBLIC = "public",
+}
+
 /**
  * SpecParamType represents the exact strings that the extensions
  * backend expects for each param type in the extensionYaml.
@@ -553,7 +566,7 @@ export async function confirmExtensionVersion(
     `You are about to publish version ${clc.green(versionId)} of ${clc.green(
       `${publisherId}/${extensionId}`
     )} to Firebase's registry of extensions.\n\n` +
-    "Once an extension version is published, it cannot be changed. If you wish to make changes after publishing, you will need to publish a new version. If you are a member of the Extensions EAP group, your published extensions will only be accessible to other members of the EAP group.\n\n" +
+    "Once an extension version is published, it cannot be changed. If you wish to make changes after publishing, you will need to publish a new version.\n\n" +
     "Do you wish to continue?";
   return await promptOnce({
     type: "confirm",
@@ -623,6 +636,25 @@ export async function instanceIdExists(projectId: string, instanceId: string): P
   return true;
 }
 
+export function isUrlPath(extInstallPath: string): boolean {
+  return urlRegex.test(extInstallPath);
+}
+
+export function isLocalPath(extInstallPath: string): boolean {
+  const trimmedPath = extInstallPath.trim();
+  return (
+    trimmedPath.startsWith("~/") ||
+    trimmedPath.startsWith("./") ||
+    trimmedPath.startsWith("../") ||
+    trimmedPath.startsWith("/") ||
+    [".", ".."].includes(trimmedPath)
+  );
+}
+
+export function isLocalOrURLPath(extInstallPath: string): boolean {
+  return isLocalPath(extInstallPath) || isUrlPath(extInstallPath);
+}
+
 /**
  * Given an update source, return where the update source came from.
  * @param sourceOrVersion path to a source or reference to a source version
@@ -640,10 +672,10 @@ export async function getSourceOrigin(sourceOrVersion: string): Promise<SourceOr
     return SourceOrigin.OFFICIAL_EXTENSION_VERSION;
   }
   // First, check if the input matches a local or URL first.
-  if (fs.existsSync(sourceOrVersion)) {
+  if (isLocalPath(sourceOrVersion)) {
     return SourceOrigin.LOCAL;
   }
-  if (urlRegex.test(sourceOrVersion)) {
+  if (isUrlPath(sourceOrVersion)) {
     return SourceOrigin.URL;
   }
   // Next, check if the source matches an extension in the official extensions registry (registry.json).
@@ -677,10 +709,11 @@ export async function getSourceOrigin(sourceOrVersion: string): Promise<SourceOr
 /**
  * Confirm if the user wants to install instance of an extension.
  */
-export async function confirmInstallInstance(): Promise<string> {
+export async function confirmInstallInstance(defaultOption?: boolean): Promise<boolean> {
   const message = `Would you like to continue installing this extension?`;
   return await promptOnce({
     type: "confirm",
     message,
+    default: defaultOption,
   });
 }

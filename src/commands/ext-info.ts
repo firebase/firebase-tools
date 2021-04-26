@@ -3,7 +3,7 @@ import * as _ from "lodash";
 
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
-import { resolveRegistryEntry, resolveSourceUrl } from "../extensions/resolveSource";
+import { resolveRegistryEntry } from "../extensions/resolveSource";
 import * as extensionsApi from "../extensions/extensionsApi";
 import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper";
 import { isLocalExtension, getLocalExtensionSpec } from "../extensions/localHelper";
@@ -31,12 +31,18 @@ export default new Command("ext:info <extensionName>")
     } else {
       await requirePermissions(options, ["firebaseextensions.sources.get"]);
       await ensureExtensionsApiEnabled(options);
-
-      const [name, version] = extensionName.split("@");
-      const registryEntry = await resolveRegistryEntry(name);
-      const sourceUrl = resolveSourceUrl(registryEntry, name, version);
-      const source = await extensionsApi.getSource(sourceUrl);
-      spec = source.spec;
+      const hasPublisherId = extensionName.split("/").length >= 2;
+      if (hasPublisherId) {
+        const nameAndVersion = extensionName.split("/")[1];
+        if (nameAndVersion.split("@").length < 2) {
+          extensionName = extensionName + "@latest";
+        }
+      } else {
+        const [name, version] = extensionName.split("@");
+        extensionName = `firebase/${name}@${version || "latest"}`;
+      }
+      const version = await extensionsApi.getExtensionVersion(extensionName);
+      spec = version.spec;
     }
 
     if (!options.markdown) {

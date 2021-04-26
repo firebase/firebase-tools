@@ -5,12 +5,13 @@ import { functionsUploadRegion } from "../../api";
 import * as gcp from "../../gcp";
 import { logSuccess, logWarning } from "../../utils";
 import { checkHttpIam } from "./checkIam";
+import * as args from "./args";
 
 const GCP_REGION = functionsUploadRegion;
 
 setGracefulCleanup();
 
-async function uploadSource(context: any): Promise<void> {
+async function uploadSource(context: args.Context): Promise<void> {
   const uploadUrl = await gcp.cloudfunctions.generateUploadUrl(context.projectId, GCP_REGION);
   context.uploadUrl = uploadUrl;
   const apiUploadUrl = uploadUrl.replace("https://storage.googleapis.com", "");
@@ -24,24 +25,30 @@ async function uploadSource(context: any): Promise<void> {
  * @param payload The deploy payload.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function deploy(context: any, options: any, payload: any): Promise<void> {
-  if (options.config.get("functions")) {
-    await checkHttpIam(context, options, payload);
+export async function deploy(
+  context: args.Context,
+  options: args.Options,
+  payload: args.Payload
+): Promise<void> {
+  if (!options.config.get("functions")) {
+    return;
+  }
 
-    if (!context.functionsSource) {
-      return;
-    }
-    try {
-      await uploadSource(context);
-      logSuccess(
-        clc.green.bold("functions:") +
-          " " +
-          clc.bold(options.config.get("functions.source")) +
-          " folder uploaded successfully"
-      );
-    } catch (err) {
-      logWarning(clc.yellow("functions:") + " Upload Error: " + err.message);
-      throw err;
-    }
+  await checkHttpIam(context, options, payload);
+
+  if (!context.functionsSource) {
+    return;
+  }
+  try {
+    await uploadSource(context);
+    logSuccess(
+      clc.green.bold("functions:") +
+        " " +
+        clc.bold(options.config.get("functions.source")) +
+        " folder uploaded successfully"
+    );
+  } catch (err) {
+    logWarning(clc.yellow("functions:") + " Upload Error: " + err.message);
+    throw err;
   }
 }

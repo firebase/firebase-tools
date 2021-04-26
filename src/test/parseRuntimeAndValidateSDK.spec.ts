@@ -76,6 +76,7 @@ describe("getRuntimeChoice", () => {
     });
 
     it("should throw error if unsupported node version set", () => {
+      // @ts-expect-error Known invalid Runtime
       expect(() => runtime.getRuntimeChoice("path/to/source", "nodejs11")).to.throw(
         FirebaseError,
         runtime.UNSUPPORTED_NODE_VERSION_FIREBASE_JSON_MSG
