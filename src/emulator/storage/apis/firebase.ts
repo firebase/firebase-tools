@@ -152,6 +152,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       isGZipped = true;
     }
 
+    // TODO: Don't serve identity / download header if not alt=media
     if (req.query.alt == "media") {
       let data = storageLayer.getBytes(req.params.bucketId, req.params.objectId);
       if (!data) {
@@ -172,6 +173,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         return;
       }
 
+      // TODO: Can't unzip
       if (isGZipped) {
         data = gunzipSync(data);
       }
