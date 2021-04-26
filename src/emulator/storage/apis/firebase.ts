@@ -49,9 +49,6 @@ async function isPermitted(opts: {
   return !!permitted;
 }
 
-/* TODO: IOS
-  Hash is base64 for some reason
- */
 /**
  * @param emulator
  */
@@ -447,6 +444,8 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
           objectContentType,
           req.body
         );
+
+        storageLayer.uploadBytes(upload.uploadId, Buffer.alloc(0));
 
         const emulatorInfo = EmulatorRegistry.getInfo(Emulators.STORAGE);
 

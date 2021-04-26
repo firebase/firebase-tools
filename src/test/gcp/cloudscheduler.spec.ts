@@ -2,13 +2,13 @@ import { expect } from "chai";
 import * as _ from "lodash";
 import * as nock from "nock";
 
-import { cloudscheduler } from "../../gcp";
+import * as cloudscheduler from "../../gcp/cloudscheduler";
 import { FirebaseError } from "../../error";
 import * as api from "../../api";
 
 const VERSION = "v1beta1";
 
-const TEST_JOB = {
+const TEST_JOB: cloudscheduler.Job = {
   name: "projects/test-project/locations/us-east1/jobs/test",
   schedule: "every 5 minutes",
   timeZone: "America/Los_Angeles",

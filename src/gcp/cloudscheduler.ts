@@ -1,20 +1,59 @@
 import * as _ from "lodash";
 import * as api from "../api";
+import * as proto from "./proto";
 import { FirebaseError } from "../error";
 import { logLabeledBullet, logLabeledSuccess } from "../utils";
 
 const VERSION = "v1beta1";
 const DEFAULT_TIME_ZONE = "America/Los_Angeles";
 
+export interface PubsubTarget {
+  topicName: string;
+  data?: string;
+  attributes?: Record<string, string>;
+}
+
+export type HttpMethod = "POST" | "GET" | "HEAD" | "PUT" | "DELETE" | "PATCH" | "OPTIONS";
+
+export interface OauthToken {
+  serviceAccountEmail: string;
+  scope: string;
+}
+
+export interface OdicToken {
+  serviceAccountEmail: string;
+  audiences: string[];
+}
+export interface HttpTarget {
+  uri: string;
+  httpMethod: HttpMethod;
+  headers?: Record<string, string>;
+  body?: string;
+
+  // oneof authorizationHeader
+  oauthToken?: OauthToken;
+  odicToken?: OdicToken;
+  // end oneof authorizationHeader;
+}
+
+export interface RetryConfig {
+  retryCount?: number;
+  maxRetryDuration?: proto.Duration;
+  maxBackoffDuration?: proto.Duration;
+  maxDoublings?: number;
+}
+
 export interface Job {
   name: string;
   schedule: string;
   description?: string;
   timeZone?: string;
-  httpTarget?: {
-    uri: string;
-    httpMethod: string;
-  };
+
+  // oneof target
+  httpTarget?: HttpTarget;
+  pubsubTarget?: PubsubTarget;
+  // end oneof target
+
   retryConfig?: {
     retryCount?: number;
     maxRetryDuration?: string;
@@ -24,6 +63,18 @@ export interface Job {
   };
 }
 
+export function assertValidJob(job: Job) {
+  proto.assertOneOf("Scheduler Job", job, "target", "httpTarget", "pubsubTarget");
+  if (job.httpTarget) {
+    proto.assertOneOf(
+      "Scheduler Job",
+      job.httpTarget,
+      "httpTarget.authorizationHeader",
+      "oauthToken",
+      "odicToken"
+    );
+  }
+}
 /**
  * Creates a cloudScheduler job.
  * If another job with that name already exists, this will return a 409.
