@@ -189,7 +189,7 @@ class Proxied<T extends ProxyTarget> {
    * Return the final proxied object.
    */
   finalize(): T {
-    return this.proxy as T;
+    return this.proxy;
   }
 }
 
@@ -714,6 +714,14 @@ async function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): Pr
   // Make firebase-admin point at the Auth emulator
   if (frb.emulators.auth) {
     process.env[Constants.FIREBASE_AUTH_EMULATOR_HOST] = formatHost(frb.emulators.auth);
+  }
+
+  // Make firebase-admin point at the Storage emulator
+  if (frb.emulators.storage) {
+    process.env[Constants.FIREBASE_STORAGE_EMULATOR_HOST] = formatHost(frb.emulators.storage);
+    process.env[Constants.CLOUD_STORAGE_EMULATOR_HOST] = `http://${formatHost(
+      frb.emulators.storage
+    )}`;
   }
 
   if (frb.emulators.pubsub) {

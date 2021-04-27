@@ -9,7 +9,8 @@ import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { displayNode10UpdateBillingNotice } from "../extensions/billingMigrationHelper";
-import { isBillingEnabled, enableBilling } from "../extensions/checkProjectBilling";
+import { enableBilling } from "../extensions/checkProjectBilling";
+import { checkBillingEnabled } from "../gcp/cloudbilling";
 import * as extensionsApi from "../extensions/extensionsApi";
 import {
   ensureExtensionsApiEnabled,
@@ -232,7 +233,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         newSourceOrigin === SourceOrigin.OFFICIAL_EXTENSION_VERSION;
       await displayChanges(existingSpec, newSpec, isOfficial);
       if (newSpec.billingRequired) {
-        const enabled = await isBillingEnabled(projectId);
+        const enabled = await checkBillingEnabled(projectId);
         if (!enabled) {
           await displayNode10UpdateBillingNotice(existingSpec, newSpec, false);
           await enableBilling(projectId, instanceId);

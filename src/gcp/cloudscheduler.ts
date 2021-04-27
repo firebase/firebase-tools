@@ -1,5 +1,6 @@
 import * as _ from "lodash";
-
+import * as api from "../api";
+import * as proto from "./proto";
 import { FirebaseError } from "../error";
 import { logLabeledBullet, logLabeledSuccess } from "../utils";
 import { logger } from "../logger";
@@ -26,7 +27,6 @@ export interface OdicToken {
   serviceAccountEmail: string;
   audiences: string[];
 }
-
 export interface HttpTarget {
   uri: string;
   httpMethod: HttpMethod;

@@ -49,9 +49,6 @@ async function isPermitted(opts: {
   return !!permitted;
 }
 
-/* TODO: IOS
-  Hash is base64 for some reason
- */
 /**
  * @param emulator
  */
@@ -155,6 +152,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       isGZipped = true;
     }
 
+    // TODO: Don't serve identity / download header if not alt=media
     if (req.query.alt == "media") {
       let data = storageLayer.getBytes(req.params.bucketId, req.params.objectId);
       if (!data) {
@@ -447,6 +445,8 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
           objectContentType,
           req.body
         );
+
+        storageLayer.uploadBytes(upload.uploadId, Buffer.alloc(0));
 
         const emulatorInfo = EmulatorRegistry.getInfo(Emulators.STORAGE);
 
