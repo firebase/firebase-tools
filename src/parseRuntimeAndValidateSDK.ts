@@ -94,7 +94,12 @@ export function getHumanFriendlyRuntimeName(runtime: Runtime): string {
 
 function getRuntimeChoiceFromPackageJson(sourceDir: string): Runtime {
   const packageJsonPath = path.join(sourceDir, "package.json");
-  const loaded = cjson.load(packageJsonPath);
+  let loaded;
+  try {
+    loaded = cjson.load(packageJsonPath);
+  } catch (err) {
+    throw new FirebaseError(`Unable to load ${packageJsonPath}: ${err}`);
+  }
   const engines = loaded.engines;
   if (!engines || !engines.node) {
     // We should really never hit this, since deploy/functions/prepare already checked that
