@@ -65,6 +65,10 @@ export interface FunctionsRuntimeBundle {
       host: string;
       port: number;
     };
+    storage?: {
+      host: string;
+      port: number;
+    };
   };
   adminSdkConfig: {
     databaseURL?: string;
