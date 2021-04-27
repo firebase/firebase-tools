@@ -330,5 +330,5 @@ export function toSerializedDate(d: Date): string {
 function generateMd5Hash(bytes: Buffer): string {
   const hash = crypto.createHash("md5");
   hash.update(bytes);
-  return hash.digest("hex");
+  return hash.digest("base64");
 }

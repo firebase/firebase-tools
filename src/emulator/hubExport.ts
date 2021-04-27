@@ -182,7 +182,7 @@ export class HubExport {
       {
         host,
         port,
-        path: `/identitytoolkit.googleapis.com/v1/projects/${this.projectId}/accounts:batchGet?limit=-1`,
+        path: `/identitytoolkit.googleapis.com/v1/projects/${this.projectId}/accounts:batchGet?maxResults=-1`,
         headers: { Authorization: "Bearer owner" },
       },
       accountsFile

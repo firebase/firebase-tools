@@ -313,6 +313,10 @@ function toExpressionValue(obj: any): ExpressionValue {
     return { string_value: obj };
   }
 
+  if (typeof obj == "boolean") {
+    return { bool_value: obj };
+  }
+
   if (typeof obj == "number") {
     if (Math.floor(obj) == obj) {
       return { int_value: obj };
@@ -362,8 +366,9 @@ function toExpressionValue(obj: any): ExpressionValue {
     };
   }
 
-  console.warn(obj);
-  throw new FirebaseError(`Can not convert variables for Cloud Storage rules runtime`);
+  throw new FirebaseError(
+    `Cannot convert "${obj}" of type ${typeof obj} for Firebase Storage rules runtime`
+  );
 }
 
 function createAuthExpressionValue(opts: RulesetVerificationOpts): ExpressionValue {

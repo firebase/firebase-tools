@@ -15,6 +15,7 @@ import * as gcp from "../../gcp";
 import * as validate from "./validate";
 import { checkRuntimeDependencies } from "./checkRuntimeDependencies";
 import { FirebaseError } from "../../error";
+import { Runtime } from "../../gcp/cloudfunctions";
 
 export async function prepare(
   context: args.Context,
@@ -26,13 +27,18 @@ export async function prepare(
   }
 
   const sourceDirName = options.config.get("functions.source");
+  if (!sourceDirName) {
+    throw new FirebaseError(
+      `No functions code detected at default location (./functions), and no functions.source defined in firebase.json`
+    );
+  }
   const sourceDir = options.config.path(sourceDirName);
   const projectDir = options.config.projectDir;
   const projectId = getProjectId(options);
 
   // Check what runtime to use, first in firebase.json, then in 'engines' field.
   const runtimeFromConfig = options.config.get("functions.runtime");
-  context.runtimeChoice = getRuntimeChoice(sourceDir, runtimeFromConfig);
+  context.runtimeChoice = getRuntimeChoice(sourceDir, runtimeFromConfig) as Runtime;
 
   // Check that all necessary APIs are enabled.
   const checkAPIsEnabled = await Promise.all([
