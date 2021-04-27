@@ -13,7 +13,7 @@ import { Command } from "../command";
 import { FirebaseError } from "../error";
 import * as getProjectId from "../getProjectId";
 import * as extensionsApi from "../extensions/extensionsApi";
-import { promptForLaunchStageConsent } from "../extensions/resolveSource";
+import { displayWarningPrompts } from "../extensions/warnings";
 import * as paramHelper from "../extensions/paramHelper";
 import {
   confirmInstallInstance,
@@ -182,15 +182,12 @@ async function confirmInstallByReference(
   if (!confirm) {
     throw new FirebaseError("Install cancelled.");
   }
-  const audienceConsent = await promptForLaunchStageConsent(extension.registryLaunchStage);
-  if (!audienceConsent) {
-    throw new FirebaseError("Install cancelled.");
-  }
-  const eapPublisherConsent = await askUserForConsent.checkAndPromptForEapPublisher(
+  const warningConsent = await displayWarningPrompts(
     ref.publisherId,
-    extVersion.spec?.sourceUrl
+    extension.registryLaunchStage,
+    extVersion
   );
-  if (!eapPublisherConsent) {
+  if (!warningConsent) {
     throw new FirebaseError("Install cancelled.");
   }
   return extVersion;
