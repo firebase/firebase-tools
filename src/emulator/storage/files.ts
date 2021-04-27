@@ -126,6 +126,18 @@ export class StorageLayer {
     this._buckets = new Map();
   }
 
+  get buckets() {
+    return this._buckets;
+  }
+
+  get files() {
+    return this._files;
+  }
+
+  get persistenceDirPath() {
+    return this._persistence.dirPath;
+  }
+
   createBucket(id: string): void {
     if (!this._buckets.has(id)) {
       this._buckets.set(id, new CloudStorageBucketMetadata(id));
