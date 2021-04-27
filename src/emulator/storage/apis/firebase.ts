@@ -173,7 +173,6 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         return;
       }
 
-      // TODO: Can't unzip
       if (isGZipped) {
         data = gunzipSync(data);
       }
