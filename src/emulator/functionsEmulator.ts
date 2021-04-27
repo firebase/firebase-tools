@@ -294,6 +294,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         database: this.getEmulatorInfo(Emulators.DATABASE),
         pubsub: this.getEmulatorInfo(Emulators.PUBSUB),
         auth: this.getEmulatorInfo(Emulators.AUTH),
+        storage: this.getEmulatorInfo(Emulators.STORAGE),
       },
       nodeMajorVersion: this.args.nodeMajorVersion,
       proto,
@@ -718,6 +719,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         database: EmulatorRegistry.getInfo(Emulators.DATABASE),
         pubsub: EmulatorRegistry.getInfo(Emulators.PUBSUB),
         auth: EmulatorRegistry.getInfo(Emulators.AUTH),
+        storage: EmulatorRegistry.getInfo(Emulators.STORAGE),
       },
       adminSdkConfig: {
         databaseURL: this.adminSdkConfig.databaseURL,
