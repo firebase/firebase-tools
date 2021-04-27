@@ -12,22 +12,29 @@ import { promptForFunctionDeletion } from "./prompts";
 import Queue from "../../throttler/queue";
 import { DeploymentTimer } from "./deploymentTimer";
 import { ErrorHandler } from "./errorHandler";
+import * as args from "./args";
+import * as deploymentPlanner from "./deploymentPlanner";
 
-export async function release(context: any, options: any, payload: any) {
+export async function release(context: args.Context, options: args.Options, payload: args.Payload) {
   if (!options.config.has("functions")) {
     return;
   }
 
   const projectId = context.projectId;
-  const sourceUrl = context.uploadUrl;
+  const sourceUrl = context.uploadUrl!;
   const appEngineLocation = getAppEngineLocation(context.firebaseConfig);
 
   const timer = new DeploymentTimer();
   const errorHandler = new ErrorHandler();
 
   const fullDeployment = createDeploymentPlan(
-    payload.functions.byRegion,
-    context.existingFunctions,
+    payload.functions!.byRegion,
+
+    // Note: this is obviously a sketchy looking cast. And it's true; the shapes don't
+    // line up. But it just so happens that we don't hit any bugs with the current
+    // implementation of the function. This will all go away once everything uses
+    // backend.FunctionSpec.
+    (context.existingFunctions! as any) as deploymentPlanner.CloudFunctionTrigger[],
     context.filters
   );
 

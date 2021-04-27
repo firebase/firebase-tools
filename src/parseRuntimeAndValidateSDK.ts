@@ -8,12 +8,13 @@ import { FirebaseError } from "./error";
 import * as utils from "./utils";
 import { logger } from "./logger";
 import * as track from "./track";
+import { Runtime } from "./gcp/cloudfunctions";
 
 // have to require this because no @types/cjson available
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const cjson = require("cjson");
 
-const MESSAGE_FRIENDLY_RUNTIMES: { [key: string]: string } = {
+const MESSAGE_FRIENDLY_RUNTIMES: Record<Runtime, string> = {
   nodejs6: "Node.js 6 (Deprecated)",
   nodejs8: "Node.js 8 (Deprecated)",
   nodejs10: "Node.js 10",
@@ -21,7 +22,7 @@ const MESSAGE_FRIENDLY_RUNTIMES: { [key: string]: string } = {
   nodejs14: "Node.js 14 (Beta)",
 };
 
-const ENGINE_RUNTIMES: { [key: string]: string } = {
+const ENGINE_RUNTIMES: Record<number, Runtime> = {
   6: "nodejs6",
   8: "nodejs8",
   10: "nodejs10",
@@ -87,13 +88,18 @@ function functionsSDKTooOld(sourceDir: string, minRange: string): boolean {
  * @param runtime name of runtime in raw format, ie, "nodejs8" or "nodejs10"
  * @return A human-friendly string describing the runtime.
  */
-export function getHumanFriendlyRuntimeName(runtime: string): string {
+export function getHumanFriendlyRuntimeName(runtime: Runtime): string {
   return _.get(MESSAGE_FRIENDLY_RUNTIMES, runtime, runtime);
 }
 
-function getRuntimeChoiceFromPackageJson(sourceDir: string): string {
+function getRuntimeChoiceFromPackageJson(sourceDir: string): Runtime {
   const packageJsonPath = path.join(sourceDir, "package.json");
-  const loaded = cjson.load(packageJsonPath);
+  let loaded;
+  try {
+    loaded = cjson.load(packageJsonPath);
+  } catch (err) {
+    throw new FirebaseError(`Unable to load ${packageJsonPath}: ${err}`);
+  }
   const engines = loaded.engines;
   if (!engines || !engines.node) {
     // We should really never hit this, since deploy/functions/prepare already checked that
@@ -111,7 +117,7 @@ function getRuntimeChoiceFromPackageJson(sourceDir: string): string {
  * @param runtimeFromConfig runtime from the `functions` section of firebase.json file (may be empty).
  * @return The runtime, e.g. `nodejs12`.
  */
-export function getRuntimeChoice(sourceDir: string, runtimeFromConfig?: string): string {
+export function getRuntimeChoice(sourceDir: string, runtimeFromConfig?: Runtime | ""): Runtime {
   const runtime = runtimeFromConfig || getRuntimeChoiceFromPackageJson(sourceDir);
   const errorMessage =
     (runtimeFromConfig
@@ -123,6 +129,9 @@ export function getRuntimeChoice(sourceDir: string, runtimeFromConfig?: string):
     throw new FirebaseError(errorMessage, { exit: 1 });
   }
 
+  // NOTE: We could consider removing nodejs6 and nodejs8 from cloudfunctions.Runtimes and
+  // make the methods here take a Runtime | RemovedRuntime. Then we'd throw if it is a RemovedRuntime
+  // and only forward a valid Runtime.
   if (["nodejs6", "nodejs8"].includes(runtime)) {
     track("functions_runtime_notices", `${runtime}_deploy_prohibited`);
     throw new FirebaseError(errorMessage, { exit: 1 });
