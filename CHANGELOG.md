@@ -1,3 +1,4 @@
 - Include `appId` in web app configuration when using the Hosting emulator (#2798).
 - Add support for emulating the `demo-*` project ID namespace with fake Admin and Web SDK configurations (#3291).
 - Update Cloud Firestore emulator to v1.11.15 which fixes unexpected PERMISSION_DENIED errors when headers are empty (#3258)
+- Fix Auth emulator export only exporting 20 users. (#3311)
