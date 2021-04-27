@@ -2,7 +2,7 @@ import * as _ from "lodash";
 
 import { FirebaseError } from "../error";
 import { logLabeledBullet, logLabeledSuccess } from "../utils";
-import { logger } from '../logger';
+import { logger } from "../logger";
 import * as api from "../api";
 import * as proto from "./proto";
 
