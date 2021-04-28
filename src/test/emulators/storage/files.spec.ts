@@ -6,7 +6,7 @@ describe("files", () => {
   it("can serialize and deserialize metadata", () => {
     const cf = new StorageCloudFunctions("demo-project");
     const metadata = new StoredFileMetadata(
-      Buffer.from('Hello, World!'),
+      Buffer.from("Hello, World!"),
       {
         name: "name",
         bucket: "bucket",
