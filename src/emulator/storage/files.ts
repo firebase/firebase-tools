@@ -261,7 +261,7 @@ export class StorageLayer {
         bucket: upload.bucketId,
         contentType: "",
         contentEncoding: upload.metadata.contentEncoding,
-        customMetadata: upload.metadata.metadata
+        customMetadata: upload.metadata.metadata,
       },
       upload.metadata,
       this._cloudFunctions
@@ -290,7 +290,7 @@ export class StorageLayer {
         bucket: bucket,
         contentType: "",
         contentEncoding: incomingMetadata.contentEncoding,
-        customMetadata: incomingMetadata.metadata
+        customMetadata: incomingMetadata.metadata,
       },
       incomingMetadata,
       this._cloudFunctions
@@ -478,27 +478,27 @@ export class StorageLayer {
     return this._persistence.dirPath;
   }
 
-  async export(storageExportPath: string) {
+  export(storageExportPath: string) {
     // Export a list of all known bucket IDs, which can be used to reconstruct
     // the bucket metadata.
     const bucketsList: BucketsList = {
-      buckets: []
+      buckets: [],
     };
     for (const b of this.listBuckets()) {
       bucketsList.buckets.push({ id: b.id });
-    };
+    }
     const bucketsFilePath = path.join(storageExportPath, "buckets.json");
     fs.writeFileSync(bucketsFilePath, JSON.stringify(bucketsList, undefined, 2));
 
     // Recursively copy all file blobs
-    const blobsDirPath = path.join(storageExportPath, 'blobs');
+    const blobsDirPath = path.join(storageExportPath, "blobs");
     if (!fs.existsSync(blobsDirPath)) {
       fs.mkdirSync(blobsDirPath, { recursive: true });
     }
     fse.copySync(this.dirPath, blobsDirPath);
 
     // Store a metadata file for each file
-    const metadataDirPath = path.join(storageExportPath, 'metadata');
+    const metadataDirPath = path.join(storageExportPath, "metadata");
     if (!fs.existsSync(metadataDirPath)) {
       fs.mkdirSync(metadataDirPath, { recursive: true });
     }
@@ -514,7 +514,7 @@ export class StorageLayer {
     }
   }
 
-  async import(storageExportPath: string) {
+  import(storageExportPath: string) {
     // Restore list of buckets
     const bucketsFile = path.join(storageExportPath, "buckets.json");
     const bucketsList = JSON.parse(fs.readFileSync(bucketsFile).toString()) as BucketsList;
@@ -527,7 +527,10 @@ export class StorageLayer {
     const metadataDir = path.join(storageExportPath, "metadata");
     const metadataList = this.walkDirSync(metadataDir);
     for (const f of metadataList) {
-      const metadata = StoredFileMetadata.fromJSON(fs.readFileSync(f).toString(), this._cloudFunctions);
+      const metadata = StoredFileMetadata.fromJSON(
+        fs.readFileSync(f).toString(),
+        this._cloudFunctions
+      );
 
       const metadataPath = path.relative(metadataDir, f);
       const blobPath = metadataPath.substring(0, metadataPath.length - 5); // Subtract .json
@@ -551,7 +554,7 @@ export class StorageLayer {
         res.push(p);
       }
     });
-    
+
     return res;
   }
 }

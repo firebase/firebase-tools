@@ -217,7 +217,7 @@ export class HubExport {
     );
   }
 
-  private async exportStorage(metadata: ExportMetadata): Promise<void> {    
+  private async exportStorage(metadata: ExportMetadata): Promise<void> {
     const storageEmulator = EmulatorRegistry.get(Emulators.STORAGE) as StorageEmulator;
 
     // Clear the export
@@ -229,7 +229,7 @@ export class HubExport {
 
     const storageHost = `http://${EmulatorRegistry.getInfoHostString(storageEmulator.getInfo())}`;
     const storageExportBody = {
-      path: storageExportPath
+      path: storageExportPath,
     };
 
     return api.request("POST", "/internal/export", {

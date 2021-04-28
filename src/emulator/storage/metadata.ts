@@ -9,10 +9,10 @@ type RulesResourceMetadataOverrides = {
   [Property in keyof RulesResourceMetadata]?: RulesResourceMetadata[Property];
 };
 
-type SerializedFileMetadata = Omit<StoredFileMetadata, 'timeCreated' | 'updated'> & {
+type SerializedFileMetadata = Omit<StoredFileMetadata, "timeCreated" | "updated"> & {
   timeCreated: string;
   updated: string;
-}
+};
 
 /**
  * Note: all fields of this object which do not begin with _ are serialized
@@ -41,9 +41,9 @@ export class StoredFileMetadata {
   constructor(
     bytes: Buffer,
     opts: Partial<SerializedFileMetadata> & {
-      name: string,
-      bucket: string,
-      contentType: string,
+      name: string;
+      bucket: string;
+      contentType: string;
     },
     incomingMetadata: IncomingMetadata | undefined,
     private _cloudFunctions: StorageCloudFunctions
@@ -80,7 +80,7 @@ export class StoredFileMetadata {
       this.downloadTokens = "";
       this.addDownloadToken();
     }
-    
+
     if (incomingMetadata) {
       this.update(incomingMetadata);
     }
@@ -189,13 +189,17 @@ export class StoredFileMetadata {
   }
 
   public toJSON(): string {
-    return JSON.stringify(this, (key, value) => {
-      if (key.startsWith("_")) {
-        return undefined;
-      }
+    return JSON.stringify(
+      this,
+      (key, value) => {
+        if (key.startsWith("_")) {
+          return undefined;
+        }
 
-      return value;
-    }, 2);
+        return value;
+      },
+      2
+    );
   }
 }
 

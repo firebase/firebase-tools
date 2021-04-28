@@ -650,9 +650,7 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
     if (exportMetadata.storage) {
       const importDirAbsPath = path.resolve(options.import);
       const storageExportDir = path.resolve(importDirAbsPath, exportMetadata.storage.path);
-      await storageEmulator.storageLayer.import(storageExportDir);
-      
-      console.log(storageEmulator.storageLayer.listItemsAndPrefixes('default-bucket', '', '/', undefined, 100));
+      storageEmulator.storageLayer.import(storageExportDir);
     }
   }
 
