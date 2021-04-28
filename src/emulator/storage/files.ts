@@ -249,11 +249,14 @@ export class StorageLayer {
 
     const bytes = this._persistence.readBytes(upload.fileLocation, upload.currentBytesUploaded);
     const finalMetadata = new StoredFileMetadata(
-      upload.bucketId,
-      upload.objectId,
       bytes,
-      "",
-      upload.metadata.contentEncoding,
+      {
+        name: upload.objectId,
+        bucket: upload.bucketId,
+        contentType: "",
+        contentEncoding: upload.metadata.contentEncoding,
+        customMetadata: upload.metadata.metadata
+      },
       upload.metadata,
       this._cloudFunctions
     );
@@ -275,11 +278,14 @@ export class StorageLayer {
     const filePath = this.path(bucket, object);
     this._persistence.appendBytes(filePath, bytes);
     const md = new StoredFileMetadata(
-      bucket,
-      object,
       bytes,
-      "",
-      incomingMetadata.contentEncoding,
+      {
+        name: object,
+        bucket: bucket,
+        contentType: "",
+        contentEncoding: incomingMetadata.contentEncoding,
+        customMetadata: incomingMetadata.metadata
+      },
       incomingMetadata,
       this._cloudFunctions
     );
@@ -478,10 +484,9 @@ export class StorageLayer {
     fs.writeFileSync(bucketsFilePath, JSON.stringify(bucketsFileData, undefined, 2));
 
     // Recursively copy all file blobs
-    // TODO: Clear the folder
     const blobsDirPath = path.join(storageExportPath, 'blobs');
     if (!fs.existsSync(blobsDirPath)) {
-      fs.mkdirSync(blobsDirPath);
+      fs.mkdirSync(blobsDirPath, { recursive: true });
     }
     fse.copySync(this.dirPath, blobsDirPath);
 
@@ -498,10 +503,7 @@ export class StorageLayer {
       if (!fs.existsSync(metadataExportDirPath)) {
         fs.mkdirSync(metadataExportDirPath, { recursive: true });
       }
-
-      // TODO: Remove private stuff like _cloudFunctions
-      // TODO: is it ok to stringify a complex object like this?
-      fs.writeFileSync(metadataExportPath, JSON.stringify(file.metadata, undefined, 2));
+      fs.writeFileSync(metadataExportPath, file.metadata.toJSON());
     }
   }
 }
