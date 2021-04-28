@@ -586,7 +586,7 @@ describe("import/export end to end", () => {
       }
     );
 
-    const credPath = path.join(__dirname, "service-account-key.json")
+    const credPath = path.join(__dirname, "service-account-key.json");
     const credential = fs.existsSync(credPath)
       ? admin.credential.cert(credPath)
       : admin.credential.applicationDefault();
@@ -600,7 +600,7 @@ describe("import/export end to end", () => {
       {
         projectId: FIREBASE_PROJECT,
         storageBucket: "bucket-a",
-        credential
+        credential,
       },
       "storage-export-a"
     );
@@ -608,7 +608,7 @@ describe("import/export end to end", () => {
       {
         projectId: FIREBASE_PROJECT,
         storageBucket: "bucket-b",
-        credential
+        credential,
       },
       "storage-export-b"
     );
