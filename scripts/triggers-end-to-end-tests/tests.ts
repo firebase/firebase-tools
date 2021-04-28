@@ -614,10 +614,10 @@ describe("import/export end to end", () => {
     );
 
     // Write data to two buckets
-    await aApp.storage().bucket().file("a/b.txt").save("hello, world!");
-    await aApp.storage().bucket().file("c/d.txt").save("hello, world!");
-    await bApp.storage().bucket().file("e/f.txt").save("hello, world!");
-    await bApp.storage().bucket().file("g/h.txt").save("hello, world!");
+    await aApp.storage().bucket().file("a/b.txt").save("a/b hello, world!");
+    await aApp.storage().bucket().file("c/d.txt").save("c/d hello, world!");
+    await bApp.storage().bucket().file("e/f.txt").save("e/f hello, world!");
+    await bApp.storage().bucket().file("g/h.txt").save("g/h hello, world!");
 
     // Ask for export
     const exportCLI = new CLIProcess("2", __dirname);
@@ -643,7 +643,7 @@ describe("import/export end to end", () => {
     await importCLI.start(
       "emulators:start",
       FIREBASE_PROJECT,
-      ["--only", "database", "--import", exportPath, "--export-on-exit"],
+      ["--only", "storage", "--import"],
       (data: unknown) => {
         if (typeof data != "string" && !Buffer.isBuffer(data)) {
           throw new Error(`data is not a string or buffer (${typeof data})`);
@@ -664,6 +664,6 @@ describe("import/export end to end", () => {
     // Read a file and check content
     const [f] = await aApp.storage().bucket().file("a/b.txt").get();
     const [buf] = await f.download();
-    expect(buf.toString()).to.eql("hello, world!");
+    expect(buf.toString()).to.eql("a/b hello, world!");
   });
 });
