@@ -3,6 +3,9 @@
   "firestore": {
     "rules": "firestore.rules"
   },
+  "storage": {
+    "rules": "storage.rules"
+  },
   "functions": {},
   "emulators": {
     "hub": {
