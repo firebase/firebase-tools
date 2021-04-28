@@ -588,7 +588,6 @@ describe("import/export end to end", () => {
 
     // Write some data to export
     const config = readConfig();
-    const port = config.emulators!.storage.port;
     const aApp = admin.initializeApp(
       {
         projectId: FIREBASE_PROJECT,

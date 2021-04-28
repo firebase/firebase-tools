@@ -188,9 +188,9 @@ export class StoredFileMetadata {
     return new StoredFileMetadata(Buffer.from([]), opts, undefined, cloudFunctions);
   }
 
-  public toJSON(): string {
+  public static toJSON(metadata: StoredFileMetadata): string {
     return JSON.stringify(
-      this,
+      metadata,
       (key, value) => {
         if (key.startsWith("_")) {
           return undefined;

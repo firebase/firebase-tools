@@ -510,7 +510,7 @@ export class StorageLayer {
       if (!fs.existsSync(metadataExportDirPath)) {
         fs.mkdirSync(metadataExportDirPath, { recursive: true });
       }
-      fs.writeFileSync(metadataExportPath, file.metadata.toJSON());
+      fs.writeFileSync(metadataExportPath, StoredFileMetadata.toJSON(file.metadata));
     }
   }
 
