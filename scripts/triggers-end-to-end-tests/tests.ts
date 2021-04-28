@@ -643,7 +643,7 @@ describe("import/export end to end", () => {
     await importCLI.start(
       "emulators:start",
       FIREBASE_PROJECT,
-      ["--only", "storage", "--import"],
+      ["--only", "storage", "--import", exportPath],
       (data: unknown) => {
         if (typeof data != "string" && !Buffer.isBuffer(data)) {
           throw new Error(`data is not a string or buffer (${typeof data})`);
