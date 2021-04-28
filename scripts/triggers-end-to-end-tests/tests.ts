@@ -587,12 +587,11 @@ describe("import/export end to end", () => {
     );
 
     // Write some data to export
-    const config = readConfig();
     const aApp = admin.initializeApp(
       {
         projectId: FIREBASE_PROJECT,
         storageBucket: "bucket-a",
-        credential: ADMIN_CREDENTIAL,
+        credential: admin.credential.cert("service-account-key.json"),
       },
       "storage-export-a"
     );
@@ -600,7 +599,7 @@ describe("import/export end to end", () => {
       {
         projectId: FIREBASE_PROJECT,
         storageBucket: "bucket-b",
-        credential: ADMIN_CREDENTIAL,
+        credential: admin.credential.cert("service-account-key.json"),
       },
       "storage-export-b"
     );
