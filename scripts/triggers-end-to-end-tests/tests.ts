@@ -7,6 +7,7 @@ import * as path from "path";
 
 import { CLIProcess } from "../integration-helpers/cli";
 import { FrameworkOptions, TriggerEndToEndTest } from "../integration-helpers/framework";
+import { assert } from "sinon";
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
 const ADMIN_CREDENTIAL = {
@@ -565,5 +566,97 @@ describe("import/export end to end", () => {
     );
 
     await importCLI.stop();
+  });
+
+  it("should be able to import/export storage data", async function (this) {
+    this.timeout(2 * TEST_SETUP_TIMEOUT);
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    // Start up emulator suite
+    const emulatorsCLI = new CLIProcess("1", __dirname);
+    await emulatorsCLI.start(
+      "emulators:start",
+      FIREBASE_PROJECT,
+      ["--only", "storage"],
+      (data: unknown) => {
+        if (typeof data != "string" && !Buffer.isBuffer(data)) {
+          throw new Error(`data is not a string or buffer (${typeof data})`);
+        }
+        return data.includes(ALL_EMULATORS_STARTED_LOG);
+      }
+    );
+
+    // Write some data to export
+    const config = readConfig();
+    const port = config.emulators!.storage.port;
+    const aApp = admin.initializeApp(
+      {
+        projectId: FIREBASE_PROJECT,
+        storageBucket: "bucket-a",
+        credential: ADMIN_CREDENTIAL,
+      },
+      "storage-export-a"
+    );
+    const bApp = admin.initializeApp(
+      {
+        projectId: FIREBASE_PROJECT,
+        storageBucket: "bucket-b",
+        credential: ADMIN_CREDENTIAL,
+      },
+      "storage-export-b"
+    );
+
+    // Write data to two buckets
+    await aApp.storage().bucket().file("a/b.txt").save("hello, world!");
+    await aApp.storage().bucket().file("c/d.txt").save("hello, world!");
+    await bApp.storage().bucket().file("e/f.txt").save("hello, world!");
+    await bApp.storage().bucket().file("g/h.txt").save("hello, world!");
+
+    // Ask for export
+    const exportCLI = new CLIProcess("2", __dirname);
+    const exportPath = fs.mkdtempSync(path.join(os.tmpdir(), "emulator-data"));
+    await exportCLI.start("emulators:export", FIREBASE_PROJECT, [exportPath], (data: unknown) => {
+      if (typeof data != "string" && !Buffer.isBuffer(data)) {
+        throw new Error(`data is not a string or buffer (${typeof data})`);
+      }
+      return data.includes("Export complete");
+    });
+    await exportCLI.stop();
+
+    // Check that the right export files are created
+    const storageExportPath = path.join(exportPath, "storage_export");
+    const storageExportFiles = fs.readdirSync(storageExportPath);
+    expect(storageExportFiles).to.eql(["buckets.json", "blobs", "metadata"]);
+
+    // Stop the suite
+    await emulatorsCLI.stop();
+
+    // Attempt to import
+    const importCLI = new CLIProcess("3", __dirname);
+    await importCLI.start(
+      "emulators:start",
+      FIREBASE_PROJECT,
+      ["--only", "database", "--import", exportPath, "--export-on-exit"],
+      (data: unknown) => {
+        if (typeof data != "string" && !Buffer.isBuffer(data)) {
+          throw new Error(`data is not a string or buffer (${typeof data})`);
+        }
+        return data.includes(ALL_EMULATORS_STARTED_LOG);
+      }
+    );
+
+    // List the files
+    const [aFiles] = await aApp.storage().bucket().getFiles();
+    const aFileNames = aFiles.map((f) => f.name);
+    expect(aFileNames).to.eql(["a/b.txt", "c/d.txt"]);
+
+    const [bFiles] = await bApp.storage().bucket().getFiles();
+    const bFileNames = bFiles.map((f) => f.name);
+    expect(bFileNames).to.eql(["e/f.txt", "g/h.txt"]);
+
+    // Read a file and check content
+    const [f] = await aApp.storage().bucket().file("a/b.txt").get();
+    const [buf] = await f.download();
+    expect(buf.toString()).to.eql("hello, world!");
   });
 });

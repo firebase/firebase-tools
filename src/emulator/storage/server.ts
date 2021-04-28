@@ -63,7 +63,7 @@ export function createApp(
     })
   );
 
-  app.post("/internal/export", async (req, res) => {
+  app.post("/internal/export", (req, res) => {
     const path = req.body.path;
     if (!path) {
       res.sendStatus(400);
