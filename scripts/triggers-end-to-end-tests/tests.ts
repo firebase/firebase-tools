@@ -632,8 +632,8 @@ describe("import/export end to end", () => {
 
     // Check that the right export files are created
     const storageExportPath = path.join(exportPath, "storage_export");
-    const storageExportFiles = fs.readdirSync(storageExportPath);
-    expect(storageExportFiles).to.eql(["buckets.json", "blobs", "metadata"]);
+    const storageExportFiles = fs.readdirSync(storageExportPath).sort();
+    expect(storageExportFiles).to.eql(["blobs", "buckets.json", "metadata"]);
 
     // Stop the suite
     await emulatorsCLI.stop();
@@ -654,11 +654,11 @@ describe("import/export end to end", () => {
 
     // List the files
     const [aFiles] = await aApp.storage().bucket().getFiles();
-    const aFileNames = aFiles.map((f) => f.name);
+    const aFileNames = aFiles.map((f) => f.name).sort();
     expect(aFileNames).to.eql(["a/b.txt", "c/d.txt"]);
 
     const [bFiles] = await bApp.storage().bucket().getFiles();
-    const bFileNames = bFiles.map((f) => f.name);
+    const bFileNames = bFiles.map((f) => f.name).sort();
     expect(bFileNames).to.eql(["e/f.txt", "g/h.txt"]);
 
     // Read a file and check content
