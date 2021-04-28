@@ -220,10 +220,12 @@ export class HubExport {
   private async exportStorage(metadata: ExportMetadata): Promise<void> {    
     const storageEmulator = EmulatorRegistry.get(Emulators.STORAGE) as StorageEmulator;
 
+    // Clear the export
     const storageExportPath = path.join(this.exportPath, metadata.storage!.path);
-    if (!fs.existsSync(storageExportPath)) {
-      fs.mkdirSync(storageExportPath);
+    if (fs.existsSync(storageExportPath)) {
+      fse.removeSync(storageExportPath);
     }
+    fs.mkdirSync(storageExportPath, { recursive: true });
 
     const storageHost = `http://${EmulatorRegistry.getInfoHostString(storageEmulator.getInfo())}`;
     const storageExportBody = {

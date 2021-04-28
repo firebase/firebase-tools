@@ -10,6 +10,7 @@ import {
 } from "./metadata";
 import * as path from "path";
 import * as fs from "fs";
+import * as fse from "fs-extra";
 import * as rimraf from "rimraf";
 import { StorageCloudFunctions } from "./cloudFunctions";
 
@@ -124,18 +125,6 @@ export class StorageLayer {
     this._persistence = new Persistence(`${tmpdir()}/firebase/storage/blobs`);
     this._uploads = new Map();
     this._buckets = new Map();
-  }
-
-  get buckets() {
-    return this._buckets;
-  }
-
-  get files() {
-    return this._files;
-  }
-
-  get persistenceDirPath() {
-    return this._persistence.dirPath;
   }
 
   createBucket(id: string): void {
@@ -475,6 +464,45 @@ export class StorageLayer {
 
   public get dirPath(): string {
     return this._persistence.dirPath;
+  }
+
+  async export(storageExportPath: string) {
+    // Export a list of all known bucket IDs, which can be used to reconstruct
+    // the bucket metadata.
+    const buckets: { id: string }[] = [];
+    for (const b of this.listBuckets()) {
+      buckets.push({ id: b.id });
+    };
+    const bucketsFileData = { buckets };
+    const bucketsFilePath = path.join(storageExportPath, "buckets.json");
+    fs.writeFileSync(bucketsFilePath, JSON.stringify(bucketsFileData, undefined, 2));
+
+    // Recursively copy all file blobs
+    // TODO: Clear the folder
+    const blobsDirPath = path.join(storageExportPath, 'blobs');
+    if (!fs.existsSync(blobsDirPath)) {
+      fs.mkdirSync(blobsDirPath);
+    }
+    fse.copySync(this.dirPath, blobsDirPath);
+
+    // Store a metadata file for each file
+    const metadataDirPath = path.join(storageExportPath, 'metadata');
+    if (!fs.existsSync(metadataDirPath)) {
+      fs.mkdirSync(metadataDirPath, { recursive: true });
+    }
+
+    for (const [p, file] of this._files.entries()) {
+      const metadataExportPath = path.join(metadataDirPath, p) + ".json";
+      const metadataExportDirPath = path.dirname(metadataExportPath);
+
+      if (!fs.existsSync(metadataExportDirPath)) {
+        fs.mkdirSync(metadataExportDirPath, { recursive: true });
+      }
+
+      // TODO: Remove private stuff like _cloudFunctions
+      // TODO: is it ok to stringify a complex object like this?
+      fs.writeFileSync(metadataExportPath, JSON.stringify(file.metadata, undefined, 2));
+    }
   }
 }
 

@@ -69,7 +69,7 @@ export function createApp(
       res.sendStatus(400);
     }
 
-    await emulator.export(path);
+    await storageLayer.export(path);
     res.sendStatus(200);
   });
 

@@ -151,49 +151,6 @@ export class StorageEmulator implements EmulatorInstance {
     return this.destroyServer ? this.destroyServer() : Promise.resolve();
   }
 
-  async export(storageExportPath: string) {
-    console.log("=================");
-    console.log(this.storageLayer.buckets);
-    console.log(this.storageLayer.files);
-    console.log("=================");
-
-    // Export a list of all known bucket IDs, which can be used to reconstruct
-    // the bucket metadata.
-    const buckets: { id: string }[] = [];
-    this.storageLayer.buckets.forEach(b => {
-      buckets.push({ id: b.id });
-    });
-    const bucketsFileData = { buckets };
-    const bucketsFilePath = path.join(storageExportPath, "buckets.json");
-    fs.writeFileSync(bucketsFilePath, JSON.stringify(bucketsFileData, undefined, 2));
-
-    // Recursively copy all file blobs
-    const blobsDirPath = path.join(storageExportPath, 'blobs');
-    if (!fs.existsSync(blobsDirPath)) {
-      fs.mkdirSync(blobsDirPath);
-    }
-    fse.copySync(this.storageLayer.persistenceDirPath, blobsDirPath);
-
-    // Store a metadata file for each file
-    const metadataDirPath = path.join(storageExportPath, 'metadata');
-    if (!fs.existsSync(metadataDirPath)) {
-      fs.mkdirSync(metadataDirPath, { recursive: true });
-    }
-
-    for (const [p, file] of this.storageLayer.files) {
-      const fileDirPath = path.dirname(p);
-      const fileExportDirPath = path.join(metadataDirPath, fileDirPath);
-      if (!fs.existsSync(fileExportDirPath)) {
-        fs.mkdirSync(fileExportDirPath, { recursive: true });
-      }
-
-      const metadataExportPath = path.join(metadataDirPath, file.path) + ".json";
-
-      // TODO: is it ok to stringify a complex object like this?
-      fs.writeFileSync(metadataExportPath, JSON.stringify(file.metadata));
-    }
-  }
-
   getInfo(): EmulatorInfo {
     const host = this.args.host || Constants.getDefaultHost(Emulators.STORAGE);
     const port = this.args.port || Constants.getDefaultPort(Emulators.STORAGE);
