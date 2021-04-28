@@ -646,6 +646,14 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
       rules: options.config.path(storageConfig.rules),
     });
     await startEmulator(storageEmulator);
+
+    if (exportMetadata.storage) {
+      const importDirAbsPath = path.resolve(options.import);
+      const storageExportDir = path.resolve(importDirAbsPath, exportMetadata.storage.path);
+      await storageEmulator.storageLayer.import(storageExportDir);
+      
+      console.log(storageEmulator.storageLayer.listItemsAndPrefixes('default-bucket', '', '/', undefined, 100));
+    }
   }
 
   // Hosting emulator needs to start after all of the others so that we can detect

@@ -7,13 +7,11 @@ import { StorageLayer } from "./files";
 import * as chokidar from "chokidar";
 import { EmulatorLogger } from "../emulatorLogger";
 import * as fs from "fs";
-import * as fse from "fs-extra";
 import { StorageRulesetInstance, StorageRulesRuntime } from "./rules/runtime";
 import { Source } from "./rules/types";
 import { FirebaseError } from "../../error";
 import { getDownloadDetails } from "../downloadableEmulators";
 import express = require("express");
-import { StorageCloudFunctions } from "./cloudFunctions";
 
 export interface StorageEmulatorArgs {
   projectId: string;
@@ -56,7 +54,6 @@ export class StorageEmulator implements EmulatorInstance {
     const { host, port } = this.getInfo();
     await this._rulesRuntime.start(this.args.auto_download);
     this._app = await createApp(this.args.projectId, this);
-    this._storageLayer = new StorageLayer(this.args.projectId);
 
     if (typeof this.args.rules == "string") {
       const rulesFile = this.args.rules;

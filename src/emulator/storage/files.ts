@@ -14,6 +14,12 @@ import * as fse from "fs-extra";
 import * as rimraf from "rimraf";
 import { StorageCloudFunctions } from "./cloudFunctions";
 
+interface BucketsList {
+  buckets: {
+    id: string;
+  }[];
+}
+
 export class StoredFile {
   private _metadata!: StoredFileMetadata;
   public get metadata(): StoredFileMetadata {
@@ -475,13 +481,14 @@ export class StorageLayer {
   async export(storageExportPath: string) {
     // Export a list of all known bucket IDs, which can be used to reconstruct
     // the bucket metadata.
-    const buckets: { id: string }[] = [];
-    for (const b of this.listBuckets()) {
-      buckets.push({ id: b.id });
+    const bucketsList: BucketsList = {
+      buckets: []
     };
-    const bucketsFileData = { buckets };
+    for (const b of this.listBuckets()) {
+      bucketsList.buckets.push({ id: b.id });
+    };
     const bucketsFilePath = path.join(storageExportPath, "buckets.json");
-    fs.writeFileSync(bucketsFilePath, JSON.stringify(bucketsFileData, undefined, 2));
+    fs.writeFileSync(bucketsFilePath, JSON.stringify(bucketsList, undefined, 2));
 
     // Recursively copy all file blobs
     const blobsDirPath = path.join(storageExportPath, 'blobs');
@@ -505,6 +512,47 @@ export class StorageLayer {
       }
       fs.writeFileSync(metadataExportPath, file.metadata.toJSON());
     }
+  }
+
+  async import(storageExportPath: string) {
+    // Restore list of buckets
+    const bucketsFile = path.join(storageExportPath, "buckets.json");
+    const bucketsList = JSON.parse(fs.readFileSync(bucketsFile).toString()) as BucketsList;
+    for (const b of bucketsList.buckets) {
+      const bucketMetadata = new CloudStorageBucketMetadata(b.id);
+      this._buckets.set(b.id, bucketMetadata);
+    }
+
+    // Restore all metadata
+    const metadataDir = path.join(storageExportPath, "metadata");
+    const metadataList = this.walkDirSync(metadataDir);
+    for (const f of metadataList) {
+      const metadata = StoredFileMetadata.fromJSON(fs.readFileSync(f).toString(), this._cloudFunctions);
+
+      const metadataPath = path.relative(metadataDir, f);
+      const blobPath = metadataPath.substring(0, metadataPath.length - 5); // Subtract .json
+
+      const file = new StoredFile(metadata, blobPath);
+      this._files.set(blobPath, file);
+    }
+
+    // Recursively copy all blobs
+    const blobsDir = path.join(storageExportPath, "blobs");
+    fse.copySync(blobsDir, this.dirPath);
+  }
+
+  private walkDirSync(dir: string, res: string[] = []): string[] {
+    const files = fs.readdirSync(dir);
+    files.forEach((file) => {
+      const p = path.join(dir, file);
+      if (fs.statSync(p).isDirectory()) {
+        res = this.walkDirSync(p, res);
+      } else {
+        res.push(p);
+      }
+    });
+    
+    return res;
   }
 }
 
