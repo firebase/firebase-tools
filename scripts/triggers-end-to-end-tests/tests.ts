@@ -586,12 +586,21 @@ describe("import/export end to end", () => {
       }
     );
 
+    const credPath = path.join(__dirname, "service-account-key.json")
+    const credential = fs.existsSync(credPath)
+      ? admin.credential.cert(credPath)
+      : admin.credential.applicationDefault();
+
+    const config = readConfig();
+    const port = config.emulators!.storage.port;
+    process.env.STORAGE_EMULATOR_HOST = `http://localhost:${port}`;
+
     // Write some data to export
     const aApp = admin.initializeApp(
       {
         projectId: FIREBASE_PROJECT,
         storageBucket: "bucket-a",
-        credential: admin.credential.cert("service-account-key.json"),
+        credential
       },
       "storage-export-a"
     );
@@ -599,7 +608,7 @@ describe("import/export end to end", () => {
       {
         projectId: FIREBASE_PROJECT,
         storageBucket: "bucket-b",
-        credential: admin.credential.cert("service-account-key.json"),
+        credential
       },
       "storage-export-b"
     );
