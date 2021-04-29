@@ -497,13 +497,13 @@ export class StorageLayer {
     // Recursively copy all file blobs
     const blobsDirPath = path.join(storageExportPath, "blobs");
     await fse.ensureDir(blobsDirPath);
-    await fse.copy(this.dirPath, blobsDirPath);
+    await fse.copy(this.dirPath, blobsDirPath, { recursive: true });
 
     // Store a metadata file for each file
     const metadataDirPath = path.join(storageExportPath, "metadata");
     await fse.ensureDir(metadataDirPath);
 
-    for (const [p, file] of this._files.entries()) {
+    for await (const [p, file] of this._files.entries()) {
       const metadataExportPath = path.join(metadataDirPath, p) + ".json";
       const metadataExportDirPath = path.dirname(metadataExportPath);
 
