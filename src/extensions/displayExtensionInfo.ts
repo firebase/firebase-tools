@@ -233,3 +233,11 @@ export async function getConsent(field: string, message: string): Promise<void> 
     );
   }
 }
+
+/**
+ * Prints a clickable link where users can download the source code for an Extension Version.
+ */
+export function printSourceDownloadLink(sourceDownloadUri: string): void {
+  const sourceDownloadMsg = `Download the source code that will be installed for this extension: ${sourceDownloadUri}`;
+  utils.logBullet(marked(sourceDownloadMsg));
+}

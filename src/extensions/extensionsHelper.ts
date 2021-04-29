@@ -31,19 +31,6 @@ import { promptOnce } from "../prompt";
 import { logger } from "../logger";
 import { envOverride } from "../utils";
 
-export enum RegistryLaunchStage {
-  EXPERIMENTAL = "EXPERIMENTAL",
-  BETA = "BETA",
-  GA = "GA",
-  DEPRECATED = "DEPRECATED",
-  REGISTRY_LAUNCH_STAGE_UNSPECIFIED = "REGISTRY_LAUNCH_STAGE_UNSPECIFIED",
-}
-
-export enum Visibility {
-  UNLISTED = "unlisted",
-  PUBLIC = "public",
-}
-
 /**
  * SpecParamType represents the exact strings that the extensions
  * backend expects for each param type in the extensionYaml.

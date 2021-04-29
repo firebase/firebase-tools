@@ -244,6 +244,7 @@ describe("extensions", () => {
           name: "publishers/test-pub/extensions/test-ext/versions/0.1.0",
           ref: "test-pub/test-ext@0.1.0",
           hash: "abc123",
+          sourceDownloadUri: "https://storage.googleapis.com/test/test",
           spec: { name: "", version: "0.1.0", sourceUrl: "", roles: [], resources: [], params: [] },
         },
         {}
