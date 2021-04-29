@@ -177,7 +177,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     res.status(200).json(new CloudStorageObjectMetadata(finalizedUpload.file.metadata)).send();
   });
 
-  gcloudStorageAPI.post("/upload/storage/v1/b/:bucketId/o", async (req, res) => {
+  gcloudStorageAPI.post("/upload/storage/v1/b/:bucketId/o", (req, res) => {
     if (!req.query.name) {
       res.sendStatus(400);
       return;
