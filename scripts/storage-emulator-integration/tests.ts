@@ -244,6 +244,20 @@ describe("Storage emulator", () => {
         });
       });
 
+      describe("#get()", () => {
+        it("should complete an save/get/download cycle", async () => {
+          const p = "testing/dir/hello.txt";
+          const content = "hello, world";
+
+          await testBucket.file(p).save(content);
+
+          const [f] = await testBucket.file(p).get();
+          const [buf] = await f.download();
+
+          expect(buf.toString()).to.equal(content);
+        });
+      });
+
       describe("#getMetadata()", () => {
         it("should throw on non-existing file", async () => {
           let err: any;
