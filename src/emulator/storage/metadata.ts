@@ -39,14 +39,14 @@ export class StoredFileMetadata {
   customMetadata: { [s: string]: string };
 
   constructor(
-    bytes: Buffer,
     opts: Partial<SerializedFileMetadata> & {
       name: string;
       bucket: string;
       contentType: string;
     },
-    incomingMetadata: IncomingMetadata | undefined,
-    private _cloudFunctions: StorageCloudFunctions
+    private _cloudFunctions: StorageCloudFunctions,
+    bytes?: Buffer,
+    incomingMetadata?: IncomingMetadata
   ) {
     // Required fields
     this.name = opts.name;
@@ -69,9 +69,17 @@ export class StoredFileMetadata {
     this.updated = opts.updated ? new Date(opts.updated) : this.timeCreated;
 
     // Fields derived from bytes
-    this.size = opts.size || bytes.byteLength;
-    this.md5Hash = opts.md5Hash || generateMd5Hash(bytes);
-    this.crc32c = opts.crc32c || `${crc32c(bytes)}`;
+    if (bytes) {
+      this.size = bytes.byteLength;
+      this.md5Hash = generateMd5Hash(bytes);
+      this.crc32c = `${crc32c(bytes)}`;
+    } else if (opts.size !== undefined && opts.md5Hash && opts.crc32c) {
+      this.size = opts.size;
+      this.md5Hash = opts.md5Hash;
+      this.crc32c = opts.crc32c;
+    } else {
+      throw new Error("Must pass bytes array or opts object with size, md5hash, and crc32c");
+    }
 
     // Special handling for download tokens
     if (opts.downloadTokens && opts.downloadTokens.length > 0) {
@@ -185,7 +193,7 @@ export class StoredFileMetadata {
 
   static fromJSON(data: string, cloudFunctions: StorageCloudFunctions): StoredFileMetadata {
     const opts = JSON.parse(data) as SerializedFileMetadata;
-    return new StoredFileMetadata(Buffer.from([]), opts, undefined, cloudFunctions);
+    return new StoredFileMetadata(opts, cloudFunctions);
   }
 
   public static toJSON(metadata: StoredFileMetadata): string {

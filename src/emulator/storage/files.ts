@@ -255,7 +255,6 @@ export class StorageLayer {
 
     const bytes = this._persistence.readBytes(upload.fileLocation, upload.currentBytesUploaded);
     const finalMetadata = new StoredFileMetadata(
-      bytes,
       {
         name: upload.objectId,
         bucket: upload.bucketId,
@@ -263,8 +262,9 @@ export class StorageLayer {
         contentEncoding: upload.metadata.contentEncoding,
         customMetadata: upload.metadata.metadata,
       },
-      upload.metadata,
-      this._cloudFunctions
+      this._cloudFunctions,
+      bytes,
+      upload.metadata
     );
     const file = new StoredFile(finalMetadata, filePath);
     this._files.set(filePath, file);
@@ -284,7 +284,6 @@ export class StorageLayer {
     const filePath = this.path(bucket, object);
     this._persistence.appendBytes(filePath, bytes);
     const md = new StoredFileMetadata(
-      bytes,
       {
         name: object,
         bucket: bucket,
@@ -292,8 +291,9 @@ export class StorageLayer {
         contentEncoding: incomingMetadata.contentEncoding,
         customMetadata: incomingMetadata.metadata,
       },
-      incomingMetadata,
-      this._cloudFunctions
+      this._cloudFunctions,
+      bytes,
+      incomingMetadata
     );
     const file = new StoredFile(md, this._persistence.getDiskPath(filePath));
     this._files.set(filePath, file);

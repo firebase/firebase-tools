@@ -6,14 +6,13 @@ describe("files", () => {
   it("can serialize and deserialize metadata", () => {
     const cf = new StorageCloudFunctions("demo-project");
     const metadata = new StoredFileMetadata(
-      Buffer.from("Hello, World!"),
       {
         name: "name",
         bucket: "bucket",
         contentType: "mime/type",
       },
-      undefined,
-      cf
+      cf,
+      Buffer.from("Hello, World!")
     );
 
     const json = StoredFileMetadata.toJSON(metadata);
