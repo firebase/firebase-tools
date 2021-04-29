@@ -68,17 +68,15 @@ export default new Command("functions:delete [filters...]")
           return "\t" + helper.getFunctionLabel(func);
         })
         .join("\n");
-      confirmDeletion = await promptOnce(
-        {
-          type: "confirm",
-          name: "confirm",
-          default: false,
-          message:
-            "You are about to delete the following Cloud Functions:\n" +
-            deleteList +
-            "\n  Are you sure?",
-        }
-      );
+      confirmDeletion = await promptOnce({
+        type: "confirm",
+        name: "confirm",
+        default: false,
+        message:
+          "You are about to delete the following Cloud Functions:\n" +
+          deleteList +
+          "\n  Are you sure?",
+      });
     }
     if (!confirmDeletion && !options.force) {
       return utils.reject("Command aborted.", { exit: 1 });
