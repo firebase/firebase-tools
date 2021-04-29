@@ -66,7 +66,7 @@ export function createApp(
   app.post("/internal/export", (req, res) => {
     const path = req.body.path;
     if (!path) {
-      res.sendStatus(400);
+      res.status(400).send("Export request body must include 'path'.");
     }
 
     storageLayer.export(path);

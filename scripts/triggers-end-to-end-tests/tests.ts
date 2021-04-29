@@ -43,6 +43,15 @@ function readConfig(): FrameworkOptions {
   return JSON.parse(data);
 }
 
+function logIncludes(msg: string) {
+  return (data: unknown) => {
+    if (typeof data != "string" && !Buffer.isBuffer(data)) {
+      throw new Error(`data is not a string or buffer (${typeof data})`);
+    }
+    return data.includes(msg);
+  };
+}
+
 describe("database and firestore emulator function triggers", () => {
   let test: TriggerEndToEndTest;
   let database: admin.database.Database | undefined;
@@ -578,12 +587,7 @@ describe("import/export end to end", () => {
       "emulators:start",
       FIREBASE_PROJECT,
       ["--only", "storage"],
-      (data: unknown) => {
-        if (typeof data != "string" && !Buffer.isBuffer(data)) {
-          throw new Error(`data is not a string or buffer (${typeof data})`);
-        }
-        return data.includes(ALL_EMULATORS_STARTED_LOG);
-      }
+      logIncludes(ALL_EMULATORS_STARTED_LOG)
     );
 
     const credPath = path.join(__dirname, "service-account-key.json");
@@ -622,12 +626,12 @@ describe("import/export end to end", () => {
     // Ask for export
     const exportCLI = new CLIProcess("2", __dirname);
     const exportPath = fs.mkdtempSync(path.join(os.tmpdir(), "emulator-data"));
-    await exportCLI.start("emulators:export", FIREBASE_PROJECT, [exportPath], (data: unknown) => {
-      if (typeof data != "string" && !Buffer.isBuffer(data)) {
-        throw new Error(`data is not a string or buffer (${typeof data})`);
-      }
-      return data.includes("Export complete");
-    });
+    await exportCLI.start(
+      "emulators:export",
+      FIREBASE_PROJECT,
+      [exportPath],
+      logIncludes("Export complete")
+    );
     await exportCLI.stop();
 
     // Check that the right export files are created
@@ -644,23 +648,18 @@ describe("import/export end to end", () => {
       "emulators:start",
       FIREBASE_PROJECT,
       ["--only", "storage", "--import", exportPath],
-      (data: unknown) => {
-        if (typeof data != "string" && !Buffer.isBuffer(data)) {
-          throw new Error(`data is not a string or buffer (${typeof data})`);
-        }
-        return data.includes(ALL_EMULATORS_STARTED_LOG);
-      }
+      logIncludes(ALL_EMULATORS_STARTED_LOG)
     );
 
     // List the files
     const [aFiles] = await aApp.storage().bucket().getFiles({
-      prefix: 'a/'
+      prefix: "a/",
     });
     const aFileNames = aFiles.map((f) => f.name).sort();
     expect(aFileNames).to.eql(["a/b.txt"]);
 
     const [bFiles] = await bApp.storage().bucket().getFiles({
-      prefix: 'e/'
+      prefix: "e/",
     });
     const bFileNames = bFiles.map((f) => f.name).sort();
     expect(bFileNames).to.eql(["e/f.txt"]);
