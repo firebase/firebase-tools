@@ -210,7 +210,7 @@ describe("Storage emulator", () => {
         });
 
         // Skipping large upload test for now.
-        it.skip("should handle large (resumable) uploads", async () => {
+        it("should handle large (resumable) uploads", async () => {
           await testBucket.upload(largeFilePath),
             {
               resumable: true,
@@ -235,7 +235,7 @@ describe("Storage emulator", () => {
 
     describe(".file()", () => {
       describe("#save()", () => {
-        it.skip("should accept a zero-byte file", async () => {
+        it("should accept a zero-byte file", async () => {
           await testBucket.file("testing/dir/").save("");
 
           const [files] = await testBucket.getFiles({
