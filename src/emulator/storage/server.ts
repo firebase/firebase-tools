@@ -63,11 +63,6 @@ export function createApp(
     })
   );
 
-  app.get("/internal/export", (req, res) => {
-    console.log(storageLayer.files.keys());
-    res.json(storageLayer.files);
-  });
-
   app.post("/internal/reset", (req, res) => {
     storageLayer.reset();
     res.sendStatus(200);
