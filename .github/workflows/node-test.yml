@@ -61,6 +61,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
+      FIREBASE_CLI_PREVIEWS: storageemulator
       FIREBASE_EMULATORS_PATH: ${{ github.workspace }}/emulator-cache
       COMMIT_SHA: ${{ github.sha }}
       CI_JOB_ID: ${{ github.action }}
@@ -78,6 +79,7 @@ jobs:
           - npm run test:emulator
           - npm run test:extensions-emulator
           - npm run test:triggers-end-to-end
+          - npm run test:storage-emulator-integration
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v2

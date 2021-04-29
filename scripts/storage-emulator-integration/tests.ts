@@ -166,15 +166,17 @@ describe("Storage emulator", () => {
 
         test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, emulatorConfig);
         await test.startEmulators(["--only", "auth,storage"]);
-
-        admin.initializeApp({
-          credential: admin.credential.applicationDefault(),
-        });
-      } else {
-        admin.initializeApp({
-          credential: admin.credential.cert(readJson(SERVICE_ACCOUNT_KEY)),
-        });
       }
+
+      // TODO: We should not need a real credential for emulator tests, but
+      //       today we do.
+      const credential = fs.existsSync(path.join(__dirname, SERVICE_ACCOUNT_KEY))
+        ? admin.credential.cert(readJson(SERVICE_ACCOUNT_KEY))
+        : admin.credential.applicationDefault();
+
+      admin.initializeApp({
+        credential,
+      });
 
       testBucket = admin.storage().bucket(storageBucket);
 
@@ -241,6 +243,20 @@ describe("Storage emulator", () => {
           });
 
           expect(files.map((file) => file.name)).to.contain("testing/dir/");
+        });
+      });
+
+      describe("#get()", () => {
+        it("should complete an save/get/download cycle", async () => {
+          const p = "testing/dir/hello.txt";
+          const content = "hello, world";
+
+          await testBucket.file(p).save(content);
+
+          const [f] = await testBucket.file(p).get();
+          const [buf] = await f.download();
+
+          expect(buf.toString()).to.equal(content);
         });
       });
 
