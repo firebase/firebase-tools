@@ -388,6 +388,8 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         Buffer.from(blobBytes)
       );
 
+      metadata.addDownloadToken();
+
       if (!metadata) {
         res.sendStatus(400);
         return;
@@ -523,6 +525,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
           return;
         }
         upload = finalizedUpload.upload;
+        finalizedUpload.file.metadata.addDownloadToken();
 
         // For resumable uploads, we check auth on finalization in case of byte-dependant rules
         if (

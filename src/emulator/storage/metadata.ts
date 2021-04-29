@@ -27,7 +27,7 @@ export class StoredFileMetadata {
   crc32c: string;
   etag: string;
   downloadTokens: string;
-  customMetadata: { [s: string]: string };
+  customMetadata?: { [s: string]: string };
 
   constructor(
     bucketId: string,
@@ -55,9 +55,8 @@ export class StoredFileMetadata {
     this.cacheControl = "no-cache";
     this.contentLanguage = "en-us";
     this.contentEncoding = contentEncoding || "identity";
-    this.customMetadata = incomingMetadata.metadata || {};
+    this.customMetadata = incomingMetadata.metadata;
 
-    this.addDownloadToken();
     this.update(incomingMetadata);
   }
 
@@ -76,7 +75,7 @@ export class StoredFileMetadata {
       contentDisposition: this.contentDisposition,
       contentEncoding: this.contentEncoding,
       contentType: this.contentType,
-      metadata: this.customMetadata,
+      metadata: this.customMetadata || {},
     };
 
     if (proposedChanges) {
@@ -268,7 +267,7 @@ export class CloudStorageObjectMetadata {
   md5Hash: string;
   crc32c: string;
   etag: string;
-  metadata: { [s: string]: string };
+  metadata: { [s: string]: string } | undefined;
   id: string;
   timeStorageClassUpdated: string;
   selfLink: string;
@@ -286,10 +285,26 @@ export class CloudStorageObjectMetadata {
     this.size = md.size.toString();
     this.md5Hash = md.md5Hash;
     this.etag = md.etag;
-    this.metadata = {
-      firebaseStorageDownloadTokens: md.downloadTokens,
-      ...md.customMetadata,
-    };
+
+    const hasCustomMetadata = md.customMetadata && Object.keys(md.customMetadata).length > 0;
+
+    if (md.downloadTokens || hasCustomMetadata) {
+      this.metadata = {};
+
+      if (hasCustomMetadata) {
+        this.metadata = {
+          ...this.metadata,
+          ...md.customMetadata,
+        };
+      }
+
+      if (md.downloadTokens) {
+        this.metadata = {
+          ...this.metadata,
+          firebaseStorageDownloadTokens: md.downloadTokens,
+        };
+      }
+    }
 
     // I'm not sure why but @google-cloud/storage calls .substr(4) on this value, so we need to pad it.
     this.crc32c = "----" + Buffer.from([md.crc32c]).toString("base64");

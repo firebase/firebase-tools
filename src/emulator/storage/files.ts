@@ -251,7 +251,7 @@ export class StorageLayer {
       upload.bucketId,
       upload.objectId,
       bytes,
-      "",
+      upload.contentType,
       upload.metadata.contentEncoding,
       upload.metadata,
       this._cloudFunctions
@@ -262,6 +262,10 @@ export class StorageLayer {
 
     this._cloudFunctions.dispatch("finalize", new CloudStorageObjectMetadata(file.metadata));
     return { upload: upload, file: file };
+  }
+
+  get files() {
+    return this._files;
   }
 
   public oneShotUpload(
@@ -277,7 +281,7 @@ export class StorageLayer {
       bucket,
       object,
       bytes,
-      "",
+      contentType,
       incomingMetadata.contentEncoding,
       incomingMetadata,
       this._cloudFunctions
