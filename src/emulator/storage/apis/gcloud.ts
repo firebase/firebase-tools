@@ -41,7 +41,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       isGZipped = true;
     }
 
-    if (req.query.alt == "media") {
+    if (req.query.alt == "broken") {
       let data = storageLayer.getBytes(req.params.bucketId, req.params.objectId);
       if (!data) {
         res.sendStatus(404);
