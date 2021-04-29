@@ -4,6 +4,7 @@ import { Emulators } from "../../types";
 import { CloudStorageObjectMetadata } from "../metadata";
 import { EmulatorRegistry } from "../../registry";
 import { StorageEmulator } from "../index";
+import { gunzipSync } from "zlib";
 
 /**
  * @param emulator
@@ -35,10 +36,43 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       return;
     }
 
-    EmulatorLogger.forEmulator(Emulators.STORAGE).log(
-      "WARN",
-      `Returning metadata: ${JSON.stringify(md)}`
-    );
+    let isGZipped = false;
+    if (md.contentEncoding == "gzip") {
+      isGZipped = true;
+    }
+
+    if (req.query.alt == "media") {
+      let data = storageLayer.getBytes(req.params.bucketId, req.params.objectId);
+      if (!data) {
+        res.sendStatus(404);
+        return;
+      }
+
+      if (isGZipped) {
+        data = gunzipSync(data);
+      }
+
+      res.setHeader("Accept-Ranges", "bytes");
+      res.setHeader("Content-Type", md.contentType);
+      res.setHeader("Content-Disposition", md.contentDisposition);
+      res.setHeader("Content-Encoding", "identity");
+
+      const byteRange = [...(req.header("range") || "").split("bytes="), "", ""];
+
+      const [rangeStart, rangeEnd] = byteRange[1].split("-");
+
+      if (rangeStart) {
+        const range = {
+          start: parseInt(rangeStart),
+          end: rangeEnd ? parseInt(rangeEnd) : data.byteLength,
+        };
+        res.setHeader("Content-Range", `bytes ${range.start}-${range.end - 1}/${data.byteLength}`);
+        res.status(206).end(data.slice(range.start, range.end));
+      } else {
+        res.end(data);
+      }
+      return;
+    }
 
     const outgoingMd = new CloudStorageObjectMetadata(md);
 
@@ -57,10 +91,6 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     md.update(req.body);
 
     const outgoingMetadata = new CloudStorageObjectMetadata(md);
-    EmulatorLogger.forEmulator(Emulators.STORAGE).log(
-      "WARN",
-      `Returning metadata: ${JSON.stringify(outgoingMetadata)}`
-    );
     res.json(outgoingMetadata).status(200).send();
     return;
   });
