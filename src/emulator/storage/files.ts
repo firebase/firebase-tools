@@ -478,7 +478,11 @@ export class StorageLayer {
     return this._persistence.dirPath;
   }
 
-  export(storageExportPath: string) {
+  /**
+   * Export is implemented using async operations so that it does not block
+   * the hub when invoked.
+   */
+  async export(storageExportPath: string) {
     // Export a list of all known bucket IDs, which can be used to reconstruct
     // the bucket metadata.
     const bucketsList: BucketsList = {
@@ -488,32 +492,30 @@ export class StorageLayer {
       bucketsList.buckets.push({ id: b.id });
     }
     const bucketsFilePath = path.join(storageExportPath, "buckets.json");
-    fs.writeFileSync(bucketsFilePath, JSON.stringify(bucketsList, undefined, 2));
+    await fse.writeFile(bucketsFilePath, JSON.stringify(bucketsList, undefined, 2));
 
     // Recursively copy all file blobs
     const blobsDirPath = path.join(storageExportPath, "blobs");
-    if (!fs.existsSync(blobsDirPath)) {
-      fs.mkdirSync(blobsDirPath, { recursive: true });
-    }
-    fse.copySync(this.dirPath, blobsDirPath);
+    await fse.ensureDir(blobsDirPath);
+    await fse.copy(this.dirPath, blobsDirPath);
 
     // Store a metadata file for each file
     const metadataDirPath = path.join(storageExportPath, "metadata");
-    if (!fs.existsSync(metadataDirPath)) {
-      fs.mkdirSync(metadataDirPath, { recursive: true });
-    }
+    await fse.ensureDir(metadataDirPath);
 
     for (const [p, file] of this._files.entries()) {
       const metadataExportPath = path.join(metadataDirPath, p) + ".json";
       const metadataExportDirPath = path.dirname(metadataExportPath);
 
-      if (!fs.existsSync(metadataExportDirPath)) {
-        fs.mkdirSync(metadataExportDirPath, { recursive: true });
-      }
-      fs.writeFileSync(metadataExportPath, StoredFileMetadata.toJSON(file.metadata));
+      await fse.ensureDir(metadataExportDirPath);
+      await fse.writeFile(metadataExportPath, StoredFileMetadata.toJSON(file.metadata));
     }
   }
 
+  /**
+   * Import can be implemented using sync operations because the emulator should
+   * not be handling any other requests during import.
+   */
   import(storageExportPath: string) {
     // Restore list of buckets
     const bucketsFile = path.join(storageExportPath, "buckets.json");

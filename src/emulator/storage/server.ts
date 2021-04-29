@@ -63,13 +63,13 @@ export function createApp(
     })
   );
 
-  app.post("/internal/export", (req, res) => {
+  app.post("/internal/export", async (req, res) => {
     const path = req.body.path;
     if (!path) {
       res.status(400).send("Export request body must include 'path'.");
     }
 
-    storageLayer.export(path);
+    await storageLayer.export(path);
     res.sendStatus(200);
   });
 
