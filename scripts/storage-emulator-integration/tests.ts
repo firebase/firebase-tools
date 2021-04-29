@@ -161,26 +161,22 @@ describe("Storage emulator", () => {
     let testBucket: Bucket;
 
     before(async () => {
+      if (!TEST_CONFIG.useProductionServers) {
+        process.env.STORAGE_EMULATOR_HOST = STORAGE_EMULATOR_HOST;
+
+        test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, emulatorConfig);
+        await test.startEmulators(["--only", "auth,storage"]);
+      }
+
       // TODO: We should not need a real credential for emulator tests, but
       //       today we do.
       const credential = fs.existsSync(path.join(__dirname, SERVICE_ACCOUNT_KEY))
         ? admin.credential.cert(readJson(SERVICE_ACCOUNT_KEY))
         : admin.credential.applicationDefault();
 
-      if (!TEST_CONFIG.useProductionServers) {
-        process.env.STORAGE_EMULATOR_HOST = STORAGE_EMULATOR_HOST;
-
-        test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, emulatorConfig);
-        await test.startEmulators(["--only", "auth,storage"]);
-
-        admin.initializeApp({
-          credential
-        });
-      } else {
-        admin.initializeApp({
-          credential
-        });
-      }
+      admin.initializeApp({
+        credential,
+      });
 
       testBucket = admin.storage().bucket(storageBucket);
 
