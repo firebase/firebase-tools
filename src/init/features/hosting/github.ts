@@ -270,7 +270,7 @@ type GitHubWorkflowConfig = {
   on: string | { [key: string]: { [key: string]: string[] } };
   jobs: {
     [key: string]: {
-      if: string;
+      if?: string;
       "runs-on": string;
       steps: {
         uses?: string;
