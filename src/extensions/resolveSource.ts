@@ -6,22 +6,8 @@ import * as api from "../api";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { promptOnce } from "../prompt";
-import { RegistryLaunchStage } from "../extensions/extensionsHelper";
 
 const EXTENSIONS_REGISTRY_ENDPOINT = "/extensions.json";
-// @TODO(b/184601300): Remove null type as an option in LAUNCH_STAGE_WARNING_MESSAGES, and leave the value
-// as undefined for stages where there is no explicit warning.
-const LAUNCH_STAGE_WARNING_MESSAGES: { [key in RegistryLaunchStage]: string | null } = {
-  EXPERIMENTAL: marked(
-    `${clc.yellow.bold("Important")}: This extension is ${clc.bold(
-      "experimental"
-    )} and may not be production-ready. Its functionality might change in backward-incompatible ways before its official release, or it may be discontinued. Learn more: https://github.com/FirebaseExtended/experimental-extensions`
-  ),
-  BETA: null,
-  DEPRECATED: null,
-  GA: null,
-  REGISTRY_LAUNCH_STAGE_UNSPECIFIED: null,
-};
 
 export interface RegistryEntry {
   icons?: { [key: string]: string };
@@ -145,25 +131,6 @@ export async function promptForUpdateWarnings(
       }
     }
   }
-}
-
-/**
- * Checks the launch stage field of a RegistryEntry, displays a warning text
- * for closed and open alpha extensions, and prompts the user to accept.
- */
-export async function promptForLaunchStageConsent(
-  launchStage: RegistryLaunchStage
-): Promise<boolean> {
-  let consent = true;
-  if (LAUNCH_STAGE_WARNING_MESSAGES[launchStage]) {
-    logger.info(LAUNCH_STAGE_WARNING_MESSAGES[launchStage] || "");
-    consent = await promptOnce({
-      type: "confirm",
-      message: "Do you acknowledge the status of this extension?",
-      default: true,
-    });
-  }
-  return consent;
 }
 
 /**
