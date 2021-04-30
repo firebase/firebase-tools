@@ -108,9 +108,8 @@ export async function prepare(
   const wantFunctions = wantBackend.cloudFunctions.filter((fn: backend.FunctionSpec) => {
     return functionMatchesAnyGroup(fn, context.filters);
   });
-
-  await backend.checkAvailability(context, wantBackend);
-
   const haveFunctions = (await backend.existingBackend(context)).cloudFunctions;
   await promptForFailurePolicies(options, wantFunctions, haveFunctions);
+
+  await backend.checkAvailability(context, wantBackend);
 }

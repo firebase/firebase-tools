@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import * as clc from "cli-color";
 
 import Queue from "../../throttler/queue";
@@ -22,7 +21,17 @@ export function functionMatchesAnyGroup(func: backend.TargetIds, filterGroups: s
 
 export function functionMatchesGroup(func: backend.TargetIds, groupChunks: string[]): boolean {
   const functionNameChunks = func.id.split("-").slice(0, groupChunks.length);
-  return _.isEqual(groupChunks, functionNameChunks);
+  // Should never happen. It would mean the user has asked to deploy something that is
+  // a sub-function. E.g. function foo-bar and group chunks [foo, bar, baz].
+  if (functionNameChunks.length != groupChunks.length) {
+    return false;
+  }
+  for (let i = 0; i < groupChunks.length; i += 1) {
+    if (groupChunks[i] !== functionNameChunks[i]) {
+      return false;
+    }
+  }
+  return true;
 }
 
 export function getFilterGroups(options: { only?: string }): string[][] {

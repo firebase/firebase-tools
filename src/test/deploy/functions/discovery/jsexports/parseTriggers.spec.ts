@@ -3,8 +3,18 @@ import { expect } from "chai";
 import { FirebaseError } from "../../../../../error";
 import * as backend from "../../../../../deploy/functions/backend";
 import * as parseTriggers from "../../../../../deploy/functions/discovery/jsexports/parseTriggers";
+import * as api from "../../../../../api";
 
 describe("addResourcesToBackend", () => {
+  const oldDefaultRegion = api.functionsDefaultRegion;
+  before(() => {
+    (api as any).functionsDefaultRegion = "us-central1";
+  });
+
+  after(() => {
+    (api as any).functionsDefaultRegion = oldDefaultRegion;
+  });
+
   const BASIC_TRIGGER: parseTriggers.TriggerAnnotation = Object.freeze({
     name: "func",
     entryPoint: "func",
@@ -48,7 +58,9 @@ describe("addResourcesToBackend", () => {
       ...BASIC_TRIGGER,
       httpsTrigger: {},
     };
+
     parseTriggers.addResourcesToBackend("project", "nodejs14", trigger, result);
+
     const expected: backend.Backend = {
       ...backend.empty(),
       cloudFunctions: [
@@ -67,7 +79,7 @@ describe("addResourcesToBackend", () => {
     for (const failurePolicy of [undefined, false, true, { retry: {} }]) {
       const name =
         typeof failurePolicy === "undefined" ? "undefined" : JSON.stringify(failurePolicy);
-      it(`failurePolicy ${name}`, () => {
+      it(`should handle failurePolicy=${name}`, () => {
         const result = backend.empty();
         const trigger: parseTriggers.TriggerAnnotation = {
           ...BASIC_TRIGGER,
@@ -80,7 +92,9 @@ describe("addResourcesToBackend", () => {
         if (typeof failurePolicy !== "undefined") {
           trigger.failurePolicy = failurePolicy;
         }
+
         parseTriggers.addResourcesToBackend("project", "nodejs14", trigger, result);
+
         const expected: backend.Backend = {
           ...backend.empty(),
           cloudFunctions: [

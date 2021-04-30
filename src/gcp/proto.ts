@@ -43,6 +43,7 @@ export function assertOneOf<T>(typename: string, obj: T, oneof: string, ...field
 }
 
 // eslint-disable @typescript-eslint/no-unsafe-returns @typescript-eslint/no-explicit-any
+
 /**
  * Utility function to help copy fields from type A to B.
  * As a safety net, catches typos or fields that aren't named the same
@@ -75,6 +76,7 @@ export function renameIfPresent<Src, Dest>(
   }
   dest[destField] = converter(src[srcField]);
 }
+
 // eslint-enable @typescript-eslint/no-unsafe-returns @typescript-eslint/no-explicit-any
 
 /**

@@ -182,7 +182,7 @@ export function empty(): Backend {
  * Consumers should use this before assuming a backend is empty (e.g. nooping
  * deploy processes) because it's possible that fields have been added.
  */
-export function isEmptyBackend(backend: Backend) {
+export function isEmptyBackend(backend: Backend): boolean {
   return (
     Object.keys(backend.requiredAPIs).length == 0 &&
     backend.cloudFunctions.length === 0 &&
@@ -196,12 +196,12 @@ export function isEmptyBackend(backend: Backend) {
  * RuntimeConfig will not be available in production for GCFv2 functions.
  * Future refactors of this code should move this type deeper into the codebase.
  */
-export type RuntimeConfigValues = Record<string, any>;
+export type RuntimeConfigValues = Record<string, unknown>;
 
 /**
  * Gets the formal resource name for a Cloud Function.
  */
-export function functionName(cloudFunction: TargetIds) {
+export function functionName(cloudFunction: TargetIds): string {
   return `projects/${cloudFunction.project}/locations/${cloudFunction.region}/functions/${cloudFunction.id}`;
 }
 
@@ -210,7 +210,7 @@ export function functionName(cloudFunction: TargetIds) {
  * This is useful for list comprehensions, e.g.
  * const newFunctions = wantFunctions.filter(fn => !haveFunctions.some(sameFunctionName(fn)));
  */
-export const sameFunctionName = (func: TargetIds) => (test: TargetIds) => {
+export const sameFunctionName = (func: TargetIds) => (test: TargetIds): boolean => {
   return func.id === test.id && func.region === test.region && func.project == test.project;
 };
 

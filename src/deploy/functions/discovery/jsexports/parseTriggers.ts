@@ -1,5 +1,3 @@
-"use strict";
-
 import * as path from "path";
 import * as _ from "lodash";
 import { fork } from "child_process";
@@ -106,8 +104,7 @@ function parseTriggers(
       if (code !== 0) {
         reject(
           new FirebaseError(
-            "There was an unknown problem while trying to parse function triggers. " +
-              "Please ensure you are using Node.js v6 or greater.",
+            "There was an unknown problem while trying to parse function triggers.",
             { exit: 2 }
           )
         );
