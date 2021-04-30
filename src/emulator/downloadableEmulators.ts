@@ -76,8 +76,7 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
           expectedSize: 3374020,
           expectedChecksum: "7a82fed575a2b9a008d96080a7dcccdb",
           namePrefix: "ui",
-          // TODO: Change back
-          skipCache: false,
+          skipCache: true,
           skipChecksumAndSize: true,
         },
       }

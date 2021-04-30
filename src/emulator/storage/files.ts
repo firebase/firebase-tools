@@ -546,12 +546,12 @@ export class StorageLayer {
       // To get the blob path from the metadata path:
       // 1) Get the relative path to the metadata export dir
       // 2) Subtract .json from the end
-      const metadataRelpath = path.relative(metadataDir, f);
-      const blobPath = metadataRelpath.substring(0, dotJson.length);
+      const metadataRelPath = path.relative(metadataDir, f);
+      const blobPath = metadataRelPath.substring(0, metadataRelPath.length - dotJson.length);
 
       const blobAbsPath = path.join(blobsDir, blobPath);
       if (!fs.existsSync(blobAbsPath)) {
-        logger.debug(`Could not find file "${blobPath}" in storage export.`);
+        logger.warn(`Could not find file "${blobPath}" in storage export.`);
         continue;
       }
 
