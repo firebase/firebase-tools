@@ -664,8 +664,8 @@ describe("import/export end to end", () => {
     const bFileNames = bFiles.map((f) => f.name).sort();
     expect(bFileNames).to.eql(["e/f.txt"]);
 
-    //
-    // TODO: I think this fails due to a bug in the emulator
+    // TODO: this operation fails due to a bug in the Storage emulator
+    // https://github.com/firebase/firebase-tools/pull/3320
     //
     // Read a file and check content
     // const [f] = await aApp.storage().bucket().file("a/b.txt").get();

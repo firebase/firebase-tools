@@ -13,6 +13,7 @@ import * as fs from "fs";
 import * as fse from "fs-extra";
 import * as rimraf from "rimraf";
 import { StorageCloudFunctions } from "./cloudFunctions";
+import { logger } from "../../logger";
 
 interface BucketsList {
   buckets: {
@@ -519,45 +520,59 @@ export class StorageLayer {
   import(storageExportPath: string) {
     // Restore list of buckets
     const bucketsFile = path.join(storageExportPath, "buckets.json");
-    const bucketsList = JSON.parse(fs.readFileSync(bucketsFile).toString()) as BucketsList;
+    const bucketsList = JSON.parse(fs.readFileSync(bucketsFile, "utf-8")) as BucketsList;
     for (const b of bucketsList.buckets) {
       const bucketMetadata = new CloudStorageBucketMetadata(b.id);
       this._buckets.set(b.id, bucketMetadata);
     }
 
-    // Restore all metadata
     const metadataDir = path.join(storageExportPath, "metadata");
+    const blobsDir = path.join(storageExportPath, "blobs");
+
+    // Restore all metadata
     const metadataList = this.walkDirSync(metadataDir);
+
+    const dotJson = ".json";
     for (const f of metadataList) {
+      if (path.extname(f) !== dotJson) {
+        logger.debug(`Skipping unexpected storage metadata file: ${f}`);
+        continue;
+      }
       const metadata = StoredFileMetadata.fromJSON(
-        fs.readFileSync(f).toString(),
+        fs.readFileSync(f, "utf-8"),
         this._cloudFunctions
       );
 
-      const metadataPath = path.relative(metadataDir, f);
-      const blobPath = metadataPath.substring(0, metadataPath.length - 5); // Subtract .json
+      // To get the blob path from the metadata path:
+      // 1) Get the relative path to the metadata export dir
+      // 2) Subtract .json from the end
+      const metadataRelpath = path.relative(metadataDir, f);
+      const blobPath = metadataRelpath.substring(0, dotJson.length);
+
+      const blobAbsPath = path.join(blobsDir, blobPath);
+      if (!fs.existsSync(blobAbsPath)) {
+        logger.debug(`Could not find file "${blobPath}" in storage export.`);
+        continue;
+      }
 
       const file = new StoredFile(metadata, blobPath);
       this._files.set(blobPath, file);
     }
 
     // Recursively copy all blobs
-    const blobsDir = path.join(storageExportPath, "blobs");
     fse.copySync(blobsDir, this.dirPath);
   }
 
-  private walkDirSync(dir: string, res: string[] = []): string[] {
+  private *walkDirSync(dir: string): Generator<string> {
     const files = fs.readdirSync(dir);
-    files.forEach((file) => {
+    for (const file of files) {
       const p = path.join(dir, file);
       if (fs.statSync(p).isDirectory()) {
-        res = this.walkDirSync(p, res);
+        yield* this.walkDirSync(p);
       } else {
-        res.push(p);
+        yield p;
       }
-    });
-
-    return res;
+    }
   }
 }
 
