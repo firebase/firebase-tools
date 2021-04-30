@@ -8,7 +8,7 @@ interface PreviewFlags {
   rtdbmanagement: boolean;
   storageemulator: boolean;
   functionsv2: boolean;
-};
+}
 
 export const previews: PreviewFlags = {
   // insert previews here...
@@ -19,7 +19,7 @@ export const previews: PreviewFlags = {
   storageemulator: false,
   functionsv2: false,
 
-  ...configstore.get("previews")
+  ...configstore.get("previews"),
 };
 
 if (process.env.FIREBASE_CLI_PREVIEWS) {

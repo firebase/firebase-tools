@@ -283,7 +283,9 @@ async function listFunctionsInternal(
  * Updates a Cloud Function.
  * Customers can force a field to be deleted by setting that field to `undefined`
  */
-export async function updateFunction(cloudFunction: Omit<CloudFunction, OutputOnlyFields>): Promise<Operation> {
+export async function updateFunction(
+  cloudFunction: Omit<CloudFunction, OutputOnlyFields>
+): Promise<Operation> {
   try {
     const queryParams = {
       updateMask: proto.fieldMasks(cloudFunction).join(","),
@@ -299,7 +301,9 @@ export async function updateFunction(cloudFunction: Omit<CloudFunction, OutputOn
   }
 }
 
-export async function deleteFunction(cloudFunction: Omit<CloudFunction, OutputOnlyFields>): Promise<Operation> {
+export async function deleteFunction(
+  cloudFunction: Omit<CloudFunction, OutputOnlyFields>
+): Promise<Operation> {
   try {
     const res = await client.delete<Operation>(cloudFunction.name);
     return res.body;
