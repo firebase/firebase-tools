@@ -148,6 +148,7 @@ export async function initGitHub(setup: Setup, config: any, options: any): Promi
       YML_FULL_PATH_PULL_REQUEST,
       githubSecretName,
       setup.projectId,
+      repo,
       script
     );
 
@@ -269,6 +270,7 @@ type GitHubWorkflowConfig = {
   on: string | { [key: string]: { [key: string]: string[] } };
   jobs: {
     [key: string]: {
+      if: string;
       "runs-on": string;
       steps: {
         uses?: string;
@@ -284,6 +286,7 @@ function writeChannelActionYMLFile(
   ymlPath: string,
   secretName: string,
   projectId: string,
+  repo: string,
   script?: string
 ): void {
   const workflowConfig: GitHubWorkflowConfig = {
@@ -291,6 +294,7 @@ function writeChannelActionYMLFile(
     on: "pull_request",
     jobs: {
       ["build_and_preview"]: {
+        if: `github.repository == "${repo}"`, // secrets aren't accessible on PRs from forks
         "runs-on": "ubuntu-latest",
         steps: [{ uses: CHECKOUT_GITHUB_ACTION_NAME }],
       },
