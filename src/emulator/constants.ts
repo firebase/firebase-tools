@@ -59,6 +59,13 @@ export class Constants {
   // Environment variable to override SDK/CLI to point at the Firebase Auth emulator.
   static FIREBASE_AUTH_EMULATOR_HOST = "FIREBASE_AUTH_EMULATOR_HOST";
 
+  // Environment variable to override SDK/CLI to point at the Firebase Storage emulator.
+  static FIREBASE_STORAGE_EMULATOR_HOST = "FIREBASE_STORAGE_EMULATOR_HOST";
+
+  // Environment variable to override SDK/CLI to point at the Firebase Storage emulator
+  // for firebase-admin <= 9.6.0
+  static CLOUD_STORAGE_EMULATOR_HOST = "STORAGE_EMULATOR_HOST";
+
   // Environment variable to discover the Emulator HUB
   static FIREBASE_EMULATOR_HUB = "FIREBASE_EMULATOR_HUB";
 
