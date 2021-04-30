@@ -87,6 +87,6 @@ export async function promptOnce<A extends inquirer.Answers>(
  */
 export async function promptOnce<A>(question: Question, options: Options = {}): Promise<any> {
   question.name = question.name || "question";
-  const answers = await prompt(options, [question]);
-  return answers[question.name];
+  await prompt(options, [question]);
+  return options[question.name];
 }
