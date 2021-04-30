@@ -8,6 +8,7 @@ import { logPrefix } from "../extensions/extensionsHelper";
 import * as iam from "../gcp/iam";
 import { promptOnce, Question } from "../prompt";
 import { confirmInstallInstance } from "./extensionsHelper";
+import { printSourceDownloadLink } from "./displayExtensionInfo";
 import { getTrustedPublishers } from "./resolveSource";
 import * as utils from "../utils";
 
@@ -102,23 +103,4 @@ export async function promptForPublisherTOS() {
       exit: 1,
     });
   }
-}
-
-/**
- * Displays a warning when installing an extension instance published by someone other than Firebase, and ask the user whether to continue installing.
- * @param publisherId the publisher Id of the extension being installed.
- * @param authorUrl the author url provided in the spec of the extension, if one was provided.
- */
-export async function checkAndPromptForEapPublisher(
-  publisherId: string,
-  sourceUrl?: string
-): Promise<boolean> {
-  const trustedPublishers = await getTrustedPublishers();
-  const publisherNameLink = sourceUrl ? `[${publisherId}](${sourceUrl})` : publisherId;
-  if (!trustedPublishers.includes(publisherId)) {
-    const warningMsg = `This extension is in preview and is built by a developer in the [Extensions Publisher Early Access Program](http://bit.ly/firex-provider). Its functionality might change in backward-incompatible ways. Since this extension isn't built by Firebase, reach out to ${publisherNameLink} with questions about this extension.`;
-    utils.logLabeledBullet(logPrefix, marked(warningMsg));
-    return await confirmInstallInstance(false);
-  }
-  return true;
 }
