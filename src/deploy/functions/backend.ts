@@ -1,10 +1,12 @@
 import * as proto from "../../gcp/proto";
 import * as gcf from "../../gcp/cloudfunctions";
+import * as gcfV2 from "../../gcp/cloudfunctionsv2";
 import * as cloudscheduler from "../../gcp/cloudscheduler";
 import * as utils from "../../utils";
 import { FirebaseError } from "../../error";
 import { Context } from "./args";
 import { logger } from "../../logger";
+import { previews } from "../../previews";
 
 /** Retry settings for a ScheduleSpec. */
 export interface ScheduleRetryConfig {
@@ -366,6 +368,159 @@ export function fromGCFv1Function(gcfFunction: gcf.CloudFunction): FunctionSpec 
   return cloudFunction;
 }
 
+export function toGCFv2Function(cloudFunction: FunctionSpec, source: gcfV2.StorageSource) {
+  if (cloudFunction.apiVersion != 2) {
+    throw new FirebaseError(
+      "Trying to create a v2 CloudFunction with v1 API. This should never happen"
+    );
+  }
+
+  if (!isValidRuntime(cloudFunction.runtime)) {
+    throw new FirebaseError(
+      "Failed internal assertion. Trying to deploy a new function with a deprecated runtime." +
+        " This should never happen"
+    );
+  }
+
+  const gcfFunction: Omit<gcfV2.CloudFunction, gcfV2.OutputOnlyFields> = {
+    name: functionName(cloudFunction),
+    buildConfig: {
+      runtime: cloudFunction.runtime,
+      entryPoint: cloudFunction.entryPoint,
+      source: {
+        storageSource: source,
+      },
+      // We don't use build environment variables,
+      environmentVariables: {},
+    },
+    serviceConfig: {},
+  };
+
+  proto.copyIfPresent(
+    gcfFunction.serviceConfig,
+    cloudFunction,
+    "availableMemoryMb",
+    "environmentVariables",
+    "vpcConnector",
+    "vpcConnectorEgressSettings",
+    "serviceAccountEmail",
+    "ingressSettings"
+  );
+  proto.renameIfPresent(
+    gcfFunction.serviceConfig,
+    cloudFunction,
+    "timeoutSeconds",
+    "timeout",
+    proto.secondsFromDuration
+  );
+  proto.renameIfPresent(
+    gcfFunction.serviceConfig,
+    cloudFunction,
+    "minInstanceCount",
+    "minInstances"
+  );
+  proto.renameIfPresent(
+    gcfFunction.serviceConfig,
+    cloudFunction,
+    "maxInstanceCount",
+    "maxInstances"
+  );
+
+  if (isEventTrigger(cloudFunction.trigger)) {
+    gcfFunction.eventTrigger = {
+      eventType: cloudFunction.trigger.eventType,
+    };
+    if (gcfFunction.eventTrigger.eventType === gcfV2.PUBSUB_PUBLISH_EVENT) {
+      gcfFunction.eventTrigger.pubsubTopic = cloudFunction.trigger.eventFilters.resource;
+    } else {
+      gcfFunction.eventTrigger.eventFilters = [];
+      for (const [attribute, value] of Object.entries(cloudFunction.trigger.eventFilters)) {
+        gcfFunction.eventTrigger.eventFilters.push({ attribute, value });
+      }
+    }
+
+    if (cloudFunction.trigger.retry) {
+      logger.warn("Cannot set a retry policy on Cloud Function", cloudFunction.id);
+    }
+  } else if (cloudFunction.trigger.allowInsecure) {
+    logger.warn("Cannot enable insecure traffic for Cloud Function", cloudFunction.id);
+  }
+  proto.copyIfPresent(gcfFunction, cloudFunction, "labels");
+
+  console.error("GCFv2 Function is:", JSON.stringify(gcfFunction, null, 2));
+  return gcfFunction;
+}
+
+export function fromGCFv2Function(gcfFunction: gcfV2.CloudFunction): FunctionSpec {
+  const [, project, , region, , id] = gcfFunction.name.split("/");
+  let trigger: EventTrigger | HttpsTrigger;
+  if (gcfFunction.eventTrigger) {
+    trigger = {
+      eventType: gcfFunction.eventTrigger!.eventType,
+      eventFilters: {},
+      retry: false,
+    };
+    if (gcfFunction.eventTrigger.pubsubTopic) {
+      trigger.eventFilters.resource = gcfFunction.eventTrigger.pubsubTopic;
+    } else {
+      for (const { attribute, value } of gcfFunction.eventTrigger.eventFilters || []) {
+        trigger.eventFilters[attribute] = value;
+      }
+    }
+  } else {
+    trigger = {
+      allowInsecure: false,
+    };
+  }
+
+  if (!isValidRuntime(gcfFunction.buildConfig.runtime)) {
+    logger.debug("GCFv1 function has a deprecated runtime:", JSON.stringify(gcfFunction, null, 2));
+  }
+
+  const cloudFunction: FunctionSpec = {
+    apiVersion: 2,
+    id,
+    project,
+    region,
+    trigger,
+    entryPoint: gcfFunction.buildConfig.entryPoint,
+    runtime: gcfFunction.buildConfig.runtime,
+    uri: gcfFunction.serviceConfig.uri,
+  };
+  proto.copyIfPresent(
+    cloudFunction,
+    gcfFunction.serviceConfig,
+    "serviceAccountEmail",
+    "availableMemoryMb",
+    "vpcConnector",
+    "vpcConnectorEgressSettings",
+    "ingressSettings",
+    "environmentVariables"
+  );
+  proto.renameIfPresent(
+    cloudFunction,
+    gcfFunction.serviceConfig,
+    "timeout",
+    "timeoutSeconds",
+    proto.durationFromSeconds
+  );
+  proto.renameIfPresent(
+    cloudFunction,
+    gcfFunction.serviceConfig,
+    "minInstances",
+    "minInstanceCount"
+  );
+  proto.renameIfPresent(
+    cloudFunction,
+    gcfFunction.serviceConfig,
+    "maxInstances",
+    "maxInstanceCount"
+  );
+  proto.copyIfPresent(cloudFunction, gcfFunction, "labels");
+
+  return cloudFunction;
+}
+
 /** Converts a version agnostic ScheduleSpec to a CloudScheduler v1 Job. */
 export function toJob(schedule: ScheduleSpec, appEngineLocation: string): cloudscheduler.Job {
   const job: cloudscheduler.Job = {
@@ -392,7 +547,8 @@ interface PrivateContextFields {
   // NOTE(inlined): Will this need to become a more nuanced data structure
   // if we support GCFv1, v2, and Run?
   unreachableRegions: {
-    gcfv1: string[];
+    gcfV1: string[];
+    gcfV2: string[];
   };
 }
 
@@ -427,10 +583,11 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
     topics: [],
   };
   ctx.unreachableRegions = {
-    gcfv1: [],
+    gcfV1: [],
+    gcfV2: [],
   };
-  const { functions, unreachable } = await gcf.listAllFunctions(ctx.projectId);
-  for (const apiFunction of functions) {
+  const gcfV1Results = await gcf.listAllFunctions(ctx.projectId);
+  for (const apiFunction of gcfV1Results.functions) {
     const specFunction = fromGCFv1Function(apiFunction);
     ctx.existingBackend.cloudFunctions.push(specFunction);
     const isScheduled = apiFunction.labels?.["deployment-scheduled"] === "true";
@@ -457,7 +614,55 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
       });
     }
   }
-  ctx.unreachableRegions.gcfv1 = [...unreachable];
+  ctx.unreachableRegions.gcfV1 = gcfV1Results.unreachable;
+
+  if (!previews.functionsv2) {
+    return;
+  }
+
+  const gcfV2Results = await gcfV2.listAllFunctions(ctx.projectId);
+  for (const apiFunction of gcfV2Results.functions) {
+    const specFunction = fromGCFv2Function(apiFunction);
+    ctx.existingBackend.cloudFunctions.push(specFunction);
+    const pubsubScheduled = apiFunction.labels?.["deployment-scheduled"] === "true";
+    const httpsScheduled = apiFunction.labels?.["deployment-scheduled"] === "https";
+    if (pubsubScheduled) {
+      const id = scheduleIdForFunction(specFunction);
+      ctx.existingBackend.schedules.push({
+        id,
+        project: specFunction.project,
+        transport: "pubsub",
+        targetService: {
+          id: specFunction.id,
+          region: specFunction.region,
+          project: specFunction.project,
+        },
+      });
+      ctx.existingBackend.topics.push({
+        id,
+        project: specFunction.project,
+        targetService: {
+          id: specFunction.id,
+          region: specFunction.region,
+          project: specFunction.project,
+        },
+      });
+    }
+    if (httpsScheduled) {
+      const id = scheduleIdForFunction(specFunction);
+      ctx.existingBackend.schedules.push({
+        id,
+        project: specFunction.project,
+        transport: "https",
+        targetService: {
+          id: specFunction.id,
+          region: specFunction.region,
+          project: specFunction.project,
+        },
+      });
+    }
+  }
+  ctx.unreachableRegions.gcfV2 = gcfV2Results.unreachable;
 }
 
 /**
@@ -473,26 +678,52 @@ export async function checkAvailability(context: Context, want: Backend): Promis
   if (!ctx.loadedExistingBackend) {
     await loadExistingBackend(ctx);
   }
-  const gcfv1Regions = new Set();
-  want.cloudFunctions
-    .filter((fn) => fn.apiVersion === 1)
-    .forEach((fn) => gcfv1Regions.add(fn.region));
-  const neededUnreachableRegions = ctx.unreachableRegions.gcfv1.filter((region) =>
-    gcfv1Regions.has(region)
+  const gcfV1Regions = new Set();
+  const gcfV2Regions = new Set();
+  for (const fn of want.cloudFunctions) {
+    if (fn.apiVersion === 1) {
+      gcfV1Regions.add(fn.region);
+    } else {
+      gcfV2Regions.add(fn.region);
+    }
+  }
+
+  const neededUnreachableV1 = ctx.unreachableRegions.gcfV1.filter((region) =>
+    gcfV1Regions.has(region)
   );
-  if (neededUnreachableRegions.length) {
+  const neededUnreachableV2 = ctx.unreachableRegions.gcfV2.filter((region) =>
+    gcfV2Regions.has(region)
+  );
+  if (neededUnreachableV1.length) {
     throw new FirebaseError(
       "The following Cloud Functions regions are currently unreachable:\n\t" +
-        neededUnreachableRegions.join("\n\t") +
+        neededUnreachableV1.join("\n\t") +
         "\nThis deployment contains functions in those regions. Please try again in a few minutes, or exclude these regions from your deployment."
     );
-  } else if (ctx.unreachableRegions.gcfv1.length) {
-    // TODO(inlined): Warn that these are GCF *v1* regions that are unavailable if the user
-    // has run the open sesame command.
+  }
+
+  if (neededUnreachableV2.length) {
+    throw new FirebaseError(
+      "The following Cloud Functions V2 regions are currently unreachable:\n\t" +
+        neededUnreachableV1.join("\n\t") +
+        "\nThis deployment contains functions in those regions. Please try again in a few minutes, or exclude these regions from your deployment."
+    );
+  }
+
+  if (ctx.unreachableRegions.gcfV1.length) {
     utils.logLabeledWarning(
       "functions",
       "The following Cloud Functions regions are currently unreachable:\n" +
-        ctx.unreachableRegions.gcfv1.join("\n") +
+        ctx.unreachableRegions.gcfV1.join("\n") +
+        "\nCloud Functions in these regions won't be deleted."
+    );
+  }
+
+  if (ctx.unreachableRegions.gcfV2.length) {
+    utils.logLabeledWarning(
+      "functions",
+      "The following Cloud Functions V2 regions are currently unreachable:\n" +
+        ctx.unreachableRegions.gcfV2.join("\n") +
         "\nCloud Functions in these regions won't be deleted."
     );
   }
