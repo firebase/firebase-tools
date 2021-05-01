@@ -4,7 +4,6 @@ import { isFirebaseManaged } from "../../deploymentTool";
 import * as backend from "./backend";
 
 export interface RegionalFunctionChanges {
-  sourceToken?: string;
   functionsToCreate: backend.FunctionSpec[];
   functionsToUpdate: backend.FunctionSpec[];
   functionsToDelete: backend.FunctionSpec[];

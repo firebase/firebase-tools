@@ -7,7 +7,6 @@ import * as args from "./args";
 import * as backend from "./backend";
 import * as track from "../../track";
 import * as utils from "../../utils";
-import * as cloudfunctions from "../../gcp/cloudfunctions";
 
 // Note: it seems like almost all of these matcher methods use IDs under the covers.
 // Consider updating methods and call sites to work on ID.

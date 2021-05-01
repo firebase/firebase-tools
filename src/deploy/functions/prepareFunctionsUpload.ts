@@ -102,17 +102,13 @@ async function packageSource(options: args.Options, sourceDir: string, configVal
       filesize(archive.pointer()) +
       ") for uploading"
   );
-  return {
-    file: tmpFile,
-    stream: fs.createReadStream(tmpFile),
-    size: archive.pointer(),
-  };
+  return tmpFile;
 }
 
 export async function prepareFunctionsUpload(
   context: args.Context,
   options: args.Options
-): Promise<args.FunctionsSource | undefined> {
+): Promise<string | undefined> {
   const sourceDir = options.config.path(options.config.get("functions.source") as string);
   const configValues = await getFunctionsConfig(context);
   const backend = await discoverBackendSpec(context, options, configValues);
