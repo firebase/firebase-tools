@@ -1,14 +1,13 @@
-// These types should proably be in a root deploy.ts, but we can only boil the ocean one bit at a time.
-
 import { ReadStream } from "fs";
-import * as gcf from "../../gcp/cloudfunctions";
-import * as deploymentPlanner from "./deploymentPlanner";
+
+import * as backend from "./backend";
+
+// These types should proably be in a root deploy.ts, but we can only boil the ocean one bit at a time.
 
 // Payload holds the output types of what we're building.
 export interface Payload {
   functions?: {
-    byRegion: deploymentPlanner.RegionMap;
-    triggers: deploymentPlanner.CloudFunctionTrigger[];
+    backend: backend.Backend;
   };
 }
 
@@ -26,8 +25,8 @@ export interface Options {
   config: {
     // Note: it might be worth defining overloads for config values we use in
     // deploy/functions.
-    get(key: string, defaultValue?: any): any;
-    set(key: string, value: any): void;
+    get(key: string, defaultValue?: unknown): unknown;
+    set(key: string, value: unknown): void;
     has(key: string): boolean;
     path(pathName: string): string;
 
@@ -59,16 +58,12 @@ export interface Context {
 
   // Filled in the "prepare" phase.
   functionsSource?: FunctionsSource;
-  // TODO: replace with backend.Runtime once it is committed.
-  runtimeChoice?: gcf.Runtime;
+  runtimeChoice?: backend.Runtime;
   runtimeConfigEnabled?: boolean;
   firebaseConfig?: FirebaseConfig;
 
   // Filled in the "deploy" phase.
   uploadUrl?: string;
-
-  // TOOD: move to caching function w/ helper
-  existingFunctions?: gcf.CloudFunction[];
 }
 
 export interface FirebaseConfig {

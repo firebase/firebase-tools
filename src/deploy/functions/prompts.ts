@@ -1,14 +1,12 @@
 import * as clc from "cli-color";
 
-import { getFunctionLabel, getFunctionId, getRegion } from "../../functionsDeployHelper";
-import { CloudFunctionTrigger } from "./deploymentPlanner";
+import { getFunctionLabel } from "./functionsDeployHelper";
 import { FirebaseError } from "../../error";
 import { promptOnce } from "../../prompt";
-import { CloudFunction } from "../../gcp/cloudfunctions";
-import * as utils from "../../utils";
 import { logger } from "../../logger";
 import * as args from "./args";
-import * as gcf from "../../gcp/cloudfunctions";
+import * as backend from "./backend";
+import * as utils from "../../utils";
 
 /**
  * Checks if a deployment will create any functions with a failure policy.
@@ -18,43 +16,33 @@ import * as gcf from "../../gcp/cloudfunctions";
  */
 export async function promptForFailurePolicies(
   options: args.Options,
-  functions: CloudFunctionTrigger[],
-  existingFunctions: CloudFunction[]
+  want: backend.FunctionSpec[],
+  have: backend.FunctionSpec[]
 ): Promise<void> {
   // Collect all the functions that have a retry policy
-  const failurePolicyFunctions = functions.filter((fn: CloudFunctionTrigger) => {
-    return !!fn.failurePolicy;
+  const retryFunctions = want.filter((fn) => {
+    return backend.isEventTrigger(fn.trigger) && fn.trigger.retry;
   });
 
-  if (failurePolicyFunctions.length === 0) {
+  if (retryFunctions.length === 0) {
     return;
   }
 
-  const existingFailurePolicyFunctions = existingFunctions.filter((fn: CloudFunction) => {
-    return !!fn?.eventTrigger?.failurePolicy;
-  });
-  const newFailurePolicyFunctions = failurePolicyFunctions.filter((fn: CloudFunctionTrigger) => {
-    for (const existing of existingFailurePolicyFunctions) {
-      if (existing.name === fn.name) {
-        return false;
-      }
-    }
-    return true;
+  const existingRetryFunctions = have.filter((fn) => {
+    return backend.isEventTrigger(fn.trigger) && fn.trigger.retry;
   });
 
-  if (newFailurePolicyFunctions.length == 0) {
+  const newRetryFunctions = retryFunctions.filter((fn) => {
+    return !existingRetryFunctions.some(backend.sameFunctionName(fn));
+  });
+
+  if (newRetryFunctions.length == 0) {
     return;
   }
-
-  const newFailurePolicyFunctionLabels = newFailurePolicyFunctions.map(
-    (fn: CloudFunctionTrigger) => {
-      return getFunctionLabel(fn.name);
-    }
-  );
 
   const warnMessage =
     "The following functions will newly be retried in case of failure: " +
-    clc.bold(newFailurePolicyFunctionLabels.join(", ")) +
+    clc.bold(newRetryFunctions.map(getFunctionLabel).join(", ")) +
     ". " +
     "Retried executions are billed as any other execution, and functions are retried repeatedly until they either successfully execute or the maximum retry period has elapsed, which can be up to 7 days. " +
     "For safety, you might want to ensure that your functions are idempotent; see https://firebase.google.com/docs/functions/retries to learn more.";
@@ -87,7 +75,7 @@ export async function promptForFailurePolicies(
  * @param functions A list of functions to be deleted.
  */
 export async function promptForFunctionDeletion(
-  functionsToDelete: string[],
+  functionsToDelete: backend.FunctionSpec[],
   force: boolean,
   nonInteractive: boolean
 ): Promise<boolean> {
@@ -96,17 +84,15 @@ export async function promptForFunctionDeletion(
     return true;
   }
   const deleteList = functionsToDelete
-    .map((funcName) => {
-      return "\t" + getFunctionLabel(funcName);
+    .map((fn) => {
+      return "\t" + getFunctionLabel(fn);
     })
     .join("\n");
 
   if (nonInteractive) {
     const deleteCommands = functionsToDelete
       .map((func) => {
-        return (
-          "\tfirebase functions:delete " + getFunctionId(func) + " --region " + getRegion(func)
-        );
+        return "\tfirebase functions:delete " + func.id + " --region " + func.region;
       })
       .join("\n");
 
