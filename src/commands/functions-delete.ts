@@ -5,7 +5,7 @@ import * as functionsConfig from "../functionsConfig";
 import { deleteFunctions } from "../functionsDelete";
 import * as getProjectId from "../getProjectId";
 import * as helper from "../functionsDeployHelper";
-import { prompt } from "../prompt";
+import { promptOnce } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 
@@ -61,26 +61,24 @@ export default new Command("functions:delete [filters...]")
       .map((fn) => fn.name);
     const fnNamesToDelete = functionsToDelete.map((fn) => fn.name);
 
-    let confirmDeletion = false;
-    if (!options.force) {
-      const deleteList = fnNamesToDelete
-        .map((func) => {
-          return "\t" + helper.getFunctionLabel(func);
-        })
-        .join("\n");
-      confirmDeletion = await prompt(options, [
-        {
-          type: "confirm",
-          name: "confirm",
-          default: false,
-          message:
-            "You are about to delete the following Cloud Functions:\n" +
-            deleteList +
-            "\n  Are you sure?",
-        },
-      ]);
-    }
-    if (!confirmDeletion && !options.force) {
+    const deleteList = fnNamesToDelete
+      .map((func) => {
+        return "\t" + helper.getFunctionLabel(func);
+      })
+      .join("\n");
+    const confirmDeletion = await promptOnce(
+      {
+        type: "confirm",
+        name: "force",
+        default: false,
+        message:
+          "You are about to delete the following Cloud Functions:\n" +
+          deleteList +
+          "\n  Are you sure?",
+      },
+      options
+    );
+    if (!confirmDeletion) {
       return utils.reject("Command aborted.", { exit: 1 });
     }
     return await deleteFunctions(

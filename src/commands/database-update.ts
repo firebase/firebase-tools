@@ -33,16 +33,17 @@ export default new Command("database:update <path> [infile]")
     }
     const origin = realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl);
     const url = utils.getDatabaseUrl(origin, options.instance, path);
-    if (!options.confirm) {
-      const confirmed = await promptOnce({
+    const confirmed = await promptOnce(
+      {
         type: "confirm",
         name: "confirm",
         default: false,
         message: `You are about to modify data at ${clc.cyan(url)}. Are you sure?`,
-      });
-      if (!confirmed) {
-        throw new FirebaseError("Command aborted.");
-      }
+      },
+      options
+    );
+    if (!confirmed) {
+      throw new FirebaseError("Command aborted.");
     }
 
     const inStream =

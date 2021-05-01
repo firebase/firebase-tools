@@ -15,18 +15,15 @@ export default new Command("hosting:disable")
   .before(requirePermissions, ["firebasehosting.sites.update"])
   .before(requireHostingSite)
   .action(async (options) => {
-    let confirm = Boolean(options.confirm);
     const siteToDisable: string = options.site;
 
-    if (!confirm) {
-      confirm = await promptOnce({
-        type: "confirm",
-        name: "confirm",
-        message: `Are you sure you want to disable Firebase Hosting for the site ${clc.underline(
-          siteToDisable
-        )}\n${clc.underline("This will immediately make your site inaccessible!")}`,
-      });
-    }
+    const confirm = await promptOnce({
+      type: "confirm",
+      name: "confirm",
+      message: `Are you sure you want to disable Firebase Hosting for the site ${clc.underline(
+        siteToDisable
+      )}\n${clc.underline("This will immediately make your site inaccessible!")}`,
+    });
 
     if (!confirm) {
       return;
