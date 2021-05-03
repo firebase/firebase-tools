@@ -33,7 +33,7 @@ export async function discoverBackendSpec(
   options: args.Options,
   runtimeConfigValues: backend.RuntimeConfigValues
 ): Promise<backend.Backend> {
-  let strategy: Strategy;
+  let strategy: Strategy | undefined = undefined;
   for (const testStrategy of STRATEGIES) {
     if (await testStrategy.useStrategy(context)) {
       strategy = testStrategy;
