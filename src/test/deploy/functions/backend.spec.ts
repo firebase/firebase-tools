@@ -306,7 +306,7 @@ describe("Backend", () => {
           ...HAVE_CLOUD_FUNCTION,
           ...extraFields,
           httpsTrigger: {},
-        })
+        } as gcf.CloudFunction)
       ).to.deep.equal({
         ...FUNCTION_SPEC,
         ...extraFields,
@@ -415,7 +415,7 @@ describe("Backend", () => {
         unreachableRegions = ["region"];
 
         const secondBackend = await backend.existingBackend(context);
-        backend.checkAvailability(context, backend.empty());
+        await backend.checkAvailability(context, backend.empty());
 
         expect(firstBackend).to.deep.equal(secondBackend);
       });

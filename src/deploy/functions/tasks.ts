@@ -1,26 +1,25 @@
 import * as clc from "cli-color";
 
+import Queue from "../../throttler/queue";
 import { logger } from "../../logger";
-import * as utils from "../../utils";
-import { CloudFunctionTrigger } from "./deploymentPlanner";
-import { cloudfunctions, cloudscheduler } from "../../gcp";
-import { Runtime } from "../../gcp/cloudfunctions";
-import * as deploymentTool from "../../deploymentTool";
-import * as helper from "../../functionsDeployHelper";
-import { RegionalDeployment } from "./deploymentPlanner";
+import { RegionalFunctionChanges } from "./deploymentPlanner";
 import { OperationResult, OperationPollerOptions, pollOperation } from "../../operation-poller";
 import { functionsOrigin } from "../../api";
-import Queue from "../../throttler/queue";
-import { getHumanFriendlyRuntimeName } from "../../parseRuntimeAndValidateSDK";
+import { getHumanFriendlyRuntimeName } from "./parseRuntimeAndValidateSDK";
 import { deleteTopic } from "../../gcp/pubsub";
 import { DeploymentTimer } from "./deploymentTimer";
 import { ErrorHandler } from "./errorHandler";
-import { result } from "lodash";
+import { FirebaseError } from "../../error";
+import * as backend from "./backend";
+import * as cloudscheduler from "../../gcp/cloudscheduler";
+import * as gcf from "../../gcp/cloudfunctions";
+import * as helper from "./functionsDeployHelper";
+import * as utils from "../../utils";
 
 // TODO: Tune this for better performance.
 const defaultPollerOptions = {
   apiOrigin: functionsOrigin,
-  apiVersion: cloudfunctions.API_VERSION,
+  apiVersion: gcf.API_VERSION,
   masterTimeout: 25 * 60000, // 25 minutes is the maximum build time for a function
 };
 
@@ -30,17 +29,18 @@ export type OperationType =
   | "delete"
   | "upsert schedule"
   | "delete schedule"
+  | "delete topic"
   | "make public";
 
 export interface DeploymentTask {
   run: () => Promise<any>;
-  functionName: string;
+  fn: backend.TargetIds;
   operationType: OperationType;
 }
 
 export interface TaskParams {
   projectId: string;
-  runtime?: Runtime;
+  runtime?: backend.Runtime;
   sourceUrl?: string;
   errorHandler: ErrorHandler;
 }
@@ -51,123 +51,98 @@ export interface TaskParams {
 
 export function createFunctionTask(
   params: TaskParams,
-  fn: CloudFunctionTrigger,
+  fn: backend.FunctionSpec,
   sourceToken?: string,
-  onPoll?: (op: OperationResult<CloudFunctionTrigger>) => void
+  onPoll?: (op: OperationResult<backend.FunctionSpec>) => void
 ): DeploymentTask {
+  const fnName = backend.functionName(fn);
   const run = async () => {
     utils.logBullet(
       clc.bold.cyan("functions: ") +
         "creating " +
         getHumanFriendlyRuntimeName(params.runtime!) +
         " function " +
-        clc.bold(helper.getFunctionLabel(fn.name)) +
+        clc.bold(helper.getFunctionLabel(fn)) +
         "..."
     );
-    const eventType = fn.eventTrigger ? fn.eventTrigger.eventType : "https";
-    const createRes = await cloudfunctions.createFunction({
-      projectId: params.projectId,
-      region: helper.getRegion(fn.name),
-      eventType: eventType,
-      functionName: helper.getFunctionId(fn.name),
-      entryPoint: fn.entryPoint,
-      trigger: helper.getFunctionTrigger(fn),
-      labels: Object.assign({}, deploymentTool.labels(), fn.labels),
-      sourceUploadUrl: params.sourceUrl,
-      sourceToken: sourceToken,
-      runtime: params.runtime,
-      availableMemoryMb: fn.availableMemoryMb,
-      timeout: fn.timeout,
-      maxInstances: fn.maxInstances,
-      environmentVariables: fn.environmentVariables,
-      vpcConnector: fn.vpcConnector,
-      vpcConnectorEgressSettings: fn.vpcConnectorEgressSettings,
-      serviceAccountEmail: fn.serviceAccountEmail,
-      ingressSettings: fn.ingressSettings,
-    });
-    const pollerOptions: OperationPollerOptions = Object.assign(
-      {
-        pollerName: `create-${fn.name}`,
-        operationResourceName: createRes.name,
-        onPoll,
-      },
-      defaultPollerOptions
-    );
-    const operationResult = await pollOperation<CloudFunctionTrigger>(pollerOptions);
-    if (eventType === "https") {
+    if (fn.apiVersion != 1) {
+      throw new FirebaseError("Only v1 of the GCF API is currently supported");
+    }
+    const apiFunction = backend.toGCFv1Function(fn, params.sourceUrl!);
+    if (sourceToken) {
+      apiFunction.sourceToken = sourceToken;
+    }
+    const createRes = await gcf.createFunction(apiFunction);
+    const pollerOptions: OperationPollerOptions = {
+      ...defaultPollerOptions,
+      pollerName: `create-${fnName}`,
+      operationResourceName: createRes.name,
+      onPoll,
+    };
+    const operationResult = await pollOperation<gcf.CloudFunction>(pollerOptions);
+    if (!backend.isEventTrigger(fn.trigger)) {
       try {
-        await cloudfunctions.setIamPolicy({
-          name: fn.name,
-          policy: cloudfunctions.DEFAULT_PUBLIC_POLICY,
+        await gcf.setIamPolicy({
+          name: fnName,
+          policy: gcf.DEFAULT_PUBLIC_POLICY,
         });
       } catch (err) {
-        params.errorHandler.record("warning", fn.name, "make public", err.original.message);
+        params.errorHandler.record("warning", fnName, "make public", err.message);
       }
     }
     return operationResult;
   };
   return {
     run,
-    functionName: fn.name,
+    fn,
     operationType: "create",
   };
 }
 
 export function updateFunctionTask(
   params: TaskParams,
-  fn: CloudFunctionTrigger,
+  fn: backend.FunctionSpec,
   sourceToken?: string,
-  onPoll?: (op: OperationResult<CloudFunctionTrigger>) => void
+  onPoll?: (op: OperationResult<gcf.CloudFunction>) => void
 ): DeploymentTask {
+  const fnName = backend.functionName(fn);
   const run = async () => {
     utils.logBullet(
       clc.bold.cyan("functions: ") +
         "updating " +
         getHumanFriendlyRuntimeName(params.runtime!) +
         " function " +
-        clc.bold(helper.getFunctionLabel(fn.name)) +
+        clc.bold(helper.getFunctionLabel(fn)) +
         "..."
     );
-    const eventType = fn.eventTrigger ? fn.eventTrigger.eventType : "https";
-    const updateRes = await cloudfunctions.updateFunction({
-      projectId: params.projectId,
-      region: helper.getRegion(fn.name),
-      eventType: eventType,
-      functionName: helper.getFunctionId(fn.name),
-      entryPoint: fn.entryPoint,
-      trigger: helper.getFunctionTrigger(fn),
-      labels: Object.assign({}, deploymentTool.labels(), fn.labels),
-      sourceUploadUrl: params.sourceUrl,
-      sourceToken: sourceToken,
-      runtime: params.runtime,
-      availableMemoryMb: fn.availableMemoryMb,
-      timeout: fn.timeout,
-      maxInstances: fn.maxInstances,
-      environmentVariables: fn.environmentVariables,
-      vpcConnector: fn.vpcConnector,
-      vpcConnectorEgressSettings: fn.vpcConnectorEgressSettings,
-      serviceAccountEmail: fn.serviceAccountEmail,
-      ingressSettings: fn.ingressSettings,
-    });
-    const pollerOptions: OperationPollerOptions = Object.assign(
-      {
-        pollerName: `update-${fn.name}`,
-        operationResourceName: updateRes.name,
-        onPoll,
-      },
-      defaultPollerOptions
-    );
-    const operationResult = await pollOperation<CloudFunctionTrigger>(pollerOptions);
+    if (fn.apiVersion !== 1) {
+      throw new FirebaseError("Only v1 of the GCF API is currently supported");
+    }
+    // TODO(inlined): separate check for updating a v1 function to a v2 function.
+    // Should this be part of deployment plan instead?
+    const apiFunction = backend.toGCFv1Function(fn, params.sourceUrl!);
+    if (sourceToken) {
+      apiFunction.sourceToken = sourceToken;
+    }
+    const updateRes = await gcf.updateFunction(apiFunction);
+    const pollerOptions: OperationPollerOptions = {
+      ...defaultPollerOptions,
+      pollerName: `update-${fnName}`,
+      operationResourceName: updateRes.name,
+      onPoll,
+    };
+    const operationResult = await pollOperation<gcf.CloudFunction>(pollerOptions);
     return operationResult;
   };
   return {
     run,
-    functionName: fn.name,
+    fn,
     operationType: "update",
   };
 }
 
-export function deleteFunctionTask(params: TaskParams, fnName: string): DeploymentTask {
+export function deleteFunctionTask(params: TaskParams, fn: backend.FunctionSpec): DeploymentTask {
+  const fnName = backend.functionName(fn);
   const run = async () => {
     utils.logBullet(
       clc.bold.cyan("functions: ") +
@@ -175,9 +150,10 @@ export function deleteFunctionTask(params: TaskParams, fnName: string): Deployme
         clc.bold(helper.getFunctionLabel(fnName)) +
         "..."
     );
-    const deleteRes = await cloudfunctions.deleteFunction({
-      functionName: fnName,
-    });
+    if (fn.apiVersion !== 1) {
+      throw new FirebaseError("Only v1 of the GCF API is currently supported");
+    }
+    const deleteRes = await gcf.deleteFunction(backend.functionName(fn));
     const pollerOptions: OperationPollerOptions = Object.assign(
       {
         pollerName: `delete-${fnName}`,
@@ -189,7 +165,7 @@ export function deleteFunctionTask(params: TaskParams, fnName: string): Deployme
   };
   return {
     run,
-    functionName: fnName,
+    fn,
     operationType: "delete",
   };
 }
@@ -200,23 +176,19 @@ export function functionsDeploymentHandler(
 ): (task: DeploymentTask) => Promise<any | undefined> {
   return async (task: DeploymentTask) => {
     let result;
+    const fnName = backend.functionName(task.fn);
     try {
-      timer.startTimer(task.functionName, task.operationType);
+      timer.startTimer(fnName, task.operationType);
       result = await task.run();
-      helper.printSuccess(task.functionName, task.operationType);
+      helper.printSuccess(task.fn, task.operationType);
     } catch (err) {
       if (err.original?.context?.response?.statusCode === 429) {
         // Throw quota errors so that throttler retries them.
         throw err;
       }
-      errorHandler.record(
-        "error",
-        task.functionName,
-        task.operationType,
-        err.original?.message || ""
-      );
+      errorHandler.record("error", fnName, task.operationType, err.original?.message || "");
     }
-    timer.endTimer(task.functionName);
+    timer.endTimer(fnName);
     return result;
   };
 }
@@ -226,7 +198,8 @@ export function functionsDeploymentHandler(
  */
 export function runRegionalFunctionDeployment(
   params: TaskParams,
-  regionalDeployment: RegionalDeployment,
+  region: string,
+  regionalDeployment: RegionalFunctionChanges,
   queue: Queue<DeploymentTask, void>
 ): Promise<void> {
   // Build an onPoll function to check for sourceToken and queue up the rest of the deployment.
@@ -238,9 +211,7 @@ export function runRegionalFunctionDeployment(
       (op.metadata?.sourceToken && !regionalDeployment.sourceToken) ||
       (!op.metadata?.sourceToken && op.done);
     if (shouldFinishDeployment) {
-      logger.debug(
-        `Got sourceToken ${op.metadata.sourceToken} for region ${regionalDeployment.region}`
-      );
+      logger.debug(`Got sourceToken ${op.metadata.sourceToken} for region ${region}`);
       regionalDeployment.sourceToken = op.metadata.sourceToken;
       finishRegionalFunctionDeployment(params, regionalDeployment, queue);
     }
@@ -261,14 +232,14 @@ export function runRegionalFunctionDeployment(
 
 function finishRegionalFunctionDeployment(
   params: TaskParams,
-  regionalDeployment: RegionalDeployment,
+  regionalChanges: RegionalFunctionChanges,
   queue: Queue<DeploymentTask, void>
 ): void {
-  for (const fn of regionalDeployment.functionsToCreate) {
-    queue.run(createFunctionTask(params, fn, regionalDeployment.sourceToken));
+  for (const fn of regionalChanges.functionsToCreate) {
+    void queue.run(createFunctionTask(params, fn, regionalChanges.sourceToken));
   }
-  for (const fn of regionalDeployment.functionsToUpdate) {
-    queue.run(updateFunctionTask(params, fn, regionalDeployment.sourceToken));
+  for (const fn of regionalChanges.functionsToUpdate) {
+    void queue.run(updateFunctionTask(params, fn, regionalChanges.sourceToken));
   }
 }
 
@@ -278,35 +249,45 @@ function finishRegionalFunctionDeployment(
 
 export function upsertScheduleTask(
   params: TaskParams,
-  fn: CloudFunctionTrigger,
+  schedule: backend.ScheduleSpec,
   appEngineLocation: string
 ): DeploymentTask {
   const run = async () => {
-    const job = helper.toJob(fn, appEngineLocation, params.projectId);
-    return await cloudscheduler.createOrReplaceJob(job);
+    const job = backend.toJob(schedule, appEngineLocation);
+    await cloudscheduler.createOrReplaceJob(job);
   };
   return {
     run,
-    functionName: fn.name,
+    fn: schedule.targetService,
     operationType: "upsert schedule",
   };
 }
 
 export function deleteScheduleTask(
   params: TaskParams,
-  fnName: string,
+  schedule: backend.ScheduleSpec,
   appEngineLocation: string
 ): DeploymentTask {
   const run = async () => {
-    const jobName = helper.getScheduleName(fnName, appEngineLocation);
-    const topicName = helper.getTopicName(fnName);
+    const jobName = backend.scheduleName(schedule, appEngineLocation);
     await cloudscheduler.deleteJob(jobName);
+  };
+  return {
+    run,
+    fn: schedule.targetService,
+    operationType: "delete schedule",
+  };
+}
+
+export function deleteTopicTask(params: TaskParams, topic: backend.PubSubSpec): DeploymentTask {
+  const run = async () => {
+    const topicName = backend.topicName(topic);
     await deleteTopic(topicName);
   };
   return {
     run,
-    functionName: fnName,
-    operationType: "delete schedule",
+    fn: topic.targetService,
+    operationType: "delete topic",
   };
 }
 
@@ -317,14 +298,19 @@ export function schedulerDeploymentHandler(
     let result;
     try {
       result = await task.run();
-      helper.printSuccess(task.functionName, task.operationType);
+      helper.printSuccess(task.fn, task.operationType);
     } catch (err) {
       if (err.status === 429) {
         // Throw quota errors so that throttler retries them.
         throw err;
       } else if (err.status !== 404) {
         // Ignore 404 errors from scheduler calls since they may be deleted out of band.
-        errorHandler.record("error", task.functionName, task.operationType, err.message || "");
+        errorHandler.record(
+          "error",
+          backend.functionName(task.fn),
+          task.operationType,
+          err.message || ""
+        );
       }
     }
     return result;

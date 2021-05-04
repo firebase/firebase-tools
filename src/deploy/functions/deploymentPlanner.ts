@@ -1,98 +1,83 @@
-import * as deploymentTool from "../../deploymentTool";
-import { functionMatchesAnyGroup, getTopicName } from "../../functionsDeployHelper";
+import { functionMatchesAnyGroup } from "./functionsDeployHelper";
 import { checkForInvalidChangeOfTrigger } from "./validate";
+import { isFirebaseManaged } from "../../deploymentTool";
+import * as backend from "./backend";
 
-// TODO: Better name for this?
-// It's really a CloudFuntion, not just a trigger,
-// but CloudFunction is a different exported type from firebase-functions
-export interface CloudFunctionTrigger {
-  name: string;
-  sourceUploadUrl?: string;
+export interface RegionalFunctionChanges {
   sourceToken?: string;
-  labels: { [key: string]: string };
-  environmentVariables: { [key: string]: string };
-  entryPoint: string;
-  runtime?: string;
-  vpcConnector?: string;
-  vpcConnectorEgressSettings?: string;
-  ingressSettings?: string;
-  availableMemoryMb?: number;
-  timeout?: number;
-  maxInstances?: number;
-  serviceAccountEmail?: string;
-  httpsTrigger?: any;
-  eventTrigger?: any;
-  failurePolicy?: {};
-  schedule?: object;
-  timeZone?: string;
-  regions?: string[];
-}
-
-export interface RegionMap {
-  [region: string]: CloudFunctionTrigger[];
-}
-
-export interface RegionalDeployment {
-  region: string;
-  sourceToken?: string;
-  functionsToCreate: CloudFunctionTrigger[];
-  functionsToUpdate: CloudFunctionTrigger[];
-  schedulesToUpsert: CloudFunctionTrigger[];
+  functionsToCreate: backend.FunctionSpec[];
+  functionsToUpdate: backend.FunctionSpec[];
+  functionsToDelete: backend.FunctionSpec[];
 }
 
 export interface DeploymentPlan {
-  regionalDeployments: RegionalDeployment[];
-  functionsToDelete: string[];
-  schedulesToDelete: string[];
+  regionalDeployments: Record<string, RegionalFunctionChanges>;
+  schedulesToUpsert: backend.ScheduleSpec[];
+  schedulesToDelete: backend.ScheduleSpec[];
+
+  // NOTE(inlined):
+  // Topics aren't created yet explicitly because the Functions API creates them
+  // automatically. This may change in GCFv2 and would certainly change in Run,
+  // so we should be ready to start creating topics before schedules or functions.
+  // OTOH, we could just say that schedules targeting Pub/Sub are just a v1 thing
+  // and save ourselves the topic management in GCFv2 or Run.
+  topicsToDelete: backend.PubSubSpec[];
 }
 
-/**
- * Creates a map of regions to all the CloudFunctions being deployed
- * to that region.
- * @param projectId The project in use.
- * @param localFunctions A list of all CloudFunctions in the deployment.
- */
+// export for testing
 export function functionsByRegion(
-  projectId: string,
-  localFunctions: CloudFunctionTrigger[]
-): RegionMap {
-  const regionMap: RegionMap = {};
-  for (const trigger of localFunctions) {
-    if (!trigger.regions) {
-      trigger.regions = ["us-central1"];
-    }
-    // Create a separate CloudFunction for
-    // each region we deploy a function to
-    for (const region of trigger.regions) {
-      const triggerDeepCopy = JSON.parse(JSON.stringify(trigger));
-      if (triggerDeepCopy.regions) {
-        delete triggerDeepCopy.regions;
-      }
-      triggerDeepCopy.name = [
-        "projects",
-        projectId,
-        "locations",
-        region,
-        "functions",
-        trigger.name,
-      ].join("/");
-      regionMap[region] = regionMap[region] || [];
-      regionMap[region].push(triggerDeepCopy);
-    }
+  allFunctions: backend.FunctionSpec[]
+): Record<string, backend.FunctionSpec[]> {
+  const partitioned: Record<string, backend.FunctionSpec[]> = {};
+  for (const fn of allFunctions) {
+    partitioned[fn.region] = partitioned[fn.region] || [];
+    partitioned[fn.region].push(fn);
   }
-  return regionMap;
+  return partitioned;
 }
 
-/**
- * Helper method to turn a RegionMap into a flat list of all functions in a deployment.
- * @param regionMap A RegionMap for the deployment.
- */
-export function allFunctions(regionMap: RegionMap): CloudFunctionTrigger[] {
-  const triggers: CloudFunctionTrigger[] = [];
-  for (const [k, v] of Object.entries(regionMap)) {
-    triggers.push(...v);
-  }
-  return triggers;
+export function allRegions(
+  spec: Record<string, backend.FunctionSpec[]>,
+  existing: Record<string, backend.FunctionSpec[]>
+): string[] {
+  return Object.keys({ ...spec, ...existing });
+}
+
+const matchesId = (hasId: { id: string }) => (test: { id: string }) => {
+  return hasId.id === test.id;
+};
+
+// export for testing
+// Assumes we don't have cross-project functions and that, per function name, functions exist
+// in the same region.
+export function calculateRegionalFunctionChanges(
+  want: backend.FunctionSpec[],
+  have: backend.FunctionSpec[],
+  filters: string[][]
+): RegionalFunctionChanges {
+  want = want.filter((fn) => functionMatchesAnyGroup(fn, filters));
+  have = have.filter((fn) => functionMatchesAnyGroup(fn, filters));
+
+  const functionsToCreate = want.filter((fn) => !have.some(matchesId(fn)));
+  const functionsToUpdate = want.filter((fn) => {
+    const haveFn = have.find(matchesId(fn));
+    if (haveFn) {
+      checkForInvalidChangeOfTrigger(fn, haveFn);
+
+      // Remember old environment variables that might have been set with
+      // gcloud or the cloud console.
+      fn.environmentVariables = {
+        ...haveFn.environmentVariables,
+        ...fn.environmentVariables,
+      };
+    }
+    return haveFn;
+  });
+  const functionsToDelete = have
+    .filter((fn) => !want.some(matchesId(fn)))
+    .filter((fn) => isFirebaseManaged(fn.labels || {}));
+
+  return { functionsToCreate, functionsToUpdate, functionsToDelete };
 }
 
 /**
@@ -104,83 +89,34 @@ export function allFunctions(regionMap: RegionMap): CloudFunctionTrigger[] {
  * @param filters The filters, passed in by the user via  `--only functions:`
  */
 export function createDeploymentPlan(
-  localFunctionsByRegion: RegionMap,
-  existingFunctions: CloudFunctionTrigger[],
+  want: backend.Backend,
+  have: backend.Backend,
   filters: string[][]
 ): DeploymentPlan {
-  let existingFnsCopy: CloudFunctionTrigger[] = [...existingFunctions];
   const deployment: DeploymentPlan = {
-    regionalDeployments: [],
-    functionsToDelete: [],
+    regionalDeployments: {},
+    schedulesToUpsert: [],
     schedulesToDelete: [],
+    topicsToDelete: [],
   };
-  // eslint-disable-next-line guard-for-in
-  for (const region in localFunctionsByRegion) {
-    const regionalDeployment: RegionalDeployment = {
-      region,
-      functionsToCreate: [],
-      functionsToUpdate: [],
-      schedulesToUpsert: [],
-    };
-    const localFunctionsInRegion = localFunctionsByRegion[region];
-    for (const fn of localFunctionsInRegion) {
-      // Check if this function matches the --only filters
-      if (!functionMatchesAnyGroup(fn.name, filters)) {
-        continue;
-      }
-      // Check if this local function has the same name as an exisiting one.
-      const matchingExistingFunction = existingFnsCopy.find((exFn) => exFn.name === fn.name);
-      // Check if the matching exisitng function is scheduled
-      const isMatchingExisitingFnScheduled =
-        matchingExistingFunction?.labels?.["deployment-scheduled"] === "true";
-      // Check if the local function is a scheduled function
-      if (fn.schedule) {
-        // If the local function is scheduled, set its trigger to the correct pubsub topic
-        fn.eventTrigger.resource = getTopicName(fn.name);
-        // and create or update a schedule.
-        regionalDeployment.schedulesToUpsert.push(fn);
-      } else if (isMatchingExisitingFnScheduled) {
-        // If the local function isn't scheduled but the existing one is, delete the schedule.
-        deployment.schedulesToDelete.push(matchingExistingFunction!.name);
-      }
 
-      if (matchingExistingFunction) {
-        // Check if this is an invalid change of trigger type.
-        checkForInvalidChangeOfTrigger(fn, matchingExistingFunction);
-        // Preserve existing environment variables.
-        fn.environmentVariables = {
-          ...matchingExistingFunction.environmentVariables,
-          ...fn.environmentVariables,
-        };
-        regionalDeployment.functionsToUpdate.push(fn);
-        existingFnsCopy = existingFnsCopy.filter((exFn: CloudFunctionTrigger) => {
-          return exFn.name !== fn.name;
-        });
-      } else {
-        regionalDeployment.functionsToCreate.push(fn);
-      }
-    }
-    deployment.regionalDeployments.push(regionalDeployment);
+  const wantRegionalFunctions = functionsByRegion(want.cloudFunctions);
+  const haveRegionalFunctions = functionsByRegion(have.cloudFunctions);
+  for (const region of allRegions(wantRegionalFunctions, haveRegionalFunctions)) {
+    const want = wantRegionalFunctions[region] || [];
+    const have = haveRegionalFunctions[region] || [];
+    deployment.regionalDeployments[region] = calculateRegionalFunctionChanges(want, have, filters);
   }
 
-  // Delete any remaining existing functions that:
-  // 1 - Have the deployment-tool: 'firebase-cli' label and
-  // 2 - Match the --only filters, if any are provided.
-  const functionsToDelete = existingFnsCopy
-    .filter((fn) => {
-      return deploymentTool.isFirebaseManaged(fn.labels);
-    })
-    .filter((fn) => {
-      return functionMatchesAnyGroup(fn.name, filters);
-    });
-  deployment.functionsToDelete = functionsToDelete.map((fn) => {
-    return fn.name;
-  });
-  // Also delete any schedules for functions that we are deleting.
-  for (const fn of functionsToDelete) {
-    if (fn.labels?.["deployment-scheduled"] === "true") {
-      deployment.schedulesToDelete.push(fn.name);
-    }
-  }
+  deployment.schedulesToUpsert = want.schedules.filter((schedule) =>
+    functionMatchesAnyGroup(schedule.targetService, filters)
+  );
+  deployment.schedulesToDelete = have.schedules
+    .filter((schedule) => !want.schedules.some(matchesId(schedule)))
+    .filter((schedule) => functionMatchesAnyGroup(schedule.targetService, filters));
+  deployment.topicsToDelete = have.topics
+    .filter((topic) => !want.topics.some(matchesId(topic)))
+    .filter((topic) => functionMatchesAnyGroup(topic.targetService, filters));
+
   return deployment;
 }
