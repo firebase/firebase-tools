@@ -14,7 +14,7 @@ import { FirebaseError } from "../error";
 import { EmulatorRegistry } from "./registry";
 import { FirestoreEmulator } from "./firestoreEmulator";
 import * as getProjectId from "../getProjectId";
-import { prompt } from "../prompt";
+import { promptOnce } from "../prompt";
 import { onExit } from "./controller";
 import * as fsutils from "../fsutils";
 import Signals = NodeJS.Signals;
@@ -110,14 +110,11 @@ export function warnEmulatorNotSupported(
     const opts = {
       confirm: undefined,
     };
-    return prompt(opts, [
-      {
-        type: "confirm",
-        name: "confirm",
-        default: false,
-        message: "Do you want to continue?",
-      },
-    ]).then(() => {
+    return promptOnce({
+      type: "confirm",
+      default: false,
+      message: "Do you want to continue?",
+    }).then((confirm: boolean) => {
       if (!opts.confirm) {
         return utils.reject("Command aborted.", { exit: 1 });
       }

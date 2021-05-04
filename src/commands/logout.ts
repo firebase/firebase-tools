@@ -46,7 +46,6 @@ module.exports = new Command("logout [email]")
 
         newDefaultAccount = await promptOnce({
           type: "list",
-          name: "id",
           message:
             "You are logging out of your default account, which account should become the new default?",
           choices,

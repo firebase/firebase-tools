@@ -131,6 +131,10 @@ var api = {
     "FIREBASE_FUNCTIONS_URL",
     "https://cloudfunctions.googleapis.com"
   ),
+  functionsV2Origin: utils.envOverride(
+    "FIREBASE_FUNCTIONS_V2_URL",
+    "https://cloudfunctions.googleapis.com"
+  ),
   functionsUploadRegion: utils.envOverride("FIREBASE_FUNCTIONS_UPLOAD_REGION", "us-central1"),
   cloudschedulerOrigin: utils.envOverride(
     "FIREBASE_CLOUDSCHEDULER_URL",

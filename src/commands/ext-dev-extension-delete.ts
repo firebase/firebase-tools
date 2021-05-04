@@ -46,11 +46,11 @@ module.exports = new Command("ext:dev:delete <extensionRef>")
     utils.logLabeledSuccess(logPrefix, "successfully deleted all versions of this extension.");
   });
 
-async function confirmDelete(publisherId: string, extensionId: string): Promise<string> {
+async function confirmDelete(publisherId: string, extensionId: string): Promise<boolean> {
   const message = `You are about to delete ALL versions of ${clc.green(
     `${publisherId}/${extensionId}`
   )}.\nDo you wish to continue? `;
-  return await promptOnce({
+  return promptOnce({
     type: "confirm",
     message,
     default: false, // Force users to explicitly type 'yes'

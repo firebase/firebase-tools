@@ -315,7 +315,7 @@ export function validateSpec(spec: any) {
  */
 export async function promptForValidInstanceId(instanceId: string): Promise<string> {
   let instanceIdIsValid = false;
-  let newInstanceId;
+  let newInstanceId = "";
   const instanceIdRegex = /^[a-z][a-z\d\-]*[a-z\d]$/;
   while (!instanceIdIsValid) {
     newInstanceId = await promptOnce({
@@ -548,7 +548,7 @@ export async function confirmExtensionVersion(
   publisherId: string,
   extensionId: string,
   versionId: string
-): Promise<string> {
+): Promise<boolean> {
   const message =
     `You are about to publish version ${clc.green(versionId)} of ${clc.green(
       `${publisherId}/${extensionId}`
@@ -586,7 +586,7 @@ export async function promptForOfficialExtension(message: string): Promise<strin
 export async function promptForRepeatInstance(
   projectName: string,
   extensionName: string
-): Promise<string> {
+): Promise<boolean> {
   const message =
     `An extension with the ID '${clc.bold(
       extensionName
