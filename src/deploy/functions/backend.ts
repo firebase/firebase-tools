@@ -143,6 +143,11 @@ export interface FunctionSpec extends TargetIds {
   vpcConnectorEgressSettings?: VpcEgressSettings;
   ingressSettings?: IngressSettings;
   serviceAccountEmail?: "default" | string;
+
+  // Output only:
+
+  // present for v1 functions with HTTP triggers and v2 functions always.
+  uri?: string;
 }
 
 /** An API agnostic definition of an entire deployment a customer has or wants. */
@@ -177,7 +182,7 @@ export function empty(): Backend {
  * Consumers should use this before assuming a backend is empty (e.g. nooping
  * deploy processes) because it's possible that fields have been added.
  */
-export function isEmptyBackend(backend: Backend) {
+export function isEmptyBackend(backend: Backend): boolean {
   return (
     Object.keys(backend.requiredAPIs).length == 0 &&
     backend.cloudFunctions.length === 0 &&
@@ -191,12 +196,12 @@ export function isEmptyBackend(backend: Backend) {
  * RuntimeConfig will not be available in production for GCFv2 functions.
  * Future refactors of this code should move this type deeper into the codebase.
  */
-export type RuntimeConfigValues = Record<string, any>;
+export type RuntimeConfigValues = Record<string, unknown>;
 
 /**
  * Gets the formal resource name for a Cloud Function.
  */
-export function functionName(cloudFunction: TargetIds) {
+export function functionName(cloudFunction: TargetIds): string {
   return `projects/${cloudFunction.project}/locations/${cloudFunction.region}/functions/${cloudFunction.id}`;
 }
 
@@ -205,7 +210,7 @@ export function functionName(cloudFunction: TargetIds) {
  * This is useful for list comprehensions, e.g.
  * const newFunctions = wantFunctions.filter(fn => !haveFunctions.some(sameFunctionName(fn)));
  */
-export const sameFunctionName = (func: TargetIds) => (test: TargetIds) => {
+export const sameFunctionName = (func: TargetIds) => (test: TargetIds): boolean => {
   return func.id === test.id && func.region === test.region && func.project == test.project;
 };
 
@@ -253,6 +258,12 @@ export function toGCFv1Function(
     );
   }
 
+  if (!isValidRuntime(cloudFunction.runtime)) {
+    throw new FirebaseError(
+      "Failed internal assertion. Trying to deploy a new function with a deprecated runtime." +
+        " This should never happen"
+    );
+  }
   const gcfFunction: Omit<gcf.CloudFunction, gcf.OutputOnlyFields> = {
     name: functionName(cloudFunction),
     sourceUploadUrl: sourceUploadUrl,
@@ -304,11 +315,13 @@ export function toGCFv1Function(
 export function fromGCFv1Function(gcfFunction: gcf.CloudFunction): FunctionSpec {
   const [, project, , region, , id] = gcfFunction.name.split("/");
   let trigger: EventTrigger | HttpsTrigger;
+  let uri: string | undefined;
   if (gcfFunction.httpsTrigger) {
     trigger = {
       // Note: default (empty) value intentionally means true
       allowInsecure: gcfFunction.httpsTrigger.securityLevel !== "SECURE_ALWAYS",
     };
+    uri = gcfFunction.httpsTrigger.url;
   } else {
     trigger = {
       eventType: gcfFunction.eventTrigger!.eventType,
@@ -332,6 +345,9 @@ export function fromGCFv1Function(gcfFunction: gcf.CloudFunction): FunctionSpec 
     entryPoint: gcfFunction.entryPoint,
     runtime: gcfFunction.runtime,
   };
+  if (uri) {
+    cloudFunction.uri = uri;
+  }
   proto.copyIfPresent(
     cloudFunction,
     gcfFunction,
@@ -389,11 +405,12 @@ interface PrivateContextFields {
  * To determine whether a function was already managed by firebase-tools use
  * deploymentTool.isFirebaseManaged(function.labels)
  * @param context A context object, passed from the Command library and used for caching.
- * @returns
+ * @param forceRefresh If true, ignores and overwrites the cache. These cases should eventually go away.
+ * @return The backend
  */
-export async function existingBackend(context: Context): Promise<Backend> {
+export async function existingBackend(context: Context, forceRefresh?: boolean): Promise<Backend> {
   const ctx = context as Context & PrivateContextFields;
-  if (!ctx.loadedExistingBackend) {
+  if (!ctx.loadedExistingBackend || forceRefresh) {
     await loadExistingBackend(ctx);
   }
   return ctx.existingBackend;
@@ -451,7 +468,7 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
  * @param context A context object from the Command library. Used for caching.
  * @param want The desired backend. Can be backend.empty() to only warn about unavailability.
  */
-export async function checkAvailability(context: Context, want: Backend) {
+export async function checkAvailability(context: Context, want: Backend): Promise<void> {
   const ctx = context as Context & PrivateContextFields;
   if (!ctx.loadedExistingBackend) {
     await loadExistingBackend(ctx);

@@ -2,10 +2,10 @@ import * as clc from "cli-color";
 import { setGracefulCleanup } from "tmp";
 
 import { functionsUploadRegion } from "../../api";
-import * as gcp from "../../gcp";
 import { logSuccess, logWarning } from "../../utils";
 import { checkHttpIam } from "./checkIam";
 import * as args from "./args";
+import * as gcp from "../../gcp";
 
 const GCP_REGION = functionsUploadRegion;
 
@@ -24,7 +24,6 @@ async function uploadSource(context: args.Context): Promise<void> {
  * @param options The command-wide options object.
  * @param payload The deploy payload.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function deploy(
   context: args.Context,
   options: args.Options,
@@ -39,6 +38,7 @@ export async function deploy(
   if (!context.functionsSource) {
     return;
   }
+
   try {
     await uploadSource(context);
     logSuccess(

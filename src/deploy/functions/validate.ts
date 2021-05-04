@@ -1,13 +1,13 @@
-import { FirebaseError } from "../../error";
-import * as _ from "lodash";
-import * as path from "path";
 import * as clc from "cli-color";
+import * as path from "path";
+
+import { FirebaseError } from "../../error";
 import { logger } from "../../logger";
-import * as projectPath from "../../projectPath";
+import { RUNTIME_NOT_SET } from "./parseRuntimeAndValidateSDK";
+import { getFunctionLabel } from "./functionsDeployHelper";
+import * as backend from "./backend";
 import * as fsutils from "../../fsutils";
-import { RUNTIME_NOT_SET } from "../../parseRuntimeAndValidateSDK";
-import { getFunctionLabel } from "../../functionsDeployHelper";
-import { CloudFunctionTrigger } from "./deploymentPlanner";
+import * as projectPath from "../../projectPath";
 
 // have to require this because no @types/cjson available
 // tslint:disable-next-line
@@ -38,14 +38,12 @@ export function functionsDirectoryExists(
  * @param functionNames Object containing function names as keys.
  * @throws { FirebaseError } Function names must be valid.
  */
-export function functionNamesAreValid(functionNames: {}): void {
+export function functionIdsAreValid(functions: { id: string }[]): void {
   const validFunctionNameRegex = /^[a-zA-Z0-9_-]{1,62}$/;
-  const invalidNames = _.reject(_.keys(functionNames), (name: string): boolean => {
-    return _.startsWith(name, ".") || validFunctionNameRegex.test(name);
-  });
-  if (!_.isEmpty(invalidNames)) {
+  const invalidIds = functions.filter((fn) => !validFunctionNameRegex.test(fn.id));
+  if (invalidIds.length !== 0) {
     const msg =
-      `${invalidNames.join(", ")} function name(s) can only contain letters, ` +
+      `${invalidIds.join(", ")} function name(s) can only contain letters, ` +
       `numbers, hyphens, and not exceed 62 characters in length`;
     throw new FirebaseError(msg);
   }
@@ -87,31 +85,27 @@ export function packageJsonIsValid(
 }
 
 export function checkForInvalidChangeOfTrigger(
-  fn: CloudFunctionTrigger,
-  exFn: CloudFunctionTrigger
+  fn: backend.FunctionSpec,
+  exFn: backend.FunctionSpec
 ) {
-  if (fn.httpsTrigger && !exFn.httpsTrigger) {
+  const wantEventTrigger = backend.isEventTrigger(fn.trigger);
+  const haveEventTrigger = backend.isEventTrigger(exFn.trigger);
+  if (!wantEventTrigger && haveEventTrigger) {
     throw new FirebaseError(
       `[${getFunctionLabel(
-        fn.name
+        fn
       )}] Changing from a background triggered function to an HTTPS function is not allowed. Please delete your function and create a new one instead.`
     );
   }
-  if (!fn.httpsTrigger && exFn.httpsTrigger) {
+  if (wantEventTrigger && !haveEventTrigger) {
     throw new FirebaseError(
       `[${getFunctionLabel(
-        fn.name
+        fn
       )}] Changing from an HTTPS function to an background triggered function is not allowed. Please delete your function and create a new one instead.`
     );
   }
-  if (fn.eventTrigger?.service != exFn.eventTrigger?.service) {
-    throw new FirebaseError(
-      `[${getFunctionLabel(
-        fn.name
-      )}] Changing to a different type of background trigger is not allowed. Please delete your function and create a new one instead.`
-    );
-  }
 }
+
 /**
  * Asserts that functions source directory exists and source file is present.
  * @param data Object representing package.json file.
