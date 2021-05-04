@@ -73,6 +73,36 @@ export function createApp(
     res.sendStatus(200);
   });
 
+  app.put("/internal/setRules", (req, res) => {
+    // Payload:
+    // {
+    //   rules: {
+    //     files: [{ name:<string> content: <string> }]
+    //   }
+    // }
+    // TODO: Add a bucket parameter for per-bucket rules support
+
+    const rules = req.body.rules;
+    if (!(rules && Array.isArray(rules.files) && rules.files.length > 0)) {
+      res.status(400).send("Request body must include 'rules.files' array .");
+      return;
+    }
+
+    const file = rules.files[0];
+    if (!(file.name && file.content)) {
+      res
+        .status(400)
+        .send(
+          "Request body must include 'rules.files' array where each member contains 'name' and 'content'."
+        );
+      return;
+    }
+
+    const name = file.name;
+    const content = file.content;
+    emulator.updateRules({ files: [{ name, content }] });
+  });
+
   app.post("/internal/reset", (req, res) => {
     storageLayer.reset();
     res.sendStatus(200);

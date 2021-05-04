@@ -93,6 +93,10 @@ export class StorageEmulator implements EmulatorInstance {
     this.destroyServer = utils.createDestroyer(server);
   }
 
+  public updateRules(source: Source): void {
+    this._rulesetSource = source;
+  }
+
   private updateRulesSource(rulesFile: string): void {
     this._rulesetSource = {
       files: [
