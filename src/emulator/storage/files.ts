@@ -10,8 +10,16 @@ import {
 } from "./metadata";
 import * as path from "path";
 import * as fs from "fs";
+import * as fse from "fs-extra";
 import * as rimraf from "rimraf";
 import { StorageCloudFunctions } from "./cloudFunctions";
+import { logger } from "../../logger";
+
+interface BucketsList {
+  buckets: {
+    id: string;
+  }[];
+}
 
 export class StoredFile {
   private _metadata!: StoredFileMetadata;
@@ -248,13 +256,16 @@ export class StorageLayer {
 
     const bytes = this._persistence.readBytes(upload.fileLocation, upload.currentBytesUploaded);
     const finalMetadata = new StoredFileMetadata(
-      upload.bucketId,
-      upload.objectId,
+      {
+        name: upload.objectId,
+        bucket: upload.bucketId,
+        contentType: "",
+        contentEncoding: upload.metadata.contentEncoding,
+        customMetadata: upload.metadata.metadata,
+      },
+      this._cloudFunctions,
       bytes,
-      "",
-      upload.metadata.contentEncoding,
-      upload.metadata,
-      this._cloudFunctions
+      upload.metadata
     );
     const file = new StoredFile(finalMetadata, filePath);
     this._files.set(filePath, file);
@@ -274,13 +285,16 @@ export class StorageLayer {
     const filePath = this.path(bucket, object);
     this._persistence.appendBytes(filePath, bytes);
     const md = new StoredFileMetadata(
-      bucket,
-      object,
+      {
+        name: object,
+        bucket: bucket,
+        contentType: "",
+        contentEncoding: incomingMetadata.contentEncoding,
+        customMetadata: incomingMetadata.metadata,
+      },
+      this._cloudFunctions,
       bytes,
-      "",
-      incomingMetadata.contentEncoding,
-      incomingMetadata,
-      this._cloudFunctions
+      incomingMetadata
     );
     const file = new StoredFile(md, this._persistence.getDiskPath(filePath));
     this._files.set(filePath, file);
@@ -463,6 +477,102 @@ export class StorageLayer {
 
   public get dirPath(): string {
     return this._persistence.dirPath;
+  }
+
+  /**
+   * Export is implemented using async operations so that it does not block
+   * the hub when invoked.
+   */
+  async export(storageExportPath: string) {
+    // Export a list of all known bucket IDs, which can be used to reconstruct
+    // the bucket metadata.
+    const bucketsList: BucketsList = {
+      buckets: [],
+    };
+    for (const b of this.listBuckets()) {
+      bucketsList.buckets.push({ id: b.id });
+    }
+    const bucketsFilePath = path.join(storageExportPath, "buckets.json");
+    await fse.writeFile(bucketsFilePath, JSON.stringify(bucketsList, undefined, 2));
+
+    // Recursively copy all file blobs
+    const blobsDirPath = path.join(storageExportPath, "blobs");
+    await fse.ensureDir(blobsDirPath);
+    await fse.copy(this.dirPath, blobsDirPath, { recursive: true });
+
+    // Store a metadata file for each file
+    const metadataDirPath = path.join(storageExportPath, "metadata");
+    await fse.ensureDir(metadataDirPath);
+
+    for await (const [p, file] of this._files.entries()) {
+      const metadataExportPath = path.join(metadataDirPath, p) + ".json";
+      const metadataExportDirPath = path.dirname(metadataExportPath);
+
+      await fse.ensureDir(metadataExportDirPath);
+      await fse.writeFile(metadataExportPath, StoredFileMetadata.toJSON(file.metadata));
+    }
+  }
+
+  /**
+   * Import can be implemented using sync operations because the emulator should
+   * not be handling any other requests during import.
+   */
+  import(storageExportPath: string) {
+    // Restore list of buckets
+    const bucketsFile = path.join(storageExportPath, "buckets.json");
+    const bucketsList = JSON.parse(fs.readFileSync(bucketsFile, "utf-8")) as BucketsList;
+    for (const b of bucketsList.buckets) {
+      const bucketMetadata = new CloudStorageBucketMetadata(b.id);
+      this._buckets.set(b.id, bucketMetadata);
+    }
+
+    const metadataDir = path.join(storageExportPath, "metadata");
+    const blobsDir = path.join(storageExportPath, "blobs");
+
+    // Restore all metadata
+    const metadataList = this.walkDirSync(metadataDir);
+
+    const dotJson = ".json";
+    for (const f of metadataList) {
+      if (path.extname(f) !== dotJson) {
+        logger.debug(`Skipping unexpected storage metadata file: ${f}`);
+        continue;
+      }
+      const metadata = StoredFileMetadata.fromJSON(
+        fs.readFileSync(f, "utf-8"),
+        this._cloudFunctions
+      );
+
+      // To get the blob path from the metadata path:
+      // 1) Get the relative path to the metadata export dir
+      // 2) Subtract .json from the end
+      const metadataRelPath = path.relative(metadataDir, f);
+      const blobPath = metadataRelPath.substring(0, metadataRelPath.length - dotJson.length);
+
+      const blobAbsPath = path.join(blobsDir, blobPath);
+      if (!fs.existsSync(blobAbsPath)) {
+        logger.warn(`Could not find file "${blobPath}" in storage export.`);
+        continue;
+      }
+
+      const file = new StoredFile(metadata, blobPath);
+      this._files.set(blobPath, file);
+    }
+
+    // Recursively copy all blobs
+    fse.copySync(blobsDir, this.dirPath);
+  }
+
+  private *walkDirSync(dir: string): Generator<string> {
+    const files = fs.readdirSync(dir);
+    for (const file of files) {
+      const p = path.join(dir, file);
+      if (fs.statSync(p).isDirectory()) {
+        yield* this.walkDirSync(p);
+      } else {
+        yield p;
+      }
+    }
   }
 }
 

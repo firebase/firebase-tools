@@ -9,6 +9,15 @@ type RulesResourceMetadataOverrides = {
   [Property in keyof RulesResourceMetadata]?: RulesResourceMetadata[Property];
 };
 
+type SerializedFileMetadata = Omit<StoredFileMetadata, "timeCreated" | "updated"> & {
+  timeCreated: string;
+  updated: string;
+};
+
+/**
+ * Note: all fields of this object which do not begin with _ are serialized
+ * during export, so add/remove/modify fields with caution.
+ */
 export class StoredFileMetadata {
   name: string;
   bucket: string;
@@ -30,35 +39,59 @@ export class StoredFileMetadata {
   customMetadata: { [s: string]: string };
 
   constructor(
-    bucketId: string,
-    objectId: string,
-    bytes: Buffer,
-    contentType: string,
-    contentEncoding: string | undefined,
-    incomingMetadata: IncomingMetadata,
-    private _cloudFunctions: StorageCloudFunctions
+    opts: Partial<SerializedFileMetadata> & {
+      name: string;
+      bucket: string;
+      contentType: string;
+    },
+    private _cloudFunctions: StorageCloudFunctions,
+    bytes?: Buffer,
+    incomingMetadata?: IncomingMetadata
   ) {
-    this.name = objectId;
-    this.bucket = bucketId;
-    this.timeCreated = new Date();
-    this.size = bytes.byteLength;
-    this.metageneration = 1;
-    this.generation = Date.now();
-    this.md5Hash = generateMd5Hash(bytes);
-    this.storageClass = "STANDARD";
-    this.downloadTokens = "";
-    this.etag = "someETag";
-    this.crc32c = `${crc32c(bytes)}`;
-    this.contentDisposition = "inline";
-    this.updated = this.timeCreated;
-    this.contentType = contentType;
-    this.cacheControl = "no-cache";
-    this.contentLanguage = "en-us";
-    this.contentEncoding = contentEncoding || "identity";
-    this.customMetadata = incomingMetadata.metadata || {};
+    // Required fields
+    this.name = opts.name;
+    this.bucket = opts.bucket;
+    this.contentType = opts.contentType;
 
-    this.addDownloadToken();
-    this.update(incomingMetadata);
+    // Optional fields
+    this.metageneration = opts.metageneration || 1;
+    this.generation = opts.generation || Date.now();
+    this.storageClass = opts.storageClass || "STANDARD";
+    this.etag = opts.etag || "someETag";
+    this.contentDisposition = opts.contentDisposition || "inline";
+    this.cacheControl = opts.cacheControl || "no-cache";
+    this.contentLanguage = opts.contentLanguage || "en-us";
+    this.contentEncoding = opts.contentEncoding || "identity";
+    this.customMetadata = opts.customMetadata || {};
+
+    // Special handling for date fields
+    this.timeCreated = opts.timeCreated ? new Date(opts.timeCreated) : new Date();
+    this.updated = opts.updated ? new Date(opts.updated) : this.timeCreated;
+
+    // Fields derived from bytes
+    if (bytes) {
+      this.size = bytes.byteLength;
+      this.md5Hash = generateMd5Hash(bytes);
+      this.crc32c = `${crc32c(bytes)}`;
+    } else if (opts.size !== undefined && opts.md5Hash && opts.crc32c) {
+      this.size = opts.size;
+      this.md5Hash = opts.md5Hash;
+      this.crc32c = opts.crc32c;
+    } else {
+      throw new Error("Must pass bytes array or opts object with size, md5hash, and crc32c");
+    }
+
+    // Special handling for download tokens
+    if (opts.downloadTokens && opts.downloadTokens.length > 0) {
+      this.downloadTokens = opts.downloadTokens;
+    } else {
+      this.downloadTokens = "";
+      this.addDownloadToken();
+    }
+
+    if (incomingMetadata) {
+      this.update(incomingMetadata);
+    }
   }
 
   asRulesResource(proposedChanges?: RulesResourceMetadataOverrides): RulesResourceMetadata {
@@ -156,6 +189,25 @@ export class StoredFileMetadata {
       this.addDownloadToken();
     }
     this.update({});
+  }
+
+  static fromJSON(data: string, cloudFunctions: StorageCloudFunctions): StoredFileMetadata {
+    const opts = JSON.parse(data) as SerializedFileMetadata;
+    return new StoredFileMetadata(opts, cloudFunctions);
+  }
+
+  public static toJSON(metadata: StoredFileMetadata): string {
+    return JSON.stringify(
+      metadata,
+      (key, value) => {
+        if (key.startsWith("_")) {
+          return undefined;
+        }
+
+        return value;
+      },
+      2
+    );
   }
 }
 

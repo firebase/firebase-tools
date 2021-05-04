@@ -63,6 +63,16 @@ export function createApp(
     })
   );
 
+  app.post("/internal/export", async (req, res) => {
+    const path = req.body.path;
+    if (!path) {
+      res.status(400).send("Export request body must include 'path'.");
+    }
+
+    await storageLayer.export(path);
+    res.sendStatus(200);
+  });
+
   app.post("/internal/reset", (req, res) => {
     storageLayer.reset();
     res.sendStatus(200);

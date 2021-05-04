@@ -7,6 +7,7 @@ import * as path from "path";
 
 import { CLIProcess } from "../integration-helpers/cli";
 import { FrameworkOptions, TriggerEndToEndTest } from "../integration-helpers/framework";
+import { assert } from "sinon";
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
 const ADMIN_CREDENTIAL = {
@@ -40,6 +41,15 @@ function readConfig(): FrameworkOptions {
   const filename = path.join(__dirname, "firebase.json");
   const data = fs.readFileSync(filename, "utf8");
   return JSON.parse(data);
+}
+
+function logIncludes(msg: string) {
+  return (data: unknown) => {
+    if (typeof data != "string" && !Buffer.isBuffer(data)) {
+      throw new Error(`data is not a string or buffer (${typeof data})`);
+    }
+    return data.includes(msg);
+  };
 }
 
 describe("database and firestore emulator function triggers", () => {
@@ -565,5 +575,101 @@ describe("import/export end to end", () => {
     );
 
     await importCLI.stop();
+  });
+
+  it("should be able to import/export storage data", async function (this) {
+    this.timeout(2 * TEST_SETUP_TIMEOUT);
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    // Start up emulator suite
+    const emulatorsCLI = new CLIProcess("1", __dirname);
+    await emulatorsCLI.start(
+      "emulators:start",
+      FIREBASE_PROJECT,
+      ["--only", "storage"],
+      logIncludes(ALL_EMULATORS_STARTED_LOG)
+    );
+
+    const credPath = path.join(__dirname, "service-account-key.json");
+    const credential = fs.existsSync(credPath)
+      ? admin.credential.cert(credPath)
+      : admin.credential.applicationDefault();
+
+    const config = readConfig();
+    const port = config.emulators!.storage.port;
+    process.env.STORAGE_EMULATOR_HOST = `http://localhost:${port}`;
+
+    // Write some data to export
+    const aApp = admin.initializeApp(
+      {
+        projectId: FIREBASE_PROJECT,
+        storageBucket: "bucket-a",
+        credential,
+      },
+      "storage-export-a"
+    );
+    const bApp = admin.initializeApp(
+      {
+        projectId: FIREBASE_PROJECT,
+        storageBucket: "bucket-b",
+        credential,
+      },
+      "storage-export-b"
+    );
+
+    // Write data to two buckets
+    await aApp.storage().bucket().file("a/b.txt").save("a/b hello, world!");
+    await aApp.storage().bucket().file("c/d.txt").save("c/d hello, world!");
+    await bApp.storage().bucket().file("e/f.txt").save("e/f hello, world!");
+    await bApp.storage().bucket().file("g/h.txt").save("g/h hello, world!");
+
+    // Ask for export
+    const exportCLI = new CLIProcess("2", __dirname);
+    const exportPath = fs.mkdtempSync(path.join(os.tmpdir(), "emulator-data"));
+    await exportCLI.start(
+      "emulators:export",
+      FIREBASE_PROJECT,
+      [exportPath],
+      logIncludes("Export complete")
+    );
+    await exportCLI.stop();
+
+    // Check that the right export files are created
+    const storageExportPath = path.join(exportPath, "storage_export");
+    const storageExportFiles = fs.readdirSync(storageExportPath).sort();
+    expect(storageExportFiles).to.eql(["blobs", "buckets.json", "metadata"]);
+
+    // Stop the suite
+    await emulatorsCLI.stop();
+
+    // Attempt to import
+    const importCLI = new CLIProcess("3", __dirname);
+    await importCLI.start(
+      "emulators:start",
+      FIREBASE_PROJECT,
+      ["--only", "storage", "--import", exportPath],
+      logIncludes(ALL_EMULATORS_STARTED_LOG)
+    );
+
+    // List the files
+    const [aFiles] = await aApp.storage().bucket().getFiles({
+      prefix: "a/",
+    });
+    const aFileNames = aFiles.map((f) => f.name).sort();
+    expect(aFileNames).to.eql(["a/b.txt"]);
+
+    const [bFiles] = await bApp.storage().bucket().getFiles({
+      prefix: "e/",
+    });
+    const bFileNames = bFiles.map((f) => f.name).sort();
+    expect(bFileNames).to.eql(["e/f.txt"]);
+
+    // TODO: this operation fails due to a bug in the Storage emulator
+    // https://github.com/firebase/firebase-tools/pull/3320
+    //
+    // Read a file and check content
+    // const [f] = await aApp.storage().bucket().file("a/b.txt").get();
+    // const [buf] = await f.download();
+    // expect(buf.toString()).to.eql("a/b hello, world!");
   });
 });

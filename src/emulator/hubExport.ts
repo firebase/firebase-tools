@@ -1,5 +1,6 @@
 import * as path from "path";
 import * as fs from "fs";
+import * as fse from "fs-extra";
 import * as http from "http";
 
 import * as api from "../api";
@@ -10,6 +11,7 @@ import { FirebaseError } from "../error";
 import { EmulatorHub } from "./hub";
 import { getDownloadDetails } from "./downloadableEmulators";
 import { DatabaseEmulator } from "./databaseEmulator";
+import { StorageEmulator } from "./storage";
 
 export interface FirestoreExportMetadata {
   version: string;
@@ -27,11 +29,17 @@ export interface AuthExportMetadata {
   path: string;
 }
 
+export interface StorageExportMetadata {
+  version: string;
+  path: string;
+}
+
 export interface ExportMetadata {
   version: string;
   firestore?: FirestoreExportMetadata;
   database?: DatabaseExportMetadata;
   auth?: AuthExportMetadata;
+  storage?: StorageExportMetadata;
 }
 
 export class HubExport {
@@ -84,6 +92,14 @@ export class HubExport {
         path: "auth_export",
       };
       await this.exportAuth(metadata);
+    }
+
+    if (shouldExport(Emulators.STORAGE)) {
+      metadata.storage = {
+        version: EmulatorHub.CLI_VERSION,
+        path: "storage_export",
+      };
+      await this.exportStorage(metadata);
     }
 
     const metadataPath = path.join(this.exportPath, HubExport.METADATA_FILE_NAME);
@@ -199,6 +215,28 @@ export class HubExport {
       },
       configFile
     );
+  }
+
+  private async exportStorage(metadata: ExportMetadata): Promise<void> {
+    const storageEmulator = EmulatorRegistry.get(Emulators.STORAGE) as StorageEmulator;
+
+    // Clear the export
+    const storageExportPath = path.join(this.exportPath, metadata.storage!.path);
+    if (fs.existsSync(storageExportPath)) {
+      fse.removeSync(storageExportPath);
+    }
+    fs.mkdirSync(storageExportPath, { recursive: true });
+
+    const storageHost = `http://${EmulatorRegistry.getInfoHostString(storageEmulator.getInfo())}`;
+    const storageExportBody = {
+      path: storageExportPath,
+    };
+
+    return api.request("POST", "/internal/export", {
+      origin: storageHost,
+      json: true,
+      data: storageExportBody,
+    });
   }
 }
 

@@ -30,7 +30,12 @@ export const DOWNLOADABLE_EMULATORS = [
 ];
 
 export type ImportExportEmulators = Emulators.FIRESTORE | Emulators.DATABASE | Emulators.AUTH;
-export const IMPORT_EXPORT_EMULATORS = [Emulators.FIRESTORE, Emulators.DATABASE, Emulators.AUTH];
+export const IMPORT_EXPORT_EMULATORS = [
+  Emulators.FIRESTORE,
+  Emulators.DATABASE,
+  Emulators.AUTH,
+  Emulators.STORAGE,
+];
 
 export const ALL_SERVICE_EMULATORS = [
   Emulators.AUTH,

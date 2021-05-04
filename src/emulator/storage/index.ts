@@ -1,3 +1,4 @@
+import * as path from "path";
 import * as utils from "../../utils";
 import { Constants } from "../constants";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../types";
@@ -11,7 +12,6 @@ import { Source } from "./rules/types";
 import { FirebaseError } from "../../error";
 import { getDownloadDetails } from "../downloadableEmulators";
 import express = require("express");
-import { StorageCloudFunctions } from "./cloudFunctions";
 
 export interface StorageEmulatorArgs {
   projectId: string;
@@ -54,7 +54,6 @@ export class StorageEmulator implements EmulatorInstance {
     const { host, port } = this.getInfo();
     await this._rulesRuntime.start(this.args.auto_download);
     this._app = await createApp(this.args.projectId, this);
-    this._storageLayer = new StorageLayer(this.args.projectId);
 
     if (typeof this.args.rules == "string") {
       const rulesFile = this.args.rules;
