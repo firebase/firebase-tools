@@ -39,7 +39,7 @@ export function functionsByRegion(
 export function allRegions(
   spec: Record<string, backend.FunctionSpec[]>,
   existing: Record<string, backend.FunctionSpec[]>
-) {
+): string[] {
   return Object.keys({ ...spec, ...existing });
 }
 
@@ -64,7 +64,7 @@ export function calculateRegionalFunctionChanges(
     if (haveFn) {
       checkForInvalidChangeOfTrigger(fn, haveFn);
 
-      // Remember old environment varialbes that might have been set with
+      // Remember old environment variables that might have been set with
       // gcloud or the cloud console.
       fn.environmentVariables = {
         ...haveFn.environmentVariables,
@@ -106,16 +106,6 @@ export function createDeploymentPlan(
     const want = wantRegionalFunctions[region] || [];
     const have = haveRegionalFunctions[region] || [];
     deployment.regionalDeployments[region] = calculateRegionalFunctionChanges(want, have, filters);
-  }
-
-  // NOTE(inlined): It's easiest to partition w/ deletes per region and might help
-  // regional consistency, but there's a lot of calculations that use all deleted
-  // functions across all regions. Should we go back to making functions to delete a global
-  // part of the DeploymentPlan?
-  // Alternatively we could make schedules and topics regional based on the service they feed into.
-  const allFunctionsToDelete: backend.FunctionSpec[] = [];
-  for (const regionalDeployment of Object.values(deployment.regionalDeployments)) {
-    allFunctionsToDelete.push(...regionalDeployment.functionsToDelete);
   }
 
   deployment.schedulesToUpsert = want.schedules.filter((schedule) =>

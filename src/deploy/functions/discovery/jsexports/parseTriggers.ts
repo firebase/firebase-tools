@@ -57,8 +57,8 @@ export interface TriggerAnnotation {
 /**
  * Removes any inspect options (`inspect` or `inspect-brk`) from options so the forked process is able to run (otherwise
  * it'll inherit process values and will use the same port).
- * @param {string[]} options From either `process.execArgv` or `NODE_OPTIONS` envar (which is a space separated string)
- * @return {string[]} `options` without any `inspect` or `inspect-brk` values
+ * @param options From either `process.execArgv` or `NODE_OPTIONS` envar (which is a space separated string)
+ * @return `options` without any `inspect` or `inspect-brk` values
  */
 function removeInspectOptions(options: string[]): string[] {
   return options.filter((opt) => !opt.startsWith("--inspect"));

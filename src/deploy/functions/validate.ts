@@ -40,12 +40,7 @@ export function functionsDirectoryExists(
  */
 export function functionIdsAreValid(functions: { id: string }[]): void {
   const validFunctionNameRegex = /^[a-zA-Z0-9_-]{1,62}$/;
-  const invalidIds = functions.filter((fn) => {
-    // NOTE(inlined): Why is it OK for a function to start with a "."?
-    // I don't know; I just preserved prior behavior.
-    return !fn.id.startsWith(".") && !validFunctionNameRegex.test(fn.id);
-  });
-
+  const invalidIds = functions.filter((fn) => !validFunctionNameRegex.test(fn.id));
   if (invalidIds.length !== 0) {
     const msg =
       `${invalidIds.join(", ")} function name(s) can only contain letters, ` +

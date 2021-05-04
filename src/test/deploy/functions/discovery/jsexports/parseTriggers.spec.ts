@@ -6,15 +6,6 @@ import * as parseTriggers from "../../../../../deploy/functions/discovery/jsexpo
 import * as api from "../../../../../api";
 
 describe("addResourcesToBackend", () => {
-  const oldDefaultRegion = api.functionsDefaultRegion;
-  before(() => {
-    (api as any).functionsDefaultRegion = "us-central1";
-  });
-
-  after(() => {
-    (api as any).functionsDefaultRegion = oldDefaultRegion;
-  });
-
   const BASIC_TRIGGER: parseTriggers.TriggerAnnotation = Object.freeze({
     name: "func",
     entryPoint: "func",
@@ -22,7 +13,7 @@ describe("addResourcesToBackend", () => {
 
   const BASIC_FUNCTION_NAME: backend.TargetIds = Object.freeze({
     id: "func",
-    region: "us-central1",
+    region: api.functionsDefaultRegion,
     project: "project",
   });
 
@@ -53,12 +44,12 @@ describe("addResourcesToBackend", () => {
   });
 
   it("should handle a minimal https trigger", () => {
-    const result = backend.empty();
     const trigger: parseTriggers.TriggerAnnotation = {
       ...BASIC_TRIGGER,
       httpsTrigger: {},
     };
 
+    const result = backend.empty();
     parseTriggers.addResourcesToBackend("project", "nodejs14", trigger, result);
 
     const expected: backend.Backend = {
@@ -80,7 +71,6 @@ describe("addResourcesToBackend", () => {
       const name =
         typeof failurePolicy === "undefined" ? "undefined" : JSON.stringify(failurePolicy);
       it(`should handle failurePolicy=${name}`, () => {
-        const result = backend.empty();
         const trigger: parseTriggers.TriggerAnnotation = {
           ...BASIC_TRIGGER,
           eventTrigger: {
@@ -93,6 +83,7 @@ describe("addResourcesToBackend", () => {
           trigger.failurePolicy = failurePolicy;
         }
 
+        const result = backend.empty();
         parseTriggers.addResourcesToBackend("project", "nodejs14", trigger, result);
 
         const expected: backend.Backend = {
