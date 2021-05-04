@@ -7,7 +7,7 @@ import { StorageLayer } from "./files";
 import * as chokidar from "chokidar";
 import { EmulatorLogger } from "../emulatorLogger";
 import * as fs from "fs";
-import { StorageRulesetInstance, StorageRulesRuntime } from "./rules/runtime";
+import { StorageRulesetInstance, StorageRulesRuntime, StorageRulesIssues } from "./rules/runtime";
 import { Source } from "./rules/types";
 import { FirebaseError } from "../../error";
 import { getDownloadDetails } from "../downloadableEmulators";
@@ -93,10 +93,6 @@ export class StorageEmulator implements EmulatorInstance {
     this.destroyServer = utils.createDestroyer(server);
   }
 
-  public updateRules(source: Source): void {
-    this._rulesetSource = source;
-  }
-
   private updateRulesSource(rulesFile: string): void {
     this._rulesetSource = {
       files: [
@@ -108,10 +104,17 @@ export class StorageEmulator implements EmulatorInstance {
     };
   }
 
-  private async loadRuleset(): Promise<void> {
+  public async loadRuleset(source?: Source): Promise<StorageRulesIssues> {
+    if (source) {
+      this._rulesetSource = source;
+    }
+
     if (!this._rulesetSource) {
-      this._logger.log("WARN", "Attempting to update ruleset without a source.");
-      return;
+      const msg = "Attempting to update ruleset without a source.";
+      this._logger.log("WARN", msg);
+
+      const error = JSON.stringify({ error: msg });
+      return new StorageRulesIssues([error], []);
     }
 
     const { ruleset, issues } = await this._rulesRuntime.loadRuleset(this._rulesetSource);
@@ -141,6 +144,8 @@ export class StorageEmulator implements EmulatorInstance {
     } else {
       this._rules = ruleset;
     }
+
+    return issues;
   }
 
   async connect(): Promise<void> {

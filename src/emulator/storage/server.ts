@@ -73,7 +73,7 @@ export function createApp(
     res.sendStatus(200);
   });
 
-  app.put("/internal/setRules", (req, res) => {
+  app.put("/internal/setRules", async (req, res) => {
     // Payload:
     // {
     //   rules: {
@@ -100,7 +100,13 @@ export function createApp(
 
     const name = file.name;
     const content = file.content;
-    emulator.updateRules({ files: [{ name, content }] });
+    const issues = await emulator.loadRuleset({ files: [{ name, content }] });
+    
+    if (issues.errors.length > 0) {
+      res.status(400).send("There was an error updating rules, see logs for more details");
+    }
+
+    res.sendStatus(200);
   });
 
   app.post("/internal/reset", (req, res) => {
