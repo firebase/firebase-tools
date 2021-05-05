@@ -104,12 +104,12 @@ export function createApp(
 
     if (issues.errors.length > 0) {
       res.status(400).json({
-        message: "There was an error updating rules, see logs for more details"
+        message: "There was an error updating rules, see logs for more details",
       });
     }
 
     res.sendStatus(200).json({
-      message: "Rules updated successfully"
+      message: "Rules updated successfully",
     });
   });
 
