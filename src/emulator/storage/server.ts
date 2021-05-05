@@ -103,10 +103,14 @@ export function createApp(
     const issues = await emulator.loadRuleset({ files: [{ name, content }] });
 
     if (issues.errors.length > 0) {
-      res.status(400).send("There was an error updating rules, see logs for more details");
+      res.status(400).json({
+        message: "There was an error updating rules, see logs for more details"
+      });
     }
 
-    res.sendStatus(200);
+    res.sendStatus(200).json({
+      message: "Rules updated successfully"
+    });
   });
 
   app.post("/internal/reset", (req, res) => {
