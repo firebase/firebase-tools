@@ -65,19 +65,16 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
   },
   ui: previews.storageemulator
     ? {
-        version: "1.4.1-STORAGE",
-        downloadPath: path.join(CACHE_DIR, "ui-v1.4.1-STORAGE.zip"),
-        unzipDir: path.join(CACHE_DIR, "ui-v1.4.1-STORAGE"),
-        binaryPath: path.join(CACHE_DIR, "ui-v1.4.1-STORAGE", "server.bundle.js"),
+        version: "1.5.0",
+        downloadPath: path.join(CACHE_DIR, "ui-v1.5.0.zip"),
+        unzipDir: path.join(CACHE_DIR, "ui-v1.5.0"),
+        binaryPath: path.join(CACHE_DIR, "ui-v1.5.0", "server.bundle.js"),
         opts: {
           cacheDir: CACHE_DIR,
-          remoteUrl:
-            "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-vStorageSnapshot.zip",
-          expectedSize: 3374020,
-          expectedChecksum: "7a82fed575a2b9a008d96080a7dcccdb",
+          remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.5.0.zip",
+          expectedSize: 6251856,
+          expectedChecksum: "a549701d81f16f133b916886b40320f4",
           namePrefix: "ui",
-          skipCache: true,
-          skipChecksumAndSize: true,
         },
       }
     : {
