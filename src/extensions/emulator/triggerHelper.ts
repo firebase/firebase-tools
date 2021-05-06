@@ -45,6 +45,9 @@ function getServiceFromEventType(eventType: string): string {
   if (eventType.includes("pubsub")) {
     return Constants.SERVICE_PUBSUB;
   }
+  if (eventType.includes("storage")) {
+    return Constants.SERVICE_STORAGE;
+  }
   // Below this point are services that do not have a emulator.
   if (eventType.includes("analytics")) {
     return Constants.SERVICE_ANALYTICS;
@@ -57,9 +60,6 @@ function getServiceFromEventType(eventType: string): string {
   }
   if (eventType.includes("remoteconfig")) {
     return Constants.SERVICE_REMOTE_CONFIG;
-  }
-  if (eventType.includes("storage")) {
-    return Constants.SERVICE_STORAGE;
   }
   if (eventType.includes("testing")) {
     return Constants.SERVICE_TEST_LAB;
