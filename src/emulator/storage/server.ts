@@ -118,7 +118,7 @@ export function createApp(
       console.log(req.method, req.url);
       res.json("endpoint not implemented");
     } else {
-      res.sendStatus(404).json("endpoint not implemented");
+      res.sendStatus(404);
     }
   });
 
