@@ -331,6 +331,15 @@ async function runScript(script: string, extraEnv: Record<string, string>): Prom
     env[FirestoreEmulator.FIRESTORE_EMULATOR_ENV_ALT] = address;
   }
 
+  const storageInstance = EmulatorRegistry.get(Emulators.STORAGE);
+  if (storageInstance) {
+    const info = storageInstance.getInfo();
+    const address = EmulatorRegistry.getInfoHostString(info);
+
+    env[Constants.FIREBASE_STORAGE_EMULATOR_HOST] = address;
+    env[Constants.CLOUD_STORAGE_EMULATOR_HOST] = `http://${address}`;
+  }
+
   const authInstance = EmulatorRegistry.get(Emulators.AUTH);
   if (authInstance) {
     const info = authInstance.getInfo();
