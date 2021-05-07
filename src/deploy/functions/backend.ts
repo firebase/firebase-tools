@@ -447,7 +447,6 @@ export function toGCFv2Function(cloudFunction: FunctionSpec, source: gcfV2.Stora
   }
   proto.copyIfPresent(gcfFunction, cloudFunction, "labels");
 
-  console.error("GCFv2 Function is:", JSON.stringify(gcfFunction, null, 2));
   return gcfFunction;
 }
 
@@ -474,7 +473,7 @@ export function fromGCFv2Function(gcfFunction: gcfV2.CloudFunction): FunctionSpe
   }
 
   if (!isValidRuntime(gcfFunction.buildConfig.runtime)) {
-    logger.debug("GCFv1 function has a deprecated runtime:", JSON.stringify(gcfFunction, null, 2));
+    logger.debug("GCFv2 function has a deprecated runtime:", JSON.stringify(gcfFunction, null, 2));
   }
 
   const cloudFunction: FunctionSpec = {
@@ -705,7 +704,7 @@ export async function checkAvailability(context: Context, want: Backend): Promis
   if (neededUnreachableV2.length) {
     throw new FirebaseError(
       "The following Cloud Functions V2 regions are currently unreachable:\n\t" +
-        neededUnreachableV1.join("\n\t") +
+        neededUnreachableV2.join("\n\t") +
         "\nThis deployment contains functions in those regions. Please try again in a few minutes, or exclude these regions from your deployment."
     );
   }
