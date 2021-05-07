@@ -1,1 +1,2 @@
 - Fixes error where Hosting gets in an undeployable state due to the hash cache having incorrect entries.
+- Improves error handling for the throttler queue, to better diagnose Hosting deploys that fail during the file upload step.
