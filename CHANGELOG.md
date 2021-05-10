@@ -1,0 +1,1 @@
+- Fixes error where Hosting gets in an undeployable state due to the hash cache having incorrect entries.
