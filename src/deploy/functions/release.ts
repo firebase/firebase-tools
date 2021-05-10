@@ -84,10 +84,10 @@ export async function release(context: args.Context, options: args.Options, payl
     });
   }
 
-  for (const deployment of Object.values(fullDeployment.regionalDeployments)) {
+  for (const [region, deployment] of Object.entries(fullDeployment.regionalDeployments)) {
     // Run the create and update function calls for the region.
     regionPromises.push(
-      tasks.runRegionalFunctionDeployment(taskParams, deployment, cloudFunctionsQueue)
+      tasks.runRegionalFunctionDeployment(taskParams, region, deployment, cloudFunctionsQueue)
     );
   }
 

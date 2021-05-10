@@ -84,7 +84,7 @@ export function createFunctionTask(
         clc.bold(helper.getFunctionLabel(fn)) +
         "..."
     );
-    let op: {name: string};
+    let op: { name: string };
     if (fn.apiVersion === 1) {
       const apiFunction = backend.toGCFv1Function(fn, params.sourceUrl!);
       if (sourceToken) {
@@ -95,7 +95,7 @@ export function createFunctionTask(
       const apiFunction = backend.toGCFv2Function(fn, params.storageSource!);
       op = await gcfV2.createFunction(apiFunction);
     }
-    let cloudFunction = await pollOperation<unknown>({
+    const cloudFunction = await pollOperation<unknown>({
       ...pollerOptionsByVersion[fn.apiVersion],
       pollerName: `create-${fnName}`,
       operationResourceName: op.name,

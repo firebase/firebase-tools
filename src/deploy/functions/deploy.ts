@@ -59,10 +59,10 @@ export async function deploy(
   try {
     const want = options.config.get("functions.backend") as backend.Backend;
     const uploads: Promise<void>[] = [];
-    if (want.cloudFunctions.some(fn => fn.apiVersion === 1)) {
+    if (want.cloudFunctions.some((fn) => fn.apiVersion === 1)) {
       uploads.push(uploadSourceV1(context));
     }
-    if (want.cloudFunctions.some(fn => fn.apiVersion === 2)) {
+    if (want.cloudFunctions.some((fn) => fn.apiVersion === 2)) {
       uploads.push(uploadSourceV2(context));
     }
     await Promise.all(uploads);

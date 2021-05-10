@@ -1,7 +1,7 @@
 import { Client } from "../apiv2";
 import { FirebaseError } from "../error";
 import { runOrigin } from "../api";
-import * as proto from './proto';
+import * as proto from "./proto";
 
 const API_VERSION = "v1";
 
@@ -19,13 +19,13 @@ export interface IamPolicy {
 }
 
 export const DEFAULT_PUBLIC_POLICY = {
-    version: 3,
-    bindings: [
-        {
-            role: "roles/run.invoker",
-            members: ["allUsers"],
-        },
-    ],
+  version: 3,
+  bindings: [
+    {
+      role: "roles/run.invoker",
+      members: ["allUsers"],
+    },
+  ],
 };
 
 /**

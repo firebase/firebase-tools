@@ -76,7 +76,7 @@ async function _uploadObject(source, bucketName) {
   return {
     bucket: bucketName,
     object: path.basename(source.file),
-    generation: result.response.headers["x-goog-generation"]
+    generation: result.response.headers["x-goog-generation"],
   };
 }
 
