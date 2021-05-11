@@ -15,14 +15,20 @@ const _ERASE_LINE = "\x1b[2K";
 
 export async function deploy(
   context: { hosting?: { deploys?: HostingDeploy[] } },
-  options: any
+  options: {
+    cwd?: string;
+    configPath?: string;
+    debug?: boolean;
+    nonInteractive?: boolean;
+    config: { path: (path: string) => string };
+  }
 ): Promise<void> {
   if (!context.hosting?.deploys) {
     return;
   }
 
   let spins = 0;
-  function updateSpinner(newMessage: string, debugging: boolean) {
+  function updateSpinner(newMessage: string, debugging: boolean): void {
     // don't try to rewrite lines if debugging since it's likely to get interrupted
     if (debugging) {
       logLabeledBullet("hosting", newMessage);
@@ -36,11 +42,11 @@ export async function deploy(
   }
 
   async function runDeploys(deploys: HostingDeploy[], debugging: boolean): Promise<void> {
-    if (!deploys.length) {
+    const deploy = deploys.shift();
+    if (!deploy) {
       return;
     }
 
-    const deploy = deploys.shift()!;
     // No need to run Uploader for no-file deploys
     if (!deploy.config?.public) {
       logLabeledBullet(
@@ -95,7 +101,7 @@ export async function deploy(
     return runDeploys(deploys, debugging);
   }
 
-  const debugging = options.debug || options.nonInteractive;
+  const debugging = !!(options.debug || options.nonInteractive);
   const deploys = [...(context.hosting?.deploys || [])];
   return runDeploys(deploys, debugging);
 }
