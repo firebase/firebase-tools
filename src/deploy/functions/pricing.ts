@@ -126,28 +126,24 @@ const MB_TO_GHZ = {
   8192: 4.8,
 };
 
-function includes(obj: Record<string | number, any>, key: string | number): boolean {
-  return Object.prototype.hasOwnProperty.call(obj, key);
-}
-
 export function canCalculateMinInstanceCost(functionSpec: backend.FunctionSpec): boolean {
   if (!functionSpec.minInstances) {
     return true;
   }
 
   if (functionSpec.apiVersion == 1) {
-    if (!includes(MB_TO_GHZ, functionSpec.availableMemoryMb || 256)) {
+    if (!MB_TO_GHZ[functionSpec.availableMemoryMb || 256]) {
       return false;
     }
 
-    if (!includes(V1_REGION_TO_TIER, functionSpec.region)) {
+    if (!V1_REGION_TO_TIER[functionSpec.region]) {
       return false;
     }
 
     return true;
   }
 
-  if (!includes(V2_REGION_TO_TIER, functionSpec.region)) {
+  if (!V2_REGION_TO_TIER[functionSpec.region]) {
     return false;
   }
 
