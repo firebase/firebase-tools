@@ -387,10 +387,11 @@ describe("promptForMinInstances", () => {
   });
 
   it("Should advise customers of possible discounts", async () => {
-    const funcs = [
+    const funcs: backend.FunctionSpec[] = [
       {
         ...SAMPLE_FUNC,
         region: "fillory",
+        apiVersion: 2,
         minInstances: 2,
       },
     ];
@@ -399,6 +400,6 @@ describe("promptForMinInstances", () => {
     await expect(functionPrompts.promptForMinInstances(SAMPLE_OPTIONS, funcs, [])).to.eventually.be
       .fulfilled;
     expect(promptStub).to.have.been.called;
-    expect(logStub.firstCall.args[1]).to.match(new RegExp("https://cloud.google.com/run/cud/"));
+    expect(logStub.firstCall.args[1]).to.match(new RegExp("https://cloud.google.com/run/cud"));
   });
 });

@@ -213,20 +213,22 @@ export async function promptForMinInstances(
       clc.bold("npm install -g firebase-tools");
   } else {
     const cost = pricing.monthlyMinInstanceCost(want).toFixed(2);
-    costLine = `With these options, your minimum bill will be $$${cost} in a 30-day month`;
+    costLine = `With these options, your minimum bill will be $${cost} in a 30-day month`;
   }
   let cudAnnotation = "";
-  if (want.some(fn => fn.apiVersion == 2 && fn.minInstances)) {
-    cudAnnotation = "\nThis bill can be lowered with a one year commitment. See https://cloud.google.com/run/cud for more"
+  if (want.some((fn) => fn.apiVersion == 2 && !!fn.minInstances)) {
+    cudAnnotation =
+      "\nThis bill can be lowered with a one year commitment. See https://cloud.google.com/run/cud for more";
   }
   const warnMessage =
     "The following functions have reserved minimum instances. This will " +
-    "reduce the frequency of cold starts but increases the minimum cost." +
+    "reduce the frequency of cold starts but increases the minimum cost. " +
     "You will be charged for the memory allocation and a fraction of the " +
     "CPU allocation of instances while they are idle.\n\n" +
     functionLines +
     "\n\n" +
-    costLine + cudAnnotation;
+    costLine +
+    cudAnnotation;
 
   utils.logLabeledWarning("functions", warnMessage);
 

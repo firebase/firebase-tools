@@ -17,7 +17,7 @@ describe("deploymentPlanner", () => {
     labels: deploymentTool.labels(),
   };
 
-  function func(id: string, region: string) {
+  function func(id: string, region: string): backend.FunctionSpec {
     return {
       ...CLOUD_FUNCTION,
       id,
@@ -135,6 +135,7 @@ describe("deploymentPlanner", () => {
         schedulesToUpsert: [],
         schedulesToDelete: [],
       };
+      expect(deploymentPlan).to.deep.equal(expected);
     });
 
     it("should delete existing functions not in local code, only if they were deployed via CLI", () => {
