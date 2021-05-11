@@ -592,8 +592,11 @@ export class Persistence {
   }
 
   appendBytes(fileName: string, bytes: Buffer, fileOffset?: number): string {
-    const path = this.getDiskPath(fileName);
-    const dirPath = path.substring(0, path.lastIndexOf("/"));
+    const filepath = this.getDiskPath(fileName);
+
+    const encodedSlashIndex = filepath.toLowerCase().lastIndexOf("%2f");
+    const dirPath =
+      encodedSlashIndex >= 0 ? filepath.substring(0, encodedSlashIndex) : path.dirname(filepath);
 
     if (!existsSync(dirPath)) {
       mkdirSync(dirPath, {
@@ -607,8 +610,8 @@ export class Persistence {
       // fd = openSync(path, "w+");
       // writeSync(fd, bytes, 0, bytes.byteLength, fileOffset);
 
-      fs.appendFileSync(path, bytes);
-      return path;
+      fs.appendFileSync(filepath, bytes);
+      return filepath;
     } finally {
       if (fd) {
         closeSync(fd);
