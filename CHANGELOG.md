@@ -1,0 +1,1 @@
+- Allows Hosting deploys with no `public` directory when dynamic rewrites or redirects are present. (#3349)
