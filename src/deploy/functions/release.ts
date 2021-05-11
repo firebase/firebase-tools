@@ -53,6 +53,7 @@ export async function release(context: args.Context, options: args.Options, payl
   const taskParams: tasks.TaskParams = {
     projectId,
     sourceUrl,
+    storageSource: context.storageSource,
     runtime: context.runtimeChoice,
     errorHandler,
   };
