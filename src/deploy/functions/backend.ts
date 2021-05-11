@@ -96,9 +96,22 @@ export function isEventTrigger(trigger: HttpsTrigger | EventTrigger): trigger is
   return "eventType" in trigger;
 }
 
+// TODO(inlined): Enum types should be singularly named
 export type VpcEgressSettings = "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC";
 export type IngressSettings = "ALLOW_ALL" | "ALLOW_INTERNAL_ONLY" | "ALLOW_INTERNAL_AND_GCLB";
-export type MemoryOptions = 128 | 256 | 512 | 1024 | 2048 | 4096;
+export type MemoryOptions = 128 | 256 | 512 | 1024 | 2048 | 4096 | 8192;
+
+export function memoryOptionDisplayName(option: MemoryOptions): string {
+  return {
+    128: "128MB",
+    256: "256MB",
+    512: "512MB",
+    1024: "1GB",
+    2048: "2GB",
+    4096: "4GB",
+    8192: "8GB",
+  }[option];
+}
 
 /** Supported runtimes for new Cloud Functions. */
 export type Runtime = "nodejs10" | "nodejs12" | "nodejs14";
@@ -128,9 +141,11 @@ export interface TargetIds {
   project: string;
 }
 
+export type FunctionsApiVersion = 1 | 2;
+
 /** An API agnostic definition of a Cloud Function. */
 export interface FunctionSpec extends TargetIds {
-  apiVersion: 1 | 2;
+  apiVersion: FunctionsApiVersion;
   entryPoint: string;
   trigger: HttpsTrigger | EventTrigger;
   runtime: Runtime | DeprecatedRuntime;
