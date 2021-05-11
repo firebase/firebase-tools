@@ -9,8 +9,6 @@ import * as backend from "./backend";
 import * as fs from "fs";
 import * as gcs from "../../gcp/storage";
 import * as gcf from "../../gcp/cloudfunctions";
-import { previews } from "../../previews";
-import { promise } from "ora";
 
 const GCP_REGION = functionsUploadRegion;
 

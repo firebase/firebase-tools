@@ -34,7 +34,7 @@ export const DEFAULT_PUBLIC_POLICY = {
  * @param policy The [policy](https://cloud.google.com/run/docs/reference/rest/v1/projects.locations.services/setIamPolicy) to set.
  */
 export async function setIamPolicy(name: string, policy: IamPolicy): Promise<void> {
-  // Cloud Run has an atypical REST binding for SetIamPolicy. Instead of making the bod a policy and
+  // Cloud Run has an atypical REST binding for SetIamPolicy. Instead of making the body a policy and
   // the update mask a query parameter (e.g. Cloud Functions v1) the request body is the literal
   // proto.
   interface Request {

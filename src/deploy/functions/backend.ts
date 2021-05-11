@@ -335,7 +335,7 @@ export function fromGCFv1Function(gcfFunction: gcf.CloudFunction): FunctionSpec 
   }
 
   if (!isValidRuntime(gcfFunction.runtime)) {
-    logger.debug("GCFv2 function has a deprecated runtime:", JSON.stringify(gcfFunction, null, 2));
+    logger.debug("GCFv1 function has a deprecated runtime:", JSON.stringify(gcfFunction, null, 2));
   }
 
   const cloudFunction: FunctionSpec = {
