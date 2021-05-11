@@ -11,6 +11,7 @@ import { DeploymentTimer } from "./deploymentTimer";
 import { ErrorHandler } from "./errorHandler";
 import * as backend from "./backend";
 import * as cloudscheduler from "../../gcp/cloudscheduler";
+import * as deploymentTool from " ../../deploymentTool";
 import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfV2 from "../../gcp/cloudfunctionsv2";
 import * as cloudrun from "../../gcp/run";
@@ -254,6 +255,10 @@ export async function runRegionalFunctionDeployment(
   };
 
   const deploy = async (functionSpec: backend.FunctionSpec, createTask: Function) => {
+    functionSpec.labels = {
+      ...(functionSpec.labels || {}),
+      ...deploymentTool.labels(),
+    }
     let task: DeploymentTask;
     // GCF v2 doesn't support tokens yet. If we were to pass onPoll to a GCFv2 function, then
     // it would complete deployment and resolve the getRealToken promies as undefined.
