@@ -1,0 +1,1 @@
+- Adds Cloud Storage for Firebase emulator
