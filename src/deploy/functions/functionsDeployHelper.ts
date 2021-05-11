@@ -5,6 +5,7 @@ import { ErrorHandler } from "./errorHandler";
 import { logger } from "../../logger";
 import * as args from "./args";
 import * as backend from "./backend";
+import * as deploymentTool from "../../deploymentTool"
 import * as track from "../../track";
 import * as utils from "../../utils";
 
@@ -111,10 +112,15 @@ export async function printTriggerUrls(context: args.Context) {
   // that are deployed directly to HTTP endpoints.
   const have = await backend.existingBackend(context, /* forceRefresh= */ true);
   const httpsFunctions = have.cloudFunctions.filter((fn) => {
-    return !backend.isEventTrigger(fn.trigger) && functionMatchesAnyGroup(fn, context.filters);
+    // TODO: way to filter out extensions deployed on GCFv2. May have to just replace
+    // the existing backend with operation results as functions deploy rather than
+    // calling existingBackend twice.
+    if (fn.apiVersion == 1 && fn.sourceUploadUrl !== context.uploadUrl) {
+      return false;
+    }
+    return !backend.isEventTrigger(fn.trigger) && deploymentTool.isFirebaseManaged(fn.labels || {});
   });
   if (httpsFunctions.length === 0) {
-    logger.info("No HTTPS functions");
     return;
   }
 
@@ -123,6 +129,6 @@ export async function printTriggerUrls(context: args.Context) {
       logger.debug("Missing URI for HTTPS function in printTriggerUrls. This shouldn't happen");
       continue;
     }
-    logger.info(clc.bold("Function URL"), `(${getFunctionLabel(httpsFunc)}): ${httpsFunc.uri}`);
+    logger.info(clc.bold("Function URL"), `(${getFunctionLabel(httpsFunc)}):`, httpsFunc.uri);
   }
 }
