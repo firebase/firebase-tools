@@ -191,7 +191,7 @@ export async function promptForMinInstances(
     );
   }
 
-  // Conisderations for future versions:
+  // Considerations for future versions:
   // Group Tier 1 and Tier 2 regions
   // Add Tier 1 or Tier 2 annotations to functionLines
   const functionLines = want
@@ -213,10 +213,10 @@ export async function promptForMinInstances(
       clc.bold("npm install -g firebase-tools");
   } else {
     const cost = pricing.monthlyMinInstanceCost(want).toFixed(2);
-    costLine = `With these options, your minimum bill will be $${cost} in a 30-day month.`;
+    costLine = `With these options, your minimum bill will be $${cost} in a 30-day month`;
   }
   let cudAnnotation = "";
-  if (want.some((fn) => fn.apiVersion == 2 && !!fn.minInstances)) {
+  if (want.some((fn) => fn.apiVersion == 2 && fn.minInstances)) {
     cudAnnotation =
       "\nThis bill can be lowered with a one year commitment. See https://cloud.google.com/run/cud for more";
   }

@@ -69,7 +69,7 @@ describe("Functions Pricing", () => {
       ).to.be.false;
     });
 
-    it("Cannot calculate the cost for an uknopwn region", () => {
+    it("Cannot calculate the cost for an unknown region", () => {
       expect(
         pricing.canCalculateMinInstanceCost({
           ...FUNCTION_FRAGMENT,

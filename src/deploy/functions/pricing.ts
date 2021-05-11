@@ -5,7 +5,7 @@ import * as backend from "./backend";
 // https://cloud.google.com/run/pricing
 //
 // It includes enough information to start eventually thinking about a pricing estimator
-// because it was pretty trivail to start transcribing this information, but GCFv2
+// because it was pretty trivial to start transcribing this information, but GCFv2
 // network egress isn't included because it's _very_ complicated (there's tables for
 // the source and destination region).
 
@@ -115,7 +115,8 @@ export const V2_FREE_TIER = {
   egress: 1,
 };
 
-// In v1, CPU is automatically fixed to the memory size
+// In v1, CPU is automatically fixed to the memory size determines the CPU size.
+// Table at https://cloud.google.com/functions/pricing#compute_time
 const MB_TO_GHZ = {
   128: 0.2,
   256: 0.4,
