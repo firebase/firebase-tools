@@ -213,7 +213,7 @@ export async function promptForMinInstances(
       clc.bold("npm install -g firebase-tools");
   } else {
     const cost = pricing.monthlyMinInstanceCost(want).toFixed(2);
-    costLine = `With these options, your minimum bill will be $${cost} in a 30-day month`;
+    costLine = `With these options, your minimum bill will be $${cost} in a 30-day month.`;
   }
   let cudAnnotation = "";
   if (want.some((fn) => fn.apiVersion == 2 && !!fn.minInstances)) {
