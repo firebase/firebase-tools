@@ -61,8 +61,7 @@ export async function prepare(
       clc.bold(options.config.get("functions.source")) +
       " directory for uploading..."
   );
-  const source = await prepareFunctionsUpload(context, options);
-  context.functionsSource = source;
+  context.functionsSource = await prepareFunctionsUpload(context, options);
 
   // Get a list of CloudFunctionTriggers, and set default environment variables on each.
   // Note(inlined): why couldn't the backend have been populated with environment variables from

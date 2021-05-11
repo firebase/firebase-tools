@@ -6,6 +6,15 @@ import * as parseTriggers from "../../../../../deploy/functions/discovery/jsexpo
 import * as api from "../../../../../api";
 
 describe("addResourcesToBackend", () => {
+  const oldDefaultRegion = api.functionsDefaultRegion;
+  before(() => {
+    (api as any).functionsDefaultRegion = "us-central1";
+  });
+
+  after(() => {
+    (api as any).functionsDefaultRegion = oldDefaultRegion;
+  });
+
   const BASIC_TRIGGER: parseTriggers.TriggerAnnotation = Object.freeze({
     name: "func",
     entryPoint: "func",
