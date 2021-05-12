@@ -123,6 +123,15 @@ export class Uploader {
         this.uploadQueue.close();
       });
 
+    this.uploadQueue.wait().catch((err: Error) => {
+      if (err.message.includes("content hash")) {
+        logger.debug(
+          "[hosting][upload queue] upload failed with content hash error. Deleting hash cache"
+        );
+        hashcache.dump(this.projectRoot, this.hashcacheName(), new Map());
+      }
+    });
+
     const fin = (err: unknown): void => {
       logger.debug("[hosting][upload queue][FINAL]", this.uploadQueue.stats());
       if (err) {
