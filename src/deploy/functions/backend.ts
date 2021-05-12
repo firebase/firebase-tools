@@ -379,7 +379,7 @@ export function fromGCFv1Function(gcfFunction: gcf.CloudFunction): FunctionSpec 
     "ingressSettings",
     "labels",
     "environmentVariables",
-    "sourceUploadUrl",
+    "sourceUploadUrl"
   );
 
   return cloudFunction;
@@ -421,7 +421,7 @@ export function toGCFv2Function(cloudFunction: FunctionSpec, source: gcfV2.Stora
     "vpcConnector",
     "vpcConnectorEgressSettings",
     "serviceAccountEmail",
-    "ingressSettings",
+    "ingressSettings"
   );
   proto.renameIfPresent(
     gcfFunction.serviceConfig,

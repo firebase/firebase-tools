@@ -5,7 +5,7 @@ import { ErrorHandler } from "./errorHandler";
 import { logger } from "../../logger";
 import * as args from "./args";
 import * as backend from "./backend";
-import * as deploymentTool from "../../deploymentTool"
+import * as deploymentTool from "../../deploymentTool";
 import * as track from "../../track";
 import * as utils from "../../utils";
 
