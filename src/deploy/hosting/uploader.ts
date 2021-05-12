@@ -251,12 +251,13 @@ export class Uploader {
       logger.debug("[hosting][upload]", this.uploadQueue.stats());
     }
     if (res.status !== 200) {
+      const errorMessage = await res.response.text();
       logger.debug(
-        `[hosting][upload] ${this.hashMap[toUpload]} (${toUpload}) HTTP ERROR ${res.status}: ${
-          res.response.headers
-        } ${await res.response.text()}`
+        `[hosting][upload] ${this.hashMap[toUpload]} (${toUpload}) HTTP ERROR ${
+          res.status
+        }: headers=${JSON.stringify(res.response.headers)} ${errorMessage}`
       );
-      throw new Error("Unexpected error while uploading file.");
+      throw new Error(`Unexpected error while uploading file: ${errorMessage}`);
     }
   }
 
