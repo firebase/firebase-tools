@@ -165,6 +165,7 @@ export interface FunctionSpec extends TargetIds {
 
   // present for v1 functions with HTTP triggers and v2 functions always.
   uri?: string;
+  sourceUploadUrl?: string;
 }
 
 /** An API agnostic definition of an entire deployment a customer has or wants. */
@@ -377,7 +378,8 @@ export function fromGCFv1Function(gcfFunction: gcf.CloudFunction): FunctionSpec 
     "vpcConnectorEgressSettings",
     "ingressSettings",
     "labels",
-    "environmentVariables"
+    "environmentVariables",
+    "sourceUploadUrl",
   );
 
   return cloudFunction;
@@ -419,7 +421,7 @@ export function toGCFv2Function(cloudFunction: FunctionSpec, source: gcfV2.Stora
     "vpcConnector",
     "vpcConnectorEgressSettings",
     "serviceAccountEmail",
-    "ingressSettings"
+    "ingressSettings",
   );
   proto.renameIfPresent(
     gcfFunction.serviceConfig,
