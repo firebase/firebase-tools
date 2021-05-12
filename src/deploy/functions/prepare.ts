@@ -3,7 +3,7 @@ import * as clc from "cli-color";
 import { logBullet } from "../../utils";
 import { getRuntimeChoice } from "./parseRuntimeAndValidateSDK";
 import { functionMatchesAnyGroup, getFilterGroups } from "./functionsDeployHelper";
-import { promptForFailurePolicies } from "./prompts";
+import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import { prepareFunctionsUpload } from "./prepareFunctionsUpload";
 import { checkRuntimeDependencies } from "./checkRuntimeDependencies";
 import { FirebaseError } from "../../error";
@@ -109,6 +109,7 @@ export async function prepare(
   });
   const haveFunctions = (await backend.existingBackend(context)).cloudFunctions;
   await promptForFailurePolicies(options, wantFunctions, haveFunctions);
+  await promptForMinInstances(options, wantFunctions, haveFunctions);
 
   await backend.checkAvailability(context, wantBackend);
 }
