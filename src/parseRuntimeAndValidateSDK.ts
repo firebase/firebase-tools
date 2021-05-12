@@ -19,7 +19,7 @@ const MESSAGE_FRIENDLY_RUNTIMES: Record<Runtime, string> = {
   nodejs8: "Node.js 8 (Deprecated)",
   nodejs10: "Node.js 10",
   nodejs12: "Node.js 12",
-  nodejs14: "Node.js 14 (Beta)",
+  nodejs14: "Node.js 14",
 };
 
 const ENGINE_RUNTIMES: Record<number, Runtime> = {
