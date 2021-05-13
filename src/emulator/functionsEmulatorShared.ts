@@ -8,7 +8,7 @@ import { InvokeRuntimeOpts } from "./functionsEmulator";
 
 export enum EmulatedTriggerType {
   BACKGROUND = "BACKGROUND",
-  HTTPS = "HTTPS"
+  HTTPS = "HTTPS",
 }
 
 export interface EmulatedTriggerDefinition {
@@ -148,7 +148,7 @@ export function emulatedFunctionsByRegion(
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const defDeepCopy: EmulatedTriggerDefinition = JSON.parse(JSON.stringify(def));
       defDeepCopy.regions = [region];
-      defDeepCopy.id =`${region}-${defDeepCopy.name}`;
+      defDeepCopy.id = `${region}-${defDeepCopy.name}`;
 
       regionDefinitions.push(defDeepCopy);
     }
