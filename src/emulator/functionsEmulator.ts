@@ -222,10 +222,8 @@ export class FunctionsEmulator implements EmulatorInstance {
     const httpsFunctionRoutes = [httpsFunctionRoute, `${httpsFunctionRoute}/*`];
 
     const backgroundHandler: express.RequestHandler = (req, res) => {
-      const triggerName = req.params.trigger_name;
-      const region = req.params.region;
+      const triggerId = req.params.trigger_name;
       const projectId = req.params.project_id;
-      const triggerId = `${region}-${triggerName}`;
 
       const reqBody = (req as RequestWithRawBody).rawBody;
       const proto = JSON.parse(reqBody.toString());
@@ -1094,7 +1092,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     // req.url = /:projectId/:region/:trigger_name/*
     const url = new URL(`${req.protocol}://${req.hostname}${req.url}`);
     const path = `${url.pathname}${url.search}`.replace(
-      new RegExp(`\/${this.args.projectId}\/[^\/]*\/${triggerId}\/?`),
+      new RegExp(`\/${this.args.projectId}\/[^\/]*\/${triggerName}\/?`),
       "/"
     );
 

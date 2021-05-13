@@ -8,7 +8,6 @@ import {
   findModuleRoot,
   FunctionsRuntimeBundle,
   FunctionsRuntimeFeatures,
-  emulatedFunctionsByRegion,
   getEmulatedTriggersFromDefinitions,
   FunctionsRuntimeArgs,
   HttpConstants,
