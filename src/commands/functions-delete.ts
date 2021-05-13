@@ -5,7 +5,7 @@ import * as functionsConfig from "../functionsConfig";
 import { deleteFunctions } from "../functionsDelete";
 import * as getProjectId from "../getProjectId";
 import * as helper from "../functionsDeployHelper";
-import { prompt } from "../prompt";
+import { promptOnce } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 
@@ -31,8 +31,16 @@ export default new Command("functions:delete [filters...]")
     });
     const config = await functionsConfig.getFirebaseConfig(options);
     const appEngineLocation = functionsConfig.getAppEngineLocation(config);
-    const existingFns = await cloudfunctions.listAllFunctions(projectId);
-    const functionsToDelete = existingFns.filter((fn) => {
+    const res = await cloudfunctions.listAllFunctions(projectId);
+    if (res.unreachable) {
+      utils.logLabeledWarning(
+        "functions",
+        `Unable to reach the following Cloud Functions regions:\n${res.unreachable.join(
+          "\n"
+        )}\nCloud Functions in these regions will not be deleted.`
+      );
+    }
+    const functionsToDelete = res.functions.filter((fn) => {
       const regionMatches = options.region ? helper.getRegion(fn.name) === options.region : true;
       const nameMatches = helper.functionMatchesAnyGroup(fn.name, filterChunks);
       return regionMatches && nameMatches;
@@ -53,26 +61,24 @@ export default new Command("functions:delete [filters...]")
       .map((fn) => fn.name);
     const fnNamesToDelete = functionsToDelete.map((fn) => fn.name);
 
-    let confirmDeletion = false;
-    if (!options.force) {
-      const deleteList = fnNamesToDelete
-        .map((func) => {
-          return "\t" + helper.getFunctionLabel(func);
-        })
-        .join("\n");
-      confirmDeletion = await prompt(options, [
-        {
-          type: "confirm",
-          name: "confirm",
-          default: false,
-          message:
-            "You are about to delete the following Cloud Functions:\n" +
-            deleteList +
-            "\n  Are you sure?",
-        },
-      ]);
-    }
-    if (!confirmDeletion && !options.force) {
+    const deleteList = fnNamesToDelete
+      .map((func) => {
+        return "\t" + helper.getFunctionLabel(func);
+      })
+      .join("\n");
+    const confirmDeletion = await promptOnce(
+      {
+        type: "confirm",
+        name: "force",
+        default: false,
+        message:
+          "You are about to delete the following Cloud Functions:\n" +
+          deleteList +
+          "\n  Are you sure?",
+      },
+      options
+    );
+    if (!confirmDeletion) {
       return utils.reject("Command aborted.", { exit: 1 });
     }
     return await deleteFunctions(

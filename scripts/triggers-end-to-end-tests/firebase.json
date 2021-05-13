@@ -3,6 +3,9 @@
   "firestore": {
     "rules": "firestore.rules"
   },
+  "storage": {
+    "rules": "storage.rules"
+  },
   "functions": {},
   "emulators": {
     "hub": {
@@ -22,6 +25,9 @@
     },
     "auth": {
       "port": 9099
+    },
+    "storage": {
+      "port": 9199
     }
   }
 }

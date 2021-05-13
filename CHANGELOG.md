@@ -1,3 +1,4 @@
-- Fixes native module issues by removing `fast-crc32c` (#3247, #3239)
-- Update to Cloud Firestore emulator v1.11.13 which includes a bug fix for documents which are created and deleted in a single transaction.
-- Fixes an edge case with nextPageToken in batchGet in Auth Emulator (#3231).
+- Adds Cloud Storage for Firebase emulator
+- Allows Hosting deploys with no `public` directory when dynamic rewrites or redirects are present. (#3349)
+- Fixes error where Hosting gets in an undeployable state due to the hash cache having incorrect entries.
+- Improves error handling for the throttler queue, to better diagnose Hosting deploys that fail during the file upload step.

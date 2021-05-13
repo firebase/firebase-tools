@@ -6,7 +6,7 @@ import { logger } from "../logger";
 import { configstore } from "../configstore";
 import * as utils from "../utils";
 import { FirebaseError } from "../error";
-import { prompt } from "../prompt";
+import { promptOnce } from "../prompt";
 
 import * as auth from "../auth";
 import { isCloudEnvironment } from "../utils";
@@ -28,8 +28,8 @@ module.exports = new Command("login")
       );
     }
 
-    const user = configstore.get("user");
-    const tokens = configstore.get("tokens");
+    const user = options.user as auth.User | undefined;
+    const tokens = options.tokens as auth.Tokens | undefined;
 
     if (user && tokens && !options.reauth) {
       logger.info("Already logged in as", clc.bold(user.email));
@@ -40,15 +40,13 @@ module.exports = new Command("login")
       utils.logBullet(
         "Firebase optionally collects CLI usage and error reporting information to help improve our products. Data is collected in accordance with Google's privacy policy (https://policies.google.com/privacy) and is not used to identify you.\n"
       );
-      await prompt(options, [
-        {
-          type: "confirm",
-          name: "collectUsage",
-          message: "Allow Firebase to collect CLI usage and error reporting information?",
-        },
-      ]);
-      configstore.set("usage", options.collectUsage);
-      if (options.collectUsage) {
+      const collectUsage = await promptOnce({
+        type: "confirm",
+        name: "collectUsage",
+        message: "Allow Firebase to collect CLI usage and error reporting information?",
+      });
+      configstore.set("usage", collectUsage);
+      if (collectUsage) {
         utils.logBullet(
           "To change your data collection preference at any time, run `firebase logout` and log in again."
         );

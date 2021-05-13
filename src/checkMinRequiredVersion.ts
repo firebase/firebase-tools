@@ -8,9 +8,10 @@ const pkg = require("../package.json"); // eslint-disable-line @typescript-eslin
 /**
  * Checks if the CLI is on a recent enough version to use a command.
  * Errors if a min version is found and the CLI is below the minimum required version.
+ * @param options
  * @param key the motd key to that contains semver for the min version for a command.
  */
-export function checkMinRequiredVersion(key: string) {
+export function checkMinRequiredVersion(options: any, key: string) {
   const minVersion = configstore.get(`motd.${key}`);
   if (minVersion && semver.gt(minVersion, pkg.version)) {
     throw new FirebaseError(

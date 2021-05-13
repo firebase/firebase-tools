@@ -32,6 +32,11 @@ module.exports = {
       rules: {
         "jsdoc/require-param-type": "off",
         "jsdoc/require-returns-type": "off",
+
+        // Google style guide allows us to omit trivial parameters and returns
+        "jsdoc/require-param": "off",
+        "jsdoc/require-return": "off",
+
         "no-invalid-this": "off", // Turned off in favor of @typescript-eslint/no-invalid-this.
         "@typescript-eslint/no-invalid-this": ["error"],
 

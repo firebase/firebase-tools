@@ -41,7 +41,6 @@ async function selectAppInteractively(
 
   return await promptOnce({
     type: "list",
-    name: "id",
     message:
       `Select the ${appPlatform === AppPlatform.ANY ? "" : appPlatform + " "}` +
       "app to get the configuration data:",

@@ -77,6 +77,7 @@ module.exports = function (client) {
     client.ext.dev.emulators.exec = loadCommand("ext-dev-emulators-exec");
     client.ext.dev.unpublish = loadCommand("ext-dev-unpublish");
     client.ext.dev.publish = loadCommand("ext-dev-publish");
+    client.ext.dev.delete = loadCommand("ext-dev-extension-delete");
   }
   client.firestore = {};
   client.firestore.delete = loadCommand("firestore-delete");
@@ -107,7 +108,10 @@ module.exports = function (client) {
   client.hosting.sites.list = loadCommand("hosting-sites-list");
   client.init = loadCommand("init");
   client.login = loadCommand("login");
+  client.login.add = loadCommand("login-add");
   client.login.ci = loadCommand("login-ci");
+  client.login.list = loadCommand("login-list");
+  client.login.use = loadCommand("login-use");
   client.logout = loadCommand("logout");
   client.open = loadCommand("open");
   client.projects = {};
@@ -125,11 +129,7 @@ module.exports = function (client) {
   client.setup.emulators.database = loadCommand("setup-emulators-database");
   client.setup.emulators.firestore = loadCommand("setup-emulators-firestore");
   client.setup.emulators.pubsub = loadCommand("setup-emulators-pubsub");
-
-  if (previews.storageemulator) {
-    client.setup.emulators.storage = loadCommand("setup-emulators-storage");
-  }
-
+  client.setup.emulators.storage = loadCommand("setup-emulators-storage");
   client.setup.emulators.ui = loadCommand("setup-emulators-ui");
   client.target = loadCommand("target");
   client.target.apply = loadCommand("target-apply");

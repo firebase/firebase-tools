@@ -6,6 +6,7 @@ import * as clc from "cli-color";
 import * as http from "http";
 import * as jwt from "jsonwebtoken";
 
+import { Account } from "../auth";
 import * as api from "../api";
 import { logger } from "../logger";
 import * as track from "../track";
@@ -66,6 +67,7 @@ const DATABASE_PATH_PATTERN = new RegExp("^projects/[^/]+/instances/([^/]+)/refs
 export interface FunctionsEmulatorArgs {
   projectId: string;
   functionsDir: string;
+  account?: Account;
   port?: number;
   host?: string;
   quiet?: boolean;
@@ -168,20 +170,20 @@ export class FunctionsEmulator implements EmulatorInstance {
         "functions",
         `Your GOOGLE_APPLICATION_CREDENTIALS environment variable points to ${process.env.GOOGLE_APPLICATION_CREDENTIALS}. Non-emulated services will access production using these credentials. Be careful!`
       );
-    } else {
-      const defaultCredPath = await getCredentialPathAsync();
+    } else if (this.args.account) {
+      const defaultCredPath = await getCredentialPathAsync(this.args.account);
       if (defaultCredPath) {
         this.logger.log("DEBUG", `Setting GAC to ${defaultCredPath}`);
         credentialEnv.GOOGLE_APPLICATION_CREDENTIALS = defaultCredPath;
-      } else {
-        // TODO: It would be safer to set GOOGLE_APPLICATION_CREDENTIALS to /dev/null here but we can't because some SDKs don't work
-        //       without credentials even when talking to the emulator: https://github.com/firebase/firebase-js-sdk/issues/3144
-        this.logger.logLabeled(
-          "WARN",
-          "functions",
-          "You are not signed in to the Firebase CLI. If you have authorized this machine using gcloud application-default credentials those may be discovered and used to access production services."
-        );
       }
+    } else {
+      // TODO: It would be safer to set GOOGLE_APPLICATION_CREDENTIALS to /dev/null here but we can't because some SDKs don't work
+      //       without credentials even when talking to the emulator: https://github.com/firebase/firebase-js-sdk/issues/3144
+      this.logger.logLabeled(
+        "WARN",
+        "functions",
+        "You are not signed in to the Firebase CLI. If you have authorized this machine using gcloud application-default credentials those may be discovered and used to access production services."
+      );
     }
 
     return credentialEnv;
@@ -292,6 +294,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         database: this.getEmulatorInfo(Emulators.DATABASE),
         pubsub: this.getEmulatorInfo(Emulators.PUBSUB),
         auth: this.getEmulatorInfo(Emulators.AUTH),
+        storage: this.getEmulatorInfo(Emulators.STORAGE),
       },
       nodeMajorVersion: this.args.nodeMajorVersion,
       proto,
@@ -716,6 +719,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         database: EmulatorRegistry.getInfo(Emulators.DATABASE),
         pubsub: EmulatorRegistry.getInfo(Emulators.PUBSUB),
         auth: EmulatorRegistry.getInfo(Emulators.AUTH),
+        storage: EmulatorRegistry.getInfo(Emulators.STORAGE),
       },
       adminSdkConfig: {
         databaseURL: this.adminSdkConfig.databaseURL,

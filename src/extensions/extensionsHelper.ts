@@ -39,7 +39,7 @@ import { envOverride } from "../utils";
  */
 export enum SpecParamType {
   SELECT = "select",
-  MULTISELECT = "multiselect",
+  MULTISELECT = "multiSelect",
   STRING = "string",
 }
 
@@ -315,7 +315,7 @@ export function validateSpec(spec: any) {
  */
 export async function promptForValidInstanceId(instanceId: string): Promise<string> {
   let instanceIdIsValid = false;
-  let newInstanceId;
+  let newInstanceId = "";
   const instanceIdRegex = /^[a-z][a-z\d\-]*[a-z\d]$/;
   while (!instanceIdIsValid) {
     newInstanceId = await promptOnce({
@@ -548,12 +548,12 @@ export async function confirmExtensionVersion(
   publisherId: string,
   extensionId: string,
   versionId: string
-): Promise<string> {
+): Promise<boolean> {
   const message =
     `You are about to publish version ${clc.green(versionId)} of ${clc.green(
       `${publisherId}/${extensionId}`
     )} to Firebase's registry of extensions.\n\n` +
-    "Once an extension version is published, it cannot be changed. If you wish to make changes after publishing, you will need to publish a new version. If you are a member of the Extensions EAP group, your published extensions will only be accessible to other members of the EAP group.\n\n" +
+    "Once an extension version is published, it cannot be changed. If you wish to make changes after publishing, you will need to publish a new version.\n\n" +
     "Do you wish to continue?";
   return await promptOnce({
     type: "confirm",
@@ -586,7 +586,7 @@ export async function promptForOfficialExtension(message: string): Promise<strin
 export async function promptForRepeatInstance(
   projectName: string,
   extensionName: string
-): Promise<string> {
+): Promise<boolean> {
   const message =
     `An extension with the ID '${clc.bold(
       extensionName
@@ -623,6 +623,25 @@ export async function instanceIdExists(projectId: string, instanceId: string): P
   return true;
 }
 
+export function isUrlPath(extInstallPath: string): boolean {
+  return urlRegex.test(extInstallPath);
+}
+
+export function isLocalPath(extInstallPath: string): boolean {
+  const trimmedPath = extInstallPath.trim();
+  return (
+    trimmedPath.startsWith("~/") ||
+    trimmedPath.startsWith("./") ||
+    trimmedPath.startsWith("../") ||
+    trimmedPath.startsWith("/") ||
+    [".", ".."].includes(trimmedPath)
+  );
+}
+
+export function isLocalOrURLPath(extInstallPath: string): boolean {
+  return isLocalPath(extInstallPath) || isUrlPath(extInstallPath);
+}
+
 /**
  * Given an update source, return where the update source came from.
  * @param sourceOrVersion path to a source or reference to a source version
@@ -640,10 +659,10 @@ export async function getSourceOrigin(sourceOrVersion: string): Promise<SourceOr
     return SourceOrigin.OFFICIAL_EXTENSION_VERSION;
   }
   // First, check if the input matches a local or URL first.
-  if (fs.existsSync(sourceOrVersion)) {
+  if (isLocalPath(sourceOrVersion)) {
     return SourceOrigin.LOCAL;
   }
-  if (urlRegex.test(sourceOrVersion)) {
+  if (isUrlPath(sourceOrVersion)) {
     return SourceOrigin.URL;
   }
   // Next, check if the source matches an extension in the official extensions registry (registry.json).
@@ -677,10 +696,11 @@ export async function getSourceOrigin(sourceOrVersion: string): Promise<SourceOr
 /**
  * Confirm if the user wants to install instance of an extension.
  */
-export async function confirmInstallInstance(): Promise<string> {
+export async function confirmInstallInstance(defaultOption?: boolean): Promise<boolean> {
   const message = `Would you like to continue installing this extension?`;
   return await promptOnce({
     type: "confirm",
     message,
+    default: defaultOption,
   });
 }

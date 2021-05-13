@@ -269,6 +269,7 @@ type GitHubWorkflowConfig = {
   on: string | { [key: string]: { [key: string]: string[] } };
   jobs: {
     [key: string]: {
+      if?: string;
       "runs-on": string;
       steps: {
         uses?: string;
@@ -291,6 +292,7 @@ function writeChannelActionYMLFile(
     on: "pull_request",
     jobs: {
       ["build_and_preview"]: {
+        if: "${{ github.event.pull_request.head.repo.full_name == github.repository }}", // secrets aren't accessible on PRs from forks
         "runs-on": "ubuntu-latest",
         steps: [{ uses: CHECKOUT_GITHUB_ACTION_NAME }],
       },
@@ -309,9 +311,6 @@ function writeChannelActionYMLFile(
       repoToken: "${{ secrets.GITHUB_TOKEN }}",
       firebaseServiceAccount: `\${{ secrets.${secretName} }}`,
       projectId: projectId,
-    },
-    env: {
-      FIREBASE_CLI_PREVIEWS: "hostingchannels",
     },
   });
 
@@ -356,9 +355,6 @@ function writeDeployToProdActionYMLFile(
       firebaseServiceAccount: `\${{ secrets.${secretName} }}`,
       channelId: "live",
       projectId: projectId,
-    },
-    env: {
-      FIREBASE_CLI_PREVIEWS: "hostingchannels",
     },
   });
 

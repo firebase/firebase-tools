@@ -10,6 +10,7 @@ import { Job } from "./gcp/cloudscheduler";
 import { CloudFunctionTrigger } from "./deploy/functions/deploymentPlanner";
 import Queue from "./throttler/queue";
 import { ErrorHandler } from "./deploy/functions/errorHandler";
+import * as args from "./deploy/functions/args";
 
 export function functionMatchesAnyGroup(fnName: string, filterGroups: string[][]) {
   if (!filterGroups.length) {
@@ -32,21 +33,21 @@ export function functionMatchesGroup(functionName: string, groupChunks: string[]
   return _.isEqual(groupChunks, functionNameChunks);
 }
 
-export function getFilterGroups(options: any): string[][] {
+export function getFilterGroups(options: args.Options): string[][] {
   if (!options.only) {
     return [];
   }
 
   let opts;
-  return _.chain(options.only.split(","))
+  return options.only
+    .split(",")
     .filter((filter) => {
       opts = filter.split(":");
       return opts[0] === "functions" && opts[1];
     })
     .map((filter) => {
       return filter.split(":")[1].split(/[.-]/);
-    })
-    .value();
+    });
 }
 
 export function getReleaseNames(
@@ -211,8 +212,8 @@ export function printSuccess(funcName: string, type: string) {
 }
 
 export async function printTriggerUrls(projectId: string, sourceUrl: string) {
-  const functions = await cloudfunctions.listAllFunctions(projectId);
-  const httpsFunctions = functions.filter((fn) => {
+  const res = await cloudfunctions.listAllFunctions(projectId);
+  const httpsFunctions = res.functions.filter((fn) => {
     return fn.sourceUploadUrl === sourceUrl && fn.httpsTrigger;
   });
   if (httpsFunctions.length === 0) {

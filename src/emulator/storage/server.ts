@@ -1,3 +1,4 @@
+import * as cors from "cors";
 import * as express from "express";
 import { EmulatorLogger } from "../emulatorLogger";
 import { Emulators } from "../types";
@@ -22,15 +23,12 @@ export function createApp(
     `Temp file directory for storage emulator: ${storageLayer.dirPath}`
   );
 
-  // Allow all origins and headers for CORS requests to Storage Emulator.
-  // This is safe since Storage Emulator does not use cookies.
-  app.use((req, res, next) => {
-    res.set("Access-Control-Allow-Origin", "*");
-    res.set("Access-Control-Allow-Headers", "*");
-    res.set("Access-Control-Allow-Methods", "GET, HEAD, POST, PUT, DELETE, OPTIONS, PATCH");
-    res.set(
-      "Access-Control-Expose-Headers",
-      [
+  // Enable CORS for all APIs, all origins (reflected), and all headers (reflected).
+  // This is similar to production behavior. Safe since all APIs are cookieless.
+  app.use(
+    cors({
+      origin: true,
+      exposedHeaders: [
         "content-type",
         "x-firebase-storage-version",
         "x-goog-upload-url",
@@ -43,16 +41,9 @@ export function createApp(
         "x-goog-upload-status",
         "x-goog-upload-chunk-granularity",
         "x-goog-upload-control-url",
-      ].join(",")
-    );
-
-    if (req.method === "OPTIONS") {
-      // This is a CORS preflight request. Just handle it.
-      res.end();
-    } else {
-      next();
-    }
-  });
+      ],
+    })
+  );
 
   app.use(bodyParser.raw({ limit: "130mb", type: "application/x-www-form-urlencoded" }));
   app.use(bodyParser.raw({ limit: "130mb", type: "multipart/related" }));
@@ -62,6 +53,58 @@ export function createApp(
       type: ["application/json"],
     })
   );
+
+  app.post("/internal/export", async (req, res) => {
+    const path = req.body.path;
+    if (!path) {
+      res.status(400).send("Export request body must include 'path'.");
+      return;
+    }
+
+    await storageLayer.export(path);
+    res.sendStatus(200);
+  });
+
+  app.put("/internal/setRules", async (req, res) => {
+    // Payload:
+    // {
+    //   rules: {
+    //     files: [{ name:<string> content: <string> }]
+    //   }
+    // }
+    // TODO: Add a bucket parameter for per-bucket rules support
+
+    const rules = req.body.rules;
+    if (!(rules && Array.isArray(rules.files) && rules.files.length > 0)) {
+      res.status(400).send("Request body must include 'rules.files' array .");
+      return;
+    }
+
+    const file = rules.files[0];
+    if (!(file.name && file.content)) {
+      res
+        .status(400)
+        .send(
+          "Request body must include 'rules.files' array where each member contains 'name' and 'content'."
+        );
+      return;
+    }
+
+    const name = file.name;
+    const content = file.content;
+    const issues = await emulator.loadRuleset({ files: [{ name, content }] });
+
+    if (issues.errors.length > 0) {
+      res.status(400).json({
+        message: "There was an error updating rules, see logs for more details",
+      });
+      return;
+    }
+
+    res.status(200).json({
+      message: "Rules updated successfully",
+    });
+  });
 
   app.post("/internal/reset", (req, res) => {
     storageLayer.reset();
@@ -77,7 +120,7 @@ export function createApp(
       console.log(req.method, req.url);
       res.json("endpoint not implemented");
     } else {
-      res.sendStatus(404).json("endpoint not implemented");
+      res.sendStatus(404);
     }
   });
 

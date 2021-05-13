@@ -49,8 +49,7 @@ describe.skip("Storage Rules", function () {
   before(async () => {
     await downloadIfNecessary(Emulators.STORAGE);
 
-    const storageDownload = getDownloadDetails(Emulators.STORAGE);
-    runtime = new StorageRulesRuntime(storageDownload.downloadPath);
+    runtime = new StorageRulesRuntime();
     (EmulatorLogger as any).prototype.log = console.log.bind(console);
     await runtime.start();
   });

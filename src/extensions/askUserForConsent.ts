@@ -7,6 +7,9 @@ import { FirebaseError } from "../error";
 import { logPrefix } from "../extensions/extensionsHelper";
 import * as iam from "../gcp/iam";
 import { promptOnce, Question } from "../prompt";
+import { confirmInstallInstance } from "./extensionsHelper";
+import { printSourceDownloadLink } from "./displayExtensionInfo";
+import { getTrustedPublishers } from "./resolveSource";
 import * as utils from "../utils";
 
 marked.setOptions({

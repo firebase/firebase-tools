@@ -3,35 +3,53 @@ import * as clc from "cli-color";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
 import * as functionsConfig from "../../functionsConfig";
 import * as getProjectId from "../../getProjectId";
-import { logBullet } from "../../utils";
+import { logBullet, logLabeledWarning } from "../../utils";
 import { getRuntimeChoice } from "../../parseRuntimeAndValidateSDK";
 import { functionMatchesAnyGroup, getFilterGroups } from "../../functionsDeployHelper";
 import { CloudFunctionTrigger, functionsByRegion, allFunctions } from "./deploymentPlanner";
 import { promptForFailurePolicies } from "./prompts";
 import { prepareFunctionsUpload } from "../../prepareFunctionsUpload";
+import * as args from "./args";
+import * as gcp from "../../gcp";
 
 import * as validate from "./validate";
 import { checkRuntimeDependencies } from "./checkRuntimeDependencies";
+import { FirebaseError } from "../../error";
+import { Runtime } from "../../gcp/cloudfunctions";
 
-export async function prepare(context: any, options: any, payload: any): Promise<void> {
+export async function prepare(
+  context: args.Context,
+  options: args.Options,
+  payload: args.Payload
+): Promise<void> {
   if (!options.config.has("functions")) {
     return;
   }
 
   const sourceDirName = options.config.get("functions.source");
+  if (!sourceDirName) {
+    throw new FirebaseError(
+      `No functions code detected at default location (./functions), and no functions.source defined in firebase.json`
+    );
+  }
   const sourceDir = options.config.path(sourceDirName);
   const projectDir = options.config.projectDir;
   const projectId = getProjectId(options);
 
   // Check what runtime to use, first in firebase.json, then in 'engines' field.
   const runtimeFromConfig = options.config.get("functions.runtime");
-  context.runtimeChoice = getRuntimeChoice(sourceDir, runtimeFromConfig);
+  context.runtimeChoice = getRuntimeChoice(sourceDir, runtimeFromConfig) as Runtime;
 
   // Check that all necessary APIs are enabled.
   const checkAPIsEnabled = await Promise.all([
-    ensureApiEnabled.ensure(options.project, "cloudfunctions.googleapis.com", "functions"),
-    ensureApiEnabled.check(projectId, "runtimeconfig.googleapis.com", "runtimeconfig", true),
-    checkRuntimeDependencies(projectId, context.runtimeChoice),
+    ensureApiEnabled.ensure(projectId, "cloudfunctions.googleapis.com", "functions"),
+    ensureApiEnabled.check(
+      projectId,
+      "runtimeconfig.googleapis.com",
+      "runtimeconfig",
+      /* silent=*/ true
+    ),
+    checkRuntimeDependencies(projectId, context.runtimeChoice!),
   ]);
   context.runtimeConfigEnabled = checkAPIsEnabled[1];
 
@@ -68,11 +86,13 @@ export async function prepare(context: any, options: any, payload: any): Promise
   }
 
   // Build a regionMap, and duplicate functions for each region they are being deployed to.
-  payload.functions = {};
   // TODO: Make byRegion an implementation detail of deploymentPlanner
   // and only store a flat array of Functions in payload.
-  payload.functions.byRegion = functionsByRegion(projectId, functions);
-  payload.functions.triggers = allFunctions(payload.functions.byRegion);
+  const byRegion = functionsByRegion(projectId, functions);
+  payload.functions = {
+    byRegion,
+    triggers: allFunctions(byRegion),
+  };
 
   // Validate the function code that is being deployed.
   validate.functionsDirectoryExists(options, sourceDirName);
@@ -87,5 +107,28 @@ export async function prepare(context: any, options: any, payload: any): Promise
   const localFnsInRelease = payload.functions.triggers.filter((fn: CloudFunctionTrigger) => {
     return functionMatchesAnyGroup(fn.name, context.filters);
   });
-  await promptForFailurePolicies(context, options, localFnsInRelease);
+
+  const res = await gcp.cloudfunctions.listAllFunctions(context.projectId);
+  if (res.unreachable) {
+    const regionsInDeployment = Object.keys(payload.functions.byRegion);
+    const unreachableRegionsInDeployment = regionsInDeployment.filter((region) =>
+      res.unreachable.includes(region)
+    );
+    if (unreachableRegionsInDeployment) {
+      throw new FirebaseError(
+        "The following Cloud Functions regions are currently unreachable:\n\t" +
+          unreachableRegionsInDeployment.join("\n\t") +
+          "\nThis deployment contains functions in those regions. Please try again in a few minutes, or exclude these regions from your deployment."
+      );
+    } else {
+      logLabeledWarning(
+        "functions",
+        "The following Cloud Functions regions are currently unreachable:\n" +
+          res.unreachable.join("\n") +
+          "\nCloud Functions in these regions won't be deleted."
+      );
+    }
+  }
+  context.existingFunctions = res.functions;
+  await promptForFailurePolicies(options, localFnsInRelease, context.existingFunctions);
 }

@@ -10,6 +10,7 @@ import { configstore } from "./configstore";
 import { detectProjectRoot } from "./detectProjectRoot";
 import track = require("./track");
 import clc = require("cli-color");
+import { selectAccount, setActiveAccount } from "./auth";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ActionFunction = (...args: any[]) => any;
@@ -248,6 +249,16 @@ export class Command {
     if (options.project) {
       validateProjectId(options.project);
     }
+
+    const account = getInheritedOption(options, "account");
+    options.account = account;
+
+    const projectRoot = options.projectRoot;
+    const activeAccount = selectAccount(account, projectRoot);
+
+    if (activeAccount) {
+      setActiveAccount(options, activeAccount);
+    }
   }
 
   /**
@@ -300,6 +311,7 @@ export class Command {
 
       const options = last(args);
       this.prepare(options);
+
       for (const before of this.befores) {
         await before.fn(options, ...before.args);
       }
