@@ -150,8 +150,17 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
     joinArgs: false,
   },
   storage: {
+    // This is for the Storage Emulator rules runtime, which is started
+    // separately in ./storage/runtime.ts (not via the start function below).
     binary: "java",
-    args: ["-jar", getExecPath(Emulators.STORAGE), "serve"],
+    args: [
+      "-jar",
+      // Required for rules error/warning messages, which are in English only.
+      // Attempts to fetch the messages in another language leads to crashes.
+      "-Duser.language=en",
+      getExecPath(Emulators.STORAGE),
+      "serve",
+    ],
     optionalArgs: [],
     joinArgs: false,
   },
@@ -186,7 +195,7 @@ export function getLogFileName(name: string): string {
  * @param emulator - string identifier for the emulator to start.
  * @param args - map<string,string> of addittional args
  */
-function _getCommand(
+export function _getCommand(
   emulator: DownloadableEmulators,
   args: { [s: string]: any }
 ): DownloadableEmulatorCommand {
