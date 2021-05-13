@@ -8,12 +8,13 @@ import { InvokeRuntimeOpts } from "./functionsEmulator";
 
 export enum EmulatedTriggerType {
   BACKGROUND = "BACKGROUND",
-  HTTPS = "HTTPS",
+  HTTPS = "HTTPS"
 }
 
 export interface EmulatedTriggerDefinition {
   entryPoint: string;
   name: string;
+  id?: string;
   timeout?: string | number; // Can be "3s" for some reason lol
   regions?: string[];
   availableMemoryMb?: "128MB" | "256MB" | "512MB" | "1GB" | "2GB" | "4GB";
@@ -126,6 +127,33 @@ export class EmulatedTrigger {
     const func = _.get(this.module, this.definition.entryPoint);
     return func.__emulator_func || func;
   }
+}
+
+/**
+ * Creates a unique trigger definition for each region a function is defined in.
+ * @param definitions A list of all CloudFunctions in the deployment.
+ * @return A list of all CloudFunctions in the deployment, with copies for each region.
+ */
+export function emulatedFunctionsByRegion(
+  definitions: EmulatedTriggerDefinition[]
+): EmulatedTriggerDefinition[] {
+  const regionDefinitions: EmulatedTriggerDefinition[] = [];
+  for (const def of definitions) {
+    if (!def.regions) {
+      def.regions = ["us-central1"];
+    }
+    // Create a separate CloudFunction for
+    // each region we deploy a function to
+    for (const region of def.regions) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const defDeepCopy: EmulatedTriggerDefinition = JSON.parse(JSON.stringify(def));
+      defDeepCopy.regions = [region];
+      defDeepCopy.id =`${region}-${defDeepCopy.name}`;
+
+      regionDefinitions.push(defDeepCopy);
+    }
+  }
+  return regionDefinitions;
 }
 
 export function getEmulatedTriggersFromDefinitions(

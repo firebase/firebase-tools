@@ -8,9 +8,10 @@ import {
   findModuleRoot,
   FunctionsRuntimeBundle,
   FunctionsRuntimeFeatures,
+  emulatedFunctionsByRegion,
   getEmulatedTriggersFromDefinitions,
   FunctionsRuntimeArgs,
-  HttpConstants,
+  HttpConstants
 } from "./functionsEmulatorShared";
 import { Constants } from "./constants";
 import { parseVersionString, compareVersionStrings } from "./functionsEmulatorUtils";

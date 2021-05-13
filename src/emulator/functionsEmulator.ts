@@ -28,6 +28,7 @@ import {
   FunctionsRuntimeArgs,
   FunctionsRuntimeBundle,
   FunctionsRuntimeFeatures,
+  emulatedFunctionsByRegion,
   getFunctionRegion,
   getFunctionService,
   HttpConstants,
@@ -221,8 +222,11 @@ export class FunctionsEmulator implements EmulatorInstance {
     const httpsFunctionRoutes = [httpsFunctionRoute, `${httpsFunctionRoute}/*`];
 
     const backgroundHandler: express.RequestHandler = (req, res) => {
-      const triggerId = req.params.trigger_name;
+      const triggerName = req.params.trigger_name;
+      const region = req.params.region;
       const projectId = req.params.project_id;
+      const triggerId = `${region}-${triggerName}`;
+
       const reqBody = (req as RequestWithRawBody).rawBody;
       const proto = JSON.parse(reqBody.toString());
 
@@ -411,8 +415,10 @@ export class FunctionsEmulator implements EmulatorInstance {
       "SYSTEM",
       "triggers-parsed"
     );
-    const triggerDefinitions = triggerParseEvent.data
+    let triggerDefinitions = triggerParseEvent.data
       .triggerDefinitions as EmulatedTriggerDefinition[];
+
+    triggerDefinitions = emulatedFunctionsByRegion(triggerDefinitions);
 
     // When force is true we set up all triggers, otherwise we only set up
     // triggers which have a unique function name
@@ -434,8 +440,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       let url: string | undefined = undefined;
 
       if (definition.httpsTrigger) {
-        // TODO(samstern): Right now we only emulate each function in one region, but it's possible
-        //                 that a developer is running the same function in multiple regions.
         const region = getFunctionRegion(definition);
         const { host, port } = this.getInfo();
         added = true;
@@ -499,12 +503,12 @@ export class FunctionsEmulator implements EmulatorInstance {
 
       if (ignored) {
         const msg = `function ignored because the ${type} emulator does not exist or is not running.`;
-        this.logger.logLabeled("BULLET", `functions[${definition.name}]`, msg);
+        this.logger.logLabeled("BULLET", `functions[${definition.id}]`, msg);
       } else {
         const msg = url
           ? `${clc.bold(type)} function initialized (${url}).`
           : `${clc.bold(type)} function initialized.`;
-        this.logger.logLabeled("SUCCESS", `functions[${definition.name}]`, msg);
+        this.logger.logLabeled("SUCCESS", `functions[${definition.id}]`, msg);
       }
     }
   }
@@ -690,7 +694,8 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   getTriggerKey(def: EmulatedTriggerDefinition): string {
     // For background triggers we attach the current generation as a suffix
-    return def.eventTrigger ? def.name + "-" + this.triggerGeneration : def.name;
+    const id = def.id ? def.id : def.name;
+    return def.eventTrigger ? id + "-" + this.triggerGeneration : id;
   }
 
   addTriggerRecord(
@@ -1018,7 +1023,9 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   private async handleHttpsTrigger(req: express.Request, res: express.Response) {
     const method = req.method;
-    const triggerId = req.params.trigger_name;
+    const region = req.params.region;
+    const triggerName = req.params.trigger_name;
+    const triggerId = `${region}-${triggerName}`;
 
     if (!this.triggers[triggerId]) {
       res
