@@ -64,7 +64,7 @@ export async function deploy(
 
     logLabeledBullet(
       `hosting[${deploy.site}]`,
-      "found " + files.length + " files in " + clc.bold(deploy.config.public)
+      `found ${files.length} files in ${clc.bold(deploy.config.public)}`
     );
 
     const uploader = new Uploader({

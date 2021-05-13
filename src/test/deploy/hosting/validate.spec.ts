@@ -13,8 +13,8 @@ describe("validateDeploy()", () => {
           config: { ...merge },
         },
         {
-          cwd: __dirname + "/../../fixtures/simple",
-          configPath: __dirname + "/../../fixtures/simple/firebase.json",
+          cwd: __dirname + "/../../fixtures/simplehosting",
+          configPath: __dirname + "/../../fixtures/simplehosting/firebase.json",
         }
       );
     };
