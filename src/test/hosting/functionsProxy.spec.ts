@@ -5,9 +5,10 @@ import * as nock from "nock";
 import * as sinon from "sinon";
 import * as supertest from "supertest";
 
-import functionsProxy, {
-  FunctionProxyRewrite,
+import {
+  functionsProxy,
   FunctionsProxyOptions,
+  FunctionProxyRewrite,
 } from "../../hosting/functionsProxy";
 import { EmulatorRegistry } from "../../emulator/registry";
 import { Emulators } from "../../emulator/types";
@@ -20,7 +21,8 @@ describe("functionsProxy", () => {
     targets: [],
   };
 
-  const fakeRewrite: FunctionProxyRewrite = { function: "bar" };
+  const fakeRewrite: FunctionProxyRewrite = { function: "bar", region: "us-central1" };
+  const fakeRewriteEurope: FunctionProxyRewrite = { function: "bar", region: "europe-west3" };
 
   beforeEach(async () => {
     const fakeFunctionsEmulator = new FakeEmulator(Emulators.FUNCTIONS, "localhost", 7778);
@@ -49,6 +51,23 @@ describe("functionsProxy", () => {
       });
   });
 
+  it("should resolve a function returns middleware that proxies to the live version in another region", async () => {
+    nock("https://europe-west3-project-foo.cloudfunctions.net")
+      .get("/bar/")
+      .reply(200, "live version");
+
+    const mwGenerator = functionsProxy(fakeOptions);
+    const mw = await mwGenerator(fakeRewriteEurope);
+    const spyMw = sinon.spy(mw);
+
+    return supertest(spyMw)
+      .get("/")
+      .expect(200, "live version")
+      .then(() => {
+        expect(spyMw.calledOnce).to.be.true;
+      });
+  });
+
   it("should resolve a function that returns middleware that proxies to a local version", async () => {
     nock("http://localhost:7778").get("/project-foo/us-central1/bar/").reply(200, "local version");
 
@@ -57,6 +76,24 @@ describe("functionsProxy", () => {
 
     const mwGenerator = functionsProxy(options);
     const mw = await mwGenerator(fakeRewrite);
+    const spyMw = sinon.spy(mw);
+
+    return supertest(spyMw)
+      .get("/")
+      .expect(200, "local version")
+      .then(() => {
+        expect(spyMw.calledOnce).to.be.true;
+      });
+  });
+
+  it("should resolve a function that returns middleware that proxies to a local version in another region", async () => {
+    nock("http://localhost:7778").get("/project-foo/europe-west3/bar/").reply(200, "local version");
+
+    const options = cloneDeep(fakeOptions);
+    options.targets = ["functions"];
+
+    const mwGenerator = functionsProxy(options);
+    const mw = await mwGenerator(fakeRewriteEurope);
     const spyMw = sinon.spy(mw);
 
     return supertest(spyMw)
