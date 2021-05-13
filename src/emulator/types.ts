@@ -44,7 +44,7 @@ export const ALL_SERVICE_EMULATORS = [
   Emulators.DATABASE,
   Emulators.HOSTING,
   Emulators.PUBSUB,
-  previews.storageemulator && Emulators.STORAGE,
+  Emulators.STORAGE,
 ].filter((v) => v) as Emulators[];
 
 export const EMULATORS_SUPPORTED_BY_FUNCTIONS = [
