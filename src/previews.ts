@@ -6,7 +6,6 @@ interface PreviewFlags {
   ext: boolean;
   extdev: boolean;
   rtdbmanagement: boolean;
-  storageemulator: boolean;
   functionsv2: boolean;
 }
 
@@ -16,7 +15,6 @@ export const previews: PreviewFlags = {
   ext: false,
   extdev: false,
   rtdbmanagement: false,
-  storageemulator: false,
   functionsv2: false,
 
   ...configstore.get("previews"),
