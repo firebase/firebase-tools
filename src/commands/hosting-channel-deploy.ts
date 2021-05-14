@@ -160,7 +160,7 @@ export default new Command("hosting:channel:deploy [channelId]")
         if (d.expireTime) {
           expires = `[expires ${bold(datetimeString(new Date(d.expireTime)))}]`;
         }
-        const versionPrefix = `sites/${d.target || d.site}/versions/`;
+        const versionPrefix = `sites/${d.site}/versions/`;
         const versionName = versionNames.find((v) => {
           return v.startsWith(versionPrefix);
         });
