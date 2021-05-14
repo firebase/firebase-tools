@@ -8,7 +8,6 @@ import { StorageEmulator } from "../index";
 import { EmulatorRegistry } from "../../registry";
 import { StorageRulesetInstance } from "../rules/runtime";
 import { RulesetOperationMethod } from "../rules/types";
-import * as path from "path";
 
 async function isPermitted(opts: {
   ruleset?: StorageRulesetInstance;
@@ -200,10 +199,10 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       } else {
         res.end(data);
       }
+
+      setObjectHeaders(res, md, { "Content-Encoding": isGZipped ? "identity" : undefined });
       return;
     }
-
-    setObjectHeaders(res, md, { "Content-Encoding": isGZipped ? "identity" : undefined });
 
     res.json(new OutgoingFirebaseMetadata(md));
   });
