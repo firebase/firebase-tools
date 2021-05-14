@@ -1,12 +1,12 @@
+import { expect } from "chai";
 import * as sinon from "sinon";
 import * as nock from "nock";
-import { expect } from "chai";
 
 import { logger } from "../../../logger";
 import { configstore } from "../../../configstore";
-import * as api from "../../../api";
 import { checkRuntimeDependencies } from "../../../deploy/functions/checkRuntimeDependencies";
 import { POLL_SETTINGS } from "../../../ensureApiEnabled";
+import * as api from "../../../api";
 
 describe("checkRuntimeDependencies()", () => {
   let restoreInterval: number;
