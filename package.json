@@ -98,7 +98,7 @@
     "cross-spawn": "^7.0.1",
     "csv-streamify": "^3.0.4",
     "dotenv": "^6.1.0",
-    "exegesis": "^2.5.6",
+    "exegesis": "^2.5.7",
     "exegesis-express": "^2.0.0",
     "exit-code": "^1.0.2",
     "express": "^4.16.4",
