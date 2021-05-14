@@ -151,7 +151,6 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     const isPermittedViaToken =
       req.query.token && md && md.downloadTokens.includes(req.query.token.toString());
 
-    console.table({ isPermittedViaHeader, isPermittedViaToken });
     const isRequestPermitted: boolean = isPermittedViaHeader || !!isPermittedViaToken;
 
     if (!isRequestPermitted) {
