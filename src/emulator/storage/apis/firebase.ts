@@ -126,50 +126,54 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     next();
   });
 
-  // get metadata and get object handler
   firebaseStorageAPI.get("/b/:bucketId/o/:objectId", async (req, res) => {
     const decodedObjectId = decodeURIComponent(req.params.objectId);
-    const operationPath = ["b", req.params.bucketId, "o", decodedObjectId].join("/");
+    const operationPath = path.join("b", req.params.bucketId, "o", decodedObjectId);
     const md = storageLayer.getMetadata(req.params.bucketId, decodedObjectId);
+
+    const rulesFiles: {
+      before?: RulesResourceMetadata;
+    } = {};
+
+    if (md) {
+      rulesFiles.before = md.asRulesResource();
+    }
+
+    // Query values are used for GETs from Web SDKs
+    const isPermittedViaHeader = await isPermitted({
+      ruleset: emulator.rules,
+      method: RulesetOperationMethod.GET,
+      path: operationPath,
+      file: rulesFiles,
+      authorization: req.header("authorization"),
+    });
+
+    // Token headers are used for GETs from Mobile SDKs
+    const isPermittedViaToken =
+      req.query.token && md && md.downloadTokens.includes(req.query.token.toString());
+
+    console.table({ isPermittedViaHeader, isPermittedViaToken });
+    const isRequestPermitted: boolean = isPermittedViaHeader || !!isPermittedViaToken;
+
+    if (!isRequestPermitted) {
+      res.sendStatus(403);
+      return;
+    }
 
     if (!md) {
       res.sendStatus(404);
       return;
     }
 
-    const isPermittedViaHeader = await isPermitted({
-      ruleset: emulator.rules,
-      method: RulesetOperationMethod.GET,
-      path: operationPath,
-      file: {
-        before: md.asRulesResource(),
-      },
-      authorization: req.header("authorization"),
-    });
-
     let isGZipped = false;
     if (md.contentEncoding == "gzip") {
       isGZipped = true;
     }
 
-    // TODO: Don't serve identity / download header if not alt=media
     if (req.query.alt == "media") {
       let data = storageLayer.getBytes(req.params.bucketId, req.params.objectId);
       if (!data) {
         res.sendStatus(404);
-        return;
-      }
-
-      const isPermittedViaToken =
-        req.query.token && md.downloadTokens.includes(req.query.token.toString());
-
-      if (
-        // Token headers are used for GETs from Mobile SDKs
-        !isPermittedViaHeader &&
-        // Query values are used for GETs from Web SDKs
-        !isPermittedViaToken
-      ) {
-        res.sendStatus(403);
         return;
       }
 
