@@ -128,7 +128,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
 
   firebaseStorageAPI.get("/b/:bucketId/o/:objectId", async (req, res) => {
     const decodedObjectId = decodeURIComponent(req.params.objectId);
-    const operationPath = path.join("b", req.params.bucketId, "o", decodedObjectId);
+    const operationPath = ["b", req.params.bucketId, "o", decodedObjectId].join("/");
     const md = storageLayer.getMetadata(req.params.bucketId, decodedObjectId);
 
     const rulesFiles: {
