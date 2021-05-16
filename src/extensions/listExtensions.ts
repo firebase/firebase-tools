@@ -5,8 +5,14 @@ import Table = require("cli-table");
 import { ExtensionInstance, listInstances } from "./extensionsApi";
 import { logPrefix } from "./extensionsHelper";
 import * as utils from "../utils";
-import * as logger from "../logger";
+import * as extensionsUtils from "./utils";
+import { logger } from "../logger";
 
+/**
+ * Lists the extensions installed under a project
+ * @param projectId ID of the project we're querying
+ * @return mapping that contains a list of instances under the "instances" key
+ */
 export async function listExtensions(
   projectId: string
 ): Promise<{ instances: ExtensionInstance[] }> {
@@ -20,19 +26,28 @@ export async function listExtensions(
   }
 
   const table = new Table({
-    head: ["Extension Instance ID", "State", "Extension Version", "Create Time", "Update Time"],
+    head: ["Extension", "Publisher", "Instance ID", "State", "Version", "Your last update"],
     style: { head: ["yellow"] },
   });
-
   // Order instances newest to oldest.
   const sorted = _.sortBy(instances, "createTime", "asc").reverse();
   sorted.forEach((instance) => {
+    let extension = _.get(instance, "config.extensionRef", "");
+    let publisher;
+    if (extension === "") {
+      extension = _.get(instance, "config.source.spec.name", "");
+      publisher = "N/A";
+    } else {
+      publisher = extension.split("/")[0];
+    }
     table.push([
+      extension,
+      publisher,
       _.last(instance.name.split("/")),
-      instance.state,
+      instance.state +
+        (_.get(instance, "config.source.state", "ACTIVE") === "DELETED" ? " (UNPUBLISHED)" : ""),
       _.get(instance, "config.source.spec.version", ""),
-      instance.createTime,
-      instance.updateTime,
+      extensionsUtils.formatTimestamp(instance.updateTime),
     ]);
   });
 

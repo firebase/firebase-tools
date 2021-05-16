@@ -1,47 +1,69 @@
 import { ChildProcess } from "child_process";
 import { EventEmitter } from "events";
+import { previews } from "../previews";
 
 export enum Emulators {
+  AUTH = "auth",
   HUB = "hub",
   FUNCTIONS = "functions",
   FIRESTORE = "firestore",
   DATABASE = "database",
   HOSTING = "hosting",
   PUBSUB = "pubsub",
-  GUI = "gui",
+  UI = "ui",
   LOGGING = "logging",
+  STORAGE = "storage",
 }
 
 export type DownloadableEmulators =
   | Emulators.FIRESTORE
   | Emulators.DATABASE
   | Emulators.PUBSUB
-  | Emulators.GUI;
+  | Emulators.UI
+  | Emulators.STORAGE;
 export const DOWNLOADABLE_EMULATORS = [
   Emulators.FIRESTORE,
   Emulators.DATABASE,
   Emulators.PUBSUB,
-  Emulators.GUI,
+  Emulators.UI,
+  Emulators.STORAGE,
 ];
 
-export type ImportExportEmulators = Emulators.FIRESTORE;
-export const IMPORT_EXPORT_EMULATORS = [Emulators.FIRESTORE];
+export type ImportExportEmulators = Emulators.FIRESTORE | Emulators.DATABASE | Emulators.AUTH;
+export const IMPORT_EXPORT_EMULATORS = [
+  Emulators.FIRESTORE,
+  Emulators.DATABASE,
+  Emulators.AUTH,
+  Emulators.STORAGE,
+];
 
 export const ALL_SERVICE_EMULATORS = [
+  Emulators.AUTH,
   Emulators.FUNCTIONS,
   Emulators.FIRESTORE,
   Emulators.DATABASE,
   Emulators.HOSTING,
   Emulators.PUBSUB,
-];
+  Emulators.STORAGE,
+].filter((v) => v) as Emulators[];
 
 export const EMULATORS_SUPPORTED_BY_FUNCTIONS = [
   Emulators.FIRESTORE,
   Emulators.DATABASE,
   Emulators.PUBSUB,
+  Emulators.STORAGE,
 ];
 
-export const EMULATORS_SUPPORTED_BY_GUI = [
+export const EMULATORS_SUPPORTED_BY_UI = [
+  Emulators.AUTH,
+  Emulators.DATABASE,
+  Emulators.FIRESTORE,
+  Emulators.FUNCTIONS,
+  Emulators.STORAGE,
+];
+
+export const EMULATORS_SUPPORTED_BY_USE_EMULATOR = [
+  Emulators.AUTH,
   Emulators.DATABASE,
   Emulators.FIRESTORE,
   Emulators.FUNCTIONS,
@@ -50,17 +72,23 @@ export const EMULATORS_SUPPORTED_BY_GUI = [
 // TODO: Is there a way we can just allow iteration over the enum?
 export const ALL_EMULATORS = [
   Emulators.HUB,
-  Emulators.GUI,
+  Emulators.UI,
   Emulators.LOGGING,
   ...ALL_SERVICE_EMULATORS,
 ];
 
+/**
+ * @param value
+ */
 export function isDownloadableEmulator(value: string): value is DownloadableEmulators {
-  return isEmulator(value) && DOWNLOADABLE_EMULATORS.indexOf(value) >= 0;
+  return isEmulator(value) && DOWNLOADABLE_EMULATORS.includes(value);
 }
 
+/**
+ * @param value
+ */
 export function isEmulator(value: string): value is Emulators {
-  return Object.values(Emulators).indexOf(value as Emulators) >= 0;
+  return Object.values(Emulators).includes(value as Emulators);
 }
 
 export interface EmulatorInstance {
@@ -96,8 +124,10 @@ export interface EmulatorInstance {
 }
 
 export interface EmulatorInfo {
+  name: Emulators;
   host: string;
   port: number;
+  pid?: number;
 }
 
 export interface DownloadableEmulatorCommand {

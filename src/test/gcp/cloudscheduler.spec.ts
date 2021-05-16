@@ -1,14 +1,14 @@
-import * as _ from "lodash";
 import { expect } from "chai";
+import * as _ from "lodash";
 import * as nock from "nock";
-import * as api from "../../api";
 
+import * as cloudscheduler from "../../gcp/cloudscheduler";
 import { FirebaseError } from "../../error";
-import { cloudscheduler } from "../../gcp";
+import * as api from "../../api";
 
 const VERSION = "v1beta1";
 
-const TEST_JOB = {
+const TEST_JOB: cloudscheduler.Job = {
   name: "projects/test-project/locations/us-east1/jobs/test",
   schedule: "every 5 minutes",
   timeZone: "America/Los_Angeles",
@@ -42,9 +42,7 @@ describe("cloudscheduler", () => {
     it("should do nothing if a functionally identical job exists", async () => {
       const otherJob = _.cloneDeep(TEST_JOB);
       otherJob.name = "something-different";
-      nock(api.cloudschedulerOrigin)
-        .get(`/${VERSION}/${TEST_JOB.name}`)
-        .reply(200, otherJob);
+      nock(api.cloudschedulerOrigin).get(`/${VERSION}/${TEST_JOB.name}`).reply(200, otherJob);
 
       const response = await cloudscheduler.createOrReplaceJob(TEST_JOB);
 
@@ -55,12 +53,8 @@ describe("cloudscheduler", () => {
     it("should update if a job exists with the same name and a different schedule", async () => {
       const otherJob = _.cloneDeep(TEST_JOB);
       otherJob.schedule = "every 6 minutes";
-      nock(api.cloudschedulerOrigin)
-        .get(`/${VERSION}/${TEST_JOB.name}`)
-        .reply(200, otherJob);
-      nock(api.cloudschedulerOrigin)
-        .patch(`/${VERSION}/${TEST_JOB.name}`)
-        .reply(200, otherJob);
+      nock(api.cloudschedulerOrigin).get(`/${VERSION}/${TEST_JOB.name}`).reply(200, otherJob);
+      nock(api.cloudschedulerOrigin).patch(`/${VERSION}/${TEST_JOB.name}`).reply(200, otherJob);
 
       const response = await cloudscheduler.createOrReplaceJob(TEST_JOB);
 
@@ -71,12 +65,8 @@ describe("cloudscheduler", () => {
     it("should update if a job exists with the same name but a different timeZone", async () => {
       const otherJob = _.cloneDeep(TEST_JOB);
       otherJob.timeZone = "America/New_York";
-      nock(api.cloudschedulerOrigin)
-        .get(`/${VERSION}/${TEST_JOB.name}`)
-        .reply(200, otherJob);
-      nock(api.cloudschedulerOrigin)
-        .patch(`/${VERSION}/${TEST_JOB.name}`)
-        .reply(200, otherJob);
+      nock(api.cloudschedulerOrigin).get(`/${VERSION}/${TEST_JOB.name}`).reply(200, otherJob);
+      nock(api.cloudschedulerOrigin).patch(`/${VERSION}/${TEST_JOB.name}`).reply(200, otherJob);
 
       const response = await cloudscheduler.createOrReplaceJob(TEST_JOB);
 
@@ -87,12 +77,8 @@ describe("cloudscheduler", () => {
     it("should update if a job exists with the same name but a different retry config", async () => {
       const otherJob = _.cloneDeep(TEST_JOB);
       otherJob.retryConfig = { maxDoublings: 10 };
-      nock(api.cloudschedulerOrigin)
-        .get(`/${VERSION}/${TEST_JOB.name}`)
-        .reply(200, otherJob);
-      nock(api.cloudschedulerOrigin)
-        .patch(`/${VERSION}/${TEST_JOB.name}`)
-        .reply(200, otherJob);
+      nock(api.cloudschedulerOrigin).get(`/${VERSION}/${TEST_JOB.name}`).reply(200, otherJob);
+      nock(api.cloudschedulerOrigin).patch(`/${VERSION}/${TEST_JOB.name}`).reply(200, otherJob);
 
       const response = await cloudscheduler.createOrReplaceJob(TEST_JOB);
 
@@ -111,6 +97,22 @@ describe("cloudscheduler", () => {
       await expect(cloudscheduler.createOrReplaceJob(TEST_JOB)).to.be.rejectedWith(
         FirebaseError,
         "Cloud resource location is not set"
+      );
+
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should error and exit if cloud scheduler create request fail", async () => {
+      nock(api.cloudschedulerOrigin)
+        .get(`/${VERSION}/${TEST_JOB.name}`)
+        .reply(404, { context: { response: { statusCode: 404 } } });
+      nock(api.cloudschedulerOrigin)
+        .post(`/${VERSION}/projects/test-project/locations/us-east1/jobs`)
+        .reply(400, { context: { response: { statusCode: 400 } } });
+
+      await expect(cloudscheduler.createOrReplaceJob(TEST_JOB)).to.be.rejectedWith(
+        FirebaseError,
+        "Failed to create scheduler job projects/test-project/locations/us-east1/jobs/test: HTTP Error: 400, Unknown Error"
       );
 
       expect(nock.isDone()).to.be.true;

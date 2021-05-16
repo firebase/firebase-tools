@@ -6,7 +6,7 @@ import { Command } from "../command";
 import { FirebaseError } from "../error";
 import * as gcp from "../gcp";
 import * as getProjectId from "../getProjectId";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
 
 module.exports = new Command("functions:log")

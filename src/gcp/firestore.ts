@@ -1,6 +1,11 @@
-import api = require("../api");
+import { firestoreOriginOrEmulator } from "../api";
+import * as apiv2 from "../apiv2";
 
-const _API_ROOT = "/v1beta1/";
+const _CLIENT = new apiv2.Client({
+  auth: true,
+  apiVersion: "v1",
+  urlPrefix: firestoreOriginOrEmulator,
+});
 
 /**
  * List all collection IDs.
@@ -8,21 +13,16 @@ const _API_ROOT = "/v1beta1/";
  * @param {string} project the Google Cloud project ID.
  * @return {Promise<string[]>} a promise for an array of collection IDs.
  */
-export async function listCollectionIds(project: string): Promise<string[]> {
-  const url =
-    _API_ROOT + "projects/" + project + "/databases/(default)/documents:listCollectionIds";
-  return api
-    .request("POST", url, {
-      auth: true,
-      origin: api.firestoreOriginOrEmulator,
-      data: {
-        // Maximum 32-bit integer
-        pageSize: 2147483647,
-      },
-    })
-    .then((res) => {
-      return res.body.collectionIds || [];
-    });
+export function listCollectionIds(project: string): Promise<string[]> {
+  const url = "projects/" + project + "/databases/(default)/documents:listCollectionIds";
+  const data = {
+    // Maximum 32-bit integer
+    pageSize: 2147483647,
+  };
+
+  return _CLIENT.post<any, { collectionIds?: string[] }>(url, data).then((res) => {
+    return res.body.collectionIds || [];
+  });
 }
 
 /**
@@ -35,10 +35,7 @@ export async function listCollectionIds(project: string): Promise<string[]> {
  * @return {Promise} a promise for the delete operation.
  */
 export async function deleteDocument(doc: any): Promise<any> {
-  return api.request("DELETE", _API_ROOT + doc.name, {
-    auth: true,
-    origin: api.firestoreOriginOrEmulator,
-  });
+  return _CLIENT.delete(doc.name);
 }
 
 /**
@@ -52,34 +49,13 @@ export async function deleteDocument(doc: any): Promise<any> {
  * @return {Promise<number>} a promise for the number of deleted documents.
  */
 export async function deleteDocuments(project: string, docs: any[]): Promise<number> {
-  const url = _API_ROOT + "projects/" + project + "/databases/(default)/documents:commit";
+  const url = "projects/" + project + "/databases/(default)/documents:commit";
 
   const writes = docs.map((doc) => {
     return { delete: doc.name };
   });
+  const data = { writes };
 
-  const body = { writes };
-
-  try {
-    const res = await api.request("POST", url, {
-      auth: true,
-      data: body,
-      origin: api.firestoreOriginOrEmulator,
-    });
-    return res.body.writeResults.length;
-  } catch (err) {
-    if (
-      err.status === 400 &&
-      err.message.indexOf("Transaction too big") !== -1 &&
-      docs.length > 2
-    ) {
-      // If the batch is too large, we can get errors. Recursively split the
-      // batch into pieces and process them individually. This can lead to
-      // partial deletes if one of them succeeeds and the other fails.
-      const a = await deleteDocuments(project, docs.slice(0, docs.length / 2));
-      const b = await deleteDocuments(project, docs.slice(docs.length / 2));
-      return a + b;
-    }
-    throw err;
-  }
+  const res = await _CLIENT.post<any, { writeResults: any[] }>(url, data);
+  return res.body.writeResults.length;
 }

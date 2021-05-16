@@ -99,6 +99,10 @@ steps:
       - "REPOSITORY_ORG=${_REPOSITORY_ORG}"
       - "REPOSITORY_NAME=${_REPOSITORY_NAME}"
 
+  # Wait a bit of time for npm to catch up.
+  - name: "gcr.io/$PROJECT_ID/package-builder"
+    args: ["sleep", "60"]
+
   # Set up the hub credentials for firepit-builder.
   - name: "gcr.io/$PROJECT_ID/firepit-builder"
     entrypoint: "bash"
@@ -108,6 +112,8 @@ steps:
   - name: "gcr.io/$PROJECT_ID/firepit-builder"
     entrypoint: "node"
     args: ["/usr/src/app/pipeline.js", "--package=firebase-tools@latest", "--publish"]
+
+timeout: 1200s # 20 minutes
 
 options:
   volumes:

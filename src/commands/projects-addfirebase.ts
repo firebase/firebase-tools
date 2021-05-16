@@ -1,5 +1,3 @@
-import * as _ from "lodash";
-
 import { Command } from "../command";
 import { FirebaseError } from "../error";
 import {

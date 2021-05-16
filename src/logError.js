@@ -1,13 +1,13 @@
 "use strict";
 
-var logger = require("./logger");
+const { logger } = require("./logger");
 var clc = require("cli-color");
 
 /* istanbul ignore next */
-module.exports = function(error) {
+module.exports = function (error) {
   if (error.children && error.children.length) {
     logger.error(clc.bold.red("Error:"), clc.underline(error.message) + ":");
-    error.children.forEach(function(child) {
+    error.children.forEach(function (child) {
       var out = "- ";
       if (child.name) {
         out += clc.bold(child.name) + " ";

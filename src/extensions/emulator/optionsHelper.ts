@@ -1,8 +1,9 @@
 import * as fs from "fs-extra";
 import * as _ from "lodash";
 import * as path from "path";
-import * as paramHelper from "./paramHelper";
+import * as paramHelper from "../paramHelper";
 import * as specHelper from "./specHelper";
+import * as localHelper from "../localHelper";
 import * as triggerHelper from "./triggerHelper";
 import { Resource } from "../extensionsApi";
 import * as extensionsHelper from "../extensionsHelper";
@@ -10,9 +11,10 @@ import * as Config from "../../config";
 import { FirebaseError } from "../../error";
 import { EmulatorLogger } from "../../emulator/emulatorLogger";
 import * as getProjectId from "../../getProjectId";
+import { Emulators } from "../../emulator/types";
 
 export async function buildOptions(options: any): Promise<any> {
-  const extensionDir = await specHelper.findExtensionYaml(process.cwd());
+  const extensionDir = localHelper.findExtensionYaml(process.cwd());
   options.extensionDir = extensionDir;
   const extensionYaml = await specHelper.readExtensionYaml(extensionDir);
   extensionsHelper.validateSpec(extensionYaml);
@@ -48,8 +50,9 @@ export async function buildOptions(options: any): Promise<any> {
  * that are relevant for the extension being emulated.
  */
 function checkTestConfig(testConfig: { [key: string]: any }, functionResources: Resource[]) {
+  const logger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
   if (!testConfig.functions && functionResources.length) {
-    EmulatorLogger.log(
+    logger.log(
       "WARN",
       "This extension uses functions," +
         "but 'firebase.json' provided by --test-config is missing a top-level 'functions' object." +
@@ -58,7 +61,7 @@ function checkTestConfig(testConfig: { [key: string]: any }, functionResources: 
   }
 
   if (!testConfig.firestore && shouldEmulateFirestore(functionResources)) {
-    EmulatorLogger.log(
+    logger.log(
       "WARN",
       "This extension interacts with Cloud Firestore," +
         "but 'firebase.json' provided by --test-config is missing a top-level 'firestore' object." +
@@ -67,11 +70,20 @@ function checkTestConfig(testConfig: { [key: string]: any }, functionResources: 
   }
 
   if (!testConfig.database && shouldEmulateDatabase(functionResources)) {
-    EmulatorLogger.log(
+    logger.log(
       "WARN",
       "This extension interacts with Realtime Database," +
         "but 'firebase.json' provided by --test-config is missing a top-level 'database' object." +
         "Realtime Database will not be emulated."
+    );
+  }
+
+  if (!testConfig.storage && shouldEmulateStorage(functionResources)) {
+    logger.log(
+      "WARN",
+      "This extension interacts with Cloud Storage," +
+        "but 'firebase.json' provided by --test-config is missing a top-level 'storage' object." +
+        "Cloud Storage will not be emulated."
     );
   }
 }
@@ -112,6 +124,9 @@ function buildConfig(
     if (shouldEmulatePubsub(functionResources)) {
       config.set("pubsub", {});
     }
+    if (shouldEmulateStorage(functionResources)) {
+      config.set("storage", {});
+    }
   }
 
   if (config.get("functions")) {
@@ -129,12 +144,12 @@ function buildConfig(
  * values for properties.sourceDirectory.
  * @param functionResources An array of function type resources
  */
-function getFunctionSourceDirectory(functionResources: Resource[]): String {
+function getFunctionSourceDirectory(functionResources: Resource[]): string {
   let sourceDirectory;
-  for (let r of functionResources) {
+  for (const r of functionResources) {
     let dir = _.get(r, "properties.sourceDirectory");
     if (!dir) {
-      EmulatorLogger.log(
+      EmulatorLogger.forEmulator(Emulators.FUNCTIONS).log(
         "INFO",
         `No sourceDirectory was specified for function ${r.name}, defaulting to 'functions'`
       );
@@ -175,4 +190,8 @@ function shouldEmulateDatabase(resources: Resource[]): boolean {
 
 function shouldEmulatePubsub(resources: Resource[]): boolean {
   return shouldEmulate("google.pubsub", resources);
+}
+
+function shouldEmulateStorage(resources: Resource[]): boolean {
+  return shouldEmulate("google.storage", resources);
 }

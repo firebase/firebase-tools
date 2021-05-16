@@ -14,6 +14,15 @@ const MOCK_INSTANCES = [
       name:
         "projects/my-test-proj/instances/image-resizer/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
       createTime: "2019-05-19T00:20:10.416947Z",
+      source: {
+        state: "ACTIVE",
+        spec: {
+          author: {
+            authorName: "Firebase",
+            url: "https://firebase.google.com",
+          },
+        },
+      },
     },
   },
   {
@@ -76,6 +85,15 @@ describe("listExtensions", () => {
           name:
             "projects/my-test-proj/instances/image-resizer/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
           createTime: "2019-05-19T00:20:10.416947Z",
+          source: {
+            state: "ACTIVE",
+            spec: {
+              author: {
+                authorName: "Firebase",
+                url: "https://firebase.google.com",
+              },
+            },
+          },
         },
       },
     ];

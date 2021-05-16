@@ -1,7 +1,7 @@
 import * as clc from "cli-color";
 import * as fs from "fs";
 
-import * as logger from "../../logger";
+import { logger } from "../../logger";
 import { promptOnce } from "../../prompt";
 import { ensureLocationSet } from "../../ensureCloudResourceLocation";
 

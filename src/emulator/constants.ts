@@ -1,28 +1,74 @@
 import * as url from "url";
 
-import { Address, Emulators } from "./types";
+import { Emulators } from "./types";
 
 const DEFAULT_PORTS: { [s in Emulators]: number } = {
-  gui: 4000,
+  ui: 4000,
   hub: 4400,
   logging: 4500,
   hosting: 5000,
   functions: 5001,
   firestore: 8080,
-  database: 9000,
   pubsub: 8085,
+  database: 9000,
+  auth: 9099,
+  storage: 9199,
+};
+
+export const FIND_AVAILBLE_PORT_BY_DEFAULT: Record<Emulators, boolean> = {
+  ui: true,
+  hub: true,
+  logging: true,
+  hosting: false,
+  functions: false,
+  firestore: false,
+  database: false,
+  pubsub: false,
+  auth: false,
+  storage: false,
+};
+
+export const EMULATOR_DESCRIPTION: Record<Emulators, string> = {
+  ui: "Emulator UI",
+  hub: "emulator hub",
+  logging: "Logging Emulator",
+  hosting: "Hosting Emulator",
+  functions: "Functions Emulator",
+  firestore: "Firestore Emulator",
+  database: "Database Emulator",
+  pubsub: "Pub/Sub Emulator",
+  auth: "Authentication Emulator",
+  storage: "Storage Emulator",
 };
 
 const DEFAULT_HOST = "localhost";
 
 export class Constants {
+  // GCP projects cannot start with 'demo' so we use 'demo-' as a prefix to denote
+  // an intentionally fake project.
+  static FAKE_PROJECT_ID_PREFIX = "demo-";
+
   static DEFAULT_DATABASE_EMULATOR_NAMESPACE = "fake-server";
 
   // Environment variable to override SDK/CLI to point at the Firestore emulator.
   static FIRESTORE_EMULATOR_HOST = "FIRESTORE_EMULATOR_HOST";
 
-  // Environment variable tok override SDK/CLI to point at the Realtime Database emulator.
+  // Environment variable to override SDK/CLI to point at the Realtime Database emulator.
   static FIREBASE_DATABASE_EMULATOR_HOST = "FIREBASE_DATABASE_EMULATOR_HOST";
+
+  // Environment variable to override SDK/CLI to point at the Firebase Auth emulator.
+  static FIREBASE_AUTH_EMULATOR_HOST = "FIREBASE_AUTH_EMULATOR_HOST";
+
+  // Environment variable to override SDK/CLI to point at the Firebase Storage emulator.
+  static FIREBASE_STORAGE_EMULATOR_HOST = "FIREBASE_STORAGE_EMULATOR_HOST";
+
+  // Environment variable to override SDK/CLI to point at the Firebase Storage emulator
+  // for firebase-admin <= 9.6.0. Unlike the FIREBASE_STORAGE_EMULATOR_HOST variable
+  // this one must start with 'http://'.
+  static CLOUD_STORAGE_EMULATOR_HOST = "STORAGE_EMULATOR_HOST";
+
+  // Environment variable to discover the Emulator HUB
+  static FIREBASE_EMULATOR_HUB = "FIREBASE_EMULATOR_HUB";
 
   static SERVICE_FIRESTORE = "firestore.googleapis.com";
   static SERVICE_REALTIME_DATABASE = "firebaseio.com";
@@ -77,27 +123,11 @@ export class Constants {
     return `emulators.${emulator.toString()}.port`;
   }
 
-  static getAddress(emulator: Emulators, options: any): Address {
-    const hostVal = options.config.get(this.getHostKey(emulator), DEFAULT_HOST);
-    const portVal = options.config.get(this.getPortKey(emulator), this.getDefaultPort(emulator));
-
-    const host = this.normalizeHost(hostVal);
-    const port = parseInt(portVal, 10);
-
-    return { host, port };
-  }
-
   static description(name: Emulators): string {
-    if (name === Emulators.HUB) {
-      return "emulator hub";
-    } else if (name === Emulators.GUI) {
-      return "emulator GUI";
-    } else {
-      return `${name} emulator`;
-    }
+    return EMULATOR_DESCRIPTION[name];
   }
 
-  private static normalizeHost(host: string): string {
+  static normalizeHost(host: string): string {
     let normalized = host;
     if (!normalized.startsWith("http")) {
       normalized = `http://${normalized}`;
@@ -105,5 +135,9 @@ export class Constants {
 
     const u = url.parse(normalized);
     return u.hostname || DEFAULT_HOST;
+  }
+
+  static isDemoProject(projectId?: string): boolean {
+    return !!projectId && projectId.startsWith(this.FAKE_PROJECT_ID_PREFIX);
   }
 }

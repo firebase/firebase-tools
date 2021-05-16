@@ -1,10 +1,14 @@
 import * as fs from "fs-extra";
 import { FirebaseError } from "../error";
 import * as crypto from "crypto";
+import { AppDistributionApp } from "./client";
+import { logger } from "../logger";
+import * as pathUtil from "path";
 
 export enum DistributionFileType {
   IPA = "ipa",
   APK = "apk",
+  AAB = "aab",
 }
 
 /**
@@ -12,6 +16,7 @@ export enum DistributionFileType {
  */
 export class Distribution {
   private readonly fileType: DistributionFileType;
+  private readonly fileName: string;
 
   constructor(private readonly path: string) {
     if (!path) {
@@ -21,23 +26,28 @@ export class Distribution {
     const distributionType = path.split(".").pop();
     if (
       distributionType !== DistributionFileType.IPA &&
-      distributionType !== DistributionFileType.APK
+      distributionType !== DistributionFileType.APK &&
+      distributionType !== DistributionFileType.AAB
     ) {
-      throw new FirebaseError("unsupported distribution file format, should be .ipa or .apk");
+      throw new FirebaseError("Unsupported distribution file format, should be .ipa, .apk or .aab");
     }
 
-    if (!fs.existsSync(path)) {
+    try {
+      fs.ensureFileSync(path);
+    } catch (err) {
+      logger.info(err);
       throw new FirebaseError(
-        `File ${path} does not exist: verify that file points to a distribution`
+        `${path} is not a file. Verify that it points to a distribution binary.`
       );
     }
 
     this.path = path;
     this.fileType = distributionType;
+    this.fileName = pathUtil.basename(path);
   }
 
-  fileSize(): number {
-    return fs.statSync(this.path).size;
+  distributionFileType(): DistributionFileType {
+    return this.fileType;
   }
 
   readStream(): fs.ReadStream {
@@ -48,20 +58,37 @@ export class Distribution {
     switch (this.fileType) {
       case DistributionFileType.IPA:
         return "ios";
+      case DistributionFileType.AAB:
       case DistributionFileType.APK:
         return "android";
       default:
-        throw new FirebaseError("Unsupported distribution file format, should be .ipa or .apk");
+        throw new FirebaseError(
+          "Unsupported distribution file format, should be .ipa, .apk or .aab"
+        );
     }
   }
 
-  async releaseHash(): Promise<string> {
+  getFileName(): string {
+    return this.fileName;
+  }
+
+  /**
+   * Returns the binary name in the format:
+   * projects/<project-number>/apps/<app-id>/releases/-/binaries/<sha-256-hash>
+   *
+   * This is used to check the distribution upload status.
+   */
+  binaryName(app: AppDistributionApp): Promise<string> {
     return new Promise<string>((resolve) => {
-      const hash = crypto.createHash("sha1");
+      const hash = crypto.createHash("sha256");
       const stream = this.readStream();
       stream.on("data", (data) => hash.update(data));
       stream.on("end", () => {
-        return resolve(hash.digest("hex"));
+        return resolve(
+          `projects/${app.projectNumber}/apps/${app.appId}/releases/-/binaries/${hash.digest(
+            "hex"
+          )}`
+        );
       });
     });
   }

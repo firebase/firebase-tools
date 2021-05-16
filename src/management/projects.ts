@@ -1,13 +1,14 @@
-import * as api from "../api";
+import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as ora from "ora";
-import * as _ from "lodash";
 
-import * as logger from "../logger";
+import { Client } from "../apiv2";
 import { FirebaseError } from "../error";
 import { pollOperation } from "../operation-poller";
-import { Question } from "inquirer";
 import { promptOnce } from "../prompt";
+import { Question } from "inquirer";
+import * as api from "../api";
+import { logger } from "../logger";
 import * as utils from "../utils";
 
 const TIMEOUT_MILLIS = 30000;
@@ -67,6 +68,12 @@ export const PROJECTS_CREATE_QUESTIONS: Question[] = [
     message: "What would you like to call your project? (defaults to your project ID)",
   },
 ];
+
+const firebaseAPIClient = new Client({
+  urlPrefix: api.firebaseApiOrigin,
+  auth: true,
+  apiVersion: "v1beta1",
+});
 
 export async function createFirebaseProjectAndLog(
   projectId: string,
@@ -140,6 +147,7 @@ async function selectProjectInteractively(
   }
   if (nextPageToken) {
     // Prompt user for project ID if we can't list all projects in 1 page
+    logger.debug(`Found more than ${projects.length} projects, selecting via prompt`);
     return selectProjectByPrompting();
   }
   return selectProjectFromList(projects);
@@ -264,11 +272,22 @@ export async function createCloudProject(
     });
     return projectInfo;
   } catch (err) {
-    logger.debug(err.message);
-    throw new FirebaseError(
-      "Failed to create Google Cloud project. See firebase-debug.log for more info.",
-      { exit: 2, original: err }
-    );
+    if (err.status === 409) {
+      throw new FirebaseError(
+        `Failed to create project because there is already a project with ID ${clc.bold(
+          projectId
+        )}. Please try again with a unique project ID.`,
+        {
+          exit: 2,
+          original: err,
+        }
+      );
+    } else {
+      throw new FirebaseError("Failed to create project. See firebase-debug.log for more info.", {
+        exit: 2,
+        original: err,
+      });
+    }
   }
 }
 
@@ -310,21 +329,24 @@ async function getProjectPage<T>(
     pageToken?: string;
   }
 ): Promise<ProjectPage<T>> {
-  let apiResponse;
-  const { responseKey, pageToken, pageSize } = options;
-  const pageTokenQueryString = pageToken ? `&pageToken=${pageToken}` : "";
-  apiResponse = await api.request(
-    "GET",
-    `${apiResource}?pageSize=${pageSize}${pageTokenQueryString}`,
-    {
-      auth: true,
-      origin: api.firebaseApiOrigin,
-      timeout: TIMEOUT_MILLIS,
-    }
-  );
+  const queryParams: { [key: string]: string } = {
+    pageSize: `${options.pageSize}`,
+  };
+  if (options.pageToken) {
+    queryParams.pageToken = options.pageToken;
+  }
+  const res = await firebaseAPIClient.request<void, { [key: string]: T[] | string | undefined }>({
+    method: "GET",
+    path: apiResource,
+    queryParams,
+    timeout: TIMEOUT_MILLIS,
+    skipLog: { resBody: true },
+  });
+  const projects = res.body[options.responseKey];
+  const token = res.body.nextPageToken;
   return {
-    projects: apiResponse.body[responseKey] || [],
-    nextPageToken: apiResponse.body.nextPageToken,
+    projects: Array.isArray(projects) ? projects : [],
+    nextPageToken: typeof token === "string" ? token : undefined,
   };
 }
 
@@ -339,7 +361,7 @@ export async function getFirebaseProjectPage(
   let projectPage;
 
   try {
-    projectPage = await getProjectPage<FirebaseProjectMetadata>("/v1beta1/projects", {
+    projectPage = await getProjectPage<FirebaseProjectMetadata>("/projects", {
       responseKey: "results",
       pageSize,
       pageToken,
@@ -364,7 +386,7 @@ export async function getAvailableCloudProjectPage(
   pageToken?: string
 ): Promise<ProjectPage<CloudProjectInfo>> {
   try {
-    return await getProjectPage<CloudProjectInfo>("/v1beta1/availableProjects", {
+    return await getProjectPage<CloudProjectInfo>("/availableProjects", {
       responseKey: "projectInfo",
       pageSize,
       pageToken,
@@ -404,12 +426,12 @@ export async function listFirebaseProjects(pageSize?: number): Promise<FirebaseP
  */
 export async function getFirebaseProject(projectId: string): Promise<FirebaseProjectMetadata> {
   try {
-    const response = await api.request("GET", `/v1beta1/projects/${projectId}`, {
-      auth: true,
-      origin: api.firebaseApiOrigin,
+    const res = await firebaseAPIClient.request<void, FirebaseProjectMetadata>({
+      method: "GET",
+      path: `/projects/${projectId}`,
       timeout: TIMEOUT_MILLIS,
     });
-    return response.body;
+    return res.body;
   } catch (err) {
     logger.debug(err.message);
     throw new FirebaseError(

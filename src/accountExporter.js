@@ -6,7 +6,9 @@ var _ = require("lodash");
 
 var api = require("./api");
 var utils = require("./utils");
+var { FirebaseError } = require("./error");
 
+// TODO: support for MFA at runtime was added in PR #3173, but this exporter currently ignores `mfaInfo` and loses the data on export.
 var EXPORTED_JSON_KEYS = [
   "localId",
   "email",
@@ -19,6 +21,7 @@ var EXPORTED_JSON_KEYS = [
   "createdAt",
   "phoneNumber",
   "disabled",
+  "customAttributes",
 ];
 var EXPORTED_JSON_KEYS_RENAMING = {
   lastLoginAt: "lastSignedInAt",
@@ -31,7 +34,7 @@ var PROVIDER_ID_INDEX_MAP = {
   "github.com": 19,
 };
 
-var _escapeComma = function(str) {
+var _escapeComma = function (str) {
   if (str.indexOf(",") !== -1) {
     // Encapsulate the string with quotes if it contains a comma.
     return `"${str}"`;
@@ -39,18 +42,18 @@ var _escapeComma = function(str) {
   return str;
 };
 
-var _convertToNormalBase64 = function(data) {
+var _convertToNormalBase64 = function (data) {
   return data.replace(/_/g, "/").replace(/-/g, "+");
 };
 
-var _addProviderUserInfo = function(providerInfo, arr, startPos) {
+var _addProviderUserInfo = function (providerInfo, arr, startPos) {
   arr[startPos] = providerInfo.rawId;
   arr[startPos + 1] = providerInfo.email || "";
   arr[startPos + 2] = _escapeComma(providerInfo.displayName || "");
   arr[startPos + 3] = providerInfo.photoUrl || "";
 };
 
-var _transUserToArray = function(user) {
+var _transUserToArray = function (user) {
   var arr = Array(27).fill("");
   arr[0] = user.localId;
   arr[1] = user.email || "";
@@ -69,12 +72,13 @@ var _transUserToArray = function(user) {
   arr[24] = user.lastLoginAt;
   arr[25] = user.phoneNumber;
   arr[26] = user.disabled;
+  arr[27] = user.customAttributes;
   return arr;
 };
 
-var _transUserJson = function(user) {
+var _transUserJson = function (user) {
   var newUser = {};
-  _.each(_.pick(user, EXPORTED_JSON_KEYS), function(value, key) {
+  _.each(_.pick(user, EXPORTED_JSON_KEYS), function (value, key) {
     var newKey = EXPORTED_JSON_KEYS_RENAMING[key] || key;
     newUser[newKey] = value;
   });
@@ -86,7 +90,7 @@ var _transUserJson = function(user) {
   }
   if (user.providerUserInfo) {
     newUser.providerUserInfo = [];
-    user.providerUserInfo.forEach(function(providerInfo) {
+    user.providerUserInfo.forEach(function (providerInfo) {
       if (!_.includes(Object.keys(PROVIDER_ID_INDEX_MAP), providerInfo.providerId)) {
         return;
       }
@@ -96,10 +100,10 @@ var _transUserJson = function(user) {
   return newUser;
 };
 
-var validateOptions = function(options, fileName) {
+var validateOptions = function (options, fileName) {
   var exportOptions = {};
   if (fileName === undefined) {
-    return utils.reject("Must specify data file", { exit: 1 });
+    throw new FirebaseError("Must specify data file", { exit: 1 });
   }
   var extName = path.extname(fileName.toLowerCase());
   if (extName === ".csv") {
@@ -111,20 +115,23 @@ var validateOptions = function(options, fileName) {
     if (format === "csv" || format === "json") {
       exportOptions.format = format;
     } else {
-      return utils.reject("Unsupported data file format, should be csv or json", { exit: 1 });
+      throw new FirebaseError("Unsupported data file format, should be csv or json", { exit: 1 });
     }
   } else {
-    return utils.reject("Please specify data file format in file name, or use `format` parameter", {
-      exit: 1,
-    });
+    throw new FirebaseError(
+      "Please specify data file format in file name, or use `format` parameter",
+      {
+        exit: 1,
+      }
+    );
   }
   return exportOptions;
 };
 
-var _createWriteUsersToFile = function() {
+var _createWriteUsersToFile = function () {
   var jsonSep = "";
-  return function(userList, format, writeStream) {
-    userList.map(function(user) {
+  return function (userList, format, writeStream) {
+    userList.map(function (user) {
       if (user.passwordHash && user.version !== 0) {
         // Password isn't hashed by default Scrypt.
         delete user.passwordHash;
@@ -140,7 +147,7 @@ var _createWriteUsersToFile = function() {
   };
 };
 
-var serialExportUsers = function(projectId, options) {
+var serialExportUsers = function (projectId, options) {
   if (!options.writeUsersToFile) {
     options.writeUsersToFile = _createWriteUsersToFile();
   }
@@ -161,7 +168,7 @@ var serialExportUsers = function(projectId, options) {
       data: postBody,
       origin: api.googleOrigin,
     })
-    .then(function(ret) {
+    .then(function (ret) {
       options.timeoutRetryCount = 0;
       var userList = ret.body.users;
       if (userList && userList.length > 0) {

@@ -1,8 +1,10 @@
 /.vscode
 node_modules
 /coverage
+/.coverage
 /.nyc_output
 firebase-debug.log
+firebase-debug.*.log
 npm-debug.log
 yarn.lock
 .npmrc

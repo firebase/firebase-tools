@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.dev.json",
+  "compilerOptions": {
+    "sourceMap": false,
+    "outDir": "../../dev",
+    "noEmit": false,
+  },
+  "include": [
+    "../../src/**/*",
+    "*",
+  ]
+}

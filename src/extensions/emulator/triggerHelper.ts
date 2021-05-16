@@ -2,6 +2,7 @@ import * as _ from "lodash";
 import { EmulatedTriggerDefinition } from "../../emulator/functionsEmulatorShared";
 import { Constants } from "../../emulator/constants";
 import { EmulatorLogger } from "../../emulator/emulatorLogger";
+import { Emulators } from "../../emulator/types";
 
 export function functionResourceToEmulatedTriggerDefintion(
   resource: any
@@ -26,7 +27,7 @@ export function functionResourceToEmulatedTriggerDefintion(
     properties.eventTrigger.service = getServiceFromEventType(properties.eventTrigger.eventType);
     etd.eventTrigger = properties.eventTrigger;
   } else {
-    EmulatorLogger.log(
+    EmulatorLogger.forEmulator(Emulators.FUNCTIONS).log(
       "WARN",
       `Function '${resource.name} is missing a trigger in extension.yaml. Please add one, as triggers defined in code are ignored.`
     );
@@ -44,6 +45,9 @@ function getServiceFromEventType(eventType: string): string {
   if (eventType.includes("pubsub")) {
     return Constants.SERVICE_PUBSUB;
   }
+  if (eventType.includes("storage")) {
+    return Constants.SERVICE_STORAGE;
+  }
   // Below this point are services that do not have a emulator.
   if (eventType.includes("analytics")) {
     return Constants.SERVICE_ANALYTICS;
@@ -56,9 +60,6 @@ function getServiceFromEventType(eventType: string): string {
   }
   if (eventType.includes("remoteconfig")) {
     return Constants.SERVICE_REMOTE_CONFIG;
-  }
-  if (eventType.includes("storage")) {
-    return Constants.SERVICE_STORAGE;
   }
   if (eventType.includes("testing")) {
     return Constants.SERVICE_TEST_LAB;

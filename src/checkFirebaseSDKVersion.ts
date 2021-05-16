@@ -5,7 +5,8 @@ import * as semver from "semver";
 import * as spawn from "cross-spawn";
 
 import * as utils from "./utils";
-import * as logger from "./logger";
+import { FirebaseError } from "./error";
+import { logger } from "./logger";
 
 interface NpmListResult {
   name: string;
@@ -58,7 +59,13 @@ export function checkFunctionsSDKVersion(options: any): void {
     return;
   }
 
-  const sourceDir = path.join(options.config.projectDir, options.config.get("functions.source"));
+  const sourceDirName = options.config.get("functions.source");
+  if (!sourceDirName) {
+    throw new FirebaseError(
+      `No functions code detected at default location ("./functions"), and no "functions.source" defined in "firebase.json"`
+    );
+  }
+  const sourceDir = path.join(options.config.projectDir, sourceDirName);
   const currentVersion = getFunctionsSDKVersion(sourceDir);
   if (!currentVersion) {
     logger.debug("getFunctionsSDKVersion was unable to retrieve 'firebase-functions' version");

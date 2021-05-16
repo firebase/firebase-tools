@@ -94,6 +94,11 @@ class MockRuntimeBundle implements FunctionsRuntimeBundle {
   triggerType = EmulatedTriggerType.HTTPS;
   cwd = "/home/users/dir";
   emulators = {};
+  adminSdkConfig = {
+    projectId: "project-1234",
+    datbaseURL: "https://project-1234-default-rtdb.firebaseio.com",
+    storageBucket: "project-1234.appspot.com",
+  };
 
   constructor(public triggerId: string) {}
 }

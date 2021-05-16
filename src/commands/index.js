@@ -1,9 +1,9 @@
 "use strict";
 
-var previews = require("../previews"); //eslint-disable-line
+const previews = require("../previews").previews;
 
-module.exports = function(client) {
-  var loadCommand = function(name) {
+module.exports = function (client) {
+  var loadCommand = function (name) {
     var cmd = require("./" + name);
     // .ts commands export at .default.
     if (cmd.default) {
@@ -19,6 +19,11 @@ module.exports = function(client) {
   client.apps.create = loadCommand("apps-create");
   client.apps.list = loadCommand("apps-list");
   client.apps.sdkconfig = loadCommand("apps-sdkconfig");
+  client.apps.android = {};
+  client.apps.android.sha = {};
+  client.apps.android.sha.list = loadCommand("apps-android-sha-list");
+  client.apps.android.sha.create = loadCommand("apps-android-sha-create");
+  client.apps.android.sha.delete = loadCommand("apps-android-sha-delete");
   client.auth = {};
   client.auth.export = loadCommand("auth-export");
   client.auth.upload = loadCommand("auth-import");
@@ -65,9 +70,14 @@ module.exports = function(client) {
   if (previews.extdev) {
     client.ext.dev = {};
     client.ext.dev.init = loadCommand("ext-dev-init");
+    client.ext.dev.list = loadCommand("ext-dev-list");
+    client.ext.dev.register = loadCommand("ext-dev-register");
     client.ext.dev.emulators = {};
     client.ext.dev.emulators.start = loadCommand("ext-dev-emulators-start");
     client.ext.dev.emulators.exec = loadCommand("ext-dev-emulators-exec");
+    client.ext.dev.unpublish = loadCommand("ext-dev-unpublish");
+    client.ext.dev.publish = loadCommand("ext-dev-publish");
+    client.ext.dev.delete = loadCommand("ext-dev-extension-delete");
   }
   client.firestore = {};
   client.firestore.delete = loadCommand("firestore-delete");
@@ -83,27 +93,48 @@ module.exports = function(client) {
   client.functions.shell = loadCommand("functions-shell");
   client.help = loadCommand("help");
   client.hosting = {};
+  client.hosting.channel = {};
+  client.hosting.channel.create = loadCommand("hosting-channel-create");
+  client.hosting.channel.delete = loadCommand("hosting-channel-delete");
+  client.hosting.channel.deploy = loadCommand("hosting-channel-deploy");
+  client.hosting.channel.list = loadCommand("hosting-channel-list");
+  client.hosting.channel.open = loadCommand("hosting-channel-open");
+  client.hosting.clone = loadCommand("hosting-clone");
   client.hosting.disable = loadCommand("hosting-disable");
+  client.hosting.sites = {};
+  client.hosting.sites.create = loadCommand("hosting-sites-create");
+  client.hosting.sites.delete = loadCommand("hosting-sites-delete");
+  client.hosting.sites.get = loadCommand("hosting-sites-get");
+  client.hosting.sites.list = loadCommand("hosting-sites-list");
   client.init = loadCommand("init");
   client.login = loadCommand("login");
+  client.login.add = loadCommand("login-add");
   client.login.ci = loadCommand("login-ci");
+  client.login.list = loadCommand("login-list");
+  client.login.use = loadCommand("login-use");
   client.logout = loadCommand("logout");
   client.open = loadCommand("open");
   client.projects = {};
   client.projects.addfirebase = loadCommand("projects-addfirebase");
   client.projects.create = loadCommand("projects-create");
   client.projects.list = loadCommand("projects-list");
+  client.remoteconfig = {};
+  client.remoteconfig.get = loadCommand("remoteconfig-get");
+  client.remoteconfig.rollback = loadCommand("remoteconfig-rollback");
+  client.remoteconfig.versions = {};
+  client.remoteconfig.versions.list = loadCommand("remoteconfig-versions-list");
   client.serve = loadCommand("serve");
   client.setup = {};
   client.setup.emulators = {};
   client.setup.emulators.database = loadCommand("setup-emulators-database");
   client.setup.emulators.firestore = loadCommand("setup-emulators-firestore");
   client.setup.emulators.pubsub = loadCommand("setup-emulators-pubsub");
+  client.setup.emulators.storage = loadCommand("setup-emulators-storage");
+  client.setup.emulators.ui = loadCommand("setup-emulators-ui");
   client.target = loadCommand("target");
   client.target.apply = loadCommand("target-apply");
   client.target.clear = loadCommand("target-clear");
   client.target.remove = loadCommand("target-remove");
   client.use = loadCommand("use");
-
   return client;
 };

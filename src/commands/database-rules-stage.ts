@@ -1,6 +1,6 @@
 import { Command } from "../command";
-import * as logger from "../logger";
-import * as requireInstance from "../requireInstance";
+import { logger } from "../logger";
+import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import { requirePermissions } from "../requirePermissions";
 import * as metadata from "../database/metadata";
 import * as fs from "fs-extra";
@@ -15,7 +15,7 @@ export default new Command("database:rules:stage")
     "use the database <instance>.firebaseio.com (if omitted, uses default database instance)"
   )
   .before(requirePermissions, ["firebasedatabase.instances.update"])
-  .before(requireInstance)
+  .before(requireDatabaseInstance)
   .before(warnEmulatorNotSupported, Emulators.DATABASE)
   .action(async (options: any) => {
     const filepath = options.config.data.database.rules;

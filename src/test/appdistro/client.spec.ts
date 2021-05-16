@@ -1,17 +1,29 @@
 import { expect } from "chai";
+import { join } from "path";
+import * as rimraf from "rimraf";
 import * as sinon from "sinon";
+import * as tmp from "tmp";
+
 import {
   AppDistributionClient,
+  AppView,
   UploadStatus,
   UploadStatusResponse,
 } from "../../appdistribution/client";
 import { FirebaseError } from "../../error";
 import * as api from "../../api";
 import * as nock from "nock";
+import { Distribution, DistributionFileType } from "../../appdistribution/distribution";
+
+tmp.setGracefulCleanup();
 
 describe("distribution", () => {
+  const tempdir = tmp.dirSync();
   const appId = "1:12345789:ios:abc123def456";
-  const distribution = new AppDistributionClient(appId);
+  const mockDistribution = new Distribution(join(tempdir.name, "app.ipa"));
+  const appDistributionClient = new AppDistributionClient(appId);
+  const appViewBasic = "BASIC";
+  const appViewFull = "FULL";
 
   let sandbox: sinon.SinonSandbox;
 
@@ -24,63 +36,90 @@ describe("distribution", () => {
     sandbox.restore();
   });
 
+  after(() => {
+    rimraf.sync(tempdir.name);
+  });
+
   describe("getApp", () => {
-    it("should throw error when app does not exist", () => {
+    it("should throw error when app does not exist", async () => {
       nock(api.appDistributionOrigin)
         .get(`/v1alpha/apps/${appId}`)
+        .query({ appView: appViewBasic })
         .reply(404, {});
-      return expect(distribution.getApp()).to.be.rejected;
+      await expect(appDistributionClient.getApp()).to.be.rejected;
+      expect(nock.isDone()).to.be.true;
     });
 
-    it("should resolve when request succeeds", () => {
+    it("should resolve when request succeeds", async () => {
       nock(api.appDistributionOrigin)
         .get(`/v1alpha/apps/${appId}`)
+        .query({ appView: appViewBasic })
         .reply(200, {});
-      return expect(distribution.getApp()).to.be.fulfilled;
+      await expect(appDistributionClient.getApp()).to.be.fulfilled;
+      expect(nock.isDone()).to.be.true;
     });
 
-    it("should throw an error when the request fails", () => {
+    it("requests basic appView", async () => {
       nock(api.appDistributionOrigin)
         .get(`/v1alpha/apps/${appId}`)
+        .query({ appView: appViewBasic })
+        .reply(200, {});
+      await expect(appDistributionClient.getApp(AppView.BASIC)).to.be.fulfilled;
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("requests full appView", async () => {
+      nock(api.appDistributionOrigin)
+        .get(`/v1alpha/apps/${appId}`)
+        .query({ appView: appViewFull })
+        .reply(200, {});
+      await expect(appDistributionClient.getApp(AppView.FULL)).to.be.fulfilled;
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should throw an error when the request fails", async () => {
+      nock(api.appDistributionOrigin)
+        .get(`/v1alpha/apps/${appId}`)
+        .query({ appView: appViewBasic })
         .reply(404, {});
-      return expect(distribution.getApp()).to.be.rejected;
+      await expect(appDistributionClient.getApp()).to.be.rejected;
+      expect(nock.isDone()).to.be.true;
     });
   });
 
-  describe("getJwtToken", () => {
-    it("should throw error if request fails", () => {
-      nock(api.appDistributionOrigin)
-        .get(`/v1alpha/apps/${appId}/jwt`)
-        .reply(400, {});
-      return expect(distribution.getJwtToken()).to.be.rejected;
+  describe("uploadDistribution", () => {
+    it("should throw error if upload fails", async () => {
+      nock(api.appDistributionOrigin).post(`/app-binary-uploads?app_id=${appId}`).reply(400, {});
+      await expect(appDistributionClient.uploadDistribution(mockDistribution)).to.be.rejected;
+      expect(nock.isDone()).to.be.true;
     });
 
-    describe("when request succeeds", () => {
-      it("should return null when response does not contain the token", () => {
-        nock(api.appDistributionOrigin)
-          .get(`/v1alpha/apps/${appId}/jwt`)
-          .reply(200, {});
-        return expect(distribution.getJwtToken()).to.be.eventually.eq(undefined);
-      });
-
-      it("should return the token", () => {
-        const fakeToken = "fake-token";
-        nock(api.appDistributionOrigin)
-          .get(`/v1alpha/apps/${appId}/jwt`)
-          .reply(200, { token: fakeToken });
-        return expect(distribution.getJwtToken()).to.be.eventually.eq(fakeToken);
-      });
+    it("should return token if upload succeeds", async () => {
+      const fakeToken = "fake-token";
+      nock(api.appDistributionOrigin)
+        .post(`/app-binary-uploads?app_id=${appId}`)
+        .reply(200, { token: fakeToken });
+      await expect(appDistributionClient.uploadDistribution(mockDistribution)).to.be.eventually.eq(
+        fakeToken
+      );
+      expect(nock.isDone()).to.be.true;
     });
   });
 
   describe("pollReleaseIdByHash", () => {
     describe("when getUploadStatus returns IN_PROGRESS", () => {
       it("should throw error when retry count >= AppDistributionClient.MAX_POLLING_RETRIES", () => {
-        sandbox.stub(distribution, "getUploadStatus").resolves({
+        sandbox.stub(appDistributionClient, "getUploadStatus").resolves({
           status: UploadStatus.IN_PROGRESS,
+          message: "",
+          errorCode: "",
+          release: { id: "" },
         });
         return expect(
-          distribution.pollReleaseIdByHash("mock-hash", AppDistributionClient.MAX_POLLING_RETRIES)
+          appDistributionClient.pollUploadStatus(
+            "mock-hash",
+            AppDistributionClient.MAX_POLLING_RETRIES
+          )
         ).to.be.rejectedWith(
           FirebaseError,
           "it took longer than expected to process your binary, please try again"
@@ -90,33 +129,39 @@ describe("distribution", () => {
 
     it("should return release id when request succeeds", () => {
       const releaseId = "fake-release-id";
-      sandbox.stub(distribution, "getUploadStatus").resolves({
+      sandbox.stub(appDistributionClient, "getUploadStatus").resolves({
         status: UploadStatus.SUCCESS,
+        message: "",
+        errorCode: "",
         release: {
           id: releaseId,
         },
       });
       return expect(
-        distribution.pollReleaseIdByHash("mock-hash", AppDistributionClient.MAX_POLLING_RETRIES)
+        appDistributionClient.pollUploadStatus(
+          "mock-hash",
+          AppDistributionClient.MAX_POLLING_RETRIES
+        )
       ).to.eventually.eq(releaseId);
     });
   });
 
   describe("getUploadStatus", () => {
-    it("should throw an error when request fails", () => {
+    it("should throw an error when request fails", async () => {
       const fakeHash = "fake-hash";
       nock(api.appDistributionOrigin)
         .get(`/v1alpha/apps/${appId}/upload_status/${fakeHash}`)
         .reply(400, {});
 
-      return expect(distribution.getUploadStatus(fakeHash)).to.be.rejectedWith(
+      await expect(appDistributionClient.getUploadStatus(fakeHash)).to.be.rejectedWith(
         FirebaseError,
         "HTTP Error: 400"
       );
+      expect(nock.isDone()).to.be.true;
     });
 
     describe("when request succeeds", () => {
-      it("should return the upload status", () => {
+      it("should return the upload status", async () => {
         const releaseId = "fake-release-id";
         const fakeHash = "fake-hash";
         const response: UploadStatusResponse = {
@@ -131,7 +176,10 @@ describe("distribution", () => {
           .get(`/v1alpha/apps/${appId}/upload_status/${fakeHash}`)
           .reply(200, response);
 
-        return expect(distribution.getUploadStatus(fakeHash)).to.eventually.deep.eq(response);
+        await expect(appDistributionClient.getUploadStatus(fakeHash)).to.eventually.deep.eq(
+          response
+        );
+        expect(nock.isDone()).to.be.true;
       });
     });
   });
@@ -139,44 +187,49 @@ describe("distribution", () => {
   describe("addReleaseNotes", () => {
     it("should return immediately when no release notes are specified", async () => {
       const apiSpy = sandbox.spy(api, "request");
-      await expect(distribution.addReleaseNotes("fake-release-id", "")).to.eventually.be.fulfilled;
+      await expect(appDistributionClient.addReleaseNotes("fake-release-id", "")).to.eventually.be
+        .fulfilled;
       expect(apiSpy).to.not.be.called;
     });
 
-    it("should throw error when request fails", () => {
+    it("should throw error when request fails", async () => {
       const releaseId = "fake-release-id";
       nock(api.appDistributionOrigin)
         .post(`/v1alpha/apps/${appId}/releases/${releaseId}/notes`)
         .reply(400, {});
-      return expect(distribution.addReleaseNotes(releaseId, "release notes")).to.be.rejectedWith(
-        FirebaseError,
-        "failed to add release notes"
-      );
+      await expect(
+        appDistributionClient.addReleaseNotes(releaseId, "release notes")
+      ).to.be.rejectedWith(FirebaseError, "failed to add release notes");
+      expect(nock.isDone()).to.be.true;
     });
 
-    it("should resolve when request succeeds", () => {
+    it("should resolve when request succeeds", async () => {
       const releaseId = "fake-release-id";
       nock(api.appDistributionOrigin)
         .post(`/v1alpha/apps/${appId}/releases/${releaseId}/notes`)
         .reply(200, {});
-      return expect(distribution.addReleaseNotes(releaseId, "release notes")).to.eventually.be
-        .fulfilled;
+      await expect(appDistributionClient.addReleaseNotes(releaseId, "release notes")).to.eventually
+        .be.fulfilled;
+      expect(nock.isDone()).to.be.true;
     });
   });
 
   describe("enableAccess", () => {
     it("should return immediately when testers and groups are empty", async () => {
       const apiSpy = sandbox.spy(api, "request");
-      await expect(distribution.enableAccess("fake-release-id")).to.eventually.be.fulfilled;
+      await expect(appDistributionClient.enableAccess("fake-release-id")).to.eventually.be
+        .fulfilled;
       expect(apiSpy).to.not.be.called;
     });
 
-    it("should resolve when request succeeds", () => {
+    it("should resolve when request succeeds", async () => {
       const releaseId = "fake-release-id";
       nock(api.appDistributionOrigin)
         .post(`/v1alpha/apps/${appId}/releases/${releaseId}/enable_access`)
         .reply(200, {});
-      return expect(distribution.enableAccess(releaseId, ["tester1"], ["group1"])).to.be.fulfilled;
+      await expect(appDistributionClient.enableAccess(releaseId, ["tester1"], ["group1"])).to.be
+        .fulfilled;
+      expect(nock.isDone()).to.be.true;
     });
 
     describe("when request fails", () => {
@@ -187,7 +240,7 @@ describe("distribution", () => {
         groups = ["group1"];
       });
 
-      it("should throw invalid testers error when status code is FAILED_PRECONDITION ", () => {
+      it("should throw invalid testers error when status code is FAILED_PRECONDITION ", async () => {
         const releaseId = "fake-release-id";
         nock(api.appDistributionOrigin)
           .post(`/v1alpha/apps/${appId}/releases/${releaseId}/enable_access`, {
@@ -195,13 +248,13 @@ describe("distribution", () => {
             groupIds: groups,
           })
           .reply(412, { error: { status: "FAILED_PRECONDITION" } });
-        return expect(distribution.enableAccess(releaseId, testers, groups)).to.be.rejectedWith(
-          FirebaseError,
-          "failed to add testers/groups: invalid testers"
-        );
+        await expect(
+          appDistributionClient.enableAccess(releaseId, testers, groups)
+        ).to.be.rejectedWith(FirebaseError, "failed to add testers/groups: invalid testers");
+        expect(nock.isDone()).to.be.true;
       });
 
-      it("should throw invalid groups error when status code is INVALID_ARGUMENT", () => {
+      it("should throw invalid groups error when status code is INVALID_ARGUMENT", async () => {
         const releaseId = "fake-release-id";
         nock(api.appDistributionOrigin)
           .post(`/v1alpha/apps/${appId}/releases/${releaseId}/enable_access`, {
@@ -209,13 +262,13 @@ describe("distribution", () => {
             groupIds: groups,
           })
           .reply(412, { error: { status: "INVALID_ARGUMENT" } });
-        return expect(distribution.enableAccess(releaseId, testers, groups)).to.be.rejectedWith(
-          FirebaseError,
-          "failed to add testers/groups: invalid groups"
-        );
+        await expect(
+          appDistributionClient.enableAccess(releaseId, testers, groups)
+        ).to.be.rejectedWith(FirebaseError, "failed to add testers/groups: invalid groups");
+        expect(nock.isDone()).to.be.true;
       });
 
-      it("should throw default error", () => {
+      it("should throw default error", async () => {
         const releaseId = "fake-release-id";
         nock(api.appDistributionOrigin)
           .post(`/v1alpha/apps/${appId}/releases/${releaseId}/enable_access`, {
@@ -223,9 +276,10 @@ describe("distribution", () => {
             groupIds: groups,
           })
           .reply(400, {});
-        return expect(
-          distribution.enableAccess(releaseId, ["tester1"], ["group1"])
+        await expect(
+          appDistributionClient.enableAccess(releaseId, ["tester1"], ["group1"])
         ).to.be.rejectedWith(FirebaseError, "failed to add testers/groups");
+        expect(nock.isDone()).to.be.true;
       });
     });
   });

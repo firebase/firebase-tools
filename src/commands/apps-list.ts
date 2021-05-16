@@ -5,9 +5,8 @@ import Table = require("cli-table");
 import { Command } from "../command";
 import * as getProjectId from "../getProjectId";
 import { AppMetadata, AppPlatform, getAppPlatform, listFirebaseApps } from "../management/apps";
-import { FirebaseError } from "../error";
 import { requireAuth } from "../requireAuth";
-import * as logger from "../logger";
+import { logger } from "../logger";
 
 const NOT_SPECIFIED = clc.yellow("[Not specified]");
 
@@ -40,9 +39,9 @@ module.exports = new Command("apps:list [platform]")
   )
   .before(requireAuth)
   .action(
-    async (platform: string = "", options: any): Promise<AppMetadata[]> => {
+    async (platform: string | undefined, options: any): Promise<AppMetadata[]> => {
       const projectId = getProjectId(options);
-      const appPlatform = getAppPlatform(platform);
+      const appPlatform = getAppPlatform(platform || "");
 
       let apps;
       const spinner = ora(

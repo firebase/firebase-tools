@@ -1,15 +1,14 @@
-import * as _ from "lodash";
 import { expect } from "chai";
 import * as sinon from "sinon";
 
 import * as resolveSource from "../../extensions/resolveSource";
-import * as updateHelper from "../../extensions/updateHelper";
 
 const testRegistryEntry = {
   name: "test-stuff",
   labels: {
     latest: "0.2.0",
   },
+  publisher: "firebase",
   versions: {
     "0.1.0": "projects/firebasemods/sources/2kd",
     "0.1.1": "projects/firebasemods/sources/xyz",
@@ -49,7 +48,7 @@ describe("checkForUpdateWarnings", () => {
   let confirmUpdateWarningSpy: sinon.SinonStub;
 
   beforeEach(() => {
-    confirmUpdateWarningSpy = sinon.stub(updateHelper, "confirmUpdateWarning").resolves();
+    confirmUpdateWarningSpy = sinon.stub(resolveSource, "confirmUpdateWarning").resolves();
   });
 
   afterEach(() => {
@@ -73,5 +72,23 @@ describe("checkForUpdateWarnings", () => {
     await resolveSource.promptForUpdateWarnings(testRegistryEntry, "0.1.1", "0.1.2");
 
     expect(confirmUpdateWarningSpy).not.to.have.been.called;
+  });
+});
+
+describe("isPublishedSource", () => {
+  it("should return true for an published source", () => {
+    const result = resolveSource.isOfficialSource(
+      testRegistryEntry,
+      "projects/firebasemods/sources/2kd"
+    );
+    expect(result).to.be.true;
+  });
+
+  it("should return false for an unpublished source", () => {
+    const result = resolveSource.isOfficialSource(
+      testRegistryEntry,
+      "projects/firebasemods/sources/invalid"
+    );
+    expect(result).to.be.false;
   });
 });

@@ -11,18 +11,18 @@ interface HostingEmulatorArgs {
 export class HostingEmulator implements EmulatorInstance {
   constructor(private args: HostingEmulatorArgs) {}
 
-  async start(): Promise<void> {
+  start(): Promise<void> {
     this.args.options.host = this.args.host;
     this.args.options.port = this.args.port;
 
     return serveHosting.start(this.args.options);
   }
 
-  async connect(): Promise<void> {
-    return;
+  connect(): Promise<void> {
+    return Promise.resolve();
   }
 
-  async stop(): Promise<void> {
+  stop(): Promise<void> {
     return serveHosting.stop();
   }
 
@@ -31,6 +31,7 @@ export class HostingEmulator implements EmulatorInstance {
     const port = this.args.port || Constants.getDefaultPort(Emulators.HOSTING);
 
     return {
+      name: this.getName(),
       host,
       port,
     };

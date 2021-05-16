@@ -8,24 +8,25 @@ var path = require("path");
 var { Command } = require("../command");
 var Config = require("../config");
 var fsutils = require("../fsutils");
-var init = require("../init");
-var logger = require("../logger");
+var { init } = require("../init");
+const { logger } = require("../logger");
 var { prompt, promptOnce } = require("../prompt");
 var { requireAuth } = require("../requireAuth");
 var utils = require("../utils");
+const { getAllAccounts } = require("../auth");
 
 var TEMPLATE_ROOT = path.resolve(__dirname, "../../templates/");
 var BANNER_TEXT = fs.readFileSync(path.join(TEMPLATE_ROOT, "banner.txt"), "utf8");
 var GITIGNORE_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_gitignore"), "utf8");
 
-var _isOutside = function(from, to) {
+var _isOutside = function (from, to) {
   return path.relative(from, to).match(/^\.\./);
 };
 
 module.exports = new Command("init [feature]")
   .description("setup a Firebase project in the current directory")
   .before(requireAuth)
-  .action(function(feature, options) {
+  .action(function (feature, options) {
     var cwd = options.cwd || process.cwd();
 
     var warnings = [];
@@ -37,13 +38,13 @@ module.exports = new Command("init [feature]")
       warnings.push("You are initializing your home directory as a Firebase project");
     }
 
-    var config = Config.load(options, true);
-    var existingConfig = !!config;
-    if (!existingConfig) {
-      config = new Config({}, { projectDir: cwd, cwd: cwd });
-    } else {
+    var existingConfig = Config.load(options, true);
+    if (existingConfig) {
       warnings.push("You are initializing in an existing Firebase project directory");
     }
+
+    var config =
+      existingConfig !== null ? existingConfig : new Config({}, { projectDir: cwd, cwd: cwd });
 
     if (warnings.length) {
       warningText =
@@ -72,7 +73,7 @@ module.exports = new Command("init [feature]")
     var choices = [
       {
         value: "database",
-        name: "Database: Deploy Firebase Realtime Database Rules",
+        name: "Database: Configure Firebase Realtime Database and deploy rules",
         checked: false,
       },
       {
@@ -100,6 +101,11 @@ module.exports = new Command("init [feature]")
         name: "Emulators: Set up local emulators for Firebase features",
         checked: false,
       },
+      {
+        value: "remoteconfig",
+        name: "Remote Config: Get, deploy, and rollback configurations for Remote Config",
+        checked: false,
+      },
     ];
 
     var next;
@@ -115,7 +121,7 @@ module.exports = new Command("init [feature]")
     }
 
     return next
-      .then(function(proceed) {
+      .then(function (proceed) {
         if (!proceed) {
           return utils.reject("Aborted by user.", { exit: 1 });
         }
@@ -125,7 +131,6 @@ module.exports = new Command("init [feature]")
           setup.features = [feature];
           return undefined;
         }
-
         return prompt(setup, [
           {
             type: "checkbox",
@@ -137,7 +142,7 @@ module.exports = new Command("init [feature]")
           },
         ]);
       })
-      .then(function() {
+      .then(function () {
         if (setup.features.length === 0) {
           return utils.reject(
             "Must select at least one feature. Use " +
@@ -146,10 +151,19 @@ module.exports = new Command("init [feature]")
               clc.bold("firebase init [feature_name]")
           );
         }
+
+        // Always set up project
         setup.features.unshift("project");
+
+        // If there is more than one account, add an account choice phase
+        const allAccounts = getAllAccounts();
+        if (allAccounts.length > 1) {
+          setup.features.unshift("account");
+        }
+
         return init(setup, config, options);
       })
-      .then(function() {
+      .then(function () {
         logger.info();
         utils.logBullet("Writing configuration info to " + clc.bold("firebase.json") + "...");
         config.writeProjectFile("firebase.json", setup.config);

@@ -5,8 +5,13 @@ var clc = require("cli-color");
 var rtdb = require("../../rtdb");
 var utils = require("../../utils");
 
-module.exports = function(context) {
-  if (!context.database || !context.database.deploys || !context.database.ruleFiles) {
+module.exports = function (context) {
+  if (
+    !context.projectId ||
+    !context.database ||
+    !context.database.deploys ||
+    !context.database.ruleFiles
+  ) {
     return Promise.resolve();
   }
 
@@ -15,12 +20,12 @@ module.exports = function(context) {
 
   utils.logBullet(clc.bold.cyan("database: ") + "releasing rules...");
   return Promise.all(
-    deploys.map(function(deploy) {
+    deploys.map(function (deploy) {
       return rtdb
-        .updateRules(deploy.instance, ruleFiles[deploy.rules], {
+        .updateRules(context.projectId, deploy.instance, ruleFiles[deploy.rules], {
           dryRun: false,
         })
-        .then(function() {
+        .then(function () {
           utils.logSuccess(
             clc.bold.green("database: ") +
               "rules for database " +

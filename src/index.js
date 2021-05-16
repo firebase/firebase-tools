@@ -3,26 +3,28 @@
 var program = require("commander");
 var pkg = require("../package.json");
 var clc = require("cli-color");
-var logger = require("./logger");
+const { logger } = require("./logger");
 var { setupLoggers } = require("./utils");
-var didYouMean = require("didyoumean");
+var leven = require("leven");
 
 program.version(pkg.version);
 program.option(
   "-P, --project <alias_or_project_id>",
   "the Firebase project to use for this command"
 );
+program.option("--account <email>", "the Google account to use for authorization");
 program.option("-j, --json", "output JSON instead of text, also triggers non-interactive mode");
 program.option("--token <token>", "supply an auth token for this command");
 program.option("--non-interactive", "error out of the command instead of waiting for prompts");
 program.option("-i, --interactive", "force prompts to be displayed");
 program.option("--debug", "print verbose debug output and keep a debug log file");
+program.option("-c, --config <path>", "path to the firebase.json file to use for configuration");
 
 var client = {};
 client.cli = program;
 client.logger = require("./logger");
 client.errorOut = require("./errorOut").errorOut;
-client.getCommand = function(name) {
+client.getCommand = function (name) {
   for (var i = 0; i < client.cli.commands.length; i++) {
     if (client.cli.commands[i]._name === name) {
       return client.cli.commands[i];
@@ -41,7 +43,9 @@ require("./commands")(client);
  * @return {string|undefined} Returns the suggested command; undefined if none.
  */
 function suggestCommands(cmd, cmdList) {
-  var suggestion = didYouMean(cmd, cmdList);
+  var suggestion = cmdList.find(function (c) {
+    return leven(c, cmd) < c.length * 0.4;
+  });
   if (suggestion) {
     logger.error();
     logger.error("Did you mean " + clc.bold(suggestion) + "?");
@@ -49,7 +53,7 @@ function suggestCommands(cmd, cmdList) {
   }
 }
 
-var commandNames = program.commands.map(function(cmd) {
+var commandNames = program.commands.map(function (cmd) {
   return cmd._name;
 });
 
@@ -67,7 +71,7 @@ var RENAMED_COMMANDS = {
 };
 
 // Default handler, this is called when no other command action matches.
-program.action(function(_, args) {
+program.action(function (_, args) {
   setupLoggers();
 
   var cmd = args[0];

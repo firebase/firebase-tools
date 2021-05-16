@@ -1,19 +1,21 @@
 "use strict";
 
-var { Command } = require("../command");
-var logger = require("../logger");
-var { requireAuth } = require("../requireAuth");
-var { getFirebaseProject, listFirebaseProjects } = require("../management/projects");
-var clc = require("cli-color");
-var utils = require("../utils");
 var _ = require("lodash");
-var { prompt } = require("../prompt");
+var clc = require("cli-color");
 
-var listAliases = function(options) {
+var { Command } = require("../command");
+var { getFirebaseProject, listFirebaseProjects } = require("../management/projects");
+var { prompt } = require("../prompt");
+var { requireAuth } = require("../requireAuth");
+var { validateProjectId } = require("../command");
+const { logger } = require("../logger");
+var utils = require("../utils");
+
+var listAliases = function (options) {
   if (options.rc.hasProjects) {
     logger.info("Project aliases for", clc.bold(options.projectRoot) + ":");
     logger.info();
-    _.forEach(options.rc.projects, function(projectId, alias) {
+    _.forEach(options.rc.projects, function (projectId, alias) {
       var listing = alias + " (" + projectId + ")";
       if (options.project === projectId || options.projectAlias === alias) {
         logger.info(clc.cyan.bold("* " + listing));
@@ -26,7 +28,7 @@ var listAliases = function(options) {
   logger.info("Run", clc.bold("firebase use --add"), "to define a new project alias.");
 };
 
-var verifyMessage = function(name) {
+var verifyMessage = function (name) {
   return "please verify project " + clc.bold(name) + " exists and you have access.";
 };
 
@@ -37,7 +39,7 @@ module.exports = new Command("use [alias_or_project_id]")
   .option("--unalias <name>", "remove an already created project alias")
   .option("--clear", "clear the active project selection")
   .before(requireAuth)
-  .action(function(newActive, options) {
+  .action(function (newActive, options) {
     // HACK: Commander.js silently swallows an option called alias >_<
     var aliasOpt;
     var i = process.argv.indexOf("--alias");
@@ -60,6 +62,7 @@ module.exports = new Command("use [alias_or_project_id]")
       var aliasedProject = options.rc.get(["projects", newActive]);
       var project = null;
       const lookupProject = aliasedProject || newActive;
+      validateProjectId(lookupProject);
       return getFirebaseProject(lookupProject)
         .then((foundProject) => {
           project = foundProject;
@@ -119,7 +122,7 @@ module.exports = new Command("use [alias_or_project_id]")
             " instead."
         );
       }
-      return listFirebaseProjects().then(function(projects) {
+      return listFirebaseProjects().then(function (projects) {
         var results = {};
         return prompt(results, [
           {
@@ -132,11 +135,11 @@ module.exports = new Command("use [alias_or_project_id]")
             type: "input",
             name: "alias",
             message: "What alias do you want to use for this project? (e.g. staging)",
-            validate: function(input) {
+            validate: function (input) {
               return input && input.length > 0;
             },
           },
-        ]).then(function() {
+        ]).then(function () {
           options.rc.addProjectAlias(results.alias, results.project);
           utils.makeActiveProject(options.projectRoot, results.alias);
           logger.info();

@@ -7,18 +7,17 @@ var url = require("url");
 
 var { Constants } = require("./emulator/constants");
 var { FirebaseError } = require("./error");
-var logger = require("./logger");
+const { logger } = require("./logger");
 var responseToError = require("./responseToError");
 var scopes = require("./scopes");
 var utils = require("./utils");
-
 var CLI_VERSION = require("../package.json").version;
 
 var accessToken;
 var refreshToken;
 var commandScopes;
 
-var _request = function(options, logOptions) {
+var _request = function (options, logOptions) {
   logOptions = logOptions || {};
   var qsLog = "";
   var bodyLog = "<request body omitted>";
@@ -36,8 +35,8 @@ var _request = function(options, logOptions) {
   options.headers = options.headers || {};
   options.headers["connection"] = "keep-alive";
 
-  return new Promise(function(resolve, reject) {
-    var req = request(options, function(err, response, body) {
+  return new Promise(function (resolve, reject) {
+    var req = request(options, function (err, response, body) {
       if (err) {
         return reject(
           new FirebaseError("Server Error. " + err.message, {
@@ -52,7 +51,7 @@ var _request = function(options, logOptions) {
       if (response.statusCode >= 400 && !logOptions.skipResponseBody) {
         logger.debug("<<< HTTP RESPONSE BODY", response.body);
         if (!options.resolveOnHTTPError) {
-          return reject(responseToError(response, body, options));
+          return reject(responseToError(response, body));
         }
       }
 
@@ -65,7 +64,7 @@ var _request = function(options, logOptions) {
 
     if (_.size(options.files) > 0) {
       var form = req.form();
-      _.forEach(options.files, function(details, param) {
+      _.forEach(options.files, function (details, param) {
         form.append(param, details.stream, {
           knownLength: details.knownLength,
           filename: details.filename,
@@ -76,7 +75,7 @@ var _request = function(options, logOptions) {
   });
 };
 
-var _appendQueryData = function(path, data) {
+var _appendQueryData = function (path, data) {
   if (data && _.size(data) > 0) {
     path += _.includes(path, "?") ? "&" : "?";
     path += querystring.stringify(data);
@@ -100,14 +99,9 @@ var api = {
     "FIREBASE_CLOUDLOGGING_URL",
     "https://logging.googleapis.com"
   ),
-  adminOrigin: utils.envOverride("FIREBASE_ADMIN_URL", "https://admin.firebase.com"),
   appDistributionOrigin: utils.envOverride(
     "FIREBASE_APP_DISTRIBUTION_URL",
     "https://firebaseappdistribution.googleapis.com"
-  ),
-  appDistributionUploadOrigin: utils.envOverride(
-    "FIREBASE_APP_DISTRIBUTION_UPLOAD_URL",
-    "https://appdistribution-uploads.crashlytics.com"
   ),
   appengineOrigin: utils.envOverride("FIREBASE_APPENGINE_URL", "https://appengine.googleapis.com"),
   authOrigin: utils.envOverride("FIREBASE_AUTH_URL", "https://accounts.google.com"),
@@ -124,8 +118,11 @@ var api = {
   firedataOrigin: utils.envOverride("FIREBASE_FIREDATA_URL", "https://mobilesdk-pa.googleapis.com"),
   firestoreOriginOrEmulator: utils.envOverride(
     Constants.FIRESTORE_EMULATOR_HOST,
-    "https://firestore.googleapis.com",
+    utils.envOverride("FIRESTORE_URL", "https://firestore.googleapis.com"),
     (val) => {
+      if (val.startsWith("http")) {
+        return val;
+      }
       return `http://${val}`;
     }
   ),
@@ -134,6 +131,13 @@ var api = {
     "FIREBASE_FUNCTIONS_URL",
     "https://cloudfunctions.googleapis.com"
   ),
+  functionsV2Origin: utils.envOverride(
+    "FIREBASE_FUNCTIONS_V2_URL",
+    "https://cloudfunctions.googleapis.com"
+  ),
+  runOrigin: utils.envOverride("CLOUD_RUN_URL", "https://run.googleapis.com"),
+  functionsUploadRegion: utils.envOverride("FIREBASE_FUNCTIONS_UPLOAD_REGION", "us-central1"),
+  functionsDefaultRegion: utils.envOverride("FIREBASE_FUNCTIONS_DEFAULT_REGION", "us-central1"),
   cloudschedulerOrigin: utils.envOverride(
     "FIREBASE_CLOUDSCHEDULER_URL",
     "https://cloudscheduler.googleapis.com"
@@ -144,22 +148,27 @@ var api = {
     utils.envOverride("FIREBASE_GOOGLE_URL", "https://www.googleapis.com")
   ),
   hostingOrigin: utils.envOverride("FIREBASE_HOSTING_URL", "https://web.app"),
+  identityOrigin: utils.envOverride(
+    "FIREBASE_IDENTITY_URL",
+    "https://identitytoolkit.googleapis.com"
+  ),
   iamOrigin: utils.envOverride("FIREBASE_IAM_URL", "https://iam.googleapis.com"),
   extensionsOrigin: utils.envOverride(
     "FIREBASE_EXT_URL",
     "https://firebaseextensions.googleapis.com"
   ),
-  realtimeOriginOrEmulator: utils.envOverride(
-    Constants.FIREBASE_DATABASE_EMULATOR_HOST,
-    "https://firebaseio.com",
-    (val) => {
-      return `http://${val}`;
-    }
-  ),
   realtimeOrigin: utils.envOverride("FIREBASE_REALTIME_URL", "https://firebaseio.com"),
+  rtdbManagementOrigin: utils.envOverride(
+    "FIREBASE_RTDB_MANAGEMENT_URL",
+    "https://firebasedatabase.googleapis.com"
+  ),
   rtdbMetadataOrigin: utils.envOverride(
     "FIREBASE_RTDB_METADATA_URL",
     "https://metadata-dot-firebase-prod.appspot.com"
+  ),
+  remoteConfigApiOrigin: utils.envOverride(
+    "FIREBASE_REMOTE_CONFIG_URL",
+    "https://firebaseremoteconfig.googleapis.com"
   ),
   resourceManagerOrigin: utils.envOverride(
     "FIREBASE_RESOURCEMANAGER_URL",
@@ -184,17 +193,23 @@ var api = {
     "FIREBASE_SERVICE_USAGE_URL",
     "https://serviceusage.googleapis.com"
   ),
-
-  setRefreshToken: function(token) {
+  githubOrigin: utils.envOverride("GITHUB_URL", "https://github.com"),
+  githubApiOrigin: utils.envOverride("GITHUB_API_URL", "https://api.github.com"),
+  githubClientId: utils.envOverride("GITHUB_CLIENT_ID", "89cf50f02ac6aaed3484"),
+  githubClientSecret: utils.envOverride(
+    "GITHUB_CLIENT_SECRET",
+    "3330d14abc895d9a74d5f17cd7a00711fa2c5bf0"
+  ),
+  setRefreshToken: function (token) {
     refreshToken = token;
   },
-  setAccessToken: function(token) {
+  setAccessToken: function (token) {
     accessToken = token;
   },
-  getScopes: function() {
+  getScopes: function () {
     return commandScopes;
   },
-  setScopes: function(s) {
+  setScopes: function (s) {
     commandScopes = _.uniq(
       _.flatten(
         [
@@ -207,30 +222,48 @@ var api = {
     );
     logger.debug("> command requires scopes:", JSON.stringify(commandScopes));
   },
-  getAccessToken: function() {
+  getAccessToken: function () {
+    // Runtime fetch of Auth singleton to prevent circular module dependencies
     return accessToken
       ? Promise.resolve({ access_token: accessToken })
       : require("./auth").getAccessToken(refreshToken, commandScopes);
   },
-  addRequestHeaders: function(reqOptions) {
-    // Runtime fetch of Auth singleton to prevent circular module dependencies
+  addRequestHeaders: function (reqOptions, options) {
     _.set(reqOptions, ["headers", "User-Agent"], "FirebaseCLI/" + CLI_VERSION);
     _.set(reqOptions, ["headers", "X-Client-Version"], "FirebaseCLI/" + CLI_VERSION);
-    return api.getAccessToken().then(function(result) {
+
+    var secureRequest = true;
+    if (options && options.origin) {
+      // Only 'https' requests are secure. Protocol includes the final ':'
+      // https://developer.mozilla.org/en-US/docs/Web/API/URL/protocol
+      const originUrl = url.parse(options.origin);
+      secureRequest = originUrl.protocol === "https:";
+    }
+
+    // For insecure requests we send a special 'owner" token which the emulators
+    // will accept and other secure APIs will deny.
+    var getTokenPromise = secureRequest
+      ? api.getAccessToken()
+      : Promise.resolve({ access_token: "owner" });
+
+    return getTokenPromise.then(function (result) {
       _.set(reqOptions, "headers.authorization", "Bearer " + result.access_token);
       return reqOptions;
     });
   },
-  request: function(method, resource, options) {
+  request: function (method, resource, options) {
     options = _.extend(
       {
         data: {},
-        origin: api.adminOrigin, // default to hitting the admin backend
         resolveOnHTTPError: false, // by default, status codes >= 400 leads to reject
         json: true,
       },
       options
     );
+
+    if (!options.origin) {
+      throw new FirebaseError("Cannot make request without an origin", { exit: 2 });
+    }
 
     var validMethods = ["GET", "PUT", "POST", "DELETE", "PATCH"];
 
@@ -264,67 +297,29 @@ var api = {
     reqOptions.headers = options.headers;
     reqOptions.timeout = options.timeout;
 
-    var requestFunction = function() {
+    var requestFunction = function () {
       return _request(reqOptions, options.logOptions);
     };
 
-    var secureRequest = true;
-    if (options.origin) {
-      // Only 'https' requests are secure. Protocol includes the final ':'
-      // https://developer.mozilla.org/en-US/docs/Web/API/URL/protocol
-      const originUrl = url.parse(options.origin);
-      secureRequest = originUrl.protocol === "https:";
-    }
-
     if (options.auth === true) {
-      if (secureRequest) {
-        requestFunction = function() {
-          return api.addRequestHeaders(reqOptions).then(function(reqOptionsWithToken) {
-            return _request(reqOptionsWithToken, options.logOptions);
-          });
-        };
-      } else {
-        logger.debug(`Ignoring options.auth for insecure origin: ${options.origin}`);
-      }
+      requestFunction = function () {
+        return api.addRequestHeaders(reqOptions, options).then(function (reqOptionsWithToken) {
+          return _request(reqOptionsWithToken, options.logOptions);
+        });
+      };
     }
 
-    return requestFunction().catch(function(err) {
+    return requestFunction().catch(function (err) {
       if (
         options.retryCodes &&
         _.includes(options.retryCodes, _.get(err, "context.response.statusCode"))
       ) {
-        return new Promise(function(resolve) {
+        return new Promise(function (resolve) {
           setTimeout(resolve, 1000);
         }).then(requestFunction);
       }
       return Promise.reject(err);
     });
-  },
-
-  /**
-   * Deprecated. Call `listFirebaseProjects()` from `./management/project.ts` instead
-   * TODO: remove this function
-   */
-  getProjects: function() {
-    logger.debug(
-      `[WARNING] ${new Error("getProjects() is deprecated - update the implementation").stack}`
-    );
-    return api
-      .request("GET", "/v1/projects", {
-        auth: true,
-      })
-      .then(function(res) {
-        if (res.body && res.body.projects) {
-          return res.body.projects;
-        }
-
-        return Promise.reject(
-          new FirebaseError("Server Error: Unexpected Response. Please try again", {
-            context: res,
-            exit: 2,
-          })
-        );
-      });
   },
 };
 

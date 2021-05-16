@@ -1,6 +1,9 @@
 import * as _ from "lodash";
 import * as url from "url";
+import * as http from "http";
 import * as clc from "cli-color";
+import * as ora from "ora";
+import * as process from "process";
 import { Readable } from "stream";
 import * as winston from "winston";
 import { SPLAT } from "triple-beam";
@@ -8,11 +11,14 @@ const ansiStrip = require("cli-color/strip") as (input: string) => string;
 
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
-import * as logger from "./logger";
+import { logger, LogLevel } from "./logger";
+import { LogDataOrUndefined } from "./emulator/loggingEmulator";
+import { Socket } from "net";
 
 const IS_WINDOWS = process.platform === "win32";
 const SUCCESS_CHAR = IS_WINDOWS ? "+" : "✔";
 const WARNING_CHAR = IS_WINDOWS ? "!" : "⚠";
+const THIRTY_DAYS_IN_MILLISECONDS = 30 * 24 * 60 * 60 * 1000;
 
 export const envOverrides: string[] = [];
 
@@ -78,16 +84,16 @@ export function getDatabaseUrl(origin: string, namespace: string, pathname: stri
  */
 export function getDatabaseViewDataUrl(
   origin: string,
+  project: string,
   namespace: string,
   pathname: string
 ): string {
   const urlObj = new url.URL(origin);
-  if (urlObj.hostname.includes("firebaseio.com")) {
-    return consoleUrl(namespace, "/database/data" + pathname);
-  } else {
-    // TODO(samstern): View in GUI
-    return getDatabaseUrl(origin, namespace, pathname + ".json");
+  if (urlObj.hostname.includes("firebaseio") || urlObj.hostname.includes("firebasedatabase")) {
+    return consoleUrl(project, `/database/${namespace}/data${pathname}`);
   }
+  // TODO(samstern): View in Emulator UI
+  return getDatabaseUrl(origin, namespace, pathname + ".json");
 }
 
 /**
@@ -97,12 +103,14 @@ export function getDatabaseViewDataUrl(
  */
 export function addDatabaseNamespace(origin: string, namespace: string): string {
   const urlObj = new url.URL(origin);
-  if (urlObj.hostname.includes("firebaseio.com")) {
-    return addSubdomain(origin, namespace);
-  } else {
-    urlObj.searchParams.set("ns", namespace);
+  if (urlObj.hostname.includes(namespace)) {
     return urlObj.href;
   }
+  if (urlObj.hostname.includes("firebaseio") || urlObj.hostname.includes("firebasedatabase")) {
+    return addSubdomain(origin, namespace);
+  }
+  urlObj.searchParams.set("ns", namespace);
+  return urlObj.href;
 }
 
 /**
@@ -116,49 +124,76 @@ export function addSubdomain(origin: string, subdomain: string): string {
 /**
  * Log an info statement with a green checkmark at the start of the line.
  */
-export function logSuccess(message: string, type = "info"): void {
-  logger[type](clc.green.bold(`${SUCCESS_CHAR} `), message);
+export function logSuccess(
+  message: string,
+  type: LogLevel = "info",
+  data: LogDataOrUndefined = undefined
+): void {
+  logger[type](clc.green.bold(`${SUCCESS_CHAR} `), message, data);
 }
 
 /**
  * Log an info statement with a green checkmark at the start of the line.
  */
-export function logLabeledSuccess(label: string, message: string, type = "info"): void {
-  logger[type](clc.green.bold(`${SUCCESS_CHAR}  ${label}:`), message);
+export function logLabeledSuccess(
+  label: string,
+  message: string,
+  type: LogLevel = "info",
+  data: LogDataOrUndefined = undefined
+): void {
+  logger[type](clc.green.bold(`${SUCCESS_CHAR}  ${label}:`), message, data);
 }
 
 /**
  * Log an info statement with a gray bullet at the start of the line.
  */
-export function logBullet(message: string, type = "info"): void {
-  logger[type](clc.cyan.bold("i "), message);
+export function logBullet(
+  message: string,
+  type: LogLevel = "info",
+  data: LogDataOrUndefined = undefined
+): void {
+  logger[type](clc.cyan.bold("i "), message, data);
 }
 
 /**
  * Log an info statement with a gray bullet at the start of the line.
  */
-export function logLabeledBullet(label: string, message: string, type = "info"): void {
-  logger[type](clc.cyan.bold(`i  ${label}:`), message);
+export function logLabeledBullet(
+  label: string,
+  message: string,
+  type: LogLevel = "info",
+  data: LogDataOrUndefined = undefined
+): void {
+  logger[type](clc.cyan.bold(`i  ${label}:`), message, data);
 }
 
 /**
  * Log an info statement with a gray bullet at the start of the line.
  */
-export function logWarning(message: string, type = "warn"): void {
-  logger[type](clc.yellow.bold(`${WARNING_CHAR} `), message);
+export function logWarning(
+  message: string,
+  type: LogLevel = "warn",
+  data: LogDataOrUndefined = undefined
+): void {
+  logger[type](clc.yellow.bold(`${WARNING_CHAR} `), message, data);
 }
 
 /**
  * Log an info statement with a gray bullet at the start of the line.
  */
-export function logLabeledWarning(label: string, message: string, type = "warn"): void {
-  logger[type](clc.yellow.bold(`${WARNING_CHAR}  ${label}:`), message);
+export function logLabeledWarning(
+  label: string,
+  message: string,
+  type: LogLevel = "warn",
+  data: LogDataOrUndefined = undefined
+): void {
+  logger[type](clc.yellow.bold(`${WARNING_CHAR}  ${label}:`), message, data);
 }
 
 /**
  * Return a promise that rejects with a FirebaseError.
  */
-export function reject(message: string, options?: any): Promise<void> {
+export function reject(message: string, options?: any): Promise<never> {
   return Promise.reject(new FirebaseError(message, options));
 }
 
@@ -177,7 +212,9 @@ export function explainStdin(): void {
 }
 
 /**
- * Convert text input to a Readable stream.
+ * Converts text input to a Readable stream.
+ * @param text string to turn into a stream.
+ * @return Readable stream, or undefined if text is empty.
  */
 export function stringToStream(text: string): Readable | undefined {
   if (!text) {
@@ -190,9 +227,23 @@ export function stringToStream(text: string): Readable | undefined {
 }
 
 /**
+ * Converts a Readable stream into a string.
+ * @param s a readable stream.
+ * @return a promise resolving to the string'd contents of the stream.
+ */
+export function streamToString(s: NodeJS.ReadableStream): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let b = "";
+    s.on("error", reject);
+    s.on("data", (d) => (b += `${d}`));
+    s.once("end", () => resolve(b));
+  });
+}
+
+/**
  * Sets the active project alias or id in the specified directory.
  */
-export function makeActiveProject(projectDir: string, newActive: string): void {
+export function makeActiveProject(projectDir: string, newActive: string | null): void {
   const activeProjects = configstore.get("activeProjects") || {};
   if (newActive) {
     activeProjects[projectDir] = newActive;
@@ -360,4 +411,91 @@ export function setupLoggers() {
       })
     );
   }
+}
+
+/**
+ * Runs a given function inside a spinner with a message
+ */
+export async function promiseWithSpinner<T>(action: () => Promise<T>, message: string): Promise<T> {
+  const spinner = ora(message).start();
+  let data;
+  try {
+    data = await action();
+    spinner.succeed();
+  } catch (err) {
+    spinner.fail();
+    throw err;
+  }
+
+  return data;
+}
+
+/**
+ * Return a "destroy" function for a Node.js HTTP server. MUST be called on
+ * server creation (e.g. right after `.listen`), BEFORE any connections.
+ *
+ * Inspired by https://github.com/isaacs/server-destroy/blob/master/index.js
+ *
+ * @returns a function that destroys all connections and closes the server
+ */
+export function createDestroyer(server: http.Server): () => Promise<void> {
+  const connections = new Set<Socket>();
+
+  server.on("connection", (conn) => {
+    connections.add(conn);
+    conn.once("close", () => connections.delete(conn));
+  });
+
+  // Make calling destroyer again just noop but return the same promise.
+  let destroyPromise: Promise<void> | undefined = undefined;
+  return function destroyer() {
+    if (!destroyPromise) {
+      destroyPromise = new Promise((resolve, reject) => {
+        server.close((err) => {
+          if (err) return reject(err);
+          resolve();
+        });
+        connections.forEach((socket) => socket.destroy());
+      });
+    }
+    return destroyPromise;
+  };
+}
+
+/**
+ * Returns the given date formatted as `YYYY-mm-dd HH:mm:ss`.
+ * @param d the date to format.
+ * @return the formatted date.
+ */
+export function datetimeString(d: Date): string {
+  const day = `${d.getFullYear()}-${(d.getMonth() + 1)
+    .toString()
+    .padStart(2, "0")}-${d.getDate().toString().padStart(2, "0")}`;
+  const time = `${d.getHours().toString().padStart(2, "0")}:${d
+    .getMinutes()
+    .toString()
+    .padStart(2, "0")}:${d.getSeconds().toString().padStart(2, "0")}`;
+  return `${day} ${time}`;
+}
+
+/**
+ * Indicates whether the end-user is running the CLI from a cloud-based environment.
+ */
+export function isCloudEnvironment() {
+  return !!process.env.CODESPACES;
+}
+
+/**
+ * Indicates whether or not this process is likely to be running in WSL.
+ * @return true if we're likely in WSL, false otherwise
+ */
+export function isRunningInWSL(): boolean {
+  return !!process.env.WSL_DISTRO_NAME;
+}
+
+/**
+ * Generates a date that is 30 days from Date.now()
+ */
+export function thirtyDaysFromNow(): Date {
+  return new Date(Date.now() + THIRTY_DAYS_IN_MILLISECONDS);
 }

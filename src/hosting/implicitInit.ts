@@ -4,12 +4,20 @@ import * as fs from "fs";
 
 import { fetchWebSetup, getCachedWebSetup } from "../fetchWebSetup";
 import * as utils from "../utils";
-import * as logger from "../logger";
+import { logger } from "../logger";
+import { EmulatorRegistry } from "../emulator/registry";
+import { EMULATORS_SUPPORTED_BY_USE_EMULATOR, Address, Emulators } from "../emulator/types";
 
 const INIT_TEMPLATE = fs.readFileSync(__dirname + "/../../templates/hosting/init.js", "utf8");
 
 export interface TemplateServerResponse {
+  // __init.js content with only initializeApp()
   js: string;
+
+  // __init.js content with initializeApp() and useEmulator() calls
+  emulatorsJs: string;
+
+  // firebaseConfig JSON
   json: string;
 }
 
@@ -54,8 +62,42 @@ export async function implicitInit(options: any): Promise<TemplateServerResponse
   }
 
   const configJson = JSON.stringify(config, null, 2);
+
+  const emulators: { [e in Emulators]?: Address } = {};
+  for (const e of EMULATORS_SUPPORTED_BY_USE_EMULATOR) {
+    const info = EmulatorRegistry.getInfo(e);
+
+    if (info) {
+      let host = info.host;
+
+      if (host === "0.0.0.0") {
+        host = "127.0.0.1";
+      } else if (host === "::") {
+        host = "[::1]";
+      } else if (host.includes(":")) {
+        // IPv6 hosts need to be quoted using brackets.
+        host = `[${host}]`;
+      }
+
+      emulators[e] = {
+        host,
+        port: info.port,
+      };
+    }
+  }
+  const emulatorsJson = JSON.stringify(emulators, null, 2);
+
+  const js = INIT_TEMPLATE.replace("/*--CONFIG--*/", `var firebaseConfig = ${configJson};`).replace(
+    "/*--EMULATORS--*/",
+    "var firebaseEmulators = undefined;"
+  );
+  const emulatorsJs = INIT_TEMPLATE.replace(
+    "/*--CONFIG--*/",
+    `var firebaseConfig = ${configJson};`
+  ).replace("/*--EMULATORS--*/", `var firebaseEmulators = ${emulatorsJson};`);
   return {
-    js: INIT_TEMPLATE.replace("/*--CONFIG--*/", `var firebaseConfig = ${configJson};`),
+    js,
+    emulatorsJs,
     json: configJson,
   };
 }

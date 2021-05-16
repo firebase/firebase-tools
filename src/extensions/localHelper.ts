@@ -2,9 +2,10 @@ import * as fs from "fs-extra";
 import * as path from "path";
 import * as yaml from "js-yaml";
 
+import { fileExistsSync } from "../fsutils";
 import { FirebaseError } from "../error";
 import { ExtensionSpec } from "./extensionsApi";
-import * as logger from "../logger";
+import { logger } from "../logger";
 
 const EXTENSIONS_SPEC_FILE = "extension.yaml";
 const EXTENSIONS_PREINSTALL_FILE = "PREINSTALL.md";
@@ -14,9 +15,9 @@ const EXTENSIONS_PREINSTALL_FILE = "PREINSTALL.md";
  * @param directory the directory to look for extension.yaml and PRESINSTALL.md in
  */
 export async function getLocalExtensionSpec(directory: string): Promise<ExtensionSpec> {
-  const spec = await parseYAML(await readFile(path.resolve(directory, EXTENSIONS_SPEC_FILE)));
+  const spec = await parseYAML(readFile(path.resolve(directory, EXTENSIONS_SPEC_FILE)));
   try {
-    const preinstall = await readFile(path.resolve(directory, EXTENSIONS_PREINSTALL_FILE));
+    const preinstall = readFile(path.resolve(directory, EXTENSIONS_PREINSTALL_FILE));
     spec.preinstallContent = preinstall;
   } catch (err) {
     logger.debug(`No PREINSTALL.md found in directory ${directory}.`);
@@ -25,11 +26,29 @@ export async function getLocalExtensionSpec(directory: string): Promise<Extensio
 }
 
 /**
+ * Climbs directories loking for an extension.yaml file, and return the first
+ * directory that contains one. Throws an error if none is found.
+ * @param directory the directory to start from searching from.
+ */
+export function findExtensionYaml(directory: string): string {
+  while (!fileExistsSync(path.resolve(directory, EXTENSIONS_SPEC_FILE))) {
+    const parentDir = path.dirname(directory);
+    if (parentDir === directory) {
+      throw new FirebaseError(
+        "Couldn't find an extension.yaml file. Check that you are in the root directory of your extension."
+      );
+    }
+    directory = parentDir;
+  }
+  return directory;
+}
+
+/**
  * Retrieves a file from the directory.
  * @param directory the directory containing the file
  * @param file the name of the file
  */
-export async function readFile(pathToFile: string): Promise<string> {
+export function readFile(pathToFile: string): string {
   try {
     return fs.readFileSync(pathToFile, "utf8");
   } catch (err) {

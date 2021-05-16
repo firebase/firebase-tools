@@ -1,6 +1,6 @@
 "use strict";
 
-var logger = require("../logger");
+const { logger } = require("../logger");
 var api = require("../api");
 var clc = require("cli-color");
 var _ = require("lodash");
@@ -16,16 +16,17 @@ var TARGETS = {
   firestore: require("./firestore"),
   functions: require("./functions"),
   storage: require("./storage"),
+  remoteconfig: require("./remoteconfig"),
 };
 
-var _noop = function() {
+var _noop = function () {
   return Promise.resolve();
 };
 
-var _chain = function(fns, context, options, payload) {
+var _chain = function (fns, context, options, payload) {
   var latest = (fns.shift() || _noop)(context, options, payload);
   if (fns.length) {
-    return latest.then(function() {
+    return latest.then(function () {
       return _chain(fns, context, options, payload);
     });
   }
@@ -38,11 +39,12 @@ var _chain = function(fns, context, options, payload) {
  * number of deploy targets. This allows deploys to be done all together or
  * for individual deployable elements to be deployed as such.
  */
-var deploy = function(targetNames, options) {
+var deploy = function (targetNames, options, customContext = {}) {
   var projectId = getProjectId(options);
   var payload = {};
   // a shared context object for deploy targets to decorate as needed
-  var context = { projectId: projectId };
+  /** @type {object} */
+  var context = Object.assign({ projectId }, customContext);
   var predeploys = [];
   var prepares = [];
   var deploys = [];
@@ -79,19 +81,19 @@ var deploy = function(targetNames, options) {
   utils.logBullet("deploying " + clc.bold(targetNames.join(", ")));
 
   return _chain(predeploys, context, options, payload)
-    .then(function() {
+    .then(function () {
       return _chain(prepares, context, options, payload);
     })
-    .then(function() {
+    .then(function () {
       return _chain(deploys, context, options, payload);
     })
-    .then(function() {
+    .then(function () {
       return _chain(releases, context, options, payload);
     })
-    .then(function() {
+    .then(function () {
       return _chain(postdeploys, context, options, payload);
     })
-    .then(function() {
+    .then(function () {
       if (_.has(options, "config.notes.databaseRules")) {
         track("Rules Deploy", options.config.notes.databaseRules);
       }
@@ -102,7 +104,7 @@ var deploy = function(targetNames, options) {
       var deployedHosting = _.includes(targetNames, "hosting");
       logger.info(clc.bold("Project Console:"), utils.consoleUrl(options.project, "/overview"));
       if (deployedHosting) {
-        _.each(context.hosting.deploys, function(deploy) {
+        _.each(context.hosting.deploys, function (deploy) {
           logger.info(clc.bold("Hosting URL:"), utils.addSubdomain(api.hostingOrigin, deploy.site));
         });
         const versionNames = context.hosting.deploys.map((deploy) => deploy.version);

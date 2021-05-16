@@ -1,10 +1,11 @@
-import * as request from "request";
-import { Request } from "request";
+import * as url from "url";
+import * as qs from "querystring";
 import { RequestHandler } from "express";
 
-import * as logger from "../logger";
-import * as utils from "../utils";
+import { Client } from "../apiv2";
 import { TemplateServerResponse } from "./implicitInit";
+import { logger } from "../logger";
+import * as utils from "../utils";
 
 const SDK_PATH_REGEXP = /^\/__\/firebase\/([^/]+)\/([^/]+)$/;
 
@@ -16,29 +17,55 @@ const SDK_PATH_REGEXP = /^\/__\/firebase\/([^/]+)\/([^/]+)$/;
  */
 export function initMiddleware(init: TemplateServerResponse): RequestHandler {
   return (req, res, next) => {
+    const parsedUrl = url.parse(req.url);
     const match = RegExp(SDK_PATH_REGEXP).exec(req.url);
     if (match) {
       const version = match[1];
       const sdkName = match[2];
-      const url = `https://www.gstatic.com/firebasejs/${version}/${sdkName}`;
-      const preq: Request = request(url)
-        .on("response", (pres) => {
-          if (pres.statusCode === 404) {
+      const u = new url.URL(`https://www.gstatic.com/firebasejs/${version}/${sdkName}`);
+      const c = new Client({ urlPrefix: u.origin, auth: false });
+      const headers: { [key: string]: string } = {};
+      const acceptEncoding = req.headers["accept-encoding"];
+      if (typeof acceptEncoding === "string" && acceptEncoding) {
+        headers["accept-encoding"] = acceptEncoding;
+      }
+      c.request<unknown, NodeJS.ReadableStream>({
+        method: "GET",
+        path: u.pathname,
+        headers,
+        responseType: "stream",
+        resolveOnHTTPError: true,
+        compress: false,
+      })
+        .then((sdkRes) => {
+          if (sdkRes.status === 404) {
             return next();
           }
-          return preq.pipe(res);
+          for (const [key, value] of Object.entries(sdkRes.response.headers.raw())) {
+            res.setHeader(key, value);
+          }
+          sdkRes.body.pipe(res);
         })
-        .on("error", (e) => {
+        .catch((e) => {
           utils.logLabeledWarning(
             "hosting",
             `Could not load Firebase SDK ${sdkName} v${version}, check your internet connection.`
           );
           logger.debug(e);
         });
-    } else if (req.url === "/__/firebase/init.js") {
+    } else if (parsedUrl.pathname === "/__/firebase/init.js") {
+      // In theory we should be able to get this from req.query but for some
+      // when testing this functionality, req.query and req.params were always
+      // empty or undefined.
+      const query = qs.parse(parsedUrl.query || "");
+
       res.setHeader("Content-Type", "application/javascript");
-      res.end(init.js);
-    } else if (req.url === "/__/firebase/init.json") {
+      if (query["useEmulator"] === "true") {
+        res.end(init.emulatorsJs);
+      } else {
+        res.end(init.js);
+      }
+    } else if (parsedUrl.pathname === "/__/firebase/init.json") {
       res.setHeader("Content-Type", "application/json");
       res.end(init.json);
     } else {

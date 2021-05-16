@@ -1,7 +1,4 @@
 import * as _ from "lodash";
-import * as logger from "../logger";
-import * as parseTriggers from "../parseTriggers";
-import * as utils from "../utils";
 import { CloudFunction } from "firebase-functions";
 import * as os from "os";
 import * as path from "path";
@@ -19,7 +16,7 @@ export interface EmulatedTriggerDefinition {
   name: string;
   timeout?: string | number; // Can be "3s" for some reason lol
   regions?: string[];
-  availableMemoryMb?: "128MB" | "256MB" | "512MB" | "1GB" | "2GB";
+  availableMemoryMb?: "128MB" | "256MB" | "512MB" | "1GB" | "2GB" | "4GB";
   httpsTrigger?: any;
   eventTrigger?: EventTrigger;
   schedule?: EventSchedule;
@@ -64,10 +61,22 @@ export interface FunctionsRuntimeBundle {
       host: string;
       port: number;
     };
+    auth?: {
+      host: string;
+      port: number;
+    };
+    storage?: {
+      host: string;
+      port: number;
+    };
+  };
+  adminSdkConfig: {
+    databaseURL?: string;
+    storageBucket?: string;
   };
   socketPath?: string;
   disabled_features?: FunctionsRuntimeFeatures;
-  nodeMajorVersion?: string;
+  nodeMajorVersion?: number;
   cwd: string;
 }
 
@@ -81,10 +90,12 @@ const memoryLookup = {
   "512MB": 512,
   "1GB": 1024,
   "2GB": 2048,
+  "4GB": 4096,
 };
 
 export class HttpConstants {
   static readonly CALLABLE_AUTH_HEADER: string = "x-callable-context-auth";
+  static readonly ORIGINAL_AUTH_HEADER: string = "x-original-auth";
 }
 
 export class EmulatedTrigger {
@@ -115,29 +126,6 @@ export class EmulatedTrigger {
     const func = _.get(this.module, this.definition.entryPoint);
     return func.__emulator_func || func;
   }
-}
-
-export async function getTriggersFromDirectory(
-  projectId: string,
-  functionsDir: string,
-  firebaseConfig: any
-): Promise<EmulatedTriggerMap> {
-  let triggerDefinitions;
-
-  try {
-    triggerDefinitions = await parseTriggers(
-      projectId,
-      functionsDir,
-      {},
-      JSON.stringify(firebaseConfig)
-    );
-  } catch (e) {
-    utils.logWarning(`Failed to load functions source code.`);
-    logger.info(e.message);
-    return {};
-  }
-
-  return getEmulatedTriggersFromDefinitions(triggerDefinitions, functionsDir);
 }
 
 export function getEmulatedTriggersFromDefinitions(

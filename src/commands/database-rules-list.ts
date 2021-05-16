@@ -1,6 +1,6 @@
 import { Command } from "../command";
-import * as logger from "../logger";
-import * as requireInstance from "../requireInstance";
+import { logger } from "../logger";
+import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import { requirePermissions } from "../requirePermissions";
 import * as metadata from "../database/metadata";
 import { Emulators } from "../emulator/types";
@@ -13,7 +13,7 @@ export default new Command("database:rules:list")
     "use the database <instance>.firebaseio.com (if omitted, uses default database instance)"
   )
   .before(requirePermissions, ["firebasedatabase.instances.get"])
-  .before(requireInstance)
+  .before(requireDatabaseInstance)
   .before(warnEmulatorNotSupported, Emulators.DATABASE)
   .action(async (options: any) => {
     const labeled = await metadata.getRulesetLabels(options.instance);

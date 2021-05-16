@@ -2,7 +2,7 @@
 
 var path = require("path");
 var api = require("../api");
-var logger = require("../logger");
+const { logger } = require("../logger");
 var { FirebaseError } = require("../error");
 
 function _getDefaultBucket(projectId) {
@@ -12,7 +12,7 @@ function _getDefaultBucket(projectId) {
       origin: api.appengineOrigin,
     })
     .then(
-      function(resp) {
+      function (resp) {
         if (resp.body.defaultBucket === "undefined") {
           logger.debug("Default storage bucket is undefined.");
           return Promise.reject(
@@ -23,7 +23,7 @@ function _getDefaultBucket(projectId) {
         }
         return Promise.resolve(resp.body.defaultBucket);
       },
-      function(err) {
+      function (err) {
         logger.info(
           "\n\nThere was an issue deploying your functions. Verify that your project has a Google App Engine instance setup at https://console.cloud.google.com/appengine and try again. If this issue persists, please contact support."
         );
@@ -32,17 +32,22 @@ function _getDefaultBucket(projectId) {
     );
 }
 
-function _uploadSource(source, uploadUrl) {
-  return api.request("PUT", uploadUrl, {
+async function _uploadSource(source, uploadUrl) {
+  const url = new URL(uploadUrl);
+  const result = await api.request("PUT", url.pathname + url.search, {
     data: source.stream,
     headers: {
       "Content-Type": "application/zip",
       "x-goog-content-length-range": "0,104857600",
     },
     json: false,
-    origin: api.storageOrigin,
+    origin: url.origin,
     logOptions: { skipRequestBody: true },
   });
+
+  return {
+    generation: result.response.headers["x-goog-generation"],
+  };
 }
 
 /**
@@ -56,8 +61,8 @@ async function _uploadObject(source, bucketName) {
   if (path.extname(source.file) !== ".zip") {
     throw new FirebaseError(`Expected a file name ending in .zip, got ${source.file}`);
   }
-  const location = `/v0/b/${bucketName}/o/${path.basename(source.file)}`;
-  await api.request("POST", location, {
+  const location = `/${bucketName}/${path.basename(source.file)}`;
+  const result = await api.request("PUT", location, {
     auth: true,
     data: source.stream,
     headers: {
@@ -65,10 +70,14 @@ async function _uploadObject(source, bucketName) {
       "x-goog-content-length-range": "0,123289600",
     },
     json: false,
-    origin: api.firebaseStorageOrigin,
+    origin: api.storageOrigin,
     logOptions: { skipRequestBody: true },
   });
-  return location;
+  return {
+    bucket: bucketName,
+    object: path.basename(source.file),
+    generation: result.response.headers["x-goog-generation"],
+  };
 }
 
 /**
@@ -78,7 +87,7 @@ async function _uploadObject(source, bucketName) {
 function _deleteObject(location) {
   return api.request("DELETE", location, {
     auth: true,
-    origin: api.firebaseStorageOrigin,
+    origin: api.storageOrigin,
   });
 }
 

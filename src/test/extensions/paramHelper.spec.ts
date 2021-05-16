@@ -5,18 +5,19 @@ import * as dotenv from "dotenv";
 import * as fs from "fs-extra";
 
 import { FirebaseError } from "../../error";
-import * as logger from "../../logger";
-import { ExtensionInstance, ParamType } from "../../extensions/extensionsApi";
+import { logger } from "../../logger";
+import { ExtensionInstance, Param, ParamType } from "../../extensions/extensionsApi";
 import * as extensionsHelper from "../../extensions/extensionsHelper";
 import * as paramHelper from "../../extensions/paramHelper";
 import * as prompt from "../../prompt";
 
 const PROJECT_ID = "test-proj";
-const TEST_PARAMS = [
+const TEST_PARAMS: Param[] = [
   {
     param: "A_PARAMETER",
     label: "Param",
     type: ParamType.STRING,
+    required: true,
   },
   {
     param: "ANOTHER_PARAMETER",
@@ -26,7 +27,7 @@ const TEST_PARAMS = [
   },
 ];
 
-const TEST_PARAMS_2 = [
+const TEST_PARAMS_2: Param[] = [
   {
     param: "ANOTHER_PARAMETER",
     label: "Another Param",
@@ -46,7 +47,7 @@ const TEST_PARAMS_2 = [
     default: "default",
   },
 ];
-const TEST_PARAMS_3 = [
+const TEST_PARAMS_3: Param[] = [
   {
     param: "A_PARAMETER",
     label: "Param",
@@ -72,18 +73,14 @@ const SPEC = {
 
 describe("paramHelper", () => {
   describe("getParams", () => {
-    let fsStub: sinon.SinonStub;
     let dotenvStub: sinon.SinonStub;
-    let getFirebaseVariableStub: sinon.SinonStub;
     let promptStub: sinon.SinonStub;
     let loggerSpy: sinon.SinonSpy;
 
     beforeEach(() => {
-      fsStub = sinon.stub(fs, "readFileSync").returns("");
+      sinon.stub(fs, "readFileSync").returns("");
       dotenvStub = sinon.stub(dotenv, "parse");
-      getFirebaseVariableStub = sinon
-        .stub(extensionsHelper, "getFirebaseProjectParams")
-        .resolves({ PROJECT_ID });
+      sinon.stub(extensionsHelper, "getFirebaseProjectParams").resolves({ PROJECT_ID });
       promptStub = sinon.stub(prompt, "promptOnce").resolves("user input");
       loggerSpy = sinon.spy(logger, "info");
     });
@@ -119,12 +116,28 @@ describe("paramHelper", () => {
       });
     });
 
-    it("should throw if a param without a default is not in envFilePath", async () => {
+    it("should omit optional params that are not in envFilePath", async () => {
       dotenvStub.returns({
         ANOTHER_PARAMETER: "aValue",
       });
 
-      expect(
+      const params = await paramHelper.getParams(
+        PROJECT_ID,
+        TEST_PARAMS_3,
+        "./a/path/to/a/file.env"
+      );
+
+      expect(params).to.eql({
+        ANOTHER_PARAMETER: "aValue",
+      });
+    });
+
+    it("should throw if a required param without a default is not in envFilePath", async () => {
+      dotenvStub.returns({
+        ANOTHER_PARAMETER: "aValue",
+      });
+
+      await expect(
         paramHelper.getParams(PROJECT_ID, TEST_PARAMS, "./a/path/to/a/file.env")
       ).to.be.rejectedWith(
         FirebaseError,
@@ -140,7 +153,7 @@ describe("paramHelper", () => {
         A_THIRD_PARAMETER: "aValue",
         A_FOURTH_PARAMETER: "default",
       });
-      const params = await paramHelper.getParams(PROJECT_ID, TEST_PARAMS, "./a/path/to/a/file.env");
+      await paramHelper.getParams(PROJECT_ID, TEST_PARAMS, "./a/path/to/a/file.env");
 
       expect(loggerSpy).to.have.been.calledWith(
         "Warning: The following params were specified in your env file but" +
@@ -151,7 +164,7 @@ describe("paramHelper", () => {
     it("should throw FirebaseError if an invalid envFilePath is provided", async () => {
       dotenvStub.throws({ message: "Error during parsing" });
 
-      expect(
+      await expect(
         paramHelper.getParams(PROJECT_ID, TEST_PARAMS, "./a/path/to/a/file.env")
       ).to.be.rejectedWith(FirebaseError, "Error reading env file: Error during parsing");
     });
@@ -188,6 +201,7 @@ describe("paramHelper", () => {
       testInstance = {
         config: {
           source: {
+            state: "ACTIVE",
             name: "",
             packageUri: "",
             hash: "",
@@ -220,6 +234,7 @@ describe("paramHelper", () => {
             label: "Param",
             default: "new default",
             type: ParamType.STRING,
+            required: true,
           },
           {
             param: "ANOTHER_PARAMETER",
@@ -247,6 +262,7 @@ describe("paramHelper", () => {
           label: "Param",
           default: "new default",
           type: ParamType.STRING,
+          required: true,
         },
         {
           param: "ANOTHER_PARAMETER",
@@ -266,12 +282,10 @@ describe("paramHelper", () => {
 
   describe("promptForNewParams", () => {
     let promptStub: sinon.SinonStub;
-    let getFirebaseVariableStub: sinon.SinonStub;
+
     beforeEach(() => {
       promptStub = sinon.stub(prompt, "promptOnce");
-      getFirebaseVariableStub = sinon
-        .stub(extensionsHelper, "getFirebaseProjectParams")
-        .resolves({ PROJECT_ID });
+      sinon.stub(extensionsHelper, "getFirebaseProjectParams").resolves({ PROJECT_ID });
     });
 
     afterEach(() => {

@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import * as uuid from "uuid";
 import { FunctionsEmulator } from "./functionsEmulator";
 import {
@@ -7,7 +6,7 @@ import {
   getFunctionRegion,
 } from "./functionsEmulatorShared";
 import * as utils from "../utils";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { FirebaseError } from "../error";
 import { LegacyEvent } from "./events/types";
 
@@ -21,7 +20,7 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
   urls: { [name: string]: string } = {};
 
   constructor(private emu: FunctionsEmulator) {
-    this.triggers = emu.getTriggers();
+    this.triggers = emu.getTriggerDefinitions();
     this.emulatedFunctions = this.triggers.map((t) => t.name);
 
     const entryPoints = this.triggers.map((t) => t.entryPoint);

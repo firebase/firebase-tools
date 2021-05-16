@@ -3,7 +3,7 @@ import { get } from "lodash";
 
 import { errorRequestHandler, proxyRequestHandler } from "./proxy";
 import * as getProjectId from "../getProjectId";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { cloudRunApiOrigin, request as apiRequest } from "../api";
 
 export interface CloudRunProxyOptions {
@@ -25,12 +25,13 @@ function getCloudRunUrl(rewrite: CloudRunProxyRewrite, projectId: string): Promi
     return Promise.resolve(alreadyFetched);
   }
 
-  const path = `/v1alpha1/projects/${projectId}/locations/${rewrite.run.region ||
-    "us-central1"}/services/${rewrite.run.serviceId}`;
+  const path = `/v1/projects/${projectId}/locations/${
+    rewrite.run.region || "us-central1"
+  }/services/${rewrite.run.serviceId}`;
   logger.info(`[hosting] Looking up Cloud Run service "${path}" for its URL`);
   return apiRequest("GET", path, { origin: cloudRunApiOrigin, auth: true })
     .then((res) => {
-      const url = get(res, "body.status.address.hostname");
+      const url = get(res, "body.status.url");
       if (!url) {
         return Promise.reject("Cloud Run URL doesn't exist in response.");
       }
@@ -49,7 +50,7 @@ function getCloudRunUrl(rewrite: CloudRunProxyRewrite, projectId: string): Promi
  * that resolves with a middleware-like function that proxies the request to
  * the live Cloud Run service running within the given project.
  */
-export default function(
+export default function (
   options: CloudRunProxyOptions
 ): (r: CloudRunProxyRewrite) => Promise<RequestHandler> {
   return async (rewrite: CloudRunProxyRewrite) => {

@@ -7,7 +7,7 @@ var os = require("os");
 var { Command } = require("../command");
 var accountExporter = require("../accountExporter");
 var getProjectId = require("../getProjectId");
-var logger = require("../logger");
+const { logger } = require("../logger");
 var { requirePermissions } = require("../requirePermissions");
 
 var MAX_BATCH_SIZE = 1000;
@@ -22,7 +22,7 @@ module.exports = new Command("auth:export [dataFile]")
     "Format of exported data (csv, json). Ignored if [dataFile] has format extension."
   )
   .before(requirePermissions, ["firebaseauth.users.get"])
-  .action(function(dataFile, options) {
+  .action(function (dataFile, options) {
     var projectId = getProjectId(options);
     var checkRes = validateOptions(options, dataFile);
     if (!checkRes.format) {
@@ -36,14 +36,14 @@ module.exports = new Command("auth:export [dataFile]")
     exportOptions.writeStream = writeStream;
     exportOptions.batchSize = MAX_BATCH_SIZE;
     logger.info("Exporting accounts to " + clc.bold(dataFile));
-    return serialExportUsers(projectId, exportOptions).then(function() {
+    return serialExportUsers(projectId, exportOptions).then(function () {
       if (exportOptions.format === "json") {
         writeStream.write("]}");
       }
       writeStream.end();
       // Ensure process ends only when all data have been flushed
       // to the output file
-      return new Promise(function(resolve, reject) {
+      return new Promise(function (resolve, reject) {
         writeStream.on("finish", resolve);
         writeStream.on("close", resolve);
         writeStream.on("error", reject);

@@ -1,10 +1,13 @@
-import { FirebaseError } from "../../error";
-import * as _ from "lodash";
-import * as path from "path";
 import * as clc from "cli-color";
-import * as logger from "../../logger";
-import * as projectPath from "../../projectPath";
+import * as path from "path";
+
+import { FirebaseError } from "../../error";
+import { logger } from "../../logger";
+import { RUNTIME_NOT_SET } from "./parseRuntimeAndValidateSDK";
+import { getFunctionLabel } from "./functionsDeployHelper";
+import * as backend from "./backend";
 import * as fsutils from "../../fsutils";
+import * as projectPath from "../../projectPath";
 
 // have to require this because no @types/cjson available
 // tslint:disable-next-line
@@ -12,12 +15,16 @@ const cjson = require("cjson");
 
 /**
  * Check that functions directory exists.
- * @param cwd Working directory.
+ * @param options options object. In prod is an args.Options; in tests can just be {cwd: string}
  * @param sourceDirName Relative path to source directory.
  * @throws { FirebaseError } Functions directory must exist.
  */
-export function functionsDirectoryExists(cwd: string, sourceDirName: string): void {
-  if (!fsutils.dirExistsSync(projectPath.resolveProjectPath(cwd, sourceDirName))) {
+export function functionsDirectoryExists(
+  options: { cwd: string; configPath?: string },
+  sourceDirName: string
+): void {
+  // Note(inlined): What's the difference between this and options.config.path(sourceDirName)?
+  if (!fsutils.dirExistsSync(projectPath.resolveProjectPath(options, sourceDirName))) {
     const msg =
       `could not deploy functions because the ${clc.bold('"' + sourceDirName + '"')} ` +
       `directory was not found. Please create it or specify a different source directory in firebase.json`;
@@ -31,14 +38,12 @@ export function functionsDirectoryExists(cwd: string, sourceDirName: string): vo
  * @param functionNames Object containing function names as keys.
  * @throws { FirebaseError } Function names must be valid.
  */
-export function functionNamesAreValid(functionNames: {}): void {
+export function functionIdsAreValid(functions: { id: string }[]): void {
   const validFunctionNameRegex = /^[a-zA-Z0-9_-]{1,62}$/;
-  const invalidNames = _.reject(_.keys(functionNames), (name: string): boolean => {
-    return _.startsWith(name, ".") || validFunctionNameRegex.test(name);
-  });
-  if (!_.isEmpty(invalidNames)) {
+  const invalidIds = functions.filter((fn) => !validFunctionNameRegex.test(fn.id));
+  if (invalidIds.length !== 0) {
     const msg =
-      `${invalidNames.join(", ")} function name(s) can only contain letters, ` +
+      `${invalidIds.join(", ")} function name(s) can only contain letters, ` +
       `numbers, hyphens, and not exceed 62 characters in length`;
     throw new FirebaseError(msg);
   }
@@ -49,12 +54,14 @@ export function functionNamesAreValid(functionNames: {}): void {
  * @param sourceDirName Name of source directory.
  * @param sourceDir Relative path of source directory.
  * @param projectDir Relative path of project directory.
+ * @param hasRuntimeConfigInConfig Whether the runtime was chosen in the `functions` section of firebase.json.
  * @throws { FirebaseError } Package.json must be present and valid.
  */
 export function packageJsonIsValid(
   sourceDirName: string,
   sourceDir: string,
-  projectDir: string
+  projectDir: string,
+  hasRuntimeConfigInConfig: boolean
 ): void {
   const packageJsonFile = path.join(sourceDir, "package.json");
   if (!fsutils.fileExistsSync(packageJsonFile)) {
@@ -62,14 +69,52 @@ export function packageJsonIsValid(
     throw new FirebaseError(msg);
   }
 
+  let data;
   try {
-    const data = cjson.load(packageJsonFile);
+    data = cjson.load(packageJsonFile);
     logger.debug("> [functions] package.json contents:", JSON.stringify(data, null, 2));
     assertFunctionsSourcePresent(data, sourceDir, projectDir);
-    assertEnginesFieldPresent(data, sourceDirName);
   } catch (e) {
     const msg = `There was an error reading ${sourceDirName}${path.sep}package.json:\n\n ${e.message}`;
     throw new FirebaseError(msg);
+  }
+
+  if (!hasRuntimeConfigInConfig) {
+    assertEnginesFieldPresent(data);
+  }
+}
+
+export function checkForInvalidChangeOfTrigger(
+  fn: backend.FunctionSpec,
+  exFn: backend.FunctionSpec
+) {
+  const wantEventTrigger = backend.isEventTrigger(fn.trigger);
+  const haveEventTrigger = backend.isEventTrigger(exFn.trigger);
+  if (!wantEventTrigger && haveEventTrigger) {
+    throw new FirebaseError(
+      `[${getFunctionLabel(
+        fn
+      )}] Changing from a background triggered function to an HTTPS function is not allowed. Please delete your function and create a new one instead.`
+    );
+  }
+  if (wantEventTrigger && !haveEventTrigger) {
+    throw new FirebaseError(
+      `[${getFunctionLabel(
+        fn
+      )}] Changing from an HTTPS function to an background triggered function is not allowed. Please delete your function and create a new one instead.`
+    );
+  }
+  if (fn.apiVersion == 2 && exFn.apiVersion == 1) {
+    throw new FirebaseError(
+      `[${getFunctionLabel(
+        fn
+      )}] Upgrading from GCFv1 to GCFv2 is not yet supported. Please delete your old function or wait for this feature to be ready.`
+    );
+  }
+  if (fn.apiVersion == 1 && exFn.apiVersion == 2) {
+    throw new FirebaseError(
+      `[${getFunctionLabel(fn)}] Functions cannot be downgraded from GCFv2 to GCFv1`
+    );
   }
 }
 
@@ -94,17 +139,10 @@ function assertFunctionsSourcePresent(data: any, sourceDir: string, projectDir: 
 /**
  * Asserts the engines field is present in package.json.
  * @param data Object representing package.json file.
- * @param sourceDirName Name of the functions source directory.
  * @throws { FirebaseError } Engines field must be present in package.json.
  */
-function assertEnginesFieldPresent(data: any, sourceDirName: string): void {
+function assertEnginesFieldPresent(data: any): void {
   if (!data.engines || !data.engines.node) {
-    const msg =
-      `Engines field is required but was not found in ${sourceDirName}${path.sep}package.json.\n` +
-      `To fix this, add the following lines to your package.json: \n
-      "engines": {
-        "node": "10"
-      }\n`;
-    throw new FirebaseError(msg);
+    throw new FirebaseError(RUNTIME_NOT_SET);
   }
 }

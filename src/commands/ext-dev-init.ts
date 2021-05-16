@@ -3,11 +3,12 @@ import * as path from "path";
 import * as marked from "marked";
 import TerminalRenderer = require("marked-terminal");
 
+import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import * as Config from "../config";
 import { FirebaseError } from "../error";
 import { promptOnce } from "../prompt";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import * as npmDependencies from "../init/features/functions/npm-dependencies";
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -37,20 +38,24 @@ async function typescriptSelected(config: Config): Promise<void> {
     path.join(TEMPLATE_ROOT, "typescript", "tsconfig.json"),
     "utf8"
   );
+  const tsconfigDevTemplate = fs.readFileSync(
+    path.join(TEMPLATE_ROOT, "typescript", "tsconfig.dev.json"),
+    "utf8"
+  );
   const indexTemplate = fs.readFileSync(path.join(TEMPLATE_ROOT, "typescript", "index.ts"), "utf8");
   const gitignoreTemplate = fs.readFileSync(
     path.join(TEMPLATE_ROOT, "typescript", "_gitignore"),
     "utf8"
   );
-  const tslintTemplate = fs.readFileSync(
-    path.join(FUNCTIONS_ROOT, "typescript", "tslint.json"),
+  const eslintTemplate = fs.readFileSync(
+    path.join(FUNCTIONS_ROOT, "typescript", "_eslintrc"),
     "utf8"
   );
 
   const lint = await promptOnce({
     name: "lint",
     type: "confirm",
-    message: "Do you want to use TSLint to catch probable bugs and enforce style?",
+    message: "Do you want to use ESLint to catch probable bugs and enforce style?",
     default: true,
   });
 
@@ -60,11 +65,14 @@ async function typescriptSelected(config: Config): Promise<void> {
   await config.askWriteProjectFile("functions/src/index.ts", indexTemplate);
   if (lint) {
     await config.askWriteProjectFile("functions/package.json", packageLintingTemplate);
-    await config.askWriteProjectFile("functions/tslint.json", tslintTemplate);
+    await config.askWriteProjectFile("functions/.eslintrc.js", eslintTemplate);
   } else {
     await config.askWriteProjectFile("functions/package.json", packageNoLintingTemplate);
   }
   await config.askWriteProjectFile("functions/tsconfig.json", tsconfigTemplate);
+  if (lint) {
+    await config.askWriteProjectFile("functions/tsconfig.dev.json", tsconfigDevTemplate);
+  }
   await config.askWriteProjectFile("functions/.gitignore", gitignoreTemplate);
 }
 
@@ -87,7 +95,7 @@ async function javascriptSelected(config: Config): Promise<void> {
     "utf8"
   );
   const eslintTemplate = fs.readFileSync(
-    path.join(FUNCTIONS_ROOT, "javascript", "eslint.json"),
+    path.join(FUNCTIONS_ROOT, "javascript", "_eslintrc"),
     "utf8"
   );
 
@@ -104,7 +112,7 @@ async function javascriptSelected(config: Config): Promise<void> {
   await config.askWriteProjectFile("functions/index.js", indexTemplate);
   if (lint) {
     await config.askWriteProjectFile("functions/package.json", packageLintingTemplate);
-    await config.askWriteProjectFile("functions/.eslintrc.json", eslintTemplate);
+    await config.askWriteProjectFile("functions/.eslintrc.js", eslintTemplate);
   } else {
     await config.askWriteProjectFile("functions/package.json", packageNoLintingTemplate);
   }
@@ -116,6 +124,7 @@ async function javascriptSelected(config: Config): Promise<void> {
  */
 export default new Command("ext:dev:init")
   .description("initialize files for writing an extension in the current directory")
+  .before(checkMinRequiredVersion, "extDevMinVersion")
   .action(async (options: any) => {
     const cwd = options.cwd || process.cwd();
     const config = new Config({}, { projectDir: cwd, cwd: cwd });

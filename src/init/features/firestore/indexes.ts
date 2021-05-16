@@ -5,7 +5,7 @@ import { FirebaseError } from "../../../error";
 import iv2 = require("../../../firestore/indexes");
 import fsutils = require("../../../fsutils");
 import { prompt, promptOnce } from "../../../prompt";
-import logger = require("../../../logger");
+import { logger } from "../../../logger";
 
 const indexes = new iv2.FirestoreIndexes();
 
@@ -14,7 +14,7 @@ const INDEXES_TEMPLATE = fs.readFileSync(
   "utf8"
 );
 
-export async function initIndexes(setup: any, config: any): Promise<any> {
+export function initIndexes(setup: any, config: any): Promise<any> {
   logger.info();
   logger.info("Firestore indexes allow you to perform complex queries while");
   logger.info("maintaining performance that scales with the size of the result");
@@ -51,13 +51,17 @@ export async function initIndexes(setup: any, config: any): Promise<any> {
         return Promise.resolve();
       }
 
+      if (!setup.projectId) {
+        return config.writeProjectFile(setup.config.firestore.indexes, INDEXES_TEMPLATE);
+      }
+
       return getIndexesFromConsole(setup.projectId).then((contents: any) => {
         return config.writeProjectFile(setup.config.firestore.indexes, contents);
       });
     });
 }
 
-async function getIndexesFromConsole(projectId: any): Promise<any> {
+function getIndexesFromConsole(projectId: any): Promise<any> {
   const indexesPromise = indexes.listIndexes(projectId);
   const fieldOverridesPromise = indexes.listFieldOverrides(projectId);
 

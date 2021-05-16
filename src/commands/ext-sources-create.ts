@@ -1,6 +1,7 @@
+import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import * as getProjectId from "../getProjectId";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import {
   createSourceFromLocation,
   ensureExtensionsApiEnabled,
@@ -18,8 +19,9 @@ export default new Command("ext:sources:create <sourceLocation>")
       "For example, if your extension.yaml is in the my/extension directory of the archive, " +
       "you should use sourceUrl#my/extension. If no extensionRoot is specified, / is assumed."
   )
-  .before(requirePermissions, ["firebasemods.sources.create"])
+  .before(requirePermissions, ["firebaseextensions.sources.create"])
   .before(ensureExtensionsApiEnabled)
+  .before(checkMinRequiredVersion, "extDevMinVersion")
   .action(async (sourceLocation: string, options: any) => {
     const projectId = getProjectId(options);
     const res = await createSourceFromLocation(projectId, sourceLocation);

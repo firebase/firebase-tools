@@ -3,24 +3,24 @@ import { expect } from "chai";
 
 import Queue from "../../throttler/queue";
 import Stack from "../../throttler/stack";
-import { Throttler, ThrottlerOptions } from "../../throttler/throttler";
+import { Throttler, ThrottlerOptions, timeToWait } from "../../throttler/throttler";
 import TaskError from "../../throttler/errors/task-error";
 import TimeoutError from "../../throttler/errors/timeout-error";
 import RetriesExhaustedError from "../../throttler/errors/retries-exhausted-error";
 
 const TEST_ERROR = new Error("foobar");
 
-type ThrottlerConstructor = new <T, R>(options: ThrottlerOptions<T, R>) => Throttler<T, R>;
+type ThrottlerConstructorType = new <T, R>(options: ThrottlerOptions<T, R>) => Throttler<T, R>;
 
-const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
+const throttlerTest = (ThrottlerConstructor: ThrottlerConstructorType): void => {
   it("should have no waiting task after creation", () => {
-    const queue = new throttlerConstructor({});
+    const queue = new ThrottlerConstructor({});
     expect(queue.hasWaitingTask()).to.equal(false);
   });
 
   it("should return the task as the task name", () => {
     const handler = sinon.stub().resolves();
-    const q = new throttlerConstructor({
+    const q = new ThrottlerConstructor({
       handler,
     });
 
@@ -32,7 +32,7 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
 
   it("should return the index as the task name", () => {
     const handler = sinon.stub().resolves();
-    const q = new throttlerConstructor({
+    const q = new ThrottlerConstructor({
       handler,
     });
 
@@ -43,7 +43,7 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
 
   it("should return 'finished task' as the task name", () => {
     const handler = sinon.stub().resolves();
-    const q = new throttlerConstructor({
+    const q = new ThrottlerConstructor({
       handler,
     });
 
@@ -57,7 +57,7 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
 
   it("should handle function tasks", () => {
     const task = sinon.stub().resolves();
-    const q = new throttlerConstructor({});
+    const q = new ThrottlerConstructor({});
 
     q.add(task);
     q.close();
@@ -74,7 +74,7 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
 
   it("should handle tasks", () => {
     const handler = sinon.stub().resolves();
-    const q = new throttlerConstructor({
+    const q = new ThrottlerConstructor({
       handler,
     });
 
@@ -93,7 +93,7 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
 
   it("should not retry", () => {
     const handler = sinon.stub().rejects(TEST_ERROR);
-    const q = new throttlerConstructor({
+    const q = new ThrottlerConstructor({
       handler,
       retries: 0,
     });
@@ -109,7 +109,9 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
       .catch((err: TaskError) => {
         expect(err).to.be.an.instanceof(RetriesExhaustedError);
         expect(err.original).to.equal(TEST_ERROR);
-        expect(err.message).to.equal("Task index 0 failed: retries exhausted after 1 attempts");
+        expect(err.message).to.equal(
+          "Task index 0 failed: retries exhausted after 1 attempts, with error: foobar"
+        );
       })
       .then(() => {
         expect(handler.callCount).to.equal(1);
@@ -123,7 +125,7 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
 
   it("should retry the number of retries, plus one", () => {
     const handler = sinon.stub().rejects(TEST_ERROR);
-    const q = new throttlerConstructor({
+    const q = new ThrottlerConstructor({
       backoff: 0,
       handler,
       retries: 3,
@@ -140,7 +142,9 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
       .catch((err: TaskError) => {
         expect(err).to.be.an.instanceof(RetriesExhaustedError);
         expect(err.original).to.equal(TEST_ERROR);
-        expect(err.message).to.equal("Task index 0 failed: retries exhausted after 4 attempts");
+        expect(err.message).to.equal(
+          "Task index 0 failed: retries exhausted after 4 attempts, with error: foobar"
+        );
       })
       .then(() => {
         expect(handler.callCount).to.equal(4);
@@ -167,7 +171,7 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
       return Promise.reject();
     };
 
-    const q = new throttlerConstructor({
+    const q = new ThrottlerConstructor({
       backoff: 0,
       concurrency: 2,
       handler,
@@ -204,7 +208,7 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
       .onCall(8)
       .resolves(0);
 
-    const q = new throttlerConstructor({
+    const q = new ThrottlerConstructor({
       backoff: 0,
       concurrency: 1, // this makes sure only one task is running at a time, so not flaky
       handler,
@@ -236,7 +240,7 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
       return Promise.resolve(`result: ${task}`);
     };
 
-    const q = new throttlerConstructor({
+    const q = new ThrottlerConstructor({
       handler,
     });
 
@@ -300,7 +304,9 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
     }
     expect(err).to.be.instanceOf(RetriesExhaustedError);
     expect(err.original).to.equal(TEST_ERROR);
-    expect(err.message).to.equal("Task index 0 failed: retries exhausted after 3 attempts");
+    expect(err.message).to.equal(
+      "Task index 0 failed: retries exhausted after 3 attempts, with error: foobar"
+    );
     expect(handler.callCount).to.equal(3);
     expect(q.complete).to.equal(1);
     expect(q.success).to.equal(0);
@@ -335,11 +341,7 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
   });
 
   it("should reject with TimeoutError when waiting", async () => {
-    const handler = sinon
-      .stub()
-      .rejects(TEST_ERROR)
-      .onFirstCall()
-      .resolves(0);
+    const handler = sinon.stub().rejects(TEST_ERROR).onFirstCall().resolves(0);
 
     const q = new Queue({
       handler,
@@ -368,11 +370,7 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
   });
 
   it("should reject with RetriesExhaustedError when waiting", async () => {
-    const handler = sinon
-      .stub()
-      .rejects(TEST_ERROR)
-      .onFirstCall()
-      .resolves(0);
+    const handler = sinon.stub().rejects(TEST_ERROR).onFirstCall().resolves(0);
 
     const q = new Queue({
       handler,
@@ -391,7 +389,9 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
       err = e;
     }
     expect(err).to.be.instanceOf(RetriesExhaustedError);
-    expect(err.message).to.equal("Task index 1 failed: retries exhausted after 2 attempts");
+    expect(err.message).to.equal(
+      "Task index 1 failed: retries exhausted after 2 attempts, with error: foobar"
+    );
     expect(handler.callCount).to.equal(3);
     expect(q.complete).to.equal(2);
     expect(q.success).to.equal(1);
@@ -407,6 +407,30 @@ describe("Throttler", () => {
   });
   describe("Stack", () => {
     throttlerTest(Stack);
+  });
+});
+
+describe("timeToWait", () => {
+  it("should wait the base delay on the first attempt", () => {
+    const retryCount = 0;
+    const delay = 100;
+    const maxDelay = 1000;
+    expect(timeToWait(retryCount, delay, maxDelay)).to.equal(delay);
+  });
+
+  it("should back off exponentially", () => {
+    const delay = 100;
+    const maxDelay = 1000;
+    expect(timeToWait(1, delay, maxDelay)).to.equal(delay * 2);
+    expect(timeToWait(2, delay, maxDelay)).to.equal(delay * 4);
+    expect(timeToWait(3, delay, maxDelay)).to.equal(delay * 8);
+  });
+
+  it("should not wait longer than maxDelay", () => {
+    const retryCount = 2;
+    const delay = 300;
+    const maxDelay = 400;
+    expect(timeToWait(retryCount, delay, maxDelay)).to.equal(maxDelay);
   });
 });
 

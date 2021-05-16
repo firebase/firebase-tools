@@ -3,23 +3,31 @@
 var api = require("./api");
 var { FirebaseError } = require("./error");
 var utils = require("./utils");
-
-exports.updateRules = function(instance, src, options) {
+const { populateInstanceDetails } = require("./management/database");
+const { realtimeOriginOrCustomUrl } = require("./database/api");
+exports.updateRules = function (projectId, instance, src, options) {
   options = options || {};
-  var url = "/.settings/rules.json";
+  var path = ".settings/rules.json";
   if (options.dryRun) {
-    url += "?dryRun=true";
+    path += "?dryRun=true";
   }
-
-  return api
-    .request("PUT", url, {
-      origin: utils.addSubdomain(api.realtimeOrigin, instance),
-      auth: true,
-      data: src,
-      json: false,
-      resolveOnHTTPError: true,
+  var downstreamOptions = { instance: instance, project: projectId };
+  return populateInstanceDetails(downstreamOptions)
+    .then(function () {
+      const origin = utils.getDatabaseUrl(
+        realtimeOriginOrCustomUrl(downstreamOptions.instanceDetails.databaseUrl),
+        instance,
+        ""
+      );
+      return api.request("PUT", path, {
+        origin: origin,
+        auth: true,
+        data: src,
+        json: false,
+        resolveOnHTTPError: true,
+      });
     })
-    .then(function(response) {
+    .then(function (response) {
       if (response.status === 400) {
         throw new FirebaseError(
           "Syntax error in database rules:\n\n" + JSON.parse(response.body).error
