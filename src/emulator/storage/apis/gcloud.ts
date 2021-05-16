@@ -90,9 +90,8 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     res.json(listResult);
   });
 
-  gcloudStorageAPI.delete("/b/:bucketId/o/:object", (req, res) => {
-    const decodedObjectId = decodeURIComponent(req.params.objectId);
-    const md = storageLayer.getMetadata(req.params.bucketId, decodedObjectId);
+  gcloudStorageAPI.delete("/b/:bucketId/o/:objectId", (req, res) => {
+    const md = storageLayer.getMetadata(req.params.bucketId, req.params.objectId);
 
     if (!md) {
       res.sendStatus(404);
