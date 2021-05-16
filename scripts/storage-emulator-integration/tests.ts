@@ -244,6 +244,18 @@ describe("Storage emulator", () => {
         });
       });
 
+      describe("#download()", () => {
+        it("should return the content of the file", async () => {
+          await testBucket.upload(smallFilePath);
+          const [downloadContent] = await testBucket
+            .file(smallFilePath.split("/").slice(-1)[0])
+            .download();
+          
+          const actualContent = fs.readFileSync(smallFilePath);
+          expect(downloadContent).to.deep.equal(actualContent);
+        });
+      });
+
       describe("#getMetadata()", () => {
         it("should throw on non-existing file", async () => {
           let err: any;
