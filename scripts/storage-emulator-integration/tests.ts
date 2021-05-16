@@ -136,6 +136,7 @@ describe("Storage emulator", () => {
 
   let smallFilePath: string;
   let largeFilePath: string;
+  let toDeleteFilePath: string;
 
   // Emulators accept fake app configs. This is sufficient for testing against the emulator.
   const FAKE_APP_CONFIG = {
@@ -180,6 +181,7 @@ describe("Storage emulator", () => {
 
       smallFilePath = createRandomFile("small_file", SMALL_FILE_SIZE);
       largeFilePath = createRandomFile("large_file", LARGE_FILE_SIZE);
+      toDeleteFilePath = createRandomFile("to_delete_file", SMALL_FILE_SIZE);
     });
 
     beforeEach(async () => {
@@ -241,6 +243,19 @@ describe("Storage emulator", () => {
           });
 
           expect(files.map((file) => file.name)).to.contain("testing/dir/");
+        });
+      });
+
+      describe("#delete()", () => {
+        it.only("should properly delete a file from the bucket", async () => {
+          await testBucket.upload(toDeleteFilePath);
+          await testBucket.file(toDeleteFilePath.split("/").slice(-1)[0]).delete();
+
+          try {
+            fs.statSync(toDeleteFilePath);
+          } catch (err) {
+            expect(err.code).to.be("ENOENT");
+          }
         });
       });
 
@@ -366,6 +381,7 @@ describe("Storage emulator", () => {
       if (tmpDir) {
         fs.unlinkSync(smallFilePath);
         fs.unlinkSync(largeFilePath);
+        fs.unlinkSync(toDeleteFilePath);
         fs.rmdirSync(tmpDir);
       }
 
@@ -744,7 +760,7 @@ describe("Storage emulator", () => {
         it("should paginate when nextPageToken is provided", async function (this) {
           this.timeout(TEST_SETUP_TIMEOUT);
           let responses: string[] = [];
-          let pageToken: string = "";
+          let pageToken = "";
           let pageCount = 0;
 
           do {
