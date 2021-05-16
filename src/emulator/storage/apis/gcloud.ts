@@ -42,7 +42,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
         res.sendStatus(404);
         return;
       }
-      
+
       const isGZipped = md.contentEncoding == "gzip";
       if (isGZipped) {
         data = gunzipSync(data);
@@ -155,7 +155,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       bufs.push(data);
     });
 
-    await new Promise((resolve) => {
+    await new Promise<void>((resolve) => {
       req.on("end", () => {
         req.body = Buffer.concat(bufs);
         resolve();
