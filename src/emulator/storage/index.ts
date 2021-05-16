@@ -34,7 +34,7 @@ export class StorageEmulator implements EmulatorInstance {
 
   constructor(private args: StorageEmulatorArgs) {
     const downloadDetails = getDownloadDetails(Emulators.STORAGE);
-    this._rulesRuntime = new StorageRulesRuntime(downloadDetails.downloadPath);
+    this._rulesRuntime = new StorageRulesRuntime();
     this._storageLayer = new StorageLayer(args.projectId);
   }
 

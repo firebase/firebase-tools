@@ -1,7 +1,7 @@
 import * as clc from "cli-color";
 
 import { logger } from "../../logger";
-import { getFunctionId, getFunctionLabel } from "../../functionsDeployHelper";
+import { getFunctionId, getFunctionLabel } from "./functionsDeployHelper";
 import { FirebaseError } from "../../error";
 import { OperationType } from "./tasks";
 

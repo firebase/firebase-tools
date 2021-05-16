@@ -58,6 +58,7 @@ export function createApp(
     const path = req.body.path;
     if (!path) {
       res.status(400).send("Export request body must include 'path'.");
+      return;
     }
 
     await storageLayer.export(path);
@@ -97,6 +98,7 @@ export function createApp(
       res.status(400).json({
         message: "There was an error updating rules, see logs for more details",
       });
+      return;
     }
 
     res.status(200).json({

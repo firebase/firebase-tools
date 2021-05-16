@@ -129,7 +129,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   // get metadata and get object handler
   firebaseStorageAPI.get("/b/:bucketId/o/:objectId", async (req, res) => {
     const decodedObjectId = decodeURIComponent(req.params.objectId);
-    const operationPath = path.join("b", req.params.bucketId, "o", decodedObjectId);
+    const operationPath = ["b", req.params.bucketId, "o", decodedObjectId].join("/");
     const md = storageLayer.getMetadata(req.params.bucketId, decodedObjectId);
 
     if (!md) {
@@ -213,7 +213,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     }
 
     const decodedObjectId = decodeURIComponent(req.params.objectId);
-    const operationPath = path.join("b", req.params.bucketId, "o", decodedObjectId);
+    const operationPath = ["b", req.params.bucketId, "o", decodedObjectId].join("/");
 
     if (
       !(await isPermitted({
@@ -253,7 +253,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     const pageToken = req.query.pageToken ? req.query.pageToken.toString() : undefined;
     const prefix = req.query.prefix ? req.query.prefix.toString() : "";
 
-    const operationPath = path.join("b", req.params.bucketId, "o", prefix);
+    const operationPath = ["b", req.params.bucketId, "o", prefix].join("/");
 
     if (
       !(await isPermitted({
@@ -280,7 +280,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   const handleUpload = async (req: Request, res: Response) => {
     if (req.query.create_token || req.query.delete_token) {
       const decodedObjectId = decodeURIComponent(req.params.objectId);
-      const operationPath = path.join("b", req.params.bucketId, "o", decodedObjectId);
+      const operationPath = ["b", req.params.bucketId, "o", decodedObjectId].join("/");
 
       const mdBefore = storageLayer.getMetadata(req.params.bucketId, req.params.objectId);
 
@@ -393,7 +393,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         return;
       }
 
-      const operationPath = path.join("b", req.params.bucketId, "o", name);
+      const operationPath = ["b", req.params.bucketId, "o", name].join("/");
 
       if (
         !(await isPermitted({
@@ -419,7 +419,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       res.json(metadata);
       return;
     } else {
-      const operationPath = path.join("b", req.params.bucketId, "o", name);
+      const operationPath = ["b", req.params.bucketId, "o", name].join("/");
       const uploadCommand = req.header("x-goog-upload-command");
       if (!uploadCommand) {
         res.sendStatus(400);
@@ -571,7 +571,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
 
   firebaseStorageAPI.delete("/b/:bucketId/o/:objectId", async (req, res) => {
     const decodedObjectId = decodeURIComponent(req.params.objectId);
-    const operationPath = path.join("b", req.params.bucketId, "o", decodedObjectId);
+    const operationPath = ["b", req.params.bucketId, "o", decodedObjectId].join("/");
 
     if (
       !(await isPermitted({
