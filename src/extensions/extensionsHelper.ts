@@ -358,8 +358,7 @@ async function archiveAndUploadSource(extPath: string, bucketName: string): Prom
     type: "zip",
     ignore: ["node_modules", ".git"],
   });
-  const res = await uploadObject(zippedSource, bucketName);
-  return `/${res.bucket}/${res.object}`;
+  return await uploadObject(zippedSource, bucketName);
 }
 
 /**
