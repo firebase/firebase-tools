@@ -1,4 +1,6 @@
 import { Router } from "express";
+import { gunzipSync } from "zlib";
+import { EmulatorLogger } from "../../emulatorLogger";
 import { Emulators } from "../../types";
 import { CloudStorageObjectMetadata } from "../metadata";
 import { EmulatorRegistry } from "../../registry";
@@ -34,6 +36,45 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       return;
     }
 
+    if (req.query.alt == "media") {
+      let data = storageLayer.getBytes(req.params.bucketId, req.params.objectId);
+      if (!data) {
+        res.sendStatus(404);
+        return;
+      }
+
+      const isGZipped = md.contentEncoding == "gzip";
+      if (isGZipped) {
+        data = gunzipSync(data);
+      }
+
+      res.setHeader("Accept-Ranges", "bytes");
+      res.setHeader("Content-Type", md.contentType);
+      res.setHeader("Content-Disposition", md.contentDisposition);
+      res.setHeader("Content-Encoding", "identity");
+
+      const byteRange = [...(req.header("range") || "").split("bytes="), "", ""];
+
+      const [rangeStart, rangeEnd] = byteRange[1].split("-");
+
+      if (rangeStart) {
+        const range = {
+          start: parseInt(rangeStart),
+          end: rangeEnd ? parseInt(rangeEnd) : data.byteLength,
+        };
+        res.setHeader("Content-Range", `bytes ${range.start}-${range.end - 1}/${data.byteLength}`);
+        res.status(206).end(data.slice(range.start, range.end));
+      } else {
+        res.end(data);
+      }
+      return;
+    }
+
+    EmulatorLogger.forEmulator(Emulators.STORAGE).log(
+      "WARN",
+      `Returning metadata: ${JSON.stringify(md)}`
+    );
+    
     const outgoingMd = new CloudStorageObjectMetadata(md);
 
     res.json(outgoingMd).status(200).send();
@@ -102,7 +143,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       bufs.push(data);
     });
 
-    await new Promise((resolve) => {
+    await new Promise<void>((resolve) => {
       req.on("end", () => {
         req.body = Buffer.concat(bufs);
         resolve();

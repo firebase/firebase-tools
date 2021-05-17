@@ -122,7 +122,7 @@ function createRandomFile(filename: string, sizeInBytes: number): string {
  * Resets the storage layer of the Storage Emulator.
  */
 async function resetStorageEmulator(emulatorHost: string) {
-  await new Promise((resolve) => {
+  await new Promise<void>((resolve) => {
     request.post(`${emulatorHost}/internal/reset`, () => {
       resolve();
     });
@@ -241,6 +241,18 @@ describe("Storage emulator", () => {
           });
 
           expect(files.map((file) => file.name)).to.contain("testing/dir/");
+        });
+      });
+
+      describe("#download()", () => {
+        it("should return the content of the file", async () => {
+          await testBucket.upload(smallFilePath);
+          const [downloadContent] = await testBucket
+            .file(smallFilePath.split("/").slice(-1)[0])
+            .download();
+
+          const actualContent = fs.readFileSync(smallFilePath);
+          expect(downloadContent).to.deep.equal(actualContent);
         });
       });
 
