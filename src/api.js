@@ -110,6 +110,14 @@ var api = {
     "FIREBASE_DEPLOY_URL",
     utils.envOverride("FIREBASE_UPLOAD_URL", "https://deploy.firebase.com")
   ),
+  dynamicLinksOrigin: utils.envOverride(
+    "FIREBASE_DYNAMIC_LINKS_URL",
+    "https://firebasedynamiclinks.googleapis.com"
+  ),
+  dynamicLinksKey: utils.envOverride(
+    "FIREBASE_DYNAMIC_LINKS_KEY",
+    "AIzaSyB6PtY5vuiSB8MNgt20mQffkOlunZnHYiQ"
+  ),
   firebaseApiOrigin: utils.envOverride("FIREBASE_API_URL", "https://firebase.googleapis.com"),
   firebaseExtensionsRegistryOrigin: utils.envOverride(
     "FIREBASE_EXT_REGISTRY_ORIGIN",
