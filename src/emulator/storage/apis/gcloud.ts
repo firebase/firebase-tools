@@ -28,58 +28,64 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     next();
   });
 
-  gcloudStorageAPI.get("/b/:bucketId/o/:objectId", (req, res) => {
-    const md = storageLayer.getMetadata(req.params.bucketId, req.params.objectId);
+  gcloudStorageAPI.get(
+    ["/b/:bucketId/o/:objectId", "/download/storage/v1/b/:bucketId/o/:objectId"],
+    (req, res) => {
+      const md = storageLayer.getMetadata(req.params.bucketId, req.params.objectId);
 
-    if (!md) {
-      res.sendStatus(404);
-      return;
-    }
-
-    if (req.query.alt == "media") {
-      let data = storageLayer.getBytes(req.params.bucketId, req.params.objectId);
-      if (!data) {
+      if (!md) {
         res.sendStatus(404);
         return;
       }
 
-      const isGZipped = md.contentEncoding == "gzip";
-      if (isGZipped) {
-        data = gunzipSync(data);
+      if (req.query.alt == "media") {
+        let data = storageLayer.getBytes(req.params.bucketId, req.params.objectId);
+        if (!data) {
+          res.sendStatus(404);
+          return;
+        }
+
+        const isGZipped = md.contentEncoding == "gzip";
+        if (isGZipped) {
+          data = gunzipSync(data);
+        }
+
+        res.setHeader("Accept-Ranges", "bytes");
+        res.setHeader("Content-Type", md.contentType);
+        res.setHeader("Content-Disposition", md.contentDisposition);
+        res.setHeader("Content-Encoding", "identity");
+
+        const byteRange = [...(req.header("range") || "").split("bytes="), "", ""];
+
+        const [rangeStart, rangeEnd] = byteRange[1].split("-");
+
+        if (rangeStart) {
+          const range = {
+            start: parseInt(rangeStart),
+            end: rangeEnd ? parseInt(rangeEnd) : data.byteLength,
+          };
+          res.setHeader(
+            "Content-Range",
+            `bytes ${range.start}-${range.end - 1}/${data.byteLength}`
+          );
+          res.status(206).end(data.slice(range.start, range.end));
+        } else {
+          res.end(data);
+        }
+        return;
       }
 
-      res.setHeader("Accept-Ranges", "bytes");
-      res.setHeader("Content-Type", md.contentType);
-      res.setHeader("Content-Disposition", md.contentDisposition);
-      res.setHeader("Content-Encoding", "identity");
+      EmulatorLogger.forEmulator(Emulators.STORAGE).log(
+        "WARN",
+        `Returning metadata: ${JSON.stringify(md)}`
+      );
 
-      const byteRange = [...(req.header("range") || "").split("bytes="), "", ""];
+      const outgoingMd = new CloudStorageObjectMetadata(md);
 
-      const [rangeStart, rangeEnd] = byteRange[1].split("-");
-
-      if (rangeStart) {
-        const range = {
-          start: parseInt(rangeStart),
-          end: rangeEnd ? parseInt(rangeEnd) : data.byteLength,
-        };
-        res.setHeader("Content-Range", `bytes ${range.start}-${range.end - 1}/${data.byteLength}`);
-        res.status(206).end(data.slice(range.start, range.end));
-      } else {
-        res.end(data);
-      }
+      res.json(outgoingMd).status(200).send();
       return;
     }
-
-    EmulatorLogger.forEmulator(Emulators.STORAGE).log(
-      "WARN",
-      `Returning metadata: ${JSON.stringify(md)}`
-    );
-
-    const outgoingMd = new CloudStorageObjectMetadata(md);
-
-    res.json(outgoingMd).status(200).send();
-    return;
-  });
+  );
 
   gcloudStorageAPI.patch("/b/:bucketId/o/:objectId", (req, res) => {
     const md = storageLayer.getMetadata(req.params.bucketId, req.params.objectId);
