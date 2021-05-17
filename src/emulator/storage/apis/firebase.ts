@@ -531,6 +531,8 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         }
         upload = finalizedUpload.upload;
 
+        res.header("x-goog-upload-status", "final");
+
         // For resumable uploads, we check auth on finalization in case of byte-dependant rules
         if (
           !(await isPermitted({
@@ -558,7 +560,6 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
           md.addDownloadToken();
         }
 
-        res.header("x-goog-upload-status", "final");
         res.json(new OutgoingFirebaseMetadata(finalizedUpload.file.metadata));
       } else if (!upload) {
         res.sendStatus(400);

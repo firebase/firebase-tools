@@ -1,6 +1,5 @@
 import { Router } from "express";
 import { gunzipSync } from "zlib";
-import { EmulatorLogger } from "../../emulatorLogger";
 import { Emulators } from "../../types";
 import { CloudStorageObjectMetadata } from "../metadata";
 import { EmulatorRegistry } from "../../registry";
@@ -69,11 +68,6 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       }
       return;
     }
-
-    EmulatorLogger.forEmulator(Emulators.STORAGE).log(
-      "WARN",
-      `Returning metadata: ${JSON.stringify(md)}`
-    );
 
     const outgoingMd = new CloudStorageObjectMetadata(md);
 
