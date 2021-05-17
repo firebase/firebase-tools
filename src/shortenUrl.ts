@@ -1,5 +1,3 @@
-// curl -d '{"dynamicLinkInfo":{"link":"https://firebase.google.com/docs","domainUriPrefix":"https://firebase.tools/l"}, "suffix":{"option":"SHORT"}}' --header "Content-Type: application/json" https://firebasedynamiclinks.googleapis.com/v1/shortLinks\?key\=AIzaSyB6PtY5vuiSB8MNgt20mQffkOlunZnHYiQ
-
 import { logger } from "./logger";
 import { Client } from "./apiv2";
 import { dynamicLinksKey, dynamicLinksOrigin } from "./api";
@@ -30,7 +28,7 @@ interface DynamicLinksResponse {
  *
  * @param url The URL to shorten.
  * @param guessable When true, a shorter suffix (~4 characters) is used instead of an unguessable one. Do not set to true when URL contains personally identifiable information.
- * @returns The short URL or the original URL if an error occurs.
+ * @return The short URL or the original URL if an error occurs.
  */
 export async function shortenUrl(url: string, guessable = false): Promise<string> {
   try {
