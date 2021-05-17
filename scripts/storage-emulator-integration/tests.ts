@@ -327,6 +327,27 @@ describe("Storage emulator", () => {
             timeStorageClassUpdated: "string",
           });
         });
+
+        it("should return a functional media link", async () => {
+          await testBucket.upload(smallFilePath);
+          const [{ mediaLink }] = await testBucket
+            .file(smallFilePath.split("/").slice(-1)[0])
+            .getMetadata();
+
+          const requestClient = TEST_CONFIG.useProductionServers ? https : http;
+          await new Promise((resolve, reject) => {
+            requestClient.get(mediaLink, {}, (response) => {
+              const data: any = [];
+              response
+                .on("data", (chunk) => data.push(chunk))
+                .on("end", () => {
+                  expect(Buffer.concat(data).length).to.equal(SMALL_FILE_SIZE);
+                })
+                .on("close", resolve)
+                .on("error", reject);
+            });
+          });
+        });
       });
 
       describe("#setMetadata()", () => {
