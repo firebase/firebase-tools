@@ -251,11 +251,7 @@ describe("Storage emulator", () => {
           await testBucket.upload(toDeleteFilePath);
           await testBucket.file(toDeleteFilePath.split("/").slice(-1)[0]).delete();
 
-          try {
-            fs.statSync(toDeleteFilePath);
-          } catch (err) {
-            expect(err.code).to.be("ENOENT");
-          }
+          expect(!fs.existsSync(toDeleteFilePath)).to.equal(true);
         });
       });
 
