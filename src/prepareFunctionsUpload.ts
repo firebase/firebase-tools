@@ -6,14 +6,14 @@ import * as fs from "fs";
 import * as path from "path";
 import * as tmp from "tmp";
 
-import { FirebaseError } from "../../error";
-import { logger } from "../../logger";
-import { discoverBackendSpec } from "./discovery";
-import { isEmptyBackend } from "./backend";
-import * as functionsConfig from "../../functionsConfig";
-import * as utils from "../../utils";
-import * as fsAsync from "../../fsAsync";
-import * as args from "./args";
+import { FirebaseError } from "./error";
+import * as functionsConfig from "./functionsConfig";
+import * as getProjectId from "./getProjectId";
+import { logger } from "./logger";
+import * as utils from "./utils";
+import * as parseTriggers from "./parseTriggers";
+import * as fsAsync from "./fsAsync";
+import * as args from "./deploy/functions/args";
 
 const CONFIG_DEST_FILE = ".runtimeconfig.json";
 
@@ -65,7 +65,7 @@ async function packageSource(options: args.Options, sourceDir: string, configVal
   // you're in the public dir when you deploy.
   // We ignore any CONFIG_DEST_FILE that already exists, and write another one
   // with current config values into the archive in the "end" handler for reader
-  const ignore = options.config.get("functions.ignore", ["node_modules", ".git"]) as string[];
+  const ignore = options.config.get("functions.ignore", ["node_modules", ".git"]);
   ignore.push(
     "firebase-debug.log",
     "firebase-debug.*.log",
@@ -102,18 +102,19 @@ async function packageSource(options: args.Options, sourceDir: string, configVal
       filesize(archive.pointer()) +
       ") for uploading"
   );
-  return tmpFile;
+  return {
+    file: tmpFile,
+    stream: fs.createReadStream(tmpFile),
+    size: archive.pointer(),
+  };
 }
 
-export async function prepareFunctionsUpload(
-  context: args.Context,
-  options: args.Options
-): Promise<string | undefined> {
-  const sourceDir = options.config.path(options.config.get("functions.source") as string);
+export async function prepareFunctionsUpload(context: args.Context, options: args.Options) {
+  const sourceDir = options.config.path(options.config.get("functions.source"));
   const configValues = await getFunctionsConfig(context);
-  const backend = await discoverBackendSpec(context, options, configValues);
-  options.config.set("functions.backend", backend);
-  if (isEmptyBackend(backend)) {
+  const triggers = await parseTriggers(getProjectId(options), sourceDir, configValues);
+  options.config.set("functions.triggers", triggers);
+  if (triggers.length === 0) {
     // No need to package if there are 0 functions to deploy.
     return;
   }
