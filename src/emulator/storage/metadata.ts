@@ -245,6 +245,8 @@ export class OutgoingFirebaseMetadata {
   md5Hash: string;
   contentEncoding: string;
   contentDisposition: string;
+  contentLanguage?: string;
+  cacheControl?: string;
   crc32c: string;
   etag: string;
   downloadTokens: string;
@@ -267,6 +269,8 @@ export class OutgoingFirebaseMetadata {
     this.contentEncoding = md.contentEncoding;
     this.contentDisposition = md.contentDisposition;
     this.metadata = md.customMetadata;
+    this.contentLanguage = md.contentLanguage;
+    this.cacheControl = md.cacheControl;
   }
 }
 

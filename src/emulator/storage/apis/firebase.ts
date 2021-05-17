@@ -421,7 +421,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         md.addDownloadToken();
       }
 
-      res.json(md);
+      res.json(new OutgoingFirebaseMetadata(md));
       return;
     } else {
       const operationPath = ["b", req.params.bucketId, "o", name].join("/");
@@ -557,7 +557,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         }
 
         res.header("x-goog-upload-status", "final");
-        res.json(finalizedUpload.file.metadata);
+        res.json(new OutgoingFirebaseMetadata(finalizedUpload.file.metadata));
       } else if (!upload) {
         res.sendStatus(400);
         return;
