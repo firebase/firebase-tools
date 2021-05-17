@@ -3,8 +3,6 @@ import * as nock from "nock";
 import { dynamicLinksKey, dynamicLinksOrigin } from "../api";
 import { shortenUrl } from "../shortenUrl";
 
-nock.disableNetConnect();
-
 describe("shortenUrl", () => {
   const TEST_LINK = "https://abc.def/";
   const MOCKED_LINK = "https://firebase.tools/l/TEST";
