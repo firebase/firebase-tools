@@ -1,14 +1,12 @@
-import { expect } from "chai";
 import * as sinon from "sinon";
-
+import { expect } from "chai";
+import * as utils from "../utils";
+import * as runtime from "../parseRuntimeAndValidateSDK";
+import * as checkFirebaseSDKVersion from "../checkFirebaseSDKVersion";
+import { FirebaseError } from "../error";
 // Have to disable this because no @types/cjson available
-// eslint-disable-next-line
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const cjson = require("cjson");
-
-import { FirebaseError } from "../../../error";
-import * as checkFirebaseSDKVersion from "../../../checkFirebaseSDKVersion";
-import * as runtime from "../../../deploy/functions/parseRuntimeAndValidateSDK";
-import * as utils from "../../../utils";
 
 describe("getHumanFriendlyRuntimeName", () => {
   it("should properly convert raw runtime to human friendly runtime", () => {
@@ -78,6 +76,7 @@ describe("getRuntimeChoice", () => {
     });
 
     it("should throw error if unsupported node version set", () => {
+      // @ts-expect-error Known invalid Runtime
       expect(() => runtime.getRuntimeChoice("path/to/source", "nodejs11")).to.throw(
         FirebaseError,
         runtime.UNSUPPORTED_NODE_VERSION_FIREBASE_JSON_MSG
