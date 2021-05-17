@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { EmulatorLogger } from "../../emulatorLogger";
 import { Emulators } from "../../types";
 import { CloudStorageObjectMetadata } from "../metadata";
 import { EmulatorRegistry } from "../../registry";
@@ -35,11 +34,6 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       return;
     }
 
-    EmulatorLogger.forEmulator(Emulators.STORAGE).log(
-      "WARN",
-      `Returning metadata: ${JSON.stringify(md)}`
-    );
-
     const outgoingMd = new CloudStorageObjectMetadata(md);
 
     res.json(outgoingMd).status(200).send();
@@ -57,10 +51,6 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     md.update(req.body);
 
     const outgoingMetadata = new CloudStorageObjectMetadata(md);
-    EmulatorLogger.forEmulator(Emulators.STORAGE).log(
-      "WARN",
-      `Returning metadata: ${JSON.stringify(outgoingMetadata)}`
-    );
     res.json(outgoingMetadata).status(200).send();
     return;
   });
@@ -74,10 +64,6 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     const delimiter = req.query.delimiter ? req.query.delimiter.toString() : "/";
     const pageToken = req.query.pageToken ? req.query.pageToken.toString() : undefined;
     const prefix = req.query.prefix ? req.query.prefix.toString() : "";
-    EmulatorLogger.forEmulator(Emulators.STORAGE).log(
-      "WARN",
-      `Received list objects request for bucket: ${req.params.bucketId}, with prefix: ${prefix} and delimiter: ${delimiter} and pageToken: ${pageToken} and maxResults: ${req.params.maxResults}`
-    );
 
     const listResult = storageLayer.listItems(
       req.params.bucketId,
@@ -105,10 +91,6 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
 
   gcloudStorageAPI.put("/upload/storage/v1/b/:bucketId/o", async (req, res) => {
     if (!req.query.upload_id) {
-      EmulatorLogger.forEmulator(Emulators.STORAGE).log(
-        "WARN",
-        `No upload id passed as query parameter!`
-      );
       res.sendStatus(400);
       return;
     }
@@ -136,10 +118,6 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
 
     const finalizedUpload = storageLayer.finalizeUpload(uploadId);
     if (!finalizedUpload) {
-      EmulatorLogger.forEmulator(Emulators.STORAGE).log(
-        "WARN",
-        `No upload found for finalizeUpload:${uploadId}`
-      );
       res.sendStatus(400);
       return;
     }
@@ -161,7 +139,6 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     const contentType = req.header("content-type") || req.header("x-upload-content-type");
 
     if (!contentType) {
-      EmulatorLogger.forEmulator(Emulators.STORAGE).log("WARN", `Missing content type`);
       res.sendStatus(400);
       return;
     }
@@ -171,10 +148,6 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       const emulatorInfo = EmulatorRegistry.getInfo(Emulators.STORAGE);
 
       if (emulatorInfo == undefined) {
-        EmulatorLogger.forEmulator(Emulators.STORAGE).log(
-          "WARN",
-          `Can't generate upload URL, no running storage emulator?`
-        );
         res.sendStatus(500);
         return;
       }

@@ -181,8 +181,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
 
       res.setHeader("Accept-Ranges", "bytes");
       res.setHeader("Content-Type", md.contentType);
-      res.setHeader("Content-Disposition", md.contentDisposition);
-      res.setHeader("Content-Encoding", "identity");
+      setObjectHeaders(res, md, { "Content-Encoding": isGZipped ? "identity" : undefined });
 
       const byteRange = [...(req.header("range") || "").split("bytes="), "", ""];
 
@@ -199,7 +198,6 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         res.end(data);
       }
 
-      setObjectHeaders(res, md, { "Content-Encoding": isGZipped ? "identity" : undefined });
       return;
     }
 
@@ -337,6 +335,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         res.sendStatus(404);
         return;
       }
+
       setObjectHeaders(res, md);
       return res.json(new OutgoingFirebaseMetadata(md));
     }
@@ -382,7 +381,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       const bufferOffset = metadataSegment.length + dataSegmentHeader.length;
 
       const blobBytes = Buffer.from(bodyBuffer.slice(bufferOffset, -`\r\n${boundary}--`.length));
-      const metadata = storageLayer.oneShotUpload(
+      const md = storageLayer.oneShotUpload(
         req.params.bucketId,
         name,
         blobContentType,
@@ -390,7 +389,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         Buffer.from(blobBytes)
       );
 
-      if (!metadata) {
+      if (!md) {
         res.sendStatus(400);
         return;
       }
@@ -405,11 +404,11 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
           path: operationPath,
           authorization: req.header("authorization"),
           file: {
-            after: metadata?.asRulesResource(),
+            after: md?.asRulesResource(),
           },
         }))
       ) {
-        storageLayer.deleteFile(metadata?.bucket, metadata?.name);
+        storageLayer.deleteFile(md?.bucket, md?.name);
         return res.status(403).json({
           error: {
             code: 403,
@@ -418,7 +417,11 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         });
       }
 
-      res.json(metadata);
+      if (md.downloadTokens.length == 0) {
+        md.addDownloadToken();
+      }
+
+      res.json(md);
       return;
     } else {
       const operationPath = ["b", req.params.bucketId, "o", name].join("/");
@@ -548,6 +551,11 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
           });
         }
 
+        const md = finalizedUpload.file.metadata;
+        if (md.downloadTokens.length == 0) {
+          md.addDownloadToken();
+        }
+
         res.header("x-goog-upload-status", "final");
         res.json(finalizedUpload.file.metadata);
       } else if (!upload) {
@@ -619,7 +627,6 @@ function setObjectHeaders(
     "Content-Encoding": string | undefined;
   } = { "Content-Encoding": undefined }
 ): void {
-  res.setHeader("Cache-Control", metadata.cacheControl);
   res.setHeader("Content-Disposition", metadata.contentDisposition);
 
   if (headerOverride["Content-Encoding"]) {
@@ -628,5 +635,11 @@ function setObjectHeaders(
     res.setHeader("Content-Encoding", metadata.contentEncoding);
   }
 
-  res.setHeader("Content-Language", metadata.contentLanguage);
+  if (metadata.cacheControl) {
+    res.setHeader("Cache-Control", metadata.cacheControl);
+  }
+
+  if (metadata.contentLanguage) {
+    res.setHeader("Content-Language", metadata.contentLanguage);
+  }
 }
