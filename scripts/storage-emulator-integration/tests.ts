@@ -136,7 +136,6 @@ describe("Storage emulator", () => {
 
   let smallFilePath: string;
   let largeFilePath: string;
-  let toDeleteFilePath: string;
 
   // Emulators accept fake app configs. This is sufficient for testing against the emulator.
   const FAKE_APP_CONFIG = {
@@ -181,7 +180,6 @@ describe("Storage emulator", () => {
 
       smallFilePath = createRandomFile("small_file", SMALL_FILE_SIZE);
       largeFilePath = createRandomFile("large_file", LARGE_FILE_SIZE);
-      toDeleteFilePath = createRandomFile("to_delete_file", SMALL_FILE_SIZE);
     });
 
     beforeEach(async () => {
@@ -247,11 +245,26 @@ describe("Storage emulator", () => {
       });
 
       describe("#delete()", () => {
-        it.only("should properly delete a file from the bucket", async () => {
-          await testBucket.upload(toDeleteFilePath);
-          await testBucket.file(toDeleteFilePath.split("/").slice(-1)[0]).delete();
+        it("should properly delete a file from the bucket", async () => {
+          // We use a nested path to ensure that we don't need to decode
+          // the objectId in the gcloud emulator API
+          const bucketFilePath = "file/to/delete";
+          await testBucket.upload(smallFilePath, {
+            destination: bucketFilePath,
+          });
 
-          expect(!fs.existsSync(toDeleteFilePath)).to.equal(true);
+          // Get a reference to the uploaded file
+          const toDeleteFile = testBucket.file(bucketFilePath);
+
+          // Ensure that the file exists on the bucket before deleting it
+          const [existsBefore] = await toDeleteFile.exists();
+          expect(existsBefore).to.equal(true);
+
+          // Delete it
+          await toDeleteFile.delete();
+          // Ensure that it doesn't exist anymore on the bucket
+          const [existsAfter] = await toDeleteFile.exists();
+          expect(existsAfter).to.equal(false);
         });
       });
 
@@ -377,7 +390,6 @@ describe("Storage emulator", () => {
       if (tmpDir) {
         fs.unlinkSync(smallFilePath);
         fs.unlinkSync(largeFilePath);
-        fs.unlinkSync(toDeleteFilePath);
         fs.rmdirSync(tmpDir);
       }
 
