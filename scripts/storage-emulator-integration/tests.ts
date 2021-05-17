@@ -244,6 +244,30 @@ describe("Storage emulator", () => {
         });
       });
 
+      describe("#delete()", () => {
+        it("should properly delete a file from the bucket", async () => {
+          // We use a nested path to ensure that we don't need to decode
+          // the objectId in the gcloud emulator API
+          const bucketFilePath = "file/to/delete";
+          await testBucket.upload(smallFilePath, {
+            destination: bucketFilePath,
+          });
+
+          // Get a reference to the uploaded file
+          const toDeleteFile = testBucket.file(bucketFilePath);
+
+          // Ensure that the file exists on the bucket before deleting it
+          const [existsBefore] = await toDeleteFile.exists();
+          expect(existsBefore).to.equal(true);
+
+          // Delete it
+          await toDeleteFile.delete();
+          // Ensure that it doesn't exist anymore on the bucket
+          const [existsAfter] = await toDeleteFile.exists();
+          expect(existsAfter).to.equal(false);
+        });
+      });
+
       describe("#download()", () => {
         it("should return the content of the file", async () => {
           await testBucket.upload(smallFilePath);
@@ -303,6 +327,27 @@ describe("Storage emulator", () => {
             timeStorageClassUpdated: "string",
           });
         });
+
+        it("should return a functional media link", async () => {
+          await testBucket.upload(smallFilePath);
+          const [{ mediaLink }] = await testBucket
+            .file(smallFilePath.split("/").slice(-1)[0])
+            .getMetadata();
+
+          const requestClient = TEST_CONFIG.useProductionServers ? https : http;
+          await new Promise((resolve, reject) => {
+            requestClient.get(mediaLink, {}, (response) => {
+              const data: any = [];
+              response
+                .on("data", (chunk) => data.push(chunk))
+                .on("end", () => {
+                  expect(Buffer.concat(data).length).to.equal(SMALL_FILE_SIZE);
+                })
+                .on("close", resolve)
+                .on("error", reject);
+            });
+          });
+        });
       });
 
       describe("#setMetadata()", () => {
@@ -352,6 +397,24 @@ describe("Storage emulator", () => {
             selfLink: "string",
             timeStorageClassUpdated: "string",
           });
+        });
+
+        it("should allow setting of optional metadata", async () => {
+          await testBucket.upload(smallFilePath);
+          const [metadata] = await testBucket
+            .file(smallFilePath.split("/").slice(-1)[0])
+            .setMetadata({ cacheControl: "no-cache", contentLanguage: "en" });
+
+          const metadataTypes: { [s: string]: string } = {};
+
+          for (const key in metadata) {
+            if (metadata[key]) {
+              metadataTypes[key] = typeof metadata[key];
+            }
+          }
+
+          expect(metadata.cacheControl).to.equal("no-cache");
+          expect(metadata.contentLanguage).to.equal("en");
         });
 
         it("should allow fields under .metadata", async () => {
@@ -756,7 +819,7 @@ describe("Storage emulator", () => {
         it("should paginate when nextPageToken is provided", async function (this) {
           this.timeout(TEST_SETUP_TIMEOUT);
           let responses: string[] = [];
-          let pageToken: string = "";
+          let pageToken = "";
           let pageCount = 0;
 
           do {
@@ -1008,7 +1071,7 @@ describe("Storage emulator", () => {
           .then((res) => {
             const md = res.body;
             const tokens = md.downloadTokens.split(",");
-            expect(tokens.length).to.deep.equal(2);
+            expect(tokens.length).to.equal(2);
 
             return tokens;
           });
@@ -1021,7 +1084,7 @@ describe("Storage emulator", () => {
           .expect(200)
           .then((res) => {
             const md = res.body;
-            expect(md.downloadTokens).to.deep.equal(tokens[1].toString());
+            expect(md.downloadTokens.split(",")).to.deep.equal([tokens[1]]);
           });
       });
 
@@ -1043,7 +1106,7 @@ describe("Storage emulator", () => {
           .then((res) => {
             const md = res.body;
             expect(md.downloadTokens.split(",").length).to.deep.equal(1);
-            expect(md.downloadTokens).to.not.deep.equal(token);
+            expect(md.downloadTokens.split(",")).to.not.deep.equal([token]);
           });
       });
     });

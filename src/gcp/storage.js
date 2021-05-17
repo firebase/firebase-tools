@@ -32,22 +32,17 @@ function _getDefaultBucket(projectId) {
     );
 }
 
-async function _uploadSource(source, uploadUrl) {
-  const url = new URL(uploadUrl);
-  const result = await api.request("PUT", url.pathname + url.search, {
+function _uploadSource(source, uploadUrl) {
+  return api.request("PUT", uploadUrl, {
     data: source.stream,
     headers: {
       "Content-Type": "application/zip",
       "x-goog-content-length-range": "0,104857600",
     },
     json: false,
-    origin: url.origin,
+    origin: api.storageOrigin,
     logOptions: { skipRequestBody: true },
   });
-
-  return {
-    generation: result.response.headers["x-goog-generation"],
-  };
 }
 
 /**
@@ -62,7 +57,7 @@ async function _uploadObject(source, bucketName) {
     throw new FirebaseError(`Expected a file name ending in .zip, got ${source.file}`);
   }
   const location = `/${bucketName}/${path.basename(source.file)}`;
-  const result = await api.request("PUT", location, {
+  await api.request("PUT", location, {
     auth: true,
     data: source.stream,
     headers: {
@@ -73,11 +68,7 @@ async function _uploadObject(source, bucketName) {
     origin: api.storageOrigin,
     logOptions: { skipRequestBody: true },
   });
-  return {
-    bucket: bucketName,
-    object: path.basename(source.file),
-    generation: result.response.headers["x-goog-generation"],
-  };
+  return location;
 }
 
 /**
