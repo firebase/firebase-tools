@@ -74,7 +74,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       "WARN",
       `Returning metadata: ${JSON.stringify(md)}`
     );
-    
+
     const outgoingMd = new CloudStorageObjectMetadata(md);
 
     res.json(outgoingMd).status(200).send();
