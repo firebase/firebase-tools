@@ -9,11 +9,12 @@ describe("shortenUrl", () => {
   const TEST_LINK = "https://abc.def/";
   const MOCKED_LINK = "https://firebase.tools/l/TEST";
 
-  function mockDynamicLinks(url: string, suffix = "UNGUESSABLE", code = 200) {
+  function mockDynamicLinks(url: string, suffix = "UNGUESSABLE", code = 200): void {
     nock(dynamicLinksOrigin)
       .post(
         `/v1/shortLinks`,
-        (body: any) => body.dynamicLinkInfo?.link === url && body.suffix?.option === suffix
+        (body: { dynamicLinkInfo?: { link: string }; suffix?: { option: string } }) =>
+          body.dynamicLinkInfo?.link === url && body.suffix?.option === suffix
       )
       .query({ key: dynamicLinksKey })
       .reply(code, {
