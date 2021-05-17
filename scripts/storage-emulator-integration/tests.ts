@@ -244,6 +244,30 @@ describe("Storage emulator", () => {
         });
       });
 
+      describe("#delete()", () => {
+        it("should properly delete a file from the bucket", async () => {
+          // We use a nested path to ensure that we don't need to decode
+          // the objectId in the gcloud emulator API
+          const bucketFilePath = "file/to/delete";
+          await testBucket.upload(smallFilePath, {
+            destination: bucketFilePath,
+          });
+
+          // Get a reference to the uploaded file
+          const toDeleteFile = testBucket.file(bucketFilePath);
+
+          // Ensure that the file exists on the bucket before deleting it
+          const [existsBefore] = await toDeleteFile.exists();
+          expect(existsBefore).to.equal(true);
+
+          // Delete it
+          await toDeleteFile.delete();
+          // Ensure that it doesn't exist anymore on the bucket
+          const [existsAfter] = await toDeleteFile.exists();
+          expect(existsAfter).to.equal(false);
+        });
+      });
+
       describe("#download()", () => {
         it("should return the content of the file", async () => {
           await testBucket.upload(smallFilePath);
@@ -756,7 +780,7 @@ describe("Storage emulator", () => {
         it("should paginate when nextPageToken is provided", async function (this) {
           this.timeout(TEST_SETUP_TIMEOUT);
           let responses: string[] = [];
-          let pageToken: string = "";
+          let pageToken = "";
           let pageCount = 0;
 
           do {
