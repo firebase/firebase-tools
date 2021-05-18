@@ -1,0 +1,1 @@
+- Enable running functions in multiple regions in the emulator.

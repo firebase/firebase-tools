@@ -35,12 +35,24 @@ functionsEmulator.nodeBinary = process.execPath;
 functionsEmulator.setTriggersForTesting([
   {
     name: "function_id",
+    id: "us-central1-function_id",
+    region: "us-central1",
+    entryPoint: "function_id",
+    httpsTrigger: {},
+    labels: {},
+  },
+  {
+    name: "function_id",
+    id: "europe-west2-function_id",
+    region: "europe-west2",
     entryPoint: "function_id",
     httpsTrigger: {},
     labels: {},
   },
   {
     name: "callable_function_id",
+    id: "us-central1-callable_function_id",
+    region: "us-central1",
     entryPoint: "callable_function_id",
     httpsTrigger: {},
     labels: {
@@ -49,6 +61,8 @@ functionsEmulator.setTriggersForTesting([
   },
   {
     name: "nested-function_id",
+    id: "us-central1-nested-function_id",
+    region: "us-central1",
     entryPoint: "nested.function_id",
     httpsTrigger: {},
     labels: {},
@@ -63,11 +77,12 @@ function useFunctions(triggers: () => {}): void {
   // eslint-disable-next-line @typescript-eslint/unbound-method
   functionsEmulator.startFunctionRuntime = (
     triggerId: string,
+    targetName: string,
     triggerType: EmulatedTriggerType,
     proto?: any,
     runtimeOpts?: InvokeRuntimeOpts
   ): RuntimeWorker => {
-    return startFunctionRuntime(triggerId, triggerType, proto, {
+    return startFunctionRuntime(triggerId, targetName, triggerType, proto, {
       nodeBinary: process.execPath,
       serializedTriggers,
     });
@@ -93,6 +108,43 @@ describe("FunctionsEmulator-Hub", () => {
       .then((res) => {
         expect(res.body.path).to.deep.equal("/");
       });
+  }).timeout(TIMEOUT_LONG);
+
+  it("should route requests to /:project_id/:other-region/:trigger_id to the region's HTTPS Function", async () => {
+    useFunctions(() => {
+      require("firebase-admin").initializeApp();
+      return {
+        function_id: require("firebase-functions").https.onRequest(
+          (req: express.Request, res: express.Response) => {
+            res.json({ path: req.path });
+          }
+        ),
+      };
+    });
+
+    await supertest(functionsEmulator.createHubServer())
+      .get("/fake-project-id/europe-west2/function_id")
+      .expect(200)
+      .then((res) => {
+        expect(res.body.path).to.deep.equal("/");
+      });
+  }).timeout(TIMEOUT_LONG);
+
+  it("should 404 when a function doesn't exist in the region", async () => {
+    useFunctions(() => {
+      require("firebase-admin").initializeApp();
+      return {
+        function_id: require("firebase-functions").https.onRequest(
+          (req: express.Request, res: express.Response) => {
+            res.json({ path: req.path });
+          }
+        ),
+      };
+    });
+
+    await supertest(functionsEmulator.createHubServer())
+      .get("/fake-project-id/us-east1/function_id")
+      .expect(404);
   }).timeout(TIMEOUT_LONG);
 
   it("should route requests to /:project_id/:region/:trigger_id/ to HTTPS Function", async () => {

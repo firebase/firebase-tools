@@ -285,6 +285,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   startFunctionRuntime(
     triggerId: string,
+    targetName: string,
     triggerType: EmulatedTriggerType,
     proto?: any,
     runtimeOpts?: InvokeRuntimeOpts
@@ -302,6 +303,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       nodeMajorVersion: this.args.nodeMajorVersion,
       proto,
       triggerId,
+      targetName,
       triggerType,
     };
     const opts = runtimeOpts || {
@@ -713,6 +715,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       cwd: this.args.functionsDir,
       projectId: this.args.projectId,
       triggerId: "",
+      targetName: "",
       triggerType: undefined,
       emulators: {
         firestore: EmulatorRegistry.getInfo(Emulators.FIRESTORE),
@@ -922,7 +925,12 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     const trigger = this.getTriggerDefinitionByKey(triggerKey);
     const service = getFunctionService(trigger);
-    const worker = this.startFunctionRuntime(trigger.id, EmulatedTriggerType.BACKGROUND, proto);
+    const worker = this.startFunctionRuntime(
+      trigger.id,
+      trigger.name,
+      EmulatedTriggerType.BACKGROUND,
+      proto
+    );
 
     return new Promise((resolve, reject) => {
       if (projectId !== this.args.projectId) {
@@ -1059,7 +1067,12 @@ export class FunctionsEmulator implements EmulatorInstance {
         );
       }
     }
-    const worker = this.startFunctionRuntime(trigger.id, EmulatedTriggerType.HTTPS, undefined);
+    const worker = this.startFunctionRuntime(
+      trigger.id,
+      trigger.name,
+      EmulatedTriggerType.HTTPS,
+      undefined
+    );
 
     worker.onLogs((el: EmulatorLog) => {
       if (el.level === "FATAL") {

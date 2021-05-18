@@ -681,7 +681,7 @@ async function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): Pr
   if (frb.triggerId) {
     // Runtime values are based on information from the bundle. Proper information for this is
     // available once the target code has been loaded, which is too late.
-    const service = frb.triggerId || "";
+    const service = frb.targetName || "";
     const target = service.replace(/-/g, ".");
     const mode = frb.triggerType === EmulatedTriggerType.BACKGROUND ? "event" : "http";
 
