@@ -703,9 +703,11 @@ describe("extensionsHelper", () => {
 
     beforeEach(() => {
       archiveStub = sinon.stub(archiveDirectory, "archiveDirectory").resolves({});
-      uploadStub = sinon
-        .stub(storage, "uploadObject")
-        .resolves("/firebase-ext-eap-uploads/object.zip");
+      uploadStub = sinon.stub(storage, "uploadObject").resolves({
+        bucket: "firebase-ext-eap-uploads",
+        object: "object.zip",
+        generation: 42,
+      });
       createSourceStub = sinon.stub(extensionsApi, "createSource").resolves(testSource);
       deleteStub = sinon.stub(storage, "deleteObject").resolves();
     });

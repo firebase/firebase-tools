@@ -1069,7 +1069,10 @@ async function initializeRuntime(
   if (extensionTriggers) {
     triggerDefinitions = extensionTriggers;
   } else {
-    require("../extractTriggers")(triggerModule, triggerDefinitions);
+    require("../deploy/functions/discovery/jsexports/extractTriggers")(
+      triggerModule,
+      triggerDefinitions
+    );
   }
 
   const triggers = getEmulatedTriggersFromDefinitions(triggerDefinitions, triggerModule);
