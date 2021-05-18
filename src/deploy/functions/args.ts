@@ -1,14 +1,14 @@
-import { ReadStream } from "fs";
-
-import * as backend from "./backend";
-import * as gcfV2 from "../../gcp/cloudfunctionsv2";
-
 // These types should proably be in a root deploy.ts, but we can only boil the ocean one bit at a time.
+
+import { ReadStream } from "fs";
+import * as gcf from "../../gcp/cloudfunctions";
+import * as deploymentPlanner from "./deploymentPlanner";
 
 // Payload holds the output types of what we're building.
 export interface Payload {
   functions?: {
-    backend: backend.Backend;
+    byRegion: deploymentPlanner.RegionMap;
+    triggers: deploymentPlanner.CloudFunctionTrigger[];
   };
 }
 
@@ -26,8 +26,8 @@ export interface Options {
   config: {
     // Note: it might be worth defining overloads for config values we use in
     // deploy/functions.
-    get(key: string, defaultValue?: unknown): unknown;
-    set(key: string, value: unknown): void;
+    get(key: string, defaultValue?: any): any;
+    set(key: string, value: any): void;
     has(key: string): boolean;
     path(pathName: string): string;
 
@@ -44,6 +44,12 @@ export interface Options {
   force: boolean;
 }
 
+export interface FunctionsSource {
+  file: string;
+  stream: ReadStream;
+  size: number;
+}
+
 // Context holds cached values of what we've looked up in handling this request.
 // For non-trivial values, use helper functions that cache automatically and/or hide implementation
 // details.
@@ -52,14 +58,17 @@ export interface Context {
   filters: string[][];
 
   // Filled in the "prepare" phase.
-  functionsSource?: string;
-  runtimeChoice?: backend.Runtime;
+  functionsSource?: FunctionsSource;
+  // TODO: replace with backend.Runtime once it is committed.
+  runtimeChoice?: gcf.Runtime;
   runtimeConfigEnabled?: boolean;
   firebaseConfig?: FirebaseConfig;
 
   // Filled in the "deploy" phase.
   uploadUrl?: string;
-  storageSource?: gcfV2.StorageSource;
+
+  // TOOD: move to caching function w/ helper
+  existingFunctions?: gcf.CloudFunction[];
 }
 
 export interface FirebaseConfig {

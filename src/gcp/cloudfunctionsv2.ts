@@ -7,12 +7,12 @@ import { logger } from "../logger";
 import * as proto from "./proto";
 import * as utils from "../utils";
 
-export const API_VERSION = "v2alpha";
+const API_VERSION = "v2alpha";
 
 const client = new Client({
   urlPrefix: functionsV2Origin,
   auth: true,
-  apiVersion: API_VERSION,
+  apiVersion: "v2alpha",
 });
 
 export const PUBSUB_PUBLISH_EVENT = "google.cloud.pubsub.topic.v1.messagePublished";
@@ -193,7 +193,7 @@ export async function generateUploadUrl(
 ): Promise<GenerateUploadUrlResponse> {
   try {
     const res = await client.post<never, GenerateUploadUrlResponse>(
-      `projects/${projectId}/locations/${location}/functions:generateUploadUrl`
+      `projects/${projectId}/locations/${location}:generateUploadUrl`
     );
     return res.body;
   } catch (err) {
@@ -203,23 +203,16 @@ export async function generateUploadUrl(
     throw err;
   }
 }
-
 /**
  * Creates a new Cloud Function.
  */
 export async function createFunction(
-  cloudFunction: Omit<CloudFunction, OutputOnlyFields>
+  cloudFunction: Omit<CloudFunction, "serviceConfig.service">
 ): Promise<Operation> {
   // the API is a POST to the collection that owns the function name.
-  const components = cloudFunction.name.split("/");
-  const functionId = components.splice(-1, 1)[0];
-
+  const path = cloudFunction.name.substring(0, cloudFunction.name.lastIndexOf("/"));
   try {
-    const res = await client.post<typeof cloudFunction, Operation>(
-      components.join("/"),
-      cloudFunction,
-      { queryParams: { functionId } }
-    );
+    const res = await client.post<typeof cloudFunction, Operation>(path, cloudFunction);
     return res.body;
   } catch (err) {
     throw functionsOpLogReject(cloudFunction.name, "create", err);
@@ -256,25 +249,21 @@ export async function listFunctions(projectId: string, region: string): Promise<
  *  Customers should generally use backend.existingBackend and backend.checkAvailability.
  */
 export async function listAllFunctions(projectId: string): Promise<ListFunctionsResponse> {
-  // NOTE: until namespace conflict resolution is implemented, prod will only support us-west1, though
-  // the preprod version still only supports us-central1 isntead.
-  const region = functionsV2Origin.match(/autopush/) ? "us-central1" : "us-west1";
-  logger.debug(`GCFv2 does not yet support listing all regions. Restricting to ${region}`);
-  return await listFunctionsInternal(projectId, /* region=*/ region);
+  return await listFunctionsInternal(projectId, /* region=*/ "-");
 }
 
 async function listFunctionsInternal(
   projectId: string,
   region: string
 ): Promise<ListFunctionsResponse> {
-  type Response = ListFunctionsResponse & { nextPageToken?: string };
   const functions: CloudFunction[] = [];
   const unreacahble = new Set<string>();
   let pageToken = "";
   while (true) {
-    const url = `projects/${projectId}/locations/${region}/functions`;
-    const opts = pageToken == "" ? {} : { queryParams: { pageToken } };
-    const res = await client.get<Response>(url, opts);
+    const res = await client.get<ListFunctionsResponse & { nextPageToken?: string }>(
+      `projects/${projectId}/locations/us-central1/functions`,
+      { queryParams: { pageToken } }
+    );
     functions.push(...(res.body.functions || []));
     for (const region of res.body.unreachable || []) {
       unreacahble.add(region);
@@ -312,15 +301,13 @@ export async function updateFunction(
   }
 }
 
-/**
- * Deletes a Cloud Function.
- * It is safe, but should be unnecessary, to delete a Cloud Function by just its name.
- */
-export async function deleteFunction(cloudFunction: string): Promise<Operation> {
+export async function deleteFunction(
+  cloudFunction: Omit<CloudFunction, OutputOnlyFields>
+): Promise<Operation> {
   try {
-    const res = await client.delete<Operation>(cloudFunction);
+    const res = await client.delete<Operation>(cloudFunction.name);
     return res.body;
   } catch (err) {
-    throw functionsOpLogReject(cloudFunction, "update", err);
+    throw functionsOpLogReject(cloudFunction.name, "update", err);
   }
 }
