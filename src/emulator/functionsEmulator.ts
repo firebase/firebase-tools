@@ -24,12 +24,12 @@ import * as spawn from "cross-spawn";
 import { ChildProcess, spawnSync } from "child_process";
 import {
   EmulatedTriggerDefinition,
+  ParsedTriggerDefinition,
   EmulatedTriggerType,
   FunctionsRuntimeArgs,
   FunctionsRuntimeBundle,
   FunctionsRuntimeFeatures,
   emulatedFunctionsByRegion,
-  getFunctionRegion,
   getFunctionService,
   HttpConstants,
   EventTrigger,
@@ -76,7 +76,7 @@ export interface FunctionsEmulatorArgs {
   debugPort?: number;
   env?: { [key: string]: string };
   remoteEmulators?: { [key: string]: EmulatorInfo };
-  predefinedTriggers?: EmulatedTriggerDefinition[];
+  predefinedTriggers?: ParsedTriggerDefinition[];
   nodeMajorVersion?: number; // Lets us specify the node version when emulating extensions.
 }
 
@@ -100,7 +100,7 @@ export interface FunctionsRuntimeInstance {
 export interface InvokeRuntimeOpts {
   nodeBinary: string;
   serializedTriggers?: string;
-  extensionTriggers?: EmulatedTriggerDefinition[];
+  extensionTriggers?: ParsedTriggerDefinition[];
   env?: { [key: string]: string };
   ignore_warnings?: boolean;
 }
@@ -222,6 +222,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     const httpsFunctionRoutes = [httpsFunctionRoute, `${httpsFunctionRoute}/*`];
 
     const backgroundHandler: express.RequestHandler = (req, res) => {
+      const region = req.params.region;
       const triggerId = req.params.trigger_name;
       const projectId = req.params.project_id;
 
@@ -397,7 +398,7 @@ export class FunctionsEmulator implements EmulatorInstance {
    *
    * TODO(abehaskins): Gracefully handle removal of deleted function definitions
    */
-  async loadTriggers(force: boolean = false) {
+  async loadTriggers(force = false): Promise<void> {
     // Before loading any triggers we need to make sure there are no 'stale' workers
     // in the pool that would cause us to run old code.
     this.workerPool.refresh();
@@ -413,10 +414,13 @@ export class FunctionsEmulator implements EmulatorInstance {
       "SYSTEM",
       "triggers-parsed"
     );
-    let triggerDefinitions = triggerParseEvent.data
-      .triggerDefinitions as EmulatedTriggerDefinition[];
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    const parsedDefinitions = triggerParseEvent.data
+      .triggerDefinitions as ParsedTriggerDefinition[];
 
-    triggerDefinitions = emulatedFunctionsByRegion(triggerDefinitions);
+    const triggerDefinitions: EmulatedTriggerDefinition[] = emulatedFunctionsByRegion(
+      parsedDefinitions
+    );
 
     // When force is true we set up all triggers, otherwise we only set up
     // triggers which have a unique function name
@@ -438,7 +442,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       let url: string | undefined = undefined;
 
       if (definition.httpsTrigger) {
-        const region = getFunctionRegion(definition);
         const { host, port } = this.getInfo();
         added = true;
         url = FunctionsEmulator.getHttpFunctionUrl(
@@ -446,7 +449,7 @@ export class FunctionsEmulator implements EmulatorInstance {
           port,
           this.args.projectId,
           definition.name,
-          region
+          definition.region
         );
       } else if (definition.eventTrigger) {
         const service: string = getFunctionService(definition);
@@ -685,15 +688,9 @@ export class FunctionsEmulator implements EmulatorInstance {
     return record.def;
   }
 
-  getTriggerDefinitionByName(triggerName: string): EmulatedTriggerDefinition | undefined {
-    const record = Object.values(this.triggers).find((r) => r.def.name === triggerName);
-    return record?.def;
-  }
-
   getTriggerKey(def: EmulatedTriggerDefinition): string {
     // For background triggers we attach the current generation as a suffix
-    const id = def.id ? def.id : def.name;
-    return def.eventTrigger ? id + "-" + this.triggerGeneration : id;
+    return def.eventTrigger ? `${def.id}-${this.triggerGeneration}` : def.id;
   }
 
   addTriggerRecord(
@@ -925,7 +922,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     const trigger = this.getTriggerDefinitionByKey(triggerKey);
     const service = getFunctionService(trigger);
-    const worker = this.startFunctionRuntime(trigger.name, EmulatedTriggerType.BACKGROUND, proto);
+    const worker = this.startFunctionRuntime(trigger.id, EmulatedTriggerType.BACKGROUND, proto);
 
     return new Promise((resolve, reject) => {
       if (projectId !== this.args.projectId) {
@@ -1062,8 +1059,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         );
       }
     }
-
-    const worker = this.startFunctionRuntime(trigger.name, EmulatedTriggerType.HTTPS, undefined);
+    const worker = this.startFunctionRuntime(trigger.id, EmulatedTriggerType.HTTPS, undefined);
 
     worker.onLogs((el: EmulatorLog) => {
       if (el.level === "FATAL") {
