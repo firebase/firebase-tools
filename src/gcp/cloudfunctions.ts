@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import * as clc from "cli-color";
 
 import * as api from "../api";
@@ -22,13 +21,7 @@ export const DEFAULT_PUBLIC_POLICY = {
 interface Operation {
   name: string;
   type: string;
-  funcName: string;
   done: boolean;
-  eventType?: string;
-  trigger?: {
-    eventTrigger?: any;
-    httpsTrigger?: any;
-  };
   error?: { code: number; message: string };
 }
 
@@ -69,7 +62,7 @@ export interface SecretVolume {
   }[];
 }
 
-export type Runtime = "nodejs6" | "nodejs8" | "nodejs10" | "nodejs12" | "nodejs14";
+export type Runtime = "nodejs10" | "nodejs12" | "nodejs14";
 export type CloudFunctionStatus =
   | "ACTIVE"
   | "OFFLINE"
@@ -80,7 +73,7 @@ export type SecurityLevel = "SECURE_ALWAYS" | "SECURE_OPTIONAL";
 
 export interface FailurePolicy {
   // oneof action
-  retry?: {};
+  retry?: Record<string, never>;
   // end oneof action
 }
 
@@ -136,10 +129,10 @@ export interface CloudFunction {
   sourceToken?: string;
 
   // Output parameters
-  readonly status: CloudFunctionStatus;
-  readonly buildId: string;
-  readonly updateTime: Date;
-  readonly versionId: number;
+  status: CloudFunctionStatus;
+  buildId: string;
+  updateTime: Date;
+  versionId: number;
 }
 
 export type OutputOnlyFields = "status" | "buildId" | "updateTime" | "versionId";
@@ -209,65 +202,28 @@ export async function generateUploadUrl(projectId: string, location: string): Pr
 
 /**
  * Create a Cloud Function.
- * @param options The function to deploy.
+ * @param cloudFunction The function to delete
  */
-export async function createFunction(options: any): Promise<Operation> {
-  const location = "projects/" + options.projectId + "/locations/" + options.region;
-  const fullFuncName = location + "/functions/" + options.functionName;
-  const endpoint = "/" + API_VERSION + "/" + location + "/functions";
+export async function createFunction(
+  cloudFunction: Omit<CloudFunction, OutputOnlyFields>
+): Promise<Operation> {
+  // the API is a POST to the collection that owns the function name.
+  const apiPath = cloudFunction.name.substring(0, cloudFunction.name.lastIndexOf("/"));
+  const endpoint = `/${API_VERSION}/${apiPath}`;
 
-  const data: Partial<CloudFunction> = {
-    sourceUploadUrl: options.sourceUploadUrl,
-    name: fullFuncName,
-    entryPoint: options.entryPoint,
-    labels: options.labels,
-    runtime: options.runtime,
-    environmentVariables: options.environmentVariables,
-  };
-
-  if (options.vpcConnector) {
-    data.vpcConnector = options.vpcConnector;
-    // use implied project/location if only given connector id
-    if (!data.vpcConnector?.includes("/")) {
-      data.vpcConnector = `${location}/connectors/${data.vpcConnector}`;
-    }
-  }
-  if (options.vpcConnectorEgressSettings) {
-    data.vpcConnectorEgressSettings = options.vpcConnectorEgressSettings;
-  }
-  if (options.availableMemoryMb) {
-    data.availableMemoryMb = options.availableMemoryMb;
-  }
-  if (options.timeout) {
-    data.timeout = options.timeout;
-  }
-  if (options.maxInstances) {
-    data.maxInstances = Number(options.maxInstances);
-  }
-  if (options.serviceAccountEmail) {
-    data.serviceAccountEmail = options.serviceAccountEmail;
-  }
-  if (options.sourceToken) {
-    data.sourceToken = options.sourceToken;
-  }
-  if (options.ingressSettings) {
-    data.ingressSettings = options.ingressSettings;
-  }
   try {
     const res = await api.request("POST", endpoint, {
       auth: true,
-      data: _.assign(data, options.trigger),
+      data: cloudFunction,
       origin: api.functionsOrigin,
     });
     return {
       name: res.body.name,
       type: "create",
-      funcName: fullFuncName,
-      eventType: options.eventType,
       done: false,
     };
   } catch (err) {
-    throw functionsOpLogReject(options.functionName, "create", err);
+    throw functionsOpLogReject(cloudFunction.name, "create", err);
   }
 }
 
@@ -284,7 +240,7 @@ interface IamOptions {
  * Sets the IAM policy of a Google Cloud Function.
  * @param options The Iam options to set.
  */
-export async function setIamPolicy(options: IamOptions) {
+export async function setIamPolicy(options: IamOptions): Promise<void> {
   const endpoint = `/${API_VERSION}/${options.name}:setIamPolicy`;
 
   try {
@@ -305,96 +261,38 @@ export async function setIamPolicy(options: IamOptions) {
 
 /**
  * Updates a Cloud Function.
- * @param options The Cloud Function to update.
+ * @param cloudFunction The Cloud Function to update.
  */
-export async function updateFunction(options: any): Promise<Operation> {
-  const location = "projects/" + options.projectId + "/locations/" + options.region;
-  const fullFuncName = location + "/functions/" + options.functionName;
-  const endpoint = "/" + API_VERSION + "/" + fullFuncName;
-
-  const data: CloudFunction = _.assign(
-    {
-      sourceUploadUrl: options.sourceUploadUrl,
-      name: fullFuncName,
-      labels: options.labels,
-    },
-    options.trigger
+export async function updateFunction(
+  cloudFunction: Omit<CloudFunction, OutputOnlyFields>
+): Promise<Operation> {
+  const endpoint = `/${API_VERSION}/${cloudFunction.name}`;
+  // Keys in labels and environmentVariables are user defined, so we don't recurse
+  // for field masks.
+  const fieldMasks = proto.fieldMasks(
+    cloudFunction,
+    /* doNotRecurseIn...=*/ "labels",
+    "environmentVariables"
   );
-  let masks = ["sourceUploadUrl", "name", "labels"];
 
-  if (options.vpcConnector) {
-    data.vpcConnector = options.vpcConnector;
-    // use implied project/location if only given connector id
-    if (!data.vpcConnector?.includes("/")) {
-      data.vpcConnector = `${location}/connectors/${data.vpcConnector}`;
-    }
-    masks.push("vpcConnector");
-  }
-  if (options.vpcConnectorEgressSettings) {
-    data.vpcConnectorEgressSettings = options.vpcConnectorEgressSettings;
-    masks.push("vpcConnectorEgressSettings");
-  }
-  if (options.runtime) {
-    data.runtime = options.runtime;
-    masks = _.concat(masks, "runtime");
-  }
-  if (options.availableMemoryMb) {
-    data.availableMemoryMb = options.availableMemoryMb;
-    masks.push("availableMemoryMb");
-  }
-  if (options.timeout) {
-    data.timeout = options.timeout;
-    masks.push("timeout");
-  }
-  if (options.maxInstances) {
-    data.maxInstances = Number(options.maxInstances);
-    masks.push("maxInstances");
-  }
-  if (options.environmentVariables) {
-    data.environmentVariables = options.environmentVariables;
-    masks.push("environmentVariables");
-  }
-  if (options.serviceAccountEmail) {
-    data.serviceAccountEmail = options.serviceAccountEmail;
-    masks.push("serviceAccountEmail");
-  }
-  if (options.sourceToken) {
-    data.sourceToken = options.sourceToken;
-    masks.push("sourceToken");
-  }
-  if (options.ingressSettings) {
-    data.ingressSettings = options.ingressSettings;
-    masks.push("ingressSettings");
-  }
-  if (options.trigger.eventTrigger) {
-    masks = _.concat(
-      masks,
-      _.map(_.keys(options.trigger.eventTrigger), (subkey) => {
-        return "eventTrigger." + subkey;
-      })
-    );
-  } else {
-    masks = _.concat(masks, "httpsTrigger");
-  }
-
+  // Failure policy is always an explicit policy and is only signified by the presence or absence of
+  // a protobuf.Empty value, so we have to manually add it in the missing case.
   try {
     const res = await api.request("PATCH", endpoint, {
       qs: {
-        updateMask: masks.join(","),
+        updateMask: fieldMasks.join(","),
       },
       auth: true,
-      data: data,
+      data: cloudFunction,
       origin: api.functionsOrigin,
     });
     return {
-      funcName: fullFuncName,
-      eventType: options.eventType,
       done: false,
       name: res.body.name,
       type: "update",
     };
   } catch (err) {
-    throw functionsOpLogReject(options.functionName, "update", err);
+    throw functionsOpLogReject(cloudFunction.name, "update", err);
   }
 }
 
@@ -402,22 +300,20 @@ export async function updateFunction(options: any): Promise<Operation> {
  * Delete a Cloud Function.
  * @param options the Cloud Function to delete.
  */
-export async function deleteFunction(options: any): Promise<Operation> {
-  const endpoint = "/" + API_VERSION + "/" + options.functionName;
+export async function deleteFunction(name: string): Promise<Operation> {
+  const endpoint = `/${API_VERSION}/${name}`;
   try {
     const res = await api.request("DELETE", endpoint, {
       auth: true,
       origin: api.functionsOrigin,
     });
     return {
-      funcName: options.funcName,
-      eventType: options.eventType,
       done: false,
       name: res.body.name,
       type: "delete",
     };
   } catch (err) {
-    throw functionsOpLogReject(options.functionName, "delete", err);
+    throw functionsOpLogReject(name, "delete", err);
   }
 }
 
@@ -440,18 +336,14 @@ async function list(projectId: string, region: string): Promise<ListFunctionsRes
       );
     }
 
-    const functionsList = res.body.functions || [];
-    _.forEach(functionsList, (f) => {
-      f.functionName = f.name.substring(f.name.lastIndexOf("/") + 1);
-    });
     return {
-      unreachable: res.body.unreachable,
-      functions: functionsList,
+      functions: res.body.functions || [],
+      unreachable: res.body.unreachable || [],
     };
   } catch (err) {
     logger.debug("[functions] failed to list functions for " + projectId);
-    logger.debug("[functions] " + err.message);
-    return Promise.reject(err.message);
+    logger.debug(`[functions] ${err?.message}`);
+    return Promise.reject(err?.message);
   }
 }
 

@@ -1,13 +1,15 @@
-import * as helper from "./functionsDeployHelper";
+import * as helper from "./deploy/functions/functionsDeployHelper";
 import { Queue } from "./throttler/queue";
 import * as tasks from "./deploy/functions/tasks";
 import { DeploymentTimer } from "./deploy/functions/deploymentTimer";
 import { ErrorHandler } from "./deploy/functions/errorHandler";
+import * as backend from "./deploy/functions/backend";
 
+/** delete functions, schedules, and topics. */
 export async function deleteFunctions(
-  functionsNamesToDelete: string[],
-  scheduledFunctionNamesToDelete: string[],
-  projectId: string,
+  functionsToDelete: backend.FunctionSpec[],
+  schedulesToDelete: backend.ScheduleSpec[],
+  topicsToDelete: backend.PubSubSpec[],
   appEngineLocation: string
 ): Promise<void> {
   const timer = new DeploymentTimer();
@@ -22,25 +24,42 @@ export async function deleteFunctions(
   const schedulerQueue = new Queue<tasks.DeploymentTask, void>({
     handler: tasks.schedulerDeploymentHandler(errorHandler),
   });
+  const topicQueue = new Queue<tasks.DeploymentTask, void>({
+    handler: tasks.schedulerDeploymentHandler(errorHandler),
+  });
 
-  const taskParams = {
-    projectId,
-    errorHandler,
-  };
-  functionsNamesToDelete.forEach((fnName) => {
-    const deleteFunctionTask = tasks.deleteFunctionTask(taskParams, fnName);
-    cloudFunctionsQueue.run(deleteFunctionTask);
+  functionsToDelete.forEach((fn) => {
+    const taskParams = {
+      projectId: fn.project,
+      errorHandler,
+    };
+    const deleteFunctionTask = tasks.deleteFunctionTask(taskParams, fn);
+    void cloudFunctionsQueue.run(deleteFunctionTask);
   });
-  scheduledFunctionNamesToDelete.forEach((fnName) => {
-    const deleteSchedulerTask = tasks.deleteScheduleTask(taskParams, fnName, appEngineLocation);
-    schedulerQueue.run(deleteSchedulerTask);
+  schedulesToDelete.forEach((schedule) => {
+    const taskParams = {
+      projectId: schedule.project,
+      errorHandler,
+    };
+    const deleteSchedulerTask = tasks.deleteScheduleTask(taskParams, schedule, appEngineLocation);
+    void schedulerQueue.run(deleteSchedulerTask);
   });
-  const queuePromises = [cloudFunctionsQueue.wait(), schedulerQueue.wait()];
+  topicsToDelete.forEach((topic) => {
+    const taskParams = {
+      projectId: topic.project,
+      errorHandler,
+    };
+    const deleteTopicTask = tasks.deleteTopicTask(taskParams, topic);
+    void topicQueue.run(deleteTopicTask);
+  });
+  const queuePromises = [cloudFunctionsQueue.wait(), schedulerQueue.wait(), topicQueue.wait()];
 
   cloudFunctionsQueue.close();
   schedulerQueue.close();
+  topicQueue.close();
   cloudFunctionsQueue.process();
   schedulerQueue.process();
+  topicQueue.process();
 
   await Promise.all(queuePromises);
 
