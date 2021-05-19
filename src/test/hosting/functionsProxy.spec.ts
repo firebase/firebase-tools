@@ -21,8 +21,11 @@ describe("functionsProxy", () => {
     targets: [],
   };
 
-  const fakeRewrite: FunctionProxyRewrite = { function: "bar", region: "us-central1" };
-  const fakeRewriteEurope: FunctionProxyRewrite = { function: "bar", region: "europe-west3" };
+  const fakeRewrite: FunctionProxyRewrite = { function: "bar", function_region: "us-central1" };
+  const fakeRewriteEurope: FunctionProxyRewrite = {
+    function: "bar",
+    function_region: "europe-west3",
+  };
 
   beforeEach(async () => {
     const fakeFunctionsEmulator = new FakeEmulator(Emulators.FUNCTIONS, "localhost", 7778);

@@ -15,7 +15,7 @@ export interface FunctionsProxyOptions {
 
 export interface FunctionProxyRewrite {
   function: string;
-  region: string;
+  function_region: string;
 }
 
 /**
@@ -29,10 +29,10 @@ export function functionsProxy(
   return (rewrite: FunctionProxyRewrite) => {
     return new Promise((resolve) => {
       const projectId = needProjectId(options);
-      if (!rewrite.region) {
-        rewrite.region = "us-central1";
+      if (!rewrite.function_region) {
+        rewrite.function_region = "us-central1";
       }
-      let url = `https://${rewrite.region}-${projectId}.cloudfunctions.net/${rewrite.function}`;
+      let url = `https://${rewrite.function_region}-${projectId}.cloudfunctions.net/${rewrite.function}`;
       let destLabel = "live";
 
       if (includes(options.targets, "functions")) {
@@ -47,13 +47,16 @@ export function functionsProxy(
             functionsEmu.getInfo().port,
             projectId,
             rewrite.function,
-            rewrite.region
+            rewrite.function_region
           );
         }
       }
 
       resolve(
-        proxyRequestHandler(url, `${destLabel} Function ${rewrite.region}/${rewrite.function}`)
+        proxyRequestHandler(
+          url,
+          `${destLabel} Function ${rewrite.function_region}/${rewrite.function}`
+        )
       );
     });
   };

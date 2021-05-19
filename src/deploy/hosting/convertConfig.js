@@ -40,10 +40,10 @@ module.exports = function (config) {
         vRewrite.path = rewrite.destination;
       } else if (rewrite.function) {
         vRewrite.function = rewrite.function;
-        if (rewrite.region) {
-          vRewrite.region = rewrite.region;
+        if (rewrite.function_region) {
+          vRewrite.function_region = rewrite.function_region;
         } else {
-          vRewrite.region = "us-central1";
+          vRewrite.function_region = "us-central1";
         }
       } else if (rewrite.dynamicLinks) {
         vRewrite.dynamicLinks = rewrite.dynamicLinks;
