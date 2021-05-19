@@ -116,6 +116,13 @@ export function checkForInvalidChangeOfTrigger(
       `[${getFunctionLabel(fn)}] Functions cannot be downgraded from GCFv2 to GCFv1`
     );
   }
+  if (exFn.labels?.["deployment-scheduled"] && !fn.labels?.["deployment-scheduled"]) {
+    throw new FirebaseError(
+      `[${getFunctionLabel(
+        fn
+      )}] Scheduled functions cannot be changed to event handler or HTTP functions`
+    );
+  }
 }
 
 /**

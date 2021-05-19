@@ -60,9 +60,10 @@ export async function release(context: args.Context, options: args.Options, payl
 
   // Note(inlined): We might increase consistency if we tried a fully regional strategy, but
   // the existing code was written to process deletes before creates and updates.
-  const allFnsToDelete = Object.values(fullDeployment.regionalDeployments)
-    .map((regionalChanges) => regionalChanges.functionsToDelete)
-    .reduce((accum, functions) => [...(accum || []), ...functions]);
+  const allFnsToDelete = Object.values(fullDeployment.regionalDeployments).reduce(
+    (accum, region) => [...accum, ...region.functionsToDelete],
+    [] as backend.FunctionSpec[]
+  );
   const shouldDeleteFunctions = await promptForFunctionDeletion(
     allFnsToDelete,
     options.force,
