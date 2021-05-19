@@ -8,7 +8,6 @@ import { StorageEmulator } from "../index";
 import { EmulatorRegistry } from "../../registry";
 import { StorageRulesetInstance } from "../rules/runtime";
 import { RulesetOperationMethod } from "../rules/types";
-import * as path from "path";
 
 async function isPermitted(opts: {
   ruleset?: StorageRulesetInstance;
@@ -126,50 +125,53 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     next();
   });
 
-  // get metadata and get object handler
   firebaseStorageAPI.get("/b/:bucketId/o/:objectId", async (req, res) => {
     const decodedObjectId = decodeURIComponent(req.params.objectId);
     const operationPath = ["b", req.params.bucketId, "o", decodedObjectId].join("/");
     const md = storageLayer.getMetadata(req.params.bucketId, decodedObjectId);
+
+    const rulesFiles: {
+      before?: RulesResourceMetadata;
+    } = {};
+
+    if (md) {
+      rulesFiles.before = md.asRulesResource();
+    }
+
+    // Query values are used for GETs from Web SDKs
+    const isPermittedViaHeader = await isPermitted({
+      ruleset: emulator.rules,
+      method: RulesetOperationMethod.GET,
+      path: operationPath,
+      file: rulesFiles,
+      authorization: req.header("authorization"),
+    });
+
+    // Token headers are used for GETs from Mobile SDKs
+    const isPermittedViaToken =
+      req.query.token && md && md.downloadTokens.includes(req.query.token.toString());
+
+    const isRequestPermitted: boolean = isPermittedViaHeader || !!isPermittedViaToken;
+
+    if (!isRequestPermitted) {
+      res.sendStatus(403);
+      return;
+    }
 
     if (!md) {
       res.sendStatus(404);
       return;
     }
 
-    const isPermittedViaHeader = await isPermitted({
-      ruleset: emulator.rules,
-      method: RulesetOperationMethod.GET,
-      path: operationPath,
-      file: {
-        before: md.asRulesResource(),
-      },
-      authorization: req.header("authorization"),
-    });
-
     let isGZipped = false;
     if (md.contentEncoding == "gzip") {
       isGZipped = true;
     }
 
-    // TODO: Don't serve identity / download header if not alt=media
     if (req.query.alt == "media") {
       let data = storageLayer.getBytes(req.params.bucketId, req.params.objectId);
       if (!data) {
         res.sendStatus(404);
-        return;
-      }
-
-      const isPermittedViaToken =
-        req.query.token && md.downloadTokens.includes(req.query.token.toString());
-
-      if (
-        // Token headers are used for GETs from Mobile SDKs
-        !isPermittedViaHeader &&
-        // Query values are used for GETs from Web SDKs
-        !isPermittedViaToken
-      ) {
-        res.sendStatus(403);
         return;
       }
 
@@ -179,8 +181,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
 
       res.setHeader("Accept-Ranges", "bytes");
       res.setHeader("Content-Type", md.contentType);
-      res.setHeader("Content-Disposition", md.contentDisposition);
-      res.setHeader("Content-Encoding", "identity");
+      setObjectHeaders(res, md, { "Content-Encoding": isGZipped ? "identity" : undefined });
 
       const byteRange = [...(req.header("range") || "").split("bytes="), "", ""];
 
@@ -196,10 +197,9 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       } else {
         res.end(data);
       }
+
       return;
     }
-
-    setObjectHeaders(res, md, { "Content-Encoding": isGZipped ? "identity" : undefined });
 
     res.json(new OutgoingFirebaseMetadata(md));
   });
@@ -335,6 +335,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         res.sendStatus(404);
         return;
       }
+
       setObjectHeaders(res, md);
       return res.json(new OutgoingFirebaseMetadata(md));
     }
@@ -380,7 +381,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       const bufferOffset = metadataSegment.length + dataSegmentHeader.length;
 
       const blobBytes = Buffer.from(bodyBuffer.slice(bufferOffset, -`\r\n${boundary}--`.length));
-      const metadata = storageLayer.oneShotUpload(
+      const md = storageLayer.oneShotUpload(
         req.params.bucketId,
         name,
         blobContentType,
@@ -388,7 +389,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         Buffer.from(blobBytes)
       );
 
-      if (!metadata) {
+      if (!md) {
         res.sendStatus(400);
         return;
       }
@@ -403,11 +404,11 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
           path: operationPath,
           authorization: req.header("authorization"),
           file: {
-            after: metadata?.asRulesResource(),
+            after: md?.asRulesResource(),
           },
         }))
       ) {
-        storageLayer.deleteFile(metadata?.bucket, metadata?.name);
+        storageLayer.deleteFile(md?.bucket, md?.name);
         return res.status(403).json({
           error: {
             code: 403,
@@ -416,7 +417,11 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         });
       }
 
-      res.json(metadata);
+      if (md.downloadTokens.length == 0) {
+        md.addDownloadToken();
+      }
+
+      res.json(new OutgoingFirebaseMetadata(md));
       return;
     } else {
       const operationPath = ["b", req.params.bucketId, "o", name].join("/");
@@ -475,6 +480,8 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
           res.sendStatus(400);
           return;
         }
+
+        res.header("X-Goog-Upload-Size-Received", upload.currentBytesUploaded.toString());
         res.sendStatus(200);
         return;
       }
@@ -524,6 +531,8 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         }
         upload = finalizedUpload.upload;
 
+        res.header("x-goog-upload-status", "final");
+
         // For resumable uploads, we check auth on finalization in case of byte-dependant rules
         if (
           !(await isPermitted({
@@ -546,8 +555,12 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
           });
         }
 
-        res.header("x-goog-upload-status", "final");
-        res.json(finalizedUpload.file.metadata);
+        const md = finalizedUpload.file.metadata;
+        if (md.downloadTokens.length == 0) {
+          md.addDownloadToken();
+        }
+
+        res.json(new OutgoingFirebaseMetadata(finalizedUpload.file.metadata));
       } else if (!upload) {
         res.sendStatus(400);
         return;
@@ -617,7 +630,6 @@ function setObjectHeaders(
     "Content-Encoding": string | undefined;
   } = { "Content-Encoding": undefined }
 ): void {
-  res.setHeader("Cache-Control", metadata.cacheControl);
   res.setHeader("Content-Disposition", metadata.contentDisposition);
 
   if (headerOverride["Content-Encoding"]) {
@@ -626,5 +638,11 @@ function setObjectHeaders(
     res.setHeader("Content-Encoding", metadata.contentEncoding);
   }
 
-  res.setHeader("Content-Language", metadata.contentLanguage);
+  if (metadata.cacheControl) {
+    res.setHeader("Cache-Control", metadata.cacheControl);
+  }
+
+  if (metadata.contentLanguage) {
+    res.setHeader("Content-Language", metadata.contentLanguage);
+  }
 }

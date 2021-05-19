@@ -41,7 +41,8 @@ export const FunctionRuntimeBundles: { [key: string]: FunctionsRuntimeBundle } =
         },
       },
     },
-    triggerId: "function_id",
+    triggerId: "us-central1-function_id",
+    targetName: "function_id",
     projectId: "fake-project-id",
   },
   onWrite: {
@@ -80,7 +81,8 @@ export const FunctionRuntimeBundles: { [key: string]: FunctionsRuntimeBundle } =
         },
       },
     },
-    triggerId: "function_id",
+    triggerId: "us-central1-function_id",
+    targetName: "function_id",
     projectId: "fake-project-id",
   },
   onDelete: {
@@ -119,7 +121,8 @@ export const FunctionRuntimeBundles: { [key: string]: FunctionsRuntimeBundle } =
         },
       },
     },
-    triggerId: "function_id",
+    triggerId: "us-central1-function_id",
+    targetName: "function_id",
     projectId: "fake-project-id",
   },
   onUpdate: {
@@ -170,7 +173,8 @@ export const FunctionRuntimeBundles: { [key: string]: FunctionsRuntimeBundle } =
         timestamp: "2019-05-15T16:21:15.148831Z",
       },
     },
-    triggerId: "function_id",
+    triggerId: "us-central1-function_id",
+    targetName: "function_id",
     projectId: "fake-project-id",
   },
   onRequest: {
@@ -185,7 +189,8 @@ export const FunctionRuntimeBundles: { [key: string]: FunctionsRuntimeBundle } =
       },
     },
     cwd: MODULE_ROOT,
-    triggerId: "function_id",
+    triggerId: "us-central1-function_id",
+    targetName: "function_id",
     projectId: "fake-project-id",
   },
 };

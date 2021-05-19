@@ -1,12 +1,25 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
-import * as tasks from "../../../deploy/functions/tasks";
 import { DeploymentTimer } from "../../../deploy/functions/deploymentTimer";
 import { ErrorHandler } from "../../../deploy/functions/errorHandler";
 import { FirebaseError } from "../../../error";
+import * as backend from "../../../deploy/functions/backend";
+import * as tasks from "../../../deploy/functions/tasks";
 
 describe("Function Deployment tasks", () => {
+  const CLOUD_FUNCTION: backend.FunctionSpec = {
+    apiVersion: 1,
+    id: "id",
+    region: "region",
+    project: "project",
+    entryPoint: "function",
+    runtime: "nodejs14",
+    trigger: {
+      allowInsecure: true,
+    },
+  };
+
   describe("functionsDeploymentHandler", () => {
     let sandbox: sinon.SinonSandbox;
     let timerStub: sinon.SinonStubbedInstance<DeploymentTimer>;
@@ -24,10 +37,10 @@ describe("Function Deployment tasks", () => {
 
     it("should execute the task and time it", async () => {
       const run = sinon.spy();
-      const functionName = "myFunc";
+      const functionName = backend.functionName(CLOUD_FUNCTION);
       const testTask: tasks.DeploymentTask = {
         run,
-        functionName: functionName,
+        fn: CLOUD_FUNCTION,
         operationType: "create",
       };
 
@@ -55,10 +68,9 @@ describe("Function Deployment tasks", () => {
           original: originalError,
         });
       });
-      const functionName = "myFunc";
       const testTask: tasks.DeploymentTask = {
         run,
-        functionName: functionName,
+        fn: CLOUD_FUNCTION,
         operationType: "create",
       };
 
@@ -85,10 +97,10 @@ describe("Function Deployment tasks", () => {
           original: originalError,
         });
       });
-      const functionName = "myFunc";
+      const functionName = backend.functionName(CLOUD_FUNCTION);
       const testTask: tasks.DeploymentTask = {
         run,
-        functionName: functionName,
+        fn: CLOUD_FUNCTION,
         operationType: "create",
       };
 
@@ -118,7 +130,7 @@ describe("Function Deployment tasks", () => {
       const run = sinon.spy();
       const testTask: tasks.DeploymentTask = {
         run,
-        functionName: "myFunc",
+        fn: CLOUD_FUNCTION,
         operationType: "upsert schedule",
       };
 
@@ -137,7 +149,7 @@ describe("Function Deployment tasks", () => {
       });
       const testTask: tasks.DeploymentTask = {
         run,
-        functionName: "myFunc",
+        fn: CLOUD_FUNCTION,
         operationType: "upsert schedule",
       };
 
@@ -156,7 +168,7 @@ describe("Function Deployment tasks", () => {
       });
       const testTask: tasks.DeploymentTask = {
         run,
-        functionName: "myFunc",
+        fn: CLOUD_FUNCTION,
         operationType: "upsert schedule",
       };
 
@@ -173,10 +185,10 @@ describe("Function Deployment tasks", () => {
           status: 500,
         });
       });
-      const functionName = "myFunc";
+      const functionName = backend.functionName(CLOUD_FUNCTION);
       const testTask: tasks.DeploymentTask = {
         run,
-        functionName: functionName,
+        fn: CLOUD_FUNCTION,
         operationType: "upsert schedule",
       };
 

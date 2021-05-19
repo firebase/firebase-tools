@@ -2,10 +2,13 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import { FirebaseError } from "../../../error";
+import { previews } from "../../../previews";
 import * as args from "../../../deploy/functions/args";
 import * as backend from "../../../deploy/functions/backend";
 import * as gcf from "../../../gcp/cloudfunctions";
+import * as gcfV2 from "../../../gcp/cloudfunctionsv2";
 import * as utils from "../../../utils";
+import { Context } from "mocha";
 
 describe("Backend", () => {
   const FUNCTION_NAME: backend.TargetIds = {
@@ -28,6 +31,35 @@ describe("Backend", () => {
     name: "projects/project/locations/region/functions/id",
     entryPoint: "function",
     runtime: "nodejs14",
+  };
+
+  const CLOUD_FUNCTION_V2_SOURCE: gcfV2.StorageSource = {
+    bucket: "sample",
+    object: "source.zip",
+    generation: 42,
+  };
+
+  const CLOUD_FUNCTION_V2: Omit<gcfV2.CloudFunction, gcfV2.OutputOnlyFields> = {
+    name: "projects/project/locations/region/functions/id",
+    buildConfig: {
+      entryPoint: "function",
+      runtime: "nodejs14",
+      source: {
+        storageSource: CLOUD_FUNCTION_V2_SOURCE,
+      },
+      environmentVariables: {},
+    },
+    serviceConfig: {},
+  };
+
+  const RUN_URI = "https://id-nonce-region-project.run.app";
+  const HAVE_CLOUD_FUNCTION_V2: gcfV2.CloudFunction = {
+    ...CLOUD_FUNCTION_V2,
+    serviceConfig: {
+      uri: RUN_URI,
+    },
+    state: "ACTIVE",
+    updateTime: new Date(),
   };
 
   const HAVE_CLOUD_FUNCTION: gcf.CloudFunction = {
@@ -306,7 +338,7 @@ describe("Backend", () => {
           ...HAVE_CLOUD_FUNCTION,
           ...extraFields,
           httpsTrigger: {},
-        })
+        } as gcf.CloudFunction)
       ).to.deep.equal({
         ...FUNCTION_SPEC,
         ...extraFields,
@@ -329,6 +361,261 @@ describe("Backend", () => {
         trigger: {
           allowInsecure: true,
         },
+      });
+    });
+  });
+
+  describe("toGCFv2Function", () => {
+    const UPLOAD_URL = "https://storage.googleapis.com/projects/-/buckets/sample/source.zip";
+    it("should guard against version mixing", () => {
+      expect(() => {
+        backend.toGCFv2Function({ ...FUNCTION_SPEC, apiVersion: 1 }, CLOUD_FUNCTION_V2_SOURCE);
+      }).to.throw;
+    });
+
+    it("should copy a minimal function", () => {
+      expect(
+        backend.toGCFv2Function(
+          {
+            ...FUNCTION_SPEC,
+            apiVersion: 2,
+          },
+          CLOUD_FUNCTION_V2_SOURCE
+        )
+      ).to.deep.equal(CLOUD_FUNCTION_V2);
+
+      const eventFunction: backend.FunctionSpec = {
+        ...FUNCTION_SPEC,
+        apiVersion: 2,
+        trigger: {
+          eventType: "google.cloud.audit.log.v1.written",
+          eventFilters: {
+            resource: "projects/p/regions/r/instances/i",
+            serviceName: "compute.googleapis.com",
+          },
+          retry: false,
+        },
+      };
+      const eventGcfFunction: Omit<gcfV2.CloudFunction, gcfV2.OutputOnlyFields> = {
+        ...CLOUD_FUNCTION_V2,
+        eventTrigger: {
+          eventType: "google.cloud.audit.log.v1.written",
+          eventFilters: [
+            {
+              attribute: "resource",
+              value: "projects/p/regions/r/instances/i",
+            },
+            {
+              attribute: "serviceName",
+              value: "compute.googleapis.com",
+            },
+          ],
+        },
+      };
+      expect(backend.toGCFv2Function(eventFunction, CLOUD_FUNCTION_V2_SOURCE)).to.deep.equal(
+        eventGcfFunction
+      );
+    });
+
+    it("should copy trival fields", () => {
+      const fullFunction: backend.FunctionSpec = {
+        ...FUNCTION_SPEC,
+        apiVersion: 2,
+        availableMemoryMb: 128,
+        vpcConnector: "connector",
+        vpcConnectorEgressSettings: "ALL_TRAFFIC",
+        ingressSettings: "ALLOW_ALL",
+        serviceAccountEmail: "inlined@google.com",
+        labels: {
+          foo: "bar",
+        },
+        environmentVariables: {
+          FOO: "bar",
+        },
+      };
+
+      const fullGcfFunction: Omit<gcfV2.CloudFunction, gcfV2.OutputOnlyFields> = {
+        ...CLOUD_FUNCTION_V2,
+        labels: {
+          foo: "bar",
+        },
+        serviceConfig: {
+          ...CLOUD_FUNCTION_V2.serviceConfig,
+          environmentVariables: {
+            FOO: "bar",
+          },
+          vpcConnector: "connector",
+          vpcConnectorEgressSettings: "ALL_TRAFFIC",
+          ingressSettings: "ALLOW_ALL",
+          availableMemoryMb: 128,
+          serviceAccountEmail: "inlined@google.com",
+        },
+      };
+
+      expect(backend.toGCFv2Function(fullFunction, CLOUD_FUNCTION_V2_SOURCE)).to.deep.equal(
+        fullGcfFunction
+      );
+    });
+
+    it("should calculate non-trivial fields", () => {
+      const complexFunction: backend.FunctionSpec = {
+        ...FUNCTION_SPEC,
+        apiVersion: 2,
+        trigger: {
+          eventType: gcfV2.PUBSUB_PUBLISH_EVENT,
+          eventFilters: {
+            resource: "projects/p/topics/t",
+          },
+          retry: false,
+        },
+        maxInstances: 42,
+        minInstances: 1,
+        timeout: "15s",
+      };
+
+      const complexGcfFunction: Omit<gcfV2.CloudFunction, gcfV2.OutputOnlyFields> = {
+        ...CLOUD_FUNCTION_V2,
+        eventTrigger: {
+          eventType: gcfV2.PUBSUB_PUBLISH_EVENT,
+          pubsubTopic: "projects/p/topics/t",
+        },
+        serviceConfig: {
+          ...CLOUD_FUNCTION_V2.serviceConfig,
+          maxInstanceCount: 42,
+          minInstanceCount: 1,
+          timeoutSeconds: 15,
+        },
+      };
+
+      expect(backend.toGCFv2Function(complexFunction, CLOUD_FUNCTION_V2_SOURCE)).to.deep.equal(
+        complexGcfFunction
+      );
+    });
+  });
+
+  describe("fromGCFv2Function", () => {
+    it("should copy a minimal version", () => {
+      expect(backend.fromGCFv2Function(HAVE_CLOUD_FUNCTION_V2)).to.deep.equal({
+        ...FUNCTION_SPEC,
+        apiVersion: 2,
+        uri: RUN_URI,
+      });
+    });
+
+    it("should translate event triggers", () => {
+      expect(
+        backend.fromGCFv2Function({
+          ...HAVE_CLOUD_FUNCTION_V2,
+          eventTrigger: {
+            eventType: gcfV2.PUBSUB_PUBLISH_EVENT,
+            pubsubTopic: "projects/p/topics/t",
+          },
+        })
+      ).to.deep.equal({
+        ...FUNCTION_SPEC,
+        apiVersion: 2,
+        uri: RUN_URI,
+        trigger: {
+          eventType: gcfV2.PUBSUB_PUBLISH_EVENT,
+          eventFilters: {
+            resource: "projects/p/topics/t",
+          },
+          retry: false,
+        },
+      });
+
+      // And again w/ a normal event trigger
+      expect(
+        backend.fromGCFv2Function({
+          ...HAVE_CLOUD_FUNCTION_V2,
+          eventTrigger: {
+            eventType: "google.cloud.audit.log.v1.written",
+            eventFilters: [
+              {
+                attribute: "resource",
+                value: "projects/p/regions/r/instances/i",
+              },
+              {
+                attribute: "serviceName",
+                value: "compute.googleapis.com",
+              },
+            ],
+          },
+        })
+      ).to.deep.equal({
+        ...FUNCTION_SPEC,
+        apiVersion: 2,
+        uri: RUN_URI,
+        trigger: {
+          eventType: "google.cloud.audit.log.v1.written",
+          eventFilters: {
+            resource: "projects/p/regions/r/instances/i",
+            serviceName: "compute.googleapis.com",
+          },
+          retry: false,
+        },
+      });
+    });
+
+    it("should copy optional fields", () => {
+      const extraFields: Partial<backend.FunctionSpec> = {
+        availableMemoryMb: 128,
+        vpcConnector: "connector",
+        vpcConnectorEgressSettings: "ALL_TRAFFIC",
+        ingressSettings: "ALLOW_ALL",
+        serviceAccountEmail: "inlined@google.com",
+        environmentVariables: {
+          FOO: "bar",
+        },
+      };
+      expect(
+        backend.fromGCFv2Function({
+          ...HAVE_CLOUD_FUNCTION_V2,
+          serviceConfig: {
+            ...HAVE_CLOUD_FUNCTION_V2.serviceConfig,
+            ...extraFields,
+          },
+          labels: {
+            foo: "bar",
+          },
+        })
+      ).to.deep.equal({
+        ...FUNCTION_SPEC,
+        apiVersion: 2,
+        uri: RUN_URI,
+        ...extraFields,
+        labels: {
+          foo: "bar",
+        },
+      });
+    });
+
+    it("should transform fields", () => {
+      const extraFields: Partial<backend.FunctionSpec> = {
+        minInstances: 1,
+        maxInstances: 42,
+        timeout: "15s",
+      };
+
+      const extraGcfFields: Partial<gcfV2.ServiceConfig> = {
+        minInstanceCount: 1,
+        maxInstanceCount: 42,
+        timeoutSeconds: 15,
+      };
+
+      expect(
+        backend.fromGCFv2Function({
+          ...HAVE_CLOUD_FUNCTION_V2,
+          serviceConfig: {
+            ...HAVE_CLOUD_FUNCTION_V2.serviceConfig,
+            ...extraGcfFields,
+          },
+        })
+      ).to.deep.equal({
+        ...FUNCTION_SPEC,
+        apiVersion: 2,
+        uri: RUN_URI,
+        ...extraFields,
       });
     });
   });
@@ -382,24 +669,19 @@ describe("Backend", () => {
 
   describe("existing backend", () => {
     let listAllFunctions: sinon.SinonStub;
-    let existingFunctions: gcf.CloudFunction[];
-    let unreachableRegions: string[];
+    let listAllFunctionsV2: sinon.SinonStub;
     let logLabeledWarning: sinon.SinonSpy;
 
     beforeEach(() => {
-      existingFunctions = [];
-      unreachableRegions = [];
-      listAllFunctions = sinon.stub(gcf, "listAllFunctions").callsFake(() => {
-        return Promise.resolve({
-          functions: existingFunctions,
-          unreachable: unreachableRegions,
-        });
-      });
+      previews.functionsv2 = false;
+      listAllFunctions = sinon.stub(gcf, "listAllFunctions").rejects("Unexpected call");
+      listAllFunctionsV2 = sinon.stub(gcfV2, "listAllFunctions").rejects("Unexpected v2 call");
       logLabeledWarning = sinon.spy(utils, "logLabeledWarning");
     });
 
     afterEach(() => {
       listAllFunctions.restore();
+      listAllFunctionsV2.restore();
       logLabeledWarning.restore();
     });
 
@@ -410,25 +692,37 @@ describe("Backend", () => {
     describe("existingBackend", () => {
       it("should cache", async () => {
         const context = newContext();
+        listAllFunctions.onFirstCall().resolves({
+          functions: [
+            {
+              ...HAVE_CLOUD_FUNCTION,
+              httpsTrigger: {},
+            },
+          ],
+          unreachable: ["region"],
+        });
         const firstBackend = await backend.existingBackend(context);
-        existingFunctions = [HAVE_CLOUD_FUNCTION];
-        unreachableRegions = ["region"];
 
         const secondBackend = await backend.existingBackend(context);
-        backend.checkAvailability(context, backend.empty());
+        await backend.checkAvailability(context, backend.empty());
 
         expect(firstBackend).to.deep.equal(secondBackend);
+        expect(listAllFunctions).to.be.calledOnce;
+        expect(listAllFunctionsV2).to.not.be.called;
       });
 
       it("should translate functions", async () => {
-        existingFunctions = [
-          {
-            ...HAVE_CLOUD_FUNCTION,
-            httpsTrigger: {
-              securityLevel: "SECURE_ALWAYS",
+        listAllFunctions.onFirstCall().resolves({
+          functions: [
+            {
+              ...HAVE_CLOUD_FUNCTION,
+              httpsTrigger: {
+                securityLevel: "SECURE_ALWAYS",
+              },
             },
-          },
-        ];
+          ],
+          unreachable: [],
+        });
         const have = await backend.existingBackend(newContext());
 
         expect(have).to.deep.equal({
@@ -437,19 +731,46 @@ describe("Backend", () => {
         });
       });
 
+      it("should read v2 functions when enabled", async () => {
+        previews.functionsv2 = true;
+        listAllFunctions.onFirstCall().resolves({
+          functions: [],
+          unreachable: [],
+        });
+        listAllFunctionsV2.onFirstCall().resolves({
+          functions: [HAVE_CLOUD_FUNCTION_V2],
+          unreachable: [],
+        });
+        const have = await backend.existingBackend(newContext());
+
+        expect(have).to.deep.equal({
+          ...backend.empty(),
+          cloudFunctions: [
+            {
+              ...FUNCTION_SPEC,
+              apiVersion: 2,
+              uri: HAVE_CLOUD_FUNCTION_V2.serviceConfig.uri,
+            },
+          ],
+        });
+      });
+
       it("should deduce features of scheduled functions", async () => {
-        existingFunctions = [
-          {
-            ...HAVE_CLOUD_FUNCTION,
-            eventTrigger: {
-              eventType: "google.pubsub.topic.publish",
-              resource: backend.topicName(TOPIC),
+        listAllFunctions.onFirstCall().resolves({
+          functions: [
+            {
+              ...HAVE_CLOUD_FUNCTION,
+              eventTrigger: {
+                eventType: "google.pubsub.topic.publish",
+                resource: backend.topicName(TOPIC),
+              },
+              labels: {
+                "deployment-scheduled": "true",
+              },
             },
-            labels: {
-              "deployment-scheduled": "true",
-            },
-          },
-        ];
+          ],
+          unreachable: [],
+        });
         const have = await backend.existingBackend(newContext());
 
         const functionSpec: backend.FunctionSpec = {
@@ -489,18 +810,72 @@ describe("Backend", () => {
 
     describe("checkAvailability", () => {
       it("should do nothing when regions are all avalable", async () => {
+        listAllFunctions.onFirstCall().resolves({
+          functions: [],
+          unreachable: [],
+        });
+
         await backend.checkAvailability(newContext(), backend.empty());
+
+        expect(listAllFunctions).to.have.been.called;
+        expect(listAllFunctionsV2).to.not.have.been.called;
+        expect(logLabeledWarning).to.not.have.been.called;
+      });
+
+      it("should do nothing when all regions are available and GCFv2 is enabled", async () => {
+        previews.functionsv2 = true;
+        listAllFunctions.onFirstCall().resolves({
+          functions: [],
+          unreachable: [],
+        });
+        listAllFunctionsV2.onFirstCall().resolves({
+          functions: [],
+          unreachable: [],
+        });
+
+        await backend.checkAvailability(newContext(), backend.empty());
+
+        expect(listAllFunctions).to.have.been.called;
+        expect(listAllFunctionsV2).to.have.been.called;
         expect(logLabeledWarning).to.not.have.been.called;
       });
 
       it("should warn if an unused backend is unavailable", async () => {
-        unreachableRegions = ["region"];
+        listAllFunctions.onFirstCall().resolves({
+          functions: [],
+          unreachable: ["region"],
+        });
+
         await backend.checkAvailability(newContext(), backend.empty());
+
+        expect(listAllFunctions).to.have.been.called;
+        expect(listAllFunctionsV2).to.not.have.been.called;
+        expect(logLabeledWarning).to.have.been.called;
+      });
+
+      it("should warn if an unused GCFv2 backend is unavailable", async () => {
+        previews.functionsv2 = true;
+        listAllFunctions.onFirstCall().resolves({
+          functions: [],
+          unreachable: [],
+        });
+        listAllFunctionsV2.onFirstCall().resolves({
+          functions: [],
+          unreachable: ["region"],
+        });
+
+        await backend.checkAvailability(newContext(), backend.empty());
+
+        expect(listAllFunctions).to.have.been.called;
+        expect(listAllFunctionsV2).to.have.been.called;
         expect(logLabeledWarning).to.have.been.called;
       });
 
       it("should throw if a needed region is unavailable", async () => {
-        unreachableRegions = ["region"];
+        listAllFunctions.onFirstCall().resolves({
+          functions: [],
+          unreachable: ["region"],
+        });
         const want = {
           ...backend.empty(),
           cloudFunctions: [FUNCTION_SPEC],
@@ -509,6 +884,81 @@ describe("Backend", () => {
           FirebaseError,
           /The following Cloud Functions regions are currently unreachable:/
         );
+      });
+
+      it("should throw if a GCFv2 needed region is unavailable", async () => {
+        previews.functionsv2 = true;
+        listAllFunctions.onFirstCall().resolves({
+          functions: [],
+          unreachable: [],
+        });
+        listAllFunctionsV2.onFirstCall().resolves({
+          functions: [],
+          unreachable: ["region"],
+        });
+        const want: backend.Backend = {
+          ...backend.empty(),
+          cloudFunctions: [
+            {
+              ...FUNCTION_SPEC,
+              apiVersion: 2,
+            },
+          ],
+        };
+
+        await expect(backend.checkAvailability(newContext(), want)).to.eventually.be.rejectedWith(
+          FirebaseError,
+          /The following Cloud Functions V2 regions are currently unreachable:/
+        );
+      });
+
+      it("Should only warn when deploying GCFv1 and GCFv2 is unavailable.", async () => {
+        previews.functionsv2 = true;
+        listAllFunctions.onFirstCall().resolves({
+          functions: [],
+          unreachable: [],
+        });
+        listAllFunctionsV2.onFirstCall().resolves({
+          functions: [],
+          unreachable: ["us-central1"],
+        });
+
+        const want = {
+          ...backend.empty(),
+          cloudFunctions: [FUNCTION_SPEC],
+        };
+        await backend.checkAvailability(newContext(), want);
+
+        expect(listAllFunctions).to.have.been.called;
+        expect(listAllFunctionsV2).to.have.been.called;
+        expect(logLabeledWarning).to.have.been.called;
+      });
+
+      it("Should only warn when deploying GCFv2 and GCFv1 is unavailable.", async () => {
+        previews.functionsv2 = true;
+        listAllFunctions.onFirstCall().resolves({
+          functions: [],
+          unreachable: ["us-central1"],
+        });
+        listAllFunctionsV2.onFirstCall().resolves({
+          functions: [],
+          unreachable: [],
+        });
+
+        const want: backend.Backend = {
+          ...backend.empty(),
+          cloudFunctions: [
+            {
+              ...FUNCTION_SPEC,
+              apiVersion: 2,
+            },
+          ],
+        };
+        await backend.checkAvailability(newContext(), want);
+
+        expect(listAllFunctions).to.have.been.called;
+        expect(listAllFunctionsV2).to.have.been.called;
+        expect(logLabeledWarning).to.have.been.called;
       });
     });
   });

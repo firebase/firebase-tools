@@ -1,13 +1,11 @@
 import * as _ from "lodash";
-import { EmulatedTriggerDefinition } from "../../emulator/functionsEmulatorShared";
+import { ParsedTriggerDefinition } from "../../emulator/functionsEmulatorShared";
 import { Constants } from "../../emulator/constants";
 import { EmulatorLogger } from "../../emulator/emulatorLogger";
 import { Emulators } from "../../emulator/types";
 
-export function functionResourceToEmulatedTriggerDefintion(
-  resource: any
-): EmulatedTriggerDefinition {
-  const etd: EmulatedTriggerDefinition = {
+export function functionResourceToEmulatedTriggerDefintion(resource: any): ParsedTriggerDefinition {
+  const etd: ParsedTriggerDefinition = {
     name: resource.name,
     entryPoint: resource.name,
   };
