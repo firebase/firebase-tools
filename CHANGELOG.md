@@ -1,1 +1,2 @@
 - Enable running functions in multiple regions in the emulator.
+- Adds the deployed version to the output when deploying to Firebase Hosting.
