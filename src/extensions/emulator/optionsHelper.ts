@@ -1,5 +1,6 @@
 import * as fs from "fs-extra";
 import * as _ from "lodash";
+import { ParsedTriggerDefinition } from "../../emulator/functionsEmulatorShared";
 import * as path from "path";
 import * as paramHelper from "../paramHelper";
 import * as specHelper from "./specHelper";
@@ -37,7 +38,7 @@ export async function buildOptions(options: any): Promise<any> {
   }
   options.config = buildConfig(functionResources, testConfig);
   options.extensionEnv = params;
-  const functionEmuTriggerDefs = functionResources.map((r) =>
+  const functionEmuTriggerDefs: ParsedTriggerDefinition[] = functionResources.map((r) =>
     triggerHelper.functionResourceToEmulatedTriggerDefintion(r)
   );
   options.extensionTriggers = functionEmuTriggerDefs;
