@@ -65,14 +65,11 @@ export default new Command("open [link]")
       }
 
       if (!link) {
-        const name = await promptOnce(
-          {},
-          {
-            type: "list",
-            message: "What link would you like to open?",
-            choices: CHOICES,
-          }
-        );
+        const name = await promptOnce({
+          type: "list",
+          message: "What link would you like to open?",
+          choices: CHOICES,
+        });
         link = _.find(LINKS, { name });
       }
       if (!link) {
