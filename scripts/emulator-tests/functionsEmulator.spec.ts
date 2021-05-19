@@ -50,6 +50,14 @@ functionsEmulator.setTriggersForTesting([
     labels: {},
   },
   {
+    name: "function_id",
+    id: "europe-west3-function_id",
+    region: "europe-west3",
+    entryPoint: "function_id",
+    httpsTrigger: {},
+    labels: {},
+  },
+  {
     name: "callable_function_id",
     id: "us-central1-callable_function_id",
     region: "us-central1",
@@ -90,7 +98,7 @@ function useFunctions(triggers: () => {}): void {
 }
 
 describe("FunctionsEmulator-Hub", () => {
-  it("should route requests to /:project_id/:region/:trigger_id to HTTPS Function", async () => {
+  it("should route requests to /:project_id/us-central1/:trigger_id to default region HTTPS Function", async () => {
     useFunctions(() => {
       require("firebase-admin").initializeApp();
       return {
@@ -114,11 +122,11 @@ describe("FunctionsEmulator-Hub", () => {
     useFunctions(() => {
       require("firebase-admin").initializeApp();
       return {
-        function_id: require("firebase-functions").https.onRequest(
-          (req: express.Request, res: express.Response) => {
+        function_id: require("firebase-functions")
+          .region("us-central1", "europe-west2")
+          .https.onRequest((req: express.Request, res: express.Response) => {
             res.json({ path: req.path });
-          }
-        ),
+          }),
       };
     });
 
@@ -134,11 +142,11 @@ describe("FunctionsEmulator-Hub", () => {
     useFunctions(() => {
       require("firebase-admin").initializeApp();
       return {
-        function_id: require("firebase-functions").https.onRequest(
-          (req: express.Request, res: express.Response) => {
+        function_id: require("firebase-functions")
+          .region("us-central1", "europe-west2")
+          .https.onRequest((req: express.Request, res: express.Response) => {
             res.json({ path: req.path });
-          }
-        ),
+          }),
       };
     });
 
