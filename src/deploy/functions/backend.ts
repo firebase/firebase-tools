@@ -21,6 +21,7 @@ export interface ScheduleRetryConfig {
 export interface PubSubSpec {
   id: string;
   project: string;
+  labels?: Record<string, string>;
 
   // What we're actually planning to invoke with this topic
   targetService: TargetIds;
@@ -622,6 +623,7 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
       ctx.existingBackend.topics.push({
         id,
         project: specFunction.project,
+        labels: { deployment: "firebase-schedule" },
         targetService: {
           id: specFunction.id,
           region: specFunction.region,
@@ -657,6 +659,7 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
       ctx.existingBackend.topics.push({
         id,
         project: specFunction.project,
+        labels: { deployment: "firebase-schedule" },
         targetService: {
           id: specFunction.id,
           region: specFunction.region,
