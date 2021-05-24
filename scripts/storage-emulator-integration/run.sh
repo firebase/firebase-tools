@@ -2,10 +2,10 @@
 set -e # Immediately exit on failure
 
 # Globally link the CLI for the testing framework
-#./scripts/npm-link.sh
+./scripts/npm-link.sh
 
 # Prepare the storage emulator rules runtime
-#firebase setup:emulators:storage
+firebase setup:emulators:storage
 
 mocha \
   --require ts-node/register \
