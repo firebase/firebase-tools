@@ -530,7 +530,6 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
           return;
         }
         upload = finalizedUpload.upload;
-        finalizedUpload.file.metadata.addDownloadToken();
 
         res.header("x-goog-upload-status", "final");
 
