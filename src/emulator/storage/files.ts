@@ -275,10 +275,6 @@ export class StorageLayer {
     return { upload: upload, file: file };
   }
 
-  get files() {
-    return this._files;
-  }
-
   public oneShotUpload(
     bucket: string,
     object: string,
