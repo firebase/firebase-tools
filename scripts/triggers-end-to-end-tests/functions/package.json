@@ -3,7 +3,7 @@
   "description": "Cloud Functions for Firebase",
   "scripts": {},
   "engines": {
-    "node": "14"
+    "node": "12"
   },
   "dependencies": {
     "@google-cloud/pubsub": "^1.1.5",
