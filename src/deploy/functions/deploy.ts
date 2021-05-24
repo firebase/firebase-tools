@@ -1,21 +1,36 @@
 import * as clc from "cli-color";
 import { setGracefulCleanup } from "tmp";
 
-import { functionsUploadRegion } from "../../api";
-import * as gcp from "../../gcp";
-import { logSuccess, logWarning } from "../../utils";
 import { checkHttpIam } from "./checkIam";
+import { functionsUploadRegion } from "../../api";
+import { logSuccess, logWarning } from "../../utils";
 import * as args from "./args";
+import * as backend from "./backend";
+import * as fs from "fs";
+import * as gcs from "../../gcp/storage";
+import * as gcf from "../../gcp/cloudfunctions";
 
 const GCP_REGION = functionsUploadRegion;
 
 setGracefulCleanup();
 
-async function uploadSource(context: args.Context): Promise<void> {
-  const uploadUrl = await gcp.cloudfunctions.generateUploadUrl(context.projectId, GCP_REGION);
+async function uploadSourceV1(context: args.Context): Promise<void> {
+  const uploadUrl = await gcf.generateUploadUrl(context.projectId, GCP_REGION);
   context.uploadUrl = uploadUrl;
-  const apiUploadUrl = uploadUrl.replace("https://storage.googleapis.com", "");
-  await gcp.storage.upload(context.functionsSource, apiUploadUrl);
+  const uploadOpts = {
+    file: context.functionsSource!,
+    stream: fs.createReadStream(context.functionsSource!),
+  };
+  await gcs.upload(uploadOpts, uploadUrl);
+}
+
+async function uploadSourceV2(context: args.Context): Promise<void> {
+  const bucket = "staging." + (await gcs.getDefaultBucket(context.projectId));
+  const uploadOpts = {
+    file: context.functionsSource!,
+    stream: fs.createReadStream(context.functionsSource!),
+  };
+  context.storageSource = await gcs.uploadObject(uploadOpts, bucket);
 }
 
 /**
@@ -24,7 +39,6 @@ async function uploadSource(context: args.Context): Promise<void> {
  * @param options The command-wide options object.
  * @param payload The deploy payload.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function deploy(
   context: args.Context,
   options: args.Options,
@@ -39,8 +53,18 @@ export async function deploy(
   if (!context.functionsSource) {
     return;
   }
+
   try {
-    await uploadSource(context);
+    const want = options.config.get("functions.backend") as backend.Backend;
+    const uploads: Promise<void>[] = [];
+    if (want.cloudFunctions.some((fn) => fn.apiVersion === 1)) {
+      uploads.push(uploadSourceV1(context));
+    }
+    if (want.cloudFunctions.some((fn) => fn.apiVersion === 2)) {
+      uploads.push(uploadSourceV2(context));
+    }
+    await Promise.all(uploads);
+
     logSuccess(
       clc.green.bold("functions:") +
         " " +

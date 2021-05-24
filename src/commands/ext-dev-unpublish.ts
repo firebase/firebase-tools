@@ -42,11 +42,11 @@ module.exports = new Command("ext:dev:unpublish <extensionRef>")
     utils.logLabeledSuccess(logPrefix, "successfully unpublished all versions of this extension.");
   });
 
-async function comfirmUnpublish(publisherId: string, extensionId: string): Promise<string> {
+async function comfirmUnpublish(publisherId: string, extensionId: string): Promise<boolean> {
   const message = `You are about to unpublish ALL versions of ${clc.green(
     `${publisherId}/${extensionId}`
   )}.\nDo you wish to continue? `;
-  return await promptOnce({
+  return promptOnce({
     type: "confirm",
     message,
     default: false, // Force users to explicitly type 'yes'

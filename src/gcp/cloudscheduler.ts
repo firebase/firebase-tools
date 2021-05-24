@@ -1,8 +1,8 @@
 import * as _ from "lodash";
+import { FirebaseError } from "../error";
+import { logger } from "../logger";
 import * as api from "../api";
 import * as proto from "./proto";
-import { FirebaseError } from "../error";
-import { logLabeledBullet, logLabeledSuccess } from "../utils";
 
 const VERSION = "v1beta1";
 const DEFAULT_TIME_ZONE = "America/Los_Angeles";
@@ -24,6 +24,7 @@ export interface OdicToken {
   serviceAccountEmail: string;
   audiences: string[];
 }
+
 export interface HttpTarget {
   uri: string;
   httpMethod: HttpMethod;
@@ -75,6 +76,7 @@ export function assertValidJob(job: Job) {
     );
   }
 }
+
 /**
  * Creates a cloudScheduler job.
  * If another job with that name already exists, this will return a 409.
@@ -151,7 +153,7 @@ export async function createOrReplaceJob(job: Job): Promise<any> {
       newJob = await createJob(job);
     } catch (err) {
       // Cloud resource location is not set so we error here and exit.
-      if (_.get(err, "context.response.statusCode") === 404) {
+      if (err?.context?.response?.statusCode === 404) {
         throw new FirebaseError(
           `Cloud resource location is not set for this project but scheduled functions require it. ` +
             `Please see this documentation for more details: https://firebase.google.com/docs/projects/locations.`
@@ -159,7 +161,7 @@ export async function createOrReplaceJob(job: Job): Promise<any> {
       }
       throw new FirebaseError(`Failed to create scheduler job ${job.name}: ${err.message}`);
     }
-    logLabeledSuccess("functions", `created scheduler job ${jobName}`);
+    logger.debug(`created scheduler job ${jobName}`);
     return newJob;
   }
   if (!job.timeZone) {
@@ -167,11 +169,11 @@ export async function createOrReplaceJob(job: Job): Promise<any> {
     job.timeZone = DEFAULT_TIME_ZONE;
   }
   if (isIdentical(existingJob.body, job)) {
-    logLabeledBullet("functions", `scheduler job ${jobName} is up to date, no changes required`);
+    logger.debug(`scheduler job ${jobName} is up to date, no changes required`);
     return;
   }
   const updatedJob = await updateJob(job);
-  logLabeledBullet("functions", `updated scheduler job ${jobName}`);
+  logger.debug(`updated scheduler job ${jobName}`);
   return updatedJob;
 }
 

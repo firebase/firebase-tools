@@ -28,6 +28,7 @@ interface ChannelInfo {
   target: string | null;
   site: string;
   url: string;
+  version: string;
   expireTime: string;
 }
 
@@ -91,7 +92,13 @@ export default new Command("hosting:channel:deploy [channelId]")
 
       const sites: ChannelInfo[] = normalizedHostingConfigs(options, {
         resolveTargets: true,
-      }).map((cfg) => ({ site: cfg.site, target: cfg.target, url: "", expireTime: "" }));
+      }).map((cfg) => ({
+        site: cfg.site,
+        target: cfg.target,
+        url: "",
+        version: "",
+        expireTime: "",
+      }));
 
       await Promise.all(
         sites.map(async (siteInfo) => {
@@ -126,7 +133,23 @@ export default new Command("hosting:channel:deploy [channelId]")
         })
       );
 
-      await deploy(["hosting"], options, { hostingChannel: channelId });
+      const { hosting } = await deploy(["hosting"], options, { hostingChannel: channelId });
+
+      // The version names are returned in the hosting key of the deploy result.
+      //
+      // If there is only one element it is returned as a string, otherwise it
+      // is an array of strings. Not sure why it's done that way, but that's
+      // something we can't change because it is in the deploy output in json.
+      //
+      // The code below turns it back to an array of version names.
+      const versionNames: Array<string> = [];
+      if (typeof hosting === "string") {
+        versionNames.push(hosting);
+      } else if (Array.isArray(hosting)) {
+        hosting.forEach((version) => {
+          versionNames.push(version);
+        });
+      }
 
       logger.info();
       await syncAuthState(projectId, sites);
@@ -137,9 +160,18 @@ export default new Command("hosting:channel:deploy [channelId]")
         if (d.expireTime) {
           expires = `[expires ${bold(datetimeString(new Date(d.expireTime)))}]`;
         }
+        const versionPrefix = `sites/${d.site}/versions/`;
+        const versionName = versionNames.find((v) => {
+          return v.startsWith(versionPrefix);
+        });
+        let version = "";
+        if (versionName) {
+          d.version = versionName.replace(versionPrefix, "");
+          version = ` [version ${bold(d.version)}]`;
+        }
         logLabeledSuccess(
           LOG_TAG,
-          `Channel URL (${bold(d.site || d.target)}): ${d.url} ${expires}`
+          `Channel URL (${bold(d.site || d.target)}): ${d.url} ${expires}${version}`
         );
       });
       return deploys;

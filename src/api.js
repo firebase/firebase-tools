@@ -110,6 +110,14 @@ var api = {
     "FIREBASE_DEPLOY_URL",
     utils.envOverride("FIREBASE_UPLOAD_URL", "https://deploy.firebase.com")
   ),
+  dynamicLinksOrigin: utils.envOverride(
+    "FIREBASE_DYNAMIC_LINKS_URL",
+    "https://firebasedynamiclinks.googleapis.com"
+  ),
+  dynamicLinksKey: utils.envOverride(
+    "FIREBASE_DYNAMIC_LINKS_KEY",
+    "AIzaSyB6PtY5vuiSB8MNgt20mQffkOlunZnHYiQ"
+  ),
   firebaseApiOrigin: utils.envOverride("FIREBASE_API_URL", "https://firebase.googleapis.com"),
   firebaseExtensionsRegistryOrigin: utils.envOverride(
     "FIREBASE_EXT_REGISTRY_ORIGIN",
@@ -131,7 +139,13 @@ var api = {
     "FIREBASE_FUNCTIONS_URL",
     "https://cloudfunctions.googleapis.com"
   ),
+  functionsV2Origin: utils.envOverride(
+    "FIREBASE_FUNCTIONS_V2_URL",
+    "https://cloudfunctions.googleapis.com"
+  ),
+  runOrigin: utils.envOverride("CLOUD_RUN_URL", "https://run.googleapis.com"),
   functionsUploadRegion: utils.envOverride("FIREBASE_FUNCTIONS_UPLOAD_REGION", "us-central1"),
+  functionsDefaultRegion: utils.envOverride("FIREBASE_FUNCTIONS_DEFAULT_REGION", "us-central1"),
   cloudschedulerOrigin: utils.envOverride(
     "FIREBASE_CLOUDSCHEDULER_URL",
     "https://cloudscheduler.googleapis.com"

@@ -14,7 +14,7 @@ import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
 import * as utils from "./utils";
 import { logger } from "./logger";
-import { prompt } from "./prompt";
+import { promptOnce } from "./prompt";
 import * as scopes from "./scopes";
 import { clearCredentials } from "./defaultCredentials";
 
@@ -417,14 +417,12 @@ async function loginWithoutLocalhost(userHint?: string): Promise<UserCredentials
 
   open(authUrl);
 
-  const answers: { code: string } = await prompt({}, [
-    {
-      type: "input",
-      name: "code",
-      message: "Paste authorization code here:",
-    },
-  ]);
-  const tokens = await getTokensFromAuthorizationCode(answers.code, callbackUrl);
+  const code: string = await promptOnce({
+    type: "input",
+    name: "code",
+    message: "Paste authorization code here:",
+  });
+  const tokens = await getTokensFromAuthorizationCode(code, callbackUrl);
   // getTokensFromAuthorizationCode doesn't handle the --token case, so we know
   // that we'll have a valid id_token.
   return {

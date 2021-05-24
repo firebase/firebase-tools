@@ -3,18 +3,18 @@ import * as path from "path";
 import * as clc from "cli-color";
 import * as semver from "semver";
 
-import { getFunctionsSDKVersion } from "./checkFirebaseSDKVersion";
-import { FirebaseError } from "./error";
-import * as utils from "./utils";
-import { logger } from "./logger";
-import * as track from "./track";
-import { Runtime } from "./gcp/cloudfunctions";
+import { FirebaseError } from "../../error";
+import { getFunctionsSDKVersion } from "../../checkFirebaseSDKVersion";
+import { logger } from "../../logger";
+import * as backend from "./backend";
+import * as utils from "../../utils";
+import * as track from "../../track";
 
 // have to require this because no @types/cjson available
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const cjson = require("cjson");
 
-const MESSAGE_FRIENDLY_RUNTIMES: Record<Runtime, string> = {
+const MESSAGE_FRIENDLY_RUNTIMES: Record<backend.Runtime | DeprecatedRuntime, string> = {
   nodejs6: "Node.js 6 (Deprecated)",
   nodejs8: "Node.js 8 (Deprecated)",
   nodejs10: "Node.js 10",
@@ -22,7 +22,11 @@ const MESSAGE_FRIENDLY_RUNTIMES: Record<Runtime, string> = {
   nodejs14: "Node.js 14 (Beta)",
 };
 
-const ENGINE_RUNTIMES: Record<number, Runtime> = {
+const DEPRECATED_RUTNIMES = ["nodejs6", "nodejs8"];
+
+type DeprecatedRuntime = typeof DEPRECATED_RUTNIMES[number];
+
+const ENGINE_RUNTIMES: Record<number, backend.Runtime | DeprecatedRuntime> = {
   6: "nodejs6",
   8: "nodejs8",
   10: "nodejs10",
@@ -88,11 +92,11 @@ function functionsSDKTooOld(sourceDir: string, minRange: string): boolean {
  * @param runtime name of runtime in raw format, ie, "nodejs8" or "nodejs10"
  * @return A human-friendly string describing the runtime.
  */
-export function getHumanFriendlyRuntimeName(runtime: Runtime): string {
+export function getHumanFriendlyRuntimeName(runtime: backend.Runtime | DeprecatedRuntime): string {
   return _.get(MESSAGE_FRIENDLY_RUNTIMES, runtime, runtime);
 }
 
-function getRuntimeChoiceFromPackageJson(sourceDir: string): Runtime {
+function getRuntimeChoiceFromPackageJson(sourceDir: string): backend.Runtime | DeprecatedRuntime {
   const packageJsonPath = path.join(sourceDir, "package.json");
   let loaded;
   try {
@@ -117,7 +121,7 @@ function getRuntimeChoiceFromPackageJson(sourceDir: string): Runtime {
  * @param runtimeFromConfig runtime from the `functions` section of firebase.json file (may be empty).
  * @return The runtime, e.g. `nodejs12`.
  */
-export function getRuntimeChoice(sourceDir: string, runtimeFromConfig?: Runtime | ""): Runtime {
+export function getRuntimeChoice(sourceDir: string, runtimeFromConfig?: string): backend.Runtime {
   const runtime = runtimeFromConfig || getRuntimeChoiceFromPackageJson(sourceDir);
   const errorMessage =
     (runtimeFromConfig
@@ -129,10 +133,10 @@ export function getRuntimeChoice(sourceDir: string, runtimeFromConfig?: Runtime 
     throw new FirebaseError(errorMessage, { exit: 1 });
   }
 
-  // NOTE: We could consider removing nodejs6 and nodejs8 from cloudfunctions.Runtimes and
-  // make the methods here take a Runtime | RemovedRuntime. Then we'd throw if it is a RemovedRuntime
-  // and only forward a valid Runtime.
-  if (["nodejs6", "nodejs8"].includes(runtime)) {
+  // Note: the backend.isValidRuntime should always be true because we've verified
+  // it's in ENGINE_RUNTIME_NAMES and not in DEPRECATED_RUNTIMES. This is still a
+  // good defense in depth and also lets us upcast the response to Runtime safely.
+  if (DEPRECATED_RUTNIMES.includes(runtime) || !backend.isValidRuntime(runtime)) {
     track("functions_runtime_notices", `${runtime}_deploy_prohibited`);
     throw new FirebaseError(errorMessage, { exit: 1 });
   }

@@ -63,36 +63,19 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
       skipChecksumAndSize: true,
     },
   },
-  ui: previews.storageemulator
-    ? {
-        version: "1.4.1-STORAGE",
-        downloadPath: path.join(CACHE_DIR, "ui-v1.4.1-STORAGE.zip"),
-        unzipDir: path.join(CACHE_DIR, "ui-v1.4.1-STORAGE"),
-        binaryPath: path.join(CACHE_DIR, "ui-v1.4.1-STORAGE", "server.bundle.js"),
-        opts: {
-          cacheDir: CACHE_DIR,
-          remoteUrl:
-            "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-vStorageSnapshot.zip",
-          expectedSize: 3374020,
-          expectedChecksum: "7a82fed575a2b9a008d96080a7dcccdb",
-          namePrefix: "ui",
-          skipCache: true,
-          skipChecksumAndSize: true,
-        },
-      }
-    : {
-        version: "1.4.2",
-        downloadPath: path.join(CACHE_DIR, "ui-v1.4.2.zip"),
-        unzipDir: path.join(CACHE_DIR, "ui-v1.4.2"),
-        binaryPath: path.join(CACHE_DIR, "ui-v1.4.2", "server.bundle.js"),
-        opts: {
-          cacheDir: CACHE_DIR,
-          remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.4.2.zip",
-          expectedSize: 3259556,
-          expectedChecksum: "651b9f2e548c319a615a5f8c03f76d02",
-          namePrefix: "ui",
-        },
-      },
+  ui: {
+    version: "1.5.0",
+    downloadPath: path.join(CACHE_DIR, "ui-v1.5.0.zip"),
+    unzipDir: path.join(CACHE_DIR, "ui-v1.5.0"),
+    binaryPath: path.join(CACHE_DIR, "ui-v1.5.0", "server.bundle.js"),
+    opts: {
+      cacheDir: CACHE_DIR,
+      remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.5.0.zip",
+      expectedSize: 6251856,
+      expectedChecksum: "a549701d81f16f133b916886b40320f4",
+      namePrefix: "ui",
+    },
+  },
   pubsub: {
     downloadPath: path.join(CACHE_DIR, "pubsub-emulator-0.1.0.zip"),
     version: "0.1.0",
@@ -167,8 +150,17 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
     joinArgs: false,
   },
   storage: {
+    // This is for the Storage Emulator rules runtime, which is started
+    // separately in ./storage/runtime.ts (not via the start function below).
     binary: "java",
-    args: ["-jar", getExecPath(Emulators.STORAGE), "serve"],
+    args: [
+      "-jar",
+      // Required for rules error/warning messages, which are in English only.
+      // Attempts to fetch the messages in another language leads to crashes.
+      "-Duser.language=en",
+      getExecPath(Emulators.STORAGE),
+      "serve",
+    ],
     optionalArgs: [],
     joinArgs: false,
   },
@@ -203,7 +195,7 @@ export function getLogFileName(name: string): string {
  * @param emulator - string identifier for the emulator to start.
  * @param args - map<string,string> of addittional args
  */
-function _getCommand(
+export function _getCommand(
   emulator: DownloadableEmulators,
   args: { [s: string]: any }
 ): DownloadableEmulatorCommand {

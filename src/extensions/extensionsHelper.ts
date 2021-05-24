@@ -31,19 +31,6 @@ import { promptOnce } from "../prompt";
 import { logger } from "../logger";
 import { envOverride } from "../utils";
 
-export enum RegistryLaunchStage {
-  EXPERIMENTAL = "EXPERIMENTAL",
-  BETA = "BETA",
-  GA = "GA",
-  DEPRECATED = "DEPRECATED",
-  REGISTRY_LAUNCH_STAGE_UNSPECIFIED = "REGISTRY_LAUNCH_STAGE_UNSPECIFIED",
-}
-
-export enum Visibility {
-  UNLISTED = "unlisted",
-  PUBLIC = "public",
-}
-
 /**
  * SpecParamType represents the exact strings that the extensions
  * backend expects for each param type in the extensionYaml.
@@ -328,7 +315,7 @@ export function validateSpec(spec: any) {
  */
 export async function promptForValidInstanceId(instanceId: string): Promise<string> {
   let instanceIdIsValid = false;
-  let newInstanceId;
+  let newInstanceId = "";
   const instanceIdRegex = /^[a-z][a-z\d\-]*[a-z\d]$/;
   while (!instanceIdIsValid) {
     newInstanceId = await promptOnce({
@@ -371,7 +358,8 @@ async function archiveAndUploadSource(extPath: string, bucketName: string): Prom
     type: "zip",
     ignore: ["node_modules", ".git"],
   });
-  return await uploadObject(zippedSource, bucketName);
+  const res = await uploadObject(zippedSource, bucketName);
+  return `/${res.bucket}/${res.object}`;
 }
 
 /**
@@ -561,7 +549,7 @@ export async function confirmExtensionVersion(
   publisherId: string,
   extensionId: string,
   versionId: string
-): Promise<string> {
+): Promise<boolean> {
   const message =
     `You are about to publish version ${clc.green(versionId)} of ${clc.green(
       `${publisherId}/${extensionId}`
@@ -599,7 +587,7 @@ export async function promptForOfficialExtension(message: string): Promise<strin
 export async function promptForRepeatInstance(
   projectName: string,
   extensionName: string
-): Promise<string> {
+): Promise<boolean> {
   const message =
     `An extension with the ID '${clc.bold(
       extensionName

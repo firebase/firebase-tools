@@ -21,7 +21,7 @@ import * as utils from "../../../utils";
 import { Constants } from "../../constants";
 import { downloadEmulator } from "../../download";
 import * as fs from "fs-extra";
-import { DownloadDetails } from "../../downloadableEmulators";
+import { DownloadDetails, _getCommand } from "../../downloadableEmulators";
 
 export interface RulesetVerificationOpts {
   file: {
@@ -94,15 +94,13 @@ export class StorageRulesRuntime {
   private _childprocess?: ChildProcess;
   private _alive = false;
 
-  constructor(private readonly _jarPath: string) {}
-
   get alive() {
     return this._alive;
   }
 
   async start(auto_download = true) {
-    const hasEmulator = fs.existsSync(this._jarPath);
     const downloadDetails = DownloadDetails[Emulators.STORAGE];
+    const hasEmulator = fs.existsSync(downloadDetails.downloadPath);
 
     if (!hasEmulator) {
       if (auto_download) {
@@ -122,7 +120,8 @@ export class StorageRulesRuntime {
     }
 
     this._alive = true;
-    this._childprocess = spawn("java", ["-jar", this._jarPath, "serve"], {
+    const command = _getCommand(Emulators.STORAGE, {});
+    this._childprocess = spawn(command.binary, command.args, {
       stdio: ["pipe", "pipe", "pipe"],
     });
 

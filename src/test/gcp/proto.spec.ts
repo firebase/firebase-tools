@@ -46,8 +46,10 @@ describe("proto", () => {
     });
 
     // Compile-time check for type safety net
+    /* eslint-disable @typescript-eslint/no-unused-vars */
     const dest: DestType = {};
     const src: SrcType = { bar: "baz" };
+    /* eslint-enable @typescript-eslint/no-unused-vars */
     // This line should fail to compile when uncommented
     // proto.copyIfPresent(dest, src, "baz");
   });
@@ -79,13 +81,15 @@ describe("proto", () => {
     it("should support transformations", () => {
       const dest: DestType = {};
       const src: SrcType = { srcFoo: "baz" };
-      proto.renameIfPresent(dest, src, "destFoo", "srcFoo", (str) => str + " transformed");
+      proto.renameIfPresent(dest, src, "destFoo", "srcFoo", (str: string) => str + " transformed");
       expect(dest.destFoo).to.equal("baz transformed");
     });
 
     // Compile-time check for type safety net
+    /* eslint-disable @typescript-eslint/no-unused-vars */
     const dest: DestType = {};
     const src: SrcType = { bar: "baz" };
+    /* eslint-enable @typescript-eslint/no-unused-vars */
     // These line should fail to compile when uncommented
     // proto.renameIfPresent(dest, src, "destFoo", "srcccFoo");
     // proto.renameIfPresent(dest, src, "desFoo", "srcFoo");
@@ -128,6 +132,22 @@ describe("proto", () => {
         },
       };
       expect(proto.fieldMasks(obj)).to.deep.equal(["failurePolicy.retry"]);
+    });
+
+    it("should support map types", () => {
+      const obj = {
+        map: {
+          userDefined: "value",
+        },
+        nested: {
+          anotherMap: {
+            userDefined: "value",
+          },
+        },
+      };
+
+      const fieldMasks = proto.fieldMasks(obj, "map", "nested.anotherMap", "missing");
+      expect(fieldMasks.sort()).to.deep.equal(["map", "nested.anotherMap"].sort());
     });
   });
 });

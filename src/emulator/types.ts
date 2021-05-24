@@ -30,7 +30,12 @@ export const DOWNLOADABLE_EMULATORS = [
 ];
 
 export type ImportExportEmulators = Emulators.FIRESTORE | Emulators.DATABASE | Emulators.AUTH;
-export const IMPORT_EXPORT_EMULATORS = [Emulators.FIRESTORE, Emulators.DATABASE, Emulators.AUTH];
+export const IMPORT_EXPORT_EMULATORS = [
+  Emulators.FIRESTORE,
+  Emulators.DATABASE,
+  Emulators.AUTH,
+  Emulators.STORAGE,
+];
 
 export const ALL_SERVICE_EMULATORS = [
   Emulators.AUTH,
@@ -39,7 +44,7 @@ export const ALL_SERVICE_EMULATORS = [
   Emulators.DATABASE,
   Emulators.HOSTING,
   Emulators.PUBSUB,
-  previews.storageemulator && Emulators.STORAGE,
+  Emulators.STORAGE,
 ].filter((v) => v) as Emulators[];
 
 export const EMULATORS_SUPPORTED_BY_FUNCTIONS = [
