@@ -288,7 +288,7 @@ export class StorageLayer {
       {
         name: object,
         bucket: bucket,
-        contentType: "",
+        contentType: incomingMetadata.contentType || "application/octet-stream",
         contentEncoding: incomingMetadata.contentEncoding,
         customMetadata: incomingMetadata.metadata,
       },
