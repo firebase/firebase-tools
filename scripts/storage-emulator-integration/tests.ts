@@ -246,7 +246,6 @@ describe("Storage emulator", () => {
         });
       });
 
-
       describe("#get()", () => {
         it("should complete an save/get/download cycle", async () => {
           const p = "testing/dir/hello.txt";

@@ -4,7 +4,6 @@ import { Emulators } from "../../types";
 import { CloudStorageObjectMetadata } from "../metadata";
 import { EmulatorRegistry } from "../../registry";
 import { StorageEmulator } from "../index";
-import { gunzipSync } from "zlib";
 
 /**
  * @param emulator
