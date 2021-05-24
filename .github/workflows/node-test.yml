@@ -79,6 +79,7 @@ jobs:
           - npm run test:emulator
           - npm run test:extensions-emulator
           - npm run test:triggers-end-to-end
+          - npm run test:storage-emulator-integration
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v2
