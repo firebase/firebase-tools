@@ -269,7 +269,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
   });
 
   gcloudStorageAPI.all("/**", (req, res) => {
-    if (true || process.env.STORAGE_EMULATOR_DEBUG) {
+    if (process.env.STORAGE_EMULATOR_DEBUG) {
       console.table(req.headers);
       console.log(req.method, req.url);
       res.json("endpoint not implemented");
