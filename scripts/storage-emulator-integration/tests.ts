@@ -1019,22 +1019,50 @@ describe("Storage emulator", () => {
         });
       });
 
-      it("#setMetadata()", async () => {
-        const metadata = await page.evaluate((filename) => {
-          return firebase
-            .storage()
-            .ref(filename)
-            .updateMetadata({
-              customMetadata: {
-                is_over: "9000",
-              },
-            })
-            .then(() => {
-              return firebase.storage().ref(filename).getMetadata();
-            });
-        }, filename);
+      describe("#setMetadata()", () => {
+        it("should allow for custom metadata to be set", async () => {
+          const metadata = await page.evaluate((filename) => {
+            return firebase
+              .storage()
+              .ref(filename)
+              .updateMetadata({
+                customMetadata: {
+                  is_over: "9000",
+                },
+              })
+              .then(() => {
+                return firebase.storage().ref(filename).getMetadata();
+              });
+          }, filename);
 
-        expect(metadata.customMetadata.is_over).to.equal("9000");
+          expect(metadata.customMetadata.is_over).to.equal("9000");
+        });
+
+        it("should allow deletion of custom metadata by setting to null", async () => {
+          const setMetadata = await page.evaluate((filename) => {
+            const storageReference = firebase.storage().ref(filename);
+            return storageReference.updateMetadata({
+              contentType: "text/plain",
+              customMetadata: {
+                removeMe: "please",
+              },
+            });
+          }, filename);
+
+          expect(setMetadata.customMetadata.removeMe).to.equal("please");
+
+          const nulledMetadata = await page.evaluate((filename) => {
+            const storageReference = firebase.storage().ref(filename);
+            return storageReference.updateMetadata({
+              contentType: "text/plain",
+              customMetadata: {
+                removeMe: null as any,
+              },
+            });
+          }, filename);
+
+          expect(nulledMetadata.customMetadata.removeMe).to.equal(undefined);
+        });
       });
 
       it("#delete()", async () => {

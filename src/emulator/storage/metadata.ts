@@ -88,7 +88,9 @@ export class StoredFileMetadata {
       this.update(incomingMetadata);
     }
 
-    this.applyDownloadTokensFromMetadata();
+
+    this.deleteFieldsSetAsNull();
+    this.setDownloadTokensFromCustomMetadata();
   }
 
   asRulesResource(proposedChanges?: RulesResourceMetadataOverrides): RulesResourceMetadata {
@@ -130,12 +132,37 @@ export class StoredFileMetadata {
     return rulesResource;
   }
 
-  private applyDownloadTokensFromMetadata() {
+  private setDownloadTokensFromCustomMetadata() {
     if (!this.customMetadata) return;
 
     if (this.customMetadata.firebaseStorageDownloadTokens) {
       this.downloadTokens = this.customMetadata.firebaseStorageDownloadTokens.split(",");
       delete this.customMetadata.firebaseStorageDownloadTokens;
+    }
+  }
+
+  private deleteFieldsSetAsNull() {
+    const deletableFields: (keyof this)[] = [
+      "contentDisposition",
+      "contentType",
+      "contentLanguage",
+      "contentEncoding",
+      "cacheControl",
+    ];
+
+    deletableFields.map((field: keyof this) => {
+      if (this[field] === null) {
+        delete this[field];
+      }
+    });
+
+    if (this.customMetadata) {
+      Object.keys(this.customMetadata).map((key: string) => {
+        if (!this.customMetadata) return;
+        if (this.customMetadata[key] === null) {
+          delete this.customMetadata[key];
+        }
+      });
     }
   }
 
@@ -150,7 +177,6 @@ export class StoredFileMetadata {
 
     if (incoming.metadata) {
       this.customMetadata = incoming.metadata;
-      this.applyDownloadTokensFromMetadata();
     }
 
     if (incoming.contentLanguage) {
@@ -170,6 +196,9 @@ export class StoredFileMetadata {
     if (incoming.cacheControl) {
       this.cacheControl = incoming.cacheControl;
     }
+
+    this.setDownloadTokensFromCustomMetadata();
+    this.deleteFieldsSetAsNull();
 
     this._cloudFunctions.dispatch("metadataUpdate", new CloudStorageObjectMetadata(this));
   }
