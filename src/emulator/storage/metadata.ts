@@ -345,6 +345,21 @@ export class CloudStorageBucketMetadata {
   }
 }
 
+export class CloudStorageObjectAccessControlMetadata {
+  kind = "storage#objectAccessControl";
+
+  constructor(
+    public object: string,
+    public generation: string,
+    public selfLink: string,
+    public id: string,
+    public role: string,
+    public entity: string,
+    public bucket: string,
+    public etag: string
+  ) {}
+}
+
 export class CloudStorageObjectMetadata {
   kind = "#storage#object";
   name: string;

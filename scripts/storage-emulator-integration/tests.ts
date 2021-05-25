@@ -298,6 +298,52 @@ describe("Storage emulator", () => {
         });
       });
 
+      describe("#makePublic()", () => {
+        it("should no-op", async () => {
+          const destination = "a/b";
+          await testBucket.upload(smallFilePath, { destination });
+          const [aclMetadata] = await testBucket.file(destination).makePublic();
+
+          const generation = aclMetadata.generation;
+          delete aclMetadata.generation;
+
+          expect(aclMetadata).to.deep.equal({
+            kind: "storage#objectAccessControl",
+            object: destination,
+            id: `${testBucket.name}/${destination}/${generation}/allUsers`,
+            selfLink: `${STORAGE_EMULATOR_HOST}/storage/v1/b/${
+              testBucket.name
+            }/o/${encodeURIComponent(destination)}/acl/allUsers`,
+            bucket: testBucket.name,
+            entity: "allUsers",
+            role: "READER",
+            etag: "someEtag",
+          });
+        });
+
+        it("should not interfere with downloading of bytes via public URL", async () => {
+          const destination = "a/b";
+          await testBucket.upload(smallFilePath, { destination });
+          await testBucket.file(destination).makePublic();
+
+          const publicLink = `${STORAGE_EMULATOR_HOST}/${testBucket.name}/${destination}`;
+
+          const requestClient = TEST_CONFIG.useProductionServers ? https : http;
+          await new Promise((resolve, reject) => {
+            requestClient.get(publicLink, {}, (response) => {
+              const data: any = [];
+              response
+                .on("data", (chunk) => data.push(chunk))
+                .on("end", () => {
+                  expect(Buffer.concat(data).length).to.equal(SMALL_FILE_SIZE);
+                })
+                .on("close", resolve)
+                .on("error", reject);
+            });
+          });
+        });
+      });
+
       describe("#getMetadata()", () => {
         it("should throw on non-existing file", async () => {
           let err: any;
