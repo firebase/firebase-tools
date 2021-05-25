@@ -1,3 +1,5 @@
 - Enable running functions in multiple regions in the emulator.
 - Adds the deployed version to the output when deploying to Firebase Hosting.
 - Releases Firestore Emulator v1.12.0: supports clearing data partially.
+- Fixes manually setting download tokens in Storage Emulator. (#3396)
+- Fixes deleting custom metadata in Storage emulator. (#3385)
