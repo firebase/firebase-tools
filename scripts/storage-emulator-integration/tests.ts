@@ -366,6 +366,38 @@ describe("Storage emulator", () => {
             });
           });
         });
+
+        it("should handle firebaseStorageDownloadTokens", async () => {
+          const destination = "public/small_file";
+          await testBucket.upload(smallFilePath, {
+            destination,
+            metadata: {},
+          });
+
+          const cloudFile = testBucket.file(destination);
+          const md = {
+            metadata: {
+              firebaseStorageDownloadTokens: "myFirstToken,mySecondToken",
+            },
+          };
+
+          await cloudFile.setMetadata(md);
+
+          // Check that the tokens are saved in Firebase metadata
+          await supertest(STORAGE_EMULATOR_HOST)
+            .get(`/v0/b/${testBucket.name}/o/${encodeURIComponent(destination)}`)
+            .expect(200)
+            .then((res) => {
+              const firebaseMd = res.body;
+              expect(firebaseMd.downloadTokens).to.equal(md.metadata.firebaseStorageDownloadTokens);
+            });
+
+          // Check that the tokens are saved in Cloud metadata
+          const [metadata] = await cloudFile.getMetadata();
+          expect(metadata.metadata.firebaseStorageDownloadTokens).to.deep.equal(
+            md.metadata.firebaseStorageDownloadTokens
+          );
+        });
       });
 
       describe("#setMetadata()", () => {

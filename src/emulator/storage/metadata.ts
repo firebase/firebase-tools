@@ -87,6 +87,8 @@ export class StoredFileMetadata {
     if (incomingMetadata) {
       this.update(incomingMetadata);
     }
+
+    this.applyDownloadTokensFromMetadata();
   }
 
   asRulesResource(proposedChanges?: RulesResourceMetadataOverrides): RulesResourceMetadata {
@@ -128,6 +130,15 @@ export class StoredFileMetadata {
     return rulesResource;
   }
 
+  private applyDownloadTokensFromMetadata() {
+    if (!this.customMetadata) return;
+
+    if (this.customMetadata.firebaseStorageDownloadTokens) {
+      this.downloadTokens = this.customMetadata.firebaseStorageDownloadTokens.split(",");
+      delete this.customMetadata.firebaseStorageDownloadTokens;
+    }
+  }
+
   update(incoming: IncomingMetadata): void {
     if (incoming.contentDisposition) {
       this.contentDisposition = incoming.contentDisposition;
@@ -139,6 +150,7 @@ export class StoredFileMetadata {
 
     if (incoming.metadata) {
       this.customMetadata = incoming.metadata;
+      this.applyDownloadTokensFromMetadata();
     }
 
     if (incoming.contentLanguage) {
