@@ -88,7 +88,6 @@ export class StoredFileMetadata {
       this.update(incomingMetadata);
     }
 
-
     this.deleteFieldsSetAsNull();
     this.setDownloadTokensFromCustomMetadata();
   }
