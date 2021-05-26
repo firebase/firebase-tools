@@ -298,6 +298,52 @@ describe("Storage emulator", () => {
         });
       });
 
+      describe("#makePublic()", () => {
+        it("should no-op", async () => {
+          const destination = "a/b";
+          await testBucket.upload(smallFilePath, { destination });
+          const [aclMetadata] = await testBucket.file(destination).makePublic();
+
+          const generation = aclMetadata.generation;
+          delete aclMetadata.generation;
+
+          expect(aclMetadata).to.deep.equal({
+            kind: "storage#objectAccessControl",
+            object: destination,
+            id: `${testBucket.name}/${destination}/${generation}/allUsers`,
+            selfLink: `${STORAGE_EMULATOR_HOST}/storage/v1/b/${
+              testBucket.name
+            }/o/${encodeURIComponent(destination)}/acl/allUsers`,
+            bucket: testBucket.name,
+            entity: "allUsers",
+            role: "READER",
+            etag: "someEtag",
+          });
+        });
+
+        it("should not interfere with downloading of bytes via public URL", async () => {
+          const destination = "a/b";
+          await testBucket.upload(smallFilePath, { destination });
+          await testBucket.file(destination).makePublic();
+
+          const publicLink = `${STORAGE_EMULATOR_HOST}/${testBucket.name}/${destination}`;
+
+          const requestClient = TEST_CONFIG.useProductionServers ? https : http;
+          await new Promise((resolve, reject) => {
+            requestClient.get(publicLink, {}, (response) => {
+              const data: any = [];
+              response
+                .on("data", (chunk) => data.push(chunk))
+                .on("end", () => {
+                  expect(Buffer.concat(data).length).to.equal(SMALL_FILE_SIZE);
+                })
+                .on("close", resolve)
+                .on("error", reject);
+            });
+          });
+        });
+      });
+
       describe("#getMetadata()", () => {
         it("should throw on non-existing file", async () => {
           let err: any;
@@ -365,6 +411,38 @@ describe("Storage emulator", () => {
                 .on("error", reject);
             });
           });
+        });
+
+        it("should handle firebaseStorageDownloadTokens", async () => {
+          const destination = "public/small_file";
+          await testBucket.upload(smallFilePath, {
+            destination,
+            metadata: {},
+          });
+
+          const cloudFile = testBucket.file(destination);
+          const md = {
+            metadata: {
+              firebaseStorageDownloadTokens: "myFirstToken,mySecondToken",
+            },
+          };
+
+          await cloudFile.setMetadata(md);
+
+          // Check that the tokens are saved in Firebase metadata
+          await supertest(STORAGE_EMULATOR_HOST)
+            .get(`/v0/b/${testBucket.name}/o/${encodeURIComponent(destination)}`)
+            .expect(200)
+            .then((res) => {
+              const firebaseMd = res.body;
+              expect(firebaseMd.downloadTokens).to.equal(md.metadata.firebaseStorageDownloadTokens);
+            });
+
+          // Check that the tokens are saved in Cloud metadata
+          const [metadata] = await cloudFile.getMetadata();
+          expect(metadata.metadata.firebaseStorageDownloadTokens).to.deep.equal(
+            md.metadata.firebaseStorageDownloadTokens
+          );
         });
       });
 
@@ -987,22 +1065,50 @@ describe("Storage emulator", () => {
         });
       });
 
-      it("#setMetadata()", async () => {
-        const metadata = await page.evaluate((filename) => {
-          return firebase
-            .storage()
-            .ref(filename)
-            .updateMetadata({
-              customMetadata: {
-                is_over: "9000",
-              },
-            })
-            .then(() => {
-              return firebase.storage().ref(filename).getMetadata();
-            });
-        }, filename);
+      describe("#setMetadata()", () => {
+        it("should allow for custom metadata to be set", async () => {
+          const metadata = await page.evaluate((filename) => {
+            return firebase
+              .storage()
+              .ref(filename)
+              .updateMetadata({
+                customMetadata: {
+                  is_over: "9000",
+                },
+              })
+              .then(() => {
+                return firebase.storage().ref(filename).getMetadata();
+              });
+          }, filename);
 
-        expect(metadata.customMetadata.is_over).to.equal("9000");
+          expect(metadata.customMetadata.is_over).to.equal("9000");
+        });
+
+        it("should allow deletion of custom metadata by setting to null", async () => {
+          const setMetadata = await page.evaluate((filename) => {
+            const storageReference = firebase.storage().ref(filename);
+            return storageReference.updateMetadata({
+              contentType: "text/plain",
+              customMetadata: {
+                removeMe: "please",
+              },
+            });
+          }, filename);
+
+          expect(setMetadata.customMetadata.removeMe).to.equal("please");
+
+          const nulledMetadata = await page.evaluate((filename) => {
+            const storageReference = firebase.storage().ref(filename);
+            return storageReference.updateMetadata({
+              contentType: "text/plain",
+              customMetadata: {
+                removeMe: null as any,
+              },
+            });
+          }, filename);
+
+          expect(nulledMetadata.customMetadata.removeMe).to.equal(undefined);
+        });
       });
 
       it("#delete()", async () => {
