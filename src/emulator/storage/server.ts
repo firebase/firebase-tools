@@ -114,15 +114,5 @@ export function createApp(
   app.use("/v0", createFirebaseEndpoints(emulator));
   app.use("/", createCloudEndpoints(emulator));
 
-  app.all("**", (req, res) => {
-    if (process.env.STORAGE_EMULATOR_DEBUG) {
-      console.table(req.headers);
-      console.log(req.method, req.url);
-      res.json("endpoint not implemented");
-    } else {
-      res.sendStatus(404);
-    }
-  });
-
   return Promise.resolve(app);
 }
