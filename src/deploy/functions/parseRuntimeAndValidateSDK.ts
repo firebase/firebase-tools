@@ -19,7 +19,7 @@ const MESSAGE_FRIENDLY_RUNTIMES: Record<backend.Runtime | DeprecatedRuntime, str
   nodejs8: "Node.js 8 (Deprecated)",
   nodejs10: "Node.js 10",
   nodejs12: "Node.js 12",
-  nodejs14: "Node.js 14 (Beta)",
+  nodejs14: "Node.js 14",
 };
 
 const DEPRECATED_RUTNIMES = ["nodejs6", "nodejs8"];
