@@ -227,7 +227,10 @@ export function addResourcesToBackend(
         cloudFunction.trigger.eventFilters.resource = `${cloudFunction.trigger.eventFilters.resource}/${id}`;
       }
 
-      cloudFunction.labels = { "deployment-scheduled": "true" };
+      cloudFunction.labels = {
+        ...cloudFunction.labels,
+        "deployment-scheduled": "true",
+      };
     }
 
     want.cloudFunctions.push(cloudFunction);
