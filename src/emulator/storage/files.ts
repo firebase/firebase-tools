@@ -269,6 +269,8 @@ export class StorageLayer {
     );
     const file = new StoredFile(finalMetadata, filePath);
     this._files.set(filePath, file);
+
+    this._persistence.deleteFile(filePath, true);
     this._persistence.renameFile(upload.fileLocation, filePath);
 
     this._cloudFunctions.dispatch("finalize", new CloudStorageObjectMetadata(file.metadata));
@@ -283,6 +285,9 @@ export class StorageLayer {
     bytes: Buffer
   ) {
     const filePath = this.path(bucket, object);
+
+    this._persistence.deleteFile(filePath, true);
+
     this._persistence.appendBytes(filePath, bytes);
     const md = new StoredFileMetadata(
       {
@@ -635,8 +640,14 @@ export class Persistence {
     }
   }
 
-  deleteFile(fileName: string): void {
-    unlinkSync(this.getDiskPath(fileName));
+  deleteFile(fileName: string, failSilently = false): void {
+    try {
+      unlinkSync(this.getDiskPath(fileName));
+    } catch (err) {
+      if (!failSilently) {
+        throw err;
+      }
+    }
   }
 
   deleteAll(): Promise<void> {
