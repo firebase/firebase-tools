@@ -6,20 +6,19 @@ interface PreviewFlags {
   ext: boolean;
   extdev: boolean;
   rtdbmanagement: boolean;
-  storageemulator: boolean;
+  functionsv2: boolean;
 }
 
-export const previews: PreviewFlags = Object.assign(
-  {
-    // insert previews here...
-    rtdbrules: false,
-    ext: false,
-    extdev: false,
-    rtdbmanagement: false,
-    storageemulator: false,
-  },
-  configstore.get("previews")
-);
+export const previews: PreviewFlags = {
+  // insert previews here...
+  rtdbrules: false,
+  ext: false,
+  extdev: false,
+  rtdbmanagement: false,
+  functionsv2: false,
+
+  ...configstore.get("previews"),
+};
 
 if (process.env.FIREBASE_CLI_PREVIEWS) {
   process.env.FIREBASE_CLI_PREVIEWS.split(",").forEach((feature) => {

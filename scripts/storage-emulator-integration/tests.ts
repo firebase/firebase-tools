@@ -122,7 +122,7 @@ function createRandomFile(filename: string, sizeInBytes: number): string {
  * Resets the storage layer of the Storage Emulator.
  */
 async function resetStorageEmulator(emulatorHost: string) {
-  await new Promise((resolve) => {
+  await new Promise<void>((resolve) => {
     request.post(`${emulatorHost}/internal/reset`, () => {
       resolve();
     });
@@ -166,15 +166,17 @@ describe("Storage emulator", () => {
 
         test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, emulatorConfig);
         await test.startEmulators(["--only", "auth,storage"]);
-
-        admin.initializeApp({
-          credential: admin.credential.applicationDefault(),
-        });
-      } else {
-        admin.initializeApp({
-          credential: admin.credential.cert(readJson(SERVICE_ACCOUNT_KEY)),
-        });
       }
+
+      // TODO: We should not need a real credential for emulator tests, but
+      //       today we do.
+      const credential = fs.existsSync(path.join(__dirname, SERVICE_ACCOUNT_KEY))
+        ? admin.credential.cert(readJson(SERVICE_ACCOUNT_KEY))
+        : admin.credential.applicationDefault();
+
+      admin.initializeApp({
+        credential,
+      });
 
       testBucket = admin.storage().bucket(storageBucket);
 
@@ -207,7 +209,7 @@ describe("Storage emulator", () => {
           });
         });
 
-        // Skipping large upload test for now.
+        // TODO(abehaskins): This test is temporarily disabled due to a credentials issue
         it.skip("should handle large (resumable) uploads", async () => {
           await testBucket.upload(largeFilePath),
             {
@@ -233,6 +235,7 @@ describe("Storage emulator", () => {
 
     describe(".file()", () => {
       describe("#save()", () => {
+        // TODO(abehaskins): This test is temporarily disabled due to a credentials issue
         it.skip("should accept a zero-byte file", async () => {
           await testBucket.file("testing/dir/").save("");
 
@@ -241,6 +244,103 @@ describe("Storage emulator", () => {
           });
 
           expect(files.map((file) => file.name)).to.contain("testing/dir/");
+        });
+      });
+
+      describe("#get()", () => {
+        // TODO(abehaskins): This test is temporarily disabled due to a credentials issue
+        it.skip("should complete an save/get/download cycle", async () => {
+          const p = "testing/dir/hello.txt";
+          const content = "hello, world";
+
+          await testBucket.file(p).save(content);
+
+          const [f] = await testBucket.file(p).get();
+          const [buf] = await f.download();
+
+          expect(buf.toString()).to.equal(content);
+        });
+      });
+
+      describe("#delete()", () => {
+        it("should properly delete a file from the bucket", async () => {
+          // We use a nested path to ensure that we don't need to decode
+          // the objectId in the gcloud emulator API
+          const bucketFilePath = "file/to/delete";
+          await testBucket.upload(smallFilePath, {
+            destination: bucketFilePath,
+          });
+
+          // Get a reference to the uploaded file
+          const toDeleteFile = testBucket.file(bucketFilePath);
+
+          // Ensure that the file exists on the bucket before deleting it
+          const [existsBefore] = await toDeleteFile.exists();
+          expect(existsBefore).to.equal(true);
+
+          // Delete it
+          await toDeleteFile.delete();
+          // Ensure that it doesn't exist anymore on the bucket
+          const [existsAfter] = await toDeleteFile.exists();
+          expect(existsAfter).to.equal(false);
+        });
+      });
+
+      describe("#download()", () => {
+        it("should return the content of the file", async () => {
+          await testBucket.upload(smallFilePath);
+          const [downloadContent] = await testBucket
+            .file(smallFilePath.split("/").slice(-1)[0])
+            .download();
+
+          const actualContent = fs.readFileSync(smallFilePath);
+          expect(downloadContent).to.deep.equal(actualContent);
+        });
+      });
+
+      describe("#makePublic()", () => {
+        it("should no-op", async () => {
+          const destination = "a/b";
+          await testBucket.upload(smallFilePath, { destination });
+          const [aclMetadata] = await testBucket.file(destination).makePublic();
+
+          const generation = aclMetadata.generation;
+          delete aclMetadata.generation;
+
+          expect(aclMetadata).to.deep.equal({
+            kind: "storage#objectAccessControl",
+            object: destination,
+            id: `${testBucket.name}/${destination}/${generation}/allUsers`,
+            selfLink: `${STORAGE_EMULATOR_HOST}/storage/v1/b/${
+              testBucket.name
+            }/o/${encodeURIComponent(destination)}/acl/allUsers`,
+            bucket: testBucket.name,
+            entity: "allUsers",
+            role: "READER",
+            etag: "someEtag",
+          });
+        });
+
+        it("should not interfere with downloading of bytes via public URL", async () => {
+          const destination = "a/b";
+          await testBucket.upload(smallFilePath, { destination });
+          await testBucket.file(destination).makePublic();
+
+          const publicLink = `${STORAGE_EMULATOR_HOST}/${testBucket.name}/${destination}`;
+
+          const requestClient = TEST_CONFIG.useProductionServers ? https : http;
+          await new Promise((resolve, reject) => {
+            requestClient.get(publicLink, {}, (response) => {
+              const data: any = [];
+              response
+                .on("data", (chunk) => data.push(chunk))
+                .on("end", () => {
+                  expect(Buffer.concat(data).length).to.equal(SMALL_FILE_SIZE);
+                })
+                .on("close", resolve)
+                .on("error", reject);
+            });
+          });
         });
       });
 
@@ -291,6 +391,59 @@ describe("Storage emulator", () => {
             timeStorageClassUpdated: "string",
           });
         });
+
+        it("should return a functional media link", async () => {
+          await testBucket.upload(smallFilePath);
+          const [{ mediaLink }] = await testBucket
+            .file(smallFilePath.split("/").slice(-1)[0])
+            .getMetadata();
+
+          const requestClient = TEST_CONFIG.useProductionServers ? https : http;
+          await new Promise((resolve, reject) => {
+            requestClient.get(mediaLink, {}, (response) => {
+              const data: any = [];
+              response
+                .on("data", (chunk) => data.push(chunk))
+                .on("end", () => {
+                  expect(Buffer.concat(data).length).to.equal(SMALL_FILE_SIZE);
+                })
+                .on("close", resolve)
+                .on("error", reject);
+            });
+          });
+        });
+
+        it("should handle firebaseStorageDownloadTokens", async () => {
+          const destination = "public/small_file";
+          await testBucket.upload(smallFilePath, {
+            destination,
+            metadata: {},
+          });
+
+          const cloudFile = testBucket.file(destination);
+          const md = {
+            metadata: {
+              firebaseStorageDownloadTokens: "myFirstToken,mySecondToken",
+            },
+          };
+
+          await cloudFile.setMetadata(md);
+
+          // Check that the tokens are saved in Firebase metadata
+          await supertest(STORAGE_EMULATOR_HOST)
+            .get(`/v0/b/${testBucket.name}/o/${encodeURIComponent(destination)}`)
+            .expect(200)
+            .then((res) => {
+              const firebaseMd = res.body;
+              expect(firebaseMd.downloadTokens).to.equal(md.metadata.firebaseStorageDownloadTokens);
+            });
+
+          // Check that the tokens are saved in Cloud metadata
+          const [metadata] = await cloudFile.getMetadata();
+          expect(metadata.metadata.firebaseStorageDownloadTokens).to.deep.equal(
+            md.metadata.firebaseStorageDownloadTokens
+          );
+        });
       });
 
       describe("#setMetadata()", () => {
@@ -340,6 +493,24 @@ describe("Storage emulator", () => {
             selfLink: "string",
             timeStorageClassUpdated: "string",
           });
+        });
+
+        it("should allow setting of optional metadata", async () => {
+          await testBucket.upload(smallFilePath);
+          const [metadata] = await testBucket
+            .file(smallFilePath.split("/").slice(-1)[0])
+            .setMetadata({ cacheControl: "no-cache", contentLanguage: "en" });
+
+          const metadataTypes: { [s: string]: string } = {};
+
+          for (const key in metadata) {
+            if (metadata[key]) {
+              metadataTypes[key] = typeof metadata[key];
+            }
+          }
+
+          expect(metadata.cacheControl).to.equal("no-cache");
+          expect(metadata.contentLanguage).to.equal("en");
         });
 
         it("should allow fields under .metadata", async () => {
@@ -744,7 +915,7 @@ describe("Storage emulator", () => {
         it("should paginate when nextPageToken is provided", async function (this) {
           this.timeout(TEST_SETUP_TIMEOUT);
           let responses: string[] = [];
-          let pageToken: string = "";
+          let pageToken = "";
           let pageCount = 0;
 
           do {
@@ -894,22 +1065,50 @@ describe("Storage emulator", () => {
         });
       });
 
-      it("#setMetadata()", async () => {
-        const metadata = await page.evaluate((filename) => {
-          return firebase
-            .storage()
-            .ref(filename)
-            .updateMetadata({
-              customMetadata: {
-                is_over: "9000",
-              },
-            })
-            .then(() => {
-              return firebase.storage().ref(filename).getMetadata();
-            });
-        }, filename);
+      describe("#setMetadata()", () => {
+        it("should allow for custom metadata to be set", async () => {
+          const metadata = await page.evaluate((filename) => {
+            return firebase
+              .storage()
+              .ref(filename)
+              .updateMetadata({
+                customMetadata: {
+                  is_over: "9000",
+                },
+              })
+              .then(() => {
+                return firebase.storage().ref(filename).getMetadata();
+              });
+          }, filename);
 
-        expect(metadata.customMetadata.is_over).to.equal("9000");
+          expect(metadata.customMetadata.is_over).to.equal("9000");
+        });
+
+        it("should allow deletion of custom metadata by setting to null", async () => {
+          const setMetadata = await page.evaluate((filename) => {
+            const storageReference = firebase.storage().ref(filename);
+            return storageReference.updateMetadata({
+              contentType: "text/plain",
+              customMetadata: {
+                removeMe: "please",
+              },
+            });
+          }, filename);
+
+          expect(setMetadata.customMetadata.removeMe).to.equal("please");
+
+          const nulledMetadata = await page.evaluate((filename) => {
+            const storageReference = firebase.storage().ref(filename);
+            return storageReference.updateMetadata({
+              contentType: "text/plain",
+              customMetadata: {
+                removeMe: null as any,
+              },
+            });
+          }, filename);
+
+          expect(nulledMetadata.customMetadata.removeMe).to.equal(undefined);
+        });
       });
 
       it("#delete()", async () => {
@@ -996,7 +1195,7 @@ describe("Storage emulator", () => {
           .then((res) => {
             const md = res.body;
             const tokens = md.downloadTokens.split(",");
-            expect(tokens.length).to.deep.equal(2);
+            expect(tokens.length).to.equal(2);
 
             return tokens;
           });
@@ -1009,7 +1208,7 @@ describe("Storage emulator", () => {
           .expect(200)
           .then((res) => {
             const md = res.body;
-            expect(md.downloadTokens).to.deep.equal(tokens[1].toString());
+            expect(md.downloadTokens.split(",")).to.deep.equal([tokens[1]]);
           });
       });
 
@@ -1031,7 +1230,7 @@ describe("Storage emulator", () => {
           .then((res) => {
             const md = res.body;
             expect(md.downloadTokens.split(",").length).to.deep.equal(1);
-            expect(md.downloadTokens).to.not.deep.equal(token);
+            expect(md.downloadTokens.split(",")).to.not.deep.equal([token]);
           });
       });
     });

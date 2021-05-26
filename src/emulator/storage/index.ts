@@ -1,3 +1,4 @@
+import * as path from "path";
 import * as utils from "../../utils";
 import { Constants } from "../constants";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../types";
@@ -6,12 +7,11 @@ import { StorageLayer } from "./files";
 import * as chokidar from "chokidar";
 import { EmulatorLogger } from "../emulatorLogger";
 import * as fs from "fs";
-import { StorageRulesetInstance, StorageRulesRuntime } from "./rules/runtime";
+import { StorageRulesetInstance, StorageRulesRuntime, StorageRulesIssues } from "./rules/runtime";
 import { Source } from "./rules/types";
 import { FirebaseError } from "../../error";
 import { getDownloadDetails } from "../downloadableEmulators";
 import express = require("express");
-import { StorageCloudFunctions } from "./cloudFunctions";
 
 export interface StorageEmulatorArgs {
   projectId: string;
@@ -34,7 +34,7 @@ export class StorageEmulator implements EmulatorInstance {
 
   constructor(private args: StorageEmulatorArgs) {
     const downloadDetails = getDownloadDetails(Emulators.STORAGE);
-    this._rulesRuntime = new StorageRulesRuntime(downloadDetails.downloadPath);
+    this._rulesRuntime = new StorageRulesRuntime();
     this._storageLayer = new StorageLayer(args.projectId);
   }
 
@@ -54,7 +54,6 @@ export class StorageEmulator implements EmulatorInstance {
     const { host, port } = this.getInfo();
     await this._rulesRuntime.start(this.args.auto_download);
     this._app = await createApp(this.args.projectId, this);
-    this._storageLayer = new StorageLayer(this.args.projectId);
 
     if (typeof this.args.rules == "string") {
       const rulesFile = this.args.rules;
@@ -105,10 +104,17 @@ export class StorageEmulator implements EmulatorInstance {
     };
   }
 
-  private async loadRuleset(): Promise<void> {
+  public async loadRuleset(source?: Source): Promise<StorageRulesIssues> {
+    if (source) {
+      this._rulesetSource = source;
+    }
+
     if (!this._rulesetSource) {
-      this._logger.log("WARN", "Attempting to update ruleset without a source.");
-      return;
+      const msg = "Attempting to update ruleset without a source.";
+      this._logger.log("WARN", msg);
+
+      const error = JSON.stringify({ error: msg });
+      return new StorageRulesIssues([error], []);
     }
 
     const { ruleset, issues } = await this._rulesRuntime.loadRuleset(this._rulesetSource);
@@ -138,6 +144,8 @@ export class StorageEmulator implements EmulatorInstance {
     } else {
       this._rules = ruleset;
     }
+
+    return issues;
   }
 
   async connect(): Promise<void> {

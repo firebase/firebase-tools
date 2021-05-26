@@ -1,7 +1,9 @@
 import { EmulatorLog } from "./types";
 import { CloudFunction, DeploymentOptions, https } from "firebase-functions";
 import {
+  ParsedTriggerDefinition,
   EmulatedTrigger,
+  emulatedFunctionsByRegion,
   EmulatedTriggerDefinition,
   EmulatedTriggerMap,
   EmulatedTriggerType,
@@ -36,10 +38,11 @@ function noOp(): false {
   return false;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function requireAsync(moduleName: string, opts?: { paths: string[] }): Promise<any> {
   return new Promise((res, rej) => {
     try {
-      res(require(require.resolve(moduleName, opts)));
+      res(require(require.resolve(moduleName, opts))); // eslint-disable-line @typescript-eslint/no-var-requires
     } catch (e) {
       rej(e);
     }
@@ -58,8 +61,8 @@ function requireResolveAsync(moduleName: string, opts?: { paths: string[] }): Pr
 
 interface PackageJSON {
   engines?: { node?: string };
-  dependencies: { [name: string]: any };
-  devDependencies: { [name: string]: any };
+  dependencies: { [name: string]: any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+  devDependencies: { [name: string]: any }; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
 interface ModuleResolution {
@@ -77,7 +80,7 @@ interface SuccessfulModuleResolution {
 }
 
 interface ProxyTarget extends Object {
-  [key: string]: any;
+  [key: string]: any; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
 /*
@@ -189,7 +192,7 @@ class Proxied<T extends ProxyTarget> {
    * Return the final proxied object.
    */
   finalize(): T {
-    return this.proxy as T;
+    return this.proxy;
   }
 }
 
@@ -678,7 +681,7 @@ async function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): Pr
   if (frb.triggerId) {
     // Runtime values are based on information from the bundle. Proper information for this is
     // available once the target code has been loaded, which is too late.
-    const service = frb.triggerId || "";
+    const service = frb.targetName || "";
     const target = service.replace(/-/g, ".");
     const mode = frb.triggerType === EmulatedTriggerType.BACKGROUND ? "event" : "http";
 
@@ -714,6 +717,14 @@ async function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): Pr
   // Make firebase-admin point at the Auth emulator
   if (frb.emulators.auth) {
     process.env[Constants.FIREBASE_AUTH_EMULATOR_HOST] = formatHost(frb.emulators.auth);
+  }
+
+  // Make firebase-admin point at the Storage emulator
+  if (frb.emulators.storage) {
+    process.env[Constants.FIREBASE_STORAGE_EMULATOR_HOST] = formatHost(frb.emulators.storage);
+    process.env[Constants.CLOUD_STORAGE_EMULATOR_HOST] = `http://${formatHost(
+      frb.emulators.storage
+    )}`;
   }
 
   if (frb.emulators.pubsub) {
@@ -1023,7 +1034,7 @@ async function invokeTrigger(
 async function initializeRuntime(
   frb: FunctionsRuntimeBundle,
   serializedFunctionTrigger?: string,
-  extensionTriggers?: EmulatedTriggerDefinition[]
+  extensionTriggers?: ParsedTriggerDefinition[]
 ): Promise<EmulatedTriggerMap | undefined> {
   logDebug(`Disabled runtime features: ${JSON.stringify(frb.disabled_features)}`);
 
@@ -1044,7 +1055,7 @@ async function initializeRuntime(
   await initializeFirebaseFunctionsStubs(frb);
   await initializeFirebaseAdminStubs(frb);
 
-  let triggerDefinitions: EmulatedTriggerDefinition[] = [];
+  let parsedDefinitions: ParsedTriggerDefinition[] = [];
   let triggerModule;
 
   if (serializedFunctionTrigger) {
@@ -1059,10 +1070,16 @@ async function initializeRuntime(
     }
   }
   if (extensionTriggers) {
-    triggerDefinitions = extensionTriggers;
+    parsedDefinitions = extensionTriggers;
   } else {
-    require("../extractTriggers")(triggerModule, triggerDefinitions);
+    require("../deploy/functions/discovery/jsexports/extractTriggers")(
+      triggerModule,
+      parsedDefinitions
+    );
   }
+  const triggerDefinitions: EmulatedTriggerDefinition[] = emulatedFunctionsByRegion(
+    parsedDefinitions
+  );
 
   const triggers = getEmulatedTriggersFromDefinitions(triggerDefinitions, triggerModule);
 

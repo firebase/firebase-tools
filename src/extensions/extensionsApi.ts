@@ -7,11 +7,23 @@ import * as api from "../api";
 import { logger } from "../logger";
 import * as operationPoller from "../operation-poller";
 import { FirebaseError } from "../error";
-import { RegistryLaunchStage, Visibility } from "../extensions/extensionsHelper";
 
 const VERSION = "v1beta";
 const PAGE_SIZE_MAX = 100;
 const refRegex = new RegExp(/^([^/@\n]+)\/{1}([^/@\n]+)(@{1}([a-z0-9.-]+)|)$/);
+
+export enum RegistryLaunchStage {
+  EXPERIMENTAL = "EXPERIMENTAL",
+  BETA = "BETA",
+  GA = "GA",
+  DEPRECATED = "DEPRECATED",
+  REGISTRY_LAUNCH_STAGE_UNSPECIFIED = "REGISTRY_LAUNCH_STAGE_UNSPECIFIED",
+}
+
+export enum Visibility {
+  UNLISTED = "unlisted",
+  PUBLIC = "public",
+}
 
 export interface Extension {
   name: string;
@@ -28,6 +40,7 @@ export interface ExtensionVersion {
   ref: string;
   spec: ExtensionSpec;
   hash: string;
+  sourceDownloadUri: string;
   createTime?: string;
 }
 

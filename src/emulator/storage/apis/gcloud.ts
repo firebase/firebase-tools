@@ -1,9 +1,16 @@
 import { Router } from "express";
-import { EmulatorLogger } from "../../emulatorLogger";
+import { gunzipSync } from "zlib";
 import { Emulators } from "../../types";
-import { CloudStorageObjectMetadata } from "../metadata";
+import {
+  CloudStorageObjectAccessControlMetadata,
+  CloudStorageObjectMetadata,
+  StoredFileMetadata,
+} from "../metadata";
 import { EmulatorRegistry } from "../../registry";
 import { StorageEmulator } from "../index";
+import { EmulatorLogger } from "../../emulatorLogger";
+import { StorageLayer } from "../files";
+import type { Request, Response } from "express";
 
 /**
  * @param emulator
@@ -14,6 +21,12 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
   const gcloudStorageAPI = Router();
   const { storageLayer } = emulator;
 
+  // Automatically create a bucket for any route which uses a bucket
+  gcloudStorageAPI.use(/.*\/b\/(.+?)\/.*/, (req, res, next) => {
+    storageLayer.createBucket(req.params[0]);
+    next();
+  });
+
   gcloudStorageAPI.get("/b", (req, res) => {
     res.json({
       kind: "storage#buckets",
@@ -21,30 +34,26 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     });
   });
 
-  // Automatically create a bucket for any route which uses a bucket
-  gcloudStorageAPI.use(/.*\/b\/(.+?)\/.*/, (req, res, next) => {
-    storageLayer.createBucket(req.params[0]);
-    next();
-  });
+  gcloudStorageAPI.get(
+    ["/b/:bucketId/o/:objectId", "/download/storage/v1/b/:bucketId/o/:objectId"],
+    (req, res) => {
+      const md = storageLayer.getMetadata(req.params.bucketId, req.params.objectId);
 
-  gcloudStorageAPI.get("/b/:bucketId/o/:objectId", (req, res) => {
-    const md = storageLayer.getMetadata(req.params.bucketId, req.params.objectId);
+      if (!md) {
+        res.sendStatus(404);
+        return;
+      }
 
-    if (!md) {
-      res.sendStatus(404);
+      if (req.query.alt == "media") {
+        return sendFileBytes(md, storageLayer, req, res);
+      }
+
+      const outgoingMd = new CloudStorageObjectMetadata(md);
+
+      res.json(outgoingMd).status(200).send();
       return;
     }
-
-    EmulatorLogger.forEmulator(Emulators.STORAGE).log(
-      "WARN",
-      `Returning metadata: ${JSON.stringify(md)}`
-    );
-
-    const outgoingMd = new CloudStorageObjectMetadata(md);
-
-    res.json(outgoingMd).status(200).send();
-    return;
-  });
+  );
 
   gcloudStorageAPI.patch("/b/:bucketId/o/:objectId", (req, res) => {
     const md = storageLayer.getMetadata(req.params.bucketId, req.params.objectId);
@@ -57,10 +66,6 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     md.update(req.body);
 
     const outgoingMetadata = new CloudStorageObjectMetadata(md);
-    EmulatorLogger.forEmulator(Emulators.STORAGE).log(
-      "WARN",
-      `Returning metadata: ${JSON.stringify(outgoingMetadata)}`
-    );
     res.json(outgoingMetadata).status(200).send();
     return;
   });
@@ -74,10 +79,6 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     const delimiter = req.query.delimiter ? req.query.delimiter.toString() : "/";
     const pageToken = req.query.pageToken ? req.query.pageToken.toString() : undefined;
     const prefix = req.query.prefix ? req.query.prefix.toString() : "";
-    EmulatorLogger.forEmulator(Emulators.STORAGE).log(
-      "WARN",
-      `Received list objects request for bucket: ${req.params.bucketId}, with prefix: ${prefix} and delimiter: ${delimiter} and pageToken: ${pageToken} and maxResults: ${req.params.maxResults}`
-    );
 
     const listResult = storageLayer.listItems(
       req.params.bucketId,
@@ -90,9 +91,8 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     res.json(listResult);
   });
 
-  gcloudStorageAPI.delete("/b/:bucketId/o/:object", (req, res) => {
-    const decodedObjectId = decodeURIComponent(req.params.objectId);
-    const md = storageLayer.getMetadata(req.params.bucketId, decodedObjectId);
+  gcloudStorageAPI.delete("/b/:bucketId/o/:objectId", (req, res) => {
+    const md = storageLayer.getMetadata(req.params.bucketId, req.params.objectId);
 
     if (!md) {
       res.sendStatus(404);
@@ -105,10 +105,6 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
 
   gcloudStorageAPI.put("/upload/storage/v1/b/:bucketId/o", async (req, res) => {
     if (!req.query.upload_id) {
-      EmulatorLogger.forEmulator(Emulators.STORAGE).log(
-        "WARN",
-        `No upload id passed as query parameter!`
-      );
       res.sendStatus(400);
       return;
     }
@@ -120,7 +116,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       bufs.push(data);
     });
 
-    await new Promise((resolve) => {
+    await new Promise<void>((resolve) => {
       req.on("end", () => {
         req.body = Buffer.concat(bufs);
         resolve();
@@ -136,15 +132,44 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
 
     const finalizedUpload = storageLayer.finalizeUpload(uploadId);
     if (!finalizedUpload) {
-      EmulatorLogger.forEmulator(Emulators.STORAGE).log(
-        "WARN",
-        `No upload found for finalizeUpload:${uploadId}`
-      );
       res.sendStatus(400);
       return;
     }
     upload = finalizedUpload.upload;
     res.status(200).json(new CloudStorageObjectMetadata(finalizedUpload.file.metadata)).send();
+  });
+
+  gcloudStorageAPI.post("/b/:bucketId/o/:objectId/acl", (req, res) => {
+    // TODO(abehaskins) Link to a doc with more info
+    EmulatorLogger.forEmulator(Emulators.STORAGE).log(
+      "WARN_ONCE",
+      "Cloud Storage ACLs are not supported in the Storage Emulator. All related methods will succeed, but have no effect."
+    );
+    const md = storageLayer.getMetadata(req.params.bucketId, req.params.objectId);
+
+    if (!md) {
+      res.sendStatus(404);
+      return;
+    }
+
+    // We do an empty update to step metageneration forward;
+    md.update({});
+
+    res
+      .json({
+        kind: "storage#objectAccessControl",
+        object: md.name,
+        id: `${req.params.bucketId}/${md.name}/${md.generation}/allUsers`,
+        selfLink: `http://${EmulatorRegistry.getInfo(Emulators.STORAGE)?.host}:${
+          EmulatorRegistry.getInfo(Emulators.STORAGE)?.port
+        }/storage/v1/b/${md.bucket}/o/${encodeURIComponent(md.name)}/acl/allUsers`,
+        bucket: md.bucket,
+        entity: req.body.entity,
+        role: req.body.role,
+        etag: "someEtag",
+        generation: md.generation.toString(),
+      } as CloudStorageObjectAccessControlMetadata)
+      .status(200);
   });
 
   gcloudStorageAPI.post("/upload/storage/v1/b/:bucketId/o", (req, res) => {
@@ -161,7 +186,6 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     const contentType = req.header("content-type") || req.header("x-upload-content-type");
 
     if (!contentType) {
-      EmulatorLogger.forEmulator(Emulators.STORAGE).log("WARN", `Missing content type`);
       res.sendStatus(400);
       return;
     }
@@ -171,10 +195,6 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       const emulatorInfo = EmulatorRegistry.getInfo(Emulators.STORAGE);
 
       if (emulatorInfo == undefined) {
-        EmulatorLogger.forEmulator(Emulators.STORAGE).log(
-          "WARN",
-          `Can't generate upload URL, no running storage emulator?`
-        );
         res.sendStatus(500);
         return;
       }
@@ -237,5 +257,65 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     return;
   });
 
+  gcloudStorageAPI.get("/:bucketId/:objectId(**)", (req, res) => {
+    const md = storageLayer.getMetadata(req.params.bucketId, req.params.objectId);
+
+    if (!md) {
+      res.sendStatus(404);
+      return;
+    }
+
+    return sendFileBytes(md, storageLayer, req, res);
+  });
+
+  gcloudStorageAPI.all("/**", (req, res) => {
+    if (process.env.STORAGE_EMULATOR_DEBUG) {
+      console.table(req.headers);
+      console.log(req.method, req.url);
+      res.json("endpoint not implemented");
+    } else {
+      res.sendStatus(501);
+    }
+  });
+
   return gcloudStorageAPI;
+}
+
+function sendFileBytes(
+  md: StoredFileMetadata,
+  storageLayer: StorageLayer,
+  req: Request,
+  res: Response
+) {
+  let data = storageLayer.getBytes(req.params.bucketId, req.params.objectId);
+  if (!data) {
+    res.sendStatus(404);
+    return;
+  }
+
+  const isGZipped = md.contentEncoding == "gzip";
+  if (isGZipped) {
+    data = gunzipSync(data);
+  }
+
+  res.setHeader("Accept-Ranges", "bytes");
+  res.setHeader("Content-Type", md.contentType);
+  res.setHeader("Content-Disposition", md.contentDisposition);
+  res.setHeader("Content-Encoding", "identity");
+
+  const byteRange = [...(req.header("range") || "").split("bytes="), "", ""];
+
+  const [rangeStart, rangeEnd] = byteRange[1].split("-");
+
+  if (rangeStart) {
+    const range = {
+      start: parseInt(rangeStart),
+      end: rangeEnd ? parseInt(rangeEnd) : data.byteLength,
+    };
+    res.setHeader("Content-Range", `bytes ${range.start}-${range.end - 1}/${data.byteLength}`);
+    res.status(206).end(data.slice(range.start, range.end));
+  } else {
+    res.end(data);
+  }
+  return;
 }

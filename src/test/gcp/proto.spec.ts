@@ -17,10 +17,12 @@ describe("proto", () => {
   describe("copyIfPresent", () => {
     interface DestType {
       foo?: string;
+      baz?: string;
     }
     interface SrcType {
       foo?: string;
       bar?: string;
+      baz?: string;
     }
     it("should copy present fields", () => {
       const dest: DestType = {};
@@ -36,16 +38,18 @@ describe("proto", () => {
       expect("foo" in dest).to.be.false;
     });
 
-    it("should support transformations", () => {
+    it("should support variadic params", () => {
       const dest: DestType = {};
-      const src: SrcType = { foo: "baz" };
-      proto.copyIfPresent(dest, src, "foo", (str) => str + " transformed");
-      expect(dest.foo).to.equal("baz transformed");
+      const src: SrcType = { foo: "baz", baz: "quz" };
+      proto.copyIfPresent(dest, src, "foo", "baz");
+      expect(dest).to.deep.equal(src);
     });
 
     // Compile-time check for type safety net
+    /* eslint-disable @typescript-eslint/no-unused-vars */
     const dest: DestType = {};
     const src: SrcType = { bar: "baz" };
+    /* eslint-enable @typescript-eslint/no-unused-vars */
     // This line should fail to compile when uncommented
     // proto.copyIfPresent(dest, src, "baz");
   });
@@ -77,13 +81,15 @@ describe("proto", () => {
     it("should support transformations", () => {
       const dest: DestType = {};
       const src: SrcType = { srcFoo: "baz" };
-      proto.renameIfPresent(dest, src, "destFoo", "srcFoo", (str) => str + " transformed");
+      proto.renameIfPresent(dest, src, "destFoo", "srcFoo", (str: string) => str + " transformed");
       expect(dest.destFoo).to.equal("baz transformed");
     });
 
     // Compile-time check for type safety net
+    /* eslint-disable @typescript-eslint/no-unused-vars */
     const dest: DestType = {};
     const src: SrcType = { bar: "baz" };
+    /* eslint-enable @typescript-eslint/no-unused-vars */
     // These line should fail to compile when uncommented
     // proto.renameIfPresent(dest, src, "destFoo", "srcccFoo");
     // proto.renameIfPresent(dest, src, "desFoo", "srcFoo");
@@ -99,18 +105,14 @@ describe("proto", () => {
       expect(proto.fieldMasks(obj).sort()).to.deep.equal(["number", "string", "array"].sort());
     });
 
-    it("should respect includeNullOrUndefinedValues", () => {
+    it("should handle empty values", () => {
       const obj = {
-        present: "foo",
-        empty: undefined,
+        undefined: undefined,
+        null: null,
+        empty: {},
       };
 
-      expect(proto.fieldMasks(obj, /* includeNullOrUndefinedValues=*/ false)).to.deep.equal([
-        "present",
-      ]);
-      expect(proto.fieldMasks(obj, /* includeNullOrUndefinedValues=*/ true).sort()).to.deep.equal(
-        ["present", "empty"].sort()
-      );
+      expect(proto.fieldMasks(obj).sort()).to.deep.equal(["undefined", "null", "empty"].sort());
     });
 
     it("should nest into objects", () => {
@@ -130,6 +132,22 @@ describe("proto", () => {
         },
       };
       expect(proto.fieldMasks(obj)).to.deep.equal(["failurePolicy.retry"]);
+    });
+
+    it("should support map types", () => {
+      const obj = {
+        map: {
+          userDefined: "value",
+        },
+        nested: {
+          anotherMap: {
+            userDefined: "value",
+          },
+        },
+      };
+
+      const fieldMasks = proto.fieldMasks(obj, "map", "nested.anotherMap", "missing");
+      expect(fieldMasks.sort()).to.deep.equal(["map", "nested.anotherMap"].sort());
     });
   });
 });

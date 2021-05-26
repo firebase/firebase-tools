@@ -6,6 +6,7 @@ import { ensure as ensureApiEnabled } from "./ensureApiEnabled";
 import { FirebaseError } from "./error";
 import * as getProjectId from "./getProjectId";
 import * as runtimeconfig from "./gcp/runtimeconfig";
+import * as args from "./deploy/functions/args";
 
 export const RESERVED_NAMESPACES = ["firebase"];
 
@@ -66,7 +67,7 @@ export function getAppEngineLocation(config: any): string {
   return appEngineLocation || "us-central1";
 }
 
-export async function getFirebaseConfig(options: any): Promise<any> {
+export async function getFirebaseConfig(options: any): Promise<args.FirebaseConfig> {
   const projectId = getProjectId(options, false);
   const response = await api.request("GET", "/v1beta1/projects/" + projectId + "/adminSdkConfig", {
     auth: true,

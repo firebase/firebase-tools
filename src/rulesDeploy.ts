@@ -7,7 +7,7 @@ import { logger } from "./logger";
 import { FirebaseError } from "./error";
 import utils = require("./utils");
 
-import { prompt } from "./prompt";
+import { promptOnce } from "./prompt";
 import { ListRulesetsEntry, Release, RulesetFile } from "./gcp/rules";
 
 // The status code the Firebase Rules backend sends to indicate too many rulesets.
@@ -157,20 +157,16 @@ export class RulesDeploy {
       const history: ListRulesetsEntry[] = await gcp.rules.listAllRulesets(this.options.project);
 
       if (history.length > RULESET_COUNT_LIMIT) {
-        const answers = await prompt(
+        const confirm = await promptOnce(
           {
-            confirm: this.options.force,
+            type: "confirm",
+            name: "force",
+            message: `You have ${history.length} rules, do you want to delete the oldest ${RULESETS_TO_GC} to free up space?`,
+            default: false,
           },
-          [
-            {
-              type: "confirm",
-              name: "confirm",
-              message: `You have ${history.length} rules, do you want to delete the oldest ${RULESETS_TO_GC} to free up space?`,
-              default: false,
-            },
-          ]
+          this.options
         );
-        if (answers.confirm) {
+        if (confirm) {
           // Find the oldest unreleased rulesets. The rulesets are sorted reverse-chronlogically.
           const releases: Release[] = await gcp.rules.listAllReleases(this.options.project);
           const unreleased: ListRulesetsEntry[] = _.reject(

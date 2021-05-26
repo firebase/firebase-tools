@@ -1,5 +1,6 @@
 import * as fs from "fs-extra";
 import * as _ from "lodash";
+import { ParsedTriggerDefinition } from "../../emulator/functionsEmulatorShared";
 import * as path from "path";
 import * as paramHelper from "../paramHelper";
 import * as specHelper from "./specHelper";
@@ -37,7 +38,7 @@ export async function buildOptions(options: any): Promise<any> {
   }
   options.config = buildConfig(functionResources, testConfig);
   options.extensionEnv = params;
-  const functionEmuTriggerDefs = functionResources.map((r) =>
+  const functionEmuTriggerDefs: ParsedTriggerDefinition[] = functionResources.map((r) =>
     triggerHelper.functionResourceToEmulatedTriggerDefintion(r)
   );
   options.extensionTriggers = functionEmuTriggerDefs;
@@ -77,6 +78,15 @@ function checkTestConfig(testConfig: { [key: string]: any }, functionResources: 
         "Realtime Database will not be emulated."
     );
   }
+
+  if (!testConfig.storage && shouldEmulateStorage(functionResources)) {
+    logger.log(
+      "WARN",
+      "This extension interacts with Cloud Storage," +
+        "but 'firebase.json' provided by --test-config is missing a top-level 'storage' object." +
+        "Cloud Storage will not be emulated."
+    );
+  }
 }
 
 /**
@@ -114,6 +124,9 @@ function buildConfig(
     }
     if (shouldEmulatePubsub(functionResources)) {
       config.set("pubsub", {});
+    }
+    if (shouldEmulateStorage(functionResources)) {
+      config.set("storage", {});
     }
   }
 
@@ -178,4 +191,8 @@ function shouldEmulateDatabase(resources: Resource[]): boolean {
 
 function shouldEmulatePubsub(resources: Resource[]): boolean {
   return shouldEmulate("google.pubsub", resources);
+}
+
+function shouldEmulateStorage(resources: Resource[]): boolean {
+  return shouldEmulate("google.storage", resources);
 }

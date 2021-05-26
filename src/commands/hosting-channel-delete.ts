@@ -29,16 +29,17 @@ export default new Command("hosting:channel:delete <channelId>")
       channelId = normalizeName(channelId);
       const channel = await getChannel(projectId, siteId, channelId);
 
-      let confirmed = Boolean(options.force);
-      if (!confirmed) {
-        confirmed = await promptOnce({
+      const confirmed = await promptOnce(
+        {
+          name: "force",
+          type: "confirm",
           message: `Are you sure you want to delete the Hosting Channel ${underline(
             channelId
           )} for site ${underline(siteId)}?`,
-          type: "confirm",
           default: false,
-        });
-      }
+        },
+        options
+      );
 
       if (!confirmed) {
         return;

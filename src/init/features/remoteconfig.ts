@@ -1,11 +1,10 @@
 import { promptOnce } from "../../prompt";
 import fsutils = require("../../fsutils");
 import clc = require("cli-color");
-import { RemoteConfigTemplate } from "../../remoteconfig/interfaces";
 import Config = require("../../config");
 
 interface RemoteConfig {
-  template?: RemoteConfigTemplate;
+  template?: string;
 }
 interface SetUpConfig {
   remoteconfig: RemoteConfig;

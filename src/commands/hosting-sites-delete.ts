@@ -32,16 +32,17 @@ export default new Command("hosting:sites:delete <siteId>")
       );
       logger.info();
 
-      let confirmed = Boolean(options.force);
-      if (!confirmed) {
-        confirmed = await promptOnce({
+      const confirmed = await promptOnce(
+        {
+          name: "force",
+          type: "confirm",
           message: `Are you sure you want to delete the Hosting site ${underline(
             siteId
           )} for project ${underline(projectId)}? `,
-          type: "confirm",
           default: false,
-        });
-      }
+        },
+        options
+      );
       if (!confirmed) {
         return;
       }
