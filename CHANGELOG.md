@@ -5,4 +5,5 @@
 - Fixes manually setting download tokens in Storage Emulator. (#3396)
 - Fixes deleting custom metadata in Storage emulator. (#3385)
 - Fixes errors when calling makePublic() with Storage Emulator(#3394)
+- Fixes mishandling of bytes when uploading two files with the same name in the Storage Emulator (#3406)
 - Adds support for setting user labels on scheduled functions.

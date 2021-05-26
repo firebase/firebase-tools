@@ -201,6 +201,31 @@ describe("Storage emulator", () => {
           // Doesn't require an assertion, will throw on failure
         });
 
+        it("should replace existing file on upload", async () => {
+          const path = "replace.txt";
+          const content1 = createRandomFile("small_content_1", 10);
+          const content2 = createRandomFile("small_content_2", 10);
+          const file = testBucket.file(path);
+
+          await testBucket.upload(content1, {
+            destination: path,
+          });
+
+          const [readContent1] = await file.download();
+
+          expect(readContent1).to.deep.equal(fs.readFileSync(content1));
+
+          await testBucket.upload(content2, {
+            destination: path,
+          });
+
+          const [readContent2] = await file.download();
+          expect(readContent2).to.deep.equal(fs.readFileSync(content2));
+
+          fs.unlinkSync(content1);
+          fs.unlinkSync(content2);
+        });
+
         it("should handle gzip'd uploads", async () => {
           // This appears to pass, but the file gets corrupted cause it's gzipped?
           // expect(true).to.be.false;
@@ -635,6 +660,57 @@ describe("Storage emulator", () => {
       }, IMAGE_FILE_BASE64);
 
       expect(uploadState).to.equal("success");
+    });
+
+    it("should upload replace existing file", async function (this) {
+      this.timeout(TEST_SETUP_TIMEOUT);
+
+      const uploadText = (text: string) =>
+        page.evaluate((TEXT_FILE) => {
+          const auth = (window as any).auth as firebase.auth.Auth;
+
+          return auth
+            .signInAnonymously()
+            .then(() => {
+              return firebase.storage().ref("replace.txt").putString(TEXT_FILE);
+            })
+            .then((task) => {
+              return task.state;
+            })
+            .catch((err) => {
+              throw err.message;
+            });
+        }, text);
+
+      await uploadText("some-content");
+      await uploadText("some-other-content");
+
+      const downloadUrl = await page.evaluate((filename) => {
+        return firebase.storage().ref("replace.txt").getDownloadURL();
+      }, filename);
+
+      const requestClient = TEST_CONFIG.useProductionServers ? https : http;
+      await new Promise((resolve, reject) => {
+        requestClient.get(
+          downloadUrl,
+          {
+            headers: {
+              // This is considered an authorized request in the emulator
+              Authorization: "Bearer owner",
+            },
+          },
+          (response) => {
+            const data: any = [];
+            response
+              .on("data", (chunk) => data.push(chunk))
+              .on("end", () => {
+                expect(Buffer.concat(data).toString()).to.equal("some-other-content");
+              })
+              .on("close", resolve)
+              .on("error", reject);
+          }
+        );
+      });
     });
 
     it("should upload a file into a directory", async () => {
