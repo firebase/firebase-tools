@@ -21,6 +21,7 @@ export interface ScheduleRetryConfig {
 export interface PubSubSpec {
   id: string;
   project: string;
+  labels?: Record<string, string>;
 
   // What we're actually planning to invoke with this topic
   targetService: TargetIds;
@@ -112,6 +113,8 @@ export function memoryOptionDisplayName(option: MemoryOptions): string {
     8192: "8GB",
   }[option];
 }
+
+export const SCHEDULED_FUNCTION_LABEL = Object.freeze({ deployment: "firebase-schedule" });
 
 /** Supported runtimes for new Cloud Functions. */
 export type Runtime = "nodejs10" | "nodejs12" | "nodejs14";
@@ -622,6 +625,7 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
       ctx.existingBackend.topics.push({
         id,
         project: specFunction.project,
+        labels: SCHEDULED_FUNCTION_LABEL,
         targetService: {
           id: specFunction.id,
           region: specFunction.region,
@@ -657,6 +661,7 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
       ctx.existingBackend.topics.push({
         id,
         project: specFunction.project,
+        labels: SCHEDULED_FUNCTION_LABEL,
         targetService: {
           id: specFunction.id,
           region: specFunction.region,
