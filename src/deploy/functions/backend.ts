@@ -217,6 +217,12 @@ export function isEmptyBackend(backend: Backend): boolean {
 export type RuntimeConfigValues = Record<string, unknown>;
 
 /**
+ * Environment variables to be applied to backend instances.
+ * Applies to both GCFv1 and GCFv2 backends.
+ */
+export type EnvironmentVariables = Record<string, string>;
+
+/**
  * Gets the formal resource name for a Cloud Function.
  */
 export function functionName(cloudFunction: TargetIds): string {

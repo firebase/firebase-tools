@@ -26,11 +26,14 @@ describe("addResourcesToBackend", () => {
     project: "project",
   });
 
+  const DEFAULT_ENV = { FIREBASE_CONFIG: JSON.stringify({ projectId: "project" }) };
+
   const BASIC_FUNCTION: Omit<backend.FunctionSpec, "trigger"> = Object.freeze({
     apiVersion: 1,
     ...BASIC_FUNCTION_NAME,
     runtime: "nodejs14",
     entryPoint: "func",
+    environmentVariables: DEFAULT_ENV,
   });
 
   it("should assert against impossible configurations", () => {
@@ -38,6 +41,7 @@ describe("addResourcesToBackend", () => {
       parseTriggers.addResourcesToBackend(
         "project",
         "nodejs14",
+        DEFAULT_ENV,
         {
           ...BASIC_TRIGGER,
           httpsTrigger: {},
@@ -59,7 +63,7 @@ describe("addResourcesToBackend", () => {
     };
 
     const result = backend.empty();
-    parseTriggers.addResourcesToBackend("project", "nodejs14", trigger, result);
+    parseTriggers.addResourcesToBackend("project", "nodejs14", DEFAULT_ENV, trigger, result);
 
     const expected: backend.Backend = {
       ...backend.empty(),
@@ -93,7 +97,7 @@ describe("addResourcesToBackend", () => {
         }
 
         const result = backend.empty();
-        parseTriggers.addResourcesToBackend("project", "nodejs14", trigger, result);
+        parseTriggers.addResourcesToBackend("project", "nodejs14", DEFAULT_ENV, trigger, result);
 
         const expected: backend.Backend = {
           ...backend.empty(),
@@ -129,7 +133,7 @@ describe("addResourcesToBackend", () => {
     };
 
     const result = backend.empty();
-    parseTriggers.addResourcesToBackend("project", "nodejs14", trigger, result);
+    parseTriggers.addResourcesToBackend("project", "nodejs14", DEFAULT_ENV, trigger, result);
 
     const expected: backend.Backend = {
       ...backend.empty(),
@@ -163,7 +167,7 @@ describe("addResourcesToBackend", () => {
     };
 
     const result = backend.empty();
-    parseTriggers.addResourcesToBackend("project", "nodejs14", trigger, result);
+    parseTriggers.addResourcesToBackend("project", "nodejs14", DEFAULT_ENV, trigger, result);
 
     const expected: backend.Backend = {
       ...backend.empty(),
@@ -191,7 +195,7 @@ describe("addResourcesToBackend", () => {
     };
 
     const result = backend.empty();
-    parseTriggers.addResourcesToBackend("project", "nodejs14", trigger, result);
+    parseTriggers.addResourcesToBackend("project", "nodejs14", DEFAULT_ENV, trigger, result);
 
     const expected: backend.Backend = {
       ...backend.empty(),
@@ -216,7 +220,7 @@ describe("addResourcesToBackend", () => {
     };
 
     const result = backend.empty();
-    parseTriggers.addResourcesToBackend("project", "nodejs14", trigger, result);
+    parseTriggers.addResourcesToBackend("project", "nodejs14", DEFAULT_ENV, trigger, result);
 
     const expected: backend.Backend = {
       ...backend.empty(),
@@ -263,7 +267,7 @@ describe("addResourcesToBackend", () => {
     };
 
     const result = backend.empty();
-    parseTriggers.addResourcesToBackend("project", "nodejs14", trigger, result);
+    parseTriggers.addResourcesToBackend("project", "nodejs14", DEFAULT_ENV, trigger, result);
 
     const europeFunctionName = {
       ...BASIC_FUNCTION_NAME,

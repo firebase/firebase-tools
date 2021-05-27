@@ -7,7 +7,8 @@ import * as jsTriggerParsing from "./jsexports/parseTriggers";
 type BackendDiscoveryStrategy = (
   context: args.Context,
   options: args.Options,
-  runtimeConfig: backend.RuntimeConfigValues
+  runtimeConfig: backend.RuntimeConfigValues,
+  env: backend.EnvironmentVariables
 ) => Promise<backend.Backend>;
 
 type UseBackendDiscoveryStrategy = (context: args.Context) => Promise<boolean>;
@@ -31,7 +32,8 @@ const STRATEGIES: Strategy[] = [
 export async function discoverBackendSpec(
   context: args.Context,
   options: args.Options,
-  runtimeConfigValues: backend.RuntimeConfigValues
+  runtimeConfigValues: backend.RuntimeConfigValues,
+  envs: backend.EnvironmentVariables
 ): Promise<backend.Backend> {
   let strategy: Strategy | undefined = undefined;
   for (const testStrategy of STRATEGIES) {
@@ -46,5 +48,5 @@ export async function discoverBackendSpec(
   } else {
     throw new FirebaseError("Cannot determine how to analyze backend");
   }
-  return strategy.discoverBackend(context, options, runtimeConfigValues);
+  return strategy.discoverBackend(context, options, runtimeConfigValues, envs);
 }
