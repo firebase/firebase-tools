@@ -126,6 +126,9 @@ describe("addResourcesToBackend", () => {
       vpcConnector: "projects/project/locations/region/connectors/connector",
       ingressSettings: "ALLOW_ALL",
       timeout: "60s",
+      labels: {
+        test: "testing",
+      },
     };
 
     const result = backend.empty();
@@ -146,6 +149,9 @@ describe("addResourcesToBackend", () => {
           vpcConnector: "projects/project/locations/region/connectors/connector",
           ingressSettings: "ALLOW_ALL",
           timeout: "60s",
+          labels: {
+            test: "testing",
+          },
         },
       ],
     };
@@ -260,6 +266,9 @@ describe("addResourcesToBackend", () => {
       httpsTrigger: {},
       regions: ["us-central1", "europe-west1"],
       schedule,
+      labels: {
+        test: "testing",
+      },
     };
 
     const result = backend.empty();
@@ -277,6 +286,7 @@ describe("addResourcesToBackend", () => {
       },
       labels: {
         "deployment-scheduled": "true",
+        test: "testing",
       },
       region: "us-central1",
     };
@@ -288,6 +298,7 @@ describe("addResourcesToBackend", () => {
       },
       labels: {
         "deployment-scheduled": "true",
+        test: "testing",
       },
     };
     const expected: backend.Backend = {
