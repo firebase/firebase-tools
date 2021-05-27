@@ -62,6 +62,7 @@ export function topicFromSpec(spec: backend.PubSubSpec): Topic {
 
 // NOTE: We currently don't need or have specFromTopic.
 // backend.ExistingBackend infers actual topics by the fact that it sees a function
-// with a scheduled annotation. This may not be good enough when we're doing the actual
-// using Run, because we'll have to create topics there. Topic specs have a "target service"
-// which is hard to deduce generally.
+// with a scheduled annotation. This may not be good enough when we're
+// using Run, because we'll have to to query multiple resources (e.g. triggers)
+// Were we to get a standalone Topic, we wouldn't have any idea how to set the
+// "target service" since that is part of the subscription.

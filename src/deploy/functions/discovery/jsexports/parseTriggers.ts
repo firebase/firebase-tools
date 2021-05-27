@@ -217,9 +217,7 @@ export function addResourcesToBackend(
       const topic: backend.PubSubSpec = {
         id,
         project: projectId,
-        labels: {
-          deployment: "firebase-schedule",
-        },
+        labels: backend.SCHEDULED_FUNCTION_LABEL,
         targetService: cloudFunctionName,
       };
       want.topics.push(topic);

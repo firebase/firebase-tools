@@ -114,6 +114,8 @@ export function memoryOptionDisplayName(option: MemoryOptions): string {
   }[option];
 }
 
+export const SCHEDULED_FUNCTION_LABEL = Object.freeze({ deployment: "firebase-schedule" });
+
 /** Supported runtimes for new Cloud Functions. */
 export type Runtime = "nodejs10" | "nodejs12" | "nodejs14";
 
@@ -623,7 +625,7 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
       ctx.existingBackend.topics.push({
         id,
         project: specFunction.project,
-        labels: { deployment: "firebase-schedule" },
+        labels: SCHEDULED_FUNCTION_LABEL,
         targetService: {
           id: specFunction.id,
           region: specFunction.region,
@@ -659,7 +661,7 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
       ctx.existingBackend.topics.push({
         id,
         project: specFunction.project,
-        labels: { deployment: "firebase-schedule" },
+        labels: SCHEDULED_FUNCTION_LABEL,
         targetService: {
           id: specFunction.id,
           region: specFunction.region,

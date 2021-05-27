@@ -300,13 +300,13 @@ describe("addResourcesToBackend", () => {
         {
           id: "firebase-schedule-func-us-central1",
           project: "project",
-          labels: { deployment: "firebase-schedule" },
+          labels: backend.SCHEDULED_FUNCTION_LABEL,
           targetService: BASIC_FUNCTION_NAME,
         },
         {
           id: "firebase-schedule-func-europe-west1",
           project: "project",
-          labels: { deployment: "firebase-schedule" },
+          labels: backend.SCHEDULED_FUNCTION_LABEL,
           targetService: europeFunctionName,
         },
       ],
