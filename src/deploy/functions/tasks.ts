@@ -87,13 +87,13 @@ export function createFunctionTask(
     );
     let op: { name: string };
     if (fn.apiVersion === 1) {
-      const apiFunction = backend.toGCFv1Function(fn, params.sourceUrl!);
+      const apiFunction = gcf.functionFromSpec(fn, params.sourceUrl!);
       if (sourceToken) {
         apiFunction.sourceToken = sourceToken;
       }
       op = await gcf.createFunction(apiFunction);
     } else {
-      const apiFunction = backend.toGCFv2Function(fn, params.storageSource!);
+      const apiFunction = gcfV2.functionFromSpec(fn, params.storageSource!);
       op = await gcfV2.createFunction(apiFunction);
     }
     const cloudFunction = await pollOperation<unknown>({
@@ -144,13 +144,13 @@ export function updateFunctionTask(
 
     let opName;
     if (fn.apiVersion == 1) {
-      const apiFunction = backend.toGCFv1Function(fn, params.sourceUrl!);
+      const apiFunction = gcf.functionFromSpec(fn, params.sourceUrl!);
       if (sourceToken) {
         apiFunction.sourceToken = sourceToken;
       }
       opName = (await gcf.updateFunction(apiFunction)).name;
     } else {
-      const apiFunction = backend.toGCFv2Function(fn, params.storageSource!);
+      const apiFunction = gcfV2.functionFromSpec(fn, params.storageSource!);
       opName = (await gcfV2.updateFunction(apiFunction)).name;
     }
     const pollerOptions: OperationPollerOptions = {
@@ -293,7 +293,7 @@ export function upsertScheduleTask(
   appEngineLocation: string
 ): DeploymentTask {
   const run = async () => {
-    const job = backend.toJob(schedule, appEngineLocation);
+    const job = cloudscheduler.jobFromSpec(schedule, appEngineLocation);
     await cloudscheduler.createOrReplaceJob(job);
   };
   return {
