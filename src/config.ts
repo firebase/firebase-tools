@@ -29,12 +29,13 @@ export class Config {
     "remoteconfig",
   ];
 
+  public options: any;
+  public projectDir: string;
+  public data: any = {};
+  public defaults: any = {};
+  public notes: any = {};
+
   private _src: any;
-  private options: any;
-  private projectDir: string;
-  private data: any = {};
-  private defaults: any = {};
-  private notes: any = {};
 
   constructor(src: any, options: any) {
     this.options = options || {};

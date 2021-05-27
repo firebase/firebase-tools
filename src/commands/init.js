@@ -63,7 +63,7 @@ module.exports = new Command("init [feature]")
     );
 
     var setup = {
-      config: config._src,
+      config: config.src,
       rcfile: config.readProjectFile(".firebaserc", {
         json: true,
         fallback: {},
