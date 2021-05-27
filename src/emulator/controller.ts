@@ -3,7 +3,7 @@ import * as clc from "cli-color";
 import * as fs from "fs";
 import * as path from "path";
 
-import * as Config from "../config";
+import { Config } from "../config";
 import { logger } from "../logger";
 import * as track from "../track";
 import * as utils from "../utils";

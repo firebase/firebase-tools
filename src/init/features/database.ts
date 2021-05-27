@@ -4,7 +4,7 @@ import { prompt, promptOnce } from "../../prompt";
 import { logger } from "../../logger";
 import * as utils from "../../utils";
 import * as fsutils from "../../fsutils";
-import Config = require("../../config");
+import { Config } from "../../config";
 import {
   createInstance,
   DatabaseInstance,

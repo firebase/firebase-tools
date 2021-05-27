@@ -2,7 +2,7 @@ import * as clc from "cli-color";
 import * as childProcess from "child_process";
 
 import * as controller from "../emulator/controller";
-import * as Config from "../config";
+import { Config } from "../config";
 import * as utils from "../utils";
 import { logger } from "../logger";
 import * as path from "path";

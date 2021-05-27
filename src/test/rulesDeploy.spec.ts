@@ -6,7 +6,7 @@ import { FirebaseError } from "../error";
 import * as prompt from "../prompt";
 import { readFileSync } from "fs-extra";
 import { RulesetFile } from "../gcp/rules";
-import Config = require("../config");
+import { Config } from "../config";
 import gcp = require("../gcp");
 
 import { RulesDeploy, RulesetServiceType } from "../rulesDeploy";
@@ -18,6 +18,7 @@ describe("RulesDeploy", () => {
     project: "test-project",
     config: null,
   };
+
   BASE_OPTIONS.config = Config.load(BASE_OPTIONS, false);
   const FIRESTORE_RULES_CONTENT = readFileSync(
     path.resolve(FIXTURE_DIR, "firestore.rules")
