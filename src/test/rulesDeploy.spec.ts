@@ -18,7 +18,6 @@ describe("RulesDeploy", () => {
     project: "test-project",
     config: null,
   };
-
   BASE_OPTIONS.config = Config.load(BASE_OPTIONS, false);
   const FIRESTORE_RULES_CONTENT = readFileSync(
     path.resolve(FIXTURE_DIR, "firestore.rules")
