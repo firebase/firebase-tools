@@ -13,10 +13,11 @@ import * as ensureApiEnabled from "../../ensureApiEnabled";
 import * as functionsConfig from "../../functionsConfig";
 import * as getProjectId from "../../getProjectId";
 import * as validate from "./validate";
+import { Options } from "../../options";
 
 export async function prepare(
   context: args.Context,
-  options: args.Options,
+  options: Options,
   payload: args.Payload
 ): Promise<void> {
   if (!options.config.has("functions")) {

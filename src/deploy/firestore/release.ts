@@ -17,7 +17,9 @@ export default async function (context: any, options: Options): Promise<void> {
 
   const rulesFile = options.config.src.firestore?.rules;
   if (!rulesFile) {
-    throw new FirebaseError(`Invalid firestore config: ${options.config.src.firestore}`);
+    throw new FirebaseError(
+      `Invalid firestore config: ${JSON.stringify(options.config.src.firestore)}`
+    );
   }
   await rulesDeploy.release(rulesFile, RulesetServiceType.CLOUD_FIRESTORE);
 }
