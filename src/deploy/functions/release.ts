@@ -69,18 +69,12 @@ export async function release(context: args.Context, options: args.Options, payl
     options.force,
     options.nonInteractive
   );
-  if (shouldDeleteFunctions) {
-    for (const fn of allFnsToDelete) {
-      const task = tasks.deleteFunctionTask(taskParams, fn);
-      cloudFunctionsQueue.run(task);
-    }
-  } else {
+  if (!shouldDeleteFunctions) {
     // If we shouldn't delete functions, don't clean up their schedules either
     fullDeployment.schedulesToDelete = fullDeployment.schedulesToDelete.filter((schedule) => {
       return !allFnsToDelete.find(backend.sameFunctionName(schedule.targetService));
     });
     fullDeployment.topicsToDelete = fullDeployment.topicsToDelete.filter((topic) => {
-      const fnName = backend.functionName(topic.targetService);
       return !allFnsToDelete.find(backend.sameFunctionName(topic.targetService));
     });
   }
@@ -94,15 +88,15 @@ export async function release(context: args.Context, options: args.Options, payl
 
   for (const schedule of fullDeployment.schedulesToUpsert) {
     const task = tasks.upsertScheduleTask(taskParams, schedule, appEngineLocation);
-    schedulerQueue.run(task);
+    void schedulerQueue.run(task);
   }
   for (const schedule of fullDeployment.schedulesToDelete) {
     const task = tasks.deleteScheduleTask(taskParams, schedule, appEngineLocation);
-    schedulerQueue.run(task);
+    void schedulerQueue.run(task);
   }
   for (const topic of fullDeployment.topicsToDelete) {
     const task = tasks.deleteTopicTask(taskParams, topic);
-    pubSubQueue.run(task);
+    void pubSubQueue.run(task);
   }
 
   // Once everything has been added to queues, starting processing.
