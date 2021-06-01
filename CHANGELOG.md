@@ -1,3 +1,0 @@
-- Fixes a regression where `timeZone` for scheduled Cloud Functions was always America/Los_Angeles. (#3425)
-- Fixes an issue where a provided channel ID would be ignored when creating a Firebase Hosting channel. (#3417)
-- Fixes a regression where HTTPS functions could not be called from `functions:shell` and `emulators:start`. (#3426)
