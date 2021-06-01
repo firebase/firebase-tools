@@ -75,7 +75,7 @@ export class Config {
     }
   }
 
-  private materialize(target: string) {
+  materialize(target: string) {
     const val = _.get(this._src, target);
     if (typeof val === "string") {
       let out = this.parseFile(target, val);
@@ -95,7 +95,7 @@ export class Config {
     });
   }
 
-  private parseFile(target: string, filePath: string) {
+  parseFile(target: string, filePath: string) {
     const fullPath = resolveProjectPath(this.options, filePath);
     const ext = path.extname(filePath);
     if (!fsutils.fileExistsSync(fullPath)) {
