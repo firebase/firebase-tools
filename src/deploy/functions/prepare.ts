@@ -1,8 +1,8 @@
 import * as clc from "cli-color";
 
 import { checkRuntimeDependencies } from "./checkRuntimeDependencies";
-import { functionMatchesAnyGroup, getFilterGroups } from "./functionsDeployHelper";
 import { FirebaseError } from "../../error";
+import { functionMatchesAnyGroup, getFilterGroups } from "./functionsDeployHelper";
 import { getRuntimeChoice } from "./parseRuntimeAndValidateSDK";
 import { prepareFunctionsUpload } from "./prepareFunctionsUpload";
 import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
@@ -65,6 +65,10 @@ export async function prepare(
 
   // Get a list of CloudFunctionTriggers.
   const wantBackend = options.config.get("functions.backend") as backend.Backend;
+  // Setup default environment variables on each function.
+  wantBackend.cloudFunctions.forEach((fn: backend.FunctionSpec) => {
+    fn.environmentVariables = wantBackend.environmentVariables;
+  });
 
   // Enable required APIs. This may come implicitly from triggers (e.g. scheduled triggers
   // require cloudscheudler and, in v1, require pub/sub), or can eventually come from

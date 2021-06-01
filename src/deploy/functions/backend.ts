@@ -179,6 +179,7 @@ export interface Backend {
   cloudFunctions: FunctionSpec[];
   schedules: ScheduleSpec[];
   topics: PubSubSpec[];
+  environmentVariables: EnvironmentVariables;
 }
 
 /**
@@ -192,6 +193,7 @@ export function empty(): Backend {
     cloudFunctions: [],
     schedules: [],
     topics: [],
+    environmentVariables: {},
   };
 }
 
@@ -603,6 +605,7 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
     cloudFunctions: [],
     schedules: [],
     topics: [],
+    environmentVariables: {},
   };
   ctx.unreachableRegions = {
     gcfV1: [],

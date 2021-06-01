@@ -73,6 +73,8 @@ function parseTriggers(
   envs: backend.EnvironmentVariables
 ): Promise<TriggerAnnotation[]> {
   return new Promise((resolve, reject) => {
+    // TODO(taeold): Consider making a breaking change to stop injecting process.env variables
+    // when parsing triggers.
     const env = { ..._.cloneDeep(process.env), ...envs } as NodeJS.ProcessEnv;
     env.GCLOUD_PROJECT = projectId;
     if (!_.isEmpty(configValues)) {
@@ -124,9 +126,9 @@ export async function discoverBackend(
 ): Promise<backend.Backend> {
   const sourceDir = options.config.path(options.config.get("functions.source") as string);
   const triggerAnnotations = await parseTriggers(context.projectId, sourceDir, configValues, envs);
-  const want: backend.Backend = backend.empty();
+  const want: backend.Backend = { ...backend.empty(), environmentVariables: envs };
   for (const annotation of triggerAnnotations) {
-    addResourcesToBackend(context.projectId, context.runtimeChoice!, envs, annotation, want);
+    addResourcesToBackend(context.projectId, context.runtimeChoice!, annotation, want);
   }
   return want;
 }
@@ -134,7 +136,6 @@ export async function discoverBackend(
 export function addResourcesToBackend(
   projectId: string,
   runtime: backend.Runtime,
-  envs: backend.EnvironmentVariables,
   annotation: TriggerAnnotation,
   want: backend.Backend
 ) {
@@ -177,7 +178,6 @@ export function addResourcesToBackend(
       entryPoint: annotation.entryPoint,
       runtime: runtime,
       trigger: trigger,
-      environmentVariables: envs,
     };
     if (annotation.vpcConnector) {
       let maybeId = annotation.vpcConnector;

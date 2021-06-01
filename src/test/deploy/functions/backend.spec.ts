@@ -772,7 +772,6 @@ describe("Backend", () => {
           unreachable: [],
         });
         const have = await backend.existingBackend(newContext());
-
         const functionSpec: backend.FunctionSpec = {
           ...FUNCTION_SPEC,
           trigger: {
@@ -794,8 +793,8 @@ describe("Backend", () => {
         // so we don't have the real schedule.
         delete schedule.schedule;
 
-        expect(have).to.deep.equal({
-          requiredAPIs: {},
+        const want = {
+          ...backend.empty(),
           cloudFunctions: [functionSpec],
           schedules: [schedule],
           topics: [
@@ -804,7 +803,9 @@ describe("Backend", () => {
               targetService: FUNCTION_NAME,
             },
           ],
-        });
+        };
+
+        expect(have).to.deep.equal(want);
       });
     });
 
