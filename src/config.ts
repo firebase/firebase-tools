@@ -2,24 +2,25 @@
 
 import { FirebaseConfig } from "./firebaseConfig";
 
-const _ = require("lodash");
-const clc = require("cli-color");
-const cjson = require("cjson");
-const fs = require("fs-extra");
-const path = require("path");
+import * as _ from "lodash";
+import * as clc from "cli-color";
+import * as fs from "fs-extra";
+import * as path from "path";
 
-const detectProjectRoot = require("./detectProjectRoot").detectProjectRoot;
-const { FirebaseError } = require("./error");
-const fsutils = require("./fsutils");
+import { detectProjectRoot } from "./detectProjectRoot";
+import { FirebaseError } from "./error";
+import * as fsutils from "./fsutils";
+import { promptOnce } from "./prompt";
+import { resolveProjectPath } from "./projectPath";
+import * as utils from "./utils";
+
+const cjson = require("cjson");
 const loadCJSON = require("./loadCJSON");
 const parseBoltRules = require("./parseBoltRules");
-const { promptOnce } = require("./prompt");
-const { resolveProjectPath } = require("./projectPath");
-const utils = require("./utils");
-
-type PlainObject = Record<string, unknown>;
 
 export class Config {
+  static DEFAULT_FUNCTIONS_SOURCE = "functions";
+
   static FILENAME = "firebase.json";
   static MATERIALIZE_TARGETS = [
     "database",
@@ -60,7 +61,7 @@ export class Config {
 
     Config.MATERIALIZE_TARGETS.forEach((target) => {
       if (_.get(this._src, target)) {
-        _.set(this.data, target, this._materialize(target));
+        _.set(this.data, target, this.materialize(target));
       }
     });
 
@@ -70,36 +71,22 @@ export class Config {
       !this.get("functions.source") &&
       fsutils.fileExistsSync(this.path("functions/package.json"))
     ) {
-      this.set("functions.source", "functions");
+      this.set("functions.source", Config.DEFAULT_FUNCTIONS_SOURCE);
     }
   }
 
-  _hasDeepKey(obj: PlainObject, key: string) {
-    if (_.has(obj, key)) {
-      return true;
-    }
-
-    for (const k in obj) {
-      if (obj.hasOwnProperty(k)) {
-        if (_.isPlainObject(obj[k]) && this._hasDeepKey(obj[k] as PlainObject, key)) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  _materialize(target: string) {
+  private materialize(target: string) {
     const val = _.get(this._src, target);
-    if (_.isString(val)) {
-      let out = this._parseFile(target, val);
+    if (typeof val === "string") {
+      let out = this.parseFile(target, val);
       // if e.g. rules.json has {"rules": {}} use that
-      const lastSegment = _.last(target.split("."));
-      if (_.size(out) === 1 && _.has(out, lastSegment)) {
+      const segments = target.split(".");
+      const lastSegment = segments[segments.length - 1];
+      if (Object.keys(out).length === 1 && _.has(out, lastSegment)) {
         out = out[lastSegment];
       }
       return out;
-    } else if (_.isPlainObject(val) || _.isArray(val)) {
+    } else if (val !== null && typeof val === "object") {
       return val;
     }
 
@@ -108,7 +95,7 @@ export class Config {
     });
   }
 
-  _parseFile(target: string, filePath: string) {
+  private parseFile(target: string, filePath: string) {
     const fullPath = resolveProjectPath(this.options, filePath);
     const ext = path.extname(filePath);
     if (!fsutils.fileExistsSync(fullPath)) {
@@ -167,7 +154,7 @@ export class Config {
 
   path(pathName: string) {
     const outPath = path.normalize(path.join(this.projectDir, pathName));
-    if (_.includes(path.relative(this.projectDir, outPath), "..")) {
+    if (path.relative(this.projectDir, outPath).includes("..")) {
       throw new FirebaseError(clc.bold(pathName) + " is outside of project directory", { exit: 1 });
     }
     return outPath;

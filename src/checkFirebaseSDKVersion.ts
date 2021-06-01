@@ -7,6 +7,7 @@ import * as spawn from "cross-spawn";
 import * as utils from "./utils";
 import { FirebaseError } from "./error";
 import { logger } from "./logger";
+import { Options } from "./options";
 
 interface NpmListResult {
   name: string;
@@ -54,12 +55,12 @@ export function getFunctionsSDKVersion(sourceDir: string): string | void {
  * If it is unable to do the check, it does nothing.
  * @param options Options object from "firebase deploy" command.
  */
-export function checkFunctionsSDKVersion(options: any): void {
+export function checkFunctionsSDKVersion(options: Options): void {
   if (!options.config.has("functions")) {
     return;
   }
 
-  const sourceDirName = options.config.get("functions.source");
+  const sourceDirName = options.config.src.functions?.source;
   if (!sourceDirName) {
     throw new FirebaseError(
       `No functions code detected at default location ("./functions"), and no "functions.source" defined in "firebase.json"`

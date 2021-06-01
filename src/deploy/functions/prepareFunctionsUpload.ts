@@ -15,6 +15,7 @@ import * as utils from "../../utils";
 import * as fsAsync from "../../fsAsync";
 import * as args from "./args";
 import { Options } from "../../options";
+import { Config } from "../../config";
 
 const CONFIG_DEST_FILE = ".runtimeconfig.json";
 
@@ -66,7 +67,7 @@ async function packageSource(options: Options, sourceDir: string, configValues: 
   // you're in the public dir when you deploy.
   // We ignore any CONFIG_DEST_FILE that already exists, and write another one
   // with current config values into the archive in the "end" handler for reader
-  const ignore = options.config.get("functions.ignore", ["node_modules", ".git"]) as string[];
+  const ignore = options.config.src.functions?.ignore || ["node_modules", ".git"];
   ignore.push(
     "firebase-debug.log",
     "firebase-debug.*.log",
@@ -95,10 +96,12 @@ async function packageSource(options: Options, sourceDir: string, configValues: 
       }
     );
   }
+
+  const srcDir = options.config.src.functions?.source || Config.DEFAULT_FUNCTIONS_SOURCE;
   utils.logBullet(
     clc.cyan.bold("functions:") +
       " packaged " +
-      clc.bold(options.config.get("functions.source")) +
+      clc.bold(srcDir) +
       " (" +
       filesize(archive.pointer()) +
       ") for uploading"
@@ -110,7 +113,8 @@ export async function prepareFunctionsUpload(
   context: args.Context,
   options: Options
 ): Promise<string | undefined> {
-  const sourceDir = options.config.path(options.config.get("functions.source") as string);
+  const functionsSource = options.config.src.functions?.source || Config.DEFAULT_FUNCTIONS_SOURCE;
+  const sourceDir = options.config.path(functionsSource);
   const configValues = await getFunctionsConfig(context);
   const backend = await discoverBackendSpec(context, options, configValues);
   options.config.set("functions.backend", backend);

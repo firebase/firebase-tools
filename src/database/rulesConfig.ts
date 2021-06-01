@@ -1,6 +1,7 @@
 import { FirebaseError } from "../error";
 import { Config } from "../config";
 import { logger } from "../logger";
+import { Options } from "../options";
 
 export interface RulesInstanceConfig {
   instance: string;
@@ -29,19 +30,16 @@ export function normalizeRulesConfig(
   });
 }
 
-export function getRulesConfig(projectId: string, options: any): RulesInstanceConfig[] {
-  // TODO(samstern): Config should be typed
-  const config = options.config as any;
-
-  const dbConfig: { rules?: string } | DatabaseConfig[] | undefined = config.get("database");
-
+export function getRulesConfig(projectId: string, options: Options): RulesInstanceConfig[] {
+  const dbConfig = options.config.src.database;
   if (dbConfig === undefined) {
     return [];
   }
 
   if (!Array.isArray(dbConfig)) {
     if (dbConfig && dbConfig.rules) {
-      const instance = options.instance || `${options.project}-default-rtdb`;
+      const instance =
+        (options.instance as string | undefined) || `${options.project}-default-rtdb`;
       return [{ rules: dbConfig.rules, instance }];
     } else {
       logger.debug("Possibly invalid database config: ", JSON.stringify(dbConfig));
@@ -50,13 +48,14 @@ export function getRulesConfig(projectId: string, options: any): RulesInstanceCo
   }
 
   const results: RulesInstanceConfig[] = [];
+  const rc = options.rc as any;
   for (const c of dbConfig) {
     if (c.target) {
       // Make sure the target exists (this will throw otherwise)
-      options.rc.requireTarget(projectId, "database", c.target);
+      rc.requireTarget(projectId, "database", c.target);
 
       // Get a list of db instances the target maps to
-      const instances: string[] = options.rc.target(projectId, "database", c.target);
+      const instances: string[] = rc.target(projectId, "database", c.target);
       for (const i of instances) {
         results.push({ instance: i, rules: c.rules });
       }

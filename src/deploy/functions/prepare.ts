@@ -14,17 +14,18 @@ import * as functionsConfig from "../../functionsConfig";
 import * as getProjectId from "../../getProjectId";
 import * as validate from "./validate";
 import { Options } from "../../options";
+import { Config } from "../../config";
 
 export async function prepare(
   context: args.Context,
   options: Options,
   payload: args.Payload
 ): Promise<void> {
-  if (!options.config.has("functions")) {
+  if (!options.config.src.functions) {
     return;
   }
 
-  const sourceDirName = options.config.get("functions.source") as string;
+  const sourceDirName = options.config.src.functions.source;
   if (!sourceDirName) {
     throw new FirebaseError(
       `No functions code detected at default location (./functions), and no functions.source defined in firebase.json`
@@ -56,11 +57,9 @@ export async function prepare(
   context.firebaseConfig = firebaseConfig;
 
   // Prepare the functions directory for upload, and set context.triggers.
+  const srcDir = options.config.src.functions.source || Config.DEFAULT_FUNCTIONS_SOURCE;
   logBullet(
-    clc.cyan.bold("functions:") +
-      " preparing " +
-      clc.bold(options.config.get("functions.source")) +
-      " directory for uploading..."
+    clc.cyan.bold("functions:") + " preparing " + clc.bold(srcDir) + " directory for uploading..."
   );
   context.functionsSource = await prepareFunctionsUpload(context, options);
 

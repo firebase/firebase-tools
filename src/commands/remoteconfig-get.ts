@@ -10,6 +10,7 @@ import { parseTemplateForTable } from "../remoteconfig/get";
 import Table = require("cli-table");
 import * as fs from "fs";
 import util = require("util");
+import { Options } from "../options";
 
 const tableHead = ["Entry Name", "Value"];
 
@@ -32,10 +33,10 @@ module.exports = new Command("remoteconfig:get")
   )
   .before(requireAuth)
   .before(requirePermissions, ["cloudconfig.configs.get"])
-  .action(async (options) => {
+  .action(async (options: Options) => {
     const template: RemoteConfigTemplate = await rcGet.getTemplate(
       getProjectId(options),
-      checkValidNumber(options.versionNumber)
+      checkValidNumber(options.versionNumber as string)
     );
     const table = new Table({ head: tableHead, style: { head: ["green"] } });
     if (template.conditions) {
@@ -60,8 +61,8 @@ module.exports = new Command("remoteconfig:get")
     if (fileOut) {
       const shouldUseDefaultFilename = options.output === true || options.output === "";
       const filename = shouldUseDefaultFilename
-        ? options.config.get("remoteconfig.template")
-        : options.output;
+        ? options.config.src.remoteconfig!.template
+        : (options.output as string);
       const outTemplate = { ...template };
       delete outTemplate.version;
       fs.writeFileSync(filename, JSON.stringify(outTemplate, null, 2));

@@ -10,6 +10,7 @@ import * as fs from "fs";
 import * as gcs from "../../gcp/storage";
 import * as gcf from "../../gcp/cloudfunctions";
 import { Options } from "../../options";
+import { Config } from "../../config";
 
 const GCP_REGION = functionsUploadRegion;
 
@@ -45,7 +46,7 @@ export async function deploy(
   options: Options,
   payload: args.Payload
 ): Promise<void> {
-  if (!options.config.get("functions")) {
+  if (!options.config.src.functions) {
     return;
   }
 
@@ -66,11 +67,9 @@ export async function deploy(
     }
     await Promise.all(uploads);
 
+    const srcDir = options.config.src.functions.source || Config.DEFAULT_FUNCTIONS_SOURCE;
     logSuccess(
-      clc.green.bold("functions:") +
-        " " +
-        clc.bold(options.config.get("functions.source")) +
-        " folder uploaded successfully"
+      clc.green.bold("functions:") + " " + clc.bold(srcDir) + " folder uploaded successfully"
     );
   } catch (err) {
     logWarning(clc.yellow("functions:") + " Upload Error: " + err.message);

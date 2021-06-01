@@ -42,12 +42,10 @@ import { fileExistsSync } from "../fsutils";
 import { StorageEmulator } from "./storage";
 import { getDefaultDatabaseInstance } from "../getDefaultDatabaseInstance";
 import { getProjectDefaultAccount } from "../auth";
+import { Options } from "../options";
 
-async function getAndCheckAddress(emulator: Emulators, options: any): Promise<Address> {
-  let host = Constants.normalizeHost(
-    options.config.get(Constants.getHostKey(emulator), Constants.getDefaultHost(emulator))
-  );
-
+async function getAndCheckAddress(emulator: Emulators, options: Options): Promise<Address> {
+  let host = options.config.src.emulators?.[emulator]?.host || Constants.getDefaultHost(emulator);
   if (host === "localhost" && utils.isRunningInWSL()) {
     // HACK(https://github.com/firebase/firebase-tools-ui/issues/332): Use IPv4
     // 127.0.0.1 instead of localhost. This, combined with the hack in
@@ -58,7 +56,7 @@ async function getAndCheckAddress(emulator: Emulators, options: any): Promise<Ad
     host = "127.0.0.1";
   }
 
-  const portVal = options.config.get(Constants.getPortKey(emulator), undefined);
+  const portVal = options.config.src.emulators?.[emulator]?.port;
   let port;
   let findAvailablePort = false;
   if (portVal) {
@@ -200,7 +198,7 @@ export function filterEmulatorTargets(options: any): Emulators[] {
  * @param options
  * @param name
  */
-export function shouldStart(options: any, name: Emulators): boolean {
+export function shouldStart(options: Options, name: Emulators): boolean {
   if (name === Emulators.HUB) {
     // The hub only starts if we know the project ID.
     return !!options.project;
@@ -213,7 +211,7 @@ export function shouldStart(options: any, name: Emulators): boolean {
       return true;
     }
 
-    if (options.config.get("emulators.ui.enabled") === false) {
+    if (options.config.src.emulators?.ui?.enabled === false) {
       // Allow disabling UI via `{emulators: {"ui": {"enabled": false}}}`.
       // Emulator UI is by default enabled if that option is not specified.
       return false;
@@ -226,11 +224,7 @@ export function shouldStart(options: any, name: Emulators): boolean {
   }
 
   // Don't start the functions emulator if we can't find the source directory
-  if (
-    name === Emulators.FUNCTIONS &&
-    emulatorInTargets &&
-    !options.config.get("functions.source")
-  ) {
+  if (name === Emulators.FUNCTIONS && emulatorInTargets && !options.config.src.functions?.source) {
     EmulatorLogger.forEmulator(Emulators.FUNCTIONS).logLabeled(
       "WARN",
       "functions",
@@ -407,9 +401,10 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
     const functionsLogger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
     const functionsAddr = await getAndCheckAddress(Emulators.FUNCTIONS, options);
     const projectId = getProjectId(options, false);
+    const functionsSource = options.config.src.functions?.source || Config.DEFAULT_FUNCTIONS_SOURCE;
     const functionsDir = path.join(
       options.extensionDir || options.config.projectDir,
-      options.config.get("functions.source")
+      functionsSource
     );
 
     let inspectFunctions: number | undefined;
@@ -484,7 +479,7 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
     }
 
     const config = options.config as Config;
-    const rulesLocalPath = config.get("firestore.rules");
+    const rulesLocalPath = config.src.firestore?.rules;
     let rulesFileFound = false;
     if (rulesLocalPath) {
       const rules: string = config.path(rulesLocalPath);
