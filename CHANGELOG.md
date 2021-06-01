@@ -1,0 +1,1 @@
+- Fix a regression where time zones for scheduled funcitons were always America/Los_Angeles
