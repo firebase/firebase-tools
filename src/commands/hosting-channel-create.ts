@@ -38,17 +38,23 @@ export default new Command("hosting:channel:create [channelId]")
         expireTTL = calculateChannelExpireTTL(options.expires);
       }
 
-      if (channelId) {
-        options.channelId = channelId;
+      if (!channelId) {
+        if (options.nonInteractive) {
+          throw new FirebaseError(
+            `"channelId" argument must be provided in a non-interactive environment`
+          );
+        }
+        channelId = await promptOnce(
+          {
+            type: "input",
+            message: "Please provide a URL-friendly name for the channel:",
+            validate: (s) => s.length > 0,
+          } // Prevents an empty string from being submitted!
+        );
       }
-      channelId = await promptOnce(
-        {
-          type: "input",
-          message: "Please provide a URL-friendly name for the channel:",
-          validate: (s) => s.length > 0,
-        },
-        options
-      );
+      if (!channelId) {
+        throw new FirebaseError(`"channelId" must not be empty`);
+      }
 
       channelId = normalizeName(channelId);
 

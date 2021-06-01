@@ -1,1 +1,2 @@
-- Fix a regression where timeZone for scheduled Cloud Functions was always America/Los_Angeles. (#3425)
+- Fixs a regression where `timeZone` for scheduled Cloud Functions was always America/Los_Angeles. (#3425)
+- Fixes an issue where a provided channel ID would be ignored when creating a Firebase Hosting channel. (#3417)
