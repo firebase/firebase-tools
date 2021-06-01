@@ -2,11 +2,11 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import { FirebaseError } from "../../../error";
-import * as args from "../../../deploy/functions/args";
 import * as backend from "../../../deploy/functions/backend";
 import * as functionPrompts from "../../../deploy/functions/prompts";
 import * as prompt from "../../../prompt";
 import * as utils from "../../../utils";
+import { Options } from "../../../options";
 
 const SAMPLE_EVENT_TRIGGER: backend.EventTrigger = {
   eventType: "google.pubsub.topic.publish",
@@ -28,7 +28,7 @@ const SAMPLE_FUNC: backend.FunctionSpec = {
   trigger: SAMPLE_EVENT_TRIGGER,
 };
 
-const SAMPLE_OPTIONS: args.Options = {
+const SAMPLE_OPTIONS: Options = {
   cwd: "/",
   configPath: "/",
   /* eslint-disable-next-line */

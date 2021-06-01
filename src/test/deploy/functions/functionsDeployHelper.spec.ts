@@ -1,8 +1,8 @@
 import { expect } from "chai";
 
-import * as args from "../../../deploy/functions/args";
 import * as backend from "../../../deploy/functions/backend";
 import * as helper from "../../../deploy/functions/functionsDeployHelper";
+import { Options } from "../../../options";
 
 describe("functionsDeployHelper", () => {
   const CLOUD_FUNCTION: Omit<backend.FunctionSpec, "id"> = {
@@ -59,14 +59,14 @@ describe("functionsDeployHelper", () => {
     it("should parse multiple filters", () => {
       const options = {
         only: "functions:myFunc,functions:myOtherFunc",
-      } as args.Options;
+      } as Options;
       expect(helper.getFilterGroups(options)).to.deep.equal([["myFunc"], ["myOtherFunc"]]);
     });
 
     it("should parse nested filters", () => {
       const options = {
         only: "functions:groupA.myFunc",
-      } as args.Options;
+      } as Options;
       expect(helper.getFilterGroups(options)).to.deep.equal([["groupA", "myFunc"]]);
     });
   });
