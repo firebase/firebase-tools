@@ -81,7 +81,7 @@ export const actionFunction = async (options: any) => {
 
       const initializeContext = (context: any) => {
         for (const trigger of emulator.triggers) {
-          if (emulator.emulatedFunctions.includes(trigger.name)) {
+          if (emulator.emulatedFunctions.includes(trigger.id)) {
             const localFunction = new LocalFunction(trigger, emulator.urls, emulator);
             const triggerNameDotNotation = trigger.name.replace(/-/g, ".");
             _.set(context, triggerNameDotNotation, localFunction.call);
