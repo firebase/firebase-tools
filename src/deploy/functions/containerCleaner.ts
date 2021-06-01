@@ -119,89 +119,42 @@ export interface Stat {
   tags: gcr.Tag[];
 }
 
-export interface Node {
-  // If we haven't actually done an LS on this exact location
-  sparse: boolean;
-
-  // For directories
-  children: Record<string, Node>;
-
-  // For images
-  digests: gcr.Digest[];
-  tags: gcr.Tag[];
-}
-
 export class ContainerRegistryHelper {
   readonly client: gcr.Client;
-  readonly cache: Node;
+  readonly cache: Record<string, Stat> = {};
 
   constructor(subdomain: string) {
     this.client = new gcr.Client(subdomain);
-    this.cache = {
-      sparse: true,
-      children: {},
-      digests: [],
-      tags: [],
-    };
-  }
-
-  private async getNode(path: string): Promise<Node> {
-    const parts = path.split("/");
-    let cwd = this.cache;
-    for (const part of parts) {
-      if (!cwd.children[part]) {
-        cwd.children[part] = {
-          sparse: true,
-          children: {},
-          digests: [],
-          tags: [],
-        };
-      }
-      cwd = cwd.children[part];
-    }
-    if (cwd.sparse) {
-      const raw = await this.client.listTags(path);
-      cwd.sparse = false;
-      cwd.tags = raw.tags;
-      cwd.digests = Object.keys(raw.manifest);
-      cwd.children = {};
-      for (const child of raw.child) {
-        cwd.children[child] = {
-          sparse: true,
-          children: {},
-          digests: [],
-          tags: [],
-        };
-      }
-    }
-    return cwd;
   }
 
   async ls(path: string): Promise<Stat> {
-    const node = await this.getNode(path);
-    return {
-      children: Object.keys(node.children),
-      digests: node.digests,
-      tags: node.tags,
-    };
+    if (!this.cache[path]) {
+      const raw = await this.client.listTags(path);
+      this.cache[path] = {
+        tags: raw.tags,
+        digests: Object.keys(raw.manifest),
+        children: raw.child,
+      };
+    }
+    return this.cache[path];
   }
 
   async rm(path: string): Promise<void> {
-    const node = await this.getNode(path);
+    const stat = await this.ls(path);
     const deleteChildren: Promise<void>[] = [];
-    const recursive = Object.keys(node.children).map((child) => this.rm(`${path}/${child}`));
+    const recursive = stat.children.map((child) => this.rm(`${path}/${child}`));
     // Let children ("directories") be cleaned up in parallel while we clean
     // up the "files" in this location.
 
-    const deleteTags = node.tags.map((tag) => this.client.deleteTag(path, tag));
+    const deleteTags = stat.tags.map((tag) => this.client.deleteTag(path, tag));
     await Promise.all(deleteTags);
-    node.tags = [];
+    stat.tags = [];
 
-    const deleteImages = node.digests.map((digest) => this.client.deleteImage(path, digest));
+    const deleteImages = stat.digests.map((digest) => this.client.deleteImage(path, digest));
     await Promise.all(deleteImages);
-    node.digests = [];
+    stat.digests = [];
 
     await Promise.all(recursive);
-    node.children = {};
+    stat.children = [];
   }
 }

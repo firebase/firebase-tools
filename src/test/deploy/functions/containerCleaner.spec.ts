@@ -102,6 +102,11 @@ describe("ContainerRegistryHelper", () => {
       tags: [],
       children: [],
     });
+    await expect(helper.ls("foo/bar/baz")).to.eventually.deep.equal({
+      digests: [],
+      tags: [],
+      children: [],
+    });
   });
 });
 
