@@ -41,14 +41,13 @@ export default new Command("hosting:channel:create [channelId]")
       if (channelId) {
         options.channelId = channelId;
       }
-      channelId = await promptOnce(
-        {
+      channelId =
+        channelId ||
+        (await promptOnce({
           type: "input",
           message: "Please provide a URL-friendly name for the channel:",
           validate: (s) => s.length > 0,
-        },
-        options
-      );
+        }));
 
       channelId = normalizeName(channelId);
 

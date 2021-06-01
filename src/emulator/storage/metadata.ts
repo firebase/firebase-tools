@@ -87,6 +87,9 @@ export class StoredFileMetadata {
     if (incomingMetadata) {
       this.update(incomingMetadata);
     }
+
+    this.deleteFieldsSetAsNull();
+    this.setDownloadTokensFromCustomMetadata();
   }
 
   asRulesResource(proposedChanges?: RulesResourceMetadataOverrides): RulesResourceMetadata {
@@ -128,6 +131,40 @@ export class StoredFileMetadata {
     return rulesResource;
   }
 
+  private setDownloadTokensFromCustomMetadata() {
+    if (!this.customMetadata) return;
+
+    if (this.customMetadata.firebaseStorageDownloadTokens) {
+      this.downloadTokens = this.customMetadata.firebaseStorageDownloadTokens.split(",");
+      delete this.customMetadata.firebaseStorageDownloadTokens;
+    }
+  }
+
+  private deleteFieldsSetAsNull() {
+    const deletableFields: (keyof this)[] = [
+      "contentDisposition",
+      "contentType",
+      "contentLanguage",
+      "contentEncoding",
+      "cacheControl",
+    ];
+
+    deletableFields.map((field: keyof this) => {
+      if (this[field] === null) {
+        delete this[field];
+      }
+    });
+
+    if (this.customMetadata) {
+      Object.keys(this.customMetadata).map((key: string) => {
+        if (!this.customMetadata) return;
+        if (this.customMetadata[key] === null) {
+          delete this.customMetadata[key];
+        }
+      });
+    }
+  }
+
   update(incoming: IncomingMetadata): void {
     if (incoming.contentDisposition) {
       this.contentDisposition = incoming.contentDisposition;
@@ -158,6 +195,9 @@ export class StoredFileMetadata {
     if (incoming.cacheControl) {
       this.cacheControl = incoming.cacheControl;
     }
+
+    this.setDownloadTokensFromCustomMetadata();
+    this.deleteFieldsSetAsNull();
 
     this._cloudFunctions.dispatch("metadataUpdate", new CloudStorageObjectMetadata(this));
   }
@@ -303,6 +343,21 @@ export class CloudStorageBucketMetadata {
     this.etag = "====";
     this.locationType = "mutli-region";
   }
+}
+
+export class CloudStorageObjectAccessControlMetadata {
+  kind = "storage#objectAccessControl";
+
+  constructor(
+    public object: string,
+    public generation: string,
+    public selfLink: string,
+    public id: string,
+    public role: string,
+    public entity: string,
+    public bucket: string,
+    public etag: string
+  ) {}
 }
 
 export class CloudStorageObjectMetadata {

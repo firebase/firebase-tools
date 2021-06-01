@@ -14,6 +14,7 @@ import * as functionsConfig from "../../functionsConfig";
 import * as utils from "../../utils";
 import * as fsAsync from "../../fsAsync";
 import * as args from "./args";
+import { Options } from "../../options";
 
 const CONFIG_DEST_FILE = ".runtimeconfig.json";
 
@@ -60,7 +61,7 @@ async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream) {
   });
 }
 
-async function packageSource(options: args.Options, sourceDir: string, configValues: any) {
+async function packageSource(options: Options, sourceDir: string, configValues: any) {
   const tmpFile = tmp.fileSync({ prefix: "firebase-functions-", postfix: ".zip" }).name;
   const fileStream = fs.createWriteStream(tmpFile, {
     flags: "w",
@@ -114,7 +115,7 @@ async function packageSource(options: args.Options, sourceDir: string, configVal
 
 export async function prepareFunctionsUpload(
   context: args.Context,
-  options: args.Options
+  options: Options
 ): Promise<string | undefined> {
   const sourceDir = options.config.path(options.config.get("functions.source") as string);
   const configValues = await getFunctionsConfig(context);

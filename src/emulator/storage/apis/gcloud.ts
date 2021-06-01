@@ -1,9 +1,16 @@
 import { Router } from "express";
 import { gunzipSync } from "zlib";
 import { Emulators } from "../../types";
-import { CloudStorageObjectMetadata } from "../metadata";
+import {
+  CloudStorageObjectAccessControlMetadata,
+  CloudStorageObjectMetadata,
+  StoredFileMetadata,
+} from "../metadata";
 import { EmulatorRegistry } from "../../registry";
 import { StorageEmulator } from "../index";
+import { EmulatorLogger } from "../../emulatorLogger";
+import { StorageLayer } from "../files";
+import type { Request, Response } from "express";
 
 /**
  * @param emulator
@@ -14,17 +21,17 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
   const gcloudStorageAPI = Router();
   const { storageLayer } = emulator;
 
+  // Automatically create a bucket for any route which uses a bucket
+  gcloudStorageAPI.use(/.*\/b\/(.+?)\/.*/, (req, res, next) => {
+    storageLayer.createBucket(req.params[0]);
+    next();
+  });
+
   gcloudStorageAPI.get("/b", (req, res) => {
     res.json({
       kind: "storage#buckets",
       items: storageLayer.listBuckets(),
     });
-  });
-
-  // Automatically create a bucket for any route which uses a bucket
-  gcloudStorageAPI.use(/.*\/b\/(.+?)\/.*/, (req, res, next) => {
-    storageLayer.createBucket(req.params[0]);
-    next();
   });
 
   gcloudStorageAPI.get(
@@ -38,40 +45,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       }
 
       if (req.query.alt == "media") {
-        let data = storageLayer.getBytes(req.params.bucketId, req.params.objectId);
-        if (!data) {
-          res.sendStatus(404);
-          return;
-        }
-
-        const isGZipped = md.contentEncoding == "gzip";
-        if (isGZipped) {
-          data = gunzipSync(data);
-        }
-
-        res.setHeader("Accept-Ranges", "bytes");
-        res.setHeader("Content-Type", md.contentType);
-        res.setHeader("Content-Disposition", md.contentDisposition);
-        res.setHeader("Content-Encoding", "identity");
-
-        const byteRange = [...(req.header("range") || "").split("bytes="), "", ""];
-
-        const [rangeStart, rangeEnd] = byteRange[1].split("-");
-
-        if (rangeStart) {
-          const range = {
-            start: parseInt(rangeStart),
-            end: rangeEnd ? parseInt(rangeEnd) : data.byteLength,
-          };
-          res.setHeader(
-            "Content-Range",
-            `bytes ${range.start}-${range.end - 1}/${data.byteLength}`
-          );
-          res.status(206).end(data.slice(range.start, range.end));
-        } else {
-          res.end(data);
-        }
-        return;
+        return sendFileBytes(md, storageLayer, req, res);
       }
 
       const outgoingMd = new CloudStorageObjectMetadata(md);
@@ -165,6 +139,39 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     res.status(200).json(new CloudStorageObjectMetadata(finalizedUpload.file.metadata)).send();
   });
 
+  gcloudStorageAPI.post("/b/:bucketId/o/:objectId/acl", (req, res) => {
+    // TODO(abehaskins) Link to a doc with more info
+    EmulatorLogger.forEmulator(Emulators.STORAGE).log(
+      "WARN_ONCE",
+      "Cloud Storage ACLs are not supported in the Storage Emulator. All related methods will succeed, but have no effect."
+    );
+    const md = storageLayer.getMetadata(req.params.bucketId, req.params.objectId);
+
+    if (!md) {
+      res.sendStatus(404);
+      return;
+    }
+
+    // We do an empty update to step metageneration forward;
+    md.update({});
+
+    res
+      .json({
+        kind: "storage#objectAccessControl",
+        object: md.name,
+        id: `${req.params.bucketId}/${md.name}/${md.generation}/allUsers`,
+        selfLink: `http://${EmulatorRegistry.getInfo(Emulators.STORAGE)?.host}:${
+          EmulatorRegistry.getInfo(Emulators.STORAGE)?.port
+        }/storage/v1/b/${md.bucket}/o/${encodeURIComponent(md.name)}/acl/allUsers`,
+        bucket: md.bucket,
+        entity: req.body.entity,
+        role: req.body.role,
+        etag: "someEtag",
+        generation: md.generation.toString(),
+      } as CloudStorageObjectAccessControlMetadata)
+      .status(200);
+  });
+
   gcloudStorageAPI.post("/upload/storage/v1/b/:bucketId/o", (req, res) => {
     if (!req.query.name) {
       res.sendStatus(400);
@@ -250,5 +257,65 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     return;
   });
 
+  gcloudStorageAPI.get("/:bucketId/:objectId(**)", (req, res) => {
+    const md = storageLayer.getMetadata(req.params.bucketId, req.params.objectId);
+
+    if (!md) {
+      res.sendStatus(404);
+      return;
+    }
+
+    return sendFileBytes(md, storageLayer, req, res);
+  });
+
+  gcloudStorageAPI.all("/**", (req, res) => {
+    if (process.env.STORAGE_EMULATOR_DEBUG) {
+      console.table(req.headers);
+      console.log(req.method, req.url);
+      res.json("endpoint not implemented");
+    } else {
+      res.sendStatus(501);
+    }
+  });
+
   return gcloudStorageAPI;
+}
+
+function sendFileBytes(
+  md: StoredFileMetadata,
+  storageLayer: StorageLayer,
+  req: Request,
+  res: Response
+) {
+  let data = storageLayer.getBytes(req.params.bucketId, req.params.objectId);
+  if (!data) {
+    res.sendStatus(404);
+    return;
+  }
+
+  const isGZipped = md.contentEncoding == "gzip";
+  if (isGZipped) {
+    data = gunzipSync(data);
+  }
+
+  res.setHeader("Accept-Ranges", "bytes");
+  res.setHeader("Content-Type", md.contentType);
+  res.setHeader("Content-Disposition", md.contentDisposition);
+  res.setHeader("Content-Encoding", "identity");
+
+  const byteRange = [...(req.header("range") || "").split("bytes="), "", ""];
+
+  const [rangeStart, rangeEnd] = byteRange[1].split("-");
+
+  if (rangeStart) {
+    const range = {
+      start: parseInt(rangeStart),
+      end: rangeEnd ? parseInt(rangeEnd) : data.byteLength,
+    };
+    res.setHeader("Content-Range", `bytes ${range.start}-${range.end - 1}/${data.byteLength}`);
+    res.status(206).end(data.slice(range.start, range.end));
+  } else {
+    res.end(data);
+  }
+  return;
 }

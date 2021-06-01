@@ -6,7 +6,7 @@ var homeDir = require("os").homedir();
 var path = require("path");
 
 var { Command } = require("../command");
-var Config = require("../config");
+var { Config } = require("../config");
 var fsutils = require("../fsutils");
 var { init } = require("../init");
 const { logger } = require("../logger");
@@ -63,7 +63,7 @@ module.exports = new Command("init [feature]")
     );
 
     var setup = {
-      config: config._src,
+      config: config.src,
       rcfile: config.readProjectFile(".firebaserc", {
         json: true,
         fallback: {},

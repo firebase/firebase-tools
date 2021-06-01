@@ -14,7 +14,6 @@ export interface RegistryEntry {
   labels: { [key: string]: string };
   versions: { [key: string]: string };
   updateWarnings?: { [key: string]: UpdateWarning[] };
-  audience?: string;
   publisher: string;
 }
 
