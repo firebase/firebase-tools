@@ -9,6 +9,7 @@ import * as backend from "./backend";
 import * as fs from "fs";
 import * as gcs from "../../gcp/storage";
 import * as gcf from "../../gcp/cloudfunctions";
+import { Options } from "../../options";
 
 const GCP_REGION = functionsUploadRegion;
 
@@ -41,7 +42,7 @@ async function uploadSourceV2(context: args.Context): Promise<void> {
  */
 export async function deploy(
   context: args.Context,
-  options: args.Options,
+  options: Options,
   payload: args.Payload
 ): Promise<void> {
   if (!options.config.get("functions")) {

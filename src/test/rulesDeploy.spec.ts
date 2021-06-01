@@ -6,7 +6,7 @@ import { FirebaseError } from "../error";
 import * as prompt from "../prompt";
 import { readFileSync } from "fs-extra";
 import { RulesetFile } from "../gcp/rules";
-import Config = require("../config");
+import { Config } from "../config";
 import gcp = require("../gcp");
 
 import { RulesDeploy, RulesetServiceType } from "../rulesDeploy";

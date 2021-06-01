@@ -640,6 +640,7 @@ describe("Backend", () => {
         backend.toJob(
           {
             ...SCHEDULE,
+            timeZone: "America/Los_Angeles",
             retryConfig: {
               maxDoublings: 2,
               maxBackoffDuration: "20s",
@@ -652,6 +653,7 @@ describe("Backend", () => {
       ).to.deep.equal({
         name: "projects/project/locations/appEngineLocation/jobs/firebase-schedule-id-region",
         schedule: "every 1 minutes",
+        timeZone: "America/Los_Angeles",
         retryConfig: {
           maxDoublings: 2,
           maxBackoffDuration: "20s",

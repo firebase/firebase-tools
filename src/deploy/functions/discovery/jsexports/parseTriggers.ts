@@ -8,6 +8,7 @@ import * as backend from "../../backend";
 import * as api from "../../../../api";
 import * as proto from "../../../../gcp/proto";
 import * as args from "../../args";
+import { Options } from "../../../../options";
 
 const TRIGGER_PARSER = path.resolve(__dirname, "./triggerParser.js");
 
@@ -122,7 +123,7 @@ export function useStrategy(context: args.Context): Promise<boolean> {
 
 export async function discoverBackend(
   context: args.Context,
-  options: args.Options,
+  options: Options,
   configValues: backend.RuntimeConfigValues
 ): Promise<backend.Backend> {
   const sourceDir = options.config.path(options.config.get("functions.source") as string);
