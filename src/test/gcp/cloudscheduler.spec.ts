@@ -149,6 +149,7 @@ describe("cloudscheduler", () => {
         cloudscheduler.jobFromSpec(
           {
             ...SCHEDULE,
+            timeZone: "America/Los_Angeles",
             retryConfig: {
               maxDoublings: 2,
               maxBackoffDuration: "20s",
@@ -161,6 +162,7 @@ describe("cloudscheduler", () => {
       ).to.deep.equal({
         name: "projects/project/locations/appEngineLocation/jobs/firebase-schedule-id-region",
         schedule: "every 1 minutes",
+        timeZone: "America/Los_Angeles",
         retryConfig: {
           maxDoublings: 2,
           maxBackoffDuration: "20s",

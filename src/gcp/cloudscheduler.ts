@@ -200,7 +200,7 @@ export function jobFromSpec(schedule: backend.ScheduleSpec, appEngineLocation: s
     name: backend.scheduleName(schedule, appEngineLocation),
     schedule: schedule.schedule!,
   };
-  proto.copyIfPresent(job, schedule, "retryConfig");
+  proto.copyIfPresent(job, schedule, "timeZone", "retryConfig");
   if (schedule.transport === "https") {
     throw new FirebaseError("HTTPS transport for scheduled functions is not yet supported");
   }
