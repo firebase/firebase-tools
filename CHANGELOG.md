@@ -1,1 +1,2 @@
 - Fix a regression where timeZone for scheduled Cloud Functions was always America/Los_Angeles. (#3425)
+- Fix a regression where HTTPS functions could not be called from `functions:shell` and `emulators:start`. (#3426)
