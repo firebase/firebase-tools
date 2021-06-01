@@ -75,7 +75,7 @@ function parseTriggers(
   return new Promise((resolve, reject) => {
     // TODO(taeold): Consider making a breaking change to stop injecting process.env variables
     // when parsing triggers.
-    const env = { ..._.cloneDeep(process.env), ...envs } as NodeJS.ProcessEnv;
+    const env = { ...process.env, ...envs } as NodeJS.ProcessEnv;
     env.GCLOUD_PROJECT = projectId;
     if (!_.isEmpty(configValues)) {
       env.CLOUD_RUNTIME_CONFIG = JSON.stringify(configValues);
