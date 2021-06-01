@@ -7,9 +7,6 @@ import { Options } from "../../../options";
 
 type BackendDiscoveryStrategy = (
   context: args.Context,
-  options: args.Options,
-  runtimeConfig: backend.RuntimeConfigValues,
-  env: backend.EnvironmentVariables
   options: Options,
   runtimeConfig: backend.RuntimeConfigValues,
   env: backend.EnvironmentVariables
