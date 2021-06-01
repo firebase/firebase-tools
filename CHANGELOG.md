@@ -1,1 +1,1 @@
-- Fix a regression where time zones for scheduled funcitons were always America/Los_Angeles
+- Fix a regression where timeZone for scheduled Cloud Functions was always America/Los_Angeles. (#3425)
