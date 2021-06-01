@@ -17,6 +17,8 @@ const { promptOnce } = require("./prompt");
 const { resolveProjectPath } = require("./projectPath");
 const utils = require("./utils");
 
+type PlainObject = Record<string, unknown>;
+
 export class Config {
   static FILENAME = "firebase.json";
   static MATERIALIZE_TARGETS = [
@@ -72,14 +74,16 @@ export class Config {
     }
   }
 
-  _hasDeepKey(obj: any, key: string) {
+  _hasDeepKey(obj: PlainObject, key: string) {
     if (_.has(obj, key)) {
       return true;
     }
 
     for (const k in obj) {
-      if (_.isPlainObject(obj[k]) && this._hasDeepKey(obj[k], key)) {
-        return true;
+      if (obj.hasOwnProperty(k)) {
+        if (_.isPlainObject(obj[k]) && this._hasDeepKey(obj[k] as PlainObject, key)) {
+          return true;
+        }
       }
     }
     return false;
