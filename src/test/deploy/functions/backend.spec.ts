@@ -80,6 +80,7 @@ describe("Backend", () => {
   const TOPIC: backend.PubSubSpec = {
     id: backend.scheduleIdForFunction(FUNCTION_SPEC),
     project: "project",
+    labels: { deployment: "firebase-schedule" },
     targetService: FUNCTION_NAME,
   };
 

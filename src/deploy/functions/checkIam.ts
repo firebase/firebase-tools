@@ -7,6 +7,7 @@ import { testIamPermissions, testResourceIamPermissions } from "../../gcp/iam";
 import * as args from "./args";
 import * as backend from "./backend";
 import * as track from "../../track";
+import { Options } from "../../options";
 
 const PERMISSION = "cloudfunctions.functions.setIamPolicy";
 
@@ -53,7 +54,7 @@ export async function checkServiceAccountIam(projectId: string): Promise<void> {
  */
 export async function checkHttpIam(
   context: args.Context,
-  options: args.Options,
+  options: Options,
   payload: args.Payload
 ): Promise<void> {
   const functions = payload.functions!.backend.cloudFunctions;

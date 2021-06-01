@@ -5,7 +5,7 @@ import { first, last, get, size, head, keys, values } from "lodash";
 import { FirebaseError } from "./error";
 import { getInheritedOption, setupLoggers } from "./utils";
 import { load } from "./rc";
-import { load as _load } from "./config";
+import { Config } from "./config";
 import { configstore } from "./configstore";
 import { detectProjectRoot } from "./detectProjectRoot";
 import track = require("./track");
@@ -239,7 +239,7 @@ export class Command {
     }
 
     try {
-      options.config = _load(options);
+      options.config = Config.load(options);
     } catch (e) {
       options.configError = e;
     }

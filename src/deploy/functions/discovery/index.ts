@@ -3,10 +3,11 @@ import { logger } from "../../../logger";
 import * as backend from "../backend";
 import * as args from "../args";
 import * as jsTriggerParsing from "./jsexports/parseTriggers";
+import { Options } from "../../../options";
 
 type BackendDiscoveryStrategy = (
   context: args.Context,
-  options: args.Options,
+  options: Options,
   runtimeConfig: backend.RuntimeConfigValues
 ) => Promise<backend.Backend>;
 
@@ -30,7 +31,7 @@ const STRATEGIES: Strategy[] = [
 // TODO(inlined): Parse the Runtime within this method instead of before it. We need this to support other languages.
 export async function discoverBackendSpec(
   context: args.Context,
-  options: args.Options,
+  options: Options,
   runtimeConfigValues: backend.RuntimeConfigValues
 ): Promise<backend.Backend> {
   let strategy: Strategy | undefined = undefined;
