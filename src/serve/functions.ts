@@ -6,6 +6,7 @@ import * as getProjectId from "../getProjectId";
 import { getProjectDefaultAccount } from "../auth";
 import { Options } from "../options";
 import { Config } from "../config";
+import * as utils from "../utils";
 
 // TODO(samstern): It would be better to convert this to an EmulatorServer
 // but we don't have the "options" object until start() is called.
@@ -37,15 +38,17 @@ export class FunctionsServer {
     };
 
     if (options.host) {
-      args.host = options.host as string | undefined;
+      utils.assertIsStringOrUndefined(options.host);
+      args.host = options.host;
     }
 
     // If hosting emulator is not being served but Functions is,
     // we can use the port argument. Otherwise it goes to hosting and
     // we use port + 1.
     if (options.port) {
+      utils.assertIsNumber(options.port);
       const targets = options.targets as string[] | undefined;
-      const port = options.port as number;
+      const port = options.port;
       const hostingRunning = targets && targets.indexOf("hosting") >= 0;
       if (hostingRunning) {
         args.port = port + 1;

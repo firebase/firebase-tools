@@ -6,6 +6,7 @@ import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as fs from "fs-extra";
 import * as path from "path";
+const cjson = require("cjson");
 
 import { detectProjectRoot } from "./detectProjectRoot";
 import { FirebaseError } from "./error";
@@ -13,8 +14,6 @@ import * as fsutils from "./fsutils";
 import { promptOnce } from "./prompt";
 import { resolveProjectPath } from "./projectPath";
 import * as utils from "./utils";
-
-const cjson = require("cjson");
 const loadCJSON = require("./loadCJSON");
 const parseBoltRules = require("./parseBoltRules");
 

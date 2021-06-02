@@ -2,6 +2,7 @@ import { FirebaseError } from "../error";
 import { Config } from "../config";
 import { logger } from "../logger";
 import { Options } from "../options";
+import * as utils from "../utils";
 
 export interface RulesInstanceConfig {
   instance: string;
@@ -19,9 +20,9 @@ interface DatabaseConfig {
  */
 export function normalizeRulesConfig(
   rulesConfig: RulesInstanceConfig[],
-  options: any
+  options: Options
 ): RulesInstanceConfig[] {
-  const config = options.config as Config;
+  const config = options.config;
   return rulesConfig.map((rc) => {
     return {
       instance: rc.instance,
@@ -38,8 +39,8 @@ export function getRulesConfig(projectId: string, options: Options): RulesInstan
 
   if (!Array.isArray(dbConfig)) {
     if (dbConfig && dbConfig.rules) {
-      const instance =
-        (options.instance as string | undefined) || `${options.project}-default-rtdb`;
+      utils.assertIsStringOrUndefined(options.instance);
+      const instance = options.instance || `${options.project}-default-rtdb`;
       return [{ rules: dbConfig.rules, instance }];
     } else {
       logger.debug("Possibly invalid database config: ", JSON.stringify(dbConfig));

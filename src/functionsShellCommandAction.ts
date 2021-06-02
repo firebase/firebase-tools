@@ -29,7 +29,8 @@ export const actionFunction = async (options: Options) => {
     debugPort = commandUtils.parseInspectionPort(options);
   }
 
-  const hubClient = new EmulatorHubClient(options.project as string);
+  utils.assertIsString(options.project);
+  const hubClient = new EmulatorHubClient(options.project);
 
   let remoteEmulators: Record<string, EmulatorInfo> = {};
   if (hubClient.foundHub()) {

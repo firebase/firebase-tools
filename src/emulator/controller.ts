@@ -43,6 +43,7 @@ import { StorageEmulator } from "./storage";
 import { getDefaultDatabaseInstance } from "../getDefaultDatabaseInstance";
 import { getProjectDefaultAccount } from "../auth";
 import { Options } from "../options";
+import { ParsedTriggerDefinition } from "./functionsEmulatorShared";
 
 async function getAndCheckAddress(emulator: Emulators, options: Options): Promise<Address> {
   let host = options.config.src.emulators?.[emulator]?.host || Constants.getDefaultHost(emulator);
@@ -305,7 +306,7 @@ function findExportMetadata(importPath: string): ExportMetadata | undefined {
   }
 }
 
-export async function startAll(options: any, showUI: boolean = true): Promise<void> {
+export async function startAll(options: Options, showUI: boolean = true): Promise<void> {
   // Emulators config is specified in firebase.json as:
   // "emulators": {
   //   "firestore": {
@@ -384,6 +385,7 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
     version: "unknown",
   };
   if (options.import) {
+    utils.assertIsString(options.import);
     const importDir = path.resolve(options.import);
     const foundMetadata = findExportMetadata(importDir);
     if (foundMetadata) {
@@ -402,6 +404,8 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
     const functionsAddr = await getAndCheckAddress(Emulators.FUNCTIONS, options);
     const projectId = getProjectId(options, false);
     const functionsSource = options.config.src.functions?.source || Config.DEFAULT_FUNCTIONS_SOURCE;
+
+    utils.assertIsStringOrUndefined(options.extensionDir);
     const functionsDir = path.join(
       options.extensionDir || options.config.projectDir,
       functionsSource
@@ -433,7 +437,7 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
       );
     }
 
-    const account = getProjectDefaultAccount(options.projectRoot);
+    const account = getProjectDefaultAccount(options.projectRoot as string | null);
     const functionsEmulator = new FunctionsEmulator({
       projectId,
       functionsDir,
@@ -442,9 +446,9 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
       port: functionsAddr.port,
       debugPort: inspectFunctions,
       env: {
-        ...options.extensionEnv,
+        ...(options.extensionEnv as Record<string, string> | undefined),
       },
-      predefinedTriggers: options.extensionTriggers,
+      predefinedTriggers: options.extensionTriggers as ParsedTriggerDefinition[] | undefined,
       nodeMajorVersion: parseRuntimeVersion(
         options.extensionNodeVersion || options.config.get("functions.runtime")
       ),
@@ -464,6 +468,7 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
     };
 
     if (exportMetadata.firestore) {
+      utils.assertIsString(options.import);
       const importDirAbsPath = path.resolve(options.import);
       const exportMetadataFilePath = path.resolve(
         importDirAbsPath,
@@ -478,7 +483,7 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
       args.seed_from_export = exportMetadataFilePath;
     }
 
-    const config = options.config as Config;
+    const config = options.config;
     const rulesLocalPath = config.src.firestore?.rules;
     let rulesFileFound = false;
     if (rulesLocalPath) {
@@ -570,6 +575,7 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
     await startEmulator(databaseEmulator);
 
     if (exportMetadata.database) {
+      utils.assertIsString(options.import);
       const importDirAbsPath = path.resolve(options.import);
       const databaseExportDir = path.resolve(importDirAbsPath, exportMetadata.database.path);
 
@@ -600,6 +606,7 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
     await startEmulator(authEmulator);
 
     if (exportMetadata.auth) {
+      utils.assertIsString(options.import);
       const importDirAbsPath = path.resolve(options.import);
       const authExportDir = path.resolve(importDirAbsPath, exportMetadata.auth.path);
 
@@ -643,6 +650,7 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
     await startEmulator(storageEmulator);
 
     if (exportMetadata.storage) {
+      utils.assertIsString(options.import);
       const importDirAbsPath = path.resolve(options.import);
       const storageExportDir = path.resolve(importDirAbsPath, exportMetadata.storage.path);
       storageEmulator.storageLayer.import(storageExportDir);
