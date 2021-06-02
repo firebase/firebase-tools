@@ -43,21 +43,27 @@ export async function cleanupBuildImages(functions: backend.FunctionSpec[]): Pro
   utils.logBullet(clc.bold.cyan("functions: ") + "cleaning up build files...");
   const gcrCleaner = new ContainerRegistryCleaner();
   const failedDomains: Set<string> = new Set();
-  await Promise.all(functions.map((func) => (async () => {
-    try {
-      await gcrCleaner.cleanupFunction(func)
-    } catch (err) {
-      const path = `${func.project}/${SUBDOMAIN_MAPPING[func.region]}/gcf`
-      failedDomains.add(`https://console.cloud.google.com/gcr/images/${path}`);
-    }
-  })()));
+  await Promise.all(
+    functions.map((func) =>
+      (async () => {
+        try {
+          await gcrCleaner.cleanupFunction(func);
+        } catch (err) {
+          const path = `${func.project}/${SUBDOMAIN_MAPPING[func.region]}/gcf`;
+          failedDomains.add(`https://console.cloud.google.com/gcr/images/${path}`);
+        }
+      })()
+    )
+  );
   if (failedDomains.size) {
-    let message = "Unhandled error cleaning up build images. This could result in a small monthly bill if not corrected. ";
-    message += "You can attempt to delete these images by redeploying or you can delete them manually at";
+    let message =
+      "Unhandled error cleaning up build images. This could result in a small monthly bill if not corrected. ";
+    message +=
+      "You can attempt to delete these images by redeploying or you can delete them manually at";
     if (failedDomains.size == 1) {
       message += " " + failedDomains.values().next().value;
     } else {
-      message += [...failedDomains].map(domain => "\n\t" + domain).join("");
+      message += [...failedDomains].map((domain) => "\n\t" + domain).join("");
     }
     utils.logLabeledWarning("functions", message);
   }
@@ -153,39 +159,45 @@ export class DockerHelper {
   async rm(path: string): Promise<void> {
     let toThrowLater: any = undefined;
     const stat = await this.ls(path);
-    const recursive = stat.children.map((child) => (async () => {
-      try {
-        await this.rm(`${path}/${child}`)
-        stat.children.splice(stat.children.indexOf(child), 1);
-      } catch (err) {
-        toThrowLater = err;
-      }
-    })());
+    const recursive = stat.children.map((child) =>
+      (async () => {
+        try {
+          await this.rm(`${path}/${child}`);
+          stat.children.splice(stat.children.indexOf(child), 1);
+        } catch (err) {
+          toThrowLater = err;
+        }
+      })()
+    );
     // Unlike a filesystem, we can delete a "directory" while its children are still being
     // deleted. Run these in parallel to improve performance and just wait for the result
     // before the function's end.
 
     // An image cannot be deleted until its tags have been removed. Do this in two phases.
-    const deleteTags = stat.tags.map((tag) => (async () => {
-      try {
-        await this.client.deleteTag(path, tag)
-        stat.tags.splice(stat.tags.indexOf(tag), 1);
-      } catch (err) {
-        logger.debug("Got error trying to remove docker tag:", err);
-        toThrowLater = err
-      }
-    })());
+    const deleteTags = stat.tags.map((tag) =>
+      (async () => {
+        try {
+          await this.client.deleteTag(path, tag);
+          stat.tags.splice(stat.tags.indexOf(tag), 1);
+        } catch (err) {
+          logger.debug("Got error trying to remove docker tag:", err);
+          toThrowLater = err;
+        }
+      })()
+    );
     await Promise.all(deleteTags);
 
-    const deleteImages = stat.digests.map((digest) => (async () => {
-      try {
-        await this.client.deleteImage(path, digest)
-        stat.digests.splice(stat.digests.indexOf(digest), 1);
-      } catch (err) {
-        logger.debug("Got error trying to remove docker image:", err);
-        toThrowLater = err;
-      }
-    })());
+    const deleteImages = stat.digests.map((digest) =>
+      (async () => {
+        try {
+          await this.client.deleteImage(path, digest);
+          stat.digests.splice(stat.digests.indexOf(digest), 1);
+        } catch (err) {
+          logger.debug("Got error trying to remove docker image:", err);
+          toThrowLater = err;
+        }
+      })()
+    );
     await Promise.all(deleteImages);
 
     await Promise.all(recursive);
