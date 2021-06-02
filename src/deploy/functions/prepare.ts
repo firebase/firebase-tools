@@ -1,12 +1,12 @@
 import * as clc from "cli-color";
 
-import { logBullet } from "../../utils";
-import { getRuntimeChoice } from "./parseRuntimeAndValidateSDK";
-import { functionMatchesAnyGroup, getFilterGroups } from "./functionsDeployHelper";
-import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
-import { prepareFunctionsUpload } from "./prepareFunctionsUpload";
 import { checkRuntimeDependencies } from "./checkRuntimeDependencies";
 import { FirebaseError } from "../../error";
+import { functionMatchesAnyGroup, getFilterGroups } from "./functionsDeployHelper";
+import { getRuntimeChoice } from "./parseRuntimeAndValidateSDK";
+import { prepareFunctionsUpload } from "./prepareFunctionsUpload";
+import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
+import { logBullet } from "../../utils";
 import * as args from "./args";
 import * as backend from "./backend";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
@@ -64,17 +64,11 @@ export async function prepare(
   );
   context.functionsSource = await prepareFunctionsUpload(context, options);
 
-  // Get a list of CloudFunctionTriggers, and set default environment variables on each.
-  // Note(inlined): why couldn't the backend have been populated with environment variables from
-  // the beginning? Does this mean that we're using different environment variables for discovery
-  // vs runtime or just that we have redundant logic.
-  // It's probably the latter just because we don't yet support arbitrary env.
-  const defaultEnvVariables = {
-    FIREBASE_CONFIG: JSON.stringify(context.firebaseConfig),
-  };
+  // Get a list of CloudFunctionTriggers.
   const wantBackend = options.config.get("functions.backend") as backend.Backend;
+  // Setup default environment variables on each function.
   wantBackend.cloudFunctions.forEach((fn: backend.FunctionSpec) => {
-    fn.environmentVariables = defaultEnvVariables;
+    fn.environmentVariables = wantBackend.environmentVariables;
   });
 
   // Enable required APIs. This may come implicitly from triggers (e.g. scheduled triggers
