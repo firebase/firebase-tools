@@ -5,8 +5,9 @@
 
 import * as clc from "cli-color";
 
+import { containerRegistryDomain } from "../../api";
 import { logger } from "../../logger";
-import * as gcr from "../../gcp/containerregistry";
+import * as docker from "../../gcp/docker";
 import * as backend from "./backend";
 import * as utils from "../../utils";
 
@@ -41,26 +42,37 @@ const SUBDOMAIN_MAPPING: Record<string, string> = {
 export async function cleanupBuildImages(functions: backend.FunctionSpec[]): Promise<void> {
   utils.logBullet(clc.bold.cyan("functions: ") + "cleaning up build files...");
   const gcrCleaner = new ContainerRegistryCleaner();
-  try {
-    await Promise.all(functions.map((func) => gcrCleaner.cleanupFunction(func)));
-  } catch (err) {
-    logger.debug("Failed to delete container registry artifacts with error", err);
-    utils.logLabeledWarning(
-      "functions",
-      "Unhnandled error cleaning up build files. This could result in a small monthly bill if not corrected"
-    );
+  const failedDomains: Set<string> = new Set();
+  await Promise.all(functions.map((func) => (async () => {
+    try {
+      await gcrCleaner.cleanupFunction(func)
+    } catch (err) {
+      const path = `${func.project}/${SUBDOMAIN_MAPPING[func.region]}/gcf`
+      failedDomains.add(`https://console.cloud.google.com/gcr/images/${path}`);
+    }
+  })()));
+  if (failedDomains.size) {
+    let message = "Unhandled error cleaning up build images. This could result in a small monthly bill if not corrected. ";
+    message += "You can attempt to delete these images by redeploying or you can delete them manually at";
+    if (failedDomains.size == 1) {
+      message += " " + failedDomains.values().next().value;
+    } else {
+      message += [...failedDomains].map(domain => "\n\t" + domain).join("");
+    }
+    utils.logLabeledWarning("functions", message);
   }
 
   // TODO: clean up Artifact Registry images as well.
 }
 
 export class ContainerRegistryCleaner {
-  readonly helpers: Record<string, ContainerRegistryHelper> = {};
+  readonly helpers: Record<string, DockerHelper> = {};
 
-  private helper(location: string): ContainerRegistryHelper {
+  private helper(location: string): DockerHelper {
     const subdomain = SUBDOMAIN_MAPPING[location] || "us";
     if (!this.helpers[subdomain]) {
-      this.helpers[subdomain] = new ContainerRegistryHelper(subdomain);
+      const origin = `https://${subdomain}.${containerRegistryDomain}`;
+      this.helpers[subdomain] = new DockerHelper(origin);
     }
     return this.helpers[subdomain];
   }
@@ -99,10 +111,7 @@ export class ContainerRegistryCleaner {
 
     const extractFunction = /^(.*)_version-\d+$/;
     const entry = Object.entries(uuidTags).find(([, tags]) => {
-      return tags.find((tag) => {
-        const match = tag.match(extractFunction);
-        return match && match[1] === func.id;
-      });
+      return tags.find((tag) => extractFunction.exec(tag)?.[1] === func.id);
     });
 
     if (!entry) {
@@ -115,16 +124,16 @@ export class ContainerRegistryCleaner {
 
 export interface Stat {
   children: string[];
-  digests: gcr.Digest[];
-  tags: gcr.Tag[];
+  digests: docker.Digest[];
+  tags: docker.Tag[];
 }
 
-export class ContainerRegistryHelper {
-  readonly client: gcr.Client;
+export class DockerHelper {
+  readonly client: docker.Client;
   readonly cache: Record<string, Stat> = {};
 
-  constructor(subdomain: string) {
-    this.client = new gcr.Client(subdomain);
+  constructor(origin: string) {
+    this.client = new docker.Client(origin);
   }
 
   async ls(path: string): Promise<Stat> {
@@ -139,22 +148,50 @@ export class ContainerRegistryHelper {
     return this.cache[path];
   }
 
+  // While we can't guarantee all promises will succeed, we can do our darndest
+  // to expunge as much as possible before throwing.
   async rm(path: string): Promise<void> {
+    let toThrowLater: any = undefined;
     const stat = await this.ls(path);
-    const deleteChildren: Promise<void>[] = [];
-    const recursive = stat.children.map((child) => this.rm(`${path}/${child}`));
-    // Let children ("directories") be cleaned up in parallel while we clean
-    // up the "files" in this location.
+    const recursive = stat.children.map((child) => (async () => {
+      try {
+        await this.rm(`${path}/${child}`)
+        stat.children.splice(stat.children.indexOf(child), 1);
+      } catch (err) {
+        toThrowLater = err;
+      }
+    })());
+    // Unlike a filesystem, we can delete a "directory" while its children are still being
+    // deleted. Run these in parallel to improve performance and just wait for the result
+    // before the function's end.
 
-    const deleteTags = stat.tags.map((tag) => this.client.deleteTag(path, tag));
+    // An image cannot be deleted until its tags have been removed. Do this in two phases.
+    const deleteTags = stat.tags.map((tag) => (async () => {
+      try {
+        await this.client.deleteTag(path, tag)
+        stat.tags.splice(stat.tags.indexOf(tag), 1);
+      } catch (err) {
+        logger.debug("Got error trying to remove docker tag:", err);
+        toThrowLater = err
+      }
+    })());
     await Promise.all(deleteTags);
-    stat.tags = [];
 
-    const deleteImages = stat.digests.map((digest) => this.client.deleteImage(path, digest));
+    const deleteImages = stat.digests.map((digest) => (async () => {
+      try {
+        await this.client.deleteImage(path, digest)
+        stat.digests.splice(stat.digests.indexOf(digest), 1);
+      } catch (err) {
+        logger.debug("Got error trying to remove docker image:", err);
+        toThrowLater = err;
+      }
+    })());
     await Promise.all(deleteImages);
-    stat.digests = [];
 
     await Promise.all(recursive);
-    stat.children = [];
+
+    if (toThrowLater) {
+      throw toThrowLater;
+    }
   }
 }

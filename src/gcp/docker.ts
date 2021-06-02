@@ -6,7 +6,6 @@
 // response document types).
 // This file will only implement a minimal subset as needed.
 import { FirebaseError } from "../error";
-import { containerRegistryDomain } from "../api";
 import * as api from "../apiv2";
 
 // A Digest is a string in the format <algorithm>:<hex>. For example:
@@ -43,7 +42,7 @@ interface ErrorsResponse {
 }
 
 function isErrors(response: unknown): response is ErrorsResponse {
-  return Object.prototype.hasOwnProperty.bind(response)("errors");
+  return Object.prototype.hasOwnProperty.call(response, "errors");
 }
 
 const API_VERSION = "v2";
@@ -51,13 +50,7 @@ const API_VERSION = "v2";
 export class Client {
   readonly client: api.Client;
 
-  constructor(subdomain?: string) {
-    let origin: string;
-    if (subdomain) {
-      origin = `https://${subdomain}.${containerRegistryDomain}`;
-    } else {
-      origin = `https://${containerRegistryDomain}`;
-    }
+  constructor(origin: string) {
     this.client = new api.Client({
       apiVersion: API_VERSION,
       auth: true,

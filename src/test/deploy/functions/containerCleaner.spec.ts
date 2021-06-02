@@ -4,16 +4,16 @@ import * as sinon from "sinon";
 
 import * as backend from "../../../deploy/functions/backend";
 import * as containerCleaner from "../../../deploy/functions/containerCleaner";
-import * as gcr from "../../../gcp/containerregistry";
+import * as docker from "../../../gcp/docker";
 
-describe("ContainerRegistryHelper", () => {
+describe("DockerHelper", () => {
   let listTags: sinon.SinonStub;
   let deleteTag: sinon.SinonStub;
   let deleteImage: sinon.SinonStub;
-  let helper: containerCleaner.ContainerRegistryHelper;
+  let helper: containerCleaner.DockerHelper;
 
   before(() => {
-    helper = new containerCleaner.ContainerRegistryHelper("us");
+    helper = new containerCleaner.DockerHelper("us");
     listTags = sinon.stub(helper.client, "listTags").rejects("Unexpected call");
     deleteTag = sinon.stub(helper.client, "deleteTag").rejects("Unexpected call");
     deleteImage = sinon.stub(helper.client, "deleteImage").rejects("Unexpected call");
@@ -23,7 +23,7 @@ describe("ContainerRegistryHelper", () => {
     sinon.verifyAndRestore();
   });
 
-  const FOO_BAR: gcr.Tags = {
+  const FOO_BAR: docker.Tags = {
     name: "foo/bar",
     tags: ["tag1", "tag2"],
     manifest: {
@@ -33,7 +33,7 @@ describe("ContainerRegistryHelper", () => {
     child: ["baz"],
   };
 
-  const FOO_BAR_BAZ: gcr.Tags = {
+  const FOO_BAR_BAZ: docker.Tags = {
     name: "foo/bar/baz",
     tags: ["tag3"],
     manifest: {
@@ -129,7 +129,7 @@ describe("ContainerRegistryCleaner", () => {
 
     // Any cast because the stub apparently isn't stubbing getNode as a priavte member.
     // This shouldn't blow up because the public methods are stubbed anyway.
-    const stub = sinon.createStubInstance(containerCleaner.ContainerRegistryHelper);
+    const stub = sinon.createStubInstance(containerCleaner.DockerHelper);
     cleaner.helpers["us"] = stub as any;
 
     stub.ls.withArgs("project/gcf/us-central1").returns(
@@ -158,7 +158,7 @@ describe("ContainerRegistryCleaner", () => {
 
     // Any cast because the stub apparently isn't stubbing getNode as a priavte member.
     // This shouldn't blow up because the public methods are stubbed anyway.
-    const stub = sinon.createStubInstance(containerCleaner.ContainerRegistryHelper);
+    const stub = sinon.createStubInstance(containerCleaner.DockerHelper);
     cleaner.helpers["us"] = stub as any;
 
     stub.ls.withArgs("project/gcf/us-central1").returns(
@@ -186,7 +186,7 @@ describe("ContainerRegistryCleaner", () => {
 
     // Any cast because the stub apparently isn't stubbing getNode as a priavte member.
     // This shouldn't blow up because the public methods are stubbed anyway.
-    const stub = sinon.createStubInstance(containerCleaner.ContainerRegistryHelper);
+    const stub = sinon.createStubInstance(containerCleaner.DockerHelper);
     cleaner.helpers["us"] = stub as any;
 
     stub.ls.withArgs("project/gcf/us-central1").returns(
