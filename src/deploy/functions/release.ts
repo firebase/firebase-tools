@@ -78,6 +78,9 @@ export async function release(context: args.Context, options: Options, payload: 
     fullDeployment.topicsToDelete = fullDeployment.topicsToDelete.filter((topic) => {
       return !allFnsToDelete.find(backend.sameFunctionName(topic.targetService));
     });
+    for (const regionalDeployment of Object.values(fullDeployment.regionalDeployments)) {
+      regionalDeployment.functionsToDelete = [];
+    }
   }
 
   for (const [region, deployment] of Object.entries(fullDeployment.regionalDeployments)) {
