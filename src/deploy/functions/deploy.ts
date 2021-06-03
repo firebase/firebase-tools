@@ -11,6 +11,7 @@ import * as gcs from "../../gcp/storage";
 import * as gcf from "../../gcp/cloudfunctions";
 import { Options } from "../../options";
 import { Config } from "../../config";
+import * as utils from "../../utils";
 
 const GCP_REGION = functionsUploadRegion;
 
@@ -67,9 +68,15 @@ export async function deploy(
     }
     await Promise.all(uploads);
 
-    const srcDir = options.config.src.functions.source || Config.DEFAULT_FUNCTIONS_SOURCE;
+    utils.assertDefined(
+      options.config.src.functions.source,
+      "Error: 'functions.source' is not defined"
+    );
     logSuccess(
-      clc.green.bold("functions:") + " " + clc.bold(srcDir) + " folder uploaded successfully"
+      clc.green.bold("functions:") +
+        " " +
+        clc.bold(options.config.src.functions.source) +
+        " folder uploaded successfully"
     );
   } catch (err) {
     logWarning(clc.yellow("functions:") + " Upload Error: " + err.message);

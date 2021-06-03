@@ -29,7 +29,7 @@ export const actionFunction = async (options: Options) => {
     debugPort = commandUtils.parseInspectionPort(options);
   }
 
-  utils.assertIsString(options.project);
+  utils.assertDefined(options.project);
   const hubClient = new EmulatorHubClient(options.project);
 
   let remoteEmulators: Record<string, EmulatorInfo> = {};

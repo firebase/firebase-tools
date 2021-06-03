@@ -10,6 +10,7 @@ import * as proto from "../../../../gcp/proto";
 import * as args from "../../args";
 import { Options } from "../../../../options";
 import { Config } from "../../../../config";
+import * as utils from "../../../../utils";
 
 const TRIGGER_PARSER = path.resolve(__dirname, "./triggerParser.js");
 
@@ -127,8 +128,12 @@ export async function discoverBackend(
   options: Options,
   configValues: backend.RuntimeConfigValues
 ): Promise<backend.Backend> {
-  const functionsSource = options.config.src.functions?.source || Config.DEFAULT_FUNCTIONS_SOURCE;
-  const sourceDir = options.config.path(functionsSource);
+  utils.assertDefined(options.config.src.functions);
+  utils.assertDefined(
+    options.config.src.functions.source,
+    "Error: 'functions.source' is not defined"
+  );
+  const sourceDir = options.config.path(options.config.src.functions.source);
   const triggerAnnotations = await parseTriggers(context.projectId, sourceDir, configValues);
   const want: backend.Backend = backend.empty();
   for (const annotation of triggerAnnotations) {

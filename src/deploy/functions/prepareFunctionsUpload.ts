@@ -97,11 +97,15 @@ async function packageSource(options: Options, sourceDir: string, configValues: 
     );
   }
 
-  const srcDir = options.config.src.functions?.source || Config.DEFAULT_FUNCTIONS_SOURCE;
+  utils.assertDefined(options.config.src.functions);
+  utils.assertDefined(
+    options.config.src.functions.source,
+    "Error: 'functions.source' is not defined"
+  );
   utils.logBullet(
     clc.cyan.bold("functions:") +
       " packaged " +
-      clc.bold(srcDir) +
+      clc.bold(options.config.src.functions.source) +
       " (" +
       filesize(archive.pointer()) +
       ") for uploading"
@@ -113,8 +117,13 @@ export async function prepareFunctionsUpload(
   context: args.Context,
   options: Options
 ): Promise<string | undefined> {
-  const functionsSource = options.config.src.functions?.source || Config.DEFAULT_FUNCTIONS_SOURCE;
-  const sourceDir = options.config.path(functionsSource);
+  utils.assertDefined(options.config.src.functions);
+  utils.assertDefined(
+    options.config.src.functions.source,
+    "Error: 'functions.source' is not defined"
+  );
+
+  const sourceDir = options.config.path(options.config.src.functions.source);
   const configValues = await getFunctionsConfig(context);
   const backend = await discoverBackendSpec(context, options, configValues);
   options.config.set("functions.backend", backend);

@@ -15,6 +15,7 @@ import * as getProjectId from "../../getProjectId";
 import * as validate from "./validate";
 import { Options } from "../../options";
 import { Config } from "../../config";
+import * as utils from "../../utils";
 
 export async function prepare(
   context: args.Context,
@@ -57,9 +58,15 @@ export async function prepare(
   context.firebaseConfig = firebaseConfig;
 
   // Prepare the functions directory for upload, and set context.triggers.
-  const srcDir = options.config.src.functions.source || Config.DEFAULT_FUNCTIONS_SOURCE;
+  utils.assertDefined(
+    options.config.src.functions.source,
+    "Error: 'functions.source' is not defined"
+  );
   logBullet(
-    clc.cyan.bold("functions:") + " preparing " + clc.bold(srcDir) + " directory for uploading..."
+    clc.cyan.bold("functions:") +
+      " preparing " +
+      clc.bold(options.config.src.functions.source) +
+      " directory for uploading..."
   );
   context.functionsSource = await prepareFunctionsUpload(context, options);
 

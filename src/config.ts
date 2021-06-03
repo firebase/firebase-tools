@@ -21,7 +21,7 @@ export class Config {
   static DEFAULT_FUNCTIONS_SOURCE = "functions";
 
   static FILENAME = "firebase.json";
-  static MATERIALIZE_TARGETS = [
+  static MATERIALIZE_TARGETS: Array<keyof FirebaseConfig> = [
     "database",
     "emulators",
     "firestore",
@@ -39,6 +39,10 @@ export class Config {
 
   private _src: any;
 
+  /**
+   * @param src incoming firebase.json source, parsed by not validated.
+   * @param options command-line options.
+   */
   constructor(src: any, options: any) {
     this.options = options || {};
     this.projectDir = options.projectDir || detectProjectRoot(options);
@@ -54,17 +58,22 @@ export class Config {
       );
     }
 
+    // Move the deprecated top-level "rules" ket into the "database" object
     if (_.has(this._src, "rules")) {
       _.set(this._src, "database.rules", this._src.rules);
     }
 
+    // If a top-level key contains a string path pointing to a suported file
+    // type (JSON or Bolt), we read the file.
+    //
+    // TODO: This is janky and confusing behavior, we should remove it ASAP.
     Config.MATERIALIZE_TARGETS.forEach((target) => {
       if (_.get(this._src, target)) {
         _.set(this.data, target, this.materialize(target));
       }
     });
 
-    // auto-detect functions from package.json in directory
+    // Auto-detect functions from package.json in directory
     if (
       this.projectDir &&
       !this.get("functions.source") &&
@@ -144,6 +153,10 @@ export class Config {
   }
 
   set(key: string, value: any) {
+    // TODO: We should really remove all instances of config.set() around the
+    //       codebase but until we do we need this to prevent src from going stale.
+    _.set(this._src, key, value);
+
     return _.set(this.data, key, value);
   }
 

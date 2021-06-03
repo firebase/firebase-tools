@@ -403,12 +403,17 @@ export async function startAll(options: Options, showUI: boolean = true): Promis
     const functionsLogger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
     const functionsAddr = await getAndCheckAddress(Emulators.FUNCTIONS, options);
     const projectId = getProjectId(options, false);
-    const functionsSource = options.config.src.functions?.source || Config.DEFAULT_FUNCTIONS_SOURCE;
+
+    utils.assertDefined(options.config.src.functions);
+    utils.assertDefined(
+      options.config.src.functions.source,
+      "Error: 'functions.source' is not defined"
+    );
 
     utils.assertIsStringOrUndefined(options.extensionDir);
     const functionsDir = path.join(
       options.extensionDir || options.config.projectDir,
-      functionsSource
+      options.config.src.functions.source
     );
 
     let inspectFunctions: number | undefined;

@@ -21,8 +21,13 @@ export class FunctionsServer {
 
   async start(options: Options, partialArgs: Partial<FunctionsEmulatorArgs>): Promise<void> {
     const projectId = getProjectId(options, false);
-    const functionsSource = options.config.src.functions?.source || Config.DEFAULT_FUNCTIONS_SOURCE;
-    const functionsDir = path.join(options.config.projectDir, functionsSource);
+    utils.assertDefined(options.config.src.functions);
+    utils.assertDefined(
+      options.config.src.functions.source,
+      "Error: 'functions.source' is not defined"
+    );
+
+    const functionsDir = path.join(options.config.projectDir, options.config.src.functions.source);
     const account = getProjectDefaultAccount(options.config.projectDir);
     const nodeMajorVersion = parseRuntimeVersion(options.config.get("functions.runtime"));
 
