@@ -72,18 +72,14 @@ function removeInspectOptions(options: string[]): string[] {
 function parseTriggers(
   projectId: string,
   sourceDir: string,
-  configValues: backend.RuntimeConfigValues
+  configValues: backend.RuntimeConfigValues,
+  envs: backend.EnvironmentVariables
 ): Promise<TriggerAnnotation[]> {
   return new Promise((resolve, reject) => {
-    const env = _.cloneDeep(process.env);
+    const env = { ...envs } as NodeJS.ProcessEnv;
     env.GCLOUD_PROJECT = projectId;
     if (!_.isEmpty(configValues)) {
       env.CLOUD_RUNTIME_CONFIG = JSON.stringify(configValues);
-      if (configValues.firebase) {
-        // In case user has `admin.initalizeApp()` at the top of the file and it was executed before firebase-functions v1
-        // is loaded, which would normally set FIREBASE_CONFIG.
-        env.FIREBASE_CONFIG = JSON.stringify(configValues.firebase);
-      }
     }
 
     const execArgv = removeInspectOptions(process.execArgv);
@@ -126,7 +122,8 @@ export function useStrategy(context: args.Context): Promise<boolean> {
 export async function discoverBackend(
   context: args.Context,
   options: Options,
-  configValues: backend.RuntimeConfigValues
+  configValues: backend.RuntimeConfigValues,
+  envs: backend.EnvironmentVariables
 ): Promise<backend.Backend> {
   utils.assertDefined(options.config.src.functions);
   utils.assertDefined(
@@ -134,8 +131,8 @@ export async function discoverBackend(
     "Error: 'functions.source' is not defined"
   );
   const sourceDir = options.config.path(options.config.src.functions.source);
-  const triggerAnnotations = await parseTriggers(context.projectId, sourceDir, configValues);
-  const want: backend.Backend = backend.empty();
+  const triggerAnnotations = await parseTriggers(context.projectId, sourceDir, configValues, envs);
+  const want: backend.Backend = { ...backend.empty(), environmentVariables: envs };
   for (const annotation of triggerAnnotations) {
     addResourcesToBackend(context.projectId, context.runtimeChoice!, annotation, want);
   }

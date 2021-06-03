@@ -182,6 +182,7 @@ export interface Backend {
   cloudFunctions: FunctionSpec[];
   schedules: ScheduleSpec[];
   topics: PubSubSpec[];
+  environmentVariables: EnvironmentVariables;
 }
 
 /**
@@ -195,6 +196,7 @@ export function empty(): Backend {
     cloudFunctions: [],
     schedules: [],
     topics: [],
+    environmentVariables: {},
   };
 }
 
@@ -218,6 +220,12 @@ export function isEmptyBackend(backend: Backend): boolean {
  * Future refactors of this code should move this type deeper into the codebase.
  */
 export type RuntimeConfigValues = Record<string, unknown>;
+
+/**
+ * Environment variables to be applied to backend instances.
+ * Applies to both GCFv1 and GCFv2 backends.
+ */
+export type EnvironmentVariables = Record<string, string>;
 
 /**
  * Gets the formal resource name for a Cloud Function.
@@ -600,6 +608,7 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
     cloudFunctions: [],
     schedules: [],
     topics: [],
+    environmentVariables: {},
   };
   ctx.unreachableRegions = {
     gcfV1: [],
