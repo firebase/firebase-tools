@@ -45,9 +45,8 @@ function isPermissionError(e: { context?: { body?: { error?: { status?: string }
  * of the deployed functions.
  *
  * @param projectId Project ID upon which to check enablement.
- * @param runtime The runtime as declared in package.json, e.g. `nodejs10`.
  */
-export async function checkRuntimeDependencies(projectId: string, runtime: string): Promise<void> {
+export async function ensureCloudBuildEnabled(projectId: string): Promise<void> {
   try {
     await ensure(projectId, CLOUD_BUILD_API, "functions");
   } catch (e) {

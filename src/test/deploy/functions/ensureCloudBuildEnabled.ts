@@ -4,11 +4,11 @@ import * as nock from "nock";
 
 import { logger } from "../../../logger";
 import { configstore } from "../../../configstore";
-import { checkRuntimeDependencies } from "../../../deploy/functions/checkRuntimeDependencies";
+import { ensureCloudBuildEnabled } from "../../../deploy/functions/ensureCloudBuildEnabled";
 import { POLL_SETTINGS } from "../../../ensureApiEnabled";
 import * as api from "../../../api";
 
-describe("checkRuntimeDependencies()", () => {
+describe("ensureCloudBuildEnabled()", () => {
   let restoreInterval: number;
   before(() => {
     restoreInterval = POLL_SETTINGS.pollInterval;
@@ -71,63 +71,57 @@ describe("checkRuntimeDependencies()", () => {
     timeStub.withArgs("motd.cloudBuildErrorAfter").returns(errorAfter);
   }
 
-  ["nodejs10", "nodejs12", "nodejs14"].forEach((runtime) => {
-    describe(`with ${runtime}`, () => {
-      describe("with cloudbuild service enabled", () => {
-        beforeEach(() => {
-          mockServiceCheck(true);
-        });
+  describe("with cloudbuild service enabled", () => {
+    beforeEach(() => {
+      mockServiceCheck(true);
+    });
 
-        it("should succeed", async () => {
-          stubTimes(Date.now() - 10000, Date.now() - 5000);
+    it("should succeed", async () => {
+      stubTimes(Date.now() - 10000, Date.now() - 5000);
 
-          await expect(checkRuntimeDependencies("test-project", runtime)).to.eventually.be
-            .fulfilled;
-          expect(logStub?.callCount).to.eq(0);
-        });
-      });
+      await expect(ensureCloudBuildEnabled("test-project")).to.eventually.be.fulfilled;
+      expect(logStub?.callCount).to.eq(0);
+    });
+  });
 
-      describe("with cloudbuild service disabled, but enabling succeeds", () => {
-        beforeEach(() => {
-          mockServiceCheck(false);
-          mockServiceEnableSuccess();
-          mockServiceCheck(true);
-        });
+  describe("with cloudbuild service disabled, but enabling succeeds", () => {
+    beforeEach(() => {
+      mockServiceCheck(false);
+      mockServiceEnableSuccess();
+      mockServiceCheck(true);
+    });
 
-        it("should succeed", async () => {
-          stubTimes(Date.now() - 10000, Date.now() - 5000);
+    it("should succeed", async () => {
+      stubTimes(Date.now() - 10000, Date.now() - 5000);
 
-          await expect(checkRuntimeDependencies("test-project", runtime)).to.eventually.be
-            .fulfilled;
-          expect(logStub?.callCount).to.eq(1); // enabling an api logs a warning
-        });
-      });
+      await expect(ensureCloudBuildEnabled("test-project")).to.eventually.be.fulfilled;
+      expect(logStub?.callCount).to.eq(1); // enabling an api logs a warning
+    });
+  });
 
-      describe("with cloudbuild service disabled, but enabling fails with billing error", () => {
-        beforeEach(() => {
-          mockServiceCheck(false);
-          mockServiceEnableBillingError();
-        });
+  describe("with cloudbuild service disabled, but enabling fails with billing error", () => {
+    beforeEach(() => {
+      mockServiceCheck(false);
+      mockServiceEnableBillingError();
+    });
 
-        it("should error", async () => {
-          stubTimes(Date.now() - 10000, Date.now() - 5000);
+    it("should error", async () => {
+      stubTimes(Date.now() - 10000, Date.now() - 5000);
 
-          await expect(checkRuntimeDependencies("test-project", runtime)).to.eventually.be.rejected;
-        });
-      });
+      await expect(ensureCloudBuildEnabled("test-project")).to.eventually.be.rejected;
+    });
+  });
 
-      describe("with cloudbuild service disabled, but enabling fails with permission error", () => {
-        beforeEach(() => {
-          mockServiceCheck(false);
-          mockServiceEnablePermissionError();
-        });
+  describe("with cloudbuild service disabled, but enabling fails with permission error", () => {
+    beforeEach(() => {
+      mockServiceCheck(false);
+      mockServiceEnablePermissionError();
+    });
 
-        it("should error", async () => {
-          stubTimes(Date.now() - 10000, Date.now() - 5000);
+    it("should error", async () => {
+      stubTimes(Date.now() - 10000, Date.now() - 5000);
 
-          await expect(checkRuntimeDependencies("test-project", runtime)).to.eventually.be.rejected;
-        });
-      });
+      await expect(ensureCloudBuildEnabled("test-project")).to.eventually.be.rejected;
     });
   });
 });
