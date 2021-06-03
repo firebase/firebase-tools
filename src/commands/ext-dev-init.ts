@@ -5,7 +5,7 @@ import TerminalRenderer = require("marked-terminal");
 
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
-import * as Config from "../config";
+import { Config } from "../config";
 import { FirebaseError } from "../error";
 import { promptOnce } from "../prompt";
 import { logger } from "../logger";

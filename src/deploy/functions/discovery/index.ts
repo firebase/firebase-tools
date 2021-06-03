@@ -3,11 +3,13 @@ import { logger } from "../../../logger";
 import * as backend from "../backend";
 import * as args from "../args";
 import * as jsTriggerParsing from "./jsexports/parseTriggers";
+import { Options } from "../../../options";
 
 type BackendDiscoveryStrategy = (
   context: args.Context,
-  options: args.Options,
-  runtimeConfig: backend.RuntimeConfigValues
+  options: Options,
+  runtimeConfig: backend.RuntimeConfigValues,
+  env: backend.EnvironmentVariables
 ) => Promise<backend.Backend>;
 
 type UseBackendDiscoveryStrategy = (context: args.Context) => Promise<boolean>;
@@ -30,8 +32,9 @@ const STRATEGIES: Strategy[] = [
 // TODO(inlined): Parse the Runtime within this method instead of before it. We need this to support other languages.
 export async function discoverBackendSpec(
   context: args.Context,
-  options: args.Options,
-  runtimeConfigValues: backend.RuntimeConfigValues
+  options: Options,
+  runtimeConfigValues: backend.RuntimeConfigValues,
+  envs: backend.EnvironmentVariables
 ): Promise<backend.Backend> {
   let strategy: Strategy | undefined = undefined;
   for (const testStrategy of STRATEGIES) {
@@ -46,5 +49,5 @@ export async function discoverBackendSpec(
   } else {
     throw new FirebaseError("Cannot determine how to analyze backend");
   }
-  return strategy.discoverBackend(context, options, runtimeConfigValues);
+  return strategy.discoverBackend(context, options, runtimeConfigValues, envs);
 }
