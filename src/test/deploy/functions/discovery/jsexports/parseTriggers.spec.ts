@@ -302,6 +302,7 @@ describe("addResourcesToBackend", () => {
       },
     };
     const expected: backend.Backend = {
+      ...backend.empty(),
       requiredAPIs: {
         pubsub: "pubsub.googleapis.com",
         scheduler: "cloudscheduler.googleapis.com",
