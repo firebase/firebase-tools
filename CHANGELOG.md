@@ -1,1 +1,2 @@
+- Add Warsaw (europe-central2) Cloud Function Location to Firebase Extension template.
 - Fixes import/export bug with Storage emulator download tokens (#3414)
