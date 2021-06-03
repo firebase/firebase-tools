@@ -4,13 +4,13 @@ var clc = require("cli-color");
 var _ = require("lodash");
 
 var { Command } = require("../command");
-var logger = require("../logger");
+const { logger } = require("../logger");
 var utils = require("../utils");
 var { requirePermissions } = require("../requirePermissions");
 var requireConfig = require("../requireConfig");
 var { serve } = require("../serve/index");
 var filterTargets = require("../filterTargets");
-var getProjectNumber = require("../getProjectNumber");
+var { getProjectNumber } = require("../getProjectNumber");
 var { FirebaseError } = require("../error");
 
 var VALID_TARGETS = ["hosting", "functions"];

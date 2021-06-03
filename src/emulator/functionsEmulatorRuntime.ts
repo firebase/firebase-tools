@@ -1,7 +1,9 @@
 import { EmulatorLog } from "./types";
 import { CloudFunction, DeploymentOptions, https } from "firebase-functions";
 import {
+  ParsedTriggerDefinition,
   EmulatedTrigger,
+  emulatedFunctionsByRegion,
   EmulatedTriggerDefinition,
   EmulatedTriggerMap,
   EmulatedTriggerType,
@@ -36,10 +38,11 @@ function noOp(): false {
   return false;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function requireAsync(moduleName: string, opts?: { paths: string[] }): Promise<any> {
   return new Promise((res, rej) => {
     try {
-      res(require(require.resolve(moduleName, opts)));
+      res(require(require.resolve(moduleName, opts))); // eslint-disable-line @typescript-eslint/no-var-requires
     } catch (e) {
       rej(e);
     }
@@ -58,8 +61,8 @@ function requireResolveAsync(moduleName: string, opts?: { paths: string[] }): Pr
 
 interface PackageJSON {
   engines?: { node?: string };
-  dependencies: { [name: string]: any };
-  devDependencies: { [name: string]: any };
+  dependencies: { [name: string]: any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+  devDependencies: { [name: string]: any }; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
 interface ModuleResolution {
@@ -77,7 +80,7 @@ interface SuccessfulModuleResolution {
 }
 
 interface ProxyTarget extends Object {
-  [key: string]: any;
+  [key: string]: any; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
 /*
@@ -189,7 +192,7 @@ class Proxied<T extends ProxyTarget> {
    * Return the final proxied object.
    */
   finalize(): T {
-    return this.proxy as T;
+    return this.proxy;
   }
 }
 
@@ -301,7 +304,7 @@ function requirePackageJson(frb: FunctionsRuntimeBundle): PackageJSON | undefine
 
 /**
  * We mock out a ton of different paths that we can take to network I/O. It doesn't matter if they
- * overlap (like TLS and HTTPS) because the dev will either whitelist, block, or allow for one
+ * overlap (like TLS and HTTPS) because the dev will either allowlist, block, or allow for one
  * invocation on the first prompt, so we can be aggressive here.
  *
  * Sadly, these vary a lot between Node versions and it will always be possible to route around
@@ -333,7 +336,7 @@ function initializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
 
     /* tslint:disable:only-arrow-functions */
     // This can't be an arrow function because it needs to be new'able
-    obj[method] = function(...args: any[]): any {
+    obj[method] = function (...args: any[]): any {
       const hrefs = args
         .map((arg) => {
           if (typeof arg === "string") {
@@ -531,14 +534,17 @@ async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
             "runtime-status",
             "The Firebase Authentication emulator is running, but your 'firebase-admin' dependency is below version 9.3.0, so calls to Firebase Authentication will affect production."
           ).log();
-        }
-
-        const auth = defaultApp.auth();
-        if (typeof (auth as any).setJwtVerificationEnabled === "function") {
-          logDebug("auth.setJwtVerificationEnabled(false)", {});
-          (auth as any).setJwtVerificationEnabled(false);
-        } else {
-          logDebug("auth.setJwtVerificationEnabled not available", {});
+        } else if (compareVersionStrings(adminResolution.version, "9.4.2") <= 0) {
+          // Between firebase-admin versions 9.3.0 and 9.4.2 (inclusive) we used the
+          // "auth.setJwtVerificationEnabled" hack to disable JWT verification while emulating.
+          // See: https://github.com/firebase/firebase-admin-node/pull/1148
+          const auth = defaultApp.auth();
+          if (typeof (auth as any).setJwtVerificationEnabled === "function") {
+            logDebug("auth.setJwtVerificationEnabled(false)", {});
+            (auth as any).setJwtVerificationEnabled(false);
+          } else {
+            logDebug("auth.setJwtVerificationEnabled not available", {});
+          }
         }
       }
 
@@ -635,8 +641,15 @@ async function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): Pr
   try {
     const configContent = fs.readFileSync(configPath, "utf8");
     if (configContent) {
-      logDebug(`Found local functions config: ${configPath}`);
-      process.env.CLOUD_RUNTIME_CONFIG = configContent.toString();
+      // try JSON.parse for .runtimeconfig.json and notice if parsing is failed
+      try {
+        JSON.parse(configContent.toString());
+
+        logDebug(`Found local functions config: ${configPath}`);
+        process.env.CLOUD_RUNTIME_CONFIG = configContent.toString();
+      } catch (e) {
+        new EmulatorLog("SYSTEM", "function-runtimeconfig-json-invalid", "").log();
+      }
     }
   } catch (e) {
     // Ignore, config is optional
@@ -647,26 +660,28 @@ async function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): Pr
   const functionsGt380 = compareVersionStrings(functionsResolution.version, "3.8.0") >= 0;
   let emulatedDatabaseURL = undefined;
   if (frb.emulators.database && functionsGt380) {
-    emulatedDatabaseURL = `http://${formatHost(frb.emulators.database)}?ns=${
-      process.env.GCLOUD_PROJECT
-    }`;
+    // Database URL will look like one of:
+    //  - https://${namespace}.firebaseio.com
+    //  - https://${namespace}.${location}.firebasedatabase.app
+    let ns = frb.projectId;
+    if (frb.adminSdkConfig.databaseURL) {
+      const asUrl = new URL(frb.adminSdkConfig.databaseURL);
+      ns = asUrl.hostname.split(".")[0];
+    }
+
+    emulatedDatabaseURL = `http://${formatHost(frb.emulators.database)}/?ns=${ns}`;
   }
 
-  // Do our best to provide reasonable FIREBASE_CONFIG, based on firebase-functions implementation
-  // https://github.com/firebase/firebase-functions/blob/59d6a7e056a7244e700dc7b6a180e25b38b647fd/src/setup.ts#L45
   process.env.FIREBASE_CONFIG = JSON.stringify({
-    databaseURL:
-      process.env.DATABASE_URL ||
-      emulatedDatabaseURL ||
-      `https://${process.env.GCLOUD_PROJECT}.firebaseio.com`,
-    storageBucket: process.env.STORAGE_BUCKET_URL || `${process.env.GCLOUD_PROJECT}.appspot.com`,
-    projectId: process.env.GCLOUD_PROJECT,
+    storageBucket: frb.adminSdkConfig.storageBucket,
+    databaseURL: emulatedDatabaseURL || frb.adminSdkConfig.databaseURL,
+    projectId: frb.projectId,
   });
 
   if (frb.triggerId) {
     // Runtime values are based on information from the bundle. Proper information for this is
     // available once the target code has been loaded, which is too late.
-    const service = frb.triggerId || "";
+    const service = frb.targetName || "";
     const target = service.replace(/-/g, ".");
     const mode = frb.triggerType === EmulatedTriggerType.BACKGROUND ? "event" : "http";
 
@@ -702,6 +717,14 @@ async function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): Pr
   // Make firebase-admin point at the Auth emulator
   if (frb.emulators.auth) {
     process.env[Constants.FIREBASE_AUTH_EMULATOR_HOST] = formatHost(frb.emulators.auth);
+  }
+
+  // Make firebase-admin point at the Storage emulator
+  if (frb.emulators.storage) {
+    process.env[Constants.FIREBASE_STORAGE_EMULATOR_HOST] = formatHost(frb.emulators.storage);
+    process.env[Constants.CLOUD_STORAGE_EMULATOR_HOST] = `http://${formatHost(
+      frb.emulators.storage
+    )}`;
   }
 
   if (frb.emulators.pubsub) {
@@ -841,10 +864,7 @@ async function processHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
 
     functionRouter.all("*", handler);
 
-    ephemeralServer.use(
-      [`/${frb.projectId}/${frb.triggerId}`, `/${frb.projectId}/:region/${frb.triggerId}`],
-      functionRouter
-    );
+    ephemeralServer.use([`/`, `/*`], functionRouter);
 
     logDebug(`Attempting to listen to socketPath: ${socketPath}`);
     const instance = ephemeralServer.listen(socketPath, () => {
@@ -870,9 +890,11 @@ async function processBackground(
 
   // This is due to the fact that the Firestore emulator sends payloads in a newer
   // format than production firestore.
-  if (context.resource && context.resource.name) {
-    logDebug("ProcessBackground: lifting resource.name from resource", context.resource);
-    context.resource = context.resource.name;
+  if (!proto.eventType || !proto.eventType.startsWith("google.storage")) {
+    if (context.resource && context.resource.name) {
+      logDebug("ProcessBackground: lifting resource.name from resource", context.resource);
+      context.resource = context.resource.name;
+    }
   }
 
   await runBackground({ data, context }, trigger.getRawFunction());
@@ -979,8 +1001,9 @@ async function invokeTrigger(
       new EmulatorLog(
         "WARN",
         "runtime-status",
-        `Your function timed out after ~${trigger.definition.timeout ||
-          "60s"}. To configure this timeout, see
+        `Your function timed out after ~${
+          trigger.definition.timeout || "60s"
+        }. To configure this timeout, see
       https://firebase.google.com/docs/functions/manage-functions#set_timeout_and_memory_allocation.`
       ).log();
       throw new Error("Function timed out.");
@@ -1011,7 +1034,7 @@ async function invokeTrigger(
 async function initializeRuntime(
   frb: FunctionsRuntimeBundle,
   serializedFunctionTrigger?: string,
-  extensionTriggers?: EmulatedTriggerDefinition[]
+  extensionTriggers?: ParsedTriggerDefinition[]
 ): Promise<EmulatedTriggerMap | undefined> {
   logDebug(`Disabled runtime features: ${JSON.stringify(frb.disabled_features)}`);
 
@@ -1032,7 +1055,7 @@ async function initializeRuntime(
   await initializeFirebaseFunctionsStubs(frb);
   await initializeFirebaseAdminStubs(frb);
 
-  let triggerDefinitions: EmulatedTriggerDefinition[] = [];
+  let parsedDefinitions: ParsedTriggerDefinition[] = [];
   let triggerModule;
 
   if (serializedFunctionTrigger) {
@@ -1047,10 +1070,16 @@ async function initializeRuntime(
     }
   }
   if (extensionTriggers) {
-    triggerDefinitions = extensionTriggers;
+    parsedDefinitions = extensionTriggers;
   } else {
-    require("../extractTriggers")(triggerModule, triggerDefinitions);
+    require("../deploy/functions/discovery/jsexports/extractTriggers")(
+      triggerModule,
+      parsedDefinitions
+    );
   }
+  const triggerDefinitions: EmulatedTriggerDefinition[] = emulatedFunctionsByRegion(
+    parsedDefinitions
+  );
 
   const triggers = getEmulatedTriggersFromDefinitions(triggerDefinitions, triggerModule);
 

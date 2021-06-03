@@ -1,7 +1,7 @@
 import { Command } from "../command";
 import * as controller from "../emulator/controller";
 import * as commandUtils from "../emulator/commandUtils";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { EmulatorRegistry } from "../emulator/registry";
 import { Emulators, EMULATORS_SUPPORTED_BY_UI } from "../emulator/types";
 import * as clc from "cli-color";
@@ -34,14 +34,17 @@ module.exports = new Command("emulators:start")
     }
 
     const reservedPorts = [] as number[];
-    for (const internalEmulator of [Emulators.HUB, Emulators.LOGGING]) {
+    for (const internalEmulator of [Emulators.LOGGING]) {
       const info = EmulatorRegistry.getInfo(internalEmulator);
       if (info) {
         reservedPorts.push(info.port);
       }
     }
+    const reservedPortsString = reservedPorts.length > 0 ? reservedPorts.join(", ") : "None";
+
     const uiInfo = EmulatorRegistry.getInfo(Emulators.UI);
-    const uiUrl = uiInfo ? EmulatorRegistry.getInfoHostString(uiInfo) : "unknown";
+    const hubInfo = EmulatorRegistry.getInfo(Emulators.HUB);
+    const uiUrl = uiInfo ? `http://${EmulatorRegistry.getInfoHostString(uiInfo)}` : "unknown";
     const head = ["Emulator", "Host:Port"];
 
     if (uiInfo) {
@@ -49,12 +52,13 @@ module.exports = new Command("emulators:start")
     }
 
     const successMessageTable = new Table();
-    successMessageTable.push([
-      `${clc.green("✔")}  All emulators ready! ` +
-        (uiInfo
-          ? `View status and logs at ${stylizeLink(uiUrl)}`
-          : `It is now safe to connect your apps.`),
-    ]);
+    let successMsg = `${clc.green("✔")}  ${clc.bold(
+      "All emulators ready! It is now safe to connect your app."
+    )}`;
+    if (uiInfo) {
+      successMsg += `\n${clc.cyan("i")}  View Emulator UI at ${stylizeLink(uiUrl)}`;
+    }
+    successMessageTable.push([successMsg]);
 
     const emulatorsTable = new Table({
       head: head,
@@ -90,7 +94,12 @@ module.exports = new Command("emulators:start")
     logger.info(`\n${successMessageTable}
 
 ${emulatorsTable}
-${clc.blackBright("  Other reserved ports:")} ${reservedPorts.join(", ")}
+${
+  hubInfo
+    ? clc.blackBright("  Emulator Hub running at ") + EmulatorRegistry.getInfoHostString(hubInfo)
+    : clc.blackBright("  Emulator Hub not running.")
+}
+${clc.blackBright("  Other reserved ports:")} ${reservedPortsString}
 
 Issues? Report them at ${stylizeLink(
       "https://github.com/firebase/firebase-tools/issues"

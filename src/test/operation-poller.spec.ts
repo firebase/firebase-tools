@@ -31,9 +31,7 @@ describe("OperationPoller", () => {
     });
 
     it("should return result with response field if polling succeeds", async () => {
-      nock(TEST_ORIGIN)
-        .get(FULL_RESOURCE_NAME)
-        .reply(200, { done: true, response: "completed" });
+      nock(TEST_ORIGIN).get(FULL_RESOURCE_NAME).reply(200, { done: true, response: "completed" });
 
       expect(await pollOperation<string>(pollerOptions)).to.deep.equal("completed");
       expect(nock.isDone()).to.be.true;
@@ -62,9 +60,7 @@ describe("OperationPoller", () => {
     });
 
     it("should return result with error field if api call rejects with unrecoverable error", async () => {
-      nock(TEST_ORIGIN)
-        .get(FULL_RESOURCE_NAME)
-        .reply(404, { message: "poll failed" });
+      nock(TEST_ORIGIN).get(FULL_RESOURCE_NAME).reply(404, { message: "poll failed" });
 
       await expect(pollOperation<string>(pollerOptions)).to.eventually.be.rejectedWith(
         FirebaseError,
@@ -74,28 +70,17 @@ describe("OperationPoller", () => {
     });
 
     it("should retry polling if http request responds with 500 or 503 status code", async () => {
-      nock(TEST_ORIGIN)
-        .get(FULL_RESOURCE_NAME)
-        .reply(500, {});
-      nock(TEST_ORIGIN)
-        .get(FULL_RESOURCE_NAME)
-        .reply(503, {});
-      nock(TEST_ORIGIN)
-        .get(FULL_RESOURCE_NAME)
-        .reply(200, { done: true, response: "completed" });
+      nock(TEST_ORIGIN).get(FULL_RESOURCE_NAME).reply(500, {});
+      nock(TEST_ORIGIN).get(FULL_RESOURCE_NAME).reply(503, {});
+      nock(TEST_ORIGIN).get(FULL_RESOURCE_NAME).reply(200, { done: true, response: "completed" });
 
       expect(await pollOperation<string>(pollerOptions)).to.deep.equal("completed");
       expect(nock.isDone()).to.be.true;
     });
 
     it("should retry polling until the LRO is done", async () => {
-      nock(TEST_ORIGIN)
-        .get(FULL_RESOURCE_NAME)
-        .twice()
-        .reply(200, { done: false });
-      nock(TEST_ORIGIN)
-        .get(FULL_RESOURCE_NAME)
-        .reply(200, { done: true, response: "completed" });
+      nock(TEST_ORIGIN).get(FULL_RESOURCE_NAME).twice().reply(200, { done: false });
+      nock(TEST_ORIGIN).get(FULL_RESOURCE_NAME).reply(200, { done: true, response: "completed" });
 
       expect(await pollOperation<string>(pollerOptions)).to.deep.equal("completed");
       expect(nock.isDone()).to.be.true;
@@ -103,10 +88,7 @@ describe("OperationPoller", () => {
 
     it("should reject with TimeoutError when timed out after failed retries", async () => {
       pollerOptions.masterTimeout = 200;
-      nock(TEST_ORIGIN)
-        .get(FULL_RESOURCE_NAME)
-        .reply(200, { done: false })
-        .persist();
+      nock(TEST_ORIGIN).get(FULL_RESOURCE_NAME).reply(200, { done: false }).persist();
 
       let error;
       try {
@@ -116,6 +98,25 @@ describe("OperationPoller", () => {
       }
       expect(error).to.be.instanceOf(TimeoutError);
       nock.cleanAll();
+    });
+
+    it("should call onPoll each time the operation is polled", async () => {
+      const opResult = { done: true, response: "completed" };
+      nock(TEST_ORIGIN).get(FULL_RESOURCE_NAME).reply(200, { done: false });
+      nock(TEST_ORIGIN).get(FULL_RESOURCE_NAME).reply(200, opResult);
+      const onPollSpy = sinon.spy((op: any) => {
+        return;
+      });
+      pollerOptions.onPoll = onPollSpy;
+
+      console.log(nock.pendingMocks());
+      const res = await pollOperation<string>(pollerOptions);
+
+      expect(res).to.deep.equal("completed");
+      expect(onPollSpy).to.have.been.calledTwice;
+      expect(onPollSpy).to.have.been.calledWith({ done: false });
+      expect(onPollSpy).to.have.been.calledWith(opResult);
+      expect(nock.isDone()).to.be.true;
     });
   });
 });

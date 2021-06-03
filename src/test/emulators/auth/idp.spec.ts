@@ -2,7 +2,6 @@ import { expect } from "chai";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import { FirebaseJwtPayload } from "../../../emulator/auth/operations";
 import { PROVIDER_PASSWORD, SIGNIN_METHOD_EMAIL_LINK } from "../../../emulator/auth/state";
-import { TEST_PHONE_NUMBER, FAKE_GOOGLE_ACCOUNT, REAL_GOOGLE_ACCOUNT } from "./helpers";
 import { describeAuthEmulator } from "./setup";
 import {
   expectStatusCode,
@@ -16,10 +15,13 @@ import {
   signInWithEmailLink,
   updateProjectConfig,
   fakeClaims,
+  TEST_PHONE_NUMBER,
+  FAKE_GOOGLE_ACCOUNT,
+  REAL_GOOGLE_ACCOUNT,
+  TEST_MFA_INFO,
 } from "./helpers";
 
 // Many JWT fields from IDPs use snake_case and we need to match that.
-/* eslint-disable @typescript-eslint/camelcase */
 
 describeAuthEmulator("sign-in with credential", ({ authApi }) => {
   it("should create new account with IDP from unsigned ID token", async () => {
@@ -42,9 +44,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
         );
         expect(res.body.oauthIdToken).to.equal(FAKE_GOOGLE_ACCOUNT.idToken);
         expect(res.body.providerId).to.equal("google.com");
-        expect(res.body)
-          .to.have.property("refreshToken")
-          .that.is.a("string");
+        expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
         // The ID Token used above does NOT contain name or photo, so the
         // account created won't have those attributes either.
@@ -78,9 +78,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
             "google.com": [FAKE_GOOGLE_ACCOUNT.rawId],
             email: [FAKE_GOOGLE_ACCOUNT.email],
           });
-        expect(decoded!.payload.firebase)
-          .to.have.property("sign_in_provider")
-          .equals("google.com");
+        expect(decoded!.payload.firebase).to.have.property("sign_in_provider").equals("google.com");
       });
   });
 
@@ -104,9 +102,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
         );
         expect(res.body.oauthIdToken).to.equal(REAL_GOOGLE_ACCOUNT.idToken);
         expect(res.body.providerId).to.equal("google.com");
-        expect(res.body)
-          .to.have.property("refreshToken")
-          .that.is.a("string");
+        expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
         // The ID Token used above does NOT contain name or photo, so the
         // account created won't have those attributes either.
@@ -141,9 +137,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
             "google.com": [REAL_GOOGLE_ACCOUNT.rawId],
             email: [REAL_GOOGLE_ACCOUNT.email],
           });
-        expect(decoded!.payload.firebase)
-          .to.have.property("sign_in_provider")
-          .equals("google.com");
+        expect(decoded!.payload.firebase).to.have.property("sign_in_provider").equals("google.com");
       });
   });
 
@@ -176,9 +170,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
         expect(res.body.firstName).to.equal(claims.given_name);
         expect(res.body.lastName).to.equal(claims.family_name);
         expect(res.body.photoUrl).to.equal(claims.picture);
-        expect(res.body)
-          .to.have.property("refreshToken")
-          .that.is.a("string");
+        expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
         const raw = JSON.parse(res.body.rawUserInfo);
         expect(raw.id).to.equal(claims.sub);
@@ -203,9 +195,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
           .eql({
             "google.com": [claims.sub],
           });
-        expect(decoded!.payload.firebase)
-          .to.have.property("sign_in_provider")
-          .equals("google.com");
+        expect(decoded!.payload.firebase).to.have.property("sign_in_provider").equals("google.com");
       });
   });
 
@@ -580,9 +570,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
         expectStatusCode(200, res);
         expect(!!res.body.isNewUser).to.equal(false);
         expect(res.body.localId).to.equal(user.localId);
-        expect(res.body)
-          .to.have.property("refreshToken")
-          .that.is.a("string");
+        expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
         const idToken = res.body.idToken;
         const decoded = decodeJwt(idToken, { complete: true }) as {
@@ -598,9 +586,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
             "google.com": [claims.sub],
             email: [user.email],
           });
-        expect(decoded!.payload.firebase)
-          .to.have.property("sign_in_provider")
-          .equals("google.com");
+        expect(decoded!.payload.firebase).to.have.property("sign_in_provider").equals("google.com");
       });
 
     const signInMethods = await getSigninMethods(authApi(), user.email);
@@ -628,9 +614,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
         expectStatusCode(200, res);
         expect(!!res.body.isNewUser).to.equal(false);
         expect(res.body.localId).to.equal(user.localId);
-        expect(res.body)
-          .to.have.property("refreshToken")
-          .that.is.a("string");
+        expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
         const idToken = res.body.idToken;
         const decoded = decodeJwt(idToken, { complete: true }) as {
@@ -647,9 +631,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
             email: [claims.email],
             phone: [TEST_PHONE_NUMBER],
           });
-        expect(decoded!.payload.firebase)
-          .to.have.property("sign_in_provider")
-          .equals("google.com");
+        expect(decoded!.payload.firebase).to.have.property("sign_in_provider").equals("google.com");
 
         return res.body.idToken as string;
       });
@@ -683,6 +665,34 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
       .then((res) => {
         expectStatusCode(400, res);
         expect(res.body.error.message).to.equal("USER_DISABLED");
+      });
+  });
+
+  it("should error if user to be linked is an MFA user", async () => {
+    const user = {
+      email: "alice@example.com",
+      password: "notasecret",
+      mfaInfo: [TEST_MFA_INFO],
+    };
+    const { idToken } = await registerUser(authApi(), user);
+
+    const claims = fakeClaims({
+      sub: "123456789012345678901",
+      name: "Foo",
+    });
+    const fakeIdToken = JSON.stringify(claims);
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+      .query({ key: "fake-api-key" })
+      .send({
+        idToken,
+        postBody: `providerId=google.com&id_token=${encodeURIComponent(fakeIdToken)}`,
+        requestUri: "http://localhost",
+        returnIdpCredential: true,
+      })
+      .then((res) => {
+        expectStatusCode(501, res);
+        expect(res.body.error.message).to.equal("MFA Login not yet implemented.");
       });
   });
 

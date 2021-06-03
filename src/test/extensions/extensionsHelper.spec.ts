@@ -8,6 +8,7 @@ import * as resolveSource from "../../extensions/resolveSource";
 import { storage } from "../../gcp";
 import * as archiveDirectory from "../../archiveDirectory";
 import * as prompt from "../../prompt";
+import { ExtensionSource } from "../../extensions/extensionsApi";
 
 describe("extensionsHelper", () => {
   describe("substituteParams", () => {
@@ -410,11 +411,39 @@ describe("extensionsHelper", () => {
         specVersion: "v1beta",
         resources: [],
         sourceUrl: "https://test-source.fake",
+        license: "apache-2.0",
       };
 
       expect(() => {
         extensionsHelper.validateSpec(testSpec);
       }).not.to.throw();
+    });
+    it("should error if license is missing", () => {
+      const testSpec: extensionsApi.ExtensionSpec = {
+        name: "test",
+        version: "0.1.0",
+        specVersion: "v1beta",
+        resources: [],
+        sourceUrl: "https://test-source.fake",
+      };
+
+      expect(() => {
+        extensionsHelper.validateSpec(testSpec);
+      }).to.throw(FirebaseError, /license/);
+    });
+    it("should error if license is invalid", () => {
+      const testSpec: extensionsApi.ExtensionSpec = {
+        name: "test",
+        version: "0.1.0",
+        specVersion: "v1beta",
+        resources: [],
+        sourceUrl: "https://test-source.fake",
+        license: "invalid-license",
+      };
+
+      expect(() => {
+        extensionsHelper.validateSpec(testSpec);
+      }).to.throw(FirebaseError, /license/);
     });
     it("should error if name is missing", () => {
       const testSpec = {
@@ -422,6 +451,7 @@ describe("extensionsHelper", () => {
         specVersion: "v1beta",
         resources: [],
         sourceUrl: "https://test-source.fake",
+        license: "apache-2.0",
       };
 
       expect(() => {
@@ -435,6 +465,7 @@ describe("extensionsHelper", () => {
         version: "0.1.0",
         resources: [],
         sourceUrl: "https://test-source.fake",
+        license: "apache-2.0",
       };
 
       expect(() => {
@@ -448,6 +479,7 @@ describe("extensionsHelper", () => {
         specVersion: "v1beta",
         resources: [],
         sourceUrl: "https://test-source.fake",
+        license: "apache-2.0",
       };
 
       expect(() => {
@@ -461,6 +493,7 @@ describe("extensionsHelper", () => {
         specVersion: "v1beta",
         resources: [{}],
         sourceUrl: "https://test-source.fake",
+        license: "apache-2.0",
       };
 
       expect(() => {
@@ -475,6 +508,7 @@ describe("extensionsHelper", () => {
         apis: [{}],
         resources: [],
         sourceUrl: "https://test-source.fake",
+        license: "apache-2.0",
       };
 
       expect(() => {
@@ -489,6 +523,7 @@ describe("extensionsHelper", () => {
         params: [{}],
         resources: [],
         sourceUrl: "https://test-source.fake",
+        license: "apache-2.0",
       };
 
       expect(() => {
@@ -503,6 +538,7 @@ describe("extensionsHelper", () => {
         params: [{ options: [] }],
         resources: [],
         sourceUrl: "https://test-source.fake",
+        license: "apache-2.0",
       };
 
       expect(() => {
@@ -517,6 +553,7 @@ describe("extensionsHelper", () => {
         params: [{ type: extensionsHelper.SpecParamType.SELECT, validationRegex: "test" }],
         resources: [],
         sourceUrl: "https://test-source.fake",
+        license: "apache-2.0",
       };
 
       expect(() => {
@@ -530,6 +567,7 @@ describe("extensionsHelper", () => {
         params: [{ type: "test-type", validationRegex: "test" }],
         resources: [],
         sourceUrl: "https://test-source.fake",
+        license: "apache-2.0",
       };
 
       expect(() => {
@@ -545,6 +583,7 @@ describe("extensionsHelper", () => {
         ],
         resources: [],
         sourceUrl: "https://test-source.fake",
+        license: "apache-2.0",
       };
 
       expect(() => {
@@ -649,12 +688,14 @@ describe("extensionsHelper", () => {
     let createSourceStub: sinon.SinonStub;
     let deleteStub: sinon.SinonStub;
     const testUrl = "https://storage.googleapis.com/firebase-ext-eap-uploads/object.zip";
-    const testSource = {
+    const testSource: ExtensionSource = {
       name: "test",
       packageUri: testUrl,
       hash: "abc123",
+      state: "ACTIVE",
       spec: {
         name: "projects/test-proj/sources/abc123",
+        version: "0.0.0",
         sourceUrl: testUrl,
         resources: [],
       },
@@ -662,9 +703,11 @@ describe("extensionsHelper", () => {
 
     beforeEach(() => {
       archiveStub = sinon.stub(archiveDirectory, "archiveDirectory").resolves({});
-      uploadStub = sinon
-        .stub(storage, "uploadObject")
-        .resolves("/firebase-ext-eap-uploads/object.zip");
+      uploadStub = sinon.stub(storage, "uploadObject").resolves({
+        bucket: "firebase-ext-eap-uploads",
+        object: "object.zip",
+        generation: 42,
+      });
       createSourceStub = sinon.stub(extensionsApi, "createSource").resolves(testSource);
       deleteStub = sinon.stub(storage, "deleteObject").resolves();
     });
@@ -736,13 +779,16 @@ describe("extensionsHelper", () => {
         "0.1.0": "projects/test-proj/sources/def456",
         "0.1.1": testOnePlatformSourceName,
       },
+      publisher: "firebase",
     };
-    const testSource = {
+    const testSource: ExtensionSource = {
       name: "test",
       packageUri: "",
       hash: "abc123",
+      state: "ACTIVE",
       spec: {
         name: "",
+        version: "0.0.0",
         sourceUrl: "",
         resources: [],
       },

@@ -1,3 +1,4 @@
+import * as cors from "cors";
 import * as express from "express";
 import * as os from "os";
 import * as fs from "fs";
@@ -5,7 +6,7 @@ import * as path from "path";
 import * as bodyParser from "body-parser";
 
 import * as utils from "../utils";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { Constants } from "./constants";
 import { Emulators, EmulatorInstance, EmulatorInfo } from "./types";
 import { HubExport } from "./hubExport";
@@ -30,7 +31,6 @@ export interface EmulatorHubArgs {
 export type GetEmulatorsResponse = Record<string, EmulatorInfo>;
 
 export class EmulatorHub implements EmulatorInstance {
-  static EMULATOR_HUB_ENV = "FIREBASE_EMULATOR_HUB";
   static CLI_VERSION = pkg.version;
   static PATH_EXPORT = "/_admin/export";
   static PATH_DISABLE_FUNCTIONS = "/functions/disableBackgroundTriggers";
@@ -70,6 +70,9 @@ export class EmulatorHub implements EmulatorInstance {
 
   constructor(private args: EmulatorHubArgs) {
     this.hub = express();
+    // Enable CORS for all APIs, all origins (reflected), and all headers (reflected).
+    // Safe since all Hub APIs are cookieless.
+    this.hub.use(cors({ origin: true }));
     this.hub.use(bodyParser.json());
 
     this.hub.get("/", (req, res) => {
@@ -105,7 +108,7 @@ export class EmulatorHub implements EmulatorInstance {
       }
     });
 
-    this.hub.put(EmulatorHub.PATH_DISABLE_FUNCTIONS, (req, res) => {
+    this.hub.put(EmulatorHub.PATH_DISABLE_FUNCTIONS, async (req, res) => {
       utils.logLabeledBullet(
         "emulators",
         `Disabling Cloud Functions triggers, non-HTTP functions will not execute.`
@@ -118,7 +121,7 @@ export class EmulatorHub implements EmulatorInstance {
       }
 
       const emu = instance as FunctionsEmulator;
-      emu.disableBackgroundTriggers();
+      await emu.disableBackgroundTriggers();
       res.status(200).json({ enabled: false });
     });
 

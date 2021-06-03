@@ -17,7 +17,7 @@ import {
 } from "../management/apps";
 import { prompt, promptOnce, Question } from "../prompt";
 import { requireAuth } from "../requireAuth";
-import * as logger from "../logger";
+import { logger } from "../logger";
 
 const DISPLAY_NAME_QUESTION: Question = {
   type: "input",

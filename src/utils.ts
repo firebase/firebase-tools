@@ -11,13 +11,14 @@ const ansiStrip = require("cli-color/strip") as (input: string) => string;
 
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
-import * as logger from "./logger";
+import { logger, LogLevel } from "./logger";
 import { LogDataOrUndefined } from "./emulator/loggingEmulator";
 import { Socket } from "net";
 
 const IS_WINDOWS = process.platform === "win32";
 const SUCCESS_CHAR = IS_WINDOWS ? "+" : "✔";
 const WARNING_CHAR = IS_WINDOWS ? "!" : "⚠";
+const THIRTY_DAYS_IN_MILLISECONDS = 30 * 24 * 60 * 60 * 1000;
 
 export const envOverrides: string[] = [];
 
@@ -88,15 +89,11 @@ export function getDatabaseViewDataUrl(
   pathname: string
 ): string {
   const urlObj = new url.URL(origin);
-  if (
-    urlObj.hostname.includes("firebaseio.com") ||
-    urlObj.hostname.includes("firebasedatabase.app")
-  ) {
+  if (urlObj.hostname.includes("firebaseio") || urlObj.hostname.includes("firebasedatabase")) {
     return consoleUrl(project, `/database/${namespace}/data${pathname}`);
-  } else {
-    // TODO(samstern): View in Emulator UI
-    return getDatabaseUrl(origin, namespace, pathname + ".json");
   }
+  // TODO(samstern): View in Emulator UI
+  return getDatabaseUrl(origin, namespace, pathname + ".json");
 }
 
 /**
@@ -109,15 +106,11 @@ export function addDatabaseNamespace(origin: string, namespace: string): string 
   if (urlObj.hostname.includes(namespace)) {
     return urlObj.href;
   }
-  if (
-    urlObj.hostname.includes("firebaseio.com") ||
-    urlObj.hostname.includes("firebasedatabase.app")
-  ) {
+  if (urlObj.hostname.includes("firebaseio") || urlObj.hostname.includes("firebasedatabase")) {
     return addSubdomain(origin, namespace);
-  } else {
-    urlObj.searchParams.set("ns", namespace);
-    return urlObj.href;
   }
+  urlObj.searchParams.set("ns", namespace);
+  return urlObj.href;
 }
 
 /**
@@ -133,7 +126,7 @@ export function addSubdomain(origin: string, subdomain: string): string {
  */
 export function logSuccess(
   message: string,
-  type = "info",
+  type: LogLevel = "info",
   data: LogDataOrUndefined = undefined
 ): void {
   logger[type](clc.green.bold(`${SUCCESS_CHAR} `), message, data);
@@ -145,7 +138,7 @@ export function logSuccess(
 export function logLabeledSuccess(
   label: string,
   message: string,
-  type = "info",
+  type: LogLevel = "info",
   data: LogDataOrUndefined = undefined
 ): void {
   logger[type](clc.green.bold(`${SUCCESS_CHAR}  ${label}:`), message, data);
@@ -156,7 +149,7 @@ export function logLabeledSuccess(
  */
 export function logBullet(
   message: string,
-  type = "info",
+  type: LogLevel = "info",
   data: LogDataOrUndefined = undefined
 ): void {
   logger[type](clc.cyan.bold("i "), message, data);
@@ -168,7 +161,7 @@ export function logBullet(
 export function logLabeledBullet(
   label: string,
   message: string,
-  type = "info",
+  type: LogLevel = "info",
   data: LogDataOrUndefined = undefined
 ): void {
   logger[type](clc.cyan.bold(`i  ${label}:`), message, data);
@@ -179,7 +172,7 @@ export function logLabeledBullet(
  */
 export function logWarning(
   message: string,
-  type = "warn",
+  type: LogLevel = "warn",
   data: LogDataOrUndefined = undefined
 ): void {
   logger[type](clc.yellow.bold(`${WARNING_CHAR} `), message, data);
@@ -191,7 +184,7 @@ export function logWarning(
 export function logLabeledWarning(
   label: string,
   message: string,
-  type = "warn",
+  type: LogLevel = "warn",
   data: LogDataOrUndefined = undefined
 ): void {
   logger[type](clc.yellow.bold(`${WARNING_CHAR}  ${label}:`), message, data);
@@ -250,7 +243,7 @@ export function streamToString(s: NodeJS.ReadableStream): Promise<string> {
 /**
  * Sets the active project alias or id in the specified directory.
  */
-export function makeActiveProject(projectDir: string, newActive: string): void {
+export function makeActiveProject(projectDir: string, newActive: string | null): void {
   const activeProjects = configstore.get("activeProjects") || {};
   if (newActive) {
     activeProjects[projectDir] = newActive;
@@ -475,20 +468,13 @@ export function createDestroyer(server: http.Server): () => Promise<void> {
  * @return the formatted date.
  */
 export function datetimeString(d: Date): string {
-  const day = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, "0")}-${d
-    .getDate()
+  const day = `${d.getFullYear()}-${(d.getMonth() + 1)
     .toString()
-    .padStart(2, "0")}`;
-  const time = `${d
-    .getHours()
-    .toString()
-    .padStart(2, "0")}:${d
+    .padStart(2, "0")}-${d.getDate().toString().padStart(2, "0")}`;
+  const time = `${d.getHours().toString().padStart(2, "0")}:${d
     .getMinutes()
     .toString()
-    .padStart(2, "0")}:${d
-    .getSeconds()
-    .toString()
-    .padStart(2, "0")}`;
+    .padStart(2, "0")}:${d.getSeconds().toString().padStart(2, "0")}`;
   return `${day} ${time}`;
 }
 
@@ -505,4 +491,11 @@ export function isCloudEnvironment() {
  */
 export function isRunningInWSL(): boolean {
   return !!process.env.WSL_DISTRO_NAME;
+}
+
+/**
+ * Generates a date that is 30 days from Date.now()
+ */
+export function thirtyDaysFromNow(): Date {
+  return new Date(Date.now() + THIRTY_DAYS_IN_MILLISECONDS);
 }

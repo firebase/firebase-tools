@@ -1,14 +1,13 @@
 import { capitalize, includes } from "lodash";
+import { FetchError, Headers } from "node-fetch";
 import { IncomingMessage, ServerResponse } from "http";
 import { PassThrough } from "stream";
 import { Request, RequestHandler, Response } from "express";
 import { URL } from "url";
-import AbortController from "abort-controller";
 
 import { Client, HttpMethod } from "../apiv2";
 import { FirebaseError } from "../error";
-import * as logger from "../logger";
-import { FetchError } from "node-fetch";
+import { logger } from "../logger";
 
 const REQUIRED_VARY_VALUES = ["Accept-Encoding", "Authorization", "Cookie"];
 
@@ -53,13 +52,39 @@ export function proxyRequestHandler(url: string, rewriteIdentifier: string): Req
     // req.url is just the full path (e.g. /foo?key=value; no origin).
     const u = new URL(url + req.url);
     const c = new Client({ urlPrefix: u.origin, auth: false });
-    const controller = new AbortController();
-    const timer: NodeJS.Timeout = setTimeout(() => controller.abort(), 60000);
 
     let passThrough: PassThrough | undefined;
     if (req.method && !["GET", "HEAD"].includes(req.method)) {
       passThrough = new PassThrough();
       req.pipe(passThrough);
+    }
+
+    const headers = new Headers({
+      "X-Forwarded-Host": req.headers.host || "",
+      "X-Original-Url": req.url || "",
+      Pragma: "no-cache",
+      "Cache-Control": "no-cache, no-store",
+      // forward the parsed __session cookie if any
+      Cookie: sessionCookie || "",
+    });
+    // Skip particular header keys:
+    // - using x-forwarded-host, don't need to keep `host` in the headers.
+    const headersToSkip = new Set(["host"]);
+    for (const key of Object.keys(req.headers)) {
+      if (headersToSkip.has(key)) {
+        continue;
+      }
+      const value = req.headers[key];
+      if (value == undefined) {
+        headers.delete(key);
+      } else if (Array.isArray(value)) {
+        headers.delete(key);
+        for (const v of value) {
+          headers.append(key, v);
+        }
+      } else {
+        headers.set(key, value);
+      }
     }
 
     let proxyRes;
@@ -68,22 +93,15 @@ export function proxyRequestHandler(url: string, rewriteIdentifier: string): Req
         method: (req.method || "GET") as HttpMethod,
         path: u.pathname,
         queryParams: u.searchParams,
-        headers: {
-          "X-Forwarded-Host": req.headers.host || "",
-          "X-Original-Url": req.url || "",
-          Pragma: "no-cache",
-          "Cache-Control": "no-cache, no-store",
-          // forward the parsed __session cookie if any
-          Cookie: sessionCookie || "",
-        },
+        headers,
         resolveOnHTTPError: true,
         responseType: "stream",
         redirect: "manual",
         body: passThrough,
-        signal: controller.signal,
+        timeout: 60000,
+        compress: false,
       });
     } catch (err) {
-      clearTimeout(timer);
       const isAbortError =
         err instanceof FirebaseError && err.original?.name.includes("AbortError");
       const isTimeoutError =
@@ -102,7 +120,6 @@ export function proxyRequestHandler(url: string, rewriteIdentifier: string): Req
       return res.end(`An internal error occurred while proxying for ${rewriteIdentifier}\n`);
     }
 
-    clearTimeout(timer);
     if (proxyRes.status === 404) {
       // x-cascade is not a string[].
       const cascade = proxyRes.response.headers.get("x-cascade");
@@ -124,8 +141,33 @@ export function proxyRequestHandler(url: string, rewriteIdentifier: string): Req
 
     proxyRes.response.headers.set("vary", makeVary(proxyRes.response.headers.get("vary")));
 
-    for (const [key, value] of proxyRes.response.headers) {
-      res.setHeader(key, value);
+    // Fix the location header that `node-fetch` attempts to helpfully fix:
+    // https://github.com/node-fetch/node-fetch/blob/4abbfd231f4bce7dbe65e060a6323fc6917fd6d9/src/index.js#L117-L120
+    // Filed a bug in `node-fetch` to either document the change or fix it:
+    // https://github.com/node-fetch/node-fetch/issues/1086
+    const location = proxyRes.response.headers.get("location");
+    if (location) {
+      // If parsing the URL fails, it may be because the location header
+      // isn't a helpeful resolved URL (if node-fetch changes behavior). This
+      // try is a preventative measure to ensure such a change shouldn't break
+      // our emulator.
+      try {
+        const locationURL = new URL(location);
+        // Only assume we can fix the location header if the origin of the
+        // "fixed" header is the same as the origin of the outbound request.
+        if (locationURL.origin == u.origin) {
+          const unborkedLocation = location.replace(locationURL.origin, "");
+          proxyRes.response.headers.set("location", unborkedLocation);
+        }
+      } catch (e) {
+        logger.debug(
+          `[hosting] had trouble parsing location header, but this may be okay: "${location}"`
+        );
+      }
+    }
+
+    for (const [key, value] of Object.entries(proxyRes.response.headers.raw())) {
+      res.setHeader(key, value as string[]);
     }
     res.statusCode = proxyRes.status;
     proxyRes.response.body.pipe(res);

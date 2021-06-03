@@ -9,7 +9,7 @@
  * It also writes a `schema.ts` file in the same directory for type-checking.
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/ban-ts-ignore */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/ban-ts-comment */
 
 import * as https from "https";
 import { resolve } from "path";
@@ -225,7 +225,7 @@ function addEmulatorOperations(openapi3: any): void {
           },
         },
       },
-      security: [{ Oauth2: [] }],
+      security: [],
       tags: ["emulator"],
     },
   };
@@ -284,7 +284,7 @@ function addEmulatorOperations(openapi3: any): void {
           },
         },
       },
-      security: [{ Oauth2: [] }],
+      security: [],
       tags: ["emulator"],
     },
   };

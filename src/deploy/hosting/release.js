@@ -1,15 +1,15 @@
 const api = require("../../api");
 const utils = require("../../utils");
-const logger = require("../../logger");
+const { logger } = require("../../logger");
 
-module.exports = function(context, options) {
+module.exports = function (context, options) {
   if (!context.hosting || !context.hosting.deploys) {
     return Promise.resolve();
   }
 
   logger.debug(JSON.stringify(context.hosting.deploys, null, 2));
   return Promise.all(
-    context.hosting.deploys.map(async function(deploy) {
+    context.hosting.deploys.map(async function (deploy) {
       utils.logLabeledBullet("hosting[" + deploy.site + "]", "finalizing version...");
       const finalizeResult = await api.request(
         "PATCH",

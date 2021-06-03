@@ -16,12 +16,31 @@ export interface AppDistributionApp {
   platform: string;
   bundleId: string;
   contactEmail: string;
+  aabState: AabState;
+  aabCertificate: AabCertificate | null;
+}
+
+export interface AabCertificate {
+  certificateHashMd5: string;
+  certificateHashSha1: string;
+  certificateHashSha256: string;
 }
 
 export enum UploadStatus {
   SUCCESS = "SUCCESS",
   IN_PROGRESS = "IN_PROGRESS",
   ERROR = "ERROR",
+}
+
+/** Enum representing the App Bundles state for the App */
+export enum AabState {
+  AAB_STATE_UNSPECIFIED = "AAB_STATE_UNSPECIFIED",
+  ACTIVE = "ACTIVE",
+  PLAY_ACCOUNT_NOT_LINKED = "PLAY_ACCOUNT_NOT_LINKED",
+  NO_APP_WITH_GIVEN_BUNDLE_ID_IN_PLAY_ACCOUNT = "NO_APP_WITH_GIVEN_BUNDLE_ID_IN_PLAY_ACCOUNT",
+  APP_NOT_PUBLISHED = "APP_NOT_PUBLISHED",
+  AAB_STATE_UNAVAILABLE = "AAB_STATE_UNAVAILABLE",
+  PLAY_IAS_TERMS_NOT_ACCEPTED = "PLAY_IAS_TERMS_NOT_ACCEPTED",
 }
 
 export interface UploadStatusResponse {
@@ -33,6 +52,12 @@ export interface UploadStatusResponse {
   };
 }
 
+/** Enum for app_view parameter for getApp requests */
+export enum AppView {
+  BASIC = "BASIC",
+  FULL = "FULL",
+}
+
 /**
  * Proxies HTTPS requests to the App Distribution server backend.
  */
@@ -42,10 +67,8 @@ export class AppDistributionClient {
 
   constructor(private readonly appId: string) {}
 
-  async getApp(): Promise<AppDistributionApp> {
-    utils.logBullet("getting app details...");
-
-    const apiResponse = await api.request("GET", `/v1alpha/apps/${this.appId}`, {
+  async getApp(appView = AppView.BASIC): Promise<AppDistributionApp> {
+    const apiResponse = await api.request("GET", `/v1alpha/apps/${this.appId}?appView=${appView}`, {
       origin: api.appDistributionOrigin,
       auth: true,
     });
@@ -61,6 +84,8 @@ export class AppDistributionClient {
         "X-APP-DISTRO-API-CLIENT-ID": pkg.name,
         "X-APP-DISTRO-API-CLIENT-TYPE": distribution.platform(),
         "X-APP-DISTRO-API-CLIENT-VERSION": pkg.version,
+        "X-GOOG-UPLOAD-FILE-NAME": distribution.getFileName(),
+        "X-GOOG-UPLOAD-PROTOCOL": "raw",
         "Content-Type": "application/octet-stream",
       },
       data: distribution.readStream(),

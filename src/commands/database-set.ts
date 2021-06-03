@@ -12,7 +12,7 @@ import { promptOnce } from "../prompt";
 import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api";
 import { requirePermissions } from "../requirePermissions";
 import { URL } from "url";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import * as utils from "../utils";
 
@@ -36,16 +36,17 @@ export default new Command("database:set <path> [infile]")
     const dbPath = utils.getDatabaseUrl(origin, options.instance, path);
     const dbJsonURL = new URL(utils.getDatabaseUrl(origin, options.instance, path + ".json"));
 
-    if (!options.confirm) {
-      const confirm = await promptOnce({
+    const confirm = await promptOnce(
+      {
         type: "confirm",
         name: "confirm",
         default: false,
         message: "You are about to overwrite all data at " + clc.cyan(dbPath) + ". Are you sure?",
-      });
-      if (!confirm) {
-        throw new FirebaseError("Command aborted.");
-      }
+      },
+      options
+    );
+    if (!confirm) {
+      throw new FirebaseError("Command aborted.");
     }
 
     const inStream =

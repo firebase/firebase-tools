@@ -3,7 +3,7 @@
  */
 
 import * as api from "../api";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import * as utils from "../utils";
 
 function handleErrorResponse(response: any): Promise<any> {

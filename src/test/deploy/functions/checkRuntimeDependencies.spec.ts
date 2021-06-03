@@ -1,12 +1,12 @@
+import { expect } from "chai";
 import * as sinon from "sinon";
 import * as nock from "nock";
-import { expect } from "chai";
 
-import * as logger from "../../../logger";
+import { logger } from "../../../logger";
 import { configstore } from "../../../configstore";
-import * as api from "../../../api";
 import { checkRuntimeDependencies } from "../../../deploy/functions/checkRuntimeDependencies";
 import { POLL_SETTINGS } from "../../../ensureApiEnabled";
+import * as api from "../../../api";
 
 describe("checkRuntimeDependencies()", () => {
   let restoreInterval: number;
@@ -71,16 +71,7 @@ describe("checkRuntimeDependencies()", () => {
     timeStub.withArgs("motd.cloudBuildErrorAfter").returns(errorAfter);
   }
 
-  describe("with nodejs8", () => {
-    it("should print warning", async () => {
-      stubTimes(Date.now() - 10000, Date.now() - 5000);
-
-      await expect(checkRuntimeDependencies("test-project", "nodejs8")).to.eventually.be.fulfilled;
-      expect(logStub?.callCount).to.eq(0);
-    });
-  });
-
-  ["nodejs10", "nodejs12"].forEach((runtime) => {
+  ["nodejs10", "nodejs12", "nodejs14"].forEach((runtime) => {
     describe(`with ${runtime}`, () => {
       describe("with cloudbuild service enabled", () => {
         beforeEach(() => {

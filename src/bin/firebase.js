@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 "use strict";
 
-// Make check for Node 6, which is no longer supported by the CLI.
+// Make check for Node 8, which is no longer supported by the CLI.
 const semver = require("semver");
 const pkg = require("../../package.json");
 const nodeVersion = process.version;
@@ -36,7 +36,7 @@ const client = require("..");
 const errorOut = require("../errorOut").errorOut;
 const winston = require("winston");
 const { SPLAT } = require("triple-beam");
-const logger = require("../logger");
+const { logger } = require("../logger");
 const fs = require("fs");
 const fsutils = require("../fsutils");
 const path = require("path");
@@ -44,7 +44,7 @@ const ansiStrip = require("cli-color/strip");
 const { configstore } = require("../configstore");
 const _ = require("lodash");
 let args = process.argv.slice(2);
-const handlePreviewToggles = require("../handlePreviewToggles");
+const { handlePreviewToggles } = require("../handlePreviewToggles");
 const utils = require("../utils");
 let cmd;
 
@@ -78,10 +78,10 @@ function findAvailableLogFile() {
 const logFilename = findAvailableLogFile();
 
 if (!process.env.DEBUG && _.includes(args, "--debug")) {
-  process.env.DEBUG = true;
+  process.env.DEBUG = "true";
 }
 
-process.env.IS_FIREBASE_CLI = true;
+process.env.IS_FIREBASE_CLI = "true";
 
 logger.add(
   new winston.transports.File({
@@ -108,7 +108,7 @@ logger.debug();
 
 require("../fetchMOTD").fetchMOTD();
 
-process.on("exit", function(code) {
+process.on("exit", function (code) {
   code = process.exitCode || code;
   if (!process.env.DEBUG && code < 2 && fsutils.fileExistsSync(logFilename)) {
     fs.unlinkSync(logFilename);
@@ -138,7 +138,7 @@ process.on("exit", function(code) {
 });
 require("exit-code");
 
-process.on("uncaughtException", function(err) {
+process.on("uncaughtException", function (err) {
   errorOut(err);
 });
 
@@ -146,7 +146,7 @@ if (!handlePreviewToggles(args)) {
   cmd = client.cli.parse(process.argv);
 
   // determine if there are any non-option arguments. if not, display help
-  args = args.filter(function(arg) {
+  args = args.filter(function (arg) {
     return arg.indexOf("-") < 0;
   });
   if (!args.length) {

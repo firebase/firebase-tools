@@ -1,7 +1,6 @@
 import { EmulatorInstance, EmulatorInfo, Emulators } from "./types";
 import * as downloadableEmulators from "./downloadableEmulators";
 import { EmulatorRegistry } from "./registry";
-import { EmulatorHub } from "./hub";
 import { FirebaseError } from "../error";
 import { Constants } from "./constants";
 
@@ -29,7 +28,7 @@ export class EmulatorUI implements EmulatorInstance {
       HOST: host.toString(),
       PORT: port.toString(),
       GCLOUD_PROJECT: projectId,
-      [EmulatorHub.EMULATOR_HUB_ENV]: EmulatorRegistry.getInfoHostString(hubInfo),
+      [Constants.FIREBASE_EMULATOR_HUB]: EmulatorRegistry.getInfoHostString(hubInfo),
     };
 
     return downloadableEmulators.start(Emulators.UI, { auto_download }, env);

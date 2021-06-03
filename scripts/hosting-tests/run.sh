@@ -75,18 +75,9 @@ kill "$PID"
 wait
 echo "Tested local hosting emulator."
 
-# This test can only run on one Node version in the matrix because if it runs twice
-# in parallel the deploys will clobber each other. This is only a temporary
-# workaround, when we update the CLI to stop supporting Node 8 we can remove
-# this hack or find some way to lock.
-if [ "${NODE_VERSION}" != 8* ]; then
-  echo "Not running deployment tests on Node version ${NODE_VERSION}"
-  exit 0
-fi
-
 echo "Testing hosting deployment..."
 firebase deploy --only hosting --project "${FBTOOLS_TARGET_PROJECT}"
-sleep 5
+sleep 12
 VALUE="$(curl https://${FBTOOLS_TARGET_PROJECT}.web.app/${TARGET_FILE})"
 test "${DATE}" = "${VALUE}" || (echo "Expected ${VALUE} to equal ${DATE}." && false)
 
@@ -134,14 +125,14 @@ echo "Initialized second temp directory."
 
 echo "Testing hosting deployment by target..."
 firebase deploy --only hosting:customtarget --project "${FBTOOLS_TARGET_PROJECT}"
-sleep 5
+sleep 12
 VALUE="$(curl https://${FBTOOLS_TARGET_PROJECT}.web.app/${TARGET_FILE})"
 test "${DATE}" = "${VALUE}" || (echo "Expected ${VALUE} to equal ${DATE}." && false)
 echo "Tested hosting deployment by target."
 
 echo "Testing hosting channel deployment by target..."
 firebase hosting:channel:deploy mychannel --only customtarget --project "${FBTOOLS_TARGET_PROJECT}" --json | tee output.json
-sleep 5
+sleep 12
 CHANNEL_URL=$(cat output.json | jq -r ".result.customtarget.url")
 VALUE="$(curl ${CHANNEL_URL}/${TARGET_FILE})"
 test "${DATE}" = "${VALUE}" || (echo "Expected ${VALUE} to equal ${DATE}." && false)

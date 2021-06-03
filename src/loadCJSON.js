@@ -3,7 +3,7 @@
 var { FirebaseError } = require("./error");
 var cjson = require("cjson");
 
-module.exports = function(path) {
+module.exports = function (path) {
   try {
     return cjson.load(path);
   } catch (e) {

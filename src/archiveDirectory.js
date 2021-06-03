@@ -11,16 +11,16 @@ const tmp = require("tmp");
 const { listFiles } = require("./listFiles");
 const { FirebaseError } = require("./error");
 const fsAsync = require("./fsAsync");
-const logger = require("./logger");
+const { logger } = require("./logger");
 const utils = require("./utils");
 
 /**
  * Archives a directory to a temporary file and returns information about the
  * new archive. Defaults to type "tar", and returns a .tar.gz file.
  * @param {string} sourceDirectory
- * @param {!Object<string, *>} options
- * @param {string} options.type Type of directory to create: "tar", or "zip".
- * @param {!Array<string>} options.ignore Globs to be ignored.
+ * @param {object} options
+ * @param {string=} options.type Type of directory to create: "tar", or "zip".
+ * @param {Array<string>=} options.ignore Globs to be ignored.
  * @return {!Promise<Object<string, *>>} Information about the archive:
  *    - `file`: file name
  *    - `stream`: read stream of the archive
@@ -122,7 +122,7 @@ const _tarDirectory = (sourceDirectory, tempFile, options) => {
 const _zipDirectory = (sourceDirectory, tempFile, options) => {
   const archiveFileStream = fs.createWriteStream(tempFile.name, {
     flags: "w",
-    defaultEncoding: "binary",
+    encoding: "binary",
   });
   const archive = archiver("zip");
   const archiveDone = _pipeAsync(archive, archiveFileStream);
@@ -136,8 +136,8 @@ const _zipDirectory = (sourceDirectory, tempFile, options) => {
       }
       throw err;
     })
-    .then(function(files) {
-      _.forEach(files, function(file) {
+    .then(function (files) {
+      _.forEach(files, function (file) {
         const name = path.relative(sourceDirectory, file.name);
         allFiles.push(name);
         archive.file(file.name, {
@@ -163,12 +163,12 @@ const _zipDirectory = (sourceDirectory, tempFile, options) => {
 /**
  * Pipes one stream to another, resolving the returned promise on finish or
  * rejects on an error.
- * @param {!Stream} from
- * @param {!Stream} to
+ * @param {!*} from a Stream
+ * @param {!*} to a Stream
  * @return {!Promise<void>}
  */
-const _pipeAsync = function(from, to) {
-  return new Promise(function(resolve, reject) {
+const _pipeAsync = function (from, to) {
+  return new Promise(function (resolve, reject) {
     to.on("finish", resolve);
     to.on("error", reject);
     from.pipe(to);

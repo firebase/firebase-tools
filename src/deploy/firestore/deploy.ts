@@ -3,7 +3,7 @@ import * as clc from "cli-color";
 
 import { FirebaseError } from "../../error";
 import { FirestoreIndexes } from "../../firestore/indexes";
-import logger = require("../../logger");
+import { logger } from "../../logger";
 import utils = require("../../utils");
 import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
 
@@ -54,6 +54,6 @@ async function deployIndexes(context: any, options: any): Promise<void> {
  * @param context The deploy context.
  * @param options The CLI options object.
  */
-export default async function(context: any, options: any): Promise<void> {
+export default async function (context: any, options: any): Promise<void> {
   await Promise.all([deployRules(context), deployIndexes(context, options)]);
 }

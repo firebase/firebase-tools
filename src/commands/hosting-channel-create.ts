@@ -1,6 +1,6 @@
 import { bold, yellow } from "cli-color";
 
-import { Channel, createChannel, addAuthDomain, normalizeName } from "../hosting/api";
+import { Channel, createChannel, addAuthDomains, normalizeName } from "../hosting/api";
 import { Command } from "../command";
 import { DEFAULT_DURATION, calculateChannelExpireTTL } from "../hosting/expireUtils";
 import { FirebaseError } from "../error";
@@ -8,7 +8,7 @@ import { logLabeledSuccess, datetimeString, logLabeledWarning, consoleUrl } from
 import { promptOnce } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 import * as getProjectId from "../getProjectId";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import * as requireConfig from "../requireConfig";
 import * as marked from "marked";
 import { requireHostingSite } from "../requireHostingSite";
@@ -38,23 +38,16 @@ export default new Command("hosting:channel:create [channelId]")
         expireTTL = calculateChannelExpireTTL(options.expires);
       }
 
-      if (!channelId) {
-        if (options.nonInteractive) {
-          throw new FirebaseError(
-            `"channelId" argument must be provided in a non-interactive environment`
-          );
-        }
-        channelId = await promptOnce(
-          {
-            type: "input",
-            message: "Please provide a URL-friendly name for the channel:",
-            validate: (s) => s.length > 0,
-          } // Prevents an empty string from being submitted!
-        );
+      if (channelId) {
+        options.channelId = channelId;
       }
-      if (!channelId) {
-        throw new FirebaseError(`"channelId" must not be empty`);
-      }
+      channelId =
+        channelId ||
+        (await promptOnce({
+          type: "input",
+          message: "Please provide a URL-friendly name for the channel:",
+          validate: (s) => s.length > 0,
+        }));
 
       channelId = normalizeName(channelId);
 
@@ -62,7 +55,7 @@ export default new Command("hosting:channel:create [channelId]")
       try {
         channel = await createChannel(projectId, site, channelId, expireTTL);
       } catch (e) {
-        if (e.status == 409) {
+        if (e.status === 409) {
           throw new FirebaseError(
             `Channel ${bold(channelId)} already exists on site ${bold(site)}. Deploy to ${bold(
               channelId
@@ -74,7 +67,7 @@ export default new Command("hosting:channel:create [channelId]")
       }
 
       try {
-        await addAuthDomain(projectId, channel.url);
+        await addAuthDomains(projectId, [channel.url]);
       } catch (e) {
         logLabeledWarning(
           LOG_TAG,
@@ -102,7 +95,7 @@ export default new Command("hosting:channel:create [channelId]")
       logLabeledSuccess(LOG_TAG, `Channel URL: ${channel.url}`);
       logger.info();
       logger.info(
-        `To deploy to this channel, use \`firebase hosting:channel:deploy ${channelId}\`.`
+        `To deploy to this channel, use ${yellow(`firebase hosting:channel:deploy ${channelId}`)}.`
       );
 
       return channel;

@@ -4,13 +4,13 @@ var _ = require("lodash");
 var clc = require("cli-color");
 
 var { Command } = require("../command");
-var logger = require("../logger");
+const { logger } = require("../logger");
 var requireConfig = require("../requireConfig");
 var utils = require("../utils");
 
 function _logTargets(type, targets) {
   logger.info(clc.cyan("[ " + type + " ]"));
-  _.forEach(targets, function(resources, name) {
+  _.forEach(targets, function (resources, name) {
     logger.info(name, "(" + (resources || []).join(",") + ")");
   });
 }
@@ -18,7 +18,7 @@ function _logTargets(type, targets) {
 module.exports = new Command("target [type]")
   .description("display configured deploy targets for the current project")
   .before(requireConfig)
-  .action(function(type, options) {
+  .action(function (type, options) {
     if (!options.project) {
       return utils.reject("No active project, cannot list deploy targets.");
     }
@@ -32,7 +32,7 @@ module.exports = new Command("target [type]")
     }
 
     var allTargets = options.rc.get(["targets", options.project], {});
-    _.forEach(allTargets, function(ts, tp) {
+    _.forEach(allTargets, function (ts, tp) {
       _logTargets(tp, ts);
     });
     return Promise.resolve(allTargets);

@@ -67,10 +67,7 @@ export function trimSlashes(str: string): string {
 }
 
 export function removePathSegments(path: string, count: number): string {
-  return trimSlashes(path)
-    .split("/")
-    .slice(count)
-    .join("/");
+  return trimSlashes(path).split("/").slice(count).join("/");
 }
 
 /**

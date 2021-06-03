@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
+import * as nock from "nock";
 
 import * as api from "../../api";
 import * as projectManager from "../../management/projects";
@@ -103,49 +104,51 @@ describe("Project management", () => {
 
     describe("getOrPromptProject", () => {
       it("should get project from list if it is able to list all projects", async () => {
-        const options = {};
-        apiRequestStub.onFirstCall().resolves({
-          body: {
+        nock(api.firebaseApiOrigin)
+          .get("/v1beta1/projects")
+          .query({ pageSize: 100 })
+          .reply(200, {
             results: [TEST_FIREBASE_PROJECT, ANOTHER_FIREBASE_PROJECT],
-          },
-        });
+          });
         promptOnceStub.resolves("my-project-123");
 
-        const project = await projectManager.getOrPromptProject(options);
+        const project = await projectManager.getOrPromptProject({});
 
         expect(project).to.deep.equal(TEST_FIREBASE_PROJECT);
         expect(promptOnceStub).to.be.calledOnce;
         expect(promptOnceStub.firstCall.args[0].type).to.equal("list");
+        expect(nock.isDone()).to.be.true;
       });
 
       it("should prompt project id if it is not able to list all projects", async () => {
-        const options = {};
-        apiRequestStub
-          .onFirstCall()
-          .resolves({
-            body: {
-              results: [TEST_FIREBASE_PROJECT, ANOTHER_FIREBASE_PROJECT],
-              nextPageToken: "token",
-            },
-          })
-          .onSecondCall()
-          .resolves({ body: TEST_FIREBASE_PROJECT });
+        nock(api.firebaseApiOrigin)
+          .get("/v1beta1/projects")
+          .query({ pageSize: 100 })
+          .reply(200, {
+            results: [TEST_FIREBASE_PROJECT, ANOTHER_FIREBASE_PROJECT],
+            nextPageToken: "token",
+          });
+        nock(api.firebaseApiOrigin)
+          .get("/v1beta1/projects/my-project-123")
+          .reply(200, TEST_FIREBASE_PROJECT);
         promptOnceStub.resolves("my-project-123");
 
-        const project = await projectManager.getOrPromptProject(options);
+        const project = await projectManager.getOrPromptProject({});
 
         expect(project).to.deep.equal(TEST_FIREBASE_PROJECT);
         expect(promptOnceStub).to.be.calledOnce;
         expect(promptOnceStub.firstCall.args[0].type).to.equal("input");
+        expect(nock.isDone()).to.be.true;
       });
 
       it("should throw if there's no project", async () => {
-        const options = {};
-        apiRequestStub.onFirstCall().resolves({ body: { results: [] } });
+        nock(api.firebaseApiOrigin).get("/v1beta1/projects").query({ pageSize: 100 }).reply(200, {
+          results: [],
+        });
 
         let err;
         try {
-          await projectManager.getOrPromptProject(options);
+          await projectManager.getOrPromptProject({});
         } catch (e) {
           err = e;
         }
@@ -154,22 +157,27 @@ describe("Project management", () => {
           "There are no Firebase projects associated with this account."
         );
         expect(promptOnceStub).to.be.not.called;
+        expect(nock.isDone()).to.be.true;
       });
 
       it("should get the correct project info when --project is supplied", async () => {
         const options = { project: "my-project-123" };
-        apiRequestStub.resolves({ body: TEST_FIREBASE_PROJECT });
+        nock(api.firebaseApiOrigin)
+          .get("/v1beta1/projects/my-project-123")
+          .reply(200, TEST_FIREBASE_PROJECT);
 
         const project = await projectManager.getOrPromptProject(options);
 
         expect(project).to.deep.equal(TEST_FIREBASE_PROJECT);
         expect(promptOnceStub).to.be.not.called;
+        expect(nock.isDone()).to.be.true;
       });
 
       it("should throw error when getFirebaseProject throw an error", async () => {
         const options = { project: "my-project-123" };
-        const expectedError = new Error("Failed to get project");
-        apiRequestStub.onFirstCall().rejects(expectedError);
+        nock(api.firebaseApiOrigin)
+          .get("/v1beta1/projects/my-project-123")
+          .reply(500, { error: "Failed to get project" });
 
         let err;
         try {
@@ -182,18 +190,20 @@ describe("Project management", () => {
           "Failed to get Firebase project my-project-123" +
             ". Please make sure the project exists and your account has permission to access it."
         );
-        expect(err.original).to.equal(expectedError);
+        expect(err.original.toString()).to.contain("Failed to get project");
         expect(promptOnceStub).to.be.not.called;
+        expect(nock.isDone()).to.be.true;
       });
     });
 
     describe("promptAvailableProjectId", () => {
       it("should select project from list if it is able to list all projects", async () => {
-        apiRequestStub.onFirstCall().resolves({
-          body: {
+        nock(api.firebaseApiOrigin)
+          .get("/v1beta1/availableProjects")
+          .query({ pageSize: 100 })
+          .reply(200, {
             projectInfo: [TEST_CLOUD_PROJECT, ANOTHER_CLOUD_PROJECT],
-          },
-        });
+          });
         promptOnceStub.resolves("my-project-123");
 
         const projectId = await projectManager.promptAvailableProjectId();
@@ -201,15 +211,17 @@ describe("Project management", () => {
         expect(projectId).to.deep.equal("my-project-123");
         expect(promptOnceStub).to.be.calledOnce;
         expect(promptOnceStub.firstCall.args[0].type).to.equal("list");
+        expect(nock.isDone()).to.be.true;
       });
 
       it("should prompt project id if it is not able to list all projects", async () => {
-        apiRequestStub.onFirstCall().resolves({
-          body: {
+        nock(api.firebaseApiOrigin)
+          .get("/v1beta1/availableProjects")
+          .query({ pageSize: 100 })
+          .reply(200, {
             projectInfo: [TEST_CLOUD_PROJECT, ANOTHER_CLOUD_PROJECT],
             nextPageToken: "token",
-          },
-        });
+          });
         promptOnceStub.resolves("my-project-123");
 
         const projectId = await projectManager.promptAvailableProjectId();
@@ -217,10 +229,16 @@ describe("Project management", () => {
         expect(projectId).to.deep.equal("my-project-123");
         expect(promptOnceStub).to.be.calledOnce;
         expect(promptOnceStub.firstCall.args[0].type).to.equal("input");
+        expect(nock.isDone()).to.be.true;
       });
 
       it("should throw if there's no project", async () => {
-        apiRequestStub.onFirstCall().resolves({ body: { projectInfo: [] } });
+        nock(api.firebaseApiOrigin)
+          .get("/v1beta1/availableProjects")
+          .query({ pageSize: 100 })
+          .reply(200, {
+            projectInfo: [],
+          });
 
         let err;
         try {
@@ -233,6 +251,7 @@ describe("Project management", () => {
           "There are no available Google Cloud projects to add Firebase services."
         );
         expect(promptOnceStub).to.be.not.called;
+        expect(nock.isDone()).to.be.true;
       });
     });
   });
@@ -422,64 +441,55 @@ describe("Project management", () => {
       it("should resolve with a project page if it succeeds (no input token)", async () => {
         const pageSize = 10;
         const expectedProjectList = generateCloudProjectList(pageSize);
-        apiRequestStub.onFirstCall().resolves({
-          body: { projectInfo: expectedProjectList, nextPageToken: NEXT_PAGE_TOKEN },
-        });
+        nock(api.firebaseApiOrigin)
+          .get("/v1beta1/availableProjects")
+          .query({ pageSize })
+          .reply(200, { projectInfo: expectedProjectList, nextPageToken: NEXT_PAGE_TOKEN });
 
         const projectPage = await projectManager.getAvailableCloudProjectPage(pageSize);
 
         expect(projectPage.projects).to.deep.equal(expectedProjectList);
         expect(projectPage.nextPageToken).to.equal(NEXT_PAGE_TOKEN);
-        expect(apiRequestStub).to.be.calledOnceWith(
-          "GET",
-          "/v1beta1/availableProjects?pageSize=10",
-          {
-            auth: true,
-            origin: api.firebaseApiOrigin,
-            timeout: 30000,
-          }
-        );
+        expect(nock.isDone()).to.be.true;
       });
 
       it("should resolve with a project page if it succeeds (with input token)", async () => {
         const pageSize = 10;
         const expectedProjectList = generateCloudProjectList(pageSize);
-        apiRequestStub.onFirstCall().resolves({
-          body: { projectInfo: expectedProjectList, nextPageToken: NEXT_PAGE_TOKEN },
-        });
+        nock(api.firebaseApiOrigin)
+          .get("/v1beta1/availableProjects")
+          .query({ pageSize, pageToken: PAGE_TOKEN })
+          .reply(200, { projectInfo: expectedProjectList, nextPageToken: NEXT_PAGE_TOKEN });
 
         const projectPage = await projectManager.getAvailableCloudProjectPage(pageSize, PAGE_TOKEN);
 
         expect(projectPage.projects).to.deep.equal(expectedProjectList);
         expect(projectPage.nextPageToken).to.equal(NEXT_PAGE_TOKEN);
-        expect(apiRequestStub).to.be.calledOnceWith(
-          "GET",
-          `/v1beta1/availableProjects?pageSize=10&pageToken=${PAGE_TOKEN}`
-        );
+        expect(nock.isDone()).to.be.true;
       });
 
       it("should resolve with a project page if it succeeds with no next page token", async () => {
         const pageSize = 10;
         const projectCounts = 5;
         const expectedProjectList = generateCloudProjectList(projectCounts);
-        apiRequestStub.onFirstCall().resolves({
-          body: { projectInfo: expectedProjectList },
-        });
+        nock(api.firebaseApiOrigin)
+          .get("/v1beta1/availableProjects")
+          .query({ pageSize })
+          .reply(200, { projectInfo: expectedProjectList });
 
         const projectPage = await projectManager.getAvailableCloudProjectPage(pageSize);
 
         expect(projectPage.projects).to.deep.equal(expectedProjectList);
         expect(projectPage.nextPageToken).to.be.undefined;
-        expect(apiRequestStub).to.be.calledOnceWith(
-          "GET",
-          "/v1beta1/availableProjects?pageSize=10"
-        );
+        expect(nock.isDone()).to.be.true;
       });
 
       it("should reject if the api call fails", async () => {
         const pageSize = 100;
-        const expectedError = new Error("HTTP Error 404: Not Found");
-        apiRequestStub.onFirstCall().rejects(expectedError);
+        nock(api.firebaseApiOrigin)
+          .get("/v1beta1/availableProjects")
+          .query({ pageSize, pageToken: PAGE_TOKEN })
+          .reply(404, { error: "Not Found" });
 
         let err;
         try {
@@ -491,11 +501,8 @@ describe("Project management", () => {
         expect(err.message).to.equal(
           "Failed to list available Google Cloud Platform projects. See firebase-debug.log for more info."
         );
-        expect(err.original).to.equal(expectedError);
-        expect(apiRequestStub).to.be.calledOnceWith(
-          "GET",
-          `/v1beta1/availableProjects?pageSize=100&pageToken=${PAGE_TOKEN}`
-        );
+        expect(err.original.toString()).to.contain("Not Found");
+        expect(nock.isDone()).to.be.true;
       });
     });
 
@@ -503,57 +510,55 @@ describe("Project management", () => {
       it("should resolve with a project page if it succeeds (no input token)", async () => {
         const pageSize = 10;
         const expectedProjectList = generateFirebaseProjectList(pageSize);
-        apiRequestStub.onFirstCall().resolves({
-          body: { results: expectedProjectList, nextPageToken: NEXT_PAGE_TOKEN },
-        });
+        nock(api.firebaseApiOrigin)
+          .get("/v1beta1/projects")
+          .query({ pageSize })
+          .reply(200, { results: expectedProjectList, nextPageToken: NEXT_PAGE_TOKEN });
 
         const projectPage = await projectManager.getFirebaseProjectPage(pageSize);
 
         expect(projectPage.projects).to.deep.equal(expectedProjectList);
         expect(projectPage.nextPageToken).to.equal(NEXT_PAGE_TOKEN);
-        expect(apiRequestStub).to.be.calledOnceWith("GET", "/v1beta1/projects?pageSize=10", {
-          auth: true,
-          origin: api.firebaseApiOrigin,
-          timeout: 30000,
-        });
+        expect(nock.isDone()).to.be.true;
       });
 
       it("should resolve with a project page if it succeeds (with input token)", async () => {
         const pageSize = 10;
         const expectedProjectList = generateFirebaseProjectList(pageSize);
-        apiRequestStub.onFirstCall().resolves({
-          body: { results: expectedProjectList, nextPageToken: NEXT_PAGE_TOKEN },
-        });
+        nock(api.firebaseApiOrigin)
+          .get("/v1beta1/projects")
+          .query({ pageSize, pageToken: PAGE_TOKEN })
+          .reply(200, { results: expectedProjectList, nextPageToken: NEXT_PAGE_TOKEN });
 
         const projectPage = await projectManager.getFirebaseProjectPage(pageSize, PAGE_TOKEN);
 
         expect(projectPage.projects).to.deep.equal(expectedProjectList);
         expect(projectPage.nextPageToken).to.equal(NEXT_PAGE_TOKEN);
-        expect(apiRequestStub).to.be.calledOnceWith(
-          "GET",
-          `/v1beta1/projects?pageSize=10&pageToken=${PAGE_TOKEN}`
-        );
+        expect(nock.isDone()).to.be.true;
       });
 
       it("should resolve with a project page if it succeeds with no next page token", async () => {
         const pageSize = 10;
         const projectCounts = 5;
         const expectedProjectList = generateFirebaseProjectList(projectCounts);
-        apiRequestStub.onFirstCall().resolves({
-          body: { results: expectedProjectList },
-        });
+        nock(api.firebaseApiOrigin)
+          .get("/v1beta1/projects")
+          .query({ pageSize })
+          .reply(200, { results: expectedProjectList });
 
         const projectPage = await projectManager.getFirebaseProjectPage(pageSize);
 
         expect(projectPage.projects).to.deep.equal(expectedProjectList);
         expect(projectPage.nextPageToken).to.be.undefined;
-        expect(apiRequestStub).to.be.calledOnceWith("GET", "/v1beta1/projects?pageSize=10");
+        expect(nock.isDone()).to.be.true;
       });
 
       it("should reject if the api call fails", async () => {
         const pageSize = 100;
-        const expectedError = new Error("HTTP Error 404: Not Found");
-        apiRequestStub.onFirstCall().rejects(expectedError);
+        nock(api.firebaseApiOrigin)
+          .get("/v1beta1/projects")
+          .query({ pageSize, pageToken: PAGE_TOKEN })
+          .reply(404, { error: "Not Found" });
 
         let err;
         try {
@@ -565,11 +570,8 @@ describe("Project management", () => {
         expect(err.message).to.equal(
           "Failed to list Firebase projects. See firebase-debug.log for more info."
         );
-        expect(err.original).to.equal(expectedError);
-        expect(apiRequestStub).to.be.calledOnceWith(
-          "GET",
-          `/v1beta1/projects?pageSize=100&pageToken=${PAGE_TOKEN}`
-        );
+        expect(err.original.toString()).to.contain("Not Found");
+        expect(nock.isDone()).to.be.true;
       });
     });
 
@@ -577,18 +579,15 @@ describe("Project management", () => {
       it("should resolve with project list if it succeeds with only 1 api call", async () => {
         const projectCounts = 10;
         const expectedProjectList = generateFirebaseProjectList(projectCounts);
-        apiRequestStub.onFirstCall().resolves({
-          body: { results: expectedProjectList },
-        });
+        nock(api.firebaseApiOrigin)
+          .get("/v1beta1/projects")
+          .query({ pageSize: 1000 })
+          .reply(200, { results: expectedProjectList });
 
         const projects = await projectManager.listFirebaseProjects();
 
         expect(projects).to.deep.equal(expectedProjectList);
-        expect(apiRequestStub).to.be.calledOnceWith("GET", "/v1beta1/projects?pageSize=1000", {
-          auth: true,
-          origin: api.firebaseApiOrigin,
-          timeout: 30000,
-        });
+        expect(nock.isDone()).to.be.true;
       });
 
       it("should concatenate pages to get project list if it succeeds with multiple api calls", async () => {
@@ -596,31 +595,28 @@ describe("Project management", () => {
         const pageSize = 5;
         const nextPageToken = "next-page-token";
         const expectedProjectList = generateFirebaseProjectList(projectCounts);
-        apiRequestStub
-          .onFirstCall()
-          .resolves({
-            body: { results: expectedProjectList.slice(0, pageSize), nextPageToken },
-          })
-          .onSecondCall()
-          .resolves({ body: { results: expectedProjectList.slice(pageSize, projectCounts) } });
+        nock(api.firebaseApiOrigin)
+          .get("/v1beta1/projects")
+          .query({ pageSize: 5 })
+          .reply(200, { results: expectedProjectList.slice(0, pageSize), nextPageToken });
+        nock(api.firebaseApiOrigin)
+          .get("/v1beta1/projects")
+          .query({ pageSize: 5, pageToken: nextPageToken })
+          .reply(200, {
+            results: expectedProjectList.slice(pageSize, projectCounts),
+          });
 
         const projects = await projectManager.listFirebaseProjects(pageSize);
 
         expect(projects).to.deep.equal(expectedProjectList);
-        expect(apiRequestStub).to.be.calledTwice;
-        expect(apiRequestStub.firstCall).to.be.calledWith(
-          "GET",
-          `/v1beta1/projects?pageSize=${pageSize}`
-        );
-        expect(apiRequestStub.secondCall).to.be.calledWith(
-          "GET",
-          `/v1beta1/projects?pageSize=${pageSize}&pageToken=${nextPageToken}`
-        );
+        expect(nock.isDone()).to.be.true;
       });
 
       it("should reject if the first api call fails", async () => {
-        const expectedError = new Error("HTTP Error 404: Not Found");
-        apiRequestStub.onFirstCall().rejects(expectedError);
+        nock(api.firebaseApiOrigin)
+          .get("/v1beta1/projects")
+          .query({ pageSize: 1000 })
+          .reply(404, { error: "Not Found" });
 
         let err;
         try {
@@ -632,20 +628,23 @@ describe("Project management", () => {
         expect(err.message).to.equal(
           "Failed to list Firebase projects. See firebase-debug.log for more info."
         );
-        expect(err.original).to.equal(expectedError);
-        expect(apiRequestStub).to.be.calledOnceWith("GET", "/v1beta1/projects?pageSize=1000");
+        expect(err.original.toString()).to.contain("Not Found");
+        expect(nock.isDone()).to.be.true;
       });
 
-      it("should reject if error is thrown in subsequence api call", async () => {
+      it("should reject if error is thrown in subsequent api call", async () => {
         const projectCounts = 10;
         const pageSize = 5;
         const nextPageToken = "next-page-token";
         const expectedProjectList = generateFirebaseProjectList(projectCounts);
-        const expectedError = new Error("HTTP Error 400: unexpected error");
-        apiRequestStub.onFirstCall().resolves({
-          body: { results: expectedProjectList.slice(0, pageSize), nextPageToken },
-        });
-        apiRequestStub.onSecondCall().rejects(expectedError);
+        nock(api.firebaseApiOrigin)
+          .get("/v1beta1/projects")
+          .query({ pageSize: 5 })
+          .reply(200, { results: expectedProjectList.slice(0, pageSize), nextPageToken });
+        nock(api.firebaseApiOrigin)
+          .get("/v1beta1/projects")
+          .query({ pageSize: 5, pageToken: nextPageToken })
+          .reply(404, { error: "Not Found" });
 
         let err;
         try {
@@ -657,15 +656,8 @@ describe("Project management", () => {
         expect(err.message).to.equal(
           "Failed to list Firebase projects. See firebase-debug.log for more info."
         );
-        expect(err.original).to.equal(expectedError);
-        expect(apiRequestStub.firstCall).to.be.calledWith(
-          "GET",
-          `/v1beta1/projects?pageSize=${pageSize}`
-        );
-        expect(apiRequestStub.secondCall).to.be.calledWith(
-          "GET",
-          `/v1beta1/projects?pageSize=${pageSize}&pageToken=${nextPageToken}`
-        );
+        expect(err.original.toString()).to.contain("Not Found");
+        expect(nock.isDone()).to.be.true;
       });
     });
 
@@ -683,21 +675,20 @@ describe("Project management", () => {
             locationId: LOCATION_ID,
           },
         };
-        apiRequestStub.onFirstCall().resolves({ body: expectedProjectInfo });
+        nock(api.firebaseApiOrigin)
+          .get(`/v1beta1/projects/${PROJECT_ID}`)
+          .reply(200, expectedProjectInfo);
 
         const projects = await projectManager.getFirebaseProject(PROJECT_ID);
 
         expect(projects).to.deep.equal(expectedProjectInfo);
-        expect(apiRequestStub).to.be.calledOnceWith("GET", `/v1beta1/projects/${PROJECT_ID}`, {
-          auth: true,
-          origin: api.firebaseApiOrigin,
-          timeout: 30000,
-        });
+        expect(nock.isDone()).to.be.true;
       });
 
       it("should reject if the api call fails", async () => {
-        const expectedError = new Error("HTTP Error 404: Not Found");
-        apiRequestStub.onFirstCall().rejects(expectedError);
+        nock(api.firebaseApiOrigin)
+          .get(`/v1beta1/projects/${PROJECT_ID}`)
+          .reply(404, { error: "Not Found" });
 
         let err;
         try {
@@ -710,12 +701,8 @@ describe("Project management", () => {
           `Failed to get Firebase project ${PROJECT_ID}. ` +
             "Please make sure the project exists and your account has permission to access it."
         );
-        expect(err.original).to.equal(expectedError);
-        expect(apiRequestStub).to.be.calledOnceWith("GET", `/v1beta1/projects/${PROJECT_ID}`, {
-          auth: true,
-          origin: api.firebaseApiOrigin,
-          timeout: 30000,
-        });
+        expect(err.original.toString()).to.contain("Not Found");
+        expect(nock.isDone()).to.be.true;
       });
     });
   });

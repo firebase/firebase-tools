@@ -4,14 +4,14 @@ var _ = require("lodash");
 var clc = require("cli-color");
 
 var { Command } = require("../command");
-var logger = require("../logger");
+const { logger } = require("../logger");
 var requireConfig = require("../requireConfig");
 var utils = require("../utils");
 
 module.exports = new Command("target:apply <type> <name> <resources...>")
   .description("apply a deploy target to a resource")
   .before(requireConfig)
-  .action(function(type, name, resources, options) {
+  .action(function (type, name, resources, options) {
     if (!options.project) {
       return utils.reject(
         "Must have an active project to set deploy targets. Try " + clc.bold("firebase use --add")
@@ -23,7 +23,7 @@ module.exports = new Command("target:apply <type> <name> <resources...>")
     utils.logSuccess(
       "Applied " + type + " target " + clc.bold(name) + " to " + clc.bold(resources.join(", "))
     );
-    _.forEach(changes, function(change) {
+    _.forEach(changes, function (change) {
       utils.logWarning(
         "Previous target " + clc.bold(change.target) + " removed from " + clc.bold(change.resource)
       );

@@ -2,9 +2,10 @@ import * as fs from "fs-extra";
 import * as path from "path";
 import * as yaml from "js-yaml";
 
+import { fileExistsSync } from "../fsutils";
 import { FirebaseError } from "../error";
 import { ExtensionSpec } from "./extensionsApi";
-import * as logger from "../logger";
+import { logger } from "../logger";
 
 const EXTENSIONS_SPEC_FILE = "extension.yaml";
 const EXTENSIONS_PREINSTALL_FILE = "PREINSTALL.md";
@@ -22,6 +23,24 @@ export async function getLocalExtensionSpec(directory: string): Promise<Extensio
     logger.debug(`No PREINSTALL.md found in directory ${directory}.`);
   }
   return spec;
+}
+
+/**
+ * Climbs directories loking for an extension.yaml file, and return the first
+ * directory that contains one. Throws an error if none is found.
+ * @param directory the directory to start from searching from.
+ */
+export function findExtensionYaml(directory: string): string {
+  while (!fileExistsSync(path.resolve(directory, EXTENSIONS_SPEC_FILE))) {
+    const parentDir = path.dirname(directory);
+    if (parentDir === directory) {
+      throw new FirebaseError(
+        "Couldn't find an extension.yaml file. Check that you are in the root directory of your extension."
+      );
+    }
+    directory = parentDir;
+  }
+  return directory;
 }
 
 /**

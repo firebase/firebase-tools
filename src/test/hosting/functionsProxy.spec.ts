@@ -50,9 +50,7 @@ describe("functionsProxy", () => {
   });
 
   it("should resolve a function that returns middleware that proxies to a local version", async () => {
-    nock("http://localhost:7778")
-      .get("/project-foo/us-central1/bar/")
-      .reply(200, "local version");
+    nock("http://localhost:7778").get("/project-foo/us-central1/bar/").reply(200, "local version");
 
     const options = cloneDeep(fakeOptions);
     options.targets = ["functions"];
@@ -65,6 +63,48 @@ describe("functionsProxy", () => {
       .get("/")
       .expect(200, "local version")
       .then(() => {
+        expect(spyMw.calledOnce).to.be.true;
+      });
+  });
+
+  it("should maintain the location header as returned by the function", async () => {
+    nock("http://localhost:7778")
+      .get("/project-foo/us-central1/bar/")
+      .reply(301, "", { location: "/over-here" });
+
+    const options = cloneDeep(fakeOptions);
+    options.targets = ["functions"];
+
+    const mwGenerator = functionsProxy(options);
+    const mw = await mwGenerator(fakeRewrite);
+    const spyMw = sinon.spy(mw);
+
+    return supertest(spyMw)
+      .get("/")
+      .expect(301)
+      .then((res) => {
+        expect(res.header["location"]).to.equal("/over-here");
+        expect(spyMw.calledOnce).to.be.true;
+      });
+  });
+
+  it("should allow location headers that wouldn't redirect to itself", async () => {
+    nock("http://localhost:7778")
+      .get("/project-foo/us-central1/bar/")
+      .reply(301, "", { location: "https://example.com/foo" });
+
+    const options = cloneDeep(fakeOptions);
+    options.targets = ["functions"];
+
+    const mwGenerator = functionsProxy(options);
+    const mw = await mwGenerator(fakeRewrite);
+    const spyMw = sinon.spy(mw);
+
+    return supertest(spyMw)
+      .get("/")
+      .expect(301)
+      .then((res) => {
+        expect(res.header["location"]).to.equal("https://example.com/foo");
         expect(spyMw.calledOnce).to.be.true;
       });
   });
@@ -128,6 +168,31 @@ describe("functionsProxy", () => {
       .get("/")
       .expect(301, "redirected")
       .then(() => {
+        expect(spyMw.calledOnce).to.be.true;
+      });
+  });
+
+  it("should pass through multiple set-cookie headers", async () => {
+    nock("http://localhost:7778")
+      .get("/project-foo/us-central1/bar/")
+      .reply(200, "crisp", {
+        "Set-Cookie": ["foo=bar", "bar=zap"],
+      });
+
+    const options = cloneDeep(fakeOptions);
+    options.targets = ["functions"];
+
+    const mwGenerator = functionsProxy(options);
+    const mw = await mwGenerator(fakeRewrite);
+    const spyMw = sinon.spy(mw);
+
+    return supertest(spyMw)
+      .get("/")
+      .expect("crisp")
+      .then((res) => {
+        expect(res.header["set-cookie"]).to.have.length(2);
+        expect(res.header["set-cookie"]).to.include("foo=bar");
+        expect(res.header["set-cookie"]).to.include("bar=zap");
         expect(spyMw.calledOnce).to.be.true;
       });
   });

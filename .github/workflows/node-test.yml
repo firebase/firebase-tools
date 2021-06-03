@@ -14,15 +14,17 @@ jobs:
     strategy:
       matrix:
         node-version:
-          - 8.x
+          - 10.x
     steps:
-      - uses: actions/checkout@v1
-      - uses: actions/setup-node@v1
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node-version }}
 
       - name: Cache npm
-        uses: actions/cache@v1
+        uses: actions/cache@v2
         with:
           path: ~/.npm
           key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/package-lock.json') }}
@@ -35,18 +37,17 @@ jobs:
     strategy:
       matrix:
         node-version:
-          - 8.x
           - 10.x
           - 12.x
           - 14.x
     steps:
-      - uses: actions/checkout@v1
-      - uses: actions/setup-node@v1
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node-version }}
 
       - name: Cache npm
-        uses: actions/cache@v1
+        uses: actions/cache@v2
         with:
           path: ~/.npm
           key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/package-lock.json') }}
@@ -60,6 +61,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
+      FIREBASE_CLI_PREVIEWS: none
       FIREBASE_EMULATORS_PATH: ${{ github.workspace }}/emulator-cache
       COMMIT_SHA: ${{ github.sha }}
       CI_JOB_ID: ${{ github.action }}
@@ -70,27 +72,28 @@ jobs:
       fail-fast: false
       matrix:
         node-version:
-          - 8.x
-          - 12.x
+          - 10.x
         script:
           - npm run test:hosting
           - npm run test:client-integration
+          - npm run test:emulator
           - npm run test:extensions-emulator
           - npm run test:triggers-end-to-end
+          - npm run test:storage-emulator-integration
     steps:
-      - uses: actions/checkout@v1
-      - uses: actions/setup-node@v1
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
         with:
-          node-version: ${{ matrix.node_version }}
+          node-version: ${{ matrix.node-version }}
 
       - name: Cache npm
-        uses: actions/cache@v1
+        uses: actions/cache@v2
         with:
           path: ~/.npm
           key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/package-lock.json') }}
 
       - name: Cache firebase emulators
-        uses: actions/cache@v1
+        uses: actions/cache@v2
         with:
           path: ${{ env.FIREBASE_EMULATORS_PATH }}
           key: ${{ runner.os }}-firebase-emulators-${{ hashFiles('emulator-cache/**') }}
@@ -99,8 +102,6 @@ jobs:
       - run: npm ci
       - run: echo ${{ secrets.service_account_json_base64 }} | base64 -d > ./scripts/service-account.json
       - run: ${{ matrix.script }}
-        env:
-          NODE_VERSION: ${{ matrix.node-version }}
 
       - name: Print debug logs
         if: failure()
@@ -111,12 +112,13 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [12.x]
+        node-version:
+          - 12.x
 
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node-version }}
       - run: npm install --package-lock-only

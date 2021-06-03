@@ -1,6 +1,8 @@
 import { EmulatorServer } from "../emulator/emulatorServer";
 import * as _ from "lodash";
-import * as logger from "../logger";
+import { logger } from "../logger";
+
+const { FunctionsServer } = require("./functions");
 
 const TARGETS: {
   [key: string]:
@@ -8,7 +10,7 @@ const TARGETS: {
     | { start: (o: any) => void; stop: (o: any) => void; connect: () => void };
 } = {
   hosting: require("./hosting"),
-  functions: require("./functions"),
+  functions: new FunctionsServer(),
 };
 
 /**

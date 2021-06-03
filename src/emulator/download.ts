@@ -8,15 +8,13 @@ import * as unzipper from "unzipper";
 
 import { Client } from "../apiv2";
 import { EmulatorLogger } from "./emulatorLogger";
-import { Emulators, EmulatorDownloadDetails } from "./types";
+import { EmulatorDownloadDetails, DownloadableEmulators } from "./types";
 import { FirebaseError } from "../error";
 import * as downloadableEmulators from "./downloadableEmulators";
 
 tmp.setGracefulCleanup();
 
-type DownloadableEmulator = Emulators.FIRESTORE | Emulators.DATABASE | Emulators.PUBSUB;
-
-module.exports = async (name: DownloadableEmulator) => {
+export async function downloadEmulator(name: DownloadableEmulators): Promise<void> {
   const emulator = downloadableEmulators.getDownloadDetails(name);
   EmulatorLogger.forEmulator(name).logLabeled(
     "BULLET",
@@ -45,7 +43,7 @@ module.exports = async (name: DownloadableEmulator) => {
   fs.chmodSync(executablePath, 0o755);
 
   removeOldFiles(name, emulator);
-};
+}
 
 function unzip(zipPath: string, unzipDir: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -57,7 +55,7 @@ function unzip(zipPath: string, unzipDir: string): Promise<void> {
 }
 
 function removeOldFiles(
-  name: DownloadableEmulator,
+  name: DownloadableEmulators,
   emulator: EmulatorDownloadDetails,
   removeAllVersions = false
 ): void {
@@ -102,6 +100,7 @@ async function downloadToTmp(remoteUrl: string): Promise<string> {
   const res = await c.request<void, NodeJS.ReadableStream>({
     method: "GET",
     path: u.pathname,
+    queryParams: u.searchParams,
     responseType: "stream",
     resolveOnHTTPError: true,
   });

@@ -7,7 +7,7 @@ import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
  * @param context The deploy context.
  * @param options The CLI options object.
  */
-export default async function(context: any, options: any): Promise<void> {
+export default async function (context: any, options: any): Promise<void> {
   const rules = get(context, "storage.rules", []);
   const rulesDeploy: RulesDeploy = get(context, "storage.rulesDeploy");
   if (!rules.length || !rulesDeploy) {

@@ -4,36 +4,42 @@ import * as marked from "marked";
 import * as semver from "semver";
 import * as api from "../api";
 import { FirebaseError } from "../error";
-import { confirmUpdateWarning } from "./updateHelper";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { promptOnce } from "../prompt";
 
 const EXTENSIONS_REGISTRY_ENDPOINT = "/extensions.json";
-const AUDIENCE_WARNING_MESSAGES: { [key: string]: string } = {
-  "open-alpha": marked(
-    `${clc.bold("Important")}: This extension is part of the ${clc.bold(
-      "preliminary-release program"
-    )} for extensions.\n Its functionality might change in backward-incompatible ways before its official release. Learn more: https://github.com/firebase/extensions/tree/master/.preliminary-release-extensions`
-  ),
-  "closed-alpha": marked(
-    `${clc.yellow.bold("Important")}: This extension is part of the ${clc.bold(
-      "Firebase Alpha program"
-    )}.\n This extension is strictly confidential, and its functionality might change in backward-incompatible ways before its official, public release. Learn more: https://dev-partners.googlesource.com/samples/firebase/extensions-alpha/+/refs/heads/master/README.md`
-  ),
-};
 
 export interface RegistryEntry {
   icons?: { [key: string]: string };
   labels: { [key: string]: string };
   versions: { [key: string]: string };
   updateWarnings?: { [key: string]: UpdateWarning[] };
-  audience?: string;
+  publisher: string;
 }
 
 export interface UpdateWarning {
   from: string;
   description: string;
   action?: string;
+}
+
+/**
+ * Displays an update warning as markdown, and prompts the user for confirmation.
+ * @param updateWarning The update warning to display and prompt for.
+ */
+export async function confirmUpdateWarning(updateWarning: UpdateWarning): Promise<void> {
+  logger.info(marked(updateWarning.description));
+  if (updateWarning.action) {
+    logger.info(marked(updateWarning.action));
+  }
+  const continueUpdate = await promptOnce({
+    type: "confirm",
+    message: "Do you wish to continue with this update?",
+    default: false,
+  });
+  if (!continueUpdate) {
+    throw new FirebaseError(`Update cancelled.`, { exit: 2 });
+  }
 }
 
 /**
@@ -69,7 +75,7 @@ export function isOfficialSource(registryEntry: RegistryEntry, sourceUrl: string
 }
 
 /**
- * Looks up and returns a entry from the official extensions registry.
+ * Looks up and returns a entry from the published extensions registry.
  * @param name the name of the extension.
  */
 export async function resolveRegistryEntry(name: string): Promise<RegistryEntry> {
@@ -89,11 +95,13 @@ export async function resolveRegistryEntry(name: string): Promise<RegistryEntry>
 export function getTargetVersion(registryEntry: RegistryEntry, versionOrLabel?: string): string {
   // The version to search for when a user passes a version x.y.z or no version.
   const seekVersion = versionOrLabel || "latest";
-
   // The version to search for when a user passes a label like 'latest'.
   const versionFromLabel = _.get(registryEntry, ["labels", seekVersion]);
-
   return versionFromLabel || seekVersion;
+}
+
+export function getMinRequiredVersion(registryEntry: RegistryEntry): string {
+  return _.get(registryEntry, ["labels", "minRequired"]);
 }
 
 /**
@@ -114,7 +122,7 @@ export async function promptForUpdateWarnings(
         const updateWarnings = registryEntry.updateWarnings[targetRange];
         for (const updateWarning of updateWarnings) {
           if (semver.satisfies(startVersion, updateWarning.from)) {
-            await confirmUpdateWarning(updateWarning);
+            await module.exports.confirmUpdateWarning(updateWarning);
             break;
           }
         }
@@ -125,24 +133,7 @@ export async function promptForUpdateWarnings(
 }
 
 /**
- * Checks the audience field of a RegistryEntry, displays a warning text
- * for closed and open alpha extensions, and prompts the user to accept.
- */
-export async function promptForAudienceConsent(registryEntry: RegistryEntry): Promise<boolean> {
-  let consent = true;
-  if (registryEntry.audience && AUDIENCE_WARNING_MESSAGES[registryEntry.audience]) {
-    logger.info(AUDIENCE_WARNING_MESSAGES[registryEntry.audience]);
-    consent = await promptOnce({
-      type: "confirm",
-      message: "Do you acknowledge the status of this extension?",
-      default: true,
-    });
-  }
-  return consent;
-}
-
-/**
- * Fetches the official extensions registry.
+ * Fetches the published extensions registry.
  * @param onlyFeatured If true, only return the featured extensions.
  */
 export async function getExtensionRegistry(
@@ -160,4 +151,26 @@ export async function getExtensionRegistry(
     });
   }
   return extensions;
+}
+
+/**
+ * Fetches a list all publishers that appear in the v1 registry.
+ */
+export async function getTrustedPublishers(): Promise<string[]> {
+  let registry: { [key: string]: RegistryEntry };
+  try {
+    registry = await getExtensionRegistry();
+  } catch (err) {
+    logger.debug(
+      "Couldn't get extensions registry, assuming no trusted publishers except Firebase."
+    );
+    return ["firebase "];
+  }
+  const publisherIds = new Set<string>();
+
+  // eslint-disable-next-line guard-for-in
+  for (const entry in registry) {
+    publisherIds.add(registry[entry].publisher);
+  }
+  return Array.from(publisherIds);
 }

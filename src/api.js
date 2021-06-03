@@ -7,7 +7,7 @@ var url = require("url");
 
 var { Constants } = require("./emulator/constants");
 var { FirebaseError } = require("./error");
-var logger = require("./logger");
+const { logger } = require("./logger");
 var responseToError = require("./responseToError");
 var scopes = require("./scopes");
 var utils = require("./utils");
@@ -17,7 +17,7 @@ var accessToken;
 var refreshToken;
 var commandScopes;
 
-var _request = function(options, logOptions) {
+var _request = function (options, logOptions) {
   logOptions = logOptions || {};
   var qsLog = "";
   var bodyLog = "<request body omitted>";
@@ -35,8 +35,8 @@ var _request = function(options, logOptions) {
   options.headers = options.headers || {};
   options.headers["connection"] = "keep-alive";
 
-  return new Promise(function(resolve, reject) {
-    var req = request(options, function(err, response, body) {
+  return new Promise(function (resolve, reject) {
+    var req = request(options, function (err, response, body) {
       if (err) {
         return reject(
           new FirebaseError("Server Error. " + err.message, {
@@ -51,7 +51,7 @@ var _request = function(options, logOptions) {
       if (response.statusCode >= 400 && !logOptions.skipResponseBody) {
         logger.debug("<<< HTTP RESPONSE BODY", response.body);
         if (!options.resolveOnHTTPError) {
-          return reject(responseToError(response, body, options));
+          return reject(responseToError(response, body));
         }
       }
 
@@ -64,7 +64,7 @@ var _request = function(options, logOptions) {
 
     if (_.size(options.files) > 0) {
       var form = req.form();
-      _.forEach(options.files, function(details, param) {
+      _.forEach(options.files, function (details, param) {
         form.append(param, details.stream, {
           knownLength: details.knownLength,
           filename: details.filename,
@@ -75,7 +75,7 @@ var _request = function(options, logOptions) {
   });
 };
 
-var _appendQueryData = function(path, data) {
+var _appendQueryData = function (path, data) {
   if (data && _.size(data) > 0) {
     path += _.includes(path, "?") ? "&" : "?";
     path += querystring.stringify(data);
@@ -110,6 +110,14 @@ var api = {
     "FIREBASE_DEPLOY_URL",
     utils.envOverride("FIREBASE_UPLOAD_URL", "https://deploy.firebase.com")
   ),
+  dynamicLinksOrigin: utils.envOverride(
+    "FIREBASE_DYNAMIC_LINKS_URL",
+    "https://firebasedynamiclinks.googleapis.com"
+  ),
+  dynamicLinksKey: utils.envOverride(
+    "FIREBASE_DYNAMIC_LINKS_KEY",
+    "AIzaSyB6PtY5vuiSB8MNgt20mQffkOlunZnHYiQ"
+  ),
   firebaseApiOrigin: utils.envOverride("FIREBASE_API_URL", "https://firebase.googleapis.com"),
   firebaseExtensionsRegistryOrigin: utils.envOverride(
     "FIREBASE_EXT_REGISTRY_ORIGIN",
@@ -131,7 +139,13 @@ var api = {
     "FIREBASE_FUNCTIONS_URL",
     "https://cloudfunctions.googleapis.com"
   ),
+  functionsV2Origin: utils.envOverride(
+    "FIREBASE_FUNCTIONS_V2_URL",
+    "https://cloudfunctions.googleapis.com"
+  ),
+  runOrigin: utils.envOverride("CLOUD_RUN_URL", "https://run.googleapis.com"),
   functionsUploadRegion: utils.envOverride("FIREBASE_FUNCTIONS_UPLOAD_REGION", "us-central1"),
+  functionsDefaultRegion: utils.envOverride("FIREBASE_FUNCTIONS_DEFAULT_REGION", "us-central1"),
   cloudschedulerOrigin: utils.envOverride(
     "FIREBASE_CLOUDSCHEDULER_URL",
     "https://cloudscheduler.googleapis.com"
@@ -194,16 +208,16 @@ var api = {
     "GITHUB_CLIENT_SECRET",
     "3330d14abc895d9a74d5f17cd7a00711fa2c5bf0"
   ),
-  setRefreshToken: function(token) {
+  setRefreshToken: function (token) {
     refreshToken = token;
   },
-  setAccessToken: function(token) {
+  setAccessToken: function (token) {
     accessToken = token;
   },
-  getScopes: function() {
+  getScopes: function () {
     return commandScopes;
   },
-  setScopes: function(s) {
+  setScopes: function (s) {
     commandScopes = _.uniq(
       _.flatten(
         [
@@ -216,13 +230,13 @@ var api = {
     );
     logger.debug("> command requires scopes:", JSON.stringify(commandScopes));
   },
-  getAccessToken: function() {
+  getAccessToken: function () {
     // Runtime fetch of Auth singleton to prevent circular module dependencies
     return accessToken
       ? Promise.resolve({ access_token: accessToken })
       : require("./auth").getAccessToken(refreshToken, commandScopes);
   },
-  addRequestHeaders: function(reqOptions, options) {
+  addRequestHeaders: function (reqOptions, options) {
     _.set(reqOptions, ["headers", "User-Agent"], "FirebaseCLI/" + CLI_VERSION);
     _.set(reqOptions, ["headers", "X-Client-Version"], "FirebaseCLI/" + CLI_VERSION);
 
@@ -240,12 +254,12 @@ var api = {
       ? api.getAccessToken()
       : Promise.resolve({ access_token: "owner" });
 
-    return getTokenPromise.then(function(result) {
+    return getTokenPromise.then(function (result) {
       _.set(reqOptions, "headers.authorization", "Bearer " + result.access_token);
       return reqOptions;
     });
   },
-  request: function(method, resource, options) {
+  request: function (method, resource, options) {
     options = _.extend(
       {
         data: {},
@@ -291,24 +305,24 @@ var api = {
     reqOptions.headers = options.headers;
     reqOptions.timeout = options.timeout;
 
-    var requestFunction = function() {
+    var requestFunction = function () {
       return _request(reqOptions, options.logOptions);
     };
 
     if (options.auth === true) {
-      requestFunction = function() {
-        return api.addRequestHeaders(reqOptions, options).then(function(reqOptionsWithToken) {
+      requestFunction = function () {
+        return api.addRequestHeaders(reqOptions, options).then(function (reqOptionsWithToken) {
           return _request(reqOptionsWithToken, options.logOptions);
         });
       };
     }
 
-    return requestFunction().catch(function(err) {
+    return requestFunction().catch(function (err) {
       if (
         options.retryCodes &&
         _.includes(options.retryCodes, _.get(err, "context.response.statusCode"))
       ) {
-        return new Promise(function(resolve) {
+        return new Promise(function (resolve) {
           setTimeout(resolve, 1000);
         }).then(requestFunction);
       }

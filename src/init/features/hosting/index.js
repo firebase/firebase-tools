@@ -3,10 +3,10 @@
 const clc = require("cli-color");
 const fs = require("fs");
 
-const api = require("../../../api");
-const logger = require("../../../logger");
-const { prompt } = require("../../../prompt");
+const { Client } = require("../../../apiv2");
 const { initGitHub } = require("./github");
+const { prompt } = require("../../../prompt");
+const { logger } = require("../../../logger");
 
 const INDEX_TEMPLATE = fs.readFileSync(
   __dirname + "/../../../../templates/init/hosting/index.html",
@@ -18,7 +18,7 @@ const MISSING_TEMPLATE = fs.readFileSync(
 );
 const DEFAULT_IGNORES = ["firebase.json", "**/.*", "**/node_modules/**"];
 
-module.exports = function(setup, config, options) {
+module.exports = function (setup, config, options) {
   setup.hosting = {};
 
   logger.info();
@@ -52,7 +52,7 @@ module.exports = function(setup, config, options) {
       default: false,
       message: "Set up automatic builds and deploys with GitHub?",
     },
-  ]).then(function() {
+  ]).then(function () {
     setup.config.hosting = {
       public: setup.hosting.public,
       ignore: DEFAULT_IGNORES,
@@ -68,19 +68,17 @@ module.exports = function(setup, config, options) {
     }
 
     return next
-      .then(function() {
-        return api.request("GET", "/firebasejs/releases.json", {
-          origin: "https://www.gstatic.com",
-          json: true,
-        });
+      .then(() => {
+        const c = new Client({ urlPrefix: "https://www.gstatic.com", auth: false });
+        return c.get("/firebasejs/releases.json");
       })
-      .then(function(response) {
+      .then((response) => {
         return config.askWriteProjectFile(
           setup.hosting.public + "/index.html",
           INDEX_TEMPLATE.replace(/{{VERSION}}/g, response.body.current.version)
         );
       })
-      .then(function() {
+      .then(() => {
         if (setup.hosting.github) {
           return initGitHub(setup, config, options);
         }

@@ -9,7 +9,7 @@ var _ = require("lodash");
 var { Command } = require("../command");
 var accountImporter = require("../accountImporter");
 var getProjectId = require("../getProjectId");
-var logger = require("../logger");
+const { logger } = require("../logger");
 var { requirePermissions } = require("../requirePermissions");
 var utils = require("../utils");
 
@@ -44,7 +44,7 @@ module.exports = new Command("auth:import [dataFile]")
       "MD5, SHA1, SHA256, SHA512, HMAC_MD5, HMAC_SHA1, HMAC_SHA256, HMAC_SHA512 support this flag."
   )
   .before(requirePermissions, ["firebaseauth.users.create", "firebaseauth.users.update"])
-  .action(function(dataFile, options) {
+  .action(function (dataFile, options) {
     var projectId = getProjectId(options);
     var checkRes = validateOptions(options);
     if (!checkRes.valid) {
@@ -63,15 +63,15 @@ module.exports = new Command("auth:import [dataFile]")
     var batches = [];
     var currentBatch = [];
     var counter = 0;
-    return new Promise(function(resolve, reject) {
+    return new Promise(function (resolve, reject) {
       var parser;
       if (dataFile.endsWith(".csv")) {
         parser = csv({ objectMode: true });
         parser
-          .on("data", function(line) {
+          .on("data", function (line) {
             counter++;
             var user = transArrayToUser(
-              line.map(function(str) {
+              line.map(function (str) {
                 // Ignore starting '|'' and trailing '|''
                 var newStr = str.trim().replace(/^["|'](.*)["|']$/, "$1");
                 return newStr === "" ? undefined : newStr;
@@ -88,7 +88,7 @@ module.exports = new Command("auth:import [dataFile]")
               currentBatch = [];
             }
           })
-          .on("end", function() {
+          .on("end", function () {
             if (currentBatch.length) {
               batches.push(currentBatch);
             }
@@ -98,7 +98,7 @@ module.exports = new Command("auth:import [dataFile]")
       } else {
         parser = jsonStream.parse(["users", { emitKey: true }]);
         parser
-          .on("data", function(pair) {
+          .on("data", function (pair) {
             counter++;
             var res = validateUserJson(pair.value);
             if (res.error) {
@@ -110,7 +110,7 @@ module.exports = new Command("auth:import [dataFile]")
               currentBatch = [];
             }
           })
-          .on("end", function() {
+          .on("end", function () {
             if (currentBatch.length) {
               batches.push(currentBatch);
             }
@@ -119,7 +119,7 @@ module.exports = new Command("auth:import [dataFile]")
         inStream.pipe(parser);
       }
     }).then(
-      function(userListArr) {
+      function (userListArr) {
         logger.debug(
           "Preparing to import",
           counter,
@@ -131,7 +131,7 @@ module.exports = new Command("auth:import [dataFile]")
           return serialImportUsers(projectId, hashOptions, userListArr, 0);
         }
       },
-      function(error) {
+      function (error) {
         return utils.reject(error, { exit: 1 });
       }
     );

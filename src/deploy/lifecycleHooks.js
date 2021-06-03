@@ -7,7 +7,7 @@ const clc = require("cli-color");
 const childProcess = require("child_process");
 const { FirebaseError } = require("../error");
 const getProjectId = require("../getProjectId");
-const logger = require("../logger");
+const { logger } = require("../logger");
 const path = require("path");
 
 function runCommand(command, childOptions) {
@@ -21,16 +21,16 @@ function runCommand(command, childOptions) {
     escapedCommand +
     '"';
 
-  return new Promise(function(resolve, reject) {
+  return new Promise(function (resolve, reject) {
     logger.info("Running command: " + command);
     if (translatedCommand === "") {
       resolve();
     }
     const child = childProcess.spawn(translatedCommand, [], childOptions);
-    child.on("error", function(err) {
+    child.on("error", function (err) {
       reject(err);
     });
-    child.on("exit", function(code, signal) {
+    child.on("exit", function (code, signal) {
       if (signal) {
         reject(new Error("Command terminated with signal " + signal));
       } else if (code !== 0) {
@@ -86,8 +86,8 @@ function runTargetCommands(target, hook, overallOptions, config) {
 
   const runAllCommands = _.reduce(
     commands,
-    function(soFar, command) {
-      return soFar.then(function() {
+    function (soFar, command) {
+      return soFar.then(function () {
         return runCommand(command, childOptions);
       });
     },
@@ -103,12 +103,12 @@ function runTargetCommands(target, hook, overallOptions, config) {
   }
 
   return runAllCommands
-    .then(function() {
+    .then(function () {
       utils.logSuccess(
         clc.green.bold(logIdentifier + ":") + " Finished running " + clc.bold(hook) + " script."
       );
     })
-    .catch(function(err) {
+    .catch(function (err) {
       throw new FirebaseError(logIdentifier + " " + hook + " error: " + err.message);
     });
 }
@@ -133,24 +133,24 @@ function getReleventConfigs(target, options) {
   }
 
   onlyTargets = onlyTargets
-    .filter(function(individualOnly) {
+    .filter(function (individualOnly) {
       return individualOnly.indexOf(`${target}:`) === 0;
     })
-    .map(function(individualOnly) {
+    .map(function (individualOnly) {
       return individualOnly.replace(`${target}:`, "");
     });
 
-  return targetConfigs.filter(function(config) {
+  return targetConfigs.filter(function (config) {
     return !config.target || _.includes(onlyTargets, config.target);
   });
 }
 
-module.exports = function(target, hook) {
-  return function(context, options) {
+module.exports = function (target, hook) {
+  return function (context, options) {
     return _.reduce(
       getReleventConfigs(target, options),
-      function(previousCommands, individualConfig) {
-        return previousCommands.then(function() {
+      function (previousCommands, individualConfig) {
+        return previousCommands.then(function () {
           return runTargetCommands(target, hook, options, individualConfig);
         });
       },

@@ -1,20 +1,60 @@
 import * as _ from "lodash";
-import * as api from "../api";
 import { FirebaseError } from "../error";
-import { logLabeledBullet, logLabeledSuccess } from "../utils";
+import { logger } from "../logger";
+import * as api from "../api";
+import * as proto from "./proto";
 
 const VERSION = "v1beta1";
 const DEFAULT_TIME_ZONE = "America/Los_Angeles";
+
+export interface PubsubTarget {
+  topicName: string;
+  data?: string;
+  attributes?: Record<string, string>;
+}
+
+export type HttpMethod = "POST" | "GET" | "HEAD" | "PUT" | "DELETE" | "PATCH" | "OPTIONS";
+
+export interface OauthToken {
+  serviceAccountEmail: string;
+  scope: string;
+}
+
+export interface OdicToken {
+  serviceAccountEmail: string;
+  audiences: string[];
+}
+
+export interface HttpTarget {
+  uri: string;
+  httpMethod: HttpMethod;
+  headers?: Record<string, string>;
+  body?: string;
+
+  // oneof authorizationHeader
+  oauthToken?: OauthToken;
+  odicToken?: OdicToken;
+  // end oneof authorizationHeader;
+}
+
+export interface RetryConfig {
+  retryCount?: number;
+  maxRetryDuration?: proto.Duration;
+  maxBackoffDuration?: proto.Duration;
+  maxDoublings?: number;
+}
 
 export interface Job {
   name: string;
   schedule: string;
   description?: string;
   timeZone?: string;
-  httpTarget?: {
-    uri: string;
-    httpMethod: string;
-  };
+
+  // oneof target
+  httpTarget?: HttpTarget;
+  pubsubTarget?: PubsubTarget;
+  // end oneof target
+
   retryConfig?: {
     retryCount?: number;
     maxRetryDuration?: string;
@@ -22,6 +62,19 @@ export interface Job {
     maxBackoffDuration?: string;
     maxDoublings?: number;
   };
+}
+
+export function assertValidJob(job: Job) {
+  proto.assertOneOf("Scheduler Job", job, "target", "httpTarget", "pubsubTarget");
+  if (job.httpTarget) {
+    proto.assertOneOf(
+      "Scheduler Job",
+      job.httpTarget,
+      "httpTarget.authorizationHeader",
+      "oauthToken",
+      "odicToken"
+    );
+  }
 }
 
 /**
@@ -100,15 +153,15 @@ export async function createOrReplaceJob(job: Job): Promise<any> {
       newJob = await createJob(job);
     } catch (err) {
       // Cloud resource location is not set so we error here and exit.
-      if (_.get(err, "context.response.statusCode") === 404) {
+      if (err?.context?.response?.statusCode === 404) {
         throw new FirebaseError(
-          `Cloud resource location is not set for this project but scheduled functions requires it. ` +
+          `Cloud resource location is not set for this project but scheduled functions require it. ` +
             `Please see this documentation for more details: https://firebase.google.com/docs/projects/locations.`
         );
       }
       throw new FirebaseError(`Failed to create scheduler job ${job.name}: ${err.message}`);
     }
-    logLabeledSuccess("functions", `created scheduler job ${jobName}`);
+    logger.debug(`created scheduler job ${jobName}`);
     return newJob;
   }
   if (!job.timeZone) {
@@ -116,11 +169,11 @@ export async function createOrReplaceJob(job: Job): Promise<any> {
     job.timeZone = DEFAULT_TIME_ZONE;
   }
   if (isIdentical(existingJob.body, job)) {
-    logLabeledBullet("functions", `scheduler job ${jobName} is up to date, no changes required`);
+    logger.debug(`scheduler job ${jobName} is up to date, no changes required`);
     return;
   }
   const updatedJob = await updateJob(job);
-  logLabeledBullet("functions", `updated scheduler job ${jobName}`);
+  logger.debug(`updated scheduler job ${jobName}`);
   return updatedJob;
 }
 

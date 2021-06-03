@@ -5,7 +5,7 @@ var clc = require("cli-color");
 var { Command } = require("../command");
 var getProjectId = require("../getProjectId");
 var { requirePermissions } = require("../requirePermissions");
-var logger = require("../logger");
+const { logger } = require("../logger");
 var utils = require("../utils");
 var functionsConfig = require("../functionsConfig");
 
@@ -24,7 +24,7 @@ module.exports = new Command("functions:config:set [values...]")
     "runtimeconfig.variables.delete",
   ])
   .before(functionsConfig.ensureApi)
-  .action(function(args, options) {
+  .action(function (args, options) {
     if (!args.length) {
       return utils.reject(
         "Must supply at least one key/value pair, e.g. " + clc.bold('app.name="My App"')
@@ -34,13 +34,13 @@ module.exports = new Command("functions:config:set [values...]")
     var parsed = functionsConfig.parseSetArgs(args);
     var promises = [];
 
-    parsed.forEach(function(item) {
+    parsed.forEach(function (item) {
       promises.push(
         functionsConfig.setVariablesRecursive(projectId, item.configId, item.varId, item.val)
       );
     });
 
-    return Promise.all(promises).then(function() {
+    return Promise.all(promises).then(function () {
       utils.logSuccess("Functions config updated.");
       logger.info(
         "\nPlease deploy your functions for the change to take effect by running " +

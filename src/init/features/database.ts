@@ -1,10 +1,10 @@
 import * as clc from "cli-color";
 import * as api from "../../api";
 import { prompt, promptOnce } from "../../prompt";
-import * as logger from "../../logger";
+import { logger } from "../../logger";
 import * as utils from "../../utils";
 import * as fsutils from "../../fsutils";
-import Config = require("../../config");
+import { Config } from "../../config";
 import {
   createInstance,
   DatabaseInstance,
@@ -25,7 +25,9 @@ interface DatabaseSetup {
 }
 
 interface DatabaseSetupConfig {
-  rulesFile?: string;
+  database?: {
+    rules?: string;
+  };
   defaultInstanceLocation?: DatabaseLocation;
 }
 
@@ -136,7 +138,9 @@ export async function doSetup(setup: DatabaseSetup, config: Config): Promise<voi
       instanceDetails = await createDefaultDatabaseInstance(setup.projectId);
     }
   }
-  let filename = null;
+
+  // Add 'database' section to config
+  setup.config.database = setup.config.database || {};
 
   logger.info();
   logger.info(
@@ -145,18 +149,20 @@ export async function doSetup(setup: DatabaseSetup, config: Config): Promise<voi
   logger.info("structured and when your data can be read from and written to.");
   logger.info();
 
-  await prompt(setup.config, [
+  await prompt(setup.config.database, [
     {
       type: "input",
-      name: "rulesFile",
+      name: "rules",
       message: "What file should be used for Realtime Database Security Rules?",
       default: "database.rules.json",
     },
   ]);
-  if (!setup.config.rulesFile) {
-    throw new FirebaseError("Rules file cannot be empty");
+
+  const filename = setup.config.database.rules;
+  if (!filename) {
+    throw new FirebaseError("Must specify location for Realtime Database rules file.");
   }
-  filename = setup.config.rulesFile;
+
   let writeRules = true;
   if (fsutils.fileExistsSync(filename)) {
     const msg = `File ${clc.bold(filename)} already exists. Do you want to overwrite it with ${

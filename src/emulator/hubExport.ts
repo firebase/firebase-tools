@@ -1,15 +1,17 @@
 import * as path from "path";
 import * as fs from "fs";
+import * as fse from "fs-extra";
 import * as http from "http";
 
 import * as api from "../api";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { IMPORT_EXPORT_EMULATORS, Emulators, ALL_EMULATORS } from "./types";
 import { EmulatorRegistry } from "./registry";
 import { FirebaseError } from "../error";
 import { EmulatorHub } from "./hub";
 import { getDownloadDetails } from "./downloadableEmulators";
 import { DatabaseEmulator } from "./databaseEmulator";
+import { StorageEmulator } from "./storage";
 
 export interface FirestoreExportMetadata {
   version: string;
@@ -21,10 +23,23 @@ export interface DatabaseExportMetadata {
   version: string;
   path: string;
 }
+
+export interface AuthExportMetadata {
+  version: string;
+  path: string;
+}
+
+export interface StorageExportMetadata {
+  version: string;
+  path: string;
+}
+
 export interface ExportMetadata {
   version: string;
   firestore?: FirestoreExportMetadata;
   database?: DatabaseExportMetadata;
+  auth?: AuthExportMetadata;
+  storage?: StorageExportMetadata;
 }
 
 export class HubExport {
@@ -71,12 +86,28 @@ export class HubExport {
       await this.exportDatabase(metadata);
     }
 
+    if (shouldExport(Emulators.AUTH)) {
+      metadata.auth = {
+        version: EmulatorHub.CLI_VERSION,
+        path: "auth_export",
+      };
+      await this.exportAuth(metadata);
+    }
+
+    if (shouldExport(Emulators.STORAGE)) {
+      metadata.storage = {
+        version: EmulatorHub.CLI_VERSION,
+        path: "storage_export",
+      };
+      await this.exportStorage(metadata);
+    }
+
     const metadataPath = path.join(this.exportPath, HubExport.METADATA_FILE_NAME);
     fs.writeFileSync(metadataPath, JSON.stringify(metadata, undefined, 2));
   }
 
   private async exportFirestore(metadata: ExportMetadata): Promise<void> {
-    const firestoreInfo = EmulatorRegistry.get(Emulators.FIRESTORE)!!.getInfo();
+    const firestoreInfo = EmulatorRegistry.get(Emulators.FIRESTORE)!.getInfo();
     const firestoreHost = `http://${EmulatorRegistry.getInfoHostString(firestoreInfo)}`;
 
     const firestoreExportBody = {
@@ -102,7 +133,7 @@ export class HubExport {
     const namespaces = inspectRes.body.map((instance: any) => instance.name);
 
     // Check each one for actual data
-    const namespacesToExport = [];
+    const namespacesToExport: string[] = [];
     for (const ns of namespaces) {
       const checkDataPath = `/.json?ns=${ns}&shallow=true&limitToFirst=1`;
       const checkDataRes = await api.request("GET", checkDataPath, {
@@ -137,27 +168,89 @@ export class HubExport {
     const { host, port } = databaseEmulator.getInfo();
     for (const ns of namespacesToExport) {
       const exportFile = path.join(dbExportPath, `${ns}.json`);
-      const writeStream = fs.createWriteStream(exportFile);
 
       logger.debug(`Exporting database instance: ${ns} to ${exportFile}`);
-      await new Promise((resolve, reject) => {
-        http
-          .get(
-            {
-              host,
-              port,
-              path: `/.json?ns=${ns}&format=export`,
-              headers: { Authorization: "Bearer owner" },
-            },
-            (response) => {
-              response.pipe(writeStream, { end: true }).once("close", resolve);
-            }
-          )
-          .on("error", reject);
-      });
+      await fetchToFile(
+        {
+          host,
+          port,
+          path: `/.json?ns=${ns}&format=export`,
+          headers: { Authorization: "Bearer owner" },
+        },
+        exportFile
+      );
     }
   }
+
+  private async exportAuth(metadata: ExportMetadata): Promise<void> {
+    const { host, port } = EmulatorRegistry.get(Emulators.AUTH)!.getInfo();
+
+    const authExportPath = path.join(this.exportPath, metadata.auth!.path);
+    if (!fs.existsSync(authExportPath)) {
+      fs.mkdirSync(authExportPath);
+    }
+
+    // TODO: Shall we support exporting other projects too?
+
+    const accountsFile = path.join(authExportPath, "accounts.json");
+    logger.debug(`Exporting auth users in Project ${this.projectId} to ${accountsFile}`);
+    await fetchToFile(
+      {
+        host,
+        port,
+        path: `/identitytoolkit.googleapis.com/v1/projects/${this.projectId}/accounts:batchGet?maxResults=-1`,
+        headers: { Authorization: "Bearer owner" },
+      },
+      accountsFile
+    );
+
+    const configFile = path.join(authExportPath, "config.json");
+    logger.debug(`Exporting project config in Project ${this.projectId} to ${accountsFile}`);
+    await fetchToFile(
+      {
+        host,
+        port,
+        path: `/emulator/v1/projects/${this.projectId}/config`,
+        headers: { Authorization: "Bearer owner" },
+      },
+      configFile
+    );
+  }
+
+  private async exportStorage(metadata: ExportMetadata): Promise<void> {
+    const storageEmulator = EmulatorRegistry.get(Emulators.STORAGE) as StorageEmulator;
+
+    // Clear the export
+    const storageExportPath = path.join(this.exportPath, metadata.storage!.path);
+    if (fs.existsSync(storageExportPath)) {
+      fse.removeSync(storageExportPath);
+    }
+    fs.mkdirSync(storageExportPath, { recursive: true });
+
+    const storageHost = `http://${EmulatorRegistry.getInfoHostString(storageEmulator.getInfo())}`;
+    const storageExportBody = {
+      path: storageExportPath,
+    };
+
+    return api.request("POST", "/internal/export", {
+      origin: storageHost,
+      json: true,
+      data: storageExportBody,
+    });
+  }
 }
+
+function fetchToFile(options: http.RequestOptions, path: fs.PathLike): Promise<void> {
+  const writeStream = fs.createWriteStream(path);
+  return new Promise((resolve, reject) => {
+    http
+      .get(options, (response) => {
+        response.pipe(writeStream, { end: true }).once("close", resolve);
+      })
+      .on("error", reject);
+  });
+}
+
 function shouldExport(e: Emulators): boolean {
   return IMPORT_EXPORT_EMULATORS.includes(e) && EmulatorRegistry.isRunning(e);
 }

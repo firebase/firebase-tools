@@ -1,13 +1,11 @@
 import * as _ from "lodash";
-import { EmulatedTriggerDefinition } from "../../emulator/functionsEmulatorShared";
+import { ParsedTriggerDefinition } from "../../emulator/functionsEmulatorShared";
 import { Constants } from "../../emulator/constants";
 import { EmulatorLogger } from "../../emulator/emulatorLogger";
 import { Emulators } from "../../emulator/types";
 
-export function functionResourceToEmulatedTriggerDefintion(
-  resource: any
-): EmulatedTriggerDefinition {
-  const etd: EmulatedTriggerDefinition = {
+export function functionResourceToEmulatedTriggerDefintion(resource: any): ParsedTriggerDefinition {
+  const etd: ParsedTriggerDefinition = {
     name: resource.name,
     entryPoint: resource.name,
   };
@@ -45,6 +43,9 @@ function getServiceFromEventType(eventType: string): string {
   if (eventType.includes("pubsub")) {
     return Constants.SERVICE_PUBSUB;
   }
+  if (eventType.includes("storage")) {
+    return Constants.SERVICE_STORAGE;
+  }
   // Below this point are services that do not have a emulator.
   if (eventType.includes("analytics")) {
     return Constants.SERVICE_ANALYTICS;
@@ -57,9 +58,6 @@ function getServiceFromEventType(eventType: string): string {
   }
   if (eventType.includes("remoteconfig")) {
     return Constants.SERVICE_REMOTE_CONFIG;
-  }
-  if (eventType.includes("storage")) {
-    return Constants.SERVICE_STORAGE;
   }
   if (eventType.includes("testing")) {
     return Constants.SERVICE_TEST_LAB;

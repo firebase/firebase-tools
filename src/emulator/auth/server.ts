@@ -1,3 +1,4 @@
+import * as cors from "cors";
 import * as express from "express";
 import * as exegesisExpress from "exegesis-express";
 import { ValidationError } from "exegesis/lib/errors";
@@ -30,6 +31,8 @@ import {
 import { logError } from "./utils";
 import { camelCase } from "lodash";
 import { registerHandlers } from "./handlers";
+import bodyParser = require("body-parser");
+import { URLSearchParams } from "url";
 const apiSpec = apiSpecUntyped as OpenAPIObject;
 
 const API_SPEC_PATH = "/emulator/openapi.json";
@@ -116,20 +119,9 @@ export async function createApp(
 ): Promise<express.Express> {
   const app = express();
   app.set("json spaces", 2);
-
-  // Allow all origins and headers for CORS requests to Auth Emulator.
-  // This is safe since Auth Emulator does not use cookies.
-  app.use((req, res, next) => {
-    res.set("Access-Control-Allow-Origin", "*");
-    res.set("Access-Control-Allow-Headers", "*");
-    res.set("Access-Control-Allow-Methods", "GET, HEAD, POST, PUT, DELETE, OPTIONS, PATCH");
-    if (req.method === "OPTIONS") {
-      // This is a CORS preflight request. Just handle it.
-      res.end();
-    } else {
-      next();
-    }
-  });
+  // Enable CORS for all APIs, all origins (reflected), and all headers (reflected).
+  // This is similar to production behavior. Safe since all APIs are cookieless.
+  app.use(cors({ origin: true }));
 
   app.get("/", (req, res) => {
     return res.json({
@@ -380,15 +372,36 @@ function registerLegacyRoutes(app: express.Express): void {
     throw new NotImplementedError(`signOutUser is not implemented in the Auth Emulator.`);
   });
 
-  // TODO: Need to rewrite paths and put project ID into the URL.
+  // Rewrites that require parsing targetProjectId from request body, e.g.
   // /downloadAccount => /v1/projects/{target_project_id}/accounts:batchGet
-  // /uploadAccount => /v1/projects/{target_project_id}/accounts:batchCreate
-  app.post(`${relyingPartyPrefix}downloadAccount`, () => {
-    throw new NotImplementedError(`downloadAccount is not implemented in the Auth Emulator.`);
-  });
-  app.post(`${relyingPartyPrefix}uploadAccount`, () => {
-    throw new NotImplementedError(`uploadAccount is not implemented in the Auth Emulator.`);
-  });
+  for (const [oldPath, newMethod, newPath] of [
+    ["downloadAccount", "GET", "accounts:batchGet"],
+    ["uploadAccount", "POST", "accounts:batchCreate"],
+  ]) {
+    app.post(`${relyingPartyPrefix}${oldPath}`, bodyParser.json(), (req, res, next) => {
+      req.body = convertKeysToCamelCase(req.body || {});
+      const targetProjectId = req.body.targetProjectId;
+      if (!targetProjectId) {
+        // Matching production behavior when targetProjectId is unspecified.
+        return next(new BadRequestError("INSUFFICIENT_PERMISSION"));
+      }
+
+      delete req.body.targetProjectId;
+      req.method = newMethod;
+      let qs = req.url.split("?", 2)[1] || "";
+      if (newMethod === "GET") {
+        Object.assign(req.query, req.body);
+
+        // Update the URL to match query since exegeisis does its own parsing.
+        const bodyAsQuery = new URLSearchParams(req.body).toString();
+        qs = qs ? `${qs}&${bodyAsQuery}` : bodyAsQuery;
+        delete req.body;
+        delete req.headers["content-type"];
+      }
+      req.url = `${v1Prefix}projects/${encodeURIComponent(targetProjectId)}/${newPath}?${qs}`;
+      next();
+    });
+  }
 }
 
 function toExegesisController(
@@ -481,44 +494,44 @@ function validateAndFixRestMappingRequestBody(
 ): ReturnType<ValidatorFunction> {
   body = convertKeysToCamelCase(body);
 
-  // Protobuf JSON parser accepts enum values as either string or integer, but
+  // Protobuf JSON parser accepts enum values as either string or int index, but
   // the JSON schema only accepts strings, causing validation errors. We catch
   // these errors and fix the paths. This is needed for e.g. Android SDK.
+  // Similarly, convert numbers to strings for e.g. Node Admin SDK.
   let result: ReturnType<ValidatorFunction>;
-  let fixedErrors = false;
+  let keepFixing = false; // Keep fixing issues as long as we can.
   const fixedPaths = new Set<string>();
   do {
     result = validate(body);
     if (!result.errors) return result;
-    fixedErrors = false;
+    keepFixing = false;
     for (const error of result.errors) {
       const path = error.location?.path;
-      if (path && !fixedPaths.has(path) && error.ajvError?.message === "should be string") {
-        let schema = api.requestBodyMediaTypeObject.schema;
-        if (schema.$ref) {
-          schema = _.get(api.openApiDoc, jsonPointerToPath(schema.$ref));
+      const ajvError = error.ajvError;
+      if (!path || fixedPaths.has(path) || !ajvError) {
+        continue;
+      }
+      const dataPath = jsonPointerToPath(path);
+      const value = _.get(body, dataPath);
+      if (ajvError.keyword === "type" && (ajvError.params as { type: string }).type === "string") {
+        if (typeof value === "number") {
+          // Coerce numbers to strings.
+          // Ideally, we should handle enums differently right now, but we don't
+          // know if it is an enum yet (ajvError.schema is somehow undefined).
+          // So we'll just leave it to the next iteration and handle it below.
+          _.set(body, dataPath, value.toString());
+          keepFixing = true;
         }
-        const schemaPath = jsonPointerToPath(error.ajvError.schemaPath);
-        if (
-          schemaPath[0] === "properties" &&
-          schemaPath[1] === "value" &&
-          schemaPath[schemaPath.length - 1] === "type"
-        ) {
-          const enumValues = _.get(schema, schemaPath.slice(2, schemaPath.length - 1))?.enum;
-          if (Array.isArray(enumValues)) {
-            const dataPath = jsonPointerToPath(path);
-            const value = _.get(body, dataPath);
-            const normalizedValue = enumValues[value];
-            if (normalizedValue) {
-              _.set(body, dataPath, normalizedValue);
-              fixedPaths.add(path);
-              fixedErrors = true;
-            }
-          }
+      } else if (ajvError.keyword === "enum") {
+        const params = ajvError.params as { allowedValues: string[] };
+        const enumValue = params.allowedValues[value];
+        if (enumValue) {
+          _.set(body, dataPath, enumValue);
+          keepFixing = true;
         }
       }
     }
-  } while (fixedErrors);
+  } while (keepFixing);
   return result;
 }
 

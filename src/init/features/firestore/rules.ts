@@ -4,7 +4,7 @@ import fs = require("fs");
 import gcp = require("../../../gcp");
 import fsutils = require("../../../fsutils");
 import { prompt, promptOnce } from "../../../prompt";
-import logger = require("../../../logger");
+import { logger } from "../../../logger";
 import utils = require("../../../utils");
 
 const DEFAULT_RULES_FILE = "firestore.rules";
@@ -53,7 +53,7 @@ export function initRules(setup: any, config: any): Promise<any> {
       }
 
       if (!setup.projectId) {
-        return config.writeProjectFile(setup.config.firestore.rules, RULES_TEMPLATE);
+        return config.writeProjectFile(setup.config.firestore.rules, getDefaultRules());
       }
 
       return getRulesFromConsole(setup.projectId).then((contents: any) => {
@@ -62,13 +62,19 @@ export function initRules(setup: any, config: any): Promise<any> {
     });
 }
 
+function getDefaultRules(): string {
+  const date = utils.thirtyDaysFromNow();
+  const formattedForRules = `${date.getFullYear()}, ${date.getMonth() + 1}, ${date.getDate()}`;
+  return RULES_TEMPLATE.replace(/{{IN_30_DAYS}}/g, formattedForRules);
+}
+
 function getRulesFromConsole(projectId: string): Promise<any> {
   return gcp.rules
     .getLatestRulesetName(projectId, "cloud.firestore")
     .then((name) => {
       if (!name) {
         logger.debug("No rulesets found, using default.");
-        return [{ name: DEFAULT_RULES_FILE, content: RULES_TEMPLATE }];
+        return [{ name: DEFAULT_RULES_FILE, content: getDefaultRules() }];
       }
 
       logger.debug("Found ruleset: " + name);

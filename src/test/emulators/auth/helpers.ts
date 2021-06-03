@@ -5,9 +5,17 @@ import { expect, AssertionError } from "chai";
 import { IdpJwtPayload } from "../../../emulator/auth/operations";
 import { OobRecord, PhoneVerificationRecord, UserInfo } from "../../../emulator/auth/state";
 import { TestAgent, PROJECT_ID } from "./setup";
+import { MfaEnrollments } from "../../../emulator/auth/types";
 
 export { PROJECT_ID };
 export const TEST_PHONE_NUMBER = "+15555550100";
+export const TEST_PHONE_NUMBER_2 = "+15555550101";
+export const TEST_PHONE_NUMBER_3 = "+15555550102";
+export const TEST_MFA_INFO = {
+  displayName: "Cell Phone",
+  phoneInfo: TEST_PHONE_NUMBER,
+};
+export const TEST_INVALID_PHONE_NUMBER = "5555550100"; /* no country code */
 export const FAKE_GOOGLE_ACCOUNT = {
   displayName: "Example User",
   email: "example@gmail.com",
@@ -79,7 +87,12 @@ export function fakeClaims(input: Partial<IdpJwtPayload> & { sub: string }): Idp
 
 export function registerUser(
   testAgent: TestAgent,
-  user: { email: string; password: string; displayName?: string }
+  user: {
+    email: string;
+    password: string;
+    displayName?: string;
+    mfaInfo?: MfaEnrollments;
+  }
 ): Promise<{ idToken: string; localId: string; refreshToken: string; email: string }> {
   return testAgent
     .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
@@ -130,6 +143,26 @@ export async function signInWithEmailLink(
         localId: res.body.localId,
         refreshToken: res.body.refreshToken,
         email,
+      };
+    });
+}
+
+export function signInWithPassword(
+  testAgent: TestAgent,
+  email: string,
+  password: string
+): Promise<{ idToken: string; localId: string; refreshToken: string; email: string }> {
+  return testAgent
+    .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword")
+    .send({ email, password })
+    .query({ key: "fake-api-key" })
+    .then((res) => {
+      expectStatusCode(200, res);
+      return {
+        idToken: res.body.idToken,
+        localId: res.body.localId,
+        refreshToken: res.body.refreshToken,
+        email: res.body.email,
       };
     });
 }
@@ -201,9 +234,7 @@ export async function expectUserNotExistsForIdToken(
     .query({ key: "fake-api-key" })
     .then((res) => {
       expectStatusCode(400, res);
-      expect(res.body.error)
-        .to.have.property("message")
-        .equals("USER_NOT_FOUND");
+      expect(res.body.error).to.have.property("message").equals("USER_NOT_FOUND");
     });
 }
 
@@ -214,9 +245,7 @@ export async function expectIdTokenExpired(testAgent: TestAgent, idToken: string
     .query({ key: "fake-api-key" })
     .then((res) => {
       expectStatusCode(400, res);
-      expect(res.body.error)
-        .to.have.property("message")
-        .equals("TOKEN_EXPIRED");
+      expect(res.body.error).to.have.property("message").equals("TOKEN_EXPIRED");
     });
 }
 
@@ -227,7 +256,19 @@ export function getAccountInfoByIdToken(testAgent: TestAgent, idToken: string): 
     .query({ key: "fake-api-key" })
     .then((res) => {
       expectStatusCode(200, res);
-      expect(res.body.users).to.have.length(1);
+      expect(res.body.users || []).to.have.length(1);
+      return res.body.users[0];
+    });
+}
+
+export function getAccountInfoByLocalId(testAgent: TestAgent, localId: string): Promise<UserInfo> {
+  return testAgent
+    .post("/identitytoolkit.googleapis.com/v1/accounts:lookup")
+    .send({ localId: [localId] })
+    .set("Authorization", "Bearer owner")
+    .then((res) => {
+      expectStatusCode(200, res);
+      expect(res.body.users || []).to.have.length(1);
       return res.body.users[0];
     });
 }

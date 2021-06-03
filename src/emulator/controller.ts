@@ -3,8 +3,8 @@ import * as clc from "cli-color";
 import * as fs from "fs";
 import * as path from "path";
 
-import * as Config from "../config";
-import * as logger from "../logger";
+import { Config } from "../config";
+import { logger } from "../logger";
 import * as track from "../track";
 import * as utils from "../utils";
 import { EmulatorRegistry } from "./registry";
@@ -39,6 +39,9 @@ import { promptOnce } from "../prompt";
 import * as rimraf from "rimraf";
 import { FLAG_EXPORT_ON_EXIT_NAME } from "./commandUtils";
 import { fileExistsSync } from "../fsutils";
+import { StorageEmulator } from "./storage";
+import { getDefaultDatabaseInstance } from "../getDefaultDatabaseInstance";
+import { getProjectDefaultAccount } from "../auth";
 
 async function getAndCheckAddress(emulator: Emulators, options: any): Promise<Address> {
   let host = Constants.normalizeHost(
@@ -118,11 +121,15 @@ async function getAndCheckAddress(emulator: Emulators, options: any): Promise<Ad
   return { host, port };
 }
 
+/**
+ * Starts a specific emulator instance
+ * @param instance
+ */
 export async function startEmulator(instance: EmulatorInstance): Promise<void> {
   const name = instance.getName();
 
   // Log the command for analytics
-  track("emulators:start", name);
+  track("Emulator Run", name);
 
   await EmulatorRegistry.start(instance);
 }
@@ -168,25 +175,38 @@ export async function cleanShutdown(): Promise<void> {
   await EmulatorRegistry.stopAll();
 }
 
+/**
+ * Filters a list of emulators to only those specified in the config
+ * @param options
+ */
 export function filterEmulatorTargets(options: any): Emulators[] {
   let targets = ALL_SERVICE_EMULATORS.filter((e) => {
     return options.config.has(e) || options.config.has(`emulators.${e}`);
   });
 
-  if (options.only) {
-    targets = _.intersection(targets, options.only.split(","));
+  const onlyOptions: string = options.only;
+  if (onlyOptions) {
+    const only = onlyOptions.split(",").map((o) => {
+      return o.split(":")[0];
+    });
+    targets = _.intersection(targets, only as Emulators[]);
   }
 
   return targets;
 }
 
+/**
+ * Returns whether or not a specific emulator should start based on configuration and dependencies.
+ * @param options
+ * @param name
+ */
 export function shouldStart(options: any, name: Emulators): boolean {
   if (name === Emulators.HUB) {
     // The hub only starts if we know the project ID.
     return !!options.project;
   }
   const targets = filterEmulatorTargets(options);
-  const emulatorInTargets = targets.indexOf(name) >= 0;
+  const emulatorInTargets = targets.includes(name);
 
   if (name === Emulators.UI) {
     if (options.ui) {
@@ -201,7 +221,7 @@ export function shouldStart(options: any, name: Emulators): boolean {
     // Emulator UI only starts if we know the project ID AND at least one
     // emulator supported by Emulator UI is launching.
     return (
-      !!options.project && targets.some((target) => EMULATORS_SUPPORTED_BY_UI.indexOf(target) >= 0)
+      !!options.project && targets.some((target) => EMULATORS_SUPPORTED_BY_UI.includes(target))
     );
   }
 
@@ -291,7 +311,7 @@ function findExportMetadata(importPath: string): ExportMetadata | undefined {
   }
 }
 
-export async function startAll(options: any, noUi: boolean = false): Promise<void> {
+export async function startAll(options: any, showUI: boolean = true): Promise<void> {
   // Emulators config is specified in firebase.json as:
   // "emulators": {
   //   "firestore": {
@@ -307,20 +327,33 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
   const targets = filterEmulatorTargets(options);
   options.targets = targets;
 
-  const projectId: string | undefined = getProjectId(options, true);
+  if (targets.length === 0) {
+    throw new FirebaseError(
+      `No emulators to start, run ${clc.bold("firebase init emulators")} to get started.`
+    );
+  }
+  const hubLogger = EmulatorLogger.forEmulator(Emulators.HUB);
+  hubLogger.logLabeled("BULLET", "emulators", `Starting emulators: ${targets.join(", ")}`);
 
-  EmulatorLogger.forEmulator(Emulators.HUB).logLabeled(
-    "BULLET",
-    "emulators",
-    `Starting emulators: ${targets.join(", ")}`
-  );
-  if (options.only) {
-    const requested: string[] = options.only.split(",");
+  const projectId: string | undefined = getProjectId(options, true);
+  if (Constants.isDemoProject(projectId)) {
+    hubLogger.logLabeled(
+      "BULLET",
+      "emulators",
+      `Detected demo project ID "${projectId}", emulated services will use a demo configuration and attempts to access non-emulated services for this project will fail.`
+    );
+  }
+
+  const onlyOptions: string = options.only;
+  if (onlyOptions) {
+    const requested: string[] = onlyOptions.split(",").map((o) => {
+      return o.split(":")[0];
+    });
     const ignored = _.difference(requested, targets);
 
     for (const name of ignored) {
       if (isEmulator(name)) {
-        EmulatorLogger.forEmulator(name as Emulators).logLabeled(
+        EmulatorLogger.forEmulator(name).logLabeled(
           "WARN",
           name,
           `Not starting the ${clc.bold(name)} emulator, make sure you have run ${clc.bold(
@@ -343,6 +376,12 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
   if (shouldStart(options, Emulators.HUB)) {
     const hubAddr = await getAndCheckAddress(Emulators.HUB, options);
     const hub = new EmulatorHub({ projectId, ...hubAddr });
+
+    // Log the command for analytics, we only report this for "hub"
+    // since we originally mistakenly reported emulators:start events
+    // for each emulator, by reporting the "hub" we ensure that our
+    // historical data can still be viewed.
+    track("emulators:start", "hub");
     await startEmulator(hub);
   }
 
@@ -356,7 +395,7 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
     if (foundMetadata) {
       exportMetadata = foundMetadata;
     } else {
-      EmulatorLogger.forEmulator(Emulators.HUB).logLabeled(
+      hubLogger.logLabeled(
         "WARN",
         "emulators",
         `Could not find import/export metadata file, ${clc.bold("skipping data import!")}`
@@ -389,7 +428,7 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
     const emulatorsNotRunning = ALL_SERVICE_EMULATORS.filter((e) => {
       return e !== Emulators.FUNCTIONS && !shouldStart(options, e);
     });
-    if (emulatorsNotRunning.length > 0) {
+    if (emulatorsNotRunning.length > 0 && !Constants.isDemoProject(projectId)) {
       functionsLogger.logLabeled(
         "WARN",
         "functions",
@@ -399,9 +438,11 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       );
     }
 
+    const account = getProjectDefaultAccount(options.projectRoot);
     const functionsEmulator = new FunctionsEmulator({
       projectId,
       functionsDir,
+      account,
       host: functionsAddr.host,
       port: functionsAddr.port,
       debugPort: inspectFunctions,
@@ -488,6 +529,19 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       auto_download: true,
     };
 
+    // Try to fetch the default RTDB instance for a project, but don't hard-fail if we
+    // can't because the user may be using a fake project.
+    try {
+      if (!options.instance) {
+        options.instance = await getDefaultDatabaseInstance(options);
+      }
+    } catch (e) {
+      databaseLogger.log(
+        "DEBUG",
+        `Failed to retrieve default database instance: ${JSON.stringify(e)}`
+      );
+    }
+
     const rc = dbRulesConfig.normalizeRulesConfig(
       dbRulesConfig.getRulesConfig(projectId, options),
       options
@@ -549,6 +603,13 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       projectId,
     });
     await startEmulator(authEmulator);
+
+    if (exportMetadata.auth) {
+      const importDirAbsPath = path.resolve(options.import);
+      const authExportDir = path.resolve(importDirAbsPath, exportMetadata.auth.path);
+
+      await authEmulator.importData(authExportDir, projectId);
+    }
   }
 
   if (shouldStart(options, Emulators.PUBSUB)) {
@@ -568,6 +629,31 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
     await startEmulator(pubsubEmulator);
   }
 
+  if (shouldStart(options, Emulators.STORAGE)) {
+    const storageAddr = await getAndCheckAddress(Emulators.STORAGE, options);
+    const storageConfig = options.config.data.storage;
+
+    if (!storageConfig?.rules) {
+      throw new FirebaseError(
+        "Cannot start the Storage emulator without rules file specified in firebase.json: run 'firebase init' and set up your Storage configuration"
+      );
+    }
+
+    const storageEmulator = new StorageEmulator({
+      host: storageAddr.host,
+      port: storageAddr.port,
+      projectId,
+      rules: options.config.path(storageConfig.rules),
+    });
+    await startEmulator(storageEmulator);
+
+    if (exportMetadata.storage) {
+      const importDirAbsPath = path.resolve(options.import);
+      const storageExportDir = path.resolve(importDirAbsPath, exportMetadata.storage.path);
+      storageEmulator.storageLayer.import(storageExportDir);
+    }
+  }
+
   // Hosting emulator needs to start after all of the others so that we can detect
   // which are running and call useEmulator in __init.js
   if (shouldStart(options, Emulators.HOSTING)) {
@@ -581,7 +667,15 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
     await startEmulator(hostingEmulator);
   }
 
-  if (!noUi && shouldStart(options, Emulators.UI)) {
+  if (showUI && !shouldStart(options, Emulators.UI)) {
+    hubLogger.logLabeled(
+      "WARN",
+      "emulators",
+      "The Emulator UI requires a project ID to start. Configure your default project with 'firebase use' or pass the --project flag."
+    );
+  }
+
+  if (showUI && shouldStart(options, Emulators.UI)) {
     const loggingAddr = await getAndCheckAddress(Emulators.LOGGING, options);
     const loggingEmulator = new LoggingEmulator({
       host: loggingAddr.host,

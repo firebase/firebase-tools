@@ -7,7 +7,7 @@ var functionsConfigClone = require("../functionsConfigClone");
 var getProjectId = require("../getProjectId");
 var { requirePermissions } = require("../requirePermissions");
 var utils = require("../utils");
-var logger = require("../logger");
+const { logger } = require("../logger");
 
 module.exports = new Command("functions:config:clone")
   .description("clone environment config from another project")
@@ -27,7 +27,7 @@ module.exports = new Command("functions:config:clone")
     "runtimeconfig.variables.delete",
   ])
   .before(functionsConfig.ensureApi)
-  .action(function(options) {
+  .action(function (options) {
     var projectId = getProjectId(options);
     if (!options.from) {
       return utils.reject(
@@ -47,7 +47,7 @@ module.exports = new Command("functions:config:clone")
       except = options.except.split(",");
     }
 
-    return functionsConfigClone(options.from, projectId, only, except).then(function() {
+    return functionsConfigClone(options.from, projectId, only, except).then(function () {
       utils.logSuccess(
         "Cloned functions config from " + clc.bold(options.from) + " into " + clc.bold(projectId)
       );

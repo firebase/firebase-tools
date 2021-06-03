@@ -7,7 +7,7 @@ import {
   getChannel,
   createChannel,
   updateChannelTtl,
-  addAuthDomain,
+  addAuthDomains,
   cleanAuthState,
   normalizeName,
 } from "../hosting/api";
@@ -15,7 +15,7 @@ import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs";
 import { requirePermissions } from "../requirePermissions";
 import * as deploy from "../deploy";
 import * as getProjectId from "../getProjectId";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import * as requireConfig from "../requireConfig";
 import { DEFAULT_DURATION, calculateChannelExpireTTL } from "../hosting/expireUtils";
 import { logLabeledSuccess, datetimeString, logLabeledWarning, consoleUrl } from "../utils";
@@ -28,6 +28,7 @@ interface ChannelInfo {
   target: string | null;
   site: string;
   url: string;
+  version: string;
   expireTime: string;
 }
 
@@ -91,15 +92,20 @@ export default new Command("hosting:channel:deploy [channelId]")
 
       const sites: ChannelInfo[] = normalizedHostingConfigs(options, {
         resolveTargets: true,
-      }).map((cfg) => ({ site: cfg.site, target: cfg.target, url: "", expireTime: "" }));
+      }).map((cfg) => ({
+        site: cfg.site,
+        target: cfg.target,
+        url: "",
+        version: "",
+        expireTime: "",
+      }));
 
       await Promise.all(
         sites.map(async (siteInfo) => {
           const site = siteInfo.site;
           let chan = await getChannel(projectId, site, channelId);
-          logger.debug("[hosting] found existing channel for site", site, chan);
-
           if (chan) {
+            logger.debug("[hosting] found existing channel for site", site, chan);
             const channelExpires = Boolean(chan.expireTime);
             if (!channelExpires && options.expires) {
               // If the channel doesn't expire, but the user provided a TTL, update the channel.
@@ -116,26 +122,10 @@ export default new Command("hosting:channel:deploy [channelId]")
           } else {
             chan = await createChannel(projectId, site, channelId, expireTTL);
             logger.debug("[hosting] created new channnel for site", site, chan);
-            try {
-              await addAuthDomain(projectId, chan.url);
-            } catch (e) {
-              logLabeledWarning(
-                LOG_TAG,
-                marked(
-                  `Unable to add channel domain to Firebase Auth. Visit the Firebase Console at ${consoleUrl(
-                    projectId,
-                    "/authentication/providers"
-                  )}`
-                )
-              );
-              logger.debug("[hosting] unable to add auth domain", e);
-            }
-          }
-          try {
-            await cleanAuthState(projectId, site);
-          } catch (e) {
-            logLabeledWarning(LOG_TAG, "Unable to sync Firebase Auth state.");
-            logger.debug("[hosting] unable to sync auth domain", e);
+            logLabeledSuccess(
+              LOG_TAG,
+              `Channel ${bold(channelId)} has been created on site ${bold(site)}.`
+            );
           }
           siteInfo.url = chan.url;
           siteInfo.expireTime = chan.expireTime;
@@ -143,9 +133,26 @@ export default new Command("hosting:channel:deploy [channelId]")
         })
       );
 
-      await deploy(["hosting"], options, { hostingChannel: channelId });
+      const { hosting } = await deploy(["hosting"], options, { hostingChannel: channelId });
+
+      // The version names are returned in the hosting key of the deploy result.
+      //
+      // If there is only one element it is returned as a string, otherwise it
+      // is an array of strings. Not sure why it's done that way, but that's
+      // something we can't change because it is in the deploy output in json.
+      //
+      // The code below turns it back to an array of version names.
+      const versionNames: Array<string> = [];
+      if (typeof hosting === "string") {
+        versionNames.push(hosting);
+      } else if (Array.isArray(hosting)) {
+        hosting.forEach((version) => {
+          versionNames.push(version);
+        });
+      }
 
       logger.info();
+      await syncAuthState(projectId, sites);
       const deploys: { [key: string]: ChannelInfo } = {};
       sites.forEach((d) => {
         deploys[d.target || d.site] = d;
@@ -153,12 +160,51 @@ export default new Command("hosting:channel:deploy [channelId]")
         if (d.expireTime) {
           expires = `[expires ${bold(datetimeString(new Date(d.expireTime)))}]`;
         }
+        const versionPrefix = `sites/${d.site}/versions/`;
+        const versionName = versionNames.find((v) => {
+          return v.startsWith(versionPrefix);
+        });
+        let version = "";
+        if (versionName) {
+          d.version = versionName.replace(versionPrefix, "");
+          version = ` [version ${bold(d.version)}]`;
+        }
         logLabeledSuccess(
           LOG_TAG,
-          `Channel URL (${bold(d.site || d.target)}): ${d.url} ${expires}`
+          `Channel URL (${bold(d.site || d.target)}): ${d.url} ${expires}${version}`
         );
       });
-
       return deploys;
     }
   );
+
+/**
+ * Helper function to sync authorized domains for deployed sites.
+ * @param projectId the project id.
+ * @param sites list of sites & url to sync auth state for.
+ */
+async function syncAuthState(projectId: string, sites: ChannelInfo[]) {
+  const siteNames = sites.map((d) => d.site);
+  const urlNames = sites.map((d) => d.url);
+  try {
+    await addAuthDomains(projectId, urlNames);
+    logger.debug("[hosting] added auth domain for urls", urlNames);
+  } catch (e) {
+    logLabeledWarning(
+      LOG_TAG,
+      marked(
+        `Unable to add channel domain to Firebase Auth. Visit the Firebase Console at ${consoleUrl(
+          projectId,
+          "/authentication/providers"
+        )}`
+      )
+    );
+    logger.debug("[hosting] unable to add auth domain", e);
+  }
+  try {
+    await cleanAuthState(projectId, siteNames);
+  } catch (e) {
+    logLabeledWarning(LOG_TAG, "Unable to sync Firebase Auth state.");
+    logger.debug("[hosting] unable to sync auth domain", e);
+  }
+}

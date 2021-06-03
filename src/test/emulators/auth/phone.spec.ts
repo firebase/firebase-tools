@@ -1,7 +1,6 @@
 import { expect } from "chai";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import { FirebaseJwtPayload } from "../../../emulator/auth/operations";
-import { TEST_PHONE_NUMBER } from "./helpers";
 import { describeAuthEmulator } from "./setup";
 import {
   expectStatusCode,
@@ -9,6 +8,9 @@ import {
   signInWithPhoneNumber,
   updateAccountByLocalId,
   inspectVerificationCodes,
+  registerUser,
+  TEST_MFA_INFO,
+  TEST_PHONE_NUMBER,
 } from "./helpers";
 
 describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
@@ -18,12 +20,8 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
       .query({ key: "fake-api-key" })
       .then((res) => {
         expectStatusCode(200, res);
-        expect(res.body)
-          .to.have.property("recaptchaStoken")
-          .that.is.a("string");
-        expect(res.body)
-          .to.have.property("recaptchaSiteKey")
-          .that.is.a("string");
+        expect(res.body).to.have.property("recaptchaStoken").that.is.a("string");
+        expect(res.body).to.have.property("recaptchaSiteKey").that.is.a("string");
       });
   });
 
@@ -36,9 +34,7 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
       .send({ phoneNumber, recaptchaToken: "ignored" })
       .then((res) => {
         expectStatusCode(200, res);
-        expect(res.body)
-          .to.have.property("sessionInfo")
-          .that.is.a("string");
+        expect(res.body).to.have.property("sessionInfo").that.is.a("string");
         return res.body.sessionInfo;
       });
 
@@ -97,16 +93,10 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
       .send({ sessionInfo, code })
       .then((res) => {
         expectStatusCode(200, res);
-        expect(res.body)
-          .to.have.property("isNewUser")
-          .equals(true);
-        expect(res.body)
-          .to.have.property("phoneNumber")
-          .equals(phoneNumber);
+        expect(res.body).to.have.property("isNewUser").equals(true);
+        expect(res.body).to.have.property("phoneNumber").equals(phoneNumber);
 
-        expect(res.body)
-          .to.have.property("refreshToken")
-          .that.is.a("string");
+        expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
         const idToken = res.body.idToken;
         const decoded = decodeJwt(idToken, { complete: true }) as {
@@ -118,9 +108,7 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
         expect(decoded!.payload.user_id).to.be.a("string");
         expect(decoded!.payload.phone_number).to.equal(phoneNumber);
         expect(decoded!.payload).not.to.have.property("provider_id");
-        expect(decoded!.payload.firebase)
-          .to.have.property("sign_in_provider")
-          .equals("phone");
+        expect(decoded!.payload.firebase).to.have.property("sign_in_provider").equals("phone");
         expect(decoded!.payload.firebase.identities).to.eql({ phone: [phoneNumber] });
       });
   });
@@ -132,9 +120,7 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
       .send({ code: "123456" /* no sessionInfo */ })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("MISSING_SESSION_INFO");
+        expect(res.body.error).to.have.property("message").equals("MISSING_SESSION_INFO");
       });
 
     await authApi()
@@ -143,9 +129,7 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
       .send({ sessionInfo: "something-something" /* no code */ })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("MISSING_CODE");
+        expect(res.body.error).to.have.property("message").equals("MISSING_CODE");
       });
   });
 
@@ -170,9 +154,7 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
       .send({ sessionInfo: "totally-invalid", code })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("INVALID_SESSION_INFO");
+        expect(res.body.error).to.have.property("message").equals("INVALID_SESSION_INFO");
       });
 
     await authApi()
@@ -183,9 +165,7 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
       .send({ sessionInfo, code: code + "1" })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("INVALID_CODE");
+        expect(res.body.error).to.have.property("message").equals("INVALID_CODE");
       });
   });
 
@@ -212,9 +192,7 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
       .send({ sessionInfo, code })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("USER_DISABLED");
+        expect(res.body.error).to.have.property("message").equals("USER_DISABLED");
       });
   });
 
@@ -240,12 +218,8 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
       .send({ sessionInfo, code, idToken })
       .then((res) => {
         expectStatusCode(200, res);
-        expect(res.body)
-          .to.have.property("isNewUser")
-          .equals(false);
-        expect(res.body)
-          .to.have.property("phoneNumber")
-          .equals(phoneNumber);
+        expect(res.body).to.have.property("isNewUser").equals(false);
+        expect(res.body).to.have.property("phoneNumber").equals(phoneNumber);
         expect(res.body.localId).to.equal(localId);
       });
   });
@@ -273,9 +247,38 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
       .send({ sessionInfo, code, idToken })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("USER_DISABLED");
+        expect(res.body.error).to.have.property("message").equals("USER_DISABLED");
+      });
+  });
+
+  it("should error if user has MFA", async () => {
+    const user = {
+      email: "alice@example.com",
+      password: "notasecret",
+      mfaInfo: [TEST_MFA_INFO],
+    };
+    const { localId, idToken } = await registerUser(authApi(), user);
+
+    const phoneNumber = TEST_PHONE_NUMBER;
+    const sessionInfo = await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode")
+      .query({ key: "fake-api-key" })
+      .send({ phoneNumber, recaptchaToken: "ignored" })
+      .then((res) => {
+        expectStatusCode(200, res);
+        return res.body.sessionInfo;
+      });
+
+    const codes = await inspectVerificationCodes(authApi());
+    const code = codes[0].code;
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPhoneNumber")
+      .query({ key: "fake-api-key" })
+      .send({ sessionInfo, code, idToken })
+      .then((res) => {
+        expectStatusCode(501, res);
+        expect(res.body.error.message).to.equal("MFA Login not yet implemented.");
       });
   });
 
@@ -308,9 +311,7 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
         // with a temporaryProof (so that clients may call this API again
         // without having to verify the phone number again).
         expect(res.body).not.to.have.property("idToken");
-        expect(res.body)
-          .to.have.property("phoneNumber")
-          .equals(phoneNumber);
+        expect(res.body).to.have.property("phoneNumber").equals(phoneNumber);
         expect(res.body.temporaryProof).to.be.a("string");
         return res.body.temporaryProof;
       });
@@ -323,9 +324,7 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
       .send({ idToken, phoneNumber, temporaryProof })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("PHONE_NUMBER_EXISTS");
+        expect(res.body.error).to.have.property("message").equals("PHONE_NUMBER_EXISTS");
       });
   });
 });

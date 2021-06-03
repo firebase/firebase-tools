@@ -2,9 +2,9 @@ import * as clc from "cli-color";
 import * as childProcess from "child_process";
 
 import * as controller from "../emulator/controller";
-import * as Config from "../config";
+import { Config } from "../config";
 import * as utils from "../utils";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import * as path from "path";
 import { Constants } from "./constants";
 import { requireAuth } from "../requireAuth";
@@ -14,8 +14,7 @@ import { FirebaseError } from "../error";
 import { EmulatorRegistry } from "./registry";
 import { FirestoreEmulator } from "./firestoreEmulator";
 import * as getProjectId from "../getProjectId";
-import { prompt } from "../prompt";
-import { EmulatorHub } from "./hub";
+import { promptOnce } from "../prompt";
 import { onExit } from "./controller";
 import * as fsutils from "../fsutils";
 import Signals = NodeJS.Signals;
@@ -111,14 +110,11 @@ export function warnEmulatorNotSupported(
     const opts = {
       confirm: undefined,
     };
-    return prompt(opts, [
-      {
-        type: "confirm",
-        name: "confirm",
-        default: false,
-        message: "Do you want to continue?",
-      },
-    ]).then(() => {
+    return promptOnce({
+      type: "confirm",
+      default: false,
+      message: "Do you want to continue?",
+    }).then((confirm: boolean) => {
       if (!opts.confirm) {
         return utils.reject("Command aborted.", { exit: 1 });
       }
@@ -335,6 +331,15 @@ async function runScript(script: string, extraEnv: Record<string, string>): Prom
     env[FirestoreEmulator.FIRESTORE_EMULATOR_ENV_ALT] = address;
   }
 
+  const storageInstance = EmulatorRegistry.get(Emulators.STORAGE);
+  if (storageInstance) {
+    const info = storageInstance.getInfo();
+    const address = EmulatorRegistry.getInfoHostString(info);
+
+    env[Constants.FIREBASE_STORAGE_EMULATOR_HOST] = address;
+    env[Constants.CLOUD_STORAGE_EMULATOR_HOST] = `http://${address}`;
+  }
+
   const authInstance = EmulatorRegistry.get(Emulators.AUTH);
   if (authInstance) {
     const info = authInstance.getInfo();
@@ -346,7 +351,7 @@ async function runScript(script: string, extraEnv: Record<string, string>): Prom
   if (hubInstance) {
     const info = hubInstance.getInfo();
     const address = EmulatorRegistry.getInfoHostString(info);
-    env[EmulatorHub.EMULATOR_HUB_ENV] = address;
+    env[Constants.FIREBASE_EMULATOR_HUB] = address;
   }
 
   const proc = childProcess.spawn(script, {
@@ -406,8 +411,8 @@ export async function emulatorExec(script: string, options: any) {
   }
   let exitCode = 0;
   try {
-    const excludeUi = !options.ui;
-    await controller.startAll(options, excludeUi);
+    const showUI = !!options.ui;
+    await controller.startAll(options, showUI);
     exitCode = await runScript(script, extraEnv);
     await onExit(options);
   } finally {

@@ -3,8 +3,8 @@
   "description": "Greet the world",
   "main": "index.js",
   "dependencies": {
-    "firebase-admin": "^8.6.0",
-    "firebase-functions": "^3.6.1"
+    "firebase-admin": "^9.8.0",
+    "firebase-functions": "^3.14.1"
   },
   "private": true
 }

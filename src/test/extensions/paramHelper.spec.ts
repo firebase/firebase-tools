@@ -5,18 +5,19 @@ import * as dotenv from "dotenv";
 import * as fs from "fs-extra";
 
 import { FirebaseError } from "../../error";
-import * as logger from "../../logger";
-import { ExtensionInstance, ParamType } from "../../extensions/extensionsApi";
+import { logger } from "../../logger";
+import { ExtensionInstance, Param, ParamType } from "../../extensions/extensionsApi";
 import * as extensionsHelper from "../../extensions/extensionsHelper";
 import * as paramHelper from "../../extensions/paramHelper";
 import * as prompt from "../../prompt";
 
 const PROJECT_ID = "test-proj";
-const TEST_PARAMS = [
+const TEST_PARAMS: Param[] = [
   {
     param: "A_PARAMETER",
     label: "Param",
     type: ParamType.STRING,
+    required: true,
   },
   {
     param: "ANOTHER_PARAMETER",
@@ -26,7 +27,7 @@ const TEST_PARAMS = [
   },
 ];
 
-const TEST_PARAMS_2 = [
+const TEST_PARAMS_2: Param[] = [
   {
     param: "ANOTHER_PARAMETER",
     label: "Another Param",
@@ -46,7 +47,7 @@ const TEST_PARAMS_2 = [
     default: "default",
   },
 ];
-const TEST_PARAMS_3 = [
+const TEST_PARAMS_3: Param[] = [
   {
     param: "A_PARAMETER",
     label: "Param",
@@ -115,7 +116,23 @@ describe("paramHelper", () => {
       });
     });
 
-    it("should throw if a param without a default is not in envFilePath", async () => {
+    it("should omit optional params that are not in envFilePath", async () => {
+      dotenvStub.returns({
+        ANOTHER_PARAMETER: "aValue",
+      });
+
+      const params = await paramHelper.getParams(
+        PROJECT_ID,
+        TEST_PARAMS_3,
+        "./a/path/to/a/file.env"
+      );
+
+      expect(params).to.eql({
+        ANOTHER_PARAMETER: "aValue",
+      });
+    });
+
+    it("should throw if a required param without a default is not in envFilePath", async () => {
       dotenvStub.returns({
         ANOTHER_PARAMETER: "aValue",
       });
@@ -184,6 +201,7 @@ describe("paramHelper", () => {
       testInstance = {
         config: {
           source: {
+            state: "ACTIVE",
             name: "",
             packageUri: "",
             hash: "",
@@ -216,6 +234,7 @@ describe("paramHelper", () => {
             label: "Param",
             default: "new default",
             type: ParamType.STRING,
+            required: true,
           },
           {
             param: "ANOTHER_PARAMETER",
@@ -243,6 +262,7 @@ describe("paramHelper", () => {
           label: "Param",
           default: "new default",
           type: ParamType.STRING,
+          required: true,
         },
         {
           param: "ANOTHER_PARAMETER",

@@ -2,8 +2,9 @@ import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
 import { Constants } from "./constants";
 import { SPLAT } from "triple-beam";
 import * as WebSocket from "ws";
+import { LogEntry } from "winston";
 import * as TransportStream from "winston-transport";
-import logger = require("../logger");
+import { logger } from "../logger";
 const ansiStrip = require("cli-color/strip");
 
 export interface LoggingEmulatorArgs {
@@ -45,10 +46,11 @@ export class LoggingEmulator implements EmulatorInstance {
     return Promise.resolve();
   }
 
-  stop(): Promise<void> {
-    logger.remove(this.transport);
-
-    return this.transport ? this.transport.stop() : Promise.resolve();
+  async stop(): Promise<void> {
+    if (this.transport) {
+      logger.remove(this.transport);
+      return this.transport.stop();
+    }
   }
 
   getInfo(): EmulatorInfo {
@@ -66,13 +68,6 @@ export class LoggingEmulator implements EmulatorInstance {
     return Emulators.LOGGING;
   }
 }
-
-type LogEntry = {
-  level: string;
-  data: any;
-  timestamp: number;
-  message: string;
-};
 
 class WebSocketTransport extends TransportStream {
   wss?: WebSocket.Server;

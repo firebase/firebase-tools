@@ -4,10 +4,9 @@
   "description": "",
   "main": "functions/index.js",
   "dependencies": {
-    "async": "^3.0.1",
-    "firebase-admin": "^8.6.0",
+    "firebase-admin": "^9.4.2",
     "firebase-functions": "^3.3.0"
   },
   "author": "",
-  "license": "ISC"
+  "license": "MIT"
 }

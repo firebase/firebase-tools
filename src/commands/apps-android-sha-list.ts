@@ -4,7 +4,7 @@ import { Command } from "../command";
 import * as getProjectId from "../getProjectId";
 import { listAppAndroidSha, AppAndroidShaData } from "../management/apps";
 import { requireAuth } from "../requireAuth";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { promiseWithSpinner } from "../utils";
 
 function logCertificatesList(certificates: AppAndroidShaData[]): void {

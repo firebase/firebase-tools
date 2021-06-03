@@ -4,9 +4,11 @@ var clc = require("cli-color");
 var _ = require("lodash");
 
 var api = require("./api");
-var logger = require("./logger");
+const { logger } = require("./logger");
 var utils = require("./utils");
+var { FirebaseError } = require("./error");
 
+// TODO: support for MFA at runtime was added in PR #3173, but this importer currently ignores `mfaInfo` and loses the data on import.
 var ALLOWED_JSON_KEYS = [
   "localId",
   "email",
@@ -28,7 +30,7 @@ var ALLOWED_JSON_KEYS_RENAMING = {
 var ALLOWED_PROVIDER_USER_INFO_KEYS = ["providerId", "rawId", "email", "displayName", "photoUrl"];
 var ALLOWED_PROVIDER_IDS = ["google.com", "facebook.com", "twitter.com", "github.com"];
 
-var _isValidBase64 = function(str) {
+var _isValidBase64 = function (str) {
   var expected = Buffer.from(str, "base64").toString("base64");
   // Buffer automatically pads with '=' character,
   // but input string might not have padding.
@@ -38,14 +40,11 @@ var _isValidBase64 = function(str) {
   return expected === str;
 };
 
-var _toWebSafeBase64 = function(data) {
-  return data
-    .toString("base64")
-    .replace(/\//g, "_")
-    .replace(/\+/g, "-");
+var _toWebSafeBase64 = function (data) {
+  return data.toString("base64").replace(/\//g, "_").replace(/\+/g, "-");
 };
 
-var _addProviderUserInfo = function(user, providerId, arr) {
+var _addProviderUserInfo = function (user, providerId, arr) {
   if (arr[0]) {
     user.providerUserInfo.push({
       providerId: providerId,
@@ -57,16 +56,16 @@ var _addProviderUserInfo = function(user, providerId, arr) {
   }
 };
 
-var _genUploadAccountPostBody = function(projectId, accounts, hashOptions) {
+var _genUploadAccountPostBody = function (projectId, accounts, hashOptions) {
   var postBody = {
-    users: accounts.map(function(account) {
+    users: accounts.map(function (account) {
       if (account.passwordHash) {
         account.passwordHash = _toWebSafeBase64(account.passwordHash);
       }
       if (account.salt) {
         account.salt = _toWebSafeBase64(account.salt);
       }
-      _.each(ALLOWED_JSON_KEYS_RENAMING, function(value, key) {
+      _.each(ALLOWED_JSON_KEYS_RENAMING, function (value, key) {
         if (account[key]) {
           account[value] = account[key];
           delete account[key];
@@ -109,7 +108,7 @@ var _genUploadAccountPostBody = function(projectId, accounts, hashOptions) {
   return postBody;
 };
 
-var transArrayToUser = function(arr) {
+var transArrayToUser = function (arr) {
   var user = {
     localId: arr[0],
     email: arr[1],
@@ -143,7 +142,7 @@ var transArrayToUser = function(arr) {
   return user;
 };
 
-var validateOptions = function(options) {
+var validateOptions = function (options) {
   var hashOptions = _validateRequiredParameters(options);
   if (!hashOptions.valid) {
     return hashOptions;
@@ -151,7 +150,7 @@ var validateOptions = function(options) {
   var hashInputOrder = options.hashInputOrder ? options.hashInputOrder.toUpperCase() : undefined;
   if (hashInputOrder) {
     if (hashInputOrder != "SALT_FIRST" && hashInputOrder != "PASSWORD_FIRST") {
-      return utils.reject("Unknown password hash order flag", { exit: 1 });
+      throw new FirebaseError("Unknown password hash order flag", { exit: 1 });
     } else {
       hashOptions["passwordHashOrder"] =
         hashInputOrder == "SALT_FIRST" ? "SALT_AND_PASSWORD" : "PASSWORD_AND_SALT";
@@ -160,7 +159,7 @@ var validateOptions = function(options) {
   return hashOptions;
 };
 
-var _validateRequiredParameters = function(options) {
+var _validateRequiredParameters = function (options) {
   if (!options.hashAlgo) {
     utils.logWarning("No hash algorithm specified. Password users cannot be imported.");
     return { valid: true };
@@ -173,7 +172,7 @@ var _validateRequiredParameters = function(options) {
     case "HMAC_SHA1":
     case "HMAC_MD5":
       if (!options.hashKey || options.hashKey === "") {
-        return utils.reject(
+        throw new FirebaseError(
           "Must provide hash key(base64 encoded) for hash algorithm " + options.hashAlgo,
           { exit: 1 }
         );
@@ -187,7 +186,7 @@ var _validateRequiredParameters = function(options) {
       roundsNum = parseInt(options.rounds, 10);
       var minRounds = hashAlgo === "MD5" ? 0 : 1;
       if (isNaN(roundsNum) || roundsNum < minRounds || roundsNum > 8192) {
-        return utils.reject(
+        throw new FirebaseError(
           `Must provide valid rounds(${minRounds}..8192) for hash algorithm ${options.hashAlgo}`,
           { exit: 1 }
         );
@@ -197,7 +196,7 @@ var _validateRequiredParameters = function(options) {
     case "PBKDF2_SHA256":
       roundsNum = parseInt(options.rounds, 10);
       if (isNaN(roundsNum) || roundsNum < 0 || roundsNum > 120000) {
-        return utils.reject(
+        throw new FirebaseError(
           "Must provide valid rounds(0..120000) for hash algorithm " + options.hashAlgo,
           { exit: 1 }
         );
@@ -205,21 +204,21 @@ var _validateRequiredParameters = function(options) {
       return { hashAlgo: hashAlgo, rounds: options.rounds, valid: true };
     case "SCRYPT":
       if (!options.hashKey || options.hashKey === "") {
-        return utils.reject(
+        throw new FirebaseError(
           "Must provide hash key(base64 encoded) for hash algorithm " + options.hashAlgo,
           { exit: 1 }
         );
       }
       roundsNum = parseInt(options.rounds, 10);
       if (isNaN(roundsNum) || roundsNum <= 0 || roundsNum > 8) {
-        return utils.reject(
+        throw new FirebaseError(
           "Must provide valid rounds(1..8) for hash algorithm " + options.hashAlgo,
           { exit: 1 }
         );
       }
       var memCost = parseInt(options.memCost, 10);
       if (isNaN(memCost) || memCost <= 0 || memCost > 14) {
-        return utils.reject(
+        throw new FirebaseError(
           "Must provide valid memory cost(1..14) for hash algorithm " + options.hashAlgo,
           { exit: 1 }
         );
@@ -252,11 +251,11 @@ var _validateRequiredParameters = function(options) {
         dkLen: dkLen,
       };
     default:
-      return utils.reject("Unsupported hash algorithm " + clc.bold(options.hashAlgo));
+      throw new FirebaseError("Unsupported hash algorithm " + clc.bold(options.hashAlgo));
   }
 };
 
-var _validateProviderUserInfo = function(providerUserInfo) {
+var _validateProviderUserInfo = function (providerUserInfo) {
   if (!_.includes(ALLOWED_PROVIDER_IDS, providerUserInfo.providerId)) {
     return {
       error: JSON.stringify(providerUserInfo, null, 2) + " has unsupported providerId",
@@ -272,7 +271,7 @@ var _validateProviderUserInfo = function(providerUserInfo) {
   return {};
 };
 
-var validateUserJson = function(userJson) {
+var validateUserJson = function (userJson) {
   var keydiff = _.difference(_.keys(userJson), ALLOWED_JSON_KEYS);
   if (keydiff.length) {
     return {
@@ -301,7 +300,7 @@ var validateUserJson = function(userJson) {
   return {};
 };
 
-var _sendRequest = function(projectId, userList, hashOptions) {
+var _sendRequest = function (projectId, userList, hashOptions) {
   logger.info("Starting importing " + userList.length + " account(s).");
   return api
     .request("POST", "/identitytoolkit/v3/relyingparty/uploadAccount", {
@@ -310,11 +309,11 @@ var _sendRequest = function(projectId, userList, hashOptions) {
       data: _genUploadAccountPostBody(projectId, userList, hashOptions),
       origin: api.googleOrigin,
     })
-    .then(function(ret) {
+    .then(function (ret) {
       if (ret.body.error) {
         logger.info("Encountered problems while importing accounts. Details:");
         logger.info(
-          ret.body.error.map(function(rawInfo) {
+          ret.body.error.map(function (rawInfo) {
             return {
               account: JSON.stringify(userList[parseInt(rawInfo.index, 10)], null, 2),
               reason: rawInfo.message,
@@ -328,8 +327,8 @@ var _sendRequest = function(projectId, userList, hashOptions) {
     });
 };
 
-var serialImportUsers = function(projectId, hashOptions, userListArr, index) {
-  return _sendRequest(projectId, userListArr[index], hashOptions).then(function() {
+var serialImportUsers = function (projectId, hashOptions, userListArr, index) {
+  return _sendRequest(projectId, userListArr[index], hashOptions).then(function () {
     if (index < userListArr.length - 1) {
       return serialImportUsers(projectId, hashOptions, userListArr, index + 1);
     }

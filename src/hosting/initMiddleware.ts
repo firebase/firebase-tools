@@ -4,7 +4,7 @@ import { RequestHandler } from "express";
 
 import { Client } from "../apiv2";
 import { TemplateServerResponse } from "./implicitInit";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import * as utils from "../utils";
 
 const SDK_PATH_REGEXP = /^\/__\/firebase\/([^/]+)\/([^/]+)$/;
@@ -24,15 +24,25 @@ export function initMiddleware(init: TemplateServerResponse): RequestHandler {
       const sdkName = match[2];
       const u = new url.URL(`https://www.gstatic.com/firebasejs/${version}/${sdkName}`);
       const c = new Client({ urlPrefix: u.origin, auth: false });
+      const headers: { [key: string]: string } = {};
+      const acceptEncoding = req.headers["accept-encoding"];
+      if (typeof acceptEncoding === "string" && acceptEncoding) {
+        headers["accept-encoding"] = acceptEncoding;
+      }
       c.request<unknown, NodeJS.ReadableStream>({
         method: "GET",
         path: u.pathname,
+        headers,
         responseType: "stream",
         resolveOnHTTPError: true,
+        compress: false,
       })
         .then((sdkRes) => {
           if (sdkRes.status === 404) {
             return next();
+          }
+          for (const [key, value] of Object.entries(sdkRes.response.headers.raw())) {
+            res.setHeader(key, value);
           }
           sdkRes.body.pipe(res);
         })
