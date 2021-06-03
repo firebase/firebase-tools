@@ -1,1 +1,2 @@
 - Add Warsaw (europe-central2) Cloud Function Location to Firebase Extension template.
+- Fixes `firebase init database` failure when no project is selected (#2981)
