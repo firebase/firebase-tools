@@ -14,6 +14,7 @@ import * as functionsConfig from "../../functionsConfig";
 import * as utils from "../../utils";
 import * as fsAsync from "../../fsAsync";
 import * as args from "./args";
+import { Options } from "../../options";
 
 const CONFIG_DEST_FILE = ".runtimeconfig.json";
 
@@ -45,6 +46,13 @@ async function getFunctionsConfig(context: args.Context): Promise<{ [key: string
   return config;
 }
 
+async function getEnvs(context: args.Context): Promise<{ [key: string]: string }> {
+  const envs = {
+    FIREBASE_CONFIG: JSON.stringify(context.firebaseConfig),
+  };
+  return Promise.resolve(envs);
+}
+
 async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream) {
   return new Promise((resolve, reject) => {
     to.on("finish", resolve);
@@ -53,7 +61,7 @@ async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream) {
   });
 }
 
-async function packageSource(options: args.Options, sourceDir: string, configValues: any) {
+async function packageSource(options: Options, sourceDir: string, configValues: any) {
   const tmpFile = tmp.fileSync({ prefix: "firebase-functions-", postfix: ".zip" }).name;
   const fileStream = fs.createWriteStream(tmpFile, {
     flags: "w",
@@ -107,11 +115,12 @@ async function packageSource(options: args.Options, sourceDir: string, configVal
 
 export async function prepareFunctionsUpload(
   context: args.Context,
-  options: args.Options
+  options: Options
 ): Promise<string | undefined> {
   const sourceDir = options.config.path(options.config.get("functions.source") as string);
   const configValues = await getFunctionsConfig(context);
-  const backend = await discoverBackendSpec(context, options, configValues);
+  const envs = await getEnvs(context);
+  const backend = await discoverBackendSpec(context, options, configValues, envs);
   options.config.set("functions.backend", backend);
   if (isEmptyBackend(backend)) {
     // No need to package if there are 0 functions to deploy.

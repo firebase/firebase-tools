@@ -15,7 +15,7 @@ const cjson = require("cjson");
 
 /**
  * Check that functions directory exists.
- * @param options options object. In prod is an args.Options; in tests can just be {cwd: string}
+ * @param options options object. In prod is an Options; in tests can just be {cwd: string}
  * @param sourceDirName Relative path to source directory.
  * @throws { FirebaseError } Functions directory must exist.
  */

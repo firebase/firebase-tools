@@ -17,11 +17,12 @@ var utils = require("./utils");
 var LocalFunction = function (trigger, urls, controller) {
   const isCallable = _.get(trigger, ["labels", "deployment-callable"], "false");
 
+  this.id = trigger.id;
   this.name = trigger.name;
   this.eventTrigger = trigger.eventTrigger;
   this.httpsTrigger = trigger.httpsTrigger;
   this.controller = controller;
-  this.url = _.get(urls, this.name);
+  this.url = _.get(urls, this.id);
 
   if (this.httpsTrigger) {
     if (isCallable == "true") {

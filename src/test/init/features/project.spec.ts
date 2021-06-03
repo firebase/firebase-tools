@@ -6,7 +6,7 @@ import { configstore } from "../../../configstore";
 import { doSetup } from "../../../init/features/project";
 import * as projectManager from "../../../management/projects";
 import * as prompt from "../../../prompt";
-import * as Config from "../../../config";
+import { Config } from "../../../config";
 
 const TEST_FIREBASE_PROJECT: projectManager.FirebaseProjectMetadata = {
   projectId: "my-project-123",

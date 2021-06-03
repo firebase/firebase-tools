@@ -12,8 +12,9 @@ import * as helper from "./functionsDeployHelper";
 import * as tasks from "./tasks";
 import * as backend from "./backend";
 import * as args from "./args";
+import { Options } from "../../options";
 
-export async function release(context: args.Context, options: args.Options, payload: args.Payload) {
+export async function release(context: args.Context, options: Options, payload: args.Payload) {
   if (!options.config.has("functions")) {
     return;
   }

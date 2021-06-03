@@ -1,5 +1,5 @@
 import { FirebaseError } from "../error";
-import * as Config from "../config";
+import { Config } from "../config";
 import { logger } from "../logger";
 
 export interface RulesInstanceConfig {

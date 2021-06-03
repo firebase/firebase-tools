@@ -21,6 +21,7 @@ export interface ScheduleRetryConfig {
 export interface PubSubSpec {
   id: string;
   project: string;
+  labels?: Record<string, string>;
 
   // What we're actually planning to invoke with this topic
   targetService: TargetIds;
@@ -113,6 +114,8 @@ export function memoryOptionDisplayName(option: MemoryOptions): string {
   }[option];
 }
 
+export const SCHEDULED_FUNCTION_LABEL = Object.freeze({ deployment: "firebase-schedule" });
+
 /** Supported runtimes for new Cloud Functions. */
 export type Runtime = "nodejs10" | "nodejs12" | "nodejs14";
 
@@ -179,6 +182,7 @@ export interface Backend {
   cloudFunctions: FunctionSpec[];
   schedules: ScheduleSpec[];
   topics: PubSubSpec[];
+  environmentVariables: EnvironmentVariables;
 }
 
 /**
@@ -192,6 +196,7 @@ export function empty(): Backend {
     cloudFunctions: [],
     schedules: [],
     topics: [],
+    environmentVariables: {},
   };
 }
 
@@ -215,6 +220,12 @@ export function isEmptyBackend(backend: Backend): boolean {
  * Future refactors of this code should move this type deeper into the codebase.
  */
 export type RuntimeConfigValues = Record<string, unknown>;
+
+/**
+ * Environment variables to be applied to backend instances.
+ * Applies to both GCFv1 and GCFv2 backends.
+ */
+export type EnvironmentVariables = Record<string, string>;
 
 /**
  * Gets the formal resource name for a Cloud Function.
@@ -543,7 +554,7 @@ export function toJob(schedule: ScheduleSpec, appEngineLocation: string): clouds
     name: scheduleName(schedule, appEngineLocation),
     schedule: schedule.schedule!,
   };
-  proto.copyIfPresent(job, schedule, "retryConfig");
+  proto.copyIfPresent(job, schedule, "timeZone", "retryConfig");
   if (schedule.transport === "https") {
     throw new FirebaseError("HTTPS transport for scheduled functions is not yet supported");
   }
@@ -597,6 +608,7 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
     cloudFunctions: [],
     schedules: [],
     topics: [],
+    environmentVariables: {},
   };
   ctx.unreachableRegions = {
     gcfV1: [],
@@ -622,6 +634,7 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
       ctx.existingBackend.topics.push({
         id,
         project: specFunction.project,
+        labels: SCHEDULED_FUNCTION_LABEL,
         targetService: {
           id: specFunction.id,
           region: specFunction.region,
@@ -657,6 +670,7 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
       ctx.existingBackend.topics.push({
         id,
         project: specFunction.project,
+        labels: SCHEDULED_FUNCTION_LABEL,
         targetService: {
           id: specFunction.id,
           region: specFunction.region,

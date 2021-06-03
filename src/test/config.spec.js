@@ -3,7 +3,7 @@
 var chai = require("chai");
 var expect = chai.expect;
 
-var Config = require("../config");
+const { Config } = require("../config");
 var path = require("path");
 
 var _fixtureDir = function (name) {

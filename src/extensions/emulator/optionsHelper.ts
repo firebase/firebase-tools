@@ -8,7 +8,7 @@ import * as localHelper from "../localHelper";
 import * as triggerHelper from "./triggerHelper";
 import { Resource } from "../extensionsApi";
 import * as extensionsHelper from "../extensionsHelper";
-import * as Config from "../../config";
+import { Config } from "../../config";
 import { FirebaseError } from "../../error";
 import { EmulatorLogger } from "../../emulator/emulatorLogger";
 import * as getProjectId from "../../getProjectId";

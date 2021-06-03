@@ -8,6 +8,7 @@ import * as args from "./args";
 import * as backend from "./backend";
 import * as pricing from "./pricing";
 import * as utils from "../../utils";
+import { Options } from "../../options";
 
 // To be a bit more deterministic, print function lists in a prescribed order.
 // Future versions might want to compare regions by GCF/Run pricing tier before
@@ -38,7 +39,7 @@ function compareFunctions(left: backend.FunctionSpec, right: backend.FunctionSpe
  * @param functions A list of all functions in the deployment
  */
 export async function promptForFailurePolicies(
-  options: args.Options,
+  options: Options,
   want: backend.FunctionSpec[],
   have: backend.FunctionSpec[]
 ): Promise<void> {
@@ -152,7 +153,7 @@ export async function promptForFunctionDeletion(
  * If there are any, prompts the user to confirm a minimum bill.
  */
 export async function promptForMinInstances(
-  options: args.Options,
+  options: Options,
   want: backend.FunctionSpec[],
   have: backend.FunctionSpec[]
 ): Promise<void> {
