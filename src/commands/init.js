@@ -73,7 +73,8 @@ module.exports = new Command("init [feature]")
     var choices = [
       {
         value: "database",
-        name: "Realtime Database: Configure a security rules file for Realtime Database and (optionally) provision default instance",
+        name:
+          "Realtime Database: Configure a security rules file for Realtime Database and (optionally) provision default instance",
         checked: false,
       },
       {
@@ -88,7 +89,8 @@ module.exports = new Command("init [feature]")
       },
       {
         value: "hosting",
-        name: "Hosting: Configure files for Firebase Hosting and (optionally) set up GitHub Action deploys",
+        name:
+          "Hosting: Configure files for Firebase Hosting and (optionally) set up GitHub Action deploys",
         checked: false,
       },
       {
