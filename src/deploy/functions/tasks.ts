@@ -281,6 +281,12 @@ export async function runRegionalFunctionDeployment(
   deploys.push(...regionalDeployment.functionsToUpdate.map((fn) => deploy(fn, updateFunctionTask)));
 
   await Promise.all(deploys);
+
+  const deletes = regionalDeployment.functionsToDelete.map(async (fn) => {
+    const task = deleteFunctionTask(params, fn);
+    await queue.run(task);
+  });
+  await Promise.all(deletes);
 }
 
 /**
