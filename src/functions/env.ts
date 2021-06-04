@@ -5,54 +5,26 @@ import * as envstore from "./envstore";
 
 // Exported for testing-only
 export const ENVSTORE_ID = "firebase-functions";
-const ENVSTORE_META_ID = "firebase-functions-active";
 const RESERVED_KEY_NAMES = [
   // Cloud Functions for Firebase
   "FIREBASE_CONFIG",
   // Cloud Functions:
-  // . https://cloud.google.com/functions/docs/env-var#best_practices_and_reserved_environment_variables
+  //   https://cloud.google.com/functions/docs/env-var#best_practices_and_reserved_environment_variables
   "FUNCTION_TARGET",
   "FUNCTION_SIGNATURE_TYPE",
   "K_SERVICE",
   "K_REVISION",
   "PORT",
   // Cloud Run:
-  // . https://cloud.google.com/run/docs/reference/container-contract#env-vars
+  //   https://cloud.google.com/run/docs/reference/container-contract#env-vars
   "K_CONFIGURATION",
 ];
-
-/**
- * Returns true if the environment variables support is active on
- * the project.
- *
- * This is a bespoke method for checking env var support. Specifically,
- * we define env var support to be active there is an entry in the
- * EnvStore API with an envstore id of ${envMetaId}.
- *
- * @return {Promise<boolean>} True if EnvStore is enabled on the project.
- */
-export async function check(projectId: string): Promise<boolean> {
-  const envStore = await envstore.getStore(projectId, ENVSTORE_META_ID);
-  return !!envStore.vars;
-}
-
-/**
- * Enable environment variables support.
- *
- * This is a bespoke method for "enabling" env var support.
- * Specifically, we activate env var support by creating an entry in
- * the EnvStore API with an envstore id ${envMetaId}.
- *
- */
-export async function enable(projectId: string): Promise<void> {
-  await envstore.createStore(projectId, ENVSTORE_META_ID, { ENABLED: "1" });
-}
 
 /**
  * Format environment variables into console-friendly strings.
  *
  * @param {Record<string, string>} envs Environment variables to format.
- * @return {string} Formatted string suitable to print.
+ * @return {string} Formatted string suitable for printing.
  */
 export function formatEnv(envs: Record<string, string>): string {
   const s = [];
@@ -63,10 +35,10 @@ export function formatEnv(envs: Record<string, string>): string {
 }
 
 /**
- * Validates string for use as environment variable key.
+ * Validates string for use as an env var key.
  *
- * We intentionally restrict key names to conform to POSIX standards for
- * environment variables.
+ * We restrict key names to ones that conform to POSIX standards.
+ * This is more restrictive than what is allowed in Cloud Functions or Cloud Run.
  *
  * @param key {string} Key to validate
  */
@@ -77,7 +49,6 @@ export function validateKey(key: string): void {
       "Invalid environment variable name " + clc.bold(key) + ", is reserved for internal use."
     );
   }
-
   // Only allow subset of key names that conforms to POSIX standards for
   // environment variables:
   //   https://cloud.google.com/functions/docs/env-var#portability
@@ -89,7 +60,6 @@ export function validateKey(key: string): void {
         ", and then consist of uppercase ASCII letters, digits, and underscores."
     );
   }
-
   // Keys cannot contain the prefix X_GOOGLE_.
   if (/^X_GOOGLE_.*$/.test(key)) {
     throw new FirebaseError(
@@ -113,10 +83,8 @@ export function parseKvArgs(args: string[]): Record<string, string> {
     if (parts.length < 2) {
       throw new FirebaseError(`Invalid argument ${clc.bold(arg)}, must be in key=val format`);
     }
-
     const key = parts[0];
     validateKey(key);
-
     const val = parts.slice(1).join("="); // Val may have contained '='.
     envs[key] = val;
   });
@@ -124,7 +92,7 @@ export function parseKvArgs(args: string[]): Record<string, string> {
 }
 
 /**
- * Get project environment variables from the EnvStore Service.
+ * Get environment variables from the EnvStore Service.
  *
  * @return {Promise<Record<string, string>>} An object that contains environment variables.
  */
@@ -161,7 +129,6 @@ export async function removeKeys(
   keys.forEach((key) => {
     envs[key] = "";
   });
-
   const envStore = await envstore.patchStore(projectId, ENVSTORE_ID, envs);
   return envStore.vars || {};
 }
@@ -169,8 +136,8 @@ export async function removeKeys(
 /**
  * Set environment variables in the EnvStore Service to the given set.
  *
- * setEnv is destructive and deletes environment variables not defined in the
- * given envs.
+ * This operation is destructive and deletes env vars not defined in the given
+ * envs.
  *
  * @param {Record<string, string>} envs Environment variables to set.
  * @return {Promise<Record<string, string>>} An object with environment variables from the EnvStore.
@@ -215,14 +182,16 @@ export async function clone(
   only: string[],
   except: string[]
 ): Promise<Record<string, string>> {
-  let filterFn: (k: string) => boolean;
+  if (only.length && except.length) {
+    throw new FirebaseError("Cannot use both only and except at the same time.");
+  }
 
+  let filterFn: (k: string) => boolean;
   if (only.length) {
     filterFn = (k) => only.includes(k);
   } else {
     filterFn = (k) => !except.includes(k);
   }
-
   const envs: Record<string, string> = {};
   const fromEnvs = await getEnvs(fromProjectId);
   Object.entries(fromEnvs).forEach(([k, v]) => {

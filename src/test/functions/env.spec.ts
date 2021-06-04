@@ -108,7 +108,7 @@ describe("function env", () => {
       expect(getStore).to.have.been.calledOnceWithExactly(fromP, fenv.ENVSTORE_ID);
     });
 
-    it("should filter the environment variables using the --only option", async () => {
+    it("should filter the environment variables using the only option", async () => {
       const envs = {
         A1: "aa",
         A2: "bb",
@@ -131,7 +131,7 @@ describe("function env", () => {
       expect(getStore).to.have.been.calledOnceWithExactly(fromP, fenv.ENVSTORE_ID);
     });
 
-    it("should filter the environment variables using the --except option", async () => {
+    it("should filter the environment variables using the except option", async () => {
       const envs = {
         A1: "aa",
         A2: "bb",
@@ -152,6 +152,10 @@ describe("function env", () => {
       });
       expect(deleteStore).to.have.been.calledOnceWithExactly(toP, fenv.ENVSTORE_ID);
       expect(getStore).to.have.been.calledOnceWithExactly(fromP, fenv.ENVSTORE_ID);
+    });
+
+    it("should throw error if both only and except options are given", () => {
+      expect(async () => await fenv.clone("a", "b", ["A1"], ["A2"])).to.throw;
     });
   });
 });
