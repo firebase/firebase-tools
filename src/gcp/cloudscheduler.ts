@@ -1,7 +1,9 @@
 import * as _ from "lodash";
+
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import * as api from "../api";
+import * as backend from "../deploy/functions/backend";
 import * as proto from "./proto";
 
 const VERSION = "v1beta1";
@@ -190,4 +192,23 @@ function isIdentical(job: Job, otherJob: Job): boolean {
     job.timeZone === otherJob.timeZone &&
     _.isEqual(job.retryConfig, otherJob.retryConfig)
   );
+}
+
+/** Converts a version agnostic ScheduleSpec to a CloudScheduler v1 Job. */
+export function jobFromSpec(schedule: backend.ScheduleSpec, appEngineLocation: string): Job {
+  const job: Job = {
+    name: backend.scheduleName(schedule, appEngineLocation),
+    schedule: schedule.schedule!,
+  };
+  proto.copyIfPresent(job, schedule, "timeZone", "retryConfig");
+  if (schedule.transport === "https") {
+    throw new FirebaseError("HTTPS transport for scheduled functions is not yet supported");
+  }
+  job.pubsubTarget = {
+    topicName: backend.topicName(schedule),
+    attributes: {
+      scheduled: "true",
+    },
+  };
+  return job;
 }
