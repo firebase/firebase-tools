@@ -4,6 +4,7 @@ import { Client } from "../apiv2";
 import { FirebaseError } from "../error";
 import { functionsV2Origin } from "../api";
 import { logger } from "../logger";
+import * as backend from "../deploy/functions/backend";
 import * as proto from "./proto";
 import * as utils from "../utils";
 
@@ -323,4 +324,156 @@ export async function deleteFunction(cloudFunction: string): Promise<Operation> 
   } catch (err) {
     throw functionsOpLogReject(cloudFunction, "update", err);
   }
+}
+
+export function functionFromSpec(cloudFunction: backend.FunctionSpec, source: StorageSource) {
+  if (cloudFunction.apiVersion != 2) {
+    throw new FirebaseError(
+      "Trying to create a v2 CloudFunction with v1 API. This should never happen"
+    );
+  }
+
+  if (!backend.isValidRuntime(cloudFunction.runtime)) {
+    throw new FirebaseError(
+      "Failed internal assertion. Trying to deploy a new function with a deprecated runtime." +
+        " This should never happen"
+    );
+  }
+
+  const gcfFunction: Omit<CloudFunction, OutputOnlyFields> = {
+    name: backend.functionName(cloudFunction),
+    buildConfig: {
+      runtime: cloudFunction.runtime,
+      entryPoint: cloudFunction.entryPoint,
+      source: {
+        storageSource: source,
+      },
+      // We don't use build environment variables,
+      environmentVariables: {},
+    },
+    serviceConfig: {},
+  };
+
+  proto.copyIfPresent(
+    gcfFunction.serviceConfig,
+    cloudFunction,
+    "availableMemoryMb",
+    "environmentVariables",
+    "vpcConnector",
+    "vpcConnectorEgressSettings",
+    "serviceAccountEmail",
+    "ingressSettings"
+  );
+  proto.renameIfPresent(
+    gcfFunction.serviceConfig,
+    cloudFunction,
+    "timeoutSeconds",
+    "timeout",
+    proto.secondsFromDuration
+  );
+  proto.renameIfPresent(
+    gcfFunction.serviceConfig,
+    cloudFunction,
+    "minInstanceCount",
+    "minInstances"
+  );
+  proto.renameIfPresent(
+    gcfFunction.serviceConfig,
+    cloudFunction,
+    "maxInstanceCount",
+    "maxInstances"
+  );
+
+  if (backend.isEventTrigger(cloudFunction.trigger)) {
+    gcfFunction.eventTrigger = {
+      eventType: cloudFunction.trigger.eventType,
+    };
+    if (gcfFunction.eventTrigger.eventType === PUBSUB_PUBLISH_EVENT) {
+      gcfFunction.eventTrigger.pubsubTopic = cloudFunction.trigger.eventFilters.resource;
+    } else {
+      gcfFunction.eventTrigger.eventFilters = [];
+      for (const [attribute, value] of Object.entries(cloudFunction.trigger.eventFilters)) {
+        gcfFunction.eventTrigger.eventFilters.push({ attribute, value });
+      }
+    }
+
+    if (cloudFunction.trigger.retry) {
+      logger.warn("Cannot set a retry policy on Cloud Function", cloudFunction.id);
+    }
+  } else if (cloudFunction.trigger.allowInsecure) {
+    logger.warn("Cannot enable insecure traffic for Cloud Function", cloudFunction.id);
+  }
+  proto.copyIfPresent(gcfFunction, cloudFunction, "labels");
+
+  return gcfFunction;
+}
+
+export function specFromFunction(gcfFunction: CloudFunction): backend.FunctionSpec {
+  const [, project, , region, , id] = gcfFunction.name.split("/");
+  let trigger: backend.EventTrigger | backend.HttpsTrigger;
+  if (gcfFunction.eventTrigger) {
+    trigger = {
+      eventType: gcfFunction.eventTrigger!.eventType,
+      eventFilters: {},
+      retry: false,
+    };
+    if (gcfFunction.eventTrigger.pubsubTopic) {
+      trigger.eventFilters.resource = gcfFunction.eventTrigger.pubsubTopic;
+    } else {
+      for (const { attribute, value } of gcfFunction.eventTrigger.eventFilters || []) {
+        trigger.eventFilters[attribute] = value;
+      }
+    }
+  } else {
+    trigger = {
+      allowInsecure: false,
+    };
+  }
+
+  if (!backend.isValidRuntime(gcfFunction.buildConfig.runtime)) {
+    logger.debug("GCFv2 function has a deprecated runtime:", JSON.stringify(gcfFunction, null, 2));
+  }
+
+  const cloudFunction: backend.FunctionSpec = {
+    apiVersion: 2,
+    id,
+    project,
+    region,
+    trigger,
+    entryPoint: gcfFunction.buildConfig.entryPoint,
+    runtime: gcfFunction.buildConfig.runtime,
+    uri: gcfFunction.serviceConfig.uri,
+  };
+  proto.copyIfPresent(
+    cloudFunction,
+    gcfFunction.serviceConfig,
+    "serviceAccountEmail",
+    "availableMemoryMb",
+    "vpcConnector",
+    "vpcConnectorEgressSettings",
+    "ingressSettings",
+    "environmentVariables"
+  );
+  proto.renameIfPresent(
+    cloudFunction,
+    gcfFunction.serviceConfig,
+    "timeout",
+    "timeoutSeconds",
+    proto.durationFromSeconds
+  );
+  proto.renameIfPresent(
+    cloudFunction,
+    gcfFunction.serviceConfig,
+    "minInstances",
+    "minInstanceCount"
+  );
+  proto.renameIfPresent(
+    cloudFunction,
+    gcfFunction.serviceConfig,
+    "maxInstances",
+    "maxInstanceCount"
+  );
+  proto.copyIfPresent(cloudFunction, gcfFunction, "labels");
+
+  return cloudFunction;
 }
