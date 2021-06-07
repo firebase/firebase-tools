@@ -1,2 +1,2 @@
 - Add Warsaw (europe-central2) Cloud Function Location to Firebase Extension template.
-- Add Singapore (asia-southeast1) to Firebase Database location.
+- Add Singapore (asia-southeast1) as a valid Firebase Realtime Database location.
