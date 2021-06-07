@@ -10,10 +10,9 @@ interface EnvStoreEntry {
 const apiClient = new Client({ urlPrefix: firebaseApiOrigin, auth: true });
 
 /**
+ * Get envstore entry from the EnvStore Service.
  *
- * @param projectId
- * @param envStoreId
- * @returns
+ * @return {EnvStoreEntry} EnvStore entry for given envstore id.
  */
 export async function getStore(projectId: string, envStoreId: string): Promise<EnvStoreEntry> {
   let response;
@@ -28,11 +27,9 @@ export async function getStore(projectId: string, envStoreId: string): Promise<E
 }
 
 /**
+ * Create envstore entry in the EnvStore Service with the given environment variables.
  *
- * @param projectId
- * @param envStoreId
- * @param envs
- * @returns
+ * @return {EnvStoreEntry} EnvStore entry for given envstore id.
  */
 export async function createStore(
   projectId: string,
@@ -56,11 +53,9 @@ export async function createStore(
 }
 
 /**
+ * Patch envstore entry with given environment variables.
  *
- * @param projectId
- * @param envStoreId
- * @param envs
- * @returns
+ * @return {EnvStoreEntry} Patched EnvStore entry.
  */
 export async function patchStore(
   projectId: string,
@@ -84,10 +79,9 @@ export async function patchStore(
 }
 
 /**
+ * Delete envstore entry.
  *
- * @param projectId
- * @param envStoreId
- * @returns
+ * @return {EnvStoreEntry} Empty envstore entry.
  */
 export async function deleteStore(projectId: string, envStoreId: string): Promise<EnvStoreEntry> {
   let response;
