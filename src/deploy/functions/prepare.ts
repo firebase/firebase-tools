@@ -1,19 +1,20 @@
 import * as clc from "cli-color";
 
-import { checkRuntimeDependencies } from "./checkRuntimeDependencies";
 import { FirebaseError } from "../../error";
+import { Options } from "../../options";
+import { ensureCloudBuildEnabled } from "./ensureCloudBuildEnabled";
 import { functionMatchesAnyGroup, getFilterGroups } from "./functionsDeployHelper";
-import { getRuntimeChoice } from "./parseRuntimeAndValidateSDK";
-import { prepareFunctionsUpload } from "./prepareFunctionsUpload";
-import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import { logBullet } from "../../utils";
+import { getFunctionsConfig, getEnvs, prepareFunctionsUpload } from "./prepareFunctionsUpload";
+import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import * as args from "./args";
 import * as backend from "./backend";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
 import * as functionsConfig from "../../functionsConfig";
 import * as getProjectId from "../../getProjectId";
+import * as runtimes from "./runtimes";
 import * as validate from "./validate";
-import { Options } from "../../options";
+import { logger } from "../../logger";
 
 export async function prepare(
   context: args.Context,
@@ -24,19 +25,13 @@ export async function prepare(
     return;
   }
 
-  const sourceDirName = options.config.get("functions.source") as string;
-  if (!sourceDirName) {
-    throw new FirebaseError(
-      `No functions code detected at default location (./functions), and no functions.source defined in firebase.json`
-    );
-  }
-  const sourceDir = options.config.path(sourceDirName);
-  const projectDir = options.config.projectDir;
-  const projectId = getProjectId(options);
+  const runtimeDelegate = await runtimes.getRuntimeDelegate(context, options);
+  logger.debug(`Validating ${runtimeDelegate.name} source`);
+  await runtimeDelegate.validate();
+  logger.debug(`Building ${runtimeDelegate.name} source`);
+  await runtimeDelegate.build();
 
-  // Check what runtime to use, first in firebase.json, then in 'engines' field.
-  const runtimeFromConfig = (options.config.get("functions.runtime") as backend.Runtime) || "";
-  context.runtimeChoice = getRuntimeChoice(sourceDir, runtimeFromConfig);
+  const projectId = getProjectId(options);
 
   // Check that all necessary APIs are enabled.
   const checkAPIsEnabled = await Promise.all([
@@ -47,13 +42,22 @@ export async function prepare(
       "runtimeconfig",
       /* silent=*/ true
     ),
-    checkRuntimeDependencies(projectId, context.runtimeChoice!),
+    ensureCloudBuildEnabled(projectId),
   ]);
   context.runtimeConfigEnabled = checkAPIsEnabled[1];
 
   // Get the Firebase Config, and set it on each function in the deployment.
   const firebaseConfig = await functionsConfig.getFirebaseConfig(options);
   context.firebaseConfig = firebaseConfig;
+  const runtimeConfig = await getFunctionsConfig(context);
+  const env = await getEnvs(context);
+
+  logger.debug(`Analyzing ${runtimeDelegate.name} backend spec`);
+  const wantBackend = await runtimeDelegate.discoverSpec(runtimeConfig, env);
+  options.config.set("functions.backend", wantBackend);
+  if (backend.isEmptyBackend(wantBackend)) {
+    return;
+  }
 
   // Prepare the functions directory for upload, and set context.triggers.
   logBullet(
@@ -62,10 +66,8 @@ export async function prepare(
       clc.bold(options.config.get("functions.source")) +
       " directory for uploading..."
   );
-  context.functionsSource = await prepareFunctionsUpload(context, options);
+  context.functionsSource = await prepareFunctionsUpload(runtimeConfig, options);
 
-  // Get a list of CloudFunctionTriggers.
-  const wantBackend = options.config.get("functions.backend") as backend.Backend;
   // Setup default environment variables on each function.
   wantBackend.cloudFunctions.forEach((fn: backend.FunctionSpec) => {
     fn.environmentVariables = wantBackend.environmentVariables;
@@ -91,9 +93,7 @@ export async function prepare(
   };
 
   // Validate the function code that is being deployed.
-  validate.functionsDirectoryExists(options, sourceDirName);
   validate.functionIdsAreValid(wantBackend.cloudFunctions);
-  validate.packageJsonIsValid(sourceDirName, sourceDir, projectDir, !!runtimeFromConfig);
 
   // Check what --only filters have been passed in.
   context.filters = getFilterGroups(options);
@@ -105,6 +105,5 @@ export async function prepare(
   const haveFunctions = (await backend.existingBackend(context)).cloudFunctions;
   await promptForFailurePolicies(options, wantFunctions, haveFunctions);
   await promptForMinInstances(options, wantFunctions, haveFunctions);
-
   await backend.checkAvailability(context, wantBackend);
 }
