@@ -31,9 +31,9 @@ export default new Command("functions:env:clone [values...]")
     let only: string[] = [];
     let except: string[] = [];
     if (options.only) {
-      only = options.only.split(",") as string[];
+      only = options.only.split(",");
     } else if (options.except) {
-      except = options.except.split(",") as string[];
+      except = options.except.split(",");
     }
     const envs = await fenv.clone(options.from, projectId, only, except);
     utils.logSuccess(
