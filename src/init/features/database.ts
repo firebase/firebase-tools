@@ -71,7 +71,7 @@ async function createDefaultDatabaseInstance(project: string): Promise<DatabaseI
     choices: [
       { name: "us-central1", value: DatabaseLocation.US_CENTRAL1 },
       { name: "europe-west1", value: DatabaseLocation.EUROPE_WEST1 },
-      { name: "asia-southeast1", value: DatabaseLocation.ASIAN_SOUTHEAST1 },
+      { name: "asia-southeast1", value: DatabaseLocation.ASIA_SOUTHEAST1 },
     ],
   });
   let instanceName = `${project}-default-rtdb`;

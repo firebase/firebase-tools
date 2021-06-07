@@ -29,7 +29,7 @@ export enum DatabaseInstanceState {
 export enum DatabaseLocation {
   US_CENTRAL1 = "us-central1",
   EUROPE_WEST1 = "europe-west1",
-  ASIAN_SOUTHEAST1 = "asia-southeast1",
+  ASIA_SOUTHEAST1 = "asia-southeast1",
   ANY = "-",
 }
 
@@ -212,7 +212,7 @@ export function parseDatabaseLocation(
     case "europe-west1":
       return DatabaseLocation.EUROPE_WEST1;
     case "asia-southeast1":
-      return DatabaseLocation.ASIAN_SOUTHEAST1;
+      return DatabaseLocation.ASIA_SOUTHEAST1;
     case "":
       return defaultLocation;
     default:
