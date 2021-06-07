@@ -217,7 +217,7 @@ export function parseDatabaseLocation(
       return defaultLocation;
     default:
       throw new FirebaseError(
-        `Unexpected location value: ${location}. Only us-central1, and europe-west1 locations are supported`
+        `Unexpected location value: ${location}. Only us-central1, europe-west1 and asia-southeast1 locations are supported`
       );
   }
 }
