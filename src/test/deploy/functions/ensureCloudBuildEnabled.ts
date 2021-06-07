@@ -2,6 +2,7 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 import * as nock from "nock";
 
+import { FirebaseError } from "../../../error";
 import { logger } from "../../../logger";
 import { configstore } from "../../../configstore";
 import { ensureCloudBuildEnabled } from "../../../deploy/functions/ensureCloudBuildEnabled";
@@ -108,7 +109,10 @@ describe("ensureCloudBuildEnabled()", () => {
     it("should error", async () => {
       stubTimes(Date.now() - 10000, Date.now() - 5000);
 
-      await expect(ensureCloudBuildEnabled("test-project")).to.eventually.be.rejected;
+      await expect(ensureCloudBuildEnabled("test-project")).to.eventually.be.rejectedWith(
+        FirebaseError,
+        /must be on the Blaze \(pay-as-you-go\) plan to complete this command/
+      );
     });
   });
 
@@ -121,7 +125,10 @@ describe("ensureCloudBuildEnabled()", () => {
     it("should error", async () => {
       stubTimes(Date.now() - 10000, Date.now() - 5000);
 
-      await expect(ensureCloudBuildEnabled("test-project")).to.eventually.be.rejected;
+      await expect(ensureCloudBuildEnabled("test-project")).to.eventually.be.rejectedWith(
+        FirebaseError,
+        /Please ask a project owner to visit the following URL to enable Cloud Build/
+      );
     });
   });
 });

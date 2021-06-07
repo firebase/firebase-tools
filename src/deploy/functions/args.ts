@@ -1,8 +1,5 @@
-import { ReadStream } from "fs";
-
 import * as backend from "./backend";
 import * as gcfV2 from "../../gcp/cloudfunctionsv2";
-import * as runtimes from "./runtimes";
 
 // These types should proably be in a root deploy.ts, but we can only boil the ocean one bit at a time.
 

@@ -34,6 +34,7 @@ describe("checkFunctionsSDKVersion", () => {
     latestVersion.returns("5.0.1");
     versioning.checkFunctionsSDKVersion("5.0.0");
     expect(warningSpy).to.have.been.calledWith(sinon.match("Please upgrade"));
+    expect(warningSpy).to.not.have.been.calledWith(sinon.match("breaking change"));
   });
 
   it("Should give a breaking change warning", () => {

@@ -41,7 +41,7 @@ export function packageJsonIsValid(
 ): void {
   const packageJsonFile = path.join(sourceDir, "package.json");
   if (!fsutils.fileExistsSync(packageJsonFile)) {
-    const msg = `No npm package found in functions source directory. Please run 'npm init' inside ${sourceDirName}`;
+    const msg = `No npm package found in functions source directory ${sourceDirName}.`;
     throw new FirebaseError(msg);
   }
 
