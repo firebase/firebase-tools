@@ -8,7 +8,7 @@ import * as backend from "../../backend";
 import * as api from "../../../../api";
 import * as proto from "../../../../gcp/proto";
 import * as args from "../../args";
-import * as runtimes from "../../runtimes";
+import { Options } from "../../../../options";
 
 const TRIGGER_PARSER = path.resolve(__dirname, "./triggerParser.js");
 
@@ -118,23 +118,23 @@ export function useStrategy(context: args.Context): Promise<boolean> {
 }
 
 export async function discoverBackend(
-  projectId: string,
-  sourceDir: string,
-  runtime: runtimes.Runtime,
+  context: args.Context,
+  options: Options,
   configValues: backend.RuntimeConfigValues,
   envs: backend.EnvironmentVariables
 ): Promise<backend.Backend> {
-  const triggerAnnotations = await parseTriggers(projectId, sourceDir, configValues, envs);
+  const sourceDir = options.config.path(options.config.get("functions.source") as string);
+  const triggerAnnotations = await parseTriggers(context.projectId, sourceDir, configValues, envs);
   const want: backend.Backend = { ...backend.empty(), environmentVariables: envs };
   for (const annotation of triggerAnnotations) {
-    addResourcesToBackend(projectId, runtime, annotation, want);
+    addResourcesToBackend(context.projectId, context.runtimeChoice!, annotation, want);
   }
   return want;
 }
 
 export function addResourcesToBackend(
   projectId: string,
-  runtime: runtimes.Runtime,
+  runtime: backend.Runtime,
   annotation: TriggerAnnotation,
   want: backend.Backend
 ) {

@@ -2,7 +2,7 @@ import { expect } from "chai";
 
 import { FirebaseError } from "../../../../../error";
 import * as backend from "../../../../../deploy/functions/backend";
-import * as parseTriggers from "../../../../../deploy/functions/runtimes/node/parseTriggers";
+import * as parseTriggers from "../../../../../deploy/functions/discovery/jsexports/parseTriggers";
 import * as api from "../../../../../api";
 
 describe("addResourcesToBackend", () => {

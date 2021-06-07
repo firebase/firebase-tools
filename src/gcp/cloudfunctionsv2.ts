@@ -5,7 +5,6 @@ import { FirebaseError } from "../error";
 import { functionsV2Origin } from "../api";
 import { logger } from "../logger";
 import * as backend from "../deploy/functions/backend";
-import * as runtimes from "../deploy/functions/runtimes";
 import * as proto from "./proto";
 import * as utils from "../utils";
 
@@ -22,6 +21,7 @@ export const PUBSUB_PUBLISH_EVENT = "google.cloud.pubsub.topic.v1.messagePublish
 export type VpcConnectorEgressSettings = "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC";
 export type IngressSettings = "ALLOW_ALL" | "ALLOW_INTERNAL_ONLY" | "ALLOW_INTERNAL_AND_GCLB";
 export type FunctionState = "ACTIVE" | "FAILED" | "DEPLOYING" | "DELETING" | "UNKONWN";
+export type Runtime = "nodejs10" | "nodejs12" | "nodejs14";
 
 // The GCFv2 funtion type has many inner types which themselves have output-only fields:
 // eventTrigger.trigger
@@ -36,7 +36,7 @@ export type OutputOnlyFields = "state" | "updateTime";
 
 /** Settings for building a container out of the customer source. */
 export interface BuildConfig {
-  runtime: runtimes.Runtime;
+  runtime: Runtime;
   entryPoint: string;
   source: Source;
   environmentVariables: Record<string, string>;
@@ -333,7 +333,7 @@ export function functionFromSpec(cloudFunction: backend.FunctionSpec, source: St
     );
   }
 
-  if (!runtimes.isValidRuntime(cloudFunction.runtime)) {
+  if (!backend.isValidRuntime(cloudFunction.runtime)) {
     throw new FirebaseError(
       "Failed internal assertion. Trying to deploy a new function with a deprecated runtime." +
         " This should never happen"
@@ -430,7 +430,7 @@ export function specFromFunction(gcfFunction: CloudFunction): backend.FunctionSp
     };
   }
 
-  if (!runtimes.isValidRuntime(gcfFunction.buildConfig.runtime)) {
+  if (!backend.isValidRuntime(gcfFunction.buildConfig.runtime)) {
     logger.debug("GCFv2 function has a deprecated runtime:", JSON.stringify(gcfFunction, null, 2));
   }
 

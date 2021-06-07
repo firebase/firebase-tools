@@ -6,7 +6,6 @@ import * as api from "../api";
 import * as backend from "../deploy/functions/backend";
 import * as utils from "../utils";
 import * as proto from "./proto";
-import * as runtimes from "../deploy/functions/runtimes";
 
 export const API_VERSION = "v1";
 
@@ -64,6 +63,7 @@ export interface SecretVolume {
   }[];
 }
 
+export type Runtime = "nodejs10" | "nodejs12" | "nodejs14";
 export type CloudFunctionStatus =
   | "ACTIVE"
   | "OFFLINE"
@@ -97,7 +97,7 @@ export interface CloudFunction {
   // end oneof trigger;
 
   entryPoint: string;
-  runtime: runtimes.Runtime;
+  runtime: Runtime;
   // Seconds. Default = 60
   timeout?: proto.Duration;
 
@@ -392,7 +392,7 @@ export function specFromFunction(gcfFunction: CloudFunction): backend.FunctionSp
     };
   }
 
-  if (!runtimes.isValidRuntime(gcfFunction.runtime)) {
+  if (!backend.isValidRuntime(gcfFunction.runtime)) {
     logger.debug("GCFv1 function has a deprecated runtime:", JSON.stringify(gcfFunction, null, 2));
   }
 
@@ -440,7 +440,7 @@ export function functionFromSpec(
     );
   }
 
-  if (!runtimes.isValidRuntime(cloudFunction.runtime)) {
+  if (!backend.isValidRuntime(cloudFunction.runtime)) {
     throw new FirebaseError(
       "Failed internal assertion. Trying to deploy a new function with a deprecated runtime." +
         " This should never happen"
