@@ -200,12 +200,14 @@ describe("deploymentPlanner", () => {
         cloudFunctions: [r1f1, r1f2, r2f1],
         schedules: [r1sched1, r1sched2, r2sched1],
         topics: [topic1, topic2],
+        environmentVariables: {},
       };
       const have: backend.Backend = {
         requiredAPIs: {},
         cloudFunctions: [r1f1, r2f1],
         schedules: [r1sched1],
         topics: [topic1],
+        environmentVariables: {},
       };
       const filters: string[][] = [];
 
@@ -245,12 +247,14 @@ describe("deploymentPlanner", () => {
         cloudFunctions: [f2],
         schedules: [],
         topics: [topic2],
+        environmentVariables: {},
       };
       const have: backend.Backend = {
         requiredAPIs: {},
         cloudFunctions: [f1, f2],
         schedules: [schedule1, schedule2],
         topics: [topic1, topic2],
+        environmentVariables: {},
       };
       const filters: string[][] = [];
 
@@ -296,6 +300,7 @@ describe("deploymentPlanner", () => {
         cloudFunctions: [group1func1, group1func2, group2func1],
         schedules: [group1schedule1, group2schedule1],
         topics: [group1topic1, group2topic1],
+        environmentVariables: {},
       };
 
       const have: backend.Backend = {
@@ -303,6 +308,7 @@ describe("deploymentPlanner", () => {
         cloudFunctions: [group1func1, group1func3, group1func4, group2func2],
         schedules: [group1schedule1, group1schedule3, group2schedule2],
         topics: [group1topic1, group1topic3, group2topic2],
+        environmentVariables: {},
       };
 
       const filters = [["group"]];
@@ -340,6 +346,7 @@ describe("deploymentPlanner", () => {
         cloudFunctions: [region1, region2],
         schedules: [],
         topics: [],
+        environmentVariables: {},
       };
 
       const have: backend.Backend = {
@@ -347,6 +354,7 @@ describe("deploymentPlanner", () => {
         cloudFunctions: [oldRegion2],
         schedules: [],
         topics: [],
+        environmentVariables: {},
       };
       const filters: string[][] = [];
 
