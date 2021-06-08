@@ -26,7 +26,7 @@ function getConfirmationMessage(deleteOp: FirestoreDelete, options: any) {
       return (
         "You are about to delete the document at " +
         clc.cyan(deleteOp.path) +
-        " and all of its subcollections "+
+        " and all of its subcollections " +
         " for " +
         clc.cyan(options.project) +
         ". Are you sure?"
