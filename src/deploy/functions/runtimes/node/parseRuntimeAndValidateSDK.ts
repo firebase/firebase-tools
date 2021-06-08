@@ -1,32 +1,16 @@
 import * as _ from "lodash";
 import * as path from "path";
 import * as clc from "cli-color";
-import * as semver from "semver";
 
-import { FirebaseError } from "../../error";
-import { getFunctionsSDKVersion } from "../../checkFirebaseSDKVersion";
-import { logger } from "../../logger";
-import * as backend from "./backend";
-import * as utils from "../../utils";
-import * as track from "../../track";
+import { FirebaseError } from "../../../../error";
+import * as track from "../../../../track";
+import * as runtimes from "../../runtimes";
 
 // have to require this because no @types/cjson available
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const cjson = require("cjson");
 
-const MESSAGE_FRIENDLY_RUNTIMES: Record<backend.Runtime | DeprecatedRuntime, string> = {
-  nodejs6: "Node.js 6 (Deprecated)",
-  nodejs8: "Node.js 8 (Deprecated)",
-  nodejs10: "Node.js 10",
-  nodejs12: "Node.js 12",
-  nodejs14: "Node.js 14",
-};
-
-const DEPRECATED_RUTNIMES = ["nodejs6", "nodejs8"];
-
-type DeprecatedRuntime = typeof DEPRECATED_RUTNIMES[number];
-
-const ENGINE_RUNTIMES: Record<number, backend.Runtime | DeprecatedRuntime> = {
+const ENGINE_RUNTIMES: Record<number, runtimes.Runtime | runtimes.DeprecatedRuntime> = {
   6: "nodejs6",
   8: "nodejs8",
   10: "nodejs10",
@@ -39,7 +23,7 @@ const ENGINE_RUNTIMES_NAMES = Object.values(ENGINE_RUNTIMES);
 export const RUNTIME_NOT_SET =
   "`runtime` field is required but was not found in firebase.json.\n" +
   "To fix this, add the following lines to the `functions` section of your firebase.json:\n" +
-  '"runtime": "nodejs12"\n';
+  '"runtime": "nodejs14"\n';
 
 export const UNSUPPORTED_NODE_VERSION_FIREBASE_JSON_MSG = clc.bold(
   `functions.runtime value is unsupported. ` +
@@ -61,42 +45,9 @@ export const DEPRECATED_NODE_VERSION_INFO =
     `Existing Node.js 8 functions ${clc.underline("will stop executing on 2021-03-15")}`
   )}. Update existing functions to Node.js 10 or greater as soon as possible.`;
 
-export const FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING =
-  clc.bold.yellow("functions: ") +
-  "You must have a " +
-  clc.bold("firebase-functions") +
-  " version that is at least 2.0.0. Please run " +
-  clc.bold("npm i --save firebase-functions@latest") +
-  " in the functions folder.";
-
-function functionsSDKTooOld(sourceDir: string, minRange: string): boolean {
-  const userVersion = getFunctionsSDKVersion(sourceDir);
-  if (!userVersion) {
-    logger.debug("getFunctionsSDKVersion was unable to retrieve 'firebase-functions' version");
-    return false;
-  }
-  try {
-    if (!semver.intersects(userVersion, minRange)) {
-      return true;
-    }
-  } catch (e) {
-    // do nothing
-  }
-
-  return false;
-}
-
-/**
- * Returns a friendly string denoting the chosen runtime: Node.js 8 for nodejs 8
- * for example. If no friendly name for runtime is found, returns back the raw runtime.
- * @param runtime name of runtime in raw format, ie, "nodejs8" or "nodejs10"
- * @return A human-friendly string describing the runtime.
- */
-export function getHumanFriendlyRuntimeName(runtime: backend.Runtime | DeprecatedRuntime): string {
-  return _.get(MESSAGE_FRIENDLY_RUNTIMES, runtime, runtime);
-}
-
-function getRuntimeChoiceFromPackageJson(sourceDir: string): backend.Runtime | DeprecatedRuntime {
+function getRuntimeChoiceFromPackageJson(
+  sourceDir: string
+): runtimes.Runtime | runtimes.DeprecatedRuntime {
   const packageJsonPath = path.join(sourceDir, "package.json");
   let loaded;
   try {
@@ -106,8 +57,10 @@ function getRuntimeChoiceFromPackageJson(sourceDir: string): backend.Runtime | D
   }
   const engines = loaded.engines;
   if (!engines || !engines.node) {
-    // We should really never hit this, since deploy/functions/prepare already checked that
-    // the runtime is defined in either firebase.json or the "engines" field of the package.json.
+    // It's a little strange, but we're throwing an error telling customers to put runtime in firebase.json
+    // if it isn't set in package.json. This is because we know through the order of function calls (note this
+    // method isn't exported) that this condition is only hit if we've checked both firebase.json and
+    // package.json.
     throw new FirebaseError(RUNTIME_NOT_SET);
   }
 
@@ -121,7 +74,7 @@ function getRuntimeChoiceFromPackageJson(sourceDir: string): backend.Runtime | D
  * @param runtimeFromConfig runtime from the `functions` section of firebase.json file (may be empty).
  * @return The runtime, e.g. `nodejs12`.
  */
-export function getRuntimeChoice(sourceDir: string, runtimeFromConfig?: string): backend.Runtime {
+export function getRuntimeChoice(sourceDir: string, runtimeFromConfig?: string): runtimes.Runtime {
   const runtime = runtimeFromConfig || getRuntimeChoiceFromPackageJson(sourceDir);
   const errorMessage =
     (runtimeFromConfig
@@ -133,17 +86,12 @@ export function getRuntimeChoice(sourceDir: string, runtimeFromConfig?: string):
     throw new FirebaseError(errorMessage, { exit: 1 });
   }
 
-  // Note: the backend.isValidRuntime should always be true because we've verified
+  // Note: the runtimes.isValidRuntime should always be true because we've verified
   // it's in ENGINE_RUNTIME_NAMES and not in DEPRECATED_RUNTIMES. This is still a
   // good defense in depth and also lets us upcast the response to Runtime safely.
-  if (DEPRECATED_RUTNIMES.includes(runtime) || !backend.isValidRuntime(runtime)) {
+  if (runtimes.isDeprecatedRuntime(runtime) || !runtimes.isValidRuntime(runtime)) {
     track("functions_runtime_notices", `${runtime}_deploy_prohibited`);
     throw new FirebaseError(errorMessage, { exit: 1 });
-  }
-
-  if (functionsSDKTooOld(sourceDir, ">=2")) {
-    track("functions_runtime_notices", "functions_sdk_too_old");
-    utils.logWarning(FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING);
   }
 
   return runtime;

@@ -55,7 +55,6 @@ export async function release(context: args.Context, options: Options, payload: 
     projectId,
     sourceUrl,
     storageSource: context.storageSource,
-    runtime: context.runtimeChoice,
     errorHandler,
   };
 

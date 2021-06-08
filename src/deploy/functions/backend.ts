@@ -1,11 +1,10 @@
 import * as proto from "../../gcp/proto";
 import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfV2 from "../../gcp/cloudfunctionsv2";
-import * as cloudscheduler from "../../gcp/cloudscheduler";
 import * as utils from "../../utils";
+import * as runtimes from "./runtimes";
 import { FirebaseError } from "../../error";
 import { Context } from "./args";
-import { logger } from "../../logger";
 import { previews } from "../../previews";
 
 /** Retry settings for a ScheduleSpec. */
@@ -116,18 +115,6 @@ export function memoryOptionDisplayName(option: MemoryOptions): string {
 
 export const SCHEDULED_FUNCTION_LABEL = Object.freeze({ deployment: "firebase-schedule" });
 
-/** Supported runtimes for new Cloud Functions. */
-export type Runtime = "nodejs10" | "nodejs12" | "nodejs14";
-
-/** Runtimes that can be found in existing backends but not used for new functions. */
-export type DeprecatedRuntime = "nodejs6" | "nodejs8";
-const RUNTIMES: string[] = ["nodejs10", "nodejs12", "nodejs14"];
-
-/** Type deduction helper for a runtime string. */
-export function isValidRuntime(runtime: string): runtime is Runtime {
-  return RUNTIMES.includes(runtime);
-}
-
 /**
  * IDs used to identify a regional resource.
  * This type exists so we can have lightweight references from a Pub/Sub topic
@@ -151,7 +138,7 @@ export interface FunctionSpec extends TargetIds {
   apiVersion: FunctionsApiVersion;
   entryPoint: string;
   trigger: HttpsTrigger | EventTrigger;
-  runtime: Runtime | DeprecatedRuntime;
+  runtime: runtimes.Runtime | runtimes.DeprecatedRuntime;
 
   labels?: Record<string, string>;
   environmentVariables?: Record<string, string>;
