@@ -35,8 +35,8 @@ function getConfirmationMessage(deleteOp: FirestoreDelete, options: any) {
 
     // Shallow document delete
     return (
-      "You are about to delete the document at " + 
-      clc.cyan(deleteOp.path) + 
+      "You are about to delete the document at " +
+      clc.cyan(deleteOp.path) +
       " for " +
       clc.cyan(options.project) +
       ". Are you sure?"
