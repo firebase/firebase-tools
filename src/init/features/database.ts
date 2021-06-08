@@ -119,7 +119,7 @@ async function createDefaultDatabaseInstance(project: string): Promise<DatabaseI
  * @param config legacy config parameter. not used for database setup.
  */
 export async function doSetup(setup: DatabaseSetup, config: Config): Promise<void> {
-  setup.config = {};
+  setup.config = setup.config || {};
 
   let instanceDetails;
   if (setup.projectId) {
