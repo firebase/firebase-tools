@@ -2,15 +2,17 @@ import { promisify } from "util";
 import * as path from "path";
 import * as fs from "fs";
 import * as spawn from "cross-spawn";
+import * as portfinder from "portfinder";
 
 import { FirebaseError } from "../../../../error";
 import { Options } from "../../../../options";
 import { logger } from "../../../../logger";
 import * as args from "../../args";
 import * as backend from "../../backend";
+import * as discovery from "../discovery";
 import * as getProjectId from "../../../../getProjectId";
 import * as runtimes from "..";
-
+import * as modules from "./modules";
 const VERSION_TO_RUNTIME: Record<string, runtimes.Runtime> = {
   "1.13": "go113",
 };
@@ -24,10 +26,10 @@ export async function tryCreateDelegate(
   const goModPath = path.join(sourceDir, "go.mod");
   const projectId = getProjectId(options);
 
-  let module: Module;
+  let module: modules.Module;
   try {
     const modBuffer = await promisify(fs.readFile)(goModPath);
-    module = parseModule(modBuffer.toString("utf8"));
+    module = modules.parseModule(modBuffer.toString("utf8"));
   } catch (err) {
     logger.debug("Customer code is not Golang code (or they aren't using modules)");
     return;
@@ -55,70 +57,6 @@ export async function tryCreateDelegate(
 
 // A module can be much more complicated than this, but this is all we need so far.
 // for a full reference, see https://golang.org/doc/modules/gomod-ref
-interface Module {
-  module: string;
-  version: string;
-  dependencies: Record<string, string>;
-}
-
-export function parseModule(mod: string): Module {
-  const module: Module = {
-    module: "",
-    version: "",
-    dependencies: {},
-  };
-  const lines = mod.split("\n");
-  let inRequire = false;
-  for (const line of lines) {
-    if (inRequire) {
-      const endRequireMatch = /\)/.exec(line);
-      if (endRequireMatch) {
-        inRequire = false;
-        continue;
-      }
-
-      const requireMatch = /([^ ]+) (.*)/.exec(line);
-      if (requireMatch) {
-        module.dependencies[requireMatch[1]] = requireMatch[2];
-        continue;
-      }
-
-      if (line.trim()) {
-        logger.debug("Don't know how to handle line", line, "inside a mod.go require block");
-      }
-      continue;
-    }
-    const modMatch = /^module (.*)$/.exec(line);
-    if (modMatch) {
-      module.module = modMatch[1];
-      continue;
-    }
-    const versionMatch = /^go (\d+\.\d+)$/.exec(line);
-    if (versionMatch) {
-      module.version = versionMatch[1];
-      continue;
-    }
-
-    const requireMatch = /^require ([^ ]+) (.*)$/.exec(line);
-    if (requireMatch) {
-      module.dependencies[requireMatch[1]] = requireMatch[2];
-      continue;
-    }
-
-    const requireBlockMatch = /^require +\(/.exec(line);
-    if (requireBlockMatch) {
-      inRequire = true;
-      continue;
-    }
-
-    if (line.trim()) {
-      logger.debug("Don't know how to handle line", line, "in mod.go");
-    }
-  }
-
-  return module;
-}
-
 export class Delegate {
   public readonly name = "golang";
 
@@ -127,7 +65,7 @@ export class Delegate {
     private readonly sourceDirName: string,
     private readonly sourceDir: string,
     public readonly runtime: runtimes.Runtime,
-    private readonly module: Module
+    private readonly module: modules.Module,
   ) {}
   validate(): Promise<void> {
     // throw new FirebaseError("Cannot yet analyze Go source code");
@@ -151,29 +89,54 @@ export class Delegate {
     return Promise.resolve(() => Promise.resolve());
   }
 
-  discoverSpec(
+  async serve(port: number, envs: backend.EnvironmentVariables): Promise<() => Promise<void>> {
+    const serverFile = path.join(__dirname, "../discovery/mockDiscoveryServer.js");
+    const childProcess = spawn("npx", [serverFile], {
+      env: {
+        ...envs,
+        PATH: process.env.PATH,
+      },
+      stdio: "inherit",
+    });
+    return () => {
+      const p = new Promise<void>((resolve) => {
+        childProcess.once("exit", resolve);
+      });
+      childProcess.kill("SIGTERM");
+      setTimeout(() => {
+        if (!childProcess.killed) {
+          childProcess.kill("SIGKILL");
+        }
+      }, 10_000);
+      return p;
+    }
+  }
+
+  async discoverSpec(
     configValues: backend.RuntimeConfigValues,
     envs: backend.EnvironmentVariables
   ): Promise<backend.Backend> {
-    const stubbed: backend.Backend = {
-      requiredAPIs: {},
-      topics: [],
-      schedules: [],
-      cloudFunctions: [
-        {
-          apiVersion: 1,
-          id: "HelloWorld",
-          region: "us-central1",
-          project: this.projectId,
-          entryPoint: "HelloWorld",
-          runtime: this.runtime,
-          trigger: {
-            allowInsecure: false,
-          },
-        },
-      ],
-      environmentVariables: envs,
-    };
-    return Promise.resolve(stubbed);
+    let discovered = await discovery.detectFromYaml(this.sourceDir, this.projectId, this.runtime);
+    if (!discovered) {
+      const port = await promisify(portfinder.getPort)();
+      const kill = await this.serve(8080, {
+        ...envs,
+        "BACKEND": `
+        cloudFunctions:
+          - apiVersion: 1
+            id: HelloWorldFromYAML
+            entryPoint: HelloWorld
+            trigger:
+              allowInsecure: false
+        `,
+      })
+      try {
+        discovered = await discovery.detectFromPort(8080, this.projectId, this.runtime);
+      } finally {
+        await kill();
+      }
+    }
+    discovered.environmentVariables = envs;
+    return discovered;
   }
 }
