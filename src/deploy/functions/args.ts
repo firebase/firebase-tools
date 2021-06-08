@@ -1,5 +1,3 @@
-import { ReadStream } from "fs";
-
 import * as backend from "./backend";
 import * as gcfV2 from "../../gcp/cloudfunctionsv2";
 
@@ -21,7 +19,6 @@ export interface Context {
 
   // Filled in the "prepare" phase.
   functionsSource?: string;
-  runtimeChoice?: backend.Runtime;
   runtimeConfigEnabled?: boolean;
   firebaseConfig?: FirebaseConfig;
 

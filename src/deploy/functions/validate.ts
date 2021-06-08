@@ -1,9 +1,6 @@
 import * as clc from "cli-color";
-import * as path from "path";
 
 import { FirebaseError } from "../../error";
-import { logger } from "../../logger";
-import { RUNTIME_NOT_SET } from "./parseRuntimeAndValidateSDK";
 import { getFunctionLabel } from "./functionsDeployHelper";
 import * as backend from "./backend";
 import * as fsutils from "../../fsutils";
@@ -49,41 +46,6 @@ export function functionIdsAreValid(functions: { id: string }[]): void {
   }
 }
 
-/**
- * Validate contents of package.json to ensure main file is present.
- * @param sourceDirName Name of source directory.
- * @param sourceDir Relative path of source directory.
- * @param projectDir Relative path of project directory.
- * @param hasRuntimeConfigInConfig Whether the runtime was chosen in the `functions` section of firebase.json.
- * @throws { FirebaseError } Package.json must be present and valid.
- */
-export function packageJsonIsValid(
-  sourceDirName: string,
-  sourceDir: string,
-  projectDir: string,
-  hasRuntimeConfigInConfig: boolean
-): void {
-  const packageJsonFile = path.join(sourceDir, "package.json");
-  if (!fsutils.fileExistsSync(packageJsonFile)) {
-    const msg = `No npm package found in functions source directory. Please run 'npm init' inside ${sourceDirName}`;
-    throw new FirebaseError(msg);
-  }
-
-  let data;
-  try {
-    data = cjson.load(packageJsonFile);
-    logger.debug("> [functions] package.json contents:", JSON.stringify(data, null, 2));
-    assertFunctionsSourcePresent(data, sourceDir, projectDir);
-  } catch (e) {
-    const msg = `There was an error reading ${sourceDirName}${path.sep}package.json:\n\n ${e.message}`;
-    throw new FirebaseError(msg);
-  }
-
-  if (!hasRuntimeConfigInConfig) {
-    assertEnginesFieldPresent(data);
-  }
-}
-
 export function checkForInvalidChangeOfTrigger(
   fn: backend.FunctionSpec,
   exFn: backend.FunctionSpec
@@ -116,33 +78,11 @@ export function checkForInvalidChangeOfTrigger(
       `[${getFunctionLabel(fn)}] Functions cannot be downgraded from GCFv2 to GCFv1`
     );
   }
-}
-
-/**
- * Asserts that functions source directory exists and source file is present.
- * @param data Object representing package.json file.
- * @param sourceDir Directory for the functions source.
- * @param projectDir Project directory.
- * @throws { FirebaseError } Functions source directory and source file must exist.
- */
-function assertFunctionsSourcePresent(data: any, sourceDir: string, projectDir: string): void {
-  const indexJsFile = path.join(sourceDir, data.main || "index.js");
-  if (!fsutils.fileExistsSync(indexJsFile)) {
-    const msg = `${path.relative(
-      projectDir,
-      indexJsFile
-    )} does not exist, can't deploy Cloud Functions`;
-    throw new FirebaseError(msg);
-  }
-}
-
-/**
- * Asserts the engines field is present in package.json.
- * @param data Object representing package.json file.
- * @throws { FirebaseError } Engines field must be present in package.json.
- */
-function assertEnginesFieldPresent(data: any): void {
-  if (!data.engines || !data.engines.node) {
-    throw new FirebaseError(RUNTIME_NOT_SET);
+  if (exFn.labels?.["deployment-scheduled"] && !fn.labels?.["deployment-scheduled"]) {
+    throw new FirebaseError(
+      `[${getFunctionLabel(
+        fn
+      )}] Scheduled functions cannot be changed to event handler or HTTP functions`
+    );
   }
 }
