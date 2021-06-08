@@ -5,7 +5,6 @@ const { requireDatabaseInstance } = require("../requireDatabaseInstance");
 const { requirePermissions } = require("../requirePermissions");
 const { checkServiceAccountIam } = require("../deploy/functions/checkIam");
 const checkValidTargetFilters = require("../checkValidTargetFilters");
-const checkFunctionsSDKVersion = require("../checkFirebaseSDKVersion").checkFunctionsSDKVersion;
 const { Command } = require("../command");
 const deploy = require("../deploy");
 const requireConfig = require("../requireConfig");
@@ -79,7 +78,6 @@ module.exports = new Command("deploy")
     }
   })
   .before(checkValidTargetFilters)
-  .before(checkFunctionsSDKVersion)
   .action(function (options) {
     return deploy(options.filteredTargets, options);
   });

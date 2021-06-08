@@ -3,7 +3,7 @@
 const chai = require("chai");
 const expect = chai.expect;
 
-const extractTriggers = require("../../../../../deploy/functions/discovery/jsexports/extractTriggers");
+const extractTriggers = require("../../../../../deploy/functions/runtimes/node/extractTriggers");
 
 describe("extractTriggers", function () {
   const fnWithTrigger = function () {};

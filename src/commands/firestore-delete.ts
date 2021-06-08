@@ -26,12 +26,21 @@ function getConfirmationMessage(deleteOp: FirestoreDelete, options: any) {
       return (
         "You are about to delete the document at " +
         clc.cyan(deleteOp.path) +
-        " and all of its subcollections. Are you sure?"
+        " and all of its subcollections " +
+        " for " +
+        clc.cyan(options.project) +
+        ". Are you sure?"
       );
     }
 
     // Shallow document delete
-    return "You are about to delete the document at " + clc.cyan(deleteOp.path) + ". Are you sure?";
+    return (
+      "You are about to delete the document at " +
+      clc.cyan(deleteOp.path) +
+      " for " +
+      clc.cyan(options.project) +
+      ". Are you sure?"
+    );
   }
 
   // Recursive collection delete
@@ -39,8 +48,10 @@ function getConfirmationMessage(deleteOp: FirestoreDelete, options: any) {
     return (
       "You are about to delete all documents in the collection at " +
       clc.cyan(deleteOp.path) +
-      " and all of their subcollections. " +
-      "Are you sure?"
+      " and all of their subcollections " +
+      " for " +
+      clc.cyan(options.project) +
+      ". Are you sure?"
     );
   }
 
@@ -48,6 +59,8 @@ function getConfirmationMessage(deleteOp: FirestoreDelete, options: any) {
   return (
     "You are about to delete all documents in the collection at " +
     clc.cyan(deleteOp.path) +
+    " for " +
+    clc.cyan(options.project) +
     ". Are you sure?"
   );
 }

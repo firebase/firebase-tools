@@ -1,10 +1,12 @@
 import * as clc from "cli-color";
 
-import * as api from "../api";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
+import * as api from "../api";
+import * as backend from "../deploy/functions/backend";
 import * as utils from "../utils";
 import * as proto from "./proto";
+import * as runtimes from "../deploy/functions/runtimes";
 
 export const API_VERSION = "v1";
 
@@ -62,7 +64,6 @@ export interface SecretVolume {
   }[];
 }
 
-export type Runtime = "nodejs10" | "nodejs12" | "nodejs14";
 export type CloudFunctionStatus =
   | "ACTIVE"
   | "OFFLINE"
@@ -96,7 +97,7 @@ export interface CloudFunction {
   // end oneof trigger;
 
   entryPoint: string;
-  runtime: Runtime;
+  runtime: runtimes.Runtime;
   // Seconds. Default = 60
   timeout?: proto.Duration;
 
@@ -364,4 +365,126 @@ export async function listFunctions(projectId: string, region: string): Promise<
 export async function listAllFunctions(projectId: string): Promise<ListFunctionsResponse> {
   // "-" instead of a region string lists functions in all regions
   return list(projectId, "-");
+}
+
+/**
+ * Converts a Cloud Function from the v1 API into a version-agnostic FunctionSpec struct.
+ * This API exists outside the GCF namespace because GCF returns an Operation<CloudFunction>
+ * and code may have to call this method explicitly.
+ */
+export function specFromFunction(gcfFunction: CloudFunction): backend.FunctionSpec {
+  const [, project, , region, , id] = gcfFunction.name.split("/");
+  let trigger: backend.EventTrigger | backend.HttpsTrigger;
+  let uri: string | undefined;
+  if (gcfFunction.httpsTrigger) {
+    trigger = {
+      // Note: default (empty) value intentionally means true
+      allowInsecure: gcfFunction.httpsTrigger.securityLevel !== "SECURE_ALWAYS",
+    };
+    uri = gcfFunction.httpsTrigger.url;
+  } else {
+    trigger = {
+      eventType: gcfFunction.eventTrigger!.eventType,
+      eventFilters: {
+        resource: gcfFunction.eventTrigger!.resource,
+      },
+      retry: !!gcfFunction.eventTrigger!.failurePolicy?.retry,
+    };
+  }
+
+  if (!runtimes.isValidRuntime(gcfFunction.runtime)) {
+    logger.debug("GCFv1 function has a deprecated runtime:", JSON.stringify(gcfFunction, null, 2));
+  }
+
+  const cloudFunction: backend.FunctionSpec = {
+    apiVersion: 1,
+    id,
+    project,
+    region,
+    trigger,
+    entryPoint: gcfFunction.entryPoint,
+    runtime: gcfFunction.runtime,
+  };
+  if (uri) {
+    cloudFunction.uri = uri;
+  }
+  proto.copyIfPresent(
+    cloudFunction,
+    gcfFunction,
+    "serviceAccountEmail",
+    "availableMemoryMb",
+    "timeout",
+    "minInstances",
+    "maxInstances",
+    "vpcConnector",
+    "vpcConnectorEgressSettings",
+    "ingressSettings",
+    "labels",
+    "environmentVariables",
+    "sourceUploadUrl"
+  );
+
+  return cloudFunction;
+}
+
+/**
+ * Convert the API agnostic FunctionSpec struct to a CloudFunction proto for the v1 API.
+ */
+export function functionFromSpec(
+  cloudFunction: backend.FunctionSpec,
+  sourceUploadUrl: string
+): Omit<CloudFunction, OutputOnlyFields> {
+  if (cloudFunction.apiVersion != 1) {
+    throw new FirebaseError(
+      "Trying to create a v1 CloudFunction with v2 API. This should never happen"
+    );
+  }
+
+  if (!runtimes.isValidRuntime(cloudFunction.runtime)) {
+    throw new FirebaseError(
+      "Failed internal assertion. Trying to deploy a new function with a deprecated runtime." +
+        " This should never happen"
+    );
+  }
+  const gcfFunction: Omit<CloudFunction, OutputOnlyFields> = {
+    name: backend.functionName(cloudFunction),
+    sourceUploadUrl: sourceUploadUrl,
+    entryPoint: cloudFunction.entryPoint,
+    runtime: cloudFunction.runtime,
+  };
+
+  if (backend.isEventTrigger(cloudFunction.trigger)) {
+    gcfFunction.eventTrigger = {
+      eventType: cloudFunction.trigger.eventType,
+      resource: cloudFunction.trigger.eventFilters.resource,
+      // Service is unnecessary and deprecated
+    };
+
+    // For field masks to pick up a deleted failure policy we must inject an undefined
+    // when retry is false
+    gcfFunction.eventTrigger.failurePolicy = cloudFunction.trigger.retry
+      ? { retry: {} }
+      : undefined;
+  } else {
+    gcfFunction.httpsTrigger = {
+      securityLevel: cloudFunction.trigger.allowInsecure ? "SECURE_OPTIONAL" : "SECURE_ALWAYS",
+    };
+  }
+
+  proto.copyIfPresent(
+    gcfFunction,
+    cloudFunction,
+    "serviceAccountEmail",
+    "timeout",
+    "availableMemoryMb",
+    "minInstances",
+    "maxInstances",
+    "vpcConnector",
+    "vpcConnectorEgressSettings",
+    "ingressSettings",
+    "labels",
+    "environmentVariables"
+  );
+
+  return gcfFunction;
 }
