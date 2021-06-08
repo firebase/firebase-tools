@@ -1,6 +1,8 @@
 import { promisify } from "util";
-import * as path from "path";
+import fetch from "node-fetch";
 import * as fs from "fs";
+import * as path from "path";
+import * as portfinder from "portfinder";
 import * as spawn from "cross-spawn";
 
 import { FirebaseError } from "../../../../error";
@@ -8,15 +10,20 @@ import { Options } from "../../../../options";
 import { logger } from "../../../../logger";
 import * as args from "../../args";
 import * as backend from "../../backend";
+import * as discovery from "../discovery";
 import * as getProjectId from "../../../../getProjectId";
+import * as gomod from "./gomod";
 import * as runtimes from "..";
-
-export const ADMIN_SDK = "firebase.google.com/go/v4";
-export const FUNCTIONS_SDK = "github.com/FirebaseExtended/firebase-functions-go";
 
 const VERSION_TO_RUNTIME: Record<string, runtimes.Runtime> = {
   "1.13": "go113",
 };
+export const ADMIN_SDK = "firebase.google.com/go/v4";
+export const FUNCTIONS_SDK = "github.com/FirebaseExtended/firebase-functions-go";
+
+// Because codegen is a separate binary we won't automatically import it
+// when we import the library.
+export const FUNCTIONS_CODEGEN = FUNCTIONS_SDK + "/support/codegen";
 
 export async function tryCreateDelegate(
   context: args.Context,
@@ -27,12 +34,12 @@ export async function tryCreateDelegate(
   const goModPath = path.join(sourceDir, "go.mod");
   const projectId = getProjectId(options);
 
-  let module: Module;
+  let module: gomod.Module;
   try {
     const modBuffer = await promisify(fs.readFile)(goModPath);
-    module = parseModule(modBuffer.toString("utf8"));
+    module = gomod.parseModule(modBuffer.toString("utf8"));
   } catch (err) {
-    logger.debug("Customer code is not Golang code (or they aren't using modules)");
+    logger.debug("Customer code is not Golang code (or they aren't using gomod)");
     return;
   }
 
@@ -56,79 +63,6 @@ export async function tryCreateDelegate(
   return new Delegate(projectId, sourceDir, runtime, module);
 }
 
-// A module can be much more complicated than this, but this is all we need so far.
-// For a full reference, see https://golang.org/doc/modules/gomod-ref
-interface Module {
-  module: string;
-  version: string;
-  dependencies: Record<string, string>;
-}
-
-export function parseModule(mod: string): Module {
-  const module: Module = {
-    module: "",
-    version: "",
-    dependencies: {},
-  };
-  const lines = mod.split("\n");
-  let inRequire = false;
-  for (const line of lines) {
-    if (inRequire) {
-      const endRequireMatch = /\)/.exec(line);
-      if (endRequireMatch) {
-        inRequire = false;
-        continue;
-      }
-
-      const requireMatch = /([^ ]+) (.*)/.exec(line);
-      if (requireMatch) {
-        module.dependencies[requireMatch[1]] = requireMatch[2];
-        continue;
-      }
-
-      if (line.trim()) {
-        logger.debug("Don't know how to handle line", line, "inside a mod.go require block");
-      }
-      continue;
-    }
-    const modMatch = /^module (.*)$/.exec(line);
-    if (modMatch) {
-      module.module = modMatch[1];
-      continue;
-    }
-    const versionMatch = /^go (\d+\.\d+)$/.exec(line);
-    if (versionMatch) {
-      module.version = versionMatch[1];
-      continue;
-    }
-
-    const requireMatch = /^require ([^ ]+) (.*)$/.exec(line);
-    if (requireMatch) {
-      module.dependencies[requireMatch[1]] = requireMatch[2];
-      continue;
-    }
-
-    const requireBlockMatch = /^require +\(/.exec(line);
-    if (requireBlockMatch) {
-      inRequire = true;
-      continue;
-    }
-
-    if (line.trim()) {
-      logger.debug("Don't know how to handle line", line, "in mod.go");
-    }
-  }
-
-  if (!module.module) {
-    throw new FirebaseError("Module has no name");
-  }
-  if (!module.version) {
-    throw new FirebaseError(`Module ${module.module} has no go version`);
-  }
-
-  return module;
-}
-
 export class Delegate {
   public readonly name = "golang";
 
@@ -136,33 +70,112 @@ export class Delegate {
     private readonly projectId: string,
     private readonly sourceDir: string,
     public readonly runtime: runtimes.Runtime,
-    private readonly module: Module
+    private readonly module: gomod.Module
   ) {}
   validate(): Promise<void> {
-    throw new FirebaseError("Cannot yet analyze Go source code");
-  }
-
-  build(): Promise<void> {
-    const res = spawn.sync("go", ["build"], {
-      cwd: this.sourceDir,
-      stdio: "inherit",
-    });
-    if (res.error) {
-      logger.debug("Got error running go build", res);
-      throw new FirebaseError("Failed to build functions source", { children: [res.error] });
-    }
-
     return Promise.resolve();
   }
 
+  async build(): Promise<void> {
+    try {
+      await promisify(fs.mkdir)(path.join(this.sourceDir, "autogen"));
+    } catch (err) {
+      if (!/EEXIST/.exec(err?.message)) {
+        throw new FirebaseError("Failed to create codegen directory", { children: [err] });
+      }
+    }
+    const genBinary = spawn.sync("go", ["run", FUNCTIONS_CODEGEN, this.module.module], {
+      cwd: this.sourceDir,
+      stdio: [/* stdin=*/ "ignore", /* stdout=*/ "pipe", /* stderr=*/ "pipe"],
+    });
+    if (genBinary.status != 0) {
+      throw new FirebaseError("Failed to run codegen", {
+        children: [new Error(genBinary.stderr.toString())],
+      });
+    }
+    await promisify(fs.writeFile)(
+      path.join(this.sourceDir, "autogen", "main.go"),
+      genBinary.stdout
+    );
+
+    // Now that we've created main.go, we will have new dependencies on the packages pulled in
+    // by /support/runtime. We need to run one more `go get`. We could have possibly frontloaded
+    // this work by adding a hand curated list of dependencies in project creation, but this
+    // would be more birttle.
+    const getDeps = spawn.sync("go", ["get"], {
+      cwd: this.sourceDir,
+      stdio: [/* stdin=*/ "ignore", /* stdout=*/ "pipe", /* stderr=*/ "pipe"],
+    });
+    logger.debug(getDeps.stdout.toString());
+    if (getDeps.status != 0) {
+      throw new FirebaseError("Failed to get dependencies", {
+        children: [new Error(getDeps.stderr.toString())],
+      });
+    }
+  }
+
+  // Watch isn't supported for Go
   watch(): Promise<() => Promise<void>> {
     return Promise.resolve(() => Promise.resolve());
   }
 
-  discoverSpec(
+  serve(
+    port: number,
+    adminPort: number,
+    envs: backend.EnvironmentVariables
+  ): Promise<() => Promise<void>> {
+    const childProcess = spawn("go", ["run", "./autogen"], {
+      env: {
+        ...envs,
+        ...process.env,
+        GOPATH: process.env.GOPATH,
+        PORT: port.toString(),
+        ADMIN_PORT: adminPort.toString(),
+        PATH: process.env.PATH,
+      },
+      cwd: this.sourceDir,
+      stdio: [/* stdin=*/ "ignore", /* stdout=*/ "pipe", /* stderr=*/ "inherit"],
+    });
+    childProcess.stdout.on("data", (chunk) => {
+      logger.debug(chunk.toString());
+    });
+    return Promise.resolve(async () => {
+      const p = new Promise<void>((resolve, reject) => {
+        childProcess.once("exit", resolve);
+        childProcess.once("error", reject);
+      });
+
+      // If we SIGKILL the child process we're actually going to kill the go
+      // runner and the webserver it launched will keep running.
+      await fetch(`http://localhost:${adminPort}/quitquitquit`);
+      setTimeout(() => {
+        if (!childProcess.killed) {
+          childProcess.kill("SIGKILL");
+        }
+      }, 10_000);
+      return p;
+    });
+  }
+
+  async discoverSpec(
     configValues: backend.RuntimeConfigValues,
     envs: backend.EnvironmentVariables
   ): Promise<backend.Backend> {
-    throw new FirebaseError("Cannot yet discover function specs");
+    let discovered = await discovery.detectFromYaml(this.sourceDir, this.projectId, this.runtime);
+    if (!discovered) {
+      const getPort = promisify(portfinder.getPort) as () => Promise<number>;
+      const port = await getPort();
+      (portfinder as any).basePort = port + 1;
+      const adminPort = await getPort();
+
+      const kill = await this.serve(port, adminPort, envs);
+      try {
+        discovered = await discovery.detectFromPort(adminPort, this.projectId, this.runtime);
+      } finally {
+        await kill();
+      }
+    }
+    discovered.environmentVariables = envs;
+    return discovered;
   }
 }

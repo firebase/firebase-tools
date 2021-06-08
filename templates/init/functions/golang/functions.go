@@ -9,9 +9,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/inlined/go-functions/https"
-	"github.com/inlined/go-functions/pubsub"
-	"github.com/inlined/go-functions/runwith"
+	"github.com/FirebaseExtended/firebase-functions-go/https"
+	"github.com/FirebaseExtended/firebase-functions-go/pubsub"
+	"github.com/FirebaseExtended/firebase-functions-go/runwith"
 )
 
 var HelloWorld = https.Function{
