@@ -19,7 +19,7 @@ import { getDefaultDatabaseInstance } from "../../getDefaultDatabaseInstance";
 import { FirebaseError } from "../../error";
 
 interface DatabaseSetup {
-  projectId: string;
+  projectId?: string;
   instance?: string;
   config?: DatabaseSetupConfig;
 }
@@ -120,23 +120,26 @@ async function createDefaultDatabaseInstance(project: string): Promise<DatabaseI
  */
 export async function doSetup(setup: DatabaseSetup, config: Config): Promise<void> {
   setup.config = {};
-  await ensure(setup.projectId, "firebasedatabase.googleapis.com", "database", false);
-  logger.info();
-  setup.instance =
-    setup.instance || (await getDefaultDatabaseInstance({ project: setup.projectId }));
+
   let instanceDetails;
-  if (setup.instance !== "") {
-    instanceDetails = await getDatabaseInstanceDetails(setup.projectId, setup.instance);
-  } else {
-    const confirm = await promptOnce({
-      type: "confirm",
-      name: "confirm",
-      default: true,
-      message:
-        "It seems like you haven’t initialized Realtime Database in your project yet. Do you want to set it up?",
-    });
-    if (confirm) {
-      instanceDetails = await createDefaultDatabaseInstance(setup.projectId);
+  if (setup.projectId) {
+    await ensure(setup.projectId, "firebasedatabase.googleapis.com", "database", false);
+    logger.info();
+    setup.instance =
+      setup.instance || (await getDefaultDatabaseInstance({ project: setup.projectId }));
+    if (setup.instance !== "") {
+      instanceDetails = await getDatabaseInstanceDetails(setup.projectId, setup.instance);
+    } else {
+      const confirm = await promptOnce({
+        type: "confirm",
+        name: "confirm",
+        default: true,
+        message:
+          "It seems like you haven’t initialized Realtime Database in your project yet. Do you want to set it up?",
+      });
+      if (confirm) {
+        instanceDetails = await createDefaultDatabaseInstance(setup.projectId);
+      }
     }
   }
 
@@ -166,13 +169,15 @@ export async function doSetup(setup: DatabaseSetup, config: Config): Promise<voi
 
   let writeRules = true;
   if (fsutils.fileExistsSync(filename)) {
-    const msg = `File ${clc.bold(filename)} already exists. Do you want to overwrite it with ${
-      instanceDetails
-        ? `the Realtime Database Security Rules for ${clc.bold(
-            instanceDetails.name
-          )} from the Firebase Console?`
-        : `default rules?`
-    }`;
+    const rulesDescription = instanceDetails
+      ? `the Realtime Database Security Rules for ${clc.bold(
+          instanceDetails.name
+        )} from the Firebase console`
+      : "default rules";
+    const msg = `File ${clc.bold(
+      filename
+    )} already exists. Do you want to overwrite it with ${rulesDescription}?`;
+
     writeRules = await promptOnce({
       type: "confirm",
       message: msg,
