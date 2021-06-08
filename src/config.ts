@@ -77,7 +77,7 @@ export class Config {
     if (
       this.projectDir &&
       !this.get("functions.source") &&
-      fsutils.fileExistsSync(this.path("functions/package.json"))
+      fsutils.dirExistsSync(this.path("functions"))
     ) {
       this.set("functions.source", Config.DEFAULT_FUNCTIONS_SOURCE);
     }
