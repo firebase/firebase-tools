@@ -1,2 +1,5 @@
 - Add Warsaw (europe-central2) Cloud Function Location to Firebase Extension template.
+- Add Singapore (asia-southeast1) as a valid Firebase Realtime Database location.
+- Fixes `firebase init database` failure when no project is selected (#2981)
+- Fix issue where `firebase init database` overwrites entire `firebase.json` (#3299)
 - Fixes import/export bug with Storage emulator download tokens (#3414)

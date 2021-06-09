@@ -23,10 +23,61 @@ var _isOutside = function (from, to) {
   return path.relative(from, to).match(/^\.\./);
 };
 
+const choices = [
+  {
+    value: "database",
+    name:
+      "Realtime Database: Configure a security rules file for Realtime Database and (optionally) provision default instance",
+    checked: false,
+  },
+  {
+    value: "firestore",
+    name: "Firestore: Configure security rules and indexes files for Firestore",
+    checked: false,
+  },
+  {
+    value: "functions",
+    name: "Functions: Configure a Cloud Functions directory and its files",
+    checked: false,
+  },
+  {
+    value: "hosting",
+    name:
+      "Hosting: Configure files for Firebase Hosting and (optionally) set up GitHub Action deploys",
+    checked: false,
+  },
+  {
+    value: "storage",
+    name: "Storage: Configure a security rules file for Cloud Storage",
+    checked: false,
+  },
+  {
+    value: "emulators",
+    name: "Emulators: Set up local emulators for Firebase products",
+    checked: false,
+  },
+  {
+    value: "remoteconfig",
+    name: "Remote Config: Configure a template file for Remote Config",
+    checked: false,
+  },
+];
+const featureNames = choices.map((choice) => choice.value);
+
 module.exports = new Command("init [feature]")
-  .description("setup a Firebase project in the current directory")
+  .description("set up a Firebase project in the current directory")
   .before(requireAuth)
   .action(function (feature, options) {
+    if (feature && !featureNames.includes(feature)) {
+      return utils.reject(
+        clc.bold(feature) +
+          " is not a supported feature; must be one of " +
+          featureNames.join(", ") +
+          ".",
+        { exit: 1 }
+      );
+    }
+
     var cwd = options.cwd || process.cwd();
 
     var warnings = [];
@@ -35,12 +86,12 @@ module.exports = new Command("init [feature]")
       warnings.push("You are currently outside your home directory");
     }
     if (cwd === homeDir) {
-      warnings.push("You are initializing your home directory as a Firebase project");
+      warnings.push("You are initializing your home directory as a Firebase project directory");
     }
 
     var existingConfig = Config.load(options, true);
     if (existingConfig) {
-      warnings.push("You are initializing in an existing Firebase project directory");
+      warnings.push("You are initializing within an existing Firebase project directory");
     }
 
     var config =
@@ -70,44 +121,6 @@ module.exports = new Command("init [feature]")
       }),
     };
 
-    var choices = [
-      {
-        value: "database",
-        name: "Database: Configure Firebase Realtime Database and deploy rules",
-        checked: false,
-      },
-      {
-        value: "firestore",
-        name: "Firestore: Deploy rules and create indexes for Firestore",
-        checked: false,
-      },
-      {
-        value: "functions",
-        name: "Functions: Configure and deploy Cloud Functions",
-        checked: false,
-      },
-      {
-        value: "hosting",
-        name: "Hosting: Configure and deploy Firebase Hosting sites",
-        checked: false,
-      },
-      {
-        value: "storage",
-        name: "Storage: Deploy Cloud Storage security rules",
-        checked: false,
-      },
-      {
-        value: "emulators",
-        name: "Emulators: Set up local emulators for Firebase features",
-        checked: false,
-      },
-      {
-        value: "remoteconfig",
-        name: "Remote Config: Get, deploy, and rollback configurations for Remote Config",
-        checked: false,
-      },
-    ];
-
     var next;
     // HACK: Windows Node has issues with selectables as the first prompt, so we
     // add an extra confirmation prompt that fixes the problem
@@ -136,7 +149,7 @@ module.exports = new Command("init [feature]")
             type: "checkbox",
             name: "features",
             message:
-              "Which Firebase CLI features do you want to set up for this folder? " +
+              "Which Firebase features do you want to set up for this directory? " +
               "Press Space to select features, then Enter to confirm your choices.",
             choices: choices,
           },
@@ -147,7 +160,7 @@ module.exports = new Command("init [feature]")
           return utils.reject(
             "Must select at least one feature. Use " +
               clc.bold.underline("SPACEBAR") +
-              " to select features, or provide a feature with " +
+              " to select features, or specify a feature by running " +
               clc.bold("firebase init [feature_name]")
           );
         }

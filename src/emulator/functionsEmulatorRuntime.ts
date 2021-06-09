@@ -1072,10 +1072,7 @@ async function initializeRuntime(
   if (extensionTriggers) {
     parsedDefinitions = extensionTriggers;
   } else {
-    require("../deploy/functions/discovery/jsexports/extractTriggers")(
-      triggerModule,
-      parsedDefinitions
-    );
+    require("../deploy/functions/runtimes/node/extractTriggers")(triggerModule, parsedDefinitions);
   }
   const triggerDefinitions: EmulatedTriggerDefinition[] = emulatedFunctionsByRegion(
     parsedDefinitions
