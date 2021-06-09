@@ -10,7 +10,7 @@ import {
   RuntimeActionResponse,
   RuntimeActionVerifyBundle,
   RuntimeActionVerifyResponse,
-  Source
+  Source,
 } from "./types";
 import * as jwt from "jsonwebtoken";
 import { ExpressionValue } from "./expressionValue";
@@ -21,7 +21,11 @@ import * as utils from "../../../utils";
 import { Constants } from "../../constants";
 import { downloadEmulator } from "../../download";
 import * as fs from "fs-extra";
-import { _getCommand, DownloadDetails, handleEmulatorProcessError } from "../../downloadableEmulators";
+import {
+  _getCommand,
+  DownloadDetails,
+  handleEmulatorProcessError,
+} from "../../downloadableEmulators";
 
 export interface RulesetVerificationOpts {
   file: {
