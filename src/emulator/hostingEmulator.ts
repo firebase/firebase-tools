@@ -6,7 +6,7 @@ interface HostingEmulatorArgs {
   options: any;
   port?: number;
   host?: string;
-  timeout: number;
+  timeout?: number;
 }
 
 export class HostingEmulator implements EmulatorInstance {

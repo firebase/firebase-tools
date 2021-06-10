@@ -17,9 +17,9 @@ export interface StorageEmulatorArgs {
   projectId: string;
   port?: number;
   host?: string;
+  timeout?: number;
   rules: Source | string;
   auto_download?: boolean;
-  timeout: number;
 }
 
 export class StorageEmulator implements EmulatorInstance {

@@ -13,8 +13,8 @@ export interface PubsubEmulatorArgs {
   projectId: string;
   port?: number;
   host?: string;
+  timeout?: number;
   auto_download?: boolean;
-  timeout: number;
 }
 
 export class PubsubEmulator implements EmulatorInstance {

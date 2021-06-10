@@ -7,9 +7,9 @@ import { Constants } from "./constants";
 export interface EmulatorUIOptions {
   port: number;
   host: string;
+  timeout: number;
   projectId: string;
   auto_download?: boolean;
-  timeout: number;
 }
 
 export class EmulatorUI implements EmulatorInstance {

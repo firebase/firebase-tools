@@ -127,8 +127,8 @@ export interface EmulatorInfo {
   name: Emulators;
   host: string;
   port: number;
-  pid?: number;
   timeout: number;
+  pid?: number;
 }
 
 export interface DownloadableEmulatorCommand {

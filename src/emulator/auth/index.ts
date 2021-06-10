@@ -12,7 +12,7 @@ export interface AuthEmulatorArgs {
   projectId: string;
   port?: number;
   host?: string;
-  timeout: number;
+  timeout?: number;
 }
 
 export class AuthEmulator implements EmulatorInstance {

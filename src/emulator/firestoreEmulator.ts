@@ -14,7 +14,7 @@ import { Issue } from "./types";
 export interface FirestoreEmulatorArgs {
   port?: number;
   host?: string;
-  timeout: number;
+  timeout?: number;
   projectId?: string;
   rules?: string;
   functions_emulator?: string;

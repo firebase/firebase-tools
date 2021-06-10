@@ -16,7 +16,7 @@ import * as parseBoltRules from "../parseBoltRules";
 export interface DatabaseEmulatorArgs {
   port?: number;
   host?: string;
-  timeout: number;
+  timeout?: number;
   projectId?: string;
   rules?: { rules: string; instance: string }[];
   functions_emulator_port?: number;

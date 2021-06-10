@@ -10,7 +10,7 @@ const ansiStrip = require("cli-color/strip");
 export interface LoggingEmulatorArgs {
   port?: number;
   host?: string;
-  timeout: number;
+  timeout?: number;
 }
 
 export interface LogData {
