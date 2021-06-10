@@ -1,7 +1,7 @@
 import * as express from "express";
 
 const app = express();
-app.get("/__/backend.yaml", (req, res) => {
+app.get("/backend.yaml", (req, res) => {
   res.setHeader("content-type", "text/yaml");
   res.send(process.env.BACKEND);
 });

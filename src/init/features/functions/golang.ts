@@ -1,17 +1,17 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as spawn from "cross-spawn";
+import { promisify } from "util";
 
 import { FirebaseError } from "../../../error";
 import { Config } from "../../../config";
 import { promptOnce } from "../../../prompt";
 import * as utils from "../../../utils";
+import * as go from "../../../deploy/functions/runtimes/golang";
 import { logger } from "../../../logger";
-import { options } from "../../../commands/auth-export";
 
 const clc = require("cli-color");
 
-const ADMIN_SDK = "firebase.google.com/go/v4";
 const RUNTIME_VERSION = "1.13";
 
 const TEMPLATE_ROOT = path.resolve(__dirname, "../../../../templates/init/functions/golang");
@@ -28,7 +28,7 @@ async function init(setup: unknown, config: Config) {
 // dynamically using the go tool
 async function writeModFile(config: Config) {
   const modPath = config.path("functions/go.mod");
-  if (fs.existsSync(modPath)) {
+  if (await promisify(fs.exists)(modPath)) {
     const shoudlWriteModFile = await promptOnce({
       type: "confirm",
       message: "File " + clc.underline("functions/go.mod") + " already exists. Overwrite?",
@@ -39,7 +39,7 @@ async function writeModFile(config: Config) {
     }
 
     // Go will refuse to overwrite an existing mod file.
-    fs.unlinkSync(modPath);
+    await promisify(fs.unlink)(modPath);
   }
 
   // Nit(inlined) can we look at functions code and see if there's a domain mapping?
@@ -58,13 +58,26 @@ async function writeModFile(config: Config) {
   // Should this come later as "would you like to install dependencies" to mirror Node?
   // It's less clearly distinct from node where you can edit the package.json file w/o installing.
   // Here we're actually locking in a version in go.mod _and_ installing it in one step.
-  const result = spawn.sync("go", ["get", ADMIN_SDK], {
-    cwd: config.path("functions"),
-    stdio: "inherit",
+  const installDeps = await promptOnce({
+    type: "confirm",
+    message: "Would you like to install recommended dependencies?",
   });
-  if (result.error) {
-    logger.debug("Full output from go get command:", JSON.stringify(result, null, 2));
-    throw new FirebaseError("Error installing dependencies", { children: [result.error] });
+  if (installDeps) {
+    for (const dep of [
+      go.ADMIN_SDK,
+      go.FUNCTIONS_SDK,
+      go.FUNCTIONS_CODEGEN,
+      go.FUNCTIONS_SDK + "/support/emulator",
+    ]) {
+      const result = spawn.sync("go", ["get", dep], {
+        cwd: config.path("functions"),
+        stdio: "inherit",
+      });
+      if (result.error) {
+        logger.debug(`Full output from \`go get ${dep}\`: ${JSON.stringify(result, null, 2)}`);
+        throw new FirebaseError("Error installing dependencies", { children: [result.error] });
+      }
+    }
   }
   utils.logSuccess("Wrote " + clc.bold("functions/go.mod"));
 }

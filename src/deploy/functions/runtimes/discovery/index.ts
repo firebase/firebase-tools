@@ -29,16 +29,22 @@ function requireKeys<T extends object>(prefix: string, yaml: T, ...keys: (keyof 
   }
 }
 
-function assertKeyTypes<T extends Object>(prefix: string, yaml: T | undefined, schema: Record<keyof T, type>) {
+function assertKeyTypes<T extends Object>(
+  prefix: string,
+  yaml: T | undefined,
+  schema: Record<keyof T, type>
+) {
   if (!yaml) {
     return;
   }
   for (const [keyAsString, value] of Object.entries(yaml)) {
     // I don't know why Object.entries(foo)[0] isn't type of keyof foo...
     const key = keyAsString as keyof T;
-    let fullKey = prefix ? prefix + "." + key : key;
+    const fullKey = prefix ? prefix + "." + key : key;
     if (!schema[key] || schema[key] === "omit") {
-      throw new FirebaseError(`Unexpected key ${fullKey}. You may need to install a newer version of the Firebase CLI`);
+      throw new FirebaseError(
+        `Unexpected key ${fullKey}. You may need to install a newer version of the Firebase CLI`
+      );
     }
     if (schema[key] === "string") {
       if (typeof value !== "string") {
@@ -70,20 +76,20 @@ export function validateYaml(yaml: any) {
   try {
     tryValidateYaml(yaml);
   } catch (err) {
-    throw new FirebaseError("Failed to parsebackend specification", {children: [err]});
+    throw new FirebaseError("Failed to parse backend specification", { children: [err] });
   }
 }
 
 function tryValidateYaml(yaml: any) {
-  backend.empty().cloudFunctions[0]
+  backend.empty().cloudFunctions[0];
   // Use a helper type to help guide code complete when writing this function
   const typed = yaml as backend.Backend;
   assertKeyTypes("", typed, {
-    "requiredAPIs": "object",
-    "cloudFunctions": "array",
-    "topics": "array",
-    "schedules": "array",
-    "environmentVariables": "object",
+    requiredAPIs: "object",
+    cloudFunctions: "array",
+    topics: "array",
+    schedules: "array",
+    environmentVariables: "object",
   });
   requireKeys("", typed, "cloudFunctions");
 
@@ -92,41 +98,41 @@ function tryValidateYaml(yaml: any) {
     const func = typed.cloudFunctions[ndx];
     requireKeys(prefix, func, "apiVersion", "id", "entryPoint", "trigger");
     assertKeyTypes(prefix, func, {
-      "apiVersion": "number",
-      "id": "string",
-      "region": "string",
-      "project": "string",
-      "runtime": "string",
-      "entryPoint": "string",
-      "availableMemoryMb": "number",
-      "maxInstances": "number",
-      "minInstances": "number",
-      "serviceAccountEmail": "string",
-      "timeout": "string",
-      "trigger": "object",
-      "vpcConnector": "string",
-      "vpcConnectorEgressSettings": "object",
-      "labels": "object",
-      "ingressSettings": "object",
-      "environmentVariables": "omit",
-      "uri": "omit",
-      "sourceUploadUrl": "omit",
-    })
+      apiVersion: "number",
+      id: "string",
+      region: "string",
+      project: "string",
+      runtime: "string",
+      entryPoint: "string",
+      availableMemoryMb: "number",
+      maxInstances: "number",
+      minInstances: "number",
+      serviceAccountEmail: "string",
+      timeout: "string",
+      trigger: "object",
+      vpcConnector: "string",
+      vpcConnectorEgressSettings: "object",
+      labels: "object",
+      ingressSettings: "object",
+      environmentVariables: "omit",
+      uri: "omit",
+      sourceUploadUrl: "omit",
+    });
     if (backend.isEventTrigger(func.trigger)) {
       requireKeys(prefix + ".trigger", func.trigger, "eventType", "eventFilters");
       assertKeyTypes(prefix + ".trigger", func.trigger, {
-        "eventFilters": "object",
-        "eventType": "string",
-        "retry": "boolean",
-        "region": "string",
-        "serviceAccountEmail": "string",
+        eventFilters: "object",
+        eventType: "string",
+        retry: "boolean",
+        region: "string",
+        serviceAccountEmail: "string",
       });
     } else {
       assertKeyTypes(prefix + ".trigger", func.trigger, {
-        "allowInsecure": "boolean",
+        allowInsecure: "boolean",
       });
     }
-    // TODO: ingressSettings and vpccConnectorSettings
+    // TODO: ingressSettings and vpcConnectorSettings
   }
 
   for (let ndx = 0; ndx < typed.topics?.length; ndx++) {
@@ -134,18 +140,18 @@ function tryValidateYaml(yaml: any) {
     const topic = typed.topics[ndx];
     requireKeys(prefix, topic, "id", "targetService");
     assertKeyTypes(prefix, topic, {
-      "id": "string",
-      "labels": "object",
-      "project": "string",
-      "targetService": "object"
+      id: "string",
+      labels: "object",
+      project: "string",
+      targetService: "object",
     });
 
     prefix += ".targetService";
     requireKeys(prefix, topic.targetService, "id");
     assertKeyTypes(prefix, topic.targetService, {
-      "id": "string",
-      "project": "string",
-      "region": "string",
+      id: "string",
+      project: "string",
+      region: "string",
     });
   }
 
@@ -154,36 +160,40 @@ function tryValidateYaml(yaml: any) {
     const schedule = typed.schedules[ndx];
     requireKeys(prefix, schedule, "id", "schedule", "transport", "targetService");
     assertKeyTypes(prefix, schedule, {
-      "id": "string",
-      "project": "string",
-      "retryConfig": "object",
-      "schedule": "string",
-      "timeZone": "string",
-      "transport": "string",
-      "targetService": "object",
-    })
-
-    assertKeyTypes(prefix + ".retryConfig", schedule.retryConfig, {
-      "maxBackoffDuration": "string",
-      "minBackoffDuration": "string",
-      "maxDoublings": "number",
-      "maxRetryDuration": "string",
-      "retryCount": "number",
+      id: "string",
+      project: "string",
+      retryConfig: "object",
+      schedule: "string",
+      timeZone: "string",
+      transport: "string",
+      targetService: "object",
     });
 
-    requireKeys(prefix = ".targetService", schedule.targetService, "id");
+    assertKeyTypes(prefix + ".retryConfig", schedule.retryConfig, {
+      maxBackoffDuration: "string",
+      minBackoffDuration: "string",
+      maxDoublings: "number",
+      maxRetryDuration: "string",
+      retryCount: "number",
+    });
+
+    requireKeys((prefix = ".targetService"), schedule.targetService, "id");
     assertKeyTypes(prefix + ".targetService", schedule.targetService, {
-      "id": "string",
-      "project": "string",
-      "region": "string"
+      id: "string",
+      project: "string",
+      region: "string",
     });
   }
 }
 
-export async function detectFromYaml(directory: string, project: string, runtime: runtimes.Runtime): Promise<backend.Backend | undefined> {
+export async function detectFromYaml(
+  directory: string,
+  project: string,
+  runtime: runtimes.Runtime
+): Promise<backend.Backend | undefined> {
   let text: string;
   try {
-    text = await readFileAsync(path.join(directory, "backend.yaml"), "utf8")
+    text = await readFileAsync(path.join(directory, "backend.yaml"), "utf8");
   } catch (err) {
     if (err.code === "ENOENT") {
       logger.debug("Could not find backend.yaml. Must use http discovery");
@@ -201,7 +211,12 @@ export async function detectFromYaml(directory: string, project: string, runtime
   return parsed;
 }
 
-function fillDefaults(want: backend.Backend, project: string, region: string, runtime: runtimes.Runtime) {
+function fillDefaults(
+  want: backend.Backend,
+  project: string,
+  region: string,
+  runtime: runtimes.Runtime
+) {
   want.requiredAPIs = want.requiredAPIs || {};
   want.environmentVariables = want.environmentVariables || {};
   want.schedules = want.schedules || [];
@@ -238,24 +253,28 @@ function fillDefaults(want: backend.Backend, project: string, region: string, ru
     if (!schedule.targetService.project) {
       schedule.targetService.project = project;
     }
-    if(!schedule.targetService.region) {
+    if (!schedule.targetService.region) {
       schedule.targetService.region = region;
     }
   }
 }
 
-export async function detectFromPort(port: number, project: string, runtime: runtimes.Runtime): Promise<backend.Backend> {
+export async function detectFromPort(
+  port: number,
+  project: string,
+  runtime: runtimes.Runtime
+): Promise<backend.Backend> {
   // The result type of fetch isn't exported
   let res: { text(): Promise<string> };
-  let timeout = new Promise<never>((resolve, reject) => {
+  const timeout = new Promise<never>((resolve, reject) => {
     setTimeout(() => {
       reject(new FirebaseError("User code failed to load. Cannot determine backend specification"));
-    }, /* 30s to boot up */ 30_000)
+    }, /* 30s to boot up */ 30_000);
   });
 
   while (true) {
     try {
-      res = await Promise.race([fetch(`http://localhost:${port}/__/backend.yaml`), timeout]);
+      res = await Promise.race([fetch(`http://localhost:${port}/backend.yaml`), timeout]);
       break;
     } catch (err) {
       // Allow us to wait until the server is listening.
@@ -267,13 +286,13 @@ export async function detectFromPort(port: number, project: string, runtime: run
   }
 
   const text = await res.text();
-  logger.debug("Got response from /__/backend.yaml", text);
+  logger.debug("Got response from /backend.yaml", text);
 
   let parsed: any;
   try {
     parsed = yaml.load(text);
   } catch (err) {
-    throw new FirebaseError("Failed to parse backend specification", { children: [err]});
+    throw new FirebaseError("Failed to parse backend specification", { children: [err] });
   }
 
   validateYaml(parsed);
