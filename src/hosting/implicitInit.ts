@@ -6,7 +6,7 @@ import { fetchWebSetup, getCachedWebSetup } from "../fetchWebSetup";
 import * as utils from "../utils";
 import { logger } from "../logger";
 import { EmulatorRegistry } from "../emulator/registry";
-import { EMULATORS_SUPPORTED_BY_USE_EMULATOR, Address, Emulators } from "../emulator/types";
+import { EMULATORS_SUPPORTED_BY_USE_EMULATOR, UserConfig, Emulators } from "../emulator/types";
 
 const INIT_TEMPLATE = fs.readFileSync(__dirname + "/../../templates/hosting/init.js", "utf8");
 
@@ -63,7 +63,7 @@ export async function implicitInit(options: any): Promise<TemplateServerResponse
 
   const configJson = JSON.stringify(config, null, 2);
 
-  const emulators: { [e in Emulators]?: Address } = {};
+  const emulators: { [e in Emulators]?: UserConfig } = {};
   for (const e of EMULATORS_SUPPORTED_BY_USE_EMULATOR) {
     const info = EmulatorRegistry.getInfo(e);
 
@@ -82,6 +82,7 @@ export async function implicitInit(options: any): Promise<TemplateServerResponse
       emulators[e] = {
         host,
         port: info.port,
+        timeout: info.timeout,
       };
     }
   }

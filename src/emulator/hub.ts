@@ -26,6 +26,7 @@ export interface EmulatorHubArgs {
   projectId: string;
   port?: number;
   host?: string;
+  timeout?: number;
 }
 
 export type GetEmulatorsResponse = Record<string, EmulatorInfo>;
@@ -164,11 +165,13 @@ export class EmulatorHub implements EmulatorInstance {
   getInfo(): EmulatorInfo {
     const host = this.args.host || Constants.getDefaultHost(Emulators.HUB);
     const port = this.args.port || Constants.getDefaultPort(Emulators.HUB);
+    const timeout = this.args.timeout || Constants.getDefaultTimeout(Emulators.HUB);
 
     return {
       name: this.getName(),
       host,
       port,
+      timeout,
     };
   }
 

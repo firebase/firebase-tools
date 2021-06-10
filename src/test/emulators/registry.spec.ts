@@ -18,7 +18,7 @@ describe("EmulatorRegistry", () => {
 
   it("should correctly return information about a running emulator", async () => {
     const name = Emulators.FUNCTIONS;
-    const emu = new FakeEmulator(name, "localhost", 5000);
+    const emu = new FakeEmulator(name, "localhost", 5000, 60000);
 
     expect(EmulatorRegistry.isRunning(name)).to.be.false;
 
@@ -32,7 +32,7 @@ describe("EmulatorRegistry", () => {
 
   it("once stopped, an emulator is no longer running", async () => {
     const name = Emulators.FUNCTIONS;
-    const emu = new FakeEmulator(name, "localhost", 5000);
+    const emu = new FakeEmulator(name, "localhost", 5000, 60000);
 
     expect(EmulatorRegistry.isRunning(name)).to.be.false;
     await EmulatorRegistry.start(emu);

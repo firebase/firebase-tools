@@ -10,7 +10,7 @@ import { FakeEmulator } from "./fakeEmulator";
 describe("cloudFunctions", () => {
   describe("dispatch", () => {
     let sandbox: sinon.SinonSandbox;
-    const fakeEmulator = new FakeEmulator(Emulators.FUNCTIONS, "1.1.1.1", 4);
+    const fakeEmulator = new FakeEmulator(Emulators.FUNCTIONS, "1.1.1.1", 4, 60000);
     before(() => {
       sandbox = sinon.createSandbox();
       sandbox.stub(EmulatorRegistry, "get").returns(fakeEmulator);

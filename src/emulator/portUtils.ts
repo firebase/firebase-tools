@@ -109,7 +109,7 @@ export function suggestUnrestricted(port: number): number {
 export async function findAvailablePort(
   host: string,
   start: number,
-  avoidRestricted: boolean = true
+  avoidRestricted = true
 ): Promise<number> {
   const openPort = await pf.getPortPromise({ host, port: start });
 
@@ -137,9 +137,12 @@ export async function checkPortOpen(port: number, host: string): Promise<boolean
 /**
  * Wait for a port to close on the given host. Checks every 250ms for up to 30s.
  */
-export async function waitForPortClosed(port: number, host: string): Promise<void> {
+export async function waitForPortClosed(
+  port: number,
+  host: string,
+  timeout: number
+): Promise<void> {
   const interval = 250;
-  const timeout = 30000;
   try {
     await tcpport.waitUntilUsedOnHost(port, host, interval, timeout);
   } catch (e) {

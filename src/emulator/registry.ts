@@ -24,7 +24,7 @@ export class EmulatorRegistry {
     await instance.start();
 
     const info = instance.getInfo();
-    await portUtils.waitForPortClosed(info.port, info.host);
+    await portUtils.waitForPortClosed(info.port, info.host, info.timeout);
   }
 
   static async stop(name: Emulators): Promise<void> {

@@ -6,6 +6,7 @@ interface HostingEmulatorArgs {
   options: any;
   port?: number;
   host?: string;
+  timeout: number;
 }
 
 export class HostingEmulator implements EmulatorInstance {
@@ -29,11 +30,13 @@ export class HostingEmulator implements EmulatorInstance {
   getInfo(): EmulatorInfo {
     const host = this.args.host || Constants.getDefaultHost(Emulators.HOSTING);
     const port = this.args.port || Constants.getDefaultPort(Emulators.HOSTING);
+    const timeout = this.args.timeout || Constants.getDefaultTimeout(Emulators.HOSTING);
 
     return {
       name: this.getName(),
       host,
       port,
+      timeout,
     };
   }
 

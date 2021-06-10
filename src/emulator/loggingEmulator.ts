@@ -10,6 +10,7 @@ const ansiStrip = require("cli-color/strip");
 export interface LoggingEmulatorArgs {
   port?: number;
   host?: string;
+  timeout: number;
 }
 
 export interface LogData {
@@ -56,11 +57,13 @@ export class LoggingEmulator implements EmulatorInstance {
   getInfo(): EmulatorInfo {
     const host = this.args.host || Constants.getDefaultHost(Emulators.LOGGING);
     const port = this.args.port || Constants.getDefaultPort(Emulators.LOGGING);
+    const timeout = this.args.timeout || Constants.getDefaultTimeout(Emulators.LOGGING);
 
     return {
       name: this.getName(),
       host,
       port,
+      timeout,
     };
   }
 

@@ -16,6 +16,7 @@ import * as parseBoltRules from "../parseBoltRules";
 export interface DatabaseEmulatorArgs {
   port?: number;
   host?: string;
+  timeout: number;
   projectId?: string;
   rules?: { rules: string; instance: string }[];
   functions_emulator_port?: number;
@@ -96,12 +97,14 @@ export class DatabaseEmulator implements EmulatorInstance {
   getInfo(): EmulatorInfo {
     const host = this.args.host || Constants.getDefaultHost(Emulators.DATABASE);
     const port = this.args.port || Constants.getDefaultPort(Emulators.DATABASE);
+    const timeout = this.args.timeout || Constants.getDefaultTimeout(Emulators.DATABASE);
 
     return {
       name: this.getName(),
       host,
       port,
       pid: downloadableEmulators.getPID(Emulators.DATABASE),
+      timeout,
     };
   }
 

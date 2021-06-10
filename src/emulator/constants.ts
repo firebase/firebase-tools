@@ -42,6 +42,7 @@ export const EMULATOR_DESCRIPTION: Record<Emulators, string> = {
 };
 
 const DEFAULT_HOST = "localhost";
+const DEFAULT_TIMEOUT = 60000;
 
 export class Constants {
   // GCP projects cannot start with 'demo' so we use 'demo-' as a prefix to denote
@@ -115,12 +116,20 @@ export class Constants {
     return DEFAULT_PORTS[emulator];
   }
 
+  static getDefaultTimeout(emulator: Emulators): number {
+    return DEFAULT_TIMEOUT;
+  }
+
   static getHostKey(emulator: Emulators): string {
     return `emulators.${emulator.toString()}.host`;
   }
 
   static getPortKey(emulator: Emulators): string {
     return `emulators.${emulator.toString()}.port`;
+  }
+
+  static getTimeoutKey(emulator: Emulators): string {
+    return `emulators.${emulator.toString()}.timeout`;
   }
 
   static description(name: Emulators): string {

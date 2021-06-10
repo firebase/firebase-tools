@@ -9,7 +9,7 @@ import * as track from "../track";
 import * as utils from "../utils";
 import { EmulatorRegistry } from "./registry";
 import {
-  Address,
+  UserConfig,
   ALL_SERVICE_EMULATORS,
   EmulatorInstance,
   Emulators,
@@ -43,7 +43,7 @@ import { StorageEmulator } from "./storage";
 import { getDefaultDatabaseInstance } from "../getDefaultDatabaseInstance";
 import { getProjectDefaultAccount } from "../auth";
 
-async function getAndCheckAddress(emulator: Emulators, options: any): Promise<Address> {
+async function getAndCheckConfig(emulator: Emulators, options: any): Promise<UserConfig> {
   let host = Constants.normalizeHost(
     options.config.get(Constants.getHostKey(emulator), Constants.getDefaultHost(emulator))
   );
@@ -118,7 +118,10 @@ async function getAndCheckAddress(emulator: Emulators, options: any): Promise<Ad
     );
   }
 
-  return { host, port };
+  const timeoutVal = options.config.get(Constants.getTimeoutKey(emulator), undefined);
+  const timeout = timeoutVal ? parseInt(timeoutVal, 10) : Constants.getDefaultTimeout(emulator);
+
+  return { host, port, timeout };
 }
 
 /**
@@ -311,7 +314,10 @@ function findExportMetadata(importPath: string): ExportMetadata | undefined {
   }
 }
 
-export async function startAll(options: any, showUI: boolean = true): Promise<void> {
+/**
+ *
+ */
+export async function startAll(options: any, showUI = true): Promise<void> {
   // Emulators config is specified in firebase.json as:
   // "emulators": {
   //   "firestore": {
@@ -374,7 +380,7 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
   }
 
   if (shouldStart(options, Emulators.HUB)) {
-    const hubAddr = await getAndCheckAddress(Emulators.HUB, options);
+    const hubAddr = await getAndCheckConfig(Emulators.HUB, options);
     const hub = new EmulatorHub({ projectId, ...hubAddr });
 
     // Log the command for analytics, we only report this for "hub"
@@ -405,7 +411,7 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
 
   if (shouldStart(options, Emulators.FUNCTIONS)) {
     const functionsLogger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
-    const functionsAddr = await getAndCheckAddress(Emulators.FUNCTIONS, options);
+    const functionsConfig = await getAndCheckConfig(Emulators.FUNCTIONS, options);
     const projectId = getProjectId(options, false);
     const functionsDir = path.join(
       options.extensionDir || options.config.projectDir,
@@ -443,8 +449,9 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
       projectId,
       functionsDir,
       account,
-      host: functionsAddr.host,
-      port: functionsAddr.port,
+      host: functionsConfig.host,
+      port: functionsConfig.port,
+      timeout: functionsConfig.timeout,
       debugPort: inspectFunctions,
       env: {
         ...options.extensionEnv,
@@ -459,11 +466,12 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
 
   if (shouldStart(options, Emulators.FIRESTORE)) {
     const firestoreLogger = EmulatorLogger.forEmulator(Emulators.FIRESTORE);
-    const firestoreAddr = await getAndCheckAddress(Emulators.FIRESTORE, options);
+    const firestoreConfig = await getAndCheckConfig(Emulators.FIRESTORE, options);
 
     const args: FirestoreEmulatorArgs = {
-      host: firestoreAddr.host,
-      port: firestoreAddr.port,
+      host: firestoreConfig.host,
+      port: firestoreConfig.port,
+      timeout: firestoreConfig.timeout,
       projectId,
       auto_download: true,
     };
@@ -520,11 +528,12 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
 
   if (shouldStart(options, Emulators.DATABASE)) {
     const databaseLogger = EmulatorLogger.forEmulator(Emulators.DATABASE);
-    const databaseAddr = await getAndCheckAddress(Emulators.DATABASE, options);
+    const databaseConfig = await getAndCheckConfig(Emulators.DATABASE, options);
 
     const args: DatabaseEmulatorArgs = {
-      host: databaseAddr.host,
-      port: databaseAddr.port,
+      host: databaseConfig.host,
+      port: databaseConfig.port,
+      timeout: databaseConfig.timeout,
       projectId,
       auto_download: true,
     };
@@ -596,10 +605,11 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
       );
     }
 
-    const authAddr = await getAndCheckAddress(Emulators.AUTH, options);
+    const authConfig = await getAndCheckConfig(Emulators.AUTH, options);
     const authEmulator = new AuthEmulator({
-      host: authAddr.host,
-      port: authAddr.port,
+      host: authConfig.host,
+      port: authConfig.port,
+      timeout: authConfig.timeout,
       projectId,
     });
     await startEmulator(authEmulator);
@@ -619,10 +629,11 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
       );
     }
 
-    const pubsubAddr = await getAndCheckAddress(Emulators.PUBSUB, options);
+    const pubsubConfig = await getAndCheckConfig(Emulators.PUBSUB, options);
     const pubsubEmulator = new PubsubEmulator({
-      host: pubsubAddr.host,
-      port: pubsubAddr.port,
+      host: pubsubConfig.host,
+      port: pubsubConfig.port,
+      timeout: pubsubConfig.timeout,
       projectId,
       auto_download: true,
     });
@@ -630,7 +641,7 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
   }
 
   if (shouldStart(options, Emulators.STORAGE)) {
-    const storageAddr = await getAndCheckAddress(Emulators.STORAGE, options);
+    const storageUserConfig = await getAndCheckConfig(Emulators.STORAGE, options);
     const storageConfig = options.config.data.storage;
 
     if (!storageConfig?.rules) {
@@ -640,8 +651,9 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
     }
 
     const storageEmulator = new StorageEmulator({
-      host: storageAddr.host,
-      port: storageAddr.port,
+      host: storageUserConfig.host,
+      port: storageUserConfig.port,
+      timeout: storageUserConfig.timeout,
       projectId,
       rules: options.config.path(storageConfig.rules),
     });
@@ -657,10 +669,11 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
   // Hosting emulator needs to start after all of the others so that we can detect
   // which are running and call useEmulator in __init.js
   if (shouldStart(options, Emulators.HOSTING)) {
-    const hostingAddr = await getAndCheckAddress(Emulators.HOSTING, options);
+    const hostingTimeout = await getAndCheckConfig(Emulators.HOSTING, options);
     const hostingEmulator = new HostingEmulator({
-      host: hostingAddr.host,
-      port: hostingAddr.port,
+      host: hostingTimeout.host,
+      port: hostingTimeout.port,
+      timeout: hostingTimeout.timeout,
       options,
     });
 
@@ -676,15 +689,16 @@ export async function startAll(options: any, showUI: boolean = true): Promise<vo
   }
 
   if (showUI && shouldStart(options, Emulators.UI)) {
-    const loggingAddr = await getAndCheckAddress(Emulators.LOGGING, options);
+    const loggingConfig = await getAndCheckConfig(Emulators.LOGGING, options);
     const loggingEmulator = new LoggingEmulator({
-      host: loggingAddr.host,
-      port: loggingAddr.port,
+      host: loggingConfig.host,
+      port: loggingConfig.port,
+      timeout: loggingConfig.timeout,
     });
 
     await startEmulator(loggingEmulator);
 
-    const uiAddr = await getAndCheckAddress(Emulators.UI, options);
+    const uiAddr = await getAndCheckConfig(Emulators.UI, options);
     const ui = new EmulatorUI({
       projectId,
       auto_download: true,

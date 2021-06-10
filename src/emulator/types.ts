@@ -45,7 +45,7 @@ export const ALL_SERVICE_EMULATORS = [
   Emulators.HOSTING,
   Emulators.PUBSUB,
   Emulators.STORAGE,
-].filter((v) => v) as Emulators[];
+].filter((v) => v);
 
 export const EMULATORS_SUPPORTED_BY_FUNCTIONS = [
   Emulators.FIRESTORE,
@@ -128,6 +128,7 @@ export interface EmulatorInfo {
   host: string;
   port: number;
   pid?: number;
+  timeout: number;
 }
 
 export interface DownloadableEmulatorCommand {
@@ -171,9 +172,10 @@ export interface DownloadableEmulatorDetails {
   stdout: any | null;
 }
 
-export interface Address {
+export interface UserConfig {
   host: string;
   port: number;
+  timeout: number;
 }
 
 export enum FunctionsExecutionMode {

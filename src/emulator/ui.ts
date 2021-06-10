@@ -9,6 +9,7 @@ export interface EmulatorUIOptions {
   host: string;
   projectId: string;
   auto_download?: boolean;
+  timeout: number;
 }
 
 export class EmulatorUI implements EmulatorInstance {
@@ -48,6 +49,7 @@ export class EmulatorUI implements EmulatorInstance {
       host: this.args.host,
       port: this.args.port,
       pid: downloadableEmulators.getPID(Emulators.UI),
+      timeout: this.args.timeout,
     };
   }
 

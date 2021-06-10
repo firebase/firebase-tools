@@ -14,6 +14,7 @@ export interface PubsubEmulatorArgs {
   port?: number;
   host?: string;
   auto_download?: boolean;
+  timeout: number;
 }
 
 export class PubsubEmulator implements EmulatorInstance {
@@ -53,12 +54,14 @@ export class PubsubEmulator implements EmulatorInstance {
   getInfo(): EmulatorInfo {
     const host = this.args.host || Constants.getDefaultHost(Emulators.PUBSUB);
     const port = this.args.port || Constants.getDefaultPort(Emulators.PUBSUB);
+    const timeout = this.args.timeout || Constants.getDefaultTimeout(Emulators.STORAGE);
 
     return {
       name: this.getName(),
       host,
       port,
       pid: downloadableEmulators.getPID(Emulators.PUBSUB),
+      timeout,
     };
   }
 

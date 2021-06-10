@@ -9,7 +9,12 @@ export class FakeEmulator implements EmulatorInstance {
   private exp: express.Express;
   private destroyServer?: () => Promise<void>;
 
-  constructor(public name: Emulators, public host: string, public port: number) {
+  constructor(
+    public name: Emulators,
+    public host: string,
+    public port: number,
+    public timeout: number
+  ) {
     this.exp = express();
   }
 
@@ -29,6 +34,7 @@ export class FakeEmulator implements EmulatorInstance {
       name: this.getName(),
       host: this.host,
       port: this.port,
+      timeout: this.timeout,
     };
   }
   getName(): Emulators {

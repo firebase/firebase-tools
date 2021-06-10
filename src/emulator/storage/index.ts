@@ -19,6 +19,7 @@ export interface StorageEmulatorArgs {
   host?: string;
   rules: Source | string;
   auto_download?: boolean;
+  timeout: number;
 }
 
 export class StorageEmulator implements EmulatorInstance {
@@ -160,11 +161,13 @@ export class StorageEmulator implements EmulatorInstance {
   getInfo(): EmulatorInfo {
     const host = this.args.host || Constants.getDefaultHost(Emulators.STORAGE);
     const port = this.args.port || Constants.getDefaultPort(Emulators.STORAGE);
+    const timeout = this.args.timeout || Constants.getDefaultTimeout(Emulators.STORAGE);
 
     return {
       name: this.getName(),
       host,
       port,
+      timeout,
     };
   }
 

@@ -14,7 +14,7 @@ describe("EmulatorController", () => {
 
     expect(EmulatorRegistry.isRunning(name)).to.be.false;
 
-    await startEmulator(new FakeEmulator(name, "localhost", 7777));
+    await startEmulator(new FakeEmulator(name, "localhost", 7777, 60000));
 
     expect(EmulatorRegistry.isRunning(name)).to.be.true;
     expect(EmulatorRegistry.getPort(name)).to.eql(7777);

@@ -7,7 +7,7 @@ import { EmulatorServer } from "../../emulator/emulatorServer";
 describe("EmulatorServer", () => {
   it("should correctly start and stop an emulator", async () => {
     const name = Emulators.FUNCTIONS;
-    const emulator = new FakeEmulator(name, "localhost", 5000);
+    const emulator = new FakeEmulator(name, "localhost", 5000, 60000);
     const server = new EmulatorServer(emulator);
 
     await server.start();

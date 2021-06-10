@@ -23,7 +23,7 @@ describe("functionsProxy", () => {
   const fakeRewrite: FunctionProxyRewrite = { function: "bar" };
 
   beforeEach(async () => {
-    const fakeFunctionsEmulator = new FakeEmulator(Emulators.FUNCTIONS, "localhost", 7778);
+    const fakeFunctionsEmulator = new FakeEmulator(Emulators.FUNCTIONS, "localhost", 7778, 60000);
     await EmulatorRegistry.start(fakeFunctionsEmulator);
   });
 

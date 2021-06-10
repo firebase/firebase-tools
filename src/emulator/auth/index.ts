@@ -12,6 +12,7 @@ export interface AuthEmulatorArgs {
   projectId: string;
   port?: number;
   host?: string;
+  timeout: number;
 }
 
 export class AuthEmulator implements EmulatorInstance {
@@ -37,11 +38,13 @@ export class AuthEmulator implements EmulatorInstance {
   getInfo(): EmulatorInfo {
     const host = this.args.host || Constants.getDefaultHost(Emulators.AUTH);
     const port = this.args.port || Constants.getDefaultPort(Emulators.AUTH);
+    const timeout = this.args.timeout || Constants.getDefaultTimeout(Emulators.AUTH);
 
     return {
       name: this.getName(),
       host,
       port,
+      timeout,
     };
   }
 

@@ -14,6 +14,7 @@ import { Issue } from "./types";
 export interface FirestoreEmulatorArgs {
   port?: number;
   host?: string;
+  timeout: number;
   projectId?: string;
   rules?: string;
   functions_emulator?: string;
@@ -77,12 +78,14 @@ export class FirestoreEmulator implements EmulatorInstance {
   getInfo(): EmulatorInfo {
     const host = this.args.host || Constants.getDefaultHost(Emulators.FIRESTORE);
     const port = this.args.port || Constants.getDefaultPort(Emulators.FIRESTORE);
+    const timeout = this.args.timeout || Constants.getDefaultTimeout(Emulators.FIRESTORE);
 
     return {
       name: this.getName(),
       host,
       port,
       pid: downloadableEmulators.getPID(Emulators.FIRESTORE),
+      timeout,
     };
   }
 
