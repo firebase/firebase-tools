@@ -5,6 +5,7 @@ import * as path from "path";
 import * as ProgressBar from "progress";
 import * as tmp from "tmp";
 import * as unzipper from "unzipper";
+import { spawnSync } from "child_process";
 
 import { Client } from "../apiv2";
 import { EmulatorLogger } from "./emulatorLogger";
@@ -13,6 +14,39 @@ import { FirebaseError } from "../error";
 import * as downloadableEmulators from "./downloadableEmulators";
 
 tmp.setGracefulCleanup();
+
+export async function downloadExtensionVersion(extensionVersionRef: string, sourceDownloadUri: string) {
+  const refAsDir = extensionVersionRef.replace("/", "-")
+  const unzipDir = `${process.cwd()}/extensionsEmulator/${refAsDir}/e`;
+  try {
+    fs.mkdirSync(unzipDir);
+  } catch(err) {
+    console.log(`${extensionVersionRef} already downloaded...`);
+  }
+  // TODO: Use something other than forFunction here.
+  EmulatorLogger.forFunction("extensions").logLabeled(
+    "BULLET",
+    "extensions",
+    `downloading ${sourceDownloadUri}...`
+  );
+  const sourceCodeZip = await downloadToTmp(sourceDownloadUri);
+  await unzip(sourceCodeZip, unzipDir);
+  EmulatorLogger.forFunction("extensions").logLabeled(
+    "BULLET",
+    "extensions",
+    `Downloaded to ${unzipDir}...`
+  );
+  // TODO: We should not need to do this 1s wait
+  // However, when I remove this, unzipDir doesn't contain everything yet.
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  console.log(`Installing dependencies for ${extensionVersionRef}...`);
+  const npmInstall = spawnSync("npm", ["--prefix", `/${unzipDir}/functions/`, "install"], 
+    {encoding: "utf8"});
+  if (npmInstall.error) {
+    throw npmInstall.error
+  }
+  return unzipDir;
+}
 
 export async function downloadEmulator(name: DownloadableEmulators): Promise<void> {
   const emulator = downloadableEmulators.getDownloadDetails(name);

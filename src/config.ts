@@ -24,6 +24,7 @@ export class Config {
   static MATERIALIZE_TARGETS = [
     "database",
     "emulators",
+    "extensions",
     "firestore",
     "functions",
     "hosting",

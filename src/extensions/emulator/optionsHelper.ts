@@ -13,14 +13,18 @@ import { FirebaseError } from "../../error";
 import { EmulatorLogger } from "../../emulator/emulatorLogger";
 import * as getProjectId from "../../getProjectId";
 import { Emulators } from "../../emulator/types";
+import { EmulatableExtension } from "../../extensions/declarative-extensions/parseExtensions";
 
-export async function buildOptions(options: any): Promise<any> {
-  const extensionDir = localHelper.findExtensionYaml(process.cwd());
+export async function buildOptions(
+  options: any,
+  emulatableExtension?: EmulatableExtension
+): Promise<any> {
+  const extensionDir = localHelper.findExtensionYaml(emulatableExtension?.sourceCodePath || process.cwd());
   options.extensionDir = extensionDir;
   const extensionYaml = await specHelper.readExtensionYaml(extensionDir);
-  extensionsHelper.validateSpec(extensionYaml);
+  // extensionsHelper.validateSpec(extensionYaml);
 
-  const params = await paramHelper.readParamsFile(options.testParams);
+  const params = emulatableExtension?.params || (await paramHelper.readParamsFile(options.testParams));
   extensionsHelper.validateCommandLineParams(params, extensionYaml.params || []);
   params["PROJECT_ID"] = getProjectId(options, false);
   params["EXT_INSTANCE_ID"] = params["EXT_INSTANCE_ID"] || extensionYaml.name;
@@ -36,7 +40,7 @@ export async function buildOptions(options: any): Promise<any> {
     testConfig = readTestConfigFile(options.testConfig);
     checkTestConfig(testConfig, functionResources);
   }
-  options.config = buildConfig(functionResources, testConfig);
+  options.config = buildConfig(functionResources, testConfig, options);
   options.extensionEnv = params;
   const functionEmuTriggerDefs: ParsedTriggerDefinition[] = functionResources.map((r) =>
     triggerHelper.functionResourceToEmulatedTriggerDefintion(r)
@@ -106,7 +110,8 @@ function readTestConfigFile(testConfigPath: string): { [key: string]: any } {
 
 function buildConfig(
   functionResources: Resource[],
-  testConfig?: { [key: string]: string }
+  testConfig?: { [key: string]: string },
+  originalOptions?: any,
 ): Config {
   const config = new Config(testConfig || {}, { projectDir: process.cwd(), cwd: process.cwd() });
 
@@ -117,16 +122,16 @@ function buildConfig(
       config.set("functions", {});
     }
     if (shouldEmulateFirestore(functionResources)) {
-      config.set("firestore", {});
+      config.set("firestore", originalOptions?.config?.data?.firestore || {});
     }
     if (shouldEmulateDatabase(functionResources)) {
-      config.set("database", {});
+      config.set("database", originalOptions?.config?.data?.database || {});
     }
     if (shouldEmulatePubsub(functionResources)) {
-      config.set("pubsub", {});
+      config.set("pubsub", originalOptions?.config?.data?.pubusb || {});
     }
     if (shouldEmulateStorage(functionResources)) {
-      config.set("storage", {});
+      config.set("storage", originalOptions?.config?.data?.storage ||{});
     }
   }
 
@@ -134,7 +139,7 @@ function buildConfig(
     // Switch functions source to what is provided in the extension.yaml
     // to match the behavior of deployed extensions.
     const sourceDirectory = getFunctionSourceDirectory(functionResources);
-    config.set("functions.source", sourceDirectory);
+    config.set("functions.source", `${sourceDirectory}`);
   }
   return config;
 }

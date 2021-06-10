@@ -63,6 +63,8 @@ module.exports = function (client) {
   client.ext.list = loadCommand("ext-list");
   client.ext.uninstall = loadCommand("ext-uninstall");
   client.ext.update = loadCommand("ext-update");
+  client.ext.emu = {};
+  client.ext.emu.test = loadCommand("ext-emu-test");
   if (previews.ext) {
     client.ext.sources = {};
     client.ext.sources.create = loadCommand("ext-sources-create");

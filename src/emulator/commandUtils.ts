@@ -148,7 +148,6 @@ export async function beforeEmulatorCommand(options: any): Promise<any> {
       )} to authenticate the CLI.`
     );
   }
-
   if (canStartWithoutConfig && !options.config) {
     utils.logWarning("Could not find config (firebase.json) so using defaults.");
     options.config = DEFAULT_CONFIG;

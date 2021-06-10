@@ -13,7 +13,7 @@ export function checkResponse(response: string, spec: Param): boolean {
   let valid = true;
   let responses: string[];
 
-  if (spec.required && !response) {
+  if (spec.required && !spec.default && !response) {
     utils.logWarning(`Param ${spec.param} is required, but no value was provided.`);
     return false;
   }
