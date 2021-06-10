@@ -4,3 +4,4 @@
 - Fix issue where `firebase init database` overwrites entire `firebase.json` (#3299)
 - Fixes import/export bug with Storage emulator download tokens (#3414)
 - Improves errors when failing to start Storage emulator (#3443)
+- Fixes missing download tokens in Storage Emulator (#3451)
