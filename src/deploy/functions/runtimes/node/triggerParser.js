@@ -7,7 +7,25 @@ var EXIT = function () {
   process.exit(0);
 };
 
-(function () {
+// Dynamic import function required to load user code packaged as an
+// ES module is only available on Node.js v13.2.0 and up.
+//   https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/import#browser_compatibility
+// eslint-disable-next-line @typescript-eslint/no-implied-eval
+var dynamicImport = new Function("modulePath", "return import(modulePath)");
+
+function loadModule(packageDir) {
+  try {
+    return Promise.resolve(require(packageDir));
+  } catch (e) {
+    if (e.code === "ERR_REQUIRE_ESM") {
+      var pkg = require.resolve(packageDir);
+      return dynamicImport(pkg);
+    }
+    throw e;
+  }
+}
+
+(async function () {
   if (!process.send) {
     console.warn("Could not parse function triggers (process.send === undefined).");
     process.exit(1);
@@ -23,7 +41,7 @@ var EXIT = function () {
   var mod;
   var triggers = [];
   try {
-    mod = require(packageDir);
+    mod = await loadModule(packageDir);
   } catch (e) {
     if (e.code === "MODULE_NOT_FOUND") {
       process.send(
