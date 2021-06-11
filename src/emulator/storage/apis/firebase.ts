@@ -201,6 +201,10 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       return;
     }
 
+    if (!md.downloadTokens.length) {
+      md.addDownloadToken();
+    }
+
     res.json(new OutgoingFirebaseMetadata(md));
   });
 

@@ -8,8 +8,7 @@ import * as tmp from "tmp";
 
 import { FirebaseError } from "../../error";
 import { logger } from "../../logger";
-import { discoverBackendSpec } from "./discovery";
-import { isEmptyBackend } from "./backend";
+import * as backend from "./backend";
 import * as functionsConfig from "../../functionsConfig";
 import * as utils from "../../utils";
 import * as fsAsync from "../../fsAsync";
@@ -19,7 +18,8 @@ import { Config } from "../../config";
 
 const CONFIG_DEST_FILE = ".runtimeconfig.json";
 
-async function getFunctionsConfig(context: args.Context): Promise<{ [key: string]: any }> {
+// TODO(inlined): move to a file that's not about uploading source code
+export async function getFunctionsConfig(context: args.Context): Promise<{ [key: string]: any }> {
   let config: Record<string, any> = {};
   if (context.runtimeConfigEnabled) {
     try {
@@ -47,7 +47,8 @@ async function getFunctionsConfig(context: args.Context): Promise<{ [key: string
   return config;
 }
 
-async function getEnvs(context: args.Context): Promise<{ [key: string]: string }> {
+// TODO(inlined): move to a file that's not about uploading source code
+export async function getEnvs(context: args.Context): Promise<{ [key: string]: string }> {
   const envs = {
     FIREBASE_CONFIG: JSON.stringify(context.firebaseConfig),
   };
@@ -121,7 +122,7 @@ async function packageSource(options: Options, sourceDir: string, configValues: 
 }
 
 export async function prepareFunctionsUpload(
-  context: args.Context,
+  runtimeConfig: backend.RuntimeConfigValues,
   options: Options
 ): Promise<string | undefined> {
   utils.assertDefined(options.config.src.functions);
@@ -131,13 +132,5 @@ export async function prepareFunctionsUpload(
   );
 
   const sourceDir = options.config.path(options.config.src.functions.source);
-  const configValues = await getFunctionsConfig(context);
-  const envs = await getEnvs(context);
-  const backend = await discoverBackendSpec(context, options, configValues, envs);
-  options.config.set("functions.backend", backend);
-  if (isEmptyBackend(backend)) {
-    // No need to package if there are 0 functions to deploy.
-    return;
-  }
-  return packageSource(options, sourceDir, configValues);
+  return packageSource(options, sourceDir, runtimeConfig);
 }
