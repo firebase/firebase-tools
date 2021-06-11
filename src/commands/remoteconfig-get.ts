@@ -6,6 +6,8 @@ import { RemoteConfigTemplate } from "../remoteconfig/interfaces";
 import getProjectId = require("../getProjectId");
 import { requirePermissions } from "../requirePermissions";
 import { parseTemplateForTable } from "../remoteconfig/get";
+import { Options } from "../options";
+import * as utils from "../utils";
 
 import Table = require("cli-table");
 import * as fs from "fs";
@@ -32,7 +34,8 @@ module.exports = new Command("remoteconfig:get")
   )
   .before(requireAuth)
   .before(requirePermissions, ["cloudconfig.configs.get"])
-  .action(async (options) => {
+  .action(async (options: Options) => {
+    utils.assertIsString(options.versionNumber);
     const template: RemoteConfigTemplate = await rcGet.getTemplate(
       getProjectId(options),
       checkValidNumber(options.versionNumber)
@@ -59,9 +62,15 @@ module.exports = new Command("remoteconfig:get")
     const fileOut = !!options.output;
     if (fileOut) {
       const shouldUseDefaultFilename = options.output === true || options.output === "";
-      const filename = shouldUseDefaultFilename
-        ? options.config.get("remoteconfig.template")
-        : options.output;
+
+      let filename = undefined;
+      if (shouldUseDefaultFilename) {
+        filename = options.config.src.remoteconfig!.template;
+      } else {
+        utils.assertIsString(options.output);
+        filename = options.output;
+      }
+
       const outTemplate = { ...template };
       delete outTemplate.version;
       fs.writeFileSync(filename, JSON.stringify(outTemplate, null, 2));
