@@ -7,9 +7,12 @@ var EXIT = function () {
   process.exit(0);
 };
 
-// Dynamic import function required to load user code packaged as an
-// ES module is only available on Node.js v13.2.0 and up.
-//   https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/import#browser_compatibility
+/**
+ * Dynamically load import function to prevent TypeScript from
+ * transpiling into a require.
+ *
+ * See https://github.com/microsoft/TypeScript/issues/43329.
+ */
 // eslint-disable-next-line @typescript-eslint/no-implied-eval
 var dynamicImport = new Function("modulePath", "return import(modulePath)");
 
