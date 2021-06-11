@@ -3,11 +3,12 @@ import * as backend from "../backend";
 import * as args from "../args";
 import * as golang from "./golang";
 import * as node from "./node";
+import * as python from "./python"
 import * as validate from "../validate";
 import { FirebaseError } from "../../../error";
 
 /** Supported runtimes for new Cloud Functions. */
-const RUNTIMES: string[] = ["nodejs10", "nodejs12", "nodejs14", "go113"];
+const RUNTIMES: string[] = ["nodejs10", "nodejs12", "nodejs14", "go113", "python37", "python38", "python39"];
 export type Runtime = typeof RUNTIMES[number];
 
 /** Runtimes that can be found in existing backends but not used for new functions. */
@@ -31,6 +32,9 @@ const MESSAGE_FRIENDLY_RUNTIMES: Record<Runtime | DeprecatedRuntime, string> = {
   nodejs12: "Node.js 12",
   nodejs14: "Node.js 14",
   go113: "Go 1.13",
+  python37: "Python 3.7",
+  python38: "Python 3.8",
+  python39: "Python 3.9",
 };
 
 /**
@@ -96,7 +100,7 @@ export interface RuntimeDelegate {
 }
 
 type Factory = (context: args.Context, options: Options) => Promise<RuntimeDelegate | undefined>;
-const factories: Factory[] = [node.tryCreateDelegate, golang.tryCreateDelegate];
+const factories: Factory[] = [node.tryCreateDelegate, golang.tryCreateDelegate, python.tryCreateDelegate];
 
 export async function getRuntimeDelegate(
   context: args.Context,

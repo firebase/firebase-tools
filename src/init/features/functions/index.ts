@@ -42,6 +42,12 @@ module.exports = async function (setup: any, config: any, options: Options) {
       value: "golang",
     });
   }
+  if (previews.python) {
+    choices.push({
+      name: "Python",
+      value: "python",
+    });
+  }
   const language = await promptOnce({
     type: "list",
     message: "What language would you like to use to write Cloud Functions?",

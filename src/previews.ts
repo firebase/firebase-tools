@@ -8,6 +8,7 @@ interface PreviewFlags {
   rtdbmanagement: boolean;
   functionsv2: boolean;
   golang: boolean;
+  python: false;
 }
 
 export const previews: PreviewFlags = {
@@ -18,6 +19,7 @@ export const previews: PreviewFlags = {
   rtdbmanagement: false,
   functionsv2: false,
   golang: false,
+  python: false,
 
   ...configstore.get("previews"),
 };
