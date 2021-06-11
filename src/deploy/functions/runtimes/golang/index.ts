@@ -152,10 +152,10 @@ export class Delegate {
   ): Promise<backend.Backend> {
     let discovered = await discovery.detectFromYaml(this.sourceDir, this.projectId, this.runtime);
     if (!discovered) {
-      const port = await promisify(portfinder.getPort)();
-      const adminPort = await promisify(portfinder.getPort)();
+      const port = await promisify(portfinder.getPort)() as number;
+      const adminPort = await promisify(portfinder.getPort)() as number;
 
-      const kill = await this.serve(8080, 8081, envs);
+      const kill = await this.serve(port, adminPort, envs);
       try {
         discovered = await discovery.detectFromPort(8081, this.projectId, this.runtime);
       } finally {
