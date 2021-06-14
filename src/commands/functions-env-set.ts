@@ -4,6 +4,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 import { Command } from "../command";
+import { ensure as ensureEnvStore } from "../functions/enableEnv";
 import { logger } from "../logger";
 import { promptOnce } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
@@ -20,6 +21,7 @@ export default new Command("functions:env:set [values...]")
     "firebase.envstores.delete",
     "firebase.envstores.update",
   ])
+  .before(ensureEnvStore)
   .action(async (args: string[], options: { file?: string; force: boolean }) => {
     if (!options.file && !args.length) {
       return utils.reject("Must supply at least one key/value pair, e.g. " + clc.bold("FOO=bar"));
