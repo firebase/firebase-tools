@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
+import { FirebaseError } from "../../error";
 import * as fenv from "../../functions/env";
 import * as envstore from "../../functions/envstore";
 
@@ -12,10 +13,10 @@ describe("function env", () => {
     });
 
     it("should throw error given invalid keys", () => {
-      const args = ["FOO=bar", "BAAR=X_GOOGLE_FOOBAR"];
+      const args = ["FOO=bar", "X_GOOGLE_BAR=foo=bar"];
       expect(() => {
         fenv.parseKvArgs(args);
-      }).to.throw;
+      }).to.throw(FirebaseError);
     });
   });
 
@@ -25,7 +26,7 @@ describe("function env", () => {
       keys.forEach((key) => {
         expect(() => {
           fenv.validateKey(key);
-        }).to.not.throw;
+        }).not.to.throw;
       });
     });
 
@@ -34,7 +35,7 @@ describe("function env", () => {
       keys.forEach((key) => {
         expect(() => {
           fenv.validateKey(key);
-        }).to.not.throw;
+        }).not.to.throw;
       });
     });
 
@@ -42,7 +43,7 @@ describe("function env", () => {
       const keys = [
         "FIREBASE_CONFIG",
         "FUNCTION_TARGET",
-        "FUNCTION_SIGNATURRE_TYPE",
+        "FUNCTION_SIGNATURE_TYPE",
         "K_SERVICE",
         "K_REVISION",
         "PORT",
@@ -51,18 +52,18 @@ describe("function env", () => {
       keys.forEach((key) => {
         expect(() => {
           fenv.validateKey(key);
-        }).to.throw;
+        }).to.throw(FirebaseError);
       });
     });
 
     it("should throw error given keys with reserved prefix", () => {
       expect(() => {
         fenv.validateKey("X_GOOGLE_");
-      }).to.throw;
+      }).to.throw(FirebaseError);
 
       expect(() => {
         fenv.validateKey("X_GOOGLE_FOOBAR");
-      }).to.throw;
+      }).to.throw(FirebaseError);
     });
   });
 
@@ -154,8 +155,8 @@ describe("function env", () => {
       expect(getStore).to.have.been.calledOnceWithExactly(fromP, fenv.ENVSTORE_ID);
     });
 
-    it("should throw error if both only and except options are given", () => {
-      expect(async () => await fenv.clone("a", "b", ["A1"], ["A2"])).to.throw;
+    it("should throw error if both only and except options are given", async () => {
+      await expect(fenv.clone("a", "b", ["A1"], ["A2"])).to.be.rejectedWith(FirebaseError);
     });
   });
 });

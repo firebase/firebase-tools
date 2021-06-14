@@ -6,7 +6,7 @@ import * as fenv from "../functions/env";
 import * as getProjectId from "../getProjectId";
 import * as utils from "../utils";
 
-export default new Command("functions:env:clone [values...]")
+export default new Command("functions:env:clone")
   .description("clone environment variables from another project")
   .option("--from <projectId>", "the project from which to clone environment variables")
   .option("--only <keys>", "a comma-separated list of keys to clone")
@@ -17,7 +17,7 @@ export default new Command("functions:env:clone [values...]")
     "firebase.envstores.list",
     "firebase.envstores.update",
   ])
-  .action(async (args: string[], options: any) => {
+  .action(async (_: string[], options: any) => {
     const projectId = getProjectId(options);
     if (!options.from) {
       return utils.reject(
