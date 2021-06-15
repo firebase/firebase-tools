@@ -37,11 +37,11 @@ async function _check(projectId: string): Promise<boolean> {
  * @return Promise<boolean> True if EnvStore API is enabled.
  */
 export async function check(projectId: string): Promise<boolean> {
-  // Get check state from cache (configstore).
-  const cfg = configstore.get(CONFIGSTORE_KEY) as { lastChecked: string } | null;
-  if (cfg) {
-    const checked = new Date(cfg.lastChecked);
-    const diff = Date.now() - checked.getTime();
+  // Get last active time from cache (configstore).
+  const cached = configstore.get(CONFIGSTORE_KEY) as { lastActiveAt: string } | null;
+  if (cached) {
+    const activeAt = new Date(cached.lastActiveAt);
+    const diff = Date.now() - activeAt.getTime();
     if (diff <= 1000 * 60 * 60 * 24 /* 1 day */) {
       return true;
     }
@@ -50,7 +50,7 @@ export async function check(projectId: string): Promise<boolean> {
 
   const checked = await _check(projectId);
   if (checked) {
-    configstore.set(CONFIGSTORE_KEY, { lastChecked: Date.now() });
+    configstore.set(CONFIGSTORE_KEY, { lastActiveAt: Date.now() });
     return true;
   }
   return false;
