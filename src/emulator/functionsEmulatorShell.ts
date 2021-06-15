@@ -35,13 +35,13 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
     }
   }
 
-  call(id: string, data: any, opts: any): void {
-    const trigger = this.getTrigger(id);
-    logger.debug(`shell:${id}: trigger=${JSON.stringify(trigger)}`);
-    logger.debug(`shell:${id}: opts=${JSON.stringify(opts)}, data=${JSON.stringify(data)}`);
+  call(name: string, data: any, opts: any): void {
+    const trigger = this.getTrigger(name);
+    logger.debug(`shell:${name}: trigger=${JSON.stringify(trigger)}`);
+    logger.debug(`shell:${name}: opts=${JSON.stringify(opts)}, data=${JSON.stringify(data)}`);
 
     if (!trigger.eventTrigger) {
-      throw new FirebaseError(`Function ${id} is not a background function`);
+      throw new FirebaseError(`Function ${name} is not a background function`);
     }
 
     const eventType = trigger.eventTrigger.eventType;
@@ -64,16 +64,16 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
       data,
     };
 
-    this.emu.startFunctionRuntime(id, trigger.name, EmulatedTriggerType.BACKGROUND, proto);
+    this.emu.startFunctionRuntime(trigger.id, trigger.name, EmulatedTriggerType.BACKGROUND, proto);
   }
 
-  private getTrigger(id: string): EmulatedTriggerDefinition {
+  private getTrigger(name: string): EmulatedTriggerDefinition {
     const result = this.triggers.find((trigger) => {
-      return trigger.id === id;
+      return trigger.name === name;
     });
 
     if (!result) {
-      throw new FirebaseError(`Could not find trigger ${id}`);
+      throw new FirebaseError(`Could not find trigger ${name}`);
     }
 
     return result;
