@@ -6,15 +6,26 @@ import * as fs from "fs";
 import * as path from "path";
 import * as tmp from "tmp";
 
+import { isEmptyBackend } from "./backend";
+import { discoverBackendSpec } from "./discovery";
 import { FirebaseError } from "../../error";
 import { logger } from "../../logger";
+<<<<<<< HEAD
 import * as backend from "./backend";
+=======
+import { Options } from "../../options";
+>>>>>>> 94d177cf (Include functions:env on deploys.)
 import * as functionsConfig from "../../functionsConfig";
+import * as fenv from "../../functions/env";
+import { check as fenvCheck } from "../../functions/ensureEnv";
 import * as utils from "../../utils";
 import * as fsAsync from "../../fsAsync";
 import * as args from "./args";
+<<<<<<< HEAD
 import { Options } from "../../options";
 import { Config } from "../../config";
+=======
+>>>>>>> 94d177cf (Include functions:env on deploys.)
 
 const CONFIG_DEST_FILE = ".runtimeconfig.json";
 
@@ -48,11 +59,18 @@ export async function getFunctionsConfig(context: args.Context): Promise<{ [key:
 }
 
 // TODO(inlined): move to a file that's not about uploading source code
-export async function getEnvs(context: args.Context): Promise<{ [key: string]: string }> {
-  const envs = {
+async function getEnvs(context: args.Context): Promise<{ [key: string]: string }> {
+  const defaultEnvs = {
     FIREBASE_CONFIG: JSON.stringify(context.firebaseConfig),
   };
-  return Promise.resolve(envs);
+
+  let projectEnvs: Record<string, string> = {};
+  const enabled = await fenvCheck(context.projectId);
+  if (enabled) {
+    projectEnvs = await fenv.getEnvs(context.projectId);
+  }
+
+  return Promise.resolve({ ...defaultEnvs, ...projectEnvs });
 }
 
 async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream) {
