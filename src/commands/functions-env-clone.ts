@@ -1,6 +1,7 @@
 import * as clc from "cli-color";
 
 import { Command } from "../command";
+import { ensure as ensureEnvStore } from "../functions/ensureEnv";
 import { requirePermissions } from "../requirePermissions";
 import * as fenv from "../functions/env";
 import * as getProjectId from "../getProjectId";
@@ -17,6 +18,7 @@ export default new Command("functions:env:clone")
     "firebase.envstores.list",
     "firebase.envstores.update",
   ])
+  .before(ensureEnvStore)
   .action(async (options: any) => {
     const projectId = getProjectId(options);
     if (!options.from) {

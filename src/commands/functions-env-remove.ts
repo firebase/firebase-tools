@@ -1,5 +1,5 @@
 import { Command } from "../command";
-import { ensure as ensureEnvStore } from "../functions/enableEnv";
+import { ensure as ensureEnvStore } from "../functions/ensureEnv";
 import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
 import * as getProjectId from "../getProjectId";

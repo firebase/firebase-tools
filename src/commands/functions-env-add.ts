@@ -1,7 +1,7 @@
 import * as clc from "cli-color";
 
 import { Command } from "../command";
-import { ensure as ensureEnvStore } from "../functions/enableEnv";
+import { ensure as ensureEnvStore } from "../functions/ensureEnv";
 import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
 import * as fenv from "../functions/env";
