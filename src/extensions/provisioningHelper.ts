@@ -4,11 +4,6 @@ import * as utils from "../utils";
 import * as marked from "marked";
 import { FirebaseError } from "../error";
 
-const provisioningMsg =
-  "Some services used by this extension have not been set up on your " +
-  "Firebase project. To ensure this extension works as intended, you must enable these services " +
-  "before completing installation by following the provided links.\n\n";
-
 /** Product for which provisioning can be (or is) deferred */
 export enum DeferredProduct {
   STORAGE,
@@ -43,16 +38,21 @@ export async function checkProductsProvisioned(
   }
 
   if (needProvisioning.length > 0) {
-    let errorMessage = provisioningMsg;
+    let errorMessage =
+      "Some services used by this extension have not been set up on your " +
+      "Firebase project. To ensure this extension works as intended, you must enable these " +
+      "services by following the provided links, then retry installing the extension\n\n";
     if (needProvisioning.includes(DeferredProduct.STORAGE)) {
       errorMessage +=
-        " - Firebase Storage: store and retrieve user-generated files like images, audio, and video without server-side code.\n";
+        " - Firebase Storage: store and retrieve user-generated files like images, audio, and " +
+        "video without server-side code.\n";
       errorMessage += `   https://console.firebase.google.com/project/${projectId}/storage`;
-      errorMessage += "\n\n";
+      errorMessage += "\n";
     }
     if (needProvisioning.includes(DeferredProduct.AUTH)) {
       errorMessage +=
-        " - Firebase Authentication: authenticate and manage users from a variety of providers without server-side code.\n";
+        " - Firebase Authentication: authenticate and manage users from a variety of providers " +
+        "without server-side code.\n";
       errorMessage += `   https://console.firebase.google.com/project/${projectId}/authentication/users`;
     }
     throw new FirebaseError(marked(errorMessage), { exit: 2 });
