@@ -64,13 +64,23 @@ async function getEnvs(context: args.Context): Promise<{ [key: string]: string }
     FIREBASE_CONFIG: JSON.stringify(context.firebaseConfig),
   };
 
-  let projectEnvs: Record<string, string> = {};
-  const enabled = await fenvCheck(context.projectId);
-  if (enabled) {
-    projectEnvs = await fenv.getEnvs(context.projectId);
+  let envs: Record<string, string> = {};
+  try {
+    const enabled = await fenvCheck(context.projectId);
+    if (enabled) {
+      envs = await fenv.getEnvs(context.projectId);
+    }
+  } catch (err) {
+    logger.debug(err);
+    throw new FirebaseError(
+      "EnvStore service is currently experiencing issues, " +
+        "which is preventing your functions from being deployed. " +
+        "Please wait a few minutes and then try to deploy your functions again." +
+        "\nRun `firebase deploy --except functions` if you want to continue deploying the rest of your project."
+    );
   }
 
-  return Promise.resolve({ ...defaultEnvs, ...projectEnvs });
+  return Promise.resolve({ ...defaultEnvs, ...envs });
 }
 
 async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream) {
