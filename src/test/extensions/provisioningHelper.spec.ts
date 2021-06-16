@@ -7,17 +7,30 @@ import { FirebaseError } from "../../error";
 
 const TEST_INSTANCES_RESPONSE = {};
 const PROJECT_ID = "test-project";
+const SPEC_WITH_STORAGE_AND_AUTH = {
+  apis: [
+    {
+      apiName: "storage-component.googleapis.com",
+    },
+    {
+      apiName: "identitytoolkit.googleapis.com",
+    },
+  ] as extensionsApi.Api[],
+  resources: [] as extensionsApi.Resource[],
+} as extensionsApi.ExtensionSpec;
 
-const PROVISIONED_DEFAULT_BUCKEET = {
-  defaultBucket: "default-bucket",
-};
-const FIREBASE_STORAGE_BUCKEETS = {
-  buckets: ["bucket1", "bucket2"],
-};
-const FIREBASE_PRODUCT_ACTIVATIONS = {
+const FIREDATA_AUTH_ACTIVATED_RESPONSE = {
   activation: [
     {
       service: "FIREBASE_AUTH",
+    },
+  ],
+};
+
+const FIREBASE_STORAGE_DEFAULT_BUCKET_LINKED_RESPONSE = {
+  buckets: [
+    {
+      name: `projects/12345/bucket/${PROJECT_ID}.appspot.com`,
     },
   ],
 };
@@ -135,55 +148,33 @@ describe.only("provisioningHelper", () => {
     it("passes provisioning check when all is provisioned", async () => {
       nock(api.firedataOrigin)
         .get(`/v1/projects/${PROJECT_ID}/products`)
-        .reply(200, FIREBASE_PRODUCT_ACTIVATIONS);
-      nock(api.appengineOrigin)
-        .get(`/v1/apps/${PROJECT_ID}`)
-        .reply(200, PROVISIONED_DEFAULT_BUCKEET);
+        .reply(200, FIREDATA_AUTH_ACTIVATED_RESPONSE);
       nock(api.firebaseStorageOrigin)
         .get(`/v1beta/projects/${PROJECT_ID}/buckets`)
-        .reply(200, {
-          buckets: ["bucket1", "bucket2"],
-        });
+        .reply(200, FIREBASE_STORAGE_DEFAULT_BUCKET_LINKED_RESPONSE);
 
       await expect(
-        provisioningHelper.checkProductsProvisioned(PROJECT_ID, {
-          apis: [
-            {
-              apiName: "storage-component.googleapis.com",
-            },
-            {
-              apiName: "identitytoolkit.googleapis.com",
-            },
-          ] as extensionsApi.Api[],
-          resources: [] as extensionsApi.Resource[],
-        } as extensionsApi.ExtensionSpec)
+        provisioningHelper.checkProductsProvisioned(PROJECT_ID, SPEC_WITH_STORAGE_AND_AUTH)
       ).to.be.fulfilled;
 
       expect(nock.isDone()).to.be.true;
     });
-    it("fails provisioning check storage when default bucket is not set", async () => {
+    it("fails provisioning check storage when default bucket is not linked", async () => {
       nock(api.firedataOrigin)
         .get(`/v1/projects/${PROJECT_ID}/products`)
-        .reply(200, FIREBASE_PRODUCT_ACTIVATIONS);
-      nock(api.appengineOrigin).get(`/v1/apps/${PROJECT_ID}`).reply(200, {
-        defaultBucket: "undefined",
-      });
+        .reply(200, FIREDATA_AUTH_ACTIVATED_RESPONSE);
       nock(api.firebaseStorageOrigin)
         .get(`/v1beta/projects/${PROJECT_ID}/buckets`)
-        .reply(200, FIREBASE_STORAGE_BUCKEETS);
+        .reply(200, {
+          buckets: [
+            {
+              name: `projects/12345/bucket/some-other-bucket`,
+            },
+          ],
+        });
 
       await expect(
-        provisioningHelper.checkProductsProvisioned(PROJECT_ID, {
-          apis: [
-            {
-              apiName: "storage-component.googleapis.com",
-            },
-            {
-              apiName: "identitytoolkit.googleapis.com",
-            },
-          ] as extensionsApi.Api[],
-          resources: [] as extensionsApi.Resource[],
-        } as extensionsApi.ExtensionSpec)
+        provisioningHelper.checkProductsProvisioned(PROJECT_ID, SPEC_WITH_STORAGE_AND_AUTH)
       ).to.be.rejectedWith(FirebaseError, "Firebase Storage: store and retrieve user-generated");
 
       expect(nock.isDone()).to.be.true;
@@ -191,49 +182,23 @@ describe.only("provisioningHelper", () => {
     it("fails provisioning check storage when no firebase storage buckets", async () => {
       nock(api.firedataOrigin)
         .get(`/v1/projects/${PROJECT_ID}/products`)
-        .reply(200, FIREBASE_PRODUCT_ACTIVATIONS);
-      nock(api.appengineOrigin)
-        .get(`/v1/apps/${PROJECT_ID}`)
-        .reply(200, PROVISIONED_DEFAULT_BUCKEET);
+        .reply(200, FIREDATA_AUTH_ACTIVATED_RESPONSE);
       nock(api.firebaseStorageOrigin).get(`/v1beta/projects/${PROJECT_ID}/buckets`).reply(200, {});
 
       await expect(
-        provisioningHelper.checkProductsProvisioned(PROJECT_ID, {
-          apis: [
-            {
-              apiName: "storage-component.googleapis.com",
-            },
-            {
-              apiName: "identitytoolkit.googleapis.com",
-            },
-          ] as extensionsApi.Api[],
-          resources: [] as extensionsApi.Resource[],
-        } as extensionsApi.ExtensionSpec)
+        provisioningHelper.checkProductsProvisioned(PROJECT_ID, SPEC_WITH_STORAGE_AND_AUTH)
       ).to.be.rejectedWith(FirebaseError, "Firebase Storage: store and retrieve user-generated");
 
       expect(nock.isDone()).to.be.true;
     });
     it("fails provisioning check storage when no auth is not provisioned", async () => {
       nock(api.firedataOrigin).get(`/v1/projects/${PROJECT_ID}/products`).reply(200, {});
-      nock(api.appengineOrigin)
-        .get(`/v1/apps/${PROJECT_ID}`)
-        .reply(200, PROVISIONED_DEFAULT_BUCKEET);
       nock(api.firebaseStorageOrigin)
         .get(`/v1beta/projects/${PROJECT_ID}/buckets`)
-        .reply(200, FIREBASE_STORAGE_BUCKEETS);
+        .reply(200, FIREBASE_STORAGE_DEFAULT_BUCKET_LINKED_RESPONSE);
 
       await expect(
-        provisioningHelper.checkProductsProvisioned(PROJECT_ID, {
-          apis: [
-            {
-              apiName: "storage-component.googleapis.com",
-            },
-            {
-              apiName: "identitytoolkit.googleapis.com",
-            },
-          ] as extensionsApi.Api[],
-          resources: [] as extensionsApi.Resource[],
-        } as extensionsApi.ExtensionSpec)
+        provisioningHelper.checkProductsProvisioned(PROJECT_ID, SPEC_WITH_STORAGE_AND_AUTH)
       ).to.be.rejectedWith(
         FirebaseError,
         "Firebase Authentication: authenticate and manage users from"

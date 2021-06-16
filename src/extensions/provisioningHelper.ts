@@ -2,9 +2,7 @@ import * as extensionsApi from "./extensionsApi";
 import * as api from "../api";
 import * as utils from "../utils";
 import * as marked from "marked";
-import { logPrefix } from "./extensionsHelper";
 import { FirebaseError } from "../error";
-import { logger, LogLevel } from "../logger";
 
 const provisioningMsg =
   "Some services used by this extension have not been set up on your " +
@@ -18,10 +16,9 @@ export enum DeferredProduct {
 }
 
 /**
- * Checks which products used by the extension require provisioning.
+ * Checks whether products used by the extension require provisioning.
  *
  * @param spec extension spec
- * @returns array of products that require provisioning
  */
 export async function checkProductsProvisioned(
   projectId: string,
@@ -96,9 +93,22 @@ function getTriggerType(propertiesYaml: string | undefined) {
 }
 
 async function isStorageProvisioned(projectId: string): Promise<boolean> {
-  const hasDefaultBucketPromise = hasDefaultBucket(projectId);
-  const hasLinkedBucketPromise = hasLinkedBucket(projectId);
-  return (await hasDefaultBucketPromise) && (await hasLinkedBucketPromise);
+  const resp = await api.request("GET", `/v1beta/projects/${projectId}/buckets`, {
+    auth: true,
+    origin: api.firebaseStorageOrigin,
+  });
+  return await Promise.resolve(
+    !!resp.body?.buckets?.find((bucket: any) => {
+      const bucketResourceName = bucket.name;
+      // Bucket resource name looks like: projects/PROJECT_NUMBER/buckets/BUCKET_NAME
+      // and we just need the BUCKET_NAME part.
+      const bucketResourceNameTokens = bucketResourceName.split("/");
+      const pattern = "^" + projectId + "(.[[a-z0-9]+)*.appspot.com$";
+      return new RegExp(pattern).test(
+        bucketResourceNameTokens[bucketResourceNameTokens.length - 1]
+      );
+    })
+  );
 }
 
 async function isAuthProvisioned(projectId: string): Promise<boolean> {
@@ -109,27 +119,4 @@ async function isAuthProvisioned(projectId: string): Promise<boolean> {
   return Promise.resolve(
     !!resp.body?.activation?.map((a: any) => a.service).includes("FIREBASE_AUTH")
   );
-}
-
-async function hasDefaultBucket(projectId: string): Promise<boolean> {
-  try {
-    const resp = await api.request("GET", `/v1/apps/${projectId}`, {
-      auth: true,
-      origin: api.appengineOrigin,
-    });
-    return await Promise.resolve(resp.body.defaultBucket !== "undefined");
-  } catch (err) {
-    if (err.status === 404) {
-      return Promise.resolve(false);
-    }
-    throw err;
-  }
-}
-
-async function hasLinkedBucket(projectId: string): Promise<boolean> {
-  const resp = await api.request("GET", `/v1beta/projects/${projectId}/buckets`, {
-    auth: true,
-    origin: api.firebaseStorageOrigin,
-  });
-  return await Promise.resolve(!!(resp.body?.buckets?.length > 0));
 }
