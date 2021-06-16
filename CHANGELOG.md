@@ -1,1 +1,1 @@
-- Fix ext:update issue where local extension is incorrectly inferred as published (#3499)
+- Fixes an issue with ext:update where local extension is incorrectly inferred as published (#3499)
