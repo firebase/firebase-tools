@@ -5,3 +5,4 @@
 - Fixes import/export bug with Storage emulator download tokens (#3414)
 - Improves errors when failing to start Storage emulator (#3443)
 - Fixes missing download tokens in Storage Emulator (#3451)
+- Fix ext:update issue where local extension is incorrectly inferred as published (#3499)

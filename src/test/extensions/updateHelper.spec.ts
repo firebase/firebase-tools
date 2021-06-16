@@ -599,12 +599,14 @@ describe("getExistingSourceOrigin", () => {
     isOfficialStub = sinon.stub(resolveSource, "isOfficialSource");
     isOfficialStub.returns(true);
     getInstanceStub = sinon.stub(extensionsApi, "getInstance").resolves(INSTANCE);
+
     const result = await updateHelper.getExistingSourceOrigin(
       "invader-zim",
       "instance-of-official-ext",
       "ext-testing",
       "projects/firebasemods/sources/fake-official-source"
     );
+    
     expect(result).to.equal(extensionsHelper.SourceOrigin.OFFICIAL_EXTENSION);
   });
 
@@ -612,12 +614,14 @@ describe("getExistingSourceOrigin", () => {
     registryEntryStub = sinon.stub(resolveSource, "resolveRegistryEntry");
     registryEntryStub.throwsException("Entry not found");
     getInstanceStub = sinon.stub(extensionsApi, "getInstance").resolves(REGISTRY_INSTANCE);
+    
     const result = await updateHelper.getExistingSourceOrigin(
       "invader-zim",
       "instance-of-registry-ext",
       "ext-testing",
       "projects/firebasemods/sources/fake-registry-source"
     );
+    
     expect(result).to.equal(extensionsHelper.SourceOrigin.PUBLISHED_EXTENSION);
   });
 
@@ -625,27 +629,31 @@ describe("getExistingSourceOrigin", () => {
     registryEntryStub = sinon.stub(resolveSource, "resolveRegistryEntry");
     registryEntryStub.throwsException("Entry not found");
     getInstanceStub = sinon.stub(extensionsApi, "getInstance").resolves(LOCAL_INSTANCE);
+    
     const result = await updateHelper.getExistingSourceOrigin(
       "invader-zim",
       "instance-of-local-ext",
       "ext-testing",
       "projects/firebasemods/sources/fake-local-source"
     );
+    
     expect(result).to.equal(extensionsHelper.SourceOrigin.LOCAL);
   });
 
-  it("should return local extension as source origin", async () => {
+  it("should return local extension as source origin even if the name matches a registry entry", async () => {
     registryEntryStub = sinon.stub(resolveSource, "resolveRegistryEntry");
     registryEntryStub.resolves(REGISTRY_ENTRY);
     isOfficialStub = sinon.stub(resolveSource, "isOfficialSource");
     isOfficialStub.returns(false);
     getInstanceStub = sinon.stub(extensionsApi, "getInstance").resolves(LOCAL_INSTANCE);
+    
     const result = await updateHelper.getExistingSourceOrigin(
       "invader-zim",
       "instance-of-local-ext",
       "ext-testing",
       "projects/firebasemods/sources/fake-local-source"
     );
+    
     expect(result).to.equal(extensionsHelper.SourceOrigin.LOCAL);
   });
 });
