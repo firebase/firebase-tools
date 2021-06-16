@@ -1,0 +1,1 @@
+- Fix ext:update issue where local extension is incorrectly inferred as published (#3499)
