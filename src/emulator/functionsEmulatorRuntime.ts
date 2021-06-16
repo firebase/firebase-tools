@@ -24,6 +24,12 @@ import * as fs from "fs";
 import { URL } from "url";
 import * as _ from "lodash";
 
+/*
+ * Firebase imposes quota limits on response data
+ * See https://firebase.google.com/docs/functions/quotas
+ */
+const MAX_DATA_LIMIT = 10000000;
+
 let triggers: EmulatedTriggerMap | undefined;
 let developerPkgJSON: PackageJSON | undefined;
 
@@ -803,6 +809,56 @@ function rawBodySaver(req: express.Request, res: express.Response, buf: Buffer):
   (req as any).rawBody = buf;
 }
 
+/*
+ Firebase imposes quota limits on response data
+ See https://firebase.google.com/docs/functions/quotas
+*/
+function enforceResponseLimitMiddleware(
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction
+): void {
+  let responseSize = 0;
+  const chunks: Buffer[] = [];
+  const originalWrite = res.write.bind(res);
+  const originalEnd = res.end.bind(res);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  res.write = function (chunk: any) {
+    const buffer = Buffer.from(chunk);
+    responseSize += buffer.length;
+    chunks.push(buffer);
+
+    if (responseSize >= MAX_DATA_LIMIT) {
+      logDebug(`Response size exceeds quota, aborting function execution`);
+      res.emit(
+        "error",
+        new Error(
+          `Response size of ${responseSize} exceeds quota of ${MAX_DATA_LIMIT}, aborting function execution`
+        )
+      );
+      return false;
+    } else {
+      logDebug(`Total response size received: ${responseSize}`);
+      return true;
+    }
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  res.end = function (chunk: any, encoding?: any, cb?: () => void) {
+    if (chunk) {
+      originalEnd(chunk, encoding, cb);
+    } else {
+      chunks.forEach((chunk) => originalWrite(chunk));
+      originalEnd(cb);
+    }
+  };
+
+  if (next) {
+    next();
+  }
+}
+
 async function processHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigger): Promise<void> {
   const ephemeralServer = express();
   const functionRouter = express.Router(); // eslint-disable-line new-cap
@@ -835,6 +891,7 @@ async function processHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
     };
 
     ephemeralServer.enable("trust proxy");
+    ephemeralServer.use(enforceResponseLimitMiddleware);
     ephemeralServer.use(
       bodyParser.json({
         limit: "10mb",
