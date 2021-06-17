@@ -124,7 +124,7 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - run: npm install --package-lock-only
       - run: "git diff --exit-code -- package-lock.json || (echo 'Error: package-lock.json is changed during npm install! Please make sure to use npm >= 6.9.0 and commit package-lock.json.' && false)"
-  
+
   check-json-schema:
     runs-on: ubuntu-latest
 
