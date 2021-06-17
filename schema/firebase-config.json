@@ -9,6 +9,9 @@
                             "type": "string"
                         }
                     },
+                    "required": [
+                        "rules"
+                    ],
                     "type": "object"
                 },
                 {
@@ -24,6 +27,9 @@
                                 "type": "string"
                             }
                         },
+                        "required": [
+                            "rules"
+                        ],
                         "type": "object"
                     },
                     "type": "array"
@@ -157,6 +163,10 @@
                     "type": "string"
                 }
             },
+            "required": [
+                "indexes",
+                "rules"
+            ],
             "type": "object"
         },
         "functions": {
@@ -200,6 +210,10 @@
                                             "type": "string"
                                         }
                                     },
+                                    "required": [
+                                        "key",
+                                        "value"
+                                    ],
                                     "type": "object"
                                 },
                                 "type": "array"
@@ -208,6 +222,10 @@
                                 "type": "string"
                             }
                         },
+                        "required": [
+                            "headers",
+                            "source"
+                        ],
                         "type": "object"
                     },
                     "type": "array"
@@ -218,6 +236,9 @@
                             "type": "string"
                         }
                     },
+                    "required": [
+                        "root"
+                    ],
                     "type": "object"
                 },
                 "ignore": {
@@ -245,6 +266,11 @@
                                 "type": "number"
                             }
                         },
+                        "required": [
+                            "destination",
+                            "source",
+                            "type"
+                        ],
                         "type": "object"
                     },
                     "type": "array"
@@ -270,12 +296,18 @@
                                         "type": "string"
                                     }
                                 },
+                                "required": [
+                                    "serviceId"
+                                ],
                                 "type": "object"
                             },
                             "source": {
                                 "type": "string"
                             }
                         },
+                        "required": [
+                            "source"
+                        ],
                         "type": "object"
                     },
                     "type": "array"
@@ -284,6 +316,9 @@
                     "type": "boolean"
                 }
             },
+            "required": [
+                "public"
+            ],
             "type": "object"
         },
         "remoteconfig": {
@@ -292,6 +327,9 @@
                     "type": "string"
                 }
             },
+            "required": [
+                "template"
+            ],
             "type": "object"
         },
         "storage": {
@@ -302,6 +340,9 @@
                             "type": "string"
                         }
                     },
+                    "required": [
+                        "rules"
+                    ],
                     "type": "object"
                 },
                 {
@@ -314,6 +355,10 @@
                                 "type": "string"
                             }
                         },
+                        "required": [
+                            "bucket",
+                            "rules"
+                        ],
                         "type": "object"
                     },
                     "type": "array"
