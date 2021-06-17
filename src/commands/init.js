@@ -48,8 +48,7 @@ const choices = [
   },
   {
     value: "hosting:github",
-    name:
-      "Hosting: Set up GitHub Action deploys",
+    name: "Hosting: Set up GitHub Action deploys",
     checked: false,
   },
   {
