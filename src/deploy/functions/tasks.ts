@@ -5,7 +5,7 @@ import { logger } from "../../logger";
 import { RegionalFunctionChanges } from "./deploymentPlanner";
 import { OperationResult, OperationPollerOptions, pollOperation } from "../../operation-poller";
 import { functionsOrigin, functionsV2Origin } from "../../api";
-import { getHumanFriendlyRuntimeName } from "./parseRuntimeAndValidateSDK";
+import { getHumanFriendlyRuntimeName } from "./runtimes";
 import { deleteTopic } from "../../gcp/pubsub";
 import { DeploymentTimer } from "./deploymentTimer";
 import { ErrorHandler } from "./errorHandler";
@@ -59,7 +59,6 @@ export interface DeploymentTask {
 
 export interface TaskParams {
   projectId: string;
-  runtime?: backend.Runtime;
   sourceUrl?: string;
   storageSource?: gcfV2.StorageSource;
   errorHandler: ErrorHandler;
@@ -80,7 +79,7 @@ export function createFunctionTask(
     utils.logBullet(
       clc.bold.cyan("functions: ") +
         "creating " +
-        getHumanFriendlyRuntimeName(params.runtime!) +
+        getHumanFriendlyRuntimeName(fn.runtime) +
         " function " +
         clc.bold(helper.getFunctionLabel(fn)) +
         "..."
@@ -136,7 +135,7 @@ export function updateFunctionTask(
     utils.logBullet(
       clc.bold.cyan("functions: ") +
         "updating " +
-        getHumanFriendlyRuntimeName(params.runtime!) +
+        getHumanFriendlyRuntimeName(fn.runtime) +
         " function " +
         clc.bold(helper.getFunctionLabel(fn)) +
         "..."

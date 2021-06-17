@@ -109,7 +109,7 @@ const INSTANCE = {
   state: "ACTIVE",
   config: {
     name:
-      "projects/invader-zim/instances/image-resizer/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
+      "projects/invader-zim/instances/instance-of-official-ext/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
     createTime: "2019-05-19T00:20:10.416947Z",
     sourceId: "fake-official-source",
     sourceName: "projects/firebasemods/sources/fake-official-source",
@@ -120,18 +120,36 @@ const INSTANCE = {
 };
 
 const REGISTRY_INSTANCE = {
-  name: "projects/invader-zim/instances/fake-official-instance",
+  name: "projects/invader-zim/instances/instance-of-registry-ext",
   createTime: "2019-05-19T00:20:10.416947Z",
   updateTime: "2019-05-19T00:20:10.416947Z",
   state: "ACTIVE",
   config: {
     name:
-      "projects/invader-zim/instances/image-resizer/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
+      "projects/invader-zim/instances/instance-of-registry-ext/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
     createTime: "2019-05-19T00:20:10.416947Z",
     sourceId: "fake-registry-source",
     sourceName: "projects/firebasemods/sources/fake-registry-source",
+    extensionRef: "test-publisher/test",
     source: {
       name: "projects/firebasemods/sources/fake-registry-source",
+    },
+  },
+};
+
+const LOCAL_INSTANCE = {
+  name: "projects/invader-zim/instances/instance-of-local-ext",
+  createTime: "2019-05-19T00:20:10.416947Z",
+  updateTime: "2019-05-19T00:20:10.416947Z",
+  state: "ACTIVE",
+  config: {
+    name:
+      "projects/invader-zim/instances/instance-of-local-ext/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
+    createTime: "2019-05-19T00:20:10.416947Z",
+    sourceId: "fake-registry-source",
+    sourceName: "projects/firebasemods/sources/fake-local-source",
+    source: {
+      name: "projects/firebasemods/sources/fake-local-source",
     },
   },
 };
@@ -561,5 +579,81 @@ describe("inferUpdateSource", () => {
       "firebase/storage-resize-images"
     );
     expect(result).to.equal("notfirebase/storage-resize-images@latest");
+  });
+});
+
+describe("getExistingSourceOrigin", () => {
+  let registryEntryStub: sinon.SinonStub;
+  let isOfficialStub: sinon.SinonStub;
+  let getInstanceStub: sinon.SinonStub;
+
+  afterEach(() => {
+    registryEntryStub.restore();
+    isOfficialStub.restore();
+    getInstanceStub.restore();
+  });
+
+  it("should return official extension as source origin", async () => {
+    registryEntryStub = sinon.stub(resolveSource, "resolveRegistryEntry");
+    registryEntryStub.resolves(REGISTRY_ENTRY);
+    isOfficialStub = sinon.stub(resolveSource, "isOfficialSource");
+    isOfficialStub.returns(true);
+    getInstanceStub = sinon.stub(extensionsApi, "getInstance").resolves(INSTANCE);
+
+    const result = await updateHelper.getExistingSourceOrigin(
+      "invader-zim",
+      "instance-of-official-ext",
+      "ext-testing",
+      "projects/firebasemods/sources/fake-official-source"
+    );
+
+    expect(result).to.equal(extensionsHelper.SourceOrigin.OFFICIAL_EXTENSION);
+  });
+
+  it("should return published extension as source origin", async () => {
+    registryEntryStub = sinon.stub(resolveSource, "resolveRegistryEntry");
+    registryEntryStub.throwsException("Entry not found");
+    getInstanceStub = sinon.stub(extensionsApi, "getInstance").resolves(REGISTRY_INSTANCE);
+
+    const result = await updateHelper.getExistingSourceOrigin(
+      "invader-zim",
+      "instance-of-registry-ext",
+      "ext-testing",
+      "projects/firebasemods/sources/fake-registry-source"
+    );
+
+    expect(result).to.equal(extensionsHelper.SourceOrigin.PUBLISHED_EXTENSION);
+  });
+
+  it("should return local extension as source origin", async () => {
+    registryEntryStub = sinon.stub(resolveSource, "resolveRegistryEntry");
+    registryEntryStub.throwsException("Entry not found");
+    getInstanceStub = sinon.stub(extensionsApi, "getInstance").resolves(LOCAL_INSTANCE);
+
+    const result = await updateHelper.getExistingSourceOrigin(
+      "invader-zim",
+      "instance-of-local-ext",
+      "ext-testing",
+      "projects/firebasemods/sources/fake-local-source"
+    );
+
+    expect(result).to.equal(extensionsHelper.SourceOrigin.LOCAL);
+  });
+
+  it("should return local extension as source origin", async () => {
+    registryEntryStub = sinon.stub(resolveSource, "resolveRegistryEntry");
+    registryEntryStub.resolves(REGISTRY_ENTRY);
+    isOfficialStub = sinon.stub(resolveSource, "isOfficialSource");
+    isOfficialStub.returns(false);
+    getInstanceStub = sinon.stub(extensionsApi, "getInstance").resolves(LOCAL_INSTANCE);
+
+    const result = await updateHelper.getExistingSourceOrigin(
+      "invader-zim",
+      "instance-of-local-ext",
+      "ext-testing",
+      "projects/firebasemods/sources/fake-local-source"
+    );
+
+    expect(result).to.equal(extensionsHelper.SourceOrigin.LOCAL);
   });
 });

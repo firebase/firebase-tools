@@ -7,6 +7,7 @@ import * as process from "process";
 import { Readable } from "stream";
 import * as winston from "winston";
 import { SPLAT } from "triple-beam";
+import { AssertionError } from "assert";
 const ansiStrip = require("cli-color/strip") as (input: string) => string;
 
 import { configstore } from "./configstore";
@@ -498,4 +499,43 @@ export function isRunningInWSL(): boolean {
  */
 export function thirtyDaysFromNow(): Date {
   return new Date(Date.now() + THIRTY_DAYS_IN_MILLISECONDS);
+}
+
+/**
+ * See:
+ * https://www.typescriptlang.org/docs/handbook/release-notes/typescript-3-7.html#assertion-functions
+ */
+export function assertDefined<T>(val: T, message?: string): asserts val is NonNullable<T> {
+  if (val === undefined || val === null) {
+    throw new AssertionError({
+      message: message || `expected value to be defined but got "${val}"`,
+    });
+  }
+}
+
+export function assertIsString(val: any, message?: string): asserts val is string {
+  if (typeof val !== "string") {
+    throw new AssertionError({
+      message: message || `expected "string" but got "${typeof val}"`,
+    });
+  }
+}
+
+export function assertIsNumber(val: any, message?: string): asserts val is number {
+  if (typeof val !== "number") {
+    throw new AssertionError({
+      message: message || `expected "number" but got "${typeof val}"`,
+    });
+  }
+}
+
+export function assertIsStringOrUndefined(
+  val: any,
+  message?: string
+): asserts val is string | undefined {
+  if (!(val === undefined || typeof val === "string")) {
+    throw new AssertionError({
+      message: message || `expected "string" or "undefined" but got "${typeof val}"`,
+    });
+  }
 }

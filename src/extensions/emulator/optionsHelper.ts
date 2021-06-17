@@ -130,7 +130,7 @@ function buildConfig(
     }
   }
 
-  if (config.get("functions")) {
+  if (config.src.functions) {
     // Switch functions source to what is provided in the extension.yaml
     // to match the behavior of deployed extensions.
     const sourceDirectory = getFunctionSourceDirectory(functionResources);

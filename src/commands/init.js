@@ -23,10 +23,66 @@ var _isOutside = function (from, to) {
   return path.relative(from, to).match(/^\.\./);
 };
 
+const choices = [
+  {
+    value: "database",
+    name:
+      "Realtime Database: Configure a security rules file for Realtime Database and (optionally) provision default instance",
+    checked: false,
+  },
+  {
+    value: "firestore",
+    name: "Firestore: Configure security rules and indexes files for Firestore",
+    checked: false,
+  },
+  {
+    value: "functions",
+    name: "Functions: Configure a Cloud Functions directory and its files",
+    checked: false,
+  },
+  {
+    value: "hosting",
+    name:
+      "Hosting: Configure files for Firebase Hosting and (optionally) set up GitHub Action deploys",
+    checked: false,
+  },
+  {
+    value: "hosting:github",
+    name: "Hosting: Set up GitHub Action deploys",
+    checked: false,
+  },
+  {
+    value: "storage",
+    name: "Storage: Configure a security rules file for Cloud Storage",
+    checked: false,
+  },
+  {
+    value: "emulators",
+    name: "Emulators: Set up local emulators for Firebase products",
+    checked: false,
+  },
+  {
+    value: "remoteconfig",
+    name: "Remote Config: Configure a template file for Remote Config",
+    checked: false,
+  },
+];
+const featureNames = choices.map((choice) => choice.value);
+
 module.exports = new Command("init [feature]")
   .description("set up a Firebase project in the current directory")
   .before(requireAuth)
   .action(function (feature, options) {
+    if (feature && !featureNames.includes(feature)) {
+      return utils.reject(
+        clc.bold(feature) +
+          " is not a supported feature; must be one of " +
+          featureNames.join(", ") +
+          ".",
+        { exit: 1 }
+      );
+    }
+
     var cwd = options.cwd || process.cwd();
 
     var warnings = [];
@@ -69,46 +125,6 @@ module.exports = new Command("init [feature]")
         fallback: {},
       }),
     };
-
-    var choices = [
-      {
-        value: "database",
-        name:
-          "Realtime Database: Configure a security rules file for Realtime Database and (optionally) provision default instance",
-        checked: false,
-      },
-      {
-        value: "firestore",
-        name: "Firestore: Configure security rules and indexes files for Firestore",
-        checked: false,
-      },
-      {
-        value: "functions",
-        name: "Functions: Configure a Cloud Functions directory and its files",
-        checked: false,
-      },
-      {
-        value: "hosting",
-        name:
-          "Hosting: Configure files for Firebase Hosting and (optionally) set up GitHub Action deploys",
-        checked: false,
-      },
-      {
-        value: "storage",
-        name: "Storage: Configure a security rules file for Cloud Storage",
-        checked: false,
-      },
-      {
-        value: "emulators",
-        name: "Emulators: Set up local emulators for Firebase products",
-        checked: false,
-      },
-      {
-        value: "remoteconfig",
-        name: "Remote Config: Configure a template file for Remote Config",
-        checked: false,
-      },
-    ];
 
     var next;
     // HACK: Windows Node has issues with selectables as the first prompt, so we

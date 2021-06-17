@@ -8,17 +8,18 @@ import * as tmp from "tmp";
 
 import { FirebaseError } from "../../error";
 import { logger } from "../../logger";
-import { discoverBackendSpec } from "./discovery";
-import { isEmptyBackend } from "./backend";
+import * as backend from "./backend";
 import * as functionsConfig from "../../functionsConfig";
 import * as utils from "../../utils";
 import * as fsAsync from "../../fsAsync";
 import * as args from "./args";
 import { Options } from "../../options";
+import { Config } from "../../config";
 
 const CONFIG_DEST_FILE = ".runtimeconfig.json";
 
-async function getFunctionsConfig(context: args.Context): Promise<{ [key: string]: any }> {
+// TODO(inlined): move to a file that's not about uploading source code
+export async function getFunctionsConfig(context: args.Context): Promise<{ [key: string]: any }> {
   let config: Record<string, any> = {};
   if (context.runtimeConfigEnabled) {
     try {
@@ -46,7 +47,8 @@ async function getFunctionsConfig(context: args.Context): Promise<{ [key: string
   return config;
 }
 
-async function getEnvs(context: args.Context): Promise<{ [key: string]: string }> {
+// TODO(inlined): move to a file that's not about uploading source code
+export async function getEnvs(context: args.Context): Promise<{ [key: string]: string }> {
   const envs = {
     FIREBASE_CONFIG: JSON.stringify(context.firebaseConfig),
   };
@@ -73,7 +75,7 @@ async function packageSource(options: Options, sourceDir: string, configValues: 
   // you're in the public dir when you deploy.
   // We ignore any CONFIG_DEST_FILE that already exists, and write another one
   // with current config values into the archive in the "end" handler for reader
-  const ignore = options.config.get("functions.ignore", ["node_modules", ".git"]) as string[];
+  const ignore = options.config.src.functions?.ignore || ["node_modules", ".git"];
   ignore.push(
     "firebase-debug.log",
     "firebase-debug.*.log",
@@ -102,10 +104,16 @@ async function packageSource(options: Options, sourceDir: string, configValues: 
       }
     );
   }
+
+  utils.assertDefined(options.config.src.functions);
+  utils.assertDefined(
+    options.config.src.functions.source,
+    "Error: 'functions.source' is not defined"
+  );
   utils.logBullet(
     clc.cyan.bold("functions:") +
       " packaged " +
-      clc.bold(options.config.get("functions.source")) +
+      clc.bold(options.config.src.functions.source) +
       " (" +
       filesize(archive.pointer()) +
       ") for uploading"
@@ -114,17 +122,15 @@ async function packageSource(options: Options, sourceDir: string, configValues: 
 }
 
 export async function prepareFunctionsUpload(
-  context: args.Context,
+  runtimeConfig: backend.RuntimeConfigValues,
   options: Options
 ): Promise<string | undefined> {
-  const sourceDir = options.config.path(options.config.get("functions.source") as string);
-  const configValues = await getFunctionsConfig(context);
-  const envs = await getEnvs(context);
-  const backend = await discoverBackendSpec(context, options, configValues, envs);
-  options.config.set("functions.backend", backend);
-  if (isEmptyBackend(backend)) {
-    // No need to package if there are 0 functions to deploy.
-    return;
-  }
-  return packageSource(options, sourceDir, configValues);
+  utils.assertDefined(options.config.src.functions);
+  utils.assertDefined(
+    options.config.src.functions.source,
+    "Error: 'functions.source' is not defined"
+  );
+
+  const sourceDir = options.config.path(options.config.src.functions.source);
+  return packageSource(options, sourceDir, runtimeConfig);
 }

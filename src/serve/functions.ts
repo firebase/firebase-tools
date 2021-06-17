@@ -4,6 +4,9 @@ import { EmulatorServer } from "../emulator/emulatorServer";
 import { parseRuntimeVersion } from "../emulator/functionsEmulatorUtils";
 import * as getProjectId from "../getProjectId";
 import { getProjectDefaultAccount } from "../auth";
+import { Options } from "../options";
+import { Config } from "../config";
+import * as utils from "../utils";
 
 // TODO(samstern): It would be better to convert this to an EmulatorServer
 // but we don't have the "options" object until start() is called.
@@ -16,12 +19,15 @@ export class FunctionsServer {
     }
   }
 
-  async start(options: any, partialArgs: Partial<FunctionsEmulatorArgs>): Promise<void> {
+  async start(options: Options, partialArgs: Partial<FunctionsEmulatorArgs>): Promise<void> {
     const projectId = getProjectId(options, false);
-    const functionsDir = path.join(
-      options.config.projectDir,
-      options.config.get("functions.source")
+    utils.assertDefined(options.config.src.functions);
+    utils.assertDefined(
+      options.config.src.functions.source,
+      "Error: 'functions.source' is not defined"
     );
+
+    const functionsDir = path.join(options.config.projectDir, options.config.src.functions.source);
     const account = getProjectDefaultAccount(options.config.projectDir);
     const nodeMajorVersion = parseRuntimeVersion(options.config.get("functions.runtime"));
 
@@ -37,6 +43,7 @@ export class FunctionsServer {
     };
 
     if (options.host) {
+      utils.assertIsStringOrUndefined(options.host);
       args.host = options.host;
     }
 
@@ -44,11 +51,14 @@ export class FunctionsServer {
     // we can use the port argument. Otherwise it goes to hosting and
     // we use port + 1.
     if (options.port) {
-      const hostingRunning = options.targets && options.targets.indexOf("hosting") >= 0;
+      utils.assertIsNumber(options.port);
+      const targets = options.targets as string[] | undefined;
+      const port = options.port;
+      const hostingRunning = targets && targets.indexOf("hosting") >= 0;
       if (hostingRunning) {
-        args.port = options.port + 1;
+        args.port = port + 1;
       } else {
-        args.port = options.port;
+        args.port = port;
       }
     }
 

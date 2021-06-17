@@ -41,6 +41,7 @@ export enum SpecParamType {
   SELECT = "select",
   MULTISELECT = "multiSelect",
   STRING = "string",
+  SELECTRESOURCE = "selectResource",
 }
 
 export enum SourceOrigin {
@@ -300,6 +301,15 @@ export function validateSpec(spec: any) {
             } is missing required field: value`
           );
         }
+      }
+    }
+    if (param.type && param.type == SpecParamType.SELECTRESOURCE) {
+      if (!param.resourceType) {
+        errors.push(
+          `Param${param.param ? ` ${param.param}` : ""} must have resourceType because it is type ${
+            param.type
+          }`
+        );
       }
     }
   }

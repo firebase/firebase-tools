@@ -1,1 +1,2 @@
-- Add Warsaw (europe-central2) Cloud Function Location to Firebase Extension template.
+- Fixes an issue with ext:update where local extension is incorrectly inferred as published (#3499)
+- Fixes `firebase init hosting:github` (#3498)

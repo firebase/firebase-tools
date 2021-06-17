@@ -2,26 +2,26 @@
 
 import { FirebaseConfig } from "./firebaseConfig";
 
-const _ = require("lodash");
-const clc = require("cli-color");
+import * as _ from "lodash";
+import * as clc from "cli-color";
+import * as fs from "fs-extra";
+import * as path from "path";
 const cjson = require("cjson");
-const fs = require("fs-extra");
-const path = require("path");
 
-const detectProjectRoot = require("./detectProjectRoot").detectProjectRoot;
-const { FirebaseError } = require("./error");
-const fsutils = require("./fsutils");
+import { detectProjectRoot } from "./detectProjectRoot";
+import { FirebaseError } from "./error";
+import * as fsutils from "./fsutils";
+import { promptOnce } from "./prompt";
+import { resolveProjectPath } from "./projectPath";
+import * as utils from "./utils";
 const loadCJSON = require("./loadCJSON");
 const parseBoltRules = require("./parseBoltRules");
-const { promptOnce } = require("./prompt");
-const { resolveProjectPath } = require("./projectPath");
-const utils = require("./utils");
-
-type PlainObject = Record<string, unknown>;
 
 export class Config {
+  static DEFAULT_FUNCTIONS_SOURCE = "functions";
+
   static FILENAME = "firebase.json";
-  static MATERIALIZE_TARGETS = [
+  static MATERIALIZE_TARGETS: Array<keyof FirebaseConfig> = [
     "database",
     "emulators",
     "firestore",
@@ -39,6 +39,10 @@ export class Config {
 
   private _src: any;
 
+  /**
+   * @param src incoming firebase.json source, parsed by not validated.
+   * @param options command-line options.
+   */
   constructor(src: any, options: any) {
     this.options = options || {};
     this.projectDir = options.projectDir || detectProjectRoot(options);
@@ -54,52 +58,43 @@ export class Config {
       );
     }
 
+    // Move the deprecated top-level "rules" ket into the "database" object
     if (_.has(this._src, "rules")) {
       _.set(this._src, "database.rules", this._src.rules);
     }
 
+    // If a top-level key contains a string path pointing to a suported file
+    // type (JSON or Bolt), we read the file.
+    //
+    // TODO: This is janky and confusing behavior, we should remove it ASAP.
     Config.MATERIALIZE_TARGETS.forEach((target) => {
       if (_.get(this._src, target)) {
-        _.set(this.data, target, this._materialize(target));
+        _.set(this.data, target, this.materialize(target));
       }
     });
 
-    // auto-detect functions from package.json in directory
+    // Auto-detect functions from package.json in directory
     if (
       this.projectDir &&
       !this.get("functions.source") &&
       fsutils.fileExistsSync(this.path("functions/package.json"))
     ) {
-      this.set("functions.source", "functions");
+      this.set("functions.source", Config.DEFAULT_FUNCTIONS_SOURCE);
     }
   }
 
-  _hasDeepKey(obj: PlainObject, key: string) {
-    if (_.has(obj, key)) {
-      return true;
-    }
-
-    for (const k in obj) {
-      if (obj.hasOwnProperty(k)) {
-        if (_.isPlainObject(obj[k]) && this._hasDeepKey(obj[k] as PlainObject, key)) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  _materialize(target: string) {
+  materialize(target: string) {
     const val = _.get(this._src, target);
-    if (_.isString(val)) {
-      let out = this._parseFile(target, val);
+    if (typeof val === "string") {
+      let out = this.parseFile(target, val);
       // if e.g. rules.json has {"rules": {}} use that
-      const lastSegment = _.last(target.split("."));
-      if (_.size(out) === 1 && _.has(out, lastSegment)) {
+      const segments = target.split(".");
+      const lastSegment = segments[segments.length - 1];
+      if (Object.keys(out).length === 1 && _.has(out, lastSegment)) {
         out = out[lastSegment];
       }
       return out;
-    } else if (_.isPlainObject(val) || _.isArray(val)) {
+    } else if (val !== null && typeof val === "object") {
       return val;
     }
 
@@ -108,7 +103,7 @@ export class Config {
     });
   }
 
-  _parseFile(target: string, filePath: string) {
+  parseFile(target: string, filePath: string) {
     const fullPath = resolveProjectPath(this.options, filePath);
     const ext = path.extname(filePath);
     if (!fsutils.fileExistsSync(fullPath)) {
@@ -158,6 +153,10 @@ export class Config {
   }
 
   set(key: string, value: any) {
+    // TODO: We should really remove all instances of config.set() around the
+    //       codebase but until we do we need this to prevent src from going stale.
+    _.set(this._src, key, value);
+
     return _.set(this.data, key, value);
   }
 
@@ -167,7 +166,7 @@ export class Config {
 
   path(pathName: string) {
     const outPath = path.normalize(path.join(this.projectDir, pathName));
-    if (_.includes(path.relative(this.projectDir, outPath), "..")) {
+    if (path.relative(this.projectDir, outPath).includes("..")) {
       throw new FirebaseError(clc.bold(pathName) + " is outside of project directory", { exit: 1 });
     }
     return outPath;
