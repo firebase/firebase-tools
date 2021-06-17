@@ -1,4 +1,5 @@
 {
+  "$schema": "https://raw.githubusercontent.com/firebase/firebase-tools/ss-fix-1409/schema/firebase-config.json",
   "database": {},
   "firestore": {
     "rules": "firestore.rules"
