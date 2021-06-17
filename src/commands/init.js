@@ -47,6 +47,11 @@ const choices = [
     checked: false,
   },
   {
+    value: "hosting:github",
+    name: "Hosting: Set up GitHub Action deploys",
+    checked: false,
+  },
+  {
     value: "storage",
     name: "Storage: Configure a security rules file for Cloud Storage",
     checked: false,
