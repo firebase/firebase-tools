@@ -1,6 +1,6 @@
 // Note: we are using ajv version 6.x because it's compatible with TypeScript
 // 3.x, if we upgrade the TS version in this project we can upgrade ajv as well.
-import { ValidateFunction } from "ajv";
+import { ValidateFunction, ErrorObject } from "ajv";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -26,4 +26,18 @@ export function getValidator(): ValidateFunction {
   }
 
   return _VALIDATOR!;
+}
+
+export function getErrorMessage(e: ErrorObject) {
+  if (e.keyword === "additionalProperties") {
+    return `Object "${e.dataPath}" in "firebase.json" has unknown property: ${JSON.stringify(
+      e.params
+    )}`;
+  } else if (e.keyword === "required") {
+    return `Object "${
+      e.dataPath
+    }" in "firebase.json" is missing required property: ${JSON.stringify(e.params)}`;
+  } else {
+    return `Field "${e.dataPath}" in "firebase.json" is possibly invalid: ${e.message}`;
+  }
 }

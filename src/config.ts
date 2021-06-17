@@ -14,7 +14,7 @@ import * as fsutils from "./fsutils";
 import { promptOnce } from "./prompt";
 import { resolveProjectPath } from "./projectPath";
 import * as utils from "./utils";
-import { getValidator } from "./firebaseConfigValidate";
+import { getValidator, getErrorMessage } from "./firebaseConfigValidate";
 import { logger } from "./logger";
 const loadCJSON = require("./loadCJSON");
 const parseBoltRules = require("./parseBoltRules");
@@ -242,23 +242,7 @@ export class Config {
             // TODO: We should probably collapse these errors on the 'dataPath' property
             //       and then pick out the most important error on each field. Otherwise
             //       some simple mistakes can cause 2-3 errors.
-            if (e.keyword === "additionalProperties") {
-              logger.debug(
-                `Object "${e.dataPath}" in "firebase.json" has unknown property: ${JSON.stringify(
-                  e.params
-                )}`
-              );
-            } else if (e.keyword === "required") {
-              logger.debug(
-                `Object "${e.dataPath}" in "firebase.json" is missing required property: ${JSON.stringify(
-                  e.params
-                )}`
-              );
-            }  else {
-              logger.debug(
-                `Field "${e.dataPath}" in "firebase.json" is possibly invalid: ${e.message}`
-              );
-            }
+            logger.debug(getErrorMessage(e));
           }
         }
 
