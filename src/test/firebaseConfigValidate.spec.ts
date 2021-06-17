@@ -92,7 +92,6 @@ describe("firebaseConfigValidate", () => {
 
     expect(isValid).to.be.false;
     expect(validator.errors).to.exist;
-    expect(validator.errors).to.deep.equal([]);
     expect(validator.errors!.length).to.eq(3);
 
     const [firstError, secondError, thirdError] = validator.errors!;
