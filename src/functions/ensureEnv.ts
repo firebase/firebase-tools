@@ -38,8 +38,8 @@ async function _check(projectId: string): Promise<boolean> {
  */
 export async function check(projectId: string): Promise<boolean> {
   // Get last active time from cache (configstore).
-  const cached = configstore.get(CONFIGSTORE_KEY) as { lastActiveAt: string } | null;
-  if (cached) {
+  const cached = configstore.get(CONFIGSTORE_KEY) as { lastActiveAt: string } | undefined;
+  if (cached?.lastActiveAt) {
     const activeAt = new Date(cached.lastActiveAt);
     const diff = Date.now() - activeAt.getTime();
     if (diff <= 1000 * 60 * 60 * 24 /* 1 day */) {
@@ -82,7 +82,6 @@ export async function ensure(options: any): Promise<void> {
   if (isEnabled) {
     return;
   }
-
   logWarning(OPT_IN_MESSAGE);
   const proceed = await promptOnce({
     type: "confirm",
