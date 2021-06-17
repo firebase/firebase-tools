@@ -127,7 +127,7 @@ describe("ContainerRegistryCleaner", () => {
   it("Handles cleanup of first function in the region", async () => {
     const cleaner = new containerCleaner.ContainerRegistryCleaner();
 
-    // Any cast because the stub apparently isn't stubbing getNode as a priavte member.
+    // Any cast because the stub apparently isn't stubbing getNode as a private member.
     // This shouldn't blow up because the public methods are stubbed anyway.
     const stub = sinon.createStubInstance(containerCleaner.DockerHelper);
     cleaner.helpers["us"] = stub as any;
