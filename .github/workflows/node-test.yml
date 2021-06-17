@@ -124,3 +124,21 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - run: npm install --package-lock-only
       - run: "git diff --exit-code -- package-lock.json || (echo 'Error: package-lock.json is changed during npm install! Please make sure to use npm >= 6.9.0 and commit package-lock.json.' && false)"
+  
+  check-json-schema:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version:
+          - 12.x
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ matrix.node-version }}
+      - run: npm install
+      - run: npm run generate:json-schema
+      - run: "git diff --exit-code -- schema/*.json || (echo 'Error: JSON schema is changed! Please run npm run generate:json-schema and commit the results.' && false)"

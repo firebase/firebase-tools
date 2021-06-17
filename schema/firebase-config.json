@@ -1,0 +1,326 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "properties": {
+        "database": {
+            "anyOf": [
+                {
+                    "properties": {
+                        "rules": {
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
+                },
+                {
+                    "items": {
+                        "properties": {
+                            "instance": {
+                                "type": "string"
+                            },
+                            "rules": {
+                                "type": "string"
+                            },
+                            "target": {
+                                "type": "string"
+                            }
+                        },
+                        "type": "object"
+                    },
+                    "type": "array"
+                }
+            ]
+        },
+        "emulators": {
+            "properties": {
+                "auth": {
+                    "properties": {
+                        "host": {
+                            "type": "string"
+                        },
+                        "port": {
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
+                },
+                "database": {
+                    "properties": {
+                        "host": {
+                            "type": "string"
+                        },
+                        "port": {
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
+                },
+                "firestore": {
+                    "properties": {
+                        "host": {
+                            "type": "string"
+                        },
+                        "port": {
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
+                },
+                "functions": {
+                    "properties": {
+                        "host": {
+                            "type": "string"
+                        },
+                        "port": {
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
+                },
+                "hosting": {
+                    "properties": {
+                        "host": {
+                            "type": "string"
+                        },
+                        "port": {
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
+                },
+                "hub": {
+                    "properties": {
+                        "host": {
+                            "type": "string"
+                        },
+                        "port": {
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
+                },
+                "logging": {
+                    "properties": {
+                        "host": {
+                            "type": "string"
+                        },
+                        "port": {
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
+                },
+                "pubsub": {
+                    "properties": {
+                        "host": {
+                            "type": "string"
+                        },
+                        "port": {
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
+                },
+                "storage": {
+                    "properties": {
+                        "host": {
+                            "type": "string"
+                        },
+                        "port": {
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
+                },
+                "ui": {
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "host": {
+                            "type": "string"
+                        },
+                        "port": {
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
+                }
+            },
+            "type": "object"
+        },
+        "firestore": {
+            "properties": {
+                "indexes": {
+                    "type": "string"
+                },
+                "rules": {
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "functions": {
+            "properties": {
+                "ignore": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "predeploy": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "source": {
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "hosting": {
+            "properties": {
+                "appAssociation": {
+                    "type": "string"
+                },
+                "cleanUrls": {
+                    "type": "boolean"
+                },
+                "headers": {
+                    "items": {
+                        "properties": {
+                            "headers": {
+                                "items": {
+                                    "properties": {
+                                        "key": {
+                                            "type": "string"
+                                        },
+                                        "value": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                },
+                                "type": "array"
+                            },
+                            "source": {
+                                "type": "string"
+                            }
+                        },
+                        "type": "object"
+                    },
+                    "type": "array"
+                },
+                "i18n": {
+                    "properties": {
+                        "root": {
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
+                },
+                "ignore": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "postdeploy": {
+                    "type": "string"
+                },
+                "public": {
+                    "type": "string"
+                },
+                "redirects": {
+                    "items": {
+                        "properties": {
+                            "destination": {
+                                "type": "string"
+                            },
+                            "source": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "number"
+                            }
+                        },
+                        "type": "object"
+                    },
+                    "type": "array"
+                },
+                "rewrites": {
+                    "items": {
+                        "properties": {
+                            "destination": {
+                                "type": "string"
+                            },
+                            "dynamicLinks": {
+                                "type": "boolean"
+                            },
+                            "function": {
+                                "type": "string"
+                            },
+                            "run": {
+                                "properties": {
+                                    "region": {
+                                        "type": "string"
+                                    },
+                                    "serviceId": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            },
+                            "source": {
+                                "type": "string"
+                            }
+                        },
+                        "type": "object"
+                    },
+                    "type": "array"
+                },
+                "trailingSlash": {
+                    "type": "boolean"
+                }
+            },
+            "type": "object"
+        },
+        "remoteconfig": {
+            "properties": {
+                "template": {
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "storage": {
+            "anyOf": [
+                {
+                    "properties": {
+                        "rules": {
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
+                },
+                {
+                    "items": {
+                        "properties": {
+                            "bucket": {
+                                "type": "string"
+                            },
+                            "rules": {
+                                "type": "string"
+                            }
+                        },
+                        "type": "object"
+                    },
+                    "type": "array"
+                }
+            ]
+        }
+    },
+    "type": "object"
+}
+
