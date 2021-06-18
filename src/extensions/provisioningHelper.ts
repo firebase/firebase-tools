@@ -1,7 +1,7 @@
+import * as marked from "marked";
+
 import * as extensionsApi from "./extensionsApi";
 import * as api from "../api";
-import * as utils from "../utils";
-import * as marked from "marked";
 import { FirebaseError } from "../error";
 
 /** Product for which provisioning can be (or is) deferred */
@@ -97,18 +97,14 @@ async function isStorageProvisioned(projectId: string): Promise<boolean> {
     auth: true,
     origin: api.firebaseStorageOrigin,
   });
-  return await Promise.resolve(
-    !!resp.body?.buckets?.find((bucket: any) => {
-      const bucketResourceName = bucket.name;
-      // Bucket resource name looks like: projects/PROJECT_NUMBER/buckets/BUCKET_NAME
-      // and we just need the BUCKET_NAME part.
-      const bucketResourceNameTokens = bucketResourceName.split("/");
-      const pattern = "^" + projectId + "(.[[a-z0-9]+)*.appspot.com$";
-      return new RegExp(pattern).test(
-        bucketResourceNameTokens[bucketResourceNameTokens.length - 1]
-      );
-    })
-  );
+  return !!resp.body?.buckets?.find((bucket: any) => {
+    const bucketResourceName = bucket.name;
+    // Bucket resource name looks like: projects/PROJECT_NUMBER/buckets/BUCKET_NAME
+    // and we just need the BUCKET_NAME part.
+    const bucketResourceNameTokens = bucketResourceName.split("/");
+    const pattern = "^" + projectId + "(.[[a-z0-9]+)*.appspot.com$";
+    return new RegExp(pattern).test(bucketResourceNameTokens[bucketResourceNameTokens.length - 1]);
+  });
 }
 
 async function isAuthProvisioned(projectId: string): Promise<boolean> {
@@ -116,7 +112,5 @@ async function isAuthProvisioned(projectId: string): Promise<boolean> {
     auth: true,
     origin: api.firedataOrigin,
   });
-  return Promise.resolve(
-    !!resp.body?.activation?.map((a: any) => a.service).includes("FIREBASE_AUTH")
-  );
+  return !!resp.body?.activation?.map((a: any) => a.service).includes("FIREBASE_AUTH");
 }
