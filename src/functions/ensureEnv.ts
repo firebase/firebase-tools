@@ -60,8 +60,8 @@ export async function check(projectId: string): Promise<boolean> {
  * Attempt to enable the EnvStore API.
  *
  * This is an bespoke method of "enabling" EnvStore API. We "enable" the
- * EnvStore API seeting up a non-empty EnvStore ENV_ID=${ENVSTORE_INTERNAL_ID}
- * contains non-empty collection of key-value pairs.
+ * EnvStore API setting up a non-empty EnvStore ENV_ID=${ENVSTORE_INTERNAL_ID}
+ * with a non-empty collection of key-value pairs.
  *
  * @param projectId The project in which to enable the EnvStore API.
  * @return Promise<void>
@@ -71,7 +71,8 @@ export async function enable(projectId: string): Promise<void> {
 }
 
 /**
- * Check if EnvStore API is enabled on a project and prompt user for enablement.
+ * Check if EnvStore API is enabled on the project.
+ * If not enabled, prompt user for enablement.
  *
  * @param projectId The project on which to check enablement.
  * @return Promise<void>
