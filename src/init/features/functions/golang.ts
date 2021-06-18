@@ -70,7 +70,6 @@ async function writeModFile(config: Config) {
   );
 
   const download = await fetch(SDK_DROP);
-  const pipeAsync = promisify(stream.pipeline);
   if (!download.body) {
     logger.debug("Unexpected empty body response when downloading firebase-functions-go SDK");
     throw new FirebaseError("Failed to download firebase-functions-go SDK");
@@ -78,10 +77,8 @@ async function writeModFile(config: Config) {
   if (!download.ok) {
     throw new FirebaseError("Faield to download firebase-functions-go SDK");
   }
-  // for some reason, a ReadableStream<T> isn't a ReadableStream according to TS. This is
-  // what the docs do though.
-  await pipeAsync(download.body as any, unzipper.Extract({path: config.path("functions/firebase-functions-go")}));
-
+  const extractArchive = unzipper.Extract({path: config.path("functions/firebase-functions-go") });
+  await promisify(stream.pipeline)(download.body, extractArchive);
 
   // Should this come later as "would you like to install dependencies" to mirror Node?
   // It's less clearly distinct from node where you can edit the package.json file w/o installing.
