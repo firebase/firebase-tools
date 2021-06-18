@@ -774,15 +774,6 @@ export async function exportEmulatorData(exportPath: string, options: any) {
     }
   }
 
-  // Remove all existing data (metadata.json will be overwritten automatically)
-  if (existingMetadata) {
-    if (existingMetadata.firestore) {
-      const firestorePath = path.join(exportAbsPath, existingMetadata.firestore.path);
-      utils.logBullet(`Deleting directory ${firestorePath}`);
-      rimraf.sync(firestorePath);
-    }
-  }
-
   utils.logBullet(`Exporting data to: ${exportAbsPath}`);
   try {
     await hubClient.postExport(exportAbsPath);
