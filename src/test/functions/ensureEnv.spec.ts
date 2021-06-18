@@ -54,7 +54,7 @@ describe("check", () => {
     expect(getStore).to.have.been.calledOnce;
   });
 
-  it("uses caches result on subsequent calls", async () => {
+  it("uses cached result on subsequent calls", async () => {
     getStore.onFirstCall().resolves({ vars: { ENABLED: "1" } });
 
     const checkResult0 = await ensureEnv.check(projectId);
@@ -65,7 +65,7 @@ describe("check", () => {
     expect(getStore).to.have.been.calledOnce;
   });
 
-  it("calls EnvStore API if caches result is expired", async () => {
+  it("calls EnvStore API if cached result has expired", async () => {
     const expiredTime = Date.now() - 1000 * 60 * 60 * 48; /* 2 days */
     configstoreGetStub.returns({ lastActiveAt: expiredTime });
     getStore.onFirstCall().resolves({ vars: { ENABLED: "1" } });
