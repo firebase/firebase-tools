@@ -4,7 +4,7 @@ import * as path from "path";
 import * as spawn from "cross-spawn";
 import * as stream from "stream";
 import * as unzipper from "unzipper";
-import fetch from "node-fetch"
+import fetch from "node-fetch";
 
 import { FirebaseError } from "../../../error";
 import { Config } from "../../../config";
@@ -27,13 +27,17 @@ async function init(setup: unknown, config: Config) {
   await writeModFile(config);
   await config.askWriteProjectFile("functions/functions.go", MAIN_TEMPLATE);
   await config.askWriteProjectFile("functions/.gitignore", GITIGNORE_TEMPLATE);
-  utils.logLabeledBullet("functions",
+  utils.logLabeledBullet(
+    "functions",
     "Welcome to the preview version of the Firebase Functions Go SDK. " +
-    "Please be a respectful member of the community and keep this a secret. " +
-    "Until the GitHub repo is public, we have set up a vendored module for you. " + 
-    "To update to the latest preview of the SDK, download " + SDK_DROP +
-    " and extract its contents into your " + clc.bold("firebase-functions-go") +
-    " directory");
+      "Please be a respectful member of the community and keep this a secret. " +
+      "Until the GitHub repo is public, we have set up a vendored module for you. " +
+      "To update to the latest preview of the SDK, download " +
+      SDK_DROP +
+      " and extract its contents into your " +
+      clc.bold("firebase-functions-go") +
+      " directory"
+  );
 }
 
 // writeModFile is meant to look like askWriteProjectFile but it generates the contents
@@ -65,8 +69,17 @@ async function writeModFile(config: Config) {
   // way to set the min Go version to anything but what the user has installed.
   config.writeProjectFile(
     "functions/go.mod",
-    "module " + modName + "\n\ngo " + RUNTIME_VERSION + "\n\n" +
-    "require " + SDK_PATH + " v0.0.0\n\n" + "replace " + SDK_PATH + " => ./firebase-functions-go\n"
+    "module " +
+      modName +
+      "\n\ngo " +
+      RUNTIME_VERSION +
+      "\n\n" +
+      "require " +
+      SDK_PATH +
+      " v0.0.0\n\n" +
+      "replace " +
+      SDK_PATH +
+      " => ./firebase-functions-go\n"
   );
 
   const download = await fetch(SDK_DROP);
@@ -77,7 +90,10 @@ async function writeModFile(config: Config) {
   if (!download.ok) {
     throw new FirebaseError("Faield to download firebase-functions-go SDK");
   }
-  const extractArchive = unzipper.Extract({path: config.path("functions/firebase-functions-go") });
+  // ESLint doesn't let us have a (non-constructor) function that starts with a captial letter,
+  // but this isn't our function to rename.
+  // eslint-disable-next-line new-cap
+  const extractArchive = unzipper.Extract({ path: config.path("functions/firebase-functions-go") });
   await promisify(stream.pipeline)(download.body, extractArchive);
 
   // Should this come later as "would you like to install dependencies" to mirror Node?
