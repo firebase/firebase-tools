@@ -52,7 +52,8 @@ const matchesId = (hasId: { id: string }) => (test: { id: string }) => {
 export function calculateRegionalFunctionChanges(
   want: backend.FunctionSpec[],
   have: backend.FunctionSpec[],
-  filters: string[][]
+  filters: string[][],
+  managedEnvVars: boolean
 ): RegionalFunctionChanges {
   want = want.filter((fn) => functionMatchesAnyGroup(fn, filters));
   have = have.filter((fn) => functionMatchesAnyGroup(fn, filters));
@@ -63,12 +64,19 @@ export function calculateRegionalFunctionChanges(
     if (haveFn) {
       checkForInvalidChangeOfTrigger(fn, haveFn);
 
-      // Remember old environment variables that might have been set with
-      // gcloud or the cloud console.
-      fn.environmentVariables = {
-        ...haveFn.environmentVariables,
-        ...fn.environmentVariables,
-      };
+      if (managedEnvVars) {
+        // Do not preserve existing env variables.
+        fn.environmentVariables = {
+          ...fn.environmentVariables,
+        };
+      } else {
+        // Remember old environment variables that might have been set with
+        // gcloud or the cloud console.
+        fn.environmentVariables = {
+          ...haveFn.environmentVariables,
+          ...fn.environmentVariables,
+        };
+      }
     }
     return haveFn;
   });
@@ -90,7 +98,8 @@ export function calculateRegionalFunctionChanges(
 export function createDeploymentPlan(
   want: backend.Backend,
   have: backend.Backend,
-  filters: string[][]
+  filters: string[][],
+  managedEnvVars: boolean
 ): DeploymentPlan {
   const deployment: DeploymentPlan = {
     regionalDeployments: {},
@@ -104,7 +113,12 @@ export function createDeploymentPlan(
   for (const region of allRegions(wantRegionalFunctions, haveRegionalFunctions)) {
     const want = wantRegionalFunctions[region] || [];
     const have = haveRegionalFunctions[region] || [];
-    deployment.regionalDeployments[region] = calculateRegionalFunctionChanges(want, have, filters);
+    deployment.regionalDeployments[region] = calculateRegionalFunctionChanges(
+      want,
+      have,
+      filters,
+      managedEnvVars
+    );
   }
 
   deployment.schedulesToUpsert = want.schedules.filter((schedule) =>

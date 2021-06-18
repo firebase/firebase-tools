@@ -17,7 +17,6 @@ import { Options } from "../../options";
 >>>>>>> 94d177cf (Include functions:env on deploys.)
 import * as functionsConfig from "../../functionsConfig";
 import * as fenv from "../../functions/env";
-import { check as fenvCheck } from "../../functions/ensureEnv";
 import * as utils from "../../utils";
 import * as fsAsync from "../../fsAsync";
 import * as args from "./args";
@@ -65,19 +64,18 @@ async function getEnvs(context: args.Context): Promise<{ [key: string]: string }
   };
 
   let envs: Record<string, string> = {};
-  try {
-    const enabled = await fenvCheck(context.projectId);
-    if (enabled) {
+  if (context.managedEnvVars) {
+    try {
       envs = await fenv.getEnvs(context.projectId);
+    } catch (err) {
+      logger.debug(err);
+      throw new FirebaseError(
+        "EnvStore service is currently experiencing issues, " +
+          "which is preventing your functions from being deployed. " +
+          "Please wait a few minutes and then try to deploy your functions again." +
+          "\nRun `firebase deploy --except functions` if you want to continue deploying the rest of your project."
+      );
     }
-  } catch (err) {
-    logger.debug(err);
-    throw new FirebaseError(
-      "EnvStore service is currently experiencing issues, " +
-        "which is preventing your functions from being deployed. " +
-        "Please wait a few minutes and then try to deploy your functions again." +
-        "\nRun `firebase deploy --except functions` if you want to continue deploying the rest of your project."
-    );
   }
 
   return Promise.resolve({ ...defaultEnvs, ...envs });

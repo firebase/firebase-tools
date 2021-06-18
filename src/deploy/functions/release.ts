@@ -29,7 +29,8 @@ export async function release(context: args.Context, options: Options, payload: 
   const fullDeployment = createDeploymentPlan(
     payload.functions!.backend,
     await backend.existingBackend(context),
-    context.filters
+    context.filters,
+    !!context.managedEnvVars
   );
 
   // This queue needs to retry quota errors.

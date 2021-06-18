@@ -3,6 +3,7 @@ import * as clc from "cli-color";
 import { Options } from "../../options";
 import { ensureCloudBuildEnabled } from "./ensureCloudBuildEnabled";
 import { functionMatchesAnyGroup, getFilterGroups } from "./functionsDeployHelper";
+import { check as fenvCheck } from "../../functions/ensureEnv";
 import { logBullet } from "../../utils";
 import { getFunctionsConfig, getEnvs, prepareFunctionsUpload } from "./prepareFunctionsUpload";
 import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
@@ -58,6 +59,10 @@ export async function prepare(
   if (backend.isEmptyBackend(wantBackend)) {
     return;
   }
+
+  // Check if env vars are managed by CF3.
+  const envStoreEnabled = await fenvCheck(context.projectId);
+  context.managedEnvVars = envStoreEnabled;
 
   // Prepare the functions directory for upload, and set context.triggers.
   utils.assertDefined(

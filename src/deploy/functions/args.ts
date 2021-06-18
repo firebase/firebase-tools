@@ -21,6 +21,7 @@ export interface Context {
   functionsSource?: string;
   runtimeConfigEnabled?: boolean;
   firebaseConfig?: FirebaseConfig;
+  managedEnvVars?: boolean;
 
   // Filled in the "deploy" phase.
   uploadUrl?: string;
