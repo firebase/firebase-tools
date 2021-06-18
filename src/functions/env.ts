@@ -61,7 +61,7 @@ export function validateKey(key: string): void {
     );
   }
   // Keys cannot contain the prefix X_GOOGLE_.
-  if (/^X_GOOGLE_.*$/.test(key)) {
+  if (key.startsWith("X_GOOGLE_")) {
     throw new FirebaseError(
       "Invalid environment variable name " +
         clc.bold(key) +
@@ -78,7 +78,7 @@ export function validateKey(key: string): void {
  */
 export function parseKvArgs(args: string[]): Record<string, string> {
   const envs: Record<string, string> = {};
-  args.forEach((arg) => {
+  for (const arg of args) {
     const parts = arg.split("=");
     if (parts.length < 2) {
       throw new FirebaseError(`Invalid argument ${clc.bold(arg)}, must be in key=val format`);
@@ -87,7 +87,7 @@ export function parseKvArgs(args: string[]): Record<string, string> {
     validateKey(key);
     const val = parts.slice(1).join("="); // Val may have contained '='.
     envs[key] = val;
-  });
+  }
   return envs;
 }
 
@@ -98,7 +98,7 @@ export function parseKvArgs(args: string[]): Record<string, string> {
  */
 export async function getEnvs(projectId: string): Promise<Record<string, string>> {
   const envStore = await envstore.getStore(projectId, ENVSTORE_ID);
-  return envStore.vars || {};
+  return envStore.vars;
 }
 
 /**
@@ -194,10 +194,10 @@ export async function clone(
   }
   const envs: Record<string, string> = {};
   const fromEnvs = await getEnvs(fromProjectId);
-  Object.entries(fromEnvs).forEach(([k, v]) => {
+  for (const [k, v] of Object.entries(fromEnvs)) {
     if (filterFn(k)) {
       envs[k] = v;
     }
-  });
+  }
   return setEnvs(toProjectId, envs);
 }

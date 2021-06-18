@@ -17,7 +17,7 @@ export default new Command("functions:env:clone")
     "firebase.envstores.list",
     "firebase.envstores.update",
   ])
-  .action(async (_: string[], options: any) => {
+  .action(async (options: any) => {
     const projectId = getProjectId(options);
     if (!options.from) {
       return utils.reject(
