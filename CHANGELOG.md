@@ -1,0 +1,1 @@
+- Ask before overwriting `storage.rules` during `firebase init` (#1833)
