@@ -4,7 +4,7 @@ import * as backend from "../../../deploy/functions/backend";
 import * as deploymentPlanner from "../../../deploy/functions/deploymentPlanner";
 import * as deploymentTool from "../../../deploymentTool";
 
-describe("deploymentPlanner", () => {
+describe.only("deploymentPlanner", () => {
   const CLOUD_FUNCTION: Omit<backend.FunctionSpec, "id" | "region"> = {
     apiVersion: 1,
     project: "project",
@@ -82,8 +82,14 @@ describe("deploymentPlanner", () => {
       };
       const have: backend.Backend = backend.empty();
       const filters: string[][] = [];
+      const managedEnvVars = false;
 
-      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, filters);
+      const deploymentPlan = deploymentPlanner.createDeploymentPlan(
+        want,
+        have,
+        filters,
+        managedEnvVars
+      );
 
       const expected: deploymentPlanner.DeploymentPlan = {
         regionalDeployments: {
@@ -115,8 +121,14 @@ describe("deploymentPlanner", () => {
       };
       const have: backend.Backend = backend.empty();
       const filters: string[][] = [];
+      const managedEnvVars = false;
 
-      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, filters);
+      const deploymentPlan = deploymentPlanner.createDeploymentPlan(
+        want,
+        have,
+        filters,
+        managedEnvVars
+      );
 
       const expected: deploymentPlanner.DeploymentPlan = {
         regionalDeployments: {
@@ -157,8 +169,14 @@ describe("deploymentPlanner", () => {
       };
       const want = backend.empty();
       const filters: string[][] = [];
+      const managedEnvVars = false;
 
-      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, filters);
+      const deploymentPlan = deploymentPlanner.createDeploymentPlan(
+        want,
+        have,
+        filters,
+        managedEnvVars
+      );
 
       const expected: deploymentPlanner.DeploymentPlan = {
         regionalDeployments: {
@@ -210,8 +228,14 @@ describe("deploymentPlanner", () => {
         environmentVariables: {},
       };
       const filters: string[][] = [];
+      const managedEnvVars = false;
 
-      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, filters);
+      const deploymentPlan = deploymentPlanner.createDeploymentPlan(
+        want,
+        have,
+        filters,
+        managedEnvVars
+      );
 
       const expected: deploymentPlanner.DeploymentPlan = {
         regionalDeployments: {
@@ -257,8 +281,14 @@ describe("deploymentPlanner", () => {
         environmentVariables: {},
       };
       const filters: string[][] = [];
+      const managedEnvVars = false;
 
-      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, filters);
+      const deploymentPlan = deploymentPlanner.createDeploymentPlan(
+        want,
+        have,
+        filters,
+        managedEnvVars
+      );
 
       const expected: deploymentPlanner.DeploymentPlan = {
         regionalDeployments: {
@@ -312,8 +342,14 @@ describe("deploymentPlanner", () => {
       };
 
       const filters = [["group"]];
+      const managedEnvVars = false;
 
-      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, filters);
+      const deploymentPlan = deploymentPlanner.createDeploymentPlan(
+        want,
+        have,
+        filters,
+        managedEnvVars
+      );
 
       const expected: deploymentPlanner.DeploymentPlan = {
         regionalDeployments: {
@@ -330,7 +366,7 @@ describe("deploymentPlanner", () => {
       expect(deploymentPlan).to.deep.equal(expected);
     });
 
-    it("should preserve existing environment variables", () => {
+    it("should preserve existing environment variables if not mananged", () => {
       const region1 = func("a", "us-east1");
       const region2 = {
         ...func("b", "us-west1"),
@@ -357,8 +393,14 @@ describe("deploymentPlanner", () => {
         environmentVariables: {},
       };
       const filters: string[][] = [];
+      const managedEnvVars = false;
 
-      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, filters);
+      const deploymentPlan = deploymentPlanner.createDeploymentPlan(
+        want,
+        have,
+        filters,
+        managedEnvVars
+      );
 
       const expected: deploymentPlanner.DeploymentPlan = {
         regionalDeployments: {
@@ -374,6 +416,69 @@ describe("deploymentPlanner", () => {
                 ...region2,
                 environmentVariables: {
                   FOO: "bar",
+                  BAR: "baz",
+                },
+              },
+            ],
+            functionsToDelete: [],
+          },
+        },
+        schedulesToUpsert: [],
+        schedulesToDelete: [],
+        topicsToDelete: [],
+      };
+      expect(deploymentPlan).to.deep.equal(expected);
+    });
+
+    it("should remove existing environment variables if mananged", () => {
+      const region1 = func("a", "us-east1");
+      const region2 = {
+        ...func("b", "us-west1"),
+        environmentVariables: { BAR: "baz" },
+      };
+      const oldRegion2: backend.FunctionSpec = {
+        ...func("b", "us-west1"),
+        environmentVariables: { FOO: "bar" },
+      };
+
+      const want: backend.Backend = {
+        requiredAPIs: {},
+        cloudFunctions: [region1, region2],
+        schedules: [],
+        topics: [],
+        environmentVariables: {},
+      };
+
+      const have: backend.Backend = {
+        requiredAPIs: {},
+        cloudFunctions: [oldRegion2],
+        schedules: [],
+        topics: [],
+        environmentVariables: {},
+      };
+      const filters: string[][] = [];
+      const managedEnvVars = true;
+
+      const deploymentPlan = deploymentPlanner.createDeploymentPlan(
+        want,
+        have,
+        filters,
+        managedEnvVars
+      );
+
+      const expected: deploymentPlanner.DeploymentPlan = {
+        regionalDeployments: {
+          "us-east1": {
+            functionsToCreate: [region1],
+            functionsToUpdate: [],
+            functionsToDelete: [],
+          },
+          "us-west1": {
+            functionsToCreate: [],
+            functionsToUpdate: [
+              {
+                ...region2,
+                environmentVariables: {
                   BAR: "baz",
                 },
               },
