@@ -102,7 +102,7 @@ describe("function env", () => {
       deleteStore.onFirstCall().resolves({});
       getStore.onFirstCall().resolves({ vars: envs });
 
-      await fenv.clone(fromP, toP, [], []);
+      await fenv.clone({ fromProjectId: fromP, toProjectId: toP, only: [], except: [] });
 
       expect(createStore).to.have.been.calledOnceWithExactly(toP, fenv.ENVSTORE_ID, envs);
       expect(deleteStore).to.have.been.calledOnceWithExactly(toP, fenv.ENVSTORE_ID);
@@ -122,7 +122,7 @@ describe("function env", () => {
       deleteStore.onFirstCall().resolves({});
       getStore.onFirstCall().resolves({ vars: envs });
 
-      await fenv.clone(fromP, toP, ["A1", "A3"], []);
+      await fenv.clone({ fromProjectId: fromP, toProjectId: toP, only: ["A1", "A3"], except: [] });
 
       expect(createStore).to.have.been.calledOnceWithExactly(toP, fenv.ENVSTORE_ID, {
         A1: "aa",
@@ -145,7 +145,7 @@ describe("function env", () => {
       deleteStore.onFirstCall().resolves({});
       getStore.onFirstCall().resolves({ vars: envs });
 
-      await fenv.clone(fromP, toP, [], ["A2"]);
+      await fenv.clone({ fromProjectId: fromP, toProjectId: toP, only: [], except: ["A2"] });
 
       expect(createStore).to.have.been.calledOnceWithExactly(toP, fenv.ENVSTORE_ID, {
         A1: "aa",
@@ -156,7 +156,9 @@ describe("function env", () => {
     });
 
     it("should throw error if both only and except options are given", async () => {
-      await expect(fenv.clone("a", "b", ["A1"], ["A2"])).to.be.rejectedWith(FirebaseError);
+      await expect(
+        fenv.clone({ fromProjectId: "", toProjectId: "", only: ["A1"], except: ["A2"] })
+      ).to.be.rejectedWith(FirebaseError);
     });
   });
 });
