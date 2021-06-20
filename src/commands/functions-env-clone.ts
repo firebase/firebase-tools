@@ -35,7 +35,12 @@ export default new Command("functions:env:clone")
     } else if (options.except) {
       except = options.except.split(",");
     }
-    const envs = await fenv.clone(options.from, projectId, only, except);
+    const envs = await fenv.clone({
+      fromProjectId: options.from,
+      toProjectId: projectId,
+      only,
+      except,
+    });
     utils.logSuccess(
       "Cloned functions envrionment variables from " +
         clc.bold(options.from) +

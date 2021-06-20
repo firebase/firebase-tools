@@ -176,12 +176,17 @@ export async function clearEnvs(projectId: string): Promise<Record<string, strin
  * @param {string[]} except List of keys to exclude when cloning.
  * @return {Promise<Record<string, string>>} An object with environment variables from the EnvStore.
  */
-export async function clone(
-  fromProjectId: string,
-  toProjectId: string,
-  only: string[],
-  except: string[]
-): Promise<Record<string, string>> {
+export async function clone({
+  fromProjectId,
+  toProjectId,
+  only,
+  except,
+}: {
+  fromProjectId: string;
+  toProjectId: string;
+  only: string[];
+  except: string[];
+}): Promise<Record<string, string>> {
   if (only.length && except.length) {
     throw new FirebaseError("Cannot use both only and except at the same time.");
   }
