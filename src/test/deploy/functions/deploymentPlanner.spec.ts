@@ -4,7 +4,7 @@ import * as backend from "../../../deploy/functions/backend";
 import * as deploymentPlanner from "../../../deploy/functions/deploymentPlanner";
 import * as deploymentTool from "../../../deploymentTool";
 
-describe.only("deploymentPlanner", () => {
+describe("deploymentPlanner", () => {
   const CLOUD_FUNCTION: Omit<backend.FunctionSpec, "id" | "region"> = {
     apiVersion: 1,
     project: "project",

@@ -7,10 +7,7 @@ import * as getProjectId from "../getProjectId";
 
 const ENVSTORE_INTERNAL_ID = "firebase-functions-internal";
 const CONFIGSTORE_KEY = "envstore";
-<<<<<<< HEAD:src/functions/ensureEnv.ts
 const CONFIGSTORE_TTL = 1000 * 60 * 60 * 24; /* 1 day */
-=======
->>>>>>> 5ca42738 (Cache envstore checks.):src/functions/enableEnv.ts
 const OPT_IN_MESSAGE =
   "functions:env family of commands helps you manage environment variables for Firebase Functions deployed in your project. " +
   "Learn more about this feature at https://firebase.google.com/docs/functions/env.\n\n" +

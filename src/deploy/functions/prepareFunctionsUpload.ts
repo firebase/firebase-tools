@@ -6,25 +6,15 @@ import * as fs from "fs";
 import * as path from "path";
 import * as tmp from "tmp";
 
-import { isEmptyBackend } from "./backend";
-import { discoverBackendSpec } from "./discovery";
 import { FirebaseError } from "../../error";
 import { logger } from "../../logger";
-<<<<<<< HEAD
 import * as backend from "./backend";
-=======
-import { Options } from "../../options";
->>>>>>> 94d177cf (Include functions:env on deploys.)
 import * as functionsConfig from "../../functionsConfig";
 import * as fenv from "../../functions/env";
 import * as utils from "../../utils";
 import * as fsAsync from "../../fsAsync";
 import * as args from "./args";
-<<<<<<< HEAD
 import { Options } from "../../options";
-import { Config } from "../../config";
-=======
->>>>>>> 94d177cf (Include functions:env on deploys.)
 
 const CONFIG_DEST_FILE = ".runtimeconfig.json";
 
