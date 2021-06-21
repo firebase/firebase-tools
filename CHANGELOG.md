@@ -1,1 +1,2 @@
+- Avoid emulator data loss when there an error during export (#3504)
 - Ask before overwriting `storage.rules` during `firebase init` (#1833)
