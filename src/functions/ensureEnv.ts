@@ -7,6 +7,7 @@ import * as getProjectId from "../getProjectId";
 
 const ENVSTORE_INTERNAL_ID = "firebase-functions-internal";
 const CONFIGSTORE_KEY = "envstore";
+const CONFIGSTORE_TTL = 1000 * 60 * 60 * 24; /* 1 day */
 const OPT_IN_MESSAGE =
   "functions:env family of commands helps you manage environment variables for Firebase Functions deployed in your project. " +
   "Learn more about this feature at https://firebase.google.com/docs/functions/env.\n\n" +
@@ -37,17 +38,18 @@ async function _check(projectId: string): Promise<boolean> {
  * @return Promise<boolean> True if EnvStore API is enabled.
  */
 export async function check(projectId: string): Promise<boolean> {
-  // Get last active time from cache (configstore).
+  // Check actice state from local cache.
   const cached = configstore.get(CONFIGSTORE_KEY) as { lastActiveAt: string } | undefined;
   if (cached?.lastActiveAt) {
     const activeAt = new Date(cached.lastActiveAt);
     const diff = Date.now() - activeAt.getTime();
-    if (diff <= 1000 * 60 * 60 * 24 /* 1 day */) {
+    if (diff <= CONFIGSTORE_TTL) {
       return true;
     }
     configstore.delete(CONFIGSTORE_KEY);
   }
 
+  // Query the EnvStore API to check active state.
   const checked = await _check(projectId);
   if (checked) {
     configstore.set(CONFIGSTORE_KEY, { lastActiveAt: Date.now() });
