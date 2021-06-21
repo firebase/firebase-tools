@@ -9,7 +9,8 @@ import { promptOnce } from "../prompt";
 module.exports = new Command("logout [email]")
   .description("log the CLI out of Firebase")
   .action(async (email: string | undefined, options: any) => {
-    const globalToken = utils.getInheritedOption(options, "token") as string | undefined;
+    const globalToken = utils.getInheritedOption(options, "token");
+    utils.assertIsStringOrUndefined(globalToken);
 
     const allAccounts = auth.getAllAccounts();
     if (allAccounts.length === 0 && !globalToken) {

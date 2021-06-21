@@ -3,7 +3,8 @@ export type DatabaseConfig =
       rules: string;
     }
   | {
-      target: string;
+      target?: string;
+      instance?: string;
       rules: string;
     }[];
 
@@ -13,6 +14,7 @@ export type FirestoreConfig = {
 };
 
 export type FunctionsConfig = {
+  // TODO: Add types for "backend" and "runtime"
   source?: string;
   ignore?: string[];
   predeploy?: string[];
@@ -78,6 +80,10 @@ export type EmulatorsConfig = {
     host?: string;
     port?: string;
   };
+  functions?: {
+    host?: string;
+    port?: string;
+  };
   hosting?: {
     host?: string;
     port?: string;
@@ -87,6 +93,14 @@ export type EmulatorsConfig = {
     port?: string;
   };
   storage?: {
+    host?: string;
+    port?: string;
+  };
+  logging?: {
+    host?: string;
+    port?: string;
+  };
+  hub?: {
     host?: string;
     port?: string;
   };
@@ -104,5 +118,5 @@ export type FirebaseConfig = {
   hosting?: HostingConfig;
   storage?: StorageConfig;
   remoteconfig?: RemoteConfigConfig;
-  emulators: EmulatorsConfig;
+  emulators?: EmulatorsConfig;
 };

@@ -2,12 +2,13 @@ import { getProjectNumber } from "../../getProjectNumber";
 import loadCJSON = require("../../loadCJSON");
 import { getEtag } from "./functions";
 import { validateInputRemoteConfigTemplate } from "./functions";
+import { Options } from "../../options";
 
-export default async function (context: any, options: any): Promise<void> {
+export default async function (context: any, options: Options): Promise<void> {
   if (!context) {
     return;
   }
-  const filePath = options.config.get("remoteconfig.template");
+  const filePath = options.config.src.remoteconfig?.template;
   if (!filePath) {
     return;
   }
