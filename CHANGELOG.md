@@ -1,3 +1,4 @@
 - Add Warsaw (europe-central2) Cloud Function Location to Firebase Extension template.
 - Fix crash when deploying zero functions (#3520)
 - Increase maximum function ID length to 63 (#3521)
+- Delete Container Registry images left after Functions deployment (#3439)
