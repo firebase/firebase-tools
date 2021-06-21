@@ -1,6 +1,0 @@
-- Fix crash when deploying zero functions (#3520)
-- Increase maximum function ID length to 63 (#3521)
-- Delete Container Registry images left after Functions deployment (#3439)
-- Avoid emulator data loss when there an error during export (#3504)
-- Ask before overwriting `storage.rules` during `firebase init` (#1833)
-- Release Cloud Firestore Emulator v1.13.0.
