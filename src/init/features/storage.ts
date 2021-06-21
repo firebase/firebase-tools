@@ -27,5 +27,5 @@ export async function doSetup(setup: any, config: any): Promise<void> {
     default: "storage.rules",
   });
   setup.config.storage.rules = storageRulesFile;
-  config.writeProjectFile(setup.config.storage.rules, RULES_TEMPLATE);
+  await config.askWriteProjectFile(setup.config.storage.rules, RULES_TEMPLATE);
 }
