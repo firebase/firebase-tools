@@ -67,20 +67,7 @@ async function writeModFile(config: Config) {
 
   // Manually create a go mod file because (A) it's easier this way and (B) it seems to be the only
   // way to set the min Go version to anything but what the user has installed.
-  config.writeProjectFile(
-    "functions/go.mod",
-    "module " +
-      modName +
-      "\n\ngo " +
-      RUNTIME_VERSION +
-      "\n\n" +
-      "require " +
-      SDK_PATH +
-      " v0.0.0\n\n" +
-      "replace " +
-      SDK_PATH +
-      " => ./firebase-functions-go\n"
-  );
+  config.writeProjectFile("functions/go.mod", `module ${modName} \n\ngo ${RUNTIME_VERSION}\n\n`);
 
   const download = await fetch(SDK_DROP);
   if (!download.body) {
@@ -90,21 +77,38 @@ async function writeModFile(config: Config) {
   if (!download.ok) {
     throw new FirebaseError("Faield to download firebase-functions-go SDK");
   }
+
   // ESLint doesn't let us have a (non-constructor) function that starts with a captial letter,
   // but this isn't our function to rename.
   // eslint-disable-next-line new-cap
   const extractArchive = unzipper.Extract({ path: config.path("functions/firebase-functions-go") });
   await promisify(stream.pipeline)(download.body, extractArchive);
 
-  const result = spawn.sync("go", ["get", ADMIN_SDK], {
-    cwd: config.path("functions"),
-    stdio: "inherit",
-  });
+  let result = spawn.sync(
+    "go",
+    ["mod", "edit", "-replace", `${SDK_PATH}=./firebase-functions-go`],
+    {
+      cwd: config.path("functions"),
+      stdio: "inherit",
+    }
+  );
   if (result.error) {
-    logger.debug("Full output from go get command:", JSON.stringify(result, null, 2));
-    throw new FirebaseError("Error installing dependencies", { children: [result.error] });
+    logger.debug("Full output from go mod edit -replace", JSON.stringify(result, null, 2));
+    throw new FirebaseError("Error initializing module", { children: [result.error] });
   }
   utils.logSuccess("Wrote " + clc.bold("functions/go.mod"));
+
+  for (const dep of [SDK_PATH, ADMIN_SDK]) {
+    result = spawn.sync("go", ["get", dep], {
+      cwd: config.path("functions"),
+      stdio: "inherit",
+    });
+    if (result.error) {
+      logger.debug("Full output from go get command:", JSON.stringify(result, null, 2));
+      throw new FirebaseError("Error installing dependencies", { children: [result.error] });
+    }
+  }
+  utils.logSuccess("Installed dependencies");
 }
 
 module.exports = init;
