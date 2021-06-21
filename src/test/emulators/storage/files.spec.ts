@@ -10,6 +10,10 @@ describe("files", () => {
         name: "name",
         bucket: "bucket",
         contentType: "mime/type",
+        downloadTokens: ["token123"],
+        customMetadata: {
+          foo: "bar",
+        },
       },
       cf,
       Buffer.from("Hello, World!")

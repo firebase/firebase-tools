@@ -1,6 +1,5 @@
 import * as clc from "cli-color";
 
-import { FirebaseError } from "../../error";
 import { Options } from "../../options";
 import { ensureCloudBuildEnabled } from "./ensureCloudBuildEnabled";
 import { functionMatchesAnyGroup, getFilterGroups } from "./functionsDeployHelper";
@@ -14,6 +13,7 @@ import * as functionsConfig from "../../functionsConfig";
 import * as getProjectId from "../../getProjectId";
 import * as runtimes from "./runtimes";
 import * as validate from "./validate";
+import * as utils from "../../utils";
 import { logger } from "../../logger";
 
 export async function prepare(
@@ -21,7 +21,7 @@ export async function prepare(
   options: Options,
   payload: args.Payload
 ): Promise<void> {
-  if (!options.config.has("functions")) {
+  if (!options.config.src.functions) {
     return;
   }
 
@@ -60,10 +60,14 @@ export async function prepare(
   }
 
   // Prepare the functions directory for upload, and set context.triggers.
+  utils.assertDefined(
+    options.config.src.functions.source,
+    "Error: 'functions.source' is not defined"
+  );
   logBullet(
     clc.cyan.bold("functions:") +
       " preparing " +
-      clc.bold(options.config.get("functions.source")) +
+      clc.bold(options.config.src.functions.source) +
       " directory for uploading..."
   );
   context.functionsSource = await prepareFunctionsUpload(runtimeConfig, options);

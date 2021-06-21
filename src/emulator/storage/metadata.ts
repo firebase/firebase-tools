@@ -65,7 +65,7 @@ export class StoredFileMetadata {
     this.customTime = opts.customTime;
     this.contentEncoding = opts.contentEncoding || "identity";
     this.customMetadata = opts.customMetadata;
-    this.downloadTokens = [];
+    this.downloadTokens = opts.downloadTokens || [];
 
     // Special handling for date fields
     this.timeCreated = opts.timeCreated ? new Date(opts.timeCreated) : new Date();
@@ -132,10 +132,15 @@ export class StoredFileMetadata {
   }
 
   private setDownloadTokensFromCustomMetadata() {
-    if (!this.customMetadata) return;
+    if (!this.customMetadata) {
+      return;
+    }
 
     if (this.customMetadata.firebaseStorageDownloadTokens) {
-      this.downloadTokens = this.customMetadata.firebaseStorageDownloadTokens.split(",");
+      this.downloadTokens = [
+        ...this.downloadTokens,
+        ...this.customMetadata.firebaseStorageDownloadTokens.split(","),
+      ];
       delete this.customMetadata.firebaseStorageDownloadTokens;
     }
   }

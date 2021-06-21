@@ -2,13 +2,14 @@ import * as _ from "lodash";
 
 import gcp = require("../../gcp");
 import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
+import { Options } from "../../options";
 
 /**
  * Prepares for a Firebase Storage deployment.
  * @param context The deploy context.
  * @param options The CLI options object.
  */
-export default async function (context: any, options: any): Promise<void> {
+export default async function (context: any, options: Options): Promise<void> {
   let rulesConfig = options.config.get("storage");
   if (!rulesConfig) {
     return;
@@ -27,7 +28,7 @@ export default async function (context: any, options: any): Promise<void> {
 
   rulesConfig.forEach((ruleConfig: any) => {
     if (ruleConfig.target) {
-      options.rc.requireTarget(context.projectId, "storage", ruleConfig.target);
+      (options.rc as any).requireTarget(context.projectId, "storage", ruleConfig.target);
     }
     rulesDeploy.addFile(ruleConfig.rules);
   });

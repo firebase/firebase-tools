@@ -21,7 +21,11 @@ import * as utils from "../../../utils";
 import { Constants } from "../../constants";
 import { downloadEmulator } from "../../download";
 import * as fs from "fs-extra";
-import { DownloadDetails, _getCommand } from "../../downloadableEmulators";
+import {
+  _getCommand,
+  DownloadDetails,
+  handleEmulatorProcessError,
+} from "../../downloadableEmulators";
 
 export interface RulesetVerificationOpts {
   file: {
@@ -142,16 +146,22 @@ export class StorageRulesRuntime {
       };
     });
 
+    // This catches error when spawning the java process
+    this._childprocess.on("error", (err) => {
+      handleEmulatorProcessError(Emulators.STORAGE, err);
+    });
+
+    // This catches errors from the java process (i.e. missing jar file)
     this._childprocess.stderr.on("data", (buf: Buffer) => {
       const error = buf.toString();
-      if (error.includes("Invalid or corrupt jarfile")) {
+      if (error.includes("jarfile")) {
         throw new FirebaseError(
           "There was an issue starting the rules emulator, please run 'firebase setup:emulators:storage` again"
         );
       } else {
         EmulatorLogger.forEmulator(Emulators.STORAGE).log(
           "WARN",
-          `Unexpected rules runtime output: ${buf.toString()}`
+          `Unexpected rules runtime error: ${buf.toString()}`
         );
       }
     });

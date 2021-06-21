@@ -53,15 +53,10 @@ export async function getExistingSourceOrigin(
     if (resolveSource.isOfficialSource(registryEntry, existingSource)) {
       existingSourceOrigin = SourceOrigin.OFFICIAL_EXTENSION;
     } else {
-      existingSourceOrigin = SourceOrigin.PUBLISHED_EXTENSION;
-    }
-  } catch {
-    // If registry entry does not exist, assume existing source was from local directory or URL.
-    if (urlRegex.test(existingSource)) {
-      existingSourceOrigin = SourceOrigin.URL;
-    } else {
       existingSourceOrigin = SourceOrigin.LOCAL;
     }
+  } catch {
+    existingSourceOrigin = SourceOrigin.LOCAL;
   }
   return existingSourceOrigin;
 }
