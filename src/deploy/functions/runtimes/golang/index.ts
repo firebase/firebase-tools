@@ -130,8 +130,7 @@ export class Delegate {
     private readonly module: Module
   ) {}
   validate(): Promise<void> {
-    // throw new FirebaseError("Cannot yet analyze Go source code");
-    return Promise.resolve();
+    throw new FirebaseError("Cannot yet analyze Go source code");
   }
 
   build(): Promise<void> {
@@ -155,25 +154,6 @@ export class Delegate {
     configValues: backend.RuntimeConfigValues,
     envs: backend.EnvironmentVariables
   ): Promise<backend.Backend> {
-    const stubbed: backend.Backend = {
-      requiredAPIs: {},
-      topics: [],
-      schedules: [],
-      cloudFunctions: [
-        {
-          apiVersion: 1,
-          id: "HelloWorld",
-          region: "us-central1",
-          project: this.projectId,
-          entryPoint: "HelloWorld",
-          runtime: this.runtime,
-          trigger: {
-            allowInsecure: false,
-          },
-        },
-      ],
-      environmentVariables: envs,
-    };
-    return Promise.resolve(stubbed);
+    throw new FirebaseError("Cannot yet discover function specs");
   }
 }

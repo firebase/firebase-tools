@@ -96,9 +96,6 @@ async function writeModFile(config: Config) {
   const extractArchive = unzipper.Extract({ path: config.path("functions/firebase-functions-go") });
   await promisify(stream.pipeline)(download.body, extractArchive);
 
-  // Should this come later as "would you like to install dependencies" to mirror Node?
-  // It's less clearly distinct from node where you can edit the package.json file w/o installing.
-  // Here we're actually locking in a version in go.mod _and_ installing it in one step.
   const result = spawn.sync("go", ["get", ADMIN_SDK], {
     cwd: config.path("functions"),
     stdio: "inherit",

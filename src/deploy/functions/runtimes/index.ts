@@ -7,8 +7,12 @@ import * as validate from "../validate";
 import { FirebaseError } from "../../../error";
 
 /** Supported runtimes for new Cloud Functions. */
-const RUNTIMES: string[] = ["nodejs10", "nodejs12", "nodejs14", "go113"];
-export type Runtime = typeof RUNTIMES[number];
+const RUNTIMES: string[] = ["nodejs10", "nodejs12", "nodejs14"]
+// Experimental runtimes are part of the Runtime type, but are in a
+// different list to help guard against some day accidentally iterating over
+// and printing a hidden runtime to the user.
+const EXPERIMENTAL_RUNTIMES = ["go113"];
+export type Runtime = typeof RUNTIMES[number] | typeof EXPERIMENTAL_RUNTIMES[number];
 
 /** Runtimes that can be found in existing backends but not used for new functions. */
 const DEPRECATED_RUNTIMES = ["nodejs6", "nodejs8"];
@@ -21,7 +25,7 @@ export function isDeprecatedRuntime(runtime: string): runtime is DeprecatedRunti
 
 /** Type deduction helper for a runtime string. */
 export function isValidRuntime(runtime: string): runtime is Runtime {
-  return RUNTIMES.includes(runtime);
+  return RUNTIMES.includes(runtime) || EXPERIMENTAL_RUNTIMES.includes(runtime);
 }
 
 const MESSAGE_FRIENDLY_RUNTIMES: Record<Runtime | DeprecatedRuntime, string> = {
