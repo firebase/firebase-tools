@@ -99,6 +99,7 @@ var api = {
     "FIREBASE_CLOUDLOGGING_URL",
     "https://logging.googleapis.com"
   ),
+  containerRegistryDomain: utils.envOverride("CONTAINER_REGISTRY_DOMAIN", "gcr.io"),
   appDistributionOrigin: utils.envOverride(
     "FIREBASE_APP_DISTRIBUTION_URL",
     "https://firebaseappdistribution.googleapis.com"
