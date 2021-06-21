@@ -1,1 +1,3 @@
-- Add Warsaw (europe-central2) Cloud Function Location to Firebase Extension template.
+- Avoid emulator data loss when there an error during export (#3504)
+- Ask before overwriting `storage.rules` during `firebase init` (#1833)
+- Release Cloud Firestore Emulator v1.13.0.

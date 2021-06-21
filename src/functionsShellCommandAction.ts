@@ -15,11 +15,12 @@ import { EMULATORS_SUPPORTED_BY_FUNCTIONS, EmulatorInfo, Emulators } from "./emu
 import { EmulatorHubClient } from "./emulator/hubClient";
 import { Constants } from "./emulator/constants";
 import { findAvailablePort } from "./emulator/portUtils";
+import { Options } from "./options";
 
 const serveFunctions = new FunctionsServer();
 
-export const actionFunction = async (options: any) => {
-  if (options.port) {
+export const actionFunction = async (options: Options) => {
+  if (typeof options.port === "string") {
     options.port = parseInt(options.port, 10);
   }
 
@@ -28,6 +29,7 @@ export const actionFunction = async (options: any) => {
     debugPort = commandUtils.parseInspectionPort(options);
   }
 
+  utils.assertDefined(options.project);
   const hubClient = new EmulatorHubClient(options.project);
 
   let remoteEmulators: Record<string, EmulatorInfo> = {};
@@ -52,7 +54,7 @@ export const actionFunction = async (options: any) => {
   } else if (!options.port) {
     // If the user did not pass in any port and the functions emulator is not already running, we can
     // use the port defined for the Functions emulator in their firebase.json
-    options.port = options.config.get(Constants.getPortKey(Emulators.FUNCTIONS), undefined);
+    options.port = options.config.src.emulators?.functions?.port;
   }
 
   // If the port was not set by the --port flag or determined from 'firebase.json', just scan
