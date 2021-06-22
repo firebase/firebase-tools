@@ -4,14 +4,15 @@ import * as clc from "cli-color";
 import loadCJSON = require("../../loadCJSON");
 import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
 import utils = require("../../utils");
+import { Options } from "../../options";
 
 /**
  * Prepares Firestore Rules deploys.
  * @param context The deploy context.
  * @param options The CLI options object.
  */
-async function prepareRules(context: any, options: any): Promise<void> {
-  const rulesFile = options.config.get("firestore.rules");
+async function prepareRules(context: any, options: Options): Promise<void> {
+  const rulesFile = options.config.src.firestore?.rules;
 
   if (context.firestoreRules && rulesFile) {
     const rulesDeploy = new RulesDeploy(options, RulesetServiceType.CLOUD_FIRESTORE);
@@ -25,12 +26,12 @@ async function prepareRules(context: any, options: any): Promise<void> {
  * @param context The deploy context.
  * @param options The CLI options object.
  */
-function prepareIndexes(context: any, options: any): void {
-  if (!context.firestoreIndexes || !options.config.get("firestore.indexes")) {
+function prepareIndexes(context: any, options: Options): void {
+  if (!context.firestoreIndexes || !options.config.src.firestore?.indexes) {
     return;
   }
 
-  const indexesFileName = options.config.get("firestore.indexes");
+  const indexesFileName = options.config.src.firestore.indexes;
   const indexesPath = options.config.path(indexesFileName);
   const parsedSrc = loadCJSON(indexesPath);
 

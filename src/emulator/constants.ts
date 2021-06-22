@@ -115,14 +115,6 @@ export class Constants {
     return DEFAULT_PORTS[emulator];
   }
 
-  static getHostKey(emulator: Emulators): string {
-    return `emulators.${emulator.toString()}.host`;
-  }
-
-  static getPortKey(emulator: Emulators): string {
-    return `emulators.${emulator.toString()}.port`;
-  }
-
   static description(name: Emulators): string {
     return EMULATOR_DESCRIPTION[name];
   }

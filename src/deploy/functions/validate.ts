@@ -31,12 +31,12 @@ export function functionsDirectoryExists(
 
 /**
  * Validate function names only contain letters, numbers, underscores, and hyphens
- * and not exceed 62 characters in length.
+ * and not exceed 63 characters in length.
  * @param functionNames Object containing function names as keys.
  * @throws { FirebaseError } Function names must be valid.
  */
 export function functionIdsAreValid(functions: { id: string }[]): void {
-  const validFunctionNameRegex = /^[a-zA-Z0-9_-]{1,62}$/;
+  const validFunctionNameRegex = /^[a-zA-Z0-9_-]{1,63}$/;
   const invalidIds = functions.filter((fn) => !validFunctionNameRegex.test(fn.id));
   if (invalidIds.length !== 0) {
     const msg =

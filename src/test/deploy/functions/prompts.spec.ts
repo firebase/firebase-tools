@@ -35,6 +35,9 @@ const SAMPLE_OPTIONS: Options = {
   config: {} as any,
   only: "functions",
   nonInteractive: false,
+  json: false,
+  interactive: false,
+  debug: false,
   force: false,
   filteredTargets: ["functions"],
 };

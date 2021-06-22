@@ -39,14 +39,14 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
     },
   },
   firestore: {
-    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.12.0.jar"),
-    version: "1.12.0",
+    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.13.0.jar"),
+    version: "1.13.0",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.12.0.jar",
-      expectedSize: 60294085,
-      expectedChecksum: "0aa18be685bfe6357302731f05faa38a",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.13.0.jar",
+      expectedSize: 60581686,
+      expectedChecksum: "ed5dbab6fbee02d141f6204754ae50f6",
       namePrefix: "cloud-firestore-emulator",
     },
   },
@@ -253,20 +253,32 @@ export function _getCommand(
   };
 }
 
-async function _fatal(emulator: DownloadableEmulatorDetails, errorMsg: string): Promise<void> {
+async function _fatal(emulator: Emulators, errorMsg: string): Promise<void> {
   // if we do not issue a stopAll here and _fatal is called during startup, we could leave emulators running
   // that did start already
   // for example: JAVA_HOME=/does/not/exist firebase emulators:start
   try {
-    const logger = EmulatorLogger.forEmulator(emulator.name);
+    const logger = EmulatorLogger.forEmulator(emulator);
     logger.logLabeled(
       "WARN",
-      emulator.name,
+      emulator,
       `Fatal error occurred: \n   ${errorMsg}, \n   stopping all running emulators`
     );
     await EmulatorRegistry.stopAll();
   } finally {
     process.exit(1);
+  }
+}
+
+export async function handleEmulatorProcessError(emulator: Emulators, err: any): Promise<void> {
+  const description = Constants.description(emulator);
+  if (err.path === "java" && err.code === "ENOENT") {
+    await _fatal(
+      emulator,
+      `${description} has exited because java is not installed, you can install it from https://openjdk.java.net/install/`
+    );
+  } else {
+    await _fatal(emulator, `${description} has exited: ${err}`);
   }
 }
 
@@ -298,7 +310,7 @@ async function _runBinary(
           `Could not spawn child process for emulator, check that java is installed and on your $PATH.`
         );
       }
-      _fatal(emulator, e);
+      _fatal(emulator.name, e);
     }
 
     const description = Constants.description(emulator.name);
@@ -331,21 +343,15 @@ async function _runBinary(
       }
     });
 
-    emulator.instance.on("error", async (err: any) => {
-      if (err.path === "java" && err.code === "ENOENT") {
-        await _fatal(
-          emulator,
-          `${description} has exited because java is not installed, you can install it from https://openjdk.java.net/install/`
-        );
-      } else {
-        await _fatal(emulator, `${description} has exited: ${err}`);
-      }
+    emulator.instance.on("error", (err) => {
+      handleEmulatorProcessError(emulator.name, err);
     });
+
     emulator.instance.once("exit", async (code, signal) => {
       if (signal) {
         utils.logWarning(`${description} has exited upon receiving signal: ${signal}`);
       } else if (code && code !== 0 && code !== /* SIGINT */ 130) {
-        await _fatal(emulator, `${description} has exited with code: ${code}`);
+        await _fatal(emulator.name, `${description} has exited with code: ${code}`);
       }
     });
     resolve();

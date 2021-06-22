@@ -7,12 +7,13 @@ import { getAppEngineLocation } from "../../functionsConfig";
 import { promptForFunctionDeletion } from "./prompts";
 import { DeploymentTimer } from "./deploymentTimer";
 import { ErrorHandler } from "./errorHandler";
-import * as utils from "../../utils";
+import { Options } from "../../options";
+import * as args from "./args";
+import * as backend from "./backend";
+import * as containerCleaner from "./containerCleaner";
 import * as helper from "./functionsDeployHelper";
 import * as tasks from "./tasks";
-import * as backend from "./backend";
-import * as args from "./args";
-import { Options } from "../../options";
+import * as utils from "../../utils";
 
 export async function release(context: args.Context, options: Options, payload: args.Payload) {
   if (!options.config.has("functions")) {
@@ -133,6 +134,7 @@ export async function release(context: args.Context, options: Options, payload: 
     );
   }
   helper.logAndTrackDeployStats(cloudFunctionsQueue, errorHandler);
+  await containerCleaner.cleanupBuildImages(payload.functions!.backend.cloudFunctions);
   await helper.printTriggerUrls(context);
   errorHandler.printWarnings();
   errorHandler.printErrors();

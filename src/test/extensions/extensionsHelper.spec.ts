@@ -590,6 +590,26 @@ describe("extensionsHelper", () => {
         extensionsHelper.validateSpec(testSpec);
       }).to.throw(FirebaseError, /default/);
     });
+    it("should error if a param selectResource missing resourceType.", () => {
+      const testSpec = {
+        version: "0.1.0",
+        specVersion: "v1beta",
+        params: [
+          {
+            type: extensionsHelper.SpecParamType.SELECTRESOURCE,
+            validationRegex: "test",
+            default: "fail",
+          },
+        ],
+        resources: [],
+        sourceUrl: "https://test-source.fake",
+        license: "apache-2.0",
+      };
+
+      expect(() => {
+        extensionsHelper.validateSpec(testSpec);
+      }).to.throw(FirebaseError, /must have resourceType/);
+    });
   });
 
   describe("promptForValidInstanceId", () => {
