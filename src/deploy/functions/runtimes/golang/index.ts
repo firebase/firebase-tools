@@ -11,6 +11,9 @@ import * as backend from "../../backend";
 import * as getProjectId from "../../../../getProjectId";
 import * as runtimes from "..";
 
+export const ADMIN_SDK = "firebase.google.com/go/v4";
+export const FUNCTIONS_SDK = "github.com/FirebaseExtended/firebase-functions-go";
+
 const VERSION_TO_RUNTIME: Record<string, runtimes.Runtime> = {
   "1.13": "go113",
 };

@@ -1,4 +1,4 @@
-package functions
+package PACKAGE
 
 // Welcome to Cloud Functions for Firebase for Golang!
 // To get started, simply uncomment the below code or create your own.
