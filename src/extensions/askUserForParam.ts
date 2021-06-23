@@ -13,7 +13,7 @@ export function checkResponse(response: string, spec: Param): boolean {
   let valid = true;
   let responses: string[];
 
-  if (spec.required && !response) {
+  if (spec.required && response === undefined) {
     utils.logWarning(`Param ${spec.param} is required, but no value was provided.`);
     return false;
   }
@@ -139,7 +139,7 @@ export async function ask(
   }
 
   utils.logLabeledBullet(logPrefix, "answer the questions below to configure your extension:");
-  const substituted = substituteParams(paramSpecs, firebaseProjectParams);
+  const substituted = substituteParams<Param[]>(paramSpecs, firebaseProjectParams);
   const result: any = {};
   const promises = _.map(substituted, (paramSpec: Param) => {
     return async () => {

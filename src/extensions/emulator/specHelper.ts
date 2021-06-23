@@ -77,7 +77,7 @@ export function getFunctionResourcesWithParamSubstitution(
   const rawResources = extensionSpec.resources.filter((resource) =>
     validFunctionTypes.includes(resource.type)
   );
-  return substituteParams(rawResources, params);
+  return substituteParams<Resource[]>(rawResources, params);
 }
 
 export function getFunctionProperties(resources: Resource[]) {
