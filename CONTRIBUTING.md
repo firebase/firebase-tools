@@ -53,6 +53,7 @@ repository:
 ```bash
 git clone git@github.com:firebase/firebase-tools.git
 cd firebase-tools
+npm install # must be run the first time you clone
 npm link  # installs dependencies, runs a build, links it into the environment
 ```
 
