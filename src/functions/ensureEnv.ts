@@ -18,14 +18,11 @@ const DEFAULT_ENV_KEYS = ["FIREBASE_CONFIG"];
 /**
  * Check if the EnvStore API is active.
  *
- * This is an bespoke method of checking whether EnvStore API has ever
- * been used on users's project.
+ * This is an bespoke method of checking whether user has opted in
+ * to activate EnvStore API.
  *
- * We define EnvStore to be active if ENV_ID=${ENVSTORE_INTERNAL_ID} contains
- * non-empty collection of key-value pairs.
- *
- * @param {string} projectId The project on which to check enablement.
- * @return {Promise<boolean>} True if EnvStore API is enabled.
+ * An EnvStore entry on ENV_ID=${ENVSTORE_INTERNAL_ID} is created when
+ * user "activates" the EnvStore API. We check for its existence.
  */
 async function _check(projectId: string): Promise<boolean> {
   const resp = await envstore.getStore(projectId, ENVSTORE_INTERNAL_ID);
@@ -35,8 +32,7 @@ async function _check(projectId: string): Promise<boolean> {
 /**
  * Check if the EnvStore API is active.
  *
- * @param {string} projectId The project on which to check enablement.
- * @return {Promise<boolean>} True if EnvStore API is enabled.
+ * An active state is cached locally for {CONFIGSTORE_TTL}.
  */
 export async function check(projectId: string): Promise<boolean> {
   // Check actice state from local cache.
@@ -65,27 +61,27 @@ export async function check(projectId: string): Promise<boolean> {
  * This is an bespoke method of "enabling" EnvStore API. We "enable" the
  * EnvStore API setting up a non-empty EnvStore ENV_ID=${ENVSTORE_INTERNAL_ID}
  * with a non-empty collection of key-value pairs.
- *
- * @param {string} projectId The project in which to enable the EnvStore API.
- * @return Promise<void>
  */
 export async function enable(projectId: string): Promise<void> {
   await envstore.patchStore(projectId, ENVSTORE_INTERNAL_ID, { ENABLED: "1" });
 }
 
+interface UserEnv {
+  fnLabel: string;
+  envs: Record<string, string>;
+}
+
 /**
- * Lookup existing cloud functions and gather user-defined env variables.
+ * Lookup existing cloud functions and collect user-defined env variables.
  *
  * If user's project hasn't already opted-in to functions:env, we consider
  * all non-default environment variable as "user-defined" (which will be deleted
  * once the env variables are managed via functions:env commands).
  */
-async function getUserEnvs(
-  projectId: string
-): Promise<{ fnLabel: string; envs: Record<string, string> }[]> {
+async function getUserEnvs(projectId: string): Promise<UserEnv[]> {
   const have = await backend.existingBackend({ projectId, filters: [] }, /* forceRefresh= */ true);
 
-  let fnEnvs: { fnLabel: string; envs: Record<string, string> }[] = [];
+  let fnEnvs: UserEnv[] = [];
   for (const fn of have.cloudFunctions) {
     // Filter out non CF3 function instances.
     if (!deploymentTool.isFirebaseManaged(fn.labels || {})) {
@@ -108,7 +104,7 @@ async function getUserEnvs(
 
 /**
  * Check if EnvStore API is enabled on the project.
- * If not enabled, prompt user for enablement.
+ * If not enabled, prompt user to enable it.
  */
 export async function ensure(options: any): Promise<void> {
   const projectId = getProjectId(options);
