@@ -116,10 +116,17 @@ export async function ensure(options: any): Promise<void> {
       "Learn more about this feature at https://firebase.google.com/docs/functions/env.\n"
   );
 
+  logWarning(
+    "By opting in to have Firebase manage your function's environment variables, " +
+      "you may lose existing environment variables you've manually set up on your functions. " +
+      "Also, any environment variables you subsequently set with the gcloud command line tool " +
+      "or in the Google Cloud console will be overwritten or removed.\n"
+  );
+
   const userEnvs = await getUserEnvs(projectId);
   if (userEnvs.length > 0) {
     let msg =
-      "By opt-ing in, the following environment variables will be deleted on next deploy:\n";
+      "If you opt in, the following environment variables will be deleted on next deploy:\n";
 
     const allKvs: Record<string, string> = {};
     for (const { fnLabel, envs } of userEnvs) {
