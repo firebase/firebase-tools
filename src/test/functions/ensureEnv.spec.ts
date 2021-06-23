@@ -10,10 +10,9 @@ describe("check", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
   let fakeConfigStore: { [key: string]: any } = {};
   let getStore: sinon.SinonStub;
-  let configstoreGetStub: sinon.SinonStub;
 
   beforeEach(() => {
-    configstoreGetStub = sandbox.stub(configstore, "get");
+    const configstoreGetStub = sandbox.stub(configstore, "get");
     configstoreGetStub.callsFake((key: string) => {
       return fakeConfigStore[key];
     });
@@ -66,8 +65,8 @@ describe("check", () => {
   });
 
   it("calls EnvStore API if cached result has expired", async () => {
-    const expiredTime = Date.now() - 1000 * 60 * 60 * 48; /* 2 days */
-    configstoreGetStub.returns({ lastActiveAt: expiredTime });
+    const expiredTime = Date.now() - 1000 * 60 * 60 * 48; // 2 days ago
+    fakeConfigStore = { envstore: { lastActiveAt: expiredTime } };
     getStore.onFirstCall().resolves({ vars: { ENABLED: "1" } });
 
     const checkResult = await ensureEnv.check(projectId);

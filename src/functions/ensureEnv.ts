@@ -12,7 +12,7 @@ import * as helper from "../deploy/functions/functionsDeployHelper";
 
 const ENVSTORE_INTERNAL_ID = "firebase-functions-internal";
 const CONFIGSTORE_KEY = "envstore";
-const CONFIGSTORE_TTL = 1000 * 60 * 60 * 24; /* 1 day */
+const CONFIGSTORE_TTL = 1000 * 60 * 60 * 24; // 1 day
 const DEFAULT_ENV_KEYS = ["FIREBASE_CONFIG"];
 
 /**
