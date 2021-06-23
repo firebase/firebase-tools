@@ -54,7 +54,7 @@ export async function prepare(
 
   logger.debug(`Analyzing ${runtimeDelegate.name} backend spec`);
   const wantBackend = await runtimeDelegate.discoverSpec(runtimeConfig, env);
-  options.config.set("functions.backend", wantBackend);
+  payload.functions = { backend: wantBackend };
   if (backend.isEmptyBackend(wantBackend)) {
     return;
   }
@@ -90,11 +90,6 @@ export async function prepare(
       );
     })
   );
-
-  // Build a regionMap, and duplicate functions for each region they are being deployed to.
-  payload.functions = {
-    backend: wantBackend,
-  };
 
   // Validate the function code that is being deployed.
   validate.functionIdsAreValid(wantBackend.cloudFunctions);
