@@ -81,7 +81,7 @@ interface UserEnv {
 async function getUserEnvs(projectId: string): Promise<UserEnv[]> {
   const have = await backend.existingBackend({ projectId, filters: [] }, /* forceRefresh= */ true);
 
-  let fnEnvs: UserEnv[] = [];
+  const fnEnvs: UserEnv[] = [];
   for (const fn of have.cloudFunctions) {
     // Filter out non CF3 function instances.
     if (!deploymentTool.isFirebaseManaged(fn.labels || {})) {
