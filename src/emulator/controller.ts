@@ -61,7 +61,7 @@ async function getAndCheckAddress(emulator: Emulators, options: Options): Promis
   let port;
   let findAvailablePort = false;
   if (portVal) {
-    port = parseInt(portVal, 10);
+    port = parseInt(`${portVal}`, 10);
   } else {
     port = Constants.getDefaultPort(emulator);
     findAvailablePort = FIND_AVAILBLE_PORT_BY_DEFAULT[emulator];
