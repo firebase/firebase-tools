@@ -19,10 +19,10 @@ const DEFAULT_ENV_KEYS = ["FIREBASE_CONFIG"];
  * Check if the EnvStore API is active.
  *
  * This is an bespoke method of checking whether user has opted in
- * to activate EnvStore API.
+ * to activate the EnvStore API.
  *
- * An EnvStore entry on ENV_ID=${ENVSTORE_INTERNAL_ID} is created when
- * user "activates" the EnvStore API. We check for its existence.
+ * We check for existance of non-emtpy ENV_ID=${ENVSTORE_INTERNAL_ID}
+ * which is created when user "enables" the EnvStore API.
  */
 async function _check(projectId: string): Promise<boolean> {
   const resp = await envstore.getStore(projectId, ENVSTORE_INTERNAL_ID);
@@ -30,9 +30,7 @@ async function _check(projectId: string): Promise<boolean> {
 }
 
 /**
- * Check if the EnvStore API is active.
- *
- * An active state is cached locally for {CONFIGSTORE_TTL}.
+ * Cached check for active EnvStore API.
  */
 export async function check(projectId: string): Promise<boolean> {
   // Check actice state from local cache.
@@ -56,11 +54,10 @@ export async function check(projectId: string): Promise<boolean> {
 }
 
 /**
- * Attempt to enable the EnvStore API.
+ * Enable the EnvStore API.
  *
  * This is an bespoke method of "enabling" EnvStore API. We "enable" the
- * EnvStore API setting up a non-empty EnvStore ENV_ID=${ENVSTORE_INTERNAL_ID}
- * with a non-empty collection of key-value pairs.
+ * EnvStore API setting up a non-empty EnvStore ENV_ID=${ENVSTORE_INTERNAL_ID}.
  */
 export async function enable(projectId: string): Promise<void> {
   await envstore.patchStore(projectId, ENVSTORE_INTERNAL_ID, { ENABLED: "1" });
@@ -74,9 +71,10 @@ interface UserEnv {
 /**
  * Lookup existing cloud functions and collect user-defined env variables.
  *
- * If user's project hasn't already opted-in to functions:env, we consider
- * all non-default environment variable as "user-defined" (which will be deleted
- * once the env variables are managed via functions:env commands).
+ * If user's project hasn't activated the EnvStore API, we consider
+ * all non-default environment variable as "user-defined". The user-defined
+ * env is significant because they will be removed on the next deploy following
+ * EnvStore API activation.
  */
 async function getUserEnvs(projectId: string): Promise<UserEnv[]> {
   const have = await backend.existingBackend({ projectId, filters: [] }, /* forceRefresh= */ true);
@@ -134,14 +132,12 @@ export async function ensure(options: any): Promise<void> {
       }
       msg += `${kvs.join(", ")}\n`;
     }
-
     msg += "\nTo preserve these environment variable, run the following command after opt-in:\n";
     msg += clc.bold(
       `\tfirebase functions:env:add ${Object.entries(allKvs)
         .map(([k, v]) => `${k}=${v}`)
         .join(" ")}\n`
     );
-
     logWarning(msg);
   }
 
