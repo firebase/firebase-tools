@@ -87,7 +87,7 @@ async function getUserEnvs(projectId: string): Promise<UserEnv[]> {
     if (!deploymentTool.isFirebaseManaged(fn.labels || {})) {
       continue;
     }
-    let uenvs: Record<string, string> = {};
+    const uenvs: Record<string, string> = {};
     const envs = fn.environmentVariables;
     if (envs && Object.keys(envs).length > 1) {
       // Collect non-default env variables to print.
@@ -127,7 +127,7 @@ export async function ensure(options: any): Promise<void> {
     for (const { fnLabel, envs } of userEnvs) {
       msg += `\t${fnLabel}: `;
 
-      let kvs: string[] = [];
+      const kvs: string[] = [];
       for (const [k, v] of Object.entries(envs)) {
         kvs.push(clc.bold(`${k}=${v}`));
         allKvs[k] = v;
