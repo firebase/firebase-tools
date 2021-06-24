@@ -59,6 +59,8 @@ export default new Command("functions:env:set [values...]")
 
     const envs = await fenv.setEnvs(projectId, setEnvs);
     logger.info(fenv.formatEnv(envs) + "\n");
-    utils.logWarning("Redeploy your functions to update the environment variables.");
+    utils.logWarning(
+      "Please deploy your functions for the change to take effect by running firebase deploy --only functions"
+    );
     return envs;
   });

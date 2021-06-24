@@ -18,6 +18,8 @@ export default new Command("functions:env:add [values...]")
     const addEnvs: Record<string, string> = fenv.parseKvArgs(args);
     const envs = await fenv.addEnvs(projectId, addEnvs);
     logger.info(fenv.formatEnv(envs) + "\n");
-    utils.logWarning("Redeploy your functions to update the environment variables.");
+    utils.logWarning(
+      "Please deploy your functions for the change to take effect by running firebase deploy --only functions"
+    );
     return envs;
   });
