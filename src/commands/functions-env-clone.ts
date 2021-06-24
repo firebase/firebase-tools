@@ -45,7 +45,9 @@ export default new Command("functions:env:clone")
       "Cloned functions envrionment variables from " +
         clc.bold(options.from) +
         " into " +
-        clc.bold(projectId)
+        clc.bold(projectId) +
+        "\n"
     );
+    utils.logWarning("Redeploy your functions to update the environment variables.");
     return envs;
   });

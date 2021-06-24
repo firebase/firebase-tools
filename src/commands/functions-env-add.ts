@@ -17,6 +17,7 @@ export default new Command("functions:env:add [values...]")
     const projectId = getProjectId(options);
     const addEnvs: Record<string, string> = fenv.parseKvArgs(args);
     const envs = await fenv.addEnvs(projectId, addEnvs);
-    logger.info(fenv.formatEnv(envs));
+    logger.info(fenv.formatEnv(envs) + "\n");
+    utils.logWarning("Redeploy your functions to update the environment variables.");
     return envs;
   });

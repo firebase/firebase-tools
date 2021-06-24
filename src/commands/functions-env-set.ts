@@ -58,6 +58,7 @@ export default new Command("functions:env:set [values...]")
     }
 
     const envs = await fenv.setEnvs(projectId, setEnvs);
-    logger.info(fenv.formatEnv(envs));
+    logger.info(fenv.formatEnv(envs) + "\n");
+    utils.logWarning("Redeploy your functions to update the environment variables.");
     return envs;
   });
