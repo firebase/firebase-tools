@@ -1,0 +1,1 @@
+- Fixes a number of issues where `ext:dev:emulator:*` was not providing the correct parameter values to the emulated extension (#2928)
