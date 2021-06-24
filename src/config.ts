@@ -14,6 +14,8 @@ import * as fsutils from "./fsutils";
 import { promptOnce } from "./prompt";
 import { resolveProjectPath } from "./projectPath";
 import * as utils from "./utils";
+import { getValidator, getErrorMessage } from "./firebaseConfigValidate";
+import { logger } from "./logger";
 const loadCJSON = require("./loadCJSON");
 const parseBoltRules = require("./parseBoltRules");
 
@@ -230,6 +232,20 @@ export class Config {
       try {
         const filePath = path.resolve(pd, path.basename(filename));
         const data = cjson.load(filePath);
+
+        // Validate config against JSON Schema. For now we just print these to debug
+        // logs but in a future CLI version they could be warnings and/or errors.
+        const validator = getValidator();
+        const valid = validator(data);
+        if (!valid && validator.errors) {
+          for (const e of validator.errors) {
+            // TODO: We should probably collapse these errors on the 'dataPath' property
+            //       and then pick out the most important error on each field. Otherwise
+            //       some simple mistakes can cause 2-3 errors.
+            logger.debug(getErrorMessage(e));
+          }
+        }
+
         return new Config(data, options);
       } catch (e) {
         throw new FirebaseError(`There was an error loading ${filename}:\n\n` + e.message, {
