@@ -2,8 +2,10 @@ import { expect } from "chai";
 import { configstore } from "../../configstore";
 import * as sinon from "sinon";
 
-import * as envstore from "../../functions/envstore";
+import * as backend from "../../deploy/functions/backend";
+import * as deploymentTool from "../../deploymentTool";
 import * as ensureEnv from "../../functions/ensureEnv";
+import * as envstore from "../../functions/envstore";
 
 describe("check", () => {
   const projectId = "project-id";
@@ -73,5 +75,107 @@ describe("check", () => {
 
     expect(checkResult).to.be.true;
     expect(getStore).to.have.been.calledOnce;
+  });
+});
+
+describe.only("getUserEnvs", () => {
+  let existingBackendStub: sinon.SinonStub;
+
+  const FUNCTION_SPEC: backend.FunctionSpec = {
+    id: "id",
+    region: "region",
+    project: "project",
+    apiVersion: 1,
+    trigger: {
+      allowInsecure: false,
+    },
+    entryPoint: "function",
+    runtime: "nodejs14",
+  };
+
+  beforeEach(() => {
+    existingBackendStub = sinon.stub(backend, "existingBackend").rejects("Unexpected call");
+  });
+
+  afterEach(() => {
+    existingBackendStub.restore();
+  });
+
+  it("picks fns with user env vars", async () => {
+    const testBackend: backend.Backend = {
+      ...backend.empty(),
+      cloudFunctions: [
+        {
+          ...FUNCTION_SPEC,
+          id: "fn1",
+          region: "region1",
+          labels: { "deployment-tool": deploymentTool.BASE },
+          environmentVariables: {
+            FIREBASE_CONFIG: "foobar",
+            FOO: "foo",
+          },
+        },
+        {
+          ...FUNCTION_SPEC,
+          id: "fn2",
+          region: "region1",
+          labels: { "deployment-tool": deploymentTool.BASE },
+          environmentVariables: {
+            FIREBASE_CONFIG: "foobar",
+          },
+        },
+        {
+          ...FUNCTION_SPEC,
+          id: "fn3",
+          region: "region1",
+          labels: { "deployment-tool": deploymentTool.BASE },
+          environmentVariables: {
+            FIREBASE_CONFIG: "foobar",
+            BAR: "bar",
+          },
+        },
+      ],
+    };
+    existingBackendStub.resolves(testBackend);
+
+    const envs = await ensureEnv.getUserEnvs("project");
+
+    expect(envs).to.deep.equal({
+      "fn1(region1)": { FOO: "foo" },
+      "fn3(region1)": { BAR: "bar" },
+    });
+  });
+
+  it("ignores fns not managed by Firebase", async () => {
+    const testBackend: backend.Backend = {
+      ...backend.empty(),
+      cloudFunctions: [
+        {
+          ...FUNCTION_SPEC,
+          id: "fn1",
+          region: "region1",
+          labels: { "deployment-tool": "firebase-extension" },
+          environmentVariables: {
+            FIREBASE_CONFIG: "foobar",
+            FOO: "foo",
+          },
+        },
+        {
+          ...FUNCTION_SPEC,
+          id: "fn2",
+          region: "region1",
+          labels: { "deployment-tool": "pantheon" },
+          environmentVariables: {
+            FIREBASE_CONFIG: "foobar",
+            BAR: "bar",
+          },
+        },
+      ],
+    };
+    existingBackendStub.resolves(testBackend);
+
+    const envs = await ensureEnv.getUserEnvs("project");
+
+    expect(envs).to.deep.equal({});
   });
 });
