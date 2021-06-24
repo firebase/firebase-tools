@@ -104,7 +104,7 @@ async function getUserEnvs(projectId: string): Promise<UserEnv[]> {
  * Check if EnvStore API is enabled on the project.
  * If not enabled, prompt user to enable it.
  */
-export async function ensure(options: any): Promise<void> {
+export async function ensureEnvStore(options: any): Promise<void> {
   const projectId = getProjectId(options);
   const isEnabled = await check(projectId);
   if (isEnabled) {

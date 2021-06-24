@@ -4,7 +4,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 import { Command } from "../command";
-import { ensure as ensureEnvStore } from "../functions/ensureEnv";
+import { ensureEnvStore } from "../functions/ensureEnv";
 import { logger } from "../logger";
 import { promptOnce } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
