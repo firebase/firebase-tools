@@ -172,9 +172,6 @@ export function validateCommandLineParams(
   envVars: Record<string, string>,
   paramSpec: Param[]
 ): void {
-  console.log("running validateCommandLineParams");
-  console.log(envVars);
-  console.log(paramSpec);
   const paramNames = paramSpec.map((param) => {
     return param.param;
   });

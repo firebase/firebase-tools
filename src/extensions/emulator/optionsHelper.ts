@@ -20,16 +20,7 @@ export async function buildOptions(options: any): Promise<any> {
   const spec = await specHelper.readExtensionYaml(extensionDir);
   extensionsHelper.validateSpec(spec);
 
-  const unsubbedParamsWithoutDefaults = await getParams(options, spec);
-  const unsubbedParams = extensionsHelper.populateDefaultParams(
-    unsubbedParamsWithoutDefaults,
-    spec.params
-  );
-  // Run a substitution to support  params that reference auto populated params.
-  const params = extensionsHelper.substituteParams<Record<string, string>>(
-    unsubbedParams,
-    unsubbedParams
-  );
+  const params = await getParams(options, spec);
 
   extensionsHelper.validateCommandLineParams(params, spec.params);
 
@@ -52,7 +43,8 @@ export async function buildOptions(options: any): Promise<any> {
   return options;
 }
 
-async function getParams(options: any, extensionSpec: ExtensionSpec) {
+// Exported for testing
+export async function getParams(options: any, extensionSpec: ExtensionSpec) {
   const projectId = getProjectId(options, false);
   const userParams = await paramHelper.readParamsFile(options.testParams);
   const autoParams = {
@@ -62,7 +54,14 @@ async function getParams(options: any, extensionSpec: ExtensionSpec) {
     DATABASE_URL: `https://${projectId}.firebaseio.com`,
     STORAGE_BUCKET: `${projectId}.appspot.com`,
   };
-  return Object.assign(autoParams, userParams);
+  const unsubbedParamsWithoutDefaults = Object.assign(autoParams, userParams);
+
+  const unsubbedParams = extensionsHelper.populateDefaultParams(
+    unsubbedParamsWithoutDefaults,
+    extensionSpec.params
+  );
+  // Run a substitution to support  params that reference auto populated params.
+  return extensionsHelper.substituteParams<Record<string, string>>(unsubbedParams, unsubbedParams);
 }
 
 /**
