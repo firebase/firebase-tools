@@ -20,13 +20,13 @@ describe("function env", () => {
     });
   });
 
-  describe("validateKey", () => {
+  describe.only("validateKey", () => {
     it("should accept valid keys", () => {
       const keys = ["FOO", "ABC_EFG", "A1_B2"];
       keys.forEach((key) => {
         expect(() => {
           fenv.validateKey(key);
-        }).not.to.throw;
+        }).not.to.throw();
       });
     });
 
@@ -35,7 +35,7 @@ describe("function env", () => {
       keys.forEach((key) => {
         expect(() => {
           fenv.validateKey(key);
-        }).not.to.throw;
+        }).to.throw(FirebaseError);
       });
     });
 
