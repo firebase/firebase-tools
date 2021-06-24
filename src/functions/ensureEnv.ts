@@ -91,26 +91,25 @@ export async function enable(projectId: string): Promise<void> {
  */
 export async function getUserEnvs(
   projectId: string
-): Promise<Record<string, backend.EnvironmentVariables>[]> {
+): Promise<Record<string, backend.EnvironmentVariables>> {
   const have = await backend.existingBackend({ projectId, filters: [] }, /* forceRefresh= */ false);
 
-  const fnEnvs: Record<string, backend.EnvironmentVariables>[] = [];
+  const fnEnvs: Record<string, backend.EnvironmentVariables> = {};
   for (const fn of have.cloudFunctions) {
-    // Filter out non CF3 function instances.
+    // Filter out non-CF3 function instances.
     if (!deploymentTool.isFirebaseManaged(fn.labels || {})) {
       continue;
     }
-
     // Filter out default environment variables.
     const uenvs = Object.entries(fn.environmentVariables || {})
       .filter(([k]) => !DEFAULT_ENV_KEYS.includes(k))
       // we can't use `Object.fromEntries()`. Implemented below.
-      .reduce((obj: Record<string, string>, [key, val]) => {
+      .reduce((obj: backend.EnvironmentVariables, [key, val]) => {
         obj[key] = val;
         return obj;
       }, {});
     if (Object.keys(uenvs).length > 0) {
-      fnEnvs.push({ [helper.getFunctionLabel(fn)]: uenvs });
+      fnEnvs[helper.getFunctionLabel(fn)] = uenvs;
     }
   }
   return fnEnvs;
@@ -140,27 +139,33 @@ export async function ensureEnvStore(options: any): Promise<void> {
   );
 
   const userEnvs = await getUserEnvs(projectId);
-  if (userEnvs.length > 0) {
+  if (Object.keys(userEnvs).length > 0) {
     let msg =
       "If you opt in, the following environment variables will be deleted on next deploy:\n";
 
-    const allKvs: Record<string, string> = {};
-    for (const { fnLabel, envs } of userEnvs) {
-      msg += `\t${fnLabel}: `;
+    // Transform userEnvs into a string of form:
+    //   helloWorld(us-central1): KEY1=VAL1, KEY2=VAL2
+    //   hellWorld(us-east1): KEY3=VAL3
+    msg += Object.entries(userEnvs)
+      .map(([label, envs]) => {
+        const envList = Object.entries(envs)
+          .map(([k, v]) => clc.bold(`${k}=${v}`))
+          .join(", ");
+        return `\t${label}: ${envList}`;
+      })
+      .join("\n");
 
-      const kvs: string[] = [];
-      for (const [k, v] of Object.entries(envs)) {
-        kvs.push(clc.bold(`${k}=${v}`));
-        allKvs[k] = v;
-      }
-      msg += `${kvs.join(", ")}\n`;
-    }
-    msg += "\nTo preserve these environment variable, run the following command after opt-in:\n";
-    msg += clc.bold(
-      `\tfirebase functions:env:add ${Object.entries(allKvs)
-        .map(([k, v]) => `${k}=${v}`)
-        .join(" ")}\n`
-    );
+    // Transform userEnvs into a string of form:
+    //   KEY1=VAL1 KEY2=VAL2 KEY3=VAL3...
+    const allEnvs = Object.values(userEnvs).reduce((obj, next) => {
+      return { ...obj, ...next };
+    }, {});
+    const allEnvsPairs = Object.entries(allEnvs)
+      .map(([k, v]) => `${k}=${v}`)
+      .join(" ");
+
+    msg += "\n\nTo preserve these environment variable, run the following command after opt-in:\n";
+    msg += clc.bold(`\tfirebase functions:env:add ${allEnvsPairs}\n`);
     logWarning(msg);
   }
 
