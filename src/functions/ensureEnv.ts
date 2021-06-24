@@ -16,7 +16,7 @@ const CONFIGSTORE_TTL = 1000 * 60 * 60 * 24; // 1 day
 const DEFAULT_ENV_KEYS = ["FIREBASE_CONFIG"];
 
 /**
- * Check if the EnvStore API is active.
+ * Check if the EnvStore API is active by querying the server.
  *
  * This is an bespoke method of checking whether user has opted in
  * to activate the EnvStore API.
@@ -24,30 +24,46 @@ const DEFAULT_ENV_KEYS = ["FIREBASE_CONFIG"];
  * We check for existance of non-emtpy ENV_ID=${ENVSTORE_INTERNAL_ID}
  * which is created when user "enables" the EnvStore API.
  */
-async function _check(projectId: string): Promise<boolean> {
+async function checkServer(projectId: string): Promise<boolean> {
   const resp = await envstore.getStore(projectId, ENVSTORE_INTERNAL_ID);
   return !!resp.vars;
 }
 
 /**
- * Cached check for active EnvStore API.
+ * Check if the EnvStore API is active by querying local cache.
+ *
+ * Active state is valid for {CONFIGSTORE_TTL}.
  */
-export async function check(projectId: string): Promise<boolean> {
-  // Check actice state from local cache.
-  const cached = configstore.get(CONFIGSTORE_KEY) as { lastActiveAt: string } | undefined;
-  if (cached?.lastActiveAt) {
-    const activeAt = new Date(cached.lastActiveAt);
+function checkCache(projectId: string): boolean {
+  const key = `${CONFIGSTORE_KEY}.${projectId}`;
+  const check = configstore.get(key);
+  if (check?.lastActiveAt) {
+    const activeAt = new Date(check.lastActiveAt);
     const diff = Date.now() - activeAt.getTime();
     if (diff <= CONFIGSTORE_TTL) {
       return true;
     }
-    configstore.delete(CONFIGSTORE_KEY);
+    // Clear expired cache entry.
+    configstore.delete(key);
   }
+  return false;
+}
 
-  // Query the EnvStore API to check active state.
-  const checked = await _check(projectId);
+function setCheckCache(projectId: string) {
+  const key = `${CONFIGSTORE_KEY}.${projectId}`;
+  configstore.set(key, { lastActiveAt: Date.now() });
+}
+
+/**
+ * Check for active EnvStore API.
+ */
+export async function checkEnvStore(projectId: string): Promise<boolean> {
+  if (checkCache(projectId)) {
+    return true;
+  }
+  const checked = await checkServer(projectId);
   if (checked) {
-    configstore.set(CONFIGSTORE_KEY, { lastActiveAt: Date.now() });
+    setCheckCache(projectId);
     return true;
   }
   return false;
@@ -106,7 +122,7 @@ async function getUserEnvs(projectId: string): Promise<UserEnv[]> {
  */
 export async function ensureEnvStore(options: any): Promise<void> {
   const projectId = getProjectId(options);
-  const isEnabled = await check(projectId);
+  const isEnabled = await checkEnvStore(projectId);
   if (isEnabled) {
     return;
   }

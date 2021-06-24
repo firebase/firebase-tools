@@ -38,7 +38,7 @@ describe("check", () => {
   it("calls EnvStore API if not active", async () => {
     getStore.onFirstCall().resolves({});
 
-    const checkResult = await ensureEnv.check(projectId);
+    const checkResult = await ensureEnv.checkEnvStore(projectId);
 
     expect(checkResult).to.be.false;
     expect(getStore).to.have.been.calledOnce;
@@ -47,7 +47,7 @@ describe("check", () => {
   it("calls EnvStore API (and caches state) if active", async () => {
     getStore.onFirstCall().resolves({ vars: { ENABLED: "1" } });
 
-    const checkResult = await ensureEnv.check(projectId);
+    const checkResult = await ensureEnv.checkEnvStore(projectId);
 
     expect(checkResult).to.be.true;
     expect(getStore).to.have.been.calledOnce;
@@ -56,8 +56,8 @@ describe("check", () => {
   it("uses cached result on subsequent calls", async () => {
     getStore.onFirstCall().resolves({ vars: { ENABLED: "1" } });
 
-    const checkResult0 = await ensureEnv.check(projectId);
-    const checkResult1 = await ensureEnv.check(projectId);
+    const checkResult0 = await ensureEnv.checkEnvStore(projectId);
+    const checkResult1 = await ensureEnv.checkEnvStore(projectId);
 
     expect(checkResult0).to.be.true;
     expect(checkResult1).to.be.true;
@@ -69,7 +69,7 @@ describe("check", () => {
     fakeConfigStore = { envstore: { lastActiveAt: expiredTime } };
     getStore.onFirstCall().resolves({ vars: { ENABLED: "1" } });
 
-    const checkResult = await ensureEnv.check(projectId);
+    const checkResult = await ensureEnv.checkEnvStore(projectId);
 
     expect(checkResult).to.be.true;
     expect(getStore).to.have.been.calledOnce;
