@@ -78,7 +78,7 @@ describe("check", () => {
   });
 });
 
-describe.only("getUserEnvs", () => {
+describe("getUserEnvs", () => {
   let existingBackendStub: sinon.SinonStub;
 
   const FUNCTION_SPEC: backend.FunctionSpec = {
