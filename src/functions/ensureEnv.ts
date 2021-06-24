@@ -13,6 +13,7 @@ import * as helper from "../deploy/functions/functionsDeployHelper";
 const ENVSTORE_INTERNAL_ID = "firebase-functions-internal";
 const CONFIGSTORE_KEY = "envstore";
 const CONFIGSTORE_TTL = 1000 * 60 * 60 * 24; // 1 day
+// TODO(taeold): Define default environment variables for functions somewhere else.
 const DEFAULT_ENV_KEYS = ["FIREBASE_CONFIG"];
 
 /**
@@ -80,11 +81,6 @@ export async function enable(projectId: string): Promise<void> {
   setCache(projectId);
 }
 
-interface UserEnv {
-  fnLabel: string;
-  envs: Record<string, string>;
-}
-
 /**
  * Lookup existing cloud functions and collect user-defined env variables.
  *
@@ -93,25 +89,28 @@ interface UserEnv {
  * env is significant because they will be removed on the next deploy following
  * EnvStore API activation.
  */
-async function getUserEnvs(projectId: string): Promise<UserEnv[]> {
-  const have = await backend.existingBackend({ projectId, filters: [] }, /* forceRefresh= */ true);
+export async function getUserEnvs(
+  projectId: string
+): Promise<Record<string, backend.EnvironmentVariables>[]> {
+  const have = await backend.existingBackend({ projectId, filters: [] }, /* forceRefresh= */ false);
 
-  const fnEnvs: UserEnv[] = [];
+  const fnEnvs: Record<string, backend.EnvironmentVariables>[] = [];
   for (const fn of have.cloudFunctions) {
     // Filter out non CF3 function instances.
     if (!deploymentTool.isFirebaseManaged(fn.labels || {})) {
       continue;
     }
-    const uenvs: Record<string, string> = {};
-    const envs = fn.environmentVariables;
-    if (envs && Object.keys(envs).length > 1) {
-      // Collect non-default env variables to print.
-      for (const [k, v] of Object.entries(envs)) {
-        if (!DEFAULT_ENV_KEYS.includes(k)) {
-          uenvs[k] = v;
-        }
-      }
-      fnEnvs.push({ fnLabel: helper.getFunctionLabel(fn), envs: uenvs });
+
+    // Filter out default environment variables.
+    const uenvs = Object.entries(fn.environmentVariables || {})
+      .filter(([k]) => !DEFAULT_ENV_KEYS.includes(k))
+      // we can't use `Object.fromEntries()`. Implemented below.
+      .reduce((obj: Record<string, string>, [key, val]) => {
+        obj[key] = val;
+        return obj;
+      }, {});
+    if (Object.keys(uenvs).length > 0) {
+      fnEnvs.push({ [helper.getFunctionLabel(fn)]: uenvs });
     }
   }
   return fnEnvs;
