@@ -17,7 +17,7 @@ const apiClient = new Client({ urlPrefix: firebaseApiOrigin, apiVersion: "v1alph
 export async function getStore(projectId: string, envStoreId: string): Promise<EnvStoreEntry> {
   let response;
   try {
-    response = await apiClient.get<typeof body>(`/projects/${projectId}/envStores/${envStoreId}`);
+    response = await apiClient.get<EnvStoreEntry>(`/projects/${projectId}/envStores/${envStoreId}`);
   } catch (err) {
     throw new FirebaseError(`Failed to make request: ${err.message}`, { original: err });
   }
