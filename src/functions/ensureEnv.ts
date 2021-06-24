@@ -49,7 +49,7 @@ function checkCache(projectId: string): boolean {
   return false;
 }
 
-function setCheckCache(projectId: string) {
+function setCache(projectId: string) {
   const key = `${CONFIGSTORE_KEY}.${projectId}`;
   configstore.set(key, { lastActiveAt: Date.now() });
 }
@@ -63,7 +63,7 @@ export async function checkEnvStore(projectId: string): Promise<boolean> {
   }
   const checked = await checkServer(projectId);
   if (checked) {
-    setCheckCache(projectId);
+    setCache(projectId);
     return true;
   }
   return false;
@@ -77,6 +77,7 @@ export async function checkEnvStore(projectId: string): Promise<boolean> {
  */
 export async function enable(projectId: string): Promise<void> {
   await envstore.patchStore(projectId, ENVSTORE_INTERNAL_ID, { ENABLED: "1" });
+  setCache(projectId);
 }
 
 interface UserEnv {
