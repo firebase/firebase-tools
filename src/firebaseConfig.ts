@@ -29,34 +29,40 @@ type DatabaseMany = ({
 ) &
   DeployAsset)[];
 
+type HostingRedirects = ({ source: string } | { regex: string }) & {
+  destination: string;
+  type: number;
+};
+
+type HostingRewrites = ({ source: string } | { regex: string }) &
+  (
+    | { destination: string }
+    | { function: string }
+    | {
+        run: {
+          serviceId: string;
+          region?: string;
+        };
+      }
+    | { dynamicLinks: boolean }
+  );
+
+type HostingHeaders = ({ source: string } | { regex: string }) & {
+  headers: {
+    key: string;
+    value: string;
+  }[];
+};
+
 type HostingBase = {
   public: string;
   ignore?: string[];
   appAssociation?: string;
   cleanUrls?: boolean;
   trailingSlash?: boolean;
-  redirects?: {
-    source: string;
-    destination: string;
-    type: number;
-  }[];
-  rewrites?: {
-    source: string;
-    destination?: string;
-    function?: string;
-    run?: {
-      serviceId: string;
-      region?: "us-central1";
-    };
-    dynamicLinks?: boolean;
-  }[];
-  headers?: {
-    source: string;
-    headers: {
-      key: string;
-      value: string;
-    }[];
-  }[];
+  redirects?: HostingRedirects[];
+  rewrites?: HostingRewrites[];
+  headers?: HostingHeaders[];
   i18n?: {
     root: string;
   };
