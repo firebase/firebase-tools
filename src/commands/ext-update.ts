@@ -12,6 +12,7 @@ import { displayNode10UpdateBillingNotice } from "../extensions/billingMigration
 import { enableBilling } from "../extensions/checkProjectBilling";
 import { checkBillingEnabled } from "../gcp/cloudbilling";
 import * as extensionsApi from "../extensions/extensionsApi";
+import * as provisioningHelper from "../extensions/provisioningHelper";
 import {
   ensureExtensionsApiEnabled,
   logPrefix,
@@ -232,6 +233,9 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         newSourceOrigin === SourceOrigin.OFFICIAL_EXTENSION ||
         newSourceOrigin === SourceOrigin.OFFICIAL_EXTENSION_VERSION;
       await displayChanges(existingSpec, newSpec, isOfficial);
+
+      await provisioningHelper.checkProductsProvisioned(projectId, newSpec);
+
       if (newSpec.billingRequired) {
         const enabled = await checkBillingEnabled(projectId);
         if (!enabled) {
