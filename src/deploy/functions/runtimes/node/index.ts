@@ -18,8 +18,8 @@ export async function tryCreateDelegate(
   context: args.Context,
   options: Options
 ): Promise<Delegate | undefined> {
-  const sourceDirName = options.config.get("functions.source") as string;
-  const sourceDir = options.config.path(sourceDirName);
+  const projectRelativeSourceDir = options.config.get("functions.source") as string;
+  const sourceDir = options.config.path(projectRelativeSourceDir);
   const packageJsonPath = path.join(sourceDir, "package.json");
 
   if (!(await promisify(fs.exists)(packageJsonPath))) {
@@ -40,13 +40,7 @@ export async function tryCreateDelegate(
     throw new FirebaseError(`Unexpected runtime ${runtime}`);
   }
 
-  return new Delegate(
-    getProjectId(options),
-    options.config.projectDir,
-    sourceDirName,
-    sourceDir,
-    runtime
-  );
+  return new Delegate(getProjectId(options), options.config.projectDir, sourceDir, runtime);
 }
 
 // TODO(inlined): Consider moving contents in parseRuntimeAndValidateSDK and validate around.
@@ -59,7 +53,6 @@ export class Delegate {
   constructor(
     private readonly projectId: string,
     private readonly projectDir: string,
-    private readonly sourceDirName: string,
     private readonly sourceDir: string,
     public readonly runtime: runtimes.Runtime
   ) {}
@@ -78,7 +71,8 @@ export class Delegate {
   validate(): Promise<void> {
     versioning.checkFunctionsSDKVersion(this.sdkVersion);
 
-    validate.packageJsonIsValid(this.sourceDirName, this.sourceDir, this.projectDir);
+    const relativeDir = path.relative(this.projectDir, this.sourceDir);
+    validate.packageJsonIsValid(relativeDir, this.sourceDir, this.projectDir);
 
     return Promise.resolve();
   }
