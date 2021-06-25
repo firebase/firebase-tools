@@ -14,6 +14,7 @@ import { Command } from "../command";
 import { FirebaseError } from "../error";
 import * as getProjectId from "../getProjectId";
 import * as extensionsApi from "../extensions/extensionsApi";
+import * as provisioningHelper from "../extensions/provisioningHelper";
 import { displayWarningPrompts } from "../extensions/warnings";
 import * as paramHelper from "../extensions/paramHelper";
 import {
@@ -57,6 +58,8 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
     "Installing your extension instance. This usually takes 3 to 5 minutes..."
   );
   try {
+    await provisioningHelper.checkProductsProvisioned(projectId, spec);
+
     if (spec.billingRequired) {
       const enabled = await checkBillingEnabled(projectId);
       if (!enabled) {

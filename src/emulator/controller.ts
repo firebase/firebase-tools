@@ -61,7 +61,7 @@ async function getAndCheckAddress(emulator: Emulators, options: Options): Promis
   let port;
   let findAvailablePort = false;
   if (portVal) {
-    port = parseInt(portVal, 10);
+    port = parseInt(`${portVal}`, 10);
   } else {
     port = Constants.getDefaultPort(emulator);
     findAvailablePort = FIND_AVAILBLE_PORT_BY_DEFAULT[emulator];
@@ -771,15 +771,6 @@ export async function exportEmulatorData(exportPath: string, options: any) {
 
     if (!prompt) {
       throw new FirebaseError("Command aborted", { exit: 1 });
-    }
-  }
-
-  // Remove all existing data (metadata.json will be overwritten automatically)
-  if (existingMetadata) {
-    if (existingMetadata.firestore) {
-      const firestorePath = path.join(exportAbsPath, existingMetadata.firestore.path);
-      utils.logBullet(`Deleting directory ${firestorePath}`);
-      rimraf.sync(firestorePath);
     }
   }
 
