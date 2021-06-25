@@ -6,6 +6,31 @@
 //
 
 // base configs
+type CloudRunRegions =
+  | "asia-east1"
+  | "asia-east2"
+  | "asia-northeast1"
+  | "asia-northeast2"
+  | "asia-northeast3"
+  | "asia-south1"
+  | "asia-southeast1"
+  | "asia-southeast2"
+  | "australia-southeast1"
+  | "europe-north1"
+  | "europe-west1"
+  | "europe-west2"
+  | "europe-west3"
+  | "europe-west4"
+  | "europe-west6"
+  | "northamerica-northeast1"
+  | "southamerica-east1"
+  | "us-central1"
+  | "us-east1"
+  | "us-east4"
+  | "us-west1";
+
+type CloudFunctionRuntimes = "nodejs10" | "nodejs12" | "nodejs14";
+
 type DeployAsset = {
   predeploy?: string | string[];
   postdeploy?: string | string[];
@@ -41,7 +66,7 @@ type HostingRewrites = ({ source: string } | { regex: string }) &
     | {
         run: {
           serviceId: string;
-          region?: string;
+          region?: CloudRunRegions;
         };
       }
     | { dynamicLinks: boolean }
@@ -110,7 +135,7 @@ export type FunctionsConfig = {
   // TODO: Add types for "backend"
   source?: string;
   ignore?: string[];
-  runtime?: "nodejs10" | "nodejs12" | "nodejs14";
+  runtime?: CloudFunctionRuntimes;
 } & DeployAsset;
 
 export type HostingConfig = HostingOne | HostingMany;
