@@ -5,35 +5,36 @@
 // 'npm run generate:json-schema' to regenerate the schema files.
 //
 
-export type DatabaseConfig =
+// base configs
+type DeployAsset = {
+  predeploy?: string | string[];
+  postdeploy?: string | string[];
+};
+
+type DatabaseOne = {
+  rules: string;
+} & DeployAsset;
+
+type DatabaseMany = ({
+  rules: string;
+} & (
   | {
-      rules?: string;
+      instance: string;
+      target?: string;
     }
   | {
-      target?: string;
       instance?: string;
-      rules: string;
-    }[];
+      target: string;
+    }
+) &
+  DeployAsset)[];
 
-export type FirestoreConfig = {
-  rules?: string;
-  indexes?: string;
-};
-
-export type FunctionsConfig = {
-  // TODO: Add types for "backend" and "runtime"
-  source?: string;
-  ignore?: string[];
-  predeploy?: string[];
-};
-
-export type HostingConfig = {
+type HostingBase = {
   public: string;
   ignore?: string[];
   appAssociation?: string;
   cleanUrls?: boolean;
   trailingSlash?: boolean;
-  postdeploy?: string;
   redirects?: {
     source: string;
     destination: string;
@@ -45,7 +46,7 @@ export type HostingConfig = {
     function?: string;
     run?: {
       serviceId: string;
-      region?: string;
+      region?: "us-central1";
     };
     dynamicLinks?: boolean;
   }[];
@@ -61,18 +62,58 @@ export type HostingConfig = {
   };
 };
 
-export type StorageConfig =
-  | {
-      rules: string;
-    }
-  | {
-      bucket: string;
-      rules: string;
-    }[];
+type HostingOne = HostingBase &
+  DeployAsset & {
+    site?: string;
+    target?: string;
+  };
+
+type HostingMany = (HostingBase &
+  (
+    | {
+        site: string;
+        target?: string;
+      }
+    | {
+        site?: string;
+        target: string;
+      }
+  ) &
+  DeployAsset)[];
+
+type StorageOne = {
+  rules: string;
+  target?: string;
+} & DeployAsset;
+
+type StorageMany = ({
+  rules: string;
+  bucket: string;
+  target?: string;
+} & DeployAsset)[];
+
+// Full Configs
+export type DatabaseConfig = DatabaseOne | DatabaseMany;
+
+export type FirestoreConfig = {
+  rules?: string;
+  indexes?: string;
+} & DeployAsset;
+
+export type FunctionsConfig = {
+  // TODO: Add types for "backend"
+  source?: string;
+  ignore?: string[];
+  runtime?: string;
+} & DeployAsset;
+
+export type HostingConfig = HostingOne | HostingMany;
+
+export type StorageConfig = StorageOne | StorageMany;
 
 export type RemoteConfigConfig = {
   template: string;
-};
+} & DeployAsset;
 
 export type EmulatorsConfig = {
   auth?: {
