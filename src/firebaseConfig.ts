@@ -75,6 +75,7 @@ type HostingOne = HostingBase &
   };
 
 type HostingMany = (HostingBase &
+  DeployAsset &
   (
     | {
         site: string;
@@ -84,8 +85,7 @@ type HostingMany = (HostingBase &
         site?: string;
         target: string;
       }
-  ) &
-  DeployAsset)[];
+  ))[];
 
 type StorageOne = {
   rules: string;
