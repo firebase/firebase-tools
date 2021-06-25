@@ -5,7 +5,7 @@
 // 'npm run generate:json-schema' to regenerate the schema files.
 //
 
-// base configs
+// Sourced from - https://firebase.google.com/docs/hosting/full-config#rewrite-cloud-run-container
 type CloudRunRegions =
   | "asia-east1"
   | "asia-east2"
