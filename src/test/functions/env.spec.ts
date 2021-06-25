@@ -336,3 +336,18 @@ describe("getUserEnvs", () => {
     expect(envs).to.deep.equal({});
   });
 });
+
+describe("findDups", () => {
+  it("detects no duplicate keys if there are none.", () => {
+    expect(env.findDups([{ FOO: "foo" }, { BAR: "bar" }])).to.have.members([]);
+  });
+
+  it("detects duplicate keys", () => {
+    expect(
+      env.findDups([
+        { FOO: "foo1", BAR: "bar1", BAZ: "baz" },
+        { BAR: "bar2", FOO: "foo2" },
+      ])
+    ).to.have.members(["FOO", "BAR"]);
+  });
+});

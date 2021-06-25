@@ -318,6 +318,25 @@ export async function getUserEnvs(
 }
 
 /**
+ * Find duplicate keys in an array of environment variables.
+ *
+ * Exported for testing-only.
+ */
+export function findDups(envs: backend.EnvironmentVariables[]): string[] {
+  const seen = new Set<string>();
+  const dupKeys = envs.reduce((acc, envs) => {
+    for (const k of Object.keys(envs)) {
+      if (seen.has(k)) {
+        acc.add(k);
+      }
+      seen.add(k);
+    }
+    return acc;
+  }, new Set<string>());
+  return Array.from(dupKeys.keys());
+}
+
+/**
  * Check if EnvStore API is enabled on the project.
  * If not enabled, prompt user to enable it.
  */
@@ -365,10 +384,19 @@ export async function ensureEnvStore(options: any): Promise<void> {
     const allEnvsPairs = Object.entries(allEnvs)
       .map(([k, v]) => `${k}=${v}`)
       .join(" ");
-
     msg += "\n\nTo preserve these environment variable, run the following command after opt-in:\n";
     msg += clc.bold(`\tfirebase functions:env:add ${allEnvsPairs}\n`);
     logWarning(msg);
+
+    // Detect duplicate keys for extra warning.
+    const dupKeys = findDups(Object.values(userEnvs));
+    if (dupKeys.length > 0) {
+      logWarning(
+        `You have multiple values for keys ${clc.bold(
+          dupKeys.join(", ")
+        )}. Make sure you choose one value for each key before proceeding.\n`
+      );
+    }
   }
 
   const proceed = await promptOnce({
