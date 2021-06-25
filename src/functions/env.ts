@@ -107,7 +107,7 @@ export function parseKvArgs(args: string[]): Record<string, string> {
  */
 export async function getEnvs(projectId: string): Promise<Record<string, string>> {
   const envStore = await envstore.getStore(projectId, ENVSTORE_ID);
-  return envStore.vars;
+  return envStore.vars || {};
 }
 
 /**
