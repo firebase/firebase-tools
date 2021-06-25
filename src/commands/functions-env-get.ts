@@ -1,17 +1,16 @@
 import { Command } from "../command";
-import { ensureEnvStore } from "../functions/ensureEnv";
 import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
-import * as fenv from "../functions/env";
+import * as env from "../functions/env";
 import * as getProjectId from "../getProjectId";
 
 export default new Command("functions:env:get")
   .description("fetch environment variables")
   .before(requirePermissions, ["firebase.envstores.get", "firebase.envstores.list"])
-  .before(ensureEnvStore)
+  .before(env.ensureEnvStore)
   .action(async (options) => {
     const projectId = getProjectId(options);
-    const envs = await fenv.getEnvs(projectId);
-    logger.info(fenv.formatEnv(envs));
+    const envs = await env.getEnvs(projectId);
+    logger.info(env.formatEnv(envs));
     return envs;
   });

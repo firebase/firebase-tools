@@ -1,24 +1,23 @@
 import * as clc from "cli-color";
 
 import { Command } from "../command";
-import { ensureEnvStore } from "../functions/ensureEnv";
 import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
-import * as fenv from "../functions/env";
+import * as env from "../functions/env";
 import * as getProjectId from "../getProjectId";
 import * as utils from "../utils";
 
 export default new Command("functions:env:add [values...]")
   .description("add environment variables")
   .before(requirePermissions, ["firebase.envstores.create", "firebase.envstores.update"])
-  .before(ensureEnvStore)
+  .before(env.ensureEnvStore)
   .action(async (args: string[], options: any) => {
     if (!args.length) {
       return utils.reject("Must supply at least one key/value pair, e.g. " + clc.bold("FOO=bar"));
     }
     const projectId = getProjectId(options);
-    const addEnvs: Record<string, string> = fenv.parseKvArgs(args);
-    const envs = await fenv.addEnvs(projectId, addEnvs);
-    logger.info(fenv.formatEnv(envs));
+    const addEnvs: Record<string, string> = env.parseKvArgs(args);
+    const envs = await env.addEnvs(projectId, addEnvs);
+    logger.info(env.formatEnv(envs));
     return envs;
   });

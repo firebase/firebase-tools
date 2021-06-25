@@ -1,9 +1,8 @@
 import * as clc from "cli-color";
 
 import { Command } from "../command";
-import { ensureEnvStore } from "../functions/ensureEnv";
 import { requirePermissions } from "../requirePermissions";
-import * as fenv from "../functions/env";
+import * as env from "../functions/env";
 import * as getProjectId from "../getProjectId";
 import * as utils from "../utils";
 
@@ -18,7 +17,7 @@ export default new Command("functions:env:clone")
     "firebase.envstores.list",
     "firebase.envstores.update",
   ])
-  .before(ensureEnvStore)
+  .before(env.ensureEnvStore)
   .action(async (options: any) => {
     const projectId = getProjectId(options);
     if (!options.from) {
@@ -37,7 +36,7 @@ export default new Command("functions:env:clone")
     } else if (options.except) {
       except = options.except.split(",");
     }
-    const envs = await fenv.clone({
+    const envs = await env.clone({
       fromProjectId: options.from,
       toProjectId: projectId,
       only,
