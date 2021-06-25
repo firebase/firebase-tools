@@ -40,12 +40,7 @@ export async function tryCreateDelegate(
     throw new FirebaseError(`Unexpected runtime ${runtime}`);
   }
 
-  return new Delegate(
-    getProjectId(options),
-    options.config.projectDir,
-    sourceDir,
-    runtime
-  );
+  return new Delegate(getProjectId(options), options.config.projectDir, sourceDir, runtime);
 }
 
 // TODO(inlined): Consider moving contents in parseRuntimeAndValidateSDK and validate around.
