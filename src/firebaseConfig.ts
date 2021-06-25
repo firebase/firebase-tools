@@ -110,7 +110,7 @@ export type FunctionsConfig = {
   // TODO: Add types for "backend"
   source?: string;
   ignore?: string[];
-  runtime?: string;
+  runtime?: "nodejs10" | "nodejs12" | "nodejs14";
 } & DeployAsset;
 
 export type HostingConfig = HostingOne | HostingMany;

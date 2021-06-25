@@ -347,6 +347,11 @@
                     ]
                 },
                 "runtime": {
+                    "enum": [
+                        "nodejs10",
+                        "nodejs12",
+                        "nodejs14"
+                    ],
                     "type": "string"
                 },
                 "source": {
