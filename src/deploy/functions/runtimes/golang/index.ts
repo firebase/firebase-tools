@@ -22,8 +22,8 @@ export async function tryCreateDelegate(
   context: args.Context,
   options: Options
 ): Promise<Delegate | undefined> {
-  const sourceDirName = options.config.get("functions.source") as string;
-  const sourceDir = options.config.path(sourceDirName);
+  const relativeSourceDir = options.config.get("functions.source") as string;
+  const sourceDir = options.config.path(relativeSourceDir);
   const goModPath = path.join(sourceDir, "go.mod");
   const projectId = getProjectId(options);
 
@@ -53,11 +53,11 @@ export async function tryCreateDelegate(
     runtime = VERSION_TO_RUNTIME[module.version];
   }
 
-  return new Delegate(projectId, sourceDirName, sourceDir, runtime, module);
+  return new Delegate(projectId, sourceDir, runtime, module);
 }
 
 // A module can be much more complicated than this, but this is all we need so far.
-// for a full reference, see https://golang.org/doc/modules/gomod-ref
+// For a full reference, see https://golang.org/doc/modules/gomod-ref
 interface Module {
   module: string;
   version: string;
@@ -119,6 +119,13 @@ export function parseModule(mod: string): Module {
     }
   }
 
+  if (!module.module) {
+    throw new FirebaseError("Module has no name");
+  }
+  if (!module.version) {
+    throw new FirebaseError(`Module ${module.module} has no go version`);
+  }
+
   return module;
 }
 
@@ -127,7 +134,6 @@ export class Delegate {
 
   constructor(
     private readonly projectId: string,
-    private readonly sourceDirName: string,
     private readonly sourceDir: string,
     public readonly runtime: runtimes.Runtime,
     private readonly module: Module
