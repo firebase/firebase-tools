@@ -60,7 +60,7 @@ export async function getParams(options: any, extensionSpec: ExtensionSpec) {
     unsubbedParamsWithoutDefaults,
     extensionSpec.params
   );
-  // Run a substitution to support  params that reference auto populated params.
+  // Run a substitution to support params that reference auto populated params.
   return extensionsHelper.substituteParams<Record<string, string>>(unsubbedParams, unsubbedParams);
 }
 

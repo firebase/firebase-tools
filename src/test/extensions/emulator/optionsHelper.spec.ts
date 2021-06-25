@@ -52,15 +52,13 @@ describe("optionsHelper", () => {
         USER_PARAM2: "val2",
       });
 
-      expect(optionsHelper.getParams(testOptions, testSpec)).to.eventually.deep.eq(
-        Object.assign(
-          {
-            USER_PARAM1: "val1",
-            USER_PARAM2: "val2",
-          },
-          autoParams
-        )
-      );
+      expect(optionsHelper.getParams(testOptions, testSpec)).to.eventually.deep.eq({
+        ...{
+          USER_PARAM1: "val1",
+          USER_PARAM2: "val2",
+        },
+        ...autoParams,
+      });
     });
 
     it("should subsitute into params that reference other params", () => {
@@ -84,16 +82,14 @@ describe("optionsHelper", () => {
         USER_PARAM3: "${USER_PARAM2}",
       });
 
-      expect(optionsHelper.getParams(testOptions, testSpec)).to.eventually.deep.eq(
-        Object.assign(
-          {
-            USER_PARAM1: "test-hello",
-            USER_PARAM2: "val2",
-            USER_PARAM3: "val2",
-          },
-          autoParams
-        )
-      );
+      expect(optionsHelper.getParams(testOptions, testSpec)).to.eventually.deep.eq({
+        ...{
+          USER_PARAM1: "test-hello",
+          USER_PARAM2: "val2",
+          USER_PARAM3: "val2",
+        },
+        ...autoParams,
+      });
     });
 
     it("should fallback to defaults if a value isn't provided", () => {
@@ -111,15 +107,13 @@ describe("optionsHelper", () => {
       ];
       readParamsFileStub.resolves({});
 
-      expect(optionsHelper.getParams(testOptions, testSpec)).to.eventually.deep.eq(
-        Object.assign(
-          {
-            USER_PARAM1: "hi",
-            USER_PARAM2: "hello",
-          },
-          autoParams
-        )
-      );
+      expect(optionsHelper.getParams(testOptions, testSpec)).to.eventually.deep.eq({
+        ...{
+          USER_PARAM1: "hi",
+          USER_PARAM2: "hello",
+        },
+        ...autoParams,
+      });
     });
   });
 });

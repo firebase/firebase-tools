@@ -53,14 +53,14 @@ export enum SourceOrigin {
 }
 
 export const logPrefix = "extensions";
-export const validLicenses = ["apache-2.0"];
+const VALID_LICENSES = ["apache-2.0"];
 // Extension archive URLs must be HTTPS.
-export const urlRegex = /^https:/;
+export const URL_REGEX = /^https:/;
 export const EXTENSIONS_BUCKET_NAME = envOverride(
   "FIREBASE_EXTENSIONS_UPLOAD_BUCKET",
   "firebase-ext-eap-uploads"
 );
-const autopopulatedParamNames = [
+const AUTOPOPULATED_PARAM_NAMES = [
   "PROJECT_ID",
   "STORAGE_BUCKET",
   "EXT_INSTANCE_ID",
@@ -172,14 +172,12 @@ export function validateCommandLineParams(
   envVars: Record<string, string>,
   paramSpec: Param[]
 ): void {
-  const paramNames = paramSpec.map((param) => {
-    return param.param;
-  });
-  const misnamedParams = Object.keys(envVars).filter((key: any) => {
-    return !paramNames.includes(key) && !autopopulatedParamNames.includes(key);
+  const paramNames = paramSpec.map((p) => p.param);
+  const misnamedParams = Object.keys(envVars).filter((key: string) => {
+    return !paramNames.includes(key) && !AUTOPOPULATED_PARAM_NAMES.includes(key);
   });
   if (misnamedParams.length) {
-    logger.info(
+    logger.warn(
       "Warning: The following params were specified in your env file but do not exist in the extension spec: " +
         `${misnamedParams.join(", ")}.`
     );
@@ -216,9 +214,9 @@ export function validateSpec(spec: any) {
     errors.push("extension.yaml is missing required field: license");
   } else {
     const formattedLicense = String(spec.license).toLocaleLowerCase();
-    if (!validLicenses.includes(formattedLicense)) {
+    if (!VALID_LICENSES.includes(formattedLicense)) {
       errors.push(
-        `license field in extension.yaml is invalid. Valid value(s): ${validLicenses.join(", ")}`
+        `license field in extension.yaml is invalid. Valid value(s): ${VALID_LICENSES.join(", ")}`
       );
     }
   }
@@ -488,7 +486,7 @@ export async function createSourceFromLocation(
   let packageUri: string;
   let extensionRoot: string;
   let objectPath = "";
-  if (!urlRegex.test(sourceUri)) {
+  if (!URL_REGEX.test(sourceUri)) {
     const uploadSpinner = ora.default(" Archiving and uploading extension source code");
     try {
       uploadSpinner.start();
@@ -633,7 +631,7 @@ export async function instanceIdExists(projectId: string, instanceId: string): P
 }
 
 export function isUrlPath(extInstallPath: string): boolean {
-  return urlRegex.test(extInstallPath);
+  return URL_REGEX.test(extInstallPath);
 }
 
 export function isLocalPath(extInstallPath: string): boolean {
