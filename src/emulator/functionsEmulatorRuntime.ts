@@ -1076,13 +1076,12 @@ async function initializeRuntime(
     try {
       triggerModule = require(frb.cwd);
     } catch (err) {
-      if (err.code === "ERR_REQUIRE_ESM") {
-        // tslint:disable:no-unsafe-assignment
-        triggerModule = await dynamicImport(require.resolve(frb.cwd));
-      } else {
+      if (err.code !== "ERR_REQUIRE_ESM") {
         await moduleResolutionDetective(frb, err);
         return;
       }
+      // tslint:disable:no-unsafe-assignment
+      triggerModule = await dynamicImport(require.resolve(frb.cwd));
     }
   }
   if (extensionTriggers) {
