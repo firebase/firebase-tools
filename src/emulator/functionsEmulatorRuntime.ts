@@ -34,10 +34,7 @@ let developerPkgJSON: PackageJSON | undefined;
  * See https://github.com/microsoft/TypeScript/issues/43329.
  */
 // eslint-disable-next-line @typescript-eslint/no-implied-eval
-const dynamicImport = new Function(
-  "modulePath",
-  "console.log(modulePath); return import(modulePath)"
-);
+const dynamicImport = new Function("modulePath", "return import(modulePath)");
 
 function isFeatureEnabled(
   frb: FunctionsRuntimeBundle,
