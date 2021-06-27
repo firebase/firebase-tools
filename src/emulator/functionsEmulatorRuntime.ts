@@ -27,6 +27,18 @@ import * as _ from "lodash";
 let triggers: EmulatedTriggerMap | undefined;
 let developerPkgJSON: PackageJSON | undefined;
 
+/**
+ * Dynamically load import function to prevent TypeScript from
+ * transpiling into a require.
+ *
+ * See https://github.com/microsoft/TypeScript/issues/43329.
+ */
+// eslint-disable-next-line @typescript-eslint/no-implied-eval
+const dynamicImport = new Function(
+  "modulePath",
+  "console.log(modulePath); return import(modulePath)"
+);
+
 function isFeatureEnabled(
   frb: FunctionsRuntimeBundle,
   feature: keyof FunctionsRuntimeFeatures
@@ -1065,8 +1077,13 @@ async function initializeRuntime(
     try {
       triggerModule = require(frb.cwd);
     } catch (err) {
-      await moduleResolutionDetective(frb, err);
-      return;
+      if (err.code === "ERR_REQUIRE_ESM") {
+        // tslint:disable:no-unsafe-assignment
+        triggerModule = await dynamicImport(require.resolve(frb.cwd));
+      } else {
+        await moduleResolutionDetective(frb, err);
+        return;
+      }
     }
   }
   if (extensionTriggers) {
