@@ -14,15 +14,15 @@ var EXIT = function () {
  * See https://github.com/microsoft/TypeScript/issues/43329.
  */
 // eslint-disable-next-line @typescript-eslint/no-implied-eval
-var dynamicImport = new Function("modulePath", "return import(modulePath)");
+const dynamicImport = new Function("modulePath", "return import(modulePath)");
 
-function loadModule(packageDir) {
+async function loadModule(packageDir) {
   try {
-    return Promise.resolve(require(packageDir));
+    return require(packageDir);
   } catch (e) {
     if (e.code === "ERR_REQUIRE_ESM") {
-      var pkg = require.resolve(packageDir);
-      return dynamicImport(pkg);
+      const mod = await dynamicImport(require.resolve(packageDir));
+      return mod;
     }
     throw e;
   }
