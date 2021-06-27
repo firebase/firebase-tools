@@ -579,6 +579,7 @@ async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
   // Stub the admin module in the require cache
   require.cache[adminResolution.resolution] = {
     exports: proxiedAdminModule,
+    path: path.dirname(adminResolution.resolution)
   };
 
   logDebug("firebase-admin has been stubbed.", {
@@ -788,6 +789,7 @@ async function initializeFunctionsConfigHelper(frb: FunctionsRuntimeBundle): Pro
   // Stub the functions module in the require cache
   require.cache[functionsResolution.resolution] = {
     exports: proxiedFunctionsModule,
+    path: path.dirname(functionsResolution.resolution)
   };
 
   logDebug("firebase-functions has been stubbed.", {
