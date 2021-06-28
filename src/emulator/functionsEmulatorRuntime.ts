@@ -1,7 +1,9 @@
 import { EmulatorLog } from "./types";
 import { CloudFunction, DeploymentOptions, https } from "firebase-functions";
 import {
+  ParsedTriggerDefinition,
   EmulatedTrigger,
+  emulatedFunctionsByRegion,
   EmulatedTriggerDefinition,
   EmulatedTriggerMap,
   EmulatedTriggerType,
@@ -25,6 +27,15 @@ import * as _ from "lodash";
 let triggers: EmulatedTriggerMap | undefined;
 let developerPkgJSON: PackageJSON | undefined;
 
+/**
+ * Dynamically load import function to prevent TypeScript from
+ * transpiling into a require.
+ *
+ * See https://github.com/microsoft/TypeScript/issues/43329.
+ */
+// eslint-disable-next-line @typescript-eslint/no-implied-eval
+const dynamicImport = new Function("modulePath", "return import(modulePath)");
+
 function isFeatureEnabled(
   frb: FunctionsRuntimeBundle,
   feature: keyof FunctionsRuntimeFeatures
@@ -36,10 +47,11 @@ function noOp(): false {
   return false;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function requireAsync(moduleName: string, opts?: { paths: string[] }): Promise<any> {
   return new Promise((res, rej) => {
     try {
-      res(require(require.resolve(moduleName, opts)));
+      res(require(require.resolve(moduleName, opts))); // eslint-disable-line @typescript-eslint/no-var-requires
     } catch (e) {
       rej(e);
     }
@@ -58,8 +70,8 @@ function requireResolveAsync(moduleName: string, opts?: { paths: string[] }): Pr
 
 interface PackageJSON {
   engines?: { node?: string };
-  dependencies: { [name: string]: any };
-  devDependencies: { [name: string]: any };
+  dependencies: { [name: string]: any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+  devDependencies: { [name: string]: any }; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
 interface ModuleResolution {
@@ -77,7 +89,7 @@ interface SuccessfulModuleResolution {
 }
 
 interface ProxyTarget extends Object {
-  [key: string]: any;
+  [key: string]: any; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
 /*
@@ -189,7 +201,7 @@ class Proxied<T extends ProxyTarget> {
    * Return the final proxied object.
    */
   finalize(): T {
-    return this.proxy as T;
+    return this.proxy;
   }
 }
 
@@ -531,14 +543,17 @@ async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
             "runtime-status",
             "The Firebase Authentication emulator is running, but your 'firebase-admin' dependency is below version 9.3.0, so calls to Firebase Authentication will affect production."
           ).log();
-        }
-
-        const auth = defaultApp.auth();
-        if (typeof (auth as any).setJwtVerificationEnabled === "function") {
-          logDebug("auth.setJwtVerificationEnabled(false)", {});
-          (auth as any).setJwtVerificationEnabled(false);
-        } else {
-          logDebug("auth.setJwtVerificationEnabled not available", {});
+        } else if (compareVersionStrings(adminResolution.version, "9.4.2") <= 0) {
+          // Between firebase-admin versions 9.3.0 and 9.4.2 (inclusive) we used the
+          // "auth.setJwtVerificationEnabled" hack to disable JWT verification while emulating.
+          // See: https://github.com/firebase/firebase-admin-node/pull/1148
+          const auth = defaultApp.auth();
+          if (typeof (auth as any).setJwtVerificationEnabled === "function") {
+            logDebug("auth.setJwtVerificationEnabled(false)", {});
+            (auth as any).setJwtVerificationEnabled(false);
+          } else {
+            logDebug("auth.setJwtVerificationEnabled not available", {});
+          }
         }
       }
 
@@ -561,6 +576,7 @@ async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
   // Stub the admin module in the require cache
   require.cache[adminResolution.resolution] = {
     exports: proxiedAdminModule,
+    path: path.dirname(adminResolution.resolution),
   };
 
   logDebug("firebase-admin has been stubbed.", {
@@ -675,7 +691,7 @@ async function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): Pr
   if (frb.triggerId) {
     // Runtime values are based on information from the bundle. Proper information for this is
     // available once the target code has been loaded, which is too late.
-    const service = frb.triggerId || "";
+    const service = frb.targetName || "";
     const target = service.replace(/-/g, ".");
     const mode = frb.triggerType === EmulatedTriggerType.BACKGROUND ? "event" : "http";
 
@@ -711,6 +727,14 @@ async function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): Pr
   // Make firebase-admin point at the Auth emulator
   if (frb.emulators.auth) {
     process.env[Constants.FIREBASE_AUTH_EMULATOR_HOST] = formatHost(frb.emulators.auth);
+  }
+
+  // Make firebase-admin point at the Storage emulator
+  if (frb.emulators.storage) {
+    process.env[Constants.FIREBASE_STORAGE_EMULATOR_HOST] = formatHost(frb.emulators.storage);
+    process.env[Constants.CLOUD_STORAGE_EMULATOR_HOST] = `http://${formatHost(
+      frb.emulators.storage
+    )}`;
   }
 
   if (frb.emulators.pubsub) {
@@ -762,6 +786,7 @@ async function initializeFunctionsConfigHelper(frb: FunctionsRuntimeBundle): Pro
   // Stub the functions module in the require cache
   require.cache[functionsResolution.resolution] = {
     exports: proxiedFunctionsModule,
+    path: path.dirname(functionsResolution.resolution),
   };
 
   logDebug("firebase-functions has been stubbed.", {
@@ -876,9 +901,11 @@ async function processBackground(
 
   // This is due to the fact that the Firestore emulator sends payloads in a newer
   // format than production firestore.
-  if (context.resource && context.resource.name) {
-    logDebug("ProcessBackground: lifting resource.name from resource", context.resource);
-    context.resource = context.resource.name;
+  if (!proto.eventType || !proto.eventType.startsWith("google.storage")) {
+    if (context.resource && context.resource.name) {
+      logDebug("ProcessBackground: lifting resource.name from resource", context.resource);
+      context.resource = context.resource.name;
+    }
   }
 
   await runBackground({ data, context }, trigger.getRawFunction());
@@ -1018,7 +1045,7 @@ async function invokeTrigger(
 async function initializeRuntime(
   frb: FunctionsRuntimeBundle,
   serializedFunctionTrigger?: string,
-  extensionTriggers?: EmulatedTriggerDefinition[]
+  extensionTriggers?: ParsedTriggerDefinition[]
 ): Promise<EmulatedTriggerMap | undefined> {
   logDebug(`Disabled runtime features: ${JSON.stringify(frb.disabled_features)}`);
 
@@ -1039,7 +1066,7 @@ async function initializeRuntime(
   await initializeFirebaseFunctionsStubs(frb);
   await initializeFirebaseAdminStubs(frb);
 
-  let triggerDefinitions: EmulatedTriggerDefinition[] = [];
+  let parsedDefinitions: ParsedTriggerDefinition[] = [];
   let triggerModule;
 
   if (serializedFunctionTrigger) {
@@ -1049,15 +1076,22 @@ async function initializeRuntime(
     try {
       triggerModule = require(frb.cwd);
     } catch (err) {
-      await moduleResolutionDetective(frb, err);
-      return;
+      if (err.code !== "ERR_REQUIRE_ESM") {
+        await moduleResolutionDetective(frb, err);
+        return;
+      }
+      // tslint:disable:no-unsafe-assignment
+      triggerModule = await dynamicImport(require.resolve(frb.cwd));
     }
   }
   if (extensionTriggers) {
-    triggerDefinitions = extensionTriggers;
+    parsedDefinitions = extensionTriggers;
   } else {
-    require("../extractTriggers")(triggerModule, triggerDefinitions);
+    require("../deploy/functions/runtimes/node/extractTriggers")(triggerModule, parsedDefinitions);
   }
+  const triggerDefinitions: EmulatedTriggerDefinition[] = emulatedFunctionsByRegion(
+    parsedDefinitions
+  );
 
   const triggers = getEmulatedTriggersFromDefinitions(triggerDefinitions, triggerModule);
 

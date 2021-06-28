@@ -53,6 +53,7 @@ repository:
 ```bash
 git clone git@github.com:firebase/firebase-tools.git
 cd firebase-tools
+npm install # must be run the first time you clone
 npm link  # installs dependencies, runs a build, links it into the environment
 ```
 
@@ -270,7 +271,7 @@ The Firebase CLI has a central logger available in `src/logger`. You should
 never use `console.log()` when displaying output to the user.
 
 ```typescript
-import * as logger from "../logger";
+import { logger } from "../logger";
 
 logger.info("This text will be displayed to the end user.");
 logger.debug("This text will only show up in firebase-debug.log or running with --debug.");

@@ -85,6 +85,21 @@ describe("apiv2", () => {
       expect(nock.isDone()).to.be.true;
     });
 
+    it("should set a bearer token to 'owner' if making an insecure, local request", async () => {
+      nock("http://localhost")
+        .get("/path/to/foo")
+        .matchHeader("Authorization", "Bearer owner")
+        .reply(200, { request: "insecure" });
+
+      const c = new Client({ urlPrefix: "http://localhost" });
+      const r = await c.request({
+        method: "GET",
+        path: "/path/to/foo",
+      });
+      expect(r.body).to.deep.equal({ request: "insecure" });
+      expect(nock.isDone()).to.be.true;
+    });
+
     it("should error with a FirebaseError if JSON is malformed", async () => {
       nock("https://example.com").get("/path/to/foo").reply(200, `{not:"json"}`);
 

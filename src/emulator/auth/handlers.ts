@@ -36,6 +36,42 @@ export function registerHandlers(
     const state = getProjectStateByApiKey(apiKey);
 
     switch (mode) {
+      case "recoverEmail": {
+        const oob = state.validateOobCode(oobCode);
+        const RETRY_INSTRUCTIONS =
+          "If you're trying to test the reverting email flow, try changing the email again to generate a new link.";
+        if (oob?.requestType !== "RECOVER_EMAIL") {
+          return res.status(400).json({
+            authEmulator: {
+              error: `Requested mode does not match the OOB code provided.`,
+              instructions: RETRY_INSTRUCTIONS,
+            },
+          });
+        }
+        try {
+          const resp = setAccountInfoImpl(state, {
+            oobCode,
+          });
+          const email = resp.email;
+          return res.status(200).json({
+            authEmulator: { success: `The email has been successfully reset.`, email },
+          });
+        } catch (e) {
+          if (
+            e instanceof NotImplementedError ||
+            (e instanceof BadRequestError && e.message === "INVALID_OOB_CODE")
+          ) {
+            return res.status(400).json({
+              authEmulator: {
+                error: `Your request to revert your email has expired or the link has already been used.`,
+                instructions: RETRY_INSTRUCTIONS,
+              },
+            });
+          } else {
+            throw e;
+          }
+        }
+      }
       case "resetPassword": {
         const oob = state.validateOobCode(oobCode);
         if (oob?.requestType !== "PASSWORD_RESET") {
@@ -196,7 +232,7 @@ export function registerHandlers(
       }
       var authEvent = e.data.data.authEvent;
       if (parentContainer) {
-        sendAuthEvent(parentContainer, authEvent);
+        sendAuthEvent(authEvent);
       } else {
         // Store it first, and initFrameMessaging() below will pick it up.
         sessionStorage['firebase:redirectEvent:' + storageKey] =
@@ -213,28 +249,26 @@ export function registerHandlers(
       return { status: 'ACK', webStorageSupport: true };
     }, gapi.iframes.CROSS_ORIGIN_IFRAMES_FILTER);
 
+    var authEvent = null;
     var storedEvent = sessionStorage['firebase:redirectEvent:' + storageKey];
     if (storedEvent) {
-      var authEvent = null;
       try {
         authEvent = JSON.parse(storedEvent);
       } catch (_) {
         return alert('Auth Emulator Internal Error: Invalid stored event.');
       }
-      if (authEvent) {
-        sendAuthEvent(parentContainer, authEvent);
-      }
-      delete sessionStorage['firebase:redirectEvent:' + storageKey];
     }
+    sendAuthEvent(authEvent);
+    delete sessionStorage['firebase:redirectEvent:' + storageKey];
   }
 
-  function sendAuthEvent(parentContainer, authEvent) {
+  function sendAuthEvent(authEvent) {
     parentContainer.send('authEvent', {
       type: 'authEvent',
-      authEvent: authEvent,
+      authEvent: authEvent || { type: 'unknown', error: { code: 'auth/no-auth-event' } },
     }, function(responses) {
       if (!responses || !responses.length ||
-          !responses[responses.length - 1].status === 'ACK') {
+          responses[responses.length - 1].status !== 'ACK') {
         return alert("Auth Emulator Internal Error: Sending authEvent failed.");
       }
     }, gapi.iframes.CROSS_ORIGIN_IFRAMES_FILTER);

@@ -1,12 +1,8 @@
 import * as uuid from "uuid";
 import { FunctionsEmulator } from "./functionsEmulator";
-import {
-  EmulatedTriggerDefinition,
-  EmulatedTriggerType,
-  getFunctionRegion,
-} from "./functionsEmulatorShared";
+import { EmulatedTriggerDefinition, EmulatedTriggerType } from "./functionsEmulatorShared";
 import * as utils from "../utils";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { FirebaseError } from "../error";
 import { LegacyEvent } from "./events/types";
 
@@ -21,21 +17,19 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
 
   constructor(private emu: FunctionsEmulator) {
     this.triggers = emu.getTriggerDefinitions();
-    this.emulatedFunctions = this.triggers.map((t) => t.name);
+    this.emulatedFunctions = this.triggers.map((t) => t.id);
 
     const entryPoints = this.triggers.map((t) => t.entryPoint);
     utils.logLabeledBullet("functions", `Loaded functions: ${entryPoints.join(", ")}`);
 
     for (const trigger of this.triggers) {
-      const name = trigger.name;
-
       if (trigger.httpsTrigger) {
-        this.urls[name] = FunctionsEmulator.getHttpFunctionUrl(
+        this.urls[trigger.id] = FunctionsEmulator.getHttpFunctionUrl(
           this.emu.getInfo().host,
           this.emu.getInfo().port,
           this.emu.getProjectId(),
-          name,
-          getFunctionRegion(trigger)
+          trigger.name,
+          trigger.region
         );
       }
     }
@@ -70,7 +64,7 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
       data,
     };
 
-    this.emu.startFunctionRuntime(name, EmulatedTriggerType.BACKGROUND, proto);
+    this.emu.startFunctionRuntime(trigger.id, trigger.name, EmulatedTriggerType.BACKGROUND, proto);
   }
 
   private getTrigger(name: string): EmulatedTriggerDefinition {

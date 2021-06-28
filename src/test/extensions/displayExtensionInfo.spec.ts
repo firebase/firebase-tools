@@ -34,19 +34,20 @@ const SPEC = {
 describe("displayExtensionInfo", () => {
   describe("displayExtInfo", () => {
     it("should display info during install", () => {
-      const loggedLines = displayExtensionInfo.displayExtInfo(SPEC.name, SPEC);
-      const expected: string[] = [
-        "**Name**: Old",
-        "**Author**: Tester (**[firebase.google.com](firebase.google.com)**)",
-        "**Description**: descriptive",
-      ];
+      const loggedLines = displayExtensionInfo.displayExtInfo(SPEC.name, "", SPEC);
+      const expected: string[] = ["**Name**: Old", "**Description**: descriptive"];
       expect(loggedLines).to.eql(expected);
     });
     it("should display additional information for a published extension", () => {
-      const loggedLines = displayExtensionInfo.displayExtInfo(SPEC.name, SPEC, true);
+      const loggedLines = displayExtensionInfo.displayExtInfo(
+        SPEC.name,
+        "testpublisher",
+        SPEC,
+        true
+      );
       const expected: string[] = [
         "**Name**: Old",
-        "**Author**: Tester (**[firebase.google.com](firebase.google.com)**)",
+        "**Publisher**: testpublisher",
         "**Description**: descriptive",
         "**License**: MIT",
         "**Source code**: test.com",

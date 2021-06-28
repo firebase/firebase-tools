@@ -12,6 +12,7 @@ const DEFAULT_PORTS: { [s in Emulators]: number } = {
   pubsub: 8085,
   database: 9000,
   auth: 9099,
+  storage: 9199,
 };
 
 export const FIND_AVAILBLE_PORT_BY_DEFAULT: Record<Emulators, boolean> = {
@@ -24,6 +25,7 @@ export const FIND_AVAILBLE_PORT_BY_DEFAULT: Record<Emulators, boolean> = {
   database: false,
   pubsub: false,
   auth: false,
+  storage: false,
 };
 
 export const EMULATOR_DESCRIPTION: Record<Emulators, string> = {
@@ -36,11 +38,16 @@ export const EMULATOR_DESCRIPTION: Record<Emulators, string> = {
   database: "Database Emulator",
   pubsub: "Pub/Sub Emulator",
   auth: "Authentication Emulator",
+  storage: "Storage Emulator",
 };
 
 const DEFAULT_HOST = "localhost";
 
 export class Constants {
+  // GCP projects cannot start with 'demo' so we use 'demo-' as a prefix to denote
+  // an intentionally fake project.
+  static FAKE_PROJECT_ID_PREFIX = "demo-";
+
   static DEFAULT_DATABASE_EMULATOR_NAMESPACE = "fake-server";
 
   // Environment variable to override SDK/CLI to point at the Firestore emulator.
@@ -51,6 +58,14 @@ export class Constants {
 
   // Environment variable to override SDK/CLI to point at the Firebase Auth emulator.
   static FIREBASE_AUTH_EMULATOR_HOST = "FIREBASE_AUTH_EMULATOR_HOST";
+
+  // Environment variable to override SDK/CLI to point at the Firebase Storage emulator.
+  static FIREBASE_STORAGE_EMULATOR_HOST = "FIREBASE_STORAGE_EMULATOR_HOST";
+
+  // Environment variable to override SDK/CLI to point at the Firebase Storage emulator
+  // for firebase-admin <= 9.6.0. Unlike the FIREBASE_STORAGE_EMULATOR_HOST variable
+  // this one must start with 'http://'.
+  static CLOUD_STORAGE_EMULATOR_HOST = "STORAGE_EMULATOR_HOST";
 
   // Environment variable to discover the Emulator HUB
   static FIREBASE_EMULATOR_HUB = "FIREBASE_EMULATOR_HUB";
@@ -100,14 +115,6 @@ export class Constants {
     return DEFAULT_PORTS[emulator];
   }
 
-  static getHostKey(emulator: Emulators): string {
-    return `emulators.${emulator.toString()}.host`;
-  }
-
-  static getPortKey(emulator: Emulators): string {
-    return `emulators.${emulator.toString()}.port`;
-  }
-
   static description(name: Emulators): string {
     return EMULATOR_DESCRIPTION[name];
   }
@@ -120,5 +127,9 @@ export class Constants {
 
     const u = url.parse(normalized);
     return u.hostname || DEFAULT_HOST;
+  }
+
+  static isDemoProject(projectId?: string): boolean {
+    return !!projectId && projectId.startsWith(this.FAKE_PROJECT_ID_PREFIX);
   }
 }

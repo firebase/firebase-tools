@@ -43,7 +43,7 @@ export default new Command("database:settings:set <path> <value>")
     );
     const c = new Client({ urlPrefix: u.origin, auth: true });
     try {
-      await c.put(u.pathname, parsedValue);
+      await c.put(u.pathname, JSON.stringify(parsedValue));
     } catch (err) {
       throw new FirebaseError(`Unexpected error fetching configs at ${path}`, {
         exit: 2,

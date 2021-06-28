@@ -7,7 +7,7 @@ var url = require("url");
 
 var { Constants } = require("./emulator/constants");
 var { FirebaseError } = require("./error");
-var logger = require("./logger");
+const { logger } = require("./logger");
 var responseToError = require("./responseToError");
 var scopes = require("./scopes");
 var utils = require("./utils");
@@ -99,6 +99,7 @@ var api = {
     "FIREBASE_CLOUDLOGGING_URL",
     "https://logging.googleapis.com"
   ),
+  containerRegistryDomain: utils.envOverride("CONTAINER_REGISTRY_DOMAIN", "gcr.io"),
   appDistributionOrigin: utils.envOverride(
     "FIREBASE_APP_DISTRIBUTION_URL",
     "https://firebaseappdistribution.googleapis.com"
@@ -109,6 +110,14 @@ var api = {
   deployOrigin: utils.envOverride(
     "FIREBASE_DEPLOY_URL",
     utils.envOverride("FIREBASE_UPLOAD_URL", "https://deploy.firebase.com")
+  ),
+  dynamicLinksOrigin: utils.envOverride(
+    "FIREBASE_DYNAMIC_LINKS_URL",
+    "https://firebasedynamiclinks.googleapis.com"
+  ),
+  dynamicLinksKey: utils.envOverride(
+    "FIREBASE_DYNAMIC_LINKS_KEY",
+    "AIzaSyB6PtY5vuiSB8MNgt20mQffkOlunZnHYiQ"
   ),
   firebaseApiOrigin: utils.envOverride("FIREBASE_API_URL", "https://firebase.googleapis.com"),
   firebaseExtensionsRegistryOrigin: utils.envOverride(
@@ -131,7 +140,13 @@ var api = {
     "FIREBASE_FUNCTIONS_URL",
     "https://cloudfunctions.googleapis.com"
   ),
+  functionsV2Origin: utils.envOverride(
+    "FIREBASE_FUNCTIONS_V2_URL",
+    "https://cloudfunctions.googleapis.com"
+  ),
+  runOrigin: utils.envOverride("CLOUD_RUN_URL", "https://run.googleapis.com"),
   functionsUploadRegion: utils.envOverride("FIREBASE_FUNCTIONS_UPLOAD_REGION", "us-central1"),
+  functionsDefaultRegion: utils.envOverride("FIREBASE_FUNCTIONS_DEFAULT_REGION", "us-central1"),
   cloudschedulerOrigin: utils.envOverride(
     "FIREBASE_CLOUDSCHEDULER_URL",
     "https://cloudscheduler.googleapis.com"

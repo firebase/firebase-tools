@@ -1,19 +1,24 @@
 import { AbortSignal } from "abort-controller";
 import { Readable } from "stream";
-import { URLSearchParams } from "url";
+import { parse, URLSearchParams } from "url";
 import * as ProxyAgent from "proxy-agent";
 import AbortController from "abort-controller";
 import fetch, { HeadersInit, Response, RequestInit, Headers } from "node-fetch";
+import util from "util";
 
+import * as auth from "./auth";
 import { FirebaseError } from "./error";
-import * as logger from "./logger";
+import { logger } from "./logger";
 import * as responseToError from "./responseToError";
 
-const CLI_VERSION = require("../package.json").version;
+// Using import would require resolveJsonModule, which seems to break the
+// build/output format.
+const pkg = require("../package.json");
+const CLI_VERSION: string = pkg.CLI_VERSION;
 
 export type HttpMethod = "GET" | "PUT" | "POST" | "DELETE" | "PATCH";
 
-interface BaseRequestOptions<T> extends VerbOptions<T> {
+interface BaseRequestOptions<T> extends VerbOptions {
   method: HttpMethod;
   path: string;
   body?: T | string | NodeJS.ReadableStream;
@@ -36,7 +41,7 @@ interface RequestOptionsWithTimeout<T> extends BaseRequestOptions<T> {
 
 type RequestOptions<T> = RequestOptionsWithSignal<T> | RequestOptionsWithTimeout<T>;
 
-interface VerbOptions<T> {
+interface VerbOptions {
   method?: HttpMethod;
   headers?: HeadersInit;
   queryParams?: URLSearchParams | { [key: string]: string | number };
@@ -51,16 +56,15 @@ interface ClientHandlingOptions {
   resolveOnHTTPError?: boolean;
 }
 
-export type ClientRequestOptions<T> = RequestOptions<T> & ClientVerbOptions<T>;
+export type ClientRequestOptions<T> = RequestOptions<T> & ClientVerbOptions;
 
-interface BaseInternalClientRequestOptions<T> {
+interface BaseInternalClientRequestOptions {
   headers?: Headers;
 }
 
-type InternalClientRequestOptions<T> = BaseInternalClientRequestOptions<T> &
-  ClientRequestOptions<T>;
+type InternalClientRequestOptions<T> = BaseInternalClientRequestOptions & ClientRequestOptions<T>;
 
-export type ClientVerbOptions<T> = VerbOptions<T> & ClientHandlingOptions;
+export type ClientVerbOptions = VerbOptions & ClientHandlingOptions;
 
 export type ClientResponse<T> = {
   status: number;
@@ -114,7 +118,7 @@ export class Client {
     }
   }
 
-  get<ResT>(path: string, options: ClientVerbOptions<unknown> = {}): Promise<ClientResponse<ResT>> {
+  get<ResT>(path: string, options: ClientVerbOptions = {}): Promise<ClientResponse<ResT>> {
     const reqOptions: ClientRequestOptions<unknown> = Object.assign(options, {
       method: "GET",
       path,
@@ -125,7 +129,7 @@ export class Client {
   post<ReqT, ResT>(
     path: string,
     json?: ReqT,
-    options: ClientVerbOptions<ReqT> = {}
+    options: ClientVerbOptions = {}
   ): Promise<ClientResponse<ResT>> {
     const reqOptions: ClientRequestOptions<ReqT> = Object.assign(options, {
       method: "POST",
@@ -138,7 +142,7 @@ export class Client {
   patch<ReqT, ResT>(
     path: string,
     json?: ReqT,
-    options: ClientVerbOptions<ReqT> = {}
+    options: ClientVerbOptions = {}
   ): Promise<ClientResponse<ResT>> {
     const reqOptions: ClientRequestOptions<ReqT> = Object.assign(options, {
       method: "PATCH",
@@ -151,7 +155,7 @@ export class Client {
   put<ReqT, ResT>(
     path: string,
     json?: ReqT,
-    options: ClientVerbOptions<ReqT> = {}
+    options: ClientVerbOptions = {}
   ): Promise<ClientResponse<ResT>> {
     const reqOptions: ClientRequestOptions<ReqT> = Object.assign(options, {
       method: "PUT",
@@ -161,10 +165,7 @@ export class Client {
     return this.request<ReqT, ResT>(reqOptions);
   }
 
-  delete<ResT>(
-    path: string,
-    options: ClientVerbOptions<unknown> = {}
-  ): Promise<ClientResponse<ResT>> {
+  delete<ResT>(path: string, options: ClientVerbOptions = {}): Promise<ClientResponse<ResT>> {
     const reqOptions: ClientRequestOptions<unknown> = Object.assign(options, {
       method: "DELETE",
       path,
@@ -186,8 +187,8 @@ export class Client {
    *   json: { name: "resource-name", key: "updated-value" }
    * });
    * // typeof res.body === ResourceType
-   *
    * @param reqOptions request options.
+   * @return the response.
    */
   async request<ReqT, ResT>(reqOptions: ClientRequestOptions<ReqT>): Promise<ClientResponse<ResT>> {
     // All requests default to JSON content types.
@@ -215,11 +216,18 @@ export class Client {
     }
     try {
       return await this.doRequest<ReqT, ResT>(internalReqOptions);
-    } catch (err) {
-      if (err instanceof FirebaseError) {
-        throw err;
+    } catch (thrown) {
+      if (thrown instanceof FirebaseError) {
+        throw thrown;
       }
-      throw new FirebaseError(`Failed to make request: ${err}`, { original: err });
+      // Though it should never happen in practice, a non-Error type can be thrown
+      let err: Error;
+      if (thrown instanceof Error) {
+        err = thrown;
+      } else {
+        err = new Error(thrown);
+      }
+      throw new FirebaseError(`Failed to make request: ${err.message}`, { original: err });
     }
   }
 
@@ -246,7 +254,12 @@ export class Client {
     if (!reqOptions.headers) {
       reqOptions.headers = new Headers();
     }
-    const token = await this.getAccessToken();
+    let token: string;
+    if (isLocalInsecureRequest(this.opts.urlPrefix)) {
+      token = "owner";
+    } else {
+      token = await this.getAccessToken();
+    }
     reqOptions.headers.set("Authorization", `Bearer ${token}`);
     return reqOptions;
   }
@@ -256,7 +269,12 @@ export class Client {
     if (accessToken) {
       return accessToken;
     }
-    const data = await require("./auth").getAccessToken(refreshToken, []);
+    // TODO: remove the as any once auth.js is migrated to auth.ts
+    interface AccessToken {
+      /* eslint-disable camelcase */
+      access_token: string;
+    }
+    const data = (await auth.getAccessToken(refreshToken, [])) as AccessToken;
     return data.access_token;
   }
 
@@ -327,7 +345,8 @@ export class Client {
     let res: Response;
     try {
       res = await fetch(fetchURL, fetchOptions);
-    } catch (err) {
+    } catch (thrown) {
+      const err = thrown instanceof Error ? thrown : new Error(thrown);
       const isAbortError = err.name.includes("AbortError");
       if (isAbortError) {
         throw new FirebaseError(`Timeout reached making request to ${fetchURL}`, { original: err });
@@ -346,7 +365,7 @@ export class Client {
       if (res.status === 204) {
         body = (undefined as unknown) as ResT;
       } else {
-        body = await res.json();
+        body = (await res.json()) as ResT;
       }
     } else if (options.responseType === "stream") {
       body = (res.body as unknown) as ResT;
@@ -408,6 +427,11 @@ export class Client {
   }
 }
 
+function isLocalInsecureRequest(urlPrefix: string): boolean {
+  const u = parse(urlPrefix);
+  return u.protocol === "http:";
+}
+
 function bodyToString(body: unknown): string {
   if (isStream(body)) {
     // Don't attempt to read any stream type, in case the caller needs it.
@@ -416,7 +440,7 @@ function bodyToString(body: unknown): string {
     try {
       return JSON.stringify(body);
     } catch (_) {
-      return `${body}`;
+      return util.inspect(body);
     }
   }
 }

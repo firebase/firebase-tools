@@ -4,7 +4,7 @@ import * as fs from "fs";
 
 import { fetchWebSetup, getCachedWebSetup } from "../fetchWebSetup";
 import * as utils from "../utils";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { EmulatorRegistry } from "../emulator/registry";
 import { EMULATORS_SUPPORTED_BY_USE_EMULATOR, Address, Emulators } from "../emulator/types";
 
@@ -68,8 +68,17 @@ export async function implicitInit(options: any): Promise<TemplateServerResponse
     const info = EmulatorRegistry.getInfo(e);
 
     if (info) {
-      // IPv6 hosts need to be quoted using brackets.
-      const host = info.host.includes(":") ? `[${info.host}]` : info.host;
+      let host = info.host;
+
+      if (host === "0.0.0.0") {
+        host = "127.0.0.1";
+      } else if (host === "::") {
+        host = "[::1]";
+      } else if (host.includes(":")) {
+        // IPv6 hosts need to be quoted using brackets.
+        host = `[${host}]`;
+      }
+
       emulators[e] = {
         host,
         port: info.port,

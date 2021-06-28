@@ -1,1 +1,1 @@
-- Adds support for uploading Android App Bundles (AABs) to App Distribution.
+- Support loading Firebase Functions packaged as an ES module. (#3485)

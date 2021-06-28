@@ -7,35 +7,31 @@ import TerminalRenderer = require("marked-terminal");
 import * as askUserForConsent from "../extensions/askUserForConsent";
 import { displayExtInfo } from "../extensions/displayExtensionInfo";
 import { displayNode10CreateBillingNotice } from "../extensions/billingMigrationHelper";
-import { isBillingEnabled, enableBilling } from "../extensions/checkProjectBilling";
+import { enableBilling } from "../extensions/checkProjectBilling";
+import { checkBillingEnabled } from "../gcp/cloudbilling";
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
 import * as getProjectId from "../getProjectId";
 import * as extensionsApi from "../extensions/extensionsApi";
-import {
-  promptForAudienceConsent,
-  resolveRegistryEntry,
-  resolveSourceUrl,
-} from "../extensions/resolveSource";
+import * as provisioningHelper from "../extensions/provisioningHelper";
+import { displayWarningPrompts } from "../extensions/warnings";
 import * as paramHelper from "../extensions/paramHelper";
 import {
   confirmInstallInstance,
   createSourceFromLocation,
   ensureExtensionsApiEnabled,
-  getSourceOrigin,
   instanceIdExists,
   logPrefix,
   promptForOfficialExtension,
   promptForRepeatInstance,
   promptForValidInstanceId,
-  SourceOrigin,
+  isLocalOrURLPath,
 } from "../extensions/extensionsHelper";
 import { getRandomString } from "../extensions/utils";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
-import * as logger from "../logger";
-import { promptOnce } from "../prompt";
+import { logger } from "../logger";
 import { previews } from "../previews";
 
 marked.setOptions({
@@ -62,8 +58,10 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
     "Installing your extension instance. This usually takes 3 to 5 minutes..."
   );
   try {
+    await provisioningHelper.checkProductsProvisioned(projectId, spec);
+
     if (spec.billingRequired) {
-      const enabled = await isBillingEnabled(projectId);
+      const enabled = await checkBillingEnabled(projectId);
       if (!enabled) {
         await displayNode10CreateBillingNotice(spec, false);
         await enableBilling(projectId, spec.displayName || spec.name);
@@ -144,6 +142,61 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
   }
 }
 
+async function confirmInstallBySource(
+  projectId: string,
+  extensionName: string
+): Promise<extensionsApi.ExtensionSource> {
+  // Create a one off source to use for the install flow.
+  let source;
+  try {
+    source = await createSourceFromLocation(projectId, extensionName);
+  } catch (err) {
+    throw new FirebaseError(
+      `Unable to find published extension '${clc.bold(extensionName)}', ` +
+        `and encountered the following error when trying to create an instance of extension '${clc.bold(
+          extensionName
+        )}':\n ${err.message}`
+    );
+  }
+  displayExtInfo(extensionName, "", source.spec);
+  const confirm = await confirmInstallInstance();
+  if (!confirm) {
+    throw new FirebaseError("Install cancelled.");
+  }
+  return source;
+}
+
+async function confirmInstallByReference(
+  extensionName: string
+): Promise<extensionsApi.ExtensionVersion> {
+  // Infer firebase if publisher ID not provided.
+  if (extensionName.split("/").length < 2) {
+    const [extensionID, version] = extensionName.split("@");
+    extensionName = `firebase/${extensionID}@${version || "latest"}`;
+  }
+  // Get the correct version for a given extension reference from the Registry API.
+  const ref = extensionsApi.parseRef(extensionName);
+  const extension = await extensionsApi.getExtension(`${ref.publisherId}/${ref.extensionId}`);
+  if (!ref.version) {
+    extensionName = `${extensionName}@latest`;
+  }
+  const extVersion = await extensionsApi.getExtensionVersion(extensionName);
+  displayExtInfo(extensionName, ref.publisherId, extVersion.spec, true);
+  const confirm = await confirmInstallInstance();
+  if (!confirm) {
+    throw new FirebaseError("Install cancelled.");
+  }
+  const warningConsent = await displayWarningPrompts(
+    ref.publisherId,
+    extension.registryLaunchStage,
+    extVersion
+  );
+  if (!warningConsent) {
+    throw new FirebaseError("Install cancelled.");
+  }
+  return extVersion;
+}
+
 /**
  * Command for installing an extension
  */
@@ -172,78 +225,27 @@ export default new Command("ext:install [extensionName]")
         );
       } else {
         throw new FirebaseError(
-          `Please provide an extension name, or run ${clc.bold(
-            "firebase ext:install -i"
-          )} to select from the list of all available official extensions.`
-        );
-      }
-    }
-
-    const [name, version] = extensionName.split("@");
-    let source;
-    let extVersion;
-    try {
-      const registryEntry = await resolveRegistryEntry(name);
-      const sourceUrl = resolveSourceUrl(registryEntry, name, version);
-      source = await extensionsApi.getSource(sourceUrl);
-      displayExtInfo(extensionName, source.spec, true);
-      await confirmInstallInstance();
-      const audienceConsent = await promptForAudienceConsent(registryEntry);
-      if (!audienceConsent) {
-        logger.info("Install cancelled.");
-        return;
-      }
-    } catch (err) {
-      if (previews.extdev) {
-        const sourceOrigin = await getSourceOrigin(extensionName);
-        switch (sourceOrigin) {
-          case SourceOrigin.LOCAL || SourceOrigin.URL: {
-            try {
-              source = await createSourceFromLocation(projectId, extensionName);
-            } catch (err) {
-              throw new FirebaseError(
-                `Unable to find published extension '${clc.bold(extensionName)}', ` +
-                  `and encountered the following error when trying to create an instance of extension '${clc.bold(
-                    extensionName
-                  )}':\n ${err.message}`
-              );
-            }
-            displayExtInfo(extensionName, source.spec);
-            await confirmInstallInstance();
-            break;
-          }
-          case SourceOrigin.PUBLISHED_EXTENSION: {
-            await extensionsApi.getExtension(extensionName);
-            extVersion = await extensionsApi.getExtensionVersion(`${extensionName}@latest`);
-            displayExtInfo(extensionName, extVersion.spec, true);
-            await confirmInstallInstance();
-            break;
-          }
-          case SourceOrigin.PUBLISHED_EXTENSION_VERSION: {
-            extVersion = await extensionsApi.getExtensionVersion(`${extensionName}`);
-            displayExtInfo(extensionName, extVersion.spec, true);
-            await confirmInstallInstance();
-            break;
-          }
-          default: {
-            throw new FirebaseError(
-              `Could not determine source origin for extension '${extensionName}'. If this is a published extension, ` +
-                "please make sure the publisher and extension exist before trying again. If trying to create an extension, " +
-                "please ensure the path or URL given is valid."
-            );
-          }
-        }
-      } else {
-        throw new FirebaseError(
           `Unable to find published extension '${clc.bold(extensionName)}'. ` +
             `Run ${clc.bold(
               "firebase ext:install -i"
-            )} to select from the list of all available published extensions.`,
-          { original: err }
+            )} to select from the list of all available published extensions.`
         );
       }
     }
-
+    let source;
+    let extVersion;
+    // If the user types in URL, or a local path (prefixed with ~/, ../, or ./), install from local/URL source.
+    // Otherwise, treat the input as an extension reference and proceed with reference-based installation.
+    if (isLocalOrURLPath(extensionName)) {
+      source = await confirmInstallBySource(projectId, extensionName);
+    } else {
+      extVersion = await confirmInstallByReference(extensionName);
+    }
+    if (!source && !extVersion) {
+      throw new FirebaseError(
+        "Could not find a source. Please specify a valid source to continue."
+      );
+    }
     const spec = source?.spec || extVersion?.spec;
     if (!spec) {
       throw new FirebaseError(
@@ -252,23 +254,19 @@ export default new Command("ext:install [extensionName]")
         )}'. Please make sure this is a valid extension and try again.`
       );
     }
-    try {
-      if (learnMore) {
-        utils.logLabeledBullet(
-          logPrefix,
-          `You selected: ${clc.bold(spec.displayName)}.\n` +
-            `${spec.description}\n` +
-            `View details: https://firebase.google.com/products/extensions/${name}\n`
-        );
-        const confirm = await promptOnce({
-          type: "confirm",
-          default: true,
-          message: "Do you wish to install this extension?",
-        });
-        if (!confirm) {
-          return;
-        }
+    if (learnMore) {
+      utils.logLabeledBullet(
+        logPrefix,
+        `You selected: ${clc.bold(spec.displayName)}.\n` +
+          `${spec.description}\n` +
+          `View details: https://firebase.google.com/products/extensions/${spec.name}\n`
+      );
+      const confirm = await confirmInstallInstance();
+      if (!confirm) {
+        return;
       }
+    }
+    try {
       return installExtension({
         paramFilePath,
         projectId,

@@ -7,7 +7,7 @@ import * as path from "path";
 import * as sodium from "tweetsodium";
 
 import { Setup } from "../..";
-import { login } from "../../../auth";
+import { loginGithub } from "../../../auth";
 import { dirExistsSync } from "../../../fsutils";
 import {
   createServiceAccount,
@@ -15,7 +15,7 @@ import {
   deleteServiceAccount,
 } from "../../../gcp/iam";
 import { addServiceAccountToRoles, firebaseRoles } from "../../../gcp/resourceManager";
-import * as logger from "../../../logger";
+import { logger } from "../../../logger";
 import { prompt } from "../../../prompt";
 import { logBullet, logLabeledBullet, logSuccess, logWarning, reject } from "../../../utils";
 import { githubApiOrigin, githubClientId } from "../../../api";
@@ -269,6 +269,7 @@ type GitHubWorkflowConfig = {
   on: string | { [key: string]: { [key: string]: string[] } };
   jobs: {
     [key: string]: {
+      if?: string;
       "runs-on": string;
       steps: {
         uses?: string;
@@ -291,6 +292,7 @@ function writeChannelActionYMLFile(
     on: "pull_request",
     jobs: {
       ["build_and_preview"]: {
+        if: "${{ github.event.pull_request.head.repo.full_name == github.repository }}", // secrets aren't accessible on PRs from forks
         "runs-on": "ubuntu-latest",
         steps: [{ uses: CHECKOUT_GITHUB_ACTION_NAME }],
       },
@@ -309,9 +311,6 @@ function writeChannelActionYMLFile(
       repoToken: "${{ secrets.GITHUB_TOKEN }}",
       firebaseServiceAccount: `\${{ secrets.${secretName} }}`,
       projectId: projectId,
-    },
-    env: {
-      FIREBASE_CLI_PREVIEWS: "hostingchannels",
     },
   });
 
@@ -356,9 +355,6 @@ function writeDeployToProdActionYMLFile(
       firebaseServiceAccount: `\${{ secrets.${secretName} }}`,
       channelId: "live",
       projectId: projectId,
-    },
-    env: {
-      FIREBASE_CLI_PREVIEWS: "hostingchannels",
     },
   });
 
@@ -529,7 +525,7 @@ async function getRepoDetails(repo: string, ghAccessToken: string) {
 }
 
 async function signInWithGitHub() {
-  return await login(true, null, "GITHUB");
+  return await loginGithub();
 }
 
 async function createServiceAccountAndKeyWithRetry(

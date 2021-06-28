@@ -1,15 +1,18 @@
 import * as path from "path";
 import * as fs from "fs";
+import * as fse from "fs-extra";
 import * as http from "http";
 
 import * as api from "../api";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { IMPORT_EXPORT_EMULATORS, Emulators, ALL_EMULATORS } from "./types";
 import { EmulatorRegistry } from "./registry";
 import { FirebaseError } from "../error";
 import { EmulatorHub } from "./hub";
 import { getDownloadDetails } from "./downloadableEmulators";
 import { DatabaseEmulator } from "./databaseEmulator";
+import { StorageEmulator } from "./storage";
+import * as rimraf from "rimraf";
 
 export interface FirestoreExportMetadata {
   version: string;
@@ -27,17 +30,27 @@ export interface AuthExportMetadata {
   path: string;
 }
 
+export interface StorageExportMetadata {
+  version: string;
+  path: string;
+}
+
 export interface ExportMetadata {
   version: string;
   firestore?: FirestoreExportMetadata;
   database?: DatabaseExportMetadata;
   auth?: AuthExportMetadata;
+  storage?: StorageExportMetadata;
 }
 
 export class HubExport {
   static METADATA_FILE_NAME = "firebase-export-metadata.json";
 
-  constructor(private projectId: string, private exportPath: string) {}
+  private tmpDir: string;
+
+  constructor(private projectId: string, private exportPath: string) {
+    this.tmpDir = fs.mkdtempSync(`firebase-export-${new Date().getTime()}`);
+  }
 
   public static readMetadata(exportPath: string): ExportMetadata | undefined {
     const metadataPath = path.join(exportPath, this.METADATA_FILE_NAME);
@@ -86,8 +99,28 @@ export class HubExport {
       await this.exportAuth(metadata);
     }
 
-    const metadataPath = path.join(this.exportPath, HubExport.METADATA_FILE_NAME);
+    if (shouldExport(Emulators.STORAGE)) {
+      metadata.storage = {
+        version: EmulatorHub.CLI_VERSION,
+        path: "storage_export",
+      };
+      await this.exportStorage(metadata);
+    }
+
+    // Make sure the export directory exists
+    if (!fs.existsSync(this.exportPath)) {
+      fs.mkdirSync(this.exportPath);
+    }
+
+    // Write the metadata file after everything else has succeeded
+    const metadataPath = path.join(this.tmpDir, HubExport.METADATA_FILE_NAME);
     fs.writeFileSync(metadataPath, JSON.stringify(metadata, undefined, 2));
+
+    // Remove any existing data in the directory and then swap it with the
+    // temp directory.
+    logger.debug(`hubExport: swapping ${this.tmpDir} with ${this.exportPath}`);
+    rimraf.sync(this.exportPath);
+    fse.moveSync(this.tmpDir, this.exportPath);
   }
 
   private async exportFirestore(metadata: ExportMetadata): Promise<void> {
@@ -96,7 +129,7 @@ export class HubExport {
 
     const firestoreExportBody = {
       database: `projects/${this.projectId}/databases/(default)`,
-      export_directory: this.exportPath,
+      export_directory: this.tmpDir,
       export_name: metadata.firestore!!.path,
     };
 
@@ -139,12 +172,7 @@ export class HubExport {
       }
     }
 
-    // Make sure the export directory exists
-    if (!fs.existsSync(this.exportPath)) {
-      fs.mkdirSync(this.exportPath);
-    }
-
-    const dbExportPath = path.join(this.exportPath, metadata.database!.path);
+    const dbExportPath = path.join(this.tmpDir, metadata.database!.path);
     if (!fs.existsSync(dbExportPath)) {
       fs.mkdirSync(dbExportPath);
     }
@@ -169,7 +197,7 @@ export class HubExport {
   private async exportAuth(metadata: ExportMetadata): Promise<void> {
     const { host, port } = EmulatorRegistry.get(Emulators.AUTH)!.getInfo();
 
-    const authExportPath = path.join(this.exportPath, metadata.auth!.path);
+    const authExportPath = path.join(this.tmpDir, metadata.auth!.path);
     if (!fs.existsSync(authExportPath)) {
       fs.mkdirSync(authExportPath);
     }
@@ -182,7 +210,7 @@ export class HubExport {
       {
         host,
         port,
-        path: `/identitytoolkit.googleapis.com/v1/projects/${this.projectId}/accounts:batchGet?limit=-1`,
+        path: `/identitytoolkit.googleapis.com/v1/projects/${this.projectId}/accounts:batchGet?maxResults=-1`,
         headers: { Authorization: "Bearer owner" },
       },
       accountsFile
@@ -199,6 +227,28 @@ export class HubExport {
       },
       configFile
     );
+  }
+
+  private async exportStorage(metadata: ExportMetadata): Promise<void> {
+    const storageEmulator = EmulatorRegistry.get(Emulators.STORAGE) as StorageEmulator;
+
+    // Clear the export
+    const storageExportPath = path.join(this.tmpDir, metadata.storage!.path);
+    if (fs.existsSync(storageExportPath)) {
+      fse.removeSync(storageExportPath);
+    }
+    fs.mkdirSync(storageExportPath, { recursive: true });
+
+    const storageHost = `http://${EmulatorRegistry.getInfoHostString(storageEmulator.getInfo())}`;
+    const storageExportBody = {
+      path: storageExportPath,
+    };
+
+    return api.request("POST", "/internal/export", {
+      origin: storageHost,
+      json: true,
+      data: storageExportBody,
+    });
   }
 }
 

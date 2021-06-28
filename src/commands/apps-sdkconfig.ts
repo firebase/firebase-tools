@@ -15,7 +15,7 @@ import * as getProjectId from "../getProjectId";
 import { getOrPromptProject } from "../management/projects";
 import { FirebaseError } from "../error";
 import { requireAuth } from "../requireAuth";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { promptOnce } from "../prompt";
 
 async function selectAppInteractively(
@@ -41,7 +41,6 @@ async function selectAppInteractively(
 
   return await promptOnce({
     type: "list",
-    name: "id",
     message:
       `Select the ${appPlatform === AppPlatform.ANY ? "" : appPlatform + " "}` +
       "app to get the configuration data:",

@@ -10,7 +10,7 @@ import { Client } from "../../apiv2";
 import { Queue } from "../../throttler/queue";
 import { hostingApiOrigin } from "../../api";
 import * as hashcache from "./hashcache";
-import * as logger from "../../logger";
+import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 
 const MIN_UPLOAD_TIMEOUT = 30000; // 30s
@@ -122,6 +122,15 @@ export class Uploader {
         logger.debug("[hosting] uploads queued:", this.uploadQueue.stats().total);
         this.uploadQueue.close();
       });
+
+    this.uploadQueue.wait().catch((err: Error) => {
+      if (err.message.includes("content hash")) {
+        logger.debug(
+          "[hosting][upload queue] upload failed with content hash error. Deleting hash cache"
+        );
+        hashcache.dump(this.projectRoot, this.hashcacheName(), new Map());
+      }
+    });
 
     const fin = (err: unknown): void => {
       logger.debug("[hosting][upload queue][FINAL]", this.uploadQueue.stats());
@@ -242,12 +251,13 @@ export class Uploader {
       logger.debug("[hosting][upload]", this.uploadQueue.stats());
     }
     if (res.status !== 200) {
+      const errorMessage = await res.response.text();
       logger.debug(
-        `[hosting][upload] ${this.hashMap[toUpload]} (${toUpload}) HTTP ERROR ${res.status}: ${
-          res.response.headers
-        } ${await res.response.text()}`
+        `[hosting][upload] ${this.hashMap[toUpload]} (${toUpload}) HTTP ERROR ${
+          res.status
+        }: headers=${JSON.stringify(res.response.headers)} ${errorMessage}`
       );
-      throw new Error("Unexpected error while uploading file.");
+      throw new Error(`Unexpected error while uploading file: ${errorMessage}`);
     }
   }
 

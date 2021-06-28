@@ -12,6 +12,26 @@ describeAuthEmulator("REST API mapping", ({ authApi }) => {
       });
   });
 
+  it("should allow cross-origin requests", async () => {
+    await authApi()
+      .options("/")
+      .set("Origin", "example.com")
+      .set("Access-Control-Request-Headers", "Authorization,X-Client-Version,X-Whatever-Header")
+      .then((res) => {
+        expectStatusCode(204, res);
+
+        // Some clients (including older browsers and jsdom) won't accept '*' as a
+        // wildcard, so we need to reflect Origin and Access-Control-Request-Headers.
+        // https://github.com/firebase/firebase-tools/issues/3200
+        expect(res.header["access-control-allow-origin"]).to.eql("example.com");
+        expect((res.header["access-control-allow-headers"] as string).split(",")).to.have.members([
+          "Authorization",
+          "X-Client-Version",
+          "X-Whatever-Header",
+        ]);
+      });
+  });
+
   it("should handle integer values for enums", async () => {
     // Proto integer value for "EMAIL_SIGNIN". Android client SDK sends this.
     const requestType = 6;
@@ -37,6 +57,21 @@ describeAuthEmulator("REST API mapping", ({ authApi }) => {
         expect(res.body.oobLink).to.include("mode=signIn");
       });
   });
+
+  it("should convert numbers to strings for type:string fields", async () => {
+    // validSince should be an int64-formatted string, but Node.js Admin SDK
+    // sends it as a plain number (without quotes).
+    const validSince = 1611780718;
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .set("Authorization", "Bearer owner")
+      .send({ localId: "nosuch", validSince })
+      .then((res) => {
+        expectStatusCode(400, res);
+        // It should pass JSON schema validation and get into handler logic.
+        expect(res.body.error.message).to.equal("USER_NOT_FOUND");
+      });
+  });
 });
 
 describeAuthEmulator("authentication", ({ authApi }) => {
@@ -52,6 +87,7 @@ describeAuthEmulator("authentication", ({ authApi }) => {
         expect(res.body.error).to.have.property("status").equal("PERMISSION_DENIED");
       });
   });
+
   it("should ignore non-Bearer Authorization headers", async () => {
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")

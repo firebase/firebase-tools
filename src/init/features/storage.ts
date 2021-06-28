@@ -1,7 +1,7 @@
 import * as clc from "cli-color";
 import * as fs from "fs";
 
-import * as logger from "../../logger";
+import { logger } from "../../logger";
 import { promptOnce } from "../../prompt";
 import { ensureLocationSet } from "../../ensureCloudResourceLocation";
 
@@ -27,5 +27,5 @@ export async function doSetup(setup: any, config: any): Promise<void> {
     default: "storage.rules",
   });
   setup.config.storage.rules = storageRulesFile;
-  config.writeProjectFile(setup.config.storage.rules, RULES_TEMPLATE);
+  await config.askWriteProjectFile(setup.config.storage.rules, RULES_TEMPLATE);
 }

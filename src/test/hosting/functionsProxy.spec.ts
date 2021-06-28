@@ -67,6 +67,48 @@ describe("functionsProxy", () => {
       });
   });
 
+  it("should maintain the location header as returned by the function", async () => {
+    nock("http://localhost:7778")
+      .get("/project-foo/us-central1/bar/")
+      .reply(301, "", { location: "/over-here" });
+
+    const options = cloneDeep(fakeOptions);
+    options.targets = ["functions"];
+
+    const mwGenerator = functionsProxy(options);
+    const mw = await mwGenerator(fakeRewrite);
+    const spyMw = sinon.spy(mw);
+
+    return supertest(spyMw)
+      .get("/")
+      .expect(301)
+      .then((res) => {
+        expect(res.header["location"]).to.equal("/over-here");
+        expect(spyMw.calledOnce).to.be.true;
+      });
+  });
+
+  it("should allow location headers that wouldn't redirect to itself", async () => {
+    nock("http://localhost:7778")
+      .get("/project-foo/us-central1/bar/")
+      .reply(301, "", { location: "https://example.com/foo" });
+
+    const options = cloneDeep(fakeOptions);
+    options.targets = ["functions"];
+
+    const mwGenerator = functionsProxy(options);
+    const mw = await mwGenerator(fakeRewrite);
+    const spyMw = sinon.spy(mw);
+
+    return supertest(spyMw)
+      .get("/")
+      .expect(301)
+      .then((res) => {
+        expect(res.header["location"]).to.equal("https://example.com/foo");
+        expect(spyMw.calledOnce).to.be.true;
+      });
+  });
+
   it("should proxy a request body on a POST request", async () => {
     nock("http://localhost:7778")
       .post("/project-foo/us-central1/bar/", "data")

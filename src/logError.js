@@ -1,6 +1,6 @@
 "use strict";
 
-var logger = require("./logger");
+const { logger } = require("./logger");
 var clc = require("cli-color");
 
 /* istanbul ignore next */

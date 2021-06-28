@@ -5,7 +5,7 @@ import { Command } from "../command";
 import { Emulators } from "../emulator/types";
 import { printNoticeIfEmulated } from "../emulator/commandUtils";
 import { FirestoreDelete } from "../firestore/delete";
-import { prompt } from "../prompt";
+import { promptOnce } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 
@@ -26,12 +26,21 @@ function getConfirmationMessage(deleteOp: FirestoreDelete, options: any) {
       return (
         "You are about to delete the document at " +
         clc.cyan(deleteOp.path) +
-        " and all of its subcollections. Are you sure?"
+        " and all of its subcollections " +
+        " for " +
+        clc.cyan(options.project) +
+        ". Are you sure?"
       );
     }
 
     // Shallow document delete
-    return "You are about to delete the document at " + clc.cyan(deleteOp.path) + ". Are you sure?";
+    return (
+      "You are about to delete the document at " +
+      clc.cyan(deleteOp.path) +
+      " for " +
+      clc.cyan(options.project) +
+      ". Are you sure?"
+    );
   }
 
   // Recursive collection delete
@@ -39,8 +48,10 @@ function getConfirmationMessage(deleteOp: FirestoreDelete, options: any) {
     return (
       "You are about to delete all documents in the collection at " +
       clc.cyan(deleteOp.path) +
-      " and all of their subcollections. " +
-      "Are you sure?"
+      " and all of their subcollections " +
+      " for " +
+      clc.cyan(options.project) +
+      ". Are you sure?"
     );
   }
 
@@ -48,6 +59,8 @@ function getConfirmationMessage(deleteOp: FirestoreDelete, options: any) {
   return (
     "You are about to delete all documents in the collection at " +
     clc.cyan(deleteOp.path) +
+    " for " +
+    clc.cyan(options.project) +
     ". Are you sure?"
   );
 }
@@ -85,19 +98,17 @@ module.exports = new Command("firestore:delete [path]")
       allCollections: options.allCollections,
     });
 
-    if (!options.yes) {
-      const res = await prompt(options, [
-        {
-          type: "confirm",
-          name: "confirm",
-          default: false,
-          message: getConfirmationMessage(deleteOp, options),
-        },
-      ]);
-
-      if (!res.confirm) {
-        return utils.reject("Command aborted.", { exit: 1 });
-      }
+    const confirm = await promptOnce(
+      {
+        type: "confirm",
+        name: "yes",
+        default: false,
+        message: getConfirmationMessage(deleteOp, options),
+      },
+      options
+    );
+    if (!confirm) {
+      return utils.reject("Command aborted.", { exit: 1 });
     }
 
     if (options.allCollections) {

@@ -244,6 +244,7 @@ describe("extensions", () => {
           name: "publishers/test-pub/extensions/test-ext/versions/0.1.0",
           ref: "test-pub/test-ext@0.1.0",
           hash: "abc123",
+          sourceDownloadUri: "https://storage.googleapis.com/test/test",
           spec: { name: "", version: "0.1.0", sourceUrl: "", roles: [], resources: [], params: [] },
         },
         {}
@@ -589,6 +590,38 @@ describe("publishExtensionVersion", () => {
         "/"
       )
     ).to.be.rejectedWith(FirebaseError, "ExtensionVersion ref");
+  });
+});
+
+describe("deleteExtension", () => {
+  afterEach(() => {
+    nock.cleanAll();
+  });
+
+  it("should make a DELETE call to the correct endpoint", async () => {
+    nock(api.extensionsOrigin)
+      .delete(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}`)
+      .reply(200);
+
+    await extensionsApi.deleteExtension(`${PUBLISHER_ID}/${EXTENSION_ID}`);
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should throw a FirebaseError if the endpoint returns an error response", async () => {
+    nock(api.extensionsOrigin)
+      .delete(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}`)
+      .reply(404);
+
+    await expect(
+      extensionsApi.deleteExtension(`${PUBLISHER_ID}/${EXTENSION_ID}`)
+    ).to.be.rejectedWith(FirebaseError);
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should throw an error for an invalid ref", async () => {
+    await expect(
+      extensionsApi.deleteExtension(`${PUBLISHER_ID}/${EXTENSION_ID}@`)
+    ).to.be.rejectedWith(FirebaseError, "Extension reference must be in format");
   });
 });
 

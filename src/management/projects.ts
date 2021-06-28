@@ -8,7 +8,7 @@ import { pollOperation } from "../operation-poller";
 import { promptOnce } from "../prompt";
 import { Question } from "inquirer";
 import * as api from "../api";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import * as utils from "../utils";
 
 const TIMEOUT_MILLIS = 30000;
@@ -147,6 +147,7 @@ async function selectProjectInteractively(
   }
   if (nextPageToken) {
     // Prompt user for project ID if we can't list all projects in 1 page
+    logger.debug(`Found more than ${projects.length} projects, selecting via prompt`);
     return selectProjectByPrompting();
   }
   return selectProjectFromList(projects);

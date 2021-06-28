@@ -7,11 +7,12 @@ import * as process from "process";
 import { Readable } from "stream";
 import * as winston from "winston";
 import { SPLAT } from "triple-beam";
+import { AssertionError } from "assert";
 const ansiStrip = require("cli-color/strip") as (input: string) => string;
 
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
-import * as logger from "./logger";
+import { logger, LogLevel } from "./logger";
 import { LogDataOrUndefined } from "./emulator/loggingEmulator";
 import { Socket } from "net";
 
@@ -89,15 +90,11 @@ export function getDatabaseViewDataUrl(
   pathname: string
 ): string {
   const urlObj = new url.URL(origin);
-  if (
-    urlObj.hostname.includes("firebaseio.com") ||
-    urlObj.hostname.includes("firebasedatabase.app")
-  ) {
+  if (urlObj.hostname.includes("firebaseio") || urlObj.hostname.includes("firebasedatabase")) {
     return consoleUrl(project, `/database/${namespace}/data${pathname}`);
-  } else {
-    // TODO(samstern): View in Emulator UI
-    return getDatabaseUrl(origin, namespace, pathname + ".json");
   }
+  // TODO(samstern): View in Emulator UI
+  return getDatabaseUrl(origin, namespace, pathname + ".json");
 }
 
 /**
@@ -110,15 +107,11 @@ export function addDatabaseNamespace(origin: string, namespace: string): string 
   if (urlObj.hostname.includes(namespace)) {
     return urlObj.href;
   }
-  if (
-    urlObj.hostname.includes("firebaseio.com") ||
-    urlObj.hostname.includes("firebasedatabase.app")
-  ) {
+  if (urlObj.hostname.includes("firebaseio") || urlObj.hostname.includes("firebasedatabase")) {
     return addSubdomain(origin, namespace);
-  } else {
-    urlObj.searchParams.set("ns", namespace);
-    return urlObj.href;
   }
+  urlObj.searchParams.set("ns", namespace);
+  return urlObj.href;
 }
 
 /**
@@ -134,7 +127,7 @@ export function addSubdomain(origin: string, subdomain: string): string {
  */
 export function logSuccess(
   message: string,
-  type = "info",
+  type: LogLevel = "info",
   data: LogDataOrUndefined = undefined
 ): void {
   logger[type](clc.green.bold(`${SUCCESS_CHAR} `), message, data);
@@ -146,7 +139,7 @@ export function logSuccess(
 export function logLabeledSuccess(
   label: string,
   message: string,
-  type = "info",
+  type: LogLevel = "info",
   data: LogDataOrUndefined = undefined
 ): void {
   logger[type](clc.green.bold(`${SUCCESS_CHAR}  ${label}:`), message, data);
@@ -157,7 +150,7 @@ export function logLabeledSuccess(
  */
 export function logBullet(
   message: string,
-  type = "info",
+  type: LogLevel = "info",
   data: LogDataOrUndefined = undefined
 ): void {
   logger[type](clc.cyan.bold("i "), message, data);
@@ -169,7 +162,7 @@ export function logBullet(
 export function logLabeledBullet(
   label: string,
   message: string,
-  type = "info",
+  type: LogLevel = "info",
   data: LogDataOrUndefined = undefined
 ): void {
   logger[type](clc.cyan.bold(`i  ${label}:`), message, data);
@@ -180,7 +173,7 @@ export function logLabeledBullet(
  */
 export function logWarning(
   message: string,
-  type = "warn",
+  type: LogLevel = "warn",
   data: LogDataOrUndefined = undefined
 ): void {
   logger[type](clc.yellow.bold(`${WARNING_CHAR} `), message, data);
@@ -192,7 +185,7 @@ export function logWarning(
 export function logLabeledWarning(
   label: string,
   message: string,
-  type = "warn",
+  type: LogLevel = "warn",
   data: LogDataOrUndefined = undefined
 ): void {
   logger[type](clc.yellow.bold(`${WARNING_CHAR}  ${label}:`), message, data);
@@ -506,4 +499,43 @@ export function isRunningInWSL(): boolean {
  */
 export function thirtyDaysFromNow(): Date {
   return new Date(Date.now() + THIRTY_DAYS_IN_MILLISECONDS);
+}
+
+/**
+ * See:
+ * https://www.typescriptlang.org/docs/handbook/release-notes/typescript-3-7.html#assertion-functions
+ */
+export function assertDefined<T>(val: T, message?: string): asserts val is NonNullable<T> {
+  if (val === undefined || val === null) {
+    throw new AssertionError({
+      message: message || `expected value to be defined but got "${val}"`,
+    });
+  }
+}
+
+export function assertIsString(val: any, message?: string): asserts val is string {
+  if (typeof val !== "string") {
+    throw new AssertionError({
+      message: message || `expected "string" but got "${typeof val}"`,
+    });
+  }
+}
+
+export function assertIsNumber(val: any, message?: string): asserts val is number {
+  if (typeof val !== "number") {
+    throw new AssertionError({
+      message: message || `expected "number" but got "${typeof val}"`,
+    });
+  }
+}
+
+export function assertIsStringOrUndefined(
+  val: any,
+  message?: string
+): asserts val is string | undefined {
+  if (!(val === undefined || typeof val === "string")) {
+    throw new AssertionError({
+      message: message || `expected "string" or "undefined" but got "${typeof val}"`,
+    });
+  }
 }

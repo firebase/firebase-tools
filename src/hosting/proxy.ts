@@ -7,7 +7,7 @@ import { URL } from "url";
 
 import { Client, HttpMethod } from "../apiv2";
 import { FirebaseError } from "../error";
-import * as logger from "../logger";
+import { logger } from "../logger";
 
 const REQUIRED_VARY_VALUES = ["Accept-Encoding", "Authorization", "Cookie"];
 
@@ -140,6 +140,31 @@ export function proxyRequestHandler(url: string, rewriteIdentifier: string): Req
     }
 
     proxyRes.response.headers.set("vary", makeVary(proxyRes.response.headers.get("vary")));
+
+    // Fix the location header that `node-fetch` attempts to helpfully fix:
+    // https://github.com/node-fetch/node-fetch/blob/4abbfd231f4bce7dbe65e060a6323fc6917fd6d9/src/index.js#L117-L120
+    // Filed a bug in `node-fetch` to either document the change or fix it:
+    // https://github.com/node-fetch/node-fetch/issues/1086
+    const location = proxyRes.response.headers.get("location");
+    if (location) {
+      // If parsing the URL fails, it may be because the location header
+      // isn't a helpeful resolved URL (if node-fetch changes behavior). This
+      // try is a preventative measure to ensure such a change shouldn't break
+      // our emulator.
+      try {
+        const locationURL = new URL(location);
+        // Only assume we can fix the location header if the origin of the
+        // "fixed" header is the same as the origin of the outbound request.
+        if (locationURL.origin == u.origin) {
+          const unborkedLocation = location.replace(locationURL.origin, "");
+          proxyRes.response.headers.set("location", unborkedLocation);
+        }
+      } catch (e) {
+        logger.debug(
+          `[hosting] had trouble parsing location header, but this may be okay: "${location}"`
+        );
+      }
+    }
 
     for (const [key, value] of Object.entries(proxyRes.response.headers.raw())) {
       res.setHeader(key, value as string[]);

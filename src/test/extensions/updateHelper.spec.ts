@@ -14,7 +14,7 @@ const SPEC = {
   name: "test",
   displayName: "Old",
   description: "descriptive",
-  version: "0.1.0",
+  version: "0.2.0",
   license: "MIT",
   apis: [
     { apiName: "api1", reason: "" },
@@ -35,6 +35,8 @@ const SPEC = {
   params: [],
 };
 
+const OLD_SPEC = Object.assign({}, SPEC, { version: "0.1.0" });
+
 const SOURCE = {
   name: "projects/firebasemods/sources/new-test-source",
   packageUri: "https://firebase-fake-bucket.com",
@@ -54,7 +56,6 @@ const EXTENSION_VERSION = {
 const EXTENSION = {
   name: "publishers/test-publisher/extensions/test",
   ref: "test-publisher/test",
-  spec: SPEC,
   state: "PUBLISHED",
   createTime: "2020-06-30T00:21:06.722782Z",
   latestVersion: "0.2.0",
@@ -108,7 +109,7 @@ const INSTANCE = {
   state: "ACTIVE",
   config: {
     name:
-      "projects/invader-zim/instances/image-resizer/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
+      "projects/invader-zim/instances/instance-of-official-ext/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
     createTime: "2019-05-19T00:20:10.416947Z",
     sourceId: "fake-official-source",
     sourceName: "projects/firebasemods/sources/fake-official-source",
@@ -119,18 +120,36 @@ const INSTANCE = {
 };
 
 const REGISTRY_INSTANCE = {
-  name: "projects/invader-zim/instances/fake-official-instance",
+  name: "projects/invader-zim/instances/instance-of-registry-ext",
   createTime: "2019-05-19T00:20:10.416947Z",
   updateTime: "2019-05-19T00:20:10.416947Z",
   state: "ACTIVE",
   config: {
     name:
-      "projects/invader-zim/instances/image-resizer/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
+      "projects/invader-zim/instances/instance-of-registry-ext/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
     createTime: "2019-05-19T00:20:10.416947Z",
     sourceId: "fake-registry-source",
     sourceName: "projects/firebasemods/sources/fake-registry-source",
+    extensionRef: "test-publisher/test",
     source: {
       name: "projects/firebasemods/sources/fake-registry-source",
+    },
+  },
+};
+
+const LOCAL_INSTANCE = {
+  name: "projects/invader-zim/instances/instance-of-local-ext",
+  createTime: "2019-05-19T00:20:10.416947Z",
+  updateTime: "2019-05-19T00:20:10.416947Z",
+  state: "ACTIVE",
+  config: {
+    name:
+      "projects/invader-zim/instances/instance-of-local-ext/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
+    createTime: "2019-05-19T00:20:10.416947Z",
+    sourceId: "fake-registry-source",
+    sourceName: "projects/firebasemods/sources/fake-local-source",
+    source: {
+      name: "projects/firebasemods/sources/fake-local-source",
     },
   },
 };
@@ -426,7 +445,7 @@ describe("updateHelper", () => {
     it("should return the correct source name for a valid published source", async () => {
       promptStub.resolves(true);
       registryEntryStub.resolves(REGISTRY_ENTRY);
-      const name = await updateHelper.updateToVersionFromRegistry(
+      const name = await updateHelper.updateToVersionFromRegistryFile(
         "test-project",
         "test-instance",
         SPEC,
@@ -440,7 +459,7 @@ describe("updateHelper", () => {
       promptStub.resolves(true);
       registryEntryStub.throws("Unable to find extension source");
       await expect(
-        updateHelper.updateToVersionFromRegistry(
+        updateHelper.updateToVersionFromRegistryFile(
           "test-project",
           "test-instance",
           SPEC,
@@ -453,11 +472,11 @@ describe("updateHelper", () => {
     it("should not update if the update warning is not confirmed", async () => {
       promptStub.resolves(false);
       await expect(
-        updateHelper.updateToVersionFromRegistry(
+        updateHelper.updateToVersionFromRegistryFile(
           "test-project",
           "test-instance",
-          SPEC,
-          SPEC.name,
+          OLD_SPEC,
+          OLD_SPEC.name,
           "0.1.2"
         )
       ).to.be.rejectedWith(FirebaseError, "Update cancelled.");
@@ -465,7 +484,7 @@ describe("updateHelper", () => {
 
     it("should not update if version given less than min version required", async () => {
       await expect(
-        updateHelper.updateToVersionFromRegistry(
+        updateHelper.updateToVersionFromRegistryFile(
           "test-project",
           "test-instance",
           SPEC,
@@ -503,7 +522,7 @@ describe("updateHelper", () => {
 
     it("should return the correct source name for a valid published source", async () => {
       promptStub.resolves(true);
-      const name = await updateHelper.updateFromRegistry(
+      const name = await updateHelper.updateFromRegistryFile(
         "test-project",
         "test-instance",
         SPEC,
@@ -516,7 +535,7 @@ describe("updateHelper", () => {
       promptStub.resolves(true);
       registryEntryStub.throws("Unable to find extension source");
       await expect(
-        updateHelper.updateFromRegistry("test-project", "test-instance", SPEC, SPEC.name)
+        updateHelper.updateFromRegistryFile("test-project", "test-instance", SPEC, SPEC.name)
       ).to.be.rejectedWith(FirebaseError, "Cannot find the latest version of this extension.");
     });
 
@@ -524,8 +543,117 @@ describe("updateHelper", () => {
       promptStub.resolves(false);
       registryEntryStub.resolves(REGISTRY_ENTRY);
       await expect(
-        updateHelper.updateFromRegistry("test-project", "test-instance", SPEC, SPEC.name)
+        updateHelper.updateFromRegistryFile(
+          "test-project",
+          "test-instance",
+          OLD_SPEC,
+          OLD_SPEC.name
+        )
       ).to.be.rejectedWith(FirebaseError, "Update cancelled.");
     });
+  });
+});
+
+describe("inferUpdateSource", () => {
+  it("should infer update source from ref without version", () => {
+    const result = updateHelper.inferUpdateSource("", "firebase/storage-resize-images");
+    expect(result).to.equal("firebase/storage-resize-images@latest");
+  });
+
+  it("should infer update source from ref with just version", () => {
+    const result = updateHelper.inferUpdateSource("0.1.2", "firebase/storage-resize-images");
+    expect(result).to.equal("firebase/storage-resize-images@0.1.2");
+  });
+
+  it("should infer update source from ref and extension name", () => {
+    const result = updateHelper.inferUpdateSource(
+      "storage-resize-images",
+      "firebase/storage-resize-images"
+    );
+    expect(result).to.equal("firebase/storage-resize-images@latest");
+  });
+
+  it("should infer update source if it is a ref distinct from the input ref", () => {
+    const result = updateHelper.inferUpdateSource(
+      "notfirebase/storage-resize-images",
+      "firebase/storage-resize-images"
+    );
+    expect(result).to.equal("notfirebase/storage-resize-images@latest");
+  });
+});
+
+describe("getExistingSourceOrigin", () => {
+  let registryEntryStub: sinon.SinonStub;
+  let isOfficialStub: sinon.SinonStub;
+  let getInstanceStub: sinon.SinonStub;
+
+  afterEach(() => {
+    registryEntryStub.restore();
+    isOfficialStub.restore();
+    getInstanceStub.restore();
+  });
+
+  it("should return official extension as source origin", async () => {
+    registryEntryStub = sinon.stub(resolveSource, "resolveRegistryEntry");
+    registryEntryStub.resolves(REGISTRY_ENTRY);
+    isOfficialStub = sinon.stub(resolveSource, "isOfficialSource");
+    isOfficialStub.returns(true);
+    getInstanceStub = sinon.stub(extensionsApi, "getInstance").resolves(INSTANCE);
+
+    const result = await updateHelper.getExistingSourceOrigin(
+      "invader-zim",
+      "instance-of-official-ext",
+      "ext-testing",
+      "projects/firebasemods/sources/fake-official-source"
+    );
+
+    expect(result).to.equal(extensionsHelper.SourceOrigin.OFFICIAL_EXTENSION);
+  });
+
+  it("should return published extension as source origin", async () => {
+    registryEntryStub = sinon.stub(resolveSource, "resolveRegistryEntry");
+    registryEntryStub.throwsException("Entry not found");
+    getInstanceStub = sinon.stub(extensionsApi, "getInstance").resolves(REGISTRY_INSTANCE);
+
+    const result = await updateHelper.getExistingSourceOrigin(
+      "invader-zim",
+      "instance-of-registry-ext",
+      "ext-testing",
+      "projects/firebasemods/sources/fake-registry-source"
+    );
+
+    expect(result).to.equal(extensionsHelper.SourceOrigin.PUBLISHED_EXTENSION);
+  });
+
+  it("should return local extension as source origin", async () => {
+    registryEntryStub = sinon.stub(resolveSource, "resolveRegistryEntry");
+    registryEntryStub.throwsException("Entry not found");
+    getInstanceStub = sinon.stub(extensionsApi, "getInstance").resolves(LOCAL_INSTANCE);
+
+    const result = await updateHelper.getExistingSourceOrigin(
+      "invader-zim",
+      "instance-of-local-ext",
+      "ext-testing",
+      "projects/firebasemods/sources/fake-local-source"
+    );
+
+    expect(result).to.equal(extensionsHelper.SourceOrigin.LOCAL);
+  });
+
+  it("should return local extension as source origin", async () => {
+    registryEntryStub = sinon.stub(resolveSource, "resolveRegistryEntry");
+    registryEntryStub.resolves(REGISTRY_ENTRY);
+    isOfficialStub = sinon.stub(resolveSource, "isOfficialSource");
+    isOfficialStub.returns(false);
+    getInstanceStub = sinon.stub(extensionsApi, "getInstance").resolves(LOCAL_INSTANCE);
+
+    const result = await updateHelper.getExistingSourceOrigin(
+      "invader-zim",
+      "instance-of-local-ext",
+      "ext-testing",
+      "projects/firebasemods/sources/fake-local-source"
+    );
+
+    expect(result).to.equal(extensionsHelper.SourceOrigin.LOCAL);
   });
 });

@@ -2,13 +2,13 @@ import { expect } from "chai";
 import * as _ from "lodash";
 import * as nock from "nock";
 
-import { cloudscheduler } from "../../gcp";
+import * as cloudscheduler from "../../gcp/cloudscheduler";
 import { FirebaseError } from "../../error";
 import * as api from "../../api";
 
 const VERSION = "v1beta1";
 
-const TEST_JOB = {
+const TEST_JOB: cloudscheduler.Job = {
   name: "projects/test-project/locations/us-east1/jobs/test",
   schedule: "every 5 minutes",
   timeZone: "America/Los_Angeles",
@@ -116,6 +116,66 @@ describe("cloudscheduler", () => {
       );
 
       expect(nock.isDone()).to.be.true;
+    });
+  });
+
+  describe("toJob", () => {
+    const SCHEDULE = {
+      id: "firebase-schedule-id-region",
+      project: "project",
+      schedule: "every 1 minutes",
+      transport: "pubsub" as any,
+      targetService: {
+        id: "id",
+        region: "region",
+        project: "project",
+      },
+    };
+    it("should copy minimal fields", () => {
+      expect(cloudscheduler.jobFromSpec(SCHEDULE, "appEngineLocation")).to.deep.equal({
+        name: "projects/project/locations/appEngineLocation/jobs/firebase-schedule-id-region",
+        schedule: "every 1 minutes",
+        pubsubTarget: {
+          topicName: "projects/project/topics/firebase-schedule-id-region",
+          attributes: {
+            scheduled: "true",
+          },
+        },
+      });
+    });
+
+    it("should copy optional fields", () => {
+      expect(
+        cloudscheduler.jobFromSpec(
+          {
+            ...SCHEDULE,
+            timeZone: "America/Los_Angeles",
+            retryConfig: {
+              maxDoublings: 2,
+              maxBackoffDuration: "20s",
+              minBackoffDuration: "1s",
+              maxRetryDuration: "60s",
+            },
+          },
+          "appEngineLocation"
+        )
+      ).to.deep.equal({
+        name: "projects/project/locations/appEngineLocation/jobs/firebase-schedule-id-region",
+        schedule: "every 1 minutes",
+        timeZone: "America/Los_Angeles",
+        retryConfig: {
+          maxDoublings: 2,
+          maxBackoffDuration: "20s",
+          minBackoffDuration: "1s",
+          maxRetryDuration: "60s",
+        },
+        pubsubTarget: {
+          topicName: "projects/project/topics/firebase-schedule-id-region",
+          attributes: {
+            scheduled: "true",
+          },
+        },
+      });
     });
   });
 });

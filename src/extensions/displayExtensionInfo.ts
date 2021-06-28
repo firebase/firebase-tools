@@ -6,7 +6,7 @@ import TerminalRenderer = require("marked-terminal");
 import * as extensionsApi from "./extensionsApi";
 import * as utils from "../utils";
 import { logPrefix } from "./extensionsHelper";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import { FirebaseError } from "../error";
 import { promptOnce } from "../prompt";
 
@@ -26,14 +26,15 @@ const deletionColor = clc.red;
  */
 export function displayExtInfo(
   extensionName: string,
+  publisher: string,
   spec: extensionsApi.ExtensionSpec,
   published = false
 ): string[] {
   const lines = [];
   lines.push(`**Name**: ${spec.displayName}`);
-  const url = spec.author?.url;
-  const urlMarkdown = url ? `(**[${url}](${url})**)` : "";
-  lines.push(`**Author**: ${spec.author?.authorName} ${urlMarkdown}`);
+  if (publisher) {
+    lines.push(`**Publisher**: ${publisher}`);
+  }
   if (spec.description) {
     lines.push(`**Description**: ${spec.description}`);
   }
@@ -74,7 +75,7 @@ export function displayExtInfo(
 export function displayUpdateChangesNoInput(
   spec: extensionsApi.ExtensionSpec,
   newSpec: extensionsApi.ExtensionSpec,
-  published = false
+  isOfficial = true
 ): string[] {
   const lines: string[] = [];
   if (spec.displayName !== newSpec.displayName) {
@@ -104,7 +105,7 @@ export function displayUpdateChangesNoInput(
     );
   }
 
-  if (published) {
+  if (!isOfficial) {
     if (spec.sourceUrl !== newSpec.sourceUrl) {
       lines.push(
         "",
@@ -231,4 +232,12 @@ export async function getConsent(field: string, message: string): Promise<void> 
       { exit: 2 }
     );
   }
+}
+
+/**
+ * Prints a clickable link where users can download the source code for an Extension Version.
+ */
+export function printSourceDownloadLink(sourceDownloadUri: string): void {
+  const sourceDownloadMsg = `Want to review the source code that will be installed? Download it here: ${sourceDownloadUri}`;
+  utils.logBullet(marked(sourceDownloadMsg));
 }

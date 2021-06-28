@@ -1,12 +1,17 @@
-import * as logger from "../logger";
+import { logger } from "../logger";
 import RetriesExhaustedError from "./errors/retries-exhausted-error";
 import TimeoutError from "./errors/timeout-error";
 import TaskError from "./errors/task-error";
 
-function backoff(retryNumber: number, delay: number): Promise<void> {
+function backoff(retryNumber: number, delay: number, maxDelay: number): Promise<void> {
   return new Promise((resolve: () => void) => {
-    setTimeout(resolve, delay * Math.pow(2, retryNumber));
+    setTimeout(resolve, timeToWait(retryNumber, delay, maxDelay));
   });
+}
+
+// Exported for unit testing.
+export function timeToWait(retryNumber: number, delay: number, maxDelay: number): number {
+  return Math.min(delay * Math.pow(2, retryNumber), maxDelay);
 }
 
 function DEFAULT_HANDLER<R>(task: any): Promise<R> {
@@ -19,6 +24,7 @@ export interface ThrottlerOptions<T, R> {
   handler?: (task: T) => Promise<R>;
   retries?: number;
   backoff?: number;
+  maxBackoff?: number;
 }
 
 export interface ThrottlerStats {
@@ -68,6 +74,7 @@ export abstract class Throttler<T, R> {
   avg: number = 0;
   retries: number = 0;
   backoff: number = 200;
+  maxBackoff: number = 60000; // 1 minute
   closed: boolean = false;
   finished: boolean = false;
   startTime: number = 0;
@@ -88,8 +95,8 @@ export abstract class Throttler<T, R> {
     if (typeof options.backoff === "number") {
       this.backoff = options.backoff;
     }
-    if (typeof options.backoff === "number") {
-      this.backoff = options.backoff;
+    if (typeof options.maxBackoff === "number") {
+      this.maxBackoff = options.maxBackoff;
     }
   }
 
@@ -263,7 +270,7 @@ export abstract class Throttler<T, R> {
       if (taskData.retryCount === this.retries) {
         throw new RetriesExhaustedError(this.taskName(cursorIndex), this.retries, err);
       }
-      await backoff(taskData.retryCount + 1, this.backoff);
+      await backoff(taskData.retryCount + 1, this.backoff, this.maxBackoff);
       if (taskData.isTimedOut) {
         throw new TimeoutError(this.taskName(cursorIndex), taskData.timeoutMillis!);
       }
@@ -280,7 +287,6 @@ export abstract class Throttler<T, R> {
     this.min = Math.min(dt, this.min);
     this.max = Math.max(dt, this.max);
     this.avg = (this.avg * this.complete + dt) / (this.complete + 1);
-
     return result;
   }
 

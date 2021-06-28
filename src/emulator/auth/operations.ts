@@ -13,11 +13,12 @@ import {
   MakeRequired,
   isValidPhoneNumber,
 } from "./utils";
-import { NotImplementedError, assert, BadRequestError } from "./errors";
+import { NotImplementedError, assert, BadRequestError, InternalError } from "./errors";
 import { Emulators } from "../types";
 import { EmulatorLogger } from "../emulatorLogger";
 import {
   ProjectState,
+  OobRequestType,
   UserInfo,
   ProviderUserInfo,
   PROVIDER_PASSWORD,
@@ -25,10 +26,9 @@ import {
   PROVIDER_PHONE,
   SIGNIN_METHOD_EMAIL_LINK,
   PROVIDER_CUSTOM,
+  OobRecord,
 } from "./state";
-
-import * as schema from "./schema";
-export type Schemas = schema.components["schemas"];
+import { MfaEnrollments, CreateMfaEnrollmentsRequest, Schemas, MfaEnrollment } from "./types";
 
 /**
  * Create a map from IDs to operations handlers suitable for exegesis.
@@ -56,6 +56,7 @@ export const authOperations: AuthOps = {
       update: setAccountInfo,
     },
     projects: {
+      createSessionCookie,
       queryAccounts,
       accounts: {
         _: signUp,
@@ -65,6 +66,7 @@ export const authOperations: AuthOps = {
         sendOobCode,
         update: setAccountInfo,
         batchCreate,
+        batchDelete,
         batchGet,
       },
     },
@@ -114,6 +116,11 @@ function signUp(
     if (reqBody.idToken) {
       assert(!reqBody.localId, "UNEXPECTED_PARAMETER : User ID");
     }
+    if (reqBody.localId) {
+      // Fail fast if localId is taken (matching production behavior).
+      assert(!state.getUserByLocalId(reqBody.localId), "DUPLICATE_LOCAL_ID");
+    }
+
     updates.displayName = reqBody.displayName;
     updates.photoUrl = reqBody.photoUrl;
     updates.emailVerified = reqBody.emailVerified || false;
@@ -157,6 +164,11 @@ function signUp(
     updates.passwordUpdatedAt = Date.now();
     updates.validSince = toUnixTimestamp(new Date()).toString();
   }
+  if (reqBody.mfaInfo) {
+    updates.mfaInfo = getMfaEnrollmentsFromRequest(state, reqBody.mfaInfo, {
+      generateEnrollmentIds: true,
+    });
+  }
   let user: UserInfo | undefined;
   if (reqBody.idToken) {
     ({ user } = parseIdToken(state, reqBody.idToken));
@@ -176,7 +188,6 @@ function signUp(
   return {
     kind: "identitytoolkit#SignupNewUserResponse",
     localId: user.localId,
-
     displayName: user.displayName,
     email: user.email,
     ...(provider ? issueTokens(state, user, provider) : {}),
@@ -188,34 +199,34 @@ function lookup(
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1GetAccountInfoRequest"],
   ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitV1GetAccountInfoResponse"] {
+  const seenLocalIds = new Set<string>();
   const users: UserInfo[] = [];
+  function tryAddUser(maybeUser: UserInfo | undefined): void {
+    if (maybeUser && !seenLocalIds.has(maybeUser.localId)) {
+      users.push(maybeUser);
+      seenLocalIds.add(maybeUser.localId);
+    }
+  }
+
   if (ctx.security?.Oauth2) {
     if (reqBody.initialEmail) {
+      // TODO: This is now possible. See ProjectState.getUserByInitialEmail.
       throw new NotImplementedError("Lookup by initialEmail is not implemented.");
     }
-    if (reqBody.localId) {
-      for (const localId of reqBody.localId) {
-        const maybeUser = state.getUserByLocalId(localId);
-        if (maybeUser) {
-          users.push(maybeUser);
-        }
-      }
+    for (const localId of reqBody.localId ?? []) {
+      tryAddUser(state.getUserByLocalId(localId));
     }
-    if (reqBody.email) {
-      for (const email of reqBody.email) {
-        const maybeUser = state.getUserByEmail(email);
-        if (maybeUser) {
-          users.push(maybeUser);
-        }
-      }
+    for (const email of reqBody.email ?? []) {
+      tryAddUser(state.getUserByEmail(email));
     }
-    if (reqBody.phoneNumber) {
-      for (const phoneNumber of reqBody.phoneNumber) {
-        const maybeUser = state.getUserByPhoneNumber(phoneNumber);
-        if (maybeUser) {
-          users.push(maybeUser);
-        }
+    for (const phoneNumber of reqBody.phoneNumber ?? []) {
+      tryAddUser(state.getUserByPhoneNumber(phoneNumber));
+    }
+    for (const { providerId, rawId } of reqBody.federatedUserId ?? []) {
+      if (!providerId || !rawId) {
+        continue;
       }
+      tryAddUser(state.getUserByProviderRawId(providerId, rawId));
     }
   } else {
     assert(reqBody.idToken, "MISSING_ID_TOKEN");
@@ -339,7 +350,7 @@ function batchCreate(
       // TODO: Support MFA.
 
       fields.validSince = toUnixTimestamp(uploadTime).toString();
-      fields.createdAt = uploadTime.toString();
+      fields.createdAt = uploadTime.getTime().toString();
       if (fields.createdAt && !isNaN(Number(userInfo.createdAt))) {
         fields.createdAt = userInfo.createdAt;
       }
@@ -395,12 +406,41 @@ function batchCreate(
   };
 }
 
+function batchDelete(
+  state: ProjectState,
+  reqBody: Schemas["GoogleCloudIdentitytoolkitV1BatchDeleteAccountsRequest"]
+): Schemas["GoogleCloudIdentitytoolkitV1BatchDeleteAccountsResponse"] {
+  const errors: Required<
+    Schemas["GoogleCloudIdentitytoolkitV1BatchDeleteAccountsResponse"]["errors"]
+  > = [];
+  const localIds = reqBody.localIds ?? [];
+  assert(localIds.length > 0 && localIds.length <= 1000, "LOCAL_ID_LIST_EXCEEDS_LIMIT");
+
+  for (let index = 0; index < localIds.length; index++) {
+    const localId = localIds[index];
+    const user = state.getUserByLocalId(localId);
+    if (!user) {
+      continue;
+    } else if (!user.disabled && !reqBody.force) {
+      errors.push({
+        index,
+        localId,
+        message: "NOT_DISABLED : Disable the account before batch deletion.",
+      });
+    } else {
+      state.deleteUser(user);
+    }
+  }
+
+  return { errors: errors.length ? errors : undefined };
+}
+
 function batchGet(
   state: ProjectState,
   reqBody: unknown,
   ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitV1DownloadAccountResponse"] {
-  const limit = Math.min(Math.floor(ctx.params.query.maxResults) || 20, 1000);
+  const maxResults = Math.min(Math.floor(ctx.params.query.maxResults) || 20, 1000);
 
   const users = state.queryUsers(
     {},
@@ -408,9 +448,9 @@ function batchGet(
   );
   let newPageToken: string | undefined = undefined;
 
-  // As a non-standard behavior, passing in limit=-1 will return all users.
-  if (limit >= 0 && users.length > limit) {
-    users.length = limit;
+  // As a non-standard behavior, passing in maxResults=-1 will return all users.
+  if (maxResults >= 0 && users.length >= maxResults) {
+    users.length = maxResults;
     if (users.length) {
       newPageToken = users[users.length - 1].localId;
     }
@@ -488,6 +528,42 @@ function createAuthUri(
     sessionId,
     signinMethods,
   };
+}
+
+const SESSION_COOKIE_MIN_VALID_DURATION = 5 * 60; /* 5 minutes in seconds */
+export const SESSION_COOKIE_MAX_VALID_DURATION = 14 * 24 * 60 * 60; /* 14 days in seconds */
+
+function createSessionCookie(
+  state: ProjectState,
+  reqBody: Schemas["GoogleCloudIdentitytoolkitV1CreateSessionCookieRequest"],
+  ctx: ExegesisContext
+): Schemas["GoogleCloudIdentitytoolkitV1CreateSessionCookieResponse"] {
+  assert(reqBody.idToken, "MISSING_ID_TOKEN");
+  const validDuration = Number(reqBody.validDuration) || SESSION_COOKIE_MAX_VALID_DURATION;
+  assert(
+    validDuration >= SESSION_COOKIE_MIN_VALID_DURATION &&
+      validDuration <= SESSION_COOKIE_MAX_VALID_DURATION,
+    "INVALID_DURATION"
+  );
+  const { payload } = parseIdToken(state, reqBody.idToken);
+  const issuedAt = toUnixTimestamp(new Date());
+  const expiresAt = issuedAt + validDuration;
+  const sessionCookie = signJwt(
+    {
+      ...payload,
+      iat: issuedAt,
+      exp: expiresAt,
+      iss: `https://session.firebase.google.com/${payload.aud}`,
+    },
+    "",
+    {
+      // Generate a unsigned (insecure) JWT. Admin SDKs should treat this like
+      // a real token (if in emulator mode). This won't work in production.
+      algorithm: "none",
+    }
+  );
+
+  return { sessionCookie };
 }
 
 function deleteAccount(
@@ -705,50 +781,22 @@ function sendOobCode(
     );
   }
 
-  const { oobCode, oobLink } = state.createOob(email, reqBody.requestType, (oobCode) => {
-    // TODO: Support custom handler links.
-    const url = authEmulatorUrl(ctx.req as express.Request);
-    url.pathname = "/emulator/action";
-    url.searchParams.set("mode", mode);
-    url.searchParams.set("lang", "en");
-    url.searchParams.set("oobCode", oobCode);
-
-    // This doesn't matter for now, since any API key works for defaultProject.
-    // TODO: What if reqBody.targetProjectId is set?
-    url.searchParams.set("apiKey", "fake-api-key");
-
-    if (reqBody.continueUrl) {
-      url.searchParams.set("continueUrl", reqBody.continueUrl);
-    }
-
-    return url.toString();
+  const url = authEmulatorUrl(ctx.req as express.Request);
+  const oobRecord = createOobRecord(state, email, url, {
+    requestType: reqBody.requestType,
+    mode,
+    continueUrl: reqBody.continueUrl,
   });
 
   if (reqBody.returnOobLink) {
     return {
       kind: "identitytoolkit#GetOobConfirmationCodeResponse",
       email,
-      oobCode,
-      oobLink,
+      oobCode: oobRecord.oobCode,
+      oobLink: oobRecord.oobLink,
     };
   } else {
-    // Print out a developer-friendly log containing the link, in lieu of
-    // sending a real email out to the email address.
-    let message: string | undefined;
-    switch (reqBody.requestType) {
-      case "EMAIL_SIGNIN":
-        message = `To sign in as ${email}, follow this link: ${oobLink}`;
-        break;
-      case "PASSWORD_RESET":
-        message = `To reset the password for ${email}, follow this link: ${oobLink}&newPassword=NEW_PASSWORD_HERE`;
-        break;
-      case "VERIFY_EMAIL":
-        message = `To verify the email address ${email}, follow this link: ${oobLink}`;
-        break;
-    }
-    if (message) {
-      EmulatorLogger.forEmulator(Emulators.AUTH).log("BULLET", message);
-    }
+    logOobMessage(oobRecord);
 
     return {
       kind: "identitytoolkit#GetOobConfirmationCodeResponse",
@@ -789,7 +837,11 @@ function setAccountInfo(
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1SetAccountInfoRequest"],
   ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitV1SetAccountInfoResponse"] {
-  return setAccountInfoImpl(state, reqBody, { privileged: !!ctx.security?.Oauth2 });
+  const url = authEmulatorUrl(ctx.req as express.Request);
+  return setAccountInfoImpl(state, reqBody, {
+    privileged: !!ctx.security?.Oauth2,
+    emulatorUrl: url,
+  });
 }
 
 /**
@@ -798,12 +850,13 @@ function setAccountInfo(
  * @param state the current project state
  * @param reqBody request with fields to update
  * @param privileged whether request is OAuth2 authenticated. Affects validation
+ * @param emulatorUrl url to the auth emulator instance. Needed for sending OOB link for email reset
  * @return the HTTP response body
  */
 export function setAccountInfoImpl(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1SetAccountInfoRequest"],
-  { privileged = false }: { privileged?: boolean } = {}
+  { privileged = false, emulatorUrl = undefined }: { privileged?: boolean; emulatorUrl?: URL } = {}
 ): Schemas["GoogleCloudIdentitytoolkitV1SetAccountInfoResponse"] {
   // TODO: Implement these.
   const unimplementedFields: (keyof typeof reqBody)[] = [
@@ -843,22 +896,40 @@ export function setAccountInfoImpl(
   const updates: Omit<Partial<UserInfo>, "localId" | "providerUserInfo"> = {};
   let user: UserInfo;
   let signInProvider: string | undefined;
+  let isEmailUpdate: boolean = false;
 
   if (reqBody.oobCode) {
     const oob = state.validateOobCode(reqBody.oobCode);
     assert(oob, "INVALID_OOB_CODE");
-    if (oob.requestType !== "VERIFY_EMAIL") {
-      throw new NotImplementedError(oob.requestType);
-    }
-    state.deleteOobCode(reqBody.oobCode);
-
-    signInProvider = PROVIDER_PASSWORD;
-    const maybeUser = state.getUserByEmail(oob.email);
-    assert(maybeUser, "INVALID_OOB_CODE");
-    user = maybeUser;
-    updates.emailVerified = true;
-    if (oob.email !== user.email) {
-      updates.email = oob.email;
+    switch (oob.requestType) {
+      case "VERIFY_EMAIL": {
+        state.deleteOobCode(reqBody.oobCode);
+        signInProvider = PROVIDER_PASSWORD;
+        const maybeUser = state.getUserByEmail(oob.email);
+        assert(maybeUser, "INVALID_OOB_CODE");
+        user = maybeUser;
+        updates.emailVerified = true;
+        if (oob.email !== user.email) {
+          updates.email = oob.email;
+        }
+        break;
+      }
+      case "RECOVER_EMAIL": {
+        state.deleteOobCode(reqBody.oobCode);
+        const maybeUser = state.getUserByInitialEmail(oob.email);
+        assert(maybeUser, "INVALID_OOB_CODE");
+        // Assert that we don't have any user with this initialEmail
+        assert(!state.getUserByEmail(oob.email), "EMAIL_EXISTS");
+        user = maybeUser;
+        if (oob.email !== user.email) {
+          updates.email = oob.email;
+          // Consider email verified, since this flow is initiated from the user's email
+          updates.emailVerified = true;
+        }
+        break;
+      }
+      default:
+        throw new NotImplementedError(oob.requestType);
     }
   } else {
     if (reqBody.idToken) {
@@ -873,12 +944,21 @@ export function setAccountInfoImpl(
 
     if (reqBody.email) {
       assert(isValidEmailAddress(reqBody.email), "INVALID_EMAIL");
+
       const newEmail = canonicalizeEmailAddress(reqBody.email);
       if (newEmail !== user.email) {
         assert(!state.getUserByEmail(newEmail), "EMAIL_EXISTS");
         updates.email = newEmail;
         // TODO: Set verified if email is verified by IDP linked to account.
         updates.emailVerified = false;
+        isEmailUpdate = true;
+        // Only update initial email if the user is not anonymous and does not have an initial email.
+        // We need to check for an anonymous user through the signIn provider, rather than relying
+        // on an empty user.email field, because it is possible for an anonymous user to update their
+        // email address through the SetAccountInfo endpoint.
+        if (signInProvider !== PROVIDER_ANONYMOUS && user.email && !user.initialEmail) {
+          updates.initialEmail = user.email;
+        }
       }
     }
     if (reqBody.password) {
@@ -896,6 +976,17 @@ export function setAccountInfoImpl(
       updates.validSince = toUnixTimestamp(new Date()).toString();
     }
 
+    // if the request specifies an `mfa` key and enrollments are present and non-empty, set the enrollments
+    // as the current MFA state for the user. if the `mfa` key is specified and no enrollments are present,
+    // clear any existing MFA data for the user. if no `mfa` key is specified, MFA is left unchanged.
+    if (reqBody.mfa) {
+      if (reqBody.mfa.enrollments && reqBody.mfa.enrollments.length > 0) {
+        updates.mfaInfo = getMfaEnrollmentsFromRequest(state, reqBody.mfa.enrollments);
+      } else {
+        updates.mfaInfo = undefined;
+      }
+    }
+
     // Copy profile properties to updates, if they're specified.
     const fieldsToCopy: (keyof typeof reqBody & keyof typeof updates)[] = [
       "displayName",
@@ -908,6 +999,7 @@ export function setAccountInfoImpl(
       if (reqBody.phoneNumber && reqBody.phoneNumber !== user.phoneNumber) {
         assert(isValidPhoneNumber(reqBody.phoneNumber), "INVALID_PHONE_NUMBER : Invalid format.");
         assert(!state.getUserByPhoneNumber(reqBody.phoneNumber), "PHONE_NUMBER_EXISTS");
+        updates.phoneNumber = reqBody.phoneNumber;
       }
       fieldsToCopy.push(
         "emailVerified",
@@ -961,6 +1053,14 @@ export function setAccountInfoImpl(
     deleteProviders: reqBody.deleteProvider,
   });
 
+  // Only initiate the recover email OOB flow for non-anonymous users
+  if (signInProvider !== PROVIDER_ANONYMOUS && user.initialEmail && isEmailUpdate) {
+    if (!emulatorUrl) {
+      throw new Error("Internal assertion error: missing emulatorUrl param");
+    }
+    sendOobForEmailReset(state, user.initialEmail, emulatorUrl);
+  }
+
   return redactPasswordHash({
     kind: "identitytoolkit#SetAccountInfoResponse",
     localId: user.localId,
@@ -974,6 +1074,74 @@ export function setAccountInfoImpl(
 
     ...(updates.validSince && signInProvider ? issueTokens(state, user, signInProvider) : {}),
   });
+}
+
+function sendOobForEmailReset(state: ProjectState, initialEmail: string, url: URL) {
+  const oobRecord = createOobRecord(state, initialEmail, url, {
+    requestType: "RECOVER_EMAIL",
+    mode: "recoverEmail",
+  });
+
+  // Print out a developer-friendly log
+  logOobMessage(oobRecord);
+}
+
+function createOobRecord(
+  state: ProjectState,
+  email: string,
+  url: URL,
+  params: {
+    requestType: OobRequestType;
+    mode: string;
+    continueUrl?: string;
+  }
+): OobRecord {
+  const oobRecord = state.createOob(email, params.requestType, (oobCode) => {
+    url.pathname = "/emulator/action";
+    url.searchParams.set("mode", params.mode);
+    url.searchParams.set("lang", "en");
+    url.searchParams.set("oobCode", oobCode);
+    // TODO: Support custom handler links.
+
+    // This doesn't matter for now, since any API key works for defaultProject.
+    // TODO: What if reqBody.targetProjectId is set?
+    url.searchParams.set("apiKey", "fake-api-key");
+
+    if (params.continueUrl) {
+      url.searchParams.set("continueUrl", params.continueUrl);
+    }
+
+    return url.toString();
+  });
+
+  return oobRecord;
+}
+
+function logOobMessage(oobRecord: OobRecord) {
+  const oobLink = oobRecord.oobLink;
+  const email = oobRecord.email;
+
+  // Generate a developer-friendly log containing the link, in lieu of
+  // sending a real email out to the email address.
+  let maybeMessage: string | undefined;
+  switch (oobRecord.requestType) {
+    case "EMAIL_SIGNIN":
+      maybeMessage = `To sign in as ${email}, follow this link: ${oobLink}`;
+      break;
+    case "PASSWORD_RESET":
+      maybeMessage = `To reset the password for ${email}, follow this link: ${oobLink}&newPassword=NEW_PASSWORD_HERE`;
+      break;
+    case "VERIFY_EMAIL":
+      maybeMessage = `To verify the email address ${email}, follow this link: ${oobLink}`;
+      break;
+    case "RECOVER_EMAIL":
+      maybeMessage = `To reset your email address to ${email}, follow this link: ${oobLink}`;
+      break;
+  }
+
+  if (maybeMessage) {
+    EmulatorLogger.forEmulator(Emulators.AUTH).log("BULLET", maybeMessage);
+  }
 }
 
 function signInWithCustomToken(
@@ -1048,6 +1216,11 @@ function signInWithCustomToken(
       throw new Error(`Internal assertion error: trying to create duplicate localId: ${localId}`);
     }
   }
+
+  if (user.mfaInfo) {
+    throw new NotImplementedError("MFA Login not yet implemented.");
+  }
+
   return {
     kind: "identitytoolkit#VerifyCustomTokenResponse",
     isNewUser,
@@ -1091,6 +1264,10 @@ function signInWithEmailLink(
     assert(!user.disabled, "USER_DISABLED");
     assert(!userFromIdToken || userFromIdToken.localId === user.localId, "EMAIL_EXISTS");
     user = state.updateUserByLocalId(user.localId, updates);
+  }
+
+  if (user.mfaInfo) {
+    throw new NotImplementedError("MFA Login not yet implemented.");
   }
 
   const tokens = issueTokens(state, user, PROVIDER_PASSWORD);
@@ -1230,6 +1407,10 @@ function signInWithIdp(
     );
   }
 
+  if (user.mfaInfo) {
+    throw new NotImplementedError("MFA Login not yet implemented.");
+  }
+
   if (user.email === response.email) {
     response.emailVerified = user.emailVerified;
   }
@@ -1258,6 +1439,10 @@ function signInWithPassword(
   assert(!user.disabled, "USER_DISABLED");
   assert(user.passwordHash && user.salt, "INVALID_PASSWORD");
   assert(user.passwordHash === hashPassword(reqBody.password, user.salt), "INVALID_PASSWORD");
+
+  if (user.mfaInfo) {
+    throw new NotImplementedError("MFA Login not yet implemented.");
+  }
 
   const tokens = issueTokens(state, user, PROVIDER_PASSWORD);
 
@@ -1320,6 +1505,10 @@ function signInWithPhoneNumber(
       throw new BadRequestError("PHONE_NUMBER_EXISTS");
     }
     user = state.updateUserByLocalId(user.localId, updates);
+  }
+
+  if (user.mfaInfo) {
+    throw new NotImplementedError("MFA Login not yet implemented.");
   }
 
   const tokens = issueTokens(state, user, PROVIDER_PHONE);
@@ -1449,6 +1638,8 @@ function issueTokens(
   signInProvider: string,
   extraClaims: Record<string, unknown> = {}
 ): { idToken: string; refreshToken: string; expiresIn: string } {
+  state.updateUserByLocalId(user.localId, { lastRefreshAt: new Date().toISOString() });
+
   const expiresInSeconds = 60 * 60;
   const idToken = generateJwt(state.projectId, user, signInProvider, expiresInSeconds, extraClaims);
   const refreshToken = state.createRefreshTokenFor(user, signInProvider, extraClaims);
@@ -1464,6 +1655,7 @@ function parseIdToken(
   idToken: string
 ): {
   user: UserInfo;
+  payload: FirebaseJwtPayload;
   signInProvider: string;
 } {
   const decoded = decodeJwt(idToken, { complete: true }) as {
@@ -1489,7 +1681,7 @@ function parseIdToken(
   assert(!user.disabled, "USER_DISABLED");
 
   const signInProvider = decoded.payload.firebase.sign_in_provider;
-  return { user, signInProvider };
+  return { user, signInProvider, payload: decoded.payload };
 }
 
 function generateJwt(
@@ -1607,6 +1799,50 @@ function validateCustomClaims(claims: unknown): asserts claims is Record<string,
   for (const reservedField of FORBIDDEN_CUSTOM_CLAIMS) {
     assert(!(reservedField in claims), `FORBIDDEN_CLAIM : ${reservedField}`);
   }
+}
+
+// generates a new random ID, checking against an optional set of "existing ids" for
+// uniqueness. if a unique ID cannot be generated in 10 tries, an internal error is
+// thrown. the ID generated by this method is not added to the set provided to this
+// method, callers must manage their own state.
+function newRandomId(length: number, existingIds?: Set<string>): string {
+  for (let i = 0; i < 10; i++) {
+    const id = randomId(length);
+    if (!existingIds?.has(id)) {
+      return id;
+    }
+  }
+  throw new InternalError(
+    "INTERNAL_ERROR : Failed to generate a random ID after 10 attempts",
+    "INTERNAL"
+  );
+}
+
+function getMfaEnrollmentsFromRequest(
+  state: ProjectState,
+  request: MfaEnrollments,
+  options?: { generateEnrollmentIds: boolean }
+): MfaEnrollments {
+  const enrollments: MfaEnrollments = [];
+  const phoneNumbers: Set<string> = new Set<string>();
+  const enrollmentIds: Set<string> = new Set<string>();
+  for (const enrollment of request) {
+    assert(
+      enrollment.phoneInfo && isValidPhoneNumber(enrollment.phoneInfo),
+      "INVALID_MFA_PHONE_NUMBER : Invalid format."
+    );
+    if (!phoneNumbers.has(enrollment.phoneInfo)) {
+      const mfaEnrollmentId = options?.generateEnrollmentIds
+        ? newRandomId(28, enrollmentIds)
+        : enrollment.mfaEnrollmentId;
+      assert(mfaEnrollmentId, "INVALID_MFA_ENROLLMENT_ID : mfaEnrollmentId must be defined.");
+      assert(!enrollmentIds.has(mfaEnrollmentId), "DUPLICATE_MFA_ENROLLMENT_ID");
+      enrollments.push({ ...enrollment, mfaEnrollmentId });
+      phoneNumbers.add(enrollment.phoneInfo);
+      enrollmentIds.add(mfaEnrollmentId);
+    }
+  }
+  return state.validateMfaEnrollments(enrollments);
 }
 
 function getNormalizedUri(reqBody: {
@@ -1882,7 +2118,10 @@ function handleIdpSignUp(
 /* eslint-disable camelcase */
 export interface FirebaseJwtPayload {
   // Standard fields:
-  iat: number;
+  iat: number; // issuedAt (in seconds since epoch)
+  exp: number; // expiresAt (in seconds since epoch)
+  iss: string; // issuer
+  aud: string; // audience (=projectId)
   // ...and other fields that we don't care for now.
 
   // Firebase-specific fields:

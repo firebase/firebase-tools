@@ -2,9 +2,9 @@ import * as semver from "semver";
 import * as yaml from "js-yaml";
 import * as _ from "lodash";
 import * as clc from "cli-color";
-
+import * as marked from "marked";
 import * as api from "../api";
-import * as logger from "../logger";
+import { logger } from "../logger";
 import * as operationPoller from "../operation-poller";
 import { FirebaseError } from "../error";
 
@@ -12,10 +12,24 @@ const VERSION = "v1beta";
 const PAGE_SIZE_MAX = 100;
 const refRegex = new RegExp(/^([^/@\n]+)\/{1}([^/@\n]+)(@{1}([a-z0-9.-]+)|)$/);
 
+export enum RegistryLaunchStage {
+  EXPERIMENTAL = "EXPERIMENTAL",
+  BETA = "BETA",
+  GA = "GA",
+  DEPRECATED = "DEPRECATED",
+  REGISTRY_LAUNCH_STAGE_UNSPECIFIED = "REGISTRY_LAUNCH_STAGE_UNSPECIFIED",
+}
+
+export enum Visibility {
+  UNLISTED = "unlisted",
+  PUBLIC = "public",
+}
+
 export interface Extension {
   name: string;
   ref: string;
-  state: "STATE_UNSPECIFIED" | "PUBLISHED";
+  visibility: Visibility;
+  registryLaunchStage: RegistryLaunchStage;
   createTime: string;
   latestVersion?: string;
   latestVersionCreateTime?: string;
@@ -25,8 +39,8 @@ export interface ExtensionVersion {
   name: string;
   ref: string;
   spec: ExtensionSpec;
-  state?: "STATE_UNSPECIFIED" | "PUBLISHED";
   hash: string;
+  sourceDownloadUri: string;
   createTime?: string;
 }
 
@@ -394,8 +408,7 @@ async function patchInstance(
   return pollRes;
 }
 
-function populateResourceProperties(source: ExtensionSource): void {
-  const spec: ExtensionSpec = source.spec;
+function populateResourceProperties(spec: ExtensionSpec): void {
   if (spec) {
     spec.resources.forEach((r) => {
       try {
@@ -435,7 +448,9 @@ export async function createSource(
     operationResourceName: createRes.body.name,
     masterTimeout: 600000,
   });
-  populateResourceProperties(pollRes);
+  if (pollRes.spec) {
+    populateResourceProperties(pollRes.spec);
+  }
   return pollRes;
 }
 
@@ -450,7 +465,9 @@ export function getSource(sourceName: string): Promise<ExtensionSource> {
       origin: api.extensionsOrigin,
     })
     .then((res) => {
-      populateResourceProperties(res.body);
+      if (res.body.spec) {
+        populateResourceProperties(res.body.spec);
+      }
       return res.body;
     });
 }
@@ -472,19 +489,13 @@ export async function getExtensionVersion(ref: string): Promise<ExtensionVersion
         origin: api.extensionsOrigin,
       }
     );
+    if (res.body.spec) {
+      populateResourceProperties(res.body.spec);
+    }
     return res.body;
   } catch (err) {
     if (err.status === 404) {
-      throw new FirebaseError(
-        `The extension reference '${clc.bold(
-          ref
-        )}' doesn't exist. This could happen for two reasons:\n` +
-          `  -The publisher ID '${clc.bold(publisherId)}' doesn't exist or could be misspelled\n` +
-          `  -The name of the extension version '${clc.bold(
-            `${extensionId}@${version}`
-          )}' doesn't exist or could be misspelled\n` +
-          `Please correct the extension reference and try again.`
-      );
+      throw refNotFoundError(publisherId, extensionId, version);
     } else if (err instanceof FirebaseError) {
       throw err;
     }
@@ -585,6 +596,8 @@ export async function publishExtensionVersion(
     throw new FirebaseError(`ExtensionVersion ref "${ref}" must supply a version.`);
   }
 
+  // TODO(b/185176470): Publishing an extension with a previously deleted name will return 409.
+  // Need to surface a better error, potentially by calling getExtension.
   const publishRes = await api.request(
     "POST",
     `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}/versions:publish`,
@@ -608,6 +621,7 @@ export async function publishExtensionVersion(
 }
 
 /**
+ * @deprecated This endpoint is replaced with deleteExtension.
  * @param ref user-friendly identifier for the Extension (publisher-id/extension-id)
  */
 export async function unpublishExtension(ref: string): Promise<void> {
@@ -626,12 +640,50 @@ export async function unpublishExtension(ref: string): Promise<void> {
       throw new FirebaseError(
         `You are not the owner of extension '${clc.bold(
           ref
-        )}' and don’t have the correct permissions to unpublish this extension.`
+        )}' and don’t have the correct permissions to unpublish this extension.`,
+        { status: err.status }
       );
     } else if (err instanceof FirebaseError) {
       throw err;
     }
-    throw new FirebaseError(`Error occurred unpublishing extension '${ref}': ${err}`);
+    throw new FirebaseError(`Error occurred unpublishing extension '${ref}': ${err}`, {
+      status: err.status,
+    });
+  }
+}
+
+/**
+ * Delete a published extension.
+ * This will also mark the name as reserved to prevent future usages.
+ * @param ref user-friendly identifier for the Extension (publisher-id/extension-id)
+ */
+export async function deleteExtension(ref: string): Promise<void> {
+  const { publisherId, extensionId, version } = parseRef(ref);
+  if (version) {
+    throw new FirebaseError(`Extension reference "${ref}" must not contain a version.`);
+  }
+  const url = `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}`;
+  try {
+    await api.request("DELETE", url, {
+      auth: true,
+      origin: api.extensionsOrigin,
+    });
+  } catch (err) {
+    if (err.status === 403) {
+      throw new FirebaseError(
+        `You are not the owner of extension '${clc.bold(
+          ref
+        )}' and don’t have the correct permissions to delete this extension.`,
+        { status: err.status }
+      );
+    } else if (err.status === 404) {
+      throw new FirebaseError(`Extension ${clc.bold(ref)} was not found.`);
+    } else if (err instanceof FirebaseError) {
+      throw err;
+    }
+    throw new FirebaseError(`Error occurred delete extension '${ref}': ${err}`, {
+      status: err.status,
+    });
   }
 }
 
@@ -653,21 +705,40 @@ export async function getExtension(ref: string): Promise<Extension> {
     return res.body;
   } catch (err) {
     if (err.status === 404) {
-      throw new FirebaseError(
-        `The extension reference '${clc.bold(
-          ref
-        )}' doesn't exist. This could happen for two reasons:\n` +
-          `  -The publisher ID '${clc.bold(publisherId)}' doesn't exist or could be misspelled\n` +
-          `  -The name of the extension '${clc.bold(
-            extensionId
-          )}' doesn't exist or could be misspelled\n` +
-          `Please correct the extension reference and try again.`
-      );
+      throw refNotFoundError(publisherId, extensionId);
     } else if (err instanceof FirebaseError) {
       throw err;
     }
-    throw new FirebaseError(`Failed to query the extension '${clc.bold(ref)}': ${err}`);
+    throw new FirebaseError(`Failed to query the extension '${clc.bold(ref)}': ${err}`, {
+      status: err.status,
+    });
   }
+}
+
+function refNotFoundError(
+  publisherId: string,
+  extensionId: string,
+  versionId?: string
+): FirebaseError {
+  const versionRef = `${publisherId}/${extensionId}@${versionId}`;
+  const extensionRef = `${publisherId}/${extensionId}`;
+  return new FirebaseError(
+    `The extension reference '${clc.bold(
+      versionId ? versionRef : extensionRef
+    )}' doesn't exist. This could happen for two reasons:\n` +
+      `  -The publisher ID '${clc.bold(publisherId)}' doesn't exist or could be misspelled\n` +
+      `  -The name of the ${versionId ? "extension version" : "extension"} '${clc.bold(
+        versionId ? `${extensionId}@${versionId}` : extensionId
+      )}' doesn't exist or could be misspelled\n\n` +
+      `Please correct the extension reference and try again. If you meant to install an extension from a local source, please provide a relative path prefixed with '${clc.bold(
+        "./"
+      )}', '${clc.bold("../")}', or '${clc.bold(
+        "~/"
+      )}'. Learn more about local extension installation at ${marked(
+        "[https://firebase.google.com/docs/extensions/alpha/install-extensions_community#install](https://firebase.google.com/docs/extensions/alpha/install-extensions_community#install)."
+      )}`,
+    { status: 404 }
+  );
 }
 
 /**

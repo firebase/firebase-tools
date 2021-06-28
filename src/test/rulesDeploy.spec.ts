@@ -6,7 +6,7 @@ import { FirebaseError } from "../error";
 import * as prompt from "../prompt";
 import { readFileSync } from "fs-extra";
 import { RulesetFile } from "../gcp/rules";
-import Config = require("../config");
+import { Config } from "../config";
 import gcp = require("../gcp");
 
 import { RulesDeploy, RulesetServiceType } from "../rulesDeploy";
@@ -371,7 +371,7 @@ describe("RulesDeploy", () => {
 
       describe("and a prompt is made", () => {
         beforeEach(() => {
-          sinon.stub(prompt, "prompt").rejects(new Error("behavior unspecified"));
+          sinon.stub(prompt, "promptOnce").rejects(new Error("behavior unspecified"));
           sinon.stub(gcp.rules, "listAllReleases").rejects(new Error("listAllReleases failing"));
           sinon.stub(gcp.rules, "deleteRuleset").rejects(new Error("deleteRuleset failing"));
           sinon.stub(gcp.rules, "getRulesetId").throws(new Error("getRulesetId failing"));
@@ -384,13 +384,13 @@ describe("RulesDeploy", () => {
         it("should prompt for a choice (no)", async () => {
           (gcp.rules.createRuleset as sinon.SinonStub).onFirstCall().rejects(QUOTA_ERROR);
           (gcp.rules.listAllRulesets as sinon.SinonStub).resolves(Array(1001));
-          (prompt.prompt as sinon.SinonStub).onFirstCall().resolves({ confirm: false });
+          (prompt.promptOnce as sinon.SinonStub).onFirstCall().resolves(false);
           rd.addFile("firestore.rules");
 
           const result = rd.createRulesets(RulesetServiceType.CLOUD_FIRESTORE);
           await expect(result).to.eventually.deep.equal([]);
           expect(gcp.rules.createRuleset).to.be.calledOnce;
-          expect(prompt.prompt).to.be.calledOnce;
+          expect(prompt.promptOnce).to.be.calledOnce;
         });
 
         it("should prompt for a choice (yes) and delete and retry creation", async () => {
@@ -398,7 +398,7 @@ describe("RulesDeploy", () => {
           (gcp.rules.listAllRulesets as sinon.SinonStub).resolves(
             new Array(1001).fill(0).map(() => ({ name: "foo" }))
           );
-          (prompt.prompt as sinon.SinonStub).onFirstCall().resolves({ confirm: true });
+          (prompt.promptOnce as sinon.SinonStub).onFirstCall().resolves(true);
           (gcp.rules.listAllReleases as sinon.SinonStub).resolves([
             { rulesetName: "name", name: "bar" },
           ]);

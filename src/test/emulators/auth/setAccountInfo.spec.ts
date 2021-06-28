@@ -2,7 +2,6 @@ import { expect } from "chai";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import { FirebaseJwtPayload } from "../../../emulator/auth/operations";
 import { ProviderUserInfo, PROVIDER_PASSWORD, PROVIDER_PHONE } from "../../../emulator/auth/state";
-import { TEST_PHONE_NUMBER } from "./helpers";
 import { describeAuthEmulator } from "./setup";
 import {
   expectStatusCode,
@@ -14,7 +13,13 @@ import {
   updateAccountByLocalId,
   getSigninMethods,
   signInWithEmailLink,
+  inspectOobs,
   expectIdTokenExpired,
+  TEST_MFA_INFO,
+  TEST_PHONE_NUMBER,
+  TEST_PHONE_NUMBER_2,
+  TEST_PHONE_NUMBER_3,
+  TEST_INVALID_PHONE_NUMBER,
 } from "./helpers";
 
 describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
@@ -146,7 +151,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
     expect(await getSigninMethods(authApi(), email)).not.to.contain(["password"]);
   });
 
-  it("should allow changing email of an existing user", async () => {
+  it("should allow changing email of an existing user, and send out an oob to reset the email", async () => {
     const oldEmail = "alice@example.com";
     const password = "notasecret";
     const newEmail = "bob@example.com";
@@ -191,6 +196,12 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
         expectStatusCode(400, res);
         expect(res.body.error.message).equals("EMAIL_NOT_FOUND");
       });
+
+    // An oob is sent to oldEmail
+    const oobs = await inspectOobs(authApi());
+    expect(oobs).to.have.length(1);
+    expect(oobs[0].email).to.equal(oldEmail);
+    expect(oobs[0].requestType).to.equal("RECOVER_EMAIL");
   });
 
   it("should disallow setting email to same as an existing user", async () => {
@@ -216,6 +227,152 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
         expectStatusCode(400, res);
         expect(res.body.error).to.have.property("message").equals("EMAIL_EXISTS");
       });
+  });
+
+  it("should set initialEmail for the user, after updating email", async () => {
+    const oldEmail = "alice@example.com";
+    const password = "notasecret";
+    const newEmail = "bob@example.com";
+    const { idToken } = await registerUser(authApi(), { email: oldEmail, password });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .query({ key: "fake-api-key" })
+      .send({ idToken, email: newEmail })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.email).to.equal(newEmail);
+      });
+
+    // Verify that the initial email has been set.
+    const info = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(info.initialEmail).to.equal(oldEmail);
+  });
+
+  it("should reset email when OOB flow is initiated, after updating user email", async () => {
+    const oldEmail = "alice@example.com";
+    const password = "notasecret";
+    const newEmail = "bob@example.com";
+    const { idToken } = await registerUser(authApi(), { email: oldEmail, password });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .query({ key: "fake-api-key" })
+      .send({ idToken, email: newEmail })
+      .then((res) => {
+        expectStatusCode(200, res);
+      });
+
+    // An oob is sent to the oldEmail
+    const oobs = await inspectOobs(authApi());
+    expect(oobs).to.have.length(1);
+    expect(oobs[0].email).to.equal(oldEmail);
+    expect(oobs[0].requestType).to.equal("RECOVER_EMAIL");
+
+    // The returned oobCode can be redeemed to verify the email.
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .query({ key: "fake-api-key" })
+      // OOB code is enough, no idToken needed.
+      .send({ oobCode: oobs[0].oobCode })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.email).to.equal(oldEmail);
+        // Email is verified since this flow can only be initiated through a link sent to the user's email.
+        expect(res.body.emailVerified).to.equal(true);
+      });
+
+    // oobCode is removed after redeemed.
+    const oobs2 = await inspectOobs(authApi());
+    expect(oobs2).to.have.length(0);
+  });
+
+  it("should disallow resetting an email if another user exists with the same email", async () => {
+    const userBob = { email: "bob@example.com", password: "notasecret" };
+    const userOtherBob = { email: "bob@example.com", password: "notasecreteither" };
+    const bobNewEmail = "bob_new@example.com";
+
+    // Register first user
+    const { idToken } = await registerUser(authApi(), userBob);
+
+    // Update first user's email
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .send({ idToken, email: bobNewEmail })
+      .query({ key: "fake-api-key" })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.email).to.equal(bobNewEmail);
+      });
+
+    // Register second user with the same email as the first user's initialEmail
+    await registerUser(authApi(), userOtherBob);
+
+    // Try to reset the first user's email.
+    const oobs = await inspectOobs(authApi());
+    expect(oobs).to.have.length(1);
+    expect(oobs[0].requestType).to.equal("RECOVER_EMAIL");
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .send({ oobCode: oobs[0].oobCode })
+      .query({ key: "fake-api-key" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("EMAIL_EXISTS");
+      });
+  });
+
+  it("should not set initial email or send OOB when anon user updates email", async () => {
+    const { idToken } = await registerAnonUser(authApi());
+    const email = "alice@example.com";
+
+    // Update the email once.
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .query({ key: "fake-api-key" })
+      .send({ idToken, email })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.email).to.equal(email);
+      });
+
+    // No OOB code should be sent.
+    expect(await inspectOobs(authApi())).to.have.length(0);
+    const info = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(info.initialEmail).to.be.undefined;
+  });
+
+  it("should not update email if user is disabled", async () => {
+    const user = { email: "bob@example.com", password: "notasecret" };
+    const newEmail = "alice@example.com";
+    const { localId, idToken } = await registerUser(authApi(), user);
+    await updateAccountByLocalId(authApi(), localId, { disableUser: true });
+
+    // Try to update the email.
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .query({ key: "fake-api-key" })
+      .send({ idToken, email: newEmail })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("USER_DISABLED");
+      });
+  });
+
+  it("should update phoneNumber if specified", async () => {
+    const phoneNumber = TEST_PHONE_NUMBER;
+    const { localId, idToken } = await signInWithPhoneNumber(authApi(), phoneNumber);
+
+    const newPhoneNumber = "+15555550123";
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .set("Authorization", "Bearer owner")
+      .send({ localId, phoneNumber: newPhoneNumber })
+      .then((res) => expectStatusCode(200, res));
+
+    const info = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(info.phoneNumber).to.equal(newPhoneNumber);
   });
 
   it("should noop when setting phoneNumber to the same as before", async () => {
@@ -259,6 +416,508 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
         expect(res.body.error)
           .to.have.property("message")
           .equals("INVALID_PHONE_NUMBER : Invalid format.");
+      });
+  });
+
+  it("should allow creating MFA info", async () => {
+    const user = { email: "bob@example.com", password: "notasecret" };
+    const { localId, idToken } = await registerUser(authApi(), user);
+    const mfaEnrollmentId = "enrollmentId1";
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .set("Authorization", "Bearer owner")
+      .send({
+        localId,
+        mfa: {
+          enrollments: [
+            {
+              ...TEST_MFA_INFO,
+              mfaEnrollmentId,
+            },
+          ],
+        },
+      })
+      .then((res) => expectStatusCode(200, res));
+
+    const info = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(info.mfaInfo).to.have.length(1);
+    const updated = info.mfaInfo![0];
+    expect(updated.displayName).to.eq(TEST_MFA_INFO.displayName);
+    expect(updated.phoneInfo).to.eq(TEST_MFA_INFO.phoneInfo);
+    expect(updated.mfaEnrollmentId).to.eq(mfaEnrollmentId);
+  });
+
+  it("should allow adding a second MFA factor", async () => {
+    const user = { email: "bob@example.com", password: "notasecret", mfaInfo: [TEST_MFA_INFO] };
+    const { localId, idToken } = await registerUser(authApi(), user);
+    const savedUserInfo = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(savedUserInfo.mfaInfo).to.have.length(1);
+    const savedMfaInfo = savedUserInfo.mfaInfo![0];
+    const secondMfaFactor = {
+      displayName: "Second MFA Factor",
+      phoneInfo: TEST_PHONE_NUMBER_2,
+      mfaEnrollmentId: "enrollmentId2",
+    };
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .set("Authorization", "Bearer owner")
+      .send({
+        localId,
+        mfa: {
+          enrollments: [savedMfaInfo, secondMfaFactor],
+        },
+      })
+      .then((res) => expectStatusCode(200, res));
+
+    const updatedUserInfo = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(updatedUserInfo.mfaInfo).to.have.length(2);
+    for (const updatedMfaFactor of updatedUserInfo.mfaInfo!) {
+      if (updatedMfaFactor.mfaEnrollmentId === savedMfaInfo.mfaEnrollmentId) {
+        expect(updatedMfaFactor).to.include(savedMfaInfo);
+      } else {
+        expect(updatedMfaFactor).to.include(secondMfaFactor);
+      }
+    }
+  });
+
+  it("should allow changing the MFA phone number", async () => {
+    const user = { email: "bob@example.com", password: "notasecret", mfaInfo: [TEST_MFA_INFO] };
+    const { localId, idToken } = await registerUser(authApi(), user);
+    const savedUserInfo = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(savedUserInfo.mfaInfo).to.have.length(1);
+    const savedMfaInfo = savedUserInfo.mfaInfo![0];
+    expect(savedMfaInfo?.mfaEnrollmentId).to.be.a("string").and.not.empty;
+    savedMfaInfo.displayName = "New Display Name";
+    savedMfaInfo.phoneInfo = "+15555550101";
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .set("Authorization", "Bearer owner")
+      .send({
+        localId,
+        mfa: {
+          enrollments: [savedMfaInfo],
+        },
+      })
+      .then((res) => expectStatusCode(200, res));
+
+    const updatedUserInfo = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(updatedUserInfo.mfaInfo).to.have.length(1);
+    const updatedMfaInfo = updatedUserInfo.mfaInfo![0];
+    expect(updatedMfaInfo?.displayName).to.eq("New Display Name");
+    expect(updatedMfaInfo?.phoneInfo).to.eq("+15555550101");
+    expect(updatedMfaInfo?.mfaEnrollmentId).to.eq(savedMfaInfo.mfaEnrollmentId);
+  });
+
+  it("should allow changing the MFA enrollment ID", async () => {
+    const user = { email: "bob@example.com", password: "notasecret", mfaInfo: [TEST_MFA_INFO] };
+    const { localId, idToken } = await registerUser(authApi(), user);
+    const savedUserInfo = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(savedUserInfo.mfaInfo).to.have.length(1);
+    const savedMfaInfo = savedUserInfo.mfaInfo![0];
+    expect(savedMfaInfo.mfaEnrollmentId).to.be.a("string").and.not.empty;
+
+    const newEnrollmentId = "newEnrollmentId";
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .set("Authorization", "Bearer owner")
+      .send({
+        localId,
+        mfa: {
+          enrollments: [{ ...savedMfaInfo, mfaEnrollmentId: newEnrollmentId }],
+        },
+      })
+      .then((res) => expectStatusCode(200, res));
+
+    const updatedUserInfo = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(updatedUserInfo.mfaInfo).to.have.length(1);
+    const updatedMfaInfo = updatedUserInfo.mfaInfo![0];
+    expect(updatedMfaInfo.displayName).to.eq(savedMfaInfo.displayName);
+    expect(updatedMfaInfo.phoneInfo).to.eq(savedMfaInfo.phoneInfo);
+    expect(updatedMfaInfo.mfaEnrollmentId).not.to.eq(savedMfaInfo.mfaEnrollmentId);
+    expect(updatedMfaInfo.mfaEnrollmentId).to.eq(newEnrollmentId);
+  });
+
+  it("should overwrite existing MFA info", async () => {
+    const user = {
+      email: "bob@example.com",
+      password: "notasecret",
+      mfaInfo: [TEST_MFA_INFO, { ...TEST_MFA_INFO, phoneInfo: TEST_PHONE_NUMBER_3 }],
+    };
+    const { localId, idToken } = await registerUser(authApi(), user);
+    const savedUserInfo = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(savedUserInfo.mfaInfo).to.have.length(2);
+    const oldEnrollmentIds = savedUserInfo.mfaInfo!.map((_) => _.mfaEnrollmentId);
+
+    const newMfaInfo = {
+      displayName: "New New",
+      phoneInfo: TEST_PHONE_NUMBER_3,
+      mfaEnrollmentId: "newEnrollmentId",
+    };
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .set("Authorization", "Bearer owner")
+      .send({
+        localId,
+        mfa: {
+          enrollments: [newMfaInfo],
+        },
+      })
+      .then((res) => expectStatusCode(200, res));
+
+    const updatedUserInfo = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(updatedUserInfo.mfaInfo).to.have.length(1);
+    const updatedMfaInfo = updatedUserInfo.mfaInfo![0];
+    expect(updatedMfaInfo.phoneInfo).to.eq(newMfaInfo.phoneInfo);
+    expect(updatedMfaInfo.displayName).to.eq(newMfaInfo.displayName);
+    expect(updatedMfaInfo.mfaEnrollmentId).to.eq(newMfaInfo.mfaEnrollmentId);
+    expect(oldEnrollmentIds).not.to.include(updatedMfaInfo.mfaEnrollmentId);
+  });
+
+  it("should remove MFA info with an empty enrollments array", async () => {
+    const user = {
+      email: "bob@example.com",
+      password: "notasecret",
+      mfaInfo: [TEST_MFA_INFO],
+    };
+    const { localId, idToken } = await registerUser(authApi(), user);
+    const savedUserInfo = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(savedUserInfo.mfaInfo).to.have.length(1);
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .set("Authorization", "Bearer owner")
+      .send({
+        localId,
+        mfa: {
+          enrollments: [],
+        },
+      })
+      .then((res) => expectStatusCode(200, res));
+
+    const updatedUserInfo = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(updatedUserInfo.mfaInfo).to.be.undefined;
+  });
+
+  it("should remove MFA info with an undefined enrollments array", async () => {
+    const user = {
+      email: "bob@example.com",
+      password: "notasecret",
+      mfaInfo: [TEST_MFA_INFO],
+    };
+    const { localId, idToken } = await registerUser(authApi(), user);
+    const savedUserInfo = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(savedUserInfo.mfaInfo).to.have.length(1);
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .set("Authorization", "Bearer owner")
+      .send({
+        localId,
+        mfa: {
+          enrollments: undefined,
+        },
+      })
+      .then((res) => expectStatusCode(200, res));
+
+    const updatedUserInfo = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(updatedUserInfo.mfaInfo).to.be.undefined;
+  });
+
+  it("should error if mfaEnrollmentId is absent", async () => {
+    const user = { email: "bob@example.com", password: "notasecret", mfaInfo: [TEST_MFA_INFO] };
+    const { localId } = await registerUser(authApi(), user);
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .set("Authorization", "Bearer owner")
+      .send({
+        localId,
+        mfa: {
+          enrollments: [TEST_MFA_INFO],
+        },
+      })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.eq(
+          "INVALID_MFA_ENROLLMENT_ID : mfaEnrollmentId must be defined."
+        );
+      });
+  });
+
+  it("should de-duplicate MFA factors with the same phone number", async () => {
+    const user = { email: "bob@example.com", password: "notasecret" };
+    const { localId, idToken } = await registerUser(authApi(), user);
+    const mfaEnrollmentId = "enrollmentId1";
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .set("Authorization", "Bearer owner")
+      .send({
+        localId,
+        mfa: {
+          enrollments: [
+            {
+              ...TEST_MFA_INFO,
+              mfaEnrollmentId,
+            },
+            {
+              ...TEST_MFA_INFO,
+              mfaEnrollmentId,
+            },
+          ],
+        },
+      })
+      .then((res) => expectStatusCode(200, res));
+
+    const info = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(info.mfaInfo).to.have.length(1);
+    const updated = info.mfaInfo![0];
+    expect(updated).to.include(TEST_MFA_INFO);
+    expect(updated.mfaEnrollmentId).to.eq(mfaEnrollmentId);
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .set("Authorization", "Bearer owner")
+      .send({
+        localId,
+        mfa: {
+          enrollments: [],
+        },
+      })
+      .then((res) => expectStatusCode(200, res));
+
+    const updatedInfo = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(updatedInfo.mfaInfo).to.be.undefined;
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .set("Authorization", "Bearer owner")
+      .send({
+        localId,
+        mfa: {
+          enrollments: [
+            {
+              ...TEST_MFA_INFO,
+              mfaEnrollmentId: "enrollmentId2",
+            },
+            {
+              ...TEST_MFA_INFO,
+              mfaEnrollmentId: "enrollmentId3",
+            },
+            {
+              ...TEST_MFA_INFO,
+              mfaEnrollmentId: "enrollmentId4",
+            },
+          ],
+        },
+      })
+      .then((res) => expectStatusCode(200, res));
+
+    const thirdUpdate = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(thirdUpdate.mfaInfo).to.have.length(1);
+    const thirdMfaInfo = thirdUpdate.mfaInfo![0];
+    expect(thirdMfaInfo).to.include(TEST_MFA_INFO);
+    expect(thirdMfaInfo.mfaEnrollmentId).not.to.eq(mfaEnrollmentId);
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .set("Authorization", "Bearer owner")
+      .send({
+        localId,
+        mfa: {
+          enrollments: [
+            {
+              ...TEST_MFA_INFO,
+              mfaEnrollmentId: "enrollmentId5",
+            },
+            {
+              ...TEST_MFA_INFO,
+              mfaEnrollmentId: "enrollmentId6",
+            },
+            {
+              ...TEST_MFA_INFO,
+              mfaEnrollmentId: "enrollmentId7",
+            },
+            {
+              phoneInfo: TEST_PHONE_NUMBER_2,
+              mfaEnrollmentId: "enrollmentId8",
+            },
+            {
+              phoneInfo: TEST_PHONE_NUMBER_2,
+              mfaEnrollmentId: "enrollmentId9",
+            },
+          ],
+        },
+      })
+      .then((res) => expectStatusCode(200, res));
+
+    const fourthUpdate = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(fourthUpdate.mfaInfo).to.have.length(2);
+    for (const mfaInfo of fourthUpdate.mfaInfo!) {
+      if (mfaInfo.phoneInfo === TEST_MFA_INFO.phoneInfo) {
+        expect(mfaInfo).to.include(TEST_MFA_INFO);
+      } else {
+        expect(mfaInfo.phoneInfo).to.eq(TEST_PHONE_NUMBER_2);
+      }
+      expect(mfaInfo.mfaEnrollmentId).to.be.a("string").and.not.empty;
+      expect(mfaInfo.mfaEnrollmentId).not.to.eq(mfaEnrollmentId);
+    }
+  });
+
+  it("should error if MFA Enrollment ID is duplicated for different phone numbers", async () => {
+    const { localId } = await registerUser(authApi(), {
+      email: "bob@example.com",
+      password: "notasecret",
+    });
+
+    const mfaEnrollmentId = "duplicateMfaEnrollmentId ";
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .set("Authorization", "Bearer owner")
+      .send({
+        localId,
+        mfa: {
+          enrollments: [
+            {
+              ...TEST_MFA_INFO,
+              mfaEnrollmentId,
+            },
+            {
+              phoneInfo: TEST_PHONE_NUMBER_2,
+              mfaEnrollmentId,
+            },
+          ],
+        },
+      })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.eq("DUPLICATE_MFA_ENROLLMENT_ID");
+      });
+  });
+
+  it("does not require MFA Enrollment ID uniqueness across users", async () => {
+    const bobUser = { email: "bob@example.com", password: "notasecret", mfaInfo: [TEST_MFA_INFO] };
+    const aliceUser = {
+      email: "alice@example.com",
+      password: "notasecret",
+      mfaInfo: [TEST_MFA_INFO],
+    };
+    const { localId: bobLocalId, idToken: bobIdToken } = await registerUser(authApi(), bobUser);
+    const bobInfo = await getAccountInfoByIdToken(authApi(), bobIdToken);
+    expect(bobInfo.mfaInfo).to.have.length(1);
+
+    const { idToken: aliceIdToken } = await registerUser(authApi(), aliceUser);
+    const aliceInfo = await getAccountInfoByIdToken(authApi(), aliceIdToken);
+    expect(aliceInfo.mfaInfo).to.have.length(1);
+    const aliceEnrollmentId = aliceInfo.mfaInfo![0].mfaEnrollmentId;
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .set("Authorization", "Bearer owner")
+      .send({
+        localId: bobLocalId,
+        mfa: {
+          enrollments: [
+            {
+              ...bobInfo.mfaInfo![0],
+              mfaEnrollmentId: aliceEnrollmentId,
+            },
+          ],
+        },
+      })
+      .then((res) => {
+        expectStatusCode(200, res);
+      });
+
+    const updatedBobInfo = await getAccountInfoByIdToken(authApi(), bobIdToken);
+    expect(updatedBobInfo.mfaInfo![0].mfaEnrollmentId).to.equal(aliceEnrollmentId);
+  });
+
+  it("should error if phone number for MFA is invalid", async () => {
+    const user = { email: "bob@example.com", password: "notasecret", mfaInfo: [TEST_MFA_INFO] };
+    const { localId, idToken } = await registerUser(authApi(), user);
+    const info = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(info.mfaInfo).to.have.length(1);
+    const mfaInfoForUpdate = { ...info.mfaInfo![0] };
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .set("Authorization", "Bearer owner")
+      .send({
+        localId,
+        mfa: {
+          enrollments: [
+            {
+              ...mfaInfoForUpdate,
+              phoneInfo: undefined,
+            },
+          ],
+        },
+      })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.eq("INVALID_MFA_PHONE_NUMBER : Invalid format.");
+      });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .set("Authorization", "Bearer owner")
+      .send({
+        localId,
+        mfa: {
+          enrollments: [
+            {
+              ...mfaInfoForUpdate,
+              phoneInfo: TEST_INVALID_PHONE_NUMBER,
+            },
+          ],
+        },
+      })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.eq("INVALID_MFA_PHONE_NUMBER : Invalid format.");
+      });
+  });
+
+  it("should error if user for MFA update is not found", async () => {
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .set("Authorization", "Bearer owner")
+      .send({
+        localId: "anything",
+        mfa: {
+          enrollments: [
+            {
+              ...TEST_MFA_INFO,
+              mfaEnrollmentId: "anything",
+            },
+          ],
+        },
+      })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.eq("USER_NOT_FOUND");
+      });
+  });
+
+  it("should error if enrollments is not an array or undefined", async () => {
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .set("Authorization", "Bearer owner")
+      .send({
+        localId: "anything",
+        mfa: {
+          enrollments: null,
+        },
+      })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.eq(
+          "Invalid JSON payload received. /mfa/enrollments should be array"
+        );
       });
   });
 

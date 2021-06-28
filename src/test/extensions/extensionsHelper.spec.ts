@@ -590,6 +590,26 @@ describe("extensionsHelper", () => {
         extensionsHelper.validateSpec(testSpec);
       }).to.throw(FirebaseError, /default/);
     });
+    it("should error if a param selectResource missing resourceType.", () => {
+      const testSpec = {
+        version: "0.1.0",
+        specVersion: "v1beta",
+        params: [
+          {
+            type: extensionsHelper.SpecParamType.SELECTRESOURCE,
+            validationRegex: "test",
+            default: "fail",
+          },
+        ],
+        resources: [],
+        sourceUrl: "https://test-source.fake",
+        license: "apache-2.0",
+      };
+
+      expect(() => {
+        extensionsHelper.validateSpec(testSpec);
+      }).to.throw(FirebaseError, /must have resourceType/);
+    });
   });
 
   describe("promptForValidInstanceId", () => {
@@ -703,9 +723,11 @@ describe("extensionsHelper", () => {
 
     beforeEach(() => {
       archiveStub = sinon.stub(archiveDirectory, "archiveDirectory").resolves({});
-      uploadStub = sinon
-        .stub(storage, "uploadObject")
-        .resolves("/firebase-ext-eap-uploads/object.zip");
+      uploadStub = sinon.stub(storage, "uploadObject").resolves({
+        bucket: "firebase-ext-eap-uploads",
+        object: "object.zip",
+        generation: 42,
+      });
       createSourceStub = sinon.stub(extensionsApi, "createSource").resolves(testSource);
       deleteStub = sinon.stub(storage, "deleteObject").resolves();
     });
@@ -777,6 +799,7 @@ describe("extensionsHelper", () => {
         "0.1.0": "projects/test-proj/sources/def456",
         "0.1.1": testOnePlatformSourceName,
       },
+      publisher: "firebase",
     };
     const testSource: ExtensionSource = {
       name: "test",

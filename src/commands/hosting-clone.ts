@@ -14,7 +14,7 @@ import {
 import * as utils from "../utils";
 import { requireAuth } from "../requireAuth";
 import * as marked from "marked";
-import * as logger from "../logger";
+import { logger } from "../logger";
 
 export default new Command("hosting:clone <source> <targetChannel>")
   .description("clone a version from one site to another")
@@ -41,7 +41,9 @@ export default new Command("hosting:clone <source> <targetChannel>")
     }
 
     targetChannelId = normalizeName(targetChannelId);
-    sourceChannelId = normalizeName(sourceChannelId);
+    if (sourceChannelId) {
+      sourceChannelId = normalizeName(sourceChannelId);
+    }
 
     const equalSiteIds = sourceSiteId == targetSiteId;
     const equalChannelIds = sourceChannelId == targetChannelId;

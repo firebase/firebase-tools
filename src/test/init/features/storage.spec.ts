@@ -3,17 +3,17 @@ import * as _ from "lodash";
 import * as sinon from "sinon";
 
 import { FirebaseError } from "../../../error";
-import * as Config from "../../../config";
+import { Config } from "../../../config";
 import { doSetup } from "../../../init/features/storage";
 import * as prompt from "../../../prompt";
 
 describe("storage", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
-  let writeProjectFileStub: sinon.SinonStub;
+  let askWriteProjectFileStub: sinon.SinonStub;
   let promptStub: sinon.SinonStub;
 
   beforeEach(() => {
-    writeProjectFileStub = sandbox.stub(Config.prototype, "writeProjectFile");
+    askWriteProjectFileStub = sandbox.stub(Config.prototype, "askWriteProjectFile");
     promptStub = sandbox.stub(prompt, "promptOnce");
   });
 
@@ -30,7 +30,7 @@ describe("storage", () => {
         projectLocation: "us-central",
       };
       promptStub.returns("storage.rules");
-      writeProjectFileStub.resolves();
+      askWriteProjectFileStub.resolves();
 
       await doSetup(setup, new Config("/path/to/src", {}));
 

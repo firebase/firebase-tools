@@ -1,5 +1,6 @@
 import { ChildProcess } from "child_process";
 import { EventEmitter } from "events";
+import { previews } from "../previews";
 
 export enum Emulators {
   AUTH = "auth",
@@ -11,22 +12,30 @@ export enum Emulators {
   PUBSUB = "pubsub",
   UI = "ui",
   LOGGING = "logging",
+  STORAGE = "storage",
 }
 
 export type DownloadableEmulators =
   | Emulators.FIRESTORE
   | Emulators.DATABASE
   | Emulators.PUBSUB
-  | Emulators.UI;
+  | Emulators.UI
+  | Emulators.STORAGE;
 export const DOWNLOADABLE_EMULATORS = [
   Emulators.FIRESTORE,
   Emulators.DATABASE,
   Emulators.PUBSUB,
   Emulators.UI,
+  Emulators.STORAGE,
 ];
 
 export type ImportExportEmulators = Emulators.FIRESTORE | Emulators.DATABASE | Emulators.AUTH;
-export const IMPORT_EXPORT_EMULATORS = [Emulators.FIRESTORE, Emulators.DATABASE, Emulators.AUTH];
+export const IMPORT_EXPORT_EMULATORS = [
+  Emulators.FIRESTORE,
+  Emulators.DATABASE,
+  Emulators.AUTH,
+  Emulators.STORAGE,
+];
 
 export const ALL_SERVICE_EMULATORS = [
   Emulators.AUTH,
@@ -35,12 +44,14 @@ export const ALL_SERVICE_EMULATORS = [
   Emulators.DATABASE,
   Emulators.HOSTING,
   Emulators.PUBSUB,
-];
+  Emulators.STORAGE,
+].filter((v) => v) as Emulators[];
 
 export const EMULATORS_SUPPORTED_BY_FUNCTIONS = [
   Emulators.FIRESTORE,
   Emulators.DATABASE,
   Emulators.PUBSUB,
+  Emulators.STORAGE,
 ];
 
 export const EMULATORS_SUPPORTED_BY_UI = [
@@ -48,6 +59,7 @@ export const EMULATORS_SUPPORTED_BY_UI = [
   Emulators.DATABASE,
   Emulators.FIRESTORE,
   Emulators.FUNCTIONS,
+  Emulators.STORAGE,
 ];
 
 export const EMULATORS_SUPPORTED_BY_USE_EMULATOR = [
@@ -65,12 +77,18 @@ export const ALL_EMULATORS = [
   ...ALL_SERVICE_EMULATORS,
 ];
 
+/**
+ * @param value
+ */
 export function isDownloadableEmulator(value: string): value is DownloadableEmulators {
-  return isEmulator(value) && DOWNLOADABLE_EMULATORS.indexOf(value) >= 0;
+  return isEmulator(value) && DOWNLOADABLE_EMULATORS.includes(value);
 }
 
+/**
+ * @param value
+ */
 export function isEmulator(value: string): value is Emulators {
-  return Object.values(Emulators).indexOf(value as Emulators) >= 0;
+  return Object.values(Emulators).includes(value as Emulators);
 }
 
 export interface EmulatorInstance {
