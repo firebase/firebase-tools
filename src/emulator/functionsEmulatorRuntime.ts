@@ -27,6 +27,15 @@ import * as _ from "lodash";
 let triggers: EmulatedTriggerMap | undefined;
 let developerPkgJSON: PackageJSON | undefined;
 
+/**
+ * Dynamically load import function to prevent TypeScript from
+ * transpiling into a require.
+ *
+ * See https://github.com/microsoft/TypeScript/issues/43329.
+ */
+// eslint-disable-next-line @typescript-eslint/no-implied-eval
+const dynamicImport = new Function("modulePath", "return import(modulePath)");
+
 function isFeatureEnabled(
   frb: FunctionsRuntimeBundle,
   feature: keyof FunctionsRuntimeFeatures
@@ -567,6 +576,7 @@ async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
   // Stub the admin module in the require cache
   require.cache[adminResolution.resolution] = {
     exports: proxiedAdminModule,
+    path: path.dirname(adminResolution.resolution),
   };
 
   logDebug("firebase-admin has been stubbed.", {
@@ -776,6 +786,7 @@ async function initializeFunctionsConfigHelper(frb: FunctionsRuntimeBundle): Pro
   // Stub the functions module in the require cache
   require.cache[functionsResolution.resolution] = {
     exports: proxiedFunctionsModule,
+    path: path.dirname(functionsResolution.resolution),
   };
 
   logDebug("firebase-functions has been stubbed.", {
@@ -1065,8 +1076,12 @@ async function initializeRuntime(
     try {
       triggerModule = require(frb.cwd);
     } catch (err) {
-      await moduleResolutionDetective(frb, err);
-      return;
+      if (err.code !== "ERR_REQUIRE_ESM") {
+        await moduleResolutionDetective(frb, err);
+        return;
+      }
+      // tslint:disable:no-unsafe-assignment
+      triggerModule = await dynamicImport(require.resolve(frb.cwd));
     }
   }
   if (extensionTriggers) {

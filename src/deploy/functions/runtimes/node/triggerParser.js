@@ -7,7 +7,28 @@ var EXIT = function () {
   process.exit(0);
 };
 
-(function () {
+/**
+ * Dynamically load import function to prevent TypeScript from
+ * transpiling into a require.
+ *
+ * See https://github.com/microsoft/TypeScript/issues/43329.
+ */
+// eslint-disable-next-line @typescript-eslint/no-implied-eval
+const dynamicImport = new Function("modulePath", "return import(modulePath)");
+
+async function loadModule(packageDir) {
+  try {
+    return require(packageDir);
+  } catch (e) {
+    if (e.code === "ERR_REQUIRE_ESM") {
+      const mod = await dynamicImport(require.resolve(packageDir));
+      return mod;
+    }
+    throw e;
+  }
+}
+
+(async function () {
   if (!process.send) {
     console.warn("Could not parse function triggers (process.send === undefined).");
     process.exit(1);
@@ -23,7 +44,7 @@ var EXIT = function () {
   var mod;
   var triggers = [];
   try {
-    mod = require(packageDir);
+    mod = await loadModule(packageDir);
   } catch (e) {
     if (e.code === "MODULE_NOT_FOUND") {
       process.send(

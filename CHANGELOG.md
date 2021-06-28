@@ -1,1 +1,2 @@
 - Fixes a number of issues where `ext:dev:emulator:*` was not providing the correct parameter values to the emulated extension (#2928)
+- Support loading Firebase Functions packaged as an ES module. (#3485)
