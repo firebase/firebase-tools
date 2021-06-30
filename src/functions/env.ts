@@ -75,7 +75,7 @@ export function validateKey(key: string): void {
     throw new FirebaseError(
       "Invalid environment variable name " +
         clc.bold(key) +
-        ", cannot contain the prefix X_GOOGLE_."
+        ", cannot contain the prefix X_GOOGLE_ or FIREBASE_."
     );
   }
 }
