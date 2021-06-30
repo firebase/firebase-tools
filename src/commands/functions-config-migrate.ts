@@ -82,13 +82,10 @@ export default new Command("functions:config:migrate")
       throw new FirebaseError("Command aborted!");
     }
 
-    const envs: Record<string, string> = converts.success.reduce(
-      (acc: Record<string, string>, next) => {
-        acc[next.envKey] = next.value;
-        return acc;
-      },
-      {}
-    );
+    const envs: Record<string, string> = {};
+    for (const conv of converts.success) {
+      envs[conv.envKey] = conv.value;
+    }
     utils.logBullet("Adding env variables...");
     await env.addEnvs(projectId, envs);
     utils.logSuccess("Successfully added env variables!\n");
