@@ -11,13 +11,6 @@ describe("function env", () => {
       const args = ["FOO=bar", "BAR=foo=bar"];
       expect(fenv.parseKvArgs(args)).to.deep.equal({ FOO: "bar", BAR: "foo=bar" });
     });
-
-    it("should throw error given invalid keys", () => {
-      const args = ["FOO=bar", "X_GOOGLE_BAR=foo=bar"];
-      expect(() => {
-        fenv.parseKvArgs(args);
-      }).to.throw(FirebaseError);
-    });
   });
 
   describe("validateKey", () => {
