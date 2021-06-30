@@ -39,27 +39,34 @@ export default new Command("functions:config:migrate")
     }
 
     const converts = env.convertConfig(configs);
-    logger.info(
-      "Based on your current config, the following environment variables will be added:\n"
-    );
-    logger.info(
-      converts.success
-        .map(
-          (conv) =>
-            `${clc.bold(conv.envKey)}=${JSON.stringify(conv.value)} (from ${clc.italic(
-              conv.configKey
-            )})`
-        )
-        .join("\n") + "\n"
-    );
+
+    if (converts.success.length > 0) {
+      logger.info(
+        "Based on your current config, the following environment variables will be added:\n"
+      );
+      logger.info(
+        converts.success
+          .map(
+            (conv) =>
+              `${clc.bold(conv.envKey)}=${JSON.stringify(conv.value)} (from ${clc.italic(
+                conv.configKey
+              )})`
+          )
+          .join("\n") + "\n"
+      );
+    }
 
     if (converts.errors.length > 0) {
-      logger.warn(`${clc.red.bold("WARNING")}: Following keys can't be transformed:`);
+      logger.warn(`${clc.red.bold("WARNING")}: Following configs can't be migrated:`);
       logger.warn(
         converts.errors
           .map((err) => `${clc.italic(err.configKey)} => ${clc.bold(err.envKey)} (${err.errMsg})`)
           .join("\n") + "\n"
       );
+    }
+
+    if (converts.success.length < 0) {
+      return;
     }
 
     const confirm = await promptOnce(
