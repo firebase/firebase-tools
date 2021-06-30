@@ -73,7 +73,7 @@ describe("function env", () => {
     });
   });
 
-  describe.only("cloneEnvs", () => {
+  describe("cloneEnvs", () => {
     let deleteStore: sinon.SinonStub;
     let createStore: sinon.SinonStub;
     let getStore: sinon.SinonStub;
