@@ -1,1 +1,2 @@
 - Support loading Firebase Functions packaged as an ES module. (#3485)
+- Fixes Cloud Storage emulator missing classes (#3541)
