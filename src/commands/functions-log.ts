@@ -21,11 +21,16 @@ module.exports = new Command("functions:log")
   .action(async (options: any) => {
     try {
       const projectId = getProjectId(options, false);
-      let apiFilter = `resource.type="cloud_function"`;
+      let apiFilter =
+        'resource.type="cloud_function" ' +
+        'OR (resource.type="cloud_run_revision" AND labels."goog-managed-by"="cloudfunctions")';
       if (options.only) {
         const funcNames = options.only.split(",");
         const apiFuncFilters = _.map(funcNames, (funcName) => {
-          return `resource.labels.function_name="${funcName}"`;
+          return (
+            `resource.labels.function_name="${funcName}" ` +
+            `OR resource.label.service_name="${funcName}`
+          );
         });
         apiFilter += `\n(${apiFuncFilters.join(" OR ")})`;
       }
