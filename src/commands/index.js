@@ -86,6 +86,7 @@ module.exports = function (client) {
   client.functions.config = {};
   client.functions.config.clone = loadCommand("functions-config-clone");
   client.functions.config.get = loadCommand("functions-config-get");
+  client.functions.config.migrate = loadCommand("functions-config-migrate");
   client.functions.config.set = loadCommand("functions-config-set");
   client.functions.config.unset = loadCommand("functions-config-unset");
   client.functions.delete = loadCommand("functions-delete");

@@ -161,4 +161,25 @@ describe("function env", () => {
       ).to.be.rejectedWith(FirebaseError);
     });
   });
+
+  describe("convertConfig", () => {
+    it("converts valid config keys to env keys", () => {
+      expect(fenv.convertConfig({ "service.api.secret": "secret-key" })).to.be.deep.equal({
+        success: [
+          {
+            configKey: "service.api.secret",
+            envKey: "SERVICE_API_SECRET",
+            value: "secret-key",
+          },
+        ],
+        errors: [],
+      });
+    });
+
+    it("collects invalid config keys", () => {
+      expect(fenv.convertConfig({ "1.api.secret": "secret-key" }).errors).to.not.be.empty;
+      expect(fenv.convertConfig({ "x.google.secret": "secret-key" }).errors).to.not.be.empty;
+      expect(fenv.convertConfig({ "k.service": "secret-key" }).errors).to.not.be.empty;
+    });
+  });
 });

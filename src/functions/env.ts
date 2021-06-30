@@ -1,4 +1,5 @@
 import * as clc from "cli-color";
+import { flatten } from "flat";
 
 import { FirebaseError } from "../error";
 import * as envstore from "./envstore";
@@ -205,4 +206,54 @@ export async function clone({
     }
   }
   return setEnvs(toProjectId, envs);
+}
+interface ConvertResult {
+  success: {
+    configKey: string;
+    envKey: string;
+    value: string;
+  }[];
+
+  errors: {
+    configKey: string;
+    envKey: string;
+    errMsg: string;
+  }[];
+}
+
+/**
+ * Convert runtime config keys to environment variable keys.
+ * e.g. someservice.key => SOMESERVICE_KEY
+ * If the conversion cannot be made, collect errors.
+ *
+ * @return {ConvertResult} Collection of successful and errored conversion.
+ */
+export function convertConfig(configs: Record<string, string>): ConvertResult {
+  const success: ConvertResult["success"] = [];
+  const errors: ConvertResult["errors"] = [];
+
+  for (const [configKey, value] of Object.entries(flatten(configs))) {
+    // To convert config key to env key (e.g. some-service.key):
+    const envKey = configKey
+      // 1. Uppercase all characters (e.g. SOME-SERVICE.KEY)
+      .toUpperCase()
+      // 2. Dots to underscores (e.g. SOME-SERVICE_KEY)
+      .replace(/\./g, "_")
+      // 3. Dashses to underscores (e.g. SOME_SERVICE_KEY)
+      .replace(/-/g, "_");
+    try {
+      validateKey(envKey);
+      success.push({ configKey, envKey, value: value as string });
+    } catch (err) {
+      if (!(err instanceof FirebaseError)) {
+        throw err;
+      }
+      errors.push({
+        configKey,
+        envKey,
+        errMsg: err.message || "",
+      });
+    }
+  }
+  return { success, errors };
 }
