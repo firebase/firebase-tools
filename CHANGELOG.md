@@ -1,1 +1,2 @@
 - Support loading Firebase Functions packaged as an ES module. (#3485)
+- Add missing properties to Authentication functions `context` in the Functions emulator. (#3536)
