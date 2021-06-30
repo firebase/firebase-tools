@@ -138,10 +138,10 @@ export async function removeKeys(
   keys: string[]
 ): Promise<Record<string, string>> {
   const envs: Record<string, string> = {};
-  keys.forEach((key) => {
+  for (const key of keys) {
     validateKey(key);
     envs[key] = "";
-  });
+  }
   const envStore = await envstore.patchStore(projectId, ENVSTORE_ID, envs);
   return envStore.vars || {};
 }
