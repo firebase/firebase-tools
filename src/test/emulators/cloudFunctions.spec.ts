@@ -21,10 +21,17 @@ describe("cloudFunctions", () => {
       nock.cleanAll();
     });
 
-    it("should make a request to the functions emulator", async () => {
+    it.only("should make a request to the functions emulator", async () => {
       nock("http://1.1.1.1:4")
         .post("/functions/projects/project-foo/trigger_multicast", {
-          eventType: `providers/firebase.auth/eventTypes/user.create`,
+          eventId: /.*/,
+          eventType: "providers/firebase.auth/eventTypes/user.create",
+          resource: {
+            name: "projects/project-foo",
+            service: "firebaseauth.googleapis.com",
+          },
+          params: {},
+          timestamp: /.*/,
           data: { uid: "foobar", metadata: {}, customClaims: {} },
         })
         .reply(200, {});
