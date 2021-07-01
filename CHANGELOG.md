@@ -1,2 +1,3 @@
 - Support loading Firebase Functions packaged as an ES module. (#3485)
-- Fixes Cloud Storage emulator missing classes (#3541)
+- Fixes Cloud Storage emulator missing classes. (#3541)
+- Add missing properties to Authentication functions `context` in the Functions emulator. (#3536)
