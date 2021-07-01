@@ -29,6 +29,7 @@ type CloudRunRegions =
   | "us-east4"
   | "us-west1";
 
+// should be sourced from https://github.com/firebase/firebase-tools/blob/master/src/deploy/functions/runtimes/index.ts#L15
 type CloudFunctionRuntimes = "nodejs10" | "nodejs12" | "nodejs14";
 
 type Deployable = {
@@ -36,11 +37,11 @@ type Deployable = {
   postdeploy?: string | string[];
 };
 
-type DatabaseOne = {
+type DatabaseSingle = {
   rules: string;
 } & Deployable;
 
-type DatabaseMany = ({
+type DatabaseMultiple = ({
   rules: string;
 } & (
   | {
@@ -93,13 +94,13 @@ type HostingBase = {
   };
 };
 
-type HostingOne = HostingBase &
+type HostingSingle = HostingBase &
   Deployable & {
     site?: string;
     target?: string;
   };
 
-type HostingMany = (HostingBase &
+type HostingMultiple = (HostingBase &
   Deployable &
   (
     | {
@@ -112,19 +113,19 @@ type HostingMany = (HostingBase &
       }
   ))[];
 
-type StorageOne = {
+type StorageSingle = {
   rules: string;
   target?: string;
 } & Deployable;
 
-type StorageMany = ({
+type StorageMultiple = ({
   rules: string;
   bucket: string;
   target?: string;
 } & Deployable)[];
 
 // Full Configs
-export type DatabaseConfig = DatabaseOne | DatabaseMany;
+export type DatabaseConfig = DatabaseSingle | DatabaseMultiple;
 
 export type FirestoreConfig = {
   rules?: string;
@@ -138,9 +139,9 @@ export type FunctionsConfig = {
   runtime?: CloudFunctionRuntimes;
 } & Deployable;
 
-export type HostingConfig = HostingOne | HostingMany;
+export type HostingConfig = HostingSingle | HostingMultiple;
 
-export type StorageConfig = StorageOne | StorageMany;
+export type StorageConfig = StorageSingle | StorageMultiple;
 
 export type RemoteConfigConfig = {
   template: string;
