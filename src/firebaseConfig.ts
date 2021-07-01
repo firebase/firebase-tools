@@ -5,30 +5,6 @@
 // 'npm run generate:json-schema' to regenerate the schema files.
 //
 
-// Sourced from - https://firebase.google.com/docs/hosting/full-config#rewrite-cloud-run-container
-type CloudRunRegions =
-  | "asia-east1"
-  | "asia-east2"
-  | "asia-northeast1"
-  | "asia-northeast2"
-  | "asia-northeast3"
-  | "asia-south1"
-  | "asia-southeast1"
-  | "asia-southeast2"
-  | "australia-southeast1"
-  | "europe-north1"
-  | "europe-west1"
-  | "europe-west2"
-  | "europe-west3"
-  | "europe-west4"
-  | "europe-west6"
-  | "northamerica-northeast1"
-  | "southamerica-east1"
-  | "us-central1"
-  | "us-east1"
-  | "us-east4"
-  | "us-west1";
-
 // should be sourced from https://github.com/firebase/firebase-tools/blob/master/src/deploy/functions/runtimes/index.ts#L15
 type CloudFunctionRuntimes = "nodejs10" | "nodejs12" | "nodejs14";
 
@@ -67,7 +43,7 @@ type HostingRewrites = ({ source: string } | { regex: string }) &
     | {
         run: {
           serviceId: string;
-          region?: CloudRunRegions;
+          region?: string;
         };
       }
     | { dynamicLinks: boolean }
