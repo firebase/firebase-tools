@@ -21,7 +21,7 @@ describe("cloudFunctions", () => {
       nock.cleanAll();
     });
 
-    it.only("should make a request to the functions emulator", async () => {
+    it("should make a request to the functions emulator", async () => {
       nock("http://1.1.1.1:4")
         .post("/functions/projects/project-foo/trigger_multicast", {
           eventId: /.*/,
