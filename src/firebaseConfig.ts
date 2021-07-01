@@ -31,14 +31,14 @@ type CloudRunRegions =
 
 type CloudFunctionRuntimes = "nodejs10" | "nodejs12" | "nodejs14";
 
-type DeployAsset = {
+type Deployable = {
   predeploy?: string | string[];
   postdeploy?: string | string[];
 };
 
 type DatabaseOne = {
   rules: string;
-} & DeployAsset;
+} & Deployable;
 
 type DatabaseMany = ({
   rules: string;
@@ -52,7 +52,7 @@ type DatabaseMany = ({
       target: string;
     }
 ) &
-  DeployAsset)[];
+  Deployable)[];
 
 type HostingRedirects = ({ source: string } | { regex: string }) & {
   destination: string;
@@ -94,13 +94,13 @@ type HostingBase = {
 };
 
 type HostingOne = HostingBase &
-  DeployAsset & {
+  Deployable & {
     site?: string;
     target?: string;
   };
 
 type HostingMany = (HostingBase &
-  DeployAsset &
+  Deployable &
   (
     | {
         site: string;
@@ -115,13 +115,13 @@ type HostingMany = (HostingBase &
 type StorageOne = {
   rules: string;
   target?: string;
-} & DeployAsset;
+} & Deployable;
 
 type StorageMany = ({
   rules: string;
   bucket: string;
   target?: string;
-} & DeployAsset)[];
+} & Deployable)[];
 
 // Full Configs
 export type DatabaseConfig = DatabaseOne | DatabaseMany;
@@ -129,14 +129,14 @@ export type DatabaseConfig = DatabaseOne | DatabaseMany;
 export type FirestoreConfig = {
   rules?: string;
   indexes?: string;
-} & DeployAsset;
+} & Deployable;
 
 export type FunctionsConfig = {
   // TODO: Add types for "backend"
   source?: string;
   ignore?: string[];
   runtime?: CloudFunctionRuntimes;
-} & DeployAsset;
+} & Deployable;
 
 export type HostingConfig = HostingOne | HostingMany;
 
@@ -144,7 +144,7 @@ export type StorageConfig = StorageOne | StorageMany;
 
 export type RemoteConfigConfig = {
   template: string;
-} & DeployAsset;
+} & Deployable;
 
 export type EmulatorsConfig = {
   auth?: {
