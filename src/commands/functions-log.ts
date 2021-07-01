@@ -44,10 +44,11 @@ module.exports = new Command("functions:log")
       );
       for (let i = _.size(entries) - 1; i >= 0; i--) {
         const entry = entries[i];
-        let msg = entry.textPayload || "";
-        if (entry.jsonPayload || entry.protoPayload) {
-          msg = JSON.stringify(entry.jsonPayload || entry.protoPayload);
-        }
+        const msg =
+          entry.textPayload ||
+          JSON.stringify(entry.jsonPayload) ||
+          JSON.stringify(entry.protoPayload) ||
+          "";
         logger.info(
           entry.timestamp,
           _.get(entry, "severity", "?").substring(0, 1),
