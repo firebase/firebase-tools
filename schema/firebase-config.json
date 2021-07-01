@@ -1058,7 +1058,7 @@
                                 },
                                 "required": [
                                     "public",
-                                    "site"
+                                    "target"
                                 ],
                                 "type": "object"
                             },
@@ -1407,7 +1407,7 @@
                                 },
                                 "required": [
                                     "public",
-                                    "target"
+                                    "site"
                                 ],
                                 "type": "object"
                             }

@@ -5,7 +5,12 @@
 // 'npm run generate:json-schema' to regenerate the schema files.
 //
 
-// should be sourced from https://github.com/firebase/firebase-tools/blob/master/src/deploy/functions/runtimes/index.ts#L15
+// Sourced from - https://docs.microsoft.com/en-us/javascript/api/@azure/keyvault-certificates/requireatleastone?view=azure-node-latest
+type RequireAtLeastOne<T> = {
+  [K in keyof T]-?: Required<Pick<T, K>> & Partial<Pick<T, Exclude<keyof T, K>>>;
+}[keyof T];
+
+// should be sourced from - https://github.com/firebase/firebase-tools/blob/master/src/deploy/functions/runtimes/index.ts#L15
 type CloudFunctionRuntimes = "nodejs10" | "nodejs12" | "nodejs14";
 
 type Deployable = {
@@ -19,16 +24,10 @@ type DatabaseSingle = {
 
 type DatabaseMultiple = ({
   rules: string;
-} & (
-  | {
-      instance: string;
-      target?: string;
-    }
-  | {
-      instance?: string;
-      target: string;
-    }
-) &
+} & RequireAtLeastOne<{
+  instance: string;
+  target: string;
+}> &
   Deployable)[];
 
 type HostingRedirects = ({ source: string } | { regex: string }) & {
@@ -70,24 +69,17 @@ type HostingBase = {
   };
 };
 
-type HostingSingle = HostingBase &
-  Deployable & {
-    site?: string;
-    target?: string;
-  };
+type HostingSingle = HostingBase & {
+  site?: string;
+  target?: string;
+} & Deployable;
 
 type HostingMultiple = (HostingBase &
-  Deployable &
-  (
-    | {
-        site: string;
-        target?: string;
-      }
-    | {
-        site?: string;
-        target: string;
-      }
-  ))[];
+  RequireAtLeastOne<{
+    site: string;
+    target: string;
+  }> &
+  Deployable)[];
 
 type StorageSingle = {
   rules: string;
