@@ -1,0 +1,1 @@
+- Support loading Firebase Functions packaged as an ES module. (#3485)
