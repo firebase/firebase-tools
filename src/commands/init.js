@@ -69,8 +69,18 @@ const choices = [
 ];
 const featureNames = choices.map((choice) => choice.value);
 
+const DESCRIPTION = `Interactively configure the current directory as a Firebase project or initialize new features in an already configured Firebase project directory.
+
+This command will create or update 'firebase.json' and '.firebaserc' configuration files in the current directory. 
+
+To initialize a specific Firebase feature run 'firebase init [feature]'. Valid features are:
+${[...featureNames]
+  .sort()
+  .map((n) => `\n  - ${n}`)
+  .join("")}`;
+
 module.exports = new Command("init [feature]")
-  .description("set up a Firebase project in the current directory")
+  .description(DESCRIPTION)
   .before(requireAuth)
   .action(function (feature, options) {
     if (feature && !featureNames.includes(feature)) {
