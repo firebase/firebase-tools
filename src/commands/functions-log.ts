@@ -44,16 +44,14 @@ module.exports = new Command("functions:log")
       );
       for (let i = _.size(entries) - 1; i >= 0; i--) {
         const entry = entries[i];
-        const msg =
-          entry.textPayload ||
-          JSON.stringify(entry.jsonPayload) ||
-          JSON.stringify(entry.protoPayload) ||
-          "";
         logger.info(
           entry.timestamp,
           _.get(entry, "severity", "?").substring(0, 1),
           _.get(entry, "resource.labels.function_name") + ":",
-          msg
+          entry.textPayload ||
+            JSON.stringify(entry.jsonPayload) ||
+            JSON.stringify(entry.protoPayload) ||
+            ""
         );
       }
       if (_.isEmpty(entries)) {
