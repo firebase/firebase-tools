@@ -73,7 +73,7 @@ const DESCRIPTION = `Interactively configure the current directory as a Firebase
 
 This command will create or update 'firebase.json' and '.firebaserc' configuration files in the current directory. 
 
-To initialize a specific Firebase feature run 'firebase init [feature]'. Valid features are:
+To initialize a specific Firebase feature, run 'firebase init [feature]'. Valid features are:
 ${[...featureNames]
   .sort()
   .map((n) => `\n  - ${n}`)
