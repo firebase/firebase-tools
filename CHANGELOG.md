@@ -1,1 +1,0 @@
-- Add Warsaw (europe-central2) Cloud Function Location to Firebase Extension template.

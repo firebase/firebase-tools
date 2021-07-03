@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "9.12.1",
+  "version": "9.14.0",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -14,6 +14,7 @@
     "format:other": "npm run lint:other -- --write",
     "format:ts": "npm run lint:ts -- --fix --quiet",
     "generate:auth-api": "ts-node scripts/gen-auth-api-spec.ts",
+    "generate:json-schema": "typescript-json-schema --strictNullChecks --required --noExtraProps src/firebaseConfig.ts FirebaseConfig > schema/firebase-config.json",
     "lint": "npm run lint:ts && npm run lint:other",
     "lint:changed-files": "ts-node ./scripts/lint-changed-files.ts",
     "lint:other": "prettier --check '**/*.{md,yaml,yml}'",
@@ -85,6 +86,7 @@
     "@types/archiver": "^5.1.0",
     "JSONStream": "^1.2.1",
     "abort-controller": "^3.0.0",
+    "ajv": "^6.12.6",
     "archiver": "^5.0.0",
     "body-parser": "^1.19.0",
     "chokidar": "^3.0.2",
@@ -205,6 +207,7 @@
     "supertest": "^3.3.0",
     "swagger2openapi": "^6.0.3",
     "ts-node": "^9.1.1",
-    "typescript": "^3.9.5"
+    "typescript": "^3.9.5",
+    "typescript-json-schema": "^0.50.1"
   }
 }

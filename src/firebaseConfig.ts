@@ -1,18 +1,27 @@
+//
+// NOTE:
+// The contents of this file are used to generate the JSON Schema documents in
+// the schema/ directory. After changing this file you will need to run
+// 'npm run generate:json-schema' to regenerate the schema files.
+//
+
 export type DatabaseConfig =
   | {
-      rules: string;
+      rules?: string;
     }
   | {
-      target: string;
+      target?: string;
+      instance?: string;
       rules: string;
     }[];
 
 export type FirestoreConfig = {
-  rules: string;
-  indexes: string;
+  rules?: string;
+  indexes?: string;
 };
 
 export type FunctionsConfig = {
+  // TODO: Add types for "backend" and "runtime"
   source?: string;
   ignore?: string[];
   predeploy?: string[];
@@ -68,32 +77,44 @@ export type RemoteConfigConfig = {
 export type EmulatorsConfig = {
   auth?: {
     host?: string;
-    port?: string;
+    port?: number;
   };
   database?: {
     host?: string;
-    port?: string;
+    port?: number;
   };
   firestore?: {
     host?: string;
-    port?: string;
+    port?: number;
+  };
+  functions?: {
+    host?: string;
+    port?: number;
   };
   hosting?: {
     host?: string;
-    port?: string;
+    port?: number;
   };
   pubsub?: {
     host?: string;
-    port?: string;
+    port?: number;
   };
   storage?: {
     host?: string;
-    port?: string;
+    port?: number;
+  };
+  logging?: {
+    host?: string;
+    port?: number;
+  };
+  hub?: {
+    host?: string;
+    port?: number;
   };
   ui?: {
     enabled?: boolean;
     host?: string;
-    port?: string;
+    port?: number | string;
   };
 };
 
@@ -104,5 +125,5 @@ export type FirebaseConfig = {
   hosting?: HostingConfig;
   storage?: StorageConfig;
   remoteconfig?: RemoteConfigConfig;
-  emulators: EmulatorsConfig;
+  emulators?: EmulatorsConfig;
 };
