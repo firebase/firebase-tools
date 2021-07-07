@@ -167,11 +167,8 @@ function getFunctionSourceDirectory(functionResources: Resource[]): string {
   let sourceDirectory;
   for (const r of functionResources) {
     let dir = _.get(r, "properties.sourceDirectory");
+    // If not specified, default sourceDirectory to "functions"
     if (!dir) {
-      EmulatorLogger.forEmulator(Emulators.FUNCTIONS).log(
-        "INFO",
-        `No sourceDirectory was specified for function ${r.name}, defaulting to 'functions'`
-      );
       dir = "functions";
     }
     if (!sourceDirectory) {
