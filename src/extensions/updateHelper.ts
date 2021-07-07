@@ -11,7 +11,7 @@ import {
   createSourceFromLocation,
   logPrefix,
   SourceOrigin,
-  urlRegex,
+  URL_REGEX,
   isLocalOrURLPath,
 } from "./extensionsHelper";
 import * as utils from "../utils";

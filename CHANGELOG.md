@@ -1,1 +1,7 @@
+- Fixes a number of issues where `ext:dev:emulator:*` was not providing the correct parameter values to the emulated extension (#2928)
 - Support loading Firebase Functions packaged as an ES module. (#3485)
+- Fixes Cloud Storage emulator missing classes. (#3541)
+- Add missing properties to Authentication functions `context` in the Functions emulator. (#3536)
+- Firestore Emulator UI now supports deleting documents and collections recursively.
+- Fixes some Storage Emulator UI errors.
+- Fixes some issues when using Emulator UI on a different device.

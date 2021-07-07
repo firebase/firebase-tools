@@ -82,7 +82,7 @@ describe("paramHelper", () => {
       dotenvStub = sinon.stub(dotenv, "parse");
       sinon.stub(extensionsHelper, "getFirebaseProjectParams").resolves({ PROJECT_ID });
       promptStub = sinon.stub(prompt, "promptOnce").resolves("user input");
-      loggerSpy = sinon.spy(logger, "info");
+      loggerSpy = sinon.spy(logger, "warn");
     });
 
     afterEach(() => {
