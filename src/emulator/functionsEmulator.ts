@@ -50,7 +50,6 @@ import {
   AdminSdkConfig,
   constructDefaultAdminSdkConfig,
 } from "./adminSdkConfig";
-import { recorder } from "nock/types";
 
 const EVENT_INVOKE = "functions:invoke";
 
