@@ -5,3 +5,4 @@
 - Firestore Emulator UI now supports deleting documents and collections recursively.
 - Fixes some Storage Emulator UI errors.
 - Fixes some issues when using Emulator UI on a different device.
+- Fixes issues where functions:log command did not showing some log entries. (#3539)
