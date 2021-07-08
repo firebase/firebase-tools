@@ -49,7 +49,9 @@ export default new Command("functions:env:clone")
         "\n"
     );
     utils.logWarning(
-      "Please deploy your functions for the change to take effect by running firebase deploy --only functions"
+      "Please deploy your functions for the change to take effect by running " +
+        clc.bold("firebase deploy --only functions") +
+        "."
     );
     return envs;
   });

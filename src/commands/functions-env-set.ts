@@ -60,7 +60,9 @@ export default new Command("functions:env:set [values...]")
     const envs = await fenv.setEnvs(projectId, setEnvs);
     logger.info(fenv.formatEnv(envs) + "\n");
     utils.logWarning(
-      "Please deploy your functions for the change to take effect by running firebase deploy --only functions"
+      "Please deploy your functions for the change to take effect by running " +
+        clc.bold("firebase deploy --only functions") +
+        "."
     );
     return envs;
   });
