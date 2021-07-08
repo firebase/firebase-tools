@@ -45,7 +45,13 @@ export default new Command("functions:env:clone")
       "Cloned functions envrionment variables from " +
         clc.bold(options.from) +
         " into " +
-        clc.bold(projectId)
+        clc.bold(projectId) +
+        "\n"
+    );
+    utils.logWarning(
+      "Please deploy your functions for the change to take effect by running " +
+        clc.bold("firebase deploy --only functions") +
+        "."
     );
     return envs;
   });

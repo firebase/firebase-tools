@@ -12,7 +12,9 @@ import * as getProjectId from "../getProjectId";
 import * as utils from "../utils";
 
 export default new Command("functions:env:set [values...]")
-  .description("set environment variables, completely replacing the existing set")
+  .description(
+    "set environment variables with KEY=value syntax, completely replacing the existing set"
+  )
   .option("--file <envFile>", "path to file with environment variables in .env format.")
   .option("-f, --force", "No confirmation. Otherwise, a confirmation prompt will appear.")
   .before(requirePermissions, [
@@ -56,6 +58,11 @@ export default new Command("functions:env:set [values...]")
     }
 
     const envs = await fenv.setEnvs(projectId, setEnvs);
-    logger.info(fenv.formatEnv(envs));
+    logger.info(fenv.formatEnv(envs) + "\n");
+    utils.logWarning(
+      "Please deploy your functions for the change to take effect by running " +
+        clc.bold("firebase deploy --only functions") +
+        "."
+    );
     return envs;
   });

@@ -17,6 +17,11 @@ export default new Command("functions:env:add [values...]")
     const projectId = getProjectId(options);
     const addEnvs: Record<string, string> = fenv.parseKvArgs(args);
     const envs = await fenv.addEnvs(projectId, addEnvs);
-    logger.info(fenv.formatEnv(envs));
+    logger.info(fenv.formatEnv(envs) + "\n");
+    utils.logWarning(
+      "Please deploy your functions for the change to take effect by running " +
+        clc.bold("firebase deploy --only functions") +
+        "."
+    );
     return envs;
   });

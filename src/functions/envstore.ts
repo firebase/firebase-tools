@@ -7,7 +7,7 @@ interface EnvStoreEntry {
   vars: Record<string, string>;
 }
 
-const apiClient = new Client({ urlPrefix: firebaseApiOrigin, auth: true });
+const apiClient = new Client({ urlPrefix: firebaseApiOrigin, apiVersion: "v1alpha", auth: true });
 
 /**
  * Get envstore entry from the EnvStore Service.
@@ -17,9 +17,7 @@ const apiClient = new Client({ urlPrefix: firebaseApiOrigin, auth: true });
 export async function getStore(projectId: string, envStoreId: string): Promise<EnvStoreEntry> {
   let response;
   try {
-    response = await apiClient.get<EnvStoreEntry>(
-      `/v1alpha/projects/${projectId}/envStores/${envStoreId}`
-    );
+    response = await apiClient.get<EnvStoreEntry>(`/projects/${projectId}/envStores/${envStoreId}`);
   } catch (err) {
     throw new FirebaseError(`Failed to make request: ${err.message}`, { original: err });
   }
@@ -43,7 +41,7 @@ export async function createStore(
   let response;
   try {
     response = await apiClient.post<EnvStoreEntry, EnvStoreEntry>(
-      `/v1alpha/projects/${projectId}/envStores?env_store_id=${envStoreId}`,
+      `/projects/${projectId}/envStores?env_store_id=${envStoreId}`,
       body
     );
   } catch (err) {
@@ -69,7 +67,7 @@ export async function patchStore(
   let response;
   try {
     response = await apiClient.patch<EnvStoreEntry, EnvStoreEntry>(
-      `/v1alpha/projects/${projectId}/envStores/${envStoreId}`,
+      `/projects/${projectId}/envStores/${envStoreId}`,
       body
     );
   } catch (err) {
@@ -87,7 +85,7 @@ export async function deleteStore(projectId: string, envStoreId: string): Promis
   let response;
   try {
     response = await apiClient.delete<EnvStoreEntry>(
-      `/v1alpha/projects/${projectId}/envStores/${envStoreId}`
+      `/projects/${projectId}/envStores/${envStoreId}`
     );
   } catch (err) {
     throw new FirebaseError(`Failed to make request: ${err.message}`, { original: err });

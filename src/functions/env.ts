@@ -8,8 +8,20 @@ export const ENVSTORE_ID = "firebase-functions";
 const RESERVED_KEY_NAMES = [
   // Cloud Functions for Firebase
   "FIREBASE_CONFIG",
-  // Cloud Functions:
-  //   https://cloud.google.com/functions/docs/env-var#best_practices_and_reserved_environment_variables
+  // Cloud Functions - old runtimes:
+  //   https://cloud.google.com/functions/docs/env-var#nodejs_8_python_37_and_go_111
+  "ENTRY_POINT",
+  "GCP_PROJECT",
+  "GCLOUD_PROJECT",
+  "GOOGLE_CLOUD_PROJECT",
+  "FUNCTION_TRIGGER_TYPE",
+  "FUNCTION_NAME",
+  "FUNCTION_MEMORY_MB",
+  "FUNCTION_TIMEOUT_SEC",
+  "FUNCTION_IDENTITY",
+  "FUNCTION_REGION",
+  // Cloud Functions - new runtimes:
+  //   https://cloud.google.com/functions/docs/env-var#newer_runtimes
   "FUNCTION_TARGET",
   "FUNCTION_SIGNATURE_TYPE",
   "K_SERVICE",
@@ -27,11 +39,9 @@ const RESERVED_KEY_NAMES = [
  * @return {string} Formatted string suitable for printing.
  */
 export function formatEnv(envs: Record<string, string>): string {
-  const s = [];
-  for (const [k, v] of Object.entries(envs)) {
-    s.push(`${k}=${v}`);
-  }
-  return s.join("\n");
+  return Object.entries(envs)
+    .map(([k, v]) => `${k}=${v}`)
+    .join("\n");
 }
 
 /**
@@ -60,12 +70,12 @@ export function validateKey(key: string): void {
         ", and then consist of uppercase ASCII letters, digits, and underscores."
     );
   }
-  // Keys cannot contain the prefix X_GOOGLE_.
-  if (key.startsWith("X_GOOGLE_")) {
+  // Prefix X_GOOGLE_ and FIREBASE_ is reserved for internal use.
+  if (key.startsWith("X_GOOGLE_") || key.startsWith("FIREBASE_")) {
     throw new FirebaseError(
       "Invalid environment variable name " +
         clc.bold(key) +
-        ", cannot contain the prefix X_GOOGLE_."
+        ", cannot contain the prefix X_GOOGLE_ or FIREBASE_."
     );
   }
 }
@@ -84,7 +94,6 @@ export function parseKvArgs(args: string[]): Record<string, string> {
       throw new FirebaseError(`Invalid argument ${clc.bold(arg)}, must be in key=val format`);
     }
     const key = parts[0];
-    validateKey(key);
     const val = parts.slice(1).join("="); // Val may have contained '='.
     envs[key] = val;
   }
@@ -98,7 +107,7 @@ export function parseKvArgs(args: string[]): Record<string, string> {
  */
 export async function getEnvs(projectId: string): Promise<Record<string, string>> {
   const envStore = await envstore.getStore(projectId, ENVSTORE_ID);
-  return envStore.vars;
+  return envStore.vars || {};
 }
 
 /**
@@ -111,6 +120,9 @@ export async function addEnvs(
   projectId: string,
   envs: Record<string, string>
 ): Promise<Record<string, string>> {
+  for (const key of Object.keys(envs)) {
+    validateKey(key);
+  }
   const envStore = await envstore.patchStore(projectId, ENVSTORE_ID, envs);
   return envStore.vars || {};
 }
@@ -126,9 +138,10 @@ export async function removeKeys(
   keys: string[]
 ): Promise<Record<string, string>> {
   const envs: Record<string, string> = {};
-  keys.forEach((key) => {
+  for (const key of keys) {
+    validateKey(key);
     envs[key] = "";
-  });
+  }
   const envStore = await envstore.patchStore(projectId, ENVSTORE_ID, envs);
   return envStore.vars || {};
 }
@@ -152,6 +165,9 @@ export async function setEnvs(
   // failure isn't too bad (users can simply try the command again). Regardless,
   // we should work with the EnvStore service team to develop an delete+create
   // transactionality.
+  for (const key of Object.keys(envs)) {
+    validateKey(key);
+  }
   await envstore.deleteStore(projectId, ENVSTORE_ID);
   const envStore = await envstore.createStore(projectId, ENVSTORE_ID, envs);
   return envStore.vars || {};
