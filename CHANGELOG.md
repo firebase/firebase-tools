@@ -6,3 +6,4 @@
 - Fixes some Storage Emulator UI errors.
 - Fixes some issues when using Emulator UI on a different device.
 - Fixes issues where functions:log command did not showing some log entries. (#3539)
+- Fixes Emulator issue when function definition changes (#2533).
