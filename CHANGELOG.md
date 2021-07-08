@@ -1,0 +1,1 @@
+- Fixes issue where `firebase.json` schema was not packaged in the module. (#3561)
