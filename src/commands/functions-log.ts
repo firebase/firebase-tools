@@ -48,7 +48,10 @@ module.exports = new Command("functions:log")
           entry.timestamp,
           _.get(entry, "severity", "?").substring(0, 1),
           _.get(entry, "resource.labels.function_name") + ":",
-          _.get(entry, "textPayload", "")
+          entry.textPayload ||
+            JSON.stringify(entry.jsonPayload) ||
+            JSON.stringify(entry.protoPayload) ||
+            ""
         );
       }
       if (_.isEmpty(entries)) {
