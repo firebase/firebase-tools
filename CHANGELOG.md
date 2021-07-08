@@ -1,1 +1,0 @@
-- Supports inspecting Firestore Emulator requests and rules in Emulator UI (#3564).
