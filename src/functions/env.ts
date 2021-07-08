@@ -120,7 +120,7 @@ export async function addEnvs(
   projectId: string,
   envs: Record<string, string>
 ): Promise<Record<string, string>> {
-  for (const [key] of Object.entries(envs)) {
+  for (const key of Object.keys(envs)) {
     validateKey(key);
   }
   const envStore = await envstore.patchStore(projectId, ENVSTORE_ID, envs);
@@ -165,7 +165,7 @@ export async function setEnvs(
   // failure isn't too bad (users can simply try the command again). Regardless,
   // we should work with the EnvStore service team to develop an delete+create
   // transactionality.
-  for (const [key] of Object.entries(envs)) {
+  for (const key of Object.keys(envs)) {
     validateKey(key);
   }
   await envstore.deleteStore(projectId, ENVSTORE_ID);
