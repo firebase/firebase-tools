@@ -6,7 +6,7 @@ import * as paramHelper from "../paramHelper";
 import * as specHelper from "./specHelper";
 import * as localHelper from "../localHelper";
 import * as triggerHelper from "./triggerHelper";
-import { Resource } from "../extensionsApi";
+import { ExtensionSpec, Resource } from "../extensionsApi";
 import * as extensionsHelper from "../extensionsHelper";
 import { Config } from "../../config";
 import { FirebaseError } from "../../error";
@@ -17,18 +17,15 @@ import { Emulators } from "../../emulator/types";
 export async function buildOptions(options: any): Promise<any> {
   const extensionDir = localHelper.findExtensionYaml(process.cwd());
   options.extensionDir = extensionDir;
-  const extensionYaml = await specHelper.readExtensionYaml(extensionDir);
-  extensionsHelper.validateSpec(extensionYaml);
+  const spec = await specHelper.readExtensionYaml(extensionDir);
+  extensionsHelper.validateSpec(spec);
 
-  const params = await paramHelper.readParamsFile(options.testParams);
-  extensionsHelper.validateCommandLineParams(params, extensionYaml.params || []);
-  params["PROJECT_ID"] = getProjectId(options, false);
-  params["EXT_INSTANCE_ID"] = params["EXT_INSTANCE_ID"] || extensionYaml.name;
-  params["DATABASE_INSTANCE"] = params["PROJECT_ID"];
-  params["DATABASE_URL"] = `https://${params["DATABASE_INSTANCE"]}.firebaseio.com`;
-  params["STORAGE_BUCKET"] = `${params["PROJECT_ID"]}.appspot.com`;
+  const params = await getParams(options, spec);
+
+  extensionsHelper.validateCommandLineParams(params, spec.params);
+
   const functionResources = specHelper.getFunctionResourcesWithParamSubstitution(
-    extensionYaml,
+    spec,
     params
   ) as Resource[];
   let testConfig;
@@ -44,6 +41,27 @@ export async function buildOptions(options: any): Promise<any> {
   options.extensionTriggers = functionEmuTriggerDefs;
   options.extensionNodeVersion = specHelper.getNodeVersion(functionResources);
   return options;
+}
+
+// Exported for testing
+export async function getParams(options: any, extensionSpec: ExtensionSpec) {
+  const projectId = getProjectId(options, false);
+  const userParams = await paramHelper.readParamsFile(options.testParams);
+  const autoParams = {
+    PROJECT_ID: projectId,
+    EXT_INSTANCE_ID: extensionSpec.name,
+    DATABASE_INSTANCE: projectId,
+    DATABASE_URL: `https://${projectId}.firebaseio.com`,
+    STORAGE_BUCKET: `${projectId}.appspot.com`,
+  };
+  const unsubbedParamsWithoutDefaults = Object.assign(autoParams, userParams);
+
+  const unsubbedParams = extensionsHelper.populateDefaultParams(
+    unsubbedParamsWithoutDefaults,
+    extensionSpec.params
+  );
+  // Run a substitution to support params that reference other params.
+  return extensionsHelper.substituteParams<Record<string, string>>(unsubbedParams, unsubbedParams);
 }
 
 /**
@@ -149,11 +167,8 @@ function getFunctionSourceDirectory(functionResources: Resource[]): string {
   let sourceDirectory;
   for (const r of functionResources) {
     let dir = _.get(r, "properties.sourceDirectory");
+    // If not specified, default sourceDirectory to "functions"
     if (!dir) {
-      EmulatorLogger.forEmulator(Emulators.FUNCTIONS).log(
-        "INFO",
-        `No sourceDirectory was specified for function ${r.name}, defaulting to 'functions'`
-      );
       dir = "functions";
     }
     if (!sourceDirectory) {
