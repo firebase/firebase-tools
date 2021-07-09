@@ -5,74 +5,117 @@
 // 'npm run generate:json-schema' to regenerate the schema files.
 //
 
-export type DatabaseConfig =
-  | {
-      rules?: string;
-    }
-  | {
-      target?: string;
-      instance?: string;
-      rules: string;
-    }[];
+// Sourced from - https://docs.microsoft.com/en-us/javascript/api/@azure/keyvault-certificates/requireatleastone?view=azure-node-latest
+type RequireAtLeastOne<T> = {
+  [K in keyof T]-?: Required<Pick<T, K>> & Partial<Pick<T, Exclude<keyof T, K>>>;
+}[keyof T];
 
-export type FirestoreConfig = {
-  rules?: string;
-  indexes?: string;
+// should be sourced from - https://github.com/firebase/firebase-tools/blob/master/src/deploy/functions/runtimes/index.ts#L15
+type CloudFunctionRuntimes = "nodejs10" | "nodejs12" | "nodejs14";
+
+type Deployable = {
+  predeploy?: string | string[];
+  postdeploy?: string | string[];
 };
 
-export type FunctionsConfig = {
-  // TODO: Add types for "backend" and "runtime"
-  source?: string;
-  ignore?: string[];
-  predeploy?: string[];
+type DatabaseSingle = {
+  rules: string;
+} & Deployable;
+
+type DatabaseMultiple = ({
+  rules: string;
+} & RequireAtLeastOne<{
+  instance: string;
+  target: string;
+}> &
+  Deployable)[];
+
+type HostingSource = { source: string } | { regex: string };
+
+type HostingRedirects = HostingSource & {
+  destination: string;
+  type: number;
 };
 
-export type HostingConfig = {
+type HostingRewrites = HostingSource &
+  (
+    | { destination: string }
+    | { function: string }
+    | {
+        run: {
+          serviceId: string;
+          region?: string;
+        };
+      }
+    | { dynamicLinks: boolean }
+  );
+
+type HostingHeaders = HostingSource & {
+  headers: {
+    key: string;
+    value: string;
+  }[];
+};
+
+type HostingBase = {
   public: string;
   ignore?: string[];
   appAssociation?: string;
   cleanUrls?: boolean;
   trailingSlash?: boolean;
-  postdeploy?: string;
-  redirects?: {
-    source: string;
-    destination: string;
-    type: number;
-  }[];
-  rewrites?: {
-    source: string;
-    destination?: string;
-    function?: string;
-    run?: {
-      serviceId: string;
-      region?: string;
-    };
-    dynamicLinks?: boolean;
-  }[];
-  headers?: {
-    source: string;
-    headers: {
-      key: string;
-      value: string;
-    }[];
-  }[];
+  redirects?: HostingRedirects[];
+  rewrites?: HostingRewrites[];
+  headers?: HostingHeaders[];
   i18n?: {
     root: string;
   };
 };
 
-export type StorageConfig =
-  | {
-      rules: string;
-    }
-  | {
-      bucket: string;
-      rules: string;
-    }[];
+type HostingSingle = HostingBase & {
+  site?: string;
+  target?: string;
+} & Deployable;
+
+type HostingMultiple = (HostingBase &
+  RequireAtLeastOne<{
+    site: string;
+    target: string;
+  }> &
+  Deployable)[];
+
+type StorageSingle = {
+  rules: string;
+  target?: string;
+} & Deployable;
+
+type StorageMultiple = ({
+  rules: string;
+  bucket: string;
+  target?: string;
+} & Deployable)[];
+
+// Full Configs
+export type DatabaseConfig = DatabaseSingle | DatabaseMultiple;
+
+export type FirestoreConfig = {
+  rules?: string;
+  indexes?: string;
+} & Deployable;
+
+export type FunctionsConfig = {
+  // TODO: Add types for "backend"
+  source?: string;
+  ignore?: string[];
+  runtime?: CloudFunctionRuntimes;
+} & Deployable;
+
+export type HostingConfig = HostingSingle | HostingMultiple;
+
+export type StorageConfig = StorageSingle | StorageMultiple;
 
 export type RemoteConfigConfig = {
   template: string;
-};
+} & Deployable;
 
 export type EmulatorsConfig = {
   auth?: {

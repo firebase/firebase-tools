@@ -102,7 +102,7 @@ export interface ExtensionSpec {
   license?: string;
   releaseNotesUrl?: string;
   sourceUrl: string;
-  params?: Param[];
+  params: Param[];
   preinstallContent?: string;
   postinstallContent?: string;
   readmeContent?: string;

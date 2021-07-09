@@ -1,3 +1,6 @@
+import * as uuid from "uuid";
+
+import { EventContext } from "firebase-functions";
 import { Client } from "../../apiv2";
 
 import { EmulatorInfo, Emulators } from "../types";
@@ -6,6 +9,10 @@ import { EmulatorRegistry } from "../registry";
 import { UserInfo } from "./state";
 
 type AuthCloudFunctionAction = "create" | "delete";
+
+type CreateEvent = EventContext & {
+  data: UserInfoPayload;
+};
 
 export class AuthCloudFunction {
   private logger = EmulatorLogger.forEmulator(Emulators.AUTH);
@@ -54,9 +61,16 @@ export class AuthCloudFunction {
   private createEventRequestBody(
     action: AuthCloudFunctionAction,
     userInfoPayload: UserInfoPayload
-  ): { eventType: string; data: UserInfoPayload } {
+  ): CreateEvent {
     return {
+      eventId: uuid.v4(),
       eventType: `providers/firebase.auth/eventTypes/user.${action}`,
+      resource: {
+        name: `projects/${this.projectId}`,
+        service: "firebaseauth.googleapis.com",
+      },
+      params: {},
+      timestamp: new Date().toISOString(),
       data: userInfoPayload,
     };
   }

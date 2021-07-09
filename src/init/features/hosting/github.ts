@@ -17,7 +17,7 @@ import {
 import { addServiceAccountToRoles, firebaseRoles } from "../../../gcp/resourceManager";
 import { logger } from "../../../logger";
 import { prompt } from "../../../prompt";
-import { logBullet, logLabeledBullet, logSuccess, reject } from "../../../utils";
+import { logBullet, logLabeledBullet, logSuccess, logWarning, reject } from "../../../utils";
 import { githubApiOrigin, githubClientId } from "../../../api";
 import { Client } from "../../../apiv2";
 
@@ -401,16 +401,39 @@ async function promptForRepo(
       message:
         "For which GitHub repository would you like to set up a GitHub workflow? (format: user/repository)",
       validate: async (repo: string) => {
-        // eslint-disable-next-line camelcase
-        const { body } = await githubApiClient.get<{ key: string; key_id: string }>(
-          `/repos/${repo}/actions/secrets/public-key`,
-          {
-            headers: { Authorization: `token ${ghAccessToken}`, "User-Agent": "Firebase CLI" },
-            queryParams: { type: "owner" },
+        try {
+          // eslint-disable-next-line camelcase
+          const { body } = await githubApiClient.get<{ key: string; key_id: string }>(
+            `/repos/${repo}/actions/secrets/public-key`,
+            {
+              headers: { Authorization: `token ${ghAccessToken}`, "User-Agent": "Firebase CLI" },
+              queryParams: { type: "owner" },
+            }
+          );
+          key = body.key;
+          keyId = body.key_id;
+        } catch (e) {
+          if (e.status === 403) {
+            logger.info();
+            logger.info();
+            logWarning(
+              "The provided authorization cannot be used with this repository. If this repository is in an organization, did you remember to grant access?",
+              "error"
+            );
+            logger.info();
+            logLabeledBullet(
+              "Action required",
+              `Visit this URL to ensure access has been granted to the appropriate organization(s) for the Firebase CLI GitHub OAuth App:`
+            );
+            logger.info(
+              bold.underline(
+                `https://github.com/settings/connections/applications/${githubClientId}`
+              )
+            );
+            logger.info();
           }
-        );
-        key = body.key;
-        keyId = body.key_id;
+          return false;
+        }
         return true;
       },
     },

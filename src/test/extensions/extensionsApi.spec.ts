@@ -390,6 +390,7 @@ describe("extensions", () => {
         name: "abc123",
         version: "0.1.0",
         resources: [],
+        params: [],
         sourceUrl: "www.google.com/pack.zip",
       },
     };
