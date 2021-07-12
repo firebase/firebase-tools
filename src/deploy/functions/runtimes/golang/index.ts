@@ -24,6 +24,7 @@ export const FUNCTIONS_SDK = "github.com/FirebaseExtended/firebase-functions-go"
 // Because codegen is a separate binary we won't automatically import it
 // when we import the library.
 export const FUNCTIONS_CODEGEN = FUNCTIONS_SDK + "/support/codegen";
+export const FUNCTIONS_RUNTIME = FUNCTIONS_SDK + "/support/runtime";
 
 export async function tryCreateDelegate(
   context: args.Context,
@@ -80,12 +81,17 @@ export class Delegate {
     try {
       await promisify(fs.mkdir)(path.join(this.sourceDir, "autogen"));
     } catch (err) {
-      if (!/EEXIST/.exec(err?.message)) {
+      if (err?.code !== "EEXIST") {
         throw new FirebaseError("Failed to create codegen directory", { children: [err] });
       }
     }
     const genBinary = spawn.sync("go", ["run", FUNCTIONS_CODEGEN, this.module.module], {
       cwd: this.sourceDir,
+      env: {
+        HOME: process.env.HOME,
+        PATH: process.env.PATH,
+        GOPATH: process.env.GOPATH,
+      },
       stdio: [/* stdin=*/ "ignore", /* stdout=*/ "pipe", /* stderr=*/ "pipe"],
     });
     if (genBinary.status != 0) {
@@ -97,21 +103,6 @@ export class Delegate {
       path.join(this.sourceDir, "autogen", "main.go"),
       genBinary.stdout
     );
-
-    // Now that we've created main.go, we will have new dependencies on the packages pulled in
-    // by /support/runtime. We need to run one more `go get`. We could have possibly frontloaded
-    // this work by adding a hand curated list of dependencies in project creation, but this
-    // would be more birttle.
-    const getDeps = spawn.sync("go", ["get"], {
-      cwd: this.sourceDir,
-      stdio: [/* stdin=*/ "ignore", /* stdout=*/ "pipe", /* stderr=*/ "pipe"],
-    });
-    logger.debug(getDeps.stdout.toString());
-    if (getDeps.status != 0) {
-      throw new FirebaseError("Failed to get dependencies", {
-        children: [new Error(getDeps.stderr.toString())],
-      });
-    }
   }
 
   // Watch isn't supported for Go
@@ -127,11 +118,11 @@ export class Delegate {
     const childProcess = spawn("go", ["run", "./autogen"], {
       env: {
         ...envs,
-        ...process.env,
-        GOPATH: process.env.GOPATH,
         PORT: port.toString(),
         ADMIN_PORT: adminPort.toString(),
+        HOME: process.env.HOME,
         PATH: process.env.PATH,
+        GOPATH: process.env.GOPATH,
       },
       cwd: this.sourceDir,
       stdio: [/* stdin=*/ "ignore", /* stdout=*/ "pipe", /* stderr=*/ "inherit"],

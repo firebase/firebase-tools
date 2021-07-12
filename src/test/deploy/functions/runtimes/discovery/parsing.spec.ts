@@ -3,7 +3,7 @@ import { FirebaseError } from "../../../../../error";
 import * as parsing from "../../../../../deploy/functions/runtimes/discovery/parsing";
 
 describe("requireKeys", () => {
-  it("accepts found keys keys", () => {
+  it("accepts found keys", () => {
     const obj = {
       foo: "foo",
       bar: "bar",
@@ -46,9 +46,9 @@ describe("assertKeyTypes", () => {
     object: {},
   };
   for (const type of tests) {
-    const schema = { [type]: type as parsing.Type };
+    const schema = { [type]: type as parsing.KeyType };
     for (const [testType, val] of Object.entries(values)) {
-      it(`Handles a ${testType} when expecting a ${type}`, () => {
+      it(`handles a ${testType} when expecting a ${type}`, () => {
         const obj = { [type]: val };
         if (type === testType) {
           expect(() => parsing.assertKeyTypes("", obj, schema)).not.to.throw;

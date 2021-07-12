@@ -58,7 +58,7 @@ async function writeModFile(config: Config) {
   config.writeProjectFile("functions/go.mod", `module ${modName} \n\ngo ${RUNTIME_VERSION}\n\n`);
   utils.logSuccess("Wrote " + clc.bold("functions/go.mod"));
 
-  for (const dep of [go.FUNCTIONS_SDK, go.ADMIN_SDK]) {
+  for (const dep of [go.FUNCTIONS_SDK, go.ADMIN_SDK, go.FUNCTIONS_CODEGEN, go.FUNCTIONS_RUNTIME]) {
     const result = spawn.sync("go", ["get", dep], {
       cwd: config.path("functions"),
       stdio: "inherit",

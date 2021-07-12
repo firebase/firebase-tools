@@ -1,5 +1,3 @@
-import * as _ from "lodash";
-
 import * as backend from "../../backend";
 import * as runtimes from "..";
 import { assertKeyTypes, requireKeys } from "./parsing";
@@ -10,7 +8,7 @@ export function backendFromV1Alpha1(
   region: string,
   runtime: runtimes.Runtime
 ): backend.Backend {
-  const bkend: backend.Backend = _.cloneDeep(yaml);
+  const bkend: backend.Backend = JSON.parse(JSON.stringify(yaml));
   delete (bkend as any).specVersion;
   tryValidate(bkend);
   fillDefaults(bkend, project, region, runtime);

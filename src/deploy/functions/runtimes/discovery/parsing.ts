@@ -2,7 +2,7 @@ import { FirebaseError } from "../../../../error";
 
 // Use "omit" for output only fields. This allows us to fully exhaust keyof T
 // while still recognizing output-only fields
-export type Type = "string" | "number" | "boolean" | "object" | "array" | "omit";
+export type KeyType = "string" | "number" | "boolean" | "object" | "array" | "omit";
 export function requireKeys<T extends object>(prefix: string, yaml: T, ...keys: (keyof T)[]) {
   if (prefix) {
     prefix = prefix + ".";
@@ -17,7 +17,7 @@ export function requireKeys<T extends object>(prefix: string, yaml: T, ...keys: 
 export function assertKeyTypes<T extends Object>(
   prefix: string,
   yaml: T | undefined,
-  schema: Record<keyof T, Type>
+  schema: Record<keyof T, KeyType>
 ) {
   if (!yaml) {
     return;

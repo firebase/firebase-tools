@@ -52,7 +52,6 @@ export async function detectFromYaml(
   }
 
   logger.debug("Found backend.yaml. Got spec:", text);
-  // TOODO(inlined): use a schema instead of manually checking everything or blindly trusting input.
   const parsed = yaml.load(text);
   return yamlToBackend(parsed, project, api.functionsDefaultRegion, runtime);
 }
@@ -77,7 +76,7 @@ export async function detectFromPort(
       break;
     } catch (err) {
       // Allow us to wait until the server is listening.
-      if (/ECONNREFUSED/.exec(err?.message)) {
+      if (err?.code === "ECONNREFUSED") {
         continue;
       }
       throw err;
