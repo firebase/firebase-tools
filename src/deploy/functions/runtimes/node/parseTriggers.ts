@@ -54,6 +54,7 @@ export interface TriggerAnnotation {
   schedule?: ScheduleAnnotation;
   timeZone?: string;
   regions?: string[];
+  concurrency?: number;
 }
 
 /**
@@ -187,6 +188,7 @@ export function addResourcesToBackend(
     proto.copyIfPresent(
       cloudFunction,
       annotation,
+      "concurrency",
       "serviceAccountEmail",
       "labels",
       "vpcConnectorEgressSettings",

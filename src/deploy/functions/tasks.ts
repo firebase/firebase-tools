@@ -116,6 +116,16 @@ export function createFunctionTask(
         params.errorHandler.record("warning", fnName, "make public", err.message);
       }
     }
+    if ("concurrency" in fn) {
+      if (fn.platform === "gcfv1") {
+        logger.debug("Cannot set concurrency for a v1 function");
+      } else {
+        await setConcurrency(
+          (cloudFunction as gcfV2.CloudFunction).serviceConfig.service!,
+          fn.concurrency || 1
+        );
+      }
+    }
   };
   return {
     run,
@@ -158,7 +168,17 @@ export function updateFunctionTask(
       operationResourceName: opName,
       onPoll,
     };
-    await pollOperation<void>(pollerOptions);
+    const cloudFunction = await pollOperation<unknown>(pollerOptions);
+    if ("concurrency" in fn) {
+      if (fn.platform === "gcfv1") {
+        logger.debug("Cannot set concurrency for a v1 function");
+      } else {
+        await setConcurrency(
+          (cloudFunction as gcfV2.CloudFunction).serviceConfig.service!,
+          fn.concurrency || 1,
+        );
+      }
+    }
   };
   return {
     run,
@@ -194,6 +214,14 @@ export function deleteFunctionTask(params: TaskParams, fn: backend.FunctionSpec)
     fn,
     operationType: "delete",
   };
+}
+
+export async function setConcurrency(name: string, concurrency: number) {
+  const service = await cloudrun.getService(name)
+
+  delete service.spec.template.spec.containerConcurrency;
+
+  await cloudrun.replaceService(name, service);
 }
 
 export function functionsDeploymentHandler(
