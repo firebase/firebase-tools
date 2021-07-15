@@ -397,7 +397,7 @@ export function specFromFunction(gcfFunction: CloudFunction): backend.FunctionSp
   }
 
   const cloudFunction: backend.FunctionSpec = {
-    apiVersion: 1,
+    platform: "gcfv1",
     id,
     project,
     region,
@@ -434,7 +434,7 @@ export function functionFromSpec(
   cloudFunction: backend.FunctionSpec,
   sourceUploadUrl: string
 ): Omit<CloudFunction, OutputOnlyFields> {
-  if (cloudFunction.apiVersion != 1) {
+  if (cloudFunction.platform != "gcfv1") {
     throw new FirebaseError(
       "Trying to create a v1 CloudFunction with v2 API. This should never happen"
     );

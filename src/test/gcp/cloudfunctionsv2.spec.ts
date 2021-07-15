@@ -11,7 +11,7 @@ describe("cloudfunctionsv2", () => {
   };
 
   const FUNCTION_SPEC: backend.FunctionSpec = {
-    apiVersion: 2,
+    platform: "gcfv2",
     ...FUNCTION_NAME,
     trigger: {
       allowInsecure: false,
@@ -57,7 +57,7 @@ describe("cloudfunctionsv2", () => {
     it("should guard against version mixing", () => {
       expect(() => {
         cloudfunctionsv2.functionFromSpec(
-          { ...FUNCTION_SPEC, apiVersion: 1 },
+          { ...FUNCTION_SPEC, platform: "gcfv1" },
           CLOUD_FUNCTION_V2_SOURCE
         );
       }).to.throw;
@@ -68,7 +68,7 @@ describe("cloudfunctionsv2", () => {
         cloudfunctionsv2.functionFromSpec(
           {
             ...FUNCTION_SPEC,
-            apiVersion: 2,
+            platform: "gcfv2",
           },
           CLOUD_FUNCTION_V2_SOURCE
         )
@@ -76,7 +76,7 @@ describe("cloudfunctionsv2", () => {
 
       const eventFunction: backend.FunctionSpec = {
         ...FUNCTION_SPEC,
-        apiVersion: 2,
+        platform: "gcfv2",
         trigger: {
           eventType: "google.cloud.audit.log.v1.written",
           eventFilters: {
@@ -113,7 +113,7 @@ describe("cloudfunctionsv2", () => {
     it("should copy trival fields", () => {
       const fullFunction: backend.FunctionSpec = {
         ...FUNCTION_SPEC,
-        apiVersion: 2,
+        platform: "gcfv2",
         availableMemoryMb: 128,
         vpcConnector: "connector",
         vpcConnectorEgressSettings: "ALL_TRAFFIC",
@@ -156,7 +156,7 @@ describe("cloudfunctionsv2", () => {
     it("should calculate non-trivial fields", () => {
       const complexFunction: backend.FunctionSpec = {
         ...FUNCTION_SPEC,
-        apiVersion: 2,
+        platform: "gcfv2",
         trigger: {
           eventType: cloudfunctionsv2.PUBSUB_PUBLISH_EVENT,
           eventFilters: {
@@ -196,7 +196,7 @@ describe("cloudfunctionsv2", () => {
     it("should copy a minimal version", () => {
       expect(cloudfunctionsv2.specFromFunction(HAVE_CLOUD_FUNCTION_V2)).to.deep.equal({
         ...FUNCTION_SPEC,
-        apiVersion: 2,
+        platform: "gcfv2",
         uri: RUN_URI,
       });
     });
@@ -212,7 +212,7 @@ describe("cloudfunctionsv2", () => {
         })
       ).to.deep.equal({
         ...FUNCTION_SPEC,
-        apiVersion: 2,
+        platform: "gcfv2",
         uri: RUN_URI,
         trigger: {
           eventType: cloudfunctionsv2.PUBSUB_PUBLISH_EVENT,
@@ -243,7 +243,7 @@ describe("cloudfunctionsv2", () => {
         })
       ).to.deep.equal({
         ...FUNCTION_SPEC,
-        apiVersion: 2,
+        platform: "gcfv2",
         uri: RUN_URI,
         trigger: {
           eventType: "google.cloud.audit.log.v1.written",
@@ -280,7 +280,7 @@ describe("cloudfunctionsv2", () => {
         })
       ).to.deep.equal({
         ...FUNCTION_SPEC,
-        apiVersion: 2,
+        platform: "gcfv2",
         uri: RUN_URI,
         ...extraFields,
         labels: {
@@ -312,7 +312,7 @@ describe("cloudfunctionsv2", () => {
         })
       ).to.deep.equal({
         ...FUNCTION_SPEC,
-        apiVersion: 2,
+        platform: "gcfv2",
         uri: RUN_URI,
         ...extraFields,
       });

@@ -17,7 +17,7 @@ const SAMPLE_EVENT_TRIGGER: backend.EventTrigger = {
 };
 
 const SAMPLE_FUNC: backend.FunctionSpec = {
-  apiVersion: 1,
+  platform: "gcfv1",
   id: "c",
   region: "us-central1",
   project: "a",
@@ -394,7 +394,7 @@ describe("promptForMinInstances", () => {
       {
         ...SAMPLE_FUNC,
         region: "fillory",
-        apiVersion: 2,
+        platform: "gcfv2",
         minInstances: 2,
       },
     ];

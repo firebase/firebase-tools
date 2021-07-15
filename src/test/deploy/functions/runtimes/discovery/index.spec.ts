@@ -11,7 +11,7 @@ import * as discovery from "../../../../../deploy/functions/runtimes/discovery";
 import * as backend from "../../../../../deploy/functions/backend";
 
 const MIN_FUNCTION = {
-  apiVersion: 1 as backend.FunctionsApiVersion,
+  platform: "gcfv1" as backend.FunctionsPlatform,
   id: "function",
   entryPoint: "entrypoint",
   trigger: {
