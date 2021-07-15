@@ -66,14 +66,14 @@ export function checkForInvalidChangeOfTrigger(
       )}] Changing from an HTTPS function to an background triggered function is not allowed. Please delete your function and create a new one instead.`
     );
   }
-  if (fn.apiVersion == 2 && exFn.apiVersion == 1) {
+  if (fn.platform == "gcfv2" && exFn.platform == "gcfv1") {
     throw new FirebaseError(
       `[${getFunctionLabel(
         fn
       )}] Upgrading from GCFv1 to GCFv2 is not yet supported. Please delete your old function or wait for this feature to be ready.`
     );
   }
-  if (fn.apiVersion == 1 && exFn.apiVersion == 2) {
+  if (fn.platform == "gcfv1" && exFn.platform == "gcfv2") {
     throw new FirebaseError(
       `[${getFunctionLabel(fn)}] Functions cannot be downgraded from GCFv2 to GCFv1`
     );

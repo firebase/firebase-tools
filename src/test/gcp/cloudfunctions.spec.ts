@@ -11,7 +11,7 @@ describe("cloudfunctions", () => {
   };
 
   const FUNCTION_SPEC: backend.FunctionSpec = {
-    apiVersion: 1,
+    platform: "gcfv1",
     ...FUNCTION_NAME,
     trigger: {
       allowInsecure: false,
@@ -38,7 +38,7 @@ describe("cloudfunctions", () => {
     const UPLOAD_URL = "https://storage.googleapis.com/projects/-/buckets/sample/source.zip";
     it("should guard against version mixing", () => {
       expect(() => {
-        cloudfunctions.functionFromSpec({ ...FUNCTION_SPEC, apiVersion: 2 }, UPLOAD_URL);
+        cloudfunctions.functionFromSpec({ ...FUNCTION_SPEC, platform: "gcfv2" }, UPLOAD_URL);
       }).to.throw;
     });
 

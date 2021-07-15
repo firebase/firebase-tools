@@ -17,7 +17,7 @@ describe("Backend", () => {
   };
 
   const FUNCTION_SPEC: backend.FunctionSpec = {
-    apiVersion: 1,
+    platform: "gcfv1",
     ...FUNCTION_NAME,
     trigger: {
       allowInsecure: false,
@@ -228,7 +228,7 @@ describe("Backend", () => {
           cloudFunctions: [
             {
               ...FUNCTION_SPEC,
-              apiVersion: 2,
+              platform: "gcfv2",
               uri: HAVE_CLOUD_FUNCTION_V2.serviceConfig.uri,
             },
           ],
@@ -382,7 +382,7 @@ describe("Backend", () => {
           cloudFunctions: [
             {
               ...FUNCTION_SPEC,
-              apiVersion: 2,
+              platform: "gcfv2",
             },
           ],
         };
@@ -431,7 +431,7 @@ describe("Backend", () => {
           cloudFunctions: [
             {
               ...FUNCTION_SPEC,
-              apiVersion: 2,
+              platform: "gcfv2",
             },
           ],
         };

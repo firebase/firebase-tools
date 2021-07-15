@@ -9,7 +9,7 @@ import * as tasks from "../../../deploy/functions/tasks";
 
 describe("Function Deployment tasks", () => {
   const CLOUD_FUNCTION: backend.FunctionSpec = {
-    apiVersion: 1,
+    platform: "gcfv1",
     id: "id",
     region: "region",
     project: "project",

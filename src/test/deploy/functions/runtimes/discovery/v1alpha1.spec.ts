@@ -9,7 +9,7 @@ const PROJECT = "project";
 const REGION = "region";
 const RUNTIME: Runtime = "node14";
 const MIN_FUNC: Partial<backend.FunctionSpec> = {
-  apiVersion: 1,
+  platform: "gcfv1",
   id: "id",
   entryPoint: "entryPoint",
   trigger: {

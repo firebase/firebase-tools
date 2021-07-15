@@ -29,9 +29,9 @@ function tryValidate(typed: backend.Backend) {
   for (let ndx = 0; ndx < typed.cloudFunctions.length; ndx++) {
     const prefix = `cloudFunctions[${ndx}]`;
     const func = typed.cloudFunctions[ndx];
-    requireKeys(prefix, func, "apiVersion", "id", "entryPoint", "trigger");
+    requireKeys(prefix, func, "platform", "id", "entryPoint", "trigger");
     assertKeyTypes(prefix, func, {
-      apiVersion: "number",
+      platform: "string",
       id: "string",
       region: "string",
       project: "string",

@@ -132,7 +132,7 @@ export function canCalculateMinInstanceCost(functionSpec: backend.FunctionSpec):
     return true;
   }
 
-  if (functionSpec.apiVersion == 1) {
+  if (functionSpec.platform == "gcfv1") {
     if (!MB_TO_GHZ[functionSpec.availableMemoryMb || 256]) {
       return false;
     }
@@ -160,9 +160,9 @@ export function monthlyMinInstanceCost(functions: backend.FunctionSpec[]): numbe
     ram: number;
     cpu: number;
   };
-  const usage: Record<backend.FunctionsApiVersion, Record<tier, Usage>> = {
-    1: { 1: { ram: 0, cpu: 0 }, 2: { ram: 0, cpu: 0 } },
-    2: { 1: { ram: 0, cpu: 0 }, 2: { ram: 0, cpu: 0 } },
+  const usage: Record<backend.FunctionsPlatform, Record<tier, Usage>> = {
+    gcfv1: { 1: { ram: 0, cpu: 0 }, 2: { ram: 0, cpu: 0 } },
+    gcfv2: { 1: { ram: 0, cpu: 0 }, 2: { ram: 0, cpu: 0 } },
   };
 
   for (const func of functions) {
@@ -172,39 +172,43 @@ export function monthlyMinInstanceCost(functions: backend.FunctionSpec[]): numbe
 
     const ramMb = func.availableMemoryMb || 256;
     const ramGb = ramMb / 1024;
-    if (func.apiVersion === 1) {
+    if (func.platform === "gcfv1") {
       const cpu = MB_TO_GHZ[ramMb];
       const tier = V1_REGION_TO_TIER[func.region];
-      usage[1][tier].ram = usage[1][tier].ram + ramGb * SECONDS_PER_MONTH * func.minInstances;
-      usage[1][tier].cpu =
-        usage[1][tier].cpu + MB_TO_GHZ[ramMb] * SECONDS_PER_MONTH * func.minInstances;
+      usage["gcfv1"][tier].ram =
+        usage["gcfv1"][tier].ram + ramGb * SECONDS_PER_MONTH * func.minInstances;
+      usage["gcfv1"][tier].cpu =
+        usage["gcfv1"][tier].cpu + MB_TO_GHZ[ramMb] * SECONDS_PER_MONTH * func.minInstances;
     } else {
       // V2 is currently fixed at 1vCPU.
       const cpu = 1;
       const tier = V2_REGION_TO_TIER[func.region];
-      usage[2][tier].ram = usage[2][tier].ram + ramGb * SECONDS_PER_MONTH * func.minInstances;
-      usage[2][tier].cpu = usage[2][tier].cpu + cpu * SECONDS_PER_MONTH * func.minInstances;
+      usage["gcfv2"][tier].ram =
+        usage["gcfv2"][tier].ram + ramGb * SECONDS_PER_MONTH * func.minInstances;
+      usage["gcfv2"][tier].cpu =
+        usage["gcfv2"][tier].cpu + cpu * SECONDS_PER_MONTH * func.minInstances;
     }
   }
 
   // The free tier doesn't work like "your first $5 are free". Instead it's a per-resource quota
   // that is given free _at the equivalent price of a tier-1 region_.
   let v1MemoryBill =
-    usage[1][1].ram * V1_RATES.memoryGb[1] + usage[1][2].ram * V1_RATES.memoryGb[2];
+    usage["gcfv1"][1].ram * V1_RATES.memoryGb[1] + usage["gcfv1"][2].ram * V1_RATES.memoryGb[2];
   v1MemoryBill -= V1_FREE_TIER.memoryGb * V1_RATES.memoryGb[1];
   v1MemoryBill = Math.max(v1MemoryBill, 0);
 
   let v1CpuBill =
-    usage[1][1].cpu * V1_RATES.idleCpuGhz[1] + usage[1][2].cpu * V1_RATES.idleCpuGhz[2];
+    usage["gcfv1"][1].cpu * V1_RATES.idleCpuGhz[1] + usage["gcfv1"][2].cpu * V1_RATES.idleCpuGhz[2];
   v1CpuBill -= V1_FREE_TIER.cpuGhz * V1_RATES.cpuGhz[1];
   v1CpuBill = Math.max(v1CpuBill, 0);
 
   let v2MemoryBill =
-    usage[2][1].ram * V2_RATES.memoryGb[1] + usage[2][2].ram * V2_RATES.memoryGb[2];
+    usage["gcfv2"][1].ram * V2_RATES.memoryGb[1] + usage["gcfv2"][2].ram * V2_RATES.memoryGb[2];
   v2MemoryBill -= V2_FREE_TIER.memoryGb * V2_RATES.memoryGb[1];
   v2MemoryBill = Math.max(v2MemoryBill, 0);
 
-  let v2CpuBill = usage[2][1].cpu * V2_RATES.idleVCpu[1] + usage[2][2].cpu * V2_RATES.idleVCpu[2];
+  let v2CpuBill =
+    usage["gcfv2"][1].cpu * V2_RATES.idleVCpu[1] + usage["gcfv2"][2].cpu * V2_RATES.idleVCpu[2];
   v2CpuBill -= V2_FREE_TIER.vCpu * V2_RATES.vCpu[1];
   v2CpuBill = Math.max(v2CpuBill, 0);
 
