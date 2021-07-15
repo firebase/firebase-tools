@@ -48,7 +48,7 @@ export async function prepare(
       "artifactregistry.googleapis.com",
       "artifactregistry",
       /* silent=*/ true
-    ),
+    ).then(() => {}, () => {}),
   ]);
   context.runtimeConfigEnabled = checkAPIsEnabled[1];
 

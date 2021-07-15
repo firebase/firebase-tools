@@ -1,12 +1,12 @@
-import * as clc from "cli-color";
 import { setGracefulCleanup } from "tmp";
+import * as clc from "cli-color";
+import * as fs from "fs";
 
 import { checkHttpIam } from "./checkIam";
 import { functionsUploadRegion } from "../../api";
 import { logSuccess, logWarning } from "../../utils";
 import { Options } from "../../options";
 import * as args from "./args";
-import * as fs from "fs";
 import * as gcs from "../../gcp/storage";
 import * as gcf from "../../gcp/cloudfunctions";
 import * as utils from "../../utils";
