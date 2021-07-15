@@ -40,14 +40,15 @@ export async function prepare(
       projectId,
       "runtimeconfig.googleapis.com",
       "runtimeconfig",
-      /*silent=*/ true
+      /* silent=*/ true
     ),
     ensureCloudBuildEnabled(projectId),
     ensureApiEnabled.ensure(
       context.projectId,
       "artifactregistry.googleapis.com",
       "artifactregistry",
-      /*silent=*/ true),
+      /* silent=*/ true
+    ),
   ]);
   context.runtimeConfigEnabled = checkAPIsEnabled[1];
 

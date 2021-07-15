@@ -153,9 +153,13 @@ export function addResourcesToBackend(
     }
 
     if (annotation.httpsTrigger) {
-      trigger = {
-        allowInsecure: !!annotation.httpsTrigger?.allowInsecure,
-      };
+      let allowInsecure: boolean;
+      if ("allowInsecure" in annotation.httpsTrigger) {
+        allowInsecure = !!annotation.httpsTrigger.allowInsecure;
+      } else {
+        allowInsecure = annotation.apiVersion != 2;
+      }
+      trigger = { allowInsecure };
       if (annotation.failurePolicy) {
         logger.warn(`Ignoring retry policy for HTTPS function ${annotation.name}`);
       }
