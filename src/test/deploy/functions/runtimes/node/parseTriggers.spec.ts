@@ -27,7 +27,7 @@ describe("addResourcesToBackend", () => {
   });
 
   const BASIC_FUNCTION: Omit<backend.FunctionSpec, "trigger"> = Object.freeze({
-    apiVersion: 1,
+    platform: "gcfv1",
     ...BASIC_FUNCTION_NAME,
     runtime: "nodejs14",
     entryPoint: "func",

@@ -37,9 +37,9 @@ const gcfV2PollerOptions = {
   masterTimeout: 25 * 60 * 1000, // 25 minutes is the maximum build time for a function
 };
 
-const pollerOptionsByVersion = {
-  1: gcfV1PollerOptions,
-  2: gcfV2PollerOptions,
+const pollerOptionsByPlatform: Record<backend.FunctionsPlatform, PollerOptions> = {
+  gcfv1: gcfV1PollerOptions,
+  gcfv2: gcfV2PollerOptions,
 };
 
 export type OperationType =
@@ -85,7 +85,7 @@ export function createFunctionTask(
         "..."
     );
     let op: { name: string };
-    if (fn.apiVersion === 1) {
+    if (fn.platform === "gcfv1") {
       const apiFunction = gcf.functionFromSpec(fn, params.sourceUrl!);
       if (sourceToken) {
         apiFunction.sourceToken = sourceToken;
@@ -96,14 +96,14 @@ export function createFunctionTask(
       op = await gcfV2.createFunction(apiFunction);
     }
     const cloudFunction = await pollOperation<unknown>({
-      ...pollerOptionsByVersion[fn.apiVersion],
+      ...pollerOptionsByPlatform[fn.platform],
       pollerName: `create-${fnName}`,
       operationResourceName: op.name,
       onPoll,
     });
     if (!backend.isEventTrigger(fn.trigger)) {
       try {
-        if (fn.apiVersion == 1) {
+        if (fn.platform === "gcfv1") {
           await gcf.setIamPolicy({
             name: fnName,
             policy: gcf.DEFAULT_PUBLIC_POLICY,
@@ -142,7 +142,7 @@ export function updateFunctionTask(
     );
 
     let opName;
-    if (fn.apiVersion == 1) {
+    if (fn.platform == "gcfv1") {
       const apiFunction = gcf.functionFromSpec(fn, params.sourceUrl!);
       if (sourceToken) {
         apiFunction.sourceToken = sourceToken;
@@ -153,7 +153,7 @@ export function updateFunctionTask(
       opName = (await gcfV2.updateFunction(apiFunction)).name;
     }
     const pollerOptions: OperationPollerOptions = {
-      ...pollerOptionsByVersion[fn.apiVersion],
+      ...pollerOptionsByPlatform[fn.platform],
       pollerName: `update-${fnName}`,
       operationResourceName: opName,
       onPoll,
@@ -177,13 +177,13 @@ export function deleteFunctionTask(params: TaskParams, fn: backend.FunctionSpec)
         "..."
     );
     let res: { name: string };
-    if (fn.apiVersion == 1) {
+    if (fn.platform == "gcfv1") {
       res = await gcf.deleteFunction(fnName);
     } else {
       res = await gcfV2.deleteFunction(fnName);
     }
     const pollerOptions: OperationPollerOptions = {
-      ...pollerOptionsByVersion[fn.apiVersion],
+      ...pollerOptionsByPlatform[fn.platform],
       pollerName: `delete-${fnName}`,
       operationResourceName: res.name,
     };
@@ -261,7 +261,7 @@ export async function runRegionalFunctionDeployment(
     let task: DeploymentTask;
     // GCF v2 doesn't support tokens yet. If we were to pass onPoll to a GCFv2 function, then
     // it would complete deployment and resolve the getRealToken promies as undefined.
-    if (functionSpec.apiVersion == 2) {
+    if (functionSpec.platform == "gcfv2") {
       task = createTask(
         params,
         functionSpec,

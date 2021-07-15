@@ -4,7 +4,7 @@ import { v1 } from "uuid";
 import * as backend from "../../../deploy/functions/backend";
 import * as pricing from "../../../deploy/functions/pricing";
 
-const FUNCTION_FRAGMENT: Omit<backend.FunctionSpec, "apiVersion" | "region"> = {
+const FUNCTION_FRAGMENT: Omit<backend.FunctionSpec, "platform" | "region"> = {
   id: "function",
   project: "project",
   entryPoint: "foobar",
@@ -21,7 +21,7 @@ describe("Functions Pricing", () => {
       expect(
         pricing.canCalculateMinInstanceCost({
           ...FUNCTION_FRAGMENT,
-          apiVersion: 1,
+          platform: "gcfv1",
           region: "us-central1",
         })
       ).to.be.true;
@@ -29,7 +29,7 @@ describe("Functions Pricing", () => {
       expect(
         pricing.canCalculateMinInstanceCost({
           ...FUNCTION_FRAGMENT,
-          apiVersion: 2,
+          platform: "gcfv2",
           ...INVALID_REGION,
         })
       ).to.be.true;
@@ -39,7 +39,7 @@ describe("Functions Pricing", () => {
       expect(
         pricing.canCalculateMinInstanceCost({
           ...FUNCTION_FRAGMENT,
-          apiVersion: 1,
+          platform: "gcfv1",
           region: "us-central1",
           minInstances: 10,
         })
@@ -50,7 +50,7 @@ describe("Functions Pricing", () => {
       expect(
         pricing.canCalculateMinInstanceCost({
           ...FUNCTION_FRAGMENT,
-          apiVersion: 2,
+          platform: "gcfv2",
           region: "us-central1",
           minInstances: 10,
         })
@@ -61,7 +61,7 @@ describe("Functions Pricing", () => {
       expect(
         pricing.canCalculateMinInstanceCost({
           ...FUNCTION_FRAGMENT,
-          apiVersion: 1,
+          platform: "gcfv1",
           region: "us-central1",
           minInstances: 10,
           availableMemoryMb: 0xdeadbeef as backend.MemoryOptions,
@@ -74,7 +74,7 @@ describe("Functions Pricing", () => {
         pricing.canCalculateMinInstanceCost({
           ...FUNCTION_FRAGMENT,
           ...INVALID_REGION,
-          apiVersion: 1,
+          platform: "gcfv1",
           minInstances: 10,
         })
       ).to.be.false;
@@ -100,7 +100,7 @@ describe("Functions Pricing", () => {
       const cost = pricing.monthlyMinInstanceCost([
         {
           ...FUNCTION_FRAGMENT,
-          apiVersion: 1,
+          platform: "gcfv1",
           region: "us-central1",
           minInstances: 1,
           availableMemoryMb: 256,
@@ -118,14 +118,14 @@ describe("Functions Pricing", () => {
       const cost = pricing.monthlyMinInstanceCost([
         {
           ...FUNCTION_FRAGMENT,
-          apiVersion: 1,
+          platform: "gcfv1",
           region: "us-central1",
           minInstances: 1,
           availableMemoryMb: 256,
         },
         {
           ...FUNCTION_FRAGMENT,
-          apiVersion: 1,
+          platform: "gcfv1",
           region: "us-central1",
           minInstances: 0,
         },
@@ -142,7 +142,7 @@ describe("Functions Pricing", () => {
       const cost = pricing.monthlyMinInstanceCost([
         {
           ...FUNCTION_FRAGMENT,
-          apiVersion: 1,
+          platform: "gcfv1",
           region: "us-central1",
           minInstances: 2,
           availableMemoryMb: 256,
@@ -160,14 +160,14 @@ describe("Functions Pricing", () => {
       const cost = pricing.monthlyMinInstanceCost([
         {
           ...FUNCTION_FRAGMENT,
-          apiVersion: 1,
+          platform: "gcfv1",
           region: "us-central1",
           minInstances: 1,
           availableMemoryMb: 256,
         },
         {
           ...FUNCTION_FRAGMENT,
-          apiVersion: 1,
+          platform: "gcfv1",
           region: "us-central1",
           minInstances: 1,
         },
@@ -184,7 +184,7 @@ describe("Functions Pricing", () => {
       const cost = pricing.monthlyMinInstanceCost([
         {
           ...FUNCTION_FRAGMENT,
-          apiVersion: 1,
+          platform: "gcfv1",
           region: "europe-west3",
           minInstances: 1,
           availableMemoryMb: 256,
@@ -202,7 +202,7 @@ describe("Functions Pricing", () => {
       const cost = pricing.monthlyMinInstanceCost([
         {
           ...FUNCTION_FRAGMENT,
-          apiVersion: 1,
+          platform: "gcfv1",
           region: "europe-west3",
           minInstances: 1,
           availableMemoryMb: 8192,
@@ -220,7 +220,7 @@ describe("Functions Pricing", () => {
       const cost = pricing.monthlyMinInstanceCost([
         {
           ...FUNCTION_FRAGMENT,
-          apiVersion: 2,
+          platform: "gcfv2",
           region: "us-central1",
           minInstances: 1,
           availableMemoryMb: 256,
@@ -238,7 +238,7 @@ describe("Functions Pricing", () => {
       const cost = pricing.monthlyMinInstanceCost([
         {
           ...FUNCTION_FRAGMENT,
-          apiVersion: 2,
+          platform: "gcfv2",
           region: "europe-west3",
           minInstances: 1,
           availableMemoryMb: 256,
@@ -256,7 +256,7 @@ describe("Functions Pricing", () => {
       const cost = pricing.monthlyMinInstanceCost([
         {
           ...FUNCTION_FRAGMENT,
-          apiVersion: 2,
+          platform: "gcfv2",
           region: "europe-west3",
           minInstances: 1,
           availableMemoryMb: 4096,
@@ -274,13 +274,13 @@ describe("Functions Pricing", () => {
       const cost = pricing.monthlyMinInstanceCost([
         {
           ...FUNCTION_FRAGMENT,
-          apiVersion: 1,
+          platform: "gcfv1",
           region: "us-central1",
           minInstances: 1,
         },
         {
           ...FUNCTION_FRAGMENT,
-          apiVersion: 2,
+          platform: "gcfv2",
           region: "us-central1",
           minInstances: 1,
         },

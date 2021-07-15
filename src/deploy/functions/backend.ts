@@ -131,11 +131,11 @@ export interface TargetIds {
   project: string;
 }
 
-export type FunctionsApiVersion = 1 | 2;
+export type FunctionsPlatform = "gcfv1" | "gcfv2";
 
 /** An API agnostic definition of a Cloud Function. */
 export interface FunctionSpec extends TargetIds {
-  apiVersion: FunctionsApiVersion;
+  platform: FunctionsPlatform;
   entryPoint: string;
   trigger: HttpsTrigger | EventTrigger;
   runtime: runtimes.Runtime | runtimes.DeprecatedRuntime;
@@ -405,7 +405,7 @@ export async function checkAvailability(context: Context, want: Backend): Promis
   const gcfV1Regions = new Set();
   const gcfV2Regions = new Set();
   for (const fn of want.cloudFunctions) {
-    if (fn.apiVersion === 1) {
+    if (fn.platform == "gcfv1") {
       gcfV1Regions.add(fn.region);
     } else {
       gcfV2Regions.add(fn.region);
