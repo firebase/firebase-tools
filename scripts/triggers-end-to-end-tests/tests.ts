@@ -526,7 +526,7 @@ describe("import/export end to end", () => {
     const emulatorsCLI = new CLIProcess("1", __dirname);
 
     await emulatorsCLI.start("emulators:start", project, ["--only", "auth"], (data: unknown) => {
-      if (typeof data != "string" && !Buffer.isBuffer(data)) {
+      if (typeof data !== "string" && !Buffer.isBuffer(data)) {
         throw new Error(`data is not a string or buffer (${typeof data})`);
       }
       return data.includes(ALL_EMULATORS_STARTED_LOG);
@@ -554,7 +554,7 @@ describe("import/export end to end", () => {
       const exportCLI = new CLIProcess("2", __dirname);
       const exportPath = fs.mkdtempSync(path.join(os.tmpdir(), "emulator-data"));
       await exportCLI.start("emulators:export", project, [exportPath], (data: unknown) => {
-        if (typeof data != "string" && !Buffer.isBuffer(data)) {
+        if (typeof data !== "string" && !Buffer.isBuffer(data)) {
           throw new Error(`data is not a string or buffer (${typeof data})`);
         }
         return data.includes("Export complete");
@@ -584,7 +584,7 @@ describe("import/export end to end", () => {
         project,
         ["--only", "auth", "--import", exportPath],
         (data: unknown) => {
-          if (typeof data != "string" && !Buffer.isBuffer(data)) {
+          if (typeof data !== "string" && !Buffer.isBuffer(data)) {
             throw new Error(`data is not a string or buffer (${typeof data})`);
           }
           return data.includes(ALL_EMULATORS_STARTED_LOG);
