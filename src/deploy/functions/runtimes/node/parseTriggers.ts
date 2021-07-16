@@ -156,7 +156,7 @@ export function addResourcesToBackend(
       if ("allowInsecure" in annotation.httpsTrigger) {
         allowInsecure = !!annotation.httpsTrigger.allowInsecure;
       } else {
-        allowInsecure = annotation.apiVersion != 2;
+        allowInsecure = !annotation.platform || annotation.platform === "gcfv1";
       }
       trigger = { allowInsecure };
       if (annotation.failurePolicy) {
