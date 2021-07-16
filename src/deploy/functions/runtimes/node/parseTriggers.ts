@@ -32,8 +32,7 @@ export interface ScheduleAnnotation {
 // Defined in firebase-functions/src/cloud-function.ts
 export interface TriggerAnnotation {
   name: string;
-  // HACK HACK HACK. Will not be the way we do this by the time customers have their hands on it.
-  apiVersion?: 1 | 2;
+  platform?: "gcfv1" | "gcfv2";
   labels?: Record<string, string>;
   entryPoint: string;
   vpcConnector?: string;
@@ -178,7 +177,7 @@ export function addResourcesToBackend(
       project: projectId,
     };
     const cloudFunction: backend.FunctionSpec = {
-      apiVersion: annotation.apiVersion || 1,
+      platform: annotation.platform || "gcfv1",
       ...cloudFunctionName,
       entryPoint: annotation.entryPoint,
       runtime: runtime,

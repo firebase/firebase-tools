@@ -14,8 +14,8 @@ import { Options } from "../../options";
 // Future versions might want to compare regions by GCF/Run pricing tier before
 // location.
 function compareFunctions(left: backend.FunctionSpec, right: backend.FunctionSpec): number {
-  if (left.apiVersion != right.apiVersion) {
-    return right.apiVersion - left.apiVersion;
+  if (left.platform != right.platform) {
+    return right.platform < left.platform ? -1 : 1;
   }
   if (left.region < right.region) {
     return -1;
@@ -217,7 +217,7 @@ export async function promptForMinInstances(
     costLine = `With these options, your minimum bill will be $${cost} in a 30-day month`;
   }
   let cudAnnotation = "";
-  if (want.some((fn) => fn.apiVersion == 2 && fn.minInstances)) {
+  if (want.some((fn) => fn.platform == "gcfv2" && fn.minInstances)) {
     cudAnnotation =
       "\nThis bill can be lowered with a one year commitment. See https://cloud.google.com/run/cud for more";
   }

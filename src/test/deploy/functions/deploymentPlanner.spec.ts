@@ -6,7 +6,7 @@ import * as deploymentTool from "../../../deploymentTool";
 
 describe("deploymentPlanner", () => {
   const CLOUD_FUNCTION: Omit<backend.FunctionSpec, "id" | "region"> = {
-    apiVersion: 1,
+    platform: "gcfv1",
     project: "project",
     runtime: "nodejs14",
     trigger: { allowInsecure: true },

@@ -21,7 +21,7 @@ import * as path from "path";
 import * as admin from "firebase-admin";
 import * as bodyParser from "body-parser";
 import * as fs from "fs";
-import { URL } from "url";
+import { pathToFileURL, URL } from "url";
 import * as _ from "lodash";
 
 let triggers: EmulatedTriggerMap | undefined;
@@ -1080,8 +1080,10 @@ async function initializeRuntime(
         await moduleResolutionDetective(frb, err);
         return;
       }
-      // tslint:disable:no-unsafe-assignment
-      triggerModule = await dynamicImport(require.resolve(frb.cwd));
+      const modulePath = require.resolve(frb.cwd);
+      // Resolve module path to file:// URL. Required for windows support.
+      const moduleURL = pathToFileURL(modulePath).href;
+      triggerModule = await dynamicImport(moduleURL);
     }
   }
   if (extensionTriggers) {

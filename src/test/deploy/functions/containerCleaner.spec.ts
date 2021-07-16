@@ -112,7 +112,7 @@ describe("DockerHelper", () => {
 
 describe("ContainerRegistryCleaner", () => {
   const FUNCTION: backend.FunctionSpec = {
-    apiVersion: 1,
+    platform: "gcfv1",
     project: "project",
     region: "us-central1",
     id: "id",

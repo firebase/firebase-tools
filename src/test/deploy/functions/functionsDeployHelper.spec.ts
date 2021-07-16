@@ -6,7 +6,7 @@ import { Options } from "../../../options";
 
 describe("functionsDeployHelper", () => {
   const CLOUD_FUNCTION: Omit<backend.FunctionSpec, "id"> = {
-    apiVersion: 1,
+    platform: "gcfv1",
     project: "project",
     region: "us-central1",
     runtime: "nodejs14",

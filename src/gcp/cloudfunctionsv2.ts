@@ -327,7 +327,7 @@ export async function deleteFunction(cloudFunction: string): Promise<Operation> 
 }
 
 export function functionFromSpec(cloudFunction: backend.FunctionSpec, source: StorageSource) {
-  if (cloudFunction.apiVersion != 2) {
+  if (cloudFunction.platform != "gcfv2") {
     throw new FirebaseError(
       "Trying to create a v2 CloudFunction with v1 API. This should never happen"
     );
@@ -435,7 +435,7 @@ export function specFromFunction(gcfFunction: CloudFunction): backend.FunctionSp
   }
 
   const cloudFunction: backend.FunctionSpec = {
-    apiVersion: 2,
+    platform: "gcfv2",
     id,
     project,
     region,
