@@ -122,8 +122,8 @@ export function createFunctionTask(
       // GCFv2 has a default concurrency of 1, but CF3 has a default concurrency of 80.
       await setConcurrency(
         (cloudFunction as gcfV2.CloudFunction).serviceConfig.service!,
-        fn.concurrency || 80,
-      )
+        fn.concurrency || 80
+      );
     }
   };
   return {
@@ -174,7 +174,7 @@ export function updateFunctionTask(
       } else {
         await setConcurrency(
           (cloudFunction as gcfV2.CloudFunction).serviceConfig.service!,
-          fn.concurrency || 80,
+          fn.concurrency || 80
         );
       }
     }
@@ -216,7 +216,7 @@ export function deleteFunctionTask(params: TaskParams, fn: backend.FunctionSpec)
 }
 
 async function setConcurrency(name: string, concurrency: number) {
-  const service = await cloudrun.getService(name)
+  const service = await cloudrun.getService(name);
 
   delete service.spec.template.spec.containerConcurrency;
 

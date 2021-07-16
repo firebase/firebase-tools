@@ -83,7 +83,13 @@ export function calculateRegionalFunctionChanges(
     .filter((fn) => isFirebaseManaged(fn.labels || {}));
 
   if (upgradedToGCFv2WithoutSettingConcurrency) {
-    logLabeledBullet("functions", "You are updating one or more functions to Google Cloud Functions v2, which introduces support for concurrent execution. New functions default to 80 concurrent executions, but existing functions keep the old default of 1. You can change this with the 'concurrency' option.")
+    logLabeledBullet(
+      "functions",
+      "You are updating one or more functions to Google Cloud Functions v2, " +
+        "which introduces support for concurrent execution. New functions " +
+        "default to 80 concurrent executions, but existing functions keep the " +
+        "old default of 1. You can change this with the 'concurrency' option."
+    );
   }
   return { functionsToCreate, functionsToUpdate, functionsToDelete };
 }
