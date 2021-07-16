@@ -8,7 +8,7 @@ source scripts/set-default-credentials.sh
   npm install
 )
 
-mocha \
+npx mocha \
   --require ts-node/register \
   --require source-map-support/register \
   --require src/test/helpers/mocha-bootstrap.ts \

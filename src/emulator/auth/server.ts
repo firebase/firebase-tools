@@ -226,6 +226,7 @@ export async function createApp(
       // Let errors propagate to our universal error handler below.
       throw err;
     },
+    defaultMaxBodySize: 1024 * 1024 * 1024, // 1GB instead of the default 10k.
     validateDefaultResponses: true,
     onResponseValidationError({ errors }) {
       logError(
