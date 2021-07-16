@@ -43,7 +43,9 @@ export interface TriggerAnnotation {
   maxInstances?: number;
   minInstances?: number;
   serviceAccountEmail?: string;
-  httpsTrigger?: {};
+  httpsTrigger?: {
+    allowInsecure?: boolean;
+  };
   eventTrigger?: {
     eventType: string;
     resource: string;
@@ -150,9 +152,13 @@ export function addResourcesToBackend(
     }
 
     if (annotation.httpsTrigger) {
-      trigger = {
-        allowInsecure: true,
-      };
+      let allowInsecure: boolean;
+      if ("allowInsecure" in annotation.httpsTrigger) {
+        allowInsecure = !!annotation.httpsTrigger.allowInsecure;
+      } else {
+        allowInsecure = !annotation.platform || annotation.platform === "gcfv1";
+      }
+      trigger = { allowInsecure };
       if (annotation.failurePolicy) {
         logger.warn(`Ignoring retry policy for HTTPS function ${annotation.name}`);
       }

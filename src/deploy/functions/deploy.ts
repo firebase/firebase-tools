@@ -1,16 +1,14 @@
-import * as clc from "cli-color";
 import { setGracefulCleanup } from "tmp";
+import * as clc from "cli-color";
+import * as fs from "fs";
 
 import { checkHttpIam } from "./checkIam";
 import { functionsUploadRegion } from "../../api";
 import { logSuccess, logWarning } from "../../utils";
+import { Options } from "../../options";
 import * as args from "./args";
-import * as backend from "./backend";
-import * as fs from "fs";
 import * as gcs from "../../gcp/storage";
 import * as gcf from "../../gcp/cloudfunctions";
-import { Options } from "../../options";
-import { Config } from "../../config";
 import * as utils from "../../utils";
 
 const GCP_REGION = functionsUploadRegion;
