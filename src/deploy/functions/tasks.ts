@@ -17,6 +17,8 @@ import * as gcfV2 from "../../gcp/cloudfunctionsv2";
 import * as cloudrun from "../../gcp/run";
 import * as helper from "./functionsDeployHelper";
 import * as utils from "../../utils";
+import { FirebaseError } from "../../error";
+import { cloudfunctions } from "../../gcp";
 
 interface PollerOptions {
   apiOrigin: string;
@@ -116,15 +118,12 @@ export function createFunctionTask(
         params.errorHandler.record("warning", fnName, "make public", err.message);
       }
     }
-    if ("concurrency" in fn) {
-      if (fn.platform === "gcfv1") {
-        logger.debug("Cannot set concurrency for a v1 function");
-      } else {
-        await setConcurrency(
-          (cloudFunction as gcfV2.CloudFunction).serviceConfig.service!,
-          fn.concurrency || 1
-        );
-      }
+    if (fn.platform !== "gcfv1") {
+      // GCFv2 has a default concurrency of 1, but CF3 has a default concurrency of 80.
+      await setConcurrency(
+        (cloudFunction as gcfV2.CloudFunction).serviceConfig.service!,
+        fn.concurrency || 80,
+      )
     }
   };
   return {
@@ -171,11 +170,11 @@ export function updateFunctionTask(
     const cloudFunction = await pollOperation<unknown>(pollerOptions);
     if ("concurrency" in fn) {
       if (fn.platform === "gcfv1") {
-        logger.debug("Cannot set concurrency for a v1 function");
+        throw new FirebaseError("Precondition failed: GCFv1 does not support concurrency");
       } else {
         await setConcurrency(
           (cloudFunction as gcfV2.CloudFunction).serviceConfig.service!,
-          fn.concurrency || 1,
+          fn.concurrency || 80,
         );
       }
     }
@@ -216,7 +215,7 @@ export function deleteFunctionTask(params: TaskParams, fn: backend.FunctionSpec)
   };
 }
 
-export async function setConcurrency(name: string, concurrency: number) {
+async function setConcurrency(name: string, concurrency: number) {
   const service = await cloudrun.getService(name)
 
   delete service.spec.template.spec.containerConcurrency;

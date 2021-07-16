@@ -2,6 +2,7 @@ import { functionMatchesAnyGroup } from "./functionsDeployHelper";
 import { checkForInvalidChangeOfTrigger } from "./validate";
 import { isFirebaseManaged } from "../../deploymentTool";
 import * as backend from "./backend";
+import { logLabeledBullet } from "../../utils";
 
 export interface RegionalFunctionChanges {
   functionsToCreate: backend.FunctionSpec[];
@@ -56,6 +57,7 @@ export function calculateRegionalFunctionChanges(
 ): RegionalFunctionChanges {
   want = want.filter((fn) => functionMatchesAnyGroup(fn, filters));
   have = have.filter((fn) => functionMatchesAnyGroup(fn, filters));
+  let upgradedToGCFv2WithoutSettingConcurrency = false;
 
   const functionsToCreate = want.filter((fn) => !have.some(matchesId(fn)));
   const functionsToUpdate = want.filter((fn) => {
@@ -69,6 +71,10 @@ export function calculateRegionalFunctionChanges(
         ...haveFn.environmentVariables,
         ...fn.environmentVariables,
       };
+
+      if (haveFn.platform === "gcfv1" && fn.platform === "gcfv2" && !fn.concurrency) {
+        upgradedToGCFv2WithoutSettingConcurrency = true;
+      }
     }
     return haveFn;
   });
@@ -76,6 +82,9 @@ export function calculateRegionalFunctionChanges(
     .filter((fn) => !want.some(matchesId(fn)))
     .filter((fn) => isFirebaseManaged(fn.labels || {}));
 
+  if (upgradedToGCFv2WithoutSettingConcurrency) {
+    logLabeledBullet("functions", "You are updating one or more functions to Google Cloud Functions v2, which introduces support for concurrent execution. New functions default to 80 concurrent executions, but existing functions keep the old default of 1. You can change this with the 'concurrency' option.")
+  }
   return { functionsToCreate, functionsToUpdate, functionsToDelete };
 }
 
