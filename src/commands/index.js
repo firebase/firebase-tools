@@ -91,6 +91,9 @@ module.exports = function (client) {
   client.functions.delete = loadCommand("functions-delete");
   client.functions.log = loadCommand("functions-log");
   client.functions.shell = loadCommand("functions-shell");
+  if (previews.purgegcr) {
+    client.functions.purgeartifacts = loadCommand("functions-purgeartifacts");
+  }
   client.help = loadCommand("help");
   client.hosting = {};
   client.hosting.channel = {};

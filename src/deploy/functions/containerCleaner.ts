@@ -10,6 +10,7 @@ import { logger } from "../../logger";
 import * as docker from "../../gcp/docker";
 import * as backend from "./backend";
 import * as utils from "../../utils";
+import { FirebaseError } from "../../error";
 
 // A flattening of container_registry_hosts and
 // region_multiregion_map from regionconfig.borg
@@ -38,6 +39,14 @@ const SUBDOMAIN_MAPPING: Record<string, string> = {
   "asia-southeast2": "asia",
   "australia-southeast1": "asia",
 };
+
+// The list of possible region roots for the GCR subdomain
+// <region-root>.gcr.io/
+const SUBDOMAINS: string[] = [
+  "us",
+  "eu",
+  "asia",
+];
 
 export async function cleanupBuildImages(functions: backend.FunctionSpec[]): Promise<void> {
   utils.logBullet(clc.bold.cyan("functions: ") + "cleaning up build files...");
@@ -125,6 +134,57 @@ export class ContainerRegistryCleaner {
       return;
     }
     await helper.rm(entry[0]);
+  }
+}
+
+// top level function for purging artifacts
+export async function purgeArtifacts(projectId: string, location?: string) {
+  // purge Container Registry
+  const purger = new ContainerRegistryPurger();
+  try {
+    await purger.purge(projectId, location);
+  } catch (err) {
+    throw (err);
+  }
+
+  // TODO: purge Artifact Registry if it has a similar problem
+}
+
+export class ContainerRegistryPurger {
+  // need function for unit testing
+  getHelper(subdomain: string) {
+    const origin = `https://${subdomain}.${containerRegistryDomain}`;
+    return new DockerHelper(origin);
+  }
+
+  async purge(projectId: string, location?: string) {
+    if (location && SUBDOMAIN_MAPPING[location] === undefined) {
+      throw new Error("Invalid location");
+    }
+
+    const failedSubdomains = new Set<string>();
+    for (const subdomain of SUBDOMAINS) {
+      if (location && subdomain !== SUBDOMAIN_MAPPING[location]) {
+        continue;
+      }
+      const helper = this.getHelper(subdomain);
+
+      let path = `${projectId}/gcf/`;
+      if (location) {
+        path += location;
+      }
+
+      try {
+        await helper.rm(path);
+      } catch (err) {
+        failedSubdomains.add(subdomain);
+        logger.debug(err);
+      }
+    }
+
+    if (failedSubdomains.size > 0) {
+      throw new FirebaseError("Failed to purge subdomains.");
+    }
   }
 }
 

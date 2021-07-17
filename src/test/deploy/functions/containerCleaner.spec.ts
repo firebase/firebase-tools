@@ -209,3 +209,44 @@ describe("ContainerRegistryCleaner", () => {
     expect(stub.rm).to.not.have.been.called;
   });
 });
+
+describe("ContainerRegistryPurger", () => {
+  it("Throws error invalid location", () => {
+    const purger = new containerCleaner.ContainerRegistryPurger();
+    expect(() => purger.purge("project", "invalid")).to.throw;
+  });
+
+  it("Purges specific location", async () => {
+    const purger = new containerCleaner.ContainerRegistryPurger();
+    const stub = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stub.ls.withArgs("project/gcf/us-central1").returns(
+      Promise.resolve({
+        children: ["uuid"],
+        digests: [],
+        tags: [],
+      })
+    );
+    sinon.stub(purger, "getHelper").returns(stub);
+
+    await purger.purge("project", "us-central1");
+
+    expect(stub.rm).to.have.been.calledWith('project/gcf/us-central1');
+  });
+
+  it("Purges all subdomains", async () => {
+    const purger = new containerCleaner.ContainerRegistryPurger();
+    const stub = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stub.ls.withArgs("project/gcf/").returns(
+      Promise.resolve({
+        children: ["uuid"],
+        digests: [],
+        tags: [],
+      })
+    );
+    sinon.stub(purger, "getHelper").returns(stub);
+
+    await purger.purge("project");
+
+    expect(stub.rm).to.have.callCount(3);
+  });
+});
