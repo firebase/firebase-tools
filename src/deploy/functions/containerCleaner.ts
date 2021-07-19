@@ -139,7 +139,7 @@ export async function purgeArtifacts(projectId: string, location?: string) {
   const purger = new ContainerRegistryPurger();
   await purger.purge(projectId, location);
 
-  // TODO: purge Artifact Registry if it has a similar problem
+  // TODO: purge Artifact Registry
 }
 
 export class ContainerRegistryPurger {
@@ -161,9 +161,9 @@ export class ContainerRegistryPurger {
       }
       const helper = this.getHelper(subdomain);
 
-      let path = `${projectId}/gcf/`;
+      let path = `${projectId}/gcf`;
       if (location) {
-        path += location;
+        path += "/" + location;
       }
 
       try {
@@ -174,8 +174,10 @@ export class ContainerRegistryPurger {
       }
     }
 
-    if (failedSubdomains.size > 0) {
-      throw new FirebaseError("Failed to purge subdomains.");
+    if (failedSubdomains.size == SUBDOMAINS.length) {
+      throw new FirebaseError("Failed to purge any subdomains.");
+    } else if (failedSubdomains.size > 0) {
+      throw new FirebaseError("Failed to purge some subdomains.");
     }
   }
 }
