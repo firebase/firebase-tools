@@ -40,8 +40,8 @@ const SUBDOMAIN_MAPPING: Record<string, string> = {
   "australia-southeast1": "asia",
 };
 
-// The list of possible region roots for the GCR subdomain
-// <region-root>.gcr.io/
+// The list of possible region roots or the subdomain for GCR
+// The full address: <subdomain>.gcr.io/
 const SUBDOMAINS: string[] = ["us", "eu", "asia"];
 
 export async function cleanupBuildImages(functions: backend.FunctionSpec[]): Promise<void> {
@@ -143,7 +143,7 @@ export async function purgeArtifacts(projectId: string, location?: string) {
 }
 
 export class ContainerRegistryPurger {
-  // need function for unit testing
+  // need helper function for unit test stubbing
   getHelper(subdomain: string) {
     const origin = `https://${subdomain}.${containerRegistryDomain}`;
     return new DockerHelper(origin);
@@ -151,7 +151,7 @@ export class ContainerRegistryPurger {
 
   async purge(projectId: string, location?: string) {
     if (location && SUBDOMAIN_MAPPING[location] === undefined) {
-      throw new Error("Invalid location");
+      throw new FirebaseError("Invalid region.");
     }
 
     const failedSubdomains = new Set<string>();
