@@ -42,11 +42,7 @@ const SUBDOMAIN_MAPPING: Record<string, string> = {
 
 // The list of possible region roots for the GCR subdomain
 // <region-root>.gcr.io/
-const SUBDOMAINS: string[] = [
-  "us",
-  "eu",
-  "asia",
-];
+const SUBDOMAINS: string[] = ["us", "eu", "asia"];
 
 export async function cleanupBuildImages(functions: backend.FunctionSpec[]): Promise<void> {
   utils.logBullet(clc.bold.cyan("functions: ") + "cleaning up build files...");
@@ -141,11 +137,7 @@ export class ContainerRegistryCleaner {
 export async function purgeArtifacts(projectId: string, location?: string) {
   // purge Container Registry
   const purger = new ContainerRegistryPurger();
-  try {
-    await purger.purge(projectId, location);
-  } catch (err) {
-    throw (err);
-  }
+  await purger.purge(projectId, location);
 
   // TODO: purge Artifact Registry if it has a similar problem
 }

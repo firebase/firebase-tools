@@ -230,7 +230,7 @@ describe("ContainerRegistryPurger", () => {
 
     await purger.purge("project", "us-central1");
 
-    expect(stub.rm).to.have.been.calledWith('project/gcf/us-central1');
+    expect(stub.rm).to.have.been.calledWith("project/gcf/us-central1");
   });
 
   it("Purges all subdomains", async () => {
