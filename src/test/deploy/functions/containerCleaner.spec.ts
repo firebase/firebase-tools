@@ -238,7 +238,7 @@ describe("ContainerRegistryPurger", () => {
     const stub = sinon.createStubInstance(containerCleaner.DockerHelper);
     stub.ls.withArgs("project/gcf/").returns(
       Promise.resolve({
-        children: ["uuid"],
+        children: ["region1", "region2", "region3", "region4"],
         digests: [],
         tags: [],
       })
@@ -247,6 +247,6 @@ describe("ContainerRegistryPurger", () => {
 
     await purger.purge("project");
 
-    expect(stub.rm).to.have.callCount(3);
+    expect(stub.rm).to.have.callCount(3); // 3 subdomain regions
   });
 });
