@@ -40,6 +40,7 @@ function tryValidate(typed: backend.Backend) {
       availableMemoryMb: "number",
       maxInstances: "number",
       minInstances: "number",
+      concurrency: "number",
       serviceAccountEmail: "string",
       timeout: "string",
       trigger: "object",
