@@ -134,21 +134,20 @@ export class ContainerRegistryCleaner {
 }
 
 /**
-* Deletes all artifacts from GCF folder in GCR.
-* @param projectId
-* @param location: the specific region to be clean up. If omitted, will delete all locations.
-* @param dockerHelpers: a map of {@link SUBDOMAINS} to {@link DockerHelper}. If omitted, will use the default value and create each {@link DockerHelper} internally.
-*
-* @throws {@link FirebaseError}
-* Thrown if the provided location is not a valid Google Cloud region.
-*/
+ * Deletes all artifacts from GCF folder in GCR.
+ * @param projectId
+ * @param location: the specific region to be clean up. If omitted, will delete all locations.
+ * @param dockerHelpers: a map of {@link SUBDOMAINS} to {@link DockerHelper}. If omitted, will use the default value and create each {@link DockerHelper} internally.
+ *
+ * @throws {@link FirebaseError}
+ * Thrown if the provided location is not a valid Google Cloud region.
+ */
 
 export async function purgeArtifacts(
-  projectId: string, 
-  location?: string, 
+  projectId: string,
+  location?: string,
   dockerHelpers: Record<string, DockerHelper> = {}
-  ) {
-
+) {
   if (location && SUBDOMAIN_MAPPING[location] === undefined) {
     throw new FirebaseError("Invalid region.");
   }
@@ -175,11 +174,8 @@ export async function purgeArtifacts(
       logger.debug(err);
     }
   }
-  
-  if (
-      failedSubdomains.size == SUBDOMAINS.length ||
-      location && failedSubdomains.size == 1
-      ) {
+
+  if (failedSubdomains.size == SUBDOMAINS.length || (location && failedSubdomains.size == 1)) {
     throw new FirebaseError("Failed to purge any subdomains.");
   } else if (failedSubdomains.size > 0) {
     throw new FirebaseError("Failed to purge at least 1 subdomains.");

@@ -225,16 +225,16 @@ describe("purgeArtifacts", () => {
         tags: [],
       })
     );
-    const helpers: Record<string, containerCleaner.DockerHelper> = {}
+    const helpers: Record<string, containerCleaner.DockerHelper> = {};
     helpers["us"] = stubDH;
     helpers["eu"] = stubDH;
     helpers["asia"] = stubDH;
-    
+
     await containerCleaner.purgeArtifacts("project", "us-central1", helpers);
-    
+
     expect(stubDH.rm).to.have.been.calledOnceWith("project/gcf/us-central1");
-    //expect(stubDH.rm).to.have.been.called;
-    //sinon.assert.calledOnce(stub);
+    // expect(stubDH.rm).to.have.been.called;
+    // sinon.assert.calledOnce(stub);
   });
 
   it("Purges all subdomains", async () => {
@@ -251,13 +251,13 @@ describe("purgeArtifacts", () => {
     stubDHAsia.ls.withArgs("project/gcf").returns(gcfObject);
 
     const helpers: Record<string, containerCleaner.DockerHelper> = {
-      "us": stubDHUS,
-      "eu": stubDHEU,
-      "asia": stubDHAsia,
+      us: stubDHUS,
+      eu: stubDHEU,
+      asia: stubDHAsia,
     };
-    
+
     await containerCleaner.purgeArtifacts("project", undefined, helpers);
-    
+
     // we rm the gcf directory in every subdomain
     expect(stubDHUS.rm).to.have.been.calledOnceWith("project/gcf");
     expect(stubDHEU.rm).to.have.been.calledOnceWith("project/gcf");
