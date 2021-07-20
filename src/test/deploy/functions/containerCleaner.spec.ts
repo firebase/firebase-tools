@@ -210,43 +210,57 @@ describe("ContainerRegistryCleaner", () => {
   });
 });
 
-describe("ContainerRegistryPurger", () => {
+describe("purgeArtifacts", () => {
   it("Throws error invalid location", () => {
-    const purger = new containerCleaner.ContainerRegistryPurger();
-    expect(() => purger.purge("project", "invalid")).to.throw;
+    expect(() => containerCleaner.purgeArtifacts("project", "invalid")).to.throw;
   });
 
   it("Purges specific location", async () => {
-    const purger = new containerCleaner.ContainerRegistryPurger();
-    const stub = sinon.createStubInstance(containerCleaner.DockerHelper);
-    stub.ls.withArgs("project/gcf/us-central1").returns(
+    // const cc = containerCleaner;
+    const stubDH = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stubDH.ls.withArgs("project/gcf/us-central1").returns(
       Promise.resolve({
         children: ["uuid"],
         digests: [],
         tags: [],
       })
     );
-    sinon.stub(purger, "getHelper").returns(stub);
-
-    await purger.purge("project", "us-central1");
-
-    expect(stub.rm).to.have.been.calledWith("project/gcf/us-central1");
+    const helpers: Record<string, containerCleaner.DockerHelper> = {}
+    helpers["us"] = stubDH;
+    helpers["eu"] = stubDH;
+    helpers["asia"] = stubDH;
+    
+    await containerCleaner.purgeArtifacts("project", "us-central1", helpers);
+    
+    expect(stubDH.rm).to.have.been.calledOnceWith("project/gcf/us-central1");
+    //expect(stubDH.rm).to.have.been.called;
+    //sinon.assert.calledOnce(stub);
   });
 
   it("Purges all subdomains", async () => {
-    const purger = new containerCleaner.ContainerRegistryPurger();
-    const stub = sinon.createStubInstance(containerCleaner.DockerHelper);
-    stub.ls.withArgs("project/gcf/").returns(
-      Promise.resolve({
-        children: ["region1", "region2", "region3", "region4"],
-        digests: [],
-        tags: [],
-      })
-    );
-    sinon.stub(purger, "getHelper").returns(stub);
+    const gcfObject = Promise.resolve({
+      children: ["uuid"],
+      digests: [],
+      tags: [],
+    });
+    const stubDHUS = sinon.createStubInstance(containerCleaner.DockerHelper);
+    const stubDHEU = sinon.createStubInstance(containerCleaner.DockerHelper);
+    const stubDHAsia = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stubDHUS.ls.withArgs("project/gcf").returns(gcfObject);
+    stubDHEU.ls.withArgs("project/gcf").returns(gcfObject);
+    stubDHAsia.ls.withArgs("project/gcf").returns(gcfObject);
 
-    await purger.purge("project");
-
-    expect(stub.rm).to.have.callCount(3); // 3 subdomain regions
+    const helpers: Record<string, containerCleaner.DockerHelper> = {
+      "us": stubDHUS,
+      "eu": stubDHEU,
+      "asia": stubDHAsia,
+    };
+    
+    await containerCleaner.purgeArtifacts("project", undefined, helpers);
+    
+    // we rm the gcf directory in every subdomain
+    expect(stubDHUS.rm).to.have.been.calledOnceWith("project/gcf");
+    expect(stubDHEU.rm).to.have.been.calledOnceWith("project/gcf");
+    expect(stubDHAsia.rm).to.have.been.calledOnceWith("project/gcf");
   });
 });

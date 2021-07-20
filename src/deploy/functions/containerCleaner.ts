@@ -133,53 +133,59 @@ export class ContainerRegistryCleaner {
   }
 }
 
-// top level function for purging artifacts
-export async function purgeArtifacts(projectId: string, location?: string) {
-  // purge Container Registry
-  const purger = new ContainerRegistryPurger();
-  await purger.purge(projectId, location);
+/**
+* Deletes all artifacts from GCF folder in GCR.
+* @param projectId
+* @param location: the specific region to be clean up. If omitted, will delete all locations.
+* @param dockerHelpers: a map of {@link SUBDOMAINS} to {@link DockerHelper}. If omitted, will use the default value and create each {@link DockerHelper} internally.
+*
+* @throws {@link FirebaseError}
+* Thrown if the provided location is not a valid Google Cloud region.
+*/
+
+export async function purgeArtifacts(
+  projectId: string, 
+  location?: string, 
+  dockerHelpers: Record<string, DockerHelper> = {}
+  ) {
+
+  if (location && SUBDOMAIN_MAPPING[location] === undefined) {
+    throw new FirebaseError("Invalid region.");
+  }
+
+  const failedSubdomains = new Set<string>();
+  for (const subdomain of SUBDOMAINS) {
+    if (location && subdomain !== SUBDOMAIN_MAPPING[location]) {
+      continue;
+    }
+    if (dockerHelpers[subdomain] === undefined) {
+      const origin = `https://${subdomain}.${containerRegistryDomain}`;
+      dockerHelpers[subdomain] = new DockerHelper(origin);
+    }
+
+    let path = `${projectId}/gcf`;
+    if (location) {
+      path += "/" + location;
+    }
+
+    try {
+      await dockerHelpers[subdomain].rm(path);
+    } catch (err) {
+      failedSubdomains.add(subdomain);
+      logger.debug(err);
+    }
+  }
+  
+  if (
+      failedSubdomains.size == SUBDOMAINS.length ||
+      location && failedSubdomains.size == 1
+      ) {
+    throw new FirebaseError("Failed to purge any subdomains.");
+  } else if (failedSubdomains.size > 0) {
+    throw new FirebaseError("Failed to purge at least 1 subdomains.");
+  }
 
   // TODO: purge Artifact Registry
-}
-
-export class ContainerRegistryPurger {
-  // need helper function for unit test stubbing
-  getHelper(subdomain: string) {
-    const origin = `https://${subdomain}.${containerRegistryDomain}`;
-    return new DockerHelper(origin);
-  }
-
-  async purge(projectId: string, location?: string) {
-    if (location && SUBDOMAIN_MAPPING[location] === undefined) {
-      throw new FirebaseError("Invalid region.");
-    }
-
-    const failedSubdomains = new Set<string>();
-    for (const subdomain of SUBDOMAINS) {
-      if (location && subdomain !== SUBDOMAIN_MAPPING[location]) {
-        continue;
-      }
-      const helper = this.getHelper(subdomain);
-
-      let path = `${projectId}/gcf`;
-      if (location) {
-        path += "/" + location;
-      }
-
-      try {
-        await helper.rm(path);
-      } catch (err) {
-        failedSubdomains.add(subdomain);
-        logger.debug(err);
-      }
-    }
-
-    if (failedSubdomains.size == SUBDOMAINS.length) {
-      throw new FirebaseError("Failed to purge any subdomains.");
-    } else if (failedSubdomains.size > 0) {
-      throw new FirebaseError("Failed to purge some subdomains.");
-    }
-  }
 }
 
 export interface Stat {
