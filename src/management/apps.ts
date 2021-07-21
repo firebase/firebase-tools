@@ -4,6 +4,7 @@ import * as api from "../api";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { pollOperation } from "../operation-poller";
+import { flatten } from "lodash";
 
 const TIMEOUT_MILLIS = 30000;
 const APP_LIST_PAGE_SIZE = 100;
@@ -17,6 +18,7 @@ export interface AppMetadata {
   appId: string;
   platform: AppPlatform;
   displayName?: string;
+  namespace?: string;
 }
 
 export interface IosAppMetadata extends AppMetadata {
@@ -193,26 +195,22 @@ export async function createWebApp(
 }
 
 function getListAppsResourceString(projectId: string, platform: AppPlatform): string {
-  let resourceSuffix;
+  const resourcePrefix = `/v1beta1/projects/${projectId}`;
   switch (platform) {
     case AppPlatform.IOS:
-      resourceSuffix = "/iosApps";
-      break;
+      return `${resourcePrefix}/iosApps`;
     case AppPlatform.ANDROID:
-      resourceSuffix = "/androidApps";
-      break;
+      return `${resourcePrefix}/androidApps`;
     case AppPlatform.WEB:
-      resourceSuffix = "/webApps";
-      break;
-    case AppPlatform.ANY:
-      resourceSuffix = ":searchApps"; // List apps in any platform
-      break;
+      return `${resourcePrefix}/webApps`;
     default:
-      throw new FirebaseError("Unexpected platform. Only support iOS, Android and Web apps");
+      throw new FirebaseError(
+        `Unexpected platform "${platform}"; only supports iOS, Android and Web apps.`
+      );
   }
-
-  return `/v1beta1/projects/${projectId}${resourceSuffix}`;
 }
+
+type PlatformAppMetadata = AndroidAppMetadata | IosAppMetadata | WebAppMetadata;
 
 /**
  * Lists all Firebase apps registered in a Firebase project, optionally filtered by a platform.
@@ -226,8 +224,21 @@ export async function listFirebaseApps(
   projectId: string,
   platform: AppPlatform,
   pageSize: number = APP_LIST_PAGE_SIZE
-): Promise<AppMetadata[]> {
-  const apps: AppMetadata[] = [];
+): Promise<PlatformAppMetadata[]> {
+  if (platform === AppPlatform.ANY) {
+    const allApps: PlatformAppMetadata[][] = await Promise.all([
+      listFirebaseApps(projectId, AppPlatform.ANDROID, pageSize),
+      listFirebaseApps(projectId, AppPlatform.IOS, pageSize),
+      listFirebaseApps(projectId, AppPlatform.WEB, pageSize),
+    ]);
+    return flatten(allApps);
+  } else if (platform === AppPlatform.PLATFORM_UNSPECIFIED) {
+    throw new FirebaseError(
+      `Unexpected platform "${platform}"; only supports iOS, Android and Web apps.`
+    );
+  }
+
+  const apps: PlatformAppMetadata[] = [];
   try {
     let nextPageToken = "";
     do {
@@ -257,8 +268,7 @@ export async function listFirebaseApps(
   } catch (err) {
     logger.debug(err.message);
     throw new FirebaseError(
-      `Failed to list Firebase ${platform === AppPlatform.ANY ? "" : platform + " "}` +
-        "apps. See firebase-debug.log for more info.",
+      `Failed to list Firebase ${platform} apps. See firebase-debug.log for more info.`,
       {
         exit: 2,
         original: err,
