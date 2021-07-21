@@ -56,6 +56,41 @@ function filterOnly(configs: HostingConfig[], onlyString: string): HostingConfig
   return filteredConfigs;
 }
 
+function filterExcept(configs: HostingConfig[], exceptString: string): HostingConfig[] {
+  if (!exceptString) {
+    return configs;
+  }
+
+  const exceptTargets = exceptString.split(",");
+  if (exceptTargets.includes("hosting")) {
+    return [];
+  }
+
+  const exceptSet = new Set(
+    exceptTargets.filter((t) => t.startsWith("hosting:")).map((t) => t.replace("hosting:", ""))
+  );
+
+  const configsBySite = new Map<string, HostingConfig>();
+  const configsByTarget = new Map<string, HostingConfig>();
+  for (const c of configs) {
+    if (c.site) {
+      configsBySite.set(c.site, c);
+    }
+    if (c.target) {
+      configsByTarget.set(c.target, c);
+    }
+  }
+
+  const filteredConfigs: HostingConfig[] = [];
+  for (const c of configs) {
+    if (!(exceptSet.has(c.site) || exceptSet.has(c.target))) {
+      filteredConfigs.push(c);
+    }
+  }
+
+  return filteredConfigs;
+}
+
 /**
  * Normalize options to HostingConfig array.
  * @param cmdOptions the Firebase CLI options object.
@@ -89,7 +124,8 @@ export function normalizedHostingConfigs(
     }
   }
 
-  const hostingConfigs: HostingConfig[] = filterOnly(configs, cmdOptions.only);
+  let hostingConfigs: HostingConfig[] = filterOnly(configs, cmdOptions.only);
+  hostingConfigs = filterExcept(configs, cmdOptions.except);
 
   if (options.resolveTargets) {
     for (const cfg of hostingConfigs) {
