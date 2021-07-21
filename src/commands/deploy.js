@@ -8,7 +8,7 @@ const checkValidTargetFilters = require("../checkValidTargetFilters");
 const { Command } = require("../command");
 const deploy = require("../deploy");
 const requireConfig = require("../requireConfig");
-const filterTargets = require("../filterTargets");
+const { filterTargets } = require("../filterTargets");
 const { requireHostingSite } = require("../requireHostingSite");
 
 // in order of least time-consuming to most time-consuming
