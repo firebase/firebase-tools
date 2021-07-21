@@ -185,7 +185,7 @@ describe("normalizedHostingConfigs", () => {
     }
   });
 
-  describe.only("with an except parameter, resolving targets", () => {
+  describe("with an except parameter, resolving targets", () => {
     const DEFAULT_SITE = "default-hosting-site";
     const TARGETED_SITE = "targeted-site";
     const baseConfig = { public: "public", ignore: ["firebase.json"] };
