@@ -124,6 +124,7 @@ export function normalizedHostingConfigs(
     }
   }
 
+  // filter* functions check if the strings are empty for us.
   let hostingConfigs: HostingConfig[] = filterOnly(configs, cmdOptions.only);
   hostingConfigs = filterExcept(hostingConfigs, cmdOptions.except);
 
