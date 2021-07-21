@@ -125,7 +125,7 @@ export function normalizedHostingConfigs(
   }
 
   let hostingConfigs: HostingConfig[] = filterOnly(configs, cmdOptions.only);
-  hostingConfigs = filterExcept(configs, cmdOptions.except);
+  hostingConfigs = filterExcept(hostingConfigs, cmdOptions.except);
 
   if (options.resolveTargets) {
     for (const cfg of hostingConfigs) {
