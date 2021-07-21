@@ -1,1 +1,1 @@
-- Supports inspecting Firestore Emulator requests and rules in Emulator UI (#3564).
+- Fix Auth Emulator errors when importing many users (#3577).

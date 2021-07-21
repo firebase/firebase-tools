@@ -115,7 +115,7 @@ export async function printTriggerUrls(context: args.Context) {
     // TODO: way to filter out extensions deployed on GCFv2. May have to just replace
     // the existing backend with operation results as functions deploy rather than
     // calling existingBackend twice.
-    if (fn.apiVersion == 1 && fn.sourceUploadUrl !== context.uploadUrl) {
+    if (fn.platform == "gcfv1" && fn.sourceUploadUrl !== context.uploadUrl) {
       return false;
     }
     return !backend.isEventTrigger(fn.trigger) && deploymentTool.isFirebaseManaged(fn.labels || {});

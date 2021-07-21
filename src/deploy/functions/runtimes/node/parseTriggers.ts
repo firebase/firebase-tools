@@ -32,8 +32,7 @@ export interface ScheduleAnnotation {
 // Defined in firebase-functions/src/cloud-function.ts
 export interface TriggerAnnotation {
   name: string;
-  // HACK HACK HACK. Will not be the way we do this by the time customers have their hands on it.
-  apiVersion?: 1 | 2;
+  platform?: "gcfv1" | "gcfv2";
   labels?: Record<string, string>;
   entryPoint: string;
   vpcConnector?: string;
@@ -44,7 +43,9 @@ export interface TriggerAnnotation {
   maxInstances?: number;
   minInstances?: number;
   serviceAccountEmail?: string;
-  httpsTrigger?: {};
+  httpsTrigger?: {
+    allowInsecure?: boolean;
+  };
   eventTrigger?: {
     eventType: string;
     resource: string;
@@ -55,6 +56,7 @@ export interface TriggerAnnotation {
   schedule?: ScheduleAnnotation;
   timeZone?: string;
   regions?: string[];
+  concurrency?: number;
 }
 
 /**
@@ -151,9 +153,13 @@ export function addResourcesToBackend(
     }
 
     if (annotation.httpsTrigger) {
-      trigger = {
-        allowInsecure: true,
-      };
+      let allowInsecure: boolean;
+      if ("allowInsecure" in annotation.httpsTrigger) {
+        allowInsecure = !!annotation.httpsTrigger.allowInsecure;
+      } else {
+        allowInsecure = !annotation.platform || annotation.platform === "gcfv1";
+      }
+      trigger = { allowInsecure };
       if (annotation.failurePolicy) {
         logger.warn(`Ignoring retry policy for HTTPS function ${annotation.name}`);
       }
@@ -172,7 +178,7 @@ export function addResourcesToBackend(
       project: projectId,
     };
     const cloudFunction: backend.FunctionSpec = {
-      apiVersion: annotation.apiVersion || 1,
+      platform: annotation.platform || "gcfv1",
       ...cloudFunctionName,
       entryPoint: annotation.entryPoint,
       runtime: runtime,
@@ -188,6 +194,7 @@ export function addResourcesToBackend(
     proto.copyIfPresent(
       cloudFunction,
       annotation,
+      "concurrency",
       "serviceAccountEmail",
       "labels",
       "vpcConnectorEgressSettings",

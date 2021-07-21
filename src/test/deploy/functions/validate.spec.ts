@@ -97,7 +97,7 @@ describe("validate", () => {
 
   describe("checkForInvalidChangeOfTrigger", () => {
     const CLOUD_FUNCTION: Omit<FunctionSpec, "trigger"> = {
-      apiVersion: 1,
+      platform: "gcfv1",
       id: "my-func",
       region: "us-central1",
       project: "project",

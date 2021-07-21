@@ -51,6 +51,7 @@ export async function getFunctionsConfig(context: args.Context): Promise<{ [key:
 export async function getEnvs(context: args.Context): Promise<{ [key: string]: string }> {
   const envs = {
     FIREBASE_CONFIG: JSON.stringify(context.firebaseConfig),
+    GCLOUD_PROJECT: context.projectId,
   };
   return Promise.resolve(envs);
 }

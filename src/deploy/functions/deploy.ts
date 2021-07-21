@@ -1,16 +1,14 @@
-import * as clc from "cli-color";
 import { setGracefulCleanup } from "tmp";
+import * as clc from "cli-color";
+import * as fs from "fs";
 
 import { checkHttpIam } from "./checkIam";
 import { functionsUploadRegion } from "../../api";
 import { logSuccess, logWarning } from "../../utils";
+import { Options } from "../../options";
 import * as args from "./args";
-import * as backend from "./backend";
-import * as fs from "fs";
 import * as gcs from "../../gcp/storage";
 import * as gcf from "../../gcp/cloudfunctions";
-import { Options } from "../../options";
-import { Config } from "../../config";
 import * as utils from "../../utils";
 
 const GCP_REGION = functionsUploadRegion;
@@ -60,10 +58,10 @@ export async function deploy(
   try {
     const want = payload.functions!.backend;
     const uploads: Promise<void>[] = [];
-    if (want.cloudFunctions.some((fn) => fn.apiVersion === 1)) {
+    if (want.cloudFunctions.some((fn) => fn.platform === "gcfv1")) {
       uploads.push(uploadSourceV1(context));
     }
-    if (want.cloudFunctions.some((fn) => fn.apiVersion === 2)) {
+    if (want.cloudFunctions.some((fn) => fn.platform === "gcfv2")) {
       uploads.push(uploadSourceV2(context));
     }
     await Promise.all(uploads);
