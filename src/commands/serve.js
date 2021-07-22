@@ -9,7 +9,7 @@ var utils = require("../utils");
 var { requirePermissions } = require("../requirePermissions");
 var requireConfig = require("../requireConfig");
 var { serve } = require("../serve/index");
-var filterTargets = require("../filterTargets");
+var { filterTargets } = require("../filterTargets");
 var { getProjectNumber } = require("../getProjectNumber");
 var { FirebaseError } = require("../error");
 
