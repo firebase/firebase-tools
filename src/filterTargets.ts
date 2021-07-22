@@ -20,7 +20,7 @@ export function filterTargets(options: Options, validTargets: string[]): string[
       })
     );
   } else if (options.except) {
-    targets = difference(targets, (options.except || "").split(","));
+    targets = difference(targets, options.except.split(","));
   }
   if (targets.length === 0) {
     let msg = "Cannot understand what targets to deploy/serve.";
