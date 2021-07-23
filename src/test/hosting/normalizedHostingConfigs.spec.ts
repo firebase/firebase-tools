@@ -184,4 +184,104 @@ describe("normalizedHostingConfigs", () => {
       });
     }
   });
+
+  describe("with an except parameter, resolving targets", () => {
+    const DEFAULT_SITE = "default-hosting-site";
+    const TARGETED_SITE = "targeted-site";
+    const baseConfig = { public: "public", ignore: ["firebase.json"] };
+    const tests = [
+      {
+        desc: "a normal hosting config, omitting the default site",
+        cfg: Object.assign({}, baseConfig),
+        except: `hosting:${DEFAULT_SITE}`,
+        want: [],
+      },
+      {
+        desc: "a hosting config with multiple sites, no targets, omitting the second site",
+        cfg: [
+          Object.assign({}, baseConfig, { site: DEFAULT_SITE }),
+          Object.assign({}, baseConfig, { site: "different-site" }),
+        ],
+        except: `hosting:different-site`,
+        want: [Object.assign({}, baseConfig, { site: DEFAULT_SITE })],
+      },
+      {
+        desc: "a normal hosting config with a target, omitting the target",
+        cfg: Object.assign({}, baseConfig, { target: "main" }),
+        except: "hosting:main",
+        want: [],
+      },
+      {
+        desc: "a hosting config with multiple targets, omitting one",
+        cfg: [
+          Object.assign({}, baseConfig, { target: "t-one" }),
+          Object.assign({}, baseConfig, { target: "t-two" }),
+        ],
+        except: "hosting:t-two",
+        want: [Object.assign({}, baseConfig, { target: "t-one", site: TARGETED_SITE })],
+      },
+      {
+        desc: "a hosting config with multiple targets, omitting all hosting",
+        cfg: [
+          Object.assign({}, baseConfig, { target: "t-one" }),
+          Object.assign({}, baseConfig, { target: "t-two" }),
+        ],
+        except: "hosting",
+        want: [],
+      },
+      {
+        desc: "a hosting config with multiple targets, omitting an invalid target",
+        cfg: [
+          Object.assign({}, baseConfig, { target: "t-one" }),
+          Object.assign({}, baseConfig, { target: "t-two" }),
+        ],
+        except: "hosting:t-three",
+        want: [
+          Object.assign({}, baseConfig, { target: "t-one", site: TARGETED_SITE }),
+          Object.assign({}, baseConfig, { target: "t-two", site: TARGETED_SITE }),
+        ],
+      },
+      {
+        desc: "a hosting config with multiple targets, with multiple matching targets",
+        cfg: [
+          Object.assign({}, baseConfig, { target: "t-one" }),
+          Object.assign({}, baseConfig, { target: "t-one" }),
+          Object.assign({}, baseConfig, { target: "t-other" }),
+        ],
+        except: "hosting:t-other",
+        targetedSites: [TARGETED_SITE, TARGETED_SITE],
+        wantErr: /Hosting target.+t-one.+linked to multiple sites/,
+      },
+      {
+        desc: "a hosting config with multiple sites but no targets, only all hosting",
+        cfg: [Object.assign({}, baseConfig), Object.assign({}, baseConfig)],
+        except: "hosting:site",
+        wantErr: /Must supply either "site" or "target"/,
+      },
+    ];
+
+    for (const t of tests) {
+      it(`should be able to parse ${t.desc}`, () => {
+        if (!Array.isArray(t.targetedSites)) {
+          t.targetedSites = [TARGETED_SITE];
+        }
+        const cmdConfig = {
+          site: DEFAULT_SITE,
+          except: t.except,
+          config: { get: () => t.cfg },
+          rc: { requireTarget: () => t.targetedSites },
+        };
+
+        if (t.wantErr) {
+          expect(() => normalizedHostingConfigs(cmdConfig, { resolveTargets: true })).to.throw(
+            FirebaseError,
+            t.wantErr
+          );
+        } else {
+          const got = normalizedHostingConfigs(cmdConfig, { resolveTargets: true });
+          expect(got).to.deep.equal(t.want);
+        }
+      });
+    }
+  });
 });
