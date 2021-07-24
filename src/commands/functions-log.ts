@@ -29,7 +29,7 @@ module.exports = new Command("functions:log")
         const apiFuncFilters = _.map(funcNames, (funcName) => {
           return (
             `resource.labels.function_name="${funcName}" ` +
-            `OR resource.label.service_name="${funcName}`
+            `OR resource.labels.service_name="${funcName}"`
           );
         });
         apiFilter += `\n(${apiFuncFilters.join(" OR ")})`;
