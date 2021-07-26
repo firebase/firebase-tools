@@ -38,4 +38,4 @@ https://firebase.google.com/support/
 *Please avoid double posting across multiple channels!*
 -->
 
-Please submit feature requests through our [support page](https://firebase.google.com/support/contact/bugs-features/).
+Please submit feature requests through our [support page](https://firebase.google.com/support/troubleshooter/report/features/).
