@@ -17,7 +17,7 @@ export default new Command("functions:purgeartifacts")
   .option(
     "--region <region>",
     "Specify region of the function to be purged. " +
-      "If omitted, functions from all regions will be purged. "
+      "If omitted, artifacts from all regions will be purged. "
   )
   .option("-f, --force", "No confirmation. Otherwise, a confirmation prompt will appear.")
   .before(requirePermissions, ["storage.objects.delete"])
