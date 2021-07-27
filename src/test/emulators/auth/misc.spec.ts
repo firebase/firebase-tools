@@ -1,7 +1,12 @@
 import { expect } from "chai";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import { UserInfo } from "../../../emulator/auth/state";
-import { PROJECT_ID, signInWithPhoneNumber, TEST_PHONE_NUMBER } from "./helpers";
+import {
+  getAccountInfoByIdToken,
+  PROJECT_ID,
+  signInWithPhoneNumber,
+  TEST_PHONE_NUMBER,
+} from "./helpers";
 import { describeAuthEmulator } from "./setup";
 import {
   expectStatusCode,
@@ -37,6 +42,31 @@ describeAuthEmulator("token refresh", ({ authApi }) => {
         expect(res.body.token_type).to.equal("Bearer");
         expect(res.body.user_id).to.equal(localId);
       });
+  });
+
+  it("should populate auth_time to match lastLoginAt (in seconds since epoch)", async () => {
+    const emailUser = { email: "alice@example.com", password: "notasecret" };
+    const { refreshToken } = await registerUser(authApi(), emailUser);
+
+    const res = await authApi()
+      .post("/securetoken.googleapis.com/v1/token")
+      .type("form")
+      // snake_case parameters also work, per OAuth 2.0 spec.
+      .send({ refresh_token: refreshToken, grantType: "refresh_token" })
+      .query({ key: "fake-api-key" });
+
+    const idToken = res.body.id_token;
+    const user = await getAccountInfoByIdToken(authApi(), idToken);
+    const lastLoginAtSeconds = user.lastLoginAt
+      ? toUnixTimestamp(new Date(user.lastLoginAt))
+      : undefined;
+    const decoded = decodeJwt(idToken, { complete: true }) as {
+      header: JwtHeader;
+      payload: FirebaseJwtPayload;
+    } | null;
+    expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
+    expect(decoded!.header.alg).to.eql("none");
+    expect(decoded!.payload.auth_time).to.equal(lastLoginAtSeconds);
   });
 
   it("should error if user is disabled", async () => {

@@ -1726,7 +1726,11 @@ function generateJwt(
     // This field is only set for anonymous sign-in but not for any other
     // provider (such as email or Google) in production. Let's match that.
     provider_id: signInProvider === "anonymous" ? signInProvider : undefined,
-    auth_time: toUnixTimestamp(new Date()),
+    auth_time: user.lastLoginAt
+      ? toUnixTimestamp(new Date(user.lastLoginAt))
+      : user.lastRefreshAt
+      ? toUnixTimestamp(new Date(user.lastRefreshAt))
+      : toUnixTimestamp(new Date()),
     user_id: user.localId,
     firebase: {
       identities,
@@ -2122,6 +2126,7 @@ export interface FirebaseJwtPayload {
   exp: number; // expiresAt (in seconds since epoch)
   iss: string; // issuer
   aud: string; // audience (=projectId)
+  auth_time: number; // lastLoginAt (in seconds since epoch)
   // ...and other fields that we don't care for now.
 
   // Firebase-specific fields:
