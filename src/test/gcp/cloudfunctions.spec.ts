@@ -258,4 +258,46 @@ describe("cloudfunctions", () => {
       });
     });
   });
+
+  describe("generateIamPolicy", () => {
+    it("should generate the public policy", () => {
+      const policy = cloudfunctions.generateIamPolicy("public", "project");
+      expect(policy.bindings.length).to.eq(1);
+      expect(policy.bindings[0].members.length).to.eq(1);
+      expect(policy.bindings[0].members[0]).to.eq("allUsers");
+    });
+
+    it("should generate the private policy", () => {
+      const policy = cloudfunctions.generateIamPolicy("private", "project");
+      expect(policy.bindings.length).to.eq(1);
+      expect(policy.bindings[0].members.length).to.eq(0);
+    });
+
+    it("should generate a policy for a single service account", () => {
+      const serviceAccount = "service-account@";
+      const project = "project";
+      const policy = cloudfunctions.generateIamPolicy(serviceAccount, project);
+      expect(policy.bindings.length).to.eq(1);
+      expect(policy.bindings[0].members.length).to.eq(1);
+      expect(policy.bindings[0].members[0]).to.eq(
+        `${serviceAccount}${project}.iam.gserviceaccount.com`
+      );
+    });
+
+    it("should generate a policy for multiple service accounts", () => {
+      const project = "project";
+      const accounts = [];
+      for (let i = 0; i < 10; i++) {
+        accounts.push(`serviceAccount-${i}@`);
+      }
+      const policy = cloudfunctions.generateIamPolicy(accounts, project);
+      expect(policy.bindings.length).to.eq(1);
+      for (let i = 0; i < 10; i++) {
+        expect(policy.bindings[0].members.length).to.eq(10);
+        expect(policy.bindings[0].members[i]).to.eq(
+          `serviceAccount-${i}@${project}.iam.gserviceaccount.com`
+        );
+      }
+    });
+  });
 });
