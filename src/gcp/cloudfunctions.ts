@@ -260,7 +260,10 @@ function serviceAccountHelper(serviceAccount: string, projectId: string): string
  * @param invoker The
  * @returns
  */
-export function generateIamPolicy(invoker: backend.Invoker | backend.Invoker[], projectId: string): IAM.Policy {
+export function generateIamPolicy(
+  invoker: backend.Invoker | backend.Invoker[],
+  projectId: string
+): IAM.Policy {
   const invokerRole = "roles/cloudfunctions.invoker";
   const policy: IAM.Policy = {
     version: 3,
@@ -287,7 +290,9 @@ export function generateIamPolicy(invoker: backend.Invoker | backend.Invoker[], 
     }
   } else {
     const serviceAccountMembers: string[] = [];
-    invoker.forEach(element => serviceAccountMembers.push(serviceAccountHelper(element, projectId)));
+    invoker.forEach((element) =>
+      serviceAccountMembers.push(serviceAccountHelper(element, projectId))
+    );
     policy.bindings.push({
       role: invokerRole,
       members: serviceAccountMembers,

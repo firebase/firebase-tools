@@ -176,13 +176,14 @@ export function updateFunctionTask(
         if (fn.platform === "gcfv1") {
           await gcf.setIamPolicy({
             name: fnName,
-            policy: gcf.generateIamPolicy(invoker), // gcf.DEFAULT_PUBLIC_POLICY,
+            policy: gcf.generateIamPolicy(invoker, params.projectId), // gcf.DEFAULT_PUBLIC_POLICY,
           });
-        } else {
-          // TODO: gcfv2
-          // const serviceName = (cloudFunction as gcfV2.CloudFunction).serviceConfig.service!;
-          // cloudrun.setIamPolicy(serviceName, cloudrun.DEFAULT_PUBLIC_POLICY);
         }
+        // else {
+        // TODO: gcfv2
+        // const serviceName = (cloudFunction as gcfV2.CloudFunction).serviceConfig.service!;
+        // cloudrun.setIamPolicy(serviceName, cloudrun.DEFAULT_PUBLIC_POLICY);
+        // }
       } catch (err) {
         params.errorHandler.record("error", fnName, "set invoker", err.message);
       }
