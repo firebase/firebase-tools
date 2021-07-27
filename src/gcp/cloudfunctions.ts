@@ -7,18 +7,9 @@ import * as backend from "../deploy/functions/backend";
 import * as utils from "../utils";
 import * as proto from "./proto";
 import * as runtimes from "../deploy/functions/runtimes";
+import * as IAM from "./iam";
 
 export const API_VERSION = "v1";
-
-export const DEFAULT_PUBLIC_POLICY = {
-  version: 3,
-  bindings: [
-    {
-      role: "roles/cloudfunctions.invoker",
-      members: ["allUsers"],
-    },
-  ],
-};
 
 interface Operation {
   name: string;
@@ -234,7 +225,7 @@ export async function createFunction(
  */
 interface IamOptions {
   name: string;
-  policy: any; // TODO: Type this?
+  policy: IAM.Policy;
 }
 
 /**
@@ -258,6 +249,52 @@ export async function setIamPolicy(options: IamOptions): Promise<void> {
       original: err,
     });
   }
+}
+
+function serviceAccountHelper(serviceAccount: string, projectId: string): string {
+  return `${serviceAccount}${projectId}.iam.gserviceaccount.com`;
+}
+
+/**
+ * Generates the correct IAM Policy to be used with a Google Cloud Function
+ * @param invoker The
+ * @returns
+ */
+export function generateIamPolicy(invoker: backend.Invoker | backend.Invoker[], projectId: string): IAM.Policy {
+  const invokerRole = "roles/cloudfunctions.invoker";
+  const policy: IAM.Policy = {
+    version: 3,
+    bindings: [],
+    etag: "",
+  };
+
+  if (typeof invoker === "string") {
+    if (invoker === "public") {
+      policy.bindings.push({
+        role: invokerRole,
+        members: ["allUsers"],
+      });
+    } else if (invoker === "private") {
+      policy.bindings.push({
+        role: invokerRole,
+        members: [],
+      });
+    } else {
+      policy.bindings.push({
+        role: invokerRole,
+        members: [serviceAccountHelper(invoker, projectId)],
+      });
+    }
+  } else {
+    const serviceAccountMembers: string[] = [];
+    invoker.forEach(element => serviceAccountMembers.push(serviceAccountHelper(element, projectId)));
+    policy.bindings.push({
+      role: invokerRole,
+      members: serviceAccountMembers,
+    });
+  }
+
+  return policy;
 }
 
 /**

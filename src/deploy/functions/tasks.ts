@@ -51,7 +51,7 @@ export type OperationType =
   | "upsert schedule"
   | "delete schedule"
   | "delete topic"
-  | "make public";
+  | "set invoker";
 
 export interface DeploymentTask {
   run: () => Promise<void>;
@@ -104,18 +104,20 @@ export function createFunctionTask(
       onPoll,
     });
     if (!backend.isEventTrigger(fn.trigger)) {
+      const invoker = fn.invoker ? fn.invoker : "public";
+
       try {
         if (fn.platform === "gcfv1") {
           await gcf.setIamPolicy({
             name: fnName,
-            policy: gcf.DEFAULT_PUBLIC_POLICY,
+            policy: gcf.generateIamPolicy(invoker, params.projectId), // gcf.DEFAULT_PUBLIC_POLICY,
           });
         } else {
           const serviceName = (cloudFunction as gcfV2.CloudFunction).serviceConfig.service!;
           cloudrun.setIamPolicy(serviceName, cloudrun.DEFAULT_PUBLIC_POLICY);
         }
       } catch (err) {
-        params.errorHandler.record("warning", fnName, "make public", err.message);
+        params.errorHandler.record("error", fnName, "set invoker", err.message);
       }
     }
     if (fn.platform !== "gcfv1") {
@@ -168,6 +170,24 @@ export function updateFunctionTask(
       onPoll,
     };
     const cloudFunction = await pollOperation<unknown>(pollerOptions);
+    if (!backend.isEventTrigger(fn.trigger)) {
+      const invoker = fn.invoker ? fn.invoker : "public";
+      try {
+        if (fn.platform === "gcfv1") {
+          await gcf.setIamPolicy({
+            name: fnName,
+            policy: gcf.generateIamPolicy(invoker), // gcf.DEFAULT_PUBLIC_POLICY,
+          });
+        } else {
+          // TODO: gcfv2
+          // const serviceName = (cloudFunction as gcfV2.CloudFunction).serviceConfig.service!;
+          // cloudrun.setIamPolicy(serviceName, cloudrun.DEFAULT_PUBLIC_POLICY);
+        }
+      } catch (err) {
+        params.errorHandler.record("error", fnName, "set invoker", err.message);
+      }
+    }
+
     if ("concurrency" in fn) {
       if (fn.platform === "gcfv1") {
         throw new FirebaseError("Precondition failed: GCFv1 does not support concurrency");

@@ -51,6 +51,7 @@ function tryValidate(typed: backend.Backend) {
       environmentVariables: "omit",
       uri: "omit",
       sourceUploadUrl: "omit",
+      invoker: "object",
     });
     if (backend.isEventTrigger(func.trigger)) {
       requireKeys(prefix + ".trigger", func.trigger, "eventType", "eventFilters");

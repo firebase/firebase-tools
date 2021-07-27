@@ -38,6 +38,20 @@ export class ErrorHandler {
     for (const failedDeployment of this.errors) {
       logger.info(`\t${getFunctionLabel(failedDeployment.functionName)}`);
     }
+
+    const failedIamCalls = this.errors.filter((e) => e.operationType === "set invoker");
+    if (failedIamCalls.length) {
+      logger.info("\nUnable to set the invoker for the IAM policy on the following functions:");
+      for (const failedDep of failedIamCalls) {
+        logger.info(`\t${failedDep.functionName}`);
+      }
+      logger.info("\nSome common causes of this:");
+      logger.info(
+        "\n- You may not have the roles/functions.admin IAM role. Note that roles/functions.developer does not allow you to change IAM policies."
+      );
+      logger.info("\n- An organization policy that restricts Network Access on your project.");
+    }
+
     logger.info("\nTo try redeploying those functions, run:");
     logger.info(
       "    " +
@@ -67,19 +81,6 @@ export class ErrorHandler {
   printWarnings() {
     if (this.warnings.length === 0) {
       return;
-    }
-    const failedIamCalls = this.warnings.filter((e) => e.operationType === "make public");
-    if (failedIamCalls.length) {
-      logger.info("\nUnable to set publicly accessible IAM policy on the following functions:");
-      for (const failedDep of failedIamCalls) {
-        logger.info(`\t${failedDep.functionName}`);
-      }
-      logger.info("\nUnauthenticated users will not be able access this function.");
-      logger.info("\nSome common causes of this:");
-      logger.info(
-        "\n- You may not have the roles/functions.admin IAM role. Note that roles/functions.developer does not allow you to change IAM policies."
-      );
-      logger.info("\n- An organization policy that restricts Network Access on your project.");
     }
 
     // Print all the original messages at debug level.
