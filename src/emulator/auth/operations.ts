@@ -1726,9 +1726,9 @@ function generateJwt(
     // This field is only set for anonymous sign-in but not for any other
     // provider (such as email or Google) in production. Let's match that.
     provider_id: signInProvider === "anonymous" ? signInProvider : undefined,
-    auth_time: user.lastLoginAt
+    auth_time: user.lastLoginAt != null
       ? toUnixTimestamp(new Date(user.lastLoginAt))
-      : user.lastRefreshAt
+      : user.lastRefreshAt != null
       ? toUnixTimestamp(new Date(user.lastRefreshAt))
       : toUnixTimestamp(new Date()),
     user_id: user.localId,
