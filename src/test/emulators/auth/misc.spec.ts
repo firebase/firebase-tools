@@ -59,9 +59,8 @@ describeAuthEmulator("token refresh", ({ authApi, getClock }) => {
 
     const idToken = res.body.id_token;
     const user = await getAccountInfoByIdToken(authApi(), idToken);
-    const lastLoginAtSeconds = user.lastLoginAt
-      ? toUnixTimestamp(new Date(user.lastLoginAt))
-      : undefined;
+    expect(user.lastLoginAt).not.to.be.undefined;
+    const lastLoginAtSeconds = toUnixTimestamp(new Date(user.lastLoginAt!));
     const decoded = decodeJwt(idToken, { complete: true }) as {
       header: JwtHeader;
       payload: FirebaseJwtPayload;
