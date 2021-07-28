@@ -21,7 +21,7 @@ import {
 } from "../../../emulator/auth/operations";
 import { toUnixTimestamp } from "../../../emulator/auth/utils";
 
-describeAuthEmulator("token refresh", ({ authApi }) => {
+describeAuthEmulator("token refresh", ({ authApi, getClock }) => {
   it("should exchange refresh token for new tokens", async () => {
     const { refreshToken, localId } = await registerAnonUser(authApi());
     await authApi()
@@ -47,6 +47,8 @@ describeAuthEmulator("token refresh", ({ authApi }) => {
   it("should populate auth_time to match lastLoginAt (in seconds since epoch)", async () => {
     const emailUser = { email: "alice@example.com", password: "notasecret" };
     const { refreshToken } = await registerUser(authApi(), emailUser);
+
+    getClock().tick(2000); // Wait for idToken to be issued in the past.
 
     const res = await authApi()
       .post("/securetoken.googleapis.com/v1/token")
