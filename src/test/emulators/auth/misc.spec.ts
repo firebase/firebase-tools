@@ -48,7 +48,7 @@ describeAuthEmulator("token refresh", ({ authApi, getClock }) => {
     const emailUser = { email: "alice@example.com", password: "notasecret" };
     const { refreshToken } = await registerUser(authApi(), emailUser);
 
-    getClock().tick(2000); // Wait for idToken to be issued in the past.
+    getClock().tick(2000); // Wait 2 seconds before refreshing.
 
     const res = await authApi()
       .post("/securetoken.googleapis.com/v1/token")
@@ -67,6 +67,7 @@ describeAuthEmulator("token refresh", ({ authApi, getClock }) => {
     } | null;
     expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
     expect(decoded!.header.alg).to.eql("none");
+    // This should match login time, not token refresh time.
     expect(decoded!.payload.auth_time).to.equal(lastLoginAtSeconds);
   });
 
