@@ -104,13 +104,11 @@ export function createFunctionTask(
       onPoll,
     });
     if (!backend.isEventTrigger(fn.trigger)) {
-      const invoker = fn.invoker ? fn.invoker : "public";
-
       try {
         if (fn.platform === "gcfv1") {
           await gcf.setIamPolicy({
             name: fnName,
-            policy: gcf.generateIamPolicy(invoker, params.projectId), // gcf.DEFAULT_PUBLIC_POLICY,
+            policy: gcf.generateIamPolicy(params.projectId, fn.invoker),
           });
         } else {
           const serviceName = (cloudFunction as gcfV2.CloudFunction).serviceConfig.service!;
@@ -171,12 +169,11 @@ export function updateFunctionTask(
     };
     const cloudFunction = await pollOperation<unknown>(pollerOptions);
     if (!backend.isEventTrigger(fn.trigger)) {
-      const invoker = fn.invoker ? fn.invoker : "public";
       try {
         if (fn.platform === "gcfv1") {
           await gcf.setIamPolicy({
             name: fnName,
-            policy: gcf.generateIamPolicy(invoker, params.projectId),
+            policy: gcf.generateIamPolicy(params.projectId, fn.invoker),
           });
         }
         // TODO: gcfv2

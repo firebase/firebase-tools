@@ -7,7 +7,7 @@ import * as backend from "../deploy/functions/backend";
 import * as utils from "../utils";
 import * as proto from "./proto";
 import * as runtimes from "../deploy/functions/runtimes";
-import * as IAM from "./iam";
+import * as iam from "./iam";
 
 export const API_VERSION = "v1";
 
@@ -225,7 +225,7 @@ export async function createFunction(
  */
 interface IamOptions {
   name: string;
-  policy: IAM.Policy;
+  policy: iam.Policy;
 }
 
 /**
@@ -251,21 +251,34 @@ export async function setIamPolicy(options: IamOptions): Promise<void> {
   }
 }
 
-function serviceAccountHelper(serviceAccount: string, projectId: string): string {
-  return `${serviceAccount}${projectId}.iam.gserviceaccount.com`;
+/**
+ * Formats the service account to be used with IAM API calls
+ * @param serviceAccount the custom service account created by the user
+ * @param projectId the ID of the current project
+ * @returns a correctly formatted service account string
+ */
+function formatServiceAccount(serviceAccount: string, projectId: string): string {
+  if (serviceAccount.length === 0) {
+    throw new Error("Service account cannot be an empty string");
+  }
+  if (serviceAccount.charAt(serviceAccount.length - 1) === "@") {
+    return `${serviceAccount}${projectId}.iam.gserviceaccount.com`;
+  }
+  return `${serviceAccount}@${projectId}.iam.gserviceaccount.com`;
 }
 
 /**
- * Generates the correct IAM Policy to be used with a Google Cloud Function
- * @param invoker The
- * @returns
+ * Generates the correct IAM Policy for changing the invoker for HTTP triggered functions.
+ * @param projectId the ID of the current project
+ * @param invoker the member(s) that will be granted the invoker role
+ * @returns correctly formatted IAM policy for use in IAM API calls
  */
 export function generateIamPolicy(
-  invoker: backend.Invoker | backend.Invoker[],
-  projectId: string
-): IAM.Policy {
+  projectId: string,
+  invoker: backend.Invoker | backend.Invoker[] = "public"
+): iam.Policy {
   const invokerRole = "roles/cloudfunctions.invoker";
-  const policy: IAM.Policy = {
+  const policy: iam.Policy = {
     version: 3,
     bindings: [],
     etag: "",
@@ -285,13 +298,13 @@ export function generateIamPolicy(
     } else {
       policy.bindings.push({
         role: invokerRole,
-        members: [serviceAccountHelper(invoker, projectId)],
+        members: [formatServiceAccount(invoker, projectId)],
       });
     }
   } else {
     const serviceAccountMembers: string[] = [];
     invoker.forEach((element) =>
-      serviceAccountMembers.push(serviceAccountHelper(element, projectId))
+      serviceAccountMembers.push(formatServiceAccount(element, projectId))
     );
     policy.bindings.push({
       role: invokerRole,
