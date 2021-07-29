@@ -261,10 +261,14 @@ function formatServiceAccount(serviceAccount: string, projectId: string): string
   if (serviceAccount.length === 0) {
     throw new Error("Service account cannot be an empty string");
   }
+  let emailId = "";
   if (serviceAccount.charAt(serviceAccount.length - 1) === "@") {
-    return `${serviceAccount}${projectId}.iam.gserviceaccount.com`;
+    emailId = `${serviceAccount}${projectId}.iam.gserviceaccount.com`;
+  } else {
+    emailId = `${serviceAccount}@${projectId}.iam.gserviceaccount.com`;
   }
-  return `${serviceAccount}@${projectId}.iam.gserviceaccount.com`;
+
+  return `serviceAccount:${emailId}`;
 }
 
 /**

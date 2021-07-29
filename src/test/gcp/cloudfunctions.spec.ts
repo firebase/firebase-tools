@@ -260,6 +260,10 @@ describe("cloudfunctions", () => {
   });
 
   describe("generateIamPolicy", () => {
+    it("should throw error on empty service account string", () => {
+      expect(() => cloudfunctions.generateIamPolicy("project", "")).to.throw();
+    });
+
     it("should generate the public policy", () => {
       const policy = cloudfunctions.generateIamPolicy("project", "public");
       expect(policy.bindings.length).to.eq(1);
@@ -280,7 +284,7 @@ describe("cloudfunctions", () => {
       expect(policy.bindings.length).to.eq(1);
       expect(policy.bindings[0].members.length).to.eq(1);
       expect(policy.bindings[0].members[0]).to.eq(
-        `${serviceAccount}${project}.iam.gserviceaccount.com`
+        `serviceAccount:${serviceAccount}${project}.iam.gserviceaccount.com`
       );
     });
 
@@ -295,7 +299,7 @@ describe("cloudfunctions", () => {
       for (let i = 0; i < 10; i++) {
         expect(policy.bindings[0].members.length).to.eq(10);
         expect(policy.bindings[0].members[i]).to.eq(
-          `serviceAccount-${i}@${project}.iam.gserviceaccount.com`
+          `serviceAccount:serviceAccount-${i}@${project}.iam.gserviceaccount.com`
         );
       }
     });
