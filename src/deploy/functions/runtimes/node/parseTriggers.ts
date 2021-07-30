@@ -74,7 +74,7 @@ function parseTriggers(
   sourceDir: string,
   configValues: backend.RuntimeConfigValues,
   envs: backend.EnvironmentVariables
-): Promise<TriggerAnnotation[]> {
+): Promise<{ triggers: TriggerAnnotation[]; spec?: any }> {
   return new Promise((resolve, reject) => {
     const env = { ...envs } as NodeJS.ProcessEnv;
     env.GCLOUD_PROJECT = projectId;
@@ -87,6 +87,8 @@ function parseTriggers(
       env.NODE_OPTIONS = removeInspectOptions(env.NODE_OPTIONS.split(" ")).join(" ");
     }
 
+    env.NODE_PATH = process.env.NODE_PATH + `:${sourceDir}/node_modules`;
+
     const parser = fork(TRIGGER_PARSER, [sourceDir], {
       silent: true,
       env: env,
@@ -95,7 +97,7 @@ function parseTriggers(
 
     parser.on("message", (message) => {
       if (message.triggers) {
-        resolve(message.triggers);
+        resolve(message);
       } else if (message.error) {
         reject(new FirebaseError(message.error, { exit: 1 }));
       }
@@ -126,7 +128,15 @@ export async function discoverBackend(
   configValues: backend.RuntimeConfigValues,
   envs: backend.EnvironmentVariables
 ): Promise<backend.Backend> {
-  const triggerAnnotations = await parseTriggers(projectId, sourceDir, configValues, envs);
+  const { triggers: triggerAnnotations, spec: spec } = await parseTriggers(
+    projectId,
+    sourceDir,
+    configValues,
+    envs
+  );
+  console.log(">>> PARSING TRIGGERS AND HERES THE SPEC:", spec);
+  throw new Error("stop");
+
   const want: backend.Backend = { ...backend.empty(), environmentVariables: envs };
   for (const annotation of triggerAnnotations) {
     addResourcesToBackend(projectId, runtime, annotation, want);
