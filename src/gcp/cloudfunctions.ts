@@ -261,12 +261,19 @@ function formatServiceAccount(serviceAccount: string, projectId: string): string
   if (serviceAccount.length === 0) {
     throw new Error("Service account cannot be an empty string");
   }
-  let emailId = "";
-  if (serviceAccount.charAt(serviceAccount.length - 1) === "@") {
-    emailId = `${serviceAccount}${projectId}.iam.gserviceaccount.com`;
-  } else {
-    emailId = `${serviceAccount}@${projectId}.iam.gserviceaccount.com`;
+
+  const suffix = `@${projectId}.iam.gserviceaccount.com`;
+  if (
+    serviceAccount.length > suffix.length &&
+    serviceAccount.slice(serviceAccount.length - suffix.length) === suffix
+  ) {
+    return `serviceAccount:${serviceAccount}`;
   }
+
+  const emailId =
+    serviceAccount.charAt(serviceAccount.length - 1) === "@"
+      ? `${serviceAccount}${projectId}.iam.gserviceaccount.com`
+      : `${serviceAccount}@${projectId}.iam.gserviceaccount.com`;
 
   return `serviceAccount:${emailId}`;
 }
@@ -289,27 +296,26 @@ export function generateIamPolicy(
   };
 
   if (typeof invoker === "string") {
-    if (invoker === "public") {
-      policy.bindings.push({
-        role: invokerRole,
-        members: ["allUsers"],
-      });
-    } else if (invoker === "private") {
-      policy.bindings.push({
-        role: invokerRole,
-        members: [],
-      });
-    } else {
-      policy.bindings.push({
-        role: invokerRole,
-        members: [formatServiceAccount(invoker, projectId)],
-      });
+    const roleMembers: string[] = [];
+    switch (invoker) {
+      case "public":
+        roleMembers.push("allUsers");
+        break;
+      case "private": // empty member array
+        break;
+      default:
+        roleMembers.push(formatServiceAccount(invoker, projectId));
+        break;
     }
+    policy.bindings.push({
+      role: invokerRole,
+      members: roleMembers,
+    });
   } else {
     const serviceAccountMembers: string[] = [];
-    invoker.forEach((element) =>
-      serviceAccountMembers.push(formatServiceAccount(element, projectId))
-    );
+    for (const serviceAccount of invoker) {
+      serviceAccountMembers.push(formatServiceAccount(serviceAccount, projectId));
+    }
     policy.bindings.push({
       role: invokerRole,
       members: serviceAccountMembers,

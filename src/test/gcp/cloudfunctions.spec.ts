@@ -266,6 +266,7 @@ describe("cloudfunctions", () => {
 
     it("should generate the public policy", () => {
       const policy = cloudfunctions.generateIamPolicy("project", "public");
+
       expect(policy.bindings.length).to.eq(1);
       expect(policy.bindings[0].members.length).to.eq(1);
       expect(policy.bindings[0].members[0]).to.eq("allUsers");
@@ -273,6 +274,7 @@ describe("cloudfunctions", () => {
 
     it("should generate the private policy", () => {
       const policy = cloudfunctions.generateIamPolicy("project", "private");
+
       expect(policy.bindings.length).to.eq(1);
       expect(policy.bindings[0].members.length).to.eq(0);
     });
@@ -280,7 +282,9 @@ describe("cloudfunctions", () => {
     it("should generate a policy for a single service account", () => {
       const serviceAccount = "service-account@";
       const project = "project";
+
       const policy = cloudfunctions.generateIamPolicy(project, serviceAccount);
+
       expect(policy.bindings.length).to.eq(1);
       expect(policy.bindings[0].members.length).to.eq(1);
       expect(policy.bindings[0].members[0]).to.eq(
@@ -294,13 +298,42 @@ describe("cloudfunctions", () => {
       for (let i = 0; i < 10; i++) {
         accounts.push(`serviceAccount-${i}@`);
       }
+
       const policy = cloudfunctions.generateIamPolicy(project, accounts);
+
       expect(policy.bindings.length).to.eq(1);
       for (let i = 0; i < 10; i++) {
         expect(policy.bindings[0].members.length).to.eq(10);
         expect(policy.bindings[0].members[i]).to.eq(
           `serviceAccount:serviceAccount-${i}@${project}.iam.gserviceaccount.com`
         );
+      }
+    });
+
+    it("should generate a policy for a single full service account", () => {
+      const serviceAccount = "service-account@project.iam.gserviceaccount.com";
+      const project = "project";
+
+      const policy = cloudfunctions.generateIamPolicy(project, serviceAccount);
+
+      expect(policy.bindings.length).to.eq(1);
+      expect(policy.bindings[0].members.length).to.eq(1);
+      expect(policy.bindings[0].members[0]).to.eq(`serviceAccount:${serviceAccount}`);
+    });
+
+    it("should generate a policy for multiple full service accounts", () => {
+      const project = "project";
+      const accounts = [];
+      for (let i = 0; i < 10; i++) {
+        accounts.push(`serviceAccount-${i}@project.iam.gserviceaccount.com`);
+      }
+
+      const policy = cloudfunctions.generateIamPolicy(project, accounts);
+
+      expect(policy.bindings.length).to.eq(1);
+      for (let i = 0; i < 10; i++) {
+        expect(policy.bindings[0].members.length).to.eq(10);
+        expect(policy.bindings[0].members[i]).to.eq(`serviceAccount:${accounts[i]}`);
       }
     });
   });
