@@ -23,7 +23,7 @@ const FUNCTION: backend.FunctionSpec = {
   ...MIN_FUNCTION,
   project: "project",
   region: api.functionsDefaultRegion,
-  runtime: "nodejs14",
+  runtime: "nodejs16",
 };
 
 const YAML_OBJ = {
@@ -45,7 +45,7 @@ describe("yamlToBackend", () => {
       YAML_OBJ,
       "project",
       api.functionsDefaultRegion,
-      "nodejs14"
+      "nodejs16"
     );
     expect(parsed).to.deep.equal(BACKEND);
   });
@@ -54,7 +54,7 @@ describe("yamlToBackend", () => {
     const flawed: any = { ...YAML_OBJ };
     delete flawed.specVersion;
     expect(() =>
-      discovery.yamlToBackend(flawed, "project", api.functionsDefaultRegion, "nodejs14")
+      discovery.yamlToBackend(flawed, "project", api.functionsDefaultRegion, "nodejs16")
     ).to.throw(FirebaseError);
   });
 
@@ -64,7 +64,7 @@ describe("yamlToBackend", () => {
       specVersion: "32767beta2",
     };
     expect(() =>
-      discovery.yamlToBackend(flawed, "project", api.functionsDefaultRegion, "nodejs14")
+      discovery.yamlToBackend(flawed, "project", api.functionsDefaultRegion, "nodejs16")
     ).to.throw(FirebaseError);
   });
 });
@@ -84,14 +84,14 @@ describe("detectFromYaml", () => {
     readFileAsync.resolves(YAML_TEXT);
 
     await expect(
-      discovery.detectFromYaml("directory", "project", "nodejs14")
+      discovery.detectFromYaml("directory", "project", "nodejs16")
     ).to.eventually.deep.equal(BACKEND);
   });
 
   it("returns undefined when YAML cannot be found", async () => {
     readFileAsync.rejects({ code: "ENOENT" });
 
-    await expect(discovery.detectFromYaml("directory", "project", "nodejs14")).to.eventually.equal(
+    await expect(discovery.detectFromYaml("directory", "project", "nodejs16")).to.eventually.equal(
       undefined
     );
   });
@@ -125,7 +125,7 @@ describe("detectFromPort", () => {
       const parsed = await discovery.detectFromPort(
         port,
         "project",
-        "nodejs14",
+        "nodejs16",
         /* timeout= */ 4_900
       );
       expect(parsed).to.deep.equal(BACKEND);

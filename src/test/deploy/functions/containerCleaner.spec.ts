@@ -117,7 +117,7 @@ describe("ContainerRegistryCleaner", () => {
     region: "us-central1",
     id: "id",
     entryPoint: "function",
-    runtime: "nodejs14",
+    runtime: "nodejs16",
     trigger: {
       allowInsecure: false,
     },

@@ -23,13 +23,13 @@ describe("Backend", () => {
       allowInsecure: false,
     },
     entryPoint: "function",
-    runtime: "nodejs14",
+    runtime: "nodejs16",
   };
 
   const CLOUD_FUNCTION: Omit<gcf.CloudFunction, gcf.OutputOnlyFields> = {
     name: "projects/project/locations/region/functions/id",
     entryPoint: "function",
-    runtime: "nodejs14",
+    runtime: "nodejs16",
   };
 
   const CLOUD_FUNCTION_V2_SOURCE: gcfV2.StorageSource = {
@@ -42,7 +42,7 @@ describe("Backend", () => {
     name: "projects/project/locations/region/functions/id",
     buildConfig: {
       entryPoint: "function",
-      runtime: "nodejs14",
+      runtime: "nodejs16",
       source: {
         storageSource: CLOUD_FUNCTION_V2_SOURCE,
       },
