@@ -28,7 +28,7 @@ export const RUNTIME_NOT_SET =
 
 export const UNSUPPORTED_NODE_VERSION_FIREBASE_JSON_MSG = clc.bold(
   `functions.runtime value is unsupported. ` +
-    `Valid choices are: ${clc.bold("nodejs{10,12,14,16}")}.`
+    `Valid choices are: ${clc.bold("nodejs{10|12|14|16}")}.`
 );
 
 export const UNSUPPORTED_NODE_VERSION_PACKAGE_JSON_MSG = clc.bold(
