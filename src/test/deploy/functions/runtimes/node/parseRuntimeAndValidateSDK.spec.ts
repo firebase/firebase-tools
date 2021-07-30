@@ -46,7 +46,7 @@ describe("getRuntimeChoice", () => {
       expect(runtime.getRuntimeChoice("path/to/source", "nodejs14")).to.equal("nodejs14");
     });
 
-    it("should return node 14 if runtime field is set to node 14", () => {
+    it("should return node 16 if runtime field is set to node 16", () => {
       expect(runtime.getRuntimeChoice("path/to/source", "nodejs16")).to.equal("nodejs16");
     });
 
