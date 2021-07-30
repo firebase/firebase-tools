@@ -146,6 +146,35 @@ describe("validate", () => {
       }).to.throw();
     });
 
+    it("should throw if a v2 pubsub function changes topic", () => {
+      const fn: FunctionSpec = {
+        ...CLOUD_FUNCTION,
+        platform: "gcfv2",
+        trigger: {
+          eventType: "google.cloud.pubsub.topic.v1.messagePublished",
+          eventFilters: {
+            resource: "projects/project/topics/topic",
+          },
+          retry: false,
+        },
+      };
+      const exFn: FunctionSpec = {
+        ...CLOUD_FUNCTION,
+        platform: "gcfv2",
+        trigger: {
+          eventType: "google.cloud.pubsub.topic.v1.messagePublished",
+          eventFilters: {
+            resource: "projects/project/topics/topic2",
+          },
+          retry: false,
+        },
+      };
+
+      expect(() => {
+        validate.checkForInvalidChangeOfTrigger(fn, exFn);
+      }).to.throw();
+    });
+
     it("should not throw if a event triggered function keeps the same trigger", () => {
       const trigger = {
         eventType: "google.pubsub.topic.publish",

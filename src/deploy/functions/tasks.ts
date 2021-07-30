@@ -6,7 +6,6 @@ import { RegionalFunctionChanges } from "./deploymentPlanner";
 import { OperationResult, OperationPollerOptions, pollOperation } from "../../operation-poller";
 import { functionsOrigin, functionsV2Origin } from "../../api";
 import { getHumanFriendlyRuntimeName } from "./runtimes";
-import { deleteTopic } from "../../gcp/pubsub";
 import { DeploymentTimer } from "./deploymentTimer";
 import { ErrorHandler } from "./errorHandler";
 import * as backend from "./backend";
@@ -16,6 +15,7 @@ import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfV2 from "../../gcp/cloudfunctionsv2";
 import * as cloudrun from "../../gcp/run";
 import * as helper from "./functionsDeployHelper";
+import * as pubsub from "../../gcp/pubsub";
 import * as utils from "../../utils";
 import { FirebaseError } from "../../error";
 import { cloudfunctions } from "../../gcp";
@@ -95,6 +95,14 @@ export function createFunctionTask(
       op = await gcf.createFunction(apiFunction);
     } else {
       const apiFunction = gcfV2.functionFromSpec(fn, params.storageSource!);
+      // N.B. As of GCFv2 private preview GCF no longer creates Pub/Sub topics
+      // for Pub/Sub event handlers. This may change, at which point this code
+      // could be deleted.
+      if (apiFunction.eventTrigger?.pubsubTopic) {
+        await pubsub.createTopic({
+          name: apiFunction.eventTrigger.pubsubTopic,
+        });
+      }
       op = await gcfV2.createFunction(apiFunction);
     }
     const cloudFunction = await pollOperation<unknown>({
@@ -159,6 +167,13 @@ export function updateFunctionTask(
       opName = (await gcf.updateFunction(apiFunction)).name;
     } else {
       const apiFunction = gcfV2.functionFromSpec(fn, params.storageSource!);
+      // N.B. As of GCFv2 private preview the API chokes on any update call that
+      // includes the pub/sub topic even if that topic is unchanged.
+      // We know that the user hasn't changed the topic between deploys because
+      // of checkForInvalidChangeOfTrigger().
+      if (apiFunction.eventTrigger?.pubsubTopic) {
+        delete apiFunction.eventTrigger.pubsubTopic;
+      }
       opName = (await gcfV2.updateFunction(apiFunction)).name;
     }
     const pollerOptions: OperationPollerOptions = {
@@ -354,7 +369,7 @@ export function deleteScheduleTask(
 export function deleteTopicTask(params: TaskParams, topic: backend.PubSubSpec): DeploymentTask {
   const run = async () => {
     const topicName = backend.topicName(topic);
-    await deleteTopic(topicName);
+    await pubsub.deleteTopic(topicName);
   };
   return {
     run,
