@@ -29,7 +29,7 @@ describe("addResourcesToBackend", () => {
   const BASIC_FUNCTION: Omit<backend.FunctionSpec, "trigger"> = Object.freeze({
     platform: "gcfv1",
     ...BASIC_FUNCTION_NAME,
-    runtime: "nodejs14",
+    runtime: "nodejs16",
     entryPoint: "func",
   });
 
@@ -37,7 +37,7 @@ describe("addResourcesToBackend", () => {
     expect(() => {
       parseTriggers.addResourcesToBackend(
         "project",
-        "nodejs14",
+        "nodejs16",
         {
           ...BASIC_TRIGGER,
           httpsTrigger: {},
@@ -59,7 +59,7 @@ describe("addResourcesToBackend", () => {
     };
 
     const result = backend.empty();
-    parseTriggers.addResourcesToBackend("project", "nodejs14", trigger, result);
+    parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
 
     const expected: backend.Backend = {
       ...backend.empty(),
@@ -93,7 +93,7 @@ describe("addResourcesToBackend", () => {
         }
 
         const result = backend.empty();
-        parseTriggers.addResourcesToBackend("project", "nodejs14", trigger, result);
+        parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
 
         const expected: backend.Backend = {
           ...backend.empty(),
@@ -132,7 +132,7 @@ describe("addResourcesToBackend", () => {
     };
 
     const result = backend.empty();
-    parseTriggers.addResourcesToBackend("project", "nodejs14", trigger, result);
+    parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
 
     const expected: backend.Backend = {
       ...backend.empty(),
@@ -169,7 +169,7 @@ describe("addResourcesToBackend", () => {
     };
 
     const result = backend.empty();
-    parseTriggers.addResourcesToBackend("project", "nodejs14", trigger, result);
+    parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
 
     const expected: backend.Backend = {
       ...backend.empty(),
@@ -197,7 +197,7 @@ describe("addResourcesToBackend", () => {
     };
 
     const result = backend.empty();
-    parseTriggers.addResourcesToBackend("project", "nodejs14", trigger, result);
+    parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
 
     const expected: backend.Backend = {
       ...backend.empty(),
@@ -222,7 +222,7 @@ describe("addResourcesToBackend", () => {
     };
 
     const result = backend.empty();
-    parseTriggers.addResourcesToBackend("project", "nodejs14", trigger, result);
+    parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
 
     const expected: backend.Backend = {
       ...backend.empty(),
@@ -272,7 +272,7 @@ describe("addResourcesToBackend", () => {
     };
 
     const result = backend.empty();
-    parseTriggers.addResourcesToBackend("project", "nodejs14", trigger, result);
+    parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
 
     const europeFunctionName = {
       ...BASIC_FUNCTION_NAME,

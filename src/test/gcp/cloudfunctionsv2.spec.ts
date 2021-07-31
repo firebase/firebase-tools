@@ -17,7 +17,7 @@ describe("cloudfunctionsv2", () => {
       allowInsecure: false,
     },
     entryPoint: "function",
-    runtime: "nodejs14",
+    runtime: "nodejs16",
   };
 
   const CLOUD_FUNCTION_V2_SOURCE: cloudfunctionsv2.StorageSource = {
@@ -33,7 +33,7 @@ describe("cloudfunctionsv2", () => {
     name: "projects/project/locations/region/functions/id",
     buildConfig: {
       entryPoint: "function",
-      runtime: "nodejs14",
+      runtime: "nodejs16",
       source: {
         storageSource: CLOUD_FUNCTION_V2_SOURCE,
       },

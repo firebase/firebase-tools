@@ -17,13 +17,13 @@ describe("cloudfunctions", () => {
       allowInsecure: false,
     },
     entryPoint: "function",
-    runtime: "nodejs14",
+    runtime: "nodejs16",
   };
 
   const CLOUD_FUNCTION: Omit<cloudfunctions.CloudFunction, cloudfunctions.OutputOnlyFields> = {
     name: "projects/project/locations/region/functions/id",
     entryPoint: "function",
-    runtime: "nodejs14",
+    runtime: "nodejs16",
   };
 
   const HAVE_CLOUD_FUNCTION: cloudfunctions.CloudFunction = {
