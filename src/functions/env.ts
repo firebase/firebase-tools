@@ -4,44 +4,38 @@ import * as path from "path";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 
-// import { FirebaseError } from "../error";
+const RESERVED_KEYS = [
+  // Cloud Functions for Firebase
+  "FIREBASE_CONFIG",
+  // Cloud Functions - old runtimes:
+  //   https://cloud.google.com/functions/docs/env-var#nodejs_8_python_37_and_go_111
+  "ENTRY_POINT",
+  "GCP_PROJECT",
+  "GCLOUD_PROJECT",
+  "GOOGLE_CLOUD_PROJECT",
+  "FUNCTION_TRIGGER_TYPE",
+  "FUNCTION_NAME",
+  "FUNCTION_MEMORY_MB",
+  "FUNCTION_TIMEOUT_SEC",
+  "FUNCTION_IDENTITY",
+  "FUNCTION_REGION",
+  // Cloud Functions - new runtimes:
+  //   https://cloud.google.com/functions/docs/env-var#newer_runtimes
+  "FUNCTION_TARGET",
+  "FUNCTION_SIGNATURE_TYPE",
+  "K_SERVICE",
+  "K_REVISION",
+  "PORT",
+  // Cloud Run:
+  //   https://cloud.google.com/run/docs/reference/container-contract#env-vars
+  "K_CONFIGURATION",
+];
 
-// const RESERVED_KEYS = [
-//   // Cloud Functions for Firebase
-//   "FIREBASE_CONFIG",
-//   // Cloud Functions - old runtimes:
-//   //   https://cloud.google.com/functions/docs/env-var#nodejs_8_python_37_and_go_111
-//   "ENTRY_POINT",
-//   "GCP_PROJECT",
-//   "GCLOUD_PROJECT",
-//   "GOOGLE_CLOUD_PROJECT",
-//   "FUNCTION_TRIGGER_TYPE",
-//   "FUNCTION_NAME",
-//   "FUNCTION_MEMORY_MB",
-//   "FUNCTION_TIMEOUT_SEC",
-//   "FUNCTION_IDENTITY",
-//   "FUNCTION_REGION",
-//   // Cloud Functions - new runtimes:
-//   //   https://cloud.google.com/functions/docs/env-var#newer_runtimes
-//   "FUNCTION_TARGET",
-//   "FUNCTION_SIGNATURE_TYPE",
-//   "K_SERVICE",
-//   "K_REVISION",
-//   "PORT",
-//   // Cloud Run:
-//   //   https://cloud.google.com/run/docs/reference/container-contract#env-vars
-//   "K_CONFIGURATION",
-// ];
-
-// // TODO: implement dotenv so we get better error messages (per file)
-// // TODO: validate per file.
-
-/* eslint-disable no-useless-escape */
 // prettier-ignore
 const LINE_RE = new RegExp(
   `^` +                    // begin line
   `\\s*` +                 //   leading whitespaces
-  `([A-Z_][A-Z0-9_]+)` +   //   key
+  `(\\w+)` +                //   key
   `\\s*=\\s*` +            //   separator (=)
   "(" +                    //   begin optional value
   `\\s*'(?:\\'|[^'])*'|` + //     single quoted or
@@ -53,7 +47,6 @@ const LINE_RE = new RegExp(
   `$`,                     // end line
   "gms"                    // flags: global, multiline, dotall
 );
-/* eslint-enable no-useless-escape */
 
 interface ParseResult {
   envs: Record<string, string>;
@@ -84,7 +77,7 @@ interface ParseResult {
  *
  * See test for more examples.
  *
- * @return {ParseResult} Parsed
+ * @return {ParseResult}
  */
 export function parse(data: string): ParseResult {
   const envs: Record<string, string> = {};
@@ -114,7 +107,7 @@ export function parse(data: string): ParseResult {
   for (let line of nonmatches.split(/[\r\n]+/)) {
     line = line.trim();
     // Ignore comments.
-    if (!line.startsWith("#")) {
+    if (line.startsWith("#")) {
       continue;
     }
     if (line.length) errors.push(line);
@@ -123,12 +116,46 @@ export function parse(data: string): ParseResult {
   return { envs, errors };
 }
 
+/**
+ * Validates string for use as an env var key.
+ *
+ * We restrict key names to ones that conform to POSIX standards.
+ * This is more restrictive than what is allowed in Cloud Functions or Cloud Run.
+ *
+ */
+export function validateKey(key: string): void {
+  // key must not be one of the reserved key names.
+  if (RESERVED_KEYS.includes(key)) {
+    throw new Error("Key reserved for internal use.");
+  }
+  if (!/^[A-Z_][A-Z0-9_]*$/.test(key)) {
+    throw new Error(
+      "Key must start with an uppercase ASCII letter or underscore" +
+        ", and then consist of uppercase ASCII letters, digits, and underscores."
+    );
+  }
+  if (key.startsWith("X_GOOGLE_") || key.startsWith("FIREBASE_")) {
+    throw new Error("Key starts with a reserved prefix (X_GOOGLE_ or FIREBASE_)");
+  }
+}
+
+// Throws errors if:
+//   1. Input has any invalid lines.
+//   2. Any env key is reserved.
 function parseStrict(data: string): Record<string, string> {
   const { envs, errors } = parse(data);
 
   if (errors.length) {
     logger.debug("Invalid dotenv file. Error on lines: " + errors.join(", "));
-    throw new FirebaseError("Invalid dotenv file", { exit: 2 });
+    throw new Error("Invalid dotenv file");
+  }
+
+  for (const key of Object.keys(envs)) {
+    try {
+      validateKey(key);
+    } catch (err) {
+      throw new Error(`Failed to validate key ${key}: ${err.message || "unknown error"}`);
+    }
   }
 
   return envs;
@@ -160,11 +187,13 @@ export function load(options: {
   isEmulator?: boolean;
 }): Record<string, string> {
   const targetFiles = [".env", `.env.${options.project}`];
-  if (options.projectAlias && options.projectAlias.length) {
-    targetFiles.push(`.env.${options.projectAlias}`);
-  }
   if (options.isEmulator) {
     targetFiles.push(".env.local");
+  } else {
+    targetFiles.push(`.env.${options.project}`);
+    if (options.projectAlias && options.projectAlias.length) {
+      targetFiles.push(`.env.${options.projectAlias}`);
+    }
   }
 
   const targetPaths = targetFiles
@@ -183,13 +212,16 @@ export function load(options: {
   }
 
   let envs: Record<string, string> = {};
-  for (const targetPath of targetFiles) {
+  for (const targetPath of targetPaths) {
     try {
       const data = fs.readFileSync(targetPath, "utf8");
       envs = { ...envs, ...parseStrict(data) };
     } catch (err) {
-      logger.debug(`Failed to parse env file ${targetPath}`, err);
-      throw new FirebaseError(`Failed to parse env file ${targetPath}`, { exit: 2, original: err });
+      logger.debug(`Failed to load environment variables from ${targetPath}`, err);
+      throw new FirebaseError(`Failed to load environment variables from ${targetPath}: ${err}`, {
+        exit: 2,
+        original: err,
+      });
     }
   }
 
