@@ -181,27 +181,27 @@ function parseStrict(data: string): Record<string, string> {
  * @return {Record<string, string>} Environment variables for the project.
  */
 export function load(options: {
-  sourcePath: string;
-  project: string;
+  functionsSource: string;
+  projectId: string;
   projectAlias?: string;
   isEmulator?: boolean;
 }): Record<string, string> {
-  const targetFiles = [".env", `.env.${options.project}`];
+  const targetFiles = [".env", `.env.${options.projectId}`];
   if (options.isEmulator) {
     targetFiles.push(".env.local");
   } else {
-    targetFiles.push(`.env.${options.project}`);
+    targetFiles.push(`.env.${options.projectId}`);
     if (options.projectAlias && options.projectAlias.length) {
       targetFiles.push(`.env.${options.projectAlias}`);
     }
   }
 
   const targetPaths = targetFiles
-    .map((f) => path.join(options.sourcePath, f))
+    .map((f) => path.join(options.functionsSource, f))
     .filter(fs.existsSync);
 
   // Check if both .env.<project> and .env.<alias> exists.
-  if (targetPaths.some((p) => path.basename(p) === `.env.${options.project}`)) {
+  if (targetPaths.some((p) => path.basename(p) === `.env.${options.projectId}`)) {
     if (options.projectAlias && options.projectAlias.length) {
       for (const p of targetPaths) {
         if (path.basename(p) === `.env.${options.projectAlias}`) {

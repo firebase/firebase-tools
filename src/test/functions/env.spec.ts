@@ -205,7 +205,7 @@ FOO=foo
         fs.writeFileSync(path.join(sourceDir, filename), data);
       }
     };
-    const projectInfo = { project: "my-project", projectAlias: "dev" };
+    const projectInfo = { projectId: "my-project", projectAlias: "dev" };
     let tmpdir: string;
 
     beforeEach(() => {
@@ -220,7 +220,7 @@ FOO=foo
     });
 
     it("loads nothing if .env files are missing", () => {
-      expect(env.load({ ...projectInfo, sourcePath: tmpdir })).to.be.deep.equal({});
+      expect(env.load({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({});
     });
 
     it("loads envs from .env file", () => {
@@ -228,7 +228,7 @@ FOO=foo
         ".env": "FOO=foo\nBAR=bar",
       });
 
-      expect(env.load({ ...projectInfo, sourcePath: tmpdir })).to.be.deep.equal({
+      expect(env.load({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
         FOO: "foo",
         BAR: "bar",
       });
@@ -239,7 +239,7 @@ FOO=foo
         ".env": "# THIS IS A COMMENT\nFOO=foo # inline comments\nBAR=bar",
       });
 
-      expect(env.load({ ...projectInfo, sourcePath: tmpdir })).to.be.deep.equal({
+      expect(env.load({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
         FOO: "foo",
         BAR: "bar",
       });
@@ -247,10 +247,10 @@ FOO=foo
 
     it("loads envs from .env.<project> file", () => {
       createEnvFiles(tmpdir, {
-        [`.env.${projectInfo.project}`]: "FOO=foo\nBAR=bar",
+        [`.env.${projectInfo.projectId}`]: "FOO=foo\nBAR=bar",
       });
 
-      expect(env.load({ ...projectInfo, sourcePath: tmpdir })).to.be.deep.equal({
+      expect(env.load({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
         FOO: "foo",
         BAR: "bar",
       });
@@ -261,7 +261,7 @@ FOO=foo
         [`.env.${projectInfo.projectAlias}`]: "FOO=foo\nBAR=bar",
       });
 
-      expect(env.load({ ...projectInfo, sourcePath: tmpdir })).to.be.deep.equal({
+      expect(env.load({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
         FOO: "foo",
         BAR: "bar",
       });
@@ -270,10 +270,10 @@ FOO=foo
     it("loads envs, preferring ones from .env.<project>", () => {
       createEnvFiles(tmpdir, {
         ".env": "FOO=bad\nBAR=bar",
-        [`.env.${projectInfo.project}`]: "FOO=good",
+        [`.env.${projectInfo.projectId}`]: "FOO=good",
       });
 
-      expect(env.load({ ...projectInfo, sourcePath: tmpdir })).to.be.deep.equal({
+      expect(env.load({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
         FOO: "good",
         BAR: "bar",
       });
@@ -285,7 +285,7 @@ FOO=foo
         [`.env.${projectInfo.projectAlias}`]: "FOO=good",
       });
 
-      expect(env.load({ ...projectInfo, sourcePath: tmpdir })).to.be.deep.equal({
+      expect(env.load({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
         FOO: "good",
         BAR: "bar",
       });
@@ -298,7 +298,7 @@ FOO=foo
         ".env.local": "FOO=good",
       });
 
-      expect(env.load({ ...projectInfo, sourcePath: tmpdir, isEmulator: true })).to.be.deep.equal({
+      expect(env.load({ ...projectInfo, functionsSource: tmpdir, isEmulator: true })).to.be.deep.equal({
         FOO: "good",
         BAR: "bar",
       });
@@ -307,12 +307,12 @@ FOO=foo
     it("throws an error if both .env.<project> and .env.<alias> exists", () => {
       createEnvFiles(tmpdir, {
         ".env": "FOO=foo\nBAR=bar",
-        [`.env.${projectInfo.project}`]: "FOO=not-foo",
+        [`.env.${projectInfo.projectId}`]: "FOO=not-foo",
         [`.env.${projectInfo.projectAlias}`]: "FOO=not-foo",
       });
 
       expect(() => {
-        env.load({ ...projectInfo, sourcePath: tmpdir });
+        env.load({ ...projectInfo, functionsSource: tmpdir });
       }).to.throw("Can't have both");
     });
 
@@ -322,18 +322,18 @@ FOO=foo
       });
 
       expect(() => {
-        env.load({ ...projectInfo, sourcePath: tmpdir });
+        env.load({ ...projectInfo, functionsSource: tmpdir });
       }).to.throw("Failed to load");
     });
 
     it("throws an error .env file contains invalid keys", () => {
       createEnvFiles(tmpdir, {
         ".env": "FOO=foo",
-        [`.env.${projectInfo.project}`]: "Foo=bad-key",
+        [`.env.${projectInfo.projectId}`]: "Foo=bad-key",
       });
 
       expect(() => {
-        env.load({ ...projectInfo, sourcePath: tmpdir });
+        env.load({ ...projectInfo, functionsSource: tmpdir });
       }).to.throw("Failed to load");
     });
 
@@ -343,7 +343,7 @@ FOO=foo
       });
 
       expect(() => {
-        env.load({ ...projectInfo, sourcePath: tmpdir });
+        env.load({ ...projectInfo, functionsSource: tmpdir });
       }).to.throw("Failed to load");
     });
   });
