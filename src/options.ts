@@ -13,6 +13,7 @@ export interface Options {
 
   // Options which are present on every command
   project?: string;
+  projectAlias?: string;
   account?: string;
   json: boolean;
   nonInteractive: boolean;

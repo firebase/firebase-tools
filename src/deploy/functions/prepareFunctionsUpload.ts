@@ -47,15 +47,6 @@ export async function getFunctionsConfig(context: args.Context): Promise<{ [key:
   return config;
 }
 
-// TODO(inlined): move to a file that's not about uploading source code
-export async function getEnvs(context: args.Context): Promise<{ [key: string]: string }> {
-  const envs = {
-    FIREBASE_CONFIG: JSON.stringify(context.firebaseConfig),
-    GCLOUD_PROJECT: context.projectId,
-  };
-  return Promise.resolve(envs);
-}
-
 async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream) {
   return new Promise((resolve, reject) => {
     to.on("finish", resolve);
