@@ -56,6 +56,30 @@ function filterOnly(configs: HostingConfig[], onlyString: string): HostingConfig
   return filteredConfigs;
 }
 
+function filterExcept(configs: HostingConfig[], exceptOption: string): HostingConfig[] {
+  if (!exceptOption) {
+    return configs;
+  }
+
+  const exceptTargets = exceptOption.split(",");
+  if (exceptTargets.includes("hosting")) {
+    return [];
+  }
+
+  const exceptValues = new Set(
+    exceptTargets.filter((t) => t.startsWith("hosting:")).map((t) => t.replace("hosting:", ""))
+  );
+
+  const filteredConfigs: HostingConfig[] = [];
+  for (const c of configs) {
+    if (!(exceptValues.has(c.site) || exceptValues.has(c.target))) {
+      filteredConfigs.push(c);
+    }
+  }
+
+  return filteredConfigs;
+}
+
 /**
  * Normalize options to HostingConfig array.
  * @param cmdOptions the Firebase CLI options object.
@@ -89,7 +113,9 @@ export function normalizedHostingConfigs(
     }
   }
 
-  const hostingConfigs: HostingConfig[] = filterOnly(configs, cmdOptions.only);
+  // filter* functions check if the strings are empty for us.
+  let hostingConfigs: HostingConfig[] = filterOnly(configs, cmdOptions.only);
+  hostingConfigs = filterExcept(hostingConfigs, cmdOptions.except);
 
   if (options.resolveTargets) {
     for (const cfg of hostingConfigs) {

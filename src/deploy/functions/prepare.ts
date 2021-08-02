@@ -59,6 +59,16 @@ export async function prepare(
     return;
   }
 
+  // NOTE: this will eventually be enalbed for everyone once AR is enabled
+  // for GCFv1
+  if (wantBackend.cloudFunctions.find((f) => f.platform === "gcfv2")) {
+    await ensureApiEnabled.ensure(
+      context.projectId,
+      "artifactregistry.googleapis.com",
+      "artifactregistry"
+    );
+  }
+
   // Prepare the functions directory for upload, and set context.triggers.
   utils.assertDefined(
     options.config.src.functions.source,

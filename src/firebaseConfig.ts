@@ -58,7 +58,7 @@ type HostingHeaders = HostingSource & {
 };
 
 type HostingBase = {
-  public: string;
+  public?: string;
   ignore?: string[];
   appAssociation?: string;
   cleanUrls?: boolean;

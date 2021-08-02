@@ -140,6 +140,7 @@ export interface FunctionSpec extends TargetIds {
   trigger: HttpsTrigger | EventTrigger;
   runtime: runtimes.Runtime | runtimes.DeprecatedRuntime;
 
+  concurrency?: number;
   labels?: Record<string, string>;
   environmentVariables?: Record<string, string>;
   availableMemoryMb?: MemoryOptions;
