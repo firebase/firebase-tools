@@ -80,7 +80,7 @@ interface ParseResult {
  *
  * See test for more examples.
  *
- * @return {ParseResult}
+ * @return {ParseResult} Result containing parsed key, value pairs and errored lines.
  */
 export function parse(data: string): ParseResult {
   const envs: Record<string, string> = {};
@@ -184,7 +184,6 @@ function parseStrict(data: string): Record<string, string> {
  *
  * If both .env.<project> and .env.<alias> files are found, an error is thrown.
  *
- * @param options
  * @return {Record<string, string>} Environment variables for the project.
  */
 export function load(options: {
