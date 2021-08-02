@@ -257,11 +257,7 @@ export async function listFunctions(projectId: string, region: string): Promise<
  *  Customers should generally use backend.existingBackend and backend.checkAvailability.
  */
 export async function listAllFunctions(projectId: string): Promise<ListFunctionsResponse> {
-  // NOTE: until namespace conflict resolution is implemented, prod will only support us-west1, though
-  // the preprod version still only supports us-central1 isntead.
-  const region = functionsV2Origin.match(/autopush/) ? "us-central1" : "us-west1";
-  logger.debug(`GCFv2 does not yet support listing all regions. Restricting to ${region}`);
-  return await listFunctionsInternal(projectId, /* region=*/ region);
+  return await listFunctionsInternal(projectId, /* region=*/ "-");
 }
 
 async function listFunctionsInternal(
