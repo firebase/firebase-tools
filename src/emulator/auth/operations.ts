@@ -27,6 +27,7 @@ import {
   SIGNIN_METHOD_EMAIL_LINK,
   PROVIDER_CUSTOM,
   OobRecord,
+  UsageMode,
 } from "./state";
 import { MfaEnrollments, CreateMfaEnrollmentsRequest, Schemas, MfaEnrollment } from "./types";
 
@@ -106,6 +107,7 @@ function signUp(
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1SignUpRequest"],
   ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitV1SignUpResponse"] {
+  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   let provider: string | undefined;
   const updates: Omit<Partial<UserInfo>, "localId" | "providerUserInfo"> = {
     lastLoginAt: Date.now().toString(),
@@ -199,6 +201,7 @@ function lookup(
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1GetAccountInfoRequest"],
   ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitV1GetAccountInfoResponse"] {
+  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   const seenLocalIds = new Set<string>();
   const users: UserInfo[] = [];
   function tryAddUser(maybeUser: UserInfo | undefined): void {
@@ -246,6 +249,7 @@ function batchCreate(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1UploadAccountRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV1UploadAccountResponse"] {
+  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   assert(reqBody.users?.length, "MISSING_USER_ACCOUNT");
 
   if (reqBody.sanityCheck) {
@@ -410,6 +414,7 @@ function batchDelete(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1BatchDeleteAccountsRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV1BatchDeleteAccountsResponse"] {
+  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   const errors: Required<
     Schemas["GoogleCloudIdentitytoolkitV1BatchDeleteAccountsResponse"]["errors"]
   > = [];
@@ -440,6 +445,7 @@ function batchGet(
   reqBody: unknown,
   ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitV1DownloadAccountResponse"] {
+  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   const maxResults = Math.min(Math.floor(ctx.params.query.maxResults) || 20, 1000);
 
   const users = state.queryUsers(
@@ -467,6 +473,7 @@ function createAuthUri(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1CreateAuthUriRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV1CreateAuthUriResponse"] {
+  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   const sessionId = reqBody.sessionId || randomId(27);
   if (reqBody.providerId) {
     throw new NotImplementedError("Sign-in with IDP is not yet supported.");
@@ -538,6 +545,7 @@ function createSessionCookie(
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1CreateSessionCookieRequest"],
   ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitV1CreateSessionCookieResponse"] {
+  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   assert(reqBody.idToken, "MISSING_ID_TOKEN");
   const validDuration = Number(reqBody.validDuration) || SESSION_COOKIE_MAX_VALID_DURATION;
   assert(
@@ -571,6 +579,7 @@ function deleteAccount(
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1DeleteAccountRequest"],
   ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitV1DeleteAccountResponse"] {
+  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   let user: UserInfo;
   if (ctx.security?.Oauth2) {
     assert(reqBody.localId, "MISSING_LOCAL_ID");
@@ -620,6 +629,7 @@ function queryAccounts(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1QueryUserInfoRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV1QueryUserInfoResponse"] {
+  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   if (reqBody.expression?.length) {
     throw new NotImplementedError("expression is not implemented.");
   }
@@ -678,6 +688,7 @@ export function resetPassword(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1ResetPasswordRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV1ResetPasswordResponse"] {
+  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   assert(reqBody.oobCode, "MISSING_OOB_CODE");
   const oob = state.validateOobCode(reqBody.oobCode);
   assert(oob, "INVALID_OOB_CODE");
@@ -723,6 +734,7 @@ function sendOobCode(
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1GetOobCodeRequest"],
   ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitV1GetOobCodeResponse"] {
+  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   assert(
     reqBody.requestType && reqBody.requestType !== "OOB_REQ_TYPE_UNSPECIFIED",
     "MISSING_REQ_TYPE"
@@ -809,6 +821,8 @@ function sendVerificationCode(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1SendVerificationCodeRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV1SendVerificationCodeResponse"] {
+  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
+
   // reqBody.iosReceipt, iosSecret, and recaptchaToken are intentionally ignored.
 
   // Production Firebase Auth service also throws INVALID_PHONE_NUMBER instead
@@ -837,6 +851,7 @@ function setAccountInfo(
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1SetAccountInfoRequest"],
   ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitV1SetAccountInfoResponse"] {
+  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   const url = authEmulatorUrl(ctx.req as express.Request);
   return setAccountInfoImpl(state, reqBody, {
     privileged: !!ctx.security?.Oauth2,
@@ -1232,6 +1247,7 @@ function signInWithEmailLink(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1SignInWithEmailLinkRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV1SignInWithEmailLinkResponse"] {
+  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   const userFromIdToken = reqBody.idToken ? parseIdToken(state, reqBody.idToken).user : undefined;
   assert(reqBody.email, "MISSING_EMAIL");
   const email = canonicalizeEmailAddress(reqBody.email);
@@ -1286,6 +1302,8 @@ function signInWithIdp(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1SignInWithIdpRequest"]
 ): SignInWithIdpResponse {
+  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
+
   if (reqBody.returnRefreshToken) {
     throw new NotImplementedError("returnRefreshToken is not implemented yet.");
   }
@@ -1422,6 +1440,7 @@ function signInWithPassword(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1SignInWithPasswordRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV1SignInWithPasswordResponse"] {
+  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   assert(reqBody.email, "MISSING_EMAIL");
   assert(reqBody.password, "MISSING_PASSWORD");
   if (reqBody.captchaResponse || reqBody.captchaChallenge) {
@@ -1463,6 +1482,7 @@ function signInWithPhoneNumber(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1SignInWithPhoneNumberRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV1SignInWithPhoneNumberResponse"] {
+  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   let phoneNumber: string;
   if (reqBody.temporaryProof) {
     assert(reqBody.phoneNumber, "MISSING_PHONE_NUMBER");
@@ -1528,6 +1548,7 @@ function grantToken(
 ): Schemas["GrantTokenResponse"] {
   // https://developers.google.com/identity/toolkit/reference/securetoken/rest/v1/token
   // reqBody.code is intentionally ignored.
+  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   assert(reqBody.grantType, "MISSING_GRANT_TYPE");
   assert(reqBody.grantType === "refresh_token", "INVALID_GRANT_TYPE");
   assert(reqBody.refreshToken, "MISSING_REFRESH_TOKEN");
@@ -1558,6 +1579,7 @@ function grantToken(
 }
 
 function deleteAllAccountsInProject(state: ProjectState): {} {
+  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   state.deleteAllAccounts();
   return {};
 }
@@ -1566,6 +1588,7 @@ function getEmulatorProjectConfig(state: ProjectState): Schemas["EmulatorV1Proje
   return {
     signIn: {
       allowDuplicateEmails: !state.oneAccountPerEmail,
+      usageMode: state.usageMode,
     },
   };
 }
@@ -1577,6 +1600,20 @@ function updateEmulatorProjectConfig(
   const allowDuplicateEmails = reqBody.signIn?.allowDuplicateEmails;
   if (allowDuplicateEmails != null) {
     state.oneAccountPerEmail = !allowDuplicateEmails;
+  }
+  const usageMode = reqBody.signIn?.usageMode;
+  if (usageMode != null) {
+    switch (usageMode) {
+      case "PASSTHROUGH":
+        assert(state.getUserCount() === 0, "Users are present, unable to set passthrough mode");
+        state.usageMode = UsageMode.PASSTHROUGH;
+        break;
+      case "DEFAULT":
+        state.usageMode = UsageMode.DEFAULT;
+        break;
+      default:
+        throw new BadRequestError("Invalid usage mode provided");
+    }
   }
   return getEmulatorProjectConfig(state);
 }
@@ -1642,7 +1679,10 @@ function issueTokens(
 
   const expiresInSeconds = 60 * 60;
   const idToken = generateJwt(state.projectId, user, signInProvider, expiresInSeconds, extraClaims);
-  const refreshToken = state.createRefreshTokenFor(user, signInProvider, extraClaims);
+  const refreshToken =
+    state.usageMode === UsageMode.DEFAULT
+      ? state.createRefreshTokenFor(user, signInProvider, extraClaims)
+      : "";
   return {
     idToken,
     refreshToken,

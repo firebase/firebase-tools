@@ -2,6 +2,7 @@ import { expect } from "chai";
 import { decode as decodeJwt } from "jsonwebtoken";
 import { describeAuthEmulator } from "./setup";
 import {
+  deleteAccount,
   expectStatusCode,
   getAccountInfoByIdToken,
   getAccountInfoByLocalId,
@@ -15,6 +16,7 @@ import {
   signInWithPhoneNumber,
   TEST_PHONE_NUMBER,
   updateAccountByLocalId,
+  updateProjectConfig,
 } from "./helpers";
 import { UserInfo } from "../../../emulator/auth/state";
 
@@ -142,6 +144,22 @@ describeAuthEmulator("accounts:batchGet", ({ authApi }) => {
         expect(res.body).not.to.have.property("nextPageToken");
       });
   });
+
+  it("should error if usageMode is passthrough", async () => {
+    const user = await registerAnonUser(authApi());
+    await deleteAccount(authApi(), { idToken: user.idToken });
+    await updateProjectConfig(authApi(), { signIn: { usageMode: "PASSTHROUGH" } });
+
+    await authApi()
+      .get(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:batchGet`)
+      .set("Authorization", "Bearer owner")
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error)
+          .to.have.property("message")
+          .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
+      });
+  });
 });
 
 describeAuthEmulator("accounts:batchCreate", ({ authApi }) => {
@@ -252,7 +270,6 @@ describeAuthEmulator("accounts:batchCreate", ({ authApi }) => {
     expect(userSignIn.localId).to.equal(user.localId);
   });
 
-  // TODO
   it.skip("should reject production passwordHash", async () => {
     const user = {
       localId: "foo",
@@ -534,6 +551,27 @@ describeAuthEmulator("accounts:batchCreate", ({ authApi }) => {
     });
     expect(user1SignIn.localId).to.equal(user1.localId);
   });
+
+  it("should error if usageMode is passthrough", async () => {
+    const user1 = { localId: "foo", email: "foo@example.com", rawPassword: "notasecret" };
+    const user2 = {
+      localId: "bar",
+      phoneNumber: TEST_PHONE_NUMBER,
+      customAttributes: '{"hello": "world"}',
+    };
+    await updateProjectConfig(authApi(), { signIn: { usageMode: "PASSTHROUGH" } });
+
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:batchCreate`)
+      .set("Authorization", "Bearer owner")
+      .send({ users: [user1, user2] })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error)
+          .to.have.property("message")
+          .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
+      });
+  });
 });
 
 describeAuthEmulator("accounts:batchDelete", ({ authApi }) => {
@@ -657,6 +695,21 @@ describeAuthEmulator("accounts:batchDelete", ({ authApi }) => {
       .then((res) => {
         expectStatusCode(400, res);
         expect(res.body.error.message).to.equal("LOCAL_ID_LIST_EXCEEDS_LIMIT");
+      });
+  });
+
+  it("should error if usageMode is passthrough", async () => {
+    await updateProjectConfig(authApi(), { signIn: { usageMode: "PASSTHROUGH" } });
+
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:batchDelete`)
+      .set("Authorization", "Bearer owner")
+      .send({ localIds: ["nosuch", "nosuch2"] })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error)
+          .to.have.property("message")
+          .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
       });
   });
 });

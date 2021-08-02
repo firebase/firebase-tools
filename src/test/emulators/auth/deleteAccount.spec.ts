@@ -6,6 +6,7 @@ import {
   signInWithFakeClaims,
   getSigninMethods,
   expectUserNotExistsForIdToken,
+  updateProjectConfig,
 } from "./helpers";
 
 describeAuthEmulator("accounts:delete", ({ authApi }) => {
@@ -101,6 +102,33 @@ describeAuthEmulator("accounts:delete", ({ authApi }) => {
       .then((res) => {
         expectStatusCode(400, res);
         expect(res.body.error).to.have.property("message").equals("MISSING_LOCAL_ID");
+      });
+  });
+
+  it("should error if usageMode is passthrough", async () => {
+    const { idToken } = await registerUser(authApi(), {
+      email: "alice@example.com",
+      password: "notasecret",
+    });
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:delete")
+      .send({ idToken })
+      .query({ key: "fake-api-key" })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body).not.to.have.property("error");
+      });
+    await updateProjectConfig(authApi(), { signIn: { usageMode: "PASSTHROUGH" } });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:delete")
+      .send({ idToken })
+      .query({ key: "fake-api-key" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error)
+          .to.have.property("message")
+          .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
       });
   });
 });

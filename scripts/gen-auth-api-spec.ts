@@ -295,6 +295,7 @@ function addEmulatorOperations(openapi3: any): void {
       signIn: {
         properties: {
           allowDuplicateEmails: { type: "boolean" },
+          usageMode: { type: "string" },
         },
         type: "object",
       },
