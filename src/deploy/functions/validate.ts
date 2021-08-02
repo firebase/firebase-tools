@@ -5,7 +5,6 @@ import { getFunctionLabel } from "./functionsDeployHelper";
 import * as backend from "./backend";
 import * as fsutils from "../../fsutils";
 import * as projectPath from "../../projectPath";
-import * as gcfv2 from "../../gcp/cloudfunctionsv2";
 
 // have to require this because no @types/cjson available
 // tslint:disable-next-line
@@ -86,32 +85,4 @@ export function checkForInvalidChangeOfTrigger(
       )}] Scheduled functions cannot be changed to event handler or HTTP functions`
     );
   }
-
-  if (changedV2PubSubTopic(exFn, fn)) {
-    throw new FirebaseError(
-      `[${getFunctionLabel(fn)}] Cannot change the Pub/Sub topic of a v2 Cloud Function`
-    );
-  }
-}
-
-function changedV2PubSubTopic(exFn: backend.FunctionSpec, fn: backend.FunctionSpec): boolean {
-  if (exFn.platform !== "gcfv2") {
-    return false;
-  }
-  if (fn.platform !== "gcfv2") {
-    return false;
-  }
-  if (!backend.isEventTrigger(exFn.trigger)) {
-    return false;
-  }
-  if (!backend.isEventTrigger(fn.trigger)) {
-    return false;
-  }
-  if (exFn.trigger.eventType !== gcfv2.PUBSUB_PUBLISH_EVENT) {
-    return false;
-  }
-  if (fn.trigger.eventType != gcfv2.PUBSUB_PUBLISH_EVENT) {
-    return false;
-  }
-  return exFn.trigger.eventFilters["resource"] != fn.trigger.eventFilters["resource"];
 }

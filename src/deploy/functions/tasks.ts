@@ -103,7 +103,9 @@ export function createFunctionTask(
           await pubsub.getTopic(apiFunction.eventTrigger.pubsubTopic);
         } catch (err) {
           if (err.status !== 404) {
-            throw new FirebaseError("Unexpected error looking for Pub/Sub topic", {original: err})
+            throw new FirebaseError("Unexpected error looking for Pub/Sub topic", {
+              original: err,
+            });
           }
           await pubsub.createTopic({
             name: apiFunction.eventTrigger.pubsubTopic,
@@ -238,7 +240,7 @@ export function deleteFunctionTask(params: TaskParams, fn: backend.FunctionSpec)
 }
 
 async function setConcurrency(name: string, concurrency: number) {
-  let err: any = null;
+  const err: any = null;
   while (true) {
     const service = await cloudrun.getService(name);
 
@@ -248,10 +250,13 @@ async function setConcurrency(name: string, concurrency: number) {
 
     try {
       await cloudrun.replaceService(name, service);
+      return;
     } catch (err) {
       // We might get a 409 if resourceVersion does not match
       if (err.status !== 409) {
-        throw new FirebaseError("Unexpected error while trying to set concurrency", {original: err});
+        throw new FirebaseError("Unexpected error while trying to set concurrency", {
+          original: err,
+        });
       }
     }
   }
@@ -338,7 +343,16 @@ export async function runRegionalFunctionDeployment(
 
   const deploys: Promise<void>[] = [];
   deploys.push(...regionalDeployment.functionsToCreate.map((fn) => deploy(fn, createFunctionTask)));
-  deploys.push(...regionalDeployment.functionsToUpdate.map((fn) => deploy(fn, updateFunctionTask)));
+  deploys.push(
+    ...regionalDeployment.functionsToUpdate.map(async (update) => {
+      if (update.deleteAndRecreate) {
+        await queue.run(deleteFunctionTask(params, update.func));
+        return deploy(update.func, createFunctionTask);
+      } else {
+        return deploy(update.func, updateFunctionTask);
+      }
+    })
+  );
 
   await Promise.all(deploys);
 
