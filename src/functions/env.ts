@@ -35,7 +35,7 @@ const RESERVED_KEYS = [
 const LINE_RE = new RegExp(
   `^` +                    // begin line
   `\\s*` +                 //   leading whitespaces
-  `(\\w+)` +                //   key
+  `(\\w+)` +               //   key
   `\\s*=\\s*` +            //   separator (=)
   "(" +                    //   begin optional value
   `\\s*'(?:\\'|[^'])*'|` + //     single quoted or
@@ -54,7 +54,7 @@ interface ParseResult {
 }
 
 /**
- * Parse contents of dotenv file.
+ * Parse contents of a dotenv file.
  *
  * Each line should contain key, value pairs, e.g.:
  *
@@ -83,7 +83,7 @@ export function parse(data: string): ParseResult {
   const envs: Record<string, string> = {};
   const errors: string[] = [];
 
-  data = data.replace(/\r\n?/, "\n");
+  data = data.replace(/\r\n?/, "\n"); // For Windows support.
   let match;
   while ((match = LINE_RE.exec(data))) {
     let [, k, v] = match;
@@ -106,8 +106,7 @@ export function parse(data: string): ParseResult {
   const nonmatches = data.replace(LINE_RE, "");
   for (let line of nonmatches.split(/[\r\n]+/)) {
     line = line.trim();
-    // Ignore comments.
-    if (line.startsWith("#")) {
+    if (line.startsWith("#")) { // Ignore comments
       continue;
     }
     if (line.length) errors.push(line);
@@ -121,10 +120,8 @@ export function parse(data: string): ParseResult {
  *
  * We restrict key names to ones that conform to POSIX standards.
  * This is more restrictive than what is allowed in Cloud Functions or Cloud Run.
- *
  */
 export function validateKey(key: string): void {
-  // key must not be one of the reserved key names.
   if (RESERVED_KEYS.includes(key)) {
     throw new Error("Key reserved for internal use.");
   }
@@ -139,7 +136,7 @@ export function validateKey(key: string): void {
   }
 }
 
-// Throws errors if:
+// Parse dotenv file, but throw errors if:
 //   1. Input has any invalid lines.
 //   2. Any env key is reserved.
 function parseStrict(data: string): Record<string, string> {
@@ -147,7 +144,7 @@ function parseStrict(data: string): Record<string, string> {
 
   if (errors.length) {
     logger.debug("Invalid dotenv file. Error on lines: " + errors.join(", "));
-    throw new Error("Invalid dotenv file");
+    throw new Error(`Dotenv file with invalid lines: [${errors.join(",")}]`);
   }
 
   for (const key of Object.keys(envs)) {
@@ -162,7 +159,7 @@ function parseStrict(data: string): Record<string, string> {
 }
 
 /**
- * Loads environment variables for project.
+ * Loads environment variables for a project.
  *
  * Load looks for .env files at the root of functions source directory
  * and loads the contents of the .env files.
@@ -170,12 +167,9 @@ function parseStrict(data: string): Record<string, string> {
  * .env files are searched and merged in the following order:
  *
  *   1. .env
- *   2. .env.<project or alias>
+ *   2. .env.<project or alias> (or .env.local if isEmulator is true).
  *
  * If both .env.<project> and .env.<alias> files are found, an error is thrown.
- *
- * If isEmulator option is passed, .env.local file is additional serached and merged
- * at the end.
  *
  * @param options
  * @return {Record<string, string>} Environment variables for the project.
@@ -224,6 +218,9 @@ export function load(options: {
       });
     }
   }
+  logger.debug(
+    `Loaded environment variables ${JSON.stringify(envs)} from ${targetPaths.join(",")}.`
+  );
 
   return envs;
 }
