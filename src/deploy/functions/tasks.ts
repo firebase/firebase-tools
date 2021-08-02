@@ -99,9 +99,16 @@ export function createFunctionTask(
       // for Pub/Sub event handlers. This may change, at which point this code
       // could be deleted.
       if (apiFunction.eventTrigger?.pubsubTopic) {
-        await pubsub.createTopic({
-          name: apiFunction.eventTrigger.pubsubTopic,
-        });
+        try {
+          await pubsub.getTopic(apiFunction.eventTrigger.pubsubTopic);
+        } catch (err) {
+          if (err.status !== 404) {
+            throw new FirebaseError("Unexpected error looking for Pub/Sub topic", {original: err})
+          }
+          await pubsub.createTopic({
+            name: apiFunction.eventTrigger.pubsubTopic,
+          });
+        }
       }
       op = await gcfV2.createFunction(apiFunction);
     }
@@ -231,11 +238,23 @@ export function deleteFunctionTask(params: TaskParams, fn: backend.FunctionSpec)
 }
 
 async function setConcurrency(name: string, concurrency: number) {
-  const service = await cloudrun.getService(name);
+  let err: any = null;
+  while (true) {
+    const service = await cloudrun.getService(name);
 
-  delete service.spec.template.spec.containerConcurrency;
+    delete service.status;
+    delete (service.spec.template.metadata as any).name;
+    service.spec.template.spec.containerConcurrency = concurrency;
 
-  await cloudrun.replaceService(name, service);
+    try {
+      await cloudrun.replaceService(name, service);
+    } catch (err) {
+      // We might get a 409 if resourceVersion does not match
+      if (err.status !== 409) {
+        throw new FirebaseError("Unexpected error while trying to set concurrency", {original: err});
+      }
+    }
+  }
 }
 
 export function functionsDeploymentHandler(
