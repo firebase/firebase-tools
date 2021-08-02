@@ -31,6 +31,9 @@ const RESERVED_KEYS = [
   "K_CONFIGURATION",
 ];
 
+// Regex to capture key, value pair in a dotenv file.
+// Inspired by:
+//   https://github.com/bkeepers/dotenv/blob/master/lib/dotenv/parser.rb
 // prettier-ignore
 const LINE_RE = new RegExp(
   `^` +                    // begin line
