@@ -200,7 +200,7 @@ FOO=foo
   });
 
   describe("load", () => {
-    const createEnvFiles = (sourceDir: string, envs: Record<string, string>) => {
+    const createEnvFiles = (sourceDir: string, envs: Record<string, string>): void => {
       for (const [filename, data] of Object.entries(envs)) {
         fs.writeFileSync(path.join(sourceDir, filename), data);
       }
@@ -298,7 +298,9 @@ FOO=foo
         ".env.local": "FOO=good",
       });
 
-      expect(env.load({ ...projectInfo, functionsSource: tmpdir, isEmulator: true })).to.be.deep.equal({
+      expect(
+        env.load({ ...projectInfo, functionsSource: tmpdir, isEmulator: true })
+      ).to.be.deep.equal({
         FOO: "good",
         BAR: "bar",
       });

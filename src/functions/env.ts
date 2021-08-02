@@ -109,7 +109,8 @@ export function parse(data: string): ParseResult {
   const nonmatches = data.replace(LINE_RE, "");
   for (let line of nonmatches.split(/[\r\n]+/)) {
     line = line.trim();
-    if (line.startsWith("#")) { // Ignore comments
+    if (line.startsWith("#")) {
+      // Ignore comments
       continue;
     }
     if (line.length) errors.push(line);
@@ -146,16 +147,25 @@ function parseStrict(data: string): Record<string, string> {
   const { envs, errors } = parse(data);
 
   if (errors.length) {
-    logger.debug("Invalid dotenv file. Error on lines: " + errors.join(", "));
-    throw new Error(`Dotenv file with invalid lines: [${errors.join(",")}]`);
+    logger.debug(`Invalid dotenv file, error on lines:\n${errors.join("\n")}`);
+    throw new Error(`Invalid dotenv file, error on lines: ${errors.join(",")}`);
   }
 
+  const invalidKeys: Record<string, string> = {};
   for (const key of Object.keys(envs)) {
     try {
       validateKey(key);
     } catch (err) {
-      throw new Error(`Failed to validate key ${key}: ${err.message || "unknown error"}`);
+      invalidKeys[key] = err.message || "unknown error";
     }
+  }
+  if (Object.keys(invalidKeys).length > 0) {
+    logger.debug(
+      `Found invalid keys: ${Object.entries(invalidKeys)
+        .map(([k, v]) => `${k}: ${v}`)
+        .join("\n")}`
+    );
+    throw new Error(`Found invalid keys: ${Object.keys(invalidKeys).join(",")}`);
   }
 
   return envs;
