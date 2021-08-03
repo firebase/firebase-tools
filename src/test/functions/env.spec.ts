@@ -293,24 +293,6 @@ FOO=foo
       });
     });
 
-<<<<<<< HEAD
-=======
-    it("loads envs, preferring ones from .env.local if emulator", () => {
-      createEnvFiles(tmpdir, {
-        ".env": "FOO=foo\nBAR=bar",
-        [`.env.${projectInfo.projectId}`]: "FOO=bad",
-        ".env.local": "FOO=good",
-      });
-
-      expect(
-        env.load({ ...projectInfo, functionsSource: tmpdir, isEmulator: true })
-      ).to.be.deep.equal({
-        FOO: "good",
-        BAR: "bar",
-      });
-    });
-
->>>>>>> parent of 5a411462 (Use mock-fs to create test dir.)
     it("throws an error if both .env.<project> and .env.<alias> exists", () => {
       createEnvFiles(tmpdir, {
         ".env": "FOO=foo\nBAR=bar",
