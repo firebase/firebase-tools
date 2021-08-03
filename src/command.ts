@@ -4,7 +4,7 @@ import { first, last, get, size, head, keys, values } from "lodash";
 
 import { FirebaseError } from "./error";
 import { getInheritedOption, setupLoggers } from "./utils";
-import { load } from "./rc";
+import { loadRC } from "./rc";
 import { Config } from "./config";
 import { configstore } from "./configstore";
 import { detectProjectRoot } from "./detectProjectRoot";
@@ -267,7 +267,7 @@ export class Command {
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private applyRC(options: any): void {
-    const rc = load(options);
+    const rc = loadRC(options);
     options.rc = rc;
 
     options.project =
