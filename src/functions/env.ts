@@ -147,7 +147,6 @@ function parseStrict(data: string): Record<string, string> {
   const { envs, errors } = parse(data);
 
   if (errors.length) {
-    logger.debug(`Invalid dotenv file, error on lines:\n${errors.join("\n")}`);
     throw new Error(`Invalid dotenv file, error on lines: ${errors.join(",")}`);
   }
 
@@ -211,7 +210,9 @@ export function load(options: {
     if (options.projectAlias && options.projectAlias.length) {
       for (const p of targetPaths) {
         if (path.basename(p) === `.env.${options.projectAlias}`) {
-          throw new FirebaseError("Can't have both .env.<project> and .env.<alias> files.");
+          throw new FirebaseError(
+            `Can't have both .env.${options.projectId} and .env.${options.projectAlias}> files.`
+          );
         }
       }
     }
@@ -223,7 +224,6 @@ export function load(options: {
       const data = fs.readFileSync(targetPath, "utf8");
       envs = { ...envs, ...parseStrict(data) };
     } catch (err) {
-      logger.debug(`Failed to load environment variables from ${targetPath}`, err);
       throw new FirebaseError(`Failed to load environment variables from ${targetPath}: ${err}`, {
         exit: 2,
         original: err,
