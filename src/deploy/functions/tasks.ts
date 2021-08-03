@@ -6,7 +6,6 @@ import { RegionalFunctionChanges } from "./deploymentPlanner";
 import { OperationResult, OperationPollerOptions, pollOperation } from "../../operation-poller";
 import { functionsOrigin, functionsV2Origin } from "../../api";
 import { getHumanFriendlyRuntimeName } from "./runtimes";
-import { deleteTopic } from "../../gcp/pubsub";
 import { DeploymentTimer } from "./deploymentTimer";
 import { ErrorHandler } from "./errorHandler";
 import * as backend from "./backend";
@@ -16,6 +15,7 @@ import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfV2 from "../../gcp/cloudfunctionsv2";
 import * as cloudrun from "../../gcp/run";
 import * as helper from "./functionsDeployHelper";
+import * as pubsub from "../../gcp/pubsub";
 import * as utils from "../../utils";
 import { FirebaseError } from "../../error";
 import { cloudfunctions } from "../../gcp";
@@ -95,6 +95,23 @@ export function createFunctionTask(
       op = await gcf.createFunction(apiFunction);
     } else {
       const apiFunction = gcfV2.functionFromSpec(fn, params.storageSource!);
+      // N.B. As of GCFv2 private preview GCF no longer creates Pub/Sub topics
+      // for Pub/Sub event handlers. This may change, at which point this code
+      // could be deleted.
+      if (apiFunction.eventTrigger?.pubsubTopic) {
+        try {
+          await pubsub.getTopic(apiFunction.eventTrigger.pubsubTopic);
+        } catch (err) {
+          if (err.status !== 404) {
+            throw new FirebaseError("Unexpected error looking for Pub/Sub topic", {
+              original: err,
+            });
+          }
+          await pubsub.createTopic({
+            name: apiFunction.eventTrigger.pubsubTopic,
+          });
+        }
+      }
       op = await gcfV2.createFunction(apiFunction);
     }
     const cloudFunction = await pollOperation<unknown>({
@@ -159,6 +176,13 @@ export function updateFunctionTask(
       opName = (await gcf.updateFunction(apiFunction)).name;
     } else {
       const apiFunction = gcfV2.functionFromSpec(fn, params.storageSource!);
+      // N.B. As of GCFv2 private preview the API chokes on any update call that
+      // includes the pub/sub topic even if that topic is unchanged.
+      // We know that the user hasn't changed the topic between deploys because
+      // of checkForInvalidChangeOfTrigger().
+      if (apiFunction.eventTrigger?.pubsubTopic) {
+        delete apiFunction.eventTrigger.pubsubTopic;
+      }
       opName = (await gcfV2.updateFunction(apiFunction)).name;
     }
     const pollerOptions: OperationPollerOptions = {
@@ -230,11 +254,26 @@ export function deleteFunctionTask(params: TaskParams, fn: backend.FunctionSpec)
 }
 
 async function setConcurrency(name: string, concurrency: number) {
-  const service = await cloudrun.getService(name);
+  const err: any = null;
+  while (true) {
+    const service = await cloudrun.getService(name);
 
-  delete service.spec.template.spec.containerConcurrency;
+    delete service.status;
+    delete (service.spec.template.metadata as any).name;
+    service.spec.template.spec.containerConcurrency = concurrency;
 
-  await cloudrun.replaceService(name, service);
+    try {
+      await cloudrun.replaceService(name, service);
+      return;
+    } catch (err) {
+      // We might get a 409 if resourceVersion does not match
+      if (err.status !== 409) {
+        throw new FirebaseError("Unexpected error while trying to set concurrency", {
+          original: err,
+        });
+      }
+    }
+  }
 }
 
 export function functionsDeploymentHandler(
@@ -318,7 +357,16 @@ export async function runRegionalFunctionDeployment(
 
   const deploys: Promise<void>[] = [];
   deploys.push(...regionalDeployment.functionsToCreate.map((fn) => deploy(fn, createFunctionTask)));
-  deploys.push(...regionalDeployment.functionsToUpdate.map((fn) => deploy(fn, updateFunctionTask)));
+  deploys.push(
+    ...regionalDeployment.functionsToUpdate.map(async (update) => {
+      if (update.deleteAndRecreate) {
+        await queue.run(deleteFunctionTask(params, update.func));
+        return deploy(update.func, createFunctionTask);
+      } else {
+        return deploy(update.func, updateFunctionTask);
+      }
+    })
+  );
 
   await Promise.all(deploys);
 
@@ -368,7 +416,7 @@ export function deleteScheduleTask(
 export function deleteTopicTask(params: TaskParams, topic: backend.PubSubSpec): DeploymentTask {
   const run = async () => {
     const topicName = backend.topicName(topic);
-    await deleteTopic(topicName);
+    await pubsub.deleteTopic(topicName);
   };
   return {
     run,
