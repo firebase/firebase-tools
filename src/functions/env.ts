@@ -41,12 +41,12 @@ const LINE_RE = new RegExp(
   "(\\w+)" +               //   key
   "\\s*=\\s*" +            //   separator (=)
   "(" +                    //   begin optional value
-  `\\s*'(?:\\'|[^'])*'|` + //     single quoted or
-  `\\s*"(?:\\"|[^"])*"|` + //     double quoted or
+  "\\s*'(?:\\'|[^'])*'|" + //     single quoted or
+  '\\s*"(?:\\"|[^"])*"|' + //     double quoted or
   "[^\\#\\r\\n]+" +        //     unquoted
   ")?" +                   //   end optional value
   "\\s*" +                 //   trailing whitespaces
-  "(?:\\#[^\\n]*)?" +      //   optional comment
+  "(?:#[^\\n]*)?" +        //   optional comment
   "$",                     // end line
   "gms"                    // flags: global, multiline, dotall
 );
@@ -175,7 +175,7 @@ function parseStrict(data: string): Record<string, string> {
  * .env files are searched and merged in the following order:
  *
  *   1. .env
- *   2. .env.<project or alias> (or .env.local if isEmulator is true).
+ *   2. .env.<project or alias>
  *
  * If both .env.<project> and .env.<alias> files are found, an error is thrown.
  *
@@ -185,16 +185,11 @@ export function load(options: {
   functionsSource: string;
   projectId: string;
   projectAlias?: string;
-  isEmulator?: boolean;
 }): Record<string, string> {
   const targetFiles = [".env"];
-  if (options.isEmulator) {
-    targetFiles.push(".env.local");
-  } else {
-    targetFiles.push(`.env.${options.projectId}`);
-    if (options.projectAlias && options.projectAlias.length) {
-      targetFiles.push(`.env.${options.projectAlias}`);
-    }
+  targetFiles.push(`.env.${options.projectId}`);
+  if (options.projectAlias && options.projectAlias.length) {
+    targetFiles.push(`.env.${options.projectAlias}`);
   }
 
   const targetPaths = targetFiles

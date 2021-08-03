@@ -291,23 +291,6 @@ FOO=foo
       });
     });
 
-    it("loads envs, preferring ones from .env.local if emulator", () => {
-      mockfs({
-        [testdir]: {
-          ".env": "FOO=foo\nBAR=bar",
-          [`.env.${projectInfo.projectId}`]: "FOO=bad",
-          ".env.local": "FOO=good",
-        },
-      });
-
-      expect(
-        env.load({ ...projectInfo, functionsSource: testdir, isEmulator: true })
-      ).to.be.deep.equal({
-        FOO: "good",
-        BAR: "bar",
-      });
-    });
-
     it("throws an error if both .env.<project> and .env.<alias> exists", () => {
       mockfs({
         [testdir]: {
