@@ -31,9 +31,8 @@ module.exports = new Command("target [type]")
       return Promise.resolve(targets);
     }
 
-    var allTargets = options.rc.get(["targets", options.project], {});
-    _.forEach(allTargets, function (ts, tp) {
-      _logTargets(tp, ts);
-    });
+    for (const [targetType, targetName] of Object.entries(options.rc.allTargets(options.project))) {
+      _logTargets(targetType, targetName);
+    }
     return Promise.resolve(allTargets);
   });

@@ -59,9 +59,8 @@ module.exports = new Command("use [alias_or_project_id]")
 
     if (newActive) {
       // firebase use [alias_or_project]
-      var aliasedProject = options.rc.get(["projects", newActive]);
       var project = null;
-      const lookupProject = aliasedProject || newActive;
+      const lookupProject = options.rc.resolveAlias(newActive);
       validateProjectId(lookupProject);
       return getFirebaseProject(lookupProject)
         .then((foundProject) => {
@@ -105,7 +104,7 @@ module.exports = new Command("use [alias_or_project_id]")
         });
     } else if (options.unalias) {
       // firebase use --unalias [alias]
-      if (_.has(options.rc.data, ["projects", options.unalias])) {
+      if (options.rc.hasProjectAlias(options.unalias)) {
         options.rc.removeProjectAlias(options.unalias);
         logger.info("Removed alias", clc.bold(options.unalias));
         logger.info();
