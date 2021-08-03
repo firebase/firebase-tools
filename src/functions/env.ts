@@ -7,6 +7,7 @@ import { logger } from "../logger";
 const RESERVED_KEYS = [
   // Cloud Functions for Firebase
   "FIREBASE_CONFIG",
+  "CLOUD_RUNTIME_CONFIG",
   // Cloud Functions - old runtimes:
   //   https://cloud.google.com/functions/docs/env-var#nodejs_8_python_37_and_go_111
   "ENTRY_POINT",
