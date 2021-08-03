@@ -60,9 +60,10 @@ module.exports = new Command("use [alias_or_project_id]")
     if (newActive) {
       // firebase use [alias_or_project]
       var project = null;
-      const lookupProject = options.rc.resolveAlias(newActive);
-      validateProjectId(lookupProject);
-      return getFirebaseProject(lookupProject)
+      const hasAlias = options.rc.hasProjectAlias(newActive);
+      const resolvedProject = options.rc.resolveAlias(newActive);
+      validateProjectId(resolvedProject);
+      return getFirebaseProject(resolvedProject)
         .then((foundProject) => {
           project = foundProject;
         })
@@ -78,21 +79,20 @@ module.exports = new Command("use [alias_or_project_id]")
               );
             }
             options.rc.addProjectAlias(aliasOpt, newActive);
-            aliasedProject = newActive;
-            logger.info("Created alias", clc.bold(aliasOpt), "for", aliasedProject + ".");
+            logger.info("Created alias", clc.bold(aliasOpt), "for", resolvedProject + ".");
           }
 
-          if (aliasedProject) {
+          if (hasAlias) {
             // found alias
             if (!project) {
               // found alias, but not in project list
               return utils.reject(
-                "Unable to use alias " + clc.bold(newActive) + ", " + verifyMessage(aliasedProject)
+                "Unable to use alias " + clc.bold(newActive) + ", " + verifyMessage(resolvedProject)
               );
             }
 
             utils.makeActiveProject(options.projectRoot, newActive);
-            logger.info("Now using alias", clc.bold(newActive), "(" + aliasedProject + ")");
+            logger.info("Now using alias", clc.bold(newActive), "(" + resolvedProject + ")");
           } else if (project) {
             // exact project id specified
             utils.makeActiveProject(options.projectRoot, newActive);

@@ -4,24 +4,24 @@ import { expect } from "chai";
 import * as path from "path";
 import { RC, loadRC, RCData } from "../rc";
 
-var fixturesDir = path.resolve(__dirname, "./fixtures");
+const fixturesDir = path.resolve(__dirname, "./fixtures");
 
 const EMPTY_DATA: RCData = { projects: {}, targets: {} };
 
 describe("RC", () => {
   describe(".load", () => {
     it("should load from nearest project directory", () => {
-      var result = loadRC({ cwd: path.resolve(fixturesDir, "fbrc/conflict") });
+      const result = loadRC({ cwd: path.resolve(fixturesDir, "fbrc/conflict") });
       expect(result.projects.default).to.eq("top");
     });
 
     it("should be an empty object when not in project dir", () => {
-      var result = loadRC({ cwd: __dirname });
+      const result = loadRC({ cwd: __dirname });
       return expect(result.data).to.deep.eq(EMPTY_DATA);
     });
 
     it("should not throw up on invalid json", () => {
-      var result = loadRC({ cwd: path.resolve(fixturesDir, "fbrc/invalid") });
+      const result = loadRC({ cwd: path.resolve(fixturesDir, "fbrc/invalid") });
       return expect(result.data).to.deep.eq(EMPTY_DATA);
     });
 
@@ -71,7 +71,7 @@ describe("RC", () => {
 
     describe("#targets", () => {
       it("should return all targets for specified project and type", () => {
-        var data = { foo: ["bar"] };
+        const data = { foo: ["bar"] };
         subject.applyTarget("myproject", "storage", "foo", "bar");
         expect(subject.targets("myproject", "storage")).to.deep.eq(data);
       });
@@ -133,7 +133,7 @@ describe("RC", () => {
 
       it("should return a list of resources that changed targets", () => {
         subject.applyTarget("myproject", "storage", "foo", "bar");
-        var result = subject.applyTarget("myproject", "storage", "baz", ["bar", "qux"]);
+        const result = subject.applyTarget("myproject", "storage", "baz", ["bar", "qux"]);
         expect(result).to.deep.eq([{ resource: "bar", target: "foo" }]);
       });
     });

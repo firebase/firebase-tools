@@ -1,18 +1,18 @@
 "use strict";
 
-var _ = require("lodash");
-var clc = require("cli-color");
-var cjson = require("cjson");
-var fs = require("fs");
-var path = require("path");
+const _ = require("lodash");
+const clc = require("cli-color");
+const cjson = require("cjson");
+const fs = require("fs");
+const path = require("path");
 
-var detectProjectRoot = require("./detectProjectRoot").detectProjectRoot;
-var { FirebaseError } = require("./error");
-var fsutils = require("./fsutils");
-var utils = require("./utils");
+const detectProjectRoot = require("./detectProjectRoot").detectProjectRoot;
+const { FirebaseError } = require("./error");
+const fsutils = require("./fsutils");
+const utils = require("./utils");
 
 // "exclusive" target implies that a resource can only be assigned a single target name
-var TARGET_TYPES: { [type: string]: { resource: string; exclusive: boolean } } = {
+const TARGET_TYPES: { [type: string]: { resource: string; exclusive: boolean } } = {
   storage: { resource: "bucket", exclusive: true },
   database: { resource: "instance", exclusive: true },
   hosting: { resource: "site", exclusive: true },
@@ -41,7 +41,7 @@ export class RC {
   data: RCData;
 
   static loadFile(rcpath: string): RC {
-    var data = {};
+    let data = {};
     if (fsutils.fileExistsSync(rcpath)) {
       try {
         data = cjson.load(rcpath);
@@ -124,11 +124,11 @@ export class RC {
       resources = [resources];
     }
 
-    let changed: { resource: string; target: string }[] = [];
+    const changed: { resource: string; target: string }[] = [];
 
     // remove resources from existing targets
     for (const resource of resources) {
-      let cur = this.findTarget(project, type, resource);
+      const cur = this.findTarget(project, type, resource);
       if (cur && cur !== targetName) {
         this.unsetTargetResource(project, type, cur, resource);
         changed.push({ resource: resource, target: cur });
@@ -137,7 +137,7 @@ export class RC {
 
     // apply resources to new target
     const existing = this.target(project, type, targetName);
-    var list = _.uniq(existing.concat(resources)).sort();
+    const list = _.uniq(existing.concat(resources)).sort();
     this.set(["targets", project, type, targetName], list);
 
     this.save();
@@ -145,7 +145,7 @@ export class RC {
   }
 
   removeTarget(project: string, type: string, resource: string): string | null {
-    var name = this.findTarget(project, type, resource);
+    const name = this.findTarget(project, type, resource);
     if (!name) {
       return null;
     }
@@ -187,7 +187,7 @@ export class RC {
    * not persist the result.
    */
   unsetTargetResource(project: string, type: string, name: string, resource: string): void {
-    var updatedResources = this.target(project, type, name).filter((r) => r !== resource);
+    const updatedResources = this.target(project, type, name).filter((r) => r !== resource);
 
     if (updatedResources.length) {
       this.set(["targets", project, type, name], updatedResources);
@@ -201,7 +201,7 @@ export class RC {
    * the specified project.
    */
   requireTarget(project: string, type: string, name: string): string[] {
-    var target = this.target(project, type, name);
+    const target = this.target(project, type, name);
     if (!target.length) {
       throw new FirebaseError(
         "Deploy target " +
