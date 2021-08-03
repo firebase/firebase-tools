@@ -18,16 +18,19 @@ const tableHead = ["Entry Name", "Value"];
 // Creates a maximum limit of 50 names for each entry
 const MAX_DISPLAY_ITEMS = 20;
 
-function checkValidNumber(versionNumber: string): string {
-  if (typeof Number(versionNumber) == "number") {
+function checkValidNumber(versionNumber: string): string | undefined {
+  if (!Number.isNaN(Number(versionNumber))) {
     return versionNumber;
   }
-  return "null";
+  return undefined;
 }
 
 module.exports = new Command("remoteconfig:get")
   .description("get a Firebase project's Remote Config template")
-  .option("-v, --version-number <versionNumber>", "grabs the specified version of the template")
+  .option(
+    "-v, --version-number <versionNumber>",
+    "grabs the specified version of the template (if omitted, will use the most recent template)"
+  )
   .option(
     "-o, --output [filename]",
     "write config output to a filename (if omitted, will use the default file path)"
@@ -35,10 +38,12 @@ module.exports = new Command("remoteconfig:get")
   .before(requireAuth)
   .before(requirePermissions, ["cloudconfig.configs.get"])
   .action(async (options: Options) => {
-    utils.assertIsString(options.versionNumber);
     const template: RemoteConfigTemplate = await rcGet.getTemplate(
       getProjectId(options),
-      checkValidNumber(options.versionNumber)
+      // If version number is specified, use that, otherwise use the most recent (which is the default if undefined)
+      typeof options.versionNumber === "string"
+        ? checkValidNumber(options.versionNumber)
+        : undefined
     );
     const table = new Table({ head: tableHead, style: { head: ["green"] } });
     if (template.conditions) {

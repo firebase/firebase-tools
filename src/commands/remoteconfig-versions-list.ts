@@ -30,6 +30,11 @@ module.exports = new Command("remoteconfig:versions:list")
       options.limit
     );
     const table = new Table({ head: tableHead, style: { head: ["green"] } });
+    // Check if there are any versions
+    if (!versionsList?.versions?.length) {
+      logger.info("No Remote Config template versions found.");
+      return versionsList;
+    }
     for (let item = 0; item < versionsList.versions.length; item++) {
       pushTableContents(table, versionsList.versions[item]);
     }
