@@ -127,16 +127,16 @@ export function parse(data: string): ParseResult {
  */
 export function validateKey(key: string): void {
   if (RESERVED_KEYS.includes(key)) {
-    throw new Error("Key reserved for internal use.");
+    throw new Error(`Key ${key} is reserved for internal use.`);
   }
   if (!/^[A-Z_][A-Z0-9_]*$/.test(key)) {
     throw new Error(
-      "Key must start with an uppercase ASCII letter or underscore" +
-        ", and then consist of uppercase ASCII letters, digits, and underscores."
+      `Key ${key} must start with an uppercase ASCII letter or underscore" +
+        ", and then consist of uppercase ASCII letters, digits, and underscores.`
     );
   }
   if (key.startsWith("X_GOOGLE_") || key.startsWith("FIREBASE_")) {
-    throw new Error("Key starts with a reserved prefix (X_GOOGLE_ or FIREBASE_)");
+    throw new Error(`Key ${key} starts with a reserved prefix (X_GOOGLE_ or FIREBASE_)`);
   }
 }
 
@@ -150,21 +150,17 @@ function parseStrict(data: string): Record<string, string> {
     throw new Error(`Invalid dotenv file, error on lines: ${errors.join(",")}`);
   }
 
-  const invalidKeys: Record<string, string> = {};
+  const invalidKeys: string[] = [];
   for (const key of Object.keys(envs)) {
     try {
       validateKey(key);
     } catch (err) {
-      invalidKeys[key] = err.message || "unknown error";
+      logger.debug(`Failed to validate key ${key}: ${err}`);
+      invalidKeys.push(err.message || `${key} failed to validate`);
     }
   }
   if (Object.keys(invalidKeys).length > 0) {
-    logger.debug(
-      `Found invalid keys: ${Object.entries(invalidKeys)
-        .map(([k, v]) => `${k}: ${v}`)
-        .join("\n")}`
-    );
-    throw new Error(`Found invalid keys: ${Object.keys(invalidKeys).join(",")}`);
+    throw new Error(`Found invalid keys: ${invalidKeys.join(",")}`);
   }
 
   return envs;
