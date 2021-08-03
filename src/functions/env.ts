@@ -119,6 +119,8 @@ export function parse(data: string): ParseResult {
   return { envs, errors };
 }
 
+class KeyValidationError extends Error {}
+
 /**
  * Validates string for use as an env var key.
  *
@@ -127,40 +129,47 @@ export function parse(data: string): ParseResult {
  */
 export function validateKey(key: string): void {
   if (RESERVED_KEYS.includes(key)) {
-    throw new Error(`Key ${key} is reserved for internal use.`);
+    throw new KeyValidationError(`Key ${key} is reserved for internal use.`);
   }
   if (!/^[A-Z_][A-Z0-9_]*$/.test(key)) {
-    throw new Error(
-      `Key ${key} must start with an uppercase ASCII letter or underscore" +
-        ", and then consist of uppercase ASCII letters, digits, and underscores.`
+    throw new KeyValidationError(
+      `Key ${key} must start with an uppercase ASCII letter or underscore` +
+        ", and then consist of uppercase ASCII letters, digits, and underscores."
     );
   }
   if (key.startsWith("X_GOOGLE_") || key.startsWith("FIREBASE_")) {
-    throw new Error(`Key ${key} starts with a reserved prefix (X_GOOGLE_ or FIREBASE_)`);
+    throw new KeyValidationError(
+      `Key ${key} starts with a reserved prefix (X_GOOGLE_ or FIREBASE_)`
+    );
   }
 }
 
 // Parse dotenv file, but throw errors if:
 //   1. Input has any invalid lines.
-//   2. Any env key is reserved.
+//   2. Any env key fails validation.
 function parseStrict(data: string): Record<string, string> {
   const { envs, errors } = parse(data);
 
   if (errors.length) {
-    throw new Error(`Invalid dotenv file, error on lines: ${errors.join(",")}`);
+    throw new FirebaseError(`Invalid dotenv file, error on lines: ${errors.join(",")}`);
   }
 
-  const invalidKeys: string[] = [];
+  const validationErrors: KeyValidationError[] = [];
   for (const key of Object.keys(envs)) {
     try {
       validateKey(key);
     } catch (err) {
       logger.debug(`Failed to validate key ${key}: ${err}`);
-      invalidKeys.push(err.message || `${key} failed to validate`);
+      if (err instanceof KeyValidationError) {
+        validationErrors.push(err);
+      } else {
+        // Unexpected error. Throw.
+        throw err;
+      }
     }
   }
-  if (Object.keys(invalidKeys).length > 0) {
-    throw new Error(`Found invalid keys: ${invalidKeys.join(",")}`);
+  if (validationErrors.length > 0) {
+    throw new FirebaseError("Validation failed", { children: validationErrors });
   }
 
   return envs;
@@ -215,9 +224,9 @@ export function load(options: {
       const data = fs.readFileSync(targetPath, "utf8");
       envs = { ...envs, ...parseStrict(data) };
     } catch (err) {
-      throw new FirebaseError(`Failed to load environment variables from ${targetPath}: ${err}`, {
+      throw new FirebaseError(`Failed to load environment variables from ${targetPath}.`, {
         exit: 2,
-        original: err,
+        children: err.children?.length > 0 ? err.children : [err],
       });
     }
   }
