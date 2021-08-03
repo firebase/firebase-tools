@@ -1,8 +1,5 @@
-import * as fs from "fs";
-import * as path from "path";
-import * as os from "os";
-import { sync as rimraf } from "rimraf";
 import { expect } from "chai";
+import * as mockfs from "mock-fs";
 
 import * as env from "../../functions/env";
 
@@ -202,106 +199,109 @@ FOO=foo
   });
 
   describe("load", () => {
-    const createEnvFiles = (sourceDir: string, envs: Record<string, string>): void => {
-      for (const [filename, data] of Object.entries(envs)) {
-        fs.writeFileSync(path.join(sourceDir, filename), data);
-      }
-    };
     const projectInfo = { projectId: "my-project", projectAlias: "dev" };
-    let tmpdir: string;
-
-    beforeEach(() => {
-      tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), "test"));
-    });
+    const testdir = "/path/to/dir";
 
     afterEach(() => {
-      rimraf(tmpdir);
-      expect(() => {
-        fs.statSync(tmpdir);
-      }).to.throw;
+      mockfs.restore();
     });
 
     it("loads nothing if .env files are missing", () => {
-      expect(env.load({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({});
+      mockfs({ [testdir]: {} });
+      expect(env.load({ ...projectInfo, functionsSource: testdir })).to.be.deep.equal({});
     });
 
     it("loads envs from .env file", () => {
-      createEnvFiles(tmpdir, {
-        ".env": "FOO=foo\nBAR=bar",
+      mockfs({
+        [testdir]: {
+          ".env": "FOO=foo\nBAR=bar",
+        },
       });
 
-      expect(env.load({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+      expect(env.load({ ...projectInfo, functionsSource: testdir })).to.be.deep.equal({
         FOO: "foo",
         BAR: "bar",
       });
     });
 
     it("loads envs from .env file, ignoring comments", () => {
-      createEnvFiles(tmpdir, {
-        ".env": "# THIS IS A COMMENT\nFOO=foo # inline comments\nBAR=bar",
+      mockfs({
+        [testdir]: {
+          ".env": "# THIS IS A COMMENT\nFOO=foo # inline comments\nBAR=bar",
+        },
       });
 
-      expect(env.load({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+      expect(env.load({ ...projectInfo, functionsSource: testdir })).to.be.deep.equal({
         FOO: "foo",
         BAR: "bar",
       });
     });
 
     it("loads envs from .env.<project> file", () => {
-      createEnvFiles(tmpdir, {
-        [`.env.${projectInfo.projectId}`]: "FOO=foo\nBAR=bar",
+      mockfs({
+        [testdir]: {
+          [`.env.${projectInfo.projectId}`]: "FOO=foo\nBAR=bar",
+        },
       });
 
-      expect(env.load({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+      expect(env.load({ ...projectInfo, functionsSource: testdir })).to.be.deep.equal({
         FOO: "foo",
         BAR: "bar",
       });
     });
 
     it("loads envs from .env.<alias> file", () => {
-      createEnvFiles(tmpdir, {
-        [`.env.${projectInfo.projectAlias}`]: "FOO=foo\nBAR=bar",
+      mockfs({
+        [testdir]: {
+          [`.env.${projectInfo.projectAlias}`]: "FOO=foo\nBAR=bar",
+        },
       });
 
-      expect(env.load({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+      expect(env.load({ ...projectInfo, functionsSource: testdir })).to.be.deep.equal({
         FOO: "foo",
         BAR: "bar",
       });
     });
 
     it("loads envs, preferring ones from .env.<project>", () => {
-      createEnvFiles(tmpdir, {
-        ".env": "FOO=bad\nBAR=bar",
-        [`.env.${projectInfo.projectId}`]: "FOO=good",
+      mockfs({
+        [testdir]: {
+          ".env": "FOO=bad\nBAR=bar",
+          [`.env.${projectInfo.projectId}`]: "FOO=good",
+        },
       });
 
-      expect(env.load({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+      expect(env.load({ ...projectInfo, functionsSource: testdir })).to.be.deep.equal({
         FOO: "good",
         BAR: "bar",
       });
     });
 
     it("loads envs, preferring ones from .env.<alias>", () => {
-      createEnvFiles(tmpdir, {
-        ".env": "FOO=bad\nBAR=bar",
-        [`.env.${projectInfo.projectAlias}`]: "FOO=good",
+      mockfs({
+        [testdir]: {
+          ".env": "FOO=bad\nBAR=bar",
+          [`.env.${projectInfo.projectAlias}`]: "FOO=good",
+        },
       });
 
-      expect(env.load({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+      expect(env.load({ ...projectInfo, functionsSource: testdir })).to.be.deep.equal({
         FOO: "good",
         BAR: "bar",
       });
     });
 
     it("loads envs, preferring ones from .env.local if emulator", () => {
-      createEnvFiles(tmpdir, {
-        ".env": "FOO=foo\nBAR=bar",
-        [`.env.${projectInfo.projectId}`]: "FOO=bad",
-        ".env.local": "FOO=good",
+      mockfs({
+        [testdir]: {
+          ".env": "FOO=foo\nBAR=bar",
+          [`.env.${projectInfo.projectId}`]: "FOO=bad",
+          ".env.local": "FOO=good",
+        },
       });
 
       expect(
-        env.load({ ...projectInfo, functionsSource: tmpdir, isEmulator: true })
+        env.load({ ...projectInfo, functionsSource: testdir, isEmulator: true })
       ).to.be.deep.equal({
         FOO: "good",
         BAR: "bar",
@@ -309,45 +309,53 @@ FOO=foo
     });
 
     it("throws an error if both .env.<project> and .env.<alias> exists", () => {
-      createEnvFiles(tmpdir, {
-        ".env": "FOO=foo\nBAR=bar",
-        [`.env.${projectInfo.projectId}`]: "FOO=not-foo",
-        [`.env.${projectInfo.projectAlias}`]: "FOO=not-foo",
+      mockfs({
+        [testdir]: {
+          ".env": "FOO=foo\nBAR=bar",
+          [`.env.${projectInfo.projectId}`]: "FOO=not-foo",
+          [`.env.${projectInfo.projectAlias}`]: "FOO=not-foo",
+        },
       });
 
       expect(() => {
-        env.load({ ...projectInfo, functionsSource: tmpdir });
+        env.load({ ...projectInfo, functionsSource: testdir });
       }).to.throw("Can't have both");
     });
 
     it("throws an error .env file is invalid", () => {
-      createEnvFiles(tmpdir, {
-        ".env": "BAH: foo",
+      mockfs({
+        [testdir]: {
+          ".env": "BAH: foo",
+        },
       });
 
       expect(() => {
-        env.load({ ...projectInfo, functionsSource: tmpdir });
+        env.load({ ...projectInfo, functionsSource: testdir });
       }).to.throw("Failed to load");
     });
 
     it("throws an error .env file contains invalid keys", () => {
-      createEnvFiles(tmpdir, {
-        ".env": "FOO=foo",
-        [`.env.${projectInfo.projectId}`]: "Foo=bad-key",
+      mockfs({
+        [testdir]: {
+          ".env": "FOO=foo",
+          [`.env.${projectInfo.projectId}`]: "Foo=bad-key",
+        },
       });
 
       expect(() => {
-        env.load({ ...projectInfo, functionsSource: tmpdir });
+        env.load({ ...projectInfo, functionsSource: testdir });
       }).to.throw("Failed to load");
     });
 
     it("throws an error .env file contains reserved keys", () => {
-      createEnvFiles(tmpdir, {
-        ".env": "FOO=foo\nPORT=100",
+      mockfs({
+        [testdir]: {
+          ".env": "FOO=foo\nPORT=100",
+        },
       });
 
       expect(() => {
-        env.load({ ...projectInfo, functionsSource: tmpdir });
+        env.load({ ...projectInfo, functionsSource: testdir });
       }).to.throw("Failed to load");
     });
   });
