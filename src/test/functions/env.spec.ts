@@ -8,136 +8,138 @@ import * as env from "../../functions/env";
 
 describe("functions/env", () => {
   describe("parse", () => {
-    it("parses values with trailing spaces", () => {
-      expect(env.parse("FOO=foo    ")).to.deep.equal({ envs: { FOO: "foo" }, errors: [] });
-      expect(env.parse("FOO='foo'    ")).to.deep.equal({ envs: { FOO: "foo" }, errors: [] });
-      expect(env.parse('FOO="foo"    ')).to.deep.equal({ envs: { FOO: "foo" }, errors: [] });
-    });
-
-    it("parses double quoted, multi-line values", () => {
-      expect(env.parse('FOO="foo1\\nfoo2"\nBAR=bar')).to.deep.equal({
-        envs: { FOO: "foo1\nfoo2", BAR: "bar" },
-        errors: [],
-      });
-      expect(
-        env.parse(`
+    const tests: { description: string; input: string; want: Record<string, string> }[] = [
+      {
+        description: "should parse values with trailing spaces",
+        input: "FOO=foo        ",
+        want: { FOO: "foo" },
+      },
+      {
+        description: "should parse values with trailing spaces (single quotes)",
+        input: "FOO='foo'        ",
+        want: { FOO: "foo" },
+      },
+      {
+        description: "should parse values with trailing spaces (double quotes)",
+        input: 'FOO="foo"        ',
+        want: { FOO: "foo" },
+      },
+      {
+        description: "should parse double quoted, multi-line values",
+        input: `
 FOO="foo1
 foo2"
 BAR=bar
-`)
-      ).to.deep.equal({ envs: { FOO: "foo1\nfoo2", BAR: "bar" }, errors: [] });
-    });
-
-    it("parses double quoted values with escape characters", () => {
-      expect(env.parse('FOO="foo1\\"foo2"')).to.deep.equal({
-        envs: { FOO: 'foo1"foo2' },
-        errors: [],
-      });
-    });
-
-    it("parses unquoted/ single quoted values with escape characters", () => {
-      expect(env.parse("FOO=foo1\\'foo2")).to.deep.equal({
-        envs: { FOO: "foo1\\'foo2" },
-        errors: [],
-      });
-      expect(env.parse("FOO='foo1\\'foo2'")).to.deep.equal({
-        envs: { FOO: "foo1\\'foo2" },
-        errors: [],
-      });
-    });
-
-    it("parses empty value", () => {
-      expect(env.parse("FOO=")).to.deep.equal({
-        envs: { FOO: "" },
-        errors: [],
-      });
-    });
-
-    it("parses keys with leading spaces", () => {
-      expect(env.parse("        FOO=foo        ")).to.deep.equal({
-        envs: { FOO: "foo" },
-        errors: [],
-      });
-    });
-
-    it("parses values with trailing spaces", () => {
-      expect(env.parse("FOO=foo        ")).to.deep.equal({
-        envs: { FOO: "foo" },
-        errors: [],
-      });
-      expect(env.parse("FOO='foo '        ")).to.deep.equal({
-        envs: { FOO: "foo " },
-        errors: [],
-      });
-      expect(env.parse('FOO="foo "        ')).to.deep.equal({
-        envs: { FOO: "foo " },
-        errors: [],
-      });
-    });
-
-    it("parses unquoted values with #", () => {
-      expect(env.parse("FOO=foo#bar")).to.deep.equal({
-        envs: { FOO: "foo" },
-        errors: [],
-      });
-    });
-
-    it("parses quoted values with #", () => {
-      expect(env.parse("FOO='foo#bar'")).to.deep.equal({
-        envs: { FOO: "foo#bar" },
-        errors: [],
-      });
-      expect(env.parse('FOO="foo#bar"')).to.deep.equal({
-        envs: { FOO: "foo#bar" },
-        errors: [],
-      });
-    });
-
-    it("ignores leading/trailing spaces before the separator", () => {
-      expect(env.parse("FOO   =      foo")).to.deep.equal({
-        envs: { FOO: "foo" },
-        errors: [],
-      });
-      expect(env.parse('FOO   =  "foo"')).to.deep.equal({
-        envs: { FOO: "foo" },
-        errors: [],
-      });
-      expect(env.parse("FOO   =  'foo'")).to.deep.equal({
-        envs: { FOO: "foo" },
-        errors: [],
-      });
-    });
-
-    it("ignores comments", () => {
-      expect(
-        env.parse(`
+`,
+        want: { FOO: "foo1\nfoo2", BAR: "bar" },
+      },
+      {
+        description: "should parse double quoted with escaped newlines",
+        input: 'FOO="foo1\\nfoo2"\nBAR=bar',
+        want: { FOO: "foo1\nfoo2", BAR: "bar" },
+      },
+      {
+        description: "should unescape escape characters for double quoted values",
+        input: 'FOO="foo1\\"foo2"',
+        want: { FOO: 'foo1"foo2' },
+      },
+      {
+        description: "should leave escape characters intact for single quoted values",
+        input: "FOO='foo1\\'foo2'",
+        want: { FOO: "foo1\\'foo2" },
+      },
+      {
+        description: "should leave escape characters intact for unquoted values",
+        input: "FOO=foo1\\'foo2",
+        want: { FOO: "foo1\\'foo2" },
+      },
+      {
+        description: "should parse empty value",
+        input: "FOO=",
+        want: { FOO: "" },
+      },
+      {
+        description: "should parse keys with leading spaces",
+        input: "        FOO=foo        ",
+        want: { FOO: "foo" },
+      },
+      {
+        description: "should parse values with trailing spaces (unquoted)",
+        input: "FOO=foo        ",
+        want: { FOO: "foo" },
+      },
+      {
+        description: "should parse values with trailing spaces (single quoted)",
+        input: "FOO='foo '        ",
+        want: { FOO: "foo " },
+      },
+      {
+        description: "should parse values with trailing spaces (double quoted)",
+        input: 'FOO="foo "        ',
+        want: { FOO: "foo " },
+      },
+      {
+        description: "should throw away unquoted values following #",
+        input: "FOO=foo#bar",
+        want: { FOO: "foo" },
+      },
+      {
+        description: "should keep values following # in singqle quotes",
+        input: "FOO='foo#bar'",
+        want: { FOO: "foo#bar" },
+      },
+      {
+        description: "should keep values following # in double quotes",
+        input: 'FOO="foo#bar"',
+        want: { FOO: "foo#bar" },
+      },
+      {
+        description: "should ignore leading/trailing spaces before the separator (unquoted)",
+        input: "FOO   =      foo",
+        want: { FOO: "foo" },
+      },
+      {
+        description: "should ignore leading/trailing spaces before the separator (single quotes)",
+        input: "FOO   =  'foo'",
+        want: { FOO: "foo" },
+      },
+      {
+        description: "should ignore leading/trailing spaces before the separator (double quotes)",
+        input: 'FOO   =  "foo"',
+        want: { FOO: "foo" },
+      },
+      {
+        description: "should ignore comments",
+        input: `
 FOO=foo # comment
 # line comment 1
 # line comment 2
 BAR=bar # another comment
-`)
-      ).to.deep.equal({
-        envs: { FOO: "foo", BAR: "bar" },
-        errors: [],
-      });
-    });
-
-    it("ignores empty lines", () => {
-      expect(
-        env.parse(`
+`,
+        want: { FOO: "foo", BAR: "bar" },
+      },
+      {
+        description: "should ignore empty lines",
+        input: `
 FOO=foo
 
 
 BAR=bar
 
-`)
-      ).to.deep.equal({
-        envs: { FOO: "foo", BAR: "bar" },
-        errors: [],
+`,
+        want: { FOO: "foo", BAR: "bar" },
+      },
+    ];
+
+    tests.forEach(({ description, input, want }) => {
+      it(description, () => {
+        const { envs, errors } = env.parse(input);
+        expect(envs).to.deep.equal(want);
+        expect(errors).to.be.empty;
       });
     });
 
-    it("catches invalid lines", () => {
+    it("should catch invalid lines", () => {
       expect(
         env.parse(`
 BAR###
@@ -294,7 +296,7 @@ FOO=foo
     it("loads envs, preferring ones from .env.local if emulator", () => {
       createEnvFiles(tmpdir, {
         ".env": "FOO=foo\nBAR=bar",
-        [`.env.${projectInfo.projectAlias}`]: "FOO=bad",
+        [`.env.${projectInfo.projectId}`]: "FOO=bad",
         ".env.local": "FOO=good",
       });
 
