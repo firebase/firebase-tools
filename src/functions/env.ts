@@ -192,7 +192,7 @@ export function load(options: {
   projectAlias?: string;
   isEmulator?: boolean;
 }): Record<string, string> {
-  const targetFiles = [".env", `.env.${options.projectId}`];
+  const targetFiles = [".env"];
   if (options.isEmulator) {
     targetFiles.push(".env.local");
   } else {
