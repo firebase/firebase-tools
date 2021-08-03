@@ -1,15 +1,13 @@
-"use strict";
+import * as _ from "lodash";
+import * as clc from "cli-color";
+import * as cjson from "cjson";
+import * as fs from "fs";
+import * as path from "path";
 
-const _ = require("lodash");
-const clc = require("cli-color");
-const cjson = require("cjson");
-const fs = require("fs");
-const path = require("path");
-
-const detectProjectRoot = require("./detectProjectRoot").detectProjectRoot;
-const { FirebaseError } = require("./error");
-const fsutils = require("./fsutils");
-const utils = require("./utils");
+import { detectProjectRoot } from "./detectProjectRoot";
+import { FirebaseError } from "./error";
+import * as fsutils from "./fsutils";
+import * as utils from "./utils";
 
 // "exclusive" target implies that a resource can only be assigned a single target name
 const TARGET_TYPES: { [type: string]: { resource: string; exclusive: boolean } } = {

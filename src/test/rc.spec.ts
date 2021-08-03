@@ -1,5 +1,3 @@
-"use strict";
-
 import { expect } from "chai";
 import * as path from "path";
 import { RC, loadRC, RCData } from "../rc";
