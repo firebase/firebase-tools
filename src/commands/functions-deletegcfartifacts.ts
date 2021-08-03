@@ -10,6 +10,7 @@ function getConfirmationMessage(artifacts: Set<string>): string {
   for (const artifact of artifacts) {
     message += `${artifact}\n`;
   }
+  message += "Are you sure?\n";
   return message;
 }
 
