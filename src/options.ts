@@ -6,6 +6,7 @@ export interface Options {
   cwd: string;
   configPath: string;
   only: string;
+  except: string;
   config: Config;
   filteredTargets: string[];
   force: boolean;

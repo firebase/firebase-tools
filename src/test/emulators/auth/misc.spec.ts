@@ -1,7 +1,12 @@
 import { expect } from "chai";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import { UserInfo } from "../../../emulator/auth/state";
-import { PROJECT_ID, signInWithPhoneNumber, TEST_PHONE_NUMBER } from "./helpers";
+import {
+  getAccountInfoByIdToken,
+  PROJECT_ID,
+  signInWithPhoneNumber,
+  TEST_PHONE_NUMBER,
+} from "./helpers";
 import { describeAuthEmulator } from "./setup";
 import {
   expectStatusCode,
@@ -16,7 +21,7 @@ import {
 } from "../../../emulator/auth/operations";
 import { toUnixTimestamp } from "../../../emulator/auth/utils";
 
-describeAuthEmulator("token refresh", ({ authApi }) => {
+describeAuthEmulator("token refresh", ({ authApi, getClock }) => {
   it("should exchange refresh token for new tokens", async () => {
     const { refreshToken, localId } = await registerAnonUser(authApi());
     await authApi()
@@ -37,6 +42,33 @@ describeAuthEmulator("token refresh", ({ authApi }) => {
         expect(res.body.token_type).to.equal("Bearer");
         expect(res.body.user_id).to.equal(localId);
       });
+  });
+
+  it("should populate auth_time to match lastLoginAt (in seconds since epoch)", async () => {
+    const emailUser = { email: "alice@example.com", password: "notasecret" };
+    const { refreshToken } = await registerUser(authApi(), emailUser);
+
+    getClock().tick(2000); // Wait 2 seconds before refreshing.
+
+    const res = await authApi()
+      .post("/securetoken.googleapis.com/v1/token")
+      .type("form")
+      // snake_case parameters also work, per OAuth 2.0 spec.
+      .send({ refresh_token: refreshToken, grantType: "refresh_token" })
+      .query({ key: "fake-api-key" });
+
+    const idToken = res.body.id_token;
+    const user = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(user.lastLoginAt).not.to.be.undefined;
+    const lastLoginAtSeconds = toUnixTimestamp(new Date(user.lastLoginAt!));
+    const decoded = decodeJwt(idToken, { complete: true }) as {
+      header: JwtHeader;
+      payload: FirebaseJwtPayload;
+    } | null;
+    expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
+    expect(decoded!.header.alg).to.eql("none");
+    // This should match login time, not token refresh time.
+    expect(decoded!.payload.auth_time).to.equal(lastLoginAtSeconds);
   });
 
   it("should error if user is disabled", async () => {
