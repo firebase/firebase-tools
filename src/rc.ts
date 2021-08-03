@@ -114,8 +114,7 @@ export class RC {
       throw new FirebaseError(
         `Unrecognized target type ${clc.bold(type)}. Must be one of ${Object.keys(
           TARGET_TYPES
-        ).join(", ")}`,
-        { exit: 1 }
+        ).join(", ")}`
       );
     }
 
@@ -211,8 +210,7 @@ export class RC {
           type +
           " " +
           name +
-          " <resources...>",
-        { exit: 1 }
+          " <resources...>"
       );
     }
 
