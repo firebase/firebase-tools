@@ -9,6 +9,7 @@ import { Options } from "../../options";
 import * as args from "./args";
 import * as gcs from "../../gcp/storage";
 import * as gcf from "../../gcp/cloudfunctions";
+import * as gcfv2 from "../../gcp/cloudfunctionsv2";
 import * as utils from "../../utils";
 
 const GCP_REGION = functionsUploadRegion;
@@ -22,16 +23,20 @@ async function uploadSourceV1(context: args.Context): Promise<void> {
     file: context.functionsSource!,
     stream: fs.createReadStream(context.functionsSource!),
   };
-  await gcs.upload(uploadOpts, uploadUrl);
+  await gcs.upload(uploadOpts, uploadUrl, {
+    "x-goog-content-length-range": "0,104857600",
+  });
 }
 
-async function uploadSourceV2(context: args.Context): Promise<void> {
-  const bucket = "staging." + (await gcs.getDefaultBucket(context.projectId));
+async function uploadSourceV2(context: args.Context, region: string): Promise<void> {
+  const res = await gcfv2.generateUploadUrl(context.projectId, region);
   const uploadOpts = {
     file: context.functionsSource!,
     stream: fs.createReadStream(context.functionsSource!),
   };
-  context.storageSource = await gcs.uploadObject(uploadOpts, bucket);
+  await gcs.upload(uploadOpts, res.uploadUrl);
+  context.storage = context.storage || {};
+  context.storage[region] = res.storageSource;
 }
 
 /**
@@ -62,7 +67,19 @@ export async function deploy(
       uploads.push(uploadSourceV1(context));
     }
     if (want.cloudFunctions.some((fn) => fn.platform === "gcfv2")) {
-      uploads.push(uploadSourceV2(context));
+      // GCFv2 cares about data residency and will possibly block deploys coming from other
+      // regions. At minimum, the implementation would consider it user-owned source and
+      // would break download URLs + console source viewing.
+      const functions = payload.functions!.backend.cloudFunctions;
+      const regions: string[] = [];
+      for (const func of functions) {
+        if (-1 === regions.indexOf(func.region)) {
+          regions.push(func.region);
+        }
+      }
+      for (const region of regions) {
+        uploads.push(uploadSourceV2(context, region));
+      }
     }
     await Promise.all(uploads);
 
