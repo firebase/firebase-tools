@@ -91,8 +91,8 @@ module.exports = function (client) {
   client.functions.delete = loadCommand("functions-delete");
   client.functions.log = loadCommand("functions-log");
   client.functions.shell = loadCommand("functions-shell");
-  if (previews.purgeartifacts) {
-    client.functions.purgeartifacts = loadCommand("functions-purgeartifacts");
+  if (previews.deletegcfartifacts) {
+    client.functions.deletegcfartifacts = loadCommand("functions-deletegcfartifacts");
   }
   client.help = loadCommand("help");
   client.hosting = {};

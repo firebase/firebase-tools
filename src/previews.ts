@@ -8,7 +8,7 @@ interface PreviewFlags {
   rtdbmanagement: boolean;
   functionsv2: boolean;
   golang: boolean;
-  purgeartifacts: boolean;
+  deletegcfartifacts: boolean;
 }
 
 export const previews: PreviewFlags = {
@@ -19,7 +19,7 @@ export const previews: PreviewFlags = {
   rtdbmanagement: false,
   functionsv2: false,
   golang: false,
-  purgeartifacts: false,
+  deletegcfartifacts: false,
 
   ...configstore.get("previews"),
 };

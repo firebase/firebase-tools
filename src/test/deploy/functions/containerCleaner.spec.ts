@@ -210,13 +210,279 @@ describe("ContainerRegistryCleaner", () => {
   });
 });
 
-describe("purgeArtifacts", () => {
-  it("Throws error invalid location", () => {
-    expect(() => containerCleaner.purgeArtifacts("project", "invalid")).to.throw;
+describe("listGCFArtifacts", () => {
+  const UUIDS = Promise.resolve({
+    children: ["uuid1", "uuid2", "uuid3"],
+    digests: [],
+    tags: [],
   });
 
-  it("Purges specific location", async () => {
-    // const cc = containerCleaner;
+  const UUIDS_1 = Promise.resolve({
+    children: ["uuid4", "uuid5", "uuid6"],
+    digests: [],
+    tags: [],
+  });
+
+  const UUIDS_2 = Promise.resolve({
+    children: ["uuid11", "uuid12"],
+    digests: [],
+    tags: [],
+  });
+
+  const LOCATIONS = Promise.resolve({
+    children: ["us-central1", "us-west2"],
+    digests: [],
+    tags: [],
+  });
+
+  const LOCATIONS_EU = Promise.resolve({
+    children: ["europe-west1", "europe-central2"],
+    digests: [],
+    tags: [],
+  });
+
+  const MIXED = Promise.resolve({
+    children: ["uuid1", "us-central1"],
+    digests: [],
+    tags: [],
+  });
+
+  const MIXED_EU = Promise.resolve({
+    children: ["uuid7", "europe-west1"],
+    digests: [],
+    tags: [],
+  });
+
+  const CHILD_TAGS = Promise.resolve({
+    children: [],
+    digests: [],
+    tags: ["tag1", "tag2"],
+  });
+
+  const CHILD_EMPTY = Promise.resolve({
+    children: [],
+    digests: [],
+    tags: [],
+  });
+
+  it("should throw an error on invalid location", () => {
+    expect(() => containerCleaner.listGCFArtifacts("project", ["invalid"])).to.throw;
+  });
+
+  it("should list artifacts, single location param", async () => {
+    const stubDH = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stubDH.ls.withArgs("project/gcf/us-central1").returns(UUIDS);
+    stubDH.ls.withArgs("project/gcf/us-central1/uuid1").returns(CHILD_TAGS);
+    stubDH.ls.withArgs("project/gcf/us-central1/uuid2").returns(CHILD_TAGS);
+    stubDH.ls.withArgs("project/gcf/us-central1/uuid3").returns(CHILD_EMPTY);
+    const helpers: Record<string, containerCleaner.DockerHelper> = {};
+    helpers["us"] = stubDH;
+
+    const artifacts = await containerCleaner.listGCFArtifacts("project", ["us-central1"], helpers);
+
+    expect(artifacts.size).to.eq(3);
+    expect(artifacts).to.include("uuid1 - tags:tag1,tag2");
+    expect(artifacts).to.include("uuid2 - tags:tag1,tag2");
+    expect(artifacts).to.include("uuid3");
+  });
+
+  it("should list artifacts, multiple locations param", async () => {
+    const stubDH = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stubDH.ls.withArgs("project/gcf/us-central1").returns(UUIDS);
+    stubDH.ls.withArgs("project/gcf/us-central1/uuid1").returns(CHILD_TAGS);
+    stubDH.ls.withArgs("project/gcf/us-central1/uuid2").returns(CHILD_TAGS);
+    stubDH.ls.withArgs("project/gcf/us-central1/uuid3").returns(CHILD_EMPTY);
+    const stubEU = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stubEU.ls.withArgs("project/gcf/europe-central2").returns(UUIDS_1);
+    stubEU.ls.withArgs("project/gcf/europe-central2/uuid4").returns(CHILD_TAGS);
+    stubEU.ls.withArgs("project/gcf/europe-central2/uuid5").returns(CHILD_TAGS);
+    stubEU.ls.withArgs("project/gcf/europe-central2/uuid6").returns(CHILD_EMPTY);
+    const helpers: Record<string, containerCleaner.DockerHelper> = {};
+    helpers["us"] = stubDH;
+    helpers["eu"] = stubEU;
+
+    const artifacts = await containerCleaner.listGCFArtifacts(
+      "project",
+      ["us-central1", "europe-central2"],
+      helpers
+    );
+
+    expect(artifacts.size).to.eq(6);
+    expect(artifacts).to.include("uuid1 - tags:tag1,tag2");
+    expect(artifacts).to.include("uuid2 - tags:tag1,tag2");
+    expect(artifacts).to.include("uuid3");
+    expect(artifacts).to.include("uuid4 - tags:tag1,tag2");
+    expect(artifacts).to.include("uuid5 - tags:tag1,tag2");
+    expect(artifacts).to.include("uuid6");
+  });
+
+  it("should list all artifacts from location dirs", async () => {
+    const stubUS = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stubUS.ls.withArgs("project/gcf").returns(LOCATIONS);
+    stubUS.ls.withArgs("project/gcf/us-central1").returns(UUIDS);
+    stubUS.ls.withArgs("project/gcf/us-central1/uuid1").returns(CHILD_TAGS);
+    stubUS.ls.withArgs("project/gcf/us-central1/uuid2").returns(CHILD_TAGS);
+    stubUS.ls.withArgs("project/gcf/us-central1/uuid3").returns(CHILD_EMPTY);
+    stubUS.ls.withArgs("project/gcf/us-west2").returns(CHILD_EMPTY);
+    const stubEmpty = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stubEmpty.ls.withArgs("project/gcf").returns(CHILD_EMPTY);
+    const helpers: Record<string, containerCleaner.DockerHelper> = {};
+    helpers["us"] = stubUS;
+    helpers["eu"] = helpers["asia"] = stubEmpty;
+
+    const artifacts = await containerCleaner.listGCFArtifacts("project", undefined, helpers);
+
+    expect(artifacts.size).to.eq(3);
+    expect(artifacts).to.include("uuid1 - tags:tag1,tag2");
+    expect(artifacts).to.include("uuid2 - tags:tag1,tag2");
+    expect(artifacts).to.include("uuid3");
+  });
+
+  it("should list artifacts from location dirs, multiple subdomains", async () => {
+    const stubUS = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stubUS.ls.withArgs("project/gcf").returns(LOCATIONS);
+    stubUS.ls.withArgs("project/gcf/us-central1").returns(UUIDS);
+    stubUS.ls.withArgs("project/gcf/us-central1/uuid1").returns(CHILD_TAGS);
+    stubUS.ls.withArgs("project/gcf/us-central1/uuid2").returns(CHILD_TAGS);
+    stubUS.ls.withArgs("project/gcf/us-central1/uuid3").returns(CHILD_EMPTY);
+    stubUS.ls.withArgs("project/gcf/us-west2").returns(CHILD_EMPTY);
+    const stubEU = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stubEU.ls.withArgs("project/gcf").returns(LOCATIONS_EU);
+    stubEU.ls.withArgs("project/gcf/europe-west1").returns(UUIDS_1);
+    stubEU.ls.withArgs("project/gcf/europe-west1/uuid4").returns(CHILD_TAGS);
+    stubEU.ls.withArgs("project/gcf/europe-west1/uuid5").returns(CHILD_TAGS);
+    stubEU.ls.withArgs("project/gcf/europe-west1/uuid6").returns(CHILD_EMPTY);
+    stubEU.ls.withArgs("project/gcf/europe-central2").returns(CHILD_EMPTY);
+    const stubEmpty = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stubEmpty.ls.withArgs("project/gcf").returns(CHILD_EMPTY);
+    const helpers: Record<string, containerCleaner.DockerHelper> = {};
+    helpers["us"] = stubUS;
+    helpers["eu"] = stubEU;
+    helpers["asia"] = stubEmpty;
+
+    const artifacts = await containerCleaner.listGCFArtifacts("project", undefined, helpers);
+
+    expect(artifacts.size).to.eq(6);
+    expect(artifacts).to.include("uuid1 - tags:tag1,tag2");
+    expect(artifacts).to.include("uuid2 - tags:tag1,tag2");
+    expect(artifacts).to.include("uuid3");
+    expect(artifacts).to.include("uuid4 - tags:tag1,tag2");
+    expect(artifacts).to.include("uuid5 - tags:tag1,tag2");
+    expect(artifacts).to.include("uuid6");
+  });
+
+  it("should list artifacts no location dirs", async () => {
+    const stubUS = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stubUS.ls.withArgs("project/gcf").returns(UUIDS);
+    stubUS.ls.withArgs("project/gcf/uuid1").returns(CHILD_TAGS);
+    stubUS.ls.withArgs("project/gcf/uuid2").returns(CHILD_TAGS);
+    stubUS.ls.withArgs("project/gcf/uuid3").returns(CHILD_EMPTY);
+    const stubEmpty = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stubEmpty.ls.withArgs("project/gcf").returns(CHILD_EMPTY);
+    const helpers: Record<string, containerCleaner.DockerHelper> = {};
+    helpers["us"] = stubUS;
+    helpers["eu"] = helpers["asia"] = stubEmpty;
+
+    const artifacts = await containerCleaner.listGCFArtifacts("project", undefined, helpers);
+
+    expect(artifacts.size).to.eq(3);
+    expect(artifacts).to.include("uuid1 - tags:tag1,tag2");
+    expect(artifacts).to.include("uuid2 - tags:tag1,tag2");
+    expect(artifacts).to.include("uuid3");
+  });
+
+  it("should list artifacts no location dirs, multiple subdomains", async () => {
+    const stubUS = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stubUS.ls.withArgs("project/gcf").returns(UUIDS);
+    stubUS.ls.withArgs("project/gcf/uuid1").returns(CHILD_TAGS);
+    stubUS.ls.withArgs("project/gcf/uuid2").returns(CHILD_TAGS);
+    stubUS.ls.withArgs("project/gcf/uuid3").returns(CHILD_EMPTY);
+    const stubEU = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stubEU.ls.withArgs("project/gcf").returns(UUIDS_1);
+    stubEU.ls.withArgs("project/gcf/uuid4").returns(CHILD_TAGS);
+    stubEU.ls.withArgs("project/gcf/uuid5").returns(CHILD_TAGS);
+    stubEU.ls.withArgs("project/gcf/uuid6").returns(CHILD_EMPTY);
+    const stubEmpty = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stubEmpty.ls.withArgs("project/gcf").returns(CHILD_EMPTY);
+    const helpers: Record<string, containerCleaner.DockerHelper> = {};
+    helpers["us"] = stubUS;
+    helpers["eu"] = stubEU;
+    helpers["asia"] = stubEmpty;
+
+    const artifacts = await containerCleaner.listGCFArtifacts("project", undefined, helpers);
+
+    expect(artifacts.size).to.eq(6);
+    expect(artifacts).to.include("uuid1 - tags:tag1,tag2");
+    expect(artifacts).to.include("uuid2 - tags:tag1,tag2");
+    expect(artifacts).to.include("uuid3");
+    expect(artifacts).to.include("uuid4 - tags:tag1,tag2");
+    expect(artifacts).to.include("uuid5 - tags:tag1,tag2");
+    expect(artifacts).to.include("uuid6");
+  });
+
+  it("should list all artifacts mixed location dirs", async () => {
+    const stubUS = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stubUS.ls.withArgs("project/gcf").returns(MIXED);
+    stubUS.ls.withArgs("project/gcf/uuid1").returns(CHILD_TAGS);
+    stubUS.ls.withArgs("project/gcf/us-central1").returns(UUIDS_1);
+    stubUS.ls.withArgs("project/gcf/us-central1/uuid4").returns(CHILD_TAGS);
+    stubUS.ls.withArgs("project/gcf/us-central1/uuid5").returns(CHILD_TAGS);
+    stubUS.ls.withArgs("project/gcf/us-central1/uuid6").returns(CHILD_EMPTY);
+    const stubEmpty = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stubEmpty.ls.withArgs("project/gcf").returns(CHILD_EMPTY);
+    const helpers: Record<string, containerCleaner.DockerHelper> = {};
+    helpers["us"] = stubUS;
+    helpers["eu"] = helpers["asia"] = stubEmpty;
+
+    const artifacts = await containerCleaner.listGCFArtifacts("project", undefined, helpers);
+
+    expect(artifacts.size).to.eq(4);
+    expect(artifacts).to.include("uuid1 - tags:tag1,tag2");
+    expect(artifacts).to.include("uuid4 - tags:tag1,tag2");
+    expect(artifacts).to.include("uuid5 - tags:tag1,tag2");
+    expect(artifacts).to.include("uuid6");
+  });
+
+  it("should list all artifacts mixed location dirs, multiple subdomains", async () => {
+    const stubUS = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stubUS.ls.withArgs("project/gcf").returns(MIXED);
+    stubUS.ls.withArgs("project/gcf/uuid1").returns(CHILD_TAGS);
+    stubUS.ls.withArgs("project/gcf/us-central1").returns(UUIDS_1);
+    stubUS.ls.withArgs("project/gcf/us-central1/uuid4").returns(CHILD_TAGS);
+    stubUS.ls.withArgs("project/gcf/us-central1/uuid5").returns(CHILD_TAGS);
+    stubUS.ls.withArgs("project/gcf/us-central1/uuid6").returns(CHILD_EMPTY);
+    const stubEU = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stubEU.ls.withArgs("project/gcf").returns(MIXED_EU);
+    stubEU.ls.withArgs("project/gcf/uuid7").returns(CHILD_TAGS);
+    stubEU.ls.withArgs("project/gcf/europe-west1").returns(UUIDS_2);
+    stubEU.ls.withArgs("project/gcf/europe-west1/uuid11").returns(CHILD_TAGS);
+    stubEU.ls.withArgs("project/gcf/europe-west1/uuid12").returns(CHILD_EMPTY);
+    const stubEmpty = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stubEmpty.ls.withArgs("project/gcf").returns(CHILD_EMPTY);
+    const helpers: Record<string, containerCleaner.DockerHelper> = {};
+    helpers["us"] = stubUS;
+    helpers["eu"] = stubEU;
+    helpers["asia"] = stubEmpty;
+
+    const artifacts = await containerCleaner.listGCFArtifacts("project", undefined, helpers);
+
+    expect(artifacts.size).to.eq(7);
+    expect(artifacts).to.include("uuid1 - tags:tag1,tag2");
+    expect(artifacts).to.include("uuid4 - tags:tag1,tag2");
+    expect(artifacts).to.include("uuid5 - tags:tag1,tag2");
+    expect(artifacts).to.include("uuid6");
+    expect(artifacts).to.include("uuid7 - tags:tag1,tag2");
+    expect(artifacts).to.include("uuid11 - tags:tag1,tag2");
+    expect(artifacts).to.include("uuid12");
+  });
+});
+
+describe("deleteGCFArtifacts", () => {
+  it("should throw an error on invalid location", () => {
+    expect(() => containerCleaner.deleteGCFArtifacts("project", ["invalid"])).to.throw;
+  });
+
+  it("should purge a specific location", async () => {
     const stubDH = sinon.createStubInstance(containerCleaner.DockerHelper);
     stubDH.ls.withArgs("project/gcf/us-central1").returns(
       Promise.resolve({
@@ -230,37 +496,75 @@ describe("purgeArtifacts", () => {
     helpers["eu"] = stubDH;
     helpers["asia"] = stubDH;
 
-    await containerCleaner.purgeArtifacts("project", "us-central1", helpers);
+    await containerCleaner.deleteGCFArtifacts("project", ["us-central1"], helpers);
 
     expect(stubDH.rm).to.have.been.calledOnceWith("project/gcf/us-central1");
-    // expect(stubDH.rm).to.have.been.called;
-    // sinon.assert.calledOnce(stub);
   });
 
-  it("Purges all subdomains", async () => {
+  it("should purge a multiple specific locations", async () => {
+    const stubUS = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stubUS.ls.withArgs("project/gcf/us-central1").returns(
+      Promise.resolve({
+        children: ["uuid"],
+        digests: [],
+        tags: [],
+      })
+    );
+    stubUS.ls.withArgs("project/gcf/us-west2").returns(
+      Promise.resolve({
+        children: ["uuid1"],
+        digests: [],
+        tags: [],
+      })
+    );
+    const stubEU = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stubEU.ls.withArgs("project/gcf/europe-west1").returns(
+      Promise.resolve({
+        children: ["uuid2"],
+        digests: [],
+        tags: [],
+      })
+    );
+    const helpers: Record<string, containerCleaner.DockerHelper> = {};
+    helpers["us"] = stubUS;
+    helpers["eu"] = stubEU;
+
+    await containerCleaner.deleteGCFArtifacts(
+      "project",
+      ["us-central1", "us-west2", "europe-west1"],
+      helpers
+    );
+
+    expect(stubUS.rm).to.have.been.calledTwice;
+    expect(stubUS.rm).to.have.been.calledWith("project/gcf/us-central1");
+    expect(stubUS.rm).to.have.been.calledWith("project/gcf/us-central1");
+    expect(stubEU.rm).to.have.been.calledOnceWith("project/gcf/europe-west1");
+  });
+
+  it("should purge all subdomains", async () => {
     const gcfObject = Promise.resolve({
-      children: ["uuid"],
+      children: ["uuid", "uuid1", "uuid2"],
       digests: [],
       tags: [],
     });
-    const stubDHUS = sinon.createStubInstance(containerCleaner.DockerHelper);
-    const stubDHEU = sinon.createStubInstance(containerCleaner.DockerHelper);
+    const stubUS = sinon.createStubInstance(containerCleaner.DockerHelper);
+    const stubEU = sinon.createStubInstance(containerCleaner.DockerHelper);
     const stubDHAsia = sinon.createStubInstance(containerCleaner.DockerHelper);
-    stubDHUS.ls.withArgs("project/gcf").returns(gcfObject);
-    stubDHEU.ls.withArgs("project/gcf").returns(gcfObject);
+    stubUS.ls.withArgs("project/gcf").returns(gcfObject);
+    stubEU.ls.withArgs("project/gcf").returns(gcfObject);
     stubDHAsia.ls.withArgs("project/gcf").returns(gcfObject);
 
     const helpers: Record<string, containerCleaner.DockerHelper> = {
-      us: stubDHUS,
-      eu: stubDHEU,
+      us: stubUS,
+      eu: stubEU,
       asia: stubDHAsia,
     };
 
-    await containerCleaner.purgeArtifacts("project", undefined, helpers);
+    await containerCleaner.deleteGCFArtifacts("project", undefined, helpers);
 
     // we rm the gcf directory in every subdomain
-    expect(stubDHUS.rm).to.have.been.calledOnceWith("project/gcf");
-    expect(stubDHEU.rm).to.have.been.calledOnceWith("project/gcf");
+    expect(stubUS.rm).to.have.been.calledOnceWith("project/gcf");
+    expect(stubEU.rm).to.have.been.calledOnceWith("project/gcf");
     expect(stubDHAsia.rm).to.have.been.calledOnceWith("project/gcf");
   });
 });
