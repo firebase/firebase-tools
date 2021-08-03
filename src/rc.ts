@@ -57,10 +57,11 @@ export class RC {
   }
 
   private set(key: string | string[], value: any): void {
-    return _.set(this.data, key, value);
+    _.set(this.data, key, value);
+    return;
   }
 
-  private unset(key: string | string[]): void {
+  private unset(key: string | string[]): boolean {
     return _.unset(this.data, key);
   }
 
