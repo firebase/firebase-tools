@@ -1,3 +1,6 @@
+import * as functionsEnv from "../functions/env";
+import { FirebaseError } from "../error";
+import { previews } from "../previews";
 import { EmulatorLog } from "./types";
 import { CloudFunction, DeploymentOptions, https } from "firebase-functions";
 import {
@@ -645,6 +648,26 @@ async function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): Pr
   process.env.TZ = "UTC";
   process.env.GCLOUD_PROJECT = frb.projectId;
   process.env.FUNCTIONS_EMULATOR = "true";
+
+  if (previews.dotenv) {
+    // Load user-specified environment variables.
+    try {
+      const userEnvs = functionsEnv.load({ functionsSource: frb.cwd, projectId: "local" });
+      for (const [k, v] of Object.entries(userEnvs)) {
+        process.env[k] = v;
+      }
+    } catch (e) {
+      let message: string = e.message || `${e}`;
+      if (e instanceof FirebaseError) {
+        for (const child of e.children) {
+          if (child instanceof Error) {
+            message += `\n- ${child.message}`;
+          }
+        }
+      }
+      new EmulatorLog("SYSTEM", "function-env-load-failed", message).log();
+    }
+  }
 
   // Look for .runtimeconfig.json in the functions directory
   const configPath = `${frb.cwd}/.runtimeconfig.json`;
