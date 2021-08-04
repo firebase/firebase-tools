@@ -5945,7 +5945,7 @@ export default {
         description: "Emulator-specific configuration.",
         properties: {
           signIn: { properties: { allowDuplicateEmails: { type: "boolean" } }, type: "object" },
-          usageMode: { enum: ["DEFAULT", "PASSTHROUGH"], type: "string" },
+          usageMode: { enum: ["USAGE_MODE_UNSPECIFIED", "DEFAULT", "PASSTHROUGH"], type: "string" },
         },
       },
       EmulatorV1ProjectsOobCodes: {

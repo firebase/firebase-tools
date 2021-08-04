@@ -299,7 +299,7 @@ function addEmulatorOperations(openapi3: any): void {
         type: "object",
       },
       usageMode: {
-        enum: ["DEFAULT", "PASSTHROUGH"],
+        enum: ["USAGE_MODE_UNSPECIFIED", "DEFAULT", "PASSTHROUGH"],
         type: "string",
       },
     },

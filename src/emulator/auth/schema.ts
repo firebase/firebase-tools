@@ -2595,7 +2595,7 @@ export interface components {
      */
     EmulatorV1ProjectsConfig: {
       signIn?: { allowDuplicateEmails?: boolean };
-      usageMode?: "DEFAULT" | "PASSTHROUGH";
+      usageMode?: "USAGE_MODE_UNSPECIFIED" | "DEFAULT" | "PASSTHROUGH";
     };
     /**
      * Details of all pending confirmation codes.

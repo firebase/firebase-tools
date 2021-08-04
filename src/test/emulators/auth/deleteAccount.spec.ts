@@ -126,18 +126,13 @@ describeAuthEmulator("accounts:delete", ({ authApi }) => {
       });
   });
 
-  it("should error on delete with localId if usageMode is passthrough", async () => {
-    const { localId, idToken } = await registerUser(authApi(), {
-      email: "alice@example.com",
-      password: "notasecret",
-    });
-    await deleteAccount(authApi(), { idToken });
+  it("should return not found on delete with localId if usageMode is passthrough", async () => {
     await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
 
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:delete")
       .set("Authorization", "Bearer owner")
-      .send({ localId })
+      .send({ localId: "does-not-exist" })
       .then((res) => {
         expectStatusCode(400, res);
         expect(res.body.error).to.have.property("message").equals("USER_NOT_FOUND");
