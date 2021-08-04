@@ -1,6 +1,7 @@
 import { functionMatchesAnyGroup } from "./functionsDeployHelper";
 import { checkForInvalidChangeOfTrigger } from "./validate";
 import { isFirebaseManaged } from "../../deploymentTool";
+import { previews } from "../../previews";
 import { logLabeledBullet } from "../../utils";
 import * as backend from "./backend";
 import * as gcfv2 from "../../gcp/cloudfunctionsv2";
@@ -73,12 +74,13 @@ export function calculateRegionalFunctionChanges(
 
       checkForInvalidChangeOfTrigger(fn, haveFn);
 
-      // Remember old environment variables that might have been set with
-      // gcloud or the cloud console.
-      fn.environmentVariables = {
-        ...haveFn.environmentVariables,
-        ...fn.environmentVariables,
-      };
+      if (!previews.dotenv) {
+        // Remember old environment variables that might have been set with gcloud or the cloud console.
+        fn.environmentVariables = {
+          ...haveFn.environmentVariables,
+          ...fn.environmentVariables,
+        };
+      } // Otherwise, we overwrite the environment variable with ones specified by the user.
 
       if (haveFn.platform === "gcfv1" && fn.platform === "gcfv2" && !fn.concurrency) {
         upgradedToGCFv2WithoutSettingConcurrency = true;

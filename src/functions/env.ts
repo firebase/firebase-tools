@@ -231,7 +231,7 @@ export function load(options: {
       });
     }
   }
-  logger.debug(
+  logger.info(
     `Loaded environment variables ${JSON.stringify(envs)} from ${targetPaths.join(",")}.`
   );
 
