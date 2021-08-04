@@ -705,9 +705,6 @@
                             "type": "boolean"
                         }
                     },
-                    "required": [
-                        "public"
-                    ],
                     "type": "object"
                 },
                 {
@@ -1057,7 +1054,6 @@
                                     }
                                 },
                                 "required": [
-                                    "public",
                                     "target"
                                 ],
                                 "type": "object"
@@ -1406,7 +1402,6 @@
                                     }
                                 },
                                 "required": [
-                                    "public",
                                     "site"
                                 ],
                                 "type": "object"

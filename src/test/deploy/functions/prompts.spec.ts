@@ -34,6 +34,7 @@ const SAMPLE_OPTIONS: Options = {
   /* eslint-disable-next-line */
   config: {} as any,
   only: "functions",
+  except: "",
   nonInteractive: false,
   json: false,
   interactive: false,
