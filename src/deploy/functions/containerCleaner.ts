@@ -196,9 +196,7 @@ export async function listGcfPaths(
       .filter((loc) => locationsSet.has(loc))
       .map((loc) => `${SUBDOMAIN_MAPPING[loc]}.${containerRegistryDomain}/${projectId}/gcf/${loc}`);
   }
-  return gcfDirs.map(
-    (loc) => `${SUBDOMAIN_MAPPING[loc] || "us"}.${containerRegistryDomain}/${projectId}/gcf/${loc}`
-  );
+  return gcfDirs.map((loc) => `${SUBDOMAIN_MAPPING[loc] || "us"}.${containerRegistryDomain}/${projectId}/gcf/${loc}`);
 }
 
 /**
