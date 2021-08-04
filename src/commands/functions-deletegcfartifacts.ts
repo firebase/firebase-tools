@@ -1,16 +1,21 @@
 import { Command } from "../command";
 import * as utils from "../utils";
 import * as getProjectId from "../getProjectId";
-import { listGCFArtifacts, deleteGCFArtifacts } from "../deploy/functions/containerCleaner";
+import {
+  listGcfPaths,
+  deleteGcfArtifacts,
+  DockerHelper,
+} from "../deploy/functions/containerCleaner";
 import { promptOnce } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
+import { FirebaseError } from "../error";
 
-function getConfirmationMessage(artifacts: Set<string>): string {
-  let message = "You are about to delete the following images from the gcf/ directory: \n";
-  for (const artifact of artifacts) {
-    message += `${artifact}\n`;
+function getConfirmationMessage(paths: string[]): string {
+  let message = "You are about to delete all images in the following directories:\n\n";
+  for (const path of paths) {
+    message += `${path}\n`;
   }
-  message += "Are you sure?\n";
+  message += "\nAre you sure?\n";
   return message;
 }
 
@@ -26,22 +31,23 @@ export default new Command("functions:deletegcfartifacts")
   .action(async (options: { regions?: string }) => {
     const projectId = getProjectId(options);
     const regions = options.regions ? options.regions.split(",") : undefined;
+    const dockerHelper: Record<string, DockerHelper> = {}; // cache dockerhelpers
     try {
-      const gcfArtifacts = await listGCFArtifacts(projectId, regions);
+      const gcfPaths = await listGcfPaths(projectId, regions, dockerHelper);
       const confirmDeletion = await promptOnce(
         {
           type: "confirm",
           name: "force",
           default: false,
-          message: getConfirmationMessage(gcfArtifacts),
+          message: getConfirmationMessage(gcfPaths),
         },
         options
       );
       if (!confirmDeletion) {
-        return utils.reject("Command aborted.", { exit: 1 });
+        throw new FirebaseError("Command aborted.", { exit: 1 });
       }
-      await deleteGCFArtifacts(projectId, regions);
+      await deleteGcfArtifacts(projectId, regions, dockerHelper);
     } catch (err) {
-      utils.reject(err);
+      throw new FirebaseError("Command failed.", { original: err });
     }
   });

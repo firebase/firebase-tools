@@ -40,10 +40,6 @@ const SUBDOMAIN_MAPPING: Record<string, string> = {
   "australia-southeast1": "asia",
 };
 
-// The list of possible region roots or the subdomain for GCR
-// The full address: <subdomain>.gcr.io/
-const SUBDOMAINS: string[] = ["us", "eu", "asia"];
-
 export async function cleanupBuildImages(functions: backend.FunctionSpec[]): Promise<void> {
   utils.logBullet(clc.bold.cyan("functions: ") + "cleaning up build files...");
   const gcrCleaner = new ContainerRegistryCleaner();
@@ -134,71 +130,16 @@ export class ContainerRegistryCleaner {
 }
 
 /**
- * Helper function to flatten all docker tags from the given path to a comma separated string
- * @param dockerHelper: the specific subdomain docker helper to search GCR with
- * @param path: the relative GCR path where the tags live
+ * Get or create a DockerHelper instance from a specific subdomain
+ * @param cache: a record that maps subdomains to DockerHelper instances
+ * @param subdomain: the host of a google cloud region
+ * @returns a {@link DockerHelper} instance for the subdomain
  */
-async function getFlattenedTags(dockerHelper: DockerHelper, path: string): Promise<string> {
-  const stat = await dockerHelper.ls(path);
-  const tags = stat.tags;
-  return tags.length == 0 ? "" : tags.join(",");
-}
-
-/**
- * Helper function to format and insert artifact strings with tags into a set of all artifact strings
- * @param dockerHelper: the specific subdomain docker helper to search GCR with
- * @param artifacts: a list of artifact names from GCR
- * @param path: the relative GCR path that the artifacts live
- */
-async function formatTagsAndInsert(
-  dockerHelper: DockerHelper,
-  artifactList: string[],
-  path: string,
-  artifacts: Set<string>
-): Promise<void> {
-  for (const artifact of artifactList) {
-    const tags = await getFlattenedTags(dockerHelper, path + `/${artifact}`);
-    const artifactEntry = tags.length === 0 ? artifact : `${artifact} - tags:${tags}`;
-    artifacts.add(artifactEntry);
+function getHelper(cache: Record<string, DockerHelper>, subdomain: string): DockerHelper {
+  if (!cache[subdomain]) {
+    cache[subdomain] = new DockerHelper(`https://${subdomain}.${containerRegistryDomain}`);
   }
-}
-
-/**
- * Helper function to find all relative Google Cloud Registry paths for use with searching for GCF artifacts
- * @param projectId: the current project that contains GCF artifacts
- * @param subdomain: the current subdomain that we're searching or deleting from
- * @param locations: an optional array that contains specific Google Regions. If ommited, will return the root path.
- * @returns an array of relative GCR paths.
- */
-function findGCFPaths(projectId: string, subdomain: string, locations?: string[]): string[] {
-  const paths: string[] = [];
-  if (locations) {
-    for (const location of locations) {
-      if (SUBDOMAIN_MAPPING[location] !== subdomain) {
-        continue;
-      }
-      paths.push(`${projectId}/gcf/${location}`);
-    }
-  } else {
-    paths.push(`${projectId}/gcf`);
-  }
-  return paths;
-}
-
-/**
- * Helper function to find all the subdomains for the supplied locations
- * @param locations: an optional array of google cloud regions, if omitted will return all {@link SUBDOMAINS}
- * @returns a set of subdomains
- */
-function getSubdomainsFromLocations(locations?: string[]): Set<string> {
-  if (locations === undefined) {
-    return new Set(SUBDOMAINS);
-  }
-  const subdomains = new Set<string>();
-  for (const location of locations) {
-    subdomains.add(SUBDOMAIN_MAPPING[location]);
-  }
-  return subdomains;
+  return cache[subdomain];
 }
 
 /**
@@ -210,72 +151,54 @@ function getSubdomainsFromLocations(locations?: string[]): Set<string> {
  * @throws {@link FirebaseError}
  * Thrown if the provided location is not a valid Google Cloud region or we fail to search subdomains.
  */
-export async function listGCFArtifacts(
+export async function listGcfPaths(
   projectId: string,
   locations?: string[],
   dockerHelpers: Record<string, DockerHelper> = {}
-): Promise<Set<string>> {
-  if (locations && locations.find((location) => SUBDOMAIN_MAPPING[location] === undefined)) {
-    throw new FirebaseError("Invalid region supplied.");
+): Promise<string[]> {
+  if (locations) {
+    const invalidRegion = locations.find((loc) => !SUBDOMAIN_MAPPING[loc]);
+    if (invalidRegion) {
+      throw new FirebaseError(`Invalid region ${invalidRegion} supplied`);
+    }
   }
-
-  const artifacts = new Set<string>();
+  const subdomains = new Set(Object.values(SUBDOMAIN_MAPPING));
   const failedSubdomains = new Set<string>();
-  const subdomains = getSubdomainsFromLocations(locations);
-  for (const subdomain of subdomains) {
-    if (dockerHelpers[subdomain] === undefined) {
-      const origin = `https://${subdomain}.${containerRegistryDomain}`;
-      dockerHelpers[subdomain] = new DockerHelper(origin);
+  const listAll = [...subdomains].map((subdomain) => {
+    try {
+      return getHelper(dockerHelpers, subdomain).ls(`${projectId}/gcf`);
+    } catch (err) {
+      failedSubdomains.add(subdomain);
+      logger.debug(err);
+      const stat: Stat = {
+        children: [],
+        digests: [],
+        tags: [],
+      };
+      return Promise.resolve(stat);
     }
+  });
 
-    const searchPaths = findGCFPaths(projectId, subdomain, locations);
-    for (const path of searchPaths) {
-      try {
-        const rootChildren = (await dockerHelpers[subdomain].ls(path)).children;
-        if (rootChildren.length === 0) {
-          continue;
-        }
-        // partition children into subsets that are artifacts and location dirs
-        const locationDirs = rootChildren.filter((child) => SUBDOMAIN_MAPPING[child] !== undefined);
-        const artifactCandidates = rootChildren.filter(
-          (child) => SUBDOMAIN_MAPPING[child] === undefined
-        );
-        // search 1 level deeper on directories
-        for (const dir of locationDirs) {
-          try {
-            const innerPath = path + `/${dir}`;
-            const innerChildren = (await dockerHelpers[subdomain].ls(innerPath)).children;
-            await formatTagsAndInsert(
-              dockerHelpers[subdomain],
-              innerChildren,
-              innerPath,
-              artifacts
-            );
-          } catch (err) {
-            logger.debug(err);
-          }
-        }
-        // format the artifacts with tags
-        try {
-          await formatTagsAndInsert(dockerHelpers[subdomain], artifactCandidates, path, artifacts);
-        } catch (err) {
-          logger.debug(err);
-        }
-      } catch (err) {
-        failedSubdomains.add(subdomain);
-        logger.debug(err);
-      }
-    }
-  }
+  const gcfDirs = (await Promise.all(listAll))
+    .map((results) => results.children)
+    .reduce((acc, val) => [...acc, ...val], []);
 
-  if (failedSubdomains.size == SUBDOMAINS.length) {
+  if (failedSubdomains.size == subdomains.size) {
     throw new FirebaseError("Failed to search all subdomains.");
   } else if (failedSubdomains.size > 0) {
     const failed: string = [...failedSubdomains].join(",");
     throw new FirebaseError(`Failed to search the following subdomains: ${failed}`);
   }
 
-  return artifacts;
+  if (locations) {
+    const locationsSet = new Set(locations); // for quick lookup
+    return gcfDirs
+      .filter((loc) => locationsSet.has(loc))
+      .map((loc) => `${SUBDOMAIN_MAPPING[loc]}.${containerRegistryDomain}/${projectId}/gcf/${loc}`);
+  }
+  return gcfDirs.map(
+    (loc) => `${SUBDOMAIN_MAPPING[loc] || "us"}.${containerRegistryDomain}/${projectId}/gcf/${loc}`
+  );
 }
 
 /**
@@ -287,39 +210,47 @@ export async function listGCFArtifacts(
  * @throws {@link FirebaseError}
  * Thrown if the provided location is not a valid Google Cloud region or we fail to delete subdomains.
  */
-export async function deleteGCFArtifacts(
+export async function deleteGcfArtifacts(
   projectId: string,
   locations?: string[],
   dockerHelpers: Record<string, DockerHelper> = {}
 ): Promise<void> {
-  if (locations && locations.find((location) => SUBDOMAIN_MAPPING[location] === undefined)) {
-    throw new FirebaseError("Invalid region supplied.");
-  }
-
-  const subdomains = getSubdomainsFromLocations(locations);
-  const failedSubdomains = new Set<string>();
-  for (const subdomain of subdomains) {
-    if (dockerHelpers[subdomain] === undefined) {
-      const origin = `https://${subdomain}.${containerRegistryDomain}`;
-      dockerHelpers[subdomain] = new DockerHelper(origin);
+  if (locations) {
+    const invalidRegion = locations.find((loc) => !SUBDOMAIN_MAPPING[loc]);
+    if (invalidRegion) {
+      throw new FirebaseError(`Invalid region ${invalidRegion} supplied`);
     }
+  }
+  const subdomains = new Set(Object.values(SUBDOMAIN_MAPPING));
+  const failedSubdomains = new Set<string>();
 
-    const purgePaths = findGCFPaths(projectId, subdomain, locations);
-    for (const path of purgePaths) {
+  if (locations) {
+    const deleteLocations = locations.map((loc) => {
       try {
-        await dockerHelpers[subdomain].rm(path);
+        return getHelper(dockerHelpers, SUBDOMAIN_MAPPING[loc]).rm(`${projectId}/gcf/${loc}`);
+      } catch (err) {
+        failedSubdomains.add(SUBDOMAIN_MAPPING[loc]);
+        logger.debug(err);
+      }
+    });
+    await Promise.all(deleteLocations);
+  } else {
+    const deleteAll = [...subdomains].map((subdomain) => {
+      try {
+        return getHelper(dockerHelpers, subdomain).rm(`${projectId}/gcf`);
       } catch (err) {
         failedSubdomains.add(subdomain);
         logger.debug(err);
       }
-    }
+    });
+    await Promise.all(deleteAll);
   }
 
-  if (failedSubdomains.size == SUBDOMAINS.length) {
-    throw new FirebaseError("Failed to delete all subdomains.");
+  if (failedSubdomains.size == subdomains.size) {
+    throw new FirebaseError("Failed to search all subdomains.");
   } else if (failedSubdomains.size > 0) {
     const failed: string = [...failedSubdomains].join(",");
-    throw new FirebaseError(`Failed to delete the following subdomains: ${failed}`);
+    throw new FirebaseError(`Failed to search the following subdomains: ${failed}`);
   }
 }
 
