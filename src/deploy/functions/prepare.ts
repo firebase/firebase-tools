@@ -9,6 +9,7 @@ import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import * as args from "./args";
 import * as backend from "./backend";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
+import { FirebaseError } from "../../error";
 import * as functionsConfig from "../../functionsConfig";
 import * as getProjectId from "../../getProjectId";
 import * as runtimes from "./runtimes";
@@ -56,7 +57,7 @@ export async function prepare(
   const wantBackend = await runtimeDelegate.discoverSpec(runtimeConfig, env);
   payload.functions = { backend: wantBackend };
   if (backend.isEmptyBackend(wantBackend)) {
-    return;
+    throw new FirebaseError("Found nothing to deploy. Is your functions source empty?");
   }
 
   // NOTE: this will eventually be enalbed for everyone once AR is enabled
@@ -107,11 +108,11 @@ export async function prepare(
   // Check what --only filters have been passed in.
   context.filters = getFilterGroups(options);
 
-  // Display a warning and prompt if any functions in the release have failurePolicies.
   const wantFunctions = wantBackend.cloudFunctions.filter((fn: backend.FunctionSpec) => {
     return functionMatchesAnyGroup(fn, context.filters);
   });
   const haveFunctions = (await backend.existingBackend(context)).cloudFunctions;
+  // Display a warning and prompt if any functions in the release have failurePolicies.
   await promptForFailurePolicies(options, wantFunctions, haveFunctions);
   await promptForMinInstances(options, wantFunctions, haveFunctions);
   await backend.checkAvailability(context, wantBackend);
