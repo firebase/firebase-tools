@@ -57,7 +57,7 @@ export async function prepare(
   const wantBackend = await runtimeDelegate.discoverSpec(runtimeConfig, env);
   payload.functions = { backend: wantBackend };
   if (backend.isEmptyBackend(wantBackend)) {
-    throw new FirebaseError("Found nothing to deploy. Is your functions source empty?");
+    return;
   }
 
   // NOTE: this will eventually be enalbed for everyone once AR is enabled
