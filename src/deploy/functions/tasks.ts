@@ -62,7 +62,7 @@ export interface DeploymentTask {
 export interface TaskParams {
   projectId: string;
   sourceUrl?: string;
-  storageSource?: gcfV2.StorageSource;
+  storage?: Record<string, gcfV2.StorageSource>;
   errorHandler: ErrorHandler;
 }
 
@@ -94,7 +94,7 @@ export function createFunctionTask(
       }
       op = await gcf.createFunction(apiFunction);
     } else {
-      const apiFunction = gcfV2.functionFromSpec(fn, params.storageSource!);
+      const apiFunction = gcfV2.functionFromSpec(fn, params.storage![fn.region]);
       // N.B. As of GCFv2 private preview GCF no longer creates Pub/Sub topics
       // for Pub/Sub event handlers. This may change, at which point this code
       // could be deleted.
@@ -175,7 +175,7 @@ export function updateFunctionTask(
       }
       opName = (await gcf.updateFunction(apiFunction)).name;
     } else {
-      const apiFunction = gcfV2.functionFromSpec(fn, params.storageSource!);
+      const apiFunction = gcfV2.functionFromSpec(fn, params.storage![fn.region]);
       // N.B. As of GCFv2 private preview the API chokes on any update call that
       // includes the pub/sub topic even if that topic is unchanged.
       // We know that the user hasn't changed the topic between deploys because

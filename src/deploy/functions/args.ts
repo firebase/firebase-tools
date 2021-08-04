@@ -24,7 +24,7 @@ export interface Context {
 
   // Filled in the "deploy" phase.
   uploadUrl?: string;
-  storageSource?: gcfV2.StorageSource;
+  storage?: Record<string, gcfV2.StorageSource>;
 }
 
 export interface FirebaseConfig {
