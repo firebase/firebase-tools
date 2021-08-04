@@ -1,5 +1,3 @@
-"use strict";
-
 import { getFirebaseProject } from "./management/projects";
 import { RC } from "./rc";
 
