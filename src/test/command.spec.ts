@@ -84,7 +84,6 @@ describe("Command", () => {
     });
 
     it("should resolve a numeric --project flag into a project id", async () => {
-      nock.disableNetConnect();
       nock("https://firebase.googleapis.com").get("/v1beta1/projects/12345678").reply(200, {
         projectNumber: "12345678",
         projectId: "resolved-project",
@@ -106,7 +105,6 @@ describe("Command", () => {
         projectNumber: "12345678",
         project: "12345678",
       });
-      nock.enableNetConnect();
     });
 
     it("should resolve a non-numeric --project flag into a project id", async () => {

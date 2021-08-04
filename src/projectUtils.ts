@@ -1,12 +1,17 @@
 import { getFirebaseProject } from "./management/projects";
 import { RC } from "./rc";
 
-const _ = require("lodash");
-const clc = require("cli-color");
-const marked = require("marked");
+import * as clc from "cli-color";
+import * as marked from "marked";
 
 const { FirebaseError } = require("./error");
 
+/**
+ * Retrieves the projectId from a command's options context.
+ *
+ * @param options The options context for a command.
+ * @returns The projectId
+ */
 export function getProjectId({
   projectId,
   project,
@@ -19,8 +24,8 @@ export function getProjectId({
 
 /**
  * Tries to determine the correct projectId given current
- * command context.
- * @returns {String} The projectId
+ * command context. Errors out if unable to determine.
+ * @returns The projectId
  */
 export function needProjectId({
   projectId,
@@ -53,10 +58,7 @@ export function needProjectId({
         ".\n" +
         marked(
           "To learn about active projects for the CLI, visit https://firebase.google.com/docs/cli#project_aliases"
-        ),
-      {
-        exit: 1,
-      }
+        )
     );
   }
 

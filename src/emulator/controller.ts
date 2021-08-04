@@ -24,7 +24,7 @@ import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
 import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
 import { HostingEmulator } from "./hostingEmulator";
 import { FirebaseError } from "../error";
-import { getProjectId, needProjectId } from "../projectUtils";
+import { needProjectId } from "../projectUtils";
 import { PubsubEmulator } from "./pubsubEmulator";
 import * as commandUtils from "./commandUtils";
 import { EmulatorHub } from "./hub";
@@ -330,7 +330,7 @@ export async function startAll(options: Options, showUI: boolean = true): Promis
   const hubLogger = EmulatorLogger.forEmulator(Emulators.HUB);
   hubLogger.logLabeled("BULLET", "emulators", `Starting emulators: ${targets.join(", ")}`);
 
-  const projectId: string | undefined = getProjectId(options);
+  const projectId: string = needProjectId(options);
   if (Constants.isDemoProject(projectId)) {
     hubLogger.logLabeled(
       "BULLET",
@@ -370,7 +370,7 @@ export async function startAll(options: Options, showUI: boolean = true): Promis
 
   if (shouldStart(options, Emulators.HUB)) {
     const hubAddr = await getAndCheckAddress(Emulators.HUB, options);
-    const hub = new EmulatorHub({ projectId: projectId!, ...hubAddr });
+    const hub = new EmulatorHub({ projectId, ...hubAddr });
 
     // Log the command for analytics, we only report this for "hub"
     // since we originally mistakenly reported emulators:start events
