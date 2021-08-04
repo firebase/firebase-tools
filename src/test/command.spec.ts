@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import * as nock from "nock";
 
 import { Command, validateProjectId } from "../command";
 import { FirebaseError } from "../error";
@@ -80,6 +81,51 @@ describe("Command", () => {
 
       const result = run();
       await expect(result).to.be.rejectedWith("foo");
+    });
+
+    it("should resolve a numeric --project flag into a project id", async () => {
+      nock.disableNetConnect();
+      nock("https://firebase.googleapis.com").get("/v1beta1/projects/12345678").reply(200, {
+        projectNumber: "12345678",
+        projectId: "resolved-project",
+      });
+
+      const run = command
+        .action((options) => {
+          return {
+            project: options.project,
+            projectNumber: options.projectNumber,
+            projectId: options.projectId,
+          };
+        })
+        .runner();
+
+      const result = await run({ project: "12345678" });
+      expect(result).to.deep.eq({
+        projectId: "resolved-project",
+        projectNumber: "12345678",
+        project: "12345678",
+      });
+      nock.enableNetConnect();
+    });
+
+    it("should resolve a non-numeric --project flag into a project id", async () => {
+      const run = command
+        .action((options) => {
+          return {
+            project: options.project,
+            projectNumber: options.projectNumber,
+            projectId: options.projectId,
+          };
+        })
+        .runner();
+
+      const result = await run({ project: "resolved-project" });
+      expect(result).to.deep.eq({
+        projectId: "resolved-project",
+        projectNumber: undefined,
+        project: "resolved-project",
+      });
     });
   });
 });
