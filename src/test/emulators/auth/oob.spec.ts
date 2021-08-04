@@ -214,7 +214,7 @@ describeAuthEmulator("accounts:sendOobCode", ({ authApi, getClock }) => {
     const user = { email: "alice@example.com", password: "notasecret" };
     const { idToken } = await registerUser(authApi(), user);
     await deleteAccount(authApi(), { idToken });
-    await updateProjectConfig(authApi(), { signIn: { usageMode: "PASSTHROUGH" } });
+    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
 
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:sendOobCode")
@@ -332,7 +332,7 @@ describeAuthEmulator("accounts:sendOobCode", ({ authApi, getClock }) => {
       });
     const oobs = await inspectOobs(authApi());
     await deleteAccount(authApi(), { idToken });
-    await updateProjectConfig(authApi(), { signIn: { usageMode: "PASSTHROUGH" } });
+    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
 
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:resetPassword")

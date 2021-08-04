@@ -184,7 +184,7 @@ describeAuthEmulator("accounts:createAuthUri", ({ authApi }) => {
   });
 
   it("should error if usageMode is passthrough", async () => {
-    await updateProjectConfig(authApi(), { signIn: { usageMode: "PASSTHROUGH" } });
+    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
 
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:createAuthUri")

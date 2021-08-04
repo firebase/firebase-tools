@@ -7,6 +7,7 @@ import {
   getSigninMethods,
   expectUserNotExistsForIdToken,
   updateProjectConfig,
+  deleteAccount,
 } from "./helpers";
 
 describeAuthEmulator("accounts:delete", ({ authApi }) => {
@@ -105,20 +106,13 @@ describeAuthEmulator("accounts:delete", ({ authApi }) => {
       });
   });
 
-  it("should error if usageMode is passthrough", async () => {
+  it("should error on delete with idToken if usageMode is passthrough", async () => {
     const { idToken } = await registerUser(authApi(), {
       email: "alice@example.com",
       password: "notasecret",
     });
-    await authApi()
-      .post("/identitytoolkit.googleapis.com/v1/accounts:delete")
-      .send({ idToken })
-      .query({ key: "fake-api-key" })
-      .then((res) => {
-        expectStatusCode(200, res);
-        expect(res.body).not.to.have.property("error");
-      });
-    await updateProjectConfig(authApi(), { signIn: { usageMode: "PASSTHROUGH" } });
+    await deleteAccount(authApi(), { idToken });
+    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
 
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:delete")
@@ -129,6 +123,24 @@ describeAuthEmulator("accounts:delete", ({ authApi }) => {
         expect(res.body.error)
           .to.have.property("message")
           .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
+      });
+  });
+
+  it("should error on delete with localId if usageMode is passthrough", async () => {
+    const { localId, idToken } = await registerUser(authApi(), {
+      email: "alice@example.com",
+      password: "notasecret",
+    });
+    await deleteAccount(authApi(), { idToken });
+    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:delete")
+      .set("Authorization", "Bearer owner")
+      .send({ localId })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("USER_NOT_FOUND");
       });
   });
 });

@@ -144,22 +144,6 @@ describeAuthEmulator("accounts:batchGet", ({ authApi }) => {
         expect(res.body).not.to.have.property("nextPageToken");
       });
   });
-
-  it("should error if usageMode is passthrough", async () => {
-    const user = await registerAnonUser(authApi());
-    await deleteAccount(authApi(), { idToken: user.idToken });
-    await updateProjectConfig(authApi(), { signIn: { usageMode: "PASSTHROUGH" } });
-
-    await authApi()
-      .get(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:batchGet`)
-      .set("Authorization", "Bearer owner")
-      .then((res) => {
-        expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
-      });
-  });
 });
 
 describeAuthEmulator("accounts:batchCreate", ({ authApi }) => {
@@ -559,7 +543,7 @@ describeAuthEmulator("accounts:batchCreate", ({ authApi }) => {
       phoneNumber: TEST_PHONE_NUMBER,
       customAttributes: '{"hello": "world"}',
     };
-    await updateProjectConfig(authApi(), { signIn: { usageMode: "PASSTHROUGH" } });
+    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
 
     await authApi()
       .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:batchCreate`)
@@ -695,21 +679,6 @@ describeAuthEmulator("accounts:batchDelete", ({ authApi }) => {
       .then((res) => {
         expectStatusCode(400, res);
         expect(res.body.error.message).to.equal("LOCAL_ID_LIST_EXCEEDS_LIMIT");
-      });
-  });
-
-  it("should error if usageMode is passthrough", async () => {
-    await updateProjectConfig(authApi(), { signIn: { usageMode: "PASSTHROUGH" } });
-
-    await authApi()
-      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:batchDelete`)
-      .set("Authorization", "Bearer owner")
-      .send({ localIds: ["nosuch", "nosuch2"] })
-      .then((res) => {
-        expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
       });
   });
 });

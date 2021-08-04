@@ -517,8 +517,8 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
     expect([mfaEnrollmentId1, mfaEnrollmentId2]).not.to.include(savedMfaInfo.mfaEnrollmentId);
   });
 
-  it("should error on signInWithPhoneNumber if usageMode is passthrough", async () => {
-    await updateProjectConfig(authApi(), { signIn: { usageMode: "PASSTHROUGH" } });
+  it("should error on signUp if usageMode is passthrough", async () => {
+    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
 
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")

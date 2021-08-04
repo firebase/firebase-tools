@@ -135,7 +135,7 @@ describeAuthEmulator("accounts:signInWithPassword", ({ authApi }) => {
     const user = { email: "alice@example.com", password: "notasecret" };
     const { localId, idToken } = await registerUser(authApi(), user);
     await deleteAccount(authApi(), { idToken });
-    await updateProjectConfig(authApi(), { signIn: { usageMode: "PASSTHROUGH" } });
+    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
 
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword")

@@ -128,7 +128,7 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
       issuer: "fake-service-account@example.com",
       audience: CUSTOM_TOKEN_AUDIENCE,
     });
-    await updateProjectConfig(authApi(), { signIn: { usageMode: "PASSTHROUGH" } });
+    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
 
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken")
@@ -137,8 +137,7 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
       .then((res) => {
         expectStatusCode(200, res);
         expect(res.body.isNewUser).to.equal(true);
-        expect(res.body).to.have.property("refreshToken").that.is.a("string");
-        expect(res.body.refreshToken).to.equal("");
+        expect(res.body).not.to.have.property("refreshToken");
 
         const idToken = res.body.idToken as string;
         const decoded = decodeJwt(idToken, { complete: true }) as {

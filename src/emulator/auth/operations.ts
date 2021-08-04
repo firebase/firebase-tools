@@ -201,7 +201,6 @@ function lookup(
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1GetAccountInfoRequest"],
   ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitV1GetAccountInfoResponse"] {
-  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   const seenLocalIds = new Set<string>();
   const users: UserInfo[] = [];
   function tryAddUser(maybeUser: UserInfo | undefined): void {
@@ -414,7 +413,6 @@ function batchDelete(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1BatchDeleteAccountsRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV1BatchDeleteAccountsResponse"] {
-  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   const errors: Required<
     Schemas["GoogleCloudIdentitytoolkitV1BatchDeleteAccountsResponse"]["errors"]
   > = [];
@@ -445,7 +443,6 @@ function batchGet(
   reqBody: unknown,
   ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitV1DownloadAccountResponse"] {
-  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   const maxResults = Math.min(Math.floor(ctx.params.query.maxResults) || 20, 1000);
 
   const users = state.queryUsers(
@@ -579,7 +576,6 @@ function deleteAccount(
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1DeleteAccountRequest"],
   ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitV1DeleteAccountResponse"] {
-  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   let user: UserInfo;
   if (ctx.security?.Oauth2) {
     assert(reqBody.localId, "MISSING_LOCAL_ID");
@@ -629,7 +625,6 @@ function queryAccounts(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1QueryUserInfoRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV1QueryUserInfoResponse"] {
-  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   if (reqBody.expression?.length) {
     throw new NotImplementedError("expression is not implemented.");
   }
@@ -822,7 +817,6 @@ function sendVerificationCode(
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1SendVerificationCodeRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV1SendVerificationCodeResponse"] {
   assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
-
   // reqBody.iosReceipt, iosSecret, and recaptchaToken are intentionally ignored.
 
   // Production Firebase Auth service also throws INVALID_PHONE_NUMBER instead
@@ -1579,7 +1573,6 @@ function grantToken(
 }
 
 function deleteAllAccountsInProject(state: ProjectState): {} {
-  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   state.deleteAllAccounts();
   return {};
 }
@@ -1588,8 +1581,8 @@ function getEmulatorProjectConfig(state: ProjectState): Schemas["EmulatorV1Proje
   return {
     signIn: {
       allowDuplicateEmails: !state.oneAccountPerEmail,
-      usageMode: state.usageMode,
     },
+    usageMode: state.usageMode,
   };
 }
 
@@ -1601,7 +1594,7 @@ function updateEmulatorProjectConfig(
   if (allowDuplicateEmails != null) {
     state.oneAccountPerEmail = !allowDuplicateEmails;
   }
-  const usageMode = reqBody.signIn?.usageMode;
+  const usageMode = reqBody.usageMode;
   if (usageMode != null) {
     switch (usageMode) {
       case "PASSTHROUGH":
@@ -1674,7 +1667,7 @@ function issueTokens(
   user: UserInfo,
   signInProvider: string,
   extraClaims: Record<string, unknown> = {}
-): { idToken: string; refreshToken: string; expiresIn: string } {
+): { idToken: string; refreshToken?: string; expiresIn: string } {
   state.updateUserByLocalId(user.localId, { lastRefreshAt: new Date().toISOString() });
 
   const expiresInSeconds = 60 * 60;
@@ -1682,7 +1675,7 @@ function issueTokens(
   const refreshToken =
     state.usageMode === UsageMode.DEFAULT
       ? state.createRefreshTokenFor(user, signInProvider, extraClaims)
-      : "";
+      : undefined;
   return {
     idToken,
     refreshToken,
@@ -1698,6 +1691,7 @@ function parseIdToken(
   payload: FirebaseJwtPayload;
   signInProvider: string;
 } {
+  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   const decoded = decodeJwt(idToken, { complete: true }) as {
     header: JwtHeader;
     payload: FirebaseJwtPayload;

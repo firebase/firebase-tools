@@ -75,7 +75,7 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
 
   it("should error on sendVerificationMode if usageMode is passthrough", async () => {
     const phoneNumber = TEST_PHONE_NUMBER;
-    await updateProjectConfig(authApi(), { signIn: { usageMode: "PASSTHROUGH" } });
+    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
 
     const sessionInfo = await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode")
@@ -357,7 +357,7 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
       });
     const codes = await inspectVerificationCodes(authApi());
     const code = codes[0].code;
-    await updateProjectConfig(authApi(), { signIn: { usageMode: "PASSTHROUGH" } });
+    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
 
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPhoneNumber")
