@@ -5,7 +5,7 @@ import * as ora from "ora";
 
 import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
-import { getProjectNumber } from "../getProjectNumber";
+import { needProjectNumber } from "../projectUtils";
 import firedata = require("../gcp/firedata");
 import { Emulators } from "../emulator/types";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
@@ -65,7 +65,7 @@ let cmd = new Command("database:instances:list")
       logInstancesCount(instances.length);
       return instances;
     }
-    const projectNumber = await getProjectNumber(options);
+    const projectNumber = await needProjectNumber(options);
     try {
       instances = await firedata.listDatabaseInstances(projectNumber);
     } catch (err) {
