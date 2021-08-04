@@ -1,6 +1,6 @@
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
-import * as getProjectId from "../getProjectId";
+import { needProjectId } from "../projectUtils";
 import { logger } from "../logger";
 import {
   createSourceFromLocation,
@@ -23,7 +23,7 @@ export default new Command("ext:sources:create <sourceLocation>")
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extDevMinVersion")
   .action(async (sourceLocation: string, options: any) => {
-    const projectId = getProjectId(options);
+    const projectId = needProjectId(options);
     const res = await createSourceFromLocation(projectId, sourceLocation);
     logger.info(
       `Extension source creation successful for ${res.spec.name}! Your new source is ${res.name}`

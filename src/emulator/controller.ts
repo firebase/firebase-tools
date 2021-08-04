@@ -24,7 +24,7 @@ import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
 import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
 import { HostingEmulator } from "./hostingEmulator";
 import { FirebaseError } from "../error";
-import * as getProjectId from "../getProjectId";
+import { getProjectId, needProjectId } from "../projectUtils";
 import { PubsubEmulator } from "./pubsubEmulator";
 import * as commandUtils from "./commandUtils";
 import { EmulatorHub } from "./hub";
@@ -330,7 +330,7 @@ export async function startAll(options: Options, showUI: boolean = true): Promis
   const hubLogger = EmulatorLogger.forEmulator(Emulators.HUB);
   hubLogger.logLabeled("BULLET", "emulators", `Starting emulators: ${targets.join(", ")}`);
 
-  const projectId: string | undefined = getProjectId(options, true);
+  const projectId: string | undefined = getProjectId(options);
   if (Constants.isDemoProject(projectId)) {
     hubLogger.logLabeled(
       "BULLET",
@@ -370,7 +370,7 @@ export async function startAll(options: Options, showUI: boolean = true): Promis
 
   if (shouldStart(options, Emulators.HUB)) {
     const hubAddr = await getAndCheckAddress(Emulators.HUB, options);
-    const hub = new EmulatorHub({ projectId, ...hubAddr });
+    const hub = new EmulatorHub({ projectId: projectId!, ...hubAddr });
 
     // Log the command for analytics, we only report this for "hub"
     // since we originally mistakenly reported emulators:start events
@@ -402,7 +402,7 @@ export async function startAll(options: Options, showUI: boolean = true): Promis
   if (shouldStart(options, Emulators.FUNCTIONS)) {
     const functionsLogger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
     const functionsAddr = await getAndCheckAddress(Emulators.FUNCTIONS, options);
-    const projectId = getProjectId(options, false);
+    const projectId = needProjectId(options);
 
     utils.assertDefined(options.config.src.functions);
     utils.assertDefined(
@@ -548,7 +548,7 @@ export async function startAll(options: Options, showUI: boolean = true): Promis
     }
 
     const rc = dbRulesConfig.normalizeRulesConfig(
-      dbRulesConfig.getRulesConfig(projectId, options),
+      dbRulesConfig.getRulesConfig(projectId!, options),
       options
     );
     logger.debug("database rules config: ", JSON.stringify(rc));
@@ -649,7 +649,7 @@ export async function startAll(options: Options, showUI: boolean = true): Promis
     const storageEmulator = new StorageEmulator({
       host: storageAddr.host,
       port: storageAddr.port,
-      projectId,
+      projectId: projectId!,
       rules: options.config.path(storageConfig.rules),
     });
     await startEmulator(storageEmulator);
@@ -694,7 +694,7 @@ export async function startAll(options: Options, showUI: boolean = true): Promis
 
     const uiAddr = await getAndCheckAddress(Emulators.UI, options);
     const ui = new EmulatorUI({
-      projectId,
+      projectId: projectId!,
       auto_download: true,
       ...uiAddr,
     });

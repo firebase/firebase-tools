@@ -3,7 +3,7 @@
 var clc = require("cli-color");
 
 var { Command } = require("../command");
-var getProjectId = require("../getProjectId");
+var needProjectId = require("../projectUtils").needProjectId;
 var { requirePermissions } = require("../requirePermissions");
 const { logger } = require("../logger");
 var utils = require("../utils");
@@ -30,7 +30,7 @@ module.exports = new Command("functions:config:set [values...]")
         "Must supply at least one key/value pair, e.g. " + clc.bold('app.name="My App"')
       );
     }
-    var projectId = getProjectId(options);
+    var projectId = needProjectId(options);
     var parsed = functionsConfig.parseSetArgs(args);
     var promises = [];
 

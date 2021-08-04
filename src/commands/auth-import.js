@@ -8,7 +8,7 @@ var _ = require("lodash");
 
 var { Command } = require("../command");
 var accountImporter = require("../accountImporter");
-var getProjectId = require("../getProjectId");
+var needProjectId = require("../projectUtils").needProjectId;
 const { logger } = require("../logger");
 var { requirePermissions } = require("../requirePermissions");
 var utils = require("../utils");
@@ -45,7 +45,7 @@ module.exports = new Command("auth:import [dataFile]")
   )
   .before(requirePermissions, ["firebaseauth.users.create", "firebaseauth.users.update"])
   .action(function (dataFile, options) {
-    var projectId = getProjectId(options);
+    var projectId = needProjectId(options);
     var checkRes = validateOptions(options);
     if (!checkRes.valid) {
       return checkRes;

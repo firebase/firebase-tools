@@ -5,7 +5,7 @@ import * as qs from "querystring";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
 import * as gcp from "../gcp";
-import * as getProjectId from "../getProjectId";
+import { needProjectId } from "../projectUtils";
 import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
 
@@ -20,7 +20,7 @@ module.exports = new Command("functions:log")
   .before(requirePermissions, ["logging.logEntries.list", "logging.logs.list"])
   .action(async (options: any) => {
     try {
-      const projectId = getProjectId(options, false);
+      const projectId = needProjectId(options);
       let apiFilter = `resource.type="cloud_function"`;
       if (options.only) {
         const funcNames = options.only.split(",");

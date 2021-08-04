@@ -1,7 +1,7 @@
 import Table = require("cli-table");
 
 import { Command } from "../command";
-import * as getProjectId from "../getProjectId";
+import { needProjectId } from "../projectUtils";
 import { listAppAndroidSha, AppAndroidShaData } from "../management/apps";
 import { requireAuth } from "../requireAuth";
 import { logger } from "../logger";
@@ -41,7 +41,7 @@ module.exports = new Command("apps:android:sha:list <appId>")
   .before(requireAuth)
   .action(
     async (appId: string = "", options: any): Promise<AppAndroidShaData[]> => {
-      const projectId = getProjectId(options);
+      const projectId = needProjectId(options);
 
       const shaCertificates = await promiseWithSpinner<AppAndroidShaData[]>(
         async () => await listAppAndroidSha(projectId, appId),

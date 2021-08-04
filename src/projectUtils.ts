@@ -1,24 +1,40 @@
 "use strict";
 
-var _ = require("lodash");
-var clc = require("cli-color");
-var marked = require("marked");
+import { RC } from "./rc";
 
-var { FirebaseError } = require("./error");
+const _ = require("lodash");
+const clc = require("cli-color");
+const marked = require("marked");
+
+const { FirebaseError } = require("./error");
+
+export function getProjectId({
+  projectId,
+  project,
+}: {
+  projectId?: string;
+  project?: string;
+}): string | undefined {
+  return projectId || project;
+}
 
 /**
- * Tries to determine the correct app name for commands that
- * only require an app name. Uses passed in firebase option
- * first, then falls back to firebase.json.
- * @param {Object} options The command-line options object
- * @param {boolean} allowNull Whether or not the firebase flag
- * is required
- * @returns {String} The firebase name
+ * Tries to determine the correct projectId given current
+ * command context.
+ * @returns {String} The projectId
  */
-module.exports = function (options, allowNull = false) {
-  if (!options.project && !allowNull) {
-    var aliases = _.get(options, "rc.projects", {});
-    var aliasCount = _.size(aliases);
+export function needProjectId({
+  projectId,
+  project,
+  rc,
+}: {
+  projectId?: string;
+  project?: string;
+  rc?: RC;
+}): string {
+  if (!project) {
+    const aliases = rc?.projects || {};
+    const aliasCount = Object.keys(aliases).length;
 
     if (aliasCount === 0) {
       throw new FirebaseError(
@@ -41,9 +57,9 @@ module.exports = function (options, allowNull = false) {
         }
       );
     } else {
-      var aliasList = _.map(aliases, function (projectId, aname) {
-        return "  " + aname + " (" + projectId + ")";
-      }).join("\n");
+      const aliasList = Object.entries(aliases)
+        .map(([aname, projectId]) => `  ${aname} (${projectId})`)
+        .join("\n");
 
       throw new FirebaseError(
         "No project active, but project aliases are available.\n\nRun " +
@@ -53,5 +69,5 @@ module.exports = function (options, allowNull = false) {
       );
     }
   }
-  return options.project;
-};
+  return projectId || project;
+}

@@ -10,7 +10,7 @@ import firedata = require("../gcp/firedata");
 import { Emulators } from "../emulator/types";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 import { previews } from "../previews";
-import getProjectId = require("../getProjectId");
+import { needProjectId } from "../projectUtils";
 import {
   listDatabaseInstances,
   DatabaseInstance,
@@ -53,7 +53,7 @@ let cmd = new Command("database:instances:list")
     let instances;
 
     if (previews.rtdbmanagement) {
-      const projectId = getProjectId(options);
+      const projectId = needProjectId(options);
       try {
         instances = await listDatabaseInstances(projectId, location);
       } catch (err) {
