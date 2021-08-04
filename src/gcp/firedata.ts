@@ -21,8 +21,8 @@ function _handleErrorResponse(response: any): any {
 
 /**
  * List Realtime Database instances
- * @param projectId Project from which you want to get the ruleset.
- * @param instanceName The name for the new Realtime Database instance.
+ * @param projectNumber Project from which you want to list databases.
+ * @return the list of databases.
  */
 export async function listDatabaseInstances(projectNumber: string): Promise<DatabaseInstance[]> {
   const response = await api.request("GET", `/v1/projects/${projectNumber}/databases`, {
