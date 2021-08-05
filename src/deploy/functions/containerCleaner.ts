@@ -129,12 +129,6 @@ export class ContainerRegistryCleaner {
   }
 }
 
-/**
- * Get or create a DockerHelper instance from a specific subdomain
- * @param cache: a record that maps subdomains to DockerHelper instances
- * @param subdomain: the host of a google cloud region
- * @returns a {@link DockerHelper} instance for the subdomain
- */
 function getHelper(cache: Record<string, DockerHelper>, subdomain: string): DockerHelper {
   if (!cache[subdomain]) {
     cache[subdomain] = new DockerHelper(`https://${subdomain}.${containerRegistryDomain}`);
@@ -143,7 +137,7 @@ function getHelper(cache: Record<string, DockerHelper>, subdomain: string): Dock
 }
 
 /**
- * List all artifacts from the GCF directory in GCR.
+ * List all paths from the GCF directory in GCR (e.g. us.gcr.io/project-id/gcf/location).
  * @param projectId: the current project that contains GCF artifacts
  * @param location: the specific region to search for artifacts. If omitted, will search all locations.
  * @param dockerHelpers: a map of {@link SUBDOMAINS} to {@link DockerHelper}. If omitted, will use the default value and create each {@link DockerHelper} internally.
