@@ -182,4 +182,19 @@ describeAuthEmulator("accounts:createAuthUri", ({ authApi }) => {
         expect(res.body.error).to.have.property("message").equals("INVALID_CONTINUE_URI");
       });
   });
+
+  it("should error if usageMode is passthrough", async () => {
+    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:createAuthUri")
+      .send({ continueUri: "http://example.com/", identifier: "notregistered@example.com" })
+      .query({ key: "fake-api-key" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error)
+          .to.have.property("message")
+          .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
+      });
+  });
 });

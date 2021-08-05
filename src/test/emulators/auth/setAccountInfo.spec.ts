@@ -20,6 +20,8 @@ import {
   TEST_PHONE_NUMBER_2,
   TEST_PHONE_NUMBER_3,
   TEST_INVALID_PHONE_NUMBER,
+  deleteAccount,
+  updateProjectConfig,
 } from "./helpers";
 
 describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
@@ -1134,6 +1136,25 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       .then((res) => {
         expectStatusCode(400, res);
         expect(res.body.error.message).to.equal("CLAIMS_TOO_LARGE");
+      });
+  });
+
+  it("should error if usageMode is passthrough", async () => {
+    const user = { email: "alice@example.com", password: "notasecret" };
+    const { idToken } = await registerUser(authApi(), user);
+    const newPassword = "notasecreteither";
+    await deleteAccount(authApi(), { idToken });
+    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .query({ key: "fake-api-key" })
+      .send({ idToken, password: newPassword })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error)
+          .to.have.property("message")
+          .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
       });
   });
 });
