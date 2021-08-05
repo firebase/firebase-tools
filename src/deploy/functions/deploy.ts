@@ -35,8 +35,7 @@ async function uploadSourceV2(context: args.Context, region: string): Promise<vo
     stream: fs.createReadStream(context.functionsSourceV2!),
   };
   await gcs.upload(uploadOpts, res.uploadUrl);
-  context.storage = context.storage || {};
-  context.storage[region] = res.storageSource;
+  context.storage = { ...context.storage, [region]: res.storageSource };
 }
 
 /**
@@ -73,7 +72,7 @@ export async function deploy(
       const functions = payload.functions!.backend.cloudFunctions;
       const regions: string[] = [];
       for (const func of functions) {
-        if (-1 === regions.indexOf(func.region)) {
+        if (func.platform === "gcfv2" && -1 === regions.indexOf(func.region)) {
           regions.push(func.region);
         }
       }
