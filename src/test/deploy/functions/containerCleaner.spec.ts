@@ -283,6 +283,23 @@ describe("listGcfPaths", () => {
     expect(paths).to.contain("eu.gcr.io/project/gcf/europe-west1");
   });
 
+  it("should list paths, only locations in gcr", async () => {
+    const stubUS = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stubUS.ls.withArgs("project/gcf").returns(LOCATIONS_US);
+    const stubEmpty = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stubEmpty.ls.withArgs("project/gcf").returns(EMPTY);
+    const helpers = { us: stubUS, eu: stubEmpty, asia: stubEmpty };
+
+    const paths = await containerCleaner.listGcfPaths(
+      "project",
+      ["us-central1", "us-west4"],
+      helpers
+    );
+
+    expect(paths.length).to.eq(1);
+    expect(paths).to.contain("us.gcr.io/project/gcf/us-central1");
+  });
+
   it("should list paths, all locations", async () => {
     const stubUS = sinon.createStubInstance(containerCleaner.DockerHelper);
     stubUS.ls.withArgs("project/gcf").returns(LOCATIONS_US);
@@ -333,6 +350,12 @@ describe("deleteGcfArtifacts", () => {
     tags: [],
   });
 
+  const ARTIFACT = Promise.resolve({
+    children: [],
+    digests: ["image"],
+    tags: ["tag"],
+  });
+
   it("should throw an error on invalid location", () => {
     expect(() => containerCleaner.deleteGcfArtifacts("project", ["invalid"])).to.throw;
   });
@@ -379,24 +402,44 @@ describe("deleteGcfArtifacts", () => {
     expect(stubEU.rm).to.have.been.calledOnceWith("project/gcf/europe-west1");
   });
 
-  it("should purge all subdomains", async () => {
+  it("should purge all locations", async () => {
+    const locations = Object.keys(containerCleaner.SUBDOMAIN_MAPPING);
+    const usLocations = locations.filter((loc) => containerCleaner.SUBDOMAIN_MAPPING[loc] === "us");
+    const euLocations = locations.filter((loc) => containerCleaner.SUBDOMAIN_MAPPING[loc] === "eu");
+    const asiaLocations = locations.filter((loc) => {
+      containerCleaner.SUBDOMAIN_MAPPING[loc] === "asia";
+    });
     const stubUS = sinon.createStubInstance(containerCleaner.DockerHelper);
-    stubUS.ls.withArgs("project/gcf").returns(LOCATIONS_US);
+    for (const usLoc of usLocations) {
+      stubUS.ls.withArgs(`project/gcf/${usLoc}`).returns(ARTIFACT);
+    }
     const stubEU = sinon.createStubInstance(containerCleaner.DockerHelper);
-    stubEU.ls.withArgs("project/gcf").returns(LOCATIONS_EU);
-    const stubDHAsia = sinon.createStubInstance(containerCleaner.DockerHelper);
-    stubDHAsia.ls.withArgs("project/gcf").returns(LOCATIONS_ASIA);
+    for (const euLoc of euLocations) {
+      stubEU.ls.withArgs(`project/gcf/${euLoc}`).returns(ARTIFACT);
+    }
+    const stubAsia = sinon.createStubInstance(containerCleaner.DockerHelper);
+    for (const asiaLoc of asiaLocations) {
+      stubAsia.ls.withArgs(`project/gcf/${asiaLoc}`).returns(ARTIFACT);
+    }
     const helpers: Record<string, containerCleaner.DockerHelper> = {
       us: stubUS,
       eu: stubEU,
-      asia: stubDHAsia,
+      asia: stubAsia,
     };
 
     await containerCleaner.deleteGcfArtifacts("project", undefined, helpers);
 
-    // we rm the gcf directory in every subdomain
-    expect(stubUS.rm).to.have.been.calledOnceWith("project/gcf");
-    expect(stubEU.rm).to.have.been.calledOnceWith("project/gcf");
-    expect(stubDHAsia.rm).to.have.been.calledOnceWith("project/gcf");
+    expect(stubUS.rm).to.have.callCount(usLocations.length);
+    for (const usLoc of usLocations) {
+      expect(stubUS.rm).to.have.been.calledWith(`project/gcf/${usLoc}`);
+    }
+    expect(stubEU.rm).to.have.callCount(euLocations.length);
+    for (const euLoc of euLocations) {
+      expect(stubEU.rm).to.have.been.calledWith(`project/gcf/${euLoc}`);
+    }
+    expect(stubAsia.rm).to.have.callCount(asiaLocations.length);
+    for (const asiaLoc of asiaLocations) {
+      expect(stubAsia.rm).to.have.been.calledWith(`project/gcf/${asiaLoc}`);
+    }
   });
 });

@@ -14,7 +14,7 @@ import { FirebaseError } from "../../error";
 
 // A flattening of container_registry_hosts and
 // region_multiregion_map from regionconfig.borg
-const SUBDOMAIN_MAPPING: Record<string, string> = {
+export const SUBDOMAIN_MAPPING: Record<string, string> = {
   "us-west2": "us",
   "us-west3": "us",
   "us-west4": "us",
@@ -156,14 +156,17 @@ export async function listGcfPaths(
   locations?: string[],
   dockerHelpers: Record<string, DockerHelper> = {}
 ): Promise<string[]> {
-  if (locations) {
-    const invalidRegion = locations.find((loc) => !SUBDOMAIN_MAPPING[loc]);
-    if (invalidRegion) {
-      throw new FirebaseError(`Invalid region ${invalidRegion} supplied`);
-    }
+  if (!locations) {
+    locations = Object.keys(SUBDOMAIN_MAPPING);
   }
+  const invalidRegion = locations.find((loc) => !SUBDOMAIN_MAPPING[loc]);
+  if (invalidRegion) {
+    throw new FirebaseError(`Invalid region ${invalidRegion} supplied`);
+  }
+  const locationsSet = new Set(locations); // for quick lookup
   const subdomains = new Set(Object.values(SUBDOMAIN_MAPPING));
   const failedSubdomains = new Set<string>();
+
   const listAll = [...subdomains].map((subdomain) => {
     try {
       return getHelper(dockerHelpers, subdomain).ls(`${projectId}/gcf`);
@@ -181,7 +184,8 @@ export async function listGcfPaths(
 
   const gcfDirs = (await Promise.all(listAll))
     .map((results) => results.children)
-    .reduce((acc, val) => [...acc, ...val], []);
+    .reduce((acc, val) => [...acc, ...val], [])
+    .filter((loc) => locationsSet.has(loc));
 
   if (failedSubdomains.size == subdomains.size) {
     throw new FirebaseError("Failed to search all subdomains.");
@@ -190,14 +194,8 @@ export async function listGcfPaths(
     throw new FirebaseError(`Failed to search the following subdomains: ${failed}`);
   }
 
-  if (locations) {
-    const locationsSet = new Set(locations); // for quick lookup
-    return gcfDirs
-      .filter((loc) => locationsSet.has(loc))
-      .map((loc) => `${SUBDOMAIN_MAPPING[loc]}.${containerRegistryDomain}/${projectId}/gcf/${loc}`);
-  }
   return gcfDirs.map((loc) => {
-    return `${SUBDOMAIN_MAPPING[loc] || "us"}.${containerRegistryDomain}/${projectId}/gcf/${loc}`;
+    return `${SUBDOMAIN_MAPPING[loc]}.${containerRegistryDomain}/${projectId}/gcf/${loc}`;
   });
 }
 
@@ -215,36 +213,25 @@ export async function deleteGcfArtifacts(
   locations?: string[],
   dockerHelpers: Record<string, DockerHelper> = {}
 ): Promise<void> {
-  if (locations) {
-    const invalidRegion = locations.find((loc) => !SUBDOMAIN_MAPPING[loc]);
-    if (invalidRegion) {
-      throw new FirebaseError(`Invalid region ${invalidRegion} supplied`);
-    }
+  if (!locations) {
+    locations = Object.keys(SUBDOMAIN_MAPPING);
+  }
+  const invalidRegion = locations.find((loc) => !SUBDOMAIN_MAPPING[loc]);
+  if (invalidRegion) {
+    throw new FirebaseError(`Invalid region ${invalidRegion} supplied`);
   }
   const subdomains = new Set(Object.values(SUBDOMAIN_MAPPING));
   const failedSubdomains = new Set<string>();
 
-  if (locations) {
-    const deleteLocations = locations.map((loc) => {
-      try {
-        return getHelper(dockerHelpers, SUBDOMAIN_MAPPING[loc]).rm(`${projectId}/gcf/${loc}`);
-      } catch (err) {
-        failedSubdomains.add(SUBDOMAIN_MAPPING[loc]);
-        logger.debug(err);
-      }
-    });
-    await Promise.all(deleteLocations);
-  } else {
-    const deleteAll = [...subdomains].map((subdomain) => {
-      try {
-        return getHelper(dockerHelpers, subdomain).rm(`${projectId}/gcf`);
-      } catch (err) {
-        failedSubdomains.add(subdomain);
-        logger.debug(err);
-      }
-    });
-    await Promise.all(deleteAll);
-  }
+  const deleteLocations = locations.map((loc) => {
+    try {
+      return getHelper(dockerHelpers, SUBDOMAIN_MAPPING[loc]).rm(`${projectId}/gcf/${loc}`);
+    } catch (err) {
+      failedSubdomains.add(SUBDOMAIN_MAPPING[loc]);
+      logger.debug(err);
+    }
+  });
+  await Promise.all(deleteLocations);
 
   if (failedSubdomains.size == subdomains.size) {
     throw new FirebaseError("Failed to search all subdomains.");
