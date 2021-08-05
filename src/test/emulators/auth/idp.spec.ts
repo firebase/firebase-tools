@@ -851,4 +851,24 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
         expect(res.body.localId).to.equal(localId);
       });
   });
+
+  it("should error if usageMode is passthrough", async () => {
+    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+      .query({ key: "fake-api-key" })
+      .send({
+        postBody: `providerId=google.com&id_token=${FAKE_GOOGLE_ACCOUNT.idToken}`,
+        requestUri: "http://localhost",
+        returnIdpCredential: true,
+        returnSecureToken: true,
+      })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error)
+          .to.have.property("message")
+          .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
+      });
+  });
 });

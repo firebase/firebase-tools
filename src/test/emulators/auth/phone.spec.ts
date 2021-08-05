@@ -11,6 +11,7 @@ import {
   registerUser,
   TEST_MFA_INFO,
   TEST_PHONE_NUMBER,
+  updateProjectConfig,
 } from "./helpers";
 
 describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
@@ -69,6 +70,22 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
         expect(res.body.error)
           .to.have.property("message")
           .equals("INVALID_PHONE_NUMBER : Invalid format.");
+      });
+  });
+
+  it("should error on sendVerificationMode if usageMode is passthrough", async () => {
+    const phoneNumber = TEST_PHONE_NUMBER;
+    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
+
+    const sessionInfo = await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode")
+      .query({ key: "fake-api-key" })
+      .send({ phoneNumber, recaptchaToken: "ignored" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error)
+          .to.have.property("message")
+          .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
       });
   });
 
@@ -325,6 +342,32 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
       .then((res) => {
         expectStatusCode(400, res);
         expect(res.body.error).to.have.property("message").equals("PHONE_NUMBER_EXISTS");
+      });
+  });
+
+  it("should error on signInWithPhoneNumber if usageMode is passthrough", async () => {
+    const phoneNumber = TEST_PHONE_NUMBER;
+    const sessionInfo = await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode")
+      .query({ key: "fake-api-key" })
+      .send({ phoneNumber, recaptchaToken: "ignored" })
+      .then((res) => {
+        expectStatusCode(200, res);
+        return res.body.sessionInfo;
+      });
+    const codes = await inspectVerificationCodes(authApi());
+    const code = codes[0].code;
+    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPhoneNumber")
+      .query({ key: "fake-api-key" })
+      .send({ sessionInfo, code })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error)
+          .to.have.property("message")
+          .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
       });
   });
 });
