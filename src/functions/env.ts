@@ -1,8 +1,10 @@
+import * as clc from "cli-color";
 import * as fs from "fs";
 import * as path from "path";
 
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
+import { logBullet } from "../utils";
 
 const RESERVED_KEYS = [
   // Cloud Functions for Firebase
@@ -231,8 +233,9 @@ export function load(options: {
       });
     }
   }
-  logger.info(
-    `Loaded environment variables ${JSON.stringify(envs)} from ${targetPaths.join(",")}.`
+  logBullet(
+    clc.cyan.bold("functions: ") +
+      `Loaded environment variables ${JSON.stringify(envs)} from ${targetPaths.join(", ")}.`
   );
 
   return envs;
