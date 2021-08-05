@@ -298,6 +298,10 @@ function addEmulatorOperations(openapi3: any): void {
         },
         type: "object",
       },
+      usageMode: {
+        enum: ["USAGE_MODE_UNSPECIFIED", "DEFAULT", "PASSTHROUGH"],
+        type: "string",
+      },
     },
   };
   openapi3.paths["/emulator/v1/projects/{targetProjectId}/oobCodes"] = {

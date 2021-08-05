@@ -16,6 +16,7 @@ import {
   TEST_PHONE_NUMBER,
   TEST_PHONE_NUMBER_2,
   TEST_INVALID_PHONE_NUMBER,
+  updateProjectConfig,
 } from "./helpers";
 
 describeAuthEmulator("accounts:signUp", ({ authApi }) => {
@@ -514,5 +515,20 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
     expect(savedMfaInfo).to.include(TEST_MFA_INFO);
     expect(savedMfaInfo.mfaEnrollmentId).to.be.a("string").and.not.empty;
     expect([mfaEnrollmentId1, mfaEnrollmentId2]).not.to.include(savedMfaInfo.mfaEnrollmentId);
+  });
+
+  it("should error on signUp if usageMode is passthrough", async () => {
+    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
+      .send({ returnSecureToken: true })
+      .query({ key: "fake-api-key" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error)
+          .to.have.property("message")
+          .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
+      });
   });
 });
