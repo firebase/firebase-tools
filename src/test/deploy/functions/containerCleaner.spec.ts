@@ -12,14 +12,14 @@ describe("DockerHelper", () => {
   let deleteImage: sinon.SinonStub;
   let helper: containerCleaner.DockerHelper;
 
-  before(() => {
+  beforeEach(() => {
     helper = new containerCleaner.DockerHelper("us");
     listTags = sinon.stub(helper.client, "listTags").rejects("Unexpected call");
     deleteTag = sinon.stub(helper.client, "deleteTag").rejects("Unexpected call");
     deleteImage = sinon.stub(helper.client, "deleteImage").rejects("Unexpected call");
   });
 
-  after(() => {
+  afterEach(() => {
     sinon.verifyAndRestore();
   });
 
@@ -43,22 +43,27 @@ describe("DockerHelper", () => {
   };
 
   it("Fetches tags with caching", async () => {
-    listTags.withArgs("foo/bar").resolves(FOO_BAR);
+    listTags
+      .withArgs("foo/bar")
+      .onFirstCall()
+      .rejects("I'm flaky!")
+      .onSecondCall()
+      .resolves(FOO_BAR);
 
     await expect(helper.ls("foo/bar")).to.eventually.deep.equal({
       digests: ["sha256:hash1", "sha256:hash2"],
       tags: ["tag1", "tag2"],
       children: ["baz"],
     });
+    expect(listTags).to.have.been.calledTwice;
+    expect(listTags).to.not.have.been.calledWith("foo");
 
     await expect(helper.ls("foo/bar")).to.eventually.deep.equal({
       digests: ["sha256:hash1", "sha256:hash2"],
       tags: ["tag1", "tag2"],
       children: ["baz"],
     });
-
-    // This also verifies that we haven't called at "/foo" to ls "/foo/bar"
-    expect(listTags).to.have.been.calledOnce;
+    expect(listTags).to.have.been.calledTwice;
   });
 
   it("Deletes recursively", async () => {
@@ -69,13 +74,24 @@ describe("DockerHelper", () => {
       "foo/bar": ["tag1", "tag2"],
       "foo/bar/baz": ["tag3"],
     };
+    let firstDeleteTag = true;
     deleteTag.callsFake((path: string, tag: string) => {
+      if (firstDeleteTag) {
+        firstDeleteTag = false;
+        throw new Error("I'm flaky");
+      }
       if (!remainingTags[path].includes(tag)) {
         throw new Error("Cannot remove tag twice");
       }
       remainingTags[path].splice(remainingTags[path].indexOf(tag), 1);
     });
+
+    let firstDeleteImage = true;
     deleteImage.callsFake((path: string, digest: string) => {
+      if (firstDeleteImage) {
+        firstDeleteImage = false;
+        throw new Error("I'm flaky");
+      }
       if (remainingTags[path].length) {
         throw new Error("Cannot remove image while tags still pin it");
       }
@@ -87,12 +103,12 @@ describe("DockerHelper", () => {
     expect(listTags).to.have.been.calledWith("foo/bar");
     expect(listTags).to.have.been.calledWith("foo/bar/baz");
 
-    expect(deleteTag).to.have.been.calledThrice;
+    expect(deleteTag).to.have.been.callCount(4);
     expect(deleteTag).to.have.been.calledWith("foo/bar/baz", "tag3");
     expect(deleteTag).to.have.been.calledWith("foo/bar", "tag1");
     expect(deleteTag).to.have.been.calledWith("foo/bar", "tag2");
 
-    expect(deleteImage).to.have.been.calledThrice;
+    expect(deleteImage).to.have.been.callCount(4);
     expect(deleteImage).to.have.been.calledWith("foo/bar/baz", "sha256:hash3");
     expect(deleteImage).to.have.been.calledWith("foo/bar", "sha256:hash1");
     expect(deleteImage).to.have.been.calledWith("foo/bar", "sha256:hash2");
