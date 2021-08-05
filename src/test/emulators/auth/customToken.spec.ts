@@ -117,6 +117,7 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
       });
   });
 
+  // TODO: update
   it("should not issue a refresh token in passthrough mode", async () => {
     const uid = "someuid";
     const claims = { abc: "def", ultimate: { answer: 42 } };
@@ -136,7 +137,7 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
       .send({ token })
       .then((res) => {
         expectStatusCode(200, res);
-        expect(res.body.isNewUser).to.equal(true);
+        expect(res.body.isNewUser).to.equal(false);
         expect(res.body).not.to.have.property("refreshToken");
 
         const idToken = res.body.idToken as string;
@@ -150,6 +151,7 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
         expect(decoded!.payload.firebase)
           .to.have.property("sign_in_provider")
           .equals(PROVIDER_CUSTOM);
+        expect(decoded!.payload.firebase).to.have.property("usage_mode").equals("passthrough");
         expect(decoded!.payload).deep.include(claims);
         return idToken;
       });

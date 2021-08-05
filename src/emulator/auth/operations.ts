@@ -1209,7 +1209,7 @@ function signInWithCustomToken(
   }
 
   let user = state.getUserByLocalId(localId);
-  const isNewUser = !user;
+  const isNewUser = state.usageMode === UsageMode.PASSTHROUGH ? false : !user;
 
   const updates = {
     customAuth: true,
@@ -1671,7 +1671,15 @@ function issueTokens(
   state.updateUserByLocalId(user.localId, { lastRefreshAt: new Date().toISOString() });
 
   const expiresInSeconds = 60 * 60;
-  const idToken = generateJwt(state.projectId, user, signInProvider, expiresInSeconds, extraClaims);
+  const usageMode = state.usageMode === UsageMode.PASSTHROUGH ? "passthrough" : undefined;
+  const idToken = generateJwt(
+    state.projectId,
+    user,
+    signInProvider,
+    expiresInSeconds,
+    extraClaims,
+    usageMode
+  );
   const refreshToken =
     state.usageMode === UsageMode.DEFAULT
       ? state.createRefreshTokenFor(user, signInProvider, extraClaims)
@@ -1723,7 +1731,8 @@ function generateJwt(
   user: UserInfo,
   signInProvider: string,
   expiresInSeconds: number,
-  extraClaims: Record<string, unknown> = {}
+  extraClaims: Record<string, unknown> = {},
+  usageMode: string | undefined
 ): string {
   const identities: Record<string, string[]> = {};
   if (user.email) {
@@ -1770,6 +1779,7 @@ function generateJwt(
     firebase: {
       identities,
       sign_in_provider: signInProvider,
+      usage_mode: usageMode,
     },
   };
   /* eslint-enable camelcase */

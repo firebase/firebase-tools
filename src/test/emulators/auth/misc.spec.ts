@@ -432,6 +432,26 @@ describeAuthEmulator("emulator utility APIs", ({ authApi }) => {
       });
   });
 
+  it("should default to DEFAULT usageMode on PATCH /emulator/v1/projects/{PROJECT_ID}/config", async () => {
+    await authApi()
+      .patch(`/emulator/v1/projects/${PROJECT_ID}/config`)
+      .send({ usageMode: undefined })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body).to.have.property("usageMode").equals("DEFAULT");
+      });
+  });
+
+  it("should error for unspecified usageMode on PATCH /emulator/v1/projects/{PROJECT_ID}/config", async () => {
+    await authApi()
+      .patch(`/emulator/v1/projects/${PROJECT_ID}/config`)
+      .send({ usageMode: "USAGE_MODE_UNSPECIFIED" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("Invalid usage mode provided");
+      });
+  });
+
   it("should error for invalid usageMode on PATCH /emulator/v1/projects/{PROJECT_ID}/config", async () => {
     await authApi()
       .patch(`/emulator/v1/projects/${PROJECT_ID}/config`)
