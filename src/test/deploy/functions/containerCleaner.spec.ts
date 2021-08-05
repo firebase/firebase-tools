@@ -311,7 +311,6 @@ describe("listGcfPaths", () => {
 
     const paths = await containerCleaner.listGcfPaths("project", undefined, helpers);
 
-    // expect(paths[7]).to.eq(1);
     expect(paths.length).to.eq(6);
     // us locations
     expect(paths).to.contain("us.gcr.io/project/gcf/us-central1");
@@ -329,30 +328,6 @@ describe("deleteGcfArtifacts", () => {
   const DIRECTORY = Promise.resolve({
     children: ["dir"],
     digests: ["image1", "image2"],
-    tags: ["tag"],
-  });
-
-  const LOCATIONS_US = Promise.resolve({
-    children: ["us-central1", "us-west2"],
-    digests: [],
-    tags: [],
-  });
-
-  const LOCATIONS_EU = Promise.resolve({
-    children: ["europe-west1", "europe-central2"],
-    digests: [],
-    tags: [],
-  });
-
-  const LOCATIONS_ASIA = Promise.resolve({
-    children: ["asia-northeast1", "asia-south1"],
-    digests: [],
-    tags: [],
-  });
-
-  const ARTIFACT = Promise.resolve({
-    children: [],
-    digests: ["image"],
     tags: ["tag"],
   });
 
@@ -407,19 +382,19 @@ describe("deleteGcfArtifacts", () => {
     const usLocations = locations.filter((loc) => containerCleaner.SUBDOMAIN_MAPPING[loc] === "us");
     const euLocations = locations.filter((loc) => containerCleaner.SUBDOMAIN_MAPPING[loc] === "eu");
     const asiaLocations = locations.filter((loc) => {
-      containerCleaner.SUBDOMAIN_MAPPING[loc] === "asia";
+      return containerCleaner.SUBDOMAIN_MAPPING[loc] === "asia";
     });
     const stubUS = sinon.createStubInstance(containerCleaner.DockerHelper);
     for (const usLoc of usLocations) {
-      stubUS.ls.withArgs(`project/gcf/${usLoc}`).returns(ARTIFACT);
+      stubUS.ls.withArgs(`project/gcf/${usLoc}`).returns(DIRECTORY);
     }
     const stubEU = sinon.createStubInstance(containerCleaner.DockerHelper);
     for (const euLoc of euLocations) {
-      stubEU.ls.withArgs(`project/gcf/${euLoc}`).returns(ARTIFACT);
+      stubEU.ls.withArgs(`project/gcf/${euLoc}`).returns(DIRECTORY);
     }
     const stubAsia = sinon.createStubInstance(containerCleaner.DockerHelper);
     for (const asiaLoc of asiaLocations) {
-      stubAsia.ls.withArgs(`project/gcf/${asiaLoc}`).returns(ARTIFACT);
+      stubAsia.ls.withArgs(`project/gcf/${asiaLoc}`).returns(DIRECTORY);
     }
     const helpers: Record<string, containerCleaner.DockerHelper> = {
       us: stubUS,
