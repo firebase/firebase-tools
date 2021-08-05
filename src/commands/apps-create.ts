@@ -2,7 +2,7 @@ import * as clc from "cli-color";
 import * as ora from "ora";
 
 import { Command } from "../command";
-import * as getProjectId from "../getProjectId";
+import { needProjectId } from "../projectUtils";
 import { FirebaseError } from "../error";
 import {
   AndroidAppMetadata,
@@ -173,7 +173,7 @@ module.exports = new Command("apps:create [platform] [displayName]")
       displayName: string | undefined,
       options: any
     ): Promise<AppMetadata> => {
-      const projectId = getProjectId(options);
+      const projectId = needProjectId(options);
 
       if (!options.nonInteractive && !platform) {
         platform = await promptOnce({

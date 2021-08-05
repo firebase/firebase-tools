@@ -10,7 +10,7 @@ import * as args from "./args";
 import * as backend from "./backend";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
 import * as functionsConfig from "../../functionsConfig";
-import * as getProjectId from "../../getProjectId";
+import { needProjectId } from "../../projectUtils";
 import * as runtimes from "./runtimes";
 import * as validate from "./validate";
 import * as utils from "../../utils";
@@ -31,7 +31,7 @@ export async function prepare(
   logger.debug(`Building ${runtimeDelegate.name} source`);
   await runtimeDelegate.build();
 
-  const projectId = getProjectId(options);
+  const projectId = needProjectId(options);
 
   // Check that all necessary APIs are enabled.
   const checkAPIsEnabled = await Promise.all([

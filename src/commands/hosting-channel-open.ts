@@ -6,7 +6,7 @@ import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { getChannel, listChannels, normalizeName } from "../hosting/api";
 import { requirePermissions } from "../requirePermissions";
-import * as getProjectId from "../getProjectId";
+import { needProjectId } from "../projectUtils";
 import * as requireConfig from "../requireConfig";
 import { logLabeledBullet } from "../utils";
 import { promptOnce } from "../prompt";
@@ -24,7 +24,7 @@ export default new Command("hosting:channel:open [channelId]")
       channelId: string,
       options: any // eslint-disable-line @typescript-eslint/no-explicit-any
     ): Promise<{ url: string }> => {
-      const projectId = getProjectId(options);
+      const projectId = needProjectId(options);
       const siteId = options.site;
 
       if (!channelId) {

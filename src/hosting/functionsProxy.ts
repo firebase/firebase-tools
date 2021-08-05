@@ -2,7 +2,7 @@ import { includes } from "lodash";
 import { RequestHandler } from "express";
 
 import { proxyRequestHandler } from "./proxy";
-import * as getProjectId from "../getProjectId";
+import { needProjectId } from "../projectUtils";
 import { EmulatorRegistry } from "../emulator/registry";
 import { Emulators } from "../emulator/types";
 import { FunctionsEmulator } from "../emulator/functionsEmulator";
@@ -29,7 +29,7 @@ export default function (
     return new Promise((resolve) => {
       // TODO(samstern): This proxy assumes all functions are in the default region, but this is
       //                 not a safe assumption.
-      const projectId = getProjectId(options, false);
+      const projectId = needProjectId(options);
       let url = `https://us-central1-${projectId}.cloudfunctions.net/${rewrite.function}`;
       let destLabel = "live";
 

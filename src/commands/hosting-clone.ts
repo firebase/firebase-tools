@@ -88,7 +88,7 @@ export default new Command("hosting:clone <source> <targetChannel>")
       }
       utils.logSuccess(`Created new channel ${targetChannelId}`);
       try {
-        const tProjectId = getProjectId(tChannel.name);
+        const tProjectId = parseProjectId(tChannel.name);
         await addAuthDomains(tProjectId, [tChannel.url]);
       } catch (e) {
         utils.logLabeledWarning(
@@ -147,7 +147,7 @@ export default new Command("hosting:clone <source> <targetChannel>")
  * projects/${project}/sites/${site{}/channels/${channel}
  * @return the project id.
  */
-function getProjectId(name: string): string {
+function parseProjectId(name: string): string {
   const matches = name.match(`^projects/([^/]+)`);
   return matches ? matches[1] || "" : "";
 }

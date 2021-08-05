@@ -5,7 +5,7 @@ var _ = require("lodash");
 var clc = require("cli-color");
 var { Command } = require("../command");
 var functionsConfig = require("../functionsConfig");
-var getProjectId = require("../getProjectId");
+var needProjectId = require("../projectUtils").needProjectId;
 const { logger } = require("../logger");
 var { requirePermissions } = require("../requirePermissions");
 var utils = require("../utils");
@@ -30,7 +30,7 @@ module.exports = new Command("functions:config:unset [keys...]")
     if (!args.length) {
       return utils.reject("Must supply at least one key");
     }
-    var projectId = getProjectId(options);
+    var projectId = needProjectId(options);
     var parsed = functionsConfig.parseUnsetArgs(args);
     return Promise.all(
       _.map(parsed, function (item) {

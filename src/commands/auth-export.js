@@ -6,7 +6,7 @@ var os = require("os");
 
 var { Command } = require("../command");
 var accountExporter = require("../accountExporter");
-var getProjectId = require("../getProjectId");
+var needProjectId = require("../projectUtils").needProjectId;
 const { logger } = require("../logger");
 var { requirePermissions } = require("../requirePermissions");
 
@@ -23,7 +23,7 @@ module.exports = new Command("auth:export [dataFile]")
   )
   .before(requirePermissions, ["firebaseauth.users.get"])
   .action(function (dataFile, options) {
-    var projectId = getProjectId(options);
+    var projectId = needProjectId(options);
     var checkRes = validateOptions(options, dataFile);
     if (!checkRes.format) {
       return checkRes;

@@ -2,13 +2,14 @@ import { Command } from "../command";
 import * as clc from "cli-color";
 import * as functionsConfig from "../functionsConfig";
 import { deleteFunctions } from "../functionsDelete";
-import * as getProjectId from "../getProjectId";
+import { needProjectId } from "../projectUtils";
 import { promptOnce } from "../prompt";
 import * as helper from "../deploy/functions/functionsDeployHelper";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import * as args from "../deploy/functions/args";
 import * as backend from "../deploy/functions/backend";
+import { Options } from "../options";
 
 export default new Command("functions:delete [filters...]")
   .description("delete one or more Cloud Functions by name or group name.")
@@ -19,13 +20,13 @@ export default new Command("functions:delete [filters...]")
   )
   .option("-f, --force", "No confirmation. Otherwise, a confirmation prompt will appear.")
   .before(requirePermissions, ["cloudfunctions.functions.list", "cloudfunctions.functions.delete"])
-  .action(async (filters: string[], options: { force: boolean; region?: string }) => {
+  .action(async (filters: string[], options: { force: boolean; region?: string } & Options) => {
     if (!filters.length) {
       return utils.reject("Must supply at least function or group name.");
     }
 
     const context = {
-      projectId: getProjectId(options),
+      projectId: needProjectId(options),
     } as args.Context;
 
     // Dot notation can be used to indicate function inside of a group
