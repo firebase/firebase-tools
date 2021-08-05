@@ -4,6 +4,8 @@ import { expect } from "chai";
 import { IncomingMessage, request } from "http";
 import * as _ from "lodash";
 import * as express from "express";
+import * as fs from "fs";
+import * as path from "path";
 
 import { EmulatorLog } from "../../src/emulator/types";
 import { FunctionRuntimeBundles, TIMEOUT_LONG, TIMEOUT_MED, MODULE_ROOT } from "./fixtures";
@@ -11,6 +13,8 @@ import { FunctionsRuntimeBundle } from "../../src/emulator/functionsEmulatorShar
 import { InvokeRuntimeOpts, FunctionsEmulator } from "../../src/emulator/functionsEmulator";
 import { RuntimeWorker } from "../../src/emulator/functionsRuntimeWorker";
 import { streamToString } from "../../src/utils";
+import { previews } from "../../src/previews";
+import * as functionsEnv from "../../src/functions/env";
 
 const DO_NOTHING = () => {
   // do nothing.
@@ -456,6 +460,41 @@ describe("FunctionsEmulator-Runtime", () => {
       const res = JSON.parse(data);
 
       expect(res.var).to.eql("localhost:9099");
+    }).timeout(TIMEOUT_MED);
+
+    it("should inject user environment variables when enabled", async () => {
+      const restore = previews.dotenv;
+      previews.dotenv = true;
+      fs.writeFileSync(path.join(MODULE_ROOT, ".env"), "SOURCE=env\nFOO=foo");
+      fs.writeFileSync(path.join(MODULE_ROOT, ".env.local"), "SOURCE=env.local");
+
+      const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest);
+      frb.emulators = {
+        auth: {
+          host: "localhost",
+          port: 9099,
+        },
+      };
+
+      const worker = invokeRuntimeWithFunctions(frb, () => {
+        return {
+          function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
+            res.json({
+              SOURCE: process.env.SOURCE,
+              FOO: process.env.FOO,
+            });
+          }),
+        };
+      });
+
+      const data = await callHTTPSFunction(worker, frb);
+      const res = JSON.parse(data);
+
+      expect(res).to.deep.equal({ SOURCE: "env.local", FOO: "foo" });
+
+      fs.unlinkSync(path.join(MODULE_ROOT, ".env"));
+      fs.unlinkSync(path.join(MODULE_ROOT, ".env.local"));
+      previews.dotenv = restore;
     }).timeout(TIMEOUT_MED);
   });
 
