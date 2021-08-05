@@ -20,8 +20,8 @@ async function uploadSourceV1(context: args.Context): Promise<void> {
   const uploadUrl = await gcf.generateUploadUrl(context.projectId, GCP_REGION);
   context.uploadUrl = uploadUrl;
   const uploadOpts = {
-    file: context.functionsSource!,
-    stream: fs.createReadStream(context.functionsSource!),
+    file: context.functionsSourceV1!,
+    stream: fs.createReadStream(context.functionsSourceV1!),
   };
   await gcs.upload(uploadOpts, uploadUrl, {
     "x-goog-content-length-range": "0,104857600",
@@ -31,8 +31,8 @@ async function uploadSourceV1(context: args.Context): Promise<void> {
 async function uploadSourceV2(context: args.Context, region: string): Promise<void> {
   const res = await gcfv2.generateUploadUrl(context.projectId, region);
   const uploadOpts = {
-    file: context.functionsSource!,
-    stream: fs.createReadStream(context.functionsSource!),
+    file: context.functionsSourceV2!,
+    stream: fs.createReadStream(context.functionsSourceV2!),
   };
   await gcs.upload(uploadOpts, res.uploadUrl);
   context.storage = { ...context.storage, [region]: res.storageSource };
@@ -55,7 +55,7 @@ export async function deploy(
 
   await checkHttpIam(context, options, payload);
 
-  if (!context.functionsSource) {
+  if (!context.functionsSourceV1 && !context.functionsSourceV2) {
     return;
   }
 

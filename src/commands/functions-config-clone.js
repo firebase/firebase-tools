@@ -4,7 +4,7 @@ var clc = require("cli-color");
 var { Command } = require("../command");
 var functionsConfig = require("../functionsConfig");
 var functionsConfigClone = require("../functionsConfigClone");
-var getProjectId = require("../getProjectId");
+var needProjectId = require("../projectUtils").needProjectId;
 var { requirePermissions } = require("../requirePermissions");
 var utils = require("../utils");
 const { logger } = require("../logger");
@@ -28,7 +28,7 @@ module.exports = new Command("functions:config:clone")
   ])
   .before(functionsConfig.ensureApi)
   .action(function (options) {
-    var projectId = getProjectId(options);
+    var projectId = needProjectId(options);
     if (!options.from) {
       return utils.reject(
         "Must specify a source project in " + clc.bold("--from <projectId>") + " option."

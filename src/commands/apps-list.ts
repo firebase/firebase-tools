@@ -3,7 +3,7 @@ import * as ora from "ora";
 import Table = require("cli-table");
 
 import { Command } from "../command";
-import * as getProjectId from "../getProjectId";
+import { needProjectId } from "../projectUtils";
 import { AppMetadata, AppPlatform, getAppPlatform, listFirebaseApps } from "../management/apps";
 import { requireAuth } from "../requireAuth";
 import { logger } from "../logger";
@@ -40,7 +40,7 @@ module.exports = new Command("apps:list [platform]")
   .before(requireAuth)
   .action(
     async (platform: string | undefined, options: any): Promise<AppMetadata[]> => {
-      const projectId = getProjectId(options);
+      const projectId = needProjectId(options);
       const appPlatform = getAppPlatform(platform || "");
 
       let apps;

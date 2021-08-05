@@ -3,7 +3,7 @@ import { Command } from "../command";
 import { requireAuth } from "../requireAuth";
 import { logger } from "../logger";
 import { RemoteConfigTemplate } from "../remoteconfig/interfaces";
-import getProjectId = require("../getProjectId");
+import { needProjectId } from "../projectUtils";
 import { requirePermissions } from "../requirePermissions";
 import { parseTemplateForTable } from "../remoteconfig/get";
 import { Options } from "../options";
@@ -37,7 +37,7 @@ module.exports = new Command("remoteconfig:get")
   .action(async (options: Options) => {
     utils.assertIsString(options.versionNumber);
     const template: RemoteConfigTemplate = await rcGet.getTemplate(
-      getProjectId(options),
+      needProjectId(options),
       checkValidNumber(options.versionNumber)
     );
     const table = new Table({ head: tableHead, style: { head: ["green"] } });

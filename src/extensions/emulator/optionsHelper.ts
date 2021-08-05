@@ -11,7 +11,7 @@ import * as extensionsHelper from "../extensionsHelper";
 import { Config } from "../../config";
 import { FirebaseError } from "../../error";
 import { EmulatorLogger } from "../../emulator/emulatorLogger";
-import * as getProjectId from "../../getProjectId";
+import { needProjectId } from "../../projectUtils";
 import { Emulators } from "../../emulator/types";
 
 export async function buildOptions(options: any): Promise<any> {
@@ -45,7 +45,7 @@ export async function buildOptions(options: any): Promise<any> {
 
 // Exported for testing
 export async function getParams(options: any, extensionSpec: ExtensionSpec) {
-  const projectId = getProjectId(options, false);
+  const projectId = needProjectId(options);
   const userParams = await paramHelper.readParamsFile(options.testParams);
   const autoParams = {
     PROJECT_ID: projectId,

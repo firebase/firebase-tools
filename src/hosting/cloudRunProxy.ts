@@ -2,9 +2,10 @@ import { RequestHandler } from "express";
 import { get } from "lodash";
 
 import { errorRequestHandler, proxyRequestHandler } from "./proxy";
-import * as getProjectId from "../getProjectId";
+import { needProjectId } from "../projectUtils";
 import { logger } from "../logger";
 import { cloudRunApiOrigin, request as apiRequest } from "../api";
+import { Options } from "../options";
 
 export interface CloudRunProxyOptions {
   project?: string;
@@ -67,7 +68,7 @@ export default function (
     logger.info(`[hosting] Cloud Run rewrite ${JSON.stringify(rewrite)} triggered`);
 
     const textIdentifier = `Cloud Run service "${rewrite.run.serviceId}" for region "${rewrite.run.region}"`;
-    return getCloudRunUrl(rewrite, getProjectId(options, false))
+    return getCloudRunUrl(rewrite, needProjectId(options))
       .then((url) => proxyRequestHandler(url, textIdentifier))
       .catch(errorRequestHandler);
   };

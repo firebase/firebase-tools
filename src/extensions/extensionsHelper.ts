@@ -13,7 +13,7 @@ import { FirebaseError } from "../error";
 import { checkResponse } from "./askUserForParam";
 import { ensure } from "../ensureApiEnabled";
 import { deleteObject, uploadObject } from "../gcp/storage";
-import * as getProjectId from "../getProjectId";
+import { needProjectId } from "../projectUtils";
 import {
   createSource,
   ExtensionSource,
@@ -341,7 +341,7 @@ export async function promptForValidInstanceId(instanceId: string): Promise<stri
 }
 
 export async function ensureExtensionsApiEnabled(options: any): Promise<void> {
-  const projectId = getProjectId(options);
+  const projectId = needProjectId(options);
   return await ensure(
     projectId,
     "firebaseextensions.googleapis.com",
