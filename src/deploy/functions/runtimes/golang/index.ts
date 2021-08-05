@@ -11,7 +11,7 @@ import { logger } from "../../../../logger";
 import * as args from "../../args";
 import * as backend from "../../backend";
 import * as discovery from "../discovery";
-import * as getProjectId from "../../../../getProjectId";
+import { needProjectId } from "../../../../projectUtils";
 import * as gomod from "./gomod";
 import * as runtimes from "..";
 
@@ -33,7 +33,7 @@ export async function tryCreateDelegate(
   const relativeSourceDir = options.config.get("functions.source") as string;
   const sourceDir = options.config.path(relativeSourceDir);
   const goModPath = path.join(sourceDir, "go.mod");
-  const projectId = getProjectId(options);
+  const projectId = needProjectId(options);
 
   let module: gomod.Module;
   try {

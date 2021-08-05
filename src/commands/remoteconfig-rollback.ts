@@ -6,7 +6,7 @@ import { rollbackTemplate } from "../remoteconfig/rollback";
 import { requirePermissions } from "../requirePermissions";
 import { getVersions } from "../remoteconfig/versionslist";
 
-import getProjectId = require("../getProjectId");
+import { needProjectId } from "../projectUtils";
 
 module.exports = new Command("remoteconfig:rollback")
   .description(
@@ -20,7 +20,7 @@ module.exports = new Command("remoteconfig:rollback")
   )
   .option("--force", "rollback template to the specified version without confirmation")
   .action(async (options) => {
-    const templateVersion = await getVersions(getProjectId(options), 1);
+    const templateVersion = await getVersions(needProjectId(options), 1);
     let targetVersion = 0;
     if (options.versionNumber) {
       targetVersion = options.versionNumber;
@@ -51,5 +51,5 @@ module.exports = new Command("remoteconfig:rollback")
     if (!confirm) {
       return;
     }
-    return rollbackTemplate(getProjectId(options), targetVersion);
+    return rollbackTemplate(needProjectId(options), targetVersion);
   });

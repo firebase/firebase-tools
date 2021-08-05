@@ -3,7 +3,7 @@
 var _ = require("lodash");
 
 var { Command } = require("../command");
-var getProjectId = require("../getProjectId");
+var needProjectId = require("../projectUtils").needProjectId;
 var { requirePermissions } = require("../requirePermissions");
 var runtimeconfig = require("../gcp/runtimeconfig");
 var functionsConfig = require("../functionsConfig");
@@ -18,7 +18,7 @@ module.exports = new Command("functions:config:legacy")
     "runtimeconfig.variables.get",
   ])
   .action(function (options) {
-    var projectId = getProjectId(options);
+    var projectId = needProjectId(options);
     var metaPath = "projects/" + projectId + "/configs/firebase/variables/meta";
     return runtimeconfig.variables
       .get(metaPath)

@@ -4,7 +4,7 @@ import * as clc from "cli-color";
 import * as api from "./api";
 import { ensure as ensureApiEnabled } from "./ensureApiEnabled";
 import { FirebaseError } from "./error";
-import * as getProjectId from "./getProjectId";
+import { needProjectId } from "./projectUtils";
 import * as runtimeconfig from "./gcp/runtimeconfig";
 import * as args from "./deploy/functions/args";
 
@@ -43,7 +43,7 @@ function isReservedNamespace(id: Id) {
 }
 
 export async function ensureApi(options: any): Promise<void> {
-  const projectId = getProjectId(options);
+  const projectId = needProjectId(options);
   return ensureApiEnabled(projectId, "runtimeconfig.googleapis.com", "runtimeconfig", true);
 }
 
@@ -68,7 +68,7 @@ export function getAppEngineLocation(config: any): string {
 }
 
 export async function getFirebaseConfig(options: any): Promise<args.FirebaseConfig> {
-  const projectId = getProjectId(options, false);
+  const projectId = needProjectId(options);
   const response = await api.request("GET", "/v1beta1/projects/" + projectId + "/adminSdkConfig", {
     auth: true,
     origin: api.firebaseApiOrigin,

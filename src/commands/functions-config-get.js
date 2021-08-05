@@ -2,7 +2,7 @@
 
 var _ = require("lodash");
 var { Command } = require("../command");
-var getProjectId = require("../getProjectId");
+var needProjectId = require("../projectUtils").needProjectId;
 const { logger } = require("../logger");
 var { requirePermissions } = require("../requirePermissions");
 var functionsConfig = require("../functionsConfig");
@@ -30,7 +30,7 @@ module.exports = new Command("functions:config:get [path]")
   ])
   .before(functionsConfig.ensureApi)
   .action(function (path, options) {
-    return _materialize(getProjectId(options), path).then(function (result) {
+    return _materialize(needProjectId(options), path).then(function (result) {
       logger.info(JSON.stringify(result, null, 2));
       return result;
     });
