@@ -6,10 +6,6 @@ import * as backend from "./backend";
 import * as fsutils from "../../fsutils";
 import * as projectPath from "../../projectPath";
 
-// have to require this because no @types/cjson available
-// tslint:disable-next-line
-const cjson = require("cjson");
-
 /**
  * Check that functions directory exists.
  * @param options options object. In prod is an Options; in tests can just be {cwd: string}
@@ -53,8 +49,8 @@ export function functionIdsAreValid(functions: { id: string; platform: string }[
   });
   if (invalidV2Ids.length !== 0) {
     const msg =
-    `${invalidV2Ids.join(", ")} v2 function name(s) can only contin lower ` +
-    `case letters, numbers, hyphens, and not exceed 62 characters in length`;
+      `${invalidV2Ids.join(", ")} v2 function name(s) can only contin lower ` +
+      `case letters, numbers, hyphens, and not exceed 62 characters in length`;
     throw new FirebaseError(msg);
   }
 }
