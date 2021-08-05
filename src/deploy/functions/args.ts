@@ -18,7 +18,8 @@ export interface Context {
   filters: string[][];
 
   // Filled in the "prepare" phase.
-  functionsSource?: string;
+  functionsSourceV1?: string;
+  functionsSourceV2?: string;
   runtimeConfigEnabled?: boolean;
   firebaseConfig?: FirebaseConfig;
 

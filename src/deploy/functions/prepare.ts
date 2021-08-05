@@ -80,7 +80,15 @@ export async function prepare(
       clc.bold(options.config.src.functions.source) +
       " directory for uploading..."
   );
-  context.functionsSource = await prepareFunctionsUpload(runtimeConfig, options);
+  if (wantBackend.cloudFunctions.find((fn) => fn.platform === "gcfv1")) {
+    context.functionsSourceV1 = await prepareFunctionsUpload(runtimeConfig, options);
+  }
+  if (wantBackend.cloudFunctions.find((fn) => fn.platform === "gcfv2")) {
+    context.functionsSourceV2 = await prepareFunctionsUpload(
+      /* runtimeConfig= */ undefined,
+      options
+    );
+  }
 
   // Setup default environment variables on each function.
   wantBackend.cloudFunctions.forEach((fn: backend.FunctionSpec) => {
