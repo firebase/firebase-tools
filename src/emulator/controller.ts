@@ -548,7 +548,7 @@ export async function startAll(options: Options, showUI: boolean = true): Promis
     }
 
     const rc = dbRulesConfig.normalizeRulesConfig(
-      dbRulesConfig.getRulesConfig(projectId!, options),
+      dbRulesConfig.getRulesConfig(projectId, options),
       options
     );
     logger.debug("database rules config: ", JSON.stringify(rc));
@@ -649,7 +649,7 @@ export async function startAll(options: Options, showUI: boolean = true): Promis
     const storageEmulator = new StorageEmulator({
       host: storageAddr.host,
       port: storageAddr.port,
-      projectId: projectId!,
+      projectId: projectId,
       rules: options.config.path(storageConfig.rules),
     });
     await startEmulator(storageEmulator);
@@ -694,7 +694,7 @@ export async function startAll(options: Options, showUI: boolean = true): Promis
 
     const uiAddr = await getAndCheckAddress(Emulators.UI, options);
     const ui = new EmulatorUI({
-      projectId: projectId!,
+      projectId: projectId,
       auto_download: true,
       ...uiAddr,
     });
