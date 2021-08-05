@@ -90,10 +90,12 @@ async function packageSource(options: Options, sourceDir: string, configValues: 
         mode: file.mode,
       });
     });
-    archive.append(JSON.stringify(configValues, null, 2), {
-      name: CONFIG_DEST_FILE,
-      mode: 420 /* 0o644 */,
-    });
+    if (typeof configValues !== "undefined") {
+      archive.append(JSON.stringify(configValues, null, 2), {
+        name: CONFIG_DEST_FILE,
+        mode: 420 /* 0o644 */,
+      });
+    }
     archive.finalize();
     await pipeAsync(archive, fileStream);
   } catch (err) {
@@ -123,7 +125,7 @@ async function packageSource(options: Options, sourceDir: string, configValues: 
 }
 
 export async function prepareFunctionsUpload(
-  runtimeConfig: backend.RuntimeConfigValues,
+  runtimeConfig: backend.RuntimeConfigValues | undefined,
   options: Options
 ): Promise<string | undefined> {
   utils.assertDefined(options.config.src.functions);
