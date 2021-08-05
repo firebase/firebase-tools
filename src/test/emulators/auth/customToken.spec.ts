@@ -117,7 +117,6 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
       });
   });
 
-  // TODO: update
   it("should not issue a refresh token in passthrough mode", async () => {
     const uid = "someuid";
     const claims = { abc: "def", ultimate: { answer: 42 } };
