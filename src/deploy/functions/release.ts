@@ -55,7 +55,7 @@ export async function release(context: args.Context, options: Options, payload: 
   const taskParams: tasks.TaskParams = {
     projectId,
     sourceUrl,
-    storageSource: context.storageSource,
+    storage: context.storage!,
     errorHandler,
   };
 
@@ -135,7 +135,7 @@ export async function release(context: args.Context, options: Options, payload: 
   }
   helper.logAndTrackDeployStats(cloudFunctionsQueue, errorHandler);
   await containerCleaner.cleanupBuildImages(payload.functions!.backend.cloudFunctions);
-  await helper.printTriggerUrls(context);
+  await helper.printTriggerUrls(context, payload.functions!.backend);
   errorHandler.printWarnings();
   errorHandler.printErrors();
 }
