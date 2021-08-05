@@ -9,6 +9,7 @@ import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import * as args from "./args";
 import * as backend from "./backend";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
+import { FirebaseError } from "../../error";
 import * as functionsConfig from "../../functionsConfig";
 import { needProjectId } from "../../projectUtils";
 import * as runtimes from "./runtimes";
@@ -115,11 +116,11 @@ export async function prepare(
   // Check what --only filters have been passed in.
   context.filters = getFilterGroups(options);
 
-  // Display a warning and prompt if any functions in the release have failurePolicies.
   const wantFunctions = wantBackend.cloudFunctions.filter((fn: backend.FunctionSpec) => {
     return functionMatchesAnyGroup(fn, context.filters);
   });
   const haveFunctions = (await backend.existingBackend(context)).cloudFunctions;
+  // Display a warning and prompt if any functions in the release have failurePolicies.
   await promptForFailurePolicies(options, wantFunctions, haveFunctions);
   await promptForMinInstances(options, wantFunctions, haveFunctions);
   await backend.checkAvailability(context, wantBackend);
