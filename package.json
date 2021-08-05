@@ -7,9 +7,9 @@
     "firebase": "./lib/bin/firebase.js"
   },
   "scripts": {
-    "build": "tsc",
-    "build:watch": "tsc --watch",
-    "clean": "rimraf lib dev",
+    "build": "./node_modules/.bin/tsc",
+    "build:watch": "./node_modules/.bin/tsc --watch",
+    "clean": "./node_modules/.bin/rimraf lib dev",
     "format": "npm run format:ts && npm run format:other",
     "format:other": "npm run lint:other -- --write",
     "format:ts": "npm run lint:ts -- --fix --quiet",
