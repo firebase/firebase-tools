@@ -437,66 +437,72 @@ describe("FunctionsEmulator-Runtime", () => {
       }).timeout(TIMEOUT_MED);
     });
 
-    it("should set FIREBASE_AUTH_EMULATOR_HOST when the emulator is running", async () => {
-      const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest);
-      frb.emulators = {
-        auth: {
-          host: "localhost",
-          port: 9099,
-        },
-      };
+    describe("environment variables", () => {
+      let restore: boolean;
 
-      const worker = invokeRuntimeWithFunctions(frb, () => {
-        return {
-          function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
-            res.json({
-              var: process.env.FIREBASE_AUTH_EMULATOR_HOST,
-            });
-          }),
-        };
+      before(() => {
+        restore = previews.dotenv;
+        previews.dotenv = true;
+        fs.writeFileSync(path.join(MODULE_ROOT, ".env"), "SOURCE=env\nFOO=foo");
+        fs.writeFileSync(path.join(MODULE_ROOT, ".env.local"), "SOURCE=env.local");
       });
 
-      const data = await callHTTPSFunction(worker, frb);
-      const res = JSON.parse(data);
-
-      expect(res.var).to.eql("localhost:9099");
-    }).timeout(TIMEOUT_MED);
-
-    it("should inject user environment variables when preview is enabled", async () => {
-      // Setup
-      const restore = previews.dotenv;
-      previews.dotenv = true;
-      fs.writeFileSync(path.join(MODULE_ROOT, ".env"), "SOURCE=env\nFOO=foo");
-      fs.writeFileSync(path.join(MODULE_ROOT, ".env.local"), "SOURCE=env.local");
-
-      const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest);
-      frb.emulators = {
-        auth: {
-          host: "localhost",
-          port: 9099,
-        },
-      };
-
-      const worker = invokeRuntimeWithFunctions(frb, () => {
-        return {
-          function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
-            res.json({
-              SOURCE: process.env.SOURCE,
-              FOO: process.env.FOO,
-            });
-          }),
-        };
+      after(() => {
+        fs.unlinkSync(path.join(MODULE_ROOT, ".env"));
+        fs.unlinkSync(path.join(MODULE_ROOT, ".env.local"));
+        previews.dotenv = restore;
       });
 
-      const data = await callHTTPSFunction(worker, frb);
-      const res = JSON.parse(data);
-      expect(res).to.deep.equal({ SOURCE: "env.local", FOO: "foo" });
+      it("should set FIREBASE_AUTH_EMULATOR_HOST when the emulator is running", async () => {
+        const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest);
+        frb.emulators = {
+          auth: {
+            host: "localhost",
+            port: 9099,
+          },
+        };
 
-      // Cleanup
-      fs.unlinkSync(path.join(MODULE_ROOT, ".env"));
-      fs.unlinkSync(path.join(MODULE_ROOT, ".env.local"));
-      previews.dotenv = restore;
-    }).timeout(TIMEOUT_MED);
+        const worker = invokeRuntimeWithFunctions(frb, () => {
+          return {
+            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
+              res.json({
+                var: process.env.FIREBASE_AUTH_EMULATOR_HOST,
+              });
+            }),
+          };
+        });
+
+        const data = await callHTTPSFunction(worker, frb);
+        const res = JSON.parse(data);
+
+        expect(res.var).to.eql("localhost:9099");
+      }).timeout(TIMEOUT_MED);
+
+      it("should inject user environment variables when preview is enabled", async () => {
+        const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest);
+        frb.emulators = {
+          auth: {
+            host: "localhost",
+            port: 9099,
+          },
+        };
+
+        const worker = invokeRuntimeWithFunctions(frb, () => {
+          return {
+            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
+              res.json({
+                SOURCE: process.env.SOURCE,
+                FOO: process.env.FOO,
+              });
+            }),
+          };
+        });
+
+        const data = await callHTTPSFunction(worker, frb);
+        const res = JSON.parse(data);
+        expect(res).to.deep.equal({ SOURCE: "env.local", FOO: "foo" });
+      }).timeout(TIMEOUT_MED);
+    });
   });
 
   describe("_InitializeFunctionsConfigHelper()", () => {
