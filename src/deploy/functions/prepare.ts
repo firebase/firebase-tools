@@ -65,13 +65,13 @@ export async function prepare(
   // enableCloudBuild is called above and has this special casing already.
   if (wantBackend.cloudFunctions.find((f) => f.platform === "gcfv2")) {
     const V2_APIS = {
-      "artifactregistry": "artifactregistry.googleapis.com",
-      "cloudrun": "run.googleapis.com",
-      "eventarc": "eventarc.googleapis.com",
-      "pubsub": "pubsub.googleapis.com",
+      artifactregistry: "artifactregistry.googleapis.com",
+      cloudrun: "run.googleapis.com",
+      eventarc: "eventarc.googleapis.com",
+      pubsub: "pubsub.googleapis.com",
     };
     const enablements = Object.entries(V2_APIS).map(([tag, api]) => {
-      return ensureApiEnabled.ensure(context.projectId, api, tag)
+      return ensureApiEnabled.ensure(context.projectId, api, tag);
     });
     await Promise.all(enablements);
   }
