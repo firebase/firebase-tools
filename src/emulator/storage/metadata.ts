@@ -389,6 +389,7 @@ export class CloudStorageObjectMetadata {
   etag: string;
   metadata?: { [s: string]: string };
   contentLanguage?: string;
+  contentDisposition: string;
   cacheControl?: string;
   customTime?: string;
   id: string;
@@ -402,6 +403,7 @@ export class CloudStorageObjectMetadata {
     this.generation = metadata.generation.toString();
     this.metageneration = metadata.metageneration.toString();
     this.contentType = metadata.contentType;
+    this.contentDisposition = metadata.contentDisposition;
     this.timeCreated = toSerializedDate(metadata.timeCreated);
     this.updated = toSerializedDate(metadata.updated);
     this.storageClass = metadata.storageClass;

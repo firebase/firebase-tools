@@ -449,6 +449,7 @@ describe("Storage emulator", () => {
           expect(metadataTypes).to.deep.equal({
             bucket: "string",
             contentType: "string",
+            contentDisposition: "string",
             generation: "string",
             md5Hash: "string",
             crc32c: "string",
@@ -585,6 +586,7 @@ describe("Storage emulator", () => {
           expect(metadataTypes).to.deep.equal({
             bucket: "string",
             contentType: "string",
+            contentDisposition: "string",
             generation: "string",
             md5Hash: "string",
             crc32c: "string",
@@ -691,6 +693,7 @@ describe("Storage emulator", () => {
           expect(metadataTypes).to.deep.equal({
             bucket: "string",
             contentType: "string",
+            contentDisposition: "string",
             generation: "string",
             md5Hash: "string",
             crc32c: "string",
