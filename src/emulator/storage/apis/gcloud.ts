@@ -11,6 +11,7 @@ import { EmulatorRegistry } from "../../registry";
 import { StorageEmulator } from "../index";
 import { EmulatorLogger } from "../../emulatorLogger";
 import { GetObjectResponse, StorageLayer } from "../files";
+import { crc32cToString } from "../crc";
 import type { Request, Response } from "express";
 import { parseObjectUploadMultipartRequest } from "../multipart";
 import { Upload, UploadNotActiveError } from "../upload";
@@ -341,6 +342,7 @@ function sendFileBytes(md: StoredFileMetadata, data: Buffer, req: Request, res: 
   res.setHeader("x-goog-generation", `${md.generation}`);
   res.setHeader("x-goog-metadatageneration", `${md.metageneration}`);
   res.setHeader("x-goog-storage-class", md.storageClass);
+  res.setHeader("x-goog-hash", `crc32c=${crc32cToString(md.crc32c)},md5=${md.md5Hash}`);
 
   const byteRange = [...(req.header("range") || "").split("bytes="), "", ""];
 
