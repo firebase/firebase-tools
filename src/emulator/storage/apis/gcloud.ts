@@ -335,7 +335,7 @@ function sendFileBytes(md: StoredFileMetadata, data: Buffer, req: Request, res: 
   res.setHeader("Accept-Ranges", "bytes");
   res.setHeader("Content-Type", md.contentType);
   res.setHeader("Content-Disposition", md.contentDisposition);
-  res.setHeader("Content-Encoding", "identity");
+  res.setHeader("Content-Encoding", md.contentEncoding);
 
   const byteRange = [...(req.header("range") || "").split("bytes="), "", ""];
 
