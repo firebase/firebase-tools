@@ -7,7 +7,7 @@ import TerminalRenderer = require("marked-terminal");
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
-import * as getProjectId from "../getProjectId";
+import { needProjectId } from "../projectUtils";
 import * as extensionsApi from "../extensions/extensionsApi";
 import { logPrefix } from "../extensions/extensionsHelper";
 import * as paramHelper from "../extensions/paramHelper";
@@ -35,7 +35,7 @@ export default new Command("ext:configure <extensionInstanceId>")
       `Configuring ${clc.bold(instanceId)}. This usually takes 3 to 5 minutes...`
     );
     try {
-      const projectId = getProjectId(options, false);
+      const projectId = needProjectId(options);
       let existingInstance: extensionsApi.ExtensionInstance;
       try {
         existingInstance = await extensionsApi.getInstance(projectId, instanceId);

@@ -3,7 +3,7 @@ import { Command } from "../command";
 import { requireAuth } from "../requireAuth";
 import { logger } from "../logger";
 import { RemoteConfigTemplate } from "../remoteconfig/interfaces";
-import getProjectId = require("../getProjectId");
+import { needProjectId } from "../projectUtils";
 import { requirePermissions } from "../requirePermissions";
 import { parseTemplateForTable } from "../remoteconfig/get";
 import { Options } from "../options";
@@ -39,7 +39,7 @@ module.exports = new Command("remoteconfig:get")
   .before(requirePermissions, ["cloudconfig.configs.get"])
   .action(async (options: Options) => {
     const template: RemoteConfigTemplate = await rcGet.getTemplate(
-      getProjectId(options),
+      needProjectId(options),
       // If version number is specified, use that, otherwise use the most recent (which is the default if undefined)
       typeof options.versionNumber === "string"
         ? checkValidNumber(options.versionNumber)

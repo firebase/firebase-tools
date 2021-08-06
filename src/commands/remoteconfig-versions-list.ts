@@ -1,7 +1,7 @@
 import { logger } from "../logger";
 import * as rcVersion from "../remoteconfig/versionslist";
 import { Command } from "../command";
-import getProjectId = require("../getProjectId");
+import { needProjectId } from "../projectUtils";
 import { requireAuth } from "../requireAuth";
 import { requirePermissions } from "../requirePermissions";
 import { Version, ListVersionsResult } from "../remoteconfig/interfaces";
@@ -26,7 +26,7 @@ module.exports = new Command("remoteconfig:versions:list")
   .before(requirePermissions, ["cloudconfig.configs.get"])
   .action(async (options) => {
     const versionsList: ListVersionsResult = await rcVersion.getVersions(
-      getProjectId(options),
+      needProjectId(options),
       options.limit
     );
     const table = new Table({ head: tableHead, style: { head: ["green"] } });
