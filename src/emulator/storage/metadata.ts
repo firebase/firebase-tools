@@ -32,7 +32,7 @@ export class StoredFileMetadata {
   contentEncoding: string;
   contentDisposition: string;
   contentLanguage?: string;
-  cacheControl?: string;
+  cacheControl: string;
   customTime?: Date;
   crc32c: string;
   etag: string;
@@ -60,7 +60,8 @@ export class StoredFileMetadata {
     this.storageClass = opts.storageClass || "STANDARD";
     this.etag = opts.etag || "someETag";
     this.contentDisposition = opts.contentDisposition || "inline";
-    this.cacheControl = opts.cacheControl;
+    // Use same default value GCS uses (see https://cloud.google.com/storage/docs/metadata#caching_data)
+    this.cacheControl = opts.cacheControl || "public, max-age=3600";
     this.contentLanguage = opts.contentLanguage;
     this.customTime = opts.customTime;
     this.contentEncoding = opts.contentEncoding || "identity";
