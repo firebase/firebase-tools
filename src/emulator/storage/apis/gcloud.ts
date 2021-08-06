@@ -336,6 +336,11 @@ function sendFileBytes(md: StoredFileMetadata, data: Buffer, req: Request, res: 
   res.setHeader("Content-Type", md.contentType);
   res.setHeader("Content-Disposition", md.contentDisposition);
   res.setHeader("Content-Encoding", md.contentEncoding);
+  res.setHeader("ETag", md.etag);
+  res.setHeader("Cache-Control", md.cacheControl);
+  res.setHeader("x-goog-generation", `${md.generation}`);
+  res.setHeader("x-goog-metadatageneration", `${md.metageneration}`);
+  res.setHeader("x-goog-storage-class", md.storageClass);
 
   const byteRange = [...(req.header("range") || "").split("bytes="), "", ""];
 
