@@ -53,7 +53,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
         );
       } catch (err) {
         if (err instanceof NotFoundError) {
-          return res.sendStatus(404);
+          return sendObjectNotFound(req, res);
         }
         if (err instanceof ForbiddenError) {
           throw new Error("Request failed unexpectedly due to Firebase Rules.");
@@ -81,7 +81,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       );
     } catch (err) {
       if (err instanceof NotFoundError) {
-        return res.sendStatus(404);
+        return sendObjectNotFound(req, res);
       }
       if (err instanceof ForbiddenError) {
         throw new Error("Request failed unexpectedly due to Firebase Rules.");
@@ -122,7 +122,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       );
     } catch (err) {
       if (err instanceof NotFoundError) {
-        return res.sendStatus(404);
+        return sendObjectNotFound(req, res);
       }
       if (err instanceof ForbiddenError) {
         throw new Error("Request failed unexpectedly due to Firebase Rules.");
@@ -197,7 +197,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       );
     } catch (err) {
       if (err instanceof NotFoundError) {
-        return res.sendStatus(404);
+        return sendObjectNotFound(req, res);
       }
       if (err instanceof ForbiddenError) {
         throw new Error("Request failed unexpectedly due to Firebase Rules.");
@@ -304,7 +304,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       );
     } catch (err) {
       if (err instanceof NotFoundError) {
-        return res.sendStatus(404);
+        return sendObjectNotFound(req, res);
       }
       if (err instanceof ForbiddenError) {
         throw new Error("Request failed unexpectedly due to Firebase Rules.");
@@ -358,4 +358,9 @@ function sendFileBytes(md: StoredFileMetadata, data: Buffer, req: Request, res: 
   } else {
     res.end(data);
   }
+}
+
+/** Sends 404 matching API */
+function sendObjectNotFound(req: Request, res: Response): void {
+  res.status(404).send(`No such object: ${req.params.bucketId}/${req.params.objectId}`);
 }

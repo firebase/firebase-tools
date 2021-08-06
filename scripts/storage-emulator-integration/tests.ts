@@ -350,6 +350,12 @@ describe("Storage emulator", () => {
           const actualContent = fs.readFileSync(smallFilePath);
           expect(downloadContent).to.deep.equal(actualContent);
         });
+
+        it("should throw 404 error for file not found", async () => {
+          await expect(testBucket.file("blah").download())
+            .to.be.eventually.rejectedWith(`No such object: ${storageBucket}/blah`)
+            .and.have.property("code", 404);
+        });
       });
 
       describe("#makePublic()", () => {
