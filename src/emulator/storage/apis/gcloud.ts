@@ -344,17 +344,16 @@ function sendFileBytes(md: StoredFileMetadata, data: Buffer, req: Request, res: 
   res.setHeader("x-goog-storage-class", md.storageClass);
   res.setHeader("x-goog-hash", `crc32c=${crc32cToString(md.crc32c)},md5=${md.md5Hash}`);
 
-  const byteRange = [...(req.header("range") || "").split("bytes="), "", ""];
+  const byteRange = req.range(data.byteLength, { combine: true });
 
-  const [rangeStart, rangeEnd] = byteRange[1].split("-");
-
-  if (rangeStart) {
-    const range = {
-      start: parseInt(rangeStart),
-      end: rangeEnd ? parseInt(rangeEnd) : data.byteLength,
-    };
-    res.setHeader("Content-Range", `bytes ${range.start}-${range.end - 1}/${data.byteLength}`);
-    res.status(206).end(data.slice(range.start, range.end));
+  if (Array.isArray(byteRange) && byteRange.type === "bytes" && byteRange.length > 0) {
+    const range = byteRange[0];
+    res.setHeader(
+      "Content-Range",
+      `${byteRange.type} ${range.start}-${range.end}/${data.byteLength}`
+    );
+    // Byte range requests are inclusive for start and end
+    res.status(206).end(data.slice(range.start, range.end + 1));
   } else {
     res.end(data);
   }

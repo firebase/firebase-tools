@@ -351,6 +351,17 @@ describe("Storage emulator", () => {
           expect(downloadContent).to.deep.equal(actualContent);
         });
 
+        it("should return partial content of the file", async () => {
+          await testBucket.upload(smallFilePath);
+          const [downloadContent] = await testBucket
+            .file(smallFilePath.split("/").slice(-1)[0])
+            // Request 10 bytes (range requests are inclusive)
+            .download({ start: 10, end: 19 });
+
+          const actualContent = fs.readFileSync(smallFilePath).slice(10, 20);
+          expect(downloadContent).to.have.lengthOf(10).and.deep.equal(actualContent);
+        });
+
         it("should throw 404 error for file not found", async () => {
           await expect(testBucket.file("blah").download())
             .to.be.eventually.rejectedWith(`No such object: ${storageBucket}/blah`)

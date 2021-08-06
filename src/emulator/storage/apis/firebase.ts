@@ -126,17 +126,20 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       res.setHeader("Content-Type", metadata.contentType);
       setObjectHeaders(res, metadata, { "Content-Encoding": isGZipped ? "identity" : undefined });
 
-      const byteRange = [...(req.header("range") || "").split("bytes="), "", ""];
-      const [rangeStart, rangeEnd] = byteRange[1].split("-");
-      if (rangeStart) {
-        const range = {
-          start: parseInt(rangeStart),
-          end: rangeEnd ? parseInt(rangeEnd) : data.byteLength,
-        };
-        res.setHeader("Content-Range", `bytes ${range.start}-${range.end - 1}/${data.byteLength}`);
-        return res.status(206).end(data.slice(range.start, range.end));
+      const byteRange = req.range(data.byteLength, { combine: true });
+
+      if (Array.isArray(byteRange) && byteRange.type === "bytes" && byteRange.length > 0) {
+        const range = byteRange[0];
+        res.setHeader(
+          "Content-Range",
+          `${byteRange.type} ${range.start}-${range.end}/${data.byteLength}`
+        );
+        // Byte range requests are inclusive for start and end
+        res.status(206).end(data.slice(range.start, range.end + 1));
+      } else {
+        res.end(data);
       }
-      return res.end(data);
+      return;
     }
 
     // Object metadata request
