@@ -314,6 +314,61 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     return sendFileBytes(getObjectResponse.metadata, getObjectResponse.data, req, res);
   });
 
+  gcloudStorageAPI.post(
+    "/b/:bucketId/o/:objectId/:method(rewriteTo|copyTo)/b/:destBucketId/o/:destObjectId",
+    (req, res, next) => {
+      const md = storageLayer.getMetadata(req.params.bucketId, req.params.objectId);
+
+      if (!md) {
+        return sendObjectNotFound(req, res);
+      }
+
+      if (req.params.method === "rewriteTo" && req.query.rewriteToken) {
+        // Don't yet support multi-request copying
+        return next();
+      }
+
+      const newMetadata: IncomingMetadata = {
+        ...md,
+        ...req.body,
+        metadata: {
+          ...md.customMetadata,
+          ...(req.body.metadata || {}),
+        },
+      };
+      const metadata = storageLayer.copyFile(
+        md,
+        req.params.destBucketId,
+        req.params.destObjectId,
+        newMetadata
+      );
+
+      if (!metadata) {
+        res.sendStatus(400);
+        return;
+      }
+
+      const resource = new CloudStorageObjectMetadata(metadata);
+
+      res.status(200);
+      if (req.params.method === "copyTo") {
+        // See https://cloud.google.com/storage/docs/json_api/v1/objects/copy#response
+        return res.json(resource);
+      } else if (req.params.method === "rewriteTo") {
+        // See https://cloud.google.com/storage/docs/json_api/v1/objects/rewrite#response
+        return res.json({
+          kind: "storage#rewriteResponse",
+          totalBytesRewritten: resource.size,
+          objectSize: resource.size,
+          done: true,
+          resource,
+        });
+      } else {
+        return next();
+      }
+    }
+  );
+
   gcloudStorageAPI.all("/**", (req, res) => {
     if (process.env.STORAGE_EMULATOR_DEBUG) {
       console.table(req.headers);

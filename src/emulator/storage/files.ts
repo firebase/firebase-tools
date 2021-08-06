@@ -327,6 +327,38 @@ export class StorageLayer {
     return metadata;
   }
 
+  public copyFile(
+    sourceFile: StoredFileMetadata,
+    destinationBucket: string,
+    destinationObject: string,
+    incomingMetadata: IncomingMetadata
+  ): StoredFileMetadata {
+    const filePath = this.path(destinationBucket, destinationObject);
+
+    this._persistence.deleteFile(filePath, true);
+
+    const bytes = this.getBytes(sourceFile.bucket, sourceFile.name) as Buffer;
+    this._persistence.appendBytes(filePath, bytes);
+
+    const newMetadata = new StoredFileMetadata(
+      {
+        name: destinationObject,
+        bucket: destinationBucket,
+        contentType: incomingMetadata.contentType || "application/octet-stream",
+        contentEncoding: incomingMetadata.contentEncoding,
+        customMetadata: incomingMetadata.metadata,
+      },
+      this._cloudFunctions,
+      bytes,
+      incomingMetadata
+    );
+    const file = new StoredFile(newMetadata, this._persistence.getDiskPath(filePath));
+    this._files.set(filePath, file);
+
+    this._cloudFunctions.dispatch("finalize", new CloudStorageObjectMetadata(file.metadata));
+    return file.metadata;
+  }
+
   /**
    * Lists all files and prefixes (folders) at a path.
    * @throws {ForbiddenError} if the request is not authorized.

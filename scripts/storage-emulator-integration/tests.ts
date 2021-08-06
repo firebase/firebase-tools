@@ -9,7 +9,7 @@ import * as puppeteer from "puppeteer";
 import * as request from "request";
 import * as crypto from "crypto";
 import * as os from "os";
-import { Bucket, Storage } from "@google-cloud/storage";
+import { Bucket, Storage, CopyOptions } from "@google-cloud/storage";
 import supertest = require("supertest");
 
 import { IMAGE_FILE_BASE64 } from "../../src/test/emulators/fixtures";
@@ -366,6 +366,146 @@ describe("Storage emulator", () => {
           await expect(testBucket.file("blah").download())
             .to.be.eventually.rejectedWith(`No such object: ${storageBucket}/blah`)
             .and.have.property("code", 404);
+        });
+      });
+
+      describe("#copy()", () => {
+        const copyDestinationFile = "copied_file";
+
+        it("should copy the file", async () => {
+          await testBucket.upload(smallFilePath);
+
+          const file = testBucket.file(copyDestinationFile);
+          const [, resp] = await testBucket.file(smallFilePath.split("/").slice(-1)[0]).copy(file);
+
+          expect(resp)
+            .to.have.all.keys(["kind", "totalBytesRewritten", "objectSize", "done", "resource"])
+            .and.include({
+              kind: "storage#rewriteResponse",
+              totalBytesRewritten: String(SMALL_FILE_SIZE),
+              objectSize: String(SMALL_FILE_SIZE),
+              done: true,
+            });
+
+          const [copiedContent] = await file.download();
+
+          const actualContent = fs.readFileSync(smallFilePath);
+          expect(copiedContent).to.deep.equal(actualContent);
+        });
+
+        it("should copy the file to a different bucket", async () => {
+          await testBucket.upload(smallFilePath);
+
+          const otherBucket = testBucket.storage.bucket("other-bucket");
+          const file = otherBucket.file(copyDestinationFile);
+          const [, { resource: metadata }] = await testBucket
+            .file(smallFilePath.split("/").slice(-1)[0])
+            .copy(file);
+
+          expect(metadata).to.have.property("bucket", otherBucket.name);
+
+          const [copiedContent] = await file.download();
+
+          const actualContent = fs.readFileSync(smallFilePath);
+          expect(copiedContent).to.deep.equal(actualContent);
+        });
+
+        it("should return the metadata of the destination file", async () => {
+          await testBucket.upload(smallFilePath);
+
+          const file = testBucket.file(copyDestinationFile);
+          const [, { resource: actualMetadata }] = await testBucket
+            .file(smallFilePath.split("/").slice(-1)[0])
+            .copy(file);
+
+          const [expectedMetadata] = await file.getMetadata();
+          expect(actualMetadata).to.deep.equal(expectedMetadata);
+        });
+
+        it("should copy the file preserving the original metadata", async () => {
+          const [, source] = await testBucket.upload(smallFilePath);
+
+          const file = testBucket.file(copyDestinationFile);
+          await testBucket.file(smallFilePath.split("/").slice(-1)[0]).copy(file);
+
+          const [metadata] = await file.getMetadata();
+
+          expect(metadata).to.have.all.keys(source).and.deep.include({
+            bucket: source.bucket,
+            contentType: source.contentType,
+            etag: source.etag,
+            crc32c: source.crc32c,
+            cacheControl: source.cacheControl,
+          });
+
+          const metadataTypes: { [s: string]: string } = {};
+
+          for (const key in metadata) {
+            if (metadata[key]) {
+              metadataTypes[key] = typeof metadata[key];
+            }
+          }
+
+          expect(metadataTypes).to.deep.equal({
+            bucket: "string",
+            contentType: "string",
+            generation: "string",
+            md5Hash: "string",
+            crc32c: "string",
+            cacheControl: "string",
+            etag: "string",
+            metageneration: "string",
+            storageClass: "string",
+            name: "string",
+            size: "string",
+            timeCreated: "string",
+            updated: "string",
+            id: "string",
+            kind: "string",
+            mediaLink: "string",
+            selfLink: "string",
+            timeStorageClassUpdated: "string",
+          });
+        });
+
+        it("should copy the file updating with the provided metadata", async () => {
+          const [, source] = await testBucket.upload(smallFilePath);
+
+          const file = testBucket.file(copyDestinationFile);
+          const metadata = { foo: "bar" };
+          const cacheControl = "private,max-age=10,immutable";
+          // Types for CopyOptions are wrong (@google-cloud/storage sub-dependency needs
+          // update to include https://github.com/googleapis/nodejs-storage/pull/1406
+          // and https://github.com/googleapis/nodejs-storage/pull/1426)
+          const copyOpts: CopyOptions & { [key: string]: any } = {
+            metadata,
+            cacheControl,
+          };
+          const [, { resource: metadata1 }] = await testBucket
+            .file(smallFilePath.split("/").slice(-1)[0])
+            .copy(file, copyOpts);
+
+          expect(metadata1).to.deep.include({
+            bucket: source.bucket,
+            contentType: source.contentType,
+            etag: source.etag,
+            crc32c: source.crc32c,
+            metadata,
+            cacheControl,
+          });
+
+          // Also double check with a new metadata fetch
+          const [metadata2] = await file.getMetadata();
+          expect(metadata2).to.deep.equal(metadata1);
+        });
+
+        it("should not support the use of a rewriteToken", async () => {
+          await testBucket.upload(smallFilePath);
+
+          const file = testBucket.file(copyDestinationFile);
+          await expect(
+            testBucket.file(smallFilePath.split("/").slice(-1)[0]).copy(file, { token: "foo-bar" })
+          ).to.eventually.be.rejected.and.have.property("code", 501);
         });
       });
 
