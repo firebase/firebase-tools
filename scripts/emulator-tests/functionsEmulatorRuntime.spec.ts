@@ -462,7 +462,8 @@ describe("FunctionsEmulator-Runtime", () => {
       expect(res.var).to.eql("localhost:9099");
     }).timeout(TIMEOUT_MED);
 
-    it("should inject user environment variables when enabled", async () => {
+    it("should inject user environment variables when preview is enabled", async () => {
+      // Setup
       const restore = previews.dotenv;
       previews.dotenv = true;
       fs.writeFileSync(path.join(MODULE_ROOT, ".env"), "SOURCE=env\nFOO=foo");
@@ -489,9 +490,9 @@ describe("FunctionsEmulator-Runtime", () => {
 
       const data = await callHTTPSFunction(worker, frb);
       const res = JSON.parse(data);
-
       expect(res).to.deep.equal({ SOURCE: "env.local", FOO: "foo" });
 
+      // Cleanup
       fs.unlinkSync(path.join(MODULE_ROOT, ".env"));
       fs.unlinkSync(path.join(MODULE_ROOT, ".env.local"));
       previews.dotenv = restore;

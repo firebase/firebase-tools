@@ -2,7 +2,7 @@
 "use strict";
 
 /**
- * Integration test for functions config commands. Run:
+ * Integration test for functions env var support. Run:
  * node ./test-functions-env.js <projectId> <region>
  *
  * If parameter ommited:
@@ -39,14 +39,13 @@ function preTest() {
   execSync("npm install", { cwd: functionsSource, stdio: "ignore", stderr: "ignore" });
   api.setRefreshToken(configstore.get("tokens").refresh_token);
   api.setScopes(scopes.CLOUD_PLATFORM);
-  console.log("Done pretest prep.");
   fs.copySync(source, functionsSource + "/index.js");
-
   execSync(`${localFirebase} --open-sesame dotenv`, { cwd: tmpDir });
+  console.log("Done pretest prep.");
 }
 
 function postTest() {
-  // fs.remove(tmpDir);
+  fs.remove(tmpDir);
   console.log(tmpDir);
   execSync(`${localFirebase} functions:delete ${functionTarget} --project=${projectId} -f`);
   console.log("Done post-test cleanup.");
@@ -57,6 +56,7 @@ async function expectEnvs(envs) {
   const fn = fns.find((fn) => fn.name.includes(functionTarget));
 
   const gotEnvs = fn.environmentVariables;
+  // Remoev system-provided environment variables.
   delete gotEnvs.GCLOUD_PROJECT;
   delete gotEnvs.FIREBASE_CONFIG;
 
@@ -86,8 +86,6 @@ async function runTest(description, envFiles, expected) {
       fs.unlinkSync(f);
     }
   }
-
-  console.log("============================");
 }
 
 async function main() {
