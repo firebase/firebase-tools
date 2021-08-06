@@ -231,6 +231,8 @@ interface IamOptions {
 /**
  * Sets the IAM policy of a Google Cloud Function.
  * @param options The Iam options to set.
+ *
+ * @throws {@link FirebaseError} when the IAM Polciy fails to be set
  */
 export async function setIamPolicy(options: IamOptions): Promise<void> {
   const endpoint = `/${API_VERSION}/${options.name}:setIamPolicy`;
@@ -252,10 +254,13 @@ export async function setIamPolicy(options: IamOptions): Promise<void> {
 }
 
 /**
- * Formats the service account to be used with IAM API calls
+ * Formats the service account to be used with IAM API calls, a vaild service account string is
+ * 'service-account@project.iam.gserviceaccount.com', 'service-account@', or 'service-account'.
  * @param serviceAccount the custom service account created by the user
  * @param projectId the ID of the current project
  * @returns a correctly formatted service account string
+ *
+ * @throws {@link Error} if the supplied service account string is empty
  */
 function formatServiceAccount(serviceAccount: string, projectId: string): string {
   if (serviceAccount.length === 0) {
@@ -289,39 +294,29 @@ export function generateIamPolicy(
   invoker: backend.Invoker | backend.Invoker[] = "public"
 ): iam.Policy {
   const invokerRole = "roles/cloudfunctions.invoker";
-  const policy: iam.Policy = {
-    version: 3,
-    bindings: [],
-    etag: "",
-  };
+  const roleMembers: string[] = [];
 
   if (typeof invoker === "string") {
-    const roleMembers: string[] = [];
-    switch (invoker) {
-      case "public":
-        roleMembers.push("allUsers");
-        break;
-      case "private": // empty member array
-        break;
-      default:
-        roleMembers.push(formatServiceAccount(invoker, projectId));
-        break;
+    if (invoker === "public") {
+      roleMembers.push("allUsers");
+    } else if (invoker !== "private") {
+      // if private we do not add any members to the invoker role
+      roleMembers.push(formatServiceAccount(invoker, projectId));
     }
-    policy.bindings.push({
-      role: invokerRole,
-      members: roleMembers,
-    });
   } else {
-    const serviceAccountMembers: string[] = [];
-    for (const serviceAccount of invoker) {
-      serviceAccountMembers.push(formatServiceAccount(serviceAccount, projectId));
-    }
-    policy.bindings.push({
-      role: invokerRole,
-      members: serviceAccountMembers,
-    });
+    roleMembers.splice(0, 0, ...invoker.map((inv) => formatServiceAccount(inv, projectId)));
   }
 
+  const policy: iam.Policy = {
+    version: 3,
+    bindings: [
+      {
+        role: invokerRole,
+        members: roleMembers,
+      },
+    ],
+    etag: "",
+  };
   return policy;
 }
 
