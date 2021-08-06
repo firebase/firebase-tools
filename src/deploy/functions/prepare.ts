@@ -32,12 +32,12 @@ function getEnvs(options: {
   };
   if (previews.dotenv) {
     envs = {
-      ...envs,
       ...functionsEnv.load({
         functionsSource,
         projectId,
         projectAlias,
       }),
+      ...envs,
     };
   }
   return envs;
@@ -110,11 +110,6 @@ export async function prepare(
     );
   }
 
-  // Prepare the functions directory for upload, and set context.triggers.
-  utils.assertDefined(
-    options.config.src.functions.source,
-    "Error: 'functions.source' is not defined"
-  );
   logBullet(
     clc.cyan.bold("functions:") +
       " preparing " +
