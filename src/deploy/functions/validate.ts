@@ -38,7 +38,7 @@ export function functionIdsAreValid(functions: { id: string; platform: string }[
   });
   if (invalidV1Ids.length !== 0) {
     const msg =
-      `${invalidV1Ids.join(", ")} function name(s) can only contain letters, ` +
+      `${invalidV1Ids.map((f) => f.id).join(", ")} function name(s) can only contain letters, ` +
       `numbers, hyphens, and not exceed 62 characters in length`;
     throw new FirebaseError(msg);
   }
@@ -49,7 +49,7 @@ export function functionIdsAreValid(functions: { id: string; platform: string }[
   });
   if (invalidV2Ids.length !== 0) {
     const msg =
-      `${invalidV2Ids.join(", ")} v2 function name(s) can only contin lower ` +
+      `${invalidV2Ids.map((f) => f.id).join(", ")} v2 function name(s) can only contin lower ` +
       `case letters, numbers, hyphens, and not exceed 62 characters in length`;
     throw new FirebaseError(msg);
   }
