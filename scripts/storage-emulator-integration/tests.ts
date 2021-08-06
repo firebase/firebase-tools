@@ -740,6 +740,38 @@ describe("Storage emulator", () => {
           expect(metadata.metadata.is_over).to.equal("9000");
         });
 
+        it("should convert non-string fields under .metadata to strings", async () => {
+          await testBucket.upload(smallFilePath);
+          const [metadata] = await testBucket
+            .file(smallFilePath.split("/").slice(-1)[0])
+            .setMetadata({ metadata: { booleanValue: true, numberValue: -1 } });
+
+          expect(metadata.metadata).to.deep.equal({
+            booleanValue: "true",
+            numberValue: "-1",
+          });
+        });
+
+        it("should remove fields under .metadata when setting to null", async () => {
+          await testBucket.upload(smallFilePath);
+          const [metadata1] = await testBucket
+            .file(smallFilePath.split("/").slice(-1)[0])
+            .setMetadata({ metadata: { foo: "bar", hello: "world" } });
+
+          expect(metadata1.metadata).to.deep.equal({
+            foo: "bar",
+            hello: "world",
+          });
+
+          const [metadata2] = await testBucket
+            .file(smallFilePath.split("/").slice(-1)[0])
+            .setMetadata({ metadata: { foo: null } });
+
+          expect(metadata2.metadata).to.deep.equal({
+            hello: "world",
+          });
+        });
+
         it("should ignore any unknown fields", async () => {
           await testBucket.upload(smallFilePath);
           const [metadata] = await testBucket

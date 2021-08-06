@@ -188,7 +188,12 @@ export class StoredFileMetadata {
     }
 
     if (incoming.metadata) {
-      this.customMetadata = incoming.metadata;
+      // Convert all values to strings
+      this.customMetadata = this.customMetadata ? { ...this.customMetadata } : {};
+      for (const k of Object.keys(incoming.metadata)) {
+        const v = incoming.metadata[k];
+        this.customMetadata[k] = (v === null ? null : String(v)) as any;
+      }
     }
 
     if (incoming.contentLanguage) {
