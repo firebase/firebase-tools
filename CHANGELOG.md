@@ -2,3 +2,4 @@
 - Fixes Auth Emulator errors when importing many users. (#3577)
 - Fixes support for `--except` flag when used for deploying Hosting. (#3397)
 - Improves handling of project number identifiers.
+- Improve remoteconfig:get and remoteconfig:versions:list when no version exists or is specified (#3628)
