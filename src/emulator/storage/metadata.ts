@@ -440,7 +440,9 @@ export class CloudStorageObjectMetadata {
       this.customTime = toSerializedDate(metadata.customTime);
     }
 
-    // I'm not sure why but @google-cloud/storage calls .substr(4) on this value, so we need to pad it.
+    // We must pad the first four bytes of the checksum.
+    // Reverse of http://stackoverflow.com/questions/25096737/base64-encoding-of-crc32c-long-value
+    // Adapted from from https://github.com/googleapis/nodejs-storage/blob/0c1fa3934a52a608366a8c6c798c43516dd03dbf/src/file.ts#L1406-L1409
     this.crc32c = "----" + Buffer.from([metadata.crc32c]).toString("base64");
 
     this.timeStorageClassUpdated = toSerializedDate(metadata.timeCreated);
