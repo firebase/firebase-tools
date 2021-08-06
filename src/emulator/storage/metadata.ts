@@ -58,7 +58,6 @@ export class StoredFileMetadata {
     this.metageneration = opts.metageneration || 1;
     this.generation = opts.generation || Date.now();
     this.storageClass = opts.storageClass || "STANDARD";
-    this.etag = opts.etag || "someETag";
     this.contentDisposition = opts.contentDisposition || "inline";
     // Use same default value GCS uses (see https://cloud.google.com/storage/docs/metadata#caching_data)
     this.cacheControl = opts.cacheControl || "public, max-age=3600";
@@ -67,6 +66,14 @@ export class StoredFileMetadata {
     this.contentEncoding = opts.contentEncoding || "identity";
     this.customMetadata = opts.customMetadata;
     this.downloadTokens = opts.downloadTokens || [];
+    if (opts.etag) {
+      this.etag = opts.etag;
+    } else if (bytes) {
+      // If we don't have a provided eTag try to derive from bytes
+      this.etag = generateETag(bytes);
+    } else {
+      this.etag = "someETag";
+    }
 
     // Special handling for date fields
     this.timeCreated = opts.timeCreated ? new Date(opts.timeCreated) : new Date();
@@ -474,4 +481,11 @@ function generateMd5Hash(bytes: Buffer): string {
   const hash = crypto.createHash("md5");
   hash.update(bytes);
   return hash.digest("base64");
+}
+
+function generateETag(bytes: Buffer): string {
+  const hash = crypto.createHash("sha1");
+  hash.update(bytes);
+  // Trim padding
+  return hash.digest("base64").slice(0, -1);
 }
