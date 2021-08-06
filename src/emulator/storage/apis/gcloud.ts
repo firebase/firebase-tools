@@ -326,7 +326,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
   return gcloudStorageAPI;
 }
 
-function sendFileBytes(md: StoredFileMetadata, data: Buffer, req: Request, res: Response) {
+function sendFileBytes(md: StoredFileMetadata, data: Buffer, req: Request, res: Response): void {
   const isGZipped = md.contentEncoding === "gzip";
   if (isGZipped) {
     data = gunzipSync(data);
