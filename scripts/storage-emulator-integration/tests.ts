@@ -338,6 +338,15 @@ describe("Storage emulator", () => {
           const [existsAfter] = await toDeleteFile.exists();
           expect(existsAfter).to.equal(false);
         });
+
+        it("should throw 404 object error for file not found", async () => {
+          await expect(testBucket.file("blah").delete())
+            .to.be.eventually.rejectedWith(`No such object: ${storageBucket}/blah`)
+            .and.nested.include({
+              code: 404,
+              "errors[0].reason": "notFound",
+            });
+        });
       });
 
       describe("#download()", () => {
@@ -363,9 +372,12 @@ describe("Storage emulator", () => {
         });
 
         it("should throw 404 error for file not found", async () => {
-          await expect(testBucket.file("blah").download())
-            .to.be.eventually.rejectedWith(`No such object: ${storageBucket}/blah`)
-            .and.have.property("code", 404);
+          const err = (await expect(
+            testBucket.file("blah").download()
+          ).to.be.eventually.rejectedWith(`No such object: ${storageBucket}/blah`)) as Error;
+
+          expect(err).to.have.property("code", 404);
+          expect(err).not.have.nested.property("errors[0]");
         });
       });
 
@@ -659,6 +671,15 @@ describe("Storage emulator", () => {
           expect(storedMetadata.metadata.firebaseStorageDownloadTokens).to.deep.equal(
             incomingMetadata.metadata.firebaseStorageDownloadTokens
           );
+        });
+
+        it("should throw 404 object error for file not found", async () => {
+          await expect(testBucket.file("blah").getMetadata())
+            .to.be.eventually.rejectedWith(`No such object: ${storageBucket}/blah`)
+            .and.nested.include({
+              code: 404,
+              "errors[0].reason": "notFound",
+            });
         });
       });
 

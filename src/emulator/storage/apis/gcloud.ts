@@ -416,5 +416,23 @@ function sendFileBytes(md: StoredFileMetadata, data: Buffer, req: Request, res: 
 
 /** Sends 404 matching API */
 function sendObjectNotFound(req: Request, res: Response): void {
-  res.status(404).send(`No such object: ${req.params.bucketId}/${req.params.objectId}`);
+  res.status(404);
+  const message = `No such object: ${req.params.bucketId}/${req.params.objectId}`;
+  if (req.method === "GET" && req.query.alt === "media") {
+    res.send(message);
+  } else {
+    res.json({
+      error: {
+        code: 404,
+        message,
+        errors: [
+          {
+            message,
+            domain: "global",
+            reason: "notFound",
+          },
+        ],
+      },
+    });
+  }
 }
