@@ -33,12 +33,17 @@ export class Distribution {
     }
 
     try {
-      fs.ensureFileSync(path);
+      var stat = fs.statSync(path);
     } catch (err) {
       logger.info(err);
       throw new FirebaseError(
-        `${path} is not a file. Verify that it points to a distribution binary.`
+        `File ${path} does not exist: verify that file points to a distribution binary`
       );
+    }
+    if (!stat.isFile()) {
+      throw new FirebaseError(
+        `${path} is not a file. Verify that it points to a distribution binary.`
+        );
     }
 
     this.path = path;

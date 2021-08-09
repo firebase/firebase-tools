@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import { join } from "path";
+import * as fs from "fs-extra";
 import * as rimraf from "rimraf";
 import * as sinon from "sinon";
 import * as tmp from "tmp";
@@ -20,7 +21,9 @@ tmp.setGracefulCleanup();
 describe("distribution", () => {
   const tempdir = tmp.dirSync();
   const appId = "1:12345789:ios:abc123def456";
-  const mockDistribution = new Distribution(join(tempdir.name, "app.ipa"));
+  const binaryFile = join(tempdir.name, "app.ipa");
+  fs.ensureFileSync(binaryFile);
+  const mockDistribution = new Distribution(binaryFile);
   const appDistributionClient = new AppDistributionClient(appId);
   const appViewBasic = "BASIC";
   const appViewFull = "FULL";
