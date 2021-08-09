@@ -1,6 +1,6 @@
 import { Command } from "../command";
 import * as utils from "../utils";
-import * as getProjectId from "../getProjectId";
+import { needProjectId } from "../projectUtils";
 import {
   listGcfPaths,
   deleteGcfArtifacts,
@@ -9,6 +9,7 @@ import {
 import { promptOnce } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 import { FirebaseError } from "../error";
+import { RC } from "../rc";
 
 function getConfirmationMessage(paths: string[]): string {
   let message = "You are about to delete all images in the following directories:\n\n";
@@ -30,8 +31,8 @@ export default new Command("functions:deletegcfartifacts")
       "<regions> is a Google defined region list, e.g. us-central1,us-east1,europe-west2."
   )
   .before(requirePermissions, ["storage.objects.delete"])
-  .action(async (options: { regions?: string }) => {
-    const projectId = getProjectId(options);
+  .action(async (options: { regions?: string, projectId?: string, project?: string, rc: RC }) => {
+    const projectId = needProjectId(options);
     const regions = options.regions ? options.regions.split(",") : undefined;
     const dockerHelper: Record<string, DockerHelper> = {}; // cache dockerhelpers
     try {
