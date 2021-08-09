@@ -9,8 +9,9 @@ import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import * as args from "./args";
 import * as backend from "./backend";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
+import { FirebaseError } from "../../error";
 import * as functionsConfig from "../../functionsConfig";
-import * as getProjectId from "../../getProjectId";
+import { needProjectId } from "../../projectUtils";
 import * as runtimes from "./runtimes";
 import * as validate from "./validate";
 import * as utils from "../../utils";
@@ -31,7 +32,7 @@ export async function prepare(
   logger.debug(`Building ${runtimeDelegate.name} source`);
   await runtimeDelegate.build();
 
-  const projectId = getProjectId(options);
+  const projectId = needProjectId(options);
 
   // Check that all necessary APIs are enabled.
   const checkAPIsEnabled = await Promise.all([
@@ -59,14 +60,20 @@ export async function prepare(
     return;
   }
 
-  // NOTE: this will eventually be enalbed for everyone once AR is enabled
-  // for GCFv1
+  // Note: Some of these are premium APIs that require billing to be enabled.
+  // We'd eventually have to add special error handling for billing APIs, but
+  // enableCloudBuild is called above and has this special casing already.
   if (wantBackend.cloudFunctions.find((f) => f.platform === "gcfv2")) {
-    await ensureApiEnabled.ensure(
-      context.projectId,
-      "artifactregistry.googleapis.com",
-      "artifactregistry"
-    );
+    const V2_APIS = {
+      artifactregistry: "artifactregistry.googleapis.com",
+      cloudrun: "run.googleapis.com",
+      eventarc: "eventarc.googleapis.com",
+      pubsub: "pubsub.googleapis.com",
+    };
+    const enablements = Object.entries(V2_APIS).map(([tag, api]) => {
+      return ensureApiEnabled.ensure(context.projectId, api, tag);
+    });
+    await Promise.all(enablements);
   }
 
   // Prepare the functions directory for upload, and set context.triggers.
@@ -115,11 +122,11 @@ export async function prepare(
   // Check what --only filters have been passed in.
   context.filters = getFilterGroups(options);
 
-  // Display a warning and prompt if any functions in the release have failurePolicies.
   const wantFunctions = wantBackend.cloudFunctions.filter((fn: backend.FunctionSpec) => {
     return functionMatchesAnyGroup(fn, context.filters);
   });
   const haveFunctions = (await backend.existingBackend(context)).cloudFunctions;
+  // Display a warning and prompt if any functions in the release have failurePolicies.
   await promptForFailurePolicies(options, wantFunctions, haveFunctions);
   await promptForMinInstances(options, wantFunctions, haveFunctions);
   await backend.checkAvailability(context, wantBackend);

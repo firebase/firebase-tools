@@ -6,10 +6,6 @@ import * as backend from "./backend";
 import * as fsutils from "../../fsutils";
 import * as projectPath from "../../projectPath";
 
-// have to require this because no @types/cjson available
-// tslint:disable-next-line
-const cjson = require("cjson");
-
 /**
  * Check that functions directory exists.
  * @param options options object. In prod is an Options; in tests can just be {cwd: string}
@@ -35,13 +31,26 @@ export function functionsDirectoryExists(
  * @param functionNames Object containing function names as keys.
  * @throws { FirebaseError } Function names must be valid.
  */
-export function functionIdsAreValid(functions: { id: string }[]): void {
-  const validFunctionNameRegex = /^[a-zA-Z0-9_-]{1,63}$/;
-  const invalidIds = functions.filter((fn) => !validFunctionNameRegex.test(fn.id));
-  if (invalidIds.length !== 0) {
+export function functionIdsAreValid(functions: { id: string; platform: string }[]): void {
+  const v1FunctionName = /^[a-zA-Z][a-zA-Z0-9_-]{0,62}$/;
+  const invalidV1Ids = functions.filter((fn) => {
+    return fn.platform === "gcfv1" && !v1FunctionName.test(fn.id);
+  });
+  if (invalidV1Ids.length !== 0) {
     const msg =
-      `${invalidIds.join(", ")} function name(s) can only contain letters, ` +
+      `${invalidV1Ids.map((f) => f.id).join(", ")} function name(s) can only contain letters, ` +
       `numbers, hyphens, and not exceed 62 characters in length`;
+    throw new FirebaseError(msg);
+  }
+
+  const v2FunctionName = /^[a-z][a-z0-9-]{0,62}$/;
+  const invalidV2Ids = functions.filter((fn) => {
+    return fn.platform === "gcfv2" && !v2FunctionName.test(fn.id);
+  });
+  if (invalidV2Ids.length !== 0) {
+    const msg =
+      `${invalidV2Ids.map((f) => f.id).join(", ")} v2 function name(s) can only contin lower ` +
+      `case letters, numbers, hyphens, and not exceed 62 characters in length`;
     throw new FirebaseError(msg);
   }
 }

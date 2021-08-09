@@ -7,7 +7,7 @@ import { Options } from "../../../../options";
 import { getRuntimeChoice } from "./parseRuntimeAndValidateSDK";
 import * as args from "../../args";
 import * as backend from "../../backend";
-import * as getProjectId from "../../../../getProjectId";
+import { needProjectId } from "../../../../projectUtils";
 import * as runtimes from "..";
 import * as validate from "./validate";
 import { logger } from "../../../../logger";
@@ -40,7 +40,7 @@ export async function tryCreateDelegate(
     throw new FirebaseError(`Unexpected runtime ${runtime}`);
   }
 
-  return new Delegate(getProjectId(options), options.config.projectDir, sourceDir, runtime);
+  return new Delegate(needProjectId(options), options.config.projectDir, sourceDir, runtime);
 }
 
 // TODO(inlined): Consider moving contents in parseRuntimeAndValidateSDK and validate around.

@@ -2,7 +2,7 @@ import * as path from "path";
 import { FunctionsEmulator, FunctionsEmulatorArgs } from "../emulator/functionsEmulator";
 import { EmulatorServer } from "../emulator/emulatorServer";
 import { parseRuntimeVersion } from "../emulator/functionsEmulatorUtils";
-import * as getProjectId from "../getProjectId";
+import { needProjectId } from "../projectUtils";
 import { getProjectDefaultAccount } from "../auth";
 import { Options } from "../options";
 import { Config } from "../config";
@@ -20,7 +20,7 @@ export class FunctionsServer {
   }
 
   async start(options: Options, partialArgs: Partial<FunctionsEmulatorArgs>): Promise<void> {
-    const projectId = getProjectId(options, false);
+    const projectId = needProjectId(options);
     utils.assertDefined(options.config.src.functions);
     utils.assertDefined(
       options.config.src.functions.source,

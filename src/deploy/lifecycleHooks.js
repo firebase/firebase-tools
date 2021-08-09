@@ -6,7 +6,7 @@ const utils = require("../utils");
 const clc = require("cli-color");
 const childProcess = require("child_process");
 const { FirebaseError } = require("../error");
-const getProjectId = require("../getProjectId");
+const needProjectId = require("../projectUtils").needProjectId;
 const { logger } = require("../logger");
 const path = require("path");
 
@@ -44,7 +44,7 @@ function runCommand(command, childOptions) {
 
 function getChildEnvironment(target, overallOptions, config) {
   // active project ID
-  const projectId = getProjectId(overallOptions);
+  const projectId = needProjectId(overallOptions);
   // root directory where firebase.json can be found
   const projectDir = overallOptions.projectRoot;
   // location of hosting site or functions deploy, defaults project directory

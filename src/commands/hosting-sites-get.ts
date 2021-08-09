@@ -3,7 +3,7 @@ import Table = require("cli-table");
 import { Command } from "../command";
 import { Site, getSite } from "../hosting/api";
 import { requirePermissions } from "../requirePermissions";
-import * as getProjectId from "../getProjectId";
+import { needProjectId } from "../projectUtils";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
 
@@ -12,7 +12,7 @@ export default new Command("hosting:sites:get <siteId>")
   .before(requirePermissions, ["firebasehosting.sites.get"])
   .action(
     async (siteId: string, options): Promise<Site> => {
-      const projectId = getProjectId(options);
+      const projectId = needProjectId(options);
       if (!siteId) {
         throw new FirebaseError("<siteId> must be specified");
       }
