@@ -12,11 +12,9 @@ export class Persistence {
 
   public reset(dirPath: string) {
     this._dirPath = dirPath;
-    if (!existsSync(dirPath)) {
-      mkdirSync(dirPath, {
-        recursive: true,
-      });
-    }
+    mkdirSync(dirPath, {
+      recursive: true,
+    });
   }
 
   public get dirPath(): string {
@@ -30,11 +28,9 @@ export class Persistence {
     const dirPath =
       encodedSlashIndex >= 0 ? filepath.substring(0, encodedSlashIndex) : path.dirname(filepath);
 
-    if (!existsSync(dirPath)) {
-      mkdirSync(dirPath, {
-        recursive: true,
-      });
-    }
+    mkdirSync(dirPath, {
+      recursive: true,
+    });
     let fd;
 
     try {
@@ -87,11 +83,9 @@ export class Persistence {
   renameFile(oldName: string, newName: string): void {
     const dirPath = this.getDiskPath(path.dirname(newName));
 
-    if (!existsSync(dirPath)) {
-      mkdirSync(dirPath, {
-        recursive: true,
-      });
-    }
+    mkdirSync(dirPath, {
+      recursive: true,
+    });
 
     renameSync(this.getDiskPath(oldName), this.getDiskPath(newName));
   }
