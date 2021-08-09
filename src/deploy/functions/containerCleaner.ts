@@ -159,33 +159,39 @@ export async function listGcfPaths(
   }
   const locationsSet = new Set(locations); // for quick lookup
   const subdomains = new Set(Object.values(SUBDOMAIN_MAPPING));
-  const failedSubdomains = new Set<string>();
+  const failedSubdomains: string[] = [];
+  const listAll: Promise<Stat>[] = [];
 
-  const listAll = [...subdomains].map((subdomain) => {
-    try {
-      return getHelper(dockerHelpers, subdomain).ls(`${projectId}/gcf`);
-    } catch (err) {
-      failedSubdomains.add(subdomain);
-      logger.debug(err);
-      const stat: Stat = {
-        children: [],
-        digests: [],
-        tags: [],
-      };
-      return Promise.resolve(stat);
-    }
-  });
+  for (const subdomain of subdomains) {
+    listAll.push(
+      (async () => {
+        try {
+          return getHelper(dockerHelpers, subdomain).ls(`${projectId}/gcf`);
+        } catch (err) {
+          failedSubdomains.push(subdomain);
+          logger.debug(err);
+          const stat: Stat = {
+            children: [],
+            digests: [],
+            tags: [],
+          };
+          return Promise.resolve(stat);
+        }
+      })()
+    );
+  }
 
   const gcfDirs = (await Promise.all(listAll))
     .map((results) => results.children)
     .reduce((acc, val) => [...acc, ...val], [])
     .filter((loc) => locationsSet.has(loc));
 
-  if (failedSubdomains.size == subdomains.size) {
+  if (failedSubdomains.length == subdomains.size) {
     throw new FirebaseError("Failed to search all subdomains.");
-  } else if (failedSubdomains.size > 0) {
-    const failed: string = [...failedSubdomains].join(",");
-    throw new FirebaseError(`Failed to search the following subdomains: ${failed}`);
+  } else if (failedSubdomains.length > 0) {
+    throw new FirebaseError(
+      `Failed to search the following subdomains: ${failedSubdomains.join(",")}`
+    );
   }
 
   return gcfDirs.map((loc) => {
@@ -215,23 +221,24 @@ export async function deleteGcfArtifacts(
     throw new FirebaseError(`Invalid region ${invalidRegion} supplied`);
   }
   const subdomains = new Set(Object.values(SUBDOMAIN_MAPPING));
-  const failedSubdomains = new Set<string>();
+  const failedSubdomains: string[] = [];
 
   const deleteLocations = locations.map((loc) => {
     try {
       return getHelper(dockerHelpers, SUBDOMAIN_MAPPING[loc]).rm(`${projectId}/gcf/${loc}`);
     } catch (err) {
-      failedSubdomains.add(SUBDOMAIN_MAPPING[loc]);
+      failedSubdomains.push(SUBDOMAIN_MAPPING[loc]);
       logger.debug(err);
     }
   });
   await Promise.all(deleteLocations);
 
-  if (failedSubdomains.size == subdomains.size) {
+  if (failedSubdomains.length == subdomains.size) {
     throw new FirebaseError("Failed to search all subdomains.");
-  } else if (failedSubdomains.size > 0) {
-    const failed: string = [...failedSubdomains].join(",");
-    throw new FirebaseError(`Failed to search the following subdomains: ${failed}`);
+  } else if (failedSubdomains.length > 0) {
+    throw new FirebaseError(
+      `Failed to search the following subdomains: ${failedSubdomains.join(",")}`
+    );
   }
 }
 

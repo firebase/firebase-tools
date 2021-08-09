@@ -235,19 +235,20 @@ describe("listGcfPaths", () => {
     tags: [],
   });
 
-  it("should throw an error on invalid location", () => {
-    expect(() => containerCleaner.listGcfPaths("project", ["invalid"])).to.throw;
+  it("should throw an error on invalid location", async () => {
+    await expect(containerCleaner.listGcfPaths("project", ["invalid"])).to.be.rejected;
   });
 
-  it("should throw an error when subdomains fail search", () => {
+  it("should throw an error when subdomains fail search", async () => {
     const stub = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stub.rm.throws(new Error("DockerHelper rm stub error"));
     const helpers = {
       us: stub,
       eu: stub,
       asia: stub,
     };
 
-    expect(async () => await containerCleaner.listGcfPaths("project", undefined, helpers)).to.throw;
+    await expect(containerCleaner.listGcfPaths("project", undefined, helpers)).to.be.rejected;
   });
 
   it("should list paths, single location param", async () => {
@@ -259,8 +260,7 @@ describe("listGcfPaths", () => {
 
     const paths = await containerCleaner.listGcfPaths("project", ["us-central1"], helpers);
 
-    expect(paths.length).to.eq(1);
-    expect(paths[0]).to.eq("us.gcr.io/project/gcf/us-central1");
+    expect(paths).to.deep.equal(["us.gcr.io/project/gcf/us-central1"]);
   });
 
   it("should list paths, multiple locations param", async () => {
@@ -277,10 +277,12 @@ describe("listGcfPaths", () => {
       ["us-central1", "europe-west1"],
       helpers
     );
+    paths.sort();
 
-    expect(paths.length).to.eq(2);
-    expect(paths).to.contain("us.gcr.io/project/gcf/us-central1");
-    expect(paths).to.contain("eu.gcr.io/project/gcf/europe-west1");
+    expect(paths).to.deep.equal([
+      "eu.gcr.io/project/gcf/europe-west1",
+      "us.gcr.io/project/gcf/us-central1",
+    ]);
   });
 
   it("should list paths, only locations in gcr", async () => {
@@ -296,8 +298,7 @@ describe("listGcfPaths", () => {
       helpers
     );
 
-    expect(paths.length).to.eq(1);
-    expect(paths).to.contain("us.gcr.io/project/gcf/us-central1");
+    expect(paths).to.deep.equal(["us.gcr.io/project/gcf/us-central1"]);
   });
 
   it("should list paths, all locations", async () => {
@@ -310,17 +311,16 @@ describe("listGcfPaths", () => {
     const helpers = { us: stubUS, eu: stubEU, asia: stubAsia };
 
     const paths = await containerCleaner.listGcfPaths("project", undefined, helpers);
+    paths.sort();
 
-    expect(paths.length).to.eq(6);
-    // us locations
-    expect(paths).to.contain("us.gcr.io/project/gcf/us-central1");
-    expect(paths).to.contain("us.gcr.io/project/gcf/us-west2");
-    // eu locations
-    expect(paths).to.contain("eu.gcr.io/project/gcf/europe-west1");
-    expect(paths).to.contain("eu.gcr.io/project/gcf/europe-central2");
-    // asia locations
-    expect(paths).to.contain("asia.gcr.io/project/gcf/asia-northeast1");
-    expect(paths).to.contain("asia.gcr.io/project/gcf/asia-south1");
+    expect(paths).to.deep.equal([
+      "asia.gcr.io/project/gcf/asia-northeast1",
+      "asia.gcr.io/project/gcf/asia-south1",
+      "eu.gcr.io/project/gcf/europe-central2",
+      "eu.gcr.io/project/gcf/europe-west1",
+      "us.gcr.io/project/gcf/us-central1",
+      "us.gcr.io/project/gcf/us-west2",
+    ]);
   });
 });
 
@@ -331,20 +331,20 @@ describe("deleteGcfArtifacts", () => {
     tags: ["tag"],
   });
 
-  it("should throw an error on invalid location", () => {
-    expect(() => containerCleaner.deleteGcfArtifacts("project", ["invalid"])).to.throw;
+  it("should throw an error on invalid location", async () => {
+    await expect(containerCleaner.deleteGcfArtifacts("project", ["invalid"])).to.be.rejected;
   });
 
-  it("should throw an error when subdomains fail search", () => {
+  it("should throw an error when subdomains fail deletion", async () => {
     const stub = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stub.rm.throws(new Error("DockerHelper rm stub error"));
     const helpers = {
       us: stub,
       eu: stub,
       asia: stub,
     };
 
-    expect(async () => await containerCleaner.deleteGcfArtifacts("project", undefined, helpers)).to
-      .throw;
+    await expect(containerCleaner.deleteGcfArtifacts("project", undefined, helpers)).to.be.rejected;
   });
 
   it("should delete a location", async () => {
