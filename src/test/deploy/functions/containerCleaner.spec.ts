@@ -209,3 +209,212 @@ describe("ContainerRegistryCleaner", () => {
     expect(stub.rm).to.not.have.been.called;
   });
 });
+
+describe("listGcfPaths", () => {
+  const LOCATIONS_US = Promise.resolve({
+    children: ["us-central1", "us-west2"],
+    digests: [],
+    tags: [],
+  });
+
+  const LOCATIONS_EU = Promise.resolve({
+    children: ["europe-west1", "europe-central2"],
+    digests: [],
+    tags: [],
+  });
+
+  const LOCATIONS_ASIA = Promise.resolve({
+    children: ["asia-northeast1", "asia-south1"],
+    digests: [],
+    tags: [],
+  });
+
+  const EMPTY = Promise.resolve({
+    children: [],
+    digests: [],
+    tags: [],
+  });
+
+  it("should throw an error on invalid location", async () => {
+    await expect(containerCleaner.listGcfPaths("project", ["invalid"])).to.be.rejected;
+  });
+
+  it("should throw an error when subdomains fail search", async () => {
+    const stub = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stub.rm.throws(new Error("DockerHelper rm stub error"));
+    const helpers = {
+      us: stub,
+      eu: stub,
+      asia: stub,
+    };
+
+    await expect(containerCleaner.listGcfPaths("project", undefined, helpers)).to.be.rejected;
+  });
+
+  it("should list paths, single location param", async () => {
+    const stub = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stub.ls.withArgs("project/gcf").returns(LOCATIONS_US);
+    const stubEmpty = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stubEmpty.ls.withArgs("project/gcf").returns(EMPTY);
+    const helpers = { us: stub, eu: stubEmpty, asia: stubEmpty };
+
+    const paths = await containerCleaner.listGcfPaths("project", ["us-central1"], helpers);
+
+    expect(paths).to.deep.equal(["us.gcr.io/project/gcf/us-central1"]);
+  });
+
+  it("should list paths, multiple locations param", async () => {
+    const stubUS = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stubUS.ls.withArgs("project/gcf").returns(LOCATIONS_US);
+    const stubEU = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stubEU.ls.withArgs("project/gcf").returns(LOCATIONS_EU);
+    const stubEmpty = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stubEmpty.ls.withArgs("project/gcf").returns(EMPTY);
+    const helpers = { us: stubUS, eu: stubEU, asia: stubEmpty };
+
+    const paths = await containerCleaner.listGcfPaths(
+      "project",
+      ["us-central1", "europe-west1"],
+      helpers
+    );
+    paths.sort();
+
+    expect(paths).to.deep.equal([
+      "eu.gcr.io/project/gcf/europe-west1",
+      "us.gcr.io/project/gcf/us-central1",
+    ]);
+  });
+
+  it("should list paths, only locations in gcr", async () => {
+    const stubUS = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stubUS.ls.withArgs("project/gcf").returns(LOCATIONS_US);
+    const stubEmpty = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stubEmpty.ls.withArgs("project/gcf").returns(EMPTY);
+    const helpers = { us: stubUS, eu: stubEmpty, asia: stubEmpty };
+
+    const paths = await containerCleaner.listGcfPaths(
+      "project",
+      ["us-central1", "us-west4"],
+      helpers
+    );
+
+    expect(paths).to.deep.equal(["us.gcr.io/project/gcf/us-central1"]);
+  });
+
+  it("should list paths, all locations", async () => {
+    const stubUS = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stubUS.ls.withArgs("project/gcf").returns(LOCATIONS_US);
+    const stubEU = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stubEU.ls.withArgs("project/gcf").returns(LOCATIONS_EU);
+    const stubAsia = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stubAsia.ls.withArgs("project/gcf").returns(LOCATIONS_ASIA);
+    const helpers = { us: stubUS, eu: stubEU, asia: stubAsia };
+
+    const paths = await containerCleaner.listGcfPaths("project", undefined, helpers);
+    paths.sort();
+
+    expect(paths).to.deep.equal([
+      "asia.gcr.io/project/gcf/asia-northeast1",
+      "asia.gcr.io/project/gcf/asia-south1",
+      "eu.gcr.io/project/gcf/europe-central2",
+      "eu.gcr.io/project/gcf/europe-west1",
+      "us.gcr.io/project/gcf/us-central1",
+      "us.gcr.io/project/gcf/us-west2",
+    ]);
+  });
+});
+
+describe("deleteGcfArtifacts", () => {
+  const DIRECTORY = Promise.resolve({
+    children: ["dir"],
+    digests: ["image1", "image2"],
+    tags: ["tag"],
+  });
+
+  it("should throw an error on invalid location", async () => {
+    await expect(containerCleaner.deleteGcfArtifacts("project", ["invalid"])).to.be.rejected;
+  });
+
+  it("should throw an error when subdomains fail deletion", async () => {
+    const stub = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stub.rm.throws(new Error("DockerHelper rm stub error"));
+    const helpers = {
+      us: stub,
+      eu: stub,
+      asia: stub,
+    };
+
+    await expect(containerCleaner.deleteGcfArtifacts("project", undefined, helpers)).to.be.rejected;
+  });
+
+  it("should delete a location", async () => {
+    const stub = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stub.ls.withArgs("project/gcf/us-central1").returns(DIRECTORY);
+    const helpers: Record<string, containerCleaner.DockerHelper> = { us: stub };
+
+    await containerCleaner.deleteGcfArtifacts("project", ["us-central1"], helpers);
+
+    expect(stub.rm).to.have.been.calledOnceWith("project/gcf/us-central1");
+  });
+
+  it("should delete multiple locations", async () => {
+    const stubUS = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stubUS.ls.withArgs("project/gcf/us-central1").returns(DIRECTORY);
+    stubUS.ls.withArgs("project/gcf/us-west2").returns(DIRECTORY);
+    const stubEU = sinon.createStubInstance(containerCleaner.DockerHelper);
+    stubEU.ls.withArgs("project/gcf/europe-west1").returns(DIRECTORY);
+    const helpers: Record<string, containerCleaner.DockerHelper> = { us: stubUS, eu: stubEU };
+
+    await containerCleaner.deleteGcfArtifacts(
+      "project",
+      ["us-central1", "us-west2", "europe-west1"],
+      helpers
+    );
+
+    expect(stubUS.rm).to.have.been.calledTwice;
+    expect(stubUS.rm).to.have.been.calledWith("project/gcf/us-central1");
+    expect(stubUS.rm).to.have.been.calledWith("project/gcf/us-west2");
+    expect(stubEU.rm).to.have.been.calledOnceWith("project/gcf/europe-west1");
+  });
+
+  it("should purge all locations", async () => {
+    const locations = Object.keys(containerCleaner.SUBDOMAIN_MAPPING);
+    const usLocations = locations.filter((loc) => containerCleaner.SUBDOMAIN_MAPPING[loc] === "us");
+    const euLocations = locations.filter((loc) => containerCleaner.SUBDOMAIN_MAPPING[loc] === "eu");
+    const asiaLocations = locations.filter((loc) => {
+      return containerCleaner.SUBDOMAIN_MAPPING[loc] === "asia";
+    });
+    const stubUS = sinon.createStubInstance(containerCleaner.DockerHelper);
+    for (const usLoc of usLocations) {
+      stubUS.ls.withArgs(`project/gcf/${usLoc}`).returns(DIRECTORY);
+    }
+    const stubEU = sinon.createStubInstance(containerCleaner.DockerHelper);
+    for (const euLoc of euLocations) {
+      stubEU.ls.withArgs(`project/gcf/${euLoc}`).returns(DIRECTORY);
+    }
+    const stubAsia = sinon.createStubInstance(containerCleaner.DockerHelper);
+    for (const asiaLoc of asiaLocations) {
+      stubAsia.ls.withArgs(`project/gcf/${asiaLoc}`).returns(DIRECTORY);
+    }
+    const helpers: Record<string, containerCleaner.DockerHelper> = {
+      us: stubUS,
+      eu: stubEU,
+      asia: stubAsia,
+    };
+
+    await containerCleaner.deleteGcfArtifacts("project", undefined, helpers);
+
+    expect(stubUS.rm).to.have.callCount(usLocations.length);
+    for (const usLoc of usLocations) {
+      expect(stubUS.rm).to.have.been.calledWith(`project/gcf/${usLoc}`);
+    }
+    expect(stubEU.rm).to.have.callCount(euLocations.length);
+    for (const euLoc of euLocations) {
+      expect(stubEU.rm).to.have.been.calledWith(`project/gcf/${euLoc}`);
+    }
+    expect(stubAsia.rm).to.have.callCount(asiaLocations.length);
+    for (const asiaLoc of asiaLocations) {
+      expect(stubAsia.rm).to.have.been.calledWith(`project/gcf/${asiaLoc}`);
+    }
+  });
+});
