@@ -60,14 +60,20 @@ export async function prepare(
     return;
   }
 
-  // NOTE: this will eventually be enalbed for everyone once AR is enabled
-  // for GCFv1
+  // Note: Some of these are premium APIs that require billing to be enabled.
+  // We'd eventually have to add special error handling for billing APIs, but
+  // enableCloudBuild is called above and has this special casing already.
   if (wantBackend.cloudFunctions.find((f) => f.platform === "gcfv2")) {
-    await ensureApiEnabled.ensure(
-      context.projectId,
-      "artifactregistry.googleapis.com",
-      "artifactregistry"
-    );
+    const V2_APIS = {
+      artifactregistry: "artifactregistry.googleapis.com",
+      cloudrun: "run.googleapis.com",
+      eventarc: "eventarc.googleapis.com",
+      pubsub: "pubsub.googleapis.com",
+    };
+    const enablements = Object.entries(V2_APIS).map(([tag, api]) => {
+      return ensureApiEnabled.ensure(context.projectId, api, tag);
+    });
+    await Promise.all(enablements);
   }
 
   // Prepare the functions directory for upload, and set context.triggers.
