@@ -270,6 +270,24 @@ describe("Storage emulator", () => {
               resumable: true,
             };
         });
+
+        it("should be able to upload file named 'prefix/file.txt' when file named 'prefix' already exists", async () => {
+          await testBucket.upload(smallFilePath, {
+            destination: "prefix",
+          });
+          await testBucket.upload(smallFilePath, {
+            destination: "prefix/file.txt",
+          });
+        });
+
+        it("should be able to upload file named 'prefix' when file named 'prefix/file.txt' already exists", async () => {
+          await testBucket.upload(smallFilePath, {
+            destination: "prefix/file.txt",
+          });
+          await testBucket.upload(smallFilePath, {
+            destination: "prefix",
+          });
+        });
       });
 
       describe("#getFiles()", () => {

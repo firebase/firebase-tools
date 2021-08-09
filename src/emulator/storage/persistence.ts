@@ -1,4 +1,4 @@
-import { openSync, closeSync, readSync, unlinkSync, renameSync, existsSync, mkdirSync } from "fs";
+import { openSync, closeSync, readSync, unlinkSync, renameSync, mkdirSync } from "fs";
 import * as rimraf from "rimraf";
 import * as fs from "fs";
 import * as path from "path";
@@ -24,13 +24,6 @@ export class Persistence {
   appendBytes(fileName: string, bytes: Buffer): string {
     const filepath = this.getDiskPath(fileName);
 
-    const encodedSlashIndex = filepath.toLowerCase().lastIndexOf("%2f");
-    const dirPath =
-      encodedSlashIndex >= 0 ? filepath.substring(0, encodedSlashIndex) : path.dirname(filepath);
-
-    mkdirSync(dirPath, {
-      recursive: true,
-    });
     let fd;
 
     try {
@@ -81,16 +74,10 @@ export class Persistence {
   }
 
   renameFile(oldName: string, newName: string): void {
-    const dirPath = this.getDiskPath(path.dirname(newName));
-
-    mkdirSync(dirPath, {
-      recursive: true,
-    });
-
     renameSync(this.getDiskPath(oldName), this.getDiskPath(newName));
   }
 
   getDiskPath(fileName: string): string {
-    return path.join(this._dirPath, fileName);
+    return path.join(this._dirPath, encodeURIComponent(fileName));
   }
 }

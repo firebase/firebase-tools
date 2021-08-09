@@ -557,10 +557,7 @@ export class StorageLayer {
   }
 
   private path(bucket: string, object: string): string {
-    const directory = path.dirname(object);
-    const filename = path.basename(object) + (object.endsWith("/") ? "/" : "");
-
-    return path.join(bucket, directory, encodeURIComponent(filename));
+    return path.join(bucket, object);
   }
 
   public get dirPath(): string {
@@ -593,10 +590,8 @@ export class StorageLayer {
     await fse.ensureDir(metadataDirPath);
 
     for await (const [p, file] of this._files.entries()) {
-      const metadataExportPath = path.join(metadataDirPath, p) + ".json";
-      const metadataExportDirPath = path.dirname(metadataExportPath);
+      const metadataExportPath = path.join(metadataDirPath, encodeURIComponent(p)) + ".json";
 
-      await fse.ensureDir(metadataExportDirPath);
       await fse.writeFile(metadataExportPath, StoredFileMetadata.toJSON(file.metadata));
     }
   }
@@ -632,7 +627,9 @@ export class StorageLayer {
       // 1) Get the relative path to the metadata export dir
       // 2) Subtract .json from the end
       const metadataRelPath = path.relative(metadataDir, f);
-      const blobPath = metadataRelPath.substring(0, metadataRelPath.length - dotJson.length);
+      const blobPath = decodeURIComponent(
+        metadataRelPath.substring(0, metadataRelPath.length - dotJson.length)
+      );
 
       const blobAbsPath = path.join(blobsDir, blobPath);
       if (!existsSync(blobAbsPath)) {
