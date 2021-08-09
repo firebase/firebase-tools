@@ -1,3 +1,6 @@
+import { existsSync, readFileSync, readdirSync, statSync } from "fs";
+import { tmpdir } from "os";
+import { v4 } from "uuid";
 import { ListItem, ListResponse } from "./list";
 import {
   CloudStorageBucketMetadata,
@@ -7,7 +10,6 @@ import {
 } from "./metadata";
 import { NotFoundError, ForbiddenError } from "./errors";
 import * as path from "path";
-import * as fs from "fs";
 import * as fse from "fs-extra";
 import { StorageCloudFunctions } from "./cloudFunctions";
 import { logger } from "../../logger";
@@ -606,7 +608,7 @@ export class StorageLayer {
   import(storageExportPath: string) {
     // Restore list of buckets
     const bucketsFile = path.join(storageExportPath, "buckets.json");
-    const bucketsList = JSON.parse(fs.readFileSync(bucketsFile, "utf-8")) as BucketsList;
+    const bucketsList = JSON.parse(readFileSync(bucketsFile, "utf-8")) as BucketsList;
     for (const b of bucketsList.buckets) {
       const bucketMetadata = new CloudStorageBucketMetadata(b.id);
       this._buckets.set(b.id, bucketMetadata);
@@ -624,10 +626,7 @@ export class StorageLayer {
         logger.debug(`Skipping unexpected storage metadata file: ${f}`);
         continue;
       }
-      const metadata = StoredFileMetadata.fromJSON(
-        fs.readFileSync(f, "utf-8"),
-        this._cloudFunctions
-      );
+      const metadata = StoredFileMetadata.fromJSON(readFileSync(f, "utf-8"), this._cloudFunctions);
 
       // To get the blob path from the metadata path:
       // 1) Get the relative path to the metadata export dir
@@ -636,7 +635,7 @@ export class StorageLayer {
       const blobPath = metadataRelPath.substring(0, metadataRelPath.length - dotJson.length);
 
       const blobAbsPath = path.join(blobsDir, blobPath);
-      if (!fs.existsSync(blobAbsPath)) {
+      if (!existsSync(blobAbsPath)) {
         logger.warn(`Could not find file "${blobPath}" in storage export.`);
         continue;
       }
@@ -650,10 +649,10 @@ export class StorageLayer {
   }
 
   private *walkDirSync(dir: string): Generator<string> {
-    const files = fs.readdirSync(dir);
+    const files = readdirSync(dir);
     for (const file of files) {
       const p = path.join(dir, file);
-      if (fs.statSync(p).isDirectory()) {
+      if (statSync(p).isDirectory()) {
         yield* this.walkDirSync(p);
       } else {
         yield p;
