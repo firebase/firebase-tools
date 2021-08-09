@@ -31,7 +31,7 @@ export default new Command("functions:deletegcfartifacts")
       "<regions> is a Google defined region list, e.g. us-central1,us-east1,europe-west2."
   )
   .before(requirePermissions, ["storage.objects.delete"])
-  .action(async (options: { regions?: string, projectId?: string, project?: string, rc: RC }) => {
+  .action(async (options: { project?: string; projectId?: string; rc: RC; regions?: string }) => {
     const projectId = needProjectId(options);
     const regions = options.regions ? options.regions.split(",") : undefined;
     const dockerHelper: Record<string, DockerHelper> = {}; // cache dockerhelpers
