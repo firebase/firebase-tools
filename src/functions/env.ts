@@ -4,6 +4,7 @@ import * as path from "path";
 
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
+import { previews } from "../previews";
 import { logBullet } from "../utils";
 
 const RESERVED_KEYS = [
@@ -178,6 +179,31 @@ function parseStrict(data: string): Record<string, string> {
   return envs;
 }
 
+function findEnvfiles(functionsSource: string, projectId: string, projectAlias?: string): string[] {
+  const files = [".env", `.env.${projectId}`];
+  if (projectAlias && projectAlias.length) {
+    files.push(`.env.${projectAlias}`);
+  }
+
+  return files
+    .map((f) => path.join(functionsSource, f))
+    .filter(fs.existsSync)
+    .map((p) => path.basename(p));
+}
+
+/**
+ * Checks if user has specified any environment variables for their functions.
+ *
+ * @return True if there are any user-specified environment variables
+ */
+export function hasUserEnvs(
+  functionsSource: string,
+  projectId: string,
+  projectAlias?: string
+): boolean {
+  return findEnvfiles(functionsSource, projectId, projectAlias).length > 0;
+}
+
 /**
  * Loads environment variables for a project.
  *
@@ -193,41 +219,31 @@ function parseStrict(data: string): Record<string, string> {
  *
  * @return {Record<string, string>} Environment variables for the project.
  */
-export function load(options: {
+export function loadUserEnvs({
+  functionsSource,
+  projectId,
+  projectAlias,
+}: {
   functionsSource: string;
   projectId: string;
   projectAlias?: string;
 }): Record<string, string> {
-  const targetFiles = [".env"];
-  targetFiles.push(`.env.${options.projectId}`);
-  if (options.projectAlias && options.projectAlias.length) {
-    targetFiles.push(`.env.${options.projectAlias}`);
-  }
+  const envFiles = findEnvfiles(functionsSource, projectId, projectAlias);
 
-  const targetPaths = targetFiles
-    .map((f) => path.join(options.functionsSource, f))
-    .filter(fs.existsSync);
-
-  // Check if both .env.<project> and .env.<alias> exists.
-  if (targetPaths.some((p) => path.basename(p) === `.env.${options.projectId}`)) {
-    if (options.projectAlias && options.projectAlias.length) {
-      for (const p of targetPaths) {
-        if (path.basename(p) === `.env.${options.projectAlias}`) {
-          throw new FirebaseError(
-            `Can't have both .env.${options.projectId} and .env.${options.projectAlias}> files.`
-          );
-        }
-      }
+  // Disallow setting both .env.<projectId> and .env.<projectAlias>
+  if (projectAlias) {
+    if (envFiles.includes(`.env.${projectId}`) && envFiles.includes(`.env.${projectAlias}`)) {
+      throw new FirebaseError(`Can't have both .env.${projectId} and .env.${projectAlias}> files.`);
     }
   }
 
   let envs: Record<string, string> = {};
-  for (const targetPath of targetPaths) {
+  for (const f of envFiles) {
     try {
-      const data = fs.readFileSync(targetPath, "utf8");
+      const data = fs.readFileSync(path.join(functionsSource, f), "utf8");
       envs = { ...envs, ...parseStrict(data) };
     } catch (err) {
-      throw new FirebaseError(`Failed to load environment variables from ${targetPath}.`, {
+      throw new FirebaseError(`Failed to load environment variables from ${f}.`, {
         exit: 2,
         children: err.children?.length > 0 ? err.children : [err],
       });
@@ -235,8 +251,38 @@ export function load(options: {
   }
   logBullet(
     clc.cyan.bold("functions: ") +
-      `Loaded environment variables ${JSON.stringify(envs)} from ${targetPaths.join(", ")}.`
+      `Loaded environment variables ${JSON.stringify(envs)} from ${envFiles.join(", ")}.`
   );
 
+  return envs;
+}
+
+/**
+ * Load environment variables for the given project.
+ *
+ * @return Environment varibles for functions.
+ */
+export function load(options: {
+  firebaseConfig: { [key: string]: any };
+  functionsSource: string;
+  projectId: string;
+  projectAlias?: string;
+}): Record<string, string> {
+  const { firebaseConfig, functionsSource, projectId, projectAlias } = options;
+
+  let envs = {
+    FIREBASE_CONFIG: JSON.stringify(firebaseConfig),
+    GCLOUD_PROJECT: projectId,
+  };
+  if (previews.dotenv) {
+    envs = {
+      ...loadUserEnvs({
+        functionsSource,
+        projectId,
+        projectAlias,
+      }),
+      ...envs,
+    };
+  }
   return envs;
 }

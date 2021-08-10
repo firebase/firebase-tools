@@ -201,7 +201,7 @@ FOO=foo
     });
   });
 
-  describe("load", () => {
+  describe("loadUserEnvs", () => {
     const createEnvFiles = (sourceDir: string, envs: Record<string, string>): void => {
       for (const [filename, data] of Object.entries(envs)) {
         fs.writeFileSync(path.join(sourceDir, filename), data);
@@ -222,7 +222,7 @@ FOO=foo
     });
 
     it("loads nothing if .env files are missing", () => {
-      expect(env.load({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({});
+      expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({});
     });
 
     it("loads envs from .env file", () => {
@@ -230,7 +230,7 @@ FOO=foo
         ".env": "FOO=foo\nBAR=bar",
       });
 
-      expect(env.load({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+      expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
         FOO: "foo",
         BAR: "bar",
       });
@@ -241,7 +241,7 @@ FOO=foo
         ".env": "# THIS IS A COMMENT\nFOO=foo # inline comments\nBAR=bar",
       });
 
-      expect(env.load({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+      expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
         FOO: "foo",
         BAR: "bar",
       });
@@ -252,7 +252,7 @@ FOO=foo
         [`.env.${projectInfo.projectId}`]: "FOO=foo\nBAR=bar",
       });
 
-      expect(env.load({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+      expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
         FOO: "foo",
         BAR: "bar",
       });
@@ -263,7 +263,7 @@ FOO=foo
         [`.env.${projectInfo.projectAlias}`]: "FOO=foo\nBAR=bar",
       });
 
-      expect(env.load({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+      expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
         FOO: "foo",
         BAR: "bar",
       });
@@ -275,7 +275,7 @@ FOO=foo
         [`.env.${projectInfo.projectId}`]: "FOO=good",
       });
 
-      expect(env.load({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+      expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
         FOO: "good",
         BAR: "bar",
       });
@@ -287,7 +287,7 @@ FOO=foo
         [`.env.${projectInfo.projectAlias}`]: "FOO=good",
       });
 
-      expect(env.load({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+      expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
         FOO: "good",
         BAR: "bar",
       });
@@ -301,7 +301,7 @@ FOO=foo
       });
 
       expect(() => {
-        env.load({ ...projectInfo, functionsSource: tmpdir });
+        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir });
       }).to.throw("Can't have both");
     });
 
@@ -311,7 +311,7 @@ FOO=foo
       });
 
       expect(() => {
-        env.load({ ...projectInfo, functionsSource: tmpdir });
+        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir });
       }).to.throw("Failed to load");
     });
 
@@ -322,7 +322,7 @@ FOO=foo
       });
 
       expect(() => {
-        env.load({ ...projectInfo, functionsSource: tmpdir });
+        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir });
       }).to.throw("Failed to load");
     });
 
@@ -332,7 +332,7 @@ FOO=foo
       });
 
       expect(() => {
-        env.load({ ...projectInfo, functionsSource: tmpdir });
+        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir });
       }).to.throw("Failed to load");
     });
   });

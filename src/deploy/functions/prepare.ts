@@ -5,7 +5,6 @@ import { ensureCloudBuildEnabled } from "./ensureCloudBuildEnabled";
 import { functionMatchesAnyGroup, getFilterGroups } from "./functionsDeployHelper";
 import { logBullet } from "../../utils";
 import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload";
-import { previews } from "../../previews";
 import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import * as args from "./args";
 import * as backend from "./backend";
@@ -18,34 +17,6 @@ import * as validate from "./validate";
 import * as utils from "../../utils";
 import { logger } from "../../logger";
 
-function getEnvs(options: {
-  firebaseConfig: { [key: string]: any };
-  functionsSource: string;
-  projectId: string;
-  projectAlias?: string;
-}): Record<string, string> {
-  const { firebaseConfig, functionsSource, projectId, projectAlias } = options;
-
-  let envs = {
-    FIREBASE_CONFIG: JSON.stringify(firebaseConfig),
-    GCLOUD_PROJECT: projectId,
-  };
-  if (previews.dotenv) {
-    envs = {
-      ...functionsEnv.load({
-        functionsSource,
-        projectId,
-        projectAlias,
-      }),
-      ...envs,
-    };
-  }
-  return envs;
-}
-
-/**
- *
- */
 export async function prepare(
   context: args.Context,
   options: Options,
@@ -86,7 +57,7 @@ export async function prepare(
     "Error: 'functions.source' is not defined"
   );
   const source = options.config.src.functions.source;
-  const envs = getEnvs({
+  const envs = functionsEnv.load({
     firebaseConfig: runtimeConfig,
     functionsSource: options.config.path(source),
     projectId: projectId,

@@ -652,7 +652,7 @@ async function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): Pr
   if (previews.dotenv) {
     // Load user-specified environment variables.
     try {
-      const userEnvs = functionsEnv.load({ functionsSource: frb.cwd, projectId: "local" });
+      const userEnvs = functionsEnv.loadUserEnvs({ functionsSource: frb.cwd, projectId: "local" });
       for (const [k, v] of Object.entries(userEnvs)) {
         process.env[k] = v;
       }
