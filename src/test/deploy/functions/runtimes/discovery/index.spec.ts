@@ -1,9 +1,6 @@
 import { expect } from "chai";
 import * as yaml from "js-yaml";
 import * as sinon from "sinon";
-import * as portfinder from "portfinder";
-import * as spawn from "cross-spawn";
-import * as path from "path";
 import * as nock from "nock";
 
 import * as api from "../../../../../api";
