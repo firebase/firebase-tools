@@ -129,7 +129,6 @@ export async function getRuntimeDelegate(
   }
 
   throw new FirebaseError(
-    "Could not detect language for functions at",
-    options.config.get("functions.source")
+    `Could not detect language for functions at ${options.config.get("functions.source")}`
   );
 }
