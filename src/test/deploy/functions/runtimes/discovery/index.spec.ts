@@ -4,8 +4,9 @@ import * as sinon from "sinon";
 import * as portfinder from "portfinder";
 import * as spawn from "cross-spawn";
 import * as path from "path";
-import * as api from "../../../../../api";
+import * as nock from "nock";
 
+import * as api from "../../../../../api";
 import { FirebaseError } from "../../../../../error";
 import * as discovery from "../../../../../deploy/functions/runtimes/discovery";
 import * as backend from "../../../../../deploy/functions/backend";
@@ -98,40 +99,22 @@ describe("detectFromYaml", () => {
 });
 
 describe("detectFromPort", () => {
+  afterEach(() => {
+    nock.cleanAll();
+  });
+
   // This test requires us to launch node and load express.js. On my 16" MBP this takes
   // 600ms, which is dangerously close to the default limit of 1s. Increase limits so
   // that this doesn't flake even when running on slower machines experiencing hiccup
   it("passes as smoke test", async () => {
-    const port = await portfinder.getPortPromise();
-
-    const serverPath = "lib/deploy/functions/runtimes/discovery/mockDiscoveryServer.js";
-    const repoRoot = path.resolve(__dirname, "../../../../../..");
-    const child = spawn.spawn("node", [serverPath], {
-      cwd: repoRoot,
-      env: {
-        ...process.env,
-        ADMIN_PORT: port.toString(),
-        BACKEND: YAML_TEXT,
-      },
-      stdio: "inherit",
+    nock("http://localhost:8080").get("/backend.yaml").times(20).replyWithError({
+      message: "Still booting",
+      code: "ECONNREFUSED",
     });
 
-    const exit = new Promise((resolve, reject) => {
-      child.on("exit", resolve);
-      child.on("error", reject);
-    });
+    nock("http://localhost:8080").get("/backend.yaml").reply(200, YAML_TEXT);
 
-    try {
-      const parsed = await discovery.detectFromPort(
-        port,
-        "project",
-        "nodejs14",
-        /* timeout= */ 9_500
-      );
-      expect(parsed).to.deep.equal(BACKEND);
-    } finally {
-      child.kill("SIGKILL");
-    }
-    await exit;
-  }).timeout(10_000);
+    const parsed = await discovery.detectFromPort(8080, "project", "nodejs14");
+    expect(parsed).to.deep.equal(BACKEND);
+  });
 });
