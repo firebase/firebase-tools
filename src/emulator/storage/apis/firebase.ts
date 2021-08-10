@@ -154,7 +154,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       response = await storageLayer.handleListObjects({
         bucketId: req.params.bucketId,
         prefix: req.query.prefix ? req.query.prefix.toString() : "",
-        delimiter: req.query.delimiter ? req.query.delimiter.toString() : "/",
+        delimiter: req.query.delimiter ? req.query.delimiter.toString() : "",
         pageToken: req.query.pageToken?.toString(),
         maxResults: maxResults ? +maxResults : undefined,
         authorization: req.header("authorization"),
