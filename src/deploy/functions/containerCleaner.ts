@@ -40,6 +40,25 @@ export const SUBDOMAIN_MAPPING: Record<string, string> = {
   "australia-southeast1": "asia",
 };
 
+async function retry<Return>(func: () => Promise<Return>): Promise<Return> {
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+  const MAX_RETRIES = 3;
+  const INITIAL_BACKOFF = 100;
+  let retry = 0;
+  while (true) {
+    try {
+      return await func();
+    } catch (error) {
+      logger.debug("Failed docker command with error", error);
+      retry += 1;
+      if (retry >= MAX_RETRIES) {
+        throw new FirebaseError("Failed to clean up artifacts", { original: error });
+      }
+      await sleep(Math.pow(INITIAL_BACKOFF, retry - 1));
+    }
+  }
+}
+
 export async function cleanupBuildImages(functions: backend.FunctionSpec[]): Promise<void> {
   utils.logBullet(clc.bold.cyan("functions: ") + "cleaning up build files...");
   const gcrCleaner = new ContainerRegistryCleaner();
@@ -258,7 +277,7 @@ export class DockerHelper {
 
   async ls(path: string): Promise<Stat> {
     if (!this.cache[path]) {
-      const raw = await this.client.listTags(path);
+      const raw = await retry(() => this.client.listTags(path));
       this.cache[path] = {
         tags: raw.tags,
         digests: Object.keys(raw.manifest),
@@ -291,7 +310,7 @@ export class DockerHelper {
     const deleteTags = stat.tags.map((tag) =>
       (async () => {
         try {
-          await this.client.deleteTag(path, tag);
+          await retry(() => this.client.deleteTag(path, tag));
           stat.tags.splice(stat.tags.indexOf(tag), 1);
         } catch (err) {
           logger.debug("Got error trying to remove docker tag:", err);
@@ -304,7 +323,7 @@ export class DockerHelper {
     const deleteImages = stat.digests.map((digest) =>
       (async () => {
         try {
-          await this.client.deleteImage(path, digest);
+          await retry(() => this.client.deleteImage(path, digest));
           stat.digests.splice(stat.digests.indexOf(digest), 1);
         } catch (err) {
           logger.debug("Got error trying to remove docker image:", err);
