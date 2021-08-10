@@ -7,8 +7,12 @@ import {
   AabInfo,
   IntegrationState,
   AppDistributionClient,
+<<<<<<< HEAD
   UploadReleaseResponse,
   UploadReleaseResult,
+=======
+  UploadStatus,
+>>>>>>> a25eefcb (Use GET /v1/.../aabInfo.)
 } from "../appdistribution/client";
 import { FirebaseError } from "../error";
 import { Distribution, DistributionFileType } from "../appdistribution/distribution";
@@ -79,6 +83,7 @@ module.exports = new Command("appdistribution:distribute <release-binary-file>")
     let aabInfo: AabInfo | undefined;
 
     if (distribution.distributionFileType() === DistributionFileType.AAB) {
+<<<<<<< HEAD
       try {
         aabInfo = await requests.getAabInfo();
       } catch (err) {
@@ -93,6 +98,9 @@ module.exports = new Command("appdistribution:distribute <release-binary-file>")
         }
         throw new FirebaseError(`failed to determine AAB info. ${err.message}`, { exit: 1 });
       }
+=======
+      aabInfo = await requests.getAabInfo();
+>>>>>>> a25eefcb (Use GET /v1/.../aabInfo.)
 
       if (
         aabInfo.integrationState !== IntegrationState.INTEGRATED &&
@@ -124,6 +132,7 @@ module.exports = new Command("appdistribution:distribute <release-binary-file>")
       }
     }
 
+<<<<<<< HEAD
     utils.logBullet("uploading binary...");
     let releaseName;
     try {
@@ -166,6 +175,31 @@ module.exports = new Command("appdistribution:distribute <release-binary-file>")
         );
       }
       throw new FirebaseError(`failed to upload release. ${err.message}`, { exit: 1 });
+=======
+    const sha256 = await distribution.sha256();
+    let binaryName = requests.binaryName(sha256);
+
+    // Upload the distribution if it hasn't been uploaded before
+    let releaseId: string;
+    const uploadStatus = await requests.getUploadStatus(binaryName);
+
+    if (uploadStatus.status === UploadStatus.SUCCESS) {
+      utils.logWarning("this distribution has been uploaded before, skipping upload");
+      releaseId = uploadStatus.release.id;
+    } else {
+      // If there's an error, we know that the distribution hasn't been uploaded before
+      utils.logBullet("uploading distribution...");
+
+      try {
+        binaryName = await requests.uploadDistribution(distribution);
+
+        // The upload process is asynchronous, so poll to figure out when the upload has finished successfully
+        releaseId = await requests.pollUploadStatus(binaryName);
+        utils.logSuccess("uploaded distribution successfully!");
+      } catch (err) {
+        throw new FirebaseError(`failed to upload distribution. ${err.message}`, { exit: 1 });
+      }
+>>>>>>> a25eefcb (Use GET /v1/.../aabInfo.)
     }
 
     // If this is an app bundle and the certificate was originally blank fetch the updated

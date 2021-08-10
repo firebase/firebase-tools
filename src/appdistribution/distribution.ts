@@ -40,7 +40,7 @@ export class Distribution {
     if (!stat.isFile()) {
       throw new FirebaseError(
         `${path} is not a file. Verify that it points to a distribution binary.`
-        );
+      );
     }
 
     this.path = path;

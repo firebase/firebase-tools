@@ -5,7 +5,9 @@ import * as rimraf from "rimraf";
 import * as sinon from "sinon";
 import * as tmp from "tmp";
 
+
 import { AppDistributionClient } from "../../appdistribution/client";
+
 import { FirebaseError } from "../../error";
 import * as api from "../../api";
 import * as nock from "nock";
@@ -36,6 +38,7 @@ describe("distribution", () => {
   after(() => {
     rimraf.sync(tempdir.name);
   });
+
 
   describe("uploadRelease", () => {
     it("should throw error if upload fails", async () => {
