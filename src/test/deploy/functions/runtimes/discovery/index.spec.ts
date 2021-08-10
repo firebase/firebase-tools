@@ -126,12 +126,12 @@ describe("detectFromPort", () => {
         port,
         "project",
         "nodejs14",
-        /* timeout= */ 9_500
+        /* timeout= */ 15_500
       );
       expect(parsed).to.deep.equal(BACKEND);
     } finally {
       child.kill("SIGKILL");
     }
     await exit;
-  }).timeout(10_000);
+  }).timeout(20_000);
 });
