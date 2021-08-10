@@ -323,6 +323,30 @@ describe("Storage emulator", () => {
           ]);
         });
 
+        it("should list all files in bucket using maxResults and pageToken", async () => {
+          const [files1, , { nextPageToken: nextPageToken1 }] = await testBucket.getFiles({
+            maxResults: 3,
+          });
+
+          expect(nextPageToken1).to.be.a("string").and.not.empty;
+          expect(files1.map((file) => file.name)).to.deep.equal([
+            PREFIX_FILE,
+            PREFIX_1_FILE,
+            PREFIX_2_FILE,
+          ]);
+
+          const [files2, , { nextPageToken: nextPageToken2 }] = await testBucket.getFiles({
+            maxResults: 3,
+            pageToken: nextPageToken1,
+          });
+
+          expect(nextPageToken2).to.be.undefined;
+          expect(files2.map((file) => file.name)).to.deep.equal([
+            PREFIX_SUB_DIRECTORY_FILE,
+            TESTING_FILE,
+          ]);
+        });
+
         it("should list files with prefix", async () => {
           const [files, , { prefixes }] = await testBucket.getFiles({
             autoPaginate: false,

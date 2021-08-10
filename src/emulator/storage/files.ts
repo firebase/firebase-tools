@@ -525,8 +525,15 @@ export class StorageLayer {
       maxResults = 1000;
     }
 
+    let nextPageToken = undefined;
+    if (items.length > maxResults) {
+      nextPageToken = items[maxResults].name;
+      items = items.slice(0, maxResults);
+    }
+
     return {
       kind: "#storage/objects",
+      nextPageToken,
       prefixes: prefixes.size > 0 ? [...prefixes].sort() : undefined,
       items:
         items.length > 0 ? items.map((item) => new CloudStorageObjectMetadata(item)) : undefined,
