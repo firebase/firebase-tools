@@ -7,7 +7,7 @@ import * as tmp from "tmp";
 
 import {
   AppDistributionClient,
-  AppView,
+  AabInfo,
   UploadStatus,
   UploadStatusResponse,
 } from "../../appdistribution/client";
@@ -25,8 +25,6 @@ describe("distribution", () => {
   fs.ensureFileSync(binaryFile);
   const mockDistribution = new Distribution(binaryFile);
   const appDistributionClient = new AppDistributionClient(appId);
-  const appViewBasic = "BASIC";
-  const appViewFull = "FULL";
 
   let sandbox: sinon.SinonSandbox;
 
@@ -41,53 +39,6 @@ describe("distribution", () => {
 
   after(() => {
     rimraf.sync(tempdir.name);
-  });
-
-  describe("getApp", () => {
-    it("should throw error when app does not exist", async () => {
-      nock(api.appDistributionOrigin)
-        .get(`/v1alpha/apps/${appId}`)
-        .query({ appView: appViewBasic })
-        .reply(404, {});
-      await expect(appDistributionClient.getApp()).to.be.rejected;
-      expect(nock.isDone()).to.be.true;
-    });
-
-    it("should resolve when request succeeds", async () => {
-      nock(api.appDistributionOrigin)
-        .get(`/v1alpha/apps/${appId}`)
-        .query({ appView: appViewBasic })
-        .reply(200, {});
-      await expect(appDistributionClient.getApp()).to.be.fulfilled;
-      expect(nock.isDone()).to.be.true;
-    });
-
-    it("requests basic appView", async () => {
-      nock(api.appDistributionOrigin)
-        .get(`/v1alpha/apps/${appId}`)
-        .query({ appView: appViewBasic })
-        .reply(200, {});
-      await expect(appDistributionClient.getApp(AppView.BASIC)).to.be.fulfilled;
-      expect(nock.isDone()).to.be.true;
-    });
-
-    it("requests full appView", async () => {
-      nock(api.appDistributionOrigin)
-        .get(`/v1alpha/apps/${appId}`)
-        .query({ appView: appViewFull })
-        .reply(200, {});
-      await expect(appDistributionClient.getApp(AppView.FULL)).to.be.fulfilled;
-      expect(nock.isDone()).to.be.true;
-    });
-
-    it("should throw an error when the request fails", async () => {
-      nock(api.appDistributionOrigin)
-        .get(`/v1alpha/apps/${appId}`)
-        .query({ appView: appViewBasic })
-        .reply(404, {});
-      await expect(appDistributionClient.getApp()).to.be.rejected;
-      expect(nock.isDone()).to.be.true;
-    });
   });
 
   describe("uploadDistribution", () => {

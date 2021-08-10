@@ -10,32 +10,22 @@ const pkg = require("../../package.json");
 /**
  * Helper interface for an app that is provisioned with App Distribution
  */
-export interface AppDistributionApp {
-  projectNumber: string;
-  appId: string;
-  platform: string;
-  bundleId: string;
-  contactEmail: string;
-  aabState: AabState;
-  aabCertificate: AabCertificate | null;
+export interface AabInfo {
+  name: string;
+  integrationState: IntegrationState;
+  testCertificate: TestCertificate | null;
 }
 
-export interface AabCertificate {
-  certificateHashMd5: string;
-  certificateHashSha1: string;
-  certificateHashSha256: string;
-}
-
-export enum UploadStatus {
-  SUCCESS = "SUCCESS",
-  IN_PROGRESS = "IN_PROGRESS",
-  ERROR = "ERROR",
+export interface TestCertificate {
+  hashSha1: string;
+  hashSha256: string;
+  hashMd5: string;
 }
 
 /** Enum representing the App Bundles state for the App */
-export enum AabState {
-  AAB_STATE_UNSPECIFIED = "AAB_STATE_UNSPECIFIED",
-  ACTIVE = "ACTIVE",
+export enum IntegrationState {
+  AAB_INTEGRATION_STATE_UNSPECIFIED = "AAB_INTEGRATION_STATE_UNSPECIFIED",
+  INTEGRATED = "INTEGRATED",
   PLAY_ACCOUNT_NOT_LINKED = "PLAY_ACCOUNT_NOT_LINKED",
   NO_APP_WITH_GIVEN_BUNDLE_ID_IN_PLAY_ACCOUNT = "NO_APP_WITH_GIVEN_BUNDLE_ID_IN_PLAY_ACCOUNT",
   APP_NOT_PUBLISHED = "APP_NOT_PUBLISHED",
@@ -52,10 +42,10 @@ export interface UploadStatusResponse {
   };
 }
 
-/** Enum for app_view parameter for getApp requests */
-export enum AppView {
-  BASIC = "BASIC",
-  FULL = "FULL",
+export enum UploadStatus {
+  SUCCESS = "SUCCESS",
+  IN_PROGRESS = "IN_PROGRESS",
+  ERROR = "ERROR",
 }
 
 /**
@@ -65,13 +55,21 @@ export class AppDistributionClient {
   static MAX_POLLING_RETRIES = 60;
   static POLLING_INTERVAL_MS = 2000;
 
-  constructor(private readonly appId: string) {}
+  private readonly projectNumber: string;
 
-  async getApp(appView = AppView.BASIC): Promise<AppDistributionApp> {
-    const apiResponse = await api.request("GET", `/v1alpha/apps/${this.appId}?appView=${appView}`, {
-      origin: api.appDistributionOrigin,
-      auth: true,
-    });
+  constructor(private readonly appId: string) {
+    this.projectNumber = appId.split(":")[1];
+  }
+
+  async getAabInfo(): Promise<AabInfo> {
+    const apiResponse = await api.request(
+      "GET",
+      `/v1/projects/${this.projectNumber}/apps/${this.appId}/aabInfo`,
+      {
+        origin: api.appDistributionOrigin,
+        auth: true,
+      }
+    );
 
     return _.get(apiResponse, "body");
   }
@@ -93,6 +91,10 @@ export class AppDistributionClient {
     });
 
     return _.get(JSON.parse(apiResponse.body), "token");
+  }
+
+  binaryName(sha256: string): string {
+    return `projects/${this.projectNumber}/apps/${this.appId}/releases/-/binaries/${sha256}`;
   }
 
   async pollUploadStatus(binaryName: string, retryCount = 0): Promise<string> {

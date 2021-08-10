@@ -4,10 +4,9 @@ import { Command } from "../command";
 import * as utils from "../utils";
 import { requireAuth } from "../requireAuth";
 import {
-  AabState,
-  AppDistributionApp,
+  AabInfo,
+  IntegrationState,
   AppDistributionClient,
-  AppView,
   UploadStatus,
 } from "../appdistribution/client";
 import { FirebaseError } from "../error";
@@ -79,62 +78,43 @@ module.exports = new Command("appdistribution:distribute <distribution-file>")
     const testers = getTestersOrGroups(options.testers, options.testersFile);
     const groups = getTestersOrGroups(options.groups, options.groupsFile);
     const requests = new AppDistributionClient(appId);
-    let app: AppDistributionApp;
+    let aabInfo: AabInfo | undefined;
 
-    try {
-      const appView =
-        distribution.distributionFileType() === DistributionFileType.AAB
-          ? AppView.FULL
-          : AppView.BASIC;
-      app = await requests.getApp(appView);
-    } catch (err) {
-      if (err.status === 404) {
-        throw new FirebaseError(
-          `App Distribution could not find your app ${appId}. ` +
-            `Make sure to onboard your app by pressing the "Get started" ` +
-            "button on the App Distribution page in the Firebase console: " +
-            "https://console.firebase.google.com/project/_/appdistribution",
-          { exit: 1 }
-        );
-      }
-      throw new FirebaseError(`failed to fetch app information. ${err.message}`, { exit: 1 });
-    }
+    if (distribution.distributionFileType() === DistributionFileType.AAB) {
+      aabInfo = await requests.getAabInfo();
 
-    if (!app.contactEmail) {
-      throw new FirebaseError(
-        `We could not find a contact email for app ${appId}. Please visit App Distribution within ` +
-          "the Firebase Console to set one up.",
-        { exit: 1 }
-      );
-    }
-
-    if (
-      distribution.distributionFileType() === DistributionFileType.AAB &&
-      app.aabState !== AabState.ACTIVE &&
-      app.aabState !== AabState.AAB_STATE_UNAVAILABLE
-    ) {
-      switch (app.aabState) {
-        case AabState.PLAY_ACCOUNT_NOT_LINKED: {
-          throw new FirebaseError("This project is not linked to a Google Play account.");
-        }
-        case AabState.APP_NOT_PUBLISHED: {
-          throw new FirebaseError('"This app is not published in the Google Play console.');
-        }
-        case AabState.NO_APP_WITH_GIVEN_BUNDLE_ID_IN_PLAY_ACCOUNT: {
-          throw new FirebaseError("App with matching package name does not exist in Google Play.");
-        }
-        case AabState.PLAY_IAS_TERMS_NOT_ACCEPTED: {
-          throw new FirebaseError(
-            "You must accept the Play Internal App Sharing (IAS) terms to upload AABs."
-          );
-        }
-        default: {
-          throw new FirebaseError("App Distribution failed to process the AAB: " + app.aabState);
+      if (
+        aabInfo.integrationState !== IntegrationState.INTEGRATED &&
+        aabInfo.integrationState !== IntegrationState.AAB_STATE_UNAVAILABLE
+      ) {
+        switch (aabInfo.integrationState) {
+          case IntegrationState.PLAY_ACCOUNT_NOT_LINKED: {
+            throw new FirebaseError("This project is not linked to a Google Play account.");
+          }
+          case IntegrationState.APP_NOT_PUBLISHED: {
+            throw new FirebaseError('"This app is not published in the Google Play console.');
+          }
+          case IntegrationState.NO_APP_WITH_GIVEN_BUNDLE_ID_IN_PLAY_ACCOUNT: {
+            throw new FirebaseError(
+              "App with matching package name does not exist in Google Play."
+            );
+          }
+          case IntegrationState.PLAY_IAS_TERMS_NOT_ACCEPTED: {
+            throw new FirebaseError(
+              "You must accept the Play Internal App Sharing (IAS) terms to upload AABs."
+            );
+          }
+          default: {
+            throw new FirebaseError(
+              "App Distribution failed to process the AAB: " + aabInfo.integrationState
+            );
+          }
         }
       }
     }
 
-    let binaryName = await distribution.binaryName(app);
+    const sha256 = await distribution.sha256();
+    let binaryName = requests.binaryName(sha256);
 
     // Upload the distribution if it hasn't been uploaded before
     let releaseId: string;
@@ -160,17 +140,17 @@ module.exports = new Command("appdistribution:distribute <distribution-file>")
 
     // If this is an app bundle and the certificate was originally blank fetch the updated
     // certificate and print
-    if (distribution.distributionFileType() === DistributionFileType.AAB && !app.aabCertificate) {
-      const updatedApp = await requests.getApp();
-      if (updatedApp.aabCertificate) {
+    if (aabInfo && !aabInfo.testCertificate) {
+      aabInfo = await requests.getAabInfo();
+      if (aabInfo.testCertificate) {
         utils.logBullet(
           "After you upload an AAB for the first time, App Distribution " +
             "generates a new test certificate. All AAB uploads are re-signed with this test " +
             "certificate. Use the certificate fingerprints below to register your app " +
             "signing key with API providers, such as Google Sign-In and Google Maps.\n" +
-            `MD-1 certificate fingerprint: ${updatedApp.aabCertificate.certificateHashMd5}\n` +
-            `SHA-1 certificate fingerprint: ${updatedApp.aabCertificate.certificateHashSha1}\n` +
-            `SHA-256 certificate fingerprint: ${updatedApp.aabCertificate.certificateHashSha256}`
+            `MD-1 certificate fingerprint: ${aabInfo.testCertificate.hashMd5}\n` +
+            `SHA-1 certificate fingerprint: ${aabInfo.testCertificate.hashSha1}\n` +
+            `SHA-256 certificate fingerprint: ${aabInfo.testCertificate.hashSha256}`
         );
       }
     }
