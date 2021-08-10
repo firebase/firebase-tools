@@ -161,29 +161,33 @@ export class AppDistributionClient {
     utils.logSuccess("added release notes successfully");
   }
 
-  async enableAccess(
+  async distribute(
     releaseId: string,
-    emails: string[] = [],
-    groupIds: string[] = []
+    testerEmails: string[] = [],
+    groupAliases: string[] = []
   ): Promise<void> {
-    if (emails.length === 0 && groupIds.length === 0) {
+    if (testerEmails.length === 0 && groupAliases.length === 0) {
       utils.logWarning("no testers or groups specified, skipping");
       return;
     }
 
-    utils.logBullet("adding testers/groups...");
+    utils.logBullet("distributing to testers/groups...");
 
     const data = {
-      emails,
-      groupIds,
+      testerEmails,
+      groupAliases,
     };
 
     try {
-      await api.request("POST", `/v1alpha/apps/${this.appId}/releases/${releaseId}/enable_access`, {
-        origin: api.appDistributionOrigin,
-        auth: true,
-        data,
-      });
+      await api.request(
+        "POST",
+        `/v1/projects/${this.projectNumber}/apps/${this.appId}/releases/${releaseId}:distribute`,
+        {
+          origin: api.appDistributionOrigin,
+          auth: true,
+          data,
+        }
+      );
     } catch (err) {
       let errorMessage = err.message;
       if (_.has(err, "context.body.error")) {
@@ -194,9 +198,9 @@ export class AppDistributionClient {
           errorMessage = "invalid groups";
         }
       }
-      throw new FirebaseError(`failed to add testers/groups: ${errorMessage}`, { exit: 1 });
+      throw new FirebaseError(`failed to distribute to testers/groups: ${errorMessage}`, { exit: 1 });
     }
 
-    utils.logSuccess("added testers/groups successfully");
+    utils.logSuccess("distributed to testers/groups successfully");
   }
 }

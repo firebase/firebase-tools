@@ -155,7 +155,7 @@ module.exports = new Command("appdistribution:distribute <distribution-file>")
       }
     }
 
-    // Add release notes and testers/groups
+    // Add release notes and distribute to testers/groups
     await requests.updateReleaseNotes(releaseId, releaseNotes);
-    await requests.enableAccess(releaseId, testers, groups);
+    await requests.distribute(releaseId, testers, groups);
   });

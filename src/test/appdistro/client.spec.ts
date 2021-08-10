@@ -173,20 +173,19 @@ describe("distribution", () => {
     });
   });
 
-  describe("enableAccess", () => {
+  describe("distribute", () => {
     it("should return immediately when testers and groups are empty", async () => {
       const apiSpy = sandbox.spy(api, "request");
-      await expect(appDistributionClient.enableAccess("fake-release-id")).to.eventually.be
-        .fulfilled;
+      await expect(appDistributionClient.distribute("fake-release-id")).to.eventually.be.fulfilled;
       expect(apiSpy).to.not.be.called;
     });
 
     it("should resolve when request succeeds", async () => {
       const releaseId = "fake-release-id";
       nock(api.appDistributionOrigin)
-        .post(`/v1alpha/apps/${appId}/releases/${releaseId}/enable_access`)
+        .post(`/v1/projects/${projectNumber}/apps/${appId}/releases/${releaseId}:distribute`)
         .reply(200, {});
-      await expect(appDistributionClient.enableAccess(releaseId, ["tester1"], ["group1"])).to.be
+      await expect(appDistributionClient.distribute(releaseId, ["tester1"], ["group1"])).to.be
         .fulfilled;
       expect(nock.isDone()).to.be.true;
     });
@@ -202,42 +201,48 @@ describe("distribution", () => {
       it("should throw invalid testers error when status code is FAILED_PRECONDITION ", async () => {
         const releaseId = "fake-release-id";
         nock(api.appDistributionOrigin)
-          .post(`/v1alpha/apps/${appId}/releases/${releaseId}/enable_access`, {
-            emails: testers,
-            groupIds: groups,
+          .post(`/v1/projects/${projectNumber}/apps/${appId}/releases/${releaseId}:distribute`, {
+            testerEmails: testers,
+            groupAliases: groups,
           })
           .reply(412, { error: { status: "FAILED_PRECONDITION" } });
         await expect(
-          appDistributionClient.enableAccess(releaseId, testers, groups)
-        ).to.be.rejectedWith(FirebaseError, "failed to add testers/groups: invalid testers");
+          appDistributionClient.distribute(releaseId, testers, groups)
+        ).to.be.rejectedWith(
+          FirebaseError,
+          "failed to distribute to testers/groups: invalid testers"
+        );
         expect(nock.isDone()).to.be.true;
       });
 
       it("should throw invalid groups error when status code is INVALID_ARGUMENT", async () => {
         const releaseId = "fake-release-id";
         nock(api.appDistributionOrigin)
-          .post(`/v1alpha/apps/${appId}/releases/${releaseId}/enable_access`, {
-            emails: testers,
-            groupIds: groups,
+          .post(`/v1/projects/${projectNumber}/apps/${appId}/releases/${releaseId}:distribute`, {
+            testerEmails: testers,
+            groupAliases: groups,
           })
           .reply(412, { error: { status: "INVALID_ARGUMENT" } });
         await expect(
-          appDistributionClient.enableAccess(releaseId, testers, groups)
-        ).to.be.rejectedWith(FirebaseError, "failed to add testers/groups: invalid groups");
+          appDistributionClient.distribute(releaseId, testers, groups)
+        ).to.be.rejectedWith(
+          FirebaseError,
+          "failed to distribute to testers/groups: invalid groups"
+        );
         expect(nock.isDone()).to.be.true;
       });
 
       it("should throw default error", async () => {
         const releaseId = "fake-release-id";
         nock(api.appDistributionOrigin)
-          .post(`/v1alpha/apps/${appId}/releases/${releaseId}/enable_access`, {
-            emails: testers,
-            groupIds: groups,
+          .post(`/v1/projects/${projectNumber}/apps/${appId}/releases/${releaseId}:distribute`, {
+            testerEmails: testers,
+            groupAliases: groups,
           })
           .reply(400, {});
         await expect(
-          appDistributionClient.enableAccess(releaseId, ["tester1"], ["group1"])
-        ).to.be.rejectedWith(FirebaseError, "failed to add testers/groups");
+          appDistributionClient.distribute(releaseId, ["tester1"], ["group1"])
+        ).to.be.rejectedWith(FirebaseError, "failed to distribute to testers/groups");
         expect(nock.isDone()).to.be.true;
       });
     });
