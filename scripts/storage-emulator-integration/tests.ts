@@ -265,10 +265,7 @@ describe("Storage emulator", () => {
 
         // TODO(abehaskins): This test is temporarily disabled due to a credentials issue
         it.skip("should handle large (resumable) uploads", async () => {
-          await testBucket.upload(largeFilePath),
-            {
-              resumable: true,
-            };
+          await testBucket.upload(largeFilePath, { resumable: true });
         });
 
         it("should be able to upload file named 'prefix/file.txt' when file named 'prefix' already exists", async () => {
