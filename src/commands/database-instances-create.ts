@@ -9,7 +9,7 @@ import {
   DatabaseLocation,
   parseDatabaseLocation,
 } from "../management/database";
-import getProjectId = require("../getProjectId");
+import { needProjectId } from "../projectUtils";
 import { getDefaultDatabaseInstance } from "../getDefaultDatabaseInstance";
 import { FirebaseError } from "../error";
 import { MISSING_DEFAULT_INSTANCE_ERROR_MESSAGE } from "../requireDatabaseInstance";
@@ -24,7 +24,7 @@ export default new Command("database:instances:create <instanceName>")
   .before(warnEmulatorNotSupported, Emulators.DATABASE)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   .action(async (instanceName: string, options: any) => {
-    const projectId = getProjectId(options);
+    const projectId = needProjectId(options);
     const defaultDatabaseInstance = await getDefaultDatabaseInstance({ project: projectId });
     if (defaultDatabaseInstance === "") {
       throw new FirebaseError(MISSING_DEFAULT_INSTANCE_ERROR_MESSAGE);

@@ -5,12 +5,12 @@ import * as ora from "ora";
 
 import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
-import { getProjectNumber } from "../getProjectNumber";
+import { needProjectNumber } from "../projectUtils";
 import firedata = require("../gcp/firedata");
 import { Emulators } from "../emulator/types";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 import { previews } from "../previews";
-import getProjectId = require("../getProjectId");
+import { needProjectId } from "../projectUtils";
 import {
   listDatabaseInstances,
   DatabaseInstance,
@@ -53,7 +53,7 @@ let cmd = new Command("database:instances:list")
     let instances;
 
     if (previews.rtdbmanagement) {
-      const projectId = getProjectId(options);
+      const projectId = needProjectId(options);
       try {
         instances = await listDatabaseInstances(projectId, location);
       } catch (err) {
@@ -65,7 +65,7 @@ let cmd = new Command("database:instances:list")
       logInstancesCount(instances.length);
       return instances;
     }
-    const projectNumber = await getProjectNumber(options);
+    const projectNumber = await needProjectNumber(options);
     try {
       instances = await firedata.listDatabaseInstances(projectNumber);
     } catch (err) {

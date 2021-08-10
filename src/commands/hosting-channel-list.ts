@@ -4,7 +4,7 @@ import Table = require("cli-table");
 import { Channel, listChannels } from "../hosting/api";
 import { Command } from "../command";
 import { requirePermissions } from "../requirePermissions";
-import * as getProjectId from "../getProjectId";
+import { needProjectId } from "../projectUtils";
 import { logger } from "../logger";
 import * as requireConfig from "../requireConfig";
 import { datetimeString } from "../utils";
@@ -23,7 +23,7 @@ export default new Command("hosting:channel:list")
     async (
       options: any // eslint-disable-line @typescript-eslint/no-explicit-any
     ): Promise<{ channels: Channel[] }> => {
-      const projectId = getProjectId(options);
+      const projectId = needProjectId(options);
       const siteId = options.site;
       const channels = await listChannels(projectId, siteId);
 

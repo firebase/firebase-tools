@@ -1,6 +1,6 @@
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
-import * as getProjectId from "../getProjectId";
+import { needProjectId } from "../projectUtils";
 import { listExtensions } from "../extensions/listExtensions";
 import { ensureExtensionsApiEnabled } from "../extensions/extensionsHelper";
 import { requirePermissions } from "../requirePermissions";
@@ -11,6 +11,6 @@ module.exports = new Command("ext:list")
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
   .action((options: any) => {
-    const projectId = getProjectId(options);
+    const projectId = needProjectId(options);
     return listExtensions(projectId);
   });

@@ -106,19 +106,17 @@ export function printSuccess(func: backend.TargetIds, type: string) {
   );
 }
 
-export async function printTriggerUrls(context: args.Context) {
+export async function printTriggerUrls(context: args.Context, want: backend.Backend) {
   // TODO: We can cut an RPC out of our workflow if we record the
   // results of our deploy tasks. This will also be important for scheduled functions
   // that are deployed directly to HTTP endpoints.
   const have = await backend.existingBackend(context, /* forceRefresh= */ true);
   const httpsFunctions = have.cloudFunctions.filter((fn) => {
-    // TODO: way to filter out extensions deployed on GCFv2. May have to just replace
-    // the existing backend with operation results as functions deploy rather than
-    // calling existingBackend twice.
-    if (fn.platform == "gcfv1" && fn.sourceUploadUrl !== context.uploadUrl) {
+    if (backend.isEventTrigger(fn.trigger)) {
       return false;
     }
-    return !backend.isEventTrigger(fn.trigger) && deploymentTool.isFirebaseManaged(fn.labels || {});
+
+    return want.cloudFunctions.some(backend.sameFunctionName(fn));
   });
   if (httpsFunctions.length === 0) {
     return;

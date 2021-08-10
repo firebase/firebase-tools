@@ -10,7 +10,7 @@ var { requirePermissions } = require("../requirePermissions");
 var requireConfig = require("../requireConfig");
 var { serve } = require("../serve/index");
 var { filterTargets } = require("../filterTargets");
-var { getProjectNumber } = require("../getProjectNumber");
+var { needProjectNumber } = require("../projectUtils");
 var { FirebaseError } = require("../error");
 
 var VALID_TARGETS = ["hosting", "functions"];
@@ -51,7 +51,7 @@ module.exports = new Command("serve")
     }
     return requireConfig(options)
       .then(() => requirePermissions(options))
-      .then(() => getProjectNumber(options));
+      .then(() => needProjectNumber(options));
   })
   .action((options) => {
     options.targets = filterOnly(ALL_TARGETS, options.only);

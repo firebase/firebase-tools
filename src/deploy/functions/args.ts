@@ -18,13 +18,14 @@ export interface Context {
   filters: string[][];
 
   // Filled in the "prepare" phase.
-  functionsSource?: string;
+  functionsSourceV1?: string;
+  functionsSourceV2?: string;
   runtimeConfigEnabled?: boolean;
   firebaseConfig?: FirebaseConfig;
 
   // Filled in the "deploy" phase.
   uploadUrl?: string;
-  storageSource?: gcfV2.StorageSource;
+  storage?: Record<string, gcfV2.StorageSource>;
 }
 
 export interface FirebaseConfig {
