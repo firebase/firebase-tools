@@ -20,7 +20,8 @@ tmp.setGracefulCleanup();
 
 describe("distribution", () => {
   const tempdir = tmp.dirSync();
-  const appId = "1:12345789:ios:abc123def456";
+  const projectNumber = "123456789";
+  const appId = "1:123456789:ios:abc123def456";
   const binaryFile = join(tempdir.name, "app.ipa");
   fs.ensureFileSync(binaryFile);
   const mockDistribution = new Distribution(binaryFile);
@@ -138,10 +139,10 @@ describe("distribution", () => {
     });
   });
 
-  describe("addReleaseNotes", () => {
+  describe("updateReleaseNotes", () => {
     it("should return immediately when no release notes are specified", async () => {
       const apiSpy = sandbox.spy(api, "request");
-      await expect(appDistributionClient.addReleaseNotes("fake-release-id", "")).to.eventually.be
+      await expect(appDistributionClient.updateReleaseNotes("fake-release-id", "")).to.eventually.be
         .fulfilled;
       expect(apiSpy).to.not.be.called;
     });
@@ -149,21 +150,25 @@ describe("distribution", () => {
     it("should throw error when request fails", async () => {
       const releaseId = "fake-release-id";
       nock(api.appDistributionOrigin)
-        .post(`/v1alpha/apps/${appId}/releases/${releaseId}/notes`)
+        .patch(
+          `/v1/projects/${projectNumber}/apps/${appId}/releases/${releaseId}?updateMask=release_notes.text`
+        )
         .reply(400, {});
       await expect(
-        appDistributionClient.addReleaseNotes(releaseId, "release notes")
-      ).to.be.rejectedWith(FirebaseError, "failed to add release notes");
+        appDistributionClient.updateReleaseNotes(releaseId, "release notes")
+      ).to.be.rejectedWith(FirebaseError, "failed to update release notes");
       expect(nock.isDone()).to.be.true;
     });
 
     it("should resolve when request succeeds", async () => {
       const releaseId = "fake-release-id";
       nock(api.appDistributionOrigin)
-        .post(`/v1alpha/apps/${appId}/releases/${releaseId}/notes`)
+        .patch(
+          `/v1/projects/${projectNumber}/apps/${appId}/releases/${releaseId}?updateMask=release_notes.text`
+        )
         .reply(200, {});
-      await expect(appDistributionClient.addReleaseNotes(releaseId, "release notes")).to.eventually
-        .be.fulfilled;
+      await expect(appDistributionClient.updateReleaseNotes(releaseId, "release notes")).to
+        .eventually.be.fulfilled;
       expect(nock.isDone()).to.be.true;
     });
   });

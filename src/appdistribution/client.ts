@@ -133,28 +133,29 @@ export class AppDistributionClient {
     return _.get(apiResponse, "body");
   }
 
-  async addReleaseNotes(releaseId: string, releaseNotes: string): Promise<void> {
+  async updateReleaseNotes(releaseId: string, releaseNotes: string): Promise<void> {
     if (!releaseNotes) {
       utils.logWarning("no release notes specified, skipping");
       return;
     }
 
-    utils.logBullet("adding release notes...");
+    utils.logBullet("updating release notes...");
 
     const data = {
+      name: `projects/${this.projectNumber}/apps/${this.appId}/releases/${releaseId}`,
       releaseNotes: {
-        releaseNotes,
+        text: releaseNotes,
       },
     };
 
     try {
-      await api.request("POST", `/v1alpha/apps/${this.appId}/releases/${releaseId}/notes`, {
+      await api.request("PATCH", `/v1/${data.name}?updateMask=release_notes.text`, {
         origin: api.appDistributionOrigin,
         auth: true,
         data,
       });
     } catch (err) {
-      throw new FirebaseError(`failed to add release notes with ${err.message}`, { exit: 1 });
+      throw new FirebaseError(`failed to update release notes with ${err.message}`, { exit: 1 });
     }
 
     utils.logSuccess("added release notes successfully");
