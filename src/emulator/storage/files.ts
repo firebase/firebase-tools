@@ -469,41 +469,53 @@ export class StorageLayer {
     delimiter: string,
     pageToken: string | undefined,
     maxResults: number | undefined
-  ) {
-    if (!delimiter) {
-      delimiter = "/";
-    }
-
-    if (!prefix) {
-      prefix = "";
-    }
-
-    if (!prefix.endsWith(delimiter)) {
-      prefix += delimiter;
-    }
-
-    let items = [];
+  ): {
+    kind: string;
+    prefixes?: string[];
+    items?: CloudStorageObjectMetadata[];
+    nextPageToken?: string;
+  } {
+    let items: Array<StoredFileMetadata> = [];
+    const prefixes = new Set<string>();
     for (const [, file] of this._files) {
       if (file.metadata.bucket !== bucket) {
         continue;
       }
 
-      let name = file.metadata.name;
+      const name = file.metadata.name;
       if (!name.startsWith(prefix)) {
         continue;
       }
 
-      name = name.substring(prefix.length);
-      if (name.startsWith(delimiter)) {
-        name = name.substring(prefix.length);
+      let includeMetadata = true;
+      if (delimiter) {
+        const delimiterIdx = name.indexOf(delimiter);
+        const delimiterAfterPrefixIdx = name.indexOf(delimiter, prefix.length);
+        // items[] contains object metadata for objects whose names do not contain delimiter, or whose names only have instances of delimiter in their prefix.
+        includeMetadata = delimiterIdx === -1 || delimiterAfterPrefixIdx === -1;
+        if (delimiterAfterPrefixIdx !== -1) {
+          // prefixes[] contains truncated object names for objects whose names contain delimiter after any prefix. Object names are truncated beyond the first applicable instance of the delimiter.
+          prefixes.add(name.slice(0, delimiterAfterPrefixIdx + delimiter.length));
+        }
       }
 
-      items.push(this.path(file.metadata.bucket, file.metadata.name));
+      if (includeMetadata) {
+        items.push(file.metadata);
+      }
     }
 
-    items.sort();
+    // Order items by name
+    items.sort((a, b) => {
+      if (a.name === b.name) {
+        return 0;
+      } else if (a.name < b.name) {
+        return -1;
+      } else {
+        return 1;
+      }
+    });
     if (pageToken) {
-      const idx = items.findIndex((v) => v === pageToken);
+      const idx = items.findIndex((v) => v.name === pageToken);
       if (idx !== -1) {
         items = items.slice(idx);
       }
@@ -515,14 +527,9 @@ export class StorageLayer {
 
     return {
       kind: "#storage/objects",
-      items: items.map((item) => {
-        const storedFile = this._files.get(item);
-        if (!storedFile) {
-          return console.warn(`No file ${item}`);
-        }
-
-        return new CloudStorageObjectMetadata(storedFile.metadata);
-      }),
+      prefixes: prefixes.size > 0 ? [...prefixes].sort() : undefined,
+      items:
+        items.length > 0 ? items.map((item) => new CloudStorageObjectMetadata(item)) : undefined,
     };
   }
 

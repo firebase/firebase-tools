@@ -97,7 +97,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     if (req.query.maxResults) {
       maxRes = +req.query.maxResults.toString();
     }
-    const delimiter = req.query.delimiter ? req.query.delimiter.toString() : "/";
+    const delimiter = req.query.delimiter ? req.query.delimiter.toString() : "";
     const pageToken = req.query.pageToken ? req.query.pageToken.toString() : undefined;
     const prefix = req.query.prefix ? req.query.prefix.toString() : "";
 

@@ -288,16 +288,188 @@ describe("Storage emulator", () => {
       });
 
       describe("#getFiles()", () => {
-        it("should list files", async () => {
-          await testBucket.upload(smallFilePath, {
-            destination: "testing/shoveler.svg",
-          });
-          const [files, prefixes] = await testBucket.getFiles({
-            directory: "testing",
+        const TESTING_FILE = "testing/shoveler.svg";
+        const PREFIX_FILE = "prefix";
+        const PREFIX_1_FILE = PREFIX_FILE + "/1.txt";
+        const PREFIX_2_FILE = PREFIX_FILE + "/2.txt";
+        const PREFIX_SUB_DIRECTORY_FILE = PREFIX_FILE + "/dir/file.txt";
+
+        beforeEach(async () => {
+          await Promise.all(
+            [
+              TESTING_FILE,
+              PREFIX_FILE,
+              PREFIX_1_FILE,
+              PREFIX_2_FILE,
+              PREFIX_SUB_DIRECTORY_FILE,
+            ].map(async (f) => {
+              await testBucket.upload(smallFilePath, {
+                destination: f,
+              });
+            })
+          );
+        });
+
+        it("should list all files in bucket", async () => {
+          // This is only test that uses autoPagination as the other tests look at the prefixes response
+          const [files] = await testBucket.getFiles();
+
+          expect(files.map((file) => file.name)).to.deep.equal([
+            PREFIX_FILE,
+            PREFIX_1_FILE,
+            PREFIX_2_FILE,
+            PREFIX_SUB_DIRECTORY_FILE,
+            TESTING_FILE,
+          ]);
+        });
+
+        it("should list files with prefix", async () => {
+          const [files, , { prefixes }] = await testBucket.getFiles({
+            autoPaginate: false,
+            prefix: "prefix",
           });
 
           expect(prefixes).to.be.undefined;
-          expect(files.map((file) => file.name)).to.deep.equal(["testing/shoveler.svg"]);
+          expect(files.map((file) => file.name)).to.deep.equal([
+            PREFIX_FILE,
+            PREFIX_1_FILE,
+            PREFIX_2_FILE,
+            PREFIX_SUB_DIRECTORY_FILE,
+          ]);
+        });
+
+        it("should list files using common delimiter", async () => {
+          const [files, , { prefixes }] = await testBucket.getFiles({
+            autoPaginate: false,
+            delimiter: "/",
+          });
+
+          expect(prefixes).to.be.deep.equal(["prefix/", "testing/"]);
+          expect(files.map((file) => file.name)).to.deep.equal([PREFIX_FILE]);
+        });
+
+        it("should list files using other delimiter", async () => {
+          const [files, , { prefixes }] = await testBucket.getFiles({
+            autoPaginate: false,
+            delimiter: "dir",
+          });
+
+          expect(prefixes).to.be.deep.equal(["prefix/dir"]);
+          expect(files.map((file) => file.name)).to.deep.equal([
+            PREFIX_FILE,
+            PREFIX_1_FILE,
+            PREFIX_2_FILE,
+            TESTING_FILE,
+          ]);
+        });
+
+        it("should list files using same prefix and delimiter of p", async () => {
+          const [files, , { prefixes }] = await testBucket.getFiles({
+            autoPaginate: false,
+            prefix: "p",
+            delimiter: "p",
+          });
+
+          expect(prefixes).to.be.undefined;
+          expect(files.map((file) => file.name)).to.deep.equal([
+            PREFIX_FILE,
+            PREFIX_1_FILE,
+            PREFIX_2_FILE,
+            PREFIX_SUB_DIRECTORY_FILE,
+          ]);
+        });
+
+        it("should list files using same prefix and delimiter of t", async () => {
+          const [files, , { prefixes }] = await testBucket.getFiles({
+            autoPaginate: false,
+            prefix: "t",
+            delimiter: "t",
+          });
+
+          expect(prefixes).to.be.deep.equal(["test"]);
+          expect(files.map((file) => file.name)).to.be.empty;
+        });
+
+        it("should list files using prefix=p and delimiter=t", async () => {
+          const [files, , { prefixes }] = await testBucket.getFiles({
+            autoPaginate: false,
+            prefix: "p",
+            delimiter: "t",
+          });
+
+          expect(prefixes).to.be.deep.equal(["prefix/1.t", "prefix/2.t", "prefix/dir/file.t"]);
+          expect(files.map((file) => file.name)).to.deep.equal([PREFIX_FILE]);
+        });
+
+        it("should list files in sub-directory (using prefix and delimiter)", async () => {
+          const [files, , { prefixes }] = await testBucket.getFiles({
+            autoPaginate: false,
+            prefix: "prefix/",
+            delimiter: "/",
+          });
+
+          expect(prefixes).to.be.deep.equal(["prefix/dir/"]);
+          expect(files.map((file) => file.name)).to.deep.equal([PREFIX_1_FILE, PREFIX_2_FILE]);
+        });
+
+        it("should list files in sub-directory (using prefix)", async () => {
+          const [files, , { prefixes }] = await testBucket.getFiles({
+            autoPaginate: false,
+            prefix: "prefix/",
+          });
+
+          expect(prefixes).to.be.undefined;
+          expect(files.map((file) => file.name)).to.deep.equal([
+            PREFIX_1_FILE,
+            PREFIX_2_FILE,
+            PREFIX_SUB_DIRECTORY_FILE,
+          ]);
+        });
+
+        it("should list files in sub-directory (using directory)", async () => {
+          const [files, , { prefixes }] = await testBucket.getFiles({
+            autoPaginate: false,
+            directory: "testing/",
+          });
+
+          expect(prefixes).to.be.undefined;
+          expect(files.map((file) => file.name)).to.deep.equal([TESTING_FILE]);
+        });
+
+        it("should list no files for unused prefix", async () => {
+          const [files, , { prefixes }] = await testBucket.getFiles({
+            autoPaginate: false,
+            prefix: "blah/",
+          });
+
+          expect(prefixes).to.be.undefined;
+          expect(files).to.be.empty;
+        });
+
+        it("should list files using prefix=pref and delimiter=i", async () => {
+          const [files, , { prefixes }] = await testBucket.getFiles({
+            autoPaginate: false,
+            prefix: "pref",
+            delimiter: "i",
+          });
+
+          expect(prefixes).to.be.deep.equal(["prefi"]);
+          expect(files).to.be.empty;
+        });
+
+        it("should list files using prefix=prefi and delimiter=i", async () => {
+          const [files, , { prefixes }] = await testBucket.getFiles({
+            autoPaginate: false,
+            prefix: "prefi",
+            delimiter: "i",
+          });
+
+          expect(prefixes).to.be.deep.equal(["prefix/di"]);
+          expect(files.map((file) => file.name)).to.deep.equal([
+            PREFIX_FILE,
+            PREFIX_1_FILE,
+            PREFIX_2_FILE,
+          ]);
         });
       });
     });
