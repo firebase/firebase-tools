@@ -97,7 +97,7 @@ export function isEventTrigger(trigger: HttpsTrigger | EventTrigger): trigger is
 }
 
 /** Friendly name to label a function in stats */
-export function triggerTag(fn: FunctionSpec) {
+export function triggerTag(fn: FunctionSpec): string {
   if (fn.labels?.["deployment-scheduled"]) {
     if (fn.platform === "gcfv1") {
       return "v1.scheduled";
@@ -124,6 +124,7 @@ export type VpcEgressSettings = "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC";
 export type IngressSettings = "ALLOW_ALL" | "ALLOW_INTERNAL_ONLY" | "ALLOW_INTERNAL_AND_GCLB";
 export type MemoryOptions = 128 | 256 | 512 | 1024 | 2048 | 4096 | 8192;
 
+/** Returns a human-readable name with MB or GB suffix for a MemoryOption (MB). */
 export function memoryOptionDisplayName(option: MemoryOptions): string {
   return {
     128: "128MB",
