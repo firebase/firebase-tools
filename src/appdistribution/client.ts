@@ -106,6 +106,7 @@ export class AppDistributionClient {
     });
   }
 
+
   async updateReleaseNotes(releaseName: string, releaseNotes: string): Promise<void> {
     if (!releaseNotes) {
       utils.logWarning("no release notes specified, skipping");
