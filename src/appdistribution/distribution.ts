@@ -38,9 +38,7 @@ export class Distribution {
       throw new FirebaseError(`File ${path} does not exist: verify that file points to a binary`);
     }
     if (!stat.isFile()) {
-      throw new FirebaseError(
-        `${path} is not a file. Verify that it points to a distribution binary.`
-      );
+      throw new FirebaseError(`${path} is not a file. Verify that it points to a binary.`);
     }
 
     this.path = path;

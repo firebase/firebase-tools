@@ -94,6 +94,7 @@ export class AppDistributionClient {
     return _.get(JSON.parse(apiResponse.body), "name");
   }
 
+
   async pollUploadStatus(operationName: string): Promise<UploadReleaseResponse> {
     return operationPoller.pollOperation<UploadReleaseResponse>({
       pollerName: "App Distribution Upload Poller",
