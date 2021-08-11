@@ -46,7 +46,6 @@ function preTest() {
 
 function postTest() {
   fs.remove(tmpDir);
-  console.log(tmpDir);
   execSync(`${localFirebase} functions:delete ${functionTarget} --project=${projectId} -f`);
   console.log("Done post-test cleanup.");
 }
