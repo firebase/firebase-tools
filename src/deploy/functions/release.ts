@@ -16,7 +16,7 @@ import * as containerCleaner from "./containerCleaner";
 import * as helper from "./functionsDeployHelper";
 import * as tasks from "./tasks";
 import * as utils from "../../utils";
-import track from "../../track";
+import { track } from "../../track";
 
 export async function release(context: args.Context, options: Options, payload: args.Payload) {
   if (!options.config.has("functions")) {
