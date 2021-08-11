@@ -233,7 +233,10 @@ export function loadUserEnvs({
   // Disallow setting both .env.<projectId> and .env.<projectAlias>
   if (projectAlias) {
     if (envFiles.includes(`.env.${projectId}`) && envFiles.includes(`.env.${projectAlias}`)) {
-      throw new FirebaseError(`Can't have both .env.${projectId} and .env.${projectAlias}> files.`);
+      throw new FirebaseError(
+        `Can't have both dotenv files with projectId (env.${projectId}) ` +
+          `and projectAlias (.env.${projectAlias}) as extensions.`
+      );
     }
   }
 
@@ -250,8 +253,7 @@ export function loadUserEnvs({
     }
   }
   logBullet(
-    clc.cyan.bold("functions: ") +
-      `Loaded environment variables ${JSON.stringify(envs)} from ${envFiles.join(", ")}.`
+    clc.cyan.bold("functions: ") + `Loaded environment variables from ${envFiles.join(", ")}.`
   );
 
   return envs;
@@ -263,7 +265,7 @@ export function loadUserEnvs({
  * @return Environment varibles for functions.
  */
 export function load(options: {
-  firebaseConfig: { [key: string]: any };
+  firebaseConfig: Record<string, any>;
   functionsSource: string;
   projectId: string;
   projectAlias?: string;
