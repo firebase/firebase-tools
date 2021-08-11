@@ -333,6 +333,12 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
         metadata: md.customMetadata,
         ...req.body,
       };
+      if (newMetadata.metadata) {
+        // Convert null metadata values to empty strings
+        for (const [k, v] of Object.entries(newMetadata.metadata)) {
+          if (v === null) newMetadata.metadata[k] = "";
+        }
+      }
       const metadata = storageLayer.copyFile(
         md,
         req.params.destBucketId,

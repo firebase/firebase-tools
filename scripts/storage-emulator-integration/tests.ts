@@ -752,6 +752,41 @@ describe("Storage emulator", () => {
           expect(metadata2).to.deep.equal(metadata1);
         });
 
+        it("should set null custom metadata values to empty strings", async () => {
+          const [, source] = await testBucket.upload(smallFilePath);
+
+          const file = testBucket.file(copyDestinationFile);
+          const metadata = { foo: "bar", nullMetadata: null };
+          const cacheControl = "private,max-age=10,immutable";
+          // Types for CopyOptions are wrong (@google-cloud/storage sub-dependency needs
+          // update to include https://github.com/googleapis/nodejs-storage/pull/1406
+          // and https://github.com/googleapis/nodejs-storage/pull/1426)
+          const copyOpts: CopyOptions & { [key: string]: unknown } = {
+            metadata,
+            cacheControl,
+          };
+          const [, { resource: metadata1 }] = await testBucket
+            .file(smallFilePath.split("/").slice(-1)[0])
+            .copy(file, copyOpts);
+
+          expect(metadata1).to.deep.include({
+            bucket: source.bucket,
+            contentType: source.contentType,
+            etag: source.etag,
+            crc32c: source.crc32c,
+            metadata: {
+              foo: "bar",
+              // Sets null metadata values to empty strings
+              nullMetadata: "",
+            },
+            cacheControl,
+          });
+
+          // Also double check with a new metadata fetch
+          const [metadata2] = await file.getMetadata();
+          expect(metadata2).to.deep.equal(metadata1);
+        });
+
         it("should not support the use of a rewriteToken", async () => {
           await testBucket.upload(smallFilePath);
 
