@@ -268,6 +268,19 @@ describe("Storage emulator", () => {
           await testBucket.upload(largeFilePath, { resumable: true });
         });
 
+        it("should upload with provided metadata", async () => {
+          const metadata = {
+            contentDisposition: "attachment",
+            metadata: { foo: "bar" },
+          };
+          const [, fileMetadata] = await testBucket.upload(smallFilePath, {
+            resumable: false,
+            metadata,
+          });
+
+          expect(fileMetadata).to.deep.include(metadata);
+        });
+
         it("should be able to upload file named 'prefix/file.txt' when file named 'prefix' already exists", async () => {
           await testBucket.upload(smallFilePath, {
             destination: "prefix",
