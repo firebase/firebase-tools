@@ -1,7 +1,0 @@
-- Makes auth_time emulator behavior match production (auth_time is now set to user's last sign in time). (#3608)
-- Fixes Auth Emulator errors when importing many users. (#3577)
-- Fixes support for `--except` flag when used for deploying Hosting. (#3397)
-- Improves handling of project number identifiers.
-- Fixes Emulator UI editing timestamp values in Firestore tab. (#3653)
-- Fixes page layout issues on Emulator UI Database tab. (#3653)
-- Stops Emulator UI triggering functions on importing JSON to Database by default. (#3653)
