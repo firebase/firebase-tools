@@ -330,11 +330,8 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
 
       const newMetadata: IncomingMetadata = {
         ...md,
+        metadata: md.customMetadata,
         ...req.body,
-        metadata: {
-          ...md.customMetadata,
-          ...(req.body.metadata || {}),
-        },
       };
       const metadata = storageLayer.copyFile(
         md,

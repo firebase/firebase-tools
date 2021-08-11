@@ -714,8 +714,15 @@ describe("Storage emulator", () => {
           });
         });
 
-        it("should copy the file updating with the provided metadata", async () => {
-          const [, source] = await testBucket.upload(smallFilePath);
+        it("should copy the file and overwrite with the provided custom metadata", async () => {
+          const [, source] = await testBucket.upload(smallFilePath, {
+            metadata: {
+              cacheControl: "private,no-store",
+              metadata: {
+                hello: "world",
+              },
+            },
+          });
 
           const file = testBucket.file(copyDestinationFile);
           const metadata = { foo: "bar" };
@@ -723,7 +730,7 @@ describe("Storage emulator", () => {
           // Types for CopyOptions are wrong (@google-cloud/storage sub-dependency needs
           // update to include https://github.com/googleapis/nodejs-storage/pull/1406
           // and https://github.com/googleapis/nodejs-storage/pull/1426)
-          const copyOpts: CopyOptions & { [key: string]: any } = {
+          const copyOpts: CopyOptions & { [key: string]: unknown } = {
             metadata,
             cacheControl,
           };
