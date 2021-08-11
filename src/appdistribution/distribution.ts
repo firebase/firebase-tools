@@ -11,7 +11,7 @@ export enum DistributionFileType {
 }
 
 /**
- * Object representing an APK or IPa file. Used for uploading app distributions.
+ * Object representing an APK, AAB or IPA file. Used for uploading app distributions.
  */
 export class Distribution {
   private readonly fileType: DistributionFileType;
@@ -19,7 +19,7 @@ export class Distribution {
 
   constructor(private readonly path: string) {
     if (!path) {
-      throw new FirebaseError("must specify a distribution file");
+      throw new FirebaseError("must specify a release binary file");
     }
 
     const distributionType = path.split(".").pop();
@@ -28,7 +28,7 @@ export class Distribution {
       distributionType !== DistributionFileType.APK &&
       distributionType !== DistributionFileType.AAB
     ) {
-      throw new FirebaseError("Unsupported distribution file format, should be .ipa, .apk or .aab");
+      throw new FirebaseError("Unsupported file format, should be .ipa, .apk or .aab");
     }
 
     let stat;
@@ -36,14 +36,10 @@ export class Distribution {
       stat = fs.statSync(path);
     } catch (err) {
       logger.info(err);
-      throw new FirebaseError(
-        `File ${path} does not exist: verify that file points to a distribution binary`
-      );
+      throw new FirebaseError(`File ${path} does not exist: verify that file points to a binary`);
     }
     if (!stat.isFile()) {
-      throw new FirebaseError(
-        `${path} is not a file. Verify that it points to a distribution binary.`
-      );
+      throw new FirebaseError(`${path} is not a file. Verify that it points to a binary.`);
     }
 
     this.path = path;
@@ -67,9 +63,7 @@ export class Distribution {
       case DistributionFileType.APK:
         return "android";
       default:
-        throw new FirebaseError(
-          "Unsupported distribution file format, should be .ipa, .apk or .aab"
-        );
+        throw new FirebaseError("Unsupported file format, should be .ipa, .apk or .aab");
     }
   }
 

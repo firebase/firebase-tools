@@ -7,7 +7,8 @@ import {
   AabInfo,
   IntegrationState,
   AppDistributionClient,
-  UploadStatus,
+  UploadReleaseResponse,
+  UploadReleaseResult,
 } from "../appdistribution/client";
 import { FirebaseError } from "../error";
 import { Distribution, DistributionFileType } from "../appdistribution/distribution";
@@ -52,14 +53,11 @@ function getTestersOrGroups(value: string, file: string): string[] {
   return [];
 }
 
-module.exports = new Command("appdistribution:distribute <distribution-file>")
-  .description("upload a distribution")
+module.exports = new Command("appdistribution:distribute <release-binary-file>")
+  .description("upload a release binary")
   .option("--app <app_id>", "the app id of your Firebase app")
-  .option("--release-notes <string>", "release notes to include with this distribution")
-  .option(
-    "--release-notes-file <file>",
-    "path to file with release notes to include with this distribution"
-  )
+  .option("--release-notes <string>", "release notes to include")
+  .option("--release-notes-file <file>", "path to file with release notes")
   .option("--testers <string>", "a comma separated list of tester emails to distribute to")
   .option(
     "--testers-file <file>",
@@ -113,28 +111,46 @@ module.exports = new Command("appdistribution:distribute <distribution-file>")
       }
     }
 
-    const sha256 = await distribution.sha256();
-    let binaryName = requests.binaryName(sha256);
-
     // Upload the distribution if it hasn't been uploaded before
-    let releaseId: string;
-    const uploadStatus = await requests.getUploadStatus(binaryName);
-
-    if (uploadStatus.status === UploadStatus.SUCCESS) {
-      utils.logWarning("this distribution has been uploaded before, skipping upload");
-      releaseId = uploadStatus.release.id;
-    } else {
+    let uploadResponse;
+    try {
+      const sha256 = await distribution.sha256();
+      uploadResponse = await requests.getUploadStatus(sha256);
+      utils.logWarning("this binary has been uploaded before, skipping upload");
+    } catch (err) {
       // If there's an error, we know that the distribution hasn't been uploaded before
-      utils.logBullet("uploading distribution...");
+      utils.logBullet("uploading binary...");
 
       try {
-        binaryName = await requests.uploadDistribution(distribution);
+        const operationName = await requests.uploadRelease(distribution);
 
         // The upload process is asynchronous, so poll to figure out when the upload has finished successfully
-        releaseId = await requests.pollUploadStatus(binaryName);
-        utils.logSuccess("uploaded distribution successfully!");
+        uploadResponse = await requests.pollUploadStatus(operationName);
+
+        const release = uploadResponse.release;
+        switch (uploadResponse.result) {
+          case UploadReleaseResult.RELEASE_CREATED:
+            utils.logSuccess(
+              `uploaded new release ${release.displayVersion} (${release.buildVersion}) successfully!`
+            );
+            break;
+          case UploadReleaseResult.RELEASE_UPDATED:
+            utils.logSuccess(
+              `uploaded update to existing release ${release.displayVersion} (${release.buildVersion}) successfully!`
+            );
+            break;
+          case UploadReleaseResult.RELEASE_UNMODIFIED:
+            utils.logSuccess(
+              `re-uploaded already existing release ${release.displayVersion} (${release.buildVersion}) successfully!`
+            );
+            break;
+          default:
+            utils.logSuccess(
+              `uploaded release ${release.displayVersion} (${release.buildVersion}) successfully!`
+            );
+        }
       } catch (err) {
-        throw new FirebaseError(`failed to upload distribution. ${err.message}`, { exit: 1 });
+        throw new FirebaseError(`failed to upload release. ${err.message}`, { exit: 1 });
       }
     }
 
@@ -156,6 +172,7 @@ module.exports = new Command("appdistribution:distribute <distribution-file>")
     }
 
     // Add release notes and distribute to testers/groups
-    await requests.updateReleaseNotes(releaseId, releaseNotes);
-    await requests.distribute(releaseId, testers, groups);
+    const releaseName = uploadResponse.release.name;
+    await requests.updateReleaseNotes(releaseName, releaseNotes);
+    await requests.distribute(releaseName, testers, groups);
   });
