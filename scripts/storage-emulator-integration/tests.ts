@@ -787,6 +787,52 @@ describe("Storage emulator", () => {
           expect(metadata2).to.deep.equal(metadata1);
         });
 
+        it("should preserve firebaseStorageDownloadTokens", async () => {
+          const firebaseStorageDownloadTokens = "token1,token2";
+          await testBucket.upload(smallFilePath, {
+            metadata: {
+              metadata: {
+                firebaseStorageDownloadTokens,
+              },
+            },
+          });
+
+          const file = testBucket.file(copyDestinationFile);
+          const [, { resource: metadata }] = await testBucket
+            .file(smallFilePath.split("/").slice(-1)[0])
+            .copy(file);
+
+          expect(metadata).to.deep.include({
+            metadata: {
+              firebaseStorageDownloadTokens,
+            },
+          });
+        });
+
+        it("should remove firebaseStorageDownloadTokens when overwriting custom metadata", async () => {
+          await testBucket.upload(smallFilePath, {
+            metadata: {
+              metadata: {
+                firebaseStorageDownloadTokens: "token1,token2",
+              },
+            },
+          });
+
+          const file = testBucket.file(copyDestinationFile);
+          const metadata = { foo: "bar" };
+          // Types for CopyOptions are wrong (@google-cloud/storage sub-dependency needs
+          // update to include https://github.com/googleapis/nodejs-storage/pull/1406
+          // and https://github.com/googleapis/nodejs-storage/pull/1426)
+          const copyOpts: CopyOptions & { [key: string]: unknown } = {
+            metadata,
+          };
+          const [, { resource: metadataOut }] = await testBucket
+            .file(smallFilePath.split("/").slice(-1)[0])
+            .copy(file, copyOpts);
+
+          expect(metadataOut).to.deep.include({ metadata });
+        });
+
         it("should not support the use of a rewriteToken", async () => {
           await testBucket.upload(smallFilePath);
 

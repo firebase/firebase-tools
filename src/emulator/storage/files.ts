@@ -348,6 +348,14 @@ export class StorageLayer {
       metadata: sourceFile.customMetadata,
       ...incomingMetadata,
     };
+    if (
+      sourceFile.downloadTokens.length &&
+      // Only copy download tokens if we're not overwriting any custom metadata
+      !(incomingMetadata?.metadata && Object.keys(incomingMetadata?.metadata).length)
+    ) {
+      if (!newMetadata.metadata) newMetadata.metadata = {};
+      newMetadata.metadata.firebaseStorageDownloadTokens = sourceFile.downloadTokens.join(",");
+    }
     if (newMetadata.metadata) {
       // Convert null metadata values to empty strings
       for (const [k, v] of Object.entries(newMetadata.metadata)) {
