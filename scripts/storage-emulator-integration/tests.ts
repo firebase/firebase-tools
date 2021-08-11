@@ -659,7 +659,14 @@ describe("Storage emulator", () => {
         });
 
         it("should copy the file preserving the original metadata", async () => {
-          const [, source] = await testBucket.upload(smallFilePath);
+          const [, source] = await testBucket.upload(smallFilePath, {
+            metadata: {
+              cacheControl: "private,no-store",
+              metadata: {
+                hello: "world",
+              },
+            },
+          });
 
           const file = testBucket.file(copyDestinationFile);
           await testBucket.file(smallFilePath.split("/").slice(-1)[0]).copy(file);
@@ -672,6 +679,7 @@ describe("Storage emulator", () => {
             etag: source.etag,
             crc32c: source.crc32c,
             cacheControl: source.cacheControl,
+            metadata: source.metadata,
           });
 
           const metadataTypes: { [s: string]: string } = {};
@@ -702,6 +710,7 @@ describe("Storage emulator", () => {
             mediaLink: "string",
             selfLink: "string",
             timeStorageClassUpdated: "string",
+            metadata: "object",
           });
         });
 
