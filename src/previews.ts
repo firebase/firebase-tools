@@ -9,6 +9,7 @@ interface PreviewFlags {
   functionsv2: boolean;
   golang: boolean;
   deletegcfartifacts: boolean;
+  dotenv: boolean;
 }
 
 export const previews: PreviewFlags = {
@@ -20,6 +21,7 @@ export const previews: PreviewFlags = {
   functionsv2: false,
   golang: false,
   deletegcfartifacts: false,
+  dotenv: false,
 
   ...configstore.get("previews"),
 };
