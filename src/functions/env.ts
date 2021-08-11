@@ -205,10 +205,10 @@ export function hasUserEnvs(
 }
 
 /**
- * Loads environment variables for a project.
+ * Load user-specified environment variables.
  *
- * Load looks for .env files at the root of functions source directory
- * and loads the contents of the .env files.
+ * Look for .env files at the root of functions source directory
+ * and load the contents of the .env files.
  *
  * .env files are searched and merged in the following order:
  *
@@ -260,31 +260,16 @@ export function loadUserEnvs({
 }
 
 /**
- * Load environment variables for the given project.
+ * Load Firebase-set environment variables.
  *
  * @return Environment varibles for functions.
  */
-export function load(options: {
-  firebaseConfig: Record<string, any>;
-  functionsSource: string;
-  projectId: string;
-  projectAlias?: string;
-}): Record<string, string> {
-  const { firebaseConfig, functionsSource, projectId, projectAlias } = options;
-
-  let envs = {
+export function loadFirebaseEnvs(
+  firebaseConfig: Record<string, any>,
+  projectId: string
+): Record<string, string> {
+  return {
     FIREBASE_CONFIG: JSON.stringify(firebaseConfig),
     GCLOUD_PROJECT: projectId,
   };
-  if (previews.dotenv) {
-    envs = {
-      ...loadUserEnvs({
-        functionsSource,
-        projectId,
-        projectAlias,
-      }),
-      ...envs,
-    };
-  }
-  return envs;
 }

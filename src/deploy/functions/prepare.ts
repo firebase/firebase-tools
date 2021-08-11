@@ -57,15 +57,16 @@ export async function prepare(
     "Error: 'functions.source' is not defined"
   );
   const source = options.config.src.functions.source;
-  const envs = functionsEnv.load({
-    firebaseConfig: runtimeConfig,
+  const firebaseEnvs = functionsEnv.loadFirebaseEnvs(runtimeConfig, projectId);
+  const userEnvs = functionsEnv.loadUserEnvs({
     functionsSource: options.config.path(source),
     projectId: projectId,
     projectAlias: options.projectAlias,
   });
 
   logger.debug(`Analyzing ${runtimeDelegate.name} backend spec`);
-  const wantBackend = await runtimeDelegate.discoverSpec(runtimeConfig, envs);
+  const wantBackend = await runtimeDelegate.discoverSpec(runtimeConfig, firebaseEnvs);
+  wantBackend.environmentVariables = { ...userEnvs, ...firebaseEnvs };
   payload.functions = { backend: wantBackend };
   if (backend.isEmptyBackend(wantBackend)) {
     return;
