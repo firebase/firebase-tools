@@ -13,8 +13,6 @@ import { FunctionsRuntimeBundle } from "../../src/emulator/functionsEmulatorShar
 import { InvokeRuntimeOpts, FunctionsEmulator } from "../../src/emulator/functionsEmulator";
 import { RuntimeWorker } from "../../src/emulator/functionsRuntimeWorker";
 import { streamToString } from "../../src/utils";
-import { previews } from "../../src/previews";
-import * as functionsEnv from "../../src/functions/env";
 
 const DO_NOTHING = () => {
   // do nothing.
@@ -263,32 +261,6 @@ describe("FunctionsEmulator-Runtime", () => {
         expect(info.port).to.be.undefined;
       }).timeout(TIMEOUT_MED);
 
-      it("should set FIRESTORE_EMULATOR_HOST when the emulator is running", async () => {
-        const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest);
-        frb.emulators = {
-          firestore: {
-            host: "localhost",
-            port: 9090,
-          },
-        };
-
-        const worker = invokeRuntimeWithFunctions(frb, () => {
-          return {
-            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
-              res.json({
-                var: process.env.FIRESTORE_EMULATOR_HOST,
-              });
-              return Promise.resolve();
-            }),
-          };
-        });
-
-        const data = await callHTTPSFunction(worker, frb);
-        const res = JSON.parse(data);
-
-        expect(res.var).to.eql("localhost:9090");
-      }).timeout(TIMEOUT_MED);
-
       it("should expose a stubbed Firestore when the emulator is running", async () => {
         const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest);
         frb.emulators = {
@@ -339,31 +311,6 @@ describe("FunctionsEmulator-Runtime", () => {
         const data = await callHTTPSFunction(worker, frb);
         const info = JSON.parse(data);
         expect(info.url).to.eql("https://fake-project-id-default-rtdb.firebaseio.com/");
-      }).timeout(TIMEOUT_MED);
-
-      it("should set FIREBASE_DATABASE_EMULATOR_HOST when the emulator is running", async () => {
-        const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest);
-        frb.emulators = {
-          database: {
-            host: "localhost",
-            port: 9000,
-          },
-        };
-
-        const worker = invokeRuntimeWithFunctions(frb, () => {
-          return {
-            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
-              res.json({
-                var: process.env.FIREBASE_DATABASE_EMULATOR_HOST,
-              });
-            }),
-          };
-        });
-
-        const data = await callHTTPSFunction(worker, frb);
-        const res = JSON.parse(data);
-
-        expect(res.var).to.eql("localhost:9000");
       }).timeout(TIMEOUT_MED);
 
       it("should expose a stubbed RTDB when the emulator is running", async () => {
@@ -437,12 +384,8 @@ describe("FunctionsEmulator-Runtime", () => {
       }).timeout(TIMEOUT_MED);
     });
 
-    describe("environment variables", () => {
-      let restore: boolean;
-
+    describe.only("environment variables", () => {
       before(() => {
-        restore = previews.dotenv;
-        previews.dotenv = true;
         fs.writeFileSync(path.join(MODULE_ROOT, ".env"), "SOURCE=env\nFOO=foo");
         fs.writeFileSync(path.join(MODULE_ROOT, ".env.local"), "SOURCE=env.local");
       });
@@ -450,8 +393,58 @@ describe("FunctionsEmulator-Runtime", () => {
       after(() => {
         fs.unlinkSync(path.join(MODULE_ROOT, ".env"));
         fs.unlinkSync(path.join(MODULE_ROOT, ".env.local"));
-        previews.dotenv = restore;
       });
+
+      it("should set FIREBASE_DATABASE_EMULATOR_HOST when the emulator is running", async () => {
+        const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest);
+        frb.emulators = {
+          database: {
+            host: "localhost",
+            port: 9000,
+          },
+        };
+
+        const worker = invokeRuntimeWithFunctions(frb, () => {
+          return {
+            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
+              res.json({
+                var: process.env.FIREBASE_DATABASE_EMULATOR_HOST,
+              });
+            }),
+          };
+        });
+
+        const data = await callHTTPSFunction(worker, frb);
+        const res = JSON.parse(data);
+
+        expect(res.var).to.eql("localhost:9000");
+      }).timeout(TIMEOUT_MED);
+
+      it("should set FIRESTORE_EMULATOR_HOST when the emulator is running", async () => {
+        const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest);
+        frb.emulators = {
+          firestore: {
+            host: "localhost",
+            port: 9090,
+          },
+        };
+
+        const worker = invokeRuntimeWithFunctions(frb, () => {
+          return {
+            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
+              res.json({
+                var: process.env.FIRESTORE_EMULATOR_HOST,
+              });
+              return Promise.resolve();
+            }),
+          };
+        });
+
+        const data = await callHTTPSFunction(worker, frb);
+        const res = JSON.parse(data);
+
+        expect(res.var).to.eql("localhost:9090");
+      }).timeout(TIMEOUT_MED);
 
       it("should set FIREBASE_AUTH_EMULATOR_HOST when the emulator is running", async () => {
         const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest);

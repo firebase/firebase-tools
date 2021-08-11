@@ -1,6 +1,5 @@
 import * as functionsEnv from "../functions/env";
 import { FirebaseError } from "../error";
-import { previews } from "../previews";
 import { EmulatorLog } from "./types";
 import { CloudFunction, DeploymentOptions, https } from "firebase-functions";
 import {
@@ -649,7 +648,7 @@ async function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): Pr
   process.env.GCLOUD_PROJECT = frb.projectId;
   process.env.FUNCTIONS_EMULATOR = "true";
 
-  if (previews.dotenv) {
+  if (functionsEnv.hasUserEnvs(frb.cwd, "local")) {
     // Load user-specified environment variables.
     try {
       const userEnvs = functionsEnv.loadUserEnvs({ functionsSource: frb.cwd, projectId: "local" });
