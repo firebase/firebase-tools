@@ -57,7 +57,7 @@ export async function prepare(
     "Error: 'functions.source' is not defined"
   );
   const source = options.config.src.functions.source;
-  const firebaseEnvs = functionsEnv.loadFirebaseEnvs(runtimeConfig, projectId);
+  const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
   const userEnvs = functionsEnv.loadUserEnvs({
     functionsSource: options.config.path(source),
     projectId: projectId,
