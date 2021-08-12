@@ -1,1 +1,0 @@
-- Fixes bug where function deploys failed due to bad FIREBASE_CONFIG value (#3668).
