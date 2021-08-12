@@ -13,10 +13,10 @@ export class DeploymentTimer {
     this.timings[name] = { type: type, t0: process.hrtime() };
   }
 
-  endTimer(name: string) {
+  endTimer(name: string): number {
     if (!this.timings[name]) {
       logger.debug("[functions] no timer initialized for", name);
-      return;
+      return 0;
     }
 
     // hrtime returns a duration as an array of [seconds, nanos]
@@ -26,5 +26,7 @@ export class DeploymentTimer {
       this.timings[name].type,
       duration[0] * 1000 + Math.round(duration[1] * 1e-6)
     );
+
+    return duration[0] * 1000 * Math.round(duration[1] * 1e-6);
   }
 }

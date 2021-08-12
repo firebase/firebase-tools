@@ -23,7 +23,7 @@ visitor.set("cd1", process.platform); // Platform
 visitor.set("cd2", process.version); // NodeVersion
 visitor.set("cd3", process.env.FIREPIT_VERSION || "none"); // FirepitVersion
 
-module.exports = function (action, label, duration) {
+function track(action, label, duration) {
   return new Promise(function (resolve) {
     if (!_.isString(action) || !_.isString(label)) {
       logger.debug("track received non-string arguments:", action, label);
@@ -40,4 +40,9 @@ module.exports = function (action, label, duration) {
       resolve();
     }
   });
-};
+}
+
+// New code should import track by name so that it can be stubbed
+// in unit tests. Legacy code still imports as default.
+track.track = track;
+module.exports = track;

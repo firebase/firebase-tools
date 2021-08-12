@@ -10,10 +10,11 @@ import { logger } from "../../logger";
 import * as docker from "../../gcp/docker";
 import * as backend from "./backend";
 import * as utils from "../../utils";
+import { FirebaseError } from "../../error";
 
 // A flattening of container_registry_hosts and
 // region_multiregion_map from regionconfig.borg
-const SUBDOMAIN_MAPPING: Record<string, string> = {
+export const SUBDOMAIN_MAPPING: Record<string, string> = {
   "us-west2": "us",
   "us-west3": "us",
   "us-west4": "us",
@@ -38,6 +39,25 @@ const SUBDOMAIN_MAPPING: Record<string, string> = {
   "asia-southeast2": "asia",
   "australia-southeast1": "asia",
 };
+
+async function retry<Return>(func: () => Promise<Return>): Promise<Return> {
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+  const MAX_RETRIES = 3;
+  const INITIAL_BACKOFF = 100;
+  let retry = 0;
+  while (true) {
+    try {
+      return await func();
+    } catch (error) {
+      logger.debug("Failed docker command with error", error);
+      retry += 1;
+      if (retry >= MAX_RETRIES) {
+        throw new FirebaseError("Failed to clean up artifacts", { original: error });
+      }
+      await sleep(Math.pow(INITIAL_BACKOFF, retry - 1));
+    }
+  }
+}
 
 export async function cleanupBuildImages(functions: backend.FunctionSpec[]): Promise<void> {
   utils.logBullet(clc.bold.cyan("functions: ") + "cleaning up build files...");
@@ -128,6 +148,119 @@ export class ContainerRegistryCleaner {
   }
 }
 
+function getHelper(cache: Record<string, DockerHelper>, subdomain: string): DockerHelper {
+  if (!cache[subdomain]) {
+    cache[subdomain] = new DockerHelper(`https://${subdomain}.${containerRegistryDomain}`);
+  }
+  return cache[subdomain];
+}
+
+/**
+ * List all paths from the GCF directory in GCR (e.g. us.gcr.io/project-id/gcf/location).
+ * @param projectId: the current project that contains GCF artifacts
+ * @param location: the specific region to search for artifacts. If omitted, will search all locations.
+ * @param dockerHelpers: a map of {@link SUBDOMAINS} to {@link DockerHelper}. If omitted, will use the default value and create each {@link DockerHelper} internally.
+ *
+ * @throws {@link FirebaseError}
+ * Thrown if the provided location is not a valid Google Cloud region or we fail to search subdomains.
+ */
+export async function listGcfPaths(
+  projectId: string,
+  locations?: string[],
+  dockerHelpers: Record<string, DockerHelper> = {}
+): Promise<string[]> {
+  if (!locations) {
+    locations = Object.keys(SUBDOMAIN_MAPPING);
+  }
+  const invalidRegion = locations.find((loc) => !SUBDOMAIN_MAPPING[loc]);
+  if (invalidRegion) {
+    throw new FirebaseError(`Invalid region ${invalidRegion} supplied`);
+  }
+  const locationsSet = new Set(locations); // for quick lookup
+  const subdomains = new Set(Object.values(SUBDOMAIN_MAPPING));
+  const failedSubdomains: string[] = [];
+  const listAll: Promise<Stat>[] = [];
+
+  for (const subdomain of subdomains) {
+    listAll.push(
+      (async () => {
+        try {
+          return getHelper(dockerHelpers, subdomain).ls(`${projectId}/gcf`);
+        } catch (err) {
+          failedSubdomains.push(subdomain);
+          logger.debug(err);
+          const stat: Stat = {
+            children: [],
+            digests: [],
+            tags: [],
+          };
+          return Promise.resolve(stat);
+        }
+      })()
+    );
+  }
+
+  const gcfDirs = (await Promise.all(listAll))
+    .map((results) => results.children)
+    .reduce((acc, val) => [...acc, ...val], [])
+    .filter((loc) => locationsSet.has(loc));
+
+  if (failedSubdomains.length == subdomains.size) {
+    throw new FirebaseError("Failed to search all subdomains.");
+  } else if (failedSubdomains.length > 0) {
+    throw new FirebaseError(
+      `Failed to search the following subdomains: ${failedSubdomains.join(",")}`
+    );
+  }
+
+  return gcfDirs.map((loc) => {
+    return `${SUBDOMAIN_MAPPING[loc]}.${containerRegistryDomain}/${projectId}/gcf/${loc}`;
+  });
+}
+
+/**
+ * Deletes all artifacts from GCF directory in GCR.
+ * @param projectId: the current project that contains GCF artifacts
+ * @param location: the specific region to be clean up. If omitted, will delete all locations.
+ * @param dockerHelpers: a map of {@link SUBDOMAINS} to {@link DockerHelper}. If omitted, will use the default value and create each {@link DockerHelper} internally.
+ *
+ * @throws {@link FirebaseError}
+ * Thrown if the provided location is not a valid Google Cloud region or we fail to delete subdomains.
+ */
+export async function deleteGcfArtifacts(
+  projectId: string,
+  locations?: string[],
+  dockerHelpers: Record<string, DockerHelper> = {}
+): Promise<void> {
+  if (!locations) {
+    locations = Object.keys(SUBDOMAIN_MAPPING);
+  }
+  const invalidRegion = locations.find((loc) => !SUBDOMAIN_MAPPING[loc]);
+  if (invalidRegion) {
+    throw new FirebaseError(`Invalid region ${invalidRegion} supplied`);
+  }
+  const subdomains = new Set(Object.values(SUBDOMAIN_MAPPING));
+  const failedSubdomains: string[] = [];
+
+  const deleteLocations = locations.map((loc) => {
+    try {
+      return getHelper(dockerHelpers, SUBDOMAIN_MAPPING[loc]).rm(`${projectId}/gcf/${loc}`);
+    } catch (err) {
+      failedSubdomains.push(SUBDOMAIN_MAPPING[loc]);
+      logger.debug(err);
+    }
+  });
+  await Promise.all(deleteLocations);
+
+  if (failedSubdomains.length == subdomains.size) {
+    throw new FirebaseError("Failed to search all subdomains.");
+  } else if (failedSubdomains.length > 0) {
+    throw new FirebaseError(
+      `Failed to search the following subdomains: ${failedSubdomains.join(",")}`
+    );
+  }
+}
+
 export interface Stat {
   children: string[];
   digests: docker.Digest[];
@@ -144,7 +277,7 @@ export class DockerHelper {
 
   async ls(path: string): Promise<Stat> {
     if (!this.cache[path]) {
-      const raw = await this.client.listTags(path);
+      const raw = await retry(() => this.client.listTags(path));
       this.cache[path] = {
         tags: raw.tags,
         digests: Object.keys(raw.manifest),
@@ -177,7 +310,7 @@ export class DockerHelper {
     const deleteTags = stat.tags.map((tag) =>
       (async () => {
         try {
-          await this.client.deleteTag(path, tag);
+          await retry(() => this.client.deleteTag(path, tag));
           stat.tags.splice(stat.tags.indexOf(tag), 1);
         } catch (err) {
           logger.debug("Got error trying to remove docker tag:", err);
@@ -190,7 +323,7 @@ export class DockerHelper {
     const deleteImages = stat.digests.map((digest) =>
       (async () => {
         try {
-          await this.client.deleteImage(path, digest);
+          await retry(() => this.client.deleteImage(path, digest));
           stat.digests.splice(stat.digests.indexOf(digest), 1);
         } catch (err) {
           logger.debug("Got error trying to remove docker image:", err);
