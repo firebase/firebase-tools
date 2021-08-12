@@ -1,1 +1,0 @@
-- Fixes issue deploying Cloud Functions for Firebase. (#3664)
