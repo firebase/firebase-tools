@@ -219,40 +219,6 @@ export async function createFunction(
   }
 }
 
-/**
- * @param name Fully qualified name of the Function.
- * @param policy The [policy](https://cloud.google.com/functions/docs/reference/rest/v1/projects.locations.functions/setIamPolicy) to set.
- */
-interface IamOptions {
-  name: string;
-  policy: iam.Policy;
-}
-
-/**
- * Sets the IAM policy of a Google Cloud Function.
- * @param options The Iam options to set.
- *
- * @throws {@link FirebaseError} when the IAM Polciy fails to be set
- */
-export async function setIamPolicy(options: IamOptions): Promise<void> {
-  const endpoint = `/${API_VERSION}/${options.name}:setIamPolicy`;
-
-  try {
-    await api.request("POST", endpoint, {
-      auth: true,
-      data: {
-        policy: options.policy,
-        updateMask: Object.keys(options.policy).join(","),
-      },
-      origin: api.functionsOrigin,
-    });
-  } catch (err) {
-    throw new FirebaseError(`Failed to set the IAM Policy on the function ${options.name}`, {
-      original: err,
-    });
-  }
-}
-
 // getIamPolicy response body
 interface GetIamPolicy {
   bindings?: iam.Binding[];
@@ -261,10 +227,10 @@ interface GetIamPolicy {
 }
 
 /**
- * Gets the current invoker IAM policy for the function and overrides it with the invoker
- * @param projectId
- * @param fnName
- * @param invoker
+ * Gets the current invoker IAM policy for the function and overrides the invoker with the supplied invoker members
+ * @param projectId id of the project
+ * @param fnName function name
+ * @param invoker an array of invoker strings
  *
  * @throws {@link FirebaseError} on an empty invoker, when the IAM Polciy fails to be grabbed or set
  */
@@ -311,7 +277,7 @@ export async function setInvoker(
   // set policy with updated invoker
   const setPolicyEndpoint = `/${API_VERSION}/${fnName}:setIamPolicy`;
   try {
-    const setPolicyResponse = await api.request("POST", setPolicyEndpoint, {
+    await api.request("POST", setPolicyEndpoint, {
       auth: true,
       data: {
         policy: policy,

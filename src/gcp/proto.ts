@@ -125,31 +125,35 @@ function fieldMasksHelper(
 }
 
 /**
- * Formats the service account to be used with IAM API calls, a vaild service account string is
- * 'service-account@project.iam.gserviceaccount.com', 'service-account@', or 'service-account'.
- * @param serviceAccount the custom service account created by the user
+ * Formats a single invoker to be used with IAM API calls, a vaild invoker is
+ * 'public', 'service-account', 'service-account@', or
+ * 'service-account@project.iam.gserviceaccount.com'.
+ * @param invokerMember the single invoker that is a member of the invoker array
  * @param projectId the ID of the current project
  * @returns a correctly formatted service account string
  *
  * @throws {@link Error} if the supplied service account string is empty
  */
-export function formatInvokerMember(member: string, projectId: string): string {
-  if (member.length === 0) {
+export function formatInvokerMember(invokerMember: string, projectId: string): string {
+  if (invokerMember.length === 0) {
     throw new Error("Service account cannot be an empty string");
   }
-  if (member === "public") {
+  if (invokerMember === "public") {
     return "allUsers";
   }
 
   const suffix = `@${projectId}.iam.gserviceaccount.com`;
-  if (member.length > suffix.length && member.slice(member.length - suffix.length) === suffix) {
-    return `serviceAccount:${member}`;
+  if (
+    invokerMember.length > suffix.length &&
+    invokerMember.slice(invokerMember.length - suffix.length) === suffix
+  ) {
+    return `serviceAccount:${invokerMember}`;
   }
 
   const emailId =
-    member.charAt(member.length - 1) === "@"
-      ? `${member}${projectId}.iam.gserviceaccount.com`
-      : `${member}@${projectId}.iam.gserviceaccount.com`;
+    invokerMember.charAt(invokerMember.length - 1) === "@"
+      ? `${invokerMember}${projectId}.iam.gserviceaccount.com`
+      : `${invokerMember}@${projectId}.iam.gserviceaccount.com`;
 
   return `serviceAccount:${emailId}`;
 }
