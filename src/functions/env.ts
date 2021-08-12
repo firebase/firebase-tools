@@ -228,7 +228,14 @@ export function loadUserEnvs({
   projectId: string;
   projectAlias?: string;
 }): Record<string, string> {
+  if (!previews.dotenv) {
+    return {};
+  }
+
   const envFiles = findEnvfiles(functionsSource, projectId, projectAlias);
+  if (envFiles.length == 0) {
+    return {};
+  }
 
   // Disallow setting both .env.<projectId> and .env.<projectAlias>
   if (projectAlias) {
