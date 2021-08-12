@@ -57,10 +57,13 @@ const matchesId = (hasId: { id: string }) => (test: { id: string }) => {
 export function calculateRegionalFunctionChanges(
   want: backend.FunctionSpec[],
   have: backend.FunctionSpec[],
-  filters: string[][]
+  options: {
+    filters: string[][];
+    overwriteEnvs?: boolean;
+  }
 ): RegionalFunctionChanges {
-  want = want.filter((fn) => functionMatchesAnyGroup(fn, filters));
-  have = have.filter((fn) => functionMatchesAnyGroup(fn, filters));
+  want = want.filter((fn) => functionMatchesAnyGroup(fn, options.filters));
+  have = have.filter((fn) => functionMatchesAnyGroup(fn, options.filters));
   let upgradedToGCFv2WithoutSettingConcurrency = false;
 
   const functionsToCreate = want.filter((fn) => !have.some(matchesId(fn)));
@@ -73,12 +76,13 @@ export function calculateRegionalFunctionChanges(
 
       checkForInvalidChangeOfTrigger(fn, haveFn);
 
-      // Remember old environment variables that might have been set with
-      // gcloud or the cloud console.
-      fn.environmentVariables = {
-        ...haveFn.environmentVariables,
-        ...fn.environmentVariables,
-      };
+      if (!options.overwriteEnvs) {
+        // Remember old environment variables that might have been set with gcloud or the cloud console.
+        fn.environmentVariables = {
+          ...haveFn.environmentVariables,
+          ...fn.environmentVariables,
+        };
+      }
 
       if (haveFn.platform === "gcfv1" && fn.platform === "gcfv2" && !fn.concurrency) {
         upgradedToGCFv2WithoutSettingConcurrency = true;
@@ -120,7 +124,10 @@ export function calculateRegionalFunctionChanges(
 export function createDeploymentPlan(
   want: backend.Backend,
   have: backend.Backend,
-  filters: string[][]
+  options: {
+    filters: string[][];
+    overwriteEnvs?: boolean;
+  }
 ): DeploymentPlan {
   const deployment: DeploymentPlan = {
     regionalDeployments: {},
@@ -134,18 +141,18 @@ export function createDeploymentPlan(
   for (const region of allRegions(wantRegionalFunctions, haveRegionalFunctions)) {
     const want = wantRegionalFunctions[region] || [];
     const have = haveRegionalFunctions[region] || [];
-    deployment.regionalDeployments[region] = calculateRegionalFunctionChanges(want, have, filters);
+    deployment.regionalDeployments[region] = calculateRegionalFunctionChanges(want, have, options);
   }
 
   deployment.schedulesToUpsert = want.schedules.filter((schedule) =>
-    functionMatchesAnyGroup(schedule.targetService, filters)
+    functionMatchesAnyGroup(schedule.targetService, options.filters)
   );
   deployment.schedulesToDelete = have.schedules
     .filter((schedule) => !want.schedules.some(matchesId(schedule)))
-    .filter((schedule) => functionMatchesAnyGroup(schedule.targetService, filters));
+    .filter((schedule) => functionMatchesAnyGroup(schedule.targetService, options.filters));
   deployment.topicsToDelete = have.topics
     .filter((topic) => !want.topics.some(matchesId(topic)))
-    .filter((topic) => functionMatchesAnyGroup(topic.targetService, filters));
+    .filter((topic) => functionMatchesAnyGroup(topic.targetService, options.filters));
 
   return deployment;
 }
