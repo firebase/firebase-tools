@@ -420,7 +420,13 @@ async function initializeFirebaseFunctionsStubs(frb: FunctionsRuntimeBundle): Pr
     firebaseFunctionsResolution.resolution
   );
   const httpsProviderResolution = path.join(firebaseFunctionsRoot, "lib/providers/https");
-  const httpsProvider = require(httpsProviderResolution);
+  const httpsProviderV1Resolution = path.join(firebaseFunctionsRoot, "lib/v1/providers/https");
+  let httpsProvider: any;
+  try {
+    httpsProvider = require(httpsProviderV1Resolution);
+  } catch (e) {
+    httpsProvider = require(httpsProviderResolution);
+  }
 
   // TODO: Remove this logic and stop relying on internal APIs.  See #1480 for reasoning.
   const onRequestInnerMethodName = "_onRequestWithOptions";
