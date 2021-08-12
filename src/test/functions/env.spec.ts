@@ -217,7 +217,7 @@ FOO=foo
 
     after(() => {
       previews.dotenv = false;
-    })
+    });
 
     beforeEach(() => {
       tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), "test"));
