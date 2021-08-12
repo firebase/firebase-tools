@@ -57,7 +57,7 @@ export interface TriggerAnnotation {
   timeZone?: string;
   regions?: string[];
   concurrency?: number;
-  invoker?: string | string[];
+  invoker?: string[];
 }
 
 /**

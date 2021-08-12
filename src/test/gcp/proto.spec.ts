@@ -150,4 +150,44 @@ describe("proto", () => {
       expect(fieldMasks.sort()).to.deep.equal(["map", "nested.anotherMap"].sort());
     });
   });
+
+  describe("formatServiceAccount", () => {
+    it("should throw error on empty service account string", () => {
+      expect(() => proto.formatInvokerMember("", "project")).to.throw();
+    });
+
+    it("should return allUsers from public member", () => {
+      const formatted = proto.formatInvokerMember("public", "project");
+
+      expect(formatted).to.eq("allUsers");
+    });
+
+    it("should return formatted service account from invoker not ending with @", () => {
+      const serviceAccount = "service-account";
+      const project = "project";
+
+      const formatted = proto.formatInvokerMember(serviceAccount, project);
+
+      expect(formatted).to.eq(
+        `serviceAccount:${serviceAccount}@${project}.iam.gserviceaccount.com`
+      );
+    });
+
+    it("should return formatted service account from invoker ending with @", () => {
+      const serviceAccount = "service-account@";
+      const project = "project";
+
+      const formatted = proto.formatInvokerMember(serviceAccount, project);
+
+      expect(formatted).to.eq(`serviceAccount:${serviceAccount}${project}.iam.gserviceaccount.com`);
+    });
+
+    it("should return formatted service account from invoker with full service account", () => {
+      const serviceAccount = "service-account@project.iam.gserviceaccount.com";
+
+      const formatted = proto.formatInvokerMember(serviceAccount, "project");
+
+      expect(formatted).to.eq(`serviceAccount:${serviceAccount}`);
+    });
+  });
 });

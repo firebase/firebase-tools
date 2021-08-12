@@ -123,3 +123,33 @@ function fieldMasksHelper(
     fieldMasksHelper(newPrefixes, value, doNotRecurseIn, masks);
   }
 }
+
+/**
+ * Formats the service account to be used with IAM API calls, a vaild service account string is
+ * 'service-account@project.iam.gserviceaccount.com', 'service-account@', or 'service-account'.
+ * @param serviceAccount the custom service account created by the user
+ * @param projectId the ID of the current project
+ * @returns a correctly formatted service account string
+ *
+ * @throws {@link Error} if the supplied service account string is empty
+ */
+export function formatInvokerMember(member: string, projectId: string): string {
+  if (member.length === 0) {
+    throw new Error("Service account cannot be an empty string");
+  }
+  if (member === "public") {
+    return "allUsers";
+  }
+
+  const suffix = `@${projectId}.iam.gserviceaccount.com`;
+  if (member.length > suffix.length && member.slice(member.length - suffix.length) === suffix) {
+    return `serviceAccount:${member}`;
+  }
+
+  const emailId =
+    member.charAt(member.length - 1) === "@"
+      ? `${member}${projectId}.iam.gserviceaccount.com`
+      : `${member}@${projectId}.iam.gserviceaccount.com`;
+
+  return `serviceAccount:${emailId}`;
+}

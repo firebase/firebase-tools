@@ -120,13 +120,10 @@ export function createFunctionTask(
       operationResourceName: op.name,
       onPoll,
     });
-    if (!backend.isEventTrigger(fn.trigger)) {
+    if (!backend.isEventTrigger(fn.trigger) && fn.invoker) {
       try {
         if (fn.platform === "gcfv1") {
-          await gcf.setIamPolicy({
-            name: fnName,
-            policy: gcf.generateIamPolicy(params.projectId, fn.invoker),
-          });
+          await gcf.setInvoker(params.projectId, fnName, fn.invoker);
         } else {
           const serviceName = (cloudFunction as gcfV2.CloudFunction).serviceConfig.service!;
           cloudrun.setIamPolicy(serviceName, cloudrun.DEFAULT_PUBLIC_POLICY);
@@ -192,15 +189,13 @@ export function updateFunctionTask(
       onPoll,
     };
     const cloudFunction = await pollOperation<unknown>(pollerOptions);
-    if (!backend.isEventTrigger(fn.trigger)) {
+    if (!backend.isEventTrigger(fn.trigger) && fn.invoker) {
       try {
         if (fn.platform === "gcfv1") {
-          await gcf.setIamPolicy({
-            name: fnName,
-            policy: gcf.generateIamPolicy(params.projectId, fn.invoker),
-          });
+          await gcf.setInvoker(params.projectId, fnName, fn.invoker);
+        } else {
+          // TODO: gcfv2
         }
-        // TODO: gcfv2
       } catch (err) {
         params.errorHandler.record("error", fnName, "set invoker", err.message);
       }

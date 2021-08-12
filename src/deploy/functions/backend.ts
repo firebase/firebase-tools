@@ -157,11 +157,6 @@ export interface TargetIds {
 
 export type FunctionsPlatform = "gcfv1" | "gcfv2";
 
-/**
- * Invoker access control type for https functions.
- */
-export type Invoker = "public" | "private" | string;
-
 /** An API agnostic definition of a Cloud Function. */
 export interface FunctionSpec extends TargetIds {
   platform: FunctionsPlatform;
@@ -180,7 +175,7 @@ export interface FunctionSpec extends TargetIds {
   vpcConnectorEgressSettings?: VpcEgressSettings;
   ingressSettings?: IngressSettings;
   serviceAccountEmail?: "default" | string;
-  invoker?: Invoker | Invoker[];
+  invoker?: string[];
 
   // Output only:
 

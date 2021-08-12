@@ -253,71 +253,77 @@ export async function setIamPolicy(options: IamOptions): Promise<void> {
   }
 }
 
-/**
- * Formats the service account to be used with IAM API calls, a vaild service account string is
- * 'service-account@project.iam.gserviceaccount.com', 'service-account@', or 'service-account'.
- * @param serviceAccount the custom service account created by the user
- * @param projectId the ID of the current project
- * @returns a correctly formatted service account string
- *
- * @throws {@link Error} if the supplied service account string is empty
- */
-function formatServiceAccount(serviceAccount: string, projectId: string): string {
-  if (serviceAccount.length === 0) {
-    throw new Error("Service account cannot be an empty string");
-  }
-
-  const suffix = `@${projectId}.iam.gserviceaccount.com`;
-  if (
-    serviceAccount.length > suffix.length &&
-    serviceAccount.slice(serviceAccount.length - suffix.length) === suffix
-  ) {
-    return `serviceAccount:${serviceAccount}`;
-  }
-
-  const emailId =
-    serviceAccount.charAt(serviceAccount.length - 1) === "@"
-      ? `${serviceAccount}${projectId}.iam.gserviceaccount.com`
-      : `${serviceAccount}@${projectId}.iam.gserviceaccount.com`;
-
-  return `serviceAccount:${emailId}`;
+// getIamPolicy response body
+interface GetIamPolicy {
+  bindings?: iam.Binding[];
+  version?: number;
+  etag?: string;
 }
 
 /**
- * Generates the correct IAM Policy for changing the invoker for HTTP triggered functions.
- * @param projectId the ID of the current project
- * @param invoker the member(s) that will be granted the invoker role
- * @returns correctly formatted IAM policy for use in IAM API calls
+ * Gets the current invoker IAM policy for the function and overrides it with the invoker
+ * @param projectId
+ * @param fnName
+ * @param invoker
+ *
+ * @throws {@link FirebaseError} on an empty invoker, when the IAM Polciy fails to be grabbed or set
  */
-export function generateIamPolicy(
+export async function setInvoker(
   projectId: string,
-  invoker: backend.Invoker | backend.Invoker[] = "public"
-): iam.Policy {
+  fnName: string,
+  invoker: string[]
+): Promise<void> {
+  if (invoker.length == 0) {
+    throw new FirebaseError("Invoker cannot be an empty array");
+  }
+  const invokerMembers =
+    invoker[0] === "private" ? [] : invoker.map((inv) => proto.formatInvokerMember(inv, projectId));
   const invokerRole = "roles/cloudfunctions.invoker";
-  const roleMembers: string[] = [];
 
-  if (typeof invoker === "string") {
-    if (invoker === "public") {
-      roleMembers.push("allUsers");
-    } else if (invoker !== "private") {
-      // if private we do not add any members to the invoker role
-      roleMembers.push(formatServiceAccount(invoker, projectId));
-    }
-  } else {
-    roleMembers.splice(0, 0, ...invoker.map((inv) => formatServiceAccount(inv, projectId)));
+  // get current policies
+  const getPolicyEndpoint = `/${API_VERSION}/${fnName}:getIamPolicy`;
+  let getPolicyResponse: GetIamPolicy;
+  try {
+    getPolicyResponse = await api.request("GET", getPolicyEndpoint, {
+      auth: true,
+      origin: api.functionsOrigin,
+    });
+    getPolicyResponse.bindings = getPolicyResponse.bindings || [];
+    getPolicyResponse.etag = getPolicyResponse.etag || "";
+    getPolicyResponse.version = getPolicyResponse.version || 1;
+  } catch (err) {
+    throw new FirebaseError(`Failed to get the IAM Policy on the function ${fnName}`, {
+      original: err,
+    });
   }
 
+  const bindings = getPolicyResponse.bindings.filter((binding) => binding.role !== invokerRole);
+  bindings.push({
+    role: invokerRole,
+    members: invokerMembers,
+  });
   const policy: iam.Policy = {
-    version: 3,
-    bindings: [
-      {
-        role: invokerRole,
-        members: roleMembers,
-      },
-    ],
-    etag: "",
+    bindings: bindings,
+    etag: getPolicyResponse.etag,
+    version: getPolicyResponse.version,
   };
-  return policy;
+
+  // set policy with updated invoker
+  const setPolicyEndpoint = `/${API_VERSION}/${fnName}:setIamPolicy`;
+  try {
+    const setPolicyResponse = await api.request("POST", setPolicyEndpoint, {
+      auth: true,
+      data: {
+        policy: policy,
+        updateMask: Object.keys(policy).join(","),
+      },
+      origin: api.functionsOrigin,
+    });
+  } catch (err) {
+    throw new FirebaseError(`Failed to set the IAM Policy on the function ${fnName}`, {
+      original: err,
+    });
+  }
 }
 
 /**
