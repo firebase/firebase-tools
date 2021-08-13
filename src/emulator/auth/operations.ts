@@ -1709,9 +1709,9 @@ function generateJwt(
     }
   }
 
-  const customAttributes = JSON.parse(user.customAttributes || "{}");
+  const customAttributes = JSON.parse(user.customAttributes || "{}") as Record<string, unknown>;
   /* eslint-disable camelcase */
-  const customPayloadFields: FirebaseJwtPayload = {
+  const customPayloadFields: Partial<FirebaseJwtPayload> = {
     // Non-reserved fields (set before custom attributes):
     name: user.displayName,
     picture: user.photoUrl,
@@ -1726,12 +1726,7 @@ function generateJwt(
     // This field is only set for anonymous sign-in but not for any other
     // provider (such as email or Google) in production. Let's match that.
     provider_id: signInProvider === "anonymous" ? signInProvider : undefined,
-    auth_time:
-      user.lastLoginAt != null
-        ? toUnixTimestamp(new Date(user.lastLoginAt))
-        : user.lastRefreshAt != null
-        ? toUnixTimestamp(new Date(user.lastRefreshAt))
-        : toUnixTimestamp(new Date()),
+    auth_time: toUnixTimestamp(getAuthTime(user)),
     user_id: user.localId,
     firebase: {
       identities,
@@ -1753,6 +1748,27 @@ function generateJwt(
     audience: projectId,
   });
   return jwtStr;
+}
+
+function getAuthTime(user: UserInfo): Date {
+  if (user.lastLoginAt != null) {
+    const millisSinceEpoch = parseInt(user.lastLoginAt, 10);
+    const authTime = new Date(millisSinceEpoch);
+    if (isNaN(authTime.getTime())) {
+      throw new Error(`Internal assertion error: invalid user.lastLoginAt = ${user.lastLoginAt}`);
+    }
+    return authTime;
+  } else if (user.lastRefreshAt != null) {
+    const authTime = new Date(user.lastRefreshAt); // Parse from ISO date string.
+    if (isNaN(authTime.getTime())) {
+      throw new Error(
+        `Internal assertion error: invalid user.lastRefreshAt = ${user.lastRefreshAt}`
+      );
+    }
+    return authTime;
+  } else {
+    throw new Error(`Internal assertion error: Missing user.lastLoginAt and user.lastRefreshAt`);
+  }
 }
 
 function verifyPhoneNumber(state: ProjectState, sessionInfo: string, code: string): string {
@@ -2127,12 +2143,17 @@ export interface FirebaseJwtPayload {
   exp: number; // expiresAt (in seconds since epoch)
   iss: string; // issuer
   aud: string; // audience (=projectId)
-  auth_time: number; // lastLoginAt (in seconds since epoch)
   // ...and other fields that we don't care for now.
 
   // Firebase-specific fields:
+
+  // the last login time (in seconds since epoch), may be different from iat
+  auth_time: number;
   email?: string;
+  email_verified?: boolean;
   phone_number?: string;
+  name?: string;
+  picture?: string;
   user_id: string;
   provider_id?: string;
   firebase: {
