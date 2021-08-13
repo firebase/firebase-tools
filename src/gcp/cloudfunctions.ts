@@ -8,6 +8,7 @@ import * as utils from "../utils";
 import * as proto from "./proto";
 import * as runtimes from "../deploy/functions/runtimes";
 import * as iam from "./iam";
+import * as _ from "lodash";
 
 export const API_VERSION = "v1";
 
@@ -325,6 +326,15 @@ export async function setInvokerUpdate(
   const invokerMembers = proto.getInvokerMembers(invoker, projectId);
   const invokerRole = "roles/cloudfunctions.invoker";
   const currentPolicy = await getIamPolicy(fnName);
+  const currentInvokerBinding = currentPolicy.bindings?.find(
+    (binding) => binding.role === invokerRole
+  );
+  if (
+    currentInvokerBinding &&
+    _.isEqual(new Set(currentInvokerBinding.members), new Set(invokerMembers))
+  ) {
+    return;
+  }
 
   const bindings = (currentPolicy.bindings || []).filter((binding) => binding.role !== invokerRole);
   bindings.push({

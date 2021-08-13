@@ -460,5 +460,31 @@ describe("cloudfunctions", () => {
       ).to.not.be.rejected;
       expect(apiRequestStub).to.be.calledTwice;
     });
+
+    it("should not set the policy if the set of invokers is the same as the current invokers", async () => {
+      apiRequestStub.onFirstCall().resolves({
+        bindings: [
+          {
+            role: "roles/cloudfunctions.invoker",
+            members: [
+              "serviceAccount:service-account1@project.iam.gserviceaccount.com",
+              "serviceAccount:service-account3@project.iam.gserviceaccount.com",
+              "serviceAccount:service-account2@project.iam.gserviceaccount.com",
+            ],
+          },
+        ],
+        etag: "1234",
+        version: 3,
+      });
+
+      await expect(
+        cloudfunctions.setInvokerUpdate("project", "function", [
+          "service-account2@project.iam.gserviceaccount.com",
+          "service-account3@",
+          "service-account1@",
+        ])
+      ).to.not.be.rejected;
+      expect(apiRequestStub).to.be.calledOnce;
+    });
   });
 });
