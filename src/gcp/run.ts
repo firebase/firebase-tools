@@ -210,8 +210,7 @@ export async function setInvoker(
   if (invoker.length == 0) {
     throw new FirebaseError("Invoker cannot be an empty array");
   }
-  const invokerMembers =
-    invoker[0] === "private" ? [] : invoker.map((inv) => proto.formatInvokerMember(inv, projectId));
+  const invokerMembers = proto.getInvokerMembers(invoker, projectId);
   const invokerRole = "roles/run.invoker";
 
   // get the policy
