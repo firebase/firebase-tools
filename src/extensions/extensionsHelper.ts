@@ -653,31 +653,13 @@ export function isLocalOrURLPath(extInstallPath: string): boolean {
  * Given an update source, return where the update source came from.
  * @param sourceOrVersion path to a source or reference to a source version
  */
-export async function getSourceOrigin(sourceOrVersion: string): Promise<SourceOrigin> {
-  if (!sourceOrVersion) {
-    return SourceOrigin.OFFICIAL_EXTENSION;
-  }
-
-  // NOTE: If a semver is passed in, we automatically asssume it is an official extension version.
-  // If this was meant to be an extension from the Registry, please pass in the full reference instead.
-  // This is just an interim solution - when official extensions are migrated to use the Registry, the
-  // SourceOrigin types will be the same, and we won't have to worry about this nuance.
-  if (semver.valid(sourceOrVersion)) {
-    return SourceOrigin.OFFICIAL_EXTENSION_VERSION;
-  }
-  // First, check if the input matches a local or URL first.
+export function getSourceOrigin(sourceOrVersion: string): SourceOrigin {
+  // First, check if the input matches a local or URL.
   if (isLocalPath(sourceOrVersion)) {
     return SourceOrigin.LOCAL;
   }
   if (isUrlPath(sourceOrVersion)) {
     return SourceOrigin.URL;
-  }
-  // Next, check if the source matches an extension in the official extensions registry (registry.json).
-  try {
-    await resolveRegistryEntry(sourceOrVersion);
-    return SourceOrigin.OFFICIAL_EXTENSION;
-  } catch {
-    // Silently fail.
   }
   // Next, check if the source is an extension reference.
   if (sourceOrVersion.includes("/")) {

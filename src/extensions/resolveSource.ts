@@ -105,34 +105,6 @@ export function getMinRequiredVersion(registryEntry: RegistryEntry): string {
 }
 
 /**
- * Checks for and prompts the user to accept updateWarnings that apply to the given start and end versions.
- * @param registryEntry the registry entry to check for updateWarnings.
- * @param startVersion the version that you are updating from.
- * @param endVersion the version you are updating to.
- * @throws FirebaseError if the user doesn't accept the update warning prompt.
- */
-export async function promptForUpdateWarnings(
-  registryEntry: RegistryEntry,
-  startVersion: string,
-  endVersion: string
-): Promise<void> {
-  if (registryEntry.updateWarnings) {
-    for (const targetRange in registryEntry.updateWarnings) {
-      if (semver.satisfies(endVersion, targetRange)) {
-        const updateWarnings = registryEntry.updateWarnings[targetRange];
-        for (const updateWarning of updateWarnings) {
-          if (semver.satisfies(startVersion, updateWarning.from)) {
-            await module.exports.confirmUpdateWarning(updateWarning);
-            break;
-          }
-        }
-        break;
-      }
-    }
-  }
-}
-
-/**
  * Fetches the published extensions registry.
  * @param onlyFeatured If true, only return the featured extensions.
  */
@@ -164,7 +136,7 @@ export async function getTrustedPublishers(): Promise<string[]> {
     logger.debug(
       "Couldn't get extensions registry, assuming no trusted publishers except Firebase."
     );
-    return ["firebase "];
+    return ["firebase"];
   }
   const publisherIds = new Set<string>();
 
