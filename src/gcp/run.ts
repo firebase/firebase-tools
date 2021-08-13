@@ -2,6 +2,7 @@ import { Client } from "../apiv2";
 import { FirebaseError } from "../error";
 import { runOrigin } from "../api";
 import * as proto from "./proto";
+import * as iam from "./iam";
 
 const API_VERSION = "v1";
 
@@ -148,12 +149,12 @@ export async function replaceService(name: string, service: Service): Promise<Se
  * @param name Fully qualified name of the Service.
  * @param policy The [policy](https://cloud.google.com/run/docs/reference/rest/v1/projects.locations.services/setIamPolicy) to set.
  */
-export async function setIamPolicy(name: string, policy: IamPolicy): Promise<void> {
+export async function setIamPolicy(name: string, policy: iam.Policy, httpClient: Client = client): Promise<void> {
   // Cloud Run has an atypical REST binding for SetIamPolicy. Instead of making the body a policy and
   // the update mask a query parameter (e.g. Cloud Functions v1) the request body is the literal
   // proto.
   interface Request {
-    policy: IamPolicy;
+    policy: iam.Policy;
     updateMask: string;
   }
   try {
@@ -166,4 +167,58 @@ export async function setIamPolicy(name: string, policy: IamPolicy): Promise<voi
       original: err,
     });
   }
+}
+
+interface GetIamPolicy {
+  bindings?: iam.Binding[];
+  version?: number;
+  etag?: string;
+}
+
+export async function getIamPolicy(serviceName: string, httpClient: Client = client): Promise<GetIamPolicy> {
+  try {
+    const response = await client.get<GetIamPolicy>(`${serviceName}:getIamPolicy`);
+    return response.body;
+  } catch (err) {
+    throw new FirebaseError(`Failed to get the IAM Policy on the Service ${serviceName}`, {
+      original: err,
+    });
+  }
+}
+
+/**
+ * Gets the current IAM policy for the run service and overrides the invoker role with the supplied invoker members
+ * @param projectId id of the project
+ * @param serviceName cloud run service
+ * @param invoker an array of invoker strings
+ *
+ * @throws {@link FirebaseError} on an empty invoker, when the IAM Polciy fails to be grabbed or set
+ */
+export async function setInvoker(
+  projectId: string,
+  serviceName: string,
+  invoker: string[],
+  httpClient: Client = client  // for unit testing
+) {
+  if (invoker.length == 0) {
+    throw new FirebaseError("Invoker cannot be an empty array");
+  }
+  const invokerMembers =
+    invoker[0] === "private" ? [] : invoker.map((inv) => proto.formatInvokerMember(inv, projectId));
+  const invokerRole = "roles/run.invoker";
+
+  // get the policy
+  const currentPolicy = await getIamPolicy(serviceName, httpClient);
+  const bindings = (currentPolicy.bindings || []).filter((binding) => binding.role !== invokerRole);
+  bindings.push({
+    role: invokerRole,
+    members: invokerMembers,
+  });
+  const policy: iam.Policy = {
+    bindings: bindings,
+    etag: currentPolicy.etag || "",
+    version: currentPolicy.version || 3,
+  };
+
+  await setIamPolicy(serviceName, policy, httpClient);
 }
