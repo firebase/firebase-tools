@@ -3,7 +3,6 @@ import * as sinon from "sinon";
 import * as api from "../../api";
 
 import * as backend from "../../deploy/functions/backend";
-import { assert } from "../../emulator/auth/errors";
 import * as cloudfunctions from "../../gcp/cloudfunctions";
 
 describe("cloudfunctions", () => {

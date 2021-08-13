@@ -256,7 +256,7 @@ export async function setInvoker(
     });
     getPolicyResponse.bindings = getPolicyResponse.bindings || [];
     getPolicyResponse.etag = getPolicyResponse.etag || "";
-    getPolicyResponse.version = getPolicyResponse.version || 1;
+    getPolicyResponse.version = getPolicyResponse.version || 3;
   } catch (err) {
     throw new FirebaseError(`Failed to get the IAM Policy on the function ${fnName}`, {
       original: err,
