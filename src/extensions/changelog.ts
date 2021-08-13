@@ -37,6 +37,10 @@ export async function getReleaseNotesForUpdate(
   return releaseNotes;
 }
 
+/**
+ * displayReleaseNotes prints out a nicely formatted table containing all release notes in an update.
+ * If there is a major version change, it also prints a warning and highlights those release notes.
+ */
 export function displayReleaseNotes(releaseNotes: Record<string, string>, fromVersion: string) {
   const versions = [fromVersion].concat(Object.keys(releaseNotes));
   const breaks = breakingChangesInUpdate(versions);
@@ -60,10 +64,14 @@ export function displayReleaseNotes(releaseNotes: Record<string, string>, fromVe
   logger.info(table.toString());
 }
 
+/**
+ * breakingChangesInUpdate identifies which versions in an update are major changes.
+ * Exported for testing.
+ */
 export function breakingChangesInUpdate(versionsInUpdate: string[]): string[] {
   const breaks: string[] = [];
   const semvers = versionsInUpdate.map((v) => semver.parse(v)!).sort(semver.compare);
-  for (let i = 1; i < versionsInUpdate.length; i++) {
+  for (let i = 1; i < semvers.length; i++) {
     if (
       semvers[i - 1].major < semvers[i].major ||
       (semvers[i - 1].major == 0 &&
