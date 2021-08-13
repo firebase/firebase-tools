@@ -122,15 +122,17 @@ export function createFunctionTask(
     });
     if (!backend.isEventTrigger(fn.trigger)) {
       const invoker = fn.invoker || ["public"];
-      try {
-        if (fn.platform === "gcfv1") {
-          await gcf.setInvokerCreate(params.projectId, fnName, invoker);
-        } else {
-          const serviceName = (cloudFunction as gcfV2.CloudFunction).serviceConfig.service!;
-          cloudrun.setIamPolicy(serviceName, cloudrun.DEFAULT_PUBLIC_POLICY);
+      if (invoker[0] !== "private") {
+        try {
+          if (fn.platform === "gcfv1") {
+            await gcf.setInvokerCreate(params.projectId, fnName, invoker);
+          } else {
+            const serviceName = (cloudFunction as gcfV2.CloudFunction).serviceConfig.service!;
+            cloudrun.setIamPolicy(serviceName, cloudrun.DEFAULT_PUBLIC_POLICY);
+          }
+        } catch (err) {
+          params.errorHandler.record("error", fnName, "set invoker", err.message);
         }
-      } catch (err) {
-        params.errorHandler.record("error", fnName, "set invoker", err.message);
       }
     }
     if (fn.platform !== "gcfv1") {
@@ -190,18 +192,15 @@ export function updateFunctionTask(
       onPoll,
     };
     const cloudFunction = await pollOperation<unknown>(pollerOptions);
-    if (!backend.isEventTrigger(fn.trigger)) {
-      const invoker = fn.invoker || ["public"];
-      if (invoker[0] !== "private") {
-        try {
-          if (fn.platform === "gcfv1") {
-            await gcf.setInvokerUpdate(params.projectId, fnName, invoker);
-          } else {
-            // TODO: gcfv2
-          }
-        } catch (err) {
-          params.errorHandler.record("error", fnName, "set invoker", err.message);
+    if (!backend.isEventTrigger(fn.trigger) && fn.invoker) {
+      try {
+        if (fn.platform === "gcfv1") {
+          await gcf.setInvokerUpdate(params.projectId, fnName, fn.invoker);
+        } else {
+          // TODO: gcfv2
         }
+      } catch (err) {
+        params.errorHandler.record("error", fnName, "set invoker", err.message);
       }
     }
 
