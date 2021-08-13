@@ -219,11 +219,62 @@ export async function createFunction(
   }
 }
 
-// getIamPolicy response body
+/**
+ * @param name Fully qualified name of the Function.
+ * @param policy The [policy](https://cloud.google.com/functions/docs/reference/rest/v1/projects.locations.functions/setIamPolicy) to set.
+ */
+interface IamOptions {
+  name: string;
+  policy: iam.Policy;
+}
+
+/**
+ * Sets the IAM policy of a Google Cloud Function.
+ * @param options The Iam options to set.
+ */
+export async function setIamPolicy(options: IamOptions): Promise<void> {
+  const endpoint = `/${API_VERSION}/${options.name}:setIamPolicy`;
+
+  try {
+    await api.request("POST", endpoint, {
+      auth: true,
+      data: {
+        policy: options.policy,
+        updateMask: Object.keys(options.policy).join(","),
+      },
+      origin: api.functionsOrigin,
+    });
+  } catch (err) {
+    throw new FirebaseError(`Failed to set the IAM Policy on the function ${options.name}`, {
+      original: err,
+    });
+  }
+}
+
+// Response body policy - https://cloud.google.com/functions/docs/reference/rest/v1/Policy
 interface GetIamPolicy {
   bindings?: iam.Binding[];
   version?: number;
   etag?: string;
+}
+
+/**
+ * Gets the IAM policy of a Google Cloud Function.
+ * @param fnName The full name and path of the Cloud Function.
+ */
+export async function getIamPolicy(fnName: string): Promise<GetIamPolicy> {
+  const endpoint = `/${API_VERSION}/${fnName}:getIamPolicy`;
+
+  try {
+    return await api.request("GET", endpoint, {
+      auth: true,
+      origin: api.functionsOrigin,
+    });
+  } catch (err) {
+    throw new FirebaseError(`Failed to get the IAM Policy on the function ${fnName}`, {
+      original: err,
+    });
+  }
 }
 
 /**
@@ -245,51 +296,20 @@ export async function setInvoker(
   const invokerMembers =
     invoker[0] === "private" ? [] : invoker.map((inv) => proto.formatInvokerMember(inv, projectId));
   const invokerRole = "roles/cloudfunctions.invoker";
+  const currentPolicy = await getIamPolicy(fnName);
 
-  // get current policies
-  const getPolicyEndpoint = `/${API_VERSION}/${fnName}:getIamPolicy`;
-  let getPolicyResponse: GetIamPolicy;
-  try {
-    getPolicyResponse = await api.request("GET", getPolicyEndpoint, {
-      auth: true,
-      origin: api.functionsOrigin,
-    });
-    getPolicyResponse.bindings = getPolicyResponse.bindings || [];
-    getPolicyResponse.etag = getPolicyResponse.etag || "";
-    getPolicyResponse.version = getPolicyResponse.version || 3;
-  } catch (err) {
-    throw new FirebaseError(`Failed to get the IAM Policy on the function ${fnName}`, {
-      original: err,
-    });
-  }
-
-  const bindings = getPolicyResponse.bindings.filter((binding) => binding.role !== invokerRole);
+  const bindings = (currentPolicy.bindings || []).filter((binding) => binding.role !== invokerRole);
   bindings.push({
     role: invokerRole,
     members: invokerMembers,
   });
+
   const policy: iam.Policy = {
     bindings: bindings,
-    etag: getPolicyResponse.etag,
-    version: getPolicyResponse.version,
+    etag: currentPolicy.etag || "",
+    version: currentPolicy.version || 3,
   };
-
-  // set policy with updated invoker
-  const setPolicyEndpoint = `/${API_VERSION}/${fnName}:setIamPolicy`;
-  try {
-    await api.request("POST", setPolicyEndpoint, {
-      auth: true,
-      data: {
-        policy: policy,
-        updateMask: Object.keys(policy).join(","),
-      },
-      origin: api.functionsOrigin,
-    });
-  } catch (err) {
-    throw new FirebaseError(`Failed to set the IAM Policy on the function ${fnName}`, {
-      original: err,
-    });
-  }
+  await setIamPolicy({ name: fnName, policy: policy });
 }
 
 /**
