@@ -1,2 +1,0 @@
-- Fix Auth Emulator not updating lastLoginAt with signInWithPassword, causing some "token revoked" errors.
-- Fix `firebase emulator:exec` throwing errors when run without project ID. (#3681)
