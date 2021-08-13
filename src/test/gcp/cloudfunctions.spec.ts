@@ -309,7 +309,7 @@ describe("cloudfunctions", () => {
             },
           ],
           etag: "",
-          version: 1,
+          version: 3,
         });
 
         return Promise.resolve();
