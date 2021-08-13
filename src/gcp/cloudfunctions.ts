@@ -229,6 +229,29 @@ interface IamOptions {
   policy: iam.Policy;
 }
 
+/**
+ * Sets the IAM policy of a Google Cloud Function.
+ * @param options The Iam options to set.
+ */
+export async function setIamPolicy(options: IamOptions): Promise<void> {
+  const endpoint = `/${API_VERSION}/${options.name}:setIamPolicy`;
+
+  try {
+    await api.request("POST", endpoint, {
+      auth: true,
+      data: {
+        policy: options.policy,
+        updateMask: Object.keys(options.policy).join(","),
+      },
+      origin: api.functionsOrigin,
+    });
+  } catch (err) {
+    throw new FirebaseError(`Failed to set the IAM Policy on the function ${options.name}`, {
+      original: err,
+    });
+  }
+}
+
 // Response body policy - https://cloud.google.com/functions/docs/reference/rest/v1/Policy
 interface GetIamPolicy {
   bindings?: iam.Binding[];
@@ -280,7 +303,7 @@ export async function setInvokerCreate(
     etag: "",
     version: 3,
   };
-  //await setIamPolicy({ name: fnName, policy: policy });
+  await setIamPolicy({ name: fnName, policy: policy });
 }
 
 /**
@@ -324,7 +347,7 @@ export async function setInvokerUpdate(
     etag: currentPolicy.etag || "",
     version: 3,
   };
-  //await setIamPolicy({ name: fnName, policy: policy });
+  await setIamPolicy({ name: fnName, policy: policy });
 }
 
 /**
