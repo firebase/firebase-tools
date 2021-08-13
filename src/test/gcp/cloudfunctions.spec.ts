@@ -261,7 +261,7 @@ describe("cloudfunctions", () => {
     });
   });
 
-  describe("setInvoker", () => {
+  describe("setInvokerCreate", () => {
     let sandbox: sinon.SinonSandbox;
     let apiRequestStub: sinon.SinonStub;
 
@@ -275,15 +275,106 @@ describe("cloudfunctions", () => {
     });
 
     it("should reject on emtpy invoker array", async () => {
-      await expect(cloudfunctions.setInvoker("project", "function", [])).to.be.rejected;
+      await expect(cloudfunctions.setInvokerCreate("project", "function", [])).to.be.rejected;
+    });
+
+    it("should reject if the setting the IAM policy fails", async () => {
+      apiRequestStub.onFirstCall().throws("Error calling set api.");
+
+      await expect(
+        cloudfunctions.setInvokerCreate("project", "function", ["public"])
+      ).to.be.rejectedWith("Failed to set the IAM Policy on the function function");
+      expect(apiRequestStub).to.be.calledOnce;
+    });
+
+    it("should set a private policy on a function", async () => {
+      apiRequestStub.onFirstCall().callsFake((method: any, resource: any, options: any) => {
+        expect(options.data.policy).to.deep.eq({
+          bindings: [
+            {
+              role: "roles/cloudfunctions.invoker",
+              members: [],
+            },
+          ],
+          etag: "",
+          version: 3,
+        });
+
+        return Promise.resolve();
+      });
+
+      await expect(cloudfunctions.setInvokerCreate("project", "function", ["private"])).to.not.be
+        .rejected;
+      expect(apiRequestStub).to.be.calledOnce;
+    });
+
+    it("should set a public policy on a function", async () => {
+      apiRequestStub.onFirstCall().callsFake((method: any, resource: any, options: any) => {
+        expect(options.data.policy).to.deep.eq({
+          bindings: [
+            {
+              role: "roles/cloudfunctions.invoker",
+              members: ["allUsers"],
+            },
+          ],
+          etag: "",
+          version: 3,
+        });
+
+        return Promise.resolve();
+      });
+
+      await expect(cloudfunctions.setInvokerCreate("project", "function", ["public"])).to.not.be
+        .rejected;
+      expect(apiRequestStub).to.be.calledOnce;
+    });
+
+    it("should set the policy with a set of invokers with active policies", async () => {
+      apiRequestStub.onFirstCall().callsFake((method: any, resource: any, options: any) => {
+        options.data.policy.bindings[0].members.sort();
+        expect(options.data.policy.bindings[0].members).to.deep.eq([
+          "serviceAccount:service-account1@project.iam.gserviceaccount.com",
+          "serviceAccount:service-account2@project.iam.gserviceaccount.com",
+          "serviceAccount:service-account3@project.iam.gserviceaccount.com",
+        ]);
+
+        return Promise.resolve();
+      });
+
+      await expect(
+        cloudfunctions.setInvokerCreate("project", "function", [
+          "service-account1@",
+          "service-account2@project.iam.gserviceaccount.com",
+          "service-account3@",
+        ])
+      ).to.not.be.rejected;
+      expect(apiRequestStub).to.be.calledOnce;
+    });
+  });
+
+  describe("setInvokerUpdate", () => {
+    let sandbox: sinon.SinonSandbox;
+    let apiRequestStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+      apiRequestStub = sandbox.stub(api, "request").throws("Unexpected API request call");
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should reject on emtpy invoker array", async () => {
+      await expect(cloudfunctions.setInvokerUpdate("project", "function", [])).to.be.rejected;
     });
 
     it("should reject if the getting the IAM policy fails", async () => {
       apiRequestStub.onFirstCall().throws("Error calling get api.");
 
-      await expect(cloudfunctions.setInvoker("project", "function", ["public"])).to.be.rejectedWith(
-        "Failed to get the IAM Policy on the function function"
-      );
+      await expect(
+        cloudfunctions.setInvokerUpdate("project", "function", ["public"])
+      ).to.be.rejectedWith("Failed to get the IAM Policy on the function function");
 
       expect(apiRequestStub).to.be.called;
     });
@@ -292,9 +383,9 @@ describe("cloudfunctions", () => {
       apiRequestStub.onFirstCall().resolves({});
       apiRequestStub.onSecondCall().throws("Error calling set api.");
 
-      await expect(cloudfunctions.setInvoker("project", "function", ["public"])).to.be.rejectedWith(
-        "Failed to set the IAM Policy on the function function"
-      );
+      await expect(
+        cloudfunctions.setInvokerUpdate("project", "function", ["public"])
+      ).to.be.rejectedWith("Failed to set the IAM Policy on the function function");
       expect(apiRequestStub).to.be.calledTwice;
     });
 
@@ -309,13 +400,14 @@ describe("cloudfunctions", () => {
             },
           ],
           etag: "",
-          version: 1,
+          version: 3,
         });
 
         return Promise.resolve();
       });
 
-      await expect(cloudfunctions.setInvoker("project", "function", ["public"])).to.not.be.rejected;
+      await expect(cloudfunctions.setInvokerUpdate("project", "function", ["public"])).to.not.be
+        .rejected;
       expect(apiRequestStub).to.be.calledTwice;
     });
 
@@ -341,7 +433,7 @@ describe("cloudfunctions", () => {
         return Promise.resolve();
       });
 
-      await expect(cloudfunctions.setInvoker("project", "function", ["private"])).to.not.be
+      await expect(cloudfunctions.setInvokerUpdate("project", "function", ["private"])).to.not.be
         .rejected;
       expect(apiRequestStub).to.be.calledTwice;
     });
@@ -360,13 +452,39 @@ describe("cloudfunctions", () => {
       });
 
       await expect(
-        cloudfunctions.setInvoker("project", "function", [
-          "service-account1",
-          "service-account2",
-          "service-account3",
+        cloudfunctions.setInvokerUpdate("project", "function", [
+          "service-account1@",
+          "service-account2@project.iam.gserviceaccount.com",
+          "service-account3@",
         ])
       ).to.not.be.rejected;
       expect(apiRequestStub).to.be.calledTwice;
+    });
+
+    it("should not set the policy if the set of invokers is the same as the current invokers", async () => {
+      apiRequestStub.onFirstCall().resolves({
+        bindings: [
+          {
+            role: "roles/cloudfunctions.invoker",
+            members: [
+              "serviceAccount:service-account1@project.iam.gserviceaccount.com",
+              "serviceAccount:service-account3@project.iam.gserviceaccount.com",
+              "serviceAccount:service-account2@project.iam.gserviceaccount.com",
+            ],
+          },
+        ],
+        etag: "1234",
+        version: 3,
+      });
+
+      await expect(
+        cloudfunctions.setInvokerUpdate("project", "function", [
+          "service-account2@project.iam.gserviceaccount.com",
+          "service-account3@",
+          "service-account1@",
+        ])
+      ).to.not.be.rejected;
+      expect(apiRequestStub).to.be.calledOnce;
     });
   });
 });
