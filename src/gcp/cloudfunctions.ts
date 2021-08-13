@@ -278,14 +278,14 @@ export async function getIamPolicy(fnName: string): Promise<GetIamPolicy> {
 }
 
 /**
- * Gets the current invoker IAM policy for the function and overrides the invoker with the supplied invoker members
+ * Sets the invoker IAM policy for the function on function create
  * @param projectId id of the project
  * @param fnName function name
  * @param invoker an array of invoker strings
  *
  * @throws {@link FirebaseError} on an empty invoker, when the IAM Polciy fails to be grabbed or set
  */
-export async function setInvoker(
+export async function setInvokerCreate(
   projectId: string,
   fnName: string,
   invoker: string[]
@@ -293,8 +293,36 @@ export async function setInvoker(
   if (invoker.length == 0) {
     throw new FirebaseError("Invoker cannot be an empty array");
   }
-  const invokerMembers =
-    invoker[0] === "private" ? [] : invoker.map((inv) => proto.formatInvokerMember(inv, projectId));
+  const invokerMembers = proto.getInvokerMembers(invoker, projectId);
+  const invokerRole = "roles/cloudfunctions.invoker";
+  const bindings = [{ role: invokerRole, members: invokerMembers }];
+
+  const policy: iam.Policy = {
+    bindings: bindings,
+    etag: "",
+    version: 3,
+  };
+  await setIamPolicy({ name: fnName, policy: policy });
+}
+
+/**
+ * Gets the current IAM policy on function update,
+ * overrides the current invoker role with the supplied invoker members
+ * @param projectId id of the project
+ * @param fnName function name
+ * @param invoker an array of invoker strings
+ *
+ * @throws {@link FirebaseError} on an empty invoker, when the IAM Polciy fails to be grabbed or set
+ */
+export async function setInvokerUpdate(
+  projectId: string,
+  fnName: string,
+  invoker: string[]
+): Promise<void> {
+  if (invoker.length == 0) {
+    throw new FirebaseError("Invoker cannot be an empty array");
+  }
+  const invokerMembers = proto.getInvokerMembers(invoker, projectId);
   const invokerRole = "roles/cloudfunctions.invoker";
   const currentPolicy = await getIamPolicy(fnName);
 
@@ -307,7 +335,7 @@ export async function setInvoker(
   const policy: iam.Policy = {
     bindings: bindings,
     etag: currentPolicy.etag || "",
-    version: currentPolicy.version || 3,
+    version: 3,
   };
   await setIamPolicy({ name: fnName, policy: policy });
 }

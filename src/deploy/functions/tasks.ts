@@ -120,10 +120,13 @@ export function createFunctionTask(
       operationResourceName: op.name,
       onPoll,
     });
-    if (!backend.isEventTrigger(fn.trigger) && fn.invoker) {
+    if (!fn.invoker) {
+      fn.invoker = ["public"];
+    }
+    if (!backend.isEventTrigger(fn.trigger) && fn.invoker[0] !== "private") {
       try {
         if (fn.platform === "gcfv1") {
-          await gcf.setInvoker(params.projectId, fnName, fn.invoker);
+          await gcf.setInvokerCreate(params.projectId, fnName, fn.invoker);
         } else {
           const serviceName = (cloudFunction as gcfV2.CloudFunction).serviceConfig.service!;
           cloudrun.setIamPolicy(serviceName, cloudrun.DEFAULT_PUBLIC_POLICY);
@@ -192,7 +195,7 @@ export function updateFunctionTask(
     if (!backend.isEventTrigger(fn.trigger) && fn.invoker) {
       try {
         if (fn.platform === "gcfv1") {
-          await gcf.setInvoker(params.projectId, fnName, fn.invoker);
+          await gcf.setInvokerUpdate(params.projectId, fnName, fn.invoker);
         } else {
           // TODO: gcfv2
         }

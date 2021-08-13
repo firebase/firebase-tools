@@ -151,33 +151,46 @@ describe("proto", () => {
     });
   });
 
+  describe("getInvokerMembers", () => {
+    it("should return empty array with private invoker", () => {
+      const invokerMembers = proto.getInvokerMembers(["private"], "project");
+
+      expect(invokerMembers).to.deep.eq([]);
+    });
+
+    it("should return allUsers with public invoker", () => {
+      const invokerMembers = proto.getInvokerMembers(["public"], "project");
+
+      expect(invokerMembers).to.deep.eq(["allUsers"]);
+    });
+
+    it("should return formatted service accounts with invoker array", () => {
+      const invokerMembers = proto.getInvokerMembers(
+        ["service-account1@", "service-account2@project.iam.gserviceaccount.com"],
+        "project"
+      );
+
+      expect(invokerMembers).to.deep.eq([
+        "serviceAccount:service-account1@project.iam.gserviceaccount.com",
+        "serviceAccount:service-account2@project.iam.gserviceaccount.com",
+      ]);
+    });
+  });
+
   describe("formatServiceAccount", () => {
     it("should throw error on empty service account string", () => {
-      expect(() => proto.formatInvokerMember("", "project")).to.throw();
+      expect(() => proto.formatServiceAccount("", "project")).to.throw();
     });
 
-    it("should return allUsers from public member", () => {
-      const formatted = proto.formatInvokerMember("public", "project");
-
-      expect(formatted).to.eq("allUsers");
-    });
-
-    it("should return formatted service account from invoker not ending with @", () => {
-      const serviceAccount = "service-account";
-      const project = "project";
-
-      const formatted = proto.formatInvokerMember(serviceAccount, project);
-
-      expect(formatted).to.eq(
-        `serviceAccount:${serviceAccount}@${project}.iam.gserviceaccount.com`
-      );
+    it("should throw error on badly formed service account string", () => {
+      expect(() => proto.formatServiceAccount("not-a-service-account", "project")).to.throw();
     });
 
     it("should return formatted service account from invoker ending with @", () => {
       const serviceAccount = "service-account@";
       const project = "project";
 
-      const formatted = proto.formatInvokerMember(serviceAccount, project);
+      const formatted = proto.formatServiceAccount(serviceAccount, project);
 
       expect(formatted).to.eq(`serviceAccount:${serviceAccount}${project}.iam.gserviceaccount.com`);
     });
@@ -185,7 +198,7 @@ describe("proto", () => {
     it("should return formatted service account from invoker with full service account", () => {
       const serviceAccount = "service-account@project.iam.gserviceaccount.com";
 
-      const formatted = proto.formatInvokerMember(serviceAccount, "project");
+      const formatted = proto.formatServiceAccount(serviceAccount, "project");
 
       expect(formatted).to.eq(`serviceAccount:${serviceAccount}`);
     });
