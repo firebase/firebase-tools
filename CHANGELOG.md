@@ -1,0 +1,1 @@
+- `firebase ext:dev:init` now creates a placeholder `CHANGELOG.md` file.
