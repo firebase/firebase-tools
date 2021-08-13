@@ -1,0 +1,1 @@
+- Fixes Auth Emulator tokens having invalid auth_time field. (#3674)
