@@ -24,7 +24,7 @@ import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
 import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
 import { HostingEmulator } from "./hostingEmulator";
 import { FirebaseError } from "../error";
-import { needProjectId } from "../projectUtils";
+import { getProjectId, needProjectId } from "../projectUtils";
 import { PubsubEmulator } from "./pubsubEmulator";
 import * as commandUtils from "./commandUtils";
 import { EmulatorHub } from "./hub";
@@ -36,7 +36,6 @@ import { EmulatorLogger } from "./emulatorLogger";
 import * as portUtils from "./portUtils";
 import { EmulatorHubClient } from "./hubClient";
 import { promptOnce } from "../prompt";
-import * as rimraf from "rimraf";
 import { FLAG_EXPORT_ON_EXIT_NAME } from "./commandUtils";
 import { fileExistsSync } from "../fsutils";
 import { StorageEmulator } from "./storage";
@@ -330,7 +329,7 @@ export async function startAll(options: Options, showUI: boolean = true): Promis
   const hubLogger = EmulatorLogger.forEmulator(Emulators.HUB);
   hubLogger.logLabeled("BULLET", "emulators", `Starting emulators: ${targets.join(", ")}`);
 
-  const projectId: string = needProjectId(options);
+  const projectId: string = getProjectId(options) || ""; // TODO: Next breaking change, consider making this fall back to demo project.
   if (Constants.isDemoProject(projectId)) {
     hubLogger.logLabeled(
       "BULLET",
