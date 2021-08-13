@@ -149,7 +149,11 @@ export async function replaceService(name: string, service: Service): Promise<Se
  * @param name Fully qualified name of the Service.
  * @param policy The [policy](https://cloud.google.com/run/docs/reference/rest/v1/projects.locations.services/setIamPolicy) to set.
  */
-export async function setIamPolicy(name: string, policy: iam.Policy, httpClient: Client = client): Promise<void> {
+export async function setIamPolicy(
+  name: string,
+  policy: iam.Policy,
+  httpClient: Client = client
+): Promise<void> {
   // Cloud Run has an atypical REST binding for SetIamPolicy. Instead of making the body a policy and
   // the update mask a query parameter (e.g. Cloud Functions v1) the request body is the literal
   // proto.
@@ -175,7 +179,10 @@ interface GetIamPolicy {
   etag?: string;
 }
 
-export async function getIamPolicy(serviceName: string, httpClient: Client = client): Promise<GetIamPolicy> {
+export async function getIamPolicy(
+  serviceName: string,
+  httpClient: Client = client
+): Promise<GetIamPolicy> {
   try {
     const response = await client.get<GetIamPolicy>(`${serviceName}:getIamPolicy`);
     return response.body;
@@ -198,7 +205,7 @@ export async function setInvoker(
   projectId: string,
   serviceName: string,
   invoker: string[],
-  httpClient: Client = client  // for unit testing
+  httpClient: Client = client // for unit testing
 ) {
   if (invoker.length == 0) {
     throw new FirebaseError("Invoker cannot be an empty array");
