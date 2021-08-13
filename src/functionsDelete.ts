@@ -14,17 +14,17 @@ export async function deleteFunctions(
 ): Promise<void> {
   const timer = new DeploymentTimer();
   const errorHandler = new ErrorHandler();
-  const cloudFunctionsQueue = new Queue<tasks.DeploymentTask, void>({
+  const cloudFunctionsQueue = new Queue<tasks.DeploymentTask<backend.FunctionSpec>, void>({
     handler: tasks.functionsDeploymentHandler(timer, errorHandler),
     retries: 30,
     backoff: 10000,
     concurrency: 40,
     maxBackoff: 40000,
   });
-  const schedulerQueue = new Queue<tasks.DeploymentTask, void>({
+  const schedulerQueue = new Queue<tasks.DeploymentTask<backend.ScheduleSpec>, void>({
     handler: tasks.schedulerDeploymentHandler(errorHandler),
   });
-  const topicQueue = new Queue<tasks.DeploymentTask, void>({
+  const topicQueue = new Queue<tasks.DeploymentTask<backend.PubSubSpec>, void>({
     handler: tasks.schedulerDeploymentHandler(errorHandler),
   });
 

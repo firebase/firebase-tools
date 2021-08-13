@@ -84,7 +84,7 @@ describe("deploymentPlanner", () => {
       const have: backend.Backend = backend.empty();
       const filters: string[][] = [];
 
-      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, filters);
+      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, { filters });
 
       const expected: deploymentPlanner.DeploymentPlan = {
         regionalDeployments: {
@@ -117,7 +117,7 @@ describe("deploymentPlanner", () => {
       const have: backend.Backend = backend.empty();
       const filters: string[][] = [];
 
-      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, filters);
+      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, { filters });
 
       const expected: deploymentPlanner.DeploymentPlan = {
         regionalDeployments: {
@@ -173,7 +173,7 @@ describe("deploymentPlanner", () => {
       const want = backend.empty();
       const filters: string[][] = [];
 
-      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, filters);
+      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, { filters });
 
       const expected: deploymentPlanner.DeploymentPlan = {
         regionalDeployments: {
@@ -226,7 +226,7 @@ describe("deploymentPlanner", () => {
       };
       const filters: string[][] = [];
 
-      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, filters);
+      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, { filters });
 
       const expected: deploymentPlanner.DeploymentPlan = {
         regionalDeployments: {
@@ -294,7 +294,7 @@ describe("deploymentPlanner", () => {
       };
       const filters: string[][] = [];
 
-      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, filters);
+      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, { filters });
 
       const expected: deploymentPlanner.DeploymentPlan = {
         regionalDeployments: {
@@ -341,7 +341,7 @@ describe("deploymentPlanner", () => {
       };
       const filters: string[][] = [];
 
-      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, filters);
+      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, { filters });
 
       const expected: deploymentPlanner.DeploymentPlan = {
         regionalDeployments: {
@@ -401,7 +401,7 @@ describe("deploymentPlanner", () => {
 
       const filters = [["group"]];
 
-      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, filters);
+      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, { filters });
 
       const expected: deploymentPlanner.DeploymentPlan = {
         regionalDeployments: {
@@ -423,65 +423,61 @@ describe("deploymentPlanner", () => {
       expect(deploymentPlan).to.deep.equal(expected);
     });
 
-    it("should preserve existing environment variables", () => {
-      const region1 = func("a", "us-east1");
-      const region2 = {
-        ...func("b", "us-west1"),
+    it("should preserve environment variables", () => {
+      const wantSpec = {
+        ...func("a", "us-west1"),
         environmentVariables: { BAR: "baz" },
       };
-      const oldRegion2: backend.FunctionSpec = {
-        ...func("b", "us-west1"),
+      const haveSpec = {
+        ...func("a", "us-west1"),
         environmentVariables: { FOO: "bar" },
       };
-
       const want: backend.Backend = {
-        requiredAPIs: {},
-        cloudFunctions: [region1, region2],
-        schedules: [],
-        topics: [],
-        environmentVariables: {},
+        ...backend.empty(),
+        cloudFunctions: [wantSpec],
       };
-
       const have: backend.Backend = {
-        requiredAPIs: {},
-        cloudFunctions: [oldRegion2],
-        schedules: [],
-        topics: [],
-        environmentVariables: {},
+        ...backend.empty(),
+        cloudFunctions: [haveSpec],
       };
       const filters: string[][] = [];
 
-      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, filters);
+      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, { filters });
+      expect(
+        deploymentPlan.regionalDeployments["us-west1"].functionsToUpdate.map(
+          (spec) => spec.func.environmentVariables
+        )
+      ).to.be.deep.equals([{ FOO: "bar", BAR: "baz" }]);
+    });
 
-      const expected: deploymentPlanner.DeploymentPlan = {
-        regionalDeployments: {
-          "us-east1": {
-            functionsToCreate: [region1],
-            functionsToUpdate: [],
-            functionsToDelete: [],
-          },
-          "us-west1": {
-            functionsToCreate: [],
-            functionsToUpdate: [
-              {
-                func: {
-                  ...region2,
-                  environmentVariables: {
-                    FOO: "bar",
-                    BAR: "baz",
-                  },
-                },
-                deleteAndRecreate: false,
-              },
-            ],
-            functionsToDelete: [],
-          },
-        },
-        schedulesToUpsert: [],
-        schedulesToDelete: [],
-        topicsToDelete: [],
+    it("should overwrite environment variables when specified", () => {
+      const wantSpec = {
+        ...func("a", "us-west1"),
+        environmentVariables: { BAR: "baz" },
       };
-      expect(deploymentPlan).to.deep.equal(expected);
+      const haveSpec = {
+        ...func("a", "us-west1"),
+        environmentVariables: { FOO: "bar" },
+      };
+      const want: backend.Backend = {
+        ...backend.empty(),
+        cloudFunctions: [wantSpec],
+      };
+      const have: backend.Backend = {
+        ...backend.empty(),
+        cloudFunctions: [haveSpec],
+      };
+      const filters: string[][] = [];
+
+      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, {
+        filters,
+        overwriteEnvs: true,
+      });
+      expect(
+        deploymentPlan.regionalDeployments["us-west1"].functionsToUpdate.map(
+          (spec) => spec.func.environmentVariables
+        )
+      ).to.be.deep.equals([{ BAR: "baz" }]);
     });
   });
 });

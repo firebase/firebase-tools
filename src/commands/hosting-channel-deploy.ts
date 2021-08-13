@@ -14,7 +14,7 @@ import {
 import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs";
 import { requirePermissions } from "../requirePermissions";
 import * as deploy from "../deploy";
-import * as getProjectId from "../getProjectId";
+import { needProjectId } from "../projectUtils";
 import { logger } from "../logger";
 import * as requireConfig from "../requireConfig";
 import { DEFAULT_DURATION, calculateChannelExpireTTL } from "../hosting/expireUtils";
@@ -49,7 +49,7 @@ export default new Command("hosting:channel:deploy [channelId]")
       channelId: string,
       options: any // eslint-disable-line @typescript-eslint/no-explicit-any
     ): Promise<{ [targetOrSite: string]: ChannelInfo }> => {
-      const projectId = getProjectId(options);
+      const projectId = needProjectId(options);
 
       // TODO: implement --open.
       if (options.open) {

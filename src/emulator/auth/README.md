@@ -110,6 +110,18 @@ large, feel free to review script changes only but with extra attention.
 rely on IDE / language helpers for autocompletion / peeking definition if you
 want to know more about the typing of request / response bodies.
 
+To run `scripts/gen-auth-api-spec.ts` to re-generate `apiSpec.js` and
+`schema.ts` perform the following command from the root directory of
+`firebase-tools`:
+
+```
+npm run generate:auth-api
+```
+
+For more on what this command does and other useful commands, please refer to
+[`package.json`](https://github.com/firebase/firebase-tools/blob/master/package.json)
+and [`CONTRIBUTING.md`](https://github.com/firebase/firebase-tools/blob/master/CONTRIBUTING.md).
+
 ### Working with OpenAPI documents
 
 It may be desirable to see the OpenAPI 3.0 document used in the Auth Emulator

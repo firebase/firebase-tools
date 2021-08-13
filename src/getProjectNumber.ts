@@ -1,6 +1,5 @@
 import { getFirebaseProject } from "./management/projects";
-import * as getProjectId from "./getProjectId";
-
+import { needProjectId } from "./projectUtils";
 /**
  * Fetches the project number.
  * @param options CLI options.
@@ -10,7 +9,7 @@ export async function getProjectNumber(options: any): Promise<string> {
   if (options.projectNumber) {
     return options.projectNumber;
   }
-  const projectId = getProjectId(options);
+  const projectId = needProjectId(options);
   const metadata = await getFirebaseProject(projectId);
   options.projectNumber = metadata.projectNumber;
   return options.projectNumber;

@@ -4,16 +4,19 @@
 import Queue from "../../throttler/queue";
 import { createDeploymentPlan } from "./deploymentPlanner";
 import { getAppEngineLocation } from "../../functionsConfig";
+import { hasUserEnvs } from "../../functions/env";
 import { promptForFunctionDeletion } from "./prompts";
 import { DeploymentTimer } from "./deploymentTimer";
 import { ErrorHandler } from "./errorHandler";
 import { Options } from "../../options";
+import { previews } from "../../previews";
 import * as args from "./args";
 import * as backend from "./backend";
 import * as containerCleaner from "./containerCleaner";
 import * as helper from "./functionsDeployHelper";
 import * as tasks from "./tasks";
 import * as utils from "../../utils";
+import { track } from "../../track";
 
 export async function release(context: args.Context, options: Options, payload: args.Payload) {
   if (!options.config.has("functions")) {
@@ -22,6 +25,7 @@ export async function release(context: args.Context, options: Options, payload: 
 
   const projectId = context.projectId;
   const sourceUrl = context.uploadUrl!;
+  const functionsSource = options.config.get("functions.source") as string;
   const appEngineLocation = getAppEngineLocation(context.firebaseConfig);
 
   const timer = new DeploymentTimer();
@@ -30,23 +34,31 @@ export async function release(context: args.Context, options: Options, payload: 
   const fullDeployment = createDeploymentPlan(
     payload.functions!.backend,
     await backend.existingBackend(context),
-    context.filters
+    {
+      filters: context.filters,
+      // By default, preserve existing environment variables.
+      // Only overwrite environment variables when the dotenv preview is enabled
+      // AND there are user specified environment variables.
+      overwriteEnvs:
+        previews.dotenv &&
+        hasUserEnvs(options.config.path(functionsSource), projectId, options.projectAlias),
+    }
   );
 
   // This queue needs to retry quota errors.
   // The main quotas that can be exceeded are per 1 minute quotas,
   // so we start with a larger backoff to reduce the liklihood of extra retries.
-  const cloudFunctionsQueue = new Queue<tasks.DeploymentTask, void>({
+  const cloudFunctionsQueue = new Queue<tasks.DeploymentTask<backend.FunctionSpec>, void>({
     retries: 30,
     backoff: 20000,
     concurrency: 40,
     maxBackoff: 40000,
     handler: tasks.functionsDeploymentHandler(timer, errorHandler),
   });
-  const schedulerQueue = new Queue<tasks.DeploymentTask, void>({
+  const schedulerQueue = new Queue<tasks.DeploymentTask<backend.ScheduleSpec>, void>({
     handler: tasks.schedulerDeploymentHandler(errorHandler),
   });
-  const pubSubQueue = new Queue<tasks.DeploymentTask, void>({
+  const pubSubQueue = new Queue<tasks.DeploymentTask<backend.PubSubSpec>, void>({
     // We can actually use the same handler for Scheduler and Pub/Sub
     handler: tasks.schedulerDeploymentHandler(errorHandler),
   });
@@ -55,7 +67,7 @@ export async function release(context: args.Context, options: Options, payload: 
   const taskParams: tasks.TaskParams = {
     projectId,
     sourceUrl,
-    storageSource: context.storageSource,
+    storage: context.storage!,
     errorHandler,
   };
 
@@ -133,9 +145,15 @@ export async function release(context: args.Context, options: Options, payload: 
       }
     );
   }
+  const functions = payload.functions!.backend.cloudFunctions;
+  const gcfv1 = functions.find((fn) => fn.platform === "gcfv1");
+  const gcfv2 = functions.find((fn) => fn.platform === "gcfv2");
+  const tag = gcfv1 && gcfv2 ? "v1+v2" : gcfv1 ? "v1" : "v2";
+  track("functions_codebase_deploy", tag, functions.length);
+
   helper.logAndTrackDeployStats(cloudFunctionsQueue, errorHandler);
   await containerCleaner.cleanupBuildImages(payload.functions!.backend.cloudFunctions);
-  await helper.printTriggerUrls(context);
+  await helper.printTriggerUrls(context, payload.functions!.backend);
   errorHandler.printWarnings();
   errorHandler.printErrors();
 }

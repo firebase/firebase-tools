@@ -31,8 +31,7 @@ import {
   getExistingSourceOrigin,
   inferUpdateSource,
 } from "../extensions/updateHelper";
-import * as changelog from "../extensions/changelog";
-import * as getProjectId from "../getProjectId";
+import { needProjectId } from "../projectUtils";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import { previews } from "../previews";
@@ -72,7 +71,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
       `Updating ${clc.bold(instanceId)}. This usually takes 3 to 5 minutes...`
     );
     try {
-      const projectId = getProjectId(options, false);
+      const projectId = needProjectId(options);
       let existingInstance;
       try {
         existingInstance = await extensionsApi.getInstance(projectId, instanceId);

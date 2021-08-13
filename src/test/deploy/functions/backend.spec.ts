@@ -147,6 +147,122 @@ describe("Backend", () => {
     });
   });
 
+  describe("triggerTag", () => {
+    it("detects v1.https", () => {
+      expect(
+        backend.triggerTag({
+          ...FUNCTION_NAME,
+          platform: "gcfv1",
+          entryPoint: "id",
+          runtime: "node14",
+          trigger: {
+            allowInsecure: false,
+          },
+        })
+      ).to.equal("v1.https");
+    });
+
+    it("detects v2.https", () => {
+      expect(
+        backend.triggerTag({
+          ...FUNCTION_NAME,
+          platform: "gcfv2",
+          entryPoint: "id",
+          runtime: "node14",
+          trigger: {
+            allowInsecure: false,
+          },
+        })
+      ).to.equal("v2.https");
+    });
+
+    it("detects v1.callable", () => {
+      expect(
+        backend.triggerTag({
+          ...FUNCTION_NAME,
+          platform: "gcfv1",
+          entryPoint: "id",
+          runtime: "node14",
+          trigger: {
+            allowInsecure: false,
+          },
+          labels: {
+            "deployment-callable": "true",
+          },
+        })
+      ).to.equal("v1.callable");
+    });
+
+    it("detects v2.callable", () => {
+      expect(
+        backend.triggerTag({
+          ...FUNCTION_NAME,
+          platform: "gcfv2",
+          entryPoint: "id",
+          runtime: "node14",
+          trigger: {
+            allowInsecure: false,
+          },
+          labels: {
+            "deployment-callable": "true",
+          },
+        })
+      ).to.equal("v2.callable");
+    });
+
+    it("detects v1.scheduled", () => {
+      expect(
+        backend.triggerTag({
+          ...FUNCTION_NAME,
+          platform: "gcfv1",
+          entryPoint: "id",
+          runtime: "node14",
+          trigger: {
+            eventType: "google.pubsub.topoic.publish",
+            eventFilters: {},
+            retry: false,
+          },
+          labels: {
+            "deployment-scheduled": "true",
+          },
+        })
+      ).to.equal("v1.scheduled");
+    });
+
+    it("detects v2.scheduled", () => {
+      expect(
+        backend.triggerTag({
+          ...FUNCTION_NAME,
+          platform: "gcfv2",
+          entryPoint: "id",
+          runtime: "node14",
+          trigger: {
+            allowInsecure: false,
+          },
+          labels: {
+            "deployment-scheduled": "true",
+          },
+        })
+      ).to.equal("v2.scheduled");
+    });
+
+    it("detects others", () => {
+      expect(
+        backend.triggerTag({
+          ...FUNCTION_NAME,
+          platform: "gcfv2",
+          entryPoint: "id",
+          runtime: "node14",
+          trigger: {
+            eventType: "google.pubsub.topic.publish",
+            eventFilters: {},
+            retry: false,
+          },
+        })
+      ).to.equal("google.pubsub.topic.publish");
+    });
+  });
+
   describe("existing backend", () => {
     let listAllFunctions: sinon.SinonStub;
     let listAllFunctionsV2: sinon.SinonStub;
