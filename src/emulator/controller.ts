@@ -329,7 +329,7 @@ export async function startAll(options: Options, showUI: boolean = true): Promis
   const hubLogger = EmulatorLogger.forEmulator(Emulators.HUB);
   hubLogger.logLabeled("BULLET", "emulators", `Starting emulators: ${targets.join(", ")}`);
 
-  const projectId: string = getProjectId(options) || "";
+  const projectId: string = getProjectId(options) || ""; // TODO: Next breaking change, consider making this fall back to demo project.
   if (Constants.isDemoProject(projectId)) {
     hubLogger.logLabeled(
       "BULLET",
