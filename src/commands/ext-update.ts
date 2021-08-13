@@ -72,7 +72,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
     );
     try {
       const projectId = needProjectId(options);
-      let existingInstance;
+      let existingInstance: extensionsApi.ExtensionInstance;
       try {
         existingInstance = await extensionsApi.getInstance(projectId, instanceId);
       } catch (err) {
