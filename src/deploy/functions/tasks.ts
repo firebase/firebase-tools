@@ -122,17 +122,15 @@ export function createFunctionTask(
     });
     if (!backend.isEventTrigger(fn.trigger)) {
       const invoker = fn.invoker || ["public"];
-      if (invoker[0] !== "private") {
-        try {
-          if (fn.platform === "gcfv1") {
-            await gcf.setInvokerCreate(params.projectId, fnName, invoker);
-          } else {
-            const serviceName = (cloudFunction as gcfV2.CloudFunction).serviceConfig.service!;
-            cloudrun.setIamPolicy(serviceName, cloudrun.DEFAULT_PUBLIC_POLICY);
-          }
-        } catch (err) {
-          params.errorHandler.record("error", fnName, "set invoker", err.message);
+      try {
+        if (fn.platform === "gcfv1") {
+          await gcf.setInvokerCreate(params.projectId, fnName, invoker);
+        } else {
+          const serviceName = (cloudFunction as gcfV2.CloudFunction).serviceConfig.service!;
+          cloudrun.setIamPolicy(serviceName, cloudrun.DEFAULT_PUBLIC_POLICY);
         }
+      } catch (err) {
+        params.errorHandler.record("error", fnName, "set invoker", err.message);
       }
     }
     if (fn.platform !== "gcfv1") {
