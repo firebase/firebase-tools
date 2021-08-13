@@ -89,6 +89,7 @@ describe("backendFromV1Alpha1", () => {
         vpcConnectorEgressSettings: {},
         labels: "yes",
         ingressSettings: true,
+        invoker: true,
       };
       for (const [key, value] of Object.entries(invalidFunctionEntries)) {
         it(`invalid value for CloudFunction key ${key}`, () => {

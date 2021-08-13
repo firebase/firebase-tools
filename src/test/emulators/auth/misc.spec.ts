@@ -45,6 +45,7 @@ describeAuthEmulator("token refresh", ({ authApi, getClock }) => {
   });
 
   it("should populate auth_time to match lastLoginAt (in seconds since epoch)", async () => {
+    getClock().tick(444); // Make timestamps a bit more interesting (non-zero).
     const emailUser = { email: "alice@example.com", password: "notasecret" };
     const { refreshToken } = await registerUser(authApi(), emailUser);
 
@@ -60,7 +61,7 @@ describeAuthEmulator("token refresh", ({ authApi, getClock }) => {
     const idToken = res.body.id_token;
     const user = await getAccountInfoByIdToken(authApi(), idToken);
     expect(user.lastLoginAt).not.to.be.undefined;
-    const lastLoginAtSeconds = toUnixTimestamp(new Date(user.lastLoginAt!));
+    const lastLoginAtSeconds = Math.floor(parseInt(user.lastLoginAt!, 10) / 1000);
     const decoded = decodeJwt(idToken, { complete: true }) as {
       header: JwtHeader;
       payload: FirebaseJwtPayload;

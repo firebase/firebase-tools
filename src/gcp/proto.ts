@@ -123,3 +123,47 @@ function fieldMasksHelper(
     fieldMasksHelper(newPrefixes, value, doNotRecurseIn, masks);
   }
 }
+
+/**
+ * Gets the correctly invoker members to be used with the invoker role for IAM API calls.
+ * @param invoker the array of non-formatted invoker members
+ * @param projectId the ID of the current project
+ * @returns an array of correctly formatted invoker members
+ *
+ * @throws {@link FirebaseError} if any invoker string is empty or not of the correct form
+ */
+export function getInvokerMembers(invoker: string[], projectId: string): string[] {
+  if (invoker[0] === "private") {
+    return [];
+  }
+  if (invoker[0] === "public") {
+    return ["allUsers"];
+  }
+  return invoker.map((inv) => formatServiceAccount(inv, projectId));
+}
+
+/**
+ * Formats the service account to be used with IAM API calls, a vaild service account string is
+ * '{service-account}@' or '{service-account}@{project}.iam.gserviceaccount.com'.
+ * @param serviceAccount the custom service account created by the user
+ * @param projectId the ID of the current project
+ * @returns a correctly formatted service account string
+ *
+ * @throws {@link FirebaseError} if the supplied service account string is empty or not of the correct form
+ */
+export function formatServiceAccount(serviceAccount: string, projectId: string): string {
+  if (serviceAccount.length === 0) {
+    throw new FirebaseError("Service account cannot be an empty string");
+  }
+  if (!serviceAccount.includes("@")) {
+    throw new FirebaseError(
+      "Service account must be of the form 'service-account@' or 'service-account@{project-id}.iam.gserviceaccount.com'"
+    );
+  }
+
+  if (serviceAccount.endsWith("@")) {
+    const suffix = `${projectId}.iam.gserviceaccount.com`;
+    return `serviceAccount:${serviceAccount}${suffix}`;
+  }
+  return `serviceAccount:${serviceAccount}`;
+}

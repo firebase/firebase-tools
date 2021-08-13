@@ -129,6 +129,7 @@ describe("addResourcesToBackend", () => {
       labels: {
         test: "testing",
       },
+      invoker: ["public"],
     };
 
     const result = backend.empty();
@@ -152,6 +153,7 @@ describe("addResourcesToBackend", () => {
           labels: {
             test: "testing",
           },
+          invoker: ["public"],
         },
       ],
     };
