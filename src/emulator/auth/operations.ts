@@ -1434,7 +1434,7 @@ function signInWithPassword(
   }
 
   const email = canonicalizeEmailAddress(reqBody.email);
-  const user = state.getUserByEmail(email);
+  let user = state.getUserByEmail(email);
   assert(user, "EMAIL_NOT_FOUND");
   assert(!user.disabled, "USER_DISABLED");
   assert(user.passwordHash && user.salt, "INVALID_PASSWORD");
@@ -1443,6 +1443,8 @@ function signInWithPassword(
   if (user.mfaInfo) {
     throw new NotImplementedError("MFA Login not yet implemented.");
   }
+
+  user = state.updateUserByLocalId(user.localId, { lastLoginAt: Date.now().toString() });
 
   const tokens = issueTokens(state, user, PROVIDER_PASSWORD);
 
