@@ -1,0 +1,1 @@
+- Fix Auth Emulator not updating lastLoginAt with signInWithPassword, causing some "token revoked" errors.
