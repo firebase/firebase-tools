@@ -13,7 +13,8 @@ export interface OperationPollerOptions {
 }
 
 const DEFAULT_INITIAL_BACKOFF_DELAY_MILLIS = 250;
-const DEFAULT_MASTER_TIMEOUT_MILLIS = 30000;
+const MAX_BACKOFF_MILLIS = 10_000;
+const DEFAULT_MASTER_TIMEOUT_MILLIS = 30_000;
 
 export interface OperationResult<T> {
   done?: boolean;
@@ -39,6 +40,7 @@ export class OperationPoller<T> {
       name: options.pollerName || "LRO Poller",
       concurrency: 1,
       retries: Number.MAX_SAFE_INTEGER,
+      maxBackoff: MAX_BACKOFF_MILLIS,
       backoff: options.backoff || DEFAULT_INITIAL_BACKOFF_DELAY_MILLIS,
     });
 
