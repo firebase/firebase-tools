@@ -4,17 +4,19 @@
 import Queue from "../../throttler/queue";
 import { createDeploymentPlan } from "./deploymentPlanner";
 import { getAppEngineLocation } from "../../functionsConfig";
+import { hasUserEnvs } from "../../functions/env";
 import { promptForFunctionDeletion } from "./prompts";
 import { DeploymentTimer } from "./deploymentTimer";
 import { ErrorHandler } from "./errorHandler";
 import { Options } from "../../options";
+import { previews } from "../../previews";
 import * as args from "./args";
 import * as backend from "./backend";
 import * as containerCleaner from "./containerCleaner";
 import * as helper from "./functionsDeployHelper";
 import * as tasks from "./tasks";
 import * as utils from "../../utils";
-import track from "../../track";
+import { track } from "../../track";
 
 export async function release(context: args.Context, options: Options, payload: args.Payload) {
   if (!options.config.has("functions")) {
@@ -23,6 +25,7 @@ export async function release(context: args.Context, options: Options, payload: 
 
   const projectId = context.projectId;
   const sourceUrl = context.uploadUrl!;
+  const functionsSource = options.config.get("functions.source") as string;
   const appEngineLocation = getAppEngineLocation(context.firebaseConfig);
 
   const timer = new DeploymentTimer();
@@ -31,7 +34,15 @@ export async function release(context: args.Context, options: Options, payload: 
   const fullDeployment = createDeploymentPlan(
     payload.functions!.backend,
     await backend.existingBackend(context),
-    context.filters
+    {
+      filters: context.filters,
+      // By default, preserve existing environment variables.
+      // Only overwrite environment variables when the dotenv preview is enabled
+      // AND there are user specified environment variables.
+      overwriteEnvs:
+        previews.dotenv &&
+        hasUserEnvs(options.config.path(functionsSource), projectId, options.projectAlias),
+    }
   );
 
   // This queue needs to retry quota errors.

@@ -57,6 +57,7 @@ export interface TriggerAnnotation {
   timeZone?: string;
   regions?: string[];
   concurrency?: number;
+  invoker?: string[];
 }
 
 /**
@@ -202,7 +203,8 @@ export function addResourcesToBackend(
       "timeout",
       "maxInstances",
       "minInstances",
-      "availableMemoryMb"
+      "availableMemoryMb",
+      "invoker"
     );
 
     if (annotation.schedule) {

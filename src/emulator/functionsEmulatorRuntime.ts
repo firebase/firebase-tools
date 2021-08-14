@@ -1,3 +1,5 @@
+import * as functionsEnv from "../functions/env";
+import { FirebaseError } from "../error";
 import { EmulatorLog } from "./types";
 import { CloudFunction, DeploymentOptions, https } from "firebase-functions";
 import {
@@ -418,7 +420,13 @@ async function initializeFirebaseFunctionsStubs(frb: FunctionsRuntimeBundle): Pr
     firebaseFunctionsResolution.resolution
   );
   const httpsProviderResolution = path.join(firebaseFunctionsRoot, "lib/providers/https");
-  const httpsProvider = require(httpsProviderResolution);
+  const httpsProviderV1Resolution = path.join(firebaseFunctionsRoot, "lib/v1/providers/https");
+  let httpsProvider: any;
+  try {
+    httpsProvider = require(httpsProviderV1Resolution);
+  } catch (e) {
+    httpsProvider = require(httpsProviderResolution);
+  }
 
   // TODO: Remove this logic and stop relying on internal APIs.  See #1480 for reasoning.
   const onRequestInnerMethodName = "_onRequestWithOptions";
@@ -645,6 +653,26 @@ async function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): Pr
   process.env.TZ = "UTC";
   process.env.GCLOUD_PROJECT = frb.projectId;
   process.env.FUNCTIONS_EMULATOR = "true";
+
+  if (functionsEnv.hasUserEnvs(frb.cwd, "local")) {
+    // Load user-specified environment variables.
+    try {
+      const userEnvs = functionsEnv.loadUserEnvs({ functionsSource: frb.cwd, projectId: "local" });
+      for (const [k, v] of Object.entries(userEnvs)) {
+        process.env[k] = v;
+      }
+    } catch (e) {
+      let message: string = e.message || `${e}`;
+      if (e instanceof FirebaseError) {
+        for (const child of e.children) {
+          if (child instanceof Error) {
+            message += `\n- ${child.message}`;
+          }
+        }
+      }
+      new EmulatorLog("SYSTEM", "function-env-load-failed", message).log();
+    }
+  }
 
   // Look for .runtimeconfig.json in the functions directory
   const configPath = `${frb.cwd}/.runtimeconfig.json`;
