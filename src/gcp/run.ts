@@ -107,21 +107,11 @@ export interface TrafficTarget {
 }
 
 export interface IamPolicy {
-  version: number;
-  bindings: Record<string, unknown>[];
+  version?: number;
+  bindings?: iam.Binding[];
   auditConfigs?: Record<string, unknown>[];
   etag?: string;
 }
-
-export const DEFAULT_PUBLIC_POLICY = {
-  version: 3,
-  bindings: [
-    {
-      role: "roles/run.invoker",
-      members: ["allUsers"],
-    },
-  ],
-};
 
 export async function getService(name: string): Promise<Service> {
   try {
@@ -174,18 +164,12 @@ export async function setIamPolicy(
   }
 }
 
-interface GetIamPolicy {
-  bindings?: iam.Binding[];
-  version?: number;
-  etag?: string;
-}
-
 export async function getIamPolicy(
   serviceName: string,
   httpClient: Client = client
-): Promise<GetIamPolicy> {
+): Promise<IamPolicy> {
   try {
-    const response = await httpClient.get<GetIamPolicy>(`${serviceName}:getIamPolicy`);
+    const response = await httpClient.get<IamPolicy>(`${serviceName}:getIamPolicy`);
     return response.body;
   } catch (err) {
     throw new FirebaseError(`Failed to get the IAM Policy on the Service ${serviceName}`, {
@@ -249,7 +233,7 @@ export async function setInvokerUpdate(
   );
   if (
     currentInvokerBinding &&
-    _.isEqual(new Set(currentInvokerBinding.members), new Set(invokerMembers))
+    JSON.stringify(currentInvokerBinding.members.sort()) === JSON.stringify(invokerMembers.sort())
   ) {
     return;
   }
