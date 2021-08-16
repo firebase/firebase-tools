@@ -128,7 +128,7 @@ export function createFunctionTask(
             await gcf.setInvokerCreate(params.projectId, fnName, invoker);
           } else {
             const serviceName = (cloudFunction as gcfV2.CloudFunction).serviceConfig.service!;
-            cloudrun.setIamPolicy(serviceName, cloudrun.DEFAULT_PUBLIC_POLICY);
+            cloudrun.setInvokerCreate(params.projectId, serviceName, invoker);
           }
         } catch (err) {
           params.errorHandler.record("error", fnName, "set invoker", err.message);
@@ -197,7 +197,8 @@ export function updateFunctionTask(
         if (fn.platform === "gcfv1") {
           await gcf.setInvokerUpdate(params.projectId, fnName, fn.invoker);
         } else {
-          // TODO: gcfv2
+          const serviceName = (cloudFunction as gcfV2.CloudFunction).serviceConfig.service!;
+          cloudrun.setInvokerUpdate(params.projectId, serviceName, fn.invoker);
         }
       } catch (err) {
         params.errorHandler.record("error", fnName, "set invoker", err.message);

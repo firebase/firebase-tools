@@ -331,7 +331,7 @@ export async function setInvokerUpdate(
   );
   if (
     currentInvokerBinding &&
-    _.isEqual(new Set(currentInvokerBinding.members), new Set(invokerMembers))
+    JSON.stringify(currentInvokerBinding.members.sort()) === JSON.stringify(invokerMembers.sort())
   ) {
     return;
   }
