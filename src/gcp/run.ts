@@ -3,6 +3,7 @@ import { FirebaseError } from "../error";
 import { runOrigin } from "../api";
 import * as proto from "./proto";
 import * as iam from "./iam";
+import * as _ from "lodash";
 
 const API_VERSION = "v1";
 
@@ -162,7 +163,7 @@ export async function setIamPolicy(
     updateMask: string;
   }
   try {
-    await client.post<Request, IamPolicy>(`${name}:setIamPolicy`, {
+    await httpClient.post<Request, IamPolicy>(`${name}:setIamPolicy`, {
       policy,
       updateMask: proto.fieldMasks(policy).join(","),
     });
@@ -184,7 +185,7 @@ export async function getIamPolicy(
   httpClient: Client = client
 ): Promise<GetIamPolicy> {
   try {
-    const response = await client.get<GetIamPolicy>(`${serviceName}:getIamPolicy`);
+    const response = await httpClient.get<GetIamPolicy>(`${serviceName}:getIamPolicy`);
     return response.body;
   } catch (err) {
     throw new FirebaseError(`Failed to get the IAM Policy on the Service ${serviceName}`, {
@@ -201,7 +202,7 @@ export async function getIamPolicy(
  *
  * @throws {@link FirebaseError} on an empty invoker, when the IAM Polciy fails to be grabbed or set
  */
-export async function setInvoker(
+export async function setInvokerCreate(
   projectId: string,
   serviceName: string,
   invoker: string[],
@@ -212,19 +213,57 @@ export async function setInvoker(
   }
   const invokerMembers = proto.getInvokerMembers(invoker, projectId);
   const invokerRole = "roles/run.invoker";
+  const bindings = [{ role: invokerRole, members: invokerMembers }];
 
-  // get the policy
+  const policy: iam.Policy = {
+    bindings: bindings,
+    etag: "",
+    version: 3,
+  };
+
+  await setIamPolicy(serviceName, policy, httpClient);
+}
+
+/**
+ * Gets the current IAM policy for the run service and overrides the invoker role with the supplied invoker members
+ * @param projectId id of the project
+ * @param serviceName cloud run service
+ * @param invoker an array of invoker strings
+ *
+ * @throws {@link FirebaseError} on an empty invoker, when the IAM Polciy fails to be grabbed or set
+ */
+export async function setInvokerUpdate(
+  projectId: string,
+  serviceName: string,
+  invoker: string[],
+  httpClient: Client = client // for unit testing
+) {
+  if (invoker.length == 0) {
+    throw new FirebaseError("Invoker cannot be an empty array");
+  }
+  const invokerMembers = proto.getInvokerMembers(invoker, projectId);
+  const invokerRole = "roles/run.invoker";
   const currentPolicy = await getIamPolicy(serviceName, httpClient);
+  const currentInvokerBinding = currentPolicy.bindings?.find(
+    (binding) => binding.role === invokerRole
+  );
+  if (
+    currentInvokerBinding &&
+    _.isEqual(new Set(currentInvokerBinding.members), new Set(invokerMembers))
+  ) {
+    return;
+  }
+
   const bindings = (currentPolicy.bindings || []).filter((binding) => binding.role !== invokerRole);
   bindings.push({
     role: invokerRole,
     members: invokerMembers,
   });
+
   const policy: iam.Policy = {
     bindings: bindings,
     etag: currentPolicy.etag || "",
-    version: currentPolicy.version || 3,
+    version: 3,
   };
-
   await setIamPolicy(serviceName, policy, httpClient);
 }
