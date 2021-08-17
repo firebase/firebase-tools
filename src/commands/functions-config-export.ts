@@ -22,6 +22,8 @@ const REQUIRED_PERMISSIONS = [
   "runtimeconfig.variables.get",
 ];
 
+const RESERVED_PROJECT_ALIAS = ["local"];
+
 interface TargetProject {
   projectId: string;
   alias?: string;
@@ -37,6 +39,97 @@ interface EnvMap {
 interface ConfigToEnvResult {
   success: EnvMap[];
   errors: Required<EnvMap>[];
+}
+
+// Find all projects (and its alias) associated with the current directory.
+function getAllProjects(options: {
+  project?: string;
+  projectId?: string;
+  cwd?: string;
+}): TargetProject[] {
+  const results: Record<string, string> = {};
+
+  const projectId = getProjectId(options);
+  if (projectId) {
+    results[projectId] = projectId;
+  }
+
+  const rc = loadRC(options);
+  if (rc.projects) {
+    for (const [alias, projectId] of Object.entries(rc.projects)) {
+      if (alias === "default") {
+        if (Object.keys(results).includes(projectId)) {
+          // We already have a better alias for this project.
+          continue;
+        }
+        results[projectId] = projectId;
+        continue;
+      }
+      results[projectId] = alias;
+    }
+  }
+  return Object.entries(results).map(([k, v]) => ({ projectId: k, alias: v }));
+}
+
+// Check necessary IAM permissions for a projects.
+// If permission check fails on a project, user must explicitly exclude it.
+async function checkRequiredPermission({ projectId }: TargetProject): Promise<boolean> {
+  const result = await testIamPermissions(projectId, REQUIRED_PERMISSIONS);
+  if (result.passed) return true;
+
+  logWarning(
+    "You are missing the following permissions to read functions config on project " +
+      `\t${clc.bold(projectId)}:\n ${result.missing.join("\n ")}`
+  );
+
+  const confirm = await promptOnce(
+    {
+      type: "confirm",
+      name: "skip",
+      default: false,
+      message: `Continue without importing configs from project ${projectId}?`,
+    },
+    // Explicitly ignore non-interactive flag. This command NEEDS to be interactive.
+    { nonInteractive: false }
+  );
+
+  if (!confirm) {
+    throw new FirebaseError("Command aborted!");
+  }
+
+  return false;
+}
+
+// Check if project alias is reserved for internal use.
+// If a project's alias is reserved, user must explicitly exclude it.
+async function checkReservedAlias({ projectId, alias }: TargetProject): Promise<boolean> {
+  if (!alias || !RESERVED_PROJECT_ALIAS.includes(alias)) {
+    return true;
+  }
+
+  logWarning(
+    "The following project alias is reserved for internal use:\n" +
+      `\t${projectId}: ${clc.bold(alias)}`
+  );
+  const suggestCmd = `firebase use --unalias ${alias}`
+  logWarning(`Please change the alias of the project by running ${clc.bold(suggestCmd)}`);
+
+  const confirm = await promptOnce(
+    {
+      type: "confirm",
+      name: "skip",
+      default: false,
+      message: `Continue without importing configs from project ${projectId}?`,
+    },
+    // Explicitly ignore non-interactive flag. This command NEEDS to be interactive.
+    { nonInteractive: false }
+  );
+
+  if (!confirm) {
+    throw new FirebaseError("Command aborted!");
+  }
+
+  return false;
 }
 
 /**
@@ -94,65 +187,6 @@ export function configToEnv(configs: Record<string, any>, prefix: string): Confi
     }
   }
   return { success, errors };
-}
-
-// Find all projects (and its alias) associated with the current directory.
-function getAllProjects(options: {
-  project?: string;
-  projectId?: string;
-  cwd?: string;
-}): TargetProject[] {
-  const results: Record<string, string> = {};
-
-  const projectId = getProjectId(options);
-  if (projectId) {
-    results[projectId] = projectId;
-  }
-
-  const rc = loadRC(options);
-  if (rc.projects) {
-    for (const [alias, projectId] of Object.entries(rc.projects)) {
-      if (alias === "default") {
-        if (Object.keys(results).includes(projectId)) {
-          // We already have a better alias for this project.
-          continue;
-        }
-        results[projectId] = projectId;
-        continue;
-      }
-      results[projectId] = alias;
-    }
-  }
-  return Object.entries(results).map(([k, v]) => ({ projectId: k, alias: v }));
-}
-
-// Check necessary IAM permissions for a projects.
-// If permission check fails on a project, user must explicitly exclude it.
-async function checkRequiredPermission(projectId: string): Promise<boolean> {
-  const result = await testIamPermissions(projectId, REQUIRED_PERMISSIONS);
-  if (result.passed) return true;
-
-  logWarning(
-    "You are missing the following permissions to read functions config on project " +
-      `${clc.bold(projectId)}:\n ${result.missing.join("\n ")}`
-  );
-
-  const confirm = await promptOnce(
-    {
-      type: "confirm",
-      name: "skip",
-      default: false,
-      message: `Continue without importing configs from project ${projectId}?`,
-    },
-    // Explicitly ignore non-interactive flag. This command NEEDS to be interactive.
-    { nonInteractive: false }
-  );
-
-  if (!confirm) {
-    throw new FirebaseError("Command aborted!");
-  }
-
-  return false;
 }
 
 async function promptForPrefix(
@@ -225,11 +259,12 @@ export default new Command("functions:config:export")
       );
     }
 
-    const projects = allProjects.filter(
-      async ({ projectId }) => await checkRequiredPermission(projectId)
-    );
-
-    // TODO: Check for reserved alias
+    const projects = [];
+    for (const project of allProjects) {
+      if ((await checkRequiredPermission(project)) && (await checkReservedAlias(project))) {
+        projects.push(project);
+      }
+    }
 
     logBullet(
       "Importing functions configs from projects [" +
@@ -257,7 +292,9 @@ export default new Command("functions:config:export")
       return { project, dotenv };
     });
 
-    // TODO: collect common envs
+    // TODO: warn if there already are files
+    // TODO: create emtpy .env and .env.local if missing.
+    // TODO: create header.
 
     let msg = "Wrote files:\n";
     const basePath: string = options.config.get("functions.source", ".");
