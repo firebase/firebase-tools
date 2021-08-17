@@ -44,10 +44,10 @@ export async function getReleaseNotesForUpdate(
 export function displayReleaseNotes(releaseNotes: Record<string, string>, fromVersion: string) {
   const versions = [fromVersion].concat(Object.keys(releaseNotes));
   const breaks = breakingChangesInUpdate(versions);
-  const table = new Table({ head: ["Version", "What's New"], style: { head: ["yellow"] } });
+  const table = new Table({ head: ["Version", "What's New"], style: { head: ["yellow", "bold"] } });
   for (const [version, note] of Object.entries(releaseNotes)) {
     if (breaks.includes(version)) {
-      table.push([clc.yellow(version), marked(note)]);
+      table.push([clc.yellow.bold(version), marked(note)]);
     } else {
       table.push([version, marked(note)]);
     }
