@@ -233,12 +233,14 @@ function escape(s: string): string {
   return result;
 }
 
-function toDotenvFormat(envs: EnvMap[]): string {
+function toDotenvFormat(project: TargetProject, envs: EnvMap[]): string {
   const lines = envs.map(({ newKey, value }) => `${newKey}="${escape(value)}"`);
   const maxLineLen = Math.max(...lines.map((l) => l.length));
-  return lines
-    .map((line, idx) => `${line.padEnd(maxLineLen)} # from ${envs[idx].origKey}`)
-    .join("\n");
+  const header = `# Exported firebase functions:config:export command on ${new Date().toLocaleDateString()}\n`;
+  return (
+    header +
+    lines.map((line, idx) => `${line.padEnd(maxLineLen)} # from ${envs[idx].origKey}`).join("\n")
+  );
 }
 
 export default new Command("functions:config:export")
@@ -289,7 +291,7 @@ export default new Command("functions:config:export")
     const tmpdir = fs.mkdtempSync("dotenvs");
     const tmpDotenvs = [];
     for (const { project, configToEnvResult } of results) {
-      const dotenv = toDotenvFormat(configToEnvResult.success);
+      const dotenv = toDotenvFormat(project, configToEnvResult.success);
       const filePath = path.join(tmpdir, `.env.${project.alias ?? project.projectId}`);
       fs.writeFileSync(filePath, dotenv);
       tmpDotenvs.push(filePath);
