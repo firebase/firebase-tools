@@ -125,7 +125,11 @@ export function parse(data: string): ParseResult {
   return { envs, errors };
 }
 
-class KeyValidationError extends Error {}
+export class KeyValidationError extends Error {
+  constructor(public key: string, public message: string) {
+    super();
+  }
+}
 
 /**
  * Validates string for use as an env var key.
@@ -135,16 +139,18 @@ class KeyValidationError extends Error {}
  */
 export function validateKey(key: string): void {
   if (RESERVED_KEYS.includes(key)) {
-    throw new KeyValidationError(`Key ${key} is reserved for internal use.`);
+    throw new KeyValidationError(key, `Key ${key} is reserved for internal use.`);
   }
   if (!/^[A-Z_][A-Z0-9_]*$/.test(key)) {
     throw new KeyValidationError(
+      key,
       `Key ${key} must start with an uppercase ASCII letter or underscore` +
         ", and then consist of uppercase ASCII letters, digits, and underscores."
     );
   }
   if (key.startsWith("X_GOOGLE_") || key.startsWith("FIREBASE_")) {
     throw new KeyValidationError(
+      key,
       `Key ${key} starts with a reserved prefix (X_GOOGLE_ or FIREBASE_)`
     );
   }
