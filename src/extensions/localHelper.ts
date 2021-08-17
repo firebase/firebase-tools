@@ -9,6 +9,8 @@ import { logger } from "../logger";
 
 const EXTENSIONS_SPEC_FILE = "extension.yaml";
 const EXTENSIONS_PREINSTALL_FILE = "PREINSTALL.md";
+const EXTENSIONS_CHANGELOG = "CHANGELOG.md";
+const VERSION_LINE_REGEX = /##.*(\d+\.\d+\.\d+).*/
 
 /**
  * Retrieves and parses an ExtensionSpec from a local directory
@@ -23,6 +25,37 @@ export async function getLocalExtensionSpec(directory: string): Promise<Extensio
     logger.debug(`No PREINSTALL.md found in directory ${directory}.`);
   }
   return spec;
+}
+
+/**
+ * getLocalChangelog checks directory for a CHANGELOG.md, and parses it into a map of
+ * version to release notes for that version.
+ * @param directory The directory to check for
+ * @returns 
+ */
+export async function getLocalChangelog(directory: string): Promise<Record<string, string>> {
+  const rawChangelog = readFile(path.resolve(directory, EXTENSIONS_CHANGELOG));
+  return parseChangelog(rawChangelog);
+}
+
+// Exported for testing.
+export function parseChangelog(rawChangelog: string): Record<string,string> {
+  const changelog: Record<string, string> = {};
+  let currentVersion = "";
+  for (const line of rawChangelog.split("\n")) {
+    const matches = line.match(VERSION_LINE_REGEX);
+    if (matches) {
+      currentVersion = matches[1]; // The first capture group is the SemVer.
+    } else {
+      // Throw away lines that aren't under a specific version.
+      if (currentVersion && !changelog[currentVersion]) {
+        changelog[currentVersion] = line
+      } else {
+        changelog[currentVersion] += `\n${line}`
+      }
+    }
+  }
+  return changelog;
 }
 
 /**
