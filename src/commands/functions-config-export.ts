@@ -86,7 +86,7 @@ async function checkRequiredPermission({ projectId }: TargetProject): Promise<bo
     {
       type: "confirm",
       name: "skip",
-      default: false,
+      default: true,
       message: `Continue without importing configs from project ${projectId}?`,
     },
     // Explicitly ignore non-interactive flag. This command NEEDS to be interactive.
@@ -111,14 +111,14 @@ async function checkReservedAlias({ projectId, alias }: TargetProject): Promise<
     "The following project alias is reserved for internal use:\n" +
       `\t${projectId}: ${clc.bold(alias)}`
   );
-  const suggestCmd = `firebase use --unalias ${alias}`
+  const suggestCmd = `firebase use --unalias ${alias}`;
   logWarning(`Please change the alias of the project by running ${clc.bold(suggestCmd)}`);
 
   const confirm = await promptOnce(
     {
       type: "confirm",
       name: "skip",
-      default: false,
+      defaul: true,
       message: `Continue without importing configs from project ${projectId}?`,
     },
     // Explicitly ignore non-interactive flag. This command NEEDS to be interactive.
@@ -275,33 +275,56 @@ export default new Command("functions:config:export")
     let prefix = "";
     let results = [];
     while (true) {
-      results = await Promise.all(
-        projects.map(async (project) => {
-          const configs = await functionsConfig.materializeAll(project.projectId);
-          return { project, configToEnvResult: configToEnv(configs, prefix) };
-        })
-      );
+      for (const project of projects) {
+        const configs = await functionsConfig.materializeAll(project.projectId);
+        results.push({ project, configToEnvResult: configToEnv(configs, prefix) });
+      }
       if (results.every((result) => result.configToEnvResult.errors.length == 0)) {
         break;
       }
       prefix = await promptForPrefix(results);
+      results = [];
     }
 
-    const dotenvs = results.map(({ project, configToEnvResult }) => {
+    const tmpdir = fs.mkdtempSync("dotenvs");
+    const tmpDotenvs = [];
+    for (const { project, configToEnvResult } of results) {
       const dotenv = toDotenvFormat(configToEnvResult.success);
-      return { project, dotenv };
-    });
+      const filePath = path.join(tmpdir, `.env.${project.alias ?? project.projectId}`);
+      fs.writeFileSync(filePath, dotenv);
+      tmpDotenvs.push(filePath);
+    }
 
-    // TODO: warn if there already are files
+    const functionsDir: string = options.config.get("functions.source", ".");
+    const dotenvs = [];
+    for (const tmpPath of tmpDotenvs) {
+      const targetPath = path.join(functionsDir, path.basename(tmpPath));
+      if (fs.existsSync(targetPath)) {
+        const overwrite = await promptOnce(
+          {
+            type: "confirm",
+            name: "overwrite",
+            default: true,
+            message: `${targetPath} already exists. Overwrite file?`,
+          },
+          { nonInteractive: false }
+        );
+        if (!overwrite) {
+          logBullet(`Skipping ${targetPath}`);
+          continue;
+        }
+      }
+      fs.copyFileSync(tmpPath, targetPath);
+      dotenvs.push(targetPath);
+    }
+
     // TODO: create emtpy .env and .env.local if missing.
     // TODO: create header.
-
-    let msg = "Wrote files:\n";
-    const basePath: string = options.config.get("functions.source", ".");
-    for (const { project, dotenv } of dotenvs) {
-      const filePath = path.join(basePath, `.env.${project.alias ?? project.projectId}`);
-      fs.writeFileSync(filePath, dotenv);
-      msg += `\t${filePath}\t\t#  Environment variables for project '${project.projectId}'\n`;
-    }
-    logSuccess(msg);
+    logSuccess(
+      "Wrote files:\n" +
+        dotenvs
+          .filter((f) => f.length > 0)
+          .map((f) => `\t${f}`)
+          .join("\n")
+    );
   });
