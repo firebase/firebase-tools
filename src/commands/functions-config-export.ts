@@ -26,7 +26,7 @@ const REQUIRED_PERMISSIONS = [
 
 const RESERVED_PROJECT_ALIAS = ["local"];
 
-interface TargetProject {
+interface Project {
   projectId: string;
   alias?: string;
 }
@@ -50,7 +50,7 @@ export function getAllProjects(options: {
   project?: string;
   projectId?: string;
   cwd?: string;
-}): TargetProject[] {
+}): Project[] {
   const results: Record<string, string> = {};
 
   const projectId = getProjectId(options);
@@ -73,7 +73,7 @@ export function getAllProjects(options: {
     }
   }
   return Object.entries(results).map(([k, v]) => {
-    const result: TargetProject = { projectId: k };
+    const result: Project = { projectId: k };
     if (k !== v) {
       result.alias = v;
     }
@@ -81,9 +81,9 @@ export function getAllProjects(options: {
   });
 }
 
-// Check necessary IAM permissions for a projects.
-// If permission check fails on a project, user must explicitly exclude it.
-async function checkRequiredPermission({ projectId }: TargetProject): Promise<boolean> {
+// Check necessary IAM permissions for a project.
+// If permission check fails on a project, ask user to exclude it.
+async function checkRequiredPermission({ projectId }: Project): Promise<boolean> {
   const result = await testIamPermissions(projectId, REQUIRED_PERMISSIONS);
   if (result.passed) return true;
 
@@ -111,8 +111,8 @@ async function checkRequiredPermission({ projectId }: TargetProject): Promise<bo
 }
 
 // Check if project alias is reserved for internal use.
-// If a project's alias is reserved, user must explicitly exclude it.
-async function checkReservedAlias({ projectId, alias }: TargetProject): Promise<boolean> {
+// If a project's alias is reserved, ask for user consent to exclude the project.
+async function checkReservedAlias({ projectId, alias }: Project): Promise<boolean> {
   if (!alias || !RESERVED_PROJECT_ALIAS.includes(alias)) {
     return true;
   }
@@ -144,6 +144,7 @@ async function checkReservedAlias({ projectId, alias }: TargetProject): Promise<
 
 /**
  * Converts functions config key from runtimeconfig to env var key.
+ * If the original config key fails to convert, try again with provided prefix.
  *
  * Throws KeyValidationErrorr if the converted key is invalid.
  */
@@ -167,9 +168,8 @@ export function convertKey(configKey: string, prefix: string): string {
 }
 
 /**
- * Convert runtime config keys to environment variable keys.
- * e.g. someservice.key => SOMESERVICE_KEY
- * If the conversion cannot be made, collect errors.
+ * Convert functions config to environment variables.
+ *   e.g. someservice.key => SOMESERVICE_KEY
  *
  * @return {ConfigToEnvResult} Collection of successful and errored conversion.
  */
@@ -201,7 +201,7 @@ export function configToEnv(configs: Record<string, any>, prefix: string): Confi
 }
 
 function configsToEnvs(
-  projects: TargetProject[],
+  projects: Project[],
   configs: Record<string, any>[],
   prefix: string
 ): { envs: EnvMap[][]; errMsg: string } {
@@ -250,7 +250,7 @@ function escape(s: string): string {
 }
 
 /**
- * Convert env var mappings to string in  dotenv format.
+ * Convert env var mappings to string in dotenv format.
  */
 export function toDotenvFormat(envs: EnvMap[], header = ""): string {
   const lines = envs.map(({ newKey, value }) => `${newKey}="${escape(value)}"`);
@@ -264,7 +264,7 @@ export function toDotenvFormat(envs: EnvMap[], header = ""): string {
 function writeEnvs(
   basePath: string,
   header: string,
-  projects: TargetProject[],
+  projects: Project[],
   envs: EnvMap[][]
 ): string[] {
   return envs.map((env, idx) => {
@@ -279,7 +279,7 @@ function writeEnvs(
   });
 }
 
-function writeEmptyEnvs(basePath: string, header: string, projects: TargetProject[]): string[] {
+function writeEmptyEnvs(basePath: string, header: string, projects: Project[]): string[] {
   return writeEnvs(
     basePath,
     header,
@@ -331,7 +331,7 @@ export default new Command("functions:config:export")
       );
     }
 
-    const projects: TargetProject[] = [];
+    const projects: Project[] = [];
     for (const project of allProjects) {
       if ((await checkRequiredPermission(project)) && (await checkReservedAlias(project))) {
         projects.push(project);
@@ -369,7 +369,7 @@ export default new Command("functions:config:export")
     const tmpdir = fs.mkdtempSync(os.tmpdir() + "dotenvs");
     const tmpFiles = writeEnvs(tmpdir, header, projects, envs);
     tmpFiles.push(...writeEmptyEnvs(tmpdir, header, [{ projectId: "" }, { projectId: "local" }]));
-    logger.debug("Wrote tmp .env files: " + tmpFiles);
+    logger.debug(`Wrote tmp .env files: [${tmpFiles.join(",")}]`);
 
     const functionsDir: string = options.config.get("functions.source", ".");
     const files = await copyFilesToDir(tmpFiles, functionsDir);
