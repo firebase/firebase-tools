@@ -42,19 +42,19 @@ const RESERVED_KEYS = [
 //   https://github.com/bkeepers/dotenv/blob/master/lib/dotenv/parser.rb
 // prettier-ignore
 const LINE_RE = new RegExp(
-  "^" +                      // begin line
-  "\\s*" +                   //   leading whitespaces
-  "(\\w+)" +                 //   key
-  "\\s*=\\s*" +              //   separator (=)
-  "(" +                      //   begin optional value
-  "\\s*'(?:\\\\'|[^'])*'|" + //     single quoted or
-  '\\s*"(?:\\\\"|[^"])*"|' + //     double quoted or
-  "[^#\\r\\n]+" +            //     unquoted
-  ")?" +                     //   end optional value
-  "\\s*" +                   //   trailing whitespaces
-  "(?:#[^\\n]*)?" +          //   optional comment
-  "$",                       // end line
-  "gms"                      // flags: global, multiline, dotall
+  "^" +                    // begin line
+  "\\s*" +                 //   leading whitespaces
+  "(\\w+)" +               //   key
+  "\\s*=\\s*" +            //   separator (=)
+  "(" +                    //   begin optional value
+  "\\s*'(?:\\'|[^'])*'|" + //     single quoted or
+  '\\s*"(?:\\"|[^"])*"|' + //     double quoted or
+  "[^\\#\\r\\n]+" +        //     unquoted
+  ")?" +                   //   end optional value
+  "\\s*" +                 //   trailing whitespaces
+  "(?:#[^\\n]*)?" +        //   optional comment
+  "$",                     // end line
+  "gms"                    // flags: global, multiline, dotall
 );
 
 interface ParseResult {
@@ -187,20 +187,10 @@ function parseStrict(data: string): Record<string, string> {
   return envs;
 }
 
-function findEnvfiles(
-  functionsSource: string,
-  projectId: string,
-  projectAlias?: string,
-  isEmulator?: boolean
-): string[] {
-  const files: string[] = [".env"];
-  if (isEmulator) {
-    files.push(FUNCTIONS_EMULATOR_DOTENV);
-  } else {
-    files.push(`.env.${projectId}`);
-    if (projectAlias && projectAlias.length) {
-      files.push(`.env.${projectAlias}`);
-    }
+function findEnvfiles(functionsSource: string, projectId: string, projectAlias?: string): string[] {
+  const files = [".env", `.env.${projectId}`];
+  if (projectAlias && projectAlias.length) {
+    files.push(`.env.${projectAlias}`);
   }
 
   return files
@@ -209,25 +199,17 @@ function findEnvfiles(
     .map((p) => path.basename(p));
 }
 
-export interface UserEnvsOpts {
-  functionsSource: string;
-  projectId: string;
-  projectAlias?: string;
-  isEmulator?: boolean;
-}
-
 /**
  * Checks if user has specified any environment variables for their functions.
  *
  * @return True if there are any user-specified environment variables
  */
-export function hasUserEnvs({
-  functionsSource,
-  projectId,
-  projectAlias,
-  isEmulator,
-}: UserEnvsOpts): boolean {
-  return findEnvfiles(functionsSource, projectId, projectAlias, isEmulator).length > 0;
+export function hasUserEnvs(
+  functionsSource: string,
+  projectId: string,
+  projectAlias?: string
+): boolean {
+  return findEnvfiles(functionsSource, projectId, projectAlias).length > 0;
 }
 
 /**
@@ -249,13 +231,16 @@ export function loadUserEnvs({
   functionsSource,
   projectId,
   projectAlias,
-  isEmulator,
-}: UserEnvsOpts): Record<string, string> {
+}: {
+  functionsSource: string;
+  projectId: string;
+  projectAlias?: string;
+}): Record<string, string> {
   if (!previews.dotenv) {
     return {};
   }
 
-  const envFiles = findEnvfiles(functionsSource, projectId, projectAlias, isEmulator);
+  const envFiles = findEnvfiles(functionsSource, projectId, projectAlias);
   if (envFiles.length == 0) {
     return {};
   }
