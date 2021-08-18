@@ -393,7 +393,6 @@ export async function publishExtensionVersionFromLocalSource(
   );
   validateSpec(subbedSpec);
 
-  
   const consent = await confirmExtensionVersion(publisherId, extensionId, extensionSpec.version);
   if (!consent) {
     return;

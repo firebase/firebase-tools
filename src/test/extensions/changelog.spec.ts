@@ -26,7 +26,7 @@ function testExtensionVersion(
   };
 }
 
-describe("changelog", () => {
+describe.only("changelog", () => {
   describe("GetReleaseNotesForUpdate", () => {
     let listExtensionVersionStub: sinon.SinonStub;
 
@@ -104,6 +104,38 @@ describe("changelog", () => {
     for (const testCase of testCases) {
       it(testCase.description, () => {
         const got = changelog.breakingChangesInUpdate(testCase.in);
+
+        expect(got).to.deep.equal(testCase.want);
+      });
+    }
+  });
+
+  describe("parseChangelog", () => {
+    const testCases: {
+      description: string;
+      in: string;
+      want: Record<string, string>;
+    }[] = [
+      {
+        description: "should split changelog by version",
+        in: "## Version 0.1.0\nNotes\n## Version 0.1.1\nNew notes",
+        want: {
+          "0.1.0": "Notes",
+          "0.1.1": "New notes",
+        },
+      },
+      {
+        description: "should ignore text not in a version",
+        in: "Some random words\n## Version 0.1.0\nNotes\n## Version 0.1.1\nNew notes",
+        want: {
+          "0.1.0": "Notes",
+          "0.1.1": "New notes",
+        },
+      },
+    ];
+    for (const testCase of testCases) {
+      it(testCase.description, () => {
+        const got = changelog.parseChangelog(testCase.in);
 
         expect(got).to.deep.equal(testCase.want);
       });
