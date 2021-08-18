@@ -191,7 +191,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         }
       }
 
-      await displayChanges(existingSpec, newSpec, false);
+      await displayChanges(existingSpec, newSpec);
 
       await provisioningHelper.checkProductsProvisioned(projectId, newSpec);
 

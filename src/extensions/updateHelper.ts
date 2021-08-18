@@ -101,14 +101,13 @@ export function warningUpdateToOtherSource(sourceOrigin: SourceOrigin) {
  */
 export async function displayChanges(
   spec: extensionsApi.ExtensionSpec,
-  newSpec: extensionsApi.ExtensionSpec,
-  isOfficial = true
+  newSpec: extensionsApi.ExtensionSpec
 ): Promise<void> {
   logger.info(
     "This update contains the following changes (in green and red). " +
       "If at any point you choose not to continue, the extension will not be updated and the changes will be discarded:\n"
   );
-  displayUpdateChangesNoInput(spec, newSpec, isOfficial);
+  displayUpdateChangesNoInput(spec, newSpec);
   await displayUpdateChangesRequiringConfirmation(spec, newSpec);
 }
 
@@ -257,7 +256,7 @@ export async function updateToVersionFromPublisherSource(
   try {
     registryEntry = await resolveSource.resolveRegistryEntry(existingSpec.name);
   } catch (err) {
-    // Ignore errors if we can't fetch the registry
+    logger.debug(`Unable to fetch registry.json entry for ${existingSpec.name}`);
   }
 
   if (registryEntry) {
@@ -273,11 +272,11 @@ export async function updateToVersionFromPublisherSource(
   }
   await showUpdateVersionInfo(instanceId, existingSpec.version, source.spec.version, extVersionRef);
   warningUpdateToOtherSource(SourceOrigin.PUBLISHED_EXTENSION);
-  const releaseNotes = await changelog.getReleaseNotesForUpdate(
+  const releaseNotes = await changelog.getReleaseNotesForUpdate({
     extensionRef,
-    existingSpec.version,
-    source.spec.version
-  );
+    fromVersion: existingSpec.version,
+    toVersion: source.spec.version,
+  });
   if (Object.keys(releaseNotes).length) {
     changelog.displayReleaseNotes(releaseNotes, existingSpec.version);
   }

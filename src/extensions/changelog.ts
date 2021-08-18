@@ -20,14 +20,17 @@ marked.setOptions({
  * @param toVersion the version you are upodating to
  * @returns a Record of version number to releaseNotes for that version
  */
-export async function getReleaseNotesForUpdate(
-  extensionRef: string,
-  fromVersion: string,
-  toVersion: string
-): Promise<Record<string, string>> {
+export async function getReleaseNotesForUpdate(args: {
+  extensionRef: string;
+  fromVersion: string;
+  toVersion: string;
+}): Promise<Record<string, string>> {
   const releaseNotes: Record<string, string> = {};
-  const filter = `id<="${toVersion}" AND id>"${fromVersion}"`;
-  const extensionVersions = await listExtensionVersions(extensionRef, filter);
+  const filter = `id<="${args.toVersion}" AND id>"${args.fromVersion}"`;
+  const extensionVersions = await listExtensionVersions(args.extensionRef, filter);
+  extensionVersions.sort((ev1, ev2) => {
+    return -semver.compare(ev1.spec.version, ev2.spec.version);
+  });
   for (const extensionVersion of extensionVersions) {
     if (extensionVersion.releaseNotes) {
       const version = parseRef(extensionVersion.ref).version!;
@@ -43,10 +46,10 @@ export async function getReleaseNotesForUpdate(
  */
 export function displayReleaseNotes(releaseNotes: Record<string, string>, fromVersion: string) {
   const versions = [fromVersion].concat(Object.keys(releaseNotes));
-  const breaks = breakingChangesInUpdate(versions);
+  const breakingVersions = breakingChangesInUpdate(versions);
   const table = new Table({ head: ["Version", "What's New"], style: { head: ["yellow", "bold"] } });
   for (const [version, note] of Object.entries(releaseNotes)) {
-    if (breaks.includes(version)) {
+    if (breakingVersions.includes(version)) {
       table.push([clc.yellow.bold(version), marked(note)]);
     } else {
       table.push([version, marked(note)]);
@@ -54,7 +57,7 @@ export function displayReleaseNotes(releaseNotes: Record<string, string>, fromVe
   }
 
   logger.info(clc.bold("What's new with this update:"));
-  if (breaks.length) {
+  if (breakingVersions.length) {
     logLabeledWarning(
       "warning",
       "This is a major version update, which means it may contain breaking changes." +
@@ -69,17 +72,15 @@ export function displayReleaseNotes(releaseNotes: Record<string, string>, fromVe
  * Exported for testing.
  */
 export function breakingChangesInUpdate(versionsInUpdate: string[]): string[] {
-  const breaks: string[] = [];
+  const breakingVersions: string[] = [];
   const semvers = versionsInUpdate.map((v) => semver.parse(v)!).sort(semver.compare);
   for (let i = 1; i < semvers.length; i++) {
-    if (
-      semvers[i - 1].major < semvers[i].major ||
-      (semvers[i - 1].major == 0 &&
-        semvers[i].major == 0 &&
-        semvers[i - 1].minor < semvers[i].minor)
-    ) {
-      breaks.push(semvers[i].raw);
+    const hasMajorBump = semvers[i - 1].major < semvers[i].major;
+    const hasMinorBumpInPreview =
+      semvers[i - 1].major == 0 && semvers[i].major == 0 && semvers[i - 1].minor < semvers[i].minor;
+    if (hasMajorBump || hasMinorBumpInPreview) {
+      breakingVersions.push(semvers[i].raw);
     }
   }
-  return breaks;
+  return breakingVersions;
 }

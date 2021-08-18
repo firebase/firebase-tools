@@ -51,7 +51,11 @@ describe("changelog", () => {
         "0.1.2": "bar",
       };
 
-      const got = await changelog.getReleaseNotesForUpdate("test/test", "0.1.0", "0.1.2");
+      const got = await changelog.getReleaseNotesForUpdate({
+        extensionRef: "test/test",
+        fromVersion: "0.1.0",
+        toVersion: "0.1.2",
+      });
 
       expect(got).to.deep.equal(want);
     });
@@ -68,7 +72,11 @@ describe("changelog", () => {
         "0.1.1": "foo",
       };
 
-      const got = await changelog.getReleaseNotesForUpdate("test/test", "0.1.0", "0.1.2");
+      const got = await changelog.getReleaseNotesForUpdate({
+        extensionRef: "test/test",
+        fromVersion: "0.1.0",
+        toVersion: "0.1.2",
+      });
 
       expect(got).to.deep.equal(want);
     });
