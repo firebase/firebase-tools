@@ -1,4 +1,5 @@
 import * as fs from "fs";
+import * as os from "os";
 import * as path from "path";
 
 import * as clc from "cli-color";
@@ -9,11 +10,12 @@ import * as functionsConfig from "../functionsConfig";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { testIamPermissions } from "../gcp/iam";
-import { logBullet, logWarning, logSuccess } from "../utils";
+import { logger } from "../logger";
+import { getProjectId } from "../projectUtils";
 import { promptOnce } from "../prompt";
 import { loadRC } from "../rc";
 import { requirePermissions } from "../requirePermissions";
-import { getProjectId } from "../projectUtils";
+import { logBullet, logWarning, logSuccess } from "../utils";
 
 const REQUIRED_PERMISSIONS = [
   "runtimeconfig.configs.list",
@@ -347,6 +349,7 @@ export default new Command("functions:config:export")
         return await functionsConfig.materializeAll(projectId);
       })
     );
+    logger.debug("Loaded function configs: " + JSON.stringify(configs));
 
     let prefix = "";
     let envs = [];
@@ -363,9 +366,10 @@ export default new Command("functions:config:export")
     }
 
     const header = `# Exported firebase functions:config:export command on ${new Date().toLocaleDateString()}`;
-    const tmpdir = fs.mkdtempSync("dotenvs");
+    const tmpdir = fs.mkdtempSync(os.tmpdir() + "dotenvs");
     const tmpFiles = writeEnvs(tmpdir, header, projects, envs);
     tmpFiles.push(...writeEmptyEnvs(tmpdir, header, [{ projectId: "" }, { projectId: "local" }]));
+    logger.debug("Wrote tmp .env files: " + tmpFiles);
 
     const functionsDir: string = options.config.get("functions.source", ".");
     const files = await copyFilesToDir(tmpFiles, functionsDir);
