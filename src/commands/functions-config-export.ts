@@ -41,8 +41,10 @@ interface ConfigToEnvResult {
   errors: Required<EnvMap>[];
 }
 
-// Find all projects (and its alias) associated with the current directory.
-function getAllProjects(options: {
+/**
+ * Find all projects (and its alias) associated with the current directory.
+ */
+export function getAllProjects(options: {
   project?: string;
   projectId?: string;
   cwd?: string;
@@ -68,7 +70,13 @@ function getAllProjects(options: {
       results[projectId] = alias;
     }
   }
-  return Object.entries(results).map(([k, v]) => ({ projectId: k, alias: v }));
+  return Object.entries(results).map(([k, v]) => {
+    const result: TargetProject = { projectId: k };
+    if (k !== v) {
+      result.alias = v;
+    }
+    return result;
+  });
 }
 
 // Check necessary IAM permissions for a projects.
@@ -118,7 +126,7 @@ async function checkReservedAlias({ projectId, alias }: TargetProject): Promise<
     {
       type: "confirm",
       name: "skip",
-      defaul: true,
+      default: true,
       message: `Continue without importing configs from project ${projectId}?`,
     },
     // Explicitly ignore non-interactive flag. This command NEEDS to be interactive.
@@ -133,7 +141,9 @@ async function checkReservedAlias({ projectId, alias }: TargetProject): Promise<
 }
 
 /**
+ * Converts functions config key from runtimeconfig to env var key.
  *
+ * Throws KeyValidationErrorr if the converted key is invalid.
  */
 export function convertKey(configKey: string, prefix: string): string {
   /* prettier-ignore */
@@ -159,7 +169,6 @@ export function convertKey(configKey: string, prefix: string): string {
  * e.g. someservice.key => SOMESERVICE_KEY
  * If the conversion cannot be made, collect errors.
  *
- * @param {string}
  * @return {ConfigToEnvResult} Collection of successful and errored conversion.
  */
 export function configToEnv(configs: Record<string, any>, prefix: string): ConfigToEnvResult {
@@ -189,27 +198,32 @@ export function configToEnv(configs: Record<string, any>, prefix: string): Confi
   return { success, errors };
 }
 
-async function promptForPrefix(
-  conversions: {
-    project: TargetProject;
-    configToEnvResult: ConfigToEnvResult;
-  }[]
-): Promise<string> {
-  logWarning("The following configs keys could not be exported as environment variables:\n");
+function configsToEnvs(
+  projects: TargetProject[],
+  configs: Record<string, any>[],
+  prefix: string
+): { envs: EnvMap[][]; errMsg: string } {
+  const results = configs.map((config) => configToEnv(config, prefix));
 
-  for (const { project, configToEnvResult } of conversions) {
-    if (configToEnvResult.errors.length == 0) {
-      continue;
-    }
-    logWarning(
-      `${project.projectId}:\n` +
-        configToEnvResult.errors
-          .map((err) => `\t${err.origKey} => ${clc.bold(err.newKey)} (${err.err})`)
-          .join("\n") +
+  const errMsg = results
+    .map(({ errors }, idx) => ({ project: projects[idx], errors }))
+    .filter(({ errors }) => errors.length > 0)
+    .map(
+      ({ project, errors }) =>
+        `${project.projectId}:\n` +
+        errors.map((err) => `\t${err.origKey} => ${clc.bold(err.newKey)} (${err.err})`).join("\n") +
         "\n"
-    );
-  }
+    )
+    .join("\n");
+  return {
+    envs: results.map((result) => result.success),
+    errMsg,
+  };
+}
 
+async function promptForPrefix(errMsg: string): Promise<string> {
+  logWarning("The following configs keys could not be exported as environment variables:\n");
+  logWarning(errMsg);
   return await promptOnce(
     {
       type: "input",
@@ -233,14 +247,68 @@ function escape(s: string): string {
   return result;
 }
 
-function toDotenvFormat(project: TargetProject, envs: EnvMap[]): string {
+/**
+ * Convert env var mappings to string in  dotenv format.
+ */
+export function toDotenvFormat(envs: EnvMap[], header = ""): string {
   const lines = envs.map(({ newKey, value }) => `${newKey}="${escape(value)}"`);
   const maxLineLen = Math.max(...lines.map((l) => l.length));
-  const header = `# Exported firebase functions:config:export command on ${new Date().toLocaleDateString()}\n`;
   return (
-    header +
+    `${header}\n` +
     lines.map((line, idx) => `${line.padEnd(maxLineLen)} # from ${envs[idx].origKey}`).join("\n")
   );
+}
+
+function writeEnvs(
+  basePath: string,
+  header: string,
+  projects: TargetProject[],
+  envs: EnvMap[][]
+): string[] {
+  return envs.map((env, idx) => {
+    const project = projects[idx];
+    const dotenv = toDotenvFormat(env, header);
+    const ext = project.alias ?? project.projectId;
+    const filename = ext ? `.env.${ext}` : ".env";
+    const filePath = path.join(basePath, filename);
+
+    fs.writeFileSync(filePath, dotenv);
+    return filePath;
+  });
+}
+
+function writeEmptyEnvs(basePath: string, header: string, projects: TargetProject[]): string[] {
+  return writeEnvs(
+    basePath,
+    header,
+    projects,
+    projects.map(() => [])
+  );
+}
+
+async function copyFilesToDir(srcFiles: string[], destDir: string): Promise<string[]> {
+  const destFiles = [];
+  for (const file of srcFiles) {
+    const targetFile = path.join(destDir, path.basename(file));
+    if (fs.existsSync(targetFile)) {
+      const overwrite = await promptOnce(
+        {
+          type: "confirm",
+          name: "overwrite",
+          default: true,
+          message: `${targetFile} already exists. Overwrite file?`,
+        },
+        { nonInteractive: false }
+      );
+      if (!overwrite) {
+        logBullet(`Skipping ${targetFile}`);
+        continue;
+      }
+    }
+    fs.copyFileSync(file, targetFile);
+    destFiles.push(targetFile);
+  }
+  return destFiles.filter((f) => f.length > 0);
 }
 
 export default new Command("functions:config:export")
@@ -261,7 +329,7 @@ export default new Command("functions:config:export")
       );
     }
 
-    const projects = [];
+    const projects: TargetProject[] = [];
     for (const project of allProjects) {
       if ((await checkRequiredPermission(project)) && (await checkReservedAlias(project))) {
         projects.push(project);
@@ -274,57 +342,36 @@ export default new Command("functions:config:export")
         "]"
     );
 
+    const configs = await Promise.all(
+      projects.map(async ({ projectId }) => {
+        return await functionsConfig.materializeAll(projectId);
+      })
+    );
+
     let prefix = "";
-    let results = [];
+    let envs = [];
     while (true) {
-      for (const project of projects) {
-        const configs = await functionsConfig.materializeAll(project.projectId);
-        results.push({ project, configToEnvResult: configToEnv(configs, prefix) });
-      }
-      if (results.every((result) => result.configToEnvResult.errors.length == 0)) {
+      const result = configsToEnvs(projects, configs, prefix);
+      envs = result.envs;
+
+      if (result.errMsg.length == 0) {
         break;
       }
-      prefix = await promptForPrefix(results);
-      results = [];
+      prefix = await promptForPrefix(result.errMsg);
+
+      envs = [];
     }
 
+    const header = `# Exported firebase functions:config:export command on ${new Date().toLocaleDateString()}`;
     const tmpdir = fs.mkdtempSync("dotenvs");
-    const tmpDotenvs = [];
-    for (const { project, configToEnvResult } of results) {
-      const dotenv = toDotenvFormat(project, configToEnvResult.success);
-      const filePath = path.join(tmpdir, `.env.${project.alias ?? project.projectId}`);
-      fs.writeFileSync(filePath, dotenv);
-      tmpDotenvs.push(filePath);
-    }
+    const tmpFiles = writeEnvs(tmpdir, header, projects, envs);
+    tmpFiles.push(...writeEmptyEnvs(tmpdir, header, [{ projectId: "" }, { projectId: "local" }]));
 
     const functionsDir: string = options.config.get("functions.source", ".");
-    const dotenvs = [];
-    for (const tmpPath of tmpDotenvs) {
-      const targetPath = path.join(functionsDir, path.basename(tmpPath));
-      if (fs.existsSync(targetPath)) {
-        const overwrite = await promptOnce(
-          {
-            type: "confirm",
-            name: "overwrite",
-            default: true,
-            message: `${targetPath} already exists. Overwrite file?`,
-          },
-          { nonInteractive: false }
-        );
-        if (!overwrite) {
-          logBullet(`Skipping ${targetPath}`);
-          continue;
-        }
-      }
-      fs.copyFileSync(tmpPath, targetPath);
-      dotenvs.push(targetPath);
-    }
-
-    // TODO: create emtpy .env and .env.local if missing.
-    // TODO: create header.
+    const files = await copyFilesToDir(tmpFiles, functionsDir);
     logSuccess(
       "Wrote files:\n" +
-        dotenvs
+        files
           .filter((f) => f.length > 0)
           .map((f) => `\t${f}`)
           .join("\n")
