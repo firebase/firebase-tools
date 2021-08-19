@@ -26,7 +26,7 @@ function testExtensionVersion(
   };
 }
 
-describe.only("changelog", () => {
+describe("changelog", () => {
   describe("GetReleaseNotesForUpdate", () => {
     let listExtensionVersionStub: sinon.SinonStub;
 

@@ -109,11 +109,11 @@ export function parseChangelog(rawChangelog: string): Record<string, string> {
     const matches = line.match(VERSION_LINE_REGEX);
     if (matches) {
       currentVersion = matches[1]; // The first capture group is the SemVer.
-    } else {
+    } else if (currentVersion) {
       // Throw away lines that aren't under a specific version.
-      if (currentVersion && !changelog[currentVersion]) {
+      if (!changelog[currentVersion]) {
         changelog[currentVersion] = line;
-      } else if (currentVersion) {
+      } else {
         changelog[currentVersion] += `\n${line}`;
       }
     }
