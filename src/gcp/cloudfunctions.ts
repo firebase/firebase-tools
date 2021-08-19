@@ -7,18 +7,10 @@ import * as backend from "../deploy/functions/backend";
 import * as utils from "../utils";
 import * as proto from "./proto";
 import * as runtimes from "../deploy/functions/runtimes";
+import * as iam from "./iam";
+import * as _ from "lodash";
 
 export const API_VERSION = "v1";
-
-export const DEFAULT_PUBLIC_POLICY = {
-  version: 3,
-  bindings: [
-    {
-      role: "roles/cloudfunctions.invoker",
-      members: ["allUsers"],
-    },
-  ],
-};
 
 interface Operation {
   name: string;
@@ -234,7 +226,7 @@ export async function createFunction(
  */
 interface IamOptions {
   name: string;
-  policy: any; // TODO: Type this?
+  policy: iam.Policy;
 }
 
 /**
@@ -258,6 +250,104 @@ export async function setIamPolicy(options: IamOptions): Promise<void> {
       original: err,
     });
   }
+}
+
+// Response body policy - https://cloud.google.com/functions/docs/reference/rest/v1/Policy
+interface GetIamPolicy {
+  bindings?: iam.Binding[];
+  version?: number;
+  etag?: string;
+}
+
+/**
+ * Gets the IAM policy of a Google Cloud Function.
+ * @param fnName The full name and path of the Cloud Function.
+ */
+export async function getIamPolicy(fnName: string): Promise<GetIamPolicy> {
+  const endpoint = `/${API_VERSION}/${fnName}:getIamPolicy`;
+
+  try {
+    return await api.request("GET", endpoint, {
+      auth: true,
+      origin: api.functionsOrigin,
+    });
+  } catch (err) {
+    throw new FirebaseError(`Failed to get the IAM Policy on the function ${fnName}`, {
+      original: err,
+    });
+  }
+}
+
+/**
+ * Sets the invoker IAM policy for the function on function create
+ * @param projectId id of the project
+ * @param fnName function name
+ * @param invoker an array of invoker strings
+ *
+ * @throws {@link FirebaseError} on an empty invoker, when the IAM Polciy fails to be grabbed or set
+ */
+export async function setInvokerCreate(
+  projectId: string,
+  fnName: string,
+  invoker: string[]
+): Promise<void> {
+  if (invoker.length == 0) {
+    throw new FirebaseError("Invoker cannot be an empty array");
+  }
+  const invokerMembers = proto.getInvokerMembers(invoker, projectId);
+  const invokerRole = "roles/cloudfunctions.invoker";
+  const bindings = [{ role: invokerRole, members: invokerMembers }];
+
+  const policy: iam.Policy = {
+    bindings: bindings,
+    etag: "",
+    version: 3,
+  };
+  await setIamPolicy({ name: fnName, policy: policy });
+}
+
+/**
+ * Gets the current IAM policy on function update,
+ * overrides the current invoker role with the supplied invoker members
+ * @param projectId id of the project
+ * @param fnName function name
+ * @param invoker an array of invoker strings
+ *
+ * @throws {@link FirebaseError} on an empty invoker, when the IAM Polciy fails to be grabbed or set
+ */
+export async function setInvokerUpdate(
+  projectId: string,
+  fnName: string,
+  invoker: string[]
+): Promise<void> {
+  if (invoker.length == 0) {
+    throw new FirebaseError("Invoker cannot be an empty array");
+  }
+  const invokerMembers = proto.getInvokerMembers(invoker, projectId);
+  const invokerRole = "roles/cloudfunctions.invoker";
+  const currentPolicy = await getIamPolicy(fnName);
+  const currentInvokerBinding = currentPolicy.bindings?.find(
+    (binding) => binding.role === invokerRole
+  );
+  if (
+    currentInvokerBinding &&
+    JSON.stringify(currentInvokerBinding.members.sort()) === JSON.stringify(invokerMembers.sort())
+  ) {
+    return;
+  }
+
+  const bindings = (currentPolicy.bindings || []).filter((binding) => binding.role !== invokerRole);
+  bindings.push({
+    role: invokerRole,
+    members: invokerMembers,
+  });
+
+  const policy: iam.Policy = {
+    bindings: bindings,
+    etag: currentPolicy.etag || "",
+    version: 3,
+  };
+  await setIamPolicy({ name: fnName, policy: policy });
 }
 
 /**

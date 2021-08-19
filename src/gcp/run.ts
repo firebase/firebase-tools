@@ -2,6 +2,8 @@ import { Client } from "../apiv2";
 import { FirebaseError } from "../error";
 import { runOrigin } from "../api";
 import * as proto from "./proto";
+import * as iam from "./iam";
+import * as _ from "lodash";
 
 const API_VERSION = "v1";
 
@@ -105,21 +107,11 @@ export interface TrafficTarget {
 }
 
 export interface IamPolicy {
-  version: number;
-  bindings: Record<string, unknown>[];
+  version?: number;
+  bindings?: iam.Binding[];
   auditConfigs?: Record<string, unknown>[];
   etag?: string;
 }
-
-export const DEFAULT_PUBLIC_POLICY = {
-  version: 3,
-  bindings: [
-    {
-      role: "roles/run.invoker",
-      members: ["allUsers"],
-    },
-  ],
-};
 
 export async function getService(name: string): Promise<Service> {
   try {
@@ -148,16 +140,20 @@ export async function replaceService(name: string, service: Service): Promise<Se
  * @param name Fully qualified name of the Service.
  * @param policy The [policy](https://cloud.google.com/run/docs/reference/rest/v1/projects.locations.services/setIamPolicy) to set.
  */
-export async function setIamPolicy(name: string, policy: IamPolicy): Promise<void> {
+export async function setIamPolicy(
+  name: string,
+  policy: iam.Policy,
+  httpClient: Client = client
+): Promise<void> {
   // Cloud Run has an atypical REST binding for SetIamPolicy. Instead of making the body a policy and
   // the update mask a query parameter (e.g. Cloud Functions v1) the request body is the literal
   // proto.
   interface Request {
-    policy: IamPolicy;
+    policy: iam.Policy;
     updateMask: string;
   }
   try {
-    await client.post<Request, IamPolicy>(`${name}:setIamPolicy`, {
+    await httpClient.post<Request, IamPolicy>(`${name}:setIamPolicy`, {
       policy,
       updateMask: proto.fieldMasks(policy).join(","),
     });
@@ -166,4 +162,92 @@ export async function setIamPolicy(name: string, policy: IamPolicy): Promise<voi
       original: err,
     });
   }
+}
+
+export async function getIamPolicy(
+  serviceName: string,
+  httpClient: Client = client
+): Promise<IamPolicy> {
+  try {
+    const response = await httpClient.get<IamPolicy>(`${serviceName}:getIamPolicy`);
+    return response.body;
+  } catch (err) {
+    throw new FirebaseError(`Failed to get the IAM Policy on the Service ${serviceName}`, {
+      original: err,
+    });
+  }
+}
+
+/**
+ * Gets the current IAM policy for the run service and overrides the invoker role with the supplied invoker members
+ * @param projectId id of the project
+ * @param serviceName cloud run service
+ * @param invoker an array of invoker strings
+ *
+ * @throws {@link FirebaseError} on an empty invoker, when the IAM Polciy fails to be grabbed or set
+ */
+export async function setInvokerCreate(
+  projectId: string,
+  serviceName: string,
+  invoker: string[],
+  httpClient: Client = client // for unit testing
+) {
+  if (invoker.length == 0) {
+    throw new FirebaseError("Invoker cannot be an empty array");
+  }
+  const invokerMembers = proto.getInvokerMembers(invoker, projectId);
+  const invokerRole = "roles/run.invoker";
+  const bindings = [{ role: invokerRole, members: invokerMembers }];
+
+  const policy: iam.Policy = {
+    bindings: bindings,
+    etag: "",
+    version: 3,
+  };
+
+  await setIamPolicy(serviceName, policy, httpClient);
+}
+
+/**
+ * Gets the current IAM policy for the run service and overrides the invoker role with the supplied invoker members
+ * @param projectId id of the project
+ * @param serviceName cloud run service
+ * @param invoker an array of invoker strings
+ *
+ * @throws {@link FirebaseError} on an empty invoker, when the IAM Polciy fails to be grabbed or set
+ */
+export async function setInvokerUpdate(
+  projectId: string,
+  serviceName: string,
+  invoker: string[],
+  httpClient: Client = client // for unit testing
+) {
+  if (invoker.length == 0) {
+    throw new FirebaseError("Invoker cannot be an empty array");
+  }
+  const invokerMembers = proto.getInvokerMembers(invoker, projectId);
+  const invokerRole = "roles/run.invoker";
+  const currentPolicy = await getIamPolicy(serviceName, httpClient);
+  const currentInvokerBinding = currentPolicy.bindings?.find(
+    (binding) => binding.role === invokerRole
+  );
+  if (
+    currentInvokerBinding &&
+    JSON.stringify(currentInvokerBinding.members.sort()) === JSON.stringify(invokerMembers.sort())
+  ) {
+    return;
+  }
+
+  const bindings = (currentPolicy.bindings || []).filter((binding) => binding.role !== invokerRole);
+  bindings.push({
+    role: invokerRole,
+    members: invokerMembers,
+  });
+
+  const policy: iam.Policy = {
+    bindings: bindings,
+    etag: currentPolicy.etag || "",
+    version: 3,
+  };
+  await setIamPolicy(serviceName, policy, httpClient);
 }

@@ -51,7 +51,7 @@ export type OperationType =
   | "upsert schedule"
   | "delete schedule"
   | "delete topic"
-  | "make public";
+  | "set invoker";
 
 export interface DeploymentTask<T> {
   run: () => Promise<void>;
@@ -121,18 +121,18 @@ export function createFunctionTask(
       onPoll,
     });
     if (!backend.isEventTrigger(fn.trigger)) {
-      try {
-        if (fn.platform === "gcfv1") {
-          await gcf.setIamPolicy({
-            name: fnName,
-            policy: gcf.DEFAULT_PUBLIC_POLICY,
-          });
-        } else {
-          const serviceName = (cloudFunction as gcfV2.CloudFunction).serviceConfig.service!;
-          cloudrun.setIamPolicy(serviceName, cloudrun.DEFAULT_PUBLIC_POLICY);
+      const invoker = fn.invoker || ["public"];
+      if (invoker[0] !== "private") {
+        try {
+          if (fn.platform === "gcfv1") {
+            await gcf.setInvokerCreate(params.projectId, fnName, invoker);
+          } else {
+            const serviceName = (cloudFunction as gcfV2.CloudFunction).serviceConfig.service!;
+            cloudrun.setInvokerCreate(params.projectId, serviceName, invoker);
+          }
+        } catch (err) {
+          params.errorHandler.record("error", fnName, "set invoker", err.message);
         }
-      } catch (err) {
-        params.errorHandler.record("warning", fnName, "make public", err.message);
       }
     }
     if (fn.platform !== "gcfv1") {
@@ -192,6 +192,19 @@ export function updateFunctionTask(
       onPoll,
     };
     const cloudFunction = await pollOperation<unknown>(pollerOptions);
+    if (!backend.isEventTrigger(fn.trigger) && fn.invoker) {
+      try {
+        if (fn.platform === "gcfv1") {
+          await gcf.setInvokerUpdate(params.projectId, fnName, fn.invoker);
+        } else {
+          const serviceName = (cloudFunction as gcfV2.CloudFunction).serviceConfig.service!;
+          cloudrun.setInvokerUpdate(params.projectId, serviceName, fn.invoker);
+        }
+      } catch (err) {
+        params.errorHandler.record("error", fnName, "set invoker", err.message);
+      }
+    }
+
     if ("concurrency" in fn) {
       if (fn.platform === "gcfv1") {
         throw new FirebaseError("Precondition failed: GCFv1 does not support concurrency");
