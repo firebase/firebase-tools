@@ -25,7 +25,7 @@ const REQUIRED_PERMISSIONS = [
 
 const RESERVED_PROJECT_ALIAS = ["local"];
 
-interface Project {
+interface ProjectAliasInfo {
   projectId: string;
   alias?: string;
 }
@@ -37,40 +37,33 @@ export function getAllProjects(options: {
   project?: string;
   projectId?: string;
   cwd?: string;
-}): Project[] {
-  const results: Record<string, string> = {};
+}): ProjectAliasInfo[] {
+  const result: Record<string, string> = {};
 
   const projectId = getProjectId(options);
   if (projectId) {
-    results[projectId] = projectId;
+    result[projectId] = projectId;
   }
 
   const rc = loadRC(options);
   if (rc.projects) {
     for (const [alias, projectId] of Object.entries(rc.projects)) {
-      if (alias === "default") {
-        if (Object.keys(results).includes(projectId)) {
-          // We already have a better alias for this project.
-          continue;
-        }
-        results[projectId] = projectId;
-        continue;
+      if (Object.keys(result).includes(projectId)) {
+        logWarning("FOOBBARCAR");
       }
-      results[projectId] = alias;
+      result[projectId] = alias;
     }
   }
-  return Object.entries(results).map(([k, v]) => {
-    const result: Project = { projectId: k };
-    if (k !== v) {
-      result.alias = v;
-    }
+  return Object.entries(result).map(([k, v]) => {
+    const result: ProjectAliasInfo = { projectId: k };
+    result.alias = v;
     return result;
   });
 }
 
 // Check necessary IAM permissions for a project.
 // If permission check fails on a project, ask user to exclude it.
-async function checkRequiredPermission({ projectId }: Project): Promise<boolean> {
+async function checkRequiredPermission({ projectId }: ProjectAliasInfo): Promise<boolean> {
   const result = await testIamPermissions(projectId, REQUIRED_PERMISSIONS);
   if (result.passed) return true;
 
@@ -99,7 +92,7 @@ async function checkRequiredPermission({ projectId }: Project): Promise<boolean>
 
 // Check if project alias is reserved for internal use.
 // If a project's alias is reserved, ask for user consent to exclude the project.
-async function checkReservedAlias({ projectId, alias }: Project): Promise<boolean> {
+async function checkReservedAlias({ projectId, alias }: ProjectAliasInfo): Promise<boolean> {
   if (!alias || !RESERVED_PROJECT_ALIAS.includes(alias)) {
     return true;
   }
@@ -130,7 +123,7 @@ async function checkReservedAlias({ projectId, alias }: Project): Promise<boolea
 }
 
 function configsToEnvs(
-  projects: Project[],
+  projects: ProjectAliasInfo[],
   configs: Record<string, any>[],
   prefix: string
 ): { envs: configExport.EnvMap[][]; errMsg: string } {
@@ -166,11 +159,10 @@ async function promptForPrefix(errMsg: string): Promise<string> {
   );
 }
 
-
 function writeEnvs(
   basePath: string,
   header: string,
-  projects: Project[],
+  projects: ProjectAliasInfo[],
   envs: configExport.EnvMap[][]
 ): string[] {
   return envs.map((env, idx) => {
@@ -185,7 +177,7 @@ function writeEnvs(
   });
 }
 
-function writeEmptyEnvs(basePath: string, header: string, projects: Project[]): string[] {
+function writeEmptyEnvs(basePath: string, header: string, projects: ProjectAliasInfo[]): string[] {
   return writeEnvs(
     basePath,
     header,
@@ -237,7 +229,7 @@ export default new Command("functions:config:export")
       );
     }
 
-    const projects: Project[] = [];
+    const projects: ProjectAliasInfo[] = [];
     for (const project of allProjects) {
       if ((await checkRequiredPermission(project)) && (await checkReservedAlias(project))) {
         projects.push(project);
