@@ -1,5 +1,3 @@
-import * as fs from "fs-extra";
-
 import {Command} from "../command";
 import * as utils from "../utils";
 import {requireAuth} from "../requireAuth";
@@ -25,10 +23,10 @@ module.exports = new Command("appdistribution:testers:remove [emails...]")
         console.log("Deleting the following testers: " + emailsArr + " from project " + projectNumber);
         deleteResponse = await request.removeTesters(projectNumber, emailsArr);
       } catch (err) {
-        throw new FirebaseError(`failed to remove testers.${err}` + {exit: 1})
+        throw new FirebaseError(`failed to remove testers.${err}` + {exit: 1});
       }
       if (options.debug) {
-        utils.logSuccess(`Testers: ${deleteResponse.emails},have been successfully deleted`)
+        utils.logSuccess(`Testers: ${deleteResponse.emails},have been successfully deleted`);
       } else {
         utils.logSuccess(`${deleteResponse.emails.length} Testers have successfully been deleted`);
       }

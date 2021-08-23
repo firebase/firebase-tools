@@ -5,11 +5,11 @@ import * as rimraf from "rimraf";
 import * as sinon from "sinon";
 import * as tmp from "tmp";
 
-import {AppDistributionClient, BatchRemoveTestersResponse} from "../../appdistribution/client";
+import {AppDistributionClient} from "../../appdistribution/client";
 import {FirebaseError} from "../../error";
 import * as api from "../../api";
 import * as nock from "nock";
-import {Distribution, DistributionFileType} from "../../appdistribution/distribution";
+import {Distribution} from "../../appdistribution/distribution";
 import {describe} from 'mocha';
 
 tmp.setGracefulCleanup();
@@ -40,7 +40,6 @@ describe("distribution", () => {
 
   describe("addTesters", () => {
     let emails = ["a@foo.com", "b@foo.com"];
-    const tokenName = "fakeResponse";
     it('should throw error if upload fails', async () => {
       nock(api.appDistributionOrigin)
           .post(`/v1/projects/${projectNumber}/testers:batchAdd`)
@@ -52,7 +51,7 @@ describe("distribution", () => {
     it("should resolve when request succeeds", async () => {
       nock(api.appDistributionOrigin)
           .post(`/v1/projects/${projectNumber}/testers:batchAdd`)
-          .reply(200, {name: tokenName});
+          .reply(200, {});
       await expect(appDistributionClient.addTesters(projectNumber, emails)).to.be.eventually.fulfilled;
       expect(nock.isDone()).to.be.true;
     });

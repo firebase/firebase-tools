@@ -6,7 +6,6 @@ import {needProjectNumber} from '../projectUtils';
 import {AppDistributionClient} from '../appdistribution/client';
 import {getEmails} from '../testerEmailParser';
 
-
 module.exports = new Command("appdistribution:testers:add [emails...]")
     .description("Create Testers")
     .option(
@@ -23,7 +22,7 @@ module.exports = new Command("appdistribution:testers:add [emails...]")
         console.log(emailsArr.length);
         await request.addTesters(projectNumber, emailsArr);
       } catch (err) {
-        throw new FirebaseError(`failed to add testers.${err}` + {exit: 1})
+        throw new FirebaseError(`failed to add testers.${err}` + {exit: 1});
       }
       utils.logSuccess(`Testers Created Successfully`);
     });

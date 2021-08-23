@@ -7,7 +7,6 @@ import {
   AabInfo,
   IntegrationState,
   AppDistributionClient,
-  UploadReleaseResponse,
   UploadReleaseResult,
 } from "../appdistribution/client";
 import { FirebaseError } from "../error";
