@@ -3,7 +3,6 @@ import * as os from "os";
 import * as path from "path";
 
 import * as clc from "cli-color";
-import { flatten } from "flat";
 
 import * as env from "../functions/env";
 import * as functionsConfig from "../functionsConfig";
@@ -41,6 +40,30 @@ interface EnvMap {
 interface ConfigToEnvResult {
   success: EnvMap[];
   errors: Required<EnvMap>[];
+}
+
+/**
+ * Flatten object with '.' as delimited key.
+ */
+export function flatten(obj: Record<string, unknown>): Record<string, unknown> {
+  /**
+   *
+   */
+  function* helper(path: string[], obj: Record<string, unknown>): Generator<[string, unknown]> {
+    for (const [k, v] of Object.entries(obj)) {
+      if (typeof v !== "object" || v === null) {
+        yield [[...path, k].join("."), v];
+      } else {
+        // Object.entries loses type info, so we must cast
+        yield* helper([...path, k], v as Record<string, unknown>);
+      }
+    }
+  }
+  const result: Record<string, unknown> = {};
+  for (const [k, v] of helper([], obj)) {
+    result[k] = v;
+  }
+  return result;
 }
 
 /**

@@ -6,6 +6,21 @@ import * as env from "../../functions/env";
 import * as rc from "../../rc";
 
 describe("functions-config-export", () => {
+  describe("flatten", () => {
+    it("should flatten simple objects", () => {
+      expect(configExport.flatten({ foo: "foo", bar: "bar" })).to.be.deep.equal({
+        foo: "foo",
+        bar: "bar",
+      });
+    });
+    it("should flatten deeply nested objects", () => {
+      expect(configExport.flatten({ foo: "foo", a: { aa: { aaa: "a" } } })).to.be.deep.equal({
+        foo: "foo",
+        ["a.aa.aaa"]: "a",
+      });
+    });
+  });
+
   describe("getAllProjects", () => {
     let loadRCStub: sinon.SinonStub;
 
