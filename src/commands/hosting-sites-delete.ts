@@ -13,7 +13,7 @@ const LOG_TAG = "hosting:sites";
 
 export default new Command("hosting:sites:delete <siteId>")
   .description("delete a Firebase Hosting site")
-  .option("-f, --force", "delete without confirmation")
+  .withForce()
   .before(requireConfig)
   .before(requirePermissions, ["firebasehosting.sites.delete"])
   .action(
