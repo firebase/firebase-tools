@@ -12,12 +12,9 @@ import {
 } from "../appdistribution/client";
 import { FirebaseError } from "../error";
 import { Distribution, DistributionFileType } from "../appdistribution/distribution";
+import {ensureFileExists} from '../ensureFileExists';
+import {testerEmailParser} from '../testerEmailParser';
 
-function ensureFileExists(file: string, message = ""): void {
-  if (!fs.existsSync(file)) {
-    throw new FirebaseError(`File ${file} does not exist: ${message}`);
-  }
-}
 
 function getAppId(appId: string): string {
   if (!appId) {
@@ -37,21 +34,6 @@ function getReleaseNotes(releaseNotes: string, releaseNotesFile: string): string
   return "";
 }
 
-function getTestersOrGroups(value: string, file: string): string[] {
-  if (!value && file) {
-    ensureFileExists(file);
-    value = fs.readFileSync(file, "utf8");
-  }
-
-  if (value) {
-    return value
-      .split(/,|\n/)
-      .map((entry) => entry.trim())
-      .filter((entry) => !!entry);
-  }
-
-  return [];
-}
 
 module.exports = new Command("appdistribution:distribute <release-binary-file>")
   .description("upload a release binary")
@@ -73,14 +55,14 @@ module.exports = new Command("appdistribution:distribute <release-binary-file>")
     const appId = getAppId(options.app);
     const distribution = new Distribution(file);
     const releaseNotes = getReleaseNotes(options.releaseNotes, options.releaseNotesFile);
-    const testers = getTestersOrGroups(options.testers, options.testersFile);
-    const groups = getTestersOrGroups(options.groups, options.groupsFile);
-    const requests = new AppDistributionClient(appId);
+    const testers = testerEmailParser(options.testers, options.testersFile);
+    const groups = testerEmailParser(options.groups, options.groupsFile);
+    const requests = new AppDistributionClient();
     let aabInfo: AabInfo | undefined;
 
     if (distribution.distributionFileType() === DistributionFileType.AAB) {
       try {
-        aabInfo = await requests.getAabInfo();
+        aabInfo = await requests.getAabInfo(appId);
       } catch (err) {
         if (err.status === 404) {
           throw new FirebaseError(
@@ -127,7 +109,7 @@ module.exports = new Command("appdistribution:distribute <release-binary-file>")
     utils.logBullet("uploading binary...");
     let releaseName;
     try {
-      const operationName = await requests.uploadRelease(distribution);
+      const operationName = await requests.uploadRelease(appId,distribution);
 
       // The upload process is asynchronous, so poll to figure out when the upload has finished successfully
       const uploadResponse = await requests.pollUploadStatus(operationName);
@@ -171,7 +153,7 @@ module.exports = new Command("appdistribution:distribute <release-binary-file>")
     // If this is an app bundle and the certificate was originally blank fetch the updated
     // certificate and print
     if (aabInfo && !aabInfo.testCertificate) {
-      aabInfo = await requests.getAabInfo();
+      aabInfo = await requests.getAabInfo(appId);
       if (aabInfo.testCertificate) {
         utils.logBullet(
           "After you upload an AAB for the first time, App Distribution " +

@@ -2,8 +2,9 @@ import * as _ from "lodash";
 import * as api from "../api";
 import * as utils from "../utils";
 import * as operationPoller from "../operation-poller";
-import { Distribution } from "./distribution";
-import { FirebaseError } from "../error";
+import {Distribution} from "./distribution";
+import {FirebaseError} from "../error";
+
 
 // tslint:disable-next-line:no-var-requires
 const pkg = require("../../package.json");
@@ -58,18 +59,20 @@ export interface UploadReleaseResponse {
   release: Release;
 }
 
+export interface BatchRemoveTestersResponse {
+  emails: string[];
+}
+
 /**
  * Makes RPCs to the App Distribution server backend.
  */
 export class AppDistributionClient {
-  private readonly appName: string;
-
-  constructor(appId: string) {
-    this.appName = `projects/${appId.split(":")[1]}/apps/${appId}`;
+  getAppName(appId: string): string {
+    return `projects/${appId.split(":")[1]}/apps/${appId}`;
   }
 
-  async getAabInfo(): Promise<AabInfo> {
-    const apiResponse = await api.request("GET", `/v1/${this.appName}/aabInfo`, {
+  async getAabInfo(appId: string): Promise<AabInfo> {
+    const apiResponse = await api.request("GET", `/v1/${this.getAppName(appId)}/aabInfo`, {
       origin: api.appDistributionOrigin,
       auth: true,
     });
@@ -77,8 +80,8 @@ export class AppDistributionClient {
     return _.get(apiResponse, "body");
   }
 
-  async uploadRelease(distribution: Distribution): Promise<string> {
-    const apiResponse = await api.request("POST", `/upload/v1/${this.appName}/releases:upload`, {
+  async uploadRelease(appId: string, distribution: Distribution): Promise<string> {
+    const apiResponse = await api.request("POST", `/upload/v1/${this.getAppName(appId)}/releases:upload`, {
       auth: true,
       origin: api.appDistributionOrigin,
       headers: {
@@ -107,7 +110,6 @@ export class AppDistributionClient {
     });
   }
 
-
   async updateReleaseNotes(releaseName: string, releaseNotes: string): Promise<void> {
     if (!releaseNotes) {
       utils.logWarning("no release notes specified, skipping");
@@ -130,16 +132,16 @@ export class AppDistributionClient {
         data,
       });
     } catch (err) {
-      throw new FirebaseError(`failed to update release notes with ${err.message}`, { exit: 1 });
+      throw new FirebaseError(`failed to update release notes with ${err.message}`, {exit: 1});
     }
 
     utils.logSuccess("added release notes successfully");
   }
 
   async distribute(
-    releaseName: string,
-    testerEmails: string[] = [],
-    groupAliases: string[] = []
+      releaseName: string,
+      testerEmails: string[] = [],
+      groupAliases: string[] = []
   ): Promise<void> {
     if (testerEmails.length === 0 && groupAliases.length === 0) {
       utils.logWarning("no testers or groups specified, skipping");
@@ -175,5 +177,30 @@ export class AppDistributionClient {
     }
 
     utils.logSuccess("distributed to testers/groups successfully");
+  }
+
+  async addTesters(projectNumber: string, emails: string[]) {
+    const url = `/v1/projects/${projectNumber}/testers:batchAdd`;
+    const data = {emails: emails};
+    const apiResponse = await api.request("POST", url, {
+      origin: api.appDistributionOrigin,
+      apiVersion: "v1",
+      auth: true,
+      data,
+    });
+
+    return _.get(apiResponse, "body");
+  }
+
+  async removeTesters(projectNumber: string, emails: string[]) :Promise<BatchRemoveTestersResponse>{
+    const url = `/v1/projects/${projectNumber}/testers:batchRemove`;
+    const data = {emails: emails};
+    const apiResponse = await api.request("POST", url, {
+      origin: api.appDistributionOrigin,
+      apiVersion: "v1",
+      auth: true,
+      data,
+    });
+    return _.get(apiResponse,"body");
   }
 }
