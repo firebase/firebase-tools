@@ -42,7 +42,7 @@ function consoleUninstallOnly(projectId: string, instanceId: string): Promise<vo
 
 export default new Command("ext:uninstall <extensionInstanceId>")
   .description("uninstall an extension that is installed in your Firebase project by instance ID")
-  .option("-f, --force", "No confirmation. Otherwise, a confirmation prompt will appear.")
+  .withForce()
   .before(requirePermissions, ["firebaseextensions.instances.delete"])
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
