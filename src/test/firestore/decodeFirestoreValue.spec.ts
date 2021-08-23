@@ -1,8 +1,5 @@
-"use strict";
-
-var chai = require("chai");
-var decodeFirestoreValue = require("../../firestore/decodeFirestoreValue");
-var expect = chai.expect;
+import { expect } from "chai";
+import decodeFirestoreValue from "../../firestore/decodeFirestoreValue";
 
 describe("decodeFirestoreValue", () => {
   it("should decode a stringValue", () => {
