@@ -1,6 +1,5 @@
 import * as fs from "fs-extra";
 import { FirebaseError } from "../error";
-import * as crypto from "crypto";
 import { logger } from "../logger";
 import * as pathUtil from "path";
 
@@ -55,30 +54,7 @@ export class Distribution {
     return fs.createReadStream(this.path);
   }
 
-  platform(): string {
-    switch (this.fileType) {
-      case DistributionFileType.IPA:
-        return "ios";
-      case DistributionFileType.AAB:
-      case DistributionFileType.APK:
-        return "android";
-      default:
-        throw new FirebaseError("Unsupported file format, should be .ipa, .apk or .aab");
-    }
-  }
-
   getFileName(): string {
     return this.fileName;
-  }
-
-  sha256(): Promise<string> {
-    return new Promise<string>((resolve) => {
-      const hash = crypto.createHash("sha256");
-      const stream = this.readStream();
-      stream.on("data", (data) => hash.update(data));
-      stream.on("end", () => {
-        return resolve(hash.digest("hex"));
-      });
-    });
   }
 }

@@ -79,7 +79,20 @@ module.exports = new Command("appdistribution:distribute <release-binary-file>")
     let aabInfo: AabInfo | undefined;
 
     if (distribution.distributionFileType() === DistributionFileType.AAB) {
-      aabInfo = await requests.getAabInfo();
+      try {
+        aabInfo = await requests.getAabInfo();
+      } catch (err) {
+        if (err.status === 404) {
+          throw new FirebaseError(
+            `App Distribution could not find your app ${appId}. ` +
+              `Make sure to onboard your app by pressing the "Get started" ` +
+              "button on the App Distribution page in the Firebase console: " +
+              "https://console.firebase.google.com/project/_/appdistribution",
+            { exit: 1 }
+          );
+        }
+        throw new FirebaseError(`failed to determine AAB info. ${err.message}`, { exit: 1 });
+      }
 
       if (
         aabInfo.integrationState !== IntegrationState.INTEGRATED &&
@@ -111,47 +124,48 @@ module.exports = new Command("appdistribution:distribute <release-binary-file>")
       }
     }
 
-    // Upload the distribution if it hasn't been uploaded before
-    let uploadResponse;
+    utils.logBullet("uploading binary...");
+    let releaseName;
     try {
-      const sha256 = await distribution.sha256();
-      uploadResponse = await requests.getUploadStatus(sha256);
-      utils.logWarning("this binary has been uploaded before, skipping upload");
-    } catch (err) {
-      // If there's an error, we know that the distribution hasn't been uploaded before
-      utils.logBullet("uploading binary...");
+      const operationName = await requests.uploadRelease(distribution);
 
-      try {
-        const operationName = await requests.uploadRelease(distribution);
+      // The upload process is asynchronous, so poll to figure out when the upload has finished successfully
+      const uploadResponse = await requests.pollUploadStatus(operationName);
 
-        // The upload process is asynchronous, so poll to figure out when the upload has finished successfully
-        uploadResponse = await requests.pollUploadStatus(operationName);
-
-        const release = uploadResponse.release;
-        switch (uploadResponse.result) {
-          case UploadReleaseResult.RELEASE_CREATED:
-            utils.logSuccess(
-              `uploaded new release ${release.displayVersion} (${release.buildVersion}) successfully!`
-            );
-            break;
-          case UploadReleaseResult.RELEASE_UPDATED:
-            utils.logSuccess(
-              `uploaded update to existing release ${release.displayVersion} (${release.buildVersion}) successfully!`
-            );
-            break;
-          case UploadReleaseResult.RELEASE_UNMODIFIED:
-            utils.logSuccess(
-              `re-uploaded already existing release ${release.displayVersion} (${release.buildVersion}) successfully!`
-            );
-            break;
-          default:
-            utils.logSuccess(
-              `uploaded release ${release.displayVersion} (${release.buildVersion}) successfully!`
-            );
-        }
-      } catch (err) {
-        throw new FirebaseError(`failed to upload release. ${err.message}`, { exit: 1 });
+      const release = uploadResponse.release;
+      switch (uploadResponse.result) {
+        case UploadReleaseResult.RELEASE_CREATED:
+          utils.logSuccess(
+            `uploaded new release ${release.displayVersion} (${release.buildVersion}) successfully!`
+          );
+          break;
+        case UploadReleaseResult.RELEASE_UPDATED:
+          utils.logSuccess(
+            `uploaded update to existing release ${release.displayVersion} (${release.buildVersion}) successfully!`
+          );
+          break;
+        case UploadReleaseResult.RELEASE_UNMODIFIED:
+          utils.logSuccess(
+            `re-uploaded already existing release ${release.displayVersion} (${release.buildVersion}) successfully!`
+          );
+          break;
+        default:
+          utils.logSuccess(
+            `uploaded release ${release.displayVersion} (${release.buildVersion}) successfully!`
+          );
       }
+      releaseName = uploadResponse.release.name;
+    } catch (err) {
+      if (err.status === 404) {
+        throw new FirebaseError(
+          `App Distribution could not find your app ${appId}. ` +
+            `Make sure to onboard your app by pressing the "Get started" ` +
+            "button on the App Distribution page in the Firebase console: " +
+            "https://console.firebase.google.com/project/_/appdistribution",
+          { exit: 1 }
+        );
+      }
+      throw new FirebaseError(`failed to upload release. ${err.message}`, { exit: 1 });
     }
 
     // If this is an app bundle and the certificate was originally blank fetch the updated
@@ -172,7 +186,6 @@ module.exports = new Command("appdistribution:distribute <release-binary-file>")
     }
 
     // Add release notes and distribute to testers/groups
-    const releaseName = uploadResponse.release.name;
     await requests.updateReleaseNotes(releaseName, releaseNotes);
     await requests.distribute(releaseName, testers, groups);
   });

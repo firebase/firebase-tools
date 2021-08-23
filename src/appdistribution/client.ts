@@ -62,9 +62,6 @@ export interface UploadReleaseResponse {
  * Makes RPCs to the App Distribution server backend.
  */
 export class AppDistributionClient {
-  static DEFAULT_POLLING_TIMEOUTL_MS = 5 * 60 * 1000;
-  static DEFAULT_POLLING_BACKOFF_MS = 1000;
-
   private readonly appName: string;
 
   constructor(appId: string) {
@@ -85,11 +82,9 @@ export class AppDistributionClient {
       auth: true,
       origin: api.appDistributionOrigin,
       headers: {
-        "X-APP-DISTRO-API-CLIENT-ID": pkg.name,
-        "X-APP-DISTRO-API-CLIENT-TYPE": distribution.platform(),
-        "X-APP-DISTRO-API-CLIENT-VERSION": pkg.version,
-        "X-GOOG-UPLOAD-FILE-NAME": distribution.getFileName(),
-        "X-GOOG-UPLOAD-PROTOCOL": "raw",
+        "X-Firebase-Client": `${pkg.name}/${pkg.version}`,
+        "X-Goog-Upload-File-Name": distribution.getFileName(),
+        "X-Goog-Upload-Protocol": "raw",
         "Content-Type": "application/octet-stream",
       },
       data: distribution.readStream(),
@@ -99,19 +94,16 @@ export class AppDistributionClient {
     return _.get(JSON.parse(apiResponse.body), "name");
   }
 
-  async pollUploadStatus(operationName: string, once = false): Promise<UploadReleaseResponse> {
+  async pollUploadStatus(operationName: string): Promise<UploadReleaseResponse> {
     return operationPoller.pollOperation<UploadReleaseResponse>({
+      pollerName: "App Distribution Upload Poller",
       apiOrigin: api.appDistributionOrigin,
       apiVersion: "v1",
       operationResourceName: operationName,
-      masterTimeout: AppDistributionClient.DEFAULT_POLLING_TIMEOUTL_MS,
-      backoff: AppDistributionClient.DEFAULT_POLLING_BACKOFF_MS,
-      once: once,
+      masterTimeout: 5 * 60 * 1000,
+      backoff: 1000,
+      maxBackoff: 10 * 1000,
     });
-  }
-
-  async getUploadStatus(sha256: string): Promise<UploadReleaseResponse> {
-    return this.pollUploadStatus(`${this.appName}/releases/-/operations/${sha256}`, true);
   }
 
   async updateReleaseNotes(releaseName: string, releaseNotes: string): Promise<void> {
