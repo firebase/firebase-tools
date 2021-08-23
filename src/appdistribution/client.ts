@@ -78,12 +78,9 @@ export class AppDistributionClient {
   }
 
   async uploadRelease(appId: string, distribution: Distribution): Promise<string> {
-    const apiResponse = await api.request(
       "POST",
       `/upload/v1/${getAppName(appId)}/releases:upload`,
-      {
         auth: true,
-        origin: api.appDistributionOrigin,
         headers: {
           "X-Firebase-Client": `${pkg.name}/${pkg.version}`,
           "X-Goog-Upload-File-Name": distribution.getFileName(),
@@ -92,9 +89,6 @@ export class AppDistributionClient {
         },
         data: distribution.readStream(),
         json: false,
-      }
-    );
-
     return _.get(JSON.parse(apiResponse.body), "name");
   }
 
