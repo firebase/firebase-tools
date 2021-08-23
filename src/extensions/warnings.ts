@@ -42,7 +42,7 @@ export async function displayWarningPrompts(
   publisherId: string,
   launchStage: RegistryLaunchStage,
   extensionVersion: ExtensionVersion
-): Promise<boolean> {
+) {
   const trustedPublishers = await getTrustedPublishers();
   if (!trustedPublishers.includes(publisherId)) {
     displayEAPWarning({
@@ -56,9 +56,4 @@ export async function displayWarningPrompts(
     // Otherwise, this is an official extension and requires no warning prompts.
     return true;
   }
-  return await promptOnce({
-    type: "confirm",
-    message: "Do you acknowledge the status of this extension?",
-    default: true,
-  });
 }

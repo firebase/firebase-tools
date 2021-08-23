@@ -44,10 +44,12 @@ interface InstallExtensionOptions {
   extensionName: string;
   source?: extensionsApi.ExtensionSource;
   extVersion?: extensionsApi.ExtensionVersion;
+  nonInteractive: boolean;
+  force?: boolean
 }
 
 async function installExtension(options: InstallExtensionOptions): Promise<void> {
-  const { projectId, extensionName, source, extVersion, paramFilePath } = options;
+  const { projectId, extensionName, source, extVersion, paramFilePath, nonInteractive, force } = options;
   const spec = source?.spec || extVersion?.spec;
   if (!spec) {
     throw new FirebaseError(
@@ -62,32 +64,49 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
 
     if (spec.billingRequired) {
       const enabled = await checkBillingEnabled(projectId);
-      if (!enabled) {
+      if (!enabled && nonInteractive) {
+        throw new FirebaseError(
+          `This extension requires the Blaze plan, but project ${projectId} is not on the Blaze plan. ` +
+          marked("Please visit https://console.cloud.google.com/billing/linkedaccount?project=${projectId} to upgrade your project.")
+        )
+      } else if (!enabled) {
         await displayNode10CreateBillingNotice(spec, false);
         await enableBilling(projectId, spec.displayName || spec.name);
       } else {
-        await displayNode10CreateBillingNotice(spec, true);
+        await displayNode10CreateBillingNotice(spec, !nonInteractive);
       }
     }
     const roles = spec.roles ? spec.roles.map((role: extensionsApi.Role) => role.role) : [];
-    await askUserForConsent.prompt(spec.displayName || spec.name, projectId, roles);
-
+    if (roles.length) {
+      await askUserForConsent.displayRoles(spec.displayName || spec.name, projectId, roles);
+      const consented = await confirmInstallInstance();
+      if (!consented) {
+        throw new FirebaseError(
+          "Without explicit consent for the roles listed, we cannot deploy this extension."
+        );
+      }
+    }
     let instanceId = spec.name;
+
+    let choice: "updateExisting" | "installNew" | "cancel";
     const anotherInstanceExists = await instanceIdExists(projectId, instanceId);
     if (anotherInstanceExists) {
-      const consent = await promptForRepeatInstance(projectId, spec.name);
-      if (!consent) {
-        // TODO(b/145233161): Add documentation link about extension instances here.
-        logger.info(
-          marked(
-            "Installation cancelled. For a list of all available Firebase Extensions commands, run `firebase ext`."
-          )
-        );
-        return;
+      if (!nonInteractive) {
+        choice = await promptForRepeatInstance(projectId, spec.name);
+      } else if (nonInteractive && force) {
+        choice = "updateExisting"
+      } else {
+        throw new FirebaseError(`An extension with the ID '${clc.bold(
+          extensionName
+        )}' already exists in the project '${clc.bold(projectId)}'.` +
+        ` To update or reconfigure this instance instead, rerun this command with the --force flag.`);
       }
+      
       instanceId = await promptForValidInstanceId(`${instanceId}-${getRandomString(4)}`);
+    } else {
+      choice = "installNew";
     }
-    const params = await paramHelper.getParams(projectId, _.get(spec, "params", []), paramFilePath);
+    const params = await paramHelper.getParams(projectId, _.get(spec, "params", []), nonInteractive, paramFilePath);
 
     spinner.start();
 
@@ -142,9 +161,9 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
   }
 }
 
-async function confirmInstallBySource(
+async function infoInstallBySource(
   projectId: string,
-  extensionName: string
+  extensionName: string,
 ): Promise<extensionsApi.ExtensionSource> {
   // Create a one off source to use for the install flow.
   let source;
@@ -159,14 +178,10 @@ async function confirmInstallBySource(
     );
   }
   displayExtInfo(extensionName, "", source.spec);
-  const confirm = await confirmInstallInstance();
-  if (!confirm) {
-    throw new FirebaseError("Install cancelled.");
-  }
   return source;
 }
 
-async function confirmInstallByReference(
+async function infoInstallByReference(
   extensionName: string
 ): Promise<extensionsApi.ExtensionVersion> {
   // Infer firebase if publisher ID not provided.
@@ -182,18 +197,11 @@ async function confirmInstallByReference(
   }
   const extVersion = await extensionsApi.getExtensionVersion(extensionName);
   displayExtInfo(extensionName, ref.publisherId, extVersion.spec, true);
-  const confirm = await confirmInstallInstance();
-  if (!confirm) {
-    throw new FirebaseError("Install cancelled.");
-  }
-  const warningConsent = await displayWarningPrompts(
+  displayWarningPrompts(
     ref.publisherId,
     extension.registryLaunchStage,
     extVersion
   );
-  if (!warningConsent) {
-    throw new FirebaseError("Install cancelled.");
-  }
   return extVersion;
 }
 
@@ -237,9 +245,17 @@ export default new Command("ext:install [extensionName]")
     // If the user types in URL, or a local path (prefixed with ~/, ../, or ./), install from local/URL source.
     // Otherwise, treat the input as an extension reference and proceed with reference-based installation.
     if (isLocalOrURLPath(extensionName)) {
-      source = await confirmInstallBySource(projectId, extensionName);
+      source = await infoInstallBySource(projectId, extensionName);
     } else {
-      extVersion = await confirmInstallByReference(extensionName);
+      extVersion = await infoInstallByReference(extensionName);
+    }
+    if (!options.nonInteractive) {
+      const confirm = await confirmInstallInstance();
+      if (!confirm) {
+        throw new FirebaseError("Install cancelled.");
+      }
+    } else if (!options.force){
+      throw new FirebaseError("Pass the --force flag to install an extension in nonInteractive mode.")
     }
     if (!source && !extVersion) {
       throw new FirebaseError(
@@ -261,10 +277,6 @@ export default new Command("ext:install [extensionName]")
           `${spec.description}\n` +
           `View details: https://firebase.google.com/products/extensions/${spec.name}\n`
       );
-      const confirm = await confirmInstallInstance();
-      if (!confirm) {
-        return;
-      }
     }
     try {
       return installExtension({
@@ -273,6 +285,8 @@ export default new Command("ext:install [extensionName]")
         extensionName,
         source,
         extVersion,
+        nonInteractive: options.nonInteractive,
+        force: options.force,
       });
     } catch (err) {
       if (!(err instanceof FirebaseError)) {

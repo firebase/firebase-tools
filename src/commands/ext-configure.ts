@@ -61,6 +61,7 @@ export default new Command("ext:configure <extensionInstanceId>")
       const params = await paramHelper.getParams(
         projectId,
         paramSpecWithNewDefaults,
+        options.nonInteractive,
         options.params
       );
       if (immutableParams.length) {

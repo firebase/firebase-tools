@@ -593,17 +593,20 @@ export async function promptForOfficialExtension(message: string): Promise<strin
 export async function promptForRepeatInstance(
   projectName: string,
   extensionName: string
-): Promise<boolean> {
+): Promise<"updateExisting" | "installNew" | "cancel"> {
   const message =
     `An extension with the ID '${clc.bold(
       extensionName
-    )}' already exists in the project '${clc.bold(projectName)}'.\n` +
-    `Do you want to proceed with installing another instance of extension '${clc.bold(
-      extensionName
-    )}' in this project?`;
+    )}' already exists in the project '${clc.bold(projectName)}'. What would you like to do?`;
+  const choices = [
+    { name: "Update or reconfigure the existing instance", value:"updateExsting" },
+    { name: "Install a new instance with a different ID", value: "installNew" }, 
+    { name: "Cancel extension installation", value: "cancel" },
+  ]
   return await promptOnce({
-    type: "confirm",
+    type: "list",
     message,
+    choices
   });
 }
 

@@ -59,6 +59,7 @@ export function getParamsWithCurrentValuesAsDefaults(
 export async function getParams(
   projectId: string,
   paramSpecs: extensionsApi.Param[],
+  noninteractive: boolean = false,
   envFilePath?: string
 ): Promise<{ [key: string]: string }> {
   let commandLineParams;
