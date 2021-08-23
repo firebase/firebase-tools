@@ -121,7 +121,7 @@ export function createFunctionTask(
       onPoll,
     });
     if (!backend.isEventTrigger(fn.trigger)) {
-      const invoker = fn.invoker || ["public"];
+      const invoker = fn.trigger.invoker || ["public"];
       if (invoker[0] !== "private") {
         try {
           if (fn.platform === "gcfv1") {
@@ -192,13 +192,13 @@ export function updateFunctionTask(
       onPoll,
     };
     const cloudFunction = await pollOperation<unknown>(pollerOptions);
-    if (!backend.isEventTrigger(fn.trigger) && fn.invoker) {
+    if (!backend.isEventTrigger(fn.trigger) && fn.trigger.invoker) {
       try {
         if (fn.platform === "gcfv1") {
-          await gcf.setInvokerUpdate(params.projectId, fnName, fn.invoker);
+          await gcf.setInvokerUpdate(params.projectId, fnName, fn.trigger.invoker);
         } else {
           const serviceName = (cloudFunction as gcfV2.CloudFunction).serviceConfig.service!;
-          cloudrun.setInvokerUpdate(params.projectId, serviceName, fn.invoker);
+          cloudrun.setInvokerUpdate(params.projectId, serviceName, fn.trigger.invoker);
         }
       } catch (err) {
         params.errorHandler.record("error", fnName, "set invoker", err.message);
