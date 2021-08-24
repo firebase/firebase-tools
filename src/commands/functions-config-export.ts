@@ -33,32 +33,40 @@ interface ProjectAliasInfo {
 /**
  * Find all projects (and its alias) associated with the current directory.
  */
-export function getAllProjects(options: {
+export function getAllProjectInfos(options: {
   project?: string;
   projectId?: string;
   cwd?: string;
 }): ProjectAliasInfo[] {
   const result: Record<string, string> = {};
 
-  const projectId = getProjectId(options);
-  if (projectId) {
-    result[projectId] = projectId;
-  }
-
   const rc = loadRC(options);
   if (rc.projects) {
     for (const [alias, projectId] of Object.entries(rc.projects)) {
       if (Object.keys(result).includes(projectId)) {
-        logWarning("FOOBBARCAR");
+        logWarning(
+          `Multiple aliases found for ${clc.bold(projectId)}. ` +
+            `Preferring alias (${clc.bold(result[projectId])}) over (${clc.bold(alias)}).`
+        );
+        continue;
       }
       result[projectId] = alias;
     }
   }
+
+  const projectId = getProjectId(options);
+  if (projectId && !Object.keys(result).includes(projectId)) {
+    result[projectId] = projectId;
+  }
+
   return Object.entries(result).map(([k, v]) => {
     const result: ProjectAliasInfo = { projectId: k };
-    result.alias = v;
+    if (k !== v) {
+      result.alias = v;
+    }
     return result;
   });
+  o
 }
 
 // Check necessary IAM permissions for a project.
@@ -71,38 +79,6 @@ async function checkRequiredPermission({ projectId }: ProjectAliasInfo): Promise
     "You are missing the following permissions to read functions config on project " +
       `\t${clc.bold(projectId)}:\n ${result.missing.join("\n ")}`
   );
-
-  const confirm = await promptOnce(
-    {
-      type: "confirm",
-      name: "skip",
-      default: true,
-      message: `Continue without importing configs from project ${projectId}?`,
-    },
-    // Explicitly ignore non-interactive flag. This command NEEDS to be interactive.
-    { nonInteractive: false }
-  );
-
-  if (!confirm) {
-    throw new FirebaseError("Command aborted!");
-  }
-
-  return false;
-}
-
-// Check if project alias is reserved for internal use.
-// If a project's alias is reserved, ask for user consent to exclude the project.
-async function checkReservedAlias({ projectId, alias }: ProjectAliasInfo): Promise<boolean> {
-  if (!alias || !RESERVED_PROJECT_ALIAS.includes(alias)) {
-    return true;
-  }
-
-  logWarning(
-    "The following project alias is reserved for internal use:\n" +
-      `\t${projectId}: ${clc.bold(alias)}`
-  );
-  const suggestCmd = `firebase use --unalias ${alias}`;
-  logWarning(`Please change the alias of the project by running ${clc.bold(suggestCmd)}`);
 
   const confirm = await promptOnce(
     {
@@ -220,30 +196,37 @@ export default new Command("functions:config:export")
     "runtimeconfig.variables.get",
   ])
   .action(async (options: any) => {
-    const allProjects = getAllProjects(options);
+    const allProjectInfos = getAllProjectInfos(options);
 
-    if (allProjects.length == 0) {
+    if (allProjectInfos.length == 0) {
       throw new FirebaseError(
         "Didn't find any project in the current directory. " +
           "Are you in a firebase project directory?"
       );
     }
 
-    const projects: ProjectAliasInfo[] = [];
-    for (const project of allProjects) {
-      if ((await checkRequiredPermission(project)) && (await checkReservedAlias(project))) {
-        projects.push(project);
+    const projectInfos: ProjectAliasInfo[] = [];
+    for (const projectInfo of allProjectInfos) {
+      if (await checkRequiredPermission(projectInfo)) {
+        if (projectInfo.alias && RESERVED_PROJECT_ALIAS.includes(projectInfo.alias)) {
+          logWarning(
+            `Project alias (${clc.bold(projectInfo.alias)}) is reserved for internal use. ` +
+              `Saving exported config in .env.${projectInfo.projectId} instead.`
+          );
+          delete projectInfo.alias;
+        }
+        projectInfos.push(projectInfo);
       }
     }
 
     logBullet(
       "Importing functions configs from projects [" +
-        projects.map(({ projectId }) => `${clc.bold(projectId)}`).join(", ") +
+        projectInfos.map(({ projectId }) => `${clc.bold(projectId)}`).join(", ") +
         "]"
     );
 
     const configs = await Promise.all(
-      projects.map(async ({ projectId }) => {
+      projectInfos.map(async ({ projectId }) => {
         return await functionsConfig.materializeAll(projectId);
       })
     );
@@ -252,7 +235,7 @@ export default new Command("functions:config:export")
     let prefix = "";
     let envs = [];
     while (true) {
-      const result = configsToEnvs(projects, configs, prefix);
+      const result = configsToEnvs(projectInfos, configs, prefix);
       envs = result.envs;
 
       if (result.errMsg.length == 0) {
@@ -265,7 +248,7 @@ export default new Command("functions:config:export")
 
     const header = `# Exported firebase functions:config:export command on ${new Date().toLocaleDateString()}`;
     const tmpdir = fs.mkdtempSync(os.tmpdir() + "dotenvs");
-    const tmpFiles = writeEnvs(tmpdir, header, projects, envs);
+    const tmpFiles = writeEnvs(tmpdir, header, projectInfos, envs);
     tmpFiles.push(...writeEmptyEnvs(tmpdir, header, [{ projectId: "" }, { projectId: "local" }]));
     logger.debug(`Wrote tmp .env files: [${tmpFiles.join(",")}]`);
 
