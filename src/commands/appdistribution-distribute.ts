@@ -11,7 +11,7 @@ import {
 } from "../appdistribution/client";
 import { FirebaseError } from "../error";
 import { Distribution, DistributionFileType } from "../appdistribution/distribution";
-import { ensureFileExists, getTestersOrGroups } from "../options-parser-util";
+import { ensureFileExists, getTestersOrGroups } from "../appdistribution/options-parser-util";
 
 function getAppId(appId: string): string {
   if (!appId) {

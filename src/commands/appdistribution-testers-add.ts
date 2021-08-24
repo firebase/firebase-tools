@@ -4,7 +4,7 @@ import { requireAuth } from "../requireAuth";
 import { FirebaseError } from "../error";
 import { needProjectNumber } from "../projectUtils";
 import { AppDistributionClient } from "../appdistribution/client";
-import { getEmails } from "../options-parser-util";
+import { getEmails } from "../appdistribution/options-parser-util";
 
 module.exports = new Command("appdistribution:testers:add [emails...]")
   .description("Add testers")

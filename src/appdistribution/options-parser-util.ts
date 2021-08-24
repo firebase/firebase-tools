@@ -1,5 +1,5 @@
 import * as fs from "fs-extra";
-import { FirebaseError } from "./error";
+import { FirebaseError } from "../error";
 
 export function getTestersOrGroups(value: string, file: string): string[] {
   if (!value && file) {
