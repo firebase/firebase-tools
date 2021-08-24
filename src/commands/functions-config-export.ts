@@ -88,8 +88,7 @@ async function checkRequiredPermission({ projectId }: ProjectAliasInfo): Promise
       default: true,
       message: `Continue without importing configs from project ${projectId}?`,
     },
-    // Explicitly ignore non-interactive flag. This command NEEDS to be interactive.
-    { nonInteractive: false }
+    {}
   );
 
   if (!confirm) {
@@ -111,7 +110,7 @@ function configsToEnvs(
     .filter(({ errors }) => errors.length > 0)
     .map(
       ({ project, errors }) =>
-        `${project.projectId}:\n` +
+        `${project.alias ?? project.projectId}:\n` +
         errors.map((err) => `\t${err.origKey} => ${clc.bold(err.newKey)} (${err.err})`).join("\n") +
         "\n"
     )
@@ -132,7 +131,7 @@ async function promptForPrefix(errMsg: string): Promise<string> {
       default: "CONFIG_",
       message: "Enter a PREFIX to rename invalid environment variable keys:",
     },
-    { nonInteractive: false }
+    {}
   );
 }
 
@@ -146,8 +145,7 @@ function writeEnvs(
     const project = projects[idx];
     const dotenv = configExport.toDotenvFormat(env, header);
     const ext = project.alias ?? project.projectId;
-    const filename = ext ? `.env.${ext}` : ".env";
-    const filePath = path.join(basePath, filename);
+    const filePath = path.join(basePath, `.env.${ext}`);
 
     fs.writeFileSync(filePath, dotenv);
     return filePath;
@@ -175,7 +173,7 @@ async function copyFilesToDir(srcFiles: string[], destDir: string): Promise<stri
           default: false,
           message: `${targetFile} already exists. Overwrite file?`,
         },
-        { nonInteractive: false }
+        {}
       );
       if (!overwrite) {
         logBullet(`Skipping ${targetFile}`);

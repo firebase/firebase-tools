@@ -95,15 +95,7 @@ export function configToEnv(configs: Record<string, unknown>, prefix: string): C
 }
 
 function escape(s: string): string {
-  // Escape newlines and tabs
-  let result = s
-    .replace("\n", "\\n")
-    .replace("\r", "\\r")
-    .replace("\t", "\\t")
-    .replace("\v", "\\v");
-  // Escape other escape characters like ' and ".
-  result = result.replace(/(['"])/g, "\\$1");
-  return result;
+  return s.replace(/['"\n\r\t\v]/, "\\$1");
 }
 
 /**
