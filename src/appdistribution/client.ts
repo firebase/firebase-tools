@@ -190,7 +190,6 @@ export class AppDistributionClient {
       auth: true,
       data,
     });
-
     return _.get(apiResponse, "body");
   }
 
