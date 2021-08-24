@@ -186,6 +186,7 @@ export class AppDistributionClient {
     const data = { emails: emails };
     const apiResponse = await api.request("POST", url, {
       origin: api.appDistributionOrigin,
+      headers: { "X-Firebase-Client": `${pkg.name}/${pkg.version}` },
       apiVersion: "v1",
       auth: true,
       data,
@@ -201,6 +202,7 @@ export class AppDistributionClient {
     const data = { emails: emails };
     const apiResponse = await api.request("POST", url, {
       origin: api.appDistributionOrigin,
+      headers: { "X-Firebase-Client": `${pkg.name}/${pkg.version}` },
       apiVersion: "v1",
       auth: true,
       data,
