@@ -81,8 +81,6 @@ export async function prepare(
   };
   const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
 
-  // "firebase" key is always going to exist in runtime config.
-  // If any other key exists, we can assume that user is using runtime config.
   const tag = hasUserConfig(runtimeConfig)
     ? hasDotenv(userEnvOpt)
       ? "mixed"
