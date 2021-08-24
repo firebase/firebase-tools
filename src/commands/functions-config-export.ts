@@ -101,7 +101,7 @@ async function checkRequiredPermission({ projectId }: ProjectAliasInfo): Promise
 
 function configsToEnvs(
   projects: ProjectAliasInfo[],
-  configs: Record<string, any>[],
+  configs: Record<string, unknown>[],
   prefix: string
 ): { envs: configExport.EnvMap[][]; errMsg: string } {
   const results = configs.map((config) => configExport.configToEnv(config, prefix));

@@ -67,7 +67,7 @@ export function convertKey(configKey: string, prefix: string): string {
  *
  * @return {ConfigToEnvResult} Collection of successful and errored conversion.
  */
-export function configToEnv(configs: Record<string, any>, prefix: string): ConfigToEnvResult {
+export function configToEnv(configs: Record<string, unknown>, prefix: string): ConfigToEnvResult {
   const success = [];
   const errors = [];
 
