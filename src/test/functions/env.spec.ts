@@ -35,6 +35,21 @@ BAR=bar
         want: { FOO: "foo1\nfoo2", BAR: "bar" },
       },
       {
+        description: "should parse many double quoted values",
+        input: 'FOO="foo"\nBAR="bar"',
+        want: { FOO: "foo", BAR: "bar" },
+      },
+      {
+        description: "should parse many single quoted values",
+        input: "FOO='foo'\nBAR='bar'",
+        want: { FOO: "foo", BAR: "bar" },
+      },
+      {
+        description: "should parse mix of double and single quoted values",
+        input: `FOO="foo"\nBAR='bar'`,
+        want: { FOO: "foo", BAR: "bar" },
+      },
+      {
         description: "should parse double quoted with escaped newlines",
         input: 'FOO="foo1\\nfoo2"\nBAR=bar',
         want: { FOO: "foo1\nfoo2", BAR: "bar" },
