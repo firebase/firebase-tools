@@ -1,6 +1,5 @@
-import * as fs from 'fs-extra';
-import {FirebaseError} from './error';
-
+import * as fs from "fs-extra";
+import { FirebaseError } from "./error";
 
 export function getTestersOrGroups(value: string, file: string): string[] {
   if (!value && file) {
@@ -29,9 +28,9 @@ export function ensureFileExists(file: string, message = ""): void {
   }
 }
 
-function testerSplitter(value:string): string[] {
+function testerSplitter(value: string): string[] {
   return value
-      .split(/[,\n]/)
-      .map((entry) => entry.trim())
-      .filter((entry) => !!entry)
+    .split(/[,\n]/)
+    .map((entry) => entry.trim())
+    .filter((entry) => !!entry);
 }

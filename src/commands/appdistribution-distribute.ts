@@ -11,8 +11,7 @@ import {
 } from "../appdistribution/client";
 import { FirebaseError } from "../error";
 import { Distribution, DistributionFileType } from "../appdistribution/distribution";
-import {ensureFileExists, getTestersOrGroups} from '../options-parser-util';
-
+import { ensureFileExists, getTestersOrGroups } from "../options-parser-util";
 
 function getAppId(appId: string): string {
   if (!appId) {
@@ -31,7 +30,6 @@ function getReleaseNotes(releaseNotes: string, releaseNotesFile: string): string
   }
   return "";
 }
-
 
 module.exports = new Command("appdistribution:distribute <release-binary-file>")
   .description("upload a release binary")
@@ -164,7 +162,7 @@ module.exports = new Command("appdistribution:distribute <release-binary-file>")
         );
       }
     }
-    
+
     // Add release notes and distribute to testers/groups
     await requests.updateReleaseNotes(releaseName, releaseNotes);
     await requests.distribute(releaseName, testers, groups);

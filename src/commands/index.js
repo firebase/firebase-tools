@@ -14,10 +14,8 @@ module.exports = function (client) {
   };
 
   client.appdistribution = {};
-  client.appdistribution.addTesters = loadCommand(
-      "appdistribution-testers-add");
-  client.appdistribution.deleteTesters = loadCommand(
-      "appdistribution-testers-remove");
+  client.appdistribution.addTesters = loadCommand("appdistribution-testers-add");
+  client.appdistribution.deleteTesters = loadCommand("appdistribution-testers-remove");
   client.appdistribution.distribute = loadCommand("appdistribution-distribute");
   client.apps = {};
   client.apps.create = loadCommand("apps-create");
@@ -59,8 +57,7 @@ module.exports = function (client) {
   client.emulators.start = loadCommand("emulators-start");
   client.experimental = {};
   client.experimental.functions = {};
-  client.experimental.functions.shell = loadCommand(
-      "experimental-functions-shell");
+  client.experimental.functions.shell = loadCommand("experimental-functions-shell");
   client.ext = loadCommand("ext");
   client.ext.configure = loadCommand("ext-configure");
   client.ext.info = loadCommand("ext-info");
@@ -97,8 +94,7 @@ module.exports = function (client) {
   client.functions.log = loadCommand("functions-log");
   client.functions.shell = loadCommand("functions-shell");
   if (previews.deletegcfartifacts) {
-    client.functions.deletegcfartifacts = loadCommand(
-        "functions-deletegcfartifacts");
+    client.functions.deletegcfartifacts = loadCommand("functions-deletegcfartifacts");
   }
   client.help = loadCommand("help");
   client.hosting = {};

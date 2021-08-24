@@ -2,9 +2,8 @@ import * as _ from "lodash";
 import * as api from "../api";
 import * as utils from "../utils";
 import * as operationPoller from "../operation-poller";
-import {Distribution} from "./distribution";
-import {FirebaseError} from "../error";
-
+import { Distribution } from "./distribution";
+import { FirebaseError } from "../error";
 
 // tslint:disable-next-line:no-var-requires
 const pkg = require("../../package.json");
@@ -81,18 +80,22 @@ export class AppDistributionClient {
   }
 
   async uploadRelease(appId: string, distribution: Distribution): Promise<string> {
-    const apiResponse = await api.request("POST", `/upload/v1/${this.getAppName(appId)}/releases:upload`, {
+    const apiResponse = await api.request(
+      "POST",
+      `/upload/v1/${this.getAppName(appId)}/releases:upload`,
+      {
         auth: true,
         origin: api.appDistributionOrigin,
         headers: {
-        "X-Firebase-Client": `${pkg.name}/${pkg.version}`,
-        "X-Goog-Upload-File-Name": distribution.getFileName(),
-        "X-Goog-Upload-Protocol": "raw",
-        "Content-Type": "application/octet-stream",
-      },
-      data: distribution.readStream(),
-      json: false,
-    });
+          "X-Firebase-Client": `${pkg.name}/${pkg.version}`,
+          "X-Goog-Upload-File-Name": distribution.getFileName(),
+          "X-Goog-Upload-Protocol": "raw",
+          "Content-Type": "application/octet-stream",
+        },
+        data: distribution.readStream(),
+        json: false,
+      }
+    );
 
     return _.get(JSON.parse(apiResponse.body), "name");
   }
@@ -131,16 +134,16 @@ export class AppDistributionClient {
         data,
       });
     } catch (err) {
-      throw new FirebaseError(`failed to update release notes with ${err.message}`, {exit: 1});
+      throw new FirebaseError(`failed to update release notes with ${err.message}`, { exit: 1 });
     }
 
     utils.logSuccess("added release notes successfully");
   }
 
   async distribute(
-      releaseName: string,
-      testerEmails: string[] = [],
-      groupAliases: string[] = []
+    releaseName: string,
+    testerEmails: string[] = [],
+    groupAliases: string[] = []
   ): Promise<void> {
     if (testerEmails.length === 0 && groupAliases.length === 0) {
       utils.logWarning("no testers or groups specified, skipping");
@@ -180,7 +183,7 @@ export class AppDistributionClient {
 
   async addTesters(projectNumber: string, emails: string[]) {
     const url = `/v1/projects/${projectNumber}/testers:batchAdd`;
-    const data = {emails: emails};
+    const data = { emails: emails };
     const apiResponse = await api.request("POST", url, {
       origin: api.appDistributionOrigin,
       apiVersion: "v1",
@@ -191,15 +194,18 @@ export class AppDistributionClient {
     return _.get(apiResponse, "body");
   }
 
-  async removeTesters(projectNumber: string, emails: string[]): Promise<BatchRemoveTestersResponse> {
+  async removeTesters(
+    projectNumber: string,
+    emails: string[]
+  ): Promise<BatchRemoveTestersResponse> {
     const url = `/v1/projects/${projectNumber}/testers:batchRemove`;
-    const data = {emails: emails};
+    const data = { emails: emails };
     const apiResponse = await api.request("POST", url, {
       origin: api.appDistributionOrigin,
       apiVersion: "v1",
       auth: true,
       data,
     });
-    return _.get(apiResponse,"body");
+    return _.get(apiResponse, "body");
   }
 }

@@ -15,4 +15,3 @@ export function dirExistsSync(path: string): boolean {
     return false;
   }
 }
-
