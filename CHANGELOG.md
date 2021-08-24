@@ -1,0 +1,1 @@
+- Track use of runtime config and environment variables on function deploys. (#3704)
