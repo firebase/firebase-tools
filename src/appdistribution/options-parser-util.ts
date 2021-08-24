@@ -8,7 +8,7 @@ export function getTestersOrGroups(value: string, file: string): string[] {
   }
 
   if (value) {
-    testerSplitter(value);
+    splitter(value);
   }
   return [];
 }
@@ -17,7 +17,7 @@ export function getEmails(emails: string[], file: string): string[] {
   if (emails.length == 0) {
     ensureFileExists(file);
     const readFile = fs.readFileSync(file, "utf8");
-    return testerSplitter(readFile);
+    return splitter(readFile);
   }
   return emails;
 }
@@ -28,7 +28,7 @@ export function ensureFileExists(file: string, message = ""): void {
   }
 }
 
-function testerSplitter(value: string): string[] {
+function splitter(value: string): string[] {
   return value
     .split(/[,\n]/)
     .map((entry) => entry.trim())

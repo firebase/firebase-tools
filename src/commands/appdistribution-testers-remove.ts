@@ -19,11 +19,15 @@ module.exports = new Command("appdistribution:testers:remove [emails...]")
       console.log(`Deleting ${emailsArr.length} testers from project ${projectNumber}`);
       deleteResponse = await appDistroClient.removeTesters(projectNumber, emailsArr);
     } catch (err) {
-      throw new FirebaseError(`failed to remove testers.${err}` + { exit: 1 });
+      throw new FirebaseError(`Failed to remove testers ${err}` + { exit: 1 });
     }
-    if (options.debug) {
-      utils.logSuccess(`Testers: ${deleteResponse.emails}, have been successfully deleted`);
+    if(deleteResponse.emails != null) {
+      if (options.debug) {
+        utils.logSuccess(`Testers: ${deleteResponse.emails}, have been successfully deleted`);
+      } else {
+        utils.logSuccess(`${deleteResponse.emails.length} testers have successfully been deleted`);
+      }
     } else {
-      utils.logSuccess(`${deleteResponse.emails.length} testers have successfully been deleted`);
+      utils.logSuccess(`Testers specified did not exist`);
     }
   });

@@ -18,7 +18,7 @@ module.exports = new Command("appdistribution:testers:add [emails...]")
       console.log(`Adding ${emailsArr.length} testers to project ${projectNumber}`);
       await appDistroClient.addTesters(projectNumber, emailsArr);
     } catch (err) {
-      throw new FirebaseError(`failed to add testers.${err}` + { exit: 1 });
+      throw new FirebaseError(`Failed to add testers ${err}` + { exit: 1 });
     }
-    utils.logSuccess(`Testers Created Successfully`);
+    utils.logSuccess(`Testers created successfully`);
   });
