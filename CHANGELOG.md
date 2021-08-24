@@ -1,0 +1,1 @@
+- Fix bug parsing dotenv files with multiple quoted values (#3703)
