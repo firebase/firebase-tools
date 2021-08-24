@@ -66,7 +66,6 @@ export function getAllProjectInfos(options: {
     }
     return result;
   });
-  o
 }
 
 // Check necessary IAM permissions for a project.
@@ -171,7 +170,7 @@ async function copyFilesToDir(srcFiles: string[], destDir: string): Promise<stri
         {
           type: "confirm",
           name: "overwrite",
-          default: true,
+          default: false,
           message: `${targetFile} already exists. Overwrite file?`,
         },
         { nonInteractive: false }
