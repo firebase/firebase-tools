@@ -11,8 +11,7 @@ import {
 } from "../appdistribution/client";
 import { FirebaseError } from "../error";
 import { Distribution, DistributionFileType } from "../appdistribution/distribution";
-import {ensureFileExists} from '../ensureFileExists';
-import {testerEmailParser} from '../testerEmailParser';
+import {ensureFileExists, getTestersOrGroups} from '../options-parser-util';
 
 
 function getAppId(appId: string): string {
@@ -54,8 +53,8 @@ module.exports = new Command("appdistribution:distribute <release-binary-file>")
     const appId = getAppId(options.app);
     const distribution = new Distribution(file);
     const releaseNotes = getReleaseNotes(options.releaseNotes, options.releaseNotesFile);
-    const testers = testerEmailParser(options.testers, options.testersFile);
-    const groups = testerEmailParser(options.groups, options.groupsFile);
+    const testers = getTestersOrGroups(options.testers, options.testersFile);
+    const groups = getTestersOrGroups(options.groups, options.groupsFile);
     const requests = new AppDistributionClient();
     let aabInfo: AabInfo | undefined;
 
@@ -108,7 +107,7 @@ module.exports = new Command("appdistribution:distribute <release-binary-file>")
     utils.logBullet("uploading binary...");
     let releaseName;
     try {
-      const operationName = await requests.uploadRelease(appId,distribution);
+      const operationName = await requests.uploadRelease(appId, distribution);
 
       // The upload process is asynchronous, so poll to figure out when the upload has finished successfully
       const uploadResponse = await requests.pollUploadStatus(operationName);

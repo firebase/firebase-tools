@@ -1,8 +1,8 @@
 import * as fs from 'fs-extra';
-import {ensureFileExists} from './ensureFileExists';
+import {FirebaseError} from './error';
 
 
-export function testerEmailParser(value: string, file: string): string[] {
+export function getTestersOrGroups(value: string, file: string): string[] {
   if (!value && file) {
     ensureFileExists(file);
     value = fs.readFileSync(file, "utf8");
@@ -14,7 +14,7 @@ export function testerEmailParser(value: string, file: string): string[] {
   return [];
 }
 
-export function getEmails(emails: string[], file: string):string[]{
+export function getEmails(emails: string[], file: string): string[] {
   if (emails.length == 0) {
     ensureFileExists(file);
     const readFile = fs.readFileSync(file, "utf8");
@@ -23,7 +23,13 @@ export function getEmails(emails: string[], file: string):string[]{
   return emails;
 }
 
-function testerSplitter(value:string):string[]{
+export function ensureFileExists(file: string, message = ""): void {
+  if (!fs.existsSync(file)) {
+    throw new FirebaseError(`File ${file} does not exist: ${message}`);
+  }
+}
+
+function testerSplitter(value:string): string[] {
   return value
       .split(/[,\n]/)
       .map((entry) => entry.trim())

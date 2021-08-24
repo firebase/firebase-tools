@@ -1,26 +1,25 @@
-import {Command} from "../command";
+import { Command } from "../command";
 import * as utils from "../utils";
-import {requireAuth} from "../requireAuth";
-import {FirebaseError} from "../error";
-import {needProjectNumber} from '../projectUtils';
-import {AppDistributionClient} from '../appdistribution/client';
-import {getEmails} from '../testerEmailParser';
+import { requireAuth } from "../requireAuth";
+import { FirebaseError } from "../error";
+import { needProjectNumber } from '../projectUtils';
+import { AppDistributionClient } from '../appdistribution/client';
+import { getEmails } from '../options-parser-util';
 
 module.exports = new Command("appdistribution:testers:add [emails...]")
-    .description("Create Testers")
+    .description("Add testers")
     .option(
         "--file <file>",
-        "a path to a file containing a comma separated list of tester emails to be added"
+        "a path to a file containing a list of tester emails to be added"
     )
     .before(requireAuth)
     .action(async (emails: string[], options?: any) => {
       const projectNumber = await needProjectNumber(options);
-      const request = new AppDistributionClient();
+      const appDistroClient = new AppDistributionClient();
       const emailsArr = getEmails(emails, options.file);
       try {
-        console.log("Adding the following testers: " + emailsArr + " to project " + projectNumber);
-        console.log(emailsArr.length);
-        await request.addTesters(projectNumber, emailsArr);
+        console.log(`Adding ${emailsArr.length} testers to project ${projectNumber}`);
+        await appDistroClient.addTesters(projectNumber, emailsArr);
       } catch (err) {
         throw new FirebaseError(`failed to add testers.${err}` + {exit: 1});
       }

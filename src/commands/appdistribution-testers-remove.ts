@@ -4,30 +4,30 @@ import {requireAuth} from "../requireAuth";
 import {FirebaseError} from "../error";
 import {needProjectNumber} from '../projectUtils';
 import {AppDistributionClient} from '../appdistribution/client';
-import {getEmails} from '../testerEmailParser';
+import {getEmails} from '../options-parser-util';
 
 
 module.exports = new Command("appdistribution:testers:remove [emails...]")
-    .description("Delete Testers")
+    .description("Remove testers")
     .option(
         "--file <file>",
-        "a path to a file containing a comma separated list of tester emails to be removed"
+        "a path to a file containing a list of tester emails to be removed"
     )
     .before(requireAuth)
     .action(async (emails: string[], options?: any) => {
       const projectNumber = await needProjectNumber(options);
-      const request = new AppDistributionClient();
+      const appDistroClient = new AppDistributionClient();
       const emailsArr = getEmails(emails, options.file);
       let deleteResponse;
       try {
-        console.log("Deleting the following testers: " + emailsArr + " from project " + projectNumber);
-        deleteResponse = await request.removeTesters(projectNumber, emailsArr);
+        console.log(`Deleting ${emailsArr.length} testers from project ${projectNumber}`);
+        deleteResponse = await appDistroClient.removeTesters(projectNumber, emailsArr);
       } catch (err) {
         throw new FirebaseError(`failed to remove testers.${err}` + {exit: 1});
       }
       if (options.debug) {
-        utils.logSuccess(`Testers: ${deleteResponse.emails},have been successfully deleted`);
+        utils.logSuccess(`Testers: ${deleteResponse.emails}, have been successfully deleted`);
       } else {
-        utils.logSuccess(`${deleteResponse.emails.length} Testers have successfully been deleted`);
+        utils.logSuccess(`${deleteResponse.emails.length} testers have successfully been deleted`);
       }
     });

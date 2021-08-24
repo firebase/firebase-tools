@@ -1,16 +1,16 @@
-import {expect} from "chai";
-import {join} from "path";
+import { expect } from "chai";
+import { join } from "path";
 import * as fs from "fs-extra";
 import * as rimraf from "rimraf";
 import * as sinon from "sinon";
 import * as tmp from "tmp";
 
-import {AppDistributionClient} from "../../appdistribution/client";
-import {FirebaseError} from "../../error";
+import { AppDistributionClient } from "../../appdistribution/client";
+import { FirebaseError } from "../../error";
 import * as api from "../../api";
 import * as nock from "nock";
-import {Distribution} from "../../appdistribution/distribution";
-import {describe} from 'mocha';
+import { Distribution } from "../../appdistribution/distribution";
+import { describe } from 'mocha';
 
 tmp.setGracefulCleanup();
 
@@ -40,7 +40,8 @@ describe("distribution", () => {
 
   describe("addTesters", () => {
     let emails = ["a@foo.com", "b@foo.com"];
-    it('should throw error if upload fails', async () => {
+
+    it('should throw error if request fails', async () => {
       nock(api.appDistributionOrigin)
           .post(`/v1/projects/${projectNumber}/testers:batchAdd`)
           .reply(400, {});
@@ -59,6 +60,7 @@ describe("distribution", () => {
 
   describe("deleteTesters", () => {
     let emails = ["a@foo.com", "b@foo.com"];
+
     it('should throw error if delete fails', async () => {
       nock(api.appDistributionOrigin)
           .post(`/v1/projects/${projectNumber}/testers:batchRemove`)

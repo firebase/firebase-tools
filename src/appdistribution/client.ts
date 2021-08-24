@@ -82,9 +82,9 @@ export class AppDistributionClient {
 
   async uploadRelease(appId: string, distribution: Distribution): Promise<string> {
     const apiResponse = await api.request("POST", `/upload/v1/${this.getAppName(appId)}/releases:upload`, {
-      auth: true,
-      origin: api.appDistributionOrigin,
-      headers: {
+        auth: true,
+        origin: api.appDistributionOrigin,
+        headers: {
         "X-Firebase-Client": `${pkg.name}/${pkg.version}`,
         "X-Goog-Upload-File-Name": distribution.getFileName(),
         "X-Goog-Upload-Protocol": "raw",
@@ -96,7 +96,6 @@ export class AppDistributionClient {
 
     return _.get(JSON.parse(apiResponse.body), "name");
   }
-
 
   async pollUploadStatus(operationName: string): Promise<UploadReleaseResponse> {
     return operationPoller.pollOperation<UploadReleaseResponse>({
@@ -192,7 +191,7 @@ export class AppDistributionClient {
     return _.get(apiResponse, "body");
   }
 
-  async removeTesters(projectNumber: string, emails: string[]) :Promise<BatchRemoveTestersResponse>{
+  async removeTesters(projectNumber: string, emails: string[]): Promise<BatchRemoveTestersResponse> {
     const url = `/v1/projects/${projectNumber}/testers:batchRemove`;
     const data = {emails: emails};
     const apiResponse = await api.request("POST", url, {
