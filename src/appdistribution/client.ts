@@ -66,7 +66,7 @@ export interface BatchRemoveTestersResponse {
  * Makes RPCs to the App Distribution server backend.
  */
 export class AppDistributionClient {
-  getAppName(appId: string): string {
+  private getAppName(appId: string): string {
     return `projects/${appId.split(":")[1]}/apps/${appId}`;
   }
 
