@@ -196,11 +196,15 @@ function findEnvfiles(functionsSource: string, projectId: string, projectAlias?:
  *
  * @return True if there are any user-specified environment variables
  */
-export function hasUserEnvs(
-  functionsSource: string,
-  projectId: string,
-  projectAlias?: string
-): boolean {
+export function hasUserEnvs({
+  functionsSource,
+  projectId,
+  projectAlias,
+}: {
+  functionsSource: string;
+  projectId: string;
+  projectAlias?: string;
+}): boolean {
   return findEnvfiles(functionsSource, projectId, projectAlias).length > 0;
 }
 
