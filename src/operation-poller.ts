@@ -10,7 +10,6 @@ export interface OperationPollerOptions {
   backoff?: number;
   maxBackoff?: number;
   masterTimeout?: number;
-  once?: boolean;
   onPoll?: (operation: OperationResult<any>) => any;
 }
 
