@@ -21,7 +21,7 @@ module.exports = new Command("appdistribution:testers:remove [emails...]")
     } catch (err) {
       throw new FirebaseError(`Failed to remove testers ${err}` + { exit: 1 });
     }
-    if(deleteResponse.emails != null) {
+    if (deleteResponse.emails != null) {
       if (options.debug) {
         utils.logSuccess(`Testers: ${deleteResponse.emails}, have been successfully deleted`);
       } else {
