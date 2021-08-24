@@ -25,11 +25,7 @@ function hasUserConfig(config: Record<string, unknown>): boolean {
   return Object.keys(config).length > 1;
 }
 
-function hasDotenv(opts: {
-  functionsSource: string;
-  projectId: string;
-  projectAlias?: string;
-}): boolean {
+function hasDotenv(opts: functionsEnv.UserEnvsOpts): boolean {
   return previews.dotenv && functionsEnv.hasUserEnvs(opts);
 }
 
@@ -80,7 +76,6 @@ export async function prepare(
     projectAlias: options.projectAlias,
   };
   const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
-
   const tag = hasUserConfig(runtimeConfig)
     ? hasDotenv(userEnvOpt)
       ? "mixed"

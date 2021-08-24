@@ -191,20 +191,18 @@ function findEnvfiles(functionsSource: string, projectId: string, projectAlias?:
     .map((p) => path.basename(p));
 }
 
+export interface UserEnvsOpts {
+  functionsSource: string;
+  projectId: string;
+  projectAlias?: string;
+}
+
 /**
  * Checks if user has specified any environment variables for their functions.
  *
  * @return True if there are any user-specified environment variables
  */
-export function hasUserEnvs({
-  functionsSource,
-  projectId,
-  projectAlias,
-}: {
-  functionsSource: string;
-  projectId: string;
-  projectAlias?: string;
-}): boolean {
+export function hasUserEnvs({ functionsSource, projectId, projectAlias }: UserEnvsOpts): boolean {
   return findEnvfiles(functionsSource, projectId, projectAlias).length > 0;
 }
 
@@ -227,11 +225,7 @@ export function loadUserEnvs({
   functionsSource,
   projectId,
   projectAlias,
-}: {
-  functionsSource: string;
-  projectId: string;
-  projectAlias?: string;
-}): Record<string, string> {
+}: UserEnvsOpts): Record<string, string> {
   if (!previews.dotenv) {
     return {};
   }
