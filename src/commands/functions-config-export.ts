@@ -6,10 +6,12 @@ import * as clc from "cli-color";
 
 import * as configExport from "../functions/runtimeConfigExport";
 import * as functionsConfig from "../functionsConfig";
+import * as requireConfig from "../requireConfig";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { testIamPermissions } from "../gcp/iam";
 import { logger } from "../logger";
+import { resolveProjectPath } from "../projectPath";
 import { getProjectId } from "../projectUtils";
 import { promptOnce } from "../prompt";
 import { loadRC } from "../rc";
@@ -194,15 +196,9 @@ export default new Command("functions:config:export")
     "runtimeconfig.variables.list",
     "runtimeconfig.variables.get",
   ])
+  .before(requireConfig)
   .action(async (options: any) => {
     const allProjectInfos = getAllProjectInfos(options);
-
-    if (allProjectInfos.length == 0) {
-      throw new FirebaseError(
-        "Didn't find any project in the current directory. " +
-          "Are you in a firebase project directory?"
-      );
-    }
 
     const projectInfos: ProjectAliasInfo[] = [];
     for (const projectInfo of allProjectInfos) {
@@ -251,7 +247,7 @@ export default new Command("functions:config:export")
     tmpFiles.push(...writeEmptyEnvs(tmpdir, header, [{ projectId: "" }, { projectId: "local" }]));
     logger.debug(`Wrote tmp .env files: [${tmpFiles.join(",")}]`);
 
-    const functionsDir: string = options.config.get("functions.source", ".");
+    const functionsDir = resolveProjectPath(options, options.config.get("functions.source", "."));
     const files = await copyFilesToDir(tmpFiles, functionsDir);
     logSuccess(
       "Wrote files:\n" +
