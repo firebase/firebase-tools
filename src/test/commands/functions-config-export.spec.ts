@@ -17,7 +17,7 @@ describe("functions-config-export", () => {
     });
 
     it("should include projectId from the options", () => {
-      expect(configExport.getAllProjects({ projectId: "project-0" })).to.have.deep.members([
+      expect(configExport.getAllProjectInfos({ projectId: "project-0" })).to.have.deep.members([
         {
           projectId: "project-0",
         },
@@ -26,7 +26,7 @@ describe("functions-config-export", () => {
 
     it("should include project and its alias from firebaserc", () => {
       loadRCStub.returns({ projects: { dev: "project-0", prod: "project-1" } });
-      expect(configExport.getAllProjects({ projectId: "project-0" })).to.have.deep.members([
+      expect(configExport.getAllProjectInfos({ projectId: "project-0" })).to.have.deep.members([
         {
           projectId: "project-0",
           alias: "dev",
@@ -34,41 +34,6 @@ describe("functions-config-export", () => {
         {
           projectId: "project-1",
           alias: "prod",
-        },
-      ]);
-    });
-
-    it("should ignore 'default' alias", () => {
-      loadRCStub.returns({
-        projects: { default: "project-1", dev: "project-0", prod: "project-1" },
-      });
-      expect(configExport.getAllProjects({ projectId: "project-0" })).to.have.deep.members([
-        {
-          projectId: "project-0",
-          alias: "dev",
-        },
-        {
-          projectId: "project-1",
-          alias: "prod",
-        },
-      ]);
-    });
-
-    it("should collect project with 'default' alias", () => {
-      loadRCStub.returns({
-        projects: { default: "project-2", dev: "project-0", prod: "project-1" },
-      });
-      expect(configExport.getAllProjects({ projectId: "project-0" })).to.have.deep.members([
-        {
-          projectId: "project-0",
-          alias: "dev",
-        },
-        {
-          projectId: "project-1",
-          alias: "prod",
-        },
-        {
-          projectId: "project-2",
         },
       ]);
     });
