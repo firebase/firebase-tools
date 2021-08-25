@@ -119,7 +119,6 @@ function configsToEnvs(
     }
     projects.map((project) => configExport.configToEnv(project.config!, prefix));
   }
-
   return {
     projects: results,
     errMsg,
