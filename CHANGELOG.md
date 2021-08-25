@@ -1,2 +1,3 @@
+- Fixes bug where functions packaged as ES module failed to load on Windows. (#3692)
 - Track use of runtime config and environment variables on function deploys. (#3704)
 - Fixes a crash when customers deploy an empty functions project (#3705)
