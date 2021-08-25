@@ -1256,9 +1256,6 @@ export class FunctionsEmulator implements EmulatorInstance {
         socketPath: worker.lastArgs.frb.socketPath,
       },
       (runtimeRes: http.IncomingMessage) => {
-        /**
-         *
-         */
         function forwardStatusAndHeaders(): void {
           res.status(runtimeRes.statusCode || 200);
           if (!res.headersSent) {
