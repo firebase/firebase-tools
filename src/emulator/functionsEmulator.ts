@@ -903,7 +903,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     // Load user-specified environment variables.
-    if (functionsEnv.hasUserEnvs(this.args.functionsDir, "local")) {
+    if (functionsEnv.hasUserEnvs({ functionsSource: this.args.functionsDir, projectId: "local" })) {
       try {
         const userEnvs = functionsEnv.loadUserEnvs({
           functionsSource: this.args.functionsDir,
@@ -1256,6 +1256,9 @@ export class FunctionsEmulator implements EmulatorInstance {
         socketPath: worker.lastArgs.frb.socketPath,
       },
       (runtimeRes: http.IncomingMessage) => {
+        /**
+         *
+         */
         function forwardStatusAndHeaders(): void {
           res.status(runtimeRes.statusCode || 200);
           if (!res.headersSent) {
