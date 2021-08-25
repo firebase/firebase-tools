@@ -1,5 +1,3 @@
-import * as functionsEnv from "../functions/env";
-import { FirebaseError } from "../error";
 import { EmulatorLog } from "./types";
 import { CloudFunction, DeploymentOptions, https } from "firebase-functions";
 import {
@@ -8,7 +6,6 @@ import {
   emulatedFunctionsByRegion,
   EmulatedTriggerDefinition,
   EmulatedTriggerMap,
-  EmulatedTriggerType,
   findModuleRoot,
   FunctionsRuntimeBundle,
   FunctionsRuntimeFeatures,
@@ -16,13 +13,11 @@ import {
   FunctionsRuntimeArgs,
   HttpConstants,
 } from "./functionsEmulatorShared";
-import { Constants } from "./constants";
-import { parseVersionString, compareVersionStrings } from "./functionsEmulatorUtils";
+import { compareVersionStrings } from "./functionsEmulatorUtils";
 import * as express from "express";
 import * as path from "path";
 import * as admin from "firebase-admin";
 import * as bodyParser from "body-parser";
-import * as fs from "fs";
 import { pathToFileURL, URL } from "url";
 import * as _ from "lodash";
 
@@ -649,129 +644,6 @@ function warnAboutAuthProd(frb: FunctionsRuntimeBundle): void {
   ).log();
 }
 
-async function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): Promise<void> {
-  process.env.TZ = "UTC";
-  process.env.GCLOUD_PROJECT = frb.projectId;
-  process.env.FUNCTIONS_EMULATOR = "true";
-
-  if (functionsEnv.hasUserEnvs(frb.cwd, "local")) {
-    // Load user-specified environment variables.
-    try {
-      const userEnvs = functionsEnv.loadUserEnvs({ functionsSource: frb.cwd, projectId: "local" });
-      for (const [k, v] of Object.entries(userEnvs)) {
-        process.env[k] = v;
-      }
-    } catch (e) {
-      let message: string = e.message || `${e}`;
-      if (e instanceof FirebaseError) {
-        for (const child of e.children) {
-          if (child instanceof Error) {
-            message += `\n- ${child.message}`;
-          }
-        }
-      }
-      new EmulatorLog("SYSTEM", "function-env-load-failed", message).log();
-    }
-  }
-
-  // Look for .runtimeconfig.json in the functions directory
-  const configPath = `${frb.cwd}/.runtimeconfig.json`;
-  try {
-    const configContent = fs.readFileSync(configPath, "utf8");
-    if (configContent) {
-      // try JSON.parse for .runtimeconfig.json and notice if parsing is failed
-      try {
-        JSON.parse(configContent.toString());
-
-        logDebug(`Found local functions config: ${configPath}`);
-        process.env.CLOUD_RUNTIME_CONFIG = configContent.toString();
-      } catch (e) {
-        new EmulatorLog("SYSTEM", "function-runtimeconfig-json-invalid", "").log();
-      }
-    }
-  } catch (e) {
-    // Ignore, config is optional
-  }
-
-  // Before firebase-functions version 3.8.0 the Functions SDK would reject non-prod database URLs.
-  const functionsResolution = await assertResolveDeveloperNodeModule(frb, "firebase-functions");
-  const functionsGt380 = compareVersionStrings(functionsResolution.version, "3.8.0") >= 0;
-  let emulatedDatabaseURL = undefined;
-  if (frb.emulators.database && functionsGt380) {
-    // Database URL will look like one of:
-    //  - https://${namespace}.firebaseio.com
-    //  - https://${namespace}.${location}.firebasedatabase.app
-    let ns = frb.projectId;
-    if (frb.adminSdkConfig.databaseURL) {
-      const asUrl = new URL(frb.adminSdkConfig.databaseURL);
-      ns = asUrl.hostname.split(".")[0];
-    }
-
-    emulatedDatabaseURL = `http://${formatHost(frb.emulators.database)}/?ns=${ns}`;
-  }
-
-  process.env.FIREBASE_CONFIG = JSON.stringify({
-    storageBucket: frb.adminSdkConfig.storageBucket,
-    databaseURL: emulatedDatabaseURL || frb.adminSdkConfig.databaseURL,
-    projectId: frb.projectId,
-  });
-
-  if (frb.triggerId) {
-    // Runtime values are based on information from the bundle. Proper information for this is
-    // available once the target code has been loaded, which is too late.
-    const service = frb.targetName || "";
-    const target = service.replace(/-/g, ".");
-    const mode = frb.triggerType === EmulatedTriggerType.BACKGROUND ? "event" : "http";
-
-    let nodeVersion = 0;
-    if (frb.nodeMajorVersion) {
-      // If nodeMajorVersion is set, we ignore pkg.engines.node
-      nodeVersion = frb.nodeMajorVersion;
-    } else {
-      const pkg = requirePackageJson(frb);
-      if (pkg?.engines?.node) {
-        const nodeSemVer = parseVersionString(pkg.engines.node);
-        nodeVersion = nodeSemVer.major;
-      }
-    }
-
-    // Setup predefined environment variables for Node.js 10 and subsequent runtimes
-    // https://cloud.google.com/functions/docs/env-var
-    if (nodeVersion >= 10) {
-      setNode10EnvVars(target, mode, service);
-    }
-  }
-
-  // Make firebase-admin point at the Firestore emulator
-  if (frb.emulators.firestore) {
-    process.env[Constants.FIRESTORE_EMULATOR_HOST] = formatHost(frb.emulators.firestore);
-  }
-
-  // Make firebase-admin point at the Database emulator
-  if (frb.emulators.database) {
-    process.env[Constants.FIREBASE_DATABASE_EMULATOR_HOST] = formatHost(frb.emulators.database);
-  }
-
-  // Make firebase-admin point at the Auth emulator
-  if (frb.emulators.auth) {
-    process.env[Constants.FIREBASE_AUTH_EMULATOR_HOST] = formatHost(frb.emulators.auth);
-  }
-
-  // Make firebase-admin point at the Storage emulator
-  if (frb.emulators.storage) {
-    process.env[Constants.FIREBASE_STORAGE_EMULATOR_HOST] = formatHost(frb.emulators.storage);
-    process.env[Constants.CLOUD_STORAGE_EMULATOR_HOST] = `http://${formatHost(
-      frb.emulators.storage
-    )}`;
-  }
-
-  if (frb.emulators.pubsub) {
-    const pubsubHost = formatHost(frb.emulators.pubsub);
-    process.env.PUBSUB_EMULATOR_HOST = pubsubHost;
-    logDebug(`Set PUBSUB_EMULATOR_HOST to ${pubsubHost}`);
-  }
-}
-
 // This is a duplicate of the helper we use elsewhere but it's important not to
 // add dependencies to this runtime.
 function formatHost(info: { host: string; port: number }) {
@@ -1088,7 +960,6 @@ async function initializeRuntime(
     return;
   }
 
-  await initializeEnvironmentalVariables(frb);
   initializeNetworkFiltering(frb);
   await initializeFunctionsConfigHelper(frb);
   await initializeFirebaseFunctionsStubs(frb);

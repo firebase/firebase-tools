@@ -5,6 +5,7 @@ import * as express from "express";
 import * as clc from "cli-color";
 import * as http from "http";
 import * as jwt from "jsonwebtoken";
+import { URL } from "url";
 
 import { Account } from "../auth";
 import * as api from "../api";
@@ -23,17 +24,17 @@ import * as chokidar from "chokidar";
 import * as spawn from "cross-spawn";
 import { ChildProcess, spawnSync } from "child_process";
 import {
+  emulatedFunctionsByRegion,
   EmulatedTriggerDefinition,
-  ParsedTriggerDefinition,
   EmulatedTriggerType,
+  EventSchedule,
+  EventTrigger,
   FunctionsRuntimeArgs,
   FunctionsRuntimeBundle,
   FunctionsRuntimeFeatures,
-  emulatedFunctionsByRegion,
   getFunctionService,
   HttpConstants,
-  EventTrigger,
-  EventSchedule,
+  ParsedTriggerDefinition,
 } from "./functionsEmulatorShared";
 import { EmulatorRegistry } from "./registry";
 import { EventEmitter } from "events";
@@ -46,10 +47,12 @@ import { WorkQueue } from "./workQueue";
 import { createDestroyer } from "../utils";
 import { getCredentialPathAsync } from "../defaultCredentials";
 import {
-  getProjectAdminSdkConfigOrCached,
   AdminSdkConfig,
   constructDefaultAdminSdkConfig,
+  getProjectAdminSdkConfigOrCached,
 } from "./adminSdkConfig";
+import * as functionsEnv from "../functions/env";
+import { compareVersionStrings } from "./functionsEmulatorUtils";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -311,7 +314,11 @@ export class FunctionsEmulator implements EmulatorInstance {
       env: this.args.env,
       extensionTriggers: this.args.predefinedTriggers,
     };
-    const worker = this.invokeRuntime(runtimeBundle, opts);
+    const worker = this.invokeRuntime(
+      runtimeBundle,
+      opts,
+      this.getRuntimeEnvs(triggerId, targetName, triggerType)
+    );
     return worker;
   }
 
@@ -818,7 +825,125 @@ export class FunctionsEmulator implements EmulatorInstance {
     return process.execPath;
   }
 
-  invokeRuntime(frb: FunctionsRuntimeBundle, opts: InvokeRuntimeOpts): RuntimeWorker {
+  getRuntimeEnvs(
+    triggerId: string,
+    targetName: string,
+    triggerType: EmulatedTriggerType
+  ): Record<string, string> {
+    const env: Record<string, string> = {};
+    env.TZ = "UTC";
+    env.GCLOUD_PROJECT = this.args.projectId;
+    env.FUNCTIONS_EMULATOR = "true";
+
+    const configPath = `${this.args.functionsDir}/.runtimeconfig.json`;
+    try {
+      const configContent = fs.readFileSync(configPath, "utf8");
+      if (configContent) {
+        // try JSON.parse for .runtimeconfig.json and notice if parsing is failed
+        try {
+          JSON.parse(configContent.toString());
+          logger.debug(`Found local functions config: ${configPath}`);
+          env.CLOUD_RUNTIME_CONFIG = configContent.toString();
+        } catch (e) {
+          new EmulatorLog("SYSTEM", "function-runtimeconfig-json-invalid", e?.message ?? "").log();
+        }
+      }
+    } catch (e) {
+      // Ignore, config is optional
+    }
+
+    // Setup predefined environment variables for Node.js 10 and subsequent runtimes
+    // https://cloud.google.com/functions/docs/env-var
+    const service = targetName;
+    const target = service.replace(/-/g, ".");
+    const mode = triggerType === EmulatedTriggerType.BACKGROUND ? "event" : "http";
+    env.FUNCTION_TARGET = target;
+    env.FUNCTION_SIGNATURE_TYPE = mode;
+    env.K_SERVICE = service;
+    env.K_REVISION = "1";
+    env.PORT = "80";
+
+    const formatHost = (info: { host: string; port: number }): string => {
+      if (info.host.includes(":")) {
+        return `[${info.host}]:${info.port}`;
+      } else {
+        return `${info.host}:${info.port}`;
+      }
+    };
+
+    // Make firebase-admin point at the Firestore emulator
+    const firestoreEmulator = this.getEmulatorInfo(Emulators.FIRESTORE);
+    if (firestoreEmulator != null) {
+      env[Constants.FIRESTORE_EMULATOR_HOST] = formatHost(firestoreEmulator);
+    }
+
+    // Make firebase-admin point at the Database emulator
+    const databaseEmulator = this.getEmulatorInfo(Emulators.DATABASE);
+    if (databaseEmulator) {
+      env[Constants.FIREBASE_DATABASE_EMULATOR_HOST] = formatHost(databaseEmulator);
+    }
+
+    // Make firebase-admin point at the Auth emulator
+    const authEmulator = this.getEmulatorInfo(Emulators.AUTH);
+    if (authEmulator) {
+      env[Constants.FIREBASE_AUTH_EMULATOR_HOST] = formatHost(authEmulator);
+    }
+
+    // Make firebase-admin point at the Storage emulator
+    const storageEmulator = this.getEmulatorInfo(Emulators.STORAGE);
+    if (storageEmulator) {
+      env[Constants.FIREBASE_STORAGE_EMULATOR_HOST] = formatHost(storageEmulator);
+      env[Constants.CLOUD_STORAGE_EMULATOR_HOST] = `http://${formatHost(storageEmulator)}`;
+    }
+
+    const pubsubEmulator = this.getEmulatorInfo(Emulators.PUBSUB);
+    if (pubsubEmulator) {
+      const pubsubHost = formatHost(pubsubEmulator);
+      process.env.PUBSUB_EMULATOR_HOST = pubsubHost;
+      logger.debug(`Set PUBSUB_EMULATOR_HOST to ${pubsubHost}`);
+    }
+
+    // Load user-specified environment variables.
+    if (functionsEnv.hasUserEnvs(this.args.functionsDir, "local")) {
+      try {
+        const userEnvs = functionsEnv.loadUserEnvs({
+          functionsSource: this.args.functionsDir,
+          projectId: "local",
+        });
+        for (const [k, v] of Object.entries(userEnvs)) {
+          env[k] = v;
+        }
+      } catch (e) {
+        // Ignore - user envs are optional.
+        logger.debug(e);
+      }
+    }
+
+    let emulatedDatabaseURL = undefined;
+    if (databaseEmulator) {
+      // Database URL will look like one of:
+      //  - https://${namespace}.firebaseio.com
+      //  - https://${namespace}.${location}.firebasedatabase.app
+      let ns = this.args.projectId;
+      if (this.adminSdkConfig.databaseURL) {
+        const asUrl = new URL(this.adminSdkConfig.databaseURL);
+        ns = asUrl.hostname.split(".")[0];
+      }
+      emulatedDatabaseURL = `http://${formatHost(databaseEmulator)}/?ns=${ns}`;
+    }
+    env.FIREBASE_CONFIG = JSON.stringify({
+      storageBucket: this.adminSdkConfig.storageBucket,
+      databaseURL: emulatedDatabaseURL || this.adminSdkConfig.databaseURL,
+      projectId: this.args.projectId,
+    });
+    return env;
+  }
+
+  invokeRuntime(
+    frb: FunctionsRuntimeBundle,
+    opts: InvokeRuntimeOpts,
+    runtimeEnv?: Record<string, string>
+  ): RuntimeWorker {
     // If we can use an existing worker there is almost nothing to do.
     if (this.workerPool.readyForWork(frb.triggerId)) {
       return this.workerPool.submitWork(frb.triggerId, frb, opts);
@@ -860,7 +985,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     const childProcess = spawn(opts.nodeBinary, args, {
-      env: { node: opts.nodeBinary, ...opts.env, ...process.env },
+      env: { node: opts.nodeBinary, ...opts.env, ...process.env, ...(runtimeEnv ?? {}) },
       cwd: frb.cwd,
       stdio: ["pipe", "pipe", "pipe", "ipc"],
     });
@@ -1132,6 +1257,9 @@ export class FunctionsEmulator implements EmulatorInstance {
         socketPath: worker.lastArgs.frb.socketPath,
       },
       (runtimeRes: http.IncomingMessage) => {
+        /**
+         *
+         */
         function forwardStatusAndHeaders(): void {
           res.status(runtimeRes.statusCode || 200);
           if (!res.headersSent) {
