@@ -2,6 +2,7 @@
 // from a functions package directory.
 "use strict";
 
+var url = require("url");
 var extractTriggers = require("./extractTriggers");
 var EXIT = function () {
   process.exit(0);
@@ -21,8 +22,10 @@ async function loadModule(packageDir) {
     return require(packageDir);
   } catch (e) {
     if (e.code === "ERR_REQUIRE_ESM") {
-      const mod = await dynamicImport(require.resolve(packageDir));
-      return mod;
+      const modulePath = require.resolve(packageDir);
+      // Resolve module path to file:// URL. Required for windows support.
+      const moduleURL = url.pathToFileURL(modulePath).href;
+      return await dynamicImport(moduleURL);
     }
     throw e;
   }
