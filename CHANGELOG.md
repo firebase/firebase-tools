@@ -1,1 +1,1 @@
-- Fix bug where functions packaged as ES module failed to load on Windows (#3692)
+- Fixes bug where functions packaged as ES module failed to load on Windows. (#3692)
