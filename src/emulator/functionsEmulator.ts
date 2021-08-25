@@ -834,6 +834,17 @@ export class FunctionsEmulator implements EmulatorInstance {
     env.GCLOUD_PROJECT = this.args.projectId;
     env.FUNCTIONS_EMULATOR = "true";
 
+    // Setup predefined environment variables for Node.js 10 and subsequent runtimes
+    // https://cloud.google.com/functions/docs/env-var
+    const service = targetName;
+    const target = service.replace(/-/g, ".");
+    const mode = triggerType === EmulatedTriggerType.BACKGROUND ? "event" : "http";
+    env.FUNCTION_TARGET = target;
+    env.FUNCTION_SIGNATURE_TYPE = mode;
+    env.K_SERVICE = service;
+    env.K_REVISION = "1";
+    env.PORT = "80";
+
     const configPath = `${this.args.functionsDir}/.runtimeconfig.json`;
     try {
       const configContent = fs.readFileSync(configPath, "utf8");
@@ -851,16 +862,21 @@ export class FunctionsEmulator implements EmulatorInstance {
       // Ignore, config is optional
     }
 
-    // Setup predefined environment variables for Node.js 10 and subsequent runtimes
-    // https://cloud.google.com/functions/docs/env-var
-    const service = targetName;
-    const target = service.replace(/-/g, ".");
-    const mode = triggerType === EmulatedTriggerType.BACKGROUND ? "event" : "http";
-    env.FUNCTION_TARGET = target;
-    env.FUNCTION_SIGNATURE_TYPE = mode;
-    env.K_SERVICE = service;
-    env.K_REVISION = "1";
-    env.PORT = "80";
+    // Load user-specified environment variables.
+    if (functionsEnv.hasUserEnvs({ functionsSource: this.args.functionsDir, projectId: "local" })) {
+      try {
+        const userEnvs = functionsEnv.loadUserEnvs({
+          functionsSource: this.args.functionsDir,
+          projectId: "local",
+        });
+        for (const [k, v] of Object.entries(userEnvs)) {
+          env[k] = v;
+        }
+      } catch (e) {
+        // Ignore - user envs are optional.
+        logger.debug(e);
+      }
+    }
 
     const formatHost = (info: { host: string; port: number }): string => {
       if (info.host.includes(":")) {
@@ -902,22 +918,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       logger.debug(`Set PUBSUB_EMULATOR_HOST to ${pubsubHost}`);
     }
 
-    // Load user-specified environment variables.
-    if (functionsEnv.hasUserEnvs({ functionsSource: this.args.functionsDir, projectId: "local" })) {
-      try {
-        const userEnvs = functionsEnv.loadUserEnvs({
-          functionsSource: this.args.functionsDir,
-          projectId: "local",
-        });
-        for (const [k, v] of Object.entries(userEnvs)) {
-          env[k] = v;
-        }
-      } catch (e) {
-        // Ignore - user envs are optional.
-        logger.debug(e);
-      }
-    }
-
     let emulatedDatabaseURL = undefined;
     if (databaseEmulator) {
       // Database URL will look like one of:
@@ -935,6 +935,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       databaseURL: emulatedDatabaseURL || this.adminSdkConfig.databaseURL,
       projectId: this.args.projectId,
     });
+
     return env;
   }
 
