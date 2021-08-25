@@ -27,19 +27,21 @@ const REQUIRED_PERMISSIONS = [
 
 const RESERVED_PROJECT_ALIAS = ["local"];
 
-interface ProjectAliasInfo {
+interface ProjectConfigInfo {
   projectId: string;
   alias?: string;
+  config?: Record<string, unknown>;
+  envs?: configExport.EnvMap[];
 }
 
 /**
  * Find all projects (and its alias) associated with the current directory.
  */
-export function getAllProjectInfos(options: {
+export function getProjectInfos(options: {
   project?: string;
   projectId?: string;
   cwd?: string;
-}): ProjectAliasInfo[] {
+}): ProjectConfigInfo[] {
   const result: Record<string, string> = {};
 
   const rc = loadRC(options);
@@ -62,7 +64,7 @@ export function getAllProjectInfos(options: {
   }
 
   return Object.entries(result).map(([k, v]) => {
-    const result: ProjectAliasInfo = { projectId: k };
+    const result: ProjectConfigInfo = { projectId: k };
     if (k !== v) {
       result.alias = v;
     }
@@ -70,15 +72,13 @@ export function getAllProjectInfos(options: {
   });
 }
 
-// Check necessary IAM permissions for a project.
-// If permission check fails on a project, ask user to exclude it.
-async function checkRequiredPermission({ projectId }: ProjectAliasInfo): Promise<boolean> {
+async function checkRequiredPermission({ projectId }: ProjectConfigInfo): Promise<boolean> {
   const result = await testIamPermissions(projectId, REQUIRED_PERMISSIONS);
   if (result.passed) return true;
 
   logWarning(
     "You are missing the following permissions to read functions config on project " +
-      `\t${clc.bold(projectId)}:\n ${result.missing.join("\n ")}`
+      `${clc.bold(projectId)}:\n\t${result.missing.join("\n\t")}`
   );
 
   const confirm = await promptOnce(
@@ -99,24 +99,29 @@ async function checkRequiredPermission({ projectId }: ProjectAliasInfo): Promise
 }
 
 function configsToEnvs(
-  projects: ProjectAliasInfo[],
-  configs: Record<string, unknown>[],
+  projects: ProjectConfigInfo[],
   prefix: string
-): { envs: configExport.EnvMap[][]; errMsg: string } {
-  const results = configs.map((config) => configExport.configToEnv(config, prefix));
-
-  const errMsg = results
-    .map(({ errors }, idx) => ({ project: projects[idx], errors }))
-    .filter(({ errors }) => errors.length > 0)
-    .map(
-      ({ project, errors }) =>
+): { projects: ProjectConfigInfo[]; errMsg: string } {
+  const results = [];
+  let errMsg = "";
+  for (const project of projects) {
+    const result = configExport.configToEnv(project.config!, prefix);
+    if (result.errors.length > 0) {
+      const msg =
         `${project.alias ?? project.projectId}:\n` +
-        errors.map((err) => `\t${err.origKey} => ${clc.bold(err.newKey)} (${err.err})`).join("\n") +
-        "\n"
-    )
-    .join("\n");
+        result.errors
+          .map((err) => `\t${err.origKey} => ${clc.bold(err.newKey)} (${err.err})`)
+          .join("\n") +
+        "\n";
+      errMsg += msg;
+    } else {
+      results.push({ ...project, envs: result.success });
+    }
+    projects.map((project) => configExport.configToEnv(project.config!, prefix));
+  }
+
   return {
-    envs: results.map((result) => result.success),
+    projects: results,
     errMsg,
   };
 }
@@ -135,30 +140,20 @@ async function promptForPrefix(errMsg: string): Promise<string> {
   );
 }
 
-function writeEnvs(
-  basePath: string,
-  header: string,
-  projects: ProjectAliasInfo[],
-  envs: configExport.EnvMap[][]
-): string[] {
-  return envs.map((env, idx) => {
-    const project = projects[idx];
-    const dotenv = configExport.toDotenvFormat(env, header);
+function writeEnvs(basePath: string, header: string, projects: ProjectConfigInfo[]): string[] {
+  return projects.map((project) => {
+    const dotenv = configExport.toDotenvFormat(project.envs ?? [], header);
     const ext = project.alias ?? project.projectId;
-    const filePath = path.join(basePath, `.env.${ext}`);
+    const filename = ext ? `.env.${ext}` : `.env`; // ext will be empty when writing empty .env.
+    const filePath = path.join(basePath, filename);
 
     fs.writeFileSync(filePath, dotenv);
     return filePath;
   });
 }
 
-function writeEmptyEnvs(basePath: string, header: string, projects: ProjectAliasInfo[]): string[] {
-  return writeEnvs(
-    basePath,
-    header,
-    projects,
-    projects.map(() => [])
-  );
+function writeEmptyEnvs(basePath: string, header: string, projects: ProjectConfigInfo[]): string[] {
+  return writeEnvs(basePath, header, projects);
 }
 
 async function copyFilesToDir(srcFiles: string[], destDir: string): Promise<string[]> {
@@ -196,52 +191,57 @@ export default new Command("functions:config:export")
   ])
   .before(requireConfig)
   .action(async (options: any) => {
-    const allProjectInfos = getAllProjectInfos(options);
+    const pInfosWithAlias = getProjectInfos(options);
 
-    const projectInfos: ProjectAliasInfo[] = [];
-    for (const projectInfo of allProjectInfos) {
-      if (await checkRequiredPermission(projectInfo)) {
-        if (projectInfo.alias && RESERVED_PROJECT_ALIAS.includes(projectInfo.alias)) {
-          logWarning(
-            `Project alias (${clc.bold(projectInfo.alias)}) is reserved for internal use. ` +
-              `Saving exported config in .env.${projectInfo.projectId} instead.`
-          );
-          delete projectInfo.alias;
-        }
-        projectInfos.push(projectInfo);
+    for (const pInfo of pInfosWithAlias) {
+      if (pInfo.alias && RESERVED_PROJECT_ALIAS.includes(pInfo.alias)) {
+        logWarning(
+          `Project alias (${clc.bold(pInfo.alias)}) is reserved for internal use. ` +
+            `Saving exported config in .env.${pInfo.projectId} instead.`
+        );
+        delete pInfo.alias;
       }
     }
 
     logBullet(
       "Importing functions configs from projects [" +
-        projectInfos.map(({ projectId }) => `${clc.bold(projectId)}`).join(", ") +
+        pInfosWithAlias.map(({ projectId }) => `${clc.bold(projectId)}`).join(", ") +
         "]"
     );
 
-    const configs = await Promise.all(
-      projectInfos.map(async ({ projectId }) => {
-        return await functionsConfig.materializeAll(projectId);
-      })
-    );
-    logger.debug("Loaded function configs: " + JSON.stringify(configs));
+    const pInfosWithConfigs: ProjectConfigInfo[] = [];
+    for (const pInfo of pInfosWithAlias) {
+      try {
+        const config = await functionsConfig.materializeAll(pInfo.projectId);
+        pInfosWithConfigs.push({ ...pInfo, config });
+      } catch (err) {
+        if (err.status === 403) {
+          await checkRequiredPermission(pInfo);
+          continue;
+        }
+        throw err;
+      }
+    }
+
+    logger.debug("Loaded function configs: " + JSON.stringify(pInfosWithConfigs));
 
     let prefix = "";
-    let envs = [];
+    let pInfosWithEnvs = [];
     while (true) {
-      const result = configsToEnvs(projectInfos, configs, prefix);
-      envs = result.envs;
+      const { projects, errMsg } = configsToEnvs(pInfosWithConfigs, prefix);
+      pInfosWithEnvs = projects;
 
-      if (result.errMsg.length == 0) {
+      if (errMsg.length == 0) {
         break;
       }
-      prefix = await promptForPrefix(result.errMsg);
+      prefix = await promptForPrefix(errMsg);
 
-      envs = [];
+      pInfosWithEnvs = [];
     }
 
     const header = `# Exported firebase functions:config:export command on ${new Date().toLocaleDateString()}`;
     const tmpdir = fs.mkdtempSync(os.tmpdir() + "dotenvs");
-    const tmpFiles = writeEnvs(tmpdir, header, projectInfos, envs);
+    const tmpFiles = writeEnvs(tmpdir, header, pInfosWithEnvs);
     tmpFiles.push(...writeEmptyEnvs(tmpdir, header, [{ projectId: "" }, { projectId: "local" }]));
     logger.debug(`Wrote tmp .env files: [${tmpFiles.join(",")}]`);
 
