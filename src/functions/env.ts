@@ -40,19 +40,19 @@ const RESERVED_KEYS = [
 //   https://github.com/bkeepers/dotenv/blob/master/lib/dotenv/parser.rb
 // prettier-ignore
 const LINE_RE = new RegExp(
-  "^" +                    // begin line
-  "\\s*" +                 //   leading whitespaces
-  "(\\w+)" +               //   key
-  "\\s*=\\s*" +            //   separator (=)
-  "(" +                    //   begin optional value
-  "\\s*'(?:\\'|[^'])*'|" + //     single quoted or
-  '\\s*"(?:\\"|[^"])*"|' + //     double quoted or
-  "[^\\#\\r\\n]+" +        //     unquoted
-  ")?" +                   //   end optional value
-  "\\s*" +                 //   trailing whitespaces
-  "(?:#[^\\n]*)?" +        //   optional comment
-  "$",                     // end line
-  "gms"                    // flags: global, multiline, dotall
+  "^" +                      // begin line
+  "\\s*" +                   //   leading whitespaces
+  "(\\w+)" +                 //   key
+  "\\s*=\\s*" +              //   separator (=)
+  "(" +                      //   begin optional value
+  "\\s*'(?:\\\\'|[^'])*'|" + //     single quoted or
+  '\\s*"(?:\\\\"|[^"])*"|' + //     double quoted or
+  "[^\\#\\r\\n]+" +          //     unquoted
+  ")?" +                     //   end optional value
+  "\\s*" +                   //   trailing whitespaces
+  "(?:#[^\\n]*)?" +          //   optional comment
+  "$",                       // end line
+  "gms"                      // flags: global, multiline, dotall
 );
 
 interface ParseResult {
