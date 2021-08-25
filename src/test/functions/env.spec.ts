@@ -55,6 +55,16 @@ BAR=bar
         want: { FOO: "foo1\nfoo2", BAR: "bar" },
       },
       {
+        description: "should leave single quotes when double quoted",
+        input: `FOO="'foo'"`,
+        want: { FOO: "'foo'" },
+      },
+      {
+        description: "should leave double quotes when single quoted",
+        input: `FOO='"foo"'`,
+        want: { FOO: '"foo"' },
+      },
+      {
         description: "should unescape escape characters for double quoted values",
         input: 'FOO="foo1\\"foo2"',
         want: { FOO: 'foo1"foo2' },
