@@ -52,7 +52,6 @@ import {
   getProjectAdminSdkConfigOrCached,
 } from "./adminSdkConfig";
 import * as functionsEnv from "../functions/env";
-import { compareVersionStrings } from "./functionsEmulatorUtils";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -1257,9 +1256,6 @@ export class FunctionsEmulator implements EmulatorInstance {
         socketPath: worker.lastArgs.frb.socketPath,
       },
       (runtimeRes: http.IncomingMessage) => {
-        /**
-         *
-         */
         function forwardStatusAndHeaders(): void {
           res.status(runtimeRes.statusCode || 200);
           if (!res.headersSent) {
