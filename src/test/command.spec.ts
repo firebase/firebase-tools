@@ -14,7 +14,8 @@ describe("Command", () => {
   it("should allow all basic behavior", () => {
     expect(() => {
       command.description("description!");
-      command.option("-f, --foobar", "description", "value");
+      command.option("-x, --foobar", "description", "value");
+      command.withForce();
       command.before(
         (arr: string[]) => {
           return arr;
