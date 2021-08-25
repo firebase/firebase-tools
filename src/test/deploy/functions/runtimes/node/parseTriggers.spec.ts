@@ -118,7 +118,9 @@ describe("addResourcesToBackend", () => {
   it("should copy fields", () => {
     const trigger: parseTriggers.TriggerAnnotation = {
       ...BASIC_TRIGGER,
-      httpsTrigger: {},
+      httpsTrigger: {
+        invoker: ["public"],
+      },
       maxInstances: 42,
       minInstances: 1,
       serviceAccountEmail: "inlined@google.com",
@@ -129,7 +131,6 @@ describe("addResourcesToBackend", () => {
       labels: {
         test: "testing",
       },
-      invoker: ["public"],
     };
 
     const result = backend.empty();
@@ -142,6 +143,7 @@ describe("addResourcesToBackend", () => {
           ...BASIC_FUNCTION,
           trigger: {
             allowInsecure: true,
+            invoker: ["public"],
           },
           maxInstances: 42,
           minInstances: 1,
@@ -153,7 +155,6 @@ describe("addResourcesToBackend", () => {
           labels: {
             test: "testing",
           },
-          invoker: ["public"],
         },
       ],
     };

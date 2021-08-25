@@ -45,6 +45,7 @@ export interface ScheduleSpec {
 /** API agnostic version of a Cloud Function's HTTPs trigger. */
 export interface HttpsTrigger {
   allowInsecure: boolean;
+  invoker?: string[];
 }
 
 /** Well known keys in the eventFilter attribute of an event trigger */
@@ -175,7 +176,6 @@ export interface FunctionSpec extends TargetIds {
   vpcConnectorEgressSettings?: VpcEgressSettings;
   ingressSettings?: IngressSettings;
   serviceAccountEmail?: "default" | string;
-  invoker?: string[];
 
   // Output only:
 
