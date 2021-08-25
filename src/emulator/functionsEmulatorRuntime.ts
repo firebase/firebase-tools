@@ -654,7 +654,7 @@ async function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): Pr
   process.env.GCLOUD_PROJECT = frb.projectId;
   process.env.FUNCTIONS_EMULATOR = "true";
 
-  if (functionsEnv.hasUserEnvs(frb.cwd, "local")) {
+  if (functionsEnv.hasUserEnvs({ functionsSource: frb.cwd, projectId: "local" })) {
     // Load user-specified environment variables.
     try {
       const userEnvs = functionsEnv.loadUserEnvs({ functionsSource: frb.cwd, projectId: "local" });
