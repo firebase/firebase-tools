@@ -678,5 +678,5 @@ describe("FunctionsEmulator-Hub", () => {
           expect(res.body.var).to.eql("localhost:9099");
         });
     }).timeout(TIMEOUT_MED);
-  })
+  });
 });
