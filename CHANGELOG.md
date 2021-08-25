@@ -1,1 +1,2 @@
 - Fixes bug where functions packaged as ES module failed to load on Windows. (#3692)
+- Tracks use of runtime config and environment variables on function deploys. (#3704)
