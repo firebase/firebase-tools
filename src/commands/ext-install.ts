@@ -28,6 +28,7 @@ import {
   promptForValidInstanceId,
   isLocalOrURLPath,
 } from "../extensions/extensionsHelper";
+import { update } from "../extensions/updateHelper";
 import { getRandomString } from "../extensions/utils";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
@@ -45,20 +46,26 @@ interface InstallExtensionOptions {
   source?: extensionsApi.ExtensionSource;
   extVersion?: extensionsApi.ExtensionVersion;
   nonInteractive: boolean;
-  force?: boolean
+  force?: boolean;
 }
 
 async function installExtension(options: InstallExtensionOptions): Promise<void> {
-  const { projectId, extensionName, source, extVersion, paramFilePath, nonInteractive, force } = options;
+  const {
+    projectId,
+    extensionName,
+    source,
+    extVersion,
+    paramFilePath,
+    nonInteractive,
+    force,
+  } = options;
   const spec = source?.spec || extVersion?.spec;
   if (!spec) {
     throw new FirebaseError(
       `Could not find the extension.yaml for ${extensionName}. Please make sure this is a valid extension and try again.`
     );
   }
-  const spinner = ora.default(
-    "Installing your extension instance. This usually takes 3 to 5 minutes..."
-  );
+  const spinner = ora.default();
   try {
     await provisioningHelper.checkProductsProvisioned(projectId, spec);
 
@@ -67,8 +74,10 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
       if (!enabled && nonInteractive) {
         throw new FirebaseError(
           `This extension requires the Blaze plan, but project ${projectId} is not on the Blaze plan. ` +
-          marked("Please visit https://console.cloud.google.com/billing/linkedaccount?project=${projectId} to upgrade your project.")
-        )
+            marked(
+              "Please visit https://console.cloud.google.com/billing/linkedaccount?project=${projectId} to upgrade your project."
+            )
+        );
       } else if (!enabled) {
         await displayNode10CreateBillingNotice(spec, false);
         await enableBilling(projectId, spec.displayName || spec.name);
@@ -79,7 +88,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
     const roles = spec.roles ? spec.roles.map((role: extensionsApi.Role) => role.role) : [];
     if (roles.length) {
       await askUserForConsent.displayRoles(spec.displayName || spec.name, projectId, roles);
-      const consented = await confirmInstallInstance();
+      const consented = await confirmInstallInstance(nonInteractive, force);
       if (!consented) {
         throw new FirebaseError(
           "Without explicit consent for the roles listed, we cannot deploy this extension."
@@ -94,44 +103,70 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
       if (!nonInteractive) {
         choice = await promptForRepeatInstance(projectId, spec.name);
       } else if (nonInteractive && force) {
-        choice = "updateExisting"
+        choice = "updateExisting";
       } else {
-        throw new FirebaseError(`An extension with the ID '${clc.bold(
-          extensionName
-        )}' already exists in the project '${clc.bold(projectId)}'.` +
-        ` To update or reconfigure this instance instead, rerun this command with the --force flag.`);
+        throw new FirebaseError(
+          `An extension with the ID '${clc.bold(
+            extensionName
+          )}' already exists in the project '${clc.bold(projectId)}'.` +
+            ` To update or reconfigure this instance instead, rerun this command with the --force flag.`
+        );
       }
-      
-      instanceId = await promptForValidInstanceId(`${instanceId}-${getRandomString(4)}`);
     } else {
       choice = "installNew";
     }
-    const params = await paramHelper.getParams(projectId, _.get(spec, "params", []), nonInteractive, paramFilePath);
-
-    spinner.start();
-
-    if (!source && extVersion) {
-      await extensionsApi.createInstanceFromExtensionVersion(
-        projectId,
-        instanceId,
-        extVersion,
-        params
-      );
-    } else if (source) {
-      await extensionsApi.createInstanceFromSource(projectId, instanceId, source, params);
-    } else {
-      throw new FirebaseError(
-        `Neither a extension source nor an extension version was supplied for ${extensionName}. Please make sure this is a valid extension and try again.`
-      );
+    let params: Record<string, string>;
+    switch (choice) {
+      case "installNew":
+        instanceId = await promptForValidInstanceId(`${instanceId}-${getRandomString(4)}`);
+        params = await paramHelper.getParams(
+          projectId,
+          _.get(spec, "params", []),
+          nonInteractive,
+          paramFilePath
+        );
+        spinner.text = "Installing your extension instance. This usually takes 3 to 5 minutes...";
+        spinner.start();
+        await extensionsApi.createInstance({
+          projectId,
+          instanceId,
+          extensionSource: source,
+          extensionVersionRef: extVersion?.ref,
+          params,
+        });
+        spinner.stop();
+        utils.logLabeledSuccess(
+          logPrefix,
+          `Successfully installed your instance of ${clc.bold(spec.displayName || spec.name)}! ` +
+            `Its Instance ID is ${clc.bold(instanceId)}.`
+        );
+        break;
+      case "updateExisting":
+        params = await paramHelper.getParams(
+          projectId,
+          _.get(spec, "params", []),
+          nonInteractive,
+          paramFilePath
+        );
+        spinner.text = "Updating your extension instance. This usually takes 3 to 5 minutes...";
+        spinner.start();
+        await update({
+          projectId,
+          instanceId,
+          source,
+          extRef: extVersion?.ref,
+          params,
+        });
+        spinner.stop();
+        utils.logLabeledSuccess(
+          logPrefix,
+          `Successfully updated your instance of ${clc.bold(spec.displayName || spec.name)}! ` +
+            `Its Instance ID is ${clc.bold(instanceId)}.`
+        );
+        break;
+      case "cancel":
+        return;
     }
-
-    spinner.stop();
-
-    utils.logLabeledSuccess(
-      logPrefix,
-      `Successfully installed your instance of ${clc.bold(spec.displayName || spec.name)}! ` +
-        `Its Instance ID is ${clc.bold(instanceId)}.`
-    );
     utils.logLabeledBullet(
       logPrefix,
       marked(
@@ -163,7 +198,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
 
 async function infoInstallBySource(
   projectId: string,
-  extensionName: string,
+  extensionName: string
 ): Promise<extensionsApi.ExtensionSource> {
   // Create a one off source to use for the install flow.
   let source;
@@ -197,11 +232,7 @@ async function infoInstallByReference(
   }
   const extVersion = await extensionsApi.getExtensionVersion(extensionName);
   displayExtInfo(extensionName, ref.publisherId, extVersion.spec, true);
-  displayWarningPrompts(
-    ref.publisherId,
-    extension.registryLaunchStage,
-    extVersion
-  );
+  displayWarningPrompts(ref.publisherId, extension.registryLaunchStage, extVersion);
   return extVersion;
 }
 
@@ -216,6 +247,7 @@ export default new Command("ext:install [extensionName]")
         : "") +
       "or run with `-i` to see all available extensions."
   )
+  .withForce()
   .option("--params <paramsFile>", "name of params variables file with .env format.")
   .before(requirePermissions, ["firebaseextensions.instances.create"])
   .before(ensureExtensionsApiEnabled)
@@ -249,14 +281,7 @@ export default new Command("ext:install [extensionName]")
     } else {
       extVersion = await infoInstallByReference(extensionName);
     }
-    if (!options.nonInteractive) {
-      const confirm = await confirmInstallInstance();
-      if (!confirm) {
-        throw new FirebaseError("Install cancelled.");
-      }
-    } else if (!options.force){
-      throw new FirebaseError("Pass the --force flag to install an extension in nonInteractive mode.")
-    }
+    const confirm = await confirmInstallInstance(options.nonInteractive, options.force);
     if (!source && !extVersion) {
       throw new FirebaseError(
         "Could not find a source. Please specify a valid source to continue."

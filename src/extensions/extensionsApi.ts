@@ -163,7 +163,7 @@ export interface ParamOption {
  * @param instanceId the id to set for the instance
  * @param config instance configuration
  */
-export async function createInstance(
+async function createInstanceHelper(
   projectId: string,
   instanceId: string,
   config: any
@@ -193,40 +193,31 @@ export async function createInstance(
  * @param extensionSource the ExtensionSource to create an instance of
  * @param params params to configure the extension instance
  */
-export async function createInstanceFromSource(
-  projectId: string,
-  instanceId: string,
-  extensionSource: ExtensionSource,
-  params: { [key: string]: string }
-): Promise<ExtensionInstance> {
-  const config = {
-    source: { name: extensionSource.name },
-    params,
+export async function createInstance(args: {
+  projectId: string;
+  instanceId: string;
+  extensionSource?: ExtensionSource;
+  extensionVersionRef?: string;
+  params: { [key: string]: string };
+}): Promise<ExtensionInstance> {
+  const config: any = {
+    params: args.params,
   };
-  return createInstance(projectId, instanceId, config);
-}
 
-/**
- * Create a new extension instance, given a extension source path, a set of params, and a service account.
- *
- * @param projectId the project to create the instance in
- * @param instanceId the id to set for the instance
- * @param extensionVersion the ExtensionVersion ref
- * @param params params to configure the extension instance
- */
-export async function createInstanceFromExtensionVersion(
-  projectId: string,
-  instanceId: string,
-  extensionVersion: ExtensionVersion,
-  params: { [key: string]: string }
-): Promise<ExtensionInstance> {
-  const { publisherId, extensionId, version } = parseRef(extensionVersion.ref);
-  const config = {
-    extensionRef: `${publisherId}/${extensionId}`,
-    extensionVersion: version || "",
-    params,
-  };
-  return createInstance(projectId, instanceId, config);
+  if (args.extensionSource && args.extensionVersionRef) {
+    throw new FirebaseError(
+      "ExtensionSource and ExtensionVersion both provided, but only one should be."
+    );
+  } else if (args.extensionSource) {
+    config.source = { name: args.extensionSource?.name };
+  } else if (args.extensionVersionRef) {
+    const { publisherId, extensionId, version } = parseRef(args.extensionVersionRef);
+    config.extensionRef = `${publisherId}/${extensionId}`;
+    config.extensionVersion = version || "";
+  } else {
+    throw new FirebaseError("No ExtensionVersion or ExtensionSource provided but one is required.");
+  }
+  return createInstanceHelper(args.projectId, args.instanceId, config);
 }
 
 /**
@@ -346,7 +337,7 @@ export async function updateInstance(
   };
   let updateMask = "config.source.name";
   if (params) {
-    body.params = params;
+    body.config.params = params;
     updateMask += ",config.params";
   }
   return await patchInstance(projectId, instanceId, updateMask, body);
@@ -375,7 +366,7 @@ export async function updateInstanceFromRegistry(
   };
   let updateMask = "config.extension_ref,config.extension_version";
   if (params) {
-    body.params = params;
+    body.config.params = params;
     updateMask += ",config.params";
   }
   return await patchInstance(projectId, instanceId, updateMask, body);

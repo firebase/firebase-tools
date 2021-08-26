@@ -54,6 +54,6 @@ export async function displayWarningPrompts(
     displayExperimentalWarning();
   } else {
     // Otherwise, this is an official extension and requires no warning prompts.
-    return true;
+    return;
   }
 }

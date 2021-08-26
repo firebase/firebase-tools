@@ -3,7 +3,6 @@ import * as _ from "lodash";
 import * as marked from "marked";
 import * as ora from "ora";
 import TerminalRenderer = require("marked-terminal");
-import * as semver from "semver";
 
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
@@ -87,6 +86,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
   ])
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
+  .withForce()
   .action(async (instanceId: string, updateSource: string, options: any) => {
     const spinner = ora.default(
       `Updating ${clc.bold(instanceId)}. This usually takes 3 to 5 minutes...`

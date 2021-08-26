@@ -62,6 +62,19 @@ export async function getParams(
   noninteractive: boolean = false,
   envFilePath?: string
 ): Promise<{ [key: string]: string }> {
+  if (noninteractive && !envFilePath) {
+    const paramsMessage = paramSpecs
+      .map((p) => {
+        return `\t${p.param}${p.required ? "" : " (Optional)"}`;
+      })
+      .join("\n");
+    throw new FirebaseError(
+      "In non-interactive mode but no `--params` flag found. " +
+        "To install this extension in non-interactive mode, set `--params` to a path to an .env file" +
+        " containing values for this extension's params:\n" +
+        paramsMessage
+    );
+  }
   let commandLineParams;
   if (envFilePath) {
     try {
@@ -80,6 +93,7 @@ export async function getParams(
   if (commandLineParams) {
     params = populateDefaultParams(commandLineParams, paramSpecs);
     validateCommandLineParams(params, paramSpecs);
+    logger.info(`Using param values from ${envFilePath}`);
   } else {
     params = await askUserForParam.ask(paramSpecs, firebaseProjectParams);
   }

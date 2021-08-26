@@ -594,19 +594,18 @@ export async function promptForRepeatInstance(
   projectName: string,
   extensionName: string
 ): Promise<"updateExisting" | "installNew" | "cancel"> {
-  const message =
-    `An extension with the ID '${clc.bold(
-      extensionName
-    )}' already exists in the project '${clc.bold(projectName)}'. What would you like to do?`;
+  const message = `An extension with the ID '${clc.bold(
+    extensionName
+  )}' already exists in the project '${clc.bold(projectName)}'. What would you like to do?`;
   const choices = [
-    { name: "Update or reconfigure the existing instance", value:"updateExsting" },
-    { name: "Install a new instance with a different ID", value: "installNew" }, 
+    { name: "Update or reconfigure the existing instance", value: "updateExisting" },
+    { name: "Install a new instance with a different ID", value: "installNew" },
     { name: "Cancel extension installation", value: "cancel" },
-  ]
+  ];
   return await promptOnce({
     type: "list",
     message,
-    choices
+    choices,
   });
 }
 
@@ -706,11 +705,20 @@ export async function getSourceOrigin(sourceOrVersion: string): Promise<SourceOr
 /**
  * Confirm if the user wants to install instance of an extension.
  */
-export async function confirmInstallInstance(defaultOption?: boolean): Promise<boolean> {
-  const message = `Would you like to continue installing this extension?`;
-  return await promptOnce({
-    type: "confirm",
-    message,
-    default: defaultOption,
-  });
+export async function confirmInstallInstance(
+  nonInteractive?: boolean,
+  force?: boolean
+): Promise<boolean> {
+  if (!nonInteractive && !force) {
+    const message = `Would you like to continue installing this extension?`;
+    return await promptOnce({
+      type: "confirm",
+      message,
+      default: true,
+    });
+  } else if (nonInteractive && !force) {
+    throw new FirebaseError("Pass the --force flag to install in non-interactive mode");
+  } else {
+    return true;
+  }
 }
