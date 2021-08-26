@@ -2,7 +2,6 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import * as resolveSource from "../../extensions/resolveSource";
-import * as prompt from "../../prompt";
 import * as utils from "../../utils";
 import * as warnings from "../../extensions/warnings";
 import { ExtensionVersion, RegistryLaunchStage } from "../../extensions/extensionsApi";
@@ -20,7 +19,7 @@ const testExtensionVersion: ExtensionVersion = {
     sourceUrl: "github.com/test/meout",
   },
 };
-// TODO: fix this test!
+
 describe("displayWarningPrompts", () => {
   let getTrustedPublisherStub: sinon.SinonStub;
   let logLabeledStub: sinon.SinonStub;
