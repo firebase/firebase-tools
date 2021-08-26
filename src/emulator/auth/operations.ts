@@ -2208,6 +2208,7 @@ export interface FirebaseJwtPayload {
       phone?: string[];
     };
     sign_in_provider: string;
+    usage_mode?: string;
   };
   // ...and other fields that we don't care for now.
 }
