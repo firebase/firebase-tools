@@ -76,7 +76,7 @@ export interface FunctionsEmulatorArgs {
   quiet?: boolean;
   disabledRuntimeFeatures?: FunctionsRuntimeFeatures;
   debugPort?: number;
-  env?: { [key: string]: string };
+  env?: Record<string, string>;
   remoteEmulators?: { [key: string]: EmulatorInfo };
   predefinedTriggers?: ParsedTriggerDefinition[];
   nodeMajorVersion?: number; // Lets us specify the node version when emulating extensions.
@@ -103,7 +103,6 @@ export interface InvokeRuntimeOpts {
   nodeBinary: string;
   serializedTriggers?: string;
   extensionTriggers?: ParsedTriggerDefinition[];
-  env?: { [key: string]: string };
   ignore_warnings?: boolean;
 }
 
@@ -310,13 +309,12 @@ export class FunctionsEmulator implements EmulatorInstance {
     };
     const opts = runtimeOpts || {
       nodeBinary: this.nodeBinary,
-      env: this.args.env,
       extensionTriggers: this.args.predefinedTriggers,
     };
     const worker = this.invokeRuntime(
       runtimeBundle,
       opts,
-      this.getRuntimeEnvs(triggerId, targetName, triggerType)
+      this.getRuntimeEnvs({ targetName, triggerType })
     );
     return worker;
   }
@@ -411,11 +409,14 @@ export class FunctionsEmulator implements EmulatorInstance {
     // in the pool that would cause us to run old code.
     this.workerPool.refresh();
 
-    const worker = this.invokeRuntime(this.getBaseBundle(), {
-      nodeBinary: this.nodeBinary,
-      env: this.args.env,
-      extensionTriggers: this.args.predefinedTriggers,
-    });
+    const worker = this.invokeRuntime(
+      this.getBaseBundle(),
+      {
+        nodeBinary: this.nodeBinary,
+        extensionTriggers: this.args.predefinedTriggers,
+      },
+      this.getRuntimeEnvs()
+    );
 
     const triggerParseEvent = await EmulatorLog.waitForLog(
       worker.runtime.events,
@@ -824,26 +825,27 @@ export class FunctionsEmulator implements EmulatorInstance {
     return process.execPath;
   }
 
-  getRuntimeEnvs(
-    triggerId: string,
-    targetName: string,
-    triggerType: EmulatedTriggerType
-  ): Record<string, string> {
-    const env: Record<string, string> = {};
+  getRuntimeEnvs(triggerDef?: {
+    targetName: string;
+    triggerType: EmulatedTriggerType;
+  }): Record<string, string> {
+    const env: Record<string, string> = this.args.env ?? {};
     env.TZ = "UTC";
     env.GCLOUD_PROJECT = this.args.projectId;
     env.FUNCTIONS_EMULATOR = "true";
+    env.K_REVISION = "1";
+    env.PORT = "80";
 
     // Setup predefined environment variables for Node.js 10 and subsequent runtimes
     // https://cloud.google.com/functions/docs/env-var
-    const service = targetName;
-    const target = service.replace(/-/g, ".");
-    const mode = triggerType === EmulatedTriggerType.BACKGROUND ? "event" : "http";
-    env.FUNCTION_TARGET = target;
-    env.FUNCTION_SIGNATURE_TYPE = mode;
-    env.K_SERVICE = service;
-    env.K_REVISION = "1";
-    env.PORT = "80";
+    if (triggerDef) {
+      const service = triggerDef.targetName;
+      const target = service.replace(/-/g, ".");
+      const mode = triggerDef.triggerType === EmulatedTriggerType.BACKGROUND ? "event" : "http";
+      env.FUNCTION_TARGET = target;
+      env.FUNCTION_SIGNATURE_TYPE = mode;
+      env.K_SERVICE = service;
+    }
 
     const configPath = `${this.args.functionsDir}/.runtimeconfig.json`;
     try {
@@ -985,7 +987,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     const childProcess = spawn(opts.nodeBinary, args, {
-      env: { node: opts.nodeBinary, ...opts.env, ...process.env, ...(runtimeEnv ?? {}) },
+      env: { node: opts.nodeBinary, ...process.env, ...(runtimeEnv ?? {}) },
       cwd: frb.cwd,
       stdio: ["pipe", "pipe", "pipe", "ipc"],
     });

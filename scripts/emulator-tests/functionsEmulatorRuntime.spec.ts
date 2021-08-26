@@ -4,6 +4,7 @@ import { expect } from "chai";
 import { IncomingMessage, request } from "http";
 import * as _ from "lodash";
 import * as express from "express";
+import * as fs from "fs";
 import * as sinon from "sinon";
 
 import { EmulatorLog, Emulators } from "../../src/emulator/types";
@@ -396,33 +397,33 @@ describe("FunctionsEmulator-Runtime", () => {
   });
 
   describe("_InitializeFunctionsConfigHelper()", () => {
-    it("should tell the user if they've accessed a non-existent function field", async () => {
-      const worker = startRuntimeWithFunctions(
-        FunctionRuntimeBundles.onCreate,
-        () => {
-          require("firebase-admin").initializeApp();
-          return {
-            function_id: require("firebase-functions")
-              .firestore.document("test/test")
-              .onCreate(() => {
-                // Exists
-                console.log(require("firebase-functions").config().real);
-
-                // Does not exist
-                console.log(require("firebase-functions").config().foo);
-                console.log(require("firebase-functions").config().bar);
-              }),
-          };
-        },
-        {
-          nodeBinary: process.execPath,
-          env: {
-            CLOUD_RUNTIME_CONFIG: JSON.stringify({
-              real: { exist: "already exists" },
-            }),
-          },
-        }
+    before(() => {
+      fs.writeFileSync(
+        MODULE_ROOT + "/.runtimeconfig.json",
+        '{"real":{"exist":"already exists" }}'
       );
+    });
+
+    after(() => {
+      fs.unlinkSync(MODULE_ROOT + "/.runtimeconfig.json");
+    });
+
+    it("should tell the user if they've accessed a non-existent function field", async () => {
+      const worker = startRuntimeWithFunctions(FunctionRuntimeBundles.onCreate, () => {
+        require("firebase-admin").initializeApp();
+        return {
+          function_id: require("firebase-functions")
+            .firestore.document("test/test")
+            .onCreate(() => {
+              // Exists
+              console.log(require("firebase-functions").config().real);
+
+              // Does not exist
+              console.log(require("firebase-functions").config().foo);
+              console.log(require("firebase-functions").config().bar);
+            }),
+        };
+      });
 
       const logs = await countLogEntries(worker);
       expect(logs["functions-config-missing-value"]).to.eq(2);
