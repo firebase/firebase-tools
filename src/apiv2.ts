@@ -364,6 +364,9 @@ export class Client {
       // 204 statuses have no content. Don't try to `json` it.
       if (res.status === 204) {
         body = (undefined as unknown) as ResT;
+      }
+      if (res.status === 404) {
+        body = ((await res.text()) as unknown) as ResT;
       } else {
         body = (await res.json()) as ResT;
       }
