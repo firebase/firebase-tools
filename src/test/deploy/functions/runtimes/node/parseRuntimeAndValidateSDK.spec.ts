@@ -100,7 +100,7 @@ describe("getRuntimeChoice", () => {
     });
 
     it("should print warning when firebase-functions version is below 2.0.0", () => {
-      cjsonStub.returns({ engines: { node: "10" } });
+      cjsonStub.returns({ engines: { node: "16" } });
 
       runtime.getRuntimeChoice("path/to/source", "");
     });
