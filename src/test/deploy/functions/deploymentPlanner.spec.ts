@@ -3,6 +3,7 @@ import { expect } from "chai";
 import * as backend from "../../../deploy/functions/backend";
 import * as deploymentPlanner from "../../../deploy/functions/deploymentPlanner";
 import * as deploymentTool from "../../../deploymentTool";
+import * as gcfv2 from "../../../gcp/cloudfunctionsv2";
 
 describe("deploymentPlanner", () => {
   const CLOUD_FUNCTION: Omit<backend.FunctionSpec, "id" | "region"> = {
@@ -83,7 +84,7 @@ describe("deploymentPlanner", () => {
       const have: backend.Backend = backend.empty();
       const filters: string[][] = [];
 
-      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, filters);
+      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, { filters });
 
       const expected: deploymentPlanner.DeploymentPlan = {
         regionalDeployments: {
@@ -116,18 +117,32 @@ describe("deploymentPlanner", () => {
       const have: backend.Backend = backend.empty();
       const filters: string[][] = [];
 
-      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, filters);
+      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, { filters });
 
       const expected: deploymentPlanner.DeploymentPlan = {
         regionalDeployments: {
           "us-east1": {
             functionsToCreate: [],
-            functionsToUpdate: [r1f1, r1f2],
+            functionsToUpdate: [
+              {
+                func: r1f1,
+                deleteAndRecreate: false,
+              },
+              {
+                func: r1f2,
+                deleteAndRecreate: false,
+              },
+            ],
             functionsToDelete: [],
           },
           "us-west1": {
             functionsToCreate: [],
-            functionsToUpdate: [r2f1],
+            functionsToUpdate: [
+              {
+                func: r2f1,
+                deleteAndRecreate: false,
+              },
+            ],
             functionsToDelete: [],
           },
         },
@@ -158,7 +173,7 @@ describe("deploymentPlanner", () => {
       const want = backend.empty();
       const filters: string[][] = [];
 
-      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, filters);
+      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, { filters });
 
       const expected: deploymentPlanner.DeploymentPlan = {
         regionalDeployments: {
@@ -211,22 +226,90 @@ describe("deploymentPlanner", () => {
       };
       const filters: string[][] = [];
 
-      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, filters);
+      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, { filters });
 
       const expected: deploymentPlanner.DeploymentPlan = {
         regionalDeployments: {
           "us-east1": {
             functionsToCreate: [r1f2],
-            functionsToUpdate: [r1f1],
+            functionsToUpdate: [
+              {
+                func: r1f1,
+                deleteAndRecreate: false,
+              },
+            ],
             functionsToDelete: [],
           },
           "us-west1": {
             functionsToCreate: [],
-            functionsToUpdate: [r2f1],
+            functionsToUpdate: [
+              {
+                func: r2f1,
+                deleteAndRecreate: false,
+              },
+            ],
             functionsToDelete: [],
           },
         },
         schedulesToUpsert: [r1sched1, r1sched2, r2sched1],
+        schedulesToDelete: [],
+        topicsToDelete: [],
+      };
+      expect(deploymentPlan).to.deep.equal(expected);
+    });
+
+    it("should delete and recreate v2 pubsub functions with changes in topics", () => {
+      const f1: backend.FunctionSpec = {
+        ...func("pubsub", "us-west1"),
+        ...DEPLOYED_BY_CLI,
+        platform: "gcfv2",
+        trigger: {
+          eventType: gcfv2.PUBSUB_PUBLISH_EVENT,
+          eventFilters: {
+            resource: "projects/aproject/topics/atopic",
+          },
+          retry: false,
+        },
+      };
+      const f2: backend.FunctionSpec = {
+        ...func("pubsub", "us-west1"),
+        ...DEPLOYED_BY_CLI,
+        platform: "gcfv2",
+        trigger: {
+          eventType: gcfv2.PUBSUB_PUBLISH_EVENT,
+          eventFilters: {
+            resource: "projects/aproject/topics/anothertopic",
+          },
+          retry: false,
+        },
+      };
+
+      const want: backend.Backend = {
+        ...backend.empty(),
+        cloudFunctions: [f2],
+      };
+      const have: backend.Backend = {
+        ...backend.empty(),
+        cloudFunctions: [f1],
+      };
+      const filters: string[][] = [];
+
+      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, { filters });
+
+      const expected: deploymentPlanner.DeploymentPlan = {
+        regionalDeployments: {
+          "us-west1": {
+            functionsToCreate: [],
+            functionsToUpdate: [
+              {
+                func: f2,
+                deleteAndRecreate: true,
+              },
+            ],
+            functionsToDelete: [],
+          },
+        },
+        schedulesToUpsert: [],
         schedulesToDelete: [],
         topicsToDelete: [],
       };
@@ -258,13 +341,18 @@ describe("deploymentPlanner", () => {
       };
       const filters: string[][] = [];
 
-      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, filters);
+      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, { filters });
 
       const expected: deploymentPlanner.DeploymentPlan = {
         regionalDeployments: {
           "us-east1": {
             functionsToCreate: [],
-            functionsToUpdate: [f2],
+            functionsToUpdate: [
+              {
+                func: f2,
+                deleteAndRecreate: false,
+              },
+            ],
             functionsToDelete: [f1],
           },
         },
@@ -313,13 +401,18 @@ describe("deploymentPlanner", () => {
 
       const filters = [["group"]];
 
-      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, filters);
+      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, { filters });
 
       const expected: deploymentPlanner.DeploymentPlan = {
         regionalDeployments: {
           "us-east1": {
             functionsToCreate: [group1func2],
-            functionsToUpdate: [group1func1],
+            functionsToUpdate: [
+              {
+                func: group1func1,
+                deleteAndRecreate: false,
+              },
+            ],
             functionsToDelete: [group1func3, group1func4],
           },
         },
@@ -330,62 +423,61 @@ describe("deploymentPlanner", () => {
       expect(deploymentPlan).to.deep.equal(expected);
     });
 
-    it("should preserve existing environment variables", () => {
-      const region1 = func("a", "us-east1");
-      const region2 = {
-        ...func("b", "us-west1"),
+    it("should preserve environment variables", () => {
+      const wantSpec = {
+        ...func("a", "us-west1"),
         environmentVariables: { BAR: "baz" },
       };
-      const oldRegion2: backend.FunctionSpec = {
-        ...func("b", "us-west1"),
+      const haveSpec = {
+        ...func("a", "us-west1"),
         environmentVariables: { FOO: "bar" },
       };
-
       const want: backend.Backend = {
-        requiredAPIs: {},
-        cloudFunctions: [region1, region2],
-        schedules: [],
-        topics: [],
-        environmentVariables: {},
+        ...backend.empty(),
+        cloudFunctions: [wantSpec],
       };
-
       const have: backend.Backend = {
-        requiredAPIs: {},
-        cloudFunctions: [oldRegion2],
-        schedules: [],
-        topics: [],
-        environmentVariables: {},
+        ...backend.empty(),
+        cloudFunctions: [haveSpec],
       };
       const filters: string[][] = [];
 
-      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, filters);
+      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, { filters });
+      expect(
+        deploymentPlan.regionalDeployments["us-west1"].functionsToUpdate.map(
+          (spec) => spec.func.environmentVariables
+        )
+      ).to.be.deep.equals([{ FOO: "bar", BAR: "baz" }]);
+    });
 
-      const expected: deploymentPlanner.DeploymentPlan = {
-        regionalDeployments: {
-          "us-east1": {
-            functionsToCreate: [region1],
-            functionsToUpdate: [],
-            functionsToDelete: [],
-          },
-          "us-west1": {
-            functionsToCreate: [],
-            functionsToUpdate: [
-              {
-                ...region2,
-                environmentVariables: {
-                  FOO: "bar",
-                  BAR: "baz",
-                },
-              },
-            ],
-            functionsToDelete: [],
-          },
-        },
-        schedulesToUpsert: [],
-        schedulesToDelete: [],
-        topicsToDelete: [],
+    it("should overwrite environment variables when specified", () => {
+      const wantSpec = {
+        ...func("a", "us-west1"),
+        environmentVariables: { BAR: "baz" },
       };
-      expect(deploymentPlan).to.deep.equal(expected);
+      const haveSpec = {
+        ...func("a", "us-west1"),
+        environmentVariables: { FOO: "bar" },
+      };
+      const want: backend.Backend = {
+        ...backend.empty(),
+        cloudFunctions: [wantSpec],
+      };
+      const have: backend.Backend = {
+        ...backend.empty(),
+        cloudFunctions: [haveSpec],
+      };
+      const filters: string[][] = [];
+
+      const deploymentPlan = deploymentPlanner.createDeploymentPlan(want, have, {
+        filters,
+        overwriteEnvs: true,
+      });
+      expect(
+        deploymentPlan.regionalDeployments["us-west1"].functionsToUpdate.map(
+          (spec) => spec.func.environmentVariables
+        )
+      ).to.be.deep.equals([{ BAR: "baz" }]);
     });
   });
 });

@@ -65,9 +65,11 @@ describe("validate", () => {
       const functions = [
         {
           id: "my-function-!@#$%",
+          platform: "gcfv1",
         },
         {
           id: "my-function-!@#$!@#",
+          platform: "gcfv1",
         },
       ];
 
@@ -77,7 +79,16 @@ describe("validate", () => {
     });
 
     it("should throw error if some function names are improperly formatted", () => {
-      const functions = [{ id: "my-function$%#" }, { id: "my-function-2" }];
+      const functions = [
+        {
+          id: "my-function$%#",
+          platform: "gcfv1",
+        },
+        {
+          id: "my-function-2",
+          platform: "gcfv2",
+        },
+      ];
 
       expect(() => {
         validate.functionIdsAreValid(functions);
@@ -87,8 +98,22 @@ describe("validate", () => {
     // I think it should throw error here but it doesn't error on empty or even undefined functionNames.
     // TODO(b/131331234): fix this test when validation code path is fixed.
     it.skip("should throw error on empty function names", () => {
-      const functions = [{ id: "" }];
+      const functions = [{ id: "", platform: "gcfv1" }];
 
+      expect(() => {
+        validate.functionIdsAreValid(functions);
+      }).to.throw(FirebaseError);
+    });
+
+    it("should throw error on capital letters in v2 function names", () => {
+      const functions = [{ id: "Hi", platform: "gcfv2" }];
+      expect(() => {
+        validate.functionIdsAreValid(functions);
+      }).to.throw(FirebaseError);
+    });
+
+    it("should throw error on underscores in v2 function names", () => {
+      const functions = [{ id: "o_O", platform: "gcfv2" }];
       expect(() => {
         validate.functionIdsAreValid(functions);
       }).to.throw(FirebaseError);

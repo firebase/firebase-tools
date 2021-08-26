@@ -7,6 +7,7 @@ import * as functionPrompts from "../../../deploy/functions/prompts";
 import * as prompt from "../../../prompt";
 import * as utils from "../../../utils";
 import { Options } from "../../../options";
+import { RC } from "../../../rc";
 
 const SAMPLE_EVENT_TRIGGER: backend.EventTrigger = {
   eventType: "google.pubsub.topic.publish",
@@ -41,6 +42,7 @@ const SAMPLE_OPTIONS: Options = {
   debug: false,
   force: false,
   filteredTargets: ["functions"],
+  rc: new RC(),
 };
 
 describe("promptForFailurePolicies", () => {

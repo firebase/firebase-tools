@@ -32,13 +32,13 @@ function _getDefaultBucket(projectId) {
     );
 }
 
-async function _uploadSource(source, uploadUrl) {
+async function _uploadSource(source, uploadUrl, extraHeaders) {
   const url = new URL(uploadUrl);
   const result = await api.request("PUT", url.pathname + url.search, {
     data: source.stream,
     headers: {
       "Content-Type": "application/zip",
-      "x-goog-content-length-range": "0,104857600",
+      ...extraHeaders,
     },
     json: false,
     origin: url.origin,

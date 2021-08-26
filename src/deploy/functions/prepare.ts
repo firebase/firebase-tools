@@ -4,17 +4,30 @@ import { Options } from "../../options";
 import { ensureCloudBuildEnabled } from "./ensureCloudBuildEnabled";
 import { functionMatchesAnyGroup, getFilterGroups } from "./functionsDeployHelper";
 import { logBullet } from "../../utils";
-import { getFunctionsConfig, getEnvs, prepareFunctionsUpload } from "./prepareFunctionsUpload";
+import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload";
 import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import * as args from "./args";
 import * as backend from "./backend";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
 import * as functionsConfig from "../../functionsConfig";
-import * as getProjectId from "../../getProjectId";
+import * as functionsEnv from "../../functions/env";
+import { previews } from "../../previews";
+import { needProjectId } from "../../projectUtils";
+import { track } from "../../track";
 import * as runtimes from "./runtimes";
 import * as validate from "./validate";
 import * as utils from "../../utils";
 import { logger } from "../../logger";
+
+function hasUserConfig(config: Record<string, unknown>): boolean {
+  // "firebase" key is always going to exist in runtime config.
+  // If any other key exists, we can assume that user is using runtime config.
+  return Object.keys(config).length > 1;
+}
+
+function hasDotenv(opts: functionsEnv.UserEnvsOpts): boolean {
+  return previews.dotenv && functionsEnv.hasUserEnvs(opts);
+}
 
 export async function prepare(
   context: args.Context,
@@ -31,7 +44,7 @@ export async function prepare(
   logger.debug(`Building ${runtimeDelegate.name} source`);
   await runtimeDelegate.build();
 
-  const projectId = getProjectId(options);
+  const projectId = needProjectId(options);
 
   // Check that all necessary APIs are enabled.
   const checkAPIsEnabled = await Promise.all([
@@ -50,39 +63,69 @@ export async function prepare(
   const firebaseConfig = await functionsConfig.getFirebaseConfig(options);
   context.firebaseConfig = firebaseConfig;
   const runtimeConfig = await getFunctionsConfig(context);
-  const env = await getEnvs(context);
+
+  utils.assertDefined(
+    options.config.src.functions.source,
+    "Error: 'functions.source' is not defined"
+  );
+  const source = options.config.src.functions.source;
+  const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
+  const userEnvOpt = {
+    functionsSource: options.config.path(source),
+    projectId: projectId,
+    projectAlias: options.projectAlias,
+  };
+  const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
+  const tag = hasUserConfig(runtimeConfig)
+    ? hasDotenv(userEnvOpt)
+      ? "mixed"
+      : "runtime_config"
+    : hasDotenv(userEnvOpt)
+    ? "dotenv"
+    : "none";
+  track("functions_codebase_deploy_env_method", tag);
 
   logger.debug(`Analyzing ${runtimeDelegate.name} backend spec`);
-  const wantBackend = await runtimeDelegate.discoverSpec(runtimeConfig, env);
+  const wantBackend = await runtimeDelegate.discoverSpec(runtimeConfig, firebaseEnvs);
+  wantBackend.environmentVariables = { ...userEnvs, ...firebaseEnvs };
   payload.functions = { backend: wantBackend };
   if (backend.isEmptyBackend(wantBackend)) {
     return;
   }
 
-  // NOTE: this will eventually be enalbed for everyone once AR is enabled
-  // for GCFv1
+  // Note: Some of these are premium APIs that require billing to be enabled.
+  // We'd eventually have to add special error handling for billing APIs, but
+  // enableCloudBuild is called above and has this special casing already.
   if (wantBackend.cloudFunctions.find((f) => f.platform === "gcfv2")) {
-    await ensureApiEnabled.ensure(
-      context.projectId,
-      "artifactregistry.googleapis.com",
-      "artifactregistry"
-    );
+    const V2_APIS = {
+      artifactregistry: "artifactregistry.googleapis.com",
+      cloudrun: "run.googleapis.com",
+      eventarc: "eventarc.googleapis.com",
+      pubsub: "pubsub.googleapis.com",
+    };
+    const enablements = Object.entries(V2_APIS).map(([tag, api]) => {
+      return ensureApiEnabled.ensure(context.projectId, api, tag);
+    });
+    await Promise.all(enablements);
   }
 
-  // Prepare the functions directory for upload, and set context.triggers.
-  utils.assertDefined(
-    options.config.src.functions.source,
-    "Error: 'functions.source' is not defined"
-  );
   logBullet(
     clc.cyan.bold("functions:") +
       " preparing " +
       clc.bold(options.config.src.functions.source) +
       " directory for uploading..."
   );
-  context.functionsSource = await prepareFunctionsUpload(runtimeConfig, options);
+  if (wantBackend.cloudFunctions.find((fn) => fn.platform === "gcfv1")) {
+    context.functionsSourceV1 = await prepareFunctionsUpload(runtimeConfig, options);
+  }
+  if (wantBackend.cloudFunctions.find((fn) => fn.platform === "gcfv2")) {
+    context.functionsSourceV2 = await prepareFunctionsUpload(
+      /* runtimeConfig= */ undefined,
+      options
+    );
+  }
 
-  // Setup default environment variables on each function.
+  // Setup environment variables on each function.
   wantBackend.cloudFunctions.forEach((fn: backend.FunctionSpec) => {
     fn.environmentVariables = wantBackend.environmentVariables;
   });
@@ -107,11 +150,11 @@ export async function prepare(
   // Check what --only filters have been passed in.
   context.filters = getFilterGroups(options);
 
-  // Display a warning and prompt if any functions in the release have failurePolicies.
   const wantFunctions = wantBackend.cloudFunctions.filter((fn: backend.FunctionSpec) => {
     return functionMatchesAnyGroup(fn, context.filters);
   });
   const haveFunctions = (await backend.existingBackend(context)).cloudFunctions;
+  // Display a warning and prompt if any functions in the release have failurePolicies.
   await promptForFailurePolicies(options, wantFunctions, haveFunctions);
   await promptForMinInstances(options, wantFunctions, haveFunctions);
   await backend.checkAvailability(context, wantBackend);

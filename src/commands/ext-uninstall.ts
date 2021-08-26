@@ -7,7 +7,7 @@ import TerminalRenderer = require("marked-terminal");
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
-import * as getProjectId from "../getProjectId";
+import { needProjectId } from "../projectUtils";
 import * as extensionsApi from "../extensions/extensionsApi";
 import {
   ensureExtensionsApiEnabled,
@@ -42,12 +42,12 @@ function consoleUninstallOnly(projectId: string, instanceId: string): Promise<vo
 
 export default new Command("ext:uninstall <extensionInstanceId>")
   .description("uninstall an extension that is installed in your Firebase project by instance ID")
-  .option("-f, --force", "No confirmation. Otherwise, a confirmation prompt will appear.")
+  .withForce()
   .before(requirePermissions, ["firebaseextensions.instances.delete"])
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
   .action(async (instanceId: string, options: any) => {
-    const projectId = getProjectId(options);
+    const projectId = needProjectId(options);
     let instance;
 
     try {

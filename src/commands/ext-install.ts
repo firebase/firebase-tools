@@ -12,7 +12,7 @@ import { checkBillingEnabled } from "../gcp/cloudbilling";
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
-import * as getProjectId from "../getProjectId";
+import { needProjectId } from "../projectUtils";
 import * as extensionsApi from "../extensions/extensionsApi";
 import * as provisioningHelper from "../extensions/provisioningHelper";
 import { displayWarningPrompts } from "../extensions/warnings";
@@ -213,7 +213,7 @@ export default new Command("ext:install [extensionName]")
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
   .action(async (extensionName: string, options: any) => {
-    const projectId = getProjectId(options, false);
+    const projectId = needProjectId(options);
     const paramFilePath = options.params;
     let learnMore = false;
     if (!extensionName) {

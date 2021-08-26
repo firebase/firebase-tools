@@ -47,15 +47,6 @@ export async function getFunctionsConfig(context: args.Context): Promise<{ [key:
   return config;
 }
 
-// TODO(inlined): move to a file that's not about uploading source code
-export async function getEnvs(context: args.Context): Promise<{ [key: string]: string }> {
-  const envs = {
-    FIREBASE_CONFIG: JSON.stringify(context.firebaseConfig),
-    GCLOUD_PROJECT: context.projectId,
-  };
-  return Promise.resolve(envs);
-}
-
 async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream) {
   return new Promise((resolve, reject) => {
     to.on("finish", resolve);
@@ -90,10 +81,12 @@ async function packageSource(options: Options, sourceDir: string, configValues: 
         mode: file.mode,
       });
     });
-    archive.append(JSON.stringify(configValues, null, 2), {
-      name: CONFIG_DEST_FILE,
-      mode: 420 /* 0o644 */,
-    });
+    if (typeof configValues !== "undefined") {
+      archive.append(JSON.stringify(configValues, null, 2), {
+        name: CONFIG_DEST_FILE,
+        mode: 420 /* 0o644 */,
+      });
+    }
     archive.finalize();
     await pipeAsync(archive, fileStream);
   } catch (err) {
@@ -123,7 +116,7 @@ async function packageSource(options: Options, sourceDir: string, configValues: 
 }
 
 export async function prepareFunctionsUpload(
-  runtimeConfig: backend.RuntimeConfigValues,
+  runtimeConfig: backend.RuntimeConfigValues | undefined,
   options: Options
 ): Promise<string | undefined> {
   utils.assertDefined(options.config.src.functions);

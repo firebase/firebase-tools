@@ -13,7 +13,7 @@ import { Emulators, ALL_SERVICE_EMULATORS } from "./types";
 import { FirebaseError } from "../error";
 import { EmulatorRegistry } from "./registry";
 import { FirestoreEmulator } from "./firestoreEmulator";
-import * as getProjectId from "../getProjectId";
+import { getProjectId } from "../projectUtils";
 import { promptOnce } from "../prompt";
 import { onExit } from "./controller";
 import * as fsutils from "../fsutils";
@@ -404,7 +404,7 @@ async function runScript(script: string, extraEnv: Record<string, string>): Prom
  */
 export async function emulatorExec(script: string, options: any) {
   shutdownWhenKilled(options);
-  const projectId = getProjectId(options, true);
+  const projectId = getProjectId(options);
   const extraEnv: Record<string, string> = {};
   if (projectId) {
     extraEnv.GCLOUD_PROJECT = projectId;

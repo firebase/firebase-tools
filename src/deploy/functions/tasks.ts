@@ -6,7 +6,6 @@ import { RegionalFunctionChanges } from "./deploymentPlanner";
 import { OperationResult, OperationPollerOptions, pollOperation } from "../../operation-poller";
 import { functionsOrigin, functionsV2Origin } from "../../api";
 import { getHumanFriendlyRuntimeName } from "./runtimes";
-import { deleteTopic } from "../../gcp/pubsub";
 import { DeploymentTimer } from "./deploymentTimer";
 import { ErrorHandler } from "./errorHandler";
 import * as backend from "./backend";
@@ -16,9 +15,10 @@ import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfV2 from "../../gcp/cloudfunctionsv2";
 import * as cloudrun from "../../gcp/run";
 import * as helper from "./functionsDeployHelper";
+import * as pubsub from "../../gcp/pubsub";
 import * as utils from "../../utils";
 import { FirebaseError } from "../../error";
-import { cloudfunctions } from "../../gcp";
+import { track } from "../../track";
 
 interface PollerOptions {
   apiOrigin: string;
@@ -51,18 +51,18 @@ export type OperationType =
   | "upsert schedule"
   | "delete schedule"
   | "delete topic"
-  | "make public";
+  | "set invoker";
 
-export interface DeploymentTask {
+export interface DeploymentTask<T> {
   run: () => Promise<void>;
-  fn: backend.TargetIds;
+  data: T;
   operationType: OperationType;
 }
 
 export interface TaskParams {
   projectId: string;
   sourceUrl?: string;
-  storageSource?: gcfV2.StorageSource;
+  storage?: Record<string, gcfV2.StorageSource>;
   errorHandler: ErrorHandler;
 }
 
@@ -75,7 +75,7 @@ export function createFunctionTask(
   fn: backend.FunctionSpec,
   sourceToken?: string,
   onPoll?: (op: OperationResult<backend.FunctionSpec>) => void
-): DeploymentTask {
+): DeploymentTask<backend.FunctionSpec> {
   const fnName = backend.functionName(fn);
   const run = async () => {
     utils.logBullet(
@@ -94,7 +94,24 @@ export function createFunctionTask(
       }
       op = await gcf.createFunction(apiFunction);
     } else {
-      const apiFunction = gcfV2.functionFromSpec(fn, params.storageSource!);
+      const apiFunction = gcfV2.functionFromSpec(fn, params.storage![fn.region]);
+      // N.B. As of GCFv2 private preview GCF no longer creates Pub/Sub topics
+      // for Pub/Sub event handlers. This may change, at which point this code
+      // could be deleted.
+      if (apiFunction.eventTrigger?.pubsubTopic) {
+        try {
+          await pubsub.getTopic(apiFunction.eventTrigger.pubsubTopic);
+        } catch (err) {
+          if (err.status !== 404) {
+            throw new FirebaseError("Unexpected error looking for Pub/Sub topic", {
+              original: err,
+            });
+          }
+          await pubsub.createTopic({
+            name: apiFunction.eventTrigger.pubsubTopic,
+          });
+        }
+      }
       op = await gcfV2.createFunction(apiFunction);
     }
     const cloudFunction = await pollOperation<unknown>({
@@ -104,18 +121,18 @@ export function createFunctionTask(
       onPoll,
     });
     if (!backend.isEventTrigger(fn.trigger)) {
-      try {
-        if (fn.platform === "gcfv1") {
-          await gcf.setIamPolicy({
-            name: fnName,
-            policy: gcf.DEFAULT_PUBLIC_POLICY,
-          });
-        } else {
-          const serviceName = (cloudFunction as gcfV2.CloudFunction).serviceConfig.service!;
-          cloudrun.setIamPolicy(serviceName, cloudrun.DEFAULT_PUBLIC_POLICY);
+      const invoker = fn.trigger.invoker || ["public"];
+      if (invoker[0] !== "private") {
+        try {
+          if (fn.platform === "gcfv1") {
+            await gcf.setInvokerCreate(params.projectId, fnName, invoker);
+          } else {
+            const serviceName = (cloudFunction as gcfV2.CloudFunction).serviceConfig.service!;
+            cloudrun.setInvokerCreate(params.projectId, serviceName, invoker);
+          }
+        } catch (err) {
+          params.errorHandler.record("error", fnName, "set invoker", err.message);
         }
-      } catch (err) {
-        params.errorHandler.record("warning", fnName, "make public", err.message);
       }
     }
     if (fn.platform !== "gcfv1") {
@@ -128,7 +145,7 @@ export function createFunctionTask(
   };
   return {
     run,
-    fn,
+    data: fn,
     operationType: "create",
   };
 }
@@ -138,7 +155,7 @@ export function updateFunctionTask(
   fn: backend.FunctionSpec,
   sourceToken?: string,
   onPoll?: (op: OperationResult<gcf.CloudFunction>) => void
-): DeploymentTask {
+): DeploymentTask<backend.FunctionSpec> {
   const fnName = backend.functionName(fn);
   const run = async () => {
     utils.logBullet(
@@ -158,7 +175,14 @@ export function updateFunctionTask(
       }
       opName = (await gcf.updateFunction(apiFunction)).name;
     } else {
-      const apiFunction = gcfV2.functionFromSpec(fn, params.storageSource!);
+      const apiFunction = gcfV2.functionFromSpec(fn, params.storage![fn.region]);
+      // N.B. As of GCFv2 private preview the API chokes on any update call that
+      // includes the pub/sub topic even if that topic is unchanged.
+      // We know that the user hasn't changed the topic between deploys because
+      // of checkForInvalidChangeOfTrigger().
+      if (apiFunction.eventTrigger?.pubsubTopic) {
+        delete apiFunction.eventTrigger.pubsubTopic;
+      }
       opName = (await gcfV2.updateFunction(apiFunction)).name;
     }
     const pollerOptions: OperationPollerOptions = {
@@ -168,6 +192,19 @@ export function updateFunctionTask(
       onPoll,
     };
     const cloudFunction = await pollOperation<unknown>(pollerOptions);
+    if (!backend.isEventTrigger(fn.trigger) && fn.trigger.invoker) {
+      try {
+        if (fn.platform === "gcfv1") {
+          await gcf.setInvokerUpdate(params.projectId, fnName, fn.trigger.invoker);
+        } else {
+          const serviceName = (cloudFunction as gcfV2.CloudFunction).serviceConfig.service!;
+          cloudrun.setInvokerUpdate(params.projectId, serviceName, fn.trigger.invoker);
+        }
+      } catch (err) {
+        params.errorHandler.record("error", fnName, "set invoker", err.message);
+      }
+    }
+
     if ("concurrency" in fn) {
       if (fn.platform === "gcfv1") {
         throw new FirebaseError("Precondition failed: GCFv1 does not support concurrency");
@@ -181,12 +218,15 @@ export function updateFunctionTask(
   };
   return {
     run,
-    fn,
+    data: fn,
     operationType: "update",
   };
 }
 
-export function deleteFunctionTask(params: TaskParams, fn: backend.FunctionSpec): DeploymentTask {
+export function deleteFunctionTask(
+  params: TaskParams,
+  fn: backend.FunctionSpec
+): DeploymentTask<backend.FunctionSpec> {
   const fnName = backend.functionName(fn);
   const run = async () => {
     utils.logBullet(
@@ -210,38 +250,56 @@ export function deleteFunctionTask(params: TaskParams, fn: backend.FunctionSpec)
   };
   return {
     run,
-    fn,
+    data: fn,
     operationType: "delete",
   };
 }
 
 async function setConcurrency(name: string, concurrency: number) {
-  const service = await cloudrun.getService(name);
+  const err: any = null;
+  while (true) {
+    const service = await cloudrun.getService(name);
 
-  delete service.spec.template.spec.containerConcurrency;
+    delete service.status;
+    delete (service.spec.template.metadata as any).name;
+    service.spec.template.spec.containerConcurrency = concurrency;
 
-  await cloudrun.replaceService(name, service);
+    try {
+      await cloudrun.replaceService(name, service);
+      return;
+    } catch (err) {
+      // We might get a 409 if resourceVersion does not match
+      if (err.status !== 409) {
+        throw new FirebaseError("Unexpected error while trying to set concurrency", {
+          original: err,
+        });
+      }
+    }
+  }
 }
 
 export function functionsDeploymentHandler(
   timer: DeploymentTimer,
   errorHandler: ErrorHandler
-): (task: DeploymentTask) => Promise<any | undefined> {
-  return async (task: DeploymentTask) => {
+): (task: DeploymentTask<backend.FunctionSpec>) => Promise<any | undefined> {
+  return async (task: DeploymentTask<backend.FunctionSpec>) => {
     let result;
-    const fnName = backend.functionName(task.fn);
+    const fnName = backend.functionName(task.data);
     try {
       timer.startTimer(fnName, task.operationType);
       result = await task.run();
-      helper.printSuccess(task.fn, task.operationType);
+      helper.printSuccess(task.data, task.operationType);
+      const duration = timer.endTimer(fnName);
+      track("function_deploy_success", backend.triggerTag(task.data), duration);
     } catch (err) {
       if (err.original?.context?.response?.statusCode === 429) {
         // Throw quota errors so that throttler retries them.
         throw err;
       }
       errorHandler.record("error", fnName, task.operationType, err.original?.message || "");
+      const duration = timer.endTimer(fnName);
+      track("function_deploy_failure", backend.triggerTag(task.data), duration);
     }
-    timer.endTimer(fnName);
     return result;
   };
 }
@@ -253,7 +311,7 @@ export async function runRegionalFunctionDeployment(
   params: TaskParams,
   region: string,
   regionalDeployment: RegionalFunctionChanges,
-  queue: Queue<DeploymentTask, void>
+  queue: Queue<DeploymentTask<backend.FunctionSpec>, void>
 ): Promise<void> {
   let resolveToken: (token: string | undefined) => void;
   const getRealToken = new Promise<string | undefined>((resolve) => (resolveToken = resolve));
@@ -285,7 +343,7 @@ export async function runRegionalFunctionDeployment(
       ...(functionSpec.labels || {}),
       ...deploymentTool.labels(),
     };
-    let task: DeploymentTask;
+    let task: DeploymentTask<backend.FunctionSpec>;
     // GCF v2 doesn't support tokens yet. If we were to pass onPoll to a GCFv2 function, then
     // it would complete deployment and resolve the getRealToken promies as undefined.
     if (functionSpec.platform == "gcfv2") {
@@ -304,7 +362,16 @@ export async function runRegionalFunctionDeployment(
 
   const deploys: Promise<void>[] = [];
   deploys.push(...regionalDeployment.functionsToCreate.map((fn) => deploy(fn, createFunctionTask)));
-  deploys.push(...regionalDeployment.functionsToUpdate.map((fn) => deploy(fn, updateFunctionTask)));
+  deploys.push(
+    ...regionalDeployment.functionsToUpdate.map(async (update) => {
+      if (update.deleteAndRecreate) {
+        await queue.run(deleteFunctionTask(params, update.func));
+        return deploy(update.func, createFunctionTask);
+      } else {
+        return deploy(update.func, updateFunctionTask);
+      }
+    })
+  );
 
   await Promise.all(deploys);
 
@@ -323,14 +390,14 @@ export function upsertScheduleTask(
   params: TaskParams,
   schedule: backend.ScheduleSpec,
   appEngineLocation: string
-): DeploymentTask {
+): DeploymentTask<backend.ScheduleSpec> {
   const run = async () => {
     const job = cloudscheduler.jobFromSpec(schedule, appEngineLocation);
     await cloudscheduler.createOrReplaceJob(job);
   };
   return {
     run,
-    fn: schedule.targetService,
+    data: schedule,
     operationType: "upsert schedule",
   };
 }
@@ -339,36 +406,39 @@ export function deleteScheduleTask(
   params: TaskParams,
   schedule: backend.ScheduleSpec,
   appEngineLocation: string
-): DeploymentTask {
+): DeploymentTask<backend.ScheduleSpec> {
   const run = async () => {
     const jobName = backend.scheduleName(schedule, appEngineLocation);
     await cloudscheduler.deleteJob(jobName);
   };
   return {
     run,
-    fn: schedule.targetService,
+    data: schedule,
     operationType: "delete schedule",
   };
 }
 
-export function deleteTopicTask(params: TaskParams, topic: backend.PubSubSpec): DeploymentTask {
+export function deleteTopicTask(
+  params: TaskParams,
+  topic: backend.PubSubSpec
+): DeploymentTask<backend.PubSubSpec> {
   const run = async () => {
     const topicName = backend.topicName(topic);
-    await deleteTopic(topicName);
+    await pubsub.deleteTopic(topicName);
   };
   return {
     run,
-    fn: topic.targetService,
+    data: topic,
     operationType: "delete topic",
   };
 }
 
 export const schedulerDeploymentHandler = (errorHandler: ErrorHandler) => async (
-  task: DeploymentTask
+  task: DeploymentTask<backend.ScheduleSpec | backend.PubSubSpec>
 ): Promise<void> => {
   try {
     const result = await task.run();
-    helper.printSuccess(task.fn, task.operationType);
+    helper.printSuccess(task.data.targetService, task.operationType);
     return result;
   } catch (err) {
     if (err.status === 429) {
@@ -378,7 +448,7 @@ export const schedulerDeploymentHandler = (errorHandler: ErrorHandler) => async 
       // Ignore 404 errors from scheduler calls since they may be deleted out of band.
       errorHandler.record(
         "error",
-        backend.functionName(task.fn),
+        backend.functionName(task.data.targetService),
         task.operationType,
         err.message || ""
       );

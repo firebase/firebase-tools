@@ -1,12 +1,16 @@
 import { functionMatchesAnyGroup } from "./functionsDeployHelper";
 import { checkForInvalidChangeOfTrigger } from "./validate";
 import { isFirebaseManaged } from "../../deploymentTool";
-import * as backend from "./backend";
 import { logLabeledBullet } from "../../utils";
+import * as backend from "./backend";
+import * as gcfv2 from "../../gcp/cloudfunctionsv2";
 
 export interface RegionalFunctionChanges {
   functionsToCreate: backend.FunctionSpec[];
-  functionsToUpdate: backend.FunctionSpec[];
+  functionsToUpdate: {
+    func: backend.FunctionSpec;
+    deleteAndRecreate: boolean;
+  }[];
   functionsToDelete: backend.FunctionSpec[];
 }
 
@@ -53,31 +57,46 @@ const matchesId = (hasId: { id: string }) => (test: { id: string }) => {
 export function calculateRegionalFunctionChanges(
   want: backend.FunctionSpec[],
   have: backend.FunctionSpec[],
-  filters: string[][]
+  options: {
+    filters: string[][];
+    overwriteEnvs?: boolean;
+  }
 ): RegionalFunctionChanges {
-  want = want.filter((fn) => functionMatchesAnyGroup(fn, filters));
-  have = have.filter((fn) => functionMatchesAnyGroup(fn, filters));
+  want = want.filter((fn) => functionMatchesAnyGroup(fn, options.filters));
+  have = have.filter((fn) => functionMatchesAnyGroup(fn, options.filters));
   let upgradedToGCFv2WithoutSettingConcurrency = false;
 
   const functionsToCreate = want.filter((fn) => !have.some(matchesId(fn)));
-  const functionsToUpdate = want.filter((fn) => {
-    const haveFn = have.find(matchesId(fn));
-    if (haveFn) {
+  const functionsToUpdate = want
+    .filter((fn) => {
+      const haveFn = have.find(matchesId(fn));
+      if (!haveFn) {
+        return false;
+      }
+
       checkForInvalidChangeOfTrigger(fn, haveFn);
 
-      // Remember old environment variables that might have been set with
-      // gcloud or the cloud console.
-      fn.environmentVariables = {
-        ...haveFn.environmentVariables,
-        ...fn.environmentVariables,
-      };
+      if (!options.overwriteEnvs) {
+        // Remember old environment variables that might have been set with gcloud or the cloud console.
+        fn.environmentVariables = {
+          ...haveFn.environmentVariables,
+          ...fn.environmentVariables,
+        };
+      }
 
       if (haveFn.platform === "gcfv1" && fn.platform === "gcfv2" && !fn.concurrency) {
         upgradedToGCFv2WithoutSettingConcurrency = true;
       }
-    }
-    return haveFn;
-  });
+      return true;
+    })
+    .map((fn) => {
+      const haveFn = have.find(matchesId(fn));
+      const deleteAndRecreate = needsDeleteAndRecreate(haveFn!, fn);
+      return {
+        func: fn,
+        deleteAndRecreate,
+      };
+    });
   const functionsToDelete = have
     .filter((fn) => !want.some(matchesId(fn)))
     .filter((fn) => isFirebaseManaged(fn.labels || {}));
@@ -105,7 +124,10 @@ export function calculateRegionalFunctionChanges(
 export function createDeploymentPlan(
   want: backend.Backend,
   have: backend.Backend,
-  filters: string[][]
+  options: {
+    filters: string[][];
+    overwriteEnvs?: boolean;
+  }
 ): DeploymentPlan {
   const deployment: DeploymentPlan = {
     regionalDeployments: {},
@@ -119,18 +141,45 @@ export function createDeploymentPlan(
   for (const region of allRegions(wantRegionalFunctions, haveRegionalFunctions)) {
     const want = wantRegionalFunctions[region] || [];
     const have = haveRegionalFunctions[region] || [];
-    deployment.regionalDeployments[region] = calculateRegionalFunctionChanges(want, have, filters);
+    deployment.regionalDeployments[region] = calculateRegionalFunctionChanges(want, have, options);
   }
 
   deployment.schedulesToUpsert = want.schedules.filter((schedule) =>
-    functionMatchesAnyGroup(schedule.targetService, filters)
+    functionMatchesAnyGroup(schedule.targetService, options.filters)
   );
   deployment.schedulesToDelete = have.schedules
     .filter((schedule) => !want.schedules.some(matchesId(schedule)))
-    .filter((schedule) => functionMatchesAnyGroup(schedule.targetService, filters));
+    .filter((schedule) => functionMatchesAnyGroup(schedule.targetService, options.filters));
   deployment.topicsToDelete = have.topics
     .filter((topic) => !want.topics.some(matchesId(topic)))
-    .filter((topic) => functionMatchesAnyGroup(topic.targetService, filters));
+    .filter((topic) => functionMatchesAnyGroup(topic.targetService, options.filters));
 
   return deployment;
+}
+
+function needsDeleteAndRecreate(exFn: backend.FunctionSpec, fn: backend.FunctionSpec): boolean {
+  return changedV2PubSubTopic(exFn, fn);
+  // TODO: is scheduled function upgrading from v1 to v2
+}
+
+function changedV2PubSubTopic(exFn: backend.FunctionSpec, fn: backend.FunctionSpec): boolean {
+  if (exFn.platform !== "gcfv2") {
+    return false;
+  }
+  if (fn.platform !== "gcfv2") {
+    return false;
+  }
+  if (!backend.isEventTrigger(exFn.trigger)) {
+    return false;
+  }
+  if (!backend.isEventTrigger(fn.trigger)) {
+    return false;
+  }
+  if (exFn.trigger.eventType !== gcfv2.PUBSUB_PUBLISH_EVENT) {
+    return false;
+  }
+  if (fn.trigger.eventType != gcfv2.PUBSUB_PUBLISH_EVENT) {
+    return false;
+  }
+  return exFn.trigger.eventFilters["resource"] != fn.trigger.eventFilters["resource"];
 }

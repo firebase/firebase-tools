@@ -45,6 +45,7 @@ export interface ScheduleSpec {
 /** API agnostic version of a Cloud Function's HTTPs trigger. */
 export interface HttpsTrigger {
   allowInsecure: boolean;
+  invoker?: string[];
 }
 
 /** Well known keys in the eventFilter attribute of an event trigger */
@@ -96,11 +97,35 @@ export function isEventTrigger(trigger: HttpsTrigger | EventTrigger): trigger is
   return "eventType" in trigger;
 }
 
+/** Friendly name to label a function in stats */
+export function triggerTag(fn: FunctionSpec): string {
+  if (fn.labels?.["deployment-scheduled"]) {
+    if (fn.platform === "gcfv1") {
+      return "v1.scheduled";
+    }
+    return "v2.scheduled";
+  }
+  if (fn.labels?.["deployment-callable"]) {
+    if (fn.platform === "gcfv1") {
+      return "v1.callable";
+    }
+    return "v2.callable";
+  }
+  if (!isEventTrigger(fn.trigger)) {
+    if (fn.platform === "gcfv1") {
+      return "v1.https";
+    }
+    return "v2.https";
+  }
+  return fn.trigger.eventType;
+}
+
 // TODO(inlined): Enum types should be singularly named
 export type VpcEgressSettings = "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC";
 export type IngressSettings = "ALLOW_ALL" | "ALLOW_INTERNAL_ONLY" | "ALLOW_INTERNAL_AND_GCLB";
 export type MemoryOptions = 128 | 256 | 512 | 1024 | 2048 | 4096 | 8192;
 
+/** Returns a human-readable name with MB or GB suffix for a MemoryOption (MB). */
 export function memoryOptionDisplayName(option: MemoryOptions): string {
   return {
     128: "128MB",
