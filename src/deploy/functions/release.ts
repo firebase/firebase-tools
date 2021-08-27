@@ -41,7 +41,11 @@ export async function release(context: args.Context, options: Options, payload: 
       // AND there are user specified environment variables.
       overwriteEnvs:
         previews.dotenv &&
-        hasUserEnvs(options.config.path(functionsSource), projectId, options.projectAlias),
+        hasUserEnvs({
+          functionsSource: options.config.path(functionsSource),
+          projectId,
+          projectAlias: options.projectAlias,
+        }),
     }
   );
 

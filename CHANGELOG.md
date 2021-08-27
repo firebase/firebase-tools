@@ -1,1 +1,2 @@
+- Adds support for the `nodejs16` runtime for Cloud Functions.
 - Improves remoteconfig:get and remoteconfig:versions:list when no version exists or is specified (#3628)

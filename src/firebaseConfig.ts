@@ -11,7 +11,7 @@ type RequireAtLeastOne<T> = {
 }[keyof T];
 
 // should be sourced from - https://github.com/firebase/firebase-tools/blob/master/src/deploy/functions/runtimes/index.ts#L15
-type CloudFunctionRuntimes = "nodejs10" | "nodejs12" | "nodejs14";
+type CloudFunctionRuntimes = "nodejs10" | "nodejs12" | "nodejs14" | "nodejs16";
 
 type Deployable = {
   predeploy?: string | string[];
