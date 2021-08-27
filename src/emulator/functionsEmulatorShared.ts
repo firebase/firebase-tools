@@ -36,8 +36,9 @@ export interface EventSchedule {
 
 export interface EventTrigger {
   resource: string;
-  service: string;
   eventType: string;
+  // Deprecated
+  service?: string;
 }
 
 export interface EmulatedTriggerMap {
