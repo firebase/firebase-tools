@@ -4,6 +4,8 @@ import * as utils from "../utils";
 import * as operationPoller from "../operation-poller";
 import { Distribution } from "./distribution";
 import { FirebaseError } from "../error";
+import {getAppName, getProjectName} from './options-parser-util';
+import {Client, ClientResponse} from '../apiv2';
 
 // tslint:disable-next-line:no-var-requires
 const pkg = require("../../package.json");
@@ -66,12 +68,8 @@ export interface BatchRemoveTestersResponse {
  * Makes RPCs to the App Distribution server backend.
  */
 export class AppDistributionClient {
-  private getAppName(appId: string): string {
-    return `projects/${appId.split(":")[1]}/apps/${appId}`;
-  }
-
   async getAabInfo(appId: string): Promise<AabInfo> {
-    const apiResponse = await api.request("GET", `/v1/${this.getAppName(appId)}/aabInfo`, {
+    const apiResponse = await api.request("GET", `/v1/${await getAppName(appId)}/aabInfo`, {
       origin: api.appDistributionOrigin,
       auth: true,
     });
@@ -82,7 +80,7 @@ export class AppDistributionClient {
   async uploadRelease(appId: string, distribution: Distribution): Promise<string> {
     const apiResponse = await api.request(
       "POST",
-      `/upload/v1/${this.getAppName(appId)}/releases:upload`,
+      `/upload/v1/${await getAppName(appId)}/releases:upload`,
       {
         auth: true,
         origin: api.appDistributionOrigin,
@@ -182,31 +180,37 @@ export class AppDistributionClient {
   }
 
   async addTesters(projectNumber: string, emails: string[]) {
-    const url = `/v1/projects/${projectNumber}/testers:batchAdd`;
-    const data = { emails: emails };
-    const apiResponse = await api.request("POST", url, {
-      origin: api.appDistributionOrigin,
-      headers: { "X-Firebase-Client": `${pkg.name}/${pkg.version}` },
-      apiVersion: "v1",
-      auth: true,
-      data,
-    });
-    return _.get(apiResponse, "body");
+    const appDistroV2Client = new Client({urlPrefix: api.appDistributionOrigin, apiVersion: "v1", auth: true});
+    try {
+      await appDistroV2Client.request({
+        method: "POST",
+        path: `/projects/${projectNumber}/testers:batchAdd`,
+        headers: {"X-Client-Version": `${pkg.name}/${pkg.version}`},
+        body: {emails: emails}
+      });
+    }catch (err){
+      throw new FirebaseError(`Failed to add testers ${err}`);
+    }
+
+    utils.logSuccess(`Testers created successfully`);
   }
 
   async removeTesters(
     projectNumber: string,
     emails: string[]
   ): Promise<BatchRemoveTestersResponse> {
-    const url = `/v1/projects/${projectNumber}/testers:batchRemove`;
-    const data = { emails: emails };
-    const apiResponse = await api.request("POST", url, {
-      origin: api.appDistributionOrigin,
-      headers: { "X-Firebase-Client": `${pkg.name}/${pkg.version}` },
-      apiVersion: "v1",
-      auth: true,
-      data,
-    });
-    return _.get(apiResponse, "body");
+    const appDistroV2Client = new Client({urlPrefix: api.appDistributionOrigin, apiVersion: "v1", auth: true});
+    let apiResponse: ClientResponse<BatchRemoveTestersResponse> ;
+    try {
+        apiResponse= await appDistroV2Client.request({
+        method: "POST",
+        path: `/projects/${projectNumber}/testers:batchRemove`,
+        headers: {"X-Client-Version": `${pkg.name}/${pkg.version}`},
+        body: {emails: emails}
+      });
+    } catch (err){
+      throw new FirebaseError(`Failed to remove testers ${err}`);
+    }
+   return apiResponse.body;
   }
 }

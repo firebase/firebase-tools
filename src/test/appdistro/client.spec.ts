@@ -5,7 +5,7 @@ import * as rimraf from "rimraf";
 import * as sinon from "sinon";
 import * as tmp from "tmp";
 
-import { AppDistributionClient } from "../../appdistribution/client";
+import {AppDistributionClient, BatchRemoveTestersResponse} from "../../appdistribution/client";
 import { FirebaseError } from "../../error";
 import * as api from "../../api";
 import * as nock from "nock";
@@ -44,8 +44,8 @@ describe("distribution", () => {
     it("should throw error if request fails", async () => {
       nock(api.appDistributionOrigin)
         .post(`/v1/projects/${projectNumber}/testers:batchAdd`)
-        .reply(400, {});
-      await expect(appDistributionClient.addTesters(projectNumber, emails)).to.be.rejected;
+        .reply(400, {error:{status: "FAILED_PRECONDITION"}});
+      await expect(appDistributionClient.addTesters(projectNumber, emails)).to.be.rejectedWith(FirebaseError,"Failed to add testers");
       expect(nock.isDone()).to.be.true;
     });
 
@@ -65,20 +65,21 @@ describe("distribution", () => {
     it("should throw error if delete fails", async () => {
       nock(api.appDistributionOrigin)
         .post(`/v1/projects/${projectNumber}/testers:batchRemove`)
-        .reply(400, {});
-      await expect(appDistributionClient.removeTesters(projectNumber, emails)).to.be.rejected;
+        .reply(400, {error:{status: "FAILED_PRECONDITION"}});
+      await expect(appDistributionClient.removeTesters(projectNumber, emails)).to.be.rejectedWith(FirebaseError,"Failed to remove testers");
       expect(nock.isDone()).to.be.true;
     });
 
+    const mockResponse: BatchRemoveTestersResponse = {emails: emails};
     it("should resolve when request succeeds", async () => {
       nock(api.appDistributionOrigin)
         .post(`/v1/projects/${projectNumber}/testers:batchRemove`)
-        .reply(200, {});
-      await expect(appDistributionClient.removeTesters(projectNumber, emails)).to.be.eventually
-        .fulfilled;
+        .reply(200, mockResponse);
+      await expect(appDistributionClient.removeTesters(projectNumber, emails)).to.eventually.deep.eq(mockResponse);
       expect(nock.isDone()).to.be.true;
     });
   });
+
   describe("uploadRelease", () => {
     it("should throw error if upload fails", async () => {
       nock(api.appDistributionOrigin)
