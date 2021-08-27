@@ -1,6 +1,8 @@
 import * as _ from "lodash";
-import { ParsedTriggerDefinition, getServiceFromEventType } from "../../emulator/functionsEmulatorShared";
-import { Constants } from "../../emulator/constants";
+import {
+  ParsedTriggerDefinition,
+  getServiceFromEventType,
+} from "../../emulator/functionsEmulatorShared";
 import { EmulatorLogger } from "../../emulator/emulatorLogger";
 import { Emulators } from "../../emulator/types";
 
