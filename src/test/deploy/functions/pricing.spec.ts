@@ -8,7 +8,7 @@ const FUNCTION_FRAGMENT: Omit<backend.FunctionSpec, "platform" | "region"> = {
   id: "function",
   project: "project",
   entryPoint: "foobar",
-  runtime: "nodejs14",
+  runtime: "nodejs16",
   trigger: {
     allowInsecure: false,
   },
