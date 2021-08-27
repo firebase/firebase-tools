@@ -48,7 +48,7 @@ export type OperationType =
   | "create"
   | "update"
   | "delete"
-  | "upsert schedule"
+  | "update schedule"
   | "delete schedule"
   | "delete topic"
   | "set invoker";
@@ -386,7 +386,7 @@ export async function runRegionalFunctionDeployment(
  * Cloud Scheduler Deployments Tasks and Handler
  */
 
-export function upsertScheduleTask(
+export function updateScheduleTask(
   params: TaskParams,
   schedule: backend.ScheduleSpec,
   appEngineLocation: string
@@ -398,7 +398,7 @@ export function upsertScheduleTask(
   return {
     run,
     data: schedule,
-    operationType: "upsert schedule",
+    operationType: "update schedule",
   };
 }
 

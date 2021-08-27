@@ -71,7 +71,7 @@ export class ProjectState {
     });
 
     const user = this.updateUserByLocalId(localId, props, {
-      upsertProviders: props.providerUserInfo,
+      updateProviders: props.providerUserInfo,
     });
     this.authCloudFunction.dispatch("create", user);
     return user;
@@ -100,7 +100,7 @@ export class ProjectState {
     });
 
     const user = this.updateUserByLocalId(localId, props, {
-      upsertProviders: props.providerUserInfo,
+      updateProviders: props.providerUserInfo,
     });
     return user;
   }
@@ -124,11 +124,11 @@ export class ProjectState {
     localId: string,
     fields: Omit<Partial<UserInfo>, "localId" | "providerUserInfo">,
     options: {
-      upsertProviders?: ProviderUserInfo[];
+      updateProviders?: ProviderUserInfo[];
       deleteProviders?: string[];
     } = {}
   ): UserInfo {
-    const upsertProviders = options.upsertProviders ?? [];
+    const updateProviders = options.updateProviders ?? [];
     const deleteProviders = options.deleteProviders ?? [];
     const user = this.users.get(localId);
     if (!user) {
@@ -148,7 +148,7 @@ export class ProjectState {
       this.localIdForEmail.set(user.email, user.localId);
     }
     if (user.email && (user.passwordHash || user.emailLinkSignin)) {
-      upsertProviders.push({
+      updateProviders.push({
         providerId: PROVIDER_PASSWORD,
         email: user.email,
         federatedId: user.email,
@@ -169,7 +169,7 @@ export class ProjectState {
     }
     if (user.phoneNumber) {
       this.localIdForPhoneNumber.set(user.phoneNumber, user.localId);
-      upsertProviders.push({
+      updateProviders.push({
         providerId: PROVIDER_PHONE,
         phoneNumber: user.phoneNumber,
         rawId: user.phoneNumber,
@@ -185,7 +185,7 @@ export class ProjectState {
       this.validateMfaEnrollments(user.mfaInfo);
     }
 
-    return this.updateUserProviderInfo(user, upsertProviders, deleteProviders);
+    return this.updateUserProviderInfo(user, updateProviders, deleteProviders);
   }
 
   /**
@@ -227,7 +227,7 @@ export class ProjectState {
 
   private updateUserProviderInfo(
     user: UserInfo,
-    upsertProviders: ProviderUserInfo[],
+    updateProviders: ProviderUserInfo[],
     deleteProviders: string[]
   ): UserInfo {
     const oldProviderEmails = getProviderEmailsForUser(user);
@@ -244,24 +244,24 @@ export class ProjectState {
       user.providerUserInfo = updatedProviderUserInfo;
     }
 
-    if (upsertProviders.length) {
+    if (updateProviders.length) {
       user.providerUserInfo = user.providerUserInfo ?? [];
-      for (const upsert of upsertProviders) {
-        const providerId = upsert.providerId;
+      for (const update of updateProviders) {
+        const providerId = update.providerId;
         let users = this.userIdForProviderRawId.get(providerId);
         if (!users) {
           users = new Map();
           this.userIdForProviderRawId.set(providerId, users);
         }
-        users.set(upsert.rawId, user.localId);
+        users.set(update.rawId, user.localId);
 
         const index = user.providerUserInfo.findIndex(
-          (info) => info.providerId === upsert.providerId
+          (info) => info.providerId === update.providerId
         );
         if (index < 0) {
-          user.providerUserInfo.push(upsert);
+          user.providerUserInfo.push(update);
         } else {
-          user.providerUserInfo[index] = upsert;
+          user.providerUserInfo[index] = update;
         }
       }
     }

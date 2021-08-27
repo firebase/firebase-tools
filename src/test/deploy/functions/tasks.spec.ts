@@ -155,7 +155,7 @@ describe("Function Deployment tasks", () => {
       const testTask: tasks.DeploymentTask<backend.ScheduleSpec> = {
         run,
         data: SCHEDULE,
-        operationType: "upsert schedule",
+        operationType: "update schedule",
       };
 
       const handler = tasks.schedulerDeploymentHandler(errorHandlerStub);
@@ -174,7 +174,7 @@ describe("Function Deployment tasks", () => {
       const testTask: tasks.DeploymentTask<backend.ScheduleSpec> = {
         run,
         data: SCHEDULE,
-        operationType: "upsert schedule",
+        operationType: "update schedule",
       };
 
       const handler = tasks.schedulerDeploymentHandler(errorHandlerStub);
@@ -193,7 +193,7 @@ describe("Function Deployment tasks", () => {
       const testTask: tasks.DeploymentTask<backend.ScheduleSpec> = {
         run,
         data: SCHEDULE,
-        operationType: "upsert schedule",
+        operationType: "update schedule",
       };
 
       const handler = tasks.schedulerDeploymentHandler(errorHandlerStub);
@@ -213,7 +213,7 @@ describe("Function Deployment tasks", () => {
       const testTask: tasks.DeploymentTask<backend.ScheduleSpec> = {
         run,
         data: SCHEDULE,
-        operationType: "upsert schedule",
+        operationType: "upate schedule",
       };
 
       const handler = tasks.schedulerDeploymentHandler(errorHandlerStub);
@@ -223,7 +223,7 @@ describe("Function Deployment tasks", () => {
       expect(errorHandlerStub.record).to.have.been.calledWith(
         "error",
         functionName,
-        "upsert schedule"
+        "update schedule"
       );
     });
   });

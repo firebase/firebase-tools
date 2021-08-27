@@ -106,8 +106,8 @@ export async function release(context: args.Context, options: Options, payload: 
     );
   }
 
-  for (const schedule of fullDeployment.schedulesToUpsert) {
-    const task = tasks.upsertScheduleTask(taskParams, schedule, appEngineLocation);
+  for (const schedule of fullDeployment.schedulesToUpdate) {
+    const task = tasks.updateScheduleTask(taskParams, schedule, appEngineLocation);
     void schedulerQueue.run(task);
   }
   for (const schedule of fullDeployment.schedulesToDelete) {

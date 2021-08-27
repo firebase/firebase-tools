@@ -16,7 +16,7 @@ export interface RegionalFunctionChanges {
 
 export interface DeploymentPlan {
   regionalDeployments: Record<string, RegionalFunctionChanges>;
-  schedulesToUpsert: backend.ScheduleSpec[];
+  schedulesToUpdate: backend.ScheduleSpec[];
   schedulesToDelete: backend.ScheduleSpec[];
 
   // NOTE(inlined):
@@ -131,7 +131,7 @@ export function createDeploymentPlan(
 ): DeploymentPlan {
   const deployment: DeploymentPlan = {
     regionalDeployments: {},
-    schedulesToUpsert: [],
+    schedulesToUpdate: [],
     schedulesToDelete: [],
     topicsToDelete: [],
   };
@@ -144,7 +144,7 @@ export function createDeploymentPlan(
     deployment.regionalDeployments[region] = calculateRegionalFunctionChanges(want, have, options);
   }
 
-  deployment.schedulesToUpsert = want.schedules.filter((schedule) =>
+  deployment.schedulesToUpdate = want.schedules.filter((schedule) =>
     functionMatchesAnyGroup(schedule.targetService, options.filters)
   );
   deployment.schedulesToDelete = have.schedules

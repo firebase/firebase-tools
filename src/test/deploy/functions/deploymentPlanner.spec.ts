@@ -100,7 +100,7 @@ describe("deploymentPlanner", () => {
           },
         },
         topicsToDelete: [],
-        schedulesToUpsert: [],
+        schedulesToUpdate: [],
         schedulesToDelete: [],
       };
       expect(deploymentPlan).to.deep.equal(expected);
@@ -147,7 +147,7 @@ describe("deploymentPlanner", () => {
           },
         },
         topicsToDelete: [],
-        schedulesToUpsert: [],
+        schedulesToUpdate: [],
         schedulesToDelete: [],
       };
     });
@@ -189,7 +189,7 @@ describe("deploymentPlanner", () => {
           },
         },
         topicsToDelete: [],
-        schedulesToUpsert: [],
+        schedulesToUpdate: [],
         schedulesToDelete: [],
       };
       expect(deploymentPlan).to.deep.equal(expected);
@@ -251,7 +251,7 @@ describe("deploymentPlanner", () => {
             functionsToDelete: [],
           },
         },
-        schedulesToUpsert: [r1sched1, r1sched2, r2sched1],
+        schedulesToUpdate: [r1sched1, r1sched2, r2sched1],
         schedulesToDelete: [],
         topicsToDelete: [],
       };
@@ -309,7 +309,7 @@ describe("deploymentPlanner", () => {
             functionsToDelete: [],
           },
         },
-        schedulesToUpsert: [],
+        schedulesToUpdate: [],
         schedulesToDelete: [],
         topicsToDelete: [],
       };
@@ -356,7 +356,7 @@ describe("deploymentPlanner", () => {
             functionsToDelete: [f1],
           },
         },
-        schedulesToUpsert: [],
+        schedulesToUpdate: [],
         schedulesToDelete: [schedule1, schedule2],
         topicsToDelete: [topic1],
       };
@@ -416,7 +416,7 @@ describe("deploymentPlanner", () => {
             functionsToDelete: [group1func3, group1func4],
           },
         },
-        schedulesToUpsert: [group1schedule1],
+        schedulesToUpdate: [group1schedule1],
         schedulesToDelete: [group1schedule3],
         topicsToDelete: [group1topic3],
       };

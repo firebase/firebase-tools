@@ -1402,7 +1402,7 @@ function signInWithIdp(
         lastLoginAt: Date.now().toString(),
       },
       {
-        upsertProviders: [providerUserInfo],
+        updateProviders: [providerUserInfo],
       }
     );
   }
@@ -1989,7 +1989,7 @@ function fakeFetchUserInfoFromIdp(
 
 interface AccountUpdates {
   fields?: Omit<Partial<UserInfo>, "localId" | "providerUserInfo">;
-  upsertProviders?: ProviderUserInfo[];
+  updateProviders?: ProviderUserInfo[];
   deleteProviders?: string[];
 }
 
