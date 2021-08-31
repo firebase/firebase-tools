@@ -1,0 +1,1 @@
+- Adds `appdistribution:testers:add` and `appdistribution:testers:remove` commands (#3072).
