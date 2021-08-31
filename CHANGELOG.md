@@ -1,2 +1,4 @@
 - Adds support for the `nodejs16` runtime for Cloud Functions.
+- `ext:update` now displays release notes for the versions you are updating to.
+- `ext:dev:publish` now checks for a CHANGELOG.md file before publishing.
 - `firebase ext:dev:init` now creates a placeholder `CHANGELOG.md` file.
