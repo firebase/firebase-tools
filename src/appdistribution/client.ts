@@ -4,6 +4,8 @@ import * as utils from "../utils";
 import * as operationPoller from "../operation-poller";
 import { Distribution } from "./distribution";
 import { FirebaseError } from "../error";
+import { getAppName, getProjectName } from "./options-parser-util";
+import { Client, ClientResponse } from "../apiv2";
 
 // tslint:disable-next-line:no-var-requires
 const pkg = require("../../package.json");
@@ -58,18 +60,16 @@ export interface UploadReleaseResponse {
   release: Release;
 }
 
+export interface BatchRemoveTestersResponse {
+  emails: string[];
+}
+
 /**
  * Makes RPCs to the App Distribution server backend.
  */
 export class AppDistributionClient {
-  private readonly appName: string;
-
-  constructor(appId: string) {
-    this.appName = `projects/${appId.split(":")[1]}/apps/${appId}`;
-  }
-
-  async getAabInfo(): Promise<AabInfo> {
-    const apiResponse = await api.request("GET", `/v1/${this.appName}/aabInfo`, {
+  async getAabInfo(appId: string): Promise<AabInfo> {
+    const apiResponse = await api.request("GET", `/v1/${getAppName(appId)}/aabInfo`, {
       origin: api.appDistributionOrigin,
       auth: true,
     });
@@ -77,19 +77,23 @@ export class AppDistributionClient {
     return _.get(apiResponse, "body");
   }
 
-  async uploadRelease(distribution: Distribution): Promise<string> {
-    const apiResponse = await api.request("POST", `/upload/v1/${this.appName}/releases:upload`, {
-      auth: true,
-      origin: api.appDistributionOrigin,
-      headers: {
-        "X-Firebase-Client": `${pkg.name}/${pkg.version}`,
-        "X-Goog-Upload-File-Name": distribution.getFileName(),
-        "X-Goog-Upload-Protocol": "raw",
-        "Content-Type": "application/octet-stream",
-      },
-      data: distribution.readStream(),
-      json: false,
-    });
+  async uploadRelease(appId: string, distribution: Distribution): Promise<string> {
+    const apiResponse = await api.request(
+      "POST",
+      `/upload/v1/${getAppName(appId)}/releases:upload`,
+      {
+        auth: true,
+        origin: api.appDistributionOrigin,
+        headers: {
+          "X-Firebase-Client": `${pkg.name}/${pkg.version}`,
+          "X-Goog-Upload-File-Name": distribution.getFileName(),
+          "X-Goog-Upload-Protocol": "raw",
+          "Content-Type": "application/octet-stream",
+        },
+        data: distribution.readStream(),
+        json: false,
+      }
+    );
 
     return _.get(JSON.parse(apiResponse.body), "name");
   }
@@ -173,5 +177,45 @@ export class AppDistributionClient {
     }
 
     utils.logSuccess("distributed to testers/groups successfully");
+  }
+
+  async addTesters(projectName: string, emails: string[]) {
+    const appDistroV2Client = new Client({
+      urlPrefix: api.appDistributionOrigin,
+      apiVersion: "v1",
+      auth: true,
+    });
+    try {
+      await appDistroV2Client.request({
+        method: "POST",
+        path: `${projectName}/testers:batchAdd`,
+        headers: { "X-Client-Version": `${pkg.name}/${pkg.version}` },
+        body: { emails: emails },
+      });
+    } catch (err) {
+      throw new FirebaseError(`Failed to add testers ${err}`);
+    }
+
+    utils.logSuccess(`Testers created successfully`);
+  }
+
+  async removeTesters(projectName: string, emails: string[]): Promise<BatchRemoveTestersResponse> {
+    const appDistroV2Client = new Client({
+      urlPrefix: api.appDistributionOrigin,
+      apiVersion: "v1",
+      auth: true,
+    });
+    let apiResponse: ClientResponse<BatchRemoveTestersResponse>;
+    try {
+      apiResponse = await appDistroV2Client.request({
+        method: "POST",
+        path: `${projectName}/testers:batchRemove`,
+        headers: { "X-Client-Version": `${pkg.name}/${pkg.version}` },
+        body: { emails: emails },
+      });
+    } catch (err) {
+      throw new FirebaseError(`Failed to remove testers ${err}`);
+    }
+    return apiResponse.body;
   }
 }

@@ -5,11 +5,12 @@ import * as rimraf from "rimraf";
 import * as sinon from "sinon";
 import * as tmp from "tmp";
 
-import { AppDistributionClient } from "../../appdistribution/client";
+import { AppDistributionClient, BatchRemoveTestersResponse } from "../../appdistribution/client";
 import { FirebaseError } from "../../error";
 import * as api from "../../api";
 import * as nock from "nock";
-import { Distribution, DistributionFileType } from "../../appdistribution/distribution";
+import { Distribution } from "../../appdistribution/distribution";
+import { describe } from "mocha";
 
 tmp.setGracefulCleanup();
 
@@ -20,7 +21,7 @@ describe("distribution", () => {
   const binaryFile = join(tempdir.name, "app.ipa");
   fs.ensureFileSync(binaryFile);
   const mockDistribution = new Distribution(binaryFile);
-  const appDistributionClient = new AppDistributionClient(appId);
+  const appDistributionClient = new AppDistributionClient();
 
   let sandbox: sinon.SinonSandbox;
 
@@ -37,12 +38,64 @@ describe("distribution", () => {
     rimraf.sync(tempdir.name);
   });
 
+  describe("addTesters", () => {
+    const emails = ["a@foo.com", "b@foo.com"];
+    const projectName = `projects/${projectNumber}`;
+
+    it("should throw error if request fails", async () => {
+      nock(api.appDistributionOrigin)
+        .post(`/v1/projects/${projectNumber}/testers:batchAdd`)
+        .reply(400, { error: { status: "FAILED_PRECONDITION" } });
+      await expect(appDistributionClient.addTesters(projectName, emails)).to.be.rejectedWith(
+        FirebaseError,
+        "Failed to add testers"
+      );
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should resolve when request succeeds", async () => {
+      nock(api.appDistributionOrigin)
+        .post(`/v1/projects/${projectNumber}/testers:batchAdd`)
+        .reply(200, {});
+      await expect(appDistributionClient.addTesters(projectName, emails)).to.be.eventually
+        .fulfilled;
+      expect(nock.isDone()).to.be.true;
+    });
+  });
+
+  describe("deleteTesters", () => {
+    const emails = ["a@foo.com", "b@foo.com"];
+    const projectName = `projects/${projectNumber}`;
+
+    it("should throw error if delete fails", async () => {
+      nock(api.appDistributionOrigin)
+        .post(`/v1/projects/${projectNumber}/testers:batchRemove`)
+        .reply(400, { error: { status: "FAILED_PRECONDITION" } });
+      await expect(appDistributionClient.removeTesters(projectName, emails)).to.be.rejectedWith(
+        FirebaseError,
+        "Failed to remove testers"
+      );
+      expect(nock.isDone()).to.be.true;
+    });
+
+    const mockResponse: BatchRemoveTestersResponse = { emails: emails };
+    it("should resolve when request succeeds", async () => {
+      nock(api.appDistributionOrigin)
+        .post(`/v1/projects/${projectNumber}/testers:batchRemove`)
+        .reply(200, mockResponse);
+      await expect(appDistributionClient.removeTesters(projectName, emails)).to.eventually.deep.eq(
+        mockResponse
+      );
+      expect(nock.isDone()).to.be.true;
+    });
+  });
+
   describe("uploadRelease", () => {
     it("should throw error if upload fails", async () => {
       nock(api.appDistributionOrigin)
         .post(`/upload/v1/projects/${projectNumber}/apps/${appId}/releases:upload`)
         .reply(400, {});
-      await expect(appDistributionClient.uploadRelease(mockDistribution)).to.be.rejected;
+      await expect(appDistributionClient.uploadRelease(appId, mockDistribution)).to.be.rejected;
       expect(nock.isDone()).to.be.true;
     });
 
@@ -51,9 +104,9 @@ describe("distribution", () => {
       nock(api.appDistributionOrigin)
         .post(`/upload/v1/projects/${projectNumber}/apps/${appId}/releases:upload`)
         .reply(200, { name: fakeOperation });
-      await expect(appDistributionClient.uploadRelease(mockDistribution)).to.be.eventually.eq(
-        fakeOperation
-      );
+      await expect(
+        appDistributionClient.uploadRelease(appId, mockDistribution)
+      ).to.be.eventually.eq(fakeOperation);
       expect(nock.isDone()).to.be.true;
     });
   });
