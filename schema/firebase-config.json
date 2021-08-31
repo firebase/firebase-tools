@@ -350,7 +350,8 @@
                     "enum": [
                         "nodejs10",
                         "nodejs12",
-                        "nodejs14"
+                        "nodejs14",
+                        "nodejs16"
                     ],
                     "type": "string"
                 },

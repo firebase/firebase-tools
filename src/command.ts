@@ -77,6 +77,17 @@ export class Command {
   }
 
   /**
+   * Sets up --force flag for the command.
+   *
+   * @param message overrides the description for --force for this command
+   * @returns the command, for chaining
+   */
+  withForce(message?: string): Command {
+    this.options.push(["-f, --force", message || "automatically accept all interactive prompts"]);
+    return this;
+  }
+
+  /**
    * Attaches a function to run before the command's action function.
    * @param fn the function to run.
    * @param args arguments, as an array, for the function.
