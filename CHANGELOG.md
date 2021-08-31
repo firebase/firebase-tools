@@ -1,0 +1,2 @@
+- Uses public v1 AppDistribution API.
+- Adds `appdistribution:testers:add` and `appdistribution:testers:remove` commands (#3072).
