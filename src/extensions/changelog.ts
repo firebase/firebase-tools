@@ -1,16 +1,21 @@
-import * as marked from "marked";
 import * as clc from "cli-color";
+import * as marked from "marked";
+import * as path from "path";
 import * as semver from "semver";
 import TerminalRenderer = require("marked-terminal");
 import Table = require("cli-table");
 
 import { listExtensionVersions, parseRef } from "./extensionsApi";
+import { readFile } from "./localHelper";
 import { logger } from "../logger";
 import { logLabeledWarning } from "../utils";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
 });
+
+const EXTENSIONS_CHANGELOG = "CHANGELOG.md";
+const VERSION_LINE_REGEX = /##.*(\d+\.\d+\.\d+).*/;
 
 /*
  * getReleaseNotesForUpdate fetches all version between toVersion and fromVersion and returns the relase notes
@@ -83,4 +88,35 @@ export function breakingChangesInUpdate(versionsInUpdate: string[]): string[] {
     }
   }
   return breakingVersions;
+}
+
+/**
+ * getLocalChangelog checks directory for a CHANGELOG.md, and parses it into a map of
+ * version to release notes for that version.
+ * @param directory The directory to check for
+ * @returns
+ */
+export function getLocalChangelog(directory: string): Record<string, string> {
+  const rawChangelog = readFile(path.resolve(directory, EXTENSIONS_CHANGELOG));
+  return parseChangelog(rawChangelog);
+}
+
+// Exported for testing.
+export function parseChangelog(rawChangelog: string): Record<string, string> {
+  const changelog: Record<string, string> = {};
+  let currentVersion = "";
+  for (const line of rawChangelog.split("\n")) {
+    const matches = line.match(VERSION_LINE_REGEX);
+    if (matches) {
+      currentVersion = matches[1]; // The first capture group is the SemVer.
+    } else if (currentVersion) {
+      // Throw away lines that aren't under a specific version.
+      if (!changelog[currentVersion]) {
+        changelog[currentVersion] = line;
+      } else {
+        changelog[currentVersion] += `\n${line}`;
+      }
+    }
+  }
+  return changelog;
 }
