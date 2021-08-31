@@ -8,6 +8,7 @@ export interface OperationPollerOptions {
   apiVersion: string;
   operationResourceName: string;
   backoff?: number;
+  maxBackoff?: number;
   masterTimeout?: number;
   onPoll?: (operation: OperationResult<any>) => any;
 }
@@ -39,6 +40,7 @@ export class OperationPoller<T> {
       name: options.pollerName || "LRO Poller",
       concurrency: 1,
       retries: Number.MAX_SAFE_INTEGER,
+      maxBackoff: options.maxBackoff,
       backoff: options.backoff || DEFAULT_INITIAL_BACKOFF_DELAY_MILLIS,
     });
 

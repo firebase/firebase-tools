@@ -1,2 +1,2 @@
+- Adds support for the `nodejs16` runtime for Cloud Functions.
 - `firebase ext:dev:init` now creates a placeholder `CHANGELOG.md` file.
-- Fix Auth Emulator not updating lastLoginAt with signInWithPassword, causing some "token revoked" errors.
