@@ -1,1 +1,2 @@
 - Adds support for the `nodejs16` runtime for Cloud Functions.
+- Fixes error when using a project number as the `--project` flag.
