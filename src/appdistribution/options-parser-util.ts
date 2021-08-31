@@ -2,9 +2,11 @@ import * as fs from "fs-extra";
 import { FirebaseError } from "../error";
 import { needProjectNumber } from "../projectUtils";
 
-/* Takes in comma separated string or a path to a comma/new line separated file
-and converts the input into an string[] of testers or groups. Value takes precedent
- over file.*/
+/**
+ * Takes in comma separated string or a path to a comma/new line separated file
+ * and converts the input into an string[] of testers or groups. Value takes precedent
+ * over file.
+ */
 export function getTestersOrGroups(value: string, file: string): string[] {
   // If there is no value then the file gets parsed into a string to be split
   if (!value && file) {
@@ -19,8 +21,10 @@ export function getTestersOrGroups(value: string, file: string): string[] {
   return [];
 }
 
-/* Takes in a string[] or a path to a comma/new line separated file of testers emails and
- * returns a string[] of emails*/
+/**
+ * Takes in a string[] or a path to a comma/new line separated file of testers emails and
+ * returns a string[] of emails.
+ */
 export function getEmails(emails: string[], file: string): string[] {
   if (emails.length == 0) {
     ensureFileExists(file);

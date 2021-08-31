@@ -2,13 +2,12 @@ import { Command } from "../command";
 import * as utils from "../utils";
 import { requireAuth } from "../requireAuth";
 import { FirebaseError } from "../error";
-import { needProjectNumber } from "../projectUtils";
 import { AppDistributionClient } from "../appdistribution/client";
 import { getEmails, getProjectName } from "../appdistribution/options-parser-util";
 import { logger } from "../logger";
 
 module.exports = new Command("appdistribution:testers:remove [emails...]")
-  .description("Remove testers")
+  .description("remove testers from a project")
   .option("--file <file>", "a path to a file containing a list of tester emails to be removed")
   .before(requireAuth)
   .action(async (emails: string[], options?: any) => {
