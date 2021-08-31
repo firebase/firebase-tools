@@ -4,7 +4,7 @@ import * as utils from "../utils";
 import * as operationPoller from "../operation-poller";
 import { Distribution } from "./distribution";
 import { FirebaseError } from "../error";
-import { getAppName, getProjectName } from "./options-parser-util";
+import { getAppName } from "./options-parser-util";
 import { Client, ClientResponse } from "../apiv2";
 
 // tslint:disable-next-line:no-var-requires
