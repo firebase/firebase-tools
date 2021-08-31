@@ -4,7 +4,7 @@ import * as utils from "../utils";
 import * as operationPoller from "../operation-poller";
 import { Distribution } from "./distribution";
 import { FirebaseError } from "../error";
-import { getAppName, getProjectName } from "./options-parser-util";
+import { getAppName } from "./options-parser-util";
 import { Client, ClientResponse } from "../apiv2";
 
 // tslint:disable-next-line:no-var-requires
@@ -27,6 +27,12 @@ export interface TestCertificate {
 
 /** Enum representing the App Bundles state for the App */
 export enum IntegrationState {
+  AAB_INTEGRATION_STATE_UNSPECIFIED = "AAB_INTEGRATION_STATE_UNSPECIFIED",
+  INTEGRATED = "INTEGRATED",
+  PLAY_ACCOUNT_NOT_LINKED = "PLAY_ACCOUNT_NOT_LINKED",
+  NO_APP_WITH_GIVEN_BUNDLE_ID_IN_PLAY_ACCOUNT = "NO_APP_WITH_GIVEN_BUNDLE_ID_IN_PLAY_ACCOUNT",
+  APP_NOT_PUBLISHED = "APP_NOT_PUBLISHED",
+  AAB_STATE_UNAVAILABLE = "AAB_STATE_UNAVAILABLE",
   PLAY_IAS_TERMS_NOT_ACCEPTED = "PLAY_IAS_TERMS_NOT_ACCEPTED",
 }
 
