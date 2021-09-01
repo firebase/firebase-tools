@@ -5,9 +5,9 @@ import { previews } from "../previews";
 import * as args from "../deploy/functions/args";
 
 /**
- *
- * @param context
- * @returns
+ * Lists all functions in the Firebase project
+ * @param context the Context of the project
+ * @returns mapping that contains a list of functions under the 'functions' key
  */
 export async function listFunctions(
   context: args.Context
