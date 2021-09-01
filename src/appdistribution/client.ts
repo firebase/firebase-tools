@@ -4,11 +4,7 @@ import * as utils from "../utils";
 import * as operationPoller from "../operation-poller";
 import { Distribution } from "./distribution";
 import { FirebaseError } from "../error";
-import { getAppName } from "./options-parser-util";
 import { Client, ClientResponse } from "../apiv2";
-
-// tslint:disable-next-line:no-var-requires
-const pkg = require("../../package.json");
 
 /**
  * Helper interface for an app that is provisioned with App Distribution
@@ -68,8 +64,8 @@ export interface BatchRemoveTestersResponse {
  * Makes RPCs to the App Distribution server backend.
  */
 export class AppDistributionClient {
-  async getAabInfo(appId: string): Promise<AabInfo> {
-    const apiResponse = await api.request("GET", `/v1/${getAppName(appId)}/aabInfo`, {
+  async getAabInfo(appName: string): Promise<AabInfo> {
+    const apiResponse = await api.request("GET", `/v1/${appName}/aabInfo`, {
       origin: api.appDistributionOrigin,
       auth: true,
     });
@@ -77,18 +73,23 @@ export class AppDistributionClient {
     return _.get(apiResponse, "body");
   }
 
-  async uploadRelease(appId: string, distribution: Distribution): Promise<string> {
+  async uploadRelease(appName: string, distribution: Distribution): Promise<string> {
+    const apiResponse = await api.request(
       "POST",
-      `/upload/v1/${getAppName(appId)}/releases:upload`,
+      `/upload/v1/${appName}/releases:upload`,
+      {
         auth: true,
+        origin: api.appDistributionOrigin,
         headers: {
-          "X-Firebase-Client": `${pkg.name}/${pkg.version}`,
           "X-Goog-Upload-File-Name": distribution.getFileName(),
           "X-Goog-Upload-Protocol": "raw",
           "Content-Type": "application/octet-stream",
         },
         data: distribution.readStream(),
         json: false,
+      }
+    );
+
     return _.get(JSON.parse(apiResponse.body), "name");
   }
 
@@ -183,7 +184,6 @@ export class AppDistributionClient {
       await appDistroV2Client.request({
         method: "POST",
         path: `${projectName}/testers:batchAdd`,
-        headers: { "X-Client-Version": `${pkg.name}/${pkg.version}` },
         body: { emails: emails },
       });
     } catch (err) {
@@ -204,7 +204,6 @@ export class AppDistributionClient {
       apiResponse = await appDistroV2Client.request({
         method: "POST",
         path: `${projectName}/testers:batchRemove`,
-        headers: { "X-Client-Version": `${pkg.name}/${pkg.version}` },
         body: { emails: emails },
       });
     } catch (err) {

@@ -11,14 +11,11 @@ import {
 } from "../appdistribution/client";
 import { FirebaseError } from "../error";
 import { Distribution, DistributionFileType } from "../appdistribution/distribution";
-import { ensureFileExists, getTestersOrGroups } from "../appdistribution/options-parser-util";
-
-function getAppId(appId: string): string {
-  if (!appId) {
-    throw new FirebaseError("set the --app option to a valid Firebase app id and try again");
-  }
-  return appId;
-}
+import {
+  ensureFileExists,
+  getAppName,
+  getTestersOrGroups,
+} from "../appdistribution/options-parser-util";
 
 function getReleaseNotes(releaseNotes: string, releaseNotesFile: string): string {
   if (releaseNotes) {
@@ -48,7 +45,7 @@ module.exports = new Command("appdistribution:distribute <release-binary-file>")
   )
   .before(requireAuth)
   .action(async (file: string, options: any) => {
-    const appId = getAppId(options.app);
+    const appName = getAppName(options);
     const distribution = new Distribution(file);
     const releaseNotes = getReleaseNotes(options.releaseNotes, options.releaseNotesFile);
     const testers = getTestersOrGroups(options.testers, options.testersFile);
@@ -58,11 +55,11 @@ module.exports = new Command("appdistribution:distribute <release-binary-file>")
 
     if (distribution.distributionFileType() === DistributionFileType.AAB) {
       try {
-        aabInfo = await requests.getAabInfo(appId);
+        aabInfo = await requests.getAabInfo(appName);
       } catch (err) {
         if (err.status === 404) {
           throw new FirebaseError(
-            `App Distribution could not find your app ${appId}. ` +
+            `App Distribution could not find your app ${options.app}. ` +
               `Make sure to onboard your app by pressing the "Get started" ` +
               "button on the App Distribution page in the Firebase console: " +
               "https://console.firebase.google.com/project/_/appdistribution",
@@ -105,7 +102,7 @@ module.exports = new Command("appdistribution:distribute <release-binary-file>")
     utils.logBullet("uploading binary...");
     let releaseName;
     try {
-      const operationName = await requests.uploadRelease(appId, distribution);
+      const operationName = await requests.uploadRelease(appName, distribution);
 
       // The upload process is asynchronous, so poll to figure out when the upload has finished successfully
       const uploadResponse = await requests.pollUploadStatus(operationName);
@@ -136,7 +133,7 @@ module.exports = new Command("appdistribution:distribute <release-binary-file>")
     } catch (err) {
       if (err.status === 404) {
         throw new FirebaseError(
-          `App Distribution could not find your app ${appId}. ` +
+          `App Distribution could not find your app ${options.app}. ` +
             `Make sure to onboard your app by pressing the "Get started" ` +
             "button on the App Distribution page in the Firebase console: " +
             "https://console.firebase.google.com/project/_/appdistribution",
@@ -149,7 +146,7 @@ module.exports = new Command("appdistribution:distribute <release-binary-file>")
     // If this is an app bundle and the certificate was originally blank fetch the updated
     // certificate and print
     if (aabInfo && !aabInfo.testCertificate) {
-      aabInfo = await requests.getAabInfo(appId);
+      aabInfo = await requests.getAabInfo(appName);
       if (aabInfo.testCertificate) {
         utils.logBullet(
           "After you upload an AAB for the first time, App Distribution " +
