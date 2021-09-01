@@ -74,8 +74,7 @@ export function displayExtInfo(
  */
 export function displayUpdateChangesNoInput(
   spec: extensionsApi.ExtensionSpec,
-  newSpec: extensionsApi.ExtensionSpec,
-  isOfficial = true
+  newSpec: extensionsApi.ExtensionSpec
 ): string[] {
   const lines: string[] = [];
   if (spec.displayName !== newSpec.displayName) {
@@ -105,15 +104,13 @@ export function displayUpdateChangesNoInput(
     );
   }
 
-  if (!isOfficial) {
-    if (spec.sourceUrl !== newSpec.sourceUrl) {
-      lines.push(
-        "",
-        "**Source code:**",
-        deletionColor(`- ${spec.sourceUrl}`),
-        additionColor(`+ ${newSpec.sourceUrl}`)
-      );
-    }
+  if (spec.sourceUrl !== newSpec.sourceUrl) {
+    lines.push(
+      "",
+      "**Source code:**",
+      deletionColor(`- ${spec.sourceUrl}`),
+      additionColor(`+ ${newSpec.sourceUrl}`)
+    );
   }
 
   if (spec.billingRequired && !newSpec.billingRequired) {
