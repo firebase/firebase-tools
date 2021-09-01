@@ -74,10 +74,7 @@ export class AppDistributionClient {
   }
 
   async uploadRelease(appName: string, distribution: Distribution): Promise<string> {
-    const apiResponse = await api.request(
-      "POST",
-      `/upload/v1/${appName}/releases:upload`,
-      {
+    const apiResponse = await api.request("POST", `/upload/v1/${appName}/releases:upload`, {
         auth: true,
         origin: api.appDistributionOrigin,
         headers: {
