@@ -3,4 +3,4 @@
 - `ext:dev:publish` now checks for a CHANGELOG.md file before publishing.
 - `firebase ext:dev:init` now creates a placeholder `CHANGELOG.md` file.
 - Fixes error when using a project number as the `--project` flag.
-- `firebase init hosting` now supports the version 9 compatibility SDK
+- `firebase init hosting` now supports the version 9 compatibility SDK (#3711).
