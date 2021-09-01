@@ -75,17 +75,16 @@ export class AppDistributionClient {
 
   async uploadRelease(appName: string, distribution: Distribution): Promise<string> {
     const apiResponse = await api.request("POST", `/upload/v1/${appName}/releases:upload`, {
-        auth: true,
-        origin: api.appDistributionOrigin,
-        headers: {
-          "X-Goog-Upload-File-Name": distribution.getFileName(),
-          "X-Goog-Upload-Protocol": "raw",
-          "Content-Type": "application/octet-stream",
-        },
-        data: distribution.readStream(),
-        json: false,
-      }
-    );
+      auth: true,
+      origin: api.appDistributionOrigin,
+      headers: {
+        "X-Goog-Upload-File-Name": distribution.getFileName(),
+        "X-Goog-Upload-Protocol": "raw",
+        "Content-Type": "application/octet-stream",
+      },
+      data: distribution.readStream(),
+      json: false,
+    });
 
     return _.get(JSON.parse(apiResponse.body), "name");
   }
