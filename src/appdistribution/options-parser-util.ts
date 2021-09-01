@@ -55,6 +55,10 @@ export async function getProjectName(options: any): Promise<string> {
 }
 
 // Gets app name from appId
-export function getAppName(appId: string): string {
+export function getAppName(options: any): string {
+  if (!options.app) {
+    throw new FirebaseError("set the --app option to a valid Firebase app id and try again");
+  }
+  const appId = options.app;
   return `projects/${appId.split(":")[1]}/apps/${appId}`;
 }
