@@ -16,8 +16,8 @@ tmp.setGracefulCleanup();
 
 describe("distribution", () => {
   const tempdir = tmp.dirSync();
-  const projectNumber = "123456789";
-  const appId = "1:123456789:ios:abc123def456";
+  const projectName = "projects/123456789";
+  const appName = `${projectName}/apps/1:123456789:ios:abc123def456`;
   const binaryFile = join(tempdir.name, "app.ipa");
   fs.ensureFileSync(binaryFile);
   const mockDistribution = new Distribution(binaryFile);
@@ -40,11 +40,10 @@ describe("distribution", () => {
 
   describe("addTesters", () => {
     const emails = ["a@foo.com", "b@foo.com"];
-    const projectName = `projects/${projectNumber}`;
 
     it("should throw error if request fails", async () => {
       nock(api.appDistributionOrigin)
-        .post(`/v1/projects/${projectNumber}/testers:batchAdd`)
+        .post(`/v1/${projectName}/testers:batchAdd`)
         .reply(400, { error: { status: "FAILED_PRECONDITION" } });
       await expect(appDistributionClient.addTesters(projectName, emails)).to.be.rejectedWith(
         FirebaseError,
@@ -54,9 +53,7 @@ describe("distribution", () => {
     });
 
     it("should resolve when request succeeds", async () => {
-      nock(api.appDistributionOrigin)
-        .post(`/v1/projects/${projectNumber}/testers:batchAdd`)
-        .reply(200, {});
+      nock(api.appDistributionOrigin).post(`/v1/${projectName}/testers:batchAdd`).reply(200, {});
       await expect(appDistributionClient.addTesters(projectName, emails)).to.be.eventually
         .fulfilled;
       expect(nock.isDone()).to.be.true;
@@ -65,11 +62,10 @@ describe("distribution", () => {
 
   describe("deleteTesters", () => {
     const emails = ["a@foo.com", "b@foo.com"];
-    const projectName = `projects/${projectNumber}`;
 
     it("should throw error if delete fails", async () => {
       nock(api.appDistributionOrigin)
-        .post(`/v1/projects/${projectNumber}/testers:batchRemove`)
+        .post(`/v1/${projectName}/testers:batchRemove`)
         .reply(400, { error: { status: "FAILED_PRECONDITION" } });
       await expect(appDistributionClient.removeTesters(projectName, emails)).to.be.rejectedWith(
         FirebaseError,
@@ -81,7 +77,7 @@ describe("distribution", () => {
     const mockResponse: BatchRemoveTestersResponse = { emails: emails };
     it("should resolve when request succeeds", async () => {
       nock(api.appDistributionOrigin)
-        .post(`/v1/projects/${projectNumber}/testers:batchRemove`)
+        .post(`/v1/${projectName}/testers:batchRemove`)
         .reply(200, mockResponse);
       await expect(appDistributionClient.removeTesters(projectName, emails)).to.eventually.deep.eq(
         mockResponse
@@ -92,27 +88,25 @@ describe("distribution", () => {
 
   describe("uploadRelease", () => {
     it("should throw error if upload fails", async () => {
-      nock(api.appDistributionOrigin)
-        .post(`/upload/v1/projects/${projectNumber}/apps/${appId}/releases:upload`)
-        .reply(400, {});
-      await expect(appDistributionClient.uploadRelease(appId, mockDistribution)).to.be.rejected;
+      nock(api.appDistributionOrigin).post(`/upload/v1/${appName}/releases:upload`).reply(400, {});
+      await expect(appDistributionClient.uploadRelease(appName, mockDistribution)).to.be.rejected;
       expect(nock.isDone()).to.be.true;
     });
 
     it("should return token if upload succeeds", async () => {
       const fakeOperation = "fake-operation-name";
       nock(api.appDistributionOrigin)
-        .post(`/upload/v1/projects/${projectNumber}/apps/${appId}/releases:upload`)
+        .post(`/upload/v1/${appName}/releases:upload`)
         .reply(200, { name: fakeOperation });
       await expect(
-        appDistributionClient.uploadRelease(appId, mockDistribution)
+        appDistributionClient.uploadRelease(appName, mockDistribution)
       ).to.be.eventually.eq(fakeOperation);
       expect(nock.isDone()).to.be.true;
     });
   });
 
   describe("updateReleaseNotes", () => {
-    const releaseName = `projects/${projectNumber}/apps/${appId}/releases/fake-release-id`;
+    const releaseName = `${appName}/releases/fake-release-id`;
     it("should return immediately when no release notes are specified", async () => {
       const apiSpy = sandbox.spy(api, "request");
       await expect(appDistributionClient.updateReleaseNotes(releaseName, "")).to.eventually.be
@@ -141,7 +135,7 @@ describe("distribution", () => {
   });
 
   describe("distribute", () => {
-    const releaseName = `projects/${projectNumber}/apps/${appId}/releases/fake-release-id`;
+    const releaseName = `${appName}/releases/fake-release-id`;
     it("should return immediately when testers and groups are empty", async () => {
       const apiSpy = sandbox.spy(api, "request");
       await expect(appDistributionClient.distribute(releaseName)).to.eventually.be.fulfilled;
