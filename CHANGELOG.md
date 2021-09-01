@@ -1,1 +1,1 @@
-Adds command for listing all functions in the Firebase project `functions:list`.
+Add command for listing all functions in the Firebase project `functions:list`.
