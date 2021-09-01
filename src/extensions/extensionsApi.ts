@@ -214,7 +214,7 @@ export async function createInstance(args: {
   } else if (args.extensionVersionRef) {
     const { publisherId, extensionId, version } = parseRef(args.extensionVersionRef);
     config.extensionRef = `${publisherId}/${extensionId}`;
-    config.extensionVersion = version || "";
+    config.extensionVersion = version ?? "";
   } else {
     throw new FirebaseError("No ExtensionVersion or ExtensionSource provided but one is required.");
   }
@@ -603,7 +603,7 @@ export async function publishExtensionVersion(
       data: {
         versionId: version,
         packageUri,
-        extensionRoot: extensionRoot || "/",
+        extensionRoot: extensionRoot ?? "/",
       },
     }
   );

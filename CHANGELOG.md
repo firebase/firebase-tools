@@ -1,0 +1,1 @@
+- `ext:install` now supports `--force` and `--non-interactive` flags.

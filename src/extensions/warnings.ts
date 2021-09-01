@@ -18,7 +18,7 @@ function displayEAPWarning({
   publisherId,
   sourceDownloadUri,
   githubLink,
-}: displayEAPWarningParameters) {
+}: displayEAPWarningParameters): void {
   const publisherNameLink = githubLink ? `[${publisherId}](${githubLink})` : publisherId;
   const warningMsg = `This extension is in preview and is built by a developer in the [Extensions Publisher Early Access Program](http://bit.ly/firex-provider). Its functionality might change in backward-incompatible ways. Since this extension isn't built by Firebase, reach out to ${publisherNameLink} with questions about this extension.`;
   const legalMsg =
@@ -42,7 +42,7 @@ export async function displayWarningPrompts(
   publisherId: string,
   launchStage: RegistryLaunchStage,
   extensionVersion: ExtensionVersion
-) {
+): Promise<void> {
   const trustedPublishers = await getTrustedPublishers();
   if (!trustedPublishers.includes(publisherId)) {
     displayEAPWarning({

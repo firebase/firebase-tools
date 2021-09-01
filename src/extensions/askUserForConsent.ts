@@ -50,9 +50,12 @@ export async function retrieveRoleInfo(role: string) {
  * @param extensionName name of extension to install/update
  * @param projectId ID of user's project
  * @param roles roles that require user approval
- * @return {Promise<?>} returns promise
  */
-export async function displayRoles(extensionName: string, projectId: string, roles: string[]) {
+export async function displayRoles(
+  extensionName: string,
+  projectId: string,
+  roles: string[]
+): Promise<void> {
   if (!roles.length) {
     return;
   }
