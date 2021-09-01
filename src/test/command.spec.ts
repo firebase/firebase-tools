@@ -100,7 +100,7 @@ describe("Command", () => {
         })
         .runner();
 
-      const result = await run({ project: "12345678" });
+      const result = await run({ project: "12345678", token: "thisisatoken" });
       expect(result).to.deep.eq({
         projectId: "resolved-project",
         projectNumber: "12345678",

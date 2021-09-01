@@ -26,8 +26,6 @@ import {
   retryUpdate,
   updateFromLocalSource,
   updateFromUrlSource,
-  updateFromRegistryFile,
-  updateToVersionFromRegistryFile,
   updateToVersionFromPublisherSource,
   updateFromPublisherSource,
   getExistingSourceOrigin,
@@ -43,32 +41,14 @@ marked.setOptions({
 });
 
 function isValidUpdate(existingSourceOrigin: SourceOrigin, newSourceOrigin: SourceOrigin): boolean {
-  let validUpdate = false;
-  if (existingSourceOrigin === SourceOrigin.OFFICIAL_EXTENSION) {
-    if (
-      [SourceOrigin.OFFICIAL_EXTENSION, SourceOrigin.OFFICIAL_EXTENSION_VERSION].includes(
-        newSourceOrigin
-      )
-    ) {
-      validUpdate = true;
-    }
-  } else if (existingSourceOrigin === SourceOrigin.PUBLISHED_EXTENSION) {
-    if (
-      [SourceOrigin.PUBLISHED_EXTENSION, SourceOrigin.PUBLISHED_EXTENSION_VERSION].includes(
-        newSourceOrigin
-      )
-    ) {
-      validUpdate = true;
-    }
-  } else if (
-    existingSourceOrigin === SourceOrigin.LOCAL ||
-    existingSourceOrigin === SourceOrigin.URL
-  ) {
-    if ([SourceOrigin.LOCAL, SourceOrigin.URL].includes(newSourceOrigin)) {
-      validUpdate = true;
-    }
+  if (existingSourceOrigin === SourceOrigin.PUBLISHED_EXTENSION) {
+    return [SourceOrigin.PUBLISHED_EXTENSION, SourceOrigin.PUBLISHED_EXTENSION_VERSION].includes(
+      newSourceOrigin
+    );
+  } else if (existingSourceOrigin === SourceOrigin.LOCAL) {
+    return [SourceOrigin.LOCAL, SourceOrigin.URL].includes(newSourceOrigin);
   }
-  return validUpdate;
+  return false;
 }
 
 /**
@@ -93,7 +73,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
     );
     try {
       const projectId = needProjectId(options);
-      let existingInstance;
+      let existingInstance: extensionsApi.ExtensionInstance;
       try {
         existingInstance = await extensionsApi.getInstance(projectId, instanceId);
       } catch (err) {
@@ -132,7 +112,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         existingSpec.name,
         existingSource
       );
-      const newSourceOrigin = await getSourceOrigin(updateSource);
+      const newSourceOrigin = getSourceOrigin(updateSource);
       const validUpdate = isValidUpdate(existingSourceOrigin, newSourceOrigin);
       if (!validUpdate) {
         throw new FirebaseError(
@@ -165,24 +145,6 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
             );
             break;
           }
-        case SourceOrigin.OFFICIAL_EXTENSION_VERSION:
-          newSourceName = await updateToVersionFromRegistryFile(
-            projectId,
-            instanceId,
-            existingSpec,
-            existingSource,
-            updateSource
-          );
-          break;
-        case SourceOrigin.OFFICIAL_EXTENSION:
-          newSourceName = await updateFromRegistryFile(
-            projectId,
-            instanceId,
-            existingSpec,
-            existingSource
-          );
-          break;
-        // falls through
         case SourceOrigin.PUBLISHED_EXTENSION_VERSION:
           newSourceName = await updateToVersionFromPublisherSource(
             projectId,
@@ -229,10 +191,8 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
           return;
         }
       }
-      const isOfficial =
-        newSourceOrigin === SourceOrigin.OFFICIAL_EXTENSION ||
-        newSourceOrigin === SourceOrigin.OFFICIAL_EXTENSION_VERSION;
-      await displayChanges(existingSpec, newSpec, isOfficial);
+
+      await displayChanges(existingSpec, newSpec);
 
       await provisioningHelper.checkProductsProvisioned(projectId, newSpec);
 

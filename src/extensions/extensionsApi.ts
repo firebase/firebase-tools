@@ -41,6 +41,7 @@ export interface ExtensionVersion {
   spec: ExtensionSpec;
   hash: string;
   sourceDownloadUri: string;
+  releaseNotes?: string;
   createTime?: string;
 }
 
@@ -525,7 +526,10 @@ export async function listExtensions(publisherId: string): Promise<Extension[]> 
  * @param ref user-friendly identifier for the ExtensionVersion (publisher-id/extension-id)
  * @param showUnpublished whether to include unpublished ExtensionVersions, default = false
  */
-export async function listExtensionVersions(ref: string): Promise<ExtensionVersion[]> {
+export async function listExtensionVersions(
+  ref: string,
+  filter?: string
+): Promise<ExtensionVersion[]> {
   const { publisherId, extensionId } = parseRef(ref);
   const extensionVersions: ExtensionVersion[] = [];
   const getNextPage = async (pageToken?: string) => {
@@ -536,6 +540,7 @@ export async function listExtensionVersions(ref: string): Promise<ExtensionVersi
         auth: true,
         origin: api.extensionsOrigin,
         query: {
+          filter,
           pageSize: PAGE_SIZE_MAX,
           pageToken,
         },
