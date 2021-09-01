@@ -4,3 +4,4 @@
 - `firebase ext:dev:init` now creates a placeholder `CHANGELOG.md` file.
 - Fixes error when using a project number as the `--project` flag.
 - `firebase init hosting` now supports the version 9 compatibility SDK (#3711).
+- Fixes layout issues when editing fields in Firestore Emulator UI.
