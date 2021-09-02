@@ -26,16 +26,19 @@ export interface PubSubSpec {
   targetService: TargetIds;
 }
 
-/** API agnostic version of a CloudScheduler Job */
-export interface ScheduleSpec {
-  id: string;
-  project: string;
+export interface ScheduleTrigger {
   // Note: schedule is missing in the existingBackend because we
   // don't actually spend the API call looking up the schedule;
   // we just infer identifiers from function labels.
   schedule?: string;
   timeZone?: string;
   retryConfig?: ScheduleRetryConfig;
+}
+
+/** API agnostic version of a CloudScheduler Job */
+export interface ScheduleSpec extends ScheduleTrigger {
+  id: string;
+  project: string;
   transport: "pubsub" | "https";
 
   // What we're actually planning to invoke with this schedule
@@ -156,15 +159,7 @@ export interface TargetIds {
   project: string;
 }
 
-export type FunctionsPlatform = "gcfv1" | "gcfv2";
-
-/** An API agnostic definition of a Cloud Function. */
-export interface FunctionSpec extends TargetIds {
-  platform: FunctionsPlatform;
-  entryPoint: string;
-  trigger: HttpsTrigger | EventTrigger;
-  runtime: runtimes.Runtime | runtimes.DeprecatedRuntime;
-
+export interface ServiceConfiguration {
   concurrency?: number;
   labels?: Record<string, string>;
   environmentVariables?: Record<string, string>;
@@ -176,13 +171,34 @@ export interface FunctionSpec extends TargetIds {
   vpcConnectorEgressSettings?: VpcEgressSettings;
   ingressSettings?: IngressSettings;
   serviceAccountEmail?: "default" | string;
-
-  // Output only:
-
-  // present for v1 functions with HTTP triggers and v2 functions always.
-  uri?: string;
-  sourceUploadUrl?: string;
 }
+
+/** An API agnostic definition of a Cloud Function. */
+export type FunctionSpec = TargetIds &
+  ServiceConfiguration & {
+    trigger: EventTrigger | HttpsTrigger;
+  };
+
+export type FunctionsPlatform = "gcfv1" | "gcfv2";
+
+type Triggered =
+  | {
+      httpsTrigger: HttpsTrigger;
+    }
+  | {
+      eventTrigger: EventTrigger;
+    }
+  | {
+      scheduleTrigger: ScheduleTrigger;
+    };
+
+/**
+ * An endpoint that serves traffic to a stack of services.
+ * For now, this is always a Cloud Function. Future iterations may use complex
+ * type unions to enforce that _eitehr_ the Stack is all Functions or the
+ * stack is all Services.
+ */
+export type Endpoint = TargetIds & ServiceConfiguration & Triggered;
 
 /** An API agnostic definition of an entire deployment a customer has or wants. */
 export interface Backend {
@@ -196,6 +212,7 @@ export interface Backend {
   schedules: ScheduleSpec[];
   topics: PubSubSpec[];
   environmentVariables: EnvironmentVariables;
+  endpoints: Endpoint[];
 }
 
 /**
@@ -206,6 +223,7 @@ export interface Backend {
 export function empty(): Backend {
   return {
     requiredAPIs: {},
+    endpoints: [],
     cloudFunctions: [],
     schedules: [],
     topics: [],
