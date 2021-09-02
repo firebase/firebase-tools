@@ -13,7 +13,7 @@ module.exports = new Command("appdistribution:testers:add [emails...]")
   .action(async (emails: string[], options?: any) => {
     const projectName = await getProjectName(options);
     const appDistroClient = new AppDistributionClient();
-    const emailsArr = getEmails(emails, options.file);
-    utils.logBullet(`Adding ${emailsArr.length} testers to project`);
-    await appDistroClient.addTesters(projectName, emails);
+    const emailsToAdd = getEmails(emails, options.file);
+    utils.logBullet(`Adding ${emailsToAdd.length} testers to project`);
+    await appDistroClient.addTesters(projectName, emailsToAdd);
   });
