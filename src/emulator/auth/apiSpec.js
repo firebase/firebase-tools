@@ -2981,6 +2981,52 @@ export default {
   },
   components: {
     schemas: {
+      GoogleCloudIdentitytoolkitV1Argon2Parameters: {
+        description: "The parameters for Argon2 hashing algorithm.",
+        properties: {
+          associatedData: {
+            description:
+              "The additional associated data, if provided, is appended to the hash value to provide an additional layer of security. A base64-encoded string if specified via JSON.",
+            format: "byte",
+            type: "string",
+          },
+          hashLengthBytes: {
+            description:
+              "Required. The desired hash length in bytes. Minimum is 4 and maximum is 1024.",
+            format: "int32",
+            type: "integer",
+          },
+          hashType: {
+            description: "Required. Must not be HASH_TYPE_UNSPECIFIED.",
+            enum: ["HASH_TYPE_UNSPECIFIED", "ARGON2_D", "ARGON2_ID", "ARGON2_I"],
+            type: "string",
+          },
+          iterations: {
+            description:
+              "Required. The number of iterations to perform. Minimum is 1, maximum is 16.",
+            format: "int32",
+            type: "integer",
+          },
+          memoryCostKib: {
+            description: "Required. The memory cost in kibibytes. Maximum is 32768.",
+            format: "int32",
+            type: "integer",
+          },
+          parallelism: {
+            description:
+              "Required. The degree of parallelism, also called threads or lanes. Minimum is 1, maximum is 16.",
+            format: "int32",
+            type: "integer",
+          },
+          version: {
+            description:
+              "The version of the Argon2 algorithm. This defaults to VERSION_13 if not specified.",
+            enum: ["VERSION_UNSPECIFIED", "VERSION_10", "VERSION_13"],
+            type: "string",
+          },
+        },
+        type: "object",
+      },
       GoogleCloudIdentitytoolkitV1AutoRetrievalInfo: {
         description: "The information required to auto-retrieve an SMS.",
         properties: {
@@ -4784,6 +4830,9 @@ export default {
               "Whether to overwrite an existing account in Identity Platform with a matching `local_id` in the request. If true, the existing account will be overwritten. If false, an error will be returned.",
             type: "boolean",
           },
+          argon2Parameters: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1Argon2Parameters",
+          },
           blockSize: {
             description:
               "The block size parameter used by the STANDARD_SCRYPT hashing function. This parameter, along with parallelization and cpu_mem_cost help tune the resources needed to hash a password, and should be tuned as processor speeds and memory technologies advance.",
@@ -4810,7 +4859,7 @@ export default {
           },
           hashAlgorithm: {
             description:
-              "Required. The hashing function used to hash the account passwords. Must be one of the following: * HMAC_SHA256 * HMAC_SHA1 * HMAC_MD5 * SCRYPT * PBKDF_SHA1 * MD5 * HMAC_SHA512 * SHA1 * BCRYPT * PBKDF2_SHA256 * SHA256 * SHA512 * STANDARD_SCRYPT",
+              "Required. The hashing function used to hash the account passwords. Must be one of the following: * HMAC_SHA256 * HMAC_SHA1 * HMAC_MD5 * SCRYPT * PBKDF_SHA1 * MD5 * HMAC_SHA512 * SHA1 * BCRYPT * PBKDF2_SHA256 * SHA256 * SHA512 * STANDARD_SCRYPT * ARGON2",
             type: "string",
           },
           memoryCost: {
@@ -5200,6 +5249,17 @@ export default {
         },
         type: "object",
       },
+      GoogleCloudIdentitytoolkitAdminV2Inheritance: {
+        description: "Settings that the tenants will inherit from project level.",
+        properties: {
+          emailSendingConfig: {
+            description:
+              "Whether to allow the tenant to inherit custom domains, email templates, and custom SMTP settings. If true, email sent from tenant will follow the project level email sending configurations. If false (by default), emails will go with the default settings with no customizations.",
+            type: "boolean",
+          },
+        },
+        type: "object",
+      },
       GoogleCloudIdentitytoolkitAdminV2ListDefaultSupportedIdpConfigsResponse: {
         description: "Response for DefaultSupportedIdpConfigs",
         properties: {
@@ -5332,7 +5392,7 @@ export default {
       },
       GoogleCloudIdentitytoolkitAdminV2OAuthResponseType: {
         description:
-          "The multiple response type to request for in the OAuth authorization flow. This can possibly be a combination of set bits (e.g. {id_token, token}).",
+          "The response type to request for in the OAuth authorization flow. You can set either `id_token` or `code` to true, but not both. Setting both types to be simultaneously true (`{code: true, id_token: true}`) is not yet supported. See https://openid.net/specs/openid-connect-core-1_0.html#Authentication for a mapping of response type to OAuth 2.0 flow.",
         properties: {
           code: {
             description:
@@ -5344,7 +5404,7 @@ export default {
             type: "boolean",
           },
           token: {
-            description: "If true, access token is returned from IdP's authorization endpoint.",
+            description: "Do not use. The `token` response type is not supported at the moment.",
             type: "boolean",
           },
         },
@@ -5404,6 +5464,9 @@ export default {
             type: "boolean",
           },
           hashConfig: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2HashConfig" },
+          inheritance: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2Inheritance",
+          },
           mfaConfig: {
             $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2MultiFactorAuthConfig",
           },
@@ -5731,7 +5794,7 @@ export default {
       },
       GoogleIamV1Policy: {
         description:
-          'An Identity and Access Management (IAM) policy, which specifies access controls for Google Cloud resources. A `Policy` is a collection of `bindings`. A `binding` binds one or more `members` to a single `role`. Members can be user accounts, service accounts, Google groups, and domains (such as G Suite). A `role` is a named list of permissions; each `role` can be an IAM predefined role or a user-created custom role. For some types of Google Cloud resources, a `binding` can also specify a `condition`, which is a logical expression that allows access to a resource only if the expression evaluates to `true`. A condition can add constraints based on attributes of the request, the resource, or both. To learn which resources support conditions in their IAM policies, see the [IAM documentation](https://cloud.google.com/iam/help/conditions/resource-policies). **JSON example:** { "bindings": [ { "role": "roles/resourcemanager.organizationAdmin", "members": [ "user:mike@example.com", "group:admins@example.com", "domain:google.com", "serviceAccount:my-project-id@appspot.gserviceaccount.com" ] }, { "role": "roles/resourcemanager.organizationViewer", "members": [ "user:eve@example.com" ], "condition": { "title": "expirable access", "description": "Does not grant access after Sep 2020", "expression": "request.time < timestamp(\'2020-10-01T00:00:00.000Z\')", } } ], "etag": "BwWWja0YfJA=", "version": 3 } **YAML example:** bindings: - members: - user:mike@example.com - group:admins@example.com - domain:google.com - serviceAccount:my-project-id@appspot.gserviceaccount.com role: roles/resourcemanager.organizationAdmin - members: - user:eve@example.com role: roles/resourcemanager.organizationViewer condition: title: expirable access description: Does not grant access after Sep 2020 expression: request.time < timestamp(\'2020-10-01T00:00:00.000Z\') - etag: BwWWja0YfJA= - version: 3 For a description of IAM and its features, see the [IAM documentation](https://cloud.google.com/iam/docs/).',
+          'An Identity and Access Management (IAM) policy, which specifies access controls for Google Cloud resources. A `Policy` is a collection of `bindings`. A `binding` binds one or more `members` to a single `role`. Members can be user accounts, service accounts, Google groups, and domains (such as G Suite). A `role` is a named list of permissions; each `role` can be an IAM predefined role or a user-created custom role. For some types of Google Cloud resources, a `binding` can also specify a `condition`, which is a logical expression that allows access to a resource only if the expression evaluates to `true`. A condition can add constraints based on attributes of the request, the resource, or both. To learn which resources support conditions in their IAM policies, see the [IAM documentation](https://cloud.google.com/iam/help/conditions/resource-policies). **JSON example:** { "bindings": [ { "role": "roles/resourcemanager.organizationAdmin", "members": [ "user:mike@example.com", "group:admins@example.com", "domain:google.com", "serviceAccount:my-project-id@appspot.gserviceaccount.com" ] }, { "role": "roles/resourcemanager.organizationViewer", "members": [ "user:eve@example.com" ], "condition": { "title": "expirable access", "description": "Does not grant access after Sep 2020", "expression": "request.time < timestamp(\'2020-10-01T00:00:00.000Z\')", } } ], "etag": "BwWWja0YfJA=", "version": 3 } **YAML example:** bindings: - members: - user:mike@example.com - group:admins@example.com - domain:google.com - serviceAccount:my-project-id@appspot.gserviceaccount.com role: roles/resourcemanager.organizationAdmin - members: - user:eve@example.com role: roles/resourcemanager.organizationViewer condition: title: expirable access description: Does not grant access after Sep 2020 expression: request.time < timestamp(\'2020-10-01T00:00:00.000Z\') etag: BwWWja0YfJA= version: 3 For a description of IAM and its features, see the [IAM documentation](https://cloud.google.com/iam/docs/).',
         properties: {
           auditConfigs: {
             description: "Specifies cloud audit logging configuration for this policy.",
@@ -6069,7 +6132,7 @@ export default {
             authorizationUrl: "https://accounts.google.com/o/oauth2/auth",
             scopes: {
               "https://www.googleapis.com/auth/cloud-platform":
-                "See, edit, configure, and delete your Google Cloud Platform data",
+                "See, edit, configure, and delete your Google Cloud data and see the email address for your Google Account.",
               "https://www.googleapis.com/auth/firebase":
                 "View and administer all your Firebase data and settings",
             },
@@ -6079,7 +6142,7 @@ export default {
             tokenUrl: "https://accounts.google.com/o/oauth2/token",
             scopes: {
               "https://www.googleapis.com/auth/cloud-platform":
-                "See, edit, configure, and delete your Google Cloud Platform data",
+                "See, edit, configure, and delete your Google Cloud data and see the email address for your Google Account.",
               "https://www.googleapis.com/auth/firebase":
                 "View and administer all your Firebase data and settings",
             },
