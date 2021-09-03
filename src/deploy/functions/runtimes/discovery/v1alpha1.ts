@@ -130,6 +130,7 @@ function fillDefaults(
   want.environmentVariables = want.environmentVariables || {};
   want.schedules = want.schedules || [];
   want.topics = want.topics || [];
+  want.endpoints = want.endpoints || [];
 
   for (const cloudFunction of want.cloudFunctions) {
     if (!cloudFunction.project) {

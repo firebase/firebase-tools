@@ -46,9 +46,19 @@ export interface ScheduleSpec extends ScheduleTrigger {
   targetService: TargetIds;
 }
 
+/** Something that has a ScheduleTrigger */
+export interface ScheduleTriggered {
+  scheduleTrigger: ScheduleTrigger;
+}
+
 /** API agnostic version of a Cloud Function's HTTPs trigger. */
 export interface HttpsTrigger {
   invoker?: string[];
+}
+
+/** Something that has an HTTPS trigger */
+export interface HttpsTriggered {
+  httpsTrigger: HttpsTrigger;
 }
 
 /** Well known keys in the eventFilter attribute of an event trigger */
@@ -93,6 +103,11 @@ export interface EventTrigger {
    * This field is ignored for v1 and defaults to the
    */
   serviceAccountEmail?: string;
+}
+
+/** Something that has an EventTrigger */
+export interface EventTriggered {
+  eventTrigger: EventTrigger;
 }
 
 /** Type deduction helper for a function trigger. */
@@ -191,24 +206,43 @@ export type FunctionSpec = TargetIds &
 
 export type FunctionsPlatform = "gcfv1" | "gcfv2";
 
-type Triggered =
-  | {
-      httpsTrigger: HttpsTrigger;
-    }
-  | {
-      eventTrigger: EventTrigger;
-    }
-  | {
-      scheduleTrigger: ScheduleTrigger;
-    };
+type Triggered = HttpsTriggered | EventTriggered | ScheduleTriggered;
+
+/** Whether something has an HttpsTrigger */
+export function isHttpsTriggered(triggered: Triggered): triggered is HttpsTriggered {
+  return {}.hasOwnProperty.call(triggered, "httpsTrigger");
+}
+
+/** Whether something has an EventTrigger */
+export function isEventTriggered(triggered: Triggered): triggered is EventTriggered {
+  return {}.hasOwnProperty.call(triggered, "eventTrigger");
+}
+
+/** Whether something has a ScheduleTrigger */
+export function isScheduleTriggered(triggered: Triggered): triggered is ScheduleTriggered {
+  return {}.hasOwnProperty.call(triggered, "scheduleTrigger");
+}
 
 /**
  * An endpoint that serves traffic to a stack of services.
  * For now, this is always a Cloud Function. Future iterations may use complex
- * type unions to enforce that _eitehr_ the Stack is all Functions or the
+ * type unions to enforce that _either_ the Stack is all Functions or the
  * stack is all Services.
  */
-export type Endpoint = TargetIds & ServiceConfiguration & Triggered;
+export type Endpoint = TargetIds &
+  ServiceConfiguration &
+  Triggered & {
+    entryPoint: string;
+    platform: FunctionsPlatform;
+    runtime: runtimes.Runtime | runtimes.DeprecatedRuntime;
+
+    // Output only
+
+    // URI is available on GCFv1 for HTTPS triggers and
+    // on GCFv2 always
+    uri?: string;
+    sourceUploadUrl?: string;
+  };
 
 /** An API agnostic definition of an entire deployment a customer has or wants. */
 export interface Backend {
