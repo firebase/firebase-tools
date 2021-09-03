@@ -12,6 +12,7 @@ import {
   authEmulatorUrl,
   MakeRequired,
   isValidPhoneNumber,
+  randomDigits,
 } from "./utils";
 import { NotImplementedError, assert, BadRequestError, InternalError } from "./errors";
 import { Emulators } from "../types";
@@ -28,7 +29,7 @@ import {
   PROVIDER_CUSTOM,
   OobRecord,
 } from "./state";
-import { MfaEnrollments, CreateMfaEnrollmentsRequest, Schemas, MfaEnrollment } from "./types";
+import { MfaEnrollments, Schemas } from "./types";
 
 /**
  * Create a map from IDs to operations handlers suitable for exegesis.
@@ -54,6 +55,14 @@ export const authOperations: AuthOps = {
       signInWithPhoneNumber,
       signUp,
       update: setAccountInfo,
+      mfaEnrollment: {
+        finalize: mfaEnrollmentFinalize,
+        start: mfaEnrollmentStart,
+      },
+      mfaSignIn: {
+        start: mfaSignInStart,
+        finalize: mfaSignInFinalize,
+      },
     },
     projects: {
       createSessionCookie,
@@ -1217,10 +1226,6 @@ function signInWithCustomToken(
     }
   }
 
-  if (user.mfaInfo) {
-    throw new NotImplementedError("MFA Login not yet implemented.");
-  }
-
   return {
     kind: "identitytoolkit#VerifyCustomTokenResponse",
     isNewUser,
@@ -1266,17 +1271,14 @@ function signInWithEmailLink(
     user = state.updateUserByLocalId(user.localId, updates);
   }
 
-  if (user.mfaInfo) {
-    throw new NotImplementedError("MFA Login not yet implemented.");
-  }
-
-  const tokens = issueTokens(state, user, PROVIDER_PASSWORD);
   return {
     kind: "identitytoolkit#EmailLinkSigninResponse",
     email,
     localId: user.localId,
     isNewUser,
-    ...tokens,
+    ...(user.mfaInfo
+      ? mfaPending(state, user, PROVIDER_PASSWORD)
+      : issueTokens(state, user, PROVIDER_PASSWORD)),
   };
 }
 
@@ -1395,6 +1397,10 @@ function signInWithIdp(
     if (!response.localId) {
       throw new Error("Internal assertion error: localId not set for exising user.");
     }
+    if (userFromIdToken?.mfaInfo) {
+      // TODO: Shall we only update user after MFA success?
+      throw new NotImplementedError("MFA Login not yet implemented.");
+    }
     user = state.updateUserByLocalId(
       response.localId,
       {
@@ -1405,10 +1411,6 @@ function signInWithIdp(
         upsertProviders: [providerUserInfo],
       }
     );
-  }
-
-  if (user.mfaInfo) {
-    throw new NotImplementedError("MFA Login not yet implemented.");
   }
 
   if (user.email === response.email) {
@@ -1440,13 +1442,7 @@ function signInWithPassword(
   assert(user.passwordHash && user.salt, "INVALID_PASSWORD");
   assert(user.passwordHash === hashPassword(reqBody.password, user.salt), "INVALID_PASSWORD");
 
-  if (user.mfaInfo) {
-    throw new NotImplementedError("MFA Login not yet implemented.");
-  }
-
   user = state.updateUserByLocalId(user.localId, { lastLoginAt: Date.now().toString() });
-
-  const tokens = issueTokens(state, user, PROVIDER_PASSWORD);
 
   return {
     kind: "identitytoolkit#VerifyPasswordResponse",
@@ -1456,8 +1452,9 @@ function signInWithPassword(
 
     displayName: user.displayName,
     profilePicture: user.photoUrl,
-
-    ...tokens,
+    ...(user.mfaInfo
+      ? mfaPending(state, user, PROVIDER_PASSWORD)
+      : issueTokens(state, user, PROVIDER_PASSWORD)),
   };
 }
 
@@ -1594,6 +1591,136 @@ function listVerificationCodesInProject(
 ): Schemas["EmulatorV1ProjectsVerificationCodes"] {
   return {
     verificationCodes: [...state.listVerificationCodes()],
+  };
+}
+
+function mfaEnrollmentStart(
+  state: ProjectState,
+  reqBody: Schemas["GoogleCloudIdentitytoolkitV2StartMfaEnrollmentRequest"]
+): Schemas["GoogleCloudIdentitytoolkitV2StartMfaEnrollmentResponse"] {
+  assert(reqBody.idToken, "MISSING_ID_TOKEN");
+  assert(reqBody.phoneEnrollmentInfo, "((Missing phoneEnrollmentInfo.))");
+  // recaptchaToken, safetyNetToken, iosReceipt, and iosSecret are intentionally
+  // ignored because the emulator doesn't implement anti-abuse features.
+  // autoRetrievalInfo is ignored because SMS will not actually be sent.
+
+  const phoneNumber = reqBody.phoneEnrollmentInfo.phoneNumber;
+  assert(phoneNumber, "((Missing phoneNumber.))");
+  assert(isValidPhoneNumber(phoneNumber), "((Invalid phone number.)");
+
+  const { sessionInfo, code } = state.createVerificationCode(phoneNumber);
+
+  // Print out a developer-friendly log containing the link, in lieu of sending
+  // a real text message out to the phone number.
+  EmulatorLogger.forEmulator(Emulators.AUTH).log(
+    "BULLET",
+    `To enroll MFA with ${phoneNumber}, use the code ${code}.`
+  );
+
+  return {
+    phoneSessionInfo: {
+      sessionInfo,
+    },
+  };
+}
+
+function mfaEnrollmentFinalize(
+  state: ProjectState,
+  reqBody: Schemas["GoogleCloudIdentitytoolkitV2FinalizeMfaEnrollmentRequest"]
+): Schemas["GoogleCloudIdentitytoolkitV2FinalizeMfaEnrollmentResponse"] {
+  assert(reqBody.idToken, "MISSING_ID_TOKEN");
+  const { user, signInProvider } = parseIdToken(state, reqBody.idToken);
+  assert(reqBody.phoneVerificationInfo, "((Missing phoneVerificationInfo.))");
+
+  if (reqBody.phoneVerificationInfo.androidVerificationProof) {
+    throw new NotImplementedError("androidVerificationProof is unsupported!");
+  }
+  const { code, sessionInfo } = reqBody.phoneVerificationInfo;
+
+  assert(code, "((Missing phoneVerificationInfo.code.))");
+  assert(sessionInfo, "((Missing phoneVerificationInfo.sessionInfo.))");
+
+  const phoneNumber = verifyPhoneNumber(state, sessionInfo, code);
+
+  const existingFactors = user.mfaInfo || [];
+  const existingIds = new Set<string>();
+  for (const { mfaEnrollmentId } of existingFactors) {
+    if (mfaEnrollmentId) {
+      existingIds.add(mfaEnrollmentId);
+    }
+  }
+  state.updateUserByLocalId(user.localId, {
+    mfaInfo: [
+      ...existingFactors,
+      {
+        displayName: reqBody.displayName,
+        enrolledAt: new Date().toISOString(),
+        mfaEnrollmentId: newRandomId(28, existingIds),
+        phoneInfo: phoneNumber,
+        unobfuscatedPhoneInfo: phoneNumber,
+      },
+    ],
+  });
+
+  const { idToken, refreshToken } = issueTokens(state, user, signInProvider);
+  return {
+    idToken,
+    refreshToken,
+  };
+}
+
+function mfaSignInStart(
+  state: ProjectState,
+  reqBody: Schemas["GoogleCloudIdentitytoolkitV2StartMfaSignInRequest"]
+): Schemas["GoogleCloudIdentitytoolkitV2StartMfaSignInResponse"] {
+  assert(reqBody.mfaPendingCredential, "((Missing mfaPendingCredential.))");
+  assert(reqBody.mfaEnrollmentId, "((Missing mfaEnrollmentId.))");
+  const { user } = parsePendingCredential(state, reqBody.mfaPendingCredential);
+
+  const enrollment = user.mfaInfo?.find(
+    (factor) => factor.mfaEnrollmentId === reqBody.mfaEnrollmentId
+  );
+  assert(enrollment, "((mfaEnrollmentId not found.))");
+  const phoneNumber = enrollment.unobfuscatedPhoneInfo;
+  assert(phoneNumber, "((not a phone-based MFA enrollment.))");
+
+  const { sessionInfo, code } = state.createVerificationCode(phoneNumber);
+
+  // Print out a developer-friendly log containing the link, in lieu of sending
+  // a real text message out to the phone number.
+  EmulatorLogger.forEmulator(Emulators.AUTH).log(
+    "BULLET",
+    `To sign in with MFA using ${phoneNumber}, use the code ${code}.`
+  );
+
+  return {
+    phoneResponseInfo: {
+      sessionInfo,
+    },
+  };
+}
+
+function mfaSignInFinalize(
+  state: ProjectState,
+  reqBody: Schemas["GoogleCloudIdentitytoolkitV2FinalizeMfaSignInRequest"]
+): Schemas["GoogleCloudIdentitytoolkitV2FinalizeMfaSignInResponse"] {
+  assert(reqBody.mfaPendingCredential, "((Missing mfaPendingCredential.))");
+  assert(reqBody.phoneVerificationInfo, "((Missing phoneVerificationInfo.))");
+
+  if (reqBody.phoneVerificationInfo.androidVerificationProof) {
+    throw new NotImplementedError("androidVerificationProof is unsupported!");
+  }
+  const { code, sessionInfo } = reqBody.phoneVerificationInfo;
+  assert(code, "((Missing phoneVerificationInfo.code.))");
+  assert(sessionInfo, "((Missing phoneVerificationInfo.sessionInfo.))");
+
+  verifyPhoneNumber(state, sessionInfo, code);
+
+  const { user, signInProvider } = parsePendingCredential(state, reqBody.mfaPendingCredential);
+  const { idToken, refreshToken } = issueTokens(state, user, signInProvider);
+  return {
+    idToken,
+    refreshToken,
   };
 }
 
@@ -2136,6 +2263,109 @@ function handleIdpSignUp(
     response: { ...response, isNewUser: true },
     accountUpdates,
   };
+}
+
+type MfaEnrollment = Schemas["GoogleCloudIdentitytoolkitV1MfaEnrollment"];
+
+interface MfaPendingCredential {
+  _AuthEmulatorMfaPendingCredential: string;
+  localId: string;
+  signInProvider: string;
+}
+
+function mfaPending(
+  state: ProjectState,
+  user: UserInfo,
+  signInProvider: string
+): { mfaPendingCredential: string; mfaInfo: MfaEnrollment[] } {
+  if (!user.mfaInfo) {
+    throw new Error("Internal assertion error: mfaPending called on user without MFA.");
+  }
+  const pendingCredentialPayload: MfaPendingCredential = {
+    _AuthEmulatorMfaPendingCredential: "DO NOT MODIFY",
+    localId: user.localId,
+    signInProvider,
+  };
+
+  // Encode pendingCredentialPayload using base64. We don't encrypt or sign the
+  // data in the Auth Emulator but just trust developers not to modify it.
+  const mfaPendingCredential = Buffer.from(
+    JSON.stringify(pendingCredentialPayload),
+    "utf8"
+  ).toString("base64");
+
+  return { mfaPendingCredential, mfaInfo: user.mfaInfo.map(redactMfaInfo) };
+}
+
+function redactMfaInfo(mfaInfo: MfaEnrollment): MfaEnrollment {
+  return {
+    displayName: mfaInfo.displayName,
+    enrolledAt: mfaInfo.enrolledAt,
+    mfaEnrollmentId: mfaInfo.mfaEnrollmentId,
+    phoneInfo: mfaInfo.unobfuscatedPhoneInfo
+      ? obfuscatePhoneNumber(mfaInfo.unobfuscatedPhoneInfo)
+      : undefined,
+  };
+}
+
+// Create an obfuscated version of a phone number, where all but the last
+// four digits are replaced by the character "*".
+function obfuscatePhoneNumber(phoneNumber: string): string {
+  let digitsLeft = 0;
+  for (const c of phoneNumber) {
+    if (isDigit(c)) {
+      digitsLeft += 1;
+    }
+  }
+  let result = "";
+  for (const c of phoneNumber) {
+    if (!isDigit(c)) {
+      result += c;
+      continue;
+    }
+    if (digitsLeft <= 4) {
+      result += c;
+    } else {
+      result += "*";
+    }
+    digitsLeft--;
+  }
+  return result;
+}
+
+function isDigit(char: string): boolean {
+  // TODO: Handle unicode digits.
+  if (char >= "0" && char <= "9") {
+    return true;
+  }
+
+  return false;
+}
+
+function parsePendingCredential(
+  state: ProjectState,
+  pendingCredential: string
+): {
+  user: UserInfo;
+  signInProvider: string;
+} {
+  let pendingCredentialPayload: MfaPendingCredential;
+  try {
+    const json = Buffer.from(pendingCredential, "base64").toString("utf8");
+    pendingCredentialPayload = JSON.parse(json) as MfaPendingCredential;
+  } catch {
+    assert(false, "((Invalid phoneVerificationInfo.mfaPendingCredential.))");
+  }
+  assert(
+    pendingCredentialPayload._AuthEmulatorMfaPendingCredential,
+    "((Invalid phoneVerificationInfo.mfaPendingCredential.))"
+  );
+
+  const { localId, signInProvider } = pendingCredentialPayload;
+  const user = state.getUserByLocalId(localId);
+  assert(user, "((User in pendingCredentialPayload does not exist.))");
+
+  return { user, signInProvider };
 }
 
 /* eslint-disable camelcase */
