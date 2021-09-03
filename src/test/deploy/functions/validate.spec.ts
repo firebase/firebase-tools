@@ -126,7 +126,7 @@ describe("validate", () => {
       id: "my-func",
       region: "us-central1",
       project: "project",
-      runtime: "nodejs14",
+      runtime: "nodejs16",
       entryPoint: "function",
     };
     it("should throw if a https function would be changed into an event triggered function", () => {

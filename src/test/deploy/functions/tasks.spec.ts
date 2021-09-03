@@ -15,7 +15,7 @@ describe("Function Deployment tasks", () => {
     region: "region",
     project: "project",
     entryPoint: "function",
-    runtime: "nodejs14",
+    runtime: "nodejs16",
     trigger: {},
   };
 
