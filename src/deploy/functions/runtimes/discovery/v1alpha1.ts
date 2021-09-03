@@ -19,6 +19,7 @@ function tryValidate(typed: backend.Backend) {
   // Use a helper type to help guide code complete when writing this function
   assertKeyTypes("", typed, {
     requiredAPIs: "object",
+    endpoints: "array",
     cloudFunctions: "array",
     topics: "array",
     schedules: "array",

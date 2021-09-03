@@ -6,6 +6,7 @@ import * as runtimes from "./runtimes";
 import { FirebaseError } from "../../error";
 import { Context } from "./args";
 import { previews } from "../../previews";
+import { backendFromV1Alpha1 } from "./runtimes/discovery/v1alpha1";
 
 /** Retry settings for a ScheduleSpec. */
 export interface ScheduleRetryConfig {
@@ -176,7 +177,17 @@ export interface ServiceConfiguration {
 /** An API agnostic definition of a Cloud Function. */
 export type FunctionSpec = TargetIds &
   ServiceConfiguration & {
+    entryPoint: string;
+    platform: FunctionsPlatform;
+    runtime: runtimes.Runtime | runtimes.DeprecatedRuntime;
     trigger: EventTrigger | HttpsTrigger;
+
+    // Output only
+
+    // URI is available on GCFv1 for HTTPS triggers and
+    // on GCFv2 always
+    uri?: string;
+    sourceUploadUrl?: string;
   };
 
 export type FunctionsPlatform = "gcfv1" | "gcfv2";
@@ -278,7 +289,7 @@ export const sameFunctionName = (func: TargetIds) => (test: TargetIds): boolean 
  * Gets the formal resource name for a Cloud Scheduler job.
  * @param appEngineLocation Must be the region where the customer has enabled App Engine.
  */
-export function scheduleName(schedule: ScheduleSpec, appEngineLocation: string) {
+export function scheduleName(schedule: ScheduleSpec, appEngineLocation: string): string {
   return `projects/${schedule.project}/locations/${appEngineLocation}/jobs/${schedule.id}`;
 }
 
@@ -287,7 +298,7 @@ export function scheduleName(schedule: ScheduleSpec, appEngineLocation: string) 
  * @param topic Something that implements project/id. This is intentionally vauge so
  *              that a schedule can be passed and the topic name generated.
  */
-export function topicName(topic: { project: string; id: string }) {
+export function topicName(topic: { project: string; id: string }): string {
   return `projects/${topic.project}/topics/${topic.id}`;
 }
 
@@ -301,7 +312,7 @@ export function topicName(topic: { project: string; id: string }) {
  * If you change this pattern, Firebase console will stop displaying schedule descriptions
  * and schedules created under the old pattern will no longer be cleaned up correctly
  */
-export function scheduleIdForFunction(cloudFunction: TargetIds) {
+export function scheduleIdForFunction(cloudFunction: TargetIds): string {
   return `firebase-schedule-${cloudFunction.id}-${cloudFunction.region}`;
 }
 
@@ -342,11 +353,7 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
   // Note: is it worth deducing the APIs that must have been enabled for this backend to work?
   // it could reduce redundant API calls for enabling the APIs.
   ctx.existingBackend = {
-    requiredAPIs: {},
-    cloudFunctions: [],
-    schedules: [],
-    topics: [],
-    environmentVariables: {},
+    ...empty(),
   };
   ctx.unreachableRegions = {
     gcfV1: [],
