@@ -62,8 +62,8 @@ describe("cloudfunctionsv2", () => {
     const UPLOAD_URL = "https://storage.googleapis.com/projects/-/buckets/sample/source.zip";
     it("should guard against version mixing", () => {
       expect(() => {
-        cloudfunctionsv2.functionFromSpec(
-          { ...FUNCTION_SPEC, platform: "gcfv1" },
+        cloudfunctionsv2.functionFromEndpoint(
+          { ...ENDPOINT, httpsTrigger: {}, platform: "gcfv1" },
           CLOUD_FUNCTION_V2_SOURCE
         );
       }).to.throw;
@@ -71,19 +71,20 @@ describe("cloudfunctionsv2", () => {
 
     it("should copy a minimal function", () => {
       expect(
-        cloudfunctionsv2.functionFromSpec(
+        cloudfunctionsv2.functionFromEndpoint(
           {
-            ...FUNCTION_SPEC,
+            ...ENDPOINT,
             platform: "gcfv2",
+            httpsTrigger: {},
           },
           CLOUD_FUNCTION_V2_SOURCE
         )
       ).to.deep.equal(CLOUD_FUNCTION_V2);
 
-      const eventFunction: backend.FunctionSpec = {
-        ...FUNCTION_SPEC,
+      const eventEndpoint: backend.Endpoint = {
+        ...ENDPOINT,
         platform: "gcfv2",
-        trigger: {
+        eventTrigger: {
           eventType: "google.cloud.audit.log.v1.written",
           eventFilters: {
             resource: "projects/p/regions/r/instances/i",
@@ -112,13 +113,14 @@ describe("cloudfunctionsv2", () => {
         },
       };
       expect(
-        cloudfunctionsv2.functionFromSpec(eventFunction, CLOUD_FUNCTION_V2_SOURCE)
+        cloudfunctionsv2.functionFromEndpoint(eventEndpoint, CLOUD_FUNCTION_V2_SOURCE)
       ).to.deep.equal(eventGcfFunction);
     });
 
     it("should copy trival fields", () => {
-      const fullFunction: backend.FunctionSpec = {
-        ...FUNCTION_SPEC,
+      const fullEndpoint: backend.Endpoint = {
+        ...ENDPOINT,
+        httpsTrigger: {},
         platform: "gcfv2",
         availableMemoryMb: 128,
         vpcConnector: "connector",
@@ -155,15 +157,15 @@ describe("cloudfunctionsv2", () => {
       };
 
       expect(
-        cloudfunctionsv2.functionFromSpec(fullFunction, CLOUD_FUNCTION_V2_SOURCE)
+        cloudfunctionsv2.functionFromEndpoint(fullEndpoint, CLOUD_FUNCTION_V2_SOURCE)
       ).to.deep.equal(fullGcfFunction);
     });
 
     it("should calculate non-trivial fields", () => {
-      const complexFunction: backend.FunctionSpec = {
-        ...FUNCTION_SPEC,
+      const complexEndpoint: backend.Endpoint = {
+        ...ENDPOINT,
         platform: "gcfv2",
-        trigger: {
+        eventTrigger: {
           eventType: cloudfunctionsv2.PUBSUB_PUBLISH_EVENT,
           eventFilters: {
             resource: "projects/p/topics/t",
@@ -193,15 +195,16 @@ describe("cloudfunctionsv2", () => {
       };
 
       expect(
-        cloudfunctionsv2.functionFromSpec(complexFunction, CLOUD_FUNCTION_V2_SOURCE)
+        cloudfunctionsv2.functionFromEndpoint(complexEndpoint, CLOUD_FUNCTION_V2_SOURCE)
       ).to.deep.equal(complexGcfFunction);
     });
   });
 
   describe("endpointFromFunction", () => {
     it("should copy a minimal version", () => {
-      expect(cloudfunctionsv2.specFromFunction(HAVE_CLOUD_FUNCTION_V2)).to.deep.equal({
-        ...FUNCTION_SPEC,
+      expect(cloudfunctionsv2.endpointFromFunction(HAVE_CLOUD_FUNCTION_V2)).to.deep.equal({
+        ...ENDPOINT,
+        httpsTrigger: {},
         platform: "gcfv2",
         uri: RUN_URI,
       });
@@ -209,7 +212,7 @@ describe("cloudfunctionsv2", () => {
 
     it("should translate event triggers", () => {
       expect(
-        cloudfunctionsv2.specFromFunction({
+        cloudfunctionsv2.endpointFromFunction({
           ...HAVE_CLOUD_FUNCTION_V2,
           eventTrigger: {
             eventType: cloudfunctionsv2.PUBSUB_PUBLISH_EVENT,
@@ -217,10 +220,10 @@ describe("cloudfunctionsv2", () => {
           },
         })
       ).to.deep.equal({
-        ...FUNCTION_SPEC,
+        ...ENDPOINT,
         platform: "gcfv2",
         uri: RUN_URI,
-        trigger: {
+        eventTrigger: {
           eventType: cloudfunctionsv2.PUBSUB_PUBLISH_EVENT,
           eventFilters: {
             resource: "projects/p/topics/t",
@@ -231,7 +234,7 @@ describe("cloudfunctionsv2", () => {
 
       // And again w/ a normal event trigger
       expect(
-        cloudfunctionsv2.specFromFunction({
+        cloudfunctionsv2.endpointFromFunction({
           ...HAVE_CLOUD_FUNCTION_V2,
           eventTrigger: {
             eventType: "google.cloud.audit.log.v1.written",
@@ -248,10 +251,10 @@ describe("cloudfunctionsv2", () => {
           },
         })
       ).to.deep.equal({
-        ...FUNCTION_SPEC,
+        ...ENDPOINT,
         platform: "gcfv2",
         uri: RUN_URI,
-        trigger: {
+        eventTrigger: {
           eventType: "google.cloud.audit.log.v1.written",
           eventFilters: {
             resource: "projects/p/regions/r/instances/i",
@@ -263,7 +266,7 @@ describe("cloudfunctionsv2", () => {
     });
 
     it("should copy optional fields", () => {
-      const extraFields: Partial<backend.FunctionSpec> = {
+      const extraFields: backend.ServiceConfiguration = {
         availableMemoryMb: 128,
         vpcConnector: "connector",
         vpcConnectorEgressSettings: "ALL_TRAFFIC",
@@ -274,7 +277,7 @@ describe("cloudfunctionsv2", () => {
         },
       };
       expect(
-        cloudfunctionsv2.specFromFunction({
+        cloudfunctionsv2.endpointFromFunction({
           ...HAVE_CLOUD_FUNCTION_V2,
           serviceConfig: {
             ...HAVE_CLOUD_FUNCTION_V2.serviceConfig,
@@ -285,8 +288,9 @@ describe("cloudfunctionsv2", () => {
           },
         })
       ).to.deep.equal({
-        ...FUNCTION_SPEC,
+        ...ENDPOINT,
         platform: "gcfv2",
+        httpsTrigger: {},
         uri: RUN_URI,
         ...extraFields,
         labels: {
@@ -296,7 +300,7 @@ describe("cloudfunctionsv2", () => {
     });
 
     it("should transform fields", () => {
-      const extraFields: Partial<backend.FunctionSpec> = {
+      const extraFields: backend.ServiceConfiguration = {
         minInstances: 1,
         maxInstances: 42,
         timeout: "15s",
