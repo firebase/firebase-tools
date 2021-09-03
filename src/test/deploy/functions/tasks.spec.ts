@@ -15,10 +15,8 @@ describe("Function Deployment tasks", () => {
     region: "region",
     project: "project",
     entryPoint: "function",
-    runtime: "nodejs14",
-    trigger: {
-      allowInsecure: true,
-    },
+    runtime: "nodejs16",
+    trigger: {},
   };
 
   const SCHEDULE: backend.ScheduleSpec = {

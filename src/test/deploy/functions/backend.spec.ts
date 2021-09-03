@@ -19,17 +19,15 @@ describe("Backend", () => {
   const FUNCTION_SPEC: backend.FunctionSpec = {
     platform: "gcfv1",
     ...FUNCTION_NAME,
-    trigger: {
-      allowInsecure: false,
-    },
+    trigger: {},
     entryPoint: "function",
-    runtime: "nodejs14",
+    runtime: "nodejs16",
   };
 
   const CLOUD_FUNCTION: Omit<gcf.CloudFunction, gcf.OutputOnlyFields> = {
     name: "projects/project/locations/region/functions/id",
     entryPoint: "function",
-    runtime: "nodejs14",
+    runtime: "nodejs16",
   };
 
   const CLOUD_FUNCTION_V2_SOURCE: gcfV2.StorageSource = {
@@ -42,7 +40,7 @@ describe("Backend", () => {
     name: "projects/project/locations/region/functions/id",
     buildConfig: {
       entryPoint: "function",
-      runtime: "nodejs14",
+      runtime: "nodejs16",
       source: {
         storageSource: CLOUD_FUNCTION_V2_SOURCE,
       },
@@ -86,9 +84,7 @@ describe("Backend", () => {
 
   describe("Helper functions", () => {
     it("isEventTrigger", () => {
-      const httpsTrigger: backend.HttpsTrigger = {
-        allowInsecure: false,
-      };
+      const httpsTrigger: backend.HttpsTrigger = {};
       expect(backend.isEventTrigger(httpsTrigger)).to.be.false;
       const eventTrigger: backend.EventTrigger = {
         eventType: "google.pubsub.topic.publish",
@@ -155,9 +151,7 @@ describe("Backend", () => {
           platform: "gcfv1",
           entryPoint: "id",
           runtime: "node14",
-          trigger: {
-            allowInsecure: false,
-          },
+          trigger: {},
         })
       ).to.equal("v1.https");
     });
@@ -169,9 +163,7 @@ describe("Backend", () => {
           platform: "gcfv2",
           entryPoint: "id",
           runtime: "node14",
-          trigger: {
-            allowInsecure: false,
-          },
+          trigger: {},
         })
       ).to.equal("v2.https");
     });
@@ -183,9 +175,7 @@ describe("Backend", () => {
           platform: "gcfv1",
           entryPoint: "id",
           runtime: "node14",
-          trigger: {
-            allowInsecure: false,
-          },
+          trigger: {},
           labels: {
             "deployment-callable": "true",
           },
@@ -200,9 +190,7 @@ describe("Backend", () => {
           platform: "gcfv2",
           entryPoint: "id",
           runtime: "node14",
-          trigger: {
-            allowInsecure: false,
-          },
+          trigger: {},
           labels: {
             "deployment-callable": "true",
           },
@@ -236,9 +224,7 @@ describe("Backend", () => {
           platform: "gcfv2",
           entryPoint: "id",
           runtime: "node14",
-          trigger: {
-            allowInsecure: false,
-          },
+          trigger: {},
           labels: {
             "deployment-scheduled": "true",
           },

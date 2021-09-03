@@ -9,9 +9,9 @@ describe("deploymentPlanner", () => {
   const CLOUD_FUNCTION: Omit<backend.FunctionSpec, "id" | "region"> = {
     platform: "gcfv1",
     project: "project",
-    runtime: "nodejs14",
-    trigger: { allowInsecure: true },
+    runtime: "nodejs16",
     entryPoint: "function",
+    trigger: {},
   };
 
   const DEPLOYED_BY_CLI = {

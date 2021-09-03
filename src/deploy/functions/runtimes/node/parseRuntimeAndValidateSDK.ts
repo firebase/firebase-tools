@@ -16,6 +16,7 @@ const ENGINE_RUNTIMES: Record<number, runtimes.Runtime | runtimes.DeprecatedRunt
   10: "nodejs10",
   12: "nodejs12",
   14: "nodejs14",
+  16: "nodejs16",
 };
 
 const ENGINE_RUNTIMES_NAMES = Object.values(ENGINE_RUNTIMES);
@@ -27,22 +28,18 @@ export const RUNTIME_NOT_SET =
 
 export const UNSUPPORTED_NODE_VERSION_FIREBASE_JSON_MSG = clc.bold(
   `functions.runtime value is unsupported. ` +
-    `Valid choices are: ${clc.bold("nodejs10")}, ${clc.bold("nodejs12")}, and ${clc.bold(
-      "nodejs14"
-    )}.`
+    `Valid choices are: ${clc.bold("nodejs{10|12|14|16}")}.`
 );
 
 export const UNSUPPORTED_NODE_VERSION_PACKAGE_JSON_MSG = clc.bold(
   `package.json in functions directory has an engines field which is unsupported. ` +
-    `Valid choices are: ${clc.bold('{"node": "10"}')}, ${clc.bold('{"node":"12"}')}, and ${clc.bold(
-      '{"node":"14"}'
-    )}.`
+    `Valid choices are: ${clc.bold('{"node": 10|12|14|16}')}`
 );
 
 export const DEPRECATED_NODE_VERSION_INFO =
   `\n\nDeploys to runtimes below Node.js 10 are now disabled in the Firebase CLI. ` +
   `${clc.bold(
-    `Existing Node.js 8 functions ${clc.underline("will stop executing on 2021-03-15")}`
+    `Existing Node.js 8 functions ${clc.underline("will stop executing at a future date")}`
   )}. Update existing functions to Node.js 10 or greater as soon as possible.`;
 
 function getRuntimeChoiceFromPackageJson(
