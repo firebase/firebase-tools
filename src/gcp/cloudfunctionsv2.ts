@@ -396,8 +396,6 @@ export function functionFromSpec(cloudFunction: backend.FunctionSpec, source: St
     if (cloudFunction.trigger.retry) {
       logger.warn("Cannot set a retry policy on Cloud Function", cloudFunction.id);
     }
-  } else if (cloudFunction.trigger.allowInsecure) {
-    logger.warn("Cannot enable insecure traffic for Cloud Function", cloudFunction.id);
   }
   proto.copyIfPresent(gcfFunction, cloudFunction, "labels");
 
@@ -421,9 +419,7 @@ export function specFromFunction(gcfFunction: CloudFunction): backend.FunctionSp
       }
     }
   } else {
-    trigger = {
-      allowInsecure: false,
-    };
+    trigger = {};
   }
 
   if (!runtimes.isValidRuntime(gcfFunction.buildConfig.runtime)) {

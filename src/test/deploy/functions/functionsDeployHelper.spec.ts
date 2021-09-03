@@ -11,7 +11,7 @@ describe("functionsDeployHelper", () => {
     region: "us-central1",
     runtime: "nodejs14",
     entryPoint: "function",
-    trigger: { allowInsecure: true },
+    trigger: {},
   };
 
   describe("functionMatchesGroup", () => {

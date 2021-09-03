@@ -66,9 +66,7 @@ describe("addResourcesToBackend", () => {
       cloudFunctions: [
         {
           ...BASIC_FUNCTION,
-          trigger: {
-            allowInsecure: true,
-          },
+          trigger: {},
         },
       ],
     };
@@ -142,7 +140,6 @@ describe("addResourcesToBackend", () => {
         {
           ...BASIC_FUNCTION,
           trigger: {
-            allowInsecure: true,
             invoker: ["public"],
           },
           maxInstances: 42,
@@ -207,9 +204,7 @@ describe("addResourcesToBackend", () => {
       cloudFunctions: [
         {
           ...BASIC_FUNCTION,
-          trigger: {
-            allowInsecure: true,
-          },
+          trigger: {},
           region: "europe-west1",
         },
       ],
@@ -232,16 +227,12 @@ describe("addResourcesToBackend", () => {
       cloudFunctions: [
         {
           ...BASIC_FUNCTION,
-          trigger: {
-            allowInsecure: true,
-          },
+          trigger: {},
           region: "us-central1",
         },
         {
           ...BASIC_FUNCTION,
-          trigger: {
-            allowInsecure: true,
-          },
+          trigger: {},
           region: "europe-west1",
         },
       ],
@@ -284,9 +275,7 @@ describe("addResourcesToBackend", () => {
 
     const usFunction = {
       ...BASIC_FUNCTION,
-      trigger: {
-        allowInsecure: true,
-      },
+      trigger: {},
       labels: {
         "deployment-scheduled": "true",
         test: "testing",
@@ -296,9 +285,7 @@ describe("addResourcesToBackend", () => {
     const europeFunction = {
       ...BASIC_FUNCTION,
       ...europeFunctionName,
-      trigger: {
-        allowInsecure: true,
-      },
+      trigger: {},
       labels: {
         "deployment-scheduled": "true",
         test: "testing",

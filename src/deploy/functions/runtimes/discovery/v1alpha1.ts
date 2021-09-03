@@ -63,7 +63,6 @@ function tryValidate(typed: backend.Backend) {
       });
     } else {
       assertKeyTypes(prefix + ".trigger", func.trigger, {
-        allowInsecure: "boolean",
         invoker: "array",
       });
     }
