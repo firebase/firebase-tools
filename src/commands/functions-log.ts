@@ -1,10 +1,10 @@
-import * as _ from "lodash";
 import * as opn from "open";
 import * as qs from "querystring";
 
 import { Command } from "../command";
 import { FirebaseError } from "../error";
 import * as cloudlogging from "../gcp/cloudlogging";
+import * as functionsLog from "../functions/functionslog";
 import { needProjectId } from "../projectUtils";
 import { requirePermissions } from "../requirePermissions";
 import { previews } from "../previews";
@@ -21,7 +21,7 @@ module.exports = new Command("functions:log")
   .action(async (options: any) => {
     try {
       const projectId = needProjectId(options);
-      const apiFilter = cloudlogging.getApiFilter(previews.functionsv2, options.only);
+      const apiFilter = functionsLog.getApiFilter(previews.functionsv2, options.only);
       if (options.open) {
         const url = `https://console.developers.google.com/logs/viewer?advancedFilter=${qs.escape(
           apiFilter
@@ -35,7 +35,7 @@ module.exports = new Command("functions:log")
         options.lines || 35,
         "desc"
       );
-      cloudlogging.logEntries(entries);
+      functionsLog.logEntries(entries);
       return entries;
     } catch (err) {
       throw new FirebaseError(`Failed to list log entries ${err.message}`, { exit: 1 });
