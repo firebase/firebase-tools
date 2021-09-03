@@ -9,9 +9,9 @@ describe("deploymentPlanner", () => {
   const CLOUD_FUNCTION: Omit<backend.FunctionSpec, "id" | "region"> = {
     platform: "gcfv1",
     project: "project",
-    runtime: "nodejs14",
-    trigger: { allowInsecure: true },
+    runtime: "nodejs16",
     entryPoint: "function",
+    trigger: {},
   };
 
   const DEPLOYED_BY_CLI = {
@@ -211,18 +211,16 @@ describe("deploymentPlanner", () => {
       const topic2 = topic(r2f1);
 
       const want: backend.Backend = {
-        requiredAPIs: {},
+        ...backend.empty(),
         cloudFunctions: [r1f1, r1f2, r2f1],
         schedules: [r1sched1, r1sched2, r2sched1],
         topics: [topic1, topic2],
-        environmentVariables: {},
       };
       const have: backend.Backend = {
-        requiredAPIs: {},
+        ...backend.empty(),
         cloudFunctions: [r1f1, r2f1],
         schedules: [r1sched1],
         topics: [topic1],
-        environmentVariables: {},
       };
       const filters: string[][] = [];
 
@@ -324,20 +322,17 @@ describe("deploymentPlanner", () => {
       const topic1 = topic(f1);
       const topic2 = topic(f2);
 
-      // Deployment plan: deleete f1 and the schedule from f2
+      // Deployment plan: delete f1 and the schedule from f2
       const want: backend.Backend = {
-        requiredAPIs: {},
+        ...backend.empty(),
         cloudFunctions: [f2],
-        schedules: [],
         topics: [topic2],
-        environmentVariables: {},
       };
       const have: backend.Backend = {
-        requiredAPIs: {},
+        ...backend.empty(),
         cloudFunctions: [f1, f2],
         schedules: [schedule1, schedule2],
         topics: [topic1, topic2],
-        environmentVariables: {},
       };
       const filters: string[][] = [];
 
@@ -384,19 +379,17 @@ describe("deploymentPlanner", () => {
       const group2topic2 = topic(group2func2);
 
       const want: backend.Backend = {
-        requiredAPIs: {},
+        ...backend.empty(),
         cloudFunctions: [group1func1, group1func2, group2func1],
         schedules: [group1schedule1, group2schedule1],
         topics: [group1topic1, group2topic1],
-        environmentVariables: {},
       };
 
       const have: backend.Backend = {
-        requiredAPIs: {},
+        ...backend.empty(),
         cloudFunctions: [group1func1, group1func3, group1func4, group2func2],
         schedules: [group1schedule1, group1schedule3, group2schedule2],
         topics: [group1topic1, group1topic3, group2topic2],
-        environmentVariables: {},
       };
 
       const filters = [["group"]];

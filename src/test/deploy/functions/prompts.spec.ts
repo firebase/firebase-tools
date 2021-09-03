@@ -25,7 +25,7 @@ const SAMPLE_FUNC: backend.FunctionSpec = {
   entryPoint: "function",
   labels: {},
   environmentVariables: {},
-  runtime: "nodejs14",
+  runtime: "nodejs16",
   trigger: SAMPLE_EVENT_TRIGGER,
 };
 

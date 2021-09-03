@@ -811,8 +811,7 @@ describe("listExtensionVersions", () => {
     nock(api.extensionsOrigin)
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
       .query((queryParams: any) => {
-        queryParams.pageSize === "100";
-        return queryParams;
+        return queryParams.pageSize === "100";
       })
       .reply(200, PUBLISHED_EXT_VERSIONS);
 
@@ -821,12 +820,27 @@ describe("listExtensionVersions", () => {
     expect(nock.isDone()).to.be.true;
   });
 
+  it("should send filter query param", async () => {
+    nock(api.extensionsOrigin)
+      .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
+      .query((queryParams: any) => {
+        return queryParams.pageSize === "100" && queryParams.filter === "id<1.0.0";
+      })
+      .reply(200, PUBLISHED_EXT_VERSIONS);
+
+    const extensions = await extensionsApi.listExtensionVersions(
+      `${PUBLISHER_ID}/${EXTENSION_ID}`,
+      "id<1.0.0"
+    );
+    expect(extensions).to.deep.equal(PUBLISHED_EXT_VERSIONS.extensionVersions);
+    expect(nock.isDone()).to.be.true;
+  });
+
   it("should return a list of all extension versions", async () => {
     nock(api.extensionsOrigin)
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
       .query((queryParams: any) => {
-        queryParams.pageSize === "100";
-        return queryParams;
+        return queryParams.pageSize === "100";
       })
       .reply(200, ALL_EXT_VERSIONS);
 
@@ -840,16 +854,13 @@ describe("listExtensionVersions", () => {
     nock(api.extensionsOrigin)
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
       .query((queryParams: any) => {
-        queryParams.pageSize === "100";
-        return queryParams;
+        return queryParams.pageSize === "100";
       })
       .reply(200, PUBLISHED_VERSIONS_WITH_TOKEN);
     nock(api.extensionsOrigin)
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
       .query((queryParams: any) => {
-        queryParams.pageSize === "100";
-        queryParams.pageToken === NEXT_PAGE_TOKEN;
-        return queryParams;
+        return queryParams.pageSize === "100" && queryParams.pageToken === NEXT_PAGE_TOKEN;
       })
       .reply(200, NEXT_PAGE_VERSIONS);
 
@@ -866,16 +877,13 @@ describe("listExtensionVersions", () => {
     nock(api.extensionsOrigin)
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
       .query((queryParams: any) => {
-        queryParams.pageSize === "100";
-        return queryParams;
+        return queryParams.pageSize === "100";
       })
       .reply(200, PUBLISHED_VERSIONS_WITH_TOKEN);
     nock(api.extensionsOrigin)
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
       .query((queryParams: any) => {
-        queryParams.pageSize === "100";
-        queryParams.nextPageToken === NEXT_PAGE_TOKEN;
-        return queryParams;
+        return queryParams.pageSize === "100" && queryParams.pageToken === NEXT_PAGE_TOKEN;
       })
       .reply(500);
 
