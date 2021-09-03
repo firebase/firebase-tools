@@ -10,8 +10,8 @@ describe("deploymentPlanner", () => {
     platform: "gcfv1",
     project: "project",
     runtime: "nodejs16",
-    trigger: { allowInsecure: true },
     entryPoint: "function",
+    trigger: {},
   };
 
   const DEPLOYED_BY_CLI = {

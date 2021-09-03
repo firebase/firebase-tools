@@ -140,9 +140,7 @@ describe("validate", () => {
       };
       const exFn: FunctionSpec = {
         ...CLOUD_FUNCTION,
-        trigger: {
-          allowInsecure: true,
-        },
+        trigger: {},
       };
 
       expect(() => {
@@ -153,9 +151,7 @@ describe("validate", () => {
     it("should throw if a event triggered function would be changed into an https function", () => {
       const fn: FunctionSpec = {
         ...CLOUD_FUNCTION,
-        trigger: {
-          allowInsecure: true,
-        },
+        trigger: {},
       };
       const exFn: FunctionSpec = {
         ...CLOUD_FUNCTION,
@@ -192,7 +188,7 @@ describe("validate", () => {
     });
 
     it("should not throw if a https function stays as a https function", () => {
-      const trigger = { allowInsecure: true };
+      const trigger = {};
       const fn: FunctionSpec = {
         ...CLOUD_FUNCTION,
         trigger,

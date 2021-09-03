@@ -44,7 +44,6 @@ export interface ScheduleSpec {
 
 /** API agnostic version of a Cloud Function's HTTPs trigger. */
 export interface HttpsTrigger {
-  allowInsecure: boolean;
   invoker?: string[];
 }
 
