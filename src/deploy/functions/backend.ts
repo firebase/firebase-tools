@@ -206,7 +206,7 @@ export type FunctionSpec = TargetIds &
 
 export type FunctionsPlatform = "gcfv1" | "gcfv2";
 
-type Triggered = HttpsTriggered | EventTriggered | ScheduleTriggered;
+export type Triggered = HttpsTriggered | EventTriggered | ScheduleTriggered;
 
 /** Whether something has an HttpsTrigger */
 export function isHttpsTriggered(triggered: Triggered): triggered is HttpsTriggered {

@@ -470,14 +470,14 @@ export function specFromFunction(gcfFunction: CloudFunction): backend.FunctionSp
   return cloudFunction;
 }
 
-export function functionFromEndpoint(cloudFunction: backend.FunctionSpec, source: StorageSource) {
-  if (cloudFunction.platform != "gcfv2") {
+export function functionFromEndpoint(endpoint: backend.Endpoint, source: StorageSource) {
+  if (endpoint.platform != "gcfv2") {
     throw new FirebaseError(
       "Trying to create a v2 CloudFunction with v1 API. This should never happen"
     );
   }
 
-  if (!runtimes.isValidRuntime(cloudFunction.runtime)) {
+  if (!runtimes.isValidRuntime(endpoint.runtime)) {
     throw new FirebaseError(
       "Failed internal assertion. Trying to deploy a new function with a deprecated runtime." +
         " This should never happen"
@@ -485,10 +485,10 @@ export function functionFromEndpoint(cloudFunction: backend.FunctionSpec, source
   }
 
   const gcfFunction: Omit<CloudFunction, OutputOnlyFields> = {
-    name: backend.functionName(cloudFunction),
+    name: backend.functionName(endpoint),
     buildConfig: {
-      runtime: cloudFunction.runtime,
-      entryPoint: cloudFunction.entryPoint,
+      runtime: endpoint.runtime,
+      entryPoint: endpoint.entryPoint,
       source: {
         storageSource: source,
       },
@@ -498,9 +498,10 @@ export function functionFromEndpoint(cloudFunction: backend.FunctionSpec, source
     serviceConfig: {},
   };
 
+  proto.copyIfPresent(gcfFunction, endpoint, "labels");
   proto.copyIfPresent(
     gcfFunction.serviceConfig,
-    cloudFunction,
+    endpoint,
     "availableMemoryMb",
     "environmentVariables",
     "vpcConnector",
@@ -510,86 +511,80 @@ export function functionFromEndpoint(cloudFunction: backend.FunctionSpec, source
   );
   proto.renameIfPresent(
     gcfFunction.serviceConfig,
-    cloudFunction,
+    endpoint,
     "timeoutSeconds",
     "timeout",
     proto.secondsFromDuration
   );
-  proto.renameIfPresent(
-    gcfFunction.serviceConfig,
-    cloudFunction,
-    "minInstanceCount",
-    "minInstances"
-  );
-  proto.renameIfPresent(
-    gcfFunction.serviceConfig,
-    cloudFunction,
-    "maxInstanceCount",
-    "maxInstances"
-  );
+  proto.renameIfPresent(gcfFunction.serviceConfig, endpoint, "minInstanceCount", "minInstances");
+  proto.renameIfPresent(gcfFunction.serviceConfig, endpoint, "maxInstanceCount", "maxInstances");
 
-  if (backend.isEventTrigger(cloudFunction.trigger)) {
+  if (backend.isEventTriggered(endpoint)) {
     gcfFunction.eventTrigger = {
-      eventType: cloudFunction.trigger.eventType,
+      eventType: endpoint.eventTrigger.eventType,
     };
     if (gcfFunction.eventTrigger.eventType === PUBSUB_PUBLISH_EVENT) {
-      gcfFunction.eventTrigger.pubsubTopic = cloudFunction.trigger.eventFilters.resource;
+      gcfFunction.eventTrigger.pubsubTopic = endpoint.eventTrigger.eventFilters.resource;
     } else {
       gcfFunction.eventTrigger.eventFilters = [];
-      for (const [attribute, value] of Object.entries(cloudFunction.trigger.eventFilters)) {
+      for (const [attribute, value] of Object.entries(endpoint.eventTrigger.eventFilters)) {
         gcfFunction.eventTrigger.eventFilters.push({ attribute, value });
       }
     }
 
-    if (cloudFunction.trigger.retry) {
-      logger.warn("Cannot set a retry policy on Cloud Function", cloudFunction.id);
+    if (endpoint.eventTrigger.retry) {
+      logger.warn("Cannot set a retry policy on Cloud Function", endpoint.id);
     }
-  } else if (cloudFunction.trigger.allowInsecure) {
-    logger.warn("Cannot enable insecure traffic for Cloud Function", cloudFunction.id);
+  } else if (backend.isScheduleTriggered(endpoint)) {
+    // trigger type defaults to HTTPS.
+    gcfFunction.labels = { ...gcfFunction.labels, ["deployment-scheduled"]: "true" };
   }
-  proto.copyIfPresent(gcfFunction, cloudFunction, "labels");
 
   return gcfFunction;
 }
 
-export function endpointFromFunction(gcfFunction: CloudFunction): backend.FunctionSpec {
+export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoint {
   const [, project, , region, , id] = gcfFunction.name.split("/");
-  let trigger: backend.EventTrigger | backend.HttpsTrigger;
-  if (gcfFunction.eventTrigger) {
+  let trigger: backend.Triggered;
+  if (gcfFunction.labels?.["deployment-scheduled"] === "true") {
     trigger = {
-      eventType: gcfFunction.eventTrigger!.eventType,
-      eventFilters: {},
-      retry: false,
+      scheduleTrigger: {},
+    };
+  } else if (gcfFunction.eventTrigger) {
+    trigger = {
+      eventTrigger: {
+        eventType: gcfFunction.eventTrigger!.eventType,
+        eventFilters: {},
+        retry: false,
+      },
     };
     if (gcfFunction.eventTrigger.pubsubTopic) {
-      trigger.eventFilters.resource = gcfFunction.eventTrigger.pubsubTopic;
+      trigger.eventTrigger.eventFilters.resource = gcfFunction.eventTrigger.pubsubTopic;
     } else {
       for (const { attribute, value } of gcfFunction.eventTrigger.eventFilters || []) {
-        trigger.eventFilters[attribute] = value;
+        trigger.eventTrigger.eventFilters[attribute] = value;
       }
     }
   } else {
-    trigger = {
-      allowInsecure: false,
-    };
+    trigger = { httpsTrigger: {} };
   }
 
   if (!runtimes.isValidRuntime(gcfFunction.buildConfig.runtime)) {
     logger.debug("GCFv2 function has a deprecated runtime:", JSON.stringify(gcfFunction, null, 2));
   }
 
-  const cloudFunction: backend.FunctionSpec = {
+  const endpoint: backend.Endpoint = {
     platform: "gcfv2",
     id,
     project,
     region,
-    trigger,
+    ...trigger,
     entryPoint: gcfFunction.buildConfig.entryPoint,
     runtime: gcfFunction.buildConfig.runtime,
     uri: gcfFunction.serviceConfig.uri,
   };
   proto.copyIfPresent(
-    cloudFunction,
+    endpoint,
     gcfFunction.serviceConfig,
     "serviceAccountEmail",
     "availableMemoryMb",
@@ -599,25 +594,15 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Functi
     "environmentVariables"
   );
   proto.renameIfPresent(
-    cloudFunction,
+    endpoint,
     gcfFunction.serviceConfig,
     "timeout",
     "timeoutSeconds",
     proto.durationFromSeconds
   );
-  proto.renameIfPresent(
-    cloudFunction,
-    gcfFunction.serviceConfig,
-    "minInstances",
-    "minInstanceCount"
-  );
-  proto.renameIfPresent(
-    cloudFunction,
-    gcfFunction.serviceConfig,
-    "maxInstances",
-    "maxInstanceCount"
-  );
-  proto.copyIfPresent(cloudFunction, gcfFunction, "labels");
+  proto.renameIfPresent(endpoint, gcfFunction.serviceConfig, "minInstances", "minInstanceCount");
+  proto.renameIfPresent(endpoint, gcfFunction.serviceConfig, "maxInstances", "maxInstanceCount");
+  proto.copyIfPresent(endpoint, gcfFunction, "labels");
 
-  return cloudFunction;
+  return endpoint;
 }

@@ -579,23 +579,26 @@ export function functionFromSpec(
  * This API exists outside the GCF namespace because GCF returns an Operation<CloudFunction>
  * and code may have to call this method explicitly.
  */
-export function endpointFromFunction(gcfFunction: CloudFunction): backend.FunctionSpec {
+export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoint {
   const [, project, , region, , id] = gcfFunction.name.split("/");
-  let trigger: backend.EventTrigger | backend.HttpsTrigger;
+  let trigger: backend.Triggered;
   let uri: string | undefined;
   if (gcfFunction.httpsTrigger) {
-    trigger = {
-      // Note: default (empty) value intentionally means true
-      allowInsecure: gcfFunction.httpsTrigger.securityLevel !== "SECURE_ALWAYS",
-    };
+    trigger = { httpsTrigger: {} };
     uri = gcfFunction.httpsTrigger.url;
+  } else if (gcfFunction.labels?.["deployment-scheduled"]) {
+    trigger = {
+      scheduleTrigger: {},
+    };
   } else {
     trigger = {
-      eventType: gcfFunction.eventTrigger!.eventType,
-      eventFilters: {
-        resource: gcfFunction.eventTrigger!.resource,
+      eventTrigger: {
+        eventType: gcfFunction.eventTrigger!.eventType,
+        eventFilters: {
+          resource: gcfFunction.eventTrigger!.resource,
+        },
+        retry: !!gcfFunction.eventTrigger!.failurePolicy?.retry,
       },
-      retry: !!gcfFunction.eventTrigger!.failurePolicy?.retry,
     };
   }
 
@@ -603,20 +606,20 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Functi
     logger.debug("GCFv1 function has a deprecated runtime:", JSON.stringify(gcfFunction, null, 2));
   }
 
-  const cloudFunction: backend.FunctionSpec = {
+  const endpoint: backend.Endpoint = {
     platform: "gcfv1",
     id,
     project,
     region,
-    trigger,
+    ...trigger,
     entryPoint: gcfFunction.entryPoint,
     runtime: gcfFunction.runtime,
   };
   if (uri) {
-    cloudFunction.uri = uri;
+    endpoint.uri = uri;
   }
   proto.copyIfPresent(
-    cloudFunction,
+    endpoint,
     gcfFunction,
     "serviceAccountEmail",
     "availableMemoryMb",
@@ -631,56 +634,62 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Functi
     "sourceUploadUrl"
   );
 
-  return cloudFunction;
+  return endpoint;
 }
 
 /**
  * Convert the API agnostic FunctionSpec struct to a CloudFunction proto for the v1 API.
  */
-export function functionFromendpoint(
-  cloudFunction: backend.FunctionSpec,
+export function functionFromEndpoint(
+  endpoint: backend.Endpoint,
   sourceUploadUrl: string
 ): Omit<CloudFunction, OutputOnlyFields> {
-  if (cloudFunction.platform != "gcfv1") {
+  if (endpoint.platform != "gcfv1") {
     throw new FirebaseError(
       "Trying to create a v1 CloudFunction with v2 API. This should never happen"
     );
   }
 
-  if (!runtimes.isValidRuntime(cloudFunction.runtime)) {
+  if (!runtimes.isValidRuntime(endpoint.runtime)) {
     throw new FirebaseError(
       "Failed internal assertion. Trying to deploy a new function with a deprecated runtime." +
         " This should never happen"
     );
   }
   const gcfFunction: Omit<CloudFunction, OutputOnlyFields> = {
-    name: backend.functionName(cloudFunction),
+    name: backend.functionName(endpoint),
     sourceUploadUrl: sourceUploadUrl,
-    entryPoint: cloudFunction.entryPoint,
-    runtime: cloudFunction.runtime,
+    entryPoint: endpoint.entryPoint,
+    runtime: endpoint.runtime,
   };
 
-  if (backend.isEventTrigger(cloudFunction.trigger)) {
+  proto.copyIfPresent(gcfFunction, endpoint, "labels");
+  if (backend.isEventTriggered(endpoint)) {
     gcfFunction.eventTrigger = {
-      eventType: cloudFunction.trigger.eventType,
-      resource: cloudFunction.trigger.eventFilters.resource,
+      eventType: endpoint.eventTrigger.eventType,
+      resource: endpoint.eventTrigger.eventFilters.resource,
       // Service is unnecessary and deprecated
     };
 
     // For field masks to pick up a deleted failure policy we must inject an undefined
     // when retry is false
-    gcfFunction.eventTrigger.failurePolicy = cloudFunction.trigger.retry
+    gcfFunction.eventTrigger.failurePolicy = endpoint.eventTrigger.retry
       ? { retry: {} }
       : undefined;
-  } else {
-    gcfFunction.httpsTrigger = {
-      securityLevel: cloudFunction.trigger.allowInsecure ? "SECURE_OPTIONAL" : "SECURE_ALWAYS",
+  } else if (backend.isScheduleTriggered(endpoint)) {
+    const id = backend.scheduleIdForFunction(endpoint);
+    gcfFunction.eventTrigger = {
+      eventType: "google.pubsub.topic.publish",
+      resource: `projects/${endpoint.project}/topics/${id}`,
     };
+    gcfFunction.labels = { ...gcfFunction.labels, "deployment-scheduled": "true" };
+  } else {
+    gcfFunction.httpsTrigger = {};
   }
 
   proto.copyIfPresent(
     gcfFunction,
-    cloudFunction,
+    endpoint,
     "serviceAccountEmail",
     "timeout",
     "availableMemoryMb",
@@ -689,7 +698,6 @@ export function functionFromendpoint(
     "vpcConnector",
     "vpcConnectorEgressSettings",
     "ingressSettings",
-    "labels",
     "environmentVariables"
   );
 

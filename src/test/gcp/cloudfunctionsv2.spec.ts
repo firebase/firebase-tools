@@ -18,6 +18,14 @@ describe("cloudfunctionsv2", () => {
     runtime: "nodejs16",
   };
 
+  // Omit a random trigger to get this fragment to compile.
+  const ENDPOINT: Omit<backend.Endpoint, "httpsTrigger"> = {
+    platform: "gcfv2",
+    ...FUNCTION_NAME,
+    entryPoint: "function",
+    runtime: "nodejs16",
+  };
+
   const CLOUD_FUNCTION_V2_SOURCE: cloudfunctionsv2.StorageSource = {
     bucket: "sample",
     object: "source.zip",
