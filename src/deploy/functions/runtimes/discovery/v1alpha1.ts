@@ -19,6 +19,7 @@ function tryValidate(typed: backend.Backend) {
   // Use a helper type to help guide code complete when writing this function
   assertKeyTypes("", typed, {
     requiredAPIs: "object",
+    endpoints: "array",
     cloudFunctions: "array",
     topics: "array",
     schedules: "array",
@@ -129,6 +130,7 @@ function fillDefaults(
   want.environmentVariables = want.environmentVariables || {};
   want.schedules = want.schedules || [];
   want.topics = want.topics || [];
+  want.endpoints = want.endpoints || [];
 
   for (const cloudFunction of want.cloudFunctions) {
     if (!cloudFunction.project) {
