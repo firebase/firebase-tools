@@ -135,8 +135,7 @@ describe("ContainerRegistryCleaner", () => {
     entryPoint: "function",
     runtime: "nodejs16",
     trigger: {},
-
-};
+  };
 
   // The first function in a region has subdirectories "cache/" and "worker/" in it.
   it("Handles cleanup of first function in the region", async () => {
