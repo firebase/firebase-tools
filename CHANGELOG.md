@@ -1,1 +1,2 @@
-Add command for listing all functions in the Firebase project `functions:list`.
+- Add command for listing all functions in the Firebase project `functions:list`.
+- Fixes a crash when customers deploy an empty functions project (#3705)

@@ -89,9 +89,6 @@ export async function prepare(
   const wantBackend = await runtimeDelegate.discoverSpec(runtimeConfig, firebaseEnvs);
   wantBackend.environmentVariables = { ...userEnvs, ...firebaseEnvs };
   payload.functions = { backend: wantBackend };
-  if (backend.isEmptyBackend(wantBackend)) {
-    return;
-  }
 
   // Note: Some of these are premium APIs that require billing to be enabled.
   // We'd eventually have to add special error handling for billing APIs, but
@@ -109,12 +106,14 @@ export async function prepare(
     await Promise.all(enablements);
   }
 
-  logBullet(
-    clc.cyan.bold("functions:") +
-      " preparing " +
-      clc.bold(options.config.src.functions.source) +
-      " directory for uploading..."
-  );
+  if (wantBackend.cloudFunctions.length) {
+    logBullet(
+      clc.cyan.bold("functions:") +
+        " preparing " +
+        clc.bold(options.config.src.functions.source) +
+        " directory for uploading..."
+    );
+  }
   if (wantBackend.cloudFunctions.find((fn) => fn.platform === "gcfv1")) {
     context.functionsSourceV1 = await prepareFunctionsUpload(runtimeConfig, options);
   }
