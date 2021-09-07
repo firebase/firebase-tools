@@ -1,5 +1,6 @@
 import { logger } from "../logger";
 import { LogEntry } from "../gcp/cloudlogging";
+import { previews } from "../previews";
 
 /**
  * The correct API filter to use when GCFv2 is enabled and/or we want specific function logs
@@ -7,8 +8,8 @@ import { LogEntry } from "../gcp/cloudlogging";
  * @param functionList list of functions seperated by comma
  * @returns the correct filter for use when calling the list api
  */
-export function getApiFilter(v2Enabled: boolean, functionList?: string) {
-  const baseFilter = v2Enabled
+export function getApiFilter(functionList?: string) {
+  const baseFilter = previews.functionsv2
     ? 'resource.type="cloud_function" OR ' +
       '(resource.type="cloud_run_revision" AND ' +
       'labels."goog-managed-by"="cloudfunctions")'
@@ -16,7 +17,7 @@ export function getApiFilter(v2Enabled: boolean, functionList?: string) {
 
   if (functionList) {
     const apiFuncFilters = functionList.split(",").map((fn) => {
-      return v2Enabled
+      return previews.functionsv2
         ? `resource.labels.function_name="${fn}" ` + `OR resource.labels.service_name="${fn}"`
         : `resource.labels.function_name="${fn}"`;
     });

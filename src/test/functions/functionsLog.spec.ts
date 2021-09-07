@@ -2,15 +2,18 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 import * as functionsLog from "../../functions/functionslog";
 import { logger } from "../../logger";
+import { previews } from "../../previews";
 
 describe("functionsLog", () => {
   describe("getApiFilter", () => {
     it("should return base api filter for v1 functions", () => {
-      expect(functionsLog.getApiFilter(false, undefined)).to.eq('resource.type="cloud_function"');
+      previews.functionsv2 = false;
+      expect(functionsLog.getApiFilter(undefined)).to.eq('resource.type="cloud_function"');
     });
 
     it("should return base api filter for v1&v2 functions", () => {
-      expect(functionsLog.getApiFilter(true, undefined)).to.eq(
+      previews.functionsv2 = true;
+      expect(functionsLog.getApiFilter(undefined)).to.eq(
         'resource.type="cloud_function" OR ' +
           '(resource.type="cloud_run_revision" AND ' +
           'labels."goog-managed-by"="cloudfunctions")'
@@ -18,7 +21,8 @@ describe("functionsLog", () => {
     });
 
     it("should return list api filter for v1 functions", () => {
-      expect(functionsLog.getApiFilter(false, "fn1,fn2")).to.eq(
+      previews.functionsv2 = false;
+      expect(functionsLog.getApiFilter("fn1,fn2")).to.eq(
         'resource.type="cloud_function"\n' +
           '(resource.labels.function_name="fn1" OR ' +
           'resource.labels.function_name="fn2")'
@@ -26,7 +30,8 @@ describe("functionsLog", () => {
     });
 
     it("should return list api filter for v1&v2 functions", () => {
-      expect(functionsLog.getApiFilter(true, "fn1,fn2")).to.eq(
+      previews.functionsv2 = true;
+      expect(functionsLog.getApiFilter("fn1,fn2")).to.eq(
         'resource.type="cloud_function" OR ' +
           '(resource.type="cloud_run_revision" AND ' +
           'labels."goog-managed-by"="cloudfunctions")\n' +

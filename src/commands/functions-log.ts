@@ -21,7 +21,7 @@ module.exports = new Command("functions:log")
   .action(async (options: any) => {
     try {
       const projectId = needProjectId(options);
-      const apiFilter = functionsLog.getApiFilter(previews.functionsv2, options.only);
+      const apiFilter = functionsLog.getApiFilter(options.only);
       if (options.open) {
         const url = `https://console.developers.google.com/logs/viewer?advancedFilter=${qs.escape(
           apiFilter
