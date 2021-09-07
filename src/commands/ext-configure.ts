@@ -24,6 +24,7 @@ marked.setOptions({
  */
 export default new Command("ext:configure <extensionInstanceId>")
   .description("configure an existing extension instance")
+  .withForce()
   .option("--params <paramsFile>", "path of params file with .env format.")
   .before(requirePermissions, [
     "firebaseextensions.instances.update",
@@ -61,6 +62,7 @@ export default new Command("ext:configure <extensionInstanceId>")
       const params = await paramHelper.getParams(
         projectId,
         paramSpecWithNewDefaults,
+        options.nonInteractive,
         options.params
       );
       if (immutableParams.length) {
