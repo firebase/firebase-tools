@@ -5,9 +5,10 @@ import { needProjectId } from "../projectUtils";
 import { Options } from "../options";
 import { requirePermissions } from "../requirePermissions";
 import * as backend from "../deploy/functions/backend";
+import { listFunctions } from "../functions/listFunctions";
 import { previews } from "../previews";
-import Table = require("cli-table");
 import { logger } from "../logger";
+import Table = require("cli-table");
 
 export default new Command("functions:list")
   .description("list all deployed functions in your Firebase project")
@@ -17,7 +18,7 @@ export default new Command("functions:list")
       const context = {
         projectId: needProjectId(options),
       } as args.Context;
-      const functionSpecs = await backend.listFunctions(context);
+      const functionList = await listFunctions(context);
       const table = previews.functionsv2
         ? new Table({
             head: ["Function", "Version", "Trigger", "Location", "Memory", "Runtime"],
@@ -27,7 +28,7 @@ export default new Command("functions:list")
             head: ["Function", "Trigger", "Location", "Memory", "Runtime"],
             style: { head: ["yellow"] },
           });
-      for (const fnSpec of functionSpecs) {
+      for (const fnSpec of functionList.functions) {
         const trigger = backend.isEventTrigger(fnSpec.trigger) ? fnSpec.trigger.eventType : "https";
         const availableMemoryMb = fnSpec.availableMemoryMb || "---";
         const entry = previews.functionsv2
@@ -43,7 +44,7 @@ export default new Command("functions:list")
         table.push(entry);
       }
       logger.info(table.toString());
-      return { functions: functionSpecs };
+      return functionList;
     } catch (err) {
       throw new FirebaseError(`Failed to list functions ${err.message}`, { exit: 1 });
     }
