@@ -195,9 +195,12 @@ export class AppDistributionClient {
       apiVersion: "v1",
       auth: true,
     });
-    let apiResponse: ClientResponse<BatchRemoveTestersResponse>;
+    let apiResponse;
     try {
-      apiResponse = await appDistroV2Client.request({
+      apiResponse = await appDistroV2Client.request<
+        { emails: string[] },
+        BatchRemoveTestersResponse
+      >({
         method: "POST",
         path: `${projectName}/testers:batchRemove`,
         body: { emails: emails },
