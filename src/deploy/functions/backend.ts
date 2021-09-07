@@ -6,6 +6,7 @@ import * as runtimes from "./runtimes";
 import { FirebaseError } from "../../error";
 import { Context } from "./args";
 import { previews } from "../../previews";
+import { backendFromV1Alpha1 } from "./runtimes/discovery/v1alpha1";
 
 /** Retry settings for a ScheduleSpec. */
 export interface ScheduleRetryConfig {
@@ -26,26 +27,38 @@ export interface PubSubSpec {
   targetService: TargetIds;
 }
 
-/** API agnostic version of a CloudScheduler Job */
-export interface ScheduleSpec {
-  id: string;
-  project: string;
+export interface ScheduleTrigger {
   // Note: schedule is missing in the existingBackend because we
   // don't actually spend the API call looking up the schedule;
   // we just infer identifiers from function labels.
   schedule?: string;
   timeZone?: string;
   retryConfig?: ScheduleRetryConfig;
+}
+
+/** API agnostic version of a CloudScheduler Job */
+export interface ScheduleSpec extends ScheduleTrigger {
+  id: string;
+  project: string;
   transport: "pubsub" | "https";
 
   // What we're actually planning to invoke with this schedule
   targetService: TargetIds;
 }
 
+/** Something that has a ScheduleTrigger */
+export interface ScheduleTriggered {
+  scheduleTrigger: ScheduleTrigger;
+}
+
 /** API agnostic version of a Cloud Function's HTTPs trigger. */
 export interface HttpsTrigger {
-  allowInsecure: boolean;
   invoker?: string[];
+}
+
+/** Something that has an HTTPS trigger */
+export interface HttpsTriggered {
+  httpsTrigger: HttpsTrigger;
 }
 
 /** Well known keys in the eventFilter attribute of an event trigger */
@@ -90,6 +103,11 @@ export interface EventTrigger {
    * This field is ignored for v1 and defaults to the
    */
   serviceAccountEmail?: string;
+}
+
+/** Something that has an EventTrigger */
+export interface EventTriggered {
+  eventTrigger: EventTrigger;
 }
 
 /** Type deduction helper for a function trigger. */
@@ -156,15 +174,7 @@ export interface TargetIds {
   project: string;
 }
 
-export type FunctionsPlatform = "gcfv1" | "gcfv2";
-
-/** An API agnostic definition of a Cloud Function. */
-export interface FunctionSpec extends TargetIds {
-  platform: FunctionsPlatform;
-  entryPoint: string;
-  trigger: HttpsTrigger | EventTrigger;
-  runtime: runtimes.Runtime | runtimes.DeprecatedRuntime;
-
+export interface ServiceConfiguration {
   concurrency?: number;
   labels?: Record<string, string>;
   environmentVariables?: Record<string, string>;
@@ -176,13 +186,63 @@ export interface FunctionSpec extends TargetIds {
   vpcConnectorEgressSettings?: VpcEgressSettings;
   ingressSettings?: IngressSettings;
   serviceAccountEmail?: "default" | string;
-
-  // Output only:
-
-  // present for v1 functions with HTTP triggers and v2 functions always.
-  uri?: string;
-  sourceUploadUrl?: string;
 }
+
+/** An API agnostic definition of a Cloud Function. */
+export type FunctionSpec = TargetIds &
+  ServiceConfiguration & {
+    entryPoint: string;
+    platform: FunctionsPlatform;
+    runtime: runtimes.Runtime | runtimes.DeprecatedRuntime;
+    trigger: EventTrigger | HttpsTrigger;
+
+    // Output only
+
+    // URI is available on GCFv1 for HTTPS triggers and
+    // on GCFv2 always
+    uri?: string;
+    sourceUploadUrl?: string;
+  };
+
+export type FunctionsPlatform = "gcfv1" | "gcfv2";
+
+type Triggered = HttpsTriggered | EventTriggered | ScheduleTriggered;
+
+/** Whether something has an HttpsTrigger */
+export function isHttpsTriggered(triggered: Triggered): triggered is HttpsTriggered {
+  return {}.hasOwnProperty.call(triggered, "httpsTrigger");
+}
+
+/** Whether something has an EventTrigger */
+export function isEventTriggered(triggered: Triggered): triggered is EventTriggered {
+  return {}.hasOwnProperty.call(triggered, "eventTrigger");
+}
+
+/** Whether something has a ScheduleTrigger */
+export function isScheduleTriggered(triggered: Triggered): triggered is ScheduleTriggered {
+  return {}.hasOwnProperty.call(triggered, "scheduleTrigger");
+}
+
+/**
+ * An endpoint that serves traffic to a stack of services.
+ * For now, this is always a Cloud Function. Future iterations may use complex
+ * type unions to enforce that _either_ the Stack is all Functions or the
+ * stack is all Services.
+ */
+export type Endpoint = TargetIds &
+  ServiceConfiguration &
+  Triggered & {
+    entryPoint: string;
+    platform: FunctionsPlatform;
+    runtime: runtimes.Runtime | runtimes.DeprecatedRuntime;
+
+    // Output only
+
+    // URI is available on GCFv1 for HTTPS triggers and
+    // on GCFv2 always
+    uri?: string;
+    sourceUploadUrl?: string;
+  };
 
 /** An API agnostic definition of an entire deployment a customer has or wants. */
 export interface Backend {
@@ -196,6 +256,7 @@ export interface Backend {
   schedules: ScheduleSpec[];
   topics: PubSubSpec[];
   environmentVariables: EnvironmentVariables;
+  endpoints: Endpoint[];
 }
 
 /**
@@ -206,6 +267,7 @@ export interface Backend {
 export function empty(): Backend {
   return {
     requiredAPIs: {},
+    endpoints: [],
     cloudFunctions: [],
     schedules: [],
     topics: [],
@@ -260,7 +322,7 @@ export const sameFunctionName = (func: TargetIds) => (test: TargetIds): boolean 
  * Gets the formal resource name for a Cloud Scheduler job.
  * @param appEngineLocation Must be the region where the customer has enabled App Engine.
  */
-export function scheduleName(schedule: ScheduleSpec, appEngineLocation: string) {
+export function scheduleName(schedule: ScheduleSpec, appEngineLocation: string): string {
   return `projects/${schedule.project}/locations/${appEngineLocation}/jobs/${schedule.id}`;
 }
 
@@ -269,7 +331,7 @@ export function scheduleName(schedule: ScheduleSpec, appEngineLocation: string) 
  * @param topic Something that implements project/id. This is intentionally vauge so
  *              that a schedule can be passed and the topic name generated.
  */
-export function topicName(topic: { project: string; id: string }) {
+export function topicName(topic: { project: string; id: string }): string {
   return `projects/${topic.project}/topics/${topic.id}`;
 }
 
@@ -283,7 +345,7 @@ export function topicName(topic: { project: string; id: string }) {
  * If you change this pattern, Firebase console will stop displaying schedule descriptions
  * and schedules created under the old pattern will no longer be cleaned up correctly
  */
-export function scheduleIdForFunction(cloudFunction: TargetIds) {
+export function scheduleIdForFunction(cloudFunction: TargetIds): string {
   return `firebase-schedule-${cloudFunction.id}-${cloudFunction.region}`;
 }
 
@@ -324,11 +386,7 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
   // Note: is it worth deducing the APIs that must have been enabled for this backend to work?
   // it could reduce redundant API calls for enabling the APIs.
   ctx.existingBackend = {
-    requiredAPIs: {},
-    cloudFunctions: [],
-    schedules: [],
-    topics: [],
-    environmentVariables: {},
+    ...empty(),
   };
   ctx.unreachableRegions = {
     gcfV1: [],
