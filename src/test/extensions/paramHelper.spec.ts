@@ -95,7 +95,12 @@ describe("paramHelper", () => {
         ANOTHER_PARAMETER: "value",
       });
 
-      const params = await paramHelper.getParams(PROJECT_ID, TEST_PARAMS, "./a/path/to/a/file.env");
+      const params = await paramHelper.getParams(
+        PROJECT_ID,
+        TEST_PARAMS,
+        false,
+        "./a/path/to/a/file.env"
+      );
 
       expect(params).to.eql({
         A_PARAMETER: "aValue",
@@ -108,7 +113,12 @@ describe("paramHelper", () => {
         A_PARAMETER: "aValue",
       });
 
-      const params = await paramHelper.getParams(PROJECT_ID, TEST_PARAMS, "./a/path/to/a/file.env");
+      const params = await paramHelper.getParams(
+        PROJECT_ID,
+        TEST_PARAMS,
+        false,
+        "./a/path/to/a/file.env"
+      );
 
       expect(params).to.eql({
         A_PARAMETER: "aValue",
@@ -124,6 +134,7 @@ describe("paramHelper", () => {
       const params = await paramHelper.getParams(
         PROJECT_ID,
         TEST_PARAMS_3,
+        false,
         "./a/path/to/a/file.env"
       );
 
@@ -138,7 +149,7 @@ describe("paramHelper", () => {
       });
 
       await expect(
-        paramHelper.getParams(PROJECT_ID, TEST_PARAMS, "./a/path/to/a/file.env")
+        paramHelper.getParams(PROJECT_ID, TEST_PARAMS, false, "./a/path/to/a/file.env")
       ).to.be.rejectedWith(
         FirebaseError,
         "A_PARAMETER has not been set in the given params file and there is no default available. " +
@@ -153,7 +164,7 @@ describe("paramHelper", () => {
         A_THIRD_PARAMETER: "aValue",
         A_FOURTH_PARAMETER: "default",
       });
-      await paramHelper.getParams(PROJECT_ID, TEST_PARAMS, "./a/path/to/a/file.env");
+      await paramHelper.getParams(PROJECT_ID, TEST_PARAMS, false, "./a/path/to/a/file.env");
 
       expect(loggerSpy).to.have.been.calledWith(
         "Warning: The following params were specified in your env file but" +
@@ -165,7 +176,7 @@ describe("paramHelper", () => {
       dotenvStub.throws({ message: "Error during parsing" });
 
       await expect(
-        paramHelper.getParams(PROJECT_ID, TEST_PARAMS, "./a/path/to/a/file.env")
+        paramHelper.getParams(PROJECT_ID, TEST_PARAMS, false, "./a/path/to/a/file.env")
       ).to.be.rejectedWith(FirebaseError, "Error reading env file: Error during parsing");
     });
 

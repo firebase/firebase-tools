@@ -53,11 +53,11 @@ export async function deploy(
     return;
   }
 
-  await checkHttpIam(context, options, payload);
-
   if (!context.functionsSourceV1 && !context.functionsSourceV2) {
     return;
   }
+
+  await checkHttpIam(context, options, payload);
 
   try {
     const want = payload.functions!.backend;
@@ -86,12 +86,14 @@ export async function deploy(
       options.config.src.functions.source,
       "Error: 'functions.source' is not defined"
     );
-    logSuccess(
-      clc.green.bold("functions:") +
-        " " +
-        clc.bold(options.config.src.functions.source) +
-        " folder uploaded successfully"
-    );
+    if (uploads.length) {
+      logSuccess(
+        clc.green.bold("functions:") +
+          " " +
+          clc.bold(options.config.src.functions.source) +
+          " folder uploaded successfully"
+      );
+    }
   } catch (err) {
     logWarning(clc.yellow("functions:") + " Upload Error: " + err.message);
     throw err;

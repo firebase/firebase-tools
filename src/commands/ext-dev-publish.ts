@@ -20,6 +20,7 @@ marked.setOptions({
  */
 export default new Command("ext:dev:publish <extensionRef>")
   .description(`publish a new version of an extension`)
+  .withForce()
   .help(
     "if you have not previously published a version of this extension, this will " +
       "create the extension. If you have previously published a version of this extension, this version must " +
