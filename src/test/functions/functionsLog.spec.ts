@@ -11,19 +11,29 @@ describe("functionsLog", () => {
 
     it("should return base api filter for v1&v2 functions", () => {
       expect(functionsLog.getApiFilter(true, undefined)).to.eq(
-        'resource.type="cloud_function" OR (resource.type="cloud_run_revision" AND labels."goog-managed-by"="cloudfunctions")'
+        'resource.type="cloud_function" OR ' +
+          '(resource.type="cloud_run_revision" AND ' +
+          'labels."goog-managed-by"="cloudfunctions")'
       );
     });
 
     it("should return list api filter for v1 functions", () => {
       expect(functionsLog.getApiFilter(false, "fn1,fn2")).to.eq(
-        'resource.type="cloud_function"\n(resource.labels.function_name="fn1" OR resource.labels.function_name="fn2")'
+        'resource.type="cloud_function"\n' +
+          '(resource.labels.function_name="fn1" OR ' +
+          'resource.labels.function_name="fn2")'
       );
     });
 
     it("should return list api filter for v1&v2 functions", () => {
       expect(functionsLog.getApiFilter(true, "fn1,fn2")).to.eq(
-        'resource.type="cloud_function" OR (resource.type="cloud_run_revision" AND labels."goog-managed-by"="cloudfunctions")\n(resource.labels.function_name="fn1" OR resource.labels.service_name="fn1" OR resource.labels.function_name="fn2" OR resource.labels.service_name="fn2")'
+        'resource.type="cloud_function" OR ' +
+          '(resource.type="cloud_run_revision" AND ' +
+          'labels."goog-managed-by"="cloudfunctions")\n' +
+          '(resource.labels.function_name="fn1" OR ' +
+          'resource.labels.service_name="fn1" OR ' +
+          'resource.labels.function_name="fn2" OR ' +
+          'resource.labels.service_name="fn2")'
       );
     });
   });

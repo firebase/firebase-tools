@@ -9,7 +9,9 @@ import { LogEntry } from "../gcp/cloudlogging";
  */
 export function getApiFilter(v2Enabled: boolean, functionList?: string) {
   const baseFilter = v2Enabled
-    ? 'resource.type="cloud_function" OR (resource.type="cloud_run_revision" AND labels."goog-managed-by"="cloudfunctions")'
+    ? 'resource.type="cloud_function" OR ' +
+      '(resource.type="cloud_run_revision" AND ' +
+      'labels."goog-managed-by"="cloudfunctions")'
     : 'resource.type="cloud_function"';
 
   if (functionList) {
