@@ -7,6 +7,7 @@ import { FirebaseError } from "../../error";
 import { Context } from "./args";
 import { previews } from "../../previews";
 import { backendFromV1Alpha1 } from "./runtimes/discovery/v1alpha1";
+import { compareFunctions } from "./prompts";
 
 /** Retry settings for a ScheduleSpec. */
 export interface ScheduleRetryConfig {
@@ -535,4 +536,18 @@ export async function checkAvailability(context: Context, want: Backend): Promis
         "\nCloud Functions in these regions won't be deleted."
     );
   }
+}
+
+/**
+ * Lists all functions of the Firebase project in order
+ * @param context the Context of the project
+ * @returns an array {@link FunctionSpec} in order
+ */
+export async function listFunctions(context: Context): Promise<FunctionSpec[]> {
+  const bkend = await existingBackend(context, true);
+  const functionSpecs = previews.functionsv2
+    ? bkend.cloudFunctions
+    : bkend.cloudFunctions.filter((fn) => fn.platform === "gcfv1");
+  functionSpecs.sort(compareFunctions);
+  return functionSpecs;
 }

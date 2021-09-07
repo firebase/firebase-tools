@@ -13,7 +13,7 @@ import { Options } from "../../options";
 // To be a bit more deterministic, print function lists in a prescribed order.
 // Future versions might want to compare regions by GCF/Run pricing tier before
 // location.
-function compareFunctions(left: backend.FunctionSpec, right: backend.FunctionSpec): number {
+export function compareFunctions(left: backend.FunctionSpec, right: backend.FunctionSpec): number {
   if (left.platform != right.platform) {
     return right.platform < left.platform ? -1 : 1;
   }

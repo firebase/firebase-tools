@@ -45,6 +45,93 @@ const SAMPLE_OPTIONS: Options = {
   rc: new RC(),
 };
 
+describe("compareFunctions", () => {
+  const fnMembers = {
+    project: "project",
+    runtime: "nodejs14",
+    trigger: {},
+  };
+
+  it("should compare different platforms", () => {
+    const left: backend.FunctionSpec = {
+      id: "v1",
+      region: "us-central1",
+      platform: "gcfv1",
+      entryPoint: "v1",
+      ...fnMembers,
+    };
+    const right: backend.FunctionSpec = {
+      id: "v2",
+      region: "us-west1",
+      platform: "gcfv2",
+      entryPoint: "v2",
+      ...fnMembers,
+    };
+
+    expect(functionPrompts.compareFunctions(left, right)).to.eq(1);
+    expect(functionPrompts.compareFunctions(right, left)).to.eq(-1);
+  });
+
+  it("should compare different regions, same platform", () => {
+    const left: backend.FunctionSpec = {
+      id: "v1",
+      region: "us-west1",
+      platform: "gcfv1",
+      entryPoint: "v1",
+      ...fnMembers,
+    };
+    const right: backend.FunctionSpec = {
+      id: "newV1",
+      region: "us-central1",
+      platform: "gcfv1",
+      entryPoint: "newV1",
+      ...fnMembers,
+    };
+
+    expect(functionPrompts.compareFunctions(left, right)).to.eq(1);
+    expect(functionPrompts.compareFunctions(right, left)).to.eq(-1);
+  });
+
+  it("should compare different ids, same platform & region", () => {
+    const left: backend.FunctionSpec = {
+      id: "v1",
+      region: "us-central1",
+      platform: "gcfv1",
+      entryPoint: "v1",
+      ...fnMembers,
+    };
+    const right: backend.FunctionSpec = {
+      id: "newV1",
+      region: "us-central1",
+      platform: "gcfv1",
+      entryPoint: "newV1",
+      ...fnMembers,
+    };
+
+    expect(functionPrompts.compareFunctions(left, right)).to.eq(1);
+    expect(functionPrompts.compareFunctions(right, left)).to.eq(-1);
+  });
+
+  it("should compare same ids", () => {
+    const left: backend.FunctionSpec = {
+      id: "v1",
+      region: "us-central1",
+      platform: "gcfv1",
+      entryPoint: "v1",
+      ...fnMembers,
+    };
+    const right: backend.FunctionSpec = {
+      id: "v1",
+      region: "us-central1",
+      platform: "gcfv1",
+      entryPoint: "v1",
+      ...fnMembers,
+    };
+
+    expect(functionPrompts.compareFunctions(left, right)).to.eq(0);
+  });
+});
+
 describe("promptForFailurePolicies", () => {
   let promptStub: sinon.SinonStub;
 
