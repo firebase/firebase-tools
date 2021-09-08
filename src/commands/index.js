@@ -94,6 +94,7 @@ module.exports = function (client) {
   client.functions.delete = loadCommand("functions-delete");
   client.functions.log = loadCommand("functions-log");
   client.functions.shell = loadCommand("functions-shell");
+  client.functions.list = loadCommand("functions-list");
   if (previews.deletegcfartifacts) {
     client.functions.deletegcfartifacts = loadCommand("functions-deletegcfartifacts");
   }
