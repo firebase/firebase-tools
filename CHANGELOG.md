@@ -1,3 +1,3 @@
 - `ext:install` now supports `--force` and `--non-interactive` flags.
 - Fixes a crash when customers deploy an empty Cloud Functions project (#3705)
-- Adds command for listing all functions in the Firebase project `functions:list`.
+- Adds a command (`functions:list`) for listing all functions in the Firebase project.
