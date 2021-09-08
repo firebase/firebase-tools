@@ -43,15 +43,6 @@ describe("listFunctions", () => {
             runtime: "nodejs14",
           },
           {
-            id: "fn3",
-            entryPoint: "fn3",
-            trigger: {},
-            platform: "gcfv2",
-            region: "us-west1",
-            availableMemoryMb: "256",
-            runtime: "nodejs14",
-          },
-          {
             id: "fn1",
             entryPoint: "fn1",
             trigger: {},
