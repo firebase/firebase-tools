@@ -216,18 +216,18 @@ describe("extensions", () => {
         .reply(200, { name: "operations/abc123" });
       nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
 
-      await extensionsApi.createInstanceFromSource(
-        PROJECT_ID,
-        INSTANCE_ID,
-        {
+      await extensionsApi.createInstance({
+        projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
+        extensionSource: {
           state: "ACTIVE",
           name: "sources/blah",
           packageUri: "https://test.fake/pacakge.zip",
           hash: "abc123",
           spec: { name: "", version: "0.1.0", sourceUrl: "", roles: [], resources: [], params: [] },
         },
-        {}
-      );
+        params: {},
+      });
       expect(nock.isDone()).to.be.true;
     });
 
@@ -237,18 +237,12 @@ describe("extensions", () => {
         .reply(200, { name: "operations/abc123" });
       nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
 
-      await extensionsApi.createInstanceFromExtensionVersion(
-        PROJECT_ID,
-        INSTANCE_ID,
-        {
-          name: "publishers/test-pub/extensions/test-ext/versions/0.1.0",
-          ref: "test-pub/test-ext@0.1.0",
-          hash: "abc123",
-          sourceDownloadUri: "https://storage.googleapis.com/test/test",
-          spec: { name: "", version: "0.1.0", sourceUrl: "", roles: [], resources: [], params: [] },
-        },
-        {}
-      );
+      await extensionsApi.createInstance({
+        projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
+        extensionVersionRef: "test-pub/test-ext@0.1.0",
+        params: {},
+      });
       expect(nock.isDone()).to.be.true;
     });
 
@@ -256,10 +250,10 @@ describe("extensions", () => {
       nock(api.extensionsOrigin).post(`/${VERSION}/projects/${PROJECT_ID}/instances/`).reply(500);
 
       await expect(
-        extensionsApi.createInstanceFromSource(
-          PROJECT_ID,
-          INSTANCE_ID,
-          {
+        extensionsApi.createInstance({
+          projectId: PROJECT_ID,
+          instanceId: INSTANCE_ID,
+          extensionSource: {
             state: "ACTIVE",
             name: "sources/blah",
             packageUri: "https://test.fake/pacakge.zip",
@@ -273,49 +267,9 @@ describe("extensions", () => {
               params: [],
             },
           },
-          {}
-        )
-      ).to.be.rejectedWith(FirebaseError, "HTTP Error: 500, Unknown Error");
-      expect(nock.isDone()).to.be.true;
-    });
-
-    it("should include config.extension_ref and config.extension_version for an update to a published extension", async () => {
-      nock(api.extensionsOrigin)
-        .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
-        .query({ updateMask: "config.extension_ref,config.extension_version" })
-        .reply(200, { name: "operations/abc123" });
-      nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
-
-      await extensionsApi.updateInstanceFromRegistry(
-        PROJECT_ID,
-        INSTANCE_ID,
-        "extens-test/firestore-translate-text"
-      );
-
-      expect(nock.isDone()).to.be.true;
-    });
-
-    it("stop polling and throw if the operation call throws an unexpected error", async () => {
-      nock(api.extensionsOrigin)
-        .post(`/${VERSION}/projects/${PROJECT_ID}/instances/`)
-        .reply(200, { name: "operations/abc123" });
-      nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(502, {});
-
-      await expect(
-        extensionsApi.createInstance(PROJECT_ID, INSTANCE_ID, {
-          name: "sources/blah",
-          packageUri: "https://test.fake/pacakge.zip",
-          hash: "abc123",
-          spec: {
-            name: "",
-            version: "0.1.0",
-            sourceUrl: "",
-            roles: [],
-            resources: [],
-            params: [],
-          },
+          params: {},
         })
-      ).to.be.rejectedWith(FirebaseError, "HTTP Error: 502, Unknown Error");
+      ).to.be.rejectedWith(FirebaseError, "HTTP Error: 500, Unknown Error");
       expect(nock.isDone()).to.be.true;
     });
   });
