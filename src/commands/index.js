@@ -15,6 +15,9 @@ module.exports = function (client) {
 
   client.appdistribution = {};
   client.appdistribution.distribute = loadCommand("appdistribution-distribute");
+  client.appdistribution.testers = {};
+  client.appdistribution.testers.add = loadCommand("appdistribution-testers-add");
+  client.appdistribution.testers.delete = loadCommand("appdistribution-testers-remove");
   client.apps = {};
   client.apps.create = loadCommand("apps-create");
   client.apps.list = loadCommand("apps-list");

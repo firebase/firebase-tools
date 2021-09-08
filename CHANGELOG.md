@@ -2,3 +2,5 @@
 - Fixes a crash when customers deploy an empty Cloud Functions project (#3705)
 - Fixes (and implements) `--no-authorized-domains`, skipping syncing with Firebase Auth, when deploying to a Firebase Hosting channel (#3740).
 - Adds a command (`functions:list`) for listing all functions in the Firebase project.
+- Uses public v1 AppDistribution API.
+- Adds `appdistribution:testers:add` and `appdistribution:testers:remove` commands.
