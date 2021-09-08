@@ -10,7 +10,6 @@ import { FirebaseError } from "../../error";
 import * as api from "../../api";
 import * as nock from "nock";
 import { Distribution } from "../../appdistribution/distribution";
-import { describe } from "mocha";
 
 tmp.setGracefulCleanup();
 

@@ -64,6 +64,11 @@ export interface BatchRemoveTestersResponse {
  * Makes RPCs to the App Distribution server backend.
  */
 export class AppDistributionClient {
+  appDistroV2Client = new Client({
+    urlPrefix: api.appDistributionOrigin,
+    apiVersion: "v1",
+  });
+
   async getAabInfo(appName: string): Promise<AabInfo> {
     const apiResponse = await api.request("GET", `/v1/${appName}/aabInfo`, {
       origin: api.appDistributionOrigin,
@@ -171,13 +176,8 @@ export class AppDistributionClient {
   }
 
   async addTesters(projectName: string, emails: string[]) {
-    const appDistroV2Client = new Client({
-      urlPrefix: api.appDistributionOrigin,
-      apiVersion: "v1",
-      auth: true,
-    });
     try {
-      await appDistroV2Client.request({
+      await this.appDistroV2Client.request({
         method: "POST",
         path: `${projectName}/testers:batchAdd`,
         body: { emails: emails },
@@ -190,14 +190,9 @@ export class AppDistributionClient {
   }
 
   async removeTesters(projectName: string, emails: string[]): Promise<BatchRemoveTestersResponse> {
-    const appDistroV2Client = new Client({
-      urlPrefix: api.appDistributionOrigin,
-      apiVersion: "v1",
-      auth: true,
-    });
     let apiResponse;
     try {
-      apiResponse = await appDistroV2Client.request<
+      apiResponse = await this.appDistroV2Client.request<
         { emails: string[] },
         BatchRemoveTestersResponse
       >({
