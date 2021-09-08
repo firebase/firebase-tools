@@ -148,7 +148,6 @@ export default new Command("hosting:channel:deploy [channelId]")
       }
 
       if (options.authorizedDomains) {
-        logger.info();
         await syncAuthState(projectId, sites);
       } else {
         logger.debug(
@@ -156,6 +155,7 @@ export default new Command("hosting:channel:deploy [channelId]")
         );
       }
 
+      logger.info();
       const deploys: { [key: string]: ChannelInfo } = {};
       sites.forEach((d) => {
         deploys[d.target || d.site] = d;
