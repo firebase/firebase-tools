@@ -8,10 +8,8 @@ const FUNCTION_FRAGMENT: Omit<backend.FunctionSpec, "platform" | "region"> = {
   id: "function",
   project: "project",
   entryPoint: "foobar",
-  runtime: "nodejs14",
-  trigger: {
-    allowInsecure: false,
-  },
+  runtime: "nodejs16",
+  trigger: {},
 };
 
 const INVALID_REGION = { region: "fillory" };

@@ -4,6 +4,11 @@ import * as ora from "ora";
 import * as semver from "semver";
 import * as marked from "marked";
 
+const TerminalRenderer = require("marked-terminal");
+marked.setOptions({
+  renderer: new TerminalRenderer(),
+});
+
 import { storageOrigin } from "../api";
 import { archiveDirectory } from "../archiveDirectory";
 import { convertOfficialExtensionsToList } from "./utils";
@@ -29,6 +34,7 @@ import { getLocalExtensionSpec } from "./localHelper";
 import { promptOnce } from "../prompt";
 import { logger } from "../logger";
 import { envOverride } from "../utils";
+import { getLocalChangelog, parseChangelog } from "./changelog";
 
 /**
  * SpecParamType represents the exact strings that the extensions
@@ -393,16 +399,44 @@ export async function publishExtensionVersionFromLocalSource(
   );
   validateSpec(subbedSpec);
 
-  const consent = await confirmExtensionVersion(publisherId, extensionId, extensionSpec.version);
-  if (!consent) {
-    return;
-  }
-
   let extension;
   try {
     extension = await getExtension(`${publisherId}/${extensionId}`);
   } catch (err) {
     // Silently fail and continue the publish flow if extension not found.
+  }
+
+  let notes: string;
+  try {
+    const changes = getLocalChangelog(rootDirectory);
+    notes = changes[extensionSpec.version];
+  } catch (err) {
+    throw new FirebaseError(
+      "No CHANGELOG.md file found. " +
+        "Please create one and add an entry for this version. " +
+        marked(
+          "See https://firebase.google.com/docs/extensions/alpha/create-user-docs#writing-changelog for more details."
+        )
+    );
+  }
+  if (!notes && extension) {
+    // If this is not the first version of this extension, we require release notes
+    throw new FirebaseError(
+      `No entry for version ${extensionSpec.version} found in CHANGELOG.md. ` +
+        "Please add one so users know what has changed in this version. " +
+        marked(
+          "See https://firebase.google.com/docs/extensions/alpha/create-user-docs#writing-changelog for more details."
+        )
+    );
+  }
+  const consent = await confirmExtensionVersion(
+    publisherId,
+    extensionId,
+    extensionSpec.version,
+    notes
+  );
+  if (!consent) {
+    return;
   }
 
   if (
@@ -554,12 +588,16 @@ export async function getExtensionSourceFromName(extensionName: string): Promise
 export async function confirmExtensionVersion(
   publisherId: string,
   extensionId: string,
-  versionId: string
+  versionId: string,
+  releaseNotes?: string
 ): Promise<boolean> {
+  const releaseNotesMessage = releaseNotes
+    ? ` Release notes for this version:\n${marked(releaseNotes)}\n`
+    : "\n";
   const message =
     `You are about to publish version ${clc.green(versionId)} of ${clc.green(
       `${publisherId}/${extensionId}`
-    )} to Firebase's registry of extensions.\n\n` +
+    )} to Firebase's registry of extensions.${releaseNotesMessage}` +
     "Once an extension version is published, it cannot be changed. If you wish to make changes after publishing, you will need to publish a new version.\n\n" +
     "Do you wish to continue?";
   return await promptOnce({
@@ -593,17 +631,19 @@ export async function promptForOfficialExtension(message: string): Promise<strin
 export async function promptForRepeatInstance(
   projectName: string,
   extensionName: string
-): Promise<boolean> {
-  const message =
-    `An extension with the ID '${clc.bold(
-      extensionName
-    )}' already exists in the project '${clc.bold(projectName)}'.\n` +
-    `Do you want to proceed with installing another instance of extension '${clc.bold(
-      extensionName
-    )}' in this project?`;
+): Promise<"updateExisting" | "installNew" | "cancel"> {
+  const message = `An extension with the ID '${clc.bold(
+    extensionName
+  )}' already exists in the project '${clc.bold(projectName)}'. What would you like to do?`;
+  const choices = [
+    { name: "Update or reconfigure the existing instance", value: "updateExisting" },
+    { name: "Install a new instance with a different ID", value: "installNew" },
+    { name: "Cancel extension installation", value: "cancel" },
+  ];
   return await promptOnce({
-    type: "confirm",
+    type: "list",
     message,
+    choices,
   });
 }
 
@@ -653,31 +693,13 @@ export function isLocalOrURLPath(extInstallPath: string): boolean {
  * Given an update source, return where the update source came from.
  * @param sourceOrVersion path to a source or reference to a source version
  */
-export async function getSourceOrigin(sourceOrVersion: string): Promise<SourceOrigin> {
-  if (!sourceOrVersion) {
-    return SourceOrigin.OFFICIAL_EXTENSION;
-  }
-
-  // NOTE: If a semver is passed in, we automatically asssume it is an official extension version.
-  // If this was meant to be an extension from the Registry, please pass in the full reference instead.
-  // This is just an interim solution - when official extensions are migrated to use the Registry, the
-  // SourceOrigin types will be the same, and we won't have to worry about this nuance.
-  if (semver.valid(sourceOrVersion)) {
-    return SourceOrigin.OFFICIAL_EXTENSION_VERSION;
-  }
-  // First, check if the input matches a local or URL first.
+export function getSourceOrigin(sourceOrVersion: string): SourceOrigin {
+  // First, check if the input matches a local or URL.
   if (isLocalPath(sourceOrVersion)) {
     return SourceOrigin.LOCAL;
   }
   if (isUrlPath(sourceOrVersion)) {
     return SourceOrigin.URL;
-  }
-  // Next, check if the source matches an extension in the official extensions registry (registry.json).
-  try {
-    await resolveRegistryEntry(sourceOrVersion);
-    return SourceOrigin.OFFICIAL_EXTENSION;
-  } catch {
-    // Silently fail.
   }
   // Next, check if the source is an extension reference.
   if (sourceOrVersion.includes("/")) {
@@ -703,11 +725,20 @@ export async function getSourceOrigin(sourceOrVersion: string): Promise<SourceOr
 /**
  * Confirm if the user wants to install instance of an extension.
  */
-export async function confirmInstallInstance(defaultOption?: boolean): Promise<boolean> {
-  const message = `Would you like to continue installing this extension?`;
-  return await promptOnce({
-    type: "confirm",
-    message,
-    default: defaultOption,
-  });
+export async function confirmInstallInstance(
+  nonInteractive?: boolean,
+  force?: boolean
+): Promise<boolean> {
+  if (!nonInteractive && !force) {
+    const message = `Would you like to continue installing this extension?`;
+    return await promptOnce({
+      type: "confirm",
+      message,
+      default: true,
+    });
+  } else if (nonInteractive && !force) {
+    throw new FirebaseError("Pass the --force flag to install in non-interactive mode");
+  } else {
+    return true;
+  }
 }
