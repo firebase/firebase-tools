@@ -467,10 +467,7 @@ export function specFromFunction(gcfFunction: CloudFunction): backend.FunctionSp
   let trigger: backend.EventTrigger | backend.HttpsTrigger;
   let uri: string | undefined;
   if (gcfFunction.httpsTrigger) {
-    trigger = {
-      // Note: default (empty) value intentionally means true
-      allowInsecure: gcfFunction.httpsTrigger.securityLevel !== "SECURE_ALWAYS",
-    };
+    trigger = {};
     uri = gcfFunction.httpsTrigger.url;
   } else {
     trigger = {
@@ -556,9 +553,7 @@ export function functionFromSpec(
       ? { retry: {} }
       : undefined;
   } else {
-    gcfFunction.httpsTrigger = {
-      securityLevel: cloudFunction.trigger.allowInsecure ? "SECURE_OPTIONAL" : "SECURE_ALWAYS",
-    };
+    gcfFunction.httpsTrigger = {};
   }
 
   proto.copyIfPresent(

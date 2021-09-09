@@ -1,1 +1,0 @@
-- Adds support for the `nodejs16` runtime for Cloud Functions.

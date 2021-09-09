@@ -12,9 +12,7 @@ const MIN_FUNCTION = {
   platform: "gcfv1" as backend.FunctionsPlatform,
   id: "function",
   entryPoint: "entrypoint",
-  trigger: {
-    allowInsecure: false,
-  },
+  trigger: {},
 };
 
 const FUNCTION: backend.FunctionSpec = {

@@ -13,9 +13,7 @@ describe("cloudfunctionsv2", () => {
   const FUNCTION_SPEC: backend.FunctionSpec = {
     platform: "gcfv2",
     ...FUNCTION_NAME,
-    trigger: {
-      allowInsecure: false,
-    },
+    trigger: {},
     entryPoint: "function",
     runtime: "nodejs16",
   };
