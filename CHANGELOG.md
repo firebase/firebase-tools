@@ -1,3 +1,1 @@
-- `ext:install` now supports `--force` and `--non-interactive` flags.
-- Fixes a crash when customers deploy an empty Cloud Functions project (#3705)
 - Improves remoteconfig:get and remoteconfig:versions:list when no version exists or is specified (#3628)
