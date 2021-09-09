@@ -112,6 +112,16 @@ export default new Command("functions:config:export")
     "runtimeconfig.variables.get",
   ])
   .before(requireConfig)
+  .before((options) => {
+    if (options.nonInteractive) {
+      return Promise.reject(
+        new FirebaseError("This command cannot run in non-interactive mode", {
+          exit: 1,
+        })
+      );
+    }
+    return Promise.resolve();
+  })
   .action(async (options: any) => {
     let pInfos = configExport.getProjectInfos(options);
     checkReservedAliases(pInfos);
