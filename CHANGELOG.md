@@ -1,2 +1,0 @@
-- `ext:install` now supports `--force` and `--non-interactive` flags.
-- Fixes a crash when customers deploy an empty Cloud Functions project (#3705)
