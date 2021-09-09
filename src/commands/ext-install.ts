@@ -18,7 +18,7 @@ import * as provisioningHelper from "../extensions/provisioningHelper";
 import { displayWarningPrompts } from "../extensions/warnings";
 import * as paramHelper from "../extensions/paramHelper";
 import {
-  confirmInstallInstance,
+  confirm,
   createSourceFromLocation,
   ensureExtensionsApiEnabled,
   instanceIdExists,
@@ -88,7 +88,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
     const roles = spec.roles ? spec.roles.map((role: extensionsApi.Role) => role.role) : [];
     if (roles.length) {
       await askUserForConsent.displayRoles(spec.displayName || spec.name, projectId, roles);
-      const consented = await confirmInstallInstance(nonInteractive, force);
+      const consented = await confirm({ nonInteractive, force, default: true });
       if (!consented) {
         throw new FirebaseError(
           "Without explicit consent for the roles listed, we cannot deploy this extension."
@@ -281,7 +281,15 @@ export default new Command("ext:install [extensionName]")
     } else {
       extVersion = await infoInstallByReference(extensionName);
     }
-    const confirm = await confirmInstallInstance(options.nonInteractive, options.force);
+    if (
+      !(await confirm({
+        nonInteractive: options.nonInteractive,
+        force: options.force,
+        default: true,
+      }))
+    ) {
+      return;
+    }
     if (!source && !extVersion) {
       throw new FirebaseError(
         "Could not find a source. Please specify a valid source to continue."
