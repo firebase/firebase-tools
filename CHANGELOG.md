@@ -1,1 +1,0 @@
-- Fixes a crash when customers deploy an empty functions project (#3705)

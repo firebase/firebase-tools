@@ -47,7 +47,7 @@ const LINE_RE = new RegExp(
   "(" +                      //   begin optional value
   "\\s*'(?:\\\\'|[^'])*'|" + //     single quoted or
   '\\s*"(?:\\\\"|[^"])*"|' + //     double quoted or
-  "[^\\#\\r\\n]+" +          //     unquoted
+  "[^#\\r\\n]+" +            //     unquoted
   ")?" +                     //   end optional value
   "\\s*" +                   //   trailing whitespaces
   "(?:#[^\\n]*)?" +          //   optional comment

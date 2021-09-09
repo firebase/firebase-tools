@@ -7,9 +7,6 @@ import { FirebaseError } from "../error";
 import { logPrefix } from "../extensions/extensionsHelper";
 import * as iam from "../gcp/iam";
 import { promptOnce, Question } from "../prompt";
-import { confirmInstallInstance } from "./extensionsHelper";
-import { printSourceDownloadLink } from "./displayExtensionInfo";
-import { getTrustedPublishers } from "./resolveSource";
 import * as utils from "../utils";
 
 marked.setOptions({
@@ -49,31 +46,22 @@ export async function retrieveRoleInfo(role: string) {
 }
 
 /**
- * Displays roles and corresponding descriptions and asks user for consent.
+ * Displays roles that will be granted to the extension instance and corresponding descriptions.
  * @param extensionName name of extension to install/update
  * @param projectId ID of user's project
  * @param roles roles that require user approval
- * @return {Promise<?>} returns promise
  */
-export async function prompt(extensionName: string, projectId: string, roles: string[]) {
-  if (!roles || !roles.length) {
+export async function displayRoles(
+  extensionName: string,
+  projectId: string,
+  roles: string[]
+): Promise<void> {
+  if (!roles.length) {
     return;
   }
 
   const message = await formatDescription(extensionName, projectId, roles);
   utils.logLabeledBullet(logPrefix, message);
-  const question: Question = {
-    name: "consent",
-    type: "confirm",
-    message: "Would you like to continue?",
-    default: true,
-  };
-  const consented = await promptOnce(question);
-  if (!consented) {
-    throw new FirebaseError(
-      "Without explicit consent for the roles listed, we cannot deploy this extension."
-    );
-  }
 }
 
 /**

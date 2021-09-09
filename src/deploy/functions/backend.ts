@@ -536,3 +536,25 @@ export async function checkAvailability(context: Context, want: Backend): Promis
     );
   }
 }
+
+// To be a bit more deterministic, print function lists in a prescribed order.
+// Future versions might want to compare regions by GCF/Run pricing tier before
+// location.
+export function compareFunctions(left: FunctionSpec, right: FunctionSpec): number {
+  if (left.platform != right.platform) {
+    return right.platform < left.platform ? -1 : 1;
+  }
+  if (left.region < right.region) {
+    return -1;
+  }
+  if (left.region > right.region) {
+    return 1;
+  }
+  if (left.id < right.id) {
+    return -1;
+  }
+  if (left.id > right.id) {
+    return 1;
+  }
+  return 0;
+}
