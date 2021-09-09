@@ -5,16 +5,13 @@ import * as path from "path";
 import * as clc from "cli-color";
 
 import * as configExport from "../functions/runtimeConfigExport";
-import * as functionsConfig from "../functionsConfig";
 import * as requireConfig from "../requireConfig";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { testIamPermissions } from "../gcp/iam";
 import { logger } from "../logger";
 import { resolveProjectPath } from "../projectPath";
-import { getProjectId } from "../projectUtils";
 import { promptOnce } from "../prompt";
-import { loadRC } from "../rc";
 import { requirePermissions } from "../requirePermissions";
 import { logBullet, logWarning, logSuccess } from "../utils";
 
@@ -27,102 +24,44 @@ const REQUIRED_PERMISSIONS = [
 
 const RESERVED_PROJECT_ALIAS = ["local"];
 
-interface ProjectConfigInfo {
-  projectId: string;
-  alias?: string;
-  config?: Record<string, unknown>;
-  envs?: configExport.EnvMap[];
-}
-
-/**
- * Find all projects (and its alias) associated with the current directory.
- */
-export function getProjectInfos(options: {
-  project?: string;
-  projectId?: string;
-  cwd?: string;
-}): ProjectConfigInfo[] {
-  const result: Record<string, string> = {};
-
-  const rc = loadRC(options);
-  if (rc.projects) {
-    for (const [alias, projectId] of Object.entries(rc.projects)) {
-      if (Object.keys(result).includes(projectId)) {
-        logWarning(
-          `Multiple aliases found for ${clc.bold(projectId)}. ` +
-            `Preferring alias (${clc.bold(result[projectId])}) over (${clc.bold(alias)}).`
-        );
-        continue;
-      }
-      result[projectId] = alias;
+function checkReservedAliases(pInfos: configExport.ProjectConfigInfo[]): void {
+  for (const pInfo of pInfos) {
+    if (pInfo.alias && RESERVED_PROJECT_ALIAS.includes(pInfo.alias)) {
+      logWarning(
+        `Project alias (${clc.bold(pInfo.alias)}) is reserved for internal use. ` +
+          `Saving exported config in .env.${pInfo.projectId} instead.`
+      );
+      delete pInfo.alias;
     }
   }
-
-  const projectId = getProjectId(options);
-  if (projectId && !Object.keys(result).includes(projectId)) {
-    result[projectId] = projectId;
-  }
-
-  return Object.entries(result).map(([k, v]) => {
-    const result: ProjectConfigInfo = { projectId: k };
-    if (k !== v) {
-      result.alias = v;
-    }
-    return result;
-  });
 }
 
-async function checkRequiredPermission({ projectId }: ProjectConfigInfo): Promise<boolean> {
-  const result = await testIamPermissions(projectId, REQUIRED_PERMISSIONS);
-  if (result.passed) return true;
+async function checkRequiredPermission(pInfos: configExport.ProjectConfigInfo[]): Promise<void> {
+  for (const pInfo of pInfos) {
+    if (pInfo.config) continue;
 
-  logWarning(
-    "You are missing the following permissions to read functions config on project " +
-      `${clc.bold(projectId)}:\n\t${result.missing.join("\n\t")}`
-  );
+    const result = await testIamPermissions(pInfo.projectId, REQUIRED_PERMISSIONS);
+    if (result.passed) return;
 
-  const confirm = await promptOnce(
-    {
-      type: "confirm",
-      name: "skip",
-      default: true,
-      message: `Continue without importing configs from project ${projectId}?`,
-    },
-    {}
-  );
+    logWarning(
+      "You are missing the following permissions to read functions config on project " +
+        `${clc.bold(pInfo.projectId)}:\n\t${result.missing.join("\n\t")}`
+    );
 
-  if (!confirm) {
-    throw new FirebaseError("Command aborted!");
-  }
+    const confirm = await promptOnce(
+      {
+        type: "confirm",
+        name: "skip",
+        default: true,
+        message: `Continue without importing configs from project ${pInfo.projectId}?`,
+      },
+      {}
+    );
 
-  return false;
-}
-
-function configsToEnvs(
-  projects: ProjectConfigInfo[],
-  prefix: string
-): { projects: ProjectConfigInfo[]; errMsg: string } {
-  const results = [];
-  let errMsg = "";
-  for (const project of projects) {
-    const result = configExport.configToEnv(project.config!, prefix);
-    if (result.errors.length > 0) {
-      const msg =
-        `${project.alias ?? project.projectId}:\n` +
-        result.errors
-          .map((err) => `\t${err.origKey} => ${clc.bold(err.newKey)} (${err.err})`)
-          .join("\n") +
-        "\n";
-      errMsg += msg;
-    } else {
-      results.push({ ...project, envs: result.success });
+    if (!confirm) {
+      throw new FirebaseError("Command aborted!");
     }
-    projects.map((project) => configExport.configToEnv(project.config!, prefix));
   }
-  return {
-    projects: results,
-    errMsg,
-  };
 }
 
 async function promptForPrefix(errMsg: string): Promise<string> {
@@ -137,22 +76,6 @@ async function promptForPrefix(errMsg: string): Promise<string> {
     },
     {}
   );
-}
-
-function writeEnvs(basePath: string, header: string, projects: ProjectConfigInfo[]): string[] {
-  return projects.map((project) => {
-    const dotenv = configExport.toDotenvFormat(project.envs ?? [], header);
-    const ext = project.alias ?? project.projectId;
-    const filename = ext ? `.env.${ext}` : `.env`; // ext will be empty when writing empty .env.
-    const filePath = path.join(basePath, filename);
-
-    fs.writeFileSync(filePath, dotenv);
-    return filePath;
-  });
-}
-
-function writeEmptyEnvs(basePath: string, header: string, projects: ProjectConfigInfo[]): string[] {
-  return writeEnvs(basePath, header, projects);
 }
 
 async function copyFilesToDir(srcFiles: string[], destDir: string): Promise<string[]> {
@@ -190,59 +113,39 @@ export default new Command("functions:config:export")
   ])
   .before(requireConfig)
   .action(async (options: any) => {
-    const pInfosWithAlias = getProjectInfos(options);
-
-    for (const pInfo of pInfosWithAlias) {
-      if (pInfo.alias && RESERVED_PROJECT_ALIAS.includes(pInfo.alias)) {
-        logWarning(
-          `Project alias (${clc.bold(pInfo.alias)}) is reserved for internal use. ` +
-            `Saving exported config in .env.${pInfo.projectId} instead.`
-        );
-        delete pInfo.alias;
-      }
-    }
+    let pInfos = configExport.getProjectInfos(options);
+    checkReservedAliases(pInfos);
 
     logBullet(
       "Importing functions configs from projects [" +
-        pInfosWithAlias.map(({ projectId }) => `${clc.bold(projectId)}`).join(", ") +
+        pInfos.map(({ projectId }) => `${clc.bold(projectId)}`).join(", ") +
         "]"
     );
 
-    const pInfosWithConfigs: ProjectConfigInfo[] = [];
-    for (const pInfo of pInfosWithAlias) {
-      try {
-        const config = await functionsConfig.materializeAll(pInfo.projectId);
-        pInfosWithConfigs.push({ ...pInfo, config });
-      } catch (err) {
-        if (err.status === 403) {
-          await checkRequiredPermission(pInfo);
-          continue;
-        }
-        throw err;
-      }
-    }
+    await configExport.hydrateConfigs(pInfos);
+    await checkRequiredPermission(pInfos);
+    pInfos = pInfos.filter((pInfo) => pInfo.config);
 
-    logger.debug("Loaded function configs: " + JSON.stringify(pInfosWithConfigs));
+    logger.debug("Loaded function configs: " + JSON.stringify(pInfos));
 
     let prefix = "";
-    let pInfosWithEnvs = [];
     while (true) {
-      const { projects, errMsg } = configsToEnvs(pInfosWithConfigs, prefix);
-      pInfosWithEnvs = projects;
+      const errMsg = configExport.hydrateEnvs(pInfos, prefix);
 
       if (errMsg.length == 0) {
         break;
       }
       prefix = await promptForPrefix(errMsg);
-
-      pInfosWithEnvs = [];
     }
 
     const header = `# Exported firebase functions:config:export command on ${new Date().toLocaleDateString()}`;
     const tmpdir = fs.mkdtempSync(os.tmpdir() + "dotenvs");
-    const tmpFiles = writeEnvs(tmpdir, header, pInfosWithEnvs);
-    tmpFiles.push(...writeEmptyEnvs(tmpdir, header, [{ projectId: "" }, { projectId: "local" }]));
-    logger.debug(`Wrote tmp .env files: [${tmpFiles.join(",")}]`);
+    const tmpFiles = configExport.writeDotenvFiles(tmpdir, header, pInfos);
+    // Create placeholder .env and .env.local file.
+    tmpFiles.push(
+      ...configExport.writeDotenvFiles(tmpdir, header, [{ projectId: "" }, { projectId: "local" }])
+    );
+    logger.debug(`Wrote temporary .env files: [${tmpFiles.join(",")}]`);
 
     const functionsDir = resolveProjectPath(options, options.config.get("functions.source", "."));
     const files = await copyFilesToDir(tmpFiles, functionsDir);
