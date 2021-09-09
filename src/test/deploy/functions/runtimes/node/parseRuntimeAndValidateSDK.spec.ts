@@ -46,6 +46,10 @@ describe("getRuntimeChoice", () => {
       expect(runtime.getRuntimeChoice("path/to/source", "nodejs14")).to.equal("nodejs14");
     });
 
+    it("should return node 16 if runtime field is set to node 16", () => {
+      expect(runtime.getRuntimeChoice("path/to/source", "nodejs16")).to.equal("nodejs16");
+    });
+
     it("should throw error if unsupported node version set", () => {
       expect(() => runtime.getRuntimeChoice("path/to/source", "nodejs11")).to.throw(
         FirebaseError,
@@ -83,14 +87,20 @@ describe("getRuntimeChoice", () => {
       expect(runtime.getRuntimeChoice("path/to/source", "")).to.equal("nodejs12");
     });
 
-    it("should return node 14 if engines field is set to node 12", () => {
+    it("should return node 14 if engines field is set to node 14", () => {
       cjsonStub.returns({ engines: { node: "14" } });
 
       expect(runtime.getRuntimeChoice("path/to/source", "")).to.equal("nodejs14");
     });
 
+    it("should return node 16 if engines field is set to node 16", () => {
+      cjsonStub.returns({ engines: { node: "16" } });
+
+      expect(runtime.getRuntimeChoice("path/to/source", "")).to.equal("nodejs16");
+    });
+
     it("should print warning when firebase-functions version is below 2.0.0", () => {
-      cjsonStub.returns({ engines: { node: "10" } });
+      cjsonStub.returns({ engines: { node: "16" } });
 
       runtime.getRuntimeChoice("path/to/source", "");
     });

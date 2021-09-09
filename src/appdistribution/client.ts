@@ -1,41 +1,30 @@
 import * as _ from "lodash";
 import * as api from "../api";
 import * as utils from "../utils";
+import * as operationPoller from "../operation-poller";
 import { Distribution } from "./distribution";
 import { FirebaseError } from "../error";
-
-// tslint:disable-next-line:no-var-requires
-const pkg = require("../../package.json");
+import { Client, ClientResponse } from "../apiv2";
 
 /**
  * Helper interface for an app that is provisioned with App Distribution
  */
-export interface AppDistributionApp {
-  projectNumber: string;
-  appId: string;
-  platform: string;
-  bundleId: string;
-  contactEmail: string;
-  aabState: AabState;
-  aabCertificate: AabCertificate | null;
+export interface AabInfo {
+  name: string;
+  integrationState: IntegrationState;
+  testCertificate: TestCertificate | null;
 }
 
-export interface AabCertificate {
-  certificateHashMd5: string;
-  certificateHashSha1: string;
-  certificateHashSha256: string;
-}
-
-export enum UploadStatus {
-  SUCCESS = "SUCCESS",
-  IN_PROGRESS = "IN_PROGRESS",
-  ERROR = "ERROR",
+export interface TestCertificate {
+  hashSha1: string;
+  hashSha256: string;
+  hashMd5: string;
 }
 
 /** Enum representing the App Bundles state for the App */
-export enum AabState {
-  AAB_STATE_UNSPECIFIED = "AAB_STATE_UNSPECIFIED",
-  ACTIVE = "ACTIVE",
+export enum IntegrationState {
+  AAB_INTEGRATION_STATE_UNSPECIFIED = "AAB_INTEGRATION_STATE_UNSPECIFIED",
+  INTEGRATED = "INTEGRATED",
   PLAY_ACCOUNT_NOT_LINKED = "PLAY_ACCOUNT_NOT_LINKED",
   NO_APP_WITH_GIVEN_BUNDLE_ID_IN_PLAY_ACCOUNT = "NO_APP_WITH_GIVEN_BUNDLE_ID_IN_PLAY_ACCOUNT",
   APP_NOT_PUBLISHED = "APP_NOT_PUBLISHED",
@@ -43,32 +32,45 @@ export enum AabState {
   PLAY_IAS_TERMS_NOT_ACCEPTED = "PLAY_IAS_TERMS_NOT_ACCEPTED",
 }
 
-export interface UploadStatusResponse {
-  status: UploadStatus;
-  message: string;
-  errorCode: string;
-  release: {
-    id: string;
-  };
+export enum UploadReleaseResult {
+  UPLOAD_RELEASE_RESULT_UNSPECIFIED = "UPLOAD_RELEASE_RESULT_UNSPECIFIED",
+  RELEASE_CREATED = "RELEASE_CREATED",
+  RELEASE_UPDATED = "RELEASE_UPDATED",
+  RELEASE_UNMODIFIED = "RELEASE_UNMODIFIED",
 }
 
-/** Enum for app_view parameter for getApp requests */
-export enum AppView {
-  BASIC = "BASIC",
-  FULL = "FULL",
+export interface Release {
+  name: string;
+  releaseNotes: ReleaseNotes;
+  displayVersion: string;
+  buildVersion: string;
+  createTime: Date;
+}
+
+export interface ReleaseNotes {
+  text: string;
+}
+
+export interface UploadReleaseResponse {
+  result: UploadReleaseResult;
+  release: Release;
+}
+
+export interface BatchRemoveTestersResponse {
+  emails: string[];
 }
 
 /**
- * Proxies HTTPS requests to the App Distribution server backend.
+ * Makes RPCs to the App Distribution server backend.
  */
 export class AppDistributionClient {
-  static MAX_POLLING_RETRIES = 60;
-  static POLLING_INTERVAL_MS = 2000;
+  appDistroV2Client = new Client({
+    urlPrefix: api.appDistributionOrigin,
+    apiVersion: "v1",
+  });
 
-  constructor(private readonly appId: string) {}
-
-  async getApp(appView = AppView.BASIC): Promise<AppDistributionApp> {
-    const apiResponse = await api.request("GET", `/v1alpha/apps/${this.appId}?appView=${appView}`, {
+  async getAabInfo(appName: string): Promise<AabInfo> {
+    const apiResponse = await api.request("GET", `/v1/${appName}/aabInfo`, {
       origin: api.appDistributionOrigin,
       auth: true,
     });
@@ -76,107 +78,81 @@ export class AppDistributionClient {
     return _.get(apiResponse, "body");
   }
 
-  async uploadDistribution(distribution: Distribution): Promise<string> {
-    const apiResponse = await api.request("POST", `/app-binary-uploads?app_id=${this.appId}`, {
+  async uploadRelease(appName: string, distribution: Distribution): Promise<string> {
+    const apiResponse = await api.request("POST", `/upload/v1/${appName}/releases:upload`, {
       auth: true,
       origin: api.appDistributionOrigin,
       headers: {
-        "X-APP-DISTRO-API-CLIENT-ID": pkg.name,
-        "X-APP-DISTRO-API-CLIENT-TYPE": distribution.platform(),
-        "X-APP-DISTRO-API-CLIENT-VERSION": pkg.version,
-        "X-GOOG-UPLOAD-FILE-NAME": distribution.getFileName(),
-        "X-GOOG-UPLOAD-PROTOCOL": "raw",
+        "X-Goog-Upload-File-Name": distribution.getFileName(),
+        "X-Goog-Upload-Protocol": "raw",
         "Content-Type": "application/octet-stream",
       },
       data: distribution.readStream(),
       json: false,
     });
 
-    return _.get(JSON.parse(apiResponse.body), "token");
+    return _.get(JSON.parse(apiResponse.body), "name");
   }
 
-  async pollUploadStatus(binaryName: string, retryCount = 0): Promise<string> {
-    const uploadStatus = await this.getUploadStatus(binaryName);
-    if (uploadStatus.status === UploadStatus.IN_PROGRESS) {
-      if (retryCount >= AppDistributionClient.MAX_POLLING_RETRIES) {
-        throw new FirebaseError(
-          "it took longer than expected to process your binary, please try again",
-          { exit: 1 }
-        );
-      }
-      await new Promise((resolve) =>
-        setTimeout(resolve, AppDistributionClient.POLLING_INTERVAL_MS)
-      );
-      return this.pollUploadStatus(binaryName, retryCount + 1);
-    } else if (uploadStatus.status === UploadStatus.SUCCESS) {
-      return uploadStatus.release.id;
-    } else {
-      throw new FirebaseError(
-        `error processing your binary: ${uploadStatus.message} (Code: ${uploadStatus.errorCode})`
-      );
-    }
+  async pollUploadStatus(operationName: string): Promise<UploadReleaseResponse> {
+    return operationPoller.pollOperation<UploadReleaseResponse>({
+      pollerName: "App Distribution Upload Poller",
+      apiOrigin: api.appDistributionOrigin,
+      apiVersion: "v1",
+      operationResourceName: operationName,
+      masterTimeout: 5 * 60 * 1000,
+      backoff: 1000,
+      maxBackoff: 10 * 1000,
+    });
   }
 
-  async getUploadStatus(binaryName: string): Promise<UploadStatusResponse> {
-    const encodedBinaryName = encodeURIComponent(binaryName);
-    const apiResponse = await api.request(
-      "GET",
-      `/v1alpha/apps/${this.appId}/upload_status/${encodedBinaryName}`,
-      {
-        origin: api.appDistributionOrigin,
-        auth: true,
-      }
-    );
-
-    return _.get(apiResponse, "body");
-  }
-
-  async addReleaseNotes(releaseId: string, releaseNotes: string): Promise<void> {
+  async updateReleaseNotes(releaseName: string, releaseNotes: string): Promise<void> {
     if (!releaseNotes) {
       utils.logWarning("no release notes specified, skipping");
       return;
     }
 
-    utils.logBullet("adding release notes...");
+    utils.logBullet("updating release notes...");
 
     const data = {
+      name: releaseName,
       releaseNotes: {
-        releaseNotes,
+        text: releaseNotes,
       },
     };
 
     try {
-      await api.request("POST", `/v1alpha/apps/${this.appId}/releases/${releaseId}/notes`, {
+      await api.request("PATCH", `/v1/${releaseName}?updateMask=release_notes.text`, {
         origin: api.appDistributionOrigin,
         auth: true,
         data,
       });
     } catch (err) {
-      throw new FirebaseError(`failed to add release notes with ${err.message}`, { exit: 1 });
+      throw new FirebaseError(`failed to update release notes with ${err.message}`, { exit: 1 });
     }
 
     utils.logSuccess("added release notes successfully");
   }
 
-  async enableAccess(
-    releaseId: string,
-    emails: string[] = [],
-    groupIds: string[] = []
+  async distribute(
+    releaseName: string,
+    testerEmails: string[] = [],
+    groupAliases: string[] = []
   ): Promise<void> {
-    if (emails.length === 0 && groupIds.length === 0) {
+    if (testerEmails.length === 0 && groupAliases.length === 0) {
       utils.logWarning("no testers or groups specified, skipping");
       return;
     }
 
-    utils.logBullet("adding testers/groups...");
+    utils.logBullet("distributing to testers/groups...");
 
     const data = {
-      emails,
-      groupIds,
+      testerEmails,
+      groupAliases,
     };
 
     try {
-      await api.request("POST", `/v1alpha/apps/${this.appId}/releases/${releaseId}/enable_access`, {
+      await api.request("POST", `/v1/${releaseName}:distribute`, {
         origin: api.appDistributionOrigin,
         auth: true,
         data,
@@ -191,9 +167,42 @@ export class AppDistributionClient {
           errorMessage = "invalid groups";
         }
       }
-      throw new FirebaseError(`failed to add testers/groups: ${errorMessage}`, { exit: 1 });
+      throw new FirebaseError(`failed to distribute to testers/groups: ${errorMessage}`, {
+        exit: 1,
+      });
     }
 
-    utils.logSuccess("added testers/groups successfully");
+    utils.logSuccess("distributed to testers/groups successfully");
+  }
+
+  async addTesters(projectName: string, emails: string[]) {
+    try {
+      await this.appDistroV2Client.request({
+        method: "POST",
+        path: `${projectName}/testers:batchAdd`,
+        body: { emails: emails },
+      });
+    } catch (err) {
+      throw new FirebaseError(`Failed to add testers ${err}`);
+    }
+
+    utils.logSuccess(`Testers created successfully`);
+  }
+
+  async removeTesters(projectName: string, emails: string[]): Promise<BatchRemoveTestersResponse> {
+    let apiResponse;
+    try {
+      apiResponse = await this.appDistroV2Client.request<
+        { emails: string[] },
+        BatchRemoveTestersResponse
+      >({
+        method: "POST",
+        path: `${projectName}/testers:batchRemove`,
+        body: { emails: emails },
+      });
+    } catch (err) {
+      throw new FirebaseError(`Failed to remove testers ${err}`);
+    }
+    return apiResponse.body;
   }
 }

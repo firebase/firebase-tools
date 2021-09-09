@@ -14,7 +14,7 @@ import * as responseToError from "./responseToError";
 // Using import would require resolveJsonModule, which seems to break the
 // build/output format.
 const pkg = require("../package.json");
-const CLI_VERSION: string = pkg.CLI_VERSION;
+const CLI_VERSION: string = pkg.version;
 
 export type HttpMethod = "GET" | "PUT" | "POST" | "DELETE" | "PATCH";
 

@@ -10,27 +10,6 @@ import * as pricing from "./pricing";
 import * as utils from "../../utils";
 import { Options } from "../../options";
 
-// To be a bit more deterministic, print function lists in a prescribed order.
-// Future versions might want to compare regions by GCF/Run pricing tier before
-// location.
-function compareFunctions(left: backend.FunctionSpec, right: backend.FunctionSpec): number {
-  if (left.platform != right.platform) {
-    return right.platform < left.platform ? -1 : 1;
-  }
-  if (left.region < right.region) {
-    return -1;
-  }
-  if (left.region > right.region) {
-    return 1;
-  }
-  if (left.id < right.id) {
-    return -1;
-  }
-  if (left.id > right.id) {
-    return 1;
-  }
-  return 0;
-}
 /**
  * Checks if a deployment will create any functions with a failure policy
  * or add a failure policy to an existing function.
@@ -66,7 +45,7 @@ export async function promptForFailurePolicies(
 
   const warnMessage =
     "The following functions will newly be retried in case of failure: " +
-    clc.bold(newRetryFunctions.sort(compareFunctions).map(getFunctionLabel).join(", ")) +
+    clc.bold(newRetryFunctions.sort(backend.compareFunctions).map(getFunctionLabel).join(", ")) +
     ". " +
     "Retried executions are billed as any other execution, and functions are retried repeatedly until they either successfully execute or the maximum retry period has elapsed, which can be up to 7 days. " +
     "For safety, you might want to ensure that your functions are idempotent; see https://firebase.google.com/docs/functions/retries to learn more.";
@@ -108,7 +87,7 @@ export async function promptForFunctionDeletion(
     return true;
   }
   const deleteList = functionsToDelete
-    .sort(compareFunctions)
+    .sort(backend.compareFunctions)
     .map((fn) => "\t" + getFunctionLabel(fn))
     .join("\n");
 
@@ -197,7 +176,7 @@ export async function promptForMinInstances(
   // Add Tier 1 or Tier 2 annotations to functionLines
   const functionLines = want
     .filter((fn) => fn.minInstances)
-    .sort(compareFunctions)
+    .sort(backend.compareFunctions)
     .map((fn) => {
       return (
         `\t${getFunctionLabel(fn)}: ${fn.minInstances} instances, ` +
