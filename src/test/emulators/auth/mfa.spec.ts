@@ -1,20 +1,39 @@
 import { expect } from "chai";
 import { describeAuthEmulator } from "./setup";
+import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import {
   enrollPhoneMfa,
   expectStatusCode,
   getAccountInfoByIdToken,
+  getAccountInfoByLocalId,
   inspectVerificationCodes,
   registerUser,
   signInWithEmailLink,
   TEST_PHONE_NUMBER,
   TEST_PHONE_NUMBER_OBFUSCATED,
+  updateAccountByLocalId,
 } from "./helpers";
 import { MfaEnrollment } from "../../../emulator/auth/types";
+import { FirebaseJwtPayload } from "../../../emulator/auth/operations";
 
-// Many JWT fields from IDPs use snake_case and we need to match that.
+describeAuthEmulator("mfa enrollment", ({ authApi, getClock }) => {
+  it("should error if account does not have email verified", async () => {
+    const { idToken } = await registerUser(authApi(), {
+      email: "unverified@example.com",
+      password: "testing",
+    });
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/mfaEnrollment:start")
+      .query({ key: "fake-api-key" })
+      .send({ idToken, phoneEnrollmentInfo: { phoneNumber: TEST_PHONE_NUMBER } })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.equal(
+          "UNVERIFIED_EMAIL : Need to verify email first before enrolling second factors."
+        );
+      });
+  });
 
-describeAuthEmulator("mfa enrollment", ({ authApi }) => {
   it("should allow phone enrollment for an existing account", async () => {
     const phoneNumber = TEST_PHONE_NUMBER;
     const { idToken } = await signInWithEmailLink(authApi(), "foo@example.com");
@@ -35,28 +54,40 @@ describeAuthEmulator("mfa enrollment", ({ authApi }) => {
     expect(codes[0].code).to.be.a("string");
     const { code } = codes[0];
 
-    await authApi()
+    const res = await authApi()
       .post("/identitytoolkit.googleapis.com/v2/accounts/mfaEnrollment:finalize")
       .query({ key: "fake-api-key" })
-      .send({ idToken, phoneVerificationInfo: { code, sessionInfo } })
-      .then((res) => {
-        expectStatusCode(200, res);
-        expect(res.body.idToken).to.be.a("string");
-        expect(res.body.refreshToken).to.be.a("string");
-      });
+      .send({ idToken, phoneVerificationInfo: { code, sessionInfo } });
+
+    expectStatusCode(200, res);
+    expect(res.body.idToken).to.be.a("string");
+    expect(res.body.refreshToken).to.be.a("string");
 
     const userInfo = await getAccountInfoByIdToken(authApi(), idToken);
     expect(userInfo.mfaInfo).to.be.an("array").with.lengthOf(1);
     expect(userInfo.mfaInfo![0].phoneInfo).to.equal(phoneNumber);
+    const mfaEnrollmentId = userInfo.mfaInfo![0].mfaEnrollmentId;
+
+    const decoded = decodeJwt(res.body.idToken, { complete: true }) as {
+      header: JwtHeader;
+      payload: FirebaseJwtPayload;
+    } | null;
+    expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
+    expect(decoded!.payload.firebase.sign_in_second_factor).to.equal("phone");
+    expect(decoded!.payload.firebase.second_factor_identifier).to.equal(mfaEnrollmentId);
   });
 
   it("should allow sign-in with pending credential for MFA-enabled user", async () => {
     const email = "foo@example.com";
     const password = "abcdef";
-    const { idToken } = await registerUser(authApi(), { email, password });
+    const { idToken, localId } = await registerUser(authApi(), { email, password });
+    await updateAccountByLocalId(authApi(), localId, { emailVerified: true });
     await enrollPhoneMfa(authApi(), idToken, TEST_PHONE_NUMBER);
+    const beforeSignIn = await getAccountInfoByLocalId(authApi(), localId);
 
-    const { mfaPendingCredential, enrollment } = await authApi()
+    getClock().tick(3333);
+
+    const { mfaPendingCredential, mfaEnrollmentId } = await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword")
       .query({ key: "fake-api-key" })
       .send({ email, password })
@@ -72,14 +103,21 @@ describeAuthEmulator("mfa enrollment", ({ authApi }) => {
 
         // This must not be exposed right after first factor login.
         expect(mfaInfo[0]?.phoneInfo).not.to.have.property("unobfuscatedPhoneInfo");
-        return { mfaPendingCredential, enrollment: mfaInfo[0] };
+        return { mfaPendingCredential, mfaEnrollmentId: mfaInfo[0].mfaEnrollmentId };
       });
+
+    // Login / refresh timestamps should not change until MFA was successful.
+    const afterFirstFactor = await getAccountInfoByLocalId(authApi(), localId);
+    expect(afterFirstFactor.lastLoginAt).to.equal(beforeSignIn.lastLoginAt);
+    expect(afterFirstFactor.lastRefreshAt).to.equal(beforeSignIn.lastRefreshAt);
+
+    getClock().tick(4444);
 
     const sessionInfo = await authApi()
       .post("/identitytoolkit.googleapis.com/v2/accounts/mfaSignIn:start")
       .query({ key: "fake-api-key" })
       .send({
-        mfaEnrollmentId: enrollment.mfaEnrollmentId,
+        mfaEnrollmentId,
         mfaPendingCredential,
       })
       .then((res) => {
@@ -89,6 +127,8 @@ describeAuthEmulator("mfa enrollment", ({ authApi }) => {
       });
 
     const code = (await inspectVerificationCodes(authApi()))[0].code;
+
+    getClock().tick(5555);
 
     await authApi()
       .post("/identitytoolkit.googleapis.com/v2/accounts/mfaSignIn:finalize")
@@ -104,6 +144,46 @@ describeAuthEmulator("mfa enrollment", ({ authApi }) => {
         expectStatusCode(200, res);
         expect(res.body.idToken).to.be.a("string");
         expect(res.body.refreshToken).to.be.a("string");
+
+        const decoded = decodeJwt(res.body.idToken, { complete: true }) as {
+          header: JwtHeader;
+          payload: FirebaseJwtPayload;
+        } | null;
+        expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
+        expect(decoded!.payload.firebase.sign_in_second_factor).to.equal("phone");
+        expect(decoded!.payload.firebase.second_factor_identifier).to.equal(mfaEnrollmentId);
+      });
+
+    // Login / refresh timestamps should now be updated.
+    const afterMfa = await getAccountInfoByLocalId(authApi(), localId);
+    expect(afterMfa.lastLoginAt).to.equal(Date.now().toString());
+    expect(afterMfa.lastRefreshAt).to.equal(new Date().toISOString());
+  });
+
+  it("should allow withdrawing MFA for a user", async () => {
+    const { idToken: token1 } = await signInWithEmailLink(authApi(), "foo@example.com");
+    const { idToken } = await enrollPhoneMfa(authApi(), token1, TEST_PHONE_NUMBER);
+
+    const { mfaInfo } = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(mfaInfo).to.have.lengthOf(1);
+    const { mfaEnrollmentId } = mfaInfo![0]!;
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/mfaEnrollment:withdraw")
+      .query({ key: "fake-api-key" })
+      .send({ idToken, mfaEnrollmentId })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.idToken).to.be.a("string");
+        expect(res.body.refreshToken).to.be.a("string");
+
+        const decoded = decodeJwt(res.body.idToken, { complete: true }) as {
+          header: JwtHeader;
+          payload: FirebaseJwtPayload;
+        } | null;
+        expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
+        expect(decoded!.payload.firebase).not.to.have.property("sign_in_second_factor");
+        expect(decoded!.payload.firebase).not.to.have.property("second_factor_identifier");
       });
   });
 });

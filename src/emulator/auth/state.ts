@@ -8,7 +8,7 @@ import {
 import { MakeRequired } from "./utils";
 import { AuthCloudFunction } from "./cloudFunctions";
 import { assert } from "./errors";
-import { MfaEnrollments, Schemas } from "./types";
+import { MfaEnrollment, MfaEnrollments, Schemas } from "./types";
 
 export const PROVIDER_PASSWORD = "password";
 export const PROVIDER_PHONE = "phone";
@@ -375,11 +375,17 @@ export class ProjectState {
   createRefreshTokenFor(
     userInfo: UserInfo,
     provider: string,
-    extraClaims: Record<string, unknown> = {}
+    {
+      extraClaims = {},
+      secondFactor,
+    }: {
+      extraClaims?: Record<string, unknown>;
+      secondFactor?: { identifier: string; provider: string };
+    } = {}
   ): string {
     const localId = userInfo.localId;
     const refreshToken = randomBase64UrlStr(204);
-    this.refreshTokens.set(refreshToken, { localId, provider, extraClaims });
+    this.refreshTokens.set(refreshToken, { localId, provider, extraClaims, secondFactor });
     let refreshTokens = this.refreshTokensForLocalId.get(localId);
     if (!refreshTokens) {
       refreshTokens = new Set();
@@ -391,7 +397,14 @@ export class ProjectState {
 
   validateRefreshToken(
     refreshToken: string
-  ): { user: UserInfo; provider: string; extraClaims: Record<string, unknown> } | undefined {
+  ):
+    | {
+        user: UserInfo;
+        provider: string;
+        extraClaims: Record<string, unknown>;
+        secondFactor?: { identifier: string; provider: string };
+      }
+    | undefined {
     const record = this.refreshTokens.get(refreshToken);
     if (!record) {
       return undefined;
@@ -400,6 +413,7 @@ export class ProjectState {
       user: this.getUserByLocalIdAssertingExists(record.localId),
       provider: record.provider,
       extraClaims: record.extraClaims,
+      secondFactor: record.secondFactor,
     };
   }
 
@@ -566,6 +580,7 @@ interface RefreshTokenRecord {
   localId: string;
   provider: string;
   extraClaims: Record<string, unknown>;
+  secondFactor?: { identifier: string; provider: string };
 }
 
 export type OobRequestType = NonNullable<
