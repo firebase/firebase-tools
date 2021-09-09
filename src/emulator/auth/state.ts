@@ -551,6 +551,45 @@ export class ProjectState {
     }
   }
 }
+
+export class AgentProjectState extends ProjectState {
+  private tenantForTenantId: Map<string, Tenant> = new Map();
+
+  // TODO(lisajian): Fill in when v2.projects.tenants.get is added
+  getTenant(): void {
+    return;
+  }
+
+  // TODO(lisajian): Fill in when v2.projects.tenants.list is added
+  listTenants(): void {
+    return;
+  }
+
+  // TODO(lisajian): Fill in when v2.projects.tenants.create is added
+  createTenant(): void {
+    return;
+  }
+
+  // TODO(lisajian): Fill in when v2.projects.tenants.patch is added
+  updateTenant(): void {
+    return;
+  }
+
+  // TODO(lisajian): Fill in when v2.projects.tenants.delete is added
+  deleteTenant(): void {
+    return;
+  }
+}
+
+export class TenantProjectState extends ProjectState {
+  readonly tenantId: string;
+
+  constructor(projectId: string, tenantId: string) {
+    super(projectId);
+    this.tenantId = tenantId;
+  }
+}
+
 export type ProviderUserInfo = MakeRequired<
   Schemas["GoogleCloudIdentitytoolkitV1ProviderUserInfo"],
   "rawId" | "providerId"
@@ -562,6 +601,7 @@ export type UserInfo = Omit<
   localId: string;
   providerUserInfo?: ProviderUserInfo[];
 };
+export type Tenant = Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"];
 
 interface RefreshTokenRecord {
   localId: string;

@@ -7,7 +7,7 @@ import { OpenAPIObject, PathsObject, ServerObject, OperationObject } from "opena
 import { EmulatorLogger } from "../emulatorLogger";
 import { Emulators } from "../types";
 import { authOperations, AuthOps, AuthOperation } from "./operations";
-import { ProjectState } from "./state";
+import { AgentProjectState, ProjectState, TenantProjectState } from "./state";
 import apiSpecUntyped from "./apiSpec";
 import {
   PromiseController,
@@ -103,6 +103,11 @@ function specWithEmulatorServer(protocol: string, host: string | undefined): Ope
   }
 }
 
+export interface AgentProject {
+  state: ProjectState;
+  tenantProjects: Map<string, ProjectState>;
+}
+
 /**
  * Create an Express app that serves Auth Emulator APIs.
  *
@@ -115,7 +120,7 @@ function specWithEmulatorServer(protocol: string, host: string | undefined): Ope
  */
 export async function createApp(
   defaultProjectId: string,
-  projectStateForId = new Map<string, ProjectState>()
+  projectStateForId = new Map<string, AgentProject>()
 ): Promise<express.Express> {
   const app = express();
   app.set("json spaces", 2);
@@ -327,13 +332,23 @@ export async function createApp(
     return defaultProjectId;
   }
 
-  function getProjectStateById(projectId: string): ProjectState {
-    let state = projectStateForId.get(projectId);
-    if (!state) {
-      state = new ProjectState(projectId);
-      projectStateForId.set(projectId, state);
+  function getProjectStateById(projectId: string, tenantId?: string): ProjectState {
+    let agentProject = projectStateForId.get(projectId);
+    if (!agentProject) {
+      const state = new AgentProjectState(projectId);
+      agentProject = { state, tenantProjects: new Map<string, ProjectState>() };
+      projectStateForId.set(projectId, agentProject);
     }
-    return state;
+    if (!tenantId) {
+      return agentProject.state;
+    }
+
+    let tenantState = agentProject.tenantProjects.get(tenantId);
+    if (!tenantState) {
+      tenantState = new TenantProjectState(projectId, tenantId);
+      agentProject.tenantProjects.set(tenantId, tenantState);
+    }
+    return tenantState;
   }
 }
 
@@ -407,7 +422,7 @@ function registerLegacyRoutes(app: express.Express): void {
 
 function toExegesisController(
   ops: AuthOps,
-  getProjectStateById: (projectId: string) => ProjectState
+  getProjectStateById: (projectId: string, tenantId: string) => ProjectState
 ): Record<string, PromiseController> {
   const result: Record<string, PromiseController> = {};
   processNested(ops, "");
@@ -461,10 +476,8 @@ function toExegesisController(
         // See: https://cloud.google.com/identity-platform/docs/reference/rest/v1/accounts/signUp
         targetProjectId = ctx.user;
       }
-      if (ctx.params.path.tenantId || ctx.requestBody?.tenantId) {
-        throw new NotImplementedError("Multi-tenancy is unimplemented.");
-      }
-      return operation(getProjectStateById(targetProjectId), ctx.requestBody, ctx);
+      const targetTenantId: string = ctx.params.path.tenantId || ctx.requestBody?.tenantId;
+      return operation(getProjectStateById(targetProjectId, targetTenantId), ctx.requestBody, ctx);
     };
   }
 }
