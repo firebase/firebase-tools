@@ -29,7 +29,7 @@ describe("optionsHelper", () => {
         sourceUrl: "https://my.stuff.com",
         params: [],
       };
-      readParamsFileStub = sinon.stub(paramHelper, "readParamsFile");
+      readParamsFileStub = sinon.stub(paramHelper, "readEnvFile");
     });
 
     afterEach(() => {
@@ -52,7 +52,7 @@ describe("optionsHelper", () => {
         USER_PARAM2: "val2",
       });
 
-      expect(optionsHelper.getParams(testOptions, testSpec)).to.eventually.deep.eq({
+      expect(optionsHelper.getParams(testOptions, testSpec)).to.deep.eq({
         ...{
           USER_PARAM1: "val1",
           USER_PARAM2: "val2",
@@ -82,7 +82,7 @@ describe("optionsHelper", () => {
         USER_PARAM3: "${USER_PARAM2}",
       });
 
-      expect(optionsHelper.getParams(testOptions, testSpec)).to.eventually.deep.eq({
+      expect(optionsHelper.getParams(testOptions, testSpec)).to.deep.eq({
         ...{
           USER_PARAM1: "test-hello",
           USER_PARAM2: "val2",
@@ -107,7 +107,7 @@ describe("optionsHelper", () => {
       ];
       readParamsFileStub.resolves({});
 
-      expect(optionsHelper.getParams(testOptions, testSpec)).to.eventually.deep.eq({
+      expect(optionsHelper.getParams(testOptions, testSpec)).to.deep.eq({
         ...{
           USER_PARAM1: "hi",
           USER_PARAM2: "hello",

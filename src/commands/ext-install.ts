@@ -40,7 +40,7 @@ marked.setOptions({
 });
 
 interface InstallExtensionOptions {
-  paramFilePath?: string;
+  paramsEnvPath?: string;
   projectId: string;
   extensionName: string;
   source?: extensionsApi.ExtensionSource;
@@ -55,7 +55,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
     extensionName,
     source,
     extVersion,
-    paramFilePath,
+    paramsEnvPath,
     nonInteractive,
     force,
   } = options;
@@ -119,12 +119,12 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
     switch (choice) {
       case "installNew":
         instanceId = await promptForValidInstanceId(`${instanceId}-${getRandomString(4)}`);
-        params = await paramHelper.getParams(
+        params = await paramHelper.getParams({
           projectId,
-          _.get(spec, "params", []),
+          paramSpecs: spec.params,
           nonInteractive,
-          paramFilePath
-        );
+          paramsEnvPath,
+        });
         spinner.text = "Installing your extension instance. This usually takes 3 to 5 minutes...";
         spinner.start();
         await extensionsApi.createInstance({
@@ -142,12 +142,12 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
         );
         break;
       case "updateExisting":
-        params = await paramHelper.getParams(
+        params = await paramHelper.getParams({
           projectId,
-          _.get(spec, "params", []),
+          paramSpecs: spec.params,
           nonInteractive,
-          paramFilePath
-        );
+          paramsEnvPath,
+        });
         spinner.text = "Updating your extension instance. This usually takes 3 to 5 minutes...";
         spinner.start();
         await update({
@@ -254,7 +254,7 @@ export default new Command("ext:install [extensionName]")
   .before(checkMinRequiredVersion, "extMinVersion")
   .action(async (extensionName: string, options: any) => {
     const projectId = needProjectId(options);
-    const paramFilePath = options.params;
+    const paramsEnvPath = options.params;
     let learnMore = false;
     if (!extensionName) {
       if (options.interactive) {
@@ -313,7 +313,7 @@ export default new Command("ext:install [extensionName]")
     }
     try {
       return installExtension({
-        paramFilePath,
+        paramsEnvPath,
         projectId,
         extensionName,
         source,

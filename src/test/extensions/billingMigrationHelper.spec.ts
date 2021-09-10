@@ -82,58 +82,6 @@ describe("billingMigrationHelper", () => {
     promptStub.restore();
   });
 
-  describe("displayUpdateBillingNotice", () => {
-    it("should notify the user if the runtime is being upgraded to nodejs10", () => {
-      promptStub.resolves(true);
-      const curSpec = _.cloneDeep(NODE8_SPEC);
-      const newSpec = _.cloneDeep(NODE10_SPEC);
-
-      expect(nodejsMigrationHelper.displayNode10UpdateBillingNotice(curSpec, newSpec, true)).not.to
-        .be.rejected;
-      expect(promptStub.callCount).to.equal(1);
-    });
-
-    it("should notify the user if the runtime is being upgraded to nodejs10 implicitly", () => {
-      promptStub.resolves(true);
-      const curSpec = _.cloneDeep(NO_RUNTIME_SPEC);
-      const newSpec = _.cloneDeep(NODE10_SPEC);
-
-      expect(nodejsMigrationHelper.displayNode10UpdateBillingNotice(curSpec, newSpec, true)).not.to
-        .be.rejected;
-      expect(promptStub.callCount).to.equal(1);
-    });
-
-    it("should display nothing if the runtime isn't being upgraded to nodejs10", () => {
-      promptStub.resolves(true);
-      const curSpec = _.cloneDeep(NODE8_SPEC);
-      const newSpec = _.cloneDeep(NODE8_SPEC);
-
-      expect(nodejsMigrationHelper.displayNode10UpdateBillingNotice(curSpec, newSpec, true)).not.to
-        .be.rejected;
-      expect(promptStub.callCount).to.equal(0);
-    });
-
-    it("should display nothing if the runtime is already on nodejs10", () => {
-      promptStub.resolves(true);
-      const curSpec = _.cloneDeep(NODE10_SPEC);
-      const newSpec = _.cloneDeep(NODE10_SPEC);
-
-      expect(nodejsMigrationHelper.displayNode10UpdateBillingNotice(curSpec, newSpec, true)).not.to
-        .be.rejected;
-      expect(promptStub.callCount).to.equal(0);
-    });
-
-    it("should error if the user doesn't give consent", () => {
-      promptStub.resolves(false);
-      const curSpec = _.cloneDeep(NODE8_SPEC);
-      const newSpec = _.cloneDeep(NODE10_SPEC);
-
-      expect(
-        nodejsMigrationHelper.displayNode10UpdateBillingNotice(curSpec, newSpec, true)
-      ).to.be.rejectedWith(FirebaseError, "Cancelled");
-    });
-  });
-
   describe("displayCreateBillingNotice", () => {
     it("should notify the user if the runtime requires nodejs10", () => {
       promptStub.resolves(true);
