@@ -9,7 +9,9 @@ import {
   inspectVerificationCodes,
   registerUser,
   signInWithEmailLink,
+  signInWithPhoneNumber,
   TEST_PHONE_NUMBER,
+  TEST_PHONE_NUMBER_2,
   TEST_PHONE_NUMBER_OBFUSCATED,
   updateAccountByLocalId,
 } from "./helpers";
@@ -75,6 +77,63 @@ describeAuthEmulator("mfa enrollment", ({ authApi, getClock }) => {
     expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
     expect(decoded!.payload.firebase.sign_in_second_factor).to.equal("phone");
     expect(decoded!.payload.firebase.second_factor_identifier).to.equal(mfaEnrollmentId);
+  });
+
+  it("should error if phoneEnrollmentInfo is not specified", async () => {
+    const { idToken } = await signInWithEmailLink(authApi(), "foo@example.com");
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/mfaEnrollment:start")
+      .query({ key: "fake-api-key" })
+      .send({ idToken })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.contain("INVALID_ARGUMENT");
+      });
+  });
+
+  it("should error if phoneNumber is invalid", async () => {
+    const { idToken } = await signInWithEmailLink(authApi(), "foo@example.com");
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/mfaEnrollment:start")
+      .query({ key: "fake-api-key" })
+      .send({ idToken, phoneEnrollmentInfo: { phoneNumber: "notaphonenumber" } })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.contain("INVALID_PHONE_NUMBER");
+      });
+  });
+
+  it("should error if phoneNumber is a duplicate", async () => {
+    const { idToken } = await signInWithEmailLink(authApi(), "foo@example.com");
+    await enrollPhoneMfa(authApi(), idToken, TEST_PHONE_NUMBER);
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/mfaEnrollment:start")
+      .query({ key: "fake-api-key" })
+      .send({ idToken, phoneEnrollmentInfo: { phoneNumber: TEST_PHONE_NUMBER } })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.equal(
+          "SECOND_FACTOR_EXISTS : Phone number already enrolled as second factor for this account."
+        );
+      });
+  });
+
+  it("should error if sign-in method of idToken is ineligible for MFA", async () => {
+    const { idToken, localId } = await signInWithPhoneNumber(authApi(), TEST_PHONE_NUMBER);
+    await updateAccountByLocalId(authApi(), localId, {
+      email: "bob@example.com",
+      emailVerified: true,
+    });
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/mfaEnrollment:start")
+      .query({ key: "fake-api-key" })
+      .send({ idToken, phoneEnrollmentInfo: { phoneNumber: TEST_PHONE_NUMBER_2 } })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.equal(
+          "UNSUPPORTED_FIRST_FACTOR : MFA is not available for the given first factor."
+        );
+      });
   });
 
   it("should allow sign-in with pending credential for MFA-enabled user", async () => {
@@ -185,5 +244,8 @@ describeAuthEmulator("mfa enrollment", ({ authApi, getClock }) => {
         expect(decoded!.payload.firebase).not.to.have.property("sign_in_second_factor");
         expect(decoded!.payload.firebase).not.to.have.property("second_factor_identifier");
       });
+
+    const after = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(after.mfaInfo).to.have.lengthOf(0);
   });
 });

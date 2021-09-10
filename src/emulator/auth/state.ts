@@ -8,12 +8,13 @@ import {
 import { MakeRequired } from "./utils";
 import { AuthCloudFunction } from "./cloudFunctions";
 import { assert } from "./errors";
-import { MfaEnrollment, MfaEnrollments, Schemas } from "./types";
+import { MfaEnrollments, Schemas } from "./types";
 
 export const PROVIDER_PASSWORD = "password";
 export const PROVIDER_PHONE = "phone";
 export const PROVIDER_ANONYMOUS = "anonymous";
 export const PROVIDER_CUSTOM = "custom";
+export const PROVIDER_GAME_CENTER = "gc.apple.com"; // Not yet implemented
 
 export const SIGNIN_METHOD_EMAIL_LINK = "emailLink";
 

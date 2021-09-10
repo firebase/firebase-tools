@@ -27,6 +27,7 @@ import {
   SIGNIN_METHOD_EMAIL_LINK,
   PROVIDER_CUSTOM,
   OobRecord,
+  PROVIDER_GAME_CENTER,
 } from "./state";
 import { MfaEnrollments, Schemas } from "./types";
 
@@ -109,6 +110,13 @@ const PASSWORD_MIN_LENGTH = 6;
 // https://cloud.google.com/identity-platform/docs/use-rest-api#section-verify-custom-token
 export const CUSTOM_TOKEN_AUDIENCE =
   "https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit";
+
+const MFA_INELIGIBLE_PROVIDER = new Set([
+  PROVIDER_ANONYMOUS,
+  PROVIDER_PHONE,
+  PROVIDER_CUSTOM,
+  PROVIDER_GAME_CENTER,
+]);
 
 function signUp(
   state: ProjectState,
@@ -1600,22 +1608,30 @@ function mfaEnrollmentStart(
 ): Schemas["GoogleCloudIdentitytoolkitV2StartMfaEnrollmentResponse"] {
   assert(reqBody.idToken, "MISSING_ID_TOKEN");
 
-  const { user } = parseIdToken(state, reqBody.idToken);
+  const { user, signInProvider } = parseIdToken(state, reqBody.idToken);
+  assert(
+    !MFA_INELIGIBLE_PROVIDER.has(signInProvider),
+    "UNSUPPORTED_FIRST_FACTOR : MFA is not available for the given first factor."
+  );
   assert(
     user.emailVerified,
     "UNVERIFIED_EMAIL : Need to verify email first before enrolling second factors."
   );
-  // TODO: Check signInProvider is eligible for MFA.
 
-  assert(reqBody.phoneEnrollmentInfo, "((Missing phoneEnrollmentInfo.))");
+  assert(reqBody.phoneEnrollmentInfo, "INVALID_ARGUMENT : ((Missing phoneEnrollmentInfo.))");
   // recaptchaToken, safetyNetToken, iosReceipt, and iosSecret are intentionally
   // ignored because the emulator doesn't implement anti-abuse features.
   // autoRetrievalInfo is ignored because SMS will not actually be sent.
 
   const phoneNumber = reqBody.phoneEnrollmentInfo.phoneNumber;
-  assert(phoneNumber, "((Missing phoneNumber.))");
-  assert(isValidPhoneNumber(phoneNumber), "((Invalid phone number.)");
-  // TODO: Check phoneNumber for duplicates.
+
+  // Production Firebase Auth service also throws INVALID_PHONE_NUMBER instead
+  // of MISSING_XXXX when phoneNumber is missing. Matching the behavior here.
+  assert(phoneNumber && isValidPhoneNumber(phoneNumber), "INVALID_PHONE_NUMBER : Invalid format.");
+  assert(
+    !user.mfaInfo?.some((enrollment) => enrollment.unobfuscatedPhoneInfo === phoneNumber),
+    "SECOND_FACTOR_EXISTS : Phone number already enrolled as second factor for this account."
+  );
 
   const { sessionInfo, code } = state.createVerificationCode(phoneNumber);
 
@@ -1639,18 +1655,25 @@ function mfaEnrollmentFinalize(
 ): Schemas["GoogleCloudIdentitytoolkitV2FinalizeMfaEnrollmentResponse"] {
   assert(reqBody.idToken, "MISSING_ID_TOKEN");
   let { user, signInProvider } = parseIdToken(state, reqBody.idToken);
-  // TODO: Check idToken and signInProvider is eligible for MFA.
-  assert(reqBody.phoneVerificationInfo, "((Missing phoneVerificationInfo.))");
+  assert(
+    !MFA_INELIGIBLE_PROVIDER.has(signInProvider),
+    "UNSUPPORTED_FIRST_FACTOR : MFA is not available for the given first factor."
+  );
+  assert(reqBody.phoneVerificationInfo, "INVALID_ARGUMENT : ((Missing phoneVerificationInfo.))");
 
   if (reqBody.phoneVerificationInfo.androidVerificationProof) {
     throw new NotImplementedError("androidVerificationProof is unsupported!");
   }
   const { code, sessionInfo } = reqBody.phoneVerificationInfo;
 
-  assert(code, "((Missing phoneVerificationInfo.code.))");
-  assert(sessionInfo, "((Missing phoneVerificationInfo.sessionInfo.))");
+  assert(code, "MISSING_CODE");
+  assert(sessionInfo, "MISSING_SESSION_INFO");
 
   const phoneNumber = verifyPhoneNumber(state, sessionInfo, code);
+  assert(
+    !user.mfaInfo?.some((enrollment) => enrollment.unobfuscatedPhoneInfo === phoneNumber),
+    "SECOND_FACTOR_EXISTS : Phone number already enrolled as second factor for this account."
+  );
 
   const existingFactors = user.mfaInfo || [];
   const existingIds = new Set<string>();
@@ -1670,9 +1693,12 @@ function mfaEnrollmentFinalize(
     mfaInfo: [...existingFactors, enrollment],
   });
 
+  // TODO: Generate OOB code for reverting enrollment.
+
   const { idToken, refreshToken } = issueTokens(state, user, signInProvider, {
     secondFactor: { identifier: enrollment.mfaEnrollmentId, provider: PROVIDER_PHONE },
   });
+
   return {
     idToken,
     refreshToken,
@@ -1689,9 +1715,9 @@ function mfaEnrollmentWithdraw(
   assert(user.mfaInfo, "MFA_ENROLLMENT_NOT_FOUND");
 
   const updatedList = user.mfaInfo.filter(
-    (enrollment) => enrollment.mfaEnrollmentId === reqBody.mfaEnrollmentId
+    (enrollment) => enrollment.mfaEnrollmentId !== reqBody.mfaEnrollmentId
   );
-  assert(updatedList.length === user.mfaInfo.length, "MFA_ENROLLMENT_NOT_FOUND");
+  assert(updatedList.length < user.mfaInfo.length, "MFA_ENROLLMENT_NOT_FOUND");
 
   user = state.updateUserByLocalId(user.localId, { mfaInfo: updatedList });
 
@@ -1704,16 +1730,25 @@ function mfaSignInStart(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV2StartMfaSignInRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV2StartMfaSignInResponse"] {
-  assert(reqBody.mfaPendingCredential, "((Missing mfaPendingCredential.))");
-  assert(reqBody.mfaEnrollmentId, "((Missing mfaEnrollmentId.))");
+  assert(
+    reqBody.mfaPendingCredential,
+    "MISSING_MFA_PENDING_CREDENTIAL : Request does not have MFA pending credential."
+  );
+  assert(
+    reqBody.mfaEnrollmentId,
+    "MISSING_MFA_ENROLLMENT_ID : No second factor identifier is provided."
+  );
+  // In production, reqBody.phoneSignInInfo must be set to indicate phone-based
+  // MFA. However, we don't enforce this because none of its fields are required
+  // in the emulator. e.g. recaptchaToken/safetyNetToken doesn't make sense;
   const { user } = parsePendingCredential(state, reqBody.mfaPendingCredential);
 
   const enrollment = user.mfaInfo?.find(
     (factor) => factor.mfaEnrollmentId === reqBody.mfaEnrollmentId
   );
-  assert(enrollment, "((mfaEnrollmentId not found.))");
+  assert(enrollment, "MFA_ENROLLMENT_NOT_FOUND");
   const phoneNumber = enrollment.unobfuscatedPhoneInfo;
-  assert(phoneNumber, "((not a phone-based MFA enrollment.))");
+  assert(phoneNumber, "INVALID_ARGUMENT : MFA provider not supported!");
 
   const { sessionInfo, code } = state.createVerificationCode(phoneNumber);
 
@@ -1735,8 +1770,10 @@ function mfaSignInFinalize(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV2FinalizeMfaSignInRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV2FinalizeMfaSignInResponse"] {
-  assert(reqBody.mfaPendingCredential, "((Missing mfaPendingCredential.))");
-  assert(reqBody.phoneVerificationInfo, "((Missing phoneVerificationInfo.))");
+  // Inconsistent with mfaSignInStart (where MISSING_MFA_PENDING_CREDENTIAL is
+  // returned), but matches production behavior.
+  assert(reqBody.mfaPendingCredential, "MISSING_CREDENTIAL : Please set MFA Pending Credential.");
+  assert(reqBody.phoneVerificationInfo, "INVALID_ARGUMENT : MFA provider not supported!");
 
   if (reqBody.phoneVerificationInfo.androidVerificationProof) {
     throw new NotImplementedError("androidVerificationProof is unsupported!");
@@ -1860,9 +1897,10 @@ function parseIdToken(
       "Received a signed JWT. Auth Emulator does not validate JWTs and IS NOT SECURE"
     );
   }
-  // TODO: Check JWT expiration here.
   const user = state.getUserByLocalId(decoded.payload.user_id);
   assert(user, "USER_NOT_FOUND");
+  // To make interactive debugging easier, idTokens in the emulator never expire
+  // due to the passage of time (exp unchecked) but they may still be _revoked_:
   assert(!user.validSince || decoded.payload.iat >= Number(user.validSince), "TOKEN_EXPIRED");
   assert(!user.disabled, "USER_DISABLED");
 
@@ -2344,6 +2382,8 @@ interface MfaPendingCredential {
   localId: string;
   signInProvider: string;
   projectId: string;
+  // MfaPendingCredential in emulator never expire to make interactive debugging
+  // a bit easier. Therefore, there's no need to record createdAt timestamps.
 }
 
 function mfaPending(
