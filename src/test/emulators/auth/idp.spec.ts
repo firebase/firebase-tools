@@ -106,7 +106,6 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
 
         // The ID Token used above does NOT contain name or photo, so the
         // account created won't have those attributes either.
-        // TODO: Shall we fetch more profile info from IDP via API calls?
         expect(res.body).not.to.have.property("displayName");
         expect(res.body).not.to.have.property("photoUrl");
 

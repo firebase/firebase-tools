@@ -538,7 +538,6 @@ export class ProjectState {
     if (!record || record.phoneNumber !== phoneNumber) {
       return undefined;
     }
-    // TODO: Find some way to enforce record.temporaryProofExpiresIn.
     return record;
   }
 
@@ -605,6 +604,8 @@ interface TemporaryProofRecord {
   phoneNumber: string;
   temporaryProof: string;
   temporaryProofExpiresIn: string;
+  // Temporary proofs in emulator never expire to make interactive debugging
+  // a bit easier. Therefore, there's no need to record createdAt timestamps.
 }
 
 function getProviderEmailsForUser(user: UserInfo): Set<string> {

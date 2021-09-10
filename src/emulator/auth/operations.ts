@@ -612,8 +612,10 @@ function getProjects(
   return {
     projectId: state.projectNumber,
     authorizedDomains: [
+      // This list is just a placeholder -- the JS SDK will NOT validate the
+      // domain at all when connecting to the emulator. Google-internal context:
+      // http://go/firebase-auth-emulator-dd#heading=h.3r9cilur7s46
       "localhost",
-      // TODO: Shall we allow more domains?
     ],
   };
 }
