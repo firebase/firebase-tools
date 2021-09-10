@@ -601,15 +601,15 @@ describe("Storage emulator", () => {
       await page.goto("https://example.com", { waitUntil: "networkidle2" });
 
       await page.addScriptTag({
-        url: "https://www.gstatic.com/firebasejs/7.24.0/firebase-app.js",
+        url: `https://www.gstatic.com/firebasejs/${firebase.SDK_VERSION}/firebase-app.js`,
       });
       await page.addScriptTag({
-        url: "https://www.gstatic.com/firebasejs/7.24.0/firebase-auth.js",
+        url: `https://www.gstatic.com/firebasejs/${firebase.SDK_VERSION}/firebase-auth.js`,
       });
       // url: "https://storage.googleapis.com/fir-tools-builds/firebase-storage-new.js",
       await page.addScriptTag({
         url: TEST_CONFIG.useProductionServers
-          ? "https://www.gstatic.com/firebasejs/7.24.0/firebase-storage.js"
+          ? `https://www.gstatic.com/firebasejs/${firebase.SDK_VERSION}/firebase-storage.js`
           : "https://storage.googleapis.com/fir-tools-builds/firebase-storage.js",
       });
 
