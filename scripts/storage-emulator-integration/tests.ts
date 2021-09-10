@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import * as admin from "firebase-admin";
-import * as firebase from "firebase";
+import firebase from "firebase";
 import * as fs from "fs";
 import * as path from "path";
 import * as http from "http";
