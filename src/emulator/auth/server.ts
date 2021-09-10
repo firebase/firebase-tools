@@ -104,8 +104,8 @@ function specWithEmulatorServer(protocol: string, host: string | undefined): Ope
 }
 
 export interface AgentProject {
-  state: ProjectState;
-  tenantProjects: Map<string, ProjectState>;
+  state: AgentProjectState;
+  tenantProjects: Map<string, TenantProjectState>;
 }
 
 /**
@@ -336,7 +336,7 @@ export async function createApp(
     let agentProject = projectStateForId.get(projectId);
     if (!agentProject) {
       const state = new AgentProjectState(projectId);
-      agentProject = { state, tenantProjects: new Map<string, ProjectState>() };
+      agentProject = { state, tenantProjects: new Map<string, TenantProjectState>() };
       projectStateForId.set(projectId, agentProject);
     }
     if (!tenantId) {
@@ -345,7 +345,7 @@ export async function createApp(
 
     let tenantState = agentProject.tenantProjects.get(tenantId);
     if (!tenantState) {
-      tenantState = new TenantProjectState(projectId, tenantId);
+      tenantState = new TenantProjectState(projectId, tenantId, agentProject.state);
       agentProject.tenantProjects.set(tenantId, tenantState);
     }
     return tenantState;
@@ -475,6 +475,12 @@ function toExegesisController(
         // Emulator DOES NOT check IAM but assumes all permissions are granted.
         // See: https://cloud.google.com/identity-platform/docs/reference/rest/v1/accounts/signUp
         targetProjectId = ctx.user;
+      }
+      if (ctx.params.path.tenantId && ctx.requestBody?.tenantId) {
+        assert(
+          ctx.params.path.tenantId === ctx.requestBody?.tenantId,
+          "Tenant IDs in path and request body do not match"
+        );
       }
       const targetTenantId: string = ctx.params.path.tenantId || ctx.requestBody?.tenantId;
       return operation(getProjectStateById(targetProjectId, targetTenantId), ctx.requestBody, ctx);

@@ -7,7 +7,7 @@ import {
 } from "./utils";
 import { MakeRequired } from "./utils";
 import { AuthCloudFunction } from "./cloudFunctions";
-import { assert } from "./errors";
+import { assert, NotImplementedError } from "./errors";
 import { MfaEnrollments, Schemas } from "./types";
 
 export const PROVIDER_PASSWORD = "password";
@@ -29,18 +29,28 @@ export class ProjectState {
   private oobs: Map<string, OobRecord> = new Map();
   private verificationCodes: Map<string, PhoneVerificationRecord> = new Map();
   private temporaryProofs: Map<string, TemporaryProofRecord> = new Map();
-  public oneAccountPerEmail = true;
-  private authCloudFunction: AuthCloudFunction;
-  public usageMode: UsageMode = UsageMode.DEFAULT;
+  protected _oneAccountPerEmail = true;
+  protected _authCloudFunction: AuthCloudFunction | undefined;
+  protected _usageMode: UsageMode = UsageMode.DEFAULT;
 
-  constructor(public readonly projectId: string) {
-    this.authCloudFunction = new AuthCloudFunction(projectId);
-  }
+  constructor(public readonly projectId: string) {}
 
   get projectNumber(): string {
     // TODO: Shall we generate something different for each project?
     // Hard-coding an obviously fake number for clarity for now.
     return "12345";
+  }
+
+  get oneAccountPerEmail() {
+    return this._oneAccountPerEmail;
+  }
+
+  get authCloudFunction() {
+    return this._authCloudFunction;
+  }
+
+  get usageMode() {
+    return this._usageMode;
   }
 
   createUser(props: Omit<UserInfo, "localId" | "createdAt" | "lastRefreshAt">): UserInfo {
@@ -74,7 +84,7 @@ export class ProjectState {
     const user = this.updateUserByLocalId(localId, props, {
       upsertProviders: props.providerUserInfo,
     });
-    this.authCloudFunction.dispatch("create", user);
+    this._authCloudFunction?.dispatch("create", user);
     return user;
   }
 
@@ -118,7 +128,7 @@ export class ProjectState {
       }
     }
 
-    this.authCloudFunction.dispatch("delete", user);
+    this._authCloudFunction?.dispatch("delete", user);
   }
 
   updateUserByLocalId(
@@ -555,38 +565,76 @@ export class ProjectState {
 export class AgentProjectState extends ProjectState {
   private tenantForTenantId: Map<string, Tenant> = new Map();
 
+  constructor(projectId: string) {
+    super(projectId);
+    this._authCloudFunction = new AuthCloudFunction(projectId);
+  }
+
+  get authCloudFunction() {
+    return super.authCloudFunction;
+  }
+
+  get oneAccountPerEmail() {
+    return super.oneAccountPerEmail;
+  }
+
+  set oneAccountPerEmail(oneAccountPerEmail: boolean) {
+    this._oneAccountPerEmail = oneAccountPerEmail;
+  }
+
+  get usageMode() {
+    return super.usageMode;
+  }
+
+  set usageMode(usageMode: UsageMode) {
+    this._usageMode = usageMode;
+  }
+
   // TODO(lisajian): Fill in when v2.projects.tenants.get is added
   getTenant(): void {
-    return;
+    throw new NotImplementedError("getTenant is not implemented yet.");
   }
 
   // TODO(lisajian): Fill in when v2.projects.tenants.list is added
   listTenants(): void {
-    return;
+    throw new NotImplementedError("listTenants is not implemented yet.");
   }
 
   // TODO(lisajian): Fill in when v2.projects.tenants.create is added
   createTenant(): void {
-    return;
+    throw new NotImplementedError("createTenant is not implemented yet.");
   }
 
   // TODO(lisajian): Fill in when v2.projects.tenants.patch is added
   updateTenant(): void {
-    return;
+    throw new NotImplementedError("updateTenant is not implemented yet.");
   }
 
   // TODO(lisajian): Fill in when v2.projects.tenants.delete is added
   deleteTenant(): void {
-    return;
+    throw new NotImplementedError("deleteTenant is not implemented yet.");
   }
 }
 
 export class TenantProjectState extends ProjectState {
-  readonly tenantId: string;
-
-  constructor(projectId: string, tenantId: string) {
+  constructor(
+    projectId: string,
+    readonly tenantId: string,
+    private readonly parentProject: AgentProjectState
+  ) {
     super(projectId);
-    this.tenantId = tenantId;
+  }
+
+  get oneAccountPerEmail() {
+    return this.parentProject.oneAccountPerEmail;
+  }
+
+  get authCloudFunction() {
+    return this.parentProject.authCloudFunction;
+  }
+
+  get usageMode() {
+    return this.parentProject.usageMode;
   }
 }
 
