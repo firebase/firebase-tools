@@ -466,6 +466,7 @@ describe("import/export end to end", () => {
         signIn: {
           allowDuplicateEmails: false,
         },
+        usageMode: "DEFAULT",
       });
 
       const accountsPath = path.join(exportPath, "auth_export", "accounts.json");
@@ -571,6 +572,7 @@ describe("import/export end to end", () => {
         signIn: {
           allowDuplicateEmails: false,
         },
+        usageMode: "DEFAULT",
       });
 
       const accountsPath = path.join(exportPath, "auth_export", "accounts.json");
@@ -636,6 +638,7 @@ describe("import/export end to end", () => {
       signIn: {
         allowDuplicateEmails: false,
       },
+      usageMode: "DEFAULT",
     });
 
     const accountsPath = path.join(exportPath, "auth_export", "accounts.json");
