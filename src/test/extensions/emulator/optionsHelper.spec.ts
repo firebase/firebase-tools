@@ -19,7 +19,7 @@ describe("optionsHelper", () => {
       STORAGE_BUCKET: "test.appspot.com",
     };
     let testSpec: ExtensionSpec;
-    let readParamsFileStub: sinon.SinonStub;
+    let readEnvFileStub: sinon.SinonStub;
 
     beforeEach(() => {
       testSpec = {
@@ -29,11 +29,11 @@ describe("optionsHelper", () => {
         sourceUrl: "https://my.stuff.com",
         params: [],
       };
-      readParamsFileStub = sinon.stub(paramHelper, "readEnvFile");
+      readEnvFileStub = sinon.stub(paramHelper, "readEnvFile");
     });
 
     afterEach(() => {
-      readParamsFileStub.restore();
+      readEnvFileStub.restore();
     });
 
     it("should return user and autopopulated params", () => {
@@ -47,7 +47,7 @@ describe("optionsHelper", () => {
           param: "USER_PARAM2",
         },
       ];
-      readParamsFileStub.resolves({
+      readEnvFileStub.returns({
         USER_PARAM1: "val1",
         USER_PARAM2: "val2",
       });
@@ -76,7 +76,7 @@ describe("optionsHelper", () => {
           param: "USER_PARAM3",
         },
       ];
-      readParamsFileStub.resolves({
+      readEnvFileStub.returns({
         USER_PARAM1: "${PROJECT_ID}-hello",
         USER_PARAM2: "val2",
         USER_PARAM3: "${USER_PARAM2}",
@@ -105,7 +105,7 @@ describe("optionsHelper", () => {
           default: "hello",
         },
       ];
-      readParamsFileStub.resolves({});
+      readEnvFileStub.returns({});
 
       expect(optionsHelper.getParams(testOptions, testSpec)).to.deep.eq({
         ...{
