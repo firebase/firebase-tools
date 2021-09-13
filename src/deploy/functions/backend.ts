@@ -138,6 +138,17 @@ export function triggerTag(fn: FunctionSpec): string {
   return fn.trigger.eventType;
 }
 
+/** A user-friendly string for the kind of trigger of an endpoint. */
+export function endpointTriggerType(endpoint: Endpoint): string {
+  if (isScheduleTriggered(endpoint)) {
+    return "scheduled";
+  } else if (isHttpsTriggered(endpoint)) {
+    return "https";
+  } else {
+    return endpoint.eventTrigger.eventType;
+  }
+}
+
 // TODO(inlined): Enum types should be singularly named
 export type VpcEgressSettings = "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC";
 export type IngressSettings = "ALLOW_ALL" | "ALLOW_INTERNAL_ONLY" | "ALLOW_INTERNAL_AND_GCLB";
@@ -396,6 +407,11 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
   };
   const gcfV1Results = await gcf.listAllFunctions(ctx.projectId);
   for (const apiFunction of gcfV1Results.functions) {
+    const endpoint = gcf.endpointFromFunction(apiFunction);
+    ctx.existingBackend.endpoints[endpoint.region] =
+      ctx.existingBackend.endpoints[endpoint.region] || {};
+    ctx.existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
+
     const specFunction = gcf.specFromFunction(apiFunction);
     ctx.existingBackend.cloudFunctions.push(specFunction);
     const isScheduled = apiFunction.labels?.["deployment-scheduled"] === "true";
@@ -431,6 +447,11 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
 
   const gcfV2Results = await gcfV2.listAllFunctions(ctx.projectId);
   for (const apiFunction of gcfV2Results.functions) {
+    const endpoint = gcfV2.endpointFromFunction(apiFunction);
+    ctx.existingBackend.endpoints[endpoint.region] =
+      ctx.existingBackend.endpoints[endpoint.region] || {};
+    ctx.existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
+
     const specFunction = gcfV2.specFromFunction(apiFunction);
     ctx.existingBackend.cloudFunctions.push(specFunction);
     const pubsubScheduled = apiFunction.labels?.["deployment-scheduled"] === "true";
@@ -539,10 +560,31 @@ export async function checkAvailability(context: Context, want: Backend): Promis
   }
 }
 
-// To be a bit more deterministic, print function lists in a prescribed order.
-// Future versions might want to compare regions by GCF/Run pricing tier before
-// location.
-export function compareFunctions(left: FunctionSpec, right: FunctionSpec): number {
+/** A helper utility for flattening all endpoints in a backend since typing is a bit wonky. */
+export function allEndpoints(backend: Backend): Endpoint[] {
+  return Object.values(backend.endpoints).reduce((accum, perRegion) => {
+    return [...accum, ...Object.values(perRegion)];
+  }, [] as Endpoint[]);
+}
+
+/** A curried function used for filters, returns a matcher for functions in a backend. */
+export const hasEndpoint = (backend: Backend) => (endpoint: Endpoint): boolean => {
+  return backend.endpoints[endpoint.region] && !!backend.endpoints[endpoint.region][endpoint.id];
+};
+
+/** A curried function that is the opposite of hasEndpoint */
+export const missingEndpoint = (backend: Backend) => (endpoint: Endpoint): boolean => {
+  return !hasEndpoint(backend)(endpoint);
+};
+
+/** A standard method for sorting endpoints for display.
+ * Future versions might consider sorting region by pricing tier before
+ * alphabetically
+ */
+export function compareFunctions(
+  left: TargetIds & { platform: FunctionsPlatform },
+  right: TargetIds & { platform: FunctionsPlatform }
+): number {
   if (left.platform != right.platform) {
     return right.platform < left.platform ? -1 : 1;
   }

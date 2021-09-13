@@ -24,6 +24,13 @@ describe("Backend", () => {
     runtime: "nodejs16",
   };
 
+  const ENDPOINT: Omit<backend.Endpoint, "httpsTrigger"> = {
+    platform: "gcfv1",
+    ...FUNCTION_NAME,
+    entryPoint: "function",
+    runtime: "nodejs16",
+  };
+
   const CLOUD_FUNCTION: Omit<gcf.CloudFunction, gcf.OutputOnlyFields> = {
     name: "projects/project/locations/region/functions/id",
     entryPoint: "function",
@@ -308,6 +315,7 @@ describe("Backend", () => {
         expect(have).to.deep.equal({
           ...backend.empty(),
           cloudFunctions: [FUNCTION_SPEC],
+          endpoints: { region: { id: { ...ENDPOINT, httpsTrigger: {} } } },
         });
       });
 
@@ -332,6 +340,16 @@ describe("Backend", () => {
               uri: HAVE_CLOUD_FUNCTION_V2.serviceConfig.uri,
             },
           ],
+          endpoints: {
+            region: {
+              id: {
+                ...ENDPOINT,
+                platform: "gcfv2",
+                httpsTrigger: {},
+                uri: HAVE_CLOUD_FUNCTION_V2.serviceConfig.uri,
+              },
+            },
+          },
         });
       });
 
@@ -383,6 +401,17 @@ describe("Backend", () => {
               targetService: FUNCTION_NAME,
             },
           ],
+          endpoints: {
+            region: {
+              id: {
+                ...ENDPOINT,
+                scheduleTrigger: {},
+                labels: {
+                  "deployment-scheduled": "true",
+                },
+              },
+            },
+          },
         };
 
         expect(have).to.deep.equal(want);
