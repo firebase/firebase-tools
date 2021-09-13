@@ -469,3 +469,140 @@ export function specFromFunction(gcfFunction: CloudFunction): backend.FunctionSp
 
   return cloudFunction;
 }
+
+export function functionFromEndpoint(endpoint: backend.Endpoint, source: StorageSource) {
+  if (endpoint.platform != "gcfv2") {
+    throw new FirebaseError(
+      "Trying to create a v2 CloudFunction with v1 API. This should never happen"
+    );
+  }
+
+  if (!runtimes.isValidRuntime(endpoint.runtime)) {
+    throw new FirebaseError(
+      "Failed internal assertion. Trying to deploy a new function with a deprecated runtime." +
+        " This should never happen"
+    );
+  }
+
+  const gcfFunction: Omit<CloudFunction, OutputOnlyFields> = {
+    name: backend.functionName(endpoint),
+    buildConfig: {
+      runtime: endpoint.runtime,
+      entryPoint: endpoint.entryPoint,
+      source: {
+        storageSource: source,
+      },
+      // We don't use build environment variables,
+      environmentVariables: {},
+    },
+    serviceConfig: {},
+  };
+
+  proto.copyIfPresent(gcfFunction, endpoint, "labels");
+  proto.copyIfPresent(
+    gcfFunction.serviceConfig,
+    endpoint,
+    "availableMemoryMb",
+    "environmentVariables",
+    "vpcConnector",
+    "vpcConnectorEgressSettings",
+    "serviceAccountEmail",
+    "ingressSettings"
+  );
+  proto.renameIfPresent(
+    gcfFunction.serviceConfig,
+    endpoint,
+    "timeoutSeconds",
+    "timeout",
+    proto.secondsFromDuration
+  );
+  proto.renameIfPresent(gcfFunction.serviceConfig, endpoint, "minInstanceCount", "minInstances");
+  proto.renameIfPresent(gcfFunction.serviceConfig, endpoint, "maxInstanceCount", "maxInstances");
+
+  if (backend.isEventTriggered(endpoint)) {
+    gcfFunction.eventTrigger = {
+      eventType: endpoint.eventTrigger.eventType,
+    };
+    if (gcfFunction.eventTrigger.eventType === PUBSUB_PUBLISH_EVENT) {
+      gcfFunction.eventTrigger.pubsubTopic = endpoint.eventTrigger.eventFilters.resource;
+    } else {
+      gcfFunction.eventTrigger.eventFilters = [];
+      for (const [attribute, value] of Object.entries(endpoint.eventTrigger.eventFilters)) {
+        gcfFunction.eventTrigger.eventFilters.push({ attribute, value });
+      }
+    }
+
+    if (endpoint.eventTrigger.retry) {
+      logger.warn("Cannot set a retry policy on Cloud Function", endpoint.id);
+    }
+  } else if (backend.isScheduleTriggered(endpoint)) {
+    // trigger type defaults to HTTPS.
+    gcfFunction.labels = { ...gcfFunction.labels, ["deployment-scheduled"]: "true" };
+  }
+
+  return gcfFunction;
+}
+
+export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoint {
+  const [, project, , region, , id] = gcfFunction.name.split("/");
+  let trigger: backend.Triggered;
+  if (gcfFunction.labels?.["deployment-scheduled"] === "true") {
+    trigger = {
+      scheduleTrigger: {},
+    };
+  } else if (gcfFunction.eventTrigger) {
+    trigger = {
+      eventTrigger: {
+        eventType: gcfFunction.eventTrigger!.eventType,
+        eventFilters: {},
+        retry: false,
+      },
+    };
+    if (gcfFunction.eventTrigger.pubsubTopic) {
+      trigger.eventTrigger.eventFilters.resource = gcfFunction.eventTrigger.pubsubTopic;
+    } else {
+      for (const { attribute, value } of gcfFunction.eventTrigger.eventFilters || []) {
+        trigger.eventTrigger.eventFilters[attribute] = value;
+      }
+    }
+  } else {
+    trigger = { httpsTrigger: {} };
+  }
+
+  if (!runtimes.isValidRuntime(gcfFunction.buildConfig.runtime)) {
+    logger.debug("GCFv2 function has a deprecated runtime:", JSON.stringify(gcfFunction, null, 2));
+  }
+
+  const endpoint: backend.Endpoint = {
+    platform: "gcfv2",
+    id,
+    project,
+    region,
+    ...trigger,
+    entryPoint: gcfFunction.buildConfig.entryPoint,
+    runtime: gcfFunction.buildConfig.runtime,
+    uri: gcfFunction.serviceConfig.uri,
+  };
+  proto.copyIfPresent(
+    endpoint,
+    gcfFunction.serviceConfig,
+    "serviceAccountEmail",
+    "availableMemoryMb",
+    "vpcConnector",
+    "vpcConnectorEgressSettings",
+    "ingressSettings",
+    "environmentVariables"
+  );
+  proto.renameIfPresent(
+    endpoint,
+    gcfFunction.serviceConfig,
+    "timeout",
+    "timeoutSeconds",
+    proto.durationFromSeconds
+  );
+  proto.renameIfPresent(endpoint, gcfFunction.serviceConfig, "minInstances", "minInstanceCount");
+  proto.renameIfPresent(endpoint, gcfFunction.serviceConfig, "maxInstances", "maxInstanceCount");
+  proto.copyIfPresent(endpoint, gcfFunction, "labels");
+
+  return endpoint;
+}
