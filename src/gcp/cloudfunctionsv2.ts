@@ -322,6 +322,7 @@ export async function deleteFunction(cloudFunction: string): Promise<Operation> 
   }
 }
 
+/** Creates a V2 Cloud Function from a GCFV2 FunctionSpec */
 export function functionFromSpec(cloudFunction: backend.FunctionSpec, source: StorageSource) {
   if (cloudFunction.platform != "gcfv2") {
     throw new FirebaseError(

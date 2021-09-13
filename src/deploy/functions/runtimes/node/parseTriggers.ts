@@ -144,6 +144,7 @@ export function addResourcesToBackend(
   // Every trigger annotation is at least a function
   for (const region of annotation.regions || [api.functionsDefaultRegion]) {
     let trigger: backend.HttpsTrigger | backend.EventTrigger;
+    let triggered: backend.Triggered;
 
     // Missing both or have both trigger types
     if (!!annotation.httpsTrigger == !!annotation.eventTrigger) {
@@ -157,7 +158,8 @@ export function addResourcesToBackend(
       if (annotation.failurePolicy) {
         logger.warn(`Ignoring retry policy for HTTPS function ${annotation.name}`);
       }
-      proto.copyIfPresent(trigger, annotation.httpsTrigger, "invoker", "invoker");
+      proto.copyIfPresent(trigger, annotation.httpsTrigger, "invoker");
+      triggered = { httpsTrigger: trigger };
     } else {
       trigger = {
         eventType: annotation.eventTrigger!.eventType,
@@ -166,6 +168,11 @@ export function addResourcesToBackend(
         },
         retry: !!annotation.failurePolicy,
       };
+      if (annotation.schedule) {
+        triggered = { scheduleTrigger: annotation.schedule };
+      } else {
+        triggered = { eventTrigger: trigger };
+      }
     }
     const cloudFunctionName: backend.TargetIds = {
       id: annotation.name,
@@ -179,15 +186,36 @@ export function addResourcesToBackend(
       runtime: runtime,
       trigger: trigger,
     };
+    const endpoint: backend.Endpoint = {
+      platform: annotation.platform || "gcfv1",
+      ...cloudFunctionName,
+      entryPoint: annotation.entryPoint,
+      runtime: runtime,
+      ...triggered,
+    };
     if (annotation.vpcConnector) {
       let maybeId = annotation.vpcConnector;
       if (!maybeId.includes("/")) {
         maybeId = `projects/${projectId}/locations/${region}/connectors/${maybeId}`;
       }
       cloudFunction.vpcConnector = maybeId;
+      endpoint.vpcConnector = maybeId;
     }
     proto.copyIfPresent(
       cloudFunction,
+      annotation,
+      "concurrency",
+      "serviceAccountEmail",
+      "labels",
+      "vpcConnectorEgressSettings",
+      "ingressSettings",
+      "timeout",
+      "maxInstances",
+      "minInstances",
+      "availableMemoryMb"
+    );
+    proto.copyIfPresent(
+      endpoint,
       annotation,
       "concurrency",
       "serviceAccountEmail",
@@ -235,5 +263,7 @@ export function addResourcesToBackend(
     }
 
     want.cloudFunctions.push(cloudFunction);
+    want.endpoints[region] = want.endpoints[region] || {};
+    want.endpoints[region][endpoint.id] = endpoint;
   }
 }

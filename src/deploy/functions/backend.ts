@@ -256,7 +256,8 @@ export interface Backend {
   schedules: ScheduleSpec[];
   topics: PubSubSpec[];
   environmentVariables: EnvironmentVariables;
-  endpoints: Endpoint[];
+  // region -> id -> Endpoint
+  endpoints: Record<string, Record<string, Endpoint>>;
 }
 
 /**
@@ -267,7 +268,7 @@ export interface Backend {
 export function empty(): Backend {
   return {
     requiredAPIs: {},
-    endpoints: [],
+    endpoints: {},
     cloudFunctions: [],
     schedules: [],
     topics: [],
@@ -283,6 +284,7 @@ export function empty(): Backend {
 export function isEmptyBackend(backend: Backend): boolean {
   return (
     Object.keys(backend.requiredAPIs).length == 0 &&
+    Object.keys(backend.endpoints).length === 0 &&
     backend.cloudFunctions.length === 0 &&
     backend.schedules.length === 0 &&
     backend.topics.length === 0
