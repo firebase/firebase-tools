@@ -30,7 +30,6 @@ export function yamlToBackend(
       "It seems you are using a newer SDK than this version of the CLI can handle. Please update your CLI with `npm install -g firebase-tools`"
     );
   } catch (err) {
-    console.error("YOU FAIL:", err);
     throw new FirebaseError("Failed to parse backend specification", { children: [err] });
   }
 }
