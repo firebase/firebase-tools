@@ -33,6 +33,13 @@ describe("addResourcesToBackend", () => {
     entryPoint: "func",
   });
 
+  const BASIC_ENDPOINT: Omit<backend.Endpoint, "httpsTrigger"> = Object.freeze({
+    platform: "gcfv1",
+    ...BASIC_FUNCTION_NAME,
+    runtime: "nodejs16",
+    entryPoint: "func",
+  });
+
   it("should assert against impossible configurations", () => {
     expect(() => {
       parseTriggers.addResourcesToBackend(
@@ -69,6 +76,14 @@ describe("addResourcesToBackend", () => {
           trigger: {},
         },
       ],
+      endpoints: {
+        "us-central1": {
+          func: {
+            ...BASIC_ENDPOINT,
+            httpsTrigger: {},
+          },
+        },
+      },
     };
     expect(result).to.deep.equal(expected);
   });
@@ -93,20 +108,29 @@ describe("addResourcesToBackend", () => {
         const result = backend.empty();
         parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
 
+        const eventTrigger: backend.EventTrigger = {
+          eventType: "google.pubsub.topic.publish",
+          eventFilters: {
+            resource: "projects/project/topics/topic",
+          },
+          retry: !!failurePolicy,
+        };
         const expected: backend.Backend = {
           ...backend.empty(),
           cloudFunctions: [
             {
               ...BASIC_FUNCTION,
-              trigger: {
-                eventType: "google.pubsub.topic.publish",
-                eventFilters: {
-                  resource: "projects/project/topics/topic",
-                },
-                retry: !!failurePolicy,
-              },
+              trigger: eventTrigger,
             },
           ],
+          endpoints: {
+            "us-central1": {
+              func: {
+                ...BASIC_ENDPOINT,
+                eventTrigger,
+              },
+            },
+          },
         };
         expect(result).to.deep.equal(expected);
       });
@@ -134,6 +158,18 @@ describe("addResourcesToBackend", () => {
     const result = backend.empty();
     parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
 
+    const config: backend.ServiceConfiguration = {
+      maxInstances: 42,
+      minInstances: 1,
+      serviceAccountEmail: "inlined@google.com",
+      vpcConnectorEgressSettings: "PRIVATE_RANGES_ONLY",
+      vpcConnector: "projects/project/locations/region/connectors/connector",
+      ingressSettings: "ALLOW_ALL",
+      timeout: "60s",
+      labels: {
+        test: "testing",
+      },
+    };
     const expected: backend.Backend = {
       ...backend.empty(),
       cloudFunctions: [
@@ -142,18 +178,20 @@ describe("addResourcesToBackend", () => {
           trigger: {
             invoker: ["public"],
           },
-          maxInstances: 42,
-          minInstances: 1,
-          serviceAccountEmail: "inlined@google.com",
-          vpcConnectorEgressSettings: "PRIVATE_RANGES_ONLY",
-          vpcConnector: "projects/project/locations/region/connectors/connector",
-          ingressSettings: "ALLOW_ALL",
-          timeout: "60s",
-          labels: {
-            test: "testing",
-          },
+          ...config,
         },
       ],
+      endpoints: {
+        "us-central1": {
+          func: {
+            ...BASIC_ENDPOINT,
+            httpsTrigger: {
+              invoker: ["public"],
+            },
+            ...config,
+          },
+        },
+      },
     };
     expect(result).to.deep.equal(expected);
   });
@@ -171,20 +209,30 @@ describe("addResourcesToBackend", () => {
     const result = backend.empty();
     parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
 
+    const eventTrigger: backend.EventTrigger = {
+      eventType: "google.pubsub.topic.publish",
+      eventFilters: {
+        resource: "projects/p/topics/t",
+      },
+      retry: false,
+    };
+
     const expected: backend.Backend = {
       ...backend.empty(),
       cloudFunctions: [
         {
           ...BASIC_FUNCTION,
-          trigger: {
-            eventType: "google.pubsub.topic.publish",
-            eventFilters: {
-              resource: "projects/p/topics/t",
-            },
-            retry: false,
-          },
+          trigger: eventTrigger,
         },
       ],
+      endpoints: {
+        "us-central1": {
+          func: {
+            ...BASIC_ENDPOINT,
+            eventTrigger,
+          },
+        },
+      },
     };
     expect(result).to.deep.equal(expected);
   });
@@ -208,6 +256,15 @@ describe("addResourcesToBackend", () => {
           region: "europe-west1",
         },
       ],
+      endpoints: {
+        "europe-west1": {
+          func: {
+            ...BASIC_ENDPOINT,
+            region: "europe-west1",
+            httpsTrigger: {},
+          },
+        },
+      },
     };
     expect(result).to.deep.equal(expected);
   });
@@ -236,6 +293,22 @@ describe("addResourcesToBackend", () => {
           region: "europe-west1",
         },
       ],
+      endpoints: {
+        "us-central1": {
+          func: {
+            ...BASIC_ENDPOINT,
+            httpsTrigger: {},
+            region: "us-central1",
+          },
+        },
+        "europe-west1": {
+          func: {
+            ...BASIC_ENDPOINT,
+            httpsTrigger: {},
+            region: "europe-west1",
+          },
+        },
+      },
     };
 
     result.cloudFunctions = result.cloudFunctions.sort();
@@ -257,7 +330,11 @@ describe("addResourcesToBackend", () => {
     };
     const trigger: parseTriggers.TriggerAnnotation = {
       ...BASIC_TRIGGER,
-      httpsTrigger: {},
+      eventTrigger: {
+        eventType: "google.pubsub.topic.publish",
+        resource: "projects/project/topics",
+        service: "pubsub.googleapis.com",
+      },
       regions: ["us-central1", "europe-west1"],
       schedule,
       labels: {
@@ -273,19 +350,31 @@ describe("addResourcesToBackend", () => {
       region: "europe-west1",
     };
 
-    const usFunction = {
+    const usFunction: backend.FunctionSpec = {
       ...BASIC_FUNCTION,
-      trigger: {},
+      trigger: {
+        eventType: "google.pubsub.topic.publish",
+        eventFilters: {
+          resource: `projects/project/topics/${backend.scheduleIdForFunction(BASIC_FUNCTION)}`,
+        },
+        retry: false,
+      },
       labels: {
         "deployment-scheduled": "true",
         test: "testing",
       },
       region: "us-central1",
     };
-    const europeFunction = {
+    const europeFunction: backend.FunctionSpec = {
       ...BASIC_FUNCTION,
       ...europeFunctionName,
-      trigger: {},
+      trigger: {
+        eventType: "google.pubsub.topic.publish",
+        eventFilters: {
+          resource: `projects/project/topics/${backend.scheduleIdForFunction(europeFunctionName)}`,
+        },
+        retry: false,
+      },
       labels: {
         "deployment-scheduled": "true",
         test: "testing",
@@ -328,6 +417,28 @@ describe("addResourcesToBackend", () => {
           targetService: europeFunctionName,
         },
       ],
+      endpoints: {
+        "us-central1": {
+          func: {
+            ...BASIC_ENDPOINT,
+            region: "us-central1",
+            labels: {
+              test: "testing",
+            },
+            scheduleTrigger: schedule,
+          },
+        },
+        "europe-west1": {
+          func: {
+            ...BASIC_ENDPOINT,
+            region: "europe-west1",
+            labels: {
+              test: "testing",
+            },
+            scheduleTrigger: schedule,
+          },
+        },
+      },
     };
 
     result.cloudFunctions = result.cloudFunctions.sort();
