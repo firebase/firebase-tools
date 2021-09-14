@@ -111,13 +111,10 @@ export async function printTriggerUrls(context: args.Context, want: backend.Back
   // results of our deploy tasks. This will also be important for scheduled functions
   // that are deployed directly to HTTP endpoints.
   const have = await backend.existingBackend(context, /* forceRefresh= */ true);
-  const httpsFunctions = have.cloudFunctions.filter((fn) => {
-    if (backend.isEventTrigger(fn.trigger)) {
-      return false;
-    }
-
-    return want.cloudFunctions.some(backend.sameFunctionName(fn));
-  });
+  const httpsFunctions = backend
+    .allEndpoints(have)
+    .filter(backend.isHttpsTriggered)
+    .filter(backend.hasEndpoint(want));
   if (httpsFunctions.length === 0) {
     return;
   }
