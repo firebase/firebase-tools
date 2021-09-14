@@ -1,116 +1,74 @@
 import { functionMatchesAnyGroup } from "./functionsDeployHelper";
-import { checkForInvalidChangeOfTrigger } from "./validate";
+import { checkForIllegalUpdate } from "./validate";
 import { isFirebaseManaged } from "../../deploymentTool";
-import { logLabeledBullet } from "../../utils";
+import * as utils from "../../utils";
 import * as backend from "./backend";
 import * as gcfv2 from "../../gcp/cloudfunctionsv2";
 
-export interface RegionalFunctionChanges {
-  functionsToCreate: backend.FunctionSpec[];
-  functionsToUpdate: {
-    func: backend.FunctionSpec;
-    deleteAndRecreate: boolean;
-  }[];
-  functionsToDelete: backend.FunctionSpec[];
+export interface EndpointUpdate {
+  endpoint: backend.Endpoint;
+  deleteAndRecreate: boolean;
 }
 
-export interface DeploymentPlan {
-  regionalDeployments: Record<string, RegionalFunctionChanges>;
-  schedulesToUpsert: backend.ScheduleSpec[];
-  schedulesToDelete: backend.ScheduleSpec[];
-
-  // NOTE(inlined):
-  // Topics aren't created yet explicitly because the Functions API creates them
-  // automatically. This may change in GCFv2 and would certainly change in Run,
-  // so we should be ready to start creating topics before schedules or functions.
-  // OTOH, we could just say that schedules targeting Pub/Sub are just a v1 thing
-  // and save ourselves the topic management in GCFv2 or Run.
-  topicsToDelete: backend.PubSubSpec[];
+export interface RegionalChanges {
+  endpointsToCreate: backend.Endpoint[];
+  endpointsToUpdate: EndpointUpdate[];
+  endpointsToDelete: backend.Endpoint[];
 }
 
-// export for testing
-export function functionsByRegion(
-  allFunctions: backend.FunctionSpec[]
-): Record<string, backend.FunctionSpec[]> {
-  const partitioned: Record<string, backend.FunctionSpec[]> = {};
-  for (const fn of allFunctions) {
-    partitioned[fn.region] = partitioned[fn.region] || [];
-    partitioned[fn.region].push(fn);
+export type DeploymentPlan = Record<string, RegionalChanges>;
+
+interface Options {
+  filters: string[][];
+  overwriteEnvs?: boolean;
+}
+
+/** Calculate the changes needed for a given region. */
+export function calculateRegionalChanges(
+  want: Record<string, backend.Endpoint>,
+  have: Record<string, backend.Endpoint>,
+  options: Options
+): RegionalChanges {
+  const endpointsToCreate = Object.keys(want)
+    .filter((id) => !have[id])
+    .map((id) => want[id]);
+
+  const endpointsToDelete = Object.keys(have)
+    .filter((id) => !want[id])
+    .filter((id) => isFirebaseManaged(have[id].labels || {}))
+    .map((id) => have[id]);
+
+  const endpointsToUpdate = Object.keys(want)
+    .filter((id) => have[id])
+    .map((id) => calculateUpdate(want[id], have[id], options));
+  return { endpointsToCreate, endpointsToUpdate, endpointsToDelete };
+}
+
+/**
+ * Calculates the update object for a given endpoint.
+ * Throws if the update is illegal.
+ * Forces a delete & recreate if the underlying API doesn't allow an upgrade but
+ * CF3 does.
+ */
+export function calculateUpdate(
+  want: backend.Endpoint,
+  have: backend.Endpoint,
+  opts: Options
+): EndpointUpdate {
+  checkForIllegalUpdate(want, have);
+
+  const endpoint: backend.Endpoint = { ...want };
+  if (!opts.overwriteEnvs) {
+    // Remember old environment variables that might have been set with gcloud or the cloud console.
+    endpoint.environmentVariables = {
+      ...have.environmentVariables,
+      ...want.environmentVariables,
+    };
   }
-  return partitioned;
-}
 
-export function allRegions(
-  spec: Record<string, backend.FunctionSpec[]>,
-  existing: Record<string, backend.FunctionSpec[]>
-): string[] {
-  return Object.keys({ ...spec, ...existing });
-}
-
-const matchesId = (hasId: { id: string }) => (test: { id: string }) => {
-  return hasId.id === test.id;
-};
-
-// export for testing
-// Assumes we don't have cross-project functions and that, per function name, functions exist
-// in the same region.
-export function calculateRegionalFunctionChanges(
-  want: backend.FunctionSpec[],
-  have: backend.FunctionSpec[],
-  options: {
-    filters: string[][];
-    overwriteEnvs?: boolean;
-  }
-): RegionalFunctionChanges {
-  want = want.filter((fn) => functionMatchesAnyGroup(fn, options.filters));
-  have = have.filter((fn) => functionMatchesAnyGroup(fn, options.filters));
-  let upgradedToGCFv2WithoutSettingConcurrency = false;
-
-  const functionsToCreate = want.filter((fn) => !have.some(matchesId(fn)));
-  const functionsToUpdate = want
-    .filter((fn) => {
-      const haveFn = have.find(matchesId(fn));
-      if (!haveFn) {
-        return false;
-      }
-
-      checkForInvalidChangeOfTrigger(fn, haveFn);
-
-      if (!options.overwriteEnvs) {
-        // Remember old environment variables that might have been set with gcloud or the cloud console.
-        fn.environmentVariables = {
-          ...haveFn.environmentVariables,
-          ...fn.environmentVariables,
-        };
-      }
-
-      if (haveFn.platform === "gcfv1" && fn.platform === "gcfv2" && !fn.concurrency) {
-        upgradedToGCFv2WithoutSettingConcurrency = true;
-      }
-      return true;
-    })
-    .map((fn) => {
-      const haveFn = have.find(matchesId(fn));
-      const deleteAndRecreate = needsDeleteAndRecreate(haveFn!, fn);
-      return {
-        func: fn,
-        deleteAndRecreate,
-      };
-    });
-  const functionsToDelete = have
-    .filter((fn) => !want.some(matchesId(fn)))
-    .filter((fn) => isFirebaseManaged(fn.labels || {}));
-
-  if (upgradedToGCFv2WithoutSettingConcurrency) {
-    logLabeledBullet(
-      "functions",
-      "You are updating one or more functions to Google Cloud Functions v2, " +
-        "which introduces support for concurrent execution. New functions " +
-        "default to 80 concurrent executions, but existing functions keep the " +
-        "old default of 1. You can change this with the 'concurrency' option."
-    );
-  }
-  return { functionsToCreate, functionsToUpdate, functionsToDelete };
+  const deleteAndRecreate =
+    changedV2PubSubTopic(have, want) || upgradedScheduleFromV1ToV2(have, want);
+  return { endpoint, deleteAndRecreate };
 }
 
 /**
@@ -129,57 +87,99 @@ export function createDeploymentPlan(
     overwriteEnvs?: boolean;
   }
 ): DeploymentPlan {
-  const deployment: DeploymentPlan = {
-    regionalDeployments: {},
-    schedulesToUpsert: [],
-    schedulesToDelete: [],
-    topicsToDelete: [],
-  };
+  const deployment: DeploymentPlan = {};
+  want = backend.matchingBackend(want, (endpoint) => {
+    return functionMatchesAnyGroup(endpoint, options.filters);
+  });
+  have = backend.matchingBackend(have, (endpoint) => {
+    return functionMatchesAnyGroup(endpoint, options.filters);
+  });
 
-  const wantRegionalFunctions = functionsByRegion(want.cloudFunctions);
-  const haveRegionalFunctions = functionsByRegion(have.cloudFunctions);
-  for (const region of allRegions(wantRegionalFunctions, haveRegionalFunctions)) {
-    const want = wantRegionalFunctions[region] || [];
-    const have = haveRegionalFunctions[region] || [];
-    deployment.regionalDeployments[region] = calculateRegionalFunctionChanges(want, have, options);
+  const regions = new Set([...Object.keys(want.endpoints), ...Object.keys(have.endpoints)]);
+  for (const region of regions) {
+    deployment[region] = calculateRegionalChanges(
+      want.endpoints[region] || {},
+      have.endpoints[region] || {},
+      options
+    );
   }
 
-  deployment.schedulesToUpsert = want.schedules.filter((schedule) =>
-    functionMatchesAnyGroup(schedule.targetService, options.filters)
-  );
-  deployment.schedulesToDelete = have.schedules
-    .filter((schedule) => !want.schedules.some(matchesId(schedule)))
-    .filter((schedule) => functionMatchesAnyGroup(schedule.targetService, options.filters));
-  deployment.topicsToDelete = have.topics
-    .filter((topic) => !want.topics.some(matchesId(topic)))
-    .filter((topic) => functionMatchesAnyGroup(topic.targetService, options.filters));
-
+  if (upgradedToGCFv2WithoutSettingConcurrency(want, have)) {
+    utils.logLabeledBullet(
+      "functions",
+      "You are updating one or more functions to Google Cloud Functions v2, " +
+        "which introduces support for concurrent execution. New functions " +
+        "default to 80 concurrent executions, but existing functions keep the " +
+        "old default of 1. You can change this with the 'concurrency' option."
+    );
+  }
   return deployment;
 }
 
-function needsDeleteAndRecreate(exFn: backend.FunctionSpec, fn: backend.FunctionSpec): boolean {
-  return changedV2PubSubTopic(exFn, fn);
-  // TODO: is scheduled function upgrading from v1 to v2
+/** Whether a user upgraded any endpionts to GCFv2 without setting concurrency. */
+export function upgradedToGCFv2WithoutSettingConcurrency(
+  want: backend.Backend,
+  have: backend.Backend
+): boolean {
+  return backend.someEndpoint(want, (endpoint) => {
+    // If there is not an existing v1 funciton
+    if (have.endpoints[endpoint.region]?.[endpoint.id]?.platform !== "gcfv1") {
+      return false;
+    }
+
+    if (endpoint.platform !== "gcfv2") {
+      return false;
+    }
+
+    if (endpoint.concurrency) {
+      return false;
+    }
+
+    return true;
+  });
 }
 
-function changedV2PubSubTopic(exFn: backend.FunctionSpec, fn: backend.FunctionSpec): boolean {
-  if (exFn.platform !== "gcfv2") {
+/** Whether a user changed the Pub/Sub topic of a GCFv2 function (which isn't allowed in the API). */
+export function changedV2PubSubTopic(have: backend.Endpoint, want: backend.Endpoint): boolean {
+  if (have.platform !== "gcfv2") {
     return false;
   }
-  if (fn.platform !== "gcfv2") {
+  if (want.platform !== "gcfv2") {
     return false;
   }
-  if (!backend.isEventTrigger(exFn.trigger)) {
+  if (!backend.isEventTriggered(have)) {
     return false;
   }
-  if (!backend.isEventTrigger(fn.trigger)) {
+  if (!backend.isEventTriggered(want)) {
     return false;
   }
-  if (exFn.trigger.eventType !== gcfv2.PUBSUB_PUBLISH_EVENT) {
+  if (have.eventTrigger.eventType !== gcfv2.PUBSUB_PUBLISH_EVENT) {
     return false;
   }
-  if (fn.trigger.eventType != gcfv2.PUBSUB_PUBLISH_EVENT) {
+  if (want.eventTrigger.eventType != gcfv2.PUBSUB_PUBLISH_EVENT) {
     return false;
   }
-  return exFn.trigger.eventFilters["resource"] != fn.trigger.eventFilters["resource"];
+  return have.eventTrigger.eventFilters["resource"] != want.eventTrigger.eventFilters["resource"];
+}
+
+/** Whether a user upgraded a scheduled function (which goes from Pub/Sub to HTTPS). */
+export function upgradedScheduleFromV1ToV2(
+  have: backend.Endpoint,
+  want: backend.Endpoint
+): boolean {
+  if (have.platform !== "gcfv1") {
+    return false;
+  }
+  if (want.platform !== "gcfv2") {
+    return false;
+  }
+  if (!backend.isScheduleTriggered(have)) {
+    return false;
+  }
+  // should not be possible
+  if (!backend.isScheduleTriggered(want)) {
+    return false;
+  }
+
+  return true;
 }

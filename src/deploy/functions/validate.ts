@@ -55,43 +55,39 @@ export function functionIdsAreValid(functions: { id: string; platform: string }[
   }
 }
 
-export function checkForInvalidChangeOfTrigger(
-  fn: backend.FunctionSpec,
-  exFn: backend.FunctionSpec
-) {
-  const wantEventTrigger = backend.isEventTrigger(fn.trigger);
-  const haveEventTrigger = backend.isEventTrigger(exFn.trigger);
-  if (!wantEventTrigger && haveEventTrigger) {
+/** Throws if there is an illegal update to a function. */
+export function checkForIllegalUpdate(want: backend.Endpoint, have: backend.Endpoint): void {
+  const triggerType = (e: backend.Endpoint): string => {
+    if (backend.isHttpsTriggered(e)) {
+      return "an HTTPS";
+    } else if (backend.isEventTriggered(e)) {
+      return "a background triggered";
+    } else if (backend.isScheduleTriggered(e)) {
+      return "a scheduled";
+    } else {
+      // Should never happen
+      return "an unknown";
+    }
+  };
+  const wantType = triggerType(want);
+  const haveType = triggerType(have);
+  if (wantType != haveType) {
     throw new FirebaseError(
       `[${getFunctionLabel(
-        fn
-      )}] Changing from a background triggered function to an HTTPS function is not allowed. Please delete your function and create a new one instead.`
+        want
+      )}] Changing from ${haveType} function to ${haveType} function is not allowed. Please delete your function and create a new one instead.`
     );
   }
-  if (wantEventTrigger && !haveEventTrigger) {
+  if (want.platform == "gcfv2" && have.platform == "gcfv1") {
     throw new FirebaseError(
       `[${getFunctionLabel(
-        fn
-      )}] Changing from an HTTPS function to an background triggered function is not allowed. Please delete your function and create a new one instead.`
-    );
-  }
-  if (fn.platform == "gcfv2" && exFn.platform == "gcfv1") {
-    throw new FirebaseError(
-      `[${getFunctionLabel(
-        fn
+        have
       )}] Upgrading from GCFv1 to GCFv2 is not yet supported. Please delete your old function or wait for this feature to be ready.`
     );
   }
-  if (fn.platform == "gcfv1" && exFn.platform == "gcfv2") {
+  if (want.platform == "gcfv1" && have.platform == "gcfv2") {
     throw new FirebaseError(
-      `[${getFunctionLabel(fn)}] Functions cannot be downgraded from GCFv2 to GCFv1`
-    );
-  }
-  if (exFn.labels?.["deployment-scheduled"] && !fn.labels?.["deployment-scheduled"]) {
-    throw new FirebaseError(
-      `[${getFunctionLabel(
-        fn
-      )}] Scheduled functions cannot be changed to event handler or HTTP functions`
+      `[${getFunctionLabel(want)}] Functions cannot be downgraded from GCFv2 to GCFv1`
     );
   }
 }
