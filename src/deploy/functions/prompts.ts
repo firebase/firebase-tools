@@ -137,7 +137,7 @@ export async function promptForMinInstances(
     return;
   }
 
-  const increasesCost = backend.allEndpoints(want).some((wantFn) => {
+  const increasesCost = backend.someEndpoint(want, (wantFn) => {
     // If we don't know how much this will cost, be pessimal
     if (!pricing.canCalculateMinInstanceCost(wantFn)) {
       return true;
