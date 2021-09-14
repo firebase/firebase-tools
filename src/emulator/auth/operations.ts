@@ -364,7 +364,6 @@ function batchCreate(
         assert(isValidPhoneNumber(userInfo.phoneNumber), "phone number format is invalid");
         fields.phoneNumber = userInfo.phoneNumber;
       }
-      // TODO: Support MFA.
 
       fields.validSince = toUnixTimestamp(uploadTime).toString();
       fields.createdAt = uploadTime.getTime().toString();
@@ -389,6 +388,29 @@ function batchCreate(
       }
       fields.emailVerified = !!userInfo.emailVerified;
       fields.disabled = !!userInfo.disabled;
+
+      // MFA
+      if (userInfo.mfaInfo) {
+        fields.mfaInfo = [];
+        assert(fields.email, "Second factor account requires email to be presented.");
+        assert(fields.emailVerified, "Second factor account requires email to be verified.");
+        const existingIds = new Set<string>();
+        for (const enrollment of userInfo.mfaInfo) {
+          if (enrollment.mfaEnrollmentId) {
+            assert(!existingIds.has(enrollment.mfaEnrollmentId), "Enrollment id already exists.");
+            existingIds.add(enrollment.mfaEnrollmentId);
+          }
+        }
+
+        for (const enrollment of userInfo.mfaInfo) {
+          enrollment.mfaEnrollmentId = enrollment.mfaEnrollmentId || newRandomId(28, existingIds);
+          enrollment.enrolledAt = enrollment.enrolledAt || new Date().toISOString();
+          assert(enrollment.phoneInfo, "Second factor not supported.");
+          assert(isValidPhoneNumber(enrollment.phoneInfo), "Phone number format is invalid");
+          enrollment.unobfuscatedPhoneInfo = enrollment.phoneInfo;
+          fields.mfaInfo.push(enrollment);
+        }
+      }
 
       if (state.getUserByLocalId(userInfo.localId)) {
         assert(
