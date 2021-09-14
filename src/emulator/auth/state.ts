@@ -17,7 +17,7 @@ export const PROVIDER_CUSTOM = "custom";
 
 export const SIGNIN_METHOD_EMAIL_LINK = "emailLink";
 
-export class ProjectState {
+export abstract class ProjectState {
   private users: Map<string, UserInfo> = new Map();
   private localIdForEmail: Map<string, string> = new Map();
   private localIdForInitialEmail: Map<string, string> = new Map();
@@ -29,9 +29,6 @@ export class ProjectState {
   private oobs: Map<string, OobRecord> = new Map();
   private verificationCodes: Map<string, PhoneVerificationRecord> = new Map();
   private temporaryProofs: Map<string, TemporaryProofRecord> = new Map();
-  protected _oneAccountPerEmail = true;
-  protected _authCloudFunction: AuthCloudFunction | undefined;
-  protected _usageMode: UsageMode = UsageMode.DEFAULT;
 
   constructor(public readonly projectId: string) {}
 
@@ -41,17 +38,11 @@ export class ProjectState {
     return "12345";
   }
 
-  get oneAccountPerEmail() {
-    return this._oneAccountPerEmail;
-  }
+  abstract get oneAccountPerEmail(): boolean;
 
-  get authCloudFunction() {
-    return this._authCloudFunction;
-  }
+  abstract get authCloudFunction(): AuthCloudFunction | undefined;
 
-  get usageMode() {
-    return this._usageMode;
-  }
+  abstract get usageMode(): UsageMode;
 
   createUser(props: Omit<UserInfo, "localId" | "createdAt" | "lastRefreshAt">): UserInfo {
     for (let i = 0; i < 10; i++) {
@@ -84,7 +75,7 @@ export class ProjectState {
     const user = this.updateUserByLocalId(localId, props, {
       upsertProviders: props.providerUserInfo,
     });
-    this._authCloudFunction?.dispatch("create", user);
+    this.authCloudFunction?.dispatch("create", user);
     return user;
   }
 
@@ -128,7 +119,7 @@ export class ProjectState {
       }
     }
 
-    this._authCloudFunction?.dispatch("delete", user);
+    this.authCloudFunction?.dispatch("delete", user);
   }
 
   updateUserByLocalId(
@@ -565,17 +556,21 @@ export class ProjectState {
 export class AgentProjectState extends ProjectState {
   private tenantForTenantId: Map<string, Tenant> = new Map();
 
-  constructor(projectId: string) {
+  constructor(
+    projectId: string,
+    private _oneAccountPerEmail = true,
+    private readonly _authCloudFunction = new AuthCloudFunction(projectId),
+    private _usageMode = UsageMode.DEFAULT
+  ) {
     super(projectId);
-    this._authCloudFunction = new AuthCloudFunction(projectId);
   }
 
   get authCloudFunction() {
-    return super.authCloudFunction;
+    return this._authCloudFunction;
   }
 
   get oneAccountPerEmail() {
-    return super.oneAccountPerEmail;
+    return this._oneAccountPerEmail;
   }
 
   set oneAccountPerEmail(oneAccountPerEmail: boolean) {
@@ -583,7 +578,7 @@ export class AgentProjectState extends ProjectState {
   }
 
   get usageMode() {
-    return super.usageMode;
+    return this._usageMode;
   }
 
   set usageMode(usageMode: UsageMode) {

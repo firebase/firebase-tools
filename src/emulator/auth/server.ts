@@ -477,10 +477,7 @@ function toExegesisController(
         targetProjectId = ctx.user;
       }
       if (ctx.params.path.tenantId && ctx.requestBody?.tenantId) {
-        assert(
-          ctx.params.path.tenantId === ctx.requestBody?.tenantId,
-          "Tenant IDs in path and request body do not match"
-        );
+        assert(ctx.params.path.tenantId === ctx.requestBody.tenantId, "TENANT_ID_MISMATCH");
       }
       const targetTenantId: string = ctx.params.path.tenantId || ctx.requestBody?.tenantId;
       return operation(getProjectStateById(targetProjectId, targetTenantId), ctx.requestBody, ctx);

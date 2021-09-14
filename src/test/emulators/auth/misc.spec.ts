@@ -365,9 +365,6 @@ describeAuthEmulator("accounts:query", ({ authApi }) => {
 });
 
 describeAuthEmulator("emulator utility APIs", ({ authApi }) => {
-  // TODO(lisajian): Add test that errors when changing allowDuplicateEmails config on tenant project
-  // TODO(lisajian): Add test that errors when changing usageMode config on tenant project
-
   it("should drop all accounts on DELETE /emulator/v1/projects/{PROJECT_ID}/accounts", async () => {
     const user1 = await registerUser(authApi(), {
       email: "alice@example.com",
