@@ -298,9 +298,7 @@ describe("Backend", () => {
           functions: [
             {
               ...HAVE_CLOUD_FUNCTION,
-              httpsTrigger: {
-                securityLevel: "SECURE_ALWAYS",
-              },
+              httpsTrigger: {},
             },
           ],
           unreachable: [],
