@@ -919,8 +919,6 @@ export function setAccountInfoImpl(
   const unimplementedFields: (keyof typeof reqBody)[] = [
     "provider",
     "upgradeToFederatedLogin",
-    "captchaChallenge",
-    "captchaResponse",
     "linkProviderUserInfo",
   ];
   for (const field of unimplementedFields) {
@@ -1531,7 +1529,6 @@ function signInWithPhoneNumber(
   }
 
   let user = state.getUserByPhoneNumber(phoneNumber);
-  // TODO: Throw if account has MFA enabled.
   let isNewUser = false;
   const updates = {
     phoneNumber,
