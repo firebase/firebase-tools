@@ -40,7 +40,7 @@ export abstract class ProjectState {
 
   abstract get oneAccountPerEmail(): boolean;
 
-  abstract get authCloudFunction(): AuthCloudFunction | undefined;
+  abstract get authCloudFunction(): AuthCloudFunction;
 
   abstract get usageMode(): UsageMode;
 
@@ -75,7 +75,7 @@ export abstract class ProjectState {
     const user = this.updateUserByLocalId(localId, props, {
       upsertProviders: props.providerUserInfo,
     });
-    this.authCloudFunction?.dispatch("create", user);
+    this.authCloudFunction.dispatch("create", user);
     return user;
   }
 
@@ -119,7 +119,7 @@ export abstract class ProjectState {
       }
     }
 
-    this.authCloudFunction?.dispatch("delete", user);
+    this.authCloudFunction.dispatch("delete", user);
   }
 
   updateUserByLocalId(
@@ -555,13 +555,11 @@ export abstract class ProjectState {
 
 export class AgentProjectState extends ProjectState {
   private tenantForTenantId: Map<string, Tenant> = new Map();
+  private _oneAccountPerEmail = true;
+  private _usageMode = UsageMode.DEFAULT;
+  private readonly _authCloudFunction = new AuthCloudFunction(this.projectId);
 
-  constructor(
-    projectId: string,
-    private _oneAccountPerEmail = true,
-    private readonly _authCloudFunction = new AuthCloudFunction(projectId),
-    private _usageMode = UsageMode.DEFAULT
-  ) {
+  constructor(projectId: string) {
     super(projectId);
   }
 
