@@ -282,3 +282,10 @@ export function findModuleRoot(moduleName: string, filepath: string): string {
 
   return "";
 }
+export function formatHost(info: { host: string; port: number }): string {
+  if (info.host.includes(":")) {
+    return `[${info.host}]:${info.port}`;
+  } else {
+    return `${info.host}:${info.port}`;
+  }
+};

@@ -29,6 +29,7 @@ import {
   EmulatedTriggerType,
   EventSchedule,
   EventTrigger,
+  formatHost,
   FunctionsRuntimeArgs,
   FunctionsRuntimeBundle,
   FunctionsRuntimeFeatures,
@@ -825,92 +826,75 @@ export class FunctionsEmulator implements EmulatorInstance {
     return process.execPath;
   }
 
-  getRuntimeEnvs(triggerDef?: {
+  getUserEnvs(): Record<string, string> {
+    const projectInfo = {
+      functionsSource: this.args.functionsDir,
+      projectId: "local", // "local" is reserved for Emulator use in functions env var.
+    };
+
+    if (functionsEnv.hasUserEnvs(projectInfo)) {
+      try {
+        return functionsEnv.loadUserEnvs(projectInfo);
+      } catch (e) {
+        // Ignore - user envs are optional.
+        logger.debug("Failed to load local environment variables", e);
+      }
+    }
+    return {};
+  }
+
+  getSystemEnvs(triggerDef?: {
     targetName: string;
     triggerType: EmulatedTriggerType;
   }): Record<string, string> {
-    const env: Record<string, string> = this.args.env ?? {};
-    env.TZ = "UTC";
-    env.GCLOUD_PROJECT = this.args.projectId;
-    env.FUNCTIONS_EMULATOR = "true";
-    env.K_REVISION = "1";
-    env.PORT = "80";
+    const envs: Record<string, string> = {};
 
-    // Setup predefined environment variables for Node.js 10 and subsequent runtimes
-    // https://cloud.google.com/functions/docs/env-var
+    // Env vars guaranteed by GCF platform.
+    //   https://cloud.google.com/functions/docs/env-var
+    envs.GCLOUD_PROJECT = this.args.projectId;
+    envs.K_REVISION = "1";
+    envs.PORT = "80";
+
     if (triggerDef) {
       const service = triggerDef.targetName;
       const target = service.replace(/-/g, ".");
       const mode = triggerDef.triggerType === EmulatedTriggerType.BACKGROUND ? "event" : "http";
-      env.FUNCTION_TARGET = target;
-      env.FUNCTION_SIGNATURE_TYPE = mode;
-      env.K_SERVICE = service;
+      envs.FUNCTION_TARGET = target;
+      envs.FUNCTION_SIGNATURE_TYPE = mode;
+      envs.K_SERVICE = service;
     }
+    return envs;
+  }
 
-    const configPath = `${this.args.functionsDir}/.runtimeconfig.json`;
-    try {
-      const configContent = fs.readFileSync(configPath, "utf8");
-      if (configContent) {
-        // try JSON.parse for .runtimeconfig.json and notice if parsing is failed
-        try {
-          JSON.parse(configContent.toString());
-          logger.debug(`Found local functions config: ${configPath}`);
-          env.CLOUD_RUNTIME_CONFIG = configContent.toString();
-        } catch (e) {
-          new EmulatorLog("SYSTEM", "function-runtimeconfig-json-invalid", e?.message ?? "").log();
-        }
-      }
-    } catch (e) {
-      // Ignore, config is optional
-    }
+  getEmulatorEnvs(): Record<string, string> {
+    const envs: Record<string, string> = {};
 
-    // Load user-specified environment variables.
-    if (functionsEnv.hasUserEnvs({ functionsSource: this.args.functionsDir, projectId: "local" })) {
-      try {
-        const userEnvs = functionsEnv.loadUserEnvs({
-          functionsSource: this.args.functionsDir,
-          projectId: "local",
-        });
-        for (const [k, v] of Object.entries(userEnvs)) {
-          env[k] = v;
-        }
-      } catch (e) {
-        // Ignore - user envs are optional.
-        logger.debug(e);
-      }
-    }
-
-    const formatHost = (info: { host: string; port: number }): string => {
-      if (info.host.includes(":")) {
-        return `[${info.host}]:${info.port}`;
-      } else {
-        return `${info.host}:${info.port}`;
-      }
-    };
+    envs.FUNCTIONS_EMULATOR = "true";
+    envs.TZ = "UTC"; // Fixes https://github.com/firebase/firebase-tools/issues/2253
 
     // Make firebase-admin point at the Firestore emulator
     const firestoreEmulator = this.getEmulatorInfo(Emulators.FIRESTORE);
     if (firestoreEmulator != null) {
-      env[Constants.FIRESTORE_EMULATOR_HOST] = formatHost(firestoreEmulator);
+      envs[Constants.FIRESTORE_EMULATOR_HOST] = formatHost(firestoreEmulator);
     }
 
     // Make firebase-admin point at the Database emulator
     const databaseEmulator = this.getEmulatorInfo(Emulators.DATABASE);
     if (databaseEmulator) {
-      env[Constants.FIREBASE_DATABASE_EMULATOR_HOST] = formatHost(databaseEmulator);
+      envs[Constants.FIREBASE_DATABASE_EMULATOR_HOST] = formatHost(databaseEmulator);
     }
 
     // Make firebase-admin point at the Auth emulator
     const authEmulator = this.getEmulatorInfo(Emulators.AUTH);
     if (authEmulator) {
-      env[Constants.FIREBASE_AUTH_EMULATOR_HOST] = formatHost(authEmulator);
+      envs[Constants.FIREBASE_AUTH_EMULATOR_HOST] = formatHost(authEmulator);
     }
 
     // Make firebase-admin point at the Storage emulator
     const storageEmulator = this.getEmulatorInfo(Emulators.STORAGE);
     if (storageEmulator) {
-      env[Constants.FIREBASE_STORAGE_EMULATOR_HOST] = formatHost(storageEmulator);
-      env[Constants.CLOUD_STORAGE_EMULATOR_HOST] = `http://${formatHost(storageEmulator)}`;
+      envs[Constants.FIREBASE_STORAGE_EMULATOR_HOST] = formatHost(storageEmulator);
+      envs[Constants.CLOUD_STORAGE_EMULATOR_HOST] = `http://${formatHost(storageEmulator)}`;
     }
 
     const pubsubEmulator = this.getEmulatorInfo(Emulators.PUBSUB);
@@ -919,6 +903,12 @@ export class FunctionsEmulator implements EmulatorInstance {
       process.env.PUBSUB_EMULATOR_HOST = pubsubHost;
       logger.debug(`Set PUBSUB_EMULATOR_HOST to ${pubsubHost}`);
     }
+
+    return envs;
+  }
+
+  getFirebaseConfig(): string {
+    const databaseEmulator = this.getEmulatorInfo(Emulators.DATABASE);
 
     let emulatedDatabaseURL = undefined;
     if (databaseEmulator) {
@@ -932,13 +922,23 @@ export class FunctionsEmulator implements EmulatorInstance {
       }
       emulatedDatabaseURL = `http://${formatHost(databaseEmulator)}/?ns=${ns}`;
     }
-    env.FIREBASE_CONFIG = JSON.stringify({
+    return JSON.stringify({
       storageBucket: this.adminSdkConfig.storageBucket,
       databaseURL: emulatedDatabaseURL || this.adminSdkConfig.databaseURL,
       projectId: this.args.projectId,
     });
+  }
 
-    return env;
+  getRuntimeEnvs(triggerDef?: {
+    targetName: string;
+    triggerType: EmulatedTriggerType;
+  }): Record<string, string> {
+    return {
+      ...this.getUserEnvs(),
+      ...this.getSystemEnvs(triggerDef),
+      ...this.getEmulatorEnvs(),
+      FIREBASE_CONFIG: this.getFirebaseConfig(),
+    };
   }
 
   invokeRuntime(
