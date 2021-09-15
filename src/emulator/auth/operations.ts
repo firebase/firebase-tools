@@ -28,6 +28,7 @@ import {
   PROVIDER_CUSTOM,
   OobRecord,
   PROVIDER_GAME_CENTER,
+  SecondFactorRecord,
 } from "./state";
 import { MfaEnrollments, Schemas } from "./types";
 
@@ -1880,7 +1881,7 @@ function issueTokens(
     secondFactor,
   }: {
     extraClaims?: Record<string, unknown>;
-    secondFactor?: { identifier: string; provider: string };
+    secondFactor?: SecondFactorRecord;
   } = {}
 ): { idToken: string; refreshToken: string; expiresIn: string } {
   user = state.updateUserByLocalId(user.localId, { lastRefreshAt: new Date().toISOString() });
@@ -1952,7 +1953,7 @@ function generateJwt(
     signInProvider: string;
     expiresInSeconds: number;
     extraClaims?: Record<string, unknown>;
-    secondFactor?: { identifier: string; provider: string };
+    secondFactor?: SecondFactorRecord;
   }
 ): string {
   const identities: Record<string, string[]> = {};
@@ -2456,35 +2457,17 @@ function redactMfaInfo(mfaInfo: MfaEnrollment): MfaEnrollment {
 // Create an obfuscated version of a phone number, where all but the last
 // four digits are replaced by the character "*".
 function obfuscatePhoneNumber(phoneNumber: string): string {
-  let digitsLeft = 0;
-  for (const c of phoneNumber) {
-    if (isDigit(c)) {
-      digitsLeft += 1;
+  const split = phoneNumber.split("");
+  let digitsEncountered = 0;
+  for (let i = split.length - 1; i >= 0; i--) {
+    if (/[0-9]/.test(split[i])) {
+      digitsEncountered++;
+      if (digitsEncountered > 4) {
+        split[i] = "*";
+      }
     }
   }
-  let result = "";
-  for (const c of phoneNumber) {
-    if (!isDigit(c)) {
-      result += c;
-      continue;
-    }
-    if (digitsLeft <= 4) {
-      result += c;
-    } else {
-      result += "*";
-    }
-    digitsLeft--;
-  }
-  return result;
-}
-
-function isDigit(char: string): boolean {
-  // TODO: Handle unicode digits.
-  if (char >= "0" && char <= "9") {
-    return true;
-  }
-
-  return false;
+  return split.join("");
 }
 
 function parsePendingCredential(

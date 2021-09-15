@@ -381,7 +381,7 @@ export class ProjectState {
       secondFactor,
     }: {
       extraClaims?: Record<string, unknown>;
-      secondFactor?: { identifier: string; provider: string };
+      secondFactor?: SecondFactorRecord;
     } = {}
   ): string {
     const localId = userInfo.localId;
@@ -403,7 +403,7 @@ export class ProjectState {
         user: UserInfo;
         provider: string;
         extraClaims: Record<string, unknown>;
-        secondFactor?: { identifier: string; provider: string };
+        secondFactor?: SecondFactorRecord;
       }
     | undefined {
     const record = this.refreshTokens.get(refreshToken);
@@ -580,7 +580,12 @@ interface RefreshTokenRecord {
   localId: string;
   provider: string;
   extraClaims: Record<string, unknown>;
-  secondFactor?: { identifier: string; provider: string };
+  secondFactor?: SecondFactorRecord;
+}
+
+export interface SecondFactorRecord {
+  identifier: string;
+  provider: string;
 }
 
 export type OobRequestType = NonNullable<
