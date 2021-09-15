@@ -289,4 +289,4 @@ export function formatHost(info: { host: string; port: number }): string {
   } else {
     return `${info.host}:${info.port}`;
   }
-};
+}
