@@ -4,6 +4,7 @@ import * as os from "os";
 import * as path from "path";
 import * as express from "express";
 import * as fs from "fs";
+import { Constants } from "./constants";
 import { InvokeRuntimeOpts } from "./functionsEmulator";
 
 export enum EmulatedTriggerType {
@@ -35,8 +36,9 @@ export interface EventSchedule {
 
 export interface EventTrigger {
   resource: string;
-  service: string;
   eventType: string;
+  // Deprecated
+  service?: string;
 }
 
 export interface EmulatedTriggerMap {
@@ -204,10 +206,43 @@ export function getTemporarySocketPath(pid: number, cwd: string): string {
 
 export function getFunctionService(def: EmulatedTriggerDefinition): string {
   if (def.eventTrigger) {
-    return def.eventTrigger.service;
+    return def.eventTrigger.service ?? getServiceFromEventType(def.eventTrigger.eventType);
   }
 
   return "unknown";
+}
+
+export function getServiceFromEventType(eventType: string): string {
+  if (eventType.includes("firestore")) {
+    return Constants.SERVICE_FIRESTORE;
+  }
+  if (eventType.includes("database")) {
+    return Constants.SERVICE_REALTIME_DATABASE;
+  }
+  if (eventType.includes("pubsub")) {
+    return Constants.SERVICE_PUBSUB;
+  }
+  if (eventType.includes("storage")) {
+    return Constants.SERVICE_STORAGE;
+  }
+  // Below this point are services that do not have a emulator.
+  if (eventType.includes("analytics")) {
+    return Constants.SERVICE_ANALYTICS;
+  }
+  if (eventType.includes("auth")) {
+    return Constants.SERVICE_AUTH;
+  }
+  if (eventType.includes("crashlytics")) {
+    return Constants.SERVICE_CRASHLYTICS;
+  }
+  if (eventType.includes("remoteconfig")) {
+    return Constants.SERVICE_REMOTE_CONFIG;
+  }
+  if (eventType.includes("testing")) {
+    return Constants.SERVICE_TEST_LAB;
+  }
+
+  return "";
 }
 
 export function waitForBody(req: express.Request): Promise<string> {

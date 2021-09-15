@@ -573,3 +573,133 @@ export function functionFromSpec(
 
   return gcfFunction;
 }
+
+/**
+ * Converts a Cloud Function from the v1 API into a version-agnostic FunctionSpec struct.
+ * This API exists outside the GCF namespace because GCF returns an Operation<CloudFunction>
+ * and code may have to call this method explicitly.
+ */
+export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoint {
+  const [, project, , region, , id] = gcfFunction.name.split("/");
+  let trigger: backend.Triggered;
+  let uri: string | undefined;
+  if (gcfFunction.httpsTrigger) {
+    trigger = { httpsTrigger: {} };
+    uri = gcfFunction.httpsTrigger.url;
+  } else if (gcfFunction.labels?.["deployment-scheduled"]) {
+    trigger = {
+      scheduleTrigger: {},
+    };
+  } else {
+    trigger = {
+      eventTrigger: {
+        eventType: gcfFunction.eventTrigger!.eventType,
+        eventFilters: {
+          resource: gcfFunction.eventTrigger!.resource,
+        },
+        retry: !!gcfFunction.eventTrigger!.failurePolicy?.retry,
+      },
+    };
+  }
+
+  if (!runtimes.isValidRuntime(gcfFunction.runtime)) {
+    logger.debug("GCFv1 function has a deprecated runtime:", JSON.stringify(gcfFunction, null, 2));
+  }
+
+  const endpoint: backend.Endpoint = {
+    platform: "gcfv1",
+    id,
+    project,
+    region,
+    ...trigger,
+    entryPoint: gcfFunction.entryPoint,
+    runtime: gcfFunction.runtime,
+  };
+  if (uri) {
+    endpoint.uri = uri;
+  }
+  proto.copyIfPresent(
+    endpoint,
+    gcfFunction,
+    "serviceAccountEmail",
+    "availableMemoryMb",
+    "timeout",
+    "minInstances",
+    "maxInstances",
+    "vpcConnector",
+    "vpcConnectorEgressSettings",
+    "ingressSettings",
+    "labels",
+    "environmentVariables",
+    "sourceUploadUrl"
+  );
+
+  return endpoint;
+}
+
+/**
+ * Convert the API agnostic FunctionSpec struct to a CloudFunction proto for the v1 API.
+ */
+export function functionFromEndpoint(
+  endpoint: backend.Endpoint,
+  sourceUploadUrl: string
+): Omit<CloudFunction, OutputOnlyFields> {
+  if (endpoint.platform != "gcfv1") {
+    throw new FirebaseError(
+      "Trying to create a v1 CloudFunction with v2 API. This should never happen"
+    );
+  }
+
+  if (!runtimes.isValidRuntime(endpoint.runtime)) {
+    throw new FirebaseError(
+      "Failed internal assertion. Trying to deploy a new function with a deprecated runtime." +
+        " This should never happen"
+    );
+  }
+  const gcfFunction: Omit<CloudFunction, OutputOnlyFields> = {
+    name: backend.functionName(endpoint),
+    sourceUploadUrl: sourceUploadUrl,
+    entryPoint: endpoint.entryPoint,
+    runtime: endpoint.runtime,
+  };
+
+  proto.copyIfPresent(gcfFunction, endpoint, "labels");
+  if (backend.isEventTriggered(endpoint)) {
+    gcfFunction.eventTrigger = {
+      eventType: endpoint.eventTrigger.eventType,
+      resource: endpoint.eventTrigger.eventFilters.resource,
+      // Service is unnecessary and deprecated
+    };
+
+    // For field masks to pick up a deleted failure policy we must inject an undefined
+    // when retry is false
+    gcfFunction.eventTrigger.failurePolicy = endpoint.eventTrigger.retry
+      ? { retry: {} }
+      : undefined;
+  } else if (backend.isScheduleTriggered(endpoint)) {
+    const id = backend.scheduleIdForFunction(endpoint);
+    gcfFunction.eventTrigger = {
+      eventType: "google.pubsub.topic.publish",
+      resource: `projects/${endpoint.project}/topics/${id}`,
+    };
+    gcfFunction.labels = { ...gcfFunction.labels, "deployment-scheduled": "true" };
+  } else {
+    gcfFunction.httpsTrigger = {};
+  }
+
+  proto.copyIfPresent(
+    gcfFunction,
+    endpoint,
+    "serviceAccountEmail",
+    "timeout",
+    "availableMemoryMb",
+    "minInstances",
+    "maxInstances",
+    "vpcConnector",
+    "vpcConnectorEgressSettings",
+    "ingressSettings",
+    "environmentVariables"
+  );
+
+  return gcfFunction;
+}
