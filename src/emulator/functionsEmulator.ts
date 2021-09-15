@@ -938,6 +938,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       ...this.getSystemEnvs(triggerDef),
       ...this.getEmulatorEnvs(),
       FIREBASE_CONFIG: this.getFirebaseConfig(),
+      ...this.args.env,
     };
   }
 
