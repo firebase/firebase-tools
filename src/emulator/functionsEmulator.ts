@@ -416,7 +416,13 @@ export class FunctionsEmulator implements EmulatorInstance {
         nodeBinary: this.nodeBinary,
         extensionTriggers: this.args.predefinedTriggers,
       },
-      this.getRuntimeEnvs()
+      // Don't include user envs when parsing triggers.
+      {
+        ...this.getSystemEnvs(),
+        ...this.getEmulatorEnvs(),
+        FIREBASE_CONFIG: this.getFirebaseConfig(),
+        ...this.args.env,
+      }
     );
 
     const triggerParseEvent = await EmulatorLog.waitForLog(
