@@ -95,12 +95,12 @@ describe("paramHelper", () => {
         ANOTHER_PARAMETER: "value",
       });
 
-      const params = await paramHelper.getParams(
-        PROJECT_ID,
-        TEST_PARAMS,
-        false,
-        "./a/path/to/a/file.env"
-      );
+      const params = await paramHelper.getParams({
+        projectId: PROJECT_ID,
+        paramSpecs: TEST_PARAMS,
+        nonInteractive: false,
+        paramsEnvPath: "./a/path/to/a/file.env",
+      });
 
       expect(params).to.eql({
         A_PARAMETER: "aValue",
@@ -113,12 +113,12 @@ describe("paramHelper", () => {
         A_PARAMETER: "aValue",
       });
 
-      const params = await paramHelper.getParams(
-        PROJECT_ID,
-        TEST_PARAMS,
-        false,
-        "./a/path/to/a/file.env"
-      );
+      const params = await paramHelper.getParams({
+        projectId: PROJECT_ID,
+        paramSpecs: TEST_PARAMS,
+        nonInteractive: false,
+        paramsEnvPath: "./a/path/to/a/file.env",
+      });
 
       expect(params).to.eql({
         A_PARAMETER: "aValue",
@@ -131,12 +131,12 @@ describe("paramHelper", () => {
         ANOTHER_PARAMETER: "aValue",
       });
 
-      const params = await paramHelper.getParams(
-        PROJECT_ID,
-        TEST_PARAMS_3,
-        false,
-        "./a/path/to/a/file.env"
-      );
+      const params = await paramHelper.getParams({
+        projectId: PROJECT_ID,
+        paramSpecs: TEST_PARAMS_3,
+        nonInteractive: false,
+        paramsEnvPath: "./a/path/to/a/file.env",
+      });
 
       expect(params).to.eql({
         ANOTHER_PARAMETER: "aValue",
@@ -149,7 +149,12 @@ describe("paramHelper", () => {
       });
 
       await expect(
-        paramHelper.getParams(PROJECT_ID, TEST_PARAMS, false, "./a/path/to/a/file.env")
+        paramHelper.getParams({
+          projectId: PROJECT_ID,
+          paramSpecs: TEST_PARAMS,
+          nonInteractive: false,
+          paramsEnvPath: "./a/path/to/a/file.env",
+        })
       ).to.be.rejectedWith(
         FirebaseError,
         "A_PARAMETER has not been set in the given params file and there is no default available. " +
@@ -164,7 +169,12 @@ describe("paramHelper", () => {
         A_THIRD_PARAMETER: "aValue",
         A_FOURTH_PARAMETER: "default",
       });
-      await paramHelper.getParams(PROJECT_ID, TEST_PARAMS, false, "./a/path/to/a/file.env");
+      await paramHelper.getParams({
+        projectId: PROJECT_ID,
+        paramSpecs: TEST_PARAMS,
+        nonInteractive: false,
+        paramsEnvPath: "./a/path/to/a/file.env",
+      });
 
       expect(loggerSpy).to.have.been.calledWith(
         "Warning: The following params were specified in your env file but" +
@@ -176,12 +186,20 @@ describe("paramHelper", () => {
       dotenvStub.throws({ message: "Error during parsing" });
 
       await expect(
-        paramHelper.getParams(PROJECT_ID, TEST_PARAMS, false, "./a/path/to/a/file.env")
+        paramHelper.getParams({
+          projectId: PROJECT_ID,
+          paramSpecs: TEST_PARAMS,
+          nonInteractive: false,
+          paramsEnvPath: "./a/path/to/a/file.env",
+        })
       ).to.be.rejectedWith(FirebaseError, "Error reading env file: Error during parsing");
     });
 
     it("should prompt the user for params if no env file is provided", async () => {
-      const params = await paramHelper.getParams(PROJECT_ID, TEST_PARAMS);
+      const params = await paramHelper.getParams({
+        projectId: PROJECT_ID,
+        paramSpecs: TEST_PARAMS,
+      });
 
       expect(params).to.eql({
         A_PARAMETER: "user input",
@@ -308,15 +326,15 @@ describe("paramHelper", () => {
       const newSpec = _.cloneDeep(SPEC);
       newSpec.params = TEST_PARAMS_2;
 
-      const newParams = await paramHelper.promptForNewParams(
-        SPEC,
+      const newParams = await paramHelper.promptForNewParams({
+        spec: SPEC,
         newSpec,
-        {
+        currentParams: {
           A_PARAMETER: "value",
           ANOTHER_PARAMETER: "value",
         },
-        PROJECT_ID
-      );
+        projectId: PROJECT_ID,
+      });
 
       const expected = {
         ANOTHER_PARAMETER: "value",
@@ -348,15 +366,15 @@ describe("paramHelper", () => {
       const newSpec = _.cloneDeep(SPEC);
       newSpec.params = TEST_PARAMS_3;
 
-      const newParams = await paramHelper.promptForNewParams(
-        SPEC,
+      const newParams = await paramHelper.promptForNewParams({
+        spec: SPEC,
         newSpec,
-        {
+        currentParams: {
           A_PARAMETER: "value",
           ANOTHER_PARAMETER: "value",
         },
-        PROJECT_ID
-      );
+        projectId: PROJECT_ID,
+      });
 
       const expected = {
         ANOTHER_PARAMETER: "value",
@@ -372,15 +390,15 @@ describe("paramHelper", () => {
       const newSpec = _.cloneDeep(SPEC);
       newSpec.params = TEST_PARAMS_2;
 
-      const newParams = await paramHelper.promptForNewParams(
-        SPEC,
+      const newParams = await paramHelper.promptForNewParams({
+        spec: SPEC,
         newSpec,
-        {
+        currentParams: {
           A_PARAMETER: "value",
           ANOTHER_PARAMETER: "value",
         },
-        PROJECT_ID
-      );
+        projectId: PROJECT_ID,
+      });
 
       const expected = {
         ANOTHER_PARAMETER: "value",
@@ -411,15 +429,15 @@ describe("paramHelper", () => {
       promptStub.resolves("Fail");
       const newSpec = _.cloneDeep(SPEC);
 
-      const newParams = await paramHelper.promptForNewParams(
-        SPEC,
+      const newParams = await paramHelper.promptForNewParams({
+        spec: SPEC,
         newSpec,
-        {
+        currentParams: {
           A_PARAMETER: "value",
           ANOTHER_PARAMETER: "value",
         },
-        PROJECT_ID
-      );
+        projectId: PROJECT_ID,
+      });
 
       const expected = {
         ANOTHER_PARAMETER: "value",
@@ -435,15 +453,15 @@ describe("paramHelper", () => {
       newSpec.params = TEST_PARAMS_2;
 
       await expect(
-        paramHelper.promptForNewParams(
-          SPEC,
+        paramHelper.promptForNewParams({
+          spec: SPEC,
           newSpec,
-          {
+          currentParams: {
             A_PARAMETER: "value",
             ANOTHER_PARAMETER: "value",
           },
-          PROJECT_ID
-        )
+          projectId: PROJECT_ID,
+        })
       ).to.be.rejectedWith(FirebaseError, "this is an error");
       // Ensure that we don't continue prompting if one fails
       expect(promptStub).to.have.been.calledOnce;

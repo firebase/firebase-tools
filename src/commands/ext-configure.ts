@@ -59,12 +59,12 @@ export default new Command("ext:configure <extensionInstanceId>")
         // TODO: Stop special casing "LOCATION" once all official extensions make it immutable
       });
 
-      const params = await paramHelper.getParams(
+      const params = await paramHelper.getParams({
         projectId,
-        paramSpecWithNewDefaults,
-        options.nonInteractive,
-        options.params
-      );
+        paramSpecs: paramSpecWithNewDefaults,
+        nonInteractive: options.nonInteractive,
+        paramsEnvPath: options.params,
+      });
       if (immutableParams.length) {
         const plural = immutableParams.length > 1;
         logger.info(`The following param${plural ? "s are" : " is"} immutable:`);
