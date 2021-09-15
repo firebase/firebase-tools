@@ -859,7 +859,11 @@ function sendVerificationCode(
     "INVALID_PHONE_NUMBER : Invalid format."
   );
 
-  // TODO: Throw if account has MFA enabled.
+  const user = state.getUserByPhoneNumber(reqBody.phoneNumber);
+  assert(
+    !user?.mfaInfo?.length,
+    "UNSUPPORTED_FIRST_FACTOR : A phone number cannot be set as a first factor on an SMS based MFA user."
+  );
 
   const { sessionInfo, phoneNumber, code } = state.createVerificationCode(reqBody.phoneNumber);
 
@@ -1119,7 +1123,7 @@ export function setAccountInfoImpl(
   });
 }
 
-function sendOobForEmailReset(state: ProjectState, initialEmail: string, url: URL) {
+function sendOobForEmailReset(state: ProjectState, initialEmail: string, url: URL): void {
   const oobRecord = createOobRecord(state, initialEmail, url, {
     requestType: "RECOVER_EMAIL",
     mode: "recoverEmail",
@@ -1288,7 +1292,6 @@ function signInWithEmailLink(
     email,
     emailVerified: true,
     emailLinkSignin: true,
-    lastLoginAt: Date.now().toString(),
   };
 
   let user = state.getUserByEmail(email);
@@ -1305,15 +1308,19 @@ function signInWithEmailLink(
     user = state.updateUserByLocalId(user.localId, updates);
   }
 
-  return {
+  const response = {
     kind: "identitytoolkit#EmailLinkSigninResponse",
     email,
     localId: user.localId,
     isNewUser,
-    ...(user.mfaInfo
-      ? mfaPending(state, user, PROVIDER_PASSWORD)
-      : issueTokens(state, user, PROVIDER_PASSWORD)),
   };
+
+  if (user.mfaInfo?.length) {
+    return { ...response, ...mfaPending(state, user, PROVIDER_PASSWORD) };
+  } else {
+    user = state.updateUserByLocalId(user.localId, { lastLoginAt: Date.now().toString() });
+    return { ...response, ...issueTokens(state, user, PROVIDER_PASSWORD) };
+  }
 }
 
 type SignInWithIdpResponse = Schemas["GoogleCloudIdentitytoolkitV1SignInWithIdpResponse"];
@@ -1431,15 +1438,10 @@ function signInWithIdp(
     if (!response.localId) {
       throw new Error("Internal assertion error: localId not set for exising user.");
     }
-    if (userFromIdToken?.mfaInfo) {
-      // TODO: Shall we only update user after MFA success?
-      throw new NotImplementedError("MFA Login not yet implemented.");
-    }
     user = state.updateUserByLocalId(
       response.localId,
       {
         ...accountUpdates.fields,
-        lastLoginAt: Date.now().toString(),
       },
       {
         upsertProviders: [providerUserInfo],
@@ -1450,8 +1452,13 @@ function signInWithIdp(
   if (user.email === response.email) {
     response.emailVerified = user.emailVerified;
   }
-  Object.assign(response, issueTokens(state, user, providerId));
-  return response;
+
+  if (user.mfaInfo?.length) {
+    return { ...response, ...mfaPending(state, user, providerId) };
+  } else {
+    user = state.updateUserByLocalId(user.localId, { lastLoginAt: Date.now().toString() });
+    return { ...response, ...issueTokens(state, user, providerId) };
+  }
 }
 
 function signInWithPassword(
@@ -1519,6 +1526,10 @@ function signInWithPhoneNumber(
   const userFromIdToken = reqBody.idToken ? parseIdToken(state, reqBody.idToken).user : undefined;
   if (!user) {
     if (userFromIdToken) {
+      assert(
+        !userFromIdToken.mfaInfo?.length,
+        "UNSUPPORTED_FIRST_FACTOR : A phone number cannot be set as a first factor on an SMS based MFA user."
+      );
       user = state.updateUserByLocalId(userFromIdToken.localId, updates);
     } else {
       isNewUser = true;
@@ -1538,10 +1549,6 @@ function signInWithPhoneNumber(
       throw new BadRequestError("PHONE_NUMBER_EXISTS");
     }
     user = state.updateUserByLocalId(user.localId, updates);
-  }
-
-  if (user.mfaInfo) {
-    throw new NotImplementedError("MFA Login not yet implemented.");
   }
 
   const tokens = issueTokens(state, user, PROVIDER_PHONE);
