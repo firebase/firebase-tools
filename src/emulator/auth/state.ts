@@ -32,6 +32,7 @@ export class ProjectState {
   private temporaryProofs: Map<string, TemporaryProofRecord> = new Map();
   public oneAccountPerEmail = true;
   private authCloudFunction: AuthCloudFunction;
+  public usageMode: UsageMode = UsageMode.DEFAULT;
 
   constructor(public readonly projectId: string) {
     this.authCloudFunction = new AuthCloudFunction(projectId);
@@ -621,4 +622,9 @@ function getProviderEmailsForUser(user: UserInfo): Set<string> {
     }
   });
   return emails;
+}
+
+export enum UsageMode {
+  DEFAULT = "DEFAULT",
+  PASSTHROUGH = "PASSTHROUGH",
 }

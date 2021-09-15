@@ -368,3 +368,15 @@ export async function enrollPhoneMfa(
       return { idToken: res.body.idToken, refreshToken: res.body.refreshToken };
     });
 }
+
+export function deleteAccount(testAgent: TestAgent, reqBody: {}): Promise<string> {
+  return testAgent
+    .post("/identitytoolkit.googleapis.com/v1/accounts:delete")
+    .send(reqBody)
+    .query({ key: "fake-api-key" })
+    .then((res) => {
+      expectStatusCode(200, res);
+      expect(res.body).not.to.have.property("error");
+      return res.body.kind;
+    });
+}

@@ -3,6 +3,7 @@ import { decode as decodeJwt } from "jsonwebtoken";
 import { describeAuthEmulator } from "./setup";
 import {
   enrollPhoneMfa,
+  deleteAccount,
   expectStatusCode,
   getAccountInfoByIdToken,
   getAccountInfoByLocalId,
@@ -16,6 +17,7 @@ import {
   signInWithPhoneNumber,
   TEST_PHONE_NUMBER,
   updateAccountByLocalId,
+  updateProjectConfig,
 } from "./helpers";
 import { UserInfo } from "../../../emulator/auth/state";
 
@@ -272,7 +274,6 @@ describeAuthEmulator("accounts:batchCreate", ({ authApi }) => {
     expect(userSignIn.localId).to.equal(user.localId);
   });
 
-  // TODO
   it.skip("should reject production passwordHash", async () => {
     const user = {
       localId: "foo",
@@ -605,6 +606,27 @@ describeAuthEmulator("accounts:batchCreate", ({ authApi }) => {
     });
     // A mfaEnrollmentId should be automatically generated if not provided.
     expect(user1Info.mfaInfo![0].mfaEnrollmentId).to.be.a("string").and.not.empty;
+  });
+
+  it("should error if usageMode is passthrough", async () => {
+    const user1 = { localId: "foo", email: "foo@example.com", rawPassword: "notasecret" };
+    const user2 = {
+      localId: "bar",
+      phoneNumber: TEST_PHONE_NUMBER,
+      customAttributes: '{"hello": "world"}',
+    };
+    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
+
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:batchCreate`)
+      .set("Authorization", "Bearer owner")
+      .send({ users: [user1, user2] })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error)
+          .to.have.property("message")
+          .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
+      });
   });
 });
 

@@ -2593,7 +2593,10 @@ export interface components {
     /**
      * Emulator-specific configuration.
      */
-    EmulatorV1ProjectsConfig: { signIn?: { allowDuplicateEmails?: boolean } };
+    EmulatorV1ProjectsConfig: {
+      signIn?: { allowDuplicateEmails?: boolean };
+      usageMode?: "USAGE_MODE_UNSPECIFIED" | "DEFAULT" | "PASSTHROUGH";
+    };
     /**
      * Details of all pending confirmation codes.
      */

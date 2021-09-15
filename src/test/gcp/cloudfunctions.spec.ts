@@ -20,6 +20,14 @@ describe("cloudfunctions", () => {
     runtime: "nodejs16",
   };
 
+  // Omit a random trigger to make this compile
+  const ENDPOINT: Omit<backend.Endpoint, "httpsTrigger"> = {
+    platform: "gcfv1",
+    ...FUNCTION_NAME,
+    entryPoint: "function",
+    runtime: "nodejs16",
+  };
+
   const CLOUD_FUNCTION: Omit<cloudfunctions.CloudFunction, cloudfunctions.OutputOnlyFields> = {
     name: "projects/project/locations/region/functions/id",
     entryPoint: "function",
@@ -33,6 +41,231 @@ describe("cloudfunctions", () => {
     updateTime: new Date(),
     status: "ACTIVE",
   };
+
+  describe("functionFromEndpoint", () => {
+    const UPLOAD_URL = "https://storage.googleapis.com/projects/-/buckets/sample/source.zip";
+    it("should guard against version mixing", () => {
+      expect(() => {
+        cloudfunctions.functionFromEndpoint(
+          { ...ENDPOINT, platform: "gcfv2", httpsTrigger: {} },
+          UPLOAD_URL
+        );
+      }).to.throw;
+    });
+
+    it("should copy a minimal function", () => {
+      expect(
+        cloudfunctions.functionFromEndpoint({ ...ENDPOINT, httpsTrigger: {} }, UPLOAD_URL)
+      ).to.deep.equal({
+        ...CLOUD_FUNCTION,
+        sourceUploadUrl: UPLOAD_URL,
+        httpsTrigger: {},
+      });
+
+      const eventEndpoint = {
+        ...ENDPOINT,
+        eventTrigger: {
+          eventType: "google.pubsub.topic.publish",
+          eventFilters: {
+            resource: "projects/p/topics/t",
+          },
+          retry: false,
+        },
+      };
+      const eventGcfFunction = {
+        ...CLOUD_FUNCTION,
+        sourceUploadUrl: UPLOAD_URL,
+        eventTrigger: {
+          eventType: "google.pubsub.topic.publish",
+          resource: "projects/p/topics/t",
+          failurePolicy: undefined,
+        },
+      };
+      expect(cloudfunctions.functionFromEndpoint(eventEndpoint, UPLOAD_URL)).to.deep.equal(
+        eventGcfFunction
+      );
+    });
+
+    it("should copy trival fields", () => {
+      const fullEndpoint: backend.Endpoint = {
+        ...ENDPOINT,
+        httpsTrigger: {},
+        availableMemoryMb: 128,
+        minInstances: 1,
+        maxInstances: 42,
+        vpcConnector: "connector",
+        vpcConnectorEgressSettings: "ALL_TRAFFIC",
+        ingressSettings: "ALLOW_ALL",
+        timeout: "15s",
+        serviceAccountEmail: "inlined@google.com",
+        labels: {
+          foo: "bar",
+        },
+        environmentVariables: {
+          FOO: "bar",
+        },
+      };
+
+      const fullGcfFunction: Omit<cloudfunctions.CloudFunction, cloudfunctions.OutputOnlyFields> = {
+        ...CLOUD_FUNCTION,
+        sourceUploadUrl: UPLOAD_URL,
+        httpsTrigger: {},
+        labels: {
+          foo: "bar",
+        },
+        environmentVariables: {
+          FOO: "bar",
+        },
+        maxInstances: 42,
+        minInstances: 1,
+        vpcConnector: "connector",
+        vpcConnectorEgressSettings: "ALL_TRAFFIC",
+        ingressSettings: "ALLOW_ALL",
+        availableMemoryMb: 128,
+        timeout: "15s",
+        serviceAccountEmail: "inlined@google.com",
+      };
+
+      expect(cloudfunctions.functionFromEndpoint(fullEndpoint, UPLOAD_URL)).to.deep.equal(
+        fullGcfFunction
+      );
+    });
+
+    it("should calculate non-trivial fields", () => {
+      const complexEndpoint: backend.Endpoint = {
+        ...ENDPOINT,
+        scheduleTrigger: {},
+      };
+
+      const complexGcfFunction: Omit<
+        cloudfunctions.CloudFunction,
+        cloudfunctions.OutputOnlyFields
+      > = {
+        ...CLOUD_FUNCTION,
+        sourceUploadUrl: UPLOAD_URL,
+        eventTrigger: {
+          eventType: "google.pubsub.topic.publish",
+          resource: `projects/project/topics/${backend.scheduleIdForFunction(FUNCTION_NAME)}`,
+        },
+        labels: {
+          "deployment-scheduled": "true",
+        },
+      };
+
+      expect(cloudfunctions.functionFromEndpoint(complexEndpoint, UPLOAD_URL)).to.deep.equal(
+        complexGcfFunction
+      );
+    });
+  });
+
+  describe("endpointFromFunction", () => {
+    it("should copy a minimal version", () => {
+      expect(
+        cloudfunctions.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION,
+          httpsTrigger: {},
+        })
+      ).to.deep.equal({ ...ENDPOINT, httpsTrigger: {} });
+    });
+
+    it("should translate event triggers", () => {
+      expect(
+        cloudfunctions.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION,
+          eventTrigger: {
+            eventType: "google.pubsub.topic.publish",
+            resource: "projects/p/topics/t",
+            failurePolicy: {
+              retry: {},
+            },
+          },
+        })
+      ).to.deep.equal({
+        ...ENDPOINT,
+        eventTrigger: {
+          eventType: "google.pubsub.topic.publish",
+          eventFilters: {
+            resource: "projects/p/topics/t",
+          },
+          retry: true,
+        },
+      });
+
+      // And again w/o the failure policy
+      expect(
+        cloudfunctions.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION,
+          eventTrigger: {
+            eventType: "google.pubsub.topic.publish",
+            resource: "projects/p/topics/t",
+          },
+        })
+      ).to.deep.equal({
+        ...ENDPOINT,
+        eventTrigger: {
+          eventType: "google.pubsub.topic.publish",
+          eventFilters: {
+            resource: "projects/p/topics/t",
+          },
+          retry: false,
+        },
+      });
+    });
+
+    it("should transalte scheduled triggers", () => {
+      expect(
+        cloudfunctions.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION,
+          eventTrigger: {
+            eventType: "google.pubsub.topic.publish",
+            resource: "projects/p/topics/t",
+            failurePolicy: {
+              retry: {},
+            },
+          },
+          labels: {
+            "deployment-scheduled": "true",
+          },
+        })
+      ).to.deep.equal({
+        ...ENDPOINT,
+        scheduleTrigger: {},
+        labels: {
+          "deployment-scheduled": "true",
+        },
+      });
+    });
+
+    it("should copy optional fields", () => {
+      const extraFields: Partial<backend.Endpoint> = {
+        availableMemoryMb: 128,
+        minInstances: 1,
+        maxInstances: 42,
+        vpcConnector: "connector",
+        vpcConnectorEgressSettings: "ALL_TRAFFIC",
+        ingressSettings: "ALLOW_ALL",
+        serviceAccountEmail: "inlined@google.com",
+        timeout: "15s",
+        labels: {
+          foo: "bar",
+        },
+        environmentVariables: {
+          FOO: "bar",
+        },
+      };
+      expect(
+        cloudfunctions.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION,
+          ...extraFields,
+          httpsTrigger: {},
+        } as cloudfunctions.CloudFunction)
+      ).to.deep.equal({
+        ...ENDPOINT,
+        ...extraFields,
+        httpsTrigger: {},
+      });
+    });
+  });
 
   describe("functionFromSpec", () => {
     const UPLOAD_URL = "https://storage.googleapis.com/projects/-/buckets/sample/source.zip";

@@ -3,12 +3,13 @@ import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import { FirebaseJwtPayload } from "../../../emulator/auth/operations";
 import { describeAuthEmulator } from "./setup";
 import {
+  deleteAccount,
   expectStatusCode,
   getAccountInfoByLocalId,
   registerUser,
   TEST_MFA_INFO,
-  TEST_PHONE_NUMBER,
   updateAccountByLocalId,
+  updateProjectConfig,
 } from "./helpers";
 
 describeAuthEmulator("accounts:signInWithPassword", ({ authApi, getClock }) => {
@@ -152,6 +153,24 @@ describeAuthEmulator("accounts:signInWithPassword", ({ authApi, getClock }) => {
         expect(res.body).not.to.have.property("refreshToken");
         expect(res.body.mfaPendingCredential).to.be.a("string");
         expect(res.body.mfaInfo).to.be.an("array").with.lengthOf(1);
+      });
+  });
+
+  it("should error if usageMode is passthrough", async () => {
+    const user = { email: "alice@example.com", password: "notasecret" };
+    const { localId, idToken } = await registerUser(authApi(), user);
+    await deleteAccount(authApi(), { idToken });
+    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword")
+      .query({ key: "fake-api-key" })
+      .send({ email: user.email, password: user.password })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error)
+          .to.have.property("message")
+          .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
       });
   });
 });
