@@ -11,6 +11,8 @@ import {
   registerUser,
   TEST_MFA_INFO,
   TEST_PHONE_NUMBER,
+  TEST_PHONE_NUMBER_2,
+  enrollPhoneMfa,
   updateProjectConfig,
 } from "./helpers";
 
@@ -268,13 +270,13 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
       });
   });
 
-  it("should error if user has MFA", async () => {
+  it("should error when linking phone number to existing user with MFA", async () => {
     const user = {
       email: "alice@example.com",
       password: "notasecret",
       mfaInfo: [TEST_MFA_INFO],
     };
-    const { localId, idToken } = await registerUser(authApi(), user);
+    const { idToken } = await registerUser(authApi(), user);
 
     const phoneNumber = TEST_PHONE_NUMBER;
     const sessionInfo = await authApi()
@@ -283,7 +285,7 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
       .send({ phoneNumber, recaptchaToken: "ignored" })
       .then((res) => {
         expectStatusCode(200, res);
-        return res.body.sessionInfo;
+        return res.body.sessionInfo as string;
       });
 
     const codes = await inspectVerificationCodes(authApi());
@@ -294,9 +296,39 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
       .query({ key: "fake-api-key" })
       .send({ sessionInfo, code, idToken })
       .then((res) => {
-        expectStatusCode(501, res);
-        expect(res.body.error.message).to.equal("MFA Login not yet implemented.");
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.equal(
+          "UNSUPPORTED_FIRST_FACTOR : A phone number cannot be set as a first factor on an SMS based MFA user."
+        );
       });
+  });
+
+  it("should error if user has MFA", async () => {
+    const phoneNumber = TEST_PHONE_NUMBER;
+    let { idToken, localId } = await registerUser(authApi(), {
+      email: "alice@example.com",
+      password: "notasecret",
+    });
+    await updateAccountByLocalId(authApi(), localId, {
+      emailVerified: true,
+      phoneNumber,
+    });
+    ({ idToken } = await enrollPhoneMfa(authApi(), idToken, TEST_PHONE_NUMBER_2));
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode")
+      .query({ key: "fake-api-key" })
+      .send({ phoneNumber })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.equal(
+          "UNSUPPORTED_FIRST_FACTOR : A phone number cannot be set as a first factor on an SMS based MFA user."
+        );
+        return res.body.sessionInfo;
+      });
+
+    const codes = await inspectVerificationCodes(authApi());
+    expect(codes).to.be.empty;
   });
 
   it("should return temporaryProof if phone number already belongs to another account", async () => {

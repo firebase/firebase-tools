@@ -8,8 +8,6 @@ import {
   getAccountInfoByIdToken,
   updateAccountByLocalId,
   signInWithEmailLink,
-  registerUser,
-  TEST_MFA_INFO,
   updateProjectConfig,
 } from "./helpers";
 
@@ -271,26 +269,6 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
       .then((res) => {
         expectStatusCode(400, res);
         expect(res.body.error).to.have.property("message").equal("USER_DISABLED");
-      });
-  });
-
-  it("should error if user has MFA", async () => {
-    const user = {
-      email: "alice@example.com",
-      password: "notasecret",
-      mfaInfo: [TEST_MFA_INFO],
-    };
-    const { localId } = await registerUser(authApi(), user);
-
-    const claims = { abc: "def", ultimate: { answer: 42 } };
-    const token = JSON.stringify({ uid: localId, claims });
-    await authApi()
-      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken")
-      .query({ key: "fake-api-key" })
-      .send({ token })
-      .then((res) => {
-        expectStatusCode(501, res);
-        expect(res.body.error.message).to.equal("MFA Login not yet implemented.");
       });
   });
 });
