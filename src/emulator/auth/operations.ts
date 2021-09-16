@@ -28,6 +28,7 @@ import {
   PROVIDER_CUSTOM,
   OobRecord,
   UsageMode,
+  AgentProjectState,
 } from "./state";
 import { MfaEnrollments, CreateMfaEnrollmentsRequest, Schemas, MfaEnrollment } from "./types";
 
@@ -1594,10 +1595,15 @@ function updateEmulatorProjectConfig(
 ): Schemas["EmulatorV1ProjectsConfig"] {
   const allowDuplicateEmails = reqBody.signIn?.allowDuplicateEmails;
   if (allowDuplicateEmails != null) {
+    assert(
+      state instanceof AgentProjectState,
+      "((Only top level projects can set oneAccountPerEmail.))"
+    );
     state.oneAccountPerEmail = !allowDuplicateEmails;
   }
   const usageMode = reqBody.usageMode;
   if (usageMode != null) {
+    assert(state instanceof AgentProjectState, "((Only top level projects can set usageMode.))");
     switch (usageMode) {
       case "PASSTHROUGH":
         assert(state.getUserCount() === 0, "Users are present, unable to set passthrough mode");
