@@ -644,16 +644,6 @@ function warnAboutAuthProd(frb: FunctionsRuntimeBundle): void {
   ).log();
 }
 
-// This is a duplicate of the helper we use elsewhere but it's important not to
-// add dependencies to this runtime.
-function formatHost(info: { host: string; port: number }) {
-  if (info.host.includes(":")) {
-    return `[${info.host}]:${info.port}`;
-  } else {
-    return `${info.host}:${info.port}`;
-  }
-}
-
 async function initializeFunctionsConfigHelper(frb: FunctionsRuntimeBundle): Promise<void> {
   const functionsResolution = await assertResolveDeveloperNodeModule(frb, "firebase-functions");
   const localFunctionsModule = require(functionsResolution.resolution);
