@@ -138,6 +138,9 @@ module.exports = function (client) {
   client.setup.emulators.pubsub = loadCommand("setup-emulators-pubsub");
   client.setup.emulators.storage = loadCommand("setup-emulators-storage");
   client.setup.emulators.ui = loadCommand("setup-emulators-ui");
+  client.setup.storage = {
+    cdn: loadCommand("setup-storage-cdn"),
+  };
   client.target = loadCommand("target");
   client.target.apply = loadCommand("target-apply");
   client.target.clear = loadCommand("target-clear");
