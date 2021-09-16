@@ -70,6 +70,7 @@ module.exports = new Command(`setup:storage:cdn [bucketId]`)
     };
 
     // TODO: check to make sure Firebase Storage bucket exists
+    // TODO: make http -> https
 
     // 1. make the bucket public
     // TODO: Prompt for OK to make bucket public
@@ -189,6 +190,8 @@ module.exports = new Command(`setup:storage:cdn [bucketId]`)
       printResp(resp);
       await pollComputeOperation(projectId, resp.body.name);
     }
+
+    // TODO: make storage API to populate our subdomain
 
     console.log(
       "\n\nALL DONE! You now have a shiny load balancer.\n",
