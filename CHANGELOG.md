@@ -1,0 +1,1 @@
+- `ext:dev:publish` and `ext:update` now support --force and --non-interactive flags.
