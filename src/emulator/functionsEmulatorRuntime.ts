@@ -980,6 +980,7 @@ async function initializeRuntime(
   } else {
     require("../deploy/functions/runtimes/node/extractTriggers")(triggerModule, parsedDefinitions);
   }
+
   const triggerDefinitions: EmulatedTriggerDefinition[] = emulatedFunctionsByRegion(
     parsedDefinitions
   );

@@ -26,7 +26,7 @@ import { ChildProcess, spawnSync } from "child_process";
 import {
   emulatedFunctionsByRegion,
   EmulatedTriggerDefinition,
-  EmulatedTriggerType,
+  SignatureType,
   EventSchedule,
   EventTrigger,
   formatHost,
@@ -288,7 +288,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   startFunctionRuntime(
     triggerId: string,
     targetName: string,
-    triggerType: EmulatedTriggerType,
+    signatureType: SignatureType,
     proto?: any,
     runtimeOpts?: InvokeRuntimeOpts
   ): RuntimeWorker {
@@ -306,7 +306,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       proto,
       triggerId,
       targetName,
-      triggerType,
     };
     const opts = runtimeOpts || {
       nodeBinary: this.nodeBinary,
@@ -315,7 +314,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     const worker = this.invokeRuntime(
       runtimeBundle,
       opts,
-      this.getRuntimeEnvs({ targetName, triggerType })
+      this.getRuntimeEnvs({ targetName, signatureType })
     );
     return worker;
   }
@@ -745,7 +744,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       projectId: this.args.projectId,
       triggerId: "",
       targetName: "",
-      triggerType: undefined,
       emulators: {
         firestore: EmulatorRegistry.getInfo(Emulators.FIRESTORE),
         database: EmulatorRegistry.getInfo(Emulators.DATABASE),
@@ -852,7 +850,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   getSystemEnvs(triggerDef?: {
     targetName: string;
-    triggerType: EmulatedTriggerType;
+    signatureType: SignatureType;
   }): Record<string, string> {
     const envs: Record<string, string> = {};
 
@@ -865,9 +863,8 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (triggerDef) {
       const service = triggerDef.targetName;
       const target = service.replace(/-/g, ".");
-      const mode = triggerDef.triggerType === EmulatedTriggerType.BACKGROUND ? "event" : "http";
       envs.FUNCTION_TARGET = target;
-      envs.FUNCTION_SIGNATURE_TYPE = mode;
+      envs.FUNCTION_SIGNATURE_TYPE = triggerDef.signatureType;
       envs.K_SERVICE = service;
     }
     return envs;
@@ -939,7 +936,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   getRuntimeEnvs(triggerDef?: {
     targetName: string;
-    triggerType: EmulatedTriggerType;
+    signatureType: SignatureType;
   }): Record<string, string> {
     return {
       ...this.getUserEnvs(),
@@ -1079,7 +1076,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     const worker = this.startFunctionRuntime(
       trigger.id,
       trigger.name,
-      EmulatedTriggerType.BACKGROUND,
+      "event",
       proto
     );
 
@@ -1221,7 +1218,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     const worker = this.startFunctionRuntime(
       trigger.id,
       trigger.name,
-      EmulatedTriggerType.HTTPS,
+      "http",
       undefined
     );
 
