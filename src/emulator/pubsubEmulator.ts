@@ -1,4 +1,6 @@
 import * as uuid from "uuid";
+import { CloudEvent, HTTP } from "cloudevents";
+import { MessagePublishedData } from "@google/events/cloud/pubsub/v1/MessagePublishedData";
 import { Message, PubSub, Subscription } from "@google-cloud/pubsub";
 
 import * as api from "../api";
@@ -124,6 +126,58 @@ export class PubsubEmulator implements EmulatorInstance {
     this.subscriptionsByTopic.set(topicName, sub);
   }
 
+  private getRequestOptions(
+    topic: string,
+    message: Message,
+    signatureType: SignatureType
+  ): Record<string, unknown> {
+    const baseOpts = {
+      origin: `http://${EmulatorRegistry.getInfoHostString(
+        EmulatorRegistry.get(Emulators.FUNCTIONS)!.getInfo()
+      )}`,
+    };
+    if (signatureType === "event") {
+      return {
+        ...baseOpts,
+        data: {
+          context: {
+            eventId: uuid.v4(),
+            resource: {
+              service: "pubsub.googleapis.com",
+              name: `projects/${this.args.projectId}/topics/${topic}`,
+            },
+            eventType: "google.pubsub.topic.publish",
+            timestamp: message.publishTime.toISOString(),
+          },
+          data: {
+            data: message.data,
+            attributes: message.attributes,
+          },
+        },
+      };
+    } else if (signatureType === "cloudevent") {
+      const data: MessagePublishedData = {
+        message: {
+          messageId: message.id,
+          publishTime: message.publishTime,
+          attributes: message.attributes,
+          orderingKey: message.orderingKey,
+          data: message.data.toString("utf-8"),
+        },
+        subscription: "", // TODO: figure out subs.
+      };
+      const ce = HTTP.binary(
+        new CloudEvent({
+          type: "google.cloud.pubsub.topic.v1.messagePublished",
+          source: `//pubsub.googleapis.com/projects/${this.args.projectId}/topics/${topic}`,
+          data,
+        })
+      );
+      return { ...baseOpts, data: ce.body, headers: ce.headers };
+    }
+    throw new FirebaseError(`Unsupported trigger signature: ${signatureType}`);
+  }
+
   private async onMessage(topicName: string, message: Message) {
     this.logger.logLabeled("DEBUG", "pubsub", `onMessage(${topicName}, ${message.id})`);
     const topicTriggers = this.triggersByTopic.get(topicName);
@@ -131,8 +185,7 @@ export class PubsubEmulator implements EmulatorInstance {
       throw new FirebaseError(`No trigger for topic: ${topicName}`);
     }
 
-    const functionsEmu = EmulatorRegistry.get(Emulators.FUNCTIONS);
-    if (!functionsEmu) {
+    if (!EmulatorRegistry.get(Emulators.FUNCTIONS)) {
       throw new FirebaseError(
         `Attempted to execute pubsub trigger for topic ${topicName} but could not find Functions emulator`
       );
@@ -146,31 +199,15 @@ export class PubsubEmulator implements EmulatorInstance {
       )})`
     );
 
-    for (const { triggerKey } of topicTriggers.triggers) {
-      const body = {
-        context: {
-          eventId: uuid.v4(),
-          resource: {
-            service: "pubsub.googleapis.com",
-            name: `projects/${this.args.projectId}/topics/${topicName}`,
-          },
-          eventType: "google.pubsub.topic.publish",
-          timestamp: message.publishTime.toISOString(),
-        },
-        data: {
-          data: message.data,
-          attributes: message.attributes,
-        },
-      };
+    for (const { triggerKey, signatureType } of topicTriggers.triggers) {
+      const reqOpts = this.getRequestOptions(topicName, message, signatureType);
+      console.log(reqOpts);
 
       try {
         await api.request(
           "POST",
           `/functions/projects/${this.args.projectId}/triggers/${triggerKey}`,
-          {
-            origin: `http://${EmulatorRegistry.getInfoHostString(functionsEmu.getInfo())}`,
-            data: body,
-          }
+          reqOpts
         );
       } catch (e) {
         this.logger.logLabeled("DEBUG", "pubsub", e);

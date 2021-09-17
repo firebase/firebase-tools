@@ -11,7 +11,7 @@ import {
   FunctionsRuntimeFeatures,
   getEmulatedTriggersFromDefinitions,
   FunctionsRuntimeArgs,
-  HttpConstants,
+  HttpConstants, getSignatureType, SignatureType,
 } from "./functionsEmulatorShared";
 import { compareVersionStrings } from "./functionsEmulatorUtils";
 import * as express from "express";
@@ -778,7 +778,8 @@ async function processHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
 
 async function processBackground(
   frb: FunctionsRuntimeBundle,
-  trigger: EmulatedTrigger
+  trigger: EmulatedTrigger,
+  signature: SignatureType
 ): Promise<void> {
   const proto = frb.proto;
   logDebug("ProcessBackground", proto);
@@ -887,9 +888,9 @@ async function invokeTrigger(
 
   const trigger = triggers[frb.triggerId];
   logDebug("triggerDefinition", trigger.definition);
-  const mode = trigger.definition.httpsTrigger ? "HTTPS" : "BACKGROUND";
+  const signature = getSignatureType(trigger.definition);
 
-  logDebug(`Running ${frb.triggerId} in mode ${mode}`);
+  logDebug(`Running ${frb.triggerId} in mode ${signature}`);
 
   let seconds = 0;
   const timerId = setInterval(() => {
@@ -911,11 +912,12 @@ async function invokeTrigger(
     }, trigger.timeoutMs);
   }
 
-  switch (mode) {
-    case "BACKGROUND":
-      await processBackground(frb, triggers[frb.triggerId]);
+  switch (signature) {
+    case "event":
+    case "cloudevent":
+      await processBackground(frb, triggers[frb.triggerId], signature);
       break;
-    case "HTTPS":
+    case "http":
       await processHTTPS(frb, triggers[frb.triggerId]);
       break;
   }
