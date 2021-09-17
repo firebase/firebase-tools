@@ -28,11 +28,6 @@ import swaggerToTS from "@manifoldco/swagger-to-ts";
 // @ts-ignore
 import * as googleDiscoveryToSwagger from "google-discovery-to-swagger";
 
-// Swagger and OpenAPI 3.0 formats do not support RFC 6570 Level 2 features
-// (like {+var}) which are present in API Discovery. Setting this flag in this
-// library makes it produce Level 1-only URL templates and fully spec-compliant.
-googleDiscoveryToSwagger.setStrict(true);
-
 async function main(): Promise<void> {
   const [v1Disc, v2Disc, tokenDisc] = await Promise.all([
     fetchJson("https://identitytoolkit.googleapis.com/$discovery/rest?version=v1"),
@@ -113,6 +108,9 @@ async function toOpenapi3(discovery: any): Promise<any> {
   const apiKeyDescription = discovery.parameters.key.description;
   delete discovery.parameters.key;
 
+  // Preprocess and replace paths with flatPaths
+  replaceWithFlatPath(discovery.resources);
+
   // We first convert the discovery document to Swagger (a.k.a. OpenAPI 2.0) and
   // then to OpenAPI 3.0 because there is tool that does direct conversion. Some
   // tools offer one single API call for the entire conversion, but perform
@@ -128,6 +126,70 @@ async function toOpenapi3(discovery: any): Promise<any> {
   patchSecurity(openapi3, apiKeyDescription);
 
   return openapi3;
+}
+
+const pathParamsForFlatPathParam: Map<string, string> = new Map([
+  ["{projectsId}", "{targetProjectId}"],
+  ["{tenantsId}", "{tenantId}"],
+]);
+
+const paramPattern = /{([^}]+)}/g;
+
+function replaceWithFlatPath(discovery: { [key: string]: any }): void {
+  if (discovery.methods) {
+    Object.entries(discovery.methods).forEach(([_, method]) => {
+      if (typeof method === "object") {
+        // Replace flat path param names with path param names
+        // e.g. for endpoint identitytoolkit.projects.defaultSupportedIdpConfigs.get:
+        // path = v2/{name}
+        // flatPath = v2/projects/{projectsId}/defaultSupportedIdpConfigs/{defaultSupportedIdpConfigsId}
+        //
+        // transform v2/projects/{projectsId}/defaultSupportedIdpConfigs/{defaultSupportedIdpConfigsId}
+        //       --> v2/projects/{targetProjectId}/defaultSupportedIdpConfigs/{defaultSupportedIdpConfigsId}
+        let flatPath = (method as any).flatPath;
+        pathParamsForFlatPathParam.forEach((pathParam, flatPathParam) => {
+          flatPath = flatPath.replace(flatPathParam, pathParam);
+        });
+
+        const cleanedParams: { [key: string]: any } = {};
+
+        // Get all param names in path
+        // e.g. ["projectsId", "defaultSupportedIdpConfigsId"]
+        const pathParamMatches = [...flatPath.matchAll(paramPattern)];
+        const paramsInPath = pathParamMatches.map((match) => match[1]);
+
+        // Remove method path parameters that don't appear in the path
+        // e.g. remove parameter "name" that appears in original path
+        const params = (method as any).parameters;
+        Object.entries(params).forEach(([name, paramObj]) => {
+          if ((paramObj as any).location !== "path" || paramsInPath.includes(name)) {
+            cleanedParams[name] = paramObj;
+          }
+        });
+
+        // Add params that are in path but are not in the parameters object
+        // e.g. add "targetProjectId" and "defaultSupportedIdpConfigsId"
+        paramsInPath.forEach((param) => {
+          if (!Object.keys(cleanedParams).some((name) => name === param)) {
+            cleanedParams[param] = {
+              location: "path",
+              required: true,
+              type: "string",
+            };
+          }
+        });
+
+        (method as any).parameters = cleanedParams;
+        (method as any).parameterOrder = paramsInPath;
+        (method as any).path = flatPath;
+      }
+    });
+    if (discovery.resources) {
+      replaceWithFlatPath(discovery.resources);
+    }
+    return;
+  }
+  Object.values(discovery).forEach((val) => replaceWithFlatPath(val));
 }
 
 function patchSecurity(openapi3: any, apiKeyDescription: string): void {
