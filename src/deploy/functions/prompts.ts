@@ -4,7 +4,6 @@ import { getFunctionLabel } from "./functionsDeployHelper";
 import { FirebaseError } from "../../error";
 import { promptOnce } from "../../prompt";
 import { logger } from "../../logger";
-import * as args from "./args";
 import * as backend from "./backend";
 import * as pricing from "./pricing";
 import * as utils from "../../utils";
@@ -23,8 +22,8 @@ export async function promptForFailurePolicies(
   have: backend.Backend
 ): Promise<void> {
   // Collect all the functions that have a retry policy
-  const retryEndpoints = backend.allEndpoints(want).filter((fn) => {
-    return backend.isEventTriggered(fn) && fn.eventTrigger.retry;
+  const retryEndpoints = backend.allEndpoints(want).filter((e) => {
+    return backend.isEventTriggered(e) && e.eventTrigger.retry;
   });
 
   if (retryEndpoints.length === 0) {
@@ -137,20 +136,20 @@ export async function promptForMinInstances(
     return;
   }
 
-  const increasesCost = backend.allEndpoints(want).some((wantFn) => {
+  const increasesCost = backend.allEndpoints(want).some((wantE) => {
     // If we don't know how much this will cost, be pessimal
-    if (!pricing.canCalculateMinInstanceCost(wantFn)) {
+    if (!pricing.canCalculateMinInstanceCost(wantE)) {
       return true;
     }
-    const wantCost = pricing.monthlyMinInstanceCost([wantFn]);
-    const haveFn = have.endpoints[wantFn.region]?.[wantFn.id];
+    const wantCost = pricing.monthlyMinInstanceCost([wantE]);
+    const haveE = have.endpoints[wantE.region]?.[wantE.id];
     let haveCost;
-    if (!haveFn) {
+    if (!haveE) {
       haveCost = 0;
-    } else if (!pricing.canCalculateMinInstanceCost(wantFn)) {
+    } else if (!pricing.canCalculateMinInstanceCost(wantE)) {
       return true;
     } else {
-      haveCost = pricing.monthlyMinInstanceCost([haveFn]);
+      haveCost = pricing.monthlyMinInstanceCost([haveE]);
     }
     return wantCost > haveCost;
   });

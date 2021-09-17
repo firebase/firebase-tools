@@ -600,7 +600,7 @@ export function matchingBackend(
 
 /** A helper utility for flattening all endpoints in a region since typing is a bit wonky. */
 export function regionalEndpoints(backend: Backend, region: string): Endpoint[] {
-  return Object.values<Endpoint>(backend.endpoints[region]);
+  return backend.endpoints[region] ? Object.values<Endpoint>(backend.endpoints[region]) : [];
 }
 
 /** A curried function used for filters, returns a matcher for functions in a backend. */
