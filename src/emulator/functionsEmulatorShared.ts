@@ -4,10 +4,12 @@ import * as os from "os";
 import * as path from "path";
 import * as express from "express";
 import * as fs from "fs";
+
 import { Constants } from "./constants";
 import { InvokeRuntimeOpts } from "./functionsEmulator";
+import { FunctionsPlatform } from "../deploy/functions/backend";
 
-export type SignatureType = "http" | "event";
+export type SignatureType = "http" | "event" | "cloudevent";
 
 export interface ParsedTriggerDefinition {
   entryPoint: string;
@@ -19,6 +21,7 @@ export interface ParsedTriggerDefinition {
   eventTrigger?: EventTrigger;
   schedule?: EventSchedule;
   labels?: { [key: string]: any };
+  platform?: FunctionsPlatform;
 }
 
 export interface EmulatedTriggerDefinition extends ParsedTriggerDefinition {
@@ -285,4 +288,11 @@ export function formatHost(info: { host: string; port: number }): string {
   } else {
     return `${info.host}:${info.port}`;
   }
+}
+
+export function getSignatureType(def: EmulatedTriggerDefinition): SignatureType {
+  if (def.httpsTrigger) {
+    return "http";
+  }
+  return def.platform === "gcfv1" ? "event" : "cloudevent";
 }

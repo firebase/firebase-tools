@@ -34,6 +34,7 @@ import {
   FunctionsRuntimeBundle,
   FunctionsRuntimeFeatures,
   getFunctionService,
+  getSignatureType,
   HttpConstants,
   ParsedTriggerDefinition,
 } from "./functionsEmulatorShared";
@@ -484,6 +485,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       } else if (definition.eventTrigger) {
         const service: string = getFunctionService(definition);
         const key = this.getTriggerKey(definition);
+        const signature = getSignatureType(definition);
 
         switch (service) {
           case Constants.SERVICE_FIRESTORE:
@@ -505,6 +507,7 @@ export class FunctionsEmulator implements EmulatorInstance {
               definition.name,
               key,
               definition.eventTrigger,
+              signature,
               definition.schedule
             );
             break;
@@ -633,6 +636,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     triggerName: string,
     key: string,
     eventTrigger: EventTrigger,
+    signatureType: SignatureType,
     schedule: EventSchedule | undefined
   ): Promise<boolean> {
     const pubsubPort = EmulatorRegistry.getPort(Emulators.PUBSUB);
@@ -1073,7 +1077,12 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     const trigger = this.getTriggerDefinitionByKey(triggerKey);
     const service = getFunctionService(trigger);
-    const worker = this.startFunctionRuntime(trigger.id, trigger.name, "event", proto);
+    const worker = this.startFunctionRuntime(
+      trigger.id,
+      trigger.name,
+      getSignatureType(trigger),
+      proto
+    );
 
     return new Promise((resolve, reject) => {
       if (projectId !== this.args.projectId) {
