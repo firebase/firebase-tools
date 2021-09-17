@@ -294,5 +294,5 @@ export function getSignatureType(def: EmulatedTriggerDefinition): SignatureType 
   if (def.httpsTrigger) {
     return "http";
   }
-  return def.platform === "gcfv1" ? "event" : "cloudevent";
+  return def.platform === "gcfv2" ? "cloudevent" : "event";
 }

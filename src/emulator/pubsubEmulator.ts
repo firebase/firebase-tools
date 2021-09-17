@@ -8,6 +8,7 @@ import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
 import { Constants } from "./constants";
 import { FirebaseError } from "../error";
 import { EmulatorRegistry } from "./registry";
+import { SignatureType } from "./functionsEmulatorShared";
 
 export interface PubsubEmulatorArgs {
   projectId: string;
@@ -16,14 +17,19 @@ export interface PubsubEmulatorArgs {
   auto_download?: boolean;
 }
 
+interface Trigger {
+  triggerKey: string;
+  signatureType: SignatureType;
+}
+
 export class PubsubEmulator implements EmulatorInstance {
   pubsub: PubSub;
 
   // Map of topic name to a list of functions to trigger
-  triggers: Map<string, Set<string>>;
+  triggersByTopic: Map<string, { triggerKeys: Set<string>; triggers: Trigger[] }>;
 
   // Map of topic name to a PubSub subscription object
-  subscriptions: Map<string, Subscription>;
+  subscriptionsByTopic: Map<string, Subscription>;
 
   private logger = EmulatorLogger.forEmulator(Emulators.PUBSUB);
 
@@ -34,8 +40,8 @@ export class PubsubEmulator implements EmulatorInstance {
       projectId: this.args.projectId,
     });
 
-    this.triggers = new Map();
-    this.subscriptions = new Map();
+    this.triggersByTopic = new Map();
+    this.subscriptionsByTopic = new Map();
   }
 
   async start(): Promise<void> {
@@ -66,11 +72,18 @@ export class PubsubEmulator implements EmulatorInstance {
     return Emulators.PUBSUB;
   }
 
-  async addTrigger(topicName: string, trigger: string) {
-    this.logger.logLabeled("DEBUG", "pubsub", `addTrigger(${topicName}, ${trigger})`);
+  async addTrigger(topicName: string, triggerKey: string, signatureType: SignatureType) {
+    this.logger.logLabeled(
+      "DEBUG",
+      "pubsub",
+      `addTrigger(${topicName}, ${triggerKey}, ${signatureType})`
+    );
 
-    const topicTriggers = this.triggers.get(topicName) || new Set();
-    if (topicTriggers.has(topicName) && this.subscriptions.has(topicName)) {
+    const topicTriggers = this.triggersByTopic.get(topicName) || {
+      triggerKeys: new Set(),
+      triggers: [],
+    };
+    if (topicTriggers.triggerKeys.has(topicName) && this.subscriptionsByTopic.has(topicName)) {
       this.logger.logLabeled("DEBUG", "pubsub", "Trigger already exists");
       return;
     }
@@ -105,15 +118,16 @@ export class PubsubEmulator implements EmulatorInstance {
       this.onMessage(topicName, message);
     });
 
-    topicTriggers.add(trigger);
-    this.triggers.set(topicName, topicTriggers);
-    this.subscriptions.set(topicName, sub);
+    topicTriggers.triggerKeys.add(triggerKey);
+    topicTriggers.triggers.push({ triggerKey, signatureType });
+    this.triggersByTopic.set(topicName, topicTriggers);
+    this.subscriptionsByTopic.set(topicName, sub);
   }
 
   private async onMessage(topicName: string, message: Message) {
     this.logger.logLabeled("DEBUG", "pubsub", `onMessage(${topicName}, ${message.id})`);
-    const topicTriggers = this.triggers.get(topicName);
-    if (!topicTriggers || topicTriggers.size === 0) {
+    const topicTriggers = this.triggersByTopic.get(topicName);
+    if (!topicTriggers || topicTriggers.triggerKeys.size === 0) {
       throw new FirebaseError(`No trigger for topic: ${topicName}`);
     }
 
@@ -127,15 +141,12 @@ export class PubsubEmulator implements EmulatorInstance {
     this.logger.logLabeled(
       "DEBUG",
       "pubsub",
-      `Executing ${topicTriggers.size} matching triggers (${JSON.stringify(
-        Array.from(topicTriggers)
+      `Executing ${topicTriggers.triggerKeys.size} matching triggers (${JSON.stringify(
+        Array.from(topicTriggers.triggerKeys)
       )})`
     );
 
-    // We need to do one POST request for each matching trigger and only
-    // 'ack' the message when they are all complete.
-    let remaining = topicTriggers.size;
-    for (const trigger of topicTriggers) {
+    for (const { triggerKey } of topicTriggers.triggers) {
       const body = {
         context: {
           eventId: uuid.v4(),
@@ -155,7 +166,7 @@ export class PubsubEmulator implements EmulatorInstance {
       try {
         await api.request(
           "POST",
-          `/functions/projects/${this.args.projectId}/triggers/${trigger}`,
+          `/functions/projects/${this.args.projectId}/triggers/${triggerKey}`,
           {
             origin: `http://${EmulatorRegistry.getInfoHostString(functionsEmu.getInfo())}`,
             data: body,
@@ -164,13 +175,8 @@ export class PubsubEmulator implements EmulatorInstance {
       } catch (e) {
         this.logger.logLabeled("DEBUG", "pubsub", e);
       }
-
-      // If this is the last trigger we need to run, ack the message.
-      remaining--;
-      if (remaining <= 0) {
-        this.logger.logLabeled("DEBUG", "pubsub", `Acking message ${message.id}`);
-        message.ack();
-      }
     }
+    this.logger.logLabeled("DEBUG", "pubsub", `Acking message ${message.id}`);
+    message.ack();
   }
 }

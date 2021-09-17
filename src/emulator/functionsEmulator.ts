@@ -662,7 +662,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     try {
-      await pubsubEmulator.addTrigger(topic, key);
+      await pubsubEmulator.addTrigger(topic, key, signatureType);
       return true;
     } catch (e) {
       return false;
