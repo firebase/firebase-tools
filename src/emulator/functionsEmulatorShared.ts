@@ -7,10 +7,7 @@ import * as fs from "fs";
 import { Constants } from "./constants";
 import { InvokeRuntimeOpts } from "./functionsEmulator";
 
-export enum EmulatedTriggerType {
-  BACKGROUND = "BACKGROUND",
-  HTTPS = "HTTPS",
-}
+export type SignatureType = "http" | "event";
 
 export interface ParsedTriggerDefinition {
   entryPoint: string;
@@ -55,7 +52,6 @@ export interface FunctionsRuntimeBundle {
   proto?: any;
   triggerId?: string;
   targetName?: string;
-  triggerType?: EmulatedTriggerType;
   emulators: {
     firestore?: {
       host: string;
