@@ -1073,12 +1073,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     const trigger = this.getTriggerDefinitionByKey(triggerKey);
     const service = getFunctionService(trigger);
-    const worker = this.startFunctionRuntime(
-      trigger.id,
-      trigger.name,
-      "event",
-      proto
-    );
+    const worker = this.startFunctionRuntime(trigger.id, trigger.name, "event", proto);
 
     return new Promise((resolve, reject) => {
       if (projectId !== this.args.projectId) {
@@ -1215,12 +1210,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         );
       }
     }
-    const worker = this.startFunctionRuntime(
-      trigger.id,
-      trigger.name,
-      "http",
-      undefined
-    );
+    const worker = this.startFunctionRuntime(trigger.id, trigger.name, "http", undefined);
 
     worker.onLogs((el: EmulatorLog) => {
       if (el.level === "FATAL") {
