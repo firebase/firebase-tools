@@ -11,7 +11,9 @@ import {
   FunctionsRuntimeFeatures,
   getEmulatedTriggersFromDefinitions,
   FunctionsRuntimeArgs,
-  HttpConstants, getSignatureType, SignatureType,
+  HttpConstants,
+  getSignatureType,
+  SignatureType,
 } from "./functionsEmulatorShared";
 import { compareVersionStrings } from "./functionsEmulatorUtils";
 import * as express from "express";
@@ -20,7 +22,7 @@ import * as admin from "firebase-admin";
 import * as bodyParser from "body-parser";
 import { pathToFileURL, URL } from "url";
 import * as _ from "lodash";
-import {CloudEvent} from "firebase-functions/lib/v2";
+import { CloudEvent } from "firebase-functions/lib/v2";
 
 let triggers: EmulatedTriggerMap | undefined;
 let developerPkgJSON: PackageJSON | undefined;

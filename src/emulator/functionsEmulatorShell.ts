@@ -1,6 +1,10 @@
 import * as uuid from "uuid";
 import { FunctionsEmulator } from "./functionsEmulator";
-import {EmulatedTriggerDefinition, getSignatureType, SignatureType} from "./functionsEmulatorShared";
+import {
+  EmulatedTriggerDefinition,
+  getSignatureType,
+  SignatureType,
+} from "./functionsEmulatorShared";
 import * as utils from "../utils";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
