@@ -166,7 +166,7 @@ export class PubsubEmulator implements EmulatorInstance {
         },
         subscription: "", // TODO: figure out subs.
       };
-      const ce = HTTP.binary(
+      const ce = HTTP.structured(
         new CloudEvent({
           type: "google.cloud.pubsub.topic.v1.messagePublished",
           source: `//pubsub.googleapis.com/projects/${this.args.projectId}/topics/${topic}`,
@@ -201,7 +201,6 @@ export class PubsubEmulator implements EmulatorInstance {
 
     for (const { triggerKey, signatureType } of topicTriggers.triggers) {
       const reqOpts = this.getRequestOptions(topicName, message, signatureType);
-      console.log(reqOpts);
 
       try {
         await api.request(

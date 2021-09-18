@@ -6,6 +6,7 @@ import * as clc from "cli-color";
 import * as http from "http";
 import * as jwt from "jsonwebtoken";
 import { URL } from "url";
+import { HTTP } from "cloudevents";
 
 import { Account } from "../auth";
 import * as api from "../api";
@@ -230,7 +231,16 @@ export class FunctionsEmulator implements EmulatorInstance {
       const projectId = req.params.project_id;
 
       const reqBody = (req as RequestWithRawBody).rawBody;
-      const proto = JSON.parse(reqBody.toString());
+      let proto = JSON.parse(reqBody.toString());
+
+      if (req.headers["content-type"]?.includes("cloudevent")) {
+        // Convert request payload to CloudEvent.
+        // TODO(taeold): Converting request payload to CloudEvent object should be done by the functions runtime.
+        // However, the Functions Emulator communicates with the runtime via socket not HTTP, and CE metadata
+        // embedded in HTTP header may get lost. Once the Functions Emulator is refactored to communicate to the
+        // runtime instances via HTTP, move this logic there.
+        proto = HTTP.toEvent({ headers: req.headers, body: proto });
+      }
 
       this.workQueue.submit(() => {
         this.logger.log("DEBUG", `Accepted request ${req.method} ${req.url} --> ${triggerId}`);
@@ -1264,6 +1274,9 @@ export class FunctionsEmulator implements EmulatorInstance {
         socketPath: worker.lastArgs.frb.socketPath,
       },
       (runtimeRes: http.IncomingMessage) => {
+        /**
+         *
+         */
         function forwardStatusAndHeaders(): void {
           res.status(runtimeRes.statusCode || 200);
           if (!res.headersSent) {

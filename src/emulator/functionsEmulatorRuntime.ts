@@ -20,6 +20,7 @@ import * as admin from "firebase-admin";
 import * as bodyParser from "body-parser";
 import { pathToFileURL, URL } from "url";
 import * as _ from "lodash";
+import {CloudEvent} from "firebase-functions/lib/v2";
 
 let triggers: EmulatedTriggerMap | undefined;
 let developerPkgJSON: PackageJSON | undefined;
@@ -784,6 +785,10 @@ async function processBackground(
   const proto = frb.proto;
   logDebug("ProcessBackground", proto);
 
+  if (signature === "cloudevent") {
+    return runCloudEvent(proto, trigger.getRawFunction());
+  }
+
   // All formats of the payload should carry a "data" property. The "context" property does
   // not exist in all versions. Where it doesn't exist, context is everything besides data.
   const data = proto.data;
@@ -824,6 +829,14 @@ async function runBackground(proto: any, func: CloudFunction<any>): Promise<any>
 
   await runFunction(() => {
     return func(proto.data, proto.context);
+  });
+}
+
+async function runCloudEvent(event: CloudEvent<unknown>, func: CloudFunction<any>): Promise<any> {
+  logDebug("RunCloudEvent", event);
+
+  await runFunction(() => {
+    return func(event);
   });
 }
 
