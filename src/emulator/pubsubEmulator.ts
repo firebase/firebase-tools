@@ -162,7 +162,7 @@ export class PubsubEmulator implements EmulatorInstance {
           publishTime: message.publishTime,
           attributes: message.attributes,
           orderingKey: message.orderingKey,
-          data: message.data.toString("utf-8"),
+          data: message.data.toString("base64"),
         },
         subscription: "", // TODO: figure out subs.
       };
