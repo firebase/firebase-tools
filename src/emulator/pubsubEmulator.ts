@@ -164,7 +164,7 @@ export class PubsubEmulator implements EmulatorInstance {
           orderingKey: message.orderingKey,
           data: message.data.toString("base64"),
         },
-        subscription: "", // TODO: figure out subs.
+        subscription: this.subscriptionsByTopic.get(topic)!.name,
       };
       const ce = HTTP.structured(
         new CloudEvent({
