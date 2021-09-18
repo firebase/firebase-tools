@@ -100,7 +100,7 @@ function fetchJson(url: string): any {
 
 const OPENAPI_HTTP_METHODS = ["get", "put", "post", "delete", "options", "head", "patch", "trace"];
 
-async function toOpenapi3(discovery: any): Promise<any> {
+async function toOpenapi3(discovery: Discovery): Promise<any> {
   // Error format query param, not supported in emulator and pollutes defs.
   delete discovery.parameters["$.xgafv"];
 
@@ -123,66 +123,114 @@ async function toOpenapi3(discovery: any): Promise<any> {
     // Server URL should not end with slash since it is prefixed to paths.
     server.url = server.url.replace(/\/$/, "");
   });
-  patchSecurity(openapi3, apiKeyDescription);
+  patchSecurity(openapi3, apiKeyDescription!);
 
   return openapi3;
 }
 
-const pathParamsForFlatPathParam: Map<string, string> = new Map([
+interface Discovery {
+  kind: string;
+  name: string;
+  version: string;
+  title: string;
+  description: string;
+  protocol: string;
+  rootUrl: string;
+  servicePath: string;
+  parameters: Parameters;
+  resources: Resources;
+}
+
+interface Parameters {
+  [paramName: string]: Parameter;
+}
+
+interface Parameter {
+  type: string;
+  required: boolean;
+  location: string;
+  description?: string;
+  pattern?: string;
+}
+
+interface Methods {
+  [methodName: string]: Method;
+}
+
+interface Method {
+  id: string;
+  path: string;
+  flatPath: string;
+  httpMethod: string;
+  description: string;
+  response: { $ref: string };
+  parameters: Parameters;
+  parameterOrder: string[];
+  scopes: string[];
+}
+
+interface Resource {
+  methods: Methods;
+  resources?: Resources;
+}
+
+interface Resources {
+  [resourceName: string]: Resource | Resources;
+}
+
+const pathParamsForFlatPathParam = new Map([
   ["{projectsId}", "{targetProjectId}"],
   ["{tenantsId}", "{tenantId}"],
 ]);
 
 const paramPattern = /{([^}]+)}/g;
 
-function replaceWithFlatPath(discovery: { [key: string]: any }): void {
+function replaceWithFlatPath(discovery: Resource | Resources): void {
   if (discovery.methods) {
     Object.entries(discovery.methods).forEach(([_, method]) => {
-      if (typeof method === "object") {
-        // Replace flat path param names with path param names
-        // e.g. for endpoint identitytoolkit.projects.defaultSupportedIdpConfigs.get:
-        // path = v2/{name}
-        // flatPath = v2/projects/{projectsId}/defaultSupportedIdpConfigs/{defaultSupportedIdpConfigsId}
-        //
-        // transform v2/projects/{projectsId}/defaultSupportedIdpConfigs/{defaultSupportedIdpConfigsId}
-        //       --> v2/projects/{targetProjectId}/defaultSupportedIdpConfigs/{defaultSupportedIdpConfigsId}
-        let flatPath = (method as any).flatPath;
-        pathParamsForFlatPathParam.forEach((pathParam, flatPathParam) => {
-          flatPath = flatPath.replace(flatPathParam, pathParam);
-        });
+      // Replace flat path param names with path param names
+      // e.g. for endpoint identitytoolkit.projects.defaultSupportedIdpConfigs.get:
+      // path = v2/{name}
+      // flatPath = v2/projects/{projectsId}/defaultSupportedIdpConfigs/{defaultSupportedIdpConfigsId}
+      //
+      // transform v2/projects/{projectsId}/defaultSupportedIdpConfigs/{defaultSupportedIdpConfigsId}
+      //       --> v2/projects/{targetProjectId}/defaultSupportedIdpConfigs/{defaultSupportedIdpConfigsId}
+      let flatPath = method.flatPath;
+      pathParamsForFlatPathParam.forEach((pathParam, flatPathParam) => {
+        flatPath = flatPath.replace(flatPathParam, pathParam);
+      });
 
-        const cleanedParams: { [key: string]: any } = {};
+      const cleanedParams: Parameters = {};
 
-        // Get all param names in path
-        // e.g. ["projectsId", "defaultSupportedIdpConfigsId"]
-        const pathParamMatches = [...flatPath.matchAll(paramPattern)];
-        const paramsInPath = pathParamMatches.map((match) => match[1]);
+      // Get all param names in path
+      // e.g. ["projectsId", "defaultSupportedIdpConfigsId"]
+      const paramsInPath = [...flatPath.matchAll(paramPattern)].map((match) => match[1]);
 
-        // Remove method path parameters that don't appear in the path
-        // e.g. remove parameter "name" that appears in original path
-        const params = (method as any).parameters;
-        Object.entries(params).forEach(([name, paramObj]) => {
-          if ((paramObj as any).location !== "path" || paramsInPath.includes(name)) {
-            cleanedParams[name] = paramObj;
-          }
-        });
+      // Remove method path parameters that don't appear in the path
+      // e.g. remove parameter "name" that appears in original path
+      const params = method.parameters;
+      Object.entries(params).forEach(([name, paramObj]) => {
+        // Compiler complains that paramObj is unknown, cast explicitly
+        if ((paramObj as Parameter).location !== "path" || paramsInPath.includes(name)) {
+          cleanedParams[name] = paramObj as Parameter;
+        }
+      });
 
-        // Add params that are in path but are not in the parameters object
-        // e.g. add "targetProjectId" and "defaultSupportedIdpConfigsId"
-        paramsInPath.forEach((param) => {
-          if (!Object.keys(cleanedParams).some((name) => name === param)) {
-            cleanedParams[param] = {
-              location: "path",
-              required: true,
-              type: "string",
-            };
-          }
-        });
+      // Add params that are in path but are not in the parameters object
+      // e.g. add "targetProjectId" and "defaultSupportedIdpConfigsId"
+      paramsInPath.forEach((param) => {
+        if (!Object.keys(cleanedParams).some((name) => name === param)) {
+          cleanedParams[param] = {
+            location: "path",
+            required: true,
+            type: "string",
+          };
+        }
+      });
 
-        (method as any).parameters = cleanedParams;
-        (method as any).parameterOrder = paramsInPath;
-        (method as any).path = flatPath;
-      }
+      method.parameters = cleanedParams;
+      method.parameterOrder = paramsInPath;
+      method.path = flatPath;
     });
     if (discovery.resources) {
       replaceWithFlatPath(discovery.resources);
