@@ -77,7 +77,7 @@ export async function hydrateConfigs(pInfos: ProjectConfigInfo[]): Promise<void>
       pInfo.config = await functionsConfig.materializeAll(pInfo.projectId);
     } catch (err) {
       logger.debug(
-        `Failed to fetch runtime config for prroject ${pInfo.projectId}: ${err.message}`
+        `Failed to fetch runtime config for project ${pInfo.projectId}: ${err.message}`
       );
     }
   }
@@ -170,7 +170,8 @@ export function hydrateEnvs(pInfos: ProjectConfigInfo[], prefix: string): string
     const { success, errors } = configToEnv(pInfo.config!, prefix);
     if (errors.length > 0) {
       const msg =
-        `${pInfo.alias ?? pInfo.projectId}:\n` +
+        `${pInfo.projectId} ` +
+        `${pInfo.alias ? "(" + pInfo.alias + ")" : ""}:\n` +
         errors.map((err) => `\t${err.origKey} => ${clc.bold(err.newKey)} (${err.err})`).join("\n") +
         "\n";
       errMsg += msg;

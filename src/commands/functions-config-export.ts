@@ -36,6 +36,7 @@ function checkReservedAliases(pInfos: configExport.ProjectConfigInfo[]): void {
   }
 }
 
+/* For projects where we failed to fetch the runtime config, find out what permissions are missing in the project. */
 async function checkRequiredPermission(pInfos: configExport.ProjectConfigInfo[]): Promise<void> {
   for (const pInfo of pInfos) {
     if (pInfo.config) continue;
@@ -136,7 +137,8 @@ export default new Command("functions:config:export")
     await checkRequiredPermission(pInfos);
     pInfos = pInfos.filter((pInfo) => pInfo.config);
 
-    logger.debug("Loaded function configs: " + JSON.stringify(pInfos));
+    logger.debug(`Loaded function configs: ${JSON.stringify(pInfos)}`);
+    logBullet(`Importing configs from projects: [${pInfos.map((p) => p.projectId).join(", ")}]`);
 
     let prefix = "";
     while (true) {
@@ -153,7 +155,16 @@ export default new Command("functions:config:export")
     const tmpFiles = configExport.writeDotenvFiles(tmpdir, header, pInfos);
     // Create placeholder .env and .env.local file.
     tmpFiles.push(
-      ...configExport.writeDotenvFiles(tmpdir, header, [{ projectId: "" }, { projectId: "local" }])
+      ...configExport.writeDotenvFiles(
+        tmpdir,
+        `${header}\n# .env.local file contains environment variables for the Functions Emulator.`,
+        [{ projectId: "local" }]
+      ),
+      ...configExport.writeDotenvFiles(
+        tmpdir,
+        `${header}\n# .env file contains environment variables that applies to all projects.`,
+        [{ projectId: "" }]
+      )
     );
     logger.debug(`Wrote temporary .env files: [${tmpFiles.join(",")}]`);
 
