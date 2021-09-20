@@ -245,7 +245,7 @@ export async function setIamPolicy(options: IamOptions): Promise<void> {
       },
       origin: api.functionsOrigin,
     });
-  } catch (err) {
+  } catch (err: any) {
     throw new FirebaseError(`Failed to set the IAM Policy on the function ${options.name}`, {
       original: err,
     });
@@ -271,7 +271,7 @@ export async function getIamPolicy(fnName: string): Promise<GetIamPolicy> {
       auth: true,
       origin: api.functionsOrigin,
     });
-  } catch (err) {
+  } catch (err: any) {
     throw new FirebaseError(`Failed to get the IAM Policy on the function ${fnName}`, {
       original: err,
     });
@@ -431,10 +431,12 @@ async function list(projectId: string, region: string): Promise<ListFunctionsRes
       functions: res.body.functions || [],
       unreachable: res.body.unreachable || [],
     };
-  } catch (err) {
-    logger.debug("[functions] failed to list functions for " + projectId);
+  } catch (err: any) {
+    logger.debug(`[functions] failed to list functions for ${projectId}`);
     logger.debug(`[functions] ${err?.message}`);
-    return Promise.reject(err?.message);
+    return Promise.reject(new FirebaseError(`Failed to list functions for ${projectId}`, {
+      original: err,
+    }));
   }
 }
 
