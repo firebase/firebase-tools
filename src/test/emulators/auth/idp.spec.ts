@@ -19,11 +19,13 @@ import {
   FAKE_GOOGLE_ACCOUNT,
   REAL_GOOGLE_ACCOUNT,
   TEST_MFA_INFO,
+  enrollPhoneMfa,
+  getAccountInfoByLocalId,
 } from "./helpers";
 
 // Many JWT fields from IDPs use snake_case and we need to match that.
 
-describeAuthEmulator("sign-in with credential", ({ authApi }) => {
+describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
   it("should create new account with IDP from unsigned ID token", async () => {
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
@@ -106,7 +108,6 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
 
         // The ID Token used above does NOT contain name or photo, so the
         // account created won't have those attributes either.
-        // TODO: Shall we fetch more profile info from IDP via API calls?
         expect(res.body).not.to.have.property("displayName");
         expect(res.body).not.to.have.property("photoUrl");
 
@@ -668,32 +669,79 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
       });
   });
 
-  it("should error if user to be linked is an MFA user", async () => {
-    const user = {
-      email: "alice@example.com",
-      password: "notasecret",
-      mfaInfo: [TEST_MFA_INFO],
-    };
-    const { idToken } = await registerUser(authApi(), user);
-
+  it("should return pending credential for MFA-enabled user", async () => {
     const claims = fakeClaims({
       sub: "123456789012345678901",
       name: "Foo",
+      email: "foo@example.com",
+      email_verified: true,
     });
+    const { idToken, localId } = await signInWithFakeClaims(authApi(), "google.com", claims);
+    await enrollPhoneMfa(authApi(), idToken, TEST_PHONE_NUMBER);
+    const beforeSignIn = await getAccountInfoByLocalId(authApi(), localId);
+
+    getClock().tick(3333);
+
     const fakeIdToken = JSON.stringify(claims);
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
       .query({ key: "fake-api-key" })
       .send({
-        idToken,
         postBody: `providerId=google.com&id_token=${encodeURIComponent(fakeIdToken)}`,
         requestUri: "http://localhost",
         returnIdpCredential: true,
       })
       .then((res) => {
-        expectStatusCode(501, res);
-        expect(res.body.error.message).to.equal("MFA Login not yet implemented.");
+        expectStatusCode(200, res);
+        expect(res.body).not.to.have.property("idToken");
+        expect(res.body).not.to.have.property("refreshToken");
+        const mfaPendingCredential = res.body.mfaPendingCredential as string;
+        expect(mfaPendingCredential).to.be.a("string");
+        expect(res.body.mfaInfo).to.be.an("array").with.lengthOf(1);
       });
+
+    // Login / refresh timestamps should not change until MFA was successful.
+    const afterFirstFactor = await getAccountInfoByLocalId(authApi(), localId);
+    expect(afterFirstFactor.lastLoginAt).to.equal(beforeSignIn.lastLoginAt);
+    expect(afterFirstFactor.lastRefreshAt).to.equal(beforeSignIn.lastRefreshAt);
+  });
+
+  it("should link IDP for existing MFA-enabled user", async () => {
+    const email = "alice@example.com";
+    const { idToken, localId } = await signInWithEmailLink(authApi(), email);
+    await enrollPhoneMfa(authApi(), idToken, TEST_PHONE_NUMBER);
+
+    const claims = fakeClaims({
+      sub: "123456789012345678901",
+      name: "Foo",
+      email,
+      email_verified: true,
+    });
+
+    const fakeIdToken = JSON.stringify(claims);
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+      .query({ key: "fake-api-key" })
+      .send({
+        postBody: `providerId=google.com&id_token=${encodeURIComponent(fakeIdToken)}`,
+        requestUri: "http://localhost",
+        returnIdpCredential: true,
+      })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body).not.to.have.property("idToken");
+        expect(res.body).not.to.have.property("refreshToken");
+        const mfaPendingCredential = res.body.mfaPendingCredential as string;
+        expect(mfaPendingCredential).to.be.a("string");
+        expect(res.body.mfaInfo).to.be.an("array").with.lengthOf(1);
+      });
+
+    // IDP sign-in should be linked even before second factor is verified.
+    expect(await getSigninMethods(authApi(), email)).to.have.members(["google.com", "emailLink"]);
+
+    // Similarly, user information from IDP should be added to account.
+    const info = await getAccountInfoByLocalId(authApi(), localId);
+    expect(info.displayName).to.equal(claims.name);
   });
 
   it("should return error if IDP account is already linked to the same user", async () => {
