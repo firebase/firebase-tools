@@ -12,12 +12,12 @@ import {
   logPrefix,
   SourceOrigin,
   isLocalOrURLPath,
+  confirm,
 } from "./extensionsHelper";
 import * as utils from "../utils";
 import {
   displayUpdateChangesNoInput,
   displayUpdateChangesRequiringConfirmation,
-  getConsent,
   displayExtInfo,
 } from "./displayExtensionInfo";
 import * as changelog from "./changelog";
@@ -44,12 +44,12 @@ export async function getExistingSourceOrigin(
     : SourceOrigin.LOCAL;
 }
 
-async function showUpdateVersionInfo(
+function showUpdateVersionInfo(
   instanceId: string,
   from: string,
   to: string,
   source?: string
-): Promise<void> {
+): void {
   if (source) {
     source = clc.bold(source);
   } else {
@@ -60,11 +60,10 @@ async function showUpdateVersionInfo(
     `Updating ${clc.bold(instanceId)} from version ${clc.bold(from)} to ${source} (${clc.bold(to)})`
   );
   if (semver.lt(to, from)) {
-    utils.logLabeledBullet(
+    utils.logLabeledWarning(
       logPrefix,
       "The version you are updating to is less than the current version for this extension. This extension may not be backwards compatible."
     );
-    return await getConsent("version", "Do you wish to continue?");
   }
   return;
 }
@@ -99,27 +98,15 @@ export function warningUpdateToOtherSource(sourceOrigin: SourceOrigin) {
  * @param newSpec A extensionSpec to compare to
  * @param published
  */
-export async function displayChanges(
-  spec: extensionsApi.ExtensionSpec,
-  newSpec: extensionsApi.ExtensionSpec
-): Promise<void> {
-  logger.info(
-    "This update contains the following changes (in green and red). " +
-      "If at any point you choose not to continue, the extension will not be updated and the changes will be discarded:\n"
-  );
-  displayUpdateChangesNoInput(spec, newSpec);
-  await displayUpdateChangesRequiringConfirmation(spec, newSpec);
-}
-
-/**
- * Prompts the user to confirm before continuing to update.
- */
-export async function retryUpdate(): Promise<boolean> {
-  return promptOnce({
-    type: "confirm",
-    message: "Are you sure you wish to continue with updating anyways?",
-    default: false,
-  });
+export async function displayChanges(args: {
+  spec: extensionsApi.ExtensionSpec;
+  newSpec: extensionsApi.ExtensionSpec;
+  nonInteractive: boolean;
+  force: boolean;
+}): Promise<void> {
+  utils.logLabeledBullet("extensions", "This update contains the following changes:");
+  displayUpdateChangesNoInput(args.spec, args.newSpec);
+  await displayUpdateChangesRequiringConfirmation(args);
 }
 
 /**
@@ -164,14 +151,12 @@ export async function update(updateOptions: UpdateOptions): Promise<any> {
  * @param instanceId Id of the instance to update
  * @param localSource path to the new local source
  * @param existingSpec ExtensionSpec of existing instance source
- * @param existingSource name of existing instance source
  */
 export async function updateFromLocalSource(
   projectId: string,
   instanceId: string,
   localSource: string,
-  existingSpec: extensionsApi.ExtensionSpec,
-  existingSource: string
+  existingSpec: extensionsApi.ExtensionSpec
 ): Promise<string> {
   displayExtInfo(instanceId, "", existingSpec, false);
   let source;
@@ -184,9 +169,8 @@ export async function updateFromLocalSource(
     logPrefix,
     `${clc.bold("You are updating this extension instance to a local source.")}`
   );
-  await showUpdateVersionInfo(instanceId, existingSpec.version, source.spec.version, localSource);
+  showUpdateVersionInfo(instanceId, existingSpec.version, source.spec.version, localSource);
   warningUpdateToOtherSource(SourceOrigin.LOCAL);
-  await confirmUpdate();
   return source.name;
 }
 
@@ -202,8 +186,7 @@ export async function updateFromUrlSource(
   projectId: string,
   instanceId: string,
   urlSource: string,
-  existingSpec: extensionsApi.ExtensionSpec,
-  existingSource: string
+  existingSpec: extensionsApi.ExtensionSpec
 ): Promise<string> {
   displayExtInfo(instanceId, "", existingSpec, false);
   let source;
@@ -216,9 +199,8 @@ export async function updateFromUrlSource(
     logPrefix,
     `${clc.bold("You are updating this extension instance to a URL source.")}`
   );
-  await showUpdateVersionInfo(instanceId, existingSpec.version, source.spec.version, urlSource);
+  showUpdateVersionInfo(instanceId, existingSpec.version, source.spec.version, urlSource);
   warningUpdateToOtherSource(SourceOrigin.URL);
-  await confirmUpdate();
   return source.name;
 }
 
@@ -232,8 +214,7 @@ export async function updateToVersionFromPublisherSource(
   projectId: string,
   instanceId: string,
   extVersionRef: string,
-  existingSpec: extensionsApi.ExtensionSpec,
-  existingSource: string
+  existingSpec: extensionsApi.ExtensionSpec
 ): Promise<string> {
   let source;
   const refObj = extensionsApi.parseRef(extVersionRef);
@@ -270,7 +251,7 @@ export async function updateToVersionFromPublisherSource(
       );
     }
   }
-  await showUpdateVersionInfo(instanceId, existingSpec.version, source.spec.version, extVersionRef);
+  showUpdateVersionInfo(instanceId, existingSpec.version, source.spec.version, extVersionRef);
   warningUpdateToOtherSource(SourceOrigin.PUBLISHED_EXTENSION);
   const releaseNotes = await changelog.getReleaseNotesForUpdate({
     extensionRef,
@@ -280,7 +261,6 @@ export async function updateToVersionFromPublisherSource(
   if (Object.keys(releaseNotes).length) {
     changelog.displayReleaseNotes(releaseNotes, existingSpec.version);
   }
-  await confirmUpdate();
   return source.name;
 }
 
@@ -294,15 +274,13 @@ export async function updateFromPublisherSource(
   projectId: string,
   instanceId: string,
   extRef: string,
-  existingSpec: extensionsApi.ExtensionSpec,
-  existingSource: string
+  existingSpec: extensionsApi.ExtensionSpec
 ): Promise<string> {
   return updateToVersionFromPublisherSource(
     projectId,
     instanceId,
     `${extRef}@latest`,
-    existingSpec,
-    existingSource
+    existingSpec
   );
 }
 
@@ -322,15 +300,4 @@ export function inferUpdateSource(updateSource: string, existingRef: string): st
     return `${updateSource}@latest`;
   }
   return updateSource;
-}
-
-export async function confirmUpdate() {
-  const continueUpdate = await promptOnce({
-    type: "confirm",
-    message: "Do you wish to continue with this update?",
-    default: false,
-  });
-  if (!continueUpdate) {
-    throw new FirebaseError(`Update cancelled.`);
-  }
 }
