@@ -76,9 +76,7 @@ export async function hydrateConfigs(pInfos: ProjectConfigInfo[]): Promise<void>
     try {
       pInfo.config = await functionsConfig.materializeAll(pInfo.projectId);
     } catch (err) {
-      logger.debug(
-        `Failed to fetch runtime config for project ${pInfo.projectId}: ${err.message}`
-      );
+      logger.debug(`Failed to fetch runtime config for project ${pInfo.projectId}: ${err.message}`);
     }
   }
 }
