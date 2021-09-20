@@ -48,26 +48,13 @@ function hasRuntime(spec: extensionsApi.ExtensionSpec, runtime: string): boolean
  *
  * @param curSpec A current extensionSpec
  * @param newSpec A extensionSpec to compare to
- * @param prompt If true, prompts user for confirmation
  */
-export async function displayNode10UpdateBillingNotice(
+export function displayNode10UpdateBillingNotice(
   curSpec: extensionsApi.ExtensionSpec,
-  newSpec: extensionsApi.ExtensionSpec,
-  prompt: boolean
-): Promise<void> {
+  newSpec: extensionsApi.ExtensionSpec
+): void {
   if (hasRuntime(curSpec, "nodejs8") && hasRuntime(newSpec, "nodejs10")) {
     utils.logLabeledWarning(logPrefix, marked(billingMsgUpdate));
-
-    if (prompt) {
-      const continueUpdate = await promptOnce({
-        type: "confirm",
-        message: "Do you wish to continue?",
-        default: true,
-      });
-      if (!continueUpdate) {
-        throw new FirebaseError(`Cancelled.`, { exit: 2 });
-      }
-    }
   }
 }
 

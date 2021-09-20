@@ -56,14 +56,15 @@ export function getParamsWithCurrentValuesAsDefaults(
  * @param envFilePath a path to an env file containing param values
  * @throws FirebaseError if an invalid env file is passed in
  */
-export async function getParams(
-  projectId: string,
-  paramSpecs: extensionsApi.Param[],
-  noninteractive: boolean = false,
-  envFilePath?: string
-): Promise<{ [key: string]: string }> {
-  if (noninteractive && !envFilePath) {
-    const paramsMessage = paramSpecs
+export async function getParams(args: {
+  projectId: string;
+  paramSpecs: extensionsApi.Param[];
+  nonInteractive?: boolean;
+  paramsEnvPath?: string;
+}): Promise<{ [key: string]: string }> {
+  let params: any;
+  if (args.nonInteractive && !args.paramsEnvPath) {
+    const paramsMessage = args.paramSpecs
       .map((p) => {
         return `\t${p.param}${p.required ? "" : " (Optional)"}`;
       })
@@ -74,28 +75,56 @@ export async function getParams(
         " containing values for this extension's params:\n" +
         paramsMessage
     );
-  }
-  let commandLineParams;
-  if (envFilePath) {
-    try {
-      const buf = fs.readFileSync(path.resolve(envFilePath), "utf8");
-      commandLineParams = dotenv.parse(buf.toString().trim(), { debug: true });
-      track("Extension Env File", "Present");
-    } catch (err) {
-      track("Extension Env File", "Invalid");
-      throw new FirebaseError(`Error reading env file: ${err.message}\n`, { original: err });
-    }
+  } else if (args.paramsEnvPath) {
+    params = getParamsFromFile({
+      projectId: args.projectId,
+      paramSpecs: args.paramSpecs,
+      noninteractive: args.nonInteractive,
+      paramsEnvPath: args.paramsEnvPath,
+    });
   } else {
-    track("Extension Env File", "Not Present");
+    const firebaseProjectParams = await getFirebaseProjectParams(args.projectId);
+    params = await askUserForParam.ask(args.paramSpecs, firebaseProjectParams);
   }
-  const firebaseProjectParams = await getFirebaseProjectParams(projectId);
+  track("Extension Params", _.isEmpty(params) ? "Not Present" : "Present", _.size(params));
+  return params;
+}
+
+export async function getParamsForUpdate(args: {
+  spec: extensionsApi.ExtensionSpec;
+  newSpec: extensionsApi.ExtensionSpec;
+  currentParams: { [option: string]: string };
+  projectId: string;
+  paramsEnvPath?: string;
+  nonInteractive?: boolean;
+}) {
   let params: any;
-  if (commandLineParams) {
-    params = populateDefaultParams(commandLineParams, paramSpecs);
-    validateCommandLineParams(params, paramSpecs);
-    logger.info(`Using param values from ${envFilePath}`);
+  if (args.nonInteractive && !args.paramsEnvPath) {
+    const paramsMessage = args.newSpec.params
+      .map((p) => {
+        return `\t${p.param}${p.required ? "" : " (Optional)"}`;
+      })
+      .join("\n");
+    throw new FirebaseError(
+      "In non-interactive mode but no `--params` flag found. " +
+        "To update this extension in non-interactive mode, set `--params` to a path to an .env file" +
+        " containing values for this extension's params:\n" +
+        paramsMessage
+    );
+  } else if (args.paramsEnvPath) {
+    params = getParamsFromFile({
+      projectId: args.projectId,
+      paramSpecs: args.newSpec.params,
+      noninteractive: args.nonInteractive,
+      paramsEnvPath: args.paramsEnvPath,
+    });
   } else {
-    params = await askUserForParam.ask(paramSpecs, firebaseProjectParams);
+    params = await promptForNewParams({
+      spec: args.spec,
+      newSpec: args.newSpec,
+      currentParams: args.currentParams,
+      projectId: args.projectId,
+    });
   }
   track("Extension Params", _.isEmpty(params) ? "Not Present" : "Present", _.size(params));
   return params;
@@ -109,23 +138,31 @@ export async function getParams(
  * @param newSpec A extensionSpec to compare to
  * @param currentParams A set of current params and their values
  */
-export async function promptForNewParams(
-  spec: extensionsApi.ExtensionSpec,
-  newSpec: extensionsApi.ExtensionSpec,
-  currentParams: { [option: string]: string },
-  projectId: string
-): Promise<any> {
-  const firebaseProjectParams = await getFirebaseProjectParams(projectId);
+export async function promptForNewParams(args: {
+  spec: extensionsApi.ExtensionSpec;
+  newSpec: extensionsApi.ExtensionSpec;
+  currentParams: { [option: string]: string };
+  projectId: string;
+}): Promise<any> {
+  const firebaseProjectParams = await getFirebaseProjectParams(args.projectId);
   const comparer = (param1: extensionsApi.Param, param2: extensionsApi.Param) => {
     return param1.type === param2.type && param1.param === param2.param;
   };
-  let paramsDiffDeletions = _.differenceWith(spec.params, _.get(newSpec, "params", []), comparer);
+  let paramsDiffDeletions = _.differenceWith(
+    args.spec.params,
+    _.get(args.newSpec, "params", []),
+    comparer
+  );
   paramsDiffDeletions = substituteParams<extensionsApi.Param[]>(
     paramsDiffDeletions,
     firebaseProjectParams
   );
 
-  let paramsDiffAdditions = _.differenceWith(newSpec.params, _.get(spec, "params", []), comparer);
+  let paramsDiffAdditions = _.differenceWith(
+    args.newSpec.params,
+    _.get(args.spec, "params", []),
+    comparer
+  );
   paramsDiffAdditions = substituteParams<extensionsApi.Param[]>(
     paramsDiffAdditions,
     firebaseProjectParams
@@ -134,27 +171,41 @@ export async function promptForNewParams(
   if (paramsDiffDeletions.length) {
     logger.info("The following params will no longer be used:");
     paramsDiffDeletions.forEach((param) => {
-      logger.info(clc.red(`- ${param.param}: ${currentParams[param.param.toUpperCase()]}`));
-      delete currentParams[param.param.toUpperCase()];
+      logger.info(clc.red(`- ${param.param}: ${args.currentParams[param.param.toUpperCase()]}`));
+      delete args.currentParams[param.param.toUpperCase()];
     });
   }
   if (paramsDiffAdditions.length) {
     logger.info("To update this instance, configure the following new parameters:");
     for (const param of paramsDiffAdditions) {
       const chosenValue = await askUserForParam.askForParam(param);
-      currentParams[param.param] = chosenValue;
+      args.currentParams[param.param] = chosenValue;
     }
   }
-  return currentParams;
+  return args.currentParams;
 }
 
-export function readParamsFile(envFilePath: string): any {
+export function getParamsFromFile(args: {
+  projectId: string;
+  paramSpecs: extensionsApi.Param[];
+  paramsEnvPath: string;
+  noninteractive?: boolean;
+}): Record<string, string> {
+  let envParams;
   try {
-    const buf = fs.readFileSync(path.resolve(envFilePath), "utf8");
-    return dotenv.parse(buf.toString().trim(), { debug: true });
+    envParams = readEnvFile(args.paramsEnvPath);
+    track("Extension Env File", "Present");
   } catch (err) {
-    throw new FirebaseError(`Error reading --test-params file: ${err.message}\n`, {
-      original: err,
-    });
+    track("Extension Env File", "Invalid");
+    throw new FirebaseError(`Error reading env file: ${err.message}\n`, { original: err });
   }
+  const params = populateDefaultParams(envParams, args.paramSpecs);
+  validateCommandLineParams(params, args.paramSpecs);
+  logger.info(`Using param values from ${args.paramsEnvPath}`);
+  return params;
+}
+
+export function readEnvFile(envPath: string) {
+  const buf = fs.readFileSync(path.resolve(envPath), "utf8");
+  return dotenv.parse(buf.toString().trim(), { debug: true });
 }
