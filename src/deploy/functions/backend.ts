@@ -567,9 +567,45 @@ export function allEndpoints(backend: Backend): Endpoint[] {
   }, [] as Endpoint[]);
 }
 
+/** A helper utility for checking whether an endpoint matches a predicate. */
+export function someEndpoint(
+  backend: Backend,
+  predicate: (endpoint: Endpoint) => boolean
+): boolean {
+  for (const endpoints of Object.values(backend.endpoints)) {
+    if (Object.values<Endpoint>(endpoints).some(predicate)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** A helper utility function that returns a subset of the backend that includes only matching endpoints */
+export function matchingBackend(
+  backend: Backend,
+  predicate: (endpoint: Endpoint) => boolean
+): Backend {
+  const filtered: Backend = {
+    ...empty(),
+  };
+  for (const endpoint of allEndpoints(backend)) {
+    if (!predicate(endpoint)) {
+      continue;
+    }
+    filtered.endpoints[endpoint.region] = filtered.endpoints[endpoint.region] || {};
+    filtered.endpoints[endpoint.region][endpoint.id] = endpoint;
+  }
+  return filtered;
+}
+
+/** A helper utility for flattening all endpoints in a region since typing is a bit wonky. */
+export function regionalEndpoints(backend: Backend, region: string): Endpoint[] {
+  return backend.endpoints[region] ? Object.values<Endpoint>(backend.endpoints[region]) : [];
+}
+
 /** A curried function used for filters, returns a matcher for functions in a backend. */
 export const hasEndpoint = (backend: Backend) => (endpoint: Endpoint): boolean => {
-  return backend.endpoints[endpoint.region] && !!backend.endpoints[endpoint.region][endpoint.id];
+  return !!backend.endpoints[endpoint.region] && !!backend.endpoints[endpoint.region][endpoint.id];
 };
 
 /** A curried function that is the opposite of hasEndpoint */

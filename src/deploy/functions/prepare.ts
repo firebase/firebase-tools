@@ -93,7 +93,7 @@ export async function prepare(
   // Note: Some of these are premium APIs that require billing to be enabled.
   // We'd eventually have to add special error handling for billing APIs, but
   // enableCloudBuild is called above and has this special casing already.
-  if (wantBackend.cloudFunctions.find((f) => f.platform === "gcfv2")) {
+  if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
     const V2_APIS = {
       artifactregistry: "artifactregistry.googleapis.com",
       cloudrun: "run.googleapis.com",
@@ -106,7 +106,7 @@ export async function prepare(
     await Promise.all(enablements);
   }
 
-  if (wantBackend.cloudFunctions.length) {
+  if (backend.someEndpoint(wantBackend, () => true)) {
     logBullet(
       clc.cyan.bold("functions:") +
         " preparing " +
@@ -114,10 +114,10 @@ export async function prepare(
         " directory for uploading..."
     );
   }
-  if (wantBackend.cloudFunctions.find((fn) => fn.platform === "gcfv1")) {
+  if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv1")) {
     context.functionsSourceV1 = await prepareFunctionsUpload(runtimeConfig, options);
   }
-  if (wantBackend.cloudFunctions.find((fn) => fn.platform === "gcfv2")) {
+  if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
     context.functionsSourceV2 = await prepareFunctionsUpload(
       /* runtimeConfig= */ undefined,
       options
@@ -128,13 +128,18 @@ export async function prepare(
   wantBackend.cloudFunctions.forEach((fn: backend.FunctionSpec) => {
     fn.environmentVariables = wantBackend.environmentVariables;
   });
+  for (const endpoints of Object.values(wantBackend.endpoints)) {
+    for (const endpoint of Object.values<backend.Endpoint>(endpoints)) {
+      endpoint.environmentVariables = wantBackend.environmentVariables;
+    }
+  }
 
   // Enable required APIs. This may come implicitly from triggers (e.g. scheduled triggers
   // require cloudscheudler and, in v1, require pub/sub), or can eventually come from
   // explicit dependencies.
   await Promise.all(
     Object.keys(wantBackend.requiredAPIs).map((friendlyName) => {
-      ensureApiEnabled.ensure(
+      return ensureApiEnabled.ensure(
         projectId,
         wantBackend.requiredAPIs[friendlyName],
         friendlyName,
@@ -144,17 +149,18 @@ export async function prepare(
   );
 
   // Validate the function code that is being deployed.
-  validate.functionIdsAreValid(wantBackend.cloudFunctions);
+  validate.functionIdsAreValid(backend.allEndpoints(wantBackend));
 
   // Check what --only filters have been passed in.
   context.filters = getFilterGroups(options);
 
-  const wantFunctions = wantBackend.cloudFunctions.filter((fn: backend.FunctionSpec) => {
-    return functionMatchesAnyGroup(fn, context.filters);
+  const matchingBackend = backend.matchingBackend(wantBackend, (endpoint) => {
+    return functionMatchesAnyGroup(endpoint, context.filters);
   });
-  const haveFunctions = (await backend.existingBackend(context)).cloudFunctions;
+
+  const haveBackend = await backend.existingBackend(context);
   // Display a warning and prompt if any functions in the release have failurePolicies.
-  await promptForFailurePolicies(options, wantFunctions, haveFunctions);
-  await promptForMinInstances(options, wantFunctions, haveFunctions);
+  await promptForFailurePolicies(options, matchingBackend, haveBackend);
+  await promptForMinInstances(options, matchingBackend, haveBackend);
   await backend.checkAvailability(context, wantBackend);
 }

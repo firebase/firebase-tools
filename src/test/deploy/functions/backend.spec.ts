@@ -659,4 +659,69 @@ describe("Backend", () => {
       expect(backend.compareFunctions(left, right)).to.eq(0);
     });
   });
+  describe("comprehension helpers", () => {
+    const endpointUS: backend.Endpoint = {
+      id: "endpointUS",
+      project: "project",
+      region: "us-west1",
+      platform: "gcfv2",
+      runtime: "nodejs16",
+      entryPoint: "ep",
+      httpsTrigger: {},
+    };
+
+    const endpointEU: backend.Endpoint = {
+      ...endpointUS,
+      id: "endpointEU",
+      region: "europe-west1",
+    };
+
+    const bkend: backend.Backend = {
+      ...backend.empty(),
+    };
+    bkend.endpoints[endpointUS.region] = { [endpointUS.id]: endpointUS };
+    bkend.endpoints[endpointEU.region] = { [endpointEU.id]: endpointEU };
+
+    it("allEndpoints", () => {
+      const have = backend.allEndpoints(bkend).sort(backend.compareFunctions);
+      const want = [endpointUS, endpointEU].sort(backend.compareFunctions);
+      expect(have).to.deep.equal(want);
+    });
+
+    it("matchingBackend", () => {
+      const have = backend.matchingBackend(bkend, (fn) => fn.id === "endpointUS");
+      const want: backend.Backend = {
+        ...backend.empty(),
+        endpoints: {
+          [endpointUS.region]: {
+            [endpointUS.id]: endpointUS,
+          },
+        },
+      };
+      expect(have).to.deep.equal(want);
+    });
+
+    it("someEndpoint", () => {
+      expect(backend.someEndpoint(bkend, (fn) => fn.id === "endpointUS")).to.be.true;
+      expect(backend.someEndpoint(bkend, (fn) => fn.id === "missing")).to.be.false;
+    });
+
+    it("regionalEndpoints", () => {
+      const have = backend.regionalEndpoints(bkend, endpointUS.region);
+      const want = [endpointUS];
+      expect(have).to.deep.equal(want);
+    });
+
+    it("hasEndpoint", () => {
+      const smallBackend = backend.matchingBackend(bkend, (fn) => fn.id === "endpointUS");
+      expect(backend.hasEndpoint(smallBackend)(endpointUS)).to.be.true;
+      expect(backend.hasEndpoint(smallBackend)(endpointEU)).to.be.false;
+    });
+
+    it("missingEndpoint", () => {
+      const smallBackend = backend.matchingBackend(bkend, (fn) => fn.id === "endpointUS");
+      expect(backend.missingEndpoint(smallBackend)(endpointUS)).to.be.false;
+      expect(backend.missingEndpoint(smallBackend)(endpointEU)).to.be.true;
+    });
+  });
 });
