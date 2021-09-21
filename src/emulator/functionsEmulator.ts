@@ -901,6 +901,8 @@ export class FunctionsEmulator implements EmulatorInstance {
     const storageEmulator = this.getEmulatorInfo(Emulators.STORAGE);
     if (storageEmulator) {
       envs[Constants.FIREBASE_STORAGE_EMULATOR_HOST] = formatHost(storageEmulator);
+      // TODO(taeold): We only need FIREBASE_STORAGE_EMULATOR_HOST, as long as the users are using new-ish SDKs.
+      //   Clean up and update documentation in a subsequent patch.
       envs[Constants.CLOUD_STORAGE_EMULATOR_HOST] = `http://${formatHost(storageEmulator)}`;
     }
 
@@ -908,7 +910,6 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (pubsubEmulator) {
       const pubsubHost = formatHost(pubsubEmulator);
       process.env.PUBSUB_EMULATOR_HOST = pubsubHost;
-      logger.debug(`Set PUBSUB_EMULATOR_HOST to ${pubsubHost}`);
     }
 
     return envs;
