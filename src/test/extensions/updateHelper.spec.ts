@@ -156,12 +156,10 @@ const LOCAL_INSTANCE = {
 
 describe("updateHelper", () => {
   describe("updateFromLocalSource", () => {
-    let promptStub: sinon.SinonStub;
     let createSourceStub: sinon.SinonStub;
     let getInstanceStub: sinon.SinonStub;
 
     beforeEach(() => {
-      promptStub = sinon.stub(prompt, "promptOnce");
       createSourceStub = sinon.stub(extensionsHelper, "createSourceFromLocation");
       getInstanceStub = sinon.stub(extensionsApi, "getInstance").resolves(INSTANCE);
 
@@ -170,7 +168,6 @@ describe("updateHelper", () => {
     });
 
     afterEach(() => {
-      promptStub.restore();
       createSourceStub.restore();
       getInstanceStub.restore();
 
@@ -178,42 +175,29 @@ describe("updateHelper", () => {
     });
 
     it("should return the correct source name for a valid local source", async () => {
-      promptStub.resolves(true);
       createSourceStub.resolves(SOURCE);
       const name = await updateHelper.updateFromLocalSource(
         "test-project",
         "test-instance",
         ".",
-        SPEC,
-        SPEC.name
+        SPEC
       );
       expect(name).to.equal(SOURCE.name);
     });
 
     it("should throw an error for an invalid source", async () => {
-      promptStub.resolves(true);
       createSourceStub.throwsException("Invalid source");
       await expect(
-        updateHelper.updateFromLocalSource("test-project", "test-instance", ".", SPEC, SPEC.name)
+        updateHelper.updateFromLocalSource("test-project", "test-instance", ".", SPEC)
       ).to.be.rejectedWith(FirebaseError, "Unable to update from the source");
-    });
-
-    it("should not update if the update warning is not confirmed", async () => {
-      promptStub.resolves(false);
-      createSourceStub.resolves(SOURCE);
-      await expect(
-        updateHelper.updateFromLocalSource("test-project", "test-instance", ".", SPEC, SPEC.name)
-      ).to.be.rejectedWith(FirebaseError, "Update cancelled.");
     });
   });
 
   describe("updateFromUrlSource", () => {
-    let promptStub: sinon.SinonStub;
     let createSourceStub: sinon.SinonStub;
     let getInstanceStub: sinon.SinonStub;
 
     beforeEach(() => {
-      promptStub = sinon.stub(prompt, "promptOnce");
       createSourceStub = sinon.stub(extensionsHelper, "createSourceFromLocation");
       getInstanceStub = sinon.stub(extensionsApi, "getInstance").resolves(INSTANCE);
 
@@ -222,7 +206,6 @@ describe("updateHelper", () => {
     });
 
     afterEach(() => {
-      promptStub.restore();
       createSourceStub.restore();
       getInstanceStub.restore();
 
@@ -230,49 +213,30 @@ describe("updateHelper", () => {
     });
 
     it("should return the correct source name for a valid url source", async () => {
-      promptStub.resolves(true);
       createSourceStub.resolves(SOURCE);
       const name = await updateHelper.updateFromUrlSource(
         "test-project",
         "test-instance",
         "https://valid-source.tar.gz",
-        SPEC,
-        SPEC.name
+        SPEC
       );
       expect(name).to.equal(SOURCE.name);
     });
 
     it("should throw an error for an invalid source", async () => {
-      promptStub.resolves(true);
       createSourceStub.throws("Invalid source");
       await expect(
         updateHelper.updateFromUrlSource(
           "test-project",
           "test-instance",
           "https://valid-source.tar.gz",
-          SPEC,
-          SPEC.name
+          SPEC
         )
       ).to.be.rejectedWith(FirebaseError, "Unable to update from the source");
-    });
-
-    it("should not update if the update warning is not confirmed", async () => {
-      promptStub.resolves(false);
-      createSourceStub.resolves(SOURCE);
-      await expect(
-        updateHelper.updateFromUrlSource(
-          "test-project",
-          "test-instance",
-          "https://valid-source.tar.gz",
-          SPEC,
-          SPEC.name
-        )
-      ).to.be.rejectedWith(FirebaseError, "Update cancelled.");
     });
   });
 
   describe("updateToVersionFromPublisherSource", () => {
-    let promptStub: sinon.SinonStub;
     let getExtensionStub: sinon.SinonStub;
     let createSourceStub: sinon.SinonStub;
     let listExtensionVersionStub: sinon.SinonStub;
@@ -281,7 +245,6 @@ describe("updateHelper", () => {
     let getInstanceStub: sinon.SinonStub;
 
     beforeEach(() => {
-      promptStub = sinon.stub(prompt, "promptOnce");
       getExtensionStub = sinon.stub(extensionsApi, "getExtension");
       createSourceStub = sinon.stub(extensionsApi, "getExtensionVersion");
       listExtensionVersionStub = sinon.stub(extensionsApi, "listExtensionVersions");
@@ -293,7 +256,6 @@ describe("updateHelper", () => {
     });
 
     afterEach(() => {
-      promptStub.restore();
       getExtensionStub.restore();
       createSourceStub.restore();
       listExtensionVersionStub.restore();
@@ -303,7 +265,6 @@ describe("updateHelper", () => {
     });
 
     it("should return the correct source name for a valid published extension version source", async () => {
-      promptStub.resolves(true);
       getExtensionStub.resolves(EXTENSION);
       createSourceStub.resolves(EXTENSION_VERSION);
       listExtensionVersionStub.resolves([]);
@@ -311,14 +272,12 @@ describe("updateHelper", () => {
         "test-project",
         "test-instance",
         "test-publisher/test@0.2.0",
-        SPEC,
-        SPEC.name
+        SPEC
       );
       expect(name).to.equal(EXTENSION_VERSION.name);
     });
 
     it("should throw an error for an invalid source", async () => {
-      promptStub.resolves(true);
       getExtensionStub.throws(Error("NOT FOUND"));
       createSourceStub.throws(Error("NOT FOUND"));
       listExtensionVersionStub.resolves([]);
@@ -327,31 +286,13 @@ describe("updateHelper", () => {
           "test-project",
           "test-instance",
           "test-publisher/test@1.2.3",
-          SPEC,
-          SPEC.name
+          SPEC
         )
       ).to.be.rejectedWith("NOT FOUND");
-    });
-
-    it("should not update if the update warning is not confirmed", async () => {
-      promptStub.resolves(false);
-      getExtensionStub.resolves(EXTENSION);
-      createSourceStub.resolves(EXTENSION_VERSION);
-      listExtensionVersionStub.resolves([]);
-      await expect(
-        updateHelper.updateToVersionFromPublisherSource(
-          "test-project",
-          "test-instance",
-          "test-publisher/test@0.2.0",
-          SPEC,
-          SPEC.name
-        )
-      ).to.be.rejectedWith(FirebaseError, "Update cancelled.");
     });
   });
 
   describe("updateFromPublisherSource", () => {
-    let promptStub: sinon.SinonStub;
     let getExtensionStub: sinon.SinonStub;
     let createSourceStub: sinon.SinonStub;
     let listExtensionVersionStub: sinon.SinonStub;
@@ -360,7 +301,6 @@ describe("updateHelper", () => {
     let getInstanceStub: sinon.SinonStub;
 
     beforeEach(() => {
-      promptStub = sinon.stub(prompt, "promptOnce");
       getExtensionStub = sinon.stub(extensionsApi, "getExtension");
       createSourceStub = sinon.stub(extensionsApi, "getExtensionVersion");
       listExtensionVersionStub = sinon.stub(extensionsApi, "listExtensionVersions");
@@ -372,7 +312,6 @@ describe("updateHelper", () => {
     });
 
     afterEach(() => {
-      promptStub.restore();
       getExtensionStub.restore();
       createSourceStub.restore();
       listExtensionVersionStub.restore();
@@ -382,7 +321,6 @@ describe("updateHelper", () => {
     });
 
     it("should return the correct source name for the latest published extension source", async () => {
-      promptStub.resolves(true);
       getExtensionStub.resolves(EXTENSION);
       createSourceStub.resolves(EXTENSION_VERSION);
       listExtensionVersionStub.resolves([]);
@@ -390,14 +328,12 @@ describe("updateHelper", () => {
         "test-project",
         "test-instance",
         "test-publisher/test",
-        SPEC,
-        SPEC.name
+        SPEC
       );
       expect(name).to.equal(EXTENSION_VERSION.name);
     });
 
     it("should throw an error for an invalid source", async () => {
-      promptStub.resolves(true);
       getExtensionStub.throws(Error("NOT FOUND"));
       createSourceStub.throws(Error("NOT FOUND"));
       listExtensionVersionStub.resolves([]);
@@ -406,26 +342,9 @@ describe("updateHelper", () => {
           "test-project",
           "test-instance",
           "test-publisher/test",
-          SPEC,
-          SPEC.name
+          SPEC
         )
       ).to.be.rejectedWith("NOT FOUND");
-    });
-
-    it("should not update if the update warning is not confirmed", async () => {
-      promptStub.resolves(false);
-      getExtensionStub.resolves(EXTENSION);
-      createSourceStub.resolves(EXTENSION_VERSION);
-      listExtensionVersionStub.resolves([]);
-      await expect(
-        updateHelper.updateToVersionFromPublisherSource(
-          "test-project",
-          "test-instance",
-          "test-publisher/test",
-          SPEC,
-          SPEC.name
-        )
-      ).to.be.rejectedWith(FirebaseError, "Update cancelled.");
     });
   });
 });

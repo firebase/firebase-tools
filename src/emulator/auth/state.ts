@@ -7,17 +7,18 @@ import {
 } from "./utils";
 import { MakeRequired } from "./utils";
 import { AuthCloudFunction } from "./cloudFunctions";
-import { assert } from "./errors";
+import { assert, NotImplementedError } from "./errors";
 import { MfaEnrollments, Schemas } from "./types";
 
 export const PROVIDER_PASSWORD = "password";
 export const PROVIDER_PHONE = "phone";
 export const PROVIDER_ANONYMOUS = "anonymous";
 export const PROVIDER_CUSTOM = "custom";
+export const PROVIDER_GAME_CENTER = "gc.apple.com"; // Not yet implemented
 
 export const SIGNIN_METHOD_EMAIL_LINK = "emailLink";
 
-export class ProjectState {
+export abstract class ProjectState {
   private users: Map<string, UserInfo> = new Map();
   private localIdForEmail: Map<string, string> = new Map();
   private localIdForInitialEmail: Map<string, string> = new Map();
@@ -29,19 +30,20 @@ export class ProjectState {
   private oobs: Map<string, OobRecord> = new Map();
   private verificationCodes: Map<string, PhoneVerificationRecord> = new Map();
   private temporaryProofs: Map<string, TemporaryProofRecord> = new Map();
-  public oneAccountPerEmail = true;
-  private authCloudFunction: AuthCloudFunction;
-  public usageMode: UsageMode = UsageMode.DEFAULT;
 
-  constructor(public readonly projectId: string) {
-    this.authCloudFunction = new AuthCloudFunction(projectId);
-  }
+  constructor(public readonly projectId: string) {}
 
   get projectNumber(): string {
     // TODO: Shall we generate something different for each project?
     // Hard-coding an obviously fake number for clarity for now.
     return "12345";
   }
+
+  abstract get oneAccountPerEmail(): boolean;
+
+  abstract get authCloudFunction(): AuthCloudFunction;
+
+  abstract get usageMode(): UsageMode;
 
   createUser(props: Omit<UserInfo, "localId" | "createdAt" | "lastRefreshAt">): UserInfo {
     for (let i = 0; i < 10; i++) {
@@ -376,11 +378,17 @@ export class ProjectState {
   createRefreshTokenFor(
     userInfo: UserInfo,
     provider: string,
-    extraClaims: Record<string, unknown> = {}
+    {
+      extraClaims = {},
+      secondFactor,
+    }: {
+      extraClaims?: Record<string, unknown>;
+      secondFactor?: SecondFactorRecord;
+    } = {}
   ): string {
     const localId = userInfo.localId;
     const refreshToken = randomBase64UrlStr(204);
-    this.refreshTokens.set(refreshToken, { localId, provider, extraClaims });
+    this.refreshTokens.set(refreshToken, { localId, provider, extraClaims, secondFactor });
     let refreshTokens = this.refreshTokensForLocalId.get(localId);
     if (!refreshTokens) {
       refreshTokens = new Set();
@@ -392,7 +400,14 @@ export class ProjectState {
 
   validateRefreshToken(
     refreshToken: string
-  ): { user: UserInfo; provider: string; extraClaims: Record<string, unknown> } | undefined {
+  ):
+    | {
+        user: UserInfo;
+        provider: string;
+        extraClaims: Record<string, unknown>;
+        secondFactor?: SecondFactorRecord;
+      }
+    | undefined {
     const record = this.refreshTokens.get(refreshToken);
     if (!record) {
       return undefined;
@@ -401,6 +416,7 @@ export class ProjectState {
       user: this.getUserByLocalIdAssertingExists(record.localId),
       provider: record.provider,
       extraClaims: record.extraClaims,
+      secondFactor: record.secondFactor,
     };
   }
 
@@ -524,7 +540,6 @@ export class ProjectState {
     if (!record || record.phoneNumber !== phoneNumber) {
       return undefined;
     }
-    // TODO: Find some way to enforce record.temporaryProofExpiresIn.
     return record;
   }
 
@@ -551,6 +566,85 @@ export class ProjectState {
     }
   }
 }
+
+export class AgentProjectState extends ProjectState {
+  private tenantForTenantId: Map<string, Tenant> = new Map();
+  private _oneAccountPerEmail = true;
+  private _usageMode = UsageMode.DEFAULT;
+  private readonly _authCloudFunction = new AuthCloudFunction(this.projectId);
+
+  constructor(projectId: string) {
+    super(projectId);
+  }
+
+  get authCloudFunction() {
+    return this._authCloudFunction;
+  }
+
+  get oneAccountPerEmail() {
+    return this._oneAccountPerEmail;
+  }
+
+  set oneAccountPerEmail(oneAccountPerEmail: boolean) {
+    this._oneAccountPerEmail = oneAccountPerEmail;
+  }
+
+  get usageMode() {
+    return this._usageMode;
+  }
+
+  set usageMode(usageMode: UsageMode) {
+    this._usageMode = usageMode;
+  }
+
+  // TODO(lisajian): Fill in when v2.projects.tenants.get is added
+  getTenant(): void {
+    throw new NotImplementedError("getTenant is not implemented yet.");
+  }
+
+  // TODO(lisajian): Fill in when v2.projects.tenants.list is added
+  listTenants(): void {
+    throw new NotImplementedError("listTenants is not implemented yet.");
+  }
+
+  // TODO(lisajian): Fill in when v2.projects.tenants.create is added
+  createTenant(): void {
+    throw new NotImplementedError("createTenant is not implemented yet.");
+  }
+
+  // TODO(lisajian): Fill in when v2.projects.tenants.patch is added
+  updateTenant(): void {
+    throw new NotImplementedError("updateTenant is not implemented yet.");
+  }
+
+  // TODO(lisajian): Fill in when v2.projects.tenants.delete is added
+  deleteTenant(): void {
+    throw new NotImplementedError("deleteTenant is not implemented yet.");
+  }
+}
+
+export class TenantProjectState extends ProjectState {
+  constructor(
+    projectId: string,
+    readonly tenantId: string,
+    private readonly parentProject: AgentProjectState
+  ) {
+    super(projectId);
+  }
+
+  get oneAccountPerEmail() {
+    return this.parentProject.oneAccountPerEmail;
+  }
+
+  get authCloudFunction() {
+    return this.parentProject.authCloudFunction;
+  }
+
+  get usageMode() {
+    return this.parentProject.usageMode;
+  }
+}
+
 export type ProviderUserInfo = MakeRequired<
   Schemas["GoogleCloudIdentitytoolkitV1ProviderUserInfo"],
   "rawId" | "providerId"
@@ -562,11 +656,18 @@ export type UserInfo = Omit<
   localId: string;
   providerUserInfo?: ProviderUserInfo[];
 };
+export type Tenant = Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"];
 
 interface RefreshTokenRecord {
   localId: string;
   provider: string;
   extraClaims: Record<string, unknown>;
+  secondFactor?: SecondFactorRecord;
+}
+
+export interface SecondFactorRecord {
+  identifier: string;
+  provider: string;
 }
 
 export type OobRequestType = NonNullable<
@@ -590,6 +691,8 @@ interface TemporaryProofRecord {
   phoneNumber: string;
   temporaryProof: string;
   temporaryProofExpiresIn: string;
+  // Temporary proofs in emulator never expire to make interactive debugging
+  // a bit easier. Therefore, there's no need to record createdAt timestamps.
 }
 
 function getProviderEmailsForUser(user: UserInfo): Set<string> {

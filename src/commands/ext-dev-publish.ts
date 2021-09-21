@@ -10,6 +10,7 @@ import { consoleInstallLink } from "../extensions/publishHelpers";
 import { requireAuth } from "../requireAuth";
 import { FirebaseError } from "../error";
 import * as utils from "../utils";
+import { options } from "./auth-export";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -27,7 +28,7 @@ export default new Command("ext:dev:publish <extensionRef>")
       "be greater than previous versions."
   )
   .before(requireAuth)
-  .action(async (extensionRef: string) => {
+  .action(async (extensionRef: string, options: any) => {
     const { publisherId, extensionId, version } = parseRef(extensionRef);
     if (version) {
       throw new FirebaseError(
@@ -44,11 +45,13 @@ export default new Command("ext:dev:publish <extensionRef>")
       );
     }
     const extensionYamlDirectory = findExtensionYaml(process.cwd());
-    const res = await publishExtensionVersionFromLocalSource(
+    const res = await publishExtensionVersionFromLocalSource({
       publisherId,
       extensionId,
-      extensionYamlDirectory
-    );
+      rootDirectory: extensionYamlDirectory,
+      nonInteractive: options.nonInteractive,
+      force: options.force,
+    });
     if (res) {
       utils.logLabeledBullet(logPrefix, marked(`[Install Link](${consoleInstallLink(res.ref)})`));
     }

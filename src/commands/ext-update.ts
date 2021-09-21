@@ -17,13 +17,13 @@ import {
   logPrefix,
   getSourceOrigin,
   SourceOrigin,
+  confirm,
 } from "../extensions/extensionsHelper";
 import * as paramHelper from "../extensions/paramHelper";
 import {
   displayChanges,
   update,
   UpdateOptions,
-  retryUpdate,
   updateFromLocalSource,
   updateFromUrlSource,
   updateToVersionFromPublisherSource,
@@ -67,6 +67,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
   .withForce()
+  .option("--params <paramsFile>", "name of params variables file with .env format.")
   .action(async (instanceId: string, updateSource: string, options: any) => {
     const spinner = ora.default(
       `Updating ${clc.bold(instanceId)}. This usually takes 3 to 5 minutes...`
@@ -86,10 +87,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         }
         throw err;
       }
-      const existingSpec: extensionsApi.ExtensionSpec = _.get(
-        existingInstance,
-        "config.source.spec"
-      );
+      const existingSpec: extensionsApi.ExtensionSpec = existingInstance.config.source.spec;
       if (existingInstance.config.source.state === "DELETED") {
         throw new FirebaseError(
           `Instance '${clc.bold(
@@ -97,8 +95,8 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
           )}' cannot be updated anymore because the underlying extension was unpublished from Firebase's registry of extensions. Going forward, you will only be able to re-configure or uninstall this instance.`
         );
       }
-      const existingParams = _.get(existingInstance, "config.params");
-      const existingSource = _.get(existingInstance, "config.source.name");
+      const existingParams = existingInstance.config.params;
+      const existingSource = existingInstance.config.source.name;
 
       if (existingInstance.config.extensionRef) {
         // User may provide abbreviated syntax in the update command (for example, providing no update source or just a semver)
@@ -127,8 +125,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
               projectId,
               instanceId,
               updateSource,
-              existingSpec,
-              existingSource
+              existingSpec
             );
             break;
           }
@@ -140,8 +137,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
               projectId,
               instanceId,
               updateSource,
-              existingSpec,
-              existingSource
+              existingSpec
             );
             break;
           }
@@ -150,8 +146,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
             projectId,
             instanceId,
             updateSource,
-            existingSpec,
-            existingSource
+            existingSpec
           );
           break;
         case SourceOrigin.PUBLISHED_EXTENSION:
@@ -159,12 +154,21 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
             projectId,
             instanceId,
             updateSource,
-            existingSpec,
-            existingSource
+            existingSpec
           );
           break;
         default:
           throw new FirebaseError(`Unknown source '${clc.bold(updateSource)}.'`);
+      }
+
+      if (
+        !(await confirm({
+          nonInteractive: options.nonInteractive,
+          force: options.force,
+          default: true,
+        }))
+      ) {
+        throw new FirebaseError(`Update cancelled.`);
       }
 
       // TODO(fix): currently exploiting an oversight in this method call to make calls to both
@@ -185,32 +189,60 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
             existingSpec.version
           )}.`
         );
-        const retry = await retryUpdate();
+        const retry = await confirm({
+          nonInteractive: options.nonInteractive,
+          force: options.force,
+          default: false,
+        });
         if (!retry) {
           utils.logLabeledBullet(logPrefix, "Update aborted.");
           return;
         }
       }
 
-      await displayChanges(existingSpec, newSpec);
+      await displayChanges({
+        spec: existingSpec,
+        newSpec: newSpec,
+        nonInteractive: options.nonInteractive,
+        force: options.force,
+      });
 
       await provisioningHelper.checkProductsProvisioned(projectId, newSpec);
 
       if (newSpec.billingRequired) {
         const enabled = await checkBillingEnabled(projectId);
+        displayNode10UpdateBillingNotice(existingSpec, newSpec);
+        if (
+          !(await confirm({
+            nonInteractive: options.nonInteractive,
+            force: options.force,
+            default: true,
+          }))
+        ) {
+          throw new FirebaseError("Update cancelled.");
+        }
         if (!enabled) {
-          await displayNode10UpdateBillingNotice(existingSpec, newSpec, false);
-          await enableBilling(projectId, instanceId);
-        } else {
-          await displayNode10UpdateBillingNotice(existingSpec, newSpec, true);
+          if (!options.nonInteractive) {
+            await enableBilling(projectId, instanceId);
+          } else {
+            throw new FirebaseError(
+              "The extension requires your project to be upgraded to the Blaze plan. " +
+                "To run this command in non-interactive mode, first upgrade your project: " +
+                marked(
+                  `https://console.cloud.google.com/billing/linkedaccount?project=${projectId}`
+                )
+            );
+          }
         }
       }
-      const newParams = await paramHelper.promptForNewParams(
-        existingSpec,
+      const newParams = await paramHelper.getParamsForUpdate({
+        spec: existingSpec,
         newSpec,
-        existingParams,
-        projectId
-      );
+        currentParams: existingParams,
+        projectId,
+        paramsEnvPath: options.params,
+        nonInteractive: options.nonInteractive,
+      });
       spinner.start();
       const updateOptions: UpdateOptions = {
         projectId,
