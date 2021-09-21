@@ -1,15 +1,19 @@
 const admin = require("firebase-admin");
 const functions = require("firebase-functions");
+const functionsV2 = require("firebase-functions/v2");
 const { PubSub } = require("@google-cloud/pubsub");
 
 /*
  * Log snippets that the driver program above checks for. Be sure to update
  * ../test.js if you plan on changing these.
  */
+/* Functions V1 */
 const RTDB_FUNCTION_LOG = "========== RTDB FUNCTION ==========";
 const FIRESTORE_FUNCTION_LOG = "========== FIRESTORE FUNCTION ==========";
 const PUBSUB_FUNCTION_LOG = "========== PUBSUB FUNCTION ==========";
 const AUTH_FUNCTION_LOG = "========== AUTH FUNCTION ==========";
+/* Functions V2 */
+const PUBSUB_FUNCTION_V2_LOG = "========== PUBSUB V2 FUNCTION ==========";
 
 /*
  * We install onWrite triggers for START_DOCUMENT_NAME in both the firestore and
@@ -118,6 +122,13 @@ exports.pubsubReaction = functions.pubsub.topic(PUBSUB_TOPIC).onPublish((msg /* 
   console.log(PUBSUB_FUNCTION_LOG);
   console.log("Message", JSON.stringify(msg.json));
   console.log("Attributes", JSON.stringify(msg.attributes));
+  return true;
+});
+
+exports.pubsubv2reaction = functionsV2.pubsub.onMessagePublished(PUBSUB_TOPIC, (cloudevent) => {
+  console.log(PUBSUB_FUNCTION_V2_LOG);
+  console.log("Message", JSON.stringify(cloudevent.data.message.json));
+  console.log("Attributes", JSON.stringify(cloudevent.data.message.attributes));
   return true;
 });
 
