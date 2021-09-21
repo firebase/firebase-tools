@@ -7,6 +7,8 @@ import { logger } from "../logger";
 import { previews } from "../previews";
 import { logBullet } from "../utils";
 
+const FUNCTIONS_EMULATOR_DOTENV = ".env.local";
+
 const RESERVED_KEYS = [
   // Cloud Functions for Firebase
   "FIREBASE_CONFIG",
@@ -179,10 +181,21 @@ function parseStrict(data: string): Record<string, string> {
   return envs;
 }
 
-function findEnvfiles(functionsSource: string, projectId: string, projectAlias?: string): string[] {
-  const files = [".env", `.env.${projectId}`];
-  if (projectAlias && projectAlias.length) {
-    files.push(`.env.${projectAlias}`);
+function findEnvfiles(
+  functionsSource: string,
+  projectId: string,
+  projectAlias?: string,
+  isEmulator?: boolean
+): string[] {
+  const files: string[] = [".env"];
+  if (isEmulator) {
+    //
+    files.push(FUNCTIONS_EMULATOR_DOTENV);
+  } else {
+    files.push(`.env.${projectId}`);
+    if (projectAlias && projectAlias.length) {
+      files.push(`.env.${projectAlias}`);
+    }
   }
 
   return files
@@ -195,6 +208,7 @@ export interface UserEnvsOpts {
   functionsSource: string;
   projectId: string;
   projectAlias?: string;
+  isEmulator?: boolean;
 }
 
 /**
@@ -202,8 +216,13 @@ export interface UserEnvsOpts {
  *
  * @return True if there are any user-specified environment variables
  */
-export function hasUserEnvs({ functionsSource, projectId, projectAlias }: UserEnvsOpts): boolean {
-  return findEnvfiles(functionsSource, projectId, projectAlias).length > 0;
+export function hasUserEnvs({
+  functionsSource,
+  projectId,
+  projectAlias,
+  isEmulator,
+}: UserEnvsOpts): boolean {
+  return findEnvfiles(functionsSource, projectId, projectAlias, isEmulator).length > 0;
 }
 
 /**
@@ -225,12 +244,13 @@ export function loadUserEnvs({
   functionsSource,
   projectId,
   projectAlias,
+  isEmulator,
 }: UserEnvsOpts): Record<string, string> {
   if (!previews.dotenv) {
     return {};
   }
 
-  const envFiles = findEnvfiles(functionsSource, projectId, projectAlias);
+  const envFiles = findEnvfiles(functionsSource, projectId, projectAlias, isEmulator);
   if (envFiles.length == 0) {
     return {};
   }

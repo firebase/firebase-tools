@@ -835,7 +835,8 @@ export class FunctionsEmulator implements EmulatorInstance {
   getUserEnvs(): Record<string, string> {
     const projectInfo = {
       functionsSource: this.args.functionsDir,
-      projectId: "local", // "local" is reserved for Emulator use in functions env var.
+      projectId: this.args.projectId,
+      isEmulator: true,
     };
 
     if (functionsEnv.hasUserEnvs(projectInfo)) {
