@@ -42,7 +42,7 @@ async function checkRequiredPermission(pInfos: configExport.ProjectConfigInfo[])
     if (pInfo.config) continue;
 
     const result = await testIamPermissions(pInfo.projectId, REQUIRED_PERMISSIONS);
-    if (result.passed) return;
+    if (result.passed) continue;
 
     logWarning(
       "You are missing the following permissions to read functions config on project " +
