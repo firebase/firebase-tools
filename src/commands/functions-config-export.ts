@@ -4,6 +4,7 @@ import * as path from "path";
 
 import * as clc from "cli-color";
 
+import type { Options } from "../options";
 import requireInteractive from "../requireInteractive";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
@@ -24,6 +25,7 @@ const REQUIRED_PERMISSIONS = [
 ];
 
 const RESERVED_PROJECT_ALIAS = ["local"];
+const MAX_ATTEMPTS = 3;
 
 function checkReservedAliases(pInfos: configExport.ProjectConfigInfo[]): void {
   for (const pInfo of pInfos) {
@@ -112,7 +114,7 @@ export default new Command("functions:config:export")
   ])
   .before(requireConfig)
   .before(requireInteractive)
-  .action(async (options: any) => {
+  .action(async (options: Options) => {
     let pInfos = configExport.getProjectInfos(options);
     checkReservedAliases(pInfos);
 
@@ -129,14 +131,19 @@ export default new Command("functions:config:export")
     logger.debug(`Loaded function configs: ${JSON.stringify(pInfos)}`);
     logBullet(`Importing configs from projects: [${pInfos.map((p) => p.projectId).join(", ")}]`);
 
+    let attempts = 0;
     let prefix = "";
     while (true) {
-      const errMsg = configExport.hydrateEnvs(pInfos, prefix);
+      if (attempts >= MAX_ATTEMPTS) {
+        throw new FirebaseError("Exceeded max attempts to fix invalid config keys.");
+      }
 
+      const errMsg = configExport.hydrateEnvs(pInfos, prefix);
       if (errMsg.length == 0) {
         break;
       }
       prefix = await promptForPrefix(errMsg);
+      attempts += 1;
     }
 
     const header = `# Exported firebase functions:config:export command on ${new Date().toLocaleDateString()}`;
