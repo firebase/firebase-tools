@@ -4,8 +4,7 @@ import * as path from "path";
 
 import * as clc from "cli-color";
 
-import * as configExport from "../functions/runtimeConfigExport";
-import * as requireConfig from "../requireConfig";
+import requireInteractive from "../requireInteractive";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { testIamPermissions } from "../gcp/iam";
@@ -14,6 +13,8 @@ import { resolveProjectPath } from "../projectPath";
 import { promptOnce } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 import { logBullet, logWarning, logSuccess } from "../utils";
+import * as configExport from "../functions/runtimeConfigExport";
+import * as requireConfig from "../requireConfig";
 
 const REQUIRED_PERMISSIONS = [
   "runtimeconfig.configs.list",
@@ -49,15 +50,12 @@ async function checkRequiredPermission(pInfos: configExport.ProjectConfigInfo[])
         `${clc.bold(pInfo.projectId)}:\n\t${result.missing.join("\n\t")}`
     );
 
-    const confirm = await promptOnce(
-      {
-        type: "confirm",
-        name: "skip",
-        default: true,
-        message: `Continue without importing configs from project ${pInfo.projectId}?`,
-      },
-      {}
-    );
+    const confirm = await promptOnce({
+      type: "confirm",
+      name: "skip",
+      default: true,
+      message: `Continue without importing configs from project ${pInfo.projectId}?`,
+    });
 
     if (!confirm) {
       throw new FirebaseError("Command aborted!");
@@ -101,7 +99,7 @@ async function copyFilesToDir(srcFiles: string[], destDir: string): Promise<stri
     fs.copyFileSync(file, targetFile);
     destFiles.push(targetFile);
   }
-  return destFiles.filter((f) => f.length > 0);
+  return destFiles;
 }
 
 export default new Command("functions:config:export")
@@ -113,16 +111,7 @@ export default new Command("functions:config:export")
     "runtimeconfig.variables.get",
   ])
   .before(requireConfig)
-  .before((options) => {
-    if (options.nonInteractive) {
-      return Promise.reject(
-        new FirebaseError("This command cannot run in non-interactive mode", {
-          exit: 1,
-        })
-      );
-    }
-    return Promise.resolve();
-  })
+  .before(requireInteractive)
   .action(async (options: any) => {
     let pInfos = configExport.getProjectInfos(options);
     checkReservedAliases(pInfos);
