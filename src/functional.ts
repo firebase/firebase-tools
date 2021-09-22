@@ -3,7 +3,7 @@
  * to a value in the source object. E.g. flattenObject({the: {answer: 42}})
  * returns {"the.answser": 42}
  * @param obj An object to be flattened
- * @returns An array where values come from obj and keys are the path in obj to that value.
+ * @return An array where values come from obj and keys are the path in obj to that value.
  */
 export function* flattenObject(obj: Record<string, unknown>): Generator<[string, unknown]> {
   function* helper(path: string[], obj: Record<string, unknown>): Generator<[string, unknown]> {
