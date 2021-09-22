@@ -6,11 +6,11 @@ import * as f from "../functional";
 
 describe("functional", () => {
   describe("flatten", () => {
-    it("Can iterate an empty object", () => {
+    it("can iterate an empty object", () => {
       expect([...f.flatten({})]).to.deep.equal([]);
     });
 
-    it("Can iterate an object that's already flat", () => {
+    it("can iterate an object that's already flat", () => {
       expect([...f.flatten({ a: "b" })]).to.deep.equal([["a", "b"]]);
     });
 
