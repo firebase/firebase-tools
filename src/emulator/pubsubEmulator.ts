@@ -28,10 +28,10 @@ export class PubsubEmulator implements EmulatorInstance {
   pubsub: PubSub;
 
   // Map of topic name to a list of functions to trigger
-  triggersByTopic: Map<string, { triggerKeys: Set<string>; triggers: Trigger[] }>;
+  triggersForTopic: Map<string, Trigger[]>;
 
   // Map of topic name to a PubSub subscription object
-  subscriptionsByTopic: Map<string, Subscription>;
+  subscriptionForTopic: Map<string, Subscription>;
 
   private logger = EmulatorLogger.forEmulator(Emulators.PUBSUB);
 
@@ -42,8 +42,8 @@ export class PubsubEmulator implements EmulatorInstance {
       projectId: this.args.projectId,
     });
 
-    this.triggersByTopic = new Map();
-    this.subscriptionsByTopic = new Map();
+    this.triggersForTopic = new Map();
+    this.subscriptionForTopic = new Map();
   }
 
   async start(): Promise<void> {
@@ -81,11 +81,11 @@ export class PubsubEmulator implements EmulatorInstance {
       `addTrigger(${topicName}, ${triggerKey}, ${signatureType})`
     );
 
-    const topicTriggers = this.triggersByTopic.get(topicName) || {
-      triggerKeys: new Set(),
-      triggers: [],
-    };
-    if (topicTriggers.triggerKeys.has(topicName) && this.subscriptionsByTopic.has(topicName)) {
+    const triggers = this.triggersForTopic.get(topicName) || [];
+    if (
+      triggers.some((t) => t.triggerKey === triggerKey) &&
+      this.subscriptionForTopic.has(topicName)
+    ) {
       this.logger.logLabeled("DEBUG", "pubsub", "Trigger already exists");
       return;
     }
@@ -120,10 +120,9 @@ export class PubsubEmulator implements EmulatorInstance {
       this.onMessage(topicName, message);
     });
 
-    topicTriggers.triggerKeys.add(triggerKey);
-    topicTriggers.triggers.push({ triggerKey, signatureType });
-    this.triggersByTopic.set(topicName, topicTriggers);
-    this.subscriptionsByTopic.set(topicName, sub);
+    triggers.push({ triggerKey, signatureType });
+    this.triggersForTopic.set(topicName, triggers);
+    this.subscriptionForTopic.set(topicName, sub);
   }
 
   private getRequestOptions(
@@ -164,7 +163,7 @@ export class PubsubEmulator implements EmulatorInstance {
           orderingKey: message.orderingKey,
           data: message.data.toString("base64"),
         },
-        subscription: this.subscriptionsByTopic.get(topic)!.name,
+        subscription: this.subscriptionForTopic.get(topic)!.name,
       };
       const ce = HTTP.structured(
         new CloudEvent({
@@ -180,8 +179,8 @@ export class PubsubEmulator implements EmulatorInstance {
 
   private async onMessage(topicName: string, message: Message) {
     this.logger.logLabeled("DEBUG", "pubsub", `onMessage(${topicName}, ${message.id})`);
-    const topicTriggers = this.triggersByTopic.get(topicName);
-    if (!topicTriggers || topicTriggers.triggerKeys.size === 0) {
+    const triggers = this.triggersForTopic.get(topicName);
+    if (!triggers || triggers.length === 0) {
       throw new FirebaseError(`No trigger for topic: ${topicName}`);
     }
 
@@ -194,12 +193,12 @@ export class PubsubEmulator implements EmulatorInstance {
     this.logger.logLabeled(
       "DEBUG",
       "pubsub",
-      `Executing ${topicTriggers.triggerKeys.size} matching triggers (${JSON.stringify(
-        Array.from(topicTriggers.triggerKeys)
+      `Executing ${triggers.length} matching triggers (${JSON.stringify(
+        triggers.map((t) => t.triggerKey)
       )})`
     );
 
-    for (const { triggerKey, signatureType } of topicTriggers.triggers) {
+    for (const { triggerKey, signatureType } of triggers) {
       const reqOpts = this.getRequestOptions(topicName, message, signatureType);
 
       try {
