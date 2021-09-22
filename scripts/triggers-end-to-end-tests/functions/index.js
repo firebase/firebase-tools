@@ -1,6 +1,6 @@
 const admin = require("firebase-admin");
 const functions = require("firebase-functions");
-// TODO(taeold): fireebase-functions/lib path is unsupported, but this is the only way to access v2 namesapce in Node10
+// TODO(taeold): firebase-functions/lib path is unsupported, but this is the only way to access v2 namesapce in Node10
 const functionsV2 = require("firebase-functions/lib/v2");
 const { PubSub } = require("@google-cloud/pubsub");
 
