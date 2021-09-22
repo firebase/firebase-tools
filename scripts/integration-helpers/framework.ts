@@ -8,13 +8,13 @@ const FIREBASE_PROJECT_ZONE = "us-central1";
  * Markers this test looks for in the emulator process stdout
  * as one test for whether a cloud function was triggered.
  */
+/* Functions V2 */
+const PUBSUB_FUNCTION_V2_LOG = "========== PUBSUB V2 FUNCTION ==========";
 /* Functions V1 */
 const RTDB_FUNCTION_LOG = "========== RTDB FUNCTION ==========";
 const FIRESTORE_FUNCTION_LOG = "========== FIRESTORE FUNCTION ==========";
 const PUBSUB_FUNCTION_LOG = "========== PUBSUB FUNCTION ==========";
 const AUTH_FUNCTION_LOG = "========== AUTH FUNCTION ==========";
-/* Functions V2 */
-const PUBSUB_FUNCTION_V2_LOG = "========== PUBSUB V2 FUNCTION ==========";
 const ALL_EMULATORS_STARTED_LOG = "All emulators ready";
 
 interface ConnectionInfo {
