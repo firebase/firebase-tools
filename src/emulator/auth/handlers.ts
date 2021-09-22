@@ -195,9 +195,11 @@ export function registerHandlers(
             <span class="mdc-list-item__graphic material-icons" aria-hidden=true>person</span>`
           }
           <span class="mdc-list-item__text"><span class="mdc-list-item__primary-text">${
-            info.displayName
+            info.displayName || "(No display name)"
           }</span>
-          <span class="mdc-list-item__secondary-text fallback-secondary-text">${info.email}</span>
+          <span class="mdc-list-item__secondary-text fallback-secondary-text">${
+            info.email || ""
+          }</span>
       </li>`
       )
       .join("\n");
