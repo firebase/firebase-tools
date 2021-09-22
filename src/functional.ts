@@ -6,7 +6,7 @@
  * @param obj An object to be flattened
  * @returns An array where values come from obj and keys are the path in obj to that value.
  */
-export function flattenObject(obj: Record<string, unknown>): Record<string, unknown> {
+export function* flattenObject(obj: Record<string, unknown>): Generator<[string, unknown]> {
   function* helper(path: string[], obj: Record<string, unknown>): Generator<[string, unknown]> {
     for (const [k, v] of Object.entries(obj)) {
       if (typeof v !== "object" || v === null) {
@@ -17,11 +17,7 @@ export function flattenObject(obj: Record<string, unknown>): Record<string, unkn
       }
     }
   }
-  const result: Record<string, unknown> = {};
-  for (const [k, v] of helper([], obj)) {
-    result[k] = v;
-  }
-  return result;
+  yield* helper([], obj);
 }
 
 /**
@@ -30,13 +26,30 @@ export function flattenObject(obj: Record<string, unknown>): Record<string, unkn
  * [...flatten([[[1]], [2], 3])] = [1, 2, 3]
  */
 // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-export function* flatten<T = any>(arr: unknown[]): Generator<T> {
+export function* flattenArray<T = any>(arr: unknown[]): Generator<T> {
   for (const val of arr) {
     if (Array.isArray(val)) {
-      yield* flatten(val);
+      yield* flattenArray(val);
     } else {
       yield val as T;
     }
+  }
+}
+
+/** Shorthand for flattenObject. */
+export function flatten(obj: Record<string, unknown>): Generator<[string, unknown]>;
+/** Shorthand for flattenArray. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function flatten<T = any>(arr: unknown[]): Generator<T>;
+
+/** Flattens an object or array. */
+export function flatten<T>(
+  objOrArr: Record<string, unknown> | unknown[]
+): Generator<[string, unknown]> | Generator<T> {
+  if (Array.isArray(objOrArr)) {
+    return flattenArray<T>(objOrArr);
+  } else {
+    return flattenObject(objOrArr);
   }
 }
 
@@ -63,18 +76,16 @@ export function* zip<T, V>(left: T[], right: V[]): Generator<[T, V]> {
   }
 }
 
-/** Just like zip but handles mismatched array lengths by yielding undefined */
-export function* zipLax<T, V>(left: T[], right: V[]): Generator<[T, V]> {
-  const max = Math.max(left.length, right.length);
-  for (let i = 0; i < max; i++) {
-    yield [left[i], right[i]];
-  }
-}
-
 /**
  * Utility to zip in another array from map.
  * [1, 2].map(zipIn(['a', 'b'])) = [[1, 'a'], [2, 'b']]
  */
 export const zipIn = <T, V>(other: V[]) => (elem: T, ndx: number): [T, V] => {
   return [elem, other[ndx]];
+};
+
+/** Used with type guards to guarantee that all cases have been covered. */
+export function assertExhaustive(val: never): never {
+  // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+  throw new Error(`Never has a value (${val}). This should be impossible`);
 }
