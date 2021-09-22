@@ -213,7 +213,7 @@ describe("askUserForParam", () => {
     });
 
     it("should keep prompting user until valid input is given", async () => {
-      await askForParam(testSpec);
+      await askForParam("project-id", "instance-id", testSpec);
       expect(promptStub.calledThrice).to.be.true;
     });
   });
@@ -236,7 +236,7 @@ describe("askUserForParam", () => {
     it("should call substituteParams with the right parameters", async () => {
       const spec = [testSpec];
       const firebaseProjectVars = { PROJECT_ID: "my-project" };
-      await ask(spec, firebaseProjectVars);
+      await ask("project-id", "instance-id", spec, firebaseProjectVars);
       expect(subVarSpy.calledWith(spec, firebaseProjectVars)).to.be.true;
     });
   });

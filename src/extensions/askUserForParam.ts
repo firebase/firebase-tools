@@ -3,8 +3,9 @@ import * as clc from "cli-color";
 import * as marked from "marked";
 
 import { Param, ParamOption, ParamType } from "./extensionsApi";
+import * as secretManagerApi from "./secretManagerApi";
 import { logPrefix, substituteParams } from "./extensionsHelper";
-import { convertExtensionOptionToLabeledList, onceWithJoin } from "./utils";
+import { convertExtensionOptionToLabeledList, getRandomString, onceWithJoin } from "./utils";
 import { logger } from "../logger";
 import { promptOnce } from "../prompt";
 import * as utils from "../utils";
@@ -53,7 +54,11 @@ export function checkResponse(response: string, spec: Param): boolean {
   return valid;
 }
 
-export async function askForParam(paramSpec: Param): Promise<string> {
+export async function askForParam(
+  projectId: string,
+  instanceId: string,
+  paramSpec: Param
+): Promise<string> {
   let valid = false;
   let response = "";
   const description = paramSpec.description || "";
@@ -101,6 +106,9 @@ export async function askForParam(paramSpec: Param): Promise<string> {
           choices: convertExtensionOptionToLabeledList(paramSpec.options as ParamOption[]),
         });
         break;
+      case ParamType.SECRET:
+        response = await promptSecret(projectId, instanceId, paramSpec);
+        break;
       default:
         // Default to ParamType.STRING
         response = await promptOnce({
@@ -114,6 +122,27 @@ export async function askForParam(paramSpec: Param): Promise<string> {
     valid = checkResponse(response, paramSpec);
   }
   return response;
+}
+
+async function promptSecret(
+  projectId: string,
+  instanceId: string,
+  paramSpec: Param
+): Promise<string> {
+  let secretName = `ext-${instanceId}-${paramSpec.param}`;
+  while (await secretManagerApi.secretExists(projectId, secretName)) {
+    secretName += `-${getRandomString(3)}`;
+  }
+  const secretValue = await promptOnce({
+    name: paramSpec.param,
+    type: "input",
+    default: paramSpec.default,
+    message: `Enter a value for ${paramSpec.label.trim()}. This secret will be stored in Cloud Secret Manager as ${secretName}:`,
+  });
+  const secret = await secretManagerApi.createSecret(projectId, secretName);
+  const version = await secretManagerApi.addVersion(secret, secretValue);
+  await secretManagerApi.grantFirexServiceAgentSecretAdminRole(secret);
+  return `projects/${version.secret.projectId}/secrets/${version.secret.name}/versions/${version.versionId}`;
 }
 
 export function getInquirerDefault(options: ParamOption[], def: string): string {
@@ -130,6 +159,8 @@ export function getInquirerDefault(options: ParamOption[], def: string): string 
  * @return Promisified map of env vars to values.
  */
 export async function ask(
+  projectId: string,
+  instanceId: string,
   paramSpecs: Param[],
   firebaseProjectParams: { [key: string]: string }
 ): Promise<{ [key: string]: string }> {
@@ -143,7 +174,7 @@ export async function ask(
   const result: any = {};
   const promises = _.map(substituted, (paramSpec: Param) => {
     return async () => {
-      result[paramSpec.param] = await askForParam(paramSpec);
+      result[paramSpec.param] = await askForParam(projectId, instanceId, paramSpec);
     };
   });
   // chaining together the promises so they get executed one after another

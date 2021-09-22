@@ -243,6 +243,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         projectId,
         paramsEnvPath: options.params,
         nonInteractive: options.nonInteractive,
+        instanceId,
       });
       spinner.start();
       const updateOptions: UpdateOptions = {

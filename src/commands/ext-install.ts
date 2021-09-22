@@ -125,6 +125,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
           paramSpecs: spec.params,
           nonInteractive,
           paramsEnvPath,
+          instanceId,
         });
         spinner.text = "Installing your extension instance. This usually takes 3 to 5 minutes...";
         spinner.start();
@@ -148,6 +149,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
           paramSpecs: spec.params,
           nonInteractive,
           paramsEnvPath,
+          instanceId,
         });
         spinner.text = "Updating your extension instance. This usually takes 3 to 5 minutes...";
         spinner.start();
