@@ -1,4 +1,3 @@
-
 /**
  * Flattens an object so that the return value's keys are the path
  * to a value in the source object. E.g. flattenObject({the: {answer: 42}})
