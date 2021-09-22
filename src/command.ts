@@ -260,6 +260,9 @@ export class Command {
     const account = getInheritedOption(options, "account");
     options.account = account;
 
+    // selectAccount needs the projectRoot to be set.
+    options.projectRoot = detectProjectRoot(options);
+
     const projectRoot = options.projectRoot;
     const activeAccount = selectAccount(account, projectRoot);
 
@@ -267,7 +270,6 @@ export class Command {
       setActiveAccount(options, activeAccount);
     }
 
-    options.projectRoot = detectProjectRoot(options);
     this.applyRC(options);
     if (options.project) {
       await this.resolveProjectIdentifiers(options);
