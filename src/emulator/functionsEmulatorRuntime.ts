@@ -905,7 +905,7 @@ async function invokeTrigger(
   logDebug("triggerDefinition", trigger.definition);
   const signature = getSignatureType(trigger.definition);
 
-  logDebug(`Running ${frb.triggerId} in mode ${signature}`);
+  logDebug(`Running ${frb.triggerId} in signature ${signature}`);
 
   let seconds = 0;
   const timerId = setInterval(() => {
