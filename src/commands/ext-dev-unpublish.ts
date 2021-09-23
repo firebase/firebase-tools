@@ -1,7 +1,8 @@
 import { Command } from "../command";
 import { logPrefix } from "../extensions/extensionsHelper";
-import { unpublishExtension, parseRef, getExtension } from "../extensions/extensionsApi";
+import { unpublishExtension, getExtension } from "../extensions/extensionsApi";
 import * as utils from "../utils";
+import * as ref from "../extensions/ref";
 import { promptOnce } from "../prompt";
 import * as clc from "cli-color";
 import { requireAuth } from "../requireAuth";
@@ -17,7 +18,7 @@ module.exports = new Command("ext:dev:unpublish <extensionRef>")
   .before(requireAuth)
   .before(checkMinRequiredVersion, "extDevMinVersion")
   .action(async (extensionRef: string) => {
-    const { publisherId, extensionId, version } = parseRef(extensionRef);
+    const { publisherId, extensionId, version } = ref.parse(extensionRef);
     utils.logLabeledWarning(
       logPrefix,
       "If you unpublish this extension, developers won't be able to install it. For developers who currently have this extension installed, it will continue to run and will appear as unpublished when listed in the Firebase console or Firebase CLI."

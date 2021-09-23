@@ -15,6 +15,7 @@ import { FirebaseError } from "../error";
 import { needProjectId } from "../projectUtils";
 import * as extensionsApi from "../extensions/extensionsApi";
 import * as provisioningHelper from "../extensions/provisioningHelper";
+import * as refHelper from "../extensions/ref";
 import { displayWarningPrompts } from "../extensions/warnings";
 import * as paramHelper from "../extensions/paramHelper";
 import {
@@ -225,8 +226,8 @@ async function infoInstallByReference(
     extensionName = `firebase/${extensionID}@${version || "latest"}`;
   }
   // Get the correct version for a given extension reference from the Registry API.
-  const ref = extensionsApi.parseRef(extensionName);
-  const extension = await extensionsApi.getExtension(`${ref.publisherId}/${ref.extensionId}`);
+  const ref = refHelper.parse(extensionName);
+  const extension = await extensionsApi.getExtension(refHelper.toExtension(ref));
   if (!ref.version) {
     extensionName = `${extensionName}@latest`;
   }
