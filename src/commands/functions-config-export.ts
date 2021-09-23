@@ -1,5 +1,3 @@
-import * as fs from "fs";
-import * as os from "os";
 import * as path from "path";
 
 import * as clc from "cli-color";
@@ -13,7 +11,7 @@ import { logger } from "../logger";
 import { resolveProjectPath } from "../projectPath";
 import { promptOnce } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
-import { logBullet, logWarning, logSuccess } from "../utils";
+import { logBullet, logWarning } from "../utils";
 import * as configExport from "../functions/runtimeConfigExport";
 import * as requireConfig from "../requireConfig";
 
@@ -77,31 +75,6 @@ async function promptForPrefix(errMsg: string): Promise<string> {
     },
     {}
   );
-}
-
-async function copyFilesToDir(srcFiles: string[], destDir: string): Promise<string[]> {
-  const destFiles = [];
-  for (const file of srcFiles) {
-    const targetFile = path.join(destDir, path.basename(file));
-    if (fs.existsSync(targetFile)) {
-      const overwrite = await promptOnce(
-        {
-          type: "confirm",
-          name: "overwrite",
-          default: false,
-          message: `${targetFile} already exists. Overwrite file?`,
-        },
-        {}
-      );
-      if (!overwrite) {
-        logBullet(`Skipping ${targetFile}`);
-        continue;
-      }
-    }
-    fs.copyFileSync(file, targetFile);
-    destFiles.push(targetFile);
-  }
-  return destFiles;
 }
 
 export default new Command("functions:config:export")
