@@ -491,7 +491,7 @@ export const WIDGET_UI = `
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Auth Emulator IDP Login Widget</title>
-<link href="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.css" rel="stylesheet">
+<link href="https://unpkg.com/material-components-web@10/dist/material-components-web.min.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
 <style>${STYLE}</style>
@@ -604,6 +604,6 @@ export const WIDGET_UI = `
     </div>
   </div>
 </div>
-<script src="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.js"></script>
+<script src="https://unpkg.com/material-components-web@10/dist/material-components-web.min.js"></script>
 <script>${SCRIPT}</script>
 `;

@@ -107,6 +107,12 @@ export interface ExtensionSpec {
   preinstallContent?: string;
   postinstallContent?: string;
   readmeContent?: string;
+  externalServices?: ExternalService[];
+}
+
+export interface ExternalService {
+  name: string;
+  pricingUri: string;
 }
 
 export interface Api {
