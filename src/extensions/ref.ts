@@ -4,6 +4,9 @@ import { FirebaseError } from "../error";
 
 const refRegex = new RegExp(/^([^/@\n]+)\/{1}([^/@\n]+)(@{1}([^\n]+)|)$/);
 
+/**
+ * Ref is a type for converting between the various string representations of an extension or version.
+ */
 export interface Ref {
   publisherId: string;
   extensionId: string;
@@ -54,10 +57,16 @@ function parseName(name: string): Ref | undefined {
   };
 }
 
+/**
+ * To an extension ref: publisherId/extensionId
+ */
 export function toExtensionRef(ref: Ref): string {
   return `${ref.publisherId}/${ref.extensionId}`;
 }
 
+/**
+ * To an extension bersion ref: publisherId/extensionId@version
+ */
 export function toExtensionVersionRef(ref: Ref): string {
   if (!ref.version) {
     throw new FirebaseError(`Ref does not have a version`);
@@ -65,10 +74,16 @@ export function toExtensionVersionRef(ref: Ref): string {
   return `${ref.publisherId}/${ref.extensionId}@${ref.version}`;
 }
 
+/**
+ * To a fully qualified extension name : publishers/publisherId/extensions/extensionId
+ */
 export function toExtensionName(ref: Ref): string {
   return `publishers/${ref.publisherId}/extensions/${ref.extensionId}`;
 }
 
+/**
+ * To a fully qualified extension version name : publishers/publisherId/extensions/extensionId/version/versionId
+ */
 export function toExtensionVersionName(ref: Ref): string {
   if (!ref.version) {
     throw new FirebaseError(`Ref does not have a version`);
