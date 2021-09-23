@@ -239,9 +239,6 @@ You can probably fix this by running "npm install ${systemLog.data.name}@latest"
       case "function-runtimeconfig-json-invalid":
         this.log("WARN", "Found .runtimeconfig.json but the JSON format is invalid.");
         break;
-      case "function-env-load-failed":
-        this.log("WARN", "Failed to load environment variables: " + systemLog.text);
-        break;
       default:
       // Silence
     }

@@ -1,16 +1,19 @@
 import { expect } from "chai";
 import * as express from "express";
+import * as sinon from "sinon";
 import * as supertest from "supertest";
 
 import { EmulatedTriggerType } from "../../src/emulator/functionsEmulatorShared";
 import { FunctionsEmulator, InvokeRuntimeOpts } from "../../src/emulator/functionsEmulator";
+import { Emulators } from "../../src/emulator/types";
 import { RuntimeWorker } from "../../src/emulator/functionsRuntimeWorker";
-import { TIMEOUT_LONG, MODULE_ROOT } from "./fixtures";
+import { TIMEOUT_LONG, TIMEOUT_MED, MODULE_ROOT } from "./fixtures";
 import { logger } from "../../src/logger";
+import * as registry from "../../src/emulator/registry";
 import * as winston from "winston";
 import * as logform from "logform";
 
-if ((process.env.DEBUG || "").toLowerCase().indexOf("spec") >= 0) {
+if ((process.env.DEBUG || "").toLowerCase().includes("spec")) {
   const dropLogLevels = (info: logform.TransformableInfo) => info.message;
   logger.add(
     new winston.transports.Console({
@@ -583,4 +586,97 @@ describe("FunctionsEmulator-Hub", () => {
         });
       });
   }).timeout(TIMEOUT_LONG);
+
+  describe("environment variables", () => {
+    let emulatorRegistryStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      emulatorRegistryStub = sinon.stub(registry.EmulatorRegistry, "getInfo").returns(undefined);
+    });
+
+    afterEach(() => {
+      emulatorRegistryStub.restore();
+    });
+
+    it("should set FIREBASE_DATABASE_EMULATOR_HOST when the emulator is running", async () => {
+      emulatorRegistryStub.withArgs(Emulators.DATABASE).returns({
+        name: Emulators.DATABASE,
+        host: "localhost",
+        port: 9090,
+      });
+
+      useFunctions(() => {
+        return {
+          function_id: require("firebase-functions").https.onRequest(
+            (_req: express.Request, res: express.Response) => {
+              res.json({
+                var: process.env.FIREBASE_DATABASE_EMULATOR_HOST,
+              });
+            }
+          ),
+        };
+      });
+
+      await supertest(functionsEmulator.createHubServer())
+        .get("/fake-project-id/us-central1/function_id")
+        .expect(200)
+        .then((res) => {
+          expect(res.body.var).to.eql("localhost:9090");
+        });
+    }).timeout(TIMEOUT_MED);
+
+    it("should set FIRESTORE_EMULATOR_HOST when the emulator is running", async () => {
+      emulatorRegistryStub.withArgs(Emulators.FIRESTORE).returns({
+        name: Emulators.FIRESTORE,
+        host: "localhost",
+        port: 9090,
+      });
+
+      useFunctions(() => {
+        return {
+          function_id: require("firebase-functions").https.onRequest(
+            (_req: express.Request, res: express.Response) => {
+              res.json({
+                var: process.env.FIRESTORE_EMULATOR_HOST,
+              });
+            }
+          ),
+        };
+      });
+
+      await supertest(functionsEmulator.createHubServer())
+        .get("/fake-project-id/us-central1/function_id")
+        .expect(200)
+        .then((res) => {
+          expect(res.body.var).to.eql("localhost:9090");
+        });
+    });
+
+    it("should set FIREBASE_AUTH_EMULATOR_HOST when the emulator is running", async () => {
+      emulatorRegistryStub.withArgs(Emulators.AUTH).returns({
+        name: Emulators.FIRESTORE,
+        host: "localhost",
+        port: 9099,
+      });
+
+      useFunctions(() => {
+        return {
+          function_id: require("firebase-functions").https.onRequest(
+            (_req: express.Request, res: express.Response) => {
+              res.json({
+                var: process.env.FIREBASE_AUTH_EMULATOR_HOST,
+              });
+            }
+          ),
+        };
+      });
+
+      await supertest(functionsEmulator.createHubServer())
+        .get("/fake-project-id/us-central1/function_id")
+        .expect(200)
+        .then((res) => {
+          expect(res.body.var).to.eql("localhost:9099");
+        });
+    }).timeout(TIMEOUT_MED);
+  });
 });
