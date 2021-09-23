@@ -463,6 +463,49 @@ describe("cloudfunctionsv2", () => {
         cloudfunctionsv2.functionFromSpec(complexFunction, CLOUD_FUNCTION_V2_SOURCE)
       ).to.deep.equal(complexGcfFunction);
     });
+
+    it("should calculate non-trivial fields with a GCS trigger", () => {
+      const complexFunction: backend.FunctionSpec = {
+        ...FUNCTION_SPEC,
+        platform: "gcfv2",
+        trigger: {
+          eventType: "google.cloud.storage.object.v1.archived",
+          eventFilters: {
+            resource: "my-bucket",
+          },
+          retry: false,
+        },
+        maxInstances: 42,
+        minInstances: 1,
+        timeout: "15s",
+      };
+
+      const complexGcfFunction: Omit<
+        cloudfunctionsv2.CloudFunction,
+        cloudfunctionsv2.OutputOnlyFields
+      > = {
+        ...CLOUD_FUNCTION_V2,
+        eventTrigger: {
+          eventType: "google.cloud.storage.object.v1.archived",
+          eventFilters: [
+            {
+              attribute: "bucket",
+              value: "my-bucket",
+            },
+          ],
+        },
+        serviceConfig: {
+          ...CLOUD_FUNCTION_V2.serviceConfig,
+          maxInstanceCount: 42,
+          minInstanceCount: 1,
+          timeoutSeconds: 15,
+        },
+      };
+
+      expect(
+        cloudfunctionsv2.functionFromSpec(complexFunction, CLOUD_FUNCTION_V2_SOURCE)
+      ).to.deep.equal(complexGcfFunction);
+    });
   });
 
   describe("specFromFunction", () => {
@@ -523,6 +566,33 @@ describe("cloudfunctionsv2", () => {
           eventFilters: {
             resource: "projects/p/regions/r/instances/i",
             serviceName: "compute.googleapis.com",
+          },
+          retry: false,
+        },
+      });
+
+      // again w/ a GCS event trigger
+      expect(
+        cloudfunctionsv2.specFromFunction({
+          ...HAVE_CLOUD_FUNCTION_V2,
+          eventTrigger: {
+            eventType: "google.cloud.storage.object.v1.archived",
+            eventFilters: [
+              {
+                attribute: "bucket",
+                value: "my-bucket",
+              },
+            ],
+          },
+        })
+      ).to.deep.equal({
+        ...FUNCTION_SPEC,
+        platform: "gcfv2",
+        uri: RUN_URI,
+        trigger: {
+          eventType: "google.cloud.storage.object.v1.archived",
+          eventFilters: {
+            resource: "my-bucket",
           },
           retry: false,
         },

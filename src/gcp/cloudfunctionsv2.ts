@@ -23,7 +23,7 @@ export const GCS_EVENTS: Set<string> = new Set<string>([
   "google.cloud.storage.object.v1.finalized",
   "google.cloud.storage.object.v1.archived",
   "google.cloud.storage.object.v1.deleted",
-  "google.cloud.storage.object.v1.metadataUpdated"
+  "google.cloud.storage.object.v1.metadataUpdated",
 ]);
 
 export type VpcConnectorEgressSettings = "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC";
@@ -394,10 +394,12 @@ export function functionFromSpec(cloudFunction: backend.FunctionSpec, source: St
     if (gcfFunction.eventTrigger.eventType === PUBSUB_PUBLISH_EVENT) {
       gcfFunction.eventTrigger.pubsubTopic = cloudFunction.trigger.eventFilters.resource;
     } else if (GCS_EVENTS.has(gcfFunction.eventTrigger.eventType)) {
-      gcfFunction.eventTrigger.eventFilters = [{
-        attribute: "bucket",
-        value: cloudFunction.trigger.eventFilters.resource,
-      }];
+      gcfFunction.eventTrigger.eventFilters = [
+        {
+          attribute: "bucket",
+          value: cloudFunction.trigger.eventFilters.resource,
+        },
+      ];
     } else {
       gcfFunction.eventTrigger.eventFilters = [];
       for (const [attribute, value] of Object.entries(cloudFunction.trigger.eventFilters)) {
@@ -425,6 +427,10 @@ export function specFromFunction(gcfFunction: CloudFunction): backend.FunctionSp
     };
     if (gcfFunction.eventTrigger.pubsubTopic) {
       trigger.eventFilters.resource = gcfFunction.eventTrigger.pubsubTopic;
+    } else if (GCS_EVENTS.has(gcfFunction.eventTrigger.eventType)) {
+      const bucketName =
+        gcfFunction.eventTrigger.eventFilters?.find((ef) => ef.attribute === "bucket")?.value || "";
+      trigger.eventFilters.resource = bucketName;
     } else {
       for (const { attribute, value } of gcfFunction.eventTrigger.eventFilters || []) {
         trigger.eventFilters[attribute] = value;
