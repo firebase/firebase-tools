@@ -6,7 +6,6 @@ import * as clc from "cli-color";
 import * as http from "http";
 import * as jwt from "jsonwebtoken";
 import { URL } from "url";
-import { HTTP } from "cloudevents";
 
 import { Account } from "../auth";
 import * as api from "../api";
@@ -55,6 +54,7 @@ import {
   getProjectAdminSdkConfigOrCached,
 } from "./adminSdkConfig";
 import * as functionsEnv from "../functions/env";
+import { EventUtils } from "./events/types";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -239,7 +239,10 @@ export class FunctionsEmulator implements EmulatorInstance {
         // However, the Functions Emulator communicates with the runtime via socket not HTTP, and CE metadata
         // embedded in HTTP header may get lost. Once the Functions Emulator is refactored to communicate to the
         // runtime instances via HTTP, move this logic there.
-        proto = HTTP.toEvent({ headers: req.headers, body: proto });
+        if (EventUtils.isBinaryCloudEvent(req)) {
+          proto = EventUtils.extractBinaryCloudEventContext(req);
+          proto.data = req.body;
+        }
       }
 
       this.workQueue.submit(() => {

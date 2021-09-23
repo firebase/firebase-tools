@@ -22,7 +22,6 @@ import * as admin from "firebase-admin";
 import * as bodyParser from "body-parser";
 import { pathToFileURL, URL } from "url";
 import * as _ from "lodash";
-import { CloudEvent } from "firebase-functions/lib/v2";
 
 let triggers: EmulatedTriggerMap | undefined;
 let developerPkgJSON: PackageJSON | undefined;
@@ -834,7 +833,7 @@ async function runBackground(proto: any, func: CloudFunction<any>): Promise<any>
   });
 }
 
-async function runCloudEvent(event: CloudEvent<unknown>, func: CloudFunction<any>): Promise<any> {
+async function runCloudEvent(event: unknown, func: CloudFunction<any>): Promise<any> {
   logDebug("RunCloudEvent", event);
 
   await runFunction(() => {

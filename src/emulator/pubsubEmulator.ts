@@ -1,5 +1,4 @@
 import * as uuid from "uuid";
-import { CloudEvent, HTTP } from "cloudevents";
 import { MessagePublishedData } from "@google/events/cloud/pubsub/v1/MessagePublishedData";
 import { Message, PubSub, Subscription } from "@google-cloud/pubsub";
 
@@ -165,14 +164,17 @@ export class PubsubEmulator implements EmulatorInstance {
         },
         subscription: this.subscriptionForTopic.get(topic)!.name,
       };
-      const ce = HTTP.structured(
-        new CloudEvent({
-          type: "google.cloud.pubsub.topic.v1.messagePublished",
-          source: `//pubsub.googleapis.com/projects/${this.args.projectId}/topics/${topic}`,
-          data,
-        })
-      );
-      return { ...baseOpts, data: ce.body, headers: ce.headers };
+      const ce = {
+        specVersion: 1,
+        type: "google.cloud.pubsub.topic.v1.messagePublished",
+        source: `//pubsub.googleapis.com/projects/${this.args.projectId}/topics/${topic}`,
+        data,
+      };
+      return {
+        ...baseOpts,
+        headers: { "Content-Type": "application/cloudevents+json; charset=UTF-8" },
+        data: ce,
+      };
     }
     throw new FirebaseError(`Unsupported trigger signature: ${signatureType}`);
   }
@@ -200,7 +202,6 @@ export class PubsubEmulator implements EmulatorInstance {
 
     for (const { triggerKey, signatureType } of triggers) {
       const reqOpts = this.getRequestOptions(topicName, message, signatureType);
-
       try {
         await api.request(
           "POST",
