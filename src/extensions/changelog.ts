@@ -5,9 +5,10 @@ import * as semver from "semver";
 import TerminalRenderer = require("marked-terminal");
 import Table = require("cli-table");
 
-import { listExtensionVersions, parseRef } from "./extensionsApi";
+import { listExtensionVersions } from "./extensionsApi";
 import { readFile } from "./localHelper";
 import { logger } from "../logger";
+import * as ref from "./ref";
 import { logLabeledWarning } from "../utils";
 
 marked.setOptions({
@@ -38,7 +39,7 @@ export async function getReleaseNotesForUpdate(args: {
   });
   for (const extensionVersion of extensionVersions) {
     if (extensionVersion.releaseNotes) {
-      const version = parseRef(extensionVersion.ref).version!;
+      const version = ref.parse(extensionVersion.ref).version!;
       releaseNotes[version] = extensionVersion.releaseNotes;
     }
   }

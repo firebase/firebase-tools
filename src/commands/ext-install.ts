@@ -227,7 +227,7 @@ async function infoInstallByReference(
   }
   // Get the correct version for a given extension reference from the Registry API.
   const ref = refHelper.parse(extensionName);
-  const extension = await extensionsApi.getExtension(refHelper.toExtension(ref));
+  const extension = await extensionsApi.getExtension(refHelper.toExtensionRef(ref));
   if (!ref.version) {
     extensionName = `${extensionName}@latest`;
   }

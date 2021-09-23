@@ -27,9 +27,9 @@ import {
   getInstance,
   getSource,
   Param,
-  parseRef,
   publishExtensionVersion,
 } from "./extensionsApi";
+import * as refHelper from "./ref";
 import { getLocalExtensionSpec } from "./localHelper";
 import { promptOnce } from "../prompt";
 import { logger } from "../logger";
@@ -704,7 +704,7 @@ export function getSourceOrigin(sourceOrVersion: string): SourceOrigin {
   if (sourceOrVersion.includes("/")) {
     let ref;
     try {
-      ref = parseRef(sourceOrVersion);
+      ref = refHelper.parse(sourceOrVersion);
     } catch (err) {
       // Silently fail.
     }
