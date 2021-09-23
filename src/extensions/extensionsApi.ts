@@ -10,7 +10,7 @@ import { FirebaseError } from "../error";
 
 const VERSION = "v1beta";
 const PAGE_SIZE_MAX = 100;
-const refRegex = new RegExp(/^([^/@\n]+)\/{1}([^/@\n]+)(@{1}([a-z0-9.-]+)|)$/);
+const refRegex = new RegExp(/^([^/@\n]+)\/{1}([^/@\n]+)(@{1}([^\n]+)|)$/);
 
 export enum RegistryLaunchStage {
   EXPERIMENTAL = "EXPERIMENTAL",
@@ -754,7 +754,7 @@ export function parseRef(
     const publisherId = parts[1];
     const extensionId = parts[2];
     const version = parts[4];
-    if (version && !semver.valid(version) && version !== "latest") {
+    if (version && !semver.valid(version) && !semver.validRange(version) && version !== "latest") {
       throw new FirebaseError(`Extension reference ${ref} contains an invalid version ${version}.`);
     }
     return { publisherId, extensionId, version };
