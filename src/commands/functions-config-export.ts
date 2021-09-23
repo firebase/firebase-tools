@@ -147,30 +147,22 @@ export default new Command("functions:config:export")
     }
 
     const header = `# Exported firebase functions:config:export command on ${new Date().toLocaleDateString()}`;
-    const tmpdir = fs.mkdtempSync(os.tmpdir() + "dotenvs");
-    const tmpFiles = configExport.writeDotenvFiles(tmpdir, header, pInfos);
-    // Create placeholder .env and .env.local file.
-    tmpFiles.push(
-      ...configExport.writeDotenvFiles(
-        tmpdir,
-        `${header}\n# .env.local file contains environment variables for the Functions Emulator.`,
-        [{ projectId: "local" }]
-      ),
-      ...configExport.writeDotenvFiles(
-        tmpdir,
-        `${header}\n# .env file contains environment variables that applies to all projects.`,
-        [{ projectId: "" }]
-      )
-    );
-    logger.debug(`Wrote temporary .env files: [${tmpFiles.join(",")}]`);
+    const filesToWrite: Record<string, string> = pInfos.reduce((acc, info) => {
+      acc[configExport.generateDotenvFilename(info)] = configExport.toDotenvFormat(
+        info.envs!,
+        header
+      );
+      return acc;
+    }, {} as Record<string, string>);
+    filesToWrite[
+      ".env.local"
+    ] = `${header}\n# .env.local file contains environment variables for the Functions Emulator.\n`;
+    filesToWrite[
+      ".env"
+    ] = `${header}# .env file contains environment variables that applies to all projects.\n`;
 
     const functionsDir = resolveProjectPath(options, options.config.get("functions.source", "."));
-    const files = await copyFilesToDir(tmpFiles, functionsDir);
-    logSuccess(
-      "Wrote files:\n" +
-        files
-          .filter((f) => f.length > 0)
-          .map((f) => `\t${f}`)
-          .join("\n")
-    );
+    for (const [filename, content] of Object.entries(filesToWrite)) {
+      await options.config.askWriteProjectFile(path.join(functionsDir, filename), content);
+    }
   });

@@ -54,6 +54,8 @@ export function getProjectInfos(options: {
     }
   }
 
+  // We export runtime config of a --project set via CLI flag, allowing export command to run on projects that's
+  // never been added to the .firebaserc file.
   const projectId = getProjectId(options);
   if (projectId && !Object.keys(result).includes(projectId)) {
     result[projectId] = projectId;
@@ -72,13 +74,17 @@ export function getProjectInfos(options: {
  * Fetch and fill in runtime config for each project.
  */
 export async function hydrateConfigs(pInfos: ProjectConfigInfo[]): Promise<void> {
-  for (const pInfo of pInfos) {
-    try {
-      pInfo.config = await functionsConfig.materializeAll(pInfo.projectId);
-    } catch (err) {
-      logger.debug(`Failed to fetch runtime config for project ${pInfo.projectId}: ${err.message}`);
-    }
-  }
+  await Promise.all(
+    pInfos.map(async (info) => {
+      try {
+        info.config = await functionsConfig.materializeAll(info.projectId);
+      } catch (err) {
+        logger.debug(
+          `Failed to fetch runtime config for project ${info.projectId}: ${err.message}`
+        );
+      }
+    })
+  );
 }
 
 /**
@@ -203,20 +209,8 @@ export function toDotenvFormat(envs: EnvMap[], header = ""): string {
 }
 
 /**
- * Create a dotenv file for each project's environment variables.
+ * Generate dotenv filename for given project.
  */
-export function writeDotenvFiles(
-  basePath: string,
-  header: string,
-  pInfos: ProjectConfigInfo[]
-): string[] {
-  return pInfos.map((pInfo) => {
-    const dotenv = toDotenvFormat(pInfo.envs ?? [], header);
-    const ext = pInfo.alias ?? pInfo.projectId;
-    const filename = ext ? `.env.${ext}` : `.env`; // ext will be empty when writing empty .env.
-    const filePath = path.join(basePath, filename);
-
-    fs.writeFileSync(filePath, dotenv);
-    return filePath;
-  });
+export function generateDotenvFilename(pInfo: ProjectConfigInfo): string {
+  return `.env.${pInfo.alias ?? pInfo.projectId}`;
 }

@@ -157,4 +157,18 @@ describe("functions-config-export", () => {
       expect(errors).to.be.empty;
     });
   });
+
+  describe("generateDotenvFilename", () => {
+    it("should generate dotenv filename using project alias", () => {
+      expect(
+        configExport.generateDotenvFilename({ projectId: "my-project", alias: "prod" })
+      ).to.equal(".env.prod");
+    });
+
+    it("should generate dotenv filename using project id if alias doesn't exist", () => {
+      expect(configExport.generateDotenvFilename({ projectId: "my-project" })).to.equal(
+        ".env.my-project"
+      );
+    });
+  });
 });
