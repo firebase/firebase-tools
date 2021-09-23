@@ -31,6 +31,8 @@ import {
   SecondFactorRecord,
   UsageMode,
   AgentProjectState,
+  Tenant,
+  TenantProjectState,
 } from "./state";
 import { MfaEnrollments, Schemas } from "./types";
 
@@ -82,6 +84,14 @@ export const authOperations: AuthOps = {
         batchDelete,
         batchGet,
       },
+      tenants: {
+        create: createTenant,
+        delete: deleteTenant,
+        get: getTenant,
+        list: listTenants,
+        patch: updateTenant,
+      },
+      // TODO(lisajian): Adjust all other endpoints that use tenantId
     },
   },
   securetoken: {
@@ -109,6 +119,9 @@ export const authOperations: AuthOps = {
 /* Handlers */
 
 const PASSWORD_MIN_LENGTH = 6;
+const PHONE_NUMBER_MAX_LENGTH = 250;
+const MIN_LENGTH_FOR_NSN = 2;
+const MAX_LENGTH_FOR_NSN = 17;
 
 // https://cloud.google.com/identity-platform/docs/use-rest-api#section-verify-custom-token
 export const CUSTOM_TOKEN_AUDIENCE =
@@ -2541,6 +2554,123 @@ function parsePendingCredential(
   assert(user, "((User in pendingCredentialPayload does not exist.))");
 
   return { user, signInProvider };
+}
+
+function createTenant(
+  state: ProjectState,
+  reqBody: Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"]
+): Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"] {
+  assert(state instanceof AgentProjectState, "((Can only create tenant in agent project.))");
+
+  const formattedPhoneNumbers: { [key: string]: string } = {};
+  if (reqBody.testPhoneNumbers) {
+    Object.entries(reqBody.testPhoneNumbers).forEach(([phoneNumber, value]) => {
+      formattedPhoneNumbers[formatPhoneNumber(phoneNumber)] = value;
+    });
+  }
+
+  const tenant = {
+    displayName: reqBody.displayName,
+    allowPasswordSignup: reqBody.allowPasswordSignup,
+    enableEmailLinkSignin: reqBody.enableEmailLinkSignin,
+    enableAnonymousUser: reqBody.enableAnonymousUser,
+    disableAuth: reqBody.disableAuth,
+    testPhoneNumbers: formattedPhoneNumbers,
+    mfaConfig: reqBody.mfaConfig,
+    tenantId: "", // Placeholder until one is generated
+  };
+
+  return state.createTenant(tenant);
+}
+
+function formatPhoneNumber(phoneNumber: string) {
+  assert(
+    phoneNumber.length < PHONE_NUMBER_MAX_LENGTH,
+    "TOO_LONG ((The string supplied was too long to parse.))"
+  );
+
+  // Only check that the phone number is reasonably formatted, but does not
+  // fully verify that phone number is valid.
+  // TODO: support unicode, alpha characters and extensions?
+  const validPhoneNumberPattern = new RegExp(
+    /^\d{2}$|^\+*(?:[ -x\.\[\]\(\)~\*]*\d){3,}[ -x\.\[\]\(\)~\*\d]*$/g
+  );
+  assert(validPhoneNumberPattern.test(phoneNumber), "INVALID_PHONE_NUMBER");
+
+  let normalizedNumber = phoneNumber.replace(/\D/g, "");
+  assert(
+    normalizedNumber.length <= MAX_LENGTH_FOR_NSN,
+    "TOO_LONG ((The string supplied is too long to be a phone number.))"
+  );
+  normalizedNumber = "+" + normalizedNumber;
+
+  return normalizedNumber;
+}
+
+function listTenants(
+  state: ProjectState,
+  reqBody: unknown,
+  ctx: ExegesisContext
+): Schemas["GoogleCloudIdentitytoolkitAdminV2ListTenantsResponse"] {
+  assert(state instanceof AgentProjectState, "((Can only list tenants in agent project.))");
+  const pageSize = Math.min(Math.floor(ctx.params.query.pageSize) || 20, 1000);
+  const tenants: Tenant[] = state.listTenants(ctx.params.query.pageToken);
+
+  // As a non-standard behavior, passing in negative pageSize will
+  // return all users starting from the pageToken.
+  let nextPageToken: string | undefined = undefined;
+  if (pageSize > 0 && tenants.length >= pageSize) {
+    tenants.length = pageSize;
+    nextPageToken = tenants[tenants.length - 1].tenantId;
+  }
+
+  return {
+    nextPageToken,
+    tenants,
+  };
+}
+
+function deleteTenant(
+  state: ProjectState,
+  reqBody: unknown,
+  ctx: ExegesisContext
+): Schemas["GoogleProtobufEmpty"] {
+  // Ideally, this would be called on the top level AgentProjectState, but
+  // because flat paths are used to generate apiSpec.js to avoid conflicting
+  // endpoints, deleteTenant will be called with a TenantProjectState
+  assert(state instanceof TenantProjectState, "((Can only delete tenant on tenant projects.))");
+  state.delete();
+  return {};
+}
+
+function getTenant(
+  state: ProjectState,
+  reqBody: unknown,
+  ctx: ExegesisContext
+): Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"] {
+  // Ideally, this would be called on the top level AgentProjectState, but
+  // because flat paths are used to generate apiSpec.js to avoid conflicting
+  // endpoints, getTenant will be called with a TenantProjectState
+  assert(state instanceof TenantProjectState, "((Can only get tenant on tenant projects.))");
+  return state.tenantConfig;
+}
+
+function updateTenant(
+  state: ProjectState,
+  reqBody: Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"],
+  ctx: ExegesisContext
+): Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"] {
+  assert(state instanceof TenantProjectState, "((Can only update tenant on tenant projects.))");
+  const update: Partial<Tenant> = { ...reqBody };
+  const formattedPhoneNumbers: { [key: string]: string } = {};
+  if (reqBody.testPhoneNumbers) {
+    Object.entries(reqBody.testPhoneNumbers).forEach(([phoneNumber, value]) => {
+      formattedPhoneNumbers[formatPhoneNumber(phoneNumber)] = value;
+    });
+    update.testPhoneNumbers = formattedPhoneNumbers;
+  }
+
+  return state.updateTenant(update, ctx.params.query.updateMask);
 }
 
 /* eslint-disable camelcase */

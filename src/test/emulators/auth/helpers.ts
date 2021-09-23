@@ -3,7 +3,7 @@ import { inspect } from "util";
 import * as supertest from "supertest";
 import { expect, AssertionError } from "chai";
 import { IdpJwtPayload } from "../../../emulator/auth/operations";
-import { OobRecord, PhoneVerificationRecord, UserInfo } from "../../../emulator/auth/state";
+import { OobRecord, PhoneVerificationRecord, Tenant, UserInfo } from "../../../emulator/auth/state";
 import { TestAgent, PROJECT_ID } from "./setup";
 import { MfaEnrollments } from "../../../emulator/auth/types";
 
@@ -378,5 +378,21 @@ export function deleteAccount(testAgent: TestAgent, reqBody: {}): Promise<string
       expectStatusCode(200, res);
       expect(res.body).not.to.have.property("error");
       return res.body.kind;
+    });
+}
+
+export function registerTenant(
+  testAgent: TestAgent,
+  projectId: string,
+  tenant?: Partial<Tenant>
+): Promise<Tenant> {
+  return testAgent
+    .post(`/identitytoolkit.googleapis.com/v2/projects/${projectId}/tenants`)
+    .query({ key: "fake-api-key" })
+    .set("Authorization", "Bearer owner")
+    .send(tenant)
+    .then((res) => {
+      expectStatusCode(200, res);
+      return res.body;
     });
 }
