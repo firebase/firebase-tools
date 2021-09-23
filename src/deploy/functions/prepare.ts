@@ -99,6 +99,7 @@ export async function prepare(
       cloudrun: "run.googleapis.com",
       eventarc: "eventarc.googleapis.com",
       pubsub: "pubsub.googleapis.com",
+      storage: "storage.googleapis.com",
     };
     const enablements = Object.entries(V2_APIS).map(([tag, api]) => {
       return ensureApiEnabled.ensure(context.projectId, api, tag);
