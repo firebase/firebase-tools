@@ -31,7 +31,7 @@ import {
   getExistingSourceOrigin,
   inferUpdateSource,
 } from "../extensions/updateHelper";
-import * as ref from "../extensions/ref";
+import * as refs from "../extensions/refs";
 import { needProjectId } from "../projectUtils";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
@@ -250,7 +250,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         instanceId,
       };
       if (newSourceName.includes("publisher")) {
-        updateOptions.extRef = ref.toExtensionVersionRef(ref.parse(newSourceName));
+        updateOptions.extRef = refs.toExtensionVersionRef(refs.parse(newSourceName));
       } else {
         updateOptions.source = newSource;
       }

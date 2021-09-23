@@ -8,7 +8,7 @@ import Table = require("cli-table");
 import { listExtensionVersions } from "./extensionsApi";
 import { readFile } from "./localHelper";
 import { logger } from "../logger";
-import * as ref from "./ref";
+import * as refs from "./refs";
 import { logLabeledWarning } from "../utils";
 
 marked.setOptions({
@@ -39,7 +39,7 @@ export async function getReleaseNotesForUpdate(args: {
   });
   for (const extensionVersion of extensionVersions) {
     if (extensionVersion.releaseNotes) {
-      const version = ref.parse(extensionVersion.ref).version!;
+      const version = refs.parse(extensionVersion.ref).version!;
       releaseNotes[version] = extensionVersion.releaseNotes;
     }
   }

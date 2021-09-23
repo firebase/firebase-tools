@@ -4,7 +4,7 @@ import TerminalRenderer = require("marked-terminal");
 
 import { Command } from "../command";
 import { publishExtensionVersionFromLocalSource, logPrefix } from "../extensions/extensionsHelper";
-import * as ref from "../extensions/ref";
+import * as refs from "../extensions/refs";
 import { findExtensionYaml } from "../extensions/localHelper";
 import { consoleInstallLink } from "../extensions/publishHelpers";
 import { requireAuth } from "../requireAuth";
@@ -29,7 +29,7 @@ export default new Command("ext:dev:publish <extensionRef>")
   )
   .before(requireAuth)
   .action(async (extensionRef: string, options: any) => {
-    const { publisherId, extensionId, version } = ref.parse(extensionRef);
+    const { publisherId, extensionId, version } = refs.parse(extensionRef);
     if (version) {
       throw new FirebaseError(
         `The input extension reference must be of the format ${clc.bold(

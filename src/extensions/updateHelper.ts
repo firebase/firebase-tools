@@ -6,7 +6,7 @@ import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import * as resolveSource from "./resolveSource";
 import * as extensionsApi from "./extensionsApi";
-import * as refHelper from "./ref";
+import * as refs from "./refs";
 import {
   createSourceFromLocation,
   logPrefix,
@@ -216,9 +216,9 @@ export async function updateToVersionFromPublisherSource(
   existingSpec: extensionsApi.ExtensionSpec
 ): Promise<string> {
   let source;
-  const ref = refHelper.parse(extVersionRef);
+  const ref = refs.parse(extVersionRef);
   const version = ref.version;
-  const extensionRef = refHelper.toExtensionRef(ref);
+  const extensionRef = refs.toExtensionRef(ref);
   displayExtInfo(instanceId, ref.publisherId, existingSpec, true);
   const extension = await extensionsApi.getExtension(extensionRef);
   try {
