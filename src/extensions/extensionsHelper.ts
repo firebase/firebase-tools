@@ -29,13 +29,12 @@ import {
   Param,
   publishExtensionVersion,
 } from "./extensionsApi";
-import * as refHelper from "./ref";
+import * as refs from "./refs";
 import { getLocalExtensionSpec } from "./localHelper";
 import { promptOnce } from "../prompt";
 import { logger } from "../logger";
 import { envOverride } from "../utils";
-import { getLocalChangelog, parseChangelog } from "./changelog";
-import { utils } from "mocha";
+import { getLocalChangelog } from "./changelog";
 
 /**
  * SpecParamType represents the exact strings that the extensions
@@ -704,7 +703,7 @@ export function getSourceOrigin(sourceOrVersion: string): SourceOrigin {
   if (sourceOrVersion.includes("/")) {
     let ref;
     try {
-      ref = refHelper.parse(sourceOrVersion);
+      ref = refs.parse(sourceOrVersion);
     } catch (err) {
       // Silently fail.
     }
