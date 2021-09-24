@@ -2562,7 +2562,7 @@ function createTenant(
 ): Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"] {
   assert(state instanceof AgentProjectState, "((Can only create tenant in agent project.))");
 
-  const formattedPhoneNumbers: { [key: string]: string } = {};
+  const formattedPhoneNumbers: Record<string, string> = {};
   if (reqBody.testPhoneNumbers) {
     Object.entries(reqBody.testPhoneNumbers).forEach(([phoneNumber, value]) => {
       formattedPhoneNumbers[formatPhoneNumber(phoneNumber)] = value;
@@ -2585,16 +2585,19 @@ function createTenant(
 
 function formatPhoneNumber(phoneNumber: string) {
   assert(
-    phoneNumber.length < PHONE_NUMBER_MAX_LENGTH,
+    phoneNumber.length <= PHONE_NUMBER_MAX_LENGTH,
     "TOO_LONG ((The string supplied was too long to parse.))"
   );
 
   // Only check that the phone number is reasonably formatted, but does not
-  // fully verify that phone number is valid.
+  // fully verify that phone number is valid. The regex corresponds to the
+  // following:
+  //
+  // [digits]{MIN_LENGTH_FOR_NSN}|
+  //    plus_sign*(([punctuation]|[star])*[digits]){3,}([punctuation]|[star]|[digits])*
+  //
   // TODO: support unicode, alpha characters and extensions?
-  const validPhoneNumberPattern = new RegExp(
-    /^\d{2}$|^\+*(?:[ -x\.\[\]\(\)~\*]*\d){3,}[ -x\.\[\]\(\)~\*\d]*$/g
-  );
+  const validPhoneNumberPattern = /^\d{2}$|^\+*(?:[ -x\.\[\]\(\)~\*]*\d){3,}[ -x\.\[\]\(\)~\*\d]*$/g;
   assert(validPhoneNumberPattern.test(phoneNumber), "INVALID_PHONE_NUMBER");
 
   let normalizedNumber = phoneNumber.replace(/\D/g, "");
@@ -2614,7 +2617,7 @@ function listTenants(
 ): Schemas["GoogleCloudIdentitytoolkitAdminV2ListTenantsResponse"] {
   assert(state instanceof AgentProjectState, "((Can only list tenants in agent project.))");
   const pageSize = Math.min(Math.floor(ctx.params.query.pageSize) || 20, 1000);
-  const tenants: Tenant[] = state.listTenants(ctx.params.query.pageToken);
+  const tenants = state.listTenants(ctx.params.query.pageToken);
 
   // As a non-standard behavior, passing in negative pageSize will
   // return all users starting from the pageToken.
@@ -2662,7 +2665,7 @@ function updateTenant(
 ): Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"] {
   assert(state instanceof TenantProjectState, "((Can only update tenant on tenant projects.))");
   const update: Partial<Tenant> = { ...reqBody };
-  const formattedPhoneNumbers: { [key: string]: string } = {};
+  const formattedPhoneNumbers: Record<string, string> = {};
   if (reqBody.testPhoneNumbers) {
     Object.entries(reqBody.testPhoneNumbers).forEach(([phoneNumber, value]) => {
       formattedPhoneNumbers[formatPhoneNumber(phoneNumber)] = value;
