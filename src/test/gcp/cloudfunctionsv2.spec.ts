@@ -62,13 +62,13 @@ describe("cloudfunctionsv2", () => {
 
   describe("functionFromEndpoint", () => {
     const UPLOAD_URL = "https://storage.googleapis.com/projects/-/buckets/sample/source.zip";
-    it("should guard against version mixing", () => {
-      expect(async () => {
-        await cloudfunctionsv2.functionFromSpec(
+    it("should guard against version mixing", async () => {
+      await expect(
+        cloudfunctionsv2.functionFromSpec(
           { ...FUNCTION_SPEC, platform: "gcfv1" },
           CLOUD_FUNCTION_V2_SOURCE
-        );
-      }).to.throw;
+        )
+      ).to.be.rejected;
     });
 
     it("should copy a minimal function", async () => {
@@ -329,13 +329,13 @@ describe("cloudfunctionsv2", () => {
 
   describe("functionFromSpec", () => {
     const UPLOAD_URL = "https://storage.googleapis.com/projects/-/buckets/sample/source.zip";
-    it("should guard against version mixing", () => {
-      expect(async () => {
-        await cloudfunctionsv2.functionFromSpec(
+    it("should guard against version mixing", async () => {
+      await expect(
+        cloudfunctionsv2.functionFromSpec(
           { ...FUNCTION_SPEC, platform: "gcfv1" },
           CLOUD_FUNCTION_V2_SOURCE
-        );
-      }).to.throw;
+        )
+      ).to.be.rejected;
     });
 
     it("should copy a minimal function", async () => {
@@ -511,6 +511,46 @@ describe("cloudfunctionsv2", () => {
       expect(
         await cloudfunctionsv2.functionFromSpec(complexFunction, CLOUD_FUNCTION_V2_SOURCE)
       ).to.deep.equal(complexGcfFunction);
+      storageStub.restore();
+    });
+
+    it("should throw error on GCS trigger without a bucket", async () => {
+      const storageStub = sinon.stub(storage, "getStorageBucket").throws("API call failed");
+      const gcsFunction: backend.FunctionSpec = {
+        ...FUNCTION_SPEC,
+        platform: "gcfv2",
+        trigger: {
+          eventType: "google.cloud.storage.object.v1.archived",
+          eventFilters: {
+            resource: "my-bucket",
+          },
+          retry: false,
+        },
+      };
+
+      await expect(cloudfunctionsv2.functionFromSpec(gcsFunction, CLOUD_FUNCTION_V2_SOURCE)).to.be
+        .rejected;
+      storageStub.restore();
+    });
+
+    it("should throw error on GCS trigger without a bucket location", async () => {
+      const storageStub = sinon
+        .stub(storage, "getStorageBucket")
+        .resolves({ notLocation: "not-a-location" });
+      const gcsFunction: backend.FunctionSpec = {
+        ...FUNCTION_SPEC,
+        platform: "gcfv2",
+        trigger: {
+          eventType: "google.cloud.storage.object.v1.archived",
+          eventFilters: {
+            resource: "my-bucket",
+          },
+          retry: false,
+        },
+      };
+
+      await expect(cloudfunctionsv2.functionFromSpec(gcsFunction, CLOUD_FUNCTION_V2_SOURCE)).to.be
+        .rejected;
       storageStub.restore();
     });
   });
