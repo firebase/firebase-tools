@@ -3,7 +3,7 @@ import * as express from "express";
 import * as sinon from "sinon";
 import * as supertest from "supertest";
 
-import { EmulatedTriggerType } from "../../src/emulator/functionsEmulatorShared";
+import { SignatureType } from "../../src/emulator/functionsEmulatorShared";
 import { FunctionsEmulator, InvokeRuntimeOpts } from "../../src/emulator/functionsEmulator";
 import { Emulators } from "../../src/emulator/types";
 import { RuntimeWorker } from "../../src/emulator/functionsRuntimeWorker";
@@ -89,7 +89,7 @@ function useFunctions(triggers: () => {}): void {
   functionsEmulator.startFunctionRuntime = (
     triggerId: string,
     targetName: string,
-    triggerType: EmulatedTriggerType,
+    triggerType: SignatureType,
     proto?: any,
     runtimeOpts?: InvokeRuntimeOpts
   ): RuntimeWorker => {
