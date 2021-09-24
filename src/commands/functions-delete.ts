@@ -10,6 +10,7 @@ import * as utils from "../utils";
 import * as args from "../deploy/functions/args";
 import * as backend from "../deploy/functions/backend";
 import { Options } from "../options";
+import { FirebaseError } from "../error";
 
 export default new Command("functions:delete [filters...]")
   .description("delete one or more Cloud Functions by name or group name.")
@@ -33,58 +34,65 @@ export default new Command("functions:delete [filters...]")
     const filterChunks = filters.map((filter: string) => {
       return filter.split(".");
     });
-    const [config, existingBackend] = await Promise.all([
-      functionsConfig.getFirebaseConfig(options),
-      backend.existingBackend(context),
-    ]);
-    await backend.checkAvailability(context, /* want=*/ backend.empty());
-    const appEngineLocation = functionsConfig.getAppEngineLocation(config);
 
-    const functionsToDelete = existingBackend.cloudFunctions.filter((fn) => {
-      const regionMatches = options.region ? fn.region === options.region : true;
-      const nameMatches = helper.functionMatchesAnyGroup(fn, filterChunks);
-      return regionMatches && nameMatches;
-    });
-    if (functionsToDelete.length === 0) {
-      return utils.reject(
-        `The specified filters do not match any existing functions in project ${clc.bold(
-          context.projectId
-        )}.`,
-        { exit: 1 }
+    try {
+      const [config, existingBackend] = await Promise.all([
+        functionsConfig.getFirebaseConfig(options),
+        backend.existingBackend(context),
+      ]);
+      await backend.checkAvailability(context, /* want=*/ backend.empty());
+      const appEngineLocation = functionsConfig.getAppEngineLocation(config);
+
+      const functionsToDelete = existingBackend.cloudFunctions.filter((fn) => {
+        const regionMatches = options.region ? fn.region === options.region : true;
+        const nameMatches = helper.functionMatchesAnyGroup(fn, filterChunks);
+        return regionMatches && nameMatches;
+      });
+      if (functionsToDelete.length === 0) {
+        throw new Error(
+          `The specified filters do not match any existing functions in project ${clc.bold(
+            context.projectId
+          )}.`
+        );
+      }
+
+      const schedulesToDelete = existingBackend.schedules.filter((schedule) => {
+        functionsToDelete.some(backend.sameFunctionName(schedule.targetService));
+      });
+      const topicsToDelete = existingBackend.topics.filter((topic) => {
+        functionsToDelete.some(backend.sameFunctionName(topic.targetService));
+      });
+
+      const deleteList = functionsToDelete
+        .map((func) => {
+          return "\t" + helper.getFunctionLabel(func);
+        })
+        .join("\n");
+      const confirmDeletion = await promptOnce(
+        {
+          type: "confirm",
+          name: "force",
+          default: false,
+          message:
+            "You are about to delete the following Cloud Functions:\n" +
+            deleteList +
+            "\n  Are you sure?",
+        },
+        options
       );
+      if (!confirmDeletion) {
+        throw new Error("Command aborted.");
+      }
+      return await deleteFunctions(
+        functionsToDelete,
+        schedulesToDelete,
+        topicsToDelete,
+        appEngineLocation
+      );
+    } catch (err) {
+      throw new FirebaseError(`Failed to delete functions ${err.message}`, {
+        original: err,
+        exit: 1,
+      });
     }
-
-    const schedulesToDelete = existingBackend.schedules.filter((schedule) => {
-      functionsToDelete.some(backend.sameFunctionName(schedule.targetService));
-    });
-    const topicsToDelete = existingBackend.topics.filter((topic) => {
-      functionsToDelete.some(backend.sameFunctionName(topic.targetService));
-    });
-
-    const deleteList = functionsToDelete
-      .map((func) => {
-        return "\t" + helper.getFunctionLabel(func);
-      })
-      .join("\n");
-    const confirmDeletion = await promptOnce(
-      {
-        type: "confirm",
-        name: "force",
-        default: false,
-        message:
-          "You are about to delete the following Cloud Functions:\n" +
-          deleteList +
-          "\n  Are you sure?",
-      },
-      options
-    );
-    if (!confirmDeletion) {
-      return utils.reject("Command aborted.", { exit: 1 });
-    }
-    return await deleteFunctions(
-      functionsToDelete,
-      schedulesToDelete,
-      topicsToDelete,
-      appEngineLocation
-    );
   });
