@@ -59,6 +59,7 @@ export const EMULATORS_SUPPORTED_BY_UI = [
   Emulators.DATABASE,
   Emulators.FIRESTORE,
   Emulators.FUNCTIONS,
+  Emulators.HOSTING,
   Emulators.STORAGE,
 ];
 
