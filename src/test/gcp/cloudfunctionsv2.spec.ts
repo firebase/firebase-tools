@@ -1,4 +1,6 @@
 import { expect } from "chai";
+import * as sinon from "sinon";
+import * as storage from "../../gcp/storage";
 
 import * as cloudfunctionsv2 from "../../gcp/cloudfunctionsv2";
 import * as backend from "../../deploy/functions/backend";
@@ -61,17 +63,17 @@ describe("cloudfunctionsv2", () => {
   describe("functionFromEndpoint", () => {
     const UPLOAD_URL = "https://storage.googleapis.com/projects/-/buckets/sample/source.zip";
     it("should guard against version mixing", () => {
-      expect(() => {
-        cloudfunctionsv2.functionFromSpec(
+      expect(async () => {
+        await cloudfunctionsv2.functionFromSpec(
           { ...FUNCTION_SPEC, platform: "gcfv1" },
           CLOUD_FUNCTION_V2_SOURCE
         );
       }).to.throw;
     });
 
-    it("should copy a minimal function", () => {
+    it("should copy a minimal function", async () => {
       expect(
-        cloudfunctionsv2.functionFromSpec(
+        await cloudfunctionsv2.functionFromSpec(
           {
             ...FUNCTION_SPEC,
             platform: "gcfv2",
@@ -112,11 +114,11 @@ describe("cloudfunctionsv2", () => {
         },
       };
       expect(
-        cloudfunctionsv2.functionFromSpec(eventFunction, CLOUD_FUNCTION_V2_SOURCE)
+        await cloudfunctionsv2.functionFromSpec(eventFunction, CLOUD_FUNCTION_V2_SOURCE)
       ).to.deep.equal(eventGcfFunction);
     });
 
-    it("should copy trival fields", () => {
+    it("should copy trival fields", async () => {
       const fullFunction: backend.FunctionSpec = {
         ...FUNCTION_SPEC,
         platform: "gcfv2",
@@ -155,11 +157,11 @@ describe("cloudfunctionsv2", () => {
       };
 
       expect(
-        cloudfunctionsv2.functionFromSpec(fullFunction, CLOUD_FUNCTION_V2_SOURCE)
+        await cloudfunctionsv2.functionFromSpec(fullFunction, CLOUD_FUNCTION_V2_SOURCE)
       ).to.deep.equal(fullGcfFunction);
     });
 
-    it("should calculate non-trivial fields", () => {
+    it("should calculate non-trivial fields", async () => {
       const complexFunction: backend.FunctionSpec = {
         ...FUNCTION_SPEC,
         platform: "gcfv2",
@@ -193,7 +195,7 @@ describe("cloudfunctionsv2", () => {
       };
 
       expect(
-        cloudfunctionsv2.functionFromSpec(complexFunction, CLOUD_FUNCTION_V2_SOURCE)
+        await cloudfunctionsv2.functionFromSpec(complexFunction, CLOUD_FUNCTION_V2_SOURCE)
       ).to.deep.equal(complexGcfFunction);
     });
   });
@@ -328,17 +330,17 @@ describe("cloudfunctionsv2", () => {
   describe("functionFromSpec", () => {
     const UPLOAD_URL = "https://storage.googleapis.com/projects/-/buckets/sample/source.zip";
     it("should guard against version mixing", () => {
-      expect(() => {
-        cloudfunctionsv2.functionFromSpec(
+      expect(async () => {
+        await cloudfunctionsv2.functionFromSpec(
           { ...FUNCTION_SPEC, platform: "gcfv1" },
           CLOUD_FUNCTION_V2_SOURCE
         );
       }).to.throw;
     });
 
-    it("should copy a minimal function", () => {
+    it("should copy a minimal function", async () => {
       expect(
-        cloudfunctionsv2.functionFromSpec(
+        await cloudfunctionsv2.functionFromSpec(
           {
             ...FUNCTION_SPEC,
             platform: "gcfv2",
@@ -379,11 +381,11 @@ describe("cloudfunctionsv2", () => {
         },
       };
       expect(
-        cloudfunctionsv2.functionFromSpec(eventFunction, CLOUD_FUNCTION_V2_SOURCE)
+        await cloudfunctionsv2.functionFromSpec(eventFunction, CLOUD_FUNCTION_V2_SOURCE)
       ).to.deep.equal(eventGcfFunction);
     });
 
-    it("should copy trival fields", () => {
+    it("should copy trival fields", async () => {
       const fullFunction: backend.FunctionSpec = {
         ...FUNCTION_SPEC,
         platform: "gcfv2",
@@ -422,11 +424,11 @@ describe("cloudfunctionsv2", () => {
       };
 
       expect(
-        cloudfunctionsv2.functionFromSpec(fullFunction, CLOUD_FUNCTION_V2_SOURCE)
+        await cloudfunctionsv2.functionFromSpec(fullFunction, CLOUD_FUNCTION_V2_SOURCE)
       ).to.deep.equal(fullGcfFunction);
     });
 
-    it("should calculate non-trivial fields", () => {
+    it("should calculate non-trivial fields", async () => {
       const complexFunction: backend.FunctionSpec = {
         ...FUNCTION_SPEC,
         platform: "gcfv2",
@@ -460,11 +462,14 @@ describe("cloudfunctionsv2", () => {
       };
 
       expect(
-        cloudfunctionsv2.functionFromSpec(complexFunction, CLOUD_FUNCTION_V2_SOURCE)
+        await cloudfunctionsv2.functionFromSpec(complexFunction, CLOUD_FUNCTION_V2_SOURCE)
       ).to.deep.equal(complexGcfFunction);
     });
 
-    it("should calculate non-trivial fields with a GCS trigger", () => {
+    it("should calculate non-trivial fields with a GCS trigger", async () => {
+      const storageStub = sinon
+        .stub(storage, "getStorageBucket")
+        .resolves({ location: "us-west1" });
       const complexFunction: backend.FunctionSpec = {
         ...FUNCTION_SPEC,
         platform: "gcfv2",
@@ -493,6 +498,7 @@ describe("cloudfunctionsv2", () => {
               value: "my-bucket",
             },
           ],
+          triggerRegion: "us-west1",
         },
         serviceConfig: {
           ...CLOUD_FUNCTION_V2.serviceConfig,
@@ -503,8 +509,9 @@ describe("cloudfunctionsv2", () => {
       };
 
       expect(
-        cloudfunctionsv2.functionFromSpec(complexFunction, CLOUD_FUNCTION_V2_SOURCE)
+        await cloudfunctionsv2.functionFromSpec(complexFunction, CLOUD_FUNCTION_V2_SOURCE)
       ).to.deep.equal(complexGcfFunction);
+      storageStub.restore();
     });
   });
 

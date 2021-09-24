@@ -8,6 +8,7 @@ import * as backend from "../deploy/functions/backend";
 import * as runtimes from "../deploy/functions/runtimes";
 import * as proto from "./proto";
 import * as utils from "../utils";
+import * as storage from "./storage";
 
 export const API_VERSION = "v2alpha";
 
@@ -329,7 +330,7 @@ export async function deleteFunction(cloudFunction: string): Promise<Operation> 
   }
 }
 
-export function functionFromSpec(cloudFunction: backend.FunctionSpec, source: StorageSource) {
+export async function functionFromSpec(cloudFunction: backend.FunctionSpec, source: StorageSource) {
   if (cloudFunction.platform != "gcfv2") {
     throw new FirebaseError(
       "Trying to create a v2 CloudFunction with v1 API. This should never happen"
@@ -400,6 +401,12 @@ export function functionFromSpec(cloudFunction: backend.FunctionSpec, source: St
           value: cloudFunction.trigger.eventFilters.resource,
         },
       ];
+      try {
+        const bucket = await storage.getStorageBucket(cloudFunction.trigger.eventFilters.resource);
+        gcfFunction.eventTrigger.triggerRegion = bucket.location.toLowerCase();
+      } catch (err) {
+        throw new FirebaseError("Can't find the storage bucket region", { original: err });
+      }
     } else {
       gcfFunction.eventTrigger.eventFilters = [];
       for (const [attribute, value] of Object.entries(cloudFunction.trigger.eventFilters)) {
