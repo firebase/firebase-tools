@@ -14,6 +14,7 @@ export const PROVIDER_PASSWORD = "password";
 export const PROVIDER_PHONE = "phone";
 export const PROVIDER_ANONYMOUS = "anonymous";
 export const PROVIDER_CUSTOM = "custom";
+export const PROVIDER_GAME_CENTER = "gc.apple.com"; // Not yet implemented
 
 export const SIGNIN_METHOD_EMAIL_LINK = "emailLink";
 
@@ -377,11 +378,17 @@ export abstract class ProjectState {
   createRefreshTokenFor(
     userInfo: UserInfo,
     provider: string,
-    extraClaims: Record<string, unknown> = {}
+    {
+      extraClaims = {},
+      secondFactor,
+    }: {
+      extraClaims?: Record<string, unknown>;
+      secondFactor?: SecondFactorRecord;
+    } = {}
   ): string {
     const localId = userInfo.localId;
     const refreshToken = randomBase64UrlStr(204);
-    this.refreshTokens.set(refreshToken, { localId, provider, extraClaims });
+    this.refreshTokens.set(refreshToken, { localId, provider, extraClaims, secondFactor });
     let refreshTokens = this.refreshTokensForLocalId.get(localId);
     if (!refreshTokens) {
       refreshTokens = new Set();
@@ -393,7 +400,14 @@ export abstract class ProjectState {
 
   validateRefreshToken(
     refreshToken: string
-  ): { user: UserInfo; provider: string; extraClaims: Record<string, unknown> } | undefined {
+  ):
+    | {
+        user: UserInfo;
+        provider: string;
+        extraClaims: Record<string, unknown>;
+        secondFactor?: SecondFactorRecord;
+      }
+    | undefined {
     const record = this.refreshTokens.get(refreshToken);
     if (!record) {
       return undefined;
@@ -402,6 +416,7 @@ export abstract class ProjectState {
       user: this.getUserByLocalIdAssertingExists(record.localId),
       provider: record.provider,
       extraClaims: record.extraClaims,
+      secondFactor: record.secondFactor,
     };
   }
 
@@ -525,7 +540,6 @@ export abstract class ProjectState {
     if (!record || record.phoneNumber !== phoneNumber) {
       return undefined;
     }
-    // TODO: Find some way to enforce record.temporaryProofExpiresIn.
     return record;
   }
 
@@ -648,6 +662,12 @@ interface RefreshTokenRecord {
   localId: string;
   provider: string;
   extraClaims: Record<string, unknown>;
+  secondFactor?: SecondFactorRecord;
+}
+
+export interface SecondFactorRecord {
+  identifier: string;
+  provider: string;
 }
 
 export type OobRequestType = NonNullable<
@@ -671,6 +691,8 @@ interface TemporaryProofRecord {
   phoneNumber: string;
   temporaryProof: string;
   temporaryProofExpiresIn: string;
+  // Temporary proofs in emulator never expire to make interactive debugging
+  // a bit easier. Therefore, there's no need to record createdAt timestamps.
 }
 
 function getProviderEmailsForUser(user: UserInfo): Set<string> {

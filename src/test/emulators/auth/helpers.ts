@@ -9,6 +9,7 @@ import { MfaEnrollments } from "../../../emulator/auth/types";
 
 export { PROJECT_ID };
 export const TEST_PHONE_NUMBER = "+15555550100";
+export const TEST_PHONE_NUMBER_OBFUSCATED = "+*******0100";
 export const TEST_PHONE_NUMBER_2 = "+15555550101";
 export const TEST_PHONE_NUMBER_3 = "+15555550102";
 export const TEST_MFA_INFO = {
@@ -336,6 +337,35 @@ export function updateAccountByLocalId(
     .send({ localId, ...fields })
     .then((res) => {
       expectStatusCode(200, res);
+    });
+}
+
+export async function enrollPhoneMfa(
+  testAgent: TestAgent,
+  idToken: string,
+  phoneNumber: string
+): Promise<{ idToken: string; refreshToken: string }> {
+  const sessionInfo = await testAgent
+    .post("/identitytoolkit.googleapis.com/v2/accounts/mfaEnrollment:start")
+    .query({ key: "fake-api-key" })
+    .send({ idToken, phoneEnrollmentInfo: { phoneNumber } })
+    .then((res) => {
+      expectStatusCode(200, res);
+      expect(res.body.phoneSessionInfo.sessionInfo).to.be.a("string");
+      return res.body.phoneSessionInfo.sessionInfo as string;
+    });
+
+  const code = (await inspectVerificationCodes(testAgent))[0].code;
+
+  return testAgent
+    .post("/identitytoolkit.googleapis.com/v2/accounts/mfaEnrollment:finalize")
+    .query({ key: "fake-api-key" })
+    .send({ idToken, phoneVerificationInfo: { code, sessionInfo } })
+    .then((res) => {
+      expectStatusCode(200, res);
+      expect(res.body.idToken).to.be.a("string");
+      expect(res.body.refreshToken).to.be.a("string");
+      return { idToken: res.body.idToken, refreshToken: res.body.refreshToken };
     });
 }
 
