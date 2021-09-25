@@ -27,7 +27,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     next();
   });
 
-  gcloudStorageAPI.get("/b", (req, res) => {
+  gcloudStorageAPI.get(["/b", "/storage/v1/b"], (req, res) => {
     res.json({
       kind: "storage#buckets",
       items: storageLayer.listBuckets(),
@@ -55,22 +55,25 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     }
   );
 
-  gcloudStorageAPI.patch("/b/:bucketId/o/:objectId", (req, res) => {
-    const md = storageLayer.getMetadata(req.params.bucketId, req.params.objectId);
+  gcloudStorageAPI.patch(
+    ["/b/:bucketId/o/:objectId", "/storage/v1/b/:bucketId/o/:objectId"],
+    (req, res) => {
+      const md = storageLayer.getMetadata(req.params.bucketId, req.params.objectId);
 
-    if (!md) {
-      res.sendStatus(404);
+      if (!md) {
+        res.sendStatus(404);
+        return;
+      }
+
+      md.update(req.body);
+
+      const outgoingMetadata = new CloudStorageObjectMetadata(md);
+      res.json(outgoingMetadata).status(200).send();
       return;
     }
+  );
 
-    md.update(req.body);
-
-    const outgoingMetadata = new CloudStorageObjectMetadata(md);
-    res.json(outgoingMetadata).status(200).send();
-    return;
-  });
-
-  gcloudStorageAPI.get("/b/:bucketId/o", (req, res) => {
+  gcloudStorageAPI.get(["/b/:bucketId/o", "/storage/v1/b/:bucketId/o"], (req, res) => {
     // TODO validate that all query params are single strings and are not repeated.
     let maxRes = undefined;
     if (req.query.maxResults) {
@@ -91,17 +94,20 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     res.json(listResult);
   });
 
-  gcloudStorageAPI.delete("/b/:bucketId/o/:objectId", (req, res) => {
-    const md = storageLayer.getMetadata(req.params.bucketId, req.params.objectId);
+  gcloudStorageAPI.delete(
+    ["/b/:bucketId/o/:objectId", "/storage/v1/b/:bucketId/o/:objectId"],
+    (req, res) => {
+      const md = storageLayer.getMetadata(req.params.bucketId, req.params.objectId);
 
-    if (!md) {
-      res.sendStatus(404);
-      return;
+      if (!md) {
+        res.sendStatus(404);
+        return;
+      }
+
+      storageLayer.deleteFile(req.params.bucketId, req.params.objectId);
+      res.status(200).send();
     }
-
-    storageLayer.deleteFile(req.params.bucketId, req.params.objectId);
-    res.status(200).send();
-  });
+  );
 
   gcloudStorageAPI.put("/upload/storage/v1/b/:bucketId/o", async (req, res) => {
     if (!req.query.upload_id) {
@@ -139,38 +145,41 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     res.status(200).json(new CloudStorageObjectMetadata(finalizedUpload.file.metadata)).send();
   });
 
-  gcloudStorageAPI.post("/b/:bucketId/o/:objectId/acl", (req, res) => {
-    // TODO(abehaskins) Link to a doc with more info
-    EmulatorLogger.forEmulator(Emulators.STORAGE).log(
-      "WARN_ONCE",
-      "Cloud Storage ACLs are not supported in the Storage Emulator. All related methods will succeed, but have no effect."
-    );
-    const md = storageLayer.getMetadata(req.params.bucketId, req.params.objectId);
+  gcloudStorageAPI.post(
+    ["/b/:bucketId/o/:objectId/acl", "/storage/v1/b/:bucketId/o/:objectId/acl"],
+    (req, res) => {
+      // TODO(abehaskins) Link to a doc with more info
+      EmulatorLogger.forEmulator(Emulators.STORAGE).log(
+        "WARN_ONCE",
+        "Cloud Storage ACLs are not supported in the Storage Emulator. All related methods will succeed, but have no effect."
+      );
+      const md = storageLayer.getMetadata(req.params.bucketId, req.params.objectId);
 
-    if (!md) {
-      res.sendStatus(404);
-      return;
+      if (!md) {
+        res.sendStatus(404);
+        return;
+      }
+
+      // We do an empty update to step metageneration forward;
+      md.update({});
+
+      res
+        .json({
+          kind: "storage#objectAccessControl",
+          object: md.name,
+          id: `${req.params.bucketId}/${md.name}/${md.generation}/allUsers`,
+          selfLink: `http://${EmulatorRegistry.getInfo(Emulators.STORAGE)?.host}:${
+            EmulatorRegistry.getInfo(Emulators.STORAGE)?.port
+          }/storage/v1/b/${md.bucket}/o/${encodeURIComponent(md.name)}/acl/allUsers`,
+          bucket: md.bucket,
+          entity: req.body.entity,
+          role: req.body.role,
+          etag: "someEtag",
+          generation: md.generation.toString(),
+        } as CloudStorageObjectAccessControlMetadata)
+        .status(200);
     }
-
-    // We do an empty update to step metageneration forward;
-    md.update({});
-
-    res
-      .json({
-        kind: "storage#objectAccessControl",
-        object: md.name,
-        id: `${req.params.bucketId}/${md.name}/${md.generation}/allUsers`,
-        selfLink: `http://${EmulatorRegistry.getInfo(Emulators.STORAGE)?.host}:${
-          EmulatorRegistry.getInfo(Emulators.STORAGE)?.port
-        }/storage/v1/b/${md.bucket}/o/${encodeURIComponent(md.name)}/acl/allUsers`,
-        bucket: md.bucket,
-        entity: req.body.entity,
-        role: req.body.role,
-        etag: "someEtag",
-        generation: md.generation.toString(),
-      } as CloudStorageObjectAccessControlMetadata)
-      .status(200);
-  });
+  );
 
   gcloudStorageAPI.post("/upload/storage/v1/b/:bucketId/o", (req, res) => {
     if (!req.query.name) {
