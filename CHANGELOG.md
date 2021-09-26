@@ -1,1 +1,4 @@
+- `ext:dev:publish` and `ext:update` now support --force and --non-interactive flags.
+- Fixes issue where account specified by `login:use` was not being correctly loaded (#3759).
+- Fixes minor layout issues in Auth Emulator IDP sign-in page (#3774).
 - Improves remoteconfig:get and remoteconfig:versions:list when no version exists or is specified (#3628)

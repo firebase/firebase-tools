@@ -15,10 +15,11 @@ import { FirebaseError } from "../error";
 import { needProjectId } from "../projectUtils";
 import * as extensionsApi from "../extensions/extensionsApi";
 import * as provisioningHelper from "../extensions/provisioningHelper";
+import * as refs from "../extensions/refs";
 import { displayWarningPrompts } from "../extensions/warnings";
 import * as paramHelper from "../extensions/paramHelper";
 import {
-  confirmInstallInstance,
+  confirm,
   createSourceFromLocation,
   ensureExtensionsApiEnabled,
   instanceIdExists,
@@ -40,7 +41,7 @@ marked.setOptions({
 });
 
 interface InstallExtensionOptions {
-  paramFilePath?: string;
+  paramsEnvPath?: string;
   projectId: string;
   extensionName: string;
   source?: extensionsApi.ExtensionSource;
@@ -55,7 +56,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
     extensionName,
     source,
     extVersion,
-    paramFilePath,
+    paramsEnvPath,
     nonInteractive,
     force,
   } = options;
@@ -88,7 +89,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
     const roles = spec.roles ? spec.roles.map((role: extensionsApi.Role) => role.role) : [];
     if (roles.length) {
       await askUserForConsent.displayRoles(spec.displayName || spec.name, projectId, roles);
-      const consented = await confirmInstallInstance(nonInteractive, force);
+      const consented = await confirm({ nonInteractive, force, default: true });
       if (!consented) {
         throw new FirebaseError(
           "Without explicit consent for the roles listed, we cannot deploy this extension."
@@ -119,12 +120,12 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
     switch (choice) {
       case "installNew":
         instanceId = await promptForValidInstanceId(`${instanceId}-${getRandomString(4)}`);
-        params = await paramHelper.getParams(
+        params = await paramHelper.getParams({
           projectId,
-          _.get(spec, "params", []),
+          paramSpecs: spec.params,
           nonInteractive,
-          paramFilePath
-        );
+          paramsEnvPath,
+        });
         spinner.text = "Installing your extension instance. This usually takes 3 to 5 minutes...";
         spinner.start();
         await extensionsApi.createInstance({
@@ -142,12 +143,12 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
         );
         break;
       case "updateExisting":
-        params = await paramHelper.getParams(
+        params = await paramHelper.getParams({
           projectId,
-          _.get(spec, "params", []),
+          paramSpecs: spec.params,
           nonInteractive,
-          paramFilePath
-        );
+          paramsEnvPath,
+        });
         spinner.text = "Updating your extension instance. This usually takes 3 to 5 minutes...";
         spinner.start();
         await update({
@@ -225,8 +226,8 @@ async function infoInstallByReference(
     extensionName = `firebase/${extensionID}@${version || "latest"}`;
   }
   // Get the correct version for a given extension reference from the Registry API.
-  const ref = extensionsApi.parseRef(extensionName);
-  const extension = await extensionsApi.getExtension(`${ref.publisherId}/${ref.extensionId}`);
+  const ref = refs.parse(extensionName);
+  const extension = await extensionsApi.getExtension(refs.toExtensionRef(ref));
   if (!ref.version) {
     extensionName = `${extensionName}@latest`;
   }
@@ -254,7 +255,7 @@ export default new Command("ext:install [extensionName]")
   .before(checkMinRequiredVersion, "extMinVersion")
   .action(async (extensionName: string, options: any) => {
     const projectId = needProjectId(options);
-    const paramFilePath = options.params;
+    const paramsEnvPath = options.params;
     let learnMore = false;
     if (!extensionName) {
       if (options.interactive) {
@@ -281,7 +282,15 @@ export default new Command("ext:install [extensionName]")
     } else {
       extVersion = await infoInstallByReference(extensionName);
     }
-    const confirm = await confirmInstallInstance(options.nonInteractive, options.force);
+    if (
+      !(await confirm({
+        nonInteractive: options.nonInteractive,
+        force: options.force,
+        default: true,
+      }))
+    ) {
+      return;
+    }
     if (!source && !extVersion) {
       throw new FirebaseError(
         "Could not find a source. Please specify a valid source to continue."
@@ -305,7 +314,7 @@ export default new Command("ext:install [extensionName]")
     }
     try {
       return installExtension({
-        paramFilePath,
+        paramsEnvPath,
         projectId,
         extensionName,
         source,

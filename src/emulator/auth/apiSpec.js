@@ -660,160 +660,6 @@ export default {
         { $ref: "#/components/parameters/upload_protocol" },
       ],
     },
-    "/v1/projects": {
-      get: {
-        description:
-          "Gets a project's public Identity Toolkit configuration. (Legacy) This method also supports authenticated calls from a developer to retrieve non-public configuration.",
-        operationId: "identitytoolkit.getProjects",
-        responses: {
-          200: {
-            description: "Successful response",
-            content: {
-              "*/*": {
-                schema: {
-                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1GetProjectConfigResponse",
-                },
-              },
-            },
-          },
-        },
-        parameters: [
-          {
-            name: "androidPackageName",
-            in: "query",
-            description:
-              "Android package name to check against the real android package name. If this field is provided, and sha1_cert_hash is not provided, the action will throw an error if this does not match the real android package name.",
-            schema: { type: "string" },
-          },
-          {
-            name: "clientId",
-            in: "query",
-            description:
-              "The RP OAuth client ID. If set, a check will be performed to ensure that the OAuth client is valid for the retrieved project and the request rejected with a client error if not valid.",
-            schema: { type: "string" },
-          },
-          {
-            name: "delegatedProjectNumber",
-            in: "query",
-            description:
-              "Project Number of the delegated project request. This field should only be used as part of the Firebase V1 migration.",
-            schema: { type: "string" },
-          },
-          {
-            name: "firebaseAppId",
-            in: "query",
-            description:
-              "The Firebase app ID, for applications that use Firebase. This can be found in the Firebase console for your project. If set, a check will be performed to ensure that the app ID is valid for the retrieved project. If not valid, the request will be rejected with a client error.",
-            schema: { type: "string" },
-          },
-          {
-            name: "iosBundleId",
-            in: "query",
-            description:
-              "iOS bundle id to check against the real ios bundle id. If this field is provided, the action will throw an error if this does not match the real iOS bundle id.",
-            schema: { type: "string" },
-          },
-          {
-            name: "projectNumber",
-            in: "query",
-            description:
-              "Project number of the configuration to retrieve. This field is deprecated and should not be used by new integrations.",
-            schema: { type: "string" },
-          },
-          {
-            name: "returnDynamicLink",
-            in: "query",
-            description: "Whether dynamic link should be returned.",
-            schema: { type: "boolean" },
-          },
-          {
-            name: "sha1Cert",
-            in: "query",
-            description:
-              "SHA-1 Android application cert hash. If set, a check will be performed to ensure that the cert hash is valid for the retrieved project and android_package_name.",
-            schema: { type: "string" },
-          },
-        ],
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
-        tags: ["v1"],
-      },
-      parameters: [
-        { $ref: "#/components/parameters/access_token" },
-        { $ref: "#/components/parameters/alt" },
-        { $ref: "#/components/parameters/callback" },
-        { $ref: "#/components/parameters/fields" },
-        { $ref: "#/components/parameters/oauth_token" },
-        { $ref: "#/components/parameters/prettyPrint" },
-        { $ref: "#/components/parameters/quotaUser" },
-        { $ref: "#/components/parameters/uploadType" },
-        { $ref: "#/components/parameters/upload_protocol" },
-      ],
-    },
-    "/v1/recaptchaParams": {
-      get: {
-        description: "Gets parameters needed for generating a reCAPTCHA challenge.",
-        operationId: "identitytoolkit.getRecaptchaParams",
-        responses: {
-          200: {
-            description: "Successful response",
-            content: {
-              "*/*": {
-                schema: {
-                  $ref:
-                    "#/components/schemas/GoogleCloudIdentitytoolkitV1GetRecaptchaParamResponse",
-                },
-              },
-            },
-          },
-        },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
-        tags: ["v1"],
-      },
-      parameters: [
-        { $ref: "#/components/parameters/access_token" },
-        { $ref: "#/components/parameters/alt" },
-        { $ref: "#/components/parameters/callback" },
-        { $ref: "#/components/parameters/fields" },
-        { $ref: "#/components/parameters/oauth_token" },
-        { $ref: "#/components/parameters/prettyPrint" },
-        { $ref: "#/components/parameters/quotaUser" },
-        { $ref: "#/components/parameters/uploadType" },
-        { $ref: "#/components/parameters/upload_protocol" },
-      ],
-    },
-    "/v1/sessionCookiePublicKeys": {
-      get: {
-        description:
-          "Retrieves the set of public keys of the session cookie JSON Web Token (JWT) signer that can be used to validate the session cookie created through createSessionCookie.",
-        operationId: "identitytoolkit.getSessionCookiePublicKeys",
-        responses: {
-          200: {
-            description: "Successful response",
-            content: {
-              "*/*": {
-                schema: {
-                  $ref:
-                    "#/components/schemas/GoogleCloudIdentitytoolkitV1GetSessionCookiePublicKeysResponse",
-                },
-              },
-            },
-          },
-        },
-        tags: ["v1"],
-        security: [{ apiKey: [] }],
-      },
-      parameters: [
-        { $ref: "#/components/parameters/access_token" },
-        { $ref: "#/components/parameters/alt" },
-        { $ref: "#/components/parameters/callback" },
-        { $ref: "#/components/parameters/fields" },
-        { $ref: "#/components/parameters/oauth_token" },
-        { $ref: "#/components/parameters/prettyPrint" },
-        { $ref: "#/components/parameters/quotaUser" },
-        { $ref: "#/components/parameters/uploadType" },
-        { $ref: "#/components/parameters/upload_protocol" },
-      ],
-    },
     "/v1/projects/{targetProjectId}/accounts": {
       post: {
         description:
@@ -1893,6 +1739,160 @@ export default {
         { $ref: "#/components/parameters/upload_protocol" },
       ],
     },
+    "/v1/projects": {
+      get: {
+        description:
+          "Gets a project's public Identity Toolkit configuration. (Legacy) This method also supports authenticated calls from a developer to retrieve non-public configuration.",
+        operationId: "identitytoolkit.getProjects",
+        responses: {
+          200: {
+            description: "Successful response",
+            content: {
+              "*/*": {
+                schema: {
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1GetProjectConfigResponse",
+                },
+              },
+            },
+          },
+        },
+        parameters: [
+          {
+            name: "androidPackageName",
+            in: "query",
+            description:
+              "Android package name to check against the real android package name. If this field is provided, and sha1_cert_hash is not provided, the action will throw an error if this does not match the real android package name.",
+            schema: { type: "string" },
+          },
+          {
+            name: "clientId",
+            in: "query",
+            description:
+              "The RP OAuth client ID. If set, a check will be performed to ensure that the OAuth client is valid for the retrieved project and the request rejected with a client error if not valid.",
+            schema: { type: "string" },
+          },
+          {
+            name: "delegatedProjectNumber",
+            in: "query",
+            description:
+              "Project Number of the delegated project request. This field should only be used as part of the Firebase V1 migration.",
+            schema: { type: "string" },
+          },
+          {
+            name: "firebaseAppId",
+            in: "query",
+            description:
+              "The Firebase app ID, for applications that use Firebase. This can be found in the Firebase console for your project. If set, a check will be performed to ensure that the app ID is valid for the retrieved project. If not valid, the request will be rejected with a client error.",
+            schema: { type: "string" },
+          },
+          {
+            name: "iosBundleId",
+            in: "query",
+            description:
+              "iOS bundle id to check against the real ios bundle id. If this field is provided, the action will throw an error if this does not match the real iOS bundle id.",
+            schema: { type: "string" },
+          },
+          {
+            name: "projectNumber",
+            in: "query",
+            description:
+              "Project number of the configuration to retrieve. This field is deprecated and should not be used by new integrations.",
+            schema: { type: "string" },
+          },
+          {
+            name: "returnDynamicLink",
+            in: "query",
+            description: "Whether dynamic link should be returned.",
+            schema: { type: "boolean" },
+          },
+          {
+            name: "sha1Cert",
+            in: "query",
+            description:
+              "SHA-1 Android application cert hash. If set, a check will be performed to ensure that the cert hash is valid for the retrieved project and android_package_name.",
+            schema: { type: "string" },
+          },
+        ],
+        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        tags: ["v1"],
+      },
+      parameters: [
+        { $ref: "#/components/parameters/access_token" },
+        { $ref: "#/components/parameters/alt" },
+        { $ref: "#/components/parameters/callback" },
+        { $ref: "#/components/parameters/fields" },
+        { $ref: "#/components/parameters/oauth_token" },
+        { $ref: "#/components/parameters/prettyPrint" },
+        { $ref: "#/components/parameters/quotaUser" },
+        { $ref: "#/components/parameters/uploadType" },
+        { $ref: "#/components/parameters/upload_protocol" },
+      ],
+    },
+    "/v1/recaptchaParams": {
+      get: {
+        description: "Gets parameters needed for generating a reCAPTCHA challenge.",
+        operationId: "identitytoolkit.getRecaptchaParams",
+        responses: {
+          200: {
+            description: "Successful response",
+            content: {
+              "*/*": {
+                schema: {
+                  $ref:
+                    "#/components/schemas/GoogleCloudIdentitytoolkitV1GetRecaptchaParamResponse",
+                },
+              },
+            },
+          },
+        },
+        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        tags: ["v1"],
+      },
+      parameters: [
+        { $ref: "#/components/parameters/access_token" },
+        { $ref: "#/components/parameters/alt" },
+        { $ref: "#/components/parameters/callback" },
+        { $ref: "#/components/parameters/fields" },
+        { $ref: "#/components/parameters/oauth_token" },
+        { $ref: "#/components/parameters/prettyPrint" },
+        { $ref: "#/components/parameters/quotaUser" },
+        { $ref: "#/components/parameters/uploadType" },
+        { $ref: "#/components/parameters/upload_protocol" },
+      ],
+    },
+    "/v1/sessionCookiePublicKeys": {
+      get: {
+        description:
+          "Retrieves the set of public keys of the session cookie JSON Web Token (JWT) signer that can be used to validate the session cookie created through createSessionCookie.",
+        operationId: "identitytoolkit.getSessionCookiePublicKeys",
+        responses: {
+          200: {
+            description: "Successful response",
+            content: {
+              "*/*": {
+                schema: {
+                  $ref:
+                    "#/components/schemas/GoogleCloudIdentitytoolkitV1GetSessionCookiePublicKeysResponse",
+                },
+              },
+            },
+          },
+        },
+        tags: ["v1"],
+        security: [{ apiKey: [] }],
+      },
+      parameters: [
+        { $ref: "#/components/parameters/access_token" },
+        { $ref: "#/components/parameters/alt" },
+        { $ref: "#/components/parameters/callback" },
+        { $ref: "#/components/parameters/fields" },
+        { $ref: "#/components/parameters/oauth_token" },
+        { $ref: "#/components/parameters/prettyPrint" },
+        { $ref: "#/components/parameters/quotaUser" },
+        { $ref: "#/components/parameters/uploadType" },
+        { $ref: "#/components/parameters/upload_protocol" },
+      ],
+    },
     "/v2/accounts/mfaEnrollment:finalize": {
       post: {
         description: "Finishes enrolling a second factor for the user.",
@@ -2148,11 +2148,11 @@ export default {
         { $ref: "#/components/parameters/upload_protocol" },
       ],
     },
-    "/v2/{parent}/defaultSupportedIdpConfigs": {
+    "/v2/projects/{targetProjectId}/defaultSupportedIdpConfigs": {
       post: {
         description:
           "Create a default supported Idp configuration for an Identity Toolkit project.",
-        operationId: "identitytoolkit.projects.tenants.defaultSupportedIdpConfigs.create",
+        operationId: "identitytoolkit.projects.defaultSupportedIdpConfigs.create",
         responses: {
           200: {
             description: "Successful response",
@@ -2167,14 +2167,7 @@ export default {
           },
         },
         parameters: [
-          {
-            name: "parent",
-            in: "path",
-            description:
-              'The parent resource name where the config to be created, for example: "projects/my-awesome-project"',
-            required: true,
-            schema: { type: "string" },
-          },
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
           {
             name: "idpId",
             in: "query",
@@ -2184,14 +2177,8 @@ export default {
           },
         ],
         requestBody: {
-          content: {
-            "application/json": {
-              schema: {
-                $ref:
-                  "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdpConfig",
-              },
-            },
-          },
+          $ref:
+            "#/components/requestBodies/GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdpConfig",
         },
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
@@ -2203,7 +2190,7 @@ export default {
       get: {
         description:
           "List all default supported Idp configurations for an Identity Toolkit project.",
-        operationId: "identitytoolkit.projects.tenants.defaultSupportedIdpConfigs.list",
+        operationId: "identitytoolkit.projects.defaultSupportedIdpConfigs.list",
         responses: {
           200: {
             description: "Successful response",
@@ -2218,13 +2205,7 @@ export default {
           },
         },
         parameters: [
-          {
-            name: "parent",
-            in: "path",
-            description: 'The parent resource name, for example, "projects/my-awesome-project".',
-            required: true,
-            schema: { type: "string" },
-          },
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
           {
             name: "pageSize",
             in: "query",
@@ -2257,10 +2238,11 @@ export default {
         { $ref: "#/components/parameters/upload_protocol" },
       ],
     },
-    "/v2/{name}": {
+    "/v2/projects/{targetProjectId}/defaultSupportedIdpConfigs/{defaultSupportedIdpConfigsId}": {
       delete: {
-        description: "Delete an Oidc Idp configuration for an Identity Toolkit project.",
-        operationId: "identitytoolkit.projects.tenants.oauthIdpConfigs.delete",
+        description:
+          "Delete a default supported Idp configuration for an Identity Toolkit project.",
+        operationId: "identitytoolkit.projects.defaultSupportedIdpConfigs.delete",
         responses: {
           200: {
             description: "Successful response",
@@ -2268,11 +2250,10 @@ export default {
           },
         },
         parameters: [
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
           {
-            name: "name",
+            name: "defaultSupportedIdpConfigsId",
             in: "path",
-            description:
-              "The resource name of the config to be deleted, for example: 'projects/my-awesome-project/oauthIdpConfigs/oauth-config-id'.",
             required: true,
             schema: { type: "string" },
           },
@@ -2285,26 +2266,27 @@ export default {
         tags: ["projects"],
       },
       get: {
-        description: "Retrieve an Oidc Idp configuration for an Identity Toolkit project.",
-        operationId: "identitytoolkit.projects.tenants.oauthIdpConfigs.get",
+        description:
+          "Retrieve a default supported Idp configuration for an Identity Toolkit project.",
+        operationId: "identitytoolkit.projects.defaultSupportedIdpConfigs.get",
         responses: {
           200: {
             description: "Successful response",
             content: {
               "*/*": {
                 schema: {
-                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2OAuthIdpConfig",
+                  $ref:
+                    "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdpConfig",
                 },
               },
             },
           },
         },
         parameters: [
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
           {
-            name: "name",
+            name: "defaultSupportedIdpConfigsId",
             in: "path",
-            description:
-              "The resource name of the config, for example: 'projects/my-awesome-project/oauthIdpConfigs/oauth-config-id'.",
             required: true,
             schema: { type: "string" },
           },
@@ -2317,8 +2299,245 @@ export default {
         tags: ["projects"],
       },
       patch: {
-        description: "Update an Oidc Idp configuration for an Identity Toolkit project.",
-        operationId: "identitytoolkit.projects.tenants.oauthIdpConfigs.patch",
+        description:
+          "Update a default supported Idp configuration for an Identity Toolkit project.",
+        operationId: "identitytoolkit.projects.defaultSupportedIdpConfigs.patch",
+        responses: {
+          200: {
+            description: "Successful response",
+            content: {
+              "*/*": {
+                schema: {
+                  $ref:
+                    "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdpConfig",
+                },
+              },
+            },
+          },
+        },
+        parameters: [
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+          {
+            name: "defaultSupportedIdpConfigsId",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+          {
+            name: "updateMask",
+            in: "query",
+            description:
+              "The update mask applies to the resource. For the `FieldMask` definition, see https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#fieldmask",
+            schema: { type: "string" },
+          },
+        ],
+        requestBody: {
+          $ref:
+            "#/components/requestBodies/GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdpConfig",
+        },
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
+          { apiKey: [] },
+        ],
+        tags: ["projects"],
+      },
+      parameters: [
+        { $ref: "#/components/parameters/access_token" },
+        { $ref: "#/components/parameters/alt" },
+        { $ref: "#/components/parameters/callback" },
+        { $ref: "#/components/parameters/fields" },
+        { $ref: "#/components/parameters/oauth_token" },
+        { $ref: "#/components/parameters/prettyPrint" },
+        { $ref: "#/components/parameters/quotaUser" },
+        { $ref: "#/components/parameters/uploadType" },
+        { $ref: "#/components/parameters/upload_protocol" },
+      ],
+    },
+    "/v2/projects/{targetProjectId}/inboundSamlConfigs": {
+      post: {
+        description: "Create an inbound SAML configuration for an Identity Toolkit project.",
+        operationId: "identitytoolkit.projects.inboundSamlConfigs.create",
+        responses: {
+          200: {
+            description: "Successful response",
+            content: {
+              "*/*": {
+                schema: {
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2InboundSamlConfig",
+                },
+              },
+            },
+          },
+        },
+        parameters: [
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+          {
+            name: "inboundSamlConfigId",
+            in: "query",
+            description: "The id to use for this config.",
+            schema: { type: "string" },
+          },
+        ],
+        requestBody: {
+          $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitAdminV2InboundSamlConfig",
+        },
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
+          { apiKey: [] },
+        ],
+        tags: ["projects"],
+      },
+      get: {
+        description: "List all inbound SAML configurations for an Identity Toolkit project.",
+        operationId: "identitytoolkit.projects.inboundSamlConfigs.list",
+        responses: {
+          200: {
+            description: "Successful response",
+            content: {
+              "*/*": {
+                schema: {
+                  $ref:
+                    "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2ListInboundSamlConfigsResponse",
+                },
+              },
+            },
+          },
+        },
+        parameters: [
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+          {
+            name: "pageSize",
+            in: "query",
+            description: "The maximum number of items to return.",
+            schema: { type: "integer" },
+          },
+          {
+            name: "pageToken",
+            in: "query",
+            description: "The next_page_token value returned from a previous List request, if any.",
+            schema: { type: "string" },
+          },
+        ],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
+          { apiKey: [] },
+        ],
+        tags: ["projects"],
+      },
+      parameters: [
+        { $ref: "#/components/parameters/access_token" },
+        { $ref: "#/components/parameters/alt" },
+        { $ref: "#/components/parameters/callback" },
+        { $ref: "#/components/parameters/fields" },
+        { $ref: "#/components/parameters/oauth_token" },
+        { $ref: "#/components/parameters/prettyPrint" },
+        { $ref: "#/components/parameters/quotaUser" },
+        { $ref: "#/components/parameters/uploadType" },
+        { $ref: "#/components/parameters/upload_protocol" },
+      ],
+    },
+    "/v2/projects/{targetProjectId}/inboundSamlConfigs/{inboundSamlConfigsId}": {
+      delete: {
+        description: "Delete an inbound SAML configuration for an Identity Toolkit project.",
+        operationId: "identitytoolkit.projects.inboundSamlConfigs.delete",
+        responses: {
+          200: {
+            description: "Successful response",
+            content: { "*/*": { schema: { $ref: "#/components/schemas/GoogleProtobufEmpty" } } },
+          },
+        },
+        parameters: [
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+          { name: "inboundSamlConfigsId", in: "path", required: true, schema: { type: "string" } },
+        ],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
+          { apiKey: [] },
+        ],
+        tags: ["projects"],
+      },
+      get: {
+        description: "Retrieve an inbound SAML configuration for an Identity Toolkit project.",
+        operationId: "identitytoolkit.projects.inboundSamlConfigs.get",
+        responses: {
+          200: {
+            description: "Successful response",
+            content: {
+              "*/*": {
+                schema: {
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2InboundSamlConfig",
+                },
+              },
+            },
+          },
+        },
+        parameters: [
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+          { name: "inboundSamlConfigsId", in: "path", required: true, schema: { type: "string" } },
+        ],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
+          { apiKey: [] },
+        ],
+        tags: ["projects"],
+      },
+      patch: {
+        description: "Update an inbound SAML configuration for an Identity Toolkit project.",
+        operationId: "identitytoolkit.projects.inboundSamlConfigs.patch",
+        responses: {
+          200: {
+            description: "Successful response",
+            content: {
+              "*/*": {
+                schema: {
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2InboundSamlConfig",
+                },
+              },
+            },
+          },
+        },
+        parameters: [
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+          { name: "inboundSamlConfigsId", in: "path", required: true, schema: { type: "string" } },
+          {
+            name: "updateMask",
+            in: "query",
+            description:
+              "The update mask applies to the resource. Empty update mask will result in updating nothing. For the `FieldMask` definition, see https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#fieldmask",
+            schema: { type: "string" },
+          },
+        ],
+        requestBody: {
+          $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitAdminV2InboundSamlConfig",
+        },
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
+          { apiKey: [] },
+        ],
+        tags: ["projects"],
+      },
+      parameters: [
+        { $ref: "#/components/parameters/access_token" },
+        { $ref: "#/components/parameters/alt" },
+        { $ref: "#/components/parameters/callback" },
+        { $ref: "#/components/parameters/fields" },
+        { $ref: "#/components/parameters/oauth_token" },
+        { $ref: "#/components/parameters/prettyPrint" },
+        { $ref: "#/components/parameters/quotaUser" },
+        { $ref: "#/components/parameters/uploadType" },
+        { $ref: "#/components/parameters/upload_protocol" },
+      ],
+    },
+    "/v2/projects/{targetProjectId}/oauthIdpConfigs": {
+      post: {
+        description: "Create an Oidc Idp configuration for an Identity Toolkit project.",
+        operationId: "identitytoolkit.projects.oauthIdpConfigs.create",
         responses: {
           200: {
             description: "Successful response",
@@ -2332,14 +2551,139 @@ export default {
           },
         },
         parameters: [
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
           {
-            name: "name",
-            in: "path",
-            description:
-              "The name of the OAuthIdpConfig resource, for example: 'projects/my-awesome-project/oauthIdpConfigs/oauth-config-id'. Ignored during create requests.",
-            required: true,
+            name: "oauthIdpConfigId",
+            in: "query",
+            description: "The id to use for this config.",
             schema: { type: "string" },
           },
+        ],
+        requestBody: {
+          $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitAdminV2OAuthIdpConfig",
+        },
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
+          { apiKey: [] },
+        ],
+        tags: ["projects"],
+      },
+      get: {
+        description: "List all Oidc Idp configurations for an Identity Toolkit project.",
+        operationId: "identitytoolkit.projects.oauthIdpConfigs.list",
+        responses: {
+          200: {
+            description: "Successful response",
+            content: {
+              "*/*": {
+                schema: {
+                  $ref:
+                    "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2ListOAuthIdpConfigsResponse",
+                },
+              },
+            },
+          },
+        },
+        parameters: [
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+          {
+            name: "pageSize",
+            in: "query",
+            description: "The maximum number of items to return.",
+            schema: { type: "integer" },
+          },
+          {
+            name: "pageToken",
+            in: "query",
+            description: "The next_page_token value returned from a previous List request, if any.",
+            schema: { type: "string" },
+          },
+        ],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
+          { apiKey: [] },
+        ],
+        tags: ["projects"],
+      },
+      parameters: [
+        { $ref: "#/components/parameters/access_token" },
+        { $ref: "#/components/parameters/alt" },
+        { $ref: "#/components/parameters/callback" },
+        { $ref: "#/components/parameters/fields" },
+        { $ref: "#/components/parameters/oauth_token" },
+        { $ref: "#/components/parameters/prettyPrint" },
+        { $ref: "#/components/parameters/quotaUser" },
+        { $ref: "#/components/parameters/uploadType" },
+        { $ref: "#/components/parameters/upload_protocol" },
+      ],
+    },
+    "/v2/projects/{targetProjectId}/oauthIdpConfigs/{oauthIdpConfigsId}": {
+      delete: {
+        description: "Delete an Oidc Idp configuration for an Identity Toolkit project.",
+        operationId: "identitytoolkit.projects.oauthIdpConfigs.delete",
+        responses: {
+          200: {
+            description: "Successful response",
+            content: { "*/*": { schema: { $ref: "#/components/schemas/GoogleProtobufEmpty" } } },
+          },
+        },
+        parameters: [
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+          { name: "oauthIdpConfigsId", in: "path", required: true, schema: { type: "string" } },
+        ],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
+          { apiKey: [] },
+        ],
+        tags: ["projects"],
+      },
+      get: {
+        description: "Retrieve an Oidc Idp configuration for an Identity Toolkit project.",
+        operationId: "identitytoolkit.projects.oauthIdpConfigs.get",
+        responses: {
+          200: {
+            description: "Successful response",
+            content: {
+              "*/*": {
+                schema: {
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2OAuthIdpConfig",
+                },
+              },
+            },
+          },
+        },
+        parameters: [
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+          { name: "oauthIdpConfigsId", in: "path", required: true, schema: { type: "string" } },
+        ],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
+          { apiKey: [] },
+        ],
+        tags: ["projects"],
+      },
+      patch: {
+        description: "Update an Oidc Idp configuration for an Identity Toolkit project.",
+        operationId: "identitytoolkit.projects.oauthIdpConfigs.patch",
+        responses: {
+          200: {
+            description: "Successful response",
+            content: {
+              "*/*": {
+                schema: {
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2OAuthIdpConfig",
+                },
+              },
+            },
+          },
+        },
+        parameters: [
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+          { name: "oauthIdpConfigsId", in: "path", required: true, schema: { type: "string" } },
           {
             name: "updateMask",
             in: "query",
@@ -2370,44 +2714,190 @@ export default {
         { $ref: "#/components/parameters/upload_protocol" },
       ],
     },
-    "/v2/{parent}/inboundSamlConfigs": {
+    "/v2/projects/{targetProjectId}/tenants": {
       post: {
-        description: "Create an inbound SAML configuration for an Identity Toolkit project.",
-        operationId: "identitytoolkit.projects.tenants.inboundSamlConfigs.create",
+        description: "Create a tenant. Requires write permission on the Agent project.",
+        operationId: "identitytoolkit.projects.tenants.create",
+        responses: {
+          200: {
+            description: "Successful response",
+            content: {
+              "*/*": {
+                schema: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2Tenant" },
+              },
+            },
+          },
+        },
+        parameters: [
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+        ],
+        requestBody: { $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitAdminV2Tenant" },
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
+          { apiKey: [] },
+        ],
+        tags: ["projects"],
+      },
+      get: {
+        description:
+          "List tenants under the given agent project. Requires read permission on the Agent project.",
+        operationId: "identitytoolkit.projects.tenants.list",
         responses: {
           200: {
             description: "Successful response",
             content: {
               "*/*": {
                 schema: {
-                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2InboundSamlConfig",
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2ListTenantsResponse",
                 },
               },
             },
           },
         },
         parameters: [
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
           {
-            name: "parent",
-            in: "path",
-            description:
-              'The parent resource name where the config to be created, for example: "projects/my-awesome-project"',
-            required: true,
-            schema: { type: "string" },
-          },
-          {
-            name: "inboundSamlConfigId",
+            name: "pageSize",
             in: "query",
-            description: "The id to use for this config.",
+            description:
+              "The maximum number of results to return, capped at 1000. If not specified, the default value is 20.",
+            schema: { type: "integer" },
+          },
+          {
+            name: "pageToken",
+            in: "query",
+            description: "The pagination token from the response of a previous request.",
             schema: { type: "string" },
           },
+        ],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
+          { apiKey: [] },
+        ],
+        tags: ["projects"],
+      },
+      parameters: [
+        { $ref: "#/components/parameters/access_token" },
+        { $ref: "#/components/parameters/alt" },
+        { $ref: "#/components/parameters/callback" },
+        { $ref: "#/components/parameters/fields" },
+        { $ref: "#/components/parameters/oauth_token" },
+        { $ref: "#/components/parameters/prettyPrint" },
+        { $ref: "#/components/parameters/quotaUser" },
+        { $ref: "#/components/parameters/uploadType" },
+        { $ref: "#/components/parameters/upload_protocol" },
+      ],
+    },
+    "/v2/projects/{targetProjectId}/tenants/{tenantId}": {
+      delete: {
+        description: "Delete a tenant. Requires write permission on the Agent project.",
+        operationId: "identitytoolkit.projects.tenants.delete",
+        responses: {
+          200: {
+            description: "Successful response",
+            content: { "*/*": { schema: { $ref: "#/components/schemas/GoogleProtobufEmpty" } } },
+          },
+        },
+        parameters: [
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+          { name: "tenantId", in: "path", required: true, schema: { type: "string" } },
+        ],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
+          { apiKey: [] },
+        ],
+        tags: ["projects"],
+      },
+      get: {
+        description: "Get a tenant. Requires read permission on the Tenant resource.",
+        operationId: "identitytoolkit.projects.tenants.get",
+        responses: {
+          200: {
+            description: "Successful response",
+            content: {
+              "*/*": {
+                schema: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2Tenant" },
+              },
+            },
+          },
+        },
+        parameters: [
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+          { name: "tenantId", in: "path", required: true, schema: { type: "string" } },
+        ],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
+          { apiKey: [] },
+        ],
+        tags: ["projects"],
+      },
+      patch: {
+        description: "Update a tenant. Requires write permission on the Tenant resource.",
+        operationId: "identitytoolkit.projects.tenants.patch",
+        responses: {
+          200: {
+            description: "Successful response",
+            content: {
+              "*/*": {
+                schema: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2Tenant" },
+              },
+            },
+          },
+        },
+        parameters: [
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+          { name: "tenantId", in: "path", required: true, schema: { type: "string" } },
+          {
+            name: "updateMask",
+            in: "query",
+            description:
+              "If provided, only update fields set in the update mask. Otherwise, all settable fields will be updated. For the `FieldMask` definition, see https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#fieldmask",
+            schema: { type: "string" },
+          },
+        ],
+        requestBody: { $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitAdminV2Tenant" },
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
+          { apiKey: [] },
+        ],
+        tags: ["projects"],
+      },
+      parameters: [
+        { $ref: "#/components/parameters/access_token" },
+        { $ref: "#/components/parameters/alt" },
+        { $ref: "#/components/parameters/callback" },
+        { $ref: "#/components/parameters/fields" },
+        { $ref: "#/components/parameters/oauth_token" },
+        { $ref: "#/components/parameters/prettyPrint" },
+        { $ref: "#/components/parameters/quotaUser" },
+        { $ref: "#/components/parameters/uploadType" },
+        { $ref: "#/components/parameters/upload_protocol" },
+      ],
+    },
+    "/v2/projects/{targetProjectId}/tenants/{tenantId}:getIamPolicy": {
+      post: {
+        description:
+          "Gets the access control policy for a resource. An error is returned if the resource does not exist. An empty policy is returned if the resource exists but does not have a policy set on it. Caller must have the right Google IAM permission on the resource.",
+        operationId: "identitytoolkit.projects.tenants.getIamPolicy",
+        responses: {
+          200: {
+            description: "Successful response",
+            content: { "*/*": { schema: { $ref: "#/components/schemas/GoogleIamV1Policy" } } },
+          },
+        },
+        parameters: [
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+          { name: "tenantId", in: "path", required: true, schema: { type: "string" } },
         ],
         requestBody: {
           content: {
             "application/json": {
-              schema: {
-                $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2InboundSamlConfig",
-              },
+              schema: { $ref: "#/components/schemas/GoogleIamV1GetIamPolicyRequest" },
             },
           },
         },
@@ -2418,9 +2908,109 @@ export default {
         ],
         tags: ["projects"],
       },
-      get: {
-        description: "List all inbound SAML configurations for an Identity Toolkit project.",
-        operationId: "identitytoolkit.projects.tenants.inboundSamlConfigs.list",
+      parameters: [
+        { $ref: "#/components/parameters/access_token" },
+        { $ref: "#/components/parameters/alt" },
+        { $ref: "#/components/parameters/callback" },
+        { $ref: "#/components/parameters/fields" },
+        { $ref: "#/components/parameters/oauth_token" },
+        { $ref: "#/components/parameters/prettyPrint" },
+        { $ref: "#/components/parameters/quotaUser" },
+        { $ref: "#/components/parameters/uploadType" },
+        { $ref: "#/components/parameters/upload_protocol" },
+      ],
+    },
+    "/v2/projects/{targetProjectId}/tenants/{tenantId}:setIamPolicy": {
+      post: {
+        description:
+          "Sets the access control policy for a resource. If the policy exists, it is replaced. Caller must have the right Google IAM permission on the resource.",
+        operationId: "identitytoolkit.projects.tenants.setIamPolicy",
+        responses: {
+          200: {
+            description: "Successful response",
+            content: { "*/*": { schema: { $ref: "#/components/schemas/GoogleIamV1Policy" } } },
+          },
+        },
+        parameters: [
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+          { name: "tenantId", in: "path", required: true, schema: { type: "string" } },
+        ],
+        requestBody: {
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/GoogleIamV1SetIamPolicyRequest" },
+            },
+          },
+        },
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
+          { apiKey: [] },
+        ],
+        tags: ["projects"],
+      },
+      parameters: [
+        { $ref: "#/components/parameters/access_token" },
+        { $ref: "#/components/parameters/alt" },
+        { $ref: "#/components/parameters/callback" },
+        { $ref: "#/components/parameters/fields" },
+        { $ref: "#/components/parameters/oauth_token" },
+        { $ref: "#/components/parameters/prettyPrint" },
+        { $ref: "#/components/parameters/quotaUser" },
+        { $ref: "#/components/parameters/uploadType" },
+        { $ref: "#/components/parameters/upload_protocol" },
+      ],
+    },
+    "/v2/projects/{targetProjectId}/tenants/{tenantId}:testIamPermissions": {
+      post: {
+        description:
+          "Returns the caller's permissions on a resource. An error is returned if the resource does not exist. A caller is not required to have Google IAM permission to make this request.",
+        operationId: "identitytoolkit.projects.tenants.testIamPermissions",
+        responses: {
+          200: {
+            description: "Successful response",
+            content: {
+              "*/*": {
+                schema: { $ref: "#/components/schemas/GoogleIamV1TestIamPermissionsResponse" },
+              },
+            },
+          },
+        },
+        parameters: [
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+          { name: "tenantId", in: "path", required: true, schema: { type: "string" } },
+        ],
+        requestBody: {
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/GoogleIamV1TestIamPermissionsRequest" },
+            },
+          },
+        },
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
+          { apiKey: [] },
+        ],
+        tags: ["projects"],
+      },
+      parameters: [
+        { $ref: "#/components/parameters/access_token" },
+        { $ref: "#/components/parameters/alt" },
+        { $ref: "#/components/parameters/callback" },
+        { $ref: "#/components/parameters/fields" },
+        { $ref: "#/components/parameters/oauth_token" },
+        { $ref: "#/components/parameters/prettyPrint" },
+        { $ref: "#/components/parameters/quotaUser" },
+        { $ref: "#/components/parameters/uploadType" },
+        { $ref: "#/components/parameters/upload_protocol" },
+      ],
+    },
+    "/v2/projects/{targetProjectId}/tenants/{tenantId}/defaultSupportedIdpConfigs": {
+      post: {
+        description:
+          "Create a default supported Idp configuration for an Identity Toolkit project.",
+        operationId: "identitytoolkit.projects.tenants.defaultSupportedIdpConfigs.create",
         responses: {
           200: {
             description: "Successful response",
@@ -2428,20 +3018,54 @@ export default {
               "*/*": {
                 schema: {
                   $ref:
-                    "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2ListInboundSamlConfigsResponse",
+                    "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdpConfig",
                 },
               },
             },
           },
         },
         parameters: [
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+          { name: "tenantId", in: "path", required: true, schema: { type: "string" } },
           {
-            name: "parent",
-            in: "path",
-            description: 'The parent resource name, for example, "projects/my-awesome-project".',
-            required: true,
+            name: "idpId",
+            in: "query",
+            description:
+              "The id of the Idp to create a config for. Call ListDefaultSupportedIdps for list of all default supported Idps.",
             schema: { type: "string" },
           },
+        ],
+        requestBody: {
+          $ref:
+            "#/components/requestBodies/GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdpConfig",
+        },
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
+          { apiKey: [] },
+        ],
+        tags: ["projects"],
+      },
+      get: {
+        description:
+          "List all default supported Idp configurations for an Identity Toolkit project.",
+        operationId: "identitytoolkit.projects.tenants.defaultSupportedIdpConfigs.list",
+        responses: {
+          200: {
+            description: "Successful response",
+            content: {
+              "*/*": {
+                schema: {
+                  $ref:
+                    "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2ListDefaultSupportedIdpConfigsResponse",
+                },
+              },
+            },
+          },
+        },
+        parameters: [
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+          { name: "tenantId", in: "path", required: true, schema: { type: "string" } },
           {
             name: "pageSize",
             in: "query",
@@ -2474,7 +3098,311 @@ export default {
         { $ref: "#/components/parameters/upload_protocol" },
       ],
     },
-    "/v2/{parent}/oauthIdpConfigs": {
+    "/v2/projects/{targetProjectId}/tenants/{tenantId}/defaultSupportedIdpConfigs/{defaultSupportedIdpConfigsId}": {
+      delete: {
+        description:
+          "Delete a default supported Idp configuration for an Identity Toolkit project.",
+        operationId: "identitytoolkit.projects.tenants.defaultSupportedIdpConfigs.delete",
+        responses: {
+          200: {
+            description: "Successful response",
+            content: { "*/*": { schema: { $ref: "#/components/schemas/GoogleProtobufEmpty" } } },
+          },
+        },
+        parameters: [
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+          { name: "tenantId", in: "path", required: true, schema: { type: "string" } },
+          {
+            name: "defaultSupportedIdpConfigsId",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
+          { apiKey: [] },
+        ],
+        tags: ["projects"],
+      },
+      get: {
+        description:
+          "Retrieve a default supported Idp configuration for an Identity Toolkit project.",
+        operationId: "identitytoolkit.projects.tenants.defaultSupportedIdpConfigs.get",
+        responses: {
+          200: {
+            description: "Successful response",
+            content: {
+              "*/*": {
+                schema: {
+                  $ref:
+                    "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdpConfig",
+                },
+              },
+            },
+          },
+        },
+        parameters: [
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+          { name: "tenantId", in: "path", required: true, schema: { type: "string" } },
+          {
+            name: "defaultSupportedIdpConfigsId",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
+          { apiKey: [] },
+        ],
+        tags: ["projects"],
+      },
+      patch: {
+        description:
+          "Update a default supported Idp configuration for an Identity Toolkit project.",
+        operationId: "identitytoolkit.projects.tenants.defaultSupportedIdpConfigs.patch",
+        responses: {
+          200: {
+            description: "Successful response",
+            content: {
+              "*/*": {
+                schema: {
+                  $ref:
+                    "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdpConfig",
+                },
+              },
+            },
+          },
+        },
+        parameters: [
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+          { name: "tenantId", in: "path", required: true, schema: { type: "string" } },
+          {
+            name: "defaultSupportedIdpConfigsId",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+          {
+            name: "updateMask",
+            in: "query",
+            description:
+              "The update mask applies to the resource. For the `FieldMask` definition, see https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#fieldmask",
+            schema: { type: "string" },
+          },
+        ],
+        requestBody: {
+          $ref:
+            "#/components/requestBodies/GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdpConfig",
+        },
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
+          { apiKey: [] },
+        ],
+        tags: ["projects"],
+      },
+      parameters: [
+        { $ref: "#/components/parameters/access_token" },
+        { $ref: "#/components/parameters/alt" },
+        { $ref: "#/components/parameters/callback" },
+        { $ref: "#/components/parameters/fields" },
+        { $ref: "#/components/parameters/oauth_token" },
+        { $ref: "#/components/parameters/prettyPrint" },
+        { $ref: "#/components/parameters/quotaUser" },
+        { $ref: "#/components/parameters/uploadType" },
+        { $ref: "#/components/parameters/upload_protocol" },
+      ],
+    },
+    "/v2/projects/{targetProjectId}/tenants/{tenantId}/inboundSamlConfigs": {
+      post: {
+        description: "Create an inbound SAML configuration for an Identity Toolkit project.",
+        operationId: "identitytoolkit.projects.tenants.inboundSamlConfigs.create",
+        responses: {
+          200: {
+            description: "Successful response",
+            content: {
+              "*/*": {
+                schema: {
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2InboundSamlConfig",
+                },
+              },
+            },
+          },
+        },
+        parameters: [
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+          { name: "tenantId", in: "path", required: true, schema: { type: "string" } },
+          {
+            name: "inboundSamlConfigId",
+            in: "query",
+            description: "The id to use for this config.",
+            schema: { type: "string" },
+          },
+        ],
+        requestBody: {
+          $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitAdminV2InboundSamlConfig",
+        },
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
+          { apiKey: [] },
+        ],
+        tags: ["projects"],
+      },
+      get: {
+        description: "List all inbound SAML configurations for an Identity Toolkit project.",
+        operationId: "identitytoolkit.projects.tenants.inboundSamlConfigs.list",
+        responses: {
+          200: {
+            description: "Successful response",
+            content: {
+              "*/*": {
+                schema: {
+                  $ref:
+                    "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2ListInboundSamlConfigsResponse",
+                },
+              },
+            },
+          },
+        },
+        parameters: [
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+          { name: "tenantId", in: "path", required: true, schema: { type: "string" } },
+          {
+            name: "pageSize",
+            in: "query",
+            description: "The maximum number of items to return.",
+            schema: { type: "integer" },
+          },
+          {
+            name: "pageToken",
+            in: "query",
+            description: "The next_page_token value returned from a previous List request, if any.",
+            schema: { type: "string" },
+          },
+        ],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
+          { apiKey: [] },
+        ],
+        tags: ["projects"],
+      },
+      parameters: [
+        { $ref: "#/components/parameters/access_token" },
+        { $ref: "#/components/parameters/alt" },
+        { $ref: "#/components/parameters/callback" },
+        { $ref: "#/components/parameters/fields" },
+        { $ref: "#/components/parameters/oauth_token" },
+        { $ref: "#/components/parameters/prettyPrint" },
+        { $ref: "#/components/parameters/quotaUser" },
+        { $ref: "#/components/parameters/uploadType" },
+        { $ref: "#/components/parameters/upload_protocol" },
+      ],
+    },
+    "/v2/projects/{targetProjectId}/tenants/{tenantId}/inboundSamlConfigs/{inboundSamlConfigsId}": {
+      delete: {
+        description: "Delete an inbound SAML configuration for an Identity Toolkit project.",
+        operationId: "identitytoolkit.projects.tenants.inboundSamlConfigs.delete",
+        responses: {
+          200: {
+            description: "Successful response",
+            content: { "*/*": { schema: { $ref: "#/components/schemas/GoogleProtobufEmpty" } } },
+          },
+        },
+        parameters: [
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+          { name: "tenantId", in: "path", required: true, schema: { type: "string" } },
+          { name: "inboundSamlConfigsId", in: "path", required: true, schema: { type: "string" } },
+        ],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
+          { apiKey: [] },
+        ],
+        tags: ["projects"],
+      },
+      get: {
+        description: "Retrieve an inbound SAML configuration for an Identity Toolkit project.",
+        operationId: "identitytoolkit.projects.tenants.inboundSamlConfigs.get",
+        responses: {
+          200: {
+            description: "Successful response",
+            content: {
+              "*/*": {
+                schema: {
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2InboundSamlConfig",
+                },
+              },
+            },
+          },
+        },
+        parameters: [
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+          { name: "tenantId", in: "path", required: true, schema: { type: "string" } },
+          { name: "inboundSamlConfigsId", in: "path", required: true, schema: { type: "string" } },
+        ],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
+          { apiKey: [] },
+        ],
+        tags: ["projects"],
+      },
+      patch: {
+        description: "Update an inbound SAML configuration for an Identity Toolkit project.",
+        operationId: "identitytoolkit.projects.tenants.inboundSamlConfigs.patch",
+        responses: {
+          200: {
+            description: "Successful response",
+            content: {
+              "*/*": {
+                schema: {
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2InboundSamlConfig",
+                },
+              },
+            },
+          },
+        },
+        parameters: [
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+          { name: "tenantId", in: "path", required: true, schema: { type: "string" } },
+          { name: "inboundSamlConfigsId", in: "path", required: true, schema: { type: "string" } },
+          {
+            name: "updateMask",
+            in: "query",
+            description:
+              "The update mask applies to the resource. Empty update mask will result in updating nothing. For the `FieldMask` definition, see https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#fieldmask",
+            schema: { type: "string" },
+          },
+        ],
+        requestBody: {
+          $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitAdminV2InboundSamlConfig",
+        },
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
+          { apiKey: [] },
+        ],
+        tags: ["projects"],
+      },
+      parameters: [
+        { $ref: "#/components/parameters/access_token" },
+        { $ref: "#/components/parameters/alt" },
+        { $ref: "#/components/parameters/callback" },
+        { $ref: "#/components/parameters/fields" },
+        { $ref: "#/components/parameters/oauth_token" },
+        { $ref: "#/components/parameters/prettyPrint" },
+        { $ref: "#/components/parameters/quotaUser" },
+        { $ref: "#/components/parameters/uploadType" },
+        { $ref: "#/components/parameters/upload_protocol" },
+      ],
+    },
+    "/v2/projects/{targetProjectId}/tenants/{tenantId}/oauthIdpConfigs": {
       post: {
         description: "Create an Oidc Idp configuration for an Identity Toolkit project.",
         operationId: "identitytoolkit.projects.tenants.oauthIdpConfigs.create",
@@ -2491,14 +3419,8 @@ export default {
           },
         },
         parameters: [
-          {
-            name: "parent",
-            in: "path",
-            description:
-              'The parent resource name where the config to be created, for example: "projects/my-awesome-project"',
-            required: true,
-            schema: { type: "string" },
-          },
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+          { name: "tenantId", in: "path", required: true, schema: { type: "string" } },
           {
             name: "oauthIdpConfigId",
             in: "query",
@@ -2533,13 +3455,8 @@ export default {
           },
         },
         parameters: [
-          {
-            name: "parent",
-            in: "path",
-            description: 'The parent resource name, for example, "projects/my-awesome-project".',
-            required: true,
-            schema: { type: "string" },
-          },
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+          { name: "tenantId", in: "path", required: true, schema: { type: "string" } },
           {
             name: "pageSize",
             in: "query",
@@ -2572,37 +3489,21 @@ export default {
         { $ref: "#/components/parameters/upload_protocol" },
       ],
     },
-    "/v2/{parent}/tenants": {
-      post: {
-        description: "Create a tenant. Requires write permission on the Agent project.",
-        operationId: "identitytoolkit.projects.tenants.create",
+    "/v2/projects/{targetProjectId}/tenants/{tenantId}/oauthIdpConfigs/{oauthIdpConfigsId}": {
+      delete: {
+        description: "Delete an Oidc Idp configuration for an Identity Toolkit project.",
+        operationId: "identitytoolkit.projects.tenants.oauthIdpConfigs.delete",
         responses: {
           200: {
             description: "Successful response",
-            content: {
-              "*/*": {
-                schema: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2Tenant" },
-              },
-            },
+            content: { "*/*": { schema: { $ref: "#/components/schemas/GoogleProtobufEmpty" } } },
           },
         },
         parameters: [
-          {
-            name: "parent",
-            in: "path",
-            description:
-              'The parent resource name where the tenant will be created. For example, "projects/project1".',
-            required: true,
-            schema: { type: "string" },
-          },
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+          { name: "tenantId", in: "path", required: true, schema: { type: "string" } },
+          { name: "oauthIdpConfigsId", in: "path", required: true, schema: { type: "string" } },
         ],
-        requestBody: {
-          content: {
-            "application/json": {
-              schema: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2Tenant" },
-            },
-          },
-        },
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
@@ -2611,42 +3512,24 @@ export default {
         tags: ["projects"],
       },
       get: {
-        description:
-          "List tenants under the given agent project. Requires read permission on the Agent project.",
-        operationId: "identitytoolkit.projects.tenants.list",
+        description: "Retrieve an Oidc Idp configuration for an Identity Toolkit project.",
+        operationId: "identitytoolkit.projects.tenants.oauthIdpConfigs.get",
         responses: {
           200: {
             description: "Successful response",
             content: {
               "*/*": {
                 schema: {
-                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2ListTenantsResponse",
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2OAuthIdpConfig",
                 },
               },
             },
           },
         },
         parameters: [
-          {
-            name: "parent",
-            in: "path",
-            description: "Required. The parent resource name to list tenants for.",
-            required: true,
-            schema: { type: "string" },
-          },
-          {
-            name: "pageSize",
-            in: "query",
-            description:
-              "The maximum number of results to return, capped at 1000. If not specified, the default value is 20.",
-            schema: { type: "integer" },
-          },
-          {
-            name: "pageToken",
-            in: "query",
-            description: "The pagination token from the response of a previous request.",
-            schema: { type: "string" },
-          },
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+          { name: "tenantId", in: "path", required: true, schema: { type: "string" } },
+          { name: "oauthIdpConfigsId", in: "path", required: true, schema: { type: "string" } },
         ],
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
@@ -2655,143 +3538,35 @@ export default {
         ],
         tags: ["projects"],
       },
-      parameters: [
-        { $ref: "#/components/parameters/access_token" },
-        { $ref: "#/components/parameters/alt" },
-        { $ref: "#/components/parameters/callback" },
-        { $ref: "#/components/parameters/fields" },
-        { $ref: "#/components/parameters/oauth_token" },
-        { $ref: "#/components/parameters/prettyPrint" },
-        { $ref: "#/components/parameters/quotaUser" },
-        { $ref: "#/components/parameters/uploadType" },
-        { $ref: "#/components/parameters/upload_protocol" },
-      ],
-    },
-    "/v2/{resource}:getIamPolicy": {
-      post: {
-        description:
-          "Gets the access control policy for a resource. An error is returned if the resource does not exist. An empty policy is returned if the resource exists but does not have a policy set on it. Caller must have the right Google IAM permission on the resource.",
-        operationId: "identitytoolkit.projects.tenants.getIamPolicy",
-        responses: {
-          200: {
-            description: "Successful response",
-            content: { "*/*": { schema: { $ref: "#/components/schemas/GoogleIamV1Policy" } } },
-          },
-        },
-        parameters: [
-          {
-            name: "resource",
-            in: "path",
-            description:
-              "REQUIRED: The resource for which the policy is being requested. See the operation documentation for the appropriate value for this field.",
-            required: true,
-            schema: { type: "string" },
-          },
-        ],
-        requestBody: {
-          content: {
-            "application/json": {
-              schema: { $ref: "#/components/schemas/GoogleIamV1GetIamPolicyRequest" },
-            },
-          },
-        },
-        security: [
-          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
-          { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
-        ],
-        tags: ["projects"],
-      },
-      parameters: [
-        { $ref: "#/components/parameters/access_token" },
-        { $ref: "#/components/parameters/alt" },
-        { $ref: "#/components/parameters/callback" },
-        { $ref: "#/components/parameters/fields" },
-        { $ref: "#/components/parameters/oauth_token" },
-        { $ref: "#/components/parameters/prettyPrint" },
-        { $ref: "#/components/parameters/quotaUser" },
-        { $ref: "#/components/parameters/uploadType" },
-        { $ref: "#/components/parameters/upload_protocol" },
-      ],
-    },
-    "/v2/{resource}:setIamPolicy": {
-      post: {
-        description:
-          "Sets the access control policy for a resource. If the policy exists, it is replaced. Caller must have the right Google IAM permission on the resource.",
-        operationId: "identitytoolkit.projects.tenants.setIamPolicy",
-        responses: {
-          200: {
-            description: "Successful response",
-            content: { "*/*": { schema: { $ref: "#/components/schemas/GoogleIamV1Policy" } } },
-          },
-        },
-        parameters: [
-          {
-            name: "resource",
-            in: "path",
-            description:
-              "REQUIRED: The resource for which the policy is being specified. See the operation documentation for the appropriate value for this field.",
-            required: true,
-            schema: { type: "string" },
-          },
-        ],
-        requestBody: {
-          content: {
-            "application/json": {
-              schema: { $ref: "#/components/schemas/GoogleIamV1SetIamPolicyRequest" },
-            },
-          },
-        },
-        security: [
-          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
-          { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
-        ],
-        tags: ["projects"],
-      },
-      parameters: [
-        { $ref: "#/components/parameters/access_token" },
-        { $ref: "#/components/parameters/alt" },
-        { $ref: "#/components/parameters/callback" },
-        { $ref: "#/components/parameters/fields" },
-        { $ref: "#/components/parameters/oauth_token" },
-        { $ref: "#/components/parameters/prettyPrint" },
-        { $ref: "#/components/parameters/quotaUser" },
-        { $ref: "#/components/parameters/uploadType" },
-        { $ref: "#/components/parameters/upload_protocol" },
-      ],
-    },
-    "/v2/{resource}:testIamPermissions": {
-      post: {
-        description:
-          "Returns the caller's permissions on a resource. An error is returned if the resource does not exist. A caller is not required to have Google IAM permission to make this request.",
-        operationId: "identitytoolkit.projects.tenants.testIamPermissions",
+      patch: {
+        description: "Update an Oidc Idp configuration for an Identity Toolkit project.",
+        operationId: "identitytoolkit.projects.tenants.oauthIdpConfigs.patch",
         responses: {
           200: {
             description: "Successful response",
             content: {
               "*/*": {
-                schema: { $ref: "#/components/schemas/GoogleIamV1TestIamPermissionsResponse" },
+                schema: {
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2OAuthIdpConfig",
+                },
               },
             },
           },
         },
         parameters: [
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+          { name: "tenantId", in: "path", required: true, schema: { type: "string" } },
+          { name: "oauthIdpConfigsId", in: "path", required: true, schema: { type: "string" } },
           {
-            name: "resource",
-            in: "path",
+            name: "updateMask",
+            in: "query",
             description:
-              "REQUIRED: The resource for which the policy detail is being requested. See the operation documentation for the appropriate value for this field.",
-            required: true,
+              "The update mask applies to the resource. Empty update mask will result in updating nothing. For the `FieldMask` definition, see https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#fieldmask",
             schema: { type: "string" },
           },
         ],
         requestBody: {
-          content: {
-            "application/json": {
-              schema: { $ref: "#/components/schemas/GoogleIamV1TestIamPermissionsRequest" },
-            },
-          },
+          $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitAdminV2OAuthIdpConfig",
         },
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
@@ -5794,7 +6569,7 @@ export default {
       },
       GoogleIamV1Policy: {
         description:
-          'An Identity and Access Management (IAM) policy, which specifies access controls for Google Cloud resources. A `Policy` is a collection of `bindings`. A `binding` binds one or more `members` to a single `role`. Members can be user accounts, service accounts, Google groups, and domains (such as G Suite). A `role` is a named list of permissions; each `role` can be an IAM predefined role or a user-created custom role. For some types of Google Cloud resources, a `binding` can also specify a `condition`, which is a logical expression that allows access to a resource only if the expression evaluates to `true`. A condition can add constraints based on attributes of the request, the resource, or both. To learn which resources support conditions in their IAM policies, see the [IAM documentation](https://cloud.google.com/iam/help/conditions/resource-policies). **JSON example:** { "bindings": [ { "role": "roles/resourcemanager.organizationAdmin", "members": [ "user:mike@example.com", "group:admins@example.com", "domain:google.com", "serviceAccount:my-project-id@appspot.gserviceaccount.com" ] }, { "role": "roles/resourcemanager.organizationViewer", "members": [ "user:eve@example.com" ], "condition": { "title": "expirable access", "description": "Does not grant access after Sep 2020", "expression": "request.time < timestamp(\'2020-10-01T00:00:00.000Z\')", } } ], "etag": "BwWWja0YfJA=", "version": 3 } **YAML example:** bindings: - members: - user:mike@example.com - group:admins@example.com - domain:google.com - serviceAccount:my-project-id@appspot.gserviceaccount.com role: roles/resourcemanager.organizationAdmin - members: - user:eve@example.com role: roles/resourcemanager.organizationViewer condition: title: expirable access description: Does not grant access after Sep 2020 expression: request.time < timestamp(\'2020-10-01T00:00:00.000Z\') - etag: BwWWja0YfJA= - version: 3 For a description of IAM and its features, see the [IAM documentation](https://cloud.google.com/iam/docs/).',
+          'An Identity and Access Management (IAM) policy, which specifies access controls for Google Cloud resources. A `Policy` is a collection of `bindings`. A `binding` binds one or more `members` to a single `role`. Members can be user accounts, service accounts, Google groups, and domains (such as G Suite). A `role` is a named list of permissions; each `role` can be an IAM predefined role or a user-created custom role. For some types of Google Cloud resources, a `binding` can also specify a `condition`, which is a logical expression that allows access to a resource only if the expression evaluates to `true`. A condition can add constraints based on attributes of the request, the resource, or both. To learn which resources support conditions in their IAM policies, see the [IAM documentation](https://cloud.google.com/iam/help/conditions/resource-policies). **JSON example:** { "bindings": [ { "role": "roles/resourcemanager.organizationAdmin", "members": [ "user:mike@example.com", "group:admins@example.com", "domain:google.com", "serviceAccount:my-project-id@appspot.gserviceaccount.com" ] }, { "role": "roles/resourcemanager.organizationViewer", "members": [ "user:eve@example.com" ], "condition": { "title": "expirable access", "description": "Does not grant access after Sep 2020", "expression": "request.time < timestamp(\'2020-10-01T00:00:00.000Z\')", } } ], "etag": "BwWWja0YfJA=", "version": 3 } **YAML example:** bindings: - members: - user:mike@example.com - group:admins@example.com - domain:google.com - serviceAccount:my-project-id@appspot.gserviceaccount.com role: roles/resourcemanager.organizationAdmin - members: - user:eve@example.com role: roles/resourcemanager.organizationViewer condition: title: expirable access description: Does not grant access after Sep 2020 expression: request.time < timestamp(\'2020-10-01T00:00:00.000Z\') etag: BwWWja0YfJA= version: 3 For a description of IAM and its features, see the [IAM documentation](https://cloud.google.com/iam/docs/).',
         properties: {
           auditConfigs: {
             description: "Specifies cloud audit logging configuration for this policy.",
@@ -6110,6 +6885,32 @@ export default {
           "application/json": {
             schema: {
               $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1QueryUserInfoRequest",
+            },
+          },
+        },
+      },
+      GoogleCloudIdentitytoolkitAdminV2Tenant: {
+        content: {
+          "application/json": {
+            schema: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2Tenant" },
+          },
+        },
+      },
+      GoogleCloudIdentitytoolkitAdminV2InboundSamlConfig: {
+        content: {
+          "application/json": {
+            schema: {
+              $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2InboundSamlConfig",
+            },
+          },
+        },
+      },
+      GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdpConfig: {
+        content: {
+          "application/json": {
+            schema: {
+              $ref:
+                "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdpConfig",
             },
           },
         },

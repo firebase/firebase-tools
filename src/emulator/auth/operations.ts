@@ -27,9 +27,12 @@ import {
   SIGNIN_METHOD_EMAIL_LINK,
   PROVIDER_CUSTOM,
   OobRecord,
+  PROVIDER_GAME_CENTER,
+  SecondFactorRecord,
   UsageMode,
+  AgentProjectState,
 } from "./state";
-import { MfaEnrollments, CreateMfaEnrollmentsRequest, Schemas, MfaEnrollment } from "./types";
+import { MfaEnrollments, Schemas } from "./types";
 
 /**
  * Create a map from IDs to operations handlers suitable for exegesis.
@@ -55,6 +58,15 @@ export const authOperations: AuthOps = {
       signInWithPhoneNumber,
       signUp,
       update: setAccountInfo,
+      mfaEnrollment: {
+        finalize: mfaEnrollmentFinalize,
+        start: mfaEnrollmentStart,
+        withdraw: mfaEnrollmentWithdraw,
+      },
+      mfaSignIn: {
+        start: mfaSignInStart,
+        finalize: mfaSignInFinalize,
+      },
     },
     projects: {
       createSessionCookie,
@@ -101,6 +113,13 @@ const PASSWORD_MIN_LENGTH = 6;
 // https://cloud.google.com/identity-platform/docs/use-rest-api#section-verify-custom-token
 export const CUSTOM_TOKEN_AUDIENCE =
   "https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit";
+
+const MFA_INELIGIBLE_PROVIDER = new Set([
+  PROVIDER_ANONYMOUS,
+  PROVIDER_PHONE,
+  PROVIDER_CUSTOM,
+  PROVIDER_GAME_CENTER,
+]);
 
 function signUp(
   state: ProjectState,
@@ -350,7 +369,6 @@ function batchCreate(
         assert(isValidPhoneNumber(userInfo.phoneNumber), "phone number format is invalid");
         fields.phoneNumber = userInfo.phoneNumber;
       }
-      // TODO: Support MFA.
 
       fields.validSince = toUnixTimestamp(uploadTime).toString();
       fields.createdAt = uploadTime.getTime().toString();
@@ -375,6 +393,29 @@ function batchCreate(
       }
       fields.emailVerified = !!userInfo.emailVerified;
       fields.disabled = !!userInfo.disabled;
+
+      // MFA
+      if (userInfo.mfaInfo) {
+        fields.mfaInfo = [];
+        assert(fields.email, "Second factor account requires email to be presented.");
+        assert(fields.emailVerified, "Second factor account requires email to be verified.");
+        const existingIds = new Set<string>();
+        for (const enrollment of userInfo.mfaInfo) {
+          if (enrollment.mfaEnrollmentId) {
+            assert(!existingIds.has(enrollment.mfaEnrollmentId), "Enrollment id already exists.");
+            existingIds.add(enrollment.mfaEnrollmentId);
+          }
+        }
+
+        for (const enrollment of userInfo.mfaInfo) {
+          enrollment.mfaEnrollmentId = enrollment.mfaEnrollmentId || newRandomId(28, existingIds);
+          enrollment.enrolledAt = enrollment.enrolledAt || new Date().toISOString();
+          assert(enrollment.phoneInfo, "Second factor not supported.");
+          assert(isValidPhoneNumber(enrollment.phoneInfo), "Phone number format is invalid");
+          enrollment.unobfuscatedPhoneInfo = enrollment.phoneInfo;
+          fields.mfaInfo.push(enrollment);
+        }
+      }
 
       if (state.getUserByLocalId(userInfo.localId)) {
         assert(
@@ -600,8 +641,10 @@ function getProjects(
   return {
     projectId: state.projectNumber,
     authorizedDomains: [
+      // This list is just a placeholder -- the JS SDK will NOT validate the
+      // domain at all when connecting to the emulator. Google-internal context:
+      // http://go/firebase-auth-emulator-dd#heading=h.3r9cilur7s46
       "localhost",
-      // TODO: Shall we allow more domains?
     ],
   };
 }
@@ -695,12 +738,12 @@ export function resetPassword(
       `WEAK_PASSWORD : Password should be at least ${PASSWORD_MIN_LENGTH} characters`
     );
     state.deleteOobCode(reqBody.oobCode);
-    const user = state.getUserByEmail(oob.email);
+    let user = state.getUserByEmail(oob.email);
     assert(user, "INVALID_OOB_CODE");
 
     const salt = "fakeSalt" + randomId(20);
     const passwordHash = hashPassword(reqBody.newPassword, salt);
-    state.updateUserByLocalId(
+    user = state.updateUserByLocalId(
       user.localId,
       {
         emailVerified: true,
@@ -826,6 +869,12 @@ function sendVerificationCode(
     "INVALID_PHONE_NUMBER : Invalid format."
   );
 
+  const user = state.getUserByPhoneNumber(reqBody.phoneNumber);
+  assert(
+    !user?.mfaInfo?.length,
+    "UNSUPPORTED_FIRST_FACTOR : A phone number cannot be set as a first factor on an SMS based MFA user."
+  );
+
   const { sessionInfo, phoneNumber, code } = state.createVerificationCode(reqBody.phoneNumber);
 
   // Print out a developer-friendly log containing the link, in lieu of sending
@@ -871,8 +920,6 @@ export function setAccountInfoImpl(
   const unimplementedFields: (keyof typeof reqBody)[] = [
     "provider",
     "upgradeToFederatedLogin",
-    "captchaChallenge",
-    "captchaResponse",
     "linkProviderUserInfo",
   ];
   for (const field of unimplementedFields) {
@@ -1085,7 +1132,7 @@ export function setAccountInfoImpl(
   });
 }
 
-function sendOobForEmailReset(state: ProjectState, initialEmail: string, url: URL) {
+function sendOobForEmailReset(state: ProjectState, initialEmail: string, url: URL): void {
   const oobRecord = createOobRecord(state, initialEmail, url, {
     requestType: "RECOVER_EMAIL",
     mode: "recoverEmail",
@@ -1202,10 +1249,10 @@ function signInWithCustomToken(
   const localId = coercePrimitiveToString(payload.uid) ?? coercePrimitiveToString(payload.user_id);
   assert(localId, "MISSING_IDENTIFIER");
 
-  let claims: Record<string, unknown> = {};
+  let extraClaims: Record<string, unknown> = {};
   if ("claims" in payload) {
     validateCustomClaims(payload.claims);
-    claims = payload.claims;
+    extraClaims = payload.claims;
   }
 
   let user = state.getUserByLocalId(localId);
@@ -1226,14 +1273,10 @@ function signInWithCustomToken(
     }
   }
 
-  if (user.mfaInfo) {
-    throw new NotImplementedError("MFA Login not yet implemented.");
-  }
-
   return {
     kind: "identitytoolkit#VerifyCustomTokenResponse",
     isNewUser,
-    ...issueTokens(state, user, PROVIDER_CUSTOM, claims),
+    ...issueTokens(state, user, PROVIDER_CUSTOM, { extraClaims }),
   };
 }
 
@@ -1259,7 +1302,6 @@ function signInWithEmailLink(
     email,
     emailVerified: true,
     emailLinkSignin: true,
-    lastLoginAt: Date.now().toString(),
   };
 
   let user = state.getUserByEmail(email);
@@ -1276,18 +1318,19 @@ function signInWithEmailLink(
     user = state.updateUserByLocalId(user.localId, updates);
   }
 
-  if (user.mfaInfo) {
-    throw new NotImplementedError("MFA Login not yet implemented.");
-  }
-
-  const tokens = issueTokens(state, user, PROVIDER_PASSWORD);
-  return {
+  const response = {
     kind: "identitytoolkit#EmailLinkSigninResponse",
     email,
     localId: user.localId,
     isNewUser,
-    ...tokens,
   };
+
+  if (user.mfaInfo?.length) {
+    return { ...response, ...mfaPending(state, user, PROVIDER_PASSWORD) };
+  } else {
+    user = state.updateUserByLocalId(user.localId, { lastLoginAt: Date.now().toString() });
+    return { ...response, ...issueTokens(state, user, PROVIDER_PASSWORD) };
+  }
 }
 
 type SignInWithIdpResponse = Schemas["GoogleCloudIdentitytoolkitV1SignInWithIdpResponse"];
@@ -1411,7 +1454,6 @@ function signInWithIdp(
       response.localId,
       {
         ...accountUpdates.fields,
-        lastLoginAt: Date.now().toString(),
       },
       {
         upsertProviders: [providerUserInfo],
@@ -1419,15 +1461,16 @@ function signInWithIdp(
     );
   }
 
-  if (user.mfaInfo) {
-    throw new NotImplementedError("MFA Login not yet implemented.");
-  }
-
   if (user.email === response.email) {
     response.emailVerified = user.emailVerified;
   }
-  Object.assign(response, issueTokens(state, user, providerId));
-  return response;
+
+  if (user.mfaInfo?.length) {
+    return { ...response, ...mfaPending(state, user, providerId) };
+  } else {
+    user = state.updateUserByLocalId(user.localId, { lastLoginAt: Date.now().toString() });
+    return { ...response, ...issueTokens(state, user, providerId) };
+  }
 }
 
 function signInWithPassword(
@@ -1453,25 +1496,19 @@ function signInWithPassword(
   assert(user.passwordHash && user.salt, "INVALID_PASSWORD");
   assert(user.passwordHash === hashPassword(reqBody.password, user.salt), "INVALID_PASSWORD");
 
-  if (user.mfaInfo) {
-    throw new NotImplementedError("MFA Login not yet implemented.");
-  }
-
-  user = state.updateUserByLocalId(user.localId, { lastLoginAt: Date.now().toString() });
-
-  const tokens = issueTokens(state, user, PROVIDER_PASSWORD);
-
-  return {
+  const response = {
     kind: "identitytoolkit#VerifyPasswordResponse",
     registered: true,
     localId: user.localId,
     email,
-
-    displayName: user.displayName,
-    profilePicture: user.photoUrl,
-
-    ...tokens,
   };
+
+  if (user.mfaInfo?.length) {
+    return { ...response, ...mfaPending(state, user, PROVIDER_PASSWORD) };
+  } else {
+    user = state.updateUserByLocalId(user.localId, { lastLoginAt: Date.now().toString() });
+    return { ...response, ...issueTokens(state, user, PROVIDER_PASSWORD) };
+  }
 }
 
 function signInWithPhoneNumber(
@@ -1502,6 +1539,10 @@ function signInWithPhoneNumber(
   const userFromIdToken = reqBody.idToken ? parseIdToken(state, reqBody.idToken).user : undefined;
   if (!user) {
     if (userFromIdToken) {
+      assert(
+        !userFromIdToken.mfaInfo?.length,
+        "UNSUPPORTED_FIRST_FACTOR : A phone number cannot be set as a first factor on an SMS based MFA user."
+      );
       user = state.updateUserByLocalId(userFromIdToken.localId, updates);
     } else {
       isNewUser = true;
@@ -1521,10 +1562,6 @@ function signInWithPhoneNumber(
       throw new BadRequestError("PHONE_NUMBER_EXISTS");
     }
     user = state.updateUserByLocalId(user.localId, updates);
-  }
-
-  if (user.mfaInfo) {
-    throw new NotImplementedError("MFA Login not yet implemented.");
   }
 
   const tokens = issueTokens(state, user, PROVIDER_PHONE);
@@ -1552,12 +1589,10 @@ function grantToken(
   const refreshTokenRecord = state.validateRefreshToken(reqBody.refreshToken);
   assert(refreshTokenRecord, "INVALID_REFRESH_TOKEN");
   assert(!refreshTokenRecord.user.disabled, "USER_DISABLED");
-  const tokens = issueTokens(
-    state,
-    refreshTokenRecord.user,
-    refreshTokenRecord.provider,
-    refreshTokenRecord.extraClaims
-  );
+  const tokens = issueTokens(state, refreshTokenRecord.user, refreshTokenRecord.provider, {
+    extraClaims: refreshTokenRecord.extraClaims,
+    secondFactor: refreshTokenRecord.secondFactor,
+  });
   return {
     /* eslint-disable camelcase */
     id_token: tokens.idToken,
@@ -1594,10 +1629,15 @@ function updateEmulatorProjectConfig(
 ): Schemas["EmulatorV1ProjectsConfig"] {
   const allowDuplicateEmails = reqBody.signIn?.allowDuplicateEmails;
   if (allowDuplicateEmails != null) {
+    assert(
+      state instanceof AgentProjectState,
+      "((Only top level projects can set oneAccountPerEmail.))"
+    );
     state.oneAccountPerEmail = !allowDuplicateEmails;
   }
   const usageMode = reqBody.usageMode;
   if (usageMode != null) {
+    assert(state instanceof AgentProjectState, "((Only top level projects can set usageMode.))");
     switch (usageMode) {
       case "PASSTHROUGH":
         assert(state.getUserCount() === 0, "Users are present, unable to set passthrough mode");
@@ -1624,6 +1664,207 @@ function listVerificationCodesInProject(
 ): Schemas["EmulatorV1ProjectsVerificationCodes"] {
   return {
     verificationCodes: [...state.listVerificationCodes()],
+  };
+}
+
+function mfaEnrollmentStart(
+  state: ProjectState,
+  reqBody: Schemas["GoogleCloudIdentitytoolkitV2StartMfaEnrollmentRequest"]
+): Schemas["GoogleCloudIdentitytoolkitV2StartMfaEnrollmentResponse"] {
+  assert(reqBody.idToken, "MISSING_ID_TOKEN");
+
+  const { user, signInProvider } = parseIdToken(state, reqBody.idToken);
+  assert(
+    !MFA_INELIGIBLE_PROVIDER.has(signInProvider),
+    "UNSUPPORTED_FIRST_FACTOR : MFA is not available for the given first factor."
+  );
+  assert(
+    user.emailVerified,
+    "UNVERIFIED_EMAIL : Need to verify email first before enrolling second factors."
+  );
+
+  assert(reqBody.phoneEnrollmentInfo, "INVALID_ARGUMENT : ((Missing phoneEnrollmentInfo.))");
+  // recaptchaToken, safetyNetToken, iosReceipt, and iosSecret are intentionally
+  // ignored because the emulator doesn't implement anti-abuse features.
+  // autoRetrievalInfo is ignored because SMS will not actually be sent.
+
+  const phoneNumber = reqBody.phoneEnrollmentInfo.phoneNumber;
+
+  // Production Firebase Auth service also throws INVALID_PHONE_NUMBER instead
+  // of MISSING_XXXX when phoneNumber is missing. Matching the behavior here.
+  assert(phoneNumber && isValidPhoneNumber(phoneNumber), "INVALID_PHONE_NUMBER : Invalid format.");
+  assert(
+    !user.mfaInfo?.some((enrollment) => enrollment.unobfuscatedPhoneInfo === phoneNumber),
+    "SECOND_FACTOR_EXISTS : Phone number already enrolled as second factor for this account."
+  );
+
+  const { sessionInfo, code } = state.createVerificationCode(phoneNumber);
+
+  // Print out a developer-friendly log containing the link, in lieu of sending
+  // a real text message out to the phone number.
+  EmulatorLogger.forEmulator(Emulators.AUTH).log(
+    "BULLET",
+    `To enroll MFA with ${phoneNumber}, use the code ${code}.`
+  );
+
+  return {
+    phoneSessionInfo: {
+      sessionInfo,
+    },
+  };
+}
+
+function mfaEnrollmentFinalize(
+  state: ProjectState,
+  reqBody: Schemas["GoogleCloudIdentitytoolkitV2FinalizeMfaEnrollmentRequest"]
+): Schemas["GoogleCloudIdentitytoolkitV2FinalizeMfaEnrollmentResponse"] {
+  assert(reqBody.idToken, "MISSING_ID_TOKEN");
+  let { user, signInProvider } = parseIdToken(state, reqBody.idToken);
+  assert(
+    !MFA_INELIGIBLE_PROVIDER.has(signInProvider),
+    "UNSUPPORTED_FIRST_FACTOR : MFA is not available for the given first factor."
+  );
+  assert(reqBody.phoneVerificationInfo, "INVALID_ARGUMENT : ((Missing phoneVerificationInfo.))");
+
+  if (reqBody.phoneVerificationInfo.androidVerificationProof) {
+    throw new NotImplementedError("androidVerificationProof is unsupported!");
+  }
+  const { code, sessionInfo } = reqBody.phoneVerificationInfo;
+
+  assert(code, "MISSING_CODE");
+  assert(sessionInfo, "MISSING_SESSION_INFO");
+
+  const phoneNumber = verifyPhoneNumber(state, sessionInfo, code);
+  assert(
+    !user.mfaInfo?.some((enrollment) => enrollment.unobfuscatedPhoneInfo === phoneNumber),
+    "SECOND_FACTOR_EXISTS : Phone number already enrolled as second factor for this account."
+  );
+
+  const existingFactors = user.mfaInfo || [];
+  const existingIds = new Set<string>();
+  for (const { mfaEnrollmentId } of existingFactors) {
+    if (mfaEnrollmentId) {
+      existingIds.add(mfaEnrollmentId);
+    }
+  }
+  const enrollment = {
+    displayName: reqBody.displayName,
+    enrolledAt: new Date().toISOString(),
+    mfaEnrollmentId: newRandomId(28, existingIds),
+    phoneInfo: phoneNumber,
+    unobfuscatedPhoneInfo: phoneNumber,
+  };
+  user = state.updateUserByLocalId(user.localId, {
+    mfaInfo: [...existingFactors, enrollment],
+  });
+
+  // TODO: Generate OOB code for reverting enrollment.
+
+  const { idToken, refreshToken } = issueTokens(state, user, signInProvider, {
+    secondFactor: { identifier: enrollment.mfaEnrollmentId, provider: PROVIDER_PHONE },
+  });
+
+  return {
+    idToken,
+    refreshToken,
+  };
+}
+
+function mfaEnrollmentWithdraw(
+  state: ProjectState,
+  reqBody: Schemas["GoogleCloudIdentitytoolkitV2WithdrawMfaRequest"]
+): Schemas["GoogleCloudIdentitytoolkitV2WithdrawMfaResponse"] {
+  assert(reqBody.idToken, "MISSING_ID_TOKEN");
+
+  let { user, signInProvider } = parseIdToken(state, reqBody.idToken);
+  assert(user.mfaInfo, "MFA_ENROLLMENT_NOT_FOUND");
+
+  const updatedList = user.mfaInfo.filter(
+    (enrollment) => enrollment.mfaEnrollmentId !== reqBody.mfaEnrollmentId
+  );
+  assert(updatedList.length < user.mfaInfo.length, "MFA_ENROLLMENT_NOT_FOUND");
+
+  user = state.updateUserByLocalId(user.localId, { mfaInfo: updatedList });
+
+  return {
+    ...issueTokens(state, user, signInProvider),
+  };
+}
+
+function mfaSignInStart(
+  state: ProjectState,
+  reqBody: Schemas["GoogleCloudIdentitytoolkitV2StartMfaSignInRequest"]
+): Schemas["GoogleCloudIdentitytoolkitV2StartMfaSignInResponse"] {
+  assert(
+    reqBody.mfaPendingCredential,
+    "MISSING_MFA_PENDING_CREDENTIAL : Request does not have MFA pending credential."
+  );
+  assert(
+    reqBody.mfaEnrollmentId,
+    "MISSING_MFA_ENROLLMENT_ID : No second factor identifier is provided."
+  );
+  // In production, reqBody.phoneSignInInfo must be set to indicate phone-based
+  // MFA. However, we don't enforce this because none of its fields are required
+  // in the emulator. e.g. recaptchaToken/safetyNetToken doesn't make sense;
+  const { user } = parsePendingCredential(state, reqBody.mfaPendingCredential);
+
+  const enrollment = user.mfaInfo?.find(
+    (factor) => factor.mfaEnrollmentId === reqBody.mfaEnrollmentId
+  );
+  assert(enrollment, "MFA_ENROLLMENT_NOT_FOUND");
+  const phoneNumber = enrollment.unobfuscatedPhoneInfo;
+  assert(phoneNumber, "INVALID_ARGUMENT : MFA provider not supported!");
+
+  const { sessionInfo, code } = state.createVerificationCode(phoneNumber);
+
+  // Print out a developer-friendly log containing the link, in lieu of sending
+  // a real text message out to the phone number.
+  EmulatorLogger.forEmulator(Emulators.AUTH).log(
+    "BULLET",
+    `To sign in with MFA using ${phoneNumber}, use the code ${code}.`
+  );
+
+  return {
+    phoneResponseInfo: {
+      sessionInfo,
+    },
+  };
+}
+
+function mfaSignInFinalize(
+  state: ProjectState,
+  reqBody: Schemas["GoogleCloudIdentitytoolkitV2FinalizeMfaSignInRequest"]
+): Schemas["GoogleCloudIdentitytoolkitV2FinalizeMfaSignInResponse"] {
+  // Inconsistent with mfaSignInStart (where MISSING_MFA_PENDING_CREDENTIAL is
+  // returned), but matches production behavior.
+  assert(reqBody.mfaPendingCredential, "MISSING_CREDENTIAL : Please set MFA Pending Credential.");
+  assert(reqBody.phoneVerificationInfo, "INVALID_ARGUMENT : MFA provider not supported!");
+
+  if (reqBody.phoneVerificationInfo.androidVerificationProof) {
+    throw new NotImplementedError("androidVerificationProof is unsupported!");
+  }
+  const { code, sessionInfo } = reqBody.phoneVerificationInfo;
+  assert(code, "MISSING_CODE");
+  assert(sessionInfo, "MISSING_SESSION_INFO");
+
+  const phoneNumber = verifyPhoneNumber(state, sessionInfo, code);
+
+  let { user, signInProvider } = parsePendingCredential(state, reqBody.mfaPendingCredential);
+  const enrollment = user.mfaInfo?.find(
+    (enrollment) => enrollment.unobfuscatedPhoneInfo == phoneNumber
+  );
+  assert(enrollment && enrollment.mfaEnrollmentId, "MFA_ENROLLMENT_NOT_FOUND");
+
+  user = state.updateUserByLocalId(user.localId, { lastLoginAt: Date.now().toString() });
+
+  assert(!user.disabled, "USER_DISABLED");
+
+  const { idToken, refreshToken } = issueTokens(state, user, signInProvider, {
+    secondFactor: { identifier: enrollment.mfaEnrollmentId, provider: PROVIDER_PHONE },
+  });
+  return {
+    idToken,
+    refreshToken,
   };
 }
 
@@ -1668,23 +1909,33 @@ function issueTokens(
   state: ProjectState,
   user: UserInfo,
   signInProvider: string,
-  extraClaims: Record<string, unknown> = {}
+  {
+    extraClaims,
+    secondFactor,
+  }: {
+    extraClaims?: Record<string, unknown>;
+    secondFactor?: SecondFactorRecord;
+  } = {}
 ): { idToken: string; refreshToken?: string; expiresIn: string } {
-  state.updateUserByLocalId(user.localId, { lastRefreshAt: new Date().toISOString() });
+  user = state.updateUserByLocalId(user.localId, { lastRefreshAt: new Date().toISOString() });
+
+  const usageMode = state.usageMode === UsageMode.PASSTHROUGH ? "passthrough" : undefined;
 
   const expiresInSeconds = 60 * 60;
-  const usageMode = state.usageMode === UsageMode.PASSTHROUGH ? "passthrough" : undefined;
-  const idToken = generateJwt(
-    state.projectId,
-    user,
+  const idToken = generateJwt(user, {
+    projectId: state.projectId,
     signInProvider,
     expiresInSeconds,
     extraClaims,
-    usageMode
-  );
+    secondFactor,
+    usageMode,
+  });
   const refreshToken =
     state.usageMode === UsageMode.DEFAULT
-      ? state.createRefreshTokenFor(user, signInProvider, extraClaims)
+      ? state.createRefreshTokenFor(user, signInProvider, {
+          extraClaims,
+          secondFactor,
+        })
       : undefined;
   return {
     idToken,
@@ -1718,9 +1969,10 @@ function parseIdToken(
       "Received a signed JWT. Auth Emulator does not validate JWTs and IS NOT SECURE"
     );
   }
-  // TODO: Check JWT expiration here.
   const user = state.getUserByLocalId(decoded.payload.user_id);
   assert(user, "USER_NOT_FOUND");
+  // To make interactive debugging easier, idTokens in the emulator never expire
+  // due to the passage of time (exp unchecked) but they may still be _revoked_:
   assert(!user.validSince || decoded.payload.iat >= Number(user.validSince), "TOKEN_EXPIRED");
   assert(!user.disabled, "USER_DISABLED");
 
@@ -1729,12 +1981,22 @@ function parseIdToken(
 }
 
 function generateJwt(
-  projectId: string,
   user: UserInfo,
-  signInProvider: string,
-  expiresInSeconds: number,
-  extraClaims: Record<string, unknown> = {},
-  usageMode: string | undefined
+  {
+    projectId,
+    signInProvider,
+    expiresInSeconds,
+    extraClaims = {},
+    secondFactor,
+    usageMode,
+  }: {
+    projectId: string;
+    signInProvider: string;
+    expiresInSeconds: number;
+    extraClaims?: Record<string, unknown>;
+    secondFactor?: SecondFactorRecord;
+    usageMode?: string;
+  }
 ): string {
   const identities: Record<string, string[]> = {};
   if (user.email) {
@@ -1776,6 +2038,8 @@ function generateJwt(
     firebase: {
       identities,
       sign_in_provider: signInProvider,
+      second_factor_identifier: secondFactor?.identifier,
+      sign_in_second_factor: secondFactor?.provider,
       usage_mode: usageMode,
     },
   };
@@ -1904,7 +2168,11 @@ function getMfaEnrollmentsFromRequest(
         : enrollment.mfaEnrollmentId;
       assert(mfaEnrollmentId, "INVALID_MFA_ENROLLMENT_ID : mfaEnrollmentId must be defined.");
       assert(!enrollmentIds.has(mfaEnrollmentId), "DUPLICATE_MFA_ENROLLMENT_ID");
-      enrollments.push({ ...enrollment, mfaEnrollmentId });
+      enrollments.push({
+        ...enrollment,
+        mfaEnrollmentId,
+        unobfuscatedPhoneInfo: enrollment.phoneInfo,
+      });
       phoneNumbers.add(enrollment.phoneInfo);
       enrollmentIds.add(mfaEnrollmentId);
     }
@@ -2182,6 +2450,99 @@ function handleIdpSignUp(
   };
 }
 
+type MfaEnrollment = Schemas["GoogleCloudIdentitytoolkitV1MfaEnrollment"];
+
+interface MfaPendingCredential {
+  _AuthEmulatorMfaPendingCredential: string;
+  localId: string;
+  signInProvider: string;
+  projectId: string;
+  // MfaPendingCredential in emulator never expire to make interactive debugging
+  // a bit easier. Therefore, there's no need to record createdAt timestamps.
+}
+
+function mfaPending(
+  state: ProjectState,
+  user: UserInfo,
+  signInProvider: string
+): { mfaPendingCredential: string; mfaInfo: MfaEnrollment[] } {
+  if (!user.mfaInfo) {
+    throw new Error("Internal assertion error: mfaPending called on user without MFA.");
+  }
+  const pendingCredentialPayload: MfaPendingCredential = {
+    _AuthEmulatorMfaPendingCredential: "DO NOT MODIFY",
+    localId: user.localId,
+    signInProvider,
+    projectId: state.projectId, // TODO: Handle tenants.
+  };
+
+  // Encode pendingCredentialPayload using base64. We don't encrypt or sign the
+  // data in the Auth Emulator but just trust developers not to modify it.
+  const mfaPendingCredential = Buffer.from(
+    JSON.stringify(pendingCredentialPayload),
+    "utf8"
+  ).toString("base64");
+
+  return { mfaPendingCredential, mfaInfo: user.mfaInfo.map(redactMfaInfo) };
+}
+
+function redactMfaInfo(mfaInfo: MfaEnrollment): MfaEnrollment {
+  return {
+    displayName: mfaInfo.displayName,
+    enrolledAt: mfaInfo.enrolledAt,
+    mfaEnrollmentId: mfaInfo.mfaEnrollmentId,
+    phoneInfo: mfaInfo.unobfuscatedPhoneInfo
+      ? obfuscatePhoneNumber(mfaInfo.unobfuscatedPhoneInfo)
+      : undefined,
+  };
+}
+
+// Create an obfuscated version of a phone number, where all but the last
+// four digits are replaced by the character "*".
+function obfuscatePhoneNumber(phoneNumber: string): string {
+  const split = phoneNumber.split("");
+  let digitsEncountered = 0;
+  for (let i = split.length - 1; i >= 0; i--) {
+    if (/[0-9]/.test(split[i])) {
+      digitsEncountered++;
+      if (digitsEncountered > 4) {
+        split[i] = "*";
+      }
+    }
+  }
+  return split.join("");
+}
+
+function parsePendingCredential(
+  state: ProjectState,
+  pendingCredential: string
+): {
+  user: UserInfo;
+  signInProvider: string;
+} {
+  let pendingCredentialPayload: MfaPendingCredential;
+  try {
+    const json = Buffer.from(pendingCredential, "base64").toString("utf8");
+    pendingCredentialPayload = JSON.parse(json) as MfaPendingCredential;
+  } catch {
+    assert(false, "((Invalid phoneVerificationInfo.mfaPendingCredential.))");
+  }
+  assert(
+    pendingCredentialPayload._AuthEmulatorMfaPendingCredential,
+    "((Invalid phoneVerificationInfo.mfaPendingCredential.))"
+  );
+  assert(
+    pendingCredentialPayload.projectId === state.projectId,
+    "INVALID_PROJECT_ID : Project ID does not match MFA pending credential."
+  );
+
+  const { localId, signInProvider } = pendingCredentialPayload;
+  const user = state.getUserByLocalId(localId);
+  assert(user, "((User in pendingCredentialPayload does not exist.))");
+
+  return { user, signInProvider };
+}
+
 /* eslint-disable camelcase */
 export interface FirebaseJwtPayload {
   // Standard fields:
@@ -2208,6 +2569,8 @@ export interface FirebaseJwtPayload {
       phone?: string[];
     };
     sign_in_provider: string;
+    sign_in_second_factor?: string;
+    second_factor_identifier?: string;
     usage_mode?: string;
   };
   // ...and other fields that we don't care for now.

@@ -5,7 +5,7 @@ import TerminalRenderer = require("marked-terminal");
 
 import * as extensionsApi from "./extensionsApi";
 import * as utils from "../utils";
-import { logPrefix } from "./extensionsHelper";
+import { confirm, logPrefix } from "./extensionsHelper";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
 import { promptOnce } from "../prompt";
@@ -127,23 +127,40 @@ export function displayUpdateChangesNoInput(
  * @param spec The current spec of a ExtensionInstance
  * @param newSpec The spec that the ExtensionInstance is being updated to
  */
-export async function displayUpdateChangesRequiringConfirmation(
-  spec: extensionsApi.ExtensionSpec,
-  newSpec: extensionsApi.ExtensionSpec
-): Promise<void> {
-  if (spec.license !== newSpec.license) {
+export async function displayUpdateChangesRequiringConfirmation(args: {
+  spec: extensionsApi.ExtensionSpec;
+  newSpec: extensionsApi.ExtensionSpec;
+  nonInteractive: boolean;
+  force: boolean;
+}): Promise<void> {
+  const equals = (a: any, b: any) => {
+    return _.isEqual(a, b);
+  };
+  if (args.spec.license !== args.newSpec.license) {
     const message =
       "\n" +
       "**License**\n" +
-      deletionColor(spec.license ? `- ${spec.license}\n` : "- None\n") +
-      additionColor(newSpec.license ? `+ ${newSpec.license}\n` : "+ None\n") +
-      "Do you wish to continue?";
-    await getConsent("license", marked(message));
+      deletionColor(args.spec.license ? `- ${args.spec.license}\n` : "- None\n") +
+      additionColor(args.newSpec.license ? `+ ${args.newSpec.license}\n` : "+ None\n");
+    logger.info(message);
+    if (
+      !(await confirm({ nonInteractive: args.nonInteractive, force: args.force, default: true }))
+    ) {
+      throw new FirebaseError(
+        "Unable to update this extension instance without explicit consent for the change to 'License'."
+      );
+    }
   }
-  // eslint-disable-next-line @typescript-eslint/unbound-method
-  const apisDiffDeletions = _.differenceWith(spec.apis, _.get(newSpec, "apis", []), _.isEqual);
-  // eslint-disable-next-line @typescript-eslint/unbound-method
-  const apisDiffAdditions = _.differenceWith(newSpec.apis, _.get(spec, "apis", []), _.isEqual);
+  const apisDiffDeletions = _.differenceWith(
+    args.spec.apis,
+    _.get(args.newSpec, "apis", []),
+    equals
+  );
+  const apisDiffAdditions = _.differenceWith(
+    args.newSpec.apis,
+    _.get(args.spec, "apis", []),
+    equals
+  );
   if (apisDiffDeletions.length || apisDiffAdditions.length) {
     let message = "\n**APIs:**\n";
     apisDiffDeletions.forEach((api) => {
@@ -152,18 +169,24 @@ export async function displayUpdateChangesRequiringConfirmation(
     apisDiffAdditions.forEach((api) => {
       message += additionColor(`+ ${api.apiName} (${api.reason})\n`);
     });
-    message += "Do you wish to continue?";
-    await getConsent("apis", marked(message));
+    logger.info(message);
+    if (
+      !(await confirm({ nonInteractive: args.nonInteractive, force: args.force, default: true }))
+    ) {
+      throw new FirebaseError(
+        "Unable to update this extension instance without explicit consent for the change to 'APIs'."
+      );
+    }
   }
 
   const resourcesDiffDeletions = _.differenceWith(
-    spec.resources,
-    _.get(newSpec, "resources", []),
+    args.spec.resources,
+    _.get(args.newSpec, "resources", []),
     compareResources
   );
   const resourcesDiffAdditions = _.differenceWith(
-    newSpec.resources,
-    _.get(spec, "resources", []),
+    args.newSpec.resources,
+    _.get(args.spec, "resources", []),
     compareResources
   );
   if (resourcesDiffDeletions.length || resourcesDiffAdditions.length) {
@@ -174,14 +197,27 @@ export async function displayUpdateChangesRequiringConfirmation(
     resourcesDiffAdditions.forEach((resource) => {
       message += additionColor(`+ ${getResourceReadableName(resource)}`);
     });
-    message += "Do you wish to continue?";
-    await getConsent("resources", marked(message));
+    logger.info(message);
+    if (
+      !(await confirm({ nonInteractive: args.nonInteractive, force: args.force, default: true }))
+    ) {
+      throw new FirebaseError(
+        "Unable to update this extension instance without explicit consent for the change to 'Resources'."
+      );
+    }
   }
 
-  // eslint-disable-next-line @typescript-eslint/unbound-method
-  const rolesDiffDeletions = _.differenceWith(spec.roles, _.get(newSpec, "roles", []), _.isEqual);
-  // eslint-disable-next-line @typescript-eslint/unbound-method
-  const rolesDiffAdditions = _.differenceWith(newSpec.roles, _.get(spec, "roles", []), _.isEqual);
+  const rolesDiffDeletions = _.differenceWith(
+    args.spec.roles,
+    _.get(args.newSpec, "roles", []),
+    equals
+  );
+  const rolesDiffAdditions = _.differenceWith(
+    args.newSpec.roles,
+    _.get(args.spec, "roles", []),
+    equals
+  );
+
   if (rolesDiffDeletions.length || rolesDiffAdditions.length) {
     let message = "\n**Permissions:**\n";
     rolesDiffDeletions.forEach((role) => {
@@ -190,15 +226,25 @@ export async function displayUpdateChangesRequiringConfirmation(
     rolesDiffAdditions.forEach((role) => {
       message += additionColor(`+ ${role.role} (${role.reason})\n`);
     });
-    message += "Do you wish to continue?";
-    await getConsent("apis", marked(message));
+    logger.info(message);
+    if (
+      !(await confirm({ nonInteractive: args.nonInteractive, force: args.force, default: true }))
+    ) {
+      throw new FirebaseError(
+        "Unable to update this extension instance without explicit consent for the change to 'Permissions'."
+      );
+    }
   }
 
-  if (!spec.billingRequired && newSpec.billingRequired) {
-    await getConsent(
-      "billingRequired",
-      "Billing is now required for the new version of this extension. Would you like to continue?"
-    );
+  if (!args.spec.billingRequired && args.newSpec.billingRequired) {
+    logger.info("Billing is now required for the new version of this extension.");
+    if (
+      !(await confirm({ nonInteractive: args.nonInteractive, force: args.force, default: true }))
+    ) {
+      throw new FirebaseError(
+        "Unable to update this extension instance without explicit consent for the change to 'BillingRequired'."
+      );
+    }
   }
 }
 
@@ -210,25 +256,6 @@ function getResourceReadableName(resource: extensionsApi.Resource): string {
   return resource.type === "firebaseextensions.v1beta.function"
     ? `${resource.name} (Cloud Function): ${resource.description}\n`
     : `${resource.name} (${resource.type})\n`;
-}
-
-/**
- * Asks the user to provide permission to update the instance.
- * @param field
- * @param message
- */
-export async function getConsent(field: string, message: string): Promise<void> {
-  const consent = await promptOnce({
-    type: "confirm",
-    message,
-    default: true,
-  });
-  if (!consent) {
-    throw new FirebaseError(
-      `Without explicit consent for the change to ${field}, we cannot update this extension instance.`,
-      { exit: 2 }
-    );
-  }
 }
 
 /**

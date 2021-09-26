@@ -4,13 +4,12 @@ import * as os from "os";
 import * as path from "path";
 import * as express from "express";
 import * as fs from "fs";
+
 import { Constants } from "./constants";
 import { InvokeRuntimeOpts } from "./functionsEmulator";
+import { FunctionsPlatform } from "../deploy/functions/backend";
 
-export enum EmulatedTriggerType {
-  BACKGROUND = "BACKGROUND",
-  HTTPS = "HTTPS",
-}
+export type SignatureType = "http" | "event" | "cloudevent";
 
 export interface ParsedTriggerDefinition {
   entryPoint: string;
@@ -22,6 +21,7 @@ export interface ParsedTriggerDefinition {
   eventTrigger?: EventTrigger;
   schedule?: EventSchedule;
   labels?: { [key: string]: any };
+  platform?: FunctionsPlatform;
 }
 
 export interface EmulatedTriggerDefinition extends ParsedTriggerDefinition {
@@ -55,7 +55,6 @@ export interface FunctionsRuntimeBundle {
   proto?: any;
   triggerId?: string;
   targetName?: string;
-  triggerType?: EmulatedTriggerType;
   emulators: {
     firestore?: {
       host: string;
@@ -281,4 +280,22 @@ export function findModuleRoot(moduleName: string, filepath: string): string {
   }
 
   return "";
+}
+
+export function formatHost(info: { host: string; port: number }): string {
+  if (info.host.includes(":")) {
+    return `[${info.host}]:${info.port}`;
+  } else {
+    return `${info.host}:${info.port}`;
+  }
+}
+
+export function getSignatureType(def: EmulatedTriggerDefinition): SignatureType {
+  if (def.httpsTrigger) {
+    return "http";
+  }
+  // TODO: As implemented, emulated CF3v1 functions cannot receive events in CloudEvent format, and emulated CF3v2
+  // functions cannot receive events in legacy format. This conflicts with our goal of introducing a 'compat' layer
+  // that allows CF3v1 functions to target GCFv2 and vice versa.
+  return def.platform === "gcfv2" ? "cloudevent" : "event";
 }

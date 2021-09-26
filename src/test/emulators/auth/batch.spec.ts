@@ -2,6 +2,7 @@ import { expect } from "chai";
 import { decode as decodeJwt } from "jsonwebtoken";
 import { describeAuthEmulator } from "./setup";
 import {
+  enrollPhoneMfa,
   deleteAccount,
   expectStatusCode,
   getAccountInfoByIdToken,
@@ -38,6 +39,25 @@ describeAuthEmulator("accounts:batchGet", ({ authApi }) => {
 
         // No more accounts after this, so no page token returned.
         expect(res.body).not.to.have.property("nextPageToken");
+      });
+  });
+
+  it("should return MFA info", async () => {
+    const user1 = await signInWithEmailLink(authApi(), "test@example.com");
+    await enrollPhoneMfa(authApi(), user1.idToken, TEST_PHONE_NUMBER);
+
+    await authApi()
+      .get(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:batchGet`)
+      .set("Authorization", "Bearer owner")
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.users).to.have.length(1);
+        const user = res.body.users[0] as UserInfo;
+        expect(user.mfaInfo![0]).to.contain({
+          enrolledAt: "1970-01-01T00:00:00.000Z",
+          phoneInfo: TEST_PHONE_NUMBER,
+          unobfuscatedPhoneInfo: TEST_PHONE_NUMBER,
+        });
       });
   });
 
@@ -413,6 +433,17 @@ describeAuthEmulator("accounts:batchCreate", ({ authApi }) => {
           { localId: "test8", providerUserInfo: [{ rawId: "012345" /* missing providerId */ }] },
           // federatedId without rawId / providerId is supported in production but not Auth Emulator.
           { localId: "test9", providerUserInfo: [{ federatedId: "foo-bar" }] },
+          {
+            // MFA without email
+            localId: "test10",
+            mfaInfo: [{ phoneInfo: TEST_PHONE_NUMBER }],
+          },
+          {
+            // MFA but email is unverified
+            localId: "test11",
+            email: "someone@example.com",
+            mfaInfo: [{ phoneInfo: TEST_PHONE_NUMBER }],
+          },
         ],
       })
       .then((res) => {
@@ -454,6 +485,14 @@ describeAuthEmulator("accounts:batchCreate", ({ authApi }) => {
             index: 9,
             message:
               "((Parsing federatedId is not implemented in Auth Emulator; please specify providerId AND rawId as a workaround.))",
+          },
+          {
+            index: 10,
+            message: "Second factor account requires email to be presented.",
+          },
+          {
+            index: 11,
+            message: "Second factor account requires email to be verified.",
           },
         ]);
       });
@@ -534,6 +573,39 @@ describeAuthEmulator("accounts:batchCreate", ({ authApi }) => {
       sub: rawId,
     });
     expect(user1SignIn.localId).to.equal(user1.localId);
+  });
+
+  it("should import MFA info", async () => {
+    const email = "foo@example.com";
+    const user1 = {
+      localId: "foo",
+      email,
+      emailVerified: true,
+      mfaInfo: [
+        {
+          enrolledAt: "2123-04-05T06:07:28.990Z",
+          phoneInfo: TEST_PHONE_NUMBER,
+        },
+      ],
+    };
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:batchCreate`)
+      .set("Authorization", "Bearer owner")
+      .send({ users: [user1] })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.error || []).to.have.length(0);
+      });
+
+    const user1Info = await getAccountInfoByLocalId(authApi(), user1.localId);
+    expect(user1Info.mfaInfo).to.have.length(1);
+    expect(user1Info.mfaInfo![0]).to.contain({
+      enrolledAt: user1.mfaInfo[0].enrolledAt,
+      phoneInfo: TEST_PHONE_NUMBER,
+      unobfuscatedPhoneInfo: TEST_PHONE_NUMBER,
+    });
+    // A mfaEnrollmentId should be automatically generated if not provided.
+    expect(user1Info.mfaInfo![0].mfaEnrollmentId).to.be.a("string").and.not.empty;
   });
 
   it("should error if usageMode is passthrough", async () => {
