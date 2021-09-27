@@ -26,7 +26,7 @@ import { ChildProcess, spawnSync } from "child_process";
 import {
   emulatedFunctionsByRegion,
   EmulatedTriggerDefinition,
-  EmulatedTriggerType,
+  SignatureType,
   EventSchedule,
   EventTrigger,
   formatHost,
@@ -34,6 +34,7 @@ import {
   FunctionsRuntimeBundle,
   FunctionsRuntimeFeatures,
   getFunctionService,
+  getSignatureType,
   HttpConstants,
   ParsedTriggerDefinition,
 } from "./functionsEmulatorShared";
@@ -53,6 +54,7 @@ import {
   getProjectAdminSdkConfigOrCached,
 } from "./adminSdkConfig";
 import * as functionsEnv from "../functions/env";
+import { EventUtils } from "./events/types";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -229,7 +231,19 @@ export class FunctionsEmulator implements EmulatorInstance {
       const projectId = req.params.project_id;
 
       const reqBody = (req as RequestWithRawBody).rawBody;
-      const proto = JSON.parse(reqBody.toString());
+      let proto = JSON.parse(reqBody.toString());
+
+      if (req.headers["content-type"]?.includes("cloudevent")) {
+        // Convert request payload to CloudEvent.
+        // TODO(taeold): Converting request payload to CloudEvent object should be done by the functions runtime.
+        // However, the Functions Emulator communicates with the runtime via socket not HTTP, and CE metadata
+        // embedded in HTTP header may get lost. Once the Functions Emulator is refactored to communicate to the
+        // runtime instances via HTTP, move this logic there.
+        if (EventUtils.isBinaryCloudEvent(req)) {
+          proto = EventUtils.extractBinaryCloudEventContext(req);
+          proto.data = req.body;
+        }
+      }
 
       this.workQueue.submit(() => {
         this.logger.log("DEBUG", `Accepted request ${req.method} ${req.url} --> ${triggerId}`);
@@ -288,7 +302,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   startFunctionRuntime(
     triggerId: string,
     targetName: string,
-    triggerType: EmulatedTriggerType,
+    signatureType: SignatureType,
     proto?: any,
     runtimeOpts?: InvokeRuntimeOpts
   ): RuntimeWorker {
@@ -306,7 +320,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       proto,
       triggerId,
       targetName,
-      triggerType,
     };
     const opts = runtimeOpts || {
       nodeBinary: this.nodeBinary,
@@ -315,7 +328,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     const worker = this.invokeRuntime(
       runtimeBundle,
       opts,
-      this.getRuntimeEnvs({ targetName, triggerType })
+      this.getRuntimeEnvs({ targetName, signatureType })
     );
     return worker;
   }
@@ -485,6 +498,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       } else if (definition.eventTrigger) {
         const service: string = getFunctionService(definition);
         const key = this.getTriggerKey(definition);
+        const signature = getSignatureType(definition);
 
         switch (service) {
           case Constants.SERVICE_FIRESTORE:
@@ -506,6 +520,7 @@ export class FunctionsEmulator implements EmulatorInstance {
               definition.name,
               key,
               definition.eventTrigger,
+              signature,
               definition.schedule
             );
             break;
@@ -634,6 +649,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     triggerName: string,
     key: string,
     eventTrigger: EventTrigger,
+    signatureType: SignatureType,
     schedule: EventSchedule | undefined
   ): Promise<boolean> {
     const pubsubPort = EmulatorRegistry.getPort(Emulators.PUBSUB);
@@ -659,7 +675,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     try {
-      await pubsubEmulator.addTrigger(topic, key);
+      await pubsubEmulator.addTrigger(topic, key, signatureType);
       return true;
     } catch (e) {
       return false;
@@ -745,7 +761,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       projectId: this.args.projectId,
       triggerId: "",
       targetName: "",
-      triggerType: undefined,
       emulators: {
         firestore: EmulatorRegistry.getInfo(Emulators.FIRESTORE),
         database: EmulatorRegistry.getInfo(Emulators.DATABASE),
@@ -852,7 +867,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   getSystemEnvs(triggerDef?: {
     targetName: string;
-    triggerType: EmulatedTriggerType;
+    signatureType: SignatureType;
   }): Record<string, string> {
     const envs: Record<string, string> = {};
 
@@ -865,9 +880,8 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (triggerDef) {
       const service = triggerDef.targetName;
       const target = service.replace(/-/g, ".");
-      const mode = triggerDef.triggerType === EmulatedTriggerType.BACKGROUND ? "event" : "http";
       envs.FUNCTION_TARGET = target;
-      envs.FUNCTION_SIGNATURE_TYPE = mode;
+      envs.FUNCTION_SIGNATURE_TYPE = triggerDef.signatureType;
       envs.K_SERVICE = service;
     }
     return envs;
@@ -939,7 +953,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   getRuntimeEnvs(triggerDef?: {
     targetName: string;
-    triggerType: EmulatedTriggerType;
+    signatureType: SignatureType;
   }): Record<string, string> {
     return {
       ...this.getUserEnvs(),
@@ -1079,7 +1093,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     const worker = this.startFunctionRuntime(
       trigger.id,
       trigger.name,
-      EmulatedTriggerType.BACKGROUND,
+      getSignatureType(trigger),
       proto
     );
 
@@ -1218,12 +1232,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         );
       }
     }
-    const worker = this.startFunctionRuntime(
-      trigger.id,
-      trigger.name,
-      EmulatedTriggerType.HTTPS,
-      undefined
-    );
+    const worker = this.startFunctionRuntime(trigger.id, trigger.name, "http", undefined);
 
     worker.onLogs((el: EmulatorLog) => {
       if (el.level === "FATAL") {

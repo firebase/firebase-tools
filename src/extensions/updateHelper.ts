@@ -1,18 +1,17 @@
 import * as clc from "cli-color";
 import * as semver from "semver";
+import * as marked from "marked";
 
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import * as resolveSource from "./resolveSource";
 import * as extensionsApi from "./extensionsApi";
-import { promptOnce } from "../prompt";
-import * as marked from "marked";
+import * as refs from "./refs";
 import {
   createSourceFromLocation,
   logPrefix,
   SourceOrigin,
   isLocalOrURLPath,
-  confirm,
 } from "./extensionsHelper";
 import * as utils from "../utils";
 import {
@@ -217,10 +216,10 @@ export async function updateToVersionFromPublisherSource(
   existingSpec: extensionsApi.ExtensionSpec
 ): Promise<string> {
   let source;
-  const refObj = extensionsApi.parseRef(extVersionRef);
-  const version = refObj.version;
-  const extensionRef = `${refObj.publisherId}/${refObj.extensionId}`;
-  displayExtInfo(instanceId, refObj.publisherId, existingSpec, true);
+  const ref = refs.parse(extVersionRef);
+  const version = ref.version;
+  const extensionRef = refs.toExtensionRef(ref);
+  displayExtInfo(instanceId, ref.publisherId, existingSpec, true);
   const extension = await extensionsApi.getExtension(extensionRef);
   try {
     source = await extensionsApi.getExtensionVersion(extVersionRef);
