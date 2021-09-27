@@ -5,8 +5,6 @@
 // 'npm run generate:json-schema' to regenerate the schema files.
 //
 
-import { ExtensionConfig } from "./extensions/extensionsApi";
-
 // Sourced from - https://docs.microsoft.com/en-us/javascript/api/@azure/keyvault-certificates/requireatleastone?view=azure-node-latest
 type RequireAtLeastOne<T> = {
   [K in keyof T]-?: Required<Pick<T, K>> & Partial<Pick<T, Exclude<keyof T, K>>>;
@@ -173,5 +171,5 @@ export type FirebaseConfig = {
   storage?: StorageConfig;
   remoteconfig?: RemoteConfigConfig;
   emulators?: EmulatorsConfig;
-  extensions?: ExtensionConfig;
+  extensions?: ExtensionsConfig;
 };
