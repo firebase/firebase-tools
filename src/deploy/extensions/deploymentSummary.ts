@@ -1,12 +1,12 @@
 import * as planner from "./planner";
 import * as refs from "../../extensions/refs";
 
-const humanReadable = (dep: planner.Deployable) =>
+const humanReadable = (dep: planner.InstanceSpec) =>
   `\t${dep.instanceId} (${
     dep.ref ? `${refs.toExtensionVersionRef(dep.ref)}` : `Installed from local source`
   })`;
 
-const humanReadableUpdate = (from: planner.Deployable, to: planner.Deployable) => {
+const humanReadableUpdate = (from: planner.InstanceSpec, to: planner.InstanceSpec) => {
   if (
     from.ref?.publisherId == to.ref?.publisherId &&
     from.ref?.extensionId == to.ref?.extensionId
@@ -20,7 +20,7 @@ const humanReadableUpdate = (from: planner.Deployable, to: planner.Deployable) =
   }
 };
 
-export function createsSummary(toCreate: planner.Deployable[]): string {
+export function createsSummary(toCreate: planner.InstanceSpec[]): string {
   return toCreate.length
     ? `The following extension instances will be created:\n${toCreate
         .map(humanReadable)
@@ -28,7 +28,7 @@ export function createsSummary(toCreate: planner.Deployable[]): string {
     : "";
 }
 
-export function updatesSummary(toUpdate: planner.Deployable[], have: planner.Deployable[]): string {
+export function updatesSummary(toUpdate: planner.InstanceSpec[], have: planner.InstanceSpec[]): string {
   const summary = toUpdate
     .map((to) => {
       const from = have.find((exists) => exists.instanceId == to.instanceId);
@@ -38,7 +38,7 @@ export function updatesSummary(toUpdate: planner.Deployable[], have: planner.Dep
   return toUpdate.length ? `The following extension instances will be updated:\n${summary}\n` : "";
 }
 
-export function deletesSummary(toDelete: planner.Deployable[]) {
+export function deletesSummary(toDelete: planner.InstanceSpec[]) {
   return toDelete.length
     ? `The following extension instances are not listed in 'firebase.json':\n${toDelete
         .map(humanReadable)

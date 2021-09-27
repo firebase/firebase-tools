@@ -6,7 +6,8 @@ import * as extensionsApi from "../../extensions/extensionsApi";
 import * as refs from "../../extensions/refs";
 import { readEnvFile } from "../../extensions/paramHelper";
 
-export interface Deployable {
+
+export interface InstanceSpec {
   instanceId: string;
   ref?: refs.Ref;
   params: Record<string, string>;
@@ -14,10 +15,10 @@ export interface Deployable {
 
 const ENV_DIRECTORY = "extensions";
 
-export async function have(projectId: string): Promise<Deployable[]> {
+export async function have(projectId: string): Promise<InstanceSpec[]> {
   const instances = await extensionsApi.listInstances(projectId);
   return instances.map((i) => {
-    const dep: Deployable = {
+    const dep: InstanceSpec = {
       instanceId: i.name.split("/").pop()!,
       params: i.config.params,
     };
@@ -33,8 +34,8 @@ export async function have(projectId: string): Promise<Deployable[]> {
 export async function want(
   extensions: Record<string, string>,
   projectDir: string
-): Promise<Deployable[]> {
-  const deployables: Deployable[] = [];
+): Promise<InstanceSpec[]> {
+  const instanceSpecs: InstanceSpec[] = [];
   const errors: FirebaseError[] = [];
   for (const e of Object.entries(extensions)) {
     try {
@@ -42,7 +43,7 @@ export async function want(
       const ref = refs.parse(e[1]);
       ref.version = await resolveVersion(ref);
       const params = readParams(projectDir, instanceId);
-      deployables.push({
+      instanceSpecs.push({
         instanceId,
         ref,
         params,
@@ -56,7 +57,7 @@ export async function want(
     const messages = errors.map((e) => e.message).join("\n");
     throw new FirebaseError(`Errors while reading 'extensions' in 'firebase.json'\n${messages}`);
   }
-  return deployables;
+  return instanceSpecs;
 }
 
 /**
