@@ -163,7 +163,7 @@ export type EmulatorsConfig = {
   };
 };
 
-export type ExtensionsConfig = Record<string, string>
+export type ExtensionsConfig = Record<string, string>;
 
 export type FirebaseConfig = {
   database?: DatabaseConfig;

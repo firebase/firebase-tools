@@ -3,53 +3,48 @@ import * as semver from "semver";
 
 import { FirebaseError } from "../../error";
 import * as extensionsApi from "../../extensions/extensionsApi";
+import * as refs from "../../extensions/refs";
 import { readEnvFile } from "../../extensions/paramHelper";
 
-interface Deployable {
-  instanceId: string,
-  publisherId?: string,
-  extensionId?: string,
-  version: string,
-  params: Record<string, string>,
+export interface Deployable {
+  instanceId: string;
+  ref?: refs.Ref;
+  params: Record<string, string>;
 }
 
-const ENV_DIRECTORY = "extensions"
+const ENV_DIRECTORY = "extensions";
 
 export async function have(projectId: string): Promise<Deployable[]> {
   const instances = await extensionsApi.listInstances(projectId);
-  return instances.map(i => {
-    const dep: Deployable =  {
+  return instances.map((i) => {
+    const dep: Deployable = {
       instanceId: i.name.split("/").pop()!,
-      version: i.config.extensionVersion!,
-      params: i.config.params
-    }
+      params: i.config.params,
+    };
     if (i.config.extensionRef) {
-      const ref = extensionsApi.parseRef(i.config.extensionRef);
-      dep.publisherId = ref.publisherId;
-      dep.extensionId = ref.extensionId;
+      const ref = refs.parse(i.config.extensionRef);
+      dep.ref = ref;
+      dep.ref.version = i.config.extensionVersion;
     }
     return dep;
   });
 }
 
-export async function want(extensions: Record<string, string>, projectDir: string):  Promise<Deployable[]> {
+export async function want(
+  extensions: Record<string, string>,
+  projectDir: string
+): Promise<Deployable[]> {
   const deployables: Deployable[] = [];
   const errors: FirebaseError[] = [];
   for (const e of Object.entries(extensions)) {
     try {
       const instanceId = e[0];
-      const extensionVersionRef = extensionsApi.parseRef(e[1]);
-      const resolvedVersion = await resolveVersion(
-        extensionVersionRef.publisherId,
-        extensionVersionRef.extensionId,
-        extensionVersionRef.version,
-      );
+      const ref = refs.parse(e[1]);
+      ref.version = await resolveVersion(ref);
       const params = readParams(projectDir, instanceId);
       deployables.push({
         instanceId,
-        publisherId: extensionVersionRef.publisherId,
-        extensionId: extensionVersionRef.extensionId,
-        version: resolvedVersion,
+        ref,
         params,
       });
     } catch (err) {
@@ -58,8 +53,8 @@ export async function want(extensions: Record<string, string>, projectDir: strin
     }
   }
   if (errors.length) {
-    const messages = errors.map(e => e.message).join("\n");
-    throw new FirebaseError(`Errors while reading 'extensions' in 'firebase.json'\n${messages}`)
+    const messages = errors.map((e) => e.message).join("\n");
+    throw new FirebaseError(`Errors while reading 'extensions' in 'firebase.json'\n${messages}`);
   }
   return deployables;
 }
@@ -68,17 +63,22 @@ export async function want(extensions: Record<string, string>, projectDir: strin
  * resolveVersion resolves a semver string to the max matching version.
  * @param publisherId
  * @param extensionId
- * @param version a semver or semver range 
+ * @param version a semver or semver range
  */
-async function resolveVersion(publisherId: string, extensionId: string, version?: string): Promise<string> {
-  if (!version || version == "latest") {
+async function resolveVersion(ref: refs.Ref): Promise<string> {
+  if (!ref.version || ref.version == "latest") {
     return "latest";
   }
-  const extensionRef = `${publisherId}/${extensionId}`;
+  const extensionRef = refs.toExtensionRef(ref);
   const versions = await extensionsApi.listExtensionVersions(extensionRef);
-  const maxSatisfying = semver.maxSatisfying(versions.map(ev => ev.spec.version), version);
+  const maxSatisfying = semver.maxSatisfying(
+    versions.map((ev) => ev.spec.version),
+    ref.version
+  );
   if (!maxSatisfying) {
-    throw new FirebaseError(`No version of ${extensionRef} matches requested version ${version}`);
+    throw new FirebaseError(
+      `No version of ${extensionRef} matches requested version ${ref.version}`
+    );
   }
   return maxSatisfying;
 }
