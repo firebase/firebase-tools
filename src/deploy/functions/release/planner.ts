@@ -74,11 +74,10 @@ export function calculateUpdate(
 
 /**
  * Create a plan for deploying all functions in one region.
- * @param region The region of this deployment
- * @param loclFunctionsByRegion The functions present in the code currently being deployed.
- * @param existingFunctionNames The names of all functions that already exist.
- * @param existingScheduledFunctionNames The names of all schedules functions that already exist.
- * @param filters The filters, passed in by the user via  `--only functions:`
+ * @param want the desired state
+ * @param have the current state
+ * @param options.filters The filters, passed in by the user via  `--only functions:`
+ * @param options.overwriteEnvs Whether we should blast over existing envs
  */
 export function createDeploymentPlan(
   want: backend.Backend,
@@ -123,7 +122,7 @@ export function upgradedToGCFv2WithoutSettingConcurrency(
   have: backend.Backend
 ): boolean {
   return backend.someEndpoint(want, (endpoint) => {
-    // If there is not an existing v1 funciton
+    // If there is not an existing v1 function
     if (have.endpoints[endpoint.region]?.[endpoint.id]?.platform !== "gcfv1") {
       return false;
     }
@@ -205,7 +204,7 @@ export function checkForIllegalUpdate(want: backend.Endpoint, have: backend.Endp
     throw new FirebaseError(
       `[${getFunctionLabel(
         want
-      )}] Changing from ${haveType} function to ${haveType} function is not allowed. Please delete your function and create a new one instead.`
+      )}] Changing from ${haveType} function to ${wantType} function is not allowed. Please delete your function and create a new one instead.`
     );
   }
   if (want.platform == "gcfv1" && have.platform == "gcfv2") {
