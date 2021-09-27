@@ -4,7 +4,6 @@ import { EventEmitter } from "events";
 import {
   FunctionsRuntimeArgs,
   FunctionsRuntimeBundle,
-  EmulatedTriggerType,
 } from "../../emulator/functionsEmulatorShared";
 import {
   RuntimeWorker,
@@ -91,7 +90,6 @@ class WorkerStateCounter {
 
 class MockRuntimeBundle implements FunctionsRuntimeBundle {
   projectId = "project-1234";
-  triggerType = EmulatedTriggerType.HTTPS;
   cwd = "/home/users/dir";
   emulators = {};
   adminSdkConfig = {

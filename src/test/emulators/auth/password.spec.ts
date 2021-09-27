@@ -135,7 +135,7 @@ describeAuthEmulator("accounts:signInWithPassword", ({ authApi, getClock }) => {
       });
   });
 
-  it("should error if user has MFA", async () => {
+  it("should return pending credential if user has MFA", async () => {
     const user = {
       email: "alice@example.com",
       password: "notasecret",
@@ -148,8 +148,11 @@ describeAuthEmulator("accounts:signInWithPassword", ({ authApi, getClock }) => {
       .query({ key: "fake-api-key" })
       .send({ email: user.email, password: user.password })
       .then((res) => {
-        expectStatusCode(501, res);
-        expect(res.body.error.message).to.equal("MFA Login not yet implemented.");
+        expectStatusCode(200, res);
+        expect(res.body).not.to.have.property("idToken");
+        expect(res.body).not.to.have.property("refreshToken");
+        expect(res.body.mfaPendingCredential).to.be.a("string");
+        expect(res.body.mfaInfo).to.be.an("array").with.lengthOf(1);
       });
   });
 

@@ -166,4 +166,18 @@ describeAuthEmulator("authentication", ({ authApi }) => {
           );
       });
   });
+
+  // TODO(lisajian): uncomment when tenant endpoints are added
+  // it.only("should deny requests where tenant IDs do not match", async () => {
+  //   await authApi()
+  //     .post(
+  //       "/identitytoolkit.googleapis.com/v1/projects/project-id/tenants/tenant-id/accounts:delete"
+  //     )
+  //     .set("Authorization", "Bearer owner")
+  //     .send({ localId: "local-id", tenantId: "mismatching-tenant-id" })
+  //     .then((res) => {
+  //       expectStatusCode(400, res);
+  //       expect(res.body.error).to.have.property("message").equals("TENANT_ID_MISMATCH");
+  //     });
+  // });
 });
