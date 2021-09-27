@@ -1,16 +1,15 @@
-import * as semver from "semver";
 import * as yaml from "js-yaml";
 import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as marked from "marked";
 import * as api from "../api";
+import * as refs from "./refs";
 import { logger } from "../logger";
 import * as operationPoller from "../operation-poller";
 import { FirebaseError } from "../error";
 
 const VERSION = "v1beta";
 const PAGE_SIZE_MAX = 100;
-const refRegex = new RegExp(/^([^/@\n]+)\/{1}([^/@\n]+)(@{1}([a-z0-9.-]+)|)$/);
 
 export enum RegistryLaunchStage {
   EXPERIMENTAL = "EXPERIMENTAL",
@@ -218,9 +217,9 @@ export async function createInstance(args: {
   } else if (args.extensionSource) {
     config.source = { name: args.extensionSource?.name };
   } else if (args.extensionVersionRef) {
-    const { publisherId, extensionId, version } = parseRef(args.extensionVersionRef);
-    config.extensionRef = `${publisherId}/${extensionId}`;
-    config.extensionVersion = version ?? "";
+    const ref = refs.parse(args.extensionVersionRef);
+    config.extensionRef = refs.toExtensionRef(ref);
+    config.extensionVersion = ref.version ?? "";
   } else {
     throw new FirebaseError("No ExtensionVersion or ExtensionSource provided but one is required.");
   }
@@ -364,11 +363,11 @@ export async function updateInstanceFromRegistry(
   extRef: string,
   params?: { [option: string]: string }
 ): Promise<any> {
-  const { publisherId, extensionId, version } = parseRef(extRef);
+  const ref = refs.parse(extRef);
   const body: any = {
     config: {
-      extensionRef: `${publisherId}/${extensionId}`,
-      extensionVersion: version,
+      extensionRef: refs.toExtensionRef(ref),
+      extensionVersion: ref.version,
     },
   };
   let updateMask = "config.extension_ref,config.extension_version";
@@ -473,31 +472,29 @@ export function getSource(sourceName: string): Promise<ExtensionSource> {
 /**
  * @param ref user-friendly identifier for the ExtensionVersion (publisher-id/extension-id@1.0.0)
  */
-export async function getExtensionVersion(ref: string): Promise<ExtensionVersion> {
-  const { publisherId, extensionId, version } = parseRef(ref);
-  if (!version) {
-    throw new FirebaseError(`ExtensionVersion ref "${ref}" must supply a version.`);
+export async function getExtensionVersion(extensionVersionRef: string): Promise<ExtensionVersion> {
+  const ref = refs.parse(extensionVersionRef);
+  if (!ref.version) {
+    throw new FirebaseError(`ExtensionVersion ref "${extensionVersionRef}" must supply a version.`);
   }
   try {
-    const res = await api.request(
-      "GET",
-      `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}/versions/${version}`,
-      {
-        auth: true,
-        origin: api.extensionsOrigin,
-      }
-    );
+    const res = await api.request("GET", `/${VERSION}/${refs.toExtensionVersionName(ref)}`, {
+      auth: true,
+      origin: api.extensionsOrigin,
+    });
     if (res.body.spec) {
       populateResourceProperties(res.body.spec);
     }
     return res.body;
   } catch (err) {
     if (err.status === 404) {
-      throw refNotFoundError(publisherId, extensionId, version);
+      throw refNotFoundError(ref);
     } else if (err instanceof FirebaseError) {
       throw err;
     }
-    throw new FirebaseError(`Failed to query the extension version '${clc.bold(ref)}': ${err}`);
+    throw new FirebaseError(
+      `Failed to query the extension version '${clc.bold(extensionVersionRef)}': ${err}`
+    );
   }
 }
 
@@ -536,7 +533,7 @@ export async function listExtensionVersions(
   ref: string,
   filter?: string
 ): Promise<ExtensionVersion[]> {
-  const { publisherId, extensionId } = parseRef(ref);
+  const { publisherId, extensionId } = refs.parse(ref);
   const extensionVersions: ExtensionVersion[] = [];
   const getNextPage = async (pageToken?: string) => {
     const res = await api.request(
@@ -585,29 +582,29 @@ export async function registerPublisherProfile(
 
 /**
  * @param packageUri public URI of a zip or tarball of the extension source code
- * @param ref user-friendly identifier for the ExtensionVersion (publisher-id/extension-id@1.0.0)
+ * @param extensionVersionRef user-friendly identifier for the ExtensionVersion (publisher-id/extension-id@1.0.0)
  * @param extensionRoot directory location of extension.yaml in the archived package, defaults to "/".
  */
 export async function publishExtensionVersion(
-  ref: string,
+  extensionVersionRef: string,
   packageUri: string,
   extensionRoot?: string
 ): Promise<ExtensionVersion> {
-  const { publisherId, extensionId, version } = parseRef(ref);
-  if (!version) {
-    throw new FirebaseError(`ExtensionVersion ref "${ref}" must supply a version.`);
+  const ref = refs.parse(extensionVersionRef);
+  if (!ref.version) {
+    throw new FirebaseError(`ExtensionVersion ref "${extensionVersionRef}" must supply a version.`);
   }
 
   // TODO(b/185176470): Publishing an extension with a previously deleted name will return 409.
   // Need to surface a better error, potentially by calling getExtension.
   const publishRes = await api.request(
     "POST",
-    `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}/versions:publish`,
+    `/${VERSION}/${refs.toExtensionName(ref)}/versions:publish`,
     {
       auth: true,
       origin: api.extensionsOrigin,
       data: {
-        versionId: version,
+        versionId: ref.version,
         packageUri,
         extensionRoot: extensionRoot ?? "/",
       },
@@ -624,14 +621,14 @@ export async function publishExtensionVersion(
 
 /**
  * @deprecated This endpoint is replaced with deleteExtension.
- * @param ref user-friendly identifier for the Extension (publisher-id/extension-id)
+ * @param extensionRef user-friendly identifier for the Extension (publisher-id/extension-id)
  */
-export async function unpublishExtension(ref: string): Promise<void> {
-  const { publisherId, extensionId, version } = parseRef(ref);
-  if (version) {
-    throw new FirebaseError(`Extension reference "${ref}" must not contain a version.`);
+export async function unpublishExtension(extensionRef: string): Promise<void> {
+  const ref = refs.parse(extensionRef);
+  if (ref.version) {
+    throw new FirebaseError(`Extension reference "${extensionRef}" must not contain a version.`);
   }
-  const url = `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}:unpublish`;
+  const url = `/${VERSION}/${refs.toExtensionName(ref)}:unpublish`;
   try {
     await api.request("POST", url, {
       auth: true,
@@ -641,14 +638,14 @@ export async function unpublishExtension(ref: string): Promise<void> {
     if (err.status === 403) {
       throw new FirebaseError(
         `You are not the owner of extension '${clc.bold(
-          ref
+          extensionRef
         )}' and don’t have the correct permissions to unpublish this extension.`,
         { status: err.status }
       );
     } else if (err instanceof FirebaseError) {
       throw err;
     }
-    throw new FirebaseError(`Error occurred unpublishing extension '${ref}': ${err}`, {
+    throw new FirebaseError(`Error occurred unpublishing extension '${extensionRef}': ${err}`, {
       status: err.status,
     });
   }
@@ -657,14 +654,14 @@ export async function unpublishExtension(ref: string): Promise<void> {
 /**
  * Delete a published extension.
  * This will also mark the name as reserved to prevent future usages.
- * @param ref user-friendly identifier for the Extension (publisher-id/extension-id)
+ * @param extensionRef user-friendly identifier for the Extension (publisher-id/extension-id)
  */
-export async function deleteExtension(ref: string): Promise<void> {
-  const { publisherId, extensionId, version } = parseRef(ref);
-  if (version) {
-    throw new FirebaseError(`Extension reference "${ref}" must not contain a version.`);
+export async function deleteExtension(extensionRef: string): Promise<void> {
+  const ref = refs.parse(extensionRef);
+  if (ref.version) {
+    throw new FirebaseError(`Extension reference "${extensionRef}" must not contain a version.`);
   }
-  const url = `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}`;
+  const url = `/${VERSION}/${refs.toExtensionName(ref)}`;
   try {
     await api.request("DELETE", url, {
       auth: true,
@@ -674,16 +671,16 @@ export async function deleteExtension(ref: string): Promise<void> {
     if (err.status === 403) {
       throw new FirebaseError(
         `You are not the owner of extension '${clc.bold(
-          ref
+          extensionRef
         )}' and don’t have the correct permissions to delete this extension.`,
         { status: err.status }
       );
     } else if (err.status === 404) {
-      throw new FirebaseError(`Extension ${clc.bold(ref)} was not found.`);
+      throw new FirebaseError(`Extension ${clc.bold(extensionRef)} was not found.`);
     } else if (err instanceof FirebaseError) {
       throw err;
     }
-    throw new FirebaseError(`Error occurred delete extension '${ref}': ${err}`, {
+    throw new FirebaseError(`Error occurred delete extension '${extensionRef}': ${err}`, {
       status: err.status,
     });
   }
@@ -693,44 +690,34 @@ export async function deleteExtension(ref: string): Promise<void> {
  * @param ref user-friendly identifier for the Extension (publisher-id/extension-id)
  * @return the extension
  */
-export async function getExtension(ref: string): Promise<Extension> {
-  const { publisherId, extensionId } = parseRef(ref);
+export async function getExtension(extensionRef: string): Promise<Extension> {
+  const ref = refs.parse(extensionRef);
   try {
-    const res = await api.request(
-      "GET",
-      `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}`,
-      {
-        auth: true,
-        origin: api.extensionsOrigin,
-      }
-    );
+    const res = await api.request("GET", `/${VERSION}/${refs.toExtensionName(ref)}`, {
+      auth: true,
+      origin: api.extensionsOrigin,
+    });
     return res.body;
   } catch (err) {
     if (err.status === 404) {
-      throw refNotFoundError(publisherId, extensionId);
+      throw refNotFoundError(ref);
     } else if (err instanceof FirebaseError) {
       throw err;
     }
-    throw new FirebaseError(`Failed to query the extension '${clc.bold(ref)}': ${err}`, {
+    throw new FirebaseError(`Failed to query the extension '${clc.bold(extensionRef)}': ${err}`, {
       status: err.status,
     });
   }
 }
 
-function refNotFoundError(
-  publisherId: string,
-  extensionId: string,
-  versionId?: string
-): FirebaseError {
-  const versionRef = `${publisherId}/${extensionId}@${versionId}`;
-  const extensionRef = `${publisherId}/${extensionId}`;
+function refNotFoundError(ref: refs.Ref): FirebaseError {
   return new FirebaseError(
     `The extension reference '${clc.bold(
-      versionId ? versionRef : extensionRef
+      ref.version ? refs.toExtensionVersionRef(ref) : refs.toExtensionRef(ref)
     )}' doesn't exist. This could happen for two reasons:\n` +
-      `  -The publisher ID '${clc.bold(publisherId)}' doesn't exist or could be misspelled\n` +
-      `  -The name of the ${versionId ? "extension version" : "extension"} '${clc.bold(
-        versionId ? `${extensionId}@${versionId}` : extensionId
+      `  -The publisher ID '${clc.bold(ref.publisherId)}' doesn't exist or could be misspelled\n` +
+      `  -The name of the ${ref.version ? "extension version" : "extension"} '${clc.bold(
+        ref.version ? `${ref.extensionId}@${ref.version}` : ref.extensionId
       )}' doesn't exist or could be misspelled\n\n` +
       `Please correct the extension reference and try again. If you meant to install an extension from a local source, please provide a relative path prefixed with '${clc.bold(
         "./"
@@ -741,59 +728,4 @@ function refNotFoundError(
       )}`,
     { status: 404 }
   );
-}
-
-/**
- * @param ref user-friendly identifier
- * @return array of ref split into publisher id, extension id, and version id (if applicable)
- */
-export function parseRef(
-  ref: string
-): {
-  publisherId: string;
-  extensionId: string;
-  version?: string;
-} {
-  const parts = refRegex.exec(ref);
-  // Exec additionally returns original string, index, & input values.
-  if (parts && (parts.length == 5 || parts.length == 7)) {
-    const publisherId = parts[1];
-    const extensionId = parts[2];
-    const version = parts[4];
-    if (version && !semver.valid(version) && version !== "latest") {
-      throw new FirebaseError(`Extension reference ${ref} contains an invalid version ${version}.`);
-    }
-    return { publisherId, extensionId, version };
-  }
-  throw new FirebaseError(
-    "Extension reference must be in format '{publisher}/{extension}(@{version})'."
-  );
-}
-
-/**
- * @param extensionVersionName resource name of the format `publishers/<publisherID>/extensions/<extensionID>/versions/<versionID>`
- * @return array of ref split into publisher id, extension id, and version id (if applicable)
- */
-export function parseExtensionVersionName(
-  extensionVersionName: string
-): {
-  publisherId: string;
-  extensionId: string;
-  version?: string;
-} {
-  const parts = extensionVersionName.split("/");
-  if (
-    parts.length !== 6 ||
-    parts[0] !== "publishers" ||
-    parts[2] !== "extensions" ||
-    parts[4] !== "versions"
-  ) {
-    throw new FirebaseError(
-      "Extension version name must be in the format `publishers/<publisherID>/extensions/<extensionID>/versions/<versionID>`."
-    );
-  }
-  const publisherId = parts[1];
-  const extensionId = parts[3];
-  const version = parts[5];
-  return { publisherId, extensionId, version };
 }
