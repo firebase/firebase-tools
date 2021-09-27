@@ -27,6 +27,11 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     next();
   });
 
+  gcloudStorageAPI.post(["/b", "/storage/v1/b"], (req, res) => {
+    storageLayer.createBucket(req.params[0]);
+    res.json(storageLayer.getBucketMetadata(req.params[0]));
+  });
+
   gcloudStorageAPI.get(["/b", "/storage/v1/b"], (req, res) => {
     res.json({
       kind: "storage#buckets",
