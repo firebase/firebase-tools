@@ -298,6 +298,7 @@ describe("paramHelper", () => {
           param: "A_PARAMETER",
           label: "Param",
           default: "new default",
+          reconfiguring: true,
           type: ParamType.STRING,
           required: true,
         },
@@ -311,6 +312,7 @@ describe("paramHelper", () => {
           param: "THIRD",
           label: "3rd",
           default: "New Default",
+          reconfiguring: true,
           type: ParamType.STRING,
         },
       ]);
