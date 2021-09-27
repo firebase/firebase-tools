@@ -6,7 +6,6 @@ import * as extensionsApi from "../../extensions/extensionsApi";
 import * as refs from "../../extensions/refs";
 import { readEnvFile } from "../../extensions/paramHelper";
 
-
 export interface InstanceSpec {
   instanceId: string;
   ref?: refs.Ref;
@@ -62,11 +61,12 @@ export async function want(
 
 /**
  * resolveVersion resolves a semver string to the max matching version.
+ * Exported for testing.
  * @param publisherId
  * @param extensionId
  * @param version a semver or semver range
  */
-async function resolveVersion(ref: refs.Ref): Promise<string> {
+export async function resolveVersion(ref: refs.Ref): Promise<string> {
   if (!ref.version || ref.version == "latest") {
     return "latest";
   }

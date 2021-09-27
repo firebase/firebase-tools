@@ -28,7 +28,10 @@ export function createsSummary(toCreate: planner.InstanceSpec[]): string {
     : "";
 }
 
-export function updatesSummary(toUpdate: planner.InstanceSpec[], have: planner.InstanceSpec[]): string {
+export function updatesSummary(
+  toUpdate: planner.InstanceSpec[],
+  have: planner.InstanceSpec[]
+): string {
   const summary = toUpdate
     .map((to) => {
       const from = have.find((exists) => exists.instanceId == to.instanceId);

@@ -1,10 +1,10 @@
 import { Options } from "../../options";
-import * as args from "./args";
+import { Payload } from "./args";
 
 export async function release(
   context: any, // TODO: type this
   options: Options,
-  payload: args.Payload,
+  payload: Payload
 ) {
   /**
    * Outline:
