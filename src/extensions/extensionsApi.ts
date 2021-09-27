@@ -149,6 +149,7 @@ export interface Param {
   validationErrorMessage?: string;
   immutable?: boolean;
   example?: string;
+  reconfiguring?: boolean;
 }
 
 export enum ParamType {

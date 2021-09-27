@@ -19,7 +19,7 @@ export async function listSecrets(projectId: string): Promise<Secret[]> {
     auth: true,
     origin: api.secretManagerOrigin,
   });
-  return listRes.body.secrets.map((s: any) => parseSecret(s.name));
+  return listRes.body.secrets.map((s: any) => parseSecretResourceName(s.name));
 }
 
 export async function getSecret(projectId: string, name: string): Promise<Secret> {
@@ -27,7 +27,7 @@ export async function getSecret(projectId: string, name: string): Promise<Secret
     auth: true,
     origin: api.secretManagerOrigin,
   });
-  return parseSecret(getRes.body.name);
+  return parseSecretResourceName(getRes.body.name);
 }
 
 export async function secretExists(projectId: string, name: string): Promise<boolean> {
@@ -42,7 +42,7 @@ export async function secretExists(projectId: string, name: string): Promise<boo
   }
 }
 
-function parseSecret(resourceName: string): Secret {
+export function parseSecretResourceName(resourceName: string): Secret {
   const nameTokens = resourceName.split("/");
   return {
     projectId: nameTokens[1],
@@ -64,7 +64,7 @@ export async function createSecret(projectId: string, name: string): Promise<Sec
       },
     }
   );
-  return parseSecret(createRes.body.name);
+  return parseSecretResourceName(createRes.body.name);
 }
 
 export async function addVersion(secret: Secret, payloadData: string): Promise<SecretVersion> {
@@ -104,13 +104,13 @@ export async function grantFirexServiceAgentSecretAdminRole(secret: Secret): Pro
   const firexSaProjectId = utils.envOverride("FIREX_SA_PROJECT_ID", "gcp-sa-firebasemods");
   const saEmail = `service-${projectNumber}@${firexSaProjectId}.iam.gserviceaccount.com`;
 
-  const bindings = getPolicyRes.body.bindings;
+  const bindings = getPolicyRes.body.bindings || [];
   if (
-    bindings.findIndex(
+    bindings.find(
       (b: any) =>
         b.role == "roles/secretmanager.admin" &&
         b.members.find((m: string) => m == `serviceAccount:${saEmail}`)
-    ) > -1
+    )
   ) {
     // binding already exists, short-circuit.
     return;

@@ -30,6 +30,7 @@ function setNewDefaults(
   params.forEach((param) => {
     if (newDefaults[param.param.toUpperCase()]) {
       param.default = newDefaults[param.param.toUpperCase()];
+      param.reconfiguring = true;
     }
   });
   return params;

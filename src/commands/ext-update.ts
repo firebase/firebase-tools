@@ -236,6 +236,8 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
           }
         }
       }
+      // make a copy of existingParams -- they get overridden by paramHelper.getParamsForUpdate
+      const oldParamValues = { ...existingParams };
       const newParams = await paramHelper.getParamsForUpdate({
         spec: existingSpec,
         newSpec,
@@ -255,7 +257,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
       } else {
         updateOptions.source = newSource;
       }
-      if (!_.isEqual(newParams, existingParams)) {
+      if (!_.isEqual(newParams, oldParamValues)) {
         updateOptions.params = newParams;
       }
       await update(updateOptions);

@@ -10,6 +10,11 @@ import { logger } from "../logger";
 import { promptOnce } from "../prompt";
 import * as utils from "../utils";
 
+enum SecretUpdateAction {
+  LEAVE,
+  SET_NEW,
+}
+
 export function checkResponse(response: string, spec: Param): boolean {
   let valid = true;
   let responses: string[];
@@ -129,10 +134,42 @@ async function promptSecret(
   instanceId: string,
   paramSpec: Param
 ): Promise<string> {
-  let secretName = `ext-${instanceId}-${paramSpec.param}`;
-  while (await secretManagerApi.secretExists(projectId, secretName)) {
-    secretName += `-${getRandomString(3)}`;
+  if (paramSpec.reconfiguring) {
+    const action = await promptOnce({
+      type: "list",
+      message: `Choose what you would like to do with this secret:`,
+      choices: [
+        { name: "Leave unchanged", value: SecretUpdateAction.LEAVE },
+        { name: "Set new value", value: SecretUpdateAction.SET_NEW },
+      ],
+    });
+    switch (action) {
+      case SecretUpdateAction.SET_NEW:
+        let secret;
+        let secretName;
+        if (paramSpec.default) {
+          secret = secretManagerApi.parseSecretResourceName(paramSpec.default);
+          secretName = secret.name;
+        } else {
+          secretName = await generateSecretName(projectId, instanceId, paramSpec.param);
+        }
+
+        const secretValue = await promptOnce({
+          name: paramSpec.param,
+          type: "input",
+          message: `Enter new value for ${paramSpec.label.trim()}. This secret will be stored in Cloud Secret Manager as ${secretName}:`,
+        });
+        if (!secret) {
+          secret = await secretManagerApi.createSecret(projectId, secretName);
+        }
+        return addNewSecretVersion(projectId, instanceId, secret, paramSpec, secretValue);
+      case SecretUpdateAction.LEAVE:
+      default:
+        return paramSpec.default || "";
+    }
   }
+
+  const secretName = await generateSecretName(projectId, instanceId, paramSpec.param);
   const secretValue = await promptOnce({
     name: paramSpec.param,
     type: "input",
@@ -140,6 +177,28 @@ async function promptSecret(
     message: `Enter a value for ${paramSpec.label.trim()}. This secret will be stored in Cloud Secret Manager as ${secretName}:`,
   });
   const secret = await secretManagerApi.createSecret(projectId, secretName);
+  return addNewSecretVersion(projectId, instanceId, secret, paramSpec, secretValue);
+}
+
+async function generateSecretName(
+  projectId: string,
+  instanceId: string,
+  paramName: string
+): Promise<string> {
+  let secretName = `ext-${instanceId}-${paramName}`;
+  while (await secretManagerApi.secretExists(projectId, secretName)) {
+    secretName += `-${getRandomString(3)}`;
+  }
+  return secretName;
+}
+
+async function addNewSecretVersion(
+  projectId: string,
+  instanceId: string,
+  secret: secretManagerApi.Secret,
+  paramSpec: Param,
+  secretValue: string
+) {
   const version = await secretManagerApi.addVersion(secret, secretValue);
   await secretManagerApi.grantFirexServiceAgentSecretAdminRole(secret);
   return `projects/${version.secret.projectId}/secrets/${version.secret.name}/versions/${version.versionId}`;
