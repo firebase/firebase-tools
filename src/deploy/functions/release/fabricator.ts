@@ -1,0 +1,463 @@
+import * as clc from "cli-color";
+
+import { FirebaseError } from "../../../error";
+import { functionsOrigin, functionsV2Origin } from "../../../api";
+import * as utils from "../../../utils";
+import { assertExhaustive } from "../../../functional";
+import * as planner from "./planner";
+import * as backend from "../backend";
+import * as helper from "../functionsDeployHelper";
+import * as gcf from "../../../gcp/cloudfunctions";
+import * as gcfV2 from "../../../gcp/cloudfunctionsv2";
+import * as run from "../../../gcp/run";
+import * as proto from "../../../gcp/proto";
+import * as pubsub from "../../../gcp/pubsub";
+import * as scheduler from "../../../gcp/cloudscheduler";
+import { getHumanFriendlyRuntimeName } from "../runtimes";
+import { SourceTokenScraper } from "./sourceTokenScraper";
+import * as poller from "../../../operation-poller";
+import { logger } from "../../../logger";
+import { Executor } from "./executor";
+import { Timer } from "./timer";
+import * as reporter from "./reporter";
+
+// TODO: Tune this for better performance.
+const gcfV1PollerOptions = {
+  apiOrigin: functionsOrigin,
+  apiVersion: gcf.API_VERSION,
+  masterTimeout: 25 * 60 * 1000, // 25 minutes is the maximum build time for a function
+};
+
+const gcfV2PollerOptions = {
+  apiOrigin: functionsV2Origin,
+  apiVersion: gcfV2.API_VERSION,
+  masterTimeout: 25 * 60 * 1000, // 25 minutes is the maximum build time for a function
+};
+
+export interface FabricatorArgs {
+  executor: Executor;
+  functionExecutor: Executor;
+  sourceUrl: string;
+  storage: Record<string, gcfV2.StorageSource>;
+  appEngineLocation: string;
+}
+
+const rethrowAs = (endpoint: backend.Endpoint, op: reporter.OperationType) => (
+  err: unknown
+): void => {
+  throw new reporter.DeploymentError(endpoint, op, err);
+};
+
+/** Fabricators make a customer's backend match a spec by applying a plan. */
+export class Fabricator {
+  executor!: Executor;
+  functionExecutor!: Executor;
+  sourceUrl!: string;
+  storage!: Record<string, gcfV2.StorageSource>;
+  appEngineLocation!: string;
+
+  constructor(args: FabricatorArgs) {
+    proto.copyIfPresent(
+      this,
+      args,
+      "executor",
+      "functionExecutor",
+      "sourceUrl",
+      "storage",
+      "appEngineLocation"
+    );
+  }
+
+  async applyPlan(plan: planner.DeploymentPlan): Promise<reporter.DeployResults> {
+    const deployRegions = Object.values(plan).map((regional) =>
+      this.applyRegionalChanges(regional)
+    );
+    const promiseResults = await utils.allSettled(deployRegions);
+
+    const errs = promiseResults
+      .filter((r) => r.status === "rejected")
+      .map((r) => (r as utils.PromiseRejectedResult).reason);
+    if (errs.length) {
+      logger.debug(
+        "Fabricator.applyRegionalChanges returned an unhandled exception. This should never happen",
+        JSON.stringify(errs, null, 2)
+      );
+    }
+
+    const deployResults: reporter.DeployResults = {};
+    const regionalResults = promiseResults
+      .filter((r) => r.status === "fulfilled")
+      .map<reporter.DeployResults>((r) => (r as utils.PromiseFulfilledResult).value);
+
+    for (const regionalResult of regionalResults) {
+      for (const [region, mapping] of Object.entries(regionalResult)) {
+        // Should always be empty...
+        deployResults[region] = deployResults[region] || {};
+        for (const [id, result] of Object.entries(mapping)) {
+          if (deployResults[region][id]) {
+            throw new Error(`Unexpected duplicate results for function ${id} in region ${region}`);
+          }
+          deployResults[region][id] = { ...result };
+        }
+      }
+    }
+    return deployResults;
+  }
+
+  async applyRegionalChanges(changes: planner.RegionalChanges): Promise<reporter.DeployResults> {
+    const deployResults: reporter.DeployResults = {};
+    let hasErrors = false;
+    const handle = async (
+      op: reporter.OperationType,
+      endpoint: backend.Endpoint,
+      fn: () => Promise<void>
+    ): Promise<void> => {
+      const timer = new Timer();
+      const result: reporter.DeployResult = { durationMs: 0 };
+      try {
+        await fn();
+        this.logOpSuccess(op, endpoint);
+      } catch (err) {
+        hasErrors = true;
+        result.error = err as Error;
+      }
+      result.durationMs = timer.stop();
+      deployResults[endpoint.region] = deployResults[endpoint.region] || {};
+      deployResults[endpoint.region][endpoint.id] = result;
+    };
+
+    const upserts: Array<Promise<void>> = [];
+    const scraper = new SourceTokenScraper();
+    for (const endpoint of changes.endpointsToCreate) {
+      this.logOpStart("creating", endpoint);
+      upserts.push(handle("create", endpoint, () => this.createEndpoint(endpoint, scraper)));
+    }
+    for (const update of changes.endpointsToUpdate) {
+      this.logOpStart("updating", update.endpoint);
+      upserts.push(handle("update", update.endpoint, () => this.updateEndpoint(update, scraper)));
+    }
+    await utils.allSettled(upserts);
+
+    // Note: every promise is generated by handle which records error in results.
+    // We've used hasErrors as a cheater here instead of viewing the results of allSettled
+    if (hasErrors) {
+      for (const endpoint of changes.endpointsToDelete) {
+        deployResults[endpoint.region][endpoint.id] = {
+          durationMs: 0,
+          error: new reporter.AbortedDeploymentError(endpoint),
+        };
+      }
+      return deployResults;
+    }
+
+    const deletes: Array<Promise<void>> = [];
+    for (const endpoint of changes.endpointsToDelete) {
+      this.logOpStart("deleting", endpoint);
+      deletes.push(handle("delete", endpoint, () => this.deleteEndpoint(endpoint)));
+    }
+    await utils.allSettled(deletes);
+
+    return deployResults;
+  }
+
+  async createEndpoint(endpoint: backend.Endpoint, scraper: SourceTokenScraper): Promise<void> {
+    if (endpoint.platform === "gcfv1") {
+      await this.createV1Function(endpoint, scraper);
+    } else if (endpoint.platform === "gcfv2") {
+      await this.createV2Function(endpoint);
+    } else {
+      assertExhaustive(endpoint.platform);
+    }
+
+    await this.setTrigger(endpoint);
+  }
+
+  async updateEndpoint(update: planner.EndpointUpdate, scraper: SourceTokenScraper): Promise<void> {
+    if (update.deleteBeforeUpdate) {
+      await this.deleteEndpoint(update.deleteBeforeUpdate);
+      await this.createEndpoint(update.endpoint, scraper);
+      return;
+    }
+
+    if (update.endpoint.platform === "gcfv1") {
+      await this.updateV1Function(update.endpoint, scraper);
+    } else if (update.endpoint.platform === "gcfv2") {
+      await this.updateV2Function(update.endpoint);
+    } else {
+      assertExhaustive(update.endpoint.platform);
+    }
+
+    await this.setTrigger(update.endpoint);
+  }
+
+  async deleteEndpoint(endpoint: backend.Endpoint): Promise<void> {
+    await this.deleteTrigger(endpoint);
+    if (endpoint.platform === "gcfv1") {
+      await this.deleteV1Function(endpoint);
+    } else {
+      await this.deleteV2Function(endpoint);
+    }
+  }
+
+  async createV1Function(endpoint: backend.Endpoint, scraper: SourceTokenScraper): Promise<void> {
+    const apiFunction = gcf.functionFromEndpoint(endpoint, this.sourceUrl);
+    apiFunction.sourceToken = await scraper.tokenPromise();
+    await this.functionExecutor
+      .run(async () => {
+        const op: { name: string } = await gcf.createFunction(apiFunction);
+        await poller.pollOperation<unknown>({
+          ...gcfV1PollerOptions,
+          pollerName: `create-${endpoint.region}-${endpoint.id}`,
+          operationResourceName: op.name,
+          onPoll: scraper.poller,
+        });
+      })
+      .catch(rethrowAs(endpoint, "create"));
+
+    if (backend.isHttpsTriggered(endpoint)) {
+      const invoker = endpoint.httpsTrigger.invoker || ["public"];
+      if (invoker[0] !== "private") {
+        await this.executor
+          .run(async () => {
+            await gcf.setInvokerCreate(endpoint.project, backend.functionName(endpoint), invoker);
+          })
+          .catch(rethrowAs(endpoint, "set invoker"));
+      }
+    }
+  }
+
+  async createV2Function(endpoint: backend.Endpoint): Promise<void> {
+    const apiFunction = gcfV2.functionFromEndpoint(endpoint, this.storage[endpoint.region]);
+
+    // N.B. As of GCFv2 private preview GCF no longer creates Pub/Sub topics
+    // for Pub/Sub event handlers. This may change, at which point this code
+    // could be deleted.
+    const topic = apiFunction.eventTrigger?.pubsubTopic;
+    if (topic) {
+      await this.executor
+        .run(async () => {
+          try {
+            await pubsub.getTopic(topic);
+          } catch (err) {
+            if (err.status !== 404) {
+              throw new FirebaseError("Unexpected error looking for Pub/Sub topic", {
+                original: err as Error,
+              });
+            }
+            await pubsub.createTopic({ name: topic });
+          }
+        })
+        .catch(rethrowAs(endpoint, "create topic"));
+    }
+
+    const resultFunction = (await this.functionExecutor
+      .run(async () => {
+        const op: { name: string } = await gcfV2.createFunction(apiFunction);
+        return await poller.pollOperation<gcfV2.CloudFunction>({
+          ...gcfV2PollerOptions,
+          pollerName: `create-${endpoint.region}-${endpoint.id}`,
+          operationResourceName: op.name,
+        });
+      })
+      .catch(rethrowAs(endpoint, "create"))) as gcfV2.CloudFunction;
+
+    const serviceName = resultFunction.serviceConfig.service!;
+    if (backend.isHttpsTriggered(endpoint)) {
+      const invoker = endpoint.httpsTrigger.invoker || ["public"];
+      if (invoker[0] !== "private") {
+        await this.executor
+          .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
+          .catch(rethrowAs(endpoint, "set invoker"));
+      }
+    }
+
+    await this.setConcurrency(endpoint, serviceName, endpoint.concurrency || 80);
+  }
+
+  async updateV1Function(endpoint: backend.Endpoint, scraper: SourceTokenScraper): Promise<void> {
+    const apiFunction = gcf.functionFromEndpoint(endpoint, this.sourceUrl);
+    apiFunction.sourceToken = await scraper.tokenPromise();
+    await this.functionExecutor
+      .run(async () => {
+        const op: { name: string } = await gcf.updateFunction(apiFunction);
+        await poller.pollOperation<unknown>({
+          ...gcfV1PollerOptions,
+          pollerName: `update-${endpoint.region}-${endpoint.id}`,
+          operationResourceName: op.name,
+          onPoll: scraper.poller,
+        });
+      })
+      .catch(rethrowAs(endpoint, "update"));
+
+    if (backend.isHttpsTriggered(endpoint) && endpoint.httpsTrigger.invoker) {
+      await this.executor
+        .run(async () => {
+          await gcf.setInvokerUpdate(
+            endpoint.project,
+            backend.functionName(endpoint),
+            endpoint.httpsTrigger.invoker!
+          );
+          return;
+        })
+        .catch(rethrowAs(endpoint, "set invoker"));
+    }
+  }
+
+  async updateV2Function(endpoint: backend.Endpoint): Promise<void> {
+    const apiFunction = gcfV2.functionFromEndpoint(endpoint, this.storage[endpoint.region]);
+
+    // N.B. As of GCFv2 private preview the API chokes on any update call that
+    // includes the pub/sub topic even if that topic is unchanged.
+    // We know that the user hasn't changed the topic between deploys because
+    // of checkForInvalidChangeOfTrigger().
+    if (apiFunction.eventTrigger?.pubsubTopic) {
+      delete apiFunction.eventTrigger.pubsubTopic;
+    }
+
+    const resultFunction = (await this.functionExecutor
+      .run(async () => {
+        const op: { name: string } = await gcfV2.updateFunction(apiFunction);
+        return await poller.pollOperation<gcfV2.CloudFunction>({
+          ...gcfV2PollerOptions,
+          pollerName: `update-${endpoint.region}-${endpoint.id}`,
+          operationResourceName: op.name,
+        });
+      })
+      .catch(rethrowAs(endpoint, "update"))) as gcfV2.CloudFunction;
+
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const serviceName = resultFunction.serviceConfig.service!;
+    if (backend.isHttpsTriggered(endpoint) && endpoint.httpsTrigger.invoker) {
+      await this.executor
+        .run(() =>
+          run.setInvokerUpdate(endpoint.project, serviceName, endpoint.httpsTrigger.invoker!)
+        )
+        .catch(rethrowAs(endpoint, "set invoker"));
+    }
+
+    if (endpoint.concurrency) {
+      await this.setConcurrency(endpoint, serviceName, endpoint.concurrency);
+    }
+  }
+
+  async deleteV1Function(endpoint: backend.Endpoint): Promise<void> {
+    const fnName = backend.functionName(endpoint);
+    await this.functionExecutor
+      .run(async () => {
+        const op: { name: string } = await gcf.deleteFunction(fnName);
+        const pollerOptions = {
+          ...gcfV1PollerOptions,
+          pollerName: `delete-${endpoint.region}-${endpoint.id}`,
+          operationResourceName: op.name,
+        };
+        await poller.pollOperation<void>(pollerOptions);
+      })
+      .catch(rethrowAs(endpoint, "delete"));
+  }
+
+  async deleteV2Function(endpoint: backend.Endpoint): Promise<void> {
+    const fnName = backend.functionName(endpoint);
+    await this.functionExecutor
+      .run(async () => {
+        const op: { name: string } = await gcfV2.deleteFunction(fnName);
+        const pollerOptions = {
+          ...gcfV2PollerOptions,
+          pollerName: `delete-${endpoint.region}-${endpoint.id}`,
+          operationResourceName: op.name,
+        };
+        await poller.pollOperation<void>(pollerOptions);
+      })
+      .catch(rethrowAs(endpoint, "delete"));
+  }
+
+  async setConcurrency(
+    endpoint: backend.Endpoint,
+    serviceName: string,
+    concurrency: number
+  ): Promise<void> {
+    await this.functionExecutor
+      .run(async () => {
+        const service = await run.getService(serviceName);
+        if (service.spec.template.spec.containerConcurrency === concurrency) {
+          logger.debug("Skipping setConcurrency on", serviceName, " because it already matches");
+          return;
+        }
+
+        delete service.status;
+        delete (service.spec.template.metadata as any).name;
+        service.spec.template.spec.containerConcurrency = concurrency;
+        await run.replaceService(serviceName, service);
+      })
+      .catch(rethrowAs(endpoint, "set concurrency"));
+  }
+
+  async setTrigger(endpoint: backend.Endpoint): Promise<void> {
+    if (backend.isScheduleTriggered(endpoint)) {
+      if (endpoint.platform === "gcfv1") {
+        await this.upsertScheduleV1(endpoint);
+        return;
+      } else if (endpoint.platform === "gcfv2") {
+        await this.upsertScheduleV2(endpoint);
+        return;
+      }
+      assertExhaustive(endpoint.platform);
+    }
+  }
+
+  async deleteTrigger(endpoint: backend.Endpoint): Promise<void> {
+    if (backend.isScheduleTriggered(endpoint)) {
+      if (endpoint.platform === "gcfv1") {
+        await this.deleteScheduleV1(endpoint);
+        return;
+      } else if (endpoint.platform === "gcfv2") {
+        await this.deleteScheduleV2(endpoint);
+        return;
+      }
+      assertExhaustive(endpoint.platform);
+    }
+  }
+
+  async upsertScheduleV1(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
+    // The Pub/Sub topic is already created
+    const job = scheduler.jobFromEndpoint(endpoint, this.appEngineLocation);
+    await this.executor
+      .run(() => scheduler.createOrReplaceJob(job))
+      .catch(rethrowAs(endpoint, "upsert schedule"));
+  }
+
+  upsertScheduleV2(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
+    return Promise.reject(
+      new reporter.DeploymentError(endpoint, "upsert schedule", new Error("Not implemented"))
+    );
+  }
+
+  async deleteScheduleV1(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
+    const job = scheduler.jobFromEndpoint(endpoint, this.appEngineLocation);
+    await this.executor
+      .run(() => scheduler.deleteJob(job.name))
+      .catch(rethrowAs(endpoint, "delete schedule"));
+
+    await this.executor
+      .run(() => pubsub.deleteTopic(job.pubsubTarget!.topicName))
+      .catch(rethrowAs(endpoint, "delete topic"));
+  }
+
+  deleteScheduleV2(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
+    return Promise.reject(
+      new reporter.DeploymentError(endpoint, "delete schedule", new Error("Not implemented"))
+    );
+  }
+
+  logOpStart(op: string, endpoint: backend.Endpoint): void {
+    const runtime = getHumanFriendlyRuntimeName(endpoint.runtime);
+    const label = helper.getFunctionLabel(endpoint);
+    utils.logBullet(
+      `${clc.bold.cyan("functions: ")} ${op} ${runtime} function ${clc.bold(label)}...`
+    );
+  }
+
+  logOpSuccess(op: string, endpoint: backend.Endpoint): void {
+    const label = helper.getFunctionLabel(endpoint);
+    utils.logSuccess(`${clc.bold.green(`functions[${label}]`)} Successful ${op} operation.`);
+  }
+}

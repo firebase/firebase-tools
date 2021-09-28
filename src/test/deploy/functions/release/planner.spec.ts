@@ -65,7 +65,7 @@ describe("planner", () => {
       }
       expect(planner.calculateUpdate(changed, original)).to.deep.equal({
         endpoint: changed,
-        deleteAndRecreate: true,
+        deleteBeforeUpdate: original,
       });
     });
 
@@ -79,7 +79,7 @@ describe("planner", () => {
       allowV2Upgrades();
       expect(planner.calculateUpdate(changed, original)).to.deep.equal({
         endpoint: changed,
-        deleteAndRecreate: true,
+        deleteBeforeUpdate: original,
       });
     });
 
@@ -95,7 +95,6 @@ describe("planner", () => {
       };
       expect(planner.calculateUpdate(v2Function, v1Function)).to.deep.equal({
         endpoint: v2Function,
-        deleteAndRecreate: false,
       });
     });
   });
@@ -117,7 +116,6 @@ describe("planner", () => {
         endpointsToUpdate: [
           {
             endpoint: updated,
-            deleteAndRecreate: false,
           },
         ],
         endpointsToDelete: [deleted],
@@ -147,7 +145,6 @@ describe("planner", () => {
           endpointsToUpdate: [
             {
               endpoint: group1Updated,
-              deleteAndRecreate: false,
             },
           ],
           endpointsToDelete: [group1Deleted],
