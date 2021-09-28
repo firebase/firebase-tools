@@ -288,6 +288,22 @@ export function empty(): Backend {
 }
 
 /**
+ * A helper utility to create a backend from a list of endpoints.
+ * Useful in unit tests.
+ */
+export function of(...endpoints: Endpoint[]): Backend {
+  const bkend = { ...empty() };
+  for (const endpoint of endpoints) {
+    bkend.endpoints[endpoint.region] = bkend.endpoints[endpoint.region] || {};
+    if (bkend.endpoints[endpoint.region][endpoint.id]) {
+      throw new Error("Trying to create a backend with the same endpiont twice");
+    }
+    bkend.endpoints[endpoint.region][endpoint.id] = endpoint;
+  }
+  return bkend;
+}
+
+/**
  * A helper utility to test whether a backend is empty.
  * Consumers should use this before assuming a backend is empty (e.g. nooping
  * deploy processes) because it's possible that fields have been added.

@@ -22,11 +22,6 @@ describe("planner", () => {
     sinon.verifyAndRestore();
   });
 
-  const OPTIONS = {
-    filters: [[]] as string[][],
-    overwriteEnvs: false,
-  };
-
   function func(
     id: string,
     region: string,
@@ -44,25 +39,11 @@ describe("planner", () => {
     } as backend.Endpoint;
   }
 
-  function backendOf(...endpoints: backend.Endpoint[]): backend.Backend {
-    const bkend = { ...backend.empty() };
-    for (const endpoint of endpoints) {
-      bkend.endpoints[endpoint.region] = bkend.endpoints[endpoint.region] || {};
-      if (bkend.endpoints[endpoint.region][endpoint.id]) {
-        throw new Error(
-          "Bug in test code; trying to create a backend with the same endpiont twice"
-        );
-      }
-      bkend.endpoints[endpoint.region][endpoint.id] = endpoint;
-    }
-    return bkend;
-  }
-
   describe("calculateUpdate", () => {
     it("throws on illegal updates", () => {
       const httpsFunc = func("a", "b", { httpsTrigger: {} });
       const scheduleFunc = func("a", "b", { scheduleTrigger: {} });
-      expect(() => planner.calculateUpdate(httpsFunc, scheduleFunc, OPTIONS)).to.throw;
+      expect(() => planner.calculateUpdate(httpsFunc, scheduleFunc)).to.throw;
     });
 
     it("knows to delete & recreate for v2 topic changes", () => {
@@ -82,7 +63,7 @@ describe("planner", () => {
       if (backend.isEventTriggered(changed)) {
         changed.eventTrigger.eventFilters["resource"] = "anotherTopic";
       }
-      expect(planner.calculateUpdate(changed, original, OPTIONS)).to.deep.equal({
+      expect(planner.calculateUpdate(changed, original)).to.deep.equal({
         endpoint: changed,
         deleteAndRecreate: true,
       });
@@ -96,7 +77,7 @@ describe("planner", () => {
       const changed: backend.Endpoint = { ...original, platform: "gcfv2" };
 
       allowV2Upgrades();
-      expect(planner.calculateUpdate(changed, original, OPTIONS)).to.deep.equal({
+      expect(planner.calculateUpdate(changed, original)).to.deep.equal({
         endpoint: changed,
         deleteAndRecreate: true,
       });
@@ -112,56 +93,8 @@ describe("planner", () => {
         platform: "gcfv1",
         availableMemoryMb: 512,
       };
-      expect(planner.calculateUpdate(v2Function, v1Function, OPTIONS)).to.deep.equal({
+      expect(planner.calculateUpdate(v2Function, v1Function)).to.deep.equal({
         endpoint: v2Function,
-        deleteAndRecreate: false,
-      });
-    });
-
-    it("updates env variables when told", () => {
-      const original: backend.Endpoint = {
-        ...func("a", "b"),
-        environmentVariables: {
-          foo: "bar",
-        },
-      };
-      const updated: backend.Endpoint = {
-        ...func("a", "b"),
-        environmentVariables: {
-          baz: "qux",
-        },
-      };
-      const options = {
-        ...OPTIONS,
-        overwriteEnvs: true,
-      };
-      expect(planner.calculateUpdate(updated, original, options)).to.deep.equal({
-        endpoint: updated,
-        deleteAndRecreate: false,
-      });
-    });
-
-    it("merges env variables when told", () => {
-      const original: backend.Endpoint = {
-        ...func("a", "b"),
-        environmentVariables: {
-          foo: "bar",
-        },
-      };
-      const updated: backend.Endpoint = {
-        ...func("a", "b"),
-        environmentVariables: {
-          baz: "qux",
-        },
-      };
-      expect(planner.calculateUpdate(updated, original, OPTIONS)).to.deep.equal({
-        endpoint: {
-          ...updated,
-          environmentVariables: {
-            foo: "bar",
-            baz: "qux",
-          },
-        },
         deleteAndRecreate: false,
       });
     });
@@ -179,7 +112,7 @@ describe("planner", () => {
       const have = { updated, deleted, pantheon };
 
       // note: pantheon is not updated in any way
-      expect(planner.calculateRegionalChanges(want, have, OPTIONS)).to.deep.equal({
+      expect(planner.calculateRegionalChanges(want, have)).to.deep.equal({
         endpointsToCreate: [created],
         endpointsToUpdate: [
           {
@@ -205,15 +138,10 @@ describe("planner", () => {
       group1Deleted.labels = deploymentTool.labels();
       group2Deleted.labels = deploymentTool.labels();
 
-      const want = backendOf(group1Updated, group1Created, group2Updated, group2Created);
-      const have = backendOf(group1Updated, group1Deleted, group2Updated, group2Deleted);
+      const want = backend.of(group1Updated, group1Created, group2Updated, group2Created);
+      const have = backend.of(group1Updated, group1Deleted, group2Updated, group2Deleted);
 
-      const options = {
-        ...OPTIONS,
-        filters: [["g1"]],
-      };
-
-      expect(planner.createDeploymentPlan(want, have, options)).to.deep.equal({
+      expect(planner.createDeploymentPlan(want, have, [["g1"]])).to.deep.equal({
         region: {
           endpointsToCreate: [group1Created],
           endpointsToUpdate: [
@@ -233,11 +161,11 @@ describe("planner", () => {
       const upgraded: backend.Endpoint = { ...original };
       upgraded.platform = "gcfv2";
 
-      const have = backendOf(original);
-      const want = backendOf(upgraded);
+      const have = backend.of(original);
+      const want = backend.of(upgraded);
 
       allowV2Upgrades();
-      planner.createDeploymentPlan(want, have, OPTIONS);
+      planner.createDeploymentPlan(want, have, []);
       expect(logLabeledBullet).to.have.been.calledOnceWith(
         "functions",
         sinon.match(/change this with the 'concurrency' option/)
@@ -251,11 +179,11 @@ describe("planner", () => {
     // should be no warning
     const v2Function: backend.Endpoint = { ...func("id", "region"), platform: "gcfv2" };
 
-    planner.createDeploymentPlan(backendOf(v2Function), backendOf(v2Function), OPTIONS);
+    planner.createDeploymentPlan(backend.of(v2Function), backend.of(v2Function), []);
     expect(logLabeledBullet).to.not.have.been.called;
 
     const v1Function: backend.Endpoint = { ...func("id", "region"), platform: "gcfv1" };
-    planner.createDeploymentPlan(backendOf(v1Function), backendOf(v1Function), OPTIONS);
+    planner.createDeploymentPlan(backend.of(v1Function), backend.of(v1Function), []);
     expect(logLabeledBullet).to.not.have.been.called;
 
     // Upgraded but specified concurrency
@@ -264,7 +192,7 @@ describe("planner", () => {
       platform: "gcfv2",
       concurrency: 80,
     };
-    planner.createDeploymentPlan(backendOf(concurrencyUpgraded), backendOf(v1Function), OPTIONS);
+    planner.createDeploymentPlan(backend.of(concurrencyUpgraded), backend.of(v1Function), []);
     expect(logLabeledBullet).to.not.have.been.called;
   });
 
