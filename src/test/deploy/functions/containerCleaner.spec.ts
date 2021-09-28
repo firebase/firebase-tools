@@ -78,23 +78,25 @@ describe("DockerHelper", () => {
     deleteTag.callsFake((path: string, tag: string) => {
       if (firstDeleteTag) {
         firstDeleteTag = false;
-        throw new Error("I'm flaky");
+        return Promise.reject(new Error("I'm flaky"));
       }
       if (!remainingTags[path].includes(tag)) {
-        throw new Error("Cannot remove tag twice");
+        return Promise.reject(new Error("Cannot remove tag twice"));
       }
       remainingTags[path].splice(remainingTags[path].indexOf(tag), 1);
+      return Promise.resolve();
     });
 
     let firstDeleteImage = true;
     deleteImage.callsFake((path: string, digest: string) => {
       if (firstDeleteImage) {
         firstDeleteImage = false;
-        throw new Error("I'm flaky");
+        return Promise.reject(new Error("I'm flaky"));
       }
       if (remainingTags[path].length) {
-        throw new Error("Cannot remove image while tags still pin it");
+        return Promise.reject(new Error("Cannot remove image while tags still pin it"));
       }
+      return Promise.resolve();
     });
 
     await helper.rm("foo/bar");
