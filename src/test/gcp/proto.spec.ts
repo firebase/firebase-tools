@@ -175,6 +175,12 @@ describe("proto", () => {
         "serviceAccount:service-account2@project.iam.gserviceaccount.com",
       ]);
     });
+    
+    it("should return user accounts unformatted", () => {
+      const invokerMembers = proto.getInvokerMembers(["user:alice@example.com"], "project");
+
+      expect(invokerMembers).to.deep.eq(["user:alice@example.com"]);
+    });
   });
 
   describe("formatServiceAccount", () => {
