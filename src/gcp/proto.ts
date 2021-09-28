@@ -140,10 +140,10 @@ export function getInvokerMembers(invoker: string[], projectId: string): string[
     return ["allUsers"];
   }
   return invoker.map((inv) => {
-    if (inv.startsWith('user:')) {
-      return inv
+    if (inv.startsWith("user:")) {
+      return inv;
     } else {
-      return formatServiceAccount(inv, projectId)
+      return formatServiceAccount(inv, projectId);
     }
   });
 }
