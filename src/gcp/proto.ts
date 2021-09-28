@@ -139,7 +139,13 @@ export function getInvokerMembers(invoker: string[], projectId: string): string[
   if (invoker[0] === "public") {
     return ["allUsers"];
   }
-  return invoker.map((inv) => formatServiceAccount(inv, projectId));
+  return invoker.map((inv) => {
+    if (inv.startsWith('user:')) {
+      return inv
+    } else {
+      return formatServiceAccount(inv, projectId)
+    }
+  });
 }
 
 /**
