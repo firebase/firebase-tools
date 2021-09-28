@@ -19,7 +19,7 @@ function extensionVersion(version: string): extensionsApi.ExtensionVersion {
     },
   };
 }
-describe.only("Extensions Deployment Planner", () => {
+describe("Extensions Deployment Planner", () => {
   describe("resolveSemver", () => {
     let listExtensionVersionsStub: sinon.SinonStub;
 
