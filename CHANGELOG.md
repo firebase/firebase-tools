@@ -1,0 +1,1 @@
+- `ext:install`, `ext:update` and `ext:configure` now support param type `secret`.
