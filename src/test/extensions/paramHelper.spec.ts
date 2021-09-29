@@ -12,6 +12,7 @@ import * as paramHelper from "../../extensions/paramHelper";
 import * as prompt from "../../prompt";
 
 const PROJECT_ID = "test-proj";
+const INSTANCE_ID = "ext-instance";
 const TEST_PARAMS: Param[] = [
   {
     param: "A_PARAMETER",
@@ -100,6 +101,7 @@ describe("paramHelper", () => {
         paramSpecs: TEST_PARAMS,
         nonInteractive: false,
         paramsEnvPath: "./a/path/to/a/file.env",
+        instanceId: INSTANCE_ID,
       });
 
       expect(params).to.eql({
@@ -118,6 +120,7 @@ describe("paramHelper", () => {
         paramSpecs: TEST_PARAMS,
         nonInteractive: false,
         paramsEnvPath: "./a/path/to/a/file.env",
+        instanceId: INSTANCE_ID,
       });
 
       expect(params).to.eql({
@@ -136,6 +139,7 @@ describe("paramHelper", () => {
         paramSpecs: TEST_PARAMS_3,
         nonInteractive: false,
         paramsEnvPath: "./a/path/to/a/file.env",
+        instanceId: INSTANCE_ID,
       });
 
       expect(params).to.eql({
@@ -154,6 +158,7 @@ describe("paramHelper", () => {
           paramSpecs: TEST_PARAMS,
           nonInteractive: false,
           paramsEnvPath: "./a/path/to/a/file.env",
+          instanceId: INSTANCE_ID,
         })
       ).to.be.rejectedWith(
         FirebaseError,
@@ -174,6 +179,7 @@ describe("paramHelper", () => {
         paramSpecs: TEST_PARAMS,
         nonInteractive: false,
         paramsEnvPath: "./a/path/to/a/file.env",
+        instanceId: INSTANCE_ID,
       });
 
       expect(loggerSpy).to.have.been.calledWith(
@@ -191,6 +197,7 @@ describe("paramHelper", () => {
           paramSpecs: TEST_PARAMS,
           nonInteractive: false,
           paramsEnvPath: "./a/path/to/a/file.env",
+          instanceId: INSTANCE_ID,
         })
       ).to.be.rejectedWith(FirebaseError, "Error reading env file: Error during parsing");
     });
@@ -199,6 +206,7 @@ describe("paramHelper", () => {
       const params = await paramHelper.getParams({
         projectId: PROJECT_ID,
         paramSpecs: TEST_PARAMS,
+        instanceId: INSTANCE_ID,
       });
 
       expect(params).to.eql({
@@ -334,6 +342,7 @@ describe("paramHelper", () => {
           ANOTHER_PARAMETER: "value",
         },
         projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
       });
 
       const expected = {
@@ -374,6 +383,7 @@ describe("paramHelper", () => {
           ANOTHER_PARAMETER: "value",
         },
         projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
       });
 
       const expected = {
@@ -398,6 +408,7 @@ describe("paramHelper", () => {
           ANOTHER_PARAMETER: "value",
         },
         projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
       });
 
       const expected = {
@@ -437,6 +448,7 @@ describe("paramHelper", () => {
           ANOTHER_PARAMETER: "value",
         },
         projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
       });
 
       const expected = {
@@ -461,6 +473,7 @@ describe("paramHelper", () => {
             ANOTHER_PARAMETER: "value",
           },
           projectId: PROJECT_ID,
+          instanceId: INSTANCE_ID,
         })
       ).to.be.rejectedWith(FirebaseError, "this is an error");
       // Ensure that we don't continue prompting if one fails
