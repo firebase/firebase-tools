@@ -6,6 +6,8 @@ import { needProjectId } from "../../projectUtils";
 import { logger } from "../../logger";
 import { Payload } from "./args";
 import { FirebaseError } from "../../error";
+import { requirePermissions } from "../../requirePermissions";
+import { ensureExtensionsApiEnabled } from "../../extensions/extensionsHelper";
 
 export async function prepare(
   context: any, // TODO: type this
@@ -14,6 +16,9 @@ export async function prepare(
 ) {
   const projectId = needProjectId(options);
 
+  await ensureExtensionsApiEnabled(options);
+  await requirePermissions(options, ["firebaseextensions.instances.list"]);
+
   const have = await planner.have(projectId);
   const want = await planner.want(options.config.get("extensions"), options.config.projectDir);
 
@@ -21,10 +26,14 @@ export async function prepare(
   payload.instancesToUpdate = want.filter((dep) => have.some(matchesInstanceId(dep)));
   payload.instancesToDelete = have.filter((dep) => !want.some(matchesInstanceId(dep)));
 
+  const permissionsNeeded: string[] = [];
+
   if (payload.instancesToCreate.length) {
+    permissionsNeeded.push("firebaseextensions.instances.create");
     logger.info(deploymentSummary.createsSummary(payload.instancesToCreate));
   }
   if (payload.instancesToUpdate.length) {
+    permissionsNeeded.push("firebaseextensions.instances.update");
     logger.info(deploymentSummary.updatesSummary(payload.instancesToUpdate, have));
   }
   if (payload.instancesToDelete.length) {
@@ -41,8 +50,12 @@ export async function prepare(
       }))
     ) {
       payload.instancesToDelete = [];
+    } else {
+      permissionsNeeded.push("firebaseextensions.instances.delete");
     }
   }
+
+  await requirePermissions(options, permissionsNeeded);
 }
 
 const matchesInstanceId = (dep: { instanceId: string }) => (test: { instanceId: string }) => {
