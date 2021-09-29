@@ -19,16 +19,10 @@ export interface RegionalChanges {
 
 export type DeploymentPlan = Record<string, RegionalChanges>;
 
-interface Options {
-  filters: string[][];
-  overwriteEnvs?: boolean;
-}
-
 /** Calculate the changes needed for a given region. */
 export function calculateRegionalChanges(
   want: Record<string, backend.Endpoint>,
-  have: Record<string, backend.Endpoint>,
-  options: Options
+  have: Record<string, backend.Endpoint>
 ): RegionalChanges {
   const endpointsToCreate = Object.keys(want)
     .filter((id) => !have[id])
@@ -41,7 +35,7 @@ export function calculateRegionalChanges(
 
   const endpointsToUpdate = Object.keys(want)
     .filter((id) => have[id])
-    .map((id) => calculateUpdate(want[id], have[id], options));
+    .map((id) => calculateUpdate(want[id], have[id]));
   return { endpointsToCreate, endpointsToUpdate, endpointsToDelete };
 }
 
@@ -51,22 +45,10 @@ export function calculateRegionalChanges(
  * Forces a delete & recreate if the underlying API doesn't allow an upgrade but
  * CF3 does.
  */
-export function calculateUpdate(
-  want: backend.Endpoint,
-  have: backend.Endpoint,
-  opts: Options
-): EndpointUpdate {
+export function calculateUpdate(want: backend.Endpoint, have: backend.Endpoint): EndpointUpdate {
   checkForIllegalUpdate(want, have);
 
   const endpoint: backend.Endpoint = { ...want };
-  if (!opts.overwriteEnvs) {
-    // Remember old environment variables that might have been set with gcloud or the cloud console.
-    endpoint.environmentVariables = {
-      ...have.environmentVariables,
-      ...want.environmentVariables,
-    };
-  }
-
   const deleteAndRecreate =
     changedV2PubSubTopic(want, have) || upgradedScheduleFromV1ToV2(want, have);
   return { endpoint, deleteAndRecreate };
@@ -76,31 +58,26 @@ export function calculateUpdate(
  * Create a plan for deploying all functions in one region.
  * @param want the desired state
  * @param have the current state
- * @param options.filters The filters, passed in by the user via  `--only functions:`
- * @param options.overwriteEnvs Whether we should blast over existing envs
+ * @param filters The filters, passed in by the user via  `--only functions:`
  */
 export function createDeploymentPlan(
   want: backend.Backend,
   have: backend.Backend,
-  options: {
-    filters: string[][];
-    overwriteEnvs?: boolean;
-  }
+  filters: string[][]
 ): DeploymentPlan {
   const deployment: DeploymentPlan = {};
   want = backend.matchingBackend(want, (endpoint) => {
-    return functionMatchesAnyGroup(endpoint, options.filters);
+    return functionMatchesAnyGroup(endpoint, filters);
   });
   have = backend.matchingBackend(have, (endpoint) => {
-    return functionMatchesAnyGroup(endpoint, options.filters);
+    return functionMatchesAnyGroup(endpoint, filters);
   });
 
   const regions = new Set([...Object.keys(want.endpoints), ...Object.keys(have.endpoints)]);
   for (const region of regions) {
     deployment[region] = calculateRegionalChanges(
       want.endpoints[region] || {},
-      have.endpoints[region] || {},
-      options
+      have.endpoints[region] || {}
     );
   }
 

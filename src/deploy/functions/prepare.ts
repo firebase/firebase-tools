@@ -76,14 +76,15 @@ export async function prepare(
     projectAlias: options.projectAlias,
   };
   const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
+  const usedDotenv = hasDotenv(userEnvOpt);
   const tag = hasUserConfig(runtimeConfig)
-    ? hasDotenv(userEnvOpt)
+    ? usedDotenv
       ? "mixed"
       : "runtime_config"
-    : hasDotenv(userEnvOpt)
+    : usedDotenv
     ? "dotenv"
     : "none";
-  track("functions_codebase_deploy_env_method", tag);
+  await track("functions_codebase_deploy_env_method", tag);
 
   logger.debug(`Analyzing ${runtimeDelegate.name} backend spec`);
   const wantBackend = await runtimeDelegate.discoverSpec(runtimeConfig, firebaseEnvs);
@@ -159,8 +160,39 @@ export async function prepare(
   });
 
   const haveBackend = await backend.existingBackend(context);
+  inferDetailsFromExisting(wantBackend, haveBackend, usedDotenv);
+
   // Display a warning and prompt if any functions in the release have failurePolicies.
   await promptForFailurePolicies(options, matchingBackend, haveBackend);
   await promptForMinInstances(options, matchingBackend, haveBackend);
   await backend.checkAvailability(context, wantBackend);
+}
+
+/**
+ * Adds information to the want backend types based on what we can infer from prod.
+ * This can help us preserve environment variables set out of band, remember the
+ * location of a trigger w/o lookup, etc.
+ */
+export function inferDetailsFromExisting(
+  want: backend.Backend,
+  have: backend.Backend,
+  usedDotenv: boolean
+): void {
+  for (const wantE of backend.allEndpoints(want)) {
+    const haveE = have.endpoints[wantE.region]?.[wantE.id];
+    if (!haveE) {
+      continue;
+    }
+    // By default, preserve existing environment variables.
+    // Only overwrite environment variables when the dotenv preview is enabled
+    // AND there are user specified environment variables.
+    if (!usedDotenv) {
+      wantE.environmentVariables = {
+        ...haveE.environmentVariables,
+        ...wantE.environmentVariables,
+      };
+    }
+  }
+
+  // TODO: copy trigger regions that are already specified
 }

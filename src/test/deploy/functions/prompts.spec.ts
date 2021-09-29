@@ -45,17 +45,6 @@ const SAMPLE_OPTIONS: Options = {
   rc: new RC(),
 };
 
-function backendOf(...endpoints: backend.Endpoint[]): backend.Backend {
-  const bkend: backend.Backend = {
-    ...backend.empty(),
-  };
-  for (const endpoint of endpoints) {
-    bkend.endpoints[endpoint.region] = bkend.endpoints[endpoint.region] || {};
-    bkend.endpoints[endpoint.region][endpoint.id] = endpoint;
-  }
-  return bkend;
-}
-
 describe("promptForFailurePolicies", () => {
   let promptStub: sinon.SinonStub;
 
@@ -78,7 +67,11 @@ describe("promptForFailurePolicies", () => {
     promptStub.resolves(true);
 
     await expect(
-      functionPrompts.promptForFailurePolicies(SAMPLE_OPTIONS, backendOf(endpoint), backend.empty())
+      functionPrompts.promptForFailurePolicies(
+        SAMPLE_OPTIONS,
+        backend.of(endpoint),
+        backend.empty()
+      )
     ).not.to.be.rejected;
     expect(promptStub).to.have.been.calledOnce;
   });
@@ -95,8 +88,8 @@ describe("promptForFailurePolicies", () => {
     await expect(
       functionPrompts.promptForFailurePolicies(
         SAMPLE_OPTIONS,
-        backendOf(endpoint),
-        backendOf(endpoint)
+        backend.of(endpoint),
+        backend.of(endpoint)
       )
     ).eventually.be.fulfilled;
     expect(promptStub).to.not.have.been.called;
@@ -113,7 +106,11 @@ describe("promptForFailurePolicies", () => {
     promptStub.resolves(false);
 
     await expect(
-      functionPrompts.promptForFailurePolicies(SAMPLE_OPTIONS, backendOf(endpoint), backend.empty())
+      functionPrompts.promptForFailurePolicies(
+        SAMPLE_OPTIONS,
+        backend.of(endpoint),
+        backend.empty()
+      )
     ).to.eventually.be.rejectedWith(FirebaseError, /Deployment canceled/);
     expect(promptStub).to.have.been.calledOnce;
   });
@@ -137,8 +134,8 @@ describe("promptForFailurePolicies", () => {
     await expect(
       functionPrompts.promptForFailurePolicies(
         SAMPLE_OPTIONS,
-        backendOf(newEndpoint),
-        backendOf(endpoint)
+        backend.of(newEndpoint),
+        backend.of(endpoint)
       )
     ).eventually.be.fulfilled;
     expect(promptStub).to.have.been.calledOnce;
@@ -155,7 +152,11 @@ describe("promptForFailurePolicies", () => {
     promptStub.resolves(false);
 
     await expect(
-      functionPrompts.promptForFailurePolicies(SAMPLE_OPTIONS, backendOf(endpoint), backend.empty())
+      functionPrompts.promptForFailurePolicies(
+        SAMPLE_OPTIONS,
+        backend.of(endpoint),
+        backend.empty()
+      )
     ).to.eventually.be.rejectedWith(FirebaseError, /Deployment canceled/);
     expect(promptStub).to.have.been.calledOnce;
   });
@@ -170,7 +171,11 @@ describe("promptForFailurePolicies", () => {
     promptStub.resolves();
 
     await expect(
-      functionPrompts.promptForFailurePolicies(SAMPLE_OPTIONS, backendOf(endpoint), backend.empty())
+      functionPrompts.promptForFailurePolicies(
+        SAMPLE_OPTIONS,
+        backend.of(endpoint),
+        backend.empty()
+      )
     ).to.eventually.be.fulfilled;
     expect(promptStub).not.to.have.been.called;
   });
@@ -186,7 +191,7 @@ describe("promptForFailurePolicies", () => {
     const options = { ...SAMPLE_OPTIONS, nonInteractive: true };
 
     await expect(
-      functionPrompts.promptForFailurePolicies(options, backendOf(endpoint), backend.empty())
+      functionPrompts.promptForFailurePolicies(options, backend.of(endpoint), backend.empty())
     ).to.be.rejectedWith(FirebaseError, /--force option/);
     expect(promptStub).not.to.have.been.called;
   });
@@ -202,7 +207,7 @@ describe("promptForFailurePolicies", () => {
     const options = { ...SAMPLE_OPTIONS, nonInteractive: true, force: true };
 
     await expect(
-      functionPrompts.promptForFailurePolicies(options, backendOf(endpoint), backend.empty())
+      functionPrompts.promptForFailurePolicies(options, backend.of(endpoint), backend.empty())
     ).to.eventually.be.fulfilled;
     expect(promptStub).not.to.have.been.called;
   });
@@ -230,20 +235,20 @@ describe("promptForMinInstances", () => {
     promptStub.resolves(true);
 
     await expect(
-      functionPrompts.promptForMinInstances(SAMPLE_OPTIONS, backendOf(endpoint), backend.empty())
+      functionPrompts.promptForMinInstances(SAMPLE_OPTIONS, backend.of(endpoint), backend.empty())
     ).not.to.be.rejected;
     expect(promptStub).to.have.been.calledOnce;
   });
 
   it("should not prompt if no fucntion has minInstance", async () => {
-    const bkend = backendOf(SAMPLE_ENDPOINT);
+    const bkend = backend.of(SAMPLE_ENDPOINT);
     await expect(functionPrompts.promptForMinInstances(SAMPLE_OPTIONS, bkend, bkend)).to.eventually
       .be.fulfilled;
     expect(promptStub).to.not.have.been.called;
   });
 
   it("should not prompt if all functions with minInstances already had the same number of minInstances", async () => {
-    const bkend = backendOf({
+    const bkend = backend.of({
       ...SAMPLE_ENDPOINT,
       minInstances: 1,
     });
@@ -266,15 +271,15 @@ describe("promptForMinInstances", () => {
     await expect(
       functionPrompts.promptForMinInstances(
         SAMPLE_OPTIONS,
-        backendOf(newEndpoint),
-        backendOf(endpoint)
+        backend.of(newEndpoint),
+        backend.of(endpoint)
       )
     ).eventually.be.fulfilled;
     expect(promptStub).to.not.have.been.called;
   });
 
   it("should throw if user declines the prompt", async () => {
-    const bkend = backendOf({
+    const bkend = backend.of({
       ...SAMPLE_ENDPOINT,
       minInstances: 1,
     });
@@ -295,8 +300,8 @@ describe("promptForMinInstances", () => {
     await expect(
       functionPrompts.promptForMinInstances(
         SAMPLE_OPTIONS,
-        backendOf(newEndpoint),
-        backendOf(SAMPLE_ENDPOINT)
+        backend.of(newEndpoint),
+        backend.of(SAMPLE_ENDPOINT)
       )
     ).eventually.be.fulfilled;
     expect(promptStub).to.have.been.calledOnce;
@@ -316,8 +321,8 @@ describe("promptForMinInstances", () => {
     await expect(
       functionPrompts.promptForMinInstances(
         SAMPLE_OPTIONS,
-        backendOf(newEndpoint),
-        backendOf(endpoint)
+        backend.of(newEndpoint),
+        backend.of(endpoint)
       )
     ).eventually.be.fulfilled;
     expect(promptStub).to.have.been.calledOnce;
@@ -339,8 +344,8 @@ describe("promptForMinInstances", () => {
     await expect(
       functionPrompts.promptForMinInstances(
         SAMPLE_OPTIONS,
-        backendOf(newEndpoint),
-        backendOf(endpoint)
+        backend.of(newEndpoint),
+        backend.of(endpoint)
       )
     ).eventually.be.fulfilled;
     expect(promptStub).to.have.been.calledOnce;
@@ -354,7 +359,7 @@ describe("promptForMinInstances", () => {
     promptStub.resolves(false);
 
     await expect(
-      functionPrompts.promptForMinInstances(SAMPLE_OPTIONS, backendOf(endpoint), backend.empty())
+      functionPrompts.promptForMinInstances(SAMPLE_OPTIONS, backend.of(endpoint), backend.empty())
     ).to.eventually.be.rejectedWith(FirebaseError, /Deployment canceled/);
     expect(promptStub).to.have.been.calledOnce;
   });
@@ -365,7 +370,7 @@ describe("promptForMinInstances", () => {
     await expect(
       functionPrompts.promptForMinInstances(
         SAMPLE_OPTIONS,
-        backendOf(SAMPLE_ENDPOINT),
+        backend.of(SAMPLE_ENDPOINT),
         backend.empty()
       )
     ).to.eventually.be.fulfilled;
@@ -380,7 +385,7 @@ describe("promptForMinInstances", () => {
     const options = { ...SAMPLE_OPTIONS, nonInteractive: true };
 
     await expect(
-      functionPrompts.promptForMinInstances(options, backendOf(endpoint), backend.empty())
+      functionPrompts.promptForMinInstances(options, backend.of(endpoint), backend.empty())
     ).to.be.rejectedWith(FirebaseError, /--force option/);
     expect(promptStub).not.to.have.been.called;
   });
@@ -393,7 +398,7 @@ describe("promptForMinInstances", () => {
     const options = { ...SAMPLE_OPTIONS, nonInteractive: true, force: true };
 
     await expect(
-      functionPrompts.promptForMinInstances(options, backendOf(endpoint), backend.empty())
+      functionPrompts.promptForMinInstances(options, backend.of(endpoint), backend.empty())
     ).to.eventually.be.fulfilled;
     expect(promptStub).not.to.have.been.called;
   });
@@ -407,7 +412,7 @@ describe("promptForMinInstances", () => {
     promptStub.resolves(true);
 
     await expect(
-      functionPrompts.promptForMinInstances(SAMPLE_OPTIONS, backendOf(endpoint), backend.empty())
+      functionPrompts.promptForMinInstances(SAMPLE_OPTIONS, backend.of(endpoint), backend.empty())
     ).to.eventually.be.fulfilled;
     expect(promptStub).to.have.been.called;
     expect(logStub.firstCall.args[1]).to.match(/Cannot calculate the minimum monthly bill/);
@@ -422,7 +427,7 @@ describe("promptForMinInstances", () => {
     promptStub.resolves(true);
 
     await expect(
-      functionPrompts.promptForMinInstances(SAMPLE_OPTIONS, backendOf(endpoint), backend.empty())
+      functionPrompts.promptForMinInstances(SAMPLE_OPTIONS, backend.of(endpoint), backend.empty())
     ).to.eventually.be.fulfilled;
     expect(promptStub).to.have.been.called;
     expect(logStub.firstCall.args[1]).to.match(new RegExp("https://cloud.google.com/run/cud"));
