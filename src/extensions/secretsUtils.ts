@@ -15,7 +15,9 @@ export function usesSecrets(spec: extensionsApi.ExtensionSpec): boolean {
   return spec.params && !!spec.params.find((p) => p.type == extensionsApi.ParamType.SECRET);
 }
 
-export async function grantFirexServiceAgentSecretAdminRole(secret: secretManagerApi.Secret): Promise<void> {
+export async function grantFirexServiceAgentSecretAdminRole(
+  secret: secretManagerApi.Secret
+): Promise<void> {
   const projectNumber = await getProjectNumber({ projectId: secret.projectId });
   const firexSaProjectId = utils.envOverride(
     "FIREBASE_EXTENSIONS_SA_PROJECT_ID",
