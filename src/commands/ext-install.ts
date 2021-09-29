@@ -14,6 +14,7 @@ import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { needProjectId } from "../projectUtils";
 import * as extensionsApi from "../extensions/extensionsApi";
+import * as secretManagerApi from "../extensions/secretManagerApi";
 import * as provisioningHelper from "../extensions/provisioningHelper";
 import * as refs from "../extensions/refs";
 import { displayWarningPrompts } from "../extensions/warnings";
@@ -70,7 +71,8 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
   try {
     await provisioningHelper.checkProductsProvisioned(projectId, spec);
 
-    if (spec.billingRequired) {
+    const usesSecrets = secretManagerApi.usesSecrets(spec);
+    if (spec.billingRequired || usesSecrets) {
       const enabled = await checkBillingEnabled(projectId);
       if (!enabled && nonInteractive) {
         throw new FirebaseError(
@@ -84,6 +86,9 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
         await enableBilling(projectId, spec.displayName || spec.name);
       } else {
         await displayNode10CreateBillingNotice(spec, !nonInteractive);
+      }
+      if (usesSecrets) {
+        await secretManagerApi.ensureSecretManagerApiEnabled(options);
       }
     }
     const roles = spec.roles ? spec.roles.map((role: extensionsApi.Role) => role.role) : [];

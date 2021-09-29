@@ -62,7 +62,8 @@ export function checkResponse(response: string, spec: Param): boolean {
 export async function askForParam(
   projectId: string,
   instanceId: string,
-  paramSpec: Param
+  paramSpec: Param,
+  reconfiguring: boolean
 ): Promise<string> {
   let valid = false;
   let response = "";
@@ -112,7 +113,9 @@ export async function askForParam(
         });
         break;
       case ParamType.SECRET:
-        response = await promptSecret(projectId, instanceId, paramSpec);
+        response = reconfiguring
+          ? await promptReconfigureSecret(projectId, instanceId, paramSpec)
+          : await promptCreateSecret(projectId, instanceId, paramSpec);
         break;
       default:
         // Default to ParamType.STRING
@@ -129,52 +132,56 @@ export async function askForParam(
   return response;
 }
 
-async function promptSecret(
+async function promptReconfigureSecret(
   projectId: string,
   instanceId: string,
   paramSpec: Param
 ): Promise<string> {
-  if (paramSpec.reconfiguring) {
-    const action = await promptOnce({
-      type: "list",
-      message: `Choose what you would like to do with this secret:`,
-      choices: [
-        { name: "Leave unchanged", value: SecretUpdateAction.LEAVE },
-        { name: "Set new value", value: SecretUpdateAction.SET_NEW },
-      ],
-    });
-    switch (action) {
-      case SecretUpdateAction.SET_NEW:
-        let secret;
-        let secretName;
-        if (paramSpec.default) {
-          secret = secretManagerApi.parseSecretResourceName(paramSpec.default);
-          secretName = secret.name;
-        } else {
-          secretName = await generateSecretName(projectId, instanceId, paramSpec.param);
-        }
+  const action = await promptOnce({
+    type: "list",
+    message: `Choose what you would like to do with this secret:`,
+    choices: [
+      { name: "Leave unchanged", value: SecretUpdateAction.LEAVE },
+      { name: "Set new value", value: SecretUpdateAction.SET_NEW },
+    ],
+  });
+  switch (action) {
+    case SecretUpdateAction.SET_NEW:
+      let secret;
+      let secretName;
+      if (paramSpec.default) {
+        secret = secretManagerApi.parseSecretResourceName(paramSpec.default);
+        secretName = secret.name;
+      } else {
+        secretName = await generateSecretName(projectId, instanceId, paramSpec.param);
+      }
 
-        const secretValue = await promptOnce({
-          name: paramSpec.param,
-          type: "input",
-          message: `Enter new value for ${paramSpec.label.trim()}. This secret will be stored in Cloud Secret Manager as ${secretName}:`,
-        });
-        if (!secret) {
-          secret = await secretManagerApi.createSecret(projectId, secretName);
-        }
-        return addNewSecretVersion(projectId, instanceId, secret, paramSpec, secretValue);
-      case SecretUpdateAction.LEAVE:
-      default:
-        return paramSpec.default || "";
-    }
+      const secretValue = await promptOnce({
+        name: paramSpec.param,
+        type: "input",
+        message: `This secret will be stored in Cloud Secret Manager as ${secretName}.\nEnter new value for ${paramSpec.label.trim()}:`,
+      });
+      if (!secret) {
+        secret = await secretManagerApi.createSecret(projectId, secretName);
+      }
+      return addNewSecretVersion(projectId, instanceId, secret, paramSpec, secretValue);
+    case SecretUpdateAction.LEAVE:
+    default:
+      return paramSpec.default || "";
   }
+}
 
+async function promptCreateSecret(
+  projectId: string,
+  instanceId: string,
+  paramSpec: Param
+): Promise<string> {
   const secretName = await generateSecretName(projectId, instanceId, paramSpec.param);
   const secretValue = await promptOnce({
     name: paramSpec.param,
     type: "input",
     default: paramSpec.default,
-    message: `Enter a value for ${paramSpec.label.trim()}. This secret will be stored in Cloud Secret Manager as ${secretName}:`,
+    message: `This secret will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/) as ${secretName}.\nEnter a value for ${paramSpec.label.trim()}:`,
   });
   const secret = await secretManagerApi.createSecret(projectId, secretName);
   return addNewSecretVersion(projectId, instanceId, secret, paramSpec, secretValue);
@@ -221,7 +228,8 @@ export async function ask(
   projectId: string,
   instanceId: string,
   paramSpecs: Param[],
-  firebaseProjectParams: { [key: string]: string }
+  firebaseProjectParams: { [key: string]: string },
+  reconfiguring: boolean
 ): Promise<{ [key: string]: string }> {
   if (_.isEmpty(paramSpecs)) {
     logger.debug("No params were specified for this extension.");
@@ -233,7 +241,7 @@ export async function ask(
   const result: any = {};
   const promises = _.map(substituted, (paramSpec: Param) => {
     return async () => {
-      result[paramSpec.param] = await askForParam(projectId, instanceId, paramSpec);
+      result[paramSpec.param] = await askForParam(projectId, instanceId, paramSpec, reconfiguring);
     };
   });
   // chaining together the promises so they get executed one after another

@@ -30,7 +30,6 @@ function setNewDefaults(
   params.forEach((param) => {
     if (newDefaults[param.param.toUpperCase()]) {
       param.default = newDefaults[param.param.toUpperCase()];
-      param.reconfiguring = true;
     }
   });
   return params;
@@ -63,6 +62,7 @@ export async function getParams(args: {
   nonInteractive?: boolean;
   paramsEnvPath?: string;
   instanceId: string;
+  reconfiguring?: boolean;
 }): Promise<{ [key: string]: string }> {
   let params: any;
   if (args.nonInteractive && !args.paramsEnvPath) {
@@ -90,7 +90,8 @@ export async function getParams(args: {
       args.projectId,
       args.instanceId,
       args.paramSpecs,
-      firebaseProjectParams
+      firebaseProjectParams,
+      !!args.reconfiguring
     );
   }
   track("Extension Params", _.isEmpty(params) ? "Not Present" : "Present", _.size(params));
@@ -188,7 +189,12 @@ export async function promptForNewParams(args: {
   if (paramsDiffAdditions.length) {
     logger.info("To update this instance, configure the following new parameters:");
     for (const param of paramsDiffAdditions) {
-      const chosenValue = await askUserForParam.askForParam(args.projectId, args.instanceId, param);
+      const chosenValue = await askUserForParam.askForParam(
+        args.projectId,
+        args.instanceId,
+        param,
+        false
+      );
       args.currentParams[param.param] = chosenValue;
     }
   }

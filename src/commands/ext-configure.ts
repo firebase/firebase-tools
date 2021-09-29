@@ -65,6 +65,7 @@ export default new Command("ext:configure <extensionInstanceId>")
         nonInteractive: options.nonInteractive,
         paramsEnvPath: options.params,
         instanceId,
+        reconfiguring: true,
       });
       if (immutableParams.length) {
         const plural = immutableParams.length > 1;

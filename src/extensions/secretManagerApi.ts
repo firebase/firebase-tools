@@ -1,6 +1,9 @@
 import * as api from "../api";
 import { getProjectNumber } from "../getProjectNumber";
 import * as utils from "../utils";
+import { ensure } from "../ensureApiEnabled";
+import { needProjectId } from "../projectUtils";
+import * as extensionsApi from "./extensionsApi";
 
 export interface Secret {
   // Secret name/label (this is not resource name)
@@ -92,6 +95,21 @@ export async function addVersion(secret: Secret, payloadData: string): Promise<S
 }
 
 export async function grantFirexServiceAgentSecretAdminRole(secret: Secret): Promise<void> {
+  const projectNumber = await getProjectNumber({ projectId: secret.projectId });
+  const firexSaProjectId = utils.envOverride(
+    "FIREBASE_EXTENSIONS_SA_PROJECT_ID",
+    "gcp-sa-firebasemods"
+  );
+  const saEmail = `service-${projectNumber}@${firexSaProjectId}.iam.gserviceaccount.com`;
+
+  return grantServiceAgentRole(secret, saEmail, "roles/secretmanager.admin");
+}
+
+export async function grantServiceAgentRole(
+  secret: Secret,
+  serviceAccountEmail: string,
+  role: string
+): Promise<void> {
   const getPolicyRes = await api.request(
     "GET",
     `/v1beta1/projects/${secret.projectId}/secrets/${secret.name}:getIamPolicy`,
@@ -100,24 +118,21 @@ export async function grantFirexServiceAgentSecretAdminRole(secret: Secret): Pro
       origin: api.secretManagerOrigin,
     }
   );
-  const projectNumber = await getProjectNumber({ projectId: secret.projectId });
-  const firexSaProjectId = utils.envOverride("FIREX_SA_PROJECT_ID", "gcp-sa-firebasemods");
-  const saEmail = `service-${projectNumber}@${firexSaProjectId}.iam.gserviceaccount.com`;
 
   const bindings = getPolicyRes.body.bindings || [];
   if (
     bindings.find(
       (b: any) =>
-        b.role == "roles/secretmanager.admin" &&
-        b.members.find((m: string) => m == `serviceAccount:${saEmail}`)
+        b.role == role &&
+        b.members.find((m: string) => m == `serviceAccount:${serviceAccountEmail}`)
     )
   ) {
     // binding already exists, short-circuit.
     return;
   }
   bindings.push({
-    role: "roles/secretmanager.admin",
-    members: [`serviceAccount:${saEmail}`],
+    role: role,
+    members: [`serviceAccount:${serviceAccountEmail}`],
   });
 
   await api.request(
@@ -136,4 +151,13 @@ export async function grantFirexServiceAgentSecretAdminRole(secret: Secret): Pro
       },
     }
   );
+}
+
+export async function ensureSecretManagerApiEnabled(options: any): Promise<void> {
+  const projectId = needProjectId(options);
+  return await ensure(projectId, "secretmanager.googleapis.com", "extensions", options.markdown);
+}
+
+export function usesSecrets(spec: extensionsApi.ExtensionSpec): boolean {
+  return spec.params && !!spec.params.find((p) => p.type == extensionsApi.ParamType.SECRET);
 }
