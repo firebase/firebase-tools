@@ -5,6 +5,7 @@ import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
 import { logger } from "../../logger";
 import { Payload } from "./args";
+import { FirebaseError } from "../../error";
 
 export async function prepare(
   context: any, // TODO: type this
@@ -28,12 +29,16 @@ export async function prepare(
   }
   if (payload.instancesToDelete.length) {
     logger.info(deploymentSummary.deletesSummary(payload.instancesToDelete));
-    if (
-      await prompt.promptOnce({
+    if (!options.force && options.nonInteractive) {
+      throw new FirebaseError("Pass the --force flag to use this command in non-interactive mode");
+    } else if (
+      !options.force &&
+      !options.nonInteractive &&
+      (await prompt.promptOnce({
         type: "confirm",
-        message: "Would you like to delete these instances?",
+        message: "Would you like to delete these extension instances?",
         default: false,
-      })
+      }))
     ) {
       payload.instancesToDelete = [];
     }
