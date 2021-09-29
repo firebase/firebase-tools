@@ -11,7 +11,7 @@ import { displayNode10UpdateBillingNotice } from "../extensions/billingMigration
 import { enableBilling } from "../extensions/checkProjectBilling";
 import { checkBillingEnabled } from "../gcp/cloudbilling";
 import * as extensionsApi from "../extensions/extensionsApi";
-import * as secretManagerApi from "../extensions/secretManagerApi";
+import * as secretsUtils from "../extensions/secretsUtils";
 import * as provisioningHelper from "../extensions/provisioningHelper";
 import {
   ensureExtensionsApiEnabled,
@@ -211,7 +211,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
 
       await provisioningHelper.checkProductsProvisioned(projectId, newSpec);
 
-      const usesSecrets = secretManagerApi.usesSecrets(newSpec);
+      const usesSecrets = secretsUtils.usesSecrets(newSpec);
       if (newSpec.billingRequired || usesSecrets) {
         const enabled = await checkBillingEnabled(projectId);
         displayNode10UpdateBillingNotice(existingSpec, newSpec);
@@ -238,7 +238,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
           }
         }
         if (usesSecrets) {
-          await secretManagerApi.ensureSecretManagerApiEnabled(options);
+          await secretsUtils.ensureSecretManagerApiEnabled(options);
         }
       }
       // make a copy of existingParams -- they get overridden by paramHelper.getParamsForUpdate

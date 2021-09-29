@@ -3,7 +3,8 @@ import * as clc from "cli-color";
 import * as marked from "marked";
 
 import { Param, ParamOption, ParamType } from "./extensionsApi";
-import * as secretManagerApi from "./secretManagerApi";
+import * as secretManagerApi from "../gcp/secretManager";
+import * as secretsUtils from "./secretsUtils";
 import { logPrefix, substituteParams } from "./extensionsHelper";
 import { convertExtensionOptionToLabeledList, getRandomString, onceWithJoin } from "./utils";
 import { logger } from "../logger";
@@ -207,7 +208,7 @@ async function addNewSecretVersion(
   secretValue: string
 ) {
   const version = await secretManagerApi.addVersion(secret, secretValue);
-  await secretManagerApi.grantFirexServiceAgentSecretAdminRole(secret);
+  await secretsUtils.grantFirexServiceAgentSecretAdminRole(secret);
   return `projects/${version.secret.projectId}/secrets/${version.secret.name}/versions/${version.versionId}`;
 }
 
