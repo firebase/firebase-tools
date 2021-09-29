@@ -240,7 +240,7 @@ async function infoInstallByReference(
   }
   const extVersion = await extensionsApi.getExtensionVersion(extensionName);
   displayExtInfo(extensionName, ref.publisherId, extVersion.spec, true);
-  displayWarningPrompts(ref.publisherId, extension.registryLaunchStage, extVersion);
+  await displayWarningPrompts(ref.publisherId, extension.registryLaunchStage, extVersion);
   return extVersion;
 }
 
