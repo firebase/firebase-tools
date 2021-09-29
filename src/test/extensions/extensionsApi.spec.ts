@@ -575,8 +575,8 @@ describe("deleteExtension", () => {
 
   it("should throw an error for an invalid ref", async () => {
     await expect(
-      extensionsApi.deleteExtension(`${PUBLISHER_ID}/${EXTENSION_ID}@`)
-    ).to.be.rejectedWith(FirebaseError, "Extension reference must be in format");
+      extensionsApi.deleteExtension(`${PUBLISHER_ID}/${EXTENSION_ID}@0.1.0`)
+    ).to.be.rejectedWith(FirebaseError, "must not contain a version");
   });
 });
 
@@ -607,8 +607,8 @@ describe("unpublishExtension", () => {
 
   it("should throw an error for an invalid ref", async () => {
     await expect(
-      extensionsApi.unpublishExtension(`${PUBLISHER_ID}/${EXTENSION_ID}@`)
-    ).to.be.rejectedWith(FirebaseError, "Extension reference must be in format");
+      extensionsApi.unpublishExtension(`${PUBLISHER_ID}/${EXTENSION_ID}@0.1.0`)
+    ).to.be.rejectedWith(FirebaseError, "must not contain a version");
   });
 });
 
@@ -640,7 +640,7 @@ describe("getExtension", () => {
   it("should throw an error for an invalid ref", async () => {
     await expect(extensionsApi.getExtension(`${PUBLISHER_ID}`)).to.be.rejectedWith(
       FirebaseError,
-      "Extension reference must be in format"
+      "Unable to parse"
     );
   });
 });
@@ -680,7 +680,7 @@ describe("getExtensionVersion", () => {
   it("should throw an error for an invalid ref", async () => {
     await expect(
       extensionsApi.getExtensionVersion(`${PUBLISHER_ID}//${EXTENSION_ID}`)
-    ).to.be.rejectedWith(FirebaseError, "Extension reference must be in format");
+    ).to.be.rejectedWith(FirebaseError, "Unable to parse");
   });
 });
 
@@ -850,7 +850,7 @@ describe("listExtensionVersions", () => {
   it("should throw an error for an invalid ref", async () => {
     await expect(extensionsApi.listExtensionVersions("")).to.be.rejectedWith(
       FirebaseError,
-      "Extension reference must be in format"
+      "Unable to parse"
     );
   });
 });
