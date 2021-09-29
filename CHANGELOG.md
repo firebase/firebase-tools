@@ -1,4 +1,1 @@
-- `ext:dev:publish` and `ext:update` now support --force and --non-interactive flags.
 - `ext:install`, `ext:update` and `ext:configure` now support param type `secret`.
-- Fixes issue where account specified by `login:use` was not being correctly loaded (#3759).
-- Fixes minor layout issues in Auth Emulator IDP sign-in page (#3774).
