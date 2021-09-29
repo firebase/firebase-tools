@@ -14,6 +14,7 @@ import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { needProjectId } from "../projectUtils";
 import * as extensionsApi from "../extensions/extensionsApi";
+import * as secretsUtils from "../extensions/secretsUtils";
 import * as provisioningHelper from "../extensions/provisioningHelper";
 import * as refs from "../extensions/refs";
 import { displayWarningPrompts } from "../extensions/warnings";
@@ -70,7 +71,8 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
   try {
     await provisioningHelper.checkProductsProvisioned(projectId, spec);
 
-    if (spec.billingRequired) {
+    const usesSecrets = secretsUtils.usesSecrets(spec);
+    if (spec.billingRequired || usesSecrets) {
       const enabled = await checkBillingEnabled(projectId);
       if (!enabled && nonInteractive) {
         throw new FirebaseError(
@@ -84,6 +86,9 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
         await enableBilling(projectId, spec.displayName || spec.name);
       } else {
         await displayNode10CreateBillingNotice(spec, !nonInteractive);
+      }
+      if (usesSecrets) {
+        await secretsUtils.ensureSecretManagerApiEnabled(options);
       }
     }
     const roles = spec.roles ? spec.roles.map((role: extensionsApi.Role) => role.role) : [];
@@ -125,6 +130,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
           paramSpecs: spec.params,
           nonInteractive,
           paramsEnvPath,
+          instanceId,
         });
         spinner.text = "Installing your extension instance. This usually takes 3 to 5 minutes...";
         spinner.start();
@@ -148,6 +154,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
           paramSpecs: spec.params,
           nonInteractive,
           paramsEnvPath,
+          instanceId,
         });
         spinner.text = "Updating your extension instance. This usually takes 3 to 5 minutes...";
         spinner.start();
@@ -233,7 +240,7 @@ async function infoInstallByReference(
   }
   const extVersion = await extensionsApi.getExtensionVersion(extensionName);
   displayExtInfo(extensionName, ref.publisherId, extVersion.spec, true);
-  displayWarningPrompts(ref.publisherId, extension.registryLaunchStage, extVersion);
+  await displayWarningPrompts(ref.publisherId, extension.registryLaunchStage, extVersion);
   return extVersion;
 }
 
