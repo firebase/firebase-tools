@@ -30,7 +30,7 @@ describe("prepare", () => {
         },
       };
 
-      prepare.inferDetailsFromExisting(backend.of(newE), backend.of(oldE), /* usedDotEnv= */ false);
+      prepare.inferDetailsFromExisting(backend.of(newE), backend.of(oldE), /* usedDotenv= */ false);
 
       expect(newE.environmentVariables).to.deep.equals({
         old: "value",
