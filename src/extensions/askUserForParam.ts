@@ -182,7 +182,7 @@ async function promptCreateSecret(
     name: paramSpec.param,
     type: "input",
     default: paramSpec.default,
-    message: `This secret will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/) as ${secretName}.\nEnter a value for ${paramSpec.label.trim()}:`,
+    message: `This secret will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${secretName}.\nEnter a value for ${paramSpec.label.trim()}:`,
   });
   const secret = await secretManagerApi.createSecret(projectId, secretName);
   return addNewSecretVersion(projectId, instanceId, secret, paramSpec, secretValue);
