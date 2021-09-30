@@ -20,13 +20,6 @@ const client = new Client({
 
 export const PUBSUB_PUBLISH_EVENT = "google.cloud.pubsub.topic.v1.messagePublished";
 
-export const GCS_EVENTS: Set<string> = new Set<string>([
-  "google.cloud.storage.object.v1.finalized",
-  "google.cloud.storage.object.v1.archived",
-  "google.cloud.storage.object.v1.deleted",
-  "google.cloud.storage.object.v1.metadataUpdated",
-]);
-
 export type VpcConnectorEgressSettings = "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC";
 export type IngressSettings = "ALLOW_ALL" | "ALLOW_INTERNAL_ONLY" | "ALLOW_INTERNAL_AND_GCLB";
 export type FunctionState = "ACTIVE" | "FAILED" | "DEPLOYING" | "DELETING" | "UNKONWN";
@@ -330,7 +323,7 @@ export async function deleteFunction(cloudFunction: string): Promise<Operation> 
   }
 }
 
-export async function functionFromSpec(cloudFunction: backend.FunctionSpec, source: StorageSource) {
+export function functionFromSpec(cloudFunction: backend.FunctionSpec, source: StorageSource) {
   if (cloudFunction.platform != "gcfv2") {
     throw new FirebaseError(
       "Trying to create a v2 CloudFunction with v1 API. This should never happen"
@@ -392,21 +385,11 @@ export async function functionFromSpec(cloudFunction: backend.FunctionSpec, sour
     gcfFunction.eventTrigger = {
       eventType: cloudFunction.trigger.eventType,
     };
+    if (cloudFunction.trigger.region) {
+      gcfFunction.eventTrigger.triggerRegion = cloudFunction.trigger.region;
+    }
     if (gcfFunction.eventTrigger.eventType === PUBSUB_PUBLISH_EVENT) {
       gcfFunction.eventTrigger.pubsubTopic = cloudFunction.trigger.eventFilters.resource;
-    } else if (GCS_EVENTS.has(gcfFunction.eventTrigger.eventType)) {
-      gcfFunction.eventTrigger.eventFilters = [
-        {
-          attribute: "bucket",
-          value: cloudFunction.trigger.eventFilters.resource,
-        },
-      ];
-      try {
-        const bucket = await storage.getStorageBucket(cloudFunction.trigger.eventFilters.resource);
-        gcfFunction.eventTrigger.triggerRegion = bucket.location.toLowerCase();
-      } catch (err) {
-        throw new FirebaseError("Can't find the storage bucket region", { original: err });
-      }
     } else {
       gcfFunction.eventTrigger.eventFilters = [];
       for (const [attribute, value] of Object.entries(cloudFunction.trigger.eventFilters)) {
@@ -432,12 +415,11 @@ export function specFromFunction(gcfFunction: CloudFunction): backend.FunctionSp
       eventFilters: {},
       retry: false,
     };
+    if (gcfFunction.eventTrigger!.triggerRegion) {
+      trigger.region = gcfFunction.eventTrigger.triggerRegion;
+    }
     if (gcfFunction.eventTrigger.pubsubTopic) {
       trigger.eventFilters.resource = gcfFunction.eventTrigger.pubsubTopic;
-    } else if (GCS_EVENTS.has(gcfFunction.eventTrigger.eventType)) {
-      const bucketName =
-        gcfFunction.eventTrigger.eventFilters?.find((ef) => ef.attribute === "bucket")?.value || "";
-      trigger.eventFilters.resource = bucketName;
     } else {
       for (const { attribute, value } of gcfFunction.eventTrigger.eventFilters || []) {
         trigger.eventFilters[attribute] = value;

@@ -97,7 +97,7 @@ function _deleteObject(location) {
  * @param {string} bucketName name of the storage bucket
  * @returns a bucket resource object
  */
-async function _getStorageBucket(bucketName) {
+async function _getBucket(bucketName) {
   try {
     const result = await api.request("GET", `/storage/v1/b/${bucketName}`, {
       auth: true,
@@ -117,5 +117,5 @@ module.exports = {
   deleteObject: _deleteObject,
   upload: _uploadSource,
   uploadObject: _uploadObject,
-  getStorageBucket: _getStorageBucket,
+  getBucket: _getBucket,
 };

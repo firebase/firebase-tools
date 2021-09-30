@@ -1,6 +1,4 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
-import * as storage from "../../gcp/storage";
 
 import * as cloudfunctionsv2 from "../../gcp/cloudfunctionsv2";
 import * as backend from "../../deploy/functions/backend";
@@ -62,18 +60,18 @@ describe("cloudfunctionsv2", () => {
 
   describe("functionFromEndpoint", () => {
     const UPLOAD_URL = "https://storage.googleapis.com/projects/-/buckets/sample/source.zip";
-    it("should guard against version mixing", async () => {
-      await expect(
+    it("should guard against version mixing", () => {
+      expect(() => {
         cloudfunctionsv2.functionFromSpec(
           { ...FUNCTION_SPEC, platform: "gcfv1" },
           CLOUD_FUNCTION_V2_SOURCE
-        )
-      ).to.be.rejected;
+        );
+      }).to.throw;
     });
 
-    it("should copy a minimal function", async () => {
+    it("should copy a minimal function", () => {
       expect(
-        await cloudfunctionsv2.functionFromSpec(
+        cloudfunctionsv2.functionFromSpec(
           {
             ...FUNCTION_SPEC,
             platform: "gcfv2",
@@ -114,11 +112,11 @@ describe("cloudfunctionsv2", () => {
         },
       };
       expect(
-        await cloudfunctionsv2.functionFromSpec(eventFunction, CLOUD_FUNCTION_V2_SOURCE)
+        cloudfunctionsv2.functionFromSpec(eventFunction, CLOUD_FUNCTION_V2_SOURCE)
       ).to.deep.equal(eventGcfFunction);
     });
 
-    it("should copy trival fields", async () => {
+    it("should copy trival fields", () => {
       const fullFunction: backend.FunctionSpec = {
         ...FUNCTION_SPEC,
         platform: "gcfv2",
@@ -157,11 +155,11 @@ describe("cloudfunctionsv2", () => {
       };
 
       expect(
-        await cloudfunctionsv2.functionFromSpec(fullFunction, CLOUD_FUNCTION_V2_SOURCE)
+        cloudfunctionsv2.functionFromSpec(fullFunction, CLOUD_FUNCTION_V2_SOURCE)
       ).to.deep.equal(fullGcfFunction);
     });
 
-    it("should calculate non-trivial fields", async () => {
+    it("should calculate non-trivial fields", () => {
       const complexFunction: backend.FunctionSpec = {
         ...FUNCTION_SPEC,
         platform: "gcfv2",
@@ -195,7 +193,7 @@ describe("cloudfunctionsv2", () => {
       };
 
       expect(
-        await cloudfunctionsv2.functionFromSpec(complexFunction, CLOUD_FUNCTION_V2_SOURCE)
+        cloudfunctionsv2.functionFromSpec(complexFunction, CLOUD_FUNCTION_V2_SOURCE)
       ).to.deep.equal(complexGcfFunction);
     });
   });
@@ -329,18 +327,18 @@ describe("cloudfunctionsv2", () => {
 
   describe("functionFromSpec", () => {
     const UPLOAD_URL = "https://storage.googleapis.com/projects/-/buckets/sample/source.zip";
-    it("should guard against version mixing", async () => {
-      await expect(
+    it("should guard against version mixing", () => {
+      expect(() => {
         cloudfunctionsv2.functionFromSpec(
           { ...FUNCTION_SPEC, platform: "gcfv1" },
           CLOUD_FUNCTION_V2_SOURCE
-        )
-      ).to.be.rejected;
+        );
+      }).to.throw;
     });
 
-    it("should copy a minimal function", async () => {
+    it("should copy a minimal function", () => {
       expect(
-        await cloudfunctionsv2.functionFromSpec(
+        cloudfunctionsv2.functionFromSpec(
           {
             ...FUNCTION_SPEC,
             platform: "gcfv2",
@@ -381,11 +379,11 @@ describe("cloudfunctionsv2", () => {
         },
       };
       expect(
-        await cloudfunctionsv2.functionFromSpec(eventFunction, CLOUD_FUNCTION_V2_SOURCE)
+        cloudfunctionsv2.functionFromSpec(eventFunction, CLOUD_FUNCTION_V2_SOURCE)
       ).to.deep.equal(eventGcfFunction);
     });
 
-    it("should copy trival fields", async () => {
+    it("should copy trival fields", () => {
       const fullFunction: backend.FunctionSpec = {
         ...FUNCTION_SPEC,
         platform: "gcfv2",
@@ -424,11 +422,11 @@ describe("cloudfunctionsv2", () => {
       };
 
       expect(
-        await cloudfunctionsv2.functionFromSpec(fullFunction, CLOUD_FUNCTION_V2_SOURCE)
+        cloudfunctionsv2.functionFromSpec(fullFunction, CLOUD_FUNCTION_V2_SOURCE)
       ).to.deep.equal(fullGcfFunction);
     });
 
-    it("should calculate non-trivial fields", async () => {
+    it("should calculate non-trivial fields", () => {
       const complexFunction: backend.FunctionSpec = {
         ...FUNCTION_SPEC,
         platform: "gcfv2",
@@ -462,96 +460,8 @@ describe("cloudfunctionsv2", () => {
       };
 
       expect(
-        await cloudfunctionsv2.functionFromSpec(complexFunction, CLOUD_FUNCTION_V2_SOURCE)
+        cloudfunctionsv2.functionFromSpec(complexFunction, CLOUD_FUNCTION_V2_SOURCE)
       ).to.deep.equal(complexGcfFunction);
-    });
-
-    it("should calculate non-trivial fields with a GCS trigger", async () => {
-      const storageStub = sinon
-        .stub(storage, "getStorageBucket")
-        .resolves({ location: "us-west1" });
-      const complexFunction: backend.FunctionSpec = {
-        ...FUNCTION_SPEC,
-        platform: "gcfv2",
-        trigger: {
-          eventType: "google.cloud.storage.object.v1.archived",
-          eventFilters: {
-            resource: "my-bucket",
-          },
-          retry: false,
-        },
-        maxInstances: 42,
-        minInstances: 1,
-        timeout: "15s",
-      };
-
-      const complexGcfFunction: Omit<
-        cloudfunctionsv2.CloudFunction,
-        cloudfunctionsv2.OutputOnlyFields
-      > = {
-        ...CLOUD_FUNCTION_V2,
-        eventTrigger: {
-          eventType: "google.cloud.storage.object.v1.archived",
-          eventFilters: [
-            {
-              attribute: "bucket",
-              value: "my-bucket",
-            },
-          ],
-          triggerRegion: "us-west1",
-        },
-        serviceConfig: {
-          ...CLOUD_FUNCTION_V2.serviceConfig,
-          maxInstanceCount: 42,
-          minInstanceCount: 1,
-          timeoutSeconds: 15,
-        },
-      };
-
-      expect(
-        await cloudfunctionsv2.functionFromSpec(complexFunction, CLOUD_FUNCTION_V2_SOURCE)
-      ).to.deep.equal(complexGcfFunction);
-      storageStub.restore();
-    });
-
-    it("should throw error on GCS trigger without a bucket", async () => {
-      const storageStub = sinon.stub(storage, "getStorageBucket").throws("API call failed");
-      const gcsFunction: backend.FunctionSpec = {
-        ...FUNCTION_SPEC,
-        platform: "gcfv2",
-        trigger: {
-          eventType: "google.cloud.storage.object.v1.archived",
-          eventFilters: {
-            resource: "my-bucket",
-          },
-          retry: false,
-        },
-      };
-
-      await expect(cloudfunctionsv2.functionFromSpec(gcsFunction, CLOUD_FUNCTION_V2_SOURCE)).to.be
-        .rejected;
-      storageStub.restore();
-    });
-
-    it("should throw error on GCS trigger without a bucket location", async () => {
-      const storageStub = sinon
-        .stub(storage, "getStorageBucket")
-        .resolves({ notLocation: "not-a-location" });
-      const gcsFunction: backend.FunctionSpec = {
-        ...FUNCTION_SPEC,
-        platform: "gcfv2",
-        trigger: {
-          eventType: "google.cloud.storage.object.v1.archived",
-          eventFilters: {
-            resource: "my-bucket",
-          },
-          retry: false,
-        },
-      };
-
-      await expect(cloudfunctionsv2.functionFromSpec(gcsFunction, CLOUD_FUNCTION_V2_SOURCE)).to.be
-        .rejected;
-      storageStub.restore();
     });
   });
 
@@ -613,33 +523,6 @@ describe("cloudfunctionsv2", () => {
           eventFilters: {
             resource: "projects/p/regions/r/instances/i",
             serviceName: "compute.googleapis.com",
-          },
-          retry: false,
-        },
-      });
-
-      // again w/ a GCS event trigger
-      expect(
-        cloudfunctionsv2.specFromFunction({
-          ...HAVE_CLOUD_FUNCTION_V2,
-          eventTrigger: {
-            eventType: "google.cloud.storage.object.v1.archived",
-            eventFilters: [
-              {
-                attribute: "bucket",
-                value: "my-bucket",
-              },
-            ],
-          },
-        })
-      ).to.deep.equal({
-        ...FUNCTION_SPEC,
-        platform: "gcfv2",
-        uri: RUN_URI,
-        trigger: {
-          eventType: "google.cloud.storage.object.v1.archived",
-          eventFilters: {
-            resource: "my-bucket",
           },
           retry: false,
         },

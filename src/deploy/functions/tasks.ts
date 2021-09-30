@@ -19,6 +19,7 @@ import * as pubsub from "../../gcp/pubsub";
 import * as utils from "../../utils";
 import { FirebaseError } from "../../error";
 import { track } from "../../track";
+import { setTriggerRegionFromTriggerType } from "./triggerRegionHelper";
 
 interface PollerOptions {
   apiOrigin: string;
@@ -94,7 +95,10 @@ export function createFunctionTask(
       }
       op = await gcf.createFunction(apiFunction);
     } else {
-      const apiFunction = await gcfV2.functionFromSpec(fn, params.storage![fn.region]);
+      if (backend.isEventTrigger(fn.trigger) && !fn.trigger.region) {
+        await setTriggerRegionFromTriggerType(fn.trigger);
+      }
+      const apiFunction = gcfV2.functionFromSpec(fn, params.storage![fn.region]);
       // N.B. As of GCFv2 private preview GCF no longer creates Pub/Sub topics
       // for Pub/Sub event handlers. This may change, at which point this code
       // could be deleted.
@@ -175,7 +179,7 @@ export function updateFunctionTask(
       }
       opName = (await gcf.updateFunction(apiFunction)).name;
     } else {
-      const apiFunction = await gcfV2.functionFromSpec(fn, params.storage![fn.region]);
+      const apiFunction = gcfV2.functionFromSpec(fn, params.storage![fn.region]);
       // N.B. As of GCFv2 private preview the API chokes on any update call that
       // includes the pub/sub topic even if that topic is unchanged.
       // We know that the user hasn't changed the topic between deploys because
