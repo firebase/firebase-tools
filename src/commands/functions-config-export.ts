@@ -85,6 +85,14 @@ async function promptForPrefix(errMsg: string): Promise<string> {
   );
 }
 
+function fromEntries<V>(itr: Iterable<[string, V]>): Record<string, V> {
+  const obj: Record<string, V> = {};
+  for (const [k, v] of itr) {
+    obj[k] = v;
+  }
+  return obj;
+}
+
 export default new Command("functions:config:export")
   .description("Export environment config as environment variables in dotenv format")
   .before(requirePermissions, [
@@ -128,13 +136,9 @@ export default new Command("functions:config:export")
     }
 
     const header = `# Exported firebase functions:config:export command on ${new Date().toLocaleDateString()}`;
-    const filesToWrite: Record<string, string> = pInfos.reduce((acc, info) => {
-      acc[configExport.generateDotenvFilename(info)] = configExport.toDotenvFormat(
-        info.envs!,
-        header
-      );
-      return acc;
-    }, {} as Record<string, string>);
+    const dotEnvs = pInfos.map((pInfo) => configExport.toDotenvFormat(pInfo.envs!, header));
+    const filenames = pInfos.map(configExport.generateDotenvFilename);
+    const filesToWrite = fromEntries(zip(filenames, dotEnvs));
     filesToWrite[
       ".env.local"
     ] = `${header}\n# .env.local file contains environment variables for the Functions Emulator.\n`;
@@ -142,7 +146,7 @@ export default new Command("functions:config:export")
       ".env"
     ] = `${header}# .env file contains environment variables that applies to all projects.\n`;
 
-    const functionsDir = resolveProjectPath(options, options.config.get("functions.source", "."));
+    const functionsDir = options.config.get("functions.source", ".");
     for (const [filename, content] of Object.entries(filesToWrite)) {
       await options.config.askWriteProjectFile(path.join(functionsDir, filename), content);
     }
