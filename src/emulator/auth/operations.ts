@@ -31,7 +31,6 @@ import {
   SecondFactorRecord,
   UsageMode,
   AgentProjectState,
-  Tenant,
   TenantProjectState,
 } from "./state";
 import { MfaEnrollments, Schemas } from "./types";
@@ -119,9 +118,6 @@ export const authOperations: AuthOps = {
 /* Handlers */
 
 const PASSWORD_MIN_LENGTH = 6;
-const PHONE_NUMBER_MAX_LENGTH = 250;
-const MIN_LENGTH_FOR_NSN = 2;
-const MAX_LENGTH_FOR_NSN = 17;
 
 // https://cloud.google.com/identity-platform/docs/use-rest-api#section-verify-custom-token
 export const CUSTOM_TOKEN_AUDIENCE =
