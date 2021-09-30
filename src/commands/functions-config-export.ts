@@ -47,7 +47,12 @@ async function checkRequiredPermission(pInfos: configExport.ProjectConfigInfo[])
   );
   const results = await Promise.all(testPermissions);
   for (const [pInfo, result] of zip(pInfos, results)) {
-    if (result.passed) continue;
+    if (result.passed) {
+      // We should've been able to fetch the config but couldn't. Ask the user to try export command again.
+      throw new FirebaseError(
+        `Unexpectedly failed to fetch runtime config for project ${pInfo.projectId}`
+      );
+    }
     logWarning(
       "You are missing the following permissions to read functions config on project " +
         `${clc.bold(pInfo.projectId)}:\n\t${result.missing.join("\n\t")}`
