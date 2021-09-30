@@ -10,7 +10,7 @@ import { logger } from "../logger";
 import { getProjectId } from "../projectUtils";
 import { loadRC } from "../rc";
 import { logWarning } from "../utils";
-import { flatten } from "../functional"
+import { flatten } from "../functional";
 
 export interface ProjectConfigInfo {
   projectId: string;
@@ -75,17 +75,20 @@ export function getProjectInfos(options: {
  * Fetch and fill in runtime config for each project.
  */
 export async function hydrateConfigs(pInfos: ProjectConfigInfo[]): Promise<void> {
-  await Promise.all(
-    pInfos.map(async (info) => {
-      try {
-        info.config = await functionsConfig.materializeAll(info.projectId);
-      } catch (err) {
+  const hydrate = pInfos.map((info) => {
+    return functionsConfig
+      .materializeAll(info.projectId)
+      .then((config) => {
+        info.config = config;
+        return;
+      })
+      .catch((err) => {
         logger.debug(
           `Failed to fetch runtime config for project ${info.projectId}: ${err.message}`
         );
-      }
-    })
-  );
+      });
+  });
+  await Promise.all(hydrate);
 }
 
 /**
