@@ -10,6 +10,7 @@ import { logger } from "../logger";
 import { getProjectId } from "../projectUtils";
 import { loadRC } from "../rc";
 import { logWarning } from "../utils";
+import { flatten } from "../functional"
 
 export interface ProjectConfigInfo {
   projectId: string;
@@ -88,27 +89,6 @@ export async function hydrateConfigs(pInfos: ProjectConfigInfo[]): Promise<void>
 }
 
 /**
- * Flatten config object with '.' as delimited key.
- */
-export function flatten(obj: Record<string, unknown>): Record<string, unknown> {
-  function* helper(path: string[], obj: Record<string, unknown>): Generator<[string, unknown]> {
-    for (const [k, v] of Object.entries(obj)) {
-      if (typeof v !== "object" || v === null) {
-        yield [[...path, k].join("."), v];
-      } else {
-        // Object.entries loses type info, so we must cast
-        yield* helper([...path, k], v as Record<string, unknown>);
-      }
-    }
-  }
-  const result: Record<string, unknown> = {};
-  for (const [k, v] of helper([], obj)) {
-    result[k] = v;
-  }
-  return result;
-}
-
-/**
  * Converts functions config key from runtime config to env var key.
  * If the original config key fails to convert, try again with provided prefix.
  *
@@ -140,7 +120,7 @@ export function configToEnv(configs: Record<string, unknown>, prefix: string): C
   const success = [];
   const errors = [];
 
-  for (const [configKey, value] of Object.entries(flatten(configs))) {
+  for (const [configKey, value] of flatten(configs)) {
     try {
       const envKey = convertKey(configKey, prefix);
       success.push({ origKey: configKey, newKey: envKey, value: value as string });
