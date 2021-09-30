@@ -2,7 +2,6 @@ import * as path from "path";
 
 import * as clc from "cli-color";
 
-import type { Options } from "../options";
 import requireInteractive from "../requireInteractive";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
@@ -12,8 +11,11 @@ import { resolveProjectPath } from "../projectPath";
 import { promptOnce } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 import { logBullet, logWarning } from "../utils";
+import { zip } from "../functional";
 import * as configExport from "../functions/runtimeConfigExport";
 import * as requireConfig from "../requireConfig";
+
+import type { Options } from "../options";
 
 const REQUIRED_PERMISSIONS = [
   "runtimeconfig.configs.list",
@@ -39,12 +41,13 @@ function checkReservedAliases(pInfos: configExport.ProjectConfigInfo[]): void {
 
 /* For projects where we failed to fetch the runtime config, find out what permissions are missing in the project. */
 async function checkRequiredPermission(pInfos: configExport.ProjectConfigInfo[]): Promise<void> {
-  for (const pInfo of pInfos) {
-    if (pInfo.config) continue;
-
-    const result = await testIamPermissions(pInfo.projectId, REQUIRED_PERMISSIONS);
+  pInfos = pInfos.filter((pInfo) => !pInfo.config);
+  const testPermissions = pInfos.map((pInfo) =>
+    testIamPermissions(pInfo.projectId, REQUIRED_PERMISSIONS)
+  );
+  const results = await Promise.all(testPermissions);
+  for (const [pInfo, result] of zip(pInfos, results)) {
     if (result.passed) continue;
-
     logWarning(
       "You are missing the following permissions to read functions config on project " +
         `${clc.bold(pInfo.projectId)}:\n\t${result.missing.join("\n\t")}`
