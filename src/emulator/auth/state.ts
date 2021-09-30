@@ -740,7 +740,10 @@ export type UserInfo = Omit<
   localId: string;
   providerUserInfo?: ProviderUserInfo[];
 };
-export type Tenant = Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"] & { tenantId: string };
+export type Tenant = Omit<
+  Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"],
+  "testPhoneNumbers"
+> & { tenantId: string };
 
 interface RefreshTokenRecord {
   localId: string;
