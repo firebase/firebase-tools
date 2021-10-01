@@ -71,7 +71,7 @@ export async function displayRoles(
  * @param projectId ID of user's project
  * @param apis APIs that require user approval
  */
- export async function displayApis(
+export async function displayApis(
   extensionName: string,
   projectId: string,
   apis: extensionsApi.Api[]
