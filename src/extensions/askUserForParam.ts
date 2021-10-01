@@ -163,7 +163,11 @@ async function promptReconfigureSecret(
         message: `This secret will be stored in Cloud Secret Manager as ${secretName}.\nEnter new value for ${paramSpec.label.trim()}:`,
       });
       if (!secret) {
-        secret = await secretManagerApi.createSecret(projectId, secretName);
+        secret = await secretManagerApi.createSecret(
+          projectId,
+          secretName,
+          getSecretLabels(instanceId)
+        );
       }
       return addNewSecretVersion(projectId, instanceId, secret, paramSpec, secretValue);
     case SecretUpdateAction.LEAVE:
@@ -184,8 +188,16 @@ async function promptCreateSecret(
     default: paramSpec.default,
     message: `This secret will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${secretName}.\nEnter a value for ${paramSpec.label.trim()}:`,
   });
-  const secret = await secretManagerApi.createSecret(projectId, secretName);
+  const secret = await secretManagerApi.createSecret(
+    projectId,
+    secretName,
+    getSecretLabels(instanceId)
+  );
   return addNewSecretVersion(projectId, instanceId, secret, paramSpec, secretValue);
+}
+
+function getSecretLabels(instanceId: string): Record<string, string> {
+  return { "firebase-extensions-managed": instanceId };
 }
 
 async function generateSecretName(
