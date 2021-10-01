@@ -22,6 +22,26 @@ describe("TriggerRegionHelper", () => {
       sinon.verifyAndRestore();
     });
 
+    it("should throw an error if we can't find the bucket region", async () => {
+      const fn: FunctionSpec = {
+        id: "fn",
+        entryPoint: "fnn",
+        platform: "gcfv2",
+        trigger: {
+          eventType: "google.cloud.storage.object.v1.finalized",
+          eventFilters: {
+            bucket: "my-bucket",
+          },
+          retry: false,
+        },
+        ...SPEC,
+      };
+
+      await expect(triggerRegionHelper.setTriggerRegion([fn], [])).to.be.rejectedWith(
+        "Can't find the storage bucket region"
+      );
+    });
+
     it("should skip v1 and callable functions", async () => {
       const v1EventFn: FunctionSpec = {
         id: "v1eventfn",
@@ -59,7 +79,9 @@ describe("TriggerRegionHelper", () => {
         platform: "gcfv2",
         trigger: {
           eventType: "google.cloud.storage.object.v1.finalized",
-          eventFilters: {},
+          eventFilters: {
+            bucket: "my-bucket",
+          },
           retry: false,
         },
         ...SPEC,
@@ -70,7 +92,9 @@ describe("TriggerRegionHelper", () => {
         platform: "gcfv2",
         trigger: {
           eventType: "google.cloud.storage.object.v1.finalized",
-          eventFilters: {},
+          eventFilters: {
+            bucket: "my-bucket",
+          },
           retry: false,
           region: "us",
         },
@@ -81,7 +105,9 @@ describe("TriggerRegionHelper", () => {
 
       expect(wantFn.trigger).to.deep.eq({
         eventType: "google.cloud.storage.object.v1.finalized",
-        eventFilters: {},
+        eventFilters: {
+          bucket: "my-bucket",
+        },
         retry: false,
         region: "us",
       });
