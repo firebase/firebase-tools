@@ -18,6 +18,7 @@ import * as runtimes from "./runtimes";
 import * as validate from "./validate";
 import * as utils from "../../utils";
 import { logger } from "../../logger";
+import { setTriggerRegion } from "./triggerRegionHelper";
 
 function hasUserConfig(config: Record<string, unknown>): boolean {
   // "firebase" key is always going to exist in runtime config.
@@ -99,6 +100,7 @@ export async function prepare(
       cloudrun: "run.googleapis.com",
       eventarc: "eventarc.googleapis.com",
       pubsub: "pubsub.googleapis.com",
+      storage: "storage.googleapis.com",
     };
     const enablements = Object.entries(V2_APIS).map(([tag, api]) => {
       return ensureApiEnabled.ensure(context.projectId, api, tag);
@@ -153,6 +155,10 @@ export async function prepare(
     return functionMatchesAnyGroup(fn, context.filters);
   });
   const haveFunctions = (await backend.existingBackend(context)).cloudFunctions;
+
+  // sets the trigger region from cached values or api lookup
+  await setTriggerRegion(wantFunctions, haveFunctions);
+
   // Display a warning and prompt if any functions in the release have failurePolicies.
   await promptForFailurePolicies(options, wantFunctions, haveFunctions);
   await promptForMinInstances(options, wantFunctions, haveFunctions);
