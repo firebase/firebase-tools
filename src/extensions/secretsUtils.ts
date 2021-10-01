@@ -27,3 +27,18 @@ export async function grantFirexServiceAgentSecretAdminRole(
 
   return secretManagerApi.grantServiceAgentRole(secret, saEmail, "roles/secretmanager.admin");
 }
+
+export function getActiveSecrets(instance: extensionsApi.ExtensionInstance): string[] {
+  return instance.config.source.spec.params
+    .map((p) => p.type == extensionsApi.ParamType.SECRET && instance.config.params[p.param])
+    .filter((pv) => !!pv);
+}
+
+export function prettySecretName(secretResourceName: string): string {
+  const nameTokens = secretResourceName.split("/");
+  if (nameTokens.length != 4 && nameTokens.length != 6) {
+    // not a familiar format, return as is
+    return secretResourceName;
+  }
+  return nameTokens.slice(0, 4).join("/");
+}
