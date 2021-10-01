@@ -4,12 +4,13 @@ import { InstanceSpec } from "./planner";
 import { ErrorHandler } from "./errors";
 import * as extensionsApi from "../../extensions/extensionsApi";
 import * as utils from "../../utils";
+import * as refs from "../../extensions/refs";
 
 export type DeploymentType = "create" | "update" | "delete";
 export interface ExtensionDeploymentTask {
-  run: () => Promise<void>,
-  spec: InstanceSpec,
-  type: DeploymentType,
+  run: () => Promise<void>;
+  spec: InstanceSpec;
+  type: DeploymentType;
 }
 export function extensionsDeploymentHandler(
   errorHandler: ErrorHandler
@@ -30,20 +31,67 @@ export function extensionsDeploymentHandler(
   };
 }
 
-export function createExtensionInstanceTask(instanceSpec: InstanceSpec): ExtensionDeploymentTask {
+export function createExtensionInstanceTask(
+  projectId: string,
+  instanceSpec: InstanceSpec,
+  validateOnly: boolean = false,
+): ExtensionDeploymentTask {
   const run = async () => {
-
-  }
+    const res = await extensionsApi.createInstance({
+      projectId,
+      instanceId: instanceSpec.instanceId,
+      params: instanceSpec.params,
+      extensionVersionRef: refs.toExtensionVersionRef(instanceSpec.ref!),
+      validateOnly,
+    });
+    return;
+  };
   return {
     run,
     spec: instanceSpec,
     type: "create",
-  }
+  };
+}
+
+export function updateExtensionInstanceTask(
+  projectId: string,
+  instanceSpec: InstanceSpec,
+  validateOnly: boolean = false
+): ExtensionDeploymentTask {
+  const run = async () => {
+    const res = await extensionsApi.updateInstanceFromRegistry(
+      projectId,
+      instanceSpec.instanceId,
+      refs.toExtensionVersionRef(instanceSpec.ref!),
+      instanceSpec.params,
+      validateOnly
+    );
+    return;
+  };
+  return {
+    run,
+    spec: instanceSpec,
+    type: "update",
+  };
+}
+
+export function deleteExtensionInstanceTask(
+  projectId: string,
+  instanceSpec: InstanceSpec
+): ExtensionDeploymentTask {
+  const run = async () => {
+    const res = await extensionsApi.deleteInstance(projectId, instanceSpec.instanceId);
+    return;
+  };
+  return {
+    run,
+    spec: instanceSpec,
+    type: "delete",
+  };
 }
 
 function printSuccess(task: ExtensionDeploymentTask) {
   utils.logSuccess(
-    clc.bold.green(task.spec.instanceId) +
-      `Successfully ${task.type}d ${task.spec.instanceId}`
+    clc.bold.green(task.spec.instanceId) + `Successfully ${task.type}d ${task.spec.instanceId}`
   );
 }

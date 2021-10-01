@@ -172,7 +172,8 @@ export interface ParamOption {
 async function createInstanceHelper(
   projectId: string,
   instanceId: string,
-  config: any
+  config: any,
+  validateOnly: boolean = false
 ): Promise<ExtensionInstance> {
   const createRes = await api.request("POST", `/${VERSION}/projects/${projectId}/instances/`, {
     auth: true,
@@ -180,6 +181,9 @@ async function createInstanceHelper(
     data: {
       name: `projects/${projectId}/instances/${instanceId}`,
       config: config,
+    },
+    query: {
+      validateOnly,
     },
   });
   const pollRes = await operationPoller.pollOperation<ExtensionInstance>({
@@ -205,6 +209,7 @@ export async function createInstance(args: {
   extensionSource?: ExtensionSource;
   extensionVersionRef?: string;
   params: { [key: string]: string };
+  validateOnly?: boolean;
 }): Promise<ExtensionInstance> {
   const config: any = {
     params: args.params,
@@ -223,7 +228,7 @@ export async function createInstance(args: {
   } else {
     throw new FirebaseError("No ExtensionVersion or ExtensionSource provided but one is required.");
   }
-  return createInstanceHelper(args.projectId, args.instanceId, config);
+  return createInstanceHelper(args.projectId, args.instanceId, config, args.validateOnly);
 }
 
 /**
@@ -312,9 +317,10 @@ export async function listInstances(projectId: string): Promise<ExtensionInstanc
 export async function configureInstance(
   projectId: string,
   instanceId: string,
-  params: { [option: string]: string }
+  params: { [option: string]: string },
+  validateOnly: boolean = false
 ): Promise<any> {
-  const res = await patchInstance(projectId, instanceId, "config.params", {
+  const res = await patchInstance(projectId, instanceId, "config.params", validateOnly, {
     config: {
       params,
     },
@@ -334,7 +340,8 @@ export async function updateInstance(
   projectId: string,
   instanceId: string,
   extensionSource: ExtensionSource,
-  params?: { [option: string]: string }
+  params?: { [option: string]: string },
+  validateOnly: boolean = false
 ): Promise<any> {
   const body: any = {
     config: {
@@ -346,7 +353,7 @@ export async function updateInstance(
     body.config.params = params;
     updateMask += ",config.params";
   }
-  return await patchInstance(projectId, instanceId, updateMask, body);
+  return await patchInstance(projectId, instanceId, updateMask, body, validateOnly);
 }
 
 /**
@@ -361,7 +368,8 @@ export async function updateInstanceFromRegistry(
   projectId: string,
   instanceId: string,
   extRef: string,
-  params?: { [option: string]: string }
+  params?: { [option: string]: string },
+  validateOnly: boolean = false
 ): Promise<any> {
   const ref = refs.parse(extRef);
   const body: any = {
@@ -375,13 +383,14 @@ export async function updateInstanceFromRegistry(
     body.config.params = params;
     updateMask += ",config.params";
   }
-  return await patchInstance(projectId, instanceId, updateMask, body);
+  return await patchInstance(projectId, instanceId, updateMask, validateOnly, body);
 }
 
 async function patchInstance(
   projectId: string,
   instanceId: string,
   updateMask: string,
+  validateOnly: boolean,
   data: any
 ): Promise<any> {
   const updateRes = await api.request(
@@ -392,6 +401,7 @@ async function patchInstance(
       origin: api.extensionsOrigin,
       query: {
         updateMask,
+        validateOnly,
       },
       data,
     }

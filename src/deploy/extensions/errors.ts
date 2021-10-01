@@ -17,7 +17,7 @@ export class ErrorHandler {
     this.errors.push({
       instanceId,
       type,
-      message: err.message
+      message: err.message,
     });
   }
 
@@ -25,11 +25,10 @@ export class ErrorHandler {
     logger.info("");
     logger.info("Extensions deploy had errors:");
     logger.info("");
-    for (let err of this.errors) {
+    for (const err of this.errors) {
       logger.info(`- ${err.type} ${clc.bold(err.instanceId)}`);
       logger.info(err.message);
       logger.info("");
     }
   }
-
 }
