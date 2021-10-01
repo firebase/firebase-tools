@@ -159,7 +159,7 @@ async function promptReconfigureSecret(
 
       const secretValue = await promptOnce({
         name: paramSpec.param,
-        type: "input",
+        type: "password",
         message: `This secret will be stored in Cloud Secret Manager as ${secretName}.\nEnter new value for ${paramSpec.label.trim()}:`,
       });
       if (!secret) {
@@ -184,7 +184,7 @@ async function promptCreateSecret(
   const secretName = await generateSecretName(projectId, instanceId, paramSpec.param);
   const secretValue = await promptOnce({
     name: paramSpec.param,
-    type: "input",
+    type: "password",
     default: paramSpec.default,
     message: `This secret will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${secretName}.\nEnter a value for ${paramSpec.label.trim()}:`,
   });
