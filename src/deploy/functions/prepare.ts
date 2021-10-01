@@ -18,7 +18,7 @@ import * as runtimes from "./runtimes";
 import * as validate from "./validate";
 import * as utils from "../../utils";
 import { logger } from "../../logger";
-import { setTriggerRegionFromCache } from "./triggerRegionHelper";
+import { setTriggerRegion } from "./triggerRegionHelper";
 
 function hasUserConfig(config: Record<string, unknown>): boolean {
   // "firebase" key is always going to exist in runtime config.
@@ -156,8 +156,8 @@ export async function prepare(
   });
   const haveFunctions = (await backend.existingBackend(context)).cloudFunctions;
 
-  // sets the trigger region to cached values
-  setTriggerRegionFromCache(wantFunctions, haveFunctions);
+  // sets the trigger region from cached values or api lookup
+  await setTriggerRegion(wantFunctions, haveFunctions);
 
   // Display a warning and prompt if any functions in the release have failurePolicies.
   await promptForFailurePolicies(options, wantFunctions, haveFunctions);

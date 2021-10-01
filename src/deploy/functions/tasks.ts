@@ -19,7 +19,6 @@ import * as pubsub from "../../gcp/pubsub";
 import * as utils from "../../utils";
 import { FirebaseError } from "../../error";
 import { track } from "../../track";
-import { setTriggerRegionFromTriggerType } from "./triggerRegionHelper";
 
 interface PollerOptions {
   apiOrigin: string;
@@ -95,9 +94,6 @@ export function createFunctionTask(
       }
       op = await gcf.createFunction(apiFunction);
     } else {
-      if (backend.isEventTrigger(fn.trigger) && !fn.trigger.region) {
-        await setTriggerRegionFromTriggerType(fn.trigger);
-      }
       const apiFunction = gcfV2.functionFromSpec(fn, params.storage![fn.region]);
       // N.B. As of GCFv2 private preview GCF no longer creates Pub/Sub topics
       // for Pub/Sub event handlers. This may change, at which point this code

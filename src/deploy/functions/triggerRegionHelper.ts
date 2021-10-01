@@ -7,10 +7,10 @@ import { FirebaseError } from "../../error";
  * @param want the list of function specs we want to deploy
  * @param have the list of function specs we have deployed
  */
-export function setTriggerRegionFromCache(
+export async function setTriggerRegion(
   want: backend.FunctionSpec[],
   have: backend.FunctionSpec[]
-): void {
+): Promise<void> {
   for (const wantFn of want) {
     if (wantFn.platform === "gcfv1" || !backend.isEventTrigger(wantFn.trigger)) {
       continue;
@@ -18,11 +18,19 @@ export function setTriggerRegionFromCache(
     const match = have.find(backend.sameFunctionName(wantFn))?.trigger as backend.EventTrigger;
     if (match?.region) {
       wantFn.trigger.region = match.region;
+    } else {
+      await setTriggerRegionFromTriggerType(wantFn.trigger);
     }
   }
 }
 
-export async function setTriggerRegionFromTriggerType(trigger: backend.EventTrigger): Promise<any> {
+/**
+ * Sets the event trigger region by calling finding the region of the underlying resource
+ * @param trigger the event trigger with a missing region
+ *
+ * @throws {@link FirebaseError} when the region is not found
+ */
+async function setTriggerRegionFromTriggerType(trigger: backend.EventTrigger): Promise<void> {
   if (trigger.eventFilters.bucket) {
     // GCS function
     try {
