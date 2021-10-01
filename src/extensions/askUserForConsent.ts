@@ -5,6 +5,7 @@ import TerminalRenderer = require("marked-terminal");
 
 import { FirebaseError } from "../error";
 import { logPrefix } from "../extensions/extensionsHelper";
+import * as extensionsApi from "./extensionsApi";
 import * as iam from "../gcp/iam";
 import { promptOnce, Question } from "../prompt";
 import * as utils from "../utils";
@@ -61,6 +62,33 @@ export async function displayRoles(
   }
 
   const message = await formatDescription(extensionName, projectId, roles);
+  utils.logLabeledBullet(logPrefix, message);
+}
+
+/**
+ * Displays APIs that will be enabled for the project and corresponding descriptions.
+ * @param extensionName name of extension to install/update
+ * @param projectId ID of user's project
+ * @param apis APIs that require user approval
+ */
+ export async function displayApis(
+  extensionName: string,
+  projectId: string,
+  apis: extensionsApi.Api[]
+): Promise<void> {
+  if (!apis.length) {
+    return;
+  }
+  const question = `${clc.bold(
+    extensionName
+  )} will enable the following APIs for project ${clc.bold(projectId)}`;
+  const results: string[] = await Promise.all(
+    apis.map((api: extensionsApi.Api) => {
+      return `- ${api.apiName}: ${api.reason}`;
+    })
+  );
+  results.unshift(question);
+  const message = _.join(results, "\n");
   utils.logLabeledBullet(logPrefix, message);
 }
 

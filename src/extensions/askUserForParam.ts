@@ -186,7 +186,7 @@ async function promptCreateSecret(
     name: paramSpec.param,
     type: "password",
     default: paramSpec.default,
-    message: `This secret will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${secretName}.\nEnter a value for ${paramSpec.label.trim()}:`,
+    message: `This secret will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${secretName} and managed by Firebase Extensions (Firebase Extensions Service Agent will be granted Secret Admin role on this secret).\nEnter a value for ${paramSpec.label.trim()}:`,
   });
   const secret = await secretManagerApi.createSecret(
     projectId,
