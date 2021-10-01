@@ -87,9 +87,6 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
       } else {
         await displayNode10CreateBillingNotice(spec, !nonInteractive);
       }
-      if (usesSecrets) {
-        await secretsUtils.ensureSecretManagerApiEnabled(options);
-      }
     }
     const apis = spec.apis || [];
     if (usesSecrets) {
@@ -99,13 +96,16 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
       });
     }
     if (apis.length) {
-      await askUserForConsent.displayApis(spec.displayName || spec.name, projectId, apis);
+      askUserForConsent.displayApis(spec.displayName || spec.name, projectId, apis);
       const consented = await confirm({ nonInteractive, force, default: true });
       if (!consented) {
         throw new FirebaseError(
           "Without explicit consent for the APIs listed, we cannot deploy this extension."
         );
       }
+    }
+    if (usesSecrets) {
+      await secretsUtils.ensureSecretManagerApiEnabled(options);
     }
 
     const roles = spec.roles ? spec.roles.map((role: extensionsApi.Role) => role.role) : [];

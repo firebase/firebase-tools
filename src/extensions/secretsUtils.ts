@@ -1,10 +1,10 @@
-import * as api from "../api";
 import { getProjectNumber } from "../getProjectNumber";
 import * as utils from "../utils";
 import { ensure } from "../ensureApiEnabled";
 import { needProjectId } from "../projectUtils";
 import * as extensionsApi from "./extensionsApi";
 import * as secretManagerApi from "../gcp/secretManager";
+import { logger } from "../logger";
 
 export async function ensureSecretManagerApiEnabled(options: any): Promise<void> {
   const projectId = needProjectId(options);
@@ -38,6 +38,7 @@ export function prettySecretName(secretResourceName: string): string {
   const nameTokens = secretResourceName.split("/");
   if (nameTokens.length != 4 && nameTokens.length != 6) {
     // not a familiar format, return as is
+    logger.debug(`unable to parse secret secretResourceName: ${secretResourceName}`);
     return secretResourceName;
   }
   return nameTokens.slice(0, 4).join("/");

@@ -71,24 +71,18 @@ export async function displayRoles(
  * @param projectId ID of user's project
  * @param apis APIs that require user approval
  */
-export async function displayApis(
-  extensionName: string,
-  projectId: string,
-  apis: extensionsApi.Api[]
-): Promise<void> {
+export function displayApis(extensionName: string, projectId: string, apis: extensionsApi.Api[]) {
   if (!apis.length) {
     return;
   }
   const question = `${clc.bold(
     extensionName
   )} will enable the following APIs for project ${clc.bold(projectId)}`;
-  const results: string[] = await Promise.all(
-    apis.map((api: extensionsApi.Api) => {
-      return `- ${api.apiName}: ${api.reason}`;
-    })
-  );
+  const results: string[] = apis.map((api: extensionsApi.Api) => {
+    return `- ${api.apiName}: ${api.reason}`;
+  });
   results.unshift(question);
-  const message = _.join(results, "\n");
+  const message = results.join("\n");
   utils.logLabeledBullet(logPrefix, message);
 }
 
