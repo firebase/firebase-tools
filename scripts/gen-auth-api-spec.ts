@@ -305,6 +305,7 @@ function pushServersDownToEachPath(openapi3: any): void {
   });
 }
 
+// TODO(lisajian): add tenantId as query param for all emulator config endpoints
 function addEmulatorOperations(openapi3: any): void {
   openapi3.tags.push({ name: "emulator" });
   openapi3.paths["/emulator/v1/projects/{targetProjectId}/accounts"] = {
@@ -425,6 +426,13 @@ function addEmulatorOperations(openapi3: any): void {
           type: "string",
         },
       },
+      {
+        name: "tenantId",
+        in: "query",
+        description:
+          "The ID of the Identity Platform tenant the accounts belongs to. If not specified, accounts on the Identity Platform project are returned.",
+        schema: { type: "string" },
+      },
     ],
     servers: [{ url: "" }],
     get: {
@@ -474,6 +482,13 @@ function addEmulatorOperations(openapi3: any): void {
         schema: {
           type: "string",
         },
+      },
+      {
+        name: "tenantId",
+        in: "query",
+        description:
+          "The ID of the Identity Platform tenant the accounts belongs to. If not specified, accounts on the Identity Platform project are returned.",
+        schema: { type: "string" },
       },
     ],
     servers: [{ url: "" }],

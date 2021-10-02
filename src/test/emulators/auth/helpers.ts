@@ -93,6 +93,7 @@ export function registerUser(
     password: string;
     displayName?: string;
     mfaInfo?: MfaEnrollments;
+    tenantId?: string;
   }
 ): Promise<{ idToken: string; localId: string; refreshToken: string; email: string }> {
   return testAgent
@@ -200,7 +201,8 @@ export async function signInWithPhoneNumber(
 export function signInWithFakeClaims(
   testAgent: TestAgent,
   providerId: string,
-  claims: Partial<IdpJwtPayload> & { sub: string }
+  claims: Partial<IdpJwtPayload> & { sub: string },
+  tenantId?: string
 ): Promise<{ idToken: string; localId: string; refreshToken: string; email?: string }> {
   const fakeIdToken = JSON.stringify(fakeClaims(claims));
   return testAgent
@@ -213,6 +215,7 @@ export function signInWithFakeClaims(
       requestUri: "http://localhost",
       returnIdpCredential: true,
       returnSecureToken: true,
+      tenantId,
     })
     .then((res) => {
       expectStatusCode(200, res);
@@ -250,10 +253,14 @@ export async function expectIdTokenExpired(testAgent: TestAgent, idToken: string
     });
 }
 
-export function getAccountInfoByIdToken(testAgent: TestAgent, idToken: string): Promise<UserInfo> {
+export function getAccountInfoByIdToken(
+  testAgent: TestAgent,
+  idToken: string,
+  tenantId?: string
+): Promise<UserInfo> {
   return testAgent
     .post("/identitytoolkit.googleapis.com/v1/accounts:lookup")
-    .send({ idToken })
+    .send({ idToken, tenantId })
     .query({ key: "fake-api-key" })
     .then((res) => {
       expectStatusCode(200, res);
@@ -262,10 +269,14 @@ export function getAccountInfoByIdToken(testAgent: TestAgent, idToken: string): 
     });
 }
 
-export function getAccountInfoByLocalId(testAgent: TestAgent, localId: string): Promise<UserInfo> {
+export function getAccountInfoByLocalId(
+  testAgent: TestAgent,
+  localId: string,
+  tenantId?: string
+): Promise<UserInfo> {
   return testAgent
     .post("/identitytoolkit.googleapis.com/v1/accounts:lookup")
-    .send({ localId: [localId] })
+    .send({ localId: [localId], tenantId })
     .set("Authorization", "Bearer owner")
     .then((res) => {
       expectStatusCode(200, res);
@@ -274,27 +285,37 @@ export function getAccountInfoByLocalId(testAgent: TestAgent, localId: string): 
     });
 }
 
-export function inspectOobs(testAgent: TestAgent): Promise<OobRecord[]> {
-  return testAgent.get(`/emulator/v1/projects/${PROJECT_ID}/oobCodes`).then((res) => {
-    expectStatusCode(200, res);
-    return res.body.oobCodes;
-  });
+export function inspectOobs(testAgent: TestAgent, tenantId?: string): Promise<OobRecord[]> {
+  return testAgent
+    .get(`/emulator/v1/projects/${PROJECT_ID}/oobCodes`)
+    .query({ tenantId })
+    .then((res) => {
+      expectStatusCode(200, res);
+      return res.body.oobCodes;
+    });
 }
 
-export function inspectVerificationCodes(testAgent: TestAgent): Promise<PhoneVerificationRecord[]> {
-  return testAgent.get(`/emulator/v1/projects/${PROJECT_ID}/verificationCodes`).then((res) => {
-    expectStatusCode(200, res);
-    return res.body.verificationCodes;
-  });
+export function inspectVerificationCodes(
+  testAgent: TestAgent,
+  tenantId?: string
+): Promise<PhoneVerificationRecord[]> {
+  return testAgent
+    .get(`/emulator/v1/projects/${PROJECT_ID}/verificationCodes`)
+    .query({ tenantId })
+    .then((res) => {
+      expectStatusCode(200, res);
+      return res.body.verificationCodes;
+    });
 }
 
 export function createEmailSignInOob(
   testAgent: TestAgent,
-  email: string
+  email: string,
+  tenantId?: string
 ): Promise<{ oobCode: string; oobLink: string }> {
   return testAgent
     .post("/identitytoolkit.googleapis.com/v1/accounts:sendOobCode")
-    .send({ email, requestType: "EMAIL_SIGNIN", returnOobLink: true })
+    .send({ email, requestType: "EMAIL_SIGNIN", returnOobLink: true, tenantId })
     .set("Authorization", "Bearer owner")
     .then((res) => {
       expectStatusCode(200, res);
@@ -343,24 +364,25 @@ export function updateAccountByLocalId(
 export async function enrollPhoneMfa(
   testAgent: TestAgent,
   idToken: string,
-  phoneNumber: string
+  phoneNumber: string,
+  tenantId?: string
 ): Promise<{ idToken: string; refreshToken: string }> {
   const sessionInfo = await testAgent
     .post("/identitytoolkit.googleapis.com/v2/accounts/mfaEnrollment:start")
     .query({ key: "fake-api-key" })
-    .send({ idToken, phoneEnrollmentInfo: { phoneNumber } })
+    .send({ idToken, phoneEnrollmentInfo: { phoneNumber }, tenantId })
     .then((res) => {
       expectStatusCode(200, res);
       expect(res.body.phoneSessionInfo.sessionInfo).to.be.a("string");
       return res.body.phoneSessionInfo.sessionInfo as string;
     });
 
-  const code = (await inspectVerificationCodes(testAgent))[0].code;
+  const code = (await inspectVerificationCodes(testAgent, tenantId))[0].code;
 
   return testAgent
     .post("/identitytoolkit.googleapis.com/v2/accounts/mfaEnrollment:finalize")
     .query({ key: "fake-api-key" })
-    .send({ idToken, phoneVerificationInfo: { code, sessionInfo } })
+    .send({ idToken, phoneVerificationInfo: { code, sessionInfo }, tenantId })
     .then((res) => {
       expectStatusCode(200, res);
       expect(res.body.idToken).to.be.a("string");

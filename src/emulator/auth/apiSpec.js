@@ -3706,6 +3706,13 @@ export default {
           required: true,
           schema: { type: "string" },
         },
+        {
+          name: "tenantId",
+          in: "query",
+          description:
+            "The ID of the Identity Platform tenant the accounts belongs to. If not specified, accounts on the Identity Platform project are returned.",
+          schema: { type: "string" },
+        },
       ],
       servers: [{ url: "" }],
       get: {
@@ -3732,6 +3739,13 @@ export default {
           in: "path",
           description: "The ID of the Google Cloud project that the verification codes belongs to.",
           required: true,
+          schema: { type: "string" },
+        },
+        {
+          name: "tenantId",
+          in: "query",
+          description:
+            "The ID of the Identity Platform tenant the accounts belongs to. If not specified, accounts on the Identity Platform project are returned.",
           schema: { type: "string" },
         },
       ],

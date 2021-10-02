@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { describeAuthEmulator } from "./setup";
+import { describeAuthEmulator, PROJECT_ID } from "./setup";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import {
   enrollPhoneMfa,
@@ -7,6 +7,7 @@ import {
   getAccountInfoByIdToken,
   getAccountInfoByLocalId,
   inspectVerificationCodes,
+  registerTenant,
   registerUser,
   signInWithEmailLink,
   signInWithPhoneNumber,
@@ -136,6 +137,106 @@ describeAuthEmulator("mfa enrollment", ({ authApi, getClock }) => {
       });
   });
 
+  it("should error on mfaEnrollment:start if auth is disabled", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: true });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/mfaEnrollment:start")
+      .query({ key: "fake-api-key" })
+      .send({ tenantId: tenant.tenantId })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("PROJECT_DISABLED");
+      });
+  });
+
+  it("should error on mfaEnrollment:start if MFA is disabled", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, {
+      disableAuth: false,
+      mfaConfig: {
+        state: "DISABLED",
+      },
+    });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/mfaEnrollment:start")
+      .query({ key: "fake-api-key" })
+      .send({ tenantId: tenant.tenantId })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").contains("OPERATION_NOT_ALLOWED");
+      });
+  });
+
+  it("should error on mfaEnrollment:start if phone SMS is not an enabled provider", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, {
+      disableAuth: false,
+      mfaConfig: {
+        state: "ENABLED",
+        enabledProviders: ["PROVIDER_UNSPECIFIED"],
+      },
+    });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/mfaEnrollment:start")
+      .query({ key: "fake-api-key" })
+      .send({ tenantId: tenant.tenantId })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").contains("OPERATION_NOT_ALLOWED");
+      });
+  });
+
+  it("should error on mfaEnrollment:finalize if auth is disabled", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: true });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/mfaEnrollment:finalize")
+      .query({ key: "fake-api-key" })
+      .send({ tenantId: tenant.tenantId })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("PROJECT_DISABLED");
+      });
+  });
+
+  it("should error on mfaEnrollment:finalize if MFA is disabled", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, {
+      disableAuth: false,
+      mfaConfig: {
+        state: "DISABLED",
+      },
+    });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/mfaEnrollment:finalize")
+      .query({ key: "fake-api-key" })
+      .send({ tenantId: tenant.tenantId })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").contains("OPERATION_NOT_ALLOWED");
+      });
+  });
+
+  it("should error on mfaEnrollment:finalize if phone SMS is not an enabled provider", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, {
+      disableAuth: false,
+      mfaConfig: {
+        state: "ENABLED",
+        enabledProviders: ["PROVIDER_UNSPECIFIED"],
+      },
+    });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/mfaEnrollment:finalize")
+      .query({ key: "fake-api-key" })
+      .send({ tenantId: tenant.tenantId })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").contains("OPERATION_NOT_ALLOWED");
+      });
+  });
+
   it("should allow sign-in with pending credential for MFA-enabled user", async () => {
     const email = "foo@example.com";
     const password = "abcdef";
@@ -219,6 +320,106 @@ describeAuthEmulator("mfa enrollment", ({ authApi, getClock }) => {
     expect(afterMfa.lastRefreshAt).to.equal(new Date().toISOString());
   });
 
+  it("should error on mfaSignIn:start if auth is disabled", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: true });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/mfaSignIn:start")
+      .query({ key: "fake-api-key" })
+      .send({ tenantId: tenant.tenantId })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("PROJECT_DISABLED");
+      });
+  });
+
+  it("should error on mfaSignIn:start if MFA is disabled", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, {
+      disableAuth: false,
+      mfaConfig: {
+        state: "DISABLED",
+      },
+    });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/mfaSignIn:start")
+      .query({ key: "fake-api-key" })
+      .send({ tenantId: tenant.tenantId })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").contains("OPERATION_NOT_ALLOWED");
+      });
+  });
+
+  it("should error on mfaSignIn:start if phone SMS is not an enabled provider", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, {
+      disableAuth: false,
+      mfaConfig: {
+        state: "ENABLED",
+        enabledProviders: ["PROVIDER_UNSPECIFIED"],
+      },
+    });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/mfaSignIn:start")
+      .query({ key: "fake-api-key" })
+      .send({ tenantId: tenant.tenantId })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").contains("OPERATION_NOT_ALLOWED");
+      });
+  });
+
+  it("should error on mfaSignIn:finalize if auth is disabled", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: true });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/mfaSignIn:finalize")
+      .query({ key: "fake-api-key" })
+      .send({ tenantId: tenant.tenantId })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("PROJECT_DISABLED");
+      });
+  });
+
+  it("should error on mfaSignIn:finalize if MFA is disabled", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, {
+      disableAuth: false,
+      mfaConfig: {
+        state: "DISABLED",
+      },
+    });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/mfaSignIn:finalize")
+      .query({ key: "fake-api-key" })
+      .send({ tenantId: tenant.tenantId })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").contains("OPERATION_NOT_ALLOWED");
+      });
+  });
+
+  it("should error on mfaSignIn:finalize if phone SMS is not an enabled provider", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, {
+      disableAuth: false,
+      mfaConfig: {
+        state: "ENABLED",
+        enabledProviders: ["PROVIDER_UNSPECIFIED"],
+      },
+    });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/mfaSignIn:finalize")
+      .query({ key: "fake-api-key" })
+      .send({ tenantId: tenant.tenantId })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").contains("OPERATION_NOT_ALLOWED");
+      });
+  });
+
   it("should allow withdrawing MFA for a user", async () => {
     const { idToken: token1 } = await signInWithEmailLink(authApi(), "foo@example.com");
     const { idToken } = await enrollPhoneMfa(authApi(), token1, TEST_PHONE_NUMBER);
@@ -247,5 +448,18 @@ describeAuthEmulator("mfa enrollment", ({ authApi, getClock }) => {
 
     const after = await getAccountInfoByIdToken(authApi(), idToken);
     expect(after.mfaInfo).to.have.lengthOf(0);
+  });
+
+  it("should error on mfaEnrollment:withdraw if auth is disabled", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: true });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/mfaEnrollment:withdraw")
+      .query({ key: "fake-api-key" })
+      .send({ tenantId: tenant.tenantId })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("PROJECT_DISABLED");
+      });
   });
 });

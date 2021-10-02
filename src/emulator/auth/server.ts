@@ -138,7 +138,9 @@ export async function createApp(
   });
 
   registerLegacyRoutes(app);
-  registerHandlers(app, (apiKey) => getProjectStateById(getProjectIdByApiKey(apiKey)));
+  registerHandlers(app, (apiKey, tenantId) =>
+    getProjectStateById(getProjectIdByApiKey(apiKey), tenantId)
+  );
 
   const apiKeyAuthenticator: PromiseAuthenticator = (ctx, info) => {
     if (info.in !== "query") {
@@ -468,7 +470,9 @@ function toExegesisController(
       if (ctx.params.path.tenantId && ctx.requestBody?.tenantId) {
         assert(ctx.params.path.tenantId === ctx.requestBody.tenantId, "TENANT_ID_MISMATCH");
       }
-      const targetTenantId: string = ctx.params.path.tenantId || ctx.requestBody?.tenantId;
+      // Rely on query param tenantId for emulator endpoints
+      const targetTenantId: string =
+        ctx.params.path.tenantId || ctx.requestBody?.tenantId || ctx.params.query.tenantId;
       return operation(getProjectStateById(targetProjectId, targetTenantId), ctx.requestBody, ctx);
     };
   }
