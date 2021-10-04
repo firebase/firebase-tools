@@ -186,6 +186,9 @@ async function createInstanceHelper(
       validateOnly,
     },
   });
+  if (validateOnly) {
+    return createRes;
+  }
   const pollRes = await operationPoller.pollOperation<ExtensionInstance>({
     apiOrigin: api.extensionsOrigin,
     apiVersion: VERSION,
@@ -406,6 +409,9 @@ async function patchInstance(
       data,
     }
   );
+  if (validateOnly) {
+    return updateRes;
+  }
   const pollRes = await operationPoller.pollOperation({
     apiOrigin: api.extensionsOrigin,
     apiVersion: VERSION,

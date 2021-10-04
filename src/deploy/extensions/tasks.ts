@@ -5,6 +5,8 @@ import { ErrorHandler } from "./errors";
 import * as extensionsApi from "../../extensions/extensionsApi";
 import * as utils from "../../utils";
 import * as refs from "../../extensions/refs";
+import { OperationType } from "../functions/tasks";
+import { instanceId } from "firebase-admin";
 
 export type DeploymentType = "create" | "update" | "delete";
 export interface ExtensionDeploymentTask {
@@ -19,13 +21,16 @@ export function extensionsDeploymentHandler(
     let result;
     try {
       result = await task.run();
-      printSuccess(task);
     } catch (err) {
-      if (err.statusCode == 429) {
+      if (err.status == 429) {
         // Throw quota errors so that throttler retries them.
         throw err;
       }
-      errorHandler.record(task.spec.instanceId, task.type, err.message ?? err);
+      errorHandler.record(
+        task.spec.instanceId,
+        task.type,
+        err.context?.body?.error?.message ?? err
+      );
     }
     return result;
   };
@@ -34,7 +39,7 @@ export function extensionsDeploymentHandler(
 export function createExtensionInstanceTask(
   projectId: string,
   instanceSpec: InstanceSpec,
-  validateOnly: boolean = false,
+  validateOnly: boolean = false
 ): ExtensionDeploymentTask {
   const run = async () => {
     const res = await extensionsApi.createInstance({
@@ -44,6 +49,7 @@ export function createExtensionInstanceTask(
       extensionVersionRef: refs.toExtensionVersionRef(instanceSpec.ref!),
       validateOnly,
     });
+    printSuccess(instanceSpec.instanceId, "create", validateOnly);
     return;
   };
   return {
@@ -66,6 +72,7 @@ export function updateExtensionInstanceTask(
       instanceSpec.params,
       validateOnly
     );
+    printSuccess(instanceSpec.instanceId, "update", validateOnly);
     return;
   };
   return {
@@ -81,6 +88,7 @@ export function deleteExtensionInstanceTask(
 ): ExtensionDeploymentTask {
   const run = async () => {
     const res = await extensionsApi.deleteInstance(projectId, instanceSpec.instanceId);
+    printSuccess(instanceSpec.instanceId, "delete", false);
     return;
   };
   return {
@@ -90,8 +98,7 @@ export function deleteExtensionInstanceTask(
   };
 }
 
-function printSuccess(task: ExtensionDeploymentTask) {
-  utils.logSuccess(
-    clc.bold.green(task.spec.instanceId) + `Successfully ${task.type}d ${task.spec.instanceId}`
-  );
+function printSuccess(instanceId: string, type: OperationType, validateOnly: boolean) {
+  const action = validateOnly ? `validated ${type} for` : `${type}d`;
+  utils.logSuccess(clc.bold.green("extensions") + ` Successfully ${action} ${instanceId}`);
 }

@@ -13,15 +13,15 @@ interface ErrorInfo {
 export class ErrorHandler {
   errors: ErrorInfo[] = [];
 
-  record(instanceId: string, type: DeploymentType, err: FirebaseError) {
+  record(instanceId: string, type: DeploymentType, message: string): void {
     this.errors.push({
       instanceId,
       type,
-      message: err.message,
+      message: message,
     });
   }
 
-  print() {
+  print(): void {
     logger.info("");
     logger.info("Extensions deploy had errors:");
     logger.info("");
@@ -30,5 +30,9 @@ export class ErrorHandler {
       logger.info(err.message);
       logger.info("");
     }
+  }
+
+  hasErrors(): boolean {
+    return this.errors.length > 0;
   }
 }
