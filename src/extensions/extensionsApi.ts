@@ -323,9 +323,15 @@ export async function configureInstance(
   params: { [option: string]: string },
   validateOnly: boolean = false
 ): Promise<any> {
-  const res = await patchInstance(projectId, instanceId, "config.params", validateOnly, {
-    config: {
-      params,
+  const res = await patchInstance({
+    projectId,
+    instanceId,
+    updateMask: "config.params",
+    validateOnly,
+    data: {
+      config: {
+        params,
+      },
     },
   });
   return res;
@@ -356,7 +362,7 @@ export async function updateInstance(
     body.config.params = params;
     updateMask += ",config.params";
   }
-  return await patchInstance(projectId, instanceId, updateMask, body, validateOnly);
+  return await patchInstance({ projectId, instanceId, updateMask, validateOnly, data: body });
 }
 
 /**
@@ -386,30 +392,30 @@ export async function updateInstanceFromRegistry(
     body.config.params = params;
     updateMask += ",config.params";
   }
-  return await patchInstance(projectId, instanceId, updateMask, validateOnly, body);
+  return await patchInstance({ projectId, instanceId, updateMask, validateOnly, data: body });
 }
 
-async function patchInstance(
-  projectId: string,
-  instanceId: string,
-  updateMask: string,
-  validateOnly: boolean,
-  data: any
-): Promise<any> {
+async function patchInstance(args: {
+  projectId: string;
+  instanceId: string;
+  updateMask: string;
+  validateOnly: boolean;
+  data: any;
+}): Promise<any> {
   const updateRes = await api.request(
     "PATCH",
-    `/${VERSION}/projects/${projectId}/instances/${instanceId}`,
+    `/${VERSION}/projects/${args.projectId}/instances/${args.instanceId}`,
     {
       auth: true,
       origin: api.extensionsOrigin,
       query: {
-        updateMask,
-        validateOnly,
+        updateMask: args.updateMask,
+        validateOnly: args.validateOnly,
       },
-      data,
+      data: args.data,
     }
   );
-  if (validateOnly) {
+  if (args.validateOnly) {
     return updateRes;
   }
   const pollRes = await operationPoller.pollOperation({
