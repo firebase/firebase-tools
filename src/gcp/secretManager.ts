@@ -48,7 +48,11 @@ export function parseSecretResourceName(resourceName: string): Secret {
   };
 }
 
-export async function createSecret(projectId: string, name: string): Promise<Secret> {
+export async function createSecret(
+  projectId: string,
+  name: string,
+  labels: Record<string, string>
+): Promise<Secret> {
   const createRes = await api.request(
     "POST",
     `/v1beta1/projects/${projectId}/secrets?secretId=${name}`,
@@ -59,6 +63,7 @@ export async function createSecret(projectId: string, name: string): Promise<Sec
         replication: {
           automatic: {},
         },
+        labels,
       },
     }
   );

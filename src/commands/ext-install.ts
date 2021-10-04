@@ -87,10 +87,27 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
       } else {
         await displayNode10CreateBillingNotice(spec, !nonInteractive);
       }
-      if (usesSecrets) {
-        await secretsUtils.ensureSecretManagerApiEnabled(options);
+    }
+    const apis = spec.apis || [];
+    if (usesSecrets) {
+      apis.push({
+        apiName: "secretmanager.googleapis.com",
+        reason: `To access and manage secrets which are used by this extension. By using this product you agree to the terms and conditions of the following license: https://console.cloud.google.com/tos?id=cloud&project=${projectId}`,
+      });
+    }
+    if (apis.length) {
+      askUserForConsent.displayApis(spec.displayName || spec.name, projectId, apis);
+      const consented = await confirm({ nonInteractive, force, default: true });
+      if (!consented) {
+        throw new FirebaseError(
+          "Without explicit consent for the APIs listed, we cannot deploy this extension."
+        );
       }
     }
+    if (usesSecrets) {
+      await secretsUtils.ensureSecretManagerApiEnabled(options);
+    }
+
     const roles = spec.roles ? spec.roles.map((role: extensionsApi.Role) => role.role) : [];
     if (roles.length) {
       await askUserForConsent.displayRoles(spec.displayName || spec.name, projectId, roles);

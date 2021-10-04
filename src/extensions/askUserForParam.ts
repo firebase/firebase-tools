@@ -159,11 +159,15 @@ async function promptReconfigureSecret(
 
       const secretValue = await promptOnce({
         name: paramSpec.param,
-        type: "input",
+        type: "password",
         message: `This secret will be stored in Cloud Secret Manager as ${secretName}.\nEnter new value for ${paramSpec.label.trim()}:`,
       });
       if (!secret) {
-        secret = await secretManagerApi.createSecret(projectId, secretName);
+        secret = await secretManagerApi.createSecret(
+          projectId,
+          secretName,
+          getSecretLabels(instanceId)
+        );
       }
       return addNewSecretVersion(projectId, instanceId, secret, paramSpec, secretValue);
     case SecretUpdateAction.LEAVE:
@@ -180,12 +184,20 @@ async function promptCreateSecret(
   const secretName = await generateSecretName(projectId, instanceId, paramSpec.param);
   const secretValue = await promptOnce({
     name: paramSpec.param,
-    type: "input",
+    type: "password",
     default: paramSpec.default,
-    message: `This secret will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${secretName}.\nEnter a value for ${paramSpec.label.trim()}:`,
+    message: `This secret will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${secretName} and managed by Firebase Extensions (Firebase Extensions Service Agent will be granted Secret Admin role on this secret).\nEnter a value for ${paramSpec.label.trim()}:`,
   });
-  const secret = await secretManagerApi.createSecret(projectId, secretName);
+  const secret = await secretManagerApi.createSecret(
+    projectId,
+    secretName,
+    getSecretLabels(instanceId)
+  );
   return addNewSecretVersion(projectId, instanceId, secret, paramSpec, secretValue);
+}
+
+function getSecretLabels(instanceId: string): Record<string, string> {
+  return { "firebase-extensions-managed": instanceId };
 }
 
 async function generateSecretName(
