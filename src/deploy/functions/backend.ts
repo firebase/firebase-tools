@@ -431,7 +431,7 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
   try {
     gcfV2Results = await gcfV2.listAllFunctions(ctx.projectId);
   } catch (err) {
-    if (err.status === 404 && err.message?.includes("Method not found")) {
+    if (err.status === 404 && err.message?.toLowerCase().includes("method not found")) {
       return; // customer has preview enabled without allowlist set
     }
     throw err;
