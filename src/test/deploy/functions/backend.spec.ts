@@ -272,6 +272,13 @@ describe("Backend", () => {
     }
 
     describe("existingBackend", () => {
+      it("should throw error when functions list fails", async () => {
+        const context = newContext();
+        listAllFunctions.rejects(new FirebaseError("Failed to list functions"));
+
+        await expect(backend.existingBackend(context)).to.be.rejected;
+      });
+
       it("should cache", async () => {
         const context = newContext();
         listAllFunctions.onFirstCall().resolves({
@@ -390,6 +397,13 @@ describe("Backend", () => {
     });
 
     describe("checkAvailability", () => {
+      it("should throw error when functions list fails", async () => {
+        const context = newContext();
+        listAllFunctions.rejects(new FirebaseError("Failed to list functions"));
+
+        await expect(backend.checkAvailability(context, backend.empty())).to.be.rejected;
+      });
+
       it("should do nothing when regions are all avalable", async () => {
         listAllFunctions.onFirstCall().resolves({
           functions: [],
