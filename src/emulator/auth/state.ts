@@ -715,7 +715,7 @@ export class TenantProjectState extends ProjectState {
   }
 
   get allowPasswordSignup() {
-    return this._tenantConfig.allowPasswordSignup ?? false;
+    return this._tenantConfig.allowPasswordSignup ?? true;
   }
 
   get disableAuth() {
@@ -723,15 +723,20 @@ export class TenantProjectState extends ProjectState {
   }
 
   get mfaConfig() {
-    return this._tenantConfig.mfaConfig ?? {};
+    return (
+      this._tenantConfig.mfaConfig ?? {
+        state: "ENABLED" as const,
+        enabledProviders: ["PHONE_SMS" as const],
+      }
+    );
   }
 
   get enableAnonymousUser() {
-    return this._tenantConfig.enableAnonymousUser ?? false;
+    return this._tenantConfig.enableAnonymousUser ?? true;
   }
 
   get enableEmailLinkSignin() {
-    return this._tenantConfig.enableEmailLinkSignin ?? false;
+    return this._tenantConfig.enableEmailLinkSignin ?? true;
   }
 
   delete(): void {
