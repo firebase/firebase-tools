@@ -598,7 +598,9 @@ export class AgentProjectState extends ProjectState {
   }
 
   getTenantProject(tenantId: string): TenantProjectState {
-    assert(this.tenantProjectForTenantId.has(tenantId), "TENANT_NOT_FOUND");
+    if (!this.tenantProjectForTenantId.has(tenantId)) {
+      this.createTenantWithTenantId(tenantId, { tenantId });
+    }
     return this.tenantProjectForTenantId.get(tenantId)!;
   }
 
@@ -624,17 +626,25 @@ export class AgentProjectState extends ProjectState {
   createTenant(tenant: Tenant): Tenant {
     for (let i = 0; i < 10; i++) {
       const tenantId = randomId(28);
-      if (!this.tenantProjectForTenantId.has(tenantId)) {
-        tenant.name = `projects/${this.projectId}/tenants/${tenantId}`;
-        tenant.tenantId = tenantId;
-        this.tenantProjectForTenantId.set(
-          tenantId,
-          new TenantProjectState(this.projectId, tenantId, tenant, this)
-        );
-        return tenant;
+      const createdTenant = this.createTenantWithTenantId(tenantId, tenant);
+      if (createdTenant) {
+        return createdTenant;
       }
     }
     throw new Error("Could not generate a random unique tenantId after 10 tries");
+  }
+
+  private createTenantWithTenantId(tenantId: string, tenant: Tenant): Tenant | undefined {
+    if (this.tenantProjectForTenantId.has(tenantId)) {
+      return undefined;
+    }
+    tenant.name = `projects/${this.projectId}/tenants/${tenantId}`;
+    tenant.tenantId = tenantId;
+    this.tenantProjectForTenantId.set(
+      tenantId,
+      new TenantProjectState(this.projectId, tenantId, tenant, this)
+    );
+    return tenant;
   }
 
   deleteTenant(tenantId: string): void {

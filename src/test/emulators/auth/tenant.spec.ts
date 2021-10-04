@@ -55,13 +55,39 @@ describeAuthEmulator("tenant management", ({ authApi }) => {
         });
     });
 
-    it("should error for tenants that do not exist", async () => {
+    it("should create tenants if they do not exist", async () => {
+      // No projects exist initially
+      const projectId = "project-id";
       await authApi()
-        .get("/identitytoolkit.googleapis.com/v2/projects/project-id/tenants/not-found-tenant-id")
+        .get(`/identitytoolkit.googleapis.com/v2/projects/${projectId}/tenants`)
         .set("Authorization", "Bearer owner")
         .then((res) => {
-          expectStatusCode(400, res);
-          expect(res.body.error.message).to.include("TENANT_NOT_FOUND");
+          expectStatusCode(200, res);
+          expect(res.body.tenants).to.have.length(0);
+        });
+
+      // Get should implicitly create a tenant that does not exist
+      const tenantId = "tenant-id";
+      const createdTenant: Tenant = {
+        tenantId,
+        name: `projects/${projectId}/tenants/${tenantId}`,
+      };
+      await authApi()
+        .get(`/identitytoolkit.googleapis.com/v2/projects/${projectId}/tenants/${tenantId}`)
+        .set("Authorization", "Bearer owner")
+        .then((res) => {
+          expectStatusCode(200, res);
+          expect(res.body).to.eql(createdTenant);
+        });
+
+      // The newly created tenant should be returned
+      await authApi()
+        .get(`/identitytoolkit.googleapis.com/v2/projects/${projectId}/tenants`)
+        .set("Authorization", "Bearer owner")
+        .then((res) => {
+          expectStatusCode(200, res);
+          expect(res.body.tenants).to.have.length(1);
+          expect(res.body.tenants[0].tenantId).to.eql(tenantId);
         });
     });
   });
