@@ -648,7 +648,6 @@ export class AgentProjectState extends ProjectState {
   }
 
   deleteTenant(tenantId: string): void {
-    assert(this.tenantProjectForTenantId.has(tenantId), "TENANT_NOT_FOUND");
     this.tenantProjectForTenantId.delete(tenantId);
   }
 }

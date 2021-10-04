@@ -106,18 +106,6 @@ describeAuthEmulator("tenant management", ({ authApi }) => {
           expectStatusCode(200, res);
         });
     });
-
-    it("should error for tenants that do not exist", async () => {
-      await authApi()
-        .delete(
-          "/identitytoolkit.googleapis.com/v2/projects/project-id/tenants/not-found-tenant-id"
-        )
-        .set("Authorization", "Bearer owner")
-        .then((res) => {
-          expectStatusCode(400, res);
-          expect(res.body.error.message).to.include("TENANT_NOT_FOUND");
-        });
-    });
   });
 
   describe("listTenants", () => {
