@@ -434,11 +434,9 @@ async function list(projectId: string, region: string): Promise<ListFunctionsRes
   } catch (err) {
     logger.debug(`[functions] failed to list functions for ${projectId}`);
     logger.debug(`[functions] ${err?.message}`);
-    return Promise.reject(
-      new FirebaseError(`Failed to list functions for ${projectId}`, {
-        original: err,
-      })
-    );
+    throw new FirebaseError(`Failed to list functions for ${projectId}`, {
+      original: err,
+    });
   }
 }
 

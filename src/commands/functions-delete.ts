@@ -90,7 +90,7 @@ export default new Command("functions:delete [filters...]")
         appEngineLocation
       );
     } catch (err) {
-      throw new FirebaseError(`Failed to delete functions ${err.message}`, {
+      throw new FirebaseError("Failed to delete functions", {
         original: err,
         exit: 1,
       });
