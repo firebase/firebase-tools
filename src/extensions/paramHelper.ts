@@ -79,7 +79,6 @@ export async function getParams(args: {
     params = getParamsFromFile({
       projectId: args.projectId,
       paramSpecs: args.paramSpecs,
-      noninteractive: args.nonInteractive,
       paramsEnvPath: args.paramsEnvPath,
     });
   } else {
@@ -115,7 +114,6 @@ export async function getParamsForUpdate(args: {
     params = getParamsFromFile({
       projectId: args.projectId,
       paramSpecs: args.newSpec.params,
-      noninteractive: args.nonInteractive,
       paramsEnvPath: args.paramsEnvPath,
     });
   } else {
@@ -189,7 +187,6 @@ export function getParamsFromFile(args: {
   projectId: string;
   paramSpecs: extensionsApi.Param[];
   paramsEnvPath: string;
-  noninteractive?: boolean;
 }): Record<string, string> {
   let envParams;
   try {

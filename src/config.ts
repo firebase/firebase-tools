@@ -26,6 +26,7 @@ export class Config {
   static MATERIALIZE_TARGETS: Array<keyof FirebaseConfig> = [
     "database",
     "emulators",
+    "extensions",
     "firestore",
     "functions",
     "hosting",
