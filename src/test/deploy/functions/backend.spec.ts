@@ -318,6 +318,44 @@ describe("Backend", () => {
         });
       });
 
+      it("should throw an error if v2 list api throws an error", async () => {
+        previews.functionsv2 = true;
+        listAllFunctions.onFirstCall().resolves({
+          functions: [],
+          unreachable: [],
+        });
+        listAllFunctionsV2.throws(
+          new FirebaseError("HTTP Error: 500, Internal Error", { status: 500 })
+        );
+
+        await expect(backend.existingBackend(newContext())).to.be.rejectedWith(
+          "HTTP Error: 500, Internal Error"
+        );
+      });
+
+      it("should read v1 functions only when user is not allowlisted for v2", async () => {
+        previews.functionsv2 = true;
+        listAllFunctions.onFirstCall().resolves({
+          functions: [
+            {
+              ...HAVE_CLOUD_FUNCTION,
+              httpsTrigger: {},
+            },
+          ],
+          unreachable: [],
+        });
+        listAllFunctionsV2.throws(
+          new FirebaseError("HTTP Error: 404, Method not found", { status: 404 })
+        );
+
+        const have = await backend.existingBackend(newContext());
+
+        expect(have).to.deep.equal({
+          ...backend.empty(),
+          cloudFunctions: [FUNCTION_SPEC],
+        });
+      });
+
       it("should read v2 functions when enabled", async () => {
         previews.functionsv2 = true;
         listAllFunctions.onFirstCall().resolves({
