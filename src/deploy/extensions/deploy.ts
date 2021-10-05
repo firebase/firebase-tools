@@ -1,10 +1,10 @@
-import { Options } from "../../options";
-import { Payload } from "./args";
-import Queue from "../../throttler/queue";
 import * as tasks from "./tasks";
-import { ErrorHandler } from "./errors";
-import { needProjectId } from "../../projectUtils";
+import Queue from "../../throttler/queue";
+import { Payload } from "./args";
 import { FirebaseError } from "../../error";
+import { ErrorHandler } from "./errors";
+import { Options } from "../../options";
+import { needProjectId } from "../../projectUtils";
 
 export async function deploy(
   context: any, // TODO: type this
@@ -20,7 +20,7 @@ export async function deploy(
     handler: tasks.extensionsDeploymentHandler(errorHandler),
   });
 
-  // Validate all creates an updates.
+  // Validate all creates and updates.
   // No need to validate deletes.
   for (const create of payload.instancesToCreate ?? []) {
     const task = tasks.createExtensionInstanceTask(projectId, create, /* validateOnly=*/ true);
@@ -43,7 +43,7 @@ export async function deploy(
   if (errorHandler.hasErrors()) {
     errorHandler.print();
     throw new FirebaseError(
-      `Extensions deployment failed validation. No changes have been made to ${projectId}`
+      `Extensions deployment failed validation. No changes have been made to the Extension instances on ${projectId}`
     );
   }
 }

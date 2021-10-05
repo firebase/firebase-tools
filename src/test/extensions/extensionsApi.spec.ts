@@ -4,7 +4,6 @@ import * as nock from "nock";
 
 import * as api from "../../api";
 import { FirebaseError } from "../../error";
-
 import * as extensionsApi from "../../extensions/extensionsApi";
 
 const VERSION = "v1beta";
@@ -248,6 +247,22 @@ describe("extensions", () => {
       expect(nock.isDone()).to.be.true;
     });
 
+    it("should make a POST and not poll if validateOnly=true", async () => {
+      nock(api.extensionsOrigin)
+        .post(`/${VERSION}/projects/${PROJECT_ID}/instances/`)
+        .query({ validateOnly: "true" })
+        .reply(200, { name: "operations/abc123", done: true });
+
+      await extensionsApi.createInstance({
+        projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
+        extensionVersionRef: "test-pub/test-ext@0.1.0",
+        params: {},
+        validateOnly: true,
+      });
+      expect(nock.isDone()).to.be.true;
+    });
+
     it("should throw a FirebaseError if create returns an error response", async () => {
       nock(api.extensionsOrigin)
         .post(`/${VERSION}/projects/${PROJECT_ID}/instances/`)
@@ -296,6 +311,16 @@ describe("extensions", () => {
         .reply(200, { done: true });
 
       await extensionsApi.configureInstance(PROJECT_ID, INSTANCE_ID, { MY_PARAM: "value" });
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should make a PATCH and not poll if validateOnly=true", async () => {
+      nock(api.extensionsOrigin)
+        .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
+        .query({ updateMask: "config.params", validateOnly: "true" })
+        .reply(200, { name: "operations/abc123", done: true });
+
+      await extensionsApi.configureInstance(PROJECT_ID, INSTANCE_ID, { MY_PARAM: "value" }, true);
       expect(nock.isDone()).to.be.true;
     });
 
@@ -380,6 +405,16 @@ describe("extensions", () => {
 
       await extensionsApi.updateInstance(PROJECT_ID, INSTANCE_ID, testSource);
 
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should make a PATCH and not poll if validateOnly=true", async () => {
+      nock(api.extensionsOrigin)
+        .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
+        .query({ updateMask: "config.source.name", validateOnly: "true" })
+        .reply(200, { name: "operations/abc123", done: true });
+
+      await extensionsApi.updateInstance(PROJECT_ID, INSTANCE_ID, testSource, undefined, true);
       expect(nock.isDone()).to.be.true;
     });
 

@@ -205,6 +205,7 @@ async function createInstanceHelper(
  * @param instanceId the id to set for the instance
  * @param extensionSource the ExtensionSource to create an instance of
  * @param params params to configure the extension instance
+ * @param validateOnly if true, only validates the update and makes no changes
  */
 export async function createInstance(args: {
   projectId: string;
@@ -316,6 +317,7 @@ export async function listInstances(projectId: string): Promise<ExtensionInstanc
  * @param projectId the project the instance is in
  * @param instanceId the id of the instance to configure
  * @param params params to configure the extension instance
+ * @param validateOnly if true, only validates the update and makes no changes
  */
 export async function configureInstance(
   projectId: string,
@@ -344,6 +346,7 @@ export async function configureInstance(
  * @param instanceId the id of the instance to configure
  * @param extensionSource the source for the version of the extension to update to
  * @param params params to configure the extension instance
+ * @param validateOnly if true, only validates the update and makes no changes
  */
 export async function updateInstance(
   projectId: string,
@@ -372,6 +375,7 @@ export async function updateInstance(
  * @param instanceId the id of the instance to configure
  * @param extRef reference for the extension to update to
  * @param params params to configure the extension instance
+ * @param validateOnly if true, only validates the update and makes no changes
  */
 export async function updateInstanceFromRegistry(
   projectId: string,

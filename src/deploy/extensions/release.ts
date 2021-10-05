@@ -1,10 +1,10 @@
-import { Options } from "../../options";
-import { Payload } from "./args";
 import Queue from "../../throttler/queue";
 import * as tasks from "./tasks";
-import { ErrorHandler } from "./errors";
-import { needProjectId } from "../../projectUtils";
+import { Payload } from "./args";
 import { FirebaseError } from "../../error";
+import { ErrorHandler } from "./errors";
+import { Options } from "../../options";
+import { needProjectId } from "../../projectUtils";
 
 export async function release(
   context: any, // TODO: type this

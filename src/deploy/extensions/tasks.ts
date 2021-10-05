@@ -1,12 +1,11 @@
 import * as clc from "cli-color";
 
-import { InstanceSpec } from "./planner";
-import { ErrorHandler } from "./errors";
 import * as extensionsApi from "../../extensions/extensionsApi";
-import * as utils from "../../utils";
 import * as refs from "../../extensions/refs";
+import * as utils from "../../utils";
+import { ErrorHandler } from "./errors";
 import { OperationType } from "../functions/tasks";
-import { instanceId } from "firebase-admin";
+import { InstanceSpec } from "./planner";
 
 export type DeploymentType = "create" | "update" | "delete";
 export interface ExtensionDeploymentTask {

@@ -1,6 +1,5 @@
 import * as clc from "cli-color";
 
-import { FirebaseError } from "../../error";
 import { logger } from "../../logger";
 import { DeploymentType } from "./tasks";
 
