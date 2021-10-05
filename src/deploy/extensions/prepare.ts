@@ -43,7 +43,7 @@ export async function prepare(
     } else if (
       !options.force &&
       !options.nonInteractive &&
-      (await prompt.promptOnce({
+      (!await prompt.promptOnce({
         type: "confirm",
         message: "Would you like to delete these extension instances?",
         default: false,
