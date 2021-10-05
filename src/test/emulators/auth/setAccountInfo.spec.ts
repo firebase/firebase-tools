@@ -1172,28 +1172,6 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       });
   });
 
-  it("should error on setting email when MFA is disabled", async () => {
-    const tenant = await registerTenant(authApi(), PROJECT_ID, {
-      disableAuth: false,
-      mfaConfig: { state: "DISABLED" as const },
-      allowPasswordSignup: true,
-    });
-
-    const user = { email: "bob@example.com", password: "notasecret", tenantId: tenant.tenantId };
-    const { idToken } = await registerUser(authApi(), user);
-
-    await authApi()
-      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
-      .send({ idToken, email: "alice@example.com", tenantId: tenant.tenantId })
-      .query({ key: "fake-api-key" })
-      .then((res) => {
-        expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("EMAIL_CHANGE_NEEDS_VERIFICATION");
-      });
-  });
-
   it("should set tenantId in oobLink", async () => {
     const tenant = await registerTenant(authApi(), PROJECT_ID, {
       disableAuth: false,

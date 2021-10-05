@@ -1,5 +1,5 @@
 import { URLSearchParams } from "url";
-import { decode as decodeJwt, sign as signJwt, JwtHeader, decode } from "jsonwebtoken";
+import { decode as decodeJwt, sign as signJwt, JwtHeader } from "jsonwebtoken";
 import * as express from "express";
 import { ExegesisContext } from "exegesis-express";
 import {
@@ -1054,10 +1054,6 @@ export function setAccountInfoImpl(
 
       const newEmail = canonicalizeEmailAddress(reqBody.email);
       if (newEmail !== user.email) {
-        assert(
-          state.mfaConfig.state === "ENABLED" || state.mfaConfig.state === "MANDATORY",
-          "EMAIL_CHANGE_NEEDS_VERIFICATION"
-        );
         assert(!state.getUserByEmail(newEmail), "EMAIL_EXISTS");
         updates.email = newEmail;
         // TODO: Set verified if email is verified by IDP linked to account.

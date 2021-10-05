@@ -286,26 +286,26 @@ export function getAccountInfoByLocalId(
 }
 
 export function inspectOobs(testAgent: TestAgent, tenantId?: string): Promise<OobRecord[]> {
-  return testAgent
-    .get(`/emulator/v1/projects/${PROJECT_ID}/oobCodes`)
-    .query({ tenantId })
-    .then((res) => {
-      expectStatusCode(200, res);
-      return res.body.oobCodes;
-    });
+  const path = tenantId
+    ? `/emulator/v1/projects/${PROJECT_ID}/tenants/${tenantId}/oobCodes`
+    : `/emulator/v1/projects/${PROJECT_ID}/oobCodes`;
+  return testAgent.get(path).then((res) => {
+    expectStatusCode(200, res);
+    return res.body.oobCodes;
+  });
 }
 
 export function inspectVerificationCodes(
   testAgent: TestAgent,
   tenantId?: string
 ): Promise<PhoneVerificationRecord[]> {
-  return testAgent
-    .get(`/emulator/v1/projects/${PROJECT_ID}/verificationCodes`)
-    .query({ tenantId })
-    .then((res) => {
-      expectStatusCode(200, res);
-      return res.body.verificationCodes;
-    });
+  const path = tenantId
+    ? `/emulator/v1/projects/${PROJECT_ID}/tenants/${tenantId}/verificationCodes`
+    : `/emulator/v1/projects/${PROJECT_ID}/verificationCodes`;
+  return testAgent.get(path).then((res) => {
+    expectStatusCode(200, res);
+    return res.body.verificationCodes;
+  });
 }
 
 export function createEmailSignInOob(
