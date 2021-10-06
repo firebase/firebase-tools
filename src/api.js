@@ -204,6 +204,10 @@ var api = {
   ),
   githubOrigin: utils.envOverride("GITHUB_URL", "https://github.com"),
   githubApiOrigin: utils.envOverride("GITHUB_API_URL", "https://api.github.com"),
+  secretManagerOrigin: utils.envOverride(
+    "CLOUD_SECRET_MANAGER_URL",
+    "https://secretmanager.googleapis.com"
+  ),
   githubClientId: utils.envOverride("GITHUB_CLIENT_ID", "89cf50f02ac6aaed3484"),
   githubClientSecret: utils.envOverride(
     "GITHUB_CLIENT_SECRET",

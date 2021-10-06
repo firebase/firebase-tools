@@ -155,6 +155,7 @@ export enum ParamType {
   STRING = "STRING",
   SELECT = "SELECT",
   MULTISELECT = "MULTISELECT",
+  SECRET = "SECRET",
 }
 
 export interface ParamOption {

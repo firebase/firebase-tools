@@ -272,6 +272,13 @@ describe("Backend", () => {
     }
 
     describe("existingBackend", () => {
+      it("should throw error when functions list fails", async () => {
+        const context = newContext();
+        listAllFunctions.rejects(new FirebaseError("Failed to list functions"));
+
+        await expect(backend.existingBackend(context)).to.be.rejected;
+      });
+
       it("should cache", async () => {
         const context = newContext();
         listAllFunctions.onFirstCall().resolves({
@@ -303,6 +310,44 @@ describe("Backend", () => {
           ],
           unreachable: [],
         });
+        const have = await backend.existingBackend(newContext());
+
+        expect(have).to.deep.equal({
+          ...backend.empty(),
+          cloudFunctions: [FUNCTION_SPEC],
+        });
+      });
+
+      it("should throw an error if v2 list api throws an error", async () => {
+        previews.functionsv2 = true;
+        listAllFunctions.onFirstCall().resolves({
+          functions: [],
+          unreachable: [],
+        });
+        listAllFunctionsV2.throws(
+          new FirebaseError("HTTP Error: 500, Internal Error", { status: 500 })
+        );
+
+        await expect(backend.existingBackend(newContext())).to.be.rejectedWith(
+          "HTTP Error: 500, Internal Error"
+        );
+      });
+
+      it("should read v1 functions only when user is not allowlisted for v2", async () => {
+        previews.functionsv2 = true;
+        listAllFunctions.onFirstCall().resolves({
+          functions: [
+            {
+              ...HAVE_CLOUD_FUNCTION,
+              httpsTrigger: {},
+            },
+          ],
+          unreachable: [],
+        });
+        listAllFunctionsV2.throws(
+          new FirebaseError("HTTP Error: 404, Method not found", { status: 404 })
+        );
+
         const have = await backend.existingBackend(newContext());
 
         expect(have).to.deep.equal({
@@ -390,6 +435,13 @@ describe("Backend", () => {
     });
 
     describe("checkAvailability", () => {
+      it("should throw error when functions list fails", async () => {
+        const context = newContext();
+        listAllFunctions.rejects(new FirebaseError("Failed to list functions"));
+
+        await expect(backend.checkAvailability(context, backend.empty())).to.be.rejected;
+      });
+
       it("should do nothing when regions are all avalable", async () => {
         listAllFunctions.onFirstCall().resolves({
           functions: [],
