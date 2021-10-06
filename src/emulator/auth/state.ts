@@ -714,6 +714,9 @@ export class TenantProjectState extends ProjectState {
     return this._tenantConfig;
   }
 
+  // TODO(lisajian): Handle divergence in tenant config settings between what is
+  // needed for admin SDK (default disabled, parallels production) vs emulator
+  // tests (default enabled, for convenience)
   get allowPasswordSignup() {
     return this._tenantConfig.allowPasswordSignup ?? true;
   }
