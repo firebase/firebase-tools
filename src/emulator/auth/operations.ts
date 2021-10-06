@@ -89,8 +89,19 @@ export const authOperations: AuthOps = {
         get: getTenant,
         list: listTenants,
         patch: updateTenant,
+        createSessionCookie,
+        accounts: {
+          _: signUp,
+          batchCreate,
+          batchDelete,
+          batchGet,
+          delete: deleteAccount,
+          lookup,
+          query: queryAccounts,
+          sendOobCode,
+          update: setAccountInfo,
+        },
       },
-      // TODO(lisajian): Adjust all other endpoints that use tenantId
     },
   },
   securetoken: {
@@ -135,6 +146,7 @@ function signUp(
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1SignUpRequest"],
   ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitV1SignUpResponse"] {
+  assert(!state.disableAuth, "PROJECT_DISABLED");
   assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   let provider: string | undefined;
   const updates: Omit<Partial<UserInfo>, "localId" | "providerUserInfo"> = {
@@ -172,9 +184,11 @@ function signUp(
       assert(reqBody.email, "MISSING_EMAIL");
       assert(reqBody.password, "MISSING_PASSWORD");
       provider = PROVIDER_PASSWORD;
+      assert(state.allowPasswordSignup, "OPERATION_NOT_ALLOWED");
     } else {
       // Most attributes are ignored when creating anon user without privilege.
       provider = PROVIDER_ANONYMOUS;
+      assert(state.enableAnonymousUser, "ADMIN_ONLY_OPERATION");
     }
   }
 
@@ -198,6 +212,9 @@ function signUp(
     updates.mfaInfo = getMfaEnrollmentsFromRequest(state, reqBody.mfaInfo, {
       generateEnrollmentIds: true,
     });
+  }
+  if (reqBody.tenantId) {
+    updates.tenantId = reqBody.tenantId;
   }
   let user: UserInfo | undefined;
   if (reqBody.idToken) {
@@ -229,6 +246,7 @@ function lookup(
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1GetAccountInfoRequest"],
   ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitV1GetAccountInfoResponse"] {
+  assert(!state.disableAuth, "PROJECT_DISABLED");
   const seenLocalIds = new Set<string>();
   const users: UserInfo[] = [];
   function tryAddUser(maybeUser: UserInfo | undefined): void {
@@ -276,6 +294,7 @@ function batchCreate(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1UploadAccountRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV1UploadAccountResponse"] {
+  assert(!state.disableAuth, "PROJECT_DISABLED");
   assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   assert(reqBody.users?.length, "MISSING_USER_ACCOUNT");
 
@@ -325,6 +344,13 @@ function batchCreate(
         photoUrl: userInfo.photoUrl,
         lastLoginAt: userInfo.lastLoginAt,
       };
+      if (userInfo.tenantId) {
+        assert(
+          state instanceof TenantProjectState && state.tenantId === userInfo.tenantId,
+          "Tenant id in userInfo does not match the tenant id in request."
+        );
+        fields.tenantId = state.tenantId;
+      }
 
       // password
       if (userInfo.passwordHash) {
@@ -493,6 +519,7 @@ function batchGet(
   reqBody: unknown,
   ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitV1DownloadAccountResponse"] {
+  assert(!state.disableAuth, "PROJECT_DISABLED");
   const maxResults = Math.min(Math.floor(ctx.params.query.maxResults) || 20, 1000);
 
   const users = state.queryUsers(
@@ -520,6 +547,7 @@ function createAuthUri(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1CreateAuthUriRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV1CreateAuthUriResponse"] {
+  assert(!state.disableAuth, "PROJECT_DISABLED");
   assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   const sessionId = reqBody.sessionId || randomId(27);
   if (reqBody.providerId) {
@@ -626,6 +654,7 @@ function deleteAccount(
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1DeleteAccountRequest"],
   ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitV1DeleteAccountResponse"] {
+  assert(!state.disableAuth, "PROJECT_DISABLED");
   let user: UserInfo;
   if (ctx.security?.Oauth2) {
     assert(reqBody.localId, "MISSING_LOCAL_ID");
@@ -647,6 +676,8 @@ function deleteAccount(
 function getProjects(
   state: ProjectState
 ): Schemas["GoogleCloudIdentitytoolkitV1GetProjectConfigResponse"] {
+  assert(!state.disableAuth, "PROJECT_DISABLED");
+  assert(state instanceof AgentProjectState, "UNSUPPORTED_TENANT_OPERATION");
   return {
     projectId: state.projectNumber,
     authorizedDomains: [
@@ -658,7 +689,10 @@ function getProjects(
   };
 }
 
-function getRecaptchaParams(): Schemas["GoogleCloudIdentitytoolkitV1GetRecaptchaParamResponse"] {
+function getRecaptchaParams(
+  state: ProjectState
+): Schemas["GoogleCloudIdentitytoolkitV1GetRecaptchaParamResponse"] {
+  assert(!state.disableAuth, "PROJECT_DISABLED");
   return {
     kind: "identitytoolkit#GetRecaptchaParamResponse",
 
@@ -677,6 +711,7 @@ function queryAccounts(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1QueryUserInfoRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV1QueryUserInfoResponse"] {
+  assert(!state.disableAuth, "PROJECT_DISABLED");
   if (reqBody.expression?.length) {
     throw new NotImplementedError("expression is not implemented.");
   }
@@ -735,7 +770,9 @@ export function resetPassword(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1ResetPasswordRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV1ResetPasswordResponse"] {
+  assert(!state.disableAuth, "PROJECT_DISABLED");
   assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
+  assert(state.allowPasswordSignup, "PASSWORD_LOGIN_DISABLED");
   assert(reqBody.oobCode, "MISSING_OOB_CODE");
   const oob = state.validateOobCode(reqBody.oobCode);
   assert(oob, "INVALID_OOB_CODE");
@@ -781,6 +818,7 @@ function sendOobCode(
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1GetOobCodeRequest"],
   ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitV1GetOobCodeResponse"] {
+  assert(!state.disableAuth, "PROJECT_DISABLED");
   assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   assert(
     reqBody.requestType && reqBody.requestType !== "OOB_REQ_TYPE_UNSPECIFIED",
@@ -801,6 +839,7 @@ function sendOobCode(
 
   switch (reqBody.requestType) {
     case "EMAIL_SIGNIN":
+      assert(state.enableEmailLinkSignin, "OPERATION_NOT_ALLOWED");
       mode = "signIn";
       assert(reqBody.email, "MISSING_EMAIL");
       email = canonicalizeEmailAddress(reqBody.email);
@@ -868,6 +907,8 @@ function sendVerificationCode(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1SendVerificationCodeRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV1SendVerificationCodeResponse"] {
+  assert(!state.disableAuth, "PROJECT_DISABLED");
+  assert(state instanceof AgentProjectState, "UNSUPPORTED_TENANT_OPERATION");
   assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   // reqBody.iosReceipt, iosSecret, and recaptchaToken are intentionally ignored.
 
@@ -903,6 +944,7 @@ function setAccountInfo(
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1SetAccountInfoRequest"],
   ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitV1SetAccountInfoResponse"] {
+  assert(!state.disableAuth, "PROJECT_DISABLED");
   assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   const url = authEmulatorUrl(ctx.req as express.Request);
   return setAccountInfoImpl(state, reqBody, {
@@ -1176,6 +1218,10 @@ function createOobRecord(
       url.searchParams.set("continueUrl", params.continueUrl);
     }
 
+    if (state instanceof TenantProjectState) {
+      url.searchParams.set("tenantId", state.tenantId);
+    }
+
     return url.toString();
   });
 
@@ -1213,10 +1259,17 @@ function signInWithCustomToken(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1SignInWithCustomTokenRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV1SignInWithCustomTokenResponse"] {
+  assert(!state.disableAuth, "PROJECT_DISABLED");
   assert(reqBody.token, "MISSING_CUSTOM_TOKEN");
 
   // eslint-disable-next-line camelcase
-  let payload: { aud?: unknown; uid?: unknown; user_id?: unknown; claims?: unknown };
+  let payload: {
+    aud?: unknown;
+    uid?: unknown;
+    user_id?: unknown;
+    claims?: unknown;
+    tenantId?: unknown;
+  };
   if (reqBody.token.startsWith("{")) {
     // In the emulator only, we allow plain JSON strings as custom tokens, to
     // simplify testing. This won't work in production.
@@ -1233,6 +1286,9 @@ function signInWithCustomToken(
       header: JwtHeader;
       payload: typeof payload;
     } | null;
+    if (state instanceof TenantProjectState) {
+      assert(decoded?.payload.tenantId === state.tenantId, "TENANT_ID_MISMATCH");
+    }
     assert(decoded, "INVALID_CUSTOM_TOKEN : Invalid assertion format");
     if (decoded.header.alg !== "none") {
       // We may have received a real token, signed using a service account private
@@ -1270,6 +1326,7 @@ function signInWithCustomToken(
   const updates = {
     customAuth: true,
     lastLoginAt: Date.now().toString(),
+    tenantId: state instanceof TenantProjectState ? state.tenantId : undefined,
   };
 
   if (user) {
@@ -1293,6 +1350,8 @@ function signInWithEmailLink(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1SignInWithEmailLinkRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV1SignInWithEmailLinkResponse"] {
+  assert(!state.disableAuth, "PROJECT_DISABLED");
+  assert(state.enableEmailLinkSignin, "OPERATION_NOT_ALLOWED");
   assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   const userFromIdToken = reqBody.idToken ? parseIdToken(state, reqBody.idToken).user : undefined;
   assert(reqBody.email, "MISSING_EMAIL");
@@ -1307,11 +1366,15 @@ function signInWithEmailLink(
 
   state.deleteOobCode(reqBody.oobCode);
 
-  const updates = {
+  const updates: Omit<Partial<UserInfo>, "localId" | "providerUserInfo"> = {
     email,
     emailVerified: true,
     emailLinkSignin: true,
   };
+
+  if (state instanceof TenantProjectState) {
+    updates.tenantId = state.tenantId;
+  }
 
   let user = state.getUserByEmail(email);
   const isNewUser = !user && !userFromIdToken;
@@ -1334,7 +1397,10 @@ function signInWithEmailLink(
     isNewUser,
   };
 
-  if (user.mfaInfo?.length) {
+  if (
+    (state.mfaConfig.state === "ENABLED" || state.mfaConfig.state === "MANDATORY") &&
+    user.mfaInfo?.length
+  ) {
     return { ...response, ...mfaPending(state, user, PROVIDER_PASSWORD) };
   } else {
     user = state.updateUserByLocalId(user.localId, { lastLoginAt: Date.now().toString() });
@@ -1348,6 +1414,7 @@ function signInWithIdp(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1SignInWithIdpRequest"]
 ): SignInWithIdpResponse {
+  assert(!state.disableAuth, "PROJECT_DISABLED");
   assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
 
   if (reqBody.returnRefreshToken) {
@@ -1453,6 +1520,7 @@ function signInWithIdp(
       ...accountUpdates.fields,
       lastLoginAt: Date.now().toString(),
       providerUserInfo: [providerUserInfo],
+      tenantId: state instanceof TenantProjectState ? state.tenantId : undefined,
     });
     response.localId = user.localId;
   } else {
@@ -1474,7 +1542,14 @@ function signInWithIdp(
     response.emailVerified = user.emailVerified;
   }
 
-  if (user.mfaInfo?.length) {
+  if (state instanceof TenantProjectState) {
+    response.tenantId = state.tenantId;
+  }
+
+  if (
+    (state.mfaConfig.state === "ENABLED" || state.mfaConfig.state === "MANDATORY") &&
+    user.mfaInfo?.length
+  ) {
     return { ...response, ...mfaPending(state, user, providerId) };
   } else {
     user = state.updateUserByLocalId(user.localId, { lastLoginAt: Date.now().toString() });
@@ -1486,6 +1561,8 @@ function signInWithPassword(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1SignInWithPasswordRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV1SignInWithPasswordResponse"] {
+  assert(!state.disableAuth, "PROJECT_DISABLED");
+  assert(state.allowPasswordSignup, "PASSWORD_LOGIN_DISABLED");
   assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   assert(reqBody.email, "MISSING_EMAIL");
   assert(reqBody.password, "MISSING_PASSWORD");
@@ -1512,7 +1589,10 @@ function signInWithPassword(
     email,
   };
 
-  if (user.mfaInfo?.length) {
+  if (
+    (state.mfaConfig.state === "ENABLED" || state.mfaConfig.state === "MANDATORY") &&
+    user.mfaInfo?.length
+  ) {
     return { ...response, ...mfaPending(state, user, PROVIDER_PASSWORD) };
   } else {
     user = state.updateUserByLocalId(user.localId, { lastLoginAt: Date.now().toString() });
@@ -1524,6 +1604,8 @@ function signInWithPhoneNumber(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1SignInWithPhoneNumberRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV1SignInWithPhoneNumberResponse"] {
+  assert(!state.disableAuth, "PROJECT_DISABLED");
+  assert(state instanceof AgentProjectState, "UNSUPPORTED_TENANT_OPERATION");
   assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   let phoneNumber: string;
   if (reqBody.temporaryProof) {
@@ -1680,6 +1762,12 @@ function mfaEnrollmentStart(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV2StartMfaEnrollmentRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV2StartMfaEnrollmentResponse"] {
+  assert(!state.disableAuth, "PROJECT_DISABLED");
+  assert(
+    (state.mfaConfig.state === "ENABLED" || state.mfaConfig.state === "MANDATORY") &&
+      state.mfaConfig.enabledProviders?.includes("PHONE_SMS"),
+    "OPERATION_NOT_ALLOWED : SMS based MFA not enabled."
+  );
   assert(reqBody.idToken, "MISSING_ID_TOKEN");
 
   const { user, signInProvider } = parseIdToken(state, reqBody.idToken);
@@ -1727,6 +1815,12 @@ function mfaEnrollmentFinalize(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV2FinalizeMfaEnrollmentRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV2FinalizeMfaEnrollmentResponse"] {
+  assert(!state.disableAuth, "PROJECT_DISABLED");
+  assert(
+    (state.mfaConfig.state === "ENABLED" || state.mfaConfig.state === "MANDATORY") &&
+      state.mfaConfig.enabledProviders?.includes("PHONE_SMS"),
+    "OPERATION_NOT_ALLOWED : SMS based MFA not enabled."
+  );
   assert(reqBody.idToken, "MISSING_ID_TOKEN");
   let { user, signInProvider } = parseIdToken(state, reqBody.idToken);
   assert(
@@ -1783,6 +1877,7 @@ function mfaEnrollmentWithdraw(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV2WithdrawMfaRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV2WithdrawMfaResponse"] {
+  assert(!state.disableAuth, "PROJECT_DISABLED");
   assert(reqBody.idToken, "MISSING_ID_TOKEN");
 
   let { user, signInProvider } = parseIdToken(state, reqBody.idToken);
@@ -1804,6 +1899,12 @@ function mfaSignInStart(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV2StartMfaSignInRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV2StartMfaSignInResponse"] {
+  assert(!state.disableAuth, "PROJECT_DISABLED");
+  assert(
+    (state.mfaConfig.state === "ENABLED" || state.mfaConfig.state === "MANDATORY") &&
+      state.mfaConfig.enabledProviders?.includes("PHONE_SMS"),
+    "OPERATION_NOT_ALLOWED : SMS based MFA not enabled."
+  );
   assert(
     reqBody.mfaPendingCredential,
     "MISSING_MFA_PENDING_CREDENTIAL : Request does not have MFA pending credential."
@@ -1844,6 +1945,12 @@ function mfaSignInFinalize(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV2FinalizeMfaSignInRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV2FinalizeMfaSignInResponse"] {
+  assert(!state.disableAuth, "PROJECT_DISABLED");
+  assert(
+    (state.mfaConfig.state === "ENABLED" || state.mfaConfig.state === "MANDATORY") &&
+      state.mfaConfig.enabledProviders?.includes("PHONE_SMS"),
+    "OPERATION_NOT_ALLOWED : SMS based MFA not enabled."
+  );
   // Inconsistent with mfaSignInStart (where MISSING_MFA_PENDING_CREDENTIAL is
   // returned), but matches production behavior.
   assert(reqBody.mfaPendingCredential, "MISSING_CREDENTIAL : Please set MFA Pending Credential.");
@@ -1930,6 +2037,8 @@ function issueTokens(
 
   const usageMode = state.usageMode === UsageMode.PASSTHROUGH ? "passthrough" : undefined;
 
+  const tenantId = state instanceof TenantProjectState ? state.tenantId : undefined;
+
   const expiresInSeconds = 60 * 60;
   const idToken = generateJwt(user, {
     projectId: state.projectId,
@@ -1938,6 +2047,7 @@ function issueTokens(
     extraClaims,
     secondFactor,
     usageMode,
+    tenantId,
   });
   const refreshToken =
     state.usageMode === UsageMode.DEFAULT
@@ -1978,6 +2088,13 @@ function parseIdToken(
       "Received a signed JWT. Auth Emulator does not validate JWTs and IS NOT SECURE"
     );
   }
+  if (decoded.payload.firebase.tenant) {
+    assert(
+      state instanceof TenantProjectState,
+      "((Parsed token that belongs to tenant in a non-tenant project.))"
+    );
+    assert(decoded.payload.firebase.tenant === state.tenantId, "TENANT_ID_MISMATCH");
+  }
   const user = state.getUserByLocalId(decoded.payload.user_id);
   assert(user, "USER_NOT_FOUND");
   // To make interactive debugging easier, idTokens in the emulator never expire
@@ -1998,6 +2115,7 @@ function generateJwt(
     extraClaims = {},
     secondFactor,
     usageMode,
+    tenantId,
   }: {
     projectId: string;
     signInProvider: string;
@@ -2005,6 +2123,7 @@ function generateJwt(
     extraClaims?: Record<string, unknown>;
     secondFactor?: SecondFactorRecord;
     usageMode?: string;
+    tenantId?: string;
   }
 ): string {
   const identities: Record<string, string[]> = {};
@@ -2050,6 +2169,7 @@ function generateJwt(
       second_factor_identifier: secondFactor?.identifier,
       sign_in_second_factor: secondFactor?.provider,
       usage_mode: usageMode,
+      tenant: tenantId,
     },
   };
   /* eslint-enable camelcase */
@@ -2466,6 +2586,7 @@ interface MfaPendingCredential {
   localId: string;
   signInProvider: string;
   projectId: string;
+  tenantId?: string;
   // MfaPendingCredential in emulator never expire to make interactive debugging
   // a bit easier. Therefore, there's no need to record createdAt timestamps.
 }
@@ -2482,8 +2603,11 @@ function mfaPending(
     _AuthEmulatorMfaPendingCredential: "DO NOT MODIFY",
     localId: user.localId,
     signInProvider,
-    projectId: state.projectId, // TODO: Handle tenants.
+    projectId: state.projectId,
   };
+  if (state instanceof TenantProjectState) {
+    pendingCredentialPayload.tenantId = state.tenantId;
+  }
 
   // Encode pendingCredentialPayload using base64. We don't encrypt or sign the
   // data in the Auth Emulator but just trust developers not to modify it.
@@ -2544,6 +2668,12 @@ function parsePendingCredential(
     pendingCredentialPayload.projectId === state.projectId,
     "INVALID_PROJECT_ID : Project ID does not match MFA pending credential."
   );
+  if (state instanceof TenantProjectState) {
+    assert(
+      pendingCredentialPayload.tenantId === state.tenantId,
+      "INVALID_PROJECT_ID : Project ID does not match MFA pending credential."
+    );
+  }
 
   const { localId, signInProvider } = pendingCredentialPayload;
   const user = state.getUserByLocalId(localId);
@@ -2653,6 +2783,7 @@ export interface FirebaseJwtPayload {
     sign_in_second_factor?: string;
     second_factor_identifier?: string;
     usage_mode?: string;
+    tenant?: string;
   };
   // ...and other fields that we don't care for now.
 }

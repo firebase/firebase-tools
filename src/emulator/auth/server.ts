@@ -138,7 +138,9 @@ export async function createApp(
   });
 
   registerLegacyRoutes(app);
-  registerHandlers(app, (apiKey) => getProjectStateById(getProjectIdByApiKey(apiKey)));
+  registerHandlers(app, (apiKey, tenantId) =>
+    getProjectStateById(getProjectIdByApiKey(apiKey), tenantId)
+  );
 
   const apiKeyAuthenticator: PromiseAuthenticator = (ctx, info) => {
     if (info.in !== "query") {

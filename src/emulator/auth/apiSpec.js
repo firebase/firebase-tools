@@ -3725,12 +3725,84 @@ export default {
         tags: ["emulator"],
       },
     },
+    "/emulator/v1/projects/{targetProjectId}/tenants/{tenantId}/oobCodes": {
+      parameters: [
+        {
+          name: "targetProjectId",
+          in: "path",
+          description: "The ID of the Google Cloud project that the confirmation codes belongs to.",
+          required: true,
+          schema: { type: "string" },
+        },
+        {
+          name: "tenantId",
+          in: "path",
+          description:
+            "The ID of the Identity Platform tenant the accounts belongs to. If not specified, accounts on the Identity Platform project are returned.",
+          required: true,
+          schema: { type: "string" },
+        },
+      ],
+      servers: [{ url: "" }],
+      get: {
+        description: "List all pending confirmation codes for the project.",
+        operationId: "emulator.projects.oobCodes.list",
+        responses: {
+          200: {
+            description: "Successful response",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/EmulatorV1ProjectsOobCodes" },
+              },
+            },
+          },
+        },
+        security: [],
+        tags: ["emulator"],
+      },
+    },
     "/emulator/v1/projects/{targetProjectId}/verificationCodes": {
       parameters: [
         {
           name: "targetProjectId",
           in: "path",
           description: "The ID of the Google Cloud project that the verification codes belongs to.",
+          required: true,
+          schema: { type: "string" },
+        },
+      ],
+      servers: [{ url: "" }],
+      get: {
+        description: "List all pending phone verification codes for the project.",
+        operationId: "emulator.projects.verificationCodes.list",
+        responses: {
+          200: {
+            description: "Successful response",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/EmulatorV1ProjectsOobCodes" },
+              },
+            },
+          },
+        },
+        security: [],
+        tags: ["emulator"],
+      },
+    },
+    "/emulator/v1/projects/{targetProjectId}/tenants/{tenantId}/verificationCodes": {
+      parameters: [
+        {
+          name: "targetProjectId",
+          in: "path",
+          description: "The ID of the Google Cloud project that the verification codes belongs to.",
+          required: true,
+          schema: { type: "string" },
+        },
+        {
+          name: "tenantId",
+          in: "path",
+          description:
+            "The ID of the Identity Platform tenant the accounts belongs to. If not specified, accounts on the Identity Platform project are returned.",
           required: true,
           schema: { type: "string" },
         },
@@ -6578,7 +6650,7 @@ export default {
           },
           bindings: {
             description:
-              "Associates a list of `members` to a `role`. Optionally, may specify a `condition` that determines how and when the `bindings` are applied. Each of the `bindings` must contain at least one member.",
+            "Associates a list of `members` to a `role`. Optionally, may specify a `condition` that determines how and when the `bindings` are applied. Each of the `bindings` must contain at least one member.",
             items: { $ref: "#/components/schemas/GoogleIamV1Binding" },
             type: "array",
           },

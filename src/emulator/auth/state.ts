@@ -7,7 +7,7 @@ import {
 } from "./utils";
 import { MakeRequired } from "./utils";
 import { AuthCloudFunction } from "./cloudFunctions";
-import { assert, NotImplementedError } from "./errors";
+import { assert } from "./errors";
 import { MfaEnrollments, Schemas } from "./types";
 
 export const PROVIDER_PASSWORD = "password";
@@ -44,6 +44,16 @@ export abstract class ProjectState {
   abstract get authCloudFunction(): AuthCloudFunction;
 
   abstract get usageMode(): UsageMode;
+
+  abstract get allowPasswordSignup(): boolean;
+
+  abstract get disableAuth(): boolean;
+
+  abstract get mfaConfig(): Schemas["GoogleCloudIdentitytoolkitAdminV2MultiFactorAuthConfig"];
+
+  abstract get enableAnonymousUser(): boolean;
+
+  abstract get enableEmailLinkSignin(): boolean;
 
   createUser(props: Omit<UserInfo, "localId" | "createdAt" | "lastRefreshAt">): UserInfo {
     for (let i = 0; i < 10; i++) {
@@ -388,7 +398,13 @@ export abstract class ProjectState {
   ): string {
     const localId = userInfo.localId;
     const refreshToken = randomBase64UrlStr(204);
-    this.refreshTokens.set(refreshToken, { localId, provider, extraClaims, secondFactor });
+    this.refreshTokens.set(refreshToken, {
+      localId,
+      provider,
+      extraClaims,
+      secondFactor,
+      tenantId: userInfo.tenantId,
+    });
     let refreshTokens = this.refreshTokensForLocalId.get(localId);
     if (!refreshTokens) {
       refreshTokens = new Set();
@@ -597,6 +613,26 @@ export class AgentProjectState extends ProjectState {
     this._usageMode = usageMode;
   }
 
+  get allowPasswordSignup() {
+    return true;
+  }
+
+  get disableAuth() {
+    return false;
+  }
+
+  get mfaConfig() {
+    return { state: "ENABLED" as const, enabledProviders: ["PHONE_SMS" as const] };
+  }
+
+  get enableAnonymousUser() {
+    return true;
+  }
+
+  get enableEmailLinkSignin() {
+    return true;
+  }
+
   getTenantProject(tenantId: string): TenantProjectState {
     if (!this.tenantProjectForTenantId.has(tenantId)) {
       this.createTenantWithTenantId(tenantId, { tenantId });
@@ -676,6 +712,34 @@ export class TenantProjectState extends ProjectState {
 
   get tenantConfig() {
     return this._tenantConfig;
+  }
+
+  // TODO(lisajian): Handle divergence in tenant config settings between what is
+  // needed for admin SDK (default disabled, parallels production) vs emulator
+  // tests (default enabled, for convenience)
+  get allowPasswordSignup() {
+    return this._tenantConfig.allowPasswordSignup ?? true;
+  }
+
+  get disableAuth() {
+    return this._tenantConfig.disableAuth ?? false;
+  }
+
+  get mfaConfig() {
+    return (
+      this._tenantConfig.mfaConfig ?? {
+        state: "ENABLED" as const,
+        enabledProviders: ["PHONE_SMS" as const],
+      }
+    );
+  }
+
+  get enableAnonymousUser() {
+    return this._tenantConfig.enableAnonymousUser ?? true;
+  }
+
+  get enableEmailLinkSignin() {
+    return this._tenantConfig.enableEmailLinkSignin ?? true;
   }
 
   delete(): void {
@@ -759,6 +823,7 @@ interface RefreshTokenRecord {
   provider: string;
   extraClaims: Record<string, unknown>;
   secondFactor?: SecondFactorRecord;
+  tenantId?: string;
 }
 
 export interface SecondFactorRecord {
