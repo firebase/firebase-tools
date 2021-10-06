@@ -427,7 +427,15 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
     return;
   }
 
-  const gcfV2Results = await gcfV2.listAllFunctions(ctx.projectId);
+  let gcfV2Results;
+  try {
+    gcfV2Results = await gcfV2.listAllFunctions(ctx.projectId);
+  } catch (err) {
+    if (err.status === 404 && err.message?.toLowerCase().includes("method not found")) {
+      return; // customer has preview enabled without allowlist set
+    }
+    throw err;
+  }
   for (const apiFunction of gcfV2Results.functions) {
     const specFunction = gcfV2.specFromFunction(apiFunction);
     ctx.existingBackend.cloudFunctions.push(specFunction);

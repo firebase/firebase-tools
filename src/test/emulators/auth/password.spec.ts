@@ -1,11 +1,12 @@
 import { expect } from "chai";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import { FirebaseJwtPayload } from "../../../emulator/auth/operations";
-import { describeAuthEmulator } from "./setup";
+import { describeAuthEmulator, PROJECT_ID } from "./setup";
 import {
   deleteAccount,
   expectStatusCode,
   getAccountInfoByLocalId,
+  registerTenant,
   registerUser,
   TEST_MFA_INFO,
   updateAccountByLocalId,
@@ -171,6 +172,64 @@ describeAuthEmulator("accounts:signInWithPassword", ({ authApi, getClock }) => {
         expect(res.body.error)
           .to.have.property("message")
           .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
+      });
+  });
+
+  it("should error if auth is disabled", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: true });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword")
+      .query({ key: "fake-api-key" })
+      .send({ tenantId: tenant.tenantId })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.include("PROJECT_DISABLED");
+      });
+  });
+
+  it("should error if password sign up is disabled", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, {
+      disableAuth: false,
+      allowPasswordSignup: false,
+    });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword")
+      .query({ key: "fake-api-key" })
+      .send({ tenantId: tenant.tenantId })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.include("PASSWORD_LOGIN_DISABLED");
+      });
+  });
+
+  it("should return pending credential if user has MFA and enabled on tenant projects", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, {
+      disableAuth: false,
+      allowPasswordSignup: true,
+      mfaConfig: {
+        state: "ENABLED",
+      },
+    });
+    const user = {
+      email: "alice@example.com",
+      password: "notasecret",
+      mfaInfo: [TEST_MFA_INFO],
+      tenantId: tenant.tenantId,
+    };
+    await registerUser(authApi(), user);
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword")
+      .query({ key: "fake-api-key" })
+      .send({ tenantId: tenant.tenantId, email: user.email, password: user.password })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body).not.to.have.property("idToken");
+        expect(res.body).not.to.have.property("refreshToken");
+        expect(res.body.mfaPendingCredential).to.be.a("string");
+        expect(res.body.mfaInfo).to.be.an("array").with.lengthOf(1);
       });
   });
 });

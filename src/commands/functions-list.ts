@@ -46,7 +46,7 @@ export default new Command("functions:list")
       logger.info(table.toString());
       return functionList;
     } catch (err) {
-      throw new FirebaseError(`Failed to list functions ${err.message}`, {
+      throw new FirebaseError("Failed to list functions", {
         exit: 1,
         original: err,
       });

@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import { FirebaseJwtPayload } from "../../../emulator/auth/operations";
-import { describeAuthEmulator } from "./setup";
+import { describeAuthEmulator, PROJECT_ID } from "./setup";
 import {
   expectStatusCode,
   getAccountInfoByIdToken,
@@ -17,6 +17,7 @@ import {
   TEST_PHONE_NUMBER_2,
   TEST_INVALID_PHONE_NUMBER,
   updateProjectConfig,
+  registerTenant,
 } from "./helpers";
 
 describeAuthEmulator("accounts:signUp", ({ authApi }) => {
@@ -530,5 +531,61 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
           .to.have.property("message")
           .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
       });
+  });
+
+  it("should error if auth is disabled", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: true });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
+      .query({ key: "fake-api-key" })
+      .send({ tenantId: tenant.tenantId })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").includes("PROJECT_DISABLED");
+      });
+  });
+
+  it("should error if password sign up is not allowed", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, { allowPasswordSignup: false });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
+      .query({ key: "fake-api-key" })
+      .send({ tenantId: tenant.tenantId, email: "me@example.com", password: "notasecret" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").includes("OPERATION_NOT_ALLOWED");
+      });
+  });
+
+  it("should error if anonymous user is disabled", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, { enableAnonymousUser: false });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
+      .query({ key: "fake-api-key" })
+      .send({ tenantId: tenant.tenantId, returnSecureToken: true })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").includes("ADMIN_ONLY_OPERATION");
+      });
+  });
+
+  it("should create new account with tenant info", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, { allowPasswordSignup: true });
+    const user = { tenantId: tenant.tenantId, email: "alice@example.com", password: "notasecret" };
+
+    const localId = await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
+      .query({ key: "fake-api-key" })
+      .send(user)
+      .then((res) => {
+        expectStatusCode(200, res);
+        return res.body.localId;
+      });
+    const info = await getAccountInfoByLocalId(authApi(), localId, tenant.tenantId);
+
+    expect(info.tenantId).to.eql(tenant.tenantId);
   });
 });
