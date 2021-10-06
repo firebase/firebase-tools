@@ -35,14 +35,3 @@ export class AbortedDeploymentError extends DeploymentError {
     super(endpoint, "delete", new Error("aborted"));
   }
 }
-
-export function reportResults(results: DeployResults, opts: any): void {
-  throw new FirebaseError(
-    "Exceeded maximum retries while deploying functions. " +
-      "If you are deploying a large number of functions, " +
-      "please deploy your functions in batches by using the --only flag, " +
-      "and wait a few minutes before deploying again. " +
-      "Go to https://firebase.google.com/docs/cli/#partial_deploys to learn more.",
-    opts
-  );
-}
