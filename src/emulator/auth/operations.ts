@@ -2556,7 +2556,9 @@ function createTenant(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"]
 ): Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"] {
-  assert(state instanceof AgentProjectState, "((Can only create tenant in agent project.))");
+  if (!(state instanceof AgentProjectState)) {
+    throw new InternalError("INTERNAL_ERROR: Can only create tenant in agent project", "INTERNAL");
+  }
 
   const tenant = {
     displayName: reqBody.displayName,
@@ -2599,9 +2601,6 @@ function deleteTenant(
   reqBody: unknown,
   ctx: ExegesisContext
 ): Schemas["GoogleProtobufEmpty"] {
-  // Ideally, this would be called on the top level AgentProjectState, but
-  // because flat paths are used to generate apiSpec.js to avoid conflicting
-  // endpoints, deleteTenant will be called with a TenantProjectState
   assert(state instanceof TenantProjectState, "((Can only delete tenant on tenant projects.))");
   state.delete();
   return {};
@@ -2612,9 +2611,6 @@ function getTenant(
   reqBody: unknown,
   ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"] {
-  // Ideally, this would be called on the top level AgentProjectState, but
-  // because flat paths are used to generate apiSpec.js to avoid conflicting
-  // endpoints, getTenant will be called with a TenantProjectState
   assert(state instanceof TenantProjectState, "((Can only get tenant on tenant projects.))");
   return state.tenantConfig;
 }
