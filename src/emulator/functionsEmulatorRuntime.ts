@@ -467,6 +467,7 @@ async function initializeFirebaseFunctionsStubs(frb: FunctionsRuntimeBundle): Pr
     };
   }
 
+  // Newer versions of the firebase-functions package's onCAll method can accept upto 2 arguments.
   httpsProvider.onCall = (optsOrHandler: any, handler: CallableHandler) => {
     let opts;
     if (arguments.length == 1) {
