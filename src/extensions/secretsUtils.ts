@@ -6,6 +6,8 @@ import * as extensionsApi from "./extensionsApi";
 import * as secretManagerApi from "../gcp/secretManager";
 import { logger } from "../logger";
 
+const SECRET_LABEL = "firebase-extensions-managed";
+
 export async function ensureSecretManagerApiEnabled(options: any): Promise<void> {
   const projectId = needProjectId(options);
   return await ensure(projectId, "secretmanager.googleapis.com", "extensions", options.markdown);
@@ -28,10 +30,33 @@ export async function grantFirexServiceAgentSecretAdminRole(
   return secretManagerApi.grantServiceAgentRole(secret, saEmail, "roles/secretmanager.admin");
 }
 
-export function getActiveSecrets(instance: extensionsApi.ExtensionInstance): string[] {
+export async function getManagedSecrets(
+  instance: extensionsApi.ExtensionInstance
+): Promise<string[]> {
+  return (
+    await Promise.all(
+      getActiveSecrets(instance).map(async (secretResourceName) => {
+        const secret = secretManagerApi.parseSecretResourceName(secretResourceName);
+        const labels = await secretManagerApi.getSecretLabels(secret.projectId, secret.name);
+        if (labels && labels[SECRET_LABEL]) {
+          return secretResourceName;
+        }
+        return Promise.resolve("");
+      })
+    )
+  ).filter((secretId) => !!secretId);
+}
+
+function getActiveSecrets(instance: extensionsApi.ExtensionInstance): string[] {
   return instance.config.source.spec.params
     .map((p) => p.type == extensionsApi.ParamType.SECRET && instance.config.params[p.param])
     .filter((pv) => !!pv);
+}
+
+export function getSecretLabels(instanceId: string): Record<string, string> {
+  const labels: Record<string, string> = {};
+  labels[SECRET_LABEL] = instanceId;
+  return labels;
 }
 
 export function prettySecretName(secretResourceName: string): string {
