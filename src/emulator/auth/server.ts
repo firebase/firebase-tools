@@ -103,11 +103,6 @@ function specWithEmulatorServer(protocol: string, host: string | undefined): Ope
   }
 }
 
-export interface AgentProject {
-  state: AgentProjectState;
-  tenantProjects: Map<string, TenantProjectState>;
-}
-
 /**
  * Create an Express app that serves Auth Emulator APIs.
  *
@@ -120,7 +115,7 @@ export interface AgentProject {
  */
 export async function createApp(
   defaultProjectId: string,
-  projectStateForId = new Map<string, AgentProject>()
+  projectStateForId = new Map<string, AgentProjectState>()
 ): Promise<express.Express> {
   const app = express();
   app.set("json spaces", 2);
@@ -333,22 +328,16 @@ export async function createApp(
   }
 
   function getProjectStateById(projectId: string, tenantId?: string): ProjectState {
-    let agentProject = projectStateForId.get(projectId);
-    if (!agentProject) {
-      const state = new AgentProjectState(projectId);
-      agentProject = { state, tenantProjects: new Map<string, TenantProjectState>() };
-      projectStateForId.set(projectId, agentProject);
+    let agentState = projectStateForId.get(projectId);
+    if (!agentState) {
+      agentState = new AgentProjectState(projectId);
+      projectStateForId.set(projectId, agentState);
     }
     if (!tenantId) {
-      return agentProject.state;
+      return agentState;
     }
 
-    let tenantState = agentProject.tenantProjects.get(tenantId);
-    if (!tenantState) {
-      tenantState = new TenantProjectState(projectId, tenantId, agentProject.state);
-      agentProject.tenantProjects.set(tenantId, tenantState);
-    }
-    return tenantState;
+    return agentState.getTenantProject(tenantId);
   }
 }
 

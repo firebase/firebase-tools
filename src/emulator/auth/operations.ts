@@ -31,6 +31,7 @@ import {
   SecondFactorRecord,
   UsageMode,
   AgentProjectState,
+  TenantProjectState,
 } from "./state";
 import { MfaEnrollments, Schemas } from "./types";
 
@@ -82,6 +83,14 @@ export const authOperations: AuthOps = {
         batchDelete,
         batchGet,
       },
+      tenants: {
+        create: createTenant,
+        delete: deleteTenant,
+        get: getTenant,
+        list: listTenants,
+        patch: updateTenant,
+      },
+      // TODO(lisajian): Adjust all other endpoints that use tenantId
     },
   },
   securetoken: {
@@ -2541,6 +2550,78 @@ function parsePendingCredential(
   assert(user, "((User in pendingCredentialPayload does not exist.))");
 
   return { user, signInProvider };
+}
+
+function createTenant(
+  state: ProjectState,
+  reqBody: Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"]
+): Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"] {
+  if (!(state instanceof AgentProjectState)) {
+    throw new InternalError("INTERNAL_ERROR: Can only create tenant in agent project", "INTERNAL");
+  }
+
+  const tenant = {
+    displayName: reqBody.displayName,
+    allowPasswordSignup: reqBody.allowPasswordSignup,
+    enableEmailLinkSignin: reqBody.enableEmailLinkSignin,
+    enableAnonymousUser: reqBody.enableAnonymousUser,
+    disableAuth: reqBody.disableAuth,
+    mfaConfig: reqBody.mfaConfig,
+    tenantId: "", // Placeholder until one is generated
+  };
+
+  return state.createTenant(tenant);
+}
+
+function listTenants(
+  state: ProjectState,
+  reqBody: unknown,
+  ctx: ExegesisContext
+): Schemas["GoogleCloudIdentitytoolkitAdminV2ListTenantsResponse"] {
+  assert(state instanceof AgentProjectState, "((Can only list tenants in agent project.))");
+  const pageSize = Math.min(Math.floor(ctx.params.query.pageSize) || 20, 1000);
+  const tenants = state.listTenants(ctx.params.query.pageToken);
+
+  // As a non-standard behavior, passing in negative pageSize will
+  // return all users starting from the pageToken.
+  let nextPageToken: string | undefined = undefined;
+  if (pageSize > 0 && tenants.length >= pageSize) {
+    tenants.length = pageSize;
+    nextPageToken = tenants[tenants.length - 1].tenantId;
+  }
+
+  return {
+    nextPageToken,
+    tenants,
+  };
+}
+
+function deleteTenant(
+  state: ProjectState,
+  reqBody: unknown,
+  ctx: ExegesisContext
+): Schemas["GoogleProtobufEmpty"] {
+  assert(state instanceof TenantProjectState, "((Can only delete tenant on tenant projects.))");
+  state.delete();
+  return {};
+}
+
+function getTenant(
+  state: ProjectState,
+  reqBody: unknown,
+  ctx: ExegesisContext
+): Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"] {
+  assert(state instanceof TenantProjectState, "((Can only get tenant on tenant projects.))");
+  return state.tenantConfig;
+}
+
+function updateTenant(
+  state: ProjectState,
+  reqBody: Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"],
+  ctx: ExegesisContext
+): Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"] {
+  assert(state instanceof TenantProjectState, "((Can only update tenant on tenant projects.))");
+  return state.updateTenant(reqBody, ctx.params.query.updateMask);
 }
 
 /* eslint-disable camelcase */
