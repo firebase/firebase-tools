@@ -30,12 +30,6 @@ export async function grantFirexServiceAgentSecretAdminRole(
   return secretManagerApi.grantServiceAgentRole(secret, saEmail, "roles/secretmanager.admin");
 }
 
-export function getActiveSecrets(instance: extensionsApi.ExtensionInstance): string[] {
-  return instance.config.source.spec.params
-    .map((p) => p.type == extensionsApi.ParamType.SECRET && instance.config.params[p.param])
-    .filter((pv) => !!pv);
-}
-
 export async function getManagedSecrets(
   instance: extensionsApi.ExtensionInstance
 ): Promise<string[]> {
@@ -51,6 +45,12 @@ export async function getManagedSecrets(
       })
     )
   ).filter((secretId) => !!secretId);
+}
+
+function getActiveSecrets(instance: extensionsApi.ExtensionInstance): string[] {
+  return instance.config.source.spec.params
+    .map((p) => p.type == extensionsApi.ParamType.SECRET && instance.config.params[p.param])
+    .filter((pv) => !!pv);
 }
 
 export function getSecretLabels(instanceId: string): Record<string, string> {
