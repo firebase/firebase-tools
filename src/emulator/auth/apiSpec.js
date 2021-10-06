@@ -2148,6 +2148,75 @@ export default {
         { $ref: "#/components/parameters/upload_protocol" },
       ],
     },
+    "/v2/projects/{targetProjectId}/config": {
+      get: {
+        description: "Retrieve an Identity Toolkit project configuration.",
+        operationId: "identitytoolkit.projects.getConfig",
+        responses: {
+          200: {
+            description: "Successful response",
+            content: {
+              "*/*": {
+                schema: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2Config" },
+              },
+            },
+          },
+        },
+        parameters: [
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+        ],
+        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        tags: ["projects"],
+      },
+      patch: {
+        description: "Update an Identity Toolkit project configuration.",
+        operationId: "identitytoolkit.projects.updateConfig",
+        responses: {
+          200: {
+            description: "Successful response",
+            content: {
+              "*/*": {
+                schema: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2Config" },
+              },
+            },
+          },
+        },
+        parameters: [
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+          {
+            name: "updateMask",
+            in: "query",
+            description:
+              "The update mask applies to the resource. Fields set in the config but not included in this update mask will be ignored. For the `FieldMask` definition, see https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#fieldmask",
+            schema: { type: "string" },
+          },
+        ],
+        requestBody: {
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2Config" },
+            },
+          },
+        },
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
+          { apiKey: [] },
+        ],
+        tags: ["projects"],
+      },
+      parameters: [
+        { $ref: "#/components/parameters/access_token" },
+        { $ref: "#/components/parameters/alt" },
+        { $ref: "#/components/parameters/callback" },
+        { $ref: "#/components/parameters/fields" },
+        { $ref: "#/components/parameters/oauth_token" },
+        { $ref: "#/components/parameters/prettyPrint" },
+        { $ref: "#/components/parameters/quotaUser" },
+        { $ref: "#/components/parameters/uploadType" },
+        { $ref: "#/components/parameters/upload_protocol" },
+      ],
+    },
     "/v2/projects/{targetProjectId}/defaultSupportedIdpConfigs": {
       post: {
         description:
@@ -3725,12 +3794,84 @@ export default {
         tags: ["emulator"],
       },
     },
+    "/emulator/v1/projects/{targetProjectId}/tenants/{tenantId}/oobCodes": {
+      parameters: [
+        {
+          name: "targetProjectId",
+          in: "path",
+          description: "The ID of the Google Cloud project that the confirmation codes belongs to.",
+          required: true,
+          schema: { type: "string" },
+        },
+        {
+          name: "tenantId",
+          in: "path",
+          description:
+            "The ID of the Identity Platform tenant the accounts belongs to. If not specified, accounts on the Identity Platform project are returned.",
+          required: true,
+          schema: { type: "string" },
+        },
+      ],
+      servers: [{ url: "" }],
+      get: {
+        description: "List all pending confirmation codes for the project.",
+        operationId: "emulator.projects.oobCodes.list",
+        responses: {
+          200: {
+            description: "Successful response",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/EmulatorV1ProjectsOobCodes" },
+              },
+            },
+          },
+        },
+        security: [],
+        tags: ["emulator"],
+      },
+    },
     "/emulator/v1/projects/{targetProjectId}/verificationCodes": {
       parameters: [
         {
           name: "targetProjectId",
           in: "path",
           description: "The ID of the Google Cloud project that the verification codes belongs to.",
+          required: true,
+          schema: { type: "string" },
+        },
+      ],
+      servers: [{ url: "" }],
+      get: {
+        description: "List all pending phone verification codes for the project.",
+        operationId: "emulator.projects.verificationCodes.list",
+        responses: {
+          200: {
+            description: "Successful response",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/EmulatorV1ProjectsOobCodes" },
+              },
+            },
+          },
+        },
+        security: [],
+        tags: ["emulator"],
+      },
+    },
+    "/emulator/v1/projects/{targetProjectId}/tenants/{tenantId}/verificationCodes": {
+      parameters: [
+        {
+          name: "targetProjectId",
+          in: "path",
+          description: "The ID of the Google Cloud project that the verification codes belongs to.",
+          required: true,
+          schema: { type: "string" },
+        },
+        {
+          name: "tenantId",
+          in: "path",
+          description:
+            "The ID of the Identity Platform tenant the accounts belongs to. If not specified, accounts on the Identity Platform project are returned.",
           required: true,
           schema: { type: "string" },
         },
@@ -5869,6 +6010,16 @@ export default {
         },
         type: "object",
       },
+      GoogleCloudIdentitytoolkitAdminV2Anonymous: {
+        description: "Configuration options related to authenticating an anonymous user.",
+        properties: {
+          enabled: {
+            description: "Whether anonymous user auth is enabled for the project or not.",
+            type: "boolean",
+          },
+        },
+        type: "object",
+      },
       GoogleCloudIdentitytoolkitAdminV2AppleSignInConfig: {
         description: "Additional config for SignInWithApple.",
         properties: {
@@ -5883,6 +6034,44 @@ export default {
         },
         type: "object",
       },
+      GoogleCloudIdentitytoolkitAdminV2BlockingFunctionsConfig: {
+        description: "Configuration related to Blocking Functions.",
+        properties: {
+          forwardInboundCredentials: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2ForwardInboundCredentials",
+          },
+          triggers: {
+            additionalProperties: {
+              $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2Trigger",
+            },
+            description:
+              'Map of Trigger to event type. Key should be one of the supported event types: "beforeCreate", "beforeSignIn"',
+            type: "object",
+          },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitAdminV2ClientConfig: {
+        description:
+          "Options related to how clients making requests on behalf of a project should be configured.",
+        properties: {
+          apiKey: {
+            description:
+              "Output only. API key that can be used when making requests for this project.",
+            readOnly: true,
+            type: "string",
+          },
+          firebaseSubdomain: {
+            description: "Output only. Firebase subdomain.",
+            readOnly: true,
+            type: "string",
+          },
+          permissions: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2Permissions",
+          },
+        },
+        type: "object",
+      },
       GoogleCloudIdentitytoolkitAdminV2CodeFlowConfig: {
         description: "Additional config for Apple for code flow.",
         properties: {
@@ -5892,6 +6081,47 @@ export default {
             type: "string",
           },
           teamId: { description: "Apple Developer Team ID.", type: "string" },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitAdminV2Config: {
+        description: "Represents an Identity Toolkit project.",
+        properties: {
+          authorizedDomains: {
+            description: "List of domains authorized for OAuth redirects",
+            items: { type: "string" },
+            type: "array",
+          },
+          blockingFunctions: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2BlockingFunctionsConfig",
+          },
+          client: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2ClientConfig" },
+          mfa: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2MultiFactorAuthConfig",
+          },
+          monitoring: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2MonitoringConfig",
+          },
+          multiTenant: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2MultiTenantConfig",
+          },
+          name: {
+            description:
+              'Output only. The name of the Config resource. Example: "projects/my-awesome-project/config"',
+            readOnly: true,
+            type: "string",
+          },
+          notification: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2NotificationConfig",
+          },
+          quota: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2QuotaConfig" },
+          signIn: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2SignInConfig" },
+          subtype: {
+            description: "Output only. The subtype of this config.",
+            enum: ["SUBTYPE_UNSPECIFIED", "IDENTITY_PLATFORM", "FIREBASE_AUTH"],
+            readOnly: true,
+            type: "string",
+          },
         },
         type: "object",
       },
@@ -5920,6 +6150,100 @@ export default {
             description:
               'The name of the DefaultSupportedIdpConfig resource, for example: "projects/my-awesome-project/defaultSupportedIdpConfigs/google.com"',
             type: "string",
+          },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitAdminV2DnsInfo: {
+        description:
+          "Information of custom domain DNS verification. By default, default_domain will be used. A custom domain can be configured using VerifyCustomDomain.",
+        properties: {
+          customDomain: {
+            description: "Output only. The applied verified custom domain.",
+            readOnly: true,
+            type: "string",
+          },
+          customDomainState: {
+            description:
+              "Output only. The current verification state of the custom domain. The custom domain will only be used once the domain verification is successful.",
+            enum: [
+              "VERIFICATION_STATE_UNSPECIFIED",
+              "NOT_STARTED",
+              "IN_PROGRESS",
+              "FAILED",
+              "SUCCEEDED",
+            ],
+            readOnly: true,
+            type: "string",
+          },
+          domainVerificationRequestTime: {
+            description:
+              "Output only. The timestamp of initial request for the current domain verification.",
+            format: "google-datetime",
+            readOnly: true,
+            type: "string",
+          },
+          pendingCustomDomain: {
+            description: "Output only. The custom domain that's to be verified.",
+            readOnly: true,
+            type: "string",
+          },
+          useCustomDomain: { description: "Whether to use custom domain.", type: "boolean" },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitAdminV2Email: {
+        description:
+          "Configuration options related to authenticating a user by their email address.",
+        properties: {
+          enabled: {
+            description: "Whether email auth is enabled for the project or not.",
+            type: "boolean",
+          },
+          passwordRequired: {
+            description:
+              "Whether a password is required for email auth or not. If true, both an email and password must be provided to sign in. If false, a user may sign in via either email/password or email link.",
+            type: "boolean",
+          },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitAdminV2EmailTemplate: {
+        description:
+          "Email template. The subject and body fields can contain the following placeholders which will be replaced with the appropriate values: %LINK% - The link to use to redeem the send OOB code. %EMAIL% - The email where the email is being sent. %NEW_EMAIL% - The new email being set for the account (when applicable). %APP_NAME% - The GCP project's display name. %DISPLAY_NAME% - The user's display name.",
+        properties: {
+          body: { description: "Email body", type: "string" },
+          bodyFormat: {
+            description: "Email body format",
+            enum: ["BODY_FORMAT_UNSPECIFIED", "PLAIN_TEXT", "HTML"],
+            type: "string",
+          },
+          customized: {
+            description: "Output only. Whether the body or subject of the email is customized.",
+            readOnly: true,
+            type: "boolean",
+          },
+          replyTo: { description: "Reply-to address", type: "string" },
+          senderDisplayName: { description: "Sender display name", type: "string" },
+          senderLocalPart: { description: "Local part of From address", type: "string" },
+          subject: { description: "Subject of the email", type: "string" },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitAdminV2ForwardInboundCredentials: {
+        description: "Indicates which credentials to pass to the registered Blocking Functions.",
+        properties: {
+          accessToken: {
+            description: "Whether to pass the user's OAuth identity provider's access token.",
+            type: "boolean",
+          },
+          idToken: {
+            description: "Whether to pass the user's OIDC identity provider's ID token.",
+            type: "boolean",
+          },
+          refreshToken: {
+            description: "Whether to pass the user's OAuth identity provider's refresh token.",
+            type: "boolean",
           },
         },
         type: "object",
@@ -6121,6 +6445,15 @@ export default {
         },
         type: "object",
       },
+      GoogleCloudIdentitytoolkitAdminV2MonitoringConfig: {
+        description: "Configuration related to monitoring project activity.",
+        properties: {
+          requestLogging: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2RequestLogging",
+          },
+        },
+        type: "object",
+      },
       GoogleCloudIdentitytoolkitAdminV2MultiFactorAuthConfig: {
         description: "Options related to MultiFactor Authentication for the project.",
         properties: {
@@ -6134,6 +6467,33 @@ export default {
             enum: ["STATE_UNSPECIFIED", "DISABLED", "ENABLED", "MANDATORY"],
             type: "string",
           },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitAdminV2MultiTenantConfig: {
+        description: "Configuration related to multi-tenant functionality.",
+        properties: {
+          allowTenants: {
+            description: "Whether this project can have tenants or not.",
+            type: "boolean",
+          },
+          defaultTenantLocation: {
+            description:
+              'The default cloud parent org or folder that the tenant project should be created under. The parent resource name should be in the format of "/", such as "folders/123" or "organizations/456". If the value is not set, the tenant will be created under the same organization or folder as the agent project.',
+            type: "string",
+          },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitAdminV2NotificationConfig: {
+        description: "Configuration related to sending notifications to users.",
+        properties: {
+          defaultLocale: {
+            description: "Default locale used for email and SMS in IETF BCP 47 format.",
+            type: "string",
+          },
+          sendEmail: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2SendEmail" },
+          sendSms: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2SendSms" },
         },
         type: "object",
       },
@@ -6185,6 +6545,144 @@ export default {
         },
         type: "object",
       },
+      GoogleCloudIdentitytoolkitAdminV2Permissions: {
+        description:
+          "Configuration related to restricting a user's ability to affect their account.",
+        properties: {
+          disabledUserDeletion: {
+            description:
+              "When true, end users cannot delete their account on the associated project through any of our API methods",
+            type: "boolean",
+          },
+          disabledUserSignup: {
+            description:
+              "When true, end users cannot sign up for a new account on the associated project through any of our API methods",
+            type: "boolean",
+          },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitAdminV2PhoneNumber: {
+        description: "Configuration options related to authenticated a user by their phone number.",
+        properties: {
+          enabled: {
+            description: "Whether phone number auth is enabled for the project or not.",
+            type: "boolean",
+          },
+          testPhoneNumbers: {
+            additionalProperties: { type: "string" },
+            description: "A map of that can be used for phone auth testing.",
+            type: "object",
+          },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitAdminV2QuotaConfig: {
+        description: "Configuration related to quotas.",
+        properties: {
+          signUpQuotaConfig: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2TemporaryQuota",
+          },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitAdminV2RequestLogging: {
+        description:
+          "Configuration for logging requests made to this project to Stackdriver Logging",
+        properties: {
+          enabled: {
+            description: "Whether logging is enabled for this project or not.",
+            type: "boolean",
+          },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitAdminV2SendEmail: {
+        description: "Options for email sending.",
+        properties: {
+          callbackUri: { description: "action url in email template.", type: "string" },
+          changeEmailTemplate: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2EmailTemplate",
+          },
+          dnsInfo: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2DnsInfo" },
+          legacyResetPasswordTemplate: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2EmailTemplate",
+          },
+          method: {
+            description: "The method used for sending an email.",
+            enum: ["METHOD_UNSPECIFIED", "DEFAULT", "CUSTOM_SMTP"],
+            type: "string",
+          },
+          resetPasswordTemplate: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2EmailTemplate",
+          },
+          revertSecondFactorAdditionTemplate: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2EmailTemplate",
+          },
+          smtp: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2Smtp" },
+          verifyEmailTemplate: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2EmailTemplate",
+          },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitAdminV2SendSms: {
+        description: "Options for SMS sending.",
+        properties: {
+          smsTemplate: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2SmsTemplate",
+          },
+          useDeviceLocale: {
+            description: "Whether to use the accept_language header for SMS.",
+            type: "boolean",
+          },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitAdminV2SignInConfig: {
+        description: "Configuration related to local sign in methods.",
+        properties: {
+          allowDuplicateEmails: {
+            description: "Whether to allow more than one account to have the same email.",
+            type: "boolean",
+          },
+          anonymous: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2Anonymous" },
+          email: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2Email" },
+          hashConfig: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2HashConfig" },
+          phoneNumber: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2PhoneNumber",
+          },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitAdminV2SmsTemplate: {
+        description: "The template to use when sending an SMS.",
+        properties: {
+          content: {
+            description:
+              "Output only. The SMS's content. Can contain the following placeholders which will be replaced with the appropriate values: %APP_NAME% - For Android or iOS apps, the app's display name. For web apps, the domain hosting the application. %LOGIN_CODE% - The OOB code being sent in the SMS.",
+            readOnly: true,
+            type: "string",
+          },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitAdminV2Smtp: {
+        description: "Configuration for SMTP relay",
+        properties: {
+          host: { description: "SMTP relay host", type: "string" },
+          password: { description: "SMTP relay password", type: "string" },
+          port: { description: "SMTP relay port", format: "int32", type: "integer" },
+          securityMode: {
+            description: "SMTP security mode.",
+            enum: ["SECURITY_MODE_UNSPECIFIED", "SSL", "START_TLS"],
+            type: "string",
+          },
+          senderEmail: { description: "Sender email for the SMTP relay", type: "string" },
+          username: { description: "SMTP relay username", type: "string" },
+        },
+        type: "object",
+      },
       GoogleCloudIdentitytoolkitAdminV2SpCertificate: {
         description:
           "The SP's certificate data for IDP to verify the SAMLRequest generated by the SP.",
@@ -6214,6 +6712,27 @@ export default {
             type: "array",
           },
           spEntityId: { description: "Unique identifier for all SAML entities.", type: "string" },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitAdminV2TemporaryQuota: {
+        description: "Temporary quota increase / decrease",
+        properties: {
+          quota: {
+            description: "Corresponds to the 'refill_token_count' field in QuotaServer config",
+            format: "int64",
+            type: "string",
+          },
+          quotaDuration: {
+            description: "How long this quota will be active for",
+            format: "google-duration",
+            type: "string",
+          },
+          startTime: {
+            description: "When this quota will take affect",
+            format: "google-datetime",
+            type: "string",
+          },
         },
         type: "object",
       },
@@ -6256,6 +6775,18 @@ export default {
             description:
               "A map of pairs that can be used for MFA. The phone number should be in E.164 format (https://www.itu.int/rec/T-REC-E.164/) and a maximum of 10 pairs can be added (error will be thrown once exceeded).",
             type: "object",
+          },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitAdminV2Trigger: {
+        description: "Synchronous Cloud Function with HTTP Trigger",
+        properties: {
+          functionUri: { description: "HTTP URI trigger for the Cloud Function.", type: "string" },
+          updateTime: {
+            description: "When the trigger was changed.",
+            format: "google-datetime",
+            type: "string",
           },
         },
         type: "object",
@@ -6578,7 +7109,7 @@ export default {
           },
           bindings: {
             description:
-              "Associates a list of `members` to a `role`. Optionally, may specify a `condition` that determines how and when the `bindings` are applied. Each of the `bindings` must contain at least one member.",
+              "Associates a list of `members` to a `role`. Optionally, may specify a `condition` that determines how and when the `bindings` are applied. Each of the `bindings` must contain at least one member. The `bindings` in a `Policy` can refer to up to 1,500 members; up to 250 of these members can be Google groups. Each occurrence of a member counts towards these limits. For example, if the `bindings` grant 50 different roles to `user:alice@example.com`, and not to any other member, then you can add another 1,450 members to the `bindings` in the `Policy`.",
             items: { $ref: "#/components/schemas/GoogleIamV1Binding" },
             type: "array",
           },

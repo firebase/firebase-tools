@@ -1,7 +1,8 @@
 import { Suite } from "mocha";
 import { useFakeTimers } from "sinon";
 import supertest = require("supertest");
-import { AgentProject, createApp } from "../../../emulator/auth/server";
+import { createApp } from "../../../emulator/auth/server";
+import { AgentProjectState } from "../../../emulator/auth/state";
 
 export const PROJECT_ID = "example";
 
@@ -40,7 +41,7 @@ export type AuthTestUtils = {
 
 // Keep a global auth server since start-up takes too long:
 let cachedAuthApp: Express.Application;
-const projectStateForId = new Map<string, AgentProject>();
+const projectStateForId = new Map<string, AgentProjectState>();
 
 async function createOrReuseApp(): Promise<Express.Application> {
   if (!cachedAuthApp) {
