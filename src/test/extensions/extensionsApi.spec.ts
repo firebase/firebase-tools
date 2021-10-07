@@ -389,8 +389,13 @@ describe("extensions", () => {
         .reply(200, { name: "operations/abc123" });
       nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
 
-      await extensionsApi.updateInstance(PROJECT_ID, INSTANCE_ID, testSource, {
-        MY_PARAM: "value",
+      await extensionsApi.updateInstance({
+        projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
+        extensionSource: testSource,
+        params: {
+          MY_PARAM: "value",
+        },
       });
 
       expect(nock.isDone()).to.be.true;
@@ -403,8 +408,27 @@ describe("extensions", () => {
         .reply(200, { name: "operations/abc123" });
       nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
 
-      await extensionsApi.updateInstance(PROJECT_ID, INSTANCE_ID, testSource);
+      await extensionsApi.updateInstance({
+        projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
+        extensionSource: testSource,
+      });
 
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should make a PATCH and not poll if validateOnly=true", async () => {
+      nock(api.extensionsOrigin)
+        .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
+        .query({ updateMask: "config.source.name", validateOnly: "true" })
+        .reply(200, { name: "operations/abc123", done: true });
+
+      await extensionsApi.updateInstance({
+        projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
+        extensionSource: testSource,
+        validateOnly: true,
+      });
       expect(nock.isDone()).to.be.true;
     });
 
@@ -425,7 +449,14 @@ describe("extensions", () => {
         .reply(500);
 
       await expect(
-        extensionsApi.updateInstance(PROJECT_ID, INSTANCE_ID, testSource, { MY_PARAM: "value" })
+        extensionsApi.updateInstance({
+          projectId: PROJECT_ID,
+          instanceId: INSTANCE_ID,
+          extensionSource: testSource,
+          params: {
+            MY_PARAM: "value",
+          },
+        })
       ).to.be.rejectedWith(FirebaseError, "HTTP Error: 500");
 
       expect(nock.isDone()).to.be.true;
