@@ -471,7 +471,7 @@ async function initializeFirebaseFunctionsStubs(frb: FunctionsRuntimeBundle): Pr
   httpsProvider.onCall = function(optsOrHandler: any, handler: CallableHandler) {
     if (onCallMethodOriginal.length === 3) {
       let opts;
-      if (arguments.length == 1) {
+      if (arguments.length === 1) {
         opts = {};
         handler = optsOrHandler as CallableHandler;
       } else {
