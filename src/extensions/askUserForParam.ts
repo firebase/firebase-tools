@@ -166,7 +166,7 @@ async function promptReconfigureSecret(
         secret = await secretManagerApi.createSecret(
           projectId,
           secretName,
-          getSecretLabels(instanceId)
+          secretsUtils.getSecretLabels(instanceId)
         );
       }
       return addNewSecretVersion(projectId, instanceId, secret, paramSpec, secretValue);
@@ -191,13 +191,9 @@ async function promptCreateSecret(
   const secret = await secretManagerApi.createSecret(
     projectId,
     secretName,
-    getSecretLabels(instanceId)
+    secretsUtils.getSecretLabels(instanceId)
   );
   return addNewSecretVersion(projectId, instanceId, secret, paramSpec, secretValue);
-}
-
-function getSecretLabels(instanceId: string): Record<string, string> {
-  return { "firebase-extensions-managed": instanceId };
 }
 
 async function generateSecretName(
