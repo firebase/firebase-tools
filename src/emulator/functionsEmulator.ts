@@ -273,21 +273,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       const triggers = this.multicastTriggers[triggerKey] || [];
       const projectId = req.params.project_id;
 
-      /*
-      // using headers field in proto since storage uses v2 api
-      if (proto.headers && proto.headers["Content-Type"]?.includes("cloudevent")) {
-        // Convert request payload to CloudEvent.
-        // TODO(colerogers): Converting request payload to CloudEvent object should be done by the functions runtime.
-        // However, the Functions Emulator communicates with the runtime via socket not HTTP, and CE metadata
-        // embedded in HTTP header may get lost. Once the Functions Emulator is refactored to communicate to the
-        // runtime instances via HTTP, move this logic there.
-        if (EventUtils.isBinaryCloudEvent(req)) {
-          proto = EventUtils.extractBinaryCloudEventContext(req);
-          proto.data = req.body;
-        }
-      }
-      */
-
       triggers.forEach((triggerId) => {
         this.workQueue.submit(() => {
           this.logger.log(
