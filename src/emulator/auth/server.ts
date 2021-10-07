@@ -250,6 +250,10 @@ export async function createApp(
         // TODO
         return true;
       },
+      "google-duration"() {
+        // TODO
+        return true;
+      },
       uint64() {
         // TODO
         return true;
