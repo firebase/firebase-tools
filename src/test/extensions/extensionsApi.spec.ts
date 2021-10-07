@@ -438,7 +438,12 @@ describe("extensions", () => {
         .query({ updateMask: "config.source.name", validateOnly: "true" })
         .reply(200, { name: "operations/abc123", done: true });
 
-      await extensionsApi.updateInstance(PROJECT_ID, INSTANCE_ID, testSource, undefined, true);
+      await extensionsApi.updateInstance({
+        projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
+        extensionSource: testSource,
+        validateOnly: true,
+      });
       expect(nock.isDone()).to.be.true;
     });
 
