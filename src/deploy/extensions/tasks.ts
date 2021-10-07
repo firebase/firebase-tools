@@ -6,6 +6,9 @@ import * as utils from "../../utils";
 import { ErrorHandler } from "./errors";
 import { OperationType } from "../functions/tasks";
 import { InstanceSpec } from "./planner";
+import { FirebaseError } from "../../error";
+
+const isRetryable = (err: any) => err.status == 429 || err.status == 409;
 
 export type DeploymentType = "create" | "update" | "delete";
 export interface ExtensionDeploymentTask {
@@ -21,8 +24,8 @@ export function extensionsDeploymentHandler(
     try {
       result = await task.run();
     } catch (err) {
-      if (err.status == 429) {
-        // Throw quota errors so that throttler retries them.
+      if (isRetryable(err)) {
+        // Rethrow quota errors or operation already in progress so that throttler retries them.
         throw err;
       }
       errorHandler.record(
@@ -64,13 +67,13 @@ export function updateExtensionInstanceTask(
   validateOnly: boolean = false
 ): ExtensionDeploymentTask {
   const run = async () => {
-    const res = await extensionsApi.updateInstanceFromRegistry(
+    const res = await extensionsApi.updateInstanceFromRegistry({
       projectId,
-      instanceSpec.instanceId,
-      refs.toExtensionVersionRef(instanceSpec.ref!),
-      instanceSpec.params,
-      validateOnly
-    );
+      instanceId: instanceSpec.instanceId,
+      extRef: refs.toExtensionVersionRef(instanceSpec.ref!),
+      params: instanceSpec.params,
+      validateOnly,
+    });
     printSuccess(instanceSpec.instanceId, "update", validateOnly);
     return;
   };

@@ -349,24 +349,30 @@ export async function configureInstance(
  * @param params params to configure the extension instance
  * @param validateOnly if true, only validates the update and makes no changes
  */
-export async function updateInstance(
-  projectId: string,
-  instanceId: string,
-  extensionSource: ExtensionSource,
-  params?: { [option: string]: string },
-  validateOnly: boolean = false
-): Promise<any> {
+export async function updateInstance(args: {
+  projectId: string;
+  instanceId: string;
+  extensionSource: ExtensionSource;
+  params?: { [option: string]: string };
+  validateOnly?: boolean;
+}): Promise<any> {
   const body: any = {
     config: {
-      source: { name: extensionSource.name },
+      source: { name: args.extensionSource.name },
     },
   };
   let updateMask = "config.source.name";
-  if (params) {
-    body.config.params = params;
+  if (args.params) {
+    body.config.params = args.params;
     updateMask += ",config.params";
   }
-  return await patchInstance({ projectId, instanceId, updateMask, validateOnly, data: body });
+  return await patchInstance({
+    projectId: args.projectId,
+    instanceId: args.instanceId,
+    updateMask,
+    validateOnly: args.validateOnly ?? false,
+    data: body,
+  });
 }
 
 /**
@@ -378,14 +384,14 @@ export async function updateInstance(
  * @param params params to configure the extension instance
  * @param validateOnly if true, only validates the update and makes no changes
  */
-export async function updateInstanceFromRegistry(
-  projectId: string,
-  instanceId: string,
-  extRef: string,
-  params?: { [option: string]: string },
-  validateOnly: boolean = false
-): Promise<any> {
-  const ref = refs.parse(extRef);
+export async function updateInstanceFromRegistry(args: {
+  projectId: string;
+  instanceId: string;
+  extRef: string;
+  params?: { [option: string]: string };
+  validateOnly?: boolean;
+}): Promise<any> {
+  const ref = refs.parse(args.extRef);
   const body: any = {
     config: {
       extensionRef: refs.toExtensionRef(ref),
@@ -393,11 +399,17 @@ export async function updateInstanceFromRegistry(
     },
   };
   let updateMask = "config.extension_ref,config.extension_version";
-  if (params) {
-    body.config.params = params;
+  if (args.params) {
+    body.config.params = args.params;
     updateMask += ",config.params";
   }
-  return await patchInstance({ projectId, instanceId, updateMask, validateOnly, data: body });
+  return await patchInstance({
+    projectId: args.projectId,
+    instanceId: args.instanceId,
+    updateMask,
+    validateOnly: args.validateOnly ?? false,
+    data: body,
+  });
 }
 
 async function patchInstance(args: {
