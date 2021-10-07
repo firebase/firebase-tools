@@ -6,7 +6,6 @@ import * as utils from "../../utils";
 import { ErrorHandler } from "./errors";
 import { OperationType } from "../functions/tasks";
 import { InstanceSpec } from "./planner";
-import { FirebaseError } from "../../error";
 
 const isRetryable = (err: any) => err.status == 429 || err.status == 409;
 

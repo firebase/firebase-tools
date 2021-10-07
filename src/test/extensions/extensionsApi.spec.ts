@@ -432,6 +432,21 @@ describe("extensions", () => {
       expect(nock.isDone()).to.be.true;
     });
 
+    it("should make a PATCH and not poll if validateOnly=true", async () => {
+      nock(api.extensionsOrigin)
+        .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
+        .query({ updateMask: "config.source.name", validateOnly: "true" })
+        .reply(200, { name: "operations/abc123", done: true });
+
+      await extensionsApi.updateInstance({
+        projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
+        extensionSource: testSource,
+        validateOnly: true,
+      });
+      expect(nock.isDone()).to.be.true;
+    });
+
     it("should throw a FirebaseError if update returns an error response", async () => {
       nock(api.extensionsOrigin)
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
