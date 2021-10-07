@@ -448,14 +448,39 @@ async function initializeFirebaseFunctionsStubs(frb: FunctionsRuntimeBundle): Pr
   const onCallInnerMethodName = "_onCallWithOptions";
   const onCallMethodOriginal = httpsProvider[onCallInnerMethodName];
 
-  httpsProvider[onCallInnerMethodName] = (handler: CallableHandler, opts: DeploymentOptions) => {
-    const wrapped = wrapCallableHandler(handler);
-    const cf = onCallMethodOriginal(wrapped, opts);
-    return cf;
-  };
+  // Newer versions of the firebase-functions package's _onCallWithOptions method expects 3 arguments.
+  if (onCallMethodOriginal.length === 3) {
+    httpsProvider[onCallInnerMethodName] = (
+      opts: any,
+      handler: any,
+      deployOpts: DeploymentOptions
+    ) => {
+      const wrapped = wrapCallableHandler(handler);
+      const cf = onCallMethodOriginal(opts, wrapped, deployOpts);
+      return cf;
+    };
+  } else {
+    httpsProvider[onCallInnerMethodName] = (handler: any, opts: DeploymentOptions) => {
+      const wrapped = wrapCallableHandler(handler);
+      const cf = onCallMethodOriginal(wrapped, opts);
+      return cf;
+    };
+  }
 
-  httpsProvider.onCall = (handler: CallableHandler) => {
-    return httpsProvider[onCallInnerMethodName](handler, {});
+  // Newer versions of the firebase-functions package's onCall method can accept upto 2 arguments.
+  httpsProvider.onCall = function (optsOrHandler: any, handler: CallableHandler) {
+    if (onCallMethodOriginal.length === 3) {
+      let opts;
+      if (arguments.length === 1) {
+        opts = {};
+        handler = optsOrHandler as CallableHandler;
+      } else {
+        opts = optsOrHandler;
+      }
+      return httpsProvider[onCallInnerMethodName](opts, handler, {});
+    } else {
+      return httpsProvider[onCallInnerMethodName](optsOrHandler, {});
+    }
   };
 }
 

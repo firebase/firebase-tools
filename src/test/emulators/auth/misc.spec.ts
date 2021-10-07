@@ -5,6 +5,7 @@ import {
   deleteAccount,
   getAccountInfoByIdToken,
   PROJECT_ID,
+  registerTenant,
   signInWithPhoneNumber,
   TEST_PHONE_NUMBER,
   updateProjectConfig,
@@ -318,6 +319,19 @@ describeAuthEmulator("accounts:lookup", ({ authApi }) => {
           .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
       });
   });
+
+  it("should error if auth is disabled", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: true });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:lookup")
+      .set("Authorization", "Bearer owner")
+      .send({ tenantId: tenant.tenantId })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").includes("PROJECT_DISABLED");
+      });
+  });
 });
 
 describeAuthEmulator("accounts:query", ({ authApi }) => {
@@ -360,6 +374,19 @@ describeAuthEmulator("accounts:query", ({ authApi }) => {
         const emailUser = users.find((x) => x.localId === localId2);
         expect(emailUser, "cannot find second registered user").to.be.not.undefined;
         expect(emailUser!.email).to.equal(user.email);
+      });
+  });
+
+  it("should error if auth is disabled", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: true });
+
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:query`)
+      .set("Authorization", "Bearer owner")
+      .send({ tenantId: tenant.tenantId })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("PROJECT_DISABLED");
       });
   });
 });
