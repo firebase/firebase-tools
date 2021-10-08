@@ -271,13 +271,12 @@ describe("Fabricator", () => {
       setConcurrency.resolves();
     });
 
-    it("creates topics if necessary", async () => {
-      pubsub.getTopic.callsFake(() => {
-        const err = new Error("404");
-        (err as any).status = 404;
+    it("handles topiocs that already exist", async () => {
+      pubsub.createTopic.callsFake(() => {
+        const err = new Error("Already exists");
+        (err as any).status = 409;
         return Promise.reject(err);
       });
-      pubsub.createTopic.resolves();
       gcfv2.createFunction.resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
 
@@ -298,10 +297,11 @@ describe("Fabricator", () => {
 
       await fab.createV2Function(ep);
       expect(pubsub.createTopic).to.have.been.called;
+      expect(gcfv2.createFunction).to.have.been.called;
     });
 
     it("handles failures to create a topic", async () => {
-      pubsub.getTopic.rejects(new Error("🤷‍♂️"));
+      pubsub.createTopic.rejects(new Error("🤷‍♂️"));
 
       const ep = endpoint(
         {
@@ -318,17 +318,6 @@ describe("Fabricator", () => {
         }
       );
 
-      await expect(fab.createV2Function(ep)).to.be.rejectedWith(
-        reporter.DeploymentError,
-        "create topic"
-      );
-
-      pubsub.getTopic.callsFake(() => {
-        const err = new Error("404");
-        (err as any).status = 404;
-        return Promise.reject(err);
-      });
-      pubsub.createTopic.rejects(new Error("🤦‍♂️"));
       await expect(fab.createV2Function(ep)).to.be.rejectedWith(
         reporter.DeploymentError,
         "create topic"
@@ -790,7 +779,7 @@ describe("Fabricator", () => {
       );
       const update = {
         endpoint: target,
-        deleteBeforeUpdate: before,
+        deleteAndRecreate: before,
       };
 
       const deleteTrigger = sinon.stub(fab, "deleteTrigger");
@@ -892,8 +881,8 @@ describe("Fabricator", () => {
       };
 
       const results = await fab.applyRegionalChanges(changes);
-      expect(results[ep.region][ep.id].error).to.be.instanceOf(reporter.DeploymentError);
-      expect(results[ep.region][ep.id].error?.message).to.match(/create function/);
+      expect(results[ep.id].error).to.be.instanceOf(reporter.DeploymentError);
+      expect(results[ep.id].error?.message).to.match(/create function/);
     });
   });
 
@@ -908,10 +897,8 @@ describe("Fabricator", () => {
     };
 
     const results = await fab.applyRegionalChanges(changes);
-    expect(results[deleteEP.region][deleteEP.id].error).to.be.instanceOf(
-      reporter.AbortedDeploymentError
-    );
-    expect(results[deleteEP.region][deleteEP.id].durationMs).to.equal(0);
+    expect(results[deleteEP.id].error).to.be.instanceOf(reporter.AbortedDeploymentError);
+    expect(results[deleteEP.id].durationMs).to.equal(0);
   });
 
   it("applies all kinds of changes", async () => {
@@ -939,9 +926,9 @@ describe("Fabricator", () => {
 
     // We can't actually verify that the timing isn't zero because tests
     // have run in <1ms and failed.
-    expect(results[createEP.region][createEP.id].error).to.be.undefined;
-    expect(results[updateEP.region][updateEP.id].error).to.be.undefined;
-    expect(results[deleteEP.region][deleteEP.id].error).to.be.undefined;
+    expect(results[createEP.id].error).to.be.undefined;
+    expect(results[updateEP.id].error).to.be.undefined;
+    expect(results[deleteEP.id].error).to.be.undefined;
   });
 
   describe("applyPlan", () => {

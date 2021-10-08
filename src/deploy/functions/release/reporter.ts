@@ -1,13 +1,12 @@
 import * as backend from "../backend";
 
-import { FirebaseError } from "../../../error";
-
 export interface DeployResult {
   durationMs: number;
   error?: Error;
 }
 
-export type DeployResults = Record<string, Record<string, DeployResult>>;
+export type RegionalDeployResults = Record<string, DeployResult>;
+export type GlobalDeployResults = Record<string, RegionalDeployResults>;
 
 export type OperationType =
   | "create"

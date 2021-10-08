@@ -10,7 +10,6 @@ import * as helper from "../functionsDeployHelper";
 import * as gcf from "../../../gcp/cloudfunctions";
 import * as gcfV2 from "../../../gcp/cloudfunctionsv2";
 import * as run from "../../../gcp/run";
-import * as proto from "../../../gcp/proto";
 import * as pubsub from "../../../gcp/pubsub";
 import * as scheduler from "../../../gcp/cloudscheduler";
 import { getHumanFriendlyRuntimeName } from "../runtimes";
@@ -34,6 +33,8 @@ const gcfV2PollerOptions = {
   masterTimeout: 25 * 60 * 1000, // 25 minutes is the maximum build time for a function
 };
 
+const DEFAULT_GCFV2_CONCURRENCY = 80;
+
 export interface FabricatorArgs {
   executor: Executor;
   functionExecutor: Executor;
@@ -50,27 +51,27 @@ const rethrowAs = (endpoint: backend.Endpoint, op: reporter.OperationType) => (
 
 /** Fabricators make a customer's backend match a spec by applying a plan. */
 export class Fabricator {
-  executor!: Executor;
-  functionExecutor!: Executor;
-  sourceUrl!: string;
-  storage!: Record<string, gcfV2.StorageSource>;
-  appEngineLocation!: string;
+  executor: Executor;
+  functionExecutor: Executor;
+  sourceUrl: string;
+  storage: Record<string, gcfV2.StorageSource>;
+  appEngineLocation: string;
 
   constructor(args: FabricatorArgs) {
-    proto.copyIfPresent(
-      this,
-      args,
-      "executor",
-      "functionExecutor",
-      "sourceUrl",
-      "storage",
-      "appEngineLocation"
-    );
+    this.executor = args.executor;
+    this.functionExecutor = args.functionExecutor;
+    this.sourceUrl = args.sourceUrl;
+    this.storage = args.storage;
+    this.appEngineLocation = args.appEngineLocation;
   }
 
-  async applyPlan(plan: planner.DeploymentPlan): Promise<reporter.DeployResults> {
-    const deployRegions = Object.values(plan).map((regional) =>
-      this.applyRegionalChanges(regional)
+  async applyPlan(plan: planner.DeploymentPlan): Promise<reporter.GlobalDeployResults> {
+    const deployResults: reporter.GlobalDeployResults = {};
+    const deployRegions = Object.entries(plan).map(
+      async ([region, changes]): Promise<void> => {
+        deployResults[region] = await this.applyRegionalChanges(changes);
+        return;
+      }
     );
     const promiseResults = await utils.allSettled(deployRegions);
 
@@ -84,28 +85,13 @@ export class Fabricator {
       );
     }
 
-    const deployResults: reporter.DeployResults = {};
-    const regionalResults = promiseResults
-      .filter((r) => r.status === "fulfilled")
-      .map<reporter.DeployResults>((r) => (r as utils.PromiseFulfilledResult).value);
-
-    for (const regionalResult of regionalResults) {
-      for (const [region, mapping] of Object.entries(regionalResult)) {
-        // Should always be empty...
-        deployResults[region] = deployResults[region] || {};
-        for (const [id, result] of Object.entries(mapping)) {
-          if (deployResults[region][id]) {
-            throw new Error(`Unexpected duplicate results for function ${id} in region ${region}`);
-          }
-          deployResults[region][id] = { ...result };
-        }
-      }
-    }
     return deployResults;
   }
 
-  async applyRegionalChanges(changes: planner.RegionalChanges): Promise<reporter.DeployResults> {
-    const deployResults: reporter.DeployResults = {};
+  async applyRegionalChanges(
+    changes: planner.RegionalChanges
+  ): Promise<reporter.RegionalDeployResults> {
+    const deployResults: reporter.RegionalDeployResults = {};
     let hasErrors = false;
     const handle = async (
       op: reporter.OperationType,
@@ -122,8 +108,7 @@ export class Fabricator {
         result.error = err as Error;
       }
       result.durationMs = timer.stop();
-      deployResults[endpoint.region] = deployResults[endpoint.region] || {};
-      deployResults[endpoint.region][endpoint.id] = result;
+      deployResults[endpoint.id] = result;
     };
 
     const upserts: Array<Promise<void>> = [];
@@ -142,7 +127,7 @@ export class Fabricator {
     // We've used hasErrors as a cheater here instead of viewing the results of allSettled
     if (hasErrors) {
       for (const endpoint of changes.endpointsToDelete) {
-        deployResults[endpoint.region][endpoint.id] = {
+        deployResults[endpoint.id] = {
           durationMs: 0,
           error: new reporter.AbortedDeploymentError(endpoint),
         };
@@ -173,8 +158,8 @@ export class Fabricator {
   }
 
   async updateEndpoint(update: planner.EndpointUpdate, scraper: SourceTokenScraper): Promise<void> {
-    if (update.deleteBeforeUpdate) {
-      await this.deleteEndpoint(update.deleteBeforeUpdate);
+    if (update.deleteAndRecreate) {
+      await this.deleteEndpoint(update.deleteAndRecreate);
       await this.createEndpoint(update.endpoint, scraper);
       return;
     }
@@ -216,7 +201,7 @@ export class Fabricator {
 
     if (backend.isHttpsTriggered(endpoint)) {
       const invoker = endpoint.httpsTrigger.invoker || ["public"];
-      if (invoker[0] !== "private") {
+      if (!invoker.includes("private")) {
         await this.executor
           .run(async () => {
             await gcf.setInvokerCreate(endpoint.project, backend.functionName(endpoint), invoker);
@@ -237,14 +222,16 @@ export class Fabricator {
       await this.executor
         .run(async () => {
           try {
-            await pubsub.getTopic(topic);
-          } catch (err) {
-            if (err.status !== 404) {
-              throw new FirebaseError("Unexpected error looking for Pub/Sub topic", {
-                original: err as Error,
-              });
-            }
             await pubsub.createTopic({ name: topic });
+          } catch (err) {
+            // Pub/Sub uses HTTP 409 (CONFLICT) with a status message of
+            // ALREADY_EXISTS if the topic already exists.
+            if (err.status === 409) {
+              return;
+            }
+            throw new FirebaseError("Unexpected error creating Pub/Sub topic", {
+              original: err as Error,
+            });
           }
         })
         .catch(rethrowAs(endpoint, "create topic"));
@@ -264,14 +251,18 @@ export class Fabricator {
     const serviceName = resultFunction.serviceConfig.service!;
     if (backend.isHttpsTriggered(endpoint)) {
       const invoker = endpoint.httpsTrigger.invoker || ["public"];
-      if (invoker[0] !== "private") {
+      if (!invoker.includes("private")) {
         await this.executor
           .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
           .catch(rethrowAs(endpoint, "set invoker"));
       }
     }
 
-    await this.setConcurrency(endpoint, serviceName, endpoint.concurrency || 80);
+    await this.setConcurrency(
+      endpoint,
+      serviceName,
+      endpoint.concurrency || DEFAULT_GCFV2_CONCURRENCY
+    );
   }
 
   async updateV1Function(endpoint: backend.Endpoint, scraper: SourceTokenScraper): Promise<void> {
@@ -391,6 +382,8 @@ export class Fabricator {
       .catch(rethrowAs(endpoint, "set concurrency"));
   }
 
+  // Set/Delete trigger is responsible for wiring up a function with any trigger not owned
+  // by the GCF API. This includes schedules, task queues, and blocking function triggers.
   async setTrigger(endpoint: backend.Endpoint): Promise<void> {
     if (backend.isScheduleTriggered(endpoint)) {
       if (endpoint.platform === "gcfv1") {

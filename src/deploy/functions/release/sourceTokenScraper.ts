@@ -28,10 +28,9 @@ export class SourceTokenScraper {
   get poller() {
     return (op: any) => {
       if (op.metadata?.sourceToken || op.done) {
-        const [, , , /* projects*/ /* project*/ /* regions*/ region] = op.metadata?.target?.split(
-          "/"
-        );
-        logger.debug(`Got source token ${op.metadata.sourceToken} for region ${region as string}`);
+        const [, , , /* projects*/ /* project*/ /* regions*/ region] =
+          op.metadata?.target?.split("/") || [];
+        logger.debug(`Got source token ${op.metadata?.sourceToken} for region ${region as string}`);
         this.resolve(op.metadata?.sourceToken);
       }
     };

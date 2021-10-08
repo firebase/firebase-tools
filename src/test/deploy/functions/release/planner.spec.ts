@@ -65,7 +65,7 @@ describe("planner", () => {
       }
       expect(planner.calculateUpdate(changed, original)).to.deep.equal({
         endpoint: changed,
-        deleteBeforeUpdate: original,
+        deleteAndRecreate: original,
       });
     });
 
@@ -79,7 +79,7 @@ describe("planner", () => {
       allowV2Upgrades();
       expect(planner.calculateUpdate(changed, original)).to.deep.equal({
         endpoint: changed,
-        deleteBeforeUpdate: original,
+        deleteAndRecreate: original,
       });
     });
 

@@ -1,13 +1,14 @@
 /** Measures the time taken from construction to the call to stop() */
 export class Timer {
-  private readonly start: [number, number];
+  private readonly start: bigint;
 
   constructor() {
-    this.start = process.hrtime();
+    this.start = process.hrtime.bigint();
   }
 
   stop(): number {
-    const duration = process.hrtime(this.start);
-    return duration[0] * 1000 + Math.round(duration[1] * 1e-6);
+    const stop = process.hrtime.bigint();
+    const elapsedNanos = stop - this.start;
+    return Number(elapsedNanos / BigInt(1e6));
   }
 }
