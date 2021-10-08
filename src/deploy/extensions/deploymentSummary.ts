@@ -1,8 +1,10 @@
+import * as clc from "cli-color";
+
 import * as planner from "./planner";
 import * as refs from "../../extensions/refs";
 
 export const humanReadable = (dep: planner.InstanceSpec) =>
-  `${dep.instanceId} (${
+  `${clc.bold(dep.instanceId)} (${
     dep.ref ? `${refs.toExtensionVersionRef(dep.ref)}` : `Installed from local source`
   })`;
 
@@ -11,12 +13,12 @@ const humanReadableUpdate = (from: planner.InstanceSpec, to: planner.InstanceSpe
     from.ref?.publisherId == to.ref?.publisherId &&
     from.ref?.extensionId == to.ref?.extensionId
   ) {
-    return `\t${from.instanceId} (${refs.toExtensionVersionRef(from.ref!)} => ${to.ref?.version})`;
+    return `\t${clc.bold(from.instanceId)} (${refs.toExtensionVersionRef(from.ref!)} => ${to.ref?.version})`;
   } else {
     const fromRef = from.ref
       ? `${refs.toExtensionVersionRef(from.ref)}`
       : `Installed from local source`;
-    return `\t${from.instanceId} (${fromRef} => ${refs.toExtensionVersionRef(to.ref!)})`;
+    return `\t${clc.bold(from.instanceId)} (${fromRef} => ${refs.toExtensionVersionRef(to.ref!)})`;
   }
 };
 
