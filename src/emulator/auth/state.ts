@@ -7,7 +7,7 @@ import {
 } from "./utils";
 import { MakeRequired } from "./utils";
 import { AuthCloudFunction } from "./cloudFunctions";
-import { assert, NotImplementedError } from "./errors";
+import { assert } from "./errors";
 import { MfaEnrollments, Schemas } from "./types";
 
 export const PROVIDER_PASSWORD = "password";
@@ -44,6 +44,16 @@ export abstract class ProjectState {
   abstract get authCloudFunction(): AuthCloudFunction;
 
   abstract get usageMode(): UsageMode;
+
+  abstract get allowPasswordSignup(): boolean;
+
+  abstract get disableAuth(): boolean;
+
+  abstract get mfaConfig(): Schemas["GoogleCloudIdentitytoolkitAdminV2MultiFactorAuthConfig"];
+
+  abstract get enableAnonymousUser(): boolean;
+
+  abstract get enableEmailLinkSignin(): boolean;
 
   createUser(props: Omit<UserInfo, "localId" | "createdAt" | "lastRefreshAt">): UserInfo {
     for (let i = 0; i < 10; i++) {
@@ -388,7 +398,13 @@ export abstract class ProjectState {
   ): string {
     const localId = userInfo.localId;
     const refreshToken = randomBase64UrlStr(204);
-    this.refreshTokens.set(refreshToken, { localId, provider, extraClaims, secondFactor });
+    this.refreshTokens.set(refreshToken, {
+      localId,
+      provider,
+      extraClaims,
+      secondFactor,
+      tenantId: userInfo.tenantId,
+    });
     let refreshTokens = this.refreshTokensForLocalId.get(localId);
     if (!refreshTokens) {
       refreshTokens = new Set();
@@ -568,9 +584,9 @@ export abstract class ProjectState {
 }
 
 export class AgentProjectState extends ProjectState {
-  private tenantForTenantId: Map<string, Tenant> = new Map();
   private _oneAccountPerEmail = true;
   private _usageMode = UsageMode.DEFAULT;
+  private tenantProjectForTenantId: Map<string, TenantProjectState> = new Map();
   private readonly _authCloudFunction = new AuthCloudFunction(this.projectId);
 
   constructor(projectId: string) {
@@ -597,29 +613,78 @@ export class AgentProjectState extends ProjectState {
     this._usageMode = usageMode;
   }
 
-  // TODO(lisajian): Fill in when v2.projects.tenants.get is added
-  getTenant(): void {
-    throw new NotImplementedError("getTenant is not implemented yet.");
+  get allowPasswordSignup() {
+    return true;
   }
 
-  // TODO(lisajian): Fill in when v2.projects.tenants.list is added
-  listTenants(): void {
-    throw new NotImplementedError("listTenants is not implemented yet.");
+  get disableAuth() {
+    return false;
   }
 
-  // TODO(lisajian): Fill in when v2.projects.tenants.create is added
-  createTenant(): void {
-    throw new NotImplementedError("createTenant is not implemented yet.");
+  get mfaConfig() {
+    return { state: "ENABLED" as const, enabledProviders: ["PHONE_SMS" as const] };
   }
 
-  // TODO(lisajian): Fill in when v2.projects.tenants.patch is added
-  updateTenant(): void {
-    throw new NotImplementedError("updateTenant is not implemented yet.");
+  get enableAnonymousUser() {
+    return true;
   }
 
-  // TODO(lisajian): Fill in when v2.projects.tenants.delete is added
-  deleteTenant(): void {
-    throw new NotImplementedError("deleteTenant is not implemented yet.");
+  get enableEmailLinkSignin() {
+    return true;
+  }
+
+  getTenantProject(tenantId: string): TenantProjectState {
+    if (!this.tenantProjectForTenantId.has(tenantId)) {
+      this.createTenantWithTenantId(tenantId, { tenantId });
+    }
+    return this.tenantProjectForTenantId.get(tenantId)!;
+  }
+
+  listTenants(startToken?: string): Tenant[] {
+    const tenantProjects = [];
+    for (const tenantProject of this.tenantProjectForTenantId.values()) {
+      if (!startToken || tenantProject.tenantId > startToken) {
+        tenantProjects.push(tenantProject);
+      }
+    }
+    // Sort in ascending order by tenantId
+    tenantProjects.sort((a, b) => {
+      if (a.tenantId < b.tenantId) {
+        return -1;
+      } else if (a.tenantId > b.tenantId) {
+        return 1;
+      }
+      return 0;
+    });
+    return tenantProjects.map((tenantProject) => tenantProject.tenantConfig);
+  }
+
+  createTenant(tenant: Tenant): Tenant {
+    for (let i = 0; i < 10; i++) {
+      const tenantId = randomId(28);
+      const createdTenant = this.createTenantWithTenantId(tenantId, tenant);
+      if (createdTenant) {
+        return createdTenant;
+      }
+    }
+    throw new Error("Could not generate a random unique tenantId after 10 tries");
+  }
+
+  private createTenantWithTenantId(tenantId: string, tenant: Tenant): Tenant | undefined {
+    if (this.tenantProjectForTenantId.has(tenantId)) {
+      return undefined;
+    }
+    tenant.name = `projects/${this.projectId}/tenants/${tenantId}`;
+    tenant.tenantId = tenantId;
+    this.tenantProjectForTenantId.set(
+      tenantId,
+      new TenantProjectState(this.projectId, tenantId, tenant, this)
+    );
+    return tenant;
+  }
+
+  deleteTenant(tenantId: string): void {
+    this.tenantProjectForTenantId.delete(tenantId);
   }
 }
 
@@ -627,6 +692,7 @@ export class TenantProjectState extends ProjectState {
   constructor(
     projectId: string,
     readonly tenantId: string,
+    private _tenantConfig: Tenant,
     private readonly parentProject: AgentProjectState
   ) {
     super(projectId);
@@ -643,6 +709,97 @@ export class TenantProjectState extends ProjectState {
   get usageMode() {
     return this.parentProject.usageMode;
   }
+
+  get tenantConfig() {
+    return this._tenantConfig;
+  }
+
+  // TODO(lisajian): Handle divergence in tenant config settings between what is
+  // needed for admin SDK (default disabled, parallels production) vs emulator
+  // tests (default enabled, for convenience)
+  get allowPasswordSignup() {
+    return this._tenantConfig.allowPasswordSignup ?? true;
+  }
+
+  get disableAuth() {
+    return this._tenantConfig.disableAuth ?? false;
+  }
+
+  get mfaConfig() {
+    return (
+      this._tenantConfig.mfaConfig ?? {
+        state: "ENABLED" as const,
+        enabledProviders: ["PHONE_SMS" as const],
+      }
+    );
+  }
+
+  get enableAnonymousUser() {
+    return this._tenantConfig.enableAnonymousUser ?? true;
+  }
+
+  get enableEmailLinkSignin() {
+    return this._tenantConfig.enableEmailLinkSignin ?? true;
+  }
+
+  delete(): void {
+    this.parentProject.deleteTenant(this.tenantId);
+  }
+
+  updateTenant(update: Partial<Tenant>, updateMask: string | undefined): Tenant {
+    // Empty masks indicate a full update
+    if (!updateMask) {
+      this._tenantConfig = { ...update, tenantId: this.tenantId, name: this.tenantConfig.name };
+      return this.tenantConfig;
+    }
+
+    const paths = updateMask.split(",");
+    for (const path of paths) {
+      const fields = path.split(".");
+      // Using `any` here to recurse over Tenant config objects
+      let updateField: any = update;
+      let existingField: any = this._tenantConfig;
+      let field;
+      for (let i = 0; i < fields.length - 1; i++) {
+        field = fields[i];
+
+        // Doesn't exist on update
+        if (updateField[field] == null) {
+          console.warn(`Unable to find field '${field}' in update '${updateField}`);
+          break;
+        }
+
+        // Field on existing is an array or is a primitive (i.e. cannot index
+        // any further)
+        if (
+          Array.isArray(updateField[field]) ||
+          Object(updateField[field]) !== updateField[field]
+        ) {
+          console.warn(`Field '${field}' is singular and cannot have sub-fields`);
+          break;
+        }
+
+        // Non-standard behavior, this creates new fields regardless of if the
+        // final field is set. Typical behavior would not modify the config
+        // payload if the final field is not successfully set.
+        if (!existingField[field]) {
+          existingField[field] = {};
+        }
+
+        updateField = updateField[field];
+        existingField = existingField[field];
+      }
+      // Reassign final field if possible
+      field = fields[fields.length - 1];
+      if (updateField[field] == null) {
+        console.warn(`Unable to find field '${field}' in update '${JSON.stringify(updateField)}`);
+        continue;
+      }
+      existingField[field] = updateField[field];
+    }
+
+    return this.tenantConfig;
+  }
 }
 
 export type ProviderUserInfo = MakeRequired<
@@ -656,13 +813,17 @@ export type UserInfo = Omit<
   localId: string;
   providerUserInfo?: ProviderUserInfo[];
 };
-export type Tenant = Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"];
+export type Tenant = Omit<
+  Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"],
+  "testPhoneNumbers"
+> & { tenantId: string };
 
 interface RefreshTokenRecord {
   localId: string;
   provider: string;
   extraClaims: Record<string, unknown>;
   secondFactor?: SecondFactorRecord;
+  tenantId?: string;
 }
 
 export interface SecondFactorRecord {

@@ -436,6 +436,7 @@ describe("cloudfunctionsv2", () => {
             resource: "projects/p/topics/t",
           },
           retry: false,
+          region: "us",
         },
         maxInstances: 42,
         minInstances: 1,
@@ -450,6 +451,7 @@ describe("cloudfunctionsv2", () => {
         eventTrigger: {
           eventType: cloudfunctionsv2.PUBSUB_PUBLISH_EVENT,
           pubsubTopic: "projects/p/topics/t",
+          triggerRegion: "us",
         },
         serviceConfig: {
           ...CLOUD_FUNCTION_V2.serviceConfig,
@@ -512,6 +514,7 @@ describe("cloudfunctionsv2", () => {
                 value: "compute.googleapis.com",
               },
             ],
+            triggerRegion: "us",
           },
         })
       ).to.deep.equal({
@@ -525,6 +528,7 @@ describe("cloudfunctionsv2", () => {
             serviceName: "compute.googleapis.com",
           },
           retry: false,
+          region: "us",
         },
       });
     });

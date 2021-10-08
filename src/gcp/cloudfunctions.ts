@@ -432,9 +432,11 @@ async function list(projectId: string, region: string): Promise<ListFunctionsRes
       unreachable: res.body.unreachable || [],
     };
   } catch (err) {
-    logger.debug("[functions] failed to list functions for " + projectId);
+    logger.debug(`[functions] failed to list functions for ${projectId}`);
     logger.debug(`[functions] ${err?.message}`);
-    return Promise.reject(err?.message);
+    throw new FirebaseError(`Failed to list functions for ${projectId}`, {
+      original: err,
+    });
   }
 }
 

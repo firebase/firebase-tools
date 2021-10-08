@@ -28,6 +28,17 @@ export async function getSecret(projectId: string, name: string): Promise<Secret
   return parseSecretResourceName(getRes.body.name);
 }
 
+export async function getSecretLabels(
+  projectId: string,
+  name: string
+): Promise<Record<string, string>> {
+  const getRes = await api.request("GET", `/v1beta1/projects/${projectId}/secrets/${name}`, {
+    auth: true,
+    origin: api.secretManagerOrigin,
+  });
+  return getRes.body.labels;
+}
+
 export async function secretExists(projectId: string, name: string): Promise<boolean> {
   try {
     await getSecret(projectId, name);
@@ -48,7 +59,11 @@ export function parseSecretResourceName(resourceName: string): Secret {
   };
 }
 
-export async function createSecret(projectId: string, name: string): Promise<Secret> {
+export async function createSecret(
+  projectId: string,
+  name: string,
+  labels: Record<string, string>
+): Promise<Secret> {
   const createRes = await api.request(
     "POST",
     `/v1beta1/projects/${projectId}/secrets?secretId=${name}`,
@@ -59,6 +74,7 @@ export async function createSecret(projectId: string, name: string): Promise<Sec
         replication: {
           automatic: {},
         },
+        labels,
       },
     }
   );
