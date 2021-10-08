@@ -320,20 +320,20 @@ export async function listInstances(projectId: string): Promise<ExtensionInstanc
  * @param params params to configure the extension instance
  * @param validateOnly if true, only validates the update and makes no changes
  */
-export async function configureInstance(
-  projectId: string,
-  instanceId: string,
-  params: { [option: string]: string },
-  validateOnly: boolean = false
-): Promise<any> {
+export async function configureInstance(args: {
+  projectId: string;
+  instanceId: string;
+  params: { [option: string]: string };
+  validateOnly?: boolean;
+}): Promise<any> {
   const res = await patchInstance({
-    projectId,
-    instanceId,
+    projectId: args.projectId,
+    instanceId: args.instanceId,
     updateMask: "config.params",
-    validateOnly,
+    validateOnly: args.validateOnly ?? false,
     data: {
       config: {
-        params,
+        params: args.params,
       },
     },
   });

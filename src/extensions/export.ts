@@ -12,9 +12,8 @@ export function displayExportInfo(withRef: InstanceSpec[], withoutRef: InstanceS
   logger.info("The following Extension instances will be saved locally:");
   logger.info("");
 
-  for (const spec of withRef) {
-    displayParams(spec);
-  }
+  displaySpecs(withRef);
+
   if (withoutRef.length) {
     logger.info(
       `Your project also has the following instances installed from local sources. These will not be saved to firebase.json:`
@@ -25,13 +24,16 @@ export function displayExportInfo(withRef: InstanceSpec[], withoutRef: InstanceS
   }
 }
 
-function displayParams(spec: InstanceSpec): void {
-  logger.info(humanReadable(spec));
-  logger.info(`Configuration will be written to 'extensions/${spec.instanceId}.env`);
-  for (const p of Object.entries(spec.params)) {
-    logger.info(`\t${p[0]}: ${p[1]}`);
+function displaySpecs(specs: InstanceSpec[]): void {
+  for (let i = 0; i < specs.length; i++) {
+    const spec = specs[i];
+    logger.info(`${i + 1}. ${humanReadable(spec)}`);
+    logger.info(`Configuration will be written to 'extensions/${spec.instanceId}.env'`);
+    for (const p of Object.entries(spec.params)) {
+      logger.info(`\t${p[0]}=${p[1]}`);
+    }
+    logger.info("");
   }
-  logger.info("");
 }
 
 function writeExtensionsToFirebaseJson(have: InstanceSpec[], existingConfig: Config): void {

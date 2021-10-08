@@ -90,3 +90,16 @@ export function toExtensionVersionName(ref: Ref): string {
   }
   return `publishers/${ref.publisherId}/extensions/${ref.extensionId}/versions/${ref.version}`;
 }
+
+/**
+ * Checks if two refs refer to the same extensionVersion.
+ */
+export function equal(a?: Ref, b?: Ref): boolean {
+  return (
+    !!a &&
+    !!b &&
+    a.publisherId === b.publisherId &&
+    a.extensionId === b.extensionId &&
+    a.version === b.version
+  );
+}

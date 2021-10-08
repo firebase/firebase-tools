@@ -310,7 +310,11 @@ describe("extensions", () => {
         .get(`/${VERSION}/operations/abc123`)
         .reply(200, { done: true });
 
-      await extensionsApi.configureInstance(PROJECT_ID, INSTANCE_ID, { MY_PARAM: "value" });
+      await extensionsApi.configureInstance({
+        projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
+        params: { MY_PARAM: "value" },
+      });
       expect(nock.isDone()).to.be.true;
     });
 
@@ -320,7 +324,12 @@ describe("extensions", () => {
         .query({ updateMask: "config.params", validateOnly: "true" })
         .reply(200, { name: "operations/abc123", done: true });
 
-      await extensionsApi.configureInstance(PROJECT_ID, INSTANCE_ID, { MY_PARAM: "value" }, true);
+      await extensionsApi.configureInstance({
+        projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
+        params: { MY_PARAM: "value" },
+        validateOnly: true,
+      });
       expect(nock.isDone()).to.be.true;
     });
 
@@ -331,7 +340,11 @@ describe("extensions", () => {
         .reply(500);
 
       await expect(
-        extensionsApi.configureInstance(PROJECT_ID, INSTANCE_ID, { MY_PARAM: "value" })
+        extensionsApi.configureInstance({
+          projectId: PROJECT_ID,
+          instanceId: INSTANCE_ID,
+          params: { MY_PARAM: "value" },
+        })
       ).to.be.rejectedWith(FirebaseError, "HTTP Error: 500");
       expect(nock.isDone()).to.be.true;
     });
