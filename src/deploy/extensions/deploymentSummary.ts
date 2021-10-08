@@ -13,7 +13,9 @@ const humanReadableUpdate = (from: planner.InstanceSpec, to: planner.InstanceSpe
     from.ref?.publisherId == to.ref?.publisherId &&
     from.ref?.extensionId == to.ref?.extensionId
   ) {
-    return `\t${clc.bold(from.instanceId)} (${refs.toExtensionVersionRef(from.ref!)} => ${to.ref?.version})`;
+    return `\t${clc.bold(from.instanceId)} (${refs.toExtensionVersionRef(from.ref!)} => ${
+      to.ref?.version
+    })`;
   } else {
     const fromRef = from.ref
       ? `${refs.toExtensionVersionRef(from.ref)}`
