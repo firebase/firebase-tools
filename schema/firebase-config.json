@@ -1,393 +1,461 @@
 {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "additionalProperties": false,
-    "properties": {
-        "database": {
-            "anyOf": [
-                {
-                    "additionalProperties": false,
-                    "properties": {
-                        "rules": {
-                            "type": "string"
-                        }
-                    },
-                    "type": "object"
-                },
-                {
-                    "items": {
-                        "additionalProperties": false,
-                        "properties": {
-                            "instance": {
-                                "type": "string"
-                            },
-                            "rules": {
-                                "type": "string"
-                            },
-                            "target": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "rules"
-                        ],
-                        "type": "object"
-                    },
-                    "type": "array"
-                }
-            ]
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "JSON schema for Firebase configuration file",
+  "properties": {
+    "database": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "rules": {
+              "description": "Points to the file that contains security rules for your Realtime Database",
+              "type": "string"
+            }
+          },
+          "type": "object"
         },
-        "emulators": {
+        {
+          "items": {
             "additionalProperties": false,
             "properties": {
-                "auth": {
-                    "additionalProperties": false,
-                    "properties": {
-                        "host": {
-                            "type": "string"
-                        },
-                        "port": {
-                            "type": "number"
-                        }
-                    },
-                    "type": "object"
-                },
-                "database": {
-                    "additionalProperties": false,
-                    "properties": {
-                        "host": {
-                            "type": "string"
-                        },
-                        "port": {
-                            "type": "number"
-                        }
-                    },
-                    "type": "object"
-                },
-                "firestore": {
-                    "additionalProperties": false,
-                    "properties": {
-                        "host": {
-                            "type": "string"
-                        },
-                        "port": {
-                            "type": "number"
-                        }
-                    },
-                    "type": "object"
-                },
-                "functions": {
-                    "additionalProperties": false,
-                    "properties": {
-                        "host": {
-                            "type": "string"
-                        },
-                        "port": {
-                            "type": "number"
-                        }
-                    },
-                    "type": "object"
-                },
-                "hosting": {
-                    "additionalProperties": false,
-                    "properties": {
-                        "host": {
-                            "type": "string"
-                        },
-                        "port": {
-                            "type": "number"
-                        }
-                    },
-                    "type": "object"
-                },
-                "hub": {
-                    "additionalProperties": false,
-                    "properties": {
-                        "host": {
-                            "type": "string"
-                        },
-                        "port": {
-                            "type": "number"
-                        }
-                    },
-                    "type": "object"
-                },
-                "logging": {
-                    "additionalProperties": false,
-                    "properties": {
-                        "host": {
-                            "type": "string"
-                        },
-                        "port": {
-                            "type": "number"
-                        }
-                    },
-                    "type": "object"
-                },
-                "pubsub": {
-                    "additionalProperties": false,
-                    "properties": {
-                        "host": {
-                            "type": "string"
-                        },
-                        "port": {
-                            "type": "number"
-                        }
-                    },
-                    "type": "object"
-                },
-                "storage": {
-                    "additionalProperties": false,
-                    "properties": {
-                        "host": {
-                            "type": "string"
-                        },
-                        "port": {
-                            "type": "number"
-                        }
-                    },
-                    "type": "object"
-                },
-                "ui": {
-                    "additionalProperties": false,
-                    "properties": {
-                        "enabled": {
-                            "type": "boolean"
-                        },
-                        "host": {
-                            "type": "string"
-                        },
-                        "port": {
-                            "type": [
-                                "string",
-                                "number"
-                            ]
-                        }
-                    },
-                    "type": "object"
-                }
+              "instance": {
+                "description": "TODO",
+                "type": "string"
+              },
+              "rules": {
+                "description": "Points to the file that contains Realtime Database security rules",
+                "type": "string"
+              },
+              "target": {
+                "description": "Define a database target name to which you apply your security rules file",
+                "type": "string"
+              }
             },
+            "required": [
+              "rules"
+            ],
             "type": "object"
+          },
+          "type": "array"
+        }
+      ]
+    },
+    "emulators": {
+      "additionalProperties": false,
+      "properties": {
+        "auth": {
+          "additionalProperties": false,
+          "properties": {
+            "host": {
+              "type": "string"
+            },
+            "port": {
+              "default": 3000,
+              "description": "Port to listen",
+              "type": "number"
+            }
+          },
+          "type": "object"
+        },
+        "database": {
+          "additionalProperties": false,
+          "properties": {
+            "host": {
+              "type": "string"
+            },
+            "port": {
+              "description": "Port to listen",
+              "type": "number"
+            }
+          },
+          "type": "object"
         },
         "firestore": {
-            "additionalProperties": false,
-            "properties": {
-                "indexes": {
-                    "type": "string"
-                },
-                "rules": {
-                    "type": "string"
-                }
+          "additionalProperties": false,
+          "properties": {
+            "host": {
+              "type": "string"
             },
-            "type": "object"
+            "port": {
+              "default": 8080,
+              "description": "Port to listen",
+              "type": "number"
+            }
+          },
+          "type": "object"
         },
         "functions": {
-            "additionalProperties": false,
-            "properties": {
-                "ignore": {
-                    "items": {
-                        "type": "string"
-                    },
-                    "type": "array"
-                },
-                "predeploy": {
-                    "items": {
-                        "type": "string"
-                    },
-                    "type": "array"
-                },
-                "source": {
-                    "type": "string"
-                }
+          "additionalProperties": false,
+          "properties": {
+            "host": {
+              "type": "string"
             },
-            "type": "object"
+            "port": {
+              "default": 5001,
+              "description": "Port to listen",
+              "type": "number"
+            }
+          },
+          "type": "object"
         },
         "hosting": {
-            "additionalProperties": false,
-            "properties": {
-                "appAssociation": {
-                    "type": "string"
-                },
-                "cleanUrls": {
-                    "type": "boolean"
-                },
-                "headers": {
-                    "items": {
-                        "additionalProperties": false,
-                        "properties": {
-                            "headers": {
-                                "items": {
-                                    "additionalProperties": false,
-                                    "properties": {
-                                        "key": {
-                                            "type": "string"
-                                        },
-                                        "value": {
-                                            "type": "string"
-                                        }
-                                    },
-                                    "required": [
-                                        "key",
-                                        "value"
-                                    ],
-                                    "type": "object"
-                                },
-                                "type": "array"
-                            },
-                            "source": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "headers",
-                            "source"
-                        ],
-                        "type": "object"
-                    },
-                    "type": "array"
-                },
-                "i18n": {
-                    "additionalProperties": false,
-                    "properties": {
-                        "root": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "root"
-                    ],
-                    "type": "object"
-                },
-                "ignore": {
-                    "items": {
-                        "type": "string"
-                    },
-                    "type": "array"
-                },
-                "postdeploy": {
-                    "type": "string"
-                },
-                "public": {
-                    "type": "string"
-                },
-                "redirects": {
-                    "items": {
-                        "additionalProperties": false,
-                        "properties": {
-                            "destination": {
-                                "type": "string"
-                            },
-                            "source": {
-                                "type": "string"
-                            },
-                            "type": {
-                                "type": "number"
-                            }
-                        },
-                        "required": [
-                            "destination",
-                            "source",
-                            "type"
-                        ],
-                        "type": "object"
-                    },
-                    "type": "array"
-                },
-                "rewrites": {
-                    "items": {
-                        "additionalProperties": false,
-                        "properties": {
-                            "destination": {
-                                "type": "string"
-                            },
-                            "dynamicLinks": {
-                                "type": "boolean"
-                            },
-                            "function": {
-                                "type": "string"
-                            },
-                            "run": {
-                                "additionalProperties": false,
-                                "properties": {
-                                    "region": {
-                                        "type": "string"
-                                    },
-                                    "serviceId": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "serviceId"
-                                ],
-                                "type": "object"
-                            },
-                            "source": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "source"
-                        ],
-                        "type": "object"
-                    },
-                    "type": "array"
-                },
-                "trailingSlash": {
-                    "type": "boolean"
-                }
+          "additionalProperties": false,
+          "properties": {
+            "host": {
+              "type": "string"
             },
-            "required": [
-                "public"
-            ],
-            "type": "object"
+            "port": {
+              "default": 5000,
+              "description": "Port to listen",
+              "type": "number"
+            }
+          },
+          "type": "object"
         },
-        "remoteconfig": {
-            "additionalProperties": false,
-            "properties": {
-                "template": {
-                    "type": "string"
-                }
+        "hub": {
+          "additionalProperties": false,
+          "properties": {
+            "host": {
+              "type": "string"
             },
-            "required": [
-                "template"
-            ],
-            "type": "object"
+            "port": {
+              "description": "Port to listen",
+              "type": "number"
+            }
+          },
+          "type": "object"
+        },
+        "logging": {
+          "additionalProperties": false,
+          "properties": {
+            "host": {
+              "type": "string"
+            },
+            "port": {
+              "description": "Port to listen",
+              "type": "number"
+            }
+          },
+          "type": "object"
+        },
+        "pubsub": {
+          "additionalProperties": false,
+          "properties": {
+            "host": {
+              "type": "string"
+            },
+            "port": {
+              "default": 8085,
+              "description": "Port to listen",
+              "type": "number"
+            }
+          },
+          "type": "object"
         },
         "storage": {
-            "anyOf": [
-                {
-                    "additionalProperties": false,
-                    "properties": {
-                        "rules": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "rules"
-                    ],
-                    "type": "object"
-                },
-                {
-                    "items": {
-                        "additionalProperties": false,
-                        "properties": {
-                            "bucket": {
-                                "type": "string"
-                            },
-                            "rules": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "bucket",
-                            "rules"
-                        ],
-                        "type": "object"
-                    },
-                    "type": "array"
-                }
-            ]
+          "additionalProperties": false,
+          "properties": {
+            "host": {
+              "type": "string"
+            },
+            "port": {
+              "description": "Port to listen",
+              "type": "number"
+            }
+          },
+          "type": "object"
+        },
+        "ui": {
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "default": true,
+              "type": "boolean"
+            },
+            "host": {
+              "default": "localhost",
+              "type": "string"
+            },
+            "port": {
+              "default": 4000,
+              "description": "Port to listen",
+              "type": [
+                "string",
+                "number"
+              ]
+            }
+          },
+          "type": "object"
         }
+      },
+      "type": "object"
     },
-    "type": "object"
+    "firestore": {
+      "additionalProperties": false,
+      "description": "Firestore configuration",
+      "properties": {
+        "indexes": {
+          "description": "Points to the file that defines indexes for Firestore",
+          "type": "string"
+        },
+        "rules": {
+          "description": "Points to the file that contains security rules for Firestore",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "functions": {
+      "additionalProperties": false,
+      "description": "Firebase Cloud Functions configuration",
+      "properties": {
+        "ignore": {
+          "description": "A list of globs to be ignored",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "postdeploy": {
+          "description": "Post-deploy lifecycle hook will only execute if pre-deploy and function deployment completed successfully",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "predeploy": {
+          "description": "Pre-deploy lifecycle hook. Commands in the string array are sequentially executed. If any one of them fails the function will not deploy and the postdeploy lifecycle hook will not run",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "source": {
+          "description": "Functions' source path",
+          "examples": "./src",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "hosting": {
+      "additionalProperties": false,
+      "description": "Firebase Hosting configuration",
+      "properties": {
+        "appAssociation": {
+          "default": "AUTO",
+          "type": "string"
+        },
+        "cleanUrls": {
+          "description": "Controls whether URLs should have the file extension",
+          "type": "boolean"
+        },
+        "headers": {
+          "description": "An array of custom header definitions",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "headers": {
+                "description": "The header object",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "key": {
+                      "description": "The header key",
+                      "type": "string"
+                    },
+                    "value": {
+                      "description": "The header value",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "key",
+                    "value"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "source": {
+                "description": "Matched against the original request path, regardless of rewrite rules",
+                "type": "string"
+              }
+            },
+            "required": [
+              "headers",
+              "source"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "i18n": {
+          "additionalProperties": false,
+          "properties": {
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "root"
+          ],
+          "type": "object"
+        },
+        "ignore": {
+          "description": "A list of globs to be ignored on deploy",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "postdeploy": {
+          "description": "Script to run after deploy",
+          "type": "string"
+        },
+        "predeploy": {
+          "description": "Script to run before deploy",
+          "type": "string"
+        },
+        "public": {
+          "default": "public",
+          "description": "The directory that gets uploaded to Firebase",
+          "type": "string"
+        },
+        "redirects": {
+          "description": "Specifies all http redirects",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "destination": {
+                "description": "The value used within the Location header entry",
+                "type": "string"
+              },
+              "source": {
+                "description": "A glob pattern that is matched against all URL paths at the start of every request",
+                "type": "string"
+              },
+              "type": {
+                "description": "The redirect status code",
+                "enum": "",
+                "examples": "301, 302",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "destination",
+              "source",
+              "type"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "rewrites": {
+          "description": "Holds rules for rewrites",
+          "items": {
+            "additionalProperties": false,
+            "description": "A redirect item",
+            "properties": {
+              "destination": {
+                "description": "A local destination",
+                "type": "string"
+              },
+              "dynamicLinks": {
+                "type": "boolean"
+              },
+              "function": {
+                "type": "string"
+              },
+              "run": {
+                "additionalProperties": false,
+                "properties": {
+                  "region": {
+                    "type": "string"
+                  },
+                  "serviceId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "serviceId"
+                ],
+                "type": "object"
+              },
+              "source": {
+                "description": "A glob specifying a rewrite rule",
+                "type": "string"
+              }
+            },
+            "required": [
+              "source"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "target": {
+          "description": "Hosting target\nDeploy targets are short-name identifiers (that you define yourself) for Firebase resources in your Firebase project,\nlike a Hosting site with unique static assets or a group of Realtime Database instances\nthat share the same security rules.\n\nTo create a deploy target and apply a target-name to a Hosting site, run the following CLI command:\n`firebase target:apply <type> <target-name> <resource-name>`",
+          "type": "string"
+        },
+        "trailingSlash": {
+          "description": "Controls whether URLs should have trailing slashes or not",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "public"
+      ],
+      "type": "object"
+    },
+    "remoteconfig": {
+      "additionalProperties": false,
+      "properties": {
+        "template": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "template"
+      ],
+      "type": "object"
+    },
+    "storage": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "rules": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "rules"
+          ],
+          "type": "object"
+        },
+        {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "bucket": {
+                "type": "string"
+              },
+              "rules": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "bucket",
+              "rules"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      ]
+    }
+  },
+  "type": "object"
 }
-
