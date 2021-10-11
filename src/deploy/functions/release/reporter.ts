@@ -1,4 +1,5 @@
 import * as backend from "../backend";
+<<<<<<< HEAD
 import * as clc from "cli-color";
 
 import { logger } from "../../../logger";
@@ -9,14 +10,23 @@ import { getFunctionLabel } from "../functionsDeployHelper";
 
 export interface DeployResult {
   endpoint: backend.Endpoint;
+=======
+
+export interface DeployResult {
+>>>>>>> @{-1}
   durationMs: number;
   error?: Error;
 }
 
+<<<<<<< HEAD
 export interface Summary {
   totalTime: number;
   results: DeployResult[];
 }
+=======
+export type RegionalDeployResults = Record<string, DeployResult>;
+export type GlobalDeployResults = Record<string, RegionalDeployResults>;
+>>>>>>> @{-1}
 
 export type OperationType =
   | "create"
