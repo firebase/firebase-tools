@@ -116,6 +116,9 @@ describeAuthEmulator("tenant management", ({ authApi }) => {
           `/identitytoolkit.googleapis.com/v2/projects/${projectId}/tenants/${tenant.tenantId}`
         )
         .set("Authorization", "Bearer owner")
+        // Sets content-type and sends "{}" in request payload. This is very
+        // uncommon for HTTP DELETE requests, but clients like the Node.js Admin
+        // SDK do it anyway. We want the emulator to tolerate this.
         .send({})
         .then((res) => {
           expectStatusCode(200, res);
