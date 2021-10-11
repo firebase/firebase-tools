@@ -1,6 +1,5 @@
 import { expect } from "chai";
 import { flatten } from "lodash";
-import { define } from "mime";
 
 import * as f from "../functional";
 
@@ -121,5 +120,23 @@ describe("functional", () => {
       // compilation if uncommented
       // f.assertExhaustive(animal);
     }
+  });
+
+  describe("partition", () => {
+    it("should split an array into true and false", () => {
+      const arr = ["T1", "F1", "T2", "F2"];
+      expect(
+        f.partition<string>(arr, (s: string) => s.startsWith("T"))
+      ).to.deep.equal([
+        ["T1", "T2"],
+        ["F1", "F2"],
+      ]);
+    });
+
+    it("can handle an empty array", () => {
+      expect(
+        f.partition<string>([], (s: string) => s.startsWith("T"))
+      ).to.deep.equal([[], []]);
+    });
   });
 });

@@ -12,6 +12,13 @@ import * as runtimes from "../../runtimes";
 
 const TRIGGER_PARSER = path.resolve(__dirname, "./triggerParser.js");
 
+export const GCS_EVENTS: Set<string> = new Set<string>([
+  "google.cloud.storage.object.v1.finalized",
+  "google.cloud.storage.object.v1.archived",
+  "google.cloud.storage.object.v1.deleted",
+  "google.cloud.storage.object.v1.metadataUpdated",
+]);
+
 export interface ScheduleRetryConfig {
   retryCount?: number;
   maxRetryDuration?: string;
@@ -172,6 +179,15 @@ export function addResourcesToBackend(
         triggered = { scheduleTrigger: annotation.schedule };
       } else {
         triggered = { eventTrigger: trigger };
+      }
+
+      if (GCS_EVENTS.has(annotation.eventTrigger?.eventType || "")) {
+        trigger.eventFilters = {
+          bucket: annotation.eventTrigger!.resource,
+        };
+        (triggered as backend.EventTriggered).eventTrigger.eventFilters = {
+          bucket: annotation.eventTrigger!.resource,
+        };
       }
     }
     const cloudFunctionName: backend.TargetIds = {

@@ -18,6 +18,7 @@ import * as runtimes from "./runtimes";
 import * as validate from "./validate";
 import * as utils from "../../utils";
 import { logger } from "../../logger";
+import { lookupMissingTriggerRegions } from "./triggerRegionHelper";
 
 function hasUserConfig(config: Record<string, unknown>): boolean {
   // "firebase" key is always going to exist in runtime config.
@@ -100,6 +101,7 @@ export async function prepare(
       cloudrun: "run.googleapis.com",
       eventarc: "eventarc.googleapis.com",
       pubsub: "pubsub.googleapis.com",
+      storage: "storage.googleapis.com",
     };
     const enablements = Object.entries(V2_APIS).map(([tag, api]) => {
       return ensureApiEnabled.ensure(context.projectId, api, tag);
@@ -161,6 +163,7 @@ export async function prepare(
 
   const haveBackend = await backend.existingBackend(context);
   inferDetailsFromExisting(wantBackend, haveBackend, usedDotenv);
+  await lookupMissingTriggerRegions(wantBackend);
 
   // Display a warning and prompt if any functions in the release have failurePolicies.
   await promptForFailurePolicies(options, matchingBackend, haveBackend);
@@ -183,6 +186,7 @@ export function inferDetailsFromExisting(
     if (!haveE) {
       continue;
     }
+
     // By default, preserve existing environment variables.
     // Only overwrite environment variables when the dotenv preview is enabled
     // AND there are user specified environment variables.
@@ -192,7 +196,11 @@ export function inferDetailsFromExisting(
         ...wantE.environmentVariables,
       };
     }
-  }
 
-  // TODO: copy trigger regions that are already specified
+    const missingRegion = backend.isEventTriggered(wantE) && !wantE.eventTrigger.region;
+    const haveOldRegion = backend.isEventTriggered(haveE) && !!haveE.eventTrigger.region;
+    if (missingRegion && haveOldRegion) {
+      (wantE as backend.EventTriggered).eventTrigger.region = (haveE as backend.EventTriggered).eventTrigger.region;
+    }
+  }
 }

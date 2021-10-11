@@ -47,6 +47,7 @@ export enum SpecParamType {
   MULTISELECT = "multiSelect",
   STRING = "string",
   SELECTRESOURCE = "selectResource",
+  SECRET = "secret",
 }
 
 export enum SourceOrigin {

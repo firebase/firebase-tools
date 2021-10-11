@@ -387,6 +387,9 @@ export function functionFromSpec(cloudFunction: backend.FunctionSpec, source: St
     gcfFunction.eventTrigger = {
       eventType: cloudFunction.trigger.eventType,
     };
+    if (cloudFunction.trigger.region) {
+      gcfFunction.eventTrigger.triggerRegion = cloudFunction.trigger.region;
+    }
     if (gcfFunction.eventTrigger.eventType === PUBSUB_PUBLISH_EVENT) {
       gcfFunction.eventTrigger.pubsubTopic = cloudFunction.trigger.eventFilters.resource;
     } else {
@@ -414,6 +417,9 @@ export function specFromFunction(gcfFunction: CloudFunction): backend.FunctionSp
       eventFilters: {},
       retry: false,
     };
+    if (gcfFunction.eventTrigger!.triggerRegion) {
+      trigger.region = gcfFunction.eventTrigger.triggerRegion;
+    }
     if (gcfFunction.eventTrigger.pubsubTopic) {
       trigger.eventFilters.resource = gcfFunction.eventTrigger.pubsubTopic;
     } else {

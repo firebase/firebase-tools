@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import { FirebaseJwtPayload } from "../../../emulator/auth/operations";
-import { describeAuthEmulator } from "./setup";
+import { describeAuthEmulator, PROJECT_ID } from "./setup";
 import {
   expectStatusCode,
   registerAnonUser,
@@ -14,6 +14,7 @@ import {
   TEST_PHONE_NUMBER_2,
   enrollPhoneMfa,
   updateProjectConfig,
+  registerTenant,
 } from "./helpers";
 
 describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
@@ -88,6 +89,32 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
         expect(res.body.error)
           .to.have.property("message")
           .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
+      });
+  });
+
+  it("should error on sendVerificationCode if auth is disabled", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: true });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode")
+      .query({ key: "fake-api-key" })
+      .send({ tenantId: tenant.tenantId })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("PROJECT_DISABLED");
+      });
+  });
+
+  it("should error on sendVerificationCode for tenant projects", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: false });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode")
+      .query({ key: "fake-api-key" })
+      .send({ tenantId: tenant.tenantId })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("UNSUPPORTED_TENANT_OPERATION");
       });
   });
 
@@ -400,6 +427,32 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
         expect(res.body.error)
           .to.have.property("message")
           .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
+      });
+  });
+
+  it("should error if auth is disabled", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: true });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPhoneNumber")
+      .query({ key: "fake-api-key" })
+      .send({ tenantId: tenant.tenantId })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("PROJECT_DISABLED");
+      });
+  });
+
+  it("should error if called on tenant project", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: false });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPhoneNumber")
+      .query({ key: "fake-api-key" })
+      .send({ tenantId: tenant.tenantId })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("UNSUPPORTED_TENANT_OPERATION");
       });
   });
 });
