@@ -8,7 +8,7 @@ import * as gcfv2 from "../../../gcp/cloudfunctionsv2";
 
 export interface EndpointUpdate {
   endpoint: backend.Endpoint;
-  deleteAndRecreate: boolean;
+  deleteAndRecreate?: backend.Endpoint;
 }
 
 export interface RegionalChanges {
@@ -48,10 +48,14 @@ export function calculateRegionalChanges(
 export function calculateUpdate(want: backend.Endpoint, have: backend.Endpoint): EndpointUpdate {
   checkForIllegalUpdate(want, have);
 
-  const endpoint: backend.Endpoint = { ...want };
-  const deleteAndRecreate =
-    changedV2PubSubTopic(want, have) || upgradedScheduleFromV1ToV2(want, have);
-  return { endpoint, deleteAndRecreate };
+  const update: EndpointUpdate = {
+    endpoint: { ...want },
+  };
+  const needsDelete = changedV2PubSubTopic(want, have) || upgradedScheduleFromV1ToV2(want, have);
+  if (needsDelete) {
+    update.deleteAndRecreate = have;
+  }
+  return update;
 }
 
 /**

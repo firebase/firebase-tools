@@ -143,7 +143,9 @@ export interface OperationMetadata {
 
 export interface Operation {
   name: string;
-  metadata: OperationMetadata;
+  // Note: this field is always present, but not used in prod and is a PITA
+  // to add in tests.
+  metadata?: OperationMetadata;
   done: boolean;
   error?: { code: number; message: string; details: unknown };
   response?: CloudFunction;
