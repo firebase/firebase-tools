@@ -1,32 +1,21 @@
 import * as backend from "../backend";
-<<<<<<< HEAD
 import * as clc from "cli-color";
 
 import { logger } from "../../../logger";
 import * as track from "../../../track";
 import * as utils from "../../../utils";
-import { flatten, reduceFlat } from "../../../functional";
 import { getFunctionLabel } from "../functionsDeployHelper";
 
 export interface DeployResult {
   endpoint: backend.Endpoint;
-=======
-
-export interface DeployResult {
->>>>>>> @{-1}
   durationMs: number;
   error?: Error;
 }
 
-<<<<<<< HEAD
 export interface Summary {
   totalTime: number;
   results: DeployResult[];
 }
-=======
-export type RegionalDeployResults = Record<string, DeployResult>;
-export type GlobalDeployResults = Record<string, RegionalDeployResults>;
->>>>>>> @{-1}
 
 export type OperationType =
   | "create"
