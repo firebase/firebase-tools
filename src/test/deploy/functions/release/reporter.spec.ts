@@ -5,7 +5,6 @@ import { logger } from "../../../../logger";
 import * as backend from "../../../../deploy/functions/backend";
 import * as reporter from "../../../../deploy/functions/release/reporter";
 import * as track from "../../../../track";
-import { errors } from "puppeteer";
 
 const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {
   platform: "gcfv1",
