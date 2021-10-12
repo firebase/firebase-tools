@@ -230,11 +230,12 @@ export function signInWithFakeClaims(
 
 export async function expectUserNotExistsForIdToken(
   testAgent: TestAgent,
-  idToken: string
+  idToken: string,
+  tenantId?: string
 ): Promise<void> {
   await testAgent
     .post("/identitytoolkit.googleapis.com/v1/accounts:lookup")
-    .send({ idToken })
+    .send({ idToken, tenantId })
     .query({ key: "fake-api-key" })
     .then((res) => {
       expectStatusCode(400, res);
