@@ -1,6 +1,7 @@
 import * as planner from "./planner";
 import * as deploymentSummary from "./deploymentSummary";
 import * as prompt from "../../prompt";
+import * as refs from "../../extensions/refs";
 import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
 import { logger } from "../../logger";
@@ -23,7 +24,8 @@ export async function prepare(
   const want = await planner.want(options.config.get("extensions"), options.config.projectDir);
 
   payload.instancesToCreate = want.filter((dep) => !have.some(matchesInstanceId(dep)));
-  payload.instancesToUpdate = want.filter((dep) => have.some(matchesInstanceId(dep)));
+  payload.instancesToConfigure = want.filter((dep) => have.some(isConfigure(dep)));
+  payload.instancesToUpdate = want.filter((dep) => have.some(isUpdate(dep)));
   payload.instancesToDelete = have.filter((dep) => !want.some(matchesInstanceId(dep)));
 
   const permissionsNeeded: string[] = [];
@@ -36,6 +38,10 @@ export async function prepare(
     permissionsNeeded.push("firebaseextensions.instances.update");
     logger.info(deploymentSummary.updatesSummary(payload.instancesToUpdate, have));
   }
+  if (payload.instancesToConfigure.length) {
+    permissionsNeeded.push("firebaseextensions.instances.update");
+    logger.info(deploymentSummary.configuresSummary(payload.instancesToConfigure));
+  }
   if (payload.instancesToDelete.length) {
     logger.info(deploymentSummary.deletesSummary(payload.instancesToDelete));
     if (!options.force && options.nonInteractive) {
@@ -45,7 +51,9 @@ export async function prepare(
       !options.nonInteractive &&
       !(await prompt.promptOnce({
         type: "confirm",
-        message: "Would you like to delete these extension instances?",
+        message: `Would you like to delete ${payload.instancesToDelete
+          .map((i) => i.instanceId)
+          .join(", ")}?`,
         default: false,
       }))
     ) {
@@ -57,7 +65,14 @@ export async function prepare(
 
   await requirePermissions(options, permissionsNeeded);
 }
-
-const matchesInstanceId = (dep: { instanceId: string }) => (test: { instanceId: string }) => {
+const matchesInstanceId = (dep: planner.InstanceSpec) => (test: planner.InstanceSpec) => {
   return dep.instanceId === test.instanceId;
+};
+
+const isUpdate = (dep: planner.InstanceSpec) => (test: planner.InstanceSpec) => {
+  return dep.instanceId === test.instanceId && !refs.equal(dep.ref, test.ref);
+};
+
+const isConfigure = (dep: planner.InstanceSpec) => (test: planner.InstanceSpec) => {
+  return dep.instanceId === test.instanceId && refs.equal(dep.ref, test.ref);
 };

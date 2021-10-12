@@ -30,6 +30,11 @@ export async function release(
     void deploymentQueue.run(task);
   }
 
+  for (const update of payload.instancesToConfigure ?? []) {
+    const task = tasks.configureExtensionInstanceTask(projectId, update);
+    void deploymentQueue.run(task);
+  }
+
   for (const deletion of payload.instancesToDelete ?? []) {
     const task = tasks.deleteExtensionInstanceTask(projectId, deletion);
     void deploymentQueue.run(task);

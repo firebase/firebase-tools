@@ -32,6 +32,15 @@ export async function deploy(
     void validationQueue.run(task);
   }
 
+  for (const configure of payload.instancesToConfigure ?? []) {
+    const task = tasks.configureExtensionInstanceTask(
+      projectId,
+      configure,
+      /* validateOnly=*/ true
+    );
+    void validationQueue.run(task);
+  }
+
   // Note: We need to wait() _BEFORE_ calling process() and close().
   const validationPromise = validationQueue.wait();
 

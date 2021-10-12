@@ -5,6 +5,7 @@ import { FirebaseError } from "../../error";
 import * as extensionsApi from "../../extensions/extensionsApi";
 import * as refs from "../../extensions/refs";
 import { readEnvFile } from "../../extensions/paramHelper";
+import { logger } from "../../logger";
 
 export interface InstanceSpec {
   instanceId: string;
@@ -48,12 +49,12 @@ export async function want(
         params,
       });
     } catch (err) {
-      console.log(e, err);
+      logger.debug(`Got error reading extensions entry ${e}: ${err}`);
       errors.push(err as FirebaseError);
     }
   }
   if (errors.length) {
-    const messages = errors.map((e) => e.message).join("\n");
+    const messages = errors.map((err) => `- ${err.message}`).join("\n");
     throw new FirebaseError(`Errors while reading 'extensions' in 'firebase.json'\n${messages}`);
   }
   return instanceSpecs;
