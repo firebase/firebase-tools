@@ -76,7 +76,7 @@ export async function release(
   const allErrors = summary.results.filter((r) => r.error).map((r) => r.error) as Error[];
   if (allErrors.length) {
     const opts = allErrors.length == 1 ? { original: allErrors[0] } : { children: allErrors };
-    throw new FirebaseError("There was an error deploying functions", { ...opts, exit: 1 });
+    throw new FirebaseError("There was an error deploying functions", { ...opts, exit: 2 });
   }
 }
 
