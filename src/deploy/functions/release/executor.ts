@@ -25,10 +25,11 @@ async function handler(op: Operation): Promise<undefined> {
     // error with the HTTP code stashed where GCP puts it, or a FirebaseError
     // wrapping either of the previous two cases.
     const code =
+      err.status ||
       err.code ||
       err.context?.response?.statusCode ||
       err.original?.code ||
-      err.original?.context.response?.statusCode;
+      err.original?.context?.response?.statusCode;
     if (code === 429 || code === 409) {
       throw err;
     }

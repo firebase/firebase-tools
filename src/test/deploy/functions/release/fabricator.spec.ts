@@ -881,8 +881,8 @@ describe("Fabricator", () => {
       };
 
       const results = await fab.applyRegionalChanges(changes);
-      expect(results[ep.id].error).to.be.instanceOf(reporter.DeploymentError);
-      expect(results[ep.id].error?.message).to.match(/create function/);
+      expect(results[0].error).to.be.instanceOf(reporter.DeploymentError);
+      expect(results[0].error?.message).to.match(/create function/);
     });
   });
 
@@ -897,8 +897,9 @@ describe("Fabricator", () => {
     };
 
     const results = await fab.applyRegionalChanges(changes);
-    expect(results[deleteEP.id].error).to.be.instanceOf(reporter.AbortedDeploymentError);
-    expect(results[deleteEP.id].durationMs).to.equal(0);
+    const result = results.find((r) => r.endpoint.id === deleteEP.id);
+    expect(result?.error).to.be.instanceOf(reporter.AbortedDeploymentError);
+    expect(result?.durationMs).to.equal(0);
   });
 
   it("applies all kinds of changes", async () => {
@@ -926,9 +927,9 @@ describe("Fabricator", () => {
 
     // We can't actually verify that the timing isn't zero because tests
     // have run in <1ms and failed.
-    expect(results[createEP.id].error).to.be.undefined;
-    expect(results[updateEP.id].error).to.be.undefined;
-    expect(results[deleteEP.id].error).to.be.undefined;
+    expect(results[0].error).to.be.undefined;
+    expect(results[1].error).to.be.undefined;
+    expect(results[2].error).to.be.undefined;
   });
 
   describe("applyPlan", () => {
@@ -949,11 +950,14 @@ describe("Fabricator", () => {
       };
 
       // Will fail when it hits actual API calls
-      const results = await fab.applyPlan(plan);
-      expect(results[ep1.region][ep1.id].error).to.be.instanceOf(reporter.DeploymentError);
-      expect(results[ep1.region][ep1.id].error?.message).to.match(/create function/);
-      expect(results[ep2.region][ep2.id].error).to.be.instanceOf(reporter.DeploymentError);
-      expect(results[ep2.region][ep2.id].error?.message).to.match(/delete function/);
+      const summary = await fab.applyPlan(plan);
+      const ep1Result = summary.results.find((r) => r.endpoint.region == ep1.region);
+      expect(ep1Result?.error).to.be.instanceOf(reporter.DeploymentError);
+      expect(ep1Result?.error?.message).to.match(/create function/);
+
+      const ep2Result = summary.results.find((r) => r.endpoint.region === ep2.region);
+      expect(ep2Result?.error).to.be.instanceOf(reporter.DeploymentError);
+      expect(ep2Result?.error?.message).to.match(/delete function/);
     });
   });
 });
