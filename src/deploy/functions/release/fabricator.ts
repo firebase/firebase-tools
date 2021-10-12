@@ -195,12 +195,15 @@ export class Fabricator {
     await this.functionExecutor
       .run(async () => {
         const op: { name: string } = await gcf.createFunction(apiFunction);
-        await poller.pollOperation<unknown>({
+        const fn = await poller.pollOperation<gcf.CloudFunction>({
           ...gcfV1PollerOptions,
           pollerName: `create-${endpoint.region}-${endpoint.id}`,
           operationResourceName: op.name,
           onPoll: scraper.poller,
         });
+        if (fn?.httpsTrigger?.url) {
+          endpoint.uri = fn.httpsTrigger.url;
+        }
       })
       .catch(rethrowAs(endpoint, "create"));
 
@@ -253,6 +256,7 @@ export class Fabricator {
       })
       .catch(rethrowAs(endpoint, "create"))) as gcfV2.CloudFunction;
 
+    endpoint.uri = resultFunction.serviceConfig.uri;
     const serviceName = resultFunction.serviceConfig.service!;
     if (backend.isHttpsTriggered(endpoint)) {
       const invoker = endpoint.httpsTrigger.invoker || ["public"];
@@ -276,12 +280,15 @@ export class Fabricator {
     await this.functionExecutor
       .run(async () => {
         const op: { name: string } = await gcf.updateFunction(apiFunction);
-        await poller.pollOperation<unknown>({
+        const fn = await poller.pollOperation<gcf.CloudFunction>({
           ...gcfV1PollerOptions,
           pollerName: `update-${endpoint.region}-${endpoint.id}`,
           operationResourceName: op.name,
           onPoll: scraper.poller,
         });
+        if (fn?.httpsTrigger?.url) {
+          endpoint.uri = fn.httpsTrigger.url;
+        }
       })
       .catch(rethrowAs(endpoint, "update"));
 
@@ -321,6 +328,7 @@ export class Fabricator {
       })
       .catch(rethrowAs(endpoint, "update"))) as gcfV2.CloudFunction;
 
+    endpoint.uri = resultFunction.serviceConfig.uri;
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const serviceName = resultFunction.serviceConfig.service!;
     if (backend.isHttpsTriggered(endpoint) && endpoint.httpsTrigger.invoker) {
