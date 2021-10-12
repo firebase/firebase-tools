@@ -25,10 +25,9 @@ const humanReadableUpdate = (from: planner.InstanceSpec, to: planner.InstanceSpe
 };
 
 export function createsSummary(toCreate: planner.InstanceSpec[]): string {
+  const instancesToCreate = toCreate.map((s) => `\t${humanReadable(s)}`).join("\n");
   return toCreate.length
-    ? `The following extension instances will be created:\n${toCreate
-        .map((s) => `\t${humanReadable(s)}`)
-        .join("\n")}\n`
+    ? `The following extension instances will be created:\n${instancesToCreate}\n`
     : "";
 }
 
@@ -36,27 +35,27 @@ export function updatesSummary(
   toUpdate: planner.InstanceSpec[],
   have: planner.InstanceSpec[]
 ): string {
-  const summary = toUpdate
+  const instancesToUpdate = toUpdate
     .map((to) => {
       const from = have.find((exists) => exists.instanceId == to.instanceId);
       return humanReadableUpdate(from!, to);
     })
     .join("\n");
-  return toUpdate.length ? `The following extension instances will be updated:\n${summary}\n` : "";
+  return toUpdate.length
+    ? `The following extension instances will be updated:\n${instancesToUpdate}\n`
+    : "";
 }
 
 export function configuresSummary(toConfigure: planner.InstanceSpec[]) {
+  const instancesToConfigure = toConfigure.map((s) => `\t${humanReadable(s)}`).join("\n");
   return toConfigure.length
-    ? `The following extension instances will be configured:\n${toConfigure
-        .map((s) => `\t${humanReadable(s)}`)
-        .join("\n")}\n`
+    ? `The following extension instances will be configured:\n${instancesToConfigure}\n`
     : "";
 }
 
 export function deletesSummary(toDelete: planner.InstanceSpec[]) {
+  const instancesToDelete = toDelete.map((s) => `\t${humanReadable(s)}`).join("\n");
   return toDelete.length
-    ? `The following extension instances are not listed in 'firebase.json':\n${toDelete
-        .map((s) => `\t${humanReadable(s)}`)
-        .join("\n")}\n`
+    ? `The following extension instances are not listed in 'firebase.json':\n${instancesToDelete}\n`
     : "";
 }

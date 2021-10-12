@@ -24,6 +24,10 @@ export function displayExportInfo(withRef: InstanceSpec[], withoutRef: InstanceS
   }
 }
 
+/**
+ * Displays a summary of the Extension instances and configurations that will be saved locally.
+ * @param specs The instances that will be saved locally.
+ */
 function displaySpecs(specs: InstanceSpec[]): void {
   for (let i = 0; i < specs.length; i++) {
     const spec = specs[i];

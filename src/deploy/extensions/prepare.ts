@@ -66,7 +66,7 @@ export async function prepare(
   await requirePermissions(options, permissionsNeeded);
 }
 const matchesInstanceId = (dep: planner.InstanceSpec) => (test: planner.InstanceSpec) => {
-  return dep.instanceId == test.instanceId;
+  return dep.instanceId === test.instanceId;
 };
 
 const isUpdate = (dep: planner.InstanceSpec) => (test: planner.InstanceSpec) => {
