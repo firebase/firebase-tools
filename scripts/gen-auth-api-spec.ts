@@ -305,6 +305,7 @@ function pushServersDownToEachPath(openapi3: any): void {
   });
 }
 
+// TODO(lisajian): add tenantId as query param for all emulator config endpoints
 function addEmulatorOperations(openapi3: any): void {
   openapi3.tags.push({ name: "emulator" });
   openapi3.paths["/emulator/v1/projects/{targetProjectId}/accounts"] = {
@@ -446,6 +447,46 @@ function addEmulatorOperations(openapi3: any): void {
       tags: ["emulator"],
     },
   };
+  openapi3.paths["/emulator/v1/projects/{targetProjectId}/tenants/{tenantId}/oobCodes"] = {
+    parameters: [
+      {
+        name: "targetProjectId",
+        in: "path",
+        description: "The ID of the Google Cloud project that the confirmation codes belongs to.",
+        required: true,
+        schema: {
+          type: "string",
+        },
+      },
+      {
+        name: "tenantId",
+        in: "path",
+        description:
+          "The ID of the Identity Platform tenant the accounts belongs to. If not specified, accounts on the Identity Platform project are returned.",
+        required: true,
+        schema: { type: "string" },
+      },
+    ],
+    servers: [{ url: "" }],
+    get: {
+      description: "List all pending confirmation codes for the project.",
+      operationId: "emulator.projects.oobCodes.list",
+      responses: {
+        "200": {
+          description: "Successful response",
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/EmulatorV1ProjectsOobCodes",
+              },
+            },
+          },
+        },
+      },
+      security: [],
+      tags: ["emulator"],
+    },
+  };
   openapi3.components.schemas.EmulatorV1ProjectsOobCodes = {
     type: "object",
     description: "Details of all pending confirmation codes.",
@@ -474,6 +515,46 @@ function addEmulatorOperations(openapi3: any): void {
         schema: {
           type: "string",
         },
+      },
+    ],
+    servers: [{ url: "" }],
+    get: {
+      description: "List all pending phone verification codes for the project.",
+      operationId: "emulator.projects.verificationCodes.list",
+      responses: {
+        "200": {
+          description: "Successful response",
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/EmulatorV1ProjectsOobCodes",
+              },
+            },
+          },
+        },
+      },
+      security: [],
+      tags: ["emulator"],
+    },
+  };
+  openapi3.paths["/emulator/v1/projects/{targetProjectId}/tenants/{tenantId}/verificationCodes"] = {
+    parameters: [
+      {
+        name: "targetProjectId",
+        in: "path",
+        description: "The ID of the Google Cloud project that the verification codes belongs to.",
+        required: true,
+        schema: {
+          type: "string",
+        },
+      },
+      {
+        name: "tenantId",
+        in: "path",
+        description:
+          "The ID of the Identity Platform tenant the accounts belongs to. If not specified, accounts on the Identity Platform project are returned.",
+        required: true,
+        schema: { type: "string" },
       },
     ],
     servers: [{ url: "" }],

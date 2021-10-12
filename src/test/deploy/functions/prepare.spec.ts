@@ -4,13 +4,17 @@ import * as prepare from "../../../deploy/functions/prepare";
 
 describe("prepare", () => {
   describe("inferDetailsFromExisting", () => {
-    const ENDPOINT: backend.Endpoint = {
+    const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {
       platform: "gcfv2",
       id: "id",
       region: "region",
       project: "project",
       entryPoint: "entry",
       runtime: "nodejs16",
+    };
+
+    const ENDPOINT: backend.Endpoint = {
+      ...ENDPOINT_BASE,
       httpsTrigger: {},
     };
 
@@ -67,6 +71,25 @@ describe("prepare", () => {
       const e = { ...ENDPOINT };
       prepare.inferDetailsFromExisting(backend.of(e), backend.of(), /* usedDotEnv= */ false);
       expect(e).to.deep.equal(ENDPOINT);
+    });
+
+    it("can fill in regions from last deploy", () => {
+      const want: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        eventTrigger: {
+          eventType: "google.cloud.storage.object.v1.finalized",
+          eventFilters: {
+            bucket: "bucket",
+          },
+          retry: false,
+        },
+      };
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const have: backend.Endpoint & backend.EventTriggered = JSON.parse(JSON.stringify(want));
+      have.eventTrigger.region = "us";
+
+      prepare.inferDetailsFromExisting(backend.of(want), backend.of(have), /* usedDotEnv= */ false);
+      expect(want.eventTrigger.region).to.equal("us");
     });
   });
 });
