@@ -180,11 +180,11 @@ function printQuotaErrors(results: Array<Required<DeployResult>>): void {
     }
     const original = r.error.original as any;
     const code: number | undefined =
-    original?.status ||
-    original?.code ||
-    original?.context?.response?.statusCode ||
-    original?.original?.code ||
-    original?.original?.context?.response?.statusCode;
+      original?.status ||
+      original?.code ||
+      original?.context?.response?.statusCode ||
+      original?.original?.code ||
+      original?.original?.context?.response?.statusCode;
     return code === 429 || code === 409;
   });
   if (!hadQuotaError) {
