@@ -303,6 +303,28 @@ describeAuthEmulator("accounts:lookup", ({ authApi }) => {
       });
   });
 
+  it("should return user by tenantId in idToken", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, {
+      disableAuth: false,
+      allowPasswordSignup: true,
+    });
+    const { idToken, localId } = await registerUser(authApi(), {
+      email: "alice@example.com",
+      password: "notasecret",
+      tenantId: tenant.tenantId,
+    });
+
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/accounts:lookup`)
+      .send({ idToken })
+      .query({ key: "fake-api-key" })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.users).to.have.length(1);
+        expect(res.body.users[0].localId).to.equal(localId);
+      });
+  });
+
   it("should error for lookup using idToken if usageMode is passthrough", async () => {
     const { idToken } = await registerAnonUser(authApi());
     await deleteAccount(authApi(), { idToken });
