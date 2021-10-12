@@ -174,10 +174,20 @@ function printIamErrors(results: Array<Required<DeployResult>>): void {
 
 /** Print errors for failures with the GCF API. */
 function printQuotaErrors(results: Array<Required<DeployResult>>): void {
-  const hadGcfFailure = results.find(
-    (r) => r.error instanceof DeploymentError && ["create", "update", "delete"].includes(r.error.op)
-  );
-  if (!hadGcfFailure) {
+  const hadQuotaError = results.find((r) => {
+    if (!(r.error instanceof DeploymentError)) {
+      return false;
+    }
+    const original = r.error.original as any;
+    const code: number | undefined =
+    original?.status ||
+    original?.code ||
+    original?.context?.response?.statusCode ||
+    original?.original?.code ||
+    original?.original?.context?.response?.statusCode;
+    return code === 429 || code === 409;
+  });
+  if (!hadQuotaError) {
     return;
   }
   logger.info("");

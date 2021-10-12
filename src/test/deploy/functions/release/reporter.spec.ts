@@ -310,13 +310,15 @@ describe("reporter", () => {
     });
 
     it("prints quota errors", () => {
+      const rawError = new Error("Quota exceeded");
+      (rawError as any).status = 429;
       const summary: reporter.Summary = {
         totalTime: 1_000,
         results: [
           {
             endpoint: ENDPOINT,
             durationMs: 1_000,
-            error: new reporter.DeploymentError(ENDPOINT, "create", undefined),
+            error: new reporter.DeploymentError(ENDPOINT, "create", rawError),
           },
         ],
       };
