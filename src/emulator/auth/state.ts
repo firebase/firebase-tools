@@ -730,23 +730,23 @@ export class TenantProjectState extends ProjectState {
   }
 
   get allowPasswordSignup() {
-    return this._tenantConfig.allowPasswordSignup!;
+    return this._tenantConfig.allowPasswordSignup;
   }
 
   get disableAuth() {
-    return this._tenantConfig.disableAuth!;
+    return this._tenantConfig.disableAuth;
   }
 
   get mfaConfig() {
-    return this._tenantConfig.mfaConfig!;
+    return this._tenantConfig.mfaConfig;
   }
 
   get enableAnonymousUser() {
-    return this._tenantConfig.enableAnonymousUser!;
+    return this._tenantConfig.enableAnonymousUser;
   }
 
   get enableEmailLinkSignin() {
-    return this._tenantConfig.enableEmailLinkSignin!;
+    return this._tenantConfig.enableEmailLinkSignin;
   }
 
   delete(): void {
@@ -756,7 +756,17 @@ export class TenantProjectState extends ProjectState {
   updateTenant(update: Partial<Tenant>, updateMask: string | undefined): Tenant {
     // Empty masks indicate a full update
     if (!updateMask) {
-      this._tenantConfig = { ...update, tenantId: this.tenantId, name: this.tenantConfig.name };
+      // Default to production defaults if unset
+      this._tenantConfig = {
+        tenantId: this.tenantId,
+        name: this.tenantConfig.name,
+        allowPasswordSignup: update.allowPasswordSignup ?? false,
+        disableAuth: update.disableAuth ?? false,
+        mfaConfig: update.mfaConfig ?? {},
+        enableAnonymousUser: update.enableAnonymousUser ?? false,
+        enableEmailLinkSignin: update.enableEmailLinkSignin ?? false,
+        displayName: update.displayName,
+      };
       return this.tenantConfig;
     }
 
@@ -820,9 +830,13 @@ export type UserInfo = Omit<
   localId: string;
   providerUserInfo?: ProviderUserInfo[];
 };
-export type Tenant = Omit<
-  Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"],
-  "testPhoneNumbers"
+export type Tenant = MakeRequired<
+  Omit<Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"], "testPhoneNumbers">,
+  | "allowPasswordSignup"
+  | "disableAuth"
+  | "mfaConfig"
+  | "enableAnonymousUser"
+  | "enableEmailLinkSignin"
 > & { tenantId: string };
 
 interface RefreshTokenRecord {

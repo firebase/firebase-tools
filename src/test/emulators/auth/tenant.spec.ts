@@ -348,5 +348,25 @@ describeAuthEmulator("tenant management", ({ authApi }) => {
           });
         });
     });
+
+    it("performs a full update with production defaults if the update mask is empty", async () => {
+      const projectId = "project-id";
+      const tenant = await registerTenant(authApi(), projectId, {});
+
+      await authApi()
+        .patch(
+          `/identitytoolkit.googleapis.com/v2/projects/${projectId}/tenants/${tenant.tenantId}`
+        )
+        .set("Authorization", "Bearer owner")
+        .send({})
+        .then((res) => {
+          expectStatusCode(200, res);
+          expect(res.body.allowPasswordSignup).to.be.false;
+          expect(res.body.disableAuth).to.be.false;
+          expect(res.body.enableAnonymousUser).to.be.false;
+          expect(res.body.enableEmailLinkSignin).to.be.false;
+          expect(res.body.mfaConfig).to.eql({});
+        });
+    });
   });
 });
