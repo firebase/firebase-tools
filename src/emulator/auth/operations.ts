@@ -2699,7 +2699,7 @@ function createTenant(
     enableEmailLinkSignin: reqBody.enableEmailLinkSignin ?? false,
     enableAnonymousUser: reqBody.enableAnonymousUser ?? false,
     disableAuth: reqBody.disableAuth ?? false,
-    mfaConfig: reqBody.mfaConfig ?? {},
+    mfaConfig: reqBody.mfaConfig ?? { state: "DISABLED" },
     tenantId: "", // Placeholder until one is generated
   };
 
