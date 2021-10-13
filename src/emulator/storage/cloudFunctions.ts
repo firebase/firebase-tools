@@ -71,7 +71,7 @@ export class StorageCloudFunctions {
   private createEventRequestBodies(
     action: StorageCloudFunctionAction,
     objectMetadataPayload: ObjectMetadataPayload
-  ) {
+  ): string[] {
     /** Legacy Event */
     const timestamp = new Date();
     const legacyEvent: string = JSON.stringify({
@@ -95,8 +95,8 @@ export class StorageCloudFunctions {
       source: `//storage.googleapis.com/projects/_/buckets/${objectMetadataPayload.bucket}/objects/${objectMetadataPayload.name}`,
       data,
     };
-    const cloudEvent = JSON.stringify({
-      eventType: `google.cloud.storage.object.v1.${ceAction}`, // need this for multicast triggerId
+    const cloudEvent: string = JSON.stringify({
+      eventType: `google.cloud.storage.object.v1.${ceAction}`, // need eventType for multicast triggerId
       data: ce,
     });
 
