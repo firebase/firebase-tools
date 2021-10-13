@@ -1,7 +1,8 @@
 import { expect } from "chai";
 import * as subprocess from "child_process";
+import { cli } from "winston/lib/winston/config";
 
-import { CLIProcess } from "../integration-helpers/cli"};
+import { CLIProcess } from "../integration-helpers/cli";
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
 
@@ -9,10 +10,10 @@ const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
  * Various delays that are needed because this test spawns
  * parallel emulator subprocesses.
  */
-const TEST_SETUP_TIMEOUT = 60000;
-
-describe("extension emulator", () => {
-
+const TEST_SETUP_TIMEOUT = 600000;
+const TEST_TIMEOUT = 50000;
+describe("firebase deploy --only extensions", () => {
+  let cli: CLIProcess;
   before(async function (this) {
     this.timeout(TEST_SETUP_TIMEOUT);
 
@@ -21,16 +22,49 @@ describe("extension emulator", () => {
     // // TODO(joehan): Delete the --open-sesame call when extdev flag is removed.
     // const p = subprocess.spawnSync("firebase", ["--open-sesame", "extdev"], { cwd: __dirname });
     // console.log("open-sesame output:", p.stdout.toString());
-    const cli = new CLIProcess("default", "");
-    await cli.start("firebase deploy", FIREBASE_PROJECT, ["--only", "extensions"], console.log)
+    cli = new CLIProcess("default", __dirname);
+    await cli.start(
+      "deploy",
+      FIREBASE_PROJECT,
+      ["--only", "extensions", "--non-interactive", "--force"],
+      (data: any) => {
+        if (`${data}`.match(/Deploy complete/)) {
+          return true;
+        }
+      }
+    );
   });
 
-  it("should execute an HTTP function", async function (this) {
-    this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
+  after(function (this) {
+    this.timeout(TEST_TIMEOUT);
+    cli.stop();
+  });
 
-    const res = await test.invokeHttpFunction(TEST_FUNCTION_NAME, FIREBASE_PROJECT_ZONE);
+  it("should have deployed the expected extensions", async function (this) {
+    this.timeout(TEST_TIMEOUT);
 
-    expect(res.status).to.equal(200);
-    await expect(res.text()).to.eventually.equal("Hello World from greet-the-world");
+    let output: any;
+    await cli.start("ext:list", FIREBASE_PROJECT, ["--json"], (data: any) => {
+      output = JSON.parse(data);
+      return true;
+    });
+
+    expect(output.result.length).to.eq(2);
+    expect(
+      output.result.some(
+        (i: any) =>
+          i.instanceId === "test-instance1" &&
+          i.extension === "firebase/firestore-bigquery-export" &&
+          i.state === "ACTIVE"
+      )
+    ).to.be.true;
+    expect(
+      output.result.some(
+        (i: any) =>
+          i.instanceId === "test-instance2" &&
+          i.extension === "firebase/storage-resize-images" &&
+          i.state === "ACTIVE"
+      )
+    ).to.be.true;
   });
 });
