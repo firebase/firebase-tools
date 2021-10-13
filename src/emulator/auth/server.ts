@@ -6,8 +6,8 @@ import * as _ from "lodash";
 import { OpenAPIObject, PathsObject, ServerObject, OperationObject } from "openapi3-ts";
 import { EmulatorLogger } from "../emulatorLogger";
 import { Emulators } from "../types";
-import { authOperations, AuthOps, AuthOperation } from "./operations";
-import { AgentProjectState, ProjectState, TenantProjectState } from "./state";
+import { authOperations, AuthOps, AuthOperation, FirebaseJwtPayload } from "./operations";
+import { AgentProjectState, ProjectState } from "./state";
 import apiSpecUntyped from "./apiSpec";
 import {
   PromiseController,
@@ -33,6 +33,7 @@ import { camelCase } from "lodash";
 import { registerHandlers } from "./handlers";
 import bodyParser = require("body-parser");
 import { URLSearchParams } from "url";
+import { decode, JwtHeader } from "jsonwebtoken";
 const apiSpec = apiSpecUntyped as OpenAPIObject;
 
 const API_SPEC_PATH = "/emulator/openapi.json";
@@ -122,6 +123,14 @@ export async function createApp(
   // Enable CORS for all APIs, all origins (reflected), and all headers (reflected).
   // This is similar to production behavior. Safe since all APIs are cookieless.
   app.use(cors({ origin: true }));
+
+  // Workaround for clients (e.g. Node.js Admin SDK) that send request bodies
+  // with HTTP DELETE requests. Such requests are tolerated by production, but
+  // exegesis will reject them without the following hack.
+  app.delete("*", (req, _, next) => {
+    delete req.headers["content-type"];
+    next();
+  });
 
   app.get("/", (req, res) => {
     return res.json({
@@ -417,7 +426,7 @@ function registerLegacyRoutes(app: express.Express): void {
 
 function toExegesisController(
   ops: AuthOps,
-  getProjectStateById: (projectId: string, tenantId: string) => ProjectState
+  getProjectStateById: (projectId: string, tenantId?: string) => ProjectState
 ): Record<string, PromiseController> {
   const result: Record<string, PromiseController> = {};
   processNested(ops, "");
@@ -471,10 +480,26 @@ function toExegesisController(
         // See: https://cloud.google.com/identity-platform/docs/reference/rest/v1/accounts/signUp
         targetProjectId = ctx.user;
       }
+
+      let targetTenantId: string | undefined = undefined;
       if (ctx.params.path.tenantId && ctx.requestBody?.tenantId) {
         assert(ctx.params.path.tenantId === ctx.requestBody.tenantId, "TENANT_ID_MISMATCH");
       }
-      const targetTenantId: string = ctx.params.path.tenantId || ctx.requestBody?.tenantId;
+      targetTenantId = ctx.params.path.tenantId || ctx.requestBody?.tenantId;
+
+      // Perform initial token parsing to get correct project state
+      if (ctx.requestBody?.idToken) {
+        const idToken = ctx.requestBody?.idToken;
+        const decoded = decode(idToken, { complete: true }) as {
+          header: JwtHeader;
+          payload: FirebaseJwtPayload;
+        } | null;
+        if (decoded?.payload.firebase.tenant && targetTenantId) {
+          assert(decoded?.payload.firebase.tenant === targetTenantId, "TENANT_ID_MISMATCH");
+        }
+        targetTenantId = targetTenantId || decoded?.payload.firebase.tenant;
+      }
+
       return operation(getProjectStateById(targetProjectId, targetTenantId), ctx.requestBody, ctx);
     };
   }

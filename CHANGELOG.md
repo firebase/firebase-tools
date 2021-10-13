@@ -1,0 +1,1 @@
+- Fix Auth Emulator deleteTenant not working with Node Admin (#3817).

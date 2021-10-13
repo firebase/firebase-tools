@@ -292,7 +292,7 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
     const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: false });
     const uid = "someuid";
     const claims = { abc: "def", ultimate: { answer: 42 } };
-    const token = signJwt({ uid, claims, tenantId: "not-matching-tenant-id" }, "", {
+    const token = signJwt({ uid, claims, tenant_id: "not-matching-tenant-id" }, "", {
       algorithm: "none",
       expiresIn: 3600,
 
@@ -315,7 +315,7 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
     const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: false });
     const uid = "someuid";
     const claims = { abc: "def", ultimate: { answer: 42 } };
-    const token = signJwt({ uid, claims, tenantId: tenant.tenantId }, "", {
+    const token = signJwt({ uid, claims, tenant_id: tenant.tenantId }, "", {
       algorithm: "none",
       expiresIn: 3600,
 
