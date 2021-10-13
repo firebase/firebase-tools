@@ -16,14 +16,6 @@ describe("Backend", () => {
     project: "project",
   };
 
-  const FUNCTION_SPEC: backend.FunctionSpec = {
-    platform: "gcfv1",
-    ...FUNCTION_NAME,
-    trigger: {},
-    entryPoint: "function",
-    runtime: "nodejs16",
-  };
-
   const ENDPOINT: Omit<backend.Endpoint, "httpsTrigger"> = {
     platform: "gcfv1",
     ...FUNCTION_NAME,
@@ -74,33 +66,7 @@ describe("Backend", () => {
     status: "ACTIVE",
   };
 
-  const SCHEDULE: backend.ScheduleSpec = {
-    id: backend.scheduleIdForFunction(FUNCTION_SPEC),
-    project: "project",
-    schedule: "every 1 minutes",
-    transport: "pubsub",
-    targetService: FUNCTION_NAME,
-  };
-
-  const TOPIC: backend.PubSubSpec = {
-    id: backend.scheduleIdForFunction(FUNCTION_SPEC),
-    project: "project",
-    labels: { deployment: "firebase-schedule" },
-    targetService: FUNCTION_NAME,
-  };
-
   describe("Helper functions", () => {
-    it("isEventTrigger", () => {
-      const httpsTrigger: backend.HttpsTrigger = {};
-      expect(backend.isEventTrigger(httpsTrigger)).to.be.false;
-      const eventTrigger: backend.EventTrigger = {
-        eventType: "google.pubsub.topic.publish",
-        eventFilters: {},
-        retry: false,
-      };
-      expect(backend.isEventTrigger(eventTrigger)).to.be.true;
-    });
-
     it("isEmptyBackend", () => {
       expect(backend.isEmptyBackend(backend.empty())).to.be.true;
       expect(
@@ -109,150 +75,13 @@ describe("Backend", () => {
           requiredAPIs: { foo: "foo.googleapis.com" },
         })
       ).to.be.false;
-      expect(
-        backend.isEmptyBackend({
-          ...backend.empty(),
-          cloudFunctions: [FUNCTION_SPEC],
-        })
-      ).to.be.false;
-      expect(
-        backend.isEmptyBackend({
-          ...backend.empty(),
-          schedules: [SCHEDULE],
-        })
-      ).to.be.false;
-      expect(
-        backend.isEmptyBackend({
-          ...backend.empty(),
-          topics: [TOPIC],
-        })
-      ).to.be.false;
+      expect(backend.isEmptyBackend(backend.of({ ...ENDPOINT, httpsTrigger: {} })));
     });
 
     it("names", () => {
-      expect(backend.functionName(FUNCTION_SPEC)).to.equal(
+      expect(backend.functionName(ENDPOINT)).to.equal(
         "projects/project/locations/region/functions/id"
       );
-      expect(backend.scheduleName(SCHEDULE, "appEngineRegion")).to.equal(
-        "projects/project/locations/appEngineRegion/jobs/firebase-schedule-id-region"
-      );
-      expect(backend.topicName(TOPIC)).to.equal(
-        "projects/project/topics/firebase-schedule-id-region"
-      );
-    });
-
-    it("sameFunctionName", () => {
-      const matcher = backend.sameFunctionName(FUNCTION_SPEC);
-      expect(matcher(FUNCTION_SPEC)).to.be.true;
-      expect(matcher({ ...FUNCTION_SPEC, id: "other" })).to.be.false;
-      expect(matcher({ ...FUNCTION_SPEC, region: "other" })).to.be.false;
-      expect(matcher({ ...FUNCTION_SPEC, project: "other" })).to.be.false;
-    });
-  });
-
-  describe("triggerTag", () => {
-    it("detects v1.https", () => {
-      expect(
-        backend.triggerTag({
-          ...FUNCTION_NAME,
-          platform: "gcfv1",
-          entryPoint: "id",
-          runtime: "node14",
-          trigger: {},
-        })
-      ).to.equal("v1.https");
-    });
-
-    it("detects v2.https", () => {
-      expect(
-        backend.triggerTag({
-          ...FUNCTION_NAME,
-          platform: "gcfv2",
-          entryPoint: "id",
-          runtime: "node14",
-          trigger: {},
-        })
-      ).to.equal("v2.https");
-    });
-
-    it("detects v1.callable", () => {
-      expect(
-        backend.triggerTag({
-          ...FUNCTION_NAME,
-          platform: "gcfv1",
-          entryPoint: "id",
-          runtime: "node14",
-          trigger: {},
-          labels: {
-            "deployment-callable": "true",
-          },
-        })
-      ).to.equal("v1.callable");
-    });
-
-    it("detects v2.callable", () => {
-      expect(
-        backend.triggerTag({
-          ...FUNCTION_NAME,
-          platform: "gcfv2",
-          entryPoint: "id",
-          runtime: "node14",
-          trigger: {},
-          labels: {
-            "deployment-callable": "true",
-          },
-        })
-      ).to.equal("v2.callable");
-    });
-
-    it("detects v1.scheduled", () => {
-      expect(
-        backend.triggerTag({
-          ...FUNCTION_NAME,
-          platform: "gcfv1",
-          entryPoint: "id",
-          runtime: "node14",
-          trigger: {
-            eventType: "google.pubsub.topoic.publish",
-            eventFilters: {},
-            retry: false,
-          },
-          labels: {
-            "deployment-scheduled": "true",
-          },
-        })
-      ).to.equal("v1.scheduled");
-    });
-
-    it("detects v2.scheduled", () => {
-      expect(
-        backend.triggerTag({
-          ...FUNCTION_NAME,
-          platform: "gcfv2",
-          entryPoint: "id",
-          runtime: "node14",
-          trigger: {},
-          labels: {
-            "deployment-scheduled": "true",
-          },
-        })
-      ).to.equal("v2.scheduled");
-    });
-
-    it("detects others", () => {
-      expect(
-        backend.triggerTag({
-          ...FUNCTION_NAME,
-          platform: "gcfv2",
-          entryPoint: "id",
-          runtime: "node14",
-          trigger: {
-            eventType: "google.pubsub.topic.publish",
-            eventFilters: {},
-            retry: false,
-          },
-        })
-      ).to.equal("google.pubsub.topic.publish");
     });
   });
 
@@ -319,11 +148,7 @@ describe("Backend", () => {
         });
         const have = await backend.existingBackend(newContext());
 
-        expect(have).to.deep.equal({
-          ...backend.empty(),
-          cloudFunctions: [FUNCTION_SPEC],
-          endpoints: { region: { id: { ...ENDPOINT, httpsTrigger: {} } } },
-        });
+        expect(have).to.deep.equal(backend.of({ ...ENDPOINT, httpsTrigger: {} }));
       });
 
       it("should throw an error if v2 list api throws an error", async () => {
@@ -358,10 +183,7 @@ describe("Backend", () => {
 
         const have = await backend.existingBackend(newContext());
 
-        expect(have).to.deep.equal({
-          ...backend.of({ ...ENDPOINT, httpsTrigger: {} }),
-          cloudFunctions: [FUNCTION_SPEC],
-        });
+        expect(have).to.deep.equal(backend.of({ ...ENDPOINT, httpsTrigger: {} }));
       });
 
       it("should throw an error if v2 list api throws an error", async () => {
@@ -396,10 +218,7 @@ describe("Backend", () => {
 
         const have = await backend.existingBackend(newContext());
 
-        expect(have).to.deep.equal({
-          ...backend.of({ ...ENDPOINT, httpsTrigger: {} }),
-          cloudFunctions: [FUNCTION_SPEC],
-        });
+        expect(have).to.deep.equal(backend.of({ ...ENDPOINT, httpsTrigger: {} }));
       });
 
       it("should read v2 functions when enabled", async () => {
@@ -414,26 +233,14 @@ describe("Backend", () => {
         });
         const have = await backend.existingBackend(newContext());
 
-        expect(have).to.deep.equal({
-          ...backend.empty(),
-          cloudFunctions: [
-            {
-              ...FUNCTION_SPEC,
-              platform: "gcfv2",
-              uri: HAVE_CLOUD_FUNCTION_V2.serviceConfig.uri,
-            },
-          ],
-          endpoints: {
-            region: {
-              id: {
-                ...ENDPOINT,
-                platform: "gcfv2",
-                httpsTrigger: {},
-                uri: HAVE_CLOUD_FUNCTION_V2.serviceConfig.uri,
-              },
-            },
-          },
-        });
+        expect(have).to.deep.equal(
+          backend.of({
+            ...ENDPOINT,
+            platform: "gcfv2",
+            httpsTrigger: {},
+            uri: HAVE_CLOUD_FUNCTION_V2.serviceConfig.uri,
+          })
+        );
       });
 
       it("should deduce features of scheduled functions", async () => {
@@ -443,7 +250,7 @@ describe("Backend", () => {
               ...HAVE_CLOUD_FUNCTION,
               eventTrigger: {
                 eventType: "google.pubsub.topic.publish",
-                resource: backend.topicName(TOPIC),
+                resource: "projects/project/topics/topic",
               },
               labels: {
                 "deployment-scheduled": "true",
@@ -453,49 +260,13 @@ describe("Backend", () => {
           unreachable: [],
         });
         const have = await backend.existingBackend(newContext());
-        const functionSpec: backend.FunctionSpec = {
-          ...FUNCTION_SPEC,
-          trigger: {
-            eventType: "google.pubsub.topic.publish",
-            eventFilters: {
-              resource: backend.topicName(TOPIC),
-            },
-            retry: false,
-          },
+        const want = backend.of({
+          ...ENDPOINT,
+          scheduleTrigger: {},
           labels: {
             "deployment-scheduled": "true",
           },
-        };
-        const schedule: backend.ScheduleSpec = {
-          ...SCHEDULE,
-          targetService: FUNCTION_NAME,
-        };
-        // We don't actually make an API call to cloud scheduler,
-        // so we don't have the real schedule.
-        delete schedule.schedule;
-
-        const want = {
-          ...backend.empty(),
-          cloudFunctions: [functionSpec],
-          schedules: [schedule],
-          topics: [
-            {
-              ...TOPIC,
-              targetService: FUNCTION_NAME,
-            },
-          ],
-          endpoints: {
-            region: {
-              id: {
-                ...ENDPOINT,
-                scheduleTrigger: {},
-                labels: {
-                  "deployment-scheduled": "true",
-                },
-              },
-            },
-          },
-        };
+        });
 
         expect(have).to.deep.equal(want);
       });
@@ -576,10 +347,7 @@ describe("Backend", () => {
           functions: [],
           unreachable: ["region"],
         });
-        const want = {
-          ...backend.empty(),
-          cloudFunctions: [FUNCTION_SPEC],
-        };
+        const want = backend.of({ ...ENDPOINT, httpsTrigger: {} });
         await expect(backend.checkAvailability(newContext(), want)).to.eventually.be.rejectedWith(
           FirebaseError,
           /The following Cloud Functions regions are currently unreachable:/
@@ -596,15 +364,11 @@ describe("Backend", () => {
           functions: [],
           unreachable: ["region"],
         });
-        const want: backend.Backend = {
-          ...backend.empty(),
-          cloudFunctions: [
-            {
-              ...FUNCTION_SPEC,
-              platform: "gcfv2",
-            },
-          ],
-        };
+        const want: backend.Backend = backend.of({
+          ...ENDPOINT,
+          platform: "gcfv2",
+          httpsTrigger: {},
+        });
 
         await expect(backend.checkAvailability(newContext(), want)).to.eventually.be.rejectedWith(
           FirebaseError,
@@ -623,10 +387,7 @@ describe("Backend", () => {
           unreachable: ["us-central1"],
         });
 
-        const want = {
-          ...backend.empty(),
-          cloudFunctions: [FUNCTION_SPEC],
-        };
+        const want = backend.of({ ...ENDPOINT, httpsTrigger: {} });
         await backend.checkAvailability(newContext(), want);
 
         expect(listAllFunctions).to.have.been.called;
@@ -645,15 +406,7 @@ describe("Backend", () => {
           unreachable: [],
         });
 
-        const want: backend.Backend = {
-          ...backend.empty(),
-          cloudFunctions: [
-            {
-              ...FUNCTION_SPEC,
-              platform: "gcfv2",
-            },
-          ],
-        };
+        const want: backend.Backend = backend.of({ ...ENDPOINT, httpsTrigger: {} });
         await backend.checkAvailability(newContext(), want);
 
         expect(listAllFunctions).to.have.been.called;
@@ -667,18 +420,18 @@ describe("Backend", () => {
     const fnMembers = {
       project: "project",
       runtime: "nodejs14",
-      trigger: {},
+      httpsTrigger: {},
     };
 
     it("should compare different platforms", () => {
-      const left: backend.FunctionSpec = {
+      const left: backend.Endpoint = {
         id: "v1",
         region: "us-central1",
         platform: "gcfv1",
         entryPoint: "v1",
         ...fnMembers,
       };
-      const right: backend.FunctionSpec = {
+      const right: backend.Endpoint = {
         id: "v2",
         region: "us-west1",
         platform: "gcfv2",
@@ -691,14 +444,14 @@ describe("Backend", () => {
     });
 
     it("should compare different regions, same platform", () => {
-      const left: backend.FunctionSpec = {
+      const left: backend.Endpoint = {
         id: "v1",
         region: "us-west1",
         platform: "gcfv1",
         entryPoint: "v1",
         ...fnMembers,
       };
-      const right: backend.FunctionSpec = {
+      const right: backend.Endpoint = {
         id: "newV1",
         region: "us-central1",
         platform: "gcfv1",
@@ -711,14 +464,14 @@ describe("Backend", () => {
     });
 
     it("should compare different ids, same platform & region", () => {
-      const left: backend.FunctionSpec = {
+      const left: backend.Endpoint = {
         id: "v1",
         region: "us-central1",
         platform: "gcfv1",
         entryPoint: "v1",
         ...fnMembers,
       };
-      const right: backend.FunctionSpec = {
+      const right: backend.Endpoint = {
         id: "newV1",
         region: "us-central1",
         platform: "gcfv1",
@@ -731,14 +484,14 @@ describe("Backend", () => {
     });
 
     it("should compare same ids", () => {
-      const left: backend.FunctionSpec = {
+      const left: backend.Endpoint = {
         id: "v1",
         region: "us-central1",
         platform: "gcfv1",
         entryPoint: "v1",
         ...fnMembers,
       };
-      const right: backend.FunctionSpec = {
+      const right: backend.Endpoint = {
         id: "v1",
         region: "us-central1",
         platform: "gcfv1",
@@ -749,6 +502,7 @@ describe("Backend", () => {
       expect(backend.compareFunctions(left, right)).to.eq(0);
     });
   });
+
   describe("comprehension helpers", () => {
     const endpointUS: backend.Endpoint = {
       id: "endpointUS",

@@ -195,25 +195,6 @@ function isIdentical(job: Job, otherJob: Job): boolean {
   );
 }
 
-/** Converts a version agnostic ScheduleSpec to a CloudScheduler v1 Job. */
-export function jobFromSpec(schedule: backend.ScheduleSpec, appEngineLocation: string): Job {
-  const job: Job = {
-    name: backend.scheduleName(schedule, appEngineLocation),
-    schedule: schedule.schedule!,
-  };
-  proto.copyIfPresent(job, schedule, "timeZone", "retryConfig");
-  if (schedule.transport === "https") {
-    throw new FirebaseError("HTTPS transport for scheduled functions is not yet supported");
-  }
-  job.pubsubTarget = {
-    topicName: backend.topicName(schedule),
-    attributes: {
-      scheduled: "true",
-    },
-  };
-  return job;
-}
-
 /** Converts an Endpoint to a CloudScheduler v1 job */
 export function jobFromEndpoint(
   endpoint: backend.Endpoint & backend.ScheduleTriggered,
@@ -241,7 +222,7 @@ export function jobFromEndpoint(
   } else {
     assertExhaustive(endpoint.platform);
   }
-  proto.copyIfPresent(job, endpoint.scheduleTrigger, "retryConfig", "timeZone");
+  proto.copyIfPresent(job, endpoint.scheduleTrigger, "schedule", "retryConfig", "timeZone");
 
   // TypeScript compiler isn't noticing that name is defined in all code paths.
   return job as Job;
