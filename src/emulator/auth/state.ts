@@ -635,7 +635,22 @@ export class AgentProjectState extends ProjectState {
 
   getTenantProject(tenantId: string): TenantProjectState {
     if (!this.tenantProjectForTenantId.has(tenantId)) {
-      this.createTenantWithTenantId(tenantId, { tenantId });
+      // Implicitly creates tenant if it does not already exist and sets all
+      // configurations to enabled. This is for convenience and differs from
+      // production in which configurations, are default disabled. Tests that
+      // need to reflect production defaults should first explicitly call
+      // `createTenant()` with a `Tenant` object.
+      this.createTenantWithTenantId(tenantId, {
+        tenantId,
+        allowPasswordSignup: true,
+        disableAuth: false,
+        mfaConfig: {
+          state: "ENABLED",
+          enabledProviders: ["PHONE_SMS"],
+        },
+        enableAnonymousUser: true,
+        enableEmailLinkSignin: true,
+      });
     }
     return this.tenantProjectForTenantId.get(tenantId)!;
   }
@@ -714,32 +729,24 @@ export class TenantProjectState extends ProjectState {
     return this._tenantConfig;
   }
 
-  // TODO(lisajian): Handle divergence in tenant config settings between what is
-  // needed for admin SDK (default disabled, parallels production) vs emulator
-  // tests (default enabled, for convenience)
   get allowPasswordSignup() {
-    return this._tenantConfig.allowPasswordSignup ?? true;
+    return this._tenantConfig.allowPasswordSignup!;
   }
 
   get disableAuth() {
-    return this._tenantConfig.disableAuth ?? false;
+    return this._tenantConfig.disableAuth!;
   }
 
   get mfaConfig() {
-    return (
-      this._tenantConfig.mfaConfig ?? {
-        state: "ENABLED" as const,
-        enabledProviders: ["PHONE_SMS" as const],
-      }
-    );
+    return this._tenantConfig.mfaConfig!;
   }
 
   get enableAnonymousUser() {
-    return this._tenantConfig.enableAnonymousUser ?? true;
+    return this._tenantConfig.enableAnonymousUser!;
   }
 
   get enableEmailLinkSignin() {
-    return this._tenantConfig.enableEmailLinkSignin ?? true;
+    return this._tenantConfig.enableEmailLinkSignin!;
   }
 
   delete(): void {

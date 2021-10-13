@@ -2692,13 +2692,14 @@ function createTenant(
     throw new InternalError("INTERNAL_ERROR: Can only create tenant in agent project", "INTERNAL");
   }
 
+  // Default to production settings if unset
   const tenant = {
     displayName: reqBody.displayName,
-    allowPasswordSignup: reqBody.allowPasswordSignup,
-    enableEmailLinkSignin: reqBody.enableEmailLinkSignin,
-    enableAnonymousUser: reqBody.enableAnonymousUser,
-    disableAuth: reqBody.disableAuth,
-    mfaConfig: reqBody.mfaConfig,
+    allowPasswordSignup: reqBody.allowPasswordSignup ?? false,
+    enableEmailLinkSignin: reqBody.enableEmailLinkSignin ?? false,
+    enableAnonymousUser: reqBody.enableAnonymousUser ?? false,
+    disableAuth: reqBody.disableAuth ?? false,
+    mfaConfig: reqBody.mfaConfig ?? {},
     tenantId: "", // Placeholder until one is generated
   };
 
