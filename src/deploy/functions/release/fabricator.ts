@@ -38,9 +38,13 @@ const DEFAULT_GCFV2_CONCURRENCY = 80;
 export interface FabricatorArgs {
   executor: Executor;
   functionExecutor: Executor;
-  sourceUrl: string;
-  storage: Record<string, gcfV2.StorageSource>;
   appEngineLocation: string;
+
+  // Required if creating or updating any GCFv1 functions
+  sourceUrl?: string;
+
+  // Required if creating or updating any GCFv2 functions
+  storage?: Record<string, gcfV2.StorageSource>;
 }
 
 const rethrowAs = (endpoint: backend.Endpoint, op: reporter.OperationType) => (
@@ -53,8 +57,8 @@ const rethrowAs = (endpoint: backend.Endpoint, op: reporter.OperationType) => (
 export class Fabricator {
   executor: Executor;
   functionExecutor: Executor;
-  sourceUrl: string;
-  storage: Record<string, gcfV2.StorageSource>;
+  sourceUrl: string | undefined;
+  storage: Record<string, gcfV2.StorageSource> | undefined;
   appEngineLocation: string;
 
   constructor(args: FabricatorArgs) {
@@ -190,6 +194,10 @@ export class Fabricator {
   }
 
   async createV1Function(endpoint: backend.Endpoint, scraper: SourceTokenScraper): Promise<void> {
+    if (!this.sourceUrl) {
+      logger.debug("Precondition failed. Cannot create a GCF function without sourceUrl");
+      throw new Error("Precondition failed");
+    }
     const apiFunction = gcf.functionFromEndpoint(endpoint, this.sourceUrl);
     apiFunction.sourceToken = await scraper.tokenPromise();
     await this.functionExecutor
@@ -217,6 +225,10 @@ export class Fabricator {
   }
 
   async createV2Function(endpoint: backend.Endpoint): Promise<void> {
+    if (!this.storage) {
+      logger.debug("Precondition failed. Cannot create a GCFv2 function without storage");
+      throw new Error("Precondition failed");
+    }
     const apiFunction = gcfV2.functionFromEndpoint(endpoint, this.storage[endpoint.region]);
 
     // N.B. As of GCFv2 private preview GCF no longer creates Pub/Sub topics
@@ -271,6 +283,10 @@ export class Fabricator {
   }
 
   async updateV1Function(endpoint: backend.Endpoint, scraper: SourceTokenScraper): Promise<void> {
+    if (!this.sourceUrl) {
+      logger.debug("Precondition failed. Cannot update a GCF function without sourceUrl");
+      throw new Error("Precondition failed");
+    }
     const apiFunction = gcf.functionFromEndpoint(endpoint, this.sourceUrl);
     apiFunction.sourceToken = await scraper.tokenPromise();
     await this.functionExecutor
@@ -300,6 +316,10 @@ export class Fabricator {
   }
 
   async updateV2Function(endpoint: backend.Endpoint): Promise<void> {
+    if (!this.storage) {
+      logger.debug("Precondition failed. Cannot update a GCFv2 function without storage");
+      throw new Error("Precondition failed");
+    }
     const apiFunction = gcfV2.functionFromEndpoint(endpoint, this.storage[endpoint.region]);
 
     // N.B. As of GCFv2 private preview the API chokes on any update call that
