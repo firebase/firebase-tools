@@ -13,11 +13,8 @@ describe("firebase deploy --only extensions", () => {
   let cli: CLIProcess;
   before(async function (this) {
     this.timeout(TEST_SETUP_TIMEOUT);
-
     expect(FIREBASE_PROJECT).to.exist.and.not.be.empty;
-
     cli = new CLIProcess("default", __dirname);
-
   });
 
   after(function (this) {
