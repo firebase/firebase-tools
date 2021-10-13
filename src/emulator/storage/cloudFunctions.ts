@@ -1,13 +1,11 @@
 import { EmulatorRegistry } from "../registry";
 import { EmulatorInfo, Emulators } from "../types";
-import * as request from "request";
 import { EmulatorLogger } from "../emulatorLogger";
 import { CloudStorageObjectMetadata, toSerializedDate } from "./metadata";
 import { Client } from "../../apiv2";
-import { SignatureType } from "../functionsEmulatorShared";
 
 type StorageCloudFunctionAction = "finalize" | "metadataUpdate" | "delete" | "archive";
-const STORAGE_ACTION_MAP: Record<string, string> = {
+const STORAGE_V2_ACTION_MAP: Record<string, string> = {
   finalize: "finalized",
   metadataUpdate: "metadataUpdated",
   delete: "deleted",
@@ -42,26 +40,25 @@ export class StorageCloudFunctions {
   ): Promise<void> {
     if (!this.enabled) return;
 
-    const statusList: Array<number> = [];
-    const errors: Array<Error> = [];
+    const errStatus: Array<number> = [];
+    let err: Error | undefined;
     try {
+      const [eventBody, cloudEventBody] = this.createEventRequestBodies(action, object);
       /** Legacy Google Events */
-      const eventBody = this.createEventRequestBody(action, "event", object);
       const eventRes = await this.client.post(this.multicastPath, eventBody);
       if (eventRes.status !== 200) {
-        statusList.push(eventRes.status);
+        errStatus.push(eventRes.status);
       }
       /** Modern CloudEvents */
-      const cloudEventBody = this.createEventRequestBody(action, "cloudevent", object);
       const cloudEventRes = await this.client.post(this.multicastPath, cloudEventBody);
       if (cloudEventRes.status !== 200) {
-        statusList.push(cloudEventRes.status);
+        errStatus.push(cloudEventRes.status);
       }
     } catch (e) {
-      errors.push(e as Error);
+      err = e as Error;
     }
 
-    if (errors.length > 0 || statusList.length > 0) {
+    if (err || errStatus.length > 0) {
       this.logger.logLabeled(
         "WARN",
         "functions",
@@ -70,42 +67,40 @@ export class StorageCloudFunctions {
     }
   }
 
-  private createEventRequestBody(
+  /** Creates a legacy event and a CloudEvent body */
+  private createEventRequestBodies(
     action: StorageCloudFunctionAction,
-    signatureType: SignatureType,
     objectMetadataPayload: ObjectMetadataPayload
-  ): string {
-    if (signatureType === "event") {
-      const timestamp = new Date();
-      return JSON.stringify({
-        eventId: `${timestamp.getTime()}`,
-        timestamp: toSerializedDate(timestamp),
-        eventType: `google.storage.object.${action}`,
-        resource: {
-          service: "storage.googleapis.com",
-          name: `projects/_/buckets/${objectMetadataPayload.bucket}/objects/${objectMetadataPayload.name}`,
-          type: "storage#object",
-        }, // bucket
-        data: objectMetadataPayload,
-      });
-    } else if (signatureType === "cloudevent") {
-      const ceAction = STORAGE_ACTION_MAP[action];
-      const data = { ...objectMetadataPayload };
-      delete (data as any).acl; // remove this field from cloud events
-      const cloudEvent = {
-        specVersion: 1,
-        type: `google.cloud.storage.object.v1.${ceAction}`,
-        source: `//storage.googleapis.com/projects/_/buckets/${objectMetadataPayload.bucket}/objects/${objectMetadataPayload.name}`,
-        data,
-      };
-      return JSON.stringify({
-        eventType: `google.cloud.storage.object.v1.${ceAction}`, // need this for multicast triggerId
-        headers: { "Content-Type": "application/cloudevents+json; charset=UTF-8" }, // v2 api automatically adds Content-Type
-        data: cloudEvent,
-      });
-    } else {
-      throw new Error(`Invalid SignatureType for event triggers: ${signatureType}`);
-    }
+  ) {
+    /** Legacy Event */
+    const timestamp = new Date();
+    const legacyEvent: string = JSON.stringify({
+      eventId: `${timestamp.getTime()}`,
+      timestamp: toSerializedDate(timestamp),
+      eventType: `google.storage.object.${action}`,
+      resource: {
+        service: "storage.googleapis.com",
+        name: `projects/_/buckets/${objectMetadataPayload.bucket}/objects/${objectMetadataPayload.name}`,
+        type: "storage#object",
+      }, // bucket
+      data: objectMetadataPayload,
+    });
+    /** Cloud Event */
+    const ceAction = STORAGE_V2_ACTION_MAP[action];
+    const data = { ...objectMetadataPayload };
+    delete (data as any).acl; // remove this field from cloud events
+    const ce = {
+      specVersion: 1,
+      type: `google.cloud.storage.object.v1.${ceAction}`,
+      source: `//storage.googleapis.com/projects/_/buckets/${objectMetadataPayload.bucket}/objects/${objectMetadataPayload.name}`,
+      data,
+    };
+    const cloudEvent = JSON.stringify({
+      eventType: `google.cloud.storage.object.v1.${ceAction}`, // need this for multicast triggerId
+      data: ce,
+    });
+
+    return [legacyEvent, cloudEvent];
   }
 }
 
