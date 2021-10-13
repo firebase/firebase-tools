@@ -124,6 +124,14 @@ export async function createApp(
   // This is similar to production behavior. Safe since all APIs are cookieless.
   app.use(cors({ origin: true }));
 
+  // Workaround for clients (e.g. Node.js Admin SDK) that send request bodies
+  // with HTTP DELETE requests. Such requests are tolerated by production, but
+  // exegesis will reject them without the following hack.
+  app.delete("*", (req, _, next) => {
+    delete req.headers["content-type"];
+    next();
+  });
+
   app.get("/", (req, res) => {
     return res.json({
       authEmulator: {

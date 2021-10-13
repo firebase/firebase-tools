@@ -8,6 +8,7 @@ import * as backend from "../deploy/functions/backend";
 import * as runtimes from "../deploy/functions/runtimes";
 import * as proto from "./proto";
 import * as utils from "../utils";
+import * as storage from "./storage";
 
 export const API_VERSION = "v2alpha";
 
