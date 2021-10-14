@@ -469,21 +469,6 @@ describeAuthEmulator("emulator utility APIs", ({ authApi }) => {
       });
   });
 
-  it("should return config on GET /emulator/v1/projects/{PROJECT_ID}/tenants/{TENANT_ID}/config", async () => {
-    const tenant = await registerTenant(authApi(), PROJECT_ID, {});
-
-    await authApi()
-      .get(`/emulator/v1/projects/${PROJECT_ID}/tenants/${tenant.tenantId}/config`)
-      .send()
-      .then((res) => {
-        expectStatusCode(200, res);
-        expect(res.body).to.have.property("signIn").eql({
-          allowDuplicateEmails: false /* default value */,
-        });
-        expect(res.body).to.have.property("usageMode").equals("DEFAULT");
-      });
-  });
-
   it("should update allowDuplicateEmails on PATCH /emulator/v1/projects/{PROJECT_ID}/config", async () => {
     await authApi()
       .patch(`/emulator/v1/projects/${PROJECT_ID}/config`)
@@ -502,20 +487,6 @@ describeAuthEmulator("emulator utility APIs", ({ authApi }) => {
         expect(res.body).to.have.property("signIn").eql({
           allowDuplicateEmails: false,
         });
-      });
-  });
-
-  it("should error when updating allowDuplicateEmails on PATCH /emulator/v1/projects/{PROJECT_ID}/tenants/{TENANT_ID}/config", async () => {
-    const tenant = await registerTenant(authApi(), PROJECT_ID, {});
-
-    await authApi()
-      .patch(`/emulator/v1/projects/${PROJECT_ID}/tenants/${tenant.tenantId}/config`)
-      .send({ signIn: { allowDuplicateEmails: true } })
-      .then((res) => {
-        expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("((Only top level projects can set oneAccountPerEmail.))");
       });
   });
 
@@ -579,20 +550,6 @@ describeAuthEmulator("emulator utility APIs", ({ authApi }) => {
         expect(res.body.error)
           .to.have.property("message")
           .equals("Users are present, unable to set passthrough mode");
-      });
-  });
-
-  it("should error on updating usageMode on PATCH /emulator/v1/projects/{PROJECT_ID}/tenants/{TENANT_ID}/config", async () => {
-    const tenant = await registerTenant(authApi(), PROJECT_ID, {});
-
-    await authApi()
-      .patch(`/emulator/v1/projects/${PROJECT_ID}/tenants/${tenant.tenantId}/config`)
-      .send({ usageMode: "PASSTHROUGH" })
-      .then((res) => {
-        expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("((Only top level projects can set usageMode.))");
       });
   });
 });
