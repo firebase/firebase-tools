@@ -8,15 +8,15 @@ import { FirebaseError } from "../../../../../error";
 import * as discovery from "../../../../../deploy/functions/runtimes/discovery";
 import * as backend from "../../../../../deploy/functions/backend";
 
-const MIN_FUNCTION = {
-  platform: "gcfv1" as backend.FunctionsPlatform,
-  id: "function",
+const MIN_ENDPOINT = {
   entryPoint: "entrypoint",
-  trigger: {},
+  httpsTrigger: {},
 };
 
-const FUNCTION: backend.FunctionSpec = {
-  ...MIN_FUNCTION,
+const ENDPOINT: backend.Endpoint = {
+  ...MIN_ENDPOINT,
+  id: "id",
+  platform: "gcfv2",
   project: "project",
   region: api.functionsDefaultRegion,
   runtime: "nodejs16",
@@ -24,16 +24,12 @@ const FUNCTION: backend.FunctionSpec = {
 
 const YAML_OBJ = {
   specVersion: "v1alpha1",
-  ...backend.empty(),
-  cloudFunctions: [MIN_FUNCTION],
+  endpoints: { id: MIN_ENDPOINT },
 };
 
 const YAML_TEXT = yaml.dump(YAML_OBJ);
 
-const BACKEND: backend.Backend = {
-  ...backend.empty(),
-  cloudFunctions: [FUNCTION],
-};
+const BACKEND: backend.Backend = backend.of(ENDPOINT);
 
 describe("yamlToBackend", () => {
   it("Accepts a valid v1alpha1 spec", () => {
@@ -47,7 +43,7 @@ describe("yamlToBackend", () => {
   });
 
   it("Requires a spec version", () => {
-    const flawed: any = { ...YAML_OBJ };
+    const flawed: Record<string, unknown> = { ...YAML_OBJ };
     delete flawed.specVersion;
     expect(() =>
       discovery.yamlToBackend(flawed, "project", api.functionsDefaultRegion, "nodejs16")
