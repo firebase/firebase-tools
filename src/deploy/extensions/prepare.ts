@@ -21,7 +21,11 @@ export async function prepare(
   await requirePermissions(options, ["firebaseextensions.instances.list"]);
 
   const have = await planner.have(projectId);
-  const want = await planner.want(options.config.get("extensions"), options.config.projectDir);
+  const want = await planner.want(
+    projectId,
+    options.config.projectDir,
+    options.config.get("extensions")
+  );
 
   payload.instancesToCreate = want.filter((dep) => !have.some(matchesInstanceId(dep)));
   payload.instancesToConfigure = want.filter((dep) => have.some(isConfigure(dep)));

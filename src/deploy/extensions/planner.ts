@@ -3,6 +3,7 @@ import * as semver from "semver";
 
 import { FirebaseError } from "../../error";
 import * as extensionsApi from "../../extensions/extensionsApi";
+import { getFirebaseProjectParams, substituteParams } from "../../extensions/extensionsHelper";
 import * as refs from "../../extensions/refs";
 import { readEnvFile } from "../../extensions/paramHelper";
 import { logger } from "../../logger";
@@ -32,8 +33,9 @@ export async function have(projectId: string): Promise<InstanceSpec[]> {
 }
 
 export async function want(
-  extensions: Record<string, string>,
-  projectDir: string
+  projectId: string,
+  projectDir: string,
+  extensions: Record<string, string>
 ): Promise<InstanceSpec[]> {
   const instanceSpecs: InstanceSpec[] = [];
   const errors: FirebaseError[] = [];
@@ -43,10 +45,12 @@ export async function want(
       const ref = refs.parse(e[1]);
       ref.version = await resolveVersion(ref);
       const params = readParams(projectDir, instanceId);
+      const autoPopulatedParams = await getFirebaseProjectParams(projectId);
+      const subbedParams = substituteParams(params, autoPopulatedParams);
       instanceSpecs.push({
         instanceId,
         ref,
-        params,
+        params: subbedParams,
       });
     } catch (err) {
       logger.debug(`Got error reading extensions entry ${e}: ${err}`);
