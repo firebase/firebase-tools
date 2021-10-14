@@ -3,9 +3,10 @@ import { EmulatorInfo, Emulators } from "../types";
 import { EmulatorLogger } from "../emulatorLogger";
 import { CloudStorageObjectMetadata, toSerializedDate } from "./metadata";
 import { Client } from "../../apiv2";
+import { StorageObjectData } from "@google/events/cloud/storage/v1/StorageObjectData";
 
 type StorageCloudFunctionAction = "finalize" | "metadataUpdate" | "delete" | "archive";
-const STORAGE_V2_ACTION_MAP: Record<string, string> = {
+const STORAGE_V2_ACTION_MAP: Record<StorageCloudFunctionAction, string> = {
   finalize: "finalized",
   metadataUpdate: "metadataUpdated",
   delete: "deleted",
@@ -43,13 +44,14 @@ export class StorageCloudFunctions {
     const errStatus: Array<number> = [];
     let err: Error | undefined;
     try {
-      const [eventBody, cloudEventBody] = this.createEventRequestBodies(action, object);
       /** Legacy Google Events */
+      const eventBody = this.createLegacyEventRequestBody(action, object);
       const eventRes = await this.client.post(this.multicastPath, eventBody);
       if (eventRes.status !== 200) {
         errStatus.push(eventRes.status);
       }
       /** Modern CloudEvents */
+      const cloudEventBody = this.createCloudEventRequestBody(action, object);
       const cloudEventRes = await this.client.post(this.multicastPath, cloudEventBody);
       if (cloudEventRes.status !== 200) {
         errStatus.push(cloudEventRes.status);
@@ -67,14 +69,13 @@ export class StorageCloudFunctions {
     }
   }
 
-  /** Creates a legacy event and a CloudEvent body */
-  private createEventRequestBodies(
+  /** Legacy Google Events type */
+  private createLegacyEventRequestBody(
     action: StorageCloudFunctionAction,
     objectMetadataPayload: ObjectMetadataPayload
-  ): string[] {
-    /** Legacy Event */
+  ) {
     const timestamp = new Date();
-    const legacyEvent: string = JSON.stringify({
+    return JSON.stringify({
       eventId: `${timestamp.getTime()}`,
       timestamp: toSerializedDate(timestamp),
       eventType: `google.storage.object.${action}`,
@@ -85,22 +86,28 @@ export class StorageCloudFunctions {
       }, // bucket
       data: objectMetadataPayload,
     });
-    /** Cloud Event */
+  }
+
+  /** Modern CloudEvents type */
+  private createCloudEventRequestBody(
+    action: StorageCloudFunctionAction,
+    objectMetadataPayload: ObjectMetadataPayload
+  ) {
     const ceAction = STORAGE_V2_ACTION_MAP[action];
-    const data = { ...objectMetadataPayload };
-    delete (data as any).acl; // remove this field from cloud events
+    if (!ceAction) {
+      throw new Error("Action is not definied as a CloudEvents action");
+    }
+    const data = (objectMetadataPayload as unknown) as StorageObjectData;
     const ce = {
       specVersion: 1,
       type: `google.cloud.storage.object.v1.${ceAction}`,
       source: `//storage.googleapis.com/projects/_/buckets/${objectMetadataPayload.bucket}/objects/${objectMetadataPayload.name}`,
       data,
     };
-    const cloudEvent: string = JSON.stringify({
-      eventType: `google.cloud.storage.object.v1.${ceAction}`, // need eventType for multicast triggerId
+    return JSON.stringify({
+      eventFormat: "cloudevent",
       data: ce,
     });
-
-    return [legacyEvent, cloudEvent];
   }
 }
 
