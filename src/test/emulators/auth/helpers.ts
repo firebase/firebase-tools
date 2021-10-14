@@ -5,7 +5,7 @@ import { expect, AssertionError } from "chai";
 import { IdpJwtPayload } from "../../../emulator/auth/operations";
 import { OobRecord, PhoneVerificationRecord, Tenant, UserInfo } from "../../../emulator/auth/state";
 import { TestAgent, PROJECT_ID } from "./setup";
-import { MfaEnrollments } from "../../../emulator/auth/types";
+import { MfaEnrollments, Schemas } from "../../../emulator/auth/types";
 
 export { PROJECT_ID };
 export const TEST_PHONE_NUMBER = "+15555550100";
@@ -407,7 +407,7 @@ export function deleteAccount(testAgent: TestAgent, reqBody: {}): Promise<string
 export function registerTenant(
   testAgent: TestAgent,
   projectId: string,
-  tenant?: Partial<Tenant>
+  tenant?: Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"]
 ): Promise<Tenant> {
   return testAgent
     .post(`/identitytoolkit.googleapis.com/v2/projects/${projectId}/tenants`)

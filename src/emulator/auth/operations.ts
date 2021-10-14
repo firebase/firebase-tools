@@ -32,6 +32,7 @@ import {
   UsageMode,
   AgentProjectState,
   TenantProjectState,
+  MfaConfig,
 } from "./state";
 import { MfaEnrollments, Schemas } from "./types";
 
@@ -2692,6 +2693,14 @@ function createTenant(
     throw new InternalError("INTERNAL_ERROR: Can only create tenant in agent project", "INTERNAL");
   }
 
+  const mfaConfig = reqBody.mfaConfig ?? {};
+  if (!("state" in mfaConfig)) {
+    mfaConfig.state = "DISABLED";
+  }
+  if (!("enabledProviders" in mfaConfig)) {
+    mfaConfig.enabledProviders = [];
+  }
+
   // Default to production settings if unset
   const tenant = {
     displayName: reqBody.displayName,
@@ -2699,7 +2708,7 @@ function createTenant(
     enableEmailLinkSignin: reqBody.enableEmailLinkSignin ?? false,
     enableAnonymousUser: reqBody.enableAnonymousUser ?? false,
     disableAuth: reqBody.disableAuth ?? false,
-    mfaConfig: reqBody.mfaConfig ?? { state: "DISABLED" },
+    mfaConfig: mfaConfig as MfaConfig,
     tenantId: "", // Placeholder until one is generated
   };
 

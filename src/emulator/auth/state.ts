@@ -753,16 +753,27 @@ export class TenantProjectState extends ProjectState {
     this.parentProject.deleteTenant(this.tenantId);
   }
 
-  updateTenant(update: Partial<Tenant>, updateMask: string | undefined): Tenant {
+  updateTenant(
+    update: Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"],
+    updateMask: string | undefined
+  ): Tenant {
     // Empty masks indicate a full update
     if (!updateMask) {
+      const mfaConfig = update.mfaConfig ?? {};
+      if (!("state" in mfaConfig)) {
+        mfaConfig.state = "DISABLED";
+      }
+      if (!("enabledProviders" in mfaConfig)) {
+        mfaConfig.enabledProviders = [];
+      }
+
       // Default to production defaults if unset
       this._tenantConfig = {
         tenantId: this.tenantId,
         name: this.tenantConfig.name,
         allowPasswordSignup: update.allowPasswordSignup ?? false,
         disableAuth: update.disableAuth ?? false,
-        mfaConfig: update.mfaConfig ?? {},
+        mfaConfig: mfaConfig as MfaConfig,
         enableAnonymousUser: update.enableAnonymousUser ?? false,
         enableEmailLinkSignin: update.enableEmailLinkSignin ?? false,
         displayName: update.displayName,
@@ -830,14 +841,17 @@ export type UserInfo = Omit<
   localId: string;
   providerUserInfo?: ProviderUserInfo[];
 };
-export type Tenant = MakeRequired<
-  Omit<Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"], "testPhoneNumbers">,
-  | "allowPasswordSignup"
-  | "disableAuth"
-  | "mfaConfig"
-  | "enableAnonymousUser"
-  | "enableEmailLinkSignin"
-> & { tenantId: string };
+export type MfaConfig = MakeRequired<
+  Schemas["GoogleCloudIdentitytoolkitAdminV2MultiFactorAuthConfig"],
+  "enabledProviders" | "state"
+>;
+export type Tenant = Omit<
+  MakeRequired<
+    Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"],
+    "allowPasswordSignup" | "disableAuth" | "enableAnonymousUser" | "enableEmailLinkSignin"
+  >,
+  "testPhoneNumbers" | "mfaConfig"
+> & { tenantId: string; mfaConfig: MfaConfig };
 
 interface RefreshTokenRecord {
   localId: string;

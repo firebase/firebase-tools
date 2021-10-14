@@ -53,6 +53,7 @@ describeAuthEmulator("tenant management", ({ authApi }) => {
           expect(res.body.enableEmailLinkSignin).to.be.false;
           expect(res.body.mfaConfig).to.eql({
             state: "DISABLED",
+            enabledProviders: [],
           });
         });
     });
@@ -367,7 +368,10 @@ describeAuthEmulator("tenant management", ({ authApi }) => {
           expect(res.body.disableAuth).to.be.false;
           expect(res.body.enableAnonymousUser).to.be.false;
           expect(res.body.enableEmailLinkSignin).to.be.false;
-          expect(res.body.mfaConfig).to.eql({});
+          expect(res.body.mfaConfig).to.eql({
+            enabledProviders: [],
+            state: "DISABLED",
+          });
         });
     });
   });
