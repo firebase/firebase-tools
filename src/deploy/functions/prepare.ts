@@ -128,13 +128,8 @@ export async function prepare(
   }
 
   // Setup environment variables on each function.
-  wantBackend.cloudFunctions.forEach((fn: backend.FunctionSpec) => {
-    fn.environmentVariables = wantBackend.environmentVariables;
-  });
-  for (const endpoints of Object.values(wantBackend.endpoints)) {
-    for (const endpoint of Object.values<backend.Endpoint>(endpoints)) {
-      endpoint.environmentVariables = wantBackend.environmentVariables;
-    }
+  for (const endpoint of backend.allEndpoints(wantBackend)) {
+    endpoint.environmentVariables = wantBackend.environmentVariables;
   }
 
   // Enable required APIs. This may come implicitly from triggers (e.g. scheduled triggers

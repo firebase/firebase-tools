@@ -6,7 +6,6 @@ import * as runtimes from "./runtimes";
 import { FirebaseError } from "../../error";
 import { Context } from "./args";
 import { previews } from "../../previews";
-import { backendFromV1Alpha1 } from "./runtimes/discovery/v1alpha1";
 
 /** Retry settings for a ScheduleSpec. */
 export interface ScheduleRetryConfig {
@@ -17,16 +16,6 @@ export interface ScheduleRetryConfig {
   maxDoublings?: number;
 }
 
-/** API agnostic version of a Pub/Sub topic. */
-export interface PubSubSpec {
-  id: string;
-  project: string;
-  labels?: Record<string, string>;
-
-  // What we're actually planning to invoke with this topic
-  targetService: TargetIds;
-}
-
 export interface ScheduleTrigger {
   // Note: schedule is missing in the existingBackend because we
   // don't actually spend the API call looking up the schedule;
@@ -34,16 +23,6 @@ export interface ScheduleTrigger {
   schedule?: string;
   timeZone?: string;
   retryConfig?: ScheduleRetryConfig;
-}
-
-/** API agnostic version of a CloudScheduler Job */
-export interface ScheduleSpec extends ScheduleTrigger {
-  id: string;
-  project: string;
-  transport: "pubsub" | "https";
-
-  // What we're actually planning to invoke with this schedule
-  targetService: TargetIds;
 }
 
 /** Something that has a ScheduleTrigger */
@@ -110,42 +89,16 @@ export interface EventTriggered {
   eventTrigger: EventTrigger;
 }
 
-/** Type deduction helper for a function trigger. */
-export function isEventTrigger(trigger: HttpsTrigger | EventTrigger): trigger is EventTrigger {
-  return "eventType" in trigger;
-}
-
-/** Friendly name to label a function in stats */
-export function triggerTag(fn: FunctionSpec): string {
-  if (fn.labels?.["deployment-scheduled"]) {
-    if (fn.platform === "gcfv1") {
-      return "v1.scheduled";
-    }
-    return "v2.scheduled";
-  }
-  if (fn.labels?.["deployment-callable"]) {
-    if (fn.platform === "gcfv1") {
-      return "v1.callable";
-    }
-    return "v2.callable";
-  }
-  if (!isEventTrigger(fn.trigger)) {
-    if (fn.platform === "gcfv1") {
-      return "v1.https";
-    }
-    return "v2.https";
-  }
-  return fn.trigger.eventType;
-}
-
 /** A user-friendly string for the kind of trigger of an endpoint. */
 export function endpointTriggerType(endpoint: Endpoint): string {
   if (isScheduleTriggered(endpoint)) {
     return "scheduled";
   } else if (isHttpsTriggered(endpoint)) {
     return "https";
-  } else {
+  } else if (isEventTriggered(endpoint)) {
     return endpoint.eventTrigger.eventType;
+  } else {
+    throw new Error("Unexpected trigger type for endpoint " + JSON.stringify(endpoint));
   }
 }
 
@@ -199,22 +152,6 @@ export interface ServiceConfiguration {
   serviceAccountEmail?: "default" | string;
 }
 
-/** An API agnostic definition of a Cloud Function. */
-export type FunctionSpec = TargetIds &
-  ServiceConfiguration & {
-    entryPoint: string;
-    platform: FunctionsPlatform;
-    runtime: runtimes.Runtime | runtimes.DeprecatedRuntime;
-    trigger: EventTrigger | HttpsTrigger;
-
-    // Output only
-
-    // URI is available on GCFv1 for HTTPS triggers and
-    // on GCFv2 always
-    uri?: string;
-    sourceUploadUrl?: string;
-  };
-
 export type FunctionsPlatform = "gcfv1" | "gcfv2";
 
 export type Triggered = HttpsTriggered | EventTriggered | ScheduleTriggered;
@@ -263,9 +200,6 @@ export interface Backend {
    * E.g. "scheduler" => "cloudscheduler.googleapis.com"
    */
   requiredAPIs: Record<string, string>;
-  cloudFunctions: FunctionSpec[];
-  schedules: ScheduleSpec[];
-  topics: PubSubSpec[];
   environmentVariables: EnvironmentVariables;
   // region -> id -> Endpoint
   endpoints: Record<string, Record<string, Endpoint>>;
@@ -280,9 +214,6 @@ export function empty(): Backend {
   return {
     requiredAPIs: {},
     endpoints: {},
-    cloudFunctions: [],
-    schedules: [],
-    topics: [],
     environmentVariables: {},
   };
 }
@@ -310,11 +241,7 @@ export function of(...endpoints: Endpoint[]): Backend {
  */
 export function isEmptyBackend(backend: Backend): boolean {
   return (
-    Object.keys(backend.requiredAPIs).length == 0 &&
-    Object.keys(backend.endpoints).length === 0 &&
-    backend.cloudFunctions.length === 0 &&
-    backend.schedules.length === 0 &&
-    backend.topics.length === 0
+    Object.keys(backend.requiredAPIs).length == 0 && Object.keys(backend.endpoints).length === 0
   );
 }
 
@@ -336,32 +263,6 @@ export type EnvironmentVariables = Record<string, string>;
  */
 export function functionName(cloudFunction: TargetIds): string {
   return `projects/${cloudFunction.project}/locations/${cloudFunction.region}/functions/${cloudFunction.id}`;
-}
-
-/**
- * Creates a matcher function that detects whether two functions match.
- * This is useful for list comprehensions, e.g.
- * const newFunctions = wantFunctions.filter(fn => !haveFunctions.some(sameFunctionName(fn)));
- */
-export const sameFunctionName = (func: TargetIds) => (test: TargetIds): boolean => {
-  return func.id === test.id && func.region === test.region && func.project == test.project;
-};
-
-/**
- * Gets the formal resource name for a Cloud Scheduler job.
- * @param appEngineLocation Must be the region where the customer has enabled App Engine.
- */
-export function scheduleName(schedule: ScheduleSpec, appEngineLocation: string): string {
-  return `projects/${schedule.project}/locations/${appEngineLocation}/jobs/${schedule.id}`;
-}
-
-/**
- * Gets the formal resource name for a Pub/Sub topic.
- * @param topic Something that implements project/id. This is intentionally vauge so
- *              that a schedule can be passed and the topic name generated.
- */
-export function topicName(topic: { project: string; id: string }): string {
-  return `projects/${topic.project}/topics/${topic.id}`;
 }
 
 /**
@@ -427,33 +328,6 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
     ctx.existingBackend.endpoints[endpoint.region] =
       ctx.existingBackend.endpoints[endpoint.region] || {};
     ctx.existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
-
-    const specFunction = gcf.specFromFunction(apiFunction);
-    ctx.existingBackend.cloudFunctions.push(specFunction);
-    const isScheduled = apiFunction.labels?.["deployment-scheduled"] === "true";
-    if (isScheduled) {
-      const id = scheduleIdForFunction(specFunction);
-      ctx.existingBackend.schedules.push({
-        id,
-        project: specFunction.project,
-        transport: "pubsub",
-        targetService: {
-          id: specFunction.id,
-          region: specFunction.region,
-          project: specFunction.project,
-        },
-      });
-      ctx.existingBackend.topics.push({
-        id,
-        project: specFunction.project,
-        labels: SCHEDULED_FUNCTION_LABEL,
-        targetService: {
-          id: specFunction.id,
-          region: specFunction.region,
-          project: specFunction.project,
-        },
-      });
-    }
   }
   ctx.unreachableRegions.gcfV1 = gcfV1Results.unreachable;
 
@@ -475,47 +349,6 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
     ctx.existingBackend.endpoints[endpoint.region] =
       ctx.existingBackend.endpoints[endpoint.region] || {};
     ctx.existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
-
-    const specFunction = gcfV2.specFromFunction(apiFunction);
-    ctx.existingBackend.cloudFunctions.push(specFunction);
-    const pubsubScheduled = apiFunction.labels?.["deployment-scheduled"] === "true";
-    const httpsScheduled = apiFunction.labels?.["deployment-scheduled"] === "https";
-    if (pubsubScheduled) {
-      const id = scheduleIdForFunction(specFunction);
-      ctx.existingBackend.schedules.push({
-        id,
-        project: specFunction.project,
-        transport: "pubsub",
-        targetService: {
-          id: specFunction.id,
-          region: specFunction.region,
-          project: specFunction.project,
-        },
-      });
-      ctx.existingBackend.topics.push({
-        id,
-        project: specFunction.project,
-        labels: SCHEDULED_FUNCTION_LABEL,
-        targetService: {
-          id: specFunction.id,
-          region: specFunction.region,
-          project: specFunction.project,
-        },
-      });
-    }
-    if (httpsScheduled) {
-      const id = scheduleIdForFunction(specFunction);
-      ctx.existingBackend.schedules.push({
-        id,
-        project: specFunction.project,
-        transport: "https",
-        targetService: {
-          id: specFunction.id,
-          region: specFunction.region,
-          project: specFunction.project,
-        },
-      });
-    }
   }
   ctx.unreachableRegions.gcfV2 = gcfV2Results.unreachable;
 }
@@ -535,11 +368,11 @@ export async function checkAvailability(context: Context, want: Backend): Promis
   }
   const gcfV1Regions = new Set();
   const gcfV2Regions = new Set();
-  for (const fn of want.cloudFunctions) {
-    if (fn.platform == "gcfv1") {
-      gcfV1Regions.add(fn.region);
+  for (const ep of allEndpoints(want)) {
+    if (ep.platform == "gcfv1") {
+      gcfV1Regions.add(ep.region);
     } else {
-      gcfV2Regions.add(fn.region);
+      gcfV2Regions.add(ep.region);
     }
   }
 

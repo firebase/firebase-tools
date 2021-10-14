@@ -1,5 +1,4 @@
 import { expect } from "chai";
-import { v1 } from "uuid";
 
 import * as backend from "../../../deploy/functions/backend";
 import * as pricing from "../../../deploy/functions/pricing";

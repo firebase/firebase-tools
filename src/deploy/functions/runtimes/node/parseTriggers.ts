@@ -146,11 +146,10 @@ export function addResourcesToBackend(
   runtime: runtimes.Runtime,
   annotation: TriggerAnnotation,
   want: backend.Backend
-) {
+): void {
   Object.freeze(annotation);
   // Every trigger annotation is at least a function
   for (const region of annotation.regions || [api.functionsDefaultRegion]) {
-    let trigger: backend.HttpsTrigger | backend.EventTrigger;
     let triggered: backend.Triggered;
 
     // Missing both or have both trigger types
@@ -161,50 +160,40 @@ export function addResourcesToBackend(
     }
 
     if (annotation.httpsTrigger) {
-      trigger = {};
+      const trigger: backend.HttpsTrigger = {};
       if (annotation.failurePolicy) {
         logger.warn(`Ignoring retry policy for HTTPS function ${annotation.name}`);
       }
       proto.copyIfPresent(trigger, annotation.httpsTrigger, "invoker");
       triggered = { httpsTrigger: trigger };
+    } else if (annotation.schedule) {
+      want.requiredAPIs["pubsub"] = "pubsub.googleapis.com";
+      want.requiredAPIs["scheduler"] = "cloudscheduler.googleapis.com";
+      triggered = { scheduleTrigger: annotation.schedule };
     } else {
-      trigger = {
-        eventType: annotation.eventTrigger!.eventType,
-        eventFilters: {
-          resource: annotation.eventTrigger!.resource,
+      triggered = {
+        eventTrigger: {
+          eventType: annotation.eventTrigger!.eventType,
+          eventFilters: {
+            resource: annotation.eventTrigger!.resource,
+          },
+          retry: !!annotation.failurePolicy,
         },
-        retry: !!annotation.failurePolicy,
       };
-      if (annotation.schedule) {
-        triggered = { scheduleTrigger: annotation.schedule };
-      } else {
-        triggered = { eventTrigger: trigger };
-      }
 
+      // TODO: yank this edge case for a v2 trigger on the pre-container contract
+      // once we use container contract for the functionsv2 experiment.
       if (GCS_EVENTS.has(annotation.eventTrigger?.eventType || "")) {
-        trigger.eventFilters = {
-          bucket: annotation.eventTrigger!.resource,
-        };
-        (triggered as backend.EventTriggered).eventTrigger.eventFilters = {
+        triggered.eventTrigger.eventFilters = {
           bucket: annotation.eventTrigger!.resource,
         };
       }
     }
-    const cloudFunctionName: backend.TargetIds = {
+    const endpoint: backend.Endpoint = {
+      platform: annotation.platform || "gcfv1",
       id: annotation.name,
       region: region,
       project: projectId,
-    };
-    const cloudFunction: backend.FunctionSpec = {
-      platform: annotation.platform || "gcfv1",
-      ...cloudFunctionName,
-      entryPoint: annotation.entryPoint,
-      runtime: runtime,
-      trigger: trigger,
-    };
-    const endpoint: backend.Endpoint = {
-      platform: annotation.platform || "gcfv1",
-      ...cloudFunctionName,
       entryPoint: annotation.entryPoint,
       runtime: runtime,
       ...triggered,
@@ -214,22 +203,8 @@ export function addResourcesToBackend(
       if (!maybeId.includes("/")) {
         maybeId = `projects/${projectId}/locations/${region}/connectors/${maybeId}`;
       }
-      cloudFunction.vpcConnector = maybeId;
       endpoint.vpcConnector = maybeId;
     }
-    proto.copyIfPresent(
-      cloudFunction,
-      annotation,
-      "concurrency",
-      "serviceAccountEmail",
-      "labels",
-      "vpcConnectorEgressSettings",
-      "ingressSettings",
-      "timeout",
-      "maxInstances",
-      "minInstances",
-      "availableMemoryMb"
-    );
     proto.copyIfPresent(
       endpoint,
       annotation,
@@ -243,42 +218,6 @@ export function addResourcesToBackend(
       "minInstances",
       "availableMemoryMb"
     );
-
-    if (annotation.schedule) {
-      want.requiredAPIs["pubsub"] = "pubsub.googleapis.com";
-      want.requiredAPIs["scheduler"] = "cloudscheduler.googleapis.com";
-
-      const id = backend.scheduleIdForFunction(cloudFunctionName);
-      const schedule: backend.ScheduleSpec = {
-        id,
-        project: projectId,
-        schedule: annotation.schedule.schedule,
-        transport: "pubsub",
-        targetService: cloudFunctionName,
-      };
-      proto.copyIfPresent(schedule, annotation.schedule, "timeZone", "retryConfig");
-      want.schedules.push(schedule);
-      const topic: backend.PubSubSpec = {
-        id,
-        project: projectId,
-        labels: backend.SCHEDULED_FUNCTION_LABEL,
-        targetService: cloudFunctionName,
-      };
-      want.topics.push(topic);
-
-      // The firebase-functions SDK is missing the topic ID in the event trigger for
-      // scheduled functions.
-      if (backend.isEventTrigger(cloudFunction.trigger)) {
-        cloudFunction.trigger.eventFilters.resource = `${cloudFunction.trigger.eventFilters.resource}/${id}`;
-      }
-
-      cloudFunction.labels = {
-        ...cloudFunction.labels,
-        "deployment-scheduled": "true",
-      };
-    }
-
-    want.cloudFunctions.push(cloudFunction);
     want.endpoints[region] = want.endpoints[region] || {};
     want.endpoints[region][endpoint.id] = endpoint;
   }
