@@ -86,12 +86,12 @@ describe("backendFromV1Alpha1", () => {
       };
       for (const [key, value] of Object.entries(invalidFunctionEntries)) {
         it(`invalid value for CloudFunction key ${key}`, () => {
-          const func = {
+          const endpoint = {
             ...MIN_ENDPOINT,
             httpsTrigger: {},
             [key]: value,
           };
-          assertParserError({ endpoints: { func } });
+          assertParserError({ endpoints: { endpoint } });
         });
       }
     }); // Top level function keys
@@ -99,9 +99,7 @@ describe("backendFromV1Alpha1", () => {
     describe("Event triggers", () => {
       const validTrigger: backend.EventTrigger = {
         eventType: "google.pubsub.v1.topic.publish",
-        eventFilters: {
-          resource: "projects/p/topics/t",
-        },
+        eventFilters: { resource: "projects/p/topics/t" },
         retry: true,
         region: "global",
         serviceAccountEmail: "root@",
@@ -146,9 +144,7 @@ describe("backendFromV1Alpha1", () => {
           endpoints: {
             func: {
               ...MIN_ENDPOINT,
-              httpsTrigger: {
-                invoker: 42,
-              },
+              httpsTrigger: { invoker: 42 },
             },
           },
         });
@@ -198,10 +194,7 @@ describe("backendFromV1Alpha1", () => {
           ...validTrigger.retryConfig,
           [key]: value,
         };
-        const scheduleTrigger = {
-          ...validTrigger,
-          retryConfig,
-        };
+        const scheduleTrigger = { ...validTrigger, retryConfig };
         assertParserError({
           endpoints: {
             func: { ...MIN_ENDPOINT, scheduleTrigger },
