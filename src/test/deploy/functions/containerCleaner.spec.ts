@@ -1,5 +1,4 @@
 import { expect } from "chai";
-import _ from "lodash";
 import * as sinon from "sinon";
 
 import * as backend from "../../../deploy/functions/backend";

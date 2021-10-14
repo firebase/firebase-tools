@@ -6,10 +6,6 @@ import * as fsutils from "../../../fsutils";
 import * as validate from "../../../deploy/functions/validate";
 import * as projectPath from "../../../projectPath";
 
-// have to require this because no @types/cjson available
-// eslint-disable-next-line
-const cjson = require("cjson");
-
 describe("validate", () => {
   describe("functionsDirectoryExists", () => {
     const sandbox: sinon.SinonSandbox = sinon.createSandbox();
