@@ -268,10 +268,8 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     const multicastHandler: express.RequestHandler = (req, res) => {
       const reqBody = (req as RequestWithRawBody).rawBody;
-      const parsed = JSON.parse(reqBody.toString());
-      const proto =
-        parsed.eventFormat && parsed.eventFormat === "cloudevent" ? parsed.data : parsed;
-      const triggerKey = proto.type
+      const proto = JSON.parse(reqBody.toString());
+      const triggerKey = proto.type // type is always a field on CloudEvents
         ? `${this.args.projectId}:${proto.type}`
         : `${this.args.projectId}:${proto.eventType}`;
       const triggers = this.multicastTriggers[triggerKey] || [];

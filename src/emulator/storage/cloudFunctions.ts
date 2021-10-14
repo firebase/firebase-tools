@@ -19,7 +19,7 @@ export class StorageCloudFunctions {
   private multicastOrigin = "";
   private multicastPath = "";
   private enabled = false;
-  private client: Client = new Client({ urlPrefix: "" });
+  private client?: Client;
 
   constructor(private projectId: string) {
     const functionsEmulator = EmulatorRegistry.get(Emulators.FUNCTIONS);
@@ -39,20 +39,22 @@ export class StorageCloudFunctions {
     action: StorageCloudFunctionAction,
     object: CloudStorageObjectMetadata
   ): Promise<void> {
-    if (!this.enabled) return;
+    if (!this.enabled) {
+      return;
+    }
 
     const errStatus: Array<number> = [];
     let err: Error | undefined;
     try {
       /** Legacy Google Events */
       const eventBody = this.createLegacyEventRequestBody(action, object);
-      const eventRes = await this.client.post(this.multicastPath, eventBody);
+      const eventRes = await this.client!.post(this.multicastPath, eventBody);
       if (eventRes.status !== 200) {
         errStatus.push(eventRes.status);
       }
       /** Modern CloudEvents */
       const cloudEventBody = this.createCloudEventRequestBody(action, object);
-      const cloudEventRes = await this.client.post(this.multicastPath, cloudEventBody);
+      const cloudEventRes = await this.client!.post(this.multicastPath, cloudEventBody);
       if (cloudEventRes.status !== 200) {
         errStatus.push(cloudEventRes.status);
       }
@@ -98,15 +100,11 @@ export class StorageCloudFunctions {
       throw new Error("Action is not definied as a CloudEvents action");
     }
     const data = (objectMetadataPayload as unknown) as StorageObjectData;
-    const ce = {
+    return JSON.stringify({
       specVersion: 1,
       type: `google.cloud.storage.object.v1.${ceAction}`,
       source: `//storage.googleapis.com/projects/_/buckets/${objectMetadataPayload.bucket}/objects/${objectMetadataPayload.name}`,
       data,
-    };
-    return JSON.stringify({
-      eventFormat: "cloudevent",
-      data: ce,
     });
   }
 }
