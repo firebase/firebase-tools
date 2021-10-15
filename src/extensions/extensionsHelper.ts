@@ -103,7 +103,7 @@ export function getDBInstanceFromURL(databaseUrl = ""): string {
 /**
  * Gets Firebase project specific param values.
  */
-export async function getFirebaseProjectParams(projectId: string): Promise<any> {
+export async function getFirebaseProjectParams(projectId: string): Promise<Record<string, string>> {
   const body = await getFirebaseConfig({ project: projectId });
 
   // This env variable is needed for parameter-less initialization of firebase-admin

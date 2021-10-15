@@ -1,7 +1,7 @@
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import * as planner from "../deploy/extensions/planner";
-import { displayExportInfo, writeFiles } from "../extensions/export";
+import { displayExportInfo, parameterizeProjectId, writeFiles } from "../extensions/export";
 import { ensureExtensionsApiEnabled } from "../extensions/extensionsHelper";
 import { partition } from "../functional";
 import { logger } from "../logger";
@@ -19,17 +19,20 @@ module.exports = new Command("ext:export")
   .action(async (options: any) => {
     const projectId = needProjectId(options);
 
-    // Look up the instances that already exist, and add a ^ to their version.
-    const have = (await planner.have(projectId)).map((s) => {
-      if (s.ref) {
-        s.ref.version = `^${s.ref.version}`;
-      }
-      return s;
-    });
+    // Look up the instances that already exist,
+    // add a ^ to their version,
+    // and strip project IDs from the param values.
+    const have = (await planner.have(projectId))
+      .map((s) => {
+        if (s.ref) {
+          s.ref.version = `^${s.ref.version}`;
+        }
+        return s;
+      })
+      .map((i) => parameterizeProjectId(projectId, i));
     // If an instance spec is missing a ref, that instance must have been installed from a local source.
-    const [withRef, withoutRef] = partition(have, (s) => {
-      return !!s.ref;
-    });
+    const [withRef, withoutRef] = partition(have, (s) => !!s.ref);
+
     displayExportInfo(withRef, withoutRef);
 
     if (

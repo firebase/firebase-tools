@@ -8,6 +8,7 @@ const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
 
 const TEST_SETUP_TIMEOUT_MS = 10000;
 const TEST_TIMEOUT_MS = 600000;
+
 describe("firebase deploy --only extensions", () => {
   let cli: CLIProcess;
   before(function (this) {

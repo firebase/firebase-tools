@@ -8,6 +8,22 @@ import { humanReadable } from "../deploy/extensions/deploymentSummary";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
 
+/**
+ * parameterizeProjectId searchs spec.params for any param that include projectId,
+ * and replaces it with a parameterized version that can be used on other projects.
+ * For example, 'my-project-id.appspot.com' becomes '${param:PROJECT_ID}.appspot.com`
+ */
+export function parameterizeProjectId(projectId: string, spec: InstanceSpec): InstanceSpec {
+  const newParams: Record<string, string> = {};
+  for (const [key, val] of Object.entries(spec.params)) {
+    const parameterizedVal = val.replace(projectId, "${param:PROJECT_ID}");
+    newParams[key] = parameterizedVal;
+  }
+  const newSpec = { ...spec };
+  newSpec.params = newParams;
+  return newSpec;
+}
+
 export function displayExportInfo(withRef: InstanceSpec[], withoutRef: InstanceSpec[]): void {
   logger.info("The following Extension instances will be saved locally:");
   logger.info("");
