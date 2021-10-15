@@ -7,6 +7,7 @@ import * as backend from "../deploy/functions/backend";
 import * as utils from "../utils";
 import * as proto from "./proto";
 import * as runtimes from "../deploy/functions/runtimes";
+import * as deploymentTool from "../deploymentTool";
 import * as iam from "./iam";
 import * as _ from "lodash";
 
@@ -549,6 +550,7 @@ export function functionFromEndpoint(
   };
 
   proto.copyIfPresent(gcfFunction, endpoint, "labels");
+  gcfFunction.labels = { ...gcfFunction.labels, ...deploymentTool.labels() };
   if (backend.isEventTriggered(endpoint)) {
     gcfFunction.eventTrigger = {
       eventType: endpoint.eventTrigger.eventType,

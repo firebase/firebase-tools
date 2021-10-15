@@ -46,11 +46,10 @@ export default new Command("functions:delete [filters...]")
     if (options.region) {
       existingBackend.endpoints = { [options.region]: existingBackend.endpoints[options.region] };
     }
-    const plan = planner.createDeploymentPlan(
-      /* want= */ backend.empty(),
-      existingBackend,
-      context.filters
-    );
+    const plan = planner.createDeploymentPlan(/* want= */ backend.empty(), existingBackend, {
+      filters: context.filters,
+      deleteAll: true,
+    });
     const allEpToDelete = Object.values(plan)
       .map((changes) => changes.endpointsToDelete)
       .reduce(reduceFlat, [])

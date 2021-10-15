@@ -19,10 +19,17 @@ export interface RegionalChanges {
 
 export type DeploymentPlan = Record<string, RegionalChanges>;
 
+export interface Options {
+  filters?: string[][];
+  // If set to false, will delete only functions that are managed by firebase
+  deleteAll?: boolean;
+}
+
 /** Calculate the changes needed for a given region. */
 export function calculateRegionalChanges(
   want: Record<string, backend.Endpoint>,
-  have: Record<string, backend.Endpoint>
+  have: Record<string, backend.Endpoint>,
+  options: Options
 ): RegionalChanges {
   const endpointsToCreate = Object.keys(want)
     .filter((id) => !have[id])
@@ -30,7 +37,7 @@ export function calculateRegionalChanges(
 
   const endpointsToDelete = Object.keys(have)
     .filter((id) => !want[id])
-    .filter((id) => isFirebaseManaged(have[id].labels || {}))
+    .filter((id) => options.deleteAll || isFirebaseManaged(have[id].labels || {}))
     .map((id) => have[id]);
 
   const endpointsToUpdate = Object.keys(want)
@@ -67,21 +74,22 @@ export function calculateUpdate(want: backend.Endpoint, have: backend.Endpoint):
 export function createDeploymentPlan(
   want: backend.Backend,
   have: backend.Backend,
-  filters: string[][]
+  options: Options = {},
 ): DeploymentPlan {
   const deployment: DeploymentPlan = {};
   want = backend.matchingBackend(want, (endpoint) => {
-    return functionMatchesAnyGroup(endpoint, filters);
+    return functionMatchesAnyGroup(endpoint, options.filters || []);
   });
   have = backend.matchingBackend(have, (endpoint) => {
-    return functionMatchesAnyGroup(endpoint, filters);
+    return functionMatchesAnyGroup(endpoint, options.filters || []);
   });
 
   const regions = new Set([...Object.keys(want.endpoints), ...Object.keys(have.endpoints)]);
   for (const region of regions) {
     deployment[region] = calculateRegionalChanges(
       want.endpoints[region] || {},
-      have.endpoints[region] || {}
+      have.endpoints[region] || {},
+      options,
     );
   }
 
