@@ -8,7 +8,6 @@ import * as backend from "../deploy/functions/backend";
 import * as runtimes from "../deploy/functions/runtimes";
 import * as proto from "./proto";
 import * as utils from "../utils";
-import * as deploymentTool from "../deploymentTool";
 
 export const API_VERSION = "v2alpha";
 
@@ -341,7 +340,6 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
 
   const gcfFunction: Omit<CloudFunction, OutputOnlyFields> = {
     name: backend.functionName(endpoint),
-    labels: deploymentTool.labels(),
     buildConfig: {
       runtime: endpoint.runtime,
       entryPoint: endpoint.entryPoint,
