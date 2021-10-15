@@ -33,14 +33,14 @@ export default new Command("functions:list")
         const availableMemoryMb = endpoint.availableMemoryMb || "---";
         const entry = previews.functionsv2
           ? [
-              endpoint.entryPoint,
+              endpoint.id,
               endpoint.platform === "gcfv2" ? "v2" : "v1",
               trigger,
               endpoint.region,
               availableMemoryMb,
               endpoint.runtime,
             ]
-          : [endpoint.entryPoint, trigger, endpoint.region, availableMemoryMb, endpoint.runtime];
+          : [endpoint.id, trigger, endpoint.region, availableMemoryMb, endpoint.runtime];
         table.push(entry);
       }
       logger.info(table.toString());
