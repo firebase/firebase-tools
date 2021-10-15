@@ -58,7 +58,7 @@ export function calculateUpdate(want: backend.Endpoint, have: backend.Endpoint):
   const update: EndpointUpdate = {
     endpoint: want,
   };
-  const needsDelete = changedV2PubSubTopic(want, have) || upgradedScheduleFromV1ToV2(want, have);
+  const needsDelete = changedTriggerRegion(want, have) || changedV2PubSubTopic(want, have) || upgradedScheduleFromV1ToV2(want, have);
   if (needsDelete) {
     update.deleteAndRecreate = have;
   }
@@ -126,6 +126,25 @@ export function upgradedToGCFv2WithoutSettingConcurrency(
 
     return true;
   });
+}
+
+/** Whether a trigger chagned regions. This can happen if, for example,
+ *  a user listens to a different bucket, which happens to have a different region.
+ */
+export function changedTriggerRegion(want: backend.Endpoint, have: backend.Endpoint): boolean {
+  if (want.platform != "gcfv2") {
+    return false;
+  }
+  if (have.platform != "gcfv2") {
+    return false;
+  }
+  if (!backend.isEventTriggered(want)) {
+    return false;
+  }
+  if (!backend.isEventTriggered(have)) {
+    return false;
+  }
+  return want.eventTrigger.region != have.eventTrigger.region;
 }
 
 /** Whether a user changed the Pub/Sub topic of a GCFv2 function (which isn't allowed in the API). */

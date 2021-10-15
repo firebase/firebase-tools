@@ -419,6 +419,12 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
         trigger.eventTrigger.eventFilters[attribute] = value;
       }
     }
+    proto.renameIfPresent(
+      trigger.eventTrigger,
+      gcfFunction.eventTrigger,
+      "region",
+      "triggerRegion"
+    );
   } else {
     trigger = { httpsTrigger: {} };
   }

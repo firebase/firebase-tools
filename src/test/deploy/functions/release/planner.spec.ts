@@ -83,6 +83,36 @@ describe("planner", () => {
       });
     });
 
+    it("knows to delete & recreate when trigger regions change", () => {
+      const original: backend.Endpoint = func("a", "b", {
+        eventTrigger: {
+          eventType: "google.cloud.storage.object.v1.finalzied",
+          eventFilters: {
+            bucket: "mybucket",
+          },
+          region: "us-west1",
+          retry: false,
+        },
+      });
+      original.platform = "gcfv2";
+      const changed: backend.Endpoint = func("a", "b", {
+        eventTrigger: {
+          eventType: "google.cloud.storage.object.v1.finalzied",
+          eventFilters: {
+            bucket: "bucket2",
+          },
+          region: "us",
+          retry: false,
+        },
+      });
+      changed.platform = "gcfv2";
+      allowV2Upgrades();
+      expect(planner.calculateUpdate(changed, original)).to.deep.equal({
+        endpoint: changed,
+        deleteAndRecreate: original,
+      });
+    });
+
     it("knows to upgrade in-place in the general case", () => {
       const v1Function: backend.Endpoint = {
         ...func("a", "b"),
