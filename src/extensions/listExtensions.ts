@@ -29,7 +29,7 @@ export async function listExtensions(projectId: string): Promise<any> {
   });
   // Order instances newest to oldest.
   const sorted = _.sortBy(instances, "createTime", "asc").reverse();
-  const formatted: any = [];
+  const formatted: Record<string, string>[] = [];
   sorted.forEach((instance) => {
     let extension = _.get(instance, "config.extensionRef", "");
     let publisher;
@@ -39,7 +39,7 @@ export async function listExtensions(projectId: string): Promise<any> {
     } else {
       publisher = extension.split("/")[0];
     }
-    const instanceId = _.last(instance.name.split("/"));
+    const instanceId = _.last(instance.name.split("/")) ?? "";
     const state =
       instance.state +
       (_.get(instance, "config.source.state", "ACTIVE") === "DELETED" ? " (UNPUBLISHED)" : "");
