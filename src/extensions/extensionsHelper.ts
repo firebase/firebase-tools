@@ -471,7 +471,8 @@ export async function publishExtensionVersionFromLocalSource(args: {
         extensionSpec.version
       )}) already exists for the extension '${clc.bold(
         `${args.publisherId}/${args.extensionId}`
-      )}'. Please increment the version inside of extension.yaml.\n`
+      )}'. Please increment the version inside of extension.yaml.\n`,
+      { exit: 103 }
     );
   }
 
