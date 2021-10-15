@@ -192,21 +192,24 @@ export function inferDetailsFromExisting(
       };
     }
 
-    const missingRegion = backend.isEventTriggered(wantE) && !wantE.eventTrigger.region;
-    const haveOldRegion = backend.isEventTriggered(haveE) && !!haveE.eventTrigger.region;
-    if (missingRegion && haveOldRegion) {
-      const oldTrigger: Record<string, unknown> = {
-        ...(haveE as backend.EventTriggered).eventTrigger,
-      };
-      delete oldTrigger.region;
-      // Don't copy the region if anything about the trigger changed. It's possible
-      // they changed the resource.
-      if (
-        JSON.stringify(oldTrigger) ===
-        JSON.stringify((wantE as backend.EventTriggered).eventTrigger)
-      ) {
-        (wantE as backend.EventTriggered).eventTrigger.region = (haveE as backend.EventTriggered).eventTrigger.region;
-      }
-    }
+    maybeCopyTriggerRegion(wantE, haveE);
   }
+}
+
+function maybeCopyTriggerRegion(wantE: backend.Endpoint, haveE: backend.Endpoint): void {
+  if (!backend.isEventTriggered(wantE) || !backend.isEventTriggered(haveE)) {
+    return;
+  }
+  if (wantE.eventTrigger.region || !haveE.eventTrigger.region) {
+    return;
+  }
+
+  // Don't copy the region if anything about the trigger changed. It's possible
+  // they changed the resource.
+  const oldTrigger: Record<string, unknown> = { ...haveE.eventTrigger };
+  delete oldTrigger.region;
+  if (JSON.stringify(oldTrigger) !== JSON.stringify(wantE.eventTrigger)) {
+    return;
+  }
+  wantE.eventTrigger.region = haveE.eventTrigger.region;
 }
