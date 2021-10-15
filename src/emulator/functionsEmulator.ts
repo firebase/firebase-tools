@@ -273,7 +273,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       let triggerKey: string;
       if (req.headers["content-type"]?.includes("cloudevent")) {
         triggerKey = `${this.args.projectId}:${proto.type}`;
-        
+
         if (EventUtils.isBinaryCloudEvent(req)) {
           proto = EventUtils.extractBinaryCloudEventContext(req);
           proto.data = req.body;

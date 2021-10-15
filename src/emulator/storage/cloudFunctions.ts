@@ -55,7 +55,7 @@ export class StorageCloudFunctions {
       /** Modern CloudEvents */
       const cloudEventBody = this.createCloudEventRequestBody(action, object);
       const cloudEventRes = await this.client!.post(this.multicastPath, cloudEventBody, {
-        headers: { "Content-Type": "application/cloudevents+json; charset=UTF-8" }
+        headers: { "Content-Type": "application/cloudevents+json; charset=UTF-8" },
       });
       if (cloudEventRes.status !== 200) {
         errStatus.push(cloudEventRes.status);
