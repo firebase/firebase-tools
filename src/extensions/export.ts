@@ -9,11 +9,11 @@ import { logger } from "../logger";
 import { FirebaseError } from "../error";
 
 /**
- * stripProjectId searchs spec.params for any param that include projectId,
+ * parameterizeProjectId searchs spec.params for any param that include projectId,
  * and replaces it with a parameterized version that can be used on other projects.
  * For example, 'my-project-id.appspot.com' becomes '${param:PROJECT_ID}.appspot.com`
  */
-export function stripProjectId(projectId: string, spec: InstanceSpec): InstanceSpec {
+export function parameterizeProjectId(projectId: string, spec: InstanceSpec): InstanceSpec {
   const newParams: Record<string, string> = {};
   for (const [key, val] of Object.entries(spec.params)) {
     const parameterizedVal = val.replace(projectId, "${param:PROJECT_ID}");

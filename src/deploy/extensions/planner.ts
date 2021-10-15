@@ -16,6 +16,11 @@ export interface InstanceSpec {
 
 const ENV_DIRECTORY = "extensions";
 
+/**
+ * have checks a project for what extension instances are currently installed,
+ * and returns them as a list of instanceSpecs.
+ * @param projectId
+ */
 export async function have(projectId: string): Promise<InstanceSpec[]> {
   const instances = await extensionsApi.listInstances(projectId);
   return instances.map((i) => {
@@ -32,6 +37,13 @@ export async function have(projectId: string): Promise<InstanceSpec[]> {
   });
 }
 
+/**
+ * want checks firebase.json and the extensions directory for which extensions
+ * the user wants installed on their project.
+ * @param projectId The project we are deploying to
+ * @param projectDir The directory containing firebase.json and extensions/
+ * @param extensions The extensions section of firebase.jsonm
+ */
 export async function want(
   projectId: string,
   projectDir: string,

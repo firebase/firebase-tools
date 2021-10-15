@@ -1,9 +1,9 @@
 import { expect } from "chai";
 
-import { stripProjectId } from "../../extensions/export";
+import { parameterizeProjectId } from "../../extensions/export";
 
 describe("ext:export helpers", () => {
-  describe("stripProjectId", () => {
+  describe("parameterizeProjectId", () => {
     const TEST_PROJECT_ID = "test-project";
     const tests: {
       desc: string;
@@ -40,7 +40,7 @@ describe("ext:export helpers", () => {
           params: t.in,
         };
 
-        expect(stripProjectId(TEST_PROJECT_ID, testSpec)).to.deep.equal({
+        expect(parameterizeProjectId(TEST_PROJECT_ID, testSpec)).to.deep.equal({
           instanceId: testSpec.instanceId,
           params: t.expected,
         });
