@@ -6,12 +6,13 @@ import { CLIProcess } from "../integration-helpers/cli";
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
 
-const TEST_SETUP_TIMEOUT = 10000;
-const TEST_TIMEOUT = 600000;
+const TEST_SETUP_TIMEOUT_MS = 10000;
+const TEST_TIMEOUT_MS = 600000;
+
 describe("firebase deploy --only extensions", () => {
   let cli: CLIProcess;
   before(function (this) {
-    this.timeout(TEST_SETUP_TIMEOUT);
+    this.timeout(TEST_SETUP_TIMEOUT_MS);
     expect(FIREBASE_PROJECT).to.exist.and.not.be.empty;
     cli = new CLIProcess("default", __dirname);
   });
@@ -21,7 +22,7 @@ describe("firebase deploy --only extensions", () => {
   });
 
   it("should have deployed the expected extensions", async function (this) {
-    this.timeout(TEST_TIMEOUT);
+    this.timeout(TEST_TIMEOUT_MS);
 
     await cli.start(
       "deploy",
