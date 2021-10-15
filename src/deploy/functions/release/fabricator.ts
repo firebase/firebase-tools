@@ -476,7 +476,7 @@ export class Fabricator {
     const runtime = getHumanFriendlyRuntimeName(endpoint.runtime);
     const label = helper.getFunctionLabel(endpoint);
     utils.logBullet(
-      `${clc.bold.cyan("functions: ")} ${op} ${runtime} function ${clc.bold(label)}...`
+      `${clc.bold.cyan("functions:")} ${op} ${runtime} function ${clc.bold(label)}...`
     );
   }
 
