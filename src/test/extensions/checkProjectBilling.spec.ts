@@ -36,13 +36,12 @@ describe("checkProjectBilling", () => {
 
   it("should resolve if billing enabled", async () => {
     const projectId = "already enabled";
-    const extensionName = "test extension";
 
     checkBillingEnabledStub.resolves(true);
 
     const enabled = await cloudbilling.checkBillingEnabled(projectId);
     if (!enabled) {
-      await checkProjectBilling.enableBilling(projectId, extensionName);
+      await checkProjectBilling.enableBilling(projectId);
     }
 
     expect(listBillingAccountsStub.notCalled);
@@ -52,7 +51,6 @@ describe("checkProjectBilling", () => {
 
   it("should list accounts if no billing account set, but accounts available.", async () => {
     const projectId = "not set, but have list";
-    const extensionName = "test extension 2";
     const accounts = [
       {
         name: "test-cloud-billing-account-name",
@@ -68,7 +66,7 @@ describe("checkProjectBilling", () => {
 
     const enabled = await cloudbilling.checkBillingEnabled(projectId);
     if (!enabled) {
-      await checkProjectBilling.enableBilling(projectId, extensionName);
+      await checkProjectBilling.enableBilling(projectId);
     }
 
     expect(listBillingAccountsStub.calledOnce);
@@ -78,7 +76,6 @@ describe("checkProjectBilling", () => {
 
   it("should not list accounts if no billing accounts set or available.", async () => {
     const projectId = "not set, not available";
-    const extensionName = "test extension 3";
 
     checkBillingEnabledStub.onCall(0).resolves(false);
     checkBillingEnabledStub.onCall(1).resolves(true);
@@ -87,7 +84,7 @@ describe("checkProjectBilling", () => {
 
     const enabled = await cloudbilling.checkBillingEnabled(projectId);
     if (!enabled) {
-      await checkProjectBilling.enableBilling(projectId, extensionName);
+      await checkProjectBilling.enableBilling(projectId);
     }
 
     expect(listBillingAccountsStub.calledOnce);

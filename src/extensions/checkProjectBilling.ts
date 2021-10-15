@@ -50,7 +50,6 @@ async function openBillingAccount(projectId: string, url: string, open: boolean)
  */
 async function chooseBillingAccount(
   projectId: string,
-  extensionName: string,
   accounts: cloudbilling.BillingAccount[]
 ): Promise<void> {
   const choices = accounts.map((m) => m.displayName);
@@ -59,9 +58,7 @@ async function chooseBillingAccount(
   const answer = await prompt.promptOnce({
     name: "billing",
     type: "list",
-    message: `The extension ${clc.underline(
-      extensionName
-    )} requires your project to be upgraded to the Blaze plan. You have access to the following billing accounts.
+    message: `Extensions require your project to be upgraded to the Blaze plan. You have access to the following billing accounts.
 Please select the one that you would like to associate with this project:`,
     choices: choices,
   });
@@ -82,14 +79,12 @@ Please select the one that you would like to associate with this project:`,
  * Directs user to set up billing account over the web and stalls until
  * user responds.
  */
-async function setUpBillingAccount(projectId: string, extensionName: string) {
+async function setUpBillingAccount(projectId: string) {
   const billingURL = `https://console.cloud.google.com/billing/linkedaccount?project=${projectId}`;
 
   logger.info();
   logger.info(
-    `The extension ${clc.bold(
-      extensionName
-    )} requires your project to be upgraded to the Blaze plan. Please visit the following link to add a billing account:`
+    `Extension require your project to be upgraded to the Blaze plan. Please visit the following link to add a billing account:`
   );
   logger.info();
   logger.info(clc.bold.underline(billingURL));
@@ -108,15 +103,13 @@ async function setUpBillingAccount(projectId: string, extensionName: string) {
 /**
  * Sets up billing for the given project.
  * @param {string} projectId
- * @param {string} extensionName
- * @return {Promise<void | undefined>}
  */
-export async function enableBilling(projectId: string, extensionName: string): Promise<void> {
+export async function enableBilling(projectId: string): Promise<void> {
   const billingAccounts = await cloudbilling.listBillingAccounts();
   if (billingAccounts) {
     const accounts = billingAccounts.filter((account) => account.open);
     return accounts.length > 0
-      ? chooseBillingAccount(projectId, extensionName, accounts)
-      : setUpBillingAccount(projectId, extensionName);
+      ? chooseBillingAccount(projectId, accounts)
+      : setUpBillingAccount(projectId);
   }
 }

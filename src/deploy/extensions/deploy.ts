@@ -5,6 +5,8 @@ import { FirebaseError } from "../../error";
 import { ErrorHandler } from "./errors";
 import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
+import { bulkCheckProductsProvisioned } from "../../extensions/provisioningHelper";
+import { checkBilling } from "./validate";
 
 export async function deploy(
   context: any, // TODO: type this
@@ -12,7 +14,17 @@ export async function deploy(
   payload: Payload
 ) {
   const projectId = needProjectId(options);
+  // First, check that billing is enabled
+  await checkBilling(projectId, options.nonInteractive);
 
+  // Then, check that required products are provisioned.
+  await bulkCheckProductsProvisioned(projectId, [
+    ...(payload.instancesToCreate ?? []),
+    ...(payload.instancesToUpdate ?? []),
+    ...(payload.instancesToConfigure ?? []),
+  ]);
+
+  // Then, run validateOnly calls.
   const errorHandler = new ErrorHandler();
   const validationQueue = new Queue<tasks.ExtensionDeploymentTask, void>({
     retries: 5,
@@ -20,7 +32,7 @@ export async function deploy(
     handler: tasks.extensionsDeploymentHandler(errorHandler),
   });
 
-  // Validate all creates and updates.
+  // Validate all creates, updates and configures.
   // No need to validate deletes.
   for (const create of payload.instancesToCreate ?? []) {
     const task = tasks.createExtensionInstanceTask(projectId, create, /* validateOnly=*/ true);
