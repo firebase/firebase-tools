@@ -44,9 +44,11 @@ export async function want(
       const instanceId = e[0];
       const ref = refs.parse(e[1]);
       ref.version = await resolveVersion(ref);
+
       const params = readParams(projectDir, instanceId);
       const autoPopulatedParams = await getFirebaseProjectParams(projectId);
       const subbedParams = substituteParams(params, autoPopulatedParams);
+
       instanceSpecs.push({
         instanceId,
         ref,

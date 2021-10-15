@@ -44,7 +44,6 @@ export async function displayWarningPrompts(
   extensionVersion: ExtensionVersion
 ): Promise<void> {
   const trustedPublishers = await getTrustedPublishers();
-  console.log(trustedPublishers);
   if (!trustedPublishers.includes(publisherId)) {
     displayEAPWarning({
       publisherId,
