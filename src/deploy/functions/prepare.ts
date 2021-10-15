@@ -201,7 +201,10 @@ export function inferDetailsFromExisting(
       delete oldTrigger.region;
       // Don't copy the region if anything about the trigger changed. It's possible
       // they changed the resource.
-      if (JSON.stringify(oldTrigger) === JSON.stringify(wantE.eventTrigger)) {
+      if (
+        JSON.stringify(oldTrigger) ===
+        JSON.stringify((wantE as backend.EventTriggered).eventTrigger)
+      ) {
         (wantE as backend.EventTriggered).eventTrigger.region = (haveE as backend.EventTriggered).eventTrigger.region;
       }
     }
