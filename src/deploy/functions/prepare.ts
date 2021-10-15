@@ -87,8 +87,9 @@ export async function prepare(
   track("functions_codebase_deploy_env_method", tag);
 
   logger.debug(`Analyzing ${runtimeDelegate.name} backend spec`);
-  const wantBackend = await runtimeDelegate.discoverSpec(runtimeConfig, firebaseEnvs);
-  wantBackend.environmentVariables = { ...userEnvs, ...firebaseEnvs };
+  const mergedEnvs = { ...userEnvs, ...firebaseEnvs };
+  const wantBackend = await runtimeDelegate.discoverSpec(runtimeConfig, mergedEnvs);
+  wantBackend.environmentVariables = mergedEnvs;
   payload.functions = { backend: wantBackend };
 
   // Note: Some of these are premium APIs that require billing to be enabled.
