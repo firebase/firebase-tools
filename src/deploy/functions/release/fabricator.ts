@@ -47,9 +47,9 @@ export interface FabricatorArgs {
   storage?: Record<string, gcfV2.StorageSource>;
 }
 
-const rethrowAs = (endpoint: backend.Endpoint, op: reporter.OperationType) => (
+const rethrowAs = <T>(endpoint: backend.Endpoint, op: reporter.OperationType) => (
   err: unknown
-): void => {
+): T => {
   throw new reporter.DeploymentError(endpoint, op, err);
 };
 
@@ -200,10 +200,10 @@ export class Fabricator {
     }
     const apiFunction = gcf.functionFromEndpoint(endpoint, this.sourceUrl);
     apiFunction.sourceToken = await scraper.tokenPromise();
-    await this.functionExecutor
+    const resultFunction = await this.functionExecutor
       .run(async () => {
         const op: { name: string } = await gcf.createFunction(apiFunction);
-        await poller.pollOperation<unknown>({
+        return poller.pollOperation<gcf.CloudFunction>({
           ...gcfV1PollerOptions,
           pollerName: `create-${endpoint.region}-${endpoint.id}`,
           operationResourceName: op.name,
@@ -212,6 +212,7 @@ export class Fabricator {
       })
       .catch(rethrowAs(endpoint, "create"));
 
+    endpoint.uri = resultFunction?.httpsTrigger?.url;
     if (backend.isHttpsTriggered(endpoint)) {
       const invoker = endpoint.httpsTrigger.invoker || ["public"];
       if (!invoker.includes("private")) {
@@ -265,6 +266,7 @@ export class Fabricator {
       })
       .catch(rethrowAs(endpoint, "create"))) as gcfV2.CloudFunction;
 
+    endpoint.uri = resultFunction.serviceConfig.uri;
     const serviceName = resultFunction.serviceConfig.service!;
     if (backend.isHttpsTriggered(endpoint)) {
       const invoker = endpoint.httpsTrigger.invoker || ["public"];
@@ -289,10 +291,10 @@ export class Fabricator {
     }
     const apiFunction = gcf.functionFromEndpoint(endpoint, this.sourceUrl);
     apiFunction.sourceToken = await scraper.tokenPromise();
-    await this.functionExecutor
+    const resultFunction = await this.functionExecutor
       .run(async () => {
         const op: { name: string } = await gcf.updateFunction(apiFunction);
-        await poller.pollOperation<unknown>({
+        return await poller.pollOperation<gcf.CloudFunction>({
           ...gcfV1PollerOptions,
           pollerName: `update-${endpoint.region}-${endpoint.id}`,
           operationResourceName: op.name,
@@ -301,6 +303,7 @@ export class Fabricator {
       })
       .catch(rethrowAs(endpoint, "update"));
 
+    endpoint.uri = resultFunction?.httpsTrigger?.url;
     if (backend.isHttpsTriggered(endpoint) && endpoint.httpsTrigger.invoker) {
       await this.executor
         .run(async () => {
@@ -341,7 +344,7 @@ export class Fabricator {
       })
       .catch(rethrowAs(endpoint, "update"))) as gcfV2.CloudFunction;
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    endpoint.uri = resultFunction.serviceConfig.uri;
     const serviceName = resultFunction.serviceConfig.service!;
     if (backend.isHttpsTriggered(endpoint) && endpoint.httpsTrigger.invoker) {
       await this.executor

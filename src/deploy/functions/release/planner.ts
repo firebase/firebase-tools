@@ -56,7 +56,7 @@ export function calculateUpdate(want: backend.Endpoint, have: backend.Endpoint):
   checkForIllegalUpdate(want, have);
 
   const update: EndpointUpdate = {
-    endpoint: { ...want },
+    endpoint: want,
   };
   const needsDelete = changedV2PubSubTopic(want, have) || upgradedScheduleFromV1ToV2(want, have);
   if (needsDelete) {
