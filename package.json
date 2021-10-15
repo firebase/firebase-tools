@@ -26,6 +26,7 @@
     "test:client-integration": "./scripts/client-integration-tests/run.sh",
     "test:compile": "tsc --project tsconfig.compile.json",
     "test:emulator": "./scripts/emulator-tests/run.sh",
+    "test:extensions-deploy": "./scripts/extensions-deploy-tests/run.sh",
     "test:extensions-emulator": "./scripts/extensions-emulator-tests/run.sh",
     "test:hosting": "./scripts/hosting-tests/run.sh",
     "test:triggers-end-to-end": "./scripts/triggers-end-to-end-tests/run.sh",
