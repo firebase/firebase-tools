@@ -60,7 +60,7 @@ export async function want(
       const params = readParams(projectDir, instanceId);
       const autoPopulatedParams = await getFirebaseProjectParams(projectId);
       const subbedParams = substituteParams(params, autoPopulatedParams);
-      
+
       instanceSpecs.push({
         instanceId,
         ref,
