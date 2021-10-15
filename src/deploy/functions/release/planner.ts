@@ -74,7 +74,7 @@ export function calculateUpdate(want: backend.Endpoint, have: backend.Endpoint):
 export function createDeploymentPlan(
   want: backend.Backend,
   have: backend.Backend,
-  options: Options = {},
+  options: Options = {}
 ): DeploymentPlan {
   const deployment: DeploymentPlan = {};
   want = backend.matchingBackend(want, (endpoint) => {
@@ -89,7 +89,7 @@ export function createDeploymentPlan(
     deployment[region] = calculateRegionalChanges(
       want.endpoints[region] || {},
       have.endpoints[region] || {},
-      options,
+      options
     );
   }
 
