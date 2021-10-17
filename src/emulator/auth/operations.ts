@@ -32,6 +32,7 @@ import {
   UsageMode,
   AgentProjectState,
   TenantProjectState,
+  MfaConfig,
 } from "./state";
 import { MfaEnrollments, Schemas } from "./types";
 
@@ -213,8 +214,8 @@ function signUp(
       generateEnrollmentIds: true,
     });
   }
-  if (reqBody.tenantId) {
-    updates.tenantId = reqBody.tenantId;
+  if (state instanceof TenantProjectState) {
+    updates.tenantId = state.tenantId;
   }
   let user: UserInfo | undefined;
   if (reqBody.idToken) {
@@ -349,6 +350,8 @@ function batchCreate(
           state instanceof TenantProjectState && state.tenantId === userInfo.tenantId,
           "Tenant id in userInfo does not match the tenant id in request."
         );
+      }
+      if (state instanceof TenantProjectState) {
         fields.tenantId = state.tenantId;
       }
 
@@ -1268,7 +1271,7 @@ function signInWithCustomToken(
     uid?: unknown;
     user_id?: unknown;
     claims?: unknown;
-    tenantId?: unknown;
+    tenant_id?: unknown;
   };
   if (reqBody.token.startsWith("{")) {
     // In the emulator only, we allow plain JSON strings as custom tokens, to
@@ -1287,7 +1290,7 @@ function signInWithCustomToken(
       payload: typeof payload;
     } | null;
     if (state instanceof TenantProjectState) {
-      assert(decoded?.payload.tenantId === state.tenantId, "TENANT_ID_MISMATCH");
+      assert(decoded?.payload.tenant_id === state.tenantId, "TENANT_ID_MISMATCH");
     }
     assert(decoded, "INVALID_CUSTOM_TOKEN : Invalid assertion format");
     if (decoded.header.alg !== "none") {
@@ -2690,13 +2693,22 @@ function createTenant(
     throw new InternalError("INTERNAL_ERROR: Can only create tenant in agent project", "INTERNAL");
   }
 
+  const mfaConfig = reqBody.mfaConfig ?? {};
+  if (!("state" in mfaConfig)) {
+    mfaConfig.state = "DISABLED";
+  }
+  if (!("enabledProviders" in mfaConfig)) {
+    mfaConfig.enabledProviders = [];
+  }
+
+  // Default to production settings if unset
   const tenant = {
     displayName: reqBody.displayName,
-    allowPasswordSignup: reqBody.allowPasswordSignup,
-    enableEmailLinkSignin: reqBody.enableEmailLinkSignin,
-    enableAnonymousUser: reqBody.enableAnonymousUser,
-    disableAuth: reqBody.disableAuth,
-    mfaConfig: reqBody.mfaConfig,
+    allowPasswordSignup: reqBody.allowPasswordSignup ?? false,
+    enableEmailLinkSignin: reqBody.enableEmailLinkSignin ?? false,
+    enableAnonymousUser: reqBody.enableAnonymousUser ?? false,
+    disableAuth: reqBody.disableAuth ?? false,
+    mfaConfig: mfaConfig as MfaConfig,
     tenantId: "", // Placeholder until one is generated
   };
 

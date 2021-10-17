@@ -684,7 +684,6 @@ describeAuthEmulator("accounts:batchCreate", ({ authApi }) => {
       localId: "foo",
       email: "me@example.com",
       rawPassword: "notasecret",
-      tenantId: tenant.tenantId,
     };
 
     await authApi()
