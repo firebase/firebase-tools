@@ -55,7 +55,7 @@ async function retry<Return>(func: () => Promise<Return>): Promise<Return> {
       });
       return await Promise.race([func(), timeout]);
     } catch (error) {
-      logger.debug("Failed docker command with error", error);
+      logger.debug("Failed docker command with error ", error);
       retry += 1;
       if (retry >= MAX_RETRIES) {
         throw new FirebaseError("Failed to clean up artifacts", { original: error });
