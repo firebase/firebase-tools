@@ -117,7 +117,7 @@ export class ArtifactRegistryCleaner {
   //     +- <function ID>
   //     +- <function ID>/cache
   // We leave the cache directory alone because it only costs
-  // a few MB and improves performance 
+  // a few MB and improves performance
   async cleanupFunction(func: backend.TargetIds, helper?: DockerHelper): Promise<void> {
     helper = helper || new DockerHelper(`https://${func.region}-docker.${artifactRegistryDomain}`);
     await helper.rm(`${func.project}/gcf-artifacts/${func.id}`);
