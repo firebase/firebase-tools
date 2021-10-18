@@ -298,11 +298,8 @@ describe("apiv2", () => {
 
     it("should make a basic POST request", async () => {
       const POST_DATA = { post: "data" };
-      nock("https://example.com", {
-        reqheaders: {
-          "Content-Type": "application/json",
-        },
-      })
+      nock("https://example.com")
+        .matchHeader("Content-Type", "application/json")
         .post("/path/to/foo", POST_DATA)
         .reply(200, { success: true });
 
@@ -318,11 +315,8 @@ describe("apiv2", () => {
 
     it("should make a basic POST request without overriding Content-Type", async () => {
       const POST_DATA = { post: "data" };
-      nock("https://example.com", {
-        reqheaders: {
-          "Content-Type": "application/json+customcontent",
-        },
-      })
+      nock("https://example.com")
+        .matchHeader("Content-Type", "application/json+customcontent")
         .post("/path/to/foo", POST_DATA)
         .reply(200, { success: true });
 
