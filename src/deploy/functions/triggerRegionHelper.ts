@@ -1,6 +1,7 @@
 import * as backend from "./backend";
 import * as storage from "../../gcp/storage";
 import { FirebaseError } from "../../error";
+import { addServiceAccountToRoles } from "../../gcp/resourceManager";
 
 /**
  * Sets the trigger region to what we currently have deployed
@@ -42,4 +43,17 @@ async function setTriggerRegionFromTriggerType(trigger: backend.EventTrigger): P
     }
   }
   // TODO: add more trigger types
+}
+
+interface StorageServiceAccountResponse {
+  email_address: string;
+  kind: string;
+}
+
+export async function enableStoragePermissions(projectId: string): Promise<void> {
+  const iamRoles = ["roles/pubsub.publisher"];
+  const storageResponse = (await storage.getServiceAccount(
+    projectId
+  )) as StorageServiceAccountResponse;
+  await addServiceAccountToRoles(projectId, storageResponse.email_address, iamRoles);
 }

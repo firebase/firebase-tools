@@ -112,10 +112,36 @@ async function _getBucket(bucketName) {
   }
 }
 
+/**
+ * Find the service account for the Cloud Storage Resource
+ * @param {string} projectId the project identifier
+ *
+ * @returns:
+ * {
+ *  "email_address": string,
+ *  "kind": "storage#serviceAccount",
+ * }
+ */
+async function _getServiceAccount(projectId) {
+  try {
+    const response = await api.request("GET", `storage/v1/projects/${projectId}/serviceAccount`, {
+      auth: true,
+      origin: api.storageOrigin,
+    });
+    return response.body;
+  } catch (err) {
+    logger.debug(err);
+    throw new FirebaseError("Failed to obtain the Cloud Storage service account", {
+      original: err,
+    });
+  }
+}
+
 module.exports = {
   getDefaultBucket: _getDefaultBucket,
   deleteObject: _deleteObject,
   upload: _uploadSource,
   uploadObject: _uploadObject,
   getBucket: _getBucket,
+  getServiceAccount: _getServiceAccount,
 };
