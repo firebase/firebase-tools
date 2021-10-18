@@ -58,7 +58,10 @@ export function calculateUpdate(want: backend.Endpoint, have: backend.Endpoint):
   const update: EndpointUpdate = {
     endpoint: want,
   };
-  const needsDelete = changedTriggerRegion(want, have) || changedV2PubSubTopic(want, have) || upgradedScheduleFromV1ToV2(want, have);
+  const needsDelete =
+    changedTriggerRegion(want, have) ||
+    changedV2PubSubTopic(want, have) ||
+    upgradedScheduleFromV1ToV2(want, have);
   if (needsDelete) {
     update.deleteAndRecreate = have;
   }
