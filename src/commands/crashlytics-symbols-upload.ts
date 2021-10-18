@@ -70,7 +70,7 @@ export default new Command("crashlytics:symbols:upload <symbolFiles...>")
         `crashlytics-${uuid.v4()}`,
         "nativeSymbols",
         // Windows does not allow ":" in their directory names
-        app.replace(":", "-"),
+        app.replace(/:/g, "-"),
         generator
       ),
       symbolFile: "",
