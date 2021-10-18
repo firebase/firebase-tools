@@ -298,13 +298,34 @@ describe("apiv2", () => {
 
     it("should make a basic POST request", async () => {
       const POST_DATA = { post: "data" };
-      nock("https://example.com").post("/path/to/foo", POST_DATA).reply(200, { success: true });
+      nock("https://example.com")
+        .matchHeader("Content-Type", "application/json")
+        .post("/path/to/foo", POST_DATA)
+        .reply(200, { success: true });
 
       const c = new Client({ urlPrefix: "https://example.com" });
       const r = await c.request({
         method: "POST",
         path: "/path/to/foo",
         body: POST_DATA,
+      });
+      expect(r.body).to.deep.equal({ success: true });
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should make a basic POST request without overriding Content-Type", async () => {
+      const POST_DATA = { post: "data" };
+      nock("https://example.com")
+        .matchHeader("Content-Type", "application/json+customcontent")
+        .post("/path/to/foo", POST_DATA)
+        .reply(200, { success: true });
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = await c.request({
+        method: "POST",
+        path: "/path/to/foo",
+        body: POST_DATA,
+        headers: { "Content-Type": "application/json+customcontent" },
       });
       expect(r.body).to.deep.equal({ success: true });
       expect(nock.isDone()).to.be.true;
