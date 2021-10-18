@@ -635,7 +635,22 @@ export class AgentProjectState extends ProjectState {
 
   getTenantProject(tenantId: string): TenantProjectState {
     if (!this.tenantProjectForTenantId.has(tenantId)) {
-      this.createTenantWithTenantId(tenantId, { tenantId });
+      // Implicitly creates tenant if it does not already exist and sets all
+      // configurations to enabled. This is for convenience and differs from
+      // production in which configurations, are default disabled. Tests that
+      // need to reflect production defaults should first explicitly call
+      // `createTenant()` with a `Tenant` object.
+      this.createTenantWithTenantId(tenantId, {
+        tenantId,
+        allowPasswordSignup: true,
+        disableAuth: false,
+        mfaConfig: {
+          state: "ENABLED",
+          enabledProviders: ["PHONE_SMS"],
+        },
+        enableAnonymousUser: true,
+        enableEmailLinkSignin: true,
+      });
     }
     return this.tenantProjectForTenantId.get(tenantId)!;
   }
@@ -714,42 +729,55 @@ export class TenantProjectState extends ProjectState {
     return this._tenantConfig;
   }
 
-  // TODO(lisajian): Handle divergence in tenant config settings between what is
-  // needed for admin SDK (default disabled, parallels production) vs emulator
-  // tests (default enabled, for convenience)
   get allowPasswordSignup() {
-    return this._tenantConfig.allowPasswordSignup ?? true;
+    return this._tenantConfig.allowPasswordSignup;
   }
 
   get disableAuth() {
-    return this._tenantConfig.disableAuth ?? false;
+    return this._tenantConfig.disableAuth;
   }
 
   get mfaConfig() {
-    return (
-      this._tenantConfig.mfaConfig ?? {
-        state: "ENABLED" as const,
-        enabledProviders: ["PHONE_SMS" as const],
-      }
-    );
+    return this._tenantConfig.mfaConfig;
   }
 
   get enableAnonymousUser() {
-    return this._tenantConfig.enableAnonymousUser ?? true;
+    return this._tenantConfig.enableAnonymousUser;
   }
 
   get enableEmailLinkSignin() {
-    return this._tenantConfig.enableEmailLinkSignin ?? true;
+    return this._tenantConfig.enableEmailLinkSignin;
   }
 
   delete(): void {
     this.parentProject.deleteTenant(this.tenantId);
   }
 
-  updateTenant(update: Partial<Tenant>, updateMask: string | undefined): Tenant {
+  updateTenant(
+    update: Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"],
+    updateMask: string | undefined
+  ): Tenant {
     // Empty masks indicate a full update
     if (!updateMask) {
-      this._tenantConfig = { ...update, tenantId: this.tenantId, name: this.tenantConfig.name };
+      const mfaConfig = update.mfaConfig ?? {};
+      if (!("state" in mfaConfig)) {
+        mfaConfig.state = "DISABLED";
+      }
+      if (!("enabledProviders" in mfaConfig)) {
+        mfaConfig.enabledProviders = [];
+      }
+
+      // Default to production defaults if unset
+      this._tenantConfig = {
+        tenantId: this.tenantId,
+        name: this.tenantConfig.name,
+        allowPasswordSignup: update.allowPasswordSignup ?? false,
+        disableAuth: update.disableAuth ?? false,
+        mfaConfig: mfaConfig as MfaConfig,
+        enableAnonymousUser: update.enableAnonymousUser ?? false,
+        enableEmailLinkSignin: update.enableEmailLinkSignin ?? false,
+        displayName: update.displayName,
+      };
       return this.tenantConfig;
     }
 
@@ -813,10 +841,17 @@ export type UserInfo = Omit<
   localId: string;
   providerUserInfo?: ProviderUserInfo[];
 };
+export type MfaConfig = MakeRequired<
+  Schemas["GoogleCloudIdentitytoolkitAdminV2MultiFactorAuthConfig"],
+  "enabledProviders" | "state"
+>;
 export type Tenant = Omit<
-  Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"],
-  "testPhoneNumbers"
-> & { tenantId: string };
+  MakeRequired<
+    Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"],
+    "allowPasswordSignup" | "disableAuth" | "enableAnonymousUser" | "enableEmailLinkSignin"
+  >,
+  "testPhoneNumbers" | "mfaConfig"
+> & { tenantId: string; mfaConfig: MfaConfig };
 
 interface RefreshTokenRecord {
   localId: string;

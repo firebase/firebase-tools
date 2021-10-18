@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { Tenant } from "../../../emulator/auth/state";
 import { expectStatusCode, registerTenant } from "./helpers";
-import { describeAuthEmulator } from "./setup";
+import { describeAuthEmulator, PROJECT_ID } from "./setup";
 
 describeAuthEmulator("tenant management", ({ authApi }) => {
   describe("createTenant", () => {
@@ -39,6 +39,24 @@ describeAuthEmulator("tenant management", ({ authApi }) => {
           expect(res.body.name).to.eql(`projects/project-id/tenants/${res.body.tenantId}`);
         });
     });
+
+    it("should create a tenant with default disabled settings", async () => {
+      await authApi()
+        .post("/identitytoolkit.googleapis.com/v2/projects/project-id/tenants")
+        .set("Authorization", "Bearer owner")
+        .send({})
+        .then((res) => {
+          expectStatusCode(200, res);
+          expect(res.body.allowPasswordSignup).to.be.false;
+          expect(res.body.disableAuth).to.be.false;
+          expect(res.body.enableAnonymousUser).to.be.false;
+          expect(res.body.enableEmailLinkSignin).to.be.false;
+          expect(res.body.mfaConfig).to.eql({
+            state: "DISABLED",
+            enabledProviders: [],
+          });
+        });
+    });
   });
 
   describe("getTenants", () => {
@@ -55,7 +73,7 @@ describeAuthEmulator("tenant management", ({ authApi }) => {
         });
     });
 
-    it("should create tenants if they do not exist", async () => {
+    it("should create tenants with default enabled settings if they do not exist", async () => {
       // No projects exist initially
       const projectId = "project-id";
       await authApi()
@@ -71,6 +89,14 @@ describeAuthEmulator("tenant management", ({ authApi }) => {
       const createdTenant: Tenant = {
         tenantId,
         name: `projects/${projectId}/tenants/${tenantId}`,
+        allowPasswordSignup: true,
+        disableAuth: false,
+        enableAnonymousUser: true,
+        enableEmailLinkSignin: true,
+        mfaConfig: {
+          enabledProviders: ["PHONE_SMS"],
+          state: "ENABLED",
+        },
       };
       await authApi()
         .get(`/identitytoolkit.googleapis.com/v2/projects/${projectId}/tenants/${tenantId}`)
@@ -322,6 +348,29 @@ describeAuthEmulator("tenant management", ({ authApi }) => {
           expect(res.body.mfaConfig).to.eql({
             enabledProviders: ["PROVIDER_UNSPECIFIED", "PHONE_SMS"],
             state: "ENABLED",
+          });
+        });
+    });
+
+    it("performs a full update with production defaults if the update mask is empty", async () => {
+      const projectId = "project-id";
+      const tenant = await registerTenant(authApi(), projectId, {});
+
+      await authApi()
+        .patch(
+          `/identitytoolkit.googleapis.com/v2/projects/${projectId}/tenants/${tenant.tenantId}`
+        )
+        .set("Authorization", "Bearer owner")
+        .send({})
+        .then((res) => {
+          expectStatusCode(200, res);
+          expect(res.body.allowPasswordSignup).to.be.false;
+          expect(res.body.disableAuth).to.be.false;
+          expect(res.body.enableAnonymousUser).to.be.false;
+          expect(res.body.enableEmailLinkSignin).to.be.false;
+          expect(res.body.mfaConfig).to.eql({
+            enabledProviders: [],
+            state: "DISABLED",
           });
         });
     });
