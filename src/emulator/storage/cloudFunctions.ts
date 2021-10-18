@@ -77,7 +77,7 @@ export class StorageCloudFunctions {
   private createLegacyEventRequestBody(
     action: StorageCloudFunctionAction,
     objectMetadataPayload: ObjectMetadataPayload
-  ) {
+  ): string {
     const timestamp = new Date();
     return JSON.stringify({
       eventId: `${timestamp.getTime()}`,
@@ -96,7 +96,7 @@ export class StorageCloudFunctions {
   private createCloudEventRequestBody(
     action: StorageCloudFunctionAction,
     objectMetadataPayload: ObjectMetadataPayload
-  ) {
+  ): string {
     const ceAction = STORAGE_V2_ACTION_MAP[action];
     if (!ceAction) {
       throw new Error("Action is not definied as a CloudEvents action");
