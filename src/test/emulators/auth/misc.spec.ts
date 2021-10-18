@@ -432,6 +432,31 @@ describeAuthEmulator("emulator utility APIs", ({ authApi }) => {
     await expectUserNotExistsForIdToken(authApi(), user2.idToken);
   });
 
+  it("should drop all accounts on DELETE /emulator/v1/projects/{PROJECT_ID}/tenants/{TENANT_ID}/accounts", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, {
+      disableAuth: false,
+      allowPasswordSignup: true,
+    });
+    const user1 = await registerUser(authApi(), {
+      email: "alice@example.com",
+      password: "notasecret",
+      tenantId: tenant.tenantId,
+    });
+    const user2 = await registerUser(authApi(), {
+      email: "bob@example.com",
+      password: "notasecret2",
+      tenantId: tenant.tenantId,
+    });
+
+    await authApi()
+      .delete(`/emulator/v1/projects/${PROJECT_ID}/tenants/${tenant.tenantId}/accounts`)
+      .send()
+      .then((res) => expectStatusCode(200, res));
+
+    await expectUserNotExistsForIdToken(authApi(), user1.idToken, tenant.tenantId);
+    await expectUserNotExistsForIdToken(authApi(), user2.idToken, tenant.tenantId);
+  });
+
   it("should return config on GET /emulator/v1/projects/{PROJECT_ID}/config", async () => {
     await authApi()
       .get(`/emulator/v1/projects/${PROJECT_ID}/config`)

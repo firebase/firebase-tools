@@ -1,2 +1,2 @@
 - Fix Auth Emulator deleteTenant not working with Node Admin (#3817).
-- Add Content-Type check for headers in apiv2 (#3829).
+- Fix Crashlytics Android Native Symbols not working on Windows due to ":" in the path (#3842)
