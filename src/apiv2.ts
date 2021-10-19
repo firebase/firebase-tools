@@ -242,8 +242,10 @@ export class Client {
       reqOptions.headers.set("User-Agent", `FirebaseCLI/${CLI_VERSION}`);
     }
     reqOptions.headers.set("X-Client-Version", `FirebaseCLI/${CLI_VERSION}`);
-    if (reqOptions.responseType === "json") {
-      reqOptions.headers.set("Content-Type", "application/json");
+    if (!reqOptions.headers.has("Content-Type")) {
+      if (reqOptions.responseType === "json") {
+        reqOptions.headers.set("Content-Type", "application/json");
+      }
     }
     return reqOptions;
   }

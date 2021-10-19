@@ -1,11 +1,17 @@
 import { EmulatorRegistry } from "../registry";
 import { EmulatorInfo, Emulators } from "../types";
-import * as request from "request";
 import { EmulatorLogger } from "../emulatorLogger";
 import { CloudStorageObjectMetadata, toSerializedDate } from "./metadata";
 import { Client } from "../../apiv2";
+import { StorageObjectData } from "@google/events/cloud/storage/v1/StorageObjectData";
 
 type StorageCloudFunctionAction = "finalize" | "metadataUpdate" | "delete" | "archive";
+const STORAGE_V2_ACTION_MAP: Record<StorageCloudFunctionAction, string> = {
+  finalize: "finalized",
+  metadataUpdate: "metadataUpdated",
+  delete: "deleted",
+  archive: "archived",
+};
 
 export class StorageCloudFunctions {
   private logger = EmulatorLogger.forEmulator(Emulators.STORAGE);
@@ -13,6 +19,7 @@ export class StorageCloudFunctions {
   private multicastOrigin = "";
   private multicastPath = "";
   private enabled = false;
+  private client?: Client;
 
   constructor(private projectId: string) {
     const functionsEmulator = EmulatorRegistry.get(Emulators.FUNCTIONS);
@@ -24,6 +31,7 @@ export class StorageCloudFunctions {
         this.functionsEmulatorInfo
       )}`;
       this.multicastPath = `/functions/projects/${projectId}/trigger_multicast`;
+      this.client = new Client({ urlPrefix: this.multicastOrigin, auth: false });
     }
   }
 
@@ -31,20 +39,32 @@ export class StorageCloudFunctions {
     action: StorageCloudFunctionAction,
     object: CloudStorageObjectMetadata
   ): Promise<void> {
-    if (!this.enabled) return;
-
-    const multicastEventBody = this.createEventRequestBody(action, object);
-
-    const c = new Client({ urlPrefix: this.multicastOrigin, auth: false });
-    let res;
-    let err: Error | undefined;
-    try {
-      res = await c.post(this.multicastPath, multicastEventBody);
-    } catch (e) {
-      err = e;
+    if (!this.enabled) {
+      return;
     }
 
-    if (err || res?.status != 200) {
+    const errStatus: Array<number> = [];
+    let err: Error | undefined;
+    try {
+      /** Legacy Google Events */
+      const eventBody = this.createLegacyEventRequestBody(action, object);
+      const eventRes = await this.client!.post(this.multicastPath, eventBody);
+      if (eventRes.status !== 200) {
+        errStatus.push(eventRes.status);
+      }
+      /** Modern CloudEvents */
+      const cloudEventBody = this.createCloudEventRequestBody(action, object);
+      const cloudEventRes = await this.client!.post(this.multicastPath, cloudEventBody, {
+        headers: { "Content-Type": "application/cloudevents+json; charset=UTF-8" },
+      });
+      if (cloudEventRes.status !== 200) {
+        errStatus.push(cloudEventRes.status);
+      }
+    } catch (e) {
+      err = e as Error;
+    }
+
+    if (err || errStatus.length > 0) {
       this.logger.logLabeled(
         "WARN",
         "functions",
@@ -53,7 +73,8 @@ export class StorageCloudFunctions {
     }
   }
 
-  private createEventRequestBody(
+  /** Legacy Google Events type */
+  private createLegacyEventRequestBody(
     action: StorageCloudFunctionAction,
     objectMetadataPayload: ObjectMetadataPayload
   ): string {
@@ -68,6 +89,24 @@ export class StorageCloudFunctions {
         type: "storage#object",
       }, // bucket
       data: objectMetadataPayload,
+    });
+  }
+
+  /** Modern CloudEvents type */
+  private createCloudEventRequestBody(
+    action: StorageCloudFunctionAction,
+    objectMetadataPayload: ObjectMetadataPayload
+  ): string {
+    const ceAction = STORAGE_V2_ACTION_MAP[action];
+    if (!ceAction) {
+      throw new Error("Action is not definied as a CloudEvents action");
+    }
+    const data = (objectMetadataPayload as unknown) as StorageObjectData;
+    return JSON.stringify({
+      specVersion: 1,
+      type: `google.cloud.storage.object.v1.${ceAction}`,
+      source: `//storage.googleapis.com/projects/_/buckets/${objectMetadataPayload.bucket}/objects/${objectMetadataPayload.name}`,
+      data,
     });
   }
 }

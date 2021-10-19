@@ -58,6 +58,7 @@ export function idsToVarName(projectId: string, configId: string, varId: string)
   return _.join(["projects", projectId, "configs", configId, "variables", varId], "/");
 }
 
+// TODO(inlined): Yank and inline into Fabricator
 export function getAppEngineLocation(config: any): string {
   let appEngineLocation = config.locationId;
   if (appEngineLocation && appEngineLocation.match(/[^\d]$/)) {

@@ -267,10 +267,21 @@ export class FunctionsEmulator implements EmulatorInstance {
     };
 
     const multicastHandler: express.RequestHandler = (req, res) => {
-      const reqBody = (req as RequestWithRawBody).rawBody;
-      const proto = JSON.parse(reqBody.toString());
-      const triggers = this.multicastTriggers[`${this.args.projectId}:${proto.eventType}`] || [];
       const projectId = req.params.project_id;
+      const reqBody = (req as RequestWithRawBody).rawBody;
+      let proto = JSON.parse(reqBody.toString());
+      let triggerKey: string;
+      if (req.headers["content-type"]?.includes("cloudevent")) {
+        triggerKey = `${this.args.projectId}:${proto.type}`;
+
+        if (EventUtils.isBinaryCloudEvent(req)) {
+          proto = EventUtils.extractBinaryCloudEventContext(req);
+          proto.data = req.body;
+        }
+      } else {
+        triggerKey = `${this.args.projectId}:${proto.eventType}`;
+      }
+      const triggers = this.multicastTriggers[triggerKey] || [];
 
       triggers.forEach((triggerId) => {
         this.workQueue.submit(() => {

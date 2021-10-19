@@ -1,5 +1,4 @@
 import { expect } from "chai";
-import _ from "lodash";
 import * as sinon from "sinon";
 import { stub } from "sinon";
 
@@ -145,14 +144,14 @@ describe("ArtifactRegistryCleaner", () => {
 });
 
 describe("ContainerRegistryCleaner", () => {
-  const FUNCTION: backend.FunctionSpec = {
+  const ENDPOINT: backend.Endpoint = {
     platform: "gcfv1",
     project: "project",
     region: "us-central1",
     id: "id",
     entryPoint: "function",
     runtime: "nodejs16",
-    trigger: {},
+    httpsTrigger: {},
   };
 
   // The first function in a region has subdirectories "cache/" and "worker/" in it.
@@ -179,7 +178,7 @@ describe("ContainerRegistryCleaner", () => {
       })
     );
 
-    await cleaner.cleanupFunction(FUNCTION);
+    await cleaner.cleanupFunction(ENDPOINT);
 
     expect(stub.rm).to.have.been.calledOnceWith("project/gcf/us-central1/uuid");
   });
@@ -208,7 +207,7 @@ describe("ContainerRegistryCleaner", () => {
       })
     );
 
-    await cleaner.cleanupFunction(FUNCTION);
+    await cleaner.cleanupFunction(ENDPOINT);
 
     expect(stub.rm).to.have.been.calledOnceWith("project/gcf/us-central1/uuid");
   });
@@ -236,7 +235,7 @@ describe("ContainerRegistryCleaner", () => {
       })
     );
 
-    await cleaner.cleanupFunction(FUNCTION);
+    await cleaner.cleanupFunction(ENDPOINT);
 
     expect(stub.rm).to.not.have.been.called;
   });

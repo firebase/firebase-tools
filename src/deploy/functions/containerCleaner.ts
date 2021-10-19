@@ -65,7 +65,7 @@ async function retry<Return>(func: () => Promise<Return>): Promise<Return> {
   }
 }
 
-export async function cleanupBuildImages(functions: backend.FunctionSpec[]): Promise<void> {
+export async function cleanupBuildImages(functions: backend.TargetIds[]): Promise<void> {
   utils.logBullet(clc.bold.cyan("functions: ") + "cleaning up build files...");
   const failedDomains: Set<string> = new Set();
   if (previews.artifactregistry) {
@@ -151,7 +151,7 @@ export class ContainerRegistryCleaner {
   // The underlying Helper's caching should make this expensive for
   // the first function and free for the next functions in the same
   // region.
-  async cleanupFunction(func: backend.FunctionSpec): Promise<void> {
+  async cleanupFunction(func: backend.TargetIds): Promise<void> {
     const helper = this.helper(func.region);
     const uuids = (await helper.ls(`${func.project}/gcf/${func.region}`)).children;
 
@@ -323,7 +323,7 @@ export class DockerHelper {
   // While we can't guarantee all promises will succeed, we can do our darndest
   // to expunge as much as possible before throwing.
   async rm(path: string): Promise<void> {
-    let toThrowLater: any = undefined;
+    let toThrowLater: unknown = undefined;
     const stat = await this.ls(path);
     const recursive = stat.children.map((child) =>
       (async () => {
