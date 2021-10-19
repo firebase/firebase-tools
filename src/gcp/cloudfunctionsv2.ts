@@ -8,7 +8,6 @@ import * as backend from "../deploy/functions/backend";
 import * as runtimes from "../deploy/functions/runtimes";
 import * as proto from "./proto";
 import * as utils from "../utils";
-import * as storage from "./storage";
 
 export const API_VERSION = "v2alpha";
 
@@ -420,6 +419,12 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
         trigger.eventTrigger.eventFilters[attribute] = value;
       }
     }
+    proto.renameIfPresent(
+      trigger.eventTrigger,
+      gcfFunction.eventTrigger,
+      "region",
+      "triggerRegion"
+    );
   } else {
     trigger = { httpsTrigger: {} };
   }

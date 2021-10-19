@@ -1,24 +1,25 @@
 import * as clc from "cli-color";
 
+import { Executor } from "./executor";
 import { FirebaseError } from "../../../error";
-import { functionsOrigin, functionsV2Origin } from "../../../api";
-import * as utils from "../../../utils";
+import { SourceTokenScraper } from "./sourceTokenScraper";
+import { Timer } from "./timer";
 import { assertExhaustive } from "../../../functional";
-import * as planner from "./planner";
+import { getHumanFriendlyRuntimeName } from "../runtimes";
+import { functionsOrigin, functionsV2Origin } from "../../../api";
+import { logger } from "../../../logger";
 import * as backend from "../backend";
-import * as helper from "../functionsDeployHelper";
+import * as deploymentTool from "../../../deploymentTool";
 import * as gcf from "../../../gcp/cloudfunctions";
 import * as gcfV2 from "../../../gcp/cloudfunctionsv2";
-import * as run from "../../../gcp/run";
-import * as pubsub from "../../../gcp/pubsub";
-import * as scheduler from "../../../gcp/cloudscheduler";
-import { getHumanFriendlyRuntimeName } from "../runtimes";
-import { SourceTokenScraper } from "./sourceTokenScraper";
+import * as helper from "../functionsDeployHelper";
+import * as planner from "./planner";
 import * as poller from "../../../operation-poller";
-import { logger } from "../../../logger";
-import { Executor } from "./executor";
-import { Timer } from "./timer";
+import * as pubsub from "../../../gcp/pubsub";
 import * as reporter from "./reporter";
+import * as run from "../../../gcp/run";
+import * as scheduler from "../../../gcp/cloudscheduler";
+import * as utils from "../../../utils";
 
 // TODO: Tune this for better performance.
 const gcfV1PollerOptions = {
@@ -47,9 +48,9 @@ export interface FabricatorArgs {
   storage?: Record<string, gcfV2.StorageSource>;
 }
 
-const rethrowAs = (endpoint: backend.Endpoint, op: reporter.OperationType) => (
+const rethrowAs = <T>(endpoint: backend.Endpoint, op: reporter.OperationType) => (
   err: unknown
-): void => {
+): T => {
   throw new reporter.DeploymentError(endpoint, op, err);
 };
 
@@ -155,6 +156,7 @@ export class Fabricator {
   }
 
   async createEndpoint(endpoint: backend.Endpoint, scraper: SourceTokenScraper): Promise<void> {
+    endpoint.labels = { ...endpoint.labels, ...deploymentTool.labels() };
     if (endpoint.platform === "gcfv1") {
       await this.createV1Function(endpoint, scraper);
     } else if (endpoint.platform === "gcfv2") {
@@ -167,6 +169,7 @@ export class Fabricator {
   }
 
   async updateEndpoint(update: planner.EndpointUpdate, scraper: SourceTokenScraper): Promise<void> {
+    update.endpoint.labels = { ...update.endpoint.labels, ...deploymentTool.labels() };
     if (update.deleteAndRecreate) {
       await this.deleteEndpoint(update.deleteAndRecreate);
       await this.createEndpoint(update.endpoint, scraper);
@@ -200,10 +203,10 @@ export class Fabricator {
     }
     const apiFunction = gcf.functionFromEndpoint(endpoint, this.sourceUrl);
     apiFunction.sourceToken = await scraper.tokenPromise();
-    await this.functionExecutor
+    const resultFunction = await this.functionExecutor
       .run(async () => {
         const op: { name: string } = await gcf.createFunction(apiFunction);
-        await poller.pollOperation<unknown>({
+        return poller.pollOperation<gcf.CloudFunction>({
           ...gcfV1PollerOptions,
           pollerName: `create-${endpoint.region}-${endpoint.id}`,
           operationResourceName: op.name,
@@ -212,6 +215,7 @@ export class Fabricator {
       })
       .catch(rethrowAs(endpoint, "create"));
 
+    endpoint.uri = resultFunction?.httpsTrigger?.url;
     if (backend.isHttpsTriggered(endpoint)) {
       const invoker = endpoint.httpsTrigger.invoker || ["public"];
       if (!invoker.includes("private")) {
@@ -265,6 +269,7 @@ export class Fabricator {
       })
       .catch(rethrowAs(endpoint, "create"))) as gcfV2.CloudFunction;
 
+    endpoint.uri = resultFunction.serviceConfig.uri;
     const serviceName = resultFunction.serviceConfig.service!;
     if (backend.isHttpsTriggered(endpoint)) {
       const invoker = endpoint.httpsTrigger.invoker || ["public"];
@@ -289,10 +294,10 @@ export class Fabricator {
     }
     const apiFunction = gcf.functionFromEndpoint(endpoint, this.sourceUrl);
     apiFunction.sourceToken = await scraper.tokenPromise();
-    await this.functionExecutor
+    const resultFunction = await this.functionExecutor
       .run(async () => {
         const op: { name: string } = await gcf.updateFunction(apiFunction);
-        await poller.pollOperation<unknown>({
+        return await poller.pollOperation<gcf.CloudFunction>({
           ...gcfV1PollerOptions,
           pollerName: `update-${endpoint.region}-${endpoint.id}`,
           operationResourceName: op.name,
@@ -301,6 +306,7 @@ export class Fabricator {
       })
       .catch(rethrowAs(endpoint, "update"));
 
+    endpoint.uri = resultFunction?.httpsTrigger?.url;
     if (backend.isHttpsTriggered(endpoint) && endpoint.httpsTrigger.invoker) {
       await this.executor
         .run(async () => {
@@ -341,7 +347,7 @@ export class Fabricator {
       })
       .catch(rethrowAs(endpoint, "update"))) as gcfV2.CloudFunction;
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    endpoint.uri = resultFunction.serviceConfig.uri;
     const serviceName = resultFunction.serviceConfig.service!;
     if (backend.isHttpsTriggered(endpoint) && endpoint.httpsTrigger.invoker) {
       await this.executor
@@ -470,7 +476,7 @@ export class Fabricator {
     const runtime = getHumanFriendlyRuntimeName(endpoint.runtime);
     const label = helper.getFunctionLabel(endpoint);
     utils.logBullet(
-      `${clc.bold.cyan("functions: ")} ${op} ${runtime} function ${clc.bold(label)}...`
+      `${clc.bold.cyan("functions:")} ${op} ${runtime} function ${clc.bold(label)}...`
     );
   }
 

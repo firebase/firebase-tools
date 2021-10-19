@@ -96,15 +96,15 @@ export async function prepare(
   // We'd eventually have to add special error handling for billing APIs, but
   // enableCloudBuild is called above and has this special casing already.
   if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
-    const V2_APIS = {
-      artifactregistry: "artifactregistry.googleapis.com",
-      cloudrun: "run.googleapis.com",
-      eventarc: "eventarc.googleapis.com",
-      pubsub: "pubsub.googleapis.com",
-      storage: "storage.googleapis.com",
-    };
-    const enablements = Object.entries(V2_APIS).map(([tag, api]) => {
-      return ensureApiEnabled.ensure(context.projectId, api, tag);
+    const V2_APIS = [
+      "artifactregistry.googleapis.com",
+      "run.googleapis.com",
+      "eventarc.googleapis.com",
+      "pubsub.googleapis.com",
+      "storage.googleapis.com",
+    ];
+    const enablements = V2_APIS.map((api) => {
+      return ensureApiEnabled.ensure(context.projectId, api, "functions");
     });
     await Promise.all(enablements);
   }
@@ -136,13 +136,8 @@ export async function prepare(
   // require cloudscheudler and, in v1, require pub/sub), or can eventually come from
   // explicit dependencies.
   await Promise.all(
-    Object.keys(wantBackend.requiredAPIs).map((friendlyName) => {
-      return ensureApiEnabled.ensure(
-        projectId,
-        wantBackend.requiredAPIs[friendlyName],
-        friendlyName,
-        /* silent=*/ false
-      );
+    Object.values(wantBackend.requiredAPIs).map((api) => {
+      return ensureApiEnabled.ensure(projectId, api, "functions", /* silent=*/ false);
     })
   );
 
@@ -192,10 +187,24 @@ export function inferDetailsFromExisting(
       };
     }
 
-    const missingRegion = backend.isEventTriggered(wantE) && !wantE.eventTrigger.region;
-    const haveOldRegion = backend.isEventTriggered(haveE) && !!haveE.eventTrigger.region;
-    if (missingRegion && haveOldRegion) {
-      (wantE as backend.EventTriggered).eventTrigger.region = (haveE as backend.EventTriggered).eventTrigger.region;
-    }
+    maybeCopyTriggerRegion(wantE, haveE);
   }
+}
+
+function maybeCopyTriggerRegion(wantE: backend.Endpoint, haveE: backend.Endpoint): void {
+  if (!backend.isEventTriggered(wantE) || !backend.isEventTriggered(haveE)) {
+    return;
+  }
+  if (wantE.eventTrigger.region || !haveE.eventTrigger.region) {
+    return;
+  }
+
+  // Don't copy the region if anything about the trigger changed. It's possible
+  // they changed the resource.
+  const oldTrigger: Record<string, unknown> = { ...haveE.eventTrigger };
+  delete oldTrigger.region;
+  if (JSON.stringify(oldTrigger) !== JSON.stringify(wantE.eventTrigger)) {
+    return;
+  }
+  wantE.eventTrigger.region = haveE.eventTrigger.region;
 }

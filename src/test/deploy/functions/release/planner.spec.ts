@@ -83,6 +83,36 @@ describe("planner", () => {
       });
     });
 
+    it("knows to delete & recreate when trigger regions change", () => {
+      const original: backend.Endpoint = func("a", "b", {
+        eventTrigger: {
+          eventType: "google.cloud.storage.object.v1.finalzied",
+          eventFilters: {
+            bucket: "mybucket",
+          },
+          region: "us-west1",
+          retry: false,
+        },
+      });
+      original.platform = "gcfv2";
+      const changed: backend.Endpoint = func("a", "b", {
+        eventTrigger: {
+          eventType: "google.cloud.storage.object.v1.finalzied",
+          eventFilters: {
+            bucket: "bucket2",
+          },
+          region: "us",
+          retry: false,
+        },
+      });
+      changed.platform = "gcfv2";
+      allowV2Upgrades();
+      expect(planner.calculateUpdate(changed, original)).to.deep.equal({
+        endpoint: changed,
+        deleteAndRecreate: original,
+      });
+    });
+
     it("knows to upgrade in-place in the general case", () => {
       const v1Function: backend.Endpoint = {
         ...func("a", "b"),
@@ -111,7 +141,7 @@ describe("planner", () => {
       const have = { updated, deleted, pantheon };
 
       // note: pantheon is not updated in any way
-      expect(planner.calculateRegionalChanges(want, have)).to.deep.equal({
+      expect(planner.calculateRegionalChanges(want, have, {})).to.deep.equal({
         endpointsToCreate: [created],
         endpointsToUpdate: [
           {
@@ -119,6 +149,28 @@ describe("planner", () => {
           },
         ],
         endpointsToDelete: [deleted],
+      });
+    });
+
+    it("can be told to delete all functions", () => {
+      const created = func("created", "region");
+      const updated = func("updated", "region");
+      const deleted = func("deleted", "region");
+      deleted.labels = deploymentTool.labels();
+      const pantheon = func("pantheon", "region");
+
+      const want = { created, updated };
+      const have = { updated, deleted, pantheon };
+
+      // note: pantheon is deleted because we have deleteAll: true
+      expect(planner.calculateRegionalChanges(want, have, { deleteAll: true })).to.deep.equal({
+        endpointsToCreate: [created],
+        endpointsToUpdate: [
+          {
+            endpoint: updated,
+          },
+        ],
+        endpointsToDelete: [deleted, pantheon],
       });
     });
   });
@@ -139,7 +191,7 @@ describe("planner", () => {
       const want = backend.of(group1Updated, group1Created, group2Updated, group2Created);
       const have = backend.of(group1Updated, group1Deleted, group2Updated, group2Deleted);
 
-      expect(planner.createDeploymentPlan(want, have, [["g1"]])).to.deep.equal({
+      expect(planner.createDeploymentPlan(want, have, { filters: [["g1"]] })).to.deep.equal({
         region: {
           endpointsToCreate: [group1Created],
           endpointsToUpdate: [
@@ -162,7 +214,7 @@ describe("planner", () => {
       const want = backend.of(upgraded);
 
       allowV2Upgrades();
-      planner.createDeploymentPlan(want, have, []);
+      planner.createDeploymentPlan(want, have);
       expect(logLabeledBullet).to.have.been.calledOnceWith(
         "functions",
         sinon.match(/change this with the 'concurrency' option/)
@@ -176,11 +228,11 @@ describe("planner", () => {
     // should be no warning
     const v2Function: backend.Endpoint = { ...func("id", "region"), platform: "gcfv2" };
 
-    planner.createDeploymentPlan(backend.of(v2Function), backend.of(v2Function), []);
+    planner.createDeploymentPlan(backend.of(v2Function), backend.of(v2Function));
     expect(logLabeledBullet).to.not.have.been.called;
 
     const v1Function: backend.Endpoint = { ...func("id", "region"), platform: "gcfv1" };
-    planner.createDeploymentPlan(backend.of(v1Function), backend.of(v1Function), []);
+    planner.createDeploymentPlan(backend.of(v1Function), backend.of(v1Function));
     expect(logLabeledBullet).to.not.have.been.called;
 
     // Upgraded but specified concurrency
@@ -189,7 +241,7 @@ describe("planner", () => {
       platform: "gcfv2",
       concurrency: 80,
     };
-    planner.createDeploymentPlan(backend.of(concurrencyUpgraded), backend.of(v1Function), []);
+    planner.createDeploymentPlan(backend.of(concurrencyUpgraded), backend.of(v1Function));
     expect(logLabeledBullet).to.not.have.been.called;
   });
 

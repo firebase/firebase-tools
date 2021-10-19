@@ -19,10 +19,17 @@ export interface RegionalChanges {
 
 export type DeploymentPlan = Record<string, RegionalChanges>;
 
+export interface Options {
+  filters?: string[][];
+  // If set to false, will delete only functions that are managed by firebase
+  deleteAll?: boolean;
+}
+
 /** Calculate the changes needed for a given region. */
 export function calculateRegionalChanges(
   want: Record<string, backend.Endpoint>,
-  have: Record<string, backend.Endpoint>
+  have: Record<string, backend.Endpoint>,
+  options: Options
 ): RegionalChanges {
   const endpointsToCreate = Object.keys(want)
     .filter((id) => !have[id])
@@ -30,7 +37,7 @@ export function calculateRegionalChanges(
 
   const endpointsToDelete = Object.keys(have)
     .filter((id) => !want[id])
-    .filter((id) => isFirebaseManaged(have[id].labels || {}))
+    .filter((id) => options.deleteAll || isFirebaseManaged(have[id].labels || {}))
     .map((id) => have[id]);
 
   const endpointsToUpdate = Object.keys(want)
@@ -49,9 +56,12 @@ export function calculateUpdate(want: backend.Endpoint, have: backend.Endpoint):
   checkForIllegalUpdate(want, have);
 
   const update: EndpointUpdate = {
-    endpoint: { ...want },
+    endpoint: want,
   };
-  const needsDelete = changedV2PubSubTopic(want, have) || upgradedScheduleFromV1ToV2(want, have);
+  const needsDelete =
+    changedTriggerRegion(want, have) ||
+    changedV2PubSubTopic(want, have) ||
+    upgradedScheduleFromV1ToV2(want, have);
   if (needsDelete) {
     update.deleteAndRecreate = have;
   }
@@ -67,21 +77,22 @@ export function calculateUpdate(want: backend.Endpoint, have: backend.Endpoint):
 export function createDeploymentPlan(
   want: backend.Backend,
   have: backend.Backend,
-  filters: string[][]
+  options: Options = {}
 ): DeploymentPlan {
   const deployment: DeploymentPlan = {};
   want = backend.matchingBackend(want, (endpoint) => {
-    return functionMatchesAnyGroup(endpoint, filters);
+    return functionMatchesAnyGroup(endpoint, options.filters || []);
   });
   have = backend.matchingBackend(have, (endpoint) => {
-    return functionMatchesAnyGroup(endpoint, filters);
+    return functionMatchesAnyGroup(endpoint, options.filters || []);
   });
 
   const regions = new Set([...Object.keys(want.endpoints), ...Object.keys(have.endpoints)]);
   for (const region of regions) {
     deployment[region] = calculateRegionalChanges(
       want.endpoints[region] || {},
-      have.endpoints[region] || {}
+      have.endpoints[region] || {},
+      options
     );
   }
 
@@ -118,6 +129,25 @@ export function upgradedToGCFv2WithoutSettingConcurrency(
 
     return true;
   });
+}
+
+/** Whether a trigger chagned regions. This can happen if, for example,
+ *  a user listens to a different bucket, which happens to have a different region.
+ */
+export function changedTriggerRegion(want: backend.Endpoint, have: backend.Endpoint): boolean {
+  if (want.platform != "gcfv2") {
+    return false;
+  }
+  if (have.platform != "gcfv2") {
+    return false;
+  }
+  if (!backend.isEventTriggered(want)) {
+    return false;
+  }
+  if (!backend.isEventTriggered(have)) {
+    return false;
+  }
+  return want.eventTrigger.region != have.eventTrigger.region;
 }
 
 /** Whether a user changed the Pub/Sub topic of a GCFv2 function (which isn't allowed in the API). */

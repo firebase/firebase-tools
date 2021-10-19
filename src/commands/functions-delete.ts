@@ -36,60 +36,57 @@ export default new Command("functions:delete [filters...]")
       filters: filters.map((f) => f.split(".")),
     };
 
+    const [config, existingBackend] = await Promise.all([
+      functionsConfig.getFirebaseConfig(options),
+      backend.existingBackend(context),
+    ]);
+    await backend.checkAvailability(context, /* want=*/ backend.empty());
+    const appEngineLocation = functionsConfig.getAppEngineLocation(config);
+
+    if (options.region) {
+      existingBackend.endpoints = { [options.region]: existingBackend.endpoints[options.region] };
+    }
+    const plan = planner.createDeploymentPlan(/* want= */ backend.empty(), existingBackend, {
+      filters: context.filters,
+      deleteAll: true,
+    });
+    const allEpToDelete = Object.values(plan)
+      .map((changes) => changes.endpointsToDelete)
+      .reduce(reduceFlat, [])
+      .sort(backend.compareFunctions);
+    if (allEpToDelete.length === 0) {
+      throw new FirebaseError(
+        `The specified filters do not match any existing functions in project ${clc.bold(
+          context.projectId
+        )}.`
+      );
+    }
+
+    const deleteList = allEpToDelete.map((func) => `\t${helper.getFunctionLabel(func)}`).join("\n");
+    const confirmDeletion = await promptOnce(
+      {
+        type: "confirm",
+        name: "force",
+        default: false,
+        message:
+          "You are about to delete the following Cloud Functions:\n" +
+          deleteList +
+          "\n  Are you sure?",
+      },
+      options
+    );
+    if (!confirmDeletion) {
+      throw new FirebaseError("Command aborted.");
+    }
+
+    const functionExecutor: executor.QueueExecutor = new executor.QueueExecutor({
+      retries: 30,
+      backoff: 20000,
+      concurrency: 40,
+      maxBackoff: 40000,
+    });
+
     try {
-      const [config, existingBackend] = await Promise.all([
-        functionsConfig.getFirebaseConfig(options),
-        backend.existingBackend(context),
-      ]);
-      await backend.checkAvailability(context, /* want=*/ backend.empty());
-      const appEngineLocation = functionsConfig.getAppEngineLocation(config);
-
-      if (options.region) {
-        existingBackend.endpoints = { [options.region]: existingBackend.endpoints[options.region] };
-      }
-      const plan = planner.createDeploymentPlan(
-        /* want= */ backend.empty(),
-        existingBackend,
-        context.filters
-      );
-      const allEpToDelete = Object.values(plan)
-        .map((changes) => changes.endpointsToDelete)
-        .reduce(reduceFlat, [])
-        .sort(backend.compareFunctions);
-      if (allEpToDelete.length === 0) {
-        throw new Error(
-          `The specified filters do not match any existing functions in project ${clc.bold(
-            context.projectId
-          )}.`
-        );
-      }
-
-      const deleteList = allEpToDelete
-        .map((func) => `\t${helper.getFunctionLabel(func)}`)
-        .join("\n");
-      const confirmDeletion = await promptOnce(
-        {
-          type: "confirm",
-          name: "force",
-          default: false,
-          message:
-            "You are about to delete the following Cloud Functions:\n" +
-            deleteList +
-            "\n  Are you sure?",
-        },
-        options
-      );
-      if (!confirmDeletion) {
-        throw new Error("Command aborted.");
-      }
-
-      const functionExecutor: executor.QueueExecutor = new executor.QueueExecutor({
-        retries: 30,
-        backoff: 20000,
-        concurrency: 40,
-        maxBackoff: 40000,
-      });
-
       const fab = new fabricator.Fabricator({
         functionExecutor,
         executor: new executor.QueueExecutor({}),
