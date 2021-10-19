@@ -11,6 +11,7 @@ import * as gcs from "../../gcp/storage";
 import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfv2 from "../../gcp/cloudfunctionsv2";
 import * as utils from "../../utils";
+import * as backend from "./backend";
 
 const GCP_REGION = functionsUploadRegion;
 
@@ -62,21 +63,15 @@ export async function deploy(
   try {
     const want = payload.functions!.backend;
     const uploads: Promise<void>[] = [];
-    if (want.cloudFunctions.some((fn) => fn.platform === "gcfv1")) {
+    if (backend.allEndpoints(want).some((endpoint) => endpoint.platform === "gcfv1")) {
       uploads.push(uploadSourceV1(context));
     }
-    if (want.cloudFunctions.some((fn) => fn.platform === "gcfv2")) {
+
+    for (const region of Object.keys(want.endpoints)) {
       // GCFv2 cares about data residency and will possibly block deploys coming from other
       // regions. At minimum, the implementation would consider it user-owned source and
       // would break download URLs + console source viewing.
-      const functions = payload.functions!.backend.cloudFunctions;
-      const regions: string[] = [];
-      for (const func of functions) {
-        if (func.platform === "gcfv2" && -1 === regions.indexOf(func.region)) {
-          regions.push(func.region);
-        }
-      }
-      for (const region of regions) {
+      if (backend.regionalEndpoints(want, region).some((e) => e.platform === "gcfv2")) {
         uploads.push(uploadSourceV2(context, region));
       }
     }
