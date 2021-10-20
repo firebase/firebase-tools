@@ -44,7 +44,11 @@ module.exports = new Command("ext:dev:unpublish <extensionRef>")
     utils.logLabeledSuccess(logPrefix, "successfully unpublished all versions of this extension.");
   });
 
-async function comfirmUnpublish(publisherId: string, extensionId: string, options: any): Promise<boolean> {
+async function comfirmUnpublish(
+  publisherId: string,
+  extensionId: string,
+  options: any
+): Promise<boolean> {
   if (options.nonInteractive && !options.force) {
     throw new FirebaseError("Pass the --force flag to use this command in non-interactive mode");
   }
