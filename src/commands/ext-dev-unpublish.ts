@@ -57,6 +57,6 @@ async function comfirmUnpublish(publisherId: string, extensionId: string, option
   return promptOnce({
     type: "confirm",
     message,
-    default: false, // Force users to explicitly type 'yes',
+    default: false, // Force users to explicitly type 'yes'
   });
 }
