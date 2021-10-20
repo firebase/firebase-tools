@@ -17,7 +17,7 @@ const SAMPLE_EVENT_TRIGGER: backend.EventTrigger = {
   retry: false,
 };
 
-const SAMPLE_FUNC: backend.FunctionSpec = {
+const SAMPLE_ENDPOINT: backend.Endpoint = {
   platform: "gcfv1",
   id: "c",
   region: "us-central1",
@@ -26,7 +26,7 @@ const SAMPLE_FUNC: backend.FunctionSpec = {
   labels: {},
   environmentVariables: {},
   runtime: "nodejs16",
-  trigger: SAMPLE_EVENT_TRIGGER,
+  eventTrigger: SAMPLE_EVENT_TRIGGER,
 };
 
 const SAMPLE_OPTIONS: Options = {
@@ -57,142 +57,158 @@ describe("promptForFailurePolicies", () => {
   });
 
   it("should prompt if there are new functions with failure policies", async () => {
-    const funcs = [
-      {
-        ...SAMPLE_FUNC,
-        trigger: {
-          ...SAMPLE_EVENT_TRIGGER,
-          retry: true,
-        },
+    const endpoint = {
+      ...SAMPLE_ENDPOINT,
+      eventTrigger: {
+        ...SAMPLE_EVENT_TRIGGER,
+        retry: true,
       },
-    ];
+    };
     promptStub.resolves(true);
 
-    await expect(functionPrompts.promptForFailurePolicies(SAMPLE_OPTIONS, funcs, [])).not.to.be
-      .rejected;
+    await expect(
+      functionPrompts.promptForFailurePolicies(
+        SAMPLE_OPTIONS,
+        backend.of(endpoint),
+        backend.empty()
+      )
+    ).not.to.be.rejected;
     expect(promptStub).to.have.been.calledOnce;
   });
 
   it("should not prompt if all functions with failure policies already had failure policies", async () => {
-    const func = {
-      ...SAMPLE_FUNC,
-      trigger: {
+    const endpoint = {
+      ...SAMPLE_ENDPOINT,
+      eventTrigger: {
         ...SAMPLE_EVENT_TRIGGER,
         retry: true,
       },
     };
 
-    await expect(functionPrompts.promptForFailurePolicies(SAMPLE_OPTIONS, [func], [func])).to
-      .eventually.be.fulfilled;
+    await expect(
+      functionPrompts.promptForFailurePolicies(
+        SAMPLE_OPTIONS,
+        backend.of(endpoint),
+        backend.of(endpoint)
+      )
+    ).eventually.be.fulfilled;
     expect(promptStub).to.not.have.been.called;
   });
 
   it("should throw if user declines the prompt", async () => {
-    const funcs = [
-      {
-        ...SAMPLE_FUNC,
-        trigger: {
-          ...SAMPLE_EVENT_TRIGGER,
-          retry: true,
-        },
+    const endpoint = {
+      ...SAMPLE_ENDPOINT,
+      eventTrigger: {
+        ...SAMPLE_EVENT_TRIGGER,
+        retry: true,
       },
-    ];
+    };
     promptStub.resolves(false);
 
     await expect(
-      functionPrompts.promptForFailurePolicies(SAMPLE_OPTIONS, funcs, [])
+      functionPrompts.promptForFailurePolicies(
+        SAMPLE_OPTIONS,
+        backend.of(endpoint),
+        backend.empty()
+      )
     ).to.eventually.be.rejectedWith(FirebaseError, /Deployment canceled/);
     expect(promptStub).to.have.been.calledOnce;
   });
 
   it("should prompt if an existing function adds a failure policy", async () => {
-    const func = {
-      ...SAMPLE_FUNC,
-      trigger: {
+    const endpoint = {
+      ...SAMPLE_ENDPOINT,
+      eventTrigger: {
         ...SAMPLE_EVENT_TRIGGER,
       },
     };
-    const newFunc = {
-      ...SAMPLE_FUNC,
-      trigger: {
+    const newEndpoint = {
+      ...SAMPLE_ENDPOINT,
+      eventTrigger: {
         ...SAMPLE_EVENT_TRIGGER,
         retry: true,
       },
     };
     promptStub.resolves(true);
 
-    await expect(functionPrompts.promptForFailurePolicies(SAMPLE_OPTIONS, [newFunc], [func])).to
-      .eventually.be.fulfilled;
+    await expect(
+      functionPrompts.promptForFailurePolicies(
+        SAMPLE_OPTIONS,
+        backend.of(newEndpoint),
+        backend.of(endpoint)
+      )
+    ).eventually.be.fulfilled;
     expect(promptStub).to.have.been.calledOnce;
   });
 
   it("should throw if there are any functions with failure policies and the user doesn't accept the prompt", async () => {
-    const funcs = [
-      {
-        ...SAMPLE_FUNC,
-        trigger: {
-          ...SAMPLE_EVENT_TRIGGER,
-          retry: true,
-        },
+    const endpoint = {
+      ...SAMPLE_ENDPOINT,
+      eventTrigger: {
+        ...SAMPLE_EVENT_TRIGGER,
+        retry: true,
       },
-    ];
+    };
     promptStub.resolves(false);
 
     await expect(
-      functionPrompts.promptForFailurePolicies(SAMPLE_OPTIONS, funcs, [])
+      functionPrompts.promptForFailurePolicies(
+        SAMPLE_OPTIONS,
+        backend.of(endpoint),
+        backend.empty()
+      )
     ).to.eventually.be.rejectedWith(FirebaseError, /Deployment canceled/);
     expect(promptStub).to.have.been.calledOnce;
   });
 
   it("should not prompt if there are no functions with failure policies", async () => {
-    const funcs = [
-      {
-        ...SAMPLE_FUNC,
-        trigger: {
-          ...SAMPLE_EVENT_TRIGGER,
-        },
+    const endpoint = {
+      ...SAMPLE_ENDPOINT,
+      eventTrigger: {
+        ...SAMPLE_EVENT_TRIGGER,
       },
-    ];
+    };
     promptStub.resolves();
 
-    await expect(functionPrompts.promptForFailurePolicies(SAMPLE_OPTIONS, funcs, [])).to.eventually
-      .be.fulfilled;
+    await expect(
+      functionPrompts.promptForFailurePolicies(
+        SAMPLE_OPTIONS,
+        backend.of(endpoint),
+        backend.empty()
+      )
+    ).to.eventually.be.fulfilled;
     expect(promptStub).not.to.have.been.called;
   });
 
   it("should throw if there are any functions with failure policies, in noninteractive mode, without the force flag set", async () => {
-    const funcs = [
-      {
-        ...SAMPLE_FUNC,
-        trigger: {
-          ...SAMPLE_EVENT_TRIGGER,
-          retry: true,
-        },
+    const endpoint = {
+      ...SAMPLE_ENDPOINT,
+      eventTrigger: {
+        ...SAMPLE_EVENT_TRIGGER,
+        retry: true,
       },
-    ];
+    };
     const options = { ...SAMPLE_OPTIONS, nonInteractive: true };
 
-    await expect(functionPrompts.promptForFailurePolicies(options, funcs, [])).to.be.rejectedWith(
-      FirebaseError,
-      /--force option/
-    );
+    await expect(
+      functionPrompts.promptForFailurePolicies(options, backend.of(endpoint), backend.empty())
+    ).to.be.rejectedWith(FirebaseError, /--force option/);
     expect(promptStub).not.to.have.been.called;
   });
 
   it("should not throw if there are any functions with failure policies, in noninteractive mode, with the force flag set", async () => {
-    const funcs = [
-      {
-        ...SAMPLE_FUNC,
-        trigger: {
-          ...SAMPLE_EVENT_TRIGGER,
-          retry: true,
-        },
+    const endpoint = {
+      ...SAMPLE_ENDPOINT,
+      eventTrigger: {
+        ...SAMPLE_EVENT_TRIGGER,
+        retry: true,
       },
-    ];
+    };
     const options = { ...SAMPLE_OPTIONS, nonInteractive: true, force: true };
 
-    await expect(functionPrompts.promptForFailurePolicies(options, funcs, [])).to.eventually.be
-      .fulfilled;
+    await expect(
+      functionPrompts.promptForFailurePolicies(options, backend.of(endpoint), backend.empty())
+    ).to.eventually.be.fulfilled;
     expect(promptStub).not.to.have.been.called;
   });
 });
@@ -212,199 +228,207 @@ describe("promptForMinInstances", () => {
   });
 
   it("should prompt if there are new functions with minInstances", async () => {
-    const funcs = [
-      {
-        ...SAMPLE_FUNC,
-        minInstances: 1,
-      },
-    ];
+    const endpoint = {
+      ...SAMPLE_ENDPOINT,
+      minInstances: 1,
+    };
     promptStub.resolves(true);
 
-    await expect(functionPrompts.promptForMinInstances(SAMPLE_OPTIONS, funcs, [])).not.to.be
-      .rejected;
+    await expect(
+      functionPrompts.promptForMinInstances(SAMPLE_OPTIONS, backend.of(endpoint), backend.empty())
+    ).not.to.be.rejected;
     expect(promptStub).to.have.been.calledOnce;
   });
 
   it("should not prompt if no fucntion has minInstance", async () => {
-    await expect(
-      functionPrompts.promptForMinInstances(SAMPLE_OPTIONS, [SAMPLE_FUNC], [SAMPLE_FUNC])
-    ).to.eventually.be.fulfilled;
+    const bkend = backend.of(SAMPLE_ENDPOINT);
+    await expect(functionPrompts.promptForMinInstances(SAMPLE_OPTIONS, bkend, bkend)).to.eventually
+      .be.fulfilled;
     expect(promptStub).to.not.have.been.called;
   });
 
   it("should not prompt if all functions with minInstances already had the same number of minInstances", async () => {
-    const func = {
-      ...SAMPLE_FUNC,
+    const bkend = backend.of({
+      ...SAMPLE_ENDPOINT,
       minInstances: 1,
-    };
+    });
 
-    await expect(functionPrompts.promptForMinInstances(SAMPLE_OPTIONS, [func], [func])).to
-      .eventually.be.fulfilled;
+    await expect(functionPrompts.promptForMinInstances(SAMPLE_OPTIONS, bkend, bkend)).to.eventually
+      .be.fulfilled;
     expect(promptStub).to.not.have.been.called;
   });
 
   it("should not prompt if functions decrease in minInstances", async () => {
-    const func = {
-      ...SAMPLE_FUNC,
+    const endpoint = {
+      ...SAMPLE_ENDPOINT,
       minInstances: 2,
     };
-    const newFunc = {
-      ...SAMPLE_FUNC,
+    const newEndpoint = {
+      ...SAMPLE_ENDPOINT,
       minInstances: 1,
     };
 
-    await expect(functionPrompts.promptForMinInstances(SAMPLE_OPTIONS, [newFunc], [func])).to
-      .eventually.be.fulfilled;
+    await expect(
+      functionPrompts.promptForMinInstances(
+        SAMPLE_OPTIONS,
+        backend.of(newEndpoint),
+        backend.of(endpoint)
+      )
+    ).eventually.be.fulfilled;
     expect(promptStub).to.not.have.been.called;
   });
 
   it("should throw if user declines the prompt", async () => {
-    const funcs = [
-      {
-        ...SAMPLE_FUNC,
-        minInstances: 1,
-      },
-    ];
+    const bkend = backend.of({
+      ...SAMPLE_ENDPOINT,
+      minInstances: 1,
+    });
     promptStub.resolves(false);
-
     await expect(
-      functionPrompts.promptForMinInstances(SAMPLE_OPTIONS, funcs, [])
+      functionPrompts.promptForMinInstances(SAMPLE_OPTIONS, bkend, backend.empty())
     ).to.eventually.be.rejectedWith(FirebaseError, /Deployment canceled/);
     expect(promptStub).to.have.been.calledOnce;
   });
 
   it("should prompt if an existing function sets minInstances", async () => {
-    const func = {
-      ...SAMPLE_FUNC,
-    };
-    const newFunc = {
-      ...SAMPLE_FUNC,
+    const newEndpoint = {
+      ...SAMPLE_ENDPOINT,
       minInstances: 1,
     };
     promptStub.resolves(true);
 
-    await expect(functionPrompts.promptForMinInstances(SAMPLE_OPTIONS, [newFunc], [func])).to
-      .eventually.be.fulfilled;
+    await expect(
+      functionPrompts.promptForMinInstances(
+        SAMPLE_OPTIONS,
+        backend.of(newEndpoint),
+        backend.of(SAMPLE_ENDPOINT)
+      )
+    ).eventually.be.fulfilled;
     expect(promptStub).to.have.been.calledOnce;
   });
 
   it("should prompt if an existing function increases minInstances", async () => {
-    const func = {
-      ...SAMPLE_FUNC,
+    const endpoint = {
+      ...SAMPLE_ENDPOINT,
       minInstances: 1,
     };
-    const newFunc = {
-      ...SAMPLE_FUNC,
+    const newEndpoint = {
+      ...SAMPLE_ENDPOINT,
       minInstances: 2,
     };
     promptStub.resolves(true);
 
-    await expect(functionPrompts.promptForMinInstances(SAMPLE_OPTIONS, [newFunc], [func])).to
-      .eventually.be.fulfilled;
+    await expect(
+      functionPrompts.promptForMinInstances(
+        SAMPLE_OPTIONS,
+        backend.of(newEndpoint),
+        backend.of(endpoint)
+      )
+    ).eventually.be.fulfilled;
     expect(promptStub).to.have.been.calledOnce;
   });
 
   it("should prompt if a minInstance function increases resource reservations", async () => {
-    const func: backend.FunctionSpec = {
-      ...SAMPLE_FUNC,
+    const endpoint: backend.Endpoint = {
+      ...SAMPLE_ENDPOINT,
       minInstances: 2,
       availableMemoryMb: 1024,
     };
-    const newFunc: backend.FunctionSpec = {
-      ...SAMPLE_FUNC,
+    const newEndpoint: backend.Endpoint = {
+      ...SAMPLE_ENDPOINT,
       minInstances: 2,
       availableMemoryMb: 2048,
     };
     promptStub.resolves(true);
 
-    await expect(functionPrompts.promptForMinInstances(SAMPLE_OPTIONS, [newFunc], [func])).to
-      .eventually.be.fulfilled;
+    await expect(
+      functionPrompts.promptForMinInstances(
+        SAMPLE_OPTIONS,
+        backend.of(newEndpoint),
+        backend.of(endpoint)
+      )
+    ).eventually.be.fulfilled;
     expect(promptStub).to.have.been.calledOnce;
   });
 
   it("should throw if there are any functions with failure policies and the user doesn't accept the prompt", async () => {
-    const funcs = [
-      {
-        ...SAMPLE_FUNC,
-        minInstances: 2,
-      },
-    ];
+    const endpoint = {
+      ...SAMPLE_ENDPOINT,
+      minInstances: 2,
+    };
     promptStub.resolves(false);
 
     await expect(
-      functionPrompts.promptForMinInstances(SAMPLE_OPTIONS, funcs, [])
+      functionPrompts.promptForMinInstances(SAMPLE_OPTIONS, backend.of(endpoint), backend.empty())
     ).to.eventually.be.rejectedWith(FirebaseError, /Deployment canceled/);
     expect(promptStub).to.have.been.calledOnce;
   });
 
   it("should not prompt if there are no functions with minInstances", async () => {
-    const funcs = [SAMPLE_FUNC];
     promptStub.resolves();
 
-    await expect(functionPrompts.promptForMinInstances(SAMPLE_OPTIONS, funcs, [])).to.eventually.be
-      .fulfilled;
+    await expect(
+      functionPrompts.promptForMinInstances(
+        SAMPLE_OPTIONS,
+        backend.of(SAMPLE_ENDPOINT),
+        backend.empty()
+      )
+    ).to.eventually.be.fulfilled;
     expect(promptStub).not.to.have.been.called;
   });
 
   it("should throw if there are any functions with minInstances, in noninteractive mode, without the force flag set", async () => {
-    const funcs = [
-      {
-        ...SAMPLE_FUNC,
-        minInstances: 1,
-      },
-    ];
+    const endpoint = {
+      ...SAMPLE_ENDPOINT,
+      minInstances: 1,
+    };
     const options = { ...SAMPLE_OPTIONS, nonInteractive: true };
 
-    await expect(functionPrompts.promptForMinInstances(options, funcs, [])).to.be.rejectedWith(
-      FirebaseError,
-      /--force option/
-    );
+    await expect(
+      functionPrompts.promptForMinInstances(options, backend.of(endpoint), backend.empty())
+    ).to.be.rejectedWith(FirebaseError, /--force option/);
     expect(promptStub).not.to.have.been.called;
   });
 
   it("should not throw if there are any functions with minInstances, in noninteractive mode, with the force flag set", async () => {
-    const funcs = [
-      {
-        ...SAMPLE_FUNC,
-        minInstances: 1,
-      },
-    ];
+    const endpoint = {
+      ...SAMPLE_ENDPOINT,
+      minInstances: 1,
+    };
     const options = { ...SAMPLE_OPTIONS, nonInteractive: true, force: true };
 
-    await expect(functionPrompts.promptForMinInstances(options, funcs, [])).to.eventually.be
-      .fulfilled;
+    await expect(
+      functionPrompts.promptForMinInstances(options, backend.of(endpoint), backend.empty())
+    ).to.eventually.be.fulfilled;
     expect(promptStub).not.to.have.been.called;
   });
 
   it("Should disclaim if a bill cannot be calculated", async () => {
-    const funcs = [
-      {
-        ...SAMPLE_FUNC,
-        region: "fillory",
-        minInstances: 1,
-      },
-    ];
+    const endpoint = {
+      ...SAMPLE_ENDPOINT,
+      region: "fillory",
+      minInstances: 1,
+    };
     promptStub.resolves(true);
 
-    await expect(functionPrompts.promptForMinInstances(SAMPLE_OPTIONS, funcs, [])).to.eventually.be
-      .fulfilled;
+    await expect(
+      functionPrompts.promptForMinInstances(SAMPLE_OPTIONS, backend.of(endpoint), backend.empty())
+    ).to.eventually.be.fulfilled;
     expect(promptStub).to.have.been.called;
     expect(logStub.firstCall.args[1]).to.match(/Cannot calculate the minimum monthly bill/);
   });
 
   it("Should advise customers of possible discounts", async () => {
-    const funcs: backend.FunctionSpec[] = [
-      {
-        ...SAMPLE_FUNC,
-        region: "fillory",
-        platform: "gcfv2",
-        minInstances: 2,
-      },
-    ];
+    const endpoint: backend.Endpoint = {
+      ...SAMPLE_ENDPOINT,
+      platform: "gcfv2",
+      minInstances: 2,
+    };
     promptStub.resolves(true);
 
-    await expect(functionPrompts.promptForMinInstances(SAMPLE_OPTIONS, funcs, [])).to.eventually.be
-      .fulfilled;
+    await expect(
+      functionPrompts.promptForMinInstances(SAMPLE_OPTIONS, backend.of(endpoint), backend.empty())
+    ).to.eventually.be.fulfilled;
     expect(promptStub).to.have.been.called;
     expect(logStub.firstCall.args[1]).to.match(new RegExp("https://cloud.google.com/run/cud"));
   });

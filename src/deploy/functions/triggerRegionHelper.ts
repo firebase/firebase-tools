@@ -2,47 +2,53 @@ import * as backend from "./backend";
 import * as storage from "../../gcp/storage";
 import { FirebaseError } from "../../error";
 import { addServiceAccountToRoles } from "../../gcp/resourceManager";
+import { logger } from "../../logger";
+
+const noop = (): Promise<void> => Promise.resolve();
+
+const LOOKUP_BY_EVENT_TYPE: Record<string, (ep: backend.EventTriggered) => Promise<void>> = {
+  "google.cloud.pubsub.topic.v1.messagePublished": noop,
+  "google.cloud.storage.object.v1.finalized": lookupBucketRegion,
+  "google.cloud.storage.object.v1.archived": lookupBucketRegion,
+  "google.cloud.storage.object.v1.deleted": lookupBucketRegion,
+  "google.cloud.storage.object.v1.metadataUpdated": lookupBucketRegion,
+};
 
 /**
  * Sets the trigger region to what we currently have deployed
  * @param want the list of function specs we want to deploy
  * @param have the list of function specs we have deployed
  */
-export async function setTriggerRegion(
-  want: backend.FunctionSpec[],
-  have: backend.FunctionSpec[]
-): Promise<void> {
-  for (const wantFn of want) {
-    if (wantFn.platform === "gcfv1" || !backend.isEventTrigger(wantFn.trigger)) {
+export async function lookupMissingTriggerRegions(want: backend.Backend): Promise<void> {
+  const regionLookups: Array<Promise<void>> = [];
+  for (const ep of backend.allEndpoints(want)) {
+    if (ep.platform === "gcfv1" || !backend.isEventTriggered(ep) || ep.eventTrigger.region) {
       continue;
     }
-    const match = have.find(backend.sameFunctionName(wantFn))?.trigger as backend.EventTrigger;
-    if (match?.region) {
-      wantFn.trigger.region = match.region;
-    } else {
-      await setTriggerRegionFromTriggerType(wantFn.trigger);
+    const lookup = LOOKUP_BY_EVENT_TYPE[ep.eventTrigger.eventType];
+    if (!lookup) {
+      logger.debug(
+        "Don't know how to look up trigger region for event type",
+        ep.eventTrigger.eventType,
+        ". Deploy will fail unless this event type is global"
+      );
+      continue;
     }
+    regionLookups.push(lookup(ep));
   }
+  await Promise.all(regionLookups);
 }
 
-/**
- * Sets the event trigger region by calling finding the region of the underlying resource
- * @param trigger the event trigger with a missing region
- *
- * @throws {@link FirebaseError} when the region is not found
- */
-async function setTriggerRegionFromTriggerType(trigger: backend.EventTrigger): Promise<void> {
-  if (trigger.eventFilters.bucket) {
-    // GCS function
-    try {
-      trigger.region = (
-        await storage.getBucket(trigger.eventFilters.bucket)
-      ).location.toLowerCase();
-    } catch (err) {
-      throw new FirebaseError("Can't find the storage bucket region", { original: err });
-    }
+/** Sets a GCS event trigger's region to the region of its bucket. */
+async function lookupBucketRegion(endpoint: backend.EventTriggered): Promise<void> {
+  try {
+    const bucket: { location: string } = await storage.getBucket(
+      endpoint.eventTrigger.eventFilters.bucket!
+    );
+    endpoint.eventTrigger.region = bucket.location.toLowerCase();
+  } catch (err) {
+    throw new FirebaseError("Can't find the storage bucket region", { original: err });
   }
-  // TODO: add more trigger types
 }
 
 interface StorageServiceAccountResponse {

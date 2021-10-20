@@ -1,15 +1,17 @@
 import { expect } from "chai";
-import { v1 } from "uuid";
 
 import * as backend from "../../../deploy/functions/backend";
 import * as pricing from "../../../deploy/functions/pricing";
 
-const FUNCTION_FRAGMENT: Omit<backend.FunctionSpec, "platform" | "region"> = {
+// N.B. I'm not sure why, but if I don't add back backend.HttpsTriggered
+// then I can't add the trigger to the Omit<>, which means it can't be
+// passed to test methods.
+const ENDPOINT_FRAGMENT: Omit<backend.Endpoint, "platform" | "region"> & backend.HttpsTriggered = {
   id: "function",
   project: "project",
   entryPoint: "foobar",
   runtime: "nodejs16",
-  trigger: {},
+  httpsTrigger: {},
 };
 
 const INVALID_REGION = { region: "fillory" };
@@ -18,7 +20,7 @@ describe("Functions Pricing", () => {
     it("Can calculate the $0 cost of a function without min instances", () => {
       expect(
         pricing.canCalculateMinInstanceCost({
-          ...FUNCTION_FRAGMENT,
+          ...ENDPOINT_FRAGMENT,
           platform: "gcfv1",
           region: "us-central1",
         })
@@ -26,7 +28,7 @@ describe("Functions Pricing", () => {
 
       expect(
         pricing.canCalculateMinInstanceCost({
-          ...FUNCTION_FRAGMENT,
+          ...ENDPOINT_FRAGMENT,
           platform: "gcfv2",
           ...INVALID_REGION,
         })
@@ -36,7 +38,7 @@ describe("Functions Pricing", () => {
     it("Can calculate the cost of a well formed v1 function", () => {
       expect(
         pricing.canCalculateMinInstanceCost({
-          ...FUNCTION_FRAGMENT,
+          ...ENDPOINT_FRAGMENT,
           platform: "gcfv1",
           region: "us-central1",
           minInstances: 10,
@@ -47,7 +49,7 @@ describe("Functions Pricing", () => {
     it("Can calculate the cost of a well formed v2 function", () => {
       expect(
         pricing.canCalculateMinInstanceCost({
-          ...FUNCTION_FRAGMENT,
+          ...ENDPOINT_FRAGMENT,
           platform: "gcfv2",
           region: "us-central1",
           minInstances: 10,
@@ -58,7 +60,7 @@ describe("Functions Pricing", () => {
     it("Cannot calculate the cost of an unknown instance size", () => {
       expect(
         pricing.canCalculateMinInstanceCost({
-          ...FUNCTION_FRAGMENT,
+          ...ENDPOINT_FRAGMENT,
           platform: "gcfv1",
           region: "us-central1",
           minInstances: 10,
@@ -70,7 +72,7 @@ describe("Functions Pricing", () => {
     it("Cannot calculate the cost for an unknown region", () => {
       expect(
         pricing.canCalculateMinInstanceCost({
-          ...FUNCTION_FRAGMENT,
+          ...ENDPOINT_FRAGMENT,
           ...INVALID_REGION,
           platform: "gcfv1",
           minInstances: 10,
@@ -97,7 +99,7 @@ describe("Functions Pricing", () => {
     it("can calculate a v1 tier1 bill", () => {
       const cost = pricing.monthlyMinInstanceCost([
         {
-          ...FUNCTION_FRAGMENT,
+          ...ENDPOINT_FRAGMENT,
           platform: "gcfv1",
           region: "us-central1",
           minInstances: 1,
@@ -115,14 +117,14 @@ describe("Functions Pricing", () => {
     it("doesn't estimate bills for unreserved instances", () => {
       const cost = pricing.monthlyMinInstanceCost([
         {
-          ...FUNCTION_FRAGMENT,
+          ...ENDPOINT_FRAGMENT,
           platform: "gcfv1",
           region: "us-central1",
           minInstances: 1,
           availableMemoryMb: 256,
         },
         {
-          ...FUNCTION_FRAGMENT,
+          ...ENDPOINT_FRAGMENT,
           platform: "gcfv1",
           region: "us-central1",
           minInstances: 0,
@@ -139,7 +141,7 @@ describe("Functions Pricing", () => {
     it("can calculate a bill for a two reserved instances", () => {
       const cost = pricing.monthlyMinInstanceCost([
         {
-          ...FUNCTION_FRAGMENT,
+          ...ENDPOINT_FRAGMENT,
           platform: "gcfv1",
           region: "us-central1",
           minInstances: 2,
@@ -157,14 +159,14 @@ describe("Functions Pricing", () => {
     it("Can calculate a v1 tier1 bill for a two reserved instance between two functions", () => {
       const cost = pricing.monthlyMinInstanceCost([
         {
-          ...FUNCTION_FRAGMENT,
+          ...ENDPOINT_FRAGMENT,
           platform: "gcfv1",
           region: "us-central1",
           minInstances: 1,
           availableMemoryMb: 256,
         },
         {
-          ...FUNCTION_FRAGMENT,
+          ...ENDPOINT_FRAGMENT,
           platform: "gcfv1",
           region: "us-central1",
           minInstances: 1,
@@ -181,7 +183,7 @@ describe("Functions Pricing", () => {
     it("can calculate a v1 tier2 bill", () => {
       const cost = pricing.monthlyMinInstanceCost([
         {
-          ...FUNCTION_FRAGMENT,
+          ...ENDPOINT_FRAGMENT,
           platform: "gcfv1",
           region: "europe-west3",
           minInstances: 1,
@@ -199,7 +201,7 @@ describe("Functions Pricing", () => {
     it("can calculate a v1 bill for large instances", () => {
       const cost = pricing.monthlyMinInstanceCost([
         {
-          ...FUNCTION_FRAGMENT,
+          ...ENDPOINT_FRAGMENT,
           platform: "gcfv1",
           region: "europe-west3",
           minInstances: 1,
@@ -217,7 +219,7 @@ describe("Functions Pricing", () => {
     it("can calculate a v2 tier1 bill", () => {
       const cost = pricing.monthlyMinInstanceCost([
         {
-          ...FUNCTION_FRAGMENT,
+          ...ENDPOINT_FRAGMENT,
           platform: "gcfv2",
           region: "us-central1",
           minInstances: 1,
@@ -235,7 +237,7 @@ describe("Functions Pricing", () => {
     it("can calculate a v2 tier2 bill", () => {
       const cost = pricing.monthlyMinInstanceCost([
         {
-          ...FUNCTION_FRAGMENT,
+          ...ENDPOINT_FRAGMENT,
           platform: "gcfv2",
           region: "europe-west3",
           minInstances: 1,
@@ -253,7 +255,7 @@ describe("Functions Pricing", () => {
     it("can calculate a v2 bill for large instances", () => {
       const cost = pricing.monthlyMinInstanceCost([
         {
-          ...FUNCTION_FRAGMENT,
+          ...ENDPOINT_FRAGMENT,
           platform: "gcfv2",
           region: "europe-west3",
           minInstances: 1,
@@ -271,13 +273,13 @@ describe("Functions Pricing", () => {
     it("calculates v1 and v2 discounts separately", () => {
       const cost = pricing.monthlyMinInstanceCost([
         {
-          ...FUNCTION_FRAGMENT,
+          ...ENDPOINT_FRAGMENT,
           platform: "gcfv1",
           region: "us-central1",
           minInstances: 1,
         },
         {
-          ...FUNCTION_FRAGMENT,
+          ...ENDPOINT_FRAGMENT,
           platform: "gcfv2",
           region: "us-central1",
           minInstances: 1,
