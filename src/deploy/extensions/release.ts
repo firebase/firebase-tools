@@ -12,7 +12,7 @@ export async function release(
   payload: Payload
 ) {
   const projectId = needProjectId(options);
-  const dryRun = false;
+
   const errorHandler = new ErrorHandler();
   const deploymentQueue = new Queue<tasks.ExtensionDeploymentTask, void>({
     retries: 5,
@@ -21,17 +21,17 @@ export async function release(
   });
 
   for (const creation of payload.instancesToCreate ?? []) {
-    const task = tasks.createExtensionInstanceTask(projectId, creation, dryRun);
+    const task = tasks.createExtensionInstanceTask(projectId, creation);
     void deploymentQueue.run(task);
   }
 
   for (const update of payload.instancesToUpdate ?? []) {
-    const task = tasks.updateExtensionInstanceTask(projectId, update, dryRun);
+    const task = tasks.updateExtensionInstanceTask(projectId, update);
     void deploymentQueue.run(task);
   }
 
   for (const update of payload.instancesToConfigure ?? []) {
-    const task = tasks.configureExtensionInstanceTask(projectId, update, dryRun);
+    const task = tasks.configureExtensionInstanceTask(projectId, update);
     void deploymentQueue.run(task);
   }
 

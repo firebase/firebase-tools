@@ -54,7 +54,6 @@ export async function getSecretLabels(
     auth: true,
     origin: api.secretManagerOrigin,
   });
-  // console.log(getRes.body);
   return getRes.body.labels ?? {};
 }
 

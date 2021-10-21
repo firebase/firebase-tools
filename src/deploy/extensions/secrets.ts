@@ -11,12 +11,6 @@ import { FirebaseError } from "../../error";
 import { logger } from "../../logger";
 import { logLabeledBullet } from "../../utils";
 
-interface SecretInfo {
-  secret?: secretManager.Secret;
-  secretVersion?: secretManager.SecretVersion;
-  labels: Record<string, string>;
-}
-
 /**
  * handleSecretParams checks each spec for secret params, and validates that the secrets in the configuration exist.
  * If they don't, it prompts the user to create them in interactive mode
@@ -192,18 +186,17 @@ async function handleSecretParamForUpdate(
   }
 }
 
-async function getSecretInfo(projectId: string, secretName: string, version: string) {
-  const secretInfo: SecretInfo = {
+async function getSecretInfo(projectId: string, secretName: string, version: string): Promise<{
+  secret?: secretManager.Secret;
+  secretVersion?: secretManager.SecretVersion;
+  labels: Record<string, string>;
+}> {
+  const secretInfo: any = {
     labels: {},
   };
   try {
-    logger.debug(`Checking if projects/${projectId}/secrets/${secretName} exists`);
     secretInfo.secret = await secretManager.getSecret(projectId, secretName);
-    logger.debug(
-      `Found secret, checking if projects/${projectId}/secrets/${secretName}/versions/${version} exists`
-    );
     secretInfo.secretVersion = await secretManager.getSecretVersion(projectId, secretName, version);
-    logger.debug(`Found secretVersion, checking labels`);
     secretInfo.labels = await secretManager.getSecretLabels(projectId, secretName);
   } catch (err) {
     // Throw anything other than the expected 404 errors.
@@ -231,11 +224,10 @@ async function promptForCreateSecret(args: {
       )}`
     );
   }
-  const ret = await promptCreateSecret(
+  return promptCreateSecret(
     args.projectId,
     args.instanceId,
     args.secretParam,
     args.secretName
   );
-  return ret;
 }
