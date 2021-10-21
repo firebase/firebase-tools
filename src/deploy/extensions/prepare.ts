@@ -10,7 +10,7 @@ import { FirebaseError } from "../../error";
 import { requirePermissions } from "../../requirePermissions";
 import { ensureExtensionsApiEnabled } from "../../extensions/extensionsHelper";
 import { ensureSecretManagerApiEnabled, usesSecrets } from "../../extensions/secretsUtils";
-import { handleSecretParams } from "./secrets";
+import { checkSpecForSecrets, handleSecretParams } from "./secrets";
 
 export async function prepare(
   context: any, // TODO: type this
@@ -31,14 +31,8 @@ export async function prepare(
 
   // Check if any extension instance that we want is using secrets,
   // and ensure the API is enabled if so.
-  const usingSecrets = await Promise.all(
-    want.filter(async (i) => {
-      const extensionVersion = await planner.getExtensionVersion(i);
-      return usesSecrets(extensionVersion.spec);
-    })
-  );
-
-  if (usingSecrets.push.length) {
+  const usingSecrets = await Promise.all(want.map(checkSpecForSecrets));
+  if (usingSecrets.some((i) => i)) {
     await ensureSecretManagerApiEnabled(options);
   }
 

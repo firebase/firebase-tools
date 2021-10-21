@@ -17,6 +17,14 @@ interface SecretInfo {
   labels: Record<string, string>;
 }
 
+/**
+ * handleSecretParams checks each spec for secret params, and validates that the secrets in the configuration exist.
+ * If they don't, it prompts the user to create them in interactive mode
+ * or throws an informative error in non-interactive mode
+ * @param payload The deploy payload
+ * @param have The instances currently installed on the project.
+ * @param nonInteractive whether the user can be prompted to create secrets that are missing.
+ */
 export async function handleSecretParams(
   payload: Payload,
   have: InstanceSpec[],
@@ -38,7 +46,7 @@ export async function handleSecretParams(
   }
 }
 
-async function checkSpecForSecrets(i: InstanceSpec): Promise<boolean> {
+export async function checkSpecForSecrets(i: InstanceSpec): Promise<boolean> {
   const extensionVersion = await getExtensionVersion(i);
   return secretUtils.usesSecrets(extensionVersion.spec);
 }
