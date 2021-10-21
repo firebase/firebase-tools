@@ -7,7 +7,9 @@ export type EventType =
   | "google.cloud.storage.object.v1.archived"
   | "google.cloud.storage.object.v1.deleted"
   | "google.cloud.storage.object.v1.metadataUpdated";
+
 export type EventShorthand = "pubsub" | "storage";
+
 export const EVENT_SHORTHAND_MAPPING: Record<EventType, EventShorthand> = {
   "google.cloud.pubsub.topic.v1.messagePublished": "pubsub",
   "google.cloud.storage.object.v1.finalized": "storage",

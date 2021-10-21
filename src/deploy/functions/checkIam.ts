@@ -9,7 +9,7 @@ import * as backend from "./backend";
 import * as track from "../../track";
 import { Options } from "../../options";
 import * as storage from "../../gcp/storage";
-import { addServiceAccountToRoles, getIamPolicy, setIamPolicy } from "../../gcp/resourceManager";
+import { getIamPolicy, setIamPolicy } from "../../gcp/resourceManager";
 import { EventShorthand, EventType, EVENT_SHORTHAND_MAPPING } from "./types";
 
 const noop = (): Promise<void> => Promise.resolve();
@@ -122,15 +122,11 @@ export async function checkServiceAgentRoles(
   want: backend.Backend,
   have: backend.Backend
 ) {
+  // build a set of v2 events as shorthand names
   const events = new Set<EventShorthand>();
   for (const ep of backend.allEndpoints(want)) {
     const haveE = have.endpoints[ep.region]?.[ep.id];
-    if (
-      ep.platform === "gcfv1" ||
-      !backend.isEventTriggered(ep) ||
-      // || backend.hasEndpoint(have)(ep) // we've already deployed the function, no need to check for permissions
-      haveE
-    ) {
+    if (ep.platform === "gcfv1" || !backend.isEventTriggered(ep) || haveE) {
       continue;
     }
     const eventShorthand = EVENT_SHORTHAND_MAPPING[ep.eventTrigger.eventType as EventType];
@@ -140,6 +136,7 @@ export async function checkServiceAgentRoles(
     }
     events.add(eventShorthand);
   }
+  // set permissions for the v2 events
   const enablePermissions: Array<Promise<void>> = [];
   for (const event of events) {
     const permissionsFn = PERMISSIONS_LOOKUP[event];
@@ -149,7 +146,7 @@ export async function checkServiceAgentRoles(
     }
     enablePermissions.push(permissionsFn(projectId));
   }
-  await Promise.all(enablePermissions); // Since we're modifying the entire IAM policy, we might need to do these iteratively
+  await Promise.all(enablePermissions); // Since we're modifying the entire IAM policy, might need await these individually
 }
 
 /** Response type for obtaining the storage service agent */
