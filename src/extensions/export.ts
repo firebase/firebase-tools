@@ -1,6 +1,7 @@
 import * as clc from "cli-color";
 
 import * as refs from "./refs";
+import { getProjectNumber } from "../getProjectNumber";
 import { Options } from "../options";
 import { Config } from "../config";
 import { InstanceSpec } from "../deploy/extensions/planner";
@@ -9,15 +10,20 @@ import { logger } from "../logger";
 import { FirebaseError } from "../error";
 
 /**
- * parameterizeProjectId searchs spec.params for any param that include projectId,
+ * parameterizeProject searchs spec.params for any param that include projectId or projectNumber,
  * and replaces it with a parameterized version that can be used on other projects.
  * For example, 'my-project-id.appspot.com' becomes '${param:PROJECT_ID}.appspot.com`
  */
-export function parameterizeProjectId(projectId: string, spec: InstanceSpec): InstanceSpec {
+export function parameterizeProjectId(
+  projectId: string,
+  projectNumber: string,
+  spec: InstanceSpec
+): InstanceSpec {
   const newParams: Record<string, string> = {};
   for (const [key, val] of Object.entries(spec.params)) {
-    const parameterizedVal = val.replace(projectId, "${param:PROJECT_ID}");
-    newParams[key] = parameterizedVal;
+    const p1 = val.replace(projectId, "${param:PROJECT_ID}");
+    const p2 = p1.replace(projectNumber, "${param:PROJECT_NUMBER}");
+    newParams[key] = p2;
   }
   const newSpec = { ...spec };
   newSpec.params = newParams;

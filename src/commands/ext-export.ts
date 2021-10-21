@@ -4,6 +4,7 @@ import * as planner from "../deploy/extensions/planner";
 import { displayExportInfo, parameterizeProjectId, writeFiles } from "../extensions/export";
 import { ensureExtensionsApiEnabled } from "../extensions/extensionsHelper";
 import { partition } from "../functional";
+import { getProjectNumber } from "../getProjectNumber";
 import { logger } from "../logger";
 import { needProjectId } from "../projectUtils";
 import { promptOnce } from "../prompt";
@@ -18,7 +19,7 @@ module.exports = new Command("ext:export")
   .before(checkMinRequiredVersion, "extMinVersion")
   .action(async (options: any) => {
     const projectId = needProjectId(options);
-
+    const projectNumber = await getProjectNumber(options);
     // Look up the instances that already exist,
     // add a ^ to their version,
     // and strip project IDs from the param values.
@@ -29,7 +30,7 @@ module.exports = new Command("ext:export")
         }
         return s;
       })
-      .map((i) => parameterizeProjectId(projectId, i));
+      .map((i) => parameterizeProjectId(projectId, projectNumber, i));
     // If an instance spec is missing a ref, that instance must have been installed from a local source.
     const [withRef, withoutRef] = partition(have, (s) => !!s.ref);
 
