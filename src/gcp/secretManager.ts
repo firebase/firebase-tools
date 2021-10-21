@@ -1,5 +1,7 @@
 import * as api from "../api";
 
+export const secretManagerConsoleUri = (projectId: string) =>
+  `https://console.cloud.google.com/security/secret-manager?project=${projectId}`;
 export interface Secret {
   // Secret name/label (this is not resource name)
   name: string;
@@ -28,6 +30,22 @@ export async function getSecret(projectId: string, name: string): Promise<Secret
   return parseSecretResourceName(getRes.body.name);
 }
 
+export async function getSecretVersion(
+  projectId: string,
+  name: string,
+  version: string
+): Promise<SecretVersion> {
+  const getRes = await api.request(
+    "GET",
+    `/v1beta1/projects/${projectId}/secrets/${name}/versions/${version}`,
+    {
+      auth: true,
+      origin: api.secretManagerOrigin,
+    }
+  );
+  return parseSecretVersionResourceName(getRes.body.name);
+}
+
 export async function getSecretLabels(
   projectId: string,
   name: string
@@ -36,7 +54,8 @@ export async function getSecretLabels(
     auth: true,
     origin: api.secretManagerOrigin,
   });
-  return getRes.body.labels;
+  // console.log(getRes.body);
+  return getRes.body.labels ?? {};
 }
 
 export async function secretExists(projectId: string, name: string): Promise<boolean> {
@@ -56,6 +75,17 @@ export function parseSecretResourceName(resourceName: string): Secret {
   return {
     projectId: nameTokens[1],
     name: nameTokens[3],
+  };
+}
+
+export function parseSecretVersionResourceName(resourceName: string): SecretVersion {
+  const nameTokens = resourceName.split("/");
+  return {
+    secret: {
+      projectId: nameTokens[1],
+      name: nameTokens[3],
+    },
+    versionId: nameTokens[5],
   };
 }
 

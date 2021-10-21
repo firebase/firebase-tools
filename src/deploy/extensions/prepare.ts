@@ -9,6 +9,8 @@ import { Payload } from "./args";
 import { FirebaseError } from "../../error";
 import { requirePermissions } from "../../requirePermissions";
 import { ensureExtensionsApiEnabled } from "../../extensions/extensionsHelper";
+import { ensureSecretManagerApiEnabled, usesSecrets } from "../../extensions/secretsUtils";
+import { handleSecretParams } from "./secrets";
 
 export async function prepare(
   context: any, // TODO: type this
@@ -27,10 +29,23 @@ export async function prepare(
     options.config.get("extensions")
   );
 
-  payload.instancesToCreate = want.filter((dep) => !have.some(matchesInstanceId(dep)));
-  payload.instancesToConfigure = want.filter((dep) => have.some(isConfigure(dep)));
-  payload.instancesToUpdate = want.filter((dep) => have.some(isUpdate(dep)));
-  payload.instancesToDelete = have.filter((dep) => !want.some(matchesInstanceId(dep)));
+  // Check if any extension instance that we want is using secrets,
+  // and ensure the API is enabled if so.
+  const usingSecrets = await Promise.all(
+    want.filter(async (i) => {
+      const extensionVersion = await planner.getExtensionVersion(i);
+      return usesSecrets(extensionVersion.spec);
+    })
+  );
+
+  if (usingSecrets.push.length) {
+    await ensureSecretManagerApiEnabled(options);
+  }
+
+  payload.instancesToCreate = want.filter((i) => !have.some(matchesInstanceId(i)));
+  payload.instancesToConfigure = want.filter((i) => have.some(isConfigure(i)));
+  payload.instancesToUpdate = want.filter((i) => have.some(isUpdate(i)));
+  payload.instancesToDelete = have.filter((i) => !want.some(matchesInstanceId(i)));
 
   const permissionsNeeded: string[] = [];
 
@@ -68,6 +83,9 @@ export async function prepare(
   }
 
   await requirePermissions(options, permissionsNeeded);
+
+  // Check if the secrets used exist, and prompt to create them if not.
+  await handleSecretParams(payload, have, options.nonInteractive);
 }
 const matchesInstanceId = (dep: planner.InstanceSpec) => (test: planner.InstanceSpec) => {
   return dep.instanceId === test.instanceId;
