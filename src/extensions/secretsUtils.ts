@@ -6,7 +6,7 @@ import * as extensionsApi from "./extensionsApi";
 import * as secretManagerApi from "../gcp/secretManager";
 import { logger } from "../logger";
 
-const SECRET_LABEL = "firebase-extensions-managed";
+export const SECRET_LABEL = "firebase-extensions-managed";
 
 export async function ensureSecretManagerApiEnabled(options: any): Promise<void> {
   const projectId = needProjectId(options);
@@ -37,7 +37,7 @@ export async function getManagedSecrets(
     await Promise.all(
       getActiveSecrets(instance).map(async (secretResourceName) => {
         const secret = secretManagerApi.parseSecretResourceName(secretResourceName);
-        const labels = await secretManagerApi.getSecretLabels(secret.projectId, secret.name);
+        const labels = (await secretManagerApi.getSecret(secret.projectId, secret.name)).labels;
         if (labels && labels[SECRET_LABEL]) {
           return secretResourceName;
         }

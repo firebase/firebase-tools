@@ -176,12 +176,13 @@ async function promptReconfigureSecret(
   }
 }
 
-async function promptCreateSecret(
+export async function promptCreateSecret(
   projectId: string,
   instanceId: string,
-  paramSpec: Param
+  paramSpec: Param,
+  secretName?: string
 ): Promise<string> {
-  const secretName = await generateSecretName(projectId, instanceId, paramSpec.param);
+  const name = secretName ?? (await generateSecretName(projectId, instanceId, paramSpec.param));
   const secretValue = await promptOnce({
     name: paramSpec.param,
     type: "password",
@@ -190,7 +191,7 @@ async function promptCreateSecret(
   });
   const secret = await secretManagerApi.createSecret(
     projectId,
-    secretName,
+    name,
     secretsUtils.getSecretLabels(instanceId)
   );
   return addNewSecretVersion(projectId, instanceId, secret, paramSpec, secretValue);
