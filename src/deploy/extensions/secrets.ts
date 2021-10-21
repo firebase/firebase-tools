@@ -186,7 +186,11 @@ async function handleSecretParamForUpdate(
   }
 }
 
-async function getSecretInfo(projectId: string, secretName: string, version: string): Promise<{
+async function getSecretInfo(
+  projectId: string,
+  secretName: string,
+  version: string
+): Promise<{
   secret?: secretManager.Secret;
   secretVersion?: secretManager.SecretVersion;
   labels: Record<string, string>;
@@ -224,10 +228,5 @@ async function promptForCreateSecret(args: {
       )}`
     );
   }
-  return promptCreateSecret(
-    args.projectId,
-    args.instanceId,
-    args.secretParam,
-    args.secretName
-  );
+  return promptCreateSecret(args.projectId, args.instanceId, args.secretParam, args.secretName);
 }
