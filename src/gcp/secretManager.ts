@@ -31,6 +31,7 @@ export async function getSecret(projectId: string, name: string): Promise<Secret
   });
   const secret = parseSecretResourceName(getRes.body.name);
   secret.labels = getRes.body.labels ?? {};
+  return secret;
 }
 
 export async function getSecretVersion(
