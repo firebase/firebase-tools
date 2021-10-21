@@ -12,7 +12,7 @@ const SPEC = {
 };
 
 describe("TriggerRegionHelper", () => {
-  describe("setTriggerRegion", () => {
+  describe("lookupMissingTriggerRegions", () => {
     let storageStub: sinon.SinonStub;
 
     beforeEach(() => {
@@ -103,6 +103,28 @@ describe("TriggerRegionHelper", () => {
         retry: false,
         region: "us",
       });
+    });
+
+    it("should set trigger region from API then reject on invalid function region", async () => {
+      storageStub.resolves({ location: "US" });
+      const wantFn: backend.Endpoint = {
+        id: "wantFn",
+        entryPoint: "wantFn",
+        platform: "gcfv2",
+        eventTrigger: {
+          eventType: "google.cloud.storage.object.v1.finalized",
+          eventFilters: {
+            bucket: "my-bucket",
+          },
+          retry: false,
+        },
+        ...SPEC,
+        region: "europe-west4",
+      };
+
+      await expect(
+        triggerRegionHelper.lookupMissingTriggerRegions(backend.of(wantFn))
+      ).to.be.rejectedWith("Function cannot be deployed outside of the trigger region");
     });
   });
 });

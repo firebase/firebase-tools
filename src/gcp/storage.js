@@ -131,7 +131,7 @@ async function _getServiceAccount(projectId) {
     return response.body;
   } catch (err) {
     logger.debug(err);
-    throw new FirebaseError("Failed to obtain the Cloud Storage service account", {
+    throw new FirebaseError("Failed to obtain the Cloud Storage service agent", {
       original: err,
     });
   }

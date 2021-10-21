@@ -9,15 +9,9 @@ import * as api from "../../../../api";
 import * as proto from "../../../../gcp/proto";
 import * as args from "../../args";
 import * as runtimes from "../../runtimes";
+import { GCS_EVENTS } from "../../types";
 
 const TRIGGER_PARSER = path.resolve(__dirname, "./triggerParser.js");
-
-export const GCS_EVENTS: Set<string> = new Set<string>([
-  "google.cloud.storage.object.v1.finalized",
-  "google.cloud.storage.object.v1.archived",
-  "google.cloud.storage.object.v1.deleted",
-  "google.cloud.storage.object.v1.metadataUpdated",
-]);
 
 export interface ScheduleRetryConfig {
   retryCount?: number;

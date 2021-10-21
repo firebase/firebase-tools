@@ -11,34 +11,7 @@ import * as docker from "../../gcp/docker";
 import * as backend from "./backend";
 import * as utils from "../../utils";
 import { FirebaseError } from "../../error";
-
-// A flattening of container_registry_hosts and
-// region_multiregion_map from regionconfig.borg
-export const SUBDOMAIN_MAPPING: Record<string, string> = {
-  "us-west2": "us",
-  "us-west3": "us",
-  "us-west4": "us",
-  "us-central1": "us",
-  "us-central2": "us",
-  "us-east1": "us",
-  "us-east4": "us",
-  "northamerica-northeast1": "us",
-  "southamerica-east1": "us",
-  "europe-west1": "eu",
-  "europe-west2": "eu",
-  "europe-west3": "eu",
-  "europe-west5": "eu",
-  "europe-west6": "eu",
-  "europe-central2": "eu",
-  "asia-east1": "asia",
-  "asia-east2": "asia",
-  "asia-northeast1": "asia",
-  "asia-northeast2": "asia",
-  "asia-northeast3": "asia",
-  "asia-south1": "asia",
-  "asia-southeast2": "asia",
-  "australia-southeast1": "asia",
-};
+import { SUBDOMAIN_MAPPING } from "./types";
 
 async function retry<Return>(func: () => Promise<Return>): Promise<Return> {
   const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));

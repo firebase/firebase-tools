@@ -19,6 +19,7 @@ import * as validate from "./validate";
 import * as utils from "../../utils";
 import { logger } from "../../logger";
 import { lookupMissingTriggerRegions } from "./triggerRegionHelper";
+import { checkServiceAgentRoles } from "./checkIam";
 
 function hasUserConfig(config: Record<string, unknown>): boolean {
   // "firebase" key is always going to exist in runtime config.
@@ -152,6 +153,7 @@ export async function prepare(
   });
 
   const haveBackend = await backend.existingBackend(context);
+  await checkServiceAgentRoles(projectId, wantBackend, haveBackend);
   inferDetailsFromExisting(wantBackend, haveBackend, usedDotenv);
   await lookupMissingTriggerRegions(wantBackend);
 

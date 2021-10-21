@@ -4,6 +4,7 @@ import * as sinon from "sinon";
 import * as backend from "../../../deploy/functions/backend";
 import * as containerCleaner from "../../../deploy/functions/containerCleaner";
 import * as docker from "../../../gcp/docker";
+import { SUBDOMAIN_MAPPING } from "../../../deploy/functions/types";
 
 describe("DockerHelper", () => {
   let listTags: sinon.SinonStub;
@@ -393,11 +394,11 @@ describe("deleteGcfArtifacts", () => {
   });
 
   it("should purge all locations", async () => {
-    const locations = Object.keys(containerCleaner.SUBDOMAIN_MAPPING);
-    const usLocations = locations.filter((loc) => containerCleaner.SUBDOMAIN_MAPPING[loc] === "us");
-    const euLocations = locations.filter((loc) => containerCleaner.SUBDOMAIN_MAPPING[loc] === "eu");
+    const locations = Object.keys(SUBDOMAIN_MAPPING);
+    const usLocations = locations.filter((loc) => SUBDOMAIN_MAPPING[loc] === "us");
+    const euLocations = locations.filter((loc) => SUBDOMAIN_MAPPING[loc] === "eu");
     const asiaLocations = locations.filter((loc) => {
-      return containerCleaner.SUBDOMAIN_MAPPING[loc] === "asia";
+      return SUBDOMAIN_MAPPING[loc] === "asia";
     });
     const stubUS = sinon.createStubInstance(containerCleaner.DockerHelper);
     for (const usLoc of usLocations) {

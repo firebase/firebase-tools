@@ -8,6 +8,18 @@ import * as args from "./args";
 import * as backend from "./backend";
 import * as track from "../../track";
 import { Options } from "../../options";
+import * as storage from "../../gcp/storage";
+import { addServiceAccountToRoles, getIamPolicy, setIamPolicy } from "../../gcp/resourceManager";
+import { EventShorthand, EventType, EVENT_SHORTHAND_MAPPING } from "./types";
+
+const noop = (): Promise<void> => Promise.resolve();
+
+const PERMISSIONS_LOOKUP: Record<EventShorthand, (projectId: string) => Promise<void>> = {
+  pubsub: noop,
+  storage: enableStoragePermissions,
+};
+
+const PUBSUB_PUBLISHER_ROLE = "roles/pubsub.publisher";
 
 const PERMISSION = "cloudfunctions.functions.setIamPolicy";
 
@@ -103,4 +115,79 @@ export async function checkHttpIam(
     );
   }
   logger.debug("[functions] found setIamPolicy permission, proceeding with deploy");
+}
+
+export async function checkServiceAgentRoles(
+  projectId: string,
+  want: backend.Backend,
+  have: backend.Backend
+) {
+  const events = new Set<EventShorthand>();
+  for (const ep of backend.allEndpoints(want)) {
+    const haveE = have.endpoints[ep.region]?.[ep.id];
+    if (
+      ep.platform === "gcfv1" ||
+      !backend.isEventTriggered(ep) ||
+      // || backend.hasEndpoint(have)(ep) // we've already deployed the function, no need to check for permissions
+      haveE
+    ) {
+      continue;
+    }
+    const eventShorthand = EVENT_SHORTHAND_MAPPING[ep.eventTrigger.eventType as EventType];
+    if (!eventShorthand) {
+      logger.debug("Can't find the shorthand name for event ", ep.eventTrigger.eventType);
+      continue;
+    }
+    events.add(eventShorthand);
+  }
+  const enablePermissions: Array<Promise<void>> = [];
+  for (const event of events) {
+    const permissionsFn = PERMISSIONS_LOOKUP[event];
+    if (!permissionsFn) {
+      logger.debug("Cannot find the correct permissions setting function for ", event, " events.");
+      continue;
+    }
+    enablePermissions.push(permissionsFn(projectId));
+  }
+  await Promise.all(enablePermissions); // Since we're modifying the entire IAM policy, we might need to do these iteratively
+}
+
+/** Response type for obtaining the storage service agent */
+interface StorageServiceAccountResponse {
+  email_address: string;
+  kind: string;
+}
+
+/**
+ * Helper function to enable Cloud Storage service agent permission for EventArc topic creation
+ * @param projectId project identifier
+ */
+export async function enableStoragePermissions(projectId: string): Promise<void> {
+  const storageResponse = (await storage.getServiceAccount(
+    projectId
+  )) as StorageServiceAccountResponse;
+  if (!storageResponse || !storageResponse.email_address) {
+    throw new FirebaseError("Failed to obtain the Cloud Storage service agent email address");
+  }
+  const storageServiceAgent = `serviceAccount:${storageResponse.email_address}`;
+  const policy = await getIamPolicy(projectId);
+  if (!policy) {
+    throw new FirebaseError("Failed to obtain the IAM policy");
+  }
+  // find the pubsub binding
+  let pubsubBinding = policy.bindings.find((b) => b.role === PUBSUB_PUBLISHER_ROLE);
+  if (!pubsubBinding) {
+    pubsubBinding = {
+      role: PUBSUB_PUBLISHER_ROLE,
+      members: [],
+    };
+    policy.bindings.push(pubsubBinding);
+  }
+  if (!pubsubBinding.members.find((m) => m === storageServiceAgent)) {
+    pubsubBinding.members.push(storageServiceAgent);
+    const newPolicy = await setIamPolicy(projectId, policy, "bindings");
+    if (JSON.stringify(policy) !== JSON.stringify(newPolicy)) {
+      throw new FirebaseError("IAM policies do not match after Cloud Storage service agent update");
+    }
+  }
 }
