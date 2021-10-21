@@ -37,7 +37,7 @@ export async function getManagedSecrets(
     await Promise.all(
       getActiveSecrets(instance).map(async (secretResourceName) => {
         const secret = secretManagerApi.parseSecretResourceName(secretResourceName);
-        const labels = await secretManagerApi.getSecretLabels(secret.projectId, secret.name);
+        const labels = (await secretManagerApi.getSecret(secret.projectId, secret.name)).labels;
         if (labels && labels[SECRET_LABEL]) {
           return secretResourceName;
         }

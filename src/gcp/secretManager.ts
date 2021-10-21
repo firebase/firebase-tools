@@ -1,3 +1,4 @@
+import { logLabeledSuccess } from "../utils";
 import * as api from "../api";
 
 export const secretManagerConsoleUri = (projectId: string) =>
@@ -7,6 +8,7 @@ export interface Secret {
   name: string;
   // This is either projectID or number
   projectId: string;
+  labels?: Record<string, string>;
 }
 
 export interface SecretVersion {
@@ -27,7 +29,8 @@ export async function getSecret(projectId: string, name: string): Promise<Secret
     auth: true,
     origin: api.secretManagerOrigin,
   });
-  return parseSecretResourceName(getRes.body.name);
+  const secret = parseSecretResourceName(getRes.body.name);
+  secret.labels = getRes.body.labels ?? {};
 }
 
 export async function getSecretVersion(
@@ -44,17 +47,6 @@ export async function getSecretVersion(
     }
   );
   return parseSecretVersionResourceName(getRes.body.name);
-}
-
-export async function getSecretLabels(
-  projectId: string,
-  name: string
-): Promise<Record<string, string>> {
-  const getRes = await api.request("GET", `/v1beta1/projects/${projectId}/secrets/${name}`, {
-    auth: true,
-    origin: api.secretManagerOrigin,
-  });
-  return getRes.body.labels ?? {};
 }
 
 export async function secretExists(projectId: string, name: string): Promise<boolean> {
@@ -163,7 +155,6 @@ export async function grantServiceAgentRole(
     role: role,
     members: [`serviceAccount:${serviceAccountEmail}`],
   });
-
   await api.request(
     "POST",
     `/v1beta1/projects/${secret.projectId}/secrets/${secret.name}:setIamPolicy`,
@@ -179,5 +170,11 @@ export async function grantServiceAgentRole(
         },
       },
     }
+  );
+  // SecretManager would like us to _always_ inform users when we grant access to one of their secrets.
+  // As a safeguard against forgetting to do so, we log it here.
+  logLabeledSuccess(
+    "SecretManager",
+    `Granted ${role} on projects/${secret.projectId}/secrets/${secret.name} to ${serviceAccountEmail}`
   );
 }

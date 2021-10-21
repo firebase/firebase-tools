@@ -106,6 +106,7 @@ async function handleSecretParamForCreate(
       secretParam,
       nonInteractive,
     });
+    return;
   } else if (!secretInfo.secretVersion) {
     throw new FirebaseError(
       `${clc.bold(i.instanceId)}: Found '${providedValue}' for secret param ${
@@ -117,20 +118,25 @@ async function handleSecretParamForCreate(
         )}`
     );
   }
+  // If the secret is managed, but by a different extension, error out.
   if (
-    !!secretInfo?.labels[secretUtils.SECRET_LABEL] &&
-    secretInfo.labels[secretUtils.SECRET_LABEL] !== i.instanceId
+    !!secretInfo?.secret?.labels &&
+    !!secretInfo?.secret.labels[secretUtils.SECRET_LABEL] &&
+    secretInfo.secret.labels[secretUtils.SECRET_LABEL] !== i.instanceId
   ) {
     throw new FirebaseError(
       `${clc.bold(i.instanceId)}: Found '${providedValue}' for secret param ${
         secretParam.param
       }. ` +
         `projects/${projectId}/secrets/${secretName} is managed by a different extension instance (${
-          secretInfo.labels[secretUtils.SECRET_LABEL]
+          secretInfo.secret.labels[secretUtils.SECRET_LABEL]
         }), so reusing it here can lead to unexpected behavior. ` +
         "Please choose a different name for this secret, and rerun this command."
     );
   }
+  // If we get to this point, we're OK to just use what was included in the params.
+  // Just need to make sure the Extensions P4SA has access.
+  await secretUtils.grantFirexServiceAgentSecretAdminRole(secretInfo.secret);
 }
 
 async function handleSecretParamForUpdate(
@@ -138,7 +144,7 @@ async function handleSecretParamForUpdate(
   i: InstanceSpec,
   prevValue: string,
   nonInteractive: boolean
-) {
+): Promise<void> {
   const providedValue = i.params[secretParam.param];
   if (!providedValue) {
     return;
@@ -173,6 +179,7 @@ async function handleSecretParamForUpdate(
       secretParam,
       nonInteractive,
     });
+    return;
   } else if (!secretInfo.secretVersion) {
     throw new FirebaseError(
       `${clc.bold(i.instanceId)}: Found '${providedValue}' for secret param ${
@@ -184,6 +191,9 @@ async function handleSecretParamForUpdate(
         )}`
     );
   }
+  // If we get to this point, we're OK to just use what was included in the params.
+  // Just need to make sure the Extensions P4SA has access.
+  await secretUtils.grantFirexServiceAgentSecretAdminRole(secretInfo.secret);
 }
 
 async function getSecretInfo(
@@ -193,15 +203,11 @@ async function getSecretInfo(
 ): Promise<{
   secret?: secretManager.Secret;
   secretVersion?: secretManager.SecretVersion;
-  labels: Record<string, string>;
 }> {
-  const secretInfo: any = {
-    labels: {},
-  };
+  const secretInfo: any = {};
   try {
     secretInfo.secret = await secretManager.getSecret(projectId, secretName);
     secretInfo.secretVersion = await secretManager.getSecretVersion(projectId, secretName, version);
-    secretInfo.labels = await secretManager.getSecretLabels(projectId, secretName);
   } catch (err) {
     // Throw anything other than the expected 404 errors.
     if (err.status !== 404) {
