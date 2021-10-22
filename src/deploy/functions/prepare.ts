@@ -187,6 +187,13 @@ export function inferDetailsFromExisting(
       };
     }
 
+    // If the instance size is set out of bounds or was previously set and is now
+    // unset we still need to remember it so that the min instance price estimator
+    // is accurate.
+    if (!wantE.availableMemoryMb && haveE.availableMemoryMb) {
+      wantE.availableMemoryMb = haveE.availableMemoryMb;
+    }
+
     maybeCopyTriggerRegion(wantE, haveE);
   }
 }
@@ -199,11 +206,12 @@ function maybeCopyTriggerRegion(wantE: backend.Endpoint, haveE: backend.Endpoint
     return;
   }
 
-  // Don't copy the region if anything about the trigger changed. It's possible
-  // they changed the resource.
-  const oldTrigger: Record<string, unknown> = { ...haveE.eventTrigger };
-  delete oldTrigger.region;
-  if (JSON.stringify(oldTrigger) !== JSON.stringify(wantE.eventTrigger)) {
+  // Don't copy the region if anything about the trigger resource changed. It's possible
+  // they changed the region
+  if (
+    JSON.stringify(haveE.eventTrigger.eventFilters) !==
+    JSON.stringify(wantE.eventTrigger.eventFilters)
+  ) {
     return;
   }
   wantE.eventTrigger.region = haveE.eventTrigger.region;

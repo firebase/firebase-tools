@@ -92,5 +92,38 @@ describe("prepare", () => {
       prepare.inferDetailsFromExisting(backend.of(want), backend.of(have), /* usedDotEnv= */ false);
       expect(want.eventTrigger.region).to.equal("us");
     });
+
+    it("doesn't fill in regions if triggers changed", () => {
+      const want: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        eventTrigger: {
+          eventType: "google.cloud.storage.object.v1.finalzied",
+          eventFilters: {
+            bucket: "us-bucket",
+          },
+          retry: false,
+        },
+      };
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const have: backend.Endpoint & backend.EventTriggered = JSON.parse(JSON.stringify(want));
+      have.eventTrigger.eventFilters["bucket"] = "us-central1-bucket";
+      have.eventTrigger.region = "us-central1";
+
+      prepare.inferDetailsFromExisting(backend.of(want), backend.of(have), /* usedDotEnv= */ false);
+      expect(want.eventTrigger.region).to.be.undefined;
+    });
+
+    it("fills in instance size", () => {
+      const want: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        httpsTrigger: {},
+      };
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const have: backend.Endpoint = JSON.parse(JSON.stringify(want));
+      have.availableMemoryMb = 512;
+
+      prepare.inferDetailsFromExisting(backend.of(want), backend.of(have), /* usedDotEnv= */ false);
+      expect(want.availableMemoryMb).to.equal(512);
+    });
   });
 });
