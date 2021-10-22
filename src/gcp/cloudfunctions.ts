@@ -2,13 +2,13 @@ import * as clc from "cli-color";
 
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
+import { previews } from "../previews";
 import * as api from "../api";
 import * as backend from "../deploy/functions/backend";
 import * as utils from "../utils";
 import * as proto from "./proto";
 import * as runtimes from "../deploy/functions/runtimes";
 import * as iam from "./iam";
-import * as _ from "lodash";
 
 export const API_VERSION = "v1";
 
@@ -205,7 +205,11 @@ export async function createFunction(
   const endpoint = `/${API_VERSION}/${apiPath}`;
 
   try {
+    const headers = previews.artifactregistry
+      ? { "X-Firebase-Artifact-Registry": "optin" }
+      : undefined;
     const res = await api.request("POST", endpoint, {
+      headers,
       auth: true,
       data: cloudFunction,
       origin: api.functionsOrigin,
@@ -369,7 +373,11 @@ export async function updateFunction(
   // Failure policy is always an explicit policy and is only signified by the presence or absence of
   // a protobuf.Empty value, so we have to manually add it in the missing case.
   try {
+    const headers = previews.artifactregistry
+      ? { "X-Firebase-Artifact-Registry": "optin" }
+      : undefined;
     const res = await api.request("PATCH", endpoint, {
+      headers,
       qs: {
         updateMask: fieldMasks.join(","),
       },

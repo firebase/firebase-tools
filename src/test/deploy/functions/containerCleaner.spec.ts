@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
+import { stub } from "sinon";
 
 import * as backend from "../../../deploy/functions/backend";
 import * as containerCleaner from "../../../deploy/functions/containerCleaner";
@@ -124,6 +125,21 @@ describe("DockerHelper", () => {
       tags: [],
       children: [],
     });
+  });
+});
+
+describe("ArtifactRegistryCleaner", () => {
+  it("deletes artifacts", async () => {
+    const cleaner = new containerCleaner.ArtifactRegistryCleaner();
+    const stub = sinon.createStubInstance(containerCleaner.DockerHelper);
+    const func = {
+      id: "function",
+      region: "region",
+      project: "project",
+    };
+
+    await cleaner.cleanupFunction(func, stub);
+    expect(stub.rm).to.have.been.calledWith("project/gcf-artifacts/function");
   });
 });
 

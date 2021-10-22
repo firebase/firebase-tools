@@ -5,12 +5,13 @@
 
 import * as clc from "cli-color";
 
-import { containerRegistryDomain } from "../../api";
+import { artifactRegistryDomain, containerRegistryDomain } from "../../api";
 import { logger } from "../../logger";
 import * as docker from "../../gcp/docker";
 import * as backend from "./backend";
 import * as utils from "../../utils";
 import { FirebaseError } from "../../error";
+import { previews } from "../../previews";
 
 // A flattening of container_registry_hosts and
 // region_multiregion_map from regionconfig.borg
@@ -54,7 +55,7 @@ async function retry<Return>(func: () => Promise<Return>): Promise<Return> {
       });
       return await Promise.race([func(), timeout]);
     } catch (error) {
-      logger.debug("Failed docker command with error", error);
+      logger.debug("Failed docker command with error ", error);
       retry += 1;
       if (retry >= MAX_RETRIES) {
         throw new FirebaseError("Failed to clean up artifacts", { original: error });
@@ -66,20 +67,32 @@ async function retry<Return>(func: () => Promise<Return>): Promise<Return> {
 
 export async function cleanupBuildImages(functions: backend.TargetIds[]): Promise<void> {
   utils.logBullet(clc.bold.cyan("functions: ") + "cleaning up build files...");
-  const gcrCleaner = new ContainerRegistryCleaner();
   const failedDomains: Set<string> = new Set();
-  await Promise.all(
-    functions.map((func) =>
-      (async () => {
+  if (previews.artifactregistry) {
+    const arCleaner = new ArtifactRegistryCleaner();
+    await Promise.all(
+      functions.map(async (func) => {
+        try {
+          await arCleaner.cleanupFunction(func);
+        } catch (err) {
+          const path = `${func.project}/${func.region}/gcf-artifacts`;
+          failedDomains.add(`https://console.cloud.google.com/artifacts/docker/${path}`);
+        }
+      })
+    );
+  } else {
+    const gcrCleaner = new ContainerRegistryCleaner();
+    await Promise.all(
+      functions.map(async (func) => {
         try {
           await gcrCleaner.cleanupFunction(func);
         } catch (err) {
           const path = `${func.project}/${SUBDOMAIN_MAPPING[func.region]}/gcf`;
           failedDomains.add(`https://console.cloud.google.com/gcr/images/${path}`);
         }
-      })()
-    )
-  );
+      })
+    );
+  }
   if (failedDomains.size) {
     let message =
       "Unhandled error cleaning up build images. This could result in a small monthly bill if not corrected. ";
@@ -94,6 +107,21 @@ export async function cleanupBuildImages(functions: backend.TargetIds[]): Promis
   }
 
   // TODO: clean up Artifact Registry images as well.
+}
+
+export class ArtifactRegistryCleaner {
+  // GCFv1 for AR has the following directory structure
+  // Hostname: <region>-docker.pkg.dev
+  // Directory structure:
+  // gcf-artifacts/
+  //     +- <function ID>
+  //     +- <function ID>/cache
+  // We leave the cache directory alone because it only costs
+  // a few MB and improves performance
+  async cleanupFunction(func: backend.TargetIds, helper?: DockerHelper): Promise<void> {
+    helper = helper || new DockerHelper(`https://${func.region}-docker.${artifactRegistryDomain}`);
+    await helper.rm(`${func.project}/gcf-artifacts/${func.id}`);
+  }
 }
 
 export class ContainerRegistryCleaner {
