@@ -192,8 +192,12 @@ export async function enableStorageRoles(projectId: string): Promise<void> {
   if (!pubsubBinding.members.find((m) => m === storageServiceAgent)) {
     pubsubBinding.members.push(storageServiceAgent);
     const newPolicy = await setIamPolicy(projectId, policy, "bindings");
-    if (JSON.stringify(policy) !== JSON.stringify(newPolicy)) {
-      throw new FirebaseError("IAM policies do not match after Cloud Storage service agent update");
+    if (
+      !newPolicy.bindings.find(
+        (b) => b.role === PUBSUB_PUBLISHER_ROLE && b.members.find((m) => m === storageServiceAgent)
+      )
+    ) {
+      throw new FirebaseError("IAM Policy did not update correctly");
     }
   }
 }

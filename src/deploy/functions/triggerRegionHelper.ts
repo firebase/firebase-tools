@@ -51,11 +51,13 @@ async function lookupBucketRegion(
   endpoint: backend.EventTriggered,
   epRegion: string
 ): Promise<void> {
+  logger.debug("Looking up bucket region for the storage event trigger");
   try {
     const bucket: { location: string } = await storage.getBucket(
       endpoint.eventTrigger.eventFilters.bucket!
     );
     endpoint.eventTrigger.region = bucket.location.toLowerCase();
+    logger.debug("Setting the event trigger region to", endpoint.eventTrigger.region, ".");
   } catch (err) {
     throw new FirebaseError("Can't find the storage bucket region", { original: err });
   }

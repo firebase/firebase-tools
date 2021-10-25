@@ -124,7 +124,7 @@ async function _getBucket(bucketName) {
  */
 async function _getServiceAccount(projectId) {
   try {
-    const response = await api.request("GET", `storage/v1/projects/${projectId}/serviceAccount`, {
+    const response = await api.request("GET", `/storage/v1/projects/${projectId}/serviceAccount`, {
       auth: true,
       origin: api.storageOrigin,
     });

@@ -222,7 +222,7 @@ describe("checkIam", () => {
       expect(setIamStub).to.be.calledOnce;
     });
 
-    it("should error if the policies don't match", async () => {
+    it("should error if the policy doesn't set", async () => {
       storageStub.resolves(STORAGE_RES);
       getIamStub.resolves({
         etag: "etag",
@@ -236,7 +236,7 @@ describe("checkIam", () => {
       });
 
       await expect(checkIam.enableStorageRoles("project")).to.be.rejectedWith(
-        "IAM policies do not match after Cloud Storage service agent update"
+        "IAM Policy did not update correctly"
       );
       expect(setIamStub).to.be.calledOnce;
     });
