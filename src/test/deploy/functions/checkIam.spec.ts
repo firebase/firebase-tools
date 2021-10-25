@@ -83,6 +83,41 @@ describe("checkIam", () => {
       expect(setIamStub).to.not.have.been.called;
     });
 
+    it("should skip if we have a deployed event fn of the same kind", async () => {
+      const wantFn: backend.Endpoint = {
+        id: "wantFn",
+        entryPoint: "wantFn",
+        platform: "gcfv2",
+        eventTrigger: {
+          eventType: "google.cloud.storage.object.v1.finalized",
+          eventFilters: {
+            bucket: "my-bucket",
+          },
+          retry: false,
+        },
+        ...SPEC,
+      };
+      const haveFn: backend.Endpoint = {
+        id: "haveFn",
+        entryPoint: "haveFn",
+        platform: "gcfv2",
+        eventTrigger: {
+          eventType: "google.cloud.storage.object.v1.metadataUpdated",
+          eventFilters: {
+            bucket: "my-bucket",
+          },
+          retry: false,
+        },
+        ...SPEC,
+      };
+
+      await checkIam.checkServiceAgentRoles("project", backend.of(wantFn), backend.of(haveFn));
+
+      expect(storageStub).to.not.have.been.called;
+      expect(getIamStub).to.not.have.been.called;
+      expect(setIamStub).to.not.have.been.called;
+    });
+
     it("should add the binding with the service agent", async () => {
       storageStub.resolves(STORAGE_RES);
       getIamStub.resolves({
@@ -123,11 +158,11 @@ describe("checkIam", () => {
     });
   });
 
-  describe("enableStoragePermissions", () => {
+  describe("enableStorageRoles", () => {
     it("should error if the storage api doesn't return correct response", async () => {
       storageStub.resolves({});
 
-      await expect(checkIam.enableStoragePermissions("project")).to.be.rejectedWith(
+      await expect(checkIam.enableStorageRoles("project")).to.be.rejectedWith(
         "Failed to obtain the Cloud Storage service agent email address"
       );
     });
@@ -136,7 +171,7 @@ describe("checkIam", () => {
       storageStub.resolves(STORAGE_RES);
       getIamStub.resolves(undefined);
 
-      await expect(checkIam.enableStoragePermissions("project")).to.be.rejectedWith(
+      await expect(checkIam.enableStorageRoles("project")).to.be.rejectedWith(
         "Failed to obtain the IAM policy"
       );
     });
@@ -160,7 +195,7 @@ describe("checkIam", () => {
         ],
       });
 
-      await expect(checkIam.enableStoragePermissions("project")).to.not.be.rejected;
+      await expect(checkIam.enableStorageRoles("project")).to.not.be.rejected;
       expect(setIamStub).to.be.calledOnce;
     });
 
@@ -183,7 +218,7 @@ describe("checkIam", () => {
         ],
       });
 
-      await expect(checkIam.enableStoragePermissions("project")).to.not.be.rejected;
+      await expect(checkIam.enableStorageRoles("project")).to.not.be.rejected;
       expect(setIamStub).to.be.calledOnce;
     });
 
@@ -200,7 +235,7 @@ describe("checkIam", () => {
         bindings: [BINDING],
       });
 
-      await expect(checkIam.enableStoragePermissions("project")).to.be.rejectedWith(
+      await expect(checkIam.enableStorageRoles("project")).to.be.rejectedWith(
         "IAM policies do not match after Cloud Storage service agent update"
       );
       expect(setIamStub).to.be.calledOnce;
@@ -220,7 +255,7 @@ describe("checkIam", () => {
         ],
       });
 
-      await expect(checkIam.enableStoragePermissions("project")).to.not.be.rejected;
+      await expect(checkIam.enableStorageRoles("project")).to.not.be.rejected;
       expect(setIamStub).to.not.have.been.called;
     });
   });

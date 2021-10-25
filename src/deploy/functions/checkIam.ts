@@ -16,7 +16,7 @@ const noop = (): Promise<void> => Promise.resolve();
 
 const PERMISSIONS_LOOKUP: Record<EventShorthand, (projectId: string) => Promise<void>> = {
   pubsub: noop,
-  storage: enableStoragePermissions,
+  storage: enableStorageRoles,
 };
 
 const PUBSUB_PUBLISHER_ROLE = "roles/pubsub.publisher";
@@ -117,25 +117,33 @@ export async function checkHttpIam(
   logger.debug("[functions] found setIamPolicy permission, proceeding with deploy");
 }
 
+/** Callback function to find all v2 event types in shorthand form */
+function reduceEventsV2(filtered: Set<EventShorthand>, option: backend.Endpoint) {
+  if (
+    option.platform === "gcfv2" &&
+    backend.isEventTriggered(option) &&
+    EVENT_SHORTHAND_MAPPING[option.eventTrigger.eventType as EventType]
+  ) {
+    filtered.add(EVENT_SHORTHAND_MAPPING[option.eventTrigger.eventType as EventType]);
+  }
+  return filtered;
+}
+
+/**
+ * Checks and sets the roles for specific resource service agents
+ * @param projectId project identifier
+ * @param want backend that we want to deploy
+ * @param have backend that we have currently deployed
+ */
 export async function checkServiceAgentRoles(
   projectId: string,
   want: backend.Backend,
   have: backend.Backend
 ) {
-  // build a set of v2 events as shorthand names
-  const events = new Set<EventShorthand>();
-  for (const ep of backend.allEndpoints(want)) {
-    const haveE = have.endpoints[ep.region]?.[ep.id];
-    if (ep.platform === "gcfv1" || !backend.isEventTriggered(ep) || haveE) {
-      continue;
-    }
-    const eventShorthand = EVENT_SHORTHAND_MAPPING[ep.eventTrigger.eventType as EventType];
-    if (!eventShorthand) {
-      logger.debug("Can't find the shorthand name for event ", ep.eventTrigger.eventType);
-      continue;
-    }
-    events.add(eventShorthand);
-  }
+  // find all new v2 events
+  const wantEvents = backend.allEndpoints(want).reduce(reduceEventsV2, new Set<EventShorthand>());
+  const haveEvents = backend.allEndpoints(have).reduce(reduceEventsV2, new Set<EventShorthand>());
+  const events = [...wantEvents].filter((event) => !haveEvents.has(event));
   // set permissions for the v2 events
   const enablePermissions: Array<Promise<void>> = [];
   for (const event of events) {
@@ -146,7 +154,8 @@ export async function checkServiceAgentRoles(
     }
     enablePermissions.push(permissionsFn(projectId));
   }
-  await Promise.all(enablePermissions); // Since we're modifying the entire IAM policy, might need await these individually
+  // Since we're modifying the entire IAM policy, might need await these individually
+  await Promise.all(enablePermissions);
 }
 
 /** Response type for obtaining the storage service agent */
@@ -156,10 +165,10 @@ interface StorageServiceAccountResponse {
 }
 
 /**
- * Helper function to enable Cloud Storage service agent permission for EventArc topic creation
+ * Helper function that grants the Cloud Storage service agent a role to access EventArc triggers
  * @param projectId project identifier
  */
-export async function enableStoragePermissions(projectId: string): Promise<void> {
+export async function enableStorageRoles(projectId: string): Promise<void> {
   const storageResponse = (await storage.getServiceAccount(
     projectId
   )) as StorageServiceAccountResponse;
