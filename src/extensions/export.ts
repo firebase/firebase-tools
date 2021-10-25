@@ -14,7 +14,7 @@ import { FirebaseError } from "../error";
  * and replaces it with a parameterized version that can be used on other projects.
  * For example, 'my-project-id.appspot.com' becomes '${param:PROJECT_ID}.appspot.com`
  */
-export function parameterizeProjectId(
+export function parameterizeProject(
   projectId: string,
   projectNumber: string,
   spec: InstanceSpec
