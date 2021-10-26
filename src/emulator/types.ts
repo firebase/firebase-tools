@@ -13,6 +13,7 @@ export enum Emulators {
   UI = "ui",
   LOGGING = "logging",
   STORAGE = "storage",
+  REMOTE_CONFIG = "remote config",
 }
 
 export type DownloadableEmulators =
@@ -45,6 +46,7 @@ export const ALL_SERVICE_EMULATORS = [
   Emulators.HOSTING,
   Emulators.PUBSUB,
   Emulators.STORAGE,
+  Emulators.REMOTE_CONFIG,
 ].filter((v) => v) as Emulators[];
 
 export const EMULATORS_SUPPORTED_BY_FUNCTIONS = [
@@ -60,6 +62,7 @@ export const EMULATORS_SUPPORTED_BY_UI = [
   Emulators.FIRESTORE,
   Emulators.FUNCTIONS,
   Emulators.STORAGE,
+  Emulators.REMOTE_CONFIG,
 ];
 
 export const EMULATORS_SUPPORTED_BY_USE_EMULATOR = [

@@ -43,6 +43,7 @@ import { getDefaultDatabaseInstance } from "../getDefaultDatabaseInstance";
 import { getProjectDefaultAccount } from "../auth";
 import { Options } from "../options";
 import { ParsedTriggerDefinition } from "./functionsEmulatorShared";
+import { RemoteConfigEmulator } from "./remoteconfig";
 
 async function getAndCheckAddress(emulator: Emulators, options: Options): Promise<Address> {
   let host = options.config.src.emulators?.[emulator]?.host || Constants.getDefaultHost(emulator);
@@ -659,6 +660,17 @@ export async function startAll(options: Options, showUI: boolean = true): Promis
       const storageExportDir = path.resolve(importDirAbsPath, exportMetadata.storage.path);
       storageEmulator.storageLayer.import(storageExportDir);
     }
+  }
+
+  if (shouldStart(options, Emulators.REMOTE_CONFIG)) {
+    const rcAddr = await getAndCheckAddress(Emulators.REMOTE_CONFIG, options);
+
+    const rcEmulator = new RemoteConfigEmulator({
+      host: rcAddr.host,
+      port: rcAddr.port,
+      projectId: projectId,
+    });
+    await startEmulator(rcEmulator);
   }
 
   // Hosting emulator needs to start after all of the others so that we can detect

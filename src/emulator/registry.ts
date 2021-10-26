@@ -46,28 +46,29 @@ export class EmulatorRegistry {
     const stopPriority: Record<Emulators, number> = {
       // Turn off the UI first, user should not interact
       // once shutdown starts
-      ui: 0,
+      [Emulators.UI]: 0,
 
       // Functions is next since it has side effects and
       // dependencies across all the others
-      functions: 1,
+      [Emulators.FUNCTIONS]: 1,
 
       // Hosting is next because it can trigger functions.
-      hosting: 2,
+      [Emulators.HOSTING]: 2,
 
       // All background trigger emulators are equal here, so we choose
       // an order for consistency.
-      database: 3.0,
-      firestore: 3.1,
-      pubsub: 3.2,
-      auth: 3.3,
-      storage: 3.5,
+      [Emulators.DATABASE]: 3.0,
+      [Emulators.FIRESTORE]: 3.1,
+      [Emulators.PUBSUB]: 3.2,
+      [Emulators.AUTH]: 3.3,
+      [Emulators.STORAGE]: 3.5,
+      [Emulators.REMOTE_CONFIG]: 3.6,
 
       // Hub shuts down once almost everything else is done
-      hub: 4,
+      [Emulators.HUB]: 4,
 
       // Logging is last to catch all errors
-      logging: 5,
+      [Emulators.LOGGING]: 5,
     };
 
     const emulatorsToStop = this.listRunning().sort((a, b) => {

@@ -6,6 +6,8 @@
 //
 
 // Sourced from - https://docs.microsoft.com/en-us/javascript/api/@azure/keyvault-certificates/requireatleastone?view=azure-node-latest
+import { Emulators } from "./emulator/types";
+
 type RequireAtLeastOne<T> = {
   [K in keyof T]-?: Required<Pick<T, K>> & Partial<Pick<T, Exclude<keyof T, K>>>;
 }[keyof T];
@@ -118,43 +120,47 @@ export type RemoteConfigConfig = {
 } & Deployable;
 
 export type EmulatorsConfig = {
-  auth?: {
+  [Emulators.AUTH]?: {
     host?: string;
     port?: number;
   };
-  database?: {
+  [Emulators.DATABASE]?: {
     host?: string;
     port?: number;
   };
-  firestore?: {
+  [Emulators.FIRESTORE]?: {
     host?: string;
     port?: number;
   };
-  functions?: {
+  [Emulators.FUNCTIONS]?: {
     host?: string;
     port?: number;
   };
-  hosting?: {
+  [Emulators.HOSTING]?: {
     host?: string;
     port?: number;
   };
-  pubsub?: {
+  [Emulators.PUBSUB]?: {
     host?: string;
     port?: number;
   };
-  storage?: {
+  [Emulators.STORAGE]?: {
     host?: string;
     port?: number;
   };
-  logging?: {
+  [Emulators.REMOTE_CONFIG]?: {
     host?: string;
     port?: number;
   };
-  hub?: {
+  [Emulators.LOGGING]?: {
     host?: string;
     port?: number;
   };
-  ui?: {
+  [Emulators.HUB]?: {
+    host?: string;
+    port?: number;
+  };
+  [Emulators.UI]?: {
     enabled?: boolean;
     host?: string;
     port?: number | string;
