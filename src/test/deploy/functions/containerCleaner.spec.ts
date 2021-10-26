@@ -1,10 +1,11 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import { stub } from "sinon";
 
+import * as artifactregistry from "../../../gcp/artifactregistry";
 import * as backend from "../../../deploy/functions/backend";
 import * as containerCleaner from "../../../deploy/functions/containerCleaner";
 import * as docker from "../../../gcp/docker";
+import * as poller from "../../../operation-poller";
 
 describe("DockerHelper", () => {
   let listTags: sinon.SinonStub;
@@ -129,17 +130,67 @@ describe("DockerHelper", () => {
 });
 
 describe("ArtifactRegistryCleaner", () => {
+  let ar: sinon.SinonStubbedInstance<typeof artifactregistry>;
+  let poll: sinon.SinonStubbedInstance<typeof poller>;
+
+  beforeEach(() => {
+    ar = sinon.stub(artifactregistry);
+    poll = sinon.stub(poller);
+  });
+
+  afterEach(() => {
+    sinon.verifyAndRestore();
+  });
+
   it("deletes artifacts", async () => {
     const cleaner = new containerCleaner.ArtifactRegistryCleaner();
-    const stub = sinon.createStubInstance(containerCleaner.DockerHelper);
     const func = {
       id: "function",
       region: "region",
       project: "project",
     };
 
-    await cleaner.cleanupFunction(func, stub);
-    expect(stub.rm).to.have.been.calledWith("project/gcf-artifacts/function");
+    ar.deletePackage.returns(Promise.resolve({ name: "op" } as any));
+
+    await cleaner.cleanupFunction(func);
+    expect(ar.deletePackage).to.have.been.calledWith(
+      "projects/project/locations/region/repositories/gcf-artifacts/packages/function"
+    );
+    expect(poll.pollOperation).to.have.been.called;
+  });
+
+  it("deletes cache dirs", async () => {
+    const cleaner = new containerCleaner.ArtifactRegistryCleaner();
+    const func = {
+      id: "function",
+      region: "region",
+      project: "project",
+    };
+
+    ar.deletePackage.returns(Promise.resolve({ name: "op", done: false }));
+
+    await cleaner.cleanupFunctionCache(func);
+    expect(ar.deletePackage).to.have.been.calledWith(
+      "projects/project/locations/region/repositories/gcf-artifacts/packages/function%2Fcache"
+    );
+    expect(poll.pollOperation).to.have.been.called;
+  });
+
+  it("bypasses poller if the operation is completed", async () => {
+    const cleaner = new containerCleaner.ArtifactRegistryCleaner();
+    const func = {
+      id: "function",
+      region: "region",
+      project: "project",
+    };
+
+    ar.deletePackage.returns(Promise.resolve({ name: "op", done: true }));
+
+    await cleaner.cleanupFunction(func);
+    expect(ar.deletePackage).to.have.been.calledWith(
+      "projects/project/locations/region/repositories/gcf-artifacts/packages/function"
+    );
+    expect(poll.pollOperation).to.not.have.been.called;
   });
 });
 
