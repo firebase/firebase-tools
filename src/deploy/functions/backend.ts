@@ -95,7 +95,7 @@ export interface TaskQueueRateLimits {
   maxDispatchesPerSecond?: number;
 }
 
-export interface TaskQueueRetryPolicy {
+export interface TaskQueueRetryConfig {
   maxAttempts?: number;
   maxRetryDuration?: proto.Duration;
   minBackoff?: proto.Duration;
@@ -105,7 +105,7 @@ export interface TaskQueueRetryPolicy {
 
 export interface TaskQueueTrigger {
   rateLimits?: TaskQueueRateLimits;
-  retryPolicy?: TaskQueueRetryPolicy;
+  retryConfig?: TaskQueueRetryConfig;
   invoker?: string[];
 }
 
