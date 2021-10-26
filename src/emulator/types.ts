@@ -14,6 +14,7 @@ export enum Emulators {
   STORAGE = "storage",
   EXTENSIONS = "extensions",
   EVENTARC = "eventarc",
+  REMOTE_CONFIG = "remote config",
 }
 
 export type DownloadableEmulators =
@@ -47,6 +48,7 @@ export const ALL_SERVICE_EMULATORS = [
   Emulators.PUBSUB,
   Emulators.STORAGE,
   Emulators.EVENTARC,
+  Emulators.REMOTE_CONFIG,
 ].filter((v) => v);
 
 export const EMULATORS_SUPPORTED_BY_FUNCTIONS = [
@@ -64,6 +66,7 @@ export const EMULATORS_SUPPORTED_BY_UI = [
   Emulators.FUNCTIONS,
   Emulators.STORAGE,
   Emulators.EXTENSIONS,
+  Emulators.REMOTE_CONFIG,
 ];
 
 export const EMULATORS_SUPPORTED_BY_USE_EMULATOR = [

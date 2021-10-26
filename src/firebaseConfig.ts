@@ -4,8 +4,9 @@
 // the schema/ directory. After changing this file you will need to run
 // 'npm run generate:json-schema' to regenerate the schema files.
 //
-
 import { RequireAtLeastOne } from "./metaprogramming";
+// Sourced from - https://docs.microsoft.com/en-us/javascript/api/@azure/keyvault-certificates/requireatleastone?view=azure-node-latest
+import { Emulators } from "./emulator/types";
 
 // should be sourced from - https://github.com/firebase/firebase-tools/blob/master/src/deploy/functions/runtimes/index.ts#L15
 type CloudFunctionRuntimes = "nodejs10" | "nodejs12" | "nodejs14" | "nodejs16";
@@ -138,44 +139,48 @@ export type RemoteConfigConfig = {
 } & Deployable;
 
 export type EmulatorsConfig = {
-  auth?: {
+  [Emulators.AUTH]?: {
     host?: string;
     port?: number;
   };
-  database?: {
+  [Emulators.DATABASE]?: {
     host?: string;
     port?: number;
   };
-  firestore?: {
+  [Emulators.FIRESTORE]?: {
     host?: string;
     port?: number;
     websocketPort?: number;
   };
-  functions?: {
+  [Emulators.FUNCTIONS]?: {
     host?: string;
     port?: number;
   };
-  hosting?: {
+  [Emulators.HOSTING]?: {
     host?: string;
     port?: number;
   };
-  pubsub?: {
+  [Emulators.PUBSUB]?: {
     host?: string;
     port?: number;
   };
-  storage?: {
+  [Emulators.STORAGE]?: {
     host?: string;
     port?: number;
   };
-  logging?: {
+  [Emulators.REMOTE_CONFIG]?: {
     host?: string;
     port?: number;
   };
-  hub?: {
+  [Emulators.LOGGING]?: {
     host?: string;
     port?: number;
   };
-  ui?: {
+  [Emulators.HUB]?: {
+    host?: string;
+    port?: number;
+  };
+  [Emulators.UI]?: {
     enabled?: boolean;
     host?: string;
     port?: number | string;
