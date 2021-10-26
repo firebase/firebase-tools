@@ -53,6 +53,7 @@ import { requiresJava } from "./downloadableEmulators";
 import { prepareFrameworks } from "../frameworks";
 import * as experiments from "../experiments";
 import { EmulatorListenConfig, PortName, resolveHostAndAssignPorts } from "./portUtils";
+import { RemoteConfigEmulator } from "./remoteconfig";
 
 const START_LOGGING_EMULATOR = utils.envOverride(
   "START_LOGGING_EMULATOR",
@@ -809,6 +810,17 @@ export async function startAll(
       const storageExportDir = path.resolve(importDirAbsPath, exportMetadata.storage.path);
       storageEmulator.storageLayer.import(storageExportDir, { initiatedBy: "start" });
     }
+  }
+
+  if (shouldStart(options, Emulators.REMOTE_CONFIG)) {
+    const rcAddr = await getAndCheckAddress(Emulators.REMOTE_CONFIG, options);
+
+    const rcEmulator = new RemoteConfigEmulator({
+      host: rcAddr.host,
+      port: rcAddr.port,
+      projectId: projectId,
+    });
+    await startEmulator(rcEmulator);
   }
 
   // Hosting emulator needs to start after all of the others so that we can detect
