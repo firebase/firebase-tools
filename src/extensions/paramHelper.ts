@@ -1,7 +1,6 @@
 import * as _ from "lodash";
 import * as path from "path";
 import * as clc from "cli-color";
-import * as dotenv from "dotenv";
 import * as fs from "fs-extra";
 
 import { FirebaseError } from "../error";
