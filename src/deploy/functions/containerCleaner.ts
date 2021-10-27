@@ -69,12 +69,13 @@ async function retry<Return>(func: () => Promise<Return>): Promise<Return> {
 
 export async function cleanupBuildImages(
   haveFunctions: backend.TargetIds[],
-  deletedFunctions: backend.TargetIds[]
+  deletedFunctions: backend.TargetIds[],
+  cleaners: { gcr?: ContainerRegistryCleaner; ar?: ArtifactRegistryCleaner } = {}
 ): Promise<void> {
   utils.logBullet(clc.bold.cyan("functions: ") + "cleaning up build files...");
   const failedDomains: Set<string> = new Set();
   if (previews.artifactregistry) {
-    const arCleaner = new ArtifactRegistryCleaner();
+    const arCleaner = cleaners.ar || new ArtifactRegistryCleaner();
     await Promise.all([
       ...haveFunctions.map(async (func) => {
         try {
@@ -97,7 +98,7 @@ export async function cleanupBuildImages(
       }),
     ]);
   } else {
-    const gcrCleaner = new ContainerRegistryCleaner();
+    const gcrCleaner = cleaners.gcr || new ContainerRegistryCleaner();
     await Promise.all(
       [...haveFunctions, ...deletedFunctions].map(async (func) => {
         try {
@@ -121,8 +122,6 @@ export async function cleanupBuildImages(
     }
     utils.logLabeledWarning("functions", message);
   }
-
-  // TODO: clean up Artifact Registry images as well.
 }
 
 // TODO: AR has a very simple API but is a Google API and thus probably has much lower quotas
