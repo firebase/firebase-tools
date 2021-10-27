@@ -12,7 +12,7 @@ const SPEC = {
 };
 
 describe("TriggerRegionHelper", () => {
-  describe("lookupMissingTriggerRegions", () => {
+  describe("ensureTriggerRegions", () => {
     let storageStub: sinon.SinonStub;
 
     beforeEach(() => {
@@ -38,9 +38,9 @@ describe("TriggerRegionHelper", () => {
         ...SPEC,
       };
 
-      await expect(
-        triggerRegionHelper.lookupMissingTriggerRegions(backend.of(ep))
-      ).to.be.rejectedWith("Can't find the storage bucket region");
+      await expect(triggerRegionHelper.ensureTriggerRegions(backend.of(ep))).to.be.rejectedWith(
+        "Can't find the storage bucket region"
+      );
     });
 
     it("should skip v1 and callable functions", async () => {
@@ -65,7 +65,7 @@ describe("TriggerRegionHelper", () => {
         ...SPEC,
       };
 
-      await triggerRegionHelper.lookupMissingTriggerRegions(backend.of(v1EventFn, v2CallableFn));
+      await triggerRegionHelper.ensureTriggerRegions(backend.of(v1EventFn, v2CallableFn));
 
       expect(v1EventFn.eventTrigger).to.deep.eq({
         eventType: "google.storage.object.create",
@@ -93,7 +93,7 @@ describe("TriggerRegionHelper", () => {
         ...SPEC,
       };
 
-      await triggerRegionHelper.lookupMissingTriggerRegions(backend.of(wantFn));
+      await triggerRegionHelper.ensureTriggerRegions(backend.of(wantFn));
 
       expect(wantFn.eventTrigger).to.deep.eq({
         eventType: "google.cloud.storage.object.v1.finalized",
@@ -122,9 +122,9 @@ describe("TriggerRegionHelper", () => {
         region: "europe-west4",
       };
 
-      await expect(
-        triggerRegionHelper.lookupMissingTriggerRegions(backend.of(wantFn))
-      ).to.be.rejectedWith("Function cannot be deployed outside of the trigger region");
+      await expect(triggerRegionHelper.ensureTriggerRegions(backend.of(wantFn))).to.be.rejectedWith(
+        "Function cannot be deployed outside of the trigger region"
+      );
     });
   });
 });

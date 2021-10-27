@@ -36,7 +36,7 @@ describe("checkIam", () => {
     sinon.verifyAndRestore();
   });
 
-  describe("checkServiceAgentRoles", () => {
+  describe("ensureServiceAgentRoles", () => {
     it("should skip v1, callable, and deployed functions", async () => {
       const v1EventFn: backend.Endpoint = {
         id: "v1eventfn",
@@ -72,7 +72,7 @@ describe("checkIam", () => {
         ...SPEC,
       };
 
-      await checkIam.checkServiceAgentRoles(
+      await checkIam.ensureServiceAgentRoles(
         "project",
         backend.of(wantFn),
         backend.of(v1EventFn, v2CallableFn, wantFn)
@@ -111,7 +111,7 @@ describe("checkIam", () => {
         ...SPEC,
       };
 
-      await checkIam.checkServiceAgentRoles("project", backend.of(wantFn), backend.of(haveFn));
+      await checkIam.ensureServiceAgentRoles("project", backend.of(wantFn), backend.of(haveFn));
 
       expect(storageStub).to.not.have.been.called;
       expect(getIamStub).to.not.have.been.called;
@@ -119,13 +119,7 @@ describe("checkIam", () => {
     });
 
     it("should add the binding with the service agent", async () => {
-      storageStub.resolves(STORAGE_RES);
-      getIamStub.resolves({
-        etag: "etag",
-        version: 3,
-        bindings: [BINDING],
-      });
-      setIamStub.resolves({
+      const newIamPolicy = {
         etag: "etag",
         version: 3,
         bindings: [
@@ -135,7 +129,14 @@ describe("checkIam", () => {
             members: [`serviceAccount:${STORAGE_RES.email_address}`],
           },
         ],
+      };
+      storageStub.resolves(STORAGE_RES);
+      getIamStub.resolves({
+        etag: "etag",
+        version: 3,
+        bindings: [BINDING],
       });
+      setIamStub.resolves(newIamPolicy);
       const wantFn: backend.Endpoint = {
         id: "wantFn",
         entryPoint: "wantFn",
@@ -150,40 +151,28 @@ describe("checkIam", () => {
         ...SPEC,
       };
 
-      await checkIam.checkServiceAgentRoles("project", backend.of(wantFn), backend.empty());
+      await checkIam.ensureServiceAgentRoles("project", backend.of(wantFn), backend.empty());
 
       expect(storageStub).to.have.been.calledOnce;
       expect(getIamStub).to.have.been.calledOnce;
       expect(setIamStub).to.have.been.calledOnce;
+      expect(setIamStub).to.have.been.calledWith("project", newIamPolicy, "bindings");
     });
   });
 
-  describe("enableStorageRoles", () => {
-    it("should error if the storage api doesn't return correct response", async () => {
-      storageStub.resolves({});
+  describe("ensureStorageRoles", () => {
+    it("should return early if we fail to get the IAM policy", async () => {
+      getIamStub.rejects("Failed to get the IAM policy");
 
-      await expect(checkIam.enableStorageRoles("project")).to.be.rejectedWith(
-        "Failed to obtain the Cloud Storage service agent email address"
-      );
-    });
-
-    it("should error if we fails to get the IAM policy", async () => {
-      storageStub.resolves(STORAGE_RES);
-      getIamStub.resolves(undefined);
-
-      await expect(checkIam.enableStorageRoles("project")).to.be.rejectedWith(
-        "Failed to obtain the IAM policy"
-      );
+      await expect(checkIam.ensureStorageRoles("project")).to.not.be.rejected;
+      expect(getIamStub).to.have.been.calledOnce;
+      expect(getIamStub).to.have.been.calledWith("project");
+      expect(storageStub).to.not.have.been.called;
+      expect(setIamStub).to.not.have.been.called;
     });
 
     it("should add the pubsub binding when missing and set the policy", async () => {
-      storageStub.resolves(STORAGE_RES);
-      getIamStub.resolves({
-        etag: "etag",
-        version: 3,
-        bindings: [BINDING],
-      });
-      setIamStub.resolves({
+      const newIamPolicy = {
         etag: "etag",
         version: 3,
         bindings: [
@@ -193,20 +182,23 @@ describe("checkIam", () => {
             members: [`serviceAccount:${STORAGE_RES.email_address}`],
           },
         ],
-      });
-
-      await expect(checkIam.enableStorageRoles("project")).to.not.be.rejected;
-      expect(setIamStub).to.be.calledOnce;
-    });
-
-    it("should update the pubsub binding and set the policy", async () => {
-      storageStub.resolves(STORAGE_RES);
+      };
       getIamStub.resolves({
         etag: "etag",
         version: 3,
-        bindings: [BINDING, { role: "roles/pubsub.publisher", members: ["someuser"] }],
+        bindings: [BINDING],
       });
-      setIamStub.resolves({
+      storageStub.resolves(STORAGE_RES);
+      setIamStub.resolves(newIamPolicy);
+
+      await expect(checkIam.ensureStorageRoles("project")).to.not.be.rejected;
+      expect(setIamStub).to.have.been.calledOnce;
+      expect(setIamStub).to.have.been.calledOnce;
+      expect(setIamStub).to.have.been.calledWith("project", newIamPolicy, "bindings");
+    });
+
+    it("should update the pubsub binding and set the policy", async () => {
+      const newIamPolicy = {
         etag: "etag",
         version: 3,
         bindings: [
@@ -216,13 +208,32 @@ describe("checkIam", () => {
             members: ["someuser", `serviceAccount:${STORAGE_RES.email_address}`],
           },
         ],
+      };
+      getIamStub.resolves({
+        etag: "etag",
+        version: 3,
+        bindings: [BINDING, { role: "roles/pubsub.publisher", members: ["someuser"] }],
       });
+      storageStub.resolves(STORAGE_RES);
+      setIamStub.resolves(newIamPolicy);
 
-      await expect(checkIam.enableStorageRoles("project")).to.not.be.rejected;
-      expect(setIamStub).to.be.calledOnce;
+      await expect(checkIam.ensureStorageRoles("project")).to.not.be.rejected;
+      expect(setIamStub).to.have.been.calledOnce;
+      expect(setIamStub).to.have.been.calledWith("project", newIamPolicy, "bindings");
     });
 
     it("should error if the policy doesn't set", async () => {
+      const newIamPolicy = {
+        etag: "etag",
+        version: 3,
+        bindings: [
+          BINDING,
+          {
+            role: "roles/pubsub.publisher",
+            members: [`serviceAccount:${STORAGE_RES.email_address}`],
+          },
+        ],
+      };
       storageStub.resolves(STORAGE_RES);
       getIamStub.resolves({
         etag: "etag",
@@ -235,10 +246,12 @@ describe("checkIam", () => {
         bindings: [BINDING],
       });
 
-      await expect(checkIam.enableStorageRoles("project")).to.be.rejectedWith(
-        "IAM Policy did not update correctly"
+      await expect(checkIam.ensureStorageRoles("project")).to.be.rejectedWith(
+        `Failed to grant ${STORAGE_RES.email_address} the roles/pubsub.publisher permission. ` +
+          "This is necessary to receive Cloud Storage events."
       );
-      expect(setIamStub).to.be.calledOnce;
+      expect(setIamStub).to.have.been.calledOnce;
+      expect(setIamStub).to.have.been.calledWith("project", newIamPolicy, "bindings");
     });
 
     it("should not set if the binding and policy are present", async () => {
@@ -255,7 +268,7 @@ describe("checkIam", () => {
         ],
       });
 
-      await expect(checkIam.enableStorageRoles("project")).to.not.be.rejected;
+      await expect(checkIam.ensureStorageRoles("project")).to.not.be.rejected;
       expect(setIamStub).to.not.have.been.called;
     });
   });

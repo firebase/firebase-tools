@@ -5,7 +5,7 @@ import { stub } from "sinon";
 import * as backend from "../../../deploy/functions/backend";
 import * as containerCleaner from "../../../deploy/functions/containerCleaner";
 import * as docker from "../../../gcp/docker";
-import { SUBDOMAIN_MAPPING } from "../../../deploy/functions/types";
+import { SUBDOMAIN_MAPPING } from "../../../gcp/location";
 
 describe("DockerHelper", () => {
   let listTags: sinon.SinonStub;

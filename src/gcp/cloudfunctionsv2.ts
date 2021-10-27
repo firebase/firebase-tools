@@ -385,9 +385,12 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
         gcfFunction.eventTrigger.eventFilters.push({ attribute, value });
       }
     }
-    if (endpoint.eventTrigger.region) {
-      gcfFunction.eventTrigger.triggerRegion = endpoint.eventTrigger.region;
-    }
+    proto.renameIfPresent(
+      gcfFunction.eventTrigger,
+      endpoint.eventTrigger,
+      "triggerRegion",
+      "region"
+    );
 
     if (endpoint.eventTrigger.retry) {
       logger.warn("Cannot set a retry policy on Cloud Function", endpoint.id);

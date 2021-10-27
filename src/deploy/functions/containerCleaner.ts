@@ -11,7 +11,7 @@ import * as docker from "../../gcp/docker";
 import * as backend from "./backend";
 import * as utils from "../../utils";
 import { FirebaseError } from "../../error";
-import { SUBDOMAIN_MAPPING } from "./types";
+import { SUBDOMAIN_MAPPING } from "../../gcp/location";
 import { previews } from "../../previews";
 
 async function retry<Return>(func: () => Promise<Return>): Promise<Return> {
