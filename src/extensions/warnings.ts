@@ -62,7 +62,7 @@ export async function displayWarningPrompts(
 
 const toListEntry = (i: InstanceSpec) => {
   const idAndRef = humanReadable(i);
-  const sourceCodeLink = `\n\t [Source Code](${i.extensionVersion?.sourceDownloadUri})`;
+  const sourceCodeLink = `\n\t[Source Code](${i.extensionVersion?.sourceDownloadUri})`;
   const githubLink = i.extensionVersion?.spec?.sourceUrl
     ? `\n\t[Publisher Contact](${i.extensionVersion?.spec.sourceUrl})`
     : "";
@@ -97,7 +97,7 @@ export async function displayWarningsForDeploy(instancesToCreate: InstanceSpec[]
       marked(
         `The following are instances of ${clc.bold(
           "experimental"
-        )} extensions.\n${humanReadableList}\nThey may not be production-ready. Their functionality may change in backward-incompatible ways before their official release, or they may be discontinued.`
+        )} extensions.They may not be production-ready. Their functionality may change in backward-incompatible ways before their official release, or they may be discontinued.\n${humanReadableList}\n`
       )
     );
   }
@@ -107,10 +107,9 @@ export async function displayWarningsForDeploy(instancesToCreate: InstanceSpec[]
     utils.logLabeledBullet(
       logPrefix,
       marked(
-        `The following are instances of extensions that are in preview and are built by a developer in the [Extensions Publisher Early Access Program](http://bit.ly/firex-provider).\n${humanReadableList}` +
-          `\nTheir functionality might change in backward-incompatible ways. Since these extensions aren't built by Firebase, reach out to their publisher with questions about them.` +
+        `These extensions are in preview and are built by a developer in the Extensions Publisher Early Access Program (http://bit.ly/firex-provider. Their functionality might change in backwards-incompatible ways. Since these extensions aren't built by Firebase, reach out to their publisher with questions about them.` +
           ` They are provided “AS IS”, without any warranty, express or implied, from Google.` +
-          ` Google disclaims all liability for any damages, direct or indirect, resulting from the use of these extensions.`
+          ` Google disclaims all liability for any damages, direct or indirect, resulting from the use of these extensions\n${humanReadableList}`
       )
     );
   }

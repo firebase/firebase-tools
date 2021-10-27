@@ -17,20 +17,15 @@ module.exports = new Command("ext:export")
   .before(requirePermissions, ["firebaseextensions.instances.list"])
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
+  .withForce()
   .action(async (options: any) => {
     const projectId = needProjectId(options);
     const projectNumber = await getProjectNumber(options);
     // Look up the instances that already exist,
-    // add a ^ to their version,
     // and strip project IDs from the param values.
-    const have = (await planner.have(projectId))
-      .map((s) => {
-        if (s.ref) {
-          s.ref.version = `^${s.ref.version}`;
-        }
-        return s;
-      })
-      .map((i) => parameterizeProject(projectId, projectNumber, i));
+    const have = (await planner.have(projectId)).map((i) =>
+      parameterizeProject(projectId, projectNumber, i)
+    );
     // If an instance spec is missing a ref, that instance must have been installed from a local source.
     const [withRef, withoutRef] = partition(have, (s) => !!s.ref);
 
@@ -38,6 +33,7 @@ module.exports = new Command("ext:export")
 
     if (
       !options.nonInteractive &&
+      !options.force &&
       !(await promptOnce({
         message: "Do you wish to add these Extension instances to firebase.json?",
         type: "confirm",

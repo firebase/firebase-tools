@@ -5,26 +5,22 @@ import * as refs from "../../extensions/refs";
 import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
 import { logger } from "../../logger";
-import { Payload } from "./args";
+import { Context, Payload } from "./args";
 import { FirebaseError } from "../../error";
 import { requirePermissions } from "../../requirePermissions";
 import { ensureExtensionsApiEnabled } from "../../extensions/extensionsHelper";
-import { ensureSecretManagerApiEnabled, usesSecrets } from "../../extensions/secretsUtils";
-import { checkSpecForSecrets, handleSecretParams } from "./secrets";
+import { ensureSecretManagerApiEnabled } from "../../extensions/secretsUtils";
+import { checkSpecForSecrets } from "./secrets";
 import { displayWarningsForDeploy } from "../../extensions/warnings";
 
-export async function prepare(
-  context: any, // TODO: type this
-  options: Options,
-  payload: Payload
-) {
+export async function prepare(context: Context, options: Options, payload: Payload) {
   const projectId = needProjectId(options);
 
   await ensureExtensionsApiEnabled(options);
   await requirePermissions(options, ["firebaseextensions.instances.list"]);
 
-  const have = await planner.have(projectId);
-  const want = await planner.want(
+  context.have = await planner.have(projectId);
+  context.want = await planner.want(
     projectId,
     options.config.projectDir,
     options.config.get("extensions")
@@ -32,15 +28,15 @@ export async function prepare(
 
   // Check if any extension instance that we want is using secrets,
   // and ensure the API is enabled if so.
-  const usingSecrets = await Promise.all(want.map(checkSpecForSecrets));
+  const usingSecrets = await Promise.all(context.have?.map(checkSpecForSecrets));
   if (usingSecrets.some((i) => i)) {
     await ensureSecretManagerApiEnabled(options);
   }
 
-  payload.instancesToCreate = want.filter((i) => !have.some(matchesInstanceId(i)));
-  payload.instancesToConfigure = want.filter((i) => have.some(isConfigure(i)));
-  payload.instancesToUpdate = want.filter((i) => have.some(isUpdate(i)));
-  payload.instancesToDelete = have.filter((i) => !want.some(matchesInstanceId(i)));
+  payload.instancesToCreate = context.want.filter((i) => !context.have?.some(matchesInstanceId(i)));
+  payload.instancesToConfigure = context.want.filter((i) => context.have?.some(isConfigure(i)));
+  payload.instancesToUpdate = context.want.filter((i) => context.have?.some(isUpdate(i)));
+  payload.instancesToDelete = context.have.filter((i) => !context.want?.some(matchesInstanceId(i)));
 
   if (await displayWarningsForDeploy(payload.instancesToCreate)) {
     if (!options.force && options.nonInteractive) {
@@ -68,7 +64,7 @@ export async function prepare(
   }
   if (payload.instancesToUpdate.length) {
     permissionsNeeded.push("firebaseextensions.instances.update");
-    logger.info(deploymentSummary.updatesSummary(payload.instancesToUpdate, have));
+    logger.info(deploymentSummary.updatesSummary(payload.instancesToUpdate, context.have));
   }
   if (payload.instancesToConfigure.length) {
     permissionsNeeded.push("firebaseextensions.instances.update");
@@ -96,9 +92,6 @@ export async function prepare(
   }
 
   await requirePermissions(options, permissionsNeeded);
-
-  // Check if the secrets used exist, and prompt to create them if not.
-  await handleSecretParams(payload, have, options.nonInteractive);
 }
 const matchesInstanceId = (dep: planner.InstanceSpec) => (test: planner.InstanceSpec) => {
   return dep.instanceId === test.instanceId;

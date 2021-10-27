@@ -1,18 +1,15 @@
 import * as tasks from "./tasks";
 import Queue from "../../throttler/queue";
-import { Payload } from "./args";
+import { Context, Payload } from "./args";
 import { FirebaseError } from "../../error";
 import { ErrorHandler } from "./errors";
 import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
 import { bulkCheckProductsProvisioned } from "../../extensions/provisioningHelper";
+import { handleSecretParams } from "./secrets";
 import { checkBilling } from "./validate";
 
-export async function deploy(
-  context: any, // TODO: type this
-  options: Options,
-  payload: Payload
-) {
+export async function deploy(context: Context, options: Options, payload: Payload) {
   const projectId = needProjectId(options);
   // First, check that billing is enabled
   await checkBilling(projectId, options.nonInteractive);
@@ -23,6 +20,9 @@ export async function deploy(
     ...(payload.instancesToUpdate ?? []),
     ...(payload.instancesToConfigure ?? []),
   ]);
+
+  // Then, check if the secrets used exist, and prompt to create them if not.
+  await handleSecretParams(payload, context.have!, options.nonInteractive);
 
   // Then, run validateOnly calls.
   const errorHandler = new ErrorHandler();

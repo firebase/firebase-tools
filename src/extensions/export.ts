@@ -1,13 +1,13 @@
 import * as clc from "cli-color";
 
 import * as refs from "./refs";
-import { getProjectNumber } from "../getProjectNumber";
 import { Options } from "../options";
 import { Config } from "../config";
 import { InstanceSpec } from "../deploy/extensions/planner";
 import { humanReadable } from "../deploy/extensions/deploymentSummary";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
+import { promptOnce } from "../prompt";
 
 /**
  * parameterizeProject searchs spec.params for any param that include projectId or projectNumber,
@@ -72,11 +72,11 @@ function writeExtensionsToFirebaseJson(have: InstanceSpec[], existingConfig: Con
   existingConfig.writeProjectFile("firebase.json", existingConfig.src);
 }
 
-async function writeEnvFile(spec: InstanceSpec, existingConfig: Config) {
+async function writeEnvFile(spec: InstanceSpec, existingConfig: Config, force?: boolean) {
   const content = Object.entries(spec.params)
     .map((r) => `${r[0]}=${r[1]}`)
     .join("\n");
-  await existingConfig.askWriteProjectFile(`extensions/${spec.instanceId}.env`, content);
+  await existingConfig.askWriteProjectFile(`extensions/${spec.instanceId}.env`, content, force);
 }
 
 export async function writeFiles(have: InstanceSpec[], options: Options) {
@@ -86,8 +86,24 @@ export async function writeFiles(have: InstanceSpec[], options: Options) {
       "Not currently in a Firebase directory. Please run `firebase init` to create a Firebase directory."
     );
   }
+  if (existingConfig.has("extensions") && !options.nonInteractive && !options.force) {
+    const currentExtensions = Object.entries(existingConfig.get("extensions"))
+      .map((i) => `${i[0]}: ${i[1]}`)
+      .join("\n\t");
+    const overwrite = await promptOnce({
+      type: "list",
+      message: `firebase.json already contains extensions:\n${currentExtensions}\nWould you like to overwrite or merge?`,
+      choices: [
+        { name: "Overwrite", value: true },
+        { name: "Merge", value: false },
+      ],
+    });
+    if (overwrite) {
+      existingConfig.set("extensions", {});
+    }
+  }
   writeExtensionsToFirebaseJson(have, existingConfig);
   for (const spec of have) {
-    await writeEnvFile(spec, existingConfig);
+    await writeEnvFile(spec, existingConfig, options.force);
   }
 }
