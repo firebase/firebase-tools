@@ -24,7 +24,7 @@ import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
 import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
 import { HostingEmulator } from "./hostingEmulator";
 import { FirebaseError } from "../error";
-import * as getProjectId from "../getProjectId";
+import { getProjectId, needProjectId } from "../projectUtils";
 import { PubsubEmulator } from "./pubsubEmulator";
 import * as commandUtils from "./commandUtils";
 import { EmulatorHub } from "./hub";
@@ -36,7 +36,6 @@ import { EmulatorLogger } from "./emulatorLogger";
 import * as portUtils from "./portUtils";
 import { EmulatorHubClient } from "./hubClient";
 import { promptOnce } from "../prompt";
-import * as rimraf from "rimraf";
 import { FLAG_EXPORT_ON_EXIT_NAME } from "./commandUtils";
 import { fileExistsSync } from "../fsutils";
 import { StorageEmulator } from "./storage";
@@ -330,7 +329,7 @@ export async function startAll(options: Options, showUI: boolean = true): Promis
   const hubLogger = EmulatorLogger.forEmulator(Emulators.HUB);
   hubLogger.logLabeled("BULLET", "emulators", `Starting emulators: ${targets.join(", ")}`);
 
-  const projectId: string | undefined = getProjectId(options, true);
+  const projectId: string = getProjectId(options) || ""; // TODO: Next breaking change, consider making this fall back to demo project.
   if (Constants.isDemoProject(projectId)) {
     hubLogger.logLabeled(
       "BULLET",
@@ -402,7 +401,7 @@ export async function startAll(options: Options, showUI: boolean = true): Promis
   if (shouldStart(options, Emulators.FUNCTIONS)) {
     const functionsLogger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
     const functionsAddr = await getAndCheckAddress(Emulators.FUNCTIONS, options);
-    const projectId = getProjectId(options, false);
+    const projectId = needProjectId(options);
 
     utils.assertDefined(options.config.src.functions);
     utils.assertDefined(
@@ -649,7 +648,7 @@ export async function startAll(options: Options, showUI: boolean = true): Promis
     const storageEmulator = new StorageEmulator({
       host: storageAddr.host,
       port: storageAddr.port,
-      projectId,
+      projectId: projectId,
       rules: options.config.path(storageConfig.rules),
     });
     await startEmulator(storageEmulator);
@@ -694,7 +693,7 @@ export async function startAll(options: Options, showUI: boolean = true): Promis
 
     const uiAddr = await getAndCheckAddress(Emulators.UI, options);
     const ui = new EmulatorUI({
-      projectId,
+      projectId: projectId,
       auto_download: true,
       ...uiAddr,
     });

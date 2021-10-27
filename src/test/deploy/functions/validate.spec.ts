@@ -2,15 +2,9 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import { FirebaseError } from "../../../error";
-import { RUNTIME_NOT_SET } from "../../../deploy/functions/runtimes/node/parseRuntimeAndValidateSDK";
-import { FunctionSpec } from "../../../deploy/functions/backend";
 import * as fsutils from "../../../fsutils";
 import * as validate from "../../../deploy/functions/validate";
 import * as projectPath from "../../../projectPath";
-
-// have to require this because no @types/cjson available
-// eslint-disable-next-line
-const cjson = require("cjson");
 
 describe("validate", () => {
   describe("functionsDirectoryExists", () => {
@@ -65,9 +59,11 @@ describe("validate", () => {
       const functions = [
         {
           id: "my-function-!@#$%",
+          platform: "gcfv1",
         },
         {
           id: "my-function-!@#$!@#",
+          platform: "gcfv1",
         },
       ];
 
@@ -77,7 +73,16 @@ describe("validate", () => {
     });
 
     it("should throw error if some function names are improperly formatted", () => {
-      const functions = [{ id: "my-function$%#" }, { id: "my-function-2" }];
+      const functions = [
+        {
+          id: "my-function$%#",
+          platform: "gcfv1",
+        },
+        {
+          id: "my-function-2",
+          platform: "gcfv2",
+        },
+      ];
 
       expect(() => {
         validate.functionIdsAreValid(functions);
@@ -87,99 +92,25 @@ describe("validate", () => {
     // I think it should throw error here but it doesn't error on empty or even undefined functionNames.
     // TODO(b/131331234): fix this test when validation code path is fixed.
     it.skip("should throw error on empty function names", () => {
-      const functions = [{ id: "" }];
+      const functions = [{ id: "", platform: "gcfv1" }];
 
       expect(() => {
         validate.functionIdsAreValid(functions);
       }).to.throw(FirebaseError);
     });
-  });
 
-  describe("checkForInvalidChangeOfTrigger", () => {
-    const CLOUD_FUNCTION: Omit<FunctionSpec, "trigger"> = {
-      platform: "gcfv1",
-      id: "my-func",
-      region: "us-central1",
-      project: "project",
-      runtime: "nodejs14",
-      entryPoint: "function",
-    };
-    it("should throw if a https function would be changed into an event triggered function", () => {
-      const fn: FunctionSpec = {
-        ...CLOUD_FUNCTION,
-        trigger: {
-          eventType: "google.pubsub.topic.publish",
-          eventFilters: {},
-          retry: false,
-        },
-      };
-      const exFn: FunctionSpec = {
-        ...CLOUD_FUNCTION,
-        trigger: {
-          allowInsecure: true,
-        },
-      };
-
+    it("should throw error on capital letters in v2 function names", () => {
+      const functions = [{ id: "Hi", platform: "gcfv2" }];
       expect(() => {
-        validate.checkForInvalidChangeOfTrigger(fn, exFn);
-      }).to.throw();
+        validate.functionIdsAreValid(functions);
+      }).to.throw(FirebaseError);
     });
 
-    it("should throw if a event triggered function would be changed into an https function", () => {
-      const fn: FunctionSpec = {
-        ...CLOUD_FUNCTION,
-        trigger: {
-          allowInsecure: true,
-        },
-      };
-      const exFn: FunctionSpec = {
-        ...CLOUD_FUNCTION,
-        trigger: {
-          eventType: "google.pubsub.topic.publish",
-          eventFilters: {},
-          retry: false,
-        },
-      };
-
+    it("should throw error on underscores in v2 function names", () => {
+      const functions = [{ id: "o_O", platform: "gcfv2" }];
       expect(() => {
-        validate.checkForInvalidChangeOfTrigger(fn, exFn);
-      }).to.throw();
-    });
-
-    it("should not throw if a event triggered function keeps the same trigger", () => {
-      const trigger = {
-        eventType: "google.pubsub.topic.publish",
-        eventFilters: {},
-        retry: false,
-      };
-      const fn: FunctionSpec = {
-        ...CLOUD_FUNCTION,
-        trigger,
-      };
-      const exFn: FunctionSpec = {
-        ...CLOUD_FUNCTION,
-        trigger,
-      };
-
-      expect(() => {
-        validate.checkForInvalidChangeOfTrigger(fn, exFn);
-      }).not.to.throw();
-    });
-
-    it("should not throw if a https function stays as a https function", () => {
-      const trigger = { allowInsecure: true };
-      const fn: FunctionSpec = {
-        ...CLOUD_FUNCTION,
-        trigger,
-      };
-      const exFn: FunctionSpec = {
-        ...CLOUD_FUNCTION,
-        trigger,
-      };
-
-      expect(() => {
-        validate.checkForInvalidChangeOfTrigger(fn, exFn);
-      }).not.to.throw();
+        validate.functionIdsAreValid(functions);
+      }).to.throw(FirebaseError);
     });
   });
 });

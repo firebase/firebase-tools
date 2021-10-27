@@ -238,6 +238,7 @@ You can probably fix this by running "npm install ${systemLog.data.name}@latest"
         break;
       case "function-runtimeconfig-json-invalid":
         this.log("WARN", "Found .runtimeconfig.json but the JSON format is invalid.");
+        break;
       default:
       // Silence
     }

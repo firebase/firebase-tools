@@ -4,33 +4,11 @@ import { getFunctionLabel } from "./functionsDeployHelper";
 import { FirebaseError } from "../../error";
 import { promptOnce } from "../../prompt";
 import { logger } from "../../logger";
-import * as args from "./args";
 import * as backend from "./backend";
 import * as pricing from "./pricing";
 import * as utils from "../../utils";
 import { Options } from "../../options";
 
-// To be a bit more deterministic, print function lists in a prescribed order.
-// Future versions might want to compare regions by GCF/Run pricing tier before
-// location.
-function compareFunctions(left: backend.FunctionSpec, right: backend.FunctionSpec): number {
-  if (left.platform != right.platform) {
-    return right.platform < left.platform ? -1 : 1;
-  }
-  if (left.region < right.region) {
-    return -1;
-  }
-  if (left.region > right.region) {
-    return 1;
-  }
-  if (left.id < right.id) {
-    return -1;
-  }
-  if (left.id > right.id) {
-    return 1;
-  }
-  return 0;
-}
 /**
  * Checks if a deployment will create any functions with a failure policy
  * or add a failure policy to an existing function.
@@ -40,33 +18,30 @@ function compareFunctions(left: backend.FunctionSpec, right: backend.FunctionSpe
  */
 export async function promptForFailurePolicies(
   options: Options,
-  want: backend.FunctionSpec[],
-  have: backend.FunctionSpec[]
+  want: backend.Backend,
+  have: backend.Backend
 ): Promise<void> {
   // Collect all the functions that have a retry policy
-  const retryFunctions = want.filter((fn) => {
-    return backend.isEventTrigger(fn.trigger) && fn.trigger.retry;
+  const retryEndpoints = backend.allEndpoints(want).filter((e) => {
+    return backend.isEventTriggered(e) && e.eventTrigger.retry;
   });
 
-  if (retryFunctions.length === 0) {
+  if (retryEndpoints.length === 0) {
     return;
   }
 
-  const existingRetryFunctions = have.filter((fn) => {
-    return backend.isEventTrigger(fn.trigger) && fn.trigger.retry;
+  const newRetryEndpoints = retryEndpoints.filter((endpoint) => {
+    const existing = have.endpoints[endpoint.region]?.[endpoint.id];
+    return !(existing && backend.isEventTriggered(existing) && existing.eventTrigger.retry);
   });
 
-  const newRetryFunctions = retryFunctions.filter((fn) => {
-    return !existingRetryFunctions.some(backend.sameFunctionName(fn));
-  });
-
-  if (newRetryFunctions.length == 0) {
+  if (newRetryEndpoints.length == 0) {
     return;
   }
 
   const warnMessage =
     "The following functions will newly be retried in case of failure: " +
-    clc.bold(newRetryFunctions.sort(compareFunctions).map(getFunctionLabel).join(", ")) +
+    clc.bold(newRetryEndpoints.sort(backend.compareFunctions).map(getFunctionLabel).join(", ")) +
     ". " +
     "Retried executions are billed as any other execution, and functions are retried repeatedly until they either successfully execute or the maximum retry period has elapsed, which can be up to 7 days. " +
     "For safety, you might want to ensure that your functions are idempotent; see https://firebase.google.com/docs/functions/retries to learn more.";
@@ -99,7 +74,7 @@ export async function promptForFailurePolicies(
  * @param functions A list of functions to be deleted.
  */
 export async function promptForFunctionDeletion(
-  functionsToDelete: backend.FunctionSpec[],
+  functionsToDelete: (backend.TargetIds & { platform: backend.FunctionsPlatform })[],
   force: boolean,
   nonInteractive: boolean
 ): Promise<boolean> {
@@ -108,7 +83,7 @@ export async function promptForFunctionDeletion(
     return true;
   }
   const deleteList = functionsToDelete
-    .sort(compareFunctions)
+    .sort(backend.compareFunctions)
     .map((fn) => "\t" + getFunctionLabel(fn))
     .join("\n");
 
@@ -154,27 +129,27 @@ export async function promptForFunctionDeletion(
  */
 export async function promptForMinInstances(
   options: Options,
-  want: backend.FunctionSpec[],
-  have: backend.FunctionSpec[]
+  want: backend.Backend,
+  have: backend.Backend
 ): Promise<void> {
   if (options.force) {
     return;
   }
 
-  const increasesCost = want.some((wantFn) => {
+  const increasesCost = backend.someEndpoint(want, (wantE) => {
     // If we don't know how much this will cost, be pessimal
-    if (!pricing.canCalculateMinInstanceCost(wantFn)) {
+    if (!pricing.canCalculateMinInstanceCost(wantE)) {
       return true;
     }
-    const wantCost = pricing.monthlyMinInstanceCost([wantFn]);
-    const haveFn = have.find(backend.sameFunctionName(wantFn));
+    const wantCost = pricing.monthlyMinInstanceCost([wantE]);
+    const haveE = have.endpoints[wantE.region]?.[wantE.id];
     let haveCost;
-    if (!haveFn) {
+    if (!haveE) {
       haveCost = 0;
-    } else if (!pricing.canCalculateMinInstanceCost(wantFn)) {
+    } else if (!pricing.canCalculateMinInstanceCost(wantE)) {
       return true;
     } else {
-      haveCost = pricing.monthlyMinInstanceCost([haveFn]);
+      haveCost = pricing.monthlyMinInstanceCost([haveE]);
     }
     return wantCost > haveCost;
   });
@@ -195,9 +170,10 @@ export async function promptForMinInstances(
   // Considerations for future versions:
   // Group Tier 1 and Tier 2 regions
   // Add Tier 1 or Tier 2 annotations to functionLines
-  const functionLines = want
+  const functionLines = backend
+    .allEndpoints(want)
     .filter((fn) => fn.minInstances)
-    .sort(compareFunctions)
+    .sort(backend.compareFunctions)
     .map((fn) => {
       return (
         `\t${getFunctionLabel(fn)}: ${fn.minInstances} instances, ` +
@@ -208,16 +184,16 @@ export async function promptForMinInstances(
     .join("\n");
 
   let costLine;
-  if (want.some((fn) => !pricing.canCalculateMinInstanceCost(fn))) {
+  if (backend.someEndpoint(want, (fn) => !pricing.canCalculateMinInstanceCost(fn))) {
     costLine =
       "Cannot calculate the minimum monthly bill for this configuration. Consider running " +
       clc.bold("npm install -g firebase-tools");
   } else {
-    const cost = pricing.monthlyMinInstanceCost(want).toFixed(2);
+    const cost = pricing.monthlyMinInstanceCost(backend.allEndpoints(want)).toFixed(2);
     costLine = `With these options, your minimum bill will be $${cost} in a 30-day month`;
   }
   let cudAnnotation = "";
-  if (want.some((fn) => fn.platform == "gcfv2" && fn.minInstances)) {
+  if (backend.someEndpoint(want, (fn) => fn.platform == "gcfv2" && !!fn.minInstances)) {
     cudAnnotation =
       "\nThis bill can be lowered with a one year commitment. See https://cloud.google.com/run/cud for more";
   }

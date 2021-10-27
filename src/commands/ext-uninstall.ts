@@ -7,8 +7,9 @@ import TerminalRenderer = require("marked-terminal");
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
-import * as getProjectId from "../getProjectId";
+import { needProjectId } from "../projectUtils";
 import * as extensionsApi from "../extensions/extensionsApi";
+import * as secretsUtils from "../extensions/secretsUtils";
 import {
   ensureExtensionsApiEnabled,
   logPrefix,
@@ -42,12 +43,12 @@ function consoleUninstallOnly(projectId: string, instanceId: string): Promise<vo
 
 export default new Command("ext:uninstall <extensionInstanceId>")
   .description("uninstall an extension that is installed in your Firebase project by instance ID")
-  .option("-f, --force", "No confirmation. Otherwise, a confirmation prompt will appear.")
+  .withForce()
   .before(requirePermissions, ["firebaseextensions.instances.delete"])
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
   .action(async (instanceId: string, options: any) => {
-    const projectId = getProjectId(options);
+    const projectId = needProjectId(options);
     let instance;
 
     try {
@@ -70,6 +71,7 @@ export default new Command("ext:uninstall <extensionInstanceId>")
       const serviceAccountMessage = `Uninstalling deletes the service account used by this extension instance:\n${clc.bold(
         instance.serviceAccountEmail
       )}\n\n`;
+      const managedSecrets = await secretsUtils.getManagedSecrets(instance);
       const resourcesMessage = _.get(instance, "config.source.spec.resources", []).length
         ? "Uninstalling deletes all extension resources created for this extension instance:\n" +
           instance.config.source.spec.resources
@@ -78,6 +80,10 @@ export default new Command("ext:uninstall <extensionInstanceId>")
                 `- ${resourceTypeToNiceName[resource.type] || resource.type}: ${resource.name} \n`
               )
             )
+            .join("") +
+          managedSecrets
+            .map(secretsUtils.prettySecretName)
+            .map((s) => clc.bold(`- Secret: ${s}\n`))
             .join("") +
           "\n"
         : "";

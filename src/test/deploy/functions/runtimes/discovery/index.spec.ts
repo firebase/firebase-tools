@@ -1,43 +1,35 @@
 import { expect } from "chai";
 import * as yaml from "js-yaml";
 import * as sinon from "sinon";
-import * as portfinder from "portfinder";
-import * as spawn from "cross-spawn";
-import * as path from "path";
-import * as api from "../../../../../api";
+import * as nock from "nock";
 
+import * as api from "../../../../../api";
 import { FirebaseError } from "../../../../../error";
 import * as discovery from "../../../../../deploy/functions/runtimes/discovery";
 import * as backend from "../../../../../deploy/functions/backend";
 
-const MIN_FUNCTION = {
-  platform: "gcfv1" as backend.FunctionsPlatform,
-  id: "function",
+const MIN_ENDPOINT = {
   entryPoint: "entrypoint",
-  trigger: {
-    allowInsecure: false,
-  },
+  httpsTrigger: {},
 };
 
-const FUNCTION: backend.FunctionSpec = {
-  ...MIN_FUNCTION,
+const ENDPOINT: backend.Endpoint = {
+  ...MIN_ENDPOINT,
+  id: "id",
+  platform: "gcfv2",
   project: "project",
   region: api.functionsDefaultRegion,
-  runtime: "nodejs14",
+  runtime: "nodejs16",
 };
 
 const YAML_OBJ = {
   specVersion: "v1alpha1",
-  ...backend.empty(),
-  cloudFunctions: [MIN_FUNCTION],
+  endpoints: { id: MIN_ENDPOINT },
 };
 
 const YAML_TEXT = yaml.dump(YAML_OBJ);
 
-const BACKEND: backend.Backend = {
-  ...backend.empty(),
-  cloudFunctions: [FUNCTION],
-};
+const BACKEND: backend.Backend = backend.of(ENDPOINT);
 
 describe("yamlToBackend", () => {
   it("Accepts a valid v1alpha1 spec", () => {
@@ -45,16 +37,16 @@ describe("yamlToBackend", () => {
       YAML_OBJ,
       "project",
       api.functionsDefaultRegion,
-      "nodejs14"
+      "nodejs16"
     );
     expect(parsed).to.deep.equal(BACKEND);
   });
 
   it("Requires a spec version", () => {
-    const flawed: any = { ...YAML_OBJ };
+    const flawed: Record<string, unknown> = { ...YAML_OBJ };
     delete flawed.specVersion;
     expect(() =>
-      discovery.yamlToBackend(flawed, "project", api.functionsDefaultRegion, "nodejs14")
+      discovery.yamlToBackend(flawed, "project", api.functionsDefaultRegion, "nodejs16")
     ).to.throw(FirebaseError);
   });
 
@@ -64,7 +56,7 @@ describe("yamlToBackend", () => {
       specVersion: "32767beta2",
     };
     expect(() =>
-      discovery.yamlToBackend(flawed, "project", api.functionsDefaultRegion, "nodejs14")
+      discovery.yamlToBackend(flawed, "project", api.functionsDefaultRegion, "nodejs16")
     ).to.throw(FirebaseError);
   });
 });
@@ -84,54 +76,36 @@ describe("detectFromYaml", () => {
     readFileAsync.resolves(YAML_TEXT);
 
     await expect(
-      discovery.detectFromYaml("directory", "project", "nodejs14")
+      discovery.detectFromYaml("directory", "project", "nodejs16")
     ).to.eventually.deep.equal(BACKEND);
   });
 
   it("returns undefined when YAML cannot be found", async () => {
     readFileAsync.rejects({ code: "ENOENT" });
 
-    await expect(discovery.detectFromYaml("directory", "project", "nodejs14")).to.eventually.equal(
+    await expect(discovery.detectFromYaml("directory", "project", "nodejs16")).to.eventually.equal(
       undefined
     );
   });
 });
 
 describe("detectFromPort", () => {
+  afterEach(() => {
+    nock.cleanAll();
+  });
+
   // This test requires us to launch node and load express.js. On my 16" MBP this takes
   // 600ms, which is dangerously close to the default limit of 1s. Increase limits so
   // that this doesn't flake even when running on slower machines experiencing hiccup
   it("passes as smoke test", async () => {
-    const port = await portfinder.getPortPromise();
-
-    const serverPath = "lib/deploy/functions/runtimes/discovery/mockDiscoveryServer.js";
-    const repoRoot = path.resolve(__dirname, "../../../../../..");
-    const child = spawn.spawn("node", [serverPath], {
-      cwd: repoRoot,
-      env: {
-        ...process.env,
-        ADMIN_PORT: port.toString(),
-        BACKEND: YAML_TEXT,
-      },
-      stdio: "inherit",
+    nock("http://localhost:8080").get("/backend.yaml").times(20).replyWithError({
+      message: "Still booting",
+      code: "ECONNREFUSED",
     });
 
-    const exit = new Promise((resolve, reject) => {
-      child.on("exit", resolve);
-      child.on("error", reject);
-    });
+    nock("http://localhost:8080").get("/backend.yaml").reply(200, YAML_TEXT);
 
-    try {
-      const parsed = await discovery.detectFromPort(
-        port,
-        "project",
-        "nodejs14",
-        /* timeout= */ 9_500
-      );
-      expect(parsed).to.deep.equal(BACKEND);
-    } finally {
-      child.kill("SIGKILL");
-    }
-    await exit;
-  }).timeout(10_000);
+    const parsed = await discovery.detectFromPort(8080, "project", "nodejs16");
+    expect(parsed).to.deep.equal(BACKEND);
+  });
 });

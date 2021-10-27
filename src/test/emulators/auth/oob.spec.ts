@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { describeAuthEmulator } from "./setup";
+import { describeAuthEmulator, PROJECT_ID } from "./setup";
 import {
   expectStatusCode,
   registerUser,
@@ -7,6 +7,9 @@ import {
   updateAccountByLocalId,
   expectIdTokenExpired,
   inspectOobs,
+  updateProjectConfig,
+  deleteAccount,
+  registerTenant,
 } from "./helpers";
 
 describeAuthEmulator("accounts:sendOobCode", ({ authApi, getClock }) => {
@@ -208,6 +211,53 @@ describeAuthEmulator("accounts:sendOobCode", ({ authApi, getClock }) => {
     expect(oobs).to.have.length(0);
   });
 
+  it("should error if usageMode is passthrough", async () => {
+    const user = { email: "alice@example.com", password: "notasecret" };
+    const { idToken } = await registerUser(authApi(), user);
+    await deleteAccount(authApi(), { idToken });
+    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:sendOobCode")
+      .query({ key: "fake-api-key" })
+      .send({ idToken, requestType: "VERIFY_EMAIL" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error)
+          .to.have.property("message")
+          .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
+      });
+  });
+
+  it("should error if auth is disabled", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: true });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:sendOobCode")
+      .query({ key: "fake-api-key" })
+      .send({ tenantId: tenant.tenantId })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("PROJECT_DISABLED");
+      });
+  });
+
+  it("should error for email sign in if not enabled", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, {
+      disableAuth: false,
+      enableEmailLinkSignin: false,
+    });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:sendOobCode")
+      .query({ key: "fake-api-key" })
+      .send({ tenantId: tenant.tenantId, email: "bob@example.com", requestType: "EMAIL_SIGNIN" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("OPERATION_NOT_ALLOWED");
+      });
+  });
+
   it("should generate OOB code for reset password", async () => {
     const user = { email: "alice@example.com", password: "notasecret" };
     const { idToken } = await registerUser(authApi(), user);
@@ -297,5 +347,61 @@ describeAuthEmulator("accounts:sendOobCode", ({ authApi, getClock }) => {
     // OOB codes are not consumed by the lookup above.
     const oobs2 = await inspectOobs(authApi());
     expect(oobs2).to.have.length(3);
+  });
+
+  it("should error on resetPassword endpoint if usageMode is passthrough", async () => {
+    const user = { email: "alice@example.com", password: "notasecret" };
+    const { idToken } = await registerUser(authApi(), user);
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:sendOobCode")
+      .query({ key: "fake-api-key" })
+      .send({ requestType: "PASSWORD_RESET", email: user.email })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.email).to.equal(user.email);
+      });
+    const oobs = await inspectOobs(authApi());
+    await deleteAccount(authApi(), { idToken });
+    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:resetPassword")
+      .query({ key: "fake-api-key" })
+      .send({ oobCode: oobs[0].oobCode, newPassword: "notasecret2" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error)
+          .to.have.property("message")
+          .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
+      });
+  });
+
+  it("should error on resetPassword if auth is disabled", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: true });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:resetPassword")
+      .query({ key: "fake-api-key" })
+      .send({ tenantId: tenant.tenantId })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("PROJECT_DISABLED");
+      });
+  });
+
+  it("should error on resetPassword if password sign up is disabled", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, {
+      disableAuth: false,
+      allowPasswordSignup: false,
+    });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:resetPassword")
+      .query({ key: "fake-api-key" })
+      .send({ tenantId: tenant.tenantId })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("PASSWORD_LOGIN_DISABLED");
+      });
   });
 });

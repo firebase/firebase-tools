@@ -8,6 +8,10 @@ interface PreviewFlags {
   rtdbmanagement: boolean;
   functionsv2: boolean;
   golang: boolean;
+  deletegcfartifacts: boolean;
+  dotenv: boolean;
+  crashlyticsSymbolsUpload: boolean;
+  artifactregistry: boolean;
 }
 
 export const previews: PreviewFlags = {
@@ -18,6 +22,10 @@ export const previews: PreviewFlags = {
   rtdbmanagement: false,
   functionsv2: false,
   golang: false,
+  deletegcfartifacts: false,
+  dotenv: false,
+  crashlyticsSymbolsUpload: false,
+  artifactregistry: false,
 
   ...configstore.get("previews"),
 };

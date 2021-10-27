@@ -1,6 +1,8 @@
 import * as _ from "lodash";
-import { ParsedTriggerDefinition } from "../../emulator/functionsEmulatorShared";
-import { Constants } from "../../emulator/constants";
+import {
+  ParsedTriggerDefinition,
+  getServiceFromEventType,
+} from "../../emulator/functionsEmulatorShared";
 import { EmulatorLogger } from "../../emulator/emulatorLogger";
 import { Emulators } from "../../emulator/types";
 
@@ -31,37 +33,4 @@ export function functionResourceToEmulatedTriggerDefintion(resource: any): Parse
     );
   }
   return etd;
-}
-
-function getServiceFromEventType(eventType: string): string {
-  if (eventType.includes("firestore")) {
-    return Constants.SERVICE_FIRESTORE;
-  }
-  if (eventType.includes("database")) {
-    return Constants.SERVICE_REALTIME_DATABASE;
-  }
-  if (eventType.includes("pubsub")) {
-    return Constants.SERVICE_PUBSUB;
-  }
-  if (eventType.includes("storage")) {
-    return Constants.SERVICE_STORAGE;
-  }
-  // Below this point are services that do not have a emulator.
-  if (eventType.includes("analytics")) {
-    return Constants.SERVICE_ANALYTICS;
-  }
-  if (eventType.includes("auth")) {
-    return Constants.SERVICE_AUTH;
-  }
-  if (eventType.includes("crashlytics")) {
-    return Constants.SERVICE_CRASHLYTICS;
-  }
-  if (eventType.includes("remoteconfig")) {
-    return Constants.SERVICE_REMOTE_CONFIG;
-  }
-  if (eventType.includes("testing")) {
-    return Constants.SERVICE_TEST_LAB;
-  }
-
-  return "";
 }

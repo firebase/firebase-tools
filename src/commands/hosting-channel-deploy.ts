@@ -14,7 +14,7 @@ import {
 import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs";
 import { requirePermissions } from "../requirePermissions";
 import * as deploy from "../deploy";
-import * as getProjectId from "../getProjectId";
+import { needProjectId } from "../projectUtils";
 import { logger } from "../logger";
 import * as requireConfig from "../requireConfig";
 import { DEFAULT_DURATION, calculateChannelExpireTTL } from "../hosting/expireUtils";
@@ -49,15 +49,11 @@ export default new Command("hosting:channel:deploy [channelId]")
       channelId: string,
       options: any // eslint-disable-line @typescript-eslint/no-explicit-any
     ): Promise<{ [targetOrSite: string]: ChannelInfo }> => {
-      const projectId = getProjectId(options);
+      const projectId = needProjectId(options);
 
       // TODO: implement --open.
       if (options.open) {
         throw new FirebaseError("open is not yet implemented");
-      }
-      // TODO: implement --no-authorized-domains.
-      if (options["no-authorized-domains"]) {
-        throw new FirebaseError("no-authorized-domains is not yet implemented");
       }
 
       let expireTTL = DEFAULT_DURATION;
@@ -151,8 +147,15 @@ export default new Command("hosting:channel:deploy [channelId]")
         });
       }
 
+      if (options.authorizedDomains) {
+        await syncAuthState(projectId, sites);
+      } else {
+        logger.debug(
+          `skipping syncAuthState since authorizedDomains is ${options.authorizedDomains}`
+        );
+      }
+
       logger.info();
-      await syncAuthState(projectId, sites);
       const deploys: { [key: string]: ChannelInfo } = {};
       sites.forEach((d) => {
         deploys[d.target || d.site] = d;

@@ -9,6 +9,7 @@
 import * as _ from "lodash";
 
 import { Resource } from "firebase-functions";
+import * as express from "express";
 
 /**
  * Wire formal for v1beta1 EventFlow.
@@ -39,6 +40,49 @@ export interface Event {
 }
 
 /**
+ * A CloudEvent is a cross-platform format for encoding a serverless event.
+ * More information can be found in https://github.com/cloudevents/spec
+ */
+export interface CloudEvent<T> {
+  /** Version of the CloudEvents spec for this event. */
+  specversion: string;
+
+  /** A globally unique ID for this event. */
+  id: string;
+
+  /** The resource which published this event. */
+  source: string;
+
+  /** The resource, provided by source, that this event relates to */
+  subject?: string;
+
+  /** The type of event that this represents. */
+  type: string;
+
+  /** When this event occurred. */
+  time: string;
+
+  /** Information about this specific event. */
+  data: T;
+
+  /**
+   * A map of template parameter name to value for subject strings.
+   *
+   * This map is only available on some event types that allow templates
+   * in the subject string, such as Firestore. When listening to a document
+   * template "/users/{uid}", an event with subject "/documents/users/1234"
+   * would have a params of {"uid": "1234"}.
+   *
+   * Params are generated inside the firebase-functions SDK and are not
+   * part of the CloudEvents spec nor the payload that a Cloud Function
+   * actually receives.
+   */
+  params?: Record<string, string>;
+}
+
+export type CloudEventContext = Omit<CloudEvent<unknown>, "data" | "params">;
+
+/**
  * Legacy AuthMode format.
  */
 export interface AuthMode {
@@ -47,7 +91,7 @@ export interface AuthMode {
 }
 
 /**
- * Utilities for determining event types.
+ * Utilities for operating on event types.
  */
 export class EventUtils {
   static isEvent(proto: any): proto is Event {
@@ -56,5 +100,25 @@ export class EventUtils {
 
   static isLegacyEvent(proto: any): proto is LegacyEvent {
     return _.has(proto, "data") && _.has(proto, "resource");
+  }
+
+  static isBinaryCloudEvent(req: express.Request): boolean {
+    return !!(
+      req.header("ce-type") &&
+      req.header("ce-specversion") &&
+      req.header("ce-source") &&
+      req.header("ce-id")
+    );
+  }
+
+  static extractBinaryCloudEventContext(req: express.Request): CloudEventContext {
+    const context: Partial<CloudEventContext> = {};
+    for (const name of Object.keys(req.headers)) {
+      if (name.startsWith("ce-")) {
+        const attributeName = name.substr("ce-".length) as keyof CloudEventContext;
+        context[attributeName] = req.header(name);
+      }
+    }
+    return context as CloudEventContext;
   }
 }

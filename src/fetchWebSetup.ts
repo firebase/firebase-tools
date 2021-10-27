@@ -1,7 +1,7 @@
 import { Client } from "./apiv2";
 import { configstore } from "./configstore";
 import { firebaseApiOrigin, hostingApiOrigin } from "./api";
-import * as getProjectId from "./getProjectId";
+import { needProjectId } from "./projectUtils";
 import { logger } from "./logger";
 import { Constants } from "./emulator/constants";
 
@@ -54,7 +54,7 @@ function setCachedWebSetup(projectId: string, config: WebConfig): void {
  * @return web app configuration, or undefined.
  */
 export function getCachedWebSetup(options: any): WebConfig | undefined {
-  const projectId = getProjectId(options, false);
+  const projectId = needProjectId(options);
   const allConfigs = configstore.get(CONFIGSTORE_KEY) || {};
   return allConfigs[projectId];
 }
@@ -96,7 +96,7 @@ function constructDefaultWebSetup(projectId: string): WebConfig {
  * @return web app configuration.
  */
 export async function fetchWebSetup(options: any): Promise<WebConfig> {
-  const projectId = getProjectId(options, false);
+  const projectId = needProjectId(options);
 
   // When using the emulators with a fake project ID, use a fake web config
   if (Constants.isDemoProject(projectId)) {

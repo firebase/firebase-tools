@@ -20,7 +20,7 @@ var cloudfunctions = require("../lib/gcp/cloudfunctions");
 var api = require("../lib/api");
 var scopes = require("../lib/scopes");
 var { configstore } = require("../lib/configstore");
-var extractTriggers = require("../lib/extractTriggers");
+var extractTriggers = require("../lib/deploy/functions/runtimes/node/extractTriggers");
 var functionsConfig = require("../lib/functionsConfig");
 
 var clc = require("cli-color");
@@ -95,9 +95,9 @@ var postTest = function (errored) {
 var checkFunctionsListMatch = function (expectedFunctions) {
   var deployedFunctions;
   return cloudfunctions
-    .list(projectId, region)
+    .listFunctions(projectId, region)
     .then(function (result) {
-      deployedFunctions = _.map(result, "functionName");
+      deployedFunctions = _.map(result, (fn) => _.last(fn.name.split("/")));
       expect(_.isEmpty(_.xor(expectedFunctions, deployedFunctions))).to.be.true;
       return true;
     })
@@ -159,24 +159,6 @@ var testDeleteWithFilter = function () {
   });
 };
 
-var testUnknownFilter = function () {
-  return new Promise(function (resolve) {
-    exec(
-      "> functions/index.js &&" +
-        `${localFirebase} deploy --only functions:unknownFilter --project=${projectId}`,
-      { cwd: tmpDir },
-      function (err, stdout) {
-        console.log(stdout);
-        expect(stdout).to.contain(
-          "the following filters were specified but do not match any functions in the project: unknownFilter"
-        );
-        expect(err).to.be.null;
-        resolve();
-      }
-    );
-  });
-};
-
 var waitForAck = function (uuid, testDescription) {
   return Promise.race([
     new Promise(function (resolve) {
@@ -209,10 +191,11 @@ var writeToDB = function (path) {
 };
 
 var sendHttpRequest = function (message) {
+  const url = new URL(httpsTrigger);
   return api
-    .request("POST", httpsTrigger, {
+    .request("POST", url.pathname, {
       data: message,
-      origin: "",
+      origin: url.origin,
     })
     .then(function (resp) {
       expect(resp.status).to.equal(200);
@@ -222,7 +205,7 @@ var sendHttpRequest = function (message) {
 
 var publishPubsub = function (topic) {
   var uuid = getUuid();
-  var message = new Buffer(uuid).toString("base64");
+  var message = Buffer.from(uuid).toString("base64");
   return api
     .request("POST", `/v1/projects/${projectId}/topics/${topic}:publish`, {
       auth: true,
@@ -328,10 +311,6 @@ var main = function () {
     .then(function () {
       console.log(clc.green("\u2713 Test passed: creating functions with filters"));
       return testDeleteWithFilter();
-    })
-    .then(function () {
-      console.log(clc.green("\u2713 Test passed: deleting functions with filters"));
-      return testUnknownFilter();
     })
     .then(function () {
       console.log(

@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import { filterTargets } from "../filterTargets";
 import { Options } from "../options";
+import { RC } from "../rc";
 
 const SAMPLE_OPTIONS: Options = {
   cwd: "/",
@@ -15,6 +16,7 @@ const SAMPLE_OPTIONS: Options = {
   debug: false,
   force: false,
   filteredTargets: [],
+  rc: new RC(),
 };
 
 const VALID_TARGETS = ["hosting", "functions"];

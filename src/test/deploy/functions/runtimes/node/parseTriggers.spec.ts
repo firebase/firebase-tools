@@ -26,10 +26,10 @@ describe("addResourcesToBackend", () => {
     project: "project",
   });
 
-  const BASIC_FUNCTION: Omit<backend.FunctionSpec, "trigger"> = Object.freeze({
+  const BASIC_ENDPOINT: Omit<backend.Endpoint, "httpsTrigger"> = Object.freeze({
     platform: "gcfv1",
     ...BASIC_FUNCTION_NAME,
-    runtime: "nodejs14",
+    runtime: "nodejs16",
     entryPoint: "func",
   });
 
@@ -37,7 +37,7 @@ describe("addResourcesToBackend", () => {
     expect(() => {
       parseTriggers.addResourcesToBackend(
         "project",
-        "nodejs14",
+        "nodejs16",
         {
           ...BASIC_TRIGGER,
           httpsTrigger: {},
@@ -59,19 +59,9 @@ describe("addResourcesToBackend", () => {
     };
 
     const result = backend.empty();
-    parseTriggers.addResourcesToBackend("project", "nodejs14", trigger, result);
+    parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
 
-    const expected: backend.Backend = {
-      ...backend.empty(),
-      cloudFunctions: [
-        {
-          ...BASIC_FUNCTION,
-          trigger: {
-            allowInsecure: true,
-          },
-        },
-      ],
-    };
+    const expected: backend.Backend = backend.of({ ...BASIC_ENDPOINT, httpsTrigger: {} });
     expect(result).to.deep.equal(expected);
   });
 
@@ -93,23 +83,16 @@ describe("addResourcesToBackend", () => {
         }
 
         const result = backend.empty();
-        parseTriggers.addResourcesToBackend("project", "nodejs14", trigger, result);
+        parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
 
-        const expected: backend.Backend = {
-          ...backend.empty(),
-          cloudFunctions: [
-            {
-              ...BASIC_FUNCTION,
-              trigger: {
-                eventType: "google.pubsub.topic.publish",
-                eventFilters: {
-                  resource: "projects/project/topics/topic",
-                },
-                retry: !!failurePolicy,
-              },
-            },
-          ],
+        const eventTrigger: backend.EventTrigger = {
+          eventType: "google.pubsub.topic.publish",
+          eventFilters: {
+            resource: "projects/project/topics/topic",
+          },
+          retry: !!failurePolicy,
         };
+        const expected: backend.Backend = backend.of({ ...BASIC_ENDPOINT, eventTrigger });
         expect(result).to.deep.equal(expected);
       });
     }
@@ -118,7 +101,9 @@ describe("addResourcesToBackend", () => {
   it("should copy fields", () => {
     const trigger: parseTriggers.TriggerAnnotation = {
       ...BASIC_TRIGGER,
-      httpsTrigger: {},
+      httpsTrigger: {
+        invoker: ["public"],
+      },
       maxInstances: 42,
       minInstances: 1,
       serviceAccountEmail: "inlined@google.com",
@@ -132,29 +117,27 @@ describe("addResourcesToBackend", () => {
     };
 
     const result = backend.empty();
-    parseTriggers.addResourcesToBackend("project", "nodejs14", trigger, result);
+    parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
 
-    const expected: backend.Backend = {
-      ...backend.empty(),
-      cloudFunctions: [
-        {
-          ...BASIC_FUNCTION,
-          trigger: {
-            allowInsecure: true,
-          },
-          maxInstances: 42,
-          minInstances: 1,
-          serviceAccountEmail: "inlined@google.com",
-          vpcConnectorEgressSettings: "PRIVATE_RANGES_ONLY",
-          vpcConnector: "projects/project/locations/region/connectors/connector",
-          ingressSettings: "ALLOW_ALL",
-          timeout: "60s",
-          labels: {
-            test: "testing",
-          },
-        },
-      ],
+    const config: backend.ServiceConfiguration = {
+      maxInstances: 42,
+      minInstances: 1,
+      serviceAccountEmail: "inlined@google.com",
+      vpcConnectorEgressSettings: "PRIVATE_RANGES_ONLY",
+      vpcConnector: "projects/project/locations/region/connectors/connector",
+      ingressSettings: "ALLOW_ALL",
+      timeout: "60s",
+      labels: {
+        test: "testing",
+      },
     };
+    const expected: backend.Backend = backend.of({
+      ...BASIC_ENDPOINT,
+      httpsTrigger: {
+        invoker: ["public"],
+      },
+      ...config,
+    });
     expect(result).to.deep.equal(expected);
   });
 
@@ -169,23 +152,17 @@ describe("addResourcesToBackend", () => {
     };
 
     const result = backend.empty();
-    parseTriggers.addResourcesToBackend("project", "nodejs14", trigger, result);
+    parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
 
-    const expected: backend.Backend = {
-      ...backend.empty(),
-      cloudFunctions: [
-        {
-          ...BASIC_FUNCTION,
-          trigger: {
-            eventType: "google.pubsub.topic.publish",
-            eventFilters: {
-              resource: "projects/p/topics/t",
-            },
-            retry: false,
-          },
-        },
-      ],
+    const eventTrigger: backend.EventTrigger = {
+      eventType: "google.pubsub.topic.publish",
+      eventFilters: {
+        resource: "projects/p/topics/t",
+      },
+      retry: false,
     };
+
+    const expected: backend.Backend = backend.of({ ...BASIC_ENDPOINT, eventTrigger });
     expect(result).to.deep.equal(expected);
   });
 
@@ -197,20 +174,13 @@ describe("addResourcesToBackend", () => {
     };
 
     const result = backend.empty();
-    parseTriggers.addResourcesToBackend("project", "nodejs14", trigger, result);
+    parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
 
-    const expected: backend.Backend = {
-      ...backend.empty(),
-      cloudFunctions: [
-        {
-          ...BASIC_FUNCTION,
-          trigger: {
-            allowInsecure: true,
-          },
-          region: "europe-west1",
-        },
-      ],
-    };
+    const expected: backend.Backend = backend.of({
+      ...BASIC_ENDPOINT,
+      region: "europe-west1",
+      httpsTrigger: {},
+    });
     expect(result).to.deep.equal(expected);
   });
 
@@ -222,30 +192,21 @@ describe("addResourcesToBackend", () => {
     };
 
     const result = backend.empty();
-    parseTriggers.addResourcesToBackend("project", "nodejs14", trigger, result);
+    parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
 
-    const expected: backend.Backend = {
-      ...backend.empty(),
-      cloudFunctions: [
-        {
-          ...BASIC_FUNCTION,
-          trigger: {
-            allowInsecure: true,
-          },
-          region: "us-central1",
-        },
-        {
-          ...BASIC_FUNCTION,
-          trigger: {
-            allowInsecure: true,
-          },
-          region: "europe-west1",
-        },
-      ],
-    };
+    const expected: backend.Backend = backend.of(
+      {
+        ...BASIC_ENDPOINT,
+        httpsTrigger: {},
+        region: "us-central1",
+      },
+      {
+        ...BASIC_ENDPOINT,
+        httpsTrigger: {},
+        region: "europe-west1",
+      }
+    );
 
-    result.cloudFunctions = result.cloudFunctions.sort();
-    expected.cloudFunctions = expected.cloudFunctions.sort();
     expect(result).to.deep.equal(expected);
   });
 
@@ -263,7 +224,11 @@ describe("addResourcesToBackend", () => {
     };
     const trigger: parseTriggers.TriggerAnnotation = {
       ...BASIC_TRIGGER,
-      httpsTrigger: {},
+      eventTrigger: {
+        eventType: "google.pubsub.topic.publish",
+        resource: "projects/project/topics",
+        service: "pubsub.googleapis.com",
+      },
       regions: ["us-central1", "europe-west1"],
       schedule,
       labels: {
@@ -272,80 +237,38 @@ describe("addResourcesToBackend", () => {
     };
 
     const result = backend.empty();
-    parseTriggers.addResourcesToBackend("project", "nodejs14", trigger, result);
+    parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
 
     const europeFunctionName = {
       ...BASIC_FUNCTION_NAME,
       region: "europe-west1",
     };
 
-    const usFunction = {
-      ...BASIC_FUNCTION,
-      trigger: {
-        allowInsecure: true,
-      },
-      labels: {
-        "deployment-scheduled": "true",
-        test: "testing",
-      },
-      region: "us-central1",
-    };
-    const europeFunction = {
-      ...BASIC_FUNCTION,
-      ...europeFunctionName,
-      trigger: {
-        allowInsecure: true,
-      },
-      labels: {
-        "deployment-scheduled": "true",
-        test: "testing",
-      },
-    };
     const expected: backend.Backend = {
-      ...backend.empty(),
+      ...backend.of(
+        {
+          ...BASIC_ENDPOINT,
+          region: "us-central1",
+          labels: {
+            test: "testing",
+          },
+          scheduleTrigger: schedule,
+        },
+        {
+          ...BASIC_ENDPOINT,
+          region: "europe-west1",
+          labels: {
+            test: "testing",
+          },
+          scheduleTrigger: schedule,
+        }
+      ),
       requiredAPIs: {
         pubsub: "pubsub.googleapis.com",
         scheduler: "cloudscheduler.googleapis.com",
       },
-      cloudFunctions: [usFunction, europeFunction],
-      topics: [
-        {
-          id: "firebase-schedule-func-us-central1",
-          project: "project",
-          labels: backend.SCHEDULED_FUNCTION_LABEL,
-          targetService: BASIC_FUNCTION_NAME,
-        },
-        {
-          id: "firebase-schedule-func-europe-west1",
-          project: "project",
-          labels: backend.SCHEDULED_FUNCTION_LABEL,
-          targetService: europeFunctionName,
-        },
-      ],
-      schedules: [
-        {
-          id: "firebase-schedule-func-us-central1",
-          project: "project",
-          ...schedule,
-          transport: "pubsub",
-          targetService: BASIC_FUNCTION_NAME,
-        },
-        {
-          id: "firebase-schedule-func-europe-west1",
-          project: "project",
-          ...schedule,
-          transport: "pubsub",
-          targetService: europeFunctionName,
-        },
-      ],
     };
 
-    result.cloudFunctions = result.cloudFunctions.sort();
-    result.schedules = result.schedules.sort();
-    result.topics = result.topics.sort();
-    expected.cloudFunctions = expected.cloudFunctions.sort();
-    expected.schedules = expected.schedules.sort();
-    expected.topics = expected.topics.sort();
     expect(result).to.deep.equal(expected);
   });
 });

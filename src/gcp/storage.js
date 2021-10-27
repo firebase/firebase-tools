@@ -32,13 +32,13 @@ function _getDefaultBucket(projectId) {
     );
 }
 
-async function _uploadSource(source, uploadUrl) {
+async function _uploadSource(source, uploadUrl, extraHeaders) {
   const url = new URL(uploadUrl);
   const result = await api.request("PUT", url.pathname + url.search, {
     data: source.stream,
     headers: {
       "Content-Type": "application/zip",
-      "x-goog-content-length-range": "0,104857600",
+      ...extraHeaders,
     },
     json: false,
     origin: url.origin,
@@ -91,9 +91,31 @@ function _deleteObject(location) {
   });
 }
 
+/**
+ * Gets a storage bucket from GCP.
+ * Ref: https://cloud.google.com/storage/docs/json_api/v1/buckets/get
+ * @param {string} bucketName name of the storage bucket
+ * @returns a bucket resource object
+ */
+async function _getBucket(bucketName) {
+  try {
+    const result = await api.request("GET", `/storage/v1/b/${bucketName}`, {
+      auth: true,
+      origin: api.storageOrigin,
+    });
+    return result.body;
+  } catch (err) {
+    logger.debug(err);
+    throw new FirebaseError("Failed to obtain the storage bucket", {
+      original: err,
+    });
+  }
+}
+
 module.exports = {
   getDefaultBucket: _getDefaultBucket,
   deleteObject: _deleteObject,
   upload: _uploadSource,
   uploadObject: _uploadObject,
+  getBucket: _getBucket,
 };

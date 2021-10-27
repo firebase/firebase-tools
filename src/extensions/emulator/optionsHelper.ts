@@ -11,7 +11,7 @@ import * as extensionsHelper from "../extensionsHelper";
 import { Config } from "../../config";
 import { FirebaseError } from "../../error";
 import { EmulatorLogger } from "../../emulator/emulatorLogger";
-import * as getProjectId from "../../getProjectId";
+import { needProjectId } from "../../projectUtils";
 import { Emulators } from "../../emulator/types";
 
 export async function buildOptions(options: any): Promise<any> {
@@ -20,7 +20,7 @@ export async function buildOptions(options: any): Promise<any> {
   const spec = await specHelper.readExtensionYaml(extensionDir);
   extensionsHelper.validateSpec(spec);
 
-  const params = await getParams(options, spec);
+  const params = getParams(options, spec);
 
   extensionsHelper.validateCommandLineParams(params, spec.params);
 
@@ -44,9 +44,9 @@ export async function buildOptions(options: any): Promise<any> {
 }
 
 // Exported for testing
-export async function getParams(options: any, extensionSpec: ExtensionSpec) {
-  const projectId = getProjectId(options, false);
-  const userParams = await paramHelper.readParamsFile(options.testParams);
+export function getParams(options: any, extensionSpec: ExtensionSpec) {
+  const projectId = needProjectId(options);
+  const userParams = paramHelper.readEnvFile(options.testParams);
   const autoParams = {
     PROJECT_ID: projectId,
     EXT_INSTANCE_ID: extensionSpec.name,

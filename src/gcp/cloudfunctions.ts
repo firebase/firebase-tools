@@ -2,23 +2,15 @@ import * as clc from "cli-color";
 
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
+import { previews } from "../previews";
 import * as api from "../api";
 import * as backend from "../deploy/functions/backend";
 import * as utils from "../utils";
 import * as proto from "./proto";
 import * as runtimes from "../deploy/functions/runtimes";
+import * as iam from "./iam";
 
 export const API_VERSION = "v1";
-
-export const DEFAULT_PUBLIC_POLICY = {
-  version: 3,
-  bindings: [
-    {
-      role: "roles/cloudfunctions.invoker",
-      members: ["allUsers"],
-    },
-  ],
-};
 
 interface Operation {
   name: string;
@@ -213,7 +205,11 @@ export async function createFunction(
   const endpoint = `/${API_VERSION}/${apiPath}`;
 
   try {
+    const headers = previews.artifactregistry
+      ? { "X-Firebase-Artifact-Registry": "optin" }
+      : undefined;
     const res = await api.request("POST", endpoint, {
+      headers,
       auth: true,
       data: cloudFunction,
       origin: api.functionsOrigin,
@@ -234,7 +230,7 @@ export async function createFunction(
  */
 interface IamOptions {
   name: string;
-  policy: any; // TODO: Type this?
+  policy: iam.Policy;
 }
 
 /**
@@ -260,6 +256,104 @@ export async function setIamPolicy(options: IamOptions): Promise<void> {
   }
 }
 
+// Response body policy - https://cloud.google.com/functions/docs/reference/rest/v1/Policy
+interface GetIamPolicy {
+  bindings?: iam.Binding[];
+  version?: number;
+  etag?: string;
+}
+
+/**
+ * Gets the IAM policy of a Google Cloud Function.
+ * @param fnName The full name and path of the Cloud Function.
+ */
+export async function getIamPolicy(fnName: string): Promise<GetIamPolicy> {
+  const endpoint = `/${API_VERSION}/${fnName}:getIamPolicy`;
+
+  try {
+    return await api.request("GET", endpoint, {
+      auth: true,
+      origin: api.functionsOrigin,
+    });
+  } catch (err) {
+    throw new FirebaseError(`Failed to get the IAM Policy on the function ${fnName}`, {
+      original: err,
+    });
+  }
+}
+
+/**
+ * Sets the invoker IAM policy for the function on function create
+ * @param projectId id of the project
+ * @param fnName function name
+ * @param invoker an array of invoker strings
+ *
+ * @throws {@link FirebaseError} on an empty invoker, when the IAM Polciy fails to be grabbed or set
+ */
+export async function setInvokerCreate(
+  projectId: string,
+  fnName: string,
+  invoker: string[]
+): Promise<void> {
+  if (invoker.length == 0) {
+    throw new FirebaseError("Invoker cannot be an empty array");
+  }
+  const invokerMembers = proto.getInvokerMembers(invoker, projectId);
+  const invokerRole = "roles/cloudfunctions.invoker";
+  const bindings = [{ role: invokerRole, members: invokerMembers }];
+
+  const policy: iam.Policy = {
+    bindings: bindings,
+    etag: "",
+    version: 3,
+  };
+  await setIamPolicy({ name: fnName, policy: policy });
+}
+
+/**
+ * Gets the current IAM policy on function update,
+ * overrides the current invoker role with the supplied invoker members
+ * @param projectId id of the project
+ * @param fnName function name
+ * @param invoker an array of invoker strings
+ *
+ * @throws {@link FirebaseError} on an empty invoker, when the IAM Polciy fails to be grabbed or set
+ */
+export async function setInvokerUpdate(
+  projectId: string,
+  fnName: string,
+  invoker: string[]
+): Promise<void> {
+  if (invoker.length == 0) {
+    throw new FirebaseError("Invoker cannot be an empty array");
+  }
+  const invokerMembers = proto.getInvokerMembers(invoker, projectId);
+  const invokerRole = "roles/cloudfunctions.invoker";
+  const currentPolicy = await getIamPolicy(fnName);
+  const currentInvokerBinding = currentPolicy.bindings?.find(
+    (binding) => binding.role === invokerRole
+  );
+  if (
+    currentInvokerBinding &&
+    JSON.stringify(currentInvokerBinding.members.sort()) === JSON.stringify(invokerMembers.sort())
+  ) {
+    return;
+  }
+
+  const bindings = (currentPolicy.bindings || []).filter((binding) => binding.role !== invokerRole);
+  bindings.push({
+    role: invokerRole,
+    members: invokerMembers,
+  });
+
+  const policy: iam.Policy = {
+    bindings: bindings,
+    etag: currentPolicy.etag || "",
+    version: 3,
+  };
+  await setIamPolicy({ name: fnName, policy: policy });
+}
+
 /**
  * Updates a Cloud Function.
  * @param cloudFunction The Cloud Function to update.
@@ -279,7 +373,11 @@ export async function updateFunction(
   // Failure policy is always an explicit policy and is only signified by the presence or absence of
   // a protobuf.Empty value, so we have to manually add it in the missing case.
   try {
+    const headers = previews.artifactregistry
+      ? { "X-Firebase-Artifact-Registry": "optin" }
+      : undefined;
     const res = await api.request("PATCH", endpoint, {
+      headers,
       qs: {
         updateMask: fieldMasks.join(","),
       },
@@ -342,9 +440,11 @@ async function list(projectId: string, region: string): Promise<ListFunctionsRes
       unreachable: res.body.unreachable || [],
     };
   } catch (err) {
-    logger.debug("[functions] failed to list functions for " + projectId);
+    logger.debug(`[functions] failed to list functions for ${projectId}`);
     logger.debug(`[functions] ${err?.message}`);
-    return Promise.reject(err?.message);
+    throw new FirebaseError(`Failed to list functions for ${projectId}`, {
+      original: err,
+    });
   }
 }
 
@@ -372,23 +472,26 @@ export async function listAllFunctions(projectId: string): Promise<ListFunctions
  * This API exists outside the GCF namespace because GCF returns an Operation<CloudFunction>
  * and code may have to call this method explicitly.
  */
-export function specFromFunction(gcfFunction: CloudFunction): backend.FunctionSpec {
+export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoint {
   const [, project, , region, , id] = gcfFunction.name.split("/");
-  let trigger: backend.EventTrigger | backend.HttpsTrigger;
+  let trigger: backend.Triggered;
   let uri: string | undefined;
   if (gcfFunction.httpsTrigger) {
-    trigger = {
-      // Note: default (empty) value intentionally means true
-      allowInsecure: gcfFunction.httpsTrigger.securityLevel !== "SECURE_ALWAYS",
-    };
+    trigger = { httpsTrigger: {} };
     uri = gcfFunction.httpsTrigger.url;
+  } else if (gcfFunction.labels?.["deployment-scheduled"]) {
+    trigger = {
+      scheduleTrigger: {},
+    };
   } else {
     trigger = {
-      eventType: gcfFunction.eventTrigger!.eventType,
-      eventFilters: {
-        resource: gcfFunction.eventTrigger!.resource,
+      eventTrigger: {
+        eventType: gcfFunction.eventTrigger!.eventType,
+        eventFilters: {
+          resource: gcfFunction.eventTrigger!.resource,
+        },
+        retry: !!gcfFunction.eventTrigger!.failurePolicy?.retry,
       },
-      retry: !!gcfFunction.eventTrigger!.failurePolicy?.retry,
     };
   }
 
@@ -396,20 +499,20 @@ export function specFromFunction(gcfFunction: CloudFunction): backend.FunctionSp
     logger.debug("GCFv1 function has a deprecated runtime:", JSON.stringify(gcfFunction, null, 2));
   }
 
-  const cloudFunction: backend.FunctionSpec = {
+  const endpoint: backend.Endpoint = {
     platform: "gcfv1",
     id,
     project,
     region,
-    trigger,
+    ...trigger,
     entryPoint: gcfFunction.entryPoint,
     runtime: gcfFunction.runtime,
   };
   if (uri) {
-    cloudFunction.uri = uri;
+    endpoint.uri = uri;
   }
   proto.copyIfPresent(
-    cloudFunction,
+    endpoint,
     gcfFunction,
     "serviceAccountEmail",
     "availableMemoryMb",
@@ -424,56 +527,62 @@ export function specFromFunction(gcfFunction: CloudFunction): backend.FunctionSp
     "sourceUploadUrl"
   );
 
-  return cloudFunction;
+  return endpoint;
 }
 
 /**
  * Convert the API agnostic FunctionSpec struct to a CloudFunction proto for the v1 API.
  */
-export function functionFromSpec(
-  cloudFunction: backend.FunctionSpec,
+export function functionFromEndpoint(
+  endpoint: backend.Endpoint,
   sourceUploadUrl: string
 ): Omit<CloudFunction, OutputOnlyFields> {
-  if (cloudFunction.platform != "gcfv1") {
+  if (endpoint.platform != "gcfv1") {
     throw new FirebaseError(
       "Trying to create a v1 CloudFunction with v2 API. This should never happen"
     );
   }
 
-  if (!runtimes.isValidRuntime(cloudFunction.runtime)) {
+  if (!runtimes.isValidRuntime(endpoint.runtime)) {
     throw new FirebaseError(
       "Failed internal assertion. Trying to deploy a new function with a deprecated runtime." +
         " This should never happen"
     );
   }
   const gcfFunction: Omit<CloudFunction, OutputOnlyFields> = {
-    name: backend.functionName(cloudFunction),
+    name: backend.functionName(endpoint),
     sourceUploadUrl: sourceUploadUrl,
-    entryPoint: cloudFunction.entryPoint,
-    runtime: cloudFunction.runtime,
+    entryPoint: endpoint.entryPoint,
+    runtime: endpoint.runtime,
   };
 
-  if (backend.isEventTrigger(cloudFunction.trigger)) {
+  proto.copyIfPresent(gcfFunction, endpoint, "labels");
+  if (backend.isEventTriggered(endpoint)) {
     gcfFunction.eventTrigger = {
-      eventType: cloudFunction.trigger.eventType,
-      resource: cloudFunction.trigger.eventFilters.resource,
+      eventType: endpoint.eventTrigger.eventType,
+      resource: endpoint.eventTrigger.eventFilters.resource,
       // Service is unnecessary and deprecated
     };
 
     // For field masks to pick up a deleted failure policy we must inject an undefined
     // when retry is false
-    gcfFunction.eventTrigger.failurePolicy = cloudFunction.trigger.retry
+    gcfFunction.eventTrigger.failurePolicy = endpoint.eventTrigger.retry
       ? { retry: {} }
       : undefined;
-  } else {
-    gcfFunction.httpsTrigger = {
-      securityLevel: cloudFunction.trigger.allowInsecure ? "SECURE_OPTIONAL" : "SECURE_ALWAYS",
+  } else if (backend.isScheduleTriggered(endpoint)) {
+    const id = backend.scheduleIdForFunction(endpoint);
+    gcfFunction.eventTrigger = {
+      eventType: "google.pubsub.topic.publish",
+      resource: `projects/${endpoint.project}/topics/${id}`,
     };
+    gcfFunction.labels = { ...gcfFunction.labels, "deployment-scheduled": "true" };
+  } else {
+    gcfFunction.httpsTrigger = {};
   }
 
   proto.copyIfPresent(
     gcfFunction,
-    cloudFunction,
+    endpoint,
     "serviceAccountEmail",
     "timeout",
     "availableMemoryMb",
@@ -482,7 +591,6 @@ export function functionFromSpec(
     "vpcConnector",
     "vpcConnectorEgressSettings",
     "ingressSettings",
-    "labels",
     "environmentVariables"
   );
 

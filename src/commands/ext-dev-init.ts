@@ -17,9 +17,14 @@ marked.setOptions({
 const TEMPLATE_ROOT = path.resolve(__dirname, "../../templates/extensions/");
 const FUNCTIONS_ROOT = path.resolve(__dirname, "../../templates/init/functions/");
 
-const EXT_SPEC_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "extension.yaml"), "utf8");
-const PREINSTALL_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "PREINSTALL.md"), "utf8");
-const POSTINSTALL_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "POSTINSTALL.md"), "utf8");
+function readCommonTemplates() {
+  return {
+    extSpecTemplate: fs.readFileSync(path.join(TEMPLATE_ROOT, "extension.yaml"), "utf8"),
+    preinstallTemplate: fs.readFileSync(path.join(TEMPLATE_ROOT, "PREINSTALL.md"), "utf8"),
+    postinstallTemplate: fs.readFileSync(path.join(TEMPLATE_ROOT, "POSTINSTALL.md"), "utf8"),
+    changelogTemplate: fs.readFileSync(path.join(TEMPLATE_ROOT, "CHANGELOG.md"), "utf8"),
+  };
+}
 
 /**
  * Sets up Typescript boilerplate code for new extension
@@ -58,10 +63,11 @@ async function typescriptSelected(config: Config): Promise<void> {
     message: "Do you want to use ESLint to catch probable bugs and enforce style?",
     default: true,
   });
-
-  await config.askWriteProjectFile("extension.yaml", EXT_SPEC_TEMPLATE);
-  await config.askWriteProjectFile("PREINSTALL.md", PREINSTALL_TEMPLATE);
-  await config.askWriteProjectFile("POSTINSTALL.md", POSTINSTALL_TEMPLATE);
+  const templates = readCommonTemplates();
+  await config.askWriteProjectFile("extension.yaml", templates.extSpecTemplate);
+  await config.askWriteProjectFile("PREINSTALL.md", templates.preinstallTemplate);
+  await config.askWriteProjectFile("POSTINSTALL.md", templates.postinstallTemplate);
+  await config.askWriteProjectFile("CHANGELOG.md", templates.changelogTemplate);
   await config.askWriteProjectFile("functions/src/index.ts", indexTemplate);
   if (lint) {
     await config.askWriteProjectFile("functions/package.json", packageLintingTemplate);
@@ -106,9 +112,11 @@ async function javascriptSelected(config: Config): Promise<void> {
     default: false,
   });
 
-  await config.askWriteProjectFile("extension.yaml", EXT_SPEC_TEMPLATE);
-  await config.askWriteProjectFile("PREINSTALL.md", PREINSTALL_TEMPLATE);
-  await config.askWriteProjectFile("POSTINSTALL.md", POSTINSTALL_TEMPLATE);
+  const templates = readCommonTemplates();
+  await config.askWriteProjectFile("extension.yaml", templates.extSpecTemplate);
+  await config.askWriteProjectFile("PREINSTALL.md", templates.preinstallTemplate);
+  await config.askWriteProjectFile("POSTINSTALL.md", templates.postinstallTemplate);
+  await config.askWriteProjectFile("CHANGELOG.md", templates.changelogTemplate);
   await config.askWriteProjectFile("functions/index.js", indexTemplate);
   if (lint) {
     await config.askWriteProjectFile("functions/package.json", packageLintingTemplate);

@@ -4,13 +4,15 @@ import { first, last, get, size, head, keys, values } from "lodash";
 
 import { FirebaseError } from "./error";
 import { getInheritedOption, setupLoggers } from "./utils";
-import { loadRC } from "./rc";
+import { loadRC, RC } from "./rc";
 import { Config } from "./config";
 import { configstore } from "./configstore";
 import { detectProjectRoot } from "./detectProjectRoot";
 import track = require("./track");
 import clc = require("cli-color");
 import { selectAccount, setActiveAccount } from "./auth";
+import { getFirebaseProject } from "./management/projects";
+import { requireAuth } from "./requireAuth";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ActionFunction = (...args: any[]) => any;
@@ -72,6 +74,17 @@ export class Command {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   option(...args: any[]): Command {
     this.options.push(args);
+    return this;
+  }
+
+  /**
+   * Sets up --force flag for the command.
+   *
+   * @param message overrides the description for --force for this command
+   * @returns the command, for chaining
+   */
+  withForce(message?: string): Command {
+    this.options.push(["-f, --force", message || "automatically accept all interactive prompts"]);
     return this;
   }
 
@@ -211,7 +224,7 @@ export class Command {
    * @param options the command options object.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private prepare(options: any): void {
+  private async prepare(options: any): Promise<void> {
     options = options || {};
     options.project = getInheritedOption(options, "project");
 
@@ -244,20 +257,23 @@ export class Command {
       options.configError = e;
     }
 
-    options.projectRoot = detectProjectRoot(options);
-    this.applyRC(options);
-    if (options.project) {
-      validateProjectId(options.project);
-    }
-
     const account = getInheritedOption(options, "account");
     options.account = account;
+
+    // selectAccount needs the projectRoot to be set.
+    options.projectRoot = detectProjectRoot(options);
 
     const projectRoot = options.projectRoot;
     const activeAccount = selectAccount(account, projectRoot);
 
     if (activeAccount) {
       setActiveAccount(options, activeAccount);
+    }
+
+    this.applyRC(options);
+    if (options.project) {
+      await this.resolveProjectIdentifiers(options);
+      validateProjectId(options.projectId);
     }
   }
 
@@ -288,6 +304,21 @@ export class Command {
     }
   }
 
+  private async resolveProjectIdentifiers(options: {
+    project?: string;
+    projectId?: string;
+    projectNumber?: string;
+  }): Promise<void> {
+    if (options.project?.match(/^\d+$/)) {
+      await requireAuth(options);
+      const { projectId, projectNumber } = await getFirebaseProject(options.project);
+      options.projectId = projectId;
+      options.projectNumber = projectNumber;
+    } else {
+      options.projectId = options.project;
+    }
+  }
+
   /**
    * Returns an async function that calls the pre-action hooks and then the
    * command's action function.
@@ -310,7 +341,7 @@ export class Command {
       }
 
       const options = last(args);
-      this.prepare(options);
+      await this.prepare(options);
 
       for (const before of this.befores) {
         await before.fn(options, ...before.args);

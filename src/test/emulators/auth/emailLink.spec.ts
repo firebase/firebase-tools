@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import { FirebaseJwtPayload } from "../../../emulator/auth/operations";
-import { describeAuthEmulator } from "./setup";
+import { describeAuthEmulator, PROJECT_ID } from "./setup";
 import {
   expectStatusCode,
   registerUser,
@@ -12,6 +12,9 @@ import {
   createEmailSignInOob,
   TEST_PHONE_NUMBER,
   TEST_MFA_INFO,
+  updateProjectConfig,
+  registerTenant,
+  getAccountInfoByLocalId,
 } from "./helpers";
 
 describeAuthEmulator("email link sign-in", ({ authApi }) => {
@@ -78,6 +81,23 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
       "password",
       "emailLink",
     ]);
+  });
+
+  it("should error on signInWithEmailLink if usageMode is passthrough", async () => {
+    const user = { email: "bob@example.com", password: "notasecret" };
+    const { oobCode } = await createEmailSignInOob(authApi(), user.email);
+    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithEmailLink")
+      .query({ key: "fake-api-key" })
+      .send({ email: user.email, oobCode })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error)
+          .to.have.property("message")
+          .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
+      });
   });
 
   it("should error on invalid oobCode", async () => {
@@ -203,7 +223,7 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
       });
   });
 
-  it("should error if user has MFA", async () => {
+  it("should return pending credential if user has MFA", async () => {
     const user = {
       email: "alice@example.com",
       password: "notasecret",
@@ -217,8 +237,92 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
       .query({ key: "fake-api-key" })
       .send({ email, oobCode, idToken })
       .then((res) => {
-        expectStatusCode(501, res);
-        expect(res.body.error.message).to.equal("MFA Login not yet implemented.");
+        expectStatusCode(200, res);
+        expect(res.body).not.to.have.property("idToken");
+        expect(res.body).not.to.have.property("refreshToken");
+        expect(res.body.mfaPendingCredential).to.be.a("string");
+        expect(res.body.mfaInfo).to.be.an("array").with.lengthOf(1);
+      });
+  });
+
+  it("should error if auth is disabled", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: true });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithEmailLink")
+      .query({ key: "fake-api-key" })
+      .send({ tenantId: tenant.tenantId })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.include("PROJECT_DISABLED");
+      });
+  });
+
+  it("should error if email link sign in is disabled", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, {
+      disableAuth: false,
+      enableEmailLinkSignin: false,
+    });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithEmailLink")
+      .query({ key: "fake-api-key" })
+      .send({ tenantId: tenant.tenantId })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.include("OPERATION_NOT_ALLOWED");
+      });
+  });
+
+  it("should create account on sign-in with tenantId", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, {
+      disableAuth: false,
+      enableEmailLinkSignin: true,
+    });
+    const email = "alice@example.com";
+    const { oobCode } = await createEmailSignInOob(authApi(), email, tenant.tenantId);
+
+    const localId = await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithEmailLink")
+      .query({ key: "fake-api-key" })
+      .send({ oobCode, email, tenantId: tenant.tenantId })
+      .then((res) => {
+        expectStatusCode(200, res);
+        return res.body.localId;
+      });
+
+    const user = await getAccountInfoByLocalId(authApi(), localId, tenant.tenantId);
+    expect(user.tenantId).to.eql(tenant.tenantId);
+  });
+
+  it("should return pending credential if user has MFA and enabled on tenant projects", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, {
+      disableAuth: false,
+      enableEmailLinkSignin: true,
+      allowPasswordSignup: true,
+      mfaConfig: {
+        state: "ENABLED",
+      },
+    });
+    const user = {
+      email: "alice@example.com",
+      password: "notasecret",
+      mfaInfo: [TEST_MFA_INFO],
+      tenantId: tenant.tenantId,
+    };
+    const { idToken, email } = await registerUser(authApi(), user);
+    const { oobCode } = await createEmailSignInOob(authApi(), email, tenant.tenantId);
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithEmailLink")
+      .query({ key: "fake-api-key" })
+      .send({ email, oobCode, idToken, tenantId: tenant.tenantId })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body).not.to.have.property("idToken");
+        expect(res.body).not.to.have.property("refreshToken");
+        expect(res.body.mfaPendingCredential).to.be.a("string");
+        expect(res.body.mfaInfo).to.be.an("array").with.lengthOf(1);
       });
   });
 });

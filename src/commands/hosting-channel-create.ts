@@ -7,7 +7,7 @@ import { FirebaseError } from "../error";
 import { logLabeledSuccess, datetimeString, logLabeledWarning, consoleUrl } from "../utils";
 import { promptOnce } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
-import * as getProjectId from "../getProjectId";
+import { needProjectId } from "../projectUtils";
 import { logger } from "../logger";
 import * as requireConfig from "../requireConfig";
 import * as marked from "marked";
@@ -30,7 +30,7 @@ export default new Command("hosting:channel:create [channelId]")
       channelId: string,
       options: any // eslint-disable-line @typescript-eslint/no-explicit-any
     ): Promise<Channel> => {
-      const projectId = getProjectId(options);
+      const projectId = needProjectId(options);
       const site = options.site;
 
       let expireTTL = DEFAULT_DURATION;

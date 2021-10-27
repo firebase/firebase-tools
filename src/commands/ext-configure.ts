@@ -7,7 +7,7 @@ import TerminalRenderer = require("marked-terminal");
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
-import * as getProjectId from "../getProjectId";
+import { needProjectId } from "../projectUtils";
 import * as extensionsApi from "../extensions/extensionsApi";
 import { logPrefix } from "../extensions/extensionsHelper";
 import * as paramHelper from "../extensions/paramHelper";
@@ -24,6 +24,7 @@ marked.setOptions({
  */
 export default new Command("ext:configure <extensionInstanceId>")
   .description("configure an existing extension instance")
+  .withForce()
   .option("--params <paramsFile>", "path of params file with .env format.")
   .before(requirePermissions, [
     "firebaseextensions.instances.update",
@@ -35,7 +36,7 @@ export default new Command("ext:configure <extensionInstanceId>")
       `Configuring ${clc.bold(instanceId)}. This usually takes 3 to 5 minutes...`
     );
     try {
-      const projectId = getProjectId(options, false);
+      const projectId = needProjectId(options);
       let existingInstance: extensionsApi.ExtensionInstance;
       try {
         existingInstance = await extensionsApi.getInstance(projectId, instanceId);
@@ -58,11 +59,14 @@ export default new Command("ext:configure <extensionInstanceId>")
         // TODO: Stop special casing "LOCATION" once all official extensions make it immutable
       });
 
-      const params = await paramHelper.getParams(
+      const params = await paramHelper.getParams({
         projectId,
-        paramSpecWithNewDefaults,
-        options.params
-      );
+        paramSpecs: paramSpecWithNewDefaults,
+        nonInteractive: options.nonInteractive,
+        paramsEnvPath: options.params,
+        instanceId,
+        reconfiguring: true,
+      });
       if (immutableParams.length) {
         const plural = immutableParams.length > 1;
         logger.info(`The following param${plural ? "s are" : " is"} immutable:`);

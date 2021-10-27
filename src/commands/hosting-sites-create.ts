@@ -6,7 +6,7 @@ import { Site, createSite } from "../hosting/api";
 import { promptOnce } from "../prompt";
 import { FirebaseError } from "../error";
 import { requirePermissions } from "../requirePermissions";
-import * as getProjectId from "../getProjectId";
+import { needProjectId } from "../projectUtils";
 import { logger } from "../logger";
 
 const LOG_TAG = "hosting:sites";
@@ -20,7 +20,7 @@ export default new Command("hosting:sites:create [siteId]")
       siteId: string,
       options: any // eslint-disable-line @typescript-eslint/no-explicit-any
     ): Promise<Site> => {
-      const projectId = getProjectId(options);
+      const projectId = needProjectId(options);
       const appId = options.app;
       if (!siteId) {
         if (options.nonInteractive) {

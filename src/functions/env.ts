@@ -1,8 +1,13 @@
+import * as clc from "cli-color";
 import * as fs from "fs";
 import * as path from "path";
 
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
+import { previews } from "../previews";
+import { logBullet } from "../utils";
+
+const FUNCTIONS_EMULATOR_DOTENV = ".env.local";
 
 const RESERVED_KEYS = [
   // Cloud Functions for Firebase
@@ -37,19 +42,19 @@ const RESERVED_KEYS = [
 //   https://github.com/bkeepers/dotenv/blob/master/lib/dotenv/parser.rb
 // prettier-ignore
 const LINE_RE = new RegExp(
-  "^" +                    // begin line
-  "\\s*" +                 //   leading whitespaces
-  "(\\w+)" +               //   key
-  "\\s*=\\s*" +            //   separator (=)
-  "(" +                    //   begin optional value
-  "\\s*'(?:\\'|[^'])*'|" + //     single quoted or
-  '\\s*"(?:\\"|[^"])*"|' + //     double quoted or
-  "[^\\#\\r\\n]+" +        //     unquoted
-  ")?" +                   //   end optional value
-  "\\s*" +                 //   trailing whitespaces
-  "(?:#[^\\n]*)?" +        //   optional comment
-  "$",                     // end line
-  "gms"                    // flags: global, multiline, dotall
+  "^" +                      // begin line
+  "\\s*" +                   //   leading whitespaces
+  "(\\w+)" +                 //   key
+  "\\s*=\\s*" +              //   separator (=)
+  "(" +                      //   begin optional value
+  "\\s*'(?:\\\\'|[^'])*'|" + //     single quoted or
+  '\\s*"(?:\\\\"|[^"])*"|' + //     double quoted or
+  "[^#\\r\\n]+" +            //     unquoted
+  ")?" +                     //   end optional value
+  "\\s*" +                   //   trailing whitespaces
+  "(?:#[^\\n]*)?" +          //   optional comment
+  "$",                       // end line
+  "gms"                      // flags: global, multiline, dotall
 );
 
 interface ParseResult {
@@ -120,7 +125,11 @@ export function parse(data: string): ParseResult {
   return { envs, errors };
 }
 
-class KeyValidationError extends Error {}
+export class KeyValidationError extends Error {
+  constructor(public key: string, public message: string) {
+    super(`Failed to validate key ${key}: ${message}`);
+  }
+}
 
 /**
  * Validates string for use as an env var key.
@@ -130,16 +139,18 @@ class KeyValidationError extends Error {}
  */
 export function validateKey(key: string): void {
   if (RESERVED_KEYS.includes(key)) {
-    throw new KeyValidationError(`Key ${key} is reserved for internal use.`);
+    throw new KeyValidationError(key, `Key ${key} is reserved for internal use.`);
   }
   if (!/^[A-Z_][A-Z0-9_]*$/.test(key)) {
     throw new KeyValidationError(
+      key,
       `Key ${key} must start with an uppercase ASCII letter or underscore` +
         ", and then consist of uppercase ASCII letters, digits, and underscores."
     );
   }
   if (key.startsWith("X_GOOGLE_") || key.startsWith("FIREBASE_")) {
     throw new KeyValidationError(
+      key,
       `Key ${key} starts with a reserved prefix (X_GOOGLE_ or FIREBASE_)`
     );
   }
@@ -176,11 +187,54 @@ function parseStrict(data: string): Record<string, string> {
   return envs;
 }
 
+function findEnvfiles(
+  functionsSource: string,
+  projectId: string,
+  projectAlias?: string,
+  isEmulator?: boolean
+): string[] {
+  const files: string[] = [".env"];
+  if (isEmulator) {
+    files.push(FUNCTIONS_EMULATOR_DOTENV);
+  } else {
+    files.push(`.env.${projectId}`);
+    if (projectAlias && projectAlias.length) {
+      files.push(`.env.${projectAlias}`);
+    }
+  }
+
+  return files
+    .map((f) => path.join(functionsSource, f))
+    .filter(fs.existsSync)
+    .map((p) => path.basename(p));
+}
+
+export interface UserEnvsOpts {
+  functionsSource: string;
+  projectId: string;
+  projectAlias?: string;
+  isEmulator?: boolean;
+}
+
 /**
- * Loads environment variables for a project.
+ * Checks if user has specified any environment variables for their functions.
  *
- * Load looks for .env files at the root of functions source directory
- * and loads the contents of the .env files.
+ * @return True if there are any user-specified environment variables
+ */
+export function hasUserEnvs({
+  functionsSource,
+  projectId,
+  projectAlias,
+  isEmulator,
+}: UserEnvsOpts): boolean {
+  return findEnvfiles(functionsSource, projectId, projectAlias, isEmulator).length > 0;
+}
+
+/**
+ * Load user-specified environment variables.
+ *
+ * Look for .env files at the root of functions source directory
+ * and load the contents of the .env files.
  *
  * .env files are searched and merged in the following order:
  *
@@ -191,49 +245,61 @@ function parseStrict(data: string): Record<string, string> {
  *
  * @return {Record<string, string>} Environment variables for the project.
  */
-export function load(options: {
-  functionsSource: string;
-  projectId: string;
-  projectAlias?: string;
-}): Record<string, string> {
-  const targetFiles = [".env"];
-  targetFiles.push(`.env.${options.projectId}`);
-  if (options.projectAlias && options.projectAlias.length) {
-    targetFiles.push(`.env.${options.projectAlias}`);
+export function loadUserEnvs({
+  functionsSource,
+  projectId,
+  projectAlias,
+  isEmulator,
+}: UserEnvsOpts): Record<string, string> {
+  if (!previews.dotenv) {
+    return {};
   }
 
-  const targetPaths = targetFiles
-    .map((f) => path.join(options.functionsSource, f))
-    .filter(fs.existsSync);
+  const envFiles = findEnvfiles(functionsSource, projectId, projectAlias, isEmulator);
+  if (envFiles.length == 0) {
+    return {};
+  }
 
-  // Check if both .env.<project> and .env.<alias> exists.
-  if (targetPaths.some((p) => path.basename(p) === `.env.${options.projectId}`)) {
-    if (options.projectAlias && options.projectAlias.length) {
-      for (const p of targetPaths) {
-        if (path.basename(p) === `.env.${options.projectAlias}`) {
-          throw new FirebaseError(
-            `Can't have both .env.${options.projectId} and .env.${options.projectAlias}> files.`
-          );
-        }
-      }
+  // Disallow setting both .env.<projectId> and .env.<projectAlias>
+  if (projectAlias) {
+    if (envFiles.includes(`.env.${projectId}`) && envFiles.includes(`.env.${projectAlias}`)) {
+      throw new FirebaseError(
+        `Can't have both dotenv files with projectId (env.${projectId}) ` +
+          `and projectAlias (.env.${projectAlias}) as extensions.`
+      );
     }
   }
 
   let envs: Record<string, string> = {};
-  for (const targetPath of targetPaths) {
+  for (const f of envFiles) {
     try {
-      const data = fs.readFileSync(targetPath, "utf8");
+      const data = fs.readFileSync(path.join(functionsSource, f), "utf8");
       envs = { ...envs, ...parseStrict(data) };
     } catch (err) {
-      throw new FirebaseError(`Failed to load environment variables from ${targetPath}.`, {
+      throw new FirebaseError(`Failed to load environment variables from ${f}.`, {
         exit: 2,
         children: err.children?.length > 0 ? err.children : [err],
       });
     }
   }
-  logger.debug(
-    `Loaded environment variables ${JSON.stringify(envs)} from ${targetPaths.join(",")}.`
+  logBullet(
+    clc.cyan.bold("functions: ") + `Loaded environment variables from ${envFiles.join(", ")}.`
   );
 
   return envs;
+}
+
+/**
+ * Load Firebase-set environment variables.
+ *
+ * @return Environment varibles for functions.
+ */
+export function loadFirebaseEnvs(
+  firebaseConfig: Record<string, any>,
+  projectId: string
+): Record<string, string> {
+  return {
+    FIREBASE_CONFIG: JSON.stringify(firebaseConfig),
+    GCLOUD_PROJECT: projectId,
+  };
 }

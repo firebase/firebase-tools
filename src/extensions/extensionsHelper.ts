@@ -4,6 +4,11 @@ import * as ora from "ora";
 import * as semver from "semver";
 import * as marked from "marked";
 
+const TerminalRenderer = require("marked-terminal");
+marked.setOptions({
+  renderer: new TerminalRenderer(),
+});
+
 import { storageOrigin } from "../api";
 import { archiveDirectory } from "../archiveDirectory";
 import { convertOfficialExtensionsToList } from "./utils";
@@ -13,7 +18,7 @@ import { FirebaseError } from "../error";
 import { checkResponse } from "./askUserForParam";
 import { ensure } from "../ensureApiEnabled";
 import { deleteObject, uploadObject } from "../gcp/storage";
-import * as getProjectId from "../getProjectId";
+import { needProjectId } from "../projectUtils";
 import {
   createSource,
   ExtensionSource,
@@ -22,13 +27,14 @@ import {
   getInstance,
   getSource,
   Param,
-  parseRef,
   publishExtensionVersion,
 } from "./extensionsApi";
+import * as refs from "./refs";
 import { getLocalExtensionSpec } from "./localHelper";
 import { promptOnce } from "../prompt";
 import { logger } from "../logger";
 import { envOverride } from "../utils";
+import { getLocalChangelog } from "./changelog";
 
 /**
  * SpecParamType represents the exact strings that the extensions
@@ -41,6 +47,7 @@ export enum SpecParamType {
   MULTISELECT = "multiSelect",
   STRING = "string",
   SELECTRESOURCE = "selectResource",
+  SECRET = "secret",
 }
 
 export enum SourceOrigin {
@@ -341,7 +348,7 @@ export async function promptForValidInstanceId(instanceId: string): Promise<stri
 }
 
 export async function ensureExtensionsApiEnabled(options: any): Promise<void> {
-  const projectId = getProjectId(options);
+  const projectId = needProjectId(options);
   return await ensure(
     projectId,
     "firebaseextensions.googleapis.com",
@@ -371,16 +378,18 @@ async function archiveAndUploadSource(extPath: string, bucketName: string): Prom
  * @param extensionId the ID of the extension. This must match the `name` field of extension.yaml.
  * @param rootDirectory the directory containing  extension.yaml
  */
-export async function publishExtensionVersionFromLocalSource(
-  publisherId: string,
-  extensionId: string,
-  rootDirectory: string
-): Promise<ExtensionVersion | undefined> {
-  const extensionSpec = await getLocalExtensionSpec(rootDirectory);
-  if (extensionSpec.name != extensionId) {
+export async function publishExtensionVersionFromLocalSource(args: {
+  publisherId: string;
+  extensionId: string;
+  rootDirectory: string;
+  nonInteractive: boolean;
+  force: boolean;
+}): Promise<ExtensionVersion | undefined> {
+  const extensionSpec = await getLocalExtensionSpec(args.rootDirectory);
+  if (extensionSpec.name != args.extensionId) {
     throw new FirebaseError(
       `Extension ID '${clc.bold(
-        extensionId
+        args.extensionId
       )}' does not match the name in extension.yaml '${clc.bold(extensionSpec.name)}'.`
     );
   }
@@ -393,16 +402,45 @@ export async function publishExtensionVersionFromLocalSource(
   );
   validateSpec(subbedSpec);
 
-  const consent = await confirmExtensionVersion(publisherId, extensionId, extensionSpec.version);
-  if (!consent) {
-    return;
-  }
-
   let extension;
   try {
-    extension = await getExtension(`${publisherId}/${extensionId}`);
+    extension = await getExtension(`${args.publisherId}/${args.extensionId}`);
   } catch (err) {
     // Silently fail and continue the publish flow if extension not found.
+  }
+
+  let notes: string;
+  try {
+    const changes = getLocalChangelog(args.rootDirectory);
+    notes = changes[extensionSpec.version];
+  } catch (err) {
+    throw new FirebaseError(
+      "No CHANGELOG.md file found. " +
+        "Please create one and add an entry for this version. " +
+        marked(
+          "See https://firebase.google.com/docs/extensions/alpha/create-user-docs#writing-changelog for more details."
+        )
+    );
+  }
+  if (!notes && extension) {
+    // If this is not the first version of this extension, we require release notes
+    throw new FirebaseError(
+      `No entry for version ${extensionSpec.version} found in CHANGELOG.md. ` +
+        "Please add one so users know what has changed in this version. " +
+        marked(
+          "See https://firebase.google.com/docs/extensions/alpha/create-user-docs#writing-changelog for more details."
+        )
+    );
+  }
+  displayReleaseNotes(args.publisherId, args.extensionId, extensionSpec.version, notes);
+  if (
+    !(await confirm({
+      nonInteractive: args.nonInteractive,
+      force: args.force,
+      default: false,
+    }))
+  ) {
+    return;
   }
 
   if (
@@ -417,7 +455,7 @@ export async function publishExtensionVersionFromLocalSource(
       )}) is lower than the current version (${clc.bold(
         extension.latestVersion
       )}) for the extension '${clc.bold(
-        `${publisherId}/${extensionId}`
+        `${args.publisherId}/${args.extensionId}`
       )}'. Please make sure this version is greater than the current version (${clc.bold(
         extension.latestVersion
       )}) inside of extension.yaml.\n`
@@ -432,18 +470,19 @@ export async function publishExtensionVersionFromLocalSource(
       `The version you are trying to publish (${clc.bold(
         extensionSpec.version
       )}) already exists for the extension '${clc.bold(
-        `${publisherId}/${extensionId}`
-      )}'. Please increment the version inside of extension.yaml.\n`
+        `${args.publisherId}/${args.extensionId}`
+      )}'. Please increment the version inside of extension.yaml.\n`,
+      { exit: 103 }
     );
   }
 
-  const ref = `${publisherId}/${extensionId}@${extensionSpec.version}`;
+  const ref = `${args.publisherId}/${args.extensionId}@${extensionSpec.version}`;
   let packageUri: string;
   let objectPath = "";
   const uploadSpinner = ora.default(" Archiving and uploading extension source code");
   try {
     uploadSpinner.start();
-    objectPath = await archiveAndUploadSource(rootDirectory, EXTENSIONS_BUCKET_NAME);
+    objectPath = await archiveAndUploadSource(args.rootDirectory, EXTENSIONS_BUCKET_NAME);
     uploadSpinner.succeed(" Uploaded extension source code");
     packageUri = storageOrigin + objectPath + "?alt=media";
   } catch (err) {
@@ -462,7 +501,7 @@ export async function publishExtensionVersionFromLocalSource(
       throw new FirebaseError(
         marked(
           `Couldn't find publisher ID '${clc.bold(
-            publisherId
+            args.publisherId
           )}'. Please ensure that you have registered this ID. To register as a publisher, you can check out the [Firebase documentation](https://firebase.google.com/docs/extensions/alpha/share#register_as_an_extensions_publisher) for step-by-step instructions.`
         )
       );
@@ -551,22 +590,21 @@ export async function getExtensionSourceFromName(extensionName: string): Promise
  * @param extensionId the extension ID of the extension being installed
  * @param versionId the version ID of the extension being installed
  */
-export async function confirmExtensionVersion(
+export function displayReleaseNotes(
   publisherId: string,
   extensionId: string,
-  versionId: string
-): Promise<boolean> {
+  versionId: string,
+  releaseNotes?: string
+): void {
+  const releaseNotesMessage = releaseNotes
+    ? ` Release notes for this version:\n${marked(releaseNotes)}\n`
+    : "\n";
   const message =
     `You are about to publish version ${clc.green(versionId)} of ${clc.green(
       `${publisherId}/${extensionId}`
-    )} to Firebase's registry of extensions.\n\n` +
-    "Once an extension version is published, it cannot be changed. If you wish to make changes after publishing, you will need to publish a new version.\n\n" +
-    "Do you wish to continue?";
-  return await promptOnce({
-    type: "confirm",
-    message,
-    default: false, // Force users to explicitly type 'yes'
-  });
+    )} to Firebase's registry of extensions.${releaseNotesMessage}` +
+    "Once an extension version is published, it cannot be changed. If you wish to make changes after publishing, you will need to publish a new version.\n\n";
+  logger.info(message);
 }
 
 /**
@@ -593,17 +631,19 @@ export async function promptForOfficialExtension(message: string): Promise<strin
 export async function promptForRepeatInstance(
   projectName: string,
   extensionName: string
-): Promise<boolean> {
-  const message =
-    `An extension with the ID '${clc.bold(
-      extensionName
-    )}' already exists in the project '${clc.bold(projectName)}'.\n` +
-    `Do you want to proceed with installing another instance of extension '${clc.bold(
-      extensionName
-    )}' in this project?`;
+): Promise<"updateExisting" | "installNew" | "cancel"> {
+  const message = `An extension with the ID '${clc.bold(
+    extensionName
+  )}' already exists in the project '${clc.bold(projectName)}'. What would you like to do?`;
+  const choices = [
+    { name: "Update or reconfigure the existing instance", value: "updateExisting" },
+    { name: "Install a new instance with a different ID", value: "installNew" },
+    { name: "Cancel extension installation", value: "cancel" },
+  ];
   return await promptOnce({
-    type: "confirm",
+    type: "list",
     message,
+    choices,
   });
 }
 
@@ -653,37 +693,19 @@ export function isLocalOrURLPath(extInstallPath: string): boolean {
  * Given an update source, return where the update source came from.
  * @param sourceOrVersion path to a source or reference to a source version
  */
-export async function getSourceOrigin(sourceOrVersion: string): Promise<SourceOrigin> {
-  if (!sourceOrVersion) {
-    return SourceOrigin.OFFICIAL_EXTENSION;
-  }
-
-  // NOTE: If a semver is passed in, we automatically asssume it is an official extension version.
-  // If this was meant to be an extension from the Registry, please pass in the full reference instead.
-  // This is just an interim solution - when official extensions are migrated to use the Registry, the
-  // SourceOrigin types will be the same, and we won't have to worry about this nuance.
-  if (semver.valid(sourceOrVersion)) {
-    return SourceOrigin.OFFICIAL_EXTENSION_VERSION;
-  }
-  // First, check if the input matches a local or URL first.
+export function getSourceOrigin(sourceOrVersion: string): SourceOrigin {
+  // First, check if the input matches a local or URL.
   if (isLocalPath(sourceOrVersion)) {
     return SourceOrigin.LOCAL;
   }
   if (isUrlPath(sourceOrVersion)) {
     return SourceOrigin.URL;
   }
-  // Next, check if the source matches an extension in the official extensions registry (registry.json).
-  try {
-    await resolveRegistryEntry(sourceOrVersion);
-    return SourceOrigin.OFFICIAL_EXTENSION;
-  } catch {
-    // Silently fail.
-  }
   // Next, check if the source is an extension reference.
   if (sourceOrVersion.includes("/")) {
     let ref;
     try {
-      ref = parseRef(sourceOrVersion);
+      ref = refs.parse(sourceOrVersion);
     } catch (err) {
       // Silently fail.
     }
@@ -701,13 +723,23 @@ export async function getSourceOrigin(sourceOrVersion: string): Promise<SourceOr
 }
 
 /**
- * Confirm if the user wants to install instance of an extension.
+ * Confirm if the user wants to continue
  */
-export async function confirmInstallInstance(defaultOption?: boolean): Promise<boolean> {
-  const message = `Would you like to continue installing this extension?`;
-  return await promptOnce({
-    type: "confirm",
-    message,
-    default: defaultOption,
-  });
+export async function confirm(args: {
+  nonInteractive?: boolean;
+  force?: boolean;
+  default?: boolean;
+}): Promise<boolean> {
+  if (!args.nonInteractive && !args.force) {
+    const message = `Do you wish to continue?`;
+    return await promptOnce({
+      type: "confirm",
+      message,
+      default: args.default,
+    });
+  } else if (args.nonInteractive && !args.force) {
+    throw new FirebaseError("Pass the --force flag to use this command in non-interactive mode");
+  } else {
+    return true;
+  }
 }

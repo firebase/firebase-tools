@@ -3,7 +3,7 @@ import * as marked from "marked";
 
 import { Command } from "../command";
 import { registerPublisherProfile } from "../extensions/extensionsApi";
-import * as getProjectId from "../getProjectId";
+import { needProjectId } from "../projectUtils";
 import { promptOnce } from "../prompt";
 import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper";
 import { promptForPublisherTOS } from "../extensions/askUserForConsent";
@@ -21,7 +21,7 @@ export default new Command("ext:dev:register")
   .before(ensureExtensionsApiEnabled)
   .action(async (options: any) => {
     await promptForPublisherTOS();
-    const projectId = getProjectId(options, false);
+    const projectId = needProjectId(options);
     const msg =
       "What would you like to register as your publisher ID? " +
       "This value identifies you in Firebase's registry of extensions as the author of your extensions. " +

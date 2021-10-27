@@ -4,7 +4,7 @@ const { logger } = require("../logger");
 var api = require("../api");
 var clc = require("cli-color");
 var _ = require("lodash");
-var getProjectId = require("../getProjectId");
+var needProjectId = require("../projectUtils").needProjectId;
 var utils = require("../utils");
 var { FirebaseError } = require("../error");
 var track = require("../track");
@@ -40,7 +40,7 @@ var _chain = function (fns, context, options, payload) {
  * for individual deployable elements to be deployed as such.
  */
 var deploy = function (targetNames, options, customContext = {}) {
-  var projectId = getProjectId(options);
+  var projectId = needProjectId(options);
   var payload = {};
   // a shared context object for deploy targets to decorate as needed
   /** @type {object} */

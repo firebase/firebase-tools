@@ -1,7 +1,7 @@
 import * as clc from "cli-color";
 
 import { Command } from "../command";
-import * as getProjectId from "../getProjectId";
+import { needProjectId } from "../projectUtils";
 import { deleteAppAndroidSha } from "../management/apps";
 import { requireAuth } from "../requireAuth";
 import { promiseWithSpinner } from "../utils";
@@ -11,7 +11,7 @@ module.exports = new Command("apps:android:sha:delete <appId> <shaId>")
   .before(requireAuth)
   .action(
     async (appId: string = "", shaId: string = "", options: any): Promise<void> => {
-      const projectId = getProjectId(options);
+      const projectId = needProjectId(options);
 
       await promiseWithSpinner<void>(
         async () => await deleteAppAndroidSha(projectId, appId, shaId),
