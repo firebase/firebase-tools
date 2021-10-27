@@ -18,7 +18,7 @@ module.exports = new Command("remoteconfig:rollback")
     "-v, --version-number <versionNumber>",
     "rollback to the specified version of the template"
   )
-  .option("--force", "rollback template to the specified version without confirmation")
+  .withForce()
   .action(async (options) => {
     const templateVersion = await getVersions(needProjectId(options), 1);
     let targetVersion = 0;

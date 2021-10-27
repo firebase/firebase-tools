@@ -15,6 +15,9 @@ module.exports = function (client) {
 
   client.appdistribution = {};
   client.appdistribution.distribute = loadCommand("appdistribution-distribute");
+  client.appdistribution.testers = {};
+  client.appdistribution.testers.add = loadCommand("appdistribution-testers-add");
+  client.appdistribution.testers.delete = loadCommand("appdistribution-testers-remove");
   client.apps = {};
   client.apps.create = loadCommand("apps-create");
   client.apps.list = loadCommand("apps-list");
@@ -27,6 +30,11 @@ module.exports = function (client) {
   client.auth = {};
   client.auth.export = loadCommand("auth-export");
   client.auth.upload = loadCommand("auth-import");
+  if (previews.crashlyticsSymbolsUpload) {
+    client.crashlytics = {};
+    client.crashlytics.symbols = {};
+    client.crashlytics.symbols.upload = loadCommand("crashlytics-symbols-upload");
+  }
   client.database = {};
   client.database.get = loadCommand("database-get");
   client.database.instances = {};
@@ -85,12 +93,19 @@ module.exports = function (client) {
   client.functions = {};
   client.functions.config = {};
   client.functions.config.clone = loadCommand("functions-config-clone");
+  if (previews.dotenv) {
+    client.functions.config.export = loadCommand("functions-config-export");
+  }
   client.functions.config.get = loadCommand("functions-config-get");
   client.functions.config.set = loadCommand("functions-config-set");
   client.functions.config.unset = loadCommand("functions-config-unset");
   client.functions.delete = loadCommand("functions-delete");
   client.functions.log = loadCommand("functions-log");
   client.functions.shell = loadCommand("functions-shell");
+  client.functions.list = loadCommand("functions-list");
+  if (previews.deletegcfartifacts) {
+    client.functions.deletegcfartifacts = loadCommand("functions-deletegcfartifacts");
+  }
   client.help = loadCommand("help");
   client.hosting = {};
   client.hosting.channel = {};

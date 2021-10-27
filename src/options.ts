@@ -14,6 +14,7 @@ export interface Options {
 
   // Options which are present on every command
   project?: string;
+  projectAlias?: string;
   projectId?: string;
   projectNumber?: string;
   account?: string;

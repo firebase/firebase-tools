@@ -14,10 +14,11 @@ export const PROVIDER_PASSWORD = "password";
 export const PROVIDER_PHONE = "phone";
 export const PROVIDER_ANONYMOUS = "anonymous";
 export const PROVIDER_CUSTOM = "custom";
+export const PROVIDER_GAME_CENTER = "gc.apple.com"; // Not yet implemented
 
 export const SIGNIN_METHOD_EMAIL_LINK = "emailLink";
 
-export class ProjectState {
+export abstract class ProjectState {
   private users: Map<string, UserInfo> = new Map();
   private localIdForEmail: Map<string, string> = new Map();
   private localIdForInitialEmail: Map<string, string> = new Map();
@@ -29,18 +30,30 @@ export class ProjectState {
   private oobs: Map<string, OobRecord> = new Map();
   private verificationCodes: Map<string, PhoneVerificationRecord> = new Map();
   private temporaryProofs: Map<string, TemporaryProofRecord> = new Map();
-  public oneAccountPerEmail = true;
-  private authCloudFunction: AuthCloudFunction;
 
-  constructor(public readonly projectId: string) {
-    this.authCloudFunction = new AuthCloudFunction(projectId);
-  }
+  constructor(public readonly projectId: string) {}
 
   get projectNumber(): string {
     // TODO: Shall we generate something different for each project?
     // Hard-coding an obviously fake number for clarity for now.
     return "12345";
   }
+
+  abstract get oneAccountPerEmail(): boolean;
+
+  abstract get authCloudFunction(): AuthCloudFunction;
+
+  abstract get usageMode(): UsageMode;
+
+  abstract get allowPasswordSignup(): boolean;
+
+  abstract get disableAuth(): boolean;
+
+  abstract get mfaConfig(): Schemas["GoogleCloudIdentitytoolkitAdminV2MultiFactorAuthConfig"];
+
+  abstract get enableAnonymousUser(): boolean;
+
+  abstract get enableEmailLinkSignin(): boolean;
 
   createUser(props: Omit<UserInfo, "localId" | "createdAt" | "lastRefreshAt">): UserInfo {
     for (let i = 0; i < 10; i++) {
@@ -375,11 +388,23 @@ export class ProjectState {
   createRefreshTokenFor(
     userInfo: UserInfo,
     provider: string,
-    extraClaims: Record<string, unknown> = {}
+    {
+      extraClaims = {},
+      secondFactor,
+    }: {
+      extraClaims?: Record<string, unknown>;
+      secondFactor?: SecondFactorRecord;
+    } = {}
   ): string {
     const localId = userInfo.localId;
     const refreshToken = randomBase64UrlStr(204);
-    this.refreshTokens.set(refreshToken, { localId, provider, extraClaims });
+    this.refreshTokens.set(refreshToken, {
+      localId,
+      provider,
+      extraClaims,
+      secondFactor,
+      tenantId: userInfo.tenantId,
+    });
     let refreshTokens = this.refreshTokensForLocalId.get(localId);
     if (!refreshTokens) {
       refreshTokens = new Set();
@@ -391,7 +416,14 @@ export class ProjectState {
 
   validateRefreshToken(
     refreshToken: string
-  ): { user: UserInfo; provider: string; extraClaims: Record<string, unknown> } | undefined {
+  ):
+    | {
+        user: UserInfo;
+        provider: string;
+        extraClaims: Record<string, unknown>;
+        secondFactor?: SecondFactorRecord;
+      }
+    | undefined {
     const record = this.refreshTokens.get(refreshToken);
     if (!record) {
       return undefined;
@@ -400,6 +432,7 @@ export class ProjectState {
       user: this.getUserByLocalIdAssertingExists(record.localId),
       provider: record.provider,
       extraClaims: record.extraClaims,
+      secondFactor: record.secondFactor,
     };
   }
 
@@ -523,7 +556,6 @@ export class ProjectState {
     if (!record || record.phoneNumber !== phoneNumber) {
       return undefined;
     }
-    // TODO: Find some way to enforce record.temporaryProofExpiresIn.
     return record;
   }
 
@@ -550,6 +582,254 @@ export class ProjectState {
     }
   }
 }
+
+export class AgentProjectState extends ProjectState {
+  private _oneAccountPerEmail = true;
+  private _usageMode = UsageMode.DEFAULT;
+  private tenantProjectForTenantId: Map<string, TenantProjectState> = new Map();
+  private readonly _authCloudFunction = new AuthCloudFunction(this.projectId);
+
+  constructor(projectId: string) {
+    super(projectId);
+  }
+
+  get authCloudFunction() {
+    return this._authCloudFunction;
+  }
+
+  get oneAccountPerEmail() {
+    return this._oneAccountPerEmail;
+  }
+
+  set oneAccountPerEmail(oneAccountPerEmail: boolean) {
+    this._oneAccountPerEmail = oneAccountPerEmail;
+  }
+
+  get usageMode() {
+    return this._usageMode;
+  }
+
+  set usageMode(usageMode: UsageMode) {
+    this._usageMode = usageMode;
+  }
+
+  get allowPasswordSignup() {
+    return true;
+  }
+
+  get disableAuth() {
+    return false;
+  }
+
+  get mfaConfig() {
+    return { state: "ENABLED" as const, enabledProviders: ["PHONE_SMS" as const] };
+  }
+
+  get enableAnonymousUser() {
+    return true;
+  }
+
+  get enableEmailLinkSignin() {
+    return true;
+  }
+
+  getTenantProject(tenantId: string): TenantProjectState {
+    if (!this.tenantProjectForTenantId.has(tenantId)) {
+      // Implicitly creates tenant if it does not already exist and sets all
+      // configurations to enabled. This is for convenience and differs from
+      // production in which configurations, are default disabled. Tests that
+      // need to reflect production defaults should first explicitly call
+      // `createTenant()` with a `Tenant` object.
+      this.createTenantWithTenantId(tenantId, {
+        tenantId,
+        allowPasswordSignup: true,
+        disableAuth: false,
+        mfaConfig: {
+          state: "ENABLED",
+          enabledProviders: ["PHONE_SMS"],
+        },
+        enableAnonymousUser: true,
+        enableEmailLinkSignin: true,
+      });
+    }
+    return this.tenantProjectForTenantId.get(tenantId)!;
+  }
+
+  listTenants(startToken?: string): Tenant[] {
+    const tenantProjects = [];
+    for (const tenantProject of this.tenantProjectForTenantId.values()) {
+      if (!startToken || tenantProject.tenantId > startToken) {
+        tenantProjects.push(tenantProject);
+      }
+    }
+    // Sort in ascending order by tenantId
+    tenantProjects.sort((a, b) => {
+      if (a.tenantId < b.tenantId) {
+        return -1;
+      } else if (a.tenantId > b.tenantId) {
+        return 1;
+      }
+      return 0;
+    });
+    return tenantProjects.map((tenantProject) => tenantProject.tenantConfig);
+  }
+
+  createTenant(tenant: Tenant): Tenant {
+    for (let i = 0; i < 10; i++) {
+      const tenantId = randomId(28);
+      const createdTenant = this.createTenantWithTenantId(tenantId, tenant);
+      if (createdTenant) {
+        return createdTenant;
+      }
+    }
+    throw new Error("Could not generate a random unique tenantId after 10 tries");
+  }
+
+  private createTenantWithTenantId(tenantId: string, tenant: Tenant): Tenant | undefined {
+    if (this.tenantProjectForTenantId.has(tenantId)) {
+      return undefined;
+    }
+    tenant.name = `projects/${this.projectId}/tenants/${tenantId}`;
+    tenant.tenantId = tenantId;
+    this.tenantProjectForTenantId.set(
+      tenantId,
+      new TenantProjectState(this.projectId, tenantId, tenant, this)
+    );
+    return tenant;
+  }
+
+  deleteTenant(tenantId: string): void {
+    this.tenantProjectForTenantId.delete(tenantId);
+  }
+}
+
+export class TenantProjectState extends ProjectState {
+  constructor(
+    projectId: string,
+    readonly tenantId: string,
+    private _tenantConfig: Tenant,
+    private readonly parentProject: AgentProjectState
+  ) {
+    super(projectId);
+  }
+
+  get oneAccountPerEmail() {
+    return this.parentProject.oneAccountPerEmail;
+  }
+
+  get authCloudFunction() {
+    return this.parentProject.authCloudFunction;
+  }
+
+  get usageMode() {
+    return this.parentProject.usageMode;
+  }
+
+  get tenantConfig() {
+    return this._tenantConfig;
+  }
+
+  get allowPasswordSignup() {
+    return this._tenantConfig.allowPasswordSignup;
+  }
+
+  get disableAuth() {
+    return this._tenantConfig.disableAuth;
+  }
+
+  get mfaConfig() {
+    return this._tenantConfig.mfaConfig;
+  }
+
+  get enableAnonymousUser() {
+    return this._tenantConfig.enableAnonymousUser;
+  }
+
+  get enableEmailLinkSignin() {
+    return this._tenantConfig.enableEmailLinkSignin;
+  }
+
+  delete(): void {
+    this.parentProject.deleteTenant(this.tenantId);
+  }
+
+  updateTenant(
+    update: Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"],
+    updateMask: string | undefined
+  ): Tenant {
+    // Empty masks indicate a full update
+    if (!updateMask) {
+      const mfaConfig = update.mfaConfig ?? {};
+      if (!("state" in mfaConfig)) {
+        mfaConfig.state = "DISABLED";
+      }
+      if (!("enabledProviders" in mfaConfig)) {
+        mfaConfig.enabledProviders = [];
+      }
+
+      // Default to production defaults if unset
+      this._tenantConfig = {
+        tenantId: this.tenantId,
+        name: this.tenantConfig.name,
+        allowPasswordSignup: update.allowPasswordSignup ?? false,
+        disableAuth: update.disableAuth ?? false,
+        mfaConfig: mfaConfig as MfaConfig,
+        enableAnonymousUser: update.enableAnonymousUser ?? false,
+        enableEmailLinkSignin: update.enableEmailLinkSignin ?? false,
+        displayName: update.displayName,
+      };
+      return this.tenantConfig;
+    }
+
+    const paths = updateMask.split(",");
+    for (const path of paths) {
+      const fields = path.split(".");
+      // Using `any` here to recurse over Tenant config objects
+      let updateField: any = update;
+      let existingField: any = this._tenantConfig;
+      let field;
+      for (let i = 0; i < fields.length - 1; i++) {
+        field = fields[i];
+
+        // Doesn't exist on update
+        if (updateField[field] == null) {
+          console.warn(`Unable to find field '${field}' in update '${updateField}`);
+          break;
+        }
+
+        // Field on existing is an array or is a primitive (i.e. cannot index
+        // any further)
+        if (
+          Array.isArray(updateField[field]) ||
+          Object(updateField[field]) !== updateField[field]
+        ) {
+          console.warn(`Field '${field}' is singular and cannot have sub-fields`);
+          break;
+        }
+
+        // Non-standard behavior, this creates new fields regardless of if the
+        // final field is set. Typical behavior would not modify the config
+        // payload if the final field is not successfully set.
+        if (!existingField[field]) {
+          existingField[field] = {};
+        }
+
+        updateField = updateField[field];
+        existingField = existingField[field];
+      }
+      // Reassign final field if possible
+      field = fields[fields.length - 1];
+      if (updateField[field] == null) {
+        console.warn(`Unable to find field '${field}' in update '${JSON.stringify(updateField)}`);
+        continue;
+      }
+      existingField[field] = updateField[field];
+    }
+
+    return this.tenantConfig;
+  }
+}
+
 export type ProviderUserInfo = MakeRequired<
   Schemas["GoogleCloudIdentitytoolkitV1ProviderUserInfo"],
   "rawId" | "providerId"
@@ -561,11 +841,29 @@ export type UserInfo = Omit<
   localId: string;
   providerUserInfo?: ProviderUserInfo[];
 };
+export type MfaConfig = MakeRequired<
+  Schemas["GoogleCloudIdentitytoolkitAdminV2MultiFactorAuthConfig"],
+  "enabledProviders" | "state"
+>;
+export type Tenant = Omit<
+  MakeRequired<
+    Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"],
+    "allowPasswordSignup" | "disableAuth" | "enableAnonymousUser" | "enableEmailLinkSignin"
+  >,
+  "testPhoneNumbers" | "mfaConfig"
+> & { tenantId: string; mfaConfig: MfaConfig };
 
 interface RefreshTokenRecord {
   localId: string;
   provider: string;
   extraClaims: Record<string, unknown>;
+  secondFactor?: SecondFactorRecord;
+  tenantId?: string;
+}
+
+export interface SecondFactorRecord {
+  identifier: string;
+  provider: string;
 }
 
 export type OobRequestType = NonNullable<
@@ -589,6 +887,8 @@ interface TemporaryProofRecord {
   phoneNumber: string;
   temporaryProof: string;
   temporaryProofExpiresIn: string;
+  // Temporary proofs in emulator never expire to make interactive debugging
+  // a bit easier. Therefore, there's no need to record createdAt timestamps.
 }
 
 function getProviderEmailsForUser(user: UserInfo): Set<string> {
@@ -599,4 +899,9 @@ function getProviderEmailsForUser(user: UserInfo): Set<string> {
     }
   });
   return emails;
+}
+
+export enum UsageMode {
+  DEFAULT = "DEFAULT",
+  PASSTHROUGH = "PASSTHROUGH",
 }

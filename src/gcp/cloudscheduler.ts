@@ -5,6 +5,7 @@ import { logger } from "../logger";
 import * as api from "../api";
 import * as backend from "../deploy/functions/backend";
 import * as proto from "./proto";
+import { assertExhaustive } from "../functional";
 
 const VERSION = "v1beta1";
 const DEFAULT_TIME_ZONE = "America/Los_Angeles";
@@ -194,21 +195,35 @@ function isIdentical(job: Job, otherJob: Job): boolean {
   );
 }
 
-/** Converts a version agnostic ScheduleSpec to a CloudScheduler v1 Job. */
-export function jobFromSpec(schedule: backend.ScheduleSpec, appEngineLocation: string): Job {
-  const job: Job = {
-    name: backend.scheduleName(schedule, appEngineLocation),
-    schedule: schedule.schedule!,
-  };
-  proto.copyIfPresent(job, schedule, "timeZone", "retryConfig");
-  if (schedule.transport === "https") {
-    throw new FirebaseError("HTTPS transport for scheduled functions is not yet supported");
+/** Converts an Endpoint to a CloudScheduler v1 job */
+export function jobFromEndpoint(
+  endpoint: backend.Endpoint & backend.ScheduleTriggered,
+  appEngineLocation: string
+): Job {
+  const job: Partial<Job> = {};
+  if (endpoint.platform === "gcfv1") {
+    const id = backend.scheduleIdForFunction(endpoint);
+    const region = appEngineLocation;
+    job.name = `projects/${endpoint.project}/locations/${region}/jobs/${id}`;
+    job.pubsubTarget = {
+      topicName: `projects/${endpoint.project}/topics/${id}`,
+      attributes: {
+        scheduled: "true",
+      },
+    };
+  } else if (endpoint.platform === "gcfv2") {
+    // NB: We should figure out whether there's a good service account we can use
+    // to get ODIC tokens from while invoking the function. Hopefully either
+    // CloudScheduler has an account we can use or we can use the default compute
+    // account credentials (it's a project editor, so it should have permissions
+    // to invoke a function and editor deployers should have permission to actAs
+    // it)
+    throw new FirebaseError("Do not know how to create a scheduled GCFv2 function");
+  } else {
+    assertExhaustive(endpoint.platform);
   }
-  job.pubsubTarget = {
-    topicName: backend.topicName(schedule),
-    attributes: {
-      scheduled: "true",
-    },
-  };
-  return job;
+  proto.copyIfPresent(job, endpoint.scheduleTrigger, "schedule", "retryConfig", "timeZone");
+
+  // TypeScript compiler isn't noticing that name is defined in all code paths.
+  return job as Job;
 }

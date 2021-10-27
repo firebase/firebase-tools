@@ -5,6 +5,7 @@ import { sync as rimraf } from "rimraf";
 import { expect } from "chai";
 
 import * as env from "../../functions/env";
+import { previews } from "../../previews";
 
 describe("functions/env", () => {
   describe("parse", () => {
@@ -34,9 +35,34 @@ BAR=bar
         want: { FOO: "foo1\nfoo2", BAR: "bar" },
       },
       {
+        description: "should parse many double quoted values",
+        input: 'FOO="foo"\nBAR="bar"',
+        want: { FOO: "foo", BAR: "bar" },
+      },
+      {
+        description: "should parse many single quoted values",
+        input: "FOO='foo'\nBAR='bar'",
+        want: { FOO: "foo", BAR: "bar" },
+      },
+      {
+        description: "should parse mix of double and single quoted values",
+        input: `FOO="foo"\nBAR='bar'`,
+        want: { FOO: "foo", BAR: "bar" },
+      },
+      {
         description: "should parse double quoted with escaped newlines",
         input: 'FOO="foo1\\nfoo2"\nBAR=bar',
         want: { FOO: "foo1\nfoo2", BAR: "bar" },
+      },
+      {
+        description: "should leave single quotes when double quoted",
+        input: `FOO="'foo'"`,
+        want: { FOO: "'foo'" },
+      },
+      {
+        description: "should leave double quotes when single quoted",
+        input: `FOO='"foo"'`,
+        want: { FOO: '"foo"' },
       },
       {
         description: "should unescape escape characters for double quoted values",
@@ -201,7 +227,7 @@ FOO=foo
     });
   });
 
-  describe("load", () => {
+  describe("loadUserEnvs", () => {
     const createEnvFiles = (sourceDir: string, envs: Record<string, string>): void => {
       for (const [filename, data] of Object.entries(envs)) {
         fs.writeFileSync(path.join(sourceDir, filename), data);
@@ -209,6 +235,14 @@ FOO=foo
     };
     const projectInfo = { projectId: "my-project", projectAlias: "dev" };
     let tmpdir: string;
+
+    before(() => {
+      previews.dotenv = true;
+    });
+
+    after(() => {
+      previews.dotenv = false;
+    });
 
     beforeEach(() => {
       tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), "test"));
@@ -222,7 +256,7 @@ FOO=foo
     });
 
     it("loads nothing if .env files are missing", () => {
-      expect(env.load({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({});
+      expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({});
     });
 
     it("loads envs from .env file", () => {
@@ -230,7 +264,7 @@ FOO=foo
         ".env": "FOO=foo\nBAR=bar",
       });
 
-      expect(env.load({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+      expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
         FOO: "foo",
         BAR: "bar",
       });
@@ -241,7 +275,7 @@ FOO=foo
         ".env": "# THIS IS A COMMENT\nFOO=foo # inline comments\nBAR=bar",
       });
 
-      expect(env.load({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+      expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
         FOO: "foo",
         BAR: "bar",
       });
@@ -252,7 +286,7 @@ FOO=foo
         [`.env.${projectInfo.projectId}`]: "FOO=foo\nBAR=bar",
       });
 
-      expect(env.load({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+      expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
         FOO: "foo",
         BAR: "bar",
       });
@@ -263,7 +297,7 @@ FOO=foo
         [`.env.${projectInfo.projectAlias}`]: "FOO=foo\nBAR=bar",
       });
 
-      expect(env.load({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+      expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
         FOO: "foo",
         BAR: "bar",
       });
@@ -275,7 +309,7 @@ FOO=foo
         [`.env.${projectInfo.projectId}`]: "FOO=good",
       });
 
-      expect(env.load({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+      expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
         FOO: "good",
         BAR: "bar",
       });
@@ -287,7 +321,7 @@ FOO=foo
         [`.env.${projectInfo.projectAlias}`]: "FOO=good",
       });
 
-      expect(env.load({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+      expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
         FOO: "good",
         BAR: "bar",
       });
@@ -301,7 +335,7 @@ FOO=foo
       });
 
       expect(() => {
-        env.load({ ...projectInfo, functionsSource: tmpdir });
+        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir });
       }).to.throw("Can't have both");
     });
 
@@ -311,7 +345,7 @@ FOO=foo
       });
 
       expect(() => {
-        env.load({ ...projectInfo, functionsSource: tmpdir });
+        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir });
       }).to.throw("Failed to load");
     });
 
@@ -322,7 +356,7 @@ FOO=foo
       });
 
       expect(() => {
-        env.load({ ...projectInfo, functionsSource: tmpdir });
+        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir });
       }).to.throw("Failed to load");
     });
 
@@ -332,7 +366,7 @@ FOO=foo
       });
 
       expect(() => {
-        env.load({ ...projectInfo, functionsSource: tmpdir });
+        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir });
       }).to.throw("Failed to load");
     });
   });

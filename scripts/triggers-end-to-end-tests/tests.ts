@@ -197,6 +197,7 @@ describe("pubsub emulator function triggers", () => {
 
   it("should have have triggered cloud functions", () => {
     expect(test.pubsubTriggerCount).to.equal(1);
+    expect(test.pubsubV2TriggerCount).to.equal(1);
   });
 
   it("should write to the scheduled pubsub emulator", async function (this) {
@@ -466,6 +467,7 @@ describe("import/export end to end", () => {
         signIn: {
           allowDuplicateEmails: false,
         },
+        usageMode: "DEFAULT",
       });
 
       const accountsPath = path.join(exportPath, "auth_export", "accounts.json");
@@ -571,6 +573,7 @@ describe("import/export end to end", () => {
         signIn: {
           allowDuplicateEmails: false,
         },
+        usageMode: "DEFAULT",
       });
 
       const accountsPath = path.join(exportPath, "auth_export", "accounts.json");
@@ -636,6 +639,7 @@ describe("import/export end to end", () => {
       signIn: {
         allowDuplicateEmails: false,
       },
+      usageMode: "DEFAULT",
     });
 
     const accountsPath = path.join(exportPath, "auth_export", "accounts.json");

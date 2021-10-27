@@ -14,7 +14,8 @@ describe("Command", () => {
   it("should allow all basic behavior", () => {
     expect(() => {
       command.description("description!");
-      command.option("-f, --foobar", "description", "value");
+      command.option("-x, --foobar", "description", "value");
+      command.withForce();
       command.before(
         (arr: string[]) => {
           return arr;
@@ -99,7 +100,7 @@ describe("Command", () => {
         })
         .runner();
 
-      const result = await run({ project: "12345678" });
+      const result = await run({ project: "12345678", token: "thisisatoken" });
       expect(result).to.deep.eq({
         projectId: "resolved-project",
         projectNumber: "12345678",

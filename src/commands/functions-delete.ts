@@ -1,15 +1,21 @@
-import { Command } from "../command";
 import * as clc from "cli-color";
 import * as functionsConfig from "../functionsConfig";
-import { deleteFunctions } from "../functionsDelete";
+
+import { Command } from "../command";
+import { FirebaseError } from "../error";
+import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import { promptOnce } from "../prompt";
-import * as helper from "../deploy/functions/functionsDeployHelper";
+import { reduceFlat } from "../functional";
 import { requirePermissions } from "../requirePermissions";
-import * as utils from "../utils";
 import * as args from "../deploy/functions/args";
+import * as helper from "../deploy/functions/functionsDeployHelper";
+import * as utils from "../utils";
 import * as backend from "../deploy/functions/backend";
-import { Options } from "../options";
+import * as planner from "../deploy/functions/release/planner";
+import * as fabricator from "../deploy/functions/release/fabricator";
+import * as executor from "../deploy/functions/release/executor";
+import * as reporter from "../deploy/functions/release/reporter";
 
 export default new Command("functions:delete [filters...]")
   .description("delete one or more Cloud Functions by name or group name.")
@@ -18,21 +24,18 @@ export default new Command("functions:delete [filters...]")
     "Specify region of the function to be deleted. " +
       "If omitted, functions from all regions whose names match the filters will be deleted. "
   )
-  .option("-f, --force", "No confirmation. Otherwise, a confirmation prompt will appear.")
+  .withForce()
   .before(requirePermissions, ["cloudfunctions.functions.list", "cloudfunctions.functions.delete"])
   .action(async (filters: string[], options: { force: boolean; region?: string } & Options) => {
     if (!filters.length) {
       return utils.reject("Must supply at least function or group name.");
     }
 
-    const context = {
+    const context: args.Context = {
       projectId: needProjectId(options),
-    } as args.Context;
+      filters: filters.map((f) => f.split(".")),
+    };
 
-    // Dot notation can be used to indicate function inside of a group
-    const filterChunks = filters.map((filter: string) => {
-      return filter.split(".");
-    });
     const [config, existingBackend] = await Promise.all([
       functionsConfig.getFirebaseConfig(options),
       backend.existingBackend(context),
@@ -40,32 +43,26 @@ export default new Command("functions:delete [filters...]")
     await backend.checkAvailability(context, /* want=*/ backend.empty());
     const appEngineLocation = functionsConfig.getAppEngineLocation(config);
 
-    const functionsToDelete = existingBackend.cloudFunctions.filter((fn) => {
-      const regionMatches = options.region ? fn.region === options.region : true;
-      const nameMatches = helper.functionMatchesAnyGroup(fn, filterChunks);
-      return regionMatches && nameMatches;
+    if (options.region) {
+      existingBackend.endpoints = { [options.region]: existingBackend.endpoints[options.region] };
+    }
+    const plan = planner.createDeploymentPlan(/* want= */ backend.empty(), existingBackend, {
+      filters: context.filters,
+      deleteAll: true,
     });
-    if (functionsToDelete.length === 0) {
-      return utils.reject(
+    const allEpToDelete = Object.values(plan)
+      .map((changes) => changes.endpointsToDelete)
+      .reduce(reduceFlat, [])
+      .sort(backend.compareFunctions);
+    if (allEpToDelete.length === 0) {
+      throw new FirebaseError(
         `The specified filters do not match any existing functions in project ${clc.bold(
           context.projectId
-        )}.`,
-        { exit: 1 }
+        )}.`
       );
     }
 
-    const schedulesToDelete = existingBackend.schedules.filter((schedule) => {
-      functionsToDelete.some(backend.sameFunctionName(schedule.targetService));
-    });
-    const topicsToDelete = existingBackend.topics.filter((topic) => {
-      functionsToDelete.some(backend.sameFunctionName(topic.targetService));
-    });
-
-    const deleteList = functionsToDelete
-      .map((func) => {
-        return "\t" + helper.getFunctionLabel(func);
-      })
-      .join("\n");
+    const deleteList = allEpToDelete.map((func) => `\t${helper.getFunctionLabel(func)}`).join("\n");
     const confirmDeletion = await promptOnce(
       {
         type: "confirm",
@@ -79,12 +76,29 @@ export default new Command("functions:delete [filters...]")
       options
     );
     if (!confirmDeletion) {
-      return utils.reject("Command aborted.", { exit: 1 });
+      throw new FirebaseError("Command aborted.");
     }
-    return await deleteFunctions(
-      functionsToDelete,
-      schedulesToDelete,
-      topicsToDelete,
-      appEngineLocation
-    );
+
+    const functionExecutor: executor.QueueExecutor = new executor.QueueExecutor({
+      retries: 30,
+      backoff: 20000,
+      concurrency: 40,
+      maxBackoff: 40000,
+    });
+
+    try {
+      const fab = new fabricator.Fabricator({
+        functionExecutor,
+        executor: new executor.QueueExecutor({}),
+        appEngineLocation,
+      });
+      const summary = await fab.applyPlan(plan);
+      await reporter.logAndTrackDeployStats(summary);
+      reporter.printErrors(summary);
+    } catch (err) {
+      throw new FirebaseError("Failed to delete functions", {
+        original: err as Error,
+        exit: 1,
+      });
+    }
   });
