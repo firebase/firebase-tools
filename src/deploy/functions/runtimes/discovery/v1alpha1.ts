@@ -194,6 +194,7 @@ function parseEndpoints(
       "concurrency",
       "serviceAccountEmail",
       "timeout",
+      // TODO: should rewrite vpcConnetor to inlcude region.
       "vpcConnector",
       "vpcConnectorEgressSettings",
       "labels",
