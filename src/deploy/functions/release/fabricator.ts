@@ -25,13 +25,15 @@ import * as utils from "../../../utils";
 const gcfV1PollerOptions = {
   apiOrigin: functionsOrigin,
   apiVersion: gcf.API_VERSION,
-  masterTimeout: 25 * 60 * 1000, // 25 minutes is the maximum build time for a function
+  masterTimeout: 25 * 60 * 1_000, // 25 minutes is the maximum build time for a function
+  maxBackoff: 10_000,
 };
 
 const gcfV2PollerOptions = {
   apiOrigin: functionsV2Origin,
   apiVersion: gcfV2.API_VERSION,
-  masterTimeout: 25 * 60 * 1000, // 25 minutes is the maximum build time for a function
+  masterTimeout: 25 * 60 * 1_000, // 25 minutes is the maximum build time for a function
+  maxBackoff: 10_000,
 };
 
 const DEFAULT_GCFV2_CONCURRENCY = 80;
