@@ -71,7 +71,11 @@ export async function release(
   // trigger URLs by calling existingBackend again.
   printTriggerUrls(payload.functions!.backend);
 
-  await containerCleaner.cleanupBuildImages(backend.allEndpoints(payload.functions!.backend));
+  const haveEndpoints = backend.allEndpoints(payload.functions!.backend);
+  const deletedEndpoints = Object.values(plan)
+    .map((r) => r.endpointsToDelete)
+    .reduce(reduceFlat, []);
+  await containerCleaner.cleanupBuildImages(haveEndpoints, deletedEndpoints);
 
   const allErrors = summary.results.filter((r) => r.error).map((r) => r.error) as Error[];
   if (allErrors.length) {

@@ -16,6 +16,7 @@ import * as planner from "../deploy/functions/release/planner";
 import * as fabricator from "../deploy/functions/release/fabricator";
 import * as executor from "../deploy/functions/release/executor";
 import * as reporter from "../deploy/functions/release/reporter";
+import * as containerCleaner from "../deploy/functions/containerCleaner";
 
 export default new Command("functions:delete [filters...]")
   .description("delete one or more Cloud Functions by name or group name.")
@@ -101,4 +102,7 @@ export default new Command("functions:delete [filters...]")
         exit: 1,
       });
     }
+
+    // Clean up image caches too
+    await containerCleaner.cleanupBuildImages([], allEpToDelete);
   });

@@ -100,7 +100,10 @@ var api = {
     "https://logging.googleapis.com"
   ),
   containerRegistryDomain: utils.envOverride("CONTAINER_REGISTRY_DOMAIN", "gcr.io"),
-  artifactRegistryDomain: utils.envOverride("ARTIFACT_REGISTRY_DOMAIN", "pkg.dev"),
+  artifactRegistryDomain: utils.envOverride(
+    "ARTIFACT_REGISTRY_DOMAIN",
+    "https://artifactregistry.googleapis.com"
+  ),
   appDistributionOrigin: utils.envOverride(
     "FIREBASE_APP_DISTRIBUTION_URL",
     "https://firebaseappdistribution.googleapis.com"
