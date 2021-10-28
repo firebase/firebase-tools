@@ -1,10 +1,11 @@
 import { expect } from "chai";
 
-import { parameterizeProjectId } from "../../extensions/export";
+import { parameterizeProject } from "../../extensions/export";
 
 describe("ext:export helpers", () => {
-  describe("parameterizeProjectId", () => {
+  describe("parameterizeProject", () => {
     const TEST_PROJECT_ID = "test-project";
+    const TEST_PROJECT_NUMBER = "123456789";
     const tests: {
       desc: string;
       in: Record<string, string>;
@@ -19,6 +20,17 @@ describe("ext:export helpers", () => {
         expected: {
           param1: "${param:PROJECT_ID}",
           param2: "${param:PROJECT_ID}.appspot.com",
+        },
+      },
+      {
+        desc: "should strip projectNumber",
+        in: {
+          param1: TEST_PROJECT_NUMBER,
+          param2: `projects/${TEST_PROJECT_NUMBER}/secrets/my-secret/versions/1`,
+        },
+        expected: {
+          param1: "${param:PROJECT_NUMBER}",
+          param2: "projects/${param:PROJECT_NUMBER}/secrets/my-secret/versions/1",
         },
       },
       {
@@ -40,7 +52,7 @@ describe("ext:export helpers", () => {
           params: t.in,
         };
 
-        expect(parameterizeProjectId(TEST_PROJECT_ID, testSpec)).to.deep.equal({
+        expect(parameterizeProject(TEST_PROJECT_ID, TEST_PROJECT_NUMBER, testSpec)).to.deep.equal({
           instanceId: testSpec.instanceId,
           params: t.expected,
         });

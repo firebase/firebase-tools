@@ -11,6 +11,7 @@ import { requirePermissions } from "../../requirePermissions";
 import { ensureExtensionsApiEnabled } from "../../extensions/extensionsHelper";
 import { ensureSecretManagerApiEnabled, usesSecrets } from "../../extensions/secretsUtils";
 import { checkSpecForSecrets, handleSecretParams } from "./secrets";
+import { displayWarningsForDeploy } from "../../extensions/warnings";
 
 export async function prepare(
   context: any, // TODO: type this
@@ -40,6 +41,24 @@ export async function prepare(
   payload.instancesToConfigure = want.filter((i) => have.some(isConfigure(i)));
   payload.instancesToUpdate = want.filter((i) => have.some(isUpdate(i)));
   payload.instancesToDelete = have.filter((i) => !want.some(matchesInstanceId(i)));
+
+  if (await displayWarningsForDeploy(payload.instancesToCreate)) {
+    if (!options.force && options.nonInteractive) {
+      throw new FirebaseError(
+        "Pass the --force flag to acknowledge these terms in non-interactive mode"
+      );
+    } else if (
+      !options.force &&
+      !options.nonInteractive &&
+      !(await prompt.promptOnce({
+        type: "confirm",
+        message: `Do you wish to continue deploying these extensions?`,
+        default: true,
+      }))
+    ) {
+      throw new FirebaseError("Deployment cancelled");
+    }
+  }
 
   const permissionsNeeded: string[] = [];
 

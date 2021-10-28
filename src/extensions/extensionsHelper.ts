@@ -35,6 +35,7 @@ import { promptOnce } from "../prompt";
 import { logger } from "../logger";
 import { envOverride } from "../utils";
 import { getLocalChangelog } from "./changelog";
+import { getProjectNumber } from "../getProjectNumber";
 
 /**
  * SpecParamType represents the exact strings that the extensions
@@ -105,7 +106,7 @@ export function getDBInstanceFromURL(databaseUrl = ""): string {
  */
 export async function getFirebaseProjectParams(projectId: string): Promise<Record<string, string>> {
   const body = await getFirebaseConfig({ project: projectId });
-
+  const projectNumber = await getProjectNumber({ projectId });
   // This env variable is needed for parameter-less initialization of firebase-admin
   const FIREBASE_CONFIG = JSON.stringify({
     projectId: body.projectId,
@@ -115,6 +116,7 @@ export async function getFirebaseProjectParams(projectId: string): Promise<Recor
 
   return {
     PROJECT_ID: body.projectId,
+    PROJECT_NUMBER: projectNumber,
     DATABASE_URL: body.databaseURL,
     STORAGE_BUCKET: body.storageBucket,
     FIREBASE_CONFIG,
