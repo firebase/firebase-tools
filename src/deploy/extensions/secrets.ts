@@ -45,7 +45,7 @@ export async function checkSpecForSecrets(i: InstanceSpec): Promise<boolean> {
   return secretUtils.usesSecrets(extensionVersion.spec);
 }
 
-export const secretsInSpec = (spec: ExtensionSpec): Param[] => {
+const secretsInSpec = (spec: ExtensionSpec): Param[] => {
   return spec.params.filter((p) => p.type === ParamType.SECRET);
 };
 

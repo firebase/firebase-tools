@@ -58,7 +58,7 @@ describe("secretsUtils", () => {
     nock.cleanAll();
   });
 
-  describe.only("getManagedSecrets", () => {
+  describe("getManagedSecrets", () => {
     it("only returns secrets that have labels set", async () => {
       nock(api.secretManagerOrigin)
         .get(`/v1beta1/projects/${PROJECT_ID}/secrets/secret1`)

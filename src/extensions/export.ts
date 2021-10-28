@@ -37,7 +37,7 @@ export function parameterizeProject(
  * We do this because old secret versions are destroyed on instance update, and to ensure that cross project installs work smoothly.
  */
 export async function setSecretParamsToLatest(spec: InstanceSpec): Promise<InstanceSpec> {
-  const newParams = { ...spec.params};
+  const newParams = { ...spec.params };
   const extensionVersion = await getExtensionVersion(spec);
   const managedSecrets = await getManagedSecrets(extensionVersion.spec, newParams);
   for (const [key, val] of Object.entries(newParams)) {
@@ -47,7 +47,7 @@ export async function setSecretParamsToLatest(spec: InstanceSpec): Promise<Insta
       newParams[key] = toSecretVersionResourceName(parsed);
     }
   }
-  return {...spec, params: newParams };
+  return { ...spec, params: newParams };
 }
 
 export function displayExportInfo(withRef: InstanceSpec[], withoutRef: InstanceSpec[]): void {

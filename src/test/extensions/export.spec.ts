@@ -1,6 +1,9 @@
 import { expect } from "chai";
+import * as sinon from "sinon";
+import { InstanceSpec } from "../../deploy/extensions/planner";
 
-import { parameterizeProject } from "../../extensions/export";
+import { parameterizeProject, setSecretParamsToLatest } from "../../extensions/export";
+import * as secretUtils from "../../extensions/secretsUtils";
 
 describe("ext:export helpers", () => {
   describe("parameterizeProject", () => {
@@ -56,6 +59,66 @@ describe("ext:export helpers", () => {
           instanceId: testSpec.instanceId,
           params: t.expected,
         });
+      });
+    }
+  });
+
+  describe("setSecretVersionsToLatest", () => {
+    let getManagedSecretsStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      getManagedSecretsStub = sinon.stub(secretUtils, "getManagedSecrets");
+    });
+
+    afterEach(() => {
+      getManagedSecretsStub.restore();
+    });
+    const testSecretVersion = "projects/my-proj/secrets/secret-1/versions/3";
+    const tests: {
+      desc: string;
+      managedSecrets: string[];
+      expected: string;
+    }[] = [
+      {
+        desc: "Should set managed secrets to latest",
+        managedSecrets: [testSecretVersion],
+        expected: "projects/my-proj/secrets/secret-1/versions/latest",
+      },
+      {
+        desc: "Should not change other secrets that are not managed",
+        managedSecrets: [],
+        expected: "projects/my-proj/secrets/secret-1/versions/3",
+      },
+    ];
+    for (const t of tests) {
+      it(t.desc, async () => {
+        const testSpec: InstanceSpec = {
+          instanceId: "my-instance",
+          params: { blah: testSecretVersion },
+          extensionVersion: {
+            name: "test",
+            ref: "test/test@0.1.0",
+            hash: "abc123",
+            sourceDownloadUri: "test.com",
+            spec: {
+              name: "blah",
+              version: "0.1.0",
+              sourceUrl: "blah.com",
+              resources: [],
+              params: [
+                {
+                  param: "blah",
+                  label: "blah",
+                },
+              ],
+            },
+          },
+        };
+        getManagedSecretsStub.resolves(t.managedSecrets);
+
+        const res = await setSecretParamsToLatest(testSpec);
+
+        expect(res.params["blah"]).to.equal(t.expected);
       });
     }
   });
