@@ -18,7 +18,7 @@ const ENSURE_BY_EVENT_TYPE: Record<
 };
 
 /**
- * Sets the trigger region to what we currently have deployed
+ * Ensures the trigger regions are set and correct
  * @param want the list of function specs we want to deploy
  * @param have the list of function specs we have deployed
  */

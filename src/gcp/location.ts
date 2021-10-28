@@ -1,6 +1,6 @@
 // A flattening of container_registry_hosts and
 // region_multiregion_map from regionconfig.borg
-export const SUBDOMAIN_MAPPING: Record<string, string> = {
+const SUBDOMAIN_MAPPING: Record<string, string> = {
   "us-west1": "us",
   "us-west2": "us",
   "us-west3": "us",
@@ -71,8 +71,14 @@ const DUAL_REGION_MAPPING: Record<string, string> = {
   "us-east1": "nam4",
 };
 
-export function subdomainFromRegion(region: string): string {
-  return SUBDOMAIN_MAPPING[region];
+/**
+ * Helper function to return a mapping from a geographical region to a subdomain.
+ * This mapping includes subdomains that can be outside the geographical multi-region mapping
+ * Some examples are 'southamerica-east1' -> 'us' or 'australia-southeast1' -> 'asia'
+ * @returns a Record<string, string> of region to subdomain
+ */
+export function getSubdomainMapping(): Record<string, string> {
+  return SUBDOMAIN_MAPPING;
 }
 
 /**

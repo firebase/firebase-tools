@@ -10,7 +10,9 @@ import * as track from "../../track";
 import { Options } from "../../options";
 import * as storage from "../../gcp/storage";
 import { getIamPolicy, setIamPolicy } from "../../gcp/resourceManager";
-import { Service, EVENT_V2_SERVICE_MAPPING } from "./eventTypes";
+import { Service, getV2ServiceMapping } from "./eventTypes";
+
+const EVENT_V2_SERVICE_MAPPING = getV2ServiceMapping();
 
 const noop = (): Promise<void> => Promise.resolve();
 

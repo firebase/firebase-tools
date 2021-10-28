@@ -11,8 +11,10 @@ import * as docker from "../../gcp/docker";
 import * as backend from "./backend";
 import * as utils from "../../utils";
 import { FirebaseError } from "../../error";
-import { SUBDOMAIN_MAPPING } from "../../gcp/location";
+import { getSubdomainMapping } from "../../gcp/location";
 import { previews } from "../../previews";
+
+const SUBDOMAIN_MAPPING = getSubdomainMapping();
 
 async function retry<Return>(func: () => Promise<Return>): Promise<Return> {
   const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
