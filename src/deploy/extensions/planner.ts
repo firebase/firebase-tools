@@ -13,6 +13,7 @@ export interface InstanceSpec {
   ref?: refs.Ref;
   params: Record<string, string>;
   extensionVersion?: extensionsApi.ExtensionVersion;
+  extension?: extensionsApi.Extension;
 }
 
 /**
@@ -28,6 +29,19 @@ export async function getExtensionVersion(
     i.extensionVersion = await extensionsApi.getExtensionVersion(refs.toExtensionVersionRef(i.ref));
   }
   return i.extensionVersion;
+}
+
+/**
+ * Caching fetcher for the corresponding Extension for an instance spec.
+ */
+export async function getExtension(i: InstanceSpec): Promise<extensionsApi.Extension> {
+  if (!i.ref) {
+    throw new FirebaseError(`Can't get Extensionfor ${i.instanceId} because it has no ref`);
+  }
+  if (!i.extension) {
+    i.extension = await extensionsApi.getExtension(refs.toExtensionRef(i.ref));
+  }
+  return i.extension;
 }
 
 const ENV_DIRECTORY = "extensions";

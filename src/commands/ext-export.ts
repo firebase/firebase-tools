@@ -1,7 +1,7 @@
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import * as planner from "../deploy/extensions/planner";
-import { displayExportInfo, parameterizeProjectId, writeFiles } from "../extensions/export";
+import { displayExportInfo, parameterizeProject, writeFiles } from "../extensions/export";
 import { ensureExtensionsApiEnabled } from "../extensions/extensionsHelper";
 import { partition } from "../functional";
 import { getProjectNumber } from "../getProjectNumber";
@@ -30,7 +30,7 @@ module.exports = new Command("ext:export")
         }
         return s;
       })
-      .map((i) => parameterizeProjectId(projectId, projectNumber, i));
+      .map((i) => parameterizeProject(projectId, projectNumber, i));
     // If an instance spec is missing a ref, that instance must have been installed from a local source.
     const [withRef, withoutRef] = partition(have, (s) => !!s.ref);
 
