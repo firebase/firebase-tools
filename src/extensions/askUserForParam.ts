@@ -10,6 +10,7 @@ import { convertExtensionOptionToLabeledList, getRandomString, onceWithJoin } fr
 import { logger } from "../logger";
 import { promptOnce } from "../prompt";
 import * as utils from "../utils";
+import { instance } from "firebase-functions/v1/database";
 
 enum SecretUpdateAction {
   LEAVE,
@@ -189,12 +190,18 @@ export async function promptCreateSecret(
     default: paramSpec.default,
     message: `This secret will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${secretName} and managed by Firebase Extensions (Firebase Extensions Service Agent will be granted Secret Admin role on this secret).\nEnter a value for ${paramSpec.label.trim()}:`,
   });
-  const secret = await secretManagerApi.createSecret(
-    projectId,
-    name,
-    secretsUtils.getSecretLabels(instanceId)
-  );
-  return addNewSecretVersion(projectId, instanceId, secret, paramSpec, secretValue);
+  if (secretValue === "" && paramSpec.required) {
+    logger.info(`Secret value cannot be empty for required param ${paramSpec.param}`);
+    return await promptCreateSecret(projectId, instanceId, paramSpec, name);
+  } else if (secretValue !== "") {
+    const secret = await secretManagerApi.createSecret(
+      projectId,
+      name,
+      secretsUtils.getSecretLabels(instanceId)
+    );
+    return addNewSecretVersion(projectId, instanceId, secret, paramSpec, secretValue);
+  }
+  return secretValue;
 }
 
 async function generateSecretName(
