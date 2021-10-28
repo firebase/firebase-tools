@@ -1,8 +1,8 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import { InstanceSpec } from "../../deploy/extensions/planner";
 
 import { parameterizeProject, setSecretParamsToLatest } from "../../extensions/export";
+import { InstanceSpec } from "../../deploy/extensions/planner";
 import * as secretUtils from "../../extensions/secretsUtils";
 
 describe("ext:export helpers", () => {
