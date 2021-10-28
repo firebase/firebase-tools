@@ -1,7 +1,12 @@
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import * as planner from "../deploy/extensions/planner";
-import { displayExportInfo, parameterizeProject, writeFiles } from "../extensions/export";
+import {
+  displayExportInfo,
+  parameterizeProject,
+  setSecretParamsToLatest,
+  writeFiles,
+} from "../extensions/export";
 import { ensureExtensionsApiEnabled } from "../extensions/extensionsHelper";
 import { partition } from "../functional";
 import { getProjectNumber } from "../getProjectNumber";
@@ -22,10 +27,13 @@ module.exports = new Command("ext:export")
     const projectId = needProjectId(options);
     const projectNumber = await getProjectNumber(options);
     // Look up the instances that already exist,
+    // set any managed secrets to latest version,
     // and strip project IDs from the param values.
-    const have = (await planner.have(projectId)).map((i) =>
-      parameterizeProject(projectId, projectNumber, i)
-    );
+    const have = await Promise.all((await planner.have(projectId)).map(async i => {
+      const subbed = await setSecretParamsToLatest(i);
+      return parameterizeProject(projectId, projectNumber, subbed)
+    }));
+
     // If an instance spec is missing a ref, that instance must have been installed from a local source.
     const [withRef, withoutRef] = partition(have, (s) => !!s.ref);
 

@@ -58,7 +58,7 @@ describe("secretsUtils", () => {
     nock.cleanAll();
   });
 
-  describe("getManagedSecrets", () => {
+  describe.only("getManagedSecrets", () => {
     it("only returns secrets that have labels set", async () => {
       nock(api.secretManagerOrigin)
         .get(`/v1beta1/projects/${PROJECT_ID}/secrets/secret1`)
@@ -72,9 +72,12 @@ describe("secretsUtils", () => {
           name: `projects/${PROJECT_ID}/secrets/secret2`,
         }); // no labels
 
-      expect(await secretsUtils.getManagedSecrets(TEST_INSTANCE)).to.deep.equal([
-        "projects/test-project/secrets/secret1/versions/1",
-      ]);
+      expect(
+        await secretsUtils.getManagedSecrets(
+          TEST_INSTANCE.config.source.spec,
+          TEST_INSTANCE.config.params
+        )
+      ).to.deep.equal(["projects/test-project/secrets/secret1/versions/1"]);
 
       expect(nock.isDone()).to.be.true;
     });

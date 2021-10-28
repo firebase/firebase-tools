@@ -81,6 +81,10 @@ export function parseSecretVersionResourceName(resourceName: string): SecretVers
   };
 }
 
+export function toSecretVersionResourceName(secretVersion: SecretVersion): string {
+  return `projects/${secretVersion.secret.projectId}/secrets/${secretVersion.secret.name}/versions/${secretVersion.versionId}`;
+}
+
 export async function createSecret(
   projectId: string,
   name: string,

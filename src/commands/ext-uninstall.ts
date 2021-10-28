@@ -71,7 +71,10 @@ export default new Command("ext:uninstall <extensionInstanceId>")
       const serviceAccountMessage = `Uninstalling deletes the service account used by this extension instance:\n${clc.bold(
         instance.serviceAccountEmail
       )}\n\n`;
-      const managedSecrets = await secretsUtils.getManagedSecrets(instance);
+      const managedSecrets = await secretsUtils.getManagedSecrets(
+        instance.config.source.spec,
+        instance.config.params
+      );
       const resourcesMessage = _.get(instance, "config.source.spec.resources", []).length
         ? "Uninstalling deletes all extension resources created for this extension instance:\n" +
           instance.config.source.spec.resources
