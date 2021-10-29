@@ -106,7 +106,12 @@ export async function writeFiles(have: InstanceSpec[], options: Options) {
       "Not currently in a Firebase directory. Please run `firebase init` to create a Firebase directory."
     );
   }
-  if (existingConfig.has("extensions") && !options.nonInteractive && !options.force) {
+  if (
+    existingConfig.has("extensions") &&
+    Object.keys(existingConfig.get("extensions")).length &&
+    !options.nonInteractive &&
+    !options.force
+  ) {
     const currentExtensions = Object.entries(existingConfig.get("extensions"))
       .map((i) => `${i[0]}: ${i[1]}`)
       .join("\n\t");

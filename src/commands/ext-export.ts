@@ -36,6 +36,13 @@ module.exports = new Command("ext:export")
       })
     );
 
+    if (have.length == 0) {
+      logger.info(
+        `No extension instances installed on ${projectId}, so there is nothing to export.`
+      );
+      return;
+    }
+
     // If an instance spec is missing a ref, that instance must have been installed from a local source.
     const [withRef, withoutRef] = partition(have, (s) => !!s.ref);
 
