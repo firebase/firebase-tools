@@ -72,12 +72,9 @@ describe("secretsUtils", () => {
           name: `projects/${PROJECT_ID}/secrets/secret2`,
         }); // no labels
 
-      expect(
-        await secretsUtils.getManagedSecrets(
-          TEST_INSTANCE.config.source.spec,
-          TEST_INSTANCE.config.params
-        )
-      ).to.deep.equal(["projects/test-project/secrets/secret1/versions/1"]);
+      expect(await secretsUtils.getManagedSecrets(TEST_INSTANCE)).to.deep.equal([
+        "projects/test-project/secrets/secret1/versions/1",
+      ]);
 
       expect(nock.isDone()).to.be.true;
     });

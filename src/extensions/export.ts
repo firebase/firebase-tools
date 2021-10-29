@@ -8,8 +8,8 @@ import { humanReadable } from "../deploy/extensions/deploymentSummary";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
 import { promptOnce } from "../prompt";
-import { getManagedSecrets } from "./secretsUtils";
 import { parseSecretVersionResourceName, toSecretVersionResourceName } from "../gcp/secretManager";
+import { getActiveSecrets } from "./secretsUtils";
 
 /**
  * parameterizeProject searchs spec.params for any param that include projectId or projectNumber,
@@ -39,9 +39,9 @@ export function parameterizeProject(
 export async function setSecretParamsToLatest(spec: InstanceSpec): Promise<InstanceSpec> {
   const newParams = { ...spec.params };
   const extensionVersion = await getExtensionVersion(spec);
-  const managedSecrets = await getManagedSecrets(extensionVersion.spec, newParams);
+  const activeSecrets = getActiveSecrets(extensionVersion.spec, newParams);
   for (const [key, val] of Object.entries(newParams)) {
-    if (managedSecrets.includes(val)) {
+    if (activeSecrets.includes(val)) {
       const parsed = parseSecretVersionResourceName(val);
       parsed.versionId = "latest";
       newParams[key] = toSecretVersionResourceName(parsed);

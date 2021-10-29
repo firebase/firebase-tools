@@ -27,7 +27,7 @@ module.exports = new Command("ext:export")
     const projectId = needProjectId(options);
     const projectNumber = await getProjectNumber(options);
     // Look up the instances that already exist,
-    // set any managed secrets to latest version,
+    // set any secrets to latest version,
     // and strip project IDs from the param values.
     const have = await Promise.all(
       (await planner.have(projectId)).map(async (i) => {

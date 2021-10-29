@@ -31,24 +31,25 @@ export async function grantFirexServiceAgentSecretAdminRole(
 }
 
 export async function getManagedSecrets(
-  spec: extensionsApi.ExtensionSpec,
-  params: Record<string, string>
+  instance: extensionsApi.ExtensionInstance
 ): Promise<string[]> {
   return (
     await Promise.all(
-      getActiveSecrets(spec, params).map(async (secretResourceName) => {
-        const secret = secretManagerApi.parseSecretResourceName(secretResourceName);
-        const labels = (await secretManagerApi.getSecret(secret.projectId, secret.name)).labels;
-        if (labels && labels[SECRET_LABEL]) {
-          return secretResourceName;
+      getActiveSecrets(instance.config.source.spec, instance.config.params).map(
+        async (secretResourceName) => {
+          const secret = secretManagerApi.parseSecretResourceName(secretResourceName);
+          const labels = (await secretManagerApi.getSecret(secret.projectId, secret.name)).labels;
+          if (labels && labels[SECRET_LABEL]) {
+            return secretResourceName;
+          }
+          return Promise.resolve("");
         }
-        return Promise.resolve("");
-      })
+      )
     )
   ).filter((secretId) => !!secretId);
 }
 
-function getActiveSecrets(
+export function getActiveSecrets(
   spec: extensionsApi.ExtensionSpec,
   params: Record<string, string>
 ): string[] {
