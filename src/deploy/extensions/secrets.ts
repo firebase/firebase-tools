@@ -159,7 +159,7 @@ async function handleSecretParamForUpdate(
   }
   // Don't allow changing secrets, only changing versions
   const [, prevProjectId, , prevSecretName] = prevValue.split("/");
-  if (prevProjectId !== projectId || prevSecretName !== secretName) {
+  if (prevSecretName !== secretName) {
     throw new FirebaseError(
       `${clc.bold(i.instanceId)}: Found '${providedValue}' for secret param ${
         secretParam.param
@@ -172,7 +172,7 @@ async function handleSecretParamForUpdate(
   }
   const secretInfo = await getSecretInfo(projectId, secretName, version);
   if (!secretInfo.secret) {
-    await promptForCreateSecret({
+    i.params[secretParam.param] = await promptForCreateSecret({
       projectId,
       secretName,
       instanceId: i.instanceId,
@@ -191,6 +191,9 @@ async function handleSecretParamForUpdate(
         )}`
     );
   }
+  // Set the param value to the exact resource name we get from SecretManager,
+  // so 'latest' gets resolved to a version number.
+  i.params[secretParam.param] = secretManager.toSecretVersionResourceName(secretInfo.secretVersion);
   // If we get to this point, we're OK to just use what was included in the params.
   // Just need to make sure the Extensions P4SA has access.
   await secretUtils.grantFirexServiceAgentSecretAdminRole(secretInfo.secret);

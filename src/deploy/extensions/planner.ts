@@ -22,10 +22,12 @@ export interface InstanceSpec {
 export async function getExtensionVersion(
   i: InstanceSpec
 ): Promise<extensionsApi.ExtensionVersion> {
-  if (!i.ref) {
-    throw new FirebaseError(`Can't get ExtensionVersion for ${i.instanceId} because it has no ref`);
-  }
   if (!i.extensionVersion) {
+    if (!i.ref) {
+      throw new FirebaseError(
+        `Can't get ExtensionVersion for ${i.instanceId} because it has no ref`
+      );
+    }
     i.extensionVersion = await extensionsApi.getExtensionVersion(refs.toExtensionVersionRef(i.ref));
   }
   return i.extensionVersion;
