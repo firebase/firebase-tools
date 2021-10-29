@@ -33,7 +33,7 @@ export function parameterizeProject(
 }
 
 /**
- * setSecretParamsToLatest searches spec.params for any secret params that are extensions managed, and changes their version to latest.
+ * setSecretParamsToLatest searches spec.params for any secret paramsthat are active, and changes their version to latest.
  * We do this because old secret versions are destroyed on instance update, and to ensure that cross project installs work smoothly.
  */
 export async function setSecretParamsToLatest(spec: InstanceSpec): Promise<InstanceSpec> {
