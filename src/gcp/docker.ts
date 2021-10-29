@@ -42,7 +42,8 @@ interface ErrorsResponse {
 }
 
 function isErrors(response: unknown): response is ErrorsResponse {
-  return Object.prototype.hasOwnProperty.call(response, "errors");
+  // Artifact registry will return 202 w/ no body on some success cases.
+  return !!response && Object.prototype.hasOwnProperty.call(response, "errors");
 }
 
 const API_VERSION = "v2";
@@ -70,6 +71,9 @@ export class Client {
 
   async deleteTag(path: string, tag: Tag): Promise<void> {
     const response = await this.client.delete<ErrorsResponse>(`${path}/manifests/${tag}`);
+    if (!response.body) {
+      return;
+    }
     if (response.body.errors?.length != 0) {
       throw new FirebaseError(`Failed to delete tag ${tag} at path ${path}`, {
         children: response.body.errors,
@@ -79,6 +83,9 @@ export class Client {
 
   async deleteImage(path: string, digest: Digest): Promise<void> {
     const response = await this.client.delete<ErrorsResponse>(`${path}/manifests/${digest}`);
+    if (!response.body) {
+      return;
+    }
     if (response.body.errors?.length != 0) {
       throw new FirebaseError(`Failed to delete image ${digest} at path ${path}`, {
         children: response.body.errors,

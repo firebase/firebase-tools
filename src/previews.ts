@@ -11,6 +11,7 @@ interface PreviewFlags {
   deletegcfartifacts: boolean;
   dotenv: boolean;
   crashlyticsSymbolsUpload: boolean;
+  artifactregistry: boolean;
 }
 
 export const previews: PreviewFlags = {
@@ -24,6 +25,7 @@ export const previews: PreviewFlags = {
   deletegcfartifacts: false,
   dotenv: false,
   crashlyticsSymbolsUpload: false,
+  artifactregistry: false,
 
   ...configstore.get("previews"),
 };
