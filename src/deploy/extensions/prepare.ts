@@ -9,13 +9,8 @@ import { Context, Payload } from "./args";
 import { FirebaseError } from "../../error";
 import { requirePermissions } from "../../requirePermissions";
 import { ensureExtensionsApiEnabled } from "../../extensions/extensionsHelper";
-<<<<<<< HEAD
 import { ensureSecretManagerApiEnabled } from "../../extensions/secretsUtils";
 import { checkSpecForSecrets } from "./secrets";
-=======
-import { ensureSecretManagerApiEnabled, usesSecrets } from "../../extensions/secretsUtils";
-import { checkSpecForSecrets, handleSecretParams } from "./secrets";
->>>>>>> public/jh-extensions-manifest
 import { displayWarningsForDeploy } from "../../extensions/warnings";
 
 export async function prepare(context: Context, options: Options, payload: Payload) {
