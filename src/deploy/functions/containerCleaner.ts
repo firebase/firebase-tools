@@ -6,7 +6,11 @@
 import * as clc from "cli-color";
 
 import { FirebaseError } from "../../error";
-import { getContainerRegistryRegions, getContainerRegistrySubdomains, regionToSubdomain } from "../../gcp/location";
+import {
+  getContainerRegistryRegions,
+  getContainerRegistrySubdomains,
+  regionToSubdomain,
+} from "../../gcp/location";
 import { previews } from "../../previews";
 import { artifactRegistryDomain, containerRegistryDomain } from "../../api";
 import { logger } from "../../logger";
@@ -15,7 +19,6 @@ import * as backend from "./backend";
 import * as docker from "../../gcp/docker";
 import * as utils from "../../utils";
 import * as poller from "../../operation-poller";
-
 
 async function retry<Return>(func: () => Promise<Return>): Promise<Return> {
   const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
