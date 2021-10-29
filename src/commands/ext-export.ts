@@ -1,7 +1,12 @@
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import * as planner from "../deploy/extensions/planner";
-import { displayExportInfo, parameterizeProject, writeFiles } from "../extensions/export";
+import {
+  displayExportInfo,
+  parameterizeProject,
+  setSecretParamsToLatest,
+  writeFiles,
+} from "../extensions/export";
 import { ensureExtensionsApiEnabled } from "../extensions/extensionsHelper";
 import { partition } from "../functional";
 import { getProjectNumber } from "../getProjectNumber";
@@ -17,20 +22,27 @@ module.exports = new Command("ext:export")
   .before(requirePermissions, ["firebaseextensions.instances.list"])
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
+  .withForce()
   .action(async (options: any) => {
     const projectId = needProjectId(options);
     const projectNumber = await getProjectNumber(options);
     // Look up the instances that already exist,
-    // add a ^ to their version,
+    // set any secrets to latest version,
     // and strip project IDs from the param values.
-    const have = (await planner.have(projectId))
-      .map((s) => {
-        if (s.ref) {
-          s.ref.version = `^${s.ref.version}`;
-        }
-        return s;
+    const have = await Promise.all(
+      (await planner.have(projectId)).map(async (i) => {
+        const subbed = await setSecretParamsToLatest(i);
+        return parameterizeProject(projectId, projectNumber, subbed);
       })
-      .map((i) => parameterizeProject(projectId, projectNumber, i));
+    );
+
+    if (have.length == 0) {
+      logger.info(
+        `No extension instances installed on ${projectId}, so there is nothing to export.`
+      );
+      return;
+    }
+
     // If an instance spec is missing a ref, that instance must have been installed from a local source.
     const [withRef, withoutRef] = partition(have, (s) => !!s.ref);
 
@@ -38,6 +50,7 @@ module.exports = new Command("ext:export")
 
     if (
       !options.nonInteractive &&
+      !options.force &&
       !(await promptOnce({
         message: "Do you wish to add these Extension instances to firebase.json?",
         type: "confirm",

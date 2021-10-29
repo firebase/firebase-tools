@@ -4,10 +4,13 @@ import * as refs from "./refs";
 import { getProjectNumber } from "../getProjectNumber";
 import { Options } from "../options";
 import { Config } from "../config";
-import { InstanceSpec } from "../deploy/extensions/planner";
+import { getExtensionVersion, InstanceSpec } from "../deploy/extensions/planner";
 import { humanReadable } from "../deploy/extensions/deploymentSummary";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
+import { promptOnce } from "../prompt";
+import { parseSecretVersionResourceName, toSecretVersionResourceName } from "../gcp/secretManager";
+import { getActiveSecrets } from "./secretsUtils";
 
 /**
  * parameterizeProject searchs spec.params for any param that include projectId or projectNumber,
@@ -28,6 +31,24 @@ export function parameterizeProject(
   const newSpec = { ...spec };
   newSpec.params = newParams;
   return newSpec;
+}
+
+/**
+ * setSecretParamsToLatest searches spec.params for any secret paramsthat are active, and changes their version to latest.
+ * We do this because old secret versions are destroyed on instance update, and to ensure that cross project installs work smoothly.
+ */
+export async function setSecretParamsToLatest(spec: InstanceSpec): Promise<InstanceSpec> {
+  const newParams = { ...spec.params };
+  const extensionVersion = await getExtensionVersion(spec);
+  const activeSecrets = getActiveSecrets(extensionVersion.spec, newParams);
+  for (const [key, val] of Object.entries(newParams)) {
+    if (activeSecrets.includes(val)) {
+      const parsed = parseSecretVersionResourceName(val);
+      parsed.versionId = "latest";
+      newParams[key] = toSecretVersionResourceName(parsed);
+    }
+  }
+  return { ...spec, params: newParams };
 }
 
 export function displayExportInfo(withRef: InstanceSpec[], withoutRef: InstanceSpec[]): void {
@@ -72,11 +93,11 @@ function writeExtensionsToFirebaseJson(have: InstanceSpec[], existingConfig: Con
   existingConfig.writeProjectFile("firebase.json", existingConfig.src);
 }
 
-async function writeEnvFile(spec: InstanceSpec, existingConfig: Config) {
+async function writeEnvFile(spec: InstanceSpec, existingConfig: Config, force?: boolean) {
   const content = Object.entries(spec.params)
     .map((r) => `${r[0]}=${r[1]}`)
     .join("\n");
-  await existingConfig.askWriteProjectFile(`extensions/${spec.instanceId}.env`, content);
+  await existingConfig.askWriteProjectFile(`extensions/${spec.instanceId}.env`, content, force);
 }
 
 export async function writeFiles(have: InstanceSpec[], options: Options) {
@@ -86,8 +107,29 @@ export async function writeFiles(have: InstanceSpec[], options: Options) {
       "Not currently in a Firebase directory. Please run `firebase init` to create a Firebase directory."
     );
   }
+  if (
+    existingConfig.has("extensions") &&
+    Object.keys(existingConfig.get("extensions")).length &&
+    !options.nonInteractive &&
+    !options.force
+  ) {
+    const currentExtensions = Object.entries(existingConfig.get("extensions"))
+      .map((i) => `${i[0]}: ${i[1]}`)
+      .join("\n\t");
+    const overwrite = await promptOnce({
+      type: "list",
+      message: `firebase.json already contains extensions:\n${currentExtensions}\nWould you like to overwrite or merge?`,
+      choices: [
+        { name: "Overwrite", value: true },
+        { name: "Merge", value: false },
+      ],
+    });
+    if (overwrite) {
+      existingConfig.set("extensions", {});
+    }
+  }
   writeExtensionsToFirebaseJson(have, existingConfig);
   for (const spec of have) {
-    await writeEnvFile(spec, existingConfig);
+    await writeEnvFile(spec, existingConfig, options.force);
   }
 }

@@ -6,3 +6,8 @@ export interface Payload {
   instancesToUpdate?: planner.InstanceSpec[];
   instancesToDelete?: planner.InstanceSpec[];
 }
+
+export interface Context {
+  have?: planner.InstanceSpec[];
+  want?: planner.InstanceSpec[];
+}
