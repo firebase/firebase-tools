@@ -476,13 +476,17 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
   const [, project, , region, , id] = gcfFunction.name.split("/");
   let trigger: backend.Triggered;
   let uri: string | undefined;
-  if (gcfFunction.httpsTrigger) {
-    trigger = { httpsTrigger: {} };
-    uri = gcfFunction.httpsTrigger.url;
-  } else if (gcfFunction.labels?.["deployment-scheduled"]) {
+  if (gcfFunction.labels?.["deployment-scheduled"]) {
     trigger = {
       scheduleTrigger: {},
     };
+  } else if (gcfFunction.labels?.["deployment-taskqueue"]) {
+    trigger = {
+      taskQueueTrigger: {},
+    };
+  } else if (gcfFunction.httpsTrigger) {
+    trigger = { httpsTrigger: {} };
+    uri = gcfFunction.httpsTrigger.url;
   } else {
     trigger = {
       eventTrigger: {
@@ -576,6 +580,9 @@ export function functionFromEndpoint(
       resource: `projects/${endpoint.project}/topics/${id}`,
     };
     gcfFunction.labels = { ...gcfFunction.labels, "deployment-scheduled": "true" };
+  } else if (backend.isTaskQueueTriggered(endpoint)) {
+    gcfFunction.httpsTrigger = {};
+    gcfFunction.labels = { ...gcfFunction.labels, "deployment-taskqueue": "true" };
   } else {
     gcfFunction.httpsTrigger = {};
   }

@@ -107,6 +107,22 @@ describe("cloudfunctionsv2", () => {
       expect(
         cloudfunctionsv2.functionFromEndpoint(eventEndpoint, CLOUD_FUNCTION_V2_SOURCE)
       ).to.deep.equal(eventGcfFunction);
+
+      expect(
+        cloudfunctionsv2.functionFromEndpoint(
+          {
+            ...ENDPOINT,
+            platform: "gcfv2",
+            taskQueueTrigger: {},
+          },
+          CLOUD_FUNCTION_V2_SOURCE
+        )
+      ).to.deep.equal({
+        ...CLOUD_FUNCTION_V2,
+        labels: {
+          "deployment-taskqueue": "true",
+        },
+      });
     });
 
     it("should copy trival fields", () => {
@@ -254,6 +270,21 @@ describe("cloudfunctionsv2", () => {
           },
           retry: false,
         },
+      });
+    });
+
+    it("should translate task queue functions", () => {
+      expect(
+        cloudfunctionsv2.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION_V2,
+          labels: { "deployment-taskqueue": "true" },
+        })
+      ).to.deep.equal({
+        ...ENDPOINT,
+        taskQueueTrigger: {},
+        platform: "gcfv2",
+        uri: RUN_URI,
+        labels: { "deployment-taskqueue": "true" },
       });
     });
 

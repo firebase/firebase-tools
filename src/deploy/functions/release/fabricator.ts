@@ -427,6 +427,8 @@ export class Fabricator {
         return;
       }
       assertExhaustive(endpoint.platform);
+    } else if (backend.isTaskQueueTriggered(endpoint)) {
+      await this.upsertTaskQueue(endpoint);
     }
   }
 
@@ -440,6 +442,8 @@ export class Fabricator {
         return;
       }
       assertExhaustive(endpoint.platform);
+    } else if (backend.isTaskQueueTriggered(endpoint)) {
+      await this.deleteTaskQueue(endpoint);
     }
   }
 
@@ -457,6 +461,12 @@ export class Fabricator {
     );
   }
 
+  upsertTaskQueue(endpoint: backend.Endpoint & backend.TaskQueueTriggered): Promise<void> {
+    return Promise.reject(
+      new reporter.DeploymentError(endpoint, "upsert task queue", new Error("Not implemented"))
+    );
+  }
+
   async deleteScheduleV1(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
     const job = scheduler.jobFromEndpoint(endpoint, this.appEngineLocation);
     await this.executor
@@ -471,6 +481,12 @@ export class Fabricator {
   deleteScheduleV2(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
     return Promise.reject(
       new reporter.DeploymentError(endpoint, "delete schedule", new Error("Not implemented"))
+    );
+  }
+
+  deleteTaskQueue(endpoint: backend.Endpoint & backend.TaskQueueTriggered): Promise<void> {
+    return Promise.reject(
+      new reporter.DeploymentError(endpoint, "delete task queue", new Error("Not implemented"))
     );
   }
 

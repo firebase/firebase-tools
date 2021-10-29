@@ -5,13 +5,15 @@
 
 import * as clc from "cli-color";
 
-import { artifactRegistryDomain, containerRegistryDomain } from "../../api";
-import { logger } from "../../logger";
-import * as docker from "../../gcp/docker";
-import * as backend from "./backend";
-import * as utils from "../../utils";
 import { FirebaseError } from "../../error";
 import { previews } from "../../previews";
+import { artifactRegistryDomain, containerRegistryDomain } from "../../api";
+import { logger } from "../../logger";
+import * as artifactregistry from "../../gcp/artifactregistry";
+import * as backend from "./backend";
+import * as docker from "../../gcp/docker";
+import * as utils from "../../utils";
+import * as poller from "../../operation-poller";
 
 // A flattening of container_registry_hosts and
 // region_multiregion_map from regionconfig.borg
@@ -65,25 +67,40 @@ async function retry<Return>(func: () => Promise<Return>): Promise<Return> {
   }
 }
 
-export async function cleanupBuildImages(functions: backend.TargetIds[]): Promise<void> {
+export async function cleanupBuildImages(
+  haveFunctions: backend.TargetIds[],
+  deletedFunctions: backend.TargetIds[],
+  cleaners: { gcr?: ContainerRegistryCleaner; ar?: ArtifactRegistryCleaner } = {}
+): Promise<void> {
   utils.logBullet(clc.bold.cyan("functions: ") + "cleaning up build files...");
   const failedDomains: Set<string> = new Set();
   if (previews.artifactregistry) {
-    const arCleaner = new ArtifactRegistryCleaner();
-    await Promise.all(
-      functions.map(async (func) => {
+    const arCleaner = cleaners.ar || new ArtifactRegistryCleaner();
+    await Promise.all([
+      ...haveFunctions.map(async (func) => {
         try {
           await arCleaner.cleanupFunction(func);
         } catch (err) {
           const path = `${func.project}/${func.region}/gcf-artifacts`;
           failedDomains.add(`https://console.cloud.google.com/artifacts/docker/${path}`);
         }
-      })
-    );
+      }),
+      ...deletedFunctions.map(async (func) => {
+        try {
+          await Promise.all([
+            arCleaner.cleanupFunction(func),
+            arCleaner.cleanupFunctionCache(func),
+          ]);
+        } catch (err) {
+          const path = `${func.project}/${func.region}/gcf-artifacts`;
+          failedDomains.add(`https://console.cloud.google.com/artifacts/docker/${path}`);
+        }
+      }),
+    ]);
   } else {
-    const gcrCleaner = new ContainerRegistryCleaner();
+    const gcrCleaner = cleaners.gcr || new ContainerRegistryCleaner();
     await Promise.all(
-      functions.map(async (func) => {
+      [...haveFunctions, ...deletedFunctions].map(async (func) => {
         try {
           await gcrCleaner.cleanupFunction(func);
         } catch (err) {
@@ -105,11 +122,22 @@ export async function cleanupBuildImages(functions: backend.TargetIds[]): Promis
     }
     utils.logLabeledWarning("functions", message);
   }
-
-  // TODO: clean up Artifact Registry images as well.
 }
 
+// TODO: AR has a very simple API but is a Google API and thus probably has much lower quotas
+// than the raw Docker API. If there are reports of any quota issues we may have to run these
+// requests through a ThrottlerQueue.
 export class ArtifactRegistryCleaner {
+  static packagePath(func: backend.TargetIds): string {
+    return `projects/${func.project}/locations/${func.region}/repositories/gcf-artifacts/packages/${func.id}`;
+  }
+
+  static POLLER_OPTIONS = {
+    apiOrigin: artifactRegistryDomain,
+    apiVersion: artifactregistry.API_VERSION,
+    masterTimeout: 5 * 60 * 1_000,
+  };
+
   // GCFv1 for AR has the following directory structure
   // Hostname: <region>-docker.pkg.dev
   // Directory structure:
@@ -117,10 +145,34 @@ export class ArtifactRegistryCleaner {
   //     +- <function ID>
   //     +- <function ID>/cache
   // We leave the cache directory alone because it only costs
-  // a few MB and improves performance
-  async cleanupFunction(func: backend.TargetIds, helper?: DockerHelper): Promise<void> {
-    helper = helper || new DockerHelper(`https://${func.region}-docker.${artifactRegistryDomain}`);
-    await helper.rm(`${func.project}/gcf-artifacts/${func.id}`);
+  // a few MB and improves performance. We only delete the cache if
+  // the function was deleted in its entirety.
+  async cleanupFunction(func: backend.TargetIds): Promise<void> {
+    const op = await artifactregistry.deletePackage(ArtifactRegistryCleaner.packagePath(func));
+    if (op.done) {
+      return;
+    }
+    await poller.pollOperation<void>({
+      ...ArtifactRegistryCleaner.POLLER_OPTIONS,
+      pollerName: `cleanup-${func.region}-${func.id}`,
+      operationResourceName: op.name,
+    });
+  }
+
+  async cleanupFunctionCache(func: backend.TargetIds): Promise<void> {
+    // GCF uses "<id>/cache" as their pacakge name, but AR percent-encodes this to
+    // avoid parsing issues with OP.
+    const op = await artifactregistry.deletePackage(
+      `${ArtifactRegistryCleaner.packagePath(func)}%2Fcache`
+    );
+    if (op.done) {
+      return;
+    }
+    await poller.pollOperation<void>({
+      ...ArtifactRegistryCleaner.POLLER_OPTIONS,
+      pollerName: `cleanup-cache-${func.region}-${func.id}`,
+      operationResourceName: op.name,
+    });
   }
 }
 
@@ -325,45 +377,39 @@ export class DockerHelper {
   async rm(path: string): Promise<void> {
     let toThrowLater: unknown = undefined;
     const stat = await this.ls(path);
-    const recursive = stat.children.map((child) =>
-      (async () => {
-        try {
-          await this.rm(`${path}/${child}`);
-          stat.children.splice(stat.children.indexOf(child), 1);
-        } catch (err) {
-          toThrowLater = err;
-        }
-      })()
-    );
+    const recursive = stat.children.map(async (child) => {
+      try {
+        await this.rm(`${path}/${child}`);
+        stat.children.splice(stat.children.indexOf(child), 1);
+      } catch (err) {
+        toThrowLater = err;
+      }
+    });
     // Unlike a filesystem, we can delete a "directory" while its children are still being
     // deleted. Run these in parallel to improve performance and just wait for the result
     // before the function's end.
 
     // An image cannot be deleted until its tags have been removed. Do this in two phases.
-    const deleteTags = stat.tags.map((tag) =>
-      (async () => {
-        try {
-          await retry(() => this.client.deleteTag(path, tag));
-          stat.tags.splice(stat.tags.indexOf(tag), 1);
-        } catch (err) {
-          logger.debug("Got error trying to remove docker tag:", err);
-          toThrowLater = err;
-        }
-      })()
-    );
+    const deleteTags = stat.tags.map(async (tag) => {
+      try {
+        await retry(() => this.client.deleteTag(path, tag));
+        stat.tags.splice(stat.tags.indexOf(tag), 1);
+      } catch (err) {
+        logger.debug("Got error trying to remove docker tag:", err);
+        toThrowLater = err;
+      }
+    });
     await Promise.all(deleteTags);
 
-    const deleteImages = stat.digests.map((digest) =>
-      (async () => {
-        try {
-          await retry(() => this.client.deleteImage(path, digest));
-          stat.digests.splice(stat.digests.indexOf(digest), 1);
-        } catch (err) {
-          logger.debug("Got error trying to remove docker image:", err);
-          toThrowLater = err;
-        }
-      })()
-    );
+    const deleteImages = stat.digests.map(async (digest) => {
+      try {
+        await retry(() => this.client.deleteImage(path, digest));
+        stat.digests.splice(stat.digests.indexOf(digest), 1);
+      } catch (err) {
+        logger.debug("Got error trying to remove docker image:", err);
+        toThrowLater = err;
+      }
+    });
     await Promise.all(deleteImages);
 
     await Promise.all(recursive);

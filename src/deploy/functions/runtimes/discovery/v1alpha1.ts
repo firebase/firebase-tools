@@ -8,6 +8,7 @@ export type ManifestEndpoint = backend.ServiceConfiguration &
   backend.Triggered &
   Partial<backend.HttpsTriggered> &
   Partial<backend.EventTriggered> &
+  Partial<backend.TaskQueueTriggered> &
   Partial<backend.ScheduleTriggered> & {
     region?: string[];
     entryPoint: string;
@@ -91,6 +92,7 @@ function parseEndpoints(
     httpsTrigger: "object",
     eventTrigger: "object",
     scheduleTrigger: "object",
+    taskQueueTrigger: "object",
   });
   let triggerCount = 0;
   if (ep.httpsTrigger) {
@@ -100,6 +102,9 @@ function parseEndpoints(
     triggerCount++;
   }
   if (ep.scheduleTrigger) {
+    triggerCount++;
+  }
+  if (ep.taskQueueTrigger) {
     triggerCount++;
   }
   if (!triggerCount) {
@@ -140,6 +145,29 @@ function parseEndpoints(
         maxRetryDuration: "string",
       });
       triggered = { scheduleTrigger: ep.scheduleTrigger };
+    } else if (backend.isTaskQueueTriggered(ep)) {
+      assertKeyTypes(prefix + ".taskQueueTrigger", ep.taskQueueTrigger, {
+        rateLimits: "object",
+        retryPolicy: "object",
+        invoker: "array",
+      });
+      if (ep.taskQueueTrigger.rateLimits) {
+        assertKeyTypes(prefix + ".taskQueueTrigger.rateLimits", ep.taskQueueTrigger.rateLimits, {
+          maxBurstSize: "number",
+          maxConcurrentDispatches: "number",
+          maxDispatchesPerSecond: "number",
+        });
+      }
+      if (ep.taskQueueTrigger.retryPolicy) {
+        assertKeyTypes(prefix + ".taskQueueTrigger.retryPolicy", ep.taskQueueTrigger.retryPolicy, {
+          maxAttempts: "number",
+          maxRetryDuration: "string",
+          minBackoff: "string",
+          maxBackoff: "string",
+          maxDoublings: "number",
+        });
+      }
+      triggered = { taskQueueTrigger: ep.taskQueueTrigger };
     } else {
       throw new FirebaseError(
         `Do not recognize trigger type for endpoint ${id}. Try upgrading ` +
