@@ -1,6 +1,7 @@
 import * as clc from "cli-color";
 
 import * as refs from "./refs";
+import { getProjectNumber } from "../getProjectNumber";
 import { Options } from "../options";
 import { Config } from "../config";
 import { InstanceSpec } from "../deploy/extensions/planner";

@@ -9,8 +9,13 @@ import { Context, Payload } from "./args";
 import { FirebaseError } from "../../error";
 import { requirePermissions } from "../../requirePermissions";
 import { ensureExtensionsApiEnabled } from "../../extensions/extensionsHelper";
+<<<<<<< HEAD
 import { ensureSecretManagerApiEnabled } from "../../extensions/secretsUtils";
 import { checkSpecForSecrets } from "./secrets";
+=======
+import { ensureSecretManagerApiEnabled, usesSecrets } from "../../extensions/secretsUtils";
+import { checkSpecForSecrets, handleSecretParams } from "./secrets";
+>>>>>>> public/jh-extensions-manifest
 import { displayWarningsForDeploy } from "../../extensions/warnings";
 
 export async function prepare(context: Context, options: Options, payload: Payload) {
@@ -37,6 +42,24 @@ export async function prepare(context: Context, options: Options, payload: Paylo
   payload.instancesToConfigure = context.want.filter((i) => context.have?.some(isConfigure(i)));
   payload.instancesToUpdate = context.want.filter((i) => context.have?.some(isUpdate(i)));
   payload.instancesToDelete = context.have.filter((i) => !context.want?.some(matchesInstanceId(i)));
+
+  if (await displayWarningsForDeploy(payload.instancesToCreate)) {
+    if (!options.force && options.nonInteractive) {
+      throw new FirebaseError(
+        "Pass the --force flag to acknowledge these terms in non-interactive mode"
+      );
+    } else if (
+      !options.force &&
+      !options.nonInteractive &&
+      !(await prompt.promptOnce({
+        type: "confirm",
+        message: `Do you wish to continue deploying these extensions?`,
+        default: true,
+      }))
+    ) {
+      throw new FirebaseError("Deployment cancelled");
+    }
+  }
 
   if (await displayWarningsForDeploy(payload.instancesToCreate)) {
     if (!options.force && options.nonInteractive) {
