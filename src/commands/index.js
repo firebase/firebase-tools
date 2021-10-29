@@ -83,6 +83,7 @@ module.exports = function (client) {
     client.ext.dev.emulators = {};
     client.ext.dev.emulators.start = loadCommand("ext-dev-emulators-start");
     client.ext.dev.emulators.exec = loadCommand("ext-dev-emulators-exec");
+    client.ext.dev.deprecate = loadCommand("ext-dev-deprecate");
     client.ext.dev.unpublish = loadCommand("ext-dev-unpublish");
     client.ext.dev.publish = loadCommand("ext-dev-publish");
     client.ext.dev.delete = loadCommand("ext-dev-extension-delete");
