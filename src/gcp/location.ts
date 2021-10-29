@@ -1,5 +1,4 @@
-// A flattening of container_registry_hosts and
-// region_multiregion_map from regionconfig.borg
+// A mapping from geographical region to subdomain, usefull for Container Registry
 const SUBDOMAIN_MAPPING: Record<string, string> = {
   "us-west1": "us",
   "us-west2": "us",
@@ -72,17 +71,30 @@ const DUAL_REGION_MAPPING: Record<string, string> = {
 };
 
 /**
- * Helper function to return a mapping from a geographical region to a subdomain.
- * This mapping includes subdomains that can be outside the geographical multi-region mapping
- * Some examples are 'southamerica-east1' -> 'us' or 'australia-southeast1' -> 'asia'
- * @returns a Record<string, string> of region to subdomain
+ * Obtains the subdomains for all the hostname options in Container Registry
  */
-export function getSubdomainMapping(): Record<string, string> {
-  return SUBDOMAIN_MAPPING;
+export function getContainerRegistrySubdomains(): string[] {
+  return Object.values(SUBDOMAIN_MAPPING);
 }
 
 /**
- * Helper function to determin if the given region is inside the multi-region or dual-region location.
+ * Obtains the geographical regions that exist in Container Registry from a function deployment
+ */
+export function getContainerRegistryRegions(): string[] {
+  return Object.keys(SUBDOMAIN_MAPPING);
+}
+
+/**
+ * Obtain the subdomain that corresponds to the given region in Container Registry
+ * @param region a geographical region from gcp (ex~ us-central1)
+ * @returns the mapped subdomain for a hostname in Container Registry
+ */
+export function regionToSubdomain(region: string): string | undefined {
+  return SUBDOMAIN_MAPPING[region];
+}
+
+/**
+ * Helper function to determine if the given region is inside the multi-region or dual-region location.
  * This is helpful for determining if a specific region maps to a Google Cloud Storage location.
  * @param region the specific geographical region name (ex~ us-west1, europe-central2, ...)
  * @param location the multi-region or dual-region location name (ex~ us, asia, nam4, ...)

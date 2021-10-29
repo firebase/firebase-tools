@@ -211,7 +211,6 @@ export async function ensureStorageRoles(projectId: string): Promise<void> {
       );
     }
   } catch (err) {
-    logger.error();
     throw new FirebaseError(
       `Failed to grant ${storageResponse.email_address} the ${PUBSUB_PUBLISHER_ROLE} permission. ` +
         "This is necessary to receive Cloud Storage events.",

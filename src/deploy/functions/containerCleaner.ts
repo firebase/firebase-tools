@@ -6,7 +6,7 @@
 import * as clc from "cli-color";
 
 import { FirebaseError } from "../../error";
-import { getSubdomainMapping } from "../../gcp/location";
+import { getContainerRegistryRegions, getContainerRegistrySubdomains, regionToSubdomain } from "../../gcp/location";
 import { previews } from "../../previews";
 import { artifactRegistryDomain, containerRegistryDomain } from "../../api";
 import { logger } from "../../logger";
@@ -16,7 +16,6 @@ import * as docker from "../../gcp/docker";
 import * as utils from "../../utils";
 import * as poller from "../../operation-poller";
 
-const SUBDOMAIN_MAPPING = getSubdomainMapping();
 
 async function retry<Return>(func: () => Promise<Return>): Promise<Return> {
   const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
@@ -79,7 +78,7 @@ export async function cleanupBuildImages(
         try {
           await gcrCleaner.cleanupFunction(func);
         } catch (err) {
-          const path = `${func.project}/${SUBDOMAIN_MAPPING[func.region]}/gcf`;
+          const path = `${func.project}/${regionToSubdomain(func.region)}/gcf`;
           failedDomains.add(`https://console.cloud.google.com/gcr/images/${path}`);
         }
       })
@@ -155,7 +154,7 @@ export class ContainerRegistryCleaner {
   readonly helpers: Record<string, DockerHelper> = {};
 
   private helper(location: string): DockerHelper {
-    const subdomain = SUBDOMAIN_MAPPING[location] || "us";
+    const subdomain = regionToSubdomain(location) || "us";
     if (!this.helpers[subdomain]) {
       const origin = `https://${subdomain}.${containerRegistryDomain}`;
       this.helpers[subdomain] = new DockerHelper(origin);
@@ -230,14 +229,14 @@ export async function listGcfPaths(
   dockerHelpers: Record<string, DockerHelper> = {}
 ): Promise<string[]> {
   if (!locations) {
-    locations = Object.keys(SUBDOMAIN_MAPPING);
+    locations = getContainerRegistryRegions();
   }
-  const invalidRegion = locations.find((loc) => !SUBDOMAIN_MAPPING[loc]);
+  const invalidRegion = locations.find((loc) => !regionToSubdomain(loc));
   if (invalidRegion) {
     throw new FirebaseError(`Invalid region ${invalidRegion} supplied`);
   }
   const locationsSet = new Set(locations); // for quick lookup
-  const subdomains = new Set(Object.values(SUBDOMAIN_MAPPING));
+  const subdomains = new Set(getContainerRegistrySubdomains());
   const failedSubdomains: string[] = [];
   const listAll: Promise<Stat>[] = [];
 
@@ -274,7 +273,7 @@ export async function listGcfPaths(
   }
 
   return gcfDirs.map((loc) => {
-    return `${SUBDOMAIN_MAPPING[loc]}.${containerRegistryDomain}/${projectId}/gcf/${loc}`;
+    return `${regionToSubdomain(loc)}.${containerRegistryDomain}/${projectId}/gcf/${loc}`;
   });
 }
 
@@ -293,20 +292,21 @@ export async function deleteGcfArtifacts(
   dockerHelpers: Record<string, DockerHelper> = {}
 ): Promise<void> {
   if (!locations) {
-    locations = Object.keys(SUBDOMAIN_MAPPING);
+    locations = getContainerRegistryRegions();
   }
-  const invalidRegion = locations.find((loc) => !SUBDOMAIN_MAPPING[loc]);
+  const invalidRegion = locations.find((loc) => !regionToSubdomain(loc));
   if (invalidRegion) {
     throw new FirebaseError(`Invalid region ${invalidRegion} supplied`);
   }
-  const subdomains = new Set(Object.values(SUBDOMAIN_MAPPING));
+  const subdomains = new Set(Object.values(getContainerRegistrySubdomains()));
   const failedSubdomains: string[] = [];
 
   const deleteLocations = locations.map((loc) => {
+    const subdomain = regionToSubdomain(loc) || "us";
     try {
-      return getHelper(dockerHelpers, SUBDOMAIN_MAPPING[loc]).rm(`${projectId}/gcf/${loc}`);
+      return getHelper(dockerHelpers, subdomain).rm(`${projectId}/gcf/${loc}`);
     } catch (err) {
-      failedSubdomains.push(SUBDOMAIN_MAPPING[loc]);
+      failedSubdomains.push(subdomain);
       logger.debug(err);
     }
   });

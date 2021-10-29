@@ -1,5 +1,3 @@
-// SOT for event types, constants, and related functions
-
 /** The type of serivce that events originate from */
 export type Service = "pubsub" | "storage";
 

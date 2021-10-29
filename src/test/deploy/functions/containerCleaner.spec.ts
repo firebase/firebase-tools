@@ -6,9 +6,8 @@ import * as artifactregistry from "../../../gcp/artifactregistry";
 import * as backend from "../../../deploy/functions/backend";
 import * as containerCleaner from "../../../deploy/functions/containerCleaner";
 import * as docker from "../../../gcp/docker";
-import { getSubdomainMapping } from "../../../gcp/location";
+import { getContainerRegistryRegions, regionToSubdomain } from "../../../gcp/location";
 
-const SUBDOMAIN_MAPPING = getSubdomainMapping();
 import * as poller from "../../../operation-poller";
 import * as utils from "../../../utils";
 
@@ -527,11 +526,11 @@ describe("deleteGcfArtifacts", () => {
   });
 
   it("should purge all locations", async () => {
-    const locations = Object.keys(SUBDOMAIN_MAPPING);
-    const usLocations = locations.filter((loc) => SUBDOMAIN_MAPPING[loc] === "us");
-    const euLocations = locations.filter((loc) => SUBDOMAIN_MAPPING[loc] === "eu");
+    const locations = getContainerRegistryRegions();
+    const usLocations = locations.filter((loc) => regionToSubdomain(loc) === "us");
+    const euLocations = locations.filter((loc) => regionToSubdomain(loc) === "eu");
     const asiaLocations = locations.filter((loc) => {
-      return SUBDOMAIN_MAPPING[loc] === "asia";
+      return regionToSubdomain(loc) === "asia";
     });
     const stubUS = sinon.createStubInstance(containerCleaner.DockerHelper);
     for (const usLoc of usLocations) {
