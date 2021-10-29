@@ -23,6 +23,8 @@ export type OperationType =
   | "delete"
   | "upsert schedule"
   | "delete schedule"
+  | "upsert task queue"
+  | "delete task queue"
   | "create topic"
   | "delete topic"
   | "set invoker"
@@ -203,7 +205,7 @@ function printQuotaErrors(results: Array<Required<DeployResult>>): void {
 /** Print errors for aborted deletes. */
 export function printAbortedErrors(results: Array<Required<DeployResult>>): void {
   const aborted = results.filter((r) => r.error instanceof AbortedDeploymentError);
-  if (!aborted) {
+  if (!aborted.length) {
     return;
   }
   logger.info("");
@@ -220,6 +222,10 @@ export function triggerTag(endpoint: backend.Endpoint): string {
   const prefix = endpoint.platform === "gcfv1" ? "v1" : "v2";
   if (backend.isScheduleTriggered(endpoint)) {
     return `${prefix}.scheduled`;
+  }
+
+  if (backend.isTaskQueueTriggered(endpoint)) {
+    return `${prefix}.taskQueue`;
   }
 
   if (backend.isHttpsTriggered(endpoint)) {

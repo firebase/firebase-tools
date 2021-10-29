@@ -397,7 +397,9 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
     }
   } else if (backend.isScheduleTriggered(endpoint)) {
     // trigger type defaults to HTTPS.
-    gcfFunction.labels = { ...gcfFunction.labels, ["deployment-scheduled"]: "true" };
+    gcfFunction.labels = { ...gcfFunction.labels, "deployment-scheduled": "true" };
+  } else if (backend.isTaskQueueTriggered(endpoint)) {
+    gcfFunction.labels = { ...gcfFunction.labels, "deployment-taskqueue": "true" };
   }
 
   return gcfFunction;
@@ -409,6 +411,10 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
   if (gcfFunction.labels?.["deployment-scheduled"] === "true") {
     trigger = {
       scheduleTrigger: {},
+    };
+  } else if (gcfFunction.labels?.["deployment-taskqueue"] === "true") {
+    trigger = {
+      taskQueueTrigger: {},
     };
   } else if (gcfFunction.eventTrigger) {
     trigger = {

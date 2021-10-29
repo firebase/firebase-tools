@@ -148,6 +148,28 @@ describe("cloudfunctions", () => {
         complexGcfFunction
       );
     });
+
+    it("detects task queue functions", () => {
+      const taskEndpoint: backend.Endpoint = {
+        ...ENDPOINT,
+        taskQueueTrigger: {},
+      };
+      const taskQueueFunction: Omit<
+        cloudfunctions.CloudFunction,
+        cloudfunctions.OutputOnlyFields
+      > = {
+        ...CLOUD_FUNCTION,
+        sourceUploadUrl: UPLOAD_URL,
+        httpsTrigger: {},
+        labels: {
+          "deployment-taskqueue": "true",
+        },
+      };
+
+      expect(cloudfunctions.functionFromEndpoint(taskEndpoint, UPLOAD_URL)).to.deep.equal(
+        taskQueueFunction
+      );
+    });
   });
 
   describe("endpointFromFunction", () => {
@@ -224,6 +246,24 @@ describe("cloudfunctions", () => {
         scheduleTrigger: {},
         labels: {
           "deployment-scheduled": "true",
+        },
+      });
+    });
+
+    it("should translate task queue triggers", () => {
+      expect(
+        cloudfunctions.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION,
+          httpsTrigger: {},
+          labels: {
+            "deployment-taskqueue": "true",
+          },
+        })
+      ).to.deep.equal({
+        ...ENDPOINT,
+        taskQueueTrigger: {},
+        labels: {
+          "deployment-taskqueue": "true",
         },
       });
     });
