@@ -903,6 +903,8 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     envs.FUNCTIONS_EMULATOR = "true";
     envs.TZ = "UTC"; // Fixes https://github.com/firebase/firebase-tools/issues/2253
+    envs.FIREBASE_DEBUG_MODE = "true";
+    envs.FIREBASE_DEBUG_FEATURES = JSON.stringify({ skipTokenVerification: true });
 
     // Make firebase-admin point at the Firestore emulator
     const firestoreEmulator = this.getEmulatorInfo(Emulators.FIRESTORE);
@@ -1225,7 +1227,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     // For callable functions we want to accept tokens without actually calling verifyIdToken
     const isCallable = trigger.labels && trigger.labels["deployment-callable"] === "true";
     const authHeader = req.header("Authorization");
-    if (authHeader && isCallable) {
+    if (authHeader && isCallable && trigger.platform !== "gcfv2") {
       const token = this.tokenFromAuthHeader(authHeader);
       if (token) {
         const contextAuth = {
