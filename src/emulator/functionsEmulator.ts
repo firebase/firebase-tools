@@ -267,10 +267,21 @@ export class FunctionsEmulator implements EmulatorInstance {
     };
 
     const multicastHandler: express.RequestHandler = (req, res) => {
-      const reqBody = (req as RequestWithRawBody).rawBody;
-      const proto = JSON.parse(reqBody.toString());
-      const triggers = this.multicastTriggers[`${this.args.projectId}:${proto.eventType}`] || [];
       const projectId = req.params.project_id;
+      const reqBody = (req as RequestWithRawBody).rawBody;
+      let proto = JSON.parse(reqBody.toString());
+      let triggerKey: string;
+      if (req.headers["content-type"]?.includes("cloudevent")) {
+        triggerKey = `${this.args.projectId}:${proto.type}`;
+
+        if (EventUtils.isBinaryCloudEvent(req)) {
+          proto = EventUtils.extractBinaryCloudEventContext(req);
+          proto.data = req.body;
+        }
+      } else {
+        triggerKey = `${this.args.projectId}:${proto.eventType}`;
+      }
+      const triggers = this.multicastTriggers[triggerKey] || [];
 
       triggers.forEach((triggerId) => {
         this.workQueue.submit(() => {
@@ -892,6 +903,8 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     envs.FUNCTIONS_EMULATOR = "true";
     envs.TZ = "UTC"; // Fixes https://github.com/firebase/firebase-tools/issues/2253
+    envs.FIREBASE_DEBUG_MODE = "true";
+    envs.FIREBASE_DEBUG_FEATURES = JSON.stringify({ skipTokenVerification: true });
 
     // Make firebase-admin point at the Firestore emulator
     const firestoreEmulator = this.getEmulatorInfo(Emulators.FIRESTORE);
@@ -1214,7 +1227,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     // For callable functions we want to accept tokens without actually calling verifyIdToken
     const isCallable = trigger.labels && trigger.labels["deployment-callable"] === "true";
     const authHeader = req.header("Authorization");
-    if (authHeader && isCallable) {
+    if (authHeader && isCallable && trigger.platform !== "gcfv2") {
       const token = this.tokenFromAuthHeader(authHeader);
       if (token) {
         const contextAuth = {

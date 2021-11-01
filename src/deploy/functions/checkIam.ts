@@ -57,25 +57,23 @@ export async function checkHttpIam(
   options: Options,
   payload: args.Payload
 ): Promise<void> {
-  const functions = payload.functions!.backend.cloudFunctions;
   const filterGroups = context.filters || getFilterGroups(options);
 
-  const httpFunctions = functions
-    .filter((f) => !backend.isEventTrigger(f.trigger))
+  const httpEndpoints = backend
+    .allEndpoints(payload.functions!.backend)
+    .filter(backend.isHttpsTriggered)
     .filter((f) => functionMatchesAnyGroup(f, filterGroups));
-  const existingFunctions = (await backend.existingBackend(context)).cloudFunctions;
 
-  const newHttpFunctions = httpFunctions.filter(
-    (func) => !existingFunctions.find(backend.sameFunctionName(func))
-  );
+  const existing = await backend.existingBackend(context);
+  const newHttpsEndpoints = httpEndpoints.filter(backend.missingEndpoint(existing));
 
-  if (newHttpFunctions.length === 0) {
+  if (newHttpsEndpoints.length === 0) {
     return;
   }
 
   logger.debug(
     "[functions] found",
-    newHttpFunctions.length,
+    newHttpsEndpoints.length,
     "new HTTP functions, testing setIamPolicy permission..."
   );
 
@@ -100,7 +98,7 @@ export async function checkHttpIam(
       )} to deploy new HTTPS functions. The permission ${bold(
         PERMISSION
       )} is required to deploy the following functions:\n\n- ` +
-        newHttpFunctions.map((func) => func.id).join("\n- ") +
+        newHttpsEndpoints.map((func) => func.id).join("\n- ") +
         `\n\nTo address this error, please ask a project Owner to assign your account the "Cloud Functions Admin" role at the following URL:\n\nhttps://console.cloud.google.com/iam-admin/iam?project=${context.projectId}`
     );
   }

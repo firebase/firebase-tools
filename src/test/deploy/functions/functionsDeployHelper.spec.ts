@@ -5,52 +5,51 @@ import * as helper from "../../../deploy/functions/functionsDeployHelper";
 import { Options } from "../../../options";
 
 describe("functionsDeployHelper", () => {
-  const CLOUD_FUNCTION: Omit<backend.FunctionSpec, "id"> = {
+  const ENDPOINT: Omit<backend.Endpoint, "id"> = {
     platform: "gcfv1",
     project: "project",
     region: "us-central1",
     runtime: "nodejs16",
     entryPoint: "function",
-    trigger: {},
   };
 
   describe("functionMatchesGroup", () => {
     it("should match empty filters", () => {
-      const func = { ...CLOUD_FUNCTION, id: "id" };
+      const func = { ...ENDPOINT, id: "id" };
       expect(helper.functionMatchesGroup(func, [])).to.be.true;
     });
 
     it("should match full names", () => {
-      const func = { ...CLOUD_FUNCTION, id: "id" };
+      const func = { ...ENDPOINT, id: "id" };
       expect(helper.functionMatchesGroup(func, ["id"])).to.be.true;
     });
 
     it("should match group prefixes", () => {
-      const func = { ...CLOUD_FUNCTION, id: "group-subgroup-func" };
+      const func = { ...ENDPOINT, id: "group-subgroup-func" };
       expect(helper.functionMatchesGroup(func, ["group", "subgroup", "func"])).to.be.true;
       expect(helper.functionMatchesGroup(func, ["group", "subgroup"])).to.be.true;
       expect(helper.functionMatchesGroup(func, ["group"])).to.be.true;
     });
 
     it("should exclude functions that don't match", () => {
-      const func = { ...CLOUD_FUNCTION, id: "id" };
+      const func = { ...ENDPOINT, id: "id" };
       expect(helper.functionMatchesGroup(func, ["group"])).to.be.false;
     });
   });
 
   describe("functionMatchesAnyGroup", () => {
     it("should match empty filters", () => {
-      const func = { ...CLOUD_FUNCTION, id: "id" };
+      const func = { ...ENDPOINT, id: "id" };
       expect(helper.functionMatchesAnyGroup(func, [[]])).to.be.true;
     });
 
     it("should match against one filter", () => {
-      const func = { ...CLOUD_FUNCTION, id: "id" };
+      const func = { ...ENDPOINT, id: "id" };
       expect(helper.functionMatchesAnyGroup(func, [["id"], ["group"]])).to.be.true;
     });
 
     it("should exclude functions that don't match", () => {
-      const func = { ...CLOUD_FUNCTION, id: "id" };
+      const func = { ...ENDPOINT, id: "id" };
       expect(helper.functionMatchesAnyGroup(func, [["group"], ["other-group"]])).to.be.false;
     });
   });

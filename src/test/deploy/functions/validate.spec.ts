@@ -2,15 +2,9 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import { FirebaseError } from "../../../error";
-import { RUNTIME_NOT_SET } from "../../../deploy/functions/runtimes/node/parseRuntimeAndValidateSDK";
-import { FunctionSpec } from "../../../deploy/functions/backend";
 import * as fsutils from "../../../fsutils";
 import * as validate from "../../../deploy/functions/validate";
 import * as projectPath from "../../../projectPath";
-
-// have to require this because no @types/cjson available
-// eslint-disable-next-line
-const cjson = require("cjson");
 
 describe("validate", () => {
   describe("functionsDirectoryExists", () => {
@@ -117,90 +111,6 @@ describe("validate", () => {
       expect(() => {
         validate.functionIdsAreValid(functions);
       }).to.throw(FirebaseError);
-    });
-  });
-
-  describe("checkForInvalidChangeOfTrigger", () => {
-    const CLOUD_FUNCTION: Omit<FunctionSpec, "trigger"> = {
-      platform: "gcfv1",
-      id: "my-func",
-      region: "us-central1",
-      project: "project",
-      runtime: "nodejs16",
-      entryPoint: "function",
-    };
-    it("should throw if a https function would be changed into an event triggered function", () => {
-      const fn: FunctionSpec = {
-        ...CLOUD_FUNCTION,
-        trigger: {
-          eventType: "google.pubsub.topic.publish",
-          eventFilters: {},
-          retry: false,
-        },
-      };
-      const exFn: FunctionSpec = {
-        ...CLOUD_FUNCTION,
-        trigger: {},
-      };
-
-      expect(() => {
-        validate.checkForInvalidChangeOfTrigger(fn, exFn);
-      }).to.throw();
-    });
-
-    it("should throw if a event triggered function would be changed into an https function", () => {
-      const fn: FunctionSpec = {
-        ...CLOUD_FUNCTION,
-        trigger: {},
-      };
-      const exFn: FunctionSpec = {
-        ...CLOUD_FUNCTION,
-        trigger: {
-          eventType: "google.pubsub.topic.publish",
-          eventFilters: {},
-          retry: false,
-        },
-      };
-
-      expect(() => {
-        validate.checkForInvalidChangeOfTrigger(fn, exFn);
-      }).to.throw();
-    });
-
-    it("should not throw if a event triggered function keeps the same trigger", () => {
-      const trigger = {
-        eventType: "google.pubsub.topic.publish",
-        eventFilters: {},
-        retry: false,
-      };
-      const fn: FunctionSpec = {
-        ...CLOUD_FUNCTION,
-        trigger,
-      };
-      const exFn: FunctionSpec = {
-        ...CLOUD_FUNCTION,
-        trigger,
-      };
-
-      expect(() => {
-        validate.checkForInvalidChangeOfTrigger(fn, exFn);
-      }).not.to.throw();
-    });
-
-    it("should not throw if a https function stays as a https function", () => {
-      const trigger = {};
-      const fn: FunctionSpec = {
-        ...CLOUD_FUNCTION,
-        trigger,
-      };
-      const exFn: FunctionSpec = {
-        ...CLOUD_FUNCTION,
-        trigger,
-      };
-
-      expect(() => {
-        validate.checkForInvalidChangeOfTrigger(fn, exFn);
-      }).not.to.throw();
     });
   });
 });
