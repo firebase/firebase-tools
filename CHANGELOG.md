@@ -1,0 +1,1 @@
+- Adds `firebase ext:export` command, and adds `extensions` to `firebase deploy`. See https://firebase.google.com/docs/extensions/reuse-project-config for more infomation on how to manage your extensions with these commands.
