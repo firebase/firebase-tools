@@ -155,6 +155,10 @@ var api = {
     "FIREBASE_CLOUDSCHEDULER_URL",
     "https://cloudscheduler.googleapis.com"
   ),
+  cloudTasksOrigin: utils.envOverride(
+    "FIREBASE_CLOUD_TAKS_URL",
+    "https://cloudtasks.googleapis.com"
+  ),
   pubsubOrigin: utils.envOverride("FIREBASE_PUBSUB_URL", "https://pubsub.googleapis.com"),
   googleOrigin: utils.envOverride(
     "FIREBASE_TOKEN_URL",

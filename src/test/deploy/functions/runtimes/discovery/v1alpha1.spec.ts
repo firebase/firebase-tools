@@ -210,7 +210,7 @@ describe("backendFromV1Alpha1", () => {
           maxConcurrentDispatches: 10,
           maxDispatchesPerSecond: 20,
         },
-        retryPolicy: {
+        retryConfig: {
           maxAttempts: 3,
           maxRetryDuration: "120s",
           minBackoff: "1s",
@@ -238,19 +238,19 @@ describe("backendFromV1Alpha1", () => {
         });
       }
 
-      const invalidRetryPolicies = {
+      const invalidRetryConfigs = {
         maxAttempts: "3",
         maxRetryDuration: 120,
         minBackoff: 1,
         maxBackoff: 30,
         maxDoublings: "5",
       };
-      for (const [key, value] of Object.entries(invalidRetryPolicies)) {
-        const retryPolicy = {
-          ...validTrigger.retryPolicy,
+      for (const [key, value] of Object.entries(invalidRetryConfigs)) {
+        const retryConfig = {
+          ...validTrigger.retryConfig,
           [key]: value,
         };
-        const taskQueueTrigger = { ...validTrigger, retryPolicy };
+        const taskQueueTrigger = { ...validTrigger, retryConfig };
         assertParserError({
           endpoints: {
             func: { ...MIN_ENDPOINT, taskQueueTrigger },
