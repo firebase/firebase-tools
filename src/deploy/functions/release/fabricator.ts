@@ -25,13 +25,15 @@ import * as utils from "../../../utils";
 const gcfV1PollerOptions = {
   apiOrigin: functionsOrigin,
   apiVersion: gcf.API_VERSION,
-  masterTimeout: 25 * 60 * 1000, // 25 minutes is the maximum build time for a function
+  masterTimeout: 25 * 60 * 1_000, // 25 minutes is the maximum build time for a function
+  maxBackoff: 10_000,
 };
 
 const gcfV2PollerOptions = {
   apiOrigin: functionsV2Origin,
   apiVersion: gcfV2.API_VERSION,
-  masterTimeout: 25 * 60 * 1000, // 25 minutes is the maximum build time for a function
+  masterTimeout: 25 * 60 * 1_000, // 25 minutes is the maximum build time for a function
+  maxBackoff: 10_000,
 };
 
 const DEFAULT_GCFV2_CONCURRENCY = 80;
@@ -425,6 +427,8 @@ export class Fabricator {
         return;
       }
       assertExhaustive(endpoint.platform);
+    } else if (backend.isTaskQueueTriggered(endpoint)) {
+      await this.upsertTaskQueue(endpoint);
     }
   }
 
@@ -438,6 +442,8 @@ export class Fabricator {
         return;
       }
       assertExhaustive(endpoint.platform);
+    } else if (backend.isTaskQueueTriggered(endpoint)) {
+      await this.deleteTaskQueue(endpoint);
     }
   }
 
@@ -455,6 +461,12 @@ export class Fabricator {
     );
   }
 
+  upsertTaskQueue(endpoint: backend.Endpoint & backend.TaskQueueTriggered): Promise<void> {
+    return Promise.reject(
+      new reporter.DeploymentError(endpoint, "upsert task queue", new Error("Not implemented"))
+    );
+  }
+
   async deleteScheduleV1(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
     const job = scheduler.jobFromEndpoint(endpoint, this.appEngineLocation);
     await this.executor
@@ -469,6 +481,12 @@ export class Fabricator {
   deleteScheduleV2(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
     return Promise.reject(
       new reporter.DeploymentError(endpoint, "delete schedule", new Error("Not implemented"))
+    );
+  }
+
+  deleteTaskQueue(endpoint: backend.Endpoint & backend.TaskQueueTriggered): Promise<void> {
+    return Promise.reject(
+      new reporter.DeploymentError(endpoint, "delete task queue", new Error("Not implemented"))
     );
   }
 
