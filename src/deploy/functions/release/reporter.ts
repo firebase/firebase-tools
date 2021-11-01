@@ -24,7 +24,7 @@ export type OperationType =
   | "upsert schedule"
   | "delete schedule"
   | "upsert task queue"
-  | "delete task queue"
+  | "disable task queue"
   | "create topic"
   | "delete topic"
   | "set invoker"
