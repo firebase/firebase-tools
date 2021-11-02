@@ -1,0 +1,1 @@
+- Fixes issue where `init` would crash with multiple Hosting items selected (#3742).
