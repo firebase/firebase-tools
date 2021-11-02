@@ -195,7 +195,7 @@
     "eslint-plugin-prettier": "^3.3.1",
     "firebase": "^7.24.0",
     "firebase-admin": "^9.4.2",
-    "firebase-functions": "^3.15.0",
+    "firebase-functions": "^3.16.0",
     "google-discovery-to-swagger": "^2.1.0",
     "mocha": "^8.2.1",
     "nock": "^13.0.5",

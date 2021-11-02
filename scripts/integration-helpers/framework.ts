@@ -10,11 +10,13 @@ const FIREBASE_PROJECT_ZONE = "us-central1";
  */
 /* Functions V2 */
 const PUBSUB_FUNCTION_V2_LOG = "========== PUBSUB V2 FUNCTION ==========";
+const STORAGE_FUNCTION_V2_LOG = "========== STORAGE V2 FUNCTION ==========";
 /* Functions V1 */
 const RTDB_FUNCTION_LOG = "========== RTDB FUNCTION ==========";
 const FIRESTORE_FUNCTION_LOG = "========== FIRESTORE FUNCTION ==========";
 const PUBSUB_FUNCTION_LOG = "========== PUBSUB FUNCTION ==========";
 const AUTH_FUNCTION_LOG = "========== AUTH FUNCTION ==========";
+const STORAGE_FUNCTION_LOG = "========== STORAGE FUNCTION ==========";
 const ALL_EMULATORS_STARTED_LOG = "All emulators ready";
 
 interface ConnectionInfo {
@@ -53,9 +55,11 @@ export class TriggerEndToEndTest {
   firestoreTriggerCount = 0;
   pubsubTriggerCount = 0;
   authTriggerCount = 0;
+  storageTriggerCount = 0;
 
   /* Functions V2 */
   pubsubV2TriggerCount = 0;
+  storageV2TriggerCount = 0;
 
   rtdbFromFirestore = false;
   firestoreFromRtdb = false;
@@ -110,9 +114,15 @@ export class TriggerEndToEndTest {
       if (data.includes(AUTH_FUNCTION_LOG)) {
         this.authTriggerCount++;
       }
+      if (data.includes(STORAGE_FUNCTION_LOG)) {
+        this.storageTriggerCount++;
+      }
       /* Functions V2 */
-      if (data.includes(PUBSUB_FUNCTION_LOG)) {
+      if (data.includes(PUBSUB_FUNCTION_V2_LOG)) {
         this.pubsubV2TriggerCount++;
+      }
+      if (data.includes(STORAGE_FUNCTION_V2_LOG)) {
+        this.storageV2TriggerCount++;
       }
     });
 
@@ -167,6 +177,10 @@ export class TriggerEndToEndTest {
 
   writeToScheduledPubsub(): Promise<Response> {
     return this.invokeHttpFunction("writeToScheduledPubsub");
+  }
+
+  writeToStorage(): Promise<Response> {
+    return this.invokeHttpFunction("writeToStorage");
   }
 
   waitForCondition(
