@@ -110,7 +110,7 @@ exports.updateDeleteFromStorage = functions.https.onRequest(async (req, res) => 
   console.log("Wrote to Storage bucket");
   await admin.storage().bucket().file(STORAGE_FILE_NAME).delete();
   console.log("Deleted from Storage bucket");
-  res.json({ done: "ok" })
+  res.json({ done: "ok" });
 });
 
 exports.firestoreReaction = functions.firestore
