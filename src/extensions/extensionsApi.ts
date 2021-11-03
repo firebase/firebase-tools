@@ -591,11 +591,11 @@ export async function deprecateExtensionVersion(
   extensionRef: string,
   deprecationMessage: string
 ): Promise<ExtensionVersion> {
-  const { publisherId, extensionId, version } = refs.parse(extensionRef);
+  const ref = refs.parse(extensionRef);
   try {
     const res = await api.request(
       "POST",
-      `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}/versions/${version}:deprecate`,
+      `/${VERSION}/${refs.toExtensionVersionName(ref)}:deprecate`,
       {
         auth: true,
         origin: api.extensionsOrigin,
@@ -629,11 +629,11 @@ export async function deprecateExtensionVersion(
  * @param extensionRef user-friendly identifier for the ExtensionVersion (publisher-id/extension-id@version)
  */
 export async function undeprecateExtensionVersion(extensionRef: string): Promise<ExtensionVersion> {
-  const { publisherId, extensionId, version } = refs.parse(extensionRef);
+  const ref = refs.parse(extensionRef);
   try {
     const res = await api.request(
       "POST",
-      `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}/versions/${version}:undeprecate`,
+      `/${VERSION}/${refs.toExtensionVersionName(ref)}:undeprecate`,
       {
         auth: true,
         origin: api.extensionsOrigin,
