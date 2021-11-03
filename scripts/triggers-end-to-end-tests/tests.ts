@@ -291,10 +291,8 @@ describe("storage emulator function triggers", () => {
     expect(test.storageMetadataTriggerCount).to.equal(2);
     expect(test.storageV2FinalizedTriggerCount).to.equal(2);
     expect(test.storageV2MetadataTriggerCount).to.equal(2);
-    // on delete two events fire (archive & delete)
-    expect(test.storageArchivedTriggerCount).to.equal(1);
+    // on delete one event fires (delete)
     expect(test.storageDeletedTriggerCount).to.equal(1);
-    expect(test.storageV2ArchivedTriggerCount).to.equal(1);
     expect(test.storageV2DeletedTriggerCount).to.equal(1);
   });
 });
