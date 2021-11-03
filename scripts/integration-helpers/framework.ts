@@ -10,13 +10,19 @@ const FIREBASE_PROJECT_ZONE = "us-central1";
  */
 /* Functions V2 */
 const PUBSUB_FUNCTION_V2_LOG = "========== PUBSUB V2 FUNCTION ==========";
-const STORAGE_FUNCTION_V2_LOG = "========== STORAGE V2 FUNCTION ==========";
+const STORAGE_FUNCTION_ARCHIVED_LOG = "========== STORAGE FUNCTION ARCHIVED ==========";
+const STORAGE_FUNCTION_DELETED_LOG = "========== STORAGE FUNCTION DELETED ==========";
+const STORAGE_FUNCTION_FINALIZED_LOG = "========== STORAGE FUNCTION FINALIZED ==========";
+const STORAGE_FUNCTION_METADATA_LOG = "========== STORAGE FUNCTION METADATA ==========";
 /* Functions V1 */
 const RTDB_FUNCTION_LOG = "========== RTDB FUNCTION ==========";
 const FIRESTORE_FUNCTION_LOG = "========== FIRESTORE FUNCTION ==========";
 const PUBSUB_FUNCTION_LOG = "========== PUBSUB FUNCTION ==========";
 const AUTH_FUNCTION_LOG = "========== AUTH FUNCTION ==========";
-const STORAGE_FUNCTION_LOG = "========== STORAGE FUNCTION ==========";
+const STORAGE_FUNCTION_V2_ARCHIVED_LOG = "========== STORAGE V2 FUNCTION ARCHIVED ==========";
+const STORAGE_FUNCTION_V2_DELETED_LOG = "========== STORAGE V2 FUNCTION DELETED ==========";
+const STORAGE_FUNCTION_V2_FINALIZED_LOG = "========== STORAGE V2 FUNCTION FINALIZED ==========";
+const STORAGE_FUNCTION_V2_METADATA_LOG = "========== STORAGE V2 FUNCTION METADATA ==========";
 const ALL_EMULATORS_STARTED_LOG = "All emulators ready";
 
 interface ConnectionInfo {
@@ -55,11 +61,17 @@ export class TriggerEndToEndTest {
   firestoreTriggerCount = 0;
   pubsubTriggerCount = 0;
   authTriggerCount = 0;
-  storageTriggerCount = 0;
+  storageArchivedTriggerCount = 0;
+  storageDeletedTriggerCount = 0;
+  storageFinalizedTriggerCount = 0;
+  storageMetadataTriggerCount = 0;
 
   /* Functions V2 */
   pubsubV2TriggerCount = 0;
-  storageV2TriggerCount = 0;
+  storageV2ArchivedTriggerCount = 0;
+  storageV2DeletedTriggerCount = 0;
+  storageV2FinalizedTriggerCount = 0;
+  storageV2MetadataTriggerCount = 0;
 
   rtdbFromFirestore = false;
   firestoreFromRtdb = false;
@@ -114,15 +126,33 @@ export class TriggerEndToEndTest {
       if (data.includes(AUTH_FUNCTION_LOG)) {
         this.authTriggerCount++;
       }
-      if (data.includes(STORAGE_FUNCTION_LOG)) {
-        this.storageTriggerCount++;
+      if (data.includes(STORAGE_FUNCTION_ARCHIVED_LOG)) {
+        this.storageArchivedTriggerCount++;
+      }
+      if (data.includes(STORAGE_FUNCTION_DELETED_LOG)) {
+        this.storageDeletedTriggerCount++;
+      }
+      if (data.includes(STORAGE_FUNCTION_FINALIZED_LOG)) {
+        this.storageFinalizedTriggerCount++;
+      }
+      if (data.includes(STORAGE_FUNCTION_METADATA_LOG)) {
+        this.storageMetadataTriggerCount++;
       }
       /* Functions V2 */
       if (data.includes(PUBSUB_FUNCTION_V2_LOG)) {
         this.pubsubV2TriggerCount++;
       }
-      if (data.includes(STORAGE_FUNCTION_V2_LOG)) {
-        this.storageV2TriggerCount++;
+      if (data.includes(STORAGE_FUNCTION_V2_ARCHIVED_LOG)) {
+        this.storageV2ArchivedTriggerCount++;
+      }
+      if (data.includes(STORAGE_FUNCTION_V2_DELETED_LOG)) {
+        this.storageV2DeletedTriggerCount++;
+      }
+      if (data.includes(STORAGE_FUNCTION_V2_FINALIZED_LOG)) {
+        this.storageV2FinalizedTriggerCount++;
+      }
+      if (data.includes(STORAGE_FUNCTION_V2_METADATA_LOG)) {
+        this.storageV2MetadataTriggerCount++;
       }
     });
 
@@ -181,6 +211,10 @@ export class TriggerEndToEndTest {
 
   writeToStorage(): Promise<Response> {
     return this.invokeHttpFunction("writeToStorage");
+  }
+
+  updateDeleteFromStorage(): Promise<Response> {
+    return this.invokeHttpFunction("updateDeleteFromStorage");
   }
 
   waitForCondition(

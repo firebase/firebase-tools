@@ -1,7 +1,6 @@
 import { expect } from "chai";
 import * as admin from "firebase-admin";
 import { Firestore } from "@google-cloud/firestore";
-import { Storage } from "@google-cloud/storage";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
@@ -259,7 +258,7 @@ describe("storage emulator function triggers", () => {
 
   after(async function (this) {
     this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
-    await test?.stopEmulators();
+    await test.stopEmulators();
   });
 
   it("should write to the storage emulator", async function (this) {
@@ -271,8 +270,32 @@ describe("storage emulator function triggers", () => {
   });
 
   it("should have triggered cloud functions", () => {
-    expect(test.storageTriggerCount).to.equal(2);
-    expect(test.storageV2TriggerCount).to.equal(2);
+    // on object create two events fire (finalize & metadata update)
+    expect(test.storageFinalizedTriggerCount).to.equal(1);
+    expect(test.storageMetadataTriggerCount).to.equal(1);
+    expect(test.storageV2FinalizedTriggerCount).to.equal(1);
+    expect(test.storageV2MetadataTriggerCount).to.equal(1);
+  });
+
+  it("should write, update, and delete from the storage emulator", async function (this) {
+    this.timeout(EMULATOR_TEST_TIMEOUT);
+
+    const response = await test.updateDeleteFromStorage();
+    expect(response.status).to.equal(200);
+    await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+  });
+
+  it("should have triggered cloud functions", () => {
+    // on update two events fire (finalize & metadata update)
+    expect(test.storageFinalizedTriggerCount).to.equal(2);
+    expect(test.storageMetadataTriggerCount).to.equal(2);
+    expect(test.storageV2FinalizedTriggerCount).to.equal(2);
+    expect(test.storageV2MetadataTriggerCount).to.equal(2);
+    // on delete two events fire (archive & delete)
+    expect(test.storageArchivedTriggerCount).to.equal(1);
+    expect(test.storageDeletedTriggerCount).to.equal(1);
+    expect(test.storageV2ArchivedTriggerCount).to.equal(1);
+    expect(test.storageV2DeletedTriggerCount).to.equal(1);
   });
 });
 
