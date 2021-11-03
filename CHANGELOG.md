@@ -1,1 +1,2 @@
 - Fixes issue where `init` would crash with multiple Hosting items selected (#3742).
+- Adds a command (`crashlytics:symbols:upload`) to upload native symbol files, used in Android NDK crash symbolication.
