@@ -10,6 +10,7 @@ import * as pollerNS from "../../../../operation-poller";
 import * as pubsubNS from "../../../../gcp/pubsub";
 import * as schedulerNS from "../../../../gcp/cloudscheduler";
 import * as runNS from "../../../../gcp/run";
+import * as cloudtasksNS from "../../../../gcp/cloudtasks";
 import * as backend from "../../../../deploy/functions/backend";
 import * as scraper from "../../../../deploy/functions/release/sourceTokenScraper";
 import * as planner from "../../../../deploy/functions/release/planner";
@@ -22,6 +23,7 @@ describe("Fabricator", () => {
   let pubsub: sinon.SinonStubbedInstance<typeof pubsubNS>;
   let scheduler: sinon.SinonStubbedInstance<typeof schedulerNS>;
   let run: sinon.SinonStubbedInstance<typeof runNS>;
+  let tasks: sinon.SinonStubbedInstance<typeof cloudtasksNS>;
 
   beforeEach(() => {
     gcf = sinon.stub(gcfNS);
@@ -30,10 +32,13 @@ describe("Fabricator", () => {
     pubsub = sinon.stub(pubsubNS);
     scheduler = sinon.stub(schedulerNS);
     run = sinon.stub(runNS);
+    tasks = sinon.stub(cloudtasksNS);
 
     gcf.functionFromEndpoint.restore();
     gcfv2.functionFromEndpoint.restore();
     scheduler.jobFromEndpoint.restore();
+    tasks.queueFromEndpoint.restore();
+    tasks.queueNameForEndpoint.restore();
     gcf.createFunction.rejects(new Error("unexpected gcf.createFunction"));
     gcf.updateFunction.rejects(new Error("unexpected gcf.updateFunction"));
     gcf.deleteFunction.rejects(new Error("unexpected gcf.deleteFunction"));
@@ -54,6 +59,13 @@ describe("Fabricator", () => {
     pubsub.deleteTopic.rejects(new Error("unexpected pubsub.deleteTopic"));
     scheduler.createOrReplaceJob.rejects(new Error("unexpected scheduler.createOrReplaceJob"));
     scheduler.deleteJob.rejects(new Error("unexpected scheduler.deleteJob"));
+    tasks.upsertQueue.rejects(new Error("unexpected tasks.upsertQueue"));
+    tasks.createQueue.rejects(new Error("unexpected tasks.createQueue"));
+    tasks.updateQueue.rejects(new Error("unexpected tasks.updateQueue"));
+    tasks.deleteQueue.rejects(new Error("unexpected tasks.deleteQueue"));
+    tasks.setEnqueuer.rejects(new Error("unexpected tasks.setEnqueuer"));
+    tasks.setIamPolicy.rejects(new Error("unexpected tasks.setIamPolicy"));
+    tasks.getIamPolicy.rejects(new Error("unexpected tasks.getIamPolicy"));
   });
 
   afterEach(() => {
@@ -602,6 +614,78 @@ describe("Fabricator", () => {
     });
   });
 
+  describe("upsertTaskQueue", () => {
+    it("upserts task queues", async () => {
+      const ep = endpoint({
+        taskQueueTrigger: {},
+      }) as backend.Endpoint & backend.TaskQueueTriggered;
+      tasks.upsertQueue.resolves();
+      await fab.upsertTaskQueue(ep);
+      expect(tasks.upsertQueue).to.have.been.called;
+      expect(tasks.setEnqueuer).to.not.have.been.called;
+    });
+
+    it("sets enqueuer", async () => {
+      const ep = endpoint({
+        taskQueueTrigger: {
+          invoker: ["public"],
+        },
+      }) as backend.Endpoint & backend.TaskQueueTriggered;
+      tasks.upsertQueue.resolves();
+      tasks.setEnqueuer.resolves();
+      await fab.upsertTaskQueue(ep);
+      expect(tasks.upsertQueue).to.have.been.called;
+      expect(tasks.setEnqueuer).to.have.been.calledWithMatch(tasks.queueNameForEndpoint(ep), [
+        "public",
+      ]);
+    });
+
+    it("wraps errors", async () => {
+      const ep = endpoint({
+        taskQueueTrigger: {
+          invoker: ["public"],
+        },
+      }) as backend.Endpoint & backend.TaskQueueTriggered;
+      tasks.upsertQueue.rejects(new Error("oh no"));
+      await expect(fab.upsertTaskQueue(ep)).to.eventually.be.rejectedWith(
+        reporter.DeploymentError,
+        "upsert task queue"
+      );
+
+      tasks.upsertQueue.resolves();
+      tasks.setEnqueuer.rejects(new Error("nope"));
+      await expect(fab.upsertTaskQueue(ep)).to.eventually.be.rejectedWith(
+        reporter.DeploymentError,
+        "set invoker"
+      );
+    });
+  });
+
+  describe("disableTaskQueue", () => {
+    it("disables task queues", async () => {
+      const ep = endpoint({
+        taskQueueTrigger: {},
+      }) as backend.Endpoint & backend.TaskQueueTriggered;
+      tasks.updateQueue.resolves();
+      await fab.disableTaskQueue(ep);
+      expect(tasks.updateQueue).to.have.been.calledWith({
+        name: tasks.queueNameForEndpoint(ep),
+        state: "DISABLED",
+      });
+    });
+
+    it("wraps errors", async () => {
+      const ep = endpoint({
+        taskQueueTrigger: {},
+      }) as backend.Endpoint & backend.TaskQueueTriggered;
+      tasks.updateQueue.rejects(new Error("Not today"));
+      await expect(fab.disableTaskQueue(ep)).to.eventually.be.rejectedWith(
+        reporter.DeploymentError,
+        "disable task queue"
+      );
+    });
+  });
+
   describe("setTrigger", () => {
     it("does nothing for HTTPS functions", async () => {
       // all APIs throw by default
@@ -642,6 +726,17 @@ describe("Fabricator", () => {
       await fab.setTrigger(ep);
       expect(upsertScheduleV2).to.have.been.called;
     });
+
+    it("sets task queue triggers", async () => {
+      const ep = endpoint({
+        taskQueueTrigger: {},
+      });
+      const upsertTaskQueue = sinon.stub(fab, "upsertTaskQueue");
+      upsertTaskQueue.resolves();
+
+      await fab.setTrigger(ep);
+      expect(upsertTaskQueue).to.have.been.called;
+    });
   });
 
   describe("deleteTrigger", () => {
@@ -664,7 +759,7 @@ describe("Fabricator", () => {
       await fab.deleteTrigger(ep);
     });
 
-    it("sets schedule triggers", async () => {
+    it("deletes schedule triggers", async () => {
       const ep = endpoint({
         scheduleTrigger: {
           schedule: "every 5 minutes",
@@ -683,6 +778,16 @@ describe("Fabricator", () => {
 
       await fab.deleteTrigger(ep);
       expect(deleteScheduleV2).to.have.been.called;
+    });
+
+    it("deletes task queue triggers", async () => {
+      const ep = endpoint({
+        taskQueueTrigger: {},
+      });
+      const disableTaskQueue = sinon.stub(fab, "disableTaskQueue");
+
+      await fab.deleteTrigger(ep);
+      expect(disableTaskQueue).to.have.been.called;
     });
   });
 
