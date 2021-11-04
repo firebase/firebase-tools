@@ -106,7 +106,7 @@ export class RemoteConfigEmulator implements EmulatorInstance {
    */
   public prepareEmulatorTemplate(template: any): any {
     const emulatorTemplate = cloneDeep(template);
-    const emulatorParameters = emulatorTemplate["parameters"];
+    const emulatorParameters = emulatorTemplate["parameters"] || {};
     for (const parameterName of Object.keys(emulatorParameters)) {
       const emulatorParameter = emulatorParameters[parameterName];
       if (emulatorParameter.hasOwnProperty("conditionalValues")) {
