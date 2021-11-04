@@ -59,7 +59,7 @@ export interface TriggerAnnotation {
       maxConcurrentDispatches?: number;
       maxDispatchesPerSecond?: number;
     };
-    retryPolicy?: {
+    retryConfig?: {
       maxAttempts?: number;
       maxRetryDuration?: proto.Duration;
       minBackoff?: proto.Duration;

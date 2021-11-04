@@ -17,6 +17,7 @@ var TARGETS = {
   functions: require("./functions"),
   storage: require("./storage"),
   remoteconfig: require("./remoteconfig"),
+  extensions: require("./extensions"),
 };
 
 var _noop = function () {

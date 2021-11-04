@@ -148,7 +148,7 @@ function parseEndpoints(
     } else if (backend.isTaskQueueTriggered(ep)) {
       assertKeyTypes(prefix + ".taskQueueTrigger", ep.taskQueueTrigger, {
         rateLimits: "object",
-        retryPolicy: "object",
+        retryConfig: "object",
         invoker: "array",
       });
       if (ep.taskQueueTrigger.rateLimits) {
@@ -158,8 +158,8 @@ function parseEndpoints(
           maxDispatchesPerSecond: "number",
         });
       }
-      if (ep.taskQueueTrigger.retryPolicy) {
-        assertKeyTypes(prefix + ".taskQueueTrigger.retryPolicy", ep.taskQueueTrigger.retryPolicy, {
+      if (ep.taskQueueTrigger.retryConfig) {
+        assertKeyTypes(prefix + ".taskQueueTrigger.retryConfig", ep.taskQueueTrigger.retryConfig, {
           maxAttempts: "number",
           maxRetryDuration: "string",
           minBackoff: "string",
