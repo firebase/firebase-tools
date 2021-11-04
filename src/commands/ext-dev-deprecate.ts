@@ -1,14 +1,15 @@
 import * as clc from "cli-color";
+import * as semver from "semver";
 
+import * as refs from "../extensions/refs";
+import * as utils from "../utils";
 import { Command } from "../command";
 import { promptOnce } from "../prompt";
 import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper";
 import { deprecateExtensionVersion, listExtensionVersions } from "../extensions/extensionsApi";
-import * as refs from "../extensions/refs";
-import { parseVersionPredicate, compareVersions } from "../extensions/versionHelper";
+import { parseVersionPredicate } from "../extensions/versionHelper";
 import { requireAuth } from "../requireAuth";
 import { FirebaseError } from "../error";
-import * as utils from "../utils";
 
 /**
  * Deprecate all extension versions that match the version predicate.
@@ -24,7 +25,6 @@ export default new Command("ext:dev:deprecate <extensionRef> <versionPredicate>"
   .before(ensureExtensionsApiEnabled)
   .action(async (extensionRef: string, versionPredicate: string, options: any) => {
     const { publisherId, extensionId, version } = refs.parse(extensionRef);
-    const baseExtensionRef = publisherId + "/" + extensionId;
     if (version) {
       throw new FirebaseError(
         `The input extension reference must be of the format ${clc.bold(
@@ -40,30 +40,33 @@ export default new Command("ext:dev:deprecate <extensionRef> <versionPredicate>"
       );
     }
     const { comparator, targetSemVer } = parseVersionPredicate(versionPredicate);
-    const extensionVersions = await listExtensionVersions(baseExtensionRef);
-    const filteredExtensionVersions = extensionVersions.filter((extensionVersion) => {
-      const semVer = refs.parse(extensionVersion.ref).version!;
-      if (
-        (extensionVersion.state === "DEPRECATED" && !options.force) ||
-        !compareVersions(semVer, targetSemVer, comparator)
-      ) {
-        return false;
-      }
-      const message =
-        extensionVersion.state === "DEPRECATED" ? ", will overwrite deprecation message" : "";
-      utils.logLabeledBullet(extensionVersion.ref, extensionVersion.state + message);
-      return true;
-    });
-    if (filteredExtensionVersions.length > 0) {
-      const confirmMessage =
-        "You are about to deprecate these extension version(s). Do you wish to continue?";
-      const consent = await promptOnce({
-        type: "confirm",
-        message: confirmMessage,
-        default: false,
+    const filter = `id${comparator}"${targetSemVer}"`;
+    const extensionVersions = await listExtensionVersions(extensionRef, filter);
+    const filteredExtensionVersions = extensionVersions
+      .sort((ev1, ev2) => {
+        return -semver.compare(ev1.spec.version, ev2.spec.version);
+      })
+      .filter((extensionVersion) => {
+        if (extensionVersion.state === "DEPRECATED" && !options.force) {
+          return false;
+        }
+        const message =
+          extensionVersion.state === "DEPRECATED" ? ", will overwrite deprecation message" : "";
+        utils.logLabeledBullet(extensionVersion.ref, extensionVersion.state + message);
+        return true;
       });
-      if (!consent) {
-        throw new FirebaseError("Deprecation canceled.");
+    if (filteredExtensionVersions.length > 0) {
+      if (!options.force) {
+        const confirmMessage =
+          "You are about to deprecate these extension version(s). Do you wish to continue?";
+        const consent = await promptOnce({
+          type: "confirm",
+          message: confirmMessage,
+          default: false,
+        });
+        if (!consent) {
+          throw new FirebaseError("Deprecation canceled.");
+        }
       }
     } else {
       throw new FirebaseError("No extension versions matched the version predicate.");
