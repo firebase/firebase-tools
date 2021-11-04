@@ -67,6 +67,7 @@ module.exports = function (client) {
   client.ext = loadCommand("ext");
   client.ext.configure = loadCommand("ext-configure");
   client.ext.info = loadCommand("ext-info");
+  client.ext.export = loadCommand("ext-export");
   client.ext.install = loadCommand("ext-install");
   client.ext.list = loadCommand("ext-list");
   client.ext.uninstall = loadCommand("ext-uninstall");
