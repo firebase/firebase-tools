@@ -49,7 +49,6 @@ export class RemoteConfigEmulator implements EmulatorInstance {
   }
 
   async start(): Promise<void> {
-    console.log("i am working");
     const { host, port } = this.getInfo();
     this._logger.logLabeled("BULLET", "remote config", `Emulator loading...`);
 
