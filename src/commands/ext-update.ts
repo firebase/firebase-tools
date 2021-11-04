@@ -226,7 +226,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         }
         if (!enabled) {
           if (!options.nonInteractive) {
-            await enableBilling(projectId, instanceId);
+            await enableBilling(projectId);
           } else {
             throw new FirebaseError(
               "The extension requires your project to be upgraded to the Blaze plan. " +

@@ -2,7 +2,10 @@ import * as marked from "marked";
 
 import * as extensionsApi from "./extensionsApi";
 import * as api from "../api";
+import * as refs from "./refs";
+import { flattenArray } from "../functional";
 import { FirebaseError } from "../error";
+import { getExtensionVersion, InstanceSpec } from "../deploy/extensions/planner";
 
 /** Product for which provisioning can be (or is) deferred */
 export enum DeferredProduct {
@@ -20,6 +23,28 @@ export async function checkProductsProvisioned(
   spec: extensionsApi.ExtensionSpec
 ): Promise<void> {
   const usedProducts = getUsedProducts(spec);
+  await checkProducts(projectId, usedProducts);
+}
+
+/**
+ * Checks whether products used for any extension version in a deploy requires provisioning.
+ *
+ * @param extensionVersionRefs
+ */
+export async function bulkCheckProductsProvisioned(
+  projectId: string,
+  instanceSpecs: InstanceSpec[]
+): Promise<void> {
+  const usedProducts = await Promise.all(
+    instanceSpecs.map(async (i) => {
+      const extensionVersion = await getExtensionVersion(i);
+      return getUsedProducts(extensionVersion.spec);
+    })
+  );
+  await checkProducts(projectId, [...flattenArray(usedProducts)]);
+}
+
+async function checkProducts(projectId: string, usedProducts: DeferredProduct[]) {
   const needProvisioning = [] as DeferredProduct[];
   let isStorageProvisionedPromise;
   let isAuthProvisionedPromise;
@@ -41,7 +66,7 @@ export async function checkProductsProvisioned(
     let errorMessage =
       "Some services used by this extension have not been set up on your " +
       "Firebase project. To ensure this extension works as intended, you must enable these " +
-      "services by following the provided links, then retry installing the extension\n\n";
+      "services by following the provided links, then retry this command\n\n";
     if (needProvisioning.includes(DeferredProduct.STORAGE)) {
       errorMessage +=
         " - Firebase Storage: store and retrieve user-generated files like images, audio, and " +
