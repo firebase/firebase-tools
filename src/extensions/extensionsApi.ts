@@ -37,11 +37,13 @@ export interface Extension {
 export interface ExtensionVersion {
   name: string;
   ref: string;
+  state: "STATE_UNSPECIFIED" | "PUBLISHED" | "DEPRECATED";
   spec: ExtensionSpec;
   hash: string;
   sourceDownloadUri: string;
   releaseNotes?: string;
   createTime?: string;
+  deprecationMessage?: string;
 }
 
 export interface PublisherProfile {
@@ -617,6 +619,85 @@ export async function registerPublisherProfile(
     }
   );
   return res.body;
+}
+
+/**
+ * @param extensionRef user-friendly identifier for the ExtensionVersion (publisher-id/extension-id@version)
+ * @param deprecationMessage the deprecation message
+ */
+export async function deprecateExtensionVersion(
+  extensionRef: string,
+  deprecationMessage: string
+): Promise<ExtensionVersion> {
+  const ref = refs.parse(extensionRef);
+  try {
+    const res = await api.request(
+      "POST",
+      `/${VERSION}/${refs.toExtensionVersionName(ref)}:deprecate`,
+      {
+        auth: true,
+        origin: api.extensionsOrigin,
+        data: { deprecationMessage },
+      }
+    );
+    return res.body;
+  } catch (err) {
+    if (err.status === 403) {
+      throw new FirebaseError(
+        `You are not the owner of extension '${clc.bold(
+          extensionRef
+        )}' and don’t have the correct permissions to deprecate this extension version.` + err,
+        { status: err.status }
+      );
+    } else if (err.status === 404) {
+      throw new FirebaseError(`Extension version ${clc.bold(extensionRef)} was not found.`);
+    } else if (err instanceof FirebaseError) {
+      throw err;
+    }
+    throw new FirebaseError(
+      `Error occurred deprecating extension version '${extensionRef}': ${err}`,
+      {
+        status: err.status,
+      }
+    );
+  }
+}
+
+/**
+ * @param extensionRef user-friendly identifier for the ExtensionVersion (publisher-id/extension-id@version)
+ */
+export async function undeprecateExtensionVersion(extensionRef: string): Promise<ExtensionVersion> {
+  const ref = refs.parse(extensionRef);
+  try {
+    const res = await api.request(
+      "POST",
+      `/${VERSION}/${refs.toExtensionVersionName(ref)}:undeprecate`,
+      {
+        auth: true,
+        origin: api.extensionsOrigin,
+      }
+    );
+    return res.body;
+  } catch (err) {
+    if (err.status === 403) {
+      throw new FirebaseError(
+        `You are not the owner of extension '${clc.bold(
+          extensionRef
+        )}' and don’t have the correct permissions to undeprecate this extension version.`,
+        { status: err.status }
+      );
+    } else if (err.status === 404) {
+      throw new FirebaseError(`Extension version ${clc.bold(extensionRef)} was not found.`);
+    } else if (err instanceof FirebaseError) {
+      throw err;
+    }
+    throw new FirebaseError(
+      `Error occurred undeprecating extension version '${extensionRef}': ${err}`,
+      {
+        status: err.status,
+      }
+    );
+  }
 }
 
 /**

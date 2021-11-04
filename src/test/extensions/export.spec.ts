@@ -85,6 +85,7 @@ describe("ext:export helpers", () => {
           extensionVersion: {
             name: "test",
             ref: "test/test@0.1.0",
+            state: "PUBLISHED",
             hash: "abc123",
             sourceDownloadUri: "test.com",
             spec: {

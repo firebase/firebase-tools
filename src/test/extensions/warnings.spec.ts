@@ -15,6 +15,7 @@ import { InstanceSpec } from "../../deploy/extensions/planner";
 const testExtensionVersion: ExtensionVersion = {
   name: "test",
   ref: "test/test@0.1.0",
+  state: "PUBLISHED",
   hash: "abc123",
   sourceDownloadUri: "https://download.com/source",
   spec: {
