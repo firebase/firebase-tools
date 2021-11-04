@@ -1,3 +1,1 @@
 - Improves remoteconfig:get and remoteconfig:versions:list when no version exists or is specified (#3628)
-- Adds `firebase ext:export` command, and adds `extensions` to `firebase deploy`. See https://firebase.google.com/docs/extensions/reuse-project-config for more infomation on how to manage your extensions with these commands.
-- Fixes issue where `init` would crash with multiple Hosting items selected (#3742).

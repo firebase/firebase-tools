@@ -30,11 +30,9 @@ module.exports = function (client) {
   client.auth = {};
   client.auth.export = loadCommand("auth-export");
   client.auth.upload = loadCommand("auth-import");
-  if (previews.crashlyticsSymbolsUpload) {
-    client.crashlytics = {};
-    client.crashlytics.symbols = {};
-    client.crashlytics.symbols.upload = loadCommand("crashlytics-symbols-upload");
-  }
+  client.crashlytics = {};
+  client.crashlytics.symbols = {};
+  client.crashlytics.symbols.upload = loadCommand("crashlytics-symbols-upload");
   client.database = {};
   client.database.get = loadCommand("database-get");
   client.database.instances = {};
@@ -84,6 +82,8 @@ module.exports = function (client) {
     client.ext.dev.emulators = {};
     client.ext.dev.emulators.start = loadCommand("ext-dev-emulators-start");
     client.ext.dev.emulators.exec = loadCommand("ext-dev-emulators-exec");
+    client.ext.dev.deprecate = loadCommand("ext-dev-deprecate");
+    client.ext.dev.undeprecate = loadCommand("ext-dev-undeprecate");
     client.ext.dev.unpublish = loadCommand("ext-dev-unpublish");
     client.ext.dev.publish = loadCommand("ext-dev-publish");
     client.ext.dev.delete = loadCommand("ext-dev-extension-delete");
