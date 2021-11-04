@@ -8,6 +8,30 @@ import { FirebaseError } from "../../error";
 
 const TEST_INSTANCES_RESPONSE = {};
 const PROJECT_ID = "test-project";
+
+const SPEC_WITH_NOTHING = {
+  apis: [] as extensionsApi.Api[],
+  resources: [] as extensionsApi.Resource[],
+} as extensionsApi.ExtensionSpec;
+
+const SPEC_WITH_STORAGE = {
+  apis: [
+    {
+      apiName: "storage-component.googleapis.com",
+    },
+  ] as extensionsApi.Api[],
+  resources: [] as extensionsApi.Resource[],
+} as extensionsApi.ExtensionSpec;
+
+const SPEC_WITH_AUTH = {
+  apis: [
+    {
+      apiName: "identitytoolkit.googleapis.com",
+    },
+  ] as extensionsApi.Api[],
+  resources: [] as extensionsApi.Resource[],
+} as extensionsApi.ExtensionSpec;
+
 const SPEC_WITH_STORAGE_AND_AUTH = {
   apis: [
     {
@@ -34,6 +58,28 @@ const FIREBASE_STORAGE_DEFAULT_BUCKET_LINKED_RESPONSE = {
       name: `projects/12345/bucket/${PROJECT_ID}.appspot.com`,
     },
   ],
+};
+
+const extensionVersionResponse = (version: string, spec: extensionsApi.ExtensionSpec) => {
+  return {
+    name: `publishers/test/extensions/test/version/${version}`,
+    ref: `test/test@${version}`,
+    hash: "abc",
+    sourceDownloadUri: "https://firebase.com",
+    spec,
+  };
+};
+
+const instanceSpec = (version: string) => {
+  return {
+    instanceId: "test",
+    params: {},
+    ref: {
+      publisherId: "test",
+      extensionId: "test",
+      version,
+    },
+  };
 };
 
 describe("provisioningHelper", () => {
@@ -196,6 +242,97 @@ describe("provisioningHelper", () => {
 
       await expect(
         provisioningHelper.checkProductsProvisioned(PROJECT_ID, SPEC_WITH_STORAGE_AND_AUTH)
+      ).to.be.rejectedWith(
+        FirebaseError,
+        "Firebase Authentication: authenticate and manage users from"
+      );
+
+      expect(nock.isDone()).to.be.true;
+    });
+  });
+
+  describe("bulkCheckProductsProvisioned", () => {
+    it("passes provisioning check status when nothing is used", async () => {
+      nock(api.extensionsOrigin)
+        .get(`/v1beta/publishers/test/extensions/test/versions/0.1.0`)
+        .reply(200, extensionVersionResponse("0.1.0", SPEC_WITH_NOTHING));
+
+      await expect(
+        provisioningHelper.bulkCheckProductsProvisioned(PROJECT_ID, [instanceSpec("0.1.0")])
+      ).to.be.fulfilled;
+    });
+
+    it("passes provisioning check when all is provisioned", async () => {
+      nock(api.extensionsOrigin)
+        .get(`/v1beta/publishers/test/extensions/test/versions/0.1.0`)
+        .reply(200, extensionVersionResponse("0.1.0", SPEC_WITH_STORAGE_AND_AUTH));
+      nock(api.firedataOrigin)
+        .get(`/v1/projects/${PROJECT_ID}/products`)
+        .reply(200, FIREDATA_AUTH_ACTIVATED_RESPONSE);
+      nock(api.firebaseStorageOrigin)
+        .get(`/v1beta/projects/${PROJECT_ID}/buckets`)
+        .reply(200, FIREBASE_STORAGE_DEFAULT_BUCKET_LINKED_RESPONSE);
+
+      await expect(
+        provisioningHelper.bulkCheckProductsProvisioned(PROJECT_ID, [instanceSpec("0.1.0")])
+      ).to.be.fulfilled;
+
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("checks all products for multiple versions", async () => {
+      nock(api.extensionsOrigin)
+        .get(`/v1beta/publishers/test/extensions/test/versions/0.1.0`)
+        .reply(200, extensionVersionResponse("0.1.0", SPEC_WITH_STORAGE));
+      nock(api.extensionsOrigin)
+        .get(`/v1beta/publishers/test/extensions/test/versions/0.1.1`)
+        .reply(200, extensionVersionResponse("0.1.1", SPEC_WITH_AUTH));
+      nock(api.firedataOrigin)
+        .get(`/v1/projects/${PROJECT_ID}/products`)
+        .reply(200, FIREDATA_AUTH_ACTIVATED_RESPONSE);
+      nock(api.firebaseStorageOrigin)
+        .get(`/v1beta/projects/${PROJECT_ID}/buckets`)
+        .reply(200, FIREBASE_STORAGE_DEFAULT_BUCKET_LINKED_RESPONSE);
+
+      await expect(
+        provisioningHelper.bulkCheckProductsProvisioned(PROJECT_ID, [
+          instanceSpec("0.1.0"),
+          instanceSpec("0.1.1"),
+        ])
+      ).to.be.fulfilled;
+
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("fails provisioning check storage when default bucket is not linked", async () => {
+      nock(api.extensionsOrigin)
+        .get(`/v1beta/publishers/test/extensions/test/versions/0.1.0`)
+        .reply(200, extensionVersionResponse("0.1.0", SPEC_WITH_STORAGE));
+      nock(api.firebaseStorageOrigin)
+        .get(`/v1beta/projects/${PROJECT_ID}/buckets`)
+        .reply(200, {
+          buckets: [
+            {
+              name: `projects/12345/bucket/some-other-bucket`,
+            },
+          ],
+        });
+
+      await expect(
+        provisioningHelper.bulkCheckProductsProvisioned(PROJECT_ID, [instanceSpec("0.1.0")])
+      ).to.be.rejectedWith(FirebaseError, "Firebase Storage: store and retrieve user-generated");
+
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("fails provisioning check storage when no auth is not provisioned", async () => {
+      nock(api.extensionsOrigin)
+        .get(`/v1beta/publishers/test/extensions/test/versions/0.1.0`)
+        .reply(200, extensionVersionResponse("0.1.0", SPEC_WITH_AUTH));
+      nock(api.firedataOrigin).get(`/v1/projects/${PROJECT_ID}/products`).reply(200, {});
+
+      await expect(
+        provisioningHelper.bulkCheckProductsProvisioned(PROJECT_ID, [instanceSpec("0.1.0")])
       ).to.be.rejectedWith(
         FirebaseError,
         "Firebase Authentication: authenticate and manage users from"
