@@ -1,6 +1,7 @@
 import * as express from "express";
 import { RemoteConfigEmulator } from "./index";
 import * as cors from "cors";
+import {cloneDeep} from "lodash";
 
 /**
  * @param defaultProjectId
@@ -51,8 +52,8 @@ export function createApp(
 }
 
 function extractEmulator(emulatorTemplate: any): any {
-  const nonEmulatorTemplate = JSON.parse(JSON.stringify(emulatorTemplate));
-  const emulatorParameters = nonEmulatorTemplate["parameters"];
+  const nonEmulatorTemplate = cloneDeep(emulatorTemplate);
+  const emulatorParameters = nonEmulatorTemplate["parameters"] || {};
   for (const parameterName of Object.keys(emulatorParameters)) {
     const emulatorParameter = emulatorParameters[parameterName];
     const conditionalValues = emulatorParameter["conditionalValues"];
