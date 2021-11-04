@@ -4,6 +4,8 @@ import { EmulatorLogger } from "../emulatorLogger";
 import { CloudStorageObjectMetadata, toSerializedDate } from "./metadata";
 import { Client } from "../../apiv2";
 import { StorageObjectData } from "@google/events/cloud/storage/v1/StorageObjectData";
+import { CloudEvent } from "../events/types";
+import uuid from "uuid";
 
 type StorageCloudFunctionAction = "finalize" | "metadataUpdate" | "delete" | "archive";
 const STORAGE_V2_ACTION_MAP: Record<StorageCloudFunctionAction, string> = {
@@ -54,9 +56,13 @@ export class StorageCloudFunctions {
       }
       /** Modern CloudEvents */
       const cloudEventBody = this.createCloudEventRequestBody(action, object);
-      const cloudEventRes = await this.client!.post(this.multicastPath, cloudEventBody, {
-        headers: { "Content-Type": "application/cloudevents+json; charset=UTF-8" },
-      });
+      const cloudEventRes = await this.client!.post<CloudEvent<StorageObjectData>, any>(
+        this.multicastPath,
+        cloudEventBody,
+        {
+          headers: { "Content-Type": "application/cloudevents+json; charset=UTF-8" },
+        }
+      );
       if (cloudEventRes.status !== 200) {
         errStatus.push(cloudEventRes.status);
       }
@@ -77,9 +83,9 @@ export class StorageCloudFunctions {
   private createLegacyEventRequestBody(
     action: StorageCloudFunctionAction,
     objectMetadataPayload: ObjectMetadataPayload
-  ): string {
+  ) {
     const timestamp = new Date();
-    return JSON.stringify({
+    return {
       eventId: `${timestamp.getTime()}`,
       timestamp: toSerializedDate(timestamp),
       eventType: `google.storage.object.${action}`,
@@ -89,25 +95,31 @@ export class StorageCloudFunctions {
         type: "storage#object",
       }, // bucket
       data: objectMetadataPayload,
-    });
+    };
   }
 
   /** Modern CloudEvents type */
   private createCloudEventRequestBody(
     action: StorageCloudFunctionAction,
     objectMetadataPayload: ObjectMetadataPayload
-  ): string {
+  ): CloudEvent<StorageObjectData> {
     const ceAction = STORAGE_V2_ACTION_MAP[action];
     if (!ceAction) {
       throw new Error("Action is not definied as a CloudEvents action");
     }
     const data = (objectMetadataPayload as unknown) as StorageObjectData;
-    return JSON.stringify({
-      specVersion: 1,
+    let time = new Date().toISOString();
+    if (data.updated) {
+      time = typeof data.updated === "string" ? data.updated : data.updated.toISOString();
+    }
+    return {
+      specversion: "1",
+      id: uuid.v4(),
       type: `google.cloud.storage.object.v1.${ceAction}`,
       source: `//storage.googleapis.com/projects/_/buckets/${objectMetadataPayload.bucket}/objects/${objectMetadataPayload.name}`,
+      time,
       data,
-    });
+    };
   }
 }
 
