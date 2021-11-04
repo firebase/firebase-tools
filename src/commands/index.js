@@ -30,6 +30,11 @@ module.exports = function (client) {
   client.auth = {};
   client.auth.export = loadCommand("auth-export");
   client.auth.upload = loadCommand("auth-import");
+  if (previews.crashlyticsSymbolsUpload) {
+    client.crashlytics = {};
+    client.crashlytics.symbols = {};
+    client.crashlytics.symbols.upload = loadCommand("crashlytics-symbols-upload");
+  }
   client.database = {};
   client.database.get = loadCommand("database-get");
   client.database.instances = {};
@@ -62,6 +67,7 @@ module.exports = function (client) {
   client.ext = loadCommand("ext");
   client.ext.configure = loadCommand("ext-configure");
   client.ext.info = loadCommand("ext-info");
+  client.ext.export = loadCommand("ext-export");
   client.ext.install = loadCommand("ext-install");
   client.ext.list = loadCommand("ext-list");
   client.ext.uninstall = loadCommand("ext-uninstall");
@@ -88,6 +94,9 @@ module.exports = function (client) {
   client.functions = {};
   client.functions.config = {};
   client.functions.config.clone = loadCommand("functions-config-clone");
+  if (previews.dotenv) {
+    client.functions.config.export = loadCommand("functions-config-export");
+  }
   client.functions.config.get = loadCommand("functions-config-get");
   client.functions.config.set = loadCommand("functions-config-set");
   client.functions.config.unset = loadCommand("functions-config-unset");

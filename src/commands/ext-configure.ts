@@ -64,6 +64,8 @@ export default new Command("ext:configure <extensionInstanceId>")
         paramSpecs: paramSpecWithNewDefaults,
         nonInteractive: options.nonInteractive,
         paramsEnvPath: options.params,
+        instanceId,
+        reconfiguring: true,
       });
       if (immutableParams.length) {
         const plural = immutableParams.length > 1;
@@ -82,7 +84,7 @@ export default new Command("ext:configure <extensionInstanceId>")
       }
 
       spinner.start();
-      const res = await extensionsApi.configureInstance(projectId, instanceId, params);
+      const res = await extensionsApi.configureInstance({ projectId, instanceId, params });
       spinner.stop();
       utils.logLabeledSuccess(logPrefix, `successfully configured ${clc.bold(instanceId)}.`);
       utils.logLabeledBullet(

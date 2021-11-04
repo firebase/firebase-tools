@@ -5,6 +5,7 @@ import {
   deleteAccount,
   getAccountInfoByIdToken,
   PROJECT_ID,
+  registerTenant,
   signInWithPhoneNumber,
   TEST_PHONE_NUMBER,
   updateProjectConfig,
@@ -302,6 +303,28 @@ describeAuthEmulator("accounts:lookup", ({ authApi }) => {
       });
   });
 
+  it("should return user by tenantId in idToken", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, {
+      disableAuth: false,
+      allowPasswordSignup: true,
+    });
+    const { idToken, localId } = await registerUser(authApi(), {
+      email: "alice@example.com",
+      password: "notasecret",
+      tenantId: tenant.tenantId,
+    });
+
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/accounts:lookup`)
+      .send({ idToken })
+      .query({ key: "fake-api-key" })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.users).to.have.length(1);
+        expect(res.body.users[0].localId).to.equal(localId);
+      });
+  });
+
   it("should error for lookup using idToken if usageMode is passthrough", async () => {
     const { idToken } = await registerAnonUser(authApi());
     await deleteAccount(authApi(), { idToken });
@@ -316,6 +339,19 @@ describeAuthEmulator("accounts:lookup", ({ authApi }) => {
         expect(res.body.error)
           .to.have.property("message")
           .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
+      });
+  });
+
+  it("should error if auth is disabled", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: true });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:lookup")
+      .set("Authorization", "Bearer owner")
+      .send({ tenantId: tenant.tenantId })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").includes("PROJECT_DISABLED");
       });
   });
 });
@@ -362,6 +398,19 @@ describeAuthEmulator("accounts:query", ({ authApi }) => {
         expect(emailUser!.email).to.equal(user.email);
       });
   });
+
+  it("should error if auth is disabled", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: true });
+
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:query`)
+      .set("Authorization", "Bearer owner")
+      .send({ tenantId: tenant.tenantId })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("PROJECT_DISABLED");
+      });
+  });
 });
 
 describeAuthEmulator("emulator utility APIs", ({ authApi }) => {
@@ -381,6 +430,31 @@ describeAuthEmulator("emulator utility APIs", ({ authApi }) => {
 
     await expectUserNotExistsForIdToken(authApi(), user1.idToken);
     await expectUserNotExistsForIdToken(authApi(), user2.idToken);
+  });
+
+  it("should drop all accounts on DELETE /emulator/v1/projects/{PROJECT_ID}/tenants/{TENANT_ID}/accounts", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, {
+      disableAuth: false,
+      allowPasswordSignup: true,
+    });
+    const user1 = await registerUser(authApi(), {
+      email: "alice@example.com",
+      password: "notasecret",
+      tenantId: tenant.tenantId,
+    });
+    const user2 = await registerUser(authApi(), {
+      email: "bob@example.com",
+      password: "notasecret2",
+      tenantId: tenant.tenantId,
+    });
+
+    await authApi()
+      .delete(`/emulator/v1/projects/${PROJECT_ID}/tenants/${tenant.tenantId}/accounts`)
+      .send()
+      .then((res) => expectStatusCode(200, res));
+
+    await expectUserNotExistsForIdToken(authApi(), user1.idToken, tenant.tenantId);
+    await expectUserNotExistsForIdToken(authApi(), user2.idToken, tenant.tenantId);
   });
 
   it("should return config on GET /emulator/v1/projects/{PROJECT_ID}/config", async () => {

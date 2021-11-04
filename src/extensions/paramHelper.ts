@@ -1,7 +1,6 @@
 import * as _ from "lodash";
 import * as path from "path";
 import * as clc from "cli-color";
-import * as dotenv from "dotenv";
 import * as fs from "fs-extra";
 
 import { FirebaseError } from "../error";
@@ -15,6 +14,7 @@ import {
 } from "./extensionsHelper";
 import * as askUserForParam from "./askUserForParam";
 import * as track from "../track";
+import * as env from "../functions/env";
 
 /**
  * A mutator to switch the defaults for a list of params to new ones.
@@ -61,6 +61,8 @@ export async function getParams(args: {
   paramSpecs: extensionsApi.Param[];
   nonInteractive?: boolean;
   paramsEnvPath?: string;
+  instanceId: string;
+  reconfiguring?: boolean;
 }): Promise<{ [key: string]: string }> {
   let params: any;
   if (args.nonInteractive && !args.paramsEnvPath) {
@@ -79,12 +81,17 @@ export async function getParams(args: {
     params = getParamsFromFile({
       projectId: args.projectId,
       paramSpecs: args.paramSpecs,
-      noninteractive: args.nonInteractive,
       paramsEnvPath: args.paramsEnvPath,
     });
   } else {
     const firebaseProjectParams = await getFirebaseProjectParams(args.projectId);
-    params = await askUserForParam.ask(args.paramSpecs, firebaseProjectParams);
+    params = await askUserForParam.ask(
+      args.projectId,
+      args.instanceId,
+      args.paramSpecs,
+      firebaseProjectParams,
+      !!args.reconfiguring
+    );
   }
   track("Extension Params", _.isEmpty(params) ? "Not Present" : "Present", _.size(params));
   return params;
@@ -97,6 +104,7 @@ export async function getParamsForUpdate(args: {
   projectId: string;
   paramsEnvPath?: string;
   nonInteractive?: boolean;
+  instanceId: string;
 }) {
   let params: any;
   if (args.nonInteractive && !args.paramsEnvPath) {
@@ -115,7 +123,6 @@ export async function getParamsForUpdate(args: {
     params = getParamsFromFile({
       projectId: args.projectId,
       paramSpecs: args.newSpec.params,
-      noninteractive: args.nonInteractive,
       paramsEnvPath: args.paramsEnvPath,
     });
   } else {
@@ -124,6 +131,7 @@ export async function getParamsForUpdate(args: {
       newSpec: args.newSpec,
       currentParams: args.currentParams,
       projectId: args.projectId,
+      instanceId: args.instanceId,
     });
   }
   track("Extension Params", _.isEmpty(params) ? "Not Present" : "Present", _.size(params));
@@ -143,6 +151,7 @@ export async function promptForNewParams(args: {
   newSpec: extensionsApi.ExtensionSpec;
   currentParams: { [option: string]: string };
   projectId: string;
+  instanceId: string;
 }): Promise<any> {
   const firebaseProjectParams = await getFirebaseProjectParams(args.projectId);
   const comparer = (param1: extensionsApi.Param, param2: extensionsApi.Param) => {
@@ -178,7 +187,12 @@ export async function promptForNewParams(args: {
   if (paramsDiffAdditions.length) {
     logger.info("To update this instance, configure the following new parameters:");
     for (const param of paramsDiffAdditions) {
-      const chosenValue = await askUserForParam.askForParam(param);
+      const chosenValue = await askUserForParam.askForParam(
+        args.projectId,
+        args.instanceId,
+        param,
+        false
+      );
       args.currentParams[param.param] = chosenValue;
     }
   }
@@ -189,7 +203,6 @@ export function getParamsFromFile(args: {
   projectId: string;
   paramSpecs: extensionsApi.Param[];
   paramsEnvPath: string;
-  noninteractive?: boolean;
 }): Record<string, string> {
   let envParams;
   try {
@@ -207,5 +220,13 @@ export function getParamsFromFile(args: {
 
 export function readEnvFile(envPath: string) {
   const buf = fs.readFileSync(path.resolve(envPath), "utf8");
-  return dotenv.parse(buf.toString().trim(), { debug: true });
+  const result = env.parse(buf.toString().trim());
+  if (result.errors.length) {
+    throw new FirebaseError(
+      `Error while parsing ${envPath} - unable to parse following lines:\n${result.errors.join(
+        "\n"
+      )}`
+    );
+  }
+  return result.envs;
 }

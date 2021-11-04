@@ -2,9 +2,10 @@ import { expect } from "chai";
 import * as _ from "lodash";
 import * as nock from "nock";
 
-import * as cloudscheduler from "../../gcp/cloudscheduler";
 import { FirebaseError } from "../../error";
 import * as api from "../../api";
+import * as backend from "../../deploy/functions/backend";
+import * as cloudscheduler from "../../gcp/cloudscheduler";
 
 const VERSION = "v1beta1";
 
@@ -119,20 +120,20 @@ describe("cloudscheduler", () => {
     });
   });
 
-  describe("toJob", () => {
-    const SCHEDULE = {
-      id: "firebase-schedule-id-region",
+  describe("jobFromEndpoint", () => {
+    const ENDPOINT: backend.Endpoint = {
+      platform: "gcfv1",
+      id: "id",
+      region: "region",
       project: "project",
-      schedule: "every 1 minutes",
-      transport: "pubsub" as any,
-      targetService: {
-        id: "id",
-        region: "region",
-        project: "project",
+      entryPoint: "id",
+      runtime: "nodejs16",
+      scheduleTrigger: {
+        schedule: "every 1 minutes",
       },
     };
     it("should copy minimal fields", () => {
-      expect(cloudscheduler.jobFromSpec(SCHEDULE, "appEngineLocation")).to.deep.equal({
+      expect(cloudscheduler.jobFromEndpoint(ENDPOINT, "appEngineLocation")).to.deep.equal({
         name: "projects/project/locations/appEngineLocation/jobs/firebase-schedule-id-region",
         schedule: "every 1 minutes",
         pubsubTarget: {
@@ -146,15 +147,18 @@ describe("cloudscheduler", () => {
 
     it("should copy optional fields", () => {
       expect(
-        cloudscheduler.jobFromSpec(
+        cloudscheduler.jobFromEndpoint(
           {
-            ...SCHEDULE,
-            timeZone: "America/Los_Angeles",
-            retryConfig: {
-              maxDoublings: 2,
-              maxBackoffDuration: "20s",
-              minBackoffDuration: "1s",
-              maxRetryDuration: "60s",
+            ...ENDPOINT,
+            scheduleTrigger: {
+              schedule: "every 1 minutes",
+              timeZone: "America/Los_Angeles",
+              retryConfig: {
+                maxDoublings: 2,
+                maxBackoffDuration: "20s",
+                minBackoffDuration: "1s",
+                maxRetryDuration: "60s",
+              },
             },
           },
           "appEngineLocation"

@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import { FirebaseJwtPayload } from "../../../emulator/auth/operations";
 import { PROVIDER_PASSWORD, SIGNIN_METHOD_EMAIL_LINK } from "../../../emulator/auth/state";
-import { describeAuthEmulator } from "./setup";
+import { describeAuthEmulator, PROJECT_ID } from "./setup";
 import {
   expectStatusCode,
   getAccountInfoByIdToken,
@@ -21,6 +21,7 @@ import {
   TEST_MFA_INFO,
   enrollPhoneMfa,
   getAccountInfoByLocalId,
+  registerTenant,
 } from "./helpers";
 
 // Many JWT fields from IDPs use snake_case and we need to match that.
@@ -918,5 +919,91 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
           .to.have.property("message")
           .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
       });
+  });
+
+  it("should error if auth is disabled", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: true });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+      .query({ key: "fake-api-key" })
+      .send({ tenantId: tenant.tenantId })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.include("PROJECT_DISABLED");
+      });
+  });
+
+  it("should create a new account with tenantId", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: false });
+
+    const localId = await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+      .query({ key: "fake-api-key" })
+      .send({
+        postBody: `providerId=google.com&id_token=${FAKE_GOOGLE_ACCOUNT.idToken}`,
+        requestUri: "http://localhost",
+        returnIdpCredential: true,
+        returnSecureToken: true,
+        tenantId: tenant.tenantId,
+      })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.tenantId).to.eql(tenant.tenantId);
+        return res.body.localId;
+      });
+
+    const user = await getAccountInfoByLocalId(authApi(), localId, tenant.tenantId);
+    expect(user.tenantId).to.eql(tenant.tenantId);
+  });
+
+  it("should return pending credential for MFA-enabled user and enabled on tenant project", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, {
+      disableAuth: false,
+      mfaConfig: {
+        state: "ENABLED",
+        enabledProviders: ["PHONE_SMS"],
+      },
+    });
+    const claims = fakeClaims({
+      sub: "123456789012345678901",
+      name: "Foo",
+      email: "foo@example.com",
+      email_verified: true,
+    });
+    const { idToken, localId } = await signInWithFakeClaims(
+      authApi(),
+      "google.com",
+      claims,
+      tenant.tenantId
+    );
+    await enrollPhoneMfa(authApi(), idToken, TEST_PHONE_NUMBER, tenant.tenantId);
+    const beforeSignIn = await getAccountInfoByLocalId(authApi(), localId, tenant.tenantId);
+
+    getClock().tick(3333);
+
+    const fakeIdToken = JSON.stringify(claims);
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+      .query({ key: "fake-api-key" })
+      .send({
+        postBody: `providerId=google.com&id_token=${encodeURIComponent(fakeIdToken)}`,
+        requestUri: "http://localhost",
+        returnIdpCredential: true,
+        tenantId: tenant.tenantId,
+      })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body).not.to.have.property("idToken");
+        expect(res.body).not.to.have.property("refreshToken");
+        const mfaPendingCredential = res.body.mfaPendingCredential as string;
+        expect(mfaPendingCredential).to.be.a("string");
+        expect(res.body.mfaInfo).to.be.an("array").with.lengthOf(1);
+      });
+
+    // Login / refresh timestamps should not change until MFA was successful.
+    const afterFirstFactor = await getAccountInfoByLocalId(authApi(), localId, tenant.tenantId);
+    expect(afterFirstFactor.lastLoginAt).to.equal(beforeSignIn.lastLoginAt);
+    expect(afterFirstFactor.lastRefreshAt).to.equal(beforeSignIn.lastRefreshAt);
   });
 });

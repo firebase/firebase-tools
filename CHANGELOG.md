@@ -1,4 +1,3 @@
-- `ext:dev:publish` and `ext:update` now support --force and --non-interactive flags.
-- Fixes issue where account specified by `login:use` was not being correctly loaded (#3759).
-- Fixes minor layout issues in Auth Emulator IDP sign-in page (#3774).
 - Improves remoteconfig:get and remoteconfig:versions:list when no version exists or is specified (#3628)
+- Adds `firebase ext:export` command, and adds `extensions` to `firebase deploy`. See https://firebase.google.com/docs/extensions/reuse-project-config for more infomation on how to manage your extensions with these commands.
+- Fixes issue where `init` would crash with multiple Hosting items selected (#3742).

@@ -2,13 +2,14 @@ import { expect } from "chai";
 import { decode as decodeJwt, sign as signJwt, JwtHeader } from "jsonwebtoken";
 import { FirebaseJwtPayload, CUSTOM_TOKEN_AUDIENCE } from "../../../emulator/auth/operations";
 import { PROVIDER_CUSTOM } from "../../../emulator/auth/state";
-import { describeAuthEmulator } from "./setup";
+import { describeAuthEmulator, PROJECT_ID } from "./setup";
 import {
   expectStatusCode,
   getAccountInfoByIdToken,
   updateAccountByLocalId,
   signInWithEmailLink,
   updateProjectConfig,
+  registerTenant,
 } from "./helpers";
 
 describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
@@ -270,5 +271,72 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
         expectStatusCode(400, res);
         expect(res.body.error).to.have.property("message").equal("USER_DISABLED");
       });
+  });
+
+  it("should error if auth is disabled", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: true });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken")
+      .query({ key: "fake-api-key" })
+      .send({
+        tenantId: tenant.tenantId,
+      })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("PROJECT_DISABLED");
+      });
+  });
+
+  it("should error if custom token tenantId does not match", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: false });
+    const uid = "someuid";
+    const claims = { abc: "def", ultimate: { answer: 42 } };
+    const token = signJwt({ uid, claims, tenant_id: "not-matching-tenant-id" }, "", {
+      algorithm: "none",
+      expiresIn: 3600,
+
+      subject: "fake-service-account@example.com",
+      issuer: "fake-service-account@example.com",
+      audience: CUSTOM_TOKEN_AUDIENCE,
+    });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken")
+      .query({ key: "fake-api-key" })
+      .send({ token, tenantId: tenant.tenantId })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.include("TENANT_ID_MISMATCH");
+      });
+  });
+
+  it("should create a new account from custom token with tenantId", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: false });
+    const uid = "someuid";
+    const claims = { abc: "def", ultimate: { answer: 42 } };
+    const token = signJwt({ uid, claims, tenant_id: tenant.tenantId }, "", {
+      algorithm: "none",
+      expiresIn: 3600,
+
+      subject: "fake-service-account@example.com",
+      issuer: "fake-service-account@example.com",
+      audience: CUSTOM_TOKEN_AUDIENCE,
+    });
+
+    const idToken = await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken")
+      .query({ key: "fake-api-key" })
+      .send({ token, tenantId: tenant.tenantId })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.isNewUser).to.equal(true);
+        expect(res.body).to.have.property("refreshToken").that.is.a("string");
+
+        return res.body.idToken as string;
+      });
+
+    const info = await getAccountInfoByIdToken(authApi(), idToken, tenant.tenantId);
+    expect(info.tenantId).to.equal(tenant.tenantId);
   });
 });

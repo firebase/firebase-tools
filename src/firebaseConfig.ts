@@ -161,6 +161,8 @@ export type EmulatorsConfig = {
   };
 };
 
+export type ExtensionsConfig = Record<string, string>;
+
 export type FirebaseConfig = {
   database?: DatabaseConfig;
   firestore?: FirestoreConfig;
@@ -169,4 +171,5 @@ export type FirebaseConfig = {
   storage?: StorageConfig;
   remoteconfig?: RemoteConfigConfig;
   emulators?: EmulatorsConfig;
+  extensions?: ExtensionsConfig;
 };

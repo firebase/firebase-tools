@@ -1,6 +1,12 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "additionalProperties": false,
+    "definitions": {
+        "ExtensionsConfig": {
+            "additionalProperties": false,
+            "type": "object"
+        }
+    },
     "properties": {
         "database": {
             "anyOf": [
@@ -272,6 +278,9 @@
                 }
             },
             "type": "object"
+        },
+        "extensions": {
+            "$ref": "#/definitions/ExtensionsConfig"
         },
         "firestore": {
             "additionalProperties": false,

@@ -14,6 +14,7 @@ import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { needProjectId } from "../projectUtils";
 import * as extensionsApi from "../extensions/extensionsApi";
+import * as secretsUtils from "../extensions/secretsUtils";
 import * as provisioningHelper from "../extensions/provisioningHelper";
 import * as refs from "../extensions/refs";
 import { displayWarningPrompts } from "../extensions/warnings";
@@ -70,7 +71,8 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
   try {
     await provisioningHelper.checkProductsProvisioned(projectId, spec);
 
-    if (spec.billingRequired) {
+    const usesSecrets = secretsUtils.usesSecrets(spec);
+    if (spec.billingRequired || usesSecrets) {
       const enabled = await checkBillingEnabled(projectId);
       if (!enabled && nonInteractive) {
         throw new FirebaseError(
@@ -81,11 +83,31 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
         );
       } else if (!enabled) {
         await displayNode10CreateBillingNotice(spec, false);
-        await enableBilling(projectId, spec.displayName || spec.name);
+        await enableBilling(projectId);
       } else {
         await displayNode10CreateBillingNotice(spec, !nonInteractive);
       }
     }
+    const apis = spec.apis || [];
+    if (usesSecrets) {
+      apis.push({
+        apiName: "secretmanager.googleapis.com",
+        reason: `To access and manage secrets which are used by this extension. By using this product you agree to the terms and conditions of the following license: https://console.cloud.google.com/tos?id=cloud&project=${projectId}`,
+      });
+    }
+    if (apis.length) {
+      askUserForConsent.displayApis(spec.displayName || spec.name, projectId, apis);
+      const consented = await confirm({ nonInteractive, force, default: true });
+      if (!consented) {
+        throw new FirebaseError(
+          "Without explicit consent for the APIs listed, we cannot deploy this extension."
+        );
+      }
+    }
+    if (usesSecrets) {
+      await secretsUtils.ensureSecretManagerApiEnabled(options);
+    }
+
     const roles = spec.roles ? spec.roles.map((role: extensionsApi.Role) => role.role) : [];
     if (roles.length) {
       await askUserForConsent.displayRoles(spec.displayName || spec.name, projectId, roles);
@@ -125,6 +147,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
           paramSpecs: spec.params,
           nonInteractive,
           paramsEnvPath,
+          instanceId,
         });
         spinner.text = "Installing your extension instance. This usually takes 3 to 5 minutes...";
         spinner.start();
@@ -148,6 +171,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
           paramSpecs: spec.params,
           nonInteractive,
           paramsEnvPath,
+          instanceId,
         });
         spinner.text = "Updating your extension instance. This usually takes 3 to 5 minutes...";
         spinner.start();
@@ -233,7 +257,7 @@ async function infoInstallByReference(
   }
   const extVersion = await extensionsApi.getExtensionVersion(extensionName);
   displayExtInfo(extensionName, ref.publisherId, extVersion.spec, true);
-  displayWarningPrompts(ref.publisherId, extension.registryLaunchStage, extVersion);
+  await displayWarningPrompts(ref.publisherId, extension.registryLaunchStage, extVersion);
   return extVersion;
 }
 

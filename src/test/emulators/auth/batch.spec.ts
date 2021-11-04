@@ -18,6 +18,7 @@ import {
   TEST_PHONE_NUMBER,
   updateAccountByLocalId,
   updateProjectConfig,
+  registerTenant,
 } from "./helpers";
 import { UserInfo } from "../../../emulator/auth/state";
 
@@ -162,6 +163,20 @@ describeAuthEmulator("accounts:batchGet", ({ authApi }) => {
         // Empty page with no page token returned.
         expect(res.body.users || []).to.have.length(0);
         expect(res.body).not.to.have.property("nextPageToken");
+      });
+  });
+
+  it("should error if auth is disabled", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: true });
+
+    await authApi()
+      .get(
+        `/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/tenants/${tenant.tenantId}/accounts:batchGet`
+      )
+      .set("Authorization", "Bearer owner")
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").includes("PROJECT_DISABLED");
       });
   });
 });
@@ -627,6 +642,61 @@ describeAuthEmulator("accounts:batchCreate", ({ authApi }) => {
           .to.have.property("message")
           .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
       });
+  });
+
+  it("should error if auth is disabled", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: true });
+
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:batchCreate`)
+      .set("Authorization", "Bearer owner")
+      .send({ tenantId: tenant.tenantId })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").includes("PROJECT_DISABLED");
+      });
+  });
+
+  it("should error if user tenantId does not match state tenantId", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: false });
+
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:batchCreate`)
+      .set("Authorization", "Bearer owner")
+      .send({
+        tenantId: tenant.tenantId,
+        users: [{ localId: "test1", tenantId: "not-matching-tenant-id" }],
+      })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.error).eql([
+          {
+            index: 0,
+            message: "Tenant id in userInfo does not match the tenant id in request.",
+          },
+        ]);
+      });
+  });
+
+  it("should create users with tenantId if present", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: false });
+    const user = {
+      localId: "foo",
+      email: "me@example.com",
+      rawPassword: "notasecret",
+    };
+
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:batchCreate`)
+      .set("Authorization", "Bearer owner")
+      .send({ tenantId: tenant.tenantId, users: [user] })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.error || []).to.have.length(0);
+      });
+
+    const userInfo = await getAccountInfoByLocalId(authApi(), user.localId, tenant.tenantId);
+    expect(userInfo.tenantId).to.eql(tenant.tenantId);
   });
 });
 

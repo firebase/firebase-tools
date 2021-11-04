@@ -11,6 +11,7 @@ import { displayNode10UpdateBillingNotice } from "../extensions/billingMigration
 import { enableBilling } from "../extensions/checkProjectBilling";
 import { checkBillingEnabled } from "../gcp/cloudbilling";
 import * as extensionsApi from "../extensions/extensionsApi";
+import * as secretsUtils from "../extensions/secretsUtils";
 import * as provisioningHelper from "../extensions/provisioningHelper";
 import {
   ensureExtensionsApiEnabled,
@@ -210,7 +211,8 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
 
       await provisioningHelper.checkProductsProvisioned(projectId, newSpec);
 
-      if (newSpec.billingRequired) {
+      const usesSecrets = secretsUtils.usesSecrets(newSpec);
+      if (newSpec.billingRequired || usesSecrets) {
         const enabled = await checkBillingEnabled(projectId);
         displayNode10UpdateBillingNotice(existingSpec, newSpec);
         if (
@@ -224,7 +226,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         }
         if (!enabled) {
           if (!options.nonInteractive) {
-            await enableBilling(projectId, instanceId);
+            await enableBilling(projectId);
           } else {
             throw new FirebaseError(
               "The extension requires your project to be upgraded to the Blaze plan. " +
@@ -235,7 +237,12 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
             );
           }
         }
+        if (usesSecrets) {
+          await secretsUtils.ensureSecretManagerApiEnabled(options);
+        }
       }
+      // make a copy of existingParams -- they get overridden by paramHelper.getParamsForUpdate
+      const oldParamValues = { ...existingParams };
       const newParams = await paramHelper.getParamsForUpdate({
         spec: existingSpec,
         newSpec,
@@ -243,6 +250,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         projectId,
         paramsEnvPath: options.params,
         nonInteractive: options.nonInteractive,
+        instanceId,
       });
       spinner.start();
       const updateOptions: UpdateOptions = {
@@ -254,7 +262,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
       } else {
         updateOptions.source = newSource;
       }
-      if (!_.isEqual(newParams, existingParams)) {
+      if (!_.isEqual(newParams, oldParamValues)) {
         updateOptions.params = newParams;
       }
       await update(updateOptions);

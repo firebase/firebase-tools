@@ -4,7 +4,6 @@ import * as nock from "nock";
 
 import * as api from "../../api";
 import { FirebaseError } from "../../error";
-
 import * as extensionsApi from "../../extensions/extensionsApi";
 
 const VERSION = "v1beta";
@@ -213,6 +212,7 @@ describe("extensions", () => {
     it("should make a POST call to the correct endpoint, and then poll on the returned operation when given a source", async () => {
       nock(api.extensionsOrigin)
         .post(`/${VERSION}/projects/${PROJECT_ID}/instances/`)
+        .query({ validateOnly: "false" })
         .reply(200, { name: "operations/abc123" });
       nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
 
@@ -234,6 +234,7 @@ describe("extensions", () => {
     it("should make a POST call to the correct endpoint, and then poll on the returned operation when given an Extension ref", async () => {
       nock(api.extensionsOrigin)
         .post(`/${VERSION}/projects/${PROJECT_ID}/instances/`)
+        .query({ validateOnly: "false" })
         .reply(200, { name: "operations/abc123" });
       nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
 
@@ -246,8 +247,27 @@ describe("extensions", () => {
       expect(nock.isDone()).to.be.true;
     });
 
+    it("should make a POST and not poll if validateOnly=true", async () => {
+      nock(api.extensionsOrigin)
+        .post(`/${VERSION}/projects/${PROJECT_ID}/instances/`)
+        .query({ validateOnly: "true" })
+        .reply(200, { name: "operations/abc123", done: true });
+
+      await extensionsApi.createInstance({
+        projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
+        extensionVersionRef: "test-pub/test-ext@0.1.0",
+        params: {},
+        validateOnly: true,
+      });
+      expect(nock.isDone()).to.be.true;
+    });
+
     it("should throw a FirebaseError if create returns an error response", async () => {
-      nock(api.extensionsOrigin).post(`/${VERSION}/projects/${PROJECT_ID}/instances/`).reply(500);
+      nock(api.extensionsOrigin)
+        .post(`/${VERSION}/projects/${PROJECT_ID}/instances/`)
+        .query({ validateOnly: "false" })
+        .reply(500);
 
       await expect(
         extensionsApi.createInstance({
@@ -282,7 +302,7 @@ describe("extensions", () => {
     it("should make a PATCH call to the correct endpoint, and then poll on the returned operation", async () => {
       nock(api.extensionsOrigin)
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
-        .query({ updateMask: "config.params" })
+        .query({ updateMask: "config.params", validateOnly: "false" })
         .reply(200, { name: "operations/abc123" });
       nock(api.extensionsOrigin)
         .get(`/${VERSION}/operations/abc123`)
@@ -290,18 +310,41 @@ describe("extensions", () => {
         .get(`/${VERSION}/operations/abc123`)
         .reply(200, { done: true });
 
-      await extensionsApi.configureInstance(PROJECT_ID, INSTANCE_ID, { MY_PARAM: "value" });
+      await extensionsApi.configureInstance({
+        projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
+        params: { MY_PARAM: "value" },
+      });
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should make a PATCH and not poll if validateOnly=true", async () => {
+      nock(api.extensionsOrigin)
+        .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
+        .query({ updateMask: "config.params", validateOnly: "true" })
+        .reply(200, { name: "operations/abc123", done: true });
+
+      await extensionsApi.configureInstance({
+        projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
+        params: { MY_PARAM: "value" },
+        validateOnly: true,
+      });
       expect(nock.isDone()).to.be.true;
     });
 
     it("should throw a FirebaseError if update returns an error response", async () => {
       nock(api.extensionsOrigin)
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
-        .query({ updateMask: "config.params" })
+        .query({ updateMask: "config.params", validateOnly: false })
         .reply(500);
 
       await expect(
-        extensionsApi.configureInstance(PROJECT_ID, INSTANCE_ID, { MY_PARAM: "value" })
+        extensionsApi.configureInstance({
+          projectId: PROJECT_ID,
+          instanceId: INSTANCE_ID,
+          params: { MY_PARAM: "value" },
+        })
       ).to.be.rejectedWith(FirebaseError, "HTTP Error: 500");
       expect(nock.isDone()).to.be.true;
     });
@@ -355,12 +398,17 @@ describe("extensions", () => {
     it("should include config.param in updateMask is params are changed", async () => {
       nock(api.extensionsOrigin)
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
-        .query({ updateMask: "config.source.name,config.params" })
+        .query({ updateMask: "config.source.name,config.params", validateOnly: "false" })
         .reply(200, { name: "operations/abc123" });
       nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
 
-      await extensionsApi.updateInstance(PROJECT_ID, INSTANCE_ID, testSource, {
-        MY_PARAM: "value",
+      await extensionsApi.updateInstance({
+        projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
+        extensionSource: testSource,
+        params: {
+          MY_PARAM: "value",
+        },
       });
 
       expect(nock.isDone()).to.be.true;
@@ -369,23 +417,64 @@ describe("extensions", () => {
     it("should not include config.param in updateMask is params aren't changed", async () => {
       nock(api.extensionsOrigin)
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
-        .query({ updateMask: "config.source.name" })
+        .query({ updateMask: "config.source.name", validateOnly: "false" })
         .reply(200, { name: "operations/abc123" });
       nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
 
-      await extensionsApi.updateInstance(PROJECT_ID, INSTANCE_ID, testSource);
+      await extensionsApi.updateInstance({
+        projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
+        extensionSource: testSource,
+      });
 
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should make a PATCH and not poll if validateOnly=true", async () => {
+      nock(api.extensionsOrigin)
+        .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
+        .query({ updateMask: "config.source.name", validateOnly: "true" })
+        .reply(200, { name: "operations/abc123", done: true });
+
+      await extensionsApi.updateInstance({
+        projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
+        extensionSource: testSource,
+        validateOnly: true,
+      });
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should make a PATCH and not poll if validateOnly=true", async () => {
+      nock(api.extensionsOrigin)
+        .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
+        .query({ updateMask: "config.source.name", validateOnly: "true" })
+        .reply(200, { name: "operations/abc123", done: true });
+
+      await extensionsApi.updateInstance({
+        projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
+        extensionSource: testSource,
+        validateOnly: true,
+      });
       expect(nock.isDone()).to.be.true;
     });
 
     it("should throw a FirebaseError if update returns an error response", async () => {
       nock(api.extensionsOrigin)
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
-        .query({ updateMask: "config.source.name,config.params" })
+        .query({ updateMask: "config.source.name,config.params", validateOnly: false })
         .reply(500);
 
       await expect(
-        extensionsApi.updateInstance(PROJECT_ID, INSTANCE_ID, testSource, { MY_PARAM: "value" })
+        extensionsApi.updateInstance({
+          projectId: PROJECT_ID,
+          instanceId: INSTANCE_ID,
+          extensionSource: testSource,
+          params: {
+            MY_PARAM: "value",
+          },
+        })
       ).to.be.rejectedWith(FirebaseError, "HTTP Error: 500");
 
       expect(nock.isDone()).to.be.true;

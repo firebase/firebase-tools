@@ -189,6 +189,11 @@ module.exports = new Command("init [feature]")
           setup.features.unshift("account");
         }
 
+        // "hosting:github" is a part of "hosting", so if both are selected, "hosting:github" is ignored.
+        if (setup.features.includes("hosting") && setup.features.includes("hosting:github")) {
+          setup.features = setup.features.filter((f) => f != "hosting:github");
+        }
+
         return init(setup, config, options);
       })
       .then(function () {
