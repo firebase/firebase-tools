@@ -1,7 +1,6 @@
 import * as express from "express";
 import { RemoteConfigEmulator } from "./index";
 import * as cors from "cors";
-import { cloneDeep } from "lodash";
 
 /**
  * @param defaultProjectId
@@ -13,7 +12,6 @@ export function createApp(
 ): Promise<express.Express> {
   const app = express();
   app.use(cors("*" as any));
-  app.use(express.json());
 
   // Test SDK endpoint
   app.get("/", (req, res) => {
@@ -42,7 +40,7 @@ export function createApp(
     }
   });
 
-  app.put("/v1/projects/:projectId/remoteConfig", (req, res) => {
+  app.put("/v1/projects/:projectId/remoteConfig", express.json({ inflate: false }), (req, res) => {
     // TODO(kroikie): validate incoming template
     // Set incoming template as emulator template.
     emulator.template = emulator.prepareEmulatorTemplate(req.body);
