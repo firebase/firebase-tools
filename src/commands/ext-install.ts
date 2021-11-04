@@ -83,7 +83,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
         );
       } else if (!enabled) {
         await displayNode10CreateBillingNotice(spec, false);
-        await enableBilling(projectId, spec.displayName || spec.name);
+        await enableBilling(projectId);
       } else {
         await displayNode10CreateBillingNotice(spec, !nonInteractive);
       }

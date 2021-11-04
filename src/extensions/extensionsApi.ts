@@ -173,7 +173,8 @@ export interface ParamOption {
 async function createInstanceHelper(
   projectId: string,
   instanceId: string,
-  config: any
+  config: any,
+  validateOnly: boolean = false
 ): Promise<ExtensionInstance> {
   const createRes = await api.request("POST", `/${VERSION}/projects/${projectId}/instances/`, {
     auth: true,
@@ -182,7 +183,13 @@ async function createInstanceHelper(
       name: `projects/${projectId}/instances/${instanceId}`,
       config: config,
     },
+    query: {
+      validateOnly,
+    },
   });
+  if (validateOnly) {
+    return createRes;
+  }
   const pollRes = await operationPoller.pollOperation<ExtensionInstance>({
     apiOrigin: api.extensionsOrigin,
     apiVersion: VERSION,
@@ -199,6 +206,7 @@ async function createInstanceHelper(
  * @param instanceId the id to set for the instance
  * @param extensionSource the ExtensionSource to create an instance of
  * @param params params to configure the extension instance
+ * @param validateOnly if true, only validates the update and makes no changes
  */
 export async function createInstance(args: {
   projectId: string;
@@ -206,6 +214,7 @@ export async function createInstance(args: {
   extensionSource?: ExtensionSource;
   extensionVersionRef?: string;
   params: { [key: string]: string };
+  validateOnly?: boolean;
 }): Promise<ExtensionInstance> {
   const config: any = {
     params: args.params,
@@ -224,7 +233,7 @@ export async function createInstance(args: {
   } else {
     throw new FirebaseError("No ExtensionVersion or ExtensionSource provided but one is required.");
   }
-  return createInstanceHelper(args.projectId, args.instanceId, config);
+  return createInstanceHelper(args.projectId, args.instanceId, config, args.validateOnly);
 }
 
 /**
@@ -309,15 +318,23 @@ export async function listInstances(projectId: string): Promise<ExtensionInstanc
  * @param projectId the project the instance is in
  * @param instanceId the id of the instance to configure
  * @param params params to configure the extension instance
+ * @param validateOnly if true, only validates the update and makes no changes
  */
-export async function configureInstance(
-  projectId: string,
-  instanceId: string,
-  params: { [option: string]: string }
-): Promise<any> {
-  const res = await patchInstance(projectId, instanceId, "config.params", {
-    config: {
-      params,
+export async function configureInstance(args: {
+  projectId: string;
+  instanceId: string;
+  params: { [option: string]: string };
+  validateOnly?: boolean;
+}): Promise<any> {
+  const res = await patchInstance({
+    projectId: args.projectId,
+    instanceId: args.instanceId,
+    updateMask: "config.params",
+    validateOnly: args.validateOnly ?? false,
+    data: {
+      config: {
+        params: args.params,
+      },
     },
   });
   return res;
@@ -330,24 +347,32 @@ export async function configureInstance(
  * @param instanceId the id of the instance to configure
  * @param extensionSource the source for the version of the extension to update to
  * @param params params to configure the extension instance
+ * @param validateOnly if true, only validates the update and makes no changes
  */
-export async function updateInstance(
-  projectId: string,
-  instanceId: string,
-  extensionSource: ExtensionSource,
-  params?: { [option: string]: string }
-): Promise<any> {
+export async function updateInstance(args: {
+  projectId: string;
+  instanceId: string;
+  extensionSource: ExtensionSource;
+  params?: { [option: string]: string };
+  validateOnly?: boolean;
+}): Promise<any> {
   const body: any = {
     config: {
-      source: { name: extensionSource.name },
+      source: { name: args.extensionSource.name },
     },
   };
   let updateMask = "config.source.name";
-  if (params) {
-    body.config.params = params;
+  if (args.params) {
+    body.config.params = args.params;
     updateMask += ",config.params";
   }
-  return await patchInstance(projectId, instanceId, updateMask, body);
+  return await patchInstance({
+    projectId: args.projectId,
+    instanceId: args.instanceId,
+    updateMask,
+    validateOnly: args.validateOnly ?? false,
+    data: body,
+  });
 }
 
 /**
@@ -357,14 +382,16 @@ export async function updateInstance(
  * @param instanceId the id of the instance to configure
  * @param extRef reference for the extension to update to
  * @param params params to configure the extension instance
+ * @param validateOnly if true, only validates the update and makes no changes
  */
-export async function updateInstanceFromRegistry(
-  projectId: string,
-  instanceId: string,
-  extRef: string,
-  params?: { [option: string]: string }
-): Promise<any> {
-  const ref = refs.parse(extRef);
+export async function updateInstanceFromRegistry(args: {
+  projectId: string;
+  instanceId: string;
+  extRef: string;
+  params?: { [option: string]: string };
+  validateOnly?: boolean;
+}): Promise<any> {
+  const ref = refs.parse(args.extRef);
   const body: any = {
     config: {
       extensionRef: refs.toExtensionRef(ref),
@@ -372,31 +399,42 @@ export async function updateInstanceFromRegistry(
     },
   };
   let updateMask = "config.extension_ref,config.extension_version";
-  if (params) {
-    body.config.params = params;
+  if (args.params) {
+    body.config.params = args.params;
     updateMask += ",config.params";
   }
-  return await patchInstance(projectId, instanceId, updateMask, body);
+  return await patchInstance({
+    projectId: args.projectId,
+    instanceId: args.instanceId,
+    updateMask,
+    validateOnly: args.validateOnly ?? false,
+    data: body,
+  });
 }
 
-async function patchInstance(
-  projectId: string,
-  instanceId: string,
-  updateMask: string,
-  data: any
-): Promise<any> {
+async function patchInstance(args: {
+  projectId: string;
+  instanceId: string;
+  updateMask: string;
+  validateOnly: boolean;
+  data: any;
+}): Promise<any> {
   const updateRes = await api.request(
     "PATCH",
-    `/${VERSION}/projects/${projectId}/instances/${instanceId}`,
+    `/${VERSION}/projects/${args.projectId}/instances/${args.instanceId}`,
     {
       auth: true,
       origin: api.extensionsOrigin,
       query: {
-        updateMask,
+        updateMask: args.updateMask,
+        validateOnly: args.validateOnly,
       },
-      data,
+      data: args.data,
     }
   );
+  if (args.validateOnly) {
+    return updateRes;
+  }
   const pollRes = await operationPoller.pollOperation({
     apiOrigin: api.extensionsOrigin,
     apiVersion: VERSION,
