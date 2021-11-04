@@ -8,6 +8,7 @@ function extensionVersion(version: string): extensionsApi.ExtensionVersion {
   return {
     name: `publishers/test/extensions/test/versions/${version}`,
     ref: `test/test@${version}`,
+    state: "PUBLISHED",
     hash: "abc123",
     sourceDownloadUri: "https://google.com",
     spec: {
