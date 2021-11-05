@@ -505,7 +505,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         );
         continue;
       }
-      
+
       let added = false;
       let url: string | undefined = undefined;
 

@@ -156,7 +156,7 @@ export function emulatedFunctionsByRegion(
       defDeepCopy.regions = [region];
       defDeepCopy.region = region;
       defDeepCopy.id = `${region}-${defDeepCopy.name}`;
-      defDeepCopy.platform = defDeepCopy.platform || 'gcfv1';
+      defDeepCopy.platform = defDeepCopy.platform || "gcfv1";
 
       regionDefinitions.push(defDeepCopy);
     }
