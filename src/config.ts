@@ -26,6 +26,7 @@ export class Config {
   static MATERIALIZE_TARGETS: Array<keyof FirebaseConfig> = [
     "database",
     "emulators",
+    "extensions",
     "firestore",
     "functions",
     "hosting",
@@ -202,10 +203,10 @@ export class Config {
     fs.writeFileSync(this.path(p), content, "utf8");
   }
 
-  askWriteProjectFile(p: string, content: any) {
+  askWriteProjectFile(p: string, content: any, force?: boolean) {
     const writeTo = this.path(p);
     let next;
-    if (fsutils.fileExistsSync(writeTo)) {
+    if (fsutils.fileExistsSync(writeTo) && !force) {
       next = promptOnce({
         type: "confirm",
         message: "File " + clc.underline(p) + " already exists. Overwrite?",
