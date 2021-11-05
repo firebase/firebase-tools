@@ -55,6 +55,7 @@ import {
 } from "./adminSdkConfig";
 import * as functionsEnv from "../functions/env";
 import { EventUtils } from "./events/types";
+import { functionIdsAreValid } from "../deploy/functions/validate";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -493,6 +494,18 @@ export class FunctionsEmulator implements EmulatorInstance {
     });
 
     for (const definition of toSetup) {
+      // Skip function with invalid id.
+      try {
+        functionIdsAreValid([definition]);
+      } catch (e) {
+        this.logger.logLabeled(
+          "WARN",
+          `functions[${definition.id}]`,
+          `Invalid function id: ${e.message}`
+        );
+        continue;
+      }
+      
       let added = false;
       let url: string | undefined = undefined;
 
@@ -1290,6 +1303,9 @@ export class FunctionsEmulator implements EmulatorInstance {
         socketPath: worker.lastArgs.frb.socketPath,
       },
       (runtimeRes: http.IncomingMessage) => {
+        /**
+         *
+         */
         function forwardStatusAndHeaders(): void {
           res.status(runtimeRes.statusCode || 200);
           if (!res.headersSent) {
