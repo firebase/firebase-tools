@@ -1,7 +1,6 @@
 import * as express from "express";
 import { RemoteConfigEmulator } from "./index";
 import * as cors from "cors";
-import {cloneDeep} from "lodash";
 
 /**
  * @param defaultProjectId
@@ -37,33 +36,18 @@ export function createApp(
       res.json(emulator.template);
     } else {
       // extract !isEmulator conditional value
-      res.json(extractEmulator(emulator.template));
+      res.json(RemoteConfigEmulator.extractEmulator(emulator.template));
     }
   });
 
   app.put("/v1/projects/:projectId/remoteConfig", express.json({ inflate: false }), (req, res) => {
     // TODO(kroikie): validate incoming template
     // Set incoming template as emulator template.
-    emulator.template = emulator.prepareEmulatorTemplate(req.body);
+    emulator.template = RemoteConfigEmulator.prepareEmulatorTemplate(req.body);
     res.status(200).send("OK");
   });
 
   return Promise.resolve(app);
-}
-
-function extractEmulator(emulatorTemplate: any): any {
-  const nonEmulatorTemplate = cloneDeep(emulatorTemplate);
-  const emulatorParameters = nonEmulatorTemplate["parameters"] || {};
-  for (const parameterName of Object.keys(emulatorParameters)) {
-    const emulatorParameter = emulatorParameters[parameterName];
-    const conditionalValues = emulatorParameter["conditionalValues"];
-    if (Object.values(conditionalValues).length > 1) {
-      delete conditionalValues["!isEmulator"];
-    } else {
-      delete emulatorParameter["conditionalValues"];
-    }
-  }
-  return nonEmulatorTemplate;
 }
 
 function generateClientResponse(template: any): any {

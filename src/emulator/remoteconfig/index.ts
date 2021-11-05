@@ -94,7 +94,9 @@ export class RemoteConfigEmulator implements EmulatorInstance {
   }
 
   private loadTemplate(source?: Source): void {
-    this._emulatorTemplate = this.prepareEmulatorTemplate(JSON.parse(source!.files[0].content));
+    this._emulatorTemplate = RemoteConfigEmulator.prepareEmulatorTemplate(
+      JSON.parse(source!.files[0].content)
+    );
   }
 
   /**
@@ -104,7 +106,7 @@ export class RemoteConfigEmulator implements EmulatorInstance {
    *
    * @param template A valid remote config template.
    */
-  public prepareEmulatorTemplate(template: any): any {
+  static prepareEmulatorTemplate(template: any): any {
     const emulatorTemplate = cloneDeep(template);
     const emulatorParameters = emulatorTemplate["parameters"] || {};
     for (const parameterName of Object.keys(emulatorParameters)) {
@@ -125,6 +127,21 @@ export class RemoteConfigEmulator implements EmulatorInstance {
       emulatorParameters[parameterName] = emulatorParameter;
     }
     return emulatorTemplate;
+  }
+
+  static extractEmulator(emulatorTemplate: any): any {
+    const nonEmulatorTemplate = cloneDeep(emulatorTemplate);
+    const emulatorParameters = nonEmulatorTemplate["parameters"] || {};
+    for (const parameterName of Object.keys(emulatorParameters)) {
+      const emulatorParameter = emulatorParameters[parameterName];
+      const conditionalValues = emulatorParameter["conditionalValues"];
+      if (Object.values(conditionalValues).length > 1) {
+        delete conditionalValues["!isEmulator"];
+      } else {
+        delete emulatorParameter["conditionalValues"];
+      }
+    }
+    return nonEmulatorTemplate;
   }
 
   private updateTemplateSource(templateFile: string): void {
