@@ -243,6 +243,60 @@ describe("auth emulator function triggers", () => {
   });
 });
 
+describe("storage emulator function triggers", () => {
+  let test: TriggerEndToEndTest;
+
+  before(async function (this) {
+    this.timeout(TEST_SETUP_TIMEOUT);
+
+    expect(FIREBASE_PROJECT).to.exist.and.not.be.empty;
+
+    const config = readConfig();
+    test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, config);
+    await test.startEmulators(["--only", "functions,storage"]);
+  });
+
+  after(async function (this) {
+    this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
+    await test.stopEmulators();
+  });
+
+  it("should write to the storage emulator", async function (this) {
+    this.timeout(EMULATOR_TEST_TIMEOUT);
+
+    const response = await test.writeToStorage();
+    expect(response.status).to.equal(200);
+    await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+  });
+
+  it("should have triggered cloud functions", () => {
+    // on object create two events fire (finalize & metadata update)
+    expect(test.storageFinalizedTriggerCount).to.equal(1);
+    expect(test.storageMetadataTriggerCount).to.equal(1);
+    expect(test.storageV2FinalizedTriggerCount).to.equal(1);
+    expect(test.storageV2MetadataTriggerCount).to.equal(1);
+  });
+
+  it("should write, update, and delete from the storage emulator", async function (this) {
+    this.timeout(EMULATOR_TEST_TIMEOUT);
+
+    const response = await test.updateDeleteFromStorage();
+    expect(response.status).to.equal(200);
+    await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+  });
+
+  it("should have triggered cloud functions", () => {
+    // on update two events fire (finalize & metadata update)
+    expect(test.storageFinalizedTriggerCount).to.equal(2);
+    expect(test.storageMetadataTriggerCount).to.equal(2);
+    expect(test.storageV2FinalizedTriggerCount).to.equal(2);
+    expect(test.storageV2MetadataTriggerCount).to.equal(2);
+    // on delete one event fires (delete)
+    expect(test.storageDeletedTriggerCount).to.equal(1);
+    expect(test.storageV2DeletedTriggerCount).to.equal(1);
+  });
+});
+
 describe("import/export end to end", () => {
   it("should be able to import/export firestore data", async function (this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);
