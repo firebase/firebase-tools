@@ -123,7 +123,7 @@ describe("TriggerRegionHelper", () => {
       };
 
       await expect(triggerRegionHelper.ensureTriggerRegions(backend.of(wantFn))).to.be.rejectedWith(
-        "Function cannot be deployed outside of the trigger region"
+        "A function in region europe-west4 cannot listen to a bucket in region us"
       );
     });
   });

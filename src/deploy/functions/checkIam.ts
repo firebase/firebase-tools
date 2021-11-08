@@ -3,25 +3,14 @@ import { bold } from "cli-color";
 import { logger } from "../../logger";
 import { getFilterGroups, functionMatchesAnyGroup } from "./functionsDeployHelper";
 import { FirebaseError } from "../../error";
-import { Policy, testIamPermissions, testResourceIamPermissions } from "../../gcp/iam";
+import * as iam from "../../gcp/iam";
 import * as args from "./args";
 import * as backend from "./backend";
 import * as track from "../../track";
 import { Options } from "../../options";
-import * as storage from "../../gcp/storage";
+
 import { getIamPolicy, setIamPolicy } from "../../gcp/resourceManager";
-import { Service, getV2ServiceMapping } from "./eventTypes";
-
-const EVENT_V2_SERVICE_MAPPING = getV2ServiceMapping();
-
-const noop = (): Promise<void> => Promise.resolve();
-
-const ROLES_LOOKUP: Record<Service, (projectId: string) => Promise<void>> = {
-  pubsub: noop,
-  storage: ensureStorageRoles,
-};
-
-const PUBSUB_PUBLISHER_ROLE = "roles/pubsub.publisher";
+import { Service, serviceForEndpoint } from "./services";
 
 const PERMISSION = "cloudfunctions.functions.setIamPolicy";
 
@@ -34,7 +23,7 @@ export async function checkServiceAccountIam(projectId: string): Promise<void> {
   const saEmail = `${projectId}@appspot.gserviceaccount.com`;
   let passed = false;
   try {
-    const iamResult = await testResourceIamPermissions(
+    const iamResult = await iam.testResourceIamPermissions(
       "https://iam.googleapis.com",
       "v1",
       `projects/${projectId}/serviceAccounts/${saEmail}`,
@@ -93,7 +82,7 @@ export async function checkHttpIam(
 
   let passed = true;
   try {
-    const iamResult = await testIamPermissions(context.projectId, [PERMISSION]);
+    const iamResult = await iam.testIamPermissions(context.projectId, [PERMISSION]);
     passed = iamResult.passed;
   } catch (e) {
     logger.debug(
@@ -119,16 +108,12 @@ export async function checkHttpIam(
   logger.debug("[functions] found setIamPolicy permission, proceeding with deploy");
 }
 
-/** Callback function to find all v2 service types in from events */
-function reduceEventsToServicesV2(filtered: Set<Service>, option: backend.Endpoint) {
-  if (
-    option.platform === "gcfv2" &&
-    backend.isEventTriggered(option) &&
-    EVENT_V2_SERVICE_MAPPING[option.eventTrigger.eventType]
-  ) {
-    filtered.add(EVENT_V2_SERVICE_MAPPING[option.eventTrigger.eventType]);
+function reduceEventsToServices(services: Array<Service>, endpoint: backend.Endpoint) {
+  const service = serviceForEndpoint(endpoint);
+  if (!services.find((s) => s.name === service.name)) {
+    services.push(service);
   }
-  return filtered;
+  return services;
 }
 
 /**
@@ -141,79 +126,62 @@ export async function ensureServiceAgentRoles(
   projectId: string,
   want: backend.Backend,
   have: backend.Backend
-) {
-  // find all new v2 events
-  const wantServices = backend
-    .allEndpoints(want)
-    .reduce(reduceEventsToServicesV2, new Set<Service>());
-  const haveServices = backend
-    .allEndpoints(have)
-    .reduce(reduceEventsToServicesV2, new Set<Service>());
-  const newServices = [...wantServices].filter((event) => !haveServices.has(event));
-  // set permissions for the v2 events
-  const ensureCorrectRoles: Array<Promise<void>> = [];
-  for (const service of newServices) {
-    const rolesFn = ROLES_LOOKUP[service];
-    if (!rolesFn) {
-      logger.debug(
-        "Cannot find the correct function mapping that grants roles for ",
-        service,
-        " service."
-      );
-      continue;
-    }
-    ensureCorrectRoles.push(rolesFn(projectId));
+): Promise<void> {
+  // find new services
+  const wantServices = backend.allEndpoints(want).reduce(reduceEventsToServices, []);
+  const haveServices = backend.allEndpoints(have).reduce(reduceEventsToServices, []);
+  const newServices = wantServices.filter(
+    (wantS) => !haveServices.find((haveS) => wantS.name === haveS.name)
+  );
+  if (newServices.length === 0) {
+    return;
   }
-  // TODO(colerogers): When we add another service to enable, check if we also call setIamPolicy,
-  // and update this to await individually, otherwise leave as is
-  await Promise.all(ensureCorrectRoles);
-}
-
-/**
- * Helper function that grants the Cloud Storage service agent a role to access EventArc triggers
- * @param projectId project identifier
- */
-export async function ensureStorageRoles(projectId: string): Promise<void> {
-  let policy: Policy;
+  // get the full project iam policy
+  let policy: iam.Policy;
   try {
     policy = await getIamPolicy(projectId);
   } catch (err) {
     logger.warn(
       "We failed to obtain the IAM policy for the project,",
-      " the storage function deployment might fail if storage service ",
-      "account doesn't have the pubsub.publisher role."
+      " the function deployment might fail if service ",
+      "accounts do not have the correct assigned roles."
     );
     return;
   }
-  const storageResponse = await storage.getServiceAccount(projectId);
-  const storageServiceAgent = `serviceAccount:${storageResponse.email_address}`;
-  let pubsubBinding = policy.bindings.find((b) => b.role === PUBSUB_PUBLISHER_ROLE);
-  if (pubsubBinding && pubsubBinding.members.find((m) => m === storageServiceAgent)) {
-    return; // already have correct role bindings
-  }
-  if (!pubsubBinding) {
-    pubsubBinding = {
-      role: PUBSUB_PUBLISHER_ROLE,
-      members: [],
-    };
-    policy.bindings.push(pubsubBinding);
-  }
-  pubsubBinding.members.push(storageServiceAgent); // add service agent to role
-  try {
-    const newPolicy = await setIamPolicy(projectId, policy, "bindings");
-    if (
-      !newPolicy.bindings.find(
-        (b) => b.role === PUBSUB_PUBLISHER_ROLE && b.members.find((m) => m === storageServiceAgent)
-      )
-    ) {
-      throw new Error(
-        `Could not find the storage service agent under the pubsub role binding in the updated policy.`
-      );
+  // run in parallel all the missingProjectBindings jobs
+  const findUpdatedBindings: Array<Promise<Array<iam.Binding>>> = [];
+  newServices.forEach((service) =>
+    findUpdatedBindings.push(service.missingProjectBindings(projectId, policy))
+  );
+  const allUpdatedBindings = await Promise.all(findUpdatedBindings);
+  // merge all updated bindings into the policy
+  for (const updatedBindings of allUpdatedBindings) {
+    if (updatedBindings.length === 0) {
+      continue;
     }
+    updatedBindings.forEach((updatedBinding) => {
+      const ndx = policy.bindings.findIndex(
+        (policyBinding) => policyBinding.role === updatedBinding.role
+      );
+      if (ndx === -1) {
+        policy.bindings.push(updatedBinding);
+        return;
+      }
+      updatedBinding.members.forEach((updatedMember) => {
+        if (!policy.bindings[ndx].members.find((member) => member === updatedMember)) {
+          policy.bindings[ndx].members.push(updatedMember);
+        }
+      });
+    });
+  }
+  // set the new policy
+  try {
+    await setIamPolicy(projectId, policy, "bindings");
   } catch (err) {
     throw new FirebaseError(
-      `Failed to grant ${storageResponse.email_address} the ${PUBSUB_PUBLISHER_ROLE} permission. ` +
-        "This is necessary to receive Cloud Storage events.",
+      "We failed to modify the IAM policy for the project. The functions " +
+        "deployment requires specific roles to be granted to service agents," +
+        " otherwise the deployment will fail.",
       { original: err }
     );
   }
