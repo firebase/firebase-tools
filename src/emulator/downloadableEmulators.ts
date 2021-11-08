@@ -337,7 +337,7 @@ async function _runBinary(
         logger.logLabeled(
           "WARN",
           emulator.name,
-          "Unsupported java version, make sure java --version reports 1.8 or higher."
+          "Unsupported java version, make sure java -version reports 1.8 or higher."
         );
       }
     });
