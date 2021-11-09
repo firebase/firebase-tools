@@ -6,6 +6,7 @@ var path = require("path");
 
 var npmDependencies = require("./npm-dependencies");
 var { prompt } = require("../../../prompt");
+var utils = require("../../../utils");
 
 var TEMPLATE_ROOT = path.resolve(__dirname, "../../../../templates/init/functions/typescript/");
 var PACKAGE_LINTING_TEMPLATE = fs.readFileSync(
@@ -38,13 +39,13 @@ module.exports = function (setup, config) {
           'npm --prefix "$RESOURCE_DIR" run build',
         ]);
         return config
-          .askWriteProjectFile("functions/package.json", PACKAGE_LINTING_TEMPLATE)
+          .askWriteProjectFile("functions/package.json", getPackage(setup.functions.lint))
           .then(function () {
             return config.askWriteProjectFile("functions/.eslintrc.js", ESLINT_TEMPLATE);
           });
       }
       _.set(setup, "config.functions.predeploy", 'npm --prefix "$RESOURCE_DIR" run build');
-      return config.askWriteProjectFile("functions/package.json", PACKAGE_NO_LINTING_TEMPLATE);
+      return config.askWriteProjectFile("functions/package.json", getPackage(setup.functions.lint));
     })
     .then(function () {
       return config.askWriteProjectFile("functions/tsconfig.json", TSCONFIG_TEMPLATE);
@@ -64,3 +65,11 @@ module.exports = function (setup, config) {
       return npmDependencies.askInstallDependencies(setup.functions, config);
     });
 };
+
+function getPackage(useLint) {
+  const nodeEngineVersion = utils.getNodeVersionString();
+  if (useLint) {
+    return PACKAGE_LINTING_TEMPLATE.replace(/{{NODE_VERSION}}/g, nodeEngineVersion);
+  }
+  return PACKAGE_NO_LINTING_TEMPLATE.replace(/{{NODE_VERSION}}/g, nodeEngineVersion);
+}
