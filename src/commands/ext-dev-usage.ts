@@ -3,6 +3,8 @@ import { Aligner, CmQuery, queryTimeSeries, TimeSeriesView } from "../gcp/cloudm
 import { requireAuth } from "../requireAuth";
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { parseTimeseriesResponse } from "../extensions/metricsUtils";
+import { getPublisherProfile } from "../extensions/extensionsApi";
+import { getPublisherProjectFromName } from "../extensions/extensionsHelper";
 
 module.exports = new Command("ext:dev:usage <publisherId>")
   .description("get usage for an extension")
@@ -13,8 +15,9 @@ module.exports = new Command("ext:dev:usage <publisherId>")
   .before(requireAuth)
   .before(checkMinRequiredVersion, "extDevMinVersion")
   .action(async (publisherId: string) => {
-    // TODO(lihes): Use lookedup project number instead. PR too big so it's split in 2.
-    const publisherProjectId = 737466537187;
+    const profile = await getPublisherProfile("-", publisherId);
+
+    const projectNumber = getPublisherProjectFromName(profile.name);
 
     const past30d = new Date();
     past30d.setDate(past30d.getDate() - 30);
@@ -29,7 +32,7 @@ module.exports = new Command("ext:dev:usage <publisherId>")
       "aggregation.perSeriesAligner": Aligner.ALIGN_MAX,
     };
 
-    const response = await queryTimeSeries(query, publisherProjectId);
+    const response = await queryTimeSeries(query, projectNumber);
 
     const metrics = parseTimeseriesResponse(response);
     // TODO(lihes): Render the output properly.

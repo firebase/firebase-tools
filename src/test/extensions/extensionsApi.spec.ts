@@ -855,6 +855,38 @@ describe("listExtensionVersions", () => {
   });
 });
 
+describe("getPublisherProfile", () => {
+  afterEach(() => {
+    nock.cleanAll();
+  });
+
+  const PUBLISHER_PROFILE = {
+    name: "projects/test-publisher/publisherProfile",
+    publisherId: "test-publisher",
+    registerTime: "2020-06-30T00:21:06.722782Z",
+  };
+  it("should make a GET call to the correct endpoint", async () => {
+    nock(api.extensionsOrigin)
+      .get(`/${VERSION}/projects/${PROJECT_ID}/publisherProfile`)
+      .query(true)
+      .reply(200, PUBLISHER_PROFILE);
+
+    const res = await extensionsApi.getPublisherProfile(PROJECT_ID);
+    expect(res).to.deep.equal(PUBLISHER_PROFILE);
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should throw a FirebaseError if the endpoint returns an error response", async () => {
+    nock(api.extensionsOrigin)
+      .get(`/${VERSION}/projects/${PROJECT_ID}/publisherProfile`)
+      .query(true)
+      .reply(404);
+
+    await expect(extensionsApi.getPublisherProfile(PROJECT_ID)).to.be.rejectedWith(FirebaseError);
+    expect(nock.isDone()).to.be.true;
+  });
+});
+
 describe("registerPublisherProfile", () => {
   afterEach(() => {
     nock.cleanAll();

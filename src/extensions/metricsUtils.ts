@@ -1,5 +1,5 @@
 import { TimeSeries, TimeSeriesResponse } from "../gcp/cloudmonitoring";
-import { Bucket, BucketedMetric } from "./cloudMonitoringTypeDefs";
+import { Bucket, BucketedMetric } from "./metricsTypeDef";
 import * as refs from "./refs";
 
 /**

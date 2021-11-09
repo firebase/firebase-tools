@@ -145,7 +145,7 @@ export async function queryTimeSeries(
     );
     return res.body.timeSeries;
   } catch (err) {
-    throw new FirebaseError(`Failed to get extension usage`, {
+    throw new FirebaseError(`Failed to get extension usage: ${err}`, {
       status: err.status,
     });
   }

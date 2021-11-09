@@ -565,6 +565,24 @@ export async function listExtensionVersions(
  * @param projectId the project for which we are registering a PublisherProfile
  * @param publisherId the desired publisher ID
  */
+export async function getPublisherProfile(
+  projectId: string,
+  publisherId?: string
+): Promise<PublisherProfile> {
+  const res = await api.request("GET", `/${VERSION}/projects/${projectId}/publisherProfile`, {
+    auth: true,
+    origin: api.extensionsOrigin,
+    query: {
+      publisherId,
+    },
+  });
+  return res.body;
+}
+
+/**
+ * @param projectId the project for which we are registering a PublisherProfile
+ * @param publisherId the desired publisher ID
+ */
 export async function registerPublisherProfile(
   projectId: string,
   publisherId: string

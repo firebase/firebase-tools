@@ -584,6 +584,19 @@ export async function getExtensionSourceFromName(extensionName: string): Promise
 }
 
 /**
+ * Parses the publisher project number from publisher profile name.
+ */
+export function getPublisherProjectFromName(publisherName: string): number {
+  const publisherNameRegex = /projects\/.+\/publisherProfile/;
+
+  if (publisherNameRegex.test(publisherName)) {
+    const [_, projectNumber, __] = publisherName.split("/");
+    return Number.parseInt(projectNumber);
+  }
+  throw new FirebaseError(`Could not find publisher with name '${publisherName}'.`);
+}
+
+/**
  * Confirm the version number in extension.yaml with the user .
  *
  * @param publisherId the publisher ID of the extension being installed
