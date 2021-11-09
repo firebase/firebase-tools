@@ -48,14 +48,19 @@ export class StorageCloudFunctions {
     try {
       /** Legacy Google Events */
       const eventBody = this.createLegacyEventRequestBody(action, object);
-      const eventRes = await this.client!.post(this.multicastPath, eventBody);
+      const eventRes = await this.client!.post(this.multicastPath, eventBody, {
+        headers: { "Trigger-Filter": object.bucket },
+      });
       if (eventRes.status !== 200) {
         errStatus.push(eventRes.status);
       }
       /** Modern CloudEvents */
       const cloudEventBody = this.createCloudEventRequestBody(action, object);
       const cloudEventRes = await this.client!.post(this.multicastPath, cloudEventBody, {
-        headers: { "Content-Type": "application/cloudevents+json; charset=UTF-8" },
+        headers: {
+          "Content-Type": "application/cloudevents+json; charset=UTF-8",
+          "Trigger-Filter": object.bucket,
+        },
       });
       if (cloudEventRes.status !== 200) {
         errStatus.push(cloudEventRes.status);

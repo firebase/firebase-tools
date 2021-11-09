@@ -272,18 +272,17 @@ export class FunctionsEmulator implements EmulatorInstance {
       let proto = JSON.parse(reqBody.toString());
       let triggerKey: string;
       if (req.headers["content-type"]?.includes("cloudevent")) {
-        triggerKey = proto.source.startsWith("//storage.googleapis.com/projects/_/buckets/")
-          ? `${this.args.projectId}:${proto.type}:${proto.source.split("/")[6]}`
-          : `${this.args.projectId}:${proto.type}`;
+        triggerKey = `${this.args.projectId}:${proto.type}`;
 
         if (EventUtils.isBinaryCloudEvent(req)) {
           proto = EventUtils.extractBinaryCloudEventContext(req);
           proto.data = req.body;
         }
       } else {
-        triggerKey = proto.resource.name.startsWith("projects/_/buckets/")
-          ? `${this.args.projectId}:${proto.eventType}:${proto.resource.name.split("/")[3]}`
-          : `${this.args.projectId}:${proto.eventType}`;
+        triggerKey = `${this.args.projectId}:${proto.eventType}`;
+      }
+      if (req.headers["trigger-filter"]) {
+        triggerKey += `:${req.headers["trigger-filter"]}`;
       }
       const triggers = this.multicastTriggers[triggerKey] || [];
 
