@@ -272,14 +272,18 @@ export class FunctionsEmulator implements EmulatorInstance {
       let proto = JSON.parse(reqBody.toString());
       let triggerKey: string;
       if (req.headers["content-type"]?.includes("cloudevent")) {
-        triggerKey = `${this.args.projectId}:${proto.type}`;
+        triggerKey = proto.source.startsWith("//storage.googleapis.com/projects/_/buckets/")
+          ? `${this.args.projectId}:${proto.type}:${proto.source.split("/")[6]}`
+          : `${this.args.projectId}:${proto.type}`;
 
         if (EventUtils.isBinaryCloudEvent(req)) {
           proto = EventUtils.extractBinaryCloudEventContext(req);
           proto.data = req.body;
         }
       } else {
-        triggerKey = `${this.args.projectId}:${proto.eventType}`;
+        triggerKey = proto.resource.name.startsWith("projects/_/buckets/")
+          ? `${this.args.projectId}:${proto.eventType}:${proto.resource.name.split("/")[3]}`
+          : `${this.args.projectId}:${proto.eventType}`;
       }
       const triggers = this.multicastTriggers[triggerKey] || [];
 
@@ -706,7 +710,10 @@ export class FunctionsEmulator implements EmulatorInstance {
   addStorageTrigger(projectId: string, key: string, eventTrigger: EventTrigger): boolean {
     logger.debug(`addStorageTrigger`, JSON.stringify({ eventTrigger }));
 
-    const eventTriggerId = `${projectId}:${eventTrigger.eventType}`;
+    const bucket = eventTrigger.resource.startsWith("projects/_/buckets/")
+      ? eventTrigger.resource.split("/")[3]
+      : eventTrigger.resource;
+    const eventTriggerId = `${projectId}:${eventTrigger.eventType}:${bucket}`;
     const triggers = this.multicastTriggers[eventTriggerId] || [];
     triggers.push(key);
     this.multicastTriggers[eventTriggerId] = triggers;
