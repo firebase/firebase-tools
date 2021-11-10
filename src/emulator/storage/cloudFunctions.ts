@@ -1,3 +1,5 @@
+import * as uuid from "uuid";
+
 import { EmulatorRegistry } from "../registry";
 import { EmulatorInfo, Emulators } from "../types";
 import { EmulatorLogger } from "../emulatorLogger";
@@ -5,7 +7,6 @@ import { CloudStorageObjectMetadata, toSerializedDate } from "./metadata";
 import { Client } from "../../apiv2";
 import { StorageObjectData } from "@google/events/cloud/storage/v1/StorageObjectData";
 import { CloudEvent } from "../events/types";
-import uuid from "uuid";
 
 type StorageCloudFunctionAction = "finalize" | "metadataUpdate" | "delete" | "archive";
 const STORAGE_V2_ACTION_MAP: Record<StorageCloudFunctionAction, string> = {
