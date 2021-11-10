@@ -205,9 +205,9 @@ export class PubsubEmulator implements EmulatorInstance {
       try {
         const path = `/functions/projects/${this.args.projectId}/triggers/${triggerKey}`;
         if (signatureType === "event") {
-          await this.client?.post(path, this.createLegacyEventRequestBody(topicName, message));
+          await this.client!.post(path, this.createLegacyEventRequestBody(topicName, message));
         } else if (signatureType === "cloudevent") {
-          await this.client?.post<CloudEvent<MessagePublishedData>, unknown>(
+          await this.client!.post<CloudEvent<MessagePublishedData>, unknown>(
             path,
             this.createCloudEventRequestBody(topicName, message),
             { headers: { "Content-Type": "application/cloudevents+json; charset=UTF-8" } }
