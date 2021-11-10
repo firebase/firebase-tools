@@ -1,8 +1,13 @@
 import * as _ from "lodash";
 import { expect } from "chai";
 
-import { parseBucket, parseTimeseriesResponse } from "../../extensions/metricsUtils";
+import {
+  buildMetricsTableRow,
+  parseBucket,
+  parseTimeseriesResponse,
+} from "../../extensions/metricsUtils";
 import { TimeSeriesResponse, MetricKind, ValueType } from "../../gcp/cloudmonitoring";
+import { BucketedMetric } from "../../extensions/metricsTypeDef";
 
 describe("metricsUtil", () => {
   describe(`${parseBucket.name}`, () => {
@@ -12,6 +17,63 @@ describe("metricsUtil", () => {
       expect(parseBucket(200)).to.deep.equals({ low: 100, high: 200 });
       expect(parseBucket(2200)).to.deep.equals({ low: 2100, high: 2200 });
       expect(parseBucket(0)).to.deep.equals({ low: 0, high: 0 });
+    });
+  });
+
+  describe("buildMetricsTableRow", () => {
+    it("shows decreasing instance count properly", () => {
+      const metric: BucketedMetric = {
+        ref: {
+          publisherId: "firebase",
+          extensionId: "bq-export",
+          version: "0.0.1",
+        },
+        valueToday: {
+          high: 500,
+          low: 400,
+        },
+        value7dAgo: {
+          high: 400,
+          low: 300,
+        },
+        value28dAgo: {
+          high: 200,
+          low: 100,
+        },
+      };
+      expect(buildMetricsTableRow(metric)).to.deep.equals([
+        "0.0.1",
+        "400 - 500",
+        "🟢 0 to 200",
+        "🟢 200 to 400",
+      ]);
+    });
+    it("shows decreasing instance count properly", () => {
+      const metric: BucketedMetric = {
+        ref: {
+          publisherId: "firebase",
+          extensionId: "bq-export",
+          version: "0.0.1",
+        },
+        valueToday: {
+          high: 200,
+          low: 100,
+        },
+        value7dAgo: {
+          high: 200,
+          low: 100,
+        },
+        value28dAgo: {
+          high: 300,
+          low: 200,
+        },
+      };
+      expect(buildMetricsTableRow(metric)).to.deep.equals([
+        "0.0.1",
+        "100 - 200",
+        "-",
+        "🔴 -200 to 0",
+      ]);
     });
   });
 

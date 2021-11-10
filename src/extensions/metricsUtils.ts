@@ -1,3 +1,4 @@
+import * as semver from "semver";
 import { TimeSeries, TimeSeriesResponse } from "../gcp/cloudmonitoring";
 import { Bucket, BucketedMetric } from "./metricsTypeDef";
 import * as refs from "./refs";
@@ -37,6 +38,8 @@ export function parseTimeseriesResponse(series: TimeSeriesResponse): Array<Bucke
       value28dAgo,
     });
   }
+
+  ret.sort((a, b) => (semver.lt(a.ref.version!, b.ref.version!) ? 1 : -1));
   return ret;
 }
 
@@ -56,6 +59,58 @@ export function parseBucket(v: number): Bucket {
     return { low: v - 10, high: v };
   }
   return { low: 0, high: 0 };
+}
+
+/**
+ * Build a row in the metrics table given a bucketed metric.
+ */
+export function buildMetricsTableRow(metric: BucketedMetric): Array<string> {
+  const ret: string[] = [metric.ref.version!];
+
+  if (metric.valueToday) {
+    ret.push(`${metric.valueToday.low} - ${metric.valueToday.high}`);
+  } else {
+    ret.push("Insufficient data");
+  }
+
+  if (metric.value7dAgo && metric.valueToday) {
+    if (metric.valueToday.high === metric.value7dAgo.high) {
+      ret.push("-");
+    } else {
+      ret.push(
+        `${getTrendEmoji(metric.valueToday.high - metric.value7dAgo.high)} ` +
+          `${metric.valueToday.low - metric.value7dAgo.high} to ${
+            metric.valueToday.high - metric.value7dAgo.low
+          }`
+      );
+    }
+  } else {
+    ret.push("Insufficient data");
+  }
+
+  if (metric.value28dAgo && metric.valueToday) {
+    if (metric.valueToday.high === metric.value28dAgo.high) {
+      ret.push("-");
+    } else {
+      ret.push(
+        `${getTrendEmoji(metric.valueToday.high - metric.value28dAgo.high)} ` +
+          `${metric.valueToday.low - metric.value28dAgo.high} to ${
+            metric.valueToday.high - metric.value28dAgo.low
+          }`
+      );
+    }
+  } else {
+    ret.push("Insufficient data");
+  }
+
+  return ret;
+}
+
+function getTrendEmoji(value: number): string {
+  if (value > 0) {
+    return "🟢";
+  }
+  return "🔴";
 }
 
 /**
