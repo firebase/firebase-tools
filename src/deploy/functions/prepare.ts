@@ -58,6 +58,9 @@ export async function prepare(
       /* silent=*/ true
     ),
     ensureCloudBuildEnabled(projectId),
+    previews.artifactregistry
+      ? ensureApiEnabled.ensure(projectId, "artifactregistry.googleapis.com", "functions")
+      : Promise.resolve(),
   ]);
   context.runtimeConfigEnabled = checkAPIsEnabled[1];
 
