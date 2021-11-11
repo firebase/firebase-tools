@@ -34,7 +34,7 @@ var PROVIDER_ID_INDEX_MAP = {
   "github.com": 19,
 };
 
-var _escapeCSV = function(str) {
+var _escapeCSV = function (str) {
   if (str.indexOf(",") !== -1 || str.indexOf("\n") !== -1 || str.indexOf("\r") !== -1) {
     // Encapsulate the string with quotes if it contains a comma or a newline.
     return `"${str}"`;
