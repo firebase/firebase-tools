@@ -103,7 +103,7 @@ var deploy = function (targetNames, options, customContext = {}) {
     })
     .then(function () {
       const duration = Date.now() - startTime;
-      return track("Product Deployed", [...targetNames].sort().join(","), duration);
+      return track("Product Deploy", [...targetNames].sort().join(","), duration);
     })
     .then(function () {
       logger.info();
