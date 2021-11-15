@@ -94,6 +94,7 @@ export async function askForParam(
             "You may only select one option.",
           choices: convertExtensionOptionToLabeledList(paramSpec.options as ParamOption[]),
         });
+        valid = checkResponse(response, paramSpec);
         break;
       case ParamType.MULTISELECT:
         response = await onceWithJoin({
@@ -113,11 +114,20 @@ export async function askForParam(
             "You may select multiple options.",
           choices: convertExtensionOptionToLabeledList(paramSpec.options as ParamOption[]),
         });
+        valid = checkResponse(response, paramSpec);
         break;
       case ParamType.SECRET:
-        response = reconfiguring
-          ? await promptReconfigureSecret(projectId, instanceId, paramSpec)
-          : await promptCreateSecret(projectId, instanceId, paramSpec);
+        if (reconfiguring) {
+          const result = await promptReconfigureSecret(projectId, instanceId, paramSpec);
+          if (result.reconfigured && result.response) {
+            valid = checkResponse(result.response, paramSpec);
+          } else {
+            valid = true;
+          }
+        } else {
+          response = await promptCreateSecret(projectId, instanceId, paramSpec);
+          valid = checkResponse(response, paramSpec);
+        }
         break;
       default:
         // Default to ParamType.STRING
@@ -127,9 +137,8 @@ export async function askForParam(
           default: paramSpec.default,
           message: `Enter a value for ${label}:`,
         });
+        valid = checkResponse(response, paramSpec);
     }
-
-    valid = checkResponse(response, paramSpec);
   }
   return response;
 }
@@ -138,7 +147,7 @@ async function promptReconfigureSecret(
   projectId: string,
   instanceId: string,
   paramSpec: Param
-): Promise<string> {
+): Promise<{ response?: string; reconfigured: boolean }> {
   const action = await promptOnce({
     type: "list",
     message: `Choose what you would like to do with this secret:`,
@@ -170,10 +179,12 @@ async function promptReconfigureSecret(
           secretsUtils.getSecretLabels(instanceId)
         );
       }
-      return addNewSecretVersion(projectId, instanceId, secret, paramSpec, secretValue);
+      await addNewSecretVersion(projectId, instanceId, secret, paramSpec, secretValue);
+      return { response: secretValue, reconfigured: true };
     case SecretUpdateAction.LEAVE:
+      return { reconfigured: false };
     default:
-      return paramSpec.default || "";
+      return { reconfigured: false };
   }
 }
 
@@ -199,7 +210,7 @@ export async function promptCreateSecret(
       name,
       secretsUtils.getSecretLabels(instanceId)
     );
-    return addNewSecretVersion(projectId, instanceId, secret, paramSpec, secretValue);
+    await addNewSecretVersion(projectId, instanceId, secret, paramSpec, secretValue);
   }
   return secretValue;
 }
