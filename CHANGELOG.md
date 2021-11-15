@@ -1,0 +1,1 @@
+- Fixes issue where providing the `--project` flag during `init` would not be recognized with a default project already set. (#3870)
