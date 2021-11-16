@@ -563,13 +563,7 @@ export function thirtyDaysFromNow(): Date {
  * @return Node.js major release version
  */
 export function getNodeVersionString(): string {
-  const nodeVersion: RegExpExecArray | null = /\d+/.exec(process.version);
-
-  if (nodeVersion === null) {
-    throw new Error("Node version is not found");
-  }
-
-  return nodeVersion.join("");
+  return process.versions.node.split(".")[0];
 }
 
 /**
