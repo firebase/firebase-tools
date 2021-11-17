@@ -221,10 +221,13 @@ describe("askUserForParam", () => {
   });
 
   describe("askForParam with secret param", () => {
-    const returnedSecret = "ABC.123";
     const stubSecret = {
       name: "new-secret",
       projectId: "firebase-project-123",
+    };
+    const stubSecretVersion = {
+      secret: stubSecret,
+      versionId: "1.0.0",
     };
     const secretSpec = {
       param: "API_KEY",
@@ -241,17 +244,14 @@ describe("askUserForParam", () => {
 
     beforeEach(() => {
       promptStub = sinon.stub(prompt, "promptOnce");
-      promptStub.onCall(0).returns(returnedSecret);
+      promptStub.onCall(0).returns("ABC.123");
 
       secretExists = sinon.stub(secretManagerApi, "secretExists");
       secretExists.onCall(0).resolves(false);
       createSecret = sinon.stub(secretManagerApi, "createSecret");
       createSecret.onCall(0).resolves(stubSecret);
       addVersion = sinon.stub(secretManagerApi, "addVersion");
-      addVersion.onCall(0).resolves({
-        secret: stubSecret,
-        versionId: "1.0.0",
-      });
+      addVersion.onCall(0).resolves(stubSecretVersion);
 
       grantRole = sinon.stub(secretsUtils, "grantFirexServiceAgentSecretAdminRole");
       grantRole.onCall(0).resolves(undefined);
@@ -265,7 +265,9 @@ describe("askUserForParam", () => {
       const result = await askForParam("project-id", "instance-id", secretSpec, false);
       expect(promptStub.calledOnce).to.be.true;
       expect(grantRole.calledOnce).to.be.true;
-      expect(result).to.be.equal(returnedSecret);
+      expect(result).to.be.equal(
+        `projects/${stubSecret.projectId}/secrets/${stubSecret.name}/versions/${stubSecretVersion.versionId}`
+      );
     });
   });
 

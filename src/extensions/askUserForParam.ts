@@ -10,7 +10,6 @@ import { convertExtensionOptionToLabeledList, getRandomString, onceWithJoin } fr
 import { logger } from "../logger";
 import { promptOnce } from "../prompt";
 import * as utils from "../utils";
-import { instance } from "firebase-functions/v1/database";
 
 enum SecretUpdateAction {
   LEAVE,
@@ -118,16 +117,11 @@ export async function askForParam(
         break;
       case ParamType.SECRET:
         if (reconfiguring) {
-          const result = await promptReconfigureSecret(projectId, instanceId, paramSpec);
-          if (result.reconfigured && result.response) {
-            valid = checkResponse(result.response, paramSpec);
-          } else {
-            valid = true;
-          }
+          response = await promptReconfigureSecret(projectId, instanceId, paramSpec);
         } else {
           response = await promptCreateSecret(projectId, instanceId, paramSpec);
-          valid = checkResponse(response, paramSpec);
         }
+        valid = true;
         break;
       default:
         // Default to ParamType.STRING
@@ -147,7 +141,7 @@ async function promptReconfigureSecret(
   projectId: string,
   instanceId: string,
   paramSpec: Param
-): Promise<{ response?: string; reconfigured: boolean }> {
+): Promise<string> {
   const action = await promptOnce({
     type: "list",
     message: `Choose what you would like to do with this secret:`,
@@ -166,25 +160,33 @@ async function promptReconfigureSecret(
       } else {
         secretName = await generateSecretName(projectId, instanceId, paramSpec.param);
       }
-
       const secretValue = await promptOnce({
         name: paramSpec.param,
         type: "password",
         message: `This secret will be stored in Cloud Secret Manager as ${secretName}.\nEnter new value for ${paramSpec.label.trim()}:`,
       });
-      if (!secret) {
-        secret = await secretManagerApi.createSecret(
-          projectId,
-          secretName,
-          secretsUtils.getSecretLabels(instanceId)
-        );
+      if (secretValue === "" && paramSpec.required) {
+        logger.info(`Secret value cannot be empty for required param ${paramSpec.param}`);
+        return promptReconfigureSecret(projectId, instanceId, paramSpec);
+      } else if (secretValue !== "") {
+        if (checkResponse(secretValue, paramSpec)) {
+          if (!secret) {
+            secret = await secretManagerApi.createSecret(
+              projectId,
+              secretName,
+              secretsUtils.getSecretLabels(instanceId)
+            );
+          }
+          return addNewSecretVersion(projectId, instanceId, secret, paramSpec, secretValue);
+        } else {
+          return promptReconfigureSecret(projectId, instanceId, paramSpec);
+        }
+      } else {
+        return "";
       }
-      await addNewSecretVersion(projectId, instanceId, secret, paramSpec, secretValue);
-      return { response: secretValue, reconfigured: true };
     case SecretUpdateAction.LEAVE:
-      return { reconfigured: false };
     default:
-      return { reconfigured: false };
+      return "";
   }
 }
 
@@ -203,16 +205,21 @@ export async function promptCreateSecret(
   });
   if (secretValue === "" && paramSpec.required) {
     logger.info(`Secret value cannot be empty for required param ${paramSpec.param}`);
-    return await promptCreateSecret(projectId, instanceId, paramSpec, name);
+    return promptCreateSecret(projectId, instanceId, paramSpec, name);
   } else if (secretValue !== "") {
-    const secret = await secretManagerApi.createSecret(
-      projectId,
-      name,
-      secretsUtils.getSecretLabels(instanceId)
-    );
-    await addNewSecretVersion(projectId, instanceId, secret, paramSpec, secretValue);
+    if (checkResponse(secretValue, paramSpec)) {
+      const secret = await secretManagerApi.createSecret(
+        projectId,
+        name,
+        secretsUtils.getSecretLabels(instanceId)
+      );
+      return addNewSecretVersion(projectId, instanceId, secret, paramSpec, secretValue);
+    } else {
+      return promptCreateSecret(projectId, instanceId, paramSpec, name);
+    }
+  } else {
+    return "";
   }
-  return secretValue;
 }
 
 async function generateSecretName(
