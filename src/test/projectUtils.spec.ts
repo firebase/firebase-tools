@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
-import { needProjectNumber, needProjectId, getProjectId } from "../projectUtils";
+import { needProjectNumber, needProjectId, getAliases, getProjectId } from "../projectUtils";
 import * as projects from "../management/projects";
 import { RC } from "../rc";
 
@@ -67,5 +67,34 @@ describe("needProjectNumber", () => {
       Error,
       "oh no"
     );
+  });
+});
+
+describe("getAliases", () => {
+  it("should return the aliases for a projectId", () => {
+    const testProjectId = "my-project";
+    const testOptions = {
+      rc: {
+        hasProjects: true,
+        projects: {
+          prod: testProjectId,
+          prod2: testProjectId,
+          staging: "other-project",
+        },
+      },
+    };
+
+    expect(getAliases(testOptions, testProjectId).sort()).to.deep.equal(["prod", "prod2"]);
+  });
+
+  it("should return an empty array if there are no aliases in rc", () => {
+    const testProjectId = "my-project";
+    const testOptions = {
+      rc: {
+        hasProjects: false,
+      },
+    };
+
+    expect(getAliases(testOptions, testProjectId)).to.deep.equal([]);
   });
 });
