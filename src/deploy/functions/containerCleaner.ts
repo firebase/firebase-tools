@@ -74,42 +74,43 @@ export async function cleanupBuildImages(
 ): Promise<void> {
   utils.logBullet(clc.bold.cyan("functions: ") + "cleaning up build files...");
   const failedDomains: Set<string> = new Set();
-  if (previews.artifactregistry) {
-    const arCleaner = cleaners.ar || new ArtifactRegistryCleaner();
-    await Promise.all([
-      ...haveFunctions.map(async (func) => {
-        try {
-          await arCleaner.cleanupFunction(func);
-        } catch (err) {
-          const path = `${func.project}/${func.region}/gcf-artifacts`;
-          failedDomains.add(`https://console.cloud.google.com/artifacts/docker/${path}`);
-        }
-      }),
-      ...deletedFunctions.map(async (func) => {
-        try {
-          await Promise.all([
-            arCleaner.cleanupFunction(func),
-            arCleaner.cleanupFunctionCache(func),
-          ]);
-        } catch (err) {
-          const path = `${func.project}/${func.region}/gcf-artifacts`;
-          failedDomains.add(`https://console.cloud.google.com/artifacts/docker/${path}`);
-        }
-      }),
-    ]);
-  } else {
-    const gcrCleaner = cleaners.gcr || new ContainerRegistryCleaner();
-    await Promise.all(
-      [...haveFunctions, ...deletedFunctions].map(async (func) => {
-        try {
-          await gcrCleaner.cleanupFunction(func);
-        } catch (err) {
-          const path = `${func.project}/${SUBDOMAIN_MAPPING[func.region]}/gcf`;
-          failedDomains.add(`https://console.cloud.google.com/gcr/images/${path}`);
-        }
-      })
-    );
-  }
+  const cleanup: Array<Promise<void>> = [];
+  const arCleaner = cleaners.ar || new ArtifactRegistryCleaner();
+  // Whether the container was stored in GCR or AR is up to a server-side experiment;
+  // clean up both, just in case.
+  // TODO: remove GCR path once the experiment is rollack-safe.
+  cleanup.push(
+    ...haveFunctions.map(async (func) => {
+      try {
+        await arCleaner.cleanupFunction(func);
+      } catch (err) {
+        const path = `${func.project}/${func.region}/gcf-artifacts`;
+        failedDomains.add(`https://console.cloud.google.com/artifacts/docker/${path}`);
+      }
+    })
+  );
+  cleanup.push(
+    ...deletedFunctions.map(async (func) => {
+      try {
+        await Promise.all([arCleaner.cleanupFunction(func), arCleaner.cleanupFunctionCache(func)]);
+      } catch (err) {
+        const path = `${func.project}/${func.region}/gcf-artifacts`;
+        failedDomains.add(`https://console.cloud.google.com/artifacts/docker/${path}`);
+      }
+    })
+  );
+  const gcrCleaner = cleaners.gcr || new ContainerRegistryCleaner();
+  cleanup.push(
+    ...[...haveFunctions, ...deletedFunctions].map(async (func) => {
+      try {
+        await gcrCleaner.cleanupFunction(func);
+      } catch (err) {
+        const path = `${func.project}/${SUBDOMAIN_MAPPING[func.region]}/gcf`;
+        failedDomains.add(`https://console.cloud.google.com/gcr/images/${path}`);
+      }
+    })
+  );
+  await Promise.all(cleanup);
   if (failedDomains.size) {
     let message =
       "Unhandled error cleaning up build images. This could result in a small monthly bill if not corrected. ";
@@ -148,7 +149,17 @@ export class ArtifactRegistryCleaner {
   // a few MB and improves performance. We only delete the cache if
   // the function was deleted in its entirety.
   async cleanupFunction(func: backend.TargetIds): Promise<void> {
-    const op = await artifactregistry.deletePackage(ArtifactRegistryCleaner.packagePath(func));
+    let op: artifactregistry.Operation;
+    try {
+      op = await artifactregistry.deletePackage(ArtifactRegistryCleaner.packagePath(func));
+    } catch (err) {
+      // The client was not enrolled in the AR experimenet and the package
+      // was missing
+      if (err.status === 404) {
+        return;
+      }
+      throw err;
+    }
     if (op.done) {
       return;
     }
