@@ -186,7 +186,7 @@ async function promptReconfigureSecret(
       }
     case SecretUpdateAction.LEAVE:
     default:
-      return "";
+      return paramSpec.default || "";
   }
 }
 
