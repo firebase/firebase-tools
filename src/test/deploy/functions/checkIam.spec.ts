@@ -27,9 +27,15 @@ describe("checkIam", () => {
   let setIamStub: sinon.SinonStub;
 
   beforeEach(() => {
-    storageStub = sinon.stub(storage, "getServiceAccount").throws("Do not call");
-    getIamStub = sinon.stub(rm, "getIamPolicy").throws("Do not call");
-    setIamStub = sinon.stub(rm, "setIamPolicy").throws("Do not call");
+    storageStub = sinon
+      .stub(storage, "getServiceAccount")
+      .throws("unexpected call to storage.getServiceAccount");
+    getIamStub = sinon
+      .stub(rm, "getIamPolicy")
+      .throws("unexpected call to resourceManager.getIamStub");
+    setIamStub = sinon
+      .stub(rm, "setIamPolicy")
+      .throws("unexpected call to resourceManager.setIamPolicy");
   });
 
   afterEach(() => {

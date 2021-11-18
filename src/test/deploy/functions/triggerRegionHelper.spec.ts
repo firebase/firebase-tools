@@ -16,7 +16,7 @@ describe("TriggerRegionHelper", () => {
     let storageStub: sinon.SinonStub;
 
     beforeEach(() => {
-      storageStub = sinon.stub(storage, "getBucket").throws("Do not call");
+      storageStub = sinon.stub(storage, "getBucket").throws("unexpected call to storage.getBucket");
     });
 
     afterEach(() => {
