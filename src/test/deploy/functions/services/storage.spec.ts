@@ -13,7 +13,7 @@ const BINDING = {
   members: ["someuser"],
 };
 
-describe("ensureStorageRoles", () => {
+describe("obtainStorageBindings", () => {
   let storageStub: sinon.SinonStub;
 
   beforeEach(() => {
@@ -24,7 +24,7 @@ describe("ensureStorageRoles", () => {
     sinon.verifyAndRestore();
   });
 
-  it("should add the pubsub binding when missing", async () => {
+  it("should return pubsub binding when missing from the policy", async () => {
     storageStub.resolves(STORAGE_RES);
     const existingPolicy = {
       etag: "etag",
@@ -41,7 +41,7 @@ describe("ensureStorageRoles", () => {
     });
   });
 
-  it("should update the pubsub binding and set the policy", async () => {
+  it("should return the updated pubsub binding from the policy", async () => {
     storageStub.resolves(STORAGE_RES);
     const existingPolicy = {
       etag: "etag",
@@ -58,7 +58,7 @@ describe("ensureStorageRoles", () => {
     });
   });
 
-  it("should not set if the binding and policy are present", async () => {
+  it("should return the binding from policy if already present", async () => {
     storageStub.resolves(STORAGE_RES);
     const existingPolicy = {
       etag: "etag",
@@ -73,6 +73,10 @@ describe("ensureStorageRoles", () => {
     };
 
     const bindings = await obtainStorageBindings("project", existingPolicy);
-    expect(bindings.length).to.equal(0);
+    expect(bindings.length).to.equal(1);
+    expect(bindings[0]).to.deep.equal({
+      role: "roles/pubsub.publisher",
+      members: [`serviceAccount:${STORAGE_RES.email_address}`],
+    });
   });
 });

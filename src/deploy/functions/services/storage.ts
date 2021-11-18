@@ -8,8 +8,9 @@ import { regionInLocation } from "../../../gcp/location";
 const PUBSUB_PUBLISHER_ROLE = "roles/pubsub.publisher";
 
 /**
- * Helper function that grants the Cloud Storage service agent a role to access EventArc triggers
+ * Finds the required project level IAM bindings for the Cloud Storage service agent
  * @param projectId project identifier
+ * @param existingPolicy the project level IAM policy
  */
 export async function obtainStorageBindings(
   projectId: string,
@@ -18,22 +19,23 @@ export async function obtainStorageBindings(
   const storageResponse = await storage.getServiceAccount(projectId);
   const storageServiceAgent = `serviceAccount:${storageResponse.email_address}`;
   let pubsubBinding = existingPolicy.bindings.find((b) => b.role === PUBSUB_PUBLISHER_ROLE);
-  if (pubsubBinding && pubsubBinding.members.find((m) => m === storageServiceAgent)) {
-    return []; // already have correct role bindings
-  }
   if (!pubsubBinding) {
     pubsubBinding = {
       role: PUBSUB_PUBLISHER_ROLE,
       members: [],
     };
   }
-  pubsubBinding.members.push(storageServiceAgent); // add service agent to role
+  if (!pubsubBinding.members.find((m) => m === storageServiceAgent)) {
+    pubsubBinding.members.push(storageServiceAgent); // add service agent to role
+  }
   return [pubsubBinding];
 }
 
 /**
  * Sets a GCS event trigger's region to the region of its bucket if unset,
  * and checks for an invalid EventArc trigger region before deployment of the function
+ * @param endpoint the storage endpoint
+ * @param eventTrigger the endpoints event trigger
  */
 export async function ensureStorageTriggerRegion(
   endpoint: backend.Endpoint,

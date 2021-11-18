@@ -36,6 +36,49 @@ describe("checkIam", () => {
     sinon.verifyAndRestore();
   });
 
+  describe("mergeBindings", () => {
+    it("should skip empty or duplicate bindings", () => {
+      const policy = {
+        etag: "etag",
+        version: 3,
+        bindings: [BINDING],
+      };
+
+      checkIam.mergeBindings(policy, [[], [BINDING]]);
+
+      expect(policy.bindings).to.deep.equal([BINDING]);
+    });
+
+    it("should update current binding", () => {
+      const policy = {
+        etag: "etag",
+        version: 3,
+        bindings: [BINDING],
+      };
+
+      checkIam.mergeBindings(policy, [[{ role: "some/role", members: ["newuser"] }]]);
+
+      expect(policy.bindings).to.deep.equal([
+        {
+          role: "some/role",
+          members: ["someuser", "newuser"],
+        },
+      ]);
+    });
+
+    it("should add the binding", () => {
+      const policy = {
+        etag: "etag",
+        version: 3,
+        bindings: [],
+      };
+
+      checkIam.mergeBindings(policy, [[BINDING]]);
+
+      expect(policy.bindings).to.deep.equal([BINDING]);
+    });
+  });
+
   describe("ensureServiceAgentRoles", () => {
     it("should return early if we fail to get the IAM policy", async () => {
       getIamStub.rejects("Failed to get the IAM policy");

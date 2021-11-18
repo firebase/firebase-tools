@@ -8,28 +8,32 @@ const noopBindings = (): Promise<Array<iam.Binding>> => Promise.resolve([]);
 /** A service interface for the underlying GCP event services */
 export interface Service {
   readonly name: string;
+  readonly api: string;
 
   // dispatch functions
-  missingProjectBindings: (pId: any, p: any) => Promise<Array<iam.Binding>>;
+  requiredProjectBindings: (pId: any, p: any) => Promise<Array<iam.Binding>>;
   ensureTriggerRegion: (ep: backend.Endpoint, et: backend.EventTrigger) => Promise<void>;
 }
 
 /** A noop service object, useful for v1 events */
 export const NoOpService: Service = {
   name: "noop",
-  missingProjectBindings: noopBindings,
+  api: "",
+  requiredProjectBindings: noopBindings,
   ensureTriggerRegion: noop,
 };
 /** A pubsub service object */
 export const PubSubService: Service = {
   name: "pubsub",
-  missingProjectBindings: noopBindings,
+  api: "pubsub.googleapis.com",
+  requiredProjectBindings: noopBindings,
   ensureTriggerRegion: noop,
 };
 /** A storage service object */
 export const StorageService = {
   name: "storage",
-  missingProjectBindings: obtainStorageBindings,
+  api: "storage.googleapis.com",
+  requiredProjectBindings: obtainStorageBindings,
   ensureTriggerRegion: ensureStorageTriggerRegion,
 };
 

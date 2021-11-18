@@ -7,6 +7,7 @@ import * as iam from "../../gcp/iam";
 import * as args from "./args";
 import * as backend from "./backend";
 import * as track from "../../track";
+import * as utils from "../../utils";
 import { Options } from "../../options";
 
 import { getIamPolicy, setIamPolicy } from "../../gcp/resourceManager";
@@ -108,12 +109,40 @@ export async function checkHttpIam(
   logger.debug("[functions] found setIamPolicy permission, proceeding with deploy");
 }
 
+/** Callback reducer function */
 function reduceEventsToServices(services: Array<Service>, endpoint: backend.Endpoint) {
   const service = serviceForEndpoint(endpoint);
-  if (!services.find((s) => s.name === service.name)) {
+  if (
+    service.name !== "noop" &&
+    service.name !== "pubsub" &&
+    !services.find((s) => s.name === service.name)
+  ) {
     services.push(service);
   }
   return services;
+}
+
+/** Helper to merge all required bindings into the IAM policy */
+export function mergeBindings(policy: iam.Policy, allRequiredBindings: iam.Binding[][]) {
+  for (const requiredBindings of allRequiredBindings) {
+    if (requiredBindings.length === 0) {
+      continue;
+    }
+    for (const requiredBinding of requiredBindings) {
+      const ndx = policy.bindings.findIndex(
+        (policyBinding) => policyBinding.role === requiredBinding.role
+      );
+      if (ndx === -1) {
+        policy.bindings.push(requiredBinding);
+        continue;
+      }
+      requiredBinding.members.forEach((updatedMember) => {
+        if (!policy.bindings[ndx].members.find((member) => member === updatedMember)) {
+          policy.bindings[ndx].members.push(updatedMember);
+        }
+      });
+    }
+  }
 }
 
 /**
@@ -141,40 +170,23 @@ export async function ensureServiceAgentRoles(
   try {
     policy = await getIamPolicy(projectId);
   } catch (err) {
-    logger.warn(
-      "We failed to obtain the IAM policy for the project,",
-      " the function deployment might fail if service ",
-      "accounts do not have the correct assigned roles."
+    utils.logLabeledBullet(
+      "functions",
+      "Could not verify the necessary IAM configuration for the following newly-integrated services: " +
+        `${newServices.map((service) => service.api).join(", ")}` +
+        ". Deployment may fail.",
+      "warn"
     );
     return;
   }
   // run in parallel all the missingProjectBindings jobs
-  const findUpdatedBindings: Array<Promise<Array<iam.Binding>>> = [];
+  const findRequiredBindings: Array<Promise<Array<iam.Binding>>> = [];
   newServices.forEach((service) =>
-    findUpdatedBindings.push(service.missingProjectBindings(projectId, policy))
+    findRequiredBindings.push(service.requiredProjectBindings(projectId, policy))
   );
-  const allUpdatedBindings = await Promise.all(findUpdatedBindings);
-  // merge all updated bindings into the policy
-  for (const updatedBindings of allUpdatedBindings) {
-    if (updatedBindings.length === 0) {
-      continue;
-    }
-    updatedBindings.forEach((updatedBinding) => {
-      const ndx = policy.bindings.findIndex(
-        (policyBinding) => policyBinding.role === updatedBinding.role
-      );
-      if (ndx === -1) {
-        policy.bindings.push(updatedBinding);
-        return;
-      }
-      updatedBinding.members.forEach((updatedMember) => {
-        if (!policy.bindings[ndx].members.find((member) => member === updatedMember)) {
-          policy.bindings[ndx].members.push(updatedMember);
-        }
-      });
-    });
-  }
-  // set the new policy
+  const allRequiredBindings = await Promise.all(findRequiredBindings);
+  mergeBindings(policy, allRequiredBindings);
+  // set the updated policy
   try {
     await setIamPolicy(projectId, policy, "bindings");
   } catch (err) {
