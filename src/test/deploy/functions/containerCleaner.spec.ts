@@ -256,7 +256,6 @@ describe("ArtifactRegistryCleaner", () => {
       "projects/project/locations/region/repositories/gcf-artifacts/packages/s-strange--_casing__cases"
     );
     expect(poll.pollOperation).to.not.have.been.called;
-
   });
 });
 
