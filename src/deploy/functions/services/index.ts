@@ -3,7 +3,6 @@ import * as iam from "../../../gcp/iam";
 import { obtainStorageBindings, ensureStorageTriggerRegion } from "./storage";
 
 const noop = (): Promise<void> => Promise.resolve();
-const noopBindings = (): Promise<Array<iam.Binding>> => Promise.resolve([]);
 
 /** A service interface for the underlying GCP event services */
 export interface Service {
@@ -11,7 +10,7 @@ export interface Service {
   readonly api: string;
 
   // dispatch functions
-  requiredProjectBindings: (pId: any, p: any) => Promise<Array<iam.Binding>>;
+  requiredProjectBindings: ((pId: any, p: any) => Promise<Array<iam.Binding>>) | undefined;
   ensureTriggerRegion: (ep: backend.Endpoint, et: backend.EventTrigger) => Promise<void>;
 }
 
@@ -19,14 +18,14 @@ export interface Service {
 export const NoOpService: Service = {
   name: "noop",
   api: "",
-  requiredProjectBindings: noopBindings,
+  requiredProjectBindings: undefined,
   ensureTriggerRegion: noop,
 };
 /** A pubsub service object */
 export const PubSubService: Service = {
   name: "pubsub",
   api: "pubsub.googleapis.com",
-  requiredProjectBindings: noopBindings,
+  requiredProjectBindings: undefined,
   ensureTriggerRegion: noop,
 };
 /** A storage service object */

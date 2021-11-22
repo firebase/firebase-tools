@@ -113,8 +113,7 @@ export async function checkHttpIam(
 function reduceEventsToServices(services: Array<Service>, endpoint: backend.Endpoint) {
   const service = serviceForEndpoint(endpoint);
   if (
-    service.name !== "noop" &&
-    service.name !== "pubsub" &&
+    service.requiredProjectBindings &&
     !services.find((s) => s.name === service.name)
   ) {
     services.push(service);
@@ -182,7 +181,7 @@ export async function ensureServiceAgentRoles(
   // run in parallel all the missingProjectBindings jobs
   const findRequiredBindings: Array<Promise<Array<iam.Binding>>> = [];
   newServices.forEach((service) =>
-    findRequiredBindings.push(service.requiredProjectBindings(projectId, policy))
+    findRequiredBindings.push(service.requiredProjectBindings!(projectId, policy))
   );
   const allRequiredBindings = await Promise.all(findRequiredBindings);
   mergeBindings(policy, allRequiredBindings);
