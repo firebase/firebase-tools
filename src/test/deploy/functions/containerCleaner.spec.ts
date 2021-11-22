@@ -11,7 +11,6 @@ import * as poller from "../../../operation-poller";
 import * as utils from "../../../utils";
 
 describe("CleanupBuildImages", () => {
-  let oldPreviewFlag: boolean;
   let gcr: sinon.SinonStubbedInstance<containerCleaner.ContainerRegistryCleaner>;
   let ar: sinon.SinonStubbedInstance<containerCleaner.ArtifactRegistryCleaner>;
   let logLabeledWarning: sinon.SinonStub;
@@ -22,35 +21,21 @@ describe("CleanupBuildImages", () => {
   };
 
   beforeEach(() => {
-    oldPreviewFlag = previews.artifactregistry as boolean;
     gcr = sinon.createStubInstance(containerCleaner.ContainerRegistryCleaner);
     ar = sinon.createStubInstance(containerCleaner.ArtifactRegistryCleaner);
     logLabeledWarning = sinon.stub(utils, "logLabeledWarning");
   });
 
   afterEach(() => {
-    previews.artifactregistry = oldPreviewFlag;
     sinon.verifyAndRestore();
   });
 
-  it("uses AR when the AR experimenet is enabled", async () => {
-    previews.artifactregistry = true;
-    await containerCleaner.cleanupBuildImages([TARGET], [], { gcr, ar } as any);
-    expect(ar.cleanupFunction).to.have.been.called;
-    // Note, after removing the artifactregistry experiment we'll need to call both
-    // until the GCF backend rolls out to 100%
-    expect(gcr.cleanupFunction).to.not.have.been.called;
-  });
-
-  it("uses GCR when the AR experiment is disabled", async () => {
-    previews.artifactregistry = false;
+  it("uses GCR and AR", async () => {
     await containerCleaner.cleanupBuildImages([TARGET], [], { gcr, ar } as any);
     expect(gcr.cleanupFunction).to.have.been.called;
-    expect(ar.cleanupFunction).to.not.have.been.called;
   });
 
   it("reports failed domains from AR", async () => {
-    previews.artifactregistry = true;
     ar.cleanupFunctionCache.rejects(new Error("uh oh"));
     await containerCleaner.cleanupBuildImages([], [TARGET], { gcr, ar } as any);
     expect(logLabeledWarning).to.have.been.calledWithMatch(
@@ -62,7 +47,6 @@ describe("CleanupBuildImages", () => {
   });
 
   it("reports failed domains from GCR", async () => {
-    previews.artifactregistry = false;
     gcr.cleanupFunction.rejects(new Error("uh oh"));
     await containerCleaner.cleanupBuildImages([], [TARGET], { gcr, ar } as any);
     expect(logLabeledWarning).to.have.been.calledWithMatch(
