@@ -14,6 +14,14 @@ const STORAGE_FUNCTION_V2_ARCHIVED_LOG = "========== STORAGE V2 FUNCTION ARCHIVE
 const STORAGE_FUNCTION_V2_DELETED_LOG = "========== STORAGE V2 FUNCTION DELETED ==========";
 const STORAGE_FUNCTION_V2_FINALIZED_LOG = "========== STORAGE V2 FUNCTION FINALIZED ==========";
 const STORAGE_FUNCTION_V2_METADATA_LOG = "========== STORAGE V2 FUNCTION METADATA ==========";
+const STORAGE_BUCKET_FUNCTION_V2_ARCHIVED_LOG =
+  "========== STORAGE BUCKET V2 FUNCTION ARCHIVED ==========";
+const STORAGE_BUCKET_FUNCTION_V2_DELETED_LOG =
+  "========== STORAGE BUCKET V2 FUNCTION DELETED ==========";
+const STORAGE_BUCKET_FUNCTION_V2_FINALIZED_LOG =
+  "========== STORAGE BUCKET V2 FUNCTION FINALIZED ==========";
+const STORAGE_BUCKET_FUNCTION_V2_METADATA_LOG =
+  "========== STORAGE BUCKET V2 FUNCTION METADATA ==========";
 /* Functions V1 */
 const RTDB_FUNCTION_LOG = "========== RTDB FUNCTION ==========";
 const FIRESTORE_FUNCTION_LOG = "========== FIRESTORE FUNCTION ==========";
@@ -23,6 +31,13 @@ const STORAGE_FUNCTION_ARCHIVED_LOG = "========== STORAGE FUNCTION ARCHIVED ====
 const STORAGE_FUNCTION_DELETED_LOG = "========== STORAGE FUNCTION DELETED ==========";
 const STORAGE_FUNCTION_FINALIZED_LOG = "========== STORAGE FUNCTION FINALIZED ==========";
 const STORAGE_FUNCTION_METADATA_LOG = "========== STORAGE FUNCTION METADATA ==========";
+const STORAGE_BUCKET_FUNCTION_ARCHIVED_LOG =
+  "========== STORAGE BUCKET FUNCTION ARCHIVED ==========";
+const STORAGE_BUCKET_FUNCTION_DELETED_LOG = "========== STORAGE BUCKET FUNCTION DELETED ==========";
+const STORAGE_BUCKET_FUNCTION_FINALIZED_LOG =
+  "========== STORAGE BUCKET FUNCTION FINALIZED ==========";
+const STORAGE_BUCKET_FUNCTION_METADATA_LOG =
+  "========== STORAGE BUCKET FUNCTION METADATA ==========";
 const ALL_EMULATORS_STARTED_LOG = "All emulators ready";
 
 interface ConnectionInfo {
@@ -65,6 +80,10 @@ export class TriggerEndToEndTest {
   storageDeletedTriggerCount = 0;
   storageFinalizedTriggerCount = 0;
   storageMetadataTriggerCount = 0;
+  storageBucketArchivedTriggerCount = 0;
+  storageBucketDeletedTriggerCount = 0;
+  storageBucketFinalizedTriggerCount = 0;
+  storageBucketMetadataTriggerCount = 0;
 
   /* Functions V2 */
   pubsubV2TriggerCount = 0;
@@ -72,6 +91,10 @@ export class TriggerEndToEndTest {
   storageV2DeletedTriggerCount = 0;
   storageV2FinalizedTriggerCount = 0;
   storageV2MetadataTriggerCount = 0;
+  storageBucketV2ArchivedTriggerCount = 0;
+  storageBucketV2DeletedTriggerCount = 0;
+  storageBucketV2FinalizedTriggerCount = 0;
+  storageBucketV2MetadataTriggerCount = 0;
 
   rtdbFromFirestore = false;
   firestoreFromRtdb = false;
@@ -138,6 +161,19 @@ export class TriggerEndToEndTest {
       if (data.includes(STORAGE_FUNCTION_METADATA_LOG)) {
         this.storageMetadataTriggerCount++;
       }
+
+      if (data.includes(STORAGE_BUCKET_FUNCTION_ARCHIVED_LOG)) {
+        this.storageBucketArchivedTriggerCount++;
+      }
+      if (data.includes(STORAGE_BUCKET_FUNCTION_DELETED_LOG)) {
+        this.storageBucketDeletedTriggerCount++;
+      }
+      if (data.includes(STORAGE_BUCKET_FUNCTION_FINALIZED_LOG)) {
+        this.storageBucketFinalizedTriggerCount++;
+      }
+      if (data.includes(STORAGE_BUCKET_FUNCTION_METADATA_LOG)) {
+        this.storageBucketMetadataTriggerCount++;
+      }
       /* Functions V2 */
       if (data.includes(PUBSUB_FUNCTION_V2_LOG)) {
         this.pubsubV2TriggerCount++;
@@ -153,6 +189,18 @@ export class TriggerEndToEndTest {
       }
       if (data.includes(STORAGE_FUNCTION_V2_METADATA_LOG)) {
         this.storageV2MetadataTriggerCount++;
+      }
+      if (data.includes(STORAGE_BUCKET_FUNCTION_V2_ARCHIVED_LOG)) {
+        this.storageBucketV2ArchivedTriggerCount++;
+      }
+      if (data.includes(STORAGE_BUCKET_FUNCTION_V2_DELETED_LOG)) {
+        this.storageBucketV2DeletedTriggerCount++;
+      }
+      if (data.includes(STORAGE_BUCKET_FUNCTION_V2_FINALIZED_LOG)) {
+        this.storageBucketV2FinalizedTriggerCount++;
+      }
+      if (data.includes(STORAGE_BUCKET_FUNCTION_V2_METADATA_LOG)) {
+        this.storageBucketV2MetadataTriggerCount++;
       }
     });
 
@@ -215,6 +263,14 @@ export class TriggerEndToEndTest {
 
   updateDeleteFromStorage(): Promise<Response> {
     return this.invokeHttpFunction("updateDeleteFromStorage");
+  }
+
+  writeToSpecificStorageBucket(): Promise<Response> {
+    return this.invokeHttpFunction("writeToSpecificStorageBucket");
+  }
+
+  updateDeleteFromSpecificStorageBucket(): Promise<Response> {
+    return this.invokeHttpFunction("updateDeleteFromSpecificStorageBucket");
   }
 
   waitForCondition(

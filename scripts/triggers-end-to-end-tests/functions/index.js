@@ -23,12 +23,27 @@ const STORAGE_FUNCTION_ARCHIVED_LOG = "========== STORAGE FUNCTION ARCHIVED ====
 const STORAGE_FUNCTION_DELETED_LOG = "========== STORAGE FUNCTION DELETED ==========";
 const STORAGE_FUNCTION_FINALIZED_LOG = "========== STORAGE FUNCTION FINALIZED ==========";
 const STORAGE_FUNCTION_METADATA_LOG = "========== STORAGE FUNCTION METADATA ==========";
+const STORAGE_BUCKET_FUNCTION_ARCHIVED_LOG =
+  "========== STORAGE BUCKET FUNCTION ARCHIVED ==========";
+const STORAGE_BUCKET_FUNCTION_DELETED_LOG = "========== STORAGE BUCKET FUNCTION DELETED ==========";
+const STORAGE_BUCKET_FUNCTION_FINALIZED_LOG =
+  "========== STORAGE BUCKET FUNCTION FINALIZED ==========";
+const STORAGE_BUCKET_FUNCTION_METADATA_LOG =
+  "========== STORAGE BUCKET FUNCTION METADATA ==========";
 /* Functions V2 */
 const PUBSUB_FUNCTION_V2_LOG = "========== PUBSUB V2 FUNCTION ==========";
 const STORAGE_FUNCTION_V2_ARCHIVED_LOG = "========== STORAGE V2 FUNCTION ARCHIVED ==========";
 const STORAGE_FUNCTION_V2_DELETED_LOG = "========== STORAGE V2 FUNCTION DELETED ==========";
 const STORAGE_FUNCTION_V2_FINALIZED_LOG = "========== STORAGE V2 FUNCTION FINALIZED ==========";
 const STORAGE_FUNCTION_V2_METADATA_LOG = "========== STORAGE V2 FUNCTION METADATA ==========";
+const STORAGE_BUCKET_FUNCTION_V2_ARCHIVED_LOG =
+  "========== STORAGE BUCKET V2 FUNCTION ARCHIVED ==========";
+const STORAGE_BUCKET_FUNCTION_V2_DELETED_LOG =
+  "========== STORAGE BUCKET V2 FUNCTION DELETED ==========";
+const STORAGE_BUCKET_FUNCTION_V2_FINALIZED_LOG =
+  "========== STORAGE BUCKET V2 FUNCTION FINALIZED ==========";
+const STORAGE_BUCKET_FUNCTION_V2_METADATA_LOG =
+  "========== STORAGE BUCKET V2 FUNCTION METADATA ==========";
 
 /*
  * We install onWrite triggers for START_DOCUMENT_NAME in both the firestore and
@@ -110,6 +125,20 @@ exports.updateDeleteFromStorage = functions.https.onRequest(async (req, res) => 
   console.log("Wrote to Storage bucket");
   await admin.storage().bucket().file(STORAGE_FILE_NAME).delete();
   console.log("Deleted from Storage bucket");
+  res.json({ done: "ok" });
+});
+
+exports.writeToSpecificStorageBucket = functions.https.onRequest(async (req, res) => {
+  await admin.storage().bucket("test-bucket").file(STORAGE_FILE_NAME).save("hello world!");
+  console.log("Wrote to a specific Storage bucket");
+  res.json({ created: "ok" });
+});
+
+exports.updateDeleteFromSpecificStorageBucket = functions.https.onRequest(async (req, res) => {
+  await admin.storage().bucket("test-bucket").file(STORAGE_FILE_NAME).save("something new!");
+  console.log("Wrote to a specific Storage bucket");
+  await admin.storage().bucket("test-bucket").file(STORAGE_FILE_NAME).delete();
+  console.log("Deleted from a specific Storage bucket");
   res.json({ done: "ok" });
 });
 
@@ -222,3 +251,75 @@ exports.storagev2metadatareaction = functionsV2.storage.onObjectMetadataUpdated(
   console.log("Object", JSON.stringify(cloudevent.data));
   return true;
 });
+
+exports.storageArchiveReaction = functions.storage
+  .bucket("test-bucket")
+  .object()
+  .onArchive((object, context) => {
+    console.log(STORAGE_BUCKET_FUNCTION_ARCHIVED_LOG);
+    console.log("Object", JSON.stringify(object));
+    return true;
+  });
+
+exports.storageDeleteReaction = functions.storage
+  .bucket("test-bucket")
+  .object()
+  .onDelete((object, context) => {
+    console.log(STORAGE_BUCKET_FUNCTION_DELETED_LOG);
+    console.log("Object", JSON.stringify(object));
+    return true;
+  });
+
+exports.storageFinalizeReaction = functions.storage
+  .bucket("test-bucket")
+  .object()
+  .onFinalize((object, context) => {
+    console.log(STORAGE_BUCKET_FUNCTION_FINALIZED_LOG);
+    console.log("Object", JSON.stringify(object));
+    return true;
+  });
+
+exports.storageMetadataReaction = functions.storage
+  .bucket("test-bucket")
+  .object()
+  .onMetadataUpdate((object, context) => {
+    console.log(STORAGE_BUCKET_FUNCTION_METADATA_LOG);
+    console.log("Object", JSON.stringify(object));
+    return true;
+  });
+
+exports.storagev2archivedreaction = functionsV2.storage.onObjectArchived(
+  "test-bucket",
+  (cloudevent) => {
+    console.log(STORAGE_BUCKET_FUNCTION_V2_ARCHIVED_LOG);
+    console.log("Object", JSON.stringify(cloudevent.data));
+    return true;
+  }
+);
+
+exports.storagev2deletedreaction = functionsV2.storage.onObjectDeleted(
+  "test-bucket",
+  (cloudevent) => {
+    console.log(STORAGE_BUCKET_FUNCTION_V2_DELETED_LOG);
+    console.log("Object", JSON.stringify(cloudevent.data));
+    return true;
+  }
+);
+
+exports.storagev2finalizedreaction = functionsV2.storage.onObjectFinalized(
+  "test-bucket",
+  (cloudevent) => {
+    console.log(STORAGE_BUCKET_FUNCTION_V2_FINALIZED_LOG);
+    console.log("Object", JSON.stringify(cloudevent.data));
+    return true;
+  }
+);
+
+exports.storagev2metadatareaction = functionsV2.storage.onObjectMetadataUpdated(
+  "test-bucket",
+  (cloudevent) => {
+    console.log(STORAGE_BUCKET_FUNCTION_V2_METADATA_LOG);
+    console.log("Object", JSON.stringify(cloudevent.data));
+    return true;
+  }
+);

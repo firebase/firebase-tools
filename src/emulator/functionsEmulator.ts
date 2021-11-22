@@ -281,8 +281,8 @@ export class FunctionsEmulator implements EmulatorInstance {
       } else {
         triggerKey = `${this.args.projectId}:${proto.eventType}`;
       }
-      if (req.headers["trigger-filter"]) {
-        triggerKey += `:${req.headers["trigger-filter"]}`;
+      if (proto.data.bucket) {
+        triggerKey += `:${proto.data.bucket}`;
       }
       const triggers = this.multicastTriggers[triggerKey] || [];
 

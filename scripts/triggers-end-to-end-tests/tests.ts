@@ -295,6 +295,54 @@ describe("storage emulator function triggers", () => {
     expect(test.storageDeletedTriggerCount).to.equal(1);
     expect(test.storageV2DeletedTriggerCount).to.equal(1);
   });
+
+  it("should write to a specific bucket in the storage emulator", async function (this) {
+    this.timeout(EMULATOR_TEST_TIMEOUT);
+
+    const response = await test.writeToSpecificStorageBucket();
+    expect(response.status).to.equal(200);
+    await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+  });
+
+  it("should have triggered cloud functions", () => {
+    // default bucket values
+    expect(test.storageFinalizedTriggerCount).to.equal(2);
+    expect(test.storageMetadataTriggerCount).to.equal(2);
+    expect(test.storageV2FinalizedTriggerCount).to.equal(2);
+    expect(test.storageV2MetadataTriggerCount).to.equal(2);
+    expect(test.storageDeletedTriggerCount).to.equal(1);
+    expect(test.storageV2DeletedTriggerCount).to.equal(1);
+    // specific bucket values
+    expect(test.storageBucketFinalizedTriggerCount).to.equal(1);
+    expect(test.storageBucketMetadataTriggerCount).to.equal(1);
+    expect(test.storageBucketV2FinalizedTriggerCount).to.equal(1);
+    expect(test.storageBucketV2MetadataTriggerCount).to.equal(1);
+  });
+
+  it("should write, update, and delete from a specific bucket in the storage emulator", async function (this) {
+    this.timeout(EMULATOR_TEST_TIMEOUT);
+
+    const response = await test.updateDeleteFromSpecificStorageBucket();
+    expect(response.status).to.equal(200);
+    await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+  });
+
+  it("should have triggered cloud functions", () => {
+    // default bucket values
+    expect(test.storageFinalizedTriggerCount).to.equal(2);
+    expect(test.storageMetadataTriggerCount).to.equal(2);
+    expect(test.storageV2FinalizedTriggerCount).to.equal(2);
+    expect(test.storageV2MetadataTriggerCount).to.equal(2);
+    expect(test.storageDeletedTriggerCount).to.equal(1);
+    expect(test.storageV2DeletedTriggerCount).to.equal(1);
+    // specific bucket values
+    expect(test.storageBucketFinalizedTriggerCount).to.equal(2);
+    expect(test.storageBucketMetadataTriggerCount).to.equal(2);
+    expect(test.storageBucketV2FinalizedTriggerCount).to.equal(2);
+    expect(test.storageBucketV2MetadataTriggerCount).to.equal(2);
+    expect(test.storageBucketDeletedTriggerCount).to.equal(1);
+    expect(test.storageBucketV2DeletedTriggerCount).to.equal(1);
+  });
 });
 
 describe("import/export end to end", () => {
