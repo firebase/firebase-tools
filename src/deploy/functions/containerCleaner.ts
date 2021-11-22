@@ -15,34 +15,6 @@ import * as docker from "../../gcp/docker";
 import * as utils from "../../utils";
 import * as poller from "../../operation-poller";
 
-// A flattening of container_registry_hosts and
-// region_multiregion_map from regionconfig.borg
-export const SUBDOMAIN_MAPPING: Record<string, string> = {
-  "us-west2": "us",
-  "us-west3": "us",
-  "us-west4": "us",
-  "us-central1": "us",
-  "us-central2": "us",
-  "us-east1": "us",
-  "us-east4": "us",
-  "northamerica-northeast1": "us",
-  "southamerica-east1": "us",
-  "europe-west1": "eu",
-  "europe-west2": "eu",
-  "europe-west3": "eu",
-  "europe-west5": "eu",
-  "europe-west6": "eu",
-  "europe-central2": "eu",
-  "asia-east1": "asia",
-  "asia-east2": "asia",
-  "asia-northeast1": "asia",
-  "asia-northeast2": "asia",
-  "asia-northeast3": "asia",
-  "asia-south1": "asia",
-  "asia-southeast2": "asia",
-  "australia-southeast1": "asia",
-};
-
 async function retry<Return>(func: () => Promise<Return>): Promise<Return> {
   const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
   const MAX_RETRIES = 3;
@@ -105,7 +77,7 @@ export async function cleanupBuildImages(
       try {
         await gcrCleaner.cleanupFunction(func);
       } catch (err) {
-        const path = `${func.project}/${SUBDOMAIN_MAPPING[func.region]}/gcf`;
+        const path = `${func.project}/${docker.GCR_SUBDOMAIN_MAPPING[func.region]}/gcf`;
         failedDomains.add(`https://console.cloud.google.com/gcr/images/${path}`);
       }
     })
@@ -191,7 +163,7 @@ export class ContainerRegistryCleaner {
   readonly helpers: Record<string, DockerHelper> = {};
 
   private helper(location: string): DockerHelper {
-    const subdomain = SUBDOMAIN_MAPPING[location] || "us";
+    const subdomain = docker.GCR_SUBDOMAIN_MAPPING[location] || "us";
     if (!this.helpers[subdomain]) {
       const origin = `https://${subdomain}.${containerRegistryDomain}`;
       this.helpers[subdomain] = new DockerHelper(origin);
@@ -266,14 +238,14 @@ export async function listGcfPaths(
   dockerHelpers: Record<string, DockerHelper> = {}
 ): Promise<string[]> {
   if (!locations) {
-    locations = Object.keys(SUBDOMAIN_MAPPING);
+    locations = Object.keys(docker.GCR_SUBDOMAIN_MAPPING);
   }
-  const invalidRegion = locations.find((loc) => !SUBDOMAIN_MAPPING[loc]);
+  const invalidRegion = locations.find((loc) => !docker.GCR_SUBDOMAIN_MAPPING[loc]);
   if (invalidRegion) {
     throw new FirebaseError(`Invalid region ${invalidRegion} supplied`);
   }
   const locationsSet = new Set(locations); // for quick lookup
-  const subdomains = new Set(Object.values(SUBDOMAIN_MAPPING));
+  const subdomains = new Set(Object.values(docker.GCR_SUBDOMAIN_MAPPING));
   const failedSubdomains: string[] = [];
   const listAll: Promise<Stat>[] = [];
 
@@ -310,7 +282,7 @@ export async function listGcfPaths(
   }
 
   return gcfDirs.map((loc) => {
-    return `${SUBDOMAIN_MAPPING[loc]}.${containerRegistryDomain}/${projectId}/gcf/${loc}`;
+    return `${docker.GCR_SUBDOMAIN_MAPPING[loc]}.${containerRegistryDomain}/${projectId}/gcf/${loc}`;
   });
 }
 
@@ -329,20 +301,21 @@ export async function deleteGcfArtifacts(
   dockerHelpers: Record<string, DockerHelper> = {}
 ): Promise<void> {
   if (!locations) {
-    locations = Object.keys(SUBDOMAIN_MAPPING);
+    locations = Object.keys(docker.GCR_SUBDOMAIN_MAPPING);
   }
-  const invalidRegion = locations.find((loc) => !SUBDOMAIN_MAPPING[loc]);
+  const invalidRegion = locations.find((loc) => !docker.GCR_SUBDOMAIN_MAPPING[loc]);
   if (invalidRegion) {
     throw new FirebaseError(`Invalid region ${invalidRegion} supplied`);
   }
-  const subdomains = new Set(Object.values(SUBDOMAIN_MAPPING));
+  const subdomains = new Set(Object.values(docker.GCR_SUBDOMAIN_MAPPING));
   const failedSubdomains: string[] = [];
 
   const deleteLocations = locations.map((loc) => {
+    const subdomain = docker.GCR_SUBDOMAIN_MAPPING[loc]!;
     try {
-      return getHelper(dockerHelpers, SUBDOMAIN_MAPPING[loc]).rm(`${projectId}/gcf/${loc}`);
+      return getHelper(dockerHelpers, subdomain).rm(`${projectId}/gcf/${loc}`);
     } catch (err) {
-      failedSubdomains.push(SUBDOMAIN_MAPPING[loc]);
+      failedSubdomains.push(subdomain);
       logger.debug(err);
     }
   });
