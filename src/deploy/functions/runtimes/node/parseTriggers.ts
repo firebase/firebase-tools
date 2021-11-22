@@ -9,15 +9,9 @@ import * as api from "../../../../api";
 import * as proto from "../../../../gcp/proto";
 import * as args from "../../args";
 import * as runtimes from "../../runtimes";
+import { STORAGE_V2_EVENTS } from "../../eventTypes";
 
 const TRIGGER_PARSER = path.resolve(__dirname, "./triggerParser.js");
-
-export const GCS_EVENTS: Set<string> = new Set<string>([
-  "google.cloud.storage.object.v1.finalized",
-  "google.cloud.storage.object.v1.archived",
-  "google.cloud.storage.object.v1.deleted",
-  "google.cloud.storage.object.v1.metadataUpdated",
-]);
 
 export interface ScheduleRetryConfig {
   retryCount?: number;
@@ -203,7 +197,7 @@ export function addResourcesToBackend(
 
       // TODO: yank this edge case for a v2 trigger on the pre-container contract
       // once we use container contract for the functionsv2 experiment.
-      if (GCS_EVENTS.has(annotation.eventTrigger?.eventType || "")) {
+      if (STORAGE_V2_EVENTS.find((event) => event === (annotation.eventTrigger?.eventType || ""))) {
         triggered.eventTrigger.eventFilters = {
           bucket: annotation.eventTrigger!.resource,
         };
