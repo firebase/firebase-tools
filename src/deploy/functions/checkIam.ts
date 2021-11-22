@@ -112,10 +112,7 @@ export async function checkHttpIam(
 /** Callback reducer function */
 function reduceEventsToServices(services: Array<Service>, endpoint: backend.Endpoint) {
   const service = serviceForEndpoint(endpoint);
-  if (
-    service.requiredProjectBindings &&
-    !services.find((s) => s.name === service.name)
-  ) {
+  if (service.requiredProjectBindings && !services.find((s) => s.name === service.name)) {
     services.push(service);
   }
   return services;
