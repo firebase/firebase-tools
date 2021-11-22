@@ -1,1 +1,0 @@
-- `firebase deploy --only extensions` now supports project specifc .env files. When deploying to multiple projects, param values that are different between projects can be put in `extensions/${extensionInstanceId}.env.${projectIdOrAlias}` and common param values can be put in `extensions/${extensionInstanceId}.env`.
