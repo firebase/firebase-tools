@@ -115,9 +115,7 @@ exports.writeToAuth = functions.https.onRequest(async (req, res) => {
 });
 
 exports.writeToStorage = functions.https.onRequest(async (req, res) => {
-  const file = admin.storage().bucket("default-bucket").file(STORAGE_FILE_NAME);
-  await file.save("hello world!");
-  console.log(file);
+  await admin.storage().bucket("default-bucket").file(STORAGE_FILE_NAME).save("hello world!");
   console.log("Wrote to Storage bucket");
   res.json({ created: "ok" });
 });
@@ -216,8 +214,8 @@ exports.storageArchiveReaction = functions.storage
   });
 
 exports.storageDeleteReaction = functions.storage
-  .object()
   .bucket("default-bucket")
+  .object()
   .onDelete((object, context) => {
     console.log(STORAGE_FUNCTION_DELETED_LOG);
     console.log("Object", JSON.stringify(object));
@@ -225,8 +223,8 @@ exports.storageDeleteReaction = functions.storage
   });
 
 exports.storageFinalizeReaction = functions.storage
-  .object()
   .bucket("default-bucket")
+  .object()
   .onFinalize((object, context) => {
     console.log(STORAGE_FUNCTION_FINALIZED_LOG);
     console.log("Object", JSON.stringify(object));
@@ -234,8 +232,8 @@ exports.storageFinalizeReaction = functions.storage
   });
 
 exports.storageMetadataReaction = functions.storage
-  .object()
   .bucket("default-bucket")
+  .object()
   .onMetadataUpdate((object, context) => {
     console.log(STORAGE_FUNCTION_METADATA_LOG);
     console.log("Object", JSON.stringify(object));
