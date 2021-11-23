@@ -161,7 +161,6 @@ export class TriggerEndToEndTest {
       if (data.includes(STORAGE_FUNCTION_METADATA_LOG)) {
         this.storageMetadataTriggerCount++;
       }
-
       if (data.includes(STORAGE_BUCKET_FUNCTION_ARCHIVED_LOG)) {
         this.storageBucketArchivedTriggerCount++;
       }
