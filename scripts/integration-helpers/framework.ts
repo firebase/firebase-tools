@@ -113,6 +113,33 @@ export class TriggerEndToEndTest {
     }
   }
 
+  resetCounts(): void {
+    /* Functions V1 */
+    this.firestoreTriggerCount = 0;
+    this.rtdbTriggerCount = 0;
+    this.pubsubTriggerCount = 0;
+    this.authTriggerCount = 0;
+    this.storageArchivedTriggerCount = 0;
+    this.storageDeletedTriggerCount = 0;
+    this.storageFinalizedTriggerCount = 0;
+    this.storageMetadataTriggerCount = 0;
+    this.storageBucketArchivedTriggerCount = 0;
+    this.storageBucketDeletedTriggerCount = 0;
+    this.storageBucketFinalizedTriggerCount = 0;
+    this.storageBucketMetadataTriggerCount = 0;
+
+    /* Functions V2 */
+    this.pubsubV2TriggerCount = 0;
+    this.storageV2ArchivedTriggerCount = 0;
+    this.storageV2DeletedTriggerCount = 0;
+    this.storageV2FinalizedTriggerCount = 0;
+    this.storageV2MetadataTriggerCount = 0;
+    this.storageBucketV2ArchivedTriggerCount = 0;
+    this.storageBucketV2DeletedTriggerCount = 0;
+    this.storageBucketV2FinalizedTriggerCount = 0;
+    this.storageBucketV2MetadataTriggerCount = 0;
+  }
+
   /*
    * Check that all directions of database <-> functions <-> firestore
    * worked.
@@ -256,16 +283,16 @@ export class TriggerEndToEndTest {
     return this.invokeHttpFunction("writeToScheduledPubsub");
   }
 
-  writeToStorage(): Promise<Response> {
-    return this.invokeHttpFunction("writeToStorage");
-  }
-
-  updateDeleteFromStorage(): Promise<Response> {
-    return this.invokeHttpFunction("updateDeleteFromStorage");
+  writeToDefaultStorage(): Promise<Response> {
+    return this.invokeHttpFunction("writeToDefaultStorage");
   }
 
   writeToSpecificStorageBucket(): Promise<Response> {
     return this.invokeHttpFunction("writeToSpecificStorageBucket");
+  }
+
+  updateDeleteFromDefaultStorage(): Promise<Response> {
+    return this.invokeHttpFunction("updateDeleteFromDefaultStorage");
   }
 
   updateDeleteFromSpecificStorageBucket(): Promise<Response> {
