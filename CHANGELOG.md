@@ -1,0 +1,1 @@
+Fixes issue when installing a Firebase Extension where secrets would be created before validation.
