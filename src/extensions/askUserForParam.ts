@@ -116,11 +116,9 @@ export async function askForParam(
         valid = checkResponse(response, paramSpec);
         break;
       case ParamType.SECRET:
-        if (reconfiguring) {
-          response = await promptReconfigureSecret(projectId, instanceId, paramSpec);
-        } else {
-          response = await promptCreateSecret(projectId, instanceId, paramSpec);
-        }
+        response = reconfiguring
+          ? await promptReconfigureSecret(projectId, instanceId, paramSpec)
+          : await promptCreateSecret(projectId, instanceId, paramSpec);
         valid = true;
         break;
       default:
