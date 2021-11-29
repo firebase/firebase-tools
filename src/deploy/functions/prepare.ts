@@ -18,7 +18,8 @@ import * as runtimes from "./runtimes";
 import * as validate from "./validate";
 import * as utils from "../../utils";
 import { logger } from "../../logger";
-import { lookupMissingTriggerRegions } from "./triggerRegionHelper";
+import { ensureTriggerRegions } from "./triggerRegionHelper";
+import { ensureServiceAgentRoles } from "./checkIam";
 
 function hasUserConfig(config: Record<string, unknown>): boolean {
   // "firebase" key is always going to exist in runtime config.
@@ -57,9 +58,7 @@ export async function prepare(
       /* silent=*/ true
     ),
     ensureCloudBuildEnabled(projectId),
-    previews.artifactregistry
-      ? ensureApiEnabled.ensure(projectId, "artifactregistry.googleapis.com", "functions")
-      : Promise.resolve(),
+    ensureApiEnabled.ensure(projectId, "artifactregistry.googleapis.com", "functions"),
   ]);
   context.runtimeConfigEnabled = checkAPIsEnabled[1];
 
@@ -155,8 +154,9 @@ export async function prepare(
   });
 
   const haveBackend = await backend.existingBackend(context);
+  await ensureServiceAgentRoles(projectId, wantBackend, haveBackend);
   inferDetailsFromExisting(wantBackend, haveBackend, usedDotenv);
-  await lookupMissingTriggerRegions(wantBackend);
+  await ensureTriggerRegions(wantBackend);
 
   // Display a warning and prompt if any functions in the release have failurePolicies.
   await promptForFailurePolicies(options, matchingBackend, haveBackend);
