@@ -102,7 +102,18 @@ export async function cleanupBuildImages(
 // requests through a ThrottlerQueue.
 export class ArtifactRegistryCleaner {
   static packagePath(func: backend.TargetIds): string {
-    return `projects/${func.project}/locations/${func.region}/repositories/gcf-artifacts/packages/${func.id}`;
+    // GCFv1 names can include upper-case letters, but docker images cannot.
+    // to fix this, the artifact registry path for these images uses a custom encoding scheme.
+    // * Underscores are doubled
+    // * Dashes are doubled
+    // * A leading capital letter is replaced with <lower><dash><lower>
+    // * Other capital letters are replaced with <underscore><lower>
+    const encodedId = func.id
+      .replace(/_/g, "__")
+      .replace(/-/g, "--")
+      .replace(/^[A-Z]/, (first) => `${first.toLowerCase()}-${first.toLowerCase()}`)
+      .replace(/[A-Z]/g, (upper) => `_${upper.toLowerCase()}`);
+    return `projects/${func.project}/locations/${func.region}/repositories/gcf-artifacts/packages/${encodedId}`;
   }
 
   static POLLER_OPTIONS = {
