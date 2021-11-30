@@ -35,6 +35,7 @@ import { promptOnce } from "../prompt";
 import { logger } from "../logger";
 import { envOverride } from "../utils";
 import { getLocalChangelog } from "./changelog";
+import { getProjectNumber } from "../getProjectNumber";
 
 /**
  * SpecParamType represents the exact strings that the extensions
@@ -103,9 +104,9 @@ export function getDBInstanceFromURL(databaseUrl = ""): string {
 /**
  * Gets Firebase project specific param values.
  */
-export async function getFirebaseProjectParams(projectId: string): Promise<any> {
+export async function getFirebaseProjectParams(projectId: string): Promise<Record<string, string>> {
   const body = await getFirebaseConfig({ project: projectId });
-
+  const projectNumber = await getProjectNumber({ projectId });
   // This env variable is needed for parameter-less initialization of firebase-admin
   const FIREBASE_CONFIG = JSON.stringify({
     projectId: body.projectId,
@@ -115,6 +116,7 @@ export async function getFirebaseProjectParams(projectId: string): Promise<any> 
 
   return {
     PROJECT_ID: body.projectId,
+    PROJECT_NUMBER: projectNumber,
     DATABASE_URL: body.databaseURL,
     STORAGE_BUCKET: body.storageBucket,
     FIREBASE_CONFIG,
@@ -156,7 +158,7 @@ export function populateDefaultParams(paramVars: Record<string, string>, paramSp
 
   for (const param of paramSpecs) {
     if (!paramVars[param.param]) {
-      if (param.default != undefined) {
+      if (param.default != undefined && param.required) {
         newParams[param.param] = param.default;
       } else if (param.required) {
         throw new FirebaseError(

@@ -98,11 +98,13 @@ describe("optionsHelper", () => {
           label: "param1",
           param: "USER_PARAM1",
           default: "hi",
+          required: true,
         },
         {
           label: "param2",
           param: "USER_PARAM2",
           default: "hello",
+          required: true,
         },
       ];
       readEnvFileStub.returns({});

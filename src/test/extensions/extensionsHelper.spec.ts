@@ -102,7 +102,6 @@ describe("extensionsHelper", () => {
       ENV_VAR_ONE: "12345",
       ENV_VAR_TWO: "hello@example.com",
       ENV_VAR_THREE: "https://${PROJECT_ID}.web.app/?acceptInvitation={token}",
-      ENV_VAR_FOUR: "users/{sender}.friends",
     };
 
     const exampleParamSpec: extensionsApi.Param[] = [
