@@ -94,6 +94,37 @@ describe("metricsUtil", () => {
             labels: {
               extension: "export-bigquery",
               publisher: "firebase",
+              version: "all",
+            },
+            type: "firebaseextensions.googleapis.com/ExtensionVersion",
+          },
+          valueType: ValueType.INT64,
+          points: [
+            {
+              interval: {
+                startTime: "2021-10-30T17:56:21.027Z",
+                endTime: "2021-10-30T17:56:21.027Z",
+              },
+              value: {
+                int64Value: 10,
+              },
+            },
+          ],
+        },
+        {
+          metric: {
+            type: "firebaseextensions.googleapis.com/extension/version/active_instances",
+            labels: {
+              extension: "export-bigquery",
+              publisher: "firebase",
+              version: "0.1.0",
+            },
+          },
+          metricKind: MetricKind.GAUGE,
+          resource: {
+            labels: {
+              extension: "export-bigquery",
+              publisher: "firebase",
               version: "0.1.0",
             },
             type: "firebaseextensions.googleapis.com/ExtensionVersion",
@@ -389,6 +420,20 @@ describe("metricsUtil", () => {
             high: 70,
             low: 60,
           },
+          valueToday: {
+            high: 10,
+            low: 0,
+          },
+        },
+        // Should sort "all" to the end.
+        {
+          ref: {
+            extensionId: "export-bigquery",
+            publisherId: "firebase",
+            version: "all",
+          },
+          value28dAgo: undefined,
+          value7dAgo: undefined,
           valueToday: {
             high: 10,
             low: 0,

@@ -21,11 +21,11 @@ module.exports = new Command("ext:dev:usage <publisherId>")
   .before(requireAuth)
   .before(checkMinRequiredVersion, "extDevMinVersion")
   .action(async (input: string) => {
-    const extensionIdRegex = /^[\w\d-]+\/[\w\d-]+$/;
+    const extensionRefRegex = /^[\w\d-]+\/[\w\d-]+$/;
 
     let extensionName;
     let publisherId;
-    if (extensionIdRegex.test(input)) {
+    if (extensionRefRegex.test(input)) {
       [publisherId, extensionName] = input.split("/");
     } else {
       publisherId = input;
@@ -53,7 +53,6 @@ module.exports = new Command("ext:dev:usage <publisherId>")
     };
 
     const response = await queryTimeSeries(query, projectNumber);
-
     const metrics = parseTimeseriesResponse(response);
 
     const table = new Table({

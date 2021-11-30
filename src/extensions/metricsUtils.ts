@@ -39,7 +39,15 @@ export function parseTimeseriesResponse(series: TimeSeriesResponse): Array<Bucke
     });
   }
 
-  ret.sort((a, b) => (semver.lt(a.ref.version!, b.ref.version!) ? 1 : -1));
+  ret.sort((a, b) => {
+    if (a.ref.version === "all") {
+      return 1;
+    }
+    if (b.ref.version === "all") {
+      return -1;
+    }
+    return semver.lt(a.ref.version!, b.ref.version!) ? 1 : -1;
+  });
   return ret;
 }
 
