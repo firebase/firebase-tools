@@ -6,17 +6,18 @@ import { Aligner, CmQuery, queryTimeSeries, TimeSeriesView } from "../gcp/cloudm
 import { requireAuth } from "../requireAuth";
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { buildMetricsTableRow, parseTimeseriesResponse } from "../extensions/metricsUtils";
-import { getPublisherProfile } from "../extensions/extensionsApi";
+import { getPublisherProfile, listExtensions } from "../extensions/extensionsApi";
 import { getPublisherProjectFromName, logPrefix } from "../extensions/extensionsHelper";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
+import { promptOnce } from "../prompt";
 
 module.exports = new Command("ext:dev:usage <publisherId>")
   .description("get usage for an extension")
   .help(
     "use this command to get the usage of extensions you published. " +
       "Specify the publisher ID you used to publish your extensions, " +
-      "or the extension ID of your published extension."
+      "or the extension ref of your published extension."
   )
   .before(requireAuth)
   .before(checkMinRequiredVersion, "extDevMinVersion")
@@ -28,9 +29,40 @@ module.exports = new Command("ext:dev:usage <publisherId>")
     if (extensionRefRegex.test(input)) {
       [publisherId, extensionName] = input.split("/");
     } else {
+      // If input doesn't match extensionRef regex then treat it as a publisher ID.
+      // We use the interactive flow to let users choose which extension to show stats for.
       publisherId = input;
-      // TODO: show interactive options to select an extension to show metrics for. (next PR)
-      throw new FirebaseError("Interactive selection unimplemented, pass extension ref instead");
+
+      let extensions;
+      try {
+        extensions = await listExtensions(publisherId);
+      } catch (err) {
+        throw new FirebaseError(err);
+      }
+
+      if (extensions.length < 1) {
+        throw new FirebaseError(
+          `There are no published extensions associated with publisher ID ${clc.bold(
+            publisherId
+          )}. This could happen for two reasons:\n` +
+            "  - The publisher ID doesn't exist or could be misspelled\n" +
+            "  - This publisher has not published any extensions\n\n" +
+            "If you are expecting some extensions to appear, please make sure you have the correct publisher ID and try again."
+        );
+      }
+
+      extensionName = await promptOnce({
+        type: "list",
+        name: "extension",
+        message: "Which published extension do you want to view the stats for?",
+        choices: extensions.map((e) => {
+          const [_, name] = e.ref.split("/");
+          return {
+            name,
+            value: name,
+          };
+        }),
+      });
     }
 
     const profile = await getPublisherProfile("-", publisherId);
@@ -52,7 +84,21 @@ module.exports = new Command("ext:dev:usage <publisherId>")
       "aggregation.perSeriesAligner": Aligner.ALIGN_MAX,
     };
 
-    const response = await queryTimeSeries(query, projectNumber);
+    let response;
+    try {
+      response = await queryTimeSeries(query, projectNumber);
+    } catch (err) {
+      throw new FirebaseError(
+        `Error occurred when fetching usage data for extension ${extensionName}`,
+        {
+          original: err,
+        }
+      );
+    }
+    if (!response) {
+      throw new FirebaseError(`Couldn't find any usage data for extension ${extensionName}`);
+    }
+
     const metrics = parseTimeseriesResponse(response);
 
     const table = new Table({
