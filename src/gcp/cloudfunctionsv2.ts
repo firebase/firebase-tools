@@ -88,7 +88,7 @@ export interface ServiceConfig {
   uri?: string;
 
   timeoutSeconds?: number;
-  availableMemoryMb?: number;
+  availableMemory?: string;
   environmentVariables?: Record<string, string>;
   maxInstanceCount?: number;
   minInstanceCount?: number;
@@ -161,6 +161,40 @@ interface ListFunctionsResponse {
 interface GenerateUploadUrlResponse {
   uploadUrl: string;
   storageSource: StorageSource;
+}
+
+// AvailableMemory suffixes and their byte count.
+type MemoryUnit = "" | "k" | "M" | "G" | "Mi" | "Gi";
+const BYTES_PER_UNIT: Record<MemoryUnit, number> = {
+  "": 1,
+  k: 1e3,
+  M: 1e6,
+  G: 1e9,
+  Mi: 1 << 20,
+  Gi: 1 << 30,
+};
+
+/**
+ * Returns the float-precision number of Mega(not Mebi)bytes in a
+ * Kubernetes-style quantity
+ * Must serve the same results as
+ * https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apimachinery/pkg/api/resource/quantity.go
+ */
+export function megabytes(memory: string): number {
+  const re = /^([0-9]+(\.[0-9]*)?)(k|Mi|Gi|M|G|([eE]([0-9]+)))?$/;
+  const matches = re.exec(memory);
+  if (!matches) {
+    throw new Error(`Invalid memory quantity "${memory}""`);
+  }
+  const quantity = Number.parseFloat(matches[1]);
+  let bytes: number;
+  if (matches[5]) {
+    bytes = quantity * Math.pow(10, Number.parseFloat(matches[5]));
+  } else {
+    const suffix = matches[3] || "";
+    bytes = quantity * BYTES_PER_UNIT[suffix as MemoryUnit];
+  }
+  return bytes / 1e6;
 }
 
 /**
@@ -356,12 +390,18 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
   proto.copyIfPresent(
     gcfFunction.serviceConfig,
     endpoint,
-    "availableMemoryMb",
     "environmentVariables",
     "vpcConnector",
     "vpcConnectorEgressSettings",
     "serviceAccountEmail",
     "ingressSettings"
+  );
+  proto.renameIfPresent(
+    gcfFunction.serviceConfig,
+    endpoint,
+    "availableMemory",
+    "availableMemoryMb",
+    (mb: string) => `${mb}M`
   );
   proto.renameIfPresent(
     gcfFunction.serviceConfig,
@@ -459,11 +499,17 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     endpoint,
     gcfFunction.serviceConfig,
     "serviceAccountEmail",
-    "availableMemoryMb",
     "vpcConnector",
     "vpcConnectorEgressSettings",
     "ingressSettings",
     "environmentVariables"
+  );
+  proto.renameIfPresent(
+    endpoint,
+    gcfFunction.serviceConfig,
+    "availableMemoryMb",
+    "availableMemory",
+    megabytes
   );
   proto.renameIfPresent(
     endpoint,
