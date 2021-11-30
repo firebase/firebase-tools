@@ -1,3 +1,4 @@
-- Corrects a bug where containers in Artifact Registry would not be deleted if a function has an upper case character in its name
+- Corrects a bug where containers in Artifact Registry would not be deleted if a function has an upper case character in its name (#3918)
 - Fixes issue where providing the `--project` flag during `init` would not be recognized with a default project already set. (#3870)
-- New HTTPS functions only allow secure traffic.
+- Fixes issue with setting memory limits for some functions (#3924)
+- New HTTPS functions only allow secure traffic. (#3923)
