@@ -205,6 +205,12 @@ export class Fabricator {
       throw new Error("Precondition failed");
     }
     const apiFunction = gcf.functionFromEndpoint(endpoint, this.sourceUrl);
+    // As a general security practice and way to smooth out the upgrade path
+    // for GCF gen 2, we are enforcing that all new GCFv1 deploys will require
+    // HTTPS
+    if (apiFunction.httpsTrigger) {
+      apiFunction.httpsTrigger.securityLevel = "SECURE_ALWAYS";
+    }
     apiFunction.sourceToken = await scraper.tokenPromise();
     const resultFunction = await this.functionExecutor
       .run(async () => {
