@@ -164,14 +164,17 @@ interface GenerateUploadUrlResponse {
 }
 
 // AvailableMemory suffixes and their byte count.
-type MemoryUnit = "" | "k" | "M" | "G" | "Mi" | "Gi";
+type MemoryUnit = "" | "k" | "M" | "G" | "T" | "Ki" | "Mi" | "Gi" | "Ti";
 const BYTES_PER_UNIT: Record<MemoryUnit, number> = {
   "": 1,
   k: 1e3,
   M: 1e6,
   G: 1e9,
+  T: 1e12,
+  Ki: 1 << 10,
   Mi: 1 << 20,
   Gi: 1 << 30,
+  Ti: 1 << 40,
 };
 
 /**
@@ -181,7 +184,7 @@ const BYTES_PER_UNIT: Record<MemoryUnit, number> = {
  * https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apimachinery/pkg/api/resource/quantity.go
  */
 export function megabytes(memory: string): number {
-  const re = /^([0-9]+(\.[0-9]*)?)(k|Mi|Gi|M|G|([eE]([0-9]+)))?$/;
+  const re = /^([0-9]+(\.[0-9]*)?)(Ki|Mi|Gi|Ti|k|M|G|T|([eE]([0-9]+)))?$/;
   const matches = re.exec(memory);
   if (!matches) {
     throw new Error(`Invalid memory quantity "${memory}""`);
