@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import { bold } from "cli-color";
 
 import * as track from "./track";
@@ -79,7 +78,7 @@ async function pollCheckEnabled(
   });
   const isEnabled = await check(projectId, apiName, prefix, silent);
   if (isEnabled) {
-    track("api_enabled", apiName);
+    void track("api_enabled", apiName);
     return;
   }
   if (!silent) {
