@@ -1460,7 +1460,43 @@ function signInWithIdp(
     }
   }
 
-  let { response, rawId } = fakeFetchUserInfoFromIdp(providerId, claims);
+  if (reqBody.pendingToken) {
+    const decoded = decodeJwt(reqBody.pendingToken, { complete: true }) as { expiresAt: number };
+    assert(decoded.expiresAt < Date.now(), "INVALID_PENDING_TOKEN");
+  }
+
+  const encryptedSessionState =
+    normalizedUri.searchParams.get("RelayState") ||
+    normalizedUri.searchParams.get("state") ||
+    undefined;
+  let sessionState = undefined;
+  if (encryptedSessionState) {
+    const sessionStateJson = Buffer.from(encryptedSessionState, "base64").toString("utf8");
+    sessionState = JSON.parse(sessionStateJson) as SessionState;
+    assert(sessionState, "MISSING_SESSION_ID");
+    assert(sessionState.sessionId === reqBody.sessionId, "INVALID_SESSION_ID");
+  }
+
+  // Generic SAML flow
+  let samlResponse: SamlResponse | undefined;
+  if (normalizedUri.searchParams.get("SAMLResponse")) {
+    // Auth emulator purposefully does not parse SAML and expects SAML-related
+    // fields to be JSON objects.
+    samlResponse = JSON.parse(normalizedUri.searchParams.get("SAMLResponse")!) as SamlResponse;
+
+    assert(samlResponse.assertion, "INVALID_IDP_RESPONSE");
+
+    assert(
+      (samlResponse.inResponseTo === undefined && sessionState === undefined) ||
+        samlResponse.inResponseTo === sessionState?.requestId,
+      "INVALID_IDP_RESPONSE"
+    );
+
+    assert(samlResponse.assertion.subject, "INVALID_IDP_RESPONSE");
+    assert(samlResponse.assertion.subject.nameId, "INVALID_IDP_RESPONSE");
+  }
+
+  let { response, rawId } = fakeFetchUserInfoFromIdp(providerId, claims, samlResponse);
 
   // Always return an access token, so that clients depending on it sorta work.
   // e.g. JS SDK creates credentials from accessTokens for most providers:
@@ -2371,7 +2407,8 @@ function parseClaims(idTokenOrJsonClaims: string | undefined): IdpJwtPayload | u
 
 function fakeFetchUserInfoFromIdp(
   providerId: string,
-  claims: IdpJwtPayload
+  claims: IdpJwtPayload,
+  samlResponse?: SamlResponse
 ): {
   response: SignInWithIdpResponse;
   rawId: string;
@@ -2397,7 +2434,7 @@ function fakeFetchUserInfoFromIdp(
     photoUrl,
   };
 
-  let federatedId: string;
+  let federatedId = rawId;
   /* eslint-disable camelcase */
   switch (providerId) {
     case "google.com": {
@@ -2421,8 +2458,17 @@ function fakeFetchUserInfoFromIdp(
       });
       break;
     }
+    case providerId.match(/^saml\./)?.input:
+      response.email =
+        samlResponse?.assertion?.subject?.nameId &&
+        isValidEmailAddress(samlResponse.assertion.subject.nameId)
+          ? samlResponse.assertion.subject.nameId
+          : response.email;
+      response.emailVerified = true;
+      response.rawUserInfo = JSON.stringify(samlResponse?.assertion?.attributeStatements);
+      break;
+    case providerId.match(/^oidc\./)?.input:
     default:
-      federatedId = rawId;
       response.rawUserInfo = JSON.stringify(claims);
       break;
   }
@@ -2764,6 +2810,23 @@ function updateTenant(
 ): Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"] {
   assert(state instanceof TenantProjectState, "((Can only update tenant on tenant projects.))");
   return state.updateTenant(reqBody, ctx.params.query.updateMask);
+}
+
+export interface SamlAssertion {
+  subject?: {
+    nameId?: string;
+  };
+  attributeStatements: unknown;
+}
+
+export interface SamlResponse {
+  assertion?: SamlAssertion;
+  inResponseTo?: string;
+}
+
+export interface SessionState {
+  sessionId: string;
+  requestId: string;
 }
 
 /* eslint-disable camelcase */
