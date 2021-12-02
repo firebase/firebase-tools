@@ -87,6 +87,7 @@ export class RemoteConfigEmulator implements EmulatorInstance {
         `Change detected, updating template for Remote Config...`
       );
       this.updateTemplateSource(templatePath);
+      this.loadTemplate(this._templateSource);
     });
 
     const server = this._app.listen(port, host);
