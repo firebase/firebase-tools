@@ -1460,40 +1460,24 @@ function signInWithIdp(
     }
   }
 
-  if (reqBody.pendingToken) {
-    const decoded = decodeJwt(reqBody.pendingToken, { complete: true }) as { expiresAt: number };
-    assert(decoded.expiresAt < Date.now(), "INVALID_PENDING_TOKEN");
-  }
-
-  const encryptedSessionState =
-    normalizedUri.searchParams.get("RelayState") ||
-    normalizedUri.searchParams.get("state") ||
-    undefined;
-  let sessionState = undefined;
-  if (encryptedSessionState) {
-    const sessionStateJson = Buffer.from(encryptedSessionState, "base64").toString("utf8");
-    sessionState = JSON.parse(sessionStateJson) as SessionState;
-    assert(sessionState, "MISSING_SESSION_ID");
-    assert(sessionState.sessionId === reqBody.sessionId, "INVALID_SESSION_ID");
-  }
-
   // Generic SAML flow
   let samlResponse: SamlResponse | undefined;
+  let signInAttributes = undefined;
   if (normalizedUri.searchParams.get("SAMLResponse")) {
     // Auth emulator purposefully does not parse SAML and expects SAML-related
     // fields to be JSON objects.
     samlResponse = JSON.parse(normalizedUri.searchParams.get("SAMLResponse")!) as SamlResponse;
+    signInAttributes = samlResponse.assertion?.attributeStatements;
 
-    assert(samlResponse.assertion, "INVALID_IDP_RESPONSE");
-
+    assert(samlResponse.assertion, "INVALID_IDP_RESPONSE ((Missing assertion in SAMLResponse.))");
     assert(
-      (samlResponse.inResponseTo === undefined && sessionState === undefined) ||
-        samlResponse.inResponseTo === sessionState?.requestId,
-      "INVALID_IDP_RESPONSE"
+      samlResponse.assertion.subject,
+      "INVALID_IDP_RESPONSE ((Missing assertion.subject in SAMLResponse.))"
     );
-
-    assert(samlResponse.assertion.subject, "INVALID_IDP_RESPONSE");
-    assert(samlResponse.assertion.subject.nameId, "INVALID_IDP_RESPONSE");
+    assert(
+      samlResponse.assertion.subject.nameId,
+      "INVALID_IDP_RESPONSE ((Missing assertion.subject.nameId in SAMLResponse.))"
+    );
   }
 
   let { response, rawId } = fakeFetchUserInfoFromIdp(providerId, claims, samlResponse);
@@ -1592,7 +1576,7 @@ function signInWithIdp(
     return { ...response, ...mfaPending(state, user, providerId) };
   } else {
     user = state.updateUserByLocalId(user.localId, { lastLoginAt: Date.now().toString() });
-    return { ...response, ...issueTokens(state, user, providerId) };
+    return { ...response, ...issueTokens(state, user, providerId, { signInAttributes }) };
   }
 }
 
@@ -2067,9 +2051,11 @@ function issueTokens(
   {
     extraClaims,
     secondFactor,
+    signInAttributes,
   }: {
     extraClaims?: Record<string, unknown>;
     secondFactor?: SecondFactorRecord;
+    signInAttributes?: unknown;
   } = {}
 ): { idToken: string; refreshToken?: string; expiresIn: string } {
   user = state.updateUserByLocalId(user.localId, { lastRefreshAt: new Date().toISOString() });
@@ -2087,6 +2073,7 @@ function issueTokens(
     secondFactor,
     usageMode,
     tenantId,
+    signInAttributes,
   });
   const refreshToken =
     state.usageMode === UsageMode.DEFAULT
@@ -2155,6 +2142,7 @@ function generateJwt(
     secondFactor,
     usageMode,
     tenantId,
+    signInAttributes,
   }: {
     projectId: string;
     signInProvider: string;
@@ -2163,6 +2151,7 @@ function generateJwt(
     secondFactor?: SecondFactorRecord;
     usageMode?: string;
     tenantId?: string;
+    signInAttributes?: unknown;
   }
 ): string {
   const identities: Record<string, string[]> = {};
@@ -2209,6 +2198,7 @@ function generateJwt(
       sign_in_second_factor: secondFactor?.provider,
       usage_mode: usageMode,
       tenant: tenantId,
+      sign_in_attributes: signInAttributes,
     },
   };
   /* eslint-enable camelcase */
@@ -2459,11 +2449,8 @@ function fakeFetchUserInfoFromIdp(
       break;
     }
     case providerId.match(/^saml\./)?.input:
-      response.email =
-        samlResponse?.assertion?.subject?.nameId &&
-        isValidEmailAddress(samlResponse.assertion.subject.nameId)
-          ? samlResponse.assertion.subject.nameId
-          : response.email;
+      const nameId = samlResponse?.assertion?.subject?.nameId;
+      response.email = nameId && isValidEmailAddress(nameId) ? nameId : response.email;
       response.emailVerified = true;
       response.rawUserInfo = JSON.stringify(samlResponse?.assertion?.attributeStatements);
       break;
@@ -2816,17 +2803,11 @@ export interface SamlAssertion {
   subject?: {
     nameId?: string;
   };
-  attributeStatements: unknown;
+  attributeStatements?: unknown;
 }
 
 export interface SamlResponse {
   assertion?: SamlAssertion;
-  inResponseTo?: string;
-}
-
-export interface SessionState {
-  sessionId: string;
-  requestId: string;
 }
 
 /* eslint-disable camelcase */
@@ -2859,6 +2840,7 @@ export interface FirebaseJwtPayload {
     second_factor_identifier?: string;
     usage_mode?: string;
     tenant?: string;
+    sign_in_attributes?: unknown;
   };
   // ...and other fields that we don't care for now.
 }
