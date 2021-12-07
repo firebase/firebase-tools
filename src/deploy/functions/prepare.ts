@@ -20,6 +20,7 @@ import * as utils from "../../utils";
 import { logger } from "../../logger";
 import { ensureTriggerRegions } from "./triggerRegionHelper";
 import { ensureServiceAgentRoles } from "./checkIam";
+import e from "express";
 
 function hasUserConfig(config: Record<string, unknown>): boolean {
   // "firebase" key is always going to exist in runtime config.
@@ -29,6 +30,22 @@ function hasUserConfig(config: Record<string, unknown>): boolean {
 
 function hasDotenv(opts: functionsEnv.UserEnvsOpts): boolean {
   return previews.dotenv && functionsEnv.hasUserEnvs(opts);
+}
+
+// We previously force-enabled AR. We want to wait on this to see if we can give
+// an upgrade warning in the future. If it already is enabled though we want to
+// remember this and still use the cleaner if necessary.
+async function maybeEnableAR(projectId: string): Promise<boolean> {
+  if (previews.artifactregistry) {
+    return ensureApiEnabled.check(
+      projectId,
+      "artifactregistry.googleapis.com",
+      "functions",
+      /* silent= */ true
+    );
+  }
+  await ensureApiEnabled.ensure(projectId, "artifactregistry.googleapis.com", "functions");
+  return true;
 }
 
 export async function prepare(
@@ -58,9 +75,10 @@ export async function prepare(
       /* silent=*/ true
     ),
     ensureCloudBuildEnabled(projectId),
-    ensureApiEnabled.ensure(projectId, "artifactregistry.googleapis.com", "functions"),
+    maybeEnableAR(projectId),
   ]);
   context.runtimeConfigEnabled = checkAPIsEnabled[1];
+  context.artifactRegistryEnabled = checkAPIsEnabled[3];
 
   // Get the Firebase Config, and set it on each function in the deployment.
   const firebaseConfig = await functionsConfig.getFirebaseConfig(options);
