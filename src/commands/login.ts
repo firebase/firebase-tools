@@ -15,8 +15,9 @@ module.exports = new Command("login")
   .description("log the CLI into Firebase")
   .option(
     "--no-localhost",
-    "copy and paste a code instead of starting a local server for authentication"
+    "[deprecated] copy and paste a code instead of starting a local server for authentication"
   )
+  .option("--remote", "sign in on a device without a localhost server available")
   .option("--reauth", "force reauthentication even if already logged in")
   .action(async (options: any) => {
     if (options.nonInteractive) {
@@ -58,7 +59,7 @@ module.exports = new Command("login")
     // the authorization callback couldn't redirect to localhost.
     const useLocalhost = isCloudEnvironment() ? false : options.localhost;
 
-    const result = await auth.loginGoogle(useLocalhost, _.get(user, "email"));
+    const result = await auth.loginGoogle(useLocalhost, _.get(user, "email"), options.remote);
     configstore.set("user", result.user);
     configstore.set("tokens", result.tokens);
     // store login scopes in case mandatory scopes grow over time

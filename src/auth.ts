@@ -17,6 +17,9 @@ import { logger } from "./logger";
 import { promptOnce } from "./prompt";
 import * as scopes from "./scopes";
 import { clearCredentials } from "./defaultCredentials";
+import { v4 as uuidv4 } from "uuid";
+import { randomBytes, createHash } from "crypto";
+import { bold } from "cli-color";
 
 /* eslint-disable camelcase */
 // The wire protocol for an access token returned by Google.
@@ -324,22 +327,32 @@ function getLoginUrl(callbackUrl: string, userHint?: string) {
   );
 }
 
-async function getTokensFromAuthorizationCode(code: string, callbackUrl: string) {
+async function getTokensFromAuthorizationCode(
+  code: string,
+  callbackUrl: string,
+  verifier?: string
+) {
   let res: {
     body?: TokensWithTTL;
     statusCode: number;
   };
 
+  const params: Record<string, string> = {
+    code: code,
+    client_id: api.clientId,
+    client_secret: api.clientSecret,
+    redirect_uri: callbackUrl,
+    grant_type: "authorization_code",
+  };
+
+  if (verifier) {
+    params["code_verifier"] = verifier;
+  }
+
   try {
     res = await api.request("POST", "/o/oauth2/token", {
       origin: api.authOrigin,
-      form: {
-        code: code,
-        client_id: api.clientId,
-        client_secret: api.clientSecret,
-        redirect_uri: callbackUrl,
-        grant_type: "authorization_code",
-      },
+      form: params,
     });
   } catch (err) {
     if (err instanceof Error) {
@@ -404,6 +417,59 @@ async function respondWithFile(
   });
   res.end(response);
   req.socket.destroy();
+}
+
+function urlsafeBase64(base64string: string) {
+  return base64string.replace(/\+/g, "-").replace(/=+$/, "").replace(/\//g, "_");
+}
+
+const authProxyClient = new apiv2.Client({
+  urlPrefix: api.authProxyOrigin,
+  auth: false,
+});
+async function loginRemotely(userHint?: string): Promise<UserCredentials> {
+  const sessionId = uuidv4();
+  const codeVerifier = randomBytes(32).toString("hex");
+  // urlsafe base64 is required for code_challenge in OAuth PKCE
+  let codeChallenge = urlsafeBase64(createHash("sha256").update(codeVerifier).digest("base64"));
+
+  const attestToken = (
+    await authProxyClient.post<{ session_id: string }, { token: string }>("/attest", {
+      session_id: sessionId,
+    })
+  ).body?.token;
+
+  const loginUrl = `${api.authProxyOrigin}/login?code_challenge=${codeChallenge}&session=${sessionId}&attest=${attestToken}`;
+
+  logger.info();
+  logger.info("Visit this URL on any device to sign into Firebase CLI:");
+  logger.info(loginUrl);
+  logger.info();
+  logger.info(
+    "When authentication is complete, confirm that the session ID in the browser matches what is printed below, then paste the provided code."
+  );
+  logger.info();
+  logger.info(`${bold("Session ID:")} ${sessionId}`);
+  logger.info();
+
+  open(loginUrl);
+
+  const code = await promptOnce({
+    type: "input",
+    message: "Enter authorization code:",
+  });
+
+  const tokens = await getTokensFromAuthorizationCode(
+    code,
+    `${api.authProxyOrigin}/complete`,
+    codeVerifier
+  );
+
+  return {
+    user: jwt.decode(tokens.id_token!) as User,
+    tokens: tokens,
+    scopes: SCOPES,
+  };
 }
 
 async function loginWithoutLocalhost(userHint?: string): Promise<UserCredentials> {
@@ -514,7 +580,14 @@ async function loginWithLocalhost<ResultType>(
   });
 }
 
-export async function loginGoogle(localhost: boolean, userHint?: string): Promise<UserCredentials> {
+export async function loginGoogle(
+  localhost: boolean,
+  userHint?: string,
+  remote = false
+): Promise<UserCredentials> {
+  if (remote) {
+    return loginRemotely(userHint);
+  }
   if (localhost) {
     const port = await getPort();
     try {
