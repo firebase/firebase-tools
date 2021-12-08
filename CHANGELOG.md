@@ -1,0 +1,5 @@
+- Corrects a bug where containers in Artifact Registry would not be deleted if a function has an upper case character in its name (#3918)
+- Fixes issue where providing the `--project` flag during `init` would not be recognized with a default project already set. (#3870)
+- Fixes issue with setting memory limits for some functions (#3924)
+- New HTTPS functions only allow secure traffic. (#3923)
+- No longer default-enable AR and don't send builds to AR unless an experiment is enabled (#3935)
