@@ -68,7 +68,13 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
       data,
     };
 
-    this.emu.startFunctionRuntime(trigger.id, trigger.name, getSignatureType(trigger), this.emu.getBackends()[0], proto);
+    this.emu.startFunctionRuntime(
+      trigger.id,
+      trigger.name,
+      getSignatureType(trigger),
+      this.emu.getBackends()[0],
+      proto
+    );
   }
 
   private getTrigger(name: string): EmulatedTriggerDefinition {
