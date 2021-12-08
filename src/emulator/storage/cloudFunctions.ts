@@ -99,7 +99,7 @@ export class StorageCloudFunctions {
   ): string {
     const ceAction = STORAGE_V2_ACTION_MAP[action];
     if (!ceAction) {
-      throw new Error("Action is not definied as a CloudEvents action");
+      throw new Error("Action is not defined as a CloudEvents action");
     }
     const data = (objectMetadataPayload as unknown) as StorageObjectData;
     return JSON.stringify({
