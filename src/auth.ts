@@ -431,7 +431,7 @@ async function loginRemotely(userHint?: string): Promise<UserCredentials> {
   const sessionId = uuidv4();
   const codeVerifier = randomBytes(32).toString("hex");
   // urlsafe base64 is required for code_challenge in OAuth PKCE
-  let codeChallenge = urlsafeBase64(createHash("sha256").update(codeVerifier).digest("base64"));
+  const codeChallenge = urlsafeBase64(createHash("sha256").update(codeVerifier).digest("base64"));
 
   const attestToken = (
     await authProxyClient.post<{ session_id: string }, { token: string }>("/attest", {
