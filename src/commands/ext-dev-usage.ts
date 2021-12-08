@@ -11,6 +11,7 @@ import { getPublisherProjectFromName, logPrefix } from "../extensions/extensions
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { promptOnce } from "../prompt";
+import { shortenUrl } from "../shortenUrl";
 
 module.exports = new Command("ext:dev:usage <publisherId>")
   .description("get usage for an extension")
@@ -114,4 +115,47 @@ module.exports = new Command("ext:dev:usage <publisherId>")
 
     utils.logLabeledBullet(logPrefix, `showing usage stats for ${clc.bold(extensionName)}:`);
     logger.info(table.toString());
+    logger.info(
+      "* Due to privacy considerations, numbers are reported as ranges." +
+        "No data is reported if there's less than 10 instances installed."
+    );
+    const link = await buildCloudMonitoringLink({
+      projectNumber: projectNumber,
+      extensionName,
+    });
+    logger.info(`For more detail, visit: ${link}`);
   });
+
+async function buildCloudMonitoringLink(args: {
+  projectNumber: number;
+  extensionName: string;
+}): Promise<string> {
+  // This JSON can be exported from the cloud monitoring page.
+  const pageState = {
+    xyChart: {
+      dataSets: [
+        {
+          timeSeriesFilter: {
+            filter:
+              `metric.type="firebaseextensions.googleapis.com/extension/version/active_instances"` +
+              `esource.type="firebaseextensions.googleapis.com/ExtensionVersion"` +
+              `resource.label.extension="${args.extensionName}"`,
+            minAlignmentPeriod: "60s",
+            aggregations: [],
+          },
+        },
+      ],
+    },
+    isAutoRefresh: true,
+    timeSelection: {
+      timeRange: "4w",
+    },
+  };
+
+  let uri =
+    `https://console.cloud.google.com/monitoring/metrics-explorer?project=${args.projectNumber}` +
+    `&pageState=${JSON.stringify(pageState)}`;
+  uri = encodeURI(uri);
+  uri = await shortenUrl(uri);
+  return uri;
+}
