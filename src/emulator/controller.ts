@@ -17,7 +17,7 @@ import {
   isEmulator,
 } from "./types";
 import { Constants, FIND_AVAILBLE_PORT_BY_DEFAULT } from "./constants";
-import { FunctionsEmulator } from "./functionsEmulator";
+import { EmulatableBackend, FunctionsEmulator } from "./functionsEmulator";
 import { parseRuntimeVersion } from "./functionsEmulatorUtils";
 import { AuthEmulator } from "./auth";
 import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
@@ -442,20 +442,26 @@ export async function startAll(options: Options, showUI: boolean = true): Promis
     }
 
     const account = getProjectDefaultAccount(options.projectRoot as string | null);
+    // TODO: Go read firebase.json for extensions and add them to emualtableBackends.
+    const emulatableBackends: EmulatableBackend[] = [
+      {
+        functionsDir,
+        env: {
+          ...(options.extensionEnv as Record<string, string> | undefined),
+        },
+        predefinedTriggers: options.extensionTriggers as ParsedTriggerDefinition[] | undefined,
+        nodeMajorVersion: parseRuntimeVersion(
+          options.extensionNodeVersion || options.config.get("functions.runtime")
+        ),
+      },
+    ];
     const functionsEmulator = new FunctionsEmulator({
       projectId,
-      functionsDir,
+      emulatableBackends,
       account,
       host: functionsAddr.host,
       port: functionsAddr.port,
       debugPort: inspectFunctions,
-      env: {
-        ...(options.extensionEnv as Record<string, string> | undefined),
-      },
-      predefinedTriggers: options.extensionTriggers as ParsedTriggerDefinition[] | undefined,
-      nodeMajorVersion: parseRuntimeVersion(
-        options.extensionNodeVersion || options.config.get("functions.runtime")
-      ),
     });
     await startEmulator(functionsEmulator);
   }

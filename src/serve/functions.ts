@@ -36,9 +36,14 @@ export class FunctionsServer {
     // default values for those tests to work properly.
     const args: FunctionsEmulatorArgs = {
       projectId,
-      functionsDir,
+      emulatableBackends: [
+        {
+          functionsDir,
+          env: {},
+          nodeMajorVersion,
+        },
+      ],
       account,
-      nodeMajorVersion,
       ...partialArgs,
     };
 

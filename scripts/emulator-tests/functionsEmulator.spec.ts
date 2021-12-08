@@ -28,57 +28,68 @@ if ((process.env.DEBUG || "").toLowerCase().includes("spec")) {
 
 const functionsEmulator = new FunctionsEmulator({
   projectId: "fake-project-id",
-  functionsDir: MODULE_ROOT,
+  emulatableBackends: [
+    {
+      functionsDir: MODULE_ROOT,
+      env: {},
+    },
+  ],
   quiet: true,
 });
 
 // This is normally discovered in FunctionsEmulator#start()
 functionsEmulator.nodeBinary = process.execPath;
 
-functionsEmulator.setTriggersForTesting([
-  {
-    name: "function_id",
-    id: "us-central1-function_id",
-    region: "us-central1",
-    entryPoint: "function_id",
-    httpsTrigger: {},
-    labels: {},
-  },
-  {
-    name: "function_id",
-    id: "europe-west2-function_id",
-    region: "europe-west2",
-    entryPoint: "function_id",
-    httpsTrigger: {},
-    labels: {},
-  },
-  {
-    name: "function_id",
-    id: "europe-west3-function_id",
-    region: "europe-west3",
-    entryPoint: "function_id",
-    httpsTrigger: {},
-    labels: {},
-  },
-  {
-    name: "callable_function_id",
-    id: "us-central1-callable_function_id",
-    region: "us-central1",
-    entryPoint: "callable_function_id",
-    httpsTrigger: {},
-    labels: {
-      "deployment-callable": "true",
+functionsEmulator.setTriggersForTesting(
+  [
+    {
+      name: "function_id",
+      id: "us-central1-function_id",
+      region: "us-central1",
+      entryPoint: "function_id",
+      httpsTrigger: {},
+      labels: {},
     },
-  },
+    {
+      name: "function_id",
+      id: "europe-west2-function_id",
+      region: "europe-west2",
+      entryPoint: "function_id",
+      httpsTrigger: {},
+      labels: {},
+    },
+    {
+      name: "function_id",
+      id: "europe-west3-function_id",
+      region: "europe-west3",
+      entryPoint: "function_id",
+      httpsTrigger: {},
+      labels: {},
+    },
+    {
+      name: "callable_function_id",
+      id: "us-central1-callable_function_id",
+      region: "us-central1",
+      entryPoint: "callable_function_id",
+      httpsTrigger: {},
+      labels: {
+        "deployment-callable": "true",
+      },
+    },
+    {
+      name: "nested-function_id",
+      id: "us-central1-nested-function_id",
+      region: "us-central1",
+      entryPoint: "nested.function_id",
+      httpsTrigger: {},
+      labels: {},
+    },
+  ],
   {
-    name: "nested-function_id",
-    id: "us-central1-nested-function_id",
-    region: "us-central1",
-    entryPoint: "nested.function_id",
-    httpsTrigger: {},
-    labels: {},
-  },
-]);
+    functionsDir: MODULE_ROOT,
+    env: {},
+  }
+);
 
 // TODO(samstern): This is an ugly way to just override the InvokeRuntimeOpts on each call
 const startFunctionRuntime = functionsEmulator.startFunctionRuntime.bind(functionsEmulator);

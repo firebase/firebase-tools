@@ -21,7 +21,12 @@ const DO_NOTHING = () => {
 
 const functionsEmulator = new FunctionsEmulator({
   projectId: "fake-project-id",
-  functionsDir: MODULE_ROOT,
+  emulatableBackends: [
+    {
+      functionsDir: MODULE_ROOT,
+      env: {},
+    },
+  ],
 });
 (functionsEmulator as any).adminSdkConfig = FunctionRuntimeBundles.onRequest.adminSdkConfig;
 functionsEmulator.nodeBinary = process.execPath;
