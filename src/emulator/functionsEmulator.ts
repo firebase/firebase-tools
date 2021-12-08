@@ -142,7 +142,6 @@ export class FunctionsEmulator implements EmulatorInstance {
     return `http://${host}:${port}/${projectId}/${region}/${name}`;
   }
 
-  nodeBinaries = {};
   private destroyServer?: () => Promise<void>;
   private triggers: { [triggerName: string]: EmulatedTriggerRecord } = {};
 

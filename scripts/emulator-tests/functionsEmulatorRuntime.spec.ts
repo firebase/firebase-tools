@@ -25,11 +25,11 @@ const functionsEmulator = new FunctionsEmulator({
     {
       functionsDir: MODULE_ROOT,
       env: {},
+      nodeBinary: process.execPath,
     },
   ],
 });
 (functionsEmulator as any).adminSdkConfig = FunctionRuntimeBundles.onRequest.adminSdkConfig;
-functionsEmulator.nodeBinary = process.execPath;
 
 async function countLogEntries(worker: RuntimeWorker): Promise<{ [key: string]: number }> {
   const runtime = worker.runtime;

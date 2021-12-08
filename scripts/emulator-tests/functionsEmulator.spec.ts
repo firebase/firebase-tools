@@ -37,9 +37,6 @@ const functionsEmulator = new FunctionsEmulator({
   quiet: true,
 });
 
-// This is normally discovered in FunctionsEmulator#start()
-functionsEmulator.nodeBinary = process.execPath;
-
 functionsEmulator.setTriggersForTesting(
   [
     {
@@ -88,6 +85,7 @@ functionsEmulator.setTriggersForTesting(
   {
     functionsDir: MODULE_ROOT,
     env: {},
+    nodeBinary: process.execPath,
   }
 );
 
