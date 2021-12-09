@@ -114,16 +114,24 @@ module.exports = new Command("ext:dev:usage <publisherId>")
     });
 
     utils.logLabeledBullet(logPrefix, `showing usage stats for ${clc.bold(extensionName)}:`);
+
     logger.info(table.toString());
-    logger.info(
-      "* Due to privacy considerations, numbers are reported as ranges." +
-        "No data is reported if there's less than 10 instances installed."
-    );
+
     const link = await buildCloudMonitoringLink({
       projectNumber: projectNumber,
       extensionName,
     });
-    logger.info(`For more detail, visit: ${link}`);
+
+    logger.info(clc.cyan("i"), `Due to privacy considerations, numbers are reported as ranges`);
+    logger.info(
+      clc.cyan("i"),
+      `In the absence of significant changes, we will render a '-' symbol`
+    );
+    logger.info(
+      clc.cyan("i"),
+      `You will need more than 10 installs over a period of more than 28 days to render sufficient data.`
+    );
+    logger.info(clc.cyan("i"), `For more detail, visit: ${link}`);
   });
 
 async function buildCloudMonitoringLink(args: {
