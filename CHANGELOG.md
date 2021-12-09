@@ -1,3 +1,1 @@
-- Adds `firebase ext:export` command, and adds `extensions` to `firebase deploy`. See https://firebase.google.com/docs/extensions/reuse-project-config for more infomation on how to manage your extensions with these commands.
-- Fixes issue where `init` would crash with multiple Hosting items selected (#3742).
-- Adds a command (`crashlytics:symbols:upload`) to upload native symbol files, used in Android NDK crash symbolication.
+- Fixes issue with filtering on a specific storage bucket using functions in the emulator (#3893)

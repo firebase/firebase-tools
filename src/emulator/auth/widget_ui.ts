@@ -33,6 +33,7 @@ var firebaseAppId = query.get('appId');
 var apn = query.get('apn');
 var ibi = query.get('ibi');
 var appIdentifier = apn || ibi;
+var isSamlProvider = !!providerId.match(/^saml\./);
 assert(
   appName || clientId || firebaseAppId || appIdentifier,
   'Missing one of appName / clientId / appId / apn / ibi query params.'
@@ -172,6 +173,19 @@ function finishWithUser(urlEncodedIdToken) {
   // Avoid URLSearchParams for browser compatibility.
   url += '?providerId=' + encodeURIComponent(providerId);
   url += '&id_token=' + urlEncodedIdToken;
+
+  // Save reasonable defaults for SAML providers
+  if (isSamlProvider) {
+    var email = document.getElementById('email-input').value;
+    url += '&SAMLResponse=' + encodeURIComponent(JSON.stringify({
+      assertion: {
+        subject: {
+          nameId: email,
+        },
+      },
+    }));
+  }
+
   saveAuthEvent({
     type: authType,
     eventId: eventId,

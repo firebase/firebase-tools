@@ -205,9 +205,10 @@ export async function createFunction(
   const endpoint = `/${API_VERSION}/${apiPath}`;
 
   try {
-    const headers = previews.artifactregistry
-      ? { "X-Firebase-Artifact-Registry": "optin" }
-      : undefined;
+    const headers: Record<string, string> = {};
+    if (previews.artifactregistry) {
+      headers["X-Firebase-Artifact-Registry"] = "optin";
+    }
     const res = await api.request("POST", endpoint, {
       headers,
       auth: true,
@@ -373,9 +374,10 @@ export async function updateFunction(
   // Failure policy is always an explicit policy and is only signified by the presence or absence of
   // a protobuf.Empty value, so we have to manually add it in the missing case.
   try {
-    const headers = previews.artifactregistry
-      ? { "X-Firebase-Artifact-Registry": "optin" }
-      : undefined;
+    const headers: Record<string, string> = {};
+    if (previews.artifactregistry) {
+      headers["X-Firebase-Artifact-Registry"] = "optin";
+    }
     const res = await api.request("PATCH", endpoint, {
       headers,
       qs: {
