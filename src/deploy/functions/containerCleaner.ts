@@ -170,6 +170,17 @@ export class ArtifactRegistryCleaner {
   }
 }
 
+// Temporary class to turn off AR cleaning if AR isn't enabled yet
+export class NoopArtifactRegistryCleaner extends ArtifactRegistryCleaner {
+  cleanupFunction(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  cleanupFunctionCache(): Promise<void> {
+    return Promise.resolve();
+  }
+}
+
 export class ContainerRegistryCleaner {
   readonly helpers: Record<string, DockerHelper> = {};
 

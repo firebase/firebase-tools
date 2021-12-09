@@ -291,6 +291,9 @@ export class FunctionsEmulator implements EmulatorInstance {
       } else {
         triggerKey = `${this.args.projectId}:${proto.eventType}`;
       }
+      if (proto.data.bucket) {
+        triggerKey += `:${proto.data.bucket}`;
+      }
       const triggers = this.multicastTriggers[triggerKey] || [];
 
       triggers.forEach((triggerId) => {
@@ -727,7 +730,10 @@ export class FunctionsEmulator implements EmulatorInstance {
   addStorageTrigger(projectId: string, key: string, eventTrigger: EventTrigger): boolean {
     logger.debug(`addStorageTrigger`, JSON.stringify({ eventTrigger }));
 
-    const eventTriggerId = `${projectId}:${eventTrigger.eventType}`;
+    const bucket = eventTrigger.resource.startsWith("projects/_/buckets/")
+      ? eventTrigger.resource.split("/")[3]
+      : eventTrigger.resource;
+    const eventTriggerId = `${projectId}:${eventTrigger.eventType}:${bucket}`;
     const triggers = this.multicastTriggers[eventTriggerId] || [];
     triggers.push(key);
     this.multicastTriggers[eventTriggerId] = triggers;
