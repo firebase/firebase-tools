@@ -122,16 +122,11 @@ module.exports = new Command("ext:dev:usage <publisherId>")
       extensionName,
     });
 
-    logger.info(clc.cyan("i"), `Due to privacy considerations, numbers are reported as ranges`);
-    logger.info(
-      clc.cyan("i"),
-      `In the absence of significant changes, we will render a '-' symbol`
-    );
-    logger.info(
-      clc.cyan("i"),
-      `You will need more than 10 installs over a period of more than 28 days to render sufficient data.`
-    );
-    logger.info(clc.cyan("i"), `For more detail, visit: ${link}`);
+    utils.logLabeledBullet(logPrefix, `How to read this table:`);
+    logger.info(`* Due to privacy considerations, numbers are reported as ranges`);
+    logger.info(`* In the absence of significant changes, we will render a '-' symbol`);
+    logger.info(`* You will need more than 10 installs over a period of more than 28 days to render sufficient data.`);
+    logger.info(`For more detail, visit: ${link}`);
   });
 
 async function buildCloudMonitoringLink(args: {
@@ -146,8 +141,8 @@ async function buildCloudMonitoringLink(args: {
           timeSeriesFilter: {
             filter:
               `metric.type="firebaseextensions.googleapis.com/extension/version/active_instances"` +
-              `esource.type="firebaseextensions.googleapis.com/ExtensionVersion"` +
-              `resource.label.extension="${args.extensionName}"`,
+              ` resource.type="firebaseextensions.googleapis.com/ExtensionVersion"` +
+              ` resource.label.extension="${args.extensionName}"`,
             minAlignmentPeriod: "60s",
             aggregations: [],
           },
