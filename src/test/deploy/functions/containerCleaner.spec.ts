@@ -241,6 +241,23 @@ describe("ArtifactRegistryCleaner", () => {
     );
     expect(poll.pollOperation).to.not.have.been.called;
   });
+
+  it("encodeds to avoid upper-case letters", async () => {
+    const cleaner = new containerCleaner.ArtifactRegistryCleaner();
+    const func = {
+      id: "Strange-Casing_cases",
+      region: "region",
+      project: "project",
+    };
+
+    ar.deletePackage.returns(Promise.resolve({ name: "op", done: true }));
+
+    await cleaner.cleanupFunction(func);
+    expect(ar.deletePackage).to.have.been.calledWith(
+      "projects/project/locations/region/repositories/gcf-artifacts/packages/s-strange--_casing__cases"
+    );
+    expect(poll.pollOperation).to.not.have.been.called;
+  });
 });
 
 describe("ContainerRegistryCleaner", () => {

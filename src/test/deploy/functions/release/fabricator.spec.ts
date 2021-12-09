@@ -136,6 +136,20 @@ describe("Fabricator", () => {
       ).to.be.rejectedWith(reporter.DeploymentError, "set invoker");
     });
 
+    it("enforces SECURE_ALWAYS HTTPS policies", async () => {
+      gcf.createFunction.resolves({ name: "op", type: "create", done: false });
+      poller.pollOperation.resolves();
+      gcf.setInvokerCreate.resolves();
+      const ep = endpoint();
+
+      await fab.createV1Function(ep, new scraper.SourceTokenScraper());
+      expect(gcf.createFunction).to.have.been.calledWithMatch({
+        httpsTrigger: {
+          securityLevel: "SECURE_ALWAYS",
+        },
+      });
+    });
+
     it("sets invoker by default", async () => {
       gcf.createFunction.resolves({ name: "op", type: "create", done: false });
       poller.pollOperation.resolves();
