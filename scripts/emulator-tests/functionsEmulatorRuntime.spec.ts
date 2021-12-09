@@ -19,7 +19,7 @@ const DO_NOTHING = () => {
   // do nothing.
 };
 
-const testBackend =     {
+const testBackend = {
   functionsDir: MODULE_ROOT,
   env: {},
   nodeBinary: process.execPath,
@@ -27,7 +27,7 @@ const testBackend =     {
 
 const functionsEmulator = new FunctionsEmulator({
   projectId: "fake-project-id",
-  emulatableBackends: [ testBackend ],
+  emulatableBackends: [testBackend],
 });
 (functionsEmulator as any).adminSdkConfig = FunctionRuntimeBundles.onRequest.adminSdkConfig;
 
