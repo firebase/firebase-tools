@@ -40,6 +40,9 @@ export async function check(
 /**
  * Attempt to enable an API on the specified project (just once).
  *
+ * If enabling an API for a customer, prefer `ensure` which will check for the
+ * API first, which is a seperate permission than enabling.
+ *
  * @param projectId The project in which to enable the API.
  * @param apiName The name of the API e.g. `someapi.googleapis.com`.
  */
