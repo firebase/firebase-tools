@@ -43,7 +43,7 @@ export async function check(
  * @param projectId The project in which to enable the API.
  * @param apiName The name of the API e.g. `someapi.googleapis.com`.
  */
-export async function enable(projectId: string, apiName: string): Promise<void> {
+async function enable(projectId: string, apiName: string): Promise<void> {
   try {
     await apiClient.post(`/projects/${projectId}/services/${apiName}:enable`);
   } catch (err) {
