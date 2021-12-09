@@ -34,6 +34,7 @@ import { update } from "../extensions/updateHelper";
 import { getRandomString } from "../extensions/utils";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
+import { track } from "../track";
 import { logger } from "../logger";
 import { previews } from "../previews";
 
@@ -253,6 +254,7 @@ async function infoInstallByReference(
   const ref = refs.parse(extensionName);
   const extension = await extensionsApi.getExtension(refs.toExtensionRef(ref));
   if (!ref.version) {
+    track("ext:install", "Install by Extension Version Ref");
     extensionName = `${extensionName}@latest`;
   }
   const extVersion = await extensionsApi.getExtensionVersion(extensionName);
@@ -278,6 +280,7 @@ export default new Command("ext:install [extensionName]")
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
   .action(async (extensionName: string, options: any) => {
+    track("ext:install", options.interactive ? "Interactive" : "Non-Interactive");
     const projectId = needProjectId(options);
     const paramsEnvPath = options.params;
     let learnMore = false;
@@ -302,8 +305,10 @@ export default new Command("ext:install [extensionName]")
     // If the user types in URL, or a local path (prefixed with ~/, ../, or ./), install from local/URL source.
     // Otherwise, treat the input as an extension reference and proceed with reference-based installation.
     if (isLocalOrURLPath(extensionName)) {
+      track("ext:install", "Install by Source");
       source = await infoInstallBySource(projectId, extensionName);
     } else {
+      track("ext:install", "Install by Extension Ref");
       extVersion = await infoInstallByReference(extensionName);
     }
     if (
