@@ -1,2 +1,1 @@
-- Corrects a bug where containers in Artifact Registry would not be deleted if a function has an upper case character in its name
-- Fixes issue where providing the `--project` flag during `init` would not be recognized with a default project already set. (#3870)
+- Fixes issue with filtering on a specific storage bucket using functions in the emulator (#3893)
