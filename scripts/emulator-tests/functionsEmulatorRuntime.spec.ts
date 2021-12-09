@@ -19,15 +19,15 @@ const DO_NOTHING = () => {
   // do nothing.
 };
 
+const testBackend =     {
+  functionsDir: MODULE_ROOT,
+  env: {},
+  nodeBinary: process.execPath,
+};
+
 const functionsEmulator = new FunctionsEmulator({
   projectId: "fake-project-id",
-  emulatableBackends: [
-    {
-      functionsDir: MODULE_ROOT,
-      env: {},
-      nodeBinary: process.execPath,
-    },
-  ],
+  emulatableBackends: [ testBackend ],
 });
 (functionsEmulator as any).adminSdkConfig = FunctionRuntimeBundles.onRequest.adminSdkConfig;
 
@@ -59,6 +59,7 @@ function startRuntimeWithFunctions(
     frb.triggerId!,
     frb.targetName!,
     signatureType,
+    testBackend,
     frb.proto,
     opts
   );

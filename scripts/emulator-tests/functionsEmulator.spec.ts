@@ -4,7 +4,7 @@ import * as sinon from "sinon";
 import * as supertest from "supertest";
 
 import { SignatureType } from "../../src/emulator/functionsEmulatorShared";
-import { FunctionsEmulator, InvokeRuntimeOpts } from "../../src/emulator/functionsEmulator";
+import { EmulatableBackend, FunctionsEmulator, InvokeRuntimeOpts } from "../../src/emulator/functionsEmulator";
 import { Emulators } from "../../src/emulator/types";
 import { RuntimeWorker } from "../../src/emulator/functionsRuntimeWorker";
 import { TIMEOUT_LONG, TIMEOUT_MED, MODULE_ROOT } from "./fixtures";
@@ -36,6 +36,12 @@ const functionsEmulator = new FunctionsEmulator({
   ],
   quiet: true,
 });
+
+const testBackend =   {
+  functionsDir: MODULE_ROOT,
+  env: {},
+  nodeBinary: process.execPath,
+};
 
 functionsEmulator.setTriggersForTesting(
   [
@@ -82,11 +88,7 @@ functionsEmulator.setTriggersForTesting(
       labels: {},
     },
   ],
-  {
-    functionsDir: MODULE_ROOT,
-    env: {},
-    nodeBinary: process.execPath,
-  }
+  testBackend,
 );
 
 // TODO(samstern): This is an ugly way to just override the InvokeRuntimeOpts on each call
@@ -99,10 +101,11 @@ function useFunctions(triggers: () => {}): void {
     triggerId: string,
     targetName: string,
     triggerType: SignatureType,
+    backned: EmulatableBackend,
     proto?: any,
     runtimeOpts?: InvokeRuntimeOpts
   ): RuntimeWorker => {
-    return startFunctionRuntime(triggerId, targetName, triggerType, proto, {
+    return startFunctionRuntime(triggerId, targetName, triggerType, testBackend, proto, {
       nodeBinary: process.execPath,
       serializedTriggers,
     });

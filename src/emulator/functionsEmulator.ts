@@ -71,7 +71,7 @@ const EVENT_INVOKE = "functions:invoke";
 const DATABASE_PATH_PATTERN = new RegExp("^projects/[^/]+/instances/([^/]+)/refs(/.*)$");
 
 /**
- * EmualtableBackend represents a group of functions to be emulated.
+ * EmulatableBackend represents a group of functions to be emulated.
  * This can be a CF3 module, or an Extension.
  */
 export interface EmulatableBackend {
