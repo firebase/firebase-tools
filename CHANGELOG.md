@@ -1,1 +1,2 @@
+- Fixes issue when installing a Firebase Extension where secrets would be created before validation.
 - Fixes issue with filtering on a specific storage bucket using functions in the emulator (#3893)
