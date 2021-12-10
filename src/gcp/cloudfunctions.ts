@@ -525,14 +525,20 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     "timeout",
     "minInstances",
     "maxInstances",
-    "vpcConnector",
-    "vpcConnectorEgressSettings",
     "ingressSettings",
     "labels",
     "environmentVariables",
     "sourceUploadUrl"
   );
-
+  if (gcfFunction.vpcConnector) {
+    endpoint.vpc = { connector: gcfFunction.vpcConnector };
+    proto.renameIfPresent(
+      endpoint.vpc,
+      gcfFunction,
+      "egressSettings",
+      "vpcConnectorEgressSettings"
+    );
+  }
   return endpoint;
 }
 
@@ -597,11 +603,17 @@ export function functionFromEndpoint(
     "availableMemoryMb",
     "minInstances",
     "maxInstances",
-    "vpcConnector",
-    "vpcConnectorEgressSettings",
     "ingressSettings",
     "environmentVariables"
   );
-
+  if (endpoint.vpc) {
+    proto.renameIfPresent(gcfFunction, endpoint.vpc, "vpcConnector", "connector");
+    proto.renameIfPresent(
+      gcfFunction,
+      endpoint.vpc,
+      "vpcConnectorEgressSettings",
+      "egressSettings"
+    );
+  }
   return gcfFunction;
 }

@@ -349,8 +349,10 @@ describe("backendFromV1Alpha1", () => {
         timeout: "60s",
         maxInstances: 20,
         minInstances: 1,
-        vpcConnector: "hello",
-        vpcConnectorEgressSettings: "ALL_TRAFFIC",
+        vpc: {
+          connector: "hello",
+          egressSettings: "ALL_TRAFFIC",
+        },
         ingressSettings: "ALLOW_INTERNAL_ONLY",
         serviceAccountEmail: "sa@",
       };

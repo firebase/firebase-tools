@@ -217,7 +217,13 @@ export function addResourcesToBackend(
       if (!maybeId.includes("/")) {
         maybeId = `projects/${projectId}/locations/${region}/connectors/${maybeId}`;
       }
-      endpoint.vpcConnector = maybeId;
+      endpoint.vpc = { connector: maybeId };
+      proto.renameIfPresent(
+        endpoint.vpc,
+        annotation,
+        "egressSettings",
+        "vpcConnectorEgressSettings"
+      );
     }
     proto.copyIfPresent(
       endpoint,
@@ -225,7 +231,6 @@ export function addResourcesToBackend(
       "concurrency",
       "serviceAccountEmail",
       "labels",
-      "vpcConnectorEgressSettings",
       "ingressSettings",
       "timeout",
       "maxInstances",

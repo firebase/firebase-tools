@@ -394,8 +394,6 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
     gcfFunction.serviceConfig,
     endpoint,
     "environmentVariables",
-    "vpcConnector",
-    "vpcConnectorEgressSettings",
     "serviceAccountEmail",
     "ingressSettings"
   );
@@ -415,6 +413,16 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
   );
   proto.renameIfPresent(gcfFunction.serviceConfig, endpoint, "minInstanceCount", "minInstances");
   proto.renameIfPresent(gcfFunction.serviceConfig, endpoint, "maxInstanceCount", "maxInstances");
+
+  if (endpoint.vpc) {
+    proto.renameIfPresent(gcfFunction.serviceConfig, endpoint.vpc, "vpcConnector", "connector");
+    proto.renameIfPresent(
+      gcfFunction.serviceConfig,
+      endpoint.vpc,
+      "vpcConnectorEgressSettings",
+      "egressSettings"
+    );
+  }
 
   if (backend.isEventTriggered(endpoint)) {
     gcfFunction.eventTrigger = {
@@ -502,8 +510,6 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     endpoint,
     gcfFunction.serviceConfig,
     "serviceAccountEmail",
-    "vpcConnector",
-    "vpcConnectorEgressSettings",
     "ingressSettings",
     "environmentVariables"
   );
@@ -524,6 +530,16 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
   proto.renameIfPresent(endpoint, gcfFunction.serviceConfig, "minInstances", "minInstanceCount");
   proto.renameIfPresent(endpoint, gcfFunction.serviceConfig, "maxInstances", "maxInstanceCount");
   proto.copyIfPresent(endpoint, gcfFunction, "labels");
+
+  if (gcfFunction.serviceConfig.vpcConnector) {
+    endpoint.vpc = { connector: gcfFunction.serviceConfig.vpcConnector };
+    proto.renameIfPresent(
+      endpoint.vpc,
+      gcfFunction.serviceConfig,
+      "egressSettings",
+      "vpcConnectorEgressSettings"
+    );
+  }
 
   return endpoint;
 }

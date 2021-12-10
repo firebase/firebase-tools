@@ -141,8 +141,10 @@ describe("addResourcesToBackend", () => {
       maxInstances: 42,
       minInstances: 1,
       serviceAccountEmail: "inlined@google.com",
-      vpcConnectorEgressSettings: "PRIVATE_RANGES_ONLY",
-      vpcConnector: "projects/project/locations/region/connectors/connector",
+      vpc: {
+        connector: "projects/project/locations/region/connectors/connector",
+        egressSettings: "PRIVATE_RANGES_ONLY",
+      },
       ingressSettings: "ALLOW_ALL",
       timeout: "60s",
       labels: {

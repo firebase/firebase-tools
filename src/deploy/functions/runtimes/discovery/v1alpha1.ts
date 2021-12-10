@@ -84,8 +84,7 @@ function parseEndpoints(
     concurrency: "number",
     serviceAccountEmail: "string",
     timeout: "string",
-    vpcConnector: "string",
-    vpcConnectorEgressSettings: "string",
+    vpc: "object",
     labels: "object",
     ingressSettings: "string",
     environmentVariables: "object",
@@ -194,9 +193,7 @@ function parseEndpoints(
       "concurrency",
       "serviceAccountEmail",
       "timeout",
-      // TODO: should rewrite vpcConnetor to inlcude region.
-      "vpcConnector",
-      "vpcConnectorEgressSettings",
+      "vpc",
       "labels",
       "ingressSettings",
       "environmentVariables"

@@ -85,8 +85,10 @@ describe("cloudfunctions", () => {
         availableMemoryMb: 128,
         minInstances: 1,
         maxInstances: 42,
-        vpcConnector: "connector",
-        vpcConnectorEgressSettings: "ALL_TRAFFIC",
+        vpc: {
+          connector: "connector",
+          egressSettings: "ALL_TRAFFIC",
+        },
         ingressSettings: "ALLOW_ALL",
         timeout: "15s",
         serviceAccountEmail: "inlined@google.com",
@@ -273,8 +275,6 @@ describe("cloudfunctions", () => {
         availableMemoryMb: 128,
         minInstances: 1,
         maxInstances: 42,
-        vpcConnector: "connector",
-        vpcConnectorEgressSettings: "ALL_TRAFFIC",
         ingressSettings: "ALLOW_ALL",
         serviceAccountEmail: "inlined@google.com",
         timeout: "15s",
@@ -285,15 +285,24 @@ describe("cloudfunctions", () => {
           FOO: "bar",
         },
       };
+      const vpcConnector = "connector";
+      const vpcConnectorEgressSettings = "ALL_TRAFFIC";
+
       expect(
         cloudfunctions.endpointFromFunction({
           ...HAVE_CLOUD_FUNCTION,
           ...extraFields,
+          vpcConnector,
+          vpcConnectorEgressSettings,
           httpsTrigger: {},
         } as cloudfunctions.CloudFunction)
       ).to.deep.equal({
         ...ENDPOINT,
         ...extraFields,
+        vpc: {
+          connector: vpcConnector,
+          egressSettings: vpcConnectorEgressSettings,
+        },
         httpsTrigger: {},
       });
     });

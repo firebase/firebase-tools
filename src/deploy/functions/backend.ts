@@ -172,8 +172,10 @@ export interface ServiceConfiguration {
   timeout?: proto.Duration;
   maxInstances?: number;
   minInstances?: number;
-  vpcConnector?: string;
-  vpcConnectorEgressSettings?: VpcEgressSettings;
+  vpc?: {
+    connector: string;
+    egressSettings?: VpcEgressSettings;
+  };
   ingressSettings?: IngressSettings;
   serviceAccountEmail?: "default" | string;
 }

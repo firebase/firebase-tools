@@ -146,8 +146,10 @@ describe("cloudfunctionsv2", () => {
         ...ENDPOINT,
         httpsTrigger: {},
         platform: "gcfv2",
-        vpcConnector: "connector",
-        vpcConnectorEgressSettings: "ALL_TRAFFIC",
+        vpc: {
+          connector: "connector",
+          egressSettings: "ALL_TRAFFIC",
+        },
         ingressSettings: "ALLOW_ALL",
         serviceAccountEmail: "inlined@google.com",
         labels: {
@@ -306,13 +308,15 @@ describe("cloudfunctionsv2", () => {
 
     it("should copy optional fields", () => {
       const extraFields: backend.ServiceConfiguration = {
-        vpcConnector: "connector",
-        vpcConnectorEgressSettings: "ALL_TRAFFIC",
         ingressSettings: "ALLOW_ALL",
         serviceAccountEmail: "inlined@google.com",
         environmentVariables: {
           FOO: "bar",
         },
+      };
+      const vpc = {
+        connector: "connector",
+        egressSettings: "ALL_TRAFFIC" as const,
       };
       expect(
         cloudfunctionsv2.endpointFromFunction({
@@ -320,6 +324,8 @@ describe("cloudfunctionsv2", () => {
           serviceConfig: {
             ...HAVE_CLOUD_FUNCTION_V2.serviceConfig,
             ...extraFields,
+            vpcConnector: vpc.connector,
+            vpcConnectorEgressSettings: vpc.egressSettings,
             availableMemory: "128M",
           },
           labels: {
@@ -332,6 +338,7 @@ describe("cloudfunctionsv2", () => {
         httpsTrigger: {},
         uri: RUN_URI,
         ...extraFields,
+        vpc,
         availableMemoryMb: 128,
         labels: {
           foo: "bar",
