@@ -17,7 +17,7 @@ export type ManifestEndpoint = backend.ServiceConfiguration &
 
 export interface Manifest {
   specVersion: string;
-  requiredAPIs?: Record<string, string>;
+  requiredAPIs?: backend.RequiredAPI[];
   endpoints: Record<string, ManifestEndpoint>;
 }
 
@@ -34,7 +34,7 @@ export function backendFromV1Alpha1(
   requireKeys("", manifest, "endpoints");
   assertKeyTypes("", manifest, {
     specVersion: "string",
-    requiredAPIs: "object",
+    requiredAPIs: "array",
     endpoints: "object",
   });
   for (const id of Object.keys(manifest.endpoints)) {
@@ -46,19 +46,17 @@ export function backendFromV1Alpha1(
   return bkend;
 }
 
-function parseRequiredAPIs(manifest: Manifest): Record<string, string> {
-  const requiredAPIs: Record<string, string> = {};
-  // Note: this intentionally allows undefined to slip through as {}
-  if (typeof manifest !== "object" || Array.isArray(manifest)) {
-    throw new FirebaseError("Expected requiredApis to be a map of string to string");
-  }
-  for (const [api, reason] of Object.entries(manifest.requiredAPIs || {})) {
+function parseRequiredAPIs(manifest: Manifest): backend.RequiredAPI[] {
+  const requiredAPIs: backend.RequiredAPI[] = manifest.requiredAPIs || [];
+  for (const { api, reason } of requiredAPIs) {
+    if (typeof api !== "string") {
+      throw new FirebaseError(`Invalid api "${JSON.stringify(api)}. Expected string`);
+    }
     if (typeof reason !== "string") {
       throw new FirebaseError(
         `Invalid reason "${JSON.stringify(reason)} for API ${api}. Expected string`
       );
     }
-    requiredAPIs[api] = reason;
   }
   return requiredAPIs;
 }

@@ -72,7 +72,7 @@ describe("Backend", () => {
       expect(
         backend.isEmptyBackend({
           ...backend.empty(),
-          requiredAPIs: { foo: "foo.googleapis.com" },
+          requiredAPIs: [{ api: "foo.googleapis.com", reason: "foo" }],
         })
       ).to.be.false;
       expect(backend.isEmptyBackend(backend.of({ ...ENDPOINT, httpsTrigger: {} })));

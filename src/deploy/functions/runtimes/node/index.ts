@@ -105,7 +105,7 @@ export class Delegate {
       env: {
         ...envs,
         PORT: port.toString(),
-        ADMIN_PORT: adminPort.toString(),
+        STACK_CONTROL_API_PORT: adminPort.toString(),
         HOME: process.env.HOME,
         PATH: process.env.PATH,
       },
@@ -123,7 +123,7 @@ export class Delegate {
 
       // If we SIGKILL the child process we're actually going to kill the go
       // runner and the webserver it launched will keep running.
-      await fetch(`http://localhost:${adminPort}/quitquitquit`);
+      await fetch(`http://localhost:${adminPort}/__/quitquitquit`);
       setTimeout(() => {
         if (!childProcess.killed) {
           childProcess.kill("SIGKILL");

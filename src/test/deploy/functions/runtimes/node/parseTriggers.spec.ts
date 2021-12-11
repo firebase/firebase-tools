@@ -76,9 +76,12 @@ describe("addResourcesToBackend", () => {
 
     const expected: backend.Backend = {
       ...backend.of({ ...BASIC_ENDPOINT, taskQueueTrigger: {} }),
-      requiredAPIs: {
-        cloudtasks: "cloudtasks.googleapis.com",
-      },
+      requiredAPIs: [
+        {
+          api: "cloudtasks.googleapis.com",
+          reason: "Needed for task queue functions.",
+        },
+      ],
     };
     expect(result).to.deep.equal(expected);
   });
@@ -283,10 +286,16 @@ describe("addResourcesToBackend", () => {
           scheduleTrigger: schedule,
         }
       ),
-      requiredAPIs: {
-        pubsub: "pubsub.googleapis.com",
-        scheduler: "cloudscheduler.googleapis.com",
-      },
+      requiredAPIs: [
+        {
+          api: "pubsub.googleapis.com",
+          reason: "Need for scheduled functions.",
+        },
+        {
+          api: "cloudscheduler.googleapis.com",
+          reason: "Need for scheduled functions.",
+        },
+      ],
     };
 
     expect(result).to.deep.equal(expected);

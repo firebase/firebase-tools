@@ -225,14 +225,17 @@ export type Endpoint = TargetIds &
     sourceUploadUrl?: string;
   };
 
+export interface RequiredAPI {
+  reason: string;
+  api: string;
+}
+
 /** An API agnostic definition of an entire deployment a customer has or wants. */
 export interface Backend {
   /**
    * requiredAPIs will be enabled when a Backend is deployed.
-   * Their format is friendly name -> API name.
-   * E.g. "scheduler" => "cloudscheduler.googleapis.com"
    */
-  requiredAPIs: Record<string, string>;
+  requiredAPIs: RequiredAPI[];
   environmentVariables: EnvironmentVariables;
   // region -> id -> Endpoint
   endpoints: Record<string, Record<string, Endpoint>>;
@@ -245,7 +248,7 @@ export interface Backend {
  */
 export function empty(): Backend {
   return {
-    requiredAPIs: {},
+    requiredAPIs: [],
     endpoints: {},
     environmentVariables: {},
   };
