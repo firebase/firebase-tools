@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { join } from "path";
 import { readFileSync, writeFileSync, unlinkSync } from "fs";
-import * as uuid from "uuid";
+import { v4 as uuidv4 } from "uuid";
 import * as tmp from "tmp";
 
 import firebase = require("../../src");
@@ -93,7 +93,7 @@ describe("apps:sdkconfig", () => {
 describe("database:set|get|remove", () => {
   it("should be able to interact with the database", async () => {
     const opts = { project: process.env.FBTOOLS_TARGET_PROJECT };
-    const path = `/${uuid()}`;
+    const path = `/${uuidv4()}`;
     const data = { foo: "bar" };
 
     await client.database.set(
