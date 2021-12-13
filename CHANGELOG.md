@@ -1,4 +1,5 @@
-- Fix Auth Emulator deleteTenant not working with Node Admin (#3817).
-- Fix Crashlytics Android Native Symbols not working on Windows due to ":" in the path (#3842)
-- Fixes Firestore emulator UI showing requests out of order
+- Fixes issue when installing a Firebase Extension where secrets would be created before validation.
+- Fixes issue with filtering on a specific storage bucket using functions in the emulator (#3893)
+- Fixes check in Cloud Functions for Firebase initialization to check for API enablement before trying to enable them. (#2574)
+- No longer tries to clean up function build images from Artifact Registry when Artifact Registry is not enabled (#3943)
 - Requires firebase-functions >= 3.13.1 in Functions emulator to include bug fixes (#3851).

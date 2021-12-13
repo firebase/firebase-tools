@@ -21,6 +21,7 @@ export interface Context {
   functionsSourceV1?: string;
   functionsSourceV2?: string;
   runtimeConfigEnabled?: boolean;
+  artifactRegistryEnabled?: boolean;
   firebaseConfig?: FirebaseConfig;
 
   // Filled in the "deploy" phase.

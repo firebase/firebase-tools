@@ -203,6 +203,62 @@ describe("backendFromV1Alpha1", () => {
       }
     });
 
+    describe("taskQueueTriggers", () => {
+      const validTrigger: backend.TaskQueueTrigger = {
+        rateLimits: {
+          maxBurstSize: 5,
+          maxConcurrentDispatches: 10,
+          maxDispatchesPerSecond: 20,
+        },
+        retryConfig: {
+          maxAttempts: 3,
+          maxRetryDuration: "120s",
+          minBackoff: "1s",
+          maxBackoff: "30s",
+          maxDoublings: 5,
+        },
+        invoker: ["custom@"],
+      };
+
+      const invalidRateLimits = {
+        maxBurstSize: "5",
+        maxConcurrentDispatches: "10",
+        maxDispatchesPerSecond: "20",
+      };
+      for (const [key, value] of Object.entries(invalidRateLimits)) {
+        const rateLimits = {
+          ...validTrigger.rateLimits,
+          [key]: value,
+        };
+        const taskQueueTrigger = { ...validTrigger, rateLimits };
+        assertParserError({
+          endpoints: {
+            func: { ...MIN_ENDPOINT, taskQueueTrigger },
+          },
+        });
+      }
+
+      const invalidRetryConfigs = {
+        maxAttempts: "3",
+        maxRetryDuration: 120,
+        minBackoff: 1,
+        maxBackoff: 30,
+        maxDoublings: "5",
+      };
+      for (const [key, value] of Object.entries(invalidRetryConfigs)) {
+        const retryConfig = {
+          ...validTrigger.retryConfig,
+          [key]: value,
+        };
+        const taskQueueTrigger = { ...validTrigger, retryConfig };
+        assertParserError({
+          endpoints: {
+            func: { ...MIN_ENDPOINT, taskQueueTrigger },
+          },
+        });
+      }
+    });
+
     it("detects missing triggers", () => {
       assertParserError({ endpoints: MIN_ENDPOINT });
     });
