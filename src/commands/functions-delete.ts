@@ -4,11 +4,11 @@ import * as functionsConfig from "../functionsConfig";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { Options } from "../options";
-import { needProjectId } from "../projectUtils";
-import { promptOnce } from "../prompt";
+import { needProjectId } from "../projectUtils"; import { promptOnce } from "../prompt";
 import { reduceFlat } from "../functional";
 import { requirePermissions } from "../requirePermissions";
 import * as args from "../deploy/functions/args";
+import * as ensure from "../ensureApiEnabled";
 import * as helper from "../deploy/functions/functionsDeployHelper";
 import * as utils from "../utils";
 import * as backend from "../deploy/functions/backend";
@@ -104,5 +104,15 @@ export default new Command("functions:delete [filters...]")
     }
 
     // Clean up image caches too
+    const opts: { ar?: containerCleaner.ArtifactRegistryCleaner } = {};
+    const arEnabled = await ensure.check(
+      needProjectId(options),
+      "artifactregistry.googleapis.com",
+      "functions",
+      /* silent= */ true
+    );
+    if (!arEnabled) {
+      opts.ar = new containerCleaner.NoopArtifactRegistryCleaner();
+    }
     await containerCleaner.cleanupBuildImages([], allEpToDelete);
   });
