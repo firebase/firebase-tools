@@ -205,9 +205,10 @@ export async function createFunction(
   const endpoint = `/${API_VERSION}/${apiPath}`;
 
   try {
-    const headers = previews.artifactregistry
-      ? { "X-Firebase-Artifact-Registry": "optin" }
-      : undefined;
+    const headers: Record<string, string> = {};
+    if (previews.artifactregistry) {
+      headers["X-Firebase-Artifact-Registry"] = "optin";
+    }
     const res = await api.request("POST", endpoint, {
       headers,
       auth: true,
@@ -373,9 +374,10 @@ export async function updateFunction(
   // Failure policy is always an explicit policy and is only signified by the presence or absence of
   // a protobuf.Empty value, so we have to manually add it in the missing case.
   try {
-    const headers = previews.artifactregistry
-      ? { "X-Firebase-Artifact-Registry": "optin" }
-      : undefined;
+    const headers: Record<string, string> = {};
+    if (previews.artifactregistry) {
+      headers["X-Firebase-Artifact-Registry"] = "optin";
+    }
     const res = await api.request("PATCH", endpoint, {
       headers,
       qs: {
@@ -476,13 +478,17 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
   const [, project, , region, , id] = gcfFunction.name.split("/");
   let trigger: backend.Triggered;
   let uri: string | undefined;
-  if (gcfFunction.httpsTrigger) {
-    trigger = { httpsTrigger: {} };
-    uri = gcfFunction.httpsTrigger.url;
-  } else if (gcfFunction.labels?.["deployment-scheduled"]) {
+  if (gcfFunction.labels?.["deployment-scheduled"]) {
     trigger = {
       scheduleTrigger: {},
     };
+  } else if (gcfFunction.labels?.["deployment-taskqueue"]) {
+    trigger = {
+      taskQueueTrigger: {},
+    };
+  } else if (gcfFunction.httpsTrigger) {
+    trigger = { httpsTrigger: {} };
+    uri = gcfFunction.httpsTrigger.url;
   } else {
     trigger = {
       eventTrigger: {
@@ -576,6 +582,9 @@ export function functionFromEndpoint(
       resource: `projects/${endpoint.project}/topics/${id}`,
     };
     gcfFunction.labels = { ...gcfFunction.labels, "deployment-scheduled": "true" };
+  } else if (backend.isTaskQueueTriggered(endpoint)) {
+    gcfFunction.httpsTrigger = {};
+    gcfFunction.labels = { ...gcfFunction.labels, "deployment-taskqueue": "true" };
   } else {
     gcfFunction.httpsTrigger = {};
   }

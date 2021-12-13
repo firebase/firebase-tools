@@ -100,7 +100,10 @@ var api = {
     "https://logging.googleapis.com"
   ),
   containerRegistryDomain: utils.envOverride("CONTAINER_REGISTRY_DOMAIN", "gcr.io"),
-  artifactRegistryDomain: utils.envOverride("ARTIFACT_REGISTRY_DOMAIN", "pkg.dev"),
+  artifactRegistryDomain: utils.envOverride(
+    "ARTIFACT_REGISTRY_DOMAIN",
+    "https://artifactregistry.googleapis.com"
+  ),
   appDistributionOrigin: utils.envOverride(
     "FIREBASE_APP_DISTRIBUTION_URL",
     "https://firebaseappdistribution.googleapis.com"
@@ -151,6 +154,10 @@ var api = {
   cloudschedulerOrigin: utils.envOverride(
     "FIREBASE_CLOUDSCHEDULER_URL",
     "https://cloudscheduler.googleapis.com"
+  ),
+  cloudTasksOrigin: utils.envOverride(
+    "FIREBASE_CLOUD_TAKS_URL",
+    "https://cloudtasks.googleapis.com"
   ),
   pubsubOrigin: utils.envOverride("FIREBASE_PUBSUB_URL", "https://pubsub.googleapis.com"),
   googleOrigin: utils.envOverride(

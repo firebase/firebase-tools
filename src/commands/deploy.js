@@ -12,7 +12,15 @@ const { filterTargets } = require("../filterTargets");
 const { requireHostingSite } = require("../requireHostingSite");
 
 // in order of least time-consuming to most time-consuming
-const VALID_TARGETS = ["database", "storage", "firestore", "functions", "hosting", "remoteconfig"];
+const VALID_TARGETS = [
+  "database",
+  "storage",
+  "firestore",
+  "functions",
+  "hosting",
+  "remoteconfig",
+  "extensions",
+];
 const TARGET_PERMISSIONS = {
   database: ["firebasedatabase.instances.update"],
   hosting: ["firebasehosting.sites.update"],

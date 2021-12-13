@@ -1,7 +1,6 @@
 import * as _ from "lodash";
 import * as path from "path";
 import * as clc from "cli-color";
-import * as dotenv from "dotenv";
 import * as fs from "fs-extra";
 
 import { FirebaseError } from "../error";
@@ -15,6 +14,7 @@ import {
 } from "./extensionsHelper";
 import * as askUserForParam from "./askUserForParam";
 import * as track from "../track";
+import * as env from "../functions/env";
 
 /**
  * A mutator to switch the defaults for a list of params to new ones.
@@ -81,7 +81,6 @@ export async function getParams(args: {
     params = getParamsFromFile({
       projectId: args.projectId,
       paramSpecs: args.paramSpecs,
-      noninteractive: args.nonInteractive,
       paramsEnvPath: args.paramsEnvPath,
     });
   } else {
@@ -124,7 +123,6 @@ export async function getParamsForUpdate(args: {
     params = getParamsFromFile({
       projectId: args.projectId,
       paramSpecs: args.newSpec.params,
-      noninteractive: args.nonInteractive,
       paramsEnvPath: args.paramsEnvPath,
     });
   } else {
@@ -205,7 +203,6 @@ export function getParamsFromFile(args: {
   projectId: string;
   paramSpecs: extensionsApi.Param[];
   paramsEnvPath: string;
-  noninteractive?: boolean;
 }): Record<string, string> {
   let envParams;
   try {
@@ -223,5 +220,13 @@ export function getParamsFromFile(args: {
 
 export function readEnvFile(envPath: string) {
   const buf = fs.readFileSync(path.resolve(envPath), "utf8");
-  return dotenv.parse(buf.toString().trim(), { debug: true });
+  const result = env.parse(buf.toString().trim());
+  if (result.errors.length) {
+    throw new FirebaseError(
+      `Error while parsing ${envPath} - unable to parse following lines:\n${result.errors.join(
+        "\n"
+      )}`
+    );
+  }
+  return result.envs;
 }

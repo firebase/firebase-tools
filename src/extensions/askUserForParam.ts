@@ -93,6 +93,7 @@ export async function askForParam(
             "You may only select one option.",
           choices: convertExtensionOptionToLabeledList(paramSpec.options as ParamOption[]),
         });
+        valid = checkResponse(response, paramSpec);
         break;
       case ParamType.MULTISELECT:
         response = await onceWithJoin({
@@ -112,11 +113,13 @@ export async function askForParam(
             "You may select multiple options.",
           choices: convertExtensionOptionToLabeledList(paramSpec.options as ParamOption[]),
         });
+        valid = checkResponse(response, paramSpec);
         break;
       case ParamType.SECRET:
         response = reconfiguring
           ? await promptReconfigureSecret(projectId, instanceId, paramSpec)
           : await promptCreateSecret(projectId, instanceId, paramSpec);
+        valid = true;
         break;
       default:
         // Default to ParamType.STRING
@@ -126,9 +129,8 @@ export async function askForParam(
           default: paramSpec.default,
           message: `Enter a value for ${label}:`,
         });
+        valid = checkResponse(response, paramSpec);
     }
-
-    valid = checkResponse(response, paramSpec);
   }
   return response;
 }
@@ -156,44 +158,66 @@ async function promptReconfigureSecret(
       } else {
         secretName = await generateSecretName(projectId, instanceId, paramSpec.param);
       }
-
       const secretValue = await promptOnce({
         name: paramSpec.param,
         type: "password",
         message: `This secret will be stored in Cloud Secret Manager as ${secretName}.\nEnter new value for ${paramSpec.label.trim()}:`,
       });
-      if (!secret) {
-        secret = await secretManagerApi.createSecret(
-          projectId,
-          secretName,
-          secretsUtils.getSecretLabels(instanceId)
-        );
+      if (secretValue === "" && paramSpec.required) {
+        logger.info(`Secret value cannot be empty for required param ${paramSpec.param}`);
+        return promptReconfigureSecret(projectId, instanceId, paramSpec);
+      } else if (secretValue !== "") {
+        if (checkResponse(secretValue, paramSpec)) {
+          if (!secret) {
+            secret = await secretManagerApi.createSecret(
+              projectId,
+              secretName,
+              secretsUtils.getSecretLabels(instanceId)
+            );
+          }
+          return addNewSecretVersion(projectId, instanceId, secret, paramSpec, secretValue);
+        } else {
+          return promptReconfigureSecret(projectId, instanceId, paramSpec);
+        }
+      } else {
+        return "";
       }
-      return addNewSecretVersion(projectId, instanceId, secret, paramSpec, secretValue);
     case SecretUpdateAction.LEAVE:
     default:
       return paramSpec.default || "";
   }
 }
 
-async function promptCreateSecret(
+export async function promptCreateSecret(
   projectId: string,
   instanceId: string,
-  paramSpec: Param
+  paramSpec: Param,
+  secretName?: string
 ): Promise<string> {
-  const secretName = await generateSecretName(projectId, instanceId, paramSpec.param);
+  const name = secretName ?? (await generateSecretName(projectId, instanceId, paramSpec.param));
   const secretValue = await promptOnce({
     name: paramSpec.param,
     type: "password",
     default: paramSpec.default,
-    message: `This secret will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${secretName} and managed by Firebase Extensions (Firebase Extensions Service Agent will be granted Secret Admin role on this secret).\nEnter a value for ${paramSpec.label.trim()}:`,
+    message: `This secret will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${name} and managed by Firebase Extensions (Firebase Extensions Service Agent will be granted Secret Admin role on this secret).\nEnter a value for ${paramSpec.label.trim()}:`,
   });
-  const secret = await secretManagerApi.createSecret(
-    projectId,
-    secretName,
-    secretsUtils.getSecretLabels(instanceId)
-  );
-  return addNewSecretVersion(projectId, instanceId, secret, paramSpec, secretValue);
+  if (secretValue === "" && paramSpec.required) {
+    logger.info(`Secret value cannot be empty for required param ${paramSpec.param}`);
+    return promptCreateSecret(projectId, instanceId, paramSpec, name);
+  } else if (secretValue !== "") {
+    if (checkResponse(secretValue, paramSpec)) {
+      const secret = await secretManagerApi.createSecret(
+        projectId,
+        name,
+        secretsUtils.getSecretLabels(instanceId)
+      );
+      return addNewSecretVersion(projectId, instanceId, secret, paramSpec, secretValue);
+    } else {
+      return promptCreateSecret(projectId, instanceId, paramSpec, name);
+    }
+  } else {
+    return "";
+  }
 }
 
 async function generateSecretName(

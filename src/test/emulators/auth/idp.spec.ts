@@ -1006,4 +1006,144 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
     expect(afterFirstFactor.lastLoginAt).to.equal(beforeSignIn.lastLoginAt);
     expect(afterFirstFactor.lastRefreshAt).to.equal(beforeSignIn.lastRefreshAt);
   });
+
+  it("should error if SAMLResponse is missing assertion", async () => {
+    const samlResponse = {};
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+      .query({ key: "fake-api-key" })
+      .send({
+        postBody: `providerId=saml.saml&id_token=${
+          FAKE_GOOGLE_ACCOUNT.idToken
+        }&SAMLResponse=${JSON.stringify(samlResponse)}`,
+        requestUri: "http://localhost",
+        returnIdpCredential: true,
+        returnSecureToken: true,
+      })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.include("INVALID_IDP_RESPONSE");
+      });
+  });
+
+  it("should error if SAMLResponse is missing assertion.subject", async () => {
+    const samlResponse = { assertion: {} };
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+      .query({ key: "fake-api-key" })
+      .send({
+        postBody: `providerId=saml.saml&id_token=${
+          FAKE_GOOGLE_ACCOUNT.idToken
+        }&SAMLResponse=${JSON.stringify(samlResponse)}`,
+        requestUri: "http://localhost",
+        returnIdpCredential: true,
+        returnSecureToken: true,
+      })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.include("INVALID_IDP_RESPONSE");
+      });
+  });
+
+  it("should error if SAMLResponse is missing assertion.subject.nameId", async () => {
+    const samlResponse = { assertion: { subject: {} } };
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+      .query({ key: "fake-api-key" })
+      .send({
+        postBody: `providerId=saml.saml&id_token=${
+          FAKE_GOOGLE_ACCOUNT.idToken
+        }&SAMLResponse=${JSON.stringify(samlResponse)}`,
+        requestUri: "http://localhost",
+        returnIdpCredential: true,
+        returnSecureToken: true,
+      })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.include("INVALID_IDP_RESPONSE");
+      });
+  });
+
+  it("should create an account for generic SAML providers", async () => {
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+      .query({ key: "fake-api-key" })
+      .send({
+        postBody: `providerId=saml.saml&id_token=${FAKE_GOOGLE_ACCOUNT.idToken}`,
+        requestUri: "http://localhost",
+        returnIdpCredential: true,
+        returnSecureToken: true,
+      })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.isNewUser).to.equal(true);
+        expect(res.body.email).to.equal(FAKE_GOOGLE_ACCOUNT.email);
+        expect(res.body.emailVerified).to.equal(true);
+        expect(res.body.federatedId).to.equal(FAKE_GOOGLE_ACCOUNT.rawId);
+        expect(res.body.oauthIdToken).to.equal(FAKE_GOOGLE_ACCOUNT.idToken);
+        expect(res.body.providerId).to.equal("saml.saml");
+        expect(res.body).to.have.property("refreshToken").that.is.a("string");
+
+        // The ID Token used above does NOT contain name or photo, so the
+        // account created won't have those attributes either.
+        expect(res.body).not.to.have.property("displayName");
+        expect(res.body).not.to.have.property("photoUrl");
+
+        const idToken = res.body.idToken;
+        const decoded = decodeJwt(idToken, { complete: true }) as {
+          header: JwtHeader;
+          payload: FirebaseJwtPayload;
+        } | null;
+        expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
+        expect(decoded!.header.alg).to.eql("none");
+        expect(decoded!.payload).not.to.have.property("provider_id");
+        expect(decoded!.payload.firebase)
+          .to.have.property("identities")
+          .eql({
+            "saml.saml": [FAKE_GOOGLE_ACCOUNT.rawId],
+            email: [FAKE_GOOGLE_ACCOUNT.email],
+          });
+        expect(decoded!.payload.firebase).to.have.property("sign_in_provider").equals("saml.saml");
+      });
+  });
+
+  it("should include fields in SAMLResponse for SAML providers", async () => {
+    const otherEmail = "otherEmail@gmail.com";
+    const attributeStatements = {
+      name: "Jane Doe",
+      mail: "otherOtherEmail@gmail.com",
+    };
+    const samlResponse = { assertion: { subject: { nameId: otherEmail }, attributeStatements } };
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+      .query({ key: "fake-api-key" })
+      .send({
+        postBody: `providerId=saml.saml&id_token=${
+          FAKE_GOOGLE_ACCOUNT.idToken
+        }&SAMLResponse=${JSON.stringify(samlResponse)}`,
+        requestUri: "http://localhost",
+        returnIdpCredential: true,
+        returnSecureToken: true,
+      })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.email).to.equal(otherEmail);
+
+        const rawUserInfo = JSON.parse(res.body.rawUserInfo);
+        expect(rawUserInfo).to.eql(attributeStatements);
+
+        const idToken = res.body.idToken;
+        const decoded = decodeJwt(idToken, { complete: true }) as {
+          header: JwtHeader;
+          payload: FirebaseJwtPayload;
+        } | null;
+        expect(decoded!.payload.firebase)
+          .to.have.property("sign_in_attributes")
+          .eql(attributeStatements);
+      });
+  });
 });
