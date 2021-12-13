@@ -4,7 +4,8 @@ import * as functionsConfig from "../functionsConfig";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { Options } from "../options";
-import { needProjectId } from "../projectUtils"; import { promptOnce } from "../prompt";
+import { needProjectId } from "../projectUtils";
+import { promptOnce } from "../prompt";
 import { reduceFlat } from "../functional";
 import { requirePermissions } from "../requirePermissions";
 import * as args from "../deploy/functions/args";
@@ -114,5 +115,5 @@ export default new Command("functions:delete [filters...]")
     if (!arEnabled) {
       opts.ar = new containerCleaner.NoopArtifactRegistryCleaner();
     }
-    await containerCleaner.cleanupBuildImages([], allEpToDelete);
+    await containerCleaner.cleanupBuildImages([], allEpToDelete, opts);
   });
