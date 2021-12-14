@@ -79,7 +79,7 @@ describe("addResourcesToBackend", () => {
       requiredAPIs: [
         {
           api: "cloudtasks.googleapis.com",
-          reason: "Needed for task queue functions.",
+          reason: "Needed for v1 task queue functions.",
         },
       ],
     };
@@ -289,11 +289,11 @@ describe("addResourcesToBackend", () => {
       requiredAPIs: [
         {
           api: "pubsub.googleapis.com",
-          reason: "Need for scheduled functions.",
+          reason: "Needed for scheduled functions.",
         },
         {
           api: "cloudscheduler.googleapis.com",
-          reason: "Need for scheduled functions.",
+          reason: "Needed for scheduled functions.",
         },
       ],
     };

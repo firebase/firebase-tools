@@ -98,12 +98,12 @@ describe("detectFromPort", () => {
   // 600ms, which is dangerously close to the default limit of 1s. Increase limits so
   // that this doesn't flake even when running on slower machines experiencing hiccup
   it("passes as smoke test", async () => {
-    nock("http://localhost:8080").get("/backend.yaml").times(20).replyWithError({
+    nock("http://localhost:8080").get("/stack.yaml").times(20).replyWithError({
       message: "Still booting",
       code: "ECONNREFUSED",
     });
 
-    nock("http://localhost:8080").get("/backend.yaml").reply(200, YAML_TEXT);
+    nock("http://localhost:8080").get("/stack.yaml").reply(200, YAML_TEXT);
 
     const parsed = await discovery.detectFromPort(8080, "project", "nodejs16");
     expect(parsed).to.deep.equal(BACKEND);

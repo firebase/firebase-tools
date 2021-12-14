@@ -32,7 +32,7 @@ describe("backendFromV1Alpha1", () => {
       for (const [key, value] of Object.entries(invalidBackendTypes)) {
         it(`throws on invalid value for top-level key ${key}`, () => {
           const obj = {
-            requiredAPIs: {},
+            requiredAPIs: [],
             endpoints: {},
             [key]: value,
           };
@@ -311,7 +311,11 @@ describe("backendFromV1Alpha1", () => {
           },
         },
       };
-      const expected = backend.of({ ...DEFAULTED_ENDPOINT, scheduleTrigger });
+      const expected = backend.of({
+        ...DEFAULTED_ENDPOINT,
+        scheduleTrigger,
+        labels: { "deployment-scheduled": "true" },
+      });
       const parsed = v1alpha1.backendFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
       expect(parsed).to.deep.equal(expected);
     });
