@@ -150,6 +150,7 @@ function parseEndpoints(
         maxRetryDuration: "string",
       });
       triggered = { scheduleTrigger: ep.scheduleTrigger };
+      ep.labels = { ...ep.labels, "deployment-scheduled": "true" };
     } else if (backend.isTaskQueueTriggered(ep)) {
       assertKeyTypes(prefix + ".taskQueueTrigger", ep.taskQueueTrigger, {
         rateLimits: "object",
