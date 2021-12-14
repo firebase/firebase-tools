@@ -243,7 +243,8 @@ async function infoInstallBySource(
 }
 
 async function infoInstallByReference(
-  extensionName: string
+  extensionName: string,
+  interactive: boolean
 ): Promise<extensionsApi.ExtensionVersion> {
   // Infer firebase if publisher ID not provided.
   if (extensionName.split("/").length < 2) {
@@ -254,7 +255,7 @@ async function infoInstallByReference(
   const ref = refs.parse(extensionName);
   const extension = await extensionsApi.getExtension(refs.toExtensionRef(ref));
   if (!ref.version) {
-    track("ext:install", "Install by Extension Version Ref");
+    track("Extension Install", "Install by Extension Version Ref", interactive ? 1 : 0);
     extensionName = `${extensionName}@latest`;
   }
   const extVersion = await extensionsApi.getExtensionVersion(extensionName);
@@ -280,7 +281,6 @@ export default new Command("ext:install [extensionName]")
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
   .action(async (extensionName: string, options: any) => {
-    track("ext:install", options.interactive ? "Interactive" : "Non-Interactive");
     const projectId = needProjectId(options);
     const paramsEnvPath = options.params;
     let learnMore = false;
@@ -305,11 +305,11 @@ export default new Command("ext:install [extensionName]")
     // If the user types in URL, or a local path (prefixed with ~/, ../, or ./), install from local/URL source.
     // Otherwise, treat the input as an extension reference and proceed with reference-based installation.
     if (isLocalOrURLPath(extensionName)) {
-      track("ext:install", "Install by Source");
+      track("Extension Install", "Install by Source", options.interactive ? 1 : 0);
       source = await infoInstallBySource(projectId, extensionName);
     } else {
-      track("ext:install", "Install by Extension Ref");
-      extVersion = await infoInstallByReference(extensionName);
+      track("Extension Install", "Install by Extension Ref", options.interactive ? 1 : 0);
+      extVersion = await infoInstallByReference(extensionName, options.interactive);
     }
     if (
       !(await confirm({
