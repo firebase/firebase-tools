@@ -10,6 +10,7 @@ export function functionResourceToEmulatedTriggerDefintion(resource: any): Parse
   const etd: ParsedTriggerDefinition = {
     name: resource.name,
     entryPoint: resource.name,
+    platform: "gcfv1",
   };
   const properties = _.get(resource, "properties", {});
   if (properties.timeout) {

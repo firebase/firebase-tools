@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import * as nock from "nock";
 
-import { check, enable, ensure, POLL_SETTINGS } from "../ensureApiEnabled";
+import { check, ensure, POLL_SETTINGS } from "../ensureApiEnabled";
 
 const FAKE_PROJECT_ID = "my_project";
 const FAKE_API = "myapi.googleapis.com";
@@ -40,26 +40,6 @@ describe("ensureApiEnabled", () => {
         .reply(200, { state: "DISABLED" });
 
       await expect(check(FAKE_PROJECT_ID, FAKE_API, "", true)).to.eventually.be.false;
-    });
-  });
-
-  describe("enable", () => {
-    before(() => {
-      nock.disableNetConnect();
-    });
-
-    after(() => {
-      nock.enableNetConnect();
-    });
-
-    it("should call the API to enable the API", async () => {
-      nock("https://serviceusage.googleapis.com")
-        .post(`/v1/projects/${FAKE_PROJECT_ID}/services/${FAKE_API}:enable`)
-        .reply(200);
-
-      await enable(FAKE_PROJECT_ID, FAKE_API);
-
-      expect(nock.isDone()).to.be.true;
     });
   });
 
