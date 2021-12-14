@@ -4,3 +4,4 @@
 - Fixes issue with filtering on a specific storage bucket using functions in the emulator (#3893)
 - Fixes check in Cloud Functions for Firebase initialization to check for API enablement before trying to enable them. (#2574)
 - No longer tries to clean up function build images from Artifact Registry when Artifact Registry is not enabled (#3943)
+- Requires firebase-functions >= 3.13.1 in Functions emulator to include bug fixes (#3851).
