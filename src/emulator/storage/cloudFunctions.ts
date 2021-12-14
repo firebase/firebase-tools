@@ -84,7 +84,7 @@ export class StorageCloudFunctions {
   private createLegacyEventRequestBody(
     action: StorageCloudFunctionAction,
     objectMetadataPayload: ObjectMetadataPayload
-  ): LegacyEvent {
+  ) {
     const timestamp = new Date();
     return {
       eventId: `${timestamp.getTime()}`,
