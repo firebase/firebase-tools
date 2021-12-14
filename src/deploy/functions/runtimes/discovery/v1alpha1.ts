@@ -7,6 +7,7 @@ import { FirebaseError } from "../../../../error";
 export type ManifestEndpoint = backend.ServiceConfiguration &
   backend.Triggered &
   Partial<backend.HttpsTriggered> &
+  Partial<backend.CallableTriggered> &
   Partial<backend.EventTriggered> &
   Partial<backend.TaskQueueTriggered> &
   Partial<backend.ScheduleTriggered> & {
@@ -87,12 +88,16 @@ function parseEndpoints(
     ingressSettings: "string",
     environmentVariables: "object",
     httpsTrigger: "object",
+    callableTrigger: "object",
     eventTrigger: "object",
     scheduleTrigger: "object",
     taskQueueTrigger: "object",
   });
   let triggerCount = 0;
   if (ep.httpsTrigger) {
+    triggerCount++;
+  }
+  if (ep.callableTrigger) {
     triggerCount++;
   }
   if (ep.eventTrigger) {
@@ -105,7 +110,7 @@ function parseEndpoints(
     triggerCount++;
   }
   if (!triggerCount) {
-    throw new FirebaseError("Expected trigger in endpoint" + id);
+    throw new FirebaseError("Expected trigger in endpoint " + id);
   }
   if (triggerCount > 1) {
     throw new FirebaseError("Multiple triggers defined for endpoint" + id);
@@ -128,6 +133,9 @@ function parseEndpoints(
       });
       triggered = { httpsTrigger: {} };
       copyIfPresent(triggered.httpsTrigger, ep.httpsTrigger, "invoker");
+    } else if (backend.isCallableTriggered(ep)) {
+      triggered = { callableTrigger: {} };
+      ep.labels = { ...ep.labels, "deployment-callabled": "true" };
     } else if (backend.isScheduleTriggered(ep)) {
       assertKeyTypes(prefix + ".scheduleTrigger", ep.scheduleTrigger, {
         schedule: "string",

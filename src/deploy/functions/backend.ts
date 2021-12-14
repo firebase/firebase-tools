@@ -40,6 +40,14 @@ export interface HttpsTriggered {
   httpsTrigger: HttpsTrigger;
 }
 
+/** API agnostic version of a Firebase callable function. */
+export type CallableTrigger = Record<string, never>;
+
+/** Something that has a callable trigger */
+export interface CallableTriggered {
+  callableTrigger: CallableTrigger;
+}
+
 /** Well known keys in the eventFilter attribute of an event trigger */
 export type EventFilterKey = "resource";
 
@@ -119,6 +127,8 @@ export function endpointTriggerType(endpoint: Endpoint): string {
     return "scheduled";
   } else if (isHttpsTriggered(endpoint)) {
     return "https";
+  } else if (isCallableTriggered(endpoint)) {
+    return "callable";
   } else if (isEventTriggered(endpoint)) {
     return endpoint.eventTrigger.eventType;
   } else if (isTaskQueueTriggered(endpoint)) {
@@ -182,11 +192,21 @@ export interface ServiceConfiguration {
 
 export type FunctionsPlatform = "gcfv1" | "gcfv2";
 
-export type Triggered = HttpsTriggered | EventTriggered | ScheduleTriggered | TaskQueueTriggered;
+export type Triggered =
+  | HttpsTriggered
+  | CallableTriggered
+  | EventTriggered
+  | ScheduleTriggered
+  | TaskQueueTriggered;
 
 /** Whether something has an HttpsTrigger */
 export function isHttpsTriggered(triggered: Triggered): triggered is HttpsTriggered {
   return {}.hasOwnProperty.call(triggered, "httpsTrigger");
+}
+
+/** Whether something has a CallableTrigger */
+export function isCallableTriggered(triggered: Triggered): triggered is CallableTriggered {
+  return {}.hasOwnProperty.call(triggered, "callableTrigger");
 }
 
 /** Whether something has an EventTrigger */

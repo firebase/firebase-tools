@@ -228,7 +228,12 @@ export function triggerTag(endpoint: backend.Endpoint): string {
     return `${prefix}.taskQueue`;
   }
 
+  if (backend.isCallableTriggered(endpoint)) {
+    return `${prefix}.callable`;
+  }
+
   if (backend.isHttpsTriggered(endpoint)) {
+    // NOTE: Legacy trigger annotation relies on a special label to differentiate http vs callable triggers.
     if (endpoint.labels?.["deployment-callable"]) {
       return `${prefix}.callable`;
     }
