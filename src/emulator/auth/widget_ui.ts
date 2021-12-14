@@ -176,7 +176,7 @@ function finishWithUser(urlEncodedIdToken) {
 
   // Save reasonable defaults for SAML providers
   if (isSamlProvider) {
-    var email = document.getElementById('email-input').value;
+    var email = document.getElementById('email-input').value || document.getElementById('reuse-email').innerText;
     url += '&SAMLResponse=' + encodeURIComponent(JSON.stringify({
       assertion: {
         subject: {
