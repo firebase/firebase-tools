@@ -25,7 +25,7 @@ export const previews: PreviewFlags = {
   dotenv: false,
   artifactregistry: false,
 
-  ...configstore.get("previews"),
+  ...(configstore.get("previews") as Partial<PreviewFlags>),
 };
 
 if (process.env.FIREBASE_CLI_PREVIEWS) {
