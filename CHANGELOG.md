@@ -1,3 +1,4 @@
+- **BREAKING** Drops support for running the CLI on Node 10.
 - **BREAKING** Replaces all usages of `-y`, `--yes`, or `--confirm` with `-f` and `--force`.
 - Fixes issue when installing a Firebase Extension where secrets would be created before validation.
 - Fixes issue with filtering on a specific storage bucket using functions in the emulator (#3893)

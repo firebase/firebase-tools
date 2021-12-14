@@ -55,7 +55,7 @@
   ],
   "preferGlobal": true,
   "engines": {
-    "node": ">= 10.13"
+    "node": ">= 12"
   },
   "author": "Firebase (https://firebase.google.com/)",
   "license": "MIT",
