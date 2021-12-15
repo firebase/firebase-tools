@@ -200,7 +200,7 @@ export class Fabricator {
   }
 
   async createV1Function(endpoint: backend.Endpoint, scraper: SourceTokenScraper): Promise<void> {
-    if (!this.sourceUrls) {
+    if (!(this.sourceUrls && this.sourceUrls[endpoint.region])) {
       logger.debug("Precondition failed. Cannot create a GCF function without sourceUrl");
       throw new Error("Precondition failed");
     }
