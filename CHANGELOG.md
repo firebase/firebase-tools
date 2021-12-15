@@ -1,5 +1,8 @@
 - Fixes issue when installing a Firebase Extension where secrets would be created before validation.
-- Fixes issue with filtering on a specific storage bucket using functions in the emulator (#3893)
+- Fixes issue with filtering on a specific storage bucket using functions in the emulator. (#3893)
 - Fixes check in Cloud Functions for Firebase initialization to check for API enablement before trying to enable them. (#2574)
 - No longer tries to clean up function build images from Artifact Registry when Artifact Registry is not enabled. (#3943)
+- Show error message when running `firebase init hosting:github` with no Hosting config in `firebase.json`. (#3113)
+- Fixes issue where `remoteconfig:get` was not fetching the latest version by default. (#3559)
 - Fixes issue where empty variables in .env files would instead read as multi-line values. (#3934)
+
