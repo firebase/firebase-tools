@@ -164,10 +164,18 @@ export interface TargetIds {
   project: string;
 }
 
+export interface SecretEnv {
+  envkey: string;
+  secretName: string;
+  secretVersion: string;
+  project?: string;
+}
+
 export interface ServiceConfiguration {
   concurrency?: number;
   labels?: Record<string, string>;
   environmentVariables?: Record<string, string>;
+  secretEnvironmentVariables?: Record<string, SecretEnv>;
   availableMemoryMb?: MemoryOptions;
   timeout?: proto.Duration;
   maxInstances?: number;

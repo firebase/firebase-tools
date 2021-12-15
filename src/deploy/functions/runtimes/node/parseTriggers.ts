@@ -10,6 +10,7 @@ import * as proto from "../../../../gcp/proto";
 import * as args from "../../args";
 import * as runtimes from "../../runtimes";
 import { STORAGE_V2_EVENTS } from "../../eventTypes";
+import {SecretEnv} from "../../backend";
 
 const TRIGGER_PARSER = path.resolve(__dirname, "./triggerParser.js");
 
@@ -44,6 +45,7 @@ export interface TriggerAnnotation {
   maxInstances?: number;
   minInstances?: number;
   serviceAccountEmail?: string;
+  secrets?: string[];
   httpsTrigger?: {
     invoker?: string[];
   };
@@ -212,6 +214,7 @@ export function addResourcesToBackend(
       runtime: runtime,
       ...triggered,
     };
+
     if (annotation.vpcConnector) {
       let maybeId = annotation.vpcConnector;
       if (!maybeId.includes("/")) {
@@ -219,6 +222,19 @@ export function addResourcesToBackend(
       }
       endpoint.vpcConnector = maybeId;
     }
+
+    if (annotation.secrets && annotation.secrets.length > 0) {
+      const secretEnvs: backend.SecretEnv[] = [];
+      for (const secret of annotation.secrets) {
+        let name = secret;
+        if (secret.includes("/")) {
+          secret =
+
+        }
+        let secretEnv: backend.SecretEnv = { envkey};
+      }
+    }
+
     proto.copyIfPresent(
       endpoint,
       annotation,
