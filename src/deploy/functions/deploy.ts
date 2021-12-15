@@ -12,20 +12,21 @@ import * as gcfv2 from "../../gcp/cloudfunctionsv2";
 import * as utils from "../../utils";
 import * as backend from "./backend";
 
-const DEFAULT_UPLOAD_REGION = process.env.FIREBASE_FUNCTIONS_UPLOAD_REGION;
-
 setGracefulCleanup();
 
 async function uploadSourceV1(context: args.Context, region: string): Promise<void> {
-  const uploadUrl = await gcf.generateUploadUrl(context.projectId, region);
-  context.sourceUrls = { ...context.sourceUrls, [region]: uploadUrl };
-  const uploadOpts = {
-    file: context.functionsSourceV1!,
-    stream: fs.createReadStream(context.functionsSourceV1!),
-  };
-  await gcs.upload(uploadOpts, uploadUrl, {
-    "x-goog-content-length-range": "0,104857600",
-  });
+  if (context.sourceUrl == undefined) {
+    const uploadUrl = await gcf.generateUploadUrl(context.projectId, region);
+    const uploadOpts = {
+      file: context.functionsSourceV1!,
+      stream: fs.createReadStream(context.functionsSourceV1!),
+    };
+    await gcs.upload(uploadOpts, uploadUrl, {
+      "x-goog-content-length-range": "0,104857600",
+    });
+
+    context.sourceUrl = uploadUrl;
+  }
 }
 
 async function uploadSourceV2(context: args.Context, region: string): Promise<void> {
@@ -64,9 +65,8 @@ export async function deploy(
     const uploads: Promise<void>[] = [];
 
     for (const region of Object.keys(want.endpoints)) {
-      if (backend.allEndpoints(want).some((endpoint) => endpoint.platform === "gcfv1")) {
-        const srcRegion = DEFAULT_UPLOAD_REGION ?? region;
-        uploads.push(uploadSourceV1(context, srcRegion));
+      if (backend.regionalEndpoints(want, region).some((e) => e.platform === "gcfv1")) {
+        uploads.push(uploadSourceV1(context, region));
       }
       // GCFv2 cares about data residency and will possibly block deploys coming from other
       // regions. At minimum, the implementation would consider it user-owned source and
