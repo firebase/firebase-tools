@@ -143,6 +143,14 @@ BAR= "blah"
         want: { FOO: "", BAR: "blah" },
       },
       {
+        description: "should handle quoted values after a newline",
+        input: `
+FOO=
+"blah"
+`,
+        want: { FOO: "blah" },
+      },
+      {
         description: "should ignore comments",
         input: `
       FOO=foo # comment
