@@ -234,7 +234,7 @@ document.getElementById('main-form').addEventListener('submit', function(e) {
     if (screenName) claims.screenName = screenName;
     if (photoUrl) claims.photoUrl = photoUrl;
 
-    finishWithUser(createFakeClaims(claims), email);
+    finishWithUser(createFakeClaims(claims), claims.email);
   }
 });
 
