@@ -5,4 +5,3 @@
 - Show error message when running `firebase init hosting:github` with no Hosting config in `firebase.json`. (#3113)
 - Fixes issue where `remoteconfig:get` was not fetching the latest version by default. (#3559)
 - Fixes issue where empty variables in .env files would instead read as multi-line values. (#3934)
-
