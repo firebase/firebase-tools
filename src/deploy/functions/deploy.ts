@@ -63,6 +63,7 @@ export async function deploy(
 
     const v1Endpoints = backend.allEndpoints(want).filter((e) => e.platform === "gcfv1");
     if (v1Endpoints.length > 0) {
+      // Choose one of the function region for source upload.
       uploads.push(uploadSourceV1(context, v1Endpoints[0].region));
     }
 
