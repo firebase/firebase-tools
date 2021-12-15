@@ -142,26 +142,26 @@ BAR= "blah"
 `,
         want: { FOO: "", BAR: "blah" },
       },
-      //       {
-      //         description: "should ignore comments",
-      //         input: `
-      // FOO=foo # comment
-      // # line comment 1
-      // # line comment 2
-      // BAR=bar # another comment
-      // `,
-      //         want: { FOO: "foo", BAR: "bar" },
-      //       },
-      //       {
-      //         description: "should ignore empty lines",
-      //         input: `
-      // FOO=foo
+      {
+        description: "should ignore comments",
+        input: `
+      FOO=foo # comment
+      # line comment 1
+      # line comment 2
+      BAR=bar # another comment
+      `,
+        want: { FOO: "foo", BAR: "bar" },
+      },
+      {
+        description: "should ignore empty lines",
+        input: `
+      FOO=foo
 
-      // BAR=bar
+      BAR=bar
 
-      // `,
-      //         want: { FOO: "foo", BAR: "bar" },
-      //       },
+      `,
+        want: { FOO: "foo", BAR: "bar" },
+      },
     ];
 
     tests.forEach(({ description, input, want }) => {
