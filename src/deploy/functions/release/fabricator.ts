@@ -45,7 +45,7 @@ export interface FabricatorArgs {
   appEngineLocation: string;
 
   // Required if creating or updating any GCFv1 functions
-  sourceUrl?: string;
+  sourceUrls?: Record<string, string>;
 
   // Required if creating or updating any GCFv2 functions
   storage?: Record<string, gcfV2.StorageSource>;
@@ -61,14 +61,14 @@ const rethrowAs = <T>(endpoint: backend.Endpoint, op: reporter.OperationType) =>
 export class Fabricator {
   executor: Executor;
   functionExecutor: Executor;
-  sourceUrl: string | undefined;
+  sourceUrls: Record<string, string> | undefined;
   storage: Record<string, gcfV2.StorageSource> | undefined;
   appEngineLocation: string;
 
   constructor(args: FabricatorArgs) {
     this.executor = args.executor;
     this.functionExecutor = args.functionExecutor;
-    this.sourceUrl = args.sourceUrl;
+    this.sourceUrls = args.sourceUrls;
     this.storage = args.storage;
     this.appEngineLocation = args.appEngineLocation;
   }
@@ -200,11 +200,11 @@ export class Fabricator {
   }
 
   async createV1Function(endpoint: backend.Endpoint, scraper: SourceTokenScraper): Promise<void> {
-    if (!this.sourceUrl) {
+    if (!this.sourceUrls) {
       logger.debug("Precondition failed. Cannot create a GCF function without sourceUrl");
       throw new Error("Precondition failed");
     }
-    const apiFunction = gcf.functionFromEndpoint(endpoint, this.sourceUrl);
+    const apiFunction = gcf.functionFromEndpoint(endpoint, this.sourceUrls[endpoint.region]);
     // As a general security practice and way to smooth out the upgrade path
     // for GCF gen 2, we are enforcing that all new GCFv1 deploys will require
     // HTTPS
@@ -319,11 +319,11 @@ export class Fabricator {
   }
 
   async updateV1Function(endpoint: backend.Endpoint, scraper: SourceTokenScraper): Promise<void> {
-    if (!this.sourceUrl) {
+    if (!this.sourceUrls) {
       logger.debug("Precondition failed. Cannot update a GCF function without sourceUrl");
       throw new Error("Precondition failed");
     }
-    const apiFunction = gcf.functionFromEndpoint(endpoint, this.sourceUrl);
+    const apiFunction = gcf.functionFromEndpoint(endpoint, this.sourceUrls[endpoint.region]);
     apiFunction.sourceToken = await scraper.tokenPromise();
     const resultFunction = await this.functionExecutor
       .run(async () => {

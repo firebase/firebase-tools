@@ -18,7 +18,7 @@ setGracefulCleanup();
 
 async function uploadSourceV1(context: args.Context, region: string): Promise<void> {
   const uploadUrl = await gcf.generateUploadUrl(context.projectId, region);
-  context.uploadUrl = uploadUrl;
+  context.sourceUrls = { ...context.sourceUrls, region: uploadUrl };
   const uploadOpts = {
     file: context.functionsSourceV1!,
     stream: fs.createReadStream(context.functionsSourceV1!),
