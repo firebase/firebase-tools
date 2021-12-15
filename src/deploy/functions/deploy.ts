@@ -15,18 +15,15 @@ import * as backend from "./backend";
 setGracefulCleanup();
 
 async function uploadSourceV1(context: args.Context, region: string): Promise<void> {
-  if (context.sourceUrl == undefined) {
-    const uploadUrl = await gcf.generateUploadUrl(context.projectId, region);
-    const uploadOpts = {
-      file: context.functionsSourceV1!,
-      stream: fs.createReadStream(context.functionsSourceV1!),
-    };
-    await gcs.upload(uploadOpts, uploadUrl, {
-      "x-goog-content-length-range": "0,104857600",
-    });
-
-    context.sourceUrl = uploadUrl;
-  }
+  const uploadUrl = await gcf.generateUploadUrl(context.projectId, region);
+  context.sourceUrl = uploadUrl;
+  const uploadOpts = {
+    file: context.functionsSourceV1!,
+    stream: fs.createReadStream(context.functionsSourceV1!),
+  };
+  await gcs.upload(uploadOpts, uploadUrl, {
+    "x-goog-content-length-range": "0,104857600",
+  });
 }
 
 async function uploadSourceV2(context: args.Context, region: string): Promise<void> {
@@ -64,10 +61,12 @@ export async function deploy(
     const want = payload.functions!.backend;
     const uploads: Promise<void>[] = [];
 
+    const v1Endpoints = backend.allEndpoints(want).filter((e) => e.platform === "gcfv1");
+    if (v1Endpoints.length > 0) {
+      uploads.push(uploadSourceV1(context, v1Endpoints[0].region));
+    }
+
     for (const region of Object.keys(want.endpoints)) {
-      if (backend.regionalEndpoints(want, region).some((e) => e.platform === "gcfv1")) {
-        uploads.push(uploadSourceV1(context, region));
-      }
       // GCFv2 cares about data residency and will possibly block deploys coming from other
       // regions. At minimum, the implementation would consider it user-owned source and
       // would break download URLs + console source viewing.
