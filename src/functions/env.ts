@@ -49,7 +49,7 @@ const LINE_RE = new RegExp(
   "(" +                      //   begin optional value
   "\\s*'(?:\\\\'|[^'])*'|" + //     single quoted or
   '\\s*"(?:\\\\"|[^"])*"|' + //     double quoted or
-  "[^#\\r\\n]+" +            //     unquoted
+  "[^#=\\r\\n]*" +           //     unquoted
   ")?" +                     //   end optional value
   "\\s*" +                   //   trailing whitespaces
   "(?:#[^\\n]*)?" +          //   optional comment
@@ -109,6 +109,7 @@ export function parse(data: string): ParseResult {
         v = v.replace(/\\([\\'"])/g, "$1");
       }
     }
+
     envs[k] = v;
   }
 
