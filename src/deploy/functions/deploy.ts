@@ -3,7 +3,6 @@ import * as clc from "cli-color";
 import * as fs from "fs";
 
 import { checkHttpIam } from "./checkIam";
-import { functionsUploadRegion } from "../../api";
 import { logSuccess, logWarning } from "../../utils";
 import { Options } from "../../options";
 import * as args from "./args";
@@ -13,12 +12,12 @@ import * as gcfv2 from "../../gcp/cloudfunctionsv2";
 import * as utils from "../../utils";
 import * as backend from "./backend";
 
-const GCP_REGION = functionsUploadRegion;
+const DEFAULT_UPLOAD_REGION = process.env.FIREBASE_FUNCTIONS_UPLOAD_REGION;
 
 setGracefulCleanup();
 
-async function uploadSourceV1(context: args.Context): Promise<void> {
-  const uploadUrl = await gcf.generateUploadUrl(context.projectId, GCP_REGION);
+async function uploadSourceV1(context: args.Context, region: string): Promise<void> {
+  const uploadUrl = await gcf.generateUploadUrl(context.projectId, region);
   context.uploadUrl = uploadUrl;
   const uploadOpts = {
     file: context.functionsSourceV1!,
@@ -63,11 +62,12 @@ export async function deploy(
   try {
     const want = payload.functions!.backend;
     const uploads: Promise<void>[] = [];
-    if (backend.allEndpoints(want).some((endpoint) => endpoint.platform === "gcfv1")) {
-      uploads.push(uploadSourceV1(context));
-    }
 
     for (const region of Object.keys(want.endpoints)) {
+      if (backend.allEndpoints(want).some((endpoint) => endpoint.platform === "gcfv1")) {
+        const srcRegion = DEFAULT_UPLOAD_REGION ?? region;
+        uploads.push(uploadSourceV1(context, srcRegion));
+      }
       // GCFv2 cares about data residency and will possibly block deploys coming from other
       // regions. At minimum, the implementation would consider it user-owned source and
       // would break download URLs + console source viewing.
