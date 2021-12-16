@@ -139,7 +139,7 @@ export async function queryTimeSeries(
       `/${CLOUD_MONITORING_VERSION}/projects/${projectNumber}/timeSeries/`,
       {
         auth: true,
-        origin: api.cloudMonitroingOrigin,
+        origin: api.cloudMonitoringOrigin,
         data: query,
       }
     );

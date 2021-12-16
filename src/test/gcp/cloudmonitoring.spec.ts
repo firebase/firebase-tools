@@ -27,7 +27,7 @@ describe("queryTimeSeries", () => {
   };
 
   it("should make a POST call to the correct endpoint", async () => {
-    nock(api.cloudMonitroingOrigin)
+    nock(api.cloudMonitoringOrigin)
       .get(`/${CLOUD_MONITORING_VERSION}/projects/${PROJECT_NUMBER}/timeSeries/`)
       .query(true)
       .reply(200, RESPONSE);
@@ -37,7 +37,7 @@ describe("queryTimeSeries", () => {
   });
 
   it("should throw a FirebaseError if the endpoint returns an error response", async () => {
-    nock(api.cloudMonitroingOrigin)
+    nock(api.cloudMonitoringOrigin)
       .post(`/${CLOUD_MONITORING_VERSION}/projects/${PROJECT_NUMBER}/timeSeries/`)
       .query(true)
       .reply(404);
