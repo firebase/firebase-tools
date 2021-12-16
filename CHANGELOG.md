@@ -1,0 +1,1 @@
+- Upgrades Database Emulator to v4.7.3, removing log4j dependency.
