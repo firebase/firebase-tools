@@ -2,6 +2,7 @@ import * as semver from "semver";
 import { TimeSeries, TimeSeriesResponse } from "../gcp/cloudmonitoring";
 import { Bucket, BucketedMetric } from "./metricsTypeDef";
 import * as refs from "./refs";
+import * as clc from "cli-color";
 
 /**
  * Parse TimeSeriesResponse into structured metric data.
@@ -59,7 +60,11 @@ export function parseTimeseriesResponse(series: TimeSeriesResponse): Array<Bucke
  *
  * @param v Value got from Cloud Monitoring, which is the upper-bound of the bucket.
  */
-export function parseBucket(v: number): Bucket {
+export function parseBucket(value: number): Bucket {
+  // int64Value has type "number" but can still be interupted as "string" sometimes.
+  // Force cast into number just in case.
+  const v = Number(value);
+
   if (v >= 200) {
     return { low: v - 100, high: v };
   }
@@ -81,44 +86,30 @@ export function buildMetricsTableRow(metric: BucketedMetric): Array<string> {
     ret.push("Insufficient data");
   }
 
-  if (metric.value7dAgo && metric.valueToday) {
-    if (metric.valueToday.high === metric.value7dAgo.high) {
-      ret.push("-");
-    } else {
-      ret.push(
-        `${getTrendEmoji(metric.valueToday.high - metric.value7dAgo.high)} ` +
-          `${metric.valueToday.low - metric.value7dAgo.high} to ${
-            metric.valueToday.high - metric.value7dAgo.low
-          }`
-      );
-    }
-  } else {
-    ret.push("Insufficient data");
-  }
+  ret.push(renderChangeCell(metric.value7dAgo, metric.valueToday));
 
-  if (metric.value28dAgo && metric.valueToday) {
-    if (metric.valueToday.high === metric.value28dAgo.high) {
-      ret.push("-");
-    } else {
-      ret.push(
-        `${getTrendEmoji(metric.valueToday.high - metric.value28dAgo.high)} ` +
-          `${metric.valueToday.low - metric.value28dAgo.high} to ${
-            metric.valueToday.high - metric.value28dAgo.low
-          }`
-      );
-    }
-  } else {
-    ret.push("Insufficient data");
-  }
+  ret.push(renderChangeCell(metric.value28dAgo, metric.valueToday));
 
   return ret;
 }
 
-function getTrendEmoji(value: number): string {
-  if (value > 0) {
-    return "🟢";
+function renderChangeCell(before: Bucket | undefined, after: Bucket | undefined) {
+  if (!(before && after)) {
+    return "Insufficient data";
   }
-  return "🔴";
+  if (before.high === after.high) {
+    return "-";
+  }
+
+  if (before.high > after.high) {
+    const diff = before.high - after.high;
+    const tolerance = diff < 100 ? 10 : 100;
+    return clc.red("▼ ") + `-${diff} (±${tolerance})`;
+  } else {
+    const diff = after.high - before.high;
+    const tolerance = diff < 100 ? 10 : 100;
+    return clc.green("▲ ") + `${diff} (±${tolerance})`;
+  }
 }
 
 /**

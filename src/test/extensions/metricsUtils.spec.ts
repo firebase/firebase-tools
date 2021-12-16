@@ -1,5 +1,6 @@
 import * as _ from "lodash";
 import { expect } from "chai";
+import * as clc from "cli-color";
 
 import {
   buildMetricsTableRow,
@@ -44,8 +45,8 @@ describe("metricsUtil", () => {
       expect(buildMetricsTableRow(metric)).to.deep.equals([
         "0.0.1",
         "400 - 500",
-        "🟢 0 to 200",
-        "🟢 200 to 400",
+        clc.green("▲ ") + "100 (±100)",
+        clc.green("▲ ") + "300 (±100)",
       ]);
     });
     it("shows decreasing instance count properly", () => {
@@ -72,7 +73,7 @@ describe("metricsUtil", () => {
         "0.0.1",
         "100 - 200",
         "-",
-        "🔴 -200 to 0",
+        clc.red("▼ ") + "-100 (±100)",
       ]);
     });
   });
