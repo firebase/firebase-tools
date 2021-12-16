@@ -29,6 +29,7 @@ jobs:
           path: ~/.npm
           key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/package-lock.json') }}
 
+      - run: npm i -g npm@8
       - run: npm ci
       - run: npm run lint:changed-files
 
@@ -52,6 +53,7 @@ jobs:
           path: ~/.npm
           key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/package-lock.json') }}
 
+      - run: npm i -g npm@8
       - run: npm ci
       - run: npm test
 
@@ -99,6 +101,7 @@ jobs:
           key: ${{ runner.os }}-firebase-emulators-${{ hashFiles('emulator-cache/**') }}
         continue-on-error: true
 
+      - run: npm i -g npm@8
       - run: npm ci
       - run: echo ${{ secrets.service_account_json_base64 }} | base64 -d > ./scripts/service-account.json
       - run: ${{ matrix.script }}
