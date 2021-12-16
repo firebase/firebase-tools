@@ -1,3 +1,4 @@
 - **BREAKING** Drops support for running the CLI on Node 10.
 - **BREAKING** Replaces all usages of `-y`, `--yes`, or `--confirm` with `-f` and `--force`.
 - Requires firebase-functions >= 3.13.1 in Functions emulator to include bug fixes (#3851).
+- Updates default functions runtime to Node.js 16.
