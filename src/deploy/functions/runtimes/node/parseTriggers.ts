@@ -153,17 +153,17 @@ export async function discoverBackend(
   const triggerAnnotations = await parseTriggers(projectId, sourceDir, configValues, envs);
   const want: backend.Backend = { ...backend.empty(), environmentVariables: envs };
   for (const annotation of triggerAnnotations) {
-    await addResourcesToBackend(projectId, runtime, annotation, want);
+    addResourcesToBackend(projectId, runtime, annotation, want);
   }
   return want;
 }
 
-export async function addResourcesToBackend(
+export function addResourcesToBackend(
   projectId: string,
   runtime: runtimes.Runtime,
   annotation: TriggerAnnotation,
   want: backend.Backend
-): Promise<void> {
+): void {
   Object.freeze(annotation);
   // Every trigger annotation is at least a function
   for (const region of annotation.regions || [api.functionsDefaultRegion]) {
@@ -232,20 +232,22 @@ export async function addResourcesToBackend(
     if (annotation.secrets && annotation.secrets.length > 0) {
       const secretEnvs: backend.SecretEnvVar[] = [];
       for (const secret of annotation.secrets) {
-        let secretVersion;
         if (secret.includes("/")) {
-          secretVersion = parseSecretVersionResourceName(secret);
+          const secretVersion = parseSecretVersionResourceName(secret);
+          secretEnvs.push({
+            key: secretVersion.secret.name,
+            secret: secretVersion.secret.name,
+            projectId: secretVersion.secret.projectId,
+            version: secretVersion.versionId,
+          });
         } else {
-          // Resolve secret to the latest version. GCP returns numeric instead of latest?
-          // TODO: Should this be resolved at deploy time?
-          secretVersion = await getSecretVersion(projectId, secret, "latest");
+          secretEnvs.push({
+            key: secret,
+            secret,
+            projectId,
+            // Note: version will be filled during function deploy.prepare phase.
+          });
         }
-        secretEnvs.push({
-          key: secretVersion.secret.name,
-          secret: secretVersion.secret.name,
-          projectId: secretVersion.secret.projectId,
-          version: secretVersion.versionId,
-        });
       }
       endpoint.secretEnvironmentVariables = secretEnvs;
     }

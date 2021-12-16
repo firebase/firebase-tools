@@ -21,6 +21,7 @@ import { logger } from "../../logger";
 import { ensureTriggerRegions } from "./triggerRegionHelper";
 import { ensureServiceAgentRoles } from "./checkIam";
 import e from "express";
+import {getSecretVersion} from "../../gcp/secretManager";
 
 function hasUserConfig(config: Record<string, unknown>): boolean {
   // "firebase" key is always going to exist in runtime config.
@@ -180,6 +181,19 @@ export async function prepare(
   await promptForFailurePolicies(options, matchingBackend, haveBackend);
   await promptForMinInstances(options, matchingBackend, haveBackend);
   await backend.checkAvailability(context, wantBackend);
+
+  // Resolve secrets without version to its the version.
+  // TODO: optimize by parallel queries.
+  for (const endpoint of backend.allEndpoints(matchingBackend)) {
+    if (endpoint.secretEnvironmentVariables) {
+      for (const secret of endpoint.secretEnvironmentVariables) {
+        if (!secret.version) {
+          const secretVersion = await getSecretVersion(projectId, secret.secret, "latest");
+          secret.version = secretVersion.versionId;
+        }
+      }
+    }
+  }
 }
 
 /**
