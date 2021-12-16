@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "9.23.1",
+  "version": "10.0.0",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -55,7 +55,7 @@
   ],
   "preferGlobal": true,
   "engines": {
-    "node": ">= 10.13"
+    "node": ">= 12"
   },
   "author": "Firebase (https://firebase.google.com/)",
   "license": "MIT",
@@ -94,7 +94,7 @@
     "chokidar": "^3.0.2",
     "cjson": "^0.3.1",
     "cli-color": "^1.2.0",
-    "cli-table": "^0.3.8",
+    "cli-table": "0.3.11",
     "commander": "^4.0.1",
     "configstore": "^5.0.1",
     "cors": "^2.8.5",

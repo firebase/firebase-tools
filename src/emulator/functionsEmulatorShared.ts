@@ -13,6 +13,7 @@ export type SignatureType = "http" | "event" | "cloudevent";
 
 export interface ParsedTriggerDefinition {
   entryPoint: string;
+  platform: FunctionsPlatform;
   name: string;
   timeout?: string | number; // Can be "3s" for some reason lol
   regions?: string[];
@@ -21,7 +22,6 @@ export interface ParsedTriggerDefinition {
   eventTrigger?: EventTrigger;
   schedule?: EventSchedule;
   labels?: { [key: string]: any };
-  platform?: FunctionsPlatform;
 }
 
 export interface EmulatedTriggerDefinition extends ParsedTriggerDefinition {
@@ -156,6 +156,7 @@ export function emulatedFunctionsByRegion(
       defDeepCopy.regions = [region];
       defDeepCopy.region = region;
       defDeepCopy.id = `${region}-${defDeepCopy.name}`;
+      defDeepCopy.platform = defDeepCopy.platform || "gcfv1";
 
       regionDefinitions.push(defDeepCopy);
     }
