@@ -2,3 +2,4 @@
 - **BREAKING** Replaces all usages of `-y`, `--yes`, or `--confirm` with `-f` and `--force`.
 - **BREAKING** Function deploys upload source to the deployed region instead of us-central1.
 - Requires firebase-functions >= 3.13.1 in Functions emulator to include bug fixes (#3851).
+- Updates default functions runtime to Node.js 16.
