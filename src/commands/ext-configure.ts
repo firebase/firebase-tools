@@ -40,7 +40,7 @@ export default new Command("ext:configure <extensionInstanceId>")
       let existingInstance: extensionsApi.ExtensionInstance;
       try {
         existingInstance = await extensionsApi.getInstance(projectId, instanceId);
-      } catch (err) {
+      } catch (err: any) {
         if (err.status === 404) {
           return utils.reject(
             `No extension instance ${instanceId} found in project ${projectId}.`,
@@ -97,7 +97,7 @@ export default new Command("ext:configure <extensionInstanceId>")
         )
       );
       return res;
-    } catch (err) {
+    } catch (err: any) {
       if (spinner.isSpinning) {
         spinner.fail();
       }

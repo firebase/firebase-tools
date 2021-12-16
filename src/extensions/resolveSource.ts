@@ -132,7 +132,7 @@ export async function getTrustedPublishers(): Promise<string[]> {
   let registry: { [key: string]: RegistryEntry };
   try {
     registry = await getExtensionRegistry();
-  } catch (err) {
+  } catch (err: any) {
     logger.debug(
       "Couldn't get extensions registry, assuming no trusted publishers except Firebase."
     );

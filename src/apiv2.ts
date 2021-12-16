@@ -216,7 +216,7 @@ export class Client {
     }
     try {
       return await this.doRequest<ReqT, ResT>(internalReqOptions);
-    } catch (thrown) {
+    } catch (thrown: any) {
       if (thrown instanceof FirebaseError) {
         throw thrown;
       }
@@ -347,7 +347,7 @@ export class Client {
     let res: Response;
     try {
       res = await fetch(fetchURL, fetchOptions);
-    } catch (thrown) {
+    } catch (thrown: any) {
       const err = thrown instanceof Error ? thrown : new Error(thrown);
       const isAbortError = err.name.includes("AbortError");
       if (isAbortError) {

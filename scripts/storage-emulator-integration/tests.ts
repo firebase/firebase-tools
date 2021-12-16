@@ -807,7 +807,7 @@ describe("Storage emulator", () => {
                     .ref(filename)
                     .putString(IMAGE_FILE_BASE64, "base64");
                   return task.state;
-                } catch (err) {
+                } catch (err: any) {
                   throw err.message;
                 }
               },
@@ -833,7 +833,7 @@ describe("Storage emulator", () => {
                     .ref(filename)
                     .putString(IMAGE_FILE_BASE64, "base64");
                   return task.state;
-                } catch (err) {
+                } catch (err: any) {
                   throw err.message;
                 }
               },
@@ -871,7 +871,7 @@ describe("Storage emulator", () => {
                   .ref(filename)
                   .putString(IMAGE_FILE_BASE64, "base64");
                 return task.state;
-              } catch (err) {
+              } catch (err: any) {
                 throw err.message;
               }
             },
@@ -909,7 +909,7 @@ describe("Storage emulator", () => {
                   .ref(filename)
                   .putString(IMAGE_FILE_BASE64, "base64");
                 return task.state;
-              } catch (err) {
+              } catch (err: any) {
                 throw err.message;
               }
             },
@@ -955,7 +955,7 @@ describe("Storage emulator", () => {
                     .ref(filename)
                     .putString(IMAGE_FILE_BASE64, "base64");
                   return task.state;
-                } catch (err) {
+                } catch (err: any) {
                   throw err.message;
                 }
               },
@@ -1067,7 +1067,7 @@ describe("Storage emulator", () => {
             downloadUrl = await page.evaluate((filename) => {
               return firebase.storage().ref(filename).getDownloadURL();
             }, filename);
-          } catch (err) {
+          } catch (err: any) {
             expect(err).to.equal("");
           }
           const expectedHost = TEST_CONFIG.useProductionServers

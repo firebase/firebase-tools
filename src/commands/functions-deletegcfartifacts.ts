@@ -50,7 +50,7 @@ export default new Command("functions:deletegcfartifacts")
         throw new FirebaseError("Command aborted.", { exit: 1 });
       }
       await deleteGcfArtifacts(projectId, regions, dockerHelper);
-    } catch (err) {
+    } catch (err: any) {
       throw new FirebaseError("Command failed.", { original: err });
     }
   });

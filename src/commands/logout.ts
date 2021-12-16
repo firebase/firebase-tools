@@ -61,7 +61,7 @@ module.exports = new Command("logout [email]")
         auth.setRefreshToken(token);
         try {
           await auth.logout(token);
-        } catch (e) {
+        } catch (e: any) {
           utils.logWarning(
             `Invalid refresh token for ${account.user.email}, did not need to deauthorize`
           );
@@ -75,7 +75,7 @@ module.exports = new Command("logout [email]")
       auth.setRefreshToken(globalToken);
       try {
         await auth.logout(globalToken);
-      } catch (e) {
+      } catch (e: any) {
         utils.logWarning("Invalid refresh token, did not need to deauthorize");
       }
 

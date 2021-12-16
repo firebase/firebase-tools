@@ -101,7 +101,7 @@ async function runTest(description, envFiles, expected) {
       { FOO: "foo", SOURCE: "env-project" }
     );
     console.log("Success");
-  } catch (err) {
+  } catch (err: any) {
     console.log("Error: " + err);
   } finally {
     postTest();

@@ -22,7 +22,7 @@ const validFunctionTypes = [
 function wrappedSafeLoad(source: string): any {
   try {
     return yaml.safeLoad(source);
-  } catch (err) {
+  } catch (err: any) {
     if (err instanceof yaml.YAMLException) {
       throw new FirebaseError(`YAML Error: ${err.message}`, { original: err });
     }

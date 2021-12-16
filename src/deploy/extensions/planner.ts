@@ -104,7 +104,7 @@ export async function want(args: {
         ref,
         params: subbedParams,
       });
-    } catch (err) {
+    } catch (err: any) {
       logger.debug(`Got error reading extensions entry ${e}: ${err}`);
       errors.push(err as FirebaseError);
     }
