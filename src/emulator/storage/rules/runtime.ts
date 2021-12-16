@@ -172,7 +172,7 @@ export class StorageRulesRuntime {
         let rap;
         try {
           rap = JSON.parse(serializedRuntimeActionResponse) as RuntimeActionResponse;
-        } catch (err) {
+        } catch (err: any) {
           EmulatorLogger.forEmulator(Emulators.STORAGE).log(
             "INFO",
             serializedRuntimeActionResponse

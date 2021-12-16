@@ -192,7 +192,7 @@ async function syncAuthState(projectId: string, sites: ChannelInfo[]) {
   try {
     await addAuthDomains(projectId, urlNames);
     logger.debug("[hosting] added auth domain for urls", urlNames);
-  } catch (e) {
+  } catch (e: any) {
     logLabeledWarning(
       LOG_TAG,
       marked(
@@ -206,7 +206,7 @@ async function syncAuthState(projectId: string, sites: ChannelInfo[]) {
   }
   try {
     await cleanAuthState(projectId, siteNames);
-  } catch (e) {
+  } catch (e: any) {
     logLabeledWarning(LOG_TAG, "Unable to sync Firebase Auth state.");
     logger.debug("[hosting] unable to sync auth domain", e);
   }

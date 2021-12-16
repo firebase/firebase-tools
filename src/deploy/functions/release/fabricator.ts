@@ -116,7 +116,7 @@ export class Fabricator {
       try {
         await fn();
         this.logOpSuccess(op, endpoint);
-      } catch (err) {
+      } catch (err: any) {
         result.error = err as Error;
       }
       result.durationMs = timer.stop();
@@ -267,7 +267,7 @@ export class Fabricator {
         .run(async () => {
           try {
             await pubsub.createTopic({ name: topic });
-          } catch (err) {
+          } catch (err: any) {
             // Pub/Sub uses HTTP 409 (CONFLICT) with a status message of
             // ALREADY_EXISTS if the topic already exists.
             if (err.status === 409) {

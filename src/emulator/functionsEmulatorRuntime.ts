@@ -51,7 +51,7 @@ function requireAsync(moduleName: string, opts?: { paths: string[] }): Promise<a
   return new Promise((res, rej) => {
     try {
       res(require(require.resolve(moduleName, opts))); // eslint-disable-line @typescript-eslint/no-var-requires
-    } catch (e) {
+    } catch (e: any) {
       rej(e);
     }
   });
@@ -61,7 +61,7 @@ function requireResolveAsync(moduleName: string, opts?: { paths: string[] }): Pr
   return new Promise((res, rej) => {
     try {
       res(require.resolve(moduleName, opts));
-    } catch (e) {
+    } catch (e: any) {
       rej(e);
     }
   });
@@ -164,7 +164,7 @@ class Proxied<T extends ProxyTarget> {
       },
       apply: (target, thisArg, argArray) => {
         if (this.appliedValue) {
-          return this.appliedValue.apply(thisArg, argArray);
+          return this.appliedValue.apply(thisArg);
         } else {
           return Proxied.applyOriginal(target, thisArg, argArray);
         }
@@ -305,7 +305,7 @@ function requirePackageJson(frb: FunctionsRuntimeBundle): PackageJSON | undefine
       devDependencies: pkg.devDependencies || {},
     };
     return developerPkgJSON;
-  } catch (err) {
+  } catch (err: any) {
     return;
   }
 }
@@ -351,7 +351,7 @@ function initializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
             try {
               new URL(arg);
               return arg;
-            } catch (err) {
+            } catch (err: any) {
               return;
             }
           } else if (typeof arg === "object") {
@@ -380,7 +380,7 @@ function initializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
 
       try {
         return original(...args);
-      } catch (e) {
+      } catch (e: any) {
         const newed = new original(...args); // eslint-disable-line new-cap
         return newed;
       }
@@ -421,7 +421,7 @@ async function initializeFirebaseFunctionsStubs(frb: FunctionsRuntimeBundle): Pr
   let httpsProvider: any;
   try {
     httpsProvider = require(httpsProviderV1Resolution);
-  } catch (e) {
+  } catch (e: any) {
     httpsProvider = require(httpsProviderResolution);
   }
 
@@ -741,7 +741,7 @@ async function processHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
     return;
   }
 
-  await new Promise((resolveEphemeralServer, rejectEphemeralServer) => {
+  await new Promise<void>((resolveEphemeralServer, rejectEphemeralServer) => {
     const handler = async (req: express.Request, res: express.Response) => {
       try {
         logDebug(`Ephemeral server handling ${req.method} request`);
@@ -757,7 +757,7 @@ async function processHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
         });
 
         await runHTTPS([req, res], func);
-      } catch (err) {
+      } catch (err: any) {
         rejectEphemeralServer(err);
       }
     };
@@ -840,7 +840,7 @@ async function runFunction(func: () => Promise<any>): Promise<any> {
   let caughtErr;
   try {
     await func();
-  } catch (err) {
+  } catch (err: any) {
     caughtErr = err;
   }
 
@@ -1005,7 +1005,7 @@ async function initializeRuntime(
   } else {
     try {
       triggerModule = require(frb.cwd);
-    } catch (err) {
+    } catch (err: any) {
       if (err.code !== "ERR_REQUIRE_ESM") {
         await moduleResolutionDetective(frb, err);
         return;
@@ -1046,7 +1046,7 @@ async function handleMessage(message: string) {
   let runtimeArgs: FunctionsRuntimeArgs;
   try {
     runtimeArgs = JSON.parse(message) as FunctionsRuntimeArgs;
-  } catch (e) {
+  } catch (e: any) {
     new EmulatorLog("FATAL", "runtime-error", `Got unexpected message body: ${message}`).log();
     await flushAndExit(1);
     return;
@@ -1091,7 +1091,7 @@ async function handleMessage(message: string) {
     } else {
       await goIdle();
     }
-  } catch (err) {
+  } catch (err: any) {
     new EmulatorLog("FATAL", "runtime-error", err.stack ? err.stack : err).log();
     await flushAndExit(1);
   }

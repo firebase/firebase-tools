@@ -33,7 +33,7 @@ export class Distribution {
     let stat;
     try {
       stat = fs.statSync(path);
-    } catch (err) {
+    } catch (err: any) {
       logger.info(err);
       throw new FirebaseError(`File ${path} does not exist: verify that file points to a binary`);
     }

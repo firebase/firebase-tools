@@ -54,7 +54,7 @@ export async function secretExists(projectId: string, name: string): Promise<boo
   try {
     await getSecret(projectId, name);
     return true;
-  } catch (err) {
+  } catch (err: any) {
     if (err.status === 404) {
       return false;
     }

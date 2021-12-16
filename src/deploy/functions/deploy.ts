@@ -89,7 +89,7 @@ export async function deploy(
           " folder uploaded successfully"
       );
     }
-  } catch (err) {
+  } catch (err: any) {
     logWarning(clc.yellow("functions:") + " Upload Error: " + err.message);
     throw err;
   }

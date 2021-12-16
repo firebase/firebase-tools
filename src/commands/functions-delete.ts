@@ -97,7 +97,7 @@ export default new Command("functions:delete [filters...]")
       const summary = await fab.applyPlan(plan);
       await reporter.logAndTrackDeployStats(summary);
       reporter.printErrors(summary);
-    } catch (err) {
+    } catch (err: any) {
       throw new FirebaseError("Failed to delete functions", {
         original: err as Error,
         exit: 1,

@@ -86,7 +86,6 @@
   "dependencies": {
     "@google-cloud/pubsub": "^2.7.0",
     "@types/archiver": "^5.1.0",
-    "JSONStream": "^1.2.1",
     "abort-controller": "^3.0.0",
     "ajv": "^6.12.6",
     "archiver": "^5.0.0",
@@ -112,6 +111,7 @@
     "google-auth-library": "^6.1.3",
     "inquirer": "~6.3.1",
     "js-yaml": "^3.13.1",
+    "JSONStream": "^1.2.1",
     "jsonwebtoken": "^8.5.1",
     "leven": "^3.1.0",
     "lodash": "^4.17.21",
@@ -211,7 +211,7 @@
     "supertest": "^3.3.0",
     "swagger2openapi": "^6.0.3",
     "ts-node": "^9.1.1",
-    "typescript": "^3.9.5",
+    "typescript": "^4.5.4",
     "typescript-json-schema": "^0.50.1"
   }
 }

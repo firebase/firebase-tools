@@ -68,7 +68,7 @@ export class WorkQueue {
     while (!this.stopped) {
       // If the queue is empty, wait until something is added.
       if (!this.queue.length) {
-        await new Promise((res) => {
+        await new Promise<void>((res) => {
           this.notifyQueue = res;
         });
       }
@@ -80,7 +80,7 @@ export class WorkQueue {
           "work-queue",
           `waiting for work to finish (running=${this.workRunningCount})`
         );
-        await new Promise((res) => {
+        await new Promise<void>((res) => {
           this.notifyWorkFinish = res;
         });
       }
@@ -105,7 +105,7 @@ export class WorkQueue {
     }
 
     this.logger.logLabeled("BULLET", "functions", "Waiting for all functions to finish...");
-    return new Promise((res, rej) => {
+    return new Promise<void>((res, rej) => {
       const delta = 100;
       let elapsed = 0;
 
@@ -143,7 +143,7 @@ export class WorkQueue {
 
       try {
         await next();
-      } catch (e) {
+      } catch (e: any) {
         this.logger.log("DEBUG", e);
       } finally {
         this.workRunningCount--;

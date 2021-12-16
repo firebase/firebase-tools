@@ -3,7 +3,7 @@ import { statSync } from "fs";
 export function fileExistsSync(path: string): boolean {
   try {
     return statSync(path).isFile();
-  } catch (e) {
+  } catch (e: any) {
     return false;
   }
 }
@@ -11,7 +11,7 @@ export function fileExistsSync(path: string): boolean {
 export function dirExistsSync(path: string): boolean {
   try {
     return statSync(path).isDirectory();
-  } catch (e) {
+  } catch (e: any) {
     return false;
   }
 }

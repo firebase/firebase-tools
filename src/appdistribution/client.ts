@@ -127,8 +127,8 @@ export class AppDistributionClient {
         auth: true,
         data,
       });
-    } catch (err) {
-      throw new FirebaseError(`failed to update release notes with ${err.message}`, { exit: 1 });
+    } catch (err: any) {
+      throw new FirebaseError(`failed to update release notes with ${err?.message}`, { exit: 1 });
     }
 
     utils.logSuccess("added release notes successfully");
@@ -157,7 +157,7 @@ export class AppDistributionClient {
         auth: true,
         data,
       });
-    } catch (err) {
+    } catch (err: any) {
       let errorMessage = err.message;
       if (_.has(err, "context.body.error")) {
         const errorStatus = _.get(err, "context.body.error.status");
@@ -182,7 +182,7 @@ export class AppDistributionClient {
         path: `${projectName}/testers:batchAdd`,
         body: { emails: emails },
       });
-    } catch (err) {
+    } catch (err: any) {
       throw new FirebaseError(`Failed to add testers ${err}`);
     }
 
@@ -200,7 +200,7 @@ export class AppDistributionClient {
         path: `${projectName}/testers:batchRemove`,
         body: { emails: emails },
       });
-    } catch (err) {
+    } catch (err: any) {
       throw new FirebaseError(`Failed to remove testers ${err}`);
     }
     return apiResponse.body;

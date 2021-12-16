@@ -107,7 +107,7 @@ async function createDefaultDatabaseInstance(project: string): Promise<DatabaseI
     );
     spinner.succeed();
     return createdInstance;
-  } catch (err) {
+  } catch (err: any) {
     spinner.fail();
     throw err;
   }

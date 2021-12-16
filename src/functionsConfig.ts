@@ -90,7 +90,7 @@ export async function setVariablesRecursive(
     try {
       // Only attempt to parse 'val' if it is a String (takes care of unparsed JSON, numbers, quoted string, etc.)
       parsed = JSON.parse(val);
-    } catch (e) {
+    } catch (e: any) {
       // 'val' is just a String
     }
   }

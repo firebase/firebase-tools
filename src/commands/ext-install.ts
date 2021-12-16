@@ -208,7 +208,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
           "including those to update, reconfigure, or delete your installed extension."
       )
     );
-  } catch (err) {
+  } catch (err: any) {
     if (spinner.isSpinning) {
       spinner.fail();
     }
@@ -229,7 +229,7 @@ async function infoInstallBySource(
   let source;
   try {
     source = await createSourceFromLocation(projectId, extensionName);
-  } catch (err) {
+  } catch (err: any) {
     throw new FirebaseError(
       `Unable to find published extension '${clc.bold(extensionName)}', ` +
         `and encountered the following error when trying to create an instance of extension '${clc.bold(
@@ -346,7 +346,7 @@ export default new Command("ext:install [extensionName]")
         nonInteractive: options.nonInteractive,
         force: options.force,
       });
-    } catch (err) {
+    } catch (err: any) {
       if (!(err instanceof FirebaseError)) {
         throw new FirebaseError(`Error occurred installing the extension: ${err.message}`, {
           original: err,

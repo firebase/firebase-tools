@@ -139,7 +139,7 @@ export async function getDefaultBucket(projectId?: string): Promise<string> {
       );
     }
     return resp.body.defaultBucket;
-  } catch (err) {
+  } catch (err: any) {
     logger.info(
       "\n\nThere was an issue deploying your functions. Verify that your project has a Google App Engine instance setup at https://console.cloud.google.com/appengine and try again. If this issue persists, please contact support."
     );
@@ -223,7 +223,7 @@ export async function getBucket(bucketName: string): Promise<BucketResponse> {
       origin: api.storageOrigin,
     });
     return result.body;
-  } catch (err) {
+  } catch (err: any) {
     logger.debug(err);
     throw new FirebaseError("Failed to obtain the storage bucket", {
       original: err,
@@ -248,7 +248,7 @@ export async function getServiceAccount(projectId: string): Promise<StorageServi
       origin: api.storageOrigin,
     });
     return response.body;
-  } catch (err) {
+  } catch (err: any) {
     logger.debug(err);
     throw new FirebaseError("Failed to obtain the Cloud Storage service agent", {
       original: err,

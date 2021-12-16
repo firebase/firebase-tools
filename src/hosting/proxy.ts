@@ -101,7 +101,7 @@ export function proxyRequestHandler(url: string, rewriteIdentifier: string): Req
         timeout: 60000,
         compress: false,
       });
-    } catch (err) {
+    } catch (err: any) {
       const isAbortError =
         err instanceof FirebaseError && err.original?.name.includes("AbortError");
       const isTimeoutError =
@@ -159,7 +159,7 @@ export function proxyRequestHandler(url: string, rewriteIdentifier: string): Req
           const unborkedLocation = location.replace(locationURL.origin, "");
           proxyRes.response.headers.set("location", unborkedLocation);
         }
-      } catch (e) {
+      } catch (e: any) {
         logger.debug(
           `[hosting] had trouble parsing location header, but this may be okay: "${location}"`
         );

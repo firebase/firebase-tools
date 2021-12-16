@@ -453,7 +453,7 @@ function populateResourceProperties(spec: ExtensionSpec): void {
         if (r.propertiesYaml) {
           r.properties = yaml.safeLoad(r.propertiesYaml);
         }
-      } catch (err) {
+      } catch (err: any) {
         logger.debug(`[ext] failed to parse resource properties yaml: ${err}`);
       }
     });
@@ -527,7 +527,7 @@ export async function getExtensionVersion(extensionVersionRef: string): Promise<
       populateResourceProperties(res.body.spec);
     }
     return res.body;
-  } catch (err) {
+  } catch (err: any) {
     if (err.status === 404) {
       throw refNotFoundError(ref);
     } else if (err instanceof FirebaseError) {
@@ -641,7 +641,7 @@ export async function deprecateExtensionVersion(
       }
     );
     return res.body;
-  } catch (err) {
+  } catch (err: any) {
     if (err.status === 403) {
       throw new FirebaseError(
         `You are not the owner of extension '${clc.bold(
@@ -678,7 +678,7 @@ export async function undeprecateExtensionVersion(extensionRef: string): Promise
       }
     );
     return res.body;
-  } catch (err) {
+  } catch (err: any) {
     if (err.status === 403) {
       throw new FirebaseError(
         `You are not the owner of extension '${clc.bold(
@@ -754,7 +754,7 @@ export async function unpublishExtension(extensionRef: string): Promise<void> {
       auth: true,
       origin: api.extensionsOrigin,
     });
-  } catch (err) {
+  } catch (err: any) {
     if (err.status === 403) {
       throw new FirebaseError(
         `You are not the owner of extension '${clc.bold(
@@ -787,7 +787,7 @@ export async function deleteExtension(extensionRef: string): Promise<void> {
       auth: true,
       origin: api.extensionsOrigin,
     });
-  } catch (err) {
+  } catch (err: any) {
     if (err.status === 403) {
       throw new FirebaseError(
         `You are not the owner of extension '${clc.bold(
@@ -818,7 +818,7 @@ export async function getExtension(extensionRef: string): Promise<Extension> {
       origin: api.extensionsOrigin,
     });
     return res.body;
-  } catch (err) {
+  } catch (err: any) {
     if (err.status === 404) {
       throw refNotFoundError(ref);
     } else if (err instanceof FirebaseError) {

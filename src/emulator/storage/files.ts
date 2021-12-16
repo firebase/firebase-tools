@@ -643,7 +643,7 @@ export class Persistence {
   deleteFile(fileName: string, failSilently = false): void {
     try {
       unlinkSync(this.getDiskPath(fileName));
-    } catch (err) {
+    } catch (err: any) {
       if (!failSilently) {
         throw err;
       }

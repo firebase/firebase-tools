@@ -49,7 +49,7 @@ export async function check(
 async function enable(projectId: string, apiName: string): Promise<void> {
   try {
     await apiClient.post(`/projects/${projectId}/services/${apiName}:enable`);
-  } catch (err) {
+  } catch (err: any) {
     if (isBillingError(err)) {
       throw new FirebaseError(`Your project ${bold(
         projectId
