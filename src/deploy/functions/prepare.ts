@@ -20,8 +20,8 @@ import * as utils from "../../utils";
 import { logger } from "../../logger";
 import { ensureTriggerRegions } from "./triggerRegionHelper";
 import { ensureServiceAgentRoles } from "./checkIam";
-import e from "express";
-import {getSecretVersion} from "../../gcp/secretManager";
+import { ensureServiceAgentRole, getSecretVersion } from "../../gcp/secretManager";
+import { FirebaseError } from "../../error";
 
 function hasUserConfig(config: Record<string, unknown>): boolean {
   // "firebase" key is always going to exist in runtime config.
@@ -184,16 +184,55 @@ export async function prepare(
 
   // Resolve secrets without version to its the version.
   // TODO: optimize by parallel queries.
-  for (const endpoint of backend.allEndpoints(matchingBackend)) {
-    if (endpoint.secretEnvironmentVariables) {
-      for (const secret of endpoint.secretEnvironmentVariables) {
+  await ensureSecretAccess(matchingBackend);
+}
+
+async function ensureSecretAccess(b: backend.Backend) {
+  const targetEndpoints = backend
+    .allEndpoints(b)
+    .filter(
+      (endpoint) =>
+        endpoint.secretEnvironmentVariables && endpoint.secretEnvironmentVariables.length > 0
+    );
+
+  if (targetEndpoints.filter((endpoint) => endpoint.platform !== "gcfv1").length > 0) {
+    throw new FirebaseError("Secret environment variables are only supported in GCFv1.");
+  }
+
+  const ensureAccess = targetEndpoints.map(async (endpoint) => {
+    await Promise.all(
+      endpoint.secretEnvironmentVariables!.map(async (secret) => {
         if (!secret.version) {
-          const secretVersion = await getSecretVersion(projectId, secret.secret, "latest");
+          logBullet(
+            clc.cyan.bold("functions:") + " Resolving secret version " + clc.bold(secret.secret)
+          );
+          const secretVersion = await getSecretVersion(endpoint.project, secret.secret, "latest");
           secret.version = secretVersion.versionId;
         }
-      }
-    }
-  }
+      })
+    );
+
+    // TODO: refactor service account getting logic?
+    const sa = endpoint.serviceAccountEmail || `${endpoint.project}@appspot.gserviceaccount.com`;
+    await Promise.all(
+      endpoint.secretEnvironmentVariables!.map((secret) => {
+        logBullet(
+          clc.cyan.bold("functions:") +
+            " Ensuring access to " +
+            clc.bold(secret.secret) +
+            " from service account " +
+            clc.bold(sa)
+        );
+        return ensureServiceAgentRole(
+          { name: secret.secret, projectId: endpoint.project },
+          sa,
+          "roles/secretmanager.secretAccessor"
+        );
+      })
+    );
+  });
+
+  await Promise.all(ensureAccess);
 }
 
 /**

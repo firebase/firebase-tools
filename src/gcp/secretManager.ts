@@ -131,7 +131,7 @@ export async function addVersion(secret: Secret, payloadData: string): Promise<S
   };
 }
 
-export async function grantServiceAgentRole(
+export async function ensureServiceAgentRole(
   secret: Secret,
   serviceAccountEmail: string,
   role: string
@@ -179,7 +179,7 @@ export async function grantServiceAgentRole(
   // SecretManager would like us to _always_ inform users when we grant access to one of their secrets.
   // As a safeguard against forgetting to do so, we log it here.
   logLabeledSuccess(
-    "SecretManager",
+    "secretmanager",
     `Granted ${role} on projects/${secret.projectId}/secrets/${secret.name} to ${serviceAccountEmail}`
   );
 }
