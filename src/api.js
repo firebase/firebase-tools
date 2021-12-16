@@ -99,7 +99,7 @@ var api = {
     "FIREBASE_CLOUDLOGGING_URL",
     "https://logging.googleapis.com"
   ),
-  cloudMonitroingOrigin: utils.envOverride(
+  cloudMonitoringOrigin: utils.envOverride(
     "CLOUD_MONITORING_URL",
     "https://monitoring.googleapis.com"
   ),
