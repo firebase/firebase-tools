@@ -2,6 +2,7 @@ import { expect } from "chai";
 import { getFunctionService } from "../../emulator/functionsEmulatorShared";
 
 const baseDef = {
+  platform: "gcfv1" as const,
   id: "trigger-id",
   region: "us-central1",
   entryPoint: "fn",

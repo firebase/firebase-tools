@@ -242,8 +242,10 @@ export class Client {
       reqOptions.headers.set("User-Agent", `FirebaseCLI/${CLI_VERSION}`);
     }
     reqOptions.headers.set("X-Client-Version", `FirebaseCLI/${CLI_VERSION}`);
-    if (reqOptions.responseType === "json") {
-      reqOptions.headers.set("Content-Type", "application/json");
+    if (!reqOptions.headers.has("Content-Type")) {
+      if (reqOptions.responseType === "json") {
+        reqOptions.headers.set("Content-Type", "application/json");
+      }
     }
     return reqOptions;
   }
@@ -361,11 +363,14 @@ export class Client {
 
     let body: ResT;
     if (options.responseType === "json") {
-      // 204 statuses have no content. Don't try to `json` it.
-      if (res.status === 204) {
+      const text = await res.text();
+      // Some responses, such as 204 and occasionally 202s don't have
+      // any content. We can't just rely on response code (202 may have conent)
+      // and unfortuantely res.length is unreliable (many requests return zero).
+      if (!text.length) {
         body = (undefined as unknown) as ResT;
       } else {
-        body = (await res.json()) as ResT;
+        body = JSON.parse(text) as ResT;
       }
     } else if (options.responseType === "stream") {
       body = (res.body as unknown) as ResT;

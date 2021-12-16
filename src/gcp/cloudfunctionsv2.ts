@@ -8,7 +8,6 @@ import * as backend from "../deploy/functions/backend";
 import * as runtimes from "../deploy/functions/runtimes";
 import * as proto from "./proto";
 import * as utils from "../utils";
-import * as storage from "./storage";
 
 export const API_VERSION = "v2alpha";
 
@@ -89,7 +88,7 @@ export interface ServiceConfig {
   uri?: string;
 
   timeoutSeconds?: number;
-  availableMemoryMb?: number;
+  availableMemory?: string;
   environmentVariables?: Record<string, string>;
   maxInstanceCount?: number;
   minInstanceCount?: number;
@@ -144,7 +143,9 @@ export interface OperationMetadata {
 
 export interface Operation {
   name: string;
-  metadata: OperationMetadata;
+  // Note: this field is always present, but not used in prod and is a PITA
+  // to add in tests.
+  metadata?: OperationMetadata;
   done: boolean;
   error?: { code: number; message: string; details: unknown };
   response?: CloudFunction;
@@ -160,6 +161,43 @@ interface ListFunctionsResponse {
 interface GenerateUploadUrlResponse {
   uploadUrl: string;
   storageSource: StorageSource;
+}
+
+// AvailableMemory suffixes and their byte count.
+type MemoryUnit = "" | "k" | "M" | "G" | "T" | "Ki" | "Mi" | "Gi" | "Ti";
+const BYTES_PER_UNIT: Record<MemoryUnit, number> = {
+  "": 1,
+  k: 1e3,
+  M: 1e6,
+  G: 1e9,
+  T: 1e12,
+  Ki: 1 << 10,
+  Mi: 1 << 20,
+  Gi: 1 << 30,
+  Ti: 1 << 40,
+};
+
+/**
+ * Returns the float-precision number of Mega(not Mebi)bytes in a
+ * Kubernetes-style quantity
+ * Must serve the same results as
+ * https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apimachinery/pkg/api/resource/quantity.go
+ */
+export function megabytes(memory: string): number {
+  const re = /^([0-9]+(\.[0-9]*)?)(Ki|Mi|Gi|Ti|k|M|G|T|([eE]([0-9]+)))?$/;
+  const matches = re.exec(memory);
+  if (!matches) {
+    throw new Error(`Invalid memory quantity "${memory}""`);
+  }
+  const quantity = Number.parseFloat(matches[1]);
+  let bytes: number;
+  if (matches[5]) {
+    bytes = quantity * Math.pow(10, Number.parseFloat(matches[5]));
+  } else {
+    const suffix = matches[3] || "";
+    bytes = quantity * BYTES_PER_UNIT[suffix as MemoryUnit];
+  }
+  return bytes / 1e6;
 }
 
 /**
@@ -323,160 +361,6 @@ export async function deleteFunction(cloudFunction: string): Promise<Operation> 
   }
 }
 
-export function functionFromSpec(cloudFunction: backend.FunctionSpec, source: StorageSource) {
-  if (cloudFunction.platform != "gcfv2") {
-    throw new FirebaseError(
-      "Trying to create a v2 CloudFunction with v1 API. This should never happen"
-    );
-  }
-
-  if (!runtimes.isValidRuntime(cloudFunction.runtime)) {
-    throw new FirebaseError(
-      "Failed internal assertion. Trying to deploy a new function with a deprecated runtime." +
-        " This should never happen"
-    );
-  }
-
-  const gcfFunction: Omit<CloudFunction, OutputOnlyFields> = {
-    name: backend.functionName(cloudFunction),
-    buildConfig: {
-      runtime: cloudFunction.runtime,
-      entryPoint: cloudFunction.entryPoint,
-      source: {
-        storageSource: source,
-      },
-      // We don't use build environment variables,
-      environmentVariables: {},
-    },
-    serviceConfig: {},
-  };
-
-  proto.copyIfPresent(
-    gcfFunction.serviceConfig,
-    cloudFunction,
-    "availableMemoryMb",
-    "environmentVariables",
-    "vpcConnector",
-    "vpcConnectorEgressSettings",
-    "serviceAccountEmail",
-    "ingressSettings"
-  );
-  proto.renameIfPresent(
-    gcfFunction.serviceConfig,
-    cloudFunction,
-    "timeoutSeconds",
-    "timeout",
-    proto.secondsFromDuration
-  );
-  proto.renameIfPresent(
-    gcfFunction.serviceConfig,
-    cloudFunction,
-    "minInstanceCount",
-    "minInstances"
-  );
-  proto.renameIfPresent(
-    gcfFunction.serviceConfig,
-    cloudFunction,
-    "maxInstanceCount",
-    "maxInstances"
-  );
-
-  if (backend.isEventTrigger(cloudFunction.trigger)) {
-    gcfFunction.eventTrigger = {
-      eventType: cloudFunction.trigger.eventType,
-    };
-    if (cloudFunction.trigger.region) {
-      gcfFunction.eventTrigger.triggerRegion = cloudFunction.trigger.region;
-    }
-    if (gcfFunction.eventTrigger.eventType === PUBSUB_PUBLISH_EVENT) {
-      gcfFunction.eventTrigger.pubsubTopic = cloudFunction.trigger.eventFilters.resource;
-    } else {
-      gcfFunction.eventTrigger.eventFilters = [];
-      for (const [attribute, value] of Object.entries(cloudFunction.trigger.eventFilters)) {
-        gcfFunction.eventTrigger.eventFilters.push({ attribute, value });
-      }
-    }
-
-    if (cloudFunction.trigger.retry) {
-      logger.warn("Cannot set a retry policy on Cloud Function", cloudFunction.id);
-    }
-  }
-  proto.copyIfPresent(gcfFunction, cloudFunction, "labels");
-
-  return gcfFunction;
-}
-
-export function specFromFunction(gcfFunction: CloudFunction): backend.FunctionSpec {
-  const [, project, , region, , id] = gcfFunction.name.split("/");
-  let trigger: backend.EventTrigger | backend.HttpsTrigger;
-  if (gcfFunction.eventTrigger) {
-    trigger = {
-      eventType: gcfFunction.eventTrigger!.eventType,
-      eventFilters: {},
-      retry: false,
-    };
-    if (gcfFunction.eventTrigger!.triggerRegion) {
-      trigger.region = gcfFunction.eventTrigger.triggerRegion;
-    }
-    if (gcfFunction.eventTrigger.pubsubTopic) {
-      trigger.eventFilters.resource = gcfFunction.eventTrigger.pubsubTopic;
-    } else {
-      for (const { attribute, value } of gcfFunction.eventTrigger.eventFilters || []) {
-        trigger.eventFilters[attribute] = value;
-      }
-    }
-  } else {
-    trigger = {};
-  }
-
-  if (!runtimes.isValidRuntime(gcfFunction.buildConfig.runtime)) {
-    logger.debug("GCFv2 function has a deprecated runtime:", JSON.stringify(gcfFunction, null, 2));
-  }
-
-  const cloudFunction: backend.FunctionSpec = {
-    platform: "gcfv2",
-    id,
-    project,
-    region,
-    trigger,
-    entryPoint: gcfFunction.buildConfig.entryPoint,
-    runtime: gcfFunction.buildConfig.runtime,
-    uri: gcfFunction.serviceConfig.uri,
-  };
-  proto.copyIfPresent(
-    cloudFunction,
-    gcfFunction.serviceConfig,
-    "serviceAccountEmail",
-    "availableMemoryMb",
-    "vpcConnector",
-    "vpcConnectorEgressSettings",
-    "ingressSettings",
-    "environmentVariables"
-  );
-  proto.renameIfPresent(
-    cloudFunction,
-    gcfFunction.serviceConfig,
-    "timeout",
-    "timeoutSeconds",
-    proto.durationFromSeconds
-  );
-  proto.renameIfPresent(
-    cloudFunction,
-    gcfFunction.serviceConfig,
-    "minInstances",
-    "minInstanceCount"
-  );
-  proto.renameIfPresent(
-    cloudFunction,
-    gcfFunction.serviceConfig,
-    "maxInstances",
-    "maxInstanceCount"
-  );
-  proto.copyIfPresent(cloudFunction, gcfFunction, "labels");
-
-  return cloudFunction;
-}
-
 export function functionFromEndpoint(endpoint: backend.Endpoint, source: StorageSource) {
   if (endpoint.platform != "gcfv2") {
     throw new FirebaseError(
@@ -509,12 +393,18 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
   proto.copyIfPresent(
     gcfFunction.serviceConfig,
     endpoint,
-    "availableMemoryMb",
     "environmentVariables",
     "vpcConnector",
     "vpcConnectorEgressSettings",
     "serviceAccountEmail",
     "ingressSettings"
+  );
+  proto.renameIfPresent(
+    gcfFunction.serviceConfig,
+    endpoint,
+    "availableMemory",
+    "availableMemoryMb",
+    (mb: string) => `${mb}M`
   );
   proto.renameIfPresent(
     gcfFunction.serviceConfig,
@@ -538,13 +428,21 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
         gcfFunction.eventTrigger.eventFilters.push({ attribute, value });
       }
     }
+    proto.renameIfPresent(
+      gcfFunction.eventTrigger,
+      endpoint.eventTrigger,
+      "triggerRegion",
+      "region"
+    );
 
     if (endpoint.eventTrigger.retry) {
       logger.warn("Cannot set a retry policy on Cloud Function", endpoint.id);
     }
   } else if (backend.isScheduleTriggered(endpoint)) {
     // trigger type defaults to HTTPS.
-    gcfFunction.labels = { ...gcfFunction.labels, ["deployment-scheduled"]: "true" };
+    gcfFunction.labels = { ...gcfFunction.labels, "deployment-scheduled": "true" };
+  } else if (backend.isTaskQueueTriggered(endpoint)) {
+    gcfFunction.labels = { ...gcfFunction.labels, "deployment-taskqueue": "true" };
   }
 
   return gcfFunction;
@@ -556,6 +454,10 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
   if (gcfFunction.labels?.["deployment-scheduled"] === "true") {
     trigger = {
       scheduleTrigger: {},
+    };
+  } else if (gcfFunction.labels?.["deployment-taskqueue"] === "true") {
+    trigger = {
+      taskQueueTrigger: {},
     };
   } else if (gcfFunction.eventTrigger) {
     trigger = {
@@ -572,6 +474,12 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
         trigger.eventTrigger.eventFilters[attribute] = value;
       }
     }
+    proto.renameIfPresent(
+      trigger.eventTrigger,
+      gcfFunction.eventTrigger,
+      "region",
+      "triggerRegion"
+    );
   } else {
     trigger = { httpsTrigger: {} };
   }
@@ -594,11 +502,17 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     endpoint,
     gcfFunction.serviceConfig,
     "serviceAccountEmail",
-    "availableMemoryMb",
     "vpcConnector",
     "vpcConnectorEgressSettings",
     "ingressSettings",
     "environmentVariables"
+  );
+  proto.renameIfPresent(
+    endpoint,
+    gcfFunction.serviceConfig,
+    "availableMemoryMb",
+    "availableMemory",
+    megabytes
   );
   proto.renameIfPresent(
     endpoint,

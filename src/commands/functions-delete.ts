@@ -1,16 +1,23 @@
-import { Command } from "../command";
 import * as clc from "cli-color";
 import * as functionsConfig from "../functionsConfig";
-import { deleteFunctions } from "../functionsDelete";
+
+import { Command } from "../command";
+import { FirebaseError } from "../error";
+import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import { promptOnce } from "../prompt";
-import * as helper from "../deploy/functions/functionsDeployHelper";
+import { reduceFlat } from "../functional";
 import { requirePermissions } from "../requirePermissions";
-import * as utils from "../utils";
 import * as args from "../deploy/functions/args";
+import * as ensure from "../ensureApiEnabled";
+import * as helper from "../deploy/functions/functionsDeployHelper";
+import * as utils from "../utils";
 import * as backend from "../deploy/functions/backend";
-import { Options } from "../options";
-import { FirebaseError } from "../error";
+import * as planner from "../deploy/functions/release/planner";
+import * as fabricator from "../deploy/functions/release/fabricator";
+import * as executor from "../deploy/functions/release/executor";
+import * as reporter from "../deploy/functions/release/reporter";
+import * as containerCleaner from "../deploy/functions/containerCleaner";
 
 export default new Command("functions:delete [filters...]")
   .description("delete one or more Cloud Functions by name or group name.")
@@ -26,73 +33,87 @@ export default new Command("functions:delete [filters...]")
       return utils.reject("Must supply at least function or group name.");
     }
 
-    const context = {
+    const context: args.Context = {
       projectId: needProjectId(options),
-    } as args.Context;
+      filters: filters.map((f) => f.split(".")),
+    };
 
-    // Dot notation can be used to indicate function inside of a group
-    const filterChunks = filters.map((filter: string) => {
-      return filter.split(".");
+    const [config, existingBackend] = await Promise.all([
+      functionsConfig.getFirebaseConfig(options),
+      backend.existingBackend(context),
+    ]);
+    await backend.checkAvailability(context, /* want=*/ backend.empty());
+    const appEngineLocation = functionsConfig.getAppEngineLocation(config);
+
+    if (options.region) {
+      existingBackend.endpoints = { [options.region]: existingBackend.endpoints[options.region] };
+    }
+    const plan = planner.createDeploymentPlan(/* want= */ backend.empty(), existingBackend, {
+      filters: context.filters,
+      deleteAll: true,
+    });
+    const allEpToDelete = Object.values(plan)
+      .map((changes) => changes.endpointsToDelete)
+      .reduce(reduceFlat, [])
+      .sort(backend.compareFunctions);
+    if (allEpToDelete.length === 0) {
+      throw new FirebaseError(
+        `The specified filters do not match any existing functions in project ${clc.bold(
+          context.projectId
+        )}.`
+      );
+    }
+
+    const deleteList = allEpToDelete.map((func) => `\t${helper.getFunctionLabel(func)}`).join("\n");
+    const confirmDeletion = await promptOnce(
+      {
+        type: "confirm",
+        name: "force",
+        default: false,
+        message:
+          "You are about to delete the following Cloud Functions:\n" +
+          deleteList +
+          "\n  Are you sure?",
+      },
+      options
+    );
+    if (!confirmDeletion) {
+      throw new FirebaseError("Command aborted.");
+    }
+
+    const functionExecutor: executor.QueueExecutor = new executor.QueueExecutor({
+      retries: 30,
+      backoff: 20000,
+      concurrency: 40,
+      maxBackoff: 40000,
     });
 
     try {
-      const [config, existingBackend] = await Promise.all([
-        functionsConfig.getFirebaseConfig(options),
-        backend.existingBackend(context),
-      ]);
-      await backend.checkAvailability(context, /* want=*/ backend.empty());
-      const appEngineLocation = functionsConfig.getAppEngineLocation(config);
-
-      const functionsToDelete = existingBackend.cloudFunctions.filter((fn) => {
-        const regionMatches = options.region ? fn.region === options.region : true;
-        const nameMatches = helper.functionMatchesAnyGroup(fn, filterChunks);
-        return regionMatches && nameMatches;
+      const fab = new fabricator.Fabricator({
+        functionExecutor,
+        executor: new executor.QueueExecutor({}),
+        appEngineLocation,
       });
-      if (functionsToDelete.length === 0) {
-        throw new Error(
-          `The specified filters do not match any existing functions in project ${clc.bold(
-            context.projectId
-          )}.`
-        );
-      }
-
-      const schedulesToDelete = existingBackend.schedules.filter((schedule) => {
-        functionsToDelete.some(backend.sameFunctionName(schedule.targetService));
-      });
-      const topicsToDelete = existingBackend.topics.filter((topic) => {
-        functionsToDelete.some(backend.sameFunctionName(topic.targetService));
-      });
-
-      const deleteList = functionsToDelete
-        .map((func) => {
-          return "\t" + helper.getFunctionLabel(func);
-        })
-        .join("\n");
-      const confirmDeletion = await promptOnce(
-        {
-          type: "confirm",
-          name: "force",
-          default: false,
-          message:
-            "You are about to delete the following Cloud Functions:\n" +
-            deleteList +
-            "\n  Are you sure?",
-        },
-        options
-      );
-      if (!confirmDeletion) {
-        throw new Error("Command aborted.");
-      }
-      return await deleteFunctions(
-        functionsToDelete,
-        schedulesToDelete,
-        topicsToDelete,
-        appEngineLocation
-      );
+      const summary = await fab.applyPlan(plan);
+      await reporter.logAndTrackDeployStats(summary);
+      reporter.printErrors(summary);
     } catch (err) {
       throw new FirebaseError("Failed to delete functions", {
-        original: err,
+        original: err as Error,
         exit: 1,
       });
     }
+
+    // Clean up image caches too
+    const opts: { ar?: containerCleaner.ArtifactRegistryCleaner } = {};
+    const arEnabled = await ensure.check(
+      needProjectId(options),
+      "artifactregistry.googleapis.com",
+      "functions",
+      /* silent= */ true
+    );
+    if (!arEnabled) {
+      opts.ar = new containerCleaner.NoopArtifactRegistryCleaner();
+    }
+    await containerCleaner.cleanupBuildImages([], allEpToDelete, opts);
   });

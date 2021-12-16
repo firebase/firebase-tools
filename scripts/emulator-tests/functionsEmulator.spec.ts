@@ -37,6 +37,7 @@ functionsEmulator.nodeBinary = process.execPath;
 
 functionsEmulator.setTriggersForTesting([
   {
+    platform: "gcfv1",
     name: "function_id",
     id: "us-central1-function_id",
     region: "us-central1",
@@ -45,6 +46,7 @@ functionsEmulator.setTriggersForTesting([
     labels: {},
   },
   {
+    platform: "gcfv1",
     name: "function_id",
     id: "europe-west2-function_id",
     region: "europe-west2",
@@ -53,6 +55,7 @@ functionsEmulator.setTriggersForTesting([
     labels: {},
   },
   {
+    platform: "gcfv1",
     name: "function_id",
     id: "europe-west3-function_id",
     region: "europe-west3",
@@ -61,6 +64,7 @@ functionsEmulator.setTriggersForTesting([
     labels: {},
   },
   {
+    platform: "gcfv1",
     name: "callable_function_id",
     id: "us-central1-callable_function_id",
     region: "us-central1",
@@ -71,6 +75,7 @@ functionsEmulator.setTriggersForTesting([
     },
   },
   {
+    platform: "gcfv1",
     name: "nested-function_id",
     id: "us-central1-nested-function_id",
     region: "us-central1",

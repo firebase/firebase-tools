@@ -2,13 +2,13 @@ import * as clc from "cli-color";
 
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
+import { previews } from "../previews";
 import * as api from "../api";
 import * as backend from "../deploy/functions/backend";
 import * as utils from "../utils";
 import * as proto from "./proto";
 import * as runtimes from "../deploy/functions/runtimes";
 import * as iam from "./iam";
-import * as _ from "lodash";
 
 export const API_VERSION = "v1";
 
@@ -205,7 +205,12 @@ export async function createFunction(
   const endpoint = `/${API_VERSION}/${apiPath}`;
 
   try {
+    const headers: Record<string, string> = {};
+    if (previews.artifactregistry) {
+      headers["X-Firebase-Artifact-Registry"] = "optin";
+    }
     const res = await api.request("POST", endpoint, {
+      headers,
       auth: true,
       data: cloudFunction,
       origin: api.functionsOrigin,
@@ -369,7 +374,12 @@ export async function updateFunction(
   // Failure policy is always an explicit policy and is only signified by the presence or absence of
   // a protobuf.Empty value, so we have to manually add it in the missing case.
   try {
+    const headers: Record<string, string> = {};
+    if (previews.artifactregistry) {
+      headers["X-Firebase-Artifact-Registry"] = "optin";
+    }
     const res = await api.request("PATCH", endpoint, {
+      headers,
       qs: {
         updateMask: fieldMasks.join(","),
       },
@@ -464,134 +474,21 @@ export async function listAllFunctions(projectId: string): Promise<ListFunctions
  * This API exists outside the GCF namespace because GCF returns an Operation<CloudFunction>
  * and code may have to call this method explicitly.
  */
-export function specFromFunction(gcfFunction: CloudFunction): backend.FunctionSpec {
-  const [, project, , region, , id] = gcfFunction.name.split("/");
-  let trigger: backend.EventTrigger | backend.HttpsTrigger;
-  let uri: string | undefined;
-  if (gcfFunction.httpsTrigger) {
-    trigger = {};
-    uri = gcfFunction.httpsTrigger.url;
-  } else {
-    trigger = {
-      eventType: gcfFunction.eventTrigger!.eventType,
-      eventFilters: {
-        resource: gcfFunction.eventTrigger!.resource,
-      },
-      retry: !!gcfFunction.eventTrigger!.failurePolicy?.retry,
-    };
-  }
-
-  if (!runtimes.isValidRuntime(gcfFunction.runtime)) {
-    logger.debug("GCFv1 function has a deprecated runtime:", JSON.stringify(gcfFunction, null, 2));
-  }
-
-  const cloudFunction: backend.FunctionSpec = {
-    platform: "gcfv1",
-    id,
-    project,
-    region,
-    trigger,
-    entryPoint: gcfFunction.entryPoint,
-    runtime: gcfFunction.runtime,
-  };
-  if (uri) {
-    cloudFunction.uri = uri;
-  }
-  proto.copyIfPresent(
-    cloudFunction,
-    gcfFunction,
-    "serviceAccountEmail",
-    "availableMemoryMb",
-    "timeout",
-    "minInstances",
-    "maxInstances",
-    "vpcConnector",
-    "vpcConnectorEgressSettings",
-    "ingressSettings",
-    "labels",
-    "environmentVariables",
-    "sourceUploadUrl"
-  );
-
-  return cloudFunction;
-}
-
-/**
- * Convert the API agnostic FunctionSpec struct to a CloudFunction proto for the v1 API.
- */
-export function functionFromSpec(
-  cloudFunction: backend.FunctionSpec,
-  sourceUploadUrl: string
-): Omit<CloudFunction, OutputOnlyFields> {
-  if (cloudFunction.platform != "gcfv1") {
-    throw new FirebaseError(
-      "Trying to create a v1 CloudFunction with v2 API. This should never happen"
-    );
-  }
-
-  if (!runtimes.isValidRuntime(cloudFunction.runtime)) {
-    throw new FirebaseError(
-      "Failed internal assertion. Trying to deploy a new function with a deprecated runtime." +
-        " This should never happen"
-    );
-  }
-  const gcfFunction: Omit<CloudFunction, OutputOnlyFields> = {
-    name: backend.functionName(cloudFunction),
-    sourceUploadUrl: sourceUploadUrl,
-    entryPoint: cloudFunction.entryPoint,
-    runtime: cloudFunction.runtime,
-  };
-
-  if (backend.isEventTrigger(cloudFunction.trigger)) {
-    gcfFunction.eventTrigger = {
-      eventType: cloudFunction.trigger.eventType,
-      resource: cloudFunction.trigger.eventFilters.resource,
-      // Service is unnecessary and deprecated
-    };
-
-    // For field masks to pick up a deleted failure policy we must inject an undefined
-    // when retry is false
-    gcfFunction.eventTrigger.failurePolicy = cloudFunction.trigger.retry
-      ? { retry: {} }
-      : undefined;
-  } else {
-    gcfFunction.httpsTrigger = {};
-  }
-
-  proto.copyIfPresent(
-    gcfFunction,
-    cloudFunction,
-    "serviceAccountEmail",
-    "timeout",
-    "availableMemoryMb",
-    "minInstances",
-    "maxInstances",
-    "vpcConnector",
-    "vpcConnectorEgressSettings",
-    "ingressSettings",
-    "labels",
-    "environmentVariables"
-  );
-
-  return gcfFunction;
-}
-
-/**
- * Converts a Cloud Function from the v1 API into a version-agnostic FunctionSpec struct.
- * This API exists outside the GCF namespace because GCF returns an Operation<CloudFunction>
- * and code may have to call this method explicitly.
- */
 export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoint {
   const [, project, , region, , id] = gcfFunction.name.split("/");
   let trigger: backend.Triggered;
   let uri: string | undefined;
-  if (gcfFunction.httpsTrigger) {
-    trigger = { httpsTrigger: {} };
-    uri = gcfFunction.httpsTrigger.url;
-  } else if (gcfFunction.labels?.["deployment-scheduled"]) {
+  if (gcfFunction.labels?.["deployment-scheduled"]) {
     trigger = {
       scheduleTrigger: {},
     };
+  } else if (gcfFunction.labels?.["deployment-taskqueue"]) {
+    trigger = {
+      taskQueueTrigger: {},
+    };
+  } else if (gcfFunction.httpsTrigger) {
+    trigger = { httpsTrigger: {} };
+    uri = gcfFunction.httpsTrigger.url;
   } else {
     trigger = {
       eventTrigger: {
@@ -685,6 +582,9 @@ export function functionFromEndpoint(
       resource: `projects/${endpoint.project}/topics/${id}`,
     };
     gcfFunction.labels = { ...gcfFunction.labels, "deployment-scheduled": "true" };
+  } else if (backend.isTaskQueueTriggered(endpoint)) {
+    gcfFunction.httpsTrigger = {};
+    gcfFunction.labels = { ...gcfFunction.labels, "deployment-taskqueue": "true" };
   } else {
     gcfFunction.httpsTrigger = {};
   }

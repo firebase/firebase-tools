@@ -40,7 +40,7 @@ const JAR_CACHE_DIR =
   process.env.FIREBASE_CRASHLYTICS_BUILDTOOLS_PATH ||
   path.join(os.homedir(), ".cache", "firebase", "crashlytics", "buildtools");
 const JAR_VERSION = "2.8.0";
-const JAR_URL = `https://storage.googleapis.com/firebase-preview-drop/android/crashlytics-eap/crashlytics-buildtools/firebase-crashlytics-buildtools-${JAR_VERSION}-alpha-all.jar`;
+const JAR_URL = `https://dl.google.com/android/maven2/com/google/firebase/firebase-crashlytics-buildtools/${JAR_VERSION}/firebase-crashlytics-buildtools-${JAR_VERSION}.jar`;
 
 export default new Command("crashlytics:symbols:upload <symbolFiles...>")
   .description("Upload symbols for native code, to symbolicate stack traces.")
@@ -69,7 +69,8 @@ export default new Command("crashlytics:symbols:upload <symbolFiles...>")
         SYMBOL_CACHE_ROOT_DIR,
         `crashlytics-${uuid.v4()}`,
         "nativeSymbols",
-        app,
+        // Windows does not allow ":" in their directory names
+        app.replace(/:/g, "-"),
         generator
       ),
       symbolFile: "",

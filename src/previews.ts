@@ -10,7 +10,7 @@ interface PreviewFlags {
   golang: boolean;
   deletegcfartifacts: boolean;
   dotenv: boolean;
-  crashlyticsSymbolsUpload: boolean;
+  artifactregistry: boolean;
 }
 
 export const previews: PreviewFlags = {
@@ -23,9 +23,9 @@ export const previews: PreviewFlags = {
   golang: false,
   deletegcfartifacts: false,
   dotenv: false,
-  crashlyticsSymbolsUpload: false,
+  artifactregistry: false,
 
-  ...configstore.get("previews"),
+  ...(configstore.get("previews") as Partial<PreviewFlags>),
 };
 
 if (process.env.FIREBASE_CLI_PREVIEWS) {
