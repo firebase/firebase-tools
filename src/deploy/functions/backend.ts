@@ -175,7 +175,7 @@ export interface ServiceConfiguration {
   concurrency?: number;
   labels?: Record<string, string>;
   environmentVariables?: Record<string, string>;
-  secretEnvironmentVariables?: Record<string, SecretEnv>;
+  secretEnvironmentVariables?: SecretEnv[];
   availableMemoryMb?: MemoryOptions;
   timeout?: proto.Duration;
   maxInstances?: number;

@@ -10,9 +10,15 @@ import * as proto from "../../../../gcp/proto";
 import * as args from "../../args";
 import * as runtimes from "../../runtimes";
 import { STORAGE_V2_EVENTS } from "../../eventTypes";
-import {SecretEnv} from "../../backend";
+import { getSecretVersion, parseSecretVersionResourceName } from "../../../../gcp/secretManager";
 
 const TRIGGER_PARSER = path.resolve(__dirname, "./triggerParser.js");
+// prettier-ignore
+const SECRET_NAME_REGEX = new RegExp(
+  "projects\\/((?:[0-9]+)|(?:[A-Za-z]+[A-Za-z\\d-]*[A-Za-z\\d]?))" + // projects/{project number of project id}
+    "\\/secrets\\/([A-Za-z\\d\\-_]+)" +                                   // secrets/{secret name}
+    "(?:\\/versions\\/(latest|[0-9]))?"                                   // (optional) versions/{latest | number}
+);
 
 export interface ScheduleRetryConfig {
   retryCount?: number;
@@ -147,17 +153,17 @@ export async function discoverBackend(
   const triggerAnnotations = await parseTriggers(projectId, sourceDir, configValues, envs);
   const want: backend.Backend = { ...backend.empty(), environmentVariables: envs };
   for (const annotation of triggerAnnotations) {
-    addResourcesToBackend(projectId, runtime, annotation, want);
+    await addResourcesToBackend(projectId, runtime, annotation, want);
   }
   return want;
 }
 
-export function addResourcesToBackend(
+export async function addResourcesToBackend(
   projectId: string,
   runtime: runtimes.Runtime,
   annotation: TriggerAnnotation,
   want: backend.Backend
-): void {
+): Promise<void> {
   Object.freeze(annotation);
   // Every trigger annotation is at least a function
   for (const region of annotation.regions || [api.functionsDefaultRegion]) {
@@ -226,13 +232,21 @@ export function addResourcesToBackend(
     if (annotation.secrets && annotation.secrets.length > 0) {
       const secretEnvs: backend.SecretEnv[] = [];
       for (const secret of annotation.secrets) {
-        let name = secret;
+        let secretVersion;
         if (secret.includes("/")) {
-          secret =
-
+          secretVersion = parseSecretVersionResourceName(secret);
+        } else {
+          // Resolve secret to the latest version. GCP returns numeric instead of latest.
+          secretVersion = await getSecretVersion(projectId, secret, "latest");
         }
-        let secretEnv: backend.SecretEnv = { envkey};
+        secretEnvs.push({
+          envkey: secretVersion.secret.name,
+          secretName: secretVersion.secret.name,
+          project: secretVersion.secret.projectId,
+          secretVersion: secretVersion.versionId,
+        });
       }
+      endpoint.secretEnvironmentVariables = secretEnvs;
     }
 
     proto.copyIfPresent(
