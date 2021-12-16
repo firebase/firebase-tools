@@ -164,18 +164,18 @@ export interface TargetIds {
   project: string;
 }
 
-export interface SecretEnv {
-  envkey: string;
-  secretName: string;
-  secretVersion: string;
-  project?: string;
+export interface SecretEnvVar {
+  key: string;
+  secret: string;
+  version: string;
+  projectId?: string;
 }
 
 export interface ServiceConfiguration {
   concurrency?: number;
   labels?: Record<string, string>;
   environmentVariables?: Record<string, string>;
-  secretEnvironmentVariables?: SecretEnv[];
+  secretEnvironmentVariables?: SecretEnvVar[];
   availableMemoryMb?: MemoryOptions;
   timeout?: proto.Duration;
   maxInstances?: number;

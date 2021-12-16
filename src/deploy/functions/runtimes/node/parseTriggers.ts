@@ -230,20 +230,21 @@ export async function addResourcesToBackend(
     }
 
     if (annotation.secrets && annotation.secrets.length > 0) {
-      const secretEnvs: backend.SecretEnv[] = [];
+      const secretEnvs: backend.SecretEnvVar[] = [];
       for (const secret of annotation.secrets) {
         let secretVersion;
         if (secret.includes("/")) {
           secretVersion = parseSecretVersionResourceName(secret);
         } else {
-          // Resolve secret to the latest version. GCP returns numeric instead of latest.
+          // Resolve secret to the latest version. GCP returns numeric instead of latest?
+          // TODO: Should this be resolved at deploy time?
           secretVersion = await getSecretVersion(projectId, secret, "latest");
         }
         secretEnvs.push({
-          envkey: secretVersion.secret.name,
-          secretName: secretVersion.secret.name,
-          project: secretVersion.secret.projectId,
-          secretVersion: secretVersion.versionId,
+          key: secretVersion.secret.name,
+          secret: secretVersion.secret.name,
+          projectId: secretVersion.secret.projectId,
+          version: secretVersion.versionId,
         });
       }
       endpoint.secretEnvironmentVariables = secretEnvs;

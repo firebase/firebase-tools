@@ -600,7 +600,8 @@ export function functionFromEndpoint(
     "vpcConnector",
     "vpcConnectorEgressSettings",
     "ingressSettings",
-    "environmentVariables"
+    "environmentVariables",
+    "secretEnvironmentVariables"
   );
 
   return gcfFunction;
