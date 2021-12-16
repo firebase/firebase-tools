@@ -261,7 +261,7 @@ async function assertResolveDeveloperNodeModule(
 async function verifyDeveloperNodeModules(frb: FunctionsRuntimeBundle): Promise<boolean> {
   const modBundles = [
     { name: "firebase-admin", isDev: false, minVersion: "8.9.0" },
-    { name: "firebase-functions", isDev: false, minVersion: "3.3.0" },
+    { name: "firebase-functions", isDev: false, minVersion: "3.13.1" },
   ];
 
   for (const modBundle of modBundles) {
