@@ -27,7 +27,7 @@ export async function grantFirexServiceAgentSecretAdminRole(
   );
   const saEmail = `service-${projectNumber}@${firexSaProjectId}.iam.gserviceaccount.com`;
 
-  return secretManagerApi.ensureServiceAgentRole(secret, saEmail, "roles/secretmanager.admin");
+  return secretManagerApi.ensureServiceAgentRole(secret, [saEmail], "roles/secretmanager.admin");
 }
 
 export async function getManagedSecrets(

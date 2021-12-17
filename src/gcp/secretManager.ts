@@ -133,7 +133,7 @@ export async function addVersion(secret: Secret, payloadData: string): Promise<S
 
 export async function ensureServiceAgentRole(
   secret: Secret,
-  serviceAccountEmail: string,
+  serviceAccountEmails: string[],
   role: string
 ): Promise<void> {
   const getPolicyRes = await api.request(
@@ -146,20 +146,28 @@ export async function ensureServiceAgentRole(
   );
 
   const bindings = getPolicyRes.body.bindings || [];
-  if (
-    bindings.find(
-      (b: any) =>
-        b.role == role &&
-        b.members.find((m: string) => m == `serviceAccount:${serviceAccountEmail}`)
-    )
-  ) {
-    // binding already exists, short-circuit.
+
+  const newBindings = [];
+  for (const serviceAccountEmail of serviceAccountEmails) {
+    if (
+      !bindings.find(
+        (b: any) => b.role == role && b.members.find((m: string) => m == `serviceAccount:${serviceAccountEmail}`)
+      )
+    ) {
+      newBindings.push({
+        role: role,
+        members: [`serviceAccount:${serviceAccountEmail}`],
+      });
+    }
+  }
+
+  if (newBindings.length == 0) {
+    // bindings already exists, short-circuit.
     return;
   }
-  bindings.push({
-    role: role,
-    members: [`serviceAccount:${serviceAccountEmail}`],
-  });
+
+  bindings.push(...newBindings);
+
   await api.request(
     "POST",
     `/v1beta1/projects/${secret.projectId}/secrets/${secret.name}:setIamPolicy`,
@@ -180,6 +188,8 @@ export async function ensureServiceAgentRole(
   // As a safeguard against forgetting to do so, we log it here.
   logLabeledSuccess(
     "secretmanager",
-    `Granted ${role} on projects/${secret.projectId}/secrets/${secret.name} to ${serviceAccountEmail}`
+    `Granted ${role} on projects/${secret.projectId}/secrets/${
+      secret.name
+    } to ${serviceAccountEmails.join(", ")}`
   );
 }

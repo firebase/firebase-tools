@@ -3,7 +3,7 @@ import * as clc from "cli-color";
 import { Options } from "../../options";
 import { ensureCloudBuildEnabled } from "./ensureCloudBuildEnabled";
 import { functionMatchesAnyGroup, getFilterGroups } from "./functionsDeployHelper";
-import { logBullet } from "../../utils";
+import { logBullet, logLabeledBullet, logLabeledSuccess } from "../../utils";
 import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload";
 import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import * as args from "./args";
@@ -182,57 +182,101 @@ export async function prepare(
   await promptForMinInstances(options, matchingBackend, haveBackend);
   await backend.checkAvailability(context, wantBackend);
 
-  // Resolve secrets without version to its the version.
-  // TODO: optimize by parallel queries.
-  await ensureSecretAccess(matchingBackend);
+  await prepareSecrets(matchingBackend);
 }
 
-async function ensureSecretAccess(b: backend.Backend) {
-  const targetEndpoints = backend
+async function prepareSecrets(b: backend.Backend) {
+  validateSecrets(b);
+  await resolveVersions(b);
+  await ensureAccesses(b);
+}
+
+function validateSecrets(b: backend.Backend) {
+  // Only GCFv1 supports secret environment variables.
+  const unsupported = backend
     .allEndpoints(b)
     .filter(
-      (endpoint) =>
-        endpoint.secretEnvironmentVariables && endpoint.secretEnvironmentVariables.length > 0
+      (e) =>
+        e.secretEnvironmentVariables &&
+        e.secretEnvironmentVariables.length > 0 &&
+        e.platform !== "gcfv1"
     );
+  if (unsupported.length > 0) {
+    const errs = unsupported.map((e) => `${clc.bold(e.id)}[${e.platform}]`);
+    throw new FirebaseError(
+      `Tried to set secret environment variables on ${errs.join(", ")}. ` +
+        "Only GCFv1 supports secret environments."
+    );
+  }
+}
 
-  if (targetEndpoints.filter((endpoint) => endpoint.platform !== "gcfv1").length > 0) {
-    throw new FirebaseError("Secret environment variables are only supported in GCFv1.");
+async function resolveVersions(b: backend.Backend) {
+  const op = async (s: backend.SecretEnvVar) => {
+    logLabeledBullet("functions", `resolving secret version ${clc.bold(s.secret)}.`);
+    const sv = await getSecretVersion(s.projectId, s.secret, "latest");
+    s.version = sv.versionId;
+    logLabeledSuccess(
+      "functions",
+      `resolved secret version ${clc.bold(s.secret)}@${sv.versionId}.`
+    );
+  };
+
+  const resolve = [];
+  for (const e of backend.allEndpoints(b)) {
+    if (e.secretEnvironmentVariables) {
+      for (const s of e.secretEnvironmentVariables) {
+        if (!s.version) {
+          resolve.push(op(s));
+        }
+      }
+    }
+  }
+  await Promise.all(resolve);
+}
+
+async function ensureAccesses(b: backend.Backend) {
+  const toEnsure: Record<string, Record<string, Set<string>>> = {}; // projectId -> secretName -> Set(service accounts)
+
+  for (const e of backend.allEndpoints(b)) {
+    // TODO: refactor logic for retrieving default sa;
+    const sa = e.serviceAccountEmail || `${e.project}@appspot.gserviceaccount.com`;
+    if (e.secretEnvironmentVariables) {
+      for (const s of e.secretEnvironmentVariables) {
+        const secrets = toEnsure[s.projectId] || {};
+        const serviceAccounts = secrets[s.secret] || new Set();
+
+        serviceAccounts.add(sa);
+
+        secrets[s.secret] = serviceAccounts;
+        toEnsure[s.projectId] = secrets;
+      }
+    }
   }
 
-  const ensureAccess = targetEndpoints.map(async (endpoint) => {
-    await Promise.all(
-      endpoint.secretEnvironmentVariables!.map(async (secret) => {
-        if (!secret.version) {
-          logBullet(
-            clc.cyan.bold("functions:") + " Resolving secret version " + clc.bold(secret.secret)
-          );
-          const secretVersion = await getSecretVersion(endpoint.project, secret.secret, "latest");
-          secret.version = secretVersion.versionId;
-        }
-      })
+  const op = async (projectId: string, secret: string, serviceAccounts: string[]) => {
+    logLabeledBullet(
+      "functions",
+      `ensuring ${clc.bold(serviceAccounts.join(", "))} access to ${clc.bold(secret)}.`
     );
-
-    // TODO: refactor service account getting logic?
-    const sa = endpoint.serviceAccountEmail || `${endpoint.project}@appspot.gserviceaccount.com`;
-    await Promise.all(
-      endpoint.secretEnvironmentVariables!.map((secret) => {
-        logBullet(
-          clc.cyan.bold("functions:") +
-            " Ensuring access to " +
-            clc.bold(secret.secret) +
-            " from service account " +
-            clc.bold(sa)
-        );
-        return ensureServiceAgentRole(
-          { name: secret.secret, projectId: endpoint.project },
-          sa,
-          "roles/secretmanager.secretAccessor"
-        );
-      })
+    await ensureServiceAgentRole(
+      { name: secret, projectId },
+      serviceAccounts,
+      "roles/secretmanager.secretAccessor"
     );
-  });
+    logLabeledSuccess(
+      "functions",
+      `ensured ${clc.bold(serviceAccounts.join(", "))} access to ${clc.bold(secret)}.`
+    );
+  };
 
-  await Promise.all(ensureAccess);
+  const ensure = [];
+  for (const [projectId, secrets] of Object.entries(toEnsure)) {
+    for (const [secret, serviceAccounts] of Object.entries(secrets)) {
+      ensure.push(op(projectId, secret, Array.from(serviceAccounts)));
+    }
+  }
+
+  await Promise.all(ensure);
 }
 
 /**
