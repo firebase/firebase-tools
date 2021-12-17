@@ -151,7 +151,9 @@ export async function ensureServiceAgentRole(
   for (const serviceAccountEmail of serviceAccountEmails) {
     if (
       !bindings.find(
-        (b: any) => b.role == role && b.members.find((m: string) => m == `serviceAccount:${serviceAccountEmail}`)
+        (b: any) =>
+          b.role == role &&
+          b.members.find((m: string) => m == `serviceAccount:${serviceAccountEmail}`)
       )
     ) {
       newBindings.push({

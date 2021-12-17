@@ -212,12 +212,12 @@ function validateSecrets(b: backend.Backend) {
 
 async function resolveVersions(b: backend.Backend) {
   const op = async (s: backend.SecretEnvVar) => {
-    logLabeledBullet("functions", `resolving secret version ${clc.bold(s.secret)}.`);
+    logLabeledBullet("functions", `resolving latest secret version of ${clc.bold(s.secret)}.`);
     const sv = await getSecretVersion(s.projectId, s.secret, "latest");
     s.version = sv.versionId;
     logLabeledSuccess(
       "functions",
-      `resolved secret version ${clc.bold(s.secret)}@${sv.versionId}.`
+      `resolved secret version of ${clc.bold(s.secret)} to ${clc.bold(sv.versionId)}.`
     );
   };
 
@@ -235,7 +235,8 @@ async function resolveVersions(b: backend.Backend) {
 }
 
 async function ensureAccesses(b: backend.Backend) {
-  const toEnsure: Record<string, Record<string, Set<string>>> = {}; // projectId -> secretName -> Set(service accounts)
+  // projectId -> secretName -> Set of service accounts
+  const toEnsure: Record<string, Record<string, Set<string>>> = {};
 
   for (const e of backend.allEndpoints(b)) {
     // TODO: refactor logic for retrieving default sa;
@@ -275,7 +276,6 @@ async function ensureAccesses(b: backend.Backend) {
       ensure.push(op(projectId, secret, Array.from(serviceAccounts)));
     }
   }
-
   await Promise.all(ensure);
 }
 

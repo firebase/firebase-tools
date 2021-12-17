@@ -13,12 +13,6 @@ import { STORAGE_V2_EVENTS } from "../../eventTypes";
 import { getSecretVersion, parseSecretVersionResourceName } from "../../../../gcp/secretManager";
 
 const TRIGGER_PARSER = path.resolve(__dirname, "./triggerParser.js");
-// prettier-ignore
-const SECRET_NAME_REGEX = new RegExp(
-  "projects\\/((?:[0-9]+)|(?:[A-Za-z]+[A-Za-z\\d-]*[A-Za-z\\d]?))" + // projects/{project number of project id}
-    "\\/secrets\\/([A-Za-z\\d\\-_]+)" +                                   // secrets/{secret name}
-    "(?:\\/versions\\/(latest|[0-9]))?"                                   // (optional) versions/{latest | number}
-);
 
 export interface ScheduleRetryConfig {
   retryCount?: number;
@@ -229,7 +223,7 @@ export function addResourcesToBackend(
       endpoint.vpcConnector = maybeId;
     }
 
-    if (annotation.secrets && annotation.secrets.length > 0) {
+    if (annotation.secrets) {
       const secretEnvs: backend.SecretEnvVar[] = [];
       for (const secret of annotation.secrets) {
         if (secret.includes("/")) {
@@ -245,7 +239,7 @@ export function addResourcesToBackend(
             key: secret,
             secret,
             projectId,
-            // Note: version will be filled during function deploy.prepare phase.
+            // Note: version will be filled in during deploy.prepare phase.
           });
         }
       }
