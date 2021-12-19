@@ -115,6 +115,104 @@ export type FinalizedUpload = {
   file: StoredFile;
 };
 
+export class Persistence {
+  private _dirPath: string;
+  constructor(dirPath: string) {
+    this._dirPath = dirPath;
+    if (!existsSync(dirPath)) {
+      mkdirSync(dirPath, {
+        recursive: true,
+      });
+    }
+  }
+
+  public get dirPath(): string {
+    return this._dirPath;
+  }
+
+  appendBytes(fileName: string, bytes: Buffer, fileOffset?: number): string {
+    const filepath = this.getDiskPath(fileName);
+
+    const encodedSlashIndex = filepath.toLowerCase().lastIndexOf("%2f");
+    const dirPath =
+      encodedSlashIndex >= 0 ? filepath.substring(0, encodedSlashIndex) : path.dirname(filepath);
+
+    if (!existsSync(dirPath)) {
+      mkdirSync(dirPath, {
+        recursive: true,
+      });
+    }
+    let fd;
+
+    try {
+      // TODO: This is more technically correct, but corrupts multipart files
+      // fd = openSync(path, "w+");
+      // writeSync(fd, bytes, 0, bytes.byteLength, fileOffset);
+
+      fs.appendFileSync(filepath, bytes);
+      return filepath;
+    } finally {
+      if (fd) {
+        closeSync(fd);
+      }
+    }
+  }
+
+  readBytes(fileName: string, size: number, fileOffset?: number): Buffer {
+    const path = this.getDiskPath(fileName);
+    let fd;
+    try {
+      fd = openSync(path, "r");
+      const buf = Buffer.alloc(size);
+      const offset = fileOffset && fileOffset > 0 ? fileOffset : 0;
+      readSync(fd, buf, 0, size, offset);
+      return buf;
+    } finally {
+      if (fd) {
+        closeSync(fd);
+      }
+    }
+  }
+
+  deleteFile(fileName: string, failSilently = false): void {
+    try {
+      unlinkSync(this.getDiskPath(fileName));
+    } catch (err) {
+      if (!failSilently) {
+        throw err;
+      }
+    }
+  }
+
+  deleteAll(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      rimraf(this._dirPath, (err) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
+  }
+
+  renameFile(oldName: string, newName: string): void {
+    const dirPath = this.getDiskPath(path.dirname(newName));
+
+    if (!existsSync(dirPath)) {
+      mkdirSync(dirPath, {
+        recursive: true,
+      });
+    }
+
+    renameSync(this.getDiskPath(oldName), this.getDiskPath(newName));
+  }
+
+  getDiskPath(fileName: string): string {
+    return path.join(this._dirPath, fileName);
+  }
+}
+
 export class StorageLayer {
   private _files!: Map<string, StoredFile>;
   private _uploads!: Map<string, ResumableUpload>;
@@ -128,10 +226,10 @@ export class StorageLayer {
   }
 
   public reset(): void {
-    this._files = new Map();
+    this._files = new Map<string, StoredFile>();
     this._persistence = new Persistence(`${tmpdir()}/firebase/storage/blobs`);
-    this._uploads = new Map();
-    this._buckets = new Map();
+    this._uploads = new Map<string, ResumableUpload>();
+    this._buckets = new Map<string, CloudStorageBucketMetadata>();
   }
 
   createBucket(id: string): void {
@@ -146,6 +244,16 @@ export class StorageLayer {
     }
 
     return [...this._buckets.values()];
+  }
+
+  getBucketMetadata(id: string): CloudStorageBucketMetadata {
+    const metadata = this._buckets.get(id);
+    if (metadata) {
+      return metadata;
+    } else {
+      this.createBucket(id);
+      return new CloudStorageBucketMetadata(id);
+    }
   }
 
   public getMetadata(bucket: string, object: string): StoredFileMetadata | undefined {
@@ -578,103 +686,5 @@ export class StorageLayer {
         yield p;
       }
     }
-  }
-}
-
-export class Persistence {
-  private _dirPath: string;
-  constructor(dirPath: string) {
-    this._dirPath = dirPath;
-    if (!existsSync(dirPath)) {
-      mkdirSync(dirPath, {
-        recursive: true,
-      });
-    }
-  }
-
-  public get dirPath(): string {
-    return this._dirPath;
-  }
-
-  appendBytes(fileName: string, bytes: Buffer, fileOffset?: number): string {
-    const filepath = this.getDiskPath(fileName);
-
-    const encodedSlashIndex = filepath.toLowerCase().lastIndexOf("%2f");
-    const dirPath =
-      encodedSlashIndex >= 0 ? filepath.substring(0, encodedSlashIndex) : path.dirname(filepath);
-
-    if (!existsSync(dirPath)) {
-      mkdirSync(dirPath, {
-        recursive: true,
-      });
-    }
-    let fd;
-
-    try {
-      // TODO: This is more technically correct, but corrupts multipart files
-      // fd = openSync(path, "w+");
-      // writeSync(fd, bytes, 0, bytes.byteLength, fileOffset);
-
-      fs.appendFileSync(filepath, bytes);
-      return filepath;
-    } finally {
-      if (fd) {
-        closeSync(fd);
-      }
-    }
-  }
-
-  readBytes(fileName: string, size: number, fileOffset?: number): Buffer {
-    const path = this.getDiskPath(fileName);
-    let fd;
-    try {
-      fd = openSync(path, "r");
-      const buf = Buffer.alloc(size);
-      const offset = fileOffset && fileOffset > 0 ? fileOffset : 0;
-      readSync(fd, buf, 0, size, offset);
-      return buf;
-    } finally {
-      if (fd) {
-        closeSync(fd);
-      }
-    }
-  }
-
-  deleteFile(fileName: string, failSilently = false): void {
-    try {
-      unlinkSync(this.getDiskPath(fileName));
-    } catch (err) {
-      if (!failSilently) {
-        throw err;
-      }
-    }
-  }
-
-  deleteAll(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      rimraf(this._dirPath, (err) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve();
-        }
-      });
-    });
-  }
-
-  renameFile(oldName: string, newName: string): void {
-    const dirPath = this.getDiskPath(path.dirname(newName));
-
-    if (!existsSync(dirPath)) {
-      mkdirSync(dirPath, {
-        recursive: true,
-      });
-    }
-
-    renameSync(this.getDiskPath(oldName), this.getDiskPath(newName));
-  }
-
-  getDiskPath(fileName: string): string {
-    return path.join(this._dirPath, fileName);
   }
 }
