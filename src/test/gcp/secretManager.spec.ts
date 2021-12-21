@@ -16,15 +16,13 @@ describe("secretManager", () => {
     });
 
     it("throws given invalid resource name", () => {
-      expect(() => {
-        secretManager.parseSecretResourceName("foo/bar");
-      }).to.throw(FirebaseError);
+      expect(() => secretManager.parseSecretResourceName("foo/bar")).to.throw(FirebaseError);
     });
 
     it("throws given incomplete resource name", () => {
-      expect(() => {
-        secretManager.parseSecretResourceName("projects/my-project");
-      }).to.throw(FirebaseError);
+      expect(() => secretManager.parseSecretResourceName("projects/my-project")).to.throw(
+        FirebaseError
+      );
     });
 
     it("parse secret version resource name", () => {
@@ -44,21 +42,19 @@ describe("secretManager", () => {
     });
 
     it("throws given invalid resource name", () => {
-      expect(() => {
-        secretManager.parseSecretVersionResourceName("foo/bar");
-      }).to.throw(FirebaseError);
+      expect(() => secretManager.parseSecretVersionResourceName("foo/bar")).to.throw(FirebaseError);
     });
 
     it("throws given incomplete resource name", () => {
-      expect(() => {
-        secretManager.parseSecretVersionResourceName("projects/my-project");
-      }).to.throw(FirebaseError);
+      expect(() => secretManager.parseSecretVersionResourceName("projects/my-project")).to.throw(
+        FirebaseError
+      );
     });
 
     it("throws given secret resource name", () => {
-      expect(() => {
-        secretManager.parseSecretVersionResourceName("projects/my-project/secrets/my-secret");
-      }).to.throw(FirebaseError);
+      expect(() =>
+        secretManager.parseSecretVersionResourceName("projects/my-project/secrets/my-secret")
+      ).to.throw(FirebaseError);
     });
   });
 
