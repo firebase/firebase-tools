@@ -2,23 +2,24 @@ import { expect } from "chai";
 
 import * as backend from "../../../deploy/functions/backend";
 import * as prepare from "../../../deploy/functions/prepare";
+import { FirebaseError } from "../../../error";
 
 describe("prepare", () => {
+  const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {
+    platform: "gcfv2",
+    id: "id",
+    region: "region",
+    project: "project",
+    entryPoint: "entry",
+    runtime: "nodejs16",
+  };
+
+  const ENDPOINT: backend.Endpoint = {
+    ...ENDPOINT_BASE,
+    httpsTrigger: {},
+  };
+
   describe("inferDetailsFromExisting", () => {
-    const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {
-      platform: "gcfv2",
-      id: "id",
-      region: "region",
-      project: "project",
-      entryPoint: "entry",
-      runtime: "nodejs16",
-    };
-
-    const ENDPOINT: backend.Endpoint = {
-      ...ENDPOINT_BASE,
-      httpsTrigger: {},
-    };
-
     it("merges env vars if .env is not used", () => {
       const oldE = {
         ...ENDPOINT,
@@ -124,6 +125,60 @@ describe("prepare", () => {
 
       prepare.inferDetailsFromExisting(backend.of(want), backend.of(have), /* usedDotEnv= */ false);
       expect(want.availableMemoryMb).to.equal(512);
+    });
+  });
+
+  describe("prepareSecrets", () => {
+    describe("validateSecrets", () => {
+      it("passes validation with empty backend", () => {
+        const b = backend.empty();
+
+        expect(() => prepare.validateSecrets(b)).to.not.throw();
+      });
+
+      it("passes validation with not secret environments", () => {
+        const b = backend.of({
+          ...ENDPOINT,
+          platform: "gcfv2",
+        });
+
+        expect(() => prepare.validateSecrets(b)).to.not.throw();
+      });
+
+      it("passes validation with valid secret environments on a gcfv1 endpoint", () => {
+        const b = backend.of({
+          ...ENDPOINT,
+          platform: "gcfv1",
+          secretEnvironmentVariables: [
+            {
+              secret: "MY_SECRET",
+              key: "MY_SECRET",
+              projectId: "project",
+            },
+          ],
+        });
+
+        expect(() => prepare.validateSecrets(b)).to.not.throw();
+      });
+
+      it("fails validation given invalid", () => {
+        const b = backend.of({
+          ...ENDPOINT,
+          platform: "gcfv2",
+          secretEnvironmentVariables: [
+            {
+              secret: "MY_SECRET",
+              key: "MY_SECRET",
+              projectId: "project",
+            },
+          ],
+        });
+
+        expect(() => prepare.validateSecrets(b)).to.throw(
+          FirebaseError,
+          /Only GCFv1 supports secret environments/
+        );
+      });
     });
   });
 });

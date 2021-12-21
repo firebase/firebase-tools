@@ -191,7 +191,7 @@ async function prepareSecrets(b: backend.Backend) {
   await ensureAccesses(b);
 }
 
-function validateSecrets(b: backend.Backend) {
+export function validateSecrets(b: backend.Backend) {
   // Only GCFv1 supports secret environment variables.
   const unsupported = backend
     .allEndpoints(b)
@@ -202,7 +202,7 @@ function validateSecrets(b: backend.Backend) {
         e.platform !== "gcfv1"
     );
   if (unsupported.length > 0) {
-    const errs = unsupported.map((e) => `${clc.bold(e.id)}[${e.platform}]`);
+    const errs = unsupported.map((e) => `${e.id}[platform=${e.platform}]`);
     throw new FirebaseError(
       `Tried to set secret environment variables on ${errs.join(", ")}. ` +
         "Only GCFv1 supports secret environments."
@@ -210,7 +210,7 @@ function validateSecrets(b: backend.Backend) {
   }
 }
 
-async function resolveVersions(b: backend.Backend) {
+export async function resolveVersions(b: backend.Backend) {
   const resolveVersion = async (s: backend.SecretEnvVar) => {
     logLabeledBullet("functions", `resolving latest secret version of ${clc.bold(s.secret)}.`);
     const sv = await getSecretVersion(s.projectId, s.secret, "latest");
@@ -234,7 +234,7 @@ async function resolveVersions(b: backend.Backend) {
   await Promise.all(resolve);
 }
 
-async function ensureAccesses(b: backend.Backend) {
+export async function ensureAccesses(b: backend.Backend) {
   const ensureAccess = async (projectId: string, secret: string, serviceAccounts: string[]) => {
     logLabeledBullet(
       "functions",
