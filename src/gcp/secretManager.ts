@@ -1,6 +1,8 @@
+import * as iam from "./iam";
 import { logLabeledSuccess } from "../utils";
-import * as api from "../api";
 import { FirebaseError } from "../error";
+import { Client } from "../apiv2";
+import { secretManagerOrigin } from "../api";
 
 // prettier-ignore
 const SECRET_NAME_REGEX = new RegExp(
@@ -32,19 +34,30 @@ export interface SecretVersion {
   versionId: string;
 }
 
+interface CreateSecretRequest {
+  replication: { automatic: {} };
+  labels: Record<string, string>;
+}
+
+interface AddVersionRequest {
+  payload: { data: string; };
+}
+
+const API_VERSION = "v1beta";
+
+const client = new Client({
+  urlPrefix: secretManagerOrigin,
+  auth: true,
+  apiVersion: API_VERSION,
+});
+
 export async function listSecrets(projectId: string): Promise<Secret[]> {
-  const listRes = await api.request("GET", `/v1beta1/projects/${projectId}/secrets`, {
-    auth: true,
-    origin: api.secretManagerOrigin,
-  });
+  const listRes = await client.get<{ secrets: Secret[] }>(`projects/${projectId}/secrets`);
   return listRes.body.secrets.map((s: any) => parseSecretResourceName(s.name));
 }
 
 export async function getSecret(projectId: string, name: string): Promise<Secret> {
-  const getRes = await api.request("GET", `/v1beta1/projects/${projectId}/secrets/${name}`, {
-    auth: true,
-    origin: api.secretManagerOrigin,
-  });
+  const getRes = await client.get<Secret>(`projects/${projectId}/secrets/${name}`);
   const secret = parseSecretResourceName(getRes.body.name);
   secret.labels = getRes.body.labels ?? {};
   return secret;
@@ -55,13 +68,8 @@ export async function getSecretVersion(
   name: string,
   version: string
 ): Promise<SecretVersion> {
-  const getRes = await api.request(
-    "GET",
-    `/v1beta1/projects/${projectId}/secrets/${name}/versions/${version}`,
-    {
-      auth: true,
-      origin: api.secretManagerOrigin,
-    }
+  const getRes = await client.get<{ name: string }>(
+    `projects/${projectId}/secrets/${name}/versions/${version}`
   );
   return parseSecretVersionResourceName(getRes.body.name);
 }
@@ -112,34 +120,24 @@ export async function createSecret(
   name: string,
   labels: Record<string, string>
 ): Promise<Secret> {
-  const createRes = await api.request(
-    "POST",
-    `/v1beta1/projects/${projectId}/secrets?secretId=${name}`,
+  const createRes = await client.post<CreateSecretRequest, Secret>(
+    `projects/${projectId}/secrets?secretId=${name}`,
     {
-      auth: true,
-      origin: api.secretManagerOrigin,
-      data: {
-        replication: {
-          automatic: {},
-        },
-        labels,
+      replication: {
+        automatic: {},
       },
+      labels,
     }
   );
   return parseSecretResourceName(createRes.body.name);
 }
 
 export async function addVersion(secret: Secret, payloadData: string): Promise<SecretVersion> {
-  const res = await api.request(
-    "POST",
-    `/v1beta1/projects/${secret.projectId}/secrets/${secret.name}:addVersion`,
+  const res = await client.post<AddVersionRequest, { name: string }>(
+    `projects/${secret.projectId}/secrets/${secret.name}:addVersion`,
     {
-      auth: true,
-      origin: api.secretManagerOrigin,
-      data: {
-        payload: {
-          data: Buffer.from(payloadData).toString("base64"),
-        },
+      payload: {
+        data: Buffer.from(payloadData).toString("base64"),
       },
     }
   );
@@ -153,27 +151,42 @@ export async function addVersion(secret: Secret, payloadData: string): Promise<S
   };
 }
 
+export async function getIamPolicy(secret: Secret): Promise<iam.Policy> {
+  const res = await client.get<iam.Policy>(
+    `projects/${secret.projectId}/secrets/${secret.name}:getIamPolicy`
+  );
+  return res.body;
+}
+
+export async function setIamPolicyBindings(secret: Secret, bindings: iam.Binding[]): Promise<void> {
+  await client.post<{ policy: Partial<iam.Policy> }, iam.Policy>(
+    `projects/${secret.projectId}/secrets/${secret.name}:setIamPolicy`,
+    {
+      policy: {
+        bindings,
+      },
+    },
+    {
+      queryParams: {
+        updateMask: "bindings",
+      },
+    }
+  );
+}
+
 export async function ensureServiceAgentRole(
   secret: Secret,
   serviceAccountEmails: string[],
   role: string
 ): Promise<void> {
-  const getPolicyRes = await api.request(
-    "GET",
-    `/v1beta1/projects/${secret.projectId}/secrets/${secret.name}:getIamPolicy`,
-    {
-      auth: true,
-      origin: api.secretManagerOrigin,
-    }
-  );
-
-  const bindings = getPolicyRes.body.bindings || [];
+  const policy = await module.exports.getIamPolicy(secret);
+  const bindings = policy.bindings || [];
 
   const newBindings = [];
   for (const serviceAccountEmail of serviceAccountEmails) {
     if (
       !bindings.find(
-        (b: any) =>
+        (b: iam.Binding) =>
           b.role == role &&
           b.members.find((m: string) => m == `serviceAccount:${serviceAccountEmail}`)
       )
@@ -192,22 +205,8 @@ export async function ensureServiceAgentRole(
 
   bindings.push(...newBindings);
 
-  await api.request(
-    "POST",
-    `/v1beta1/projects/${secret.projectId}/secrets/${secret.name}:setIamPolicy`,
-    {
-      auth: true,
-      origin: api.secretManagerOrigin,
-      data: {
-        policy: {
-          bindings,
-        },
-        updateMask: {
-          paths: "bindings",
-        },
-      },
-    }
-  );
+  await module.exports.setIamPolicyBindings(secret, bindings);
+
   // SecretManager would like us to _always_ inform users when we grant access to one of their secrets.
   // As a safeguard against forgetting to do so, we log it here.
   logLabeledSuccess(

@@ -1,153 +1,140 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
 
-import * as api from "../../api";
+import * as iam from "../../gcp/iam";
+import * as apiv2 from "../../apiv2";
 import * as secretManager from "../../gcp/secretManager";
 import { FirebaseError } from "../../error";
-import { ensureServiceAgentRole } from "../../gcp/secretManager";
+import { ensureServiceAgentRole, setIamPolicyBindings } from "../../gcp/secretManager";
 
-describe("parseSecretResourceName", () => {
-  it("parses valid secret resource name", () => {
-    expect(
-      secretManager.parseSecretResourceName("projects/my-project/secrets/my-secret")
-    ).to.deep.equal({ projectId: "my-project", name: "my-secret" });
+describe("secretManager", () => {
+  describe("parseSecretResourceName", () => {
+    it("parses valid secret resource name", () => {
+      expect(
+        secretManager.parseSecretResourceName("projects/my-project/secrets/my-secret")
+      ).to.deep.equal({ projectId: "my-project", name: "my-secret" });
+    });
+
+    it("throws given invalid resource name", () => {
+      expect(() => {
+        secretManager.parseSecretResourceName("foo/bar");
+      }).to.throw(FirebaseError);
+    });
+
+    it("throws given incomplete resource name", () => {
+      expect(() => {
+        secretManager.parseSecretResourceName("projects/my-project");
+      }).to.throw(FirebaseError);
+    });
+
+    it("parse secret version resource name", () => {
+      expect(
+        secretManager.parseSecretResourceName("projects/my-project/secrets/my-secret/versions/8")
+      ).to.deep.equal({ projectId: "my-project", name: "my-secret" });
+    });
   });
 
-  it("throws given invalid resource name", () => {
-    expect(() => {
-      secretManager.parseSecretResourceName("foo/bar");
-    }).to.throw(FirebaseError);
+  describe("parseSecretVersionResourceName", () => {
+    it("parses valid secret resource name", () => {
+      expect(
+        secretManager.parseSecretVersionResourceName(
+          "projects/my-project/secrets/my-secret/versions/7"
+        )
+      ).to.deep.equal({ secret: { projectId: "my-project", name: "my-secret" }, versionId: "7" });
+    });
+
+    it("throws given invalid resource name", () => {
+      expect(() => {
+        secretManager.parseSecretVersionResourceName("foo/bar");
+      }).to.throw(FirebaseError);
+    });
+
+    it("throws given incomplete resource name", () => {
+      expect(() => {
+        secretManager.parseSecretVersionResourceName("projects/my-project");
+      }).to.throw(FirebaseError);
+    });
+
+    it("throws given secret resource name", () => {
+      expect(() => {
+        secretManager.parseSecretVersionResourceName("projects/my-project/secrets/my-secret");
+      }).to.throw(FirebaseError);
+    });
   });
 
-  it("throws given incomplete resource name", () => {
-    expect(() => {
-      secretManager.parseSecretResourceName("projects/my-project");
-    }).to.throw(FirebaseError);
-  });
+  describe("ensureServiceAgentRole", () => {
+    const projectId = "my-project";
+    const secret: secretManager.Secret = { projectId, name: "my-secret" };
+    const role = "test-role";
 
-  it("parse secret version resource name", () => {
-    expect(
-      secretManager.parseSecretResourceName("projects/my-project/secrets/my-secret/versions/8")
-    ).to.deep.equal({ projectId: "my-project", name: "my-secret" });
-  });
-});
+    let getIamPolicyStub: sinon.SinonStub;
+    let setIamPolicyBindingsStub: sinon.SinonStub;
 
-describe("parseSecretVersionResourceName", () => {
-  it("parses valid secret resource name", () => {
-    expect(
-      secretManager.parseSecretVersionResourceName(
-        "projects/my-project/secrets/my-secret/versions/7"
-      )
-    ).to.deep.equal({ secret: { projectId: "my-project", name: "my-secret" }, versionId: "7" });
-  });
+    beforeEach(() => {
+      getIamPolicyStub = sinon.stub(secretManager, "getIamPolicy").rejects("Unexpected call");
+      setIamPolicyBindingsStub = sinon
+        .stub(secretManager, "setIamPolicyBindings")
+        .rejects("Unexpected call");
+    });
 
-  it("throws given invalid resource name", () => {
-    expect(() => {
-      secretManager.parseSecretVersionResourceName("foo/bar");
-    }).to.throw(FirebaseError);
-  });
+    afterEach(() => {
+      getIamPolicyStub.restore();
+      setIamPolicyBindingsStub.restore();
+    });
 
-  it("throws given incomplete resource name", () => {
-    expect(() => {
-      secretManager.parseSecretVersionResourceName("projects/my-project");
-    }).to.throw(FirebaseError);
-  });
+    function setupStubs(existing: iam.Binding[], expected: iam.Binding[]) {
+      getIamPolicyStub.withArgs(secret).resolves({ bindings: existing });
+      setIamPolicyBindingsStub
+        .withArgs(secret, expected)
+        .resolves({ body: { bindings: expected } });
+    }
 
-  it("throws given secret resource name", () => {
-    expect(() => {
-      secretManager.parseSecretVersionResourceName("projects/my-project/secrets/my-secret");
-    }).to.throw(FirebaseError);
-  });
-});
+    it("adds new binding for each member", async () => {
+      const existing: iam.Binding[] = [];
+      const expected: iam.Binding[] = [
+        { role, members: ["serviceAccount:1@foobar.com"] },
+        { role, members: ["serviceAccount:2@foobar.com"] },
+      ];
 
-describe("ensureServiceAgentRole", () => {
-  const projectId = "my-project";
-  const secret: secretManager.Secret = { projectId, name: "my-secret" };
-  const role = "test-role";
+      setupStubs(existing, expected);
 
-  let mockApi: sinon.SinonMock;
+      await ensureServiceAgentRole(secret, ["1@foobar.com", "2@foobar.com"], role);
+    });
 
-  beforeEach(() => {
-    mockApi = sinon.mock(api);
-  });
+    it("adds bindings only for missing members", async () => {
+      const existing: iam.Binding[] = [{ role, members: ["serviceAccount:1@foobar.com"] }];
+      const expected: iam.Binding[] = [
+        { role, members: ["serviceAccount:1@foobar.com"] },
+        { role, members: ["serviceAccount:2@foobar.com"] },
+      ];
 
-  afterEach(() => {
-    sinon.verifyAndRestore();
-  });
+      setupStubs(existing, expected);
 
-  function mockGetIamPolicy(bindings: any) {
-    mockApi
-      .expects("request")
-      .withArgs(
-        "GET",
-        `/v1beta1/projects/${secret.projectId}/secrets/${secret.name}:getIamPolicy`
-      )
-      .once()
-      .resolves({
-        body: { bindings },
-      });
-  }
+      await ensureServiceAgentRole(secret, ["1@foobar.com", "2@foobar.com"], role);
+    });
 
-  function mockSetIamPolicy(bindings: any) {
-    mockApi
-      .expects("request")
-      .withArgs(
-        "POST",
-        `/v1beta1/projects/${secret.projectId}/secrets/${secret.name}:setIamPolicy`,
-        {
-          auth: true,
-          origin: api.secretManagerOrigin,
-          data: {
-            policy: {
-              bindings,
-            },
-            updateMask: {
-              paths: "bindings",
-            },
-          },
-        }
-      )
-      .once()
-      .resolves({
-        body: { bindings },
-      });
-  }
+    it("keeps bindings that already exists", async () => {
+      const existing: iam.Binding[] = [
+        { role: "another-role", members: ["serviceAccount:3@foobar.com"] },
+      ];
+      const expected: iam.Binding[] = [
+        { role: "another-role", members: ["serviceAccount:3@foobar.com"] },
+        { role, members: ["serviceAccount:1@foobar.com"] },
+        { role, members: ["serviceAccount:2@foobar.com"] },
+      ];
 
-  it("adds new binding for each member", async () => {
-    mockGetIamPolicy([]);
-    mockSetIamPolicy([
-      { role: "a-role", members: ["serviceAccount:1@foobar.com"] },
-      { role: "a-role", members: ["serviceAccount:2@foobar.com"] },
-    ]);
+      setupStubs(existing, expected);
 
-    await ensureServiceAgentRole(secret, ["1@foobar.com", "2@foobar.com"], "a-role");
-  });
+      await ensureServiceAgentRole(secret, ["1@foobar.com", "2@foobar.com"], role);
+    });
 
-  it("adds bindings only for missing members", async () => {
-    mockGetIamPolicy([{ role: "a-role", members: ["serviceAccount:1@foobar.com"] }]);
-    mockSetIamPolicy([
-      { role: "a-role", members: ["serviceAccount:1@foobar.com"] },
-      { role: "a-role", members: ["serviceAccount:2@foobar.com"] },
-    ]);
+    it("does nothing if the binding already exists", async () => {
+      const existing: iam.Binding[] = [{ role, members: ["serviceAccount:1@foobar.com"] }];
+      const expected: iam.Binding[] = [];
 
-    await ensureServiceAgentRole(secret, ["1@foobar.com", "2@foobar.com"], "a-role");
-  });
+      setupStubs(existing, expected);
 
-  it("keeps bindings that already exists", async () => {
-    mockGetIamPolicy([{ role: "another-role", members: ["serviceAccount:3@foobar.com"] }]);
-    mockSetIamPolicy([
-      { role: "another-role", members: ["serviceAccount:3@foobar.com"] },
-      { role: "a-role", members: ["serviceAccount:1@foobar.com"] },
-      { role: "a-role", members: ["serviceAccount:2@foobar.com"] },
-    ]);
-
-    await ensureServiceAgentRole(secret, ["1@foobar.com", "2@foobar.com"], "a-role");
-  });
-
-  it("does nothing if the binding already exists", async () => {
-    mockGetIamPolicy([{ role: "a-role", members: ["serviceAccount:1@foobar.com"] }]);
-    // Note: Don't call mockSetIamPolicy - we don't expect to call setIamPolicy.
-
-    await ensureServiceAgentRole(secret, ["1@foobar.com"], "a-role");
+      await ensureServiceAgentRole(secret, ["1@foobar.com"], role);
+    });
   });
 });
