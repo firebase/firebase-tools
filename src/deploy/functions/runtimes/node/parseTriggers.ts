@@ -10,7 +10,7 @@ import * as proto from "../../../../gcp/proto";
 import * as args from "../../args";
 import * as runtimes from "../../runtimes";
 import { STORAGE_V2_EVENTS } from "../../eventTypes";
-import { getSecretVersion, parseSecretVersionResourceName } from "../../../../gcp/secretManager";
+import { parseSecretVersionResourceName } from "../../../../gcp/secretManager";
 
 const TRIGGER_PARSER = path.resolve(__dirname, "./triggerParser.js");
 
@@ -227,6 +227,8 @@ export function addResourcesToBackend(
       const secretEnvs: backend.SecretEnvVar[] = [];
       for (const secret of annotation.secrets) {
         if (secret.includes("/")) {
+          // Assume full secret resource name
+          //   (e.g. projects/my-project/secrets/MY_API_KEY/versions/2)
           const secretVersion = parseSecretVersionResourceName(secret);
           secretEnvs.push({
             key: secretVersion.secret.name,
@@ -235,6 +237,7 @@ export function addResourcesToBackend(
             version: secretVersion.versionId,
           });
         } else {
+          // Assume secret resource id (e.g. MY_API_KEY).
           secretEnvs.push({
             key: secret,
             secret,
