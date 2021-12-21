@@ -40,7 +40,7 @@ interface CreateSecretRequest {
 }
 
 interface AddVersionRequest {
-  payload: { data: string; };
+  payload: { data: string };
 }
 
 const API_VERSION = "v1beta";
