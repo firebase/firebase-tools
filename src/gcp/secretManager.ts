@@ -43,7 +43,7 @@ interface AddVersionRequest {
   payload: { data: string };
 }
 
-const API_VERSION = "v1beta";
+const API_VERSION = "v1beta1";
 
 const client = new Client({
   urlPrefix: secretManagerOrigin,
