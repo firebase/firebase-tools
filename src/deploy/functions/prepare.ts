@@ -211,7 +211,7 @@ function validateSecrets(b: backend.Backend) {
 }
 
 async function resolveVersions(b: backend.Backend) {
-  const op = async (s: backend.SecretEnvVar) => {
+  const resolveVersion = async (s: backend.SecretEnvVar) => {
     logLabeledBullet("functions", `resolving latest secret version of ${clc.bold(s.secret)}.`);
     const sv = await getSecretVersion(s.projectId, s.secret, "latest");
     s.version = sv.versionId;
@@ -226,7 +226,7 @@ async function resolveVersions(b: backend.Backend) {
     if (e.secretEnvironmentVariables) {
       for (const s of e.secretEnvironmentVariables) {
         if (!s.version) {
-          resolve.push(op(s));
+          resolve.push(resolveVersion(s));
         }
       }
     }
@@ -235,6 +235,22 @@ async function resolveVersions(b: backend.Backend) {
 }
 
 async function ensureAccesses(b: backend.Backend) {
+  const ensureAccess = async (projectId: string, secret: string, serviceAccounts: string[]) => {
+    logLabeledBullet(
+      "functions",
+      `ensuring ${clc.bold(serviceAccounts.join(", "))} access to ${clc.bold(secret)}.`
+    );
+    await ensureServiceAgentRole(
+      { name: secret, projectId },
+      serviceAccounts,
+      "roles/secretmanager.secretAccessor"
+    );
+    logLabeledSuccess(
+      "functions",
+      `ensured ${clc.bold(serviceAccounts.join(", "))} access to ${clc.bold(secret)}.`
+    );
+  };
+
   // projectId -> secretName -> Set of service accounts
   const toEnsure: Record<string, Record<string, Set<string>>> = {};
 
@@ -254,26 +270,10 @@ async function ensureAccesses(b: backend.Backend) {
     }
   }
 
-  const op = async (projectId: string, secret: string, serviceAccounts: string[]) => {
-    logLabeledBullet(
-      "functions",
-      `ensuring ${clc.bold(serviceAccounts.join(", "))} access to ${clc.bold(secret)}.`
-    );
-    await ensureServiceAgentRole(
-      { name: secret, projectId },
-      serviceAccounts,
-      "roles/secretmanager.secretAccessor"
-    );
-    logLabeledSuccess(
-      "functions",
-      `ensured ${clc.bold(serviceAccounts.join(", "))} access to ${clc.bold(secret)}.`
-    );
-  };
-
   const ensure = [];
   for (const [projectId, secrets] of Object.entries(toEnsure)) {
     for (const [secret, serviceAccounts] of Object.entries(secrets)) {
-      ensure.push(op(projectId, secret, Array.from(serviceAccounts)));
+      ensure.push(ensureAccess(projectId, secret, Array.from(serviceAccounts)));
     }
   }
   await Promise.all(ensure);
