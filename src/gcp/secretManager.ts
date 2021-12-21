@@ -1,5 +1,21 @@
 import { logLabeledSuccess } from "../utils";
 import * as api from "../api";
+import { FirebaseError } from "../error";
+
+// prettier-ignore
+const SECRET_NAME_REGEX = new RegExp(
+  "projects\\/" +                                     // projects/
+  "((?:[0-9]+)|(?:[A-Za-z]+[A-Za-z\\d-]*[A-Za-z\\d]?))\\/" + // {project number of project id}/
+  "secrets\\/" +                                             // secrets/
+  "([A-Za-z\\d\\-_]+)"                                       // secrets/{secret name}
+);
+
+// prettier-ignore
+const SECRET_VERSION_NAME_REGEX = new RegExp(
+  SECRET_NAME_REGEX.source +
+  "\\/versions\\/" +                    // /versions/
+  "(latest|[0-9]+)"                  // {'latest' or number}
+);
 
 export const secretManagerConsoleUri = (projectId: string) =>
   `https://console.cloud.google.com/security/secret-manager?project=${projectId}`;
@@ -63,21 +79,27 @@ export async function secretExists(projectId: string, name: string): Promise<boo
 }
 
 export function parseSecretResourceName(resourceName: string): Secret {
-  const nameTokens = resourceName.split("/");
+  const tokens = resourceName.match(SECRET_NAME_REGEX);
+  if (tokens == null) {
+    throw new FirebaseError(`Invalid secret resource name [${resourceName}].`);
+  }
   return {
-    projectId: nameTokens[1],
-    name: nameTokens[3],
+    projectId: tokens[1],
+    name: tokens[2],
   };
 }
 
 export function parseSecretVersionResourceName(resourceName: string): SecretVersion {
-  const nameTokens = resourceName.split("/");
+  const tokens = resourceName.match(SECRET_VERSION_NAME_REGEX);
+  if (tokens == null) {
+    throw new FirebaseError(`Invalid secret version resource name [${resourceName}].`);
+  }
   return {
     secret: {
-      projectId: nameTokens[1],
-      name: nameTokens[3],
+      projectId: tokens[1],
+      name: tokens[2],
     },
-    versionId: nameTokens[5],
+    versionId: tokens[3],
   };
 }
 
@@ -164,7 +186,7 @@ export async function ensureServiceAgentRole(
   }
 
   if (newBindings.length == 0) {
-    // bindings already exists, short-circuit.
+    // bindings already exist, short-circuit.
     return;
   }
 
