@@ -34,13 +34,15 @@ describe("queryTimeSeries", () => {
 
     const res = await queryTimeSeries(query, PROJECT_NUMBER);
     expect(res).to.deep.equal(RESPONSE.timeSeries);
+    expect(nock.isDone()).to.be.true;
   });
 
   it("should throw a FirebaseError if the endpoint returns an error response", async () => {
     nock(api.cloudMonitoringOrigin)
-      .post(`/${CLOUD_MONITORING_VERSION}/projects/${PROJECT_NUMBER}/timeSeries/`)
+      .get(`/${CLOUD_MONITORING_VERSION}/projects/${PROJECT_NUMBER}/timeSeries/`)
       .query(true)
       .reply(404);
     await expect(queryTimeSeries(query, PROJECT_NUMBER)).to.be.rejectedWith(FirebaseError);
+    expect(nock.isDone()).to.be.true;
   });
 });
