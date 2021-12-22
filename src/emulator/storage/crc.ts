@@ -24,12 +24,22 @@ function makeCRCTable(poly: number) {
  */
 const CRC32C_TABLE = makeCRCTable(0x82f63b78);
 
+let nativeCrc32c: typeof import("@node-rs/crc32")["crc32c"] | null = null;
+
+try {
+  const { crc32c } = require("@node-rs/crc32");
+  nativeCrc32c = crc32c;
+} catch {
+  // no supported crc32 package, just continue
+}
+
 /**
  * Adapted from:
  *  - https://en.wikipedia.org/wiki/Cyclic_redundancy_check#Computation
  *  - https://stackoverflow.com/a/18639999/324977
  */
 export function crc32c(bytes: Buffer): number {
+  if (nativeCrc32c) return nativeCrc32c(bytes);
   let crc = 0 ^ -1;
 
   for (let i = 0; i < bytes.length; i++) {
