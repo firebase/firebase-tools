@@ -2,7 +2,6 @@ import * as sinon from "sinon";
 import { expect } from "chai";
 
 import * as iam from "../../gcp/iam";
-import * as apiv2 from "../../apiv2";
 import * as secretManager from "../../gcp/secretManager";
 import { FirebaseError } from "../../error";
 import { ensureServiceAgentRole, setIamPolicyBindings } from "../../gcp/secretManager";

@@ -289,4 +289,124 @@ describe("addResourcesToBackend", () => {
 
     expect(result).to.deep.equal(expected);
   });
+
+  describe("secrets", () => {
+    it("should parse shorthand secret", () => {
+      const trigger: parseTriggers.TriggerAnnotation = {
+        ...BASIC_TRIGGER,
+        httpsTrigger: {},
+        secrets: ["MY_SECRET"],
+      };
+
+      const expected: backend.Backend = backend.of({
+        ...BASIC_ENDPOINT,
+        httpsTrigger: {},
+        secretEnvironmentVariables: [
+          {
+            projectId: "project",
+            secret: "MY_SECRET",
+            key: "MY_SECRET",
+          },
+        ],
+      });
+
+      const result = backend.empty();
+      parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
+      expect(result).to.deep.equal(expected);
+    });
+
+    it("should parse shorthand secrets with version", () => {
+      const trigger: parseTriggers.TriggerAnnotation = {
+        ...BASIC_TRIGGER,
+        httpsTrigger: {},
+        secrets: ["MY_SECRET@3"],
+      };
+
+      const expected: backend.Backend = backend.of({
+        ...BASIC_ENDPOINT,
+        httpsTrigger: {},
+        secretEnvironmentVariables: [
+          {
+            projectId: "project",
+            secret: "MY_SECRET",
+            key: "MY_SECRET",
+            version: "3",
+          },
+        ],
+      });
+
+      const result = backend.empty();
+      parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
+      expect(result).to.deep.equal(expected);
+    });
+
+    it("should parse secret with full resource name", () => {
+      const trigger: parseTriggers.TriggerAnnotation = {
+        ...BASIC_TRIGGER,
+        httpsTrigger: {},
+        secrets: ["projects/another-project/secrets/ANOTHER_SECRET/versions/3"],
+      };
+
+      const expected: backend.Backend = backend.of({
+        ...BASIC_ENDPOINT,
+        httpsTrigger: {},
+        secretEnvironmentVariables: [
+          {
+            projectId: "another-project",
+            secret: "ANOTHER_SECRET",
+            key: "ANOTHER_SECRET",
+            version: "3",
+          },
+        ],
+      });
+
+      const result = backend.empty();
+      parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
+      expect(result).to.deep.equal(expected);
+    });
+
+    it("should parse combination of secrets", () => {
+      const trigger: parseTriggers.TriggerAnnotation = {
+        ...BASIC_TRIGGER,
+        httpsTrigger: {},
+        secrets: ["MY_SECRET@3", "projects/another-project/secrets/ANOTHER_SECRET/versions/3"],
+      };
+
+      const expected: backend.Backend = backend.of({
+        ...BASIC_ENDPOINT,
+        httpsTrigger: {},
+        secretEnvironmentVariables: [
+          {
+            projectId: "project",
+            secret: "MY_SECRET",
+            key: "MY_SECRET",
+            version: "3",
+          },
+          {
+            projectId: "another-project",
+            secret: "ANOTHER_SECRET",
+            key: "ANOTHER_SECRET",
+            version: "3",
+          },
+        ],
+      });
+
+      const result = backend.empty();
+      parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
+      expect(result).to.deep.equal(expected);
+    });
+
+    it("should blow up given invalid secret reference", () => {
+      const trigger: parseTriggers.TriggerAnnotation = {
+        ...BASIC_TRIGGER,
+        httpsTrigger: {},
+        secrets: ["ABC/EFG"],
+      };
+
+      const result = backend.empty();
+      expect(() =>
+        parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result)
+      ).to.throw(FirebaseError);
+    });
+  });
 });
