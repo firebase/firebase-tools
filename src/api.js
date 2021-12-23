@@ -99,6 +99,10 @@ var api = {
     "FIREBASE_CLOUDLOGGING_URL",
     "https://logging.googleapis.com"
   ),
+  cloudMonitoringOrigin: utils.envOverride(
+    "CLOUD_MONITORING_URL",
+    "https://monitoring.googleapis.com"
+  ),
   containerRegistryDomain: utils.envOverride("CONTAINER_REGISTRY_DOMAIN", "gcr.io"),
   artifactRegistryDomain: utils.envOverride(
     "ARTIFACT_REGISTRY_DOMAIN",
