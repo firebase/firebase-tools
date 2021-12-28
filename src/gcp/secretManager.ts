@@ -15,9 +15,7 @@ const SECRET_NAME_REGEX = new RegExp(
 
 // Matches projects/{PROJECT}/secrets/{SECRET}/versions/{latest|VERSION}
 const SECRET_VERSION_NAME_REGEX = new RegExp(
-  SECRET_NAME_REGEX.source +
-    "\\/versions\\/" +
-    "(latest|[0-9]+)"
+  SECRET_NAME_REGEX.source + "\\/versions\\/" + "(latest|[0-9]+)"
 );
 
 export const secretManagerConsoleUri = (projectId: string) =>
