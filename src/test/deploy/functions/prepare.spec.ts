@@ -4,6 +4,7 @@ import { expect } from "chai";
 import * as backend from "../../../deploy/functions/backend";
 import * as prepare from "../../../deploy/functions/prepare";
 import * as secretManager from "../../../gcp/secretManager";
+import { defaultServiceAccount } from "../../../gcp/cloudfunctions";
 import { FirebaseError } from "../../../error";
 import { ensureAccesses, resolveVersions } from "../../../deploy/functions/prepare";
 
@@ -295,8 +296,7 @@ describe("prepare", () => {
           .once()
           .withExactArgs(
             { name: secret0.secret, projectId: project0 },
-            // TODO: refactor default SA.
-            [`${e.project}@appspot.gserviceaccount.com`],
+            [defaultServiceAccount(e.project)],
             "roles/secretmanager.secretAccessor"
           );
         await ensureAccesses(b);

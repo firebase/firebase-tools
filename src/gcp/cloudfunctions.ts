@@ -606,3 +606,10 @@ export function functionFromEndpoint(
 
   return gcfFunction;
 }
+
+/**
+ *  By default, Google Cloud Function uses App Engine default service account for function execution.
+ */
+export function defaultServiceAccount(projectId: string): string {
+  return `${projectId}@appspot.gserviceaccount.com`;
+}

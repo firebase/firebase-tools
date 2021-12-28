@@ -21,6 +21,7 @@ import { logger } from "../../logger";
 import { ensureTriggerRegions } from "./triggerRegionHelper";
 import { ensureServiceAgentRoles } from "./checkIam";
 import { ensureServiceAgentRole, getSecretVersion } from "../../gcp/secretManager";
+import { defaultServiceAccount } from "../../gcp/cloudfunctions";
 import { FirebaseError } from "../../error";
 
 function hasUserConfig(config: Record<string, unknown>): boolean {
@@ -256,7 +257,7 @@ export async function ensureAccesses(b: backend.Backend) {
 
   for (const e of backend.allEndpoints(b)) {
     // TODO: refactor logic for retrieving default sa;
-    const sa = e.serviceAccountEmail || `${e.project}@appspot.gserviceaccount.com`;
+    const sa = e.serviceAccountEmail || defaultServiceAccount(e.project);
     if (e.secretEnvironmentVariables) {
       for (const s of e.secretEnvironmentVariables) {
         const secrets = toEnsure[s.projectId] || {};
