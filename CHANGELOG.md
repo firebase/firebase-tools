@@ -1,0 +1,1 @@
+ - Upgrades google-auth-library to 7.x.x, enabling support for workload identity federation
