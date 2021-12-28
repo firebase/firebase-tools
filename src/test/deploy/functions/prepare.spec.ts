@@ -139,7 +139,7 @@ describe("prepare", () => {
         expect(() => prepare.validateSecrets(b)).to.not.throw();
       });
 
-      it("passes validation with not secret environments", () => {
+      it("passes validation with no secret env vars", () => {
         const b = backend.of({
           ...ENDPOINT,
           platform: "gcfv2",
@@ -148,7 +148,7 @@ describe("prepare", () => {
         expect(() => prepare.validateSecrets(b)).to.not.throw();
       });
 
-      it("passes validation with valid secret environments on a gcfv1 endpoint", () => {
+      it("passes validation with a valid secret env var on a gcfv1 endpoint", () => {
         const b = backend.of({
           ...ENDPOINT,
           platform: "gcfv1",
@@ -164,7 +164,7 @@ describe("prepare", () => {
         expect(() => prepare.validateSecrets(b)).to.not.throw();
       });
 
-      it("fails validation given invalid", () => {
+      it("fails validation for unsupported platform", () => {
         const b = backend.of({
           ...ENDPOINT,
           platform: "gcfv2",
@@ -204,7 +204,6 @@ describe("prepare", () => {
         secretVersionStub
           .withArgs(projectId, secret.name, "latest")
           .resolves({ secret, versionId: "1" });
-
         const e: backend.Endpoint = {
           ...ENDPOINT,
           platform: "gcfv1",
@@ -216,9 +215,7 @@ describe("prepare", () => {
             },
           ],
         };
-
         await resolveVersions(backend.of(e));
-
         expect(e.secretEnvironmentVariables).to.be.deep.equal([
           {
             projectId,
@@ -242,9 +239,7 @@ describe("prepare", () => {
             },
           ],
         };
-
         await resolveVersions(backend.of(e));
-
         expect(e.secretEnvironmentVariables).to.be.deep.equal([
           {
             projectId,
@@ -295,7 +290,6 @@ describe("prepare", () => {
           ...e,
           secretEnvironmentVariables: [secret0],
         });
-
         secretManagerMock
           .expects("ensureServiceAgentRole")
           .once()
@@ -305,7 +299,6 @@ describe("prepare", () => {
             [`${e.project}@appspot.gserviceaccount.com`],
             "roles/secretmanager.secretAccessor"
           );
-
         await ensureAccesses(b);
       });
 
@@ -314,9 +307,7 @@ describe("prepare", () => {
           ...e,
           secretEnvironmentVariables: [secret0, secret1],
         });
-
         secretManagerMock.expects("ensureServiceAgentRole").twice();
-
         await ensureAccesses(b);
       });
 
@@ -333,7 +324,6 @@ describe("prepare", () => {
             secretEnvironmentVariables: [secret0],
           }
         );
-
         secretManagerMock
           .expects("ensureServiceAgentRole")
           .once()
@@ -342,7 +332,6 @@ describe("prepare", () => {
             [`${e.project}@appspot.gserviceaccount.com`, "foo@bar.com"],
             "roles/secretmanager.secretAccessor"
           );
-
         await ensureAccesses(b);
       });
     });

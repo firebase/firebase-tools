@@ -77,11 +77,13 @@ describe("secretManager", () => {
       setIamPolicyBindingsStub.restore();
     });
 
-    function setupStubs(existing: iam.Binding[], expected: iam.Binding[]) {
+    function setupStubs(existing: iam.Binding[], expected?: iam.Binding[]) {
       getIamPolicyStub.withArgs(secret).resolves({ bindings: existing });
-      setIamPolicyBindingsStub
-        .withArgs(secret, expected)
-        .resolves({ body: { bindings: expected } });
+      if (expected) {
+        setIamPolicyBindingsStub
+          .withArgs(secret, expected)
+          .resolves({ body: { bindings: expected } });
+      }
     }
 
     it("adds new binding for each member", async () => {
@@ -92,7 +94,6 @@ describe("secretManager", () => {
       ];
 
       setupStubs(existing, expected);
-
       await ensureServiceAgentRole(secret, ["1@foobar.com", "2@foobar.com"], role);
     });
 
@@ -104,7 +105,6 @@ describe("secretManager", () => {
       ];
 
       setupStubs(existing, expected);
-
       await ensureServiceAgentRole(secret, ["1@foobar.com", "2@foobar.com"], role);
     });
 
@@ -119,16 +119,13 @@ describe("secretManager", () => {
       ];
 
       setupStubs(existing, expected);
-
       await ensureServiceAgentRole(secret, ["1@foobar.com", "2@foobar.com"], role);
     });
 
     it("does nothing if the binding already exists", async () => {
       const existing: iam.Binding[] = [{ role, members: ["serviceAccount:1@foobar.com"] }];
-      const expected: iam.Binding[] = [];
 
-      setupStubs(existing, expected);
-
+      setupStubs(existing);
       await ensureServiceAgentRole(secret, ["1@foobar.com"], role);
     });
   });

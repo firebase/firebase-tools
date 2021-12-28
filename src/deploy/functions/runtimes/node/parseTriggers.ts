@@ -238,22 +238,14 @@ export function addResourcesToBackend(
           });
         } else {
           // Assume secret resource id (e.g. MY_API_KEY[@VERSION]).
-          let secretEnv: backend.SecretEnvVar;
-          if (secret.includes("@")) {
-            const [key, version] = secret.split("@");
-            secretEnv = {
-              secret: key,
-              projectId,
-              key,
-              version,
-            };
-          } else {
-            secretEnv = {
-              secret,
-              projectId,
-              key: secret,
-              // Note: version will be filled in during deploy.prepare phase.
-            };
+          const [key, version] = secret.split("@");
+          const secretEnv: backend.SecretEnvVar = {
+            key,
+            projectId,
+            secret: key,
+          };
+          if (version != undefined) {
+            secretEnv.version = version;
           }
           secretEnvs.push(secretEnv);
         }

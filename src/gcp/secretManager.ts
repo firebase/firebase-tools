@@ -1,22 +1,23 @@
 import * as iam from "./iam";
+
 import { logLabeledSuccess } from "../utils";
 import { FirebaseError } from "../error";
 import { Client } from "../apiv2";
 import { secretManagerOrigin } from "../api";
 
-// prettier-ignore
+// Matches projects/{PROJECT}/secrets/{SECRET}
 const SECRET_NAME_REGEX = new RegExp(
-  "projects\\/" +                                     // projects/
-  "((?:[0-9]+)|(?:[A-Za-z]+[A-Za-z\\d-]*[A-Za-z\\d]?))\\/" + // {project number of project id}/
-  "secrets\\/" +                                             // secrets/
-  "([A-Za-z\\d\\-_]+)"                                       // secrets/{secret name}
+  "projects\\/" +
+    "((?:[0-9]+)|(?:[A-Za-z]+[A-Za-z\\d-]*[A-Za-z\\d]?))\\/" +
+    "secrets\\/" +
+    "([A-Za-z\\d\\-_]+)"
 );
 
-// prettier-ignore
+// Matches projects/{PROJECT}/secrets/{SECRET}/versions/{latest|VERSION}
 const SECRET_VERSION_NAME_REGEX = new RegExp(
   SECRET_NAME_REGEX.source +
-  "\\/versions\\/" +                    // /versions/
-  "(latest|[0-9]+)"                     // {'latest' or number}
+    "\\/versions\\/" +
+    "(latest|[0-9]+)"
 );
 
 export const secretManagerConsoleUri = (projectId: string) =>
