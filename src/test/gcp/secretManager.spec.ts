@@ -37,7 +37,7 @@ describe("secretManager", () => {
         secretManager.parseSecretVersionResourceName(
           "projects/my-project/secrets/my-secret/versions/7"
         )
-      ).to.deep.equal({ secret: { projectId: "my-project", name: "my-secret" }, versionId: "7" });
+      ).to.deep.equal({ secret: { projectId: "my-project", name: "my-secret" }, version: "7" });
     });
 
     it("throws given invalid resource name", () => {

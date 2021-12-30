@@ -204,7 +204,7 @@ describe("prepare", () => {
       it("fills in missing version id", async () => {
         secretVersionStub
           .withArgs(projectId, secret.name, "latest")
-          .resolves({ secret, versionId: "1" });
+          .resolves({ secret, version: "1" });
         const e: backend.Endpoint = {
           ...ENDPOINT,
           platform: "gcfv1",

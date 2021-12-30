@@ -227,7 +227,7 @@ describe("askUserForParam", () => {
     };
     const stubSecretVersion = {
       secret: stubSecret,
-      versionId: "1.0.0",
+      version: "1.0.0",
     };
     const secretSpec = {
       param: "API_KEY",
@@ -266,7 +266,7 @@ describe("askUserForParam", () => {
       expect(promptStub.calledOnce).to.be.true;
       expect(grantRole.calledOnce).to.be.true;
       expect(result).to.be.equal(
-        `projects/${stubSecret.projectId}/secrets/${stubSecret.name}/versions/${stubSecretVersion.versionId}`
+        `projects/${stubSecret.projectId}/secrets/${stubSecret.name}/versions/${stubSecretVersion.version}`
       );
     });
   });
