@@ -185,12 +185,19 @@ export async function prepare(
   await prepareSecrets(matchingBackend);
 }
 
+/**
+ * Ensures that secret environment variables are valid.
+ * A bad secret configuration can lead to a significant delay in function delay
+ * since the GCFv1 backend does little upfront validation and instead will
+ * below up after repeated failure to spin up a container instance with an invalid config.
+ */
 async function prepareSecrets(b: backend.Backend) {
   validateSecrets(b);
   await resolveVersions(b);
   await ensureAccesses(b);
 }
 
+// @internal
 export function validateSecrets(b: backend.Backend) {
   // Only GCFv1 supports secret environment variables.
   const unsupported = backend
@@ -210,10 +217,11 @@ export function validateSecrets(b: backend.Backend) {
   }
 }
 
+// Resolves the version of a secret if missing. If present, ensure that the specified version actually exists.
 export async function resolveVersions(b: backend.Backend) {
-  const resolveVersion = async (s: backend.SecretEnvVar) => {
+  const resolveVersion = async (s: backend.SecretEnvVar, version = "latest") => {
     logLabeledBullet("functions", `resolving latest secret version of ${clc.bold(s.secret)}.`);
-    const sv = await getSecretVersion(s.projectId, s.secret, "latest");
+    const sv = await getSecretVersion(s.projectId, s.secret, version);
     s.version = sv.version;
     logLabeledSuccess(
       "functions",
@@ -223,17 +231,15 @@ export async function resolveVersions(b: backend.Backend) {
 
   const resolve = [];
   for (const e of backend.allEndpoints(b)) {
-    if (e.secretEnvironmentVariables) {
-      for (const s of e.secretEnvironmentVariables) {
-        if (!s.version) {
-          resolve.push(resolveVersion(s));
-        }
-      }
+    for (const s of e.secretEnvironmentVariables || []) {
+      // Either resolve the latest version of check that the version exists.
+      resolve.push(resolveVersion(s, s.version));
     }
   }
   await Promise.all(resolve);
 }
 
+// Ensures that runtime service account has access to the secrets.
 export async function ensureAccesses(b: backend.Backend) {
   const ensureAccess = async (projectId: string, secret: string, serviceAccounts: string[]) => {
     logLabeledBullet(
@@ -256,16 +262,14 @@ export async function ensureAccesses(b: backend.Backend) {
 
   for (const e of backend.allEndpoints(b)) {
     const sa = e.serviceAccountEmail || defaultServiceAccount(e.project);
-    if (e.secretEnvironmentVariables) {
-      for (const s of e.secretEnvironmentVariables) {
-        const secrets = toEnsure[s.projectId] || {};
-        const serviceAccounts = secrets[s.secret] || new Set();
+    for (const s of e.secretEnvironmentVariables || []) {
+      const secrets = toEnsure[s.projectId] || {};
+      const serviceAccounts = secrets[s.secret] || new Set();
 
-        serviceAccounts.add(sa);
+      serviceAccounts.add(sa);
 
-        secrets[s.secret] = serviceAccounts;
-        toEnsure[s.projectId] = secrets;
-      }
+      secrets[s.secret] = serviceAccounts;
+      toEnsure[s.projectId] = secrets;
     }
   }
 
