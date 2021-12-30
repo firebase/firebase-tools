@@ -99,6 +99,10 @@ var api = {
     "FIREBASE_CLOUDLOGGING_URL",
     "https://logging.googleapis.com"
   ),
+  cloudMonitoringOrigin: utils.envOverride(
+    "CLOUD_MONITORING_URL",
+    "https://monitoring.googleapis.com"
+  ),
   containerRegistryDomain: utils.envOverride("CONTAINER_REGISTRY_DOMAIN", "gcr.io"),
   artifactRegistryDomain: utils.envOverride(
     "ARTIFACT_REGISTRY_DOMAIN",
@@ -149,7 +153,6 @@ var api = {
     "https://cloudfunctions.googleapis.com"
   ),
   runOrigin: utils.envOverride("CLOUD_RUN_URL", "https://run.googleapis.com"),
-  functionsUploadRegion: utils.envOverride("FIREBASE_FUNCTIONS_UPLOAD_REGION", "us-central1"),
   functionsDefaultRegion: utils.envOverride("FIREBASE_FUNCTIONS_DEFAULT_REGION", "us-central1"),
   cloudschedulerOrigin: utils.envOverride(
     "FIREBASE_CLOUDSCHEDULER_URL",
