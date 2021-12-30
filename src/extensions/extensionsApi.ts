@@ -3,6 +3,7 @@ import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as marked from "marked";
 import * as api from "../api";
+import * as apiv2 from "../apiv2";
 import * as refs from "./refs";
 import { logger } from "../logger";
 import * as operationPoller from "../operation-poller";
@@ -599,6 +600,26 @@ export async function listExtensionVersions(
   };
   await getNextPage();
   return extensionVersions;
+}
+
+/**
+ * @param projectId the project for which we are registering a PublisherProfile
+ * @param publisherId the desired publisher ID
+ */
+export async function getPublisherProfile(
+  projectId: string,
+  publisherId?: string
+): Promise<PublisherProfile> {
+  const client = new apiv2.Client({ urlPrefix: api.extensionsOrigin });
+  const res = await client.get(`/${VERSION}/projects/${projectId}/publisherProfile`, {
+    queryParams:
+      publisherId == undefined
+        ? undefined
+        : {
+            publisherId,
+          },
+  });
+  return res.body as PublisherProfile;
 }
 
 /**
