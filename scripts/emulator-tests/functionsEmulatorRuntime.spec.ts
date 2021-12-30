@@ -56,10 +56,10 @@ function startRuntimeWithFunctions(
   opts.serializedTriggers = serializedTriggers;
 
   return functionsEmulator.startFunctionRuntime(
+    testBackend,
     frb.triggerId!,
     frb.targetName!,
     signatureType,
-    testBackend,
     frb.proto,
     opts
   );

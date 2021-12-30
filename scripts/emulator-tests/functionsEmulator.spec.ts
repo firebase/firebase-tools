@@ -109,7 +109,7 @@ function useFunctions(triggers: () => {}): void {
     proto?: any,
     runtimeOpts?: InvokeRuntimeOpts
   ): RuntimeWorker => {
-    return startFunctionRuntime(triggerId, targetName, triggerType, testBackend, proto, {
+    return startFunctionRuntime(testBackend, triggerId, targetName, triggerType, proto, {
       nodeBinary: process.execPath,
       serializedTriggers,
     });
