@@ -44,7 +44,7 @@ export async function setSecretParamsToLatest(spec: InstanceSpec): Promise<Insta
   for (const [key, val] of Object.entries(newParams)) {
     if (activeSecrets.includes(val)) {
       const parsed = parseSecretVersionResourceName(val);
-      parsed.versionId = "latest";
+      parsed.version = "latest";
       newParams[key] = toSecretVersionResourceName(parsed);
     }
   }

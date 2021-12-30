@@ -30,7 +30,7 @@ export interface Secret {
 
 export interface SecretVersion {
   secret: Secret;
-  versionId: string;
+  version: string;
 }
 
 interface CreateSecretRequest {
@@ -106,12 +106,12 @@ export function parseSecretVersionResourceName(resourceName: string): SecretVers
       projectId: tokens[1],
       name: tokens[2],
     },
-    versionId: tokens[3],
+    version: tokens[3],
   };
 }
 
 export function toSecretVersionResourceName(secretVersion: SecretVersion): string {
-  return `projects/${secretVersion.secret.projectId}/secrets/${secretVersion.secret.name}/versions/${secretVersion.versionId}`;
+  return `projects/${secretVersion.secret.projectId}/secrets/${secretVersion.secret.name}/versions/${secretVersion.version}`;
 }
 
 export async function createSecret(
@@ -146,7 +146,7 @@ export async function addVersion(secret: Secret, payloadData: string): Promise<S
       projectId: nameTokens[1],
       name: nameTokens[3],
     },
-    versionId: nameTokens[5],
+    version: nameTokens[5],
   };
 }
 

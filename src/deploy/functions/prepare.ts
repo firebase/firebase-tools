@@ -182,7 +182,6 @@ export async function prepare(
   await promptForFailurePolicies(options, matchingBackend, haveBackend);
   await promptForMinInstances(options, matchingBackend, haveBackend);
   await backend.checkAvailability(context, wantBackend);
-
   await prepareSecrets(matchingBackend);
 }
 
@@ -215,10 +214,10 @@ export async function resolveVersions(b: backend.Backend) {
   const resolveVersion = async (s: backend.SecretEnvVar) => {
     logLabeledBullet("functions", `resolving latest secret version of ${clc.bold(s.secret)}.`);
     const sv = await getSecretVersion(s.projectId, s.secret, "latest");
-    s.version = sv.versionId;
+    s.version = sv.version;
     logLabeledSuccess(
       "functions",
-      `resolved secret version of ${clc.bold(s.secret)} to ${clc.bold(sv.versionId)}.`
+      `resolved secret version of ${clc.bold(s.secret)} to ${clc.bold(sv.version)}.`
     );
   };
 
@@ -256,7 +255,6 @@ export async function ensureAccesses(b: backend.Backend) {
   const toEnsure: Record<string, Record<string, Set<string>>> = {};
 
   for (const e of backend.allEndpoints(b)) {
-    // TODO: refactor logic for retrieving default sa;
     const sa = e.serviceAccountEmail || defaultServiceAccount(e.project);
     if (e.secretEnvironmentVariables) {
       for (const s of e.secretEnvironmentVariables) {

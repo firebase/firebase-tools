@@ -234,7 +234,7 @@ export function addResourcesToBackend(
             key: secretVersion.secret.name,
             secret: secretVersion.secret.name,
             projectId: secretVersion.secret.projectId,
-            version: secretVersion.versionId,
+            version: secretVersion.version,
           });
         } else {
           // Assume secret resource id (e.g. MY_API_KEY[@VERSION]).
