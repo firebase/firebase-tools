@@ -102,10 +102,10 @@ function useFunctions(triggers: () => {}): void {
 
   // eslint-disable-next-line @typescript-eslint/unbound-method
   functionsEmulator.startFunctionRuntime = (
+    backend: EmulatableBackend,
     triggerId: string,
     targetName: string,
     triggerType: SignatureType,
-    backned: EmulatableBackend,
     proto?: any,
     runtimeOpts?: InvokeRuntimeOpts
   ): RuntimeWorker => {

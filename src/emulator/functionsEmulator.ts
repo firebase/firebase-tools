@@ -123,8 +123,8 @@ interface RequestWithRawBody extends express.Request {
 }
 
 interface EmulatedTriggerRecord {
-  def: EmulatedTriggerDefinition;
   backend: EmulatableBackend;
+  def: EmulatedTriggerDefinition;
   enabled: boolean;
   ignored: boolean;
 
@@ -324,10 +324,10 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   startFunctionRuntime(
+    backend: EmulatableBackend,
     triggerId: string,
     targetName: string,
     signatureType: SignatureType,
-    backend: EmulatableBackend,
     proto?: any,
     runtimeOpts?: InvokeRuntimeOpts
   ): RuntimeWorker {
@@ -1147,10 +1147,10 @@ export class FunctionsEmulator implements EmulatorInstance {
     const trigger = record.def;
     const service = getFunctionService(trigger);
     const worker = this.startFunctionRuntime(
+      record.backend,
       trigger.id,
       trigger.name,
       getSignatureType(trigger),
-      record.backend,
       proto
     );
 
@@ -1291,10 +1291,10 @@ export class FunctionsEmulator implements EmulatorInstance {
       }
     }
     const worker = this.startFunctionRuntime(
+      record.backend,
       trigger.id,
       trigger.name,
       "http",
-      record.backend,
       undefined
     );
 

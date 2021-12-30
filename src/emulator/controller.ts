@@ -305,7 +305,11 @@ function findExportMetadata(importPath: string): ExportMetadata | undefined {
   }
 }
 
-export async function startAll(options: Options, showUI: boolean = true): Promise<void> {
+interface EmulatorOptions extends Options {
+  extensionEnv?: Record<string, string>;
+}
+
+export async function startAll(options: EmulatorOptions, showUI: boolean = true): Promise<void> {
   // Emulators config is specified in firebase.json as:
   // "emulators": {
   //   "firestore": {
@@ -441,13 +445,13 @@ export async function startAll(options: Options, showUI: boolean = true): Promis
       );
     }
 
-    const account = getProjectDefaultAccount(options.projectRoot as string | null);
+    const account = getProjectDefaultAccount(options.projectRoot);
     // TODO: Go read firebase.json for extensions and add them to emualtableBackends.
     const emulatableBackends: EmulatableBackend[] = [
       {
         functionsDir,
         env: {
-          ...(options.extensionEnv as Record<string, string> | undefined),
+          ...options.extensionEnv,
         },
         predefinedTriggers: options.extensionTriggers as ParsedTriggerDefinition[] | undefined,
         nodeMajorVersion: parseRuntimeVersion(
