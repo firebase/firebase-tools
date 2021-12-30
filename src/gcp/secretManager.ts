@@ -140,14 +140,7 @@ export async function addVersion(secret: Secret, payloadData: string): Promise<S
       },
     }
   );
-  const nameTokens = res.body.name.split("/");
-  return {
-    secret: {
-      projectId: nameTokens[1],
-      name: nameTokens[3],
-    },
-    version: nameTokens[5],
-  };
+  return parseSecretVersionResourceName(res.body.name);
 }
 
 export async function getIamPolicy(secret: Secret): Promise<iam.Policy> {
