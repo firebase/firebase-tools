@@ -1,0 +1,1 @@
+- Preserve empty vpc connector setting on function deploy. (#3973)
