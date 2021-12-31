@@ -182,65 +182,84 @@ export async function prepare(
   await promptForFailurePolicies(options, matchingBackend, haveBackend);
   await promptForMinInstances(options, matchingBackend, haveBackend);
   await backend.checkAvailability(context, wantBackend);
-  await prepareSecrets(matchingBackend);
+  await validateSecrets(matchingBackend);
+  await ensureSecretAccess(matchingBackend);
 }
 
 /**
- * Ensures that secret environment variables are valid.
- * A bad secret configuration can lead to a significant delay in function delay
- * since the GCFv1 backend does little upfront validation and instead will
- * below up after repeated failure to spin up a container instance with an invalid config.
+ * Validate secret environment variables setting, if any.
+ * A bad secret configuration can lead to a significant delay in function deploys.
+ *
+ * If validation fails for any secret config, throws a FirebaseError.
  */
-async function prepareSecrets(b: backend.Backend) {
-  validateSecrets(b);
-  await resolveVersions(b);
-  await ensureAccesses(b);
+export async function validateSecrets(b: backend.Backend) {
+  const endpoints = backend
+    .allEndpoints(b)
+    .filter((e) => e.secretEnvironmentVariables && e.secretEnvironmentVariables.length > 0);
+  validatePlatformTargets(endpoints);
+  await validateSecretVersions(endpoints);
 }
 
-// @internal
-export function validateSecrets(b: backend.Backend) {
-  // Only GCFv1 supports secret environment variables.
-  const unsupported = backend
-    .allEndpoints(b)
-    .filter(
-      (e) =>
-        e.secretEnvironmentVariables &&
-        e.secretEnvironmentVariables.length > 0 &&
-        e.platform !== "gcfv1"
-    );
+/**
+ * Ensures that all endpoints specifying secret environment variables target platform that supports the feature.
+ */
+function validatePlatformTargets(endpoints: backend.Endpoint[]) {
+  const supportedPlatforms = ["gcfv1"];
+  const unsupported = endpoints.filter((e) => !supportedPlatforms.includes(e.platform));
   if (unsupported.length > 0) {
     const errs = unsupported.map((e) => `${e.id}[platform=${e.platform}]`);
     throw new FirebaseError(
       `Tried to set secret environment variables on ${errs.join(", ")}. ` +
-        "Only GCFv1 supports secret environments."
+        `Only ${supportedPlatforms.join(", ")} support secret environments.`
     );
   }
 }
 
-// Resolves the version of a secret if missing. If present, ensure that the specified version actually exists.
-export async function resolveVersions(b: backend.Backend) {
-  const resolveVersion = async (s: backend.SecretEnvVar, version = "latest") => {
-    logLabeledBullet("functions", `resolving latest secret version of ${clc.bold(s.secret)}.`);
-    const sv = await getSecretVersion(s.projectId, s.secret, version);
-    s.version = sv.version;
-    logLabeledSuccess(
-      "functions",
-      `resolved secret version of ${clc.bold(s.secret)} to ${clc.bold(sv.version)}.`
-    );
+/**
+ * Validate each secret version referenced in target endpoints.
+ *
+ * A secret version is valid if:
+ *   1) It exists.
+ *   2) It's in state "enabled".
+ */
+async function validateSecretVersions(endpoints: backend.Endpoint[]) {
+  const validate = async (s: backend.SecretEnvVar) => {
+    const sv = await getSecretVersion(s.projectId, s.secret, s.version || "latest");
+    if (s.version == null) {
+      logLabeledSuccess(
+        "functions",
+        `resolved secret version of ${clc.bold(s.secret)} to ${clc.bold(sv.version)}.`
+      );
+      s.version = sv.version;
+    }
+    if (sv.state !== "ENABLED") {
+      throw new FirebaseError(
+        `Expected secret ${s.secret}@${s.version} to be in state ENABLED not ${sv.state}.`
+      );
+    }
   };
 
-  const resolve = [];
-  for (const e of backend.allEndpoints(b)) {
-    for (const s of e.secretEnvironmentVariables || []) {
-      // Either resolve the latest version of check that the version exists.
-      resolve.push(resolveVersion(s, s.version));
+  const validations: Promise<void>[] = [];
+  for (const e of endpoints) {
+    for (const s of e.secretEnvironmentVariables! || []) {
+      validations.push(validate(s));
     }
   }
-  await Promise.all(resolve);
+  const results = await utils.allSettled(validations);
+
+  const errs: { message: string }[] = results
+    .filter((r) => r.status === "rejected")
+    .map((r) => (r as utils.PromiseRejectedResult).reason as { message: string });
+  if (errs.length) {
+    const msg = errs.map((e) => e.message).join(", ");
+    throw new FirebaseError(`Failed to validate secret versions: ${msg}`);
+  }
 }
 
-// Ensures that runtime service account has access to the secrets.
-export async function ensureAccesses(b: backend.Backend) {
+/**
+ * Ensures that runtime service account has access to the secrets.
+ */
+export async function ensureSecretAccess(b: backend.Backend) {
   const ensureAccess = async (projectId: string, secret: string, serviceAccounts: string[]) => {
     logLabeledBullet(
       "functions",
@@ -259,10 +278,9 @@ export async function ensureAccesses(b: backend.Backend) {
 
   // projectId -> secretName -> Set of service accounts
   const toEnsure: Record<string, Record<string, Set<string>>> = {};
-
   for (const e of backend.allEndpoints(b)) {
     const sa = e.serviceAccountEmail || defaultServiceAccount(e.project);
-    for (const s of e.secretEnvironmentVariables || []) {
+    for (const s of e.secretEnvironmentVariables! || []) {
       const secrets = toEnsure[s.projectId] || {};
       const serviceAccounts = secrets[s.secret] || new Set();
 

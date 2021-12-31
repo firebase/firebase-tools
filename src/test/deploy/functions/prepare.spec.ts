@@ -6,7 +6,6 @@ import * as prepare from "../../../deploy/functions/prepare";
 import * as secretManager from "../../../gcp/secretManager";
 import { defaultServiceAccount } from "../../../gcp/cloudfunctions";
 import { FirebaseError } from "../../../error";
-import { ensureAccesses, resolveVersions } from "../../../deploy/functions/prepare";
 
 describe("prepare", () => {
   const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {
@@ -132,208 +131,213 @@ describe("prepare", () => {
     });
   });
 
-  describe("prepareSecrets", () => {
-    describe("validateSecrets", () => {
-      it("passes validation with empty backend", () => {
-        const b = backend.empty();
+  describe("validateSecrets", () => {
+    const projectId = "project";
+    const secret: secretManager.Secret = { projectId, name: "MY_SECRET" };
 
-        expect(() => prepare.validateSecrets(b)).to.not.throw();
-      });
+    let secretVersionStub: sinon.SinonStub;
 
-      it("passes validation with no secret env vars", () => {
-        const b = backend.of({
-          ...ENDPOINT,
-          platform: "gcfv2",
-        });
-
-        expect(() => prepare.validateSecrets(b)).to.not.throw();
-      });
-
-      it("passes validation with a valid secret env var on a gcfv1 endpoint", () => {
-        const b = backend.of({
-          ...ENDPOINT,
-          platform: "gcfv1",
-          secretEnvironmentVariables: [
-            {
-              secret: "MY_SECRET",
-              key: "MY_SECRET",
-              projectId: "project",
-            },
-          ],
-        });
-
-        expect(() => prepare.validateSecrets(b)).to.not.throw();
-      });
-
-      it("fails validation for unsupported platform", () => {
-        const b = backend.of({
-          ...ENDPOINT,
-          platform: "gcfv2",
-          secretEnvironmentVariables: [
-            {
-              secret: "MY_SECRET",
-              key: "MY_SECRET",
-              projectId: "project",
-            },
-          ],
-        });
-
-        expect(() => prepare.validateSecrets(b)).to.throw(
-          FirebaseError,
-          /Only GCFv1 supports secret environments/
-        );
-      });
+    beforeEach(() => {
+      secretVersionStub = sinon.stub(secretManager, "getSecretVersion").rejects("Unexpected call");
     });
 
-    describe("resolveVersions", () => {
-      let secretVersionStub: sinon.SinonStub;
-
-      beforeEach(() => {
-        secretVersionStub = sinon
-          .stub(secretManager, "getSecretVersion")
-          .rejects("Unexpected call");
-      });
-
-      afterEach(() => {
-        secretVersionStub.restore();
-      });
-
-      const projectId = "project";
-      const secret: secretManager.Secret = { projectId, name: "my-secret" };
-
-      it("fills in missing version id", async () => {
-        secretVersionStub
-          .withArgs(projectId, secret.name, "latest")
-          .resolves({ secret, version: "1" });
-        const e: backend.Endpoint = {
-          ...ENDPOINT,
-          platform: "gcfv1",
-          secretEnvironmentVariables: [
-            {
-              projectId,
-              secret: secret.name,
-              key: secret.name,
-            },
-          ],
-        };
-        await resolveVersions(backend.of(e));
-        expect(e.secretEnvironmentVariables).to.be.deep.equal([
-          {
-            projectId,
-            secret: secret.name,
-            key: secret.name,
-            version: "1",
-          },
-        ]);
-      });
-
-      it("skips api call if version id already exists", async () => {
-        const e: backend.Endpoint = {
-          ...ENDPOINT,
-          platform: "gcfv1",
-          secretEnvironmentVariables: [
-            {
-              projectId,
-              secret: secret.name,
-              key: secret.name,
-              version: "1",
-            },
-          ],
-        };
-        await resolveVersions(backend.of(e));
-        expect(e.secretEnvironmentVariables).to.be.deep.equal([
-          {
-            projectId,
-            version: "1",
-            secret: secret.name,
-            key: secret.name,
-          },
-        ]);
-      });
+    afterEach(() => {
+      secretVersionStub.restore();
     });
 
-    describe("ensureAccesses", () => {
-      const project0 = "project-0";
-      const project1 = "project-1";
-      const secret0: backend.SecretEnvVar = {
-        projectId: project0,
-        key: "MY_SECRET_0",
-        secret: "MY_SECRET_0",
-        version: "2",
-      };
-      const secret1: backend.SecretEnvVar = {
-        projectId: project1,
-        key: "MY_SECRET_1",
-        secret: "MY_SECRET_1",
-        version: "2",
-      };
+    it("passes validation with empty backend", () => {
+      expect(prepare.validateSecrets(backend.empty())).to.not.be.rejected;
+    });
 
-      const e: backend.Endpoint = {
+    it("passes validation with no secret env vars", () => {
+      const b = backend.of({
         ...ENDPOINT,
-        project: project0,
+        platform: "gcfv2",
+      });
+      expect(prepare.validateSecrets(b)).to.not.be.rejected;
+    });
+
+    it("fails validation given endpoint with secrets targeting unsupported platform", () => {
+      const b = backend.of({
+        ...ENDPOINT,
+        platform: "gcfv2",
+        secretEnvironmentVariables: [
+          {
+            secret: "MY_SECRET",
+            key: "MY_SECRET",
+            projectId: "project",
+          },
+        ],
+      });
+
+      expect(prepare.validateSecrets(b)).to.be.rejectedWith(FirebaseError);
+    });
+
+    it("fails validation given non-existent secret version", () => {
+      secretVersionStub.rejects({ reason: "Secret version does not exist" });
+
+      const b = backend.of({
+        ...ENDPOINT,
         platform: "gcfv1",
-        secretEnvironmentVariables: [],
-      };
+        secretEnvironmentVariables: [
+          {
+            secret: "MY_SECRET",
+            key: "MY_SECRET",
+            projectId: "project",
+          },
+        ],
+      });
+      expect(prepare.validateSecrets(b)).to.be.rejectedWith(FirebaseError);
+    });
 
-      let secretManagerMock: sinon.SinonMock;
-
-      beforeEach(() => {
-        secretManagerMock = sinon.mock(secretManager);
+    it("fails validation given disabled secret version", () => {
+      secretVersionStub.resolves({
+        secret,
+        version: "1",
+        state: "DISABLED",
       });
 
-      afterEach(() => {
-        secretManagerMock.verify();
-        secretManagerMock.restore();
+      const b = backend.of({
+        ...ENDPOINT,
+        platform: "gcfv1",
+        secretEnvironmentVariables: [
+          {
+            secret: "MY_SECRET",
+            key: "MY_SECRET",
+            projectId: "project",
+          },
+        ],
+      });
+      expect(prepare.validateSecrets(b)).to.be.rejectedWith(FirebaseError, /DISABLED/);
+    });
+
+    it("passes validation given valid secret config", () => {
+      secretVersionStub.withArgs(projectId, secret.name, "3").resolves({
+        secret,
+        version: "3",
+        state: "ENABLED",
       });
 
-      it("ensures access to default service account", async () => {
-        const b = backend.of({
+      const b = backend.of({
+        ...ENDPOINT,
+        platform: "gcfv1",
+        secretEnvironmentVariables: [
+          {
+            secret: "MY_SECRET",
+            key: "MY_SECRET",
+            projectId: "project",
+            version: "3",
+          },
+        ],
+      });
+      expect(prepare.validateSecrets(b)).to.not.be.rejected;
+    });
+
+    it("passes validation and resolves latest version given valid secret config", async () => {
+      secretVersionStub.withArgs(projectId, secret.name, "latest").resolves({
+        secret,
+        version: "2",
+        state: "ENABLED",
+      });
+
+      const b = backend.of({
+        ...ENDPOINT,
+        platform: "gcfv1",
+        secretEnvironmentVariables: [
+          {
+            secret: "MY_SECRET",
+            key: "MY_SECRET",
+            projectId: "project",
+          },
+        ],
+      });
+
+      await prepare.validateSecrets(b);
+      expect(backend.allEndpoints(b)[0].secretEnvironmentVariables![0].version).to.equal("2");
+    });
+  });
+
+  describe("ensureSecretAccess", () => {
+    const project0 = "project-0";
+    const project1 = "project-1";
+    const secret0: backend.SecretEnvVar = {
+      projectId: project0,
+      key: "MY_SECRET_0",
+      secret: "MY_SECRET_0",
+      version: "2",
+    };
+    const secret1: backend.SecretEnvVar = {
+      projectId: project1,
+      key: "MY_SECRET_1",
+      secret: "MY_SECRET_1",
+      version: "2",
+    };
+
+    const e: backend.Endpoint = {
+      ...ENDPOINT,
+      project: project0,
+      platform: "gcfv1",
+      secretEnvironmentVariables: [],
+    };
+
+    let secretManagerMock: sinon.SinonMock;
+
+    beforeEach(() => {
+      secretManagerMock = sinon.mock(secretManager);
+    });
+
+    afterEach(() => {
+      secretManagerMock.verify();
+      secretManagerMock.restore();
+    });
+
+    it("ensures access to default service account", async () => {
+      const b = backend.of({
+        ...e,
+        secretEnvironmentVariables: [secret0],
+      });
+      secretManagerMock
+        .expects("ensureServiceAgentRole")
+        .once()
+        .withExactArgs(
+          { name: secret0.secret, projectId: project0 },
+          [defaultServiceAccount(e.project)],
+          "roles/secretmanager.secretAccessor"
+        );
+      await prepare.ensureSecretAccess(b);
+    });
+
+    it("ensures access to all secrets", async () => {
+      const b = backend.of({
+        ...e,
+        secretEnvironmentVariables: [secret0, secret1],
+      });
+      secretManagerMock.expects("ensureServiceAgentRole").twice();
+      await prepare.ensureSecretAccess(b);
+    });
+
+    it("combines service account to make one call per secret", async () => {
+      const b = backend.of(
+        {
           ...e,
           secretEnvironmentVariables: [secret0],
-        });
-        secretManagerMock
-          .expects("ensureServiceAgentRole")
-          .once()
-          .withExactArgs(
-            { name: secret0.secret, projectId: project0 },
-            [defaultServiceAccount(e.project)],
-            "roles/secretmanager.secretAccessor"
-          );
-        await ensureAccesses(b);
-      });
-
-      it("ensures access to all secrets", async () => {
-        const b = backend.of({
+        },
+        {
           ...e,
-          secretEnvironmentVariables: [secret0, secret1],
-        });
-        secretManagerMock.expects("ensureServiceAgentRole").twice();
-        await ensureAccesses(b);
-      });
-
-      it("combines service account to make one call per secret", async () => {
-        const b = backend.of(
-          {
-            ...e,
-            secretEnvironmentVariables: [secret0],
-          },
-          {
-            ...e,
-            id: "another-id",
-            serviceAccountEmail: "foo@bar.com",
-            secretEnvironmentVariables: [secret0],
-          }
+          id: "another-id",
+          serviceAccountEmail: "foo@bar.com",
+          secretEnvironmentVariables: [secret0],
+        }
+      );
+      secretManagerMock
+        .expects("ensureServiceAgentRole")
+        .once()
+        .withExactArgs(
+          { name: secret0.secret, projectId: project0 },
+          [`${e.project}@appspot.gserviceaccount.com`, "foo@bar.com"],
+          "roles/secretmanager.secretAccessor"
         );
-        secretManagerMock
-          .expects("ensureServiceAgentRole")
-          .once()
-          .withExactArgs(
-            { name: secret0.secret, projectId: project0 },
-            [`${e.project}@appspot.gserviceaccount.com`, "foo@bar.com"],
-            "roles/secretmanager.secretAccessor"
-          );
-        await ensureAccesses(b);
-      });
+      await prepare.ensureSecretAccess(b);
     });
   });
 });

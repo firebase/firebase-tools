@@ -28,9 +28,14 @@ export interface Secret {
   labels?: Record<string, string>;
 }
 
+type SecretVersionState = "STATE_UNSPECIFIED" | "ENABLED" | "DISABLED" | "DESTROYED";
+
 export interface SecretVersion {
   secret: Secret;
   version: string;
+
+  // Output-only fields
+  readonly state?: SecretVersionState;
 }
 
 interface CreateSecretRequest {
@@ -66,11 +71,14 @@ export async function getSecretVersion(
   projectId: string,
   name: string,
   version: string
-): Promise<SecretVersion> {
-  const getRes = await client.get<{ name: string }>(
+): Promise<Required<SecretVersion>> {
+  const getRes = await client.get<{ name: string; state: SecretVersionState }>(
     `projects/${projectId}/secrets/${name}/versions/${version}`
   );
-  return parseSecretVersionResourceName(getRes.body.name);
+  return {
+    ...parseSecretVersionResourceName(getRes.body.name),
+    state: getRes.body.state,
+  };
 }
 
 export async function secretExists(projectId: string, name: string): Promise<boolean> {
