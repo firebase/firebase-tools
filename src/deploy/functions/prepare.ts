@@ -258,6 +258,9 @@ async function validateSecretVersions(endpoints: backend.Endpoint[]) {
 
 /**
  * Ensures that runtime service account has access to the secrets.
+ *
+ * To avoid making more than one simultaneous call to setIamPolicy calls per secret, the function batches all
+ * service account that requires access to it.
  */
 export async function ensureSecretAccess(b: backend.Backend) {
   const ensureAccess = async (projectId: string, secret: string, serviceAccounts: string[]) => {
@@ -276,6 +279,7 @@ export async function ensureSecretAccess(b: backend.Backend) {
     );
   };
 
+  // Collect all service accounts that requires access to a secret.
   // projectId -> secretName -> Set of service accounts
   const toEnsure: Record<string, Record<string, Set<string>>> = {};
   for (const e of backend.allEndpoints(b)) {
