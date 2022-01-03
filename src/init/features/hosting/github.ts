@@ -109,7 +109,7 @@ export async function initGitHub(setup: Setup, config: any, options: any): Promi
     `Created service account ${bold(serviceAccountName)} with Firebase Hosting admin permissions.`
   );
 
-  const spinnerSecrets = ora.default(`Uploading service account secrets to repository: ${repo}`);
+  const spinnerSecrets = ora(`Uploading service account secrets to repository: ${repo}`);
   spinnerSecrets.start();
 
   const encryptedServiceAccountJSON = encryptServiceAccountJSON(serviceAccountJSON, key);
@@ -539,7 +539,7 @@ async function createServiceAccountAndKeyWithRetry(
   repo: string,
   accountId: string
 ): Promise<string> {
-  const spinnerServiceAccount = ora.default("Retrieving a service account.");
+  const spinnerServiceAccount = ora("Retrieving a service account.");
   spinnerServiceAccount.start();
 
   try {

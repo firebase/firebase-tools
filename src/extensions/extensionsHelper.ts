@@ -481,7 +481,7 @@ export async function publishExtensionVersionFromLocalSource(args: {
   const ref = `${args.publisherId}/${args.extensionId}@${extensionSpec.version}`;
   let packageUri: string;
   let objectPath = "";
-  const uploadSpinner = ora.default(" Archiving and uploading extension source code");
+  const uploadSpinner = ora(" Archiving and uploading extension source code");
   try {
     uploadSpinner.start();
     objectPath = await archiveAndUploadSource(args.rootDirectory, EXTENSIONS_BUCKET_NAME);
@@ -491,7 +491,7 @@ export async function publishExtensionVersionFromLocalSource(args: {
     uploadSpinner.fail();
     throw err;
   }
-  const publishSpinner = ora.default(`Publishing ${clc.bold(ref)}`);
+  const publishSpinner = ora(`Publishing ${clc.bold(ref)}`);
   let res;
   try {
     publishSpinner.start();
@@ -528,7 +528,7 @@ export async function createSourceFromLocation(
   let extensionRoot: string;
   let objectPath = "";
   if (!URL_REGEX.test(sourceUri)) {
-    const uploadSpinner = ora.default(" Archiving and uploading extension source code");
+    const uploadSpinner = ora(" Archiving and uploading extension source code");
     try {
       uploadSpinner.start();
       objectPath = await archiveAndUploadSource(sourceUri, EXTENSIONS_BUCKET_NAME);

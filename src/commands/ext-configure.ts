@@ -32,7 +32,7 @@ export default new Command("ext:configure <extensionInstanceId>")
   ])
   .before(checkMinRequiredVersion, "extMinVersion")
   .action(async (instanceId: string, options: any) => {
-    const spinner = ora.default(
+    const spinner = ora(
       `Configuring ${clc.bold(instanceId)}. This usually takes 3 to 5 minutes...`
     );
     try {

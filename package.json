@@ -122,7 +122,7 @@
     "morgan": "^1.10.0",
     "node-fetch": "^2.6.1",
     "open": "^6.3.0",
-    "ora": "^3.4.0",
+    "ora": "^5.4.1",
     "portfinder": "^1.0.23",
     "progress": "^2.0.3",
     "proxy-agent": "^5.0.0",

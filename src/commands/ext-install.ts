@@ -68,7 +68,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
       `Could not find the extension.yaml for ${extensionName}. Please make sure this is a valid extension and try again.`
     );
   }
-  const spinner = ora.default();
+  const spinner = ora();
   try {
     await provisioningHelper.checkProductsProvisioned(projectId, spec);
 
