@@ -527,27 +527,31 @@ function initializeRuntimeConfig(frb: FunctionsRuntimeBundle) {
   // Most recent version of Firebase Functions SDK automatically picks up locally
   // stored .runtimeconfig.json to populate the config entries.
   // However, due to a bug in some older version of the Function SDK, this process may fail.
+  //
   // See the following issues for more detail:
   //   https://github.com/firebase/firebase-tools/issues/3793
   //   https://github.com/firebase/firebase-functions/issues/877
+  //
   // As a workaround, the emulator runtime will load the contents of the .runtimeconfig.json
-  // to the CLOUD_RUNTIME_CONFIG environment variable.
+  // to the CLOUD_RUNTIME_CONFIG environment variable IF the env var is unused.
   // In the future, we will bump up the minimum version of the Firebase Functions SDK
   // required to run the functions emulator to v3.15.1 and get rid of this workaround.
-  const configPath = `${frb.cwd}/.runtimeconfig.json`;
-  try {
-    const configContent = fs.readFileSync(configPath, "utf8");
-    if (configContent) {
-      try {
-        JSON.parse(configContent.toString());
-        logDebug(`Found local functions config: ${configPath}`);
-        process.env.CLOUD_RUNTIME_CONFIG = configContent.toString();
-      } catch (e) {
-        new EmulatorLog("SYSTEM", "function-runtimeconfig-json-invalid", "").log();
+  if (!process.env.CLOUD_RUNTIME_CONFIG) {
+    const configPath = `${frb.cwd}/.runtimeconfig.json`;
+    try {
+      const configContent = fs.readFileSync(configPath, "utf8");
+      if (configContent) {
+        try {
+          JSON.parse(configContent.toString());
+          logDebug(`Found local functions config: ${configPath}`);
+          process.env.CLOUD_RUNTIME_CONFIG = configContent.toString();
+        } catch (e) {
+          new EmulatorLog("SYSTEM", "function-runtimeconfig-json-invalid", "").log();
+        }
       }
+    } catch (e) {
+      // Ignore, config is optional
     }
-  } catch (e) {
-    // Ignore, config is optional
   }
 }
 
