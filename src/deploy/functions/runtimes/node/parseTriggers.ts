@@ -10,7 +10,10 @@ import * as proto from "../../../../gcp/proto";
 import * as args from "../../args";
 import * as runtimes from "../../runtimes";
 import { STORAGE_V2_EVENTS } from "../../eventTypes";
-import { parseSecretVersionResourceName } from "../../../../gcp/secretManager";
+import {
+  parseSecretResourceName,
+  parseSecretVersionResourceName,
+} from "../../../../gcp/secretManager";
 
 const TRIGGER_PARSER = path.resolve(__dirname, "./triggerParser.js");
 
@@ -226,15 +229,19 @@ export function addResourcesToBackend(
       const secretEnvs: backend.SecretEnvVar[] = [];
       for (const secret of annotation.secrets) {
         if (secret.includes("/")) {
-          // Assume full secret resource name
+          // Assume full secret resource name, either a secret or a secret version name.
           //   (e.g. projects/my-project/secrets/MY_API_KEY/versions/2)
-          const secretVersion = parseSecretVersionResourceName(secret);
-          secretEnvs.push({
-            key: secretVersion.secret.name,
-            secret: secretVersion.secret.name,
-            projectId: secretVersion.secret.projectId,
-            version: secretVersion.version,
-          });
+          const parsedSecret = parseSecretResourceName(secret);
+          const secretEnv: backend.SecretEnvVar = {
+            key: parsedSecret.name,
+            secret: parsedSecret.name,
+            projectId: parsedSecret.projectId,
+          };
+          if (secret.includes("/versions/")) {
+            const secretVersion = parseSecretVersionResourceName(secret);
+            secretEnv.version = secretVersion.version;
+          }
+          secretEnvs.push(secretEnv);
         } else {
           // Assume secret resource id (e.g. MY_API_KEY[@VERSION]).
           const [key, version] = secret.split("@");
