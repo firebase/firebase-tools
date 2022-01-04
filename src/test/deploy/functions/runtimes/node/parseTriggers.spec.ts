@@ -289,4 +289,23 @@ describe("addResourcesToBackend", () => {
 
     expect(result).to.deep.equal(expected);
   });
+
+  it("should preserve empty vpc connector setting", () => {
+    const trigger: parseTriggers.TriggerAnnotation = {
+      ...BASIC_TRIGGER,
+      httpsTrigger: {},
+      vpcConnector: "",
+    };
+
+    const result = backend.empty();
+    parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
+
+    const expected: backend.Backend = backend.of({
+      ...BASIC_ENDPOINT,
+      httpsTrigger: {},
+      vpcConnector: "",
+    });
+
+    expect(result).to.deep.equal(expected);
+  });
 });
