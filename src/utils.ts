@@ -217,9 +217,7 @@ export type PromiseResult<T> = PromiseFulfilledResult<T> | PromiseRejectedResult
  * TODO: delete once min Node version is 12.9.0 or greater
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function allSettled<T extends any>(
-  promises: Array<Promise<T>>
-): Promise<Array<PromiseResult<T>>> {
+export function allSettled<T>(promises: Array<Promise<T>>): Promise<Array<PromiseResult<T>>> {
   if (!promises.length) {
     return Promise.resolve([]);
   }
@@ -446,6 +444,9 @@ export function tryParse(value: any) {
   }
 }
 
+/**
+ *
+ */
 export function setupLoggers() {
   if (process.env.DEBUG) {
     logger.add(
@@ -494,7 +495,7 @@ export async function promiseWithSpinner<T>(action: () => Promise<T>, message: s
  *
  * Inspired by https://github.com/isaacs/server-destroy/blob/master/index.js
  *
- * @returns a function that destroys all connections and closes the server
+ * @return a function that destroys all connections and closes the server
  */
 export function createDestroyer(server: http.Server): () => Promise<void> {
   const connections = new Set<Socket>();
@@ -570,6 +571,9 @@ export function assertDefined<T>(val: T, message?: string): asserts val is NonNu
   }
 }
 
+/**
+ *
+ */
 export function assertIsString(val: any, message?: string): asserts val is string {
   if (typeof val !== "string") {
     throw new AssertionError({
@@ -578,6 +582,9 @@ export function assertIsString(val: any, message?: string): asserts val is strin
   }
 }
 
+/**
+ *
+ */
 export function assertIsNumber(val: any, message?: string): asserts val is number {
   if (typeof val !== "number") {
     throw new AssertionError({
@@ -586,6 +593,9 @@ export function assertIsNumber(val: any, message?: string): asserts val is numbe
   }
 }
 
+/**
+ *
+ */
 export function assertIsStringOrUndefined(
   val: any,
   message?: string
