@@ -113,10 +113,8 @@ export class RulesDeploy {
   async createRulesets(service: RulesetServiceType): Promise<string[]> {
     const createdRulesetNames: string[] = [];
 
-    const {
-      latestName: latestRulesetName,
-      latestContent: latestRulesetContent,
-    } = await this.getCurrentRules(service);
+    const { latestName: latestRulesetName, latestContent: latestRulesetContent } =
+      await this.getCurrentRules(service);
 
     // TODO: Make this into a more useful helper method.
     // Gather the files to be uploaded.

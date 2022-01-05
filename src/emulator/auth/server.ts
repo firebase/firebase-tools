@@ -513,12 +513,14 @@ function toExegesisController(
 
 function wrapValidateBody(pluginContext: ExegesisPluginContext): void {
   // Apply fixes to body for Google REST API mapping compatibility.
-  const op = ((pluginContext as unknown) as {
-    _operation: {
-      validateBody?: ValidatorFunction;
-      _authEmulatorValidateBodyWrapped?: true;
-    };
-  })._operation;
+  const op = (
+    pluginContext as unknown as {
+      _operation: {
+        validateBody?: ValidatorFunction;
+        _authEmulatorValidateBodyWrapped?: true;
+      };
+    }
+  )._operation;
   if (op.validateBody && !op._authEmulatorValidateBodyWrapped) {
     const validateBody = op.validateBody.bind(op);
     op.validateBody = (body) => {
