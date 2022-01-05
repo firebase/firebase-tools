@@ -30,7 +30,9 @@ module.exports = new Command("ext:export")
     // set any secrets to latest version,
     // and strip project IDs from the param values.
     const have = await Promise.all(
-      (await planner.have(projectId)).map(async (i) => {
+      (
+        await planner.have(projectId)
+      ).map(async (i) => {
         const subbed = await setSecretParamsToLatest(i);
         return parameterizeProject(projectId, projectNumber, subbed);
       })

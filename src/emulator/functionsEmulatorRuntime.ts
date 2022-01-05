@@ -1045,9 +1045,8 @@ async function initializeRuntime(
     require("../deploy/functions/runtimes/node/extractTriggers")(triggerModule, parsedDefinitions);
   }
 
-  const triggerDefinitions: EmulatedTriggerDefinition[] = emulatedFunctionsByRegion(
-    parsedDefinitions
-  );
+  const triggerDefinitions: EmulatedTriggerDefinition[] =
+    emulatedFunctionsByRegion(parsedDefinitions);
 
   const triggers = getEmulatedTriggersFromDefinitions(triggerDefinitions, triggerModule);
 
