@@ -202,7 +202,7 @@
     "nock": "^13.0.5",
     "nyc": "^15.1.0",
     "openapi-merge": "^1.0.23",
-    "prettier": "^2.2.1",
+    "prettier": "^2.5.1",
     "proxy": "^1.0.2",
     "puppeteer": "^9.0.0",
     "sinon": "^9.2.3",

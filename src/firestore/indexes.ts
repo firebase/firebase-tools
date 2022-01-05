@@ -175,22 +175,20 @@ export class FirestoreIndexes {
       return [];
     }
 
-    return indexes.map(
-      (index: any): API.Index => {
-        // Ignore any fields that point at the document ID, as those are implied
-        // in all indexes.
-        const fields = index.fields.filter((field: API.IndexField) => {
-          return field.fieldPath !== "__name__";
-        });
+    return indexes.map((index: any): API.Index => {
+      // Ignore any fields that point at the document ID, as those are implied
+      // in all indexes.
+      const fields = index.fields.filter((field: API.IndexField) => {
+        return field.fieldPath !== "__name__";
+      });
 
-        return {
-          name: index.name,
-          state: index.state,
-          queryScope: index.queryScope,
-          fields,
-        };
-      }
-    );
+      return {
+        name: index.name,
+        state: index.state,
+        queryScope: index.queryScope,
+        fields,
+      };
+    });
   }
 
   /**

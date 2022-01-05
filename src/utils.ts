@@ -527,9 +527,10 @@ export function createDestroyer(server: http.Server): () => Promise<void> {
  * @return the formatted date.
  */
 export function datetimeString(d: Date): string {
-  const day = `${d.getFullYear()}-${(d.getMonth() + 1)
+  const day = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, "0")}-${d
+    .getDate()
     .toString()
-    .padStart(2, "0")}-${d.getDate().toString().padStart(2, "0")}`;
+    .padStart(2, "0")}`;
   const time = `${d.getHours().toString().padStart(2, "0")}:${d
     .getMinutes()
     .toString()

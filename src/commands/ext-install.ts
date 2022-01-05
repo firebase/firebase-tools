@@ -53,15 +53,8 @@ interface InstallExtensionOptions {
 }
 
 async function installExtension(options: InstallExtensionOptions): Promise<void> {
-  const {
-    projectId,
-    extensionName,
-    source,
-    extVersion,
-    paramsEnvPath,
-    nonInteractive,
-    force,
-  } = options;
+  const { projectId, extensionName, source, extVersion, paramsEnvPath, nonInteractive, force } =
+    options;
   const spec = source?.spec || extVersion?.spec;
   if (!spec) {
     throw new FirebaseError(
