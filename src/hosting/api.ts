@@ -182,6 +182,26 @@ export type Site = {
   labels: { [key: string]: string };
 };
 
+export type Domain = {
+  // The site name of the association.
+  site: string;
+
+  // The domain name of the association
+  domainName: string;
+
+  domainRedirect: { Type: string; domainName: string };
+
+  readonly provisioning: {
+    certStatus: string;
+    dnsStatus: string;
+    expectedIps: Array<string>;
+    discoveredIps: Array<string>;
+    dnsFetchTime: string;
+  };
+
+  readonly status: string;
+};
+
 /**
  * normalizeName normalizes a name given to it. Most useful for normalizing
  * user provided names. This removes any `/`, ':', '_', or '#' characters and
@@ -454,6 +474,115 @@ export async function updateSite(project: string, site: Site, fields: string[]):
  */
 export async function deleteSite(project: string, site: string): Promise<void> {
   await apiClient.delete<void>(`/projects/${project}/sites/${site}`);
+}
+
+/**
+ * List the Hosting domains for a given site.
+ * @param project project name or number.
+ * @param site site id.
+ * @return list of Domains.
+ */
+export async function listDomains(project: string, site: string): Promise<Domain[]> {
+  const domains: Domain[] = [];
+  let nextPageToken = "";
+  for (;;) {
+    try {
+      const res = await apiClient.get<{ domains: Domain[]; nextPageToken?: string }>(
+        `/projects/${project}/sites/${site}/domains`,
+        { queryParams: { pageToken: nextPageToken, pageSize: 10 } }
+      );
+      const c = res.body?.domains;
+      if (c) {
+        domains.push(...c);
+      }
+      nextPageToken = res.body?.nextPageToken || "";
+      if (!nextPageToken) {
+        return domains;
+      }
+    } catch (e) {
+      if (e.status === 404) {
+        throw new FirebaseError(`could not find domains for project "${project}"`, {
+          original: e,
+        });
+      }
+      throw e;
+    }
+  }
+}
+
+/**
+ * Get a Hosting domain.
+ * @param project project name or number.
+ * @param site site name.
+ * @param domain domain name.
+ * @return site information.
+ */
+export async function getDomain(project: string, site: string, domain: string): Promise<Domain> {
+  try {
+    const res = await apiClient.get<Domain>(`/projects/${project}/sites/${site}/domains/${domain}`);
+    return res.body;
+  } catch (e) {
+    if (e.status === 404) {
+      throw new FirebaseError(
+        `could not find domain "${domain}" for site "${site} and project "${project}"`,
+        {
+          original: e,
+        }
+      );
+    }
+    throw e;
+  }
+}
+
+/**
+ * Create a Hosting domain.
+ * @param project project name or number.
+ * @param site the site name.
+ * @param domain the domain name to create.
+ * @return site information.
+ */
+export async function createDomain(project: string, site: string, domain: string): Promise<Domain> {
+  const res = await apiClient.post<{}, Domain>(
+    `/projects/${project}/sites/${site}/domains`,
+    { site: site, domain_name: domain },
+    {}
+  );
+  return res.body;
+}
+
+/**
+ * Update a Hosting domain.
+ * @param project project name or number.
+ * @param site the site .
+ * @param domain the domain to update.
+ * @param fields the fields to update.
+ * @return site information.
+ */
+export async function updateDomain(
+  project: string,
+  site: string,
+  domain: Domain,
+  fields: string[]
+): Promise<Domain> {
+  const res = await apiClient.patch<Domain, Domain>(
+    `/projects/${project}/sites/${site}/domains/${domain.domainName}`,
+    domain,
+    {
+      queryParams: { updateMask: fields.join(",") },
+    }
+  );
+  return res.body;
+}
+
+/**
+ * Delete a Hosting domain.
+ * @param project project name or number.
+ * @param site the site .
+ * @param domain the domain to delete.
+ * @return nothing.
+ */
+export async function deleteDomain(project: string, site: string, domain: string): Promise<void> {
+  await apiClient.delete<void>(`/projects/${project}/sites/${site}/domains/${domain}`);
 }
 
 /**

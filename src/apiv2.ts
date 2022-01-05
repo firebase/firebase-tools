@@ -369,6 +369,9 @@ export class Client {
       // and unfortuantely res.length is unreliable (many requests return zero).
       if (!text.length) {
         body = (undefined as unknown) as ResT;
+      }
+      if (res.status === 404) {
+        body = ((await res.text()) as unknown) as ResT;
       } else {
         body = JSON.parse(text) as ResT;
       }
