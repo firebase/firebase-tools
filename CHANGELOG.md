@@ -1,2 +1,3 @@
 - Preserve empty vpc connector setting on function deploy. (#3973)
 - Upgrades google-auth-library to 7.x.x, enabling support for workload identity federation
+- Updates the underlying request library in Hosting deploys and uses project-scoped URLs. (#2558)
