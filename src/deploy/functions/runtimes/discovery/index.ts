@@ -29,7 +29,7 @@ export function yamlToBackend(
     throw new FirebaseError(
       "It seems you are using a newer SDK than this version of the CLI can handle. Please update your CLI with `npm install -g firebase-tools`"
     );
-  } catch (err) {
+  } catch (err: any) {
     throw new FirebaseError("Failed to parse backend specification", { children: [err] });
   }
 }
@@ -42,7 +42,7 @@ export async function detectFromYaml(
   let text: string;
   try {
     text = await exports.readFileAsync(path.join(directory, "backend.yaml"), "utf8");
-  } catch (err) {
+  } catch (err: any) {
     if (err.code === "ENOENT") {
       logger.debug("Could not find backend.yaml. Must use http discovery");
     } else {
@@ -74,7 +74,7 @@ export async function detectFromPort(
     try {
       res = await Promise.race([fetch(`http://localhost:${port}/backend.yaml`), timedOut]);
       break;
-    } catch (err) {
+    } catch (err: any) {
       // Allow us to wait until the server is listening.
       if (err?.code === "ECONNREFUSED") {
         continue;
@@ -89,7 +89,7 @@ export async function detectFromPort(
   let parsed: any;
   try {
     parsed = yaml.load(text);
-  } catch (err) {
+  } catch (err: any) {
     throw new FirebaseError("Failed to parse backend specification", { children: [err] });
   }
 

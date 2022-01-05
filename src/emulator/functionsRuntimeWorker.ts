@@ -126,7 +126,7 @@ export class RuntimeWorker {
       return Promise.resolve();
     }
 
-    return new Promise((res) => {
+    return new Promise<void>((res) => {
       const listener = () => {
         this.stateEvents.removeListener(RuntimeWorkerState.IDLE, listener);
         this.stateEvents.removeListener(RuntimeWorkerState.FINISHED, listener);

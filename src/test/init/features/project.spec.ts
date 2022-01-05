@@ -115,7 +115,7 @@ describe("project", () => {
         let err;
         try {
           await doSetup(setup, emptyConfig, options);
-        } catch (e) {
+        } catch (e: any) {
           err = e;
         }
 
@@ -159,7 +159,7 @@ describe("project", () => {
         let err;
         try {
           await doSetup(setup, emptyConfig, options);
-        } catch (e) {
+        } catch (e: any) {
           err = e;
         }
 

@@ -45,7 +45,7 @@ export async function listEntries(
       origin: api.cloudloggingOrigin,
     });
     return result.body.entries;
-  } catch (err) {
+  } catch (err: any) {
     throw new FirebaseError("Failed to retrieve log entries from Google Cloud.", {
       original: err,
     });

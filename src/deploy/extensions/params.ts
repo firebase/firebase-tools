@@ -37,7 +37,7 @@ export function readParams(args: {
       logger.debug(`Successfully read params from ${fileToCheck}`);
       noFilesFound = false;
       Object.assign(combinedParams, params);
-    } catch (err) {
+    } catch (err: any) {
       logger.debug(`${err}`);
     }
   }

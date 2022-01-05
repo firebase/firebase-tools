@@ -45,7 +45,7 @@ export class AuthCloudFunction {
     let err: Error | undefined;
     try {
       res = await c.post(this.multicastPath, multicastEventBody);
-    } catch (e) {
+    } catch (e: any) {
       err = e;
     }
 

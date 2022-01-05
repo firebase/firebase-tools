@@ -41,7 +41,7 @@ module.exports = new Command("ext")
       await requirePermissions(options, ["firebaseextensions.instances.list"]);
       const projectId = needProjectId(options);
       return listExtensions(projectId);
-    } catch (err) {
+    } catch (err: any) {
       return;
     }
   });

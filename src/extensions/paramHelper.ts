@@ -208,7 +208,7 @@ export function getParamsFromFile(args: {
   try {
     envParams = readEnvFile(args.paramsEnvPath);
     track("Extension Env File", "Present");
-  } catch (err) {
+  } catch (err: any) {
     track("Extension Env File", "Invalid");
     throw new FirebaseError(`Error reading env file: ${err.message}\n`, { original: err });
   }
