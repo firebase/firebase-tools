@@ -1,9 +1,9 @@
 import * as clc from "cli-color";
 
 import { Options } from "../../options";
-import { ensureCloudBuildEnabled } from "./ensureCloudBuildEnabled";
+import { ensureCloudBuildEnabled, ensureSecretAccess, maybeEnableAR } from "./ensure";
 import { functionMatchesAnyGroup, getFilterGroups } from "./functionsDeployHelper";
-import { logBullet, logLabeledBullet, logLabeledSuccess } from "../../utils";
+import { logBullet } from "../../utils";
 import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload";
 import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import * as args from "./args";
@@ -20,9 +20,6 @@ import * as utils from "../../utils";
 import { logger } from "../../logger";
 import { ensureTriggerRegions } from "./triggerRegionHelper";
 import { ensureServiceAgentRoles } from "./checkIam";
-import { ensureServiceAgentRole, getSecretVersion } from "../../gcp/secretManager";
-import { defaultServiceAccount } from "../../gcp/cloudfunctions";
-import { FirebaseError } from "../../error";
 
 function hasUserConfig(config: Record<string, unknown>): boolean {
   // "firebase" key is always going to exist in runtime config.
@@ -32,22 +29,6 @@ function hasUserConfig(config: Record<string, unknown>): boolean {
 
 function hasDotenv(opts: functionsEnv.UserEnvsOpts): boolean {
   return previews.dotenv && functionsEnv.hasUserEnvs(opts);
-}
-
-// We previously force-enabled AR. We want to wait on this to see if we can give
-// an upgrade warning in the future. If it already is enabled though we want to
-// remember this and still use the cleaner if necessary.
-async function maybeEnableAR(projectId: string): Promise<boolean> {
-  if (previews.artifactregistry) {
-    return ensureApiEnabled.check(
-      projectId,
-      "artifactregistry.googleapis.com",
-      "functions",
-      /* silent= */ true
-    );
-  }
-  await ensureApiEnabled.ensure(projectId, "artifactregistry.googleapis.com", "functions");
-  return true;
 }
 
 export async function prepare(
@@ -182,126 +163,8 @@ export async function prepare(
   await promptForFailurePolicies(options, matchingBackend, haveBackend);
   await promptForMinInstances(options, matchingBackend, haveBackend);
   await backend.checkAvailability(context, wantBackend);
-  await validateSecrets(matchingBackend);
+  await validate.secretsAreValid(matchingBackend);
   await ensureSecretAccess(matchingBackend);
-}
-
-/**
- * Validate secret environment variables setting, if any.
- * A bad secret configuration can lead to a significant delay in function deploys.
- *
- * If validation fails for any secret config, throws a FirebaseError.
- */
-export async function validateSecrets(b: backend.Backend) {
-  const endpoints = backend
-    .allEndpoints(b)
-    .filter((e) => e.secretEnvironmentVariables && e.secretEnvironmentVariables.length > 0);
-  validatePlatformTargets(endpoints);
-  await validateSecretVersions(endpoints);
-}
-
-/**
- * Ensures that all endpoints specifying secret environment variables target platform that supports the feature.
- */
-function validatePlatformTargets(endpoints: backend.Endpoint[]) {
-  const supportedPlatforms = ["gcfv1"];
-  const unsupported = endpoints.filter((e) => !supportedPlatforms.includes(e.platform));
-  if (unsupported.length > 0) {
-    const errs = unsupported.map((e) => `${e.id}[platform=${e.platform}]`);
-    throw new FirebaseError(
-      `Tried to set secret environment variables on ${errs.join(", ")}. ` +
-        `Only ${supportedPlatforms.join(", ")} support secret environments.`
-    );
-  }
-}
-
-/**
- * Validate each secret version referenced in target endpoints.
- *
- * A secret version is valid if:
- *   1) It exists.
- *   2) It's in state "enabled".
- */
-async function validateSecretVersions(endpoints: backend.Endpoint[]) {
-  const validate = async (s: backend.SecretEnvVar) => {
-    const sv = await getSecretVersion(s.projectId, s.secret, s.version || "latest");
-    if (s.version == null) {
-      logLabeledSuccess(
-        "functions",
-        `resolved secret version of ${clc.bold(s.secret)} to ${clc.bold(sv.version)}.`
-      );
-      s.version = sv.version;
-    }
-    if (sv.state !== "ENABLED") {
-      throw new FirebaseError(
-        `Expected secret ${s.secret}@${s.version} to be in state ENABLED not ${sv.state}.`
-      );
-    }
-  };
-
-  const validations: Promise<void>[] = [];
-  for (const e of endpoints) {
-    for (const s of e.secretEnvironmentVariables! || []) {
-      validations.push(validate(s));
-    }
-  }
-  const results = await utils.allSettled(validations);
-
-  const errs: { message: string }[] = results
-    .filter((r) => r.status === "rejected")
-    .map((r) => (r as utils.PromiseRejectedResult).reason as { message: string });
-  if (errs.length) {
-    const msg = errs.map((e) => e.message).join(", ");
-    throw new FirebaseError(`Failed to validate secret versions: ${msg}`);
-  }
-}
-
-/**
- * Ensures that runtime service account has access to the secrets.
- *
- * To avoid making more than one simultaneous call to setIamPolicy calls per secret, the function batches all
- * service account that requires access to it.
- */
-export async function ensureSecretAccess(b: backend.Backend) {
-  const ensureAccess = async (projectId: string, secret: string, serviceAccounts: string[]) => {
-    logLabeledBullet(
-      "functions",
-      `ensuring ${clc.bold(serviceAccounts.join(", "))} access to ${clc.bold(secret)}.`
-    );
-    await ensureServiceAgentRole(
-      { name: secret, projectId },
-      serviceAccounts,
-      "roles/secretmanager.secretAccessor"
-    );
-    logLabeledSuccess(
-      "functions",
-      `ensured ${clc.bold(serviceAccounts.join(", "))} access to ${clc.bold(secret)}.`
-    );
-  };
-
-  // Collect all service accounts that requires access to a secret.
-  // projectId -> secretName -> Set of service accounts
-  const toEnsure: Record<string, Record<string, Set<string>>> = {};
-  for (const e of backend.allEndpoints(b)) {
-    const sa = e.serviceAccountEmail || defaultServiceAccount(e.project);
-    for (const s of e.secretEnvironmentVariables! || []) {
-      const secrets = toEnsure[s.projectId] || {};
-      const serviceAccounts = secrets[s.secret] || new Set();
-
-      serviceAccounts.add(sa);
-
-      secrets[s.secret] = serviceAccounts;
-      toEnsure[s.projectId] = secrets;
-    }
-  }
-
-  const ensure = [];
-  for (const [projectId, secrets] of Object.entries(toEnsure)) {
-    for (const [secret, serviceAccounts] of Object.entries(secrets)) {
-      ensure.push(ensureAccess(projectId, secret, Array.from(serviceAccounts)));
-    }
-  }
-  await Promise.all(ensure);
 }
 
 /**
