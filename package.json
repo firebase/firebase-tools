@@ -210,7 +210,7 @@
     "source-map-support": "^0.5.9",
     "supertest": "^3.3.0",
     "swagger2openapi": "^6.0.3",
-    "ts-node": "^9.1.1",
+    "ts-node": "^10.4.0",
     "typescript": "^4.5.4",
     "typescript-json-schema": "^0.50.1"
   }
