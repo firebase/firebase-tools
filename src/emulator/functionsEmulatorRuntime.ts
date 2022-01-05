@@ -1,3 +1,5 @@
+import * as fs from "fs";
+
 import { EmulatorLog } from "./types";
 import { CloudFunction, DeploymentOptions, https } from "firebase-functions";
 import {
@@ -137,7 +139,7 @@ class Proxied<T extends ProxyTarget> {
 
   proxy: T;
   private anyValue?: (target: T, key: string) => any;
-  private appliedValue?: () => any;
+  private appliedValue?: (...args: any[]) => any;
   private rewrites: {
     [key: string]: (target: T, key: string) => any;
   } = {};
@@ -521,6 +523,38 @@ function getDefaultConfig(): any {
   return JSON.parse(process.env.FIREBASE_CONFIG || "{}");
 }
 
+function initializeRuntimeConfig(frb: FunctionsRuntimeBundle) {
+  // Most recent version of Firebase Functions SDK automatically picks up locally
+  // stored .runtimeconfig.json to populate the config entries.
+  // However, due to a bug in some older version of the Function SDK, this process may fail.
+  //
+  // See the following issues for more detail:
+  //   https://github.com/firebase/firebase-tools/issues/3793
+  //   https://github.com/firebase/firebase-functions/issues/877
+  //
+  // As a workaround, the emulator runtime will load the contents of the .runtimeconfig.json
+  // to the CLOUD_RUNTIME_CONFIG environment variable IF the env var is unused.
+  // In the future, we will bump up the minimum version of the Firebase Functions SDK
+  // required to run the functions emulator to v3.15.1 and get rid of this workaround.
+  if (!process.env.CLOUD_RUNTIME_CONFIG) {
+    const configPath = `${frb.cwd}/.runtimeconfig.json`;
+    try {
+      const configContent = fs.readFileSync(configPath, "utf8");
+      if (configContent) {
+        try {
+          JSON.parse(configContent.toString());
+          logDebug(`Found local functions config: ${configPath}`);
+          process.env.CLOUD_RUNTIME_CONFIG = configContent.toString();
+        } catch (e) {
+          new EmulatorLog("SYSTEM", "function-runtimeconfig-json-invalid", "").log();
+        }
+      }
+    } catch (e) {
+      // Ignore, config is optional
+    }
+  }
+}
+
 /**
  * This stub is the most important and one of the only non-optional stubs.This feature redirects
  * writes from the admin SDK back into emulated resources.
@@ -709,18 +743,6 @@ async function initializeFunctionsConfigHelper(frb: FunctionsRuntimeBundle): Pro
   logDebug("firebase-functions has been stubbed.", {
     functionsResolution,
   });
-}
-
-/**
- * Setup predefined environment variables for Node.js 10 and subsequent runtimes
- * https://cloud.google.com/functions/docs/env-var
- */
-function setNode10EnvVars(target: string, mode: "event" | "http", service: string) {
-  process.env.FUNCTION_TARGET = target;
-  process.env.FUNCTION_SIGNATURE_TYPE = mode;
-  process.env.K_SERVICE = service;
-  process.env.K_REVISION = "1";
-  process.env.PORT = "80";
 }
 
 /*
@@ -991,6 +1013,7 @@ async function initializeRuntime(
     return;
   }
 
+  initializeRuntimeConfig(frb);
   initializeNetworkFiltering(frb);
   await initializeFunctionsConfigHelper(frb);
   await initializeFirebaseFunctionsStubs(frb);
