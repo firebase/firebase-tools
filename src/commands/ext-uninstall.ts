@@ -111,7 +111,7 @@ export default new Command("ext:uninstall <extensionInstanceId>")
       }
     }
 
-    const spinner = ora.default(
+    const spinner = ora(
       ` ${clc.green.bold(logPrefix)}: uninstalling ${clc.bold(
         instanceId
       )}. This usually takes 1 to 2 minutes...`
