@@ -154,7 +154,7 @@ export async function createOrReplaceJob(job: Job): Promise<any> {
     let newJob;
     try {
       newJob = await createJob(job);
-    } catch (err) {
+    } catch (err: any) {
       // Cloud resource location is not set so we error here and exit.
       if (err?.context?.response?.statusCode === 404) {
         throw new FirebaseError(

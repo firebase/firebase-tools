@@ -73,7 +73,7 @@ export async function getDatabaseInstanceDetails(
     );
 
     return convertDatabaseInstance(response.body);
-  } catch (err) {
+  } catch (err: any) {
     logger.debug(err.message);
     const emulatorHost = process.env[Constants.FIREBASE_DATABASE_EMULATOR_HOST];
     if (emulatorHost) {
@@ -126,7 +126,7 @@ export async function createInstance(
     );
 
     return convertDatabaseInstance(response.body);
-  } catch (err) {
+  } catch (err: any) {
     logger.debug(err.message);
     return utils.reject(
       `Failed to create instance: ${instanceName}. See firebase-debug.log for more details.`,
@@ -171,7 +171,7 @@ export async function checkInstanceNameAvailable(
     return {
       available: true,
     };
-  } catch (err) {
+  } catch (err: any) {
     logger.debug(
       `Invalid Realtime Database instance name: ${instanceName}.${
         err.message ? " " + err.message : ""
@@ -256,7 +256,7 @@ export async function listDatabaseInstances(
     } while (nextPageToken);
 
     return instances;
-  } catch (err) {
+  } catch (err: any) {
     logger.debug(err.message);
     throw new FirebaseError(
       `Failed to list Firebase Realtime Database instances${

@@ -91,7 +91,7 @@ function sendAuthEventViaIframeRelay(authEvent, cb) {
           }, '*');
           sent = true;
         }
-      } catch (e) {
+      } catch (e: any) {
         // The frame does not have the same origin
       }
     }

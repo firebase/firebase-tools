@@ -110,7 +110,7 @@ export async function createIosApp(
       operationResourceName: response.body.name /* LRO resource name */,
     });
     return appData;
-  } catch (err) {
+  } catch (err: any) {
     logger.debug(err.message);
     throw new FirebaseError(
       `Failed to create iOS app for project ${projectId}. See firebase-debug.log for more info.`,
@@ -145,7 +145,7 @@ export async function createAndroidApp(
       operationResourceName: response.body.name /* LRO resource name */,
     });
     return appData;
-  } catch (err) {
+  } catch (err: any) {
     logger.debug(err.message);
     throw new FirebaseError(
       `Failed to create Android app for project ${projectId}. See firebase-debug.log for more info.`,
@@ -183,7 +183,7 @@ export async function createWebApp(
       operationResourceName: response.body.name /* LRO resource name */,
     });
     return appData;
-  } catch (err) {
+  } catch (err: any) {
     logger.debug(err.message);
     throw new FirebaseError(
       `Failed to create Web app for project ${projectId}. See firebase-debug.log for more info.`,
@@ -254,7 +254,7 @@ export async function listFirebaseApps(
     } while (nextPageToken);
 
     return apps;
-  } catch (err) {
+  } catch (err: any) {
     logger.debug(err.message);
     throw new FirebaseError(
       `Failed to list Firebase ${platform === AppPlatform.ANY ? "" : platform + " "}` +
@@ -330,7 +330,7 @@ export async function getAppConfig(appId: string, platform: AppPlatform): Promis
       origin: api.firebaseApiOrigin,
       timeout: TIMEOUT_MILLIS,
     });
-  } catch (err) {
+  } catch (err: any) {
     logger.debug(err.message);
     throw new FirebaseError(
       `Failed to get ${platform} app configuration. See firebase-debug.log for more info.`,
@@ -368,7 +368,7 @@ export async function listAppAndroidSha(
     }
 
     return shaCertificates;
-  } catch (err) {
+  } catch (err: any) {
     logger.debug(err.message);
     throw new FirebaseError(
       `Failed to list SHA certificate hashes for Android app ${appId}.` +
@@ -408,7 +408,7 @@ export async function createAppAndroidSha(
     const shaCertificate = response.body;
 
     return shaCertificate;
-  } catch (err) {
+  } catch (err: any) {
     logger.debug(err.message);
     throw new FirebaseError(
       `Failed to create SHA certificate hash for Android app ${appId}. See firebase-debug.log for more info.`,
@@ -442,7 +442,7 @@ export async function deleteAppAndroidSha(
         data: null,
       }
     );
-  } catch (err) {
+  } catch (err: any) {
     logger.debug(err.message);
     throw new FirebaseError(
       `Failed to delete SHA certificate hash for Android app ${appId}. See firebase-debug.log for more info.`,

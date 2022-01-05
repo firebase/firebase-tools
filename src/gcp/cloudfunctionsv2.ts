@@ -236,7 +236,7 @@ export async function generateUploadUrl(
       `projects/${projectId}/locations/${location}/functions:generateUploadUrl`
     );
     return res.body;
-  } catch (err) {
+  } catch (err: any) {
     logger.info(
       "\n\nThere was an issue deploying your functions. Verify that your project has a Google App Engine instance setup at https://console.cloud.google.com/appengine and try again. If this issue persists, please contact support."
     );
@@ -261,7 +261,7 @@ export async function createFunction(
       { queryParams: { functionId } }
     );
     return res.body;
-  } catch (err) {
+  } catch (err: any) {
     throw functionsOpLogReject(cloudFunction.name, "create", err);
   }
 }
@@ -343,7 +343,7 @@ export async function updateFunction(
       { queryParams }
     );
     return res.body;
-  } catch (err) {
+  } catch (err: any) {
     throw functionsOpLogReject(cloudFunction.name, "update", err);
   }
 }
@@ -356,7 +356,7 @@ export async function deleteFunction(cloudFunction: string): Promise<Operation> 
   try {
     const res = await client.delete<Operation>(cloudFunction);
     return res.body;
-  } catch (err) {
+  } catch (err: any) {
     throw functionsOpLogReject(cloudFunction, "update", err);
   }
 }

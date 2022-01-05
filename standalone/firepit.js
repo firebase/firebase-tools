@@ -145,7 +145,7 @@ const runtime = require("./runtime");
 let config;
 try {
   config = require("./config");
-} catch (err) {
+} catch (err: any) {
   console.warn("Invalid Firepit configuration, this may be a broken build.");
   process.exit(2);
 }
@@ -684,7 +684,7 @@ node "${FindTool("npm/bin/npm-cli")[0]}" ${npmArgs.join(" ")}  %*`,
 
   try {
     shell.mkdir("-p", runtimeBinsPath);
-  } catch (err) {
+  } catch (err: any) {
     debug(err);
   }
 
@@ -693,7 +693,7 @@ node "${FindTool("npm/bin/npm-cli")[0]}" ${npmArgs.join(" ")}  %*`,
       const runtimeBinPath = path.join(runtimeBinsPath, filename);
       try {
         shell.rm("-rf", runtimeBinPath);
-      } catch (err) {
+      } catch (err: any) {
         debug(err);
       }
       fs.writeFileSync(runtimeBinPath, runtimeBins[filename]);
@@ -840,7 +840,7 @@ function uninstallLegacyFirepit() {
     installedFirebaseToolsPackage = JSON.parse(
       shell.cat(installedFirebaseToolsPackagePath)
     );
-  } catch (err) {
+  } catch (err: any) {
     debug("No existing firebase-tools install found.");
   }
 

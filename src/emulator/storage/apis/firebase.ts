@@ -508,7 +508,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
             bufs.push(data);
           });
 
-          await new Promise((resolve) => {
+          await new Promise<void>((resolve) => {
             req.on("end", () => {
               req.body = Buffer.concat(bufs);
               resolve();

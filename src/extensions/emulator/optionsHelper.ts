@@ -115,7 +115,7 @@ function readTestConfigFile(testConfigPath: string): { [key: string]: any } {
   try {
     const buf = fs.readFileSync(path.resolve(testConfigPath));
     return JSON.parse(buf.toString());
-  } catch (err) {
+  } catch (err: any) {
     throw new FirebaseError(`Error reading --test-config file: ${err.message}\n`, {
       original: err,
     });

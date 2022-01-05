@@ -145,7 +145,7 @@ export async function exportOnExit(options: any) {
           "please wait for the export to finish..."
       );
       await exportEmulatorData(exportOnExitDir, options);
-    } catch (e) {
+    } catch (e: any) {
       utils.logWarning(e);
       utils.logWarning(`Automatic export to "${exportOnExitDir}" failed, going to exit now...`);
     }
@@ -539,7 +539,7 @@ export async function startAll(options: Options, showUI: boolean = true): Promis
       if (!options.instance) {
         options.instance = await getDefaultDatabaseInstance(options);
       }
-    } catch (e) {
+    } catch (e: any) {
       databaseLogger.log(
         "DEBUG",
         `Failed to retrieve default database instance: ${JSON.stringify(e)}`
@@ -733,7 +733,7 @@ export async function exportEmulatorData(exportPath: string, options: any) {
 
   try {
     await hubClient.getStatus();
-  } catch (e) {
+  } catch (e: any) {
     const filePath = EmulatorHub.getLocatorFilePath(projectId);
     throw new FirebaseError(
       `The emulator hub for ${projectId} did not respond to a status check. If this error continues try shutting down all running emulators and deleting the file ${filePath}`,
@@ -776,7 +776,7 @@ export async function exportEmulatorData(exportPath: string, options: any) {
   utils.logBullet(`Exporting data to: ${exportAbsPath}`);
   try {
     await hubClient.postExport(exportAbsPath);
-  } catch (e) {
+  } catch (e: any) {
     throw new FirebaseError("Export request failed, see emulator logs for more information.", {
       exit: 1,
       original: e,

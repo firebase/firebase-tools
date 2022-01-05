@@ -84,7 +84,7 @@ export async function createFirebaseProjectAndLog(
   try {
     await createCloudProject(projectId, options);
     spinner.succeed();
-  } catch (err) {
+  } catch (err: any) {
     spinner.fail();
     throw err;
   }
@@ -100,7 +100,7 @@ export async function addFirebaseToCloudProjectAndLog(
 
   try {
     projectInfo = await addFirebaseToCloudProject(projectId);
-  } catch (err) {
+  } catch (err: any) {
     spinner.fail();
     throw err;
   }
@@ -271,7 +271,7 @@ export async function createCloudProject(
       operationResourceName: response.body.name /* LRO resource name */,
     });
     return projectInfo;
-  } catch (err) {
+  } catch (err: any) {
     if (err.status === 409) {
       throw new FirebaseError(
         `Failed to create project because there is already a project with ID ${clc.bold(
@@ -312,7 +312,7 @@ export async function addFirebaseToCloudProject(
       operationResourceName: response.body.name /* LRO resource name */,
     });
     return projectInfo;
-  } catch (err) {
+  } catch (err: any) {
     logger.debug(err.message);
     throw new FirebaseError(
       "Failed to add Firebase to Google Cloud Platform project. See firebase-debug.log for more info.",
@@ -366,7 +366,7 @@ export async function getFirebaseProjectPage(
       pageSize,
       pageToken,
     });
-  } catch (err) {
+  } catch (err: any) {
     logger.debug(err.message);
     throw new FirebaseError(
       "Failed to list Firebase projects. See firebase-debug.log for more info.",
@@ -391,7 +391,7 @@ export async function getAvailableCloudProjectPage(
       pageSize,
       pageToken,
     });
-  } catch (err) {
+  } catch (err: any) {
     logger.debug(err.message);
     throw new FirebaseError(
       "Failed to list available Google Cloud Platform projects. See firebase-debug.log for more info.",
@@ -432,7 +432,7 @@ export async function getFirebaseProject(projectId: string): Promise<FirebasePro
       timeout: TIMEOUT_MILLIS,
     });
     return res.body;
-  } catch (err) {
+  } catch (err: any) {
     logger.debug(err.message);
     throw new FirebaseError(
       `Failed to get Firebase project ${projectId}. ` +

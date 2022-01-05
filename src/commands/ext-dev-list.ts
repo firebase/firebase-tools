@@ -21,7 +21,7 @@ export default new Command("ext:dev:list <publisherId>")
     let extensions;
     try {
       extensions = await listExtensions(publisherId);
-    } catch (err) {
+    } catch (err: any) {
       throw new FirebaseError(err);
     }
 

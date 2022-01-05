@@ -462,7 +462,7 @@ function batchCreate(
         );
       }
       state.overwriteUserWithLocalId(userInfo.localId, fields);
-    } catch (e) {
+    } catch (e: any) {
       if (e instanceof BadRequestError) {
         // Use friendlier messages for some codes, consistent with production.
         let message = e.message;
@@ -1512,7 +1512,7 @@ function signInWithIdp(
         userMatchingProvider
       ));
     }
-  } catch (err) {
+  } catch (err: any) {
     if (reqBody.returnIdpCredential && err instanceof BadRequestError) {
       response.errorMessage = err.message;
       return response;

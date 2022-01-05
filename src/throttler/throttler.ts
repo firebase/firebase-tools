@@ -170,7 +170,7 @@ export abstract class Throttler<T, R> {
     let result;
     try {
       result = await Promise.race(promises);
-    } catch (err) {
+    } catch (err: any) {
       this.errored++;
       this.complete++;
       this.active--;
@@ -266,7 +266,7 @@ export abstract class Throttler<T, R> {
     let result;
     try {
       result = await this.handler(taskData.task);
-    } catch (err) {
+    } catch (err: any) {
       if (taskData.retryCount === this.retries) {
         throw new RetriesExhaustedError(this.taskName(cursorIndex), this.retries, err);
       }
