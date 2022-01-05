@@ -17,7 +17,7 @@ interface Operation {
 async function handler(op: Operation): Promise<undefined> {
   try {
     op.result = await op.func();
-  } catch (err) {
+  } catch (err: any) {
     // Throw retry functions back to the queue where they will be retried
     // with backoffs. To do this we cast a wide net for possible error codes.
     // These can be either TOO MANY REQUESTS (429) errors or CONFLICT (409)

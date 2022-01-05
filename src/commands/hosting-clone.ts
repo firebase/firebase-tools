@@ -80,7 +80,7 @@ export default new Command("hosting:clone <source> <targetChannel>")
       );
       try {
         tChannel = await createChannel("-", targetSiteId, targetChannelId);
-      } catch (e) {
+      } catch (e: any) {
         throw new FirebaseError(
           `Could not create the channel ${bold(targetChannelId)} for site ${bold(targetSiteId)}.`,
           { original: e }
@@ -90,7 +90,7 @@ export default new Command("hosting:clone <source> <targetChannel>")
       try {
         const tProjectId = parseProjectId(tChannel.name);
         await addAuthDomains(tProjectId, [tChannel.url]);
-      } catch (e) {
+      } catch (e: any) {
         utils.logLabeledWarning(
           "hosting:clone",
           marked(
@@ -127,7 +127,7 @@ export default new Command("hosting:clone <source> <targetChannel>")
         targetVersionName = targetVersion.name;
       }
       await createRelease(targetSiteId, targetChannelId, targetVersionName);
-    } catch (err) {
+    } catch (err: any) {
       spinner.fail();
       throw err;
     }

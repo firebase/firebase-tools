@@ -18,7 +18,7 @@ export async function checkDatabaseType(projectId: string): Promise<string | und
     });
 
     return resp.body.databaseType;
-  } catch (err) {
+  } catch (err: any) {
     logger.debug("error getting database type", err);
     return undefined;
   }

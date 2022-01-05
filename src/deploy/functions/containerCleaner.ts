@@ -28,11 +28,11 @@ async function retry<Return>(func: () => Promise<Return>): Promise<Return> {
         setTimeout(() => reject(new Error("Timeout")), TIMEOUT_MS);
       });
       return await Promise.race([func(), timeout]);
-    } catch (error) {
-      logger.debug("Failed docker command with error ", error);
+    } catch (err: any) {
+      logger.debug("Failed docker command with error ", err);
       retry += 1;
       if (retry >= MAX_RETRIES) {
-        throw new FirebaseError("Failed to clean up artifacts", { original: error });
+        throw new FirebaseError("Failed to clean up artifacts", { original: err });
       }
       await sleep(Math.pow(INITIAL_BACKOFF, retry - 1));
     }
@@ -55,7 +55,7 @@ export async function cleanupBuildImages(
     ...haveFunctions.map(async (func) => {
       try {
         await arCleaner.cleanupFunction(func);
-      } catch (err) {
+      } catch (err: any) {
         const path = `${func.project}/${func.region}/gcf-artifacts`;
         failedDomains.add(`https://console.cloud.google.com/artifacts/docker/${path}`);
       }
@@ -65,7 +65,7 @@ export async function cleanupBuildImages(
     ...deletedFunctions.map(async (func) => {
       try {
         await Promise.all([arCleaner.cleanupFunction(func), arCleaner.cleanupFunctionCache(func)]);
-      } catch (err) {
+      } catch (err: any) {
         const path = `${func.project}/${func.region}/gcf-artifacts`;
         failedDomains.add(`https://console.cloud.google.com/artifacts/docker/${path}`);
       }
@@ -76,7 +76,7 @@ export async function cleanupBuildImages(
     ...[...haveFunctions, ...deletedFunctions].map(async (func) => {
       try {
         await gcrCleaner.cleanupFunction(func);
-      } catch (err) {
+      } catch (err: any) {
         const path = `${func.project}/${docker.GCR_SUBDOMAIN_MAPPING[func.region]}/gcf`;
         failedDomains.add(`https://console.cloud.google.com/gcr/images/${path}`);
       }
@@ -135,7 +135,7 @@ export class ArtifactRegistryCleaner {
     let op: artifactregistry.Operation;
     try {
       op = await artifactregistry.deletePackage(ArtifactRegistryCleaner.packagePath(func));
-    } catch (err) {
+    } catch (err: any) {
       // The client was not enrolled in the AR experimenet and the package
       // was missing
       if (err.status === 404) {
@@ -276,7 +276,7 @@ export async function listGcfPaths(
       (async () => {
         try {
           return getHelper(dockerHelpers, subdomain).ls(`${projectId}/gcf`);
-        } catch (err) {
+        } catch (err: any) {
           failedSubdomains.push(subdomain);
           logger.debug(err);
           const stat: Stat = {
@@ -336,7 +336,7 @@ export async function deleteGcfArtifacts(
     const subdomain = docker.GCR_SUBDOMAIN_MAPPING[loc]!;
     try {
       return getHelper(dockerHelpers, subdomain).rm(`${projectId}/gcf/${loc}`);
-    } catch (err) {
+    } catch (err: any) {
       failedSubdomains.push(subdomain);
       logger.debug(err);
     }
@@ -387,7 +387,7 @@ export class DockerHelper {
       try {
         await this.rm(`${path}/${child}`);
         stat.children.splice(stat.children.indexOf(child), 1);
-      } catch (err) {
+      } catch (err: any) {
         toThrowLater = err;
       }
     });
@@ -400,7 +400,7 @@ export class DockerHelper {
       try {
         await retry(() => this.client.deleteTag(path, tag));
         stat.tags.splice(stat.tags.indexOf(tag), 1);
-      } catch (err) {
+      } catch (err: any) {
         logger.debug("Got error trying to remove docker tag:", err);
         toThrowLater = err;
       }
@@ -411,7 +411,7 @@ export class DockerHelper {
       try {
         await retry(() => this.client.deleteImage(path, digest));
         stat.digests.splice(stat.digests.indexOf(digest), 1);
-      } catch (err) {
+      } catch (err: any) {
         logger.debug("Got error trying to remove docker image:", err);
         toThrowLater = err;
       }

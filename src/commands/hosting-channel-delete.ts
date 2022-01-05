@@ -49,7 +49,7 @@ export default new Command("hosting:channel:delete <channelId>")
       if (channel) {
         try {
           await removeAuthDomain(projectId, channel.url);
-        } catch (e) {
+        } catch (e: any) {
           logLabeledWarning(
             "hosting:channel",
             marked(

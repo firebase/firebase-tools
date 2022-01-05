@@ -24,7 +24,7 @@ export async function getFunctionsConfig(context: args.Context): Promise<{ [key:
   if (context.runtimeConfigEnabled) {
     try {
       config = await functionsConfig.materializeAll(context.firebaseConfig!.projectId);
-    } catch (err) {
+    } catch (err: any) {
       logger.debug(err);
       let errorCode = err?.context?.response?.statusCode;
       if (!errorCode) {
@@ -89,7 +89,7 @@ async function packageSource(options: Options, sourceDir: string, configValues: 
     }
     archive.finalize();
     await pipeAsync(archive, fileStream);
-  } catch (err) {
+  } catch (err: any) {
     throw new FirebaseError(
       "Could not read source directory. Remove links and shortcuts and try again.",
       {

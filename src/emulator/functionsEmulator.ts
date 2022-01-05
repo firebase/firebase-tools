@@ -423,7 +423,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   async stop(): Promise<void> {
     try {
       await this.workQueue.flush();
-    } catch (e) {
+    } catch (e: any) {
       this.logger.logLabeled(
         "WARN",
         "functions",
@@ -521,7 +521,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       // Skip function with invalid id.
       try {
         functionIdsAreValid([definition]);
-      } catch (e) {
+      } catch (e: any) {
         this.logger.logLabeled(
           "WARN",
           `functions[${definition.id}]`,
@@ -725,7 +725,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     try {
       await pubsubEmulator.addTrigger(topic, key, signatureType);
       return true;
-    } catch (e) {
+    } catch (e: any) {
       return false;
     }
   }
@@ -876,7 +876,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     try {
       const localNodeOutput = spawnSync(localNodePath, ["--version"]).stdout.toString();
       localMajorVersion = localNodeOutput.slice(1).split(".")[0];
-    } catch (err) {
+    } catch (err: any) {
       // Will happen if we haven't asked about local version yet
     }
 
@@ -918,7 +918,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (functionsEnv.hasUserEnvs(projectInfo)) {
       try {
         return functionsEnv.loadUserEnvs(projectInfo);
-      } catch (e) {
+      } catch (e: any) {
         // Ignore - user envs are optional.
         logger.debug("Failed to load local environment variables", e);
       }
@@ -1254,7 +1254,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       claims.uid = claims.sub;
 
       return claims;
-    } catch (e) {
+    } catch (e: any) {
       return;
     }
   }

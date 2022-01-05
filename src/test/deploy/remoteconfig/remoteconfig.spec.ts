@@ -140,7 +140,7 @@ describe("Remote Config Deploy", () => {
 
       try {
         await rcDeploy.publishTemplate(PROJECT_NUMBER, currentTemplate, etag);
-      } catch (e) {
+      } catch (e: any) {
         e;
       }
 

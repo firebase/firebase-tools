@@ -212,9 +212,9 @@ export function addResourcesToBackend(
       runtime: runtime,
       ...triggered,
     };
-    if (annotation.vpcConnector) {
+    if (annotation.vpcConnector != null) {
       let maybeId = annotation.vpcConnector;
-      if (!maybeId.includes("/")) {
+      if (maybeId && !maybeId.includes("/")) {
         maybeId = `projects/${projectId}/locations/${region}/connectors/${maybeId}`;
       }
       endpoint.vpcConnector = maybeId;

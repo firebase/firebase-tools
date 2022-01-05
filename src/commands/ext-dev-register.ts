@@ -35,7 +35,7 @@ export default new Command("ext:dev:register")
     });
     try {
       await registerPublisherProfile(projectId, publisherId);
-    } catch (err) {
+    } catch (err: any) {
       if (err.status === 409) {
         const error =
           `Couldn't register the publisher ID '${clc.bold(publisherId)}' to the project '${clc.bold(
@@ -52,8 +52,7 @@ export default new Command("ext:dev:register")
       throw new FirebaseError(
         `Failed to register publisher ID ${clc.bold(publisherId)} for project ${clc.bold(
           projectId
-        )}: ${err.message}`,
-        { exit: 1 }
+        )}: ${err.message}`
       );
     }
     return utils.logLabeledSuccess(

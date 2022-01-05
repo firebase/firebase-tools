@@ -39,7 +39,7 @@ export async function tryCreateDelegate(
   try {
     const modBuffer = await promisify(fs.readFile)(goModPath);
     module = gomod.parseModule(modBuffer.toString("utf8"));
-  } catch (err) {
+  } catch (err: any) {
     logger.debug("Customer code is not Golang code (or they aren't using gomod)");
     return;
   }
@@ -80,7 +80,7 @@ export class Delegate {
   async build(): Promise<void> {
     try {
       await promisify(fs.mkdir)(path.join(this.sourceDir, "autogen"));
-    } catch (err) {
+    } catch (err: any) {
       if (err?.code !== "EEXIST") {
         throw new FirebaseError("Failed to create codegen directory", { children: [err] });
       }

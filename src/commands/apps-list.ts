@@ -50,7 +50,7 @@ module.exports = new Command("apps:list [platform]")
       ).start();
       try {
         apps = await listFirebaseApps(projectId, appPlatform);
-      } catch (err) {
+      } catch (err: any) {
         spinner.fail();
         throw err;
       }

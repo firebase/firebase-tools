@@ -896,7 +896,7 @@ describe("FunctionsEmulator-Runtime", () => {
 
         try {
           await callHTTPSFunction(worker, frb);
-        } catch (e) {
+        } catch (e: any) {
           // No-op
         }
 

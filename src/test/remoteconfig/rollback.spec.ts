@@ -81,7 +81,7 @@ describe("RemoteConfig Rollback", () => {
       );
       try {
         await remoteconfig.rollbackTemplate(PROJECT_ID);
-      } catch (e) {
+      } catch (e: any) {
         e;
       }
     });
@@ -106,7 +106,7 @@ describe("RemoteConfig Rollback", () => {
     it("should reject if the api call fails", async () => {
       try {
         await remoteconfig.rollbackTemplate(PROJECT_ID);
-      } catch (e) {
+      } catch (e: any) {
         e;
       }
 

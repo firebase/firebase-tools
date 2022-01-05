@@ -56,7 +56,7 @@ module.exports = new Command("projects:list")
 
       try {
         projects = await listFirebaseProjects();
-      } catch (err) {
+      } catch (err: any) {
         spinner.fail();
         throw err;
       }
