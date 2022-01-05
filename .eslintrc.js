@@ -10,7 +10,6 @@ module.exports = {
     "plugin:jsdoc/recommended",
     "google",
     "prettier",
-    // "prettier/@typescript-eslint",
   ],
   rules: {
     "jsdoc/newline-after-description": "off",
