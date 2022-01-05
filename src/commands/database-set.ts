@@ -63,7 +63,7 @@ export default new Command("database:set <path> [infile]")
         path: dbJsonURL.pathname,
         body: inStream,
       });
-    } catch (err) {
+    } catch (err: any) {
       logger.debug(err);
       throw new FirebaseError(`Unexpected error while setting data: ${err}`, { exit: 2 });
     }

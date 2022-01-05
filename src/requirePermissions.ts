@@ -34,7 +34,7 @@ export async function requirePermissions(options: any, permissions: string[] = [
         )}:\n\n  ${iamResult.missing.join("\n  ")}`
       );
     }
-  } catch (err) {
+  } catch (err: any) {
     logger.debug(`[iam] error while checking permissions, command may fail: ${err}`);
     return;
   }

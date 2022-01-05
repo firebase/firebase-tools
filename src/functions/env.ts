@@ -171,7 +171,7 @@ function parseStrict(data: string): Record<string, string> {
   for (const key of Object.keys(envs)) {
     try {
       validateKey(key);
-    } catch (err) {
+    } catch (err: any) {
       logger.debug(`Failed to validate key ${key}: ${err}`);
       if (err instanceof KeyValidationError) {
         validationErrors.push(err);
@@ -276,7 +276,7 @@ export function loadUserEnvs({
     try {
       const data = fs.readFileSync(path.join(functionsSource, f), "utf8");
       envs = { ...envs, ...parseStrict(data) };
-    } catch (err) {
+    } catch (err: any) {
       throw new FirebaseError(`Failed to load environment variables from ${f}.`, {
         exit: 2,
         children: err.children?.length > 0 ? err.children : [err],

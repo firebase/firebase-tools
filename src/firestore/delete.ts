@@ -446,7 +446,7 @@ export class FirestoreDelete {
       return false;
     };
 
-    return new Promise((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
       const intervalId = setInterval(() => {
         if (queueLoop()) {
           clearInterval(intervalId);

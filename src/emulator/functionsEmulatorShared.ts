@@ -275,7 +275,7 @@ export function findModuleRoot(moduleName: string, filepath: string): string {
         return chunks.join("/");
       }
       break;
-    } catch (err) {
+    } catch (err: any) {
       /**/
     }
   }

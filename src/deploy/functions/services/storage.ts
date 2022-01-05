@@ -49,7 +49,7 @@ export async function ensureStorageTriggerRegion(
       );
       eventTrigger.region = bucket.location.toLowerCase();
       logger.debug("Setting the event trigger region to", eventTrigger.region, ".");
-    } catch (err) {
+    } catch (err: any) {
       throw new FirebaseError("Can't find the storage bucket region", { original: err });
     }
   }

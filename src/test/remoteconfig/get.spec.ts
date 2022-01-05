@@ -162,7 +162,7 @@ describe("Remote Config GET", () => {
       let err;
       try {
         await remoteconfig.getTemplate(PROJECT_ID);
-      } catch (e) {
+      } catch (e: any) {
         err = e;
       }
 

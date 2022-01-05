@@ -211,7 +211,7 @@ async function getSecretInfo(
   try {
     secretInfo.secret = await secretManager.getSecret(projectId, secretName);
     secretInfo.secretVersion = await secretManager.getSecretVersion(projectId, secretName, version);
-  } catch (err) {
+  } catch (err: any) {
     // Throw anything other than the expected 404 errors.
     if (err.status !== 404) {
       throw err;
