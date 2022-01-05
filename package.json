@@ -85,7 +85,6 @@
   },
   "dependencies": {
     "@google-cloud/pubsub": "^2.7.0",
-    "@types/archiver": "^5.1.0",
     "abort-controller": "^3.0.0",
     "ajv": "^6.12.6",
     "archiver": "^5.0.0",
@@ -146,6 +145,7 @@
   "devDependencies": {
     "@google/events": "^5.1.1",
     "@manifoldco/swagger-to-ts": "^2.0.0",
+    "@types/archiver": "^5.1.0",
     "@types/body-parser": "^1.17.0",
     "@types/chai": "^4.2.12",
     "@types/chai-as-promised": "^7.1.3",
