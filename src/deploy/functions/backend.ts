@@ -492,14 +492,20 @@ export function regionalEndpoints(backend: Backend, region: string): Endpoint[] 
 }
 
 /** A curried function used for filters, returns a matcher for functions in a backend. */
-export const hasEndpoint = (backend: Backend) => (endpoint: Endpoint): boolean => {
-  return !!backend.endpoints[endpoint.region] && !!backend.endpoints[endpoint.region][endpoint.id];
-};
+export const hasEndpoint =
+  (backend: Backend) =>
+  (endpoint: Endpoint): boolean => {
+    return (
+      !!backend.endpoints[endpoint.region] && !!backend.endpoints[endpoint.region][endpoint.id]
+    );
+  };
 
 /** A curried function that is the opposite of hasEndpoint */
-export const missingEndpoint = (backend: Backend) => (endpoint: Endpoint): boolean => {
-  return !hasEndpoint(backend)(endpoint);
-};
+export const missingEndpoint =
+  (backend: Backend) =>
+  (endpoint: Endpoint): boolean => {
+    return !hasEndpoint(backend)(endpoint);
+  };
 
 /** A standard method for sorting endpoints for display.
  * Future versions might consider sorting region by pricing tier before

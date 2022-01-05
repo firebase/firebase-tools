@@ -455,16 +455,17 @@ export class CloudStorageObjectMetadata {
  * @return the formatted date.
  */
 export function toSerializedDate(d: Date): string {
-  const day = `${d.getFullYear()}-${(d.getMonth() + 1)
+  const day = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, "0")}-${d
+    .getDate()
     .toString()
-    .padStart(2, "0")}-${d.getDate().toString().padStart(2, "0")}`;
+    .padStart(2, "0")}`;
   const time = `${d.getHours().toString().padStart(2, "0")}:${d
     .getMinutes()
     .toString()
-    .padStart(2, "0")}:${d
-    .getSeconds()
+    .padStart(2, "0")}:${d.getSeconds().toString().padStart(2, "0")}.${d
+    .getMilliseconds()
     .toString()
-    .padStart(2, "0")}.${d.getMilliseconds().toString().padStart(3, "0")}`;
+    .padStart(3, "0")}`;
   return `${day}T${time}Z`;
 }
 

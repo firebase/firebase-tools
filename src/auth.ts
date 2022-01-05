@@ -74,7 +74,7 @@ interface GitHubAuthResponse {
 // Typescript emulates modules, which have constant exports. We can
 // overcome this by casting to any
 // TODO fix after https://github.com/http-party/node-portfinder/pull/115
-((portfinder as unknown) as { basePort: number }).basePort = 9005;
+(portfinder as unknown as { basePort: number }).basePort = 9005;
 
 /**
  * Get the global default account. Before multi-auth was implemented

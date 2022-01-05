@@ -7,7 +7,7 @@ import { FirebaseError } from "../error";
 import { logPrefix } from "../extensions/extensionsHelper";
 import * as extensionsApi from "./extensionsApi";
 import * as iam from "../gcp/iam";
-import { promptOnce, Question } from "../prompt";
+import { promptOnce } from "../prompt";
 import * as utils from "../utils";
 
 marked.setOptions({
@@ -90,7 +90,7 @@ export function displayApis(extensionName: string, projectId: string, apis: exte
  * Displays publisher terms of service and asks user to consent to them.
  * Errors if they do not consent.
  */
-export async function promptForPublisherTOS() {
+export async function promptForPublisherTOS(): Promise<void> {
   const termsOfServiceMsg =
     "By registering as a publisher, you confirm that you have read the Firebase Extensions Publisher Terms and Conditions (linked below) and you, on behalf of yourself and the organization you represent, agree to comply with it.  Here is a brief summary of the highlights of our terms and conditions:\n" +
     "  - You ensure extensions you publish comply with all laws and regulations; do not include any viruses, spyware, Trojan horses, or other malicious code; and do not violate any person’s rights, including intellectual property, privacy, and security rights.\n" +
@@ -99,15 +99,14 @@ export async function promptForPublisherTOS() {
     "  - If Google requests a critical security matter to be patched for your extension, you will respond to Google within 48 hours with either a resolution or a written resolution plan.\n" +
     "  - Google may remove your extension or terminate the agreement, if you violate any terms.";
   utils.logLabeledBullet(logPrefix, marked(termsOfServiceMsg));
-  const question: Question = {
+  const consented: boolean = await promptOnce({
     name: "consent",
     type: "confirm",
     message: marked(
       "Do you accept the [Firebase Extensions Publisher Terms and Conditions](https://firebase.google.com/docs/extensions/alpha/terms-of-service) and acknowledge that your information will be used in accordance with [Google's Privacy Policy](https://policies.google.com/privacy?hl=en)?"
     ),
     default: false,
-  };
-  const consented: boolean = await promptOnce(question);
+  });
   if (!consented) {
     throw new FirebaseError("You must agree to the terms of service to register a publisher ID.", {
       exit: 1,

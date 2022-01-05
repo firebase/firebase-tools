@@ -51,9 +51,8 @@ export default new Command("ext:configure <extensionInstanceId>")
         }
         throw err;
       }
-      const paramSpecWithNewDefaults = paramHelper.getParamsWithCurrentValuesAsDefaults(
-        existingInstance
-      );
+      const paramSpecWithNewDefaults =
+        paramHelper.getParamsWithCurrentValuesAsDefaults(existingInstance);
       const immutableParams = _.remove(paramSpecWithNewDefaults, (param) => {
         return param.immutable || param.param === "LOCATION";
         // TODO: Stop special casing "LOCATION" once all official extensions make it immutable
