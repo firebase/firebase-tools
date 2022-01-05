@@ -299,7 +299,7 @@ async function _runBinary(
         detached: true,
         stdio: ["inherit", "pipe", "pipe"],
       });
-    } catch (e) {
+    } catch (e: any) {
       if (e.code === "EACCES") {
         // Known issue when WSL users don't have java
         // https://github.com/Microsoft/WSL/issues/3886

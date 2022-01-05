@@ -271,6 +271,12 @@ export async function createApp(
         // TODO
         return true;
       },
+      byte() {
+        // Disable the "byte" format validation to allow stuffing arbitary
+        // strings in passwordHash etc. Needed because the emulator generates
+        // non-base64 hash strings like "fakeHash:salt=foo:password=bar".
+        return true;
+      },
     },
     plugins: [
       {

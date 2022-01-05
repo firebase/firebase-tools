@@ -52,7 +52,7 @@ export async function getTemplate(
       timeout: TIMEOUT,
     });
     return response.body;
-  } catch (err) {
+  } catch (err: any) {
     logger.debug(err.message);
     throw new FirebaseError(
       `Failed to get Firebase Remote Config template for project ${projectId}. `,

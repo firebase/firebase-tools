@@ -123,7 +123,7 @@ export class Config {
           this.notes.databaseRulesFile = filePath;
           try {
             return fs.readFileSync(fullPath, "utf8");
-          } catch (e) {
+          } catch (e: any) {
             if (e.code === "ENOENT") {
               throw new FirebaseError(`File not found: ${fullPath}`, { original: e });
             }
@@ -183,7 +183,7 @@ export class Config {
         return JSON.parse(content);
       }
       return content;
-    } catch (e) {
+    } catch (e: any) {
       if (options.fallback) {
         return options.fallback;
       }
@@ -248,7 +248,7 @@ export class Config {
         }
 
         return new Config(data, options);
-      } catch (e) {
+      } catch (e: any) {
         throw new FirebaseError(`There was an error loading ${filename}:\n\n` + e.message, {
           exit: 1,
         });

@@ -67,7 +67,7 @@ export class StorageCloudFunctions {
       if (cloudEventRes.status !== 200) {
         errStatus.push(cloudEventRes.status);
       }
-    } catch (e) {
+    } catch (e: any) {
       err = e as Error;
     }
 

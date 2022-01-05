@@ -407,7 +407,7 @@ export async function publishExtensionVersionFromLocalSource(args: {
   let extension;
   try {
     extension = await getExtension(`${args.publisherId}/${args.extensionId}`);
-  } catch (err) {
+  } catch (err: any) {
     // Silently fail and continue the publish flow if extension not found.
   }
 
@@ -415,7 +415,7 @@ export async function publishExtensionVersionFromLocalSource(args: {
   try {
     const changes = getLocalChangelog(args.rootDirectory);
     notes = changes[extensionSpec.version];
-  } catch (err) {
+  } catch (err: any) {
     throw new FirebaseError(
       "No CHANGELOG.md file found. " +
         "Please create one and add an entry for this version. " +
@@ -487,7 +487,7 @@ export async function publishExtensionVersionFromLocalSource(args: {
     objectPath = await archiveAndUploadSource(args.rootDirectory, EXTENSIONS_BUCKET_NAME);
     uploadSpinner.succeed(" Uploaded extension source code");
     packageUri = storageOrigin + objectPath + "?alt=media";
-  } catch (err) {
+  } catch (err: any) {
     uploadSpinner.fail();
     throw err;
   }
@@ -497,7 +497,7 @@ export async function publishExtensionVersionFromLocalSource(args: {
     publishSpinner.start();
     res = await publishExtensionVersion(ref, packageUri);
     publishSpinner.succeed(` Successfully published ${clc.bold(ref)}`);
-  } catch (err) {
+  } catch (err: any) {
     publishSpinner.fail();
     if (err.status == 404) {
       throw new FirebaseError(
@@ -535,7 +535,7 @@ export async function createSourceFromLocation(
       uploadSpinner.succeed(" Uploaded extension source code");
       packageUri = storageOrigin + objectPath + "?alt=media";
       extensionRoot = "/";
-    } catch (err) {
+    } catch (err: any) {
       uploadSpinner.fail();
       throw err;
     }
@@ -557,7 +557,7 @@ async function deleteUploadedSource(objectPath: string) {
     try {
       await deleteObject(objectPath);
       logger.debug("Cleaned up uploaded source archive");
-    } catch (err) {
+    } catch (err: any) {
       logger.debug("Unable to clean up uploaded source archive");
     }
   }
@@ -721,7 +721,7 @@ export function getSourceOrigin(sourceOrVersion: string): SourceOrigin {
     let ref;
     try {
       ref = refs.parse(sourceOrVersion);
-    } catch (err) {
+    } catch (err: any) {
       // Silently fail.
     }
     if (ref && ref.publisherId && ref.extensionId && !ref.version) {

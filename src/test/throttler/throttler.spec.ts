@@ -280,7 +280,7 @@ const throttlerTest = (ThrottlerConstructor: ThrottlerConstructorType): void => 
     let err;
     try {
       await q.run(2, 100);
-    } catch (e) {
+    } catch (e: any) {
       err = e;
     }
     expect(err).to.be.instanceOf(TimeoutError);
@@ -299,7 +299,7 @@ const throttlerTest = (ThrottlerConstructor: ThrottlerConstructorType): void => 
     let err;
     try {
       await q.run(2, 200);
-    } catch (e) {
+    } catch (e: any) {
       err = e;
     }
     expect(err).to.be.instanceOf(RetriesExhaustedError);
@@ -327,7 +327,7 @@ const throttlerTest = (ThrottlerConstructor: ThrottlerConstructorType): void => 
     let err;
     try {
       await q.run(2, 100);
-    } catch (e) {
+    } catch (e: any) {
       err = e;
     }
     expect(err).to.be.instanceOf(TimeoutError);
@@ -357,7 +357,7 @@ const throttlerTest = (ThrottlerConstructor: ThrottlerConstructorType): void => 
     let err;
     try {
       await q.wait();
-    } catch (e) {
+    } catch (e: any) {
       err = e;
     }
     expect(err).to.be.instanceOf(TimeoutError);
@@ -385,7 +385,7 @@ const throttlerTest = (ThrottlerConstructor: ThrottlerConstructorType): void => 
     let err;
     try {
       await q.wait();
-    } catch (e) {
+    } catch (e: any) {
       err = e;
     }
     expect(err).to.be.instanceOf(RetriesExhaustedError);

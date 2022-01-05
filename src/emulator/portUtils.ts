@@ -128,7 +128,7 @@ export async function checkPortOpen(port: number, host: string): Promise<boolean
   try {
     const inUse = await tcpport.check(port, host);
     return !inUse;
-  } catch (e) {
+  } catch (e: any) {
     logger.debug(`port check error: ${e}`);
     return false;
   }
@@ -142,7 +142,7 @@ export async function waitForPortClosed(port: number, host: string): Promise<voi
   const timeout = 60000;
   try {
     await tcpport.waitUntilUsedOnHost(port, host, interval, timeout);
-  } catch (e) {
+  } catch (e: any) {
     throw new FirebaseError(`TIMEOUT: Port ${port} on ${host} was not active within ${timeout}ms`);
   }
 }

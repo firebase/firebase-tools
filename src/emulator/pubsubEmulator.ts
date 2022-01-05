@@ -96,7 +96,7 @@ export class PubsubEmulator implements EmulatorInstance {
     try {
       this.logger.logLabeled("DEBUG", "pubsub", `Creating topic: ${topicName}`);
       await topic.create();
-    } catch (e) {
+    } catch (e: any) {
       if (e && e.code === 6) {
         this.logger.logLabeled("DEBUG", "pubsub", `Topic ${topicName} exists`);
       } else {
@@ -109,7 +109,7 @@ export class PubsubEmulator implements EmulatorInstance {
     try {
       this.logger.logLabeled("DEBUG", "pubsub", `Creating sub for topic: ${topicName}`);
       [sub] = await topic.createSubscription(subName);
-    } catch (e) {
+    } catch (e: any) {
       if (e && e.code === 6) {
         this.logger.logLabeled("DEBUG", "pubsub", `Sub for ${topicName} exists`);
         sub = topic.subscription(`emulator-sub-${topicName}`);
@@ -215,7 +215,7 @@ export class PubsubEmulator implements EmulatorInstance {
         } else {
           throw new FirebaseError(`Unsupported trigger signature: ${signatureType}`);
         }
-      } catch (e) {
+      } catch (e: any) {
         this.logger.logLabeled("DEBUG", "pubsub", e);
       }
     }

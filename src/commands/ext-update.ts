@@ -77,7 +77,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
       let existingInstance: extensionsApi.ExtensionInstance;
       try {
         existingInstance = await extensionsApi.getInstance(projectId, instanceId);
-      } catch (err) {
+      } catch (err: any) {
         if (err.status === 404) {
           throw new FirebaseError(
             `Extension instance '${clc.bold(instanceId)}' not found in project '${clc.bold(
@@ -275,7 +275,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
           )}`
         )
       );
-    } catch (err) {
+    } catch (err: any) {
       if (spinner.isSpinning) {
         spinner.fail();
       }

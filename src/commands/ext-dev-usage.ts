@@ -37,7 +37,7 @@ module.exports = new Command("ext:dev:usage <publisherId>")
       let extensions;
       try {
         extensions = await listExtensions(publisherId);
-      } catch (err) {
+      } catch (err: any) {
         throw new FirebaseError(err);
       }
 
@@ -88,7 +88,7 @@ module.exports = new Command("ext:dev:usage <publisherId>")
     let response;
     try {
       response = await queryTimeSeries(query, projectNumber);
-    } catch (err) {
+    } catch (err: any) {
       throw new FirebaseError(
         `Error occurred when fetching usage data for extension ${extensionName}`,
         {

@@ -49,7 +49,7 @@ function getRuntimeChoiceFromPackageJson(
   let loaded;
   try {
     loaded = cjson.load(packageJsonPath);
-  } catch (err) {
+  } catch (err: any) {
     throw new FirebaseError(`Unable to load ${packageJsonPath}: ${err}`);
   }
   const engines = loaded.engines;

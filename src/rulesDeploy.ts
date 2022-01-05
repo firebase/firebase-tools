@@ -64,7 +64,7 @@ export class RulesDeploy {
     let src;
     try {
       src = fs.readFileSync(fullPath, "utf8");
-    } catch (e) {
+    } catch (e: any) {
       logger.debug("[rules read error]", e.stack);
       throw new FirebaseError("Error reading rules file " + clc.bold(path));
     }
@@ -145,7 +145,7 @@ export class RulesDeploy {
         this.rulesetNames[filename] = await rulesetName;
         createdRulesetNames.push(await rulesetName);
       }
-    } catch (err) {
+    } catch (err: any) {
       if (err.status !== QUOTA_EXCEEDED_STATUS_CODE) {
         throw err;
       }

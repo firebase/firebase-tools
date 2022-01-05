@@ -418,7 +418,7 @@ async function promptForRepo(
           );
           key = body.key;
           keyId = body.key_id;
-        } catch (e) {
+        } catch (e: any) {
           if (e.status === 403) {
             logger.info();
             logger.info();
@@ -546,7 +546,7 @@ async function createServiceAccountAndKeyWithRetry(
     const serviceAccountJSON = await createServiceAccountAndKey(options, repo, accountId);
     spinnerServiceAccount.stop();
     return serviceAccountJSON;
-  } catch (e) {
+  } catch (e: any) {
     spinnerServiceAccount.stop();
     if (!e.message.includes("429")) {
       throw e;
@@ -576,7 +576,7 @@ async function createServiceAccountAndKey(
       `A service account with permission to deploy to Firebase Hosting for the GitHub repository ${repo}`,
       `GitHub Actions (${repo})`
     );
-  } catch (e) {
+  } catch (e: any) {
     // No need to throw if there is an existing service account
     if (!e.message.includes("409")) {
       throw e;

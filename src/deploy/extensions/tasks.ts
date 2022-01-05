@@ -21,7 +21,7 @@ export function extensionsDeploymentHandler(
     let result;
     try {
       result = await task.run();
-    } catch (err) {
+    } catch (err: any) {
       if (isRetryable(err)) {
         // Rethrow quota errors or operation already in progress so that throttler retries them.
         throw err;

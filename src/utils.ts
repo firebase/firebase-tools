@@ -61,7 +61,7 @@ export function envOverride(
     if (coerce) {
       try {
         return coerce(currentEnvValue, value);
-      } catch (e) {
+      } catch (e: any) {
         return value;
       }
     }
@@ -369,7 +369,7 @@ export function promiseAllSettled(promises: Array<Promise<any>>): Promise<Settle
     try {
       const val = await Promise.resolve(p);
       return { state: "fulfilled", value: val } as SettledPromiseResolved;
-    } catch (err) {
+    } catch (err: any) {
       return { state: "rejected", reason: err } as SettledPromiseRejected;
     }
   });
@@ -393,7 +393,7 @@ export async function promiseWhile<T>(
           return resolve(res);
         }
         setTimeout(run, interval);
-      } catch (err) {
+      } catch (err: any) {
         return promiseReject(err);
       }
     };
@@ -480,7 +480,7 @@ export async function promiseWithSpinner<T>(action: () => Promise<T>, message: s
   try {
     data = await action();
     spinner.succeed();
-  } catch (err) {
+  } catch (err: any) {
     spinner.fail();
     throw err;
   }

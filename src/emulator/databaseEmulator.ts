@@ -64,7 +64,7 @@ export class DatabaseEmulator implements EmulatorInstance {
           try {
             await this.updateRules(c.instance, c.rules);
             this.logger.logLabeled("SUCCESS", "database", "Rules updated.");
-          } catch (e) {
+          } catch (e: any) {
             this.logger.logLabeled("WARN", "database", this.prettyPrintRulesError(c.rules, e));
             this.logger.logLabeled("WARN", "database", "Failed to update rules");
           }
@@ -119,7 +119,7 @@ export class DatabaseEmulator implements EmulatorInstance {
     const readStream = fs.createReadStream(fPath);
     const { host, port } = this.getInfo();
 
-    await new Promise((resolve, reject) => {
+    await new Promise<void>((resolve, reject) => {
       const req = http.request(
         {
           method: "PUT",
@@ -168,7 +168,7 @@ export class DatabaseEmulator implements EmulatorInstance {
         data: content,
         json: false,
       });
-    } catch (e) {
+    } catch (e: any) {
       // The body is already parsed as JSON
       if (e.context && e.context.body) {
         throw e.context.body.error;

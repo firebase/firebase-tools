@@ -51,7 +51,7 @@ describe("OperationPoller", () => {
       let err;
       try {
         await pollOperation<string>(pollerOptions);
-      } catch (e) {
+      } catch (e: any) {
         err = e;
       }
       expect(err.message).to.equal("failed");
@@ -93,7 +93,7 @@ describe("OperationPoller", () => {
       let error;
       try {
         await pollOperation<string>(pollerOptions);
-      } catch (err) {
+      } catch (err: any) {
         error = err;
       }
       expect(error).to.be.instanceOf(TimeoutError);

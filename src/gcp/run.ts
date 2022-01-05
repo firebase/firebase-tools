@@ -117,7 +117,7 @@ export async function getService(name: string): Promise<Service> {
   try {
     const response = await client.get<Service>(name);
     return response.body;
-  } catch (err) {
+  } catch (err: any) {
     throw new FirebaseError(`Failed to fetch Run service ${name}`, {
       original: err,
     });
@@ -128,7 +128,7 @@ export async function replaceService(name: string, service: Service): Promise<Se
   try {
     const response = await client.put<Service, Service>(name, service);
     return response.body;
-  } catch (err) {
+  } catch (err: any) {
     throw new FirebaseError(`Failed to update Run service ${name}`, {
       original: err,
     });
@@ -157,7 +157,7 @@ export async function setIamPolicy(
       policy,
       updateMask: proto.fieldMasks(policy).join(","),
     });
-  } catch (err) {
+  } catch (err: any) {
     throw new FirebaseError(`Failed to set the IAM Policy on the Service ${name}`, {
       original: err,
     });
@@ -171,7 +171,7 @@ export async function getIamPolicy(
   try {
     const response = await httpClient.get<IamPolicy>(`${serviceName}:getIamPolicy`);
     return response.body;
-  } catch (err) {
+  } catch (err: any) {
     throw new FirebaseError(`Failed to get the IAM Policy on the Service ${serviceName}`, {
       original: err,
     });

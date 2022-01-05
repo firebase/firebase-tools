@@ -53,7 +53,7 @@ export default new Command("ext:uninstall <extensionInstanceId>")
 
     try {
       instance = await extensionsApi.getInstance(projectId, instanceId);
-    } catch (err) {
+    } catch (err: any) {
       if (err.status === 404) {
         return utils.reject(`No extension instance ${instanceId} in project ${projectId}.`, {
           exit: 1,
@@ -125,7 +125,7 @@ export default new Command("ext:uninstall <extensionInstanceId>")
       spinner.succeed(
         ` ${clc.green.bold(logPrefix)}: deleted your extension instance's resources.`
       );
-    } catch (err) {
+    } catch (err: any) {
       if (spinner.isSpinning) {
         spinner.fail();
       }
