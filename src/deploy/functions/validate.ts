@@ -81,7 +81,7 @@ function validatePlatformTargets(endpoints: backend.Endpoint[]) {
     const errs = unsupported.map((e) => `${e.id}[platform=${e.platform}]`);
     throw new FirebaseError(
       `Tried to set secret environment variables on ${errs.join(", ")}. ` +
-      `Only ${supportedPlatforms.join(", ")} support secret environments.`
+        `Only ${supportedPlatforms.join(", ")} support secret environments.`
     );
   }
 }
