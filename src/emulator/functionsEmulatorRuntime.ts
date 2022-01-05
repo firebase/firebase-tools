@@ -139,7 +139,7 @@ class Proxied<T extends ProxyTarget> {
 
   proxy: T;
   private anyValue?: (target: T, key: string) => any;
-  private appliedValue?: () => any;
+  private appliedValue?: (...args: any[]) => any;
   private rewrites: {
     [key: string]: (target: T, key: string) => any;
   } = {};
@@ -166,7 +166,7 @@ class Proxied<T extends ProxyTarget> {
       },
       apply: (target, thisArg, argArray) => {
         if (this.appliedValue) {
-          return this.appliedValue.apply(thisArg);
+          return this.appliedValue.apply(thisArg, argArray);
         } else {
           return Proxied.applyOriginal(target, thisArg, argArray);
         }
