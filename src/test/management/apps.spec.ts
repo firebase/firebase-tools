@@ -469,6 +469,7 @@ describe("App management", () => {
       const appCounts = 10;
       const expectedAppList = generateIosAppList(appCounts);
       const apiResponseAppList = expectedAppList.map((app) => {
+        // TODO: this is gross typing to make it invalid. Might be possible to do better.
         const iosApp: any = { ...app };
         delete iosApp.platform;
         return iosApp;
@@ -488,6 +489,7 @@ describe("App management", () => {
       const appCounts = 10;
       const expectedAppList = generateAndroidAppList(appCounts);
       const apiResponseAppList = expectedAppList.map((app) => {
+        // TODO: this is gross typing to make it invalid. Might be possible to do better.
         const androidApps: any = { ...app };
         delete androidApps.platform;
         return androidApps;
@@ -507,6 +509,7 @@ describe("App management", () => {
       const appCounts = 10;
       const expectedAppList = generateWebAppList(appCounts);
       const apiResponseAppList = expectedAppList.map((app) => {
+        // TODO: this is gross typing to make it invalid. Might be possible to do better.
         const webApp: any = { ...app };
         delete webApp.platform;
         return webApp;
