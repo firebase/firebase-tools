@@ -166,7 +166,7 @@ class Proxied<T extends ProxyTarget> {
       },
       apply: (target, thisArg, argArray) => {
         if (this.appliedValue) {
-          return this.appliedValue.apply(thisArg, argArray);
+          return this.appliedValue.apply(thisArg);
         } else {
           return Proxied.applyOriginal(target, thisArg, argArray);
         }

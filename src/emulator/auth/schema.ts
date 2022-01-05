@@ -397,7 +397,7 @@ export interface components {
        */
       dynamicLinkDomain?: string;
       /**
-       * The account's email address to send the OOB code to, and generally the email address of the account that needs to be updated. Required for PASSWORD_RESET, EMAIL_SIGNIN, and VERIFY_EMAIL.
+       * The account's email address to send the OOB code to, and generally the email address of the account that needs to be updated. Required for PASSWORD_RESET, EMAIL_SIGNIN, and VERIFY_EMAIL. Only required for VERIFY_AND_CHANGE_EMAIL requests when return_oob_link is set to true. In this case, it is the original email of the user.
        */
       email?: string;
       /**
@@ -408,10 +408,16 @@ export interface components {
        * If an associated iOS app can handle the OOB code, the iOS bundle id of this app. This will allow the correct app to open if it is already installed.
        */
       iOSBundleId?: string;
+      /**
+       * An ID token for the account. It is required for VERIFY_AND_CHANGE_EMAIL and VERIFY_EMAIL requests unless return_oob_link is set to true.
+       */
       idToken?: string;
+      /**
+       * The email address the account is being updated to. Required only for VERIFY_AND_CHANGE_EMAIL requests.
+       */
       newEmail?: string;
       /**
-       * Required. The type of out-of-band (OOB) code to send. Depending on this value, other fields in this request will be required and/or have different meanings. There are 3 different OOB codes that can be sent: * PASSWORD_RESET * EMAIL_SIGNIN * VERIFY_EMAIL
+       * Required. The type of out-of-band (OOB) code to send. Depending on this value, other fields in this request will be required and/or have different meanings. There are 4 different OOB codes that can be sent: * PASSWORD_RESET * EMAIL_SIGNIN * VERIFY_EMAIL * VERIFY_AND_CHANGE_EMAIL
        */
       requestType?:
         | "OOB_REQ_TYPE_UNSPECIFIED"
@@ -1375,7 +1381,7 @@ export interface components {
     GoogleCloudIdentitytoolkitV1SignInWithPasswordRequest: {
       captchaChallenge?: string;
       /**
-       * The response from a reCaptcha challenge. A recaptcha response is required when the service detects possible abuse activity.
+       * The reCAPTCHA token provided by the reCAPTCHA client-side integration. reCAPTCHA Enterprise uses it for risk assessment. Required when reCAPTCHA Enterprise is enabled.
        */
       captchaResponse?: string;
       delegatedProjectNumber?: string;
@@ -1539,7 +1545,7 @@ export interface components {
     GoogleCloudIdentitytoolkitV1SignUpRequest: {
       captchaChallenge?: string;
       /**
-       * The response from a reCaptcha challenge. A reCaptcha response is required when the service detects potential abuse activity.
+       * The reCAPTCHA token provided by the reCAPTCHA client-side integration. reCAPTCHA Enterprise uses it for assessment. Required when reCAPTCHA enterprise is enabled.
        */
       captchaResponse?: string;
       /**
@@ -2803,7 +2809,7 @@ export interface components {
      */
     GoogleIamV1GetPolicyOptions: {
       /**
-       * Optional. The policy format version to be returned. Valid values are 0, 1, and 3. Requests specifying an invalid value will be rejected. Requests for policies with any conditional bindings must specify version 3. Policies without any conditional bindings may specify any valid value or leave the field unset. To learn which resources support conditions in their IAM policies, see the [IAM documentation](https://cloud.google.com/iam/help/conditions/resource-policies).
+       * Optional. The maximum policy version that will be used to format the policy. Valid values are 0, 1, and 3. Requests specifying an invalid value will be rejected. Requests for policies with any conditional role bindings must specify version 3. Policies with no conditional role bindings may specify any valid value or leave the field unset. The policy in the response might use the policy version that you specified, or it might use a lower policy version. For example, if you specify version 3, but the policy has no conditional role bindings, the response uses version 1. To learn which resources support conditions in their IAM policies, see the [IAM documentation](https://cloud.google.com/iam/help/conditions/resource-policies).
        */
       requestedPolicyVersion?: number;
     };
