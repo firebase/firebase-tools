@@ -19,12 +19,17 @@ const DO_NOTHING = () => {
   // do nothing.
 };
 
+const testBackend = {
+  functionsDir: MODULE_ROOT,
+  env: {},
+  nodeBinary: process.execPath,
+};
+
 const functionsEmulator = new FunctionsEmulator({
   projectId: "fake-project-id",
-  functionsDir: MODULE_ROOT,
+  emulatableBackends: [testBackend],
 });
 (functionsEmulator as any).adminSdkConfig = FunctionRuntimeBundles.onRequest.adminSdkConfig;
-functionsEmulator.nodeBinary = process.execPath;
 
 async function countLogEntries(worker: RuntimeWorker): Promise<{ [key: string]: number }> {
   const runtime = worker.runtime;
@@ -51,6 +56,7 @@ function startRuntimeWithFunctions(
   opts.serializedTriggers = serializedTriggers;
 
   return functionsEmulator.startFunctionRuntime(
+    testBackend,
     frb.triggerId!,
     frb.targetName!,
     signatureType,
@@ -890,7 +896,7 @@ describe("FunctionsEmulator-Runtime", () => {
 
         try {
           await callHTTPSFunction(worker, frb);
-        } catch (e) {
+        } catch (e: any) {
           // No-op
         }
 

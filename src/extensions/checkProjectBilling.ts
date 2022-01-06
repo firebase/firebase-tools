@@ -30,7 +30,7 @@ async function openBillingAccount(projectId: string, url: string, open: boolean)
   if (open) {
     try {
       opn(url);
-    } catch (err) {
+    } catch (err: any) {
       logger.debug("Unable to open billing URL: " + err.stack);
     }
   }

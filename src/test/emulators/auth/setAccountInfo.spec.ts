@@ -919,7 +919,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       .then((res) => {
         expectStatusCode(400, res);
         expect(res.body.error.message).to.eq(
-          "Invalid JSON payload received. /mfa/enrollments should be array"
+          "Invalid JSON payload received. /mfa/enrollments must be array"
         );
       });
   });

@@ -70,7 +70,7 @@ function main(): void {
       cwd: root,
       stdio: ["pipe", process.stdout, process.stderr],
     });
-  } catch (e) {
+  } catch (e: any) {
     console.error("eslint failed, see errors above.");
     console.error();
     process.exit(e.status);

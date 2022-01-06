@@ -159,7 +159,6 @@ describeAuthEmulator("accounts:batchGet", ({ authApi }) => {
       .set("Authorization", "Bearer owner")
       .then((res) => {
         expectStatusCode(200, res);
-        console.log(nextPageToken, res.body.users);
         // Empty page with no page token returned.
         expect(res.body.users || []).to.have.length(0);
         expect(res.body).not.to.have.property("nextPageToken");

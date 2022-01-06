@@ -14,7 +14,7 @@ jobs:
     strategy:
       matrix:
         node-version:
-          - 10.x
+          - 12.x
     steps:
       - uses: actions/checkout@v2
         with:
@@ -29,6 +29,7 @@ jobs:
           path: ~/.npm
           key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/package-lock.json') }}
 
+      - run: npm i -g npm@8
       - run: npm ci
       - run: npm run lint:changed-files
 
@@ -37,7 +38,6 @@ jobs:
     strategy:
       matrix:
         node-version:
-          - 10.x
           - 12.x
           - 14.x
           - 16.x
@@ -53,6 +53,7 @@ jobs:
           path: ~/.npm
           key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/package-lock.json') }}
 
+      - run: npm i -g npm@8
       - run: npm ci
       - run: npm test
 
@@ -73,7 +74,7 @@ jobs:
       fail-fast: false
       matrix:
         node-version:
-          - 10.x
+          - 12.x
         script:
           - npm run test:hosting
           - npm run test:client-integration
@@ -100,6 +101,7 @@ jobs:
           key: ${{ runner.os }}-firebase-emulators-${{ hashFiles('emulator-cache/**') }}
         continue-on-error: true
 
+      - run: npm i -g npm@8
       - run: npm ci
       - run: echo ${{ secrets.service_account_json_base64 }} | base64 -d > ./scripts/service-account.json
       - run: ${{ matrix.script }}
@@ -122,8 +124,10 @@ jobs:
         uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node-version }}
-      - run: npm install --package-lock-only
-      - run: "git diff --exit-code -- package-lock.json || (echo 'Error: package-lock.json is changed during npm install! Please make sure to use npm >= 6.9.0 and commit package-lock.json.' && false)"
+      - run: npm i -g npm@8
+      # --ignore-scripts prevents the `prepare` script from being run.
+      - run: npm install --package-lock-only --ignore-scripts
+      - run: "git diff --exit-code -- package-lock.json || (echo 'Error: package-lock.json is changed during npm install! Please make sure to use npm >= 8 and commit package-lock.json.' && false)"
 
   check-json-schema:
     runs-on: ubuntu-latest

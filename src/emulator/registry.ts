@@ -77,7 +77,7 @@ export class EmulatorRegistry {
     for (const name of emulatorsToStop) {
       try {
         await this.stop(name);
-      } catch (e) {
+      } catch (e: any) {
         EmulatorLogger.forEmulator(name).logLabeled(
           "WARN",
           name,

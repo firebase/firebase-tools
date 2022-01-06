@@ -44,7 +44,7 @@ export async function shortenUrl(url: string, guessable = false): Promise<string
     );
 
     return response.body.shortLink;
-  } catch (e) {
+  } catch (e: any) {
     logger.debug("URL shortening failed, falling back to full URL. Error:", e.original || e);
     return url;
   }

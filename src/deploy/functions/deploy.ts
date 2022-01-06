@@ -3,7 +3,6 @@ import * as clc from "cli-color";
 import * as fs from "fs";
 
 import { checkHttpIam } from "./checkIam";
-import { functionsUploadRegion } from "../../api";
 import { logSuccess, logWarning } from "../../utils";
 import { Options } from "../../options";
 import * as args from "./args";
@@ -13,13 +12,11 @@ import * as gcfv2 from "../../gcp/cloudfunctionsv2";
 import * as utils from "../../utils";
 import * as backend from "./backend";
 
-const GCP_REGION = functionsUploadRegion;
-
 setGracefulCleanup();
 
-async function uploadSourceV1(context: args.Context): Promise<void> {
-  const uploadUrl = await gcf.generateUploadUrl(context.projectId, GCP_REGION);
-  context.uploadUrl = uploadUrl;
+async function uploadSourceV1(context: args.Context, region: string): Promise<void> {
+  const uploadUrl = await gcf.generateUploadUrl(context.projectId, region);
+  context.sourceUrl = uploadUrl;
   const uploadOpts = {
     file: context.functionsSourceV1!,
     stream: fs.createReadStream(context.functionsSourceV1!),
@@ -63,8 +60,11 @@ export async function deploy(
   try {
     const want = payload.functions!.backend;
     const uploads: Promise<void>[] = [];
-    if (backend.allEndpoints(want).some((endpoint) => endpoint.platform === "gcfv1")) {
-      uploads.push(uploadSourceV1(context));
+
+    const v1Endpoints = backend.allEndpoints(want).filter((e) => e.platform === "gcfv1");
+    if (v1Endpoints.length > 0) {
+      // Choose one of the function region for source upload.
+      uploads.push(uploadSourceV1(context, v1Endpoints[0].region));
     }
 
     for (const region of Object.keys(want.endpoints)) {
@@ -89,7 +89,7 @@ export async function deploy(
           " folder uploaded successfully"
       );
     }
-  } catch (err) {
+  } catch (err: any) {
     logWarning(clc.yellow("functions:") + " Upload Error: " + err.message);
     throw err;
   }

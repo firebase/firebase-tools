@@ -37,7 +37,7 @@ module.exports = new Command("functions:log")
       );
       functionsLog.logEntries(entries);
       return entries;
-    } catch (err) {
+    } catch (err: any) {
       throw new FirebaseError(`Failed to list log entries ${err.message}`, { exit: 1 });
     }
   });

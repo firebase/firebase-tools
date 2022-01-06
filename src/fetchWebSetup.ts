@@ -111,7 +111,7 @@ export async function fetchWebSetup(options: any): Promise<WebConfig> {
     if (defaultSite && defaultSite.appId) {
       hostingAppId = defaultSite.appId;
     }
-  } catch (e) {
+  } catch (e: any) {
     logger.debug("Failed to list hosting sites");
     logger.debug(e);
   }

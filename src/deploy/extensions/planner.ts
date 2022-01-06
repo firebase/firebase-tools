@@ -5,7 +5,7 @@ import { FirebaseError } from "../../error";
 import * as extensionsApi from "../../extensions/extensionsApi";
 import { getFirebaseProjectParams, substituteParams } from "../../extensions/extensionsHelper";
 import * as refs from "../../extensions/refs";
-import { readEnvFile } from "../../extensions/paramHelper";
+import { readParams } from "./params";
 import { logger } from "../../logger";
 
 export interface InstanceSpec {
@@ -46,8 +46,6 @@ export async function getExtension(i: InstanceSpec): Promise<extensionsApi.Exten
   return i.extension;
 }
 
-const ENV_DIRECTORY = "extensions";
-
 /**
  * have checks a project for what extension instances are currently installed,
  * and returns them as a list of instanceSpecs.
@@ -76,21 +74,29 @@ export async function have(projectId: string): Promise<InstanceSpec[]> {
  * @param projectDir The directory containing firebase.json and extensions/
  * @param extensions The extensions section of firebase.jsonm
  */
-export async function want(
-  projectId: string,
-  projectDir: string,
-  extensions: Record<string, string>
-): Promise<InstanceSpec[]> {
+export async function want(args: {
+  projectId: string;
+  projectNumber: string;
+  aliases: string[];
+  projectDir: string;
+  extensions: Record<string, string>;
+}): Promise<InstanceSpec[]> {
   const instanceSpecs: InstanceSpec[] = [];
   const errors: FirebaseError[] = [];
-  for (const e of Object.entries(extensions)) {
+  for (const e of Object.entries(args.extensions)) {
     try {
       const instanceId = e[0];
       const ref = refs.parse(e[1]);
       ref.version = await resolveVersion(ref);
 
-      const params = readParams(projectDir, instanceId);
-      const autoPopulatedParams = await getFirebaseProjectParams(projectId);
+      const params = readParams({
+        projectDir: args.projectDir,
+        instanceId,
+        projectId: args.projectId,
+        projectNumber: args.projectNumber,
+        aliases: args.aliases,
+      });
+      const autoPopulatedParams = await getFirebaseProjectParams(args.projectId);
       const subbedParams = substituteParams(params, autoPopulatedParams);
 
       instanceSpecs.push({
@@ -98,7 +104,7 @@ export async function want(
         ref,
         params: subbedParams,
       });
-    } catch (err) {
+    } catch (err: any) {
       logger.debug(`Got error reading extensions entry ${e}: ${err}`);
       errors.push(err as FirebaseError);
     }
@@ -133,10 +139,4 @@ export async function resolveVersion(ref: refs.Ref): Promise<string> {
     );
   }
   return maxSatisfying;
-}
-
-function readParams(projectDir: string, instanceId: string): Record<string, string> {
-  const paramPath = path.join(projectDir, ENV_DIRECTORY, `${instanceId}.env`);
-  const params = readEnvFile(paramPath);
-  return params as Record<string, string>;
 }

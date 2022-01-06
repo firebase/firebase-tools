@@ -462,7 +462,7 @@ function batchCreate(
         );
       }
       state.overwriteUserWithLocalId(userInfo.localId, fields);
-    } catch (e) {
+    } catch (e: any) {
       if (e instanceof BadRequestError) {
         // Use friendlier messages for some codes, consistent with production.
         let message = e.message;
@@ -1460,7 +1460,27 @@ function signInWithIdp(
     }
   }
 
-  let { response, rawId } = fakeFetchUserInfoFromIdp(providerId, claims);
+  // Generic SAML flow
+  let samlResponse: SamlResponse | undefined;
+  let signInAttributes = undefined;
+  if (normalizedUri.searchParams.get("SAMLResponse")) {
+    // Auth emulator purposefully does not parse SAML and expects SAML-related
+    // fields to be JSON objects.
+    samlResponse = JSON.parse(normalizedUri.searchParams.get("SAMLResponse")!) as SamlResponse;
+    signInAttributes = samlResponse.assertion?.attributeStatements;
+
+    assert(samlResponse.assertion, "INVALID_IDP_RESPONSE ((Missing assertion in SAMLResponse.))");
+    assert(
+      samlResponse.assertion.subject,
+      "INVALID_IDP_RESPONSE ((Missing assertion.subject in SAMLResponse.))"
+    );
+    assert(
+      samlResponse.assertion.subject.nameId,
+      "INVALID_IDP_RESPONSE ((Missing assertion.subject.nameId in SAMLResponse.))"
+    );
+  }
+
+  let { response, rawId } = fakeFetchUserInfoFromIdp(providerId, claims, samlResponse);
 
   // Always return an access token, so that clients depending on it sorta work.
   // e.g. JS SDK creates credentials from accessTokens for most providers:
@@ -1492,7 +1512,7 @@ function signInWithIdp(
         userMatchingProvider
       ));
     }
-  } catch (err) {
+  } catch (err: any) {
     if (reqBody.returnIdpCredential && err instanceof BadRequestError) {
       response.errorMessage = err.message;
       return response;
@@ -1556,7 +1576,7 @@ function signInWithIdp(
     return { ...response, ...mfaPending(state, user, providerId) };
   } else {
     user = state.updateUserByLocalId(user.localId, { lastLoginAt: Date.now().toString() });
-    return { ...response, ...issueTokens(state, user, providerId) };
+    return { ...response, ...issueTokens(state, user, providerId, { signInAttributes }) };
   }
 }
 
@@ -2031,9 +2051,11 @@ function issueTokens(
   {
     extraClaims,
     secondFactor,
+    signInAttributes,
   }: {
     extraClaims?: Record<string, unknown>;
     secondFactor?: SecondFactorRecord;
+    signInAttributes?: unknown;
   } = {}
 ): { idToken: string; refreshToken?: string; expiresIn: string } {
   user = state.updateUserByLocalId(user.localId, { lastRefreshAt: new Date().toISOString() });
@@ -2051,6 +2073,7 @@ function issueTokens(
     secondFactor,
     usageMode,
     tenantId,
+    signInAttributes,
   });
   const refreshToken =
     state.usageMode === UsageMode.DEFAULT
@@ -2119,6 +2142,7 @@ function generateJwt(
     secondFactor,
     usageMode,
     tenantId,
+    signInAttributes,
   }: {
     projectId: string;
     signInProvider: string;
@@ -2127,6 +2151,7 @@ function generateJwt(
     secondFactor?: SecondFactorRecord;
     usageMode?: string;
     tenantId?: string;
+    signInAttributes?: unknown;
   }
 ): string {
   const identities: Record<string, string[]> = {};
@@ -2173,6 +2198,7 @@ function generateJwt(
       sign_in_second_factor: secondFactor?.provider,
       usage_mode: usageMode,
       tenant: tenantId,
+      sign_in_attributes: signInAttributes,
     },
   };
   /* eslint-enable camelcase */
@@ -2371,7 +2397,8 @@ function parseClaims(idTokenOrJsonClaims: string | undefined): IdpJwtPayload | u
 
 function fakeFetchUserInfoFromIdp(
   providerId: string,
-  claims: IdpJwtPayload
+  claims: IdpJwtPayload,
+  samlResponse?: SamlResponse
 ): {
   response: SignInWithIdpResponse;
   rawId: string;
@@ -2397,7 +2424,7 @@ function fakeFetchUserInfoFromIdp(
     photoUrl,
   };
 
-  let federatedId: string;
+  let federatedId = rawId;
   /* eslint-disable camelcase */
   switch (providerId) {
     case "google.com": {
@@ -2421,8 +2448,14 @@ function fakeFetchUserInfoFromIdp(
       });
       break;
     }
+    case providerId.match(/^saml\./)?.input:
+      const nameId = samlResponse?.assertion?.subject?.nameId;
+      response.email = nameId && isValidEmailAddress(nameId) ? nameId : response.email;
+      response.emailVerified = true;
+      response.rawUserInfo = JSON.stringify(samlResponse?.assertion?.attributeStatements);
+      break;
+    case providerId.match(/^oidc\./)?.input:
     default:
-      federatedId = rawId;
       response.rawUserInfo = JSON.stringify(claims);
       break;
   }
@@ -2766,6 +2799,17 @@ function updateTenant(
   return state.updateTenant(reqBody, ctx.params.query.updateMask);
 }
 
+export interface SamlAssertion {
+  subject?: {
+    nameId?: string;
+  };
+  attributeStatements?: unknown;
+}
+
+export interface SamlResponse {
+  assertion?: SamlAssertion;
+}
+
 /* eslint-disable camelcase */
 export interface FirebaseJwtPayload {
   // Standard fields:
@@ -2796,6 +2840,7 @@ export interface FirebaseJwtPayload {
     second_factor_identifier?: string;
     usage_mode?: string;
     tenant?: string;
+    sign_in_attributes?: unknown;
   };
   // ...and other fields that we don't care for now.
 }

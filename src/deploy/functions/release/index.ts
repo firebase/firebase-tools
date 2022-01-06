@@ -55,7 +55,7 @@ export async function release(
   const fab = new fabricator.Fabricator({
     functionExecutor,
     executor: new executor.QueueExecutor({}),
-    sourceUrl: context.uploadUrl!,
+    sourceUrl: context.sourceUrl!,
     storage: context.storage!,
     appEngineLocation: getAppEngineLocation(context.firebaseConfig),
   });
@@ -75,7 +75,11 @@ export async function release(
   const deletedEndpoints = Object.values(plan)
     .map((r) => r.endpointsToDelete)
     .reduce(reduceFlat, []);
-  await containerCleaner.cleanupBuildImages(haveEndpoints, deletedEndpoints);
+  const opts: { ar?: containerCleaner.ArtifactRegistryCleaner } = {};
+  if (!context.artifactRegistryEnabled) {
+    opts.ar = new containerCleaner.NoopArtifactRegistryCleaner();
+  }
+  await containerCleaner.cleanupBuildImages(haveEndpoints, deletedEndpoints, opts);
 
   const allErrors = summary.results.filter((r) => r.error).map((r) => r.error) as Error[];
   if (allErrors.length) {
