@@ -74,7 +74,7 @@ export const actionFunction = async (options: Options) => {
     })
     .then(() => {
       const instance = serveFunctions.get();
-      const emulator = new shell.FunctionsEmulatorShell(instance);
+      const emulator = new shell.FunctionsEmulatorShell(instance, serveFunctions.getBackend());
 
       if (emulator.emulatedFunctions && emulator.emulatedFunctions.length === 0) {
         logger.info("No functions emulated.");
