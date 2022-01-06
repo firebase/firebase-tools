@@ -1,3 +1,8 @@
 - Fixes bug where functions' memory configurations weren't preserved in batched function deploys (#4253).
 - `ext:export` now uses stable ordering for params in .env files (#4256).
 - Adds alerting event provider (#4258).
+- Adds `rewriteTo` / `copyTo` endpoints to Cloud Storage Emulator (#3647, #3751)
+- Addes `createReadStream` support to Cloud Storage Emulator (#3469)
+- Fixes `list` endpoint in Cloud Storage Emulator (#3647)
+- Fixes `getFiles` for Cloud Storage Emulator (#3778)
+- Fixes `exists` for Cloud Storage Emulator (#3764)
