@@ -169,7 +169,7 @@ describe("accountImporter", () => {
           .once()
           .reply(expectedResponse[i].status, expectedResponse[i].body);
       }
-      await serialImportUsers("test-project-id", hashOptions, batches, 0)
+      await serialImportUsers("test-project-id", hashOptions, batches, 0);
       expect(nock.isDone()).to.be.true;
     });
   });
