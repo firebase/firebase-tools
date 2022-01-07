@@ -414,10 +414,8 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
     );
 
     utils.assertIsStringOrUndefined(options.extensionDir);
-    const functionsDir = path.join(
-      options.extensionDir || options.config.projectDir,
-      options.config.src.functions.source
-    );
+    const projectDir = options.extensionDir || options.config.projectDir;
+    const functionsDir = path.join(projectDir, options.config.src.functions.source);
 
     let inspectFunctions: number | undefined;
     if (options.inspectFunctions) {
@@ -449,6 +447,7 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
     // TODO: Go read firebase.json for extensions and add them to emualtableBackends.
     const emulatableBackends: EmulatableBackend[] = [
       {
+        projectDir,
         functionsDir,
         env: {
           ...options.extensionEnv,

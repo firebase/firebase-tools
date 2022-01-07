@@ -24,7 +24,6 @@ import * as chokidar from "chokidar";
 import * as spawn from "cross-spawn";
 import { ChildProcess, spawnSync } from "child_process";
 import {
-  emulatedFunctionsByRegion,
   EmulatedTriggerDefinition,
   SignatureType,
   EventSchedule,
@@ -36,7 +35,7 @@ import {
   getFunctionService,
   getSignatureType,
   HttpConstants,
-  ParsedTriggerDefinition,
+  ParsedTriggerDefinition, emulatedFunctionsFromEndpoints,
 } from "./functionsEmulatorShared";
 import { EmulatorRegistry } from "./registry";
 import { EventEmitter } from "events";
@@ -53,9 +52,11 @@ import {
   constructDefaultAdminSdkConfig,
   getProjectAdminSdkConfigOrCached,
 } from "./adminSdkConfig";
-import * as functionsEnv from "../functions/env";
 import { EventUtils } from "./events/types";
 import { functionIdsAreValid } from "../deploy/functions/validate";
+import { getRuntimeDelegate } from "../deploy/functions/runtimes";
+import * as backend from "../deploy/functions/backend";
+import * as functionsEnv from "../functions/env";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -76,6 +77,7 @@ const DATABASE_PATH_PATTERN = new RegExp("^projects/[^/]+/instances/([^/]+)/refs
  * This can be a CF3 module, or an Extension.
  */
 export interface EmulatableBackend {
+  projectDir: string;
   functionsDir: string;
   env: Record<string, string>;
   predefinedTriggers?: ParsedTriggerDefinition[];
@@ -459,32 +461,53 @@ export class FunctionsEmulator implements EmulatorInstance {
         `No node binary for ${emulatableBackend.functionsDir}. This should never happen.`
       );
     }
-    const worker = this.invokeRuntime(
-      this.getBaseBundle(emulatableBackend),
-      {
-        nodeBinary: emulatableBackend.nodeBinary,
-        extensionTriggers: emulatableBackend.predefinedTriggers,
-      },
+    const runtimeDelegate = await getRuntimeDelegate({
+      projectId: this.args.projectId,
+      projectDir: emulatableBackend.projectDir,
+      sourceDir: emulatableBackend.functionsDir,
+      runtime: ""
+    })
+    logger.debug(`Validating ${runtimeDelegate.name} source`);
+    await runtimeDelegate.validate();
+    logger.debug(`Building ${runtimeDelegate.name} source`);
+    await runtimeDelegate.build();
+
+    logger.debug(`Analyzing ${runtimeDelegate.name} backend spec`);
+    const discoveredBackend = await runtimeDelegate.discoverSpec(
+      {},
       // Don't include user envs when parsing triggers.
       {
         ...this.getSystemEnvs(),
         ...this.getEmulatorEnvs(),
         FIREBASE_CONFIG: this.getFirebaseConfig(),
-        ...emulatableBackend.env,
-      }
+        ...emulatableBackend.env
+      },
     );
-
-    const triggerParseEvent = await EmulatorLog.waitForLog(
-      worker.runtime.events,
-      "SYSTEM",
-      "triggers-parsed"
-    );
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    const parsedDefinitions = triggerParseEvent.data
-      .triggerDefinitions as ParsedTriggerDefinition[];
+    const endpoints = backend.allEndpoints(discoveredBackend)
+    console.log(JSON.stringify(endpoints));
+    // const worker = this.invokeRuntime(
+    //   this.getBaseBundle(emulatableBackend),
+    //   {
+    //     nodeBinary: emulatableBackend.nodeBinary,
+    //     extensionTriggers: emulatableBackend.predefinedTriggers,
+    //   },
+    //   {
+    //     FIREBASE_CONFIG: this.getFirebaseConfig(),
+    //     ...emulatableBackend.env,
+    //   }
+    // );
+    //
+    // const triggerParseEvent = await EmulatorLog.waitForLog(
+    //   worker.runtime.events,
+    //   "SYSTEM",
+    //   "triggers-parsed"
+    // );
+    // // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    // const parsedDefinitions = triggerParseEvent.data
+    //   .triggerDefinitions as ParsedTriggerDefinition[];
 
     const triggerDefinitions: EmulatedTriggerDefinition[] =
-      emulatedFunctionsByRegion(parsedDefinitions);
+      emulatedFunctionsFromEndpoints(endpoints);
 
     // When force is true we set up all triggers, otherwise we only set up
     // triggers which have a unique function name
@@ -532,6 +555,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       let added = false;
       let url: string | undefined = undefined;
 
+      console.log(JSON.stringify(definition));
       if (definition.httpsTrigger) {
         const { host, port } = this.getInfo();
         added = true;
@@ -584,7 +608,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       } else {
         this.logger.log(
           "WARN",
-          `Trigger trigger "${definition.name}" has has neither "httpsTrigger" or "eventTrigger" member`
+          `Trigger "${definition.name}" has neither "httpsTrigger" or "eventTrigger" member`
         );
       }
 
@@ -659,7 +683,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         return true;
       })
       .catch((err) => {
-        this.logger.log("WARN", "Error adding trigger: " + err);
+        this.logger.log("WARN", "Error adding rtdb trigger: " + err);
         throw err;
       });
   }
@@ -669,6 +693,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     key: string,
     eventTrigger: EventTrigger
   ): Promise<boolean> {
+    console.log(JSON.stringify(eventTrigger));
     const firestoreEmu = EmulatorRegistry.get(Emulators.FIRESTORE);
     if (!firestoreEmu) {
       return Promise.resolve(false);
@@ -687,7 +712,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         return true;
       })
       .catch((err) => {
-        this.logger.log("WARN", "Error adding trigger: " + err);
+        this.logger.log("WARN", "Error adding firestore trigger: " + err);
         throw err;
       });
   }

@@ -34,6 +34,7 @@ const functionsEmulator = new FunctionsEmulator({
   projectId: "fake-project-id",
   emulatableBackends: [
     {
+      projectDir: MODULE_ROOT,
       functionsDir: MODULE_ROOT,
       env: {},
     },
@@ -42,6 +43,7 @@ const functionsEmulator = new FunctionsEmulator({
 });
 
 const testBackend = {
+  projectDir: MODULE_ROOT,
   functionsDir: MODULE_ROOT,
   env: {},
   nodeBinary: process.execPath,

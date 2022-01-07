@@ -7,7 +7,7 @@ import * as fs from "fs";
 
 import { Constants } from "./constants";
 import { InvokeRuntimeOpts } from "./functionsEmulator";
-import { FunctionsPlatform } from "../deploy/functions/backend";
+import { Endpoint, FunctionsPlatform } from "../deploy/functions/backend";
 
 export type SignatureType = "http" | "event" | "cloudevent";
 
@@ -133,6 +133,31 @@ export class EmulatedTrigger {
     const func = _.get(this.module, this.definition.entryPoint);
     return func.__emulator_func || func;
   }
+}
+
+
+/**
+ * Creates a unique trigger definition from Endpoints.
+ * @param Endpoints A list of all CloudFunctions in the deployment.
+ * @return A list of all CloudFunctions in the deployment.
+ */
+export function emulatedFunctionsFromEndpoints(
+  endpoints: Endpoint[]
+): EmulatedTriggerDefinition[] {
+  const regionDefinitions: EmulatedTriggerDefinition[] = [];
+  for (const endpoint of endpoints) {
+    if (!endpoint.region) {
+      endpoint.region = "us-central1";
+    }
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const defDeepCopy: EmulatedTriggerDefinition = JSON.parse(JSON.stringify(endpoint));
+    // TODO: Difference in use of name/id in Endpoint vs Emulator is unnecessarily confusing.
+    defDeepCopy.name = endpoint.id;
+    defDeepCopy.id = `${endpoint.region}-${defDeepCopy.name}`;
+    defDeepCopy.platform = defDeepCopy.platform || "gcfv1";
+    regionDefinitions.push(defDeepCopy);
+  }
+  return regionDefinitions;
 }
 
 /**

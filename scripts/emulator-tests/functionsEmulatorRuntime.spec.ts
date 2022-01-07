@@ -20,6 +20,7 @@ const DO_NOTHING = () => {
 };
 
 const testBackend = {
+  projectDir: MODULE_ROOT,
   functionsDir: MODULE_ROOT,
   env: {},
   nodeBinary: process.execPath,
