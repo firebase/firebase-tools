@@ -1,12 +1,22 @@
 "use strict";
 
+const nock = require("nock");
 var chai = require("chai");
-var sinon = require("sinon");
-var api = require("../api");
+
+var { googleOrigin } = require("../api");
+
 var accountImporter = require("../accountImporter");
 
 var expect = chai.expect;
 describe("accountImporter", function () {
+  before(() => {
+    nock.disableNetConnect();
+  });
+
+  after(() => {
+    nock.enableNetConnect();
+  });
+
   var transArrayToUser = accountImporter.transArrayToUser;
   var validateOptions = accountImporter.validateOptions;
   var validateUserJson = accountImporter.validateUserJson;
@@ -98,8 +108,6 @@ describe("accountImporter", function () {
   });
 
   describe("serialImportUsers", function () {
-    var sandbox;
-    var mockApi;
     var batches = [];
     var hashOptions = {
       hashAlgo: "HMAC_SHA1",
@@ -108,8 +116,6 @@ describe("accountImporter", function () {
     var expectedResponse = [];
 
     beforeEach(function () {
-      sandbox = sinon.createSandbox();
-      mockApi = sandbox.mock(api);
       for (var i = 0; i < 10; i++) {
         batches.push([
           {
@@ -119,36 +125,27 @@ describe("accountImporter", function () {
         ]);
         expectedResponse.push({
           status: 200,
-          response: "",
-          body: "",
+          body: {},
         });
       }
     });
 
     afterEach(function () {
-      mockApi.verify();
-      sandbox.restore();
       batches = [];
       expectedResponse = [];
     });
 
     it("should call api.request multiple times", function (done) {
       for (var i = 0; i < batches.length; i++) {
-        mockApi
-          .expects("request")
-          .withArgs("POST", "/identitytoolkit/v3/relyingparty/uploadAccount", {
-            auth: true,
-            data: {
-              hashAlgorithm: "HMAC_SHA1",
-              signerKey: "a2V5MTIz",
-              targetProjectId: "test-project-id",
-              users: [{ email: "test" + i + "@test.org", localId: i.toString() }],
-            },
-            json: true,
-            origin: "https://www.googleapis.com",
+        nock(googleOrigin)
+          .post("/identitytoolkit/v3/relyingparty/uploadAccount", {
+            hashAlgorithm: "HMAC_SHA1",
+            signerKey: "a2V5MTIz",
+            targetProjectId: "test-project-id",
+            users: [{ email: `test${i}@test.org`, localId: i.toString() }],
           })
           .once()
-          .resolves(expectedResponse[i]);
+          .reply(expectedResponse[i].status, expectedResponse[i].body);
       }
       return expect(
         serialImportUsers("test-project-id", hashOptions, batches, 0)
@@ -158,7 +155,6 @@ describe("accountImporter", function () {
     it("should continue when some request's response is 200 but has `error` in response", function (done) {
       expectedResponse[5] = {
         status: 200,
-        response: "",
         body: {
           error: [
             {
@@ -169,21 +165,15 @@ describe("accountImporter", function () {
         },
       };
       for (var i = 0; i < batches.length; i++) {
-        mockApi
-          .expects("request")
-          .withArgs("POST", "/identitytoolkit/v3/relyingparty/uploadAccount", {
-            auth: true,
-            data: {
-              hashAlgorithm: "HMAC_SHA1",
-              signerKey: "a2V5MTIz",
-              targetProjectId: "test-project-id",
-              users: [{ email: "test" + i + "@test.org", localId: i.toString() }],
-            },
-            json: true,
-            origin: "https://www.googleapis.com",
+        nock(googleOrigin)
+          .post("/identitytoolkit/v3/relyingparty/uploadAccount", {
+            hashAlgorithm: "HMAC_SHA1",
+            signerKey: "a2V5MTIz",
+            targetProjectId: "test-project-id",
+            users: [{ email: `test${i}@test.org`, localId: i.toString() }],
           })
           .once()
-          .resolves(expectedResponse[i]);
+          .reply(expectedResponse[i].status, expectedResponse[i].body);
       }
       return expect(
         serialImportUsers("test-project-id", hashOptions, batches, 0)
