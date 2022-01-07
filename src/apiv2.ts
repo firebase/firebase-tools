@@ -54,6 +54,7 @@ interface ClientHandlingOptions {
     resBody?: boolean;
   };
   resolveOnHTTPError?: boolean;
+  retryCodes?: number[];
 }
 
 export type ClientRequestOptions<T> = RequestOptions<T> & ClientVerbOptions;
@@ -383,6 +384,9 @@ export class Client {
     this.logResponse(res, body, options);
 
     if (res.status >= 400) {
+      if (options.retryCodes?.includes(res.status)) {
+        return this.doRequest(options);
+      }
       if (!options.resolveOnHTTPError) {
         throw responseToError({ statusCode: res.status }, body);
       }

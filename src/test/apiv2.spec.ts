@@ -59,6 +59,20 @@ describe("apiv2", () => {
       expect(nock.isDone()).to.be.true;
     });
 
+    it("should be able to handle specified retry codes", async () => {
+      nock("https://example.com").get("/path/to/foo").once().reply(503, {});
+      nock("https://example.com").get("/path/to/foo").once().reply(200, { foo: "bar" });
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = await c.request({
+        method: "GET",
+        path: "/path/to/foo",
+        retryCodes: [503],
+      });
+      expect(r.body).to.deep.equal({ foo: "bar" });
+      expect(nock.isDone()).to.be.true;
+    });
+
     it("should not allow resolving on http error when streaming", async () => {
       const c = new Client({ urlPrefix: "https://example.com" });
       const r = c.request<unknown, NodeJS.ReadableStream>({
