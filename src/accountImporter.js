@@ -3,10 +3,15 @@
 var clc = require("cli-color");
 var _ = require("lodash");
 
-var api = require("./api");
+const { Client } = require("./apiv2");
+const { googleOrigin } = require("./api");
 const { logger } = require("./logger");
-var utils = require("./utils");
 var { FirebaseError } = require("./error");
+var utils = require("./utils");
+
+const apiClient = new Client({
+  urlPrefix: googleOrigin,
+});
 
 // TODO: support for MFA at runtime was added in PR #3173, but this importer currently ignores `mfaInfo` and loses the data on import.
 var ALLOWED_JSON_KEYS = [
@@ -302,12 +307,10 @@ var validateUserJson = function (userJson) {
 
 var _sendRequest = function (projectId, userList, hashOptions) {
   logger.info("Starting importing " + userList.length + " account(s).");
-  return api
-    .request("POST", "/identitytoolkit/v3/relyingparty/uploadAccount", {
-      auth: true,
-      json: true,
-      data: _genUploadAccountPostBody(projectId, userList, hashOptions),
-      origin: api.googleOrigin,
+  const postData = _genUploadAccountPostBody(projectId, userList, hashOptions);
+  return apiClient
+    .post("/identitytoolkit/v3/relyingparty/uploadAccount", postData, {
+      skipLog: { body: true }, // Contains a lot of PII - don't log.
     })
     .then(function (ret) {
       if (ret.body.error) {
