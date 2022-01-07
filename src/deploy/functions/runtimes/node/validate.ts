@@ -18,10 +18,8 @@ const cjson = require("cjson");
 function assertFunctionsSourcePresent(data: any, sourceDir: string, projectDir: string): void {
   const indexJsFile = path.join(sourceDir, data.main || "index.js");
   if (!fsutils.fileExistsSync(indexJsFile)) {
-    const msg = `${path.relative(
-      projectDir,
-      indexJsFile
-    )} does not exist, can't deploy Cloud Functions`;
+    const relativeMainPath = path.relative(projectDir, indexJsFile);
+    const msg = `${relativeMainPath} does not exist, can't deploy Cloud Functions`;
     throw new FirebaseError(msg);
   }
 }
