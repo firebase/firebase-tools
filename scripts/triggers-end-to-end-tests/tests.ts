@@ -135,14 +135,14 @@ describe("database and firestore emulator function triggers", () => {
     await test.stopEmulators();
   });
 
-  it.only("should write to the database emulator", async function (this) {
+  it("should write to the database emulator", async function (this) {
     this.timeout(EMULATOR_TEST_TIMEOUT);
 
     const response = await test.writeToRtdb();
     expect(response.status).to.equal(200);
   });
 
-  it.only("should write to the firestore emulator", async function (this) {
+  it("should write to the firestore emulator", async function (this) {
     this.timeout(EMULATOR_TEST_TIMEOUT);
 
     const response = await test.writeToFirestore();

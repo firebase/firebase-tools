@@ -35,7 +35,8 @@ import {
   getFunctionService,
   getSignatureType,
   HttpConstants,
-  ParsedTriggerDefinition, emulatedFunctionsFromEndpoints,
+  ParsedTriggerDefinition,
+  emulatedFunctionsFromEndpoints, emulatedFunctionsByRegion,
 } from "./functionsEmulatorShared";
 import { EmulatorRegistry } from "./registry";
 import { EventEmitter } from "events";
@@ -461,54 +462,35 @@ export class FunctionsEmulator implements EmulatorInstance {
         `No node binary for ${emulatableBackend.functionsDir}. This should never happen.`
       );
     }
-    const runtimeDelegate = await getRuntimeDelegate({
-      projectId: this.args.projectId,
-      projectDir: emulatableBackend.projectDir,
-      sourceDir: emulatableBackend.functionsDir,
-      runtime: ""
-    })
-    logger.debug(`Validating ${runtimeDelegate.name} source`);
-    await runtimeDelegate.validate();
-    logger.debug(`Building ${runtimeDelegate.name} source`);
-    await runtimeDelegate.build();
 
-    logger.debug(`Analyzing ${runtimeDelegate.name} backend spec`);
-    const discoveredBackend = await runtimeDelegate.discoverSpec(
-      {},
-      // Don't include user envs when parsing triggers.
-      {
-        ...this.getSystemEnvs(),
-        ...this.getEmulatorEnvs(),
-        FIREBASE_CONFIG: this.getFirebaseConfig(),
-        ...emulatableBackend.env
-      },
-    );
-    const endpoints = backend.allEndpoints(discoveredBackend)
-    console.log(JSON.stringify(endpoints));
-    // const worker = this.invokeRuntime(
-    //   this.getBaseBundle(emulatableBackend),
-    //   {
-    //     nodeBinary: emulatableBackend.nodeBinary,
-    //     extensionTriggers: emulatableBackend.predefinedTriggers,
-    //   },
-    //   {
-    //     FIREBASE_CONFIG: this.getFirebaseConfig(),
-    //     ...emulatableBackend.env,
-    //   }
-    // );
-    //
-    // const triggerParseEvent = await EmulatorLog.waitForLog(
-    //   worker.runtime.events,
-    //   "SYSTEM",
-    //   "triggers-parsed"
-    // );
-    // // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    // const parsedDefinitions = triggerParseEvent.data
-    //   .triggerDefinitions as ParsedTriggerDefinition[];
-
-    const triggerDefinitions: EmulatedTriggerDefinition[] =
-      emulatedFunctionsFromEndpoints(endpoints);
-
+    let triggerDefinitions: EmulatedTriggerDefinition[];
+    if (!emulatableBackend.predefinedTriggers) {
+      const runtimeDelegate = await getRuntimeDelegate({
+        projectId: this.args.projectId,
+        projectDir: emulatableBackend.projectDir,
+        sourceDir: emulatableBackend.functionsDir,
+        runtime: "",
+      });
+      logger.debug(`Validating ${runtimeDelegate.name} source`);
+      await runtimeDelegate.validate();
+      logger.debug(`Building ${runtimeDelegate.name} source`);
+      await runtimeDelegate.build();
+      logger.debug(`Analyzing ${runtimeDelegate.name} backend spec`);
+      const discoveredBackend = await runtimeDelegate.discoverSpec(
+        {},
+        // Don't include user envs when parsing triggers.
+        {
+          ...this.getSystemEnvs(),
+          ...this.getEmulatorEnvs(),
+          FIREBASE_CONFIG: this.getFirebaseConfig(),
+          ...emulatableBackend.env,
+        }
+      );
+      const endpoints = backend.allEndpoints(discoveredBackend);
+      triggerDefinitions = emulatedFunctionsFromEndpoints(endpoints);
+    } else {
+      triggerDefinitions = emulatedFunctionsByRegion(emulatableBackend.predefinedTriggers);
+    }
     // When force is true we set up all triggers, otherwise we only set up
     // triggers which have a unique function name
     const toSetup = triggerDefinitions.filter((definition) => {
@@ -555,7 +537,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       let added = false;
       let url: string | undefined = undefined;
 
-      console.log(JSON.stringify(definition));
       if (definition.httpsTrigger) {
         const { host, port } = this.getInfo();
         added = true;
@@ -693,13 +674,17 @@ export class FunctionsEmulator implements EmulatorInstance {
     key: string,
     eventTrigger: EventTrigger
   ): Promise<boolean> {
-    console.log(JSON.stringify(eventTrigger));
     const firestoreEmu = EmulatorRegistry.get(Emulators.FIRESTORE);
     if (!firestoreEmu) {
       return Promise.resolve(false);
     }
 
-    const bundle = JSON.stringify({ eventTrigger });
+    const bundle = JSON.stringify({
+      eventTrigger: {
+        ...eventTrigger,
+        service: "firestore.googleapis.com",
+      },
+    });
     logger.debug(`addFirestoreTrigger`, JSON.stringify(bundle));
 
     return api
@@ -1249,7 +1234,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   private tokenFromAuthHeader(authHeader: string) {
-    const match = authHeader.match(/^Bearer (.*)$/);
+    const match = /^Bearer (.*)$/.exec(authHeader);
     if (!match) {
       return;
     }

@@ -7,7 +7,14 @@ import * as fs from "fs";
 
 import { Constants } from "./constants";
 import { InvokeRuntimeOpts } from "./functionsEmulator";
-import { Endpoint, FunctionsPlatform } from "../deploy/functions/backend";
+import {
+  Endpoint,
+  FunctionsPlatform,
+  isEventTriggered,
+  isHttpsTriggered,
+  isScheduleTriggered,
+} from "../deploy/functions/backend";
+import { copyIfPresent } from "../gcp/proto";
 
 export type SignatureType = "http" | "event" | "cloudevent";
 
@@ -135,27 +142,60 @@ export class EmulatedTrigger {
   }
 }
 
-
 /**
  * Creates a unique trigger definition from Endpoints.
  * @param Endpoints A list of all CloudFunctions in the deployment.
  * @return A list of all CloudFunctions in the deployment.
  */
-export function emulatedFunctionsFromEndpoints(
-  endpoints: Endpoint[]
-): EmulatedTriggerDefinition[] {
+export function emulatedFunctionsFromEndpoints(endpoints: Endpoint[]): EmulatedTriggerDefinition[] {
   const regionDefinitions: EmulatedTriggerDefinition[] = [];
   for (const endpoint of endpoints) {
     if (!endpoint.region) {
       endpoint.region = "us-central1";
     }
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const defDeepCopy: EmulatedTriggerDefinition = JSON.parse(JSON.stringify(endpoint));
-    // TODO: Difference in use of name/id in Endpoint vs Emulator is unnecessarily confusing.
-    defDeepCopy.name = endpoint.id;
-    defDeepCopy.id = `${endpoint.region}-${defDeepCopy.name}`;
-    defDeepCopy.platform = defDeepCopy.platform || "gcfv1";
-    regionDefinitions.push(defDeepCopy);
+    const def: EmulatedTriggerDefinition = {
+      entryPoint: endpoint.entryPoint,
+      platform: endpoint.platform,
+      region: endpoint.region,
+      // TODO: Difference in use of name/id in Endpoint vs Emulator is unnecessarily confusing.
+      name: endpoint.id,
+      id: `${endpoint.region}-${endpoint.id}`,
+    };
+    copyIfPresent(def, endpoint, "timeout", "availableMemoryMb", "labels", "platform");
+    // TODO: This whole event crap an awkward transformation.
+    // Emulator does not understand endpoints - maybe it should?
+    if (isHttpsTriggered(endpoint)) {
+      def.httpsTrigger = endpoint.httpsTrigger;
+    } else if (isEventTriggered(endpoint)) {
+      const eventTrigger = endpoint.eventTrigger;
+      if (endpoint.platform === "gcfv1") {
+        def.eventTrigger = {
+          eventType: eventTrigger.eventType,
+          resource: eventTrigger.eventFilters.resource,
+        };
+      } else {
+        // Only pubsub and storage events are supported for gcfv2.
+        const { resource, topic, bucket } = endpoint.eventTrigger.eventFilters;
+        const eventResource = resource || topic || bucket;
+        if (!eventResource) {
+          // Unsupported event type for GCFv2
+          continue;
+        }
+        def.eventTrigger = {
+          eventType: eventTrigger.eventType,
+          resource: eventResource,
+        };
+      }
+    } else if (isScheduleTriggered(endpoint)) {
+      // TODO: This is an awkward transformation. Emulator does not understand scheduled triggers - maybe it should?
+      def.eventTrigger = { eventType: "pubsub", resource: "" };
+      def.schedule = endpoint.scheduleTrigger as EventSchedule;
+    } else {
+      // All other trigger types are not supported by the emulator
+      continue;
+    }
+    regionDefinitions.push(def);
   }
   return regionDefinitions;
 }
