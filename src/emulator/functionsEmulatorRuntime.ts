@@ -3,18 +3,12 @@ import * as fs from "fs";
 import { EmulatorLog } from "./types";
 import { CloudFunction, DeploymentOptions, https } from "firebase-functions";
 import {
-  ParsedTriggerDefinition,
-  EmulatedTrigger,
-  emulatedFunctionsByRegion,
-  EmulatedTriggerDefinition,
   EmulatedTriggerMap,
   findModuleRoot,
   FunctionsRuntimeBundle,
   FunctionsRuntimeFeatures,
-  getEmulatedTriggersFromDefinitions,
   FunctionsRuntimeArgs,
   HttpConstants,
-  getSignatureType,
   SignatureType,
 } from "./functionsEmulatorShared";
 import { compareVersionStrings } from "./functionsEmulatorUtils";
@@ -25,7 +19,11 @@ import * as bodyParser from "body-parser";
 import { pathToFileURL, URL } from "url";
 import * as _ from "lodash";
 
-let triggers: EmulatedTriggerMap | undefined;
+let functionTrigger: CloudFunction<any>;
+let FUNCTION_TARGET_NAME: string;
+// TODO: narrow the scope to SignatureType
+let FUNCTION_SIGNATURE: string;
+
 let developerPkgJSON: PackageJSON | undefined;
 
 /**
@@ -753,7 +751,7 @@ function rawBodySaver(req: express.Request, res: express.Response, buf: Buffer):
   (req as any).rawBody = buf;
 }
 
-async function processHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigger): Promise<void> {
+async function processHTTPS(frb: FunctionsRuntimeBundle): Promise<void> {
   const ephemeralServer = express();
   const functionRouter = express.Router(); // eslint-disable-line new-cap
   const socketPath = frb.socketPath;
@@ -767,7 +765,6 @@ async function processHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
     const handler = async (req: express.Request, res: express.Response) => {
       try {
         logDebug(`Ephemeral server handling ${req.method} request`);
-        const func = trigger.getRawFunction();
         res.on("finish", () => {
           instance.close((err) => {
             if (err) {
@@ -778,7 +775,7 @@ async function processHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
           });
         });
 
-        await runHTTPS([req, res], func);
+        await runHTTPS([req, res]);
       } catch (err: any) {
         rejectEphemeralServer(err);
       }
@@ -827,14 +824,13 @@ async function processHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
 
 async function processBackground(
   frb: FunctionsRuntimeBundle,
-  trigger: EmulatedTrigger,
   signature: SignatureType
 ): Promise<void> {
   const proto = frb.proto;
   logDebug("ProcessBackground", proto);
 
   if (signature === "cloudevent") {
-    return runCloudEvent(proto, trigger.getRawFunction());
+    return runCloudEvent(proto);
   }
 
   // All formats of the payload should carry a "data" property. The "context" property does
@@ -852,7 +848,7 @@ async function processBackground(
     }
   }
 
-  await runBackground({ data, context }, trigger.getRawFunction());
+  await runBackground({ data, context });
 }
 
 /**
@@ -872,32 +868,29 @@ async function runFunction(func: () => Promise<any>): Promise<any> {
   }
 }
 
-async function runBackground(proto: any, func: CloudFunction<any>): Promise<any> {
+async function runBackground(proto: any): Promise<any> {
   logDebug("RunBackground", proto);
 
   await runFunction(() => {
-    return func(proto.data, proto.context);
+    return functionTrigger(proto.data, proto.context);
   });
 }
 
-async function runCloudEvent(event: unknown, func: CloudFunction<any>): Promise<any> {
+async function runCloudEvent(event: unknown): Promise<any> {
   logDebug("RunCloudEvent", event);
 
   await runFunction(() => {
-    return func(event);
+    return functionTrigger(event);
   });
 }
 
-async function runHTTPS(
-  args: any[],
-  func: (a: express.Request, b: express.Response) => Promise<any>
-): Promise<any> {
+async function runHTTPS(args: any[]): Promise<any> {
   if (args.length < 2) {
     throw new Error("Function must be passed 2 args.");
   }
 
   await runFunction(() => {
-    return func(args[0], args[1]);
+    return functionTrigger(args[0], args[1]);
   });
 }
 
@@ -935,23 +928,12 @@ function logDebug(msg: string, data?: any): void {
   new EmulatorLog("DEBUG", "runtime-status", `[${process.pid}] ${msg}`, data).log();
 }
 
-async function invokeTrigger(
-  frb: FunctionsRuntimeBundle,
-  triggers: EmulatedTriggerMap
-): Promise<void> {
-  if (!frb.triggerId) {
-    throw new Error("frb.triggerId unexpectedly null");
-  }
-
+async function invokeTrigger(frb: FunctionsRuntimeBundle): Promise<void> {
   new EmulatorLog("INFO", "runtime-status", `Beginning execution of "${frb.triggerId}"`, {
     frb,
   }).log();
 
-  const trigger = triggers[frb.triggerId];
-  logDebug("triggerDefinition", trigger.definition);
-  const signature = getSignatureType(trigger.definition);
-
-  logDebug(`Running ${frb.triggerId} in signature ${signature}`);
+  logDebug(`Running ${frb.triggerId} in signature ${FUNCTION_TARGET_NAME}`);
 
   let seconds = 0;
   const timerId = setInterval(() => {
@@ -960,26 +942,29 @@ async function invokeTrigger(
 
   let timeoutId;
   if (isFeatureEnabled(frb, "timeout")) {
+    let timeout = process.env.FUNCTIONS_EMULATOR_TIMEOUT_SECONDS || "60";
+    if (timeout.endsWith("s")) {
+      timeout = timeout.slice(0, -1);
+    }
+    const timeoutMs = parseInt(timeout, 10) * 1000;
     timeoutId = setTimeout(() => {
       new EmulatorLog(
         "WARN",
         "runtime-status",
-        `Your function timed out after ~${
-          trigger.definition.timeout || "60s"
-        }. To configure this timeout, see
+        `Your function timed out after ~${timeout}. To configure this timeout, see
       https://firebase.google.com/docs/functions/manage-functions#set_timeout_and_memory_allocation.`
       ).log();
       throw new Error("Function timed out.");
-    }, trigger.timeoutMs);
+    }, timeoutMs);
   }
 
-  switch (signature) {
+  switch (FUNCTION_SIGNATURE) {
     case "event":
     case "cloudevent":
-      await processBackground(frb, triggers[frb.triggerId], signature);
+      await processBackground(frb, FUNCTION_SIGNATURE);
       break;
     case "http":
-      await processHTTPS(frb, triggers[frb.triggerId]);
+      await processHTTPS(frb);
       break;
   }
 
@@ -996,10 +981,28 @@ async function invokeTrigger(
 }
 
 async function initializeRuntime(
-  frb: FunctionsRuntimeBundle,
-  serializedFunctionTrigger?: string,
-  extensionTriggers?: ParsedTriggerDefinition[]
+  frb: FunctionsRuntimeBundle
 ): Promise<EmulatedTriggerMap | undefined> {
+  FUNCTION_TARGET_NAME = process.env.FUNCTION_TARGET || "";
+  if (!FUNCTION_TARGET_NAME) {
+    new EmulatorLog(
+      "FATAL",
+      "runtime-status",
+      `Environment variable FUNCTION_TARGET cannot be empty. This shouldn't happen.`
+    ).log();
+    await flushAndExit(1);
+  }
+
+  FUNCTION_SIGNATURE = process.env.FUNCTION_SIGNATURE_TYPE || "";
+  if (!FUNCTION_SIGNATURE) {
+    new EmulatorLog(
+      "FATAL",
+      "runtime-status",
+      `Environment variable FUNCTION_SIGNATURE_TYPE cannot be empty. This shouldn't happen.`
+    ).log();
+    await flushAndExit(1);
+  }
+
   logDebug(`Disabled runtime features: ${JSON.stringify(frb.disabled_features)}`);
 
   const verified = await verifyDeveloperNodeModules(frb);
@@ -1018,10 +1021,14 @@ async function initializeRuntime(
   await initializeFunctionsConfigHelper(frb);
   await initializeFirebaseFunctionsStubs(frb);
   await initializeFirebaseAdminStubs(frb);
+}
 
-  let parsedDefinitions: ParsedTriggerDefinition[] = [];
+async function loadTrigger(
+  frb: FunctionsRuntimeBundle,
+  functionTarget: string,
+  serializedFunctionTrigger?: string
+): Promise<CloudFunction<any>> {
   let triggerModule;
-
   if (serializedFunctionTrigger) {
     /* tslint:disable:no-eval */
     triggerModule = eval(serializedFunctionTrigger)();
@@ -1031,7 +1038,7 @@ async function initializeRuntime(
     } catch (err: any) {
       if (err.code !== "ERR_REQUIRE_ESM") {
         await moduleResolutionDetective(frb, err);
-        return;
+        throw err;
       }
       const modulePath = require.resolve(frb.cwd);
       // Resolve module path to file:// URL. Required for windows support.
@@ -1039,19 +1046,11 @@ async function initializeRuntime(
       triggerModule = await dynamicImport(moduleURL);
     }
   }
-  if (extensionTriggers) {
-    parsedDefinitions = extensionTriggers;
-  } else {
-    require("../deploy/functions/runtimes/node/extractTriggers")(triggerModule, parsedDefinitions);
+  const maybeTrigger = triggerModule[functionTarget];
+  if (!maybeTrigger) {
+    throw new Error(`Failed to find function ${functionTarget} in the loaded module`);
   }
-
-  const triggerDefinitions: EmulatedTriggerDefinition[] =
-    emulatedFunctionsByRegion(parsedDefinitions);
-
-  const triggers = getEmulatedTriggersFromDefinitions(triggerDefinitions, triggerModule);
-
-  new EmulatorLog("SYSTEM", "triggers-parsed", "", { triggers, triggerDefinitions }).log();
-  return triggers;
+  return maybeTrigger;
 }
 
 async function flushAndExit(code: number) {
@@ -1074,38 +1073,32 @@ async function handleMessage(message: string) {
     return;
   }
 
-  if (!triggers) {
-    const serializedTriggers = runtimeArgs.opts ? runtimeArgs.opts.serializedTriggers : undefined;
-    const extensionTriggers = runtimeArgs.opts ? runtimeArgs.opts.extensionTriggers : undefined;
-    triggers = await initializeRuntime(runtimeArgs.frb, serializedTriggers, extensionTriggers);
-  }
-
-  // If we don't have triggers by now, we can't run.
-  if (!triggers) {
-    await flushAndExit(1);
-    return;
+  if (!functionTrigger) {
+    try {
+      await initializeRuntime(runtimeArgs.frb);
+      const serializedTriggers = runtimeArgs.opts ? runtimeArgs.opts.serializedTriggers : undefined;
+      functionTrigger = await loadTrigger(
+        runtimeArgs.frb,
+        FUNCTION_TARGET_NAME,
+        serializedTriggers
+      );
+    } catch (e: any) {
+      logDebug(e);
+      new EmulatorLog(
+        "FATAL",
+        "runtime-status",
+        `Failed to initialize and load trigger. This shouldn't happen.`
+      ).log();
+      await flushAndExit(1);
+      return;
+    }
   }
 
   // If there's no trigger id it's just a diagnostic call. We can go idle right away.
-  if (!runtimeArgs.frb.triggerId) {
-    await goIdle();
-    return;
-  }
-
-  if (!triggers[runtimeArgs.frb.triggerId]) {
-    new EmulatorLog(
-      "FATAL",
-      "runtime-status",
-      `Could not find trigger "${runtimeArgs.frb.triggerId}" in your functions directory.`
-    ).log();
-    return;
-  } else {
-    logDebug(`Trigger "${runtimeArgs.frb.triggerId}" has been found, beginning invocation!`);
-  }
+  logDebug(`Beginning invocation function ${FUNCTION_TARGET_NAME}!`);
 
   try {
-    await invokeTrigger(runtimeArgs.frb, triggers);
-
+    await invokeTrigger(runtimeArgs.frb);
     // If we were passed serialized triggers we have to exit the runtime after,
     // otherwise we can go IDLE and await another request.
     if (runtimeArgs.opts && runtimeArgs.opts.serializedTriggers) {

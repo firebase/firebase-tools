@@ -36,7 +36,8 @@ import {
   getSignatureType,
   HttpConstants,
   ParsedTriggerDefinition,
-  emulatedFunctionsFromEndpoints, emulatedFunctionsByRegion,
+  emulatedFunctionsFromEndpoints,
+  emulatedFunctionsByRegion,
 } from "./functionsEmulatorShared";
 import { EmulatorRegistry } from "./registry";
 import { EventEmitter } from "events";
@@ -829,6 +830,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   getBaseBundle(backend: EmulatableBackend): FunctionsRuntimeBundle {
     return {
       cwd: backend.functionsDir,
+      proto: {},
       projectId: this.args.projectId,
       triggerId: "",
       targetName: "",
@@ -964,6 +966,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     envs.TZ = "UTC"; // Fixes https://github.com/firebase/firebase-tools/issues/2253
     envs.FIREBASE_DEBUG_MODE = "true";
     envs.FIREBASE_DEBUG_FEATURES = JSON.stringify({ skipTokenVerification: true });
+    // TODO: set timeouts.
 
     // Make firebase-admin point at the Firestore emulator
     const firestoreEmulator = this.getEmulatorInfo(Emulators.FIRESTORE);
