@@ -444,14 +444,8 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   /**
    * When a user changes their code, we need to look for triggers defined in their updates sources.
-   * To do this, we spin up a "diagnostic" runtime invocation. In other words, we pretend we're
-   * going to invoke a cloud function in the emulator, but stop short of actually running a function.
-   * Instead, we set up the environment and catch a special "triggers-parsed" log from the runtime
-   * then exit out.
    *
-   * A "diagnostic" FunctionsRuntimeBundle looks just like a normal bundle except triggerId == "".
-   *
-   * TODO(abehaskins): Gracefully handle removal of deleted function definitions
+   * TODO(danielylee): Gracefully handle removal of deleted function definitions
    */
   async loadTriggers(emulatableBackend: EmulatableBackend, force = false): Promise<void> {
     // Before loading any triggers we need to make sure there are no 'stale' workers
@@ -465,7 +459,9 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     let triggerDefinitions: EmulatedTriggerDefinition[];
-    if (!emulatableBackend.predefinedTriggers) {
+    if (emulatableBackend.predefinedTriggers) {
+      triggerDefinitions = emulatedFunctionsByRegion(emulatableBackend.predefinedTriggers);
+    } else {
       const runtimeDelegate = await getRuntimeDelegate({
         projectId: this.args.projectId,
         projectDir: emulatableBackend.projectDir,
@@ -489,8 +485,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       );
       const endpoints = backend.allEndpoints(discoveredBackend);
       triggerDefinitions = emulatedFunctionsFromEndpoints(endpoints);
-    } else {
-      triggerDefinitions = emulatedFunctionsByRegion(emulatableBackend.predefinedTriggers);
     }
     // When force is true we set up all triggers, otherwise we only set up
     // triggers which have a unique function name
