@@ -97,6 +97,7 @@ class MockRuntimeBundle implements FunctionsRuntimeBundle {
     datbaseURL: "https://project-1234-default-rtdb.firebaseio.com",
     storageBucket: "project-1234.appspot.com",
   };
+  proto = {};
 
   constructor(public triggerId: string, public targetName: string) {}
 }

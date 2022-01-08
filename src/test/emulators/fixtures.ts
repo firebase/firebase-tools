@@ -192,6 +192,7 @@ export const FunctionRuntimeBundles: { [key: string]: FunctionsRuntimeBundle } =
     triggerId: "region-function_id",
     targetName: "function_id",
     projectId: "fake-project-id",
+    proto: {},
   },
 };
 
