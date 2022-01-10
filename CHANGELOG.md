@@ -1,2 +1,3 @@
+- Now publishes npm-shrinkwrap.json which pins dependencies for the CLI.
 - Preserve empty vpc connector setting on function deploy. (#3973)
 - Upgrades google-auth-library to 7.x.x, enabling support for workload identity federation
