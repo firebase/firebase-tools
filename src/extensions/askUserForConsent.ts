@@ -5,11 +5,9 @@ import TerminalRenderer = require("marked-terminal");
 
 import { FirebaseError } from "../error";
 import { logPrefix } from "../extensions/extensionsHelper";
+import * as extensionsApi from "./extensionsApi";
 import * as iam from "../gcp/iam";
-import { promptOnce, Question } from "../prompt";
-import { confirmInstallInstance } from "./extensionsHelper";
-import { printSourceDownloadLink } from "./displayExtensionInfo";
-import { getTrustedPublishers } from "./resolveSource";
+import { promptOnce } from "../prompt";
 import * as utils from "../utils";
 
 marked.setOptions({
@@ -49,38 +47,50 @@ export async function retrieveRoleInfo(role: string) {
 }
 
 /**
- * Displays roles and corresponding descriptions and asks user for consent.
+ * Displays roles that will be granted to the extension instance and corresponding descriptions.
  * @param extensionName name of extension to install/update
  * @param projectId ID of user's project
  * @param roles roles that require user approval
- * @return {Promise<?>} returns promise
  */
-export async function prompt(extensionName: string, projectId: string, roles: string[]) {
-  if (!roles || !roles.length) {
+export async function displayRoles(
+  extensionName: string,
+  projectId: string,
+  roles: string[]
+): Promise<void> {
+  if (!roles.length) {
     return;
   }
 
   const message = await formatDescription(extensionName, projectId, roles);
   utils.logLabeledBullet(logPrefix, message);
-  const question: Question = {
-    name: "consent",
-    type: "confirm",
-    message: "Would you like to continue?",
-    default: true,
-  };
-  const consented = await promptOnce(question);
-  if (!consented) {
-    throw new FirebaseError(
-      "Without explicit consent for the roles listed, we cannot deploy this extension."
-    );
+}
+
+/**
+ * Displays APIs that will be enabled for the project and corresponding descriptions.
+ * @param extensionName name of extension to install/update
+ * @param projectId ID of user's project
+ * @param apis APIs that require user approval
+ */
+export function displayApis(extensionName: string, projectId: string, apis: extensionsApi.Api[]) {
+  if (!apis.length) {
+    return;
   }
+  const question = `${clc.bold(
+    extensionName
+  )} will enable the following APIs for project ${clc.bold(projectId)}`;
+  const results: string[] = apis.map((api: extensionsApi.Api) => {
+    return `- ${api.apiName}: ${api.reason}`;
+  });
+  results.unshift(question);
+  const message = results.join("\n");
+  utils.logLabeledBullet(logPrefix, message);
 }
 
 /**
  * Displays publisher terms of service and asks user to consent to them.
  * Errors if they do not consent.
  */
-export async function promptForPublisherTOS() {
+export async function promptForPublisherTOS(): Promise<void> {
   const termsOfServiceMsg =
     "By registering as a publisher, you confirm that you have read the Firebase Extensions Publisher Terms and Conditions (linked below) and you, on behalf of yourself and the organization you represent, agree to comply with it.  Here is a brief summary of the highlights of our terms and conditions:\n" +
     "  - You ensure extensions you publish comply with all laws and regulations; do not include any viruses, spyware, Trojan horses, or other malicious code; and do not violate any person’s rights, including intellectual property, privacy, and security rights.\n" +
@@ -89,15 +99,14 @@ export async function promptForPublisherTOS() {
     "  - If Google requests a critical security matter to be patched for your extension, you will respond to Google within 48 hours with either a resolution or a written resolution plan.\n" +
     "  - Google may remove your extension or terminate the agreement, if you violate any terms.";
   utils.logLabeledBullet(logPrefix, marked(termsOfServiceMsg));
-  const question: Question = {
+  const consented: boolean = await promptOnce({
     name: "consent",
     type: "confirm",
     message: marked(
       "Do you accept the [Firebase Extensions Publisher Terms and Conditions](https://firebase.google.com/docs/extensions/alpha/terms-of-service) and acknowledge that your information will be used in accordance with [Google's Privacy Policy](https://policies.google.com/privacy?hl=en)?"
     ),
     default: false,
-  };
-  const consented: boolean = await promptOnce(question);
+  });
   if (!consented) {
     throw new FirebaseError("You must agree to the terms of service to register a publisher ID.", {
       exit: 1,

@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import { expectStatusCode } from "./helpers";
-import { describeAuthEmulator } from "./setup";
+import { expectStatusCode, registerTenant, registerUser } from "./helpers";
+import { describeAuthEmulator, PROJECT_ID } from "./setup";
 
 describeAuthEmulator("REST API mapping", ({ authApi }) => {
   it("should respond to status checks", async () => {
@@ -164,6 +164,63 @@ describeAuthEmulator("authentication", ({ authApi }) => {
           .equals(
             "INSUFFICIENT_PERMISSION : Only authenticated requests can specify target_project_id."
           );
+      });
+  });
+
+  it("should deny requests where tenant IDs do not match in the request body and path", async () => {
+    await authApi()
+      .post(
+        "/identitytoolkit.googleapis.com/v1/projects/project-id/tenants/tenant-id/accounts:delete"
+      )
+      .set("Authorization", "Bearer owner")
+      .send({ localId: "local-id", tenantId: "mismatching-tenant-id" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("TENANT_ID_MISMATCH");
+      });
+  });
+
+  it("should deny requests where tenant IDs do not match in the token and path", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, {
+      disableAuth: false,
+      allowPasswordSignup: true,
+    });
+    const { idToken, localId } = await registerUser(authApi(), {
+      email: "alice@example.com",
+      password: "notasecret",
+      tenantId: tenant.tenantId,
+    });
+
+    await authApi()
+      .post(
+        `/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/tenants/not-matching-tenant-id/accounts:lookup`
+      )
+      .send({ idToken })
+      .set("Authorization", "Bearer owner")
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("TENANT_ID_MISMATCH");
+      });
+  });
+
+  it("should deny requests where tenant IDs do not match in the token and request body", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, {
+      disableAuth: false,
+      allowPasswordSignup: true,
+    });
+    const { idToken, localId } = await registerUser(authApi(), {
+      email: "alice@example.com",
+      password: "notasecret",
+      tenantId: tenant.tenantId,
+    });
+
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:lookup`)
+      .send({ idToken, tenantId: "not-matching-tenant-id" })
+      .set("Authorization", "Bearer owner")
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("TENANT_ID_MISMATCH");
       });
   });
 });

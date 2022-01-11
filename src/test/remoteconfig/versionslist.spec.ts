@@ -92,7 +92,7 @@ describe("RemoteConfig ListVersions", () => {
       let err;
       try {
         await remoteconfig.getVersions(PROJECT_ID);
-      } catch (e) {
+      } catch (e: any) {
         err = e;
       }
 

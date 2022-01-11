@@ -12,12 +12,10 @@ describe("cloudfunctions", () => {
     project: "project",
   };
 
-  const FUNCTION_SPEC: backend.FunctionSpec = {
+  // Omit a random trigger to make this compile
+  const ENDPOINT: Omit<backend.Endpoint, "httpsTrigger"> = {
     platform: "gcfv1",
     ...FUNCTION_NAME,
-    trigger: {
-      allowInsecure: false,
-    },
     entryPoint: "function",
     runtime: "nodejs16",
   };
@@ -36,26 +34,29 @@ describe("cloudfunctions", () => {
     status: "ACTIVE",
   };
 
-  describe("functionFromSpec", () => {
+  describe("functionFromEndpoint", () => {
     const UPLOAD_URL = "https://storage.googleapis.com/projects/-/buckets/sample/source.zip";
     it("should guard against version mixing", () => {
       expect(() => {
-        cloudfunctions.functionFromSpec({ ...FUNCTION_SPEC, platform: "gcfv2" }, UPLOAD_URL);
+        cloudfunctions.functionFromEndpoint(
+          { ...ENDPOINT, platform: "gcfv2", httpsTrigger: {} },
+          UPLOAD_URL
+        );
       }).to.throw;
     });
 
     it("should copy a minimal function", () => {
-      expect(cloudfunctions.functionFromSpec(FUNCTION_SPEC, UPLOAD_URL)).to.deep.equal({
+      expect(
+        cloudfunctions.functionFromEndpoint({ ...ENDPOINT, httpsTrigger: {} }, UPLOAD_URL)
+      ).to.deep.equal({
         ...CLOUD_FUNCTION,
         sourceUploadUrl: UPLOAD_URL,
-        httpsTrigger: {
-          securityLevel: "SECURE_ALWAYS",
-        },
+        httpsTrigger: {},
       });
 
-      const eventFunction = {
-        ...FUNCTION_SPEC,
-        trigger: {
+      const eventEndpoint = {
+        ...ENDPOINT,
+        eventTrigger: {
           eventType: "google.pubsub.topic.publish",
           eventFilters: {
             resource: "projects/p/topics/t",
@@ -72,14 +73,15 @@ describe("cloudfunctions", () => {
           failurePolicy: undefined,
         },
       };
-      expect(cloudfunctions.functionFromSpec(eventFunction, UPLOAD_URL)).to.deep.equal(
+      expect(cloudfunctions.functionFromEndpoint(eventEndpoint, UPLOAD_URL)).to.deep.equal(
         eventGcfFunction
       );
     });
 
     it("should copy trival fields", () => {
-      const fullFunction: backend.FunctionSpec = {
-        ...FUNCTION_SPEC,
+      const fullEndpoint: backend.Endpoint = {
+        ...ENDPOINT,
+        httpsTrigger: {},
         availableMemoryMb: 128,
         minInstances: 1,
         maxInstances: 42,
@@ -99,9 +101,7 @@ describe("cloudfunctions", () => {
       const fullGcfFunction: Omit<cloudfunctions.CloudFunction, cloudfunctions.OutputOnlyFields> = {
         ...CLOUD_FUNCTION,
         sourceUploadUrl: UPLOAD_URL,
-        httpsTrigger: {
-          securityLevel: "SECURE_ALWAYS",
-        },
+        httpsTrigger: {},
         labels: {
           foo: "bar",
         },
@@ -118,21 +118,15 @@ describe("cloudfunctions", () => {
         serviceAccountEmail: "inlined@google.com",
       };
 
-      expect(cloudfunctions.functionFromSpec(fullFunction, UPLOAD_URL)).to.deep.equal(
+      expect(cloudfunctions.functionFromEndpoint(fullEndpoint, UPLOAD_URL)).to.deep.equal(
         fullGcfFunction
       );
     });
 
     it("should calculate non-trivial fields", () => {
-      const complexFunction: backend.FunctionSpec = {
-        ...FUNCTION_SPEC,
-        trigger: {
-          eventType: "google.pubsub.topic.publish",
-          eventFilters: {
-            resource: "projects/p/topics/t",
-          },
-          retry: true,
-        },
+      const complexEndpoint: backend.Endpoint = {
+        ...ENDPOINT,
+        scheduleTrigger: {},
       };
 
       const complexGcfFunction: Omit<
@@ -143,34 +137,52 @@ describe("cloudfunctions", () => {
         sourceUploadUrl: UPLOAD_URL,
         eventTrigger: {
           eventType: "google.pubsub.topic.publish",
-          resource: "projects/p/topics/t",
-          failurePolicy: {
-            retry: {},
-          },
+          resource: `projects/project/topics/${backend.scheduleIdForFunction(FUNCTION_NAME)}`,
+        },
+        labels: {
+          "deployment-scheduled": "true",
         },
       };
 
-      expect(cloudfunctions.functionFromSpec(complexFunction, UPLOAD_URL)).to.deep.equal(
+      expect(cloudfunctions.functionFromEndpoint(complexEndpoint, UPLOAD_URL)).to.deep.equal(
         complexGcfFunction
+      );
+    });
+
+    it("detects task queue functions", () => {
+      const taskEndpoint: backend.Endpoint = {
+        ...ENDPOINT,
+        taskQueueTrigger: {},
+      };
+      const taskQueueFunction: Omit<cloudfunctions.CloudFunction, cloudfunctions.OutputOnlyFields> =
+        {
+          ...CLOUD_FUNCTION,
+          sourceUploadUrl: UPLOAD_URL,
+          httpsTrigger: {},
+          labels: {
+            "deployment-taskqueue": "true",
+          },
+        };
+
+      expect(cloudfunctions.functionFromEndpoint(taskEndpoint, UPLOAD_URL)).to.deep.equal(
+        taskQueueFunction
       );
     });
   });
 
-  describe("specFromFunction", () => {
+  describe("endpointFromFunction", () => {
     it("should copy a minimal version", () => {
       expect(
-        cloudfunctions.specFromFunction({
+        cloudfunctions.endpointFromFunction({
           ...HAVE_CLOUD_FUNCTION,
-          httpsTrigger: {
-            securityLevel: "SECURE_ALWAYS",
-          },
+          httpsTrigger: {},
         })
-      ).to.deep.equal(FUNCTION_SPEC);
+      ).to.deep.equal({ ...ENDPOINT, httpsTrigger: {} });
     });
 
     it("should translate event triggers", () => {
       expect(
-        cloudfunctions.specFromFunction({
+        cloudfunctions.endpointFromFunction({
           ...HAVE_CLOUD_FUNCTION,
           eventTrigger: {
             eventType: "google.pubsub.topic.publish",
@@ -181,8 +193,8 @@ describe("cloudfunctions", () => {
           },
         })
       ).to.deep.equal({
-        ...FUNCTION_SPEC,
-        trigger: {
+        ...ENDPOINT,
+        eventTrigger: {
           eventType: "google.pubsub.topic.publish",
           eventFilters: {
             resource: "projects/p/topics/t",
@@ -193,7 +205,7 @@ describe("cloudfunctions", () => {
 
       // And again w/o the failure policy
       expect(
-        cloudfunctions.specFromFunction({
+        cloudfunctions.endpointFromFunction({
           ...HAVE_CLOUD_FUNCTION,
           eventTrigger: {
             eventType: "google.pubsub.topic.publish",
@@ -201,8 +213,8 @@ describe("cloudfunctions", () => {
           },
         })
       ).to.deep.equal({
-        ...FUNCTION_SPEC,
-        trigger: {
+        ...ENDPOINT,
+        eventTrigger: {
           eventType: "google.pubsub.topic.publish",
           eventFilters: {
             resource: "projects/p/topics/t",
@@ -212,8 +224,50 @@ describe("cloudfunctions", () => {
       });
     });
 
+    it("should transalte scheduled triggers", () => {
+      expect(
+        cloudfunctions.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION,
+          eventTrigger: {
+            eventType: "google.pubsub.topic.publish",
+            resource: "projects/p/topics/t",
+            failurePolicy: {
+              retry: {},
+            },
+          },
+          labels: {
+            "deployment-scheduled": "true",
+          },
+        })
+      ).to.deep.equal({
+        ...ENDPOINT,
+        scheduleTrigger: {},
+        labels: {
+          "deployment-scheduled": "true",
+        },
+      });
+    });
+
+    it("should translate task queue triggers", () => {
+      expect(
+        cloudfunctions.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION,
+          httpsTrigger: {},
+          labels: {
+            "deployment-taskqueue": "true",
+          },
+        })
+      ).to.deep.equal({
+        ...ENDPOINT,
+        taskQueueTrigger: {},
+        labels: {
+          "deployment-taskqueue": "true",
+        },
+      });
+    });
+
     it("should copy optional fields", () => {
-      const extraFields: Partial<backend.FunctionSpec> = {
+      const extraFields: Partial<backend.Endpoint> = {
         availableMemoryMb: 128,
         minInstances: 1,
         maxInstances: 42,
@@ -230,33 +284,15 @@ describe("cloudfunctions", () => {
         },
       };
       expect(
-        cloudfunctions.specFromFunction({
+        cloudfunctions.endpointFromFunction({
           ...HAVE_CLOUD_FUNCTION,
           ...extraFields,
           httpsTrigger: {},
         } as cloudfunctions.CloudFunction)
       ).to.deep.equal({
-        ...FUNCTION_SPEC,
+        ...ENDPOINT,
         ...extraFields,
-        trigger: {
-          allowInsecure: true,
-        },
-      });
-    });
-
-    it("should transform fields", () => {
-      expect(
-        cloudfunctions.specFromFunction({
-          ...HAVE_CLOUD_FUNCTION,
-          httpsTrigger: {
-            securityLevel: "SECURE_OPTIONAL",
-          },
-        })
-      ).to.deep.equal({
-        ...FUNCTION_SPEC,
-        trigger: {
-          allowInsecure: true,
-        },
+        httpsTrigger: {},
       });
     });
   });

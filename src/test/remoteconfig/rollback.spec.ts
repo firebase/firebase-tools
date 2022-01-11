@@ -56,7 +56,7 @@ describe("RemoteConfig Rollback", () => {
       expect(RCtemplate).to.deep.equal(latestTemplate);
       try {
         await remoteconfig.rollbackTemplate(PROJECT_ID);
-      } catch (e) {
+      } catch (e: any) {
         e;
       }
     });

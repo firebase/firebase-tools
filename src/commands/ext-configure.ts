@@ -24,6 +24,7 @@ marked.setOptions({
  */
 export default new Command("ext:configure <extensionInstanceId>")
   .description("configure an existing extension instance")
+  .withForce()
   .option("--params <paramsFile>", "path of params file with .env format.")
   .before(requirePermissions, [
     "firebaseextensions.instances.update",
@@ -31,7 +32,7 @@ export default new Command("ext:configure <extensionInstanceId>")
   ])
   .before(checkMinRequiredVersion, "extMinVersion")
   .action(async (instanceId: string, options: any) => {
-    const spinner = ora.default(
+    const spinner = ora(
       `Configuring ${clc.bold(instanceId)}. This usually takes 3 to 5 minutes...`
     );
     try {
@@ -39,7 +40,7 @@ export default new Command("ext:configure <extensionInstanceId>")
       let existingInstance: extensionsApi.ExtensionInstance;
       try {
         existingInstance = await extensionsApi.getInstance(projectId, instanceId);
-      } catch (err) {
+      } catch (err: any) {
         if (err.status === 404) {
           return utils.reject(
             `No extension instance ${instanceId} found in project ${projectId}.`,
@@ -50,19 +51,21 @@ export default new Command("ext:configure <extensionInstanceId>")
         }
         throw err;
       }
-      const paramSpecWithNewDefaults = paramHelper.getParamsWithCurrentValuesAsDefaults(
-        existingInstance
-      );
+      const paramSpecWithNewDefaults =
+        paramHelper.getParamsWithCurrentValuesAsDefaults(existingInstance);
       const immutableParams = _.remove(paramSpecWithNewDefaults, (param) => {
         return param.immutable || param.param === "LOCATION";
         // TODO: Stop special casing "LOCATION" once all official extensions make it immutable
       });
 
-      const params = await paramHelper.getParams(
+      const params = await paramHelper.getParams({
         projectId,
-        paramSpecWithNewDefaults,
-        options.params
-      );
+        paramSpecs: paramSpecWithNewDefaults,
+        nonInteractive: options.nonInteractive,
+        paramsEnvPath: options.params,
+        instanceId,
+        reconfiguring: true,
+      });
       if (immutableParams.length) {
         const plural = immutableParams.length > 1;
         logger.info(`The following param${plural ? "s are" : " is"} immutable:`);
@@ -80,7 +83,7 @@ export default new Command("ext:configure <extensionInstanceId>")
       }
 
       spinner.start();
-      const res = await extensionsApi.configureInstance(projectId, instanceId, params);
+      const res = await extensionsApi.configureInstance({ projectId, instanceId, params });
       spinner.stop();
       utils.logLabeledSuccess(logPrefix, `successfully configured ${clc.bold(instanceId)}.`);
       utils.logLabeledBullet(
@@ -93,7 +96,7 @@ export default new Command("ext:configure <extensionInstanceId>")
         )
       );
       return res;
-    } catch (err) {
+    } catch (err: any) {
       if (spinner.isSpinning) {
         spinner.fail();
       }

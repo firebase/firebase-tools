@@ -50,7 +50,7 @@ export function packageJsonIsValid(
     data = cjson.load(packageJsonFile);
     logger.debug("> [functions] package.json contents:", JSON.stringify(data, null, 2));
     assertFunctionsSourcePresent(data, sourceDir, projectDir);
-  } catch (e) {
+  } catch (e: any) {
     const msg = `There was an error reading ${sourceDirName}${path.sep}package.json:\n\n ${e.message}`;
     throw new FirebaseError(msg);
   }

@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import { FirebaseJwtPayload } from "../../../emulator/auth/operations";
 import { PROVIDER_PASSWORD, SIGNIN_METHOD_EMAIL_LINK } from "../../../emulator/auth/state";
-import { describeAuthEmulator } from "./setup";
+import { describeAuthEmulator, PROJECT_ID } from "./setup";
 import {
   expectStatusCode,
   getAccountInfoByIdToken,
@@ -19,11 +19,14 @@ import {
   FAKE_GOOGLE_ACCOUNT,
   REAL_GOOGLE_ACCOUNT,
   TEST_MFA_INFO,
+  enrollPhoneMfa,
+  getAccountInfoByLocalId,
+  registerTenant,
 } from "./helpers";
 
 // Many JWT fields from IDPs use snake_case and we need to match that.
 
-describeAuthEmulator("sign-in with credential", ({ authApi }) => {
+describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
   it("should create new account with IDP from unsigned ID token", async () => {
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
@@ -106,7 +109,6 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
 
         // The ID Token used above does NOT contain name or photo, so the
         // account created won't have those attributes either.
-        // TODO: Shall we fetch more profile info from IDP via API calls?
         expect(res.body).not.to.have.property("displayName");
         expect(res.body).not.to.have.property("photoUrl");
 
@@ -668,32 +670,79 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
       });
   });
 
-  it("should error if user to be linked is an MFA user", async () => {
-    const user = {
-      email: "alice@example.com",
-      password: "notasecret",
-      mfaInfo: [TEST_MFA_INFO],
-    };
-    const { idToken } = await registerUser(authApi(), user);
-
+  it("should return pending credential for MFA-enabled user", async () => {
     const claims = fakeClaims({
       sub: "123456789012345678901",
       name: "Foo",
+      email: "foo@example.com",
+      email_verified: true,
     });
+    const { idToken, localId } = await signInWithFakeClaims(authApi(), "google.com", claims);
+    await enrollPhoneMfa(authApi(), idToken, TEST_PHONE_NUMBER);
+    const beforeSignIn = await getAccountInfoByLocalId(authApi(), localId);
+
+    getClock().tick(3333);
+
     const fakeIdToken = JSON.stringify(claims);
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
       .query({ key: "fake-api-key" })
       .send({
-        idToken,
         postBody: `providerId=google.com&id_token=${encodeURIComponent(fakeIdToken)}`,
         requestUri: "http://localhost",
         returnIdpCredential: true,
       })
       .then((res) => {
-        expectStatusCode(501, res);
-        expect(res.body.error.message).to.equal("MFA Login not yet implemented.");
+        expectStatusCode(200, res);
+        expect(res.body).not.to.have.property("idToken");
+        expect(res.body).not.to.have.property("refreshToken");
+        const mfaPendingCredential = res.body.mfaPendingCredential as string;
+        expect(mfaPendingCredential).to.be.a("string");
+        expect(res.body.mfaInfo).to.be.an("array").with.lengthOf(1);
       });
+
+    // Login / refresh timestamps should not change until MFA was successful.
+    const afterFirstFactor = await getAccountInfoByLocalId(authApi(), localId);
+    expect(afterFirstFactor.lastLoginAt).to.equal(beforeSignIn.lastLoginAt);
+    expect(afterFirstFactor.lastRefreshAt).to.equal(beforeSignIn.lastRefreshAt);
+  });
+
+  it("should link IDP for existing MFA-enabled user", async () => {
+    const email = "alice@example.com";
+    const { idToken, localId } = await signInWithEmailLink(authApi(), email);
+    await enrollPhoneMfa(authApi(), idToken, TEST_PHONE_NUMBER);
+
+    const claims = fakeClaims({
+      sub: "123456789012345678901",
+      name: "Foo",
+      email,
+      email_verified: true,
+    });
+
+    const fakeIdToken = JSON.stringify(claims);
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+      .query({ key: "fake-api-key" })
+      .send({
+        postBody: `providerId=google.com&id_token=${encodeURIComponent(fakeIdToken)}`,
+        requestUri: "http://localhost",
+        returnIdpCredential: true,
+      })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body).not.to.have.property("idToken");
+        expect(res.body).not.to.have.property("refreshToken");
+        const mfaPendingCredential = res.body.mfaPendingCredential as string;
+        expect(mfaPendingCredential).to.be.a("string");
+        expect(res.body.mfaInfo).to.be.an("array").with.lengthOf(1);
+      });
+
+    // IDP sign-in should be linked even before second factor is verified.
+    expect(await getSigninMethods(authApi(), email)).to.have.members(["google.com", "emailLink"]);
+
+    // Similarly, user information from IDP should be added to account.
+    const info = await getAccountInfoByLocalId(authApi(), localId);
+    expect(info.displayName).to.equal(claims.name);
   });
 
   it("should return error if IDP account is already linked to the same user", async () => {
@@ -849,6 +898,252 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
       .then((res) => {
         expectStatusCode(200, res);
         expect(res.body.localId).to.equal(localId);
+      });
+  });
+
+  it("should error if usageMode is passthrough", async () => {
+    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+      .query({ key: "fake-api-key" })
+      .send({
+        postBody: `providerId=google.com&id_token=${FAKE_GOOGLE_ACCOUNT.idToken}`,
+        requestUri: "http://localhost",
+        returnIdpCredential: true,
+        returnSecureToken: true,
+      })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error)
+          .to.have.property("message")
+          .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
+      });
+  });
+
+  it("should error if auth is disabled", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: true });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+      .query({ key: "fake-api-key" })
+      .send({ tenantId: tenant.tenantId })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.include("PROJECT_DISABLED");
+      });
+  });
+
+  it("should create a new account with tenantId", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: false });
+
+    const localId = await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+      .query({ key: "fake-api-key" })
+      .send({
+        postBody: `providerId=google.com&id_token=${FAKE_GOOGLE_ACCOUNT.idToken}`,
+        requestUri: "http://localhost",
+        returnIdpCredential: true,
+        returnSecureToken: true,
+        tenantId: tenant.tenantId,
+      })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.tenantId).to.eql(tenant.tenantId);
+        return res.body.localId;
+      });
+
+    const user = await getAccountInfoByLocalId(authApi(), localId, tenant.tenantId);
+    expect(user.tenantId).to.eql(tenant.tenantId);
+  });
+
+  it("should return pending credential for MFA-enabled user and enabled on tenant project", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, {
+      disableAuth: false,
+      mfaConfig: {
+        state: "ENABLED",
+        enabledProviders: ["PHONE_SMS"],
+      },
+    });
+    const claims = fakeClaims({
+      sub: "123456789012345678901",
+      name: "Foo",
+      email: "foo@example.com",
+      email_verified: true,
+    });
+    const { idToken, localId } = await signInWithFakeClaims(
+      authApi(),
+      "google.com",
+      claims,
+      tenant.tenantId
+    );
+    await enrollPhoneMfa(authApi(), idToken, TEST_PHONE_NUMBER, tenant.tenantId);
+    const beforeSignIn = await getAccountInfoByLocalId(authApi(), localId, tenant.tenantId);
+
+    getClock().tick(3333);
+
+    const fakeIdToken = JSON.stringify(claims);
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+      .query({ key: "fake-api-key" })
+      .send({
+        postBody: `providerId=google.com&id_token=${encodeURIComponent(fakeIdToken)}`,
+        requestUri: "http://localhost",
+        returnIdpCredential: true,
+        tenantId: tenant.tenantId,
+      })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body).not.to.have.property("idToken");
+        expect(res.body).not.to.have.property("refreshToken");
+        const mfaPendingCredential = res.body.mfaPendingCredential as string;
+        expect(mfaPendingCredential).to.be.a("string");
+        expect(res.body.mfaInfo).to.be.an("array").with.lengthOf(1);
+      });
+
+    // Login / refresh timestamps should not change until MFA was successful.
+    const afterFirstFactor = await getAccountInfoByLocalId(authApi(), localId, tenant.tenantId);
+    expect(afterFirstFactor.lastLoginAt).to.equal(beforeSignIn.lastLoginAt);
+    expect(afterFirstFactor.lastRefreshAt).to.equal(beforeSignIn.lastRefreshAt);
+  });
+
+  it("should error if SAMLResponse is missing assertion", async () => {
+    const samlResponse = {};
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+      .query({ key: "fake-api-key" })
+      .send({
+        postBody: `providerId=saml.saml&id_token=${
+          FAKE_GOOGLE_ACCOUNT.idToken
+        }&SAMLResponse=${JSON.stringify(samlResponse)}`,
+        requestUri: "http://localhost",
+        returnIdpCredential: true,
+        returnSecureToken: true,
+      })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.include("INVALID_IDP_RESPONSE");
+      });
+  });
+
+  it("should error if SAMLResponse is missing assertion.subject", async () => {
+    const samlResponse = { assertion: {} };
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+      .query({ key: "fake-api-key" })
+      .send({
+        postBody: `providerId=saml.saml&id_token=${
+          FAKE_GOOGLE_ACCOUNT.idToken
+        }&SAMLResponse=${JSON.stringify(samlResponse)}`,
+        requestUri: "http://localhost",
+        returnIdpCredential: true,
+        returnSecureToken: true,
+      })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.include("INVALID_IDP_RESPONSE");
+      });
+  });
+
+  it("should error if SAMLResponse is missing assertion.subject.nameId", async () => {
+    const samlResponse = { assertion: { subject: {} } };
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+      .query({ key: "fake-api-key" })
+      .send({
+        postBody: `providerId=saml.saml&id_token=${
+          FAKE_GOOGLE_ACCOUNT.idToken
+        }&SAMLResponse=${JSON.stringify(samlResponse)}`,
+        requestUri: "http://localhost",
+        returnIdpCredential: true,
+        returnSecureToken: true,
+      })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.include("INVALID_IDP_RESPONSE");
+      });
+  });
+
+  it("should create an account for generic SAML providers", async () => {
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+      .query({ key: "fake-api-key" })
+      .send({
+        postBody: `providerId=saml.saml&id_token=${FAKE_GOOGLE_ACCOUNT.idToken}`,
+        requestUri: "http://localhost",
+        returnIdpCredential: true,
+        returnSecureToken: true,
+      })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.isNewUser).to.equal(true);
+        expect(res.body.email).to.equal(FAKE_GOOGLE_ACCOUNT.email);
+        expect(res.body.emailVerified).to.equal(true);
+        expect(res.body.federatedId).to.equal(FAKE_GOOGLE_ACCOUNT.rawId);
+        expect(res.body.oauthIdToken).to.equal(FAKE_GOOGLE_ACCOUNT.idToken);
+        expect(res.body.providerId).to.equal("saml.saml");
+        expect(res.body).to.have.property("refreshToken").that.is.a("string");
+
+        // The ID Token used above does NOT contain name or photo, so the
+        // account created won't have those attributes either.
+        expect(res.body).not.to.have.property("displayName");
+        expect(res.body).not.to.have.property("photoUrl");
+
+        const idToken = res.body.idToken;
+        const decoded = decodeJwt(idToken, { complete: true }) as {
+          header: JwtHeader;
+          payload: FirebaseJwtPayload;
+        } | null;
+        expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
+        expect(decoded!.header.alg).to.eql("none");
+        expect(decoded!.payload).not.to.have.property("provider_id");
+        expect(decoded!.payload.firebase)
+          .to.have.property("identities")
+          .eql({
+            "saml.saml": [FAKE_GOOGLE_ACCOUNT.rawId],
+            email: [FAKE_GOOGLE_ACCOUNT.email],
+          });
+        expect(decoded!.payload.firebase).to.have.property("sign_in_provider").equals("saml.saml");
+      });
+  });
+
+  it("should include fields in SAMLResponse for SAML providers", async () => {
+    const otherEmail = "otherEmail@gmail.com";
+    const attributeStatements = {
+      name: "Jane Doe",
+      mail: "otherOtherEmail@gmail.com",
+    };
+    const samlResponse = { assertion: { subject: { nameId: otherEmail }, attributeStatements } };
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+      .query({ key: "fake-api-key" })
+      .send({
+        postBody: `providerId=saml.saml&id_token=${
+          FAKE_GOOGLE_ACCOUNT.idToken
+        }&SAMLResponse=${JSON.stringify(samlResponse)}`,
+        requestUri: "http://localhost",
+        returnIdpCredential: true,
+        returnSecureToken: true,
+      })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.email).to.equal(otherEmail);
+
+        const rawUserInfo = JSON.parse(res.body.rawUserInfo);
+        expect(rawUserInfo).to.eql(attributeStatements);
+
+        const idToken = res.body.idToken;
+        const decoded = decodeJwt(idToken, { complete: true }) as {
+          header: JwtHeader;
+          payload: FirebaseJwtPayload;
+        } | null;
+        expect(decoded!.payload.firebase)
+          .to.have.property("sign_in_attributes")
+          .eql(attributeStatements);
       });
   });
 });

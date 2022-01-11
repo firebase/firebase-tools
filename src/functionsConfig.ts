@@ -58,6 +58,7 @@ export function idsToVarName(projectId: string, configId: string, varId: string)
   return _.join(["projects", projectId, "configs", configId, "variables", varId], "/");
 }
 
+// TODO(inlined): Yank and inline into Fabricator
 export function getAppEngineLocation(config: any): string {
   let appEngineLocation = config.locationId;
   if (appEngineLocation && appEngineLocation.match(/[^\d]$/)) {
@@ -89,7 +90,7 @@ export async function setVariablesRecursive(
     try {
       // Only attempt to parse 'val' if it is a String (takes care of unparsed JSON, numbers, quoted string, etc.)
       parsed = JSON.parse(val);
-    } catch (e) {
+    } catch (e: any) {
       // 'val' is just a String
     }
   }

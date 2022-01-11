@@ -10,12 +10,10 @@ describe("cloudfunctionsv2", () => {
     project: "project",
   };
 
-  const FUNCTION_SPEC: backend.FunctionSpec = {
+  // Omit a random trigger to get this fragment to compile.
+  const ENDPOINT: Omit<backend.Endpoint, "httpsTrigger"> = {
     platform: "gcfv2",
     ...FUNCTION_NAME,
-    trigger: {
-      allowInsecure: false,
-    },
     entryPoint: "function",
     runtime: "nodejs16",
   };
@@ -26,21 +24,19 @@ describe("cloudfunctionsv2", () => {
     generation: 42,
   };
 
-  const CLOUD_FUNCTION_V2: Omit<
-    cloudfunctionsv2.CloudFunction,
-    cloudfunctionsv2.OutputOnlyFields
-  > = {
-    name: "projects/project/locations/region/functions/id",
-    buildConfig: {
-      entryPoint: "function",
-      runtime: "nodejs16",
-      source: {
-        storageSource: CLOUD_FUNCTION_V2_SOURCE,
+  const CLOUD_FUNCTION_V2: Omit<cloudfunctionsv2.CloudFunction, cloudfunctionsv2.OutputOnlyFields> =
+    {
+      name: "projects/project/locations/region/functions/id",
+      buildConfig: {
+        entryPoint: "function",
+        runtime: "nodejs16",
+        source: {
+          storageSource: CLOUD_FUNCTION_V2_SOURCE,
+        },
+        environmentVariables: {},
       },
-      environmentVariables: {},
-    },
-    serviceConfig: {},
-  };
+      serviceConfig: {},
+    };
 
   const RUN_URI = "https://id-nonce-region-project.run.app";
   const HAVE_CLOUD_FUNCTION_V2: cloudfunctionsv2.CloudFunction = {
@@ -52,12 +48,28 @@ describe("cloudfunctionsv2", () => {
     updateTime: new Date(),
   };
 
-  describe("functionFromSpec", () => {
+  describe("megabytes", () => {
+    it("Should handle decimal SI units", () => {
+      expect(cloudfunctionsv2.megabytes("1000k")).to.equal(1);
+      expect(cloudfunctionsv2.megabytes("1.5M")).to.equal(1.5);
+      expect(cloudfunctionsv2.megabytes("1G")).to.equal(1000);
+    });
+    it("Should handle binary SI units", () => {
+      expect(cloudfunctionsv2.megabytes("1Mi")).to.equal((1 << 20) / 1e6);
+      expect(cloudfunctionsv2.megabytes("1Gi")).to.equal((1 << 30) / 1e6);
+    });
+    it("Should handle no unit", () => {
+      expect(cloudfunctionsv2.megabytes("100000")).to.equal(0.1);
+      expect(cloudfunctionsv2.megabytes("1e9")).to.equal(1000);
+      expect(cloudfunctionsv2.megabytes("1.5E6")).to.equal(1.5);
+    });
+  });
+  describe("functionFromEndpoint", () => {
     const UPLOAD_URL = "https://storage.googleapis.com/projects/-/buckets/sample/source.zip";
     it("should guard against version mixing", () => {
       expect(() => {
-        cloudfunctionsv2.functionFromSpec(
-          { ...FUNCTION_SPEC, platform: "gcfv1" },
+        cloudfunctionsv2.functionFromEndpoint(
+          { ...ENDPOINT, httpsTrigger: {}, platform: "gcfv1" },
           CLOUD_FUNCTION_V2_SOURCE
         );
       }).to.throw;
@@ -65,19 +77,20 @@ describe("cloudfunctionsv2", () => {
 
     it("should copy a minimal function", () => {
       expect(
-        cloudfunctionsv2.functionFromSpec(
+        cloudfunctionsv2.functionFromEndpoint(
           {
-            ...FUNCTION_SPEC,
+            ...ENDPOINT,
             platform: "gcfv2",
+            httpsTrigger: {},
           },
           CLOUD_FUNCTION_V2_SOURCE
         )
       ).to.deep.equal(CLOUD_FUNCTION_V2);
 
-      const eventFunction: backend.FunctionSpec = {
-        ...FUNCTION_SPEC,
+      const eventEndpoint: backend.Endpoint = {
+        ...ENDPOINT,
         platform: "gcfv2",
-        trigger: {
+        eventTrigger: {
           eventType: "google.cloud.audit.log.v1.written",
           eventFilters: {
             resource: "projects/p/regions/r/instances/i",
@@ -106,15 +119,31 @@ describe("cloudfunctionsv2", () => {
         },
       };
       expect(
-        cloudfunctionsv2.functionFromSpec(eventFunction, CLOUD_FUNCTION_V2_SOURCE)
+        cloudfunctionsv2.functionFromEndpoint(eventEndpoint, CLOUD_FUNCTION_V2_SOURCE)
       ).to.deep.equal(eventGcfFunction);
+
+      expect(
+        cloudfunctionsv2.functionFromEndpoint(
+          {
+            ...ENDPOINT,
+            platform: "gcfv2",
+            taskQueueTrigger: {},
+          },
+          CLOUD_FUNCTION_V2_SOURCE
+        )
+      ).to.deep.equal({
+        ...CLOUD_FUNCTION_V2,
+        labels: {
+          "deployment-taskqueue": "true",
+        },
+      });
     });
 
     it("should copy trival fields", () => {
-      const fullFunction: backend.FunctionSpec = {
-        ...FUNCTION_SPEC,
+      const fullEndpoint: backend.Endpoint = {
+        ...ENDPOINT,
+        httpsTrigger: {},
         platform: "gcfv2",
-        availableMemoryMb: 128,
         vpcConnector: "connector",
         vpcConnectorEgressSettings: "ALL_TRAFFIC",
         ingressSettings: "ALLOW_ALL",
@@ -143,21 +172,20 @@ describe("cloudfunctionsv2", () => {
           vpcConnector: "connector",
           vpcConnectorEgressSettings: "ALL_TRAFFIC",
           ingressSettings: "ALLOW_ALL",
-          availableMemoryMb: 128,
           serviceAccountEmail: "inlined@google.com",
         },
       };
 
       expect(
-        cloudfunctionsv2.functionFromSpec(fullFunction, CLOUD_FUNCTION_V2_SOURCE)
+        cloudfunctionsv2.functionFromEndpoint(fullEndpoint, CLOUD_FUNCTION_V2_SOURCE)
       ).to.deep.equal(fullGcfFunction);
     });
 
     it("should calculate non-trivial fields", () => {
-      const complexFunction: backend.FunctionSpec = {
-        ...FUNCTION_SPEC,
+      const complexEndpoint: backend.Endpoint = {
+        ...ENDPOINT,
         platform: "gcfv2",
-        trigger: {
+        eventTrigger: {
           eventType: cloudfunctionsv2.PUBSUB_PUBLISH_EVENT,
           eventFilters: {
             resource: "projects/p/topics/t",
@@ -167,6 +195,7 @@ describe("cloudfunctionsv2", () => {
         maxInstances: 42,
         minInstances: 1,
         timeout: "15s",
+        availableMemoryMb: 128,
       };
 
       const complexGcfFunction: Omit<
@@ -183,19 +212,21 @@ describe("cloudfunctionsv2", () => {
           maxInstanceCount: 42,
           minInstanceCount: 1,
           timeoutSeconds: 15,
+          availableMemory: "128M",
         },
       };
 
       expect(
-        cloudfunctionsv2.functionFromSpec(complexFunction, CLOUD_FUNCTION_V2_SOURCE)
+        cloudfunctionsv2.functionFromEndpoint(complexEndpoint, CLOUD_FUNCTION_V2_SOURCE)
       ).to.deep.equal(complexGcfFunction);
     });
   });
 
-  describe("specFromFunction", () => {
+  describe("endpointFromFunction", () => {
     it("should copy a minimal version", () => {
-      expect(cloudfunctionsv2.specFromFunction(HAVE_CLOUD_FUNCTION_V2)).to.deep.equal({
-        ...FUNCTION_SPEC,
+      expect(cloudfunctionsv2.endpointFromFunction(HAVE_CLOUD_FUNCTION_V2)).to.deep.equal({
+        ...ENDPOINT,
+        httpsTrigger: {},
         platform: "gcfv2",
         uri: RUN_URI,
       });
@@ -203,7 +234,7 @@ describe("cloudfunctionsv2", () => {
 
     it("should translate event triggers", () => {
       expect(
-        cloudfunctionsv2.specFromFunction({
+        cloudfunctionsv2.endpointFromFunction({
           ...HAVE_CLOUD_FUNCTION_V2,
           eventTrigger: {
             eventType: cloudfunctionsv2.PUBSUB_PUBLISH_EVENT,
@@ -211,10 +242,10 @@ describe("cloudfunctionsv2", () => {
           },
         })
       ).to.deep.equal({
-        ...FUNCTION_SPEC,
+        ...ENDPOINT,
         platform: "gcfv2",
         uri: RUN_URI,
-        trigger: {
+        eventTrigger: {
           eventType: cloudfunctionsv2.PUBSUB_PUBLISH_EVENT,
           eventFilters: {
             resource: "projects/p/topics/t",
@@ -225,7 +256,7 @@ describe("cloudfunctionsv2", () => {
 
       // And again w/ a normal event trigger
       expect(
-        cloudfunctionsv2.specFromFunction({
+        cloudfunctionsv2.endpointFromFunction({
           ...HAVE_CLOUD_FUNCTION_V2,
           eventTrigger: {
             eventType: "google.cloud.audit.log.v1.written",
@@ -242,10 +273,10 @@ describe("cloudfunctionsv2", () => {
           },
         })
       ).to.deep.equal({
-        ...FUNCTION_SPEC,
+        ...ENDPOINT,
         platform: "gcfv2",
         uri: RUN_URI,
-        trigger: {
+        eventTrigger: {
           eventType: "google.cloud.audit.log.v1.written",
           eventFilters: {
             resource: "projects/p/regions/r/instances/i",
@@ -256,9 +287,23 @@ describe("cloudfunctionsv2", () => {
       });
     });
 
+    it("should translate task queue functions", () => {
+      expect(
+        cloudfunctionsv2.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION_V2,
+          labels: { "deployment-taskqueue": "true" },
+        })
+      ).to.deep.equal({
+        ...ENDPOINT,
+        taskQueueTrigger: {},
+        platform: "gcfv2",
+        uri: RUN_URI,
+        labels: { "deployment-taskqueue": "true" },
+      });
+    });
+
     it("should copy optional fields", () => {
-      const extraFields: Partial<backend.FunctionSpec> = {
-        availableMemoryMb: 128,
+      const extraFields: backend.ServiceConfiguration = {
         vpcConnector: "connector",
         vpcConnectorEgressSettings: "ALL_TRAFFIC",
         ingressSettings: "ALLOW_ALL",
@@ -268,21 +313,24 @@ describe("cloudfunctionsv2", () => {
         },
       };
       expect(
-        cloudfunctionsv2.specFromFunction({
+        cloudfunctionsv2.endpointFromFunction({
           ...HAVE_CLOUD_FUNCTION_V2,
           serviceConfig: {
             ...HAVE_CLOUD_FUNCTION_V2.serviceConfig,
             ...extraFields,
+            availableMemory: "128M",
           },
           labels: {
             foo: "bar",
           },
         })
       ).to.deep.equal({
-        ...FUNCTION_SPEC,
+        ...ENDPOINT,
         platform: "gcfv2",
+        httpsTrigger: {},
         uri: RUN_URI,
         ...extraFields,
+        availableMemoryMb: 128,
         labels: {
           foo: "bar",
         },
@@ -290,7 +338,7 @@ describe("cloudfunctionsv2", () => {
     });
 
     it("should transform fields", () => {
-      const extraFields: Partial<backend.FunctionSpec> = {
+      const extraFields: backend.ServiceConfiguration = {
         minInstances: 1,
         maxInstances: 42,
         timeout: "15s",
@@ -303,7 +351,7 @@ describe("cloudfunctionsv2", () => {
       };
 
       expect(
-        cloudfunctionsv2.specFromFunction({
+        cloudfunctionsv2.endpointFromFunction({
           ...HAVE_CLOUD_FUNCTION_V2,
           serviceConfig: {
             ...HAVE_CLOUD_FUNCTION_V2.serviceConfig,
@@ -311,9 +359,10 @@ describe("cloudfunctionsv2", () => {
           },
         })
       ).to.deep.equal({
-        ...FUNCTION_SPEC,
+        ...ENDPOINT,
         platform: "gcfv2",
         uri: RUN_URI,
+        httpsTrigger: {},
         ...extraFields,
       });
     });

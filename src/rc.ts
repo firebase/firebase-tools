@@ -43,7 +43,7 @@ export class RC {
     if (fsutils.fileExistsSync(rcpath)) {
       try {
         data = cjson.load(rcpath);
-      } catch (e) {
+      } catch (e: any) {
         // malformed rc file is a warning, not an error
         utils.logWarning("JSON error trying to load " + clc.bold(rcpath));
       }

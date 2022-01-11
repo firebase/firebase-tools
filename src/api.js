@@ -99,7 +99,15 @@ var api = {
     "FIREBASE_CLOUDLOGGING_URL",
     "https://logging.googleapis.com"
   ),
+  cloudMonitoringOrigin: utils.envOverride(
+    "CLOUD_MONITORING_URL",
+    "https://monitoring.googleapis.com"
+  ),
   containerRegistryDomain: utils.envOverride("CONTAINER_REGISTRY_DOMAIN", "gcr.io"),
+  artifactRegistryDomain: utils.envOverride(
+    "ARTIFACT_REGISTRY_DOMAIN",
+    "https://artifactregistry.googleapis.com"
+  ),
   appDistributionOrigin: utils.envOverride(
     "FIREBASE_APP_DISTRIBUTION_URL",
     "https://firebaseappdistribution.googleapis.com"
@@ -145,11 +153,14 @@ var api = {
     "https://cloudfunctions.googleapis.com"
   ),
   runOrigin: utils.envOverride("CLOUD_RUN_URL", "https://run.googleapis.com"),
-  functionsUploadRegion: utils.envOverride("FIREBASE_FUNCTIONS_UPLOAD_REGION", "us-central1"),
   functionsDefaultRegion: utils.envOverride("FIREBASE_FUNCTIONS_DEFAULT_REGION", "us-central1"),
   cloudschedulerOrigin: utils.envOverride(
     "FIREBASE_CLOUDSCHEDULER_URL",
     "https://cloudscheduler.googleapis.com"
+  ),
+  cloudTasksOrigin: utils.envOverride(
+    "FIREBASE_CLOUD_TAKS_URL",
+    "https://cloudtasks.googleapis.com"
   ),
   pubsubOrigin: utils.envOverride("FIREBASE_PUBSUB_URL", "https://pubsub.googleapis.com"),
   googleOrigin: utils.envOverride(
@@ -204,6 +215,10 @@ var api = {
   ),
   githubOrigin: utils.envOverride("GITHUB_URL", "https://github.com"),
   githubApiOrigin: utils.envOverride("GITHUB_API_URL", "https://api.github.com"),
+  secretManagerOrigin: utils.envOverride(
+    "CLOUD_SECRET_MANAGER_URL",
+    "https://secretmanager.googleapis.com"
+  ),
   githubClientId: utils.envOverride("GITHUB_CLIENT_ID", "89cf50f02ac6aaed3484"),
   githubClientSecret: utils.envOverride(
     "GITHUB_CLIENT_SECRET",

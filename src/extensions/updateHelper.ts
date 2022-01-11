@@ -1,26 +1,25 @@
 import * as clc from "cli-color";
 import * as semver from "semver";
+import * as marked from "marked";
 
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import * as resolveSource from "./resolveSource";
 import * as extensionsApi from "./extensionsApi";
-import { promptOnce } from "../prompt";
-import * as marked from "marked";
+import * as refs from "./refs";
 import {
   createSourceFromLocation,
   logPrefix,
   SourceOrigin,
-  URL_REGEX,
   isLocalOrURLPath,
 } from "./extensionsHelper";
 import * as utils from "../utils";
 import {
   displayUpdateChangesNoInput,
   displayUpdateChangesRequiringConfirmation,
-  getConsent,
   displayExtInfo,
 } from "./displayExtensionInfo";
+import * as changelog from "./changelog";
 
 function invalidSourceErrMsgTemplate(instanceId: string, source: string): string {
   return `Unable to update from the source \`${clc.bold(
@@ -39,34 +38,17 @@ export async function getExistingSourceOrigin(
   existingSource: string
 ): Promise<SourceOrigin> {
   const instance = await extensionsApi.getInstance(projectId, instanceId);
-  if (instance && instance.config.extensionRef) {
-    return SourceOrigin.PUBLISHED_EXTENSION;
-  }
-  // TODO: Deprecate this once official extensions are fully using the Registry.
-  // This logic will try to resolve the source with the Registry File. This allows us to use the old update flow
-  // of official => officical extensions, if the extension_ref is not filled out.
-  // After the migration is complete, all instances will have extension_ref filled out (except instances of local/URL sources).
-  // Once that we happens, we can deprecate this whole try-catch block and assume it is a url/local source.
-  let existingSourceOrigin: SourceOrigin;
-  try {
-    const registryEntry = await resolveSource.resolveRegistryEntry(extensionName);
-    if (resolveSource.isOfficialSource(registryEntry, existingSource)) {
-      existingSourceOrigin = SourceOrigin.OFFICIAL_EXTENSION;
-    } else {
-      existingSourceOrigin = SourceOrigin.LOCAL;
-    }
-  } catch {
-    existingSourceOrigin = SourceOrigin.LOCAL;
-  }
-  return existingSourceOrigin;
+  return instance && instance.config.extensionRef
+    ? SourceOrigin.PUBLISHED_EXTENSION
+    : SourceOrigin.LOCAL;
 }
 
-async function showUpdateVersionInfo(
+function showUpdateVersionInfo(
   instanceId: string,
   from: string,
   to: string,
   source?: string
-): Promise<void> {
+): void {
   if (source) {
     source = clc.bold(source);
   } else {
@@ -77,28 +59,24 @@ async function showUpdateVersionInfo(
     `Updating ${clc.bold(instanceId)} from version ${clc.bold(from)} to ${source} (${clc.bold(to)})`
   );
   if (semver.lt(to, from)) {
-    utils.logLabeledBullet(
+    utils.logLabeledWarning(
       logPrefix,
       "The version you are updating to is less than the current version for this extension. This extension may not be backwards compatible."
     );
-    return await getConsent("version", "Do you wish to continue?");
   }
   return;
 }
 
 /**
- * Prints out warning messages and requires user to consent before continuing with update.
+ * Prints out informational message about what code the instance will be updated to..
  * @param sourceOrigin source origin
  */
-export async function warningUpdateToOtherSource(sourceOrigin: SourceOrigin): Promise<void> {
+export function warningUpdateToOtherSource(sourceOrigin: SourceOrigin) {
   let targetText;
   if (
-    [
-      SourceOrigin.PUBLISHED_EXTENSION,
-      SourceOrigin.PUBLISHED_EXTENSION_VERSION,
-      SourceOrigin.OFFICIAL_EXTENSION,
-      SourceOrigin.OFFICIAL_EXTENSION_VERSION,
-    ].includes(sourceOrigin)
+    [SourceOrigin.PUBLISHED_EXTENSION, SourceOrigin.PUBLISHED_EXTENSION_VERSION].includes(
+      sourceOrigin
+    )
   ) {
     targetText = "published extension";
   } else if (sourceOrigin === SourceOrigin.LOCAL) {
@@ -108,14 +86,6 @@ export async function warningUpdateToOtherSource(sourceOrigin: SourceOrigin): Pr
   }
   const warning = `All the instance's resources and logic will be overwritten to use the source code and files from the ${targetText}.\n`;
   logger.info(marked(warning));
-  const continueUpdate = await promptOnce({
-    type: "confirm",
-    message: "Do you wish to continue with this update?",
-    default: false,
-  });
-  if (!continueUpdate) {
-    throw new FirebaseError(`Update cancelled.`, { exit: 2 });
-  }
 }
 
 /**
@@ -127,28 +97,15 @@ export async function warningUpdateToOtherSource(sourceOrigin: SourceOrigin): Pr
  * @param newSpec A extensionSpec to compare to
  * @param published
  */
-export async function displayChanges(
-  spec: extensionsApi.ExtensionSpec,
-  newSpec: extensionsApi.ExtensionSpec,
-  isOfficial = true
-): Promise<void> {
-  logger.info(
-    "This update contains the following changes (in green and red). " +
-      "If at any point you choose not to continue, the extension will not be updated and the changes will be discarded:\n"
-  );
-  displayUpdateChangesNoInput(spec, newSpec, isOfficial);
-  await displayUpdateChangesRequiringConfirmation(spec, newSpec);
-}
-
-/**
- * Prompts the user to confirm before continuing to update.
- */
-export async function retryUpdate(): Promise<boolean> {
-  return promptOnce({
-    type: "confirm",
-    message: "Are you sure you wish to continue with updating anyways?",
-    default: false,
-  });
+export async function displayChanges(args: {
+  spec: extensionsApi.ExtensionSpec;
+  newSpec: extensionsApi.ExtensionSpec;
+  nonInteractive: boolean;
+  force: boolean;
+}): Promise<void> {
+  utils.logLabeledBullet("extensions", "This update contains the following changes:");
+  displayUpdateChangesNoInput(args.spec, args.newSpec);
+  await displayUpdateChangesRequiringConfirmation(args);
 }
 
 /**
@@ -178,9 +135,19 @@ export interface UpdateOptions {
 export async function update(updateOptions: UpdateOptions): Promise<any> {
   const { projectId, instanceId, source, extRef, params } = updateOptions;
   if (extRef) {
-    return await extensionsApi.updateInstanceFromRegistry(projectId, instanceId, extRef, params);
+    return await extensionsApi.updateInstanceFromRegistry({
+      projectId,
+      instanceId,
+      extRef,
+      params,
+    });
   } else if (source) {
-    return await extensionsApi.updateInstance(projectId, instanceId, source, params);
+    return await extensionsApi.updateInstance({
+      projectId,
+      instanceId,
+      extensionSource: source,
+      params,
+    });
   }
   throw new FirebaseError(
     `Neither a source nor a version of the extension was supplied for ${instanceId}. Please make sure this is a valid extension and try again.`
@@ -193,28 +160,26 @@ export async function update(updateOptions: UpdateOptions): Promise<any> {
  * @param instanceId Id of the instance to update
  * @param localSource path to the new local source
  * @param existingSpec ExtensionSpec of existing instance source
- * @param existingSource name of existing instance source
  */
 export async function updateFromLocalSource(
   projectId: string,
   instanceId: string,
   localSource: string,
-  existingSpec: extensionsApi.ExtensionSpec,
-  existingSource: string
+  existingSpec: extensionsApi.ExtensionSpec
 ): Promise<string> {
   displayExtInfo(instanceId, "", existingSpec, false);
   let source;
   try {
     source = await createSourceFromLocation(projectId, localSource);
-  } catch (err) {
+  } catch (err: any) {
     throw new FirebaseError(invalidSourceErrMsgTemplate(instanceId, localSource));
   }
   utils.logLabeledBullet(
     logPrefix,
     `${clc.bold("You are updating this extension instance to a local source.")}`
   );
-  await showUpdateVersionInfo(instanceId, existingSpec.version, source.spec.version, localSource);
-  await warningUpdateToOtherSource(SourceOrigin.LOCAL);
+  showUpdateVersionInfo(instanceId, existingSpec.version, source.spec.version, localSource);
+  warningUpdateToOtherSource(SourceOrigin.LOCAL);
   return source.name;
 }
 
@@ -230,22 +195,21 @@ export async function updateFromUrlSource(
   projectId: string,
   instanceId: string,
   urlSource: string,
-  existingSpec: extensionsApi.ExtensionSpec,
-  existingSource: string
+  existingSpec: extensionsApi.ExtensionSpec
 ): Promise<string> {
   displayExtInfo(instanceId, "", existingSpec, false);
   let source;
   try {
     source = await createSourceFromLocation(projectId, urlSource);
-  } catch (err) {
+  } catch (err: any) {
     throw new FirebaseError(invalidSourceErrMsgTemplate(instanceId, urlSource));
   }
   utils.logLabeledBullet(
     logPrefix,
     `${clc.bold("You are updating this extension instance to a URL source.")}`
   );
-  await showUpdateVersionInfo(instanceId, existingSpec.version, source.spec.version, urlSource);
-  await warningUpdateToOtherSource(SourceOrigin.URL);
+  showUpdateVersionInfo(instanceId, existingSpec.version, source.spec.version, urlSource);
+  warningUpdateToOtherSource(SourceOrigin.URL);
   return source.name;
 }
 
@@ -259,17 +223,17 @@ export async function updateToVersionFromPublisherSource(
   projectId: string,
   instanceId: string,
   extVersionRef: string,
-  existingSpec: extensionsApi.ExtensionSpec,
-  existingSource: string
+  existingSpec: extensionsApi.ExtensionSpec
 ): Promise<string> {
   let source;
-  const refObj = extensionsApi.parseRef(extVersionRef);
-  const version = refObj.version;
-  displayExtInfo(instanceId, refObj.publisherId, existingSpec, true);
-  const extension = await extensionsApi.getExtension(`${refObj.publisherId}/${refObj.extensionId}`);
+  const ref = refs.parse(extVersionRef);
+  const version = ref.version;
+  const extensionRef = refs.toExtensionRef(ref);
+  displayExtInfo(instanceId, ref.publisherId, existingSpec, true);
+  const extension = await extensionsApi.getExtension(extensionRef);
   try {
     source = await extensionsApi.getExtensionVersion(extVersionRef);
-  } catch (err) {
+  } catch (err: any) {
     throw new FirebaseError(
       `Could not find source '${clc.bold(extVersionRef)}' because (${clc.bold(
         version
@@ -279,23 +243,12 @@ export async function updateToVersionFromPublisherSource(
     );
   }
   let registryEntry;
-  let sourceOrigin;
   try {
-    // Double check that both publisher and extension ID match
-    // If the publisher and extension ID both match, we know it's an official extension (i.e. it's specifically listed in our Registry File)
-    // Otherwise, it's simply a published extension in the Registry
     registryEntry = await resolveSource.resolveRegistryEntry(existingSpec.name);
-    sourceOrigin =
-      registryEntry.publisher === refObj.publisherId
-        ? SourceOrigin.OFFICIAL_EXTENSION
-        : SourceOrigin.PUBLISHED_EXTENSION;
-  } catch (err) {
-    sourceOrigin = SourceOrigin.PUBLISHED_EXTENSION;
+  } catch (err: any) {
+    logger.debug(`Unable to fetch registry.json entry for ${existingSpec.name}`);
   }
-  utils.logLabeledBullet(
-    logPrefix,
-    `${clc.bold(`You are updating this extension instance to a(n) ${sourceOrigin}.`)}`
-  );
+
   if (registryEntry) {
     // Do not allow user to "downgrade" to a version lower than the minimum required version.
     const minVer = resolveSource.getMinRequiredVersion(registryEntry);
@@ -307,14 +260,15 @@ export async function updateToVersionFromPublisherSource(
       );
     }
   }
-  await showUpdateVersionInfo(instanceId, existingSpec.version, source.spec.version, extVersionRef);
-  await warningUpdateToOtherSource(SourceOrigin.PUBLISHED_EXTENSION);
-  if (registryEntry) {
-    await resolveSource.promptForUpdateWarnings(
-      registryEntry,
-      existingSpec.version,
-      source.spec.version
-    );
+  showUpdateVersionInfo(instanceId, existingSpec.version, source.spec.version, extVersionRef);
+  warningUpdateToOtherSource(SourceOrigin.PUBLISHED_EXTENSION);
+  const releaseNotes = await changelog.getReleaseNotesForUpdate({
+    extensionRef,
+    fromVersion: existingSpec.version,
+    toVersion: source.spec.version,
+  });
+  if (Object.keys(releaseNotes).length) {
+    changelog.displayReleaseNotes(releaseNotes, existingSpec.version);
   }
   return source.name;
 }
@@ -329,89 +283,13 @@ export async function updateFromPublisherSource(
   projectId: string,
   instanceId: string,
   extRef: string,
-  existingSpec: extensionsApi.ExtensionSpec,
-  existingSource: string
+  existingSpec: extensionsApi.ExtensionSpec
 ): Promise<string> {
   return updateToVersionFromPublisherSource(
     projectId,
     instanceId,
     `${extRef}@latest`,
-    existingSpec,
-    existingSource
-  );
-}
-
-/**
- * Preparatory work for updating an published extension instance to the given version.
- *
- * @param instanceId Id of the instance to update
- * @param existingSpec ExtensionSpec of the existing instance source
- * @param existingSource name of existing instance source
- * @param version Version to update the instance to
- */
-export async function updateToVersionFromRegistryFile(
-  projectId: string,
-  instanceId: string,
-  existingSpec: extensionsApi.ExtensionSpec,
-  existingSource: string,
-  version: string
-): Promise<string> {
-  if (version !== "latest" && !semver.valid(version)) {
-    throw new FirebaseError(`cannot update to invalid version ${version}`);
-  }
-  // Updating to a version from an published source
-  let registryEntry;
-  try {
-    registryEntry = await resolveSource.resolveRegistryEntry(existingSpec.name);
-  } catch (err) {
-    // If registry entry does not exist, assume existing source was from local directory or URL.
-    throw new FirebaseError(
-      `Cannot find the latest version of this extension. To update this instance to a local source or URL source, run "firebase ext:update ${instanceId} <localSourceOrURL>".`
-    );
-  }
-  displayExtInfo(instanceId, registryEntry.publisher, existingSpec, true);
-  utils.logLabeledBullet(
-    logPrefix,
-    clc.bold("You are updating this extension instance to an official source.")
-  );
-
-  // Do not allow user to "downgrade" to a version lower than the minimum required version.
-  const minVer = resolveSource.getMinRequiredVersion(registryEntry);
-  if (minVer) {
-    if (version !== "latest" && semver.gt(minVer, version)) {
-      throw new FirebaseError(
-        `The version you are trying to upgrade to (${clc.bold(
-          version
-        )}) is less than the minimum version required (${clc.bold(minVer)}) to use this extension.`
-      );
-    }
-  }
-  const targetVersion = resolveSource.getTargetVersion(registryEntry, version);
-  await showUpdateVersionInfo(instanceId, existingSpec.version, targetVersion);
-  await warningUpdateToOtherSource(SourceOrigin.OFFICIAL_EXTENSION);
-  await resolveSource.promptForUpdateWarnings(registryEntry, existingSpec.version, targetVersion);
-  return resolveSource.resolveSourceUrl(registryEntry, existingSpec.name, targetVersion);
-}
-
-/**
- * Preparatory work for updating an published extension instance to the latest version.
- *
- * @param instanceId Id of the instance to update
- * @param existingSpec ExtensionSpec of the existing instance source
- * @param existingSource name of existing instance source
- */
-export async function updateFromRegistryFile(
-  projectId: string,
-  instanceId: string,
-  existingSpec: extensionsApi.ExtensionSpec,
-  existingSource: string
-): Promise<string> {
-  return updateToVersionFromRegistryFile(
-    projectId,
-    instanceId,
-    existingSpec,
-    existingSource,
-    "latest"
+    existingSpec
   );
 }
 

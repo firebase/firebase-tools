@@ -38,26 +38,24 @@ module.exports = new Command("apps:list [platform]")
       "Optionally filter apps by [platform]: IOS, ANDROID or WEB (case insensitive)"
   )
   .before(requireAuth)
-  .action(
-    async (platform: string | undefined, options: any): Promise<AppMetadata[]> => {
-      const projectId = needProjectId(options);
-      const appPlatform = getAppPlatform(platform || "");
+  .action(async (platform: string | undefined, options: any): Promise<AppMetadata[]> => {
+    const projectId = needProjectId(options);
+    const appPlatform = getAppPlatform(platform || "");
 
-      let apps;
-      const spinner = ora(
-        "Preparing the list of your Firebase " +
-          `${appPlatform === AppPlatform.ANY ? "" : appPlatform + " "}apps`
-      ).start();
-      try {
-        apps = await listFirebaseApps(projectId, appPlatform);
-      } catch (err) {
-        spinner.fail();
-        throw err;
-      }
-
-      spinner.succeed();
-      logAppsList(apps);
-      logAppCount(apps.length);
-      return apps;
+    let apps;
+    const spinner = ora(
+      "Preparing the list of your Firebase " +
+        `${appPlatform === AppPlatform.ANY ? "" : appPlatform + " "}apps`
+    ).start();
+    try {
+      apps = await listFirebaseApps(projectId, appPlatform);
+    } catch (err: any) {
+      spinner.fail();
+      throw err;
     }
-  );
+
+    spinner.succeed();
+    logAppsList(apps);
+    logAppCount(apps.length);
+    return apps;
+  });

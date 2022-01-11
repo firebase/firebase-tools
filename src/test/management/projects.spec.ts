@@ -149,7 +149,7 @@ describe("Project management", () => {
         let err;
         try {
           await projectManager.getOrPromptProject({});
-        } catch (e) {
+        } catch (e: any) {
           err = e;
         }
 
@@ -182,7 +182,7 @@ describe("Project management", () => {
         let err;
         try {
           await projectManager.getOrPromptProject(options);
-        } catch (e) {
+        } catch (e: any) {
           err = e;
         }
 
@@ -243,7 +243,7 @@ describe("Project management", () => {
         let err;
         try {
           await projectManager.promptAvailableProjectId();
-        } catch (e) {
+        } catch (e: any) {
           err = e;
         }
 
@@ -297,7 +297,7 @@ describe("Project management", () => {
             displayName: PROJECT_NAME,
             parentResource: PARENT_RESOURCE,
           });
-        } catch (e) {
+        } catch (e: any) {
           err = e;
         }
 
@@ -325,7 +325,7 @@ describe("Project management", () => {
             displayName: PROJECT_NAME,
             parentResource: PARENT_RESOURCE,
           });
-        } catch (e) {
+        } catch (e: any) {
           err = e;
         }
 
@@ -383,7 +383,7 @@ describe("Project management", () => {
         let err;
         try {
           await projectManager.addFirebaseToCloudProject(PROJECT_ID);
-        } catch (e) {
+        } catch (e: any) {
           err = e;
         }
 
@@ -411,7 +411,7 @@ describe("Project management", () => {
         let err;
         try {
           await projectManager.addFirebaseToCloudProject(PROJECT_ID);
-        } catch (e) {
+        } catch (e: any) {
           err = e;
         }
 
@@ -494,7 +494,7 @@ describe("Project management", () => {
         let err;
         try {
           await projectManager.getAvailableCloudProjectPage(pageSize, PAGE_TOKEN);
-        } catch (e) {
+        } catch (e: any) {
           err = e;
         }
 
@@ -563,7 +563,7 @@ describe("Project management", () => {
         let err;
         try {
           await projectManager.getFirebaseProjectPage(pageSize, PAGE_TOKEN);
-        } catch (e) {
+        } catch (e: any) {
           err = e;
         }
 
@@ -621,7 +621,7 @@ describe("Project management", () => {
         let err;
         try {
           await projectManager.listFirebaseProjects();
-        } catch (e) {
+        } catch (e: any) {
           err = e;
         }
 
@@ -649,7 +649,7 @@ describe("Project management", () => {
         let err;
         try {
           await projectManager.listFirebaseProjects(pageSize);
-        } catch (e) {
+        } catch (e: any) {
           err = e;
         }
 
@@ -693,7 +693,7 @@ describe("Project management", () => {
         let err;
         try {
           await projectManager.getFirebaseProject(PROJECT_ID);
-        } catch (e) {
+        } catch (e: any) {
           err = e;
         }
 

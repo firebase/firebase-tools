@@ -1,11 +1,14 @@
 import { expect } from "chai";
-import { describeAuthEmulator } from "./setup";
+import { describeAuthEmulator, PROJECT_ID } from "./setup";
 import {
   expectStatusCode,
   registerUser,
   signInWithFakeClaims,
   getSigninMethods,
   expectUserNotExistsForIdToken,
+  updateProjectConfig,
+  deleteAccount,
+  registerTenant,
 } from "./helpers";
 
 describeAuthEmulator("accounts:delete", ({ authApi }) => {
@@ -101,6 +104,52 @@ describeAuthEmulator("accounts:delete", ({ authApi }) => {
       .then((res) => {
         expectStatusCode(400, res);
         expect(res.body.error).to.have.property("message").equals("MISSING_LOCAL_ID");
+      });
+  });
+
+  it("should error on delete with idToken if usageMode is passthrough", async () => {
+    const { idToken } = await registerUser(authApi(), {
+      email: "alice@example.com",
+      password: "notasecret",
+    });
+    await deleteAccount(authApi(), { idToken });
+    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:delete")
+      .send({ idToken })
+      .query({ key: "fake-api-key" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error)
+          .to.have.property("message")
+          .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
+      });
+  });
+
+  it("should return not found on delete with localId if usageMode is passthrough", async () => {
+    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:delete")
+      .set("Authorization", "Bearer owner")
+      .send({ localId: "does-not-exist" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("USER_NOT_FOUND");
+      });
+  });
+
+  it("should delete the user of the idToken", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: true });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:delete")
+      .send({ tenantId: tenant.tenantId })
+      .query({ key: "fake-api-key" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").includes("PROJECT_DISABLED");
       });
   });
 });

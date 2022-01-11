@@ -12,10 +12,13 @@ import { PROVIDERS_LIST_PLACEHOLDER, WIDGET_UI } from "./widget_ui";
  */
 export function registerHandlers(
   app: express.Express,
-  getProjectStateByApiKey: (apiKey: string) => ProjectState
+  getProjectStateByApiKey: (apiKey: string, tenantId?: string) => ProjectState
 ): void {
   app.get(`/emulator/action`, (req, res) => {
-    const { mode, oobCode, continueUrl, apiKey } = req.query as Record<string, string | undefined>;
+    const { mode, oobCode, continueUrl, apiKey, tenantId } = req.query as Record<
+      string,
+      string | undefined
+    >;
 
     if (!apiKey) {
       return res.status(400).json({
@@ -33,7 +36,7 @@ export function registerHandlers(
         },
       });
     }
-    const state = getProjectStateByApiKey(apiKey);
+    const state = getProjectStateByApiKey(apiKey, tenantId);
 
     switch (mode) {
       case "recoverEmail": {
@@ -56,7 +59,7 @@ export function registerHandlers(
           return res.status(200).json({
             authEmulator: { success: `The email has been successfully reset.`, email },
           });
-        } catch (e) {
+        } catch (e: any) {
           if (
             e instanceof NotImplementedError ||
             (e instanceof BadRequestError && e.message === "INVALID_OOB_CODE")
@@ -124,7 +127,7 @@ export function registerHandlers(
               authEmulator: { success: `The email has been successfully verified.`, email },
             });
           }
-        } catch (e) {
+        } catch (e: any) {
           if (
             e instanceof NotImplementedError ||
             (e instanceof BadRequestError && e.message === "INVALID_OOB_CODE")
@@ -169,6 +172,7 @@ export function registerHandlers(
     res.set("Content-Type", "text/html; charset=utf-8");
     const apiKey = req.query.apiKey as string | undefined;
     const providerId = req.query.providerId as string | undefined;
+    const tenantId = req.query.tenantId as string | undefined;
     if (!apiKey || !providerId) {
       return res.status(400).json({
         authEmulator: {
@@ -176,7 +180,7 @@ export function registerHandlers(
         },
       });
     }
-    const state = getProjectStateByApiKey(apiKey);
+    const state = getProjectStateByApiKey(apiKey, tenantId);
     const providerInfos = state.listProviderInfosByProviderId(providerId);
 
     const options = providerInfos
@@ -195,9 +199,11 @@ export function registerHandlers(
             <span class="mdc-list-item__graphic material-icons" aria-hidden=true>person</span>`
           }
           <span class="mdc-list-item__text"><span class="mdc-list-item__primary-text">${
-            info.displayName
+            info.displayName || "(No display name)"
           }</span>
-          <span class="mdc-list-item__secondary-text fallback-secondary-text">${info.email}</span>
+          <span class="mdc-list-item__secondary-text fallback-secondary-text" id="reuse-email">${
+            info.email || ""
+          }</span>
       </li>`
       )
       .join("\n");

@@ -1,15 +1,49 @@
 const admin = require("firebase-admin");
 const functions = require("firebase-functions");
+let functionsV2;
+try {
+  functionsV2 = require("firebase-functions/v2");
+} catch {
+  // TODO: firebase-functions/lib path is unsupported, but this is the only way to access the v2 namespace in Node 10.
+  // Remove this ugly hack once we cut support for Node 10.
+  functionsV2 = require("firebase-functions/lib/v2");
+}
 const { PubSub } = require("@google-cloud/pubsub");
 
 /*
  * Log snippets that the driver program above checks for. Be sure to update
  * ../test.js if you plan on changing these.
  */
+/* Functions V1 */
 const RTDB_FUNCTION_LOG = "========== RTDB FUNCTION ==========";
 const FIRESTORE_FUNCTION_LOG = "========== FIRESTORE FUNCTION ==========";
 const PUBSUB_FUNCTION_LOG = "========== PUBSUB FUNCTION ==========";
 const AUTH_FUNCTION_LOG = "========== AUTH FUNCTION ==========";
+const STORAGE_FUNCTION_ARCHIVED_LOG = "========== STORAGE FUNCTION ARCHIVED ==========";
+const STORAGE_FUNCTION_DELETED_LOG = "========== STORAGE FUNCTION DELETED ==========";
+const STORAGE_FUNCTION_FINALIZED_LOG = "========== STORAGE FUNCTION FINALIZED ==========";
+const STORAGE_FUNCTION_METADATA_LOG = "========== STORAGE FUNCTION METADATA ==========";
+const STORAGE_BUCKET_FUNCTION_ARCHIVED_LOG =
+  "========== STORAGE BUCKET FUNCTION ARCHIVED ==========";
+const STORAGE_BUCKET_FUNCTION_DELETED_LOG = "========== STORAGE BUCKET FUNCTION DELETED ==========";
+const STORAGE_BUCKET_FUNCTION_FINALIZED_LOG =
+  "========== STORAGE BUCKET FUNCTION FINALIZED ==========";
+const STORAGE_BUCKET_FUNCTION_METADATA_LOG =
+  "========== STORAGE BUCKET FUNCTION METADATA ==========";
+/* Functions V2 */
+const PUBSUB_FUNCTION_V2_LOG = "========== PUBSUB V2 FUNCTION ==========";
+const STORAGE_FUNCTION_V2_ARCHIVED_LOG = "========== STORAGE V2 FUNCTION ARCHIVED ==========";
+const STORAGE_FUNCTION_V2_DELETED_LOG = "========== STORAGE V2 FUNCTION DELETED ==========";
+const STORAGE_FUNCTION_V2_FINALIZED_LOG = "========== STORAGE V2 FUNCTION FINALIZED ==========";
+const STORAGE_FUNCTION_V2_METADATA_LOG = "========== STORAGE V2 FUNCTION METADATA ==========";
+const STORAGE_BUCKET_FUNCTION_V2_ARCHIVED_LOG =
+  "========== STORAGE BUCKET V2 FUNCTION ARCHIVED ==========";
+const STORAGE_BUCKET_FUNCTION_V2_DELETED_LOG =
+  "========== STORAGE BUCKET V2 FUNCTION DELETED ==========";
+const STORAGE_BUCKET_FUNCTION_V2_FINALIZED_LOG =
+  "========== STORAGE BUCKET V2 FUNCTION FINALIZED ==========";
+const STORAGE_BUCKET_FUNCTION_V2_METADATA_LOG =
+  "========== STORAGE BUCKET V2 FUNCTION METADATA ==========";
 
 /*
  * We install onWrite triggers for START_DOCUMENT_NAME in both the firestore and
@@ -22,6 +56,8 @@ const END_DOCUMENT_NAME = "test/done";
 
 const PUBSUB_TOPIC = "test-topic";
 const PUBSUB_SCHEDULED_TOPIC = "firebase-schedule-pubsubScheduled";
+
+const STORAGE_FILE_NAME = "test-file.txt";
 
 const pubsub = new PubSub();
 admin.initializeApp();
@@ -78,6 +114,34 @@ exports.writeToAuth = functions.https.onRequest(async (req, res) => {
   res.json({ created: "ok" });
 });
 
+exports.writeToDefaultStorage = functions.https.onRequest(async (req, res) => {
+  await admin.storage().bucket().file(STORAGE_FILE_NAME).save("hello world!");
+  console.log("Wrote to default Storage bucket");
+  res.json({ created: "ok" });
+});
+
+exports.writeToSpecificStorageBucket = functions.https.onRequest(async (req, res) => {
+  await admin.storage().bucket("test-bucket").file(STORAGE_FILE_NAME).save("hello world!");
+  console.log("Wrote to a specific Storage bucket");
+  res.json({ created: "ok" });
+});
+
+exports.updateDeleteFromDefaultStorage = functions.https.onRequest(async (req, res) => {
+  await admin.storage().bucket().file(STORAGE_FILE_NAME).save("something new!");
+  console.log("Wrote to Storage bucket");
+  await admin.storage().bucket().file(STORAGE_FILE_NAME).delete();
+  console.log("Deleted from Storage bucket");
+  res.json({ done: "ok" });
+});
+
+exports.updateDeleteFromSpecificStorageBucket = functions.https.onRequest(async (req, res) => {
+  await admin.storage().bucket("test-bucket").file(STORAGE_FILE_NAME).save("something new!");
+  console.log("Wrote to a specific Storage bucket");
+  await admin.storage().bucket("test-bucket").file(STORAGE_FILE_NAME).delete();
+  console.log("Deleted from a specific Storage bucket");
+  res.json({ done: "ok" });
+});
+
 exports.firestoreReaction = functions.firestore
   .document(START_DOCUMENT_NAME)
   .onWrite(async (/* change, ctx */) => {
@@ -121,6 +185,13 @@ exports.pubsubReaction = functions.pubsub.topic(PUBSUB_TOPIC).onPublish((msg /* 
   return true;
 });
 
+exports.pubsubv2reaction = functionsV2.pubsub.onMessagePublished(PUBSUB_TOPIC, (cloudevent) => {
+  console.log(PUBSUB_FUNCTION_V2_LOG);
+  console.log("Message", JSON.stringify(cloudevent.data.message.json));
+  console.log("Attributes", JSON.stringify(cloudevent.data.message.attributes));
+  return true;
+});
+
 exports.pubsubScheduled = functions.pubsub.schedule("every mon 07:00").onRun((context) => {
   console.log(PUBSUB_FUNCTION_LOG);
   console.log("Resource", JSON.stringify(context.resource));
@@ -132,3 +203,135 @@ exports.authReaction = functions.auth.user().onCreate((user, ctx) => {
   console.log("User", JSON.stringify(user));
   return true;
 });
+
+exports.storageArchiveReaction = functions.storage
+  .bucket()
+  .object()
+  .onArchive((object, context) => {
+    console.log(STORAGE_FUNCTION_ARCHIVED_LOG);
+    console.log("Object", JSON.stringify(object));
+    return true;
+  });
+
+exports.storageDeleteReaction = functions.storage
+  .bucket()
+  .object()
+  .onDelete((object, context) => {
+    console.log(STORAGE_FUNCTION_DELETED_LOG);
+    console.log("Object", JSON.stringify(object));
+    return true;
+  });
+
+exports.storageFinalizeReaction = functions.storage
+  .bucket()
+  .object()
+  .onFinalize((object, context) => {
+    console.log(STORAGE_FUNCTION_FINALIZED_LOG);
+    console.log("Object", JSON.stringify(object));
+    return true;
+  });
+
+exports.storageMetadataReaction = functions.storage
+  .bucket()
+  .object()
+  .onMetadataUpdate((object, context) => {
+    console.log(STORAGE_FUNCTION_METADATA_LOG);
+    console.log("Object", JSON.stringify(object));
+    return true;
+  });
+
+exports.storagev2archivedreaction = functionsV2.storage.onObjectArchived((cloudevent) => {
+  console.log(STORAGE_FUNCTION_V2_ARCHIVED_LOG);
+  console.log("Object", JSON.stringify(cloudevent.data));
+  return true;
+});
+
+exports.storagev2deletedreaction = functionsV2.storage.onObjectDeleted((cloudevent) => {
+  console.log(STORAGE_FUNCTION_V2_DELETED_LOG);
+  console.log("Object", JSON.stringify(cloudevent.data));
+  return true;
+});
+
+exports.storagev2finalizedreaction = functionsV2.storage.onObjectFinalized((cloudevent) => {
+  console.log(STORAGE_FUNCTION_V2_FINALIZED_LOG);
+  console.log("Object", JSON.stringify(cloudevent.data));
+  return true;
+});
+
+exports.storagev2metadatareaction = functionsV2.storage.onObjectMetadataUpdated((cloudevent) => {
+  console.log(STORAGE_FUNCTION_V2_METADATA_LOG);
+  console.log("Object", JSON.stringify(cloudevent.data));
+  return true;
+});
+
+exports.storageBucketArchiveReaction = functions.storage
+  .bucket("test-bucket")
+  .object()
+  .onArchive((object, context) => {
+    console.log(STORAGE_BUCKET_FUNCTION_ARCHIVED_LOG);
+    console.log("Object", JSON.stringify(object));
+    return true;
+  });
+
+exports.storageBucketDeleteReaction = functions.storage
+  .bucket("test-bucket")
+  .object()
+  .onDelete((object, context) => {
+    console.log(STORAGE_BUCKET_FUNCTION_DELETED_LOG);
+    console.log("Object", JSON.stringify(object));
+    return true;
+  });
+
+exports.storageBucketFinalizeReaction = functions.storage
+  .bucket("test-bucket")
+  .object()
+  .onFinalize((object, context) => {
+    console.log(STORAGE_BUCKET_FUNCTION_FINALIZED_LOG);
+    console.log("Object", JSON.stringify(object));
+    return true;
+  });
+
+exports.storageBucketMetadataReaction = functions.storage
+  .bucket("test-bucket")
+  .object()
+  .onMetadataUpdate((object, context) => {
+    console.log(STORAGE_BUCKET_FUNCTION_METADATA_LOG);
+    console.log("Object", JSON.stringify(object));
+    return true;
+  });
+
+exports.storagebucketv2archivedreaction = functionsV2.storage.onObjectArchived(
+  "test-bucket",
+  (cloudevent) => {
+    console.log(STORAGE_BUCKET_FUNCTION_V2_ARCHIVED_LOG);
+    console.log("Object", JSON.stringify(cloudevent.data));
+    return true;
+  }
+);
+
+exports.storagebucketv2deletedreaction = functionsV2.storage.onObjectDeleted(
+  "test-bucket",
+  (cloudevent) => {
+    console.log(STORAGE_BUCKET_FUNCTION_V2_DELETED_LOG);
+    console.log("Object", JSON.stringify(cloudevent.data));
+    return true;
+  }
+);
+
+exports.storagebucketv2finalizedreaction = functionsV2.storage.onObjectFinalized(
+  "test-bucket",
+  (cloudevent) => {
+    console.log(STORAGE_BUCKET_FUNCTION_V2_FINALIZED_LOG);
+    console.log("Object", JSON.stringify(cloudevent.data));
+    return true;
+  }
+);
+
+exports.storagebucketv2metadatareaction = functionsV2.storage.onObjectMetadataUpdated(
+  "test-bucket",
+  (cloudevent) => {
+    console.log(STORAGE_BUCKET_FUNCTION_V2_METADATA_LOG);
+    console.log("Object", JSON.stringify(cloudevent.data));
+    return true;
+  }
+);

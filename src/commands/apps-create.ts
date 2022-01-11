@@ -103,7 +103,7 @@ async function initiateIosAppCreation(options: CreateIosAppOptions): Promise<Ios
     });
     spinner.succeed();
     return appData;
-  } catch (err) {
+  } catch (err: any) {
     spinner.fail();
     throw err;
   }
@@ -135,7 +135,7 @@ async function initiateAndroidAppCreation(
     });
     spinner.succeed();
     return appData;
-  } catch (err) {
+  } catch (err: any) {
     spinner.fail();
     throw err;
   }
@@ -153,7 +153,7 @@ async function initiateWebAppCreation(options: CreateWebAppOptions): Promise<Web
     const appData = await createWebApp(options.project, { displayName: options.displayName });
     spinner.succeed();
     return appData;
-  } catch (err) {
+  } catch (err: any) {
     spinner.fail();
     throw err;
   }

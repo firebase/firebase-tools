@@ -15,6 +15,9 @@ module.exports = function (client) {
 
   client.appdistribution = {};
   client.appdistribution.distribute = loadCommand("appdistribution-distribute");
+  client.appdistribution.testers = {};
+  client.appdistribution.testers.add = loadCommand("appdistribution-testers-add");
+  client.appdistribution.testers.delete = loadCommand("appdistribution-testers-remove");
   client.apps = {};
   client.apps.create = loadCommand("apps-create");
   client.apps.list = loadCommand("apps-list");
@@ -27,6 +30,9 @@ module.exports = function (client) {
   client.auth = {};
   client.auth.export = loadCommand("auth-export");
   client.auth.upload = loadCommand("auth-import");
+  client.crashlytics = {};
+  client.crashlytics.symbols = {};
+  client.crashlytics.symbols.upload = loadCommand("crashlytics-symbols-upload");
   client.database = {};
   client.database.get = loadCommand("database-get");
   client.database.instances = {};
@@ -59,6 +65,7 @@ module.exports = function (client) {
   client.ext = loadCommand("ext");
   client.ext.configure = loadCommand("ext-configure");
   client.ext.info = loadCommand("ext-info");
+  client.ext.export = loadCommand("ext-export");
   client.ext.install = loadCommand("ext-install");
   client.ext.list = loadCommand("ext-list");
   client.ext.uninstall = loadCommand("ext-uninstall");
@@ -75,9 +82,12 @@ module.exports = function (client) {
     client.ext.dev.emulators = {};
     client.ext.dev.emulators.start = loadCommand("ext-dev-emulators-start");
     client.ext.dev.emulators.exec = loadCommand("ext-dev-emulators-exec");
+    client.ext.dev.deprecate = loadCommand("ext-dev-deprecate");
+    client.ext.dev.undeprecate = loadCommand("ext-dev-undeprecate");
     client.ext.dev.unpublish = loadCommand("ext-dev-unpublish");
     client.ext.dev.publish = loadCommand("ext-dev-publish");
     client.ext.dev.delete = loadCommand("ext-dev-extension-delete");
+    client.ext.dev.usage = loadCommand("ext-dev-usage");
   }
   client.firestore = {};
   client.firestore.delete = loadCommand("firestore-delete");
@@ -85,12 +95,16 @@ module.exports = function (client) {
   client.functions = {};
   client.functions.config = {};
   client.functions.config.clone = loadCommand("functions-config-clone");
+  if (previews.dotenv) {
+    client.functions.config.export = loadCommand("functions-config-export");
+  }
   client.functions.config.get = loadCommand("functions-config-get");
   client.functions.config.set = loadCommand("functions-config-set");
   client.functions.config.unset = loadCommand("functions-config-unset");
   client.functions.delete = loadCommand("functions-delete");
   client.functions.log = loadCommand("functions-log");
   client.functions.shell = loadCommand("functions-shell");
+  client.functions.list = loadCommand("functions-list");
   if (previews.deletegcfartifacts) {
     client.functions.deletegcfartifacts = loadCommand("functions-deletegcfartifacts");
   }

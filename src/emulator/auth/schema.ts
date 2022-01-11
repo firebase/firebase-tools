@@ -10,6 +10,39 @@
 export interface components {
   schemas: {
     /**
+     * The parameters for Argon2 hashing algorithm.
+     */
+    GoogleCloudIdentitytoolkitV1Argon2Parameters: {
+      /**
+       * The additional associated data, if provided, is appended to the hash value to provide an additional layer of security. A base64-encoded string if specified via JSON.
+       */
+      associatedData?: string;
+      /**
+       * Required. The desired hash length in bytes. Minimum is 4 and maximum is 1024.
+       */
+      hashLengthBytes?: number;
+      /**
+       * Required. Must not be HASH_TYPE_UNSPECIFIED.
+       */
+      hashType?: "HASH_TYPE_UNSPECIFIED" | "ARGON2_D" | "ARGON2_ID" | "ARGON2_I";
+      /**
+       * Required. The number of iterations to perform. Minimum is 1, maximum is 16.
+       */
+      iterations?: number;
+      /**
+       * Required. The memory cost in kibibytes. Maximum is 32768.
+       */
+      memoryCostKib?: number;
+      /**
+       * Required. The degree of parallelism, also called threads or lanes. Minimum is 1, maximum is 16.
+       */
+      parallelism?: number;
+      /**
+       * The version of the Argon2 algorithm. This defaults to VERSION_13 if not specified.
+       */
+      version?: "VERSION_UNSPECIFIED" | "VERSION_10" | "VERSION_13";
+    };
+    /**
      * The information required to auto-retrieve an SMS.
      */
     GoogleCloudIdentitytoolkitV1AutoRetrievalInfo: {
@@ -364,7 +397,7 @@ export interface components {
        */
       dynamicLinkDomain?: string;
       /**
-       * The account's email address to send the OOB code to, and generally the email address of the account that needs to be updated. Required for PASSWORD_RESET, EMAIL_SIGNIN, and VERIFY_EMAIL.
+       * The account's email address to send the OOB code to, and generally the email address of the account that needs to be updated. Required for PASSWORD_RESET, EMAIL_SIGNIN, and VERIFY_EMAIL. Only required for VERIFY_AND_CHANGE_EMAIL requests when return_oob_link is set to true. In this case, it is the original email of the user.
        */
       email?: string;
       /**
@@ -375,10 +408,16 @@ export interface components {
        * If an associated iOS app can handle the OOB code, the iOS bundle id of this app. This will allow the correct app to open if it is already installed.
        */
       iOSBundleId?: string;
+      /**
+       * An ID token for the account. It is required for VERIFY_AND_CHANGE_EMAIL and VERIFY_EMAIL requests unless return_oob_link is set to true.
+       */
       idToken?: string;
+      /**
+       * The email address the account is being updated to. Required only for VERIFY_AND_CHANGE_EMAIL requests.
+       */
       newEmail?: string;
       /**
-       * Required. The type of out-of-band (OOB) code to send. Depending on this value, other fields in this request will be required and/or have different meanings. There are 3 different OOB codes that can be sent: * PASSWORD_RESET * EMAIL_SIGNIN * VERIFY_EMAIL
+       * Required. The type of out-of-band (OOB) code to send. Depending on this value, other fields in this request will be required and/or have different meanings. There are 4 different OOB codes that can be sent: * PASSWORD_RESET * EMAIL_SIGNIN * VERIFY_EMAIL * VERIFY_AND_CHANGE_EMAIL
        */
       requestType?:
         | "OOB_REQ_TYPE_UNSPECIFIED"
@@ -1156,7 +1195,7 @@ export interface components {
        */
       pendingToken?: string;
       /**
-       * If the user is signing in with an authorization response obtained via a previous CreateAuthUri authorization request, this is the body of the HTTP POST callback from the IdP, if present. Otherwise, if the user is signing in with a manually provided IdP credential, this should be a URL-encoded form that contains the credential (e.g. an ID token or access token for OAuth 2.0 IdPs) and the provider ID of the IdP that issued the credential. For example, if the user is signing in to the Google provider using a Google ID token, this should be set to `id_token=[GOOGLE_ID_TOKEN]&providerId=google.com`, where `[GOOGLE_ID_TOKEN]` should be replaced with the Google ID token. If the user is signing in to the Facebook provider using a Facebook access token, this should be set to `access_token=[FACEBOOK_ACCESS_TOKEN]&providerId=facebook.com`, where `[FACEBOOK_ACCESS_TOKEN]` should be replaced with the Facebook access token. If the user is signing in to the Twitter provider using a Twitter OAuth 1.0 credential, this should be set to `access_token=[TWITTER_ACCESS_TOKEN]&oauth_token_secret=[TWITTER_TOKEN_SECRET]&providerId=twitter.com`, where `[TWITTER_ACCESS_TOKEN]` and `[TWITTER_TOKEN_SECRET]` should be replaced with the Twitter OAuth access token and Twitter OAuth token secret respectively.
+       * If the user is signing in with an authorization response obtained via a previous CreateAuthUri authorization request, this is the body of the HTTP POST callback from the IdP, if present. Otherwise, if the user is signing in with a manually provided IdP credential, this should be a URL-encoded form that contains the credential (e.g. an ID token or access token for OAuth 2.0 IdPs) and the provider ID of the IdP that issued the credential. For example, if the user is signing in to the Google provider using a Google ID token, this should be set to `id_token=[GOOGLE_ID_TOKEN]&providerId=google.com`, where `[GOOGLE_ID_TOKEN]` should be replaced with the Google ID token. If the user is signing in to the Facebook provider using a Facebook authentication token, this should be set to `id_token=[FACEBOOK_AUTHENTICATION_TOKEN]&providerId=facebook.com&nonce= [NONCE]`, where `[FACEBOOK_AUTHENTICATION_TOKEN]` should be replaced with the Facebook authentication token. Nonce is required for validating the token. The request will fail if no nonce is provided. If the user is signing in to the Facebook provider using a Facebook access token, this should be set to `access_token=[FACEBOOK_ACCESS_TOKEN]&providerId=facebook.com`, where `[FACEBOOK_ACCESS_TOKEN]` should be replaced with the Facebook access token. If the user is signing in to the Twitter provider using a Twitter OAuth 1.0 credential, this should be set to `access_token=[TWITTER_ACCESS_TOKEN]&oauth_token_secret=[TWITTER_TOKEN_SECRET]&providerId=twitter.com`, where `[TWITTER_ACCESS_TOKEN]` and `[TWITTER_TOKEN_SECRET]` should be replaced with the Twitter OAuth access token and Twitter OAuth token secret respectively.
        */
       postBody?: string;
       /**
@@ -1342,7 +1381,7 @@ export interface components {
     GoogleCloudIdentitytoolkitV1SignInWithPasswordRequest: {
       captchaChallenge?: string;
       /**
-       * The response from a reCaptcha challenge. A recaptcha response is required when the service detects possible abuse activity.
+       * The reCAPTCHA token provided by the reCAPTCHA client-side integration. reCAPTCHA Enterprise uses it for risk assessment. Required when reCAPTCHA Enterprise is enabled.
        */
       captchaResponse?: string;
       delegatedProjectNumber?: string;
@@ -1506,7 +1545,7 @@ export interface components {
     GoogleCloudIdentitytoolkitV1SignUpRequest: {
       captchaChallenge?: string;
       /**
-       * The response from a reCaptcha challenge. A reCaptcha response is required when the service detects potential abuse activity.
+       * The reCAPTCHA token provided by the reCAPTCHA client-side integration. reCAPTCHA Enterprise uses it for assessment. Required when reCAPTCHA enterprise is enabled.
        */
       captchaResponse?: string;
       /**
@@ -1614,6 +1653,7 @@ export interface components {
        * Whether to overwrite an existing account in Identity Platform with a matching `local_id` in the request. If true, the existing account will be overwritten. If false, an error will be returned.
        */
       allowOverwrite?: boolean;
+      argon2Parameters?: components["schemas"]["GoogleCloudIdentitytoolkitV1Argon2Parameters"];
       /**
        * The block size parameter used by the STANDARD_SCRYPT hashing function. This parameter, along with parallelization and cpu_mem_cost help tune the resources needed to hash a password, and should be tuned as processor speeds and memory technologies advance.
        */
@@ -1631,7 +1671,7 @@ export interface components {
        */
       dkLen?: number;
       /**
-       * Required. The hashing function used to hash the account passwords. Must be one of the following: * HMAC_SHA256 * HMAC_SHA1 * HMAC_MD5 * SCRYPT * PBKDF_SHA1 * MD5 * HMAC_SHA512 * SHA1 * BCRYPT * PBKDF2_SHA256 * SHA256 * SHA512 * STANDARD_SCRYPT
+       * Required. The hashing function used to hash the account passwords. Must be one of the following: * HMAC_SHA256 * HMAC_SHA1 * HMAC_MD5 * SCRYPT * PBKDF_SHA1 * MD5 * HMAC_SHA512 * SHA1 * BCRYPT * PBKDF2_SHA256 * SHA256 * SHA512 * STANDARD_SCRYPT * ARGON2
        */
       hashAlgorithm?: string;
       /**
@@ -1818,6 +1858,15 @@ export interface components {
       suggestedTimeout?: string;
     };
     /**
+     * Configuration options related to authenticating an anonymous user.
+     */
+    GoogleCloudIdentitytoolkitAdminV2Anonymous: {
+      /**
+       * Whether anonymous user auth is enabled for the project or not.
+       */
+      enabled?: boolean;
+    };
+    /**
      * Additional config for SignInWithApple.
      */
     GoogleCloudIdentitytoolkitAdminV2AppleSignInConfig: {
@@ -1826,6 +1875,32 @@ export interface components {
        */
       bundleIds?: string[];
       codeFlowConfig?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2CodeFlowConfig"];
+    };
+    /**
+     * Configuration related to Blocking Functions.
+     */
+    GoogleCloudIdentitytoolkitAdminV2BlockingFunctionsConfig: {
+      forwardInboundCredentials?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2ForwardInboundCredentials"];
+      /**
+       * Map of Trigger to event type. Key should be one of the supported event types: "beforeCreate", "beforeSignIn"
+       */
+      triggers?: {
+        [key: string]: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2Trigger"];
+      };
+    };
+    /**
+     * Options related to how clients making requests on behalf of a project should be configured.
+     */
+    GoogleCloudIdentitytoolkitAdminV2ClientConfig: {
+      /**
+       * Output only. API key that can be used when making requests for this project.
+       */
+      apiKey?: string;
+      /**
+       * Output only. Firebase subdomain.
+       */
+      firebaseSubdomain?: string;
+      permissions?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2Permissions"];
     };
     /**
      * Additional config for Apple for code flow.
@@ -1843,6 +1918,31 @@ export interface components {
        * Apple Developer Team ID.
        */
       teamId?: string;
+    };
+    /**
+     * Represents an Identity Toolkit project.
+     */
+    GoogleCloudIdentitytoolkitAdminV2Config: {
+      /**
+       * List of domains authorized for OAuth redirects
+       */
+      authorizedDomains?: string[];
+      blockingFunctions?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2BlockingFunctionsConfig"];
+      client?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2ClientConfig"];
+      mfa?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2MultiFactorAuthConfig"];
+      monitoring?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2MonitoringConfig"];
+      multiTenant?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2MultiTenantConfig"];
+      /**
+       * Output only. The name of the Config resource. Example: "projects/my-awesome-project/config"
+       */
+      name?: string;
+      notification?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2NotificationConfig"];
+      quota?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2QuotaConfig"];
+      signIn?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2SignInConfig"];
+      /**
+       * Output only. The subtype of this config.
+       */
+      subtype?: "SUBTYPE_UNSPECIFIED" | "IDENTITY_PLATFORM" | "FIREBASE_AUTH";
     };
     /**
      * Standard Identity Toolkit-trusted IDPs.
@@ -1878,6 +1978,99 @@ export interface components {
        * The name of the DefaultSupportedIdpConfig resource, for example: "projects/my-awesome-project/defaultSupportedIdpConfigs/google.com"
        */
       name?: string;
+    };
+    /**
+     * Information of custom domain DNS verification. By default, default_domain will be used. A custom domain can be configured using VerifyCustomDomain.
+     */
+    GoogleCloudIdentitytoolkitAdminV2DnsInfo: {
+      /**
+       * Output only. The applied verified custom domain.
+       */
+      customDomain?: string;
+      /**
+       * Output only. The current verification state of the custom domain. The custom domain will only be used once the domain verification is successful.
+       */
+      customDomainState?:
+        | "VERIFICATION_STATE_UNSPECIFIED"
+        | "NOT_STARTED"
+        | "IN_PROGRESS"
+        | "FAILED"
+        | "SUCCEEDED";
+      /**
+       * Output only. The timestamp of initial request for the current domain verification.
+       */
+      domainVerificationRequestTime?: string;
+      /**
+       * Output only. The custom domain that's to be verified.
+       */
+      pendingCustomDomain?: string;
+      /**
+       * Whether to use custom domain.
+       */
+      useCustomDomain?: boolean;
+    };
+    /**
+     * Configuration options related to authenticating a user by their email address.
+     */
+    GoogleCloudIdentitytoolkitAdminV2Email: {
+      /**
+       * Whether email auth is enabled for the project or not.
+       */
+      enabled?: boolean;
+      /**
+       * Whether a password is required for email auth or not. If true, both an email and password must be provided to sign in. If false, a user may sign in via either email/password or email link.
+       */
+      passwordRequired?: boolean;
+    };
+    /**
+     * Email template. The subject and body fields can contain the following placeholders which will be replaced with the appropriate values: %LINK% - The link to use to redeem the send OOB code. %EMAIL% - The email where the email is being sent. %NEW_EMAIL% - The new email being set for the account (when applicable). %APP_NAME% - The GCP project's display name. %DISPLAY_NAME% - The user's display name.
+     */
+    GoogleCloudIdentitytoolkitAdminV2EmailTemplate: {
+      /**
+       * Email body
+       */
+      body?: string;
+      /**
+       * Email body format
+       */
+      bodyFormat?: "BODY_FORMAT_UNSPECIFIED" | "PLAIN_TEXT" | "HTML";
+      /**
+       * Output only. Whether the body or subject of the email is customized.
+       */
+      customized?: boolean;
+      /**
+       * Reply-to address
+       */
+      replyTo?: string;
+      /**
+       * Sender display name
+       */
+      senderDisplayName?: string;
+      /**
+       * Local part of From address
+       */
+      senderLocalPart?: string;
+      /**
+       * Subject of the email
+       */
+      subject?: string;
+    };
+    /**
+     * Indicates which credentials to pass to the registered Blocking Functions.
+     */
+    GoogleCloudIdentitytoolkitAdminV2ForwardInboundCredentials: {
+      /**
+       * Whether to pass the user's OAuth identity provider's access token.
+       */
+      accessToken?: boolean;
+      /**
+       * Whether to pass the user's OIDC identity provider's ID token.
+       */
+      idToken?: boolean;
+      /**
+       * Whether to pass the user's OAuth identity provider's refresh token.
+       */
+      refreshToken?: boolean;
     };
     /**
      * History information of the hash algorithm and key. Different accounts' passwords may be generated by different version.
@@ -1968,6 +2161,15 @@ export interface components {
       spConfig?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2SpConfig"];
     };
     /**
+     * Settings that the tenants will inherit from project level.
+     */
+    GoogleCloudIdentitytoolkitAdminV2Inheritance: {
+      /**
+       * Whether to allow the tenant to inherit custom domains, email templates, and custom SMTP settings. If true, email sent from tenant will follow the project level email sending configurations. If false (by default), emails will go with the default settings with no customizations.
+       */
+      emailSendingConfig?: boolean;
+    };
+    /**
      * Response for DefaultSupportedIdpConfigs
      */
     GoogleCloudIdentitytoolkitAdminV2ListDefaultSupportedIdpConfigsResponse: {
@@ -2033,6 +2235,12 @@ export interface components {
       tenants?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2Tenant"][];
     };
     /**
+     * Configuration related to monitoring project activity.
+     */
+    GoogleCloudIdentitytoolkitAdminV2MonitoringConfig: {
+      requestLogging?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2RequestLogging"];
+    };
+    /**
      * Options related to MultiFactor Authentication for the project.
      */
     GoogleCloudIdentitytoolkitAdminV2MultiFactorAuthConfig: {
@@ -2044,6 +2252,30 @@ export interface components {
        * Whether MultiFactor Authentication has been enabled for this project.
        */
       state?: "STATE_UNSPECIFIED" | "DISABLED" | "ENABLED" | "MANDATORY";
+    };
+    /**
+     * Configuration related to multi-tenant functionality.
+     */
+    GoogleCloudIdentitytoolkitAdminV2MultiTenantConfig: {
+      /**
+       * Whether this project can have tenants or not.
+       */
+      allowTenants?: boolean;
+      /**
+       * The default cloud parent org or folder that the tenant project should be created under. The parent resource name should be in the format of "/", such as "folders/123" or "organizations/456". If the value is not set, the tenant will be created under the same organization or folder as the agent project.
+       */
+      defaultTenantLocation?: string;
+    };
+    /**
+     * Configuration related to sending notifications to users.
+     */
+    GoogleCloudIdentitytoolkitAdminV2NotificationConfig: {
+      /**
+       * Default locale used for email and SMS in IETF BCP 47 format.
+       */
+      defaultLocale?: string;
+      sendEmail?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2SendEmail"];
+      sendSms?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2SendSms"];
     };
     /**
      * Configuration options for authenticating with an OAuth IDP.
@@ -2076,7 +2308,7 @@ export interface components {
       responseType?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2OAuthResponseType"];
     };
     /**
-     * The multiple response type to request for in the OAuth authorization flow. This can possibly be a combination of set bits (e.g. {id_token, token}).
+     * The response type to request for in the OAuth authorization flow. You can set either `id_token` or `code` to true, but not both. Setting both types to be simultaneously true (`{code: true, id_token: true}`) is not yet supported. See https://openid.net/specs/openid-connect-core-1_0.html#Authentication for a mapping of response type to OAuth 2.0 flow.
      */
     GoogleCloudIdentitytoolkitAdminV2OAuthResponseType: {
       /**
@@ -2088,9 +2320,131 @@ export interface components {
        */
       idToken?: boolean;
       /**
-       * If true, access token is returned from IdP's authorization endpoint.
+       * Do not use. The `token` response type is not supported at the moment.
        */
       token?: boolean;
+    };
+    /**
+     * Configuration related to restricting a user's ability to affect their account.
+     */
+    GoogleCloudIdentitytoolkitAdminV2Permissions: {
+      /**
+       * When true, end users cannot delete their account on the associated project through any of our API methods
+       */
+      disabledUserDeletion?: boolean;
+      /**
+       * When true, end users cannot sign up for a new account on the associated project through any of our API methods
+       */
+      disabledUserSignup?: boolean;
+    };
+    /**
+     * Configuration options related to authenticated a user by their phone number.
+     */
+    GoogleCloudIdentitytoolkitAdminV2PhoneNumber: {
+      /**
+       * Whether phone number auth is enabled for the project or not.
+       */
+      enabled?: boolean;
+      /**
+       * A map of that can be used for phone auth testing.
+       */
+      testPhoneNumbers?: { [key: string]: string };
+    };
+    /**
+     * Configuration related to quotas.
+     */
+    GoogleCloudIdentitytoolkitAdminV2QuotaConfig: {
+      signUpQuotaConfig?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2TemporaryQuota"];
+    };
+    /**
+     * Configuration for logging requests made to this project to Stackdriver Logging
+     */
+    GoogleCloudIdentitytoolkitAdminV2RequestLogging: {
+      /**
+       * Whether logging is enabled for this project or not.
+       */
+      enabled?: boolean;
+    };
+    /**
+     * Options for email sending.
+     */
+    GoogleCloudIdentitytoolkitAdminV2SendEmail: {
+      /**
+       * action url in email template.
+       */
+      callbackUri?: string;
+      changeEmailTemplate?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2EmailTemplate"];
+      dnsInfo?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2DnsInfo"];
+      legacyResetPasswordTemplate?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2EmailTemplate"];
+      /**
+       * The method used for sending an email.
+       */
+      method?: "METHOD_UNSPECIFIED" | "DEFAULT" | "CUSTOM_SMTP";
+      resetPasswordTemplate?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2EmailTemplate"];
+      revertSecondFactorAdditionTemplate?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2EmailTemplate"];
+      smtp?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2Smtp"];
+      verifyEmailTemplate?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2EmailTemplate"];
+    };
+    /**
+     * Options for SMS sending.
+     */
+    GoogleCloudIdentitytoolkitAdminV2SendSms: {
+      smsTemplate?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2SmsTemplate"];
+      /**
+       * Whether to use the accept_language header for SMS.
+       */
+      useDeviceLocale?: boolean;
+    };
+    /**
+     * Configuration related to local sign in methods.
+     */
+    GoogleCloudIdentitytoolkitAdminV2SignInConfig: {
+      /**
+       * Whether to allow more than one account to have the same email.
+       */
+      allowDuplicateEmails?: boolean;
+      anonymous?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2Anonymous"];
+      email?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2Email"];
+      hashConfig?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2HashConfig"];
+      phoneNumber?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2PhoneNumber"];
+    };
+    /**
+     * The template to use when sending an SMS.
+     */
+    GoogleCloudIdentitytoolkitAdminV2SmsTemplate: {
+      /**
+       * Output only. The SMS's content. Can contain the following placeholders which will be replaced with the appropriate values: %APP_NAME% - For Android or iOS apps, the app's display name. For web apps, the domain hosting the application. %LOGIN_CODE% - The OOB code being sent in the SMS.
+       */
+      content?: string;
+    };
+    /**
+     * Configuration for SMTP relay
+     */
+    GoogleCloudIdentitytoolkitAdminV2Smtp: {
+      /**
+       * SMTP relay host
+       */
+      host?: string;
+      /**
+       * SMTP relay password
+       */
+      password?: string;
+      /**
+       * SMTP relay port
+       */
+      port?: number;
+      /**
+       * SMTP security mode.
+       */
+      securityMode?: "SECURITY_MODE_UNSPECIFIED" | "SSL" | "START_TLS";
+      /**
+       * Sender email for the SMTP relay
+       */
+      senderEmail?: string;
+      /**
+       * SMTP relay username
+       */
+      username?: string;
     };
     /**
      * The SP's certificate data for IDP to verify the SAMLRequest generated by the SP.
@@ -2123,6 +2477,23 @@ export interface components {
       spEntityId?: string;
     };
     /**
+     * Temporary quota increase / decrease
+     */
+    GoogleCloudIdentitytoolkitAdminV2TemporaryQuota: {
+      /**
+       * Corresponds to the 'refill_token_count' field in QuotaServer config
+       */
+      quota?: string;
+      /**
+       * How long this quota will be active for
+       */
+      quotaDuration?: string;
+      /**
+       * When this quota will take affect
+       */
+      startTime?: string;
+    };
+    /**
      * A Tenant contains configuration for the tenant in a multi-tenant project.
      */
     GoogleCloudIdentitytoolkitAdminV2Tenant: {
@@ -2147,6 +2518,7 @@ export interface components {
        */
       enableEmailLinkSignin?: boolean;
       hashConfig?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2HashConfig"];
+      inheritance?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2Inheritance"];
       mfaConfig?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2MultiFactorAuthConfig"];
       /**
        * Output only. Resource name of a tenant. For example: "projects/{project-id}/tenants/{tenant-id}"
@@ -2156,6 +2528,19 @@ export interface components {
        * A map of pairs that can be used for MFA. The phone number should be in E.164 format (https://www.itu.int/rec/T-REC-E.164/) and a maximum of 10 pairs can be added (error will be thrown once exceeded).
        */
       testPhoneNumbers?: { [key: string]: string };
+    };
+    /**
+     * Synchronous Cloud Function with HTTP Trigger
+     */
+    GoogleCloudIdentitytoolkitAdminV2Trigger: {
+      /**
+       * HTTP URI trigger for the Cloud Function.
+       */
+      functionUri?: string;
+      /**
+       * When the trigger was changed.
+       */
+      updateTime?: string;
     };
     /**
      * The information required to auto-retrieve an SMS.
@@ -2400,16 +2785,16 @@ export interface components {
       logType?: "LOG_TYPE_UNSPECIFIED" | "ADMIN_READ" | "DATA_WRITE" | "DATA_READ";
     };
     /**
-     * Associates `members` with a `role`.
+     * Associates `members`, or principals, with a `role`.
      */
     GoogleIamV1Binding: {
       condition?: components["schemas"]["GoogleTypeExpr"];
       /**
-       * Specifies the identities requesting access for a Cloud Platform resource. `members` can have the following values: * `allUsers`: A special identifier that represents anyone who is on the internet; with or without a Google account. * `allAuthenticatedUsers`: A special identifier that represents anyone who is authenticated with a Google account or a service account. * `user:{emailid}`: An email address that represents a specific Google account. For example, `alice@example.com` . * `serviceAccount:{emailid}`: An email address that represents a service account. For example, `my-other-app@appspot.gserviceaccount.com`. * `group:{emailid}`: An email address that represents a Google group. For example, `admins@example.com`. * `deleted:user:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a user that has been recently deleted. For example, `alice@example.com?uid=123456789012345678901`. If the user is recovered, this value reverts to `user:{emailid}` and the recovered user retains the role in the binding. * `deleted:serviceAccount:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a service account that has been recently deleted. For example, `my-other-app@appspot.gserviceaccount.com?uid=123456789012345678901`. If the service account is undeleted, this value reverts to `serviceAccount:{emailid}` and the undeleted service account retains the role in the binding. * `deleted:group:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a Google group that has been recently deleted. For example, `admins@example.com?uid=123456789012345678901`. If the group is recovered, this value reverts to `group:{emailid}` and the recovered group retains the role in the binding. * `domain:{domain}`: The G Suite domain (primary) that represents all the users of that domain. For example, `google.com` or `example.com`.
+       * Specifies the principals requesting access for a Cloud Platform resource. `members` can have the following values: * `allUsers`: A special identifier that represents anyone who is on the internet; with or without a Google account. * `allAuthenticatedUsers`: A special identifier that represents anyone who is authenticated with a Google account or a service account. * `user:{emailid}`: An email address that represents a specific Google account. For example, `alice@example.com` . * `serviceAccount:{emailid}`: An email address that represents a service account. For example, `my-other-app@appspot.gserviceaccount.com`. * `group:{emailid}`: An email address that represents a Google group. For example, `admins@example.com`. * `deleted:user:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a user that has been recently deleted. For example, `alice@example.com?uid=123456789012345678901`. If the user is recovered, this value reverts to `user:{emailid}` and the recovered user retains the role in the binding. * `deleted:serviceAccount:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a service account that has been recently deleted. For example, `my-other-app@appspot.gserviceaccount.com?uid=123456789012345678901`. If the service account is undeleted, this value reverts to `serviceAccount:{emailid}` and the undeleted service account retains the role in the binding. * `deleted:group:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a Google group that has been recently deleted. For example, `admins@example.com?uid=123456789012345678901`. If the group is recovered, this value reverts to `group:{emailid}` and the recovered group retains the role in the binding. * `domain:{domain}`: The G Suite domain (primary) that represents all the users of that domain. For example, `google.com` or `example.com`.
        */
       members?: string[];
       /**
-       * Role that is assigned to `members`. For example, `roles/viewer`, `roles/editor`, or `roles/owner`.
+       * Role that is assigned to the list of `members`, or principals. For example, `roles/viewer`, `roles/editor`, or `roles/owner`.
        */
       role?: string;
     };
@@ -2424,12 +2809,12 @@ export interface components {
      */
     GoogleIamV1GetPolicyOptions: {
       /**
-       * Optional. The policy format version to be returned. Valid values are 0, 1, and 3. Requests specifying an invalid value will be rejected. Requests for policies with any conditional bindings must specify version 3. Policies without any conditional bindings may specify any valid value or leave the field unset. To learn which resources support conditions in their IAM policies, see the [IAM documentation](https://cloud.google.com/iam/help/conditions/resource-policies).
+       * Optional. The maximum policy version that will be used to format the policy. Valid values are 0, 1, and 3. Requests specifying an invalid value will be rejected. Requests for policies with any conditional role bindings must specify version 3. Policies with no conditional role bindings may specify any valid value or leave the field unset. The policy in the response might use the policy version that you specified, or it might use a lower policy version. For example, if you specify version 3, but the policy has no conditional role bindings, the response uses version 1. To learn which resources support conditions in their IAM policies, see the [IAM documentation](https://cloud.google.com/iam/help/conditions/resource-policies).
        */
       requestedPolicyVersion?: number;
     };
     /**
-     * An Identity and Access Management (IAM) policy, which specifies access controls for Google Cloud resources. A `Policy` is a collection of `bindings`. A `binding` binds one or more `members` to a single `role`. Members can be user accounts, service accounts, Google groups, and domains (such as G Suite). A `role` is a named list of permissions; each `role` can be an IAM predefined role or a user-created custom role. For some types of Google Cloud resources, a `binding` can also specify a `condition`, which is a logical expression that allows access to a resource only if the expression evaluates to `true`. A condition can add constraints based on attributes of the request, the resource, or both. To learn which resources support conditions in their IAM policies, see the [IAM documentation](https://cloud.google.com/iam/help/conditions/resource-policies). **JSON example:** { "bindings": [ { "role": "roles/resourcemanager.organizationAdmin", "members": [ "user:mike@example.com", "group:admins@example.com", "domain:google.com", "serviceAccount:my-project-id@appspot.gserviceaccount.com" ] }, { "role": "roles/resourcemanager.organizationViewer", "members": [ "user:eve@example.com" ], "condition": { "title": "expirable access", "description": "Does not grant access after Sep 2020", "expression": "request.time < timestamp('2020-10-01T00:00:00.000Z')", } } ], "etag": "BwWWja0YfJA=", "version": 3 } **YAML example:** bindings: - members: - user:mike@example.com - group:admins@example.com - domain:google.com - serviceAccount:my-project-id@appspot.gserviceaccount.com role: roles/resourcemanager.organizationAdmin - members: - user:eve@example.com role: roles/resourcemanager.organizationViewer condition: title: expirable access description: Does not grant access after Sep 2020 expression: request.time < timestamp('2020-10-01T00:00:00.000Z') - etag: BwWWja0YfJA= - version: 3 For a description of IAM and its features, see the [IAM documentation](https://cloud.google.com/iam/docs/).
+     * An Identity and Access Management (IAM) policy, which specifies access controls for Google Cloud resources. A `Policy` is a collection of `bindings`. A `binding` binds one or more `members`, or principals, to a single `role`. Principals can be user accounts, service accounts, Google groups, and domains (such as G Suite). A `role` is a named list of permissions; each `role` can be an IAM predefined role or a user-created custom role. For some types of Google Cloud resources, a `binding` can also specify a `condition`, which is a logical expression that allows access to a resource only if the expression evaluates to `true`. A condition can add constraints based on attributes of the request, the resource, or both. To learn which resources support conditions in their IAM policies, see the [IAM documentation](https://cloud.google.com/iam/help/conditions/resource-policies). **JSON example:** { "bindings": [ { "role": "roles/resourcemanager.organizationAdmin", "members": [ "user:mike@example.com", "group:admins@example.com", "domain:google.com", "serviceAccount:my-project-id@appspot.gserviceaccount.com" ] }, { "role": "roles/resourcemanager.organizationViewer", "members": [ "user:eve@example.com" ], "condition": { "title": "expirable access", "description": "Does not grant access after Sep 2020", "expression": "request.time < timestamp('2020-10-01T00:00:00.000Z')", } } ], "etag": "BwWWja0YfJA=", "version": 3 } **YAML example:** bindings: - members: - user:mike@example.com - group:admins@example.com - domain:google.com - serviceAccount:my-project-id@appspot.gserviceaccount.com role: roles/resourcemanager.organizationAdmin - members: - user:eve@example.com role: roles/resourcemanager.organizationViewer condition: title: expirable access description: Does not grant access after Sep 2020 expression: request.time < timestamp('2020-10-01T00:00:00.000Z') etag: BwWWja0YfJA= version: 3 For a description of IAM and its features, see the [IAM documentation](https://cloud.google.com/iam/docs/).
      */
     GoogleIamV1Policy: {
       /**
@@ -2437,7 +2822,7 @@ export interface components {
        */
       auditConfigs?: components["schemas"]["GoogleIamV1AuditConfig"][];
       /**
-       * Associates a list of `members` to a `role`. Optionally, may specify a `condition` that determines how and when the `bindings` are applied. Each of the `bindings` must contain at least one member.
+       * Associates a list of `members`, or principals, with a `role`. Optionally, may specify a `condition` that determines how and when the `bindings` are applied. Each of the `bindings` must contain at least one principal. The `bindings` in a `Policy` can refer to up to 1,500 principals; up to 250 of these principals can be Google groups. Each occurrence of a principal counts towards these limits. For example, if the `bindings` grant 50 different roles to `user:alice@example.com`, and not to any other principal, then you can add another 1,450 principals to the `bindings` in the `Policy`.
        */
       bindings?: components["schemas"]["GoogleIamV1Binding"][];
       /**
@@ -2549,7 +2934,10 @@ export interface components {
     /**
      * Emulator-specific configuration.
      */
-    EmulatorV1ProjectsConfig: { signIn?: { allowDuplicateEmails?: boolean } };
+    EmulatorV1ProjectsConfig: {
+      signIn?: { allowDuplicateEmails?: boolean };
+      usageMode?: "USAGE_MODE_UNSPECIFIED" | "DEFAULT" | "PASSTHROUGH";
+    };
     /**
      * Details of all pending confirmation codes.
      */

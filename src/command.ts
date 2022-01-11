@@ -12,6 +12,7 @@ import track = require("./track");
 import clc = require("cli-color");
 import { selectAccount, setActiveAccount } from "./auth";
 import { getFirebaseProject } from "./management/projects";
+import { requireAuth } from "./requireAuth";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ActionFunction = (...args: any[]) => any;
@@ -252,25 +253,27 @@ export class Command {
 
     try {
       options.config = Config.load(options);
-    } catch (e) {
+    } catch (e: any) {
       options.configError = e;
-    }
-
-    options.projectRoot = detectProjectRoot(options);
-    this.applyRC(options);
-    if (options.project) {
-      await this.resolveProjectIdentifiers(options);
-      validateProjectId(options.projectId);
     }
 
     const account = getInheritedOption(options, "account");
     options.account = account;
+
+    // selectAccount needs the projectRoot to be set.
+    options.projectRoot = detectProjectRoot(options);
 
     const projectRoot = options.projectRoot;
     const activeAccount = selectAccount(account, projectRoot);
 
     if (activeAccount) {
       setActiveAccount(options, activeAccount);
+    }
+
+    this.applyRC(options);
+    if (options.project) {
+      await this.resolveProjectIdentifiers(options);
+      validateProjectId(options.projectId);
     }
   }
 
@@ -307,6 +310,7 @@ export class Command {
     projectNumber?: string;
   }): Promise<void> {
     if (options.project?.match(/^\d+$/)) {
+      await requireAuth(options);
       const { projectId, projectNumber } = await getFirebaseProject(options.project);
       options.projectId = projectId;
       options.projectNumber = projectNumber;

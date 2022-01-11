@@ -4,15 +4,16 @@ import * as os from "os";
 import * as path from "path";
 import * as express from "express";
 import * as fs from "fs";
-import { InvokeRuntimeOpts } from "./functionsEmulator";
 
-export enum EmulatedTriggerType {
-  BACKGROUND = "BACKGROUND",
-  HTTPS = "HTTPS",
-}
+import { Constants } from "./constants";
+import { InvokeRuntimeOpts } from "./functionsEmulator";
+import { FunctionsPlatform } from "../deploy/functions/backend";
+
+export type SignatureType = "http" | "event" | "cloudevent";
 
 export interface ParsedTriggerDefinition {
   entryPoint: string;
+  platform: FunctionsPlatform;
   name: string;
   timeout?: string | number; // Can be "3s" for some reason lol
   regions?: string[];
@@ -35,8 +36,9 @@ export interface EventSchedule {
 
 export interface EventTrigger {
   resource: string;
-  service: string;
   eventType: string;
+  // Deprecated
+  service?: string;
 }
 
 export interface EmulatedTriggerMap {
@@ -53,7 +55,6 @@ export interface FunctionsRuntimeBundle {
   proto?: any;
   triggerId?: string;
   targetName?: string;
-  triggerType?: EmulatedTriggerType;
   emulators: {
     firestore?: {
       host: string;
@@ -155,6 +156,7 @@ export function emulatedFunctionsByRegion(
       defDeepCopy.regions = [region];
       defDeepCopy.region = region;
       defDeepCopy.id = `${region}-${defDeepCopy.name}`;
+      defDeepCopy.platform = defDeepCopy.platform || "gcfv1";
 
       regionDefinitions.push(defDeepCopy);
     }
@@ -204,10 +206,43 @@ export function getTemporarySocketPath(pid: number, cwd: string): string {
 
 export function getFunctionService(def: EmulatedTriggerDefinition): string {
   if (def.eventTrigger) {
-    return def.eventTrigger.service;
+    return def.eventTrigger.service ?? getServiceFromEventType(def.eventTrigger.eventType);
   }
 
   return "unknown";
+}
+
+export function getServiceFromEventType(eventType: string): string {
+  if (eventType.includes("firestore")) {
+    return Constants.SERVICE_FIRESTORE;
+  }
+  if (eventType.includes("database")) {
+    return Constants.SERVICE_REALTIME_DATABASE;
+  }
+  if (eventType.includes("pubsub")) {
+    return Constants.SERVICE_PUBSUB;
+  }
+  if (eventType.includes("storage")) {
+    return Constants.SERVICE_STORAGE;
+  }
+  // Below this point are services that do not have a emulator.
+  if (eventType.includes("analytics")) {
+    return Constants.SERVICE_ANALYTICS;
+  }
+  if (eventType.includes("auth")) {
+    return Constants.SERVICE_AUTH;
+  }
+  if (eventType.includes("crashlytics")) {
+    return Constants.SERVICE_CRASHLYTICS;
+  }
+  if (eventType.includes("remoteconfig")) {
+    return Constants.SERVICE_REMOTE_CONFIG;
+  }
+  if (eventType.includes("testing")) {
+    return Constants.SERVICE_TEST_LAB;
+  }
+
+  return "";
 }
 
 export function waitForBody(req: express.Request): Promise<string> {
@@ -240,10 +275,28 @@ export function findModuleRoot(moduleName: string, filepath: string): string {
         return chunks.join("/");
       }
       break;
-    } catch (err) {
+    } catch (err: any) {
       /**/
     }
   }
 
   return "";
+}
+
+export function formatHost(info: { host: string; port: number }): string {
+  if (info.host.includes(":")) {
+    return `[${info.host}]:${info.port}`;
+  } else {
+    return `${info.host}:${info.port}`;
+  }
+}
+
+export function getSignatureType(def: EmulatedTriggerDefinition): SignatureType {
+  if (def.httpsTrigger) {
+    return "http";
+  }
+  // TODO: As implemented, emulated CF3v1 functions cannot receive events in CloudEvent format, and emulated CF3v2
+  // functions cannot receive events in legacy format. This conflicts with our goal of introducing a 'compat' layer
+  // that allows CF3v1 functions to target GCFv2 and vice versa.
+  return def.platform === "gcfv2" ? "cloudevent" : "event";
 }

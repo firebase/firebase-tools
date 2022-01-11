@@ -19,7 +19,7 @@ export async function getLocalExtensionSpec(directory: string): Promise<Extensio
   try {
     const preinstall = readFile(path.resolve(directory, EXTENSIONS_PREINSTALL_FILE));
     spec.preinstallContent = preinstall;
-  } catch (err) {
+  } catch (err: any) {
     logger.debug(`No PREINSTALL.md found in directory ${directory}.`);
   }
   return spec;
@@ -51,7 +51,7 @@ export function findExtensionYaml(directory: string): string {
 export function readFile(pathToFile: string): string {
   try {
     return fs.readFileSync(pathToFile, "utf8");
-  } catch (err) {
+  } catch (err: any) {
     if (err.code === "ENOENT") {
       throw new FirebaseError(`Could not find "${pathToFile}""`, { original: err });
     }
@@ -66,7 +66,7 @@ export function readFile(pathToFile: string): string {
 export function isLocalExtension(extensionName: string): boolean {
   try {
     fs.readdirSync(extensionName);
-  } catch (err) {
+  } catch (err: any) {
     return false;
   }
   return true;
@@ -80,7 +80,7 @@ export function isLocalExtension(extensionName: string): boolean {
 function parseYAML(source: string): any {
   try {
     return yaml.safeLoad(source);
-  } catch (err) {
+  } catch (err: any) {
     if (err instanceof yaml.YAMLException) {
       throw new FirebaseError(`YAML Error: ${err.message}`, { original: err });
     }

@@ -3,7 +3,6 @@ import * as clc from "cli-color";
 import * as fs from "fs";
 
 import { checkHttpIam } from "./checkIam";
-import { functionsUploadRegion } from "../../api";
 import { logSuccess, logWarning } from "../../utils";
 import { Options } from "../../options";
 import * as args from "./args";
@@ -11,14 +10,13 @@ import * as gcs from "../../gcp/storage";
 import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfv2 from "../../gcp/cloudfunctionsv2";
 import * as utils from "../../utils";
-
-const GCP_REGION = functionsUploadRegion;
+import * as backend from "./backend";
 
 setGracefulCleanup();
 
-async function uploadSourceV1(context: args.Context): Promise<void> {
-  const uploadUrl = await gcf.generateUploadUrl(context.projectId, GCP_REGION);
-  context.uploadUrl = uploadUrl;
+async function uploadSourceV1(context: args.Context, region: string): Promise<void> {
+  const uploadUrl = await gcf.generateUploadUrl(context.projectId, region);
+  context.sourceUrl = uploadUrl;
   const uploadOpts = {
     file: context.functionsSourceV1!,
     stream: fs.createReadStream(context.functionsSourceV1!),
@@ -53,30 +51,27 @@ export async function deploy(
     return;
   }
 
-  await checkHttpIam(context, options, payload);
-
   if (!context.functionsSourceV1 && !context.functionsSourceV2) {
     return;
   }
 
+  await checkHttpIam(context, options, payload);
+
   try {
     const want = payload.functions!.backend;
     const uploads: Promise<void>[] = [];
-    if (want.cloudFunctions.some((fn) => fn.platform === "gcfv1")) {
-      uploads.push(uploadSourceV1(context));
+
+    const v1Endpoints = backend.allEndpoints(want).filter((e) => e.platform === "gcfv1");
+    if (v1Endpoints.length > 0) {
+      // Choose one of the function region for source upload.
+      uploads.push(uploadSourceV1(context, v1Endpoints[0].region));
     }
-    if (want.cloudFunctions.some((fn) => fn.platform === "gcfv2")) {
+
+    for (const region of Object.keys(want.endpoints)) {
       // GCFv2 cares about data residency and will possibly block deploys coming from other
       // regions. At minimum, the implementation would consider it user-owned source and
       // would break download URLs + console source viewing.
-      const functions = payload.functions!.backend.cloudFunctions;
-      const regions: string[] = [];
-      for (const func of functions) {
-        if (func.platform === "gcfv2" && -1 === regions.indexOf(func.region)) {
-          regions.push(func.region);
-        }
-      }
-      for (const region of regions) {
+      if (backend.regionalEndpoints(want, region).some((e) => e.platform === "gcfv2")) {
         uploads.push(uploadSourceV2(context, region));
       }
     }
@@ -86,13 +81,15 @@ export async function deploy(
       options.config.src.functions.source,
       "Error: 'functions.source' is not defined"
     );
-    logSuccess(
-      clc.green.bold("functions:") +
-        " " +
-        clc.bold(options.config.src.functions.source) +
-        " folder uploaded successfully"
-    );
-  } catch (err) {
+    if (uploads.length) {
+      logSuccess(
+        clc.green.bold("functions:") +
+          " " +
+          clc.bold(options.config.src.functions.source) +
+          " folder uploaded successfully"
+      );
+    }
+  } catch (err: any) {
     logWarning(clc.yellow("functions:") + " Upload Error: " + err.message);
     throw err;
   }

@@ -4,8 +4,8 @@ import * as nock from "nock";
 
 import * as api from "../../api";
 import { FirebaseError } from "../../error";
-
 import * as extensionsApi from "../../extensions/extensionsApi";
+import * as refs from "../../extensions/refs";
 
 const VERSION = "v1beta";
 const PROJECT_ID = "test-project";
@@ -65,14 +65,22 @@ const TEST_EXT_VERSION_3 = {
   hash: "34567",
   createTime: "2020-06-30T00:21:06.722782Z",
 };
+const TEST_EXT_VERSION_4 = {
+  name: "publishers/test-pub/extensions/ext-one/versions/0.0.4",
+  ref: "test-pub/ext-one@0.0.4",
+  spec: EXT_SPEC,
+  state: "DEPRECATED",
+  hash: "34567",
+  createTime: "2020-06-30T00:21:06.722782Z",
+  deprecationMessage: "This version is deprecated",
+};
 const TEST_INSTANCE_1 = {
   name: "projects/invader-zim/instances/image-resizer-1",
   createTime: "2019-06-19T00:20:10.416947Z",
   updateTime: "2019-06-19T00:21:06.722782Z",
   state: "ACTIVE",
   config: {
-    name:
-      "projects/invader-zim/instances/image-resizer-1/configurations/5b1fb749-764d-4bd1-af60-bb7f22d27860",
+    name: "projects/invader-zim/instances/image-resizer-1/configurations/5b1fb749-764d-4bd1-af60-bb7f22d27860",
     createTime: "2019-06-19T00:21:06.722782Z",
   },
 };
@@ -83,8 +91,7 @@ const TEST_INSTANCE_2 = {
   updateTime: "2019-05-19T00:20:10.416947Z",
   state: "ACTIVE",
   config: {
-    name:
-      "projects/invader-zim/instances/image-resizer/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
+    name: "projects/invader-zim/instances/image-resizer/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
     createTime: "2019-05-19T00:20:10.416947Z",
   },
 };
@@ -213,53 +220,68 @@ describe("extensions", () => {
     it("should make a POST call to the correct endpoint, and then poll on the returned operation when given a source", async () => {
       nock(api.extensionsOrigin)
         .post(`/${VERSION}/projects/${PROJECT_ID}/instances/`)
+        .query({ validateOnly: "false" })
         .reply(200, { name: "operations/abc123" });
       nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
 
-      await extensionsApi.createInstanceFromSource(
-        PROJECT_ID,
-        INSTANCE_ID,
-        {
+      await extensionsApi.createInstance({
+        projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
+        extensionSource: {
           state: "ACTIVE",
           name: "sources/blah",
           packageUri: "https://test.fake/pacakge.zip",
           hash: "abc123",
           spec: { name: "", version: "0.1.0", sourceUrl: "", roles: [], resources: [], params: [] },
         },
-        {}
-      );
+        params: {},
+      });
       expect(nock.isDone()).to.be.true;
     });
 
     it("should make a POST call to the correct endpoint, and then poll on the returned operation when given an Extension ref", async () => {
       nock(api.extensionsOrigin)
         .post(`/${VERSION}/projects/${PROJECT_ID}/instances/`)
+        .query({ validateOnly: "false" })
         .reply(200, { name: "operations/abc123" });
       nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
 
-      await extensionsApi.createInstanceFromExtensionVersion(
-        PROJECT_ID,
-        INSTANCE_ID,
-        {
-          name: "publishers/test-pub/extensions/test-ext/versions/0.1.0",
-          ref: "test-pub/test-ext@0.1.0",
-          hash: "abc123",
-          sourceDownloadUri: "https://storage.googleapis.com/test/test",
-          spec: { name: "", version: "0.1.0", sourceUrl: "", roles: [], resources: [], params: [] },
-        },
-        {}
-      );
+      await extensionsApi.createInstance({
+        projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
+        extensionVersionRef: "test-pub/test-ext@0.1.0",
+        params: {},
+      });
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should make a POST and not poll if validateOnly=true", async () => {
+      nock(api.extensionsOrigin)
+        .post(`/${VERSION}/projects/${PROJECT_ID}/instances/`)
+        .query({ validateOnly: "true" })
+        .reply(200, { name: "operations/abc123", done: true });
+
+      await extensionsApi.createInstance({
+        projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
+        extensionVersionRef: "test-pub/test-ext@0.1.0",
+        params: {},
+        validateOnly: true,
+      });
       expect(nock.isDone()).to.be.true;
     });
 
     it("should throw a FirebaseError if create returns an error response", async () => {
-      nock(api.extensionsOrigin).post(`/${VERSION}/projects/${PROJECT_ID}/instances/`).reply(500);
+      nock(api.extensionsOrigin)
+        .post(`/${VERSION}/projects/${PROJECT_ID}/instances/`)
+        .query({ validateOnly: "false" })
+        .reply(500);
 
       await expect(
-        extensionsApi.createInstanceFromSource(
-          PROJECT_ID,
-          INSTANCE_ID,
-          {
+        extensionsApi.createInstance({
+          projectId: PROJECT_ID,
+          instanceId: INSTANCE_ID,
+          extensionSource: {
             state: "ACTIVE",
             name: "sources/blah",
             packageUri: "https://test.fake/pacakge.zip",
@@ -273,49 +295,9 @@ describe("extensions", () => {
               params: [],
             },
           },
-          {}
-        )
-      ).to.be.rejectedWith(FirebaseError, "HTTP Error: 500, Unknown Error");
-      expect(nock.isDone()).to.be.true;
-    });
-
-    it("should include config.extension_ref and config.extension_version for an update to a published extension", async () => {
-      nock(api.extensionsOrigin)
-        .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
-        .query({ updateMask: "config.extension_ref,config.extension_version" })
-        .reply(200, { name: "operations/abc123" });
-      nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
-
-      await extensionsApi.updateInstanceFromRegistry(
-        PROJECT_ID,
-        INSTANCE_ID,
-        "extens-test/firestore-translate-text"
-      );
-
-      expect(nock.isDone()).to.be.true;
-    });
-
-    it("stop polling and throw if the operation call throws an unexpected error", async () => {
-      nock(api.extensionsOrigin)
-        .post(`/${VERSION}/projects/${PROJECT_ID}/instances/`)
-        .reply(200, { name: "operations/abc123" });
-      nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(502, {});
-
-      await expect(
-        extensionsApi.createInstance(PROJECT_ID, INSTANCE_ID, {
-          name: "sources/blah",
-          packageUri: "https://test.fake/pacakge.zip",
-          hash: "abc123",
-          spec: {
-            name: "",
-            version: "0.1.0",
-            sourceUrl: "",
-            roles: [],
-            resources: [],
-            params: [],
-          },
+          params: {},
         })
-      ).to.be.rejectedWith(FirebaseError, "HTTP Error: 502, Unknown Error");
+      ).to.be.rejectedWith(FirebaseError, "HTTP Error: 500, Unknown Error");
       expect(nock.isDone()).to.be.true;
     });
   });
@@ -328,7 +310,7 @@ describe("extensions", () => {
     it("should make a PATCH call to the correct endpoint, and then poll on the returned operation", async () => {
       nock(api.extensionsOrigin)
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
-        .query({ updateMask: "config.params" })
+        .query({ updateMask: "config.params", validateOnly: "false" })
         .reply(200, { name: "operations/abc123" });
       nock(api.extensionsOrigin)
         .get(`/${VERSION}/operations/abc123`)
@@ -336,18 +318,41 @@ describe("extensions", () => {
         .get(`/${VERSION}/operations/abc123`)
         .reply(200, { done: true });
 
-      await extensionsApi.configureInstance(PROJECT_ID, INSTANCE_ID, { MY_PARAM: "value" });
+      await extensionsApi.configureInstance({
+        projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
+        params: { MY_PARAM: "value" },
+      });
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should make a PATCH and not poll if validateOnly=true", async () => {
+      nock(api.extensionsOrigin)
+        .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
+        .query({ updateMask: "config.params", validateOnly: "true" })
+        .reply(200, { name: "operations/abc123", done: true });
+
+      await extensionsApi.configureInstance({
+        projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
+        params: { MY_PARAM: "value" },
+        validateOnly: true,
+      });
       expect(nock.isDone()).to.be.true;
     });
 
     it("should throw a FirebaseError if update returns an error response", async () => {
       nock(api.extensionsOrigin)
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
-        .query({ updateMask: "config.params" })
+        .query({ updateMask: "config.params", validateOnly: false })
         .reply(500);
 
       await expect(
-        extensionsApi.configureInstance(PROJECT_ID, INSTANCE_ID, { MY_PARAM: "value" })
+        extensionsApi.configureInstance({
+          projectId: PROJECT_ID,
+          instanceId: INSTANCE_ID,
+          params: { MY_PARAM: "value" },
+        })
       ).to.be.rejectedWith(FirebaseError, "HTTP Error: 500");
       expect(nock.isDone()).to.be.true;
     });
@@ -401,12 +406,17 @@ describe("extensions", () => {
     it("should include config.param in updateMask is params are changed", async () => {
       nock(api.extensionsOrigin)
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
-        .query({ updateMask: "config.source.name,config.params" })
+        .query({ updateMask: "config.source.name,config.params", validateOnly: "false" })
         .reply(200, { name: "operations/abc123" });
       nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
 
-      await extensionsApi.updateInstance(PROJECT_ID, INSTANCE_ID, testSource, {
-        MY_PARAM: "value",
+      await extensionsApi.updateInstance({
+        projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
+        extensionSource: testSource,
+        params: {
+          MY_PARAM: "value",
+        },
       });
 
       expect(nock.isDone()).to.be.true;
@@ -415,23 +425,64 @@ describe("extensions", () => {
     it("should not include config.param in updateMask is params aren't changed", async () => {
       nock(api.extensionsOrigin)
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
-        .query({ updateMask: "config.source.name" })
+        .query({ updateMask: "config.source.name", validateOnly: "false" })
         .reply(200, { name: "operations/abc123" });
       nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
 
-      await extensionsApi.updateInstance(PROJECT_ID, INSTANCE_ID, testSource);
+      await extensionsApi.updateInstance({
+        projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
+        extensionSource: testSource,
+      });
 
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should make a PATCH and not poll if validateOnly=true", async () => {
+      nock(api.extensionsOrigin)
+        .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
+        .query({ updateMask: "config.source.name", validateOnly: "true" })
+        .reply(200, { name: "operations/abc123", done: true });
+
+      await extensionsApi.updateInstance({
+        projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
+        extensionSource: testSource,
+        validateOnly: true,
+      });
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should make a PATCH and not poll if validateOnly=true", async () => {
+      nock(api.extensionsOrigin)
+        .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
+        .query({ updateMask: "config.source.name", validateOnly: "true" })
+        .reply(200, { name: "operations/abc123", done: true });
+
+      await extensionsApi.updateInstance({
+        projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
+        extensionSource: testSource,
+        validateOnly: true,
+      });
       expect(nock.isDone()).to.be.true;
     });
 
     it("should throw a FirebaseError if update returns an error response", async () => {
       nock(api.extensionsOrigin)
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
-        .query({ updateMask: "config.source.name,config.params" })
+        .query({ updateMask: "config.source.name,config.params", validateOnly: false })
         .reply(500);
 
       await expect(
-        extensionsApi.updateInstance(PROJECT_ID, INSTANCE_ID, testSource, { MY_PARAM: "value" })
+        extensionsApi.updateInstance({
+          projectId: PROJECT_ID,
+          instanceId: INSTANCE_ID,
+          extensionSource: testSource,
+          params: {
+            MY_PARAM: "value",
+          },
+        })
       ).to.be.rejectedWith(FirebaseError, "HTTP Error: 500");
 
       expect(nock.isDone()).to.be.true;
@@ -621,8 +672,8 @@ describe("deleteExtension", () => {
 
   it("should throw an error for an invalid ref", async () => {
     await expect(
-      extensionsApi.deleteExtension(`${PUBLISHER_ID}/${EXTENSION_ID}@`)
-    ).to.be.rejectedWith(FirebaseError, "Extension reference must be in format");
+      extensionsApi.deleteExtension(`${PUBLISHER_ID}/${EXTENSION_ID}@0.1.0`)
+    ).to.be.rejectedWith(FirebaseError, "must not contain a version");
   });
 });
 
@@ -653,8 +704,8 @@ describe("unpublishExtension", () => {
 
   it("should throw an error for an invalid ref", async () => {
     await expect(
-      extensionsApi.unpublishExtension(`${PUBLISHER_ID}/${EXTENSION_ID}@`)
-    ).to.be.rejectedWith(FirebaseError, "Extension reference must be in format");
+      extensionsApi.unpublishExtension(`${PUBLISHER_ID}/${EXTENSION_ID}@0.1.0`)
+    ).to.be.rejectedWith(FirebaseError, "must not contain a version");
   });
 });
 
@@ -686,7 +737,7 @@ describe("getExtension", () => {
   it("should throw an error for an invalid ref", async () => {
     await expect(extensionsApi.getExtension(`${PUBLISHER_ID}`)).to.be.rejectedWith(
       FirebaseError,
-      "Extension reference must be in format"
+      "Unable to parse"
     );
   });
 });
@@ -726,7 +777,7 @@ describe("getExtensionVersion", () => {
   it("should throw an error for an invalid ref", async () => {
     await expect(
       extensionsApi.getExtensionVersion(`${PUBLISHER_ID}//${EXTENSION_ID}`)
-    ).to.be.rejectedWith(FirebaseError, "Extension reference must be in format");
+    ).to.be.rejectedWith(FirebaseError, "Unable to parse");
   });
 });
 
@@ -811,8 +862,7 @@ describe("listExtensionVersions", () => {
     nock(api.extensionsOrigin)
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
       .query((queryParams: any) => {
-        queryParams.pageSize === "100";
-        return queryParams;
+        return queryParams.pageSize === "100";
       })
       .reply(200, PUBLISHED_EXT_VERSIONS);
 
@@ -821,12 +871,27 @@ describe("listExtensionVersions", () => {
     expect(nock.isDone()).to.be.true;
   });
 
+  it("should send filter query param", async () => {
+    nock(api.extensionsOrigin)
+      .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
+      .query((queryParams: any) => {
+        return queryParams.pageSize === "100" && queryParams.filter === "id<1.0.0";
+      })
+      .reply(200, PUBLISHED_EXT_VERSIONS);
+
+    const extensions = await extensionsApi.listExtensionVersions(
+      `${PUBLISHER_ID}/${EXTENSION_ID}`,
+      "id<1.0.0"
+    );
+    expect(extensions).to.deep.equal(PUBLISHED_EXT_VERSIONS.extensionVersions);
+    expect(nock.isDone()).to.be.true;
+  });
+
   it("should return a list of all extension versions", async () => {
     nock(api.extensionsOrigin)
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
       .query((queryParams: any) => {
-        queryParams.pageSize === "100";
-        return queryParams;
+        return queryParams.pageSize === "100";
       })
       .reply(200, ALL_EXT_VERSIONS);
 
@@ -840,16 +905,13 @@ describe("listExtensionVersions", () => {
     nock(api.extensionsOrigin)
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
       .query((queryParams: any) => {
-        queryParams.pageSize === "100";
-        return queryParams;
+        return queryParams.pageSize === "100";
       })
       .reply(200, PUBLISHED_VERSIONS_WITH_TOKEN);
     nock(api.extensionsOrigin)
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
       .query((queryParams: any) => {
-        queryParams.pageSize === "100";
-        queryParams.pageToken === NEXT_PAGE_TOKEN;
-        return queryParams;
+        return queryParams.pageSize === "100" && queryParams.pageToken === NEXT_PAGE_TOKEN;
       })
       .reply(200, NEXT_PAGE_VERSIONS);
 
@@ -866,16 +928,13 @@ describe("listExtensionVersions", () => {
     nock(api.extensionsOrigin)
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
       .query((queryParams: any) => {
-        queryParams.pageSize === "100";
-        return queryParams;
+        return queryParams.pageSize === "100";
       })
       .reply(200, PUBLISHED_VERSIONS_WITH_TOKEN);
     nock(api.extensionsOrigin)
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
       .query((queryParams: any) => {
-        queryParams.pageSize === "100";
-        queryParams.nextPageToken === NEXT_PAGE_TOKEN;
-        return queryParams;
+        return queryParams.pageSize === "100" && queryParams.pageToken === NEXT_PAGE_TOKEN;
       })
       .reply(500);
 
@@ -888,8 +947,40 @@ describe("listExtensionVersions", () => {
   it("should throw an error for an invalid ref", async () => {
     await expect(extensionsApi.listExtensionVersions("")).to.be.rejectedWith(
       FirebaseError,
-      "Extension reference must be in format"
+      "Unable to parse"
     );
+  });
+});
+
+describe("getPublisherProfile", () => {
+  afterEach(() => {
+    nock.cleanAll();
+  });
+
+  const PUBLISHER_PROFILE = {
+    name: "projects/test-publisher/publisherProfile",
+    publisherId: "test-publisher",
+    registerTime: "2020-06-30T00:21:06.722782Z",
+  };
+  it("should make a GET call to the correct endpoint", async () => {
+    nock(api.extensionsOrigin)
+      .get(`/${VERSION}/projects/${PROJECT_ID}/publisherProfile`)
+      .query(true)
+      .reply(200, PUBLISHER_PROFILE);
+
+    const res = await extensionsApi.getPublisherProfile(PROJECT_ID);
+    expect(res).to.deep.equal(PUBLISHER_PROFILE);
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should throw a FirebaseError if the endpoint returns an error response", async () => {
+    nock(api.extensionsOrigin)
+      .get(`/${VERSION}/projects/${PROJECT_ID}/publisherProfile`)
+      .query(true)
+      .reply(404);
+
+    await expect(extensionsApi.getPublisherProfile(PROJECT_ID)).to.be.rejectedWith(FirebaseError);
+    expect(nock.isDone()).to.be.true;
   });
 });
 
@@ -919,6 +1010,77 @@ describe("registerPublisherProfile", () => {
       .reply(404);
     await expect(
       extensionsApi.registerPublisherProfile(PROJECT_ID, PUBLISHER_ID)
+    ).to.be.rejectedWith(FirebaseError);
+    expect(nock.isDone()).to.be.true;
+  });
+});
+
+describe("deprecateExtensionVersion", () => {
+  afterEach(() => {
+    nock.cleanAll();
+  });
+
+  it("should make a POST call to the correct endpoint", async () => {
+    const { publisherId, extensionId, version } = refs.parse(TEST_EXT_VERSION_4.ref);
+    nock(api.extensionsOrigin)
+      .persist()
+      .post(
+        `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}/versions/${version}:deprecate`
+      )
+      .reply(200, TEST_EXT_VERSION_4);
+
+    const res = await extensionsApi.deprecateExtensionVersion(
+      TEST_EXT_VERSION_4.ref,
+      "This version is deprecated."
+    );
+    expect(res).to.deep.equal(TEST_EXT_VERSION_4);
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should throw a FirebaseError if the endpoint returns an error response", async () => {
+    const { publisherId, extensionId, version } = refs.parse(TEST_EXT_VERSION_4.ref);
+    nock(api.extensionsOrigin)
+      .persist()
+      .post(
+        `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}/versions/${version}:deprecate`
+      )
+      .reply(404);
+    await expect(
+      extensionsApi.deprecateExtensionVersion(TEST_EXT_VERSION_4.ref, "This version is deprecated.")
+    ).to.be.rejectedWith(FirebaseError);
+    expect(nock.isDone()).to.be.true;
+  });
+});
+
+describe("undeprecateExtensionVersion", () => {
+  afterEach(() => {
+    nock.cleanAll();
+  });
+
+  it("should make a POST call to the correct endpoint", async () => {
+    const { publisherId, extensionId, version } = refs.parse(TEST_EXT_VERSION_3.ref);
+    nock(api.extensionsOrigin)
+      .persist()
+      .post(
+        `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}/versions/${version}:undeprecate`
+      )
+      .reply(200, TEST_EXT_VERSION_3);
+
+    const res = await extensionsApi.undeprecateExtensionVersion(TEST_EXT_VERSION_3.ref);
+    expect(res).to.deep.equal(TEST_EXT_VERSION_3);
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should throw a FirebaseError if the endpoint returns an error response", async () => {
+    const { publisherId, extensionId, version } = refs.parse(TEST_EXT_VERSION_3.ref);
+    nock(api.extensionsOrigin)
+      .persist()
+      .post(
+        `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}/versions/${version}:undeprecate`
+      )
+      .reply(404);
+    await expect(
+      extensionsApi.undeprecateExtensionVersion(TEST_EXT_VERSION_3.ref)
     ).to.be.rejectedWith(FirebaseError);
     expect(nock.isDone()).to.be.true;
   });

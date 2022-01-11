@@ -91,4 +91,4 @@ rawLogger.exitOnError = false;
 // allow error parameters.
 // Casting looks super dodgy, but it should be safe because we know the underlying code
 // handles all parameter types we care about.
-export const logger = (annotateDebugLines(expandErrors(rawLogger)) as unknown) as Logger;
+export const logger = annotateDebugLines(expandErrors(rawLogger)) as unknown as Logger;

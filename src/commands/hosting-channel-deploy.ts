@@ -55,10 +55,6 @@ export default new Command("hosting:channel:deploy [channelId]")
       if (options.open) {
         throw new FirebaseError("open is not yet implemented");
       }
-      // TODO: implement --no-authorized-domains.
-      if (options["no-authorized-domains"]) {
-        throw new FirebaseError("no-authorized-domains is not yet implemented");
-      }
 
       let expireTTL = DEFAULT_DURATION;
       if (options.expires) {
@@ -151,8 +147,15 @@ export default new Command("hosting:channel:deploy [channelId]")
         });
       }
 
+      if (options.authorizedDomains) {
+        await syncAuthState(projectId, sites);
+      } else {
+        logger.debug(
+          `skipping syncAuthState since authorizedDomains is ${options.authorizedDomains}`
+        );
+      }
+
       logger.info();
-      await syncAuthState(projectId, sites);
       const deploys: { [key: string]: ChannelInfo } = {};
       sites.forEach((d) => {
         deploys[d.target || d.site] = d;
@@ -189,7 +192,7 @@ async function syncAuthState(projectId: string, sites: ChannelInfo[]) {
   try {
     await addAuthDomains(projectId, urlNames);
     logger.debug("[hosting] added auth domain for urls", urlNames);
-  } catch (e) {
+  } catch (e: any) {
     logLabeledWarning(
       LOG_TAG,
       marked(
@@ -203,7 +206,7 @@ async function syncAuthState(projectId: string, sites: ChannelInfo[]) {
   }
   try {
     await cleanAuthState(projectId, siteNames);
-  } catch (e) {
+  } catch (e: any) {
     logLabeledWarning(LOG_TAG, "Unable to sync Firebase Auth state.");
     logger.debug("[hosting] unable to sync auth domain", e);
   }

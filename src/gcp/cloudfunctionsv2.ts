@@ -88,7 +88,7 @@ export interface ServiceConfig {
   uri?: string;
 
   timeoutSeconds?: number;
-  availableMemoryMb?: number;
+  availableMemory?: string;
   environmentVariables?: Record<string, string>;
   maxInstanceCount?: number;
   minInstanceCount?: number;
@@ -143,7 +143,9 @@ export interface OperationMetadata {
 
 export interface Operation {
   name: string;
-  metadata: OperationMetadata;
+  // Note: this field is always present, but not used in prod and is a PITA
+  // to add in tests.
+  metadata?: OperationMetadata;
   done: boolean;
   error?: { code: number; message: string; details: unknown };
   response?: CloudFunction;
@@ -159,6 +161,43 @@ interface ListFunctionsResponse {
 interface GenerateUploadUrlResponse {
   uploadUrl: string;
   storageSource: StorageSource;
+}
+
+// AvailableMemory suffixes and their byte count.
+type MemoryUnit = "" | "k" | "M" | "G" | "T" | "Ki" | "Mi" | "Gi" | "Ti";
+const BYTES_PER_UNIT: Record<MemoryUnit, number> = {
+  "": 1,
+  k: 1e3,
+  M: 1e6,
+  G: 1e9,
+  T: 1e12,
+  Ki: 1 << 10,
+  Mi: 1 << 20,
+  Gi: 1 << 30,
+  Ti: 1 << 40,
+};
+
+/**
+ * Returns the float-precision number of Mega(not Mebi)bytes in a
+ * Kubernetes-style quantity
+ * Must serve the same results as
+ * https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apimachinery/pkg/api/resource/quantity.go
+ */
+export function megabytes(memory: string): number {
+  const re = /^([0-9]+(\.[0-9]*)?)(Ki|Mi|Gi|Ti|k|M|G|T|([eE]([0-9]+)))?$/;
+  const matches = re.exec(memory);
+  if (!matches) {
+    throw new Error(`Invalid memory quantity "${memory}""`);
+  }
+  const quantity = Number.parseFloat(matches[1]);
+  let bytes: number;
+  if (matches[5]) {
+    bytes = quantity * Math.pow(10, Number.parseFloat(matches[5]));
+  } else {
+    const suffix = matches[3] || "";
+    bytes = quantity * BYTES_PER_UNIT[suffix as MemoryUnit];
+  }
+  return bytes / 1e6;
 }
 
 /**
@@ -197,7 +236,7 @@ export async function generateUploadUrl(
       `projects/${projectId}/locations/${location}/functions:generateUploadUrl`
     );
     return res.body;
-  } catch (err) {
+  } catch (err: any) {
     logger.info(
       "\n\nThere was an issue deploying your functions. Verify that your project has a Google App Engine instance setup at https://console.cloud.google.com/appengine and try again. If this issue persists, please contact support."
     );
@@ -222,7 +261,7 @@ export async function createFunction(
       { queryParams: { functionId } }
     );
     return res.body;
-  } catch (err) {
+  } catch (err: any) {
     throw functionsOpLogReject(cloudFunction.name, "create", err);
   }
 }
@@ -304,7 +343,7 @@ export async function updateFunction(
       { queryParams }
     );
     return res.body;
-  } catch (err) {
+  } catch (err: any) {
     throw functionsOpLogReject(cloudFunction.name, "update", err);
   }
 }
@@ -317,19 +356,19 @@ export async function deleteFunction(cloudFunction: string): Promise<Operation> 
   try {
     const res = await client.delete<Operation>(cloudFunction);
     return res.body;
-  } catch (err) {
+  } catch (err: any) {
     throw functionsOpLogReject(cloudFunction, "update", err);
   }
 }
 
-export function functionFromSpec(cloudFunction: backend.FunctionSpec, source: StorageSource) {
-  if (cloudFunction.platform != "gcfv2") {
+export function functionFromEndpoint(endpoint: backend.Endpoint, source: StorageSource) {
+  if (endpoint.platform != "gcfv2") {
     throw new FirebaseError(
       "Trying to create a v2 CloudFunction with v1 API. This should never happen"
     );
   }
 
-  if (!runtimes.isValidRuntime(cloudFunction.runtime)) {
+  if (!runtimes.isValidRuntime(endpoint.runtime)) {
     throw new FirebaseError(
       "Failed internal assertion. Trying to deploy a new function with a deprecated runtime." +
         " This should never happen"
@@ -337,10 +376,10 @@ export function functionFromSpec(cloudFunction: backend.FunctionSpec, source: St
   }
 
   const gcfFunction: Omit<CloudFunction, OutputOnlyFields> = {
-    name: backend.functionName(cloudFunction),
+    name: backend.functionName(endpoint),
     buildConfig: {
-      runtime: cloudFunction.runtime,
-      entryPoint: cloudFunction.entryPoint,
+      runtime: endpoint.runtime,
+      entryPoint: endpoint.entryPoint,
       source: {
         storageSource: source,
       },
@@ -350,10 +389,10 @@ export function functionFromSpec(cloudFunction: backend.FunctionSpec, source: St
     serviceConfig: {},
   };
 
+  proto.copyIfPresent(gcfFunction, endpoint, "labels");
   proto.copyIfPresent(
     gcfFunction.serviceConfig,
-    cloudFunction,
-    "availableMemoryMb",
+    endpoint,
     "environmentVariables",
     "vpcConnector",
     "vpcConnectorEgressSettings",
@@ -362,114 +401,129 @@ export function functionFromSpec(cloudFunction: backend.FunctionSpec, source: St
   );
   proto.renameIfPresent(
     gcfFunction.serviceConfig,
-    cloudFunction,
+    endpoint,
+    "availableMemory",
+    "availableMemoryMb",
+    (mb: string) => `${mb}M`
+  );
+  proto.renameIfPresent(
+    gcfFunction.serviceConfig,
+    endpoint,
     "timeoutSeconds",
     "timeout",
     proto.secondsFromDuration
   );
-  proto.renameIfPresent(
-    gcfFunction.serviceConfig,
-    cloudFunction,
-    "minInstanceCount",
-    "minInstances"
-  );
-  proto.renameIfPresent(
-    gcfFunction.serviceConfig,
-    cloudFunction,
-    "maxInstanceCount",
-    "maxInstances"
-  );
+  proto.renameIfPresent(gcfFunction.serviceConfig, endpoint, "minInstanceCount", "minInstances");
+  proto.renameIfPresent(gcfFunction.serviceConfig, endpoint, "maxInstanceCount", "maxInstances");
 
-  if (backend.isEventTrigger(cloudFunction.trigger)) {
+  if (backend.isEventTriggered(endpoint)) {
     gcfFunction.eventTrigger = {
-      eventType: cloudFunction.trigger.eventType,
+      eventType: endpoint.eventTrigger.eventType,
     };
     if (gcfFunction.eventTrigger.eventType === PUBSUB_PUBLISH_EVENT) {
-      gcfFunction.eventTrigger.pubsubTopic = cloudFunction.trigger.eventFilters.resource;
+      gcfFunction.eventTrigger.pubsubTopic = endpoint.eventTrigger.eventFilters.resource;
     } else {
       gcfFunction.eventTrigger.eventFilters = [];
-      for (const [attribute, value] of Object.entries(cloudFunction.trigger.eventFilters)) {
+      for (const [attribute, value] of Object.entries(endpoint.eventTrigger.eventFilters)) {
         gcfFunction.eventTrigger.eventFilters.push({ attribute, value });
       }
     }
+    proto.renameIfPresent(
+      gcfFunction.eventTrigger,
+      endpoint.eventTrigger,
+      "triggerRegion",
+      "region"
+    );
 
-    if (cloudFunction.trigger.retry) {
-      logger.warn("Cannot set a retry policy on Cloud Function", cloudFunction.id);
+    if (endpoint.eventTrigger.retry) {
+      logger.warn("Cannot set a retry policy on Cloud Function", endpoint.id);
     }
-  } else if (cloudFunction.trigger.allowInsecure) {
-    logger.warn("Cannot enable insecure traffic for Cloud Function", cloudFunction.id);
+  } else if (backend.isScheduleTriggered(endpoint)) {
+    // trigger type defaults to HTTPS.
+    gcfFunction.labels = { ...gcfFunction.labels, "deployment-scheduled": "true" };
+  } else if (backend.isTaskQueueTriggered(endpoint)) {
+    gcfFunction.labels = { ...gcfFunction.labels, "deployment-taskqueue": "true" };
   }
-  proto.copyIfPresent(gcfFunction, cloudFunction, "labels");
 
   return gcfFunction;
 }
 
-export function specFromFunction(gcfFunction: CloudFunction): backend.FunctionSpec {
+export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoint {
   const [, project, , region, , id] = gcfFunction.name.split("/");
-  let trigger: backend.EventTrigger | backend.HttpsTrigger;
-  if (gcfFunction.eventTrigger) {
+  let trigger: backend.Triggered;
+  if (gcfFunction.labels?.["deployment-scheduled"] === "true") {
     trigger = {
-      eventType: gcfFunction.eventTrigger!.eventType,
-      eventFilters: {},
-      retry: false,
+      scheduleTrigger: {},
+    };
+  } else if (gcfFunction.labels?.["deployment-taskqueue"] === "true") {
+    trigger = {
+      taskQueueTrigger: {},
+    };
+  } else if (gcfFunction.eventTrigger) {
+    trigger = {
+      eventTrigger: {
+        eventType: gcfFunction.eventTrigger!.eventType,
+        eventFilters: {},
+        retry: false,
+      },
     };
     if (gcfFunction.eventTrigger.pubsubTopic) {
-      trigger.eventFilters.resource = gcfFunction.eventTrigger.pubsubTopic;
+      trigger.eventTrigger.eventFilters.resource = gcfFunction.eventTrigger.pubsubTopic;
     } else {
       for (const { attribute, value } of gcfFunction.eventTrigger.eventFilters || []) {
-        trigger.eventFilters[attribute] = value;
+        trigger.eventTrigger.eventFilters[attribute] = value;
       }
     }
+    proto.renameIfPresent(
+      trigger.eventTrigger,
+      gcfFunction.eventTrigger,
+      "region",
+      "triggerRegion"
+    );
   } else {
-    trigger = {
-      allowInsecure: false,
-    };
+    trigger = { httpsTrigger: {} };
   }
 
   if (!runtimes.isValidRuntime(gcfFunction.buildConfig.runtime)) {
     logger.debug("GCFv2 function has a deprecated runtime:", JSON.stringify(gcfFunction, null, 2));
   }
 
-  const cloudFunction: backend.FunctionSpec = {
+  const endpoint: backend.Endpoint = {
     platform: "gcfv2",
     id,
     project,
     region,
-    trigger,
+    ...trigger,
     entryPoint: gcfFunction.buildConfig.entryPoint,
     runtime: gcfFunction.buildConfig.runtime,
     uri: gcfFunction.serviceConfig.uri,
   };
   proto.copyIfPresent(
-    cloudFunction,
+    endpoint,
     gcfFunction.serviceConfig,
     "serviceAccountEmail",
-    "availableMemoryMb",
     "vpcConnector",
     "vpcConnectorEgressSettings",
     "ingressSettings",
     "environmentVariables"
   );
   proto.renameIfPresent(
-    cloudFunction,
+    endpoint,
+    gcfFunction.serviceConfig,
+    "availableMemoryMb",
+    "availableMemory",
+    megabytes
+  );
+  proto.renameIfPresent(
+    endpoint,
     gcfFunction.serviceConfig,
     "timeout",
     "timeoutSeconds",
     proto.durationFromSeconds
   );
-  proto.renameIfPresent(
-    cloudFunction,
-    gcfFunction.serviceConfig,
-    "minInstances",
-    "minInstanceCount"
-  );
-  proto.renameIfPresent(
-    cloudFunction,
-    gcfFunction.serviceConfig,
-    "maxInstances",
-    "maxInstanceCount"
-  );
-  proto.copyIfPresent(cloudFunction, gcfFunction, "labels");
+  proto.renameIfPresent(endpoint, gcfFunction.serviceConfig, "minInstances", "minInstanceCount");
+  proto.renameIfPresent(endpoint, gcfFunction.serviceConfig, "maxInstances", "maxInstanceCount");
+  proto.copyIfPresent(endpoint, gcfFunction, "labels");
 
-  return cloudFunction;
+  return endpoint;
 }

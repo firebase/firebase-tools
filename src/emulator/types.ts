@@ -232,7 +232,7 @@ export class EmulatorLog {
     let isNotJSON = false;
     try {
       parsedLog = JSON.parse(json);
-    } catch (err) {
+    } catch (err: any) {
       isNotJSON = true;
     }
 
