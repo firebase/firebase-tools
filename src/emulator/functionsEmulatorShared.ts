@@ -60,8 +60,11 @@ export interface FunctionsRuntimeArgs {
 export interface FunctionsRuntimeBundle {
   projectId: string;
   proto: any;
-  triggerId: string;
-  targetName?: string;
+  // TODO(danielylee): One day, we hope to get rid of all of the following properties.
+  // Our goal is for the emulator environment to mimic the production environment as much
+  // as possible, and that includes how the emulated functions are called. In prod,
+  // the calls are made over HTTP which provides only the uri path, payload, headers, etc
+  // and none of these extra properties.
   emulators: {
     firestore?: {
       host: string;
@@ -84,14 +87,9 @@ export interface FunctionsRuntimeBundle {
       port: number;
     };
   };
-  adminSdkConfig: {
-    databaseURL?: string;
-    storageBucket?: string;
-  };
   socketPath?: string;
   disabled_features?: FunctionsRuntimeFeatures;
   nodeMajorVersion?: number;
-  cwd: string;
 }
 
 export interface FunctionsRuntimeFeatures {

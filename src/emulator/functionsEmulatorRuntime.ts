@@ -223,7 +223,7 @@ async function resolveDeveloperNodeModule(
   }
 
   // Once we know it's in the package.json, make sure it's actually `npm install`ed
-  const resolveResult = await requireResolveAsync(name, { paths: [frb.cwd] }).catch(noOp);
+  const resolveResult = await requireResolveAsync(name, { paths: [process.cwd()] }).catch(noOp);
   if (!resolveResult) {
     return { declared: true, installed: false };
   }
@@ -297,7 +297,7 @@ function requirePackageJson(frb: FunctionsRuntimeBundle): PackageJSON | undefine
   }
 
   try {
-    const pkg = require(`${frb.cwd}/package.json`);
+    const pkg = require(`${process.cwd()}/package.json`);
     developerPkgJSON = {
       engines: pkg.engines || {},
       dependencies: pkg.dependencies || {},
@@ -534,7 +534,7 @@ function initializeRuntimeConfig(frb: FunctionsRuntimeBundle) {
   // In the future, we will bump up the minimum version of the Firebase Functions SDK
   // required to run the functions emulator to v3.15.1 and get rid of this workaround.
   if (!process.env.CLOUD_RUNTIME_CONFIG) {
-    const configPath = `${frb.cwd}/.runtimeconfig.json`;
+    const configPath = `${process.cwd()}/.runtimeconfig.json`;
     try {
       const configContent = fs.readFileSync(configPath, "utf8");
       if (configContent) {
@@ -903,8 +903,8 @@ async function moduleResolutionDetective(frb: FunctionsRuntimeBundle, error: Err
   falsey, so we just catch to keep from throwing.
    */
   const clues = {
-    tsconfigJSON: await requireAsync("./tsconfig.json", { paths: [frb.cwd] }).catch(noOp),
-    packageJSON: await requireAsync("./package.json", { paths: [frb.cwd] }).catch(noOp),
+    tsconfigJSON: await requireAsync("./tsconfig.json", { paths: [process.cwd()] }).catch(noOp),
+    packageJSON: await requireAsync("./package.json", { paths: [process.cwd()] }).catch(noOp),
   };
 
   const isPotentially = {
@@ -928,11 +928,11 @@ function logDebug(msg: string, data?: any): void {
 }
 
 async function invokeTrigger(frb: FunctionsRuntimeBundle): Promise<void> {
-  new EmulatorLog("INFO", "runtime-status", `Beginning execution of "${frb.triggerId}"`, {
+  new EmulatorLog("INFO", "runtime-status", `Beginning execution of "${FUNCTION_TARGET_NAME}"`, {
     frb,
   }).log();
 
-  logDebug(`Running ${frb.triggerId} in signature ${FUNCTION_SIGNATURE}`);
+  logDebug(`Running ${FUNCTION_TARGET_NAME} in signature ${FUNCTION_SIGNATURE}`);
 
   let seconds = 0;
   const timerId = setInterval(() => {
@@ -975,7 +975,7 @@ async function invokeTrigger(frb: FunctionsRuntimeBundle): Promise<void> {
   new EmulatorLog(
     "INFO",
     "runtime-status",
-    `Finished "${frb.triggerId}" in ~${Math.max(seconds, 1)}s`
+    `Finished "${FUNCTION_TARGET_NAME}" in ~${Math.max(seconds, 1)}s`
   ).log();
 }
 
@@ -1033,14 +1033,14 @@ async function loadTrigger(
     triggerModule = eval(serializedFunctionTrigger)();
   } else {
     try {
-      triggerModule = require(frb.cwd);
+      triggerModule = require(process.cwd());
     } catch (err: any) {
       if (err.code !== "ERR_REQUIRE_ESM") {
         // Try to run diagnostics to see what could've gone wrong before rethrowing the error.
         await moduleResolutionDetective(frb, err);
         throw err;
       }
-      const modulePath = require.resolve(frb.cwd);
+      const modulePath = require.resolve(process.cwd());
       // Resolve module path to file:// URL. Required for windows support.
       const moduleURL = pathToFileURL(modulePath).href;
       triggerModule = await dynamicImport(moduleURL);
@@ -1089,7 +1089,7 @@ async function handleMessage(message: string) {
       new EmulatorLog(
         "FATAL",
         "runtime-status",
-        `Failed to initialize and load trigger. This shouldn't happen.`
+        `Failed to initialize and load trigger. This shouldn't happen: ${e.message}`
       ).log();
       await flushAndExit(1);
       return;
