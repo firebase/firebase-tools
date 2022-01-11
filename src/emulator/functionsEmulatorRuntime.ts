@@ -21,7 +21,6 @@ import * as _ from "lodash";
 
 let functionTrigger: CloudFunction<any>;
 let FUNCTION_TARGET_NAME: string;
-// TODO: narrow the scope to SignatureType
 let FUNCTION_SIGNATURE: string;
 
 let developerPkgJSON: PackageJSON | undefined;
