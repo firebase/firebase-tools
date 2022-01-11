@@ -65,28 +65,6 @@ export interface FunctionsRuntimeBundle {
   // as possible, and that includes how the emulated functions are called. In prod,
   // the calls are made over HTTP which provides only the uri path, payload, headers, etc
   // and none of these extra properties.
-  emulators: {
-    firestore?: {
-      host: string;
-      port: number;
-    };
-    database?: {
-      host: string;
-      port: number;
-    };
-    pubsub?: {
-      host: string;
-      port: number;
-    };
-    auth?: {
-      host: string;
-      port: number;
-    };
-    storage?: {
-      host: string;
-      port: number;
-    };
-  };
   socketPath?: string;
   disabled_features?: FunctionsRuntimeFeatures;
   nodeMajorVersion?: number;

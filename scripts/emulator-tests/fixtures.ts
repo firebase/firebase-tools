@@ -6,12 +6,6 @@ export const TIMEOUT_MED = 5000;
 export const MODULE_ROOT = findModuleRoot("firebase-tools", __dirname);
 export const FunctionRuntimeBundles: { [key: string]: FunctionsRuntimeBundle } = {
   onCreate: {
-    emulators: {
-      firestore: {
-        host: "localhost",
-        port: 8080,
-      },
-    },
     proto: {
       data: {
         value: {
@@ -39,12 +33,6 @@ export const FunctionRuntimeBundles: { [key: string]: FunctionsRuntimeBundle } =
     projectId: "fake-project-id",
   },
   onWrite: {
-    emulators: {
-      firestore: {
-        host: "localhost",
-        port: 8080,
-      },
-    },
     proto: {
       data: {
         value: {
@@ -72,12 +60,6 @@ export const FunctionRuntimeBundles: { [key: string]: FunctionsRuntimeBundle } =
     projectId: "fake-project-id",
   },
   onDelete: {
-    emulators: {
-      firestore: {
-        host: "localhost",
-        port: 8080,
-      },
-    },
     proto: {
       data: {
         oldValue: {
@@ -105,12 +87,6 @@ export const FunctionRuntimeBundles: { [key: string]: FunctionsRuntimeBundle } =
     projectId: "fake-project-id",
   },
   onUpdate: {
-    emulators: {
-      firestore: {
-        host: "localhost",
-        port: 8080,
-      },
-    },
     proto: {
       data: {
         oldValue: {
@@ -150,12 +126,6 @@ export const FunctionRuntimeBundles: { [key: string]: FunctionsRuntimeBundle } =
     projectId: "fake-project-id",
   },
   onRequest: {
-    emulators: {
-      firestore: {
-        host: "localhost",
-        port: 8080,
-      },
-    },
     projectId: "fake-project-id",
     proto: {},
   },

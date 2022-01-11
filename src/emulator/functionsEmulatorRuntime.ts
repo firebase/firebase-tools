@@ -1,7 +1,15 @@
 import * as fs from "fs";
 
-import { EmulatorLog } from "./types";
 import { CloudFunction, DeploymentOptions, https } from "firebase-functions";
+import * as express from "express";
+import * as path from "path";
+import * as admin from "firebase-admin";
+import * as bodyParser from "body-parser";
+import { pathToFileURL, URL } from "url";
+import * as _ from "lodash";
+
+import { EmulatorLog } from "./types";
+import { Constants } from "./constants";
 import {
   EmulatedTriggerMap,
   findModuleRoot,
@@ -12,12 +20,6 @@ import {
   SignatureType,
 } from "./functionsEmulatorShared";
 import { compareVersionStrings } from "./functionsEmulatorUtils";
-import * as express from "express";
-import * as path from "path";
-import * as admin from "firebase-admin";
-import * as bodyParser from "body-parser";
-import { pathToFileURL, URL } from "url";
-import * as _ from "lodash";
 
 let functionTrigger: CloudFunction<any>;
 let FUNCTION_TARGET_NAME: string;
@@ -597,7 +599,7 @@ async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
       localFunctionsModule.app.setEmulatedAdminApp(defaultApp);
 
       // When the auth emulator is running, try to disable JWT verification.
-      if (frb.emulators.auth) {
+      if (process.env[Constants.FIREBASE_AUTH_EMULATOR_HOST]) {
         if (compareVersionStrings(adminResolution.version, "9.3.0") < 0) {
           new EmulatorLog(
             "WARN_ONCE",
@@ -621,16 +623,20 @@ async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
       return defaultApp;
     })
     .when("firestore", (target) => {
-      warnAboutFirestoreProd(frb);
+      warnAboutFirestoreProd();
       return Proxied.getOriginal(target, "firestore");
     })
     .when("database", (target) => {
-      warnAboutDatabaseProd(frb);
+      warnAboutDatabaseProd();
       return Proxied.getOriginal(target, "database");
     })
     .when("auth", (target) => {
-      warnAboutAuthProd(frb);
+      warnAboutAuthProd();
       return Proxied.getOriginal(target, "auth");
+    })
+    .when("storage", (target) => {
+      warnAboutStorageProd();
+      return Proxied.getOriginal(target, "storage");
     })
     .finalize();
 
@@ -652,22 +658,26 @@ function makeProxiedFirebaseApp(
   const appProxy = new Proxied<admin.app.App>(original);
   return appProxy
     .when("firestore", (target: any) => {
-      warnAboutFirestoreProd(frb);
+      warnAboutFirestoreProd();
       return Proxied.getOriginal(target, "firestore");
     })
     .when("database", (target: any) => {
-      warnAboutDatabaseProd(frb);
+      warnAboutDatabaseProd();
       return Proxied.getOriginal(target, "database");
     })
     .when("auth", (target: any) => {
-      warnAboutAuthProd(frb);
+      warnAboutAuthProd();
       return Proxied.getOriginal(target, "auth");
+    })
+    .when("storage", (target: any) => {
+      warnAboutStorageProd();
+      return Proxied.getOriginal(target, "storage");
     })
     .finalize();
 }
 
-function warnAboutFirestoreProd(frb: FunctionsRuntimeBundle): void {
-  if (frb.emulators.firestore) {
+function warnAboutFirestoreProd(): void {
+  if (process.env[Constants.FIRESTORE_EMULATOR_HOST]) {
     return;
   }
 
@@ -678,8 +688,8 @@ function warnAboutFirestoreProd(frb: FunctionsRuntimeBundle): void {
   ).log();
 }
 
-function warnAboutDatabaseProd(frb: FunctionsRuntimeBundle): void {
-  if (frb.emulators.database) {
+function warnAboutDatabaseProd(): void {
+  if (process.env[Constants.FIREBASE_DATABASE_EMULATOR_HOST]) {
     return;
   }
 
@@ -690,8 +700,8 @@ function warnAboutDatabaseProd(frb: FunctionsRuntimeBundle): void {
   ).log();
 }
 
-function warnAboutAuthProd(frb: FunctionsRuntimeBundle): void {
-  if (frb.emulators.auth) {
+function warnAboutAuthProd(): void {
+  if (process.env[Constants.FIREBASE_AUTH_EMULATOR_HOST]) {
     return;
   }
 
@@ -699,6 +709,18 @@ function warnAboutAuthProd(frb: FunctionsRuntimeBundle): void {
     "WARN_ONCE",
     "runtime-status",
     "The Firebase Authentication emulator is not running, so calls to Firebase Authentication will affect production."
+  ).log();
+}
+
+function warnAboutStorageProd(): void {
+  if (process.env[Constants.FIREBASE_STORAGE_EMULATOR_HOST]) {
+    return;
+  }
+
+  new EmulatorLog(
+    "WARN_ONCE",
+    "runtime-status",
+    "The Firebase Storage emulator is not running, so calls to Firebase Storage will affect production."
   ).log();
 }
 

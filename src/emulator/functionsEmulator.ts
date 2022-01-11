@@ -340,13 +340,6 @@ export class FunctionsEmulator implements EmulatorInstance {
     const bundleTemplate = this.getBaseBundle();
     const runtimeBundle: FunctionsRuntimeBundle = {
       ...bundleTemplate,
-      emulators: {
-        firestore: this.getEmulatorInfo(Emulators.FIRESTORE),
-        database: this.getEmulatorInfo(Emulators.DATABASE),
-        pubsub: this.getEmulatorInfo(Emulators.PUBSUB),
-        auth: this.getEmulatorInfo(Emulators.AUTH),
-        storage: this.getEmulatorInfo(Emulators.STORAGE),
-      },
       nodeMajorVersion: backend.nodeMajorVersion,
       proto,
     };
@@ -827,25 +820,10 @@ export class FunctionsEmulator implements EmulatorInstance {
     return {
       proto: {},
       projectId: this.args.projectId,
-      emulators: {
-        firestore: EmulatorRegistry.getInfo(Emulators.FIRESTORE),
-        database: EmulatorRegistry.getInfo(Emulators.DATABASE),
-        pubsub: EmulatorRegistry.getInfo(Emulators.PUBSUB),
-        auth: EmulatorRegistry.getInfo(Emulators.AUTH),
-        storage: EmulatorRegistry.getInfo(Emulators.STORAGE),
-      },
       disabled_features: this.args.disabledRuntimeFeatures,
     };
   }
 
-  /**
-   * Returns the path to a "node" executable to use.
-   * @param cwd the directory to checkout for a package.json file.
-   * @param nodeMajorVersion forces the emulator to choose this version. Used when emulating extensions,
-   *  since in production, extensions ignore the node version provided in package.json and use the version
-   *  specified in extension.yaml. This will ALWAYS be populated when emulating extensions, even if they
-   *  are using the default version.
-   */
   getNodeBinary(backend: EmulatableBackend): string {
     const pkg = require(path.join(backend.functionsDir, "package.json"));
     // If the developer hasn't specified a Node to use, inform them that it's an option and use default
