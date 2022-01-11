@@ -2,7 +2,7 @@
 set -e # Immediately exit on failure
 
 # Globally link the CLI for the testing framework
-# ./scripts/npm-link.sh
+./scripts/npm-link.sh
 
 cd scripts/extensions-emulator-tests/greet-the-world
 npm i
