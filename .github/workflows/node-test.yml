@@ -22,12 +22,8 @@ jobs:
       - uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node-version }}
-
-      - name: Cache npm
-        uses: actions/cache@v2
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/npm-shrinkwrap.json') }}
+          cache: npm
+          cache-dependency-path: npm-shrinkwrap.json
 
       - run: npm i -g npm@8
       - run: npm ci
@@ -46,12 +42,8 @@ jobs:
       - uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node-version }}
-
-      - name: Cache npm
-        uses: actions/cache@v2
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/npm-shrinkwrap.json') }}
+          cache: npm
+          cache-dependency-path: npm-shrinkwrap.json
 
       - run: npm i -g npm@8
       - run: npm ci
@@ -87,12 +79,8 @@ jobs:
       - uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node-version }}
-
-      - name: Cache npm
-        uses: actions/cache@v2
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/npm-shrinkwrap.json') }}
+          cache: npm
+          cache-dependency-path: npm-shrinkwrap.json
 
       - name: Cache firebase emulators
         uses: actions/cache@v2
