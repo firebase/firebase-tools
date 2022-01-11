@@ -79,7 +79,6 @@ const DATABASE_PATH_PATTERN = new RegExp("^projects/[^/]+/instances/([^/]+)/refs
  * This can be a CF3 module, or an Extension.
  */
 export interface EmulatableBackend {
-  projectDir: string;
   functionsDir: string;
   env: Record<string, string>;
   predefinedTriggers?: ParsedTriggerDefinition[];
@@ -89,6 +88,7 @@ export interface EmulatableBackend {
 
 export interface FunctionsEmulatorArgs {
   projectId: string;
+  projectDir: string;
   emulatableBackends: EmulatableBackend[];
   account?: Account;
   port?: number;
@@ -464,7 +464,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     } else {
       const runtimeDelegate = await getRuntimeDelegate({
         projectId: this.args.projectId,
-        projectDir: emulatableBackend.projectDir,
+        projectDir: this.args.projectDir,
         sourceDir: emulatableBackend.functionsDir,
         runtime: "",
       });

@@ -20,13 +20,13 @@ const DO_NOTHING = () => {
 };
 
 const testBackend = {
-  projectDir: MODULE_ROOT,
   functionsDir: MODULE_ROOT,
   env: {},
   nodeBinary: process.execPath,
 };
 
 const functionsEmulator = new FunctionsEmulator({
+  projectDir: MODULE_ROOT,
   projectId: "fake-project-id",
   emulatableBackends: [testBackend],
 });

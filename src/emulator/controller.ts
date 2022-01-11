@@ -447,7 +447,6 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
     // TODO: Go read firebase.json for extensions and add them to emualtableBackends.
     const emulatableBackends: EmulatableBackend[] = [
       {
-        projectDir,
         functionsDir,
         env: {
           ...options.extensionEnv,
@@ -460,6 +459,7 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
     ];
     const functionsEmulator = new FunctionsEmulator({
       projectId,
+      projectDir,
       emulatableBackends,
       account,
       host: functionsAddr.host,

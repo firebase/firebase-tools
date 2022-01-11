@@ -37,7 +37,6 @@ export class FunctionsServer {
     this.backend = {
       functionsDir,
       nodeMajorVersion,
-      projectDir: options.config.projectDir,
       env: {},
     };
     // Normally, these two fields are included in args (and typed as such).
@@ -45,6 +44,7 @@ export class FunctionsServer {
     // default values for those tests to work properly.
     const args: FunctionsEmulatorArgs = {
       projectId,
+      projectDir: options.config.projectDir,
       emulatableBackends: [this.backend],
       account,
       ...partialArgs,

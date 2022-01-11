@@ -1046,7 +1046,13 @@ async function loadTrigger(
       triggerModule = await dynamicImport(moduleURL);
     }
   }
-  const maybeTrigger = triggerModule[functionTarget];
+  const maybeTrigger = functionTarget.split(".").reduce((mod, functionTargetPart) => {
+    if (typeof mod === "undefined") {
+      return undefined;
+    } else {
+      return mod[functionTargetPart];
+    }
+  }, triggerModule);
   if (!maybeTrigger) {
     throw new Error(`Failed to find function ${functionTarget} in the loaded module`);
   }

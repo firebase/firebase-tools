@@ -32,9 +32,9 @@ if ((process.env.DEBUG || "").toLowerCase().includes("spec")) {
 
 const functionsEmulator = new FunctionsEmulator({
   projectId: "fake-project-id",
+  projectDir: MODULE_ROOT,
   emulatableBackends: [
     {
-      projectDir: MODULE_ROOT,
       functionsDir: MODULE_ROOT,
       env: {},
     },
@@ -43,7 +43,6 @@ const functionsEmulator = new FunctionsEmulator({
 });
 
 const testBackend = {
-  projectDir: MODULE_ROOT,
   functionsDir: MODULE_ROOT,
   env: {},
   nodeBinary: process.execPath,
