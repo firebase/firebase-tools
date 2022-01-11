@@ -32,7 +32,7 @@ class MockRuntimeInstance implements FunctionsRuntimeInstance {
     this.events.emit("exit", { reason: "shutdown" });
   }
 
-  kill(signal?: string): void {
+  kill(signal?: number): void {
     this.events.emit("exit", { reason: "kill" });
   }
 
