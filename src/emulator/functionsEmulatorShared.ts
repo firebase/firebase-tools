@@ -158,13 +158,14 @@ export function emulatedFunctionsFromEndpoints(endpoints: Endpoint[]): EmulatedT
       entryPoint: endpoint.entryPoint,
       platform: endpoint.platform,
       region: endpoint.region,
-      // TODO: Difference in use of name/id in Endpoint vs Emulator is unnecessarily confusing.
+      // TODO: Difference in use of name/id in Endpoint vs Emulator is subtle and confusing.
+      // We should later refactor the emulator to stop using a custom trigger definition.
       name: endpoint.id,
       id: `${endpoint.region}-${endpoint.id}`,
     };
     copyIfPresent(def, endpoint, "timeout", "availableMemoryMb", "labels", "platform");
-    // TODO: This whole event crap an awkward transformation.
-    // Emulator does not understand endpoints - maybe it should?
+    // TODO: This transformation is confusing but must be kept since the Firestore/RTDB trigger registration
+    // process requires it in this form. Need to work in Firestore emulator for a proper fix...
     if (isHttpsTriggered(endpoint)) {
       def.httpsTrigger = endpoint.httpsTrigger;
     } else if (isEventTriggered(endpoint)) {
