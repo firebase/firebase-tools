@@ -24,5 +24,6 @@ cd "$THIS_DIR"
 gcloud --project fir-tools-builds \
   builds \
   submit \
+  --machine-type=e2-highcpu-8 \
   --substitutions=_VERSION=$VERSION \
   .
