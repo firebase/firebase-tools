@@ -398,9 +398,7 @@ describe("cloudfunctions", () => {
     });
 
     it("should reject if the getting the IAM policy fails", async () => {
-      nock(functionsOrigin)
-        .get("/v1/function:getIamPolicy")
-        .reply(404, {});
+      nock(functionsOrigin).get("/v1/function:getIamPolicy").reply(404, {});
 
       await expect(
         cloudfunctions.setInvokerUpdate("project", "function", ["public"])
@@ -408,9 +406,7 @@ describe("cloudfunctions", () => {
     });
 
     it("should reject if the setting the IAM policy fails", async () => {
-      nock(functionsOrigin)
-        .get("/v1/function:getIamPolicy")
-        .reply(200, {});
+      nock(functionsOrigin).get("/v1/function:getIamPolicy").reply(200, {});
       nock(functionsOrigin)
         .post("/v1/function:setIamPolicy", {
           policy: {
@@ -428,9 +424,7 @@ describe("cloudfunctions", () => {
     });
 
     it("should set a basic policy on a function without any polices", async () => {
-      nock(functionsOrigin)
-        .get("/v1/function:getIamPolicy")
-        .reply(200, {});
+      nock(functionsOrigin).get("/v1/function:getIamPolicy").reply(200, {});
       nock(functionsOrigin)
         .post("/v1/function:setIamPolicy", {
           policy: {
@@ -476,9 +470,7 @@ describe("cloudfunctions", () => {
     });
 
     it("should set the policy with a set of invokers with active policies", async () => {
-      nock(functionsOrigin)
-        .get("/v1/function:getIamPolicy")
-        .reply(200, {});
+      nock(functionsOrigin).get("/v1/function:getIamPolicy").reply(200, {});
       nock(functionsOrigin)
         .post("/v1/function:setIamPolicy", {
           policy: {
