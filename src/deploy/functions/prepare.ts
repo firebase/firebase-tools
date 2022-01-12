@@ -20,7 +20,8 @@ import * as utils from "../../utils";
 import { logger } from "../../logger";
 import { ensureTriggerRegions } from "./triggerRegionHelper";
 import { ensureServiceAgentRoles } from "./checkIam";
-import e from "express";
+import { DelegateContext } from "./runtimes";
+import { FirebaseError } from "../../error";
 
 function hasUserConfig(config: Record<string, unknown>): boolean {
   // "firebase" key is always going to exist in runtime config.
@@ -53,17 +54,27 @@ export async function prepare(
   options: Options,
   payload: args.Payload
 ): Promise<void> {
-  if (!options.config.src.functions) {
-    return;
-  }
+  const projectId = needProjectId(options);
 
-  const runtimeDelegate = await runtimes.getRuntimeDelegate(context, options);
+  const sourceDirName = options.config.get("functions.source") as string;
+  if (!sourceDirName) {
+    throw new FirebaseError(
+      `No functions code detected at default location (./functions), and no functions.source defined in firebase.json`
+    );
+  }
+  const sourceDir = options.config.path(sourceDirName);
+
+  const delegateContext: DelegateContext = {
+    projectId,
+    sourceDir,
+    projectDir: options.config.projectDir,
+    runtime: (options.config.get("functions.runtime") as string) || "",
+  };
+  const runtimeDelegate = await runtimes.getRuntimeDelegate(delegateContext);
   logger.debug(`Validating ${runtimeDelegate.name} source`);
   await runtimeDelegate.validate();
   logger.debug(`Building ${runtimeDelegate.name} source`);
   await runtimeDelegate.build();
-
-  const projectId = needProjectId(options);
 
   // Check that all necessary APIs are enabled.
   const checkAPIsEnabled = await Promise.all([
@@ -85,14 +96,9 @@ export async function prepare(
   context.firebaseConfig = firebaseConfig;
   const runtimeConfig = await getFunctionsConfig(context);
 
-  utils.assertDefined(
-    options.config.src.functions.source,
-    "Error: 'functions.source' is not defined"
-  );
-  const source = options.config.src.functions.source;
   const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
   const userEnvOpt = {
-    functionsSource: options.config.path(source),
+    functionsSource: sourceDir,
     projectId: projectId,
     projectAlias: options.projectAlias,
   };
@@ -133,7 +139,7 @@ export async function prepare(
     logBullet(
       clc.cyan.bold("functions:") +
         " preparing " +
-        clc.bold(options.config.src.functions.source) +
+        clc.bold(sourceDirName) +
         " directory for uploading..."
     );
   }
