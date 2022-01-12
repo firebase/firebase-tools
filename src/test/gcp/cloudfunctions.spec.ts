@@ -313,7 +313,7 @@ describe("cloudfunctions", () => {
     });
 
     it("should reject if the setting the IAM policy fails", async () => {
-      nock("https://cloudfunctions.googleapis.com:443")
+      nock(functionsOrigin)
         .post("/v1/function:setIamPolicy", {
           policy: {
             bindings: [{ role: "roles/cloudfunctions.invoker", members: ["allUsers"] }],
@@ -330,7 +330,7 @@ describe("cloudfunctions", () => {
     });
 
     it("should set a private policy on a function", async () => {
-      nock("https://cloudfunctions.googleapis.com:443")
+      nock(functionsOrigin)
         .post("/v1/function:setIamPolicy", {
           policy: {
             bindings: [{ role: "roles/cloudfunctions.invoker", members: [] }],
@@ -346,7 +346,7 @@ describe("cloudfunctions", () => {
     });
 
     it("should set a public policy on a function", async () => {
-      nock("https://cloudfunctions.googleapis.com:443")
+      nock(functionsOrigin)
         .post("/v1/function:setIamPolicy", {
           policy: {
             bindings: [{ role: "roles/cloudfunctions.invoker", members: ["allUsers"] }],
@@ -362,7 +362,7 @@ describe("cloudfunctions", () => {
     });
 
     it("should set the policy with a set of invokers with active policies", async () => {
-      nock("https://cloudfunctions.googleapis.com:443")
+      nock(functionsOrigin)
         .post("/v1/function:setIamPolicy", {
           policy: {
             bindings: [
@@ -398,7 +398,7 @@ describe("cloudfunctions", () => {
     });
 
     it("should reject if the getting the IAM policy fails", async () => {
-      nock("https://cloudfunctions.googleapis.com:443")
+      nock(functionsOrigin)
         .get("/v1/function:getIamPolicy")
         .reply(404, {});
 
@@ -408,10 +408,10 @@ describe("cloudfunctions", () => {
     });
 
     it("should reject if the setting the IAM policy fails", async () => {
-      nock("https://cloudfunctions.googleapis.com:443")
+      nock(functionsOrigin)
         .get("/v1/function:getIamPolicy")
         .reply(200, {});
-      nock("https://cloudfunctions.googleapis.com:443")
+      nock(functionsOrigin)
         .post("/v1/function:setIamPolicy", {
           policy: {
             bindings: [{ role: "roles/cloudfunctions.invoker", members: ["allUsers"] }],
@@ -428,10 +428,10 @@ describe("cloudfunctions", () => {
     });
 
     it("should set a basic policy on a function without any polices", async () => {
-      nock("https://cloudfunctions.googleapis.com:443")
+      nock(functionsOrigin)
         .get("/v1/function:getIamPolicy")
         .reply(200, {});
-      nock("https://cloudfunctions.googleapis.com:443")
+      nock(functionsOrigin)
         .post("/v1/function:setIamPolicy", {
           policy: {
             bindings: [{ role: "roles/cloudfunctions.invoker", members: ["allUsers"] }],
@@ -447,7 +447,7 @@ describe("cloudfunctions", () => {
     });
 
     it("should set the policy with private invoker with active policies", async () => {
-      nock("https://cloudfunctions.googleapis.com:443")
+      nock(functionsOrigin)
         .get("/v1/function:getIamPolicy")
         .reply(200, {
           bindings: [
@@ -457,7 +457,7 @@ describe("cloudfunctions", () => {
           etag: "1234",
           version: 3,
         });
-      nock("https://cloudfunctions.googleapis.com:443")
+      nock(functionsOrigin)
         .post("/v1/function:setIamPolicy", {
           policy: {
             bindings: [
@@ -476,10 +476,10 @@ describe("cloudfunctions", () => {
     });
 
     it("should set the policy with a set of invokers with active policies", async () => {
-      nock("https://cloudfunctions.googleapis.com:443")
+      nock(functionsOrigin)
         .get("/v1/function:getIamPolicy")
         .reply(200, {});
-      nock("https://cloudfunctions.googleapis.com:443")
+      nock(functionsOrigin)
         .post("/v1/function:setIamPolicy", {
           policy: {
             bindings: [
@@ -509,7 +509,7 @@ describe("cloudfunctions", () => {
     });
 
     it("should not set the policy if the set of invokers is the same as the current invokers", async () => {
-      nock("https://cloudfunctions.googleapis.com:443")
+      nock(functionsOrigin)
         .get("/v1/function:getIamPolicy")
         .reply(200, {
           bindings: [

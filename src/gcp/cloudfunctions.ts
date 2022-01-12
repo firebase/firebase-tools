@@ -9,7 +9,7 @@ import * as proto from "./proto";
 import * as runtimes from "../deploy/functions/runtimes";
 import * as iam from "./iam";
 import { Client } from "../apiv2";
-import api, { functionsOrigin } from "../api";
+import { functionsOrigin } from "../api";
 
 export const API_VERSION = "v1";
 const client = new Client({ urlPrefix: functionsOrigin, apiVersion: API_VERSION });
