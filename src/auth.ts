@@ -442,17 +442,18 @@ async function loginRemotely(userHint?: string): Promise<UserCredentials> {
   const loginUrl = `${api.authProxyOrigin}/login?code_challenge=${codeChallenge}&session=${sessionId}&attest=${attestToken}`;
 
   logger.info();
-  logger.info("Visit this URL on any device to sign into Firebase CLI:");
-  logger.info(loginUrl);
+  logger.info("To sign in to the Firebase CLI:");
   logger.info();
-  logger.info(
-    "When authentication is complete, confirm that the session ID in the browser matches what is printed below, then paste the provided code."
-  );
+  logger.info("1. Take note of your session ID:");
   logger.info();
-  logger.info(`${bold("Session ID:")} ${sessionId}`);
+  logger.info(`   ${bold(sessionId.substring(0, 5).toUpperCase())}`);
   logger.info();
-
-  open(loginUrl);
+  logger.info("2. Visit the URL below on any device and follow the instructions to get your code:");
+  logger.info();
+  logger.info(`   ${loginUrl}`);
+  logger.info();
+  logger.info("3. Paste or enter the authorization code below once you have it:");
+  logger.info();
 
   const code = await promptOnce({
     type: "input",
