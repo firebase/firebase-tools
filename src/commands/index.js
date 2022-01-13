@@ -108,6 +108,8 @@ module.exports = function (client) {
   if (previews.deletegcfartifacts) {
     client.functions.deletegcfartifacts = loadCommand("functions-deletegcfartifacts");
   }
+  client.functions.secret = {};
+  client.functions.secret.set = loadCommand("functions-secret-set");
   client.help = loadCommand("help");
   client.hosting = {};
   client.hosting.channel = {};
