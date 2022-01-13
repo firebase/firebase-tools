@@ -1,22 +1,21 @@
 import * as clc from "cli-color";
 
-import { Options } from "../../options";
-import { ensureCloudBuildEnabled, ensureSecretAccess, maybeEnableAR } from "./ensure";
-import { functionMatchesAnyGroup, getFilterGroups } from "./functionsDeployHelper";
-import { logBullet } from "../../utils";
-import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload";
-import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import * as args from "./args";
 import * as backend from "./backend";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
 import * as functionsConfig from "../../functionsConfig";
 import * as functionsEnv from "../../functions/env";
+import * as runtimes from "./runtimes";
+import { Options } from "../../options";
+import { ensureCloudBuildEnabled, ensureSecretAccess, maybeEnableAR } from "./ensure";
+import { functionIdsAreValid, secretsAreValid } from "./validate";
+import { functionMatchesAnyGroup, getFilterGroups } from "./functionsDeployHelper";
+import { logBullet } from "../../utils";
+import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload";
+import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import { previews } from "../../previews";
 import { needProjectId } from "../../projectUtils";
 import { track } from "../../track";
-import * as runtimes from "./runtimes";
-import * as validate from "./validate";
-import * as utils from "../../utils";
 import { logger } from "../../logger";
 import { ensureTriggerRegions } from "./triggerRegionHelper";
 import { ensureServiceAgentRoles } from "./checkIam";
@@ -152,7 +151,7 @@ export async function prepare(
   );
 
   // Validate the function code that is being deployed.
-  validate.functionIdsAreValid(backend.allEndpoints(wantBackend));
+  functionIdsAreValid(backend.allEndpoints(wantBackend));
 
   // Check what --only filters have been passed in.
   context.filters = getFilterGroups(options);
@@ -170,7 +169,7 @@ export async function prepare(
   await promptForFailurePolicies(options, matchingBackend, haveBackend);
   await promptForMinInstances(options, matchingBackend, haveBackend);
   await backend.checkAvailability(context, wantBackend);
-  await validate.secretsAreValid(matchingBackend);
+  await secretsAreValid(matchingBackend);
   await ensureSecretAccess(matchingBackend);
 }
 
