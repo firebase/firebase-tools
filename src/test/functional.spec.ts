@@ -125,18 +125,14 @@ describe("functional", () => {
   describe("partition", () => {
     it("should split an array into true and false", () => {
       const arr = ["T1", "F1", "T2", "F2"];
-      expect(
-        f.partition<string>(arr, (s: string) => s.startsWith("T"))
-      ).to.deep.equal([
+      expect(f.partition<string>(arr, (s: string) => s.startsWith("T"))).to.deep.equal([
         ["T1", "T2"],
         ["F1", "F2"],
       ]);
     });
 
     it("can handle an empty array", () => {
-      expect(
-        f.partition<string>([], (s: string) => s.startsWith("T"))
-      ).to.deep.equal([[], []]);
+      expect(f.partition<string>([], (s: string) => s.startsWith("T"))).to.deep.equal([[], []]);
     });
   });
 });

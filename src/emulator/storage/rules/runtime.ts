@@ -229,9 +229,7 @@ export class StorageRulesRuntime {
     });
   }
 
-  async loadRuleset(
-    source: Source
-  ): Promise<{
+  async loadRuleset(source: Source): Promise<{
     ruleset?: StorageRulesetInstance;
     issues: StorageRulesIssues;
   }> {

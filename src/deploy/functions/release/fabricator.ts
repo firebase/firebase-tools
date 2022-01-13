@@ -51,11 +51,11 @@ export interface FabricatorArgs {
   storage?: Record<string, gcfV2.StorageSource>;
 }
 
-const rethrowAs = <T>(endpoint: backend.Endpoint, op: reporter.OperationType) => (
-  err: unknown
-): T => {
-  throw new reporter.DeploymentError(endpoint, op, err);
-};
+const rethrowAs =
+  <T>(endpoint: backend.Endpoint, op: reporter.OperationType) =>
+  (err: unknown): T => {
+    throw new reporter.DeploymentError(endpoint, op, err);
+  };
 
 /** Fabricators make a customer's backend match a spec by applying a plan. */
 export class Fabricator {
@@ -79,13 +79,11 @@ export class Fabricator {
       totalTime: 0,
       results: [],
     };
-    const deployRegions = Object.values(plan).map(
-      async (changes): Promise<void> => {
-        const results = await this.applyRegionalChanges(changes);
-        summary.results.push(...results);
-        return;
-      }
-    );
+    const deployRegions = Object.values(plan).map(async (changes): Promise<void> => {
+      const results = await this.applyRegionalChanges(changes);
+      summary.results.push(...results);
+      return;
+    });
     const promiseResults = await utils.allSettled(deployRegions);
 
     const errs = promiseResults

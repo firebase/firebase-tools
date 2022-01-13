@@ -39,17 +39,15 @@ function logCertificatesCount(count: number = 0): void {
 module.exports = new Command("apps:android:sha:list <appId>")
   .description("list the SHA certificate hashes for a given app id. ")
   .before(requireAuth)
-  .action(
-    async (appId: string = "", options: any): Promise<AppAndroidShaData[]> => {
-      const projectId = needProjectId(options);
+  .action(async (appId: string = "", options: any): Promise<AppAndroidShaData[]> => {
+    const projectId = needProjectId(options);
 
-      const shaCertificates = await promiseWithSpinner<AppAndroidShaData[]>(
-        async () => await listAppAndroidSha(projectId, appId),
-        "Preparing the list of your Firebase Android app SHA certificate hashes"
-      );
+    const shaCertificates = await promiseWithSpinner<AppAndroidShaData[]>(
+      async () => await listAppAndroidSha(projectId, appId),
+      "Preparing the list of your Firebase Android app SHA certificate hashes"
+    );
 
-      logCertificatesList(shaCertificates);
-      logCertificatesCount(shaCertificates.length);
-      return shaCertificates;
-    }
-  );
+    logCertificatesList(shaCertificates);
+    logCertificatesCount(shaCertificates.length);
+    return shaCertificates;
+  });

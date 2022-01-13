@@ -55,53 +55,51 @@ export default new Command("open [link]")
   .description("quickly open a browser to relevant project resources")
   .before(requirePermissions)
   .before(requireDatabaseInstance)
-  .action(
-    async (linkName: string, options: any): Promise<void> => {
-      let link = _.find(LINKS, { arg: linkName });
-      if (linkName && !link) {
-        throw new FirebaseError(
-          "Unrecognized link name. Valid links are:\n\n" + _.map(LINKS, "arg").join("\n")
-        );
-      }
-
-      if (!link) {
-        const name = await promptOnce({
-          type: "list",
-          message: "What link would you like to open?",
-          choices: CHOICES,
-        });
-        link = _.find(LINKS, { name });
-      }
-      if (!link) {
-        throw new FirebaseError(
-          "Unrecognized link name. Valid links are:\n\n" + _.map(LINKS, "arg").join("\n")
-        );
-      }
-
-      let url;
-      if (link.consolePath) {
-        url = utils.consoleUrl(options.project, link.consolePath);
-      } else if (link.url) {
-        url = link.url;
-      } else if (link.arg === "hosting:site") {
-        url = utils.addSubdomain(api.hostingOrigin, options.instance);
-      } else if (link.arg === "functions:log") {
-        url = `https://console.developers.google.com/logs/viewer?resource=cloudfunctions.googleapis.com&project=${options.project}`;
-      } else {
-        throw new FirebaseError(`Unable to determine URL for link: ${link}`);
-      }
-
-      if (link.arg !== linkName) {
-        logger.info(
-          `${clc.bold.cyan("Tip:")} You can also run ${clc.bold.underline(
-            `firebase open ${link.arg}`
-          )}`
-        );
-        logger.info();
-      }
-      logger.info(`Opening ${clc.bold(link.name)} link in your default browser:`);
-      logger.info(clc.bold.underline(url));
-
-      open(url);
+  .action(async (linkName: string, options: any): Promise<void> => {
+    let link = _.find(LINKS, { arg: linkName });
+    if (linkName && !link) {
+      throw new FirebaseError(
+        "Unrecognized link name. Valid links are:\n\n" + _.map(LINKS, "arg").join("\n")
+      );
     }
-  );
+
+    if (!link) {
+      const name = await promptOnce({
+        type: "list",
+        message: "What link would you like to open?",
+        choices: CHOICES,
+      });
+      link = _.find(LINKS, { name });
+    }
+    if (!link) {
+      throw new FirebaseError(
+        "Unrecognized link name. Valid links are:\n\n" + _.map(LINKS, "arg").join("\n")
+      );
+    }
+
+    let url;
+    if (link.consolePath) {
+      url = utils.consoleUrl(options.project, link.consolePath);
+    } else if (link.url) {
+      url = link.url;
+    } else if (link.arg === "hosting:site") {
+      url = utils.addSubdomain(api.hostingOrigin, options.instance);
+    } else if (link.arg === "functions:log") {
+      url = `https://console.developers.google.com/logs/viewer?resource=cloudfunctions.googleapis.com&project=${options.project}`;
+    } else {
+      throw new FirebaseError(`Unable to determine URL for link: ${link}`);
+    }
+
+    if (link.arg !== linkName) {
+      logger.info(
+        `${clc.bold.cyan("Tip:")} You can also run ${clc.bold.underline(
+          `firebase open ${link.arg}`
+        )}`
+      );
+      logger.info();
+    }
+    logger.info(`Opening ${clc.bold(link.name)} link in your default browser:`);
+    logger.info(clc.bold.underline(url));
+
+    open(url);
+  });

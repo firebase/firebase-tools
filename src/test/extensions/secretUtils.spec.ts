@@ -13,8 +13,7 @@ const TEST_INSTANCE: extensionsApi.ExtensionInstance = {
   state: "ACTIVE",
   serviceAccountEmail: "service@account.com",
   config: {
-    name:
-      "projects/invader-zim/instances/image-resizer/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
+    name: "projects/invader-zim/instances/image-resizer/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
     createTime: "2019-05-19T00:20:10.416947Z",
     source: {
       name: "",

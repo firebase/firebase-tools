@@ -1,3 +1,4 @@
+import * as path from "path";
 import * as clc from "cli-color";
 
 import { FirebaseError } from "../../error";
@@ -10,16 +11,13 @@ import * as utils from "../../utils";
 
 /**
  * Check that functions directory exists.
- * @param options options object. In prod is an Options; in tests can just be {cwd: string}
- * @param sourceDirName Relative path to source directory.
+ * @param sourceDir Absolute path to source directory.
+ * @param projectDir Absolute path to project directory.
  * @throws { FirebaseError } Functions directory must exist.
  */
-export function functionsDirectoryExists(
-  options: { cwd: string; configPath?: string },
-  sourceDirName: string
-): void {
-  // Note(inlined): What's the difference between this and options.config.path(sourceDirName)?
-  if (!fsutils.dirExistsSync(projectPath.resolveProjectPath(options, sourceDirName))) {
+export function functionsDirectoryExists(sourceDir: string, projectDir: string): void {
+  if (!fsutils.dirExistsSync(sourceDir)) {
+    const sourceDirName = path.relative(projectDir, sourceDir);
     const msg =
       `could not deploy functions because the ${clc.bold('"' + sourceDirName + '"')} ` +
       `directory was not found. Please create it or specify a different source directory in firebase.json`;
