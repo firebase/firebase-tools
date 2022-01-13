@@ -39,6 +39,7 @@ export interface SecretVersion {
 }
 
 interface CreateSecretRequest {
+  name: string;
   replication: { automatic: {} };
   labels: Record<string, string>;
 }
@@ -130,6 +131,7 @@ export async function createSecret(
   const createRes = await client.post<CreateSecretRequest, Secret>(
     `projects/${projectId}/secrets?secretId=${name}`,
     {
+      name,
       replication: {
         automatic: {},
       },
@@ -139,8 +141,11 @@ export async function createSecret(
   return parseSecretResourceName(createRes.body.name);
 }
 
-export async function addVersion(secret: Secret, payloadData: string): Promise<SecretVersion> {
-  const res = await client.post<AddVersionRequest, { name: string }>(
+export async function addVersion(
+  secret: Secret,
+  payloadData: string
+): Promise<Required<SecretVersion>> {
+  const res = await client.post<AddVersionRequest, { name: string, state: SecretVersionState }>(
     `projects/${secret.projectId}/secrets/${secret.name}:addVersion`,
     {
       payload: {
@@ -148,7 +153,10 @@ export async function addVersion(secret: Secret, payloadData: string): Promise<S
       },
     }
   );
-  return parseSecretVersionResourceName(res.body.name);
+  return {
+    ...parseSecretVersionResourceName(res.body.name),
+    state: res.body.state,
+  };
 }
 
 export async function getIamPolicy(secret: Secret): Promise<iam.Policy> {
