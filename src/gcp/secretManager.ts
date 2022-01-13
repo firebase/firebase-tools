@@ -141,6 +141,20 @@ export async function createSecret(
   return parseSecretResourceName(createRes.body.name);
 }
 
+export async function patchSecret(
+  projectId: string,
+  name: string,
+  labels: Record<string, string>
+): Promise<Secret> {
+  const fullName = `projects/${projectId}/secrets/${name}`;
+  const res = await client.patch<Omit<Secret, "projectId">, Secret>(
+    fullName,
+    { name: fullName, labels },
+    { queryParams: { updateMask: "labels" } } // Only allow patching labels for now.
+  );
+  return parseSecretResourceName(res.body.name);
+}
+
 export async function addVersion(
   secret: Secret,
   payloadData: string

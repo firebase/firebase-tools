@@ -10,6 +10,7 @@ import {
   addVersion,
   createSecret,
   getSecret,
+  patchSecret,
   Secret,
   toSecretVersionResourceName,
 } from "../gcp/secretManager";
@@ -17,6 +18,7 @@ import { FirebaseError } from "../error";
 import { logError } from "../emulator/auth/utils";
 import clc from "cli-color";
 import * as utils from "../utils";
+import { labels } from "../deploymentTool";
 
 export default new Command("functions:secret:set <KEY>")
   .description("Create or update a secret to be used in Cloud Functions for Firebase")
@@ -63,17 +65,14 @@ function validateKey(key: string, options: Options) {
   return key.toUpperCase();
 }
 
-// Check if secret already exists
-// If secret already exits...
-// .. check if secret is Firebase managed
-// .. promopt to have FB manage it.
 async function ensureSecret(projectId: string, name: string, options: Options): Promise<Secret> {
   try {
     const secret = await getSecret(projectId, name);
     if (!Object.keys(secret.labels || []).includes("firebase-managed")) {
       if (!options.force) {
         logWarning(
-          "Your secret is not managed by Firebase. Firebase managed secrets are automatically pruned to reduce your monthly cost for Secret Manager. "
+          "Your secret is not managed by Firebase. " +
+            "Firebase managed secrets are automatically pruned to reduce your monthly cost for using Secret Manager. "
         );
         const confirm = await promptOnce(
           {
@@ -85,7 +84,7 @@ async function ensureSecret(projectId: string, name: string, options: Options): 
           options
         );
         if (confirm) {
-          return utils.reject("Command aborted.", { exit: 1 });
+          patchSecret(projectId, secret.name, { ...secret.labels, "firebase-managed": "true" });
         }
       }
     }
