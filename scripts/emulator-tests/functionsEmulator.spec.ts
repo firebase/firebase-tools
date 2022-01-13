@@ -4,7 +4,11 @@ import * as sinon from "sinon";
 import * as supertest from "supertest";
 
 import { SignatureType } from "../../src/emulator/functionsEmulatorShared";
-import { FunctionsEmulator, InvokeRuntimeOpts } from "../../src/emulator/functionsEmulator";
+import {
+  EmulatableBackend,
+  FunctionsEmulator,
+  InvokeRuntimeOpts,
+} from "../../src/emulator/functionsEmulator";
 import { Emulators } from "../../src/emulator/types";
 import { RuntimeWorker } from "../../src/emulator/functionsRuntimeWorker";
 import { TIMEOUT_LONG, TIMEOUT_MED, MODULE_ROOT } from "./fixtures";
@@ -28,62 +32,73 @@ if ((process.env.DEBUG || "").toLowerCase().includes("spec")) {
 
 const functionsEmulator = new FunctionsEmulator({
   projectId: "fake-project-id",
-  functionsDir: MODULE_ROOT,
+  emulatableBackends: [
+    {
+      functionsDir: MODULE_ROOT,
+      env: {},
+    },
+  ],
   quiet: true,
 });
 
-// This is normally discovered in FunctionsEmulator#start()
-functionsEmulator.nodeBinary = process.execPath;
+const testBackend = {
+  functionsDir: MODULE_ROOT,
+  env: {},
+  nodeBinary: process.execPath,
+};
 
-functionsEmulator.setTriggersForTesting([
-  {
-    platform: "gcfv1",
-    name: "function_id",
-    id: "us-central1-function_id",
-    region: "us-central1",
-    entryPoint: "function_id",
-    httpsTrigger: {},
-    labels: {},
-  },
-  {
-    platform: "gcfv1",
-    name: "function_id",
-    id: "europe-west2-function_id",
-    region: "europe-west2",
-    entryPoint: "function_id",
-    httpsTrigger: {},
-    labels: {},
-  },
-  {
-    platform: "gcfv1",
-    name: "function_id",
-    id: "europe-west3-function_id",
-    region: "europe-west3",
-    entryPoint: "function_id",
-    httpsTrigger: {},
-    labels: {},
-  },
-  {
-    platform: "gcfv1",
-    name: "callable_function_id",
-    id: "us-central1-callable_function_id",
-    region: "us-central1",
-    entryPoint: "callable_function_id",
-    httpsTrigger: {},
-    labels: {
-      "deployment-callable": "true",
+functionsEmulator.setTriggersForTesting(
+  [
+    {
+      platform: "gcfv1",
+      name: "function_id",
+      id: "us-central1-function_id",
+      region: "us-central1",
+      entryPoint: "function_id",
+      httpsTrigger: {},
+      labels: {},
     },
-  },
-  {
-    platform: "gcfv1",
-    name: "nested-function_id",
-    id: "us-central1-nested-function_id",
-    region: "us-central1",
-    entryPoint: "nested.function_id",
-    httpsTrigger: {},
-    labels: {},
-  },
-]);
+    {
+      platform: "gcfv1",
+      name: "function_id",
+      id: "europe-west2-function_id",
+      region: "europe-west2",
+      entryPoint: "function_id",
+      httpsTrigger: {},
+      labels: {},
+    },
+    {
+      platform: "gcfv1",
+      name: "function_id",
+      id: "europe-west3-function_id",
+      region: "europe-west3",
+      entryPoint: "function_id",
+      httpsTrigger: {},
+      labels: {},
+    },
+    {
+      platform: "gcfv1",
+      name: "callable_function_id",
+      id: "us-central1-callable_function_id",
+      region: "us-central1",
+      entryPoint: "callable_function_id",
+      httpsTrigger: {},
+      labels: {
+        "deployment-callable": "true",
+      },
+    },
+    {
+      platform: "gcfv1",
+      name: "nested-function_id",
+      id: "us-central1-nested-function_id",
+      region: "us-central1",
+      entryPoint: "nested.function_id",
+      httpsTrigger: {},
+      labels: {},
+    },
+  ],
+  testBackend
+);
 
 // TODO(samstern): This is an ugly way to just override the InvokeRuntimeOpts on each call
 const startFunctionRuntime = functionsEmulator.startFunctionRuntime.bind(functionsEmulator);
@@ -92,13 +107,14 @@ function useFunctions(triggers: () => {}): void {
 
   // eslint-disable-next-line @typescript-eslint/unbound-method
   functionsEmulator.startFunctionRuntime = (
+    backend: EmulatableBackend,
     triggerId: string,
     targetName: string,
     triggerType: SignatureType,
     proto?: any,
     runtimeOpts?: InvokeRuntimeOpts
   ): RuntimeWorker => {
-    return startFunctionRuntime(triggerId, targetName, triggerType, proto, {
+    return startFunctionRuntime(testBackend, triggerId, targetName, triggerType, proto, {
       nodeBinary: process.execPath,
       serializedTriggers,
     });

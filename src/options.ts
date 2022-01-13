@@ -17,6 +17,7 @@ export interface Options {
   projectAlias?: string;
   projectId?: string;
   projectNumber?: string;
+  projectRoot?: string;
   account?: string;
   json: boolean;
   nonInteractive: boolean;

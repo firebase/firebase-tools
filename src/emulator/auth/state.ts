@@ -414,9 +414,7 @@ export abstract class ProjectState {
     return refreshToken;
   }
 
-  validateRefreshToken(
-    refreshToken: string
-  ):
+  validateRefreshToken(refreshToken: string):
     | {
         user: UserInfo;
         provider: string;

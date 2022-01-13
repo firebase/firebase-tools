@@ -154,17 +154,15 @@ describe("cloudfunctions", () => {
         ...ENDPOINT,
         taskQueueTrigger: {},
       };
-      const taskQueueFunction: Omit<
-        cloudfunctions.CloudFunction,
-        cloudfunctions.OutputOnlyFields
-      > = {
-        ...CLOUD_FUNCTION,
-        sourceUploadUrl: UPLOAD_URL,
-        httpsTrigger: {},
-        labels: {
-          "deployment-taskqueue": "true",
-        },
-      };
+      const taskQueueFunction: Omit<cloudfunctions.CloudFunction, cloudfunctions.OutputOnlyFields> =
+        {
+          ...CLOUD_FUNCTION,
+          sourceUploadUrl: UPLOAD_URL,
+          httpsTrigger: {},
+          labels: {
+            "deployment-taskqueue": "true",
+          },
+        };
 
       expect(cloudfunctions.functionFromEndpoint(taskEndpoint, UPLOAD_URL)).to.deep.equal(
         taskQueueFunction
