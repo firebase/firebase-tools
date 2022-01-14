@@ -143,7 +143,7 @@ export async function addVersion(
   secret: Secret,
   payloadData: string
 ): Promise<Required<SecretVersion>> {
-  const res = await client.post<AddVersionRequest, { name: string, state: SecretVersionState }>(
+  const res = await client.post<AddVersionRequest, { name: string; state: SecretVersionState }>(
     `projects/${secret.projectId}/secrets/${secret.name}:addVersion`,
     {
       payload: {
