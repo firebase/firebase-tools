@@ -15,24 +15,34 @@ function isFirebaseManaged(secret: Secret): boolean {
 
 /**
  * Return labels to mark secret as managed by Firebase.
+ * @internal
  */
-function labels(): Record<string, string> {
+export function labels(): Record<string, string> {
   return { [FIREBASE_MANGED]: "true" };
+}
+
+function transformKey(key: string): string {
+  return key
+    .replace("-", "_")
+    .replace(".", "_")
+    .replace(/([a-z])([A-Z])/g, "$1_$2")
+    .toUpperCase();
 }
 
 /**
  * Validate and transform keys to match the convention recommended by Firebase.
  */
 export function ensureValidKey(key: string, options: Options): string {
-  if (key.toUpperCase() !== key) {
+  const transformedKey = transformKey(key);
+  if (transformedKey !== key) {
     if (options.force) {
       throw new FirebaseError("Secret key must be in UPPERCASE.");
     }
+    logWarning(
+      `By convention, secret key must be in UPPER_SNAKE_CASE. Using ${transformedKey} as key instead.`
+    );
   }
-  logWarning(
-    `By convention, secret key must be in UPPERCASE. Using ${key.toUpperCase()} as key instead.`
-  );
-  return key.toUpperCase();
+  return transformedKey;
 }
 
 /**
@@ -45,7 +55,7 @@ export async function ensureSecret(
 ): Promise<Secret> {
   try {
     const secret = await getSecret(projectId, name);
-    if (isFirebaseManaged(secret)) {
+    if (!isFirebaseManaged(secret)) {
       if (!options.force) {
         logWarning(
           "Your secret is not managed by Firebase. " +
@@ -61,7 +71,7 @@ export async function ensureSecret(
           options
         );
         if (confirm) {
-          patchSecret(projectId, secret.name, {
+          return patchSecret(projectId, secret.name, {
             ...secret.labels,
             ...labels(),
           });
