@@ -5,7 +5,6 @@ import { sync as rimraf } from "rimraf";
 import { expect } from "chai";
 
 import * as env from "../../functions/env";
-import { previews } from "../../previews";
 
 describe("functions/env", () => {
   describe("parse", () => {
@@ -248,16 +247,12 @@ FOO=foo
         fs.writeFileSync(path.join(sourceDir, filename), data);
       }
     };
-    const projectInfo = { projectId: "my-project", projectAlias: "dev" };
+    const projectInfo: Omit<env.UserEnvsOpts, "functionsSource"> = {
+      projectId: "my-project",
+      projectAlias: "dev",
+      disabled: false,
+    };
     let tmpdir: string;
-
-    before(() => {
-      previews.dotenv = true;
-    });
-
-    after(() => {
-      previews.dotenv = false;
-    });
 
     beforeEach(() => {
       tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), "test"));
@@ -272,6 +267,16 @@ FOO=foo
 
     it("loads nothing if .env files are missing", () => {
       expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({});
+    });
+
+    it("loads nothing if explictly disabled", () => {
+      createEnvFiles(tmpdir, {
+        ".env": "FOO=foo\nBAR=bar",
+      });
+
+      expect(
+        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir, disabled: true })
+      ).to.be.deep.equal({});
     });
 
     it("loads envs from .env file", () => {

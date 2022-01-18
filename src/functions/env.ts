@@ -213,6 +213,7 @@ function findEnvfiles(
 export interface UserEnvsOpts {
   functionsSource: string;
   projectId: string;
+  disabled: boolean;
   projectAlias?: string;
   isEmulator?: boolean;
 }
@@ -250,9 +251,10 @@ export function loadUserEnvs({
   functionsSource,
   projectId,
   projectAlias,
+  disabled,
   isEmulator,
 }: UserEnvsOpts): Record<string, string> {
-  if (!previews.dotenv) {
+  if (disabled) {
     return {};
   }
 

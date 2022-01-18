@@ -465,6 +465,7 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
       host: functionsAddr.host,
       port: functionsAddr.port,
       debugPort: inspectFunctions,
+      disableDotenv: options.config.get("functions.disableDotenv") ?? false,
     });
     await startEmulator(functionsEmulator);
   }
