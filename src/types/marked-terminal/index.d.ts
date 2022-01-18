@@ -1,5 +1,5 @@
 declare module "marked-terminal" {
-    import marked = require("marked");
+  import marked from "marked";
 
   class TerminalRenderer extends marked.Renderer {
     constructor(options?: marked.MarkedOptions);
