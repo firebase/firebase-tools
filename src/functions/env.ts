@@ -45,11 +45,11 @@ const LINE_RE = new RegExp(
   "^" +                      // begin line
   "\\s*" +                   //   leading whitespaces
   "(\\w+)" +                 //   key
-  "\\s*=\\s*" +              //   separator (=)
+  "\\s*=[\\f\\t\\v]*" +              //   separator (=)
   "(" +                      //   begin optional value
   "\\s*'(?:\\\\'|[^'])*'|" + //     single quoted or
   '\\s*"(?:\\\\"|[^"])*"|' + //     double quoted or
-  "[^#\\r\\n]+" +            //     unquoted
+  "[^#\\r\\n]*" +           //     unquoted
   ")?" +                     //   end optional value
   "\\s*" +                   //   trailing whitespaces
   "(?:#[^\\n]*)?" +          //   optional comment
@@ -109,6 +109,7 @@ export function parse(data: string): ParseResult {
         v = v.replace(/\\([\\'"])/g, "$1");
       }
     }
+
     envs[k] = v;
   }
 
@@ -170,7 +171,7 @@ function parseStrict(data: string): Record<string, string> {
   for (const key of Object.keys(envs)) {
     try {
       validateKey(key);
-    } catch (err) {
+    } catch (err: any) {
       logger.debug(`Failed to validate key ${key}: ${err}`);
       if (err instanceof KeyValidationError) {
         validationErrors.push(err);
@@ -275,7 +276,7 @@ export function loadUserEnvs({
     try {
       const data = fs.readFileSync(path.join(functionsSource, f), "utf8");
       envs = { ...envs, ...parseStrict(data) };
-    } catch (err) {
+    } catch (err: any) {
       throw new FirebaseError(`Failed to load environment variables from ${f}.`, {
         exit: 2,
         children: err.children?.length > 0 ? err.children : [err],

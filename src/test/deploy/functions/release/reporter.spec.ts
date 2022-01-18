@@ -132,6 +132,7 @@ describe("reporter", () => {
 
       await reporter.logAndTrackDeployStats(summary);
 
+      expect(trackStub).to.have.been.calledWith("functions_region_count", "1", 1);
       expect(trackStub).to.have.been.calledWith("function_deploy_success", "v1.https", 2_000);
       expect(trackStub).to.have.been.calledWith("function_deploy_failure", "v1.https", 1_000);
       // Aborts aren't tracked because they would throw off timing metrics

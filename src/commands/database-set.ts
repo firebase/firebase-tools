@@ -19,7 +19,7 @@ import * as utils from "../utils";
 export default new Command("database:set <path> [infile]")
   .description("store JSON data at the specified path via STDIN, arg, or file")
   .option("-d, --data <data>", "specify escaped JSON directly")
-  .option("-y, --confirm", "pass this option to bypass confirmation prompt")
+  .option("-f, --force", "pass this option to bypass confirmation prompt")
   .option(
     "--instance <instance>",
     "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
@@ -39,7 +39,7 @@ export default new Command("database:set <path> [infile]")
     const confirm = await promptOnce(
       {
         type: "confirm",
-        name: "confirm",
+        name: "force",
         default: false,
         message: "You are about to overwrite all data at " + clc.cyan(dbPath) + ". Are you sure?",
       },
@@ -63,7 +63,7 @@ export default new Command("database:set <path> [infile]")
         path: dbJsonURL.pathname,
         body: inStream,
       });
-    } catch (err) {
+    } catch (err: any) {
       logger.debug(err);
       throw new FirebaseError(`Unexpected error while setting data: ${err}`, { exit: 2 });
     }

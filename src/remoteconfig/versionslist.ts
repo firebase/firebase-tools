@@ -24,7 +24,7 @@ export async function getVersions(projectId: string, maxResults = 10): Promise<L
       timeout: TIMEOUT,
     });
     return response.body;
-  } catch (err) {
+  } catch (err: any) {
     logger.debug(err.message);
     throw new FirebaseError(
       `Failed to get Remote Config template versions for Firebase project ${projectId}. `,

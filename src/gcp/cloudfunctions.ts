@@ -185,7 +185,7 @@ export async function generateUploadUrl(projectId: string, location: string): Pr
     });
     const responseBody = JSON.parse(res.body);
     return responseBody.uploadUrl;
-  } catch (err) {
+  } catch (err: any) {
     logger.info(
       "\n\nThere was an issue deploying your functions. Verify that your project has a Google App Engine instance setup at https://console.cloud.google.com/appengine and try again. If this issue persists, please contact support."
     );
@@ -205,9 +205,10 @@ export async function createFunction(
   const endpoint = `/${API_VERSION}/${apiPath}`;
 
   try {
-    const headers = previews.artifactregistry
-      ? { "X-Firebase-Artifact-Registry": "optin" }
-      : undefined;
+    const headers: Record<string, string> = {};
+    if (previews.artifactregistry) {
+      headers["X-Firebase-Artifact-Registry"] = "optin";
+    }
     const res = await api.request("POST", endpoint, {
       headers,
       auth: true,
@@ -219,7 +220,7 @@ export async function createFunction(
       type: "create",
       done: false,
     };
-  } catch (err) {
+  } catch (err: any) {
     throw functionsOpLogReject(cloudFunction.name, "create", err);
   }
 }
@@ -249,7 +250,7 @@ export async function setIamPolicy(options: IamOptions): Promise<void> {
       },
       origin: api.functionsOrigin,
     });
-  } catch (err) {
+  } catch (err: any) {
     throw new FirebaseError(`Failed to set the IAM Policy on the function ${options.name}`, {
       original: err,
     });
@@ -275,7 +276,7 @@ export async function getIamPolicy(fnName: string): Promise<GetIamPolicy> {
       auth: true,
       origin: api.functionsOrigin,
     });
-  } catch (err) {
+  } catch (err: any) {
     throw new FirebaseError(`Failed to get the IAM Policy on the function ${fnName}`, {
       original: err,
     });
@@ -373,9 +374,10 @@ export async function updateFunction(
   // Failure policy is always an explicit policy and is only signified by the presence or absence of
   // a protobuf.Empty value, so we have to manually add it in the missing case.
   try {
-    const headers = previews.artifactregistry
-      ? { "X-Firebase-Artifact-Registry": "optin" }
-      : undefined;
+    const headers: Record<string, string> = {};
+    if (previews.artifactregistry) {
+      headers["X-Firebase-Artifact-Registry"] = "optin";
+    }
     const res = await api.request("PATCH", endpoint, {
       headers,
       qs: {
@@ -390,7 +392,7 @@ export async function updateFunction(
       name: res.body.name,
       type: "update",
     };
-  } catch (err) {
+  } catch (err: any) {
     throw functionsOpLogReject(cloudFunction.name, "update", err);
   }
 }
@@ -411,7 +413,7 @@ export async function deleteFunction(name: string): Promise<Operation> {
       name: res.body.name,
       type: "delete",
     };
-  } catch (err) {
+  } catch (err: any) {
     throw functionsOpLogReject(name, "delete", err);
   }
 }
@@ -439,7 +441,7 @@ async function list(projectId: string, region: string): Promise<ListFunctionsRes
       functions: res.body.functions || [],
       unreachable: res.body.unreachable || [],
     };
-  } catch (err) {
+  } catch (err: any) {
     logger.debug(`[functions] failed to list functions for ${projectId}`);
     logger.debug(`[functions] ${err?.message}`);
     throw new FirebaseError(`Failed to list functions for ${projectId}`, {

@@ -66,7 +66,7 @@ export class CLIProcess {
       return Promise.resolve();
     }
 
-    const stopped = new Promise((resolve) => {
+    const stopped = new Promise<void>((resolve) => {
       p.once("exit", (/* exitCode, signal */) => {
         this.process = undefined;
         resolve();

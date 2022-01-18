@@ -13,7 +13,7 @@ import * as _ from "lodash";
 
 module.exports = new Command("database:remove <path>")
   .description("remove data from your Firebase at the specified path")
-  .option("-y, --confirm", "pass this option to bypass confirmation prompt")
+  .option("-f, --force", "pass this option to bypass confirmation prompt")
   .option(
     "--instance <instance>",
     "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
@@ -31,7 +31,7 @@ module.exports = new Command("database:remove <path>")
     const confirm = await promptOnce(
       {
         type: "confirm",
-        name: "confirm",
+        name: "force",
         default: false,
         message: "You are about to remove all data at " + clc.cyan(databaseUrl) + ". Are you sure?",
       },

@@ -59,7 +59,7 @@ export function registerHandlers(
           return res.status(200).json({
             authEmulator: { success: `The email has been successfully reset.`, email },
           });
-        } catch (e) {
+        } catch (e: any) {
           if (
             e instanceof NotImplementedError ||
             (e instanceof BadRequestError && e.message === "INVALID_OOB_CODE")
@@ -127,7 +127,7 @@ export function registerHandlers(
               authEmulator: { success: `The email has been successfully verified.`, email },
             });
           }
-        } catch (e) {
+        } catch (e: any) {
           if (
             e instanceof NotImplementedError ||
             (e instanceof BadRequestError && e.message === "INVALID_OOB_CODE")
@@ -201,7 +201,7 @@ export function registerHandlers(
           <span class="mdc-list-item__text"><span class="mdc-list-item__primary-text">${
             info.displayName || "(No display name)"
           }</span>
-          <span class="mdc-list-item__secondary-text fallback-secondary-text">${
+          <span class="mdc-list-item__secondary-text fallback-secondary-text" id="reuse-email">${
             info.email || ""
           }</span>
       </li>`

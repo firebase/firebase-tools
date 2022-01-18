@@ -107,7 +107,7 @@ export function convertKey(configKey: string, prefix: string): string {
   let envKey = baseKey;
   try {
     env.validateKey(envKey);
-  } catch (err) {
+  } catch (err: any) {
     if (err instanceof env.KeyValidationError) {
       envKey = prefix + envKey;
       env.validateKey(envKey);
@@ -127,7 +127,7 @@ export function configToEnv(configs: Record<string, unknown>, prefix: string): C
     try {
       const envKey = convertKey(configKey, prefix);
       success.push({ origKey: configKey, newKey: envKey, value: value as string });
-    } catch (err) {
+    } catch (err: any) {
       if (err instanceof env.KeyValidationError) {
         errors.push({
           origKey: configKey,

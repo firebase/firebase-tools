@@ -115,7 +115,7 @@ export async function doSetup(setup: any, config: any, options: any): Promise<vo
   logger.info();
 
   const projectFromRcFile = _.get(setup.rcfile, "projects.default");
-  if (projectFromRcFile) {
+  if (projectFromRcFile && !options.project) {
     utils.logBullet(`.firebaserc already has a default project, using ${projectFromRcFile}.`);
     // we still need to get project info in case user wants to init firestore or storage, which
     // require a resource location:
@@ -128,6 +128,7 @@ export async function doSetup(setup: any, config: any, options: any): Promise<vo
   let projectMetaData;
   // If the user presented a project with `--project`, try to fetch that project.
   if (options.project) {
+    logger.debug(`Using project from CLI flag: ${options.project}`);
     projectMetaData = await getFirebaseProject(options.project);
   } else {
     projectMetaData = await projectChoicePrompt(options);

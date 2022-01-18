@@ -18,7 +18,7 @@ module.exports = new Command("appdistribution:testers:remove [emails...]")
     try {
       utils.logBullet(`Deleting ${emailsArr.length} testers from project`);
       deleteResponse = await appDistroClient.removeTesters(projectName, emailsArr);
-    } catch (err) {
+    } catch (err: any) {
       throw new FirebaseError(`Failed to remove testers ${err}`);
     }
 

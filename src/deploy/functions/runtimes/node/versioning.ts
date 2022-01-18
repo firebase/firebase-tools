@@ -53,7 +53,7 @@ export function getFunctionsSDKVersion(sourceDir: string): string | void {
     }
     const output: NpmListResult = JSON.parse(child.stdout);
     return _.get(output, ["dependencies", "firebase-functions", "version"]);
-  } catch (e) {
+  } catch (e: any) {
     logger.debug("getFunctionsSDKVersion encountered error:", e);
     return;
   }
@@ -110,7 +110,7 @@ export function checkFunctionsSDKVersion(currentVersion: string): void {
           "Please note that there will be breaking changes when you upgrade."
       );
     }
-  } catch (e) {
+  } catch (e: any) {
     logger.debug("checkFunctionsSDKVersion encountered error:", e);
     return;
   }

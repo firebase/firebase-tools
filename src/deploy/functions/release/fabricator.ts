@@ -51,11 +51,11 @@ export interface FabricatorArgs {
   storage?: Record<string, gcfV2.StorageSource>;
 }
 
-const rethrowAs = <T>(endpoint: backend.Endpoint, op: reporter.OperationType) => (
-  err: unknown
-): T => {
-  throw new reporter.DeploymentError(endpoint, op, err);
-};
+const rethrowAs =
+  <T>(endpoint: backend.Endpoint, op: reporter.OperationType) =>
+  (err: unknown): T => {
+    throw new reporter.DeploymentError(endpoint, op, err);
+  };
 
 /** Fabricators make a customer's backend match a spec by applying a plan. */
 export class Fabricator {
@@ -79,13 +79,11 @@ export class Fabricator {
       totalTime: 0,
       results: [],
     };
-    const deployRegions = Object.values(plan).map(
-      async (changes): Promise<void> => {
-        const results = await this.applyRegionalChanges(changes);
-        summary.results.push(...results);
-        return;
-      }
-    );
+    const deployRegions = Object.values(plan).map(async (changes): Promise<void> => {
+      const results = await this.applyRegionalChanges(changes);
+      summary.results.push(...results);
+      return;
+    });
     const promiseResults = await utils.allSettled(deployRegions);
 
     const errs = promiseResults
@@ -116,7 +114,7 @@ export class Fabricator {
       try {
         await fn();
         this.logOpSuccess(op, endpoint);
-      } catch (err) {
+      } catch (err: any) {
         result.error = err as Error;
       }
       result.durationMs = timer.stop();
@@ -172,7 +170,10 @@ export class Fabricator {
   }
 
   async updateEndpoint(update: planner.EndpointUpdate, scraper: SourceTokenScraper): Promise<void> {
-    update.endpoint.labels = { ...update.endpoint.labels, ...deploymentTool.labels() };
+    // GCF team wants us to stop setting the deployment-tool labels on updates for gen 2
+    if (update.deleteAndRecreate || update.endpoint.platform !== "gcfv2") {
+      update.endpoint.labels = { ...update.endpoint.labels, ...deploymentTool.labels() };
+    }
     if (update.deleteAndRecreate) {
       await this.deleteEndpoint(update.deleteAndRecreate);
       await this.createEndpoint(update.endpoint, scraper);
@@ -205,6 +206,12 @@ export class Fabricator {
       throw new Error("Precondition failed");
     }
     const apiFunction = gcf.functionFromEndpoint(endpoint, this.sourceUrl);
+    // As a general security practice and way to smooth out the upgrade path
+    // for GCF gen 2, we are enforcing that all new GCFv1 deploys will require
+    // HTTPS
+    if (apiFunction.httpsTrigger) {
+      apiFunction.httpsTrigger.securityLevel = "SECURE_ALWAYS";
+    }
     apiFunction.sourceToken = await scraper.tokenPromise();
     const resultFunction = await this.functionExecutor
       .run(async () => {
@@ -258,7 +265,7 @@ export class Fabricator {
         .run(async () => {
           try {
             await pubsub.createTopic({ name: topic });
-          } catch (err) {
+          } catch (err: any) {
             // Pub/Sub uses HTTP 409 (CONFLICT) with a status message of
             // ALREADY_EXISTS if the topic already exists.
             if (err.status === 409) {
