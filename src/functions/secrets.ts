@@ -36,7 +36,7 @@ export function ensureValidKey(key: string, options: Options): string {
   const transformedKey = transformKey(key);
   if (transformedKey !== key) {
     if (options.force) {
-      throw new FirebaseError("Secret key must be in UPPERCASE.");
+      throw new FirebaseError("Secret key must be in UPPER_SNAKE_CASE.");
     }
     logWarning(
       `By convention, secret key must be in UPPER_SNAKE_CASE. Using ${transformedKey} as key instead.`

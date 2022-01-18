@@ -9,8 +9,8 @@ import { logSuccess } from "../utils";
 import { needProjectId } from "../projectUtils";
 import { addVersion, toSecretVersionResourceName } from "../gcp/secretManager";
 
-export default new Command("functions:secret:set <KEY>")
-  .description("Create or update a secret to be used in Cloud Functions for Firebase")
+export default new Command("functions:secrets:set <KEY>")
+  .description("Create or update a secret for use in Cloud Functions for Firebase")
   .withForce(
     "Does not ensure input keys are valid or upgrade existing secrets to have Firebase manage them."
   )
