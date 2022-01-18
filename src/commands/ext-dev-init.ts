@@ -1,6 +1,5 @@
 import * as fs from "fs";
 import * as path from "path";
-// `marked` is an ES module, needs to be imported as such:
 import marked = require("marked");
 import TerminalRenderer = require("marked-terminal");
 

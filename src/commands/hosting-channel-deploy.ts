@@ -19,7 +19,6 @@ import { logger } from "../logger";
 import * as requireConfig from "../requireConfig";
 import { DEFAULT_DURATION, calculateChannelExpireTTL } from "../hosting/expireUtils";
 import { logLabeledSuccess, datetimeString, logLabeledWarning, consoleUrl } from "../utils";
-// `marked` is an ES module, needs to be imported as such:
 import marked = require("marked");
 import { requireHostingSite } from "../requireHostingSite";
 

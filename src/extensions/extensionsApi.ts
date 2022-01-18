@@ -1,7 +1,6 @@
 import * as yaml from "js-yaml";
 import * as _ from "lodash";
 import * as clc from "cli-color";
-// `marked` is an ES module, needs to be imported as such:
 import marked = require("marked");
 import * as api from "../api";
 import * as apiv2 from "../apiv2";

@@ -2,7 +2,6 @@ import { getFirebaseProject } from "./management/projects";
 import { RC } from "./rc";
 
 import * as clc from "cli-color";
-// `marked` is an ES module, needs to be imported as such:
 import marked = require("marked");
 
 const { FirebaseError } = require("./error");

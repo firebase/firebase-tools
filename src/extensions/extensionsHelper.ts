@@ -2,7 +2,6 @@ import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as ora from "ora";
 import * as semver from "semver";
-// `marked` is an ES module, needs to be imported as such:
 import marked = require("marked");
 
 const TerminalRenderer = require("marked-terminal");

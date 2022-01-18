@@ -1,6 +1,5 @@
 import * as clc from "cli-color";
 import * as semver from "semver";
-// `marked` is an ES module, needs to be imported as such:
 import marked = require("marked");
 
 import { FirebaseError } from "../error";
