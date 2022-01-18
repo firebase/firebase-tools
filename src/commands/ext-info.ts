@@ -11,7 +11,8 @@ import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 
-import * as marked from "marked";
+// `marked` is an ES module, needs to be imported as such:
+import marked = require("marked");
 import TerminalRenderer = require("marked-terminal");
 
 const FUNCTION_TYPE_REGEX = /\..+\.function/;

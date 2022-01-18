@@ -1,4 +1,5 @@
-import * as marked from "marked";
+// `marked` is an ES module, needs to be imported as such:
+import marked = require("marked");
 import TerminalRenderer = require("marked-terminal");
 
 import { FirebaseError } from "../error";

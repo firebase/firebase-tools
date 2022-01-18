@@ -13,7 +13,8 @@ import {
 } from "../hosting/api";
 import * as utils from "../utils";
 import { requireAuth } from "../requireAuth";
-import * as marked from "marked";
+// `marked` is an ES module, needs to be imported as such:
+import marked = require("marked");
 import { logger } from "../logger";
 
 export default new Command("hosting:clone <source> <targetChannel>")

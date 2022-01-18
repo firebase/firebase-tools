@@ -1,6 +1,7 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
-import * as marked from "marked";
+// `marked` is an ES module, needs to be imported as such:
+import marked = require("marked");
 
 import { Param, ParamOption, ParamType } from "./extensionsApi";
 import * as secretManagerApi from "../gcp/secretManager";

@@ -10,7 +10,8 @@ import { requirePermissions } from "../requirePermissions";
 import { needProjectId } from "../projectUtils";
 import { logger } from "../logger";
 import * as requireConfig from "../requireConfig";
-import * as marked from "marked";
+// `marked` is an ES module, needs to be imported as such:
+import marked = require("marked");
 import { requireHostingSite } from "../requireHostingSite";
 
 const LOG_TAG = "hosting:channel";
