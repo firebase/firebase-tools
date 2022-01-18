@@ -48,6 +48,19 @@ interface AddVersionRequest {
   payload: { data: string };
 }
 
+interface SecretVersionResponse {
+  name: string;
+  state: SecretVersionState;
+}
+
+
+interface AccessSecretVersionResponse {
+  name: string;
+  payload: {
+    data: string;
+  };
+}
+
 const API_VERSION = "v1beta1";
 
 const client = new Client({
@@ -68,18 +81,70 @@ export async function getSecret(projectId: string, name: string): Promise<Secret
   return secret;
 }
 
+export async function getSecretVersions(
+  projectId: string,
+  name: string
+): Promise<Required<SecretVersion[]>> {
+  type Response = { versions: SecretVersionResponse[]; nextPageToken?: string };
+  const secrets: Required<SecretVersion[]> = [];
+  const path = `projects/${projectId}/secrets/${name}/versions`;
+
+  let pageToken = "";
+  while (true) {
+    const opts = pageToken == "" ? {} : { queryParams: { pageToken } };
+    const res = await client.get<Response>(path, opts);
+
+    for (const s of res.body.versions) {
+      secrets.push({
+        ...parseSecretVersionResourceName(s.name),
+        state: s.state,
+      });
+    }
+
+    if (!res.body.nextPageToken) {
+      return secrets;
+    }
+    pageToken = res.body.nextPageToken;
+  }
+}
+
 export async function getSecretVersion(
   projectId: string,
   name: string,
   version: string
 ): Promise<Required<SecretVersion>> {
-  const getRes = await client.get<{ name: string; state: SecretVersionState }>(
+  const getRes = await client.get<SecretVersionResponse>(
     `projects/${projectId}/secrets/${name}/versions/${version}`
   );
   return {
     ...parseSecretVersionResourceName(getRes.body.name),
     state: getRes.body.state,
   };
+}
+
+export async function accessSecretVersion(
+  projectId: string,
+  name: string,
+  version: string
+): Promise<string> {
+  const res = await client.get<AccessSecretVersionResponse>(
+    `projects/${projectId}/secrets/${name}/versions/${version}:access`
+  );
+  return Buffer.from(res.body.payload.data, "base64").toString();
+}
+
+export async function destroySecretVersion(
+  projectId: string,
+  name: string,
+  version: string
+): Promise<void> {
+  if (version === "latest") {
+    const sv = await getSecretVersion(projectId, name, "latest");
+    version = sv.version;
+  }
+  const res = await client.post(
+    `projects/${projectId}/secrets/${name}/versions/${version}:destroy`
+  );
 }
 
 export async function secretExists(projectId: string, name: string): Promise<boolean> {
