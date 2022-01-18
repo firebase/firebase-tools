@@ -32,7 +32,7 @@ export default new Command("ext:configure <extensionInstanceId>")
   ])
   .before(checkMinRequiredVersion, "extMinVersion")
   .action(async (instanceId: string, options: any) => {
-    const spinner = ora.default(
+    const spinner = ora(
       `Configuring ${clc.bold(instanceId)}. This usually takes 3 to 5 minutes...`
     );
     try {
@@ -40,7 +40,7 @@ export default new Command("ext:configure <extensionInstanceId>")
       let existingInstance: extensionsApi.ExtensionInstance;
       try {
         existingInstance = await extensionsApi.getInstance(projectId, instanceId);
-      } catch (err) {
+      } catch (err: any) {
         if (err.status === 404) {
           return utils.reject(
             `No extension instance ${instanceId} found in project ${projectId}.`,
@@ -51,9 +51,8 @@ export default new Command("ext:configure <extensionInstanceId>")
         }
         throw err;
       }
-      const paramSpecWithNewDefaults = paramHelper.getParamsWithCurrentValuesAsDefaults(
-        existingInstance
-      );
+      const paramSpecWithNewDefaults =
+        paramHelper.getParamsWithCurrentValuesAsDefaults(existingInstance);
       const immutableParams = _.remove(paramSpecWithNewDefaults, (param) => {
         return param.immutable || param.param === "LOCATION";
         // TODO: Stop special casing "LOCATION" once all official extensions make it immutable
@@ -97,7 +96,7 @@ export default new Command("ext:configure <extensionInstanceId>")
         )
       );
       return res;
-    } catch (err) {
+    } catch (err: any) {
       if (spinner.isSpinning) {
         spinner.fail();
       }

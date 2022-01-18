@@ -6,12 +6,9 @@ import * as portfinder from "portfinder";
 import * as spawn from "cross-spawn";
 
 import { FirebaseError } from "../../../../error";
-import { Options } from "../../../../options";
 import { logger } from "../../../../logger";
-import * as args from "../../args";
 import * as backend from "../../backend";
 import * as discovery from "../discovery";
-import { needProjectId } from "../../../../projectUtils";
 import * as gomod from "./gomod";
 import * as runtimes from "..";
 
@@ -27,24 +24,20 @@ export const FUNCTIONS_CODEGEN = FUNCTIONS_SDK + "/support/codegen";
 export const FUNCTIONS_RUNTIME = FUNCTIONS_SDK + "/support/runtime";
 
 export async function tryCreateDelegate(
-  context: args.Context,
-  options: Options
+  context: runtimes.DelegateContext
 ): Promise<Delegate | undefined> {
-  const relativeSourceDir = options.config.get("functions.source") as string;
-  const sourceDir = options.config.path(relativeSourceDir);
-  const goModPath = path.join(sourceDir, "go.mod");
-  const projectId = needProjectId(options);
+  const goModPath = path.join(context.sourceDir, "go.mod");
 
   let module: gomod.Module;
   try {
     const modBuffer = await promisify(fs.readFile)(goModPath);
     module = gomod.parseModule(modBuffer.toString("utf8"));
-  } catch (err) {
+  } catch (err: any) {
     logger.debug("Customer code is not Golang code (or they aren't using gomod)");
     return;
   }
 
-  let runtime = options.config.get("functions.runtime");
+  let runtime = context.runtime;
   if (!runtime) {
     if (!module.version) {
       throw new FirebaseError("Could not detect Golang version from go.mod");
@@ -61,7 +54,7 @@ export async function tryCreateDelegate(
     runtime = VERSION_TO_RUNTIME[module.version];
   }
 
-  return new Delegate(projectId, sourceDir, runtime, module);
+  return new Delegate(context.projectId, context.sourceDir, runtime, module);
 }
 
 export class Delegate {
@@ -80,7 +73,7 @@ export class Delegate {
   async build(): Promise<void> {
     try {
       await promisify(fs.mkdir)(path.join(this.sourceDir, "autogen"));
-    } catch (err) {
+    } catch (err: any) {
       if (err?.code !== "EEXIST") {
         throw new FirebaseError("Failed to create codegen directory", { children: [err] });
       }

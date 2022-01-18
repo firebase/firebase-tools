@@ -99,7 +99,7 @@ export class EmulatorHub implements EmulatorInstance {
         res.status(200).send({
           message: "OK",
         });
-      } catch (e) {
+      } catch (e: any) {
         const errorString = e.message || JSON.stringify(e);
         utils.logLabeledWarning("emulators", `Export failed: ${errorString}`);
         res.status(500).json({

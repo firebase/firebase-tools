@@ -28,7 +28,7 @@ module.exports = new Command("emulators:start")
 
     try {
       await controller.startAll(options);
-    } catch (e) {
+    } catch (e: any) {
       await controller.cleanShutdown();
       throw e;
     }

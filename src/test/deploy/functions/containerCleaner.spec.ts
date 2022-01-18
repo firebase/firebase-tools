@@ -6,6 +6,7 @@ import * as artifactregistry from "../../../gcp/artifactregistry";
 import * as backend from "../../../deploy/functions/backend";
 import * as containerCleaner from "../../../deploy/functions/containerCleaner";
 import * as docker from "../../../gcp/docker";
+
 import * as poller from "../../../operation-poller";
 import * as utils from "../../../utils";
 
@@ -237,6 +238,23 @@ describe("ArtifactRegistryCleaner", () => {
     await cleaner.cleanupFunction(func);
     expect(ar.deletePackage).to.have.been.calledWith(
       "projects/project/locations/region/repositories/gcf-artifacts/packages/function"
+    );
+    expect(poll.pollOperation).to.not.have.been.called;
+  });
+
+  it("encodeds to avoid upper-case letters", async () => {
+    const cleaner = new containerCleaner.ArtifactRegistryCleaner();
+    const func = {
+      id: "Strange-Casing_cases",
+      region: "region",
+      project: "project",
+    };
+
+    ar.deletePackage.returns(Promise.resolve({ name: "op", done: true }));
+
+    await cleaner.cleanupFunction(func);
+    expect(ar.deletePackage).to.have.been.calledWith(
+      "projects/project/locations/region/repositories/gcf-artifacts/packages/s-strange--_casing__cases"
     );
     expect(poll.pollOperation).to.not.have.been.called;
   });
@@ -508,11 +526,11 @@ describe("deleteGcfArtifacts", () => {
   });
 
   it("should purge all locations", async () => {
-    const locations = Object.keys(containerCleaner.SUBDOMAIN_MAPPING);
-    const usLocations = locations.filter((loc) => containerCleaner.SUBDOMAIN_MAPPING[loc] === "us");
-    const euLocations = locations.filter((loc) => containerCleaner.SUBDOMAIN_MAPPING[loc] === "eu");
+    const locations = Object.keys(docker.GCR_SUBDOMAIN_MAPPING);
+    const usLocations = locations.filter((loc) => docker.GCR_SUBDOMAIN_MAPPING[loc] === "us");
+    const euLocations = locations.filter((loc) => docker.GCR_SUBDOMAIN_MAPPING[loc] === "eu");
     const asiaLocations = locations.filter((loc) => {
-      return containerCleaner.SUBDOMAIN_MAPPING[loc] === "asia";
+      return docker.GCR_SUBDOMAIN_MAPPING[loc] === "asia";
     });
     const stubUS = sinon.createStubInstance(containerCleaner.DockerHelper);
     for (const usLoc of usLocations) {

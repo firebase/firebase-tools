@@ -216,7 +216,7 @@ export class Client {
     }
     try {
       return await this.doRequest<ReqT, ResT>(internalReqOptions);
-    } catch (thrown) {
+    } catch (thrown: any) {
       if (thrown instanceof FirebaseError) {
         throw thrown;
       }
@@ -347,7 +347,7 @@ export class Client {
     let res: Response;
     try {
       res = await fetch(fetchURL, fetchOptions);
-    } catch (thrown) {
+    } catch (thrown: any) {
       const err = thrown instanceof Error ? thrown : new Error(thrown);
       const isAbortError = err.name.includes("AbortError");
       if (isAbortError) {
@@ -368,12 +368,12 @@ export class Client {
       // any content. We can't just rely on response code (202 may have conent)
       // and unfortuantely res.length is unreliable (many requests return zero).
       if (!text.length) {
-        body = (undefined as unknown) as ResT;
+        body = undefined as unknown as ResT;
       } else {
         body = JSON.parse(text) as ResT;
       }
     } else if (options.responseType === "stream") {
-      body = (res.body as unknown) as ResT;
+      body = res.body as unknown as ResT;
     } else {
       throw new FirebaseError(`Unable to interpret response. Please set responseType.`, {
         exit: 2,

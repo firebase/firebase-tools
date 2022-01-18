@@ -369,7 +369,7 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
   let gcfV2Results;
   try {
     gcfV2Results = await gcfV2.listAllFunctions(ctx.projectId);
-  } catch (err) {
+  } catch (err: any) {
     if (err.status === 404 && err.message?.toLowerCase().includes("method not found")) {
       return; // customer has preview enabled without allowlist set
     }
@@ -492,14 +492,20 @@ export function regionalEndpoints(backend: Backend, region: string): Endpoint[] 
 }
 
 /** A curried function used for filters, returns a matcher for functions in a backend. */
-export const hasEndpoint = (backend: Backend) => (endpoint: Endpoint): boolean => {
-  return !!backend.endpoints[endpoint.region] && !!backend.endpoints[endpoint.region][endpoint.id];
-};
+export const hasEndpoint =
+  (backend: Backend) =>
+  (endpoint: Endpoint): boolean => {
+    return (
+      !!backend.endpoints[endpoint.region] && !!backend.endpoints[endpoint.region][endpoint.id]
+    );
+  };
 
 /** A curried function that is the opposite of hasEndpoint */
-export const missingEndpoint = (backend: Backend) => (endpoint: Endpoint): boolean => {
-  return !hasEndpoint(backend)(endpoint);
-};
+export const missingEndpoint =
+  (backend: Backend) =>
+  (endpoint: Endpoint): boolean => {
+    return !hasEndpoint(backend)(endpoint);
+  };
 
 /** A standard method for sorting endpoints for display.
  * Future versions might consider sorting region by pricing tier before

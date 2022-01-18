@@ -48,7 +48,7 @@ export default new Command("database:push <path> [infile]")
         path: u.pathname,
         body: inStream,
       });
-    } catch (err) {
+    } catch (err: any) {
       logger.debug(err);
       throw new FirebaseError(`Unexpected error while pushing data: ${err}`, { exit: 2 });
     }

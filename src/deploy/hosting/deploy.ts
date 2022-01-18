@@ -82,7 +82,7 @@ export async function deploy(
 
     try {
       await uploader.start();
-    } catch (err) {
+    } catch (err: any) {
       track("Hosting Deploy", "failure");
       throw err;
     } finally {

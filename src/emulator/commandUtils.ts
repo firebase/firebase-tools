@@ -139,7 +139,7 @@ export async function beforeEmulatorCommand(options: any): Promise<any> {
 
   try {
     await requireAuth(options);
-  } catch (e) {
+  } catch (e: any) {
     logger.debug(e);
     utils.logLabeledWarning(
       "emulators",
@@ -284,7 +284,7 @@ function processKillSignal(
         }
       }
       res();
-    } catch (e) {
+    } catch (e: any) {
       logger.debug(e);
       rej();
     }

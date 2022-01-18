@@ -18,7 +18,10 @@ import * as runtimes from "./runtimes";
 import * as validate from "./validate";
 import * as utils from "../../utils";
 import { logger } from "../../logger";
-import { lookupMissingTriggerRegions } from "./triggerRegionHelper";
+import { ensureTriggerRegions } from "./triggerRegionHelper";
+import { ensureServiceAgentRoles } from "./checkIam";
+import { DelegateContext } from "./runtimes";
+import { FirebaseError } from "../../error";
 
 function hasUserConfig(config: Record<string, unknown>): boolean {
   // "firebase" key is always going to exist in runtime config.
@@ -30,22 +33,48 @@ function hasDotenv(opts: functionsEnv.UserEnvsOpts): boolean {
   return previews.dotenv && functionsEnv.hasUserEnvs(opts);
 }
 
+// We previously force-enabled AR. We want to wait on this to see if we can give
+// an upgrade warning in the future. If it already is enabled though we want to
+// remember this and still use the cleaner if necessary.
+async function maybeEnableAR(projectId: string): Promise<boolean> {
+  if (previews.artifactregistry) {
+    return ensureApiEnabled.check(
+      projectId,
+      "artifactregistry.googleapis.com",
+      "functions",
+      /* silent= */ true
+    );
+  }
+  await ensureApiEnabled.ensure(projectId, "artifactregistry.googleapis.com", "functions");
+  return true;
+}
+
 export async function prepare(
   context: args.Context,
   options: Options,
   payload: args.Payload
 ): Promise<void> {
-  if (!options.config.src.functions) {
-    return;
-  }
+  const projectId = needProjectId(options);
 
-  const runtimeDelegate = await runtimes.getRuntimeDelegate(context, options);
+  const sourceDirName = options.config.get("functions.source") as string;
+  if (!sourceDirName) {
+    throw new FirebaseError(
+      `No functions code detected at default location (./functions), and no functions.source defined in firebase.json`
+    );
+  }
+  const sourceDir = options.config.path(sourceDirName);
+
+  const delegateContext: DelegateContext = {
+    projectId,
+    sourceDir,
+    projectDir: options.config.projectDir,
+    runtime: (options.config.get("functions.runtime") as string) || "",
+  };
+  const runtimeDelegate = await runtimes.getRuntimeDelegate(delegateContext);
   logger.debug(`Validating ${runtimeDelegate.name} source`);
   await runtimeDelegate.validate();
   logger.debug(`Building ${runtimeDelegate.name} source`);
   await runtimeDelegate.build();
-
-  const projectId = needProjectId(options);
 
   // Check that all necessary APIs are enabled.
   const checkAPIsEnabled = await Promise.all([
@@ -57,23 +86,19 @@ export async function prepare(
       /* silent=*/ true
     ),
     ensureCloudBuildEnabled(projectId),
-    ensureApiEnabled.ensure(projectId, "artifactregistry.googleapis.com", "functions"),
+    maybeEnableAR(projectId),
   ]);
   context.runtimeConfigEnabled = checkAPIsEnabled[1];
+  context.artifactRegistryEnabled = checkAPIsEnabled[3];
 
   // Get the Firebase Config, and set it on each function in the deployment.
   const firebaseConfig = await functionsConfig.getFirebaseConfig(options);
   context.firebaseConfig = firebaseConfig;
   const runtimeConfig = await getFunctionsConfig(context);
 
-  utils.assertDefined(
-    options.config.src.functions.source,
-    "Error: 'functions.source' is not defined"
-  );
-  const source = options.config.src.functions.source;
   const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
   const userEnvOpt = {
-    functionsSource: options.config.path(source),
+    functionsSource: sourceDir,
     projectId: projectId,
     projectAlias: options.projectAlias,
   };
@@ -114,7 +139,7 @@ export async function prepare(
     logBullet(
       clc.cyan.bold("functions:") +
         " preparing " +
-        clc.bold(options.config.src.functions.source) +
+        clc.bold(sourceDirName) +
         " directory for uploading..."
     );
   }
@@ -153,8 +178,9 @@ export async function prepare(
   });
 
   const haveBackend = await backend.existingBackend(context);
+  await ensureServiceAgentRoles(projectId, wantBackend, haveBackend);
   inferDetailsFromExisting(wantBackend, haveBackend, usedDotenv);
-  await lookupMissingTriggerRegions(wantBackend);
+  await ensureTriggerRegions(wantBackend);
 
   // Display a warning and prompt if any functions in the release have failurePolicies.
   await promptForFailurePolicies(options, matchingBackend, haveBackend);

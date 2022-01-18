@@ -79,9 +79,11 @@ export function* zip<T, V>(left: T[], right: V[]): Generator<[T, V]> {
  * Utility to zip in another array from map.
  * [1, 2].map(zipIn(['a', 'b'])) = [[1, 'a'], [2, 'b']]
  */
-export const zipIn = <T, V>(other: V[]) => (elem: T, ndx: number): [T, V] => {
-  return [elem, other[ndx]];
-};
+export const zipIn =
+  <T, V>(other: V[]) =>
+  (elem: T, ndx: number): [T, V] => {
+    return [elem, other[ndx]];
+  };
 
 /** Used with type guards to guarantee that all cases have been covered. */
 export function assertExhaustive(val: never): never {

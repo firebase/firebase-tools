@@ -172,7 +172,7 @@ export default new Command("ext:dev:init")
 
       const welcome = fs.readFileSync(path.join(TEMPLATE_ROOT, lang, "WELCOME.md"), "utf8");
       return logger.info("\n" + marked(welcome));
-    } catch (err) {
+    } catch (err: any) {
       if (!(err instanceof FirebaseError)) {
         throw new FirebaseError(
           `Error occurred when initializing files for new extension: ${err.message}`,
