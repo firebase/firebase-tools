@@ -1,3 +1,4 @@
+import * as clc from "cli-color";
 import * as fs from "fs";
 
 import { ensureValidKey, ensureSecret } from "../functions/secrets";
@@ -5,7 +6,7 @@ import { Command } from "../command";
 import { requirePermissions } from "../requirePermissions";
 import { Options } from "../options";
 import { promptOnce } from "../prompt";
-import { logSuccess } from "../utils";
+import { logBullet, logSuccess } from "../utils";
 import { needProjectId } from "../projectUtils";
 import { addVersion, toSecretVersionResourceName } from "../gcp/secretManager";
 
@@ -46,4 +47,8 @@ export default new Command("functions:secrets:set <KEY>")
 
     const secretVersion = await addVersion(secret, secretValue);
     logSuccess(`Created a new secret version ${toSecretVersionResourceName(secretVersion)}`);
+    logBullet(
+      "Please deploy your functions for the change to take effect by running:\n\t" +
+        clc.bold("firebase deploy --only functions")
+    );
   });
