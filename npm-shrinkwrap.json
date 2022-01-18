@@ -39,7 +39,7 @@
         "jsonwebtoken": "^8.5.1",
         "leven": "^3.1.0",
         "lodash": "^4.17.21",
-        "marked": "^0.7.0",
+        "marked": "^4.0.10",
         "marked-terminal": "^3.3.0",
         "mime": "^2.5.2",
         "minimatch": "^3.0.4",
@@ -8844,14 +8844,14 @@
       }
     },
     "node_modules/marked": {
-      "version": "0.7.0",
-      "resolved": "https://registry.npmjs.org/marked/-/marked-0.7.0.tgz",
-      "integrity": "sha512-c+yYdCZJQrsRjTPhUx7VKkApw9bwDkNbHUKo1ovgcfDjb2kc8rLuRbIFyXL5WOEUwzSSKo3IXpph2K6DqB/KZg==",
+      "version": "4.0.10",
+      "resolved": "https://registry.npmjs.org/marked/-/marked-4.0.10.tgz",
+      "integrity": "sha512-+QvuFj0nGgO970fySghXGmuw+Fd0gD2x3+MqCWLIPf5oxdv1Ka6b2q+z9RP01P/IaKPMEramy+7cNy/Lw8c3hw==",
       "bin": {
-        "marked": "bin/marked"
+        "marked": "bin/marked.js"
       },
       "engines": {
-        "node": ">=0.10.0"
+        "node": ">= 12"
       }
     },
     "node_modules/marked-terminal": {
@@ -20984,9 +20984,9 @@
       "dev": true
     },
     "marked": {
-      "version": "0.7.0",
-      "resolved": "https://registry.npmjs.org/marked/-/marked-0.7.0.tgz",
-      "integrity": "sha512-c+yYdCZJQrsRjTPhUx7VKkApw9bwDkNbHUKo1ovgcfDjb2kc8rLuRbIFyXL5WOEUwzSSKo3IXpph2K6DqB/KZg=="
+      "version": "4.0.10",
+      "resolved": "https://registry.npmjs.org/marked/-/marked-4.0.10.tgz",
+      "integrity": "sha512-+QvuFj0nGgO970fySghXGmuw+Fd0gD2x3+MqCWLIPf5oxdv1Ka6b2q+z9RP01P/IaKPMEramy+7cNy/Lw8c3hw=="
     },
     "marked-terminal": {
       "version": "3.3.0",
