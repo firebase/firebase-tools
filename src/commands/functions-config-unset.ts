@@ -7,6 +7,7 @@ import { needProjectId } from "../projectUtils";
 import * as functionsConfig from "../functionsConfig";
 import * as runtimeconfig from "../gcp/runtimeconfig";
 import * as utils from "../utils";
+import { FirebaseError } from "../error";
 
 export default new Command("functions:config:unset [keys...]")
   .description("unset environment config at the specified path(s)")
@@ -25,7 +26,7 @@ export default new Command("functions:config:unset [keys...]")
   .before(functionsConfig.ensureApi)
   .action(async (args, options) => {
     if (!args.length) {
-      return utils.reject("Must supply at least one key");
+      throw new FirebaseError("Must supply at least one key");
     }
     const projectId = needProjectId(options);
     const parsed = functionsConfig.parseUnsetArgs(args);
