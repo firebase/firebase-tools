@@ -141,9 +141,7 @@ export async function destroySecretVersion(
     const sv = await getSecretVersion(projectId, name, "latest");
     version = sv.version;
   }
-  const res = await client.post(
-    `projects/${projectId}/secrets/${name}/versions/${version}:destroy`
-  );
+  await client.post(`projects/${projectId}/secrets/${name}/versions/${version}:destroy`);
 }
 
 export async function secretExists(projectId: string, name: string): Promise<boolean> {
