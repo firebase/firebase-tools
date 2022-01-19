@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
-import clc from "cli-color";
+import * as clc from "cli-color";
 
 import { Command } from "../command";
 import { logger } from "../logger";
@@ -7,7 +7,8 @@ import * as utils from "../utils";
 
 export default new Command("help [command]")
   .description("display help information")
-  .action((commandName) => {
+  // This must stay `function (commandName)`.
+  .action(function (commandName) {
     // @ts-ignore
     const client = this.client; // eslint-disable-line @typescript-eslint/no-invalid-this
     const cmd = client.getCommand(commandName);

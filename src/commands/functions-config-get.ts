@@ -14,10 +14,9 @@ async function materialize(projectId: string, path?: string): Promise<any> {
   const parts = path.split(".");
   const configId = parts[0];
   const configName = join("projects", projectId, "configs", configId);
-  await functionsConfig.materializeConfig(configName, {}).then((result) => {
-    const query = parts.join(".");
-    return query ? get(result, query) : result;
-  });
+  const result = await functionsConfig.materializeConfig(configName, {});
+  const query = parts.join(".");
+  return query ? get(result, query) : result;
 }
 
 export default new Command("functions:config:get [path]")
