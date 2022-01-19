@@ -43,6 +43,7 @@ import { getDefaultDatabaseInstance } from "../getDefaultDatabaseInstance";
 import { getProjectDefaultAccount } from "../auth";
 import { Options } from "../options";
 import { ParsedTriggerDefinition } from "./functionsEmulatorShared";
+import { ExtensionsEmulator } from "./extensionsEmulator";
 
 async function getAndCheckAddress(emulator: Emulators, options: Options): Promise<Address> {
   let host = options.config.src.emulators?.[emulator]?.host || Constants.getDefaultHost(emulator);
@@ -446,19 +447,24 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
     }
 
     const account = getProjectDefaultAccount(options.projectRoot);
-    // TODO: Go read firebase.json for extensions and add them to emualtableBackends.
+    const extensionEmulator = new ExtensionsEmulator({options});
+    const extensionsBackends = await extensionEmulator.getEmulatableBackends();
     const emulatableBackends: EmulatableBackend[] = [
       {
         functionsDir,
         env: {
           ...options.extensionEnv,
         },
+        // TODO: predefinedTriggers and nodeMajorVersion are here to support ext:dev:emulators:* commands. 
+        // Ideally, we should handle that case via ExtensionEmulator.
         predefinedTriggers: options.extensionTriggers as ParsedTriggerDefinition[] | undefined,
         nodeMajorVersion: parseRuntimeVersion(
           options.extensionNodeVersion || options.config.get("functions.runtime")
         ),
       },
+      ...extensionsBackends,
     ];
+    // TODO: Figure out how to watch for changes to extensions .env files & reload triggers when they change.
     const functionsEmulator = new FunctionsEmulator({
       projectId,
       emulatableBackends,
