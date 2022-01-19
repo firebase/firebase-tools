@@ -1,0 +1,1 @@
+- Add support for specifying environment variable of CF3 function using dotenv.
