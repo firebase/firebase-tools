@@ -43,23 +43,27 @@ export async function buildOptions(options: any): Promise<any> {
   return options;
 }
 
-export async function getExtensionFunctionInfo(extensionDir: string, params: Record<string, string>): Promise<{
-  nodeMajorVersion: number,
-  extensionTriggers: ParsedTriggerDefinition[]}
-> {
+// TODO: Better name? Also, should this be in extensionsEmulator instead?
+export async function getExtensionFunctionInfo(
+  extensionDir: string,
+  params: Record<string, string>
+): Promise<{
+  nodeMajorVersion: number;
+  extensionTriggers: ParsedTriggerDefinition[];
+}> {
   const spec = await specHelper.readExtensionYaml(extensionDir);
   const functionResources = specHelper.getFunctionResourcesWithParamSubstitution(
     spec,
     params
   ) as Resource[];
   const extensionTriggers: ParsedTriggerDefinition[] = functionResources.map((r) =>
-  triggerHelper.functionResourceToEmulatedTriggerDefintion(r)
-);
+    triggerHelper.functionResourceToEmulatedTriggerDefintion(r)
+  );
   const nodeMajorVersion = specHelper.getNodeVersion(functionResources);
   return {
     extensionTriggers,
     nodeMajorVersion,
-  }
+  };
 }
 
 // Exported for testing

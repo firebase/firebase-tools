@@ -43,10 +43,14 @@ export async function downloadEmulator(name: DownloadableEmulators): Promise<voi
   removeOldFiles(name, emulator);
 }
 
-export async function downloadExtensionVersion(extensionVersionRef: string, sourceDownloadUri: string, targetDir: string): Promise<void> {
+export async function downloadExtensionVersion(
+  extensionVersionRef: string,
+  sourceDownloadUri: string,
+  targetDir: string
+): Promise<void> {
   try {
     fs.mkdirSync(targetDir);
-  } catch(err) {
+  } catch (err) {
     console.log(`${extensionVersionRef} already downloaded...`);
   }
   EmulatorLogger.forExtension(extensionVersionRef).logLabeled(
@@ -64,7 +68,7 @@ export async function downloadExtensionVersion(extensionVersionRef: string, sour
   );
   // TODO: We should not need to do this wait
   // However, when I remove this, unzipDir doesn't contain everything yet.
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  await new Promise((resolve) => setTimeout(resolve, 1000));
 }
 
 function unzip(zipPath: string, unzipDir: string): Promise<void> {

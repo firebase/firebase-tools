@@ -6,6 +6,7 @@ import * as fs from "fs-extra";
 import { ExtensionSpec, Resource } from "../extensionsApi";
 import { FirebaseError } from "../../error";
 import { substituteParams } from "../extensionsHelper";
+import { parseRuntimeVersion } from "../../emulator/functionsEmulatorUtils";
 
 const SPEC_FILE = "extension.yaml";
 const validFunctionTypes = [
@@ -86,15 +87,16 @@ export function getNodeVersion(resources: Resource[]): number {
   const invalidRuntimes: string[] = [];
   const versions = resources.map((r: Resource) => {
     if (r.properties?.runtime) {
-      const runtimeName = r.properties?.runtime as string
-      if (!runtimeName.match(/nodejs\d+/)) {
+      const runtimeName = r.properties?.runtime as string;
+      const runtime = parseRuntimeVersion(runtimeName);
+      if (!runtime) {
         invalidRuntimes.push(runtimeName);
       } else {
-        return runtimeName.slice(6) as unknown as number; // TODO: Cast to int, cant remember how to right now.
+        return runtime;
       }
     }
     return 14;
-  })
+  });
 
   if (invalidRuntimes.length) {
     throw new FirebaseError(
@@ -103,5 +105,5 @@ export function getNodeVersion(resources: Resource[]): number {
       )}. \n Only Node runtimes are supported.`
     );
   }
-  return Math.max(...versions)
+  return Math.max(...versions);
 }
