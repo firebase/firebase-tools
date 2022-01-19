@@ -98,7 +98,7 @@
     "cors": "^2.8.5",
     "cross-env": "^5.1.3",
     "cross-spawn": "^7.0.1",
-    "csv-streamify": "^3.0.4",
+    "csv-parse": "^5.0.4",
     "dotenv": "^6.1.0",
     "exegesis": "^4.1.0",
     "exegesis-express": "^4.0.0",

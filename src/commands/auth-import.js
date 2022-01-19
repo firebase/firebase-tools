@@ -1,23 +1,24 @@
 "use strict";
 
-var csv = require("csv-streamify");
-var clc = require("cli-color");
-var fs = require("fs");
-var jsonStream = require("JSONStream");
-var _ = require("lodash");
+const _ = require("lodash");
+const { parse } = require("csv-parse");
+const clc = require("cli-color");
+const fs = require("fs");
+const jsonStream = require("JSONStream");
 
-var { Command } = require("../command");
-var accountImporter = require("../accountImporter");
-var needProjectId = require("../projectUtils").needProjectId;
+const { Command } = require("../command");
+const { FirebaseError } = require("../error");
 const { logger } = require("../logger");
-var { requirePermissions } = require("../requirePermissions");
-var utils = require("../utils");
+const { requirePermissions } = require("../requirePermissions");
+const accountImporter = require("../accountImporter");
+const needProjectId = require("../projectUtils").needProjectId;
+const utils = require("../utils");
 
-var MAX_BATCH_SIZE = 1000;
-var validateOptions = accountImporter.validateOptions;
-var validateUserJson = accountImporter.validateUserJson;
-var transArrayToUser = accountImporter.transArrayToUser;
-var serialImportUsers = accountImporter.serialImportUsers;
+const MAX_BATCH_SIZE = 1000;
+const validateOptions = accountImporter.validateOptions;
+const validateUserJson = accountImporter.validateUserJson;
+const transArrayToUser = accountImporter.transArrayToUser;
+const serialImportUsers = accountImporter.serialImportUsers;
 
 module.exports = new Command("auth:import [dataFile]")
   .description("import users into your Firebase project from a data file(.csv or .json)")
@@ -44,65 +45,68 @@ module.exports = new Command("auth:import [dataFile]")
       "MD5, SHA1, SHA256, SHA512, HMAC_MD5, HMAC_SHA1, HMAC_SHA256, HMAC_SHA512 support this flag."
   )
   .before(requirePermissions, ["firebaseauth.users.create", "firebaseauth.users.update"])
-  .action(function (dataFile, options) {
-    var projectId = needProjectId(options);
-    var checkRes = validateOptions(options);
+  .action(async (dataFile, options) => {
+    const projectId = needProjectId(options);
+    const checkRes = validateOptions(options);
     if (!checkRes.valid) {
       return checkRes;
     }
-    var hashOptions = checkRes;
+    const hashOptions = checkRes;
 
     if (!_.endsWith(dataFile, ".csv") && !_.endsWith(dataFile, ".json")) {
       return utils.reject("Data file must end with .csv or .json", { exit: 1 });
     }
-    var stats = fs.statSync(dataFile);
-    var fileSizeInBytes = stats.size;
+    const stats = fs.statSync(dataFile);
+    const fileSizeInBytes = stats.size;
     logger.info("Processing " + clc.bold(dataFile) + " (" + fileSizeInBytes + " bytes)");
 
-    var inStream = fs.createReadStream(dataFile);
-    var batches = [];
-    var currentBatch = [];
-    var counter = 0;
-    return new Promise(function (resolve, reject) {
-      var parser;
+    const inStream = fs.createReadStream(dataFile);
+    const batches = [];
+    let currentBatch = [];
+    let counter = 0;
+    const userListArr = await new Promise((resolve, reject) => {
+      let parser;
       if (dataFile.endsWith(".csv")) {
-        parser = csv({ objectMode: true });
+        parser = parse();
         parser
-          .on("data", function (line) {
-            counter++;
-            var user = transArrayToUser(
-              line.map(function (str) {
-                // Ignore starting '|'' and trailing '|''
-                var newStr = str.trim().replace(/^["|'](.*)["|']$/, "$1");
-                return newStr === "" ? undefined : newStr;
-              })
-            );
-            if (user.error) {
-              return reject(
-                "Line " + counter + " (" + line + ") has invalid data format: " + user.error
-              );
-            }
-            currentBatch.push(user);
-            if (currentBatch.length === MAX_BATCH_SIZE) {
-              batches.push(currentBatch);
-              currentBatch = [];
+          .on("readable", () => {
+            let record;
+            while ((record = parser.read()) !== null) {
+              counter++;
+              const trimmed = record.map((s) => {
+                const str = s.trim().replace(/^["|'](.*)["|']$/, "$1");
+                return str === "" ? undefined : str;
+              });
+              const user = transArrayToUser(trimmed);
+              if (user.error) {
+                return reject(
+                  new FirebaseError(
+                    `Line ${counter} (${record}) has invalid data format: ${user.error}`
+                  )
+                );
+              }
+              currentBatch.push(user);
+              if (currentBatch.length === MAX_BATCH_SIZE) {
+                batches.push(currentBatch);
+                currentBatch = [];
+              }
             }
           })
-          .on("end", function () {
+          .on("end", () => {
             if (currentBatch.length) {
               batches.push(currentBatch);
             }
-            return resolve(batches);
+            resolve(batches);
           });
         inStream.pipe(parser);
       } else {
         parser = jsonStream.parse(["users", { emitKey: true }]);
         parser
-          .on("data", function (pair) {
+          .on("data", (pair) => {
             counter++;
             var res = validateUserJson(pair.value);
             if (res.error) {
-              return reject(res.error);
+              return reject(new FirebaseError(res.error));
             }
             currentBatch.push(pair.value);
             if (currentBatch.length === MAX_BATCH_SIZE) {
@@ -110,7 +114,7 @@ module.exports = new Command("auth:import [dataFile]")
               currentBatch = [];
             }
           })
-          .on("end", function () {
+          .on("end", () => {
             if (currentBatch.length) {
               batches.push(currentBatch);
             }
@@ -118,21 +122,9 @@ module.exports = new Command("auth:import [dataFile]")
           });
         inStream.pipe(parser);
       }
-    }).then(
-      function (userListArr) {
-        logger.debug(
-          "Preparing to import",
-          counter,
-          "user records in",
-          userListArr.length,
-          "batches."
-        );
-        if (userListArr.length) {
-          return serialImportUsers(projectId, hashOptions, userListArr, 0);
-        }
-      },
-      function (error) {
-        return utils.reject(error, { exit: 1 });
-      }
-    );
+    });
+    logger.debug(`Preparing to import ${counter} user records in ${userListArr.length} batches.`);
+    if (userListArr.length) {
+      return serialImportUsers(projectId, hashOptions, userListArr, 0);
+    }
   });
