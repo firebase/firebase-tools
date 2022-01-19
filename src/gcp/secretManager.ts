@@ -53,7 +53,6 @@ interface SecretVersionResponse {
   state: SecretVersionState;
 }
 
-
 interface AccessSecretVersionResponse {
   name: string;
   payload: {
