@@ -46,7 +46,7 @@ export class FunctionsServer {
       projectId,
       projectDir: options.config.projectDir,
       emulatableBackends: [this.backend],
-      disableDotenv: options.config.get("functions.disableDotenv") ?? false,
+      disableDotenv: options.config.get("functions.disableDotenv"),
       account,
       ...partialArgs,
     };
