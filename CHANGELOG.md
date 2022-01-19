@@ -1,1 +1,0 @@
-- Fixes issue where Auth UI did not behave correctly.
