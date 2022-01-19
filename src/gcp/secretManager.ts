@@ -101,10 +101,11 @@ export async function getSecretVersions(
     }
 
     if (!res.body.nextPageToken) {
-      return secrets;
+      break;
     }
     pageToken = res.body.nextPageToken;
   }
+  return secrets;
 }
 
 export async function getSecretVersion(
