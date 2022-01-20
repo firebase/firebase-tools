@@ -1,5 +1,6 @@
 import * as clc from "cli-color";
-import * as marked from "marked";
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
+const { marked } = require("marked");
 import * as path from "path";
 import * as semver from "semver";
 import TerminalRenderer = require("marked-terminal");

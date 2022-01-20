@@ -20,7 +20,7 @@ if (!semver.satisfies(nodeVersion, pkg.engines.node)) {
 const updateNotifier = require("update-notifier")({ pkg: pkg });
 const clc = require("cli-color");
 const TerminalRenderer = require("marked-terminal");
-const marked = require("marked");
+const marked = require("marked").marked;
 marked.setOptions({
   renderer: new TerminalRenderer(),
 });
