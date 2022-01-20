@@ -1,0 +1,1 @@
+- Updates the streaming libraries used in `auth:import`.
