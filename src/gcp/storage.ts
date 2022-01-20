@@ -1,6 +1,7 @@
 import * as path from "path";
 
-import * as api from "../api";
+import api, { storageOrigin } from "../api";
+import { Client } from "../apiv2";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
 
@@ -126,12 +127,11 @@ interface StorageServiceAccountResponse {
   kind: string;
 }
 
+const storageAPIClient = new Client({ urlPrefix: storageOrigin, apiVersion: "v1" });
+
 export async function getDefaultBucket(projectId?: string): Promise<string> {
   try {
-    const resp = await api.request("GET", "/v1/apps/" + projectId, {
-      auth: true,
-      origin: api.appengineOrigin,
-    });
+    const resp = await storageAPIClient.get<{ defaultBucket: string }>(`/apps/${projectId}`);
     if (resp.body.defaultBucket === "undefined") {
       logger.debug("Default storage bucket is undefined.");
       throw new FirebaseError(
@@ -153,19 +153,31 @@ export async function upload(
   extraHeaders?: Record<string, string>
 ): Promise<any> {
   const url = new URL(uploadUrl);
-  const result = await api.request("PUT", url.pathname + url.search, {
-    data: source.stream,
+  const localAPIClient = new Client({ urlPrefix: url.origin, auth: false });
+  const res = await localAPIClient.request({
+    method: "PUT",
+    path: url.pathname,
+    queryParams: url.searchParams,
     headers: {
-      "Content-Type": "application/zip",
+      "content-type": "application/zip",
       ...extraHeaders,
     },
-    json: false,
-    origin: url.origin,
-    logOptions: { skipRequestBody: true },
+    body: source.stream,
+    skipLog: { resBody: true },
   });
+  // const result = await api.request("PUT", url.pathname + url.search, {
+  //   data: source.stream,
+  //   headers: {
+  //     "Content-Type": "application/zip",
+  //     ...extraHeaders,
+  //   },
+  //   json: false,
+  //   origin: url.origin,
+  //   logOptions: { skipRequestBody: true },
+  // });
 
   return {
-    generation: result.response.headers["x-goog-generation"],
+    generation: res.response.headers.get("x-goog-generation"),
   };
 }
 
@@ -181,21 +193,30 @@ export async function uploadObject(source: any, bucketName: string): Promise<any
     throw new FirebaseError(`Expected a file name ending in .zip, got ${source.file}`);
   }
   const location = `/${bucketName}/${path.basename(source.file)}`;
-  const result = await api.request("PUT", location, {
-    auth: true,
-    data: source.stream,
+  const res = await storageAPIClient.request({
+    method: "PUT",
+    path: location,
     headers: {
       "Content-Type": "application/zip",
       "x-goog-content-length-range": "0,123289600",
     },
-    json: false,
-    origin: api.storageOrigin,
-    logOptions: { skipRequestBody: true },
+    body: source.stream,
   });
+  // const result = await api.request("PUT", location, {
+  //   auth: true,
+  //   data: source.stream,
+  //   headers: {
+  //     "Content-Type": "application/zip",
+  //     "x-goog-content-length-range": "0,123289600",
+  //   },
+  //   json: false,
+  //   origin: api.storageOrigin,
+  //   logOptions: { skipRequestBody: true },
+  // });
   return {
     bucket: bucketName,
     object: path.basename(source.file),
-    generation: result.response.headers["x-goog-generation"],
+    generation: res.response.headers.get("x-goog-generation"),
   };
 }
 
@@ -214,14 +235,12 @@ export function deleteObject(location: string): Promise<any> {
  * Gets a storage bucket from GCP.
  * Ref: https://cloud.google.com/storage/docs/json_api/v1/buckets/get
  * @param {string} bucketName name of the storage bucket
- * @returns a bucket resource object
+ * @return a bucket resource object
  */
 export async function getBucket(bucketName: string): Promise<BucketResponse> {
   try {
-    const result = await api.request("GET", `/storage/v1/b/${bucketName}`, {
-      auth: true,
-      origin: api.storageOrigin,
-    });
+    const localAPIClient = new Client({ urlPrefix: storageOrigin });
+    const result = await localAPIClient.get<BucketResponse>(`/storage/v1/b/${bucketName}`);
     return result.body;
   } catch (err: any) {
     logger.debug(err);
@@ -234,7 +253,6 @@ export async function getBucket(bucketName: string): Promise<BucketResponse> {
 /**
  * Find the service account for the Cloud Storage Resource
  * @param {string} projectId the project identifier
- *
  * @returns:
  * {
  *  "email_address": string,
@@ -243,10 +261,10 @@ export async function getBucket(bucketName: string): Promise<BucketResponse> {
  */
 export async function getServiceAccount(projectId: string): Promise<StorageServiceAccountResponse> {
   try {
-    const response = await api.request("GET", `/storage/v1/projects/${projectId}/serviceAccount`, {
-      auth: true,
-      origin: api.storageOrigin,
-    });
+    const localAPIClient = new Client({ urlPrefix: storageOrigin });
+    const response = await localAPIClient.get<StorageServiceAccountResponse>(
+      `/storage/v1/projects/${projectId}/serviceAccount`
+    );
     return response.body;
   } catch (err: any) {
     logger.debug(err);
