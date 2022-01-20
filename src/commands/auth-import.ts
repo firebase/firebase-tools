@@ -4,6 +4,9 @@ import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as fs from "fs-extra";
 import { parse } from "csv-parse";
+import * as Chain from "stream-chain";
+import * as Pick from "stream-json/filters/Pick";
+import * as StreamArray from "stream-json/streamers/StreamArray";
 
 import { Command } from "../command";
 import { FirebaseError } from "../error";
@@ -63,9 +66,9 @@ module.exports = new Command("auth:import [dataFile]")
     let currentBatch: any[] = [];
     let counter = 0;
     let userListArr: any[] = [];
+    const inStream = fs.createReadStream(dataFile);
     if (dataFile.endsWith(".csv")) {
       userListArr = await new Promise<any[]>((resolve, reject) => {
-        const inStream = fs.createReadStream(dataFile);
         const parser = parse();
         parser
           .on("readable", () => {
@@ -100,24 +103,32 @@ module.exports = new Command("auth:import [dataFile]")
         inStream.pipe(parser);
       });
     } else {
-      const fileContent = await fs.readFile(dataFile, "utf-8");
-      const data = JSON.parse(fileContent).users;
-      for (const user of data) {
-        counter++;
-        const res = validateUserJson(user);
-        if (_.get(user, "error")) {
-          throw new FirebaseError(_.get(user, "error"));
-        }
-        currentBatch.push(user);
-        if (currentBatch.length === MAX_BATCH_SIZE) {
-          batches.push(currentBatch);
-          currentBatch = [];
-        }
-      }
-      if (currentBatch.length) {
-        batches.push(currentBatch);
-      }
-      userListArr = batches;
+      userListArr = await new Promise<any[]>((resolve, reject) => {
+        const pipeline = new Chain([
+          Pick.withParser({ filter: /^users$/ }),
+          StreamArray.streamArray(),
+          ({ value }) => {
+            counter++;
+            const user = validateUserJson(value);
+            if (_.get(user, "error")) {
+              throw new FirebaseError(`Validation Error: ${_.get(user, "error")}`);
+            }
+            currentBatch.push(user);
+            if (currentBatch.length === MAX_BATCH_SIZE) {
+              batches.push(currentBatch);
+              currentBatch = [];
+            }
+          },
+        ]);
+        pipeline.once("error", reject);
+        pipeline.on("finish", () => {
+          if (currentBatch.length) {
+            batches.push(currentBatch);
+          }
+          resolve(batches);
+        });
+        inStream.pipe(pipeline);
+      });
     }
 
     logger.debug(`Preparing to import ${counter} user records in ${userListArr.length} batches.`);
