@@ -1,5 +1,4 @@
 import { parse } from "csv-parse";
-import * as _ from "lodash";
 import * as Chain from "stream-chain";
 import * as clc from "cli-color";
 import * as fs from "fs-extra";
@@ -10,9 +9,9 @@ import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { needProjectId } from "../projectUtils";
+import { Options } from "../options";
 import { requirePermissions } from "../requirePermissions";
 import * as accountImporter from "../accountImporter";
-import * as utils from "../utils";
 
 const MAX_BATCH_SIZE = 1000;
 const validateOptions = accountImporter.validateOptions;
@@ -45,7 +44,7 @@ module.exports = new Command("auth:import [dataFile]")
       "MD5, SHA1, SHA256, SHA512, HMAC_MD5, HMAC_SHA1, HMAC_SHA256, HMAC_SHA512 support this flag."
   )
   .before(requirePermissions, ["firebaseauth.users.create", "firebaseauth.users.update"])
-  .action(async (dataFile, options) => {
+  .action(async (dataFile: string, options: Options) => {
     const projectId = needProjectId(options);
     const checkRes = validateOptions(options);
     if (!checkRes.valid) {
@@ -53,8 +52,8 @@ module.exports = new Command("auth:import [dataFile]")
     }
     const hashOptions = checkRes;
 
-    if (!_.endsWith(dataFile, ".csv") && !_.endsWith(dataFile, ".json")) {
-      return utils.reject("Data file must end with .csv or .json", { exit: 1 });
+    if (!dataFile.endsWith(".csv") && !dataFile.endsWith(".json")) {
+      throw new FirebaseError("Data file must end with .csv or .json");
     }
     const stats = await fs.stat(dataFile);
     const fileSizeInBytes = stats.size;
@@ -78,7 +77,8 @@ module.exports = new Command("auth:import [dataFile]")
                 return str === "" ? undefined : str;
               });
               const user = transArrayToUser(trimmed);
-              const err = _.get(user, "error");
+              // TODO: Remove this casst once user can have an error.
+              const err = (user as any).error;
               if (err) {
                 return reject(
                   new FirebaseError(
@@ -109,7 +109,8 @@ module.exports = new Command("auth:import [dataFile]")
           ({ value }) => {
             counter++;
             const user = validateUserJson(value);
-            const err = _.get(user, "error");
+            // TODO: Remove this casst once user can have an error.
+            const err = (user as any).error;
             if (err) {
               throw new FirebaseError(`Validation Error: ${err}`);
             }
