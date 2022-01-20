@@ -1,8 +1,18 @@
-import {createSecret, getSecret, listSecrets, patchSecret, Secret, SecretVersion} from "../gcp/secretManager";
+import {
+  createSecret,
+  getSecret,
+  listSecrets,
+  listSecretVersions,
+  parseSecretResourceName,
+  patchSecret,
+  Secret,
+  SecretVersion,
+} from "../gcp/secretManager";
 import { Options } from "../options";
 import { FirebaseError } from "../error";
 import { logWarning } from "../utils";
 import { promptOnce } from "../prompt";
+import { Endpoint } from "../deploy/functions/backend";
 
 const FIREBASE_MANGED = "firebase-managed";
 
@@ -87,12 +97,53 @@ export async function ensureSecret(
   return await createSecret(projectId, name, labels());
 }
 
-/**
- * Get Firebase-managed secrets and their versions from user's project.
- */
-async function listFirebaseSecrets(projectId: string): Promise<SecretVersion> {
-  const haveSecrets = await listSecrets(projectId);
-  const haveSecretVersions: SecretVersion[] = [];
+async function listFirebaseSecrets(options: Options): Promise<SecretVersion[]> {
+  const secrets = await listSecrets(options.projectId!, "labels.firebase-managed=true");
+  const secretVersions: SecretVersion[] = [];
 
+  const listVersions = secrets.map(async (secret) => {
+    const versions = await listSecretVersions(options.projectId!, secret.name, "state:ENABLED");
+    secretVersions.push(...versions);
+  });
+
+  await Promise.all(listVersions);
+  return secretVersions;
 }
 
+function secretVersionsFromEndpoint(options: Options, endpoints: Endpoint[]): SecretVersion[] {
+  const versions: SecretVersion[] = [];
+  for (const endpoint of endpoints) {
+    for (const sev of endpoint.secretEnvironmentVariables ?? []) {
+      if (sev.projectId === options.projectId || sev.projectId === options.projectNumber) {
+        let name = sev.secret;
+        if (name.includes("/")) {
+          const secret = parseSecretResourceName(name);
+          name = secret.name;
+        }
+        versions.push({
+          secret: { name, projectId: options.projectId! },
+          version: sev.version!,
+        });
+      }
+    }
+  }
+  return versions;
+}
+
+export async function pruneSecrets(options: Options, endpoints: Endpoint[]) {
+  const haveVersions = await listFirebaseSecrets(options);
+  const needVersions = secretVersionsFromEndpoint(options, endpoints);
+
+  console.log(JSON.stringify(haveVersions));
+  console.log("===========");
+  console.log(JSON.stringify(needVersions));
+  console.log("===========");
+  const haveSet = new Set(haveVersions.map((sv) => `${sv.secret.name}@${sv.version}`));
+  const needSet = new Set(needVersions.map((sv) => `${sv.secret.name}@${sv.version}`));
+  console.log(haveSet);
+  console.log(needSet);
+  const pruneSet = new Set([...haveSet].filter((x) => !new Set(needSet).has(x)));
+  console.log("===========");
+  console.log("===========");
+  console.log(pruneSet);
+}

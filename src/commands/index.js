@@ -112,6 +112,7 @@ module.exports = function (client) {
   client.functions.secrets.access = loadCommand("functions-secrets-access");
   client.functions.secrets.destroy = loadCommand("functions-secrets-destroy");
   client.functions.secrets.get = loadCommand("functions-secrets-get");
+  client.functions.secrets.prune = loadCommand("functions-secrets-prune");
   client.functions.secrets.set = loadCommand("functions-secrets-set");
   client.help = loadCommand("help");
   client.hosting = {};

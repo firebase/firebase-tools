@@ -60,7 +60,7 @@ interface AccessSecretVersionResponse {
   };
 }
 
-const API_VERSION = "v1beta1";
+const API_VERSION = "v1";
 
 const client = new Client({
   urlPrefix: secretManagerOrigin,
@@ -83,9 +83,10 @@ export async function listSecrets(projectId: string, filter?: string): Promise<S
 
   let pageToken = "";
   while (true) {
-    const opts = pageToken
-      ? baseOpts
-      : { ...baseOpts, queryParams: { ...baseOpts?.queryParams, pageToken } };
+    const opts =
+      pageToken === ""
+        ? baseOpts
+        : { ...baseOpts, queryParams: { ...baseOpts?.queryParams, pageToken } };
     const res = await client.get<Response>(path, opts);
 
     for (const s of res.body.secrets) {
@@ -115,12 +116,13 @@ export async function listSecretVersions(
 
   let pageToken = "";
   while (true) {
-    const opts = pageToken
-      ? baseOpts
-      : { ...baseOpts, queryParams: { ...baseOpts?.queryParams, pageToken } };
+    const opts =
+      pageToken === ""
+        ? baseOpts
+        : { ...baseOpts, queryParams: { ...baseOpts?.queryParams, pageToken } };
     const res = await client.get<Response>(path, opts);
 
-    for (const s of res.body.versions) {
+    for (const s of res.body.versions || []) {
       secrets.push({
         ...parseSecretVersionResourceName(s.name),
         state: s.state,
