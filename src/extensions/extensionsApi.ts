@@ -183,7 +183,7 @@ async function createInstanceHelper(
   config: any,
   validateOnly = false
 ): Promise<ExtensionInstance> {
-  const createRes = await apiClient.post<unknown, ExtensionInstance>(
+  const createRes = await apiClient.post<{ name: string; config: unknown }, ExtensionInstance>(
     `/projects/${projectId}/instances/`,
     {
       name: `projects/${projectId}/instances/${instanceId}`,
@@ -456,13 +456,13 @@ export async function createSource(
   packageUri: string,
   extensionRoot: string
 ): Promise<ExtensionSource> {
-  const createRes = await apiClient.post<unknown, ExtensionSource>(
-    `/projects/${projectId}/sources/`,
-    {
-      packageUri,
-      extensionRoot,
-    }
-  );
+  const createRes = await apiClient.post<
+    { packageUri: string; extensionRoot: string },
+    ExtensionSource
+  >(`/projects/${projectId}/sources/`, {
+    packageUri,
+    extensionRoot,
+  });
   const pollRes = await operationPoller.pollOperation<ExtensionSource>({
     apiOrigin: extensionsOrigin,
     apiVersion: VERSION,
@@ -598,7 +598,7 @@ export async function registerPublisherProfile(
   projectId: string,
   publisherId: string
 ): Promise<PublisherProfile> {
-  const res = await apiClient.post<unknown, PublisherProfile>(
+  const res = await apiClient.post<{ publisherId: string }, PublisherProfile>(
     `/projects/${projectId}/publisherProfile:register`,
     {
       publisherId,
@@ -617,7 +617,7 @@ export async function deprecateExtensionVersion(
 ): Promise<ExtensionVersion> {
   const ref = refs.parse(extensionRef);
   try {
-    const res = await apiClient.post<unknown, ExtensionVersion>(
+    const res = await apiClient.post<{ deprecationMessage: string }, ExtensionVersion>(
       `/${refs.toExtensionVersionName(ref)}:deprecate`,
       {
         deprecationMessage,
@@ -652,7 +652,7 @@ export async function deprecateExtensionVersion(
 export async function undeprecateExtensionVersion(extensionRef: string): Promise<ExtensionVersion> {
   const ref = refs.parse(extensionRef);
   try {
-    const res = await apiClient.post<unknown, ExtensionVersion>(
+    const res = await apiClient.post<void, ExtensionVersion>(
       `/${refs.toExtensionVersionName(ref)}:undeprecate`
     );
     return res.body;
@@ -695,14 +695,14 @@ export async function publishExtensionVersion(
 
   // TODO(b/185176470): Publishing an extension with a previously deleted name will return 409.
   // Need to surface a better error, potentially by calling getExtension.
-  const publishRes = await apiClient.post<unknown, ExtensionVersion>(
-    `/${refs.toExtensionName(ref)}/versions:publish`,
-    {
-      versionId: ref.version,
-      packageUri,
-      extensionRoot: extensionRoot ?? "/",
-    }
-  );
+  const publishRes = await apiClient.post<
+    { versionId: string; packageUri: string; extensionRoot: string },
+    ExtensionVersion
+  >(`/${refs.toExtensionName(ref)}/versions:publish`, {
+    versionId: ref.version,
+    packageUri,
+    extensionRoot: extensionRoot ?? "/",
+  });
   const pollRes = await operationPoller.pollOperation<ExtensionVersion>({
     apiOrigin: extensionsOrigin,
     apiVersion: VERSION,
@@ -722,7 +722,7 @@ export async function unpublishExtension(extensionRef: string): Promise<void> {
     throw new FirebaseError(`Extension reference "${extensionRef}" must not contain a version.`);
   }
   try {
-    await apiClient.post(`/${refs.toExtensionName(ref)}:unpublish`);
+    await apiClient.post<void, void>(`/${refs.toExtensionName(ref)}:unpublish`);
   } catch (err: any) {
     if (err.status === 403) {
       throw new FirebaseError(
