@@ -68,11 +68,6 @@ const client = new Client({
   apiVersion: API_VERSION,
 });
 
-export async function listSecrets(projectId: string): Promise<Secret[]> {
-  const listRes = await client.get<{ secrets: Secret[] }>(`projects/${projectId}/secrets`);
-  return listRes.body.secrets.map((s: any) => parseSecretResourceName(s.name));
-}
-
 export async function getSecret(projectId: string, name: string): Promise<Secret> {
   const getRes = await client.get<Secret>(`projects/${projectId}/secrets/${name}`);
   const secret = parseSecretResourceName(getRes.body.name);
@@ -80,17 +75,49 @@ export async function getSecret(projectId: string, name: string): Promise<Secret
   return secret;
 }
 
-export async function getSecretVersions(
+export async function listSecrets(projectId: string, filter?: string): Promise<Secret[]> {
+  type Response = { secrets: Secret[]; nextPageToken?: string };
+  const secrets: Secret[] = [];
+  const path = `projects/${projectId}/secrets`;
+  const baseOpts = filter ? { queryParams: { filter } } : {};
+
+  let pageToken = "";
+  while (true) {
+    const opts = pageToken
+      ? baseOpts
+      : { ...baseOpts, queryParams: { ...baseOpts?.queryParams, pageToken } };
+    const res = await client.get<Response>(path, opts);
+
+    for (const s of res.body.secrets) {
+      secrets.push({
+        ...parseSecretResourceName(s.name),
+        labels: s.labels ?? {},
+      });
+    }
+
+    if (!res.body.nextPageToken) {
+      break;
+    }
+    pageToken = res.body.nextPageToken;
+  }
+  return secrets;
+}
+
+export async function listSecretVersions(
   projectId: string,
-  name: string
+  name: string,
+  filter?: string
 ): Promise<Required<SecretVersion[]>> {
   type Response = { versions: SecretVersionResponse[]; nextPageToken?: string };
   const secrets: Required<SecretVersion[]> = [];
   const path = `projects/${projectId}/secrets/${name}/versions`;
+  const baseOpts = filter ? { queryParams: { filter } } : {};
 
   let pageToken = "";
   while (true) {
-    const opts = pageToken == "" ? {} : { queryParams: { pageToken } };
+    const opts = pageToken
+      ? baseOpts
+      : { ...baseOpts, queryParams: { ...baseOpts?.queryParams, pageToken } };
     const res = await client.get<Response>(path, opts);
 
     for (const s of res.body.versions) {
@@ -158,7 +185,7 @@ export async function secretExists(projectId: string, name: string): Promise<boo
 }
 
 export function parseSecretResourceName(resourceName: string): Secret {
-  const tokens = resourceName.match(SECRET_NAME_REGEX);
+  const tokens = SECRET_NAME_REGEX.exec(resourceName);
   if (tokens == null) {
     throw new FirebaseError(`Invalid secret resource name [${resourceName}].`);
   }

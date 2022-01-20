@@ -1,4 +1,4 @@
-import { createSecret, getSecret, patchSecret, Secret } from "../gcp/secretManager";
+import {createSecret, getSecret, listSecrets, patchSecret, Secret, SecretVersion} from "../gcp/secretManager";
 import { Options } from "../options";
 import { FirebaseError } from "../error";
 import { logWarning } from "../utils";
@@ -86,3 +86,13 @@ export async function ensureSecret(
   }
   return await createSecret(projectId, name, labels());
 }
+
+/**
+ * Get Firebase-managed secrets and their versions from user's project.
+ */
+async function listFirebaseSecrets(projectId: string): Promise<SecretVersion> {
+  const haveSecrets = await listSecrets(projectId);
+  const haveSecretVersions: SecretVersion[] = [];
+
+}
+
