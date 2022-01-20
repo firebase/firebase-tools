@@ -1,18 +1,17 @@
-"use strict";
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+import * as _ from "lodash";
+import * as clc from "cli-color";
+import * as fs from "fs-extra";
+import { parse } from "csv-parse";
 
-const _ = require("lodash");
-const { parse } = require("csv-parse");
-const clc = require("cli-color");
-const fs = require("fs");
-const jsonStream = require("JSONStream");
-
-const { Command } = require("../command");
-const { FirebaseError } = require("../error");
-const { logger } = require("../logger");
-const { requirePermissions } = require("../requirePermissions");
-const accountImporter = require("../accountImporter");
-const needProjectId = require("../projectUtils").needProjectId;
-const utils = require("../utils");
+import { Command } from "../command";
+import { FirebaseError } from "../error";
+import { logger } from "../logger";
+import { requirePermissions } from "../requirePermissions";
+import * as accountImporter from "../accountImporter";
+import { needProjectId } from "../projectUtils";
+import * as utils from "../utils";
 
 const MAX_BATCH_SIZE = 1000;
 const validateOptions = accountImporter.validateOptions;
@@ -56,21 +55,21 @@ module.exports = new Command("auth:import [dataFile]")
     if (!_.endsWith(dataFile, ".csv") && !_.endsWith(dataFile, ".json")) {
       return utils.reject("Data file must end with .csv or .json", { exit: 1 });
     }
-    const stats = fs.statSync(dataFile);
+    const stats = await fs.stat(dataFile);
     const fileSizeInBytes = stats.size;
     logger.info("Processing " + clc.bold(dataFile) + " (" + fileSizeInBytes + " bytes)");
 
-    const inStream = fs.createReadStream(dataFile);
-    const batches = [];
-    let currentBatch = [];
+    const batches: any[] = [];
+    let currentBatch: any[] = [];
     let counter = 0;
-    const userListArr = await new Promise((resolve, reject) => {
-      let parser;
-      if (dataFile.endsWith(".csv")) {
-        parser = parse();
+    let userListArr: any[] = [];
+    if (dataFile.endsWith(".csv")) {
+      userListArr = await new Promise<any[]>((resolve, reject) => {
+        const inStream = fs.createReadStream(dataFile);
+        const parser = parse();
         parser
           .on("readable", () => {
-            let record;
+            let record: string[] = [];
             while ((record = parser.read()) !== null) {
               counter++;
               const trimmed = record.map((s) => {
@@ -78,10 +77,10 @@ module.exports = new Command("auth:import [dataFile]")
                 return str === "" ? undefined : str;
               });
               const user = transArrayToUser(trimmed);
-              if (user.error) {
+              if (_.get(user, "error")) {
                 return reject(
                   new FirebaseError(
-                    `Line ${counter} (${record}) has invalid data format: ${user.error}`
+                    `Line ${counter} (${record}) has invalid data format: ${_.get(user, "error")}`
                   )
                 );
               }
@@ -99,30 +98,28 @@ module.exports = new Command("auth:import [dataFile]")
             resolve(batches);
           });
         inStream.pipe(parser);
-      } else {
-        parser = jsonStream.parse(["users", { emitKey: true }]);
-        parser
-          .on("data", (pair) => {
-            counter++;
-            var res = validateUserJson(pair.value);
-            if (res.error) {
-              return reject(new FirebaseError(res.error));
-            }
-            currentBatch.push(pair.value);
-            if (currentBatch.length === MAX_BATCH_SIZE) {
-              batches.push(currentBatch);
-              currentBatch = [];
-            }
-          })
-          .on("end", () => {
-            if (currentBatch.length) {
-              batches.push(currentBatch);
-            }
-            return resolve(batches);
-          });
-        inStream.pipe(parser);
+      });
+    } else {
+      const fileContent = await fs.readFile(dataFile, "utf-8");
+      const data = JSON.parse(fileContent).users;
+      for (const user of data) {
+        counter++;
+        const res = validateUserJson(user);
+        if (res.error) {
+          throw new FirebaseError(res.error);
+        }
+        currentBatch.push(user);
+        if (currentBatch.length === MAX_BATCH_SIZE) {
+          batches.push(currentBatch);
+          currentBatch = [];
+        }
       }
-    });
+      if (currentBatch.length) {
+        batches.push(currentBatch);
+      }
+      userListArr = batches;
+    }
+
     logger.debug(`Preparing to import ${counter} user records in ${userListArr.length} batches.`);
     if (userListArr.length) {
       return serialImportUsers(projectId, hashOptions, userListArr, 0);
