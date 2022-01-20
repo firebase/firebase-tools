@@ -105,8 +105,8 @@ module.exports = new Command("auth:import [dataFile]")
       for (const user of data) {
         counter++;
         const res = validateUserJson(user);
-        if (res.error) {
-          throw new FirebaseError(res.error);
+        if (_.get(user, "error")) {
+          throw new FirebaseError(_.get(user, "error"));
         }
         currentBatch.push(user);
         if (currentBatch.length === MAX_BATCH_SIZE) {
