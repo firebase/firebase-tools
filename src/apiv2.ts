@@ -374,7 +374,9 @@ export class Client {
         let body: ResT;
         try {
           if (currentAttempt > 1) {
-            logger.debug(`Attempting the request again. Attempt number ${currentAttempt}`);
+            logger.debug(
+              `*** [apiv2] Attempting the request again. Attempt number ${currentAttempt}`
+            );
           }
           this.logRequest(options);
 
