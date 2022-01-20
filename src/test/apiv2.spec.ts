@@ -92,7 +92,7 @@ describe("apiv2", () => {
       expect(nock.isDone()).to.be.true;
     });
 
-    it.only("should be able to resolve the error response if retry codes never succeed", async () => {
+    it("should be able to resolve the error response if retry codes never succeed", async () => {
       nock("https://example.com").get("/path/to/foo").twice().reply(503, {});
 
       const c = new Client({ urlPrefix: "https://example.com" });
