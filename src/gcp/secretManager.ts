@@ -80,7 +80,7 @@ export async function getSecret(projectId: string, name: string): Promise<Secret
   return secret;
 }
 
-export async function getSecretVersions(
+export async function listSecretVersions(
   projectId: string,
   name: string
 ): Promise<Required<SecretVersion[]>> {
