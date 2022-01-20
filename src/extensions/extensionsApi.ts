@@ -1,13 +1,15 @@
 import * as yaml from "js-yaml";
 import * as _ from "lodash";
 import * as clc from "cli-color";
-import * as marked from "marked";
-import { extensionsOrigin } from "../api";
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
+const { marked } = require("marked");
+
 import { Client } from "../apiv2";
-import * as refs from "./refs";
+import { extensionsOrigin } from "../api";
+import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import * as operationPoller from "../operation-poller";
-import { FirebaseError } from "../error";
+import * as refs from "./refs";
 
 const VERSION = "v1beta";
 const PAGE_SIZE_MAX = 100;
