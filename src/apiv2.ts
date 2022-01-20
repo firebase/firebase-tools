@@ -1,5 +1,5 @@
 import { AbortSignal } from "abort-controller";
-import { parse, URLSearchParams } from "url";
+import { URL, URLSearchParams } from "url";
 import { Readable } from "stream";
 import * as ProxyAgent from "proxy-agent";
 import * as retry from "retry";
@@ -482,7 +482,7 @@ export class Client {
 }
 
 function isLocalInsecureRequest(urlPrefix: string): boolean {
-  const u = parse(urlPrefix);
+  const u = new URL(urlPrefix);
   return u.protocol === "http:";
 }
 
