@@ -354,11 +354,11 @@ describe("apiv2", () => {
           res.end(JSON.stringify({ proxied: true }));
         });
         await Promise.all([
-          new Promise((resolve) => {
-            proxyServer.listen(52672, resolve);
+          new Promise<void>((resolve) => {
+            proxyServer.listen(52672, () => resolve());
           }),
-          new Promise((resolve) => {
-            targetServer.listen(52673, resolve);
+          new Promise<void>((resolve) => {
+            targetServer.listen(52673, () => resolve());
           }),
         ]);
       });

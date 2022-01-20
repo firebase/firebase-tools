@@ -1,2 +1,1 @@
-- Preserve empty vpc connector setting on function deploy. (#3973)
-- Upgrades google-auth-library to 7.x.x, enabling support for workload identity federation
+- Updates the streaming libraries used in `auth:import`.
