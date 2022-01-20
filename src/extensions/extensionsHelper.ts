@@ -2,7 +2,8 @@ import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as ora from "ora";
 import * as semver from "semver";
-import * as marked from "marked";
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
+const { marked } = require("marked");
 
 const TerminalRenderer = require("marked-terminal");
 marked.setOptions({

@@ -638,10 +638,13 @@ async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
     .finalize();
 
   // Stub the admin module in the require cache
-  require.cache[adminResolution.resolution] = {
-    exports: proxiedAdminModule,
-    path: path.dirname(adminResolution.resolution),
-  };
+  require.cache[adminResolution.resolution] = Object.assign(
+    require.cache[adminResolution.resolution],
+    {
+      exports: proxiedAdminModule,
+      path: path.dirname(adminResolution.resolution),
+    }
+  );
 
   logDebug("firebase-admin has been stubbed.", {
     adminResolution,
@@ -735,10 +738,13 @@ async function initializeFunctionsConfigHelper(frb: FunctionsRuntimeBundle): Pro
     .finalize();
 
   // Stub the functions module in the require cache
-  require.cache[functionsResolution.resolution] = {
-    exports: proxiedFunctionsModule,
-    path: path.dirname(functionsResolution.resolution),
-  };
+  require.cache[functionsResolution.resolution] = Object.assign(
+    require.cache[functionsResolution.resolution],
+    {
+      exports: proxiedFunctionsModule,
+      path: path.dirname(functionsResolution.resolution),
+    }
+  );
 
   logDebug("firebase-functions has been stubbed.", {
     functionsResolution,
