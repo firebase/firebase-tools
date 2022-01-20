@@ -7,6 +7,8 @@ import * as api from "../api";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { promptOnce } from "../prompt";
+import { Client } from "../apiv2";
+import { firebaseExtensionsRegistryOrigin } from "../api";
 
 const EXTENSIONS_REGISTRY_ENDPOINT = "/extensions.json";
 
@@ -112,9 +114,8 @@ export function getMinRequiredVersion(registryEntry: RegistryEntry): string {
 export async function getExtensionRegistry(
   onlyFeatured?: boolean
 ): Promise<{ [key: string]: RegistryEntry }> {
-  const res = await api.request("GET", EXTENSIONS_REGISTRY_ENDPOINT, {
-    origin: api.firebaseExtensionsRegistryOrigin,
-  });
+  const client = new Client({ urlPrefix: firebaseExtensionsRegistryOrigin });
+  const res = await client.get(EXTENSIONS_REGISTRY_ENDPOINT);
   const extensions = _.get(res, "body.mods") as { [key: string]: RegistryEntry };
 
   if (onlyFeatured) {
