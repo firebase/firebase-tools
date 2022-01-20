@@ -351,6 +351,7 @@ export class Client {
       fetchOptions.body = JSON.stringify(options.body);
     }
 
+    // TODO(bkendall): Refactor this to use Throttler _or_ refactor Throttle to use `retry`.
     const operationOptions: retry.OperationOptions = {
       retries: options.retryCodes?.length ? 1 : 2,
       minTimeout: 1 * 1000,
