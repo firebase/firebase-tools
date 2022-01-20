@@ -68,8 +68,44 @@ describe("apiv2", () => {
         method: "GET",
         path: "/path/to/foo",
         retryCodes: [503],
+        retries: 1,
+        retryMinTimeout: 10,
+        retryMaxTimeout: 15,
       });
       expect(r.body).to.deep.equal({ foo: "bar" });
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should return an error if the retry never succeeds", async () => {
+      nock("https://example.com").get("/path/to/foo").twice().reply(503, {});
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = c.request({
+        method: "GET",
+        path: "/path/to/foo",
+        retryCodes: [503],
+        retries: 1,
+        retryMinTimeout: 10,
+        retryMaxTimeout: 15,
+      });
+      await expect(r).to.eventually.be.rejectedWith(FirebaseError, /503.+Error/);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should be able to resolve the error response if retry codes never succeed", async () => {
+      nock("https://example.com").get("/path/to/foo").twice().reply(503, {});
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = await c.request({
+        method: "GET",
+        path: "/path/to/foo",
+        resolveOnHTTPError: true,
+        retryCodes: [503],
+        retries: 1,
+        retryMinTimeout: 10,
+        retryMaxTimeout: 15,
+      });
+      expect(r.status).to.equal(503);
       expect(nock.isDone()).to.be.true;
     });
 

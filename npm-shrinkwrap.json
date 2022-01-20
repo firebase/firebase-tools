@@ -50,6 +50,7 @@
         "progress": "^2.0.3",
         "proxy-agent": "^5.0.0",
         "request": "^2.87.0",
+        "retry": "^0.13.1",
         "rimraf": "^3.0.0",
         "semver": "^5.7.1",
         "stream-chain": "^2.2.4",
@@ -102,6 +103,7 @@
         "@types/progress": "^2.0.3",
         "@types/puppeteer": "^5.4.2",
         "@types/request": "^2.48.1",
+        "@types/retry": "^0.12.1",
         "@types/rimraf": "^2.0.3",
         "@types/semver": "^6.0.0",
         "@types/sinon": "^9.0.10",
@@ -2144,6 +2146,12 @@
       "engines": {
         "node": ">= 0.12"
       }
+    },
+    "node_modules/@types/retry": {
+      "version": "0.12.1",
+      "resolved": "https://registry.npmjs.org/@types/retry/-/retry-0.12.1.tgz",
+      "integrity": "sha512-xoDlM2S4ortawSWORYqsdU+2rxdh4LRW9ytc3zmT37RIKQh6IHyKwwtKhKis9ah8ol07DCkZxPt8BBvPjC6v4g==",
+      "dev": true
     },
     "node_modules/@types/rimraf": {
       "version": "2.0.3",
@@ -10820,6 +10828,14 @@
         "node": ">=8"
       }
     },
+    "node_modules/retry": {
+      "version": "0.13.1",
+      "resolved": "https://registry.npmjs.org/retry/-/retry-0.13.1.tgz",
+      "integrity": "sha512-XQBQ3I8W1Cge0Seh+6gjj03LbmRFWuoszgK9ooCpwYIrhhoO80pfq4cUkU5DkknwfOfFteRwlZ56PYOGYyFWdg==",
+      "engines": {
+        "node": ">= 4"
+      }
+    },
     "node_modules/retry-request": {
       "version": "4.1.3",
       "resolved": "https://registry.npmjs.org/retry-request/-/retry-request-4.1.3.tgz",
@@ -15232,6 +15248,12 @@
           }
         }
       }
+    },
+    "@types/retry": {
+      "version": "0.12.1",
+      "resolved": "https://registry.npmjs.org/@types/retry/-/retry-0.12.1.tgz",
+      "integrity": "sha512-xoDlM2S4ortawSWORYqsdU+2rxdh4LRW9ytc3zmT37RIKQh6IHyKwwtKhKis9ah8ol07DCkZxPt8BBvPjC6v4g==",
+      "dev": true
     },
     "@types/rimraf": {
       "version": "2.0.3",
@@ -22042,6 +22064,11 @@
         "onetime": "^5.1.0",
         "signal-exit": "^3.0.2"
       }
+    },
+    "retry": {
+      "version": "0.13.1",
+      "resolved": "https://registry.npmjs.org/retry/-/retry-0.13.1.tgz",
+      "integrity": "sha512-XQBQ3I8W1Cge0Seh+6gjj03LbmRFWuoszgK9ooCpwYIrhhoO80pfq4cUkU5DkknwfOfFteRwlZ56PYOGYyFWdg=="
     },
     "retry-request": {
       "version": "4.1.3",
