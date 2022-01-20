@@ -1,19 +1,17 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
+import { parse } from "csv-parse";
 import * as _ from "lodash";
+import * as Chain from "stream-chain";
 import * as clc from "cli-color";
 import * as fs from "fs-extra";
-import { parse } from "csv-parse";
-import * as Chain from "stream-chain";
 import * as Pick from "stream-json/filters/Pick";
 import * as StreamArray from "stream-json/streamers/StreamArray";
 
 import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
+import { needProjectId } from "../projectUtils";
 import { requirePermissions } from "../requirePermissions";
 import * as accountImporter from "../accountImporter";
-import { needProjectId } from "../projectUtils";
 import * as utils from "../utils";
 
 const MAX_BATCH_SIZE = 1000;
@@ -60,7 +58,7 @@ module.exports = new Command("auth:import [dataFile]")
     }
     const stats = await fs.stat(dataFile);
     const fileSizeInBytes = stats.size;
-    logger.info("Processing " + clc.bold(dataFile) + " (" + fileSizeInBytes + " bytes)");
+    logger.info(`Processing ${clc.bold(dataFile)} (${fileSizeInBytes} bytes)`);
 
     const batches: any[] = [];
     let currentBatch: any[] = [];
@@ -80,10 +78,11 @@ module.exports = new Command("auth:import [dataFile]")
                 return str === "" ? undefined : str;
               });
               const user = transArrayToUser(trimmed);
-              if (_.get(user, "error")) {
+              const err = _.get(user, "error");
+              if (err) {
                 return reject(
                   new FirebaseError(
-                    `Line ${counter} (${record}) has invalid data format: ${_.get(user, "error")}`
+                    `Line ${counter} (${record.join(",")}) has invalid data format: ${err}`
                   )
                 );
               }
@@ -110,8 +109,9 @@ module.exports = new Command("auth:import [dataFile]")
           ({ value }) => {
             counter++;
             const user = validateUserJson(value);
-            if (_.get(user, "error")) {
-              throw new FirebaseError(`Validation Error: ${_.get(user, "error")}`);
+            const err = _.get(user, "error");
+            if (err) {
+              throw new FirebaseError(`Validation Error: ${err}`);
             }
             currentBatch.push(user);
             if (currentBatch.length === MAX_BATCH_SIZE) {
