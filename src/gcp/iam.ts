@@ -89,9 +89,6 @@ export async function getServiceAccount(
   return response.body;
 }
 
-/**
- *
- */
 export async function createServiceAccountKey(
   projectId: string,
   serviceAccountName: string
