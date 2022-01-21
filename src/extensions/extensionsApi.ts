@@ -1,7 +1,8 @@
 import * as yaml from "js-yaml";
 import * as _ from "lodash";
 import * as clc from "cli-color";
-import * as marked from "marked";
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
+const { marked } = require("marked");
 import * as api from "../api";
 import * as apiv2 from "../apiv2";
 import * as refs from "./refs";
