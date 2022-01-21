@@ -165,17 +165,6 @@ export async function upload(
     body: source.stream,
     skipLog: { resBody: true },
   });
-  // const result = await api.request("PUT", url.pathname + url.search, {
-  //   data: source.stream,
-  //   headers: {
-  //     "Content-Type": "application/zip",
-  //     ...extraHeaders,
-  //   },
-  //   json: false,
-  //   origin: url.origin,
-  //   logOptions: { skipRequestBody: true },
-  // });
-
   return {
     generation: res.response.headers.get("x-goog-generation"),
   };
@@ -202,17 +191,6 @@ export async function uploadObject(source: any, bucketName: string): Promise<any
     },
     body: source.stream,
   });
-  // const result = await api.request("PUT", location, {
-  //   auth: true,
-  //   data: source.stream,
-  //   headers: {
-  //     "Content-Type": "application/zip",
-  //     "x-goog-content-length-range": "0,123289600",
-  //   },
-  //   json: false,
-  //   origin: api.storageOrigin,
-  //   logOptions: { skipRequestBody: true },
-  // });
   return {
     bucket: bucketName,
     object: path.basename(source.file),

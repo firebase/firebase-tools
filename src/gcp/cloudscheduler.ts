@@ -68,9 +68,6 @@ export interface Job {
   };
 }
 
-/**
- *
- */
 export function assertValidJob(job: Job) {
   proto.assertOneOf("Scheduler Job", job, "target", "httpTarget", "pubsubTarget");
   if (job.httpTarget) {
