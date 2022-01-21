@@ -170,7 +170,7 @@ export async function prepare(
   await promptForMinInstances(options, matchingBackend, haveBackend);
   await backend.checkAvailability(context, wantBackend);
   await secretsAreValid(matchingBackend);
-  await ensureSecretAccess(matchingBackend);
+  await ensureSecretAccess(projectId, matchingBackend);
 }
 
 /**

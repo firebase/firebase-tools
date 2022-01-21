@@ -11,7 +11,6 @@ import * as api from "../../../api";
 import * as backend from "../../../deploy/functions/backend";
 import * as ensure from "../../../deploy/functions/ensure";
 import * as secretManager from "../../../gcp/secretManager";
-import * as prepare from "../../../deploy/functions";
 
 describe("ensureCloudBuildEnabled()", () => {
   let restoreInterval: number;
@@ -150,24 +149,20 @@ describe("ensureCloudBuildEnabled()", () => {
       httpsTrigger: {},
     };
 
-    const project0 = "project-0";
-    const project1 = "project-1";
+    const projectId = "project-0";
     const secret0: backend.SecretEnvVar = {
-      projectId: project0,
       key: "MY_SECRET_0",
       secret: "MY_SECRET_0",
       version: "2",
     };
     const secret1: backend.SecretEnvVar = {
-      projectId: project1,
-      key: "MY_SECRET_1",
-      secret: "MY_SECRET_1",
-      version: "2",
+      key: "ANOTHER_SECRET",
+      secret: "ANOTHER_SECRET",
+      version: "1",
     };
-
     const e: backend.Endpoint = {
       ...ENDPOINT,
-      project: project0,
+      project: projectId,
       platform: "gcfv1",
       secretEnvironmentVariables: [],
     };
@@ -192,11 +187,11 @@ describe("ensureCloudBuildEnabled()", () => {
         .expects("ensureServiceAgentRole")
         .once()
         .withExactArgs(
-          { name: secret0.secret, projectId: project0 },
+          { name: secret0.secret, projectId: projectId },
           [defaultServiceAccount(e.project)],
           "roles/secretmanager.secretAccessor"
         );
-      await ensure.ensureSecretAccess(b);
+      await ensure.ensureSecretAccess(projectId, b);
     });
 
     it("ensures access to all secrets", async () => {
@@ -205,7 +200,7 @@ describe("ensureCloudBuildEnabled()", () => {
         secretEnvironmentVariables: [secret0, secret1],
       });
       secretManagerMock.expects("ensureServiceAgentRole").twice();
-      await ensure.ensureSecretAccess(b);
+      await ensure.ensureSecretAccess(projectId, b);
     });
 
     it("combines service account to make one call per secret", async () => {
@@ -225,11 +220,11 @@ describe("ensureCloudBuildEnabled()", () => {
         .expects("ensureServiceAgentRole")
         .once()
         .withExactArgs(
-          { name: secret0.secret, projectId: project0 },
+          { name: secret0.secret, projectId: projectId },
           [`${e.project}@appspot.gserviceaccount.com`, "foo@bar.com"],
           "roles/secretmanager.secretAccessor"
         );
-      await ensure.ensureSecretAccess(b);
+      await ensure.ensureSecretAccess(projectId, b);
     });
   });
 });

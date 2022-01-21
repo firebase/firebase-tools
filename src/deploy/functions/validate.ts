@@ -91,8 +91,8 @@ function validatePlatformTargets(endpoints: backend.Endpoint[]) {
  *   2) It's in state "enabled".
  */
 async function validateSecretVersions(endpoints: backend.Endpoint[]) {
-  const validate = async (s: backend.SecretEnvVar) => {
-    const sv = await getSecretVersion(s.projectId, s.secret, "latest");
+  const validate = async (projectId: string, s: backend.SecretEnvVar) => {
+    const sv = await getSecretVersion(projectId, s.secret, "latest");
     if (s.version == null) {
       logLabeledSuccess(
         "functions",
@@ -110,7 +110,7 @@ async function validateSecretVersions(endpoints: backend.Endpoint[]) {
   const validations: Promise<void>[] = [];
   for (const e of endpoints) {
     for (const s of e.secretEnvironmentVariables! || []) {
-      validations.push(validate(s));
+      validations.push(validate(e.project, s));
     }
   }
   const results = await utils.allSettled(validations);

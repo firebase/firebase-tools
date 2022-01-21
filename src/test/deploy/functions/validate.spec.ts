@@ -164,7 +164,6 @@ describe("validate", () => {
           {
             secret: "MY_SECRET",
             key: "MY_SECRET",
-            projectId: "project",
           },
         ],
       });
@@ -182,7 +181,6 @@ describe("validate", () => {
           {
             secret: "MY_SECRET",
             key: "MY_SECRET",
-            projectId: "project",
           },
         ],
       });
@@ -203,7 +201,6 @@ describe("validate", () => {
           {
             secret: "MY_SECRET",
             key: "MY_SECRET",
-            projectId: "project",
           },
         ],
       });
@@ -224,7 +221,6 @@ describe("validate", () => {
           {
             secret: "MY_SECRET",
             key: "MY_SECRET",
-            projectId: "project",
           },
         ],
       });

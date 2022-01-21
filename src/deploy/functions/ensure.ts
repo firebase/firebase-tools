@@ -88,8 +88,8 @@ export async function maybeEnableAR(projectId: string): Promise<boolean> {
  * To avoid making more than one simultaneous call to setIamPolicy calls per secret, the function batches all
  * service account that requires access to it.
  */
-export async function ensureSecretAccess(b: backend.Backend) {
-  const ensureAccess = async (projectId: string, secret: string, serviceAccounts: string[]) => {
+export async function ensureSecretAccess(projectId: string, b: backend.Backend) {
+  const ensureAccess = async (secret: string, serviceAccounts: string[]) => {
     logLabeledBullet(
       "functions",
       `ensuring ${clc.bold(serviceAccounts.join(", "))} access to ${clc.bold(secret)}.`
@@ -106,26 +106,19 @@ export async function ensureSecretAccess(b: backend.Backend) {
   };
 
   // Collect all service accounts that requires access to a secret.
-  // projectId -> secretName -> Set of service accounts
-  const toEnsure: Record<string, Record<string, Set<string>>> = {};
+  const toEnsure: Record<string, Set<string>> = {};
   for (const e of backend.allEndpoints(b)) {
     const sa = e.serviceAccountEmail || defaultServiceAccount(e.project);
     for (const s of e.secretEnvironmentVariables! || []) {
-      const secrets = toEnsure[s.projectId] || {};
-      const serviceAccounts = secrets[s.secret] || new Set();
-
+      const serviceAccounts = toEnsure[s.secret] || new Set();
       serviceAccounts.add(sa);
-
-      secrets[s.secret] = serviceAccounts;
-      toEnsure[s.projectId] = secrets;
+      toEnsure[s.secret] = serviceAccounts;
     }
   }
 
   const ensure = [];
-  for (const [projectId, secrets] of Object.entries(toEnsure)) {
-    for (const [secret, serviceAccounts] of Object.entries(secrets)) {
-      ensure.push(ensureAccess(projectId, secret, Array.from(serviceAccounts)));
-    }
+  for (const [secret, serviceAccounts] of Object.entries(toEnsure)) {
+    ensure.push(ensureAccess(secret, Array.from(serviceAccounts)));
   }
   await Promise.all(ensure);
 }

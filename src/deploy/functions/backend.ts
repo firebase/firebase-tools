@@ -167,7 +167,6 @@ export interface TargetIds {
 export interface SecretEnvVar {
   key: string;
   secret: string;
-  projectId: string;
   version?: string;
 }
 
