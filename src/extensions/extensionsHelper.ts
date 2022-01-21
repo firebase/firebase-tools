@@ -95,7 +95,7 @@ export const resourceTypeToNiceName: Record<string, string> = {
  */
 export function getDBInstanceFromURL(databaseUrl = ""): string {
   const instanceRegex = new RegExp("(?:https://)(.*)(?:.firebaseio.com)");
-  const matches = databaseUrl.match(instanceRegex);
+  const matches = instanceRegex.exec(databaseUrl);
   if (matches && matches.length > 1) {
     return matches[1];
   }
@@ -528,7 +528,7 @@ export async function createSourceFromLocation(
   let packageUri: string;
   let extensionRoot: string;
   let objectPath = "";
-  if (!URL_REGEX.test(sourceUri)) {
+  if (!sourceUri.startsWith("https:")) {
     const uploadSpinner = ora(" Archiving and uploading extension source code");
     try {
       uploadSpinner.start();
@@ -669,25 +669,26 @@ export async function promptForRepeatInstance(
  * @param instanceId ID of the extension instance
  */
 export async function instanceIdExists(projectId: string, instanceId: string): Promise<boolean> {
-  const instanceRes = await getInstance(projectId, instanceId, {
-    resolveOnHTTPError: true,
-  });
-  if (instanceRes.error) {
-    if (_.get(instanceRes, "error.code") === 404) {
-      return false;
+  try {
+    await getInstance(projectId, instanceId);
+  } catch (err: unknown) {
+    if (err instanceof FirebaseError) {
+      if (err.status === 404) {
+        return false;
+      }
+      const msg = `Unexpected error when checking if instance ID exists: ${err}`;
+      throw new FirebaseError(msg, {
+        original: err,
+      });
+    } else {
+      throw err;
     }
-    const msg =
-      "Unexpected error when checking if instance ID exists: " +
-      _.get(instanceRes, "error.message");
-    throw new FirebaseError(msg, {
-      original: instanceRes.error,
-    });
   }
   return true;
 }
 
 export function isUrlPath(extInstallPath: string): boolean {
-  return URL_REGEX.test(extInstallPath);
+  return extInstallPath.startsWith("https:");
 }
 
 export function isLocalPath(extInstallPath: string): boolean {
