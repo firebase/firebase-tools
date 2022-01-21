@@ -92,7 +92,7 @@ function validatePlatformTargets(endpoints: backend.Endpoint[]) {
  */
 async function validateSecretVersions(endpoints: backend.Endpoint[]) {
   const validate = async (s: backend.SecretEnvVar) => {
-    const sv = await getSecretVersion(s.projectId, s.secret, s.version || "latest");
+    const sv = await getSecretVersion(s.projectId, s.secret, "latest");
     if (s.version == null) {
       logLabeledSuccess(
         "functions",

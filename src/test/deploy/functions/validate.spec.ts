@@ -210,28 +210,6 @@ describe("validate", () => {
       expect(validate.secretsAreValid(b)).to.be.rejectedWith(FirebaseError, /DISABLED/);
     });
 
-    it("passes validation given valid secret config", () => {
-      secretVersionStub.withArgs(project, secret.name, "3").resolves({
-        secret,
-        version: "3",
-        state: "ENABLED",
-      });
-
-      const b = backend.of({
-        ...ENDPOINT,
-        platform: "gcfv1",
-        secretEnvironmentVariables: [
-          {
-            secret: "MY_SECRET",
-            key: "MY_SECRET",
-            projectId: "project",
-            version: "3",
-          },
-        ],
-      });
-      expect(validate.secretsAreValid(b)).to.not.be.rejected;
-    });
-
     it("passes validation and resolves latest version given valid secret config", async () => {
       secretVersionStub.withArgs(project, secret.name, "latest").resolves({
         secret,
