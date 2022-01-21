@@ -1,0 +1,1 @@
+- Updates Hosting initial `index.html` to be proper javascript.
