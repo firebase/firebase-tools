@@ -7,7 +7,7 @@ import AbortController from "abort-controller";
 import { Client } from "./apiv2";
 import { realtimeOriginOrEmulatorOrCustomUrl } from "./database/api";
 import { logger } from "./logger";
-import * as ProfileReport from "./profileReport";
+import { ProfileReport } from "./profileReport";
 import * as responseToError from "./responseToError";
 import * as utils from "./utils";
 

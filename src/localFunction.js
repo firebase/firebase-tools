@@ -6,6 +6,8 @@ var request = require("request");
 var { encodeFirestoreValue } = require("./firestore/encodeFirestoreValue");
 var utils = require("./utils");
 
+class LocalFunction {
+
 /**
  * @constructor
  * @this LocalFunction
@@ -14,7 +16,7 @@ var utils = require("./utils");
  * @param {object=} urls
  * @param {object=} controller
  */
-var LocalFunction = function (trigger, urls, controller) {
+  constructor(trigger, urls, controller) {
   const isCallable = _.get(trigger, ["labels", "deployment-callable"], "false");
 
   this.id = trigger.id;
@@ -39,15 +41,15 @@ var LocalFunction = function (trigger, urls, controller) {
   }
 };
 
-LocalFunction.prototype._isDatabaseFunc = function (eventTrigger) {
+_isDatabaseFunc = function (eventTrigger) {
   return utils.getFunctionsEventProvider(eventTrigger.eventType) === "Database";
 };
 
-LocalFunction.prototype._isFirestoreFunc = function (eventTrigger) {
+_isFirestoreFunc = function (eventTrigger) {
   return utils.getFunctionsEventProvider(eventTrigger.eventType) === "Firestore";
 };
 
-LocalFunction.prototype._substituteParams = function (resource, params) {
+_substituteParams = function (resource, params) {
   var wildcardRegex = new RegExp("{[^/{}]*}", "g");
   return resource.replace(wildcardRegex, function (wildcard) {
     var wildcardNoBraces = wildcard.slice(1, -1); // .slice removes '{' and '}' from wildcard
@@ -56,7 +58,7 @@ LocalFunction.prototype._substituteParams = function (resource, params) {
   });
 };
 
-LocalFunction.prototype._constructCallableFunc = function (data, opts) {
+_constructCallableFunc = function (data, opts) {
   opts = opts || {};
 
   var headers = {};
@@ -74,7 +76,7 @@ LocalFunction.prototype._constructCallableFunc = function (data, opts) {
   });
 };
 
-LocalFunction.prototype._constructAuth = function (auth, authType) {
+_constructAuth = function (auth, authType) {
   if (_.get(auth, "admin") || _.get(auth, "variable")) {
     return auth; // User is providing the wire auth format already.
   }
@@ -115,7 +117,7 @@ LocalFunction.prototype._constructAuth = function (auth, authType) {
   return { admin: true };
 };
 
-LocalFunction.prototype._makeFirestoreValue = function (input) {
+_makeFirestoreValue = function (input) {
   if (typeof input === "undefined" || _.isEmpty(input)) {
     // Document does not exist.
     return {};
@@ -131,7 +133,7 @@ LocalFunction.prototype._makeFirestoreValue = function (input) {
   };
 };
 
-LocalFunction.prototype._requestCallBack = function (err, response, body) {
+_requestCallBack = function (err, response, body) {
   if (err) {
     return console.warn("\nERROR SENDING REQUEST: " + err);
   }
@@ -154,7 +156,7 @@ LocalFunction.prototype._requestCallBack = function (err, response, body) {
   return console.log("\nRESPONSE RECEIVED FROM FUNCTION: " + status + bodyString);
 };
 
-LocalFunction.prototype._call = function (data, opts) {
+_call = function (data, opts) {
   opts = opts || {};
   var operationType;
   var dataPayload;
@@ -217,5 +219,10 @@ LocalFunction.prototype._call = function (data, opts) {
   }
   return "Successfully invoked function.";
 };
+}
 
-module.exports = LocalFunction;
+module.exports = {
+  LocalFunction,
+};
+
+export { LocalFunction };

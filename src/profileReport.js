@@ -26,11 +26,13 @@ var SPEED_NOTE =
 var COLLAPSE_THRESHOLD = 25;
 var COLLAPSE_WILDCARD = ["$wildcard"];
 
+class ProfileReport {
+
 /**
  * @constructor
  * @this ProfileReport
  */
-var ProfileReport = function (tmpFile, outStream, options) {
+constructor (tmpFile, outStream, options) {
   this.tempFile = tmpFile;
   this.output = outStream;
   this.options = options;
@@ -52,7 +54,7 @@ var ProfileReport = function (tmpFile, outStream, options) {
 
 // 'static' helper methods
 
-ProfileReport.extractJSON = function (line, input) {
+static extractJSON = function (line, input) {
   if (!input && !DATA_LINE_REGEX.test(line)) {
     return null;
   } else if (!input) {
@@ -65,11 +67,11 @@ ProfileReport.extractJSON = function (line, input) {
   }
 };
 
-ProfileReport.pathString = function (path) {
+static pathString = function (path) {
   return "/" + (path ? path.join("/") : "");
 };
 
-ProfileReport.formatNumber = function (num) {
+static formatNumber = function (num) {
   var parts = num.toFixed(2).split(".");
   parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   if (+parts[1] === 0) {
@@ -78,7 +80,7 @@ ProfileReport.formatNumber = function (num) {
   return parts.join(".");
 };
 
-ProfileReport.formatBytes = function (bytes) {
+static formatBytes = function (bytes) {
   var threshold = 1000;
   if (Math.round(bytes) < threshold) {
     return bytes + " B";
@@ -90,21 +92,21 @@ ProfileReport.formatBytes = function (bytes) {
     formattedBytes /= threshold;
     u++;
   } while (Math.abs(formattedBytes) >= threshold && u < units.length - 1);
-  return ProfileReport.formatNumber(formattedBytes) + " " + units[u];
+  return formatNumber(formattedBytes) + " " + units[u];
 };
 
-ProfileReport.extractReadableIndex = function (query) {
+static extractReadableIndex = function (query) {
   if (_.has(query, "orderBy")) {
     return query.orderBy;
   }
   var indexPath = _.get(query, "index.path");
   if (indexPath) {
-    return ProfileReport.pathString(indexPath);
+    return pathString(indexPath);
   }
   return ".value";
 };
 
-ProfileReport.prototype.collectUnindexed = function (data, path) {
+collectUnindexed = function (data, path) {
   if (!data.unIndexed) {
     return;
   }
@@ -126,7 +128,7 @@ ProfileReport.prototype.collectUnindexed = function (data, path) {
   indexNode.times += 1;
 };
 
-ProfileReport.prototype.collectSpeedUnpathed = function (data, opStats) {
+collectSpeedUnpathed = function (data, opStats) {
   if (Object.keys(opStats).length === 0) {
     opStats.times = 0;
     opStats.millis = 0;
@@ -149,7 +151,7 @@ ProfileReport.prototype.collectSpeedUnpathed = function (data, opStats) {
   }
 };
 
-ProfileReport.prototype.collectSpeed = function (data, path, opType) {
+collectSpeed = function (data, path, opType) {
   if (!_.has(opType, path)) {
     opType[path] = {
       times: 0,
@@ -180,7 +182,7 @@ ProfileReport.prototype.collectSpeed = function (data, path, opType) {
   }
 };
 
-ProfileReport.prototype.collectBandwidth = function (bytes, path, direction) {
+collectBandwidth = function (bytes, path, direction) {
   if (!_.has(direction, path)) {
     direction[path] = {
       times: 0,
@@ -192,39 +194,39 @@ ProfileReport.prototype.collectBandwidth = function (bytes, path, direction) {
   node.bytes += bytes;
 };
 
-ProfileReport.prototype.collectRead = function (data, path, bytes) {
+collectRead = function (data, path, bytes) {
   this.collectSpeed(data, path, this.state.readSpeed);
   this.collectBandwidth(bytes, path, this.state.outband);
 };
 
-ProfileReport.prototype.collectBroadcast = function (data, path, bytes) {
+collectBroadcast = function (data, path, bytes) {
   this.collectSpeed(data, path, this.state.broadcastSpeed);
   this.collectBandwidth(bytes, path, this.state.outband);
 };
 
-ProfileReport.prototype.collectUnlisten = function (data, path) {
+collectUnlisten = function (data, path) {
   this.collectSpeed(data, path, this.state.unlistenSpeed);
 };
 
-ProfileReport.prototype.collectConnect = function (data) {
+collectConnect = function (data) {
   this.collectSpeedUnpathed(data, this.state.connectSpeed);
 };
 
-ProfileReport.prototype.collectDisconnect = function (data) {
+collectDisconnect = function (data) {
   this.collectSpeedUnpathed(data, this.state.disconnectSpeed);
 };
 
-ProfileReport.prototype.collectWrite = function (data, path, bytes) {
+collectWrite = function (data, path, bytes) {
   this.collectSpeed(data, path, this.state.writeSpeed);
   this.collectBandwidth(bytes, path, this.state.inband);
 };
 
-ProfileReport.prototype.processOperation = function (data) {
+processOperation = function (data) {
   if (!this.state.startTime) {
     this.state.startTime = data.timestamp;
   }
   this.state.endTime = data.timestamp;
-  var path = ProfileReport.pathString(data.path);
+  var path = pathString(data.path);
   this.state.opCount++;
   switch (data.name) {
     case "concurrent-connect":
@@ -274,7 +276,7 @@ ProfileReport.prototype.processOperation = function (data) {
  * keys that have similar prefixes.
  * Combining is done via the combiner function.
  */
-ProfileReport.prototype.collapsePaths = function (pathedObject, combiner, pathIndex) {
+collapsePaths = function (pathedObject, combiner, pathIndex) {
   if (!this.options.collapse) {
     // Don't do this if the --no-collapse flag is specified
     return pathedObject;
@@ -299,19 +301,19 @@ ProfileReport.prototype.collapsePaths = function (pathedObject, combiner, pathIn
   var prefixes = {};
   // Count path prefixes for the index.
   pathSegments.forEach(function (segments) {
-    var prefixPath = ProfileReport.pathString(segments.slice(0, pathIndex));
+    var prefixPath = pathString(segments.slice(0, pathIndex));
     var prefixCount = _.get(prefixes, prefixPath, new Set());
     prefixes[prefixPath] = prefixCount.add(segments[pathIndex]);
   });
   var collapsedObject = {};
   pathSegments.forEach(function (segments) {
     var prefix = segments.slice(0, pathIndex);
-    var prefixPath = ProfileReport.pathString(prefix);
+    var prefixPath = pathString(prefix);
     var prefixCount = _.get(prefixes, prefixPath);
-    var originalPath = ProfileReport.pathString(segments);
+    var originalPath = pathString(segments);
     if (prefixCount.size >= COLLAPSE_THRESHOLD) {
       var tail = segments.slice(pathIndex + 1);
-      var collapsedPath = ProfileReport.pathString(prefix.concat(COLLAPSE_WILDCARD).concat(tail));
+      var collapsedPath = pathString(prefix.concat(COLLAPSE_WILDCARD).concat(tail));
       var currentValue = collapsedObject[collapsedPath];
       if (currentValue) {
         collapsedObject[collapsedPath] = combiner(currentValue, pathedObject[originalPath]);
@@ -323,14 +325,14 @@ ProfileReport.prototype.collapsePaths = function (pathedObject, combiner, pathIn
     }
   });
   otherSegments.forEach(function (segments) {
-    var originalPath = ProfileReport.pathString(segments);
+    var originalPath = pathString(segments);
     collapsedObject[originalPath] = pathedObject[originalPath];
   });
   // Do this again, but down a level.
   return this.collapsePaths(collapsedObject, combiner, pathIndex + 1);
 };
 
-ProfileReport.prototype.renderUnindexedData = function () {
+renderUnindexedData = function () {
   var table = new Table({
     head: ["Path", "Index", "Count"],
     style: {
@@ -353,8 +355,8 @@ ProfileReport.prototype.renderUnindexedData = function () {
       var data = unindexed[path][index];
       var row = [
         path,
-        ProfileReport.extractReadableIndex(data.query),
-        ProfileReport.formatNumber(data.times),
+        extractReadableIndex(data.query),
+        formatNumber(data.times),
       ];
       table.push(row);
     });
@@ -362,7 +364,7 @@ ProfileReport.prototype.renderUnindexedData = function () {
   return table;
 };
 
-ProfileReport.prototype.renderBandwidth = function (pureData) {
+renderBandwidth = function (pureData) {
   var table = new Table({
     head: ["Path", "Total", "Count", "Average"],
     style: {
@@ -389,20 +391,20 @@ ProfileReport.prototype.renderBandwidth = function (pureData) {
     var bandwidth = data[path];
     var row = [
       path,
-      ProfileReport.formatBytes(bandwidth.bytes),
-      ProfileReport.formatNumber(bandwidth.times),
-      ProfileReport.formatBytes(bandwidth.bytes / bandwidth.times),
+      formatBytes(bandwidth.bytes),
+      formatNumber(bandwidth.times),
+      formatBytes(bandwidth.bytes / bandwidth.times),
     ];
     table.push(row);
   });
   return table;
 };
 
-ProfileReport.prototype.renderOutgoingBandwidth = function () {
+renderOutgoingBandwidth = function () {
   return this.renderBandwidth(this.state.outband);
 };
 
-ProfileReport.prototype.renderIncomingBandwidth = function () {
+renderIncomingBandwidth = function () {
   return this.renderBandwidth(this.state.inband);
 };
 
@@ -414,7 +416,7 @@ ProfileReport.prototype.renderIncomingBandwidth = function () {
  * developers, we render aggregate statistics for such operations without a
  * `path` table column.
  */
-ProfileReport.prototype.renderUnpathedOperationSpeed = function (speedData, hasSecurity) {
+renderUnpathedOperationSpeed = function (speedData, hasSecurity) {
   var head = ["Count", "Average Execution Speed", "Average Pending Time"];
   if (hasSecurity) {
     head.push("Permission Denied");
@@ -433,20 +435,20 @@ ProfileReport.prototype.renderUnpathedOperationSpeed = function (speedData, hasS
   if (Object.keys(speedData).length > 0) {
     var row = [
       speedData.times,
-      ProfileReport.formatNumber(speedData.millis / speedData.times) + " ms",
-      ProfileReport.formatNumber(
+      formatNumber(speedData.millis / speedData.times) + " ms",
+      formatNumber(
         speedData.pendingCount === 0 ? 0 : speedData.pendingTime / speedData.pendingCount
       ) + " ms",
     ];
     if (hasSecurity) {
-      row.push(ProfileReport.formatNumber(speedData.rejected));
+      row.push(formatNumber(speedData.rejected));
     }
     table.push(row);
   }
   return table;
 };
 
-ProfileReport.prototype.renderOperationSpeed = function (pureData, hasSecurity) {
+renderOperationSpeed = function (pureData, hasSecurity) {
   var head = ["Path", "Count", "Average Execution Speed", "Average Pending Time"];
   if (hasSecurity) {
     head.push("Permission Denied");
@@ -481,44 +483,44 @@ ProfileReport.prototype.renderOperationSpeed = function (pureData, hasSecurity) 
     var row = [
       path,
       speed.times,
-      ProfileReport.formatNumber(speed.millis / speed.times) + " ms",
-      ProfileReport.formatNumber(
+      formatNumber(speed.millis / speed.times) + " ms",
+      formatNumber(
         speed.pendingCount === 0 ? 0 : speed.pendingTime / speed.pendingCount
       ) + " ms",
     ];
     if (hasSecurity) {
-      row.push(ProfileReport.formatNumber(speed.rejected));
+      row.push(formatNumber(speed.rejected));
     }
     table.push(row);
   });
   return table;
 };
 
-ProfileReport.prototype.renderReadSpeed = function () {
+renderReadSpeed = function () {
   return this.renderOperationSpeed(this.state.readSpeed, true);
 };
 
-ProfileReport.prototype.renderWriteSpeed = function () {
+renderWriteSpeed = function () {
   return this.renderOperationSpeed(this.state.writeSpeed, true);
 };
 
-ProfileReport.prototype.renderBroadcastSpeed = function () {
+renderBroadcastSpeed = function () {
   return this.renderOperationSpeed(this.state.broadcastSpeed, false);
 };
 
-ProfileReport.prototype.renderConnectSpeed = function () {
+renderConnectSpeed = function () {
   return this.renderUnpathedOperationSpeed(this.state.connectSpeed, false);
 };
 
-ProfileReport.prototype.renderDisconnectSpeed = function () {
+renderDisconnectSpeed = function () {
   return this.renderUnpathedOperationSpeed(this.state.disconnectSpeed, false);
 };
 
-ProfileReport.prototype.renderUnlistenSpeed = function () {
+renderUnlistenSpeed = function () {
   return this.renderOperationSpeed(this.state.unlistenSpeed, false);
 };
 
-ProfileReport.prototype.parse = function (onLine, onClose) {
+parse = function (onLine, onClose) {
   var isFile = this.options.isFile;
   var tmpFile = this.tempFile;
   var outStream = this.output;
@@ -529,7 +531,7 @@ ProfileReport.prototype.parse = function (onLine, onClose) {
     });
     var errored = false;
     rl.on("line", function (line) {
-      var data = ProfileReport.extractJSON(line, isInput);
+      var data = extractJSON(line, isInput);
       if (!data) {
         return;
       }
@@ -561,7 +563,7 @@ ProfileReport.prototype.parse = function (onLine, onClose) {
   });
 };
 
-ProfileReport.prototype.write = function (data) {
+write = function (data) {
   if (this.options.isFile) {
     this.output.write(data);
   } else {
@@ -569,7 +571,7 @@ ProfileReport.prototype.write = function (data) {
   }
 };
 
-ProfileReport.prototype.generate = function () {
+generate = function () {
   if (this.options.format === "TXT") {
     return this.generateText();
   } else if (this.options.format === "RAW") {
@@ -582,22 +584,22 @@ ProfileReport.prototype.generate = function () {
   });
 };
 
-ProfileReport.prototype.generateRaw = function () {
+generateRaw = function () {
   return this.parse(this.writeRaw.bind(this), function () {
     return null;
   });
 };
 
-ProfileReport.prototype.writeRaw = function (data) {
+writeRaw = function (data) {
   // Just write the json to the output
   this.write(JSON.stringify(data) + "\n");
 };
 
-ProfileReport.prototype.generateText = function () {
+generateText = function () {
   return this.parse(this.processOperation.bind(this), this.outputText.bind(this));
 };
 
-ProfileReport.prototype.outputText = function () {
+outputText = function () {
   var totalTime = this.state.endTime - this.state.startTime;
   var isFile = this.options.isFile;
   var write = this.write.bind(this);
@@ -634,11 +636,11 @@ ProfileReport.prototype.outputText = function () {
   writeTable("Unindexed Queries", this.renderUnindexedData());
 };
 
-ProfileReport.prototype.generateJson = function () {
+generateJson = function () {
   return this.parse(this.processOperation.bind(this), this.outputJson.bind(this));
 };
 
-ProfileReport.prototype.outputJson = function () {
+outputJson = function () {
   var totalTime = this.state.endTime - this.state.startTime;
   var tableToJson = function (table, note) {
     var json = {
@@ -672,5 +674,8 @@ ProfileReport.prototype.outputJson = function () {
   }
   return json;
 };
+}
 
-module.exports = ProfileReport;
+module.exports = { ProfileReport };
+
+export { ProfileReport };
