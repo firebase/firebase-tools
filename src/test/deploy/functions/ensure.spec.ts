@@ -191,7 +191,7 @@ describe("ensureCloudBuildEnabled()", () => {
           [defaultServiceAccount(e.project)],
           "roles/secretmanager.secretAccessor"
         );
-      await ensure.ensureSecretAccess(projectId, b);
+      await ensure.ensureSecretAccess(projectId, b, backend.empty());
     });
 
     it("ensures access to all secrets", async () => {
@@ -200,7 +200,7 @@ describe("ensureCloudBuildEnabled()", () => {
         secretEnvironmentVariables: [secret0, secret1],
       });
       secretManagerMock.expects("ensureServiceAgentRole").twice();
-      await ensure.ensureSecretAccess(projectId, b);
+      await ensure.ensureSecretAccess(projectId, b, backend.empty());
     });
 
     it("combines service account to make one call per secret", async () => {
@@ -224,7 +224,39 @@ describe("ensureCloudBuildEnabled()", () => {
           [`${e.project}@appspot.gserviceaccount.com`, "foo@bar.com"],
           "roles/secretmanager.secretAccessor"
         );
-      await ensure.ensureSecretAccess(projectId, b);
+      await ensure.ensureSecretAccess(projectId, b, backend.empty());
+    });
+
+    it("skips calling IAM if secret is already bound to a service account", async () => {
+      const b = backend.of({
+        ...e,
+        secretEnvironmentVariables: [secret0],
+      });
+      secretManagerMock.expects("ensureServiceAgentRole").never();
+      await ensure.ensureSecretAccess(projectId, b, b);
+    });
+
+    it("does not include service account already bounud to a secret", async () => {
+      const haveEndpoint = {
+        ...e,
+        secretEnvironmentVariables: [secret0],
+      };
+      const haveBackend = backend.of(haveEndpoint);
+      const wantBackend = backend.of(haveEndpoint, {
+        ...e,
+        id: "another-id",
+        serviceAccountEmail: "foo@bar.com",
+        secretEnvironmentVariables: [secret0],
+      });
+      secretManagerMock
+        .expects("ensureServiceAgentRole")
+        .once()
+        .withExactArgs(
+          { name: secret0.secret, projectId: projectId },
+          ["foo@bar.com"],
+          "roles/secretmanager.secretAccessor"
+        );
+      await ensure.ensureSecretAccess(projectId, wantBackend, haveBackend);
     });
   });
 });

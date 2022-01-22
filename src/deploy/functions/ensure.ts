@@ -83,12 +83,32 @@ export async function maybeEnableAR(projectId: string): Promise<boolean> {
 }
 
 /**
+ * Returns a mapping of all secrets declared in a stack to the bound service accounts.
+ */
+function secretsToServiceAccounts(b: backend.Backend): Record<string, Set<string>> {
+  const secretsToSa: Record<string, Set<string>> = {};
+  for (const e of backend.allEndpoints(b)) {
+    const sa = e.serviceAccountEmail || defaultServiceAccount(e.project);
+    for (const s of e.secretEnvironmentVariables! || []) {
+      const serviceAccounts = secretsToSa[s.secret] || new Set();
+      serviceAccounts.add(sa);
+      secretsToSa[s.secret] = serviceAccounts;
+    }
+  }
+  return secretsToSa;
+}
+
+/**
  * Ensures that runtime service account has access to the secrets.
  *
  * To avoid making more than one simultaneous call to setIamPolicy calls per secret, the function batches all
  * service account that requires access to it.
  */
-export async function ensureSecretAccess(projectId: string, b: backend.Backend) {
+export async function ensureSecretAccess(
+  projectId: string,
+  wantBackend: backend.Backend,
+  haveBackend: backend.Backend
+) {
   const ensureAccess = async (secret: string, serviceAccounts: string[]) => {
     logLabeledBullet(
       "functions",
@@ -105,19 +125,23 @@ export async function ensureSecretAccess(projectId: string, b: backend.Backend) 
     );
   };
 
-  // Collect all service accounts that requires access to a secret.
-  const toEnsure: Record<string, Set<string>> = {};
-  for (const e of backend.allEndpoints(b)) {
-    const sa = e.serviceAccountEmail || defaultServiceAccount(e.project);
-    for (const s of e.secretEnvironmentVariables! || []) {
-      const serviceAccounts = toEnsure[s.secret] || new Set();
-      serviceAccounts.add(sa);
-      toEnsure[s.secret] = serviceAccounts;
+  const wantSecrets = secretsToServiceAccounts(wantBackend);
+  const haveSecrets = secretsToServiceAccounts(haveBackend);
+
+  // Remove secret/service account pairs that already exists to avoid unnecessary IAM calls.
+  for (const [secret, serviceAccounts] of Object.entries(haveSecrets)) {
+    for (const serviceAccount of serviceAccounts) {
+      if (wantSecrets?.[secret].has(serviceAccount)) {
+        wantSecrets[secret].delete(serviceAccount);
+        if (wantSecrets[secret].size === 0) {
+          delete wantSecrets[secret];
+        }
+      }
     }
   }
 
   const ensure = [];
-  for (const [secret, serviceAccounts] of Object.entries(toEnsure)) {
+  for (const [secret, serviceAccounts] of Object.entries(wantSecrets)) {
     ensure.push(ensureAccess(secret, Array.from(serviceAccounts)));
   }
   await Promise.all(ensure);
