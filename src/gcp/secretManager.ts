@@ -8,14 +8,14 @@ import { secretManagerOrigin } from "../api";
 // Matches projects/{PROJECT}/secrets/{SECRET}
 const SECRET_NAME_REGEX = new RegExp(
   "projects\\/" +
-    "((?:[0-9]+)|(?:[A-Za-z]+[A-Za-z\\d-]*[A-Za-z\\d]?))\\/" +
+    "(?<project>(?:\\d+)|(?:[A-Za-z]+[A-Za-z\\d-]*[A-Za-z\\d]?))\\/" +
     "secrets\\/" +
-    "([A-Za-z\\d\\-_]+)"
+    "(?<secret>[A-Za-z\\d\\-_]+)"
 );
 
 // Matches projects/{PROJECT}/secrets/{SECRET}/versions/{latest|VERSION}
 const SECRET_VERSION_NAME_REGEX = new RegExp(
-  SECRET_NAME_REGEX.source + "\\/versions\\/" + "(latest|[0-9]+)"
+  SECRET_NAME_REGEX.source + "\\/versions\\/" + "(?<version>latest|[0-9]+)"
 );
 
 export const secretManagerConsoleUri = (projectId: string) =>
@@ -94,27 +94,27 @@ export async function secretExists(projectId: string, name: string): Promise<boo
 }
 
 export function parseSecretResourceName(resourceName: string): Secret {
-  const tokens = resourceName.match(SECRET_NAME_REGEX);
-  if (tokens == null) {
+  const match = resourceName.match(SECRET_NAME_REGEX);
+  if (!match?.groups) {
     throw new FirebaseError(`Invalid secret resource name [${resourceName}].`);
   }
   return {
-    projectId: tokens[1],
-    name: tokens[2],
+    projectId: match.groups.project,
+    name: match.groups.secret,
   };
 }
 
 export function parseSecretVersionResourceName(resourceName: string): SecretVersion {
-  const tokens = resourceName.match(SECRET_VERSION_NAME_REGEX);
-  if (tokens == null) {
+  const match = resourceName.match(SECRET_VERSION_NAME_REGEX);
+  if (!match?.groups) {
     throw new FirebaseError(`Invalid secret version resource name [${resourceName}].`);
   }
   return {
     secret: {
-      projectId: tokens[1],
-      name: tokens[2],
+      projectId: match.groups.project,
+      name: match.groups.secret,
     },
-    version: tokens[3],
+    version: match.groups.version,
   };
 }
 
