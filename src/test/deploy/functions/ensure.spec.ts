@@ -83,7 +83,7 @@ describe("ensureCloudBuildEnabled()", () => {
     it("should succeed", async () => {
       stubTimes(Date.now() - 10000, Date.now() - 5000);
 
-      await expect(ensure.ensureCloudBuildEnabled("test-project")).to.eventually.be.fulfilled;
+      await expect(ensure.cloudBuildEnabled("test-project")).to.eventually.be.fulfilled;
       expect(logStub?.callCount).to.eq(0);
     });
   });
@@ -98,7 +98,7 @@ describe("ensureCloudBuildEnabled()", () => {
     it("should succeed", async () => {
       stubTimes(Date.now() - 10000, Date.now() - 5000);
 
-      await expect(ensure.ensureCloudBuildEnabled("test-project")).to.eventually.be.fulfilled;
+      await expect(ensure.cloudBuildEnabled("test-project")).to.eventually.be.fulfilled;
       expect(logStub?.callCount).to.eq(1); // enabling an api logs a warning
     });
   });
@@ -112,7 +112,7 @@ describe("ensureCloudBuildEnabled()", () => {
     it("should error", async () => {
       stubTimes(Date.now() - 10000, Date.now() - 5000);
 
-      await expect(ensure.ensureCloudBuildEnabled("test-project")).to.eventually.be.rejectedWith(
+      await expect(ensure.cloudBuildEnabled("test-project")).to.eventually.be.rejectedWith(
         FirebaseError,
         /must be on the Blaze \(pay-as-you-go\) plan to complete this command/
       );
@@ -128,7 +128,7 @@ describe("ensureCloudBuildEnabled()", () => {
     it("should error", async () => {
       stubTimes(Date.now() - 10000, Date.now() - 5000);
 
-      await expect(ensure.ensureCloudBuildEnabled("test-project")).to.eventually.be.rejectedWith(
+      await expect(ensure.cloudBuildEnabled("test-project")).to.eventually.be.rejectedWith(
         FirebaseError,
         /Please ask a project owner to visit the following URL to enable Cloud Build/
       );
@@ -191,7 +191,7 @@ describe("ensureCloudBuildEnabled()", () => {
           [defaultServiceAccount(e.project)],
           "roles/secretmanager.secretAccessor"
         );
-      await ensure.ensureSecretAccess(projectId, b, backend.empty());
+      await ensure.secretAccess(projectId, b, backend.empty());
     });
 
     it("ensures access to all secrets", async () => {
@@ -200,7 +200,7 @@ describe("ensureCloudBuildEnabled()", () => {
         secretEnvironmentVariables: [secret0, secret1],
       });
       secretManagerMock.expects("ensureServiceAgentRole").twice();
-      await ensure.ensureSecretAccess(projectId, b, backend.empty());
+      await ensure.secretAccess(projectId, b, backend.empty());
     });
 
     it("combines service account to make one call per secret", async () => {
@@ -224,7 +224,7 @@ describe("ensureCloudBuildEnabled()", () => {
           [`${e.project}@appspot.gserviceaccount.com`, "foo@bar.com"],
           "roles/secretmanager.secretAccessor"
         );
-      await ensure.ensureSecretAccess(projectId, b, backend.empty());
+      await ensure.secretAccess(projectId, b, backend.empty());
     });
 
     it("skips calling IAM if secret is already bound to a service account", async () => {
@@ -233,7 +233,7 @@ describe("ensureCloudBuildEnabled()", () => {
         secretEnvironmentVariables: [secret0],
       });
       secretManagerMock.expects("ensureServiceAgentRole").never();
-      await ensure.ensureSecretAccess(projectId, b, b);
+      await ensure.secretAccess(projectId, b, b);
     });
 
     it("does not include service account already bounud to a secret", async () => {
@@ -256,7 +256,7 @@ describe("ensureCloudBuildEnabled()", () => {
           ["foo@bar.com"],
           "roles/secretmanager.secretAccessor"
         );
-      await ensure.ensureSecretAccess(projectId, wantBackend, haveBackend);
+      await ensure.secretAccess(projectId, wantBackend, haveBackend);
     });
   });
 });

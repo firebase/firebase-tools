@@ -52,7 +52,7 @@ function isPermissionError(e: { context?: { body?: { error?: { status?: string }
  *
  * @param projectId Project ID upon which to check enablement.
  */
-export async function ensureCloudBuildEnabled(projectId: string): Promise<void> {
+export async function cloudBuildEnabled(projectId: string): Promise<void> {
   try {
     await ensure(projectId, CLOUD_BUILD_API, "functions");
   } catch (e: any) {
@@ -104,7 +104,7 @@ function secretsToServiceAccounts(b: backend.Backend): Record<string, Set<string
  * To avoid making more than one simultaneous call to setIamPolicy calls per secret, the function batches all
  * service account that requires access to it.
  */
-export async function ensureSecretAccess(
+export async function secretAccess(
   projectId: string,
   wantBackend: backend.Backend,
   haveBackend: backend.Backend
