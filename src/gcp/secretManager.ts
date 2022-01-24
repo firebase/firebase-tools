@@ -164,7 +164,7 @@ export async function getIamPolicy(secret: Secret): Promise<iam.Policy> {
   return res.body;
 }
 
-export async function setIamPolicyBindings(secret: Secret, bindings: iam.Binding[]): Promise<void> {
+export async function setIamPolicy(secret: Secret, bindings: iam.Binding[]): Promise<void> {
   await client.post<{ policy: Partial<iam.Policy> }, iam.Policy>(
     `projects/${secret.projectId}/secrets/${secret.name}:setIamPolicy`,
     {
