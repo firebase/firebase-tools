@@ -105,7 +105,7 @@ export interface DelegateContext {
   projectDir: string;
   // Absolute path of the source directory.
   sourceDir: string;
-  runtime: string;
+  runtime?: string;
 }
 
 type Factory = (context: DelegateContext) => Promise<RuntimeDelegate | undefined>;

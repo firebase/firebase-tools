@@ -932,7 +932,7 @@ async function invokeTrigger(frb: FunctionsRuntimeBundle): Promise<void> {
     frb,
   }).log();
 
-  logDebug(`Running ${frb.triggerId} in signature ${FUNCTION_TARGET_NAME}`);
+  logDebug(`Running ${frb.triggerId} in signature ${FUNCTION_SIGNATURE}`);
 
   let seconds = 0;
   const timerId = setInterval(() => {
@@ -950,7 +950,7 @@ async function invokeTrigger(frb: FunctionsRuntimeBundle): Promise<void> {
       new EmulatorLog(
         "WARN",
         "runtime-status",
-        `Your function timed out after ~${timeout}. To configure this timeout, see
+        `Your function timed out after ~${timeout}s. To configure this timeout, see
       https://firebase.google.com/docs/functions/manage-functions#set_timeout_and_memory_allocation.`
       ).log();
       throw new Error("Function timed out.");
@@ -1036,6 +1036,7 @@ async function loadTrigger(
       triggerModule = require(frb.cwd);
     } catch (err: any) {
       if (err.code !== "ERR_REQUIRE_ESM") {
+        // Try to run diagnostics to see what could've gone wrong before rethrowing the error.
         await moduleResolutionDetective(frb, err);
         throw err;
       }
@@ -1046,11 +1047,7 @@ async function loadTrigger(
     }
   }
   const maybeTrigger = functionTarget.split(".").reduce((mod, functionTargetPart) => {
-    if (typeof mod === "undefined") {
-      return undefined;
-    } else {
-      return mod[functionTargetPart];
-    }
+    return mod?.[functionTargetPart];
   }, triggerModule);
   if (!maybeTrigger) {
     throw new Error(`Failed to find function ${functionTarget} in the loaded module`);

@@ -194,7 +194,8 @@ export function emulatedFunctionsFromEndpoints(endpoints: Endpoint[]): EmulatedT
       def.schedule = endpoint.scheduleTrigger as EventSchedule;
     } else {
       // All other trigger types are not supported by the emulator
-      continue;
+      // We leave both eventTrigger and httpTrigger attributes empty
+      // and let the caller deal with invalid triggers.
     }
     regionDefinitions.push(def);
   }

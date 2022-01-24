@@ -445,7 +445,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   /**
    * When a user changes their code, we need to look for triggers defined in their updates sources.
    *
-   * TODO(danielylee): Gracefully handle removal of deleted function definitions
+   * TODO(b/216167890): Gracefully handle removal of deleted function definitions
    */
   async loadTriggers(emulatableBackend: EmulatableBackend, force = false): Promise<void> {
     // Before loading any triggers we need to make sure there are no 'stale' workers
@@ -466,7 +466,6 @@ export class FunctionsEmulator implements EmulatorInstance {
         projectId: this.args.projectId,
         projectDir: this.args.projectDir,
         sourceDir: emulatableBackend.functionsDir,
-        runtime: "",
       });
       logger.debug(`Validating ${runtimeDelegate.name} source`);
       await runtimeDelegate.validate();
@@ -659,7 +658,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         return true;
       })
       .catch((err) => {
-        this.logger.log("WARN", "Error adding rtdb trigger: " + err);
+        this.logger.log("WARN", "Error adding Realtime Database trigger: " + err);
         throw err;
       });
   }
