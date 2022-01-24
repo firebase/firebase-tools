@@ -6,7 +6,7 @@ import * as request from "request";
 import * as util from "util";
 
 import { FunctionsServer } from "./serve/functions";
-import { LocalFunction } from "./localFunction";
+import * as LocalFunction from "./localFunction";
 import * as utils from "./utils";
 import { logger } from "./logger";
 import * as shell from "./emulator/functionsEmulatorShell";

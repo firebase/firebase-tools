@@ -26,13 +26,11 @@ var SPEED_NOTE =
 var COLLAPSE_THRESHOLD = 25;
 var COLLAPSE_WILDCARD = ["$wildcard"];
 
-class ProfileReport {
-
 /**
  * @constructor
  * @this ProfileReport
  */
-constructor (tmpFile, outStream, options) {
+var ProfileReport = function (tmpFile, outStream, options) {
   this.tempFile = tmpFile;
   this.output = outStream;
   this.options = options;
@@ -54,7 +52,7 @@ constructor (tmpFile, outStream, options) {
 
 // 'static' helper methods
 
-static extractJSON = function (line, input) {
+ProfileReport.extractJSON = function (line, input) {
   if (!input && !DATA_LINE_REGEX.test(line)) {
     return null;
   } else if (!input) {
@@ -67,11 +65,11 @@ static extractJSON = function (line, input) {
   }
 };
 
-static pathString = function (path) {
+ProfileReport.pathString = function (path) {
   return "/" + (path ? path.join("/") : "");
 };
 
-static formatNumber = function (num) {
+ProfileReport.formatNumber = function (num) {
   var parts = num.toFixed(2).split(".");
   parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   if (+parts[1] === 0) {
@@ -80,7 +78,7 @@ static formatNumber = function (num) {
   return parts.join(".");
 };
 
-static formatBytes = function (bytes) {
+ProfileReport.formatBytes = function (bytes) {
   var threshold = 1000;
   if (Math.round(bytes) < threshold) {
     return bytes + " B";
@@ -92,21 +90,21 @@ static formatBytes = function (bytes) {
     formattedBytes /= threshold;
     u++;
   } while (Math.abs(formattedBytes) >= threshold && u < units.length - 1);
-  return formatNumber(formattedBytes) + " " + units[u];
+  return ProfileReport.formatNumber(formattedBytes) + " " + units[u];
 };
 
-static extractReadableIndex = function (query) {
+ProfileReport.extractReadableIndex = function (query) {
   if (_.has(query, "orderBy")) {
     return query.orderBy;
   }
   var indexPath = _.get(query, "index.path");
   if (indexPath) {
-    return pathString(indexPath);
+    return ProfileReport.pathString(indexPath);
   }
   return ".value";
 };
 
-collectUnindexed = function (data, path) {
+ProfileReport.prototype.collectUnindexed = function (data, path) {
   if (!data.unIndexed) {
     return;
   }
@@ -128,7 +126,7 @@ collectUnindexed = function (data, path) {
   indexNode.times += 1;
 };
 
-collectSpeedUnpathed = function (data, opStats) {
+ProfileReport.prototype.collectSpeedUnpathed = function (data, opStats) {
   if (Object.keys(opStats).length === 0) {
     opStats.times = 0;
     opStats.millis = 0;
@@ -151,7 +149,7 @@ collectSpeedUnpathed = function (data, opStats) {
   }
 };
 
-collectSpeed = function (data, path, opType) {
+ProfileReport.prototype.collectSpeed = function (data, path, opType) {
   if (!_.has(opType, path)) {
     opType[path] = {
       times: 0,
@@ -182,7 +180,7 @@ collectSpeed = function (data, path, opType) {
   }
 };
 
-collectBandwidth = function (bytes, path, direction) {
+ProfileReport.prototype.collectBandwidth = function (bytes, path, direction) {
   if (!_.has(direction, path)) {
     direction[path] = {
       times: 0,
@@ -194,39 +192,39 @@ collectBandwidth = function (bytes, path, direction) {
   node.bytes += bytes;
 };
 
-collectRead = function (data, path, bytes) {
+ProfileReport.prototype.collectRead = function (data, path, bytes) {
   this.collectSpeed(data, path, this.state.readSpeed);
   this.collectBandwidth(bytes, path, this.state.outband);
 };
 
-collectBroadcast = function (data, path, bytes) {
+ProfileReport.prototype.collectBroadcast = function (data, path, bytes) {
   this.collectSpeed(data, path, this.state.broadcastSpeed);
   this.collectBandwidth(bytes, path, this.state.outband);
 };
 
-collectUnlisten = function (data, path) {
+ProfileReport.prototype.collectUnlisten = function (data, path) {
   this.collectSpeed(data, path, this.state.unlistenSpeed);
 };
 
-collectConnect = function (data) {
+ProfileReport.prototype.collectConnect = function (data) {
   this.collectSpeedUnpathed(data, this.state.connectSpeed);
 };
 
-collectDisconnect = function (data) {
+ProfileReport.prototype.collectDisconnect = function (data) {
   this.collectSpeedUnpathed(data, this.state.disconnectSpeed);
 };
 
-collectWrite = function (data, path, bytes) {
+ProfileReport.prototype.collectWrite = function (data, path, bytes) {
   this.collectSpeed(data, path, this.state.writeSpeed);
   this.collectBandwidth(bytes, path, this.state.inband);
 };
 
-processOperation = function (data) {
+ProfileReport.prototype.processOperation = function (data) {
   if (!this.state.startTime) {
     this.state.startTime = data.timestamp;
   }
   this.state.endTime = data.timestamp;
-  var path = pathString(data.path);
+  var path = ProfileReport.pathString(data.path);
   this.state.opCount++;
   switch (data.name) {
     case "concurrent-connect":
@@ -276,7 +274,7 @@ processOperation = function (data) {
  * keys that have similar prefixes.
  * Combining is done via the combiner function.
  */
-collapsePaths = function (pathedObject, combiner, pathIndex) {
+ProfileReport.prototype.collapsePaths = function (pathedObject, combiner, pathIndex) {
   if (!this.options.collapse) {
     // Don't do this if the --no-collapse flag is specified
     return pathedObject;
@@ -301,19 +299,19 @@ collapsePaths = function (pathedObject, combiner, pathIndex) {
   var prefixes = {};
   // Count path prefixes for the index.
   pathSegments.forEach(function (segments) {
-    var prefixPath = pathString(segments.slice(0, pathIndex));
+    var prefixPath = ProfileReport.pathString(segments.slice(0, pathIndex));
     var prefixCount = _.get(prefixes, prefixPath, new Set());
     prefixes[prefixPath] = prefixCount.add(segments[pathIndex]);
   });
   var collapsedObject = {};
   pathSegments.forEach(function (segments) {
     var prefix = segments.slice(0, pathIndex);
-    var prefixPath = pathString(prefix);
+    var prefixPath = ProfileReport.pathString(prefix);
     var prefixCount = _.get(prefixes, prefixPath);
-    var originalPath = pathString(segments);
+    var originalPath = ProfileReport.pathString(segments);
     if (prefixCount.size >= COLLAPSE_THRESHOLD) {
       var tail = segments.slice(pathIndex + 1);
-      var collapsedPath = pathString(prefix.concat(COLLAPSE_WILDCARD).concat(tail));
+      var collapsedPath = ProfileReport.pathString(prefix.concat(COLLAPSE_WILDCARD).concat(tail));
       var currentValue = collapsedObject[collapsedPath];
       if (currentValue) {
         collapsedObject[collapsedPath] = combiner(currentValue, pathedObject[originalPath]);
@@ -325,14 +323,14 @@ collapsePaths = function (pathedObject, combiner, pathIndex) {
     }
   });
   otherSegments.forEach(function (segments) {
-    var originalPath = pathString(segments);
+    var originalPath = ProfileReport.pathString(segments);
     collapsedObject[originalPath] = pathedObject[originalPath];
   });
   // Do this again, but down a level.
   return this.collapsePaths(collapsedObject, combiner, pathIndex + 1);
 };
 
-renderUnindexedData = function () {
+ProfileReport.prototype.renderUnindexedData = function () {
   var table = new Table({
     head: ["Path", "Index", "Count"],
     style: {
@@ -355,8 +353,8 @@ renderUnindexedData = function () {
       var data = unindexed[path][index];
       var row = [
         path,
-        extractReadableIndex(data.query),
-        formatNumber(data.times),
+        ProfileReport.extractReadableIndex(data.query),
+        ProfileReport.formatNumber(data.times),
       ];
       table.push(row);
     });
@@ -364,7 +362,7 @@ renderUnindexedData = function () {
   return table;
 };
 
-renderBandwidth = function (pureData) {
+ProfileReport.prototype.renderBandwidth = function (pureData) {
   var table = new Table({
     head: ["Path", "Total", "Count", "Average"],
     style: {
@@ -391,20 +389,20 @@ renderBandwidth = function (pureData) {
     var bandwidth = data[path];
     var row = [
       path,
-      formatBytes(bandwidth.bytes),
-      formatNumber(bandwidth.times),
-      formatBytes(bandwidth.bytes / bandwidth.times),
+      ProfileReport.formatBytes(bandwidth.bytes),
+      ProfileReport.formatNumber(bandwidth.times),
+      ProfileReport.formatBytes(bandwidth.bytes / bandwidth.times),
     ];
     table.push(row);
   });
   return table;
 };
 
-renderOutgoingBandwidth = function () {
+ProfileReport.prototype.renderOutgoingBandwidth = function () {
   return this.renderBandwidth(this.state.outband);
 };
 
-renderIncomingBandwidth = function () {
+ProfileReport.prototype.renderIncomingBandwidth = function () {
   return this.renderBandwidth(this.state.inband);
 };
 
@@ -416,7 +414,7 @@ renderIncomingBandwidth = function () {
  * developers, we render aggregate statistics for such operations without a
  * `path` table column.
  */
-renderUnpathedOperationSpeed = function (speedData, hasSecurity) {
+ProfileReport.prototype.renderUnpathedOperationSpeed = function (speedData, hasSecurity) {
   var head = ["Count", "Average Execution Speed", "Average Pending Time"];
   if (hasSecurity) {
     head.push("Permission Denied");
@@ -435,20 +433,20 @@ renderUnpathedOperationSpeed = function (speedData, hasSecurity) {
   if (Object.keys(speedData).length > 0) {
     var row = [
       speedData.times,
-      formatNumber(speedData.millis / speedData.times) + " ms",
-      formatNumber(
+      ProfileReport.formatNumber(speedData.millis / speedData.times) + " ms",
+      ProfileReport.formatNumber(
         speedData.pendingCount === 0 ? 0 : speedData.pendingTime / speedData.pendingCount
       ) + " ms",
     ];
     if (hasSecurity) {
-      row.push(formatNumber(speedData.rejected));
+      row.push(ProfileReport.formatNumber(speedData.rejected));
     }
     table.push(row);
   }
   return table;
 };
 
-renderOperationSpeed = function (pureData, hasSecurity) {
+ProfileReport.prototype.renderOperationSpeed = function (pureData, hasSecurity) {
   var head = ["Path", "Count", "Average Execution Speed", "Average Pending Time"];
   if (hasSecurity) {
     head.push("Permission Denied");
@@ -483,44 +481,44 @@ renderOperationSpeed = function (pureData, hasSecurity) {
     var row = [
       path,
       speed.times,
-      formatNumber(speed.millis / speed.times) + " ms",
-      formatNumber(
+      ProfileReport.formatNumber(speed.millis / speed.times) + " ms",
+      ProfileReport.formatNumber(
         speed.pendingCount === 0 ? 0 : speed.pendingTime / speed.pendingCount
       ) + " ms",
     ];
     if (hasSecurity) {
-      row.push(formatNumber(speed.rejected));
+      row.push(ProfileReport.formatNumber(speed.rejected));
     }
     table.push(row);
   });
   return table;
 };
 
-renderReadSpeed = function () {
+ProfileReport.prototype.renderReadSpeed = function () {
   return this.renderOperationSpeed(this.state.readSpeed, true);
 };
 
-renderWriteSpeed = function () {
+ProfileReport.prototype.renderWriteSpeed = function () {
   return this.renderOperationSpeed(this.state.writeSpeed, true);
 };
 
-renderBroadcastSpeed = function () {
+ProfileReport.prototype.renderBroadcastSpeed = function () {
   return this.renderOperationSpeed(this.state.broadcastSpeed, false);
 };
 
-renderConnectSpeed = function () {
+ProfileReport.prototype.renderConnectSpeed = function () {
   return this.renderUnpathedOperationSpeed(this.state.connectSpeed, false);
 };
 
-renderDisconnectSpeed = function () {
+ProfileReport.prototype.renderDisconnectSpeed = function () {
   return this.renderUnpathedOperationSpeed(this.state.disconnectSpeed, false);
 };
 
-renderUnlistenSpeed = function () {
+ProfileReport.prototype.renderUnlistenSpeed = function () {
   return this.renderOperationSpeed(this.state.unlistenSpeed, false);
 };
 
-parse = function (onLine, onClose) {
+ProfileReport.prototype.parse = function (onLine, onClose) {
   var isFile = this.options.isFile;
   var tmpFile = this.tempFile;
   var outStream = this.output;
@@ -531,7 +529,7 @@ parse = function (onLine, onClose) {
     });
     var errored = false;
     rl.on("line", function (line) {
-      var data = extractJSON(line, isInput);
+      var data = ProfileReport.extractJSON(line, isInput);
       if (!data) {
         return;
       }
@@ -563,7 +561,7 @@ parse = function (onLine, onClose) {
   });
 };
 
-write = function (data) {
+ProfileReport.prototype.write = function (data) {
   if (this.options.isFile) {
     this.output.write(data);
   } else {
@@ -571,7 +569,7 @@ write = function (data) {
   }
 };
 
-generate = function () {
+ProfileReport.prototype.generate = function () {
   if (this.options.format === "TXT") {
     return this.generateText();
   } else if (this.options.format === "RAW") {
@@ -584,22 +582,22 @@ generate = function () {
   });
 };
 
-generateRaw = function () {
+ProfileReport.prototype.generateRaw = function () {
   return this.parse(this.writeRaw.bind(this), function () {
     return null;
   });
 };
 
-writeRaw = function (data) {
+ProfileReport.prototype.writeRaw = function (data) {
   // Just write the json to the output
   this.write(JSON.stringify(data) + "\n");
 };
 
-generateText = function () {
+ProfileReport.prototype.generateText = function () {
   return this.parse(this.processOperation.bind(this), this.outputText.bind(this));
 };
 
-outputText = function () {
+ProfileReport.prototype.outputText = function () {
   var totalTime = this.state.endTime - this.state.startTime;
   var isFile = this.options.isFile;
   var write = this.write.bind(this);
@@ -636,11 +634,11 @@ outputText = function () {
   writeTable("Unindexed Queries", this.renderUnindexedData());
 };
 
-generateJson = function () {
+ProfileReport.prototype.generateJson = function () {
   return this.parse(this.processOperation.bind(this), this.outputJson.bind(this));
 };
 
-outputJson = function () {
+ProfileReport.prototype.outputJson = function () {
   var totalTime = this.state.endTime - this.state.startTime;
   var tableToJson = function (table, note) {
     var json = {
@@ -674,8 +672,5 @@ outputJson = function () {
   }
   return json;
 };
-}
 
-module.exports = { ProfileReport };
-
-export { ProfileReport };
+module.exports = ProfileReport;

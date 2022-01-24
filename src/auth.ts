@@ -49,7 +49,7 @@ export interface Account {
   tokens: Tokens;
 }
 
-export interface TokensWithExpiration extends Tokens {
+interface TokensWithExpiration extends Tokens {
   expires_at?: number;
 }
 
@@ -57,7 +57,7 @@ interface TokensWithTTL extends Tokens {
   expires_in?: number;
 }
 
-export interface UserCredentials {
+interface UserCredentials {
   user: string | User;
   tokens: TokensWithExpiration;
   scopes: string[];
