@@ -88,7 +88,7 @@ export interface ServiceConfig {
   uri?: string;
 
   timeoutSeconds?: number;
-  availableMemoryMb?: number;
+  availableMemory?: string;
   environmentVariables?: Record<string, string>;
   maxInstanceCount?: number;
   minInstanceCount?: number;
@@ -163,6 +163,43 @@ interface GenerateUploadUrlResponse {
   storageSource: StorageSource;
 }
 
+// AvailableMemory suffixes and their byte count.
+type MemoryUnit = "" | "k" | "M" | "G" | "T" | "Ki" | "Mi" | "Gi" | "Ti";
+const BYTES_PER_UNIT: Record<MemoryUnit, number> = {
+  "": 1,
+  k: 1e3,
+  M: 1e6,
+  G: 1e9,
+  T: 1e12,
+  Ki: 1 << 10,
+  Mi: 1 << 20,
+  Gi: 1 << 30,
+  Ti: 1 << 40,
+};
+
+/**
+ * Returns the float-precision number of Mega(not Mebi)bytes in a
+ * Kubernetes-style quantity
+ * Must serve the same results as
+ * https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apimachinery/pkg/api/resource/quantity.go
+ */
+export function megabytes(memory: string): number {
+  const re = /^([0-9]+(\.[0-9]*)?)(Ki|Mi|Gi|Ti|k|M|G|T|([eE]([0-9]+)))?$/;
+  const matches = re.exec(memory);
+  if (!matches) {
+    throw new Error(`Invalid memory quantity "${memory}""`);
+  }
+  const quantity = Number.parseFloat(matches[1]);
+  let bytes: number;
+  if (matches[5]) {
+    bytes = quantity * Math.pow(10, Number.parseFloat(matches[5]));
+  } else {
+    const suffix = matches[3] || "";
+    bytes = quantity * BYTES_PER_UNIT[suffix as MemoryUnit];
+  }
+  return bytes / 1e6;
+}
+
 /**
  * Logs an error from a failed function deployment.
  * @param funcName Name of the function that was unsuccessfully deployed.
@@ -199,7 +236,7 @@ export async function generateUploadUrl(
       `projects/${projectId}/locations/${location}/functions:generateUploadUrl`
     );
     return res.body;
-  } catch (err) {
+  } catch (err: any) {
     logger.info(
       "\n\nThere was an issue deploying your functions. Verify that your project has a Google App Engine instance setup at https://console.cloud.google.com/appengine and try again. If this issue persists, please contact support."
     );
@@ -224,7 +261,7 @@ export async function createFunction(
       { queryParams: { functionId } }
     );
     return res.body;
-  } catch (err) {
+  } catch (err: any) {
     throw functionsOpLogReject(cloudFunction.name, "create", err);
   }
 }
@@ -306,7 +343,7 @@ export async function updateFunction(
       { queryParams }
     );
     return res.body;
-  } catch (err) {
+  } catch (err: any) {
     throw functionsOpLogReject(cloudFunction.name, "update", err);
   }
 }
@@ -319,7 +356,7 @@ export async function deleteFunction(cloudFunction: string): Promise<Operation> 
   try {
     const res = await client.delete<Operation>(cloudFunction);
     return res.body;
-  } catch (err) {
+  } catch (err: any) {
     throw functionsOpLogReject(cloudFunction, "update", err);
   }
 }
@@ -356,12 +393,18 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
   proto.copyIfPresent(
     gcfFunction.serviceConfig,
     endpoint,
-    "availableMemoryMb",
     "environmentVariables",
     "vpcConnector",
     "vpcConnectorEgressSettings",
     "serviceAccountEmail",
     "ingressSettings"
+  );
+  proto.renameIfPresent(
+    gcfFunction.serviceConfig,
+    endpoint,
+    "availableMemory",
+    "availableMemoryMb",
+    (mb: string) => `${mb}M`
   );
   proto.renameIfPresent(
     gcfFunction.serviceConfig,
@@ -385,13 +428,21 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
         gcfFunction.eventTrigger.eventFilters.push({ attribute, value });
       }
     }
+    proto.renameIfPresent(
+      gcfFunction.eventTrigger,
+      endpoint.eventTrigger,
+      "triggerRegion",
+      "region"
+    );
 
     if (endpoint.eventTrigger.retry) {
       logger.warn("Cannot set a retry policy on Cloud Function", endpoint.id);
     }
   } else if (backend.isScheduleTriggered(endpoint)) {
     // trigger type defaults to HTTPS.
-    gcfFunction.labels = { ...gcfFunction.labels, ["deployment-scheduled"]: "true" };
+    gcfFunction.labels = { ...gcfFunction.labels, "deployment-scheduled": "true" };
+  } else if (backend.isTaskQueueTriggered(endpoint)) {
+    gcfFunction.labels = { ...gcfFunction.labels, "deployment-taskqueue": "true" };
   }
 
   return gcfFunction;
@@ -403,6 +454,10 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
   if (gcfFunction.labels?.["deployment-scheduled"] === "true") {
     trigger = {
       scheduleTrigger: {},
+    };
+  } else if (gcfFunction.labels?.["deployment-taskqueue"] === "true") {
+    trigger = {
+      taskQueueTrigger: {},
     };
   } else if (gcfFunction.eventTrigger) {
     trigger = {
@@ -447,11 +502,17 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     endpoint,
     gcfFunction.serviceConfig,
     "serviceAccountEmail",
-    "availableMemoryMb",
     "vpcConnector",
     "vpcConnectorEgressSettings",
     "ingressSettings",
     "environmentVariables"
+  );
+  proto.renameIfPresent(
+    endpoint,
+    gcfFunction.serviceConfig,
+    "availableMemoryMb",
+    "availableMemory",
+    megabytes
   );
   proto.renameIfPresent(
     endpoint,

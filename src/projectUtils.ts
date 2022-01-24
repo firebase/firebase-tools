@@ -2,7 +2,8 @@ import { getFirebaseProject } from "./management/projects";
 import { RC } from "./rc";
 
 import * as clc from "cli-color";
-import * as marked from "marked";
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
+const { marked } = require("marked");
 
 const { FirebaseError } = require("./error");
 
@@ -89,4 +90,18 @@ export async function needProjectNumber(options: any): Promise<string> {
   const metadata = await getFirebaseProject(projectId);
   options.projectNumber = metadata.projectNumber;
   return options.projectNumber;
+}
+
+/**
+ * Looks up all aliases for projectId.
+ * @param options CLI options.
+ * @param projectId A project id to get the aliases for
+ */
+export function getAliases(options: any, projectId: string): string[] {
+  if (options.rc.hasProjects) {
+    return Object.entries(options.rc.projects)
+      .filter((entry) => entry[1] === projectId)
+      .map((entry) => entry[0]);
+  }
+  return [];
 }

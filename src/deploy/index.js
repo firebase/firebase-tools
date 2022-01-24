@@ -17,6 +17,7 @@ var TARGETS = {
   functions: require("./functions"),
   storage: require("./storage"),
   remoteconfig: require("./remoteconfig"),
+  extensions: require("./extensions"),
 };
 
 var _noop = function () {
@@ -50,6 +51,7 @@ var deploy = function (targetNames, options, customContext = {}) {
   var deploys = [];
   var releases = [];
   var postdeploys = [];
+  var startTime = Date.now();
 
   for (var i = 0; i < targetNames.length; i++) {
     var targetName = targetNames[i];
@@ -95,9 +97,15 @@ var deploy = function (targetNames, options, customContext = {}) {
     })
     .then(function () {
       if (_.has(options, "config.notes.databaseRules")) {
-        track("Rules Deploy", options.config.notes.databaseRules);
+        return track("Rules Deploy", options.config.notes.databaseRules);
       }
-
+      return;
+    })
+    .then(function () {
+      const duration = Date.now() - startTime;
+      return track("Product Deploy", [...targetNames].sort().join(","), duration);
+    })
+    .then(function () {
       logger.info();
       utils.logSuccess(clc.underline.bold("Deploy complete!"));
       logger.info();

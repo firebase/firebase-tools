@@ -65,6 +65,24 @@ describe("addResourcesToBackend", () => {
     expect(result).to.deep.equal(expected);
   });
 
+  it("should handle a minimal task queue trigger", () => {
+    const trigger: parseTriggers.TriggerAnnotation = {
+      ...BASIC_TRIGGER,
+      taskQueueTrigger: {},
+    };
+
+    const result = backend.empty();
+    parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
+
+    const expected: backend.Backend = {
+      ...backend.of({ ...BASIC_ENDPOINT, taskQueueTrigger: {} }),
+      requiredAPIs: {
+        cloudtasks: "cloudtasks.googleapis.com",
+      },
+    };
+    expect(result).to.deep.equal(expected);
+  });
+
   describe("should handle a minimal event trigger", () => {
     for (const failurePolicy of [undefined, false, true, { retry: {} }]) {
       const name =
@@ -268,6 +286,25 @@ describe("addResourcesToBackend", () => {
         scheduler: "cloudscheduler.googleapis.com",
       },
     };
+
+    expect(result).to.deep.equal(expected);
+  });
+
+  it("should preserve empty vpc connector setting", () => {
+    const trigger: parseTriggers.TriggerAnnotation = {
+      ...BASIC_TRIGGER,
+      httpsTrigger: {},
+      vpcConnector: "",
+    };
+
+    const result = backend.empty();
+    parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
+
+    const expected: backend.Backend = backend.of({
+      ...BASIC_ENDPOINT,
+      httpsTrigger: {},
+      vpcConnector: "",
+    });
 
     expect(result).to.deep.equal(expected);
   });

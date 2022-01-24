@@ -17,7 +17,7 @@ import {
   isEmulator,
 } from "./types";
 import { Constants, FIND_AVAILBLE_PORT_BY_DEFAULT } from "./constants";
-import { FunctionsEmulator } from "./functionsEmulator";
+import { EmulatableBackend, FunctionsEmulator } from "./functionsEmulator";
 import { parseRuntimeVersion } from "./functionsEmulatorUtils";
 import { AuthEmulator } from "./auth";
 import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
@@ -145,7 +145,7 @@ export async function exportOnExit(options: any) {
           "please wait for the export to finish..."
       );
       await exportEmulatorData(exportOnExitDir, options);
-    } catch (e) {
+    } catch (e: any) {
       utils.logWarning(e);
       utils.logWarning(`Automatic export to "${exportOnExitDir}" failed, going to exit now...`);
     }
@@ -305,7 +305,11 @@ function findExportMetadata(importPath: string): ExportMetadata | undefined {
   }
 }
 
-export async function startAll(options: Options, showUI: boolean = true): Promise<void> {
+interface EmulatorOptions extends Options {
+  extensionEnv?: Record<string, string>;
+}
+
+export async function startAll(options: EmulatorOptions, showUI: boolean = true): Promise<void> {
   // Emulators config is specified in firebase.json as:
   // "emulators": {
   //   "firestore": {
@@ -441,21 +445,27 @@ export async function startAll(options: Options, showUI: boolean = true): Promis
       );
     }
 
-    const account = getProjectDefaultAccount(options.projectRoot as string | null);
+    const account = getProjectDefaultAccount(options.projectRoot);
+    // TODO: Go read firebase.json for extensions and add them to emualtableBackends.
+    const emulatableBackends: EmulatableBackend[] = [
+      {
+        functionsDir,
+        env: {
+          ...options.extensionEnv,
+        },
+        predefinedTriggers: options.extensionTriggers as ParsedTriggerDefinition[] | undefined,
+        nodeMajorVersion: parseRuntimeVersion(
+          options.extensionNodeVersion || options.config.get("functions.runtime")
+        ),
+      },
+    ];
     const functionsEmulator = new FunctionsEmulator({
       projectId,
-      functionsDir,
+      emulatableBackends,
       account,
       host: functionsAddr.host,
       port: functionsAddr.port,
       debugPort: inspectFunctions,
-      env: {
-        ...(options.extensionEnv as Record<string, string> | undefined),
-      },
-      predefinedTriggers: options.extensionTriggers as ParsedTriggerDefinition[] | undefined,
-      nodeMajorVersion: parseRuntimeVersion(
-        options.extensionNodeVersion || options.config.get("functions.runtime")
-      ),
     });
     await startEmulator(functionsEmulator);
   }
@@ -539,7 +549,7 @@ export async function startAll(options: Options, showUI: boolean = true): Promis
       if (!options.instance) {
         options.instance = await getDefaultDatabaseInstance(options);
       }
-    } catch (e) {
+    } catch (e: any) {
       databaseLogger.log(
         "DEBUG",
         `Failed to retrieve default database instance: ${JSON.stringify(e)}`
@@ -733,7 +743,7 @@ export async function exportEmulatorData(exportPath: string, options: any) {
 
   try {
     await hubClient.getStatus();
-  } catch (e) {
+  } catch (e: any) {
     const filePath = EmulatorHub.getLocatorFilePath(projectId);
     throw new FirebaseError(
       `The emulator hub for ${projectId} did not respond to a status check. If this error continues try shutting down all running emulators and deleting the file ${filePath}`,
@@ -776,7 +786,7 @@ export async function exportEmulatorData(exportPath: string, options: any) {
   utils.logBullet(`Exporting data to: ${exportAbsPath}`);
   try {
     await hubClient.postExport(exportAbsPath);
-  } catch (e) {
+  } catch (e: any) {
     throw new FirebaseError("Export request failed, see emulator logs for more information.", {
       exit: 1,
       original: e,

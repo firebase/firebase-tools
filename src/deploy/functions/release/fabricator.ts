@@ -9,6 +9,7 @@ import { getHumanFriendlyRuntimeName } from "../runtimes";
 import { functionsOrigin, functionsV2Origin } from "../../../api";
 import { logger } from "../../../logger";
 import * as backend from "../backend";
+import * as cloudtasks from "../../../gcp/cloudtasks";
 import * as deploymentTool from "../../../deploymentTool";
 import * as gcf from "../../../gcp/cloudfunctions";
 import * as gcfV2 from "../../../gcp/cloudfunctionsv2";
@@ -25,13 +26,15 @@ import * as utils from "../../../utils";
 const gcfV1PollerOptions = {
   apiOrigin: functionsOrigin,
   apiVersion: gcf.API_VERSION,
-  masterTimeout: 25 * 60 * 1000, // 25 minutes is the maximum build time for a function
+  masterTimeout: 25 * 60 * 1_000, // 25 minutes is the maximum build time for a function
+  maxBackoff: 10_000,
 };
 
 const gcfV2PollerOptions = {
   apiOrigin: functionsV2Origin,
   apiVersion: gcfV2.API_VERSION,
-  masterTimeout: 25 * 60 * 1000, // 25 minutes is the maximum build time for a function
+  masterTimeout: 25 * 60 * 1_000, // 25 minutes is the maximum build time for a function
+  maxBackoff: 10_000,
 };
 
 const DEFAULT_GCFV2_CONCURRENCY = 80;
@@ -48,11 +51,11 @@ export interface FabricatorArgs {
   storage?: Record<string, gcfV2.StorageSource>;
 }
 
-const rethrowAs = <T>(endpoint: backend.Endpoint, op: reporter.OperationType) => (
-  err: unknown
-): T => {
-  throw new reporter.DeploymentError(endpoint, op, err);
-};
+const rethrowAs =
+  <T>(endpoint: backend.Endpoint, op: reporter.OperationType) =>
+  (err: unknown): T => {
+    throw new reporter.DeploymentError(endpoint, op, err);
+  };
 
 /** Fabricators make a customer's backend match a spec by applying a plan. */
 export class Fabricator {
@@ -76,13 +79,11 @@ export class Fabricator {
       totalTime: 0,
       results: [],
     };
-    const deployRegions = Object.values(plan).map(
-      async (changes): Promise<void> => {
-        const results = await this.applyRegionalChanges(changes);
-        summary.results.push(...results);
-        return;
-      }
-    );
+    const deployRegions = Object.values(plan).map(async (changes): Promise<void> => {
+      const results = await this.applyRegionalChanges(changes);
+      summary.results.push(...results);
+      return;
+    });
     const promiseResults = await utils.allSettled(deployRegions);
 
     const errs = promiseResults
@@ -113,7 +114,7 @@ export class Fabricator {
       try {
         await fn();
         this.logOpSuccess(op, endpoint);
-      } catch (err) {
+      } catch (err: any) {
         result.error = err as Error;
       }
       result.durationMs = timer.stop();
@@ -169,7 +170,10 @@ export class Fabricator {
   }
 
   async updateEndpoint(update: planner.EndpointUpdate, scraper: SourceTokenScraper): Promise<void> {
-    update.endpoint.labels = { ...update.endpoint.labels, ...deploymentTool.labels() };
+    // GCF team wants us to stop setting the deployment-tool labels on updates for gen 2
+    if (update.deleteAndRecreate || update.endpoint.platform !== "gcfv2") {
+      update.endpoint.labels = { ...update.endpoint.labels, ...deploymentTool.labels() };
+    }
     if (update.deleteAndRecreate) {
       await this.deleteEndpoint(update.deleteAndRecreate);
       await this.createEndpoint(update.endpoint, scraper);
@@ -202,6 +206,12 @@ export class Fabricator {
       throw new Error("Precondition failed");
     }
     const apiFunction = gcf.functionFromEndpoint(endpoint, this.sourceUrl);
+    // As a general security practice and way to smooth out the upgrade path
+    // for GCF gen 2, we are enforcing that all new GCFv1 deploys will require
+    // HTTPS
+    if (apiFunction.httpsTrigger) {
+      apiFunction.httpsTrigger.securityLevel = "SECURE_ALWAYS";
+    }
     apiFunction.sourceToken = await scraper.tokenPromise();
     const resultFunction = await this.functionExecutor
       .run(async () => {
@@ -219,6 +229,17 @@ export class Fabricator {
     if (backend.isHttpsTriggered(endpoint)) {
       const invoker = endpoint.httpsTrigger.invoker || ["public"];
       if (!invoker.includes("private")) {
+        await this.executor
+          .run(async () => {
+            await gcf.setInvokerCreate(endpoint.project, backend.functionName(endpoint), invoker);
+          })
+          .catch(rethrowAs(endpoint, "set invoker"));
+      }
+    } else if (backend.isTaskQueueTriggered(endpoint)) {
+      // Like HTTPS triggers, taskQueueTriggers have an invoker, but unlike HTTPS they don't default
+      // public.
+      const invoker = endpoint.taskQueueTrigger.invoker;
+      if (invoker && !invoker.includes("private")) {
         await this.executor
           .run(async () => {
             await gcf.setInvokerCreate(endpoint.project, backend.functionName(endpoint), invoker);
@@ -244,7 +265,7 @@ export class Fabricator {
         .run(async () => {
           try {
             await pubsub.createTopic({ name: topic });
-          } catch (err) {
+          } catch (err: any) {
             // Pub/Sub uses HTTP 409 (CONFLICT) with a status message of
             // ALREADY_EXISTS if the topic already exists.
             if (err.status === 409) {
@@ -278,6 +299,17 @@ export class Fabricator {
           .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
           .catch(rethrowAs(endpoint, "set invoker"));
       }
+    } else if (backend.isTaskQueueTriggered(endpoint)) {
+      // Like HTTPS triggers, taskQueueTriggers have an invoker, but unlike HTTPS they don't default
+      // public.
+      const invoker = endpoint.taskQueueTrigger.invoker;
+      if (invoker && !invoker.includes("private")) {
+        await this.executor
+          .run(async () => {
+            await gcf.setInvokerCreate(endpoint.project, backend.functionName(endpoint), invoker);
+          })
+          .catch(rethrowAs(endpoint, "set invoker"));
+      }
     }
 
     await this.setConcurrency(
@@ -307,16 +339,15 @@ export class Fabricator {
       .catch(rethrowAs(endpoint, "update"));
 
     endpoint.uri = resultFunction?.httpsTrigger?.url;
-    if (backend.isHttpsTriggered(endpoint) && endpoint.httpsTrigger.invoker) {
+    let invoker: string[] | undefined;
+    if (backend.isHttpsTriggered(endpoint)) {
+      invoker = endpoint.httpsTrigger.invoker;
+    } else if (backend.isTaskQueueTriggered(endpoint)) {
+      invoker = endpoint.taskQueueTrigger.invoker;
+    }
+    if (invoker) {
       await this.executor
-        .run(async () => {
-          await gcf.setInvokerUpdate(
-            endpoint.project,
-            backend.functionName(endpoint),
-            endpoint.httpsTrigger.invoker!
-          );
-          return;
-        })
+        .run(() => gcf.setInvokerUpdate(endpoint.project, backend.functionName(endpoint), invoker!))
         .catch(rethrowAs(endpoint, "set invoker"));
     }
   }
@@ -336,7 +367,7 @@ export class Fabricator {
       delete apiFunction.eventTrigger.pubsubTopic;
     }
 
-    const resultFunction = (await this.functionExecutor
+    const resultFunction = await this.functionExecutor
       .run(async () => {
         const op: { name: string } = await gcfV2.updateFunction(apiFunction);
         return await poller.pollOperation<gcfV2.CloudFunction>({
@@ -345,15 +376,19 @@ export class Fabricator {
           operationResourceName: op.name,
         });
       })
-      .catch(rethrowAs(endpoint, "update"))) as gcfV2.CloudFunction;
+      .catch(rethrowAs(endpoint, "update"));
 
     endpoint.uri = resultFunction.serviceConfig.uri;
     const serviceName = resultFunction.serviceConfig.service!;
-    if (backend.isHttpsTriggered(endpoint) && endpoint.httpsTrigger.invoker) {
+    let invoker: string[] | undefined;
+    if (backend.isHttpsTriggered(endpoint)) {
+      invoker = endpoint.httpsTrigger.invoker;
+    } else if (backend.isTaskQueueTriggered(endpoint)) {
+      invoker = endpoint.taskQueueTrigger.invoker;
+    }
+    if (invoker) {
       await this.executor
-        .run(() =>
-          run.setInvokerUpdate(endpoint.project, serviceName, endpoint.httpsTrigger.invoker!)
-        )
+        .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker!))
         .catch(rethrowAs(endpoint, "set invoker"));
     }
 
@@ -425,6 +460,8 @@ export class Fabricator {
         return;
       }
       assertExhaustive(endpoint.platform);
+    } else if (backend.isTaskQueueTriggered(endpoint)) {
+      await this.upsertTaskQueue(endpoint);
     }
   }
 
@@ -438,6 +475,8 @@ export class Fabricator {
         return;
       }
       assertExhaustive(endpoint.platform);
+    } else if (backend.isTaskQueueTriggered(endpoint)) {
+      await this.disableTaskQueue(endpoint);
     }
   }
 
@@ -455,6 +494,21 @@ export class Fabricator {
     );
   }
 
+  async upsertTaskQueue(endpoint: backend.Endpoint & backend.TaskQueueTriggered): Promise<void> {
+    const queue = cloudtasks.queueFromEndpoint(endpoint);
+    await this.executor
+      .run(() => cloudtasks.upsertQueue(queue))
+      .catch(rethrowAs(endpoint, "upsert task queue"));
+
+    // Note: should we split setTrigger into createTrigger and updateTrigger so we can avoid a
+    // getIamPolicy on create?
+    if (endpoint.taskQueueTrigger.invoker) {
+      await this.executor
+        .run(() => cloudtasks.setEnqueuer(queue.name, endpoint.taskQueueTrigger.invoker!))
+        .catch(rethrowAs(endpoint, "set invoker"));
+    }
+  }
+
   async deleteScheduleV1(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
     const job = scheduler.jobFromEndpoint(endpoint, this.appEngineLocation);
     await this.executor
@@ -470,6 +524,16 @@ export class Fabricator {
     return Promise.reject(
       new reporter.DeploymentError(endpoint, "delete schedule", new Error("Not implemented"))
     );
+  }
+
+  async disableTaskQueue(endpoint: backend.Endpoint & backend.TaskQueueTriggered): Promise<void> {
+    const update = {
+      name: cloudtasks.queueNameForEndpoint(endpoint),
+      state: "DISABLED" as cloudtasks.State,
+    };
+    await this.executor
+      .run(() => cloudtasks.updateQueue(update))
+      .catch(rethrowAs(endpoint, "disable task queue"));
   }
 
   logOpStart(op: string, endpoint: backend.Endpoint): void {

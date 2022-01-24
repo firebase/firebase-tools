@@ -19,8 +19,11 @@ export function describeAuthEmulator(
   return describe(`Auth Emulator: ${title}`, function (this) {
     let authApp: Express.Application;
     beforeEach("setup or reuse auth server", async function (this) {
-      this.timeout(10000);
+      this.timeout(20000);
+      const t0 = new Date();
       authApp = await createOrReuseApp();
+      const t1 = new Date();
+      console.log(`it took ${(t1.valueOf() - t0.valueOf()) / 1000}s to get the app`);
     });
 
     let clock: sinon.SinonFakeTimers;

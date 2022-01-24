@@ -1,9 +1,60 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
+import { previews } from "../../../previews";
+import * as artifactregistry from "../../../gcp/artifactregistry";
 import * as backend from "../../../deploy/functions/backend";
 import * as containerCleaner from "../../../deploy/functions/containerCleaner";
 import * as docker from "../../../gcp/docker";
+
+import * as poller from "../../../operation-poller";
+import * as utils from "../../../utils";
+
+describe("CleanupBuildImages", () => {
+  let gcr: sinon.SinonStubbedInstance<containerCleaner.ContainerRegistryCleaner>;
+  let ar: sinon.SinonStubbedInstance<containerCleaner.ArtifactRegistryCleaner>;
+  let logLabeledWarning: sinon.SinonStub;
+  const TARGET: backend.TargetIds = {
+    project: "project",
+    region: "us-central1",
+    id: "id",
+  };
+
+  beforeEach(() => {
+    gcr = sinon.createStubInstance(containerCleaner.ContainerRegistryCleaner);
+    ar = sinon.createStubInstance(containerCleaner.ArtifactRegistryCleaner);
+    logLabeledWarning = sinon.stub(utils, "logLabeledWarning");
+  });
+
+  afterEach(() => {
+    sinon.verifyAndRestore();
+  });
+
+  it("uses GCR and AR", async () => {
+    await containerCleaner.cleanupBuildImages([TARGET], [], { gcr, ar } as any);
+    expect(gcr.cleanupFunction).to.have.been.called;
+  });
+
+  it("reports failed domains from AR", async () => {
+    ar.cleanupFunctionCache.rejects(new Error("uh oh"));
+    await containerCleaner.cleanupBuildImages([], [TARGET], { gcr, ar } as any);
+    expect(logLabeledWarning).to.have.been.calledWithMatch(
+      "functions",
+      new RegExp(
+        "https://console.cloud.google.com/artifacts/docker/project/us-central1/gcf-artifacts"
+      )
+    );
+  });
+
+  it("reports failed domains from GCR", async () => {
+    gcr.cleanupFunction.rejects(new Error("uh oh"));
+    await containerCleaner.cleanupBuildImages([], [TARGET], { gcr, ar } as any);
+    expect(logLabeledWarning).to.have.been.calledWithMatch(
+      "functions",
+      new RegExp("https://console.cloud.google.com/gcr/images/project/us/gcf")
+    );
+  });
+});
 
 describe("DockerHelper", () => {
   let listTags: sinon.SinonStub;
@@ -124,6 +175,88 @@ describe("DockerHelper", () => {
       tags: [],
       children: [],
     });
+  });
+});
+
+describe("ArtifactRegistryCleaner", () => {
+  let ar: sinon.SinonStubbedInstance<typeof artifactregistry>;
+  let poll: sinon.SinonStubbedInstance<typeof poller>;
+
+  beforeEach(() => {
+    ar = sinon.stub(artifactregistry);
+    poll = sinon.stub(poller);
+  });
+
+  afterEach(() => {
+    sinon.verifyAndRestore();
+  });
+
+  it("deletes artifacts", async () => {
+    const cleaner = new containerCleaner.ArtifactRegistryCleaner();
+    const func = {
+      id: "function",
+      region: "region",
+      project: "project",
+    };
+
+    ar.deletePackage.returns(Promise.resolve({ name: "op" } as any));
+
+    await cleaner.cleanupFunction(func);
+    expect(ar.deletePackage).to.have.been.calledWith(
+      "projects/project/locations/region/repositories/gcf-artifacts/packages/function"
+    );
+    expect(poll.pollOperation).to.have.been.called;
+  });
+
+  it("deletes cache dirs", async () => {
+    const cleaner = new containerCleaner.ArtifactRegistryCleaner();
+    const func = {
+      id: "function",
+      region: "region",
+      project: "project",
+    };
+
+    ar.deletePackage.returns(Promise.resolve({ name: "op", done: false }));
+
+    await cleaner.cleanupFunctionCache(func);
+    expect(ar.deletePackage).to.have.been.calledWith(
+      "projects/project/locations/region/repositories/gcf-artifacts/packages/function%2Fcache"
+    );
+    expect(poll.pollOperation).to.have.been.called;
+  });
+
+  it("bypasses poller if the operation is completed", async () => {
+    const cleaner = new containerCleaner.ArtifactRegistryCleaner();
+    const func = {
+      id: "function",
+      region: "region",
+      project: "project",
+    };
+
+    ar.deletePackage.returns(Promise.resolve({ name: "op", done: true }));
+
+    await cleaner.cleanupFunction(func);
+    expect(ar.deletePackage).to.have.been.calledWith(
+      "projects/project/locations/region/repositories/gcf-artifacts/packages/function"
+    );
+    expect(poll.pollOperation).to.not.have.been.called;
+  });
+
+  it("encodeds to avoid upper-case letters", async () => {
+    const cleaner = new containerCleaner.ArtifactRegistryCleaner();
+    const func = {
+      id: "Strange-Casing_cases",
+      region: "region",
+      project: "project",
+    };
+
+    ar.deletePackage.returns(Promise.resolve({ name: "op", done: true }));
+
+    await cleaner.cleanupFunction(func);
+    expect(ar.deletePackage).to.have.been.calledWith(
+      "projects/project/locations/region/repositories/gcf-artifacts/packages/s-strange--_casing__cases"
+    );
+    expect(poll.pollOperation).to.not.have.been.called;
   });
 });
 
@@ -393,11 +526,11 @@ describe("deleteGcfArtifacts", () => {
   });
 
   it("should purge all locations", async () => {
-    const locations = Object.keys(containerCleaner.SUBDOMAIN_MAPPING);
-    const usLocations = locations.filter((loc) => containerCleaner.SUBDOMAIN_MAPPING[loc] === "us");
-    const euLocations = locations.filter((loc) => containerCleaner.SUBDOMAIN_MAPPING[loc] === "eu");
+    const locations = Object.keys(docker.GCR_SUBDOMAIN_MAPPING);
+    const usLocations = locations.filter((loc) => docker.GCR_SUBDOMAIN_MAPPING[loc] === "us");
+    const euLocations = locations.filter((loc) => docker.GCR_SUBDOMAIN_MAPPING[loc] === "eu");
     const asiaLocations = locations.filter((loc) => {
-      return containerCleaner.SUBDOMAIN_MAPPING[loc] === "asia";
+      return docker.GCR_SUBDOMAIN_MAPPING[loc] === "asia";
     });
     const stubUS = sinon.createStubInstance(containerCleaner.DockerHelper);
     for (const usLoc of usLocations) {

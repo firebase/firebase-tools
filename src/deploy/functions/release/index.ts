@@ -55,7 +55,7 @@ export async function release(
   const fab = new fabricator.Fabricator({
     functionExecutor,
     executor: new executor.QueueExecutor({}),
-    sourceUrl: context.uploadUrl!,
+    sourceUrl: context.sourceUrl!,
     storage: context.storage!,
     appEngineLocation: getAppEngineLocation(context.firebaseConfig),
   });
@@ -71,7 +71,15 @@ export async function release(
   // trigger URLs by calling existingBackend again.
   printTriggerUrls(payload.functions!.backend);
 
-  await containerCleaner.cleanupBuildImages(backend.allEndpoints(payload.functions!.backend));
+  const haveEndpoints = backend.allEndpoints(payload.functions!.backend);
+  const deletedEndpoints = Object.values(plan)
+    .map((r) => r.endpointsToDelete)
+    .reduce(reduceFlat, []);
+  const opts: { ar?: containerCleaner.ArtifactRegistryCleaner } = {};
+  if (!context.artifactRegistryEnabled) {
+    opts.ar = new containerCleaner.NoopArtifactRegistryCleaner();
+  }
+  await containerCleaner.cleanupBuildImages(haveEndpoints, deletedEndpoints, opts);
 
   const allErrors = summary.results.filter((r) => r.error).map((r) => r.error) as Error[];
   if (allErrors.length) {

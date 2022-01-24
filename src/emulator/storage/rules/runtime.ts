@@ -152,7 +152,7 @@ export class StorageRulesRuntime {
     });
 
     // This catches errors from the java process (i.e. missing jar file)
-    this._childprocess.stderr.on("data", (buf: Buffer) => {
+    this._childprocess.stderr?.on("data", (buf: Buffer) => {
       const error = buf.toString();
       if (error.includes("jarfile")) {
         throw new FirebaseError(
@@ -166,13 +166,13 @@ export class StorageRulesRuntime {
       }
     });
 
-    this._childprocess.stdout.on("data", (buf: Buffer) => {
+    this._childprocess.stdout?.on("data", (buf: Buffer) => {
       const serializedRuntimeActionResponse = buf.toString("UTF8").trim();
       if (serializedRuntimeActionResponse != "") {
         let rap;
         try {
           rap = JSON.parse(serializedRuntimeActionResponse) as RuntimeActionResponse;
-        } catch (err) {
+        } catch (err: any) {
           EmulatorLogger.forEmulator(Emulators.STORAGE).log(
             "INFO",
             serializedRuntimeActionResponse
@@ -225,13 +225,11 @@ export class StorageRulesRuntime {
       };
 
       const serializedRequest = JSON.stringify(runtimeActionRequest);
-      this._childprocess?.stdin.write(serializedRequest + "\n");
+      this._childprocess?.stdin?.write(serializedRequest + "\n");
     });
   }
 
-  async loadRuleset(
-    source: Source
-  ): Promise<{
+  async loadRuleset(source: Source): Promise<{
     ruleset?: StorageRulesetInstance;
     issues: StorageRulesIssues;
   }> {

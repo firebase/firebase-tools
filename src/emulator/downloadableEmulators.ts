@@ -27,14 +27,14 @@ const CACHE_DIR =
 
 export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
   database: {
-    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.7.2.jar"),
-    version: "4.7.2",
+    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.7.3.jar"),
+    version: "4.7.3",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.7.2.jar",
-      expectedSize: 28910604,
-      expectedChecksum: "264e5df0c0661c064ef7dc9ce8179aba",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.7.3.jar",
+      expectedSize: 28862098,
+      expectedChecksum: "8f696f24ee89c937a789498a0c0e4899",
       namePrefix: "firebase-database-emulator",
     },
   },
@@ -299,7 +299,7 @@ async function _runBinary(
         detached: true,
         stdio: ["inherit", "pipe", "pipe"],
       });
-    } catch (e) {
+    } catch (e: any) {
       if (e.code === "EACCES") {
         // Known issue when WSL users don't have java
         // https://github.com/Microsoft/WSL/issues/3886
@@ -325,11 +325,11 @@ async function _runBinary(
       `${description} logging to ${clc.bold(getLogFileName(emulator.name))}`
     );
 
-    emulator.instance.stdout.on("data", (data) => {
+    emulator.instance.stdout?.on("data", (data) => {
       logger.log("DEBUG", data.toString());
       emulator.stdout.write(data);
     });
-    emulator.instance.stderr.on("data", (data) => {
+    emulator.instance.stderr?.on("data", (data) => {
       logger.log("DEBUG", data.toString());
       emulator.stdout.write(data);
 

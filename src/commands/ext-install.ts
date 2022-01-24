@@ -1,6 +1,7 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
-import * as marked from "marked";
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
+const { marked } = require("marked");
 import * as ora from "ora";
 import TerminalRenderer = require("marked-terminal");
 
@@ -34,6 +35,7 @@ import { update } from "../extensions/updateHelper";
 import { getRandomString } from "../extensions/utils";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
+import { track } from "../track";
 import { logger } from "../logger";
 import { previews } from "../previews";
 
@@ -52,22 +54,15 @@ interface InstallExtensionOptions {
 }
 
 async function installExtension(options: InstallExtensionOptions): Promise<void> {
-  const {
-    projectId,
-    extensionName,
-    source,
-    extVersion,
-    paramsEnvPath,
-    nonInteractive,
-    force,
-  } = options;
+  const { projectId, extensionName, source, extVersion, paramsEnvPath, nonInteractive, force } =
+    options;
   const spec = source?.spec || extVersion?.spec;
   if (!spec) {
     throw new FirebaseError(
       `Could not find the extension.yaml for ${extensionName}. Please make sure this is a valid extension and try again.`
     );
   }
-  const spinner = ora.default();
+  const spinner = ora();
   try {
     await provisioningHelper.checkProductsProvisioned(projectId, spec);
 
@@ -83,7 +78,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
         );
       } else if (!enabled) {
         await displayNode10CreateBillingNotice(spec, false);
-        await enableBilling(projectId, spec.displayName || spec.name);
+        await enableBilling(projectId);
       } else {
         await displayNode10CreateBillingNotice(spec, !nonInteractive);
       }
@@ -208,7 +203,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
           "including those to update, reconfigure, or delete your installed extension."
       )
     );
-  } catch (err) {
+  } catch (err: any) {
     if (spinner.isSpinning) {
       spinner.fail();
     }
@@ -229,7 +224,7 @@ async function infoInstallBySource(
   let source;
   try {
     source = await createSourceFromLocation(projectId, extensionName);
-  } catch (err) {
+  } catch (err: any) {
     throw new FirebaseError(
       `Unable to find published extension '${clc.bold(extensionName)}', ` +
         `and encountered the following error when trying to create an instance of extension '${clc.bold(
@@ -242,7 +237,8 @@ async function infoInstallBySource(
 }
 
 async function infoInstallByReference(
-  extensionName: string
+  extensionName: string,
+  interactive: boolean
 ): Promise<extensionsApi.ExtensionVersion> {
   // Infer firebase if publisher ID not provided.
   if (extensionName.split("/").length < 2) {
@@ -253,6 +249,7 @@ async function infoInstallByReference(
   const ref = refs.parse(extensionName);
   const extension = await extensionsApi.getExtension(refs.toExtensionRef(ref));
   if (!ref.version) {
+    track("Extension Install", "Install by Extension Version Ref", interactive ? 1 : 0);
     extensionName = `${extensionName}@latest`;
   }
   const extVersion = await extensionsApi.getExtensionVersion(extensionName);
@@ -302,9 +299,11 @@ export default new Command("ext:install [extensionName]")
     // If the user types in URL, or a local path (prefixed with ~/, ../, or ./), install from local/URL source.
     // Otherwise, treat the input as an extension reference and proceed with reference-based installation.
     if (isLocalOrURLPath(extensionName)) {
+      track("Extension Install", "Install by Source", options.interactive ? 1 : 0);
       source = await infoInstallBySource(projectId, extensionName);
     } else {
-      extVersion = await infoInstallByReference(extensionName);
+      track("Extension Install", "Install by Extension Ref", options.interactive ? 1 : 0);
+      extVersion = await infoInstallByReference(extensionName, options.interactive);
     }
     if (
       !(await confirm({
@@ -346,7 +345,7 @@ export default new Command("ext:install [extensionName]")
         nonInteractive: options.nonInteractive,
         force: options.force,
       });
-    } catch (err) {
+    } catch (err: any) {
       if (!(err instanceof FirebaseError)) {
         throw new FirebaseError(`Error occurred installing the extension: ${err.message}`, {
           original: err,

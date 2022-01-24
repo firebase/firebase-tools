@@ -1,6 +1,7 @@
 import * as clc from "cli-color";
 import * as _ from "lodash";
-import * as marked from "marked";
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
+const { marked } = require("marked");
 import * as ora from "ora";
 import TerminalRenderer = require("marked-terminal");
 
@@ -71,15 +72,13 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
   .withForce()
   .option("--params <paramsFile>", "name of params variables file with .env format.")
   .action(async (instanceId: string, updateSource: string, options: any) => {
-    const spinner = ora.default(
-      `Updating ${clc.bold(instanceId)}. This usually takes 3 to 5 minutes...`
-    );
+    const spinner = ora(`Updating ${clc.bold(instanceId)}. This usually takes 3 to 5 minutes...`);
     try {
       const projectId = needProjectId(options);
       let existingInstance: extensionsApi.ExtensionInstance;
       try {
         existingInstance = await extensionsApi.getInstance(projectId, instanceId);
-      } catch (err) {
+      } catch (err: any) {
         if (err.status === 404) {
           throw new FirebaseError(
             `Extension instance '${clc.bold(instanceId)}' not found in project '${clc.bold(
@@ -226,7 +225,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         }
         if (!enabled) {
           if (!options.nonInteractive) {
-            await enableBilling(projectId, instanceId);
+            await enableBilling(projectId);
           } else {
             throw new FirebaseError(
               "The extension requires your project to be upgraded to the Blaze plan. " +
@@ -277,7 +276,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
           )}`
         )
       );
-    } catch (err) {
+    } catch (err: any) {
       if (spinner.isSpinning) {
         spinner.fail();
       }

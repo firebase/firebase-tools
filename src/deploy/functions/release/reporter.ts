@@ -23,6 +23,8 @@ export type OperationType =
   | "delete"
   | "upsert schedule"
   | "delete schedule"
+  | "upsert task queue"
+  | "disable task queue"
   | "create topic"
   | "delete topic"
   | "set invoker"
@@ -57,8 +59,10 @@ export async function logAndTrackDeployStats(summary: Summary): Promise<void> {
   let totalAborts = 0;
   const reports: Array<Promise<void>> = [];
 
+  const regions = new Set<string>();
   for (const result of summary.results) {
     const tag = triggerTag(result.endpoint);
+    regions.add(result.endpoint.region);
     totalTime += result.durationMs;
     if (!result.error) {
       totalSuccesses++;
@@ -71,6 +75,9 @@ export async function logAndTrackDeployStats(summary: Summary): Promise<void> {
       reports.push(track.track("function_deploy_failure", tag, result.durationMs));
     }
   }
+
+  const regionCountTag = regions.size < 5 ? regions.size.toString() : ">=5";
+  reports.push(track.track("functions_region_count", regionCountTag, 1));
 
   const gcfv1 = summary.results.find((r) => r.endpoint.platform === "gcfv1");
   const gcfv2 = summary.results.find((r) => r.endpoint.platform === "gcfv2");
@@ -203,7 +210,7 @@ function printQuotaErrors(results: Array<Required<DeployResult>>): void {
 /** Print errors for aborted deletes. */
 export function printAbortedErrors(results: Array<Required<DeployResult>>): void {
   const aborted = results.filter((r) => r.error instanceof AbortedDeploymentError);
-  if (!aborted) {
+  if (!aborted.length) {
     return;
   }
   logger.info("");
@@ -220,6 +227,10 @@ export function triggerTag(endpoint: backend.Endpoint): string {
   const prefix = endpoint.platform === "gcfv1" ? "v1" : "v2";
   if (backend.isScheduleTriggered(endpoint)) {
     return `${prefix}.scheduled`;
+  }
+
+  if (backend.isTaskQueueTriggered(endpoint)) {
+    return `${prefix}.taskQueue`;
   }
 
   if (backend.isHttpsTriggered(endpoint)) {

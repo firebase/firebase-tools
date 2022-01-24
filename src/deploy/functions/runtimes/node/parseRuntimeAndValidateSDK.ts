@@ -24,7 +24,7 @@ const ENGINE_RUNTIMES_NAMES = Object.values(ENGINE_RUNTIMES);
 export const RUNTIME_NOT_SET =
   "`runtime` field is required but was not found in firebase.json.\n" +
   "To fix this, add the following lines to the `functions` section of your firebase.json:\n" +
-  '"runtime": "nodejs14"\n';
+  '"runtime": "nodejs16"\n';
 
 export const UNSUPPORTED_NODE_VERSION_FIREBASE_JSON_MSG = clc.bold(
   `functions.runtime value is unsupported. ` +
@@ -49,7 +49,7 @@ function getRuntimeChoiceFromPackageJson(
   let loaded;
   try {
     loaded = cjson.load(packageJsonPath);
-  } catch (err) {
+  } catch (err: any) {
     throw new FirebaseError(`Unable to load ${packageJsonPath}: ${err}`);
   }
   const engines = loaded.engines;

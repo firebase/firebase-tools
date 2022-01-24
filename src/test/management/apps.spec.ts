@@ -160,7 +160,7 @@ describe("App management", () => {
           bundleId: IOS_APP_BUNDLE_ID,
           appStoreId: IOS_APP_STORE_ID,
         });
-      } catch (e) {
+      } catch (e: any) {
         err = e;
       }
 
@@ -197,7 +197,7 @@ describe("App management", () => {
           bundleId: IOS_APP_BUNDLE_ID,
           appStoreId: IOS_APP_STORE_ID,
         });
-      } catch (e) {
+      } catch (e: any) {
         err = e;
       }
 
@@ -275,7 +275,7 @@ describe("App management", () => {
           displayName: ANDROID_APP_DISPLAY_NAME,
           packageName: ANDROID_APP_PACKAGE_NAME,
         });
-      } catch (e) {
+      } catch (e: any) {
         err = e;
       }
 
@@ -310,7 +310,7 @@ describe("App management", () => {
           displayName: ANDROID_APP_DISPLAY_NAME,
           packageName: ANDROID_APP_PACKAGE_NAME,
         });
-      } catch (e) {
+      } catch (e: any) {
         err = e;
       }
 
@@ -379,7 +379,7 @@ describe("App management", () => {
       let err;
       try {
         await createWebApp(PROJECT_ID, { displayName: WEB_APP_DISPLAY_NAME });
-      } catch (e) {
+      } catch (e: any) {
         err = e;
       }
 
@@ -412,7 +412,7 @@ describe("App management", () => {
       let err;
       try {
         await createWebApp(PROJECT_ID, { displayName: WEB_APP_DISPLAY_NAME });
-      } catch (e) {
+      } catch (e: any) {
         err = e;
       }
 
@@ -469,7 +469,8 @@ describe("App management", () => {
       const appCounts = 10;
       const expectedAppList = generateIosAppList(appCounts);
       const apiResponseAppList = expectedAppList.map((app) => {
-        const iosApp = { ...app };
+        // TODO: this is gross typing to make it invalid. Might be possible to do better.
+        const iosApp: any = { ...app };
         delete iosApp.platform;
         return iosApp;
       });
@@ -488,7 +489,8 @@ describe("App management", () => {
       const appCounts = 10;
       const expectedAppList = generateAndroidAppList(appCounts);
       const apiResponseAppList = expectedAppList.map((app) => {
-        const androidApps = { ...app };
+        // TODO: this is gross typing to make it invalid. Might be possible to do better.
+        const androidApps: any = { ...app };
         delete androidApps.platform;
         return androidApps;
       });
@@ -507,7 +509,8 @@ describe("App management", () => {
       const appCounts = 10;
       const expectedAppList = generateWebAppList(appCounts);
       const apiResponseAppList = expectedAppList.map((app) => {
-        const webApp = { ...app };
+        // TODO: this is gross typing to make it invalid. Might be possible to do better.
+        const webApp: any = { ...app };
         delete webApp.platform;
         return webApp;
       });
@@ -557,7 +560,7 @@ describe("App management", () => {
       let err;
       try {
         await listFirebaseApps(PROJECT_ID, AppPlatform.ANY);
-      } catch (e) {
+      } catch (e: any) {
         err = e;
       }
 
@@ -586,7 +589,7 @@ describe("App management", () => {
       let err;
       try {
         await listFirebaseApps(PROJECT_ID, AppPlatform.ANY, pageSize);
-      } catch (e) {
+      } catch (e: any) {
         err = e;
       }
 
@@ -611,7 +614,7 @@ describe("App management", () => {
       let err;
       try {
         await listFirebaseApps(PROJECT_ID, AppPlatform.IOS);
-      } catch (e) {
+      } catch (e: any) {
         err = e;
       }
 
@@ -632,7 +635,7 @@ describe("App management", () => {
       let err;
       try {
         await listFirebaseApps(PROJECT_ID, AppPlatform.ANDROID);
-      } catch (e) {
+      } catch (e: any) {
         err = e;
       }
 
@@ -653,7 +656,7 @@ describe("App management", () => {
       let err;
       try {
         await listFirebaseApps(PROJECT_ID, AppPlatform.WEB);
-      } catch (e) {
+      } catch (e: any) {
         err = e;
       }
 
@@ -774,7 +777,7 @@ describe("App management", () => {
       let err;
       try {
         await getAppConfig(APP_ID, AppPlatform.ANDROID);
-      } catch (e) {
+      } catch (e: any) {
         err = e;
       }
 

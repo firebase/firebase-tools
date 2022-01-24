@@ -102,7 +102,6 @@ describe("extensionsHelper", () => {
       ENV_VAR_ONE: "12345",
       ENV_VAR_TWO: "hello@example.com",
       ENV_VAR_THREE: "https://${PROJECT_ID}.web.app/?acceptInvitation={token}",
-      ENV_VAR_FOUR: "users/{sender}.friends",
     };
 
     const exampleParamSpec: extensionsApi.Param[] = [
@@ -863,7 +862,7 @@ describe("extensionsHelper", () => {
     });
 
     it("should return false if no instance with that name exists", async () => {
-      getInstanceStub.resolves({ error: { code: 404 } });
+      getInstanceStub.throws(new FirebaseError("Not Found", { status: 404 }));
 
       const exists = await extensionsHelper.instanceIdExists("proj", TEST_NAME);
       expect(exists).to.be.false;
@@ -877,11 +876,11 @@ describe("extensionsHelper", () => {
     });
 
     it("should throw if it gets an unexpected error response from getInstance", async () => {
-      getInstanceStub.resolves({ error: { code: 500, message: "a message" } });
+      getInstanceStub.throws(new FirebaseError("Internal Error", { status: 500 }));
 
       await expect(extensionsHelper.instanceIdExists("proj", TEST_NAME)).to.be.rejectedWith(
         FirebaseError,
-        "Unexpected error when checking if instance ID exists: a message"
+        "Unexpected error when checking if instance ID exists: FirebaseError: Internal Error"
       );
     });
   });

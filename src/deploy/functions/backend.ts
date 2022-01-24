@@ -89,6 +89,30 @@ export interface EventTriggered {
   eventTrigger: EventTrigger;
 }
 
+export interface TaskQueueRateLimits {
+  maxBurstSize?: number;
+  maxConcurrentDispatches?: number;
+  maxDispatchesPerSecond?: number;
+}
+
+export interface TaskQueueRetryConfig {
+  maxAttempts?: number;
+  maxRetryDuration?: proto.Duration;
+  minBackoff?: proto.Duration;
+  maxBackoff?: proto.Duration;
+  maxDoublings?: number;
+}
+
+export interface TaskQueueTrigger {
+  rateLimits?: TaskQueueRateLimits;
+  retryConfig?: TaskQueueRetryConfig;
+  invoker?: string[];
+}
+
+export interface TaskQueueTriggered {
+  taskQueueTrigger: TaskQueueTrigger;
+}
+
 /** A user-friendly string for the kind of trigger of an endpoint. */
 export function endpointTriggerType(endpoint: Endpoint): string {
   if (isScheduleTriggered(endpoint)) {
@@ -97,6 +121,8 @@ export function endpointTriggerType(endpoint: Endpoint): string {
     return "https";
   } else if (isEventTriggered(endpoint)) {
     return endpoint.eventTrigger.eventType;
+  } else if (isTaskQueueTriggered(endpoint)) {
+    return "taskQueue";
   } else {
     throw new Error("Unexpected trigger type for endpoint " + JSON.stringify(endpoint));
   }
@@ -154,7 +180,7 @@ export interface ServiceConfiguration {
 
 export type FunctionsPlatform = "gcfv1" | "gcfv2";
 
-export type Triggered = HttpsTriggered | EventTriggered | ScheduleTriggered;
+export type Triggered = HttpsTriggered | EventTriggered | ScheduleTriggered | TaskQueueTriggered;
 
 /** Whether something has an HttpsTrigger */
 export function isHttpsTriggered(triggered: Triggered): triggered is HttpsTriggered {
@@ -169,6 +195,11 @@ export function isEventTriggered(triggered: Triggered): triggered is EventTrigge
 /** Whether something has a ScheduleTrigger */
 export function isScheduleTriggered(triggered: Triggered): triggered is ScheduleTriggered {
   return {}.hasOwnProperty.call(triggered, "scheduleTrigger");
+}
+
+/** Whether something has a TaskQueueTrigger */
+export function isTaskQueueTriggered(triggered: Triggered): triggered is TaskQueueTriggered {
+  return {}.hasOwnProperty.call(triggered, "taskQueueTrigger");
 }
 
 /**
@@ -338,7 +369,7 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
   let gcfV2Results;
   try {
     gcfV2Results = await gcfV2.listAllFunctions(ctx.projectId);
-  } catch (err) {
+  } catch (err: any) {
     if (err.status === 404 && err.message?.toLowerCase().includes("method not found")) {
       return; // customer has preview enabled without allowlist set
     }
@@ -461,14 +492,20 @@ export function regionalEndpoints(backend: Backend, region: string): Endpoint[] 
 }
 
 /** A curried function used for filters, returns a matcher for functions in a backend. */
-export const hasEndpoint = (backend: Backend) => (endpoint: Endpoint): boolean => {
-  return !!backend.endpoints[endpoint.region] && !!backend.endpoints[endpoint.region][endpoint.id];
-};
+export const hasEndpoint =
+  (backend: Backend) =>
+  (endpoint: Endpoint): boolean => {
+    return (
+      !!backend.endpoints[endpoint.region] && !!backend.endpoints[endpoint.region][endpoint.id]
+    );
+  };
 
 /** A curried function that is the opposite of hasEndpoint */
-export const missingEndpoint = (backend: Backend) => (endpoint: Endpoint): boolean => {
-  return !hasEndpoint(backend)(endpoint);
-};
+export const missingEndpoint =
+  (backend: Backend) =>
+  (endpoint: Endpoint): boolean => {
+    return !hasEndpoint(backend)(endpoint);
+  };
 
 /** A standard method for sorting endpoints for display.
  * Future versions might consider sorting region by pricing tier before

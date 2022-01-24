@@ -1,6 +1,7 @@
 import * as clc from "cli-color";
 import * as semver from "semver";
-import * as marked from "marked";
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
+const { marked } = require("marked");
 
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
@@ -135,9 +136,19 @@ export interface UpdateOptions {
 export async function update(updateOptions: UpdateOptions): Promise<any> {
   const { projectId, instanceId, source, extRef, params } = updateOptions;
   if (extRef) {
-    return await extensionsApi.updateInstanceFromRegistry(projectId, instanceId, extRef, params);
+    return await extensionsApi.updateInstanceFromRegistry({
+      projectId,
+      instanceId,
+      extRef,
+      params,
+    });
   } else if (source) {
-    return await extensionsApi.updateInstance(projectId, instanceId, source, params);
+    return await extensionsApi.updateInstance({
+      projectId,
+      instanceId,
+      extensionSource: source,
+      params,
+    });
   }
   throw new FirebaseError(
     `Neither a source nor a version of the extension was supplied for ${instanceId}. Please make sure this is a valid extension and try again.`
@@ -161,7 +172,7 @@ export async function updateFromLocalSource(
   let source;
   try {
     source = await createSourceFromLocation(projectId, localSource);
-  } catch (err) {
+  } catch (err: any) {
     throw new FirebaseError(invalidSourceErrMsgTemplate(instanceId, localSource));
   }
   utils.logLabeledBullet(
@@ -191,7 +202,7 @@ export async function updateFromUrlSource(
   let source;
   try {
     source = await createSourceFromLocation(projectId, urlSource);
-  } catch (err) {
+  } catch (err: any) {
     throw new FirebaseError(invalidSourceErrMsgTemplate(instanceId, urlSource));
   }
   utils.logLabeledBullet(
@@ -223,7 +234,7 @@ export async function updateToVersionFromPublisherSource(
   const extension = await extensionsApi.getExtension(extensionRef);
   try {
     source = await extensionsApi.getExtensionVersion(extVersionRef);
-  } catch (err) {
+  } catch (err: any) {
     throw new FirebaseError(
       `Could not find source '${clc.bold(extVersionRef)}' because (${clc.bold(
         version
@@ -235,7 +246,7 @@ export async function updateToVersionFromPublisherSource(
   let registryEntry;
   try {
     registryEntry = await resolveSource.resolveRegistryEntry(existingSpec.name);
-  } catch (err) {
+  } catch (err: any) {
     logger.debug(`Unable to fetch registry.json entry for ${existingSpec.name}`);
   }
 

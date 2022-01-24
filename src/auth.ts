@@ -77,7 +77,7 @@ interface GitHubAuthResponse {
 // Typescript emulates modules, which have constant exports. We can
 // overcome this by casting to any
 // TODO fix after https://github.com/http-party/node-portfinder/pull/115
-((portfinder as unknown) as { basePort: number }).basePort = 9005;
+(portfinder as unknown as { basePort: number }).basePort = 9005;
 
 /**
  * Get the global default account. Before multi-auth was implemented
@@ -354,7 +354,7 @@ async function getTokensFromAuthorizationCode(
       origin: api.authOrigin,
       form: params,
     });
-  } catch (err) {
+  } catch (err: any) {
     if (err instanceof Error) {
       logger.debug("Token Fetch Error:", err.stack || "");
     } else {
@@ -557,7 +557,7 @@ async function loginWithLocalhost<ResultType>(
         const tokens = await getTokens(queryCode, callbackUrl);
         await respondWithFile(req, res, 200, successTemplate);
         resolve(tokens);
-      } catch (err) {
+      } catch (err: any) {
         await respondWithFile(req, res, 400, "../templates/loginFailure.html");
         reject(err);
       }
@@ -725,7 +725,7 @@ async function refreshTokens(
     }
 
     return lastAccessToken!;
-  } catch (err) {
+  } catch (err: any) {
     if (err?.context?.body?.error === "invalid_scope") {
       throw new FirebaseError(
         "This command requires new authorization scopes not granted to your current session. Please run " +
@@ -761,7 +761,7 @@ export async function logout(refreshToken: string) {
         token: refreshToken,
       },
     });
-  } catch (thrown) {
+  } catch (thrown: any) {
     const err: Error = thrown instanceof Error ? thrown : new Error(thrown);
     throw new FirebaseError("Authentication Error.", {
       exit: 1,
