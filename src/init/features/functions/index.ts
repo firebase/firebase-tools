@@ -42,11 +42,18 @@ module.exports = async function (setup: any, config: any, options: Options) {
       value: "golang",
     });
   }
-  const language = await promptOnce({
-    type: "list",
-    message: "What language would you like to use to write Cloud Functions?",
-    default: "javascript",
-    choices,
-  });
-  return require("./" + language)(setup, config);
+  const language = await promptOnce(
+    {
+      name: "language",
+      type: "list",
+      message: "What language would you like to use to write Cloud Functions?",
+      default: "javascript",
+      choices,
+    },
+    {
+      nonInteractive: options.nonInteractive,
+      language: options.interactiveAnswers?.language,
+    }
+  );
+  return require("./" + language)(setup, config, options);
 };

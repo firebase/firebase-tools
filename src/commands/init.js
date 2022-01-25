@@ -126,6 +126,10 @@ module.exports = new Command("init [feature]")
         warningText
     );
 
+    if (options.answers) {
+      options.interactiveAnswers = JSON.parse(options.answers);
+    }
+
     var setup = {
       config: config.src,
       rcfile: config.readProjectFile(".firebaserc", {

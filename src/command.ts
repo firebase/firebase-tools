@@ -227,6 +227,7 @@ export class Command {
   private async prepare(options: any): Promise<void> {
     options = options || {};
     options.project = getInheritedOption(options, "project");
+    options.answers = getInheritedOption(options, "answers");
 
     if (!process.stdin.isTTY || getInheritedOption(options, "nonInteractive")) {
       options.nonInteractive = true;

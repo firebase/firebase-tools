@@ -20,8 +20,15 @@ export interface Options {
   projectRoot?: string;
   account?: string;
   json: boolean;
+  
+  // Interactivity
   nonInteractive: boolean;
   interactive: boolean;
+  // JSON representation of answers supplied in nonInteractive mode.
+  answers?: string;
+  // Parsed answers map
+  interactiveAnswers?: { [key: string]: string };
+
   debug: boolean;
 
   rc: RC;

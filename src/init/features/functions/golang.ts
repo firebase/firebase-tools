@@ -9,6 +9,7 @@ import { promptOnce } from "../../../prompt";
 import * as utils from "../../../utils";
 import * as go from "../../../deploy/functions/runtimes/golang";
 import { logger } from "../../../logger";
+import { Options } from "../../../options";
 
 const clc = require("cli-color");
 
@@ -18,8 +19,8 @@ const TEMPLATE_ROOT = path.resolve(__dirname, "../../../../templates/init/functi
 const MAIN_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "functions.go"), "utf8");
 const GITIGNORE_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_gitignore"), "utf8");
 
-async function init(setup: unknown, config: Config) {
-  await writeModFile(config);
+async function init(setup: unknown, config: Config, options: Options) {
+  await writeModFile(config, options);
 
   const modName = config.get("functions.go.module") as string;
   const [pkg] = modName.split("/").slice(-1);
@@ -29,14 +30,20 @@ async function init(setup: unknown, config: Config) {
 
 // writeModFile is meant to look like askWriteProjectFile but it generates the contents
 // dynamically using the go tool
-async function writeModFile(config: Config) {
+async function writeModFile(config: Config, options: Options) {
   const modPath = config.path("functions/go.mod");
   if (await promisify(fs.exists)(modPath)) {
     const shoudlWriteModFile = await promptOnce({
-      type: "confirm",
-      message: "File " + clc.underline("functions/go.mod") + " already exists. Overwrite?",
-      default: false,
-    });
+        name: "overwriteModFile",
+        type: "confirm",
+        message: "File " + clc.underline("functions/go.mod") + " already exists. Overwrite?",
+        default: false,
+      },
+      {
+        nonInteractive: options.nonInteractive,
+        overwriteModFile: options.interactiveAnswers?.overwriteModFile,
+      }
+    );
     if (!shoudlWriteModFile) {
       return;
     }
@@ -46,11 +53,18 @@ async function writeModFile(config: Config) {
   }
 
   // Nit(inlined) can we look at functions code and see if there's a domain mapping?
-  const modName = await promptOnce({
-    type: "input",
-    message: "What would you like to name your module?",
-    default: "acme.com/functions",
-  });
+  const modName = await promptOnce(
+    {
+      name: "moduleName",
+      type: "input",
+      message: "What would you like to name your module?",
+      default: "acme.com/functions",
+    },
+    {
+      nonInteractive: options.nonInteractive,
+      moduleName: options.interactiveAnswers?.moduleName,
+    }
+  );
   config.set("functions.go.module", modName);
 
   // Manually create a go mod file because (A) it's easier this way and (B) it seems to be the only

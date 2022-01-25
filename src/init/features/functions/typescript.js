@@ -22,15 +22,22 @@ var TSCONFIG_DEV_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "tsconfig.d
 var INDEX_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "index.ts"), "utf8");
 var GITIGNORE_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_gitignore"), "utf8");
 
-module.exports = function (setup, config) {
-  return prompt(setup.functions, [
+module.exports = function (setup, config, options) {
+  return prompt(
     {
-      name: "lint",
-      type: "confirm",
-      message: "Do you want to use ESLint to catch probable bugs and enforce style?",
-      default: true,
+      ...setup.functions,
+      nonInteractive: options.nonInteractive,
+      lint: options.interactiveAnswers.lint,
     },
-  ])
+    [
+      {
+        name: "lint",
+        type: "confirm",
+        message: "Do you want to use ESLint to catch probable bugs and enforce style?",
+        default: true,
+      },
+    ]
+  )
     .then(function () {
       if (setup.functions.lint) {
         _.set(setup, "config.functions.predeploy", [
@@ -38,29 +45,64 @@ module.exports = function (setup, config) {
           'npm --prefix "$RESOURCE_DIR" run build',
         ]);
         return config
-          .askWriteProjectFile("functions/package.json", PACKAGE_LINTING_TEMPLATE)
+          .askWriteProjectFile(
+            "functions/package.json",
+            PACKAGE_LINTING_TEMPLATE,
+            options.nonInteractive
+          )
           .then(function () {
-            return config.askWriteProjectFile("functions/.eslintrc.js", ESLINT_TEMPLATE);
+            return config.askWriteProjectFile(
+              "functions/.eslintrc.js",
+              ESLINT_TEMPLATE,
+              options.nonInteractive
+            );
           });
       }
       _.set(setup, "config.functions.predeploy", 'npm --prefix "$RESOURCE_DIR" run build');
-      return config.askWriteProjectFile("functions/package.json", PACKAGE_NO_LINTING_TEMPLATE);
+      return config.askWriteProjectFile(
+        "functions/package.json",
+        PACKAGE_NO_LINTING_TEMPLATE,
+        options.nonInteractive
+      );
     })
     .then(function () {
-      return config.askWriteProjectFile("functions/tsconfig.json", TSCONFIG_TEMPLATE);
+      return config.askWriteProjectFile(
+        "functions/tsconfig.json",
+        TSCONFIG_TEMPLATE,
+        options.nonInteractive
+      );
     })
     .then(function () {
       if (setup.functions.lint) {
-        return config.askWriteProjectFile("functions/tsconfig.dev.json", TSCONFIG_DEV_TEMPLATE);
+        return config.askWriteProjectFile(
+          "functions/tsconfig.dev.json",
+          TSCONFIG_DEV_TEMPLATE,
+          options.nonInteractive
+        );
       }
     })
     .then(function () {
-      return config.askWriteProjectFile("functions/src/index.ts", INDEX_TEMPLATE);
+      return config.askWriteProjectFile(
+        "functions/src/index.ts",
+        INDEX_TEMPLATE,
+        options.nonInteractive
+      );
     })
     .then(function () {
-      return config.askWriteProjectFile("functions/.gitignore", GITIGNORE_TEMPLATE);
+      return config.askWriteProjectFile(
+        "functions/.gitignore",
+        GITIGNORE_TEMPLATE,
+        options.nonInteractive
+      );
     })
     .then(function () {
-      return npmDependencies.askInstallDependencies(setup.functions, config);
+      return npmDependencies.askInstallDependencies(
+        {
+          ...setup.functions,
+          nonInteractive: options.nonInteractive,
+          npm: options.interactiveAnswers.npm,
+        },
+        config
+      );
     });
 };
