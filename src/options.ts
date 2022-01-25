@@ -27,7 +27,7 @@ export interface Options {
   // JSON representation of answers supplied in nonInteractive mode.
   answers?: string;
   // Parsed answers map
-  interactiveAnswers?: { [key: string]: string|boolean };
+  interactiveAnswers?: { [key: string]: string | boolean };
 
   debug: boolean;
 
