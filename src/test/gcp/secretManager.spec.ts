@@ -67,9 +67,7 @@ describe("secretManager", () => {
 
     beforeEach(() => {
       getIamPolicyStub = sinon.stub(secretManager, "getIamPolicy").rejects("Unexpected call");
-      setIamPolicyStub = sinon
-        .stub(secretManager, "setIamPolicy")
-        .rejects("Unexpected call");
+      setIamPolicyStub = sinon.stub(secretManager, "setIamPolicy").rejects("Unexpected call");
     });
 
     afterEach(() => {
@@ -80,9 +78,7 @@ describe("secretManager", () => {
     function setupStubs(existing: iam.Binding[], expected?: iam.Binding[]) {
       getIamPolicyStub.withArgs(secret).resolves({ bindings: existing });
       if (expected) {
-        setIamPolicyStub
-          .withArgs(secret, expected)
-          .resolves({ body: { bindings: expected } });
+        setIamPolicyStub.withArgs(secret, expected).resolves({ body: { bindings: expected } });
       }
     }
 
