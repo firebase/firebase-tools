@@ -4,7 +4,7 @@ import { expect } from "chai";
 import * as iam from "../../gcp/iam";
 import * as secretManager from "../../gcp/secretManager";
 import { FirebaseError } from "../../error";
-import { ensureServiceAgentRole, setIamPolicy } from "../../gcp/secretManager";
+import { ensureServiceAgentRole } from "../../gcp/secretManager";
 
 describe("secretManager", () => {
   describe("parseSecretResourceName", () => {

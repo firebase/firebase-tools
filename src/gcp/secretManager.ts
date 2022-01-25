@@ -211,7 +211,7 @@ export async function ensureServiceAgentRole(
 
   bindings.push(...newBindings);
 
-  await module.exports.setIamPolicyBindings(secret, bindings);
+  await module.exports.setIamPolicy(secret, bindings);
 
   // SecretManager would like us to _always_ inform users when we grant access to one of their secrets.
   // As a safeguard against forgetting to do so, we log it here.
