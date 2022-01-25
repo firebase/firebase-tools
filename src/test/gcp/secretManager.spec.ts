@@ -63,24 +63,24 @@ describe("secretManager", () => {
     const role = "test-role";
 
     let getIamPolicyStub: sinon.SinonStub;
-    let setIamPolicyBindingsStub: sinon.SinonStub;
+    let setIamPolicyStub: sinon.SinonStub;
 
     beforeEach(() => {
       getIamPolicyStub = sinon.stub(secretManager, "getIamPolicy").rejects("Unexpected call");
-      setIamPolicyBindingsStub = sinon
-        .stub(secretManager, "setIamPolicyBindings")
+      setIamPolicyStub = sinon
+        .stub(secretManager, "setIamPolicy")
         .rejects("Unexpected call");
     });
 
     afterEach(() => {
       getIamPolicyStub.restore();
-      setIamPolicyBindingsStub.restore();
+      setIamPolicyStub.restore();
     });
 
     function setupStubs(existing: iam.Binding[], expected?: iam.Binding[]) {
       getIamPolicyStub.withArgs(secret).resolves({ bindings: existing });
       if (expected) {
-        setIamPolicyBindingsStub
+        setIamPolicyStub
           .withArgs(secret, expected)
           .resolves({ body: { bindings: expected } });
       }
