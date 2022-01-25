@@ -128,8 +128,7 @@ export function deleteServiceAccount(projectId: string, accountEmail: string): P
  */
 export async function getRole(role: string): Promise<{ title: string; description: string }> {
   const response = await apiClient.get<{ title: string; description: string }>(`/roles/${role}`, {
-    // TODO(bkendall): enable once retryCodes are available.
-    // retryCodes: [500, 503],
+    retryCodes: [500, 503],
   });
   return response.body;
 }

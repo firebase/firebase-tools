@@ -12,8 +12,7 @@ const apiClient = new Client({ urlPrefix: runtimeconfigOrigin, apiVersion: API_V
 function _listConfigs(projectId) {
   return apiClient
     .get(`/projects/${projectId}/configs`, {
-      // TODO(bkendall): enable once retry codes are available.
-      // retryCodes: [500, 503],
+      retryCodes: [500, 503],
     })
     .then(function (resp) {
       return resp.body.configs;
@@ -29,8 +28,7 @@ function _createConfig(projectId, configId) {
         name: path + "/" + configId,
       },
       {
-        // TODO(bkendall): enable once retry codes are available.
-        // retryCodes: [500, 503],
+        retryCodes: [500, 503],
       }
     )
     .catch(function (err) {
@@ -45,8 +43,7 @@ function _createConfig(projectId, configId) {
 function _deleteConfig(projectId, configId) {
   return apiClient
     .delete(`/projects/${projectId}/configs/${configId}`, {
-      // TODO(bkendall): enable once retry codes are available.
-      // retryCodes: [500, 503],
+      retryCodes: [500, 503],
     })
     .catch(function (err) {
       if (_.get(err, "context.response.statusCode") === 404) {
@@ -60,8 +57,7 @@ function _deleteConfig(projectId, configId) {
 function _listVariables(configPath) {
   return apiClient
     .get(`${configPath}/variables`, {
-      // TODO(bkendall): enable once retry codes are available.
-      // retryCodes: [500, 503],
+      retryCodes: [500, 503],
     })
     .then(function (resp) {
       return Promise.resolve(resp.body.variables);
@@ -71,8 +67,7 @@ function _listVariables(configPath) {
 function _getVariable(varPath) {
   return apiClient
     .get(varPath, {
-      // TODO(bkendall): enable once retry codes are available.
-      // retryCodes: [500, 503],
+      retryCodes: [500, 503],
     })
     .then(function (resp) {
       return Promise.resolve(resp.body);
@@ -89,8 +84,7 @@ function _createVariable(projectId, configId, varId, value) {
         text: value,
       },
       {
-        // TODO(bkendall): enable once retry codes are available.
-        // retryCodes: [500, 503],
+        retryCodes: [500, 503],
       }
     )
     .catch(function (err) {
@@ -113,8 +107,7 @@ function _updateVariable(projectId, configId, varId, value) {
       text: value,
     },
     {
-      // TODO(bkendall): enable once retry codes are available.
-      // retryCodes: [500, 503],
+      retryCodes: [500, 503],
     }
   );
 }
@@ -136,8 +129,7 @@ function _setVariable(projectId, configId, varId, value) {
 function _deleteVariable(projectId, configId, varId) {
   return apiClient
     .delete(`/projects/${projectId}/configs/${configId}/variables/${varId}`, {
-      // TODO(bkendall): enable once retry codes are available.
-      // retryCodes: [500, 503],
+      retryCodes: [500, 503],
       queryParams: { recursive: "true" },
     })
     .catch(function (err) {
