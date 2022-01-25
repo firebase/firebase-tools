@@ -145,7 +145,7 @@ describe("validate", () => {
     });
 
     it("passes validation with empty backend", () => {
-      expect(validate.secretsAreValid(backend.empty())).to.not.be.rejected;
+      expect(validate.secretsAreValid(project, backend.empty())).to.not.be.rejected;
     });
 
     it("passes validation with no secret env vars", () => {
@@ -153,7 +153,7 @@ describe("validate", () => {
         ...ENDPOINT,
         platform: "gcfv2",
       });
-      expect(validate.secretsAreValid(b)).to.not.be.rejected;
+      expect(validate.secretsAreValid(project, b)).to.not.be.rejected;
     });
 
     it("fails validation given endpoint with secrets targeting unsupported platform", () => {
@@ -168,7 +168,7 @@ describe("validate", () => {
         ],
       });
 
-      expect(validate.secretsAreValid(b)).to.be.rejectedWith(FirebaseError);
+      expect(validate.secretsAreValid(project, b)).to.be.rejectedWith(FirebaseError);
     });
 
     it("fails validation given non-existent secret version", () => {
@@ -184,7 +184,7 @@ describe("validate", () => {
           },
         ],
       });
-      expect(validate.secretsAreValid(b)).to.be.rejectedWith(FirebaseError);
+      expect(validate.secretsAreValid(project, b)).to.be.rejectedWith(FirebaseError);
     });
 
     it("fails validation given disabled secret version", () => {
@@ -204,7 +204,7 @@ describe("validate", () => {
           },
         ],
       });
-      expect(validate.secretsAreValid(b)).to.be.rejectedWith(FirebaseError, /DISABLED/);
+      expect(validate.secretsAreValid(project, b)).to.be.rejected;
     });
 
     it("passes validation and resolves latest version given valid secret config", async () => {
@@ -225,7 +225,7 @@ describe("validate", () => {
         ],
       });
 
-      await validate.secretsAreValid(b);
+      await validate.secretsAreValid(project, b);
       expect(backend.allEndpoints(b)[0].secretEnvironmentVariables![0].version).to.equal("2");
     });
   });

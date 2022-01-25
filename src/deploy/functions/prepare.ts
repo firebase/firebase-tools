@@ -168,7 +168,7 @@ export async function prepare(
   await promptForFailurePolicies(options, matchingBackend, haveBackend);
   await promptForMinInstances(options, matchingBackend, haveBackend);
   await backend.checkAvailability(context, wantBackend);
-  await validate.secretsAreValid(matchingBackend);
+  await validate.secretsAreValid(projectId, matchingBackend);
   await ensure.secretAccess(projectId, matchingBackend, haveBackend);
 }
 
