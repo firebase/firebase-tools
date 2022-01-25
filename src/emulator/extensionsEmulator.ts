@@ -11,6 +11,7 @@ import { toExtensionVersionRef } from "../extensions/refs";
 import { downloadExtensionVersion } from "./download";
 import { EmulatableBackend } from "./functionsEmulator";
 import { getExtensionFunctionInfo } from "../extensions/emulator/optionsHelper";
+import { getProjectId } from "../projectUtils";
 
 const CACHE_DIR =
   process.env.FIREBASE_EXTENSIONS_CACHE_PATH ||
@@ -57,6 +58,7 @@ export class ExtensionsEmulator {
         `No ref found for ${instance.instanceId}. Emulating local extensions is not yet supported.`
       );
     }
+    // TODO: If ref contains 'latest', we need to reolve that to a real version.
     const sourceCodePath = path.join(CACHE_DIR, toExtensionVersionRef(instance.ref));
 
     // Check if something is at the cache location already. If so, assume its the extension source code!
@@ -74,21 +76,12 @@ export class ExtensionsEmulator {
   }
 
   private installAndBuildSourceCode(sourceCodePath: string): void {
+    //TODO: Add logging during this so it is clear what is happening.
     const npmInstall = spawnSync("npm", ["--prefix", `/${sourceCodePath}/functions/`, "install"], {
       encoding: "utf8",
     });
     if (npmInstall.error) {
       throw npmInstall.error;
-    }
-
-    const npmRunBuild = spawnSync(
-      "npm",
-      ["--prefix", `/${sourceCodePath}/functions/`, "run", "build"],
-      { encoding: "utf8" }
-    );
-    if (npmRunBuild.error) {
-      // TODO: Make sure this does not error out if "build" is not defined, but does error if it fails otherwise.
-      throw npmRunBuild.error;
     }
 
     const npmRunGCPBuild = spawnSync(
@@ -118,17 +111,31 @@ export class ExtensionsEmulator {
   }
 
   private async toEmulatableBackend(instance: planner.InstanceSpec): Promise<EmulatableBackend> {
-    const functionsDir = await this.ensureSourceCode(instance);
+    const extensionDir = await this.ensureSourceCode(instance);
+    // TODO: This should find package.json, then use that as functionsDir.
+    const functionsDir = path.join(extensionDir, "functions");
+    const env = Object.assign(this.autoPopulatedParams(instance), instance.params);
     const { extensionTriggers, nodeMajorVersion } = await getExtensionFunctionInfo(
-      functionsDir,
-      instance.params
+      extensionDir,
+      env
     );
     return {
       functionsDir,
-      env: instance.params,
+      env,
       predefinedTriggers: extensionTriggers,
       nodeMajorVersion: nodeMajorVersion,
       extensionInstanceId: instance.instanceId,
+    };
+  }
+
+  private autoPopulatedParams(instance: planner.InstanceSpec): Record<string, string> {
+    const projectId = getProjectId(this.options);
+    return {
+      PROJECT_ID: projectId ?? "", // TODO: Should this fallback to a default?
+      EXT_INSTANCE_ID: instance.instanceId,
+      DATABASE_INSTANCE: projectId ?? "",
+      DATABASE_URL: `https://${projectId}.firebaseio.com`,
+      STORAGE_BUCKET: `${projectId}.appspot.com`,
     };
   }
 }

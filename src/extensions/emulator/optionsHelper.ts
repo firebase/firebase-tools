@@ -46,7 +46,8 @@ export async function buildOptions(options: any): Promise<any> {
 // TODO: Better name? Also, should this be in extensionsEmulator instead?
 export async function getExtensionFunctionInfo(
   extensionDir: string,
-  params: Record<string, string>
+  params: Record<string, string>,
+  
 ): Promise<{
   nodeMajorVersion: number;
   extensionTriggers: ParsedTriggerDefinition[];
