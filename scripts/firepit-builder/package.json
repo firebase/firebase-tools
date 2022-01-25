@@ -11,7 +11,7 @@
   "license": "MIT",
   "private": true,
   "dependencies": {
-    "shelljs": "^0.8.3",
+    "shelljs": "^0.8.5",
     "yargs": "^13.3.0"
   }
 }
