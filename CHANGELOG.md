@@ -1,1 +1,1 @@
-- Updates the streaming libraries used in `auth:import`.
+- Updates Hosting initial `index.html` to be proper javascript.
