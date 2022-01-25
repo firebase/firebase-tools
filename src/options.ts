@@ -20,7 +20,7 @@ export interface Options {
   projectRoot?: string;
   account?: string;
   json: boolean;
-  
+
   // Interactivity
   nonInteractive: boolean;
   interactive: boolean;

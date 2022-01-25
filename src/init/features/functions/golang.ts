@@ -33,7 +33,8 @@ async function init(setup: unknown, config: Config, options: Options) {
 async function writeModFile(config: Config, options: Options) {
   const modPath = config.path("functions/go.mod");
   if (await promisify(fs.exists)(modPath)) {
-    const shoudlWriteModFile = await promptOnce({
+    const shoudlWriteModFile = await promptOnce(
+      {
         name: "overwriteModFile",
         type: "confirm",
         message: "File " + clc.underline("functions/go.mod") + " already exists. Overwrite?",
