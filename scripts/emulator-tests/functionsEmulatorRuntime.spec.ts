@@ -9,10 +9,7 @@ import * as sinon from "sinon";
 
 import { EmulatorLog, Emulators } from "../../src/emulator/types";
 import { FunctionRuntimeBundles, TIMEOUT_LONG, TIMEOUT_MED, MODULE_ROOT } from "./fixtures";
-import {
-  FunctionsRuntimeBundle,
-  SignatureType,
-} from "../../src/emulator/functionsEmulatorShared";
+import { FunctionsRuntimeBundle, SignatureType } from "../../src/emulator/functionsEmulatorShared";
 import { InvokeRuntimeOpts, FunctionsEmulator } from "../../src/emulator/functionsEmulator";
 import { RuntimeWorker } from "../../src/emulator/functionsRuntimeWorker";
 import { streamToString } from "../../src/utils";
