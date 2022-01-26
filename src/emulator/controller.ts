@@ -455,7 +455,7 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
         env: {
           ...options.extensionEnv,
         },
-        // TODO: predefinedTriggers and nodeMajorVersion are here to support ext:dev:emulators:* commands.
+        // TODO(b/213335255): predefinedTriggers and nodeMajorVersion are here to support ext:dev:emulators:* commands.
         // Ideally, we should handle that case via ExtensionEmulator.
         predefinedTriggers: options.extensionTriggers as ParsedTriggerDefinition[] | undefined,
         nodeMajorVersion: parseRuntimeVersion(
@@ -464,7 +464,7 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
       },
       ...extensionsBackends,
     ];
-    // TODO: Figure out how to watch for changes to extensions .env files & reload triggers when they change.
+    // TODO(b/213241033): Figure out how to watch for changes to extensions .env files & reload triggers when they change.
     const functionsEmulator = new FunctionsEmulator({
       projectId,
       emulatableBackends,

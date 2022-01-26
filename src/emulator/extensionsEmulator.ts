@@ -52,17 +52,17 @@ export class ExtensionsEmulator {
   // ensureSourceCode checks the cache for the source code for a given extension version,
   // downloads and builds it if it is not found, then returns the path to that source code.
   private async ensureSourceCode(instance: planner.InstanceSpec): Promise<string> {
-    // TODO: Handle local extensions.
+    // TODO(b/213335255): Handle local extensions.
     if (!instance.ref) {
       throw new FirebaseError(
         `No ref found for ${instance.instanceId}. Emulating local extensions is not yet supported.`
       );
     }
-    // TODO: If ref contains 'latest', we need to reolve that to a real version.
+    // TODO: If ref contains 'latest', we need to resolve that to a real version.
     const sourceCodePath = path.join(CACHE_DIR, toExtensionVersionRef(instance.ref));
 
     // Check if something is at the cache location already. If so, assume its the extension source code!
-    // TODO: Add some better sanity checking that it is the extension source code & was successfully downloaded.
+    // TODO(b/216376066): Add some better sanity checking that it is the extension source code & was successfully downloaded.
     if (!fs.existsSync(sourceCodePath)) {
       const extensionVersion = await planner.getExtensionVersion(instance);
       await downloadExtensionVersion(
