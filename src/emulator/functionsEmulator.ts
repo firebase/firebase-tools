@@ -1001,7 +1001,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       this.logger.log("WARN", `Failed to read local secrets file ${overrideFile}: ${e.message}`);
     }
 
-    const secrets = trigger.secretEnvironmentVariables.
+    const secrets = trigger.secretEnvironmentVariables;
 
 
     return {};
