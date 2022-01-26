@@ -142,7 +142,7 @@ export class StorageLayer {
 
   listBuckets(): CloudStorageBucketMetadata[] {
     if (this._buckets.size == 0) {
-      this.createBucket("default-bucket");
+      this.createBucket(`${this._projectId}.appspot.com`);
     }
 
     return [...this._buckets.values()];
