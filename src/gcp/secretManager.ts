@@ -49,11 +49,7 @@ interface AddVersionRequest {
 
 const API_VERSION = "v1beta1";
 
-const client = new Client({
-  urlPrefix: secretManagerOrigin,
-  auth: true,
-  apiVersion: API_VERSION,
-});
+const client = new Client({ urlPrefix: secretManagerOrigin, apiVersion: API_VERSION });
 
 export async function listSecrets(projectId: string): Promise<Secret[]> {
   const listRes = await client.get<{ secrets: Secret[] }>(`projects/${projectId}/secrets`);
@@ -128,13 +124,14 @@ export async function createSecret(
   labels: Record<string, string>
 ): Promise<Secret> {
   const createRes = await client.post<CreateSecretRequest, Secret>(
-    `projects/${projectId}/secrets?secretId=${name}`,
+    `projects/${projectId}/secrets`,
     {
       replication: {
         automatic: {},
       },
       labels,
-    }
+    },
+    { queryParams: { secretId: name } }
   );
   return parseSecretResourceName(createRes.body.name);
 }
@@ -165,17 +162,13 @@ export async function getIamPolicy(secret: Secret): Promise<iam.Policy> {
 }
 
 export async function setIamPolicy(secret: Secret, bindings: iam.Binding[]): Promise<void> {
-  await client.post<{ policy: Partial<iam.Policy> }, iam.Policy>(
+  await client.post<{ policy: Partial<iam.Policy>; updateMask: string }, iam.Policy>(
     `projects/${secret.projectId}/secrets/${secret.name}:setIamPolicy`,
     {
       policy: {
         bindings,
       },
-    },
-    {
-      queryParams: {
-        updateMask: "bindings",
-      },
+      updateMask: "bindings",
     }
   );
 }

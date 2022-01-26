@@ -325,11 +325,11 @@ async function _runBinary(
       `${description} logging to ${clc.bold(getLogFileName(emulator.name))}`
     );
 
-    emulator.instance.stdout.on("data", (data) => {
+    emulator.instance.stdout?.on("data", (data) => {
       logger.log("DEBUG", data.toString());
       emulator.stdout.write(data);
     });
-    emulator.instance.stderr.on("data", (data) => {
+    emulator.instance.stderr?.on("data", (data) => {
       logger.log("DEBUG", data.toString());
       emulator.stdout.write(data);
 
