@@ -19,22 +19,21 @@ export interface ArchiveOptions {
 }
 
 export interface ArchiveResult {
+  /** File name. */
   file: string;
+  /** Read stream of the archive. */
   stream: Readable;
+  /** List of all the files in the archive. */
   manifest: string[];
+  /** The size of the archive. */
   size: number;
+  /** The source directory of the archive. */
   source: string;
 }
 
 /**
  * Archives a directory to a temporary file and returns information about the
  * new archive. Defaults to type "tar", and returns a .tar.gz file.
- * @return {!Promise<Object<string, *>>} Information about the archive:
- *    - `file`: file name
- *    - `stream`: read stream of the archive
- *    - `manifest`: list of all files in the archive
- *    - `size`: information about the size of the archive
- *    - `source`: the source directory of the archive, for reference
  */
 export async function archiveDirectory(
   sourceDirectory: string,
@@ -73,10 +72,6 @@ export async function archiveDirectory(
 
 /**
  * Archives a directory and returns information about the local archive.
- * @return {!Object<string, *>} Information with the following keys:
- *   - file: name of the temp archive that was created.
- *   - stream: read stream of the temp archive.
- *   - size: the size of the file.
  */
 async function tarDirectory(
   sourceDirectory: string,
