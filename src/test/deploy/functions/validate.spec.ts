@@ -134,7 +134,7 @@ describe("validate", () => {
         concurrency: 2,
       };
       expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(/GCF gen 1/);
-    })
+    });
 
     it("Allows endpoints with no mem and no concurrency", () => {
       expect(() => validate.endpointsAreValid(backend.of(ENDPOINT_BASE))).to.not.throw;
