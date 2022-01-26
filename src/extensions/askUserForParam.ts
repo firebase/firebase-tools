@@ -241,7 +241,7 @@ async function addNewSecretVersion(
 ) {
   const version = await secretManagerApi.addVersion(secret, secretValue);
   await secretsUtils.grantFirexServiceAgentSecretAdminRole(secret);
-  return `projects/${version.secret.projectId}/secrets/${version.secret.name}/versions/${version.versionId}`;
+  return `projects/${version.secret.projectId}/secrets/${version.secret.name}/versions/${version.version}`;
 }
 
 export function getInquirerDefault(options: ParamOption[], def: string): string {
