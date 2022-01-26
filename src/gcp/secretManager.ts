@@ -1,5 +1,6 @@
 import { logLabeledSuccess } from "../utils";
-import * as api from "../api";
+import { secretManagerOrigin } from "../api";
+import { Client } from "../apiv2";
 
 export const secretManagerConsoleUri = (projectId: string) =>
   `https://console.cloud.google.com/security/secret-manager?project=${projectId}`;
@@ -16,19 +17,17 @@ export interface SecretVersion {
   versionId: string;
 }
 
+const apiClient = new Client({ urlPrefix: secretManagerOrigin, apiVersion: "v1beta1" });
+
 export async function listSecrets(projectId: string): Promise<Secret[]> {
-  const listRes = await api.request("GET", `/v1beta1/projects/${projectId}/secrets`, {
-    auth: true,
-    origin: api.secretManagerOrigin,
-  });
-  return listRes.body.secrets.map((s: any) => parseSecretResourceName(s.name));
+  const listRes = await apiClient.get<{ secrets: any[] }>(`/projects/${projectId}/secrets`);
+  return listRes.body.secrets.map((s) => parseSecretResourceName(s.name));
 }
 
 export async function getSecret(projectId: string, name: string): Promise<Secret> {
-  const getRes = await api.request("GET", `/v1beta1/projects/${projectId}/secrets/${name}`, {
-    auth: true,
-    origin: api.secretManagerOrigin,
-  });
+  const getRes = await apiClient.get<{ name: string; labels: Record<string, string> }>(
+    `/projects/${projectId}/secrets/${name}`
+  );
   const secret = parseSecretResourceName(getRes.body.name);
   secret.labels = getRes.body.labels ?? {};
   return secret;
@@ -39,13 +38,8 @@ export async function getSecretVersion(
   name: string,
   version: string
 ): Promise<SecretVersion> {
-  const getRes = await api.request(
-    "GET",
-    `/v1beta1/projects/${projectId}/secrets/${name}/versions/${version}`,
-    {
-      auth: true,
-      origin: api.secretManagerOrigin,
-    }
+  const getRes = await apiClient.get<{ name: string }>(
+    `/projects/${projectId}/secrets/${name}/versions/${version}`
   );
   return parseSecretVersionResourceName(getRes.body.name);
 }
@@ -90,34 +84,28 @@ export async function createSecret(
   name: string,
   labels: Record<string, string>
 ): Promise<Secret> {
-  const createRes = await api.request(
-    "POST",
-    `/v1beta1/projects/${projectId}/secrets?secretId=${name}`,
+  const createRes = await apiClient.post<
+    { replication: { automatic: {} }; labels: Record<string, string> },
+    { name: string }
+  >(
+    `/projects/${projectId}/secrets`,
     {
-      auth: true,
-      origin: api.secretManagerOrigin,
-      data: {
-        replication: {
-          automatic: {},
-        },
-        labels,
+      replication: {
+        automatic: {},
       },
-    }
+      labels,
+    },
+    { queryParams: { secretId: name } }
   );
   return parseSecretResourceName(createRes.body.name);
 }
 
 export async function addVersion(secret: Secret, payloadData: string): Promise<SecretVersion> {
-  const res = await api.request(
-    "POST",
-    `/v1beta1/projects/${secret.projectId}/secrets/${secret.name}:addVersion`,
+  const res = await apiClient.post<{ payload: { data: string } }, { name: string }>(
+    `/projects/${secret.projectId}/secrets/${secret.name}:addVersion`,
     {
-      auth: true,
-      origin: api.secretManagerOrigin,
-      data: {
-        payload: {
-          data: Buffer.from(payloadData).toString("base64"),
-        },
+      payload: {
+        data: Buffer.from(payloadData).toString("base64"),
       },
     }
   );
@@ -136,13 +124,8 @@ export async function grantServiceAgentRole(
   serviceAccountEmail: string,
   role: string
 ): Promise<void> {
-  const getPolicyRes = await api.request(
-    "GET",
-    `/v1beta1/projects/${secret.projectId}/secrets/${secret.name}:getIamPolicy`,
-    {
-      auth: true,
-      origin: api.secretManagerOrigin,
-    }
+  const getPolicyRes = await apiClient.get<{ bindings: any[] }>(
+    `/projects/${secret.projectId}/secrets/${secret.name}:getIamPolicy`
   );
 
   const bindings = getPolicyRes.body.bindings || [];
@@ -160,19 +143,14 @@ export async function grantServiceAgentRole(
     role: role,
     members: [`serviceAccount:${serviceAccountEmail}`],
   });
-  await api.request(
-    "POST",
-    `/v1beta1/projects/${secret.projectId}/secrets/${secret.name}:setIamPolicy`,
+  await apiClient.post<{ policy: { bindings: unknown }; updateMask: { paths: string } }, void>(
+    `/projects/${secret.projectId}/secrets/${secret.name}:setIamPolicy`,
     {
-      auth: true,
-      origin: api.secretManagerOrigin,
-      data: {
-        policy: {
-          bindings,
-        },
-        updateMask: {
-          paths: "bindings",
-        },
+      policy: {
+        bindings,
+      },
+      updateMask: {
+        paths: "bindings",
       },
     }
   );
