@@ -348,13 +348,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       nodeBinary: backend.nodeBinary,
       extensionTriggers: backend.predefinedTriggers,
     };
-    const worker = this.invokeRuntime(
-      backend,
-      trigger.id,
-      runtimeBundle,
-      opts,
-      this.getRuntimeEnvs(backend, trigger)
-    );
+    const worker = this.invokeRuntime(backend, trigger, runtimeBundle, opts);
     return worker;
   }
 
@@ -994,16 +988,34 @@ export class FunctionsEmulator implements EmulatorInstance {
     };
   }
 
+  resolveSecretEnvs(
+    backend: EmulatableBackend,
+    trigger: EmulatedTriggerDefinition
+  ): Record<string, string> {
+    const overrideFile = ".secrets.local";
+    let overrideSecrets: Record<string, string> = {};
+    try {
+      const data = fs.readFileSync(path.join(backend.functionsDir, overrideFile), "utf8");
+      overrideSecrets = functionsEnv.parseStrict(data);
+    } catch (e: any) {
+      this.logger.log("WARN", `Failed to read local secrets file ${overrideFile}: ${e.message}`);
+    }
+
+    const secrets = trigger.secretEnvironmentVariables.
+
+
+    return {};
+  }
+
   invokeRuntime(
     backend: EmulatableBackend,
-    triggerId: string,
+    trigger: EmulatedTriggerDefinition,
     frb: FunctionsRuntimeBundle,
-    opts: InvokeRuntimeOpts,
-    runtimeEnv?: Record<string, string>
+    opts: InvokeRuntimeOpts
   ): RuntimeWorker {
     // If we can use an existing worker there is almost nothing to do.
-    if (this.workerPool.readyForWork(triggerId)) {
-      return this.workerPool.submitWork(triggerId, frb, opts);
+    if (this.workerPool.readyForWork(trigger.id)) {
+      return this.workerPool.submitWork(trigger.id, frb, opts);
     }
 
     const emitter = new EventEmitter();
@@ -1040,6 +1052,9 @@ export class FunctionsEmulator implements EmulatorInstance {
           "See https://yarnpkg.com/getting-started/migration#step-by-step for more information."
       );
     }
+
+    const runtimeEnv = this.getRuntimeEnvs(backend, trigger);
+    const secretEnvs = this.resolveSecretEnvs(backend, trigger);
 
     const childProcess = spawn(opts.nodeBinary, args, {
       cwd: backend.functionsDir,
@@ -1090,8 +1105,8 @@ export class FunctionsEmulator implements EmulatorInstance {
       },
     };
 
-    this.workerPool.addWorker(triggerId, runtime);
-    return this.workerPool.submitWork(triggerId, frb, opts);
+    this.workerPool.addWorker(trigger.id, runtime);
+    return this.workerPool.submitWork(trigger.id, frb, opts);
   }
 
   async disableBackgroundTriggers() {

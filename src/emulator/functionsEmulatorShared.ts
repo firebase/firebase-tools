@@ -15,6 +15,7 @@ import {
   isScheduleTriggered,
 } from "../deploy/functions/backend";
 import { copyIfPresent } from "../gcp/proto";
+import { SecretEnvVar } from "../gcp/cloudfunctions";
 
 export type SignatureType = "http" | "event" | "cloudevent";
 
@@ -34,6 +35,7 @@ export interface ParsedTriggerDefinition {
 export interface EmulatedTriggerDefinition extends ParsedTriggerDefinition {
   id: string; // An unique-id per-function, generated from the name and the region.
   region: string;
+  secretEnvironmentVariables?: SecretEnvVar; // Secret env vars needs to be specially loaded in the Emulator.
 }
 
 export interface EventSchedule {
@@ -139,7 +141,15 @@ export function emulatedFunctionsFromEndpoints(endpoints: Endpoint[]): EmulatedT
       name: endpoint.id,
       id: `${endpoint.region}-${endpoint.id}`,
     };
-    copyIfPresent(def, endpoint, "timeout", "availableMemoryMb", "labels", "platform");
+    copyIfPresent(
+      def,
+      endpoint,
+      "timeout",
+      "availableMemoryMb",
+      "labels",
+      "platform",
+      "secretEnvironmentVariables"
+    );
     // TODO: This transformation is confusing but must be kept since the Firestore/RTDB trigger registration
     // process requires it in this form. Need to work in Firestore emulator for a proper fix...
     if (isHttpsTriggered(endpoint)) {
@@ -226,6 +236,9 @@ export function getEmulatedTriggersFromDefinitions(
   );
 }
 
+/**
+ *
+ */
 export function getTemporarySocketPath(pid: number, cwd: string): string {
   // See "net" package docs for information about IPC pipes on Windows
   // https://nodejs.org/api/net.html#net_identifying_paths_for_ipc_connections
@@ -247,6 +260,9 @@ export function getTemporarySocketPath(pid: number, cwd: string): string {
   }
 }
 
+/**
+ *
+ */
 export function getFunctionService(def: EmulatedTriggerDefinition): string {
   if (def.eventTrigger) {
     return def.eventTrigger.service ?? getServiceFromEventType(def.eventTrigger.eventType);
@@ -255,6 +271,9 @@ export function getFunctionService(def: EmulatedTriggerDefinition): string {
   return "unknown";
 }
 
+/**
+ *
+ */
 export function getServiceFromEventType(eventType: string): string {
   if (eventType.includes("firestore")) {
     return Constants.SERVICE_FIRESTORE;
@@ -288,6 +307,9 @@ export function getServiceFromEventType(eventType: string): string {
   return "";
 }
 
+/**
+ *
+ */
 export function waitForBody(req: express.Request): Promise<string> {
   let data = "";
   return new Promise((resolve) => {
@@ -301,6 +323,9 @@ export function waitForBody(req: express.Request): Promise<string> {
   });
 }
 
+/**
+ *
+ */
 export function findModuleRoot(moduleName: string, filepath: string): string {
   const hierarchy = filepath.split(path.sep);
 
@@ -326,6 +351,9 @@ export function findModuleRoot(moduleName: string, filepath: string): string {
   return "";
 }
 
+/**
+ *
+ */
 export function formatHost(info: { host: string; port: number }): string {
   if (info.host.includes(":")) {
     return `[${info.host}]:${info.port}`;
@@ -334,6 +362,9 @@ export function formatHost(info: { host: string; port: number }): string {
   }
 }
 
+/**
+ *
+ */
 export function getSignatureType(def: EmulatedTriggerDefinition): SignatureType {
   if (def.httpsTrigger) {
     return "http";
