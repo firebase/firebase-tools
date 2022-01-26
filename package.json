@@ -114,7 +114,7 @@
     "leven": "^3.1.0",
     "lodash": "^4.17.21",
     "marked": "^4.0.10",
-    "marked-terminal": "^3.3.0",
+    "marked-terminal": "^5.1.1",
     "mime": "^2.5.2",
     "minimatch": "^3.0.4",
     "morgan": "^1.10.0",
