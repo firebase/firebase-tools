@@ -38,15 +38,16 @@ export class ExtensionsEmulator {
     const projectId = needProjectId(this.options);
     const projectNumber = await needProjectNumber(this.options);
     const aliases = getAliases(this.options, projectId);
-
-    this.want = await planner.want({
-      projectId,
-      projectNumber,
-      aliases,
-      projectDir: this.options.config.projectDir,
-      extensions: this.options.config.get("extensions"),
-      checkLocal: true,
-    });
+    if (this.options.config.has("extensions")) {
+      this.want = await planner.want({
+        projectId,
+        projectNumber,
+        aliases,
+        projectDir: this.options.config.projectDir,
+        extensions: this.options.config.get("extensions"),
+        checkLocal: true,
+      });
+    }
   }
 
   // ensureSourceCode checks the cache for the source code for a given extension version,
