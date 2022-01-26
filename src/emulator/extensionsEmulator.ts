@@ -34,11 +34,11 @@ export class ExtensionsEmulator {
   // readManifest checks the `extensions` section of `firebase.json` for the extension instances to emulate,
   // and the `{projectRoot}/extensions` directory for param values.
   private async readManifest(): Promise<void> {
-    // TODO: Ideally, this should not error out if called with a fake projectId.
-    const projectId = needProjectId(this.options);
-    const projectNumber = await needProjectNumber(this.options);
-    const aliases = getAliases(this.options, projectId);
     if (this.options.config.has("extensions")) {
+      // TODO: Ideally, this should not error out if called with a fake projectId.
+      const projectId = needProjectId(this.options);
+      const projectNumber = await needProjectNumber(this.options);
+      const aliases = getAliases(this.options, projectId);
       this.want = await planner.want({
         projectId,
         projectNumber,
