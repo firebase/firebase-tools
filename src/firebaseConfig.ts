@@ -30,14 +30,14 @@ type DatabaseMultiple = ({
 }> &
   Deployable)[];
 
-type HostingSource = { source: string } | { regex: string };
+type HostingSource = { glob: string } | { source: string } | { regex: string };
 
-type HostingRedirects = HostingSource & {
+type HostingRedirect = HostingSource & {
   destination: string;
-  type: number;
+  type?: number;
 };
 
-type HostingRewrites = HostingSource &
+export type HostingRewrite = HostingSource &
   (
     | { destination: string }
     | { function: string }
@@ -50,7 +50,7 @@ type HostingRewrites = HostingSource &
     | { dynamicLinks: boolean }
   );
 
-type HostingHeaders = HostingSource & {
+export type HostingHeaders = HostingSource & {
   headers: {
     key: string;
     value: string;
@@ -63,8 +63,8 @@ type HostingBase = {
   appAssociation?: string;
   cleanUrls?: boolean;
   trailingSlash?: boolean;
-  redirects?: HostingRedirects[];
-  rewrites?: HostingRewrites[];
+  redirects?: HostingRedirect[];
+  rewrites?: HostingRewrite[];
   headers?: HostingHeaders[];
   i18n?: {
     root: string;
