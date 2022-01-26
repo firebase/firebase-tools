@@ -9,7 +9,10 @@ import * as sinon from "sinon";
 
 import { EmulatorLog, Emulators } from "../../src/emulator/types";
 import { FunctionRuntimeBundles, TIMEOUT_LONG, TIMEOUT_MED, MODULE_ROOT } from "./fixtures";
-import { FunctionsRuntimeBundle, SignatureType } from "../../src/emulator/functionsEmulatorShared";
+import {
+  FunctionsRuntimeBundle,
+  SignatureType,
+} from "../../src/emulator/functionsEmulatorShared";
 import { InvokeRuntimeOpts, FunctionsEmulator } from "../../src/emulator/functionsEmulator";
 import { RuntimeWorker } from "../../src/emulator/functionsRuntimeWorker";
 import { streamToString } from "../../src/utils";
@@ -60,11 +63,22 @@ function startRuntimeWithFunctions(
   opts.ignore_warnings = true;
   opts.serializedTriggers = serializedTriggers;
 
+  const dummyTriggerDef = {
+    name: "function_id",
+    region: "region",
+    id: "region-function_id",
+    entryPoint: "function_id",
+    platform: "gcfv1" as const,
+  };
   return functionsEmulator.startFunctionRuntime(
     testBackend,
-    "region-function_id",
-    "function_id",
-    signatureType,
+    {
+      ...dummyTriggerDef,
+      // Fill in with dummy trigger info based on given signature type.
+      ...(signatureType === "http"
+        ? { httpTrigger: {} }
+        : { eventTrigger: { eventType: "", resource: "" } }),
+    },
     frb.proto,
     opts
   );

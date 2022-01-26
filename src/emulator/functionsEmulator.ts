@@ -331,9 +331,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   startFunctionRuntime(
     backend: EmulatableBackend,
-    triggerId: string,
-    targetName: string,
-    signatureType: SignatureType,
+    trigger: EmulatedTriggerDefinition,
     proto?: any,
     runtimeOpts?: InvokeRuntimeOpts
   ): RuntimeWorker {
@@ -344,7 +342,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       proto,
     };
     if (!backend.nodeBinary) {
-      throw new FirebaseError(`No node binary for ${triggerId}. This should never happen.`);
+      throw new FirebaseError(`No node binary for ${trigger.id}. This should never happen.`);
     }
     const opts = runtimeOpts || {
       nodeBinary: backend.nodeBinary,
@@ -352,10 +350,10 @@ export class FunctionsEmulator implements EmulatorInstance {
     };
     const worker = this.invokeRuntime(
       backend,
-      triggerId,
+      trigger.id,
       runtimeBundle,
       opts,
-      this.getRuntimeEnvs(backend, { targetName, signatureType })
+      this.getRuntimeEnvs(backend, trigger)
     );
     return worker;
   }
@@ -897,10 +895,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     return {};
   }
 
-  getSystemEnvs(triggerDef?: {
-    targetName: string;
-    signatureType: SignatureType;
-  }): Record<string, string> {
+  getSystemEnvs(trigger?: EmulatedTriggerDefinition): Record<string, string> {
     const envs: Record<string, string> = {};
 
     // Env vars guaranteed by GCF platform.
@@ -909,11 +904,11 @@ export class FunctionsEmulator implements EmulatorInstance {
     envs.K_REVISION = "1";
     envs.PORT = "80";
 
-    if (triggerDef) {
-      const service = triggerDef.targetName;
+    if (trigger) {
+      const service = trigger.name;
       const target = service.replace(/-/g, ".");
       envs.FUNCTION_TARGET = target;
-      envs.FUNCTION_SIGNATURE_TYPE = triggerDef.signatureType;
+      envs.FUNCTION_SIGNATURE_TYPE = getSignatureType(trigger);
       envs.K_SERVICE = service;
     }
     return envs;
@@ -988,14 +983,11 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   getRuntimeEnvs(
     backend: EmulatableBackend,
-    triggerDef?: {
-      targetName: string;
-      signatureType: SignatureType;
-    }
+    trigger: EmulatedTriggerDefinition
   ): Record<string, string> {
     return {
       ...this.getUserEnvs(backend),
-      ...this.getSystemEnvs(triggerDef),
+      ...this.getSystemEnvs(trigger),
       ...this.getEmulatorEnvs(),
       FIREBASE_CONFIG: this.getFirebaseConfig(),
       ...backend.env,
@@ -1134,13 +1126,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
     const trigger = record.def;
     const service = getFunctionService(trigger);
-    const worker = this.startFunctionRuntime(
-      record.backend,
-      trigger.id,
-      trigger.name,
-      getSignatureType(trigger),
-      proto
-    );
+    const worker = this.startFunctionRuntime(record.backend, trigger, proto);
 
     return new Promise((resolve, reject) => {
       if (projectId !== this.args.projectId) {
@@ -1278,13 +1264,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         );
       }
     }
-    const worker = this.startFunctionRuntime(
-      record.backend,
-      trigger.id,
-      trigger.name,
-      "http",
-      undefined
-    );
+    const worker = this.startFunctionRuntime(record.backend, trigger);
 
     worker.onLogs((el: EmulatorLog) => {
       if (el.level === "FATAL") {
