@@ -76,7 +76,7 @@ export class ExtensionsEmulator {
   }
 
   private installAndBuildSourceCode(sourceCodePath: string): void {
-    //TODO: Add logging during this so it is clear what is happening.
+    // TODO: Add logging during this so it is clear what is happening.
     const npmInstall = spawnSync("npm", ["--prefix", `/${sourceCodePath}/functions/`, "install"], {
       encoding: "utf8",
     });
