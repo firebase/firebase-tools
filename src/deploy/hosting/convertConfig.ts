@@ -1,5 +1,5 @@
 import { FirebaseError } from "../../error";
-import { HostingConfig, HostingRewrite, HostingHeaders } from "../../firebaseConfig";
+import { HostingConfig, HostingRewrites, HostingHeaders } from "../../firebaseConfig";
 
 function has(obj: { [k: string]: unknown }, k: string): boolean {
   return obj[k] !== undefined;
@@ -9,7 +9,7 @@ function has(obj: { [k: string]: unknown }, k: string): boolean {
  * extractPattern contains the logic for extracting exactly one glob/regexp
  * from a Hosting rewrite/redirect/header specification
  */
-function extractPattern(type: string, spec: HostingRewrite | HostingHeaders): any {
+function extractPattern(type: string, spec: HostingRewrites | HostingHeaders): any {
   let glob = "";
   let regex = "";
   if ("source" in spec) {

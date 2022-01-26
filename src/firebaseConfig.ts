@@ -32,12 +32,12 @@ type DatabaseMultiple = ({
 
 type HostingSource = { glob: string } | { source: string } | { regex: string };
 
-type HostingRedirect = HostingSource & {
+type HostingRedirects = HostingSource & {
   destination: string;
   type?: number;
 };
 
-export type HostingRewrite = HostingSource &
+export type HostingRewrites = HostingSource &
   (
     | { destination: string }
     | { function: string }
@@ -63,8 +63,8 @@ type HostingBase = {
   appAssociation?: string;
   cleanUrls?: boolean;
   trailingSlash?: boolean;
-  redirects?: HostingRedirect[];
-  rewrites?: HostingRewrite[];
+  redirects?: HostingRedirects[];
+  rewrites?: HostingRewrites[];
   headers?: HostingHeaders[];
   i18n?: {
     root: string;
