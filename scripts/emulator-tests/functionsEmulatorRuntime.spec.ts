@@ -73,7 +73,7 @@ function startRuntimeWithFunctions(
       ...dummyTriggerDef,
       // Fill in with dummy trigger info based on given signature type.
       ...(signatureType === "http"
-        ? { httpTrigger: {} }
+        ? { httpsTrigger: {} }
         : { eventTrigger: { eventType: "", resource: "" } }),
     },
     frb.proto,
