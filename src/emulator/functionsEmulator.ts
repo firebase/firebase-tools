@@ -577,7 +577,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       } else {
         this.logger.log(
           "WARN",
-          `Trigger "${definition.name}" has neither "httpsTrigger" or "eventTrigger" member`
+          `Unsupported function type on ${definition.name}. Expected either httpsTrigger or eventTrigger.`
         );
       }
 
@@ -614,7 +614,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (result === null || result.length !== 3) {
       this.logger.log(
         "WARN",
-        `Event trigger "${key}" has malformed "resource" member. ` + `${eventTrigger.resource}`
+        `Event function "${key}" has malformed "resource" member. ` + `${eventTrigger.resource}`
       );
       return Promise.reject();
     }
@@ -635,7 +635,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     } else {
       this.logger.log(
         "WARN",
-        `No project in use. Registering function trigger for sentinel namespace '${Constants.DEFAULT_DATABASE_EMULATOR_NAMESPACE}'`
+        `No project in use. Registering function for sentinel namespace '${Constants.DEFAULT_DATABASE_EMULATOR_NAMESPACE}'`
       );
     }
 
@@ -652,7 +652,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         return true;
       })
       .catch((err) => {
-        this.logger.log("WARN", "Error adding Realtime Database trigger: " + err);
+        this.logger.log("WARN", "Error adding Realtime Database function: " + err);
         throw err;
       });
   }
@@ -685,7 +685,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         return true;
       })
       .catch((err) => {
-        this.logger.log("WARN", "Error adding firestore trigger: " + err);
+        this.logger.log("WARN", "Error adding firestore function: " + err);
         throw err;
       });
   }
@@ -777,7 +777,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     const record = this.triggers[triggerKey];
     if (!record) {
       logger.debug(`Could not find key=${triggerKey} in ${JSON.stringify(this.triggers)}`);
-      throw new FirebaseError(`No trigger with key ${triggerKey}`);
+      throw new FirebaseError(`No function with key ${triggerKey}`);
     }
 
     return record;
@@ -1047,6 +1047,13 @@ export class FunctionsEmulator implements EmulatorInstance {
       stdio: ["pipe", "pipe", "pipe", "ipc"],
     });
 
+    if (!childProcess.stderr) {
+      throw new FirebaseError(`childProcess.stderr is undefined.`);
+    }
+    if (!childProcess.stdout) {
+      throw new FirebaseError(`childProcess.stdout is undefined.`);
+    }
+
     const buffers: {
       [pipe: string]: {
         pipe: stream.Readable;
@@ -1230,7 +1237,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       res
         .status(404)
         .send(
-          `Function ${triggerId} does not exist, valid triggers are: ${Object.keys(
+          `Function ${triggerId} does not exist, valid functions are: ${Object.keys(
             this.triggers
           ).join(", ")}`
         );

@@ -120,7 +120,7 @@ export class Delegate {
       cwd: this.sourceDir,
       stdio: [/* stdin=*/ "ignore", /* stdout=*/ "pipe", /* stderr=*/ "inherit"],
     });
-    childProcess.stdout.on("data", (chunk) => {
+    childProcess.stdout?.on("data", (chunk) => {
       logger.debug(chunk.toString());
     });
     return Promise.resolve(async () => {
