@@ -1,8 +1,11 @@
 import { findIndex } from "lodash";
-import * as api from "../api";
+import { resourceManagerOrigin } from "../api";
+import { Client } from "../apiv2";
 import { Binding, getServiceAccount, Policy } from "./iam";
 
 const API_VERSION = "v1";
+
+const apiClient = new Client({ urlPrefix: resourceManagerOrigin, apiVersion: API_VERSION });
 
 // Roles listed at https://firebase.google.com/docs/projects/iam/roles-predefined-product
 export const firebaseRoles = {
@@ -19,10 +22,7 @@ export const firebaseRoles = {
  * @param projectId the id of the project whose IAM Policy you want to get
  */
 export async function getIamPolicy(projectId: string): Promise<Policy> {
-  const response = await api.request("POST", `/${API_VERSION}/projects/${projectId}:getIamPolicy`, {
-    auth: true,
-    origin: api.resourceManagerOrigin,
-  });
+  const response = await apiClient.post<void, Policy>(`/projects/${projectId}:getIamPolicy`);
   return response.body;
 }
 
@@ -37,16 +37,15 @@ export async function getIamPolicy(projectId: string): Promise<Policy> {
 export async function setIamPolicy(
   projectId: string,
   newPolicy: Policy,
-  updateMask?: string
+  updateMask = ""
 ): Promise<Policy> {
-  const response = await api.request("POST", `/${API_VERSION}/projects/${projectId}:setIamPolicy`, {
-    auth: true,
-    origin: api.resourceManagerOrigin,
-    data: {
+  const response = await apiClient.post<{ policy: Policy; updateMask: string }, Policy>(
+    `/projects/${projectId}:setIamPolicy`,
+    {
       policy: newPolicy,
       updateMask: updateMask,
-    },
-  });
+    }
+  );
   return response.body;
 }
 
