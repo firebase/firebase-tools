@@ -26,6 +26,7 @@ const testBackend = {
 };
 
 const functionsEmulator = new FunctionsEmulator({
+  projectDir: MODULE_ROOT,
   projectId: "fake-project-id",
   emulatableBackends: [testBackend],
 });
