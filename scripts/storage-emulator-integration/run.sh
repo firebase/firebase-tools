@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e # Immediately exit on failure
 
+source scripts/set-default-credentials.sh
+
 # Globally link the CLI for the testing framework
 ./scripts/npm-link.sh
 
