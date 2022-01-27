@@ -60,7 +60,6 @@ export interface FunctionsRuntimeArgs {
 }
 
 export interface FunctionsRuntimeBundle {
-  projectId: string;
   proto: any;
   // TODO(danielylee): One day, we hope to get rid of all of the following properties.
   // Our goal is for the emulator environment to mimic the production environment as much
@@ -69,7 +68,6 @@ export interface FunctionsRuntimeBundle {
   // and none of these extra properties.
   socketPath?: string;
   disabled_features?: FunctionsRuntimeFeatures;
-  nodeMajorVersion?: number;
 }
 
 export interface FunctionsRuntimeFeatures {
