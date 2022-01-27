@@ -163,6 +163,7 @@ describe("Storage emulator", () => {
     before(async () => {
       if (!TEST_CONFIG.useProductionServers) {
         process.env.STORAGE_EMULATOR_HOST = STORAGE_EMULATOR_HOST;
+        process.env.GCLOUD_PROJECT = "demo-example";
 
         test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, emulatorConfig);
         await test.startEmulators(["--only", "auth,storage"]);
@@ -234,8 +235,9 @@ describe("Storage emulator", () => {
           });
         });
 
-        // TODO(abehaskins): This test is temporarily disabled due to a credentials issue
-        it.skip("should handle large (resumable) uploads", async () => {
+        it("should handle large (resumable) uploads", async () => {
+          // This requires Application Default Credential and GCLOUD_PROJECT
+          // due to the underlying gcs-resumable-upload implementation.
           await testBucket.upload(largeFilePath),
             {
               resumable: true,
