@@ -192,7 +192,6 @@ export function logLabeledWarning(
   logger[type](clc.yellow.bold(`${WARNING_CHAR}  ${label}:`), message, data);
 }
 
-
 /**
  * Log an info statement with a gray bullet at the start of the line.
  */
