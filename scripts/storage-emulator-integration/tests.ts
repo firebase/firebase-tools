@@ -236,7 +236,7 @@ describe("Storage emulator", () => {
         });
 
         it("should handle large (resumable) uploads", async () => {
-          // This requires Application Default Credential and GCLOUD_PROJECT
+          // This requires credential and GCLOUD_PROJECT even for the emulator
           // due to the underlying gcs-resumable-upload implementation.
           await testBucket.upload(largeFilePath),
             {
@@ -262,8 +262,8 @@ describe("Storage emulator", () => {
 
     describe(".file()", () => {
       describe("#save()", () => {
-        // TODO(abehaskins): This test is temporarily disabled due to a credentials issue
-        it.skip("should accept a zero-byte file", async () => {
+        it("should accept a zero-byte file", async () => {
+          // The SDK requires credentials even for the emulator for this test.
           await testBucket.file("testing/dir/").save("");
 
           const [files] = await testBucket.getFiles({
@@ -275,8 +275,8 @@ describe("Storage emulator", () => {
       });
 
       describe("#get()", () => {
-        // TODO(abehaskins): This test is temporarily disabled due to a credentials issue
-        it.skip("should complete an save/get/download cycle", async () => {
+        it("should complete an save/get/download cycle", async () => {
+          // The SDK requires credentials even for the emulator for this test.
           const p = "testing/dir/hello.txt";
           const content = "hello, world";
 

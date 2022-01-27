@@ -192,15 +192,12 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
 
     if (req.query.uploadType == "resumable") {
       const upload = storageLayer.startUpload(req.params.bucketId, name, contentType, req.body);
-      const emulatorInfo = EmulatorRegistry.getInfo(Emulators.STORAGE);
 
-      if (emulatorInfo == undefined) {
-        res.sendStatus(500);
-        return;
-      }
-
-      const { host, port } = emulatorInfo;
-      const uploadUrl = `http://${host}:${port}/upload/storage/v1/b/${upload.bucketId}/o?name=${upload.fileLocation}&uploadType=resumable&upload_id=${upload.uploadId}`;
+      // This is a relative URL to indicate that clients should keep using
+      // whatever host / port / protocol after the redirect. This is especially
+      // important due to containers / proxies / forwarding use cases.
+      // See: https://github.com/firebase/firebase-admin-node/issues/1562
+      const uploadUrl = `/upload/storage/v1/b/${upload.bucketId}/o?name=${upload.fileLocation}&uploadType=resumable&upload_id=${upload.uploadId}`;
       res.header("location", uploadUrl).status(200).send();
       return;
     }
