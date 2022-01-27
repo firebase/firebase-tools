@@ -13,9 +13,9 @@ import {
   isEventTriggered,
   isHttpsTriggered,
   isScheduleTriggered,
+  SecretEnvVar,
 } from "../deploy/functions/backend";
 import { copyIfPresent } from "../gcp/proto";
-import { SecretEnvVar } from "../gcp/cloudfunctions";
 
 export type SignatureType = "http" | "event" | "cloudevent";
 
@@ -35,7 +35,7 @@ export interface ParsedTriggerDefinition {
 export interface EmulatedTriggerDefinition extends ParsedTriggerDefinition {
   id: string; // An unique-id per-function, generated from the name and the region.
   region: string;
-  secretEnvironmentVariables?: SecretEnvVar; // Secret env vars needs to be specially loaded in the Emulator.
+  secretEnvironmentVariables?: SecretEnvVar[]; // Secret env vars needs to be specially loaded in the Emulator.
 }
 
 export interface EventSchedule {
