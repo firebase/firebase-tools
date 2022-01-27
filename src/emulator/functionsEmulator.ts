@@ -338,7 +338,6 @@ export class FunctionsEmulator implements EmulatorInstance {
     const bundleTemplate = this.getBaseBundle();
     const runtimeBundle: FunctionsRuntimeBundle = {
       ...bundleTemplate,
-      nodeMajorVersion: backend.nodeMajorVersion,
       proto,
     };
     if (!backend.nodeBinary) {

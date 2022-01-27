@@ -66,7 +66,6 @@ export interface FunctionsRuntimeBundle {
   // and none of these extra properties.
   socketPath?: string;
   disabled_features?: FunctionsRuntimeFeatures;
-  nodeMajorVersion?: number;
 }
 
 export interface FunctionsRuntimeFeatures {
