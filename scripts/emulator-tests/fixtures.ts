@@ -30,7 +30,6 @@ export const FunctionRuntimeBundles: { [key: string]: FunctionsRuntimeBundle } =
         },
       },
     },
-    projectId: "fake-project-id",
   },
   onWrite: {
     proto: {
@@ -57,7 +56,6 @@ export const FunctionRuntimeBundles: { [key: string]: FunctionsRuntimeBundle } =
         },
       },
     },
-    projectId: "fake-project-id",
   },
   onDelete: {
     proto: {
@@ -84,7 +82,6 @@ export const FunctionRuntimeBundles: { [key: string]: FunctionsRuntimeBundle } =
         },
       },
     },
-    projectId: "fake-project-id",
   },
   onUpdate: {
     proto: {
@@ -123,10 +120,8 @@ export const FunctionRuntimeBundles: { [key: string]: FunctionsRuntimeBundle } =
         timestamp: "2019-05-15T16:21:15.148831Z",
       },
     },
-    projectId: "fake-project-id",
   },
   onRequest: {
-    projectId: "fake-project-id",
     proto: {},
   },
 };

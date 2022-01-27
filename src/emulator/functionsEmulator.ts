@@ -114,7 +114,7 @@ export interface FunctionsRuntimeInstance {
   // A function to manually kill the child process as normal cleanup
   shutdown(): void;
   // A function to manually kill the child process in case of errors
-  kill(signal?: string): void;
+  kill(signal?: number): void;
   // Send an IPC message to the child process
   send(args: FunctionsRuntimeArgs): boolean;
 }
@@ -817,7 +817,6 @@ export class FunctionsEmulator implements EmulatorInstance {
   getBaseBundle(): FunctionsRuntimeBundle {
     return {
       proto: {},
-      projectId: this.args.projectId,
       disabled_features: this.args.disabledRuntimeFeatures,
     };
   }
@@ -1088,7 +1087,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       shutdown: () => {
         childProcess.kill();
       },
-      kill: (signal?: string) => {
+      kill: (signal?: number) => {
         childProcess.kill(signal);
         emitter.emit("log", new EmulatorLog("SYSTEM", "runtime-status", "killed"));
       },

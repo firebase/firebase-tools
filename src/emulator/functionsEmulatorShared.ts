@@ -58,7 +58,6 @@ export interface FunctionsRuntimeArgs {
 }
 
 export interface FunctionsRuntimeBundle {
-  projectId: string;
   proto: any;
   // TODO(danielylee): One day, we hope to get rid of all of the following properties.
   // Our goal is for the emulator environment to mimic the production environment as much
