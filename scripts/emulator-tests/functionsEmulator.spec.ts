@@ -112,7 +112,7 @@ function useFunctions(triggers: () => {}): void {
     trigger: EmulatedTriggerDefinition,
     proto?: any,
     runtimeOpts?: InvokeRuntimeOpts
-  ): RuntimeWorker => {
+  ): Promise<RuntimeWorker> => {
     return startFunctionRuntime(testBackend, trigger, proto, {
       nodeBinary: process.execPath,
       serializedTriggers,
