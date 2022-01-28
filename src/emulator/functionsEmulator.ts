@@ -1032,7 +1032,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         "ERROR",
         "functions",
         "Unable to access secret environment variables from Secret Manager. " +
-          `Make sure you have access OR override them in ${overrideFile}:\n\t` +
+          `Make sure you have access OR override them in file ${overrideFile}:\n\t` +
           errs.join("\n\t")
       );
     }
