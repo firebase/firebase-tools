@@ -7,6 +7,7 @@ import { logLabeledSuccess } from "../../utils";
 import * as backend from "./backend";
 import * as fsutils from "../../fsutils";
 import * as utils from "../../utils";
+import * as secrets from "../../functions/secrets";
 
 /**
  * Check that functions directory exists.
@@ -108,10 +109,8 @@ async function validateSecretVersions(endpoints: backend.Endpoint[]) {
   };
 
   const validations: Promise<void>[] = [];
-  for (const e of endpoints) {
-    for (const s of e.secretEnvironmentVariables! || []) {
-      validations.push(validate(s));
-    }
+  for (const s of secrets.of(endpoints)) {
+    validations.push(validate(s));
   }
   const results = await utils.allSettled(validations);
 

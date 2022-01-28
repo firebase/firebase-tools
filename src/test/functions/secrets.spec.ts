@@ -5,6 +5,7 @@ import * as secretManager from "../../gcp/secretManager";
 import * as secrets from "../../functions/secrets";
 import * as utils from "../../utils";
 import * as prompt from "../../prompt";
+import * as backend from "../../deploy/functions/backend";
 import { Options } from "../../options";
 import { FirebaseError } from "../../error";
 
@@ -112,6 +113,146 @@ describe("functions/secret", () => {
 
       await expect(secrets.ensureSecret("project-id", "MY_SECRET", options)).to.eventually.be
         .rejected;
+    });
+  });
+
+  describe("of", () => {
+    const ENDPOINT = {
+      id: "id",
+      region: "region",
+      project: "project",
+      entryPoint: "id",
+      runtime: "nodejs16",
+      platform: "gcfv1" as const,
+      httpsTrigger: {},
+    };
+
+    function makeSecret(name: string, version?: string): backend.SecretEnvVar {
+      return {
+        projectId: "project",
+        key: name,
+        secret: name,
+        version: version ?? "1",
+      };
+    }
+
+    it("returns empty list given empty list", () => {
+      expect(secrets.of([])).to.be.empty;
+    });
+
+    it("collects all secret environment variables", () => {
+      const secret1 = makeSecret("SECRET1");
+      const secret2 = makeSecret("SECRET2");
+      const secret3 = makeSecret("SECRET3");
+
+      const endpoints: backend.Endpoint[] = [
+        {
+          ...ENDPOINT,
+          secretEnvironmentVariables: [secret1],
+        },
+        ENDPOINT,
+        {
+          ...ENDPOINT,
+          secretEnvironmentVariables: [secret2, secret3],
+        },
+      ];
+      expect(secrets.of(endpoints)).to.have.members([secret1, secret2, secret3]);
+      expect(secrets.of(endpoints)).to.have.length(3);
+    });
+  });
+
+  describe("pruneSecrets", () => {
+    const ENDPOINT = {
+      id: "id",
+      region: "region",
+      project: "project",
+      entryPoint: "id",
+      runtime: "nodejs16",
+      platform: "gcfv1" as const,
+      httpsTrigger: {},
+    };
+
+    let listSecretsStub: sinon.SinonStub;
+    let listSecretVersionsStub: sinon.SinonStub;
+
+    const secret1: secretManager.Secret = {
+      projectId: "project",
+      name: "MY_SECRET1",
+    };
+    const secretVersion11: secretManager.SecretVersion = {
+      secret: secret1,
+      version: "1",
+    };
+    const secretVersion12: secretManager.SecretVersion = {
+      secret: secret1,
+      version: "2",
+    };
+
+    const secret2: secretManager.Secret = {
+      projectId: "project",
+      name: "MY_SECRET2",
+    };
+    const secretVersion21: secretManager.SecretVersion = {
+      secret: secret2,
+      version: "1",
+    };
+
+    function toSecretEnvVar(sv: secretManager.SecretVersion): backend.SecretEnvVar {
+      return {
+        projectId: "project",
+        version: sv.version,
+        secret: sv.secret.name,
+        key: sv.secret.name,
+      };
+    }
+
+    beforeEach(() => {
+      listSecretsStub = sinon.stub(secretManager, "listSecrets").rejects("Unexpected call");
+      listSecretVersionsStub = sinon
+        .stub(secretManager, "listSecretVersions")
+        .rejects("Unexpected call");
+    });
+
+    afterEach(() => {
+      listSecretsStub.restore();
+      listSecretVersionsStub.restore();
+    });
+
+    it("returns nothing if unused", async () => {
+      listSecretsStub.resolves([]);
+
+      await expect(
+        secrets.pruneSecrets({ projectId: "project", projectNumber: "12345" }, [])
+      ).to.eventually.deep.equal([]);
+    });
+
+    it("returns all secrets given no endpoints", async () => {
+      listSecretsStub.resolves([secret1, secret2]);
+      listSecretVersionsStub.onFirstCall().resolves([secretVersion11, secretVersion12]);
+      listSecretVersionsStub.onSecondCall().resolves([secretVersion21]);
+
+      const pruned = await secrets.pruneSecrets(
+        { projectId: "project", projectNumber: "12345" },
+        []
+      );
+
+      expect(pruned).to.have.deep.members(
+        [secretVersion11, secretVersion12, secretVersion21].map(toSecretEnvVar)
+      );
+      expect(pruned).to.have.length(3);
+    });
+
+    it("does not include secret version in use", async () => {
+      listSecretsStub.resolves([secret1, secret2]);
+      listSecretVersionsStub.onFirstCall().resolves([secretVersion11, secretVersion12]);
+      listSecretVersionsStub.onSecondCall().resolves([secretVersion21]);
+
+      const pruned = await secrets.pruneSecrets({ projectId: "project", projectNumber: "12345" }, [
+        { ...ENDPOINT, secretEnvironmentVariables: [toSecretEnvVar(secretVersion12)] },
+      ]);
+
+      expect(pruned).to.have.deep.members([secretVersion11, secretVersion21].map(toSecretEnvVar));
+      expect(pruned).to.have.length(2);
     });
   });
 });

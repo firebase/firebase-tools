@@ -1,18 +1,18 @@
+import * as backend from "../deploy/functions/backend";
 import {
   createSecret,
   getSecret,
+  getSecretVersion,
   listSecrets,
   listSecretVersions,
   parseSecretResourceName,
   patchSecret,
   Secret,
-  SecretVersion,
 } from "../gcp/secretManager";
 import { Options } from "../options";
 import { FirebaseError } from "../error";
 import { logWarning } from "../utils";
 import { promptOnce } from "../prompt";
-import { Endpoint } from "../deploy/functions/backend";
 
 const FIREBASE_MANGED = "firebase-managed";
 
@@ -97,53 +97,58 @@ export async function ensureSecret(
   return await createSecret(projectId, name, labels());
 }
 
-async function listFirebaseSecrets(options: Options): Promise<SecretVersion[]> {
-  const secrets = await listSecrets(options.projectId!, "labels.firebase-managed=true");
-  const secretVersions: SecretVersion[] = [];
-
-  const listVersions = secrets.map(async (secret) => {
-    const versions = await listSecretVersions(options.projectId!, secret.name, "state:ENABLED");
-    secretVersions.push(...versions);
-  });
-
-  await Promise.all(listVersions);
-  return secretVersions;
+/**
+ * Collects all secret environment variables of endpoints.
+ */
+export function of(endpoints: backend.Endpoint[]): backend.SecretEnvVar[] {
+  return endpoints.reduce(
+    (envs, endpoint) => [...envs, ...(endpoint.secretEnvironmentVariables || [])],
+    [] as backend.SecretEnvVar[]
+  );
 }
 
-function secretVersionsFromEndpoint(options: Options, endpoints: Endpoint[]): SecretVersion[] {
-  const versions: SecretVersion[] = [];
-  for (const endpoint of endpoints) {
-    for (const sev of endpoint.secretEnvironmentVariables ?? []) {
-      if (sev.projectId === options.projectId || sev.projectId === options.projectNumber) {
-        let name = sev.secret;
-        if (name.includes("/")) {
-          const secret = parseSecretResourceName(name);
-          name = secret.name;
-        }
-        versions.push({
-          secret: { name, projectId: options.projectId! },
-          version: sev.version!,
-        });
-      }
+/**
+ * Returns all secret versions from Firebase managed secrets unused in the given list of endpoints.
+ */
+export async function pruneSecrets(
+  projectInfo: { projectNumber: string; projectId: string },
+  endpoints: backend.Endpoint[]
+): Promise<Required<backend.SecretEnvVar>[]> {
+  const { projectId, projectNumber } = projectInfo;
+  const pruneKey = (name: string, version: string) => `${name}@${version}`;
+  const prunedSecrets: Set<string> = new Set();
+
+  // Collect all Firebase managed secret versions
+  const haveSecrets = await listSecrets(projectId, `labels.${FIREBASE_MANGED}=true`);
+  for (const secret of haveSecrets) {
+    const versions = await listSecretVersions(projectId, secret.name, `state: ENABLED`);
+    for (const version of versions) {
+      prunedSecrets.add(pruneKey(secret.name, version.version));
     }
   }
-  return versions;
-}
 
-export async function pruneSecrets(options: Options, endpoints: Endpoint[]) {
-  const haveVersions = await listFirebaseSecrets(options);
-  const needVersions = secretVersionsFromEndpoint(options, endpoints);
+  // Prune all project-scoped secrets in use.
+  const secretEnvs = of(endpoints).filter(
+    (s) => s.projectId === projectId || s.projectId === projectNumber
+  );
+  for (const sev of secretEnvs) {
+    let name = sev.secret;
+    if (name.includes("/")) {
+      const secret = parseSecretResourceName(name);
+      name = secret.name;
+    }
 
-  console.log(JSON.stringify(haveVersions));
-  console.log("===========");
-  console.log(JSON.stringify(needVersions));
-  console.log("===========");
-  const haveSet = new Set(haveVersions.map((sv) => `${sv.secret.name}@${sv.version}`));
-  const needSet = new Set(needVersions.map((sv) => `${sv.secret.name}@${sv.version}`));
-  console.log(haveSet);
-  console.log(needSet);
-  const pruneSet = new Set([...haveSet].filter((x) => !new Set(needSet).has(x)));
-  console.log("===========");
-  console.log("===========");
-  console.log(pruneSet);
+    let version = sev.version;
+    if (version === "latest") {
+      // We need to figure out what "latest" resolves to.
+      const resolved = await getSecretVersion(projectId, name, version);
+      version = resolved.version;
+    }
+
+    prunedSecrets.delete(pruneKey(name, version!));
+  }
+
+  return Array.from(prunedSecrets)
+    .map((key) => key.split("@"))
+    .map(([secret, version]) => ({ projectId, version, secret, key: secret }));
 }
