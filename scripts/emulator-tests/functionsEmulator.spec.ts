@@ -106,11 +106,13 @@ functionsEmulator.setTriggersForTesting(
       id: "us-central1-secrets_function_id",
       region: "us-central1",
       entryPoint: "secrets_function_id",
-      secretEnvironmentVariables: [{
-        secret: "MY_SECRET",
-        key: "MY_SECRET",
-        version: "1"
-      }],
+      secretEnvironmentVariables: [
+        {
+          secret: "MY_SECRET",
+          key: "MY_SECRET",
+          version: "1",
+        },
+      ],
       httpsTrigger: {},
       labels: {},
     },
@@ -723,13 +725,15 @@ describe("FunctionsEmulator-Hub", () => {
 
     beforeEach(() => {
       readFileSyncStub = sinon.stub(fs, "readFileSync").throws("Unexpected call");
-      accessSecretVersionStub = sinon.stub(secretManager, "accessSecretVersion").rejects("Unexpected call");
+      accessSecretVersionStub = sinon
+        .stub(secretManager, "accessSecretVersion")
+        .rejects("Unexpected call");
     });
 
     afterEach(() => {
       readFileSyncStub.restore();
       accessSecretVersionStub.restore();
-    })
+    });
 
     it("should load secret values from local secrets file if one exists", async () => {
       readFileSyncStub.returns("MY_SECRET=local");
@@ -754,7 +758,7 @@ describe("FunctionsEmulator-Hub", () => {
 
     it("should try to access secret values from Secret Manager", async () => {
       readFileSyncStub.throws({ code: "ENOENT" });
-      accessSecretVersionStub.resolves("secretManager")
+      accessSecretVersionStub.resolves("secretManager");
 
       useFunctions(() => {
         return {
@@ -773,5 +777,5 @@ describe("FunctionsEmulator-Hub", () => {
           expect(res.body.secret).to.equal("secretManager");
         });
     }).timeout(TIMEOUT_LONG);
-  })
+  });
 });
