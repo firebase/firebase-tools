@@ -24,7 +24,7 @@ import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
 import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
 import { HostingEmulator } from "./hostingEmulator";
 import { FirebaseError } from "../error";
-import { getProjectId, needProjectId } from "../projectUtils";
+import { getProjectId, needProjectId, getAliases, needProjectNumber } from "../projectUtils";
 import { PubsubEmulator } from "./pubsubEmulator";
 import * as commandUtils from "./commandUtils";
 import { EmulatorHub } from "./hub";
@@ -447,8 +447,6 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
     }
 
     const account = getProjectDefaultAccount(options.projectRoot);
-    const extensionEmulator = new ExtensionsEmulator({ options });
-    const extensionsBackends = await extensionEmulator.getExtensionBackends();
     const emulatableBackends: EmulatableBackend[] = [
       {
         functionsDir,
@@ -462,8 +460,23 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
           options.extensionNodeVersion || options.config.get("functions.runtime")
         ),
       },
-      ...extensionsBackends,
     ];
+    if (options.config.has("extensions")) {
+      // TODO: This should not error out when called with a fake project.
+      const projectNumber = await needProjectNumber(options);
+      const aliases = getAliases(options, projectId);
+
+      const extensionEmulator = new ExtensionsEmulator({
+        projectId,
+        projectDir: options.config.projectDir,
+        projectNumber,
+        aliases,
+        extensions: options.config.get("extensions"),
+      });
+      const extensionsBackends = await extensionEmulator.getExtensionBackends();
+      emulatableBackends.push(...extensionsBackends);
+    }
+
     // TODO(b/213241033): Figure out how to watch for changes to extensions .env files & reload triggers when they change.
     const functionsEmulator = new FunctionsEmulator({
       projectId,

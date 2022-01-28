@@ -51,7 +51,11 @@ export async function downloadExtensionVersion(
   try {
     fs.mkdirSync(targetDir);
   } catch (err) {
-    console.log(`${extensionVersionRef} already downloaded...`);
+    EmulatorLogger.forExtension(extensionVersionRef).logLabeled(
+      "BULLET",
+      "extensions",
+      `${extensionVersionRef} already downloaded...`
+    );
   }
   EmulatorLogger.forExtension(extensionVersionRef).logLabeled(
     "BULLET",

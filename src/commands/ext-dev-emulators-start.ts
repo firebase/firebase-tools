@@ -24,7 +24,6 @@ module.exports = new Command("ext:dev:emulators:start")
     } catch (e: any) {
       await controller.cleanShutdown();
       if (!(e instanceof FirebaseError)) {
-        console.log(e);
         throw new FirebaseError("Error in ext:dev:emulator:start", e);
       }
       throw e;
