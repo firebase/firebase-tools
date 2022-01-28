@@ -9,7 +9,7 @@ describe("Extensions Emulator", () => {
     let previousCachePath: string | undefined;
     beforeEach(() => {
       previousCachePath = process.env.FIREBASE_EXTENSIONS_CACHE_PATH;
-      process.env.FIREBASE_EXTENSIONS_CACHE_PATH = "./extensions";
+      process.env.FIREBASE_EXTENSIONS_CACHE_PATH = "./src/test/emulators/extensions";
     });
     afterEach(() => {
       process.env.FIREBASE_EXTENSIONS_CACHE_PATH = previousCachePath;
@@ -63,7 +63,6 @@ describe("Extensions Emulator", () => {
     ];
     for (const testCase of testCases) {
       it(testCase.desc, async () => {
-        process.env.FIREBASE_EXTENSIONS_CACHE_PATH = "./src/test/emulators/extensions";
         const e = new ExtensionsEmulator({
           projectId: "test-project",
           projectNumber: "1234567",

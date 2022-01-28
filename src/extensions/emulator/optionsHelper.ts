@@ -52,10 +52,7 @@ export async function getExtensionFunctionInfo(
   extensionTriggers: ParsedTriggerDefinition[];
 }> {
   const spec = await specHelper.readExtensionYaml(extensionDir);
-  const functionResources = specHelper.getFunctionResourcesWithParamSubstitution(
-    spec,
-    params
-  ) as Resource[];
+  const functionResources = specHelper.getFunctionResourcesWithParamSubstitution(spec, params);
   const extensionTriggers: ParsedTriggerDefinition[] = functionResources.map((r) =>
     triggerHelper.functionResourceToEmulatedTriggerDefintion(r)
   );

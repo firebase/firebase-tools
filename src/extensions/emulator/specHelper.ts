@@ -72,7 +72,7 @@ export function readFileFromDirectory(
 export function getFunctionResourcesWithParamSubstitution(
   extensionSpec: ExtensionSpec,
   params: { [key: string]: string }
-): object[] {
+): Resource[] {
   const rawResources = extensionSpec.resources.filter((resource) =>
     validFunctionTypes.includes(resource.type)
   );
