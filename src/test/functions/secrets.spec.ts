@@ -174,6 +174,7 @@ describe("functions/secret", () => {
 
     let listSecretsStub: sinon.SinonStub;
     let listSecretVersionsStub: sinon.SinonStub;
+    let getSecretVersionStub: sinon.SinonStub;
 
     const secret1: secretManager.Secret = {
       projectId: "project",
@@ -211,11 +212,13 @@ describe("functions/secret", () => {
       listSecretVersionsStub = sinon
         .stub(secretManager, "listSecretVersions")
         .rejects("Unexpected call");
+      getSecretVersionStub = sinon.stub(secretManager, "getSecretVersion").rejects("Unexpected call");
     });
 
     afterEach(() => {
       listSecretsStub.restore();
       listSecretVersionsStub.restore();
+      getSecretVersionStub.restore();
     });
 
     it("returns nothing if unused", async () => {
@@ -249,6 +252,23 @@ describe("functions/secret", () => {
 
       const pruned = await secrets.pruneSecrets({ projectId: "project", projectNumber: "12345" }, [
         { ...ENDPOINT, secretEnvironmentVariables: [toSecretEnvVar(secretVersion12)] },
+      ]);
+
+      expect(pruned).to.have.deep.members([secretVersion11, secretVersion21].map(toSecretEnvVar));
+      expect(pruned).to.have.length(2);
+    });
+
+    it("resolves 'latest' secrets and properly prunes it", async () => {
+      listSecretsStub.resolves([secret1, secret2]);
+      listSecretVersionsStub.onFirstCall().resolves([secretVersion11, secretVersion12]);
+      listSecretVersionsStub.onSecondCall().resolves([secretVersion21]);
+      getSecretVersionStub.resolves(secretVersion12);
+
+      const pruned = await secrets.pruneSecrets({ projectId: "project", projectNumber: "12345" }, [
+        {
+          ...ENDPOINT,
+          secretEnvironmentVariables: [{ ...toSecretEnvVar(secretVersion12), version: "latest" }],
+        },
       ]);
 
       expect(pruned).to.have.deep.members([secretVersion11, secretVersion21].map(toSecretEnvVar));
