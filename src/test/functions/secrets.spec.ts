@@ -212,7 +212,9 @@ describe("functions/secret", () => {
       listSecretVersionsStub = sinon
         .stub(secretManager, "listSecretVersions")
         .rejects("Unexpected call");
-      getSecretVersionStub = sinon.stub(secretManager, "getSecretVersion").rejects("Unexpected call");
+      getSecretVersionStub = sinon
+        .stub(secretManager, "getSecretVersion")
+        .rejects("Unexpected call");
     });
 
     afterEach(() => {
