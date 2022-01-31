@@ -37,7 +37,7 @@ function hasDotenv(opts: functionsEnv.UserEnvsOpts): boolean {
 // an upgrade warning in the future. If it already is enabled though we want to
 // remember this and still use the cleaner if necessary.
 async function maybeEnableAR(projectId: string): Promise<boolean> {
-  if (previews.artifactregistry) {
+  if (!previews.artifactregistry) {
     return ensureApiEnabled.check(
       projectId,
       "artifactregistry.googleapis.com",
