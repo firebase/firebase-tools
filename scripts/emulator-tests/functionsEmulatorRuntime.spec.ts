@@ -29,8 +29,12 @@ const functionsEmulator = new FunctionsEmulator({
   projectDir: MODULE_ROOT,
   projectId: "fake-project-id",
   emulatableBackends: [testBackend],
+  adminSdkConfig: {
+    projectId: "fake-project-id",
+    databaseURL: "https://fake-project-id-default-rtdb.firebaseio.com",
+    storageBucket: "fake-project-id.appspot.com",
+  },
 });
-(functionsEmulator as any).adminSdkConfig = FunctionRuntimeBundles.onRequest.adminSdkConfig;
 
 async function countLogEntries(worker: RuntimeWorker): Promise<{ [key: string]: number }> {
   const runtime = worker.runtime;
@@ -56,11 +60,22 @@ function startRuntimeWithFunctions(
   opts.ignore_warnings = true;
   opts.serializedTriggers = serializedTriggers;
 
+  const dummyTriggerDef = {
+    name: "function_id",
+    region: "region",
+    id: "region-function_id",
+    entryPoint: "function_id",
+    platform: "gcfv1" as const,
+  };
   return functionsEmulator.startFunctionRuntime(
     testBackend,
-    frb.triggerId!,
-    frb.targetName!,
-    signatureType,
+    {
+      ...dummyTriggerDef,
+      // Fill in with dummy trigger info based on given signature type.
+      ...(signatureType === "http"
+        ? { httpsTrigger: {} }
+        : { eventTrigger: { eventType: "", resource: "" } }),
+    },
     frb.proto,
     opts
   );
@@ -451,7 +466,7 @@ describe("FunctionsEmulator-Runtime", () => {
 
         const data = await callHTTPSFunction(worker, frb);
         const info = JSON.parse(data);
-        expect(info.databaseURL).to.eql(frb.adminSdkConfig.databaseURL!);
+        expect(info.databaseURL).to.eql("https://fake-project-id-default-rtdb.firebaseio.com");
       }).timeout(TIMEOUT_MED);
     });
   });

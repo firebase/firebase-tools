@@ -58,40 +58,14 @@ export interface FunctionsRuntimeArgs {
 }
 
 export interface FunctionsRuntimeBundle {
-  projectId: string;
   proto: any;
-  triggerId: string;
-  targetName?: string;
-  emulators: {
-    firestore?: {
-      host: string;
-      port: number;
-    };
-    database?: {
-      host: string;
-      port: number;
-    };
-    pubsub?: {
-      host: string;
-      port: number;
-    };
-    auth?: {
-      host: string;
-      port: number;
-    };
-    storage?: {
-      host: string;
-      port: number;
-    };
-  };
-  adminSdkConfig: {
-    databaseURL?: string;
-    storageBucket?: string;
-  };
+  // TODO(danielylee): One day, we hope to get rid of all of the following properties.
+  // Our goal is for the emulator environment to mimic the production environment as much
+  // as possible, and that includes how the emulated functions are called. In prod,
+  // the calls are made over HTTP which provides only the uri path, payload, headers, etc
+  // and none of these extra properties.
   socketPath?: string;
   disabled_features?: FunctionsRuntimeFeatures;
-  nodeMajorVersion?: number;
-  cwd: string;
 }
 
 export interface FunctionsRuntimeFeatures {
