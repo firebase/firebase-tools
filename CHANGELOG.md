@@ -1,2 +1,0 @@
-- Updates Hosting initial `index.html` to be proper javascript.
-- Fix issue where the Cloud Functions for Firebase Emulator would incorrectly log a node version mismatch (#4024).
