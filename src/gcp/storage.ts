@@ -1,3 +1,4 @@
+import { Readable } from "stream";
 import * as path from "path";
 
 import api, { storageOrigin } from "../api";
@@ -172,12 +173,13 @@ export async function upload(
 
 /**
  * Uploads a zip file to the specified bucket using the firebasestorage api.
- * @param {!Object<string, *>} source a zip file to upload. Must contain:
- *    - `file` {string}: file name
- *    - `stream` {Stream}: read stream of the archive
- * @param {string} bucketName a bucket to upload to
  */
-export async function uploadObject(source: any, bucketName: string): Promise<any> {
+export async function uploadObject(
+  /** Source with file (name) to upload, and stream of file. */
+  source: { file: string; stream: Readable },
+  /** Bucket to upload to. */
+  bucketName: string
+): Promise<{ bucket: string; object: string; generation: string | null }> {
   if (path.extname(source.file) !== ".zip") {
     throw new FirebaseError(`Expected a file name ending in .zip, got ${source.file}`);
   }
