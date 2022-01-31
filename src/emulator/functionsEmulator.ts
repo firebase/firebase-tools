@@ -236,6 +236,9 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     // A trigger named "foo" needs to respond at "foo" as well as "foo/*" but not "fooBar".
     const httpsFunctionRoutes = [httpsFunctionRoute, `${httpsFunctionRoute}/*`];
+    
+    // The URL for the listBackends endpoint, which is used by the Emulator UI.
+    const listBackendsRoute = `/backends`;
 
     const backgroundHandler: express.RequestHandler = (req, res) => {
       const region = req.params.region;
@@ -312,9 +315,15 @@ export class FunctionsEmulator implements EmulatorInstance {
       res.json({ status: "multicast_acknowledged" });
     };
 
+    const listBackendsHandler: express.RequestHandler = (req, res) => {
+      const backends = this.getBackends();
+      res.json({ backends });
+    }
+
     // The ordering here is important. The longer routes (background)
     // need to be registered first otherwise the HTTP functions consume
     // all events.
+    hub.get(listBackendsRoute, dataMiddleware, listBackendsHandler);
     hub.post(backgroundFunctionRoute, dataMiddleware, backgroundHandler);
     hub.post(multicastFunctionRoute, dataMiddleware, multicastHandler);
     hub.all(httpsFunctionRoutes, dataMiddleware, httpsHandler);
