@@ -3,6 +3,41 @@ import * as clc from "cli-color";
 
 import { FirebaseError } from "../../error";
 import * as fsutils from "../../fsutils";
+import * as backend from "./backend";
+
+/** Validate that the configuration for endpoints are valid. */
+export function endpointsAreValid(wantBackend: backend.Backend): void {
+  functionIdsAreValid(backend.allEndpoints(wantBackend));
+
+  // Our SDK doesn't let people articulate this, but it's theoretically possible in the manifest syntax.
+  const gcfV1WithConcurrency = backend
+    .allEndpoints(wantBackend)
+    .filter((endpoint) => (endpoint.concurrency || 1) != 1 && endpoint.platform == "gcfv1")
+    .map((endpoint) => endpoint.id);
+  if (gcfV1WithConcurrency.length) {
+    const msg = `Cannot set concurrency on the functions ${gcfV1WithConcurrency.join(
+      ","
+    )} because they are GCF gen 1`;
+    throw new FirebaseError(msg);
+  }
+
+  const tooSmallForConcurrency = backend
+    .allEndpoints(wantBackend)
+    .filter((endpoint) => {
+      if ((endpoint.concurrency || 1) == 1) {
+        return false;
+      }
+      const mem = endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;
+      return mem < backend.MIN_MEMORY_FOR_CONCURRENCY;
+    })
+    .map((endpoint) => endpoint.id);
+  if (tooSmallForConcurrency.length) {
+    const msg = `Cannot set concurency on the functions ${tooSmallForConcurrency.join(
+      ","
+    )} because they have fewer than 2GB memory`;
+    throw new FirebaseError(msg);
+  }
+}
 
 /**
  * Check that functions directory exists.
