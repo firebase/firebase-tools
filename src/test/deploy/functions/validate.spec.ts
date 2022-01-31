@@ -166,6 +166,17 @@ describe("validate", () => {
       }
     });
 
+    it("Allows endpoints with enough mem and explicit concurrency", () => {
+      for (const mem of [2 << 10, 4 << 10, 8 << 10] as backend.MemoryOptions[]) {
+        const ep: backend.Endpoint = {
+          ...ENDPOINT_BASE,
+          availableMemoryMb: mem,
+          concurrency: 42,
+        };
+        expect(() => validate.endpointsAreValid(backend.of(ep))).to.not.throw;
+      }
+    });
+
     it("Disallows concurrency with too little memory (implicit)", () => {
       const ep: backend.Endpoint = {
         ...ENDPOINT_BASE,
