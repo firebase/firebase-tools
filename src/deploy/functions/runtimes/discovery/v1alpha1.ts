@@ -9,6 +9,7 @@ export type ManifestEndpoint = backend.ServiceConfiguration &
   Partial<backend.HttpsTriggered> &
   Partial<backend.EventTriggered> &
   Partial<backend.TaskQueueTriggered> &
+  Partial<backend.BlockingTriggered> &
   Partial<backend.ScheduleTriggered> & {
     region?: string[];
     entryPoint: string;
@@ -93,6 +94,7 @@ function parseEndpoints(
     eventTrigger: "object",
     scheduleTrigger: "object",
     taskQueueTrigger: "object",
+    blockingTrigger: "object",
   });
   let triggerCount = 0;
   if (ep.httpsTrigger) {
@@ -105,6 +107,9 @@ function parseEndpoints(
     triggerCount++;
   }
   if (ep.taskQueueTrigger) {
+    triggerCount++;
+  }
+  if (ep.blockingTrigger) {
     triggerCount++;
   }
   if (!triggerCount) {
@@ -168,6 +173,13 @@ function parseEndpoints(
         });
       }
       triggered = { taskQueueTrigger: ep.taskQueueTrigger };
+    } else if (backend.isBlockingTriggered(ep)) {
+      requireKeys(prefix + ".blockingTrigger", ep.blockingTrigger, "eventType", "options");
+      assertKeyTypes(prefix + ".blockingTrigger", ep.blockingTrigger, {
+        eventType: "string",
+        options: "object",
+      });
+      triggered = { blockingTrigger: ep.blockingTrigger };
     } else {
       throw new FirebaseError(
         `Do not recognize trigger type for endpoint ${id}. Try upgrading ` +

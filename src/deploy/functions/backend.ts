@@ -113,6 +113,15 @@ export interface TaskQueueTriggered {
   taskQueueTrigger: TaskQueueTrigger;
 }
 
+export interface BlockingTrigger {
+  eventType: string;
+  options: Record<string, any>;
+}
+
+export interface BlockingTriggered {
+  blockingTrigger: BlockingTrigger;
+}
+
 /** A user-friendly string for the kind of trigger of an endpoint. */
 export function endpointTriggerType(endpoint: Endpoint): string {
   if (isScheduleTriggered(endpoint)) {
@@ -123,6 +132,8 @@ export function endpointTriggerType(endpoint: Endpoint): string {
     return endpoint.eventTrigger.eventType;
   } else if (isTaskQueueTriggered(endpoint)) {
     return "taskQueue";
+  } else if (isBlockingTriggered(endpoint)) {
+    return "blocking";
   } else {
     throw new Error("Unexpected trigger type for endpoint " + JSON.stringify(endpoint));
   }
@@ -180,7 +191,7 @@ export interface ServiceConfiguration {
 
 export type FunctionsPlatform = "gcfv1" | "gcfv2";
 
-export type Triggered = HttpsTriggered | EventTriggered | ScheduleTriggered | TaskQueueTriggered;
+export type Triggered = HttpsTriggered | EventTriggered | ScheduleTriggered | TaskQueueTriggered | BlockingTriggered;
 
 /** Whether something has an HttpsTrigger */
 export function isHttpsTriggered(triggered: Triggered): triggered is HttpsTriggered {
@@ -200,6 +211,11 @@ export function isScheduleTriggered(triggered: Triggered): triggered is Schedule
 /** Whether something has a TaskQueueTrigger */
 export function isTaskQueueTriggered(triggered: Triggered): triggered is TaskQueueTriggered {
   return {}.hasOwnProperty.call(triggered, "taskQueueTrigger");
+}
+
+/** Whether something has a BlockingTrigger */
+export function isBlockingTriggered(triggered: Triggered): triggered is TaskQueueTriggered {
+  return {}.hasOwnProperty.call(triggered, "blockingTrigger");
 }
 
 /**

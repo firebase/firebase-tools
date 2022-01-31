@@ -29,12 +29,21 @@ export const PubSubService: Service = {
   ensureTriggerRegion: noop,
 };
 /** A storage service object */
-export const StorageService = {
+export const StorageService: Service = {
   name: "storage",
   api: "storage.googleapis.com",
   requiredProjectBindings: obtainStorageBindings,
   ensureTriggerRegion: ensureStorageTriggerRegion,
 };
+
+/** An auth blocking service object */
+export const AuthBlockingService: Service = {
+  name: "authBlocking",
+  api: "identity.googleapis.com",
+  requiredProjectBindings: undefined,
+  ensureTriggerRegion: noop,
+
+}
 
 /** Mapping from event type string to service object */
 export const EVENT_SERVICE_MAPPING: Record<string, any> = {
