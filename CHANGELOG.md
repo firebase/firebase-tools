@@ -1,2 +1,1 @@
-- Updates Hosting initial `index.html` to be proper javascript.
 - Updates the Storage Emulator to use the actual default storage bucket.
