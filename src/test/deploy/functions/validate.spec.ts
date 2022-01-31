@@ -5,6 +5,7 @@ import { FirebaseError } from "../../../error";
 import * as fsutils from "../../../fsutils";
 import * as validate from "../../../deploy/functions/validate";
 import * as projectPath from "../../../projectPath";
+import * as backend from "../../../deploy/functions/backend";
 
 describe("validate", () => {
   describe("functionsDirectoryExists", () => {
@@ -111,6 +112,90 @@ describe("validate", () => {
       expect(() => {
         validate.functionIdsAreValid(functions);
       }).to.throw(FirebaseError);
+    });
+  });
+
+  describe("endpointsAreValid", () => {
+    const ENDPOINT_BASE: backend.Endpoint = {
+      platform: "gcfv2",
+      id: "id",
+      region: "us-east1",
+      project: "project",
+      entryPoint: "func",
+      runtime: "nodejs16",
+      httpsTrigger: {},
+    };
+
+    it("Disallows concurrency for GCF gen 1", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        platform: "gcfv1",
+        availableMemoryMb: backend.MIN_MEMORY_FOR_CONCURRENCY,
+        concurrency: 2,
+      };
+      expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(/GCF gen 1/);
+    });
+
+    it("Allows endpoints with no mem and no concurrency", () => {
+      expect(() => validate.endpointsAreValid(backend.of(ENDPOINT_BASE))).to.not.throw;
+    });
+
+    it("Allows endpionts with mem and no concurrency", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        availableMemoryMb: 256,
+      };
+      expect(() => validate.endpointsAreValid(backend.of(ep))).to.not.throw;
+    });
+
+    it("Allows explicitly one concurrent", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        concurrency: 1,
+      };
+      expect(() => validate.endpointsAreValid(backend.of(ep))).to.not.throw;
+    });
+
+    it("Allows endpoints with enough mem and no concurrency", () => {
+      for (const mem of [2 << 10, 4 << 10, 8 << 10] as backend.MemoryOptions[]) {
+        const ep: backend.Endpoint = {
+          ...ENDPOINT_BASE,
+          availableMemoryMb: mem,
+        };
+        expect(() => validate.endpointsAreValid(backend.of(ep))).to.not.throw;
+      }
+    });
+
+    it("Allows endpoints with enough mem and explicit concurrency", () => {
+      for (const mem of [2 << 10, 4 << 10, 8 << 10] as backend.MemoryOptions[]) {
+        const ep: backend.Endpoint = {
+          ...ENDPOINT_BASE,
+          availableMemoryMb: mem,
+          concurrency: 42,
+        };
+        expect(() => validate.endpointsAreValid(backend.of(ep))).to.not.throw;
+      }
+    });
+
+    it("Disallows concurrency with too little memory (implicit)", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        concurrency: 2,
+      };
+      expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
+        /they have fewer than 2GB memory/
+      );
+    });
+
+    it("Disallows concurrency with too little memory (explicit)", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        concurrency: 2,
+        availableMemoryMb: 512,
+      };
+      expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
+        /they have fewer than 2GB memory/
+      );
     });
   });
 });

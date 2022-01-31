@@ -516,7 +516,6 @@ export async function getExtensionVersion(extensionVersionRef: string): Promise<
 
 /**
  * @param publisherId the publisher for which we are listing Extensions
- * @param showUnpublished whether to include unpublished Extensions, default = false
  */
 export async function listExtensions(publisherId: string): Promise<Extension[]> {
   const extensions: Extension[] = [];
@@ -525,7 +524,6 @@ export async function listExtensions(publisherId: string): Promise<Extension[]> 
       `/publishers/${publisherId}/extensions`,
       {
         queryParams: {
-          showUnpublished: "false",
           pageSize: PAGE_SIZE_MAX,
           pageToken,
         },
@@ -544,7 +542,6 @@ export async function listExtensions(publisherId: string): Promise<Extension[]> 
 
 /**
  * @param ref user-friendly identifier for the ExtensionVersion (publisher-id/extension-id)
- * @param showUnpublished whether to include unpublished ExtensionVersions, default = false
  */
 export async function listExtensionVersions(ref: string, filter = ""): Promise<ExtensionVersion[]> {
   const { publisherId, extensionId } = refs.parse(ref);
