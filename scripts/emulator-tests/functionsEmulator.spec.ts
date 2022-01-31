@@ -3,7 +3,7 @@ import * as express from "express";
 import * as sinon from "sinon";
 import * as supertest from "supertest";
 
-import { SignatureType } from "../../src/emulator/functionsEmulatorShared";
+import { EmulatedTriggerDefinition } from "../../src/emulator/functionsEmulatorShared";
 import {
   EmulatableBackend,
   FunctionsEmulator,
@@ -109,13 +109,11 @@ function useFunctions(triggers: () => {}): void {
   // eslint-disable-next-line @typescript-eslint/unbound-method
   functionsEmulator.startFunctionRuntime = (
     backend: EmulatableBackend,
-    triggerId: string,
-    targetName: string,
-    triggerType: SignatureType,
+    trigger: EmulatedTriggerDefinition,
     proto?: any,
     runtimeOpts?: InvokeRuntimeOpts
   ): RuntimeWorker => {
-    return startFunctionRuntime(testBackend, triggerId, targetName, triggerType, proto, {
+    return startFunctionRuntime(testBackend, trigger, proto, {
       nodeBinary: process.execPath,
       serializedTriggers,
     });
