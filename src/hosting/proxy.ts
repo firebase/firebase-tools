@@ -40,7 +40,7 @@ function makeVary(vary: string | null = ""): string {
  * the Firebase Hosting origin.
  */
 export function proxyRequestHandler(url: string, rewriteIdentifier: string): RequestHandler {
-  return async (req: IncomingMessage, res: ServerResponse, next: () => void): Promise<void> => {
+  return async (req: IncomingMessage, res: ServerResponse, next: () => void): Promise<unknown> => {
     logger.info(`[hosting] Rewriting ${req.url} to ${url} for ${rewriteIdentifier}`);
     // Extract the __session cookie from headers to forward it to the
     // functions cookie is not a string[].

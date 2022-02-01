@@ -9,6 +9,8 @@ import { storage } from "../../gcp";
 import * as archiveDirectory from "../../archiveDirectory";
 import * as prompt from "../../prompt";
 import { ExtensionSource } from "../../extensions/extensionsApi";
+import { Readable } from "stream";
+import { ArchiveResult } from "../../archiveDirectory";
 
 describe("extensionsHelper", () => {
   describe("substituteParams", () => {
@@ -715,14 +717,22 @@ describe("extensionsHelper", () => {
         params: [],
       },
     };
+    const testArchivedFiles: ArchiveResult = {
+      file: "somefile",
+      manifest: ["file"],
+      size: 4,
+      source: "/some/path",
+      stream: new Readable(),
+    };
+    const testUploadedArchive: { bucket: string; object: string; generation: string | null } = {
+      bucket: extensionsHelper.EXTENSIONS_BUCKET_NAME,
+      object: "object.zip",
+      generation: "1",
+    };
 
     beforeEach(() => {
-      archiveStub = sinon.stub(archiveDirectory, "archiveDirectory").resolves({});
-      uploadStub = sinon.stub(storage, "uploadObject").resolves({
-        bucket: "firebase-ext-eap-uploads",
-        object: "object.zip",
-        generation: 42,
-      });
+      archiveStub = sinon.stub(archiveDirectory, "archiveDirectory").resolves(testArchivedFiles);
+      uploadStub = sinon.stub(storage, "uploadObject").resolves(testUploadedArchive);
       createSourceStub = sinon.stub(extensionsApi, "createSource").resolves(testSource);
       deleteStub = sinon.stub(storage, "deleteObject").resolves();
     });
@@ -736,7 +746,10 @@ describe("extensionsHelper", () => {
 
       expect(result).to.equal(testSource);
       expect(archiveStub).to.have.been.calledWith(".");
-      expect(uploadStub).to.have.been.calledWith({}, extensionsHelper.EXTENSIONS_BUCKET_NAME);
+      expect(uploadStub).to.have.been.calledWith(
+        testArchivedFiles,
+        extensionsHelper.EXTENSIONS_BUCKET_NAME
+      );
       expect(createSourceStub).to.have.been.calledWith("test-proj", testUrl + "?alt=media", "/");
       expect(deleteStub).to.have.been.calledWith(
         `/${extensionsHelper.EXTENSIONS_BUCKET_NAME}/object.zip`
@@ -750,7 +763,10 @@ describe("extensionsHelper", () => {
 
       expect(result).to.equal(testSource);
       expect(archiveStub).to.have.been.calledWith(".");
-      expect(uploadStub).to.have.been.calledWith({}, extensionsHelper.EXTENSIONS_BUCKET_NAME);
+      expect(uploadStub).to.have.been.calledWith(
+        testArchivedFiles,
+        extensionsHelper.EXTENSIONS_BUCKET_NAME
+      );
       expect(createSourceStub).to.have.been.calledWith("test-proj", testUrl + "?alt=media", "/");
       expect(deleteStub).to.have.been.calledWith(
         `/${extensionsHelper.EXTENSIONS_BUCKET_NAME}/object.zip`
@@ -769,7 +785,7 @@ describe("extensionsHelper", () => {
       expect(deleteStub).not.to.have.been.called;
     });
 
-    it("should throw an error if one is thrown while uploading a local source ", async () => {
+    it("should throw an error if one is thrown while uploading a local source", async () => {
       uploadStub.throws(new FirebaseError("something bad happened"));
 
       await expect(extensionsHelper.createSourceFromLocation("test-proj", ".")).to.be.rejectedWith(
@@ -777,7 +793,10 @@ describe("extensionsHelper", () => {
       );
 
       expect(archiveStub).to.have.been.calledWith(".");
-      expect(uploadStub).to.have.been.calledWith({}, extensionsHelper.EXTENSIONS_BUCKET_NAME);
+      expect(uploadStub).to.have.been.calledWith(
+        testArchivedFiles,
+        extensionsHelper.EXTENSIONS_BUCKET_NAME
+      );
       expect(createSourceStub).not.to.have.been.called;
       expect(deleteStub).not.to.have.been.called;
     });
@@ -862,7 +881,7 @@ describe("extensionsHelper", () => {
     });
 
     it("should return false if no instance with that name exists", async () => {
-      getInstanceStub.resolves({ error: { code: 404 } });
+      getInstanceStub.throws(new FirebaseError("Not Found", { status: 404 }));
 
       const exists = await extensionsHelper.instanceIdExists("proj", TEST_NAME);
       expect(exists).to.be.false;
@@ -876,11 +895,11 @@ describe("extensionsHelper", () => {
     });
 
     it("should throw if it gets an unexpected error response from getInstance", async () => {
-      getInstanceStub.resolves({ error: { code: 500, message: "a message" } });
+      getInstanceStub.throws(new FirebaseError("Internal Error", { status: 500 }));
 
       await expect(extensionsHelper.instanceIdExists("proj", TEST_NAME)).to.be.rejectedWith(
         FirebaseError,
-        "Unexpected error when checking if instance ID exists: a message"
+        "Unexpected error when checking if instance ID exists: FirebaseError: Internal Error"
       );
     });
   });

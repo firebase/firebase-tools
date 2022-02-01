@@ -27,10 +27,10 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     next();
   });
 
-  gcloudStorageAPI.get("/b", (req, res) => {
+  gcloudStorageAPI.get("/b", async (req, res) => {
     res.json({
       kind: "storage#buckets",
-      items: storageLayer.listBuckets(),
+      items: await storageLayer.listBuckets(),
     });
   });
 

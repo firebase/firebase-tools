@@ -162,7 +162,7 @@ export class TriggerEndToEndTest {
       return data.includes(ALL_EMULATORS_STARTED_LOG);
     });
 
-    cli.process?.stdout.on("data", (data) => {
+    cli.process?.stdout?.on("data", (data) => {
       /* Functions V1 */
       if (data.includes(RTDB_FUNCTION_LOG)) {
         this.rtdbTriggerCount++;

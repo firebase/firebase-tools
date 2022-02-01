@@ -146,6 +146,8 @@ export function memoryOptionDisplayName(option: MemoryOptions): string {
   }[option];
 }
 
+export const DEFAULT_MEMORY: MemoryOptions = 256;
+export const MIN_MEMORY_FOR_CONCURRENCY: MemoryOptions = 2048;
 export const SCHEDULED_FUNCTION_LABEL = Object.freeze({ deployment: "firebase-schedule" });
 
 /**
@@ -167,7 +169,6 @@ export interface TargetIds {
 export interface SecretEnvVar {
   key: string;
   secret: string;
-  projectId: string;
   version?: string;
 }
 
@@ -474,6 +475,17 @@ export function someEndpoint(
     }
   }
   return false;
+}
+
+/** A helper utility for finding an endpoint that matches the predicate. */
+export function findEndpoint(
+  backend: Backend,
+  predicate: (endpoint: Endpoint) => boolean
+): Endpoint | undefined {
+  for (const endpoints of Object.values(backend.endpoints)) {
+    const endpoint = Object.values<Endpoint>(endpoints).find(predicate);
+    if (endpoint) return endpoint;
+  }
 }
 
 /** A helper utility function that returns a subset of the backend that includes only matching endpoints */

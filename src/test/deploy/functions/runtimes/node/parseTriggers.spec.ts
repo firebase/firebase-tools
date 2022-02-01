@@ -321,7 +321,6 @@ describe("addResourcesToBackend", () => {
       httpsTrigger: {},
       secretEnvironmentVariables: [
         {
-          projectId: "project",
           secret: "MY_SECRET",
           key: "MY_SECRET",
         },

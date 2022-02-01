@@ -8,14 +8,14 @@ import { secretManagerOrigin } from "../api";
 // Matches projects/{PROJECT}/secrets/{SECRET}
 const SECRET_NAME_REGEX = new RegExp(
   "projects\\/" +
-    "((?:[0-9]+)|(?:[A-Za-z]+[A-Za-z\\d-]*[A-Za-z\\d]?))\\/" +
+    "(?<project>(?:\\d+)|(?:[A-Za-z]+[A-Za-z\\d-]*[A-Za-z\\d]?))\\/" +
     "secrets\\/" +
-    "([A-Za-z\\d\\-_]+)"
+    "(?<secret>[A-Za-z\\d\\-_]+)"
 );
 
 // Matches projects/{PROJECT}/secrets/{SECRET}/versions/{latest|VERSION}
 const SECRET_VERSION_NAME_REGEX = new RegExp(
-  SECRET_NAME_REGEX.source + "\\/versions\\/" + "(latest|[0-9]+)"
+  SECRET_NAME_REGEX.source + "\\/versions\\/" + "(?<version>latest|[0-9]+)"
 );
 
 export const secretManagerConsoleUri = (projectId: string) =>
@@ -50,11 +50,7 @@ interface AddVersionRequest {
 
 const API_VERSION = "v1beta1";
 
-const client = new Client({
-  urlPrefix: secretManagerOrigin,
-  auth: true,
-  apiVersion: API_VERSION,
-});
+const client = new Client({ urlPrefix: secretManagerOrigin, apiVersion: API_VERSION });
 
 export async function listSecrets(projectId: string): Promise<Secret[]> {
   const listRes = await client.get<{ secrets: Secret[] }>(`projects/${projectId}/secrets`);
@@ -95,27 +91,27 @@ export async function secretExists(projectId: string, name: string): Promise<boo
 }
 
 export function parseSecretResourceName(resourceName: string): Secret {
-  const tokens = resourceName.match(SECRET_NAME_REGEX);
-  if (tokens == null) {
+  const match = resourceName.match(SECRET_NAME_REGEX);
+  if (!match?.groups) {
     throw new FirebaseError(`Invalid secret resource name [${resourceName}].`);
   }
   return {
-    projectId: tokens[1],
-    name: tokens[2],
+    projectId: match.groups.project,
+    name: match.groups.secret,
   };
 }
 
 export function parseSecretVersionResourceName(resourceName: string): SecretVersion {
-  const tokens = resourceName.match(SECRET_VERSION_NAME_REGEX);
-  if (tokens == null) {
+  const match = resourceName.match(SECRET_VERSION_NAME_REGEX);
+  if (!match?.groups) {
     throw new FirebaseError(`Invalid secret version resource name [${resourceName}].`);
   }
   return {
     secret: {
-      projectId: tokens[1],
-      name: tokens[2],
+      projectId: match.groups.project,
+      name: match.groups.secret,
     },
-    version: tokens[3],
+    version: match.groups.version,
   };
 }
 
@@ -129,14 +125,15 @@ export async function createSecret(
   labels: Record<string, string>
 ): Promise<Secret> {
   const createRes = await client.post<CreateSecretRequest, Secret>(
-    `projects/${projectId}/secrets?secretId=${name}`,
+    `projects/${projectId}/secrets`,
     {
       name,
       replication: {
         automatic: {},
       },
       labels,
-    }
+    },
+    { queryParams: { secretId: name } }
   );
   return parseSecretResourceName(createRes.body.name);
 }
@@ -180,18 +177,14 @@ export async function getIamPolicy(secret: Secret): Promise<iam.Policy> {
   return res.body;
 }
 
-export async function setIamPolicyBindings(secret: Secret, bindings: iam.Binding[]): Promise<void> {
-  await client.post<{ policy: Partial<iam.Policy> }, iam.Policy>(
+export async function setIamPolicy(secret: Secret, bindings: iam.Binding[]): Promise<void> {
+  await client.post<{ policy: Partial<iam.Policy>; updateMask: string }, iam.Policy>(
     `projects/${secret.projectId}/secrets/${secret.name}:setIamPolicy`,
     {
       policy: {
         bindings,
       },
-    },
-    {
-      queryParams: {
-        updateMask: "bindings",
-      },
+      updateMask: "bindings",
     }
   );
 }
@@ -227,7 +220,7 @@ export async function ensureServiceAgentRole(
 
   bindings.push(...newBindings);
 
-  await module.exports.setIamPolicyBindings(secret, bindings);
+  await module.exports.setIamPolicy(secret, bindings);
 
   // SecretManager would like us to _always_ inform users when we grant access to one of their secrets.
   // As a safeguard against forgetting to do so, we log it here.
