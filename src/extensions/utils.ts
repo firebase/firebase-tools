@@ -36,7 +36,7 @@ export function convertOfficialExtensionsToList(officialExts: {
   return _.map(officialExts, (entry: RegistryEntry, key: string) => {
     return {
       checked: false,
-      value: key,
+      value: `${entry.publisher}/${key}`,
     };
   });
 }
