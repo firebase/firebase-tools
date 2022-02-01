@@ -50,7 +50,7 @@ module.exports = function (context, options) {
           data,
         })
         .then(function (result) {
-          deploy.versionId = result.body.name;
+          deploy.version = result.body.name;
         })
     );
   });
