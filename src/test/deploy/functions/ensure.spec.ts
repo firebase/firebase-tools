@@ -172,9 +172,7 @@ describe("ensureSecretAccess", () => {
   let secretManagerMock: sinon.SinonMock;
 
   beforeEach(() => {
-    defaultServiceAccountStub = sinon
-      .stub(ensure, "defaultServiceAccount")
-      .resolves(DEFAULT_SA);
+    defaultServiceAccountStub = sinon.stub(ensure, "defaultServiceAccount").resolves(DEFAULT_SA);
     secretManagerMock = sinon.mock(secretManager);
   });
 

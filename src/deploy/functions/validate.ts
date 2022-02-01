@@ -94,10 +94,7 @@ export function functionIdsAreValid(functions: { id: string; platform: string }[
  *
  * If validation fails for any secret config, throws a FirebaseError.
  */
-export async function secretsAreValid(
-  projectId: string,
-  wantBackend: backend.Backend,
-) {
+export async function secretsAreValid(projectId: string, wantBackend: backend.Backend) {
   const endpoints = backend
     .allEndpoints(wantBackend)
     .filter((e) => e.secretEnvironmentVariables && e.secretEnvironmentVariables.length > 0);

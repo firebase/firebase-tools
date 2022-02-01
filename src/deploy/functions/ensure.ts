@@ -29,7 +29,6 @@ export async function defaultServiceAccount(e: backend.Endpoint): Promise<string
   assertExhaustive(e.platform);
 }
 
-
 function nodeBillingError(projectId: string): FirebaseError {
   track("functions_runtime_notices", "nodejs10_billing_error");
   return new FirebaseError(
