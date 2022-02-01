@@ -87,7 +87,7 @@ export async function cloudBuildEnabled(projectId: string): Promise<void> {
 // an upgrade warning in the future. If it already is enabled though we want to
 // remember this and still use the cleaner if necessary.
 export async function maybeEnableAR(projectId: string): Promise<boolean> {
-  if (previews.artifactregistry) {
+  if (!previews.artifactregistry) {
     return ensureApiEnabled.check(
       projectId,
       "artifactregistry.googleapis.com",
