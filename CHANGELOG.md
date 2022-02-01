@@ -1,2 +1,0 @@
-- Updates the Storage Emulator to use the actual default storage bucket.
-- Fixes issue where `deploy` would fail with a `JSON: SyntaxError` error. (#4117)
