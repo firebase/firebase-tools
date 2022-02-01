@@ -37,7 +37,7 @@ describe("secretManager", () => {
         secretManager.parseSecretVersionResourceName(
           "projects/my-project/secrets/my-secret/versions/7"
         )
-      ).to.deep.equal({ secret: { projectId: "my-project", name: "my-secret" }, version: "7" });
+      ).to.deep.equal({ secret: { projectId: "my-project", name: "my-secret" }, versionId: "7" });
     });
 
     it("throws given invalid resource name", () => {
@@ -85,8 +85,7 @@ describe("secretManager", () => {
     it("adds new binding for each member", async () => {
       const existing: iam.Binding[] = [];
       const expected: iam.Binding[] = [
-        { role, members: ["serviceAccount:1@foobar.com"] },
-        { role, members: ["serviceAccount:2@foobar.com"] },
+        { role, members: ["serviceAccount:1@foobar.com", "serviceAccount:2@foobar.com"] },
       ];
 
       setupStubs(existing, expected);
@@ -96,8 +95,7 @@ describe("secretManager", () => {
     it("adds bindings only for missing members", async () => {
       const existing: iam.Binding[] = [{ role, members: ["serviceAccount:1@foobar.com"] }];
       const expected: iam.Binding[] = [
-        { role, members: ["serviceAccount:1@foobar.com"] },
-        { role, members: ["serviceAccount:2@foobar.com"] },
+        { role, members: ["serviceAccount:1@foobar.com", "serviceAccount:2@foobar.com"] },
       ];
 
       setupStubs(existing, expected);
@@ -109,9 +107,14 @@ describe("secretManager", () => {
         { role: "another-role", members: ["serviceAccount:3@foobar.com"] },
       ];
       const expected: iam.Binding[] = [
-        { role: "another-role", members: ["serviceAccount:3@foobar.com"] },
-        { role, members: ["serviceAccount:1@foobar.com"] },
-        { role, members: ["serviceAccount:2@foobar.com"] },
+        {
+          role: "another-role",
+          members: ["serviceAccount:3@foobar.com"],
+        },
+        {
+          role,
+          members: ["serviceAccount:1@foobar.com", "serviceAccount:2@foobar.com"],
+        },
       ];
 
       setupStubs(existing, expected);

@@ -169,6 +169,8 @@ export interface TargetIds {
 export interface SecretEnvVar {
   key: string;
   secret: string;
+
+  // Internal use only. Users cannot pin secret to a specific version.
   version?: string;
 }
 

@@ -10,7 +10,6 @@ import * as api from "../../../api";
 import * as backend from "../../../deploy/functions/backend";
 import * as ensure from "../../../deploy/functions/ensure";
 import * as secretManager from "../../../gcp/secretManager";
-import * as cloudfunctions from "../../../gcp/cloudfunctions";
 
 describe("ensureCloudBuildEnabled()", () => {
   let restoreInterval: number;
@@ -173,9 +172,7 @@ describe("ensureSecretAccess", () => {
   let secretManagerMock: sinon.SinonMock;
 
   beforeEach(() => {
-    defaultServiceAccountStub = sinon
-      .stub(cloudfunctions, "defaultServiceAccount")
-      .resolves(DEFAULT_SA);
+    defaultServiceAccountStub = sinon.stub(ensure, "defaultServiceAccount").resolves(DEFAULT_SA);
     secretManagerMock = sinon.mock(secretManager);
   });
 

@@ -593,18 +593,3 @@ export function functionFromEndpoint(
 
   return gcfFunction;
 }
-
-/**
- *  By default:
- *    1. GCFv1 uses App Engine default service account.
- *    2. GCFv2 (Cloud Run) uses Compute Engine default service account.
- */
-export async function defaultServiceAccount(e: backend.Endpoint): Promise<string> {
-  const metadata = await getFirebaseProject(e.project);
-  if (e.platform === "gcfv1") {
-    return `${metadata.projectId}@appspot.gserviceaccount.com`;
-  } else if (e.platform === "gcfv2") {
-    return `${metadata.projectNumber}-compute@developer.gserviceaccount.com`;
-  }
-  assertExhaustive(e.platform);
-}
