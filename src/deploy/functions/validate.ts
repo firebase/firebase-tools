@@ -97,7 +97,6 @@ export function functionIdsAreValid(functions: { id: string; platform: string }[
 export async function secretsAreValid(
   projectId: string,
   wantBackend: backend.Backend,
-  haveBackend: backend.Backend
 ) {
   const endpoints = backend
     .allEndpoints(wantBackend)
@@ -141,7 +140,7 @@ async function validateSecretVersions(projectId: string, endpoints: backend.Endp
       const sv = await getSecretVersion(projectId, secret, "latest");
       logLabeledSuccess(
         "functions",
-        `resolved secret version of ${clc.bold(secret)} to ${clc.bold(sv.version)}.`
+        `resolved secret version of ${clc.bold(secret)} to ${clc.bold(sv.versionId)}.`
       );
       return sv;
     })
@@ -156,7 +155,7 @@ async function validateSecretVersions(projectId: string, endpoints: backend.Endp
       if (sv.state != "ENABLED") {
         errs.push(
           new FirebaseError(
-            `Expected secret ${sv.secret.name}@${sv.version} to be in state ENABLED not ${sv.state}.`
+            `Expected secret ${sv.secret.name}@${sv.versionId} to be in state ENABLED not ${sv.state}.`
           )
         );
       }
@@ -174,7 +173,7 @@ async function validateSecretVersions(projectId: string, endpoints: backend.Endp
   // Fill in versions.
   for (const e of endpoints) {
     for (const s of e.secretEnvironmentVariables! || []) {
-      s.version = secretVersions[s.secret].version;
+      s.version = secretVersions[s.secret].versionId;
       if (!s.version) {
         throw new FirebaseError("Secret version is unexpectedly undefined. Please file a ticket.");
       }
