@@ -4,14 +4,31 @@ import { ensure } from "../../ensureApiEnabled";
 import { FirebaseError, isBillingError } from "../../error";
 import { logLabeledBullet, logLabeledSuccess } from "../../utils";
 import { ensureServiceAgentRole } from "../../gcp/secretManager";
-import { defaultServiceAccount } from "../../gcp/cloudfunctions";
 import { previews } from "../../previews";
+import { getFirebaseProject } from "../../management/projects";
+import { assertExhaustive } from "../../functional";
 import * as track from "../../track";
 import * as backend from "./backend";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
 
 const FAQ_URL = "https://firebase.google.com/support/faq#functions-runtime";
 const CLOUD_BUILD_API = "cloudbuild.googleapis.com";
+
+/**
+ *  By default:
+ *    1. GCFv1 uses App Engine default service account.
+ *    2. GCFv2 (Cloud Run) uses Compute Engine default service account.
+ */
+export async function defaultServiceAccount(e: backend.Endpoint): Promise<string> {
+  const metadata = await getFirebaseProject(e.project);
+  if (e.platform === "gcfv1") {
+    return `${metadata.projectId}@appspot.gserviceaccount.com`;
+  } else if (e.platform === "gcfv2") {
+    return `${metadata.projectNumber}-compute@developer.gserviceaccount.com`;
+  }
+  assertExhaustive(e.platform);
+}
+
 
 function nodeBillingError(projectId: string): FirebaseError {
   track("functions_runtime_notices", "nodejs10_billing_error");
@@ -88,7 +105,7 @@ export async function maybeEnableAR(projectId: string): Promise<boolean> {
 async function secretsToServiceAccounts(b: backend.Backend): Promise<Record<string, Set<string>>> {
   const secretsToSa: Record<string, Set<string>> = {};
   for (const e of backend.allEndpoints(b)) {
-    const sa = e.serviceAccountEmail || (await defaultServiceAccount(e));
+    const sa = e.serviceAccountEmail || (await module.exports.defaultServiceAccount(e));
     for (const s of e.secretEnvironmentVariables! || []) {
       const serviceAccounts = secretsToSa[s.secret] || new Set();
       serviceAccounts.add(sa);
