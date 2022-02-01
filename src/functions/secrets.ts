@@ -22,7 +22,7 @@ export function labels(): Record<string, string> {
   return { [FIREBASE_MANGED]: "true" };
 }
 
-function transformKey(key: string): string {
+function toUpperSnakeCase(key: string): string {
   return key
     .replace("-", "_")
     .replace(".", "_")
@@ -34,7 +34,7 @@ function transformKey(key: string): string {
  * Validate and transform keys to match the convention recommended by Firebase.
  */
 export async function ensureValidKey(key: string, options: Options): Promise<string> {
-  const transformedKey = transformKey(key);
+  const transformedKey = toUpperSnakeCase(key);
   if (transformedKey !== key) {
     if (options.force) {
       throw new FirebaseError("Secret key must be in UPPER_SNAKE_CASE.");
