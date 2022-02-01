@@ -85,10 +85,10 @@ export async function maybeEnableAR(projectId: string): Promise<boolean> {
 /**
  * Returns a mapping of all secrets declared in a stack to the bound service accounts.
  */
-function secretsToServiceAccounts(b: backend.Backend): Record<string, Set<string>> {
+async function secretsToServiceAccounts(b: backend.Backend): Promise<Record<string, Set<string>>> {
   const secretsToSa: Record<string, Set<string>> = {};
   for (const e of backend.allEndpoints(b)) {
-    const sa = e.serviceAccountEmail || defaultServiceAccount(e.project);
+    const sa = e.serviceAccountEmail || (await defaultServiceAccount(e));
     for (const s of e.secretEnvironmentVariables! || []) {
       const serviceAccounts = secretsToSa[s.secret] || new Set();
       serviceAccounts.add(sa);
@@ -125,8 +125,8 @@ export async function secretAccess(
     );
   };
 
-  const wantSecrets = secretsToServiceAccounts(wantBackend);
-  const haveSecrets = secretsToServiceAccounts(haveBackend);
+  const wantSecrets = await secretsToServiceAccounts(wantBackend);
+  const haveSecrets = await secretsToServiceAccounts(haveBackend);
 
   // Remove secret/service account pairs that already exists to avoid unnecessary IAM calls.
   for (const [secret, serviceAccounts] of Object.entries(haveSecrets)) {

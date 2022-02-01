@@ -6,11 +6,11 @@ import { FirebaseError } from "../../../error";
 import { logger } from "../../../logger";
 import { configstore } from "../../../configstore";
 import { POLL_SETTINGS } from "../../../ensureApiEnabled";
-import { defaultServiceAccount } from "../../../gcp/cloudfunctions";
 import * as api from "../../../api";
 import * as backend from "../../../deploy/functions/backend";
 import * as ensure from "../../../deploy/functions/ensure";
 import * as secretManager from "../../../gcp/secretManager";
+import * as cloudfunctions from "../../../gcp/cloudfunctions";
 
 describe("ensureCloudBuildEnabled()", () => {
   let restoreInterval: number;
@@ -134,129 +134,135 @@ describe("ensureCloudBuildEnabled()", () => {
       );
     });
   });
+});
 
-  describe("ensureSecretAccess", () => {
-    const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {
-      project: "project",
-      platform: "gcfv2",
-      id: "id",
-      region: "region",
-      entryPoint: "entry",
-      runtime: "nodejs16",
-    };
-    const ENDPOINT: backend.Endpoint = {
-      ...ENDPOINT_BASE,
-      httpsTrigger: {},
-    };
+describe("ensureSecretAccess", () => {
+  const DEFAULT_SA = "default-sa@google.com";
+  const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {
+    project: "project",
+    platform: "gcfv2",
+    id: "id",
+    region: "region",
+    entryPoint: "entry",
+    runtime: "nodejs16",
+  };
+  const ENDPOINT: backend.Endpoint = {
+    ...ENDPOINT_BASE,
+    httpsTrigger: {},
+  };
 
-    const projectId = "project-0";
-    const secret0: backend.SecretEnvVar = {
-      key: "MY_SECRET_0",
-      secret: "MY_SECRET_0",
-      version: "2",
-    };
-    const secret1: backend.SecretEnvVar = {
-      key: "ANOTHER_SECRET",
-      secret: "ANOTHER_SECRET",
-      version: "1",
-    };
-    const e: backend.Endpoint = {
-      ...ENDPOINT,
-      project: projectId,
-      platform: "gcfv1",
-      secretEnvironmentVariables: [],
-    };
+  const projectId = "project-0";
+  const secret0: backend.SecretEnvVar = {
+    key: "MY_SECRET_0",
+    secret: "MY_SECRET_0",
+    version: "2",
+  };
+  const secret1: backend.SecretEnvVar = {
+    key: "ANOTHER_SECRET",
+    secret: "ANOTHER_SECRET",
+    version: "1",
+  };
+  const e: backend.Endpoint = {
+    ...ENDPOINT,
+    project: projectId,
+    platform: "gcfv1",
+    secretEnvironmentVariables: [],
+  };
 
-    let secretManagerMock: sinon.SinonMock;
+  let defaultServiceAccountStub: sinon.SinonStub;
+  let secretManagerMock: sinon.SinonMock;
 
-    beforeEach(() => {
-      secretManagerMock = sinon.mock(secretManager);
+  beforeEach(() => {
+    defaultServiceAccountStub = sinon
+      .stub(cloudfunctions, "defaultServiceAccount")
+      .resolves(DEFAULT_SA);
+    secretManagerMock = sinon.mock(secretManager);
+  });
+
+  afterEach(() => {
+    defaultServiceAccountStub.restore();
+    secretManagerMock.verify();
+    secretManagerMock.restore();
+  });
+
+  it("ensures access to default service account", async () => {
+    const b = backend.of({
+      ...e,
+      secretEnvironmentVariables: [secret0],
     });
-
-    afterEach(() => {
-      secretManagerMock.verify();
-      secretManagerMock.restore();
-    });
-
-    it("ensures access to default service account", async () => {
-      const b = backend.of({
-        ...e,
-        secretEnvironmentVariables: [secret0],
-      });
-      secretManagerMock
-        .expects("ensureServiceAgentRole")
-        .once()
-        .withExactArgs(
-          { name: secret0.secret, projectId: projectId },
-          [defaultServiceAccount(e.project)],
-          "roles/secretmanager.secretAccessor"
-        );
-      await ensure.secretAccess(projectId, b, backend.empty());
-    });
-
-    it("ensures access to all secrets", async () => {
-      const b = backend.of({
-        ...e,
-        secretEnvironmentVariables: [secret0, secret1],
-      });
-      secretManagerMock.expects("ensureServiceAgentRole").twice();
-      await ensure.secretAccess(projectId, b, backend.empty());
-    });
-
-    it("combines service account to make one call per secret", async () => {
-      const b = backend.of(
-        {
-          ...e,
-          secretEnvironmentVariables: [secret0],
-        },
-        {
-          ...e,
-          id: "another-id",
-          serviceAccountEmail: "foo@bar.com",
-          secretEnvironmentVariables: [secret0],
-        }
+    secretManagerMock
+      .expects("ensureServiceAgentRole")
+      .once()
+      .withExactArgs(
+        { name: secret0.secret, projectId: projectId },
+        [DEFAULT_SA],
+        "roles/secretmanager.secretAccessor"
       );
-      secretManagerMock
-        .expects("ensureServiceAgentRole")
-        .once()
-        .withExactArgs(
-          { name: secret0.secret, projectId: projectId },
-          [`${e.project}@appspot.gserviceaccount.com`, "foo@bar.com"],
-          "roles/secretmanager.secretAccessor"
-        );
-      await ensure.secretAccess(projectId, b, backend.empty());
-    });
+    await ensure.secretAccess(projectId, b, backend.empty());
+  });
 
-    it("skips calling IAM if secret is already bound to a service account", async () => {
-      const b = backend.of({
+  it("ensures access to all secrets", async () => {
+    const b = backend.of({
+      ...e,
+      secretEnvironmentVariables: [secret0, secret1],
+    });
+    secretManagerMock.expects("ensureServiceAgentRole").twice();
+    await ensure.secretAccess(projectId, b, backend.empty());
+  });
+
+  it("combines service account to make one call per secret", async () => {
+    const b = backend.of(
+      {
         ...e,
         secretEnvironmentVariables: [secret0],
-      });
-      secretManagerMock.expects("ensureServiceAgentRole").never();
-      await ensure.secretAccess(projectId, b, b);
-    });
-
-    it("does not include service account already bounud to a secret", async () => {
-      const haveEndpoint = {
-        ...e,
-        secretEnvironmentVariables: [secret0],
-      };
-      const haveBackend = backend.of(haveEndpoint);
-      const wantBackend = backend.of(haveEndpoint, {
+      },
+      {
         ...e,
         id: "another-id",
         serviceAccountEmail: "foo@bar.com",
         secretEnvironmentVariables: [secret0],
-      });
-      secretManagerMock
-        .expects("ensureServiceAgentRole")
-        .once()
-        .withExactArgs(
-          { name: secret0.secret, projectId: projectId },
-          ["foo@bar.com"],
-          "roles/secretmanager.secretAccessor"
-        );
-      await ensure.secretAccess(projectId, wantBackend, haveBackend);
+      }
+    );
+    secretManagerMock
+      .expects("ensureServiceAgentRole")
+      .once()
+      .withExactArgs(
+        { name: secret0.secret, projectId: projectId },
+        [DEFAULT_SA, "foo@bar.com"],
+        "roles/secretmanager.secretAccessor"
+      );
+    await ensure.secretAccess(projectId, b, backend.empty());
+  });
+
+  it("skips calling IAM if secret is already bound to a service account", async () => {
+    const b = backend.of({
+      ...e,
+      secretEnvironmentVariables: [secret0],
     });
+    secretManagerMock.expects("ensureServiceAgentRole").never();
+    await ensure.secretAccess(projectId, b, b);
+  });
+
+  it("does not include service account already bounud to a secret", async () => {
+    const haveEndpoint = {
+      ...e,
+      secretEnvironmentVariables: [secret0],
+    };
+    const haveBackend = backend.of(haveEndpoint);
+    const wantBackend = backend.of(haveEndpoint, {
+      ...e,
+      id: "another-id",
+      serviceAccountEmail: "foo@bar.com",
+      secretEnvironmentVariables: [secret0],
+    });
+    secretManagerMock
+      .expects("ensureServiceAgentRole")
+      .once()
+      .withExactArgs(
+        { name: secret0.secret, projectId: projectId },
+        ["foo@bar.com"],
+        "roles/secretmanager.secretAccessor"
+      );
+    await ensure.secretAccess(projectId, wantBackend, haveBackend);
   });
 });

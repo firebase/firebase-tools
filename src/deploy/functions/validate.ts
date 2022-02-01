@@ -94,9 +94,13 @@ export function functionIdsAreValid(functions: { id: string; platform: string }[
  *
  * If validation fails for any secret config, throws a FirebaseError.
  */
-export async function secretsAreValid(projectId: string, b: backend.Backend) {
+export async function secretsAreValid(
+  projectId: string,
+  wantBackend: backend.Backend,
+  haveBackend: backend.Backend
+) {
   const endpoints = backend
-    .allEndpoints(b)
+    .allEndpoints(wantBackend)
     .filter((e) => e.secretEnvironmentVariables && e.secretEnvironmentVariables.length > 0);
   validatePlatformTargets(endpoints);
   await validateSecretVersions(projectId, endpoints);
@@ -167,7 +171,7 @@ async function validateSecretVersions(projectId: string, endpoints: backend.Endp
     throw new FirebaseError("Failed to validate secret versions", { children: errs });
   }
 
-  // Fill in versions
+  // Fill in versions.
   for (const e of endpoints) {
     for (const s of e.secretEnvironmentVariables! || []) {
       s.version = secretVersions[s.secret].version;

@@ -10,6 +10,8 @@ import * as runtimes from "../deploy/functions/runtimes";
 import * as iam from "./iam";
 import { Client } from "../apiv2";
 import { functionsOrigin } from "../api";
+import { getFirebaseProject } from "../management/projects";
+import { assertExhaustive } from "../functional";
 
 export const API_VERSION = "v1";
 const client = new Client({ urlPrefix: functionsOrigin, apiVersion: API_VERSION });
@@ -593,8 +595,16 @@ export function functionFromEndpoint(
 }
 
 /**
- *  By default, Google Cloud Function uses App Engine default service account for function execution.
+ *  By default:
+ *    1. GCFv1 uses App Engine default service account.
+ *    2. GCFv2 (Cloud Run) uses Compute Engine default service account.
  */
-export function defaultServiceAccount(projectId: string): string {
-  return `${projectId}@appspot.gserviceaccount.com`;
+export async function defaultServiceAccount(e: backend.Endpoint): Promise<string> {
+  const metadata = await getFirebaseProject(e.project);
+  if (e.platform === "gcfv1") {
+    return `${metadata.projectId}@appspot.gserviceaccount.com`;
+  } else if (e.platform === "gcfv2") {
+    return `${metadata.projectNumber}-compute@developer.gserviceaccount.com`;
+  }
+  assertExhaustive(e.platform);
 }
