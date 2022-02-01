@@ -119,12 +119,14 @@ export class ExtensionsEmulator {
       extensionDir,
       env
     );
+    const extensionVersion = await planner.getExtensionVersion(instance);
     return {
       functionsDir,
       env,
       predefinedTriggers: extensionTriggers,
       nodeMajorVersion: nodeMajorVersion,
       extensionInstanceId: instance.instanceId,
+      extensionVersion,
     };
   }
 
