@@ -274,7 +274,7 @@ describe("validate", () => {
     it("fails validation given disabled secret version", () => {
       secretVersionStub.resolves({
         secret,
-        version: "1",
+        versionId: "1",
         state: "DISABLED",
       });
 
@@ -294,7 +294,7 @@ describe("validate", () => {
     it("passes validation and resolves latest version given valid secret config", async () => {
       secretVersionStub.withArgs(project, secret.name, "latest").resolves({
         secret,
-        version: "2",
+        versionId: "2",
         state: "ENABLED",
       });
 
