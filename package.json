@@ -30,6 +30,7 @@
     "test:extensions-emulator": "./scripts/extensions-emulator-tests/run.sh",
     "test:hosting": "./scripts/hosting-tests/run.sh",
     "test:triggers-end-to-end": "./scripts/triggers-end-to-end-tests/run.sh",
+    "test:storage-deploy": "./scripts/storage-deploy-tests/run.sh",
     "test:storage-emulator-integration": "./scripts/storage-emulator-integration/run.sh"
   },
   "files": [
