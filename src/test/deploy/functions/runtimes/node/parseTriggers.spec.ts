@@ -288,10 +288,6 @@ describe("addResourcesToBackend", () => {
       ),
       requiredAPIs: [
         {
-          api: "pubsub.googleapis.com",
-          reason: "Needed for scheduled functions.",
-        },
-        {
           api: "cloudscheduler.googleapis.com",
           reason: "Needed for scheduled functions.",
         },
