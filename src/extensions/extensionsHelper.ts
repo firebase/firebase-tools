@@ -14,7 +14,7 @@ import { storageOrigin } from "../api";
 import { archiveDirectory } from "../archiveDirectory";
 import { convertOfficialExtensionsToList } from "./utils";
 import { getFirebaseConfig } from "../functionsConfig";
-import { getExtensionRegistry, resolveSourceUrl, resolveRegistryEntry } from "./resolveSource";
+import { getExtensionRegistry} from "./resolveSource";
 import { FirebaseError } from "../error";
 import { checkResponse } from "./askUserForParam";
 import { ensure } from "../ensureApiEnabled";
@@ -26,7 +26,6 @@ import {
   ExtensionVersion,
   getExtension,
   getInstance,
-  getSource,
   Param,
   publishExtensionVersion,
 } from "./extensionsApi";
@@ -562,28 +561,6 @@ async function deleteUploadedSource(objectPath: string) {
       logger.debug("Unable to clean up uploaded source archive");
     }
   }
-}
-
-/**
- * Looks up a ExtensionSource from a extensionName. If no source exists for that extensionName, returns undefined.
- * @param extensionName a official extension source name
- *                      or a One-Platform format source name (/project/<projectName>/sources/<sourceId>)
- * @return an ExtensionSource corresponding to extensionName if one exists, undefined otherwise
- */
-export async function getExtensionSourceFromName(extensionName: string): Promise<ExtensionSource> {
-  const officialExtensionRegex = /^[a-zA-Z\-]+[0-9@.]*$/;
-  const existingSourceRegex = /projects\/.+\/sources\/.+/;
-  // if the provided extensionName contains only letters and hyphens, assume it is an official extension
-  if (officialExtensionRegex.test(extensionName)) {
-    const [name, version] = extensionName.split("@");
-    const registryEntry = await resolveRegistryEntry(name);
-    const sourceUrl = resolveSourceUrl(registryEntry, name, version);
-    return await getSource(sourceUrl);
-  } else if (existingSourceRegex.test(extensionName)) {
-    logger.info(`Fetching the source "${extensionName}"...`);
-    return await getSource(extensionName);
-  }
-  throw new FirebaseError(`Could not find an extension named '${extensionName}'. `);
 }
 
 /**
