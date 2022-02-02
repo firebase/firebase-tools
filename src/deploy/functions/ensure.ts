@@ -4,14 +4,30 @@ import { ensure } from "../../ensureApiEnabled";
 import { FirebaseError, isBillingError } from "../../error";
 import { logLabeledBullet, logLabeledSuccess } from "../../utils";
 import { ensureServiceAgentRole } from "../../gcp/secretManager";
-import { defaultServiceAccount } from "../../gcp/cloudfunctions";
 import { previews } from "../../previews";
+import { getFirebaseProject } from "../../management/projects";
+import { assertExhaustive } from "../../functional";
 import * as track from "../../track";
 import * as backend from "./backend";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
 
 const FAQ_URL = "https://firebase.google.com/support/faq#functions-runtime";
 const CLOUD_BUILD_API = "cloudbuild.googleapis.com";
+
+/**
+ *  By default:
+ *    1. GCFv1 uses App Engine default service account.
+ *    2. GCFv2 (Cloud Run) uses Compute Engine default service account.
+ */
+export async function defaultServiceAccount(e: backend.Endpoint): Promise<string> {
+  const metadata = await getFirebaseProject(e.project);
+  if (e.platform === "gcfv1") {
+    return `${metadata.projectId}@appspot.gserviceaccount.com`;
+  } else if (e.platform === "gcfv2") {
+    return `${metadata.projectNumber}-compute@developer.gserviceaccount.com`;
+  }
+  assertExhaustive(e.platform);
+}
 
 function nodeBillingError(projectId: string): FirebaseError {
   track("functions_runtime_notices", "nodejs10_billing_error");
@@ -70,7 +86,7 @@ export async function cloudBuildEnabled(projectId: string): Promise<void> {
 // an upgrade warning in the future. If it already is enabled though we want to
 // remember this and still use the cleaner if necessary.
 export async function maybeEnableAR(projectId: string): Promise<boolean> {
-  if (previews.artifactregistry) {
+  if (!previews.artifactregistry) {
     return ensureApiEnabled.check(
       projectId,
       "artifactregistry.googleapis.com",
@@ -85,10 +101,10 @@ export async function maybeEnableAR(projectId: string): Promise<boolean> {
 /**
  * Returns a mapping of all secrets declared in a stack to the bound service accounts.
  */
-function secretsToServiceAccounts(b: backend.Backend): Record<string, Set<string>> {
+async function secretsToServiceAccounts(b: backend.Backend): Promise<Record<string, Set<string>>> {
   const secretsToSa: Record<string, Set<string>> = {};
   for (const e of backend.allEndpoints(b)) {
-    const sa = e.serviceAccountEmail || defaultServiceAccount(e.project);
+    const sa = e.serviceAccountEmail || (await module.exports.defaultServiceAccount(e));
     for (const s of e.secretEnvironmentVariables! || []) {
       const serviceAccounts = secretsToSa[s.secret] || new Set();
       serviceAccounts.add(sa);
@@ -125,8 +141,8 @@ export async function secretAccess(
     );
   };
 
-  const wantSecrets = secretsToServiceAccounts(wantBackend);
-  const haveSecrets = secretsToServiceAccounts(haveBackend);
+  const wantSecrets = await secretsToServiceAccounts(wantBackend);
+  const haveSecrets = await secretsToServiceAccounts(haveBackend);
 
   // Remove secret/service account pairs that already exists to avoid unnecessary IAM calls.
   for (const [secret, serviceAccounts] of Object.entries(haveSecrets)) {
