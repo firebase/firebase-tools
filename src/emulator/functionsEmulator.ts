@@ -817,7 +817,9 @@ export class FunctionsEmulator implements EmulatorInstance {
         env: e.env,
         extensionInstanceId: e.extensionInstanceId,
         extensionVersion: e.extensionVersion,
-        functionTriggers: e.predefinedTriggers ?? [], // TODO: We should expose CF3 triggers here as well.
+        functionTriggers: e.predefinedTriggers ?? [],
+        // TODO: Right now, functionTriggers will be an empty list for CF3 backends.
+        // We need to figure out how to expose the loaded triggers here here.
       };
     });
   }
