@@ -226,7 +226,6 @@ export function addResourcesToBackend(
       for (const secret of annotation.secrets) {
         const secretEnv: backend.SecretEnvVar = {
           secret,
-          projectId,
           key: secret,
         };
         secretEnvs.push(secretEnv);

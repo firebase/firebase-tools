@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import * as api from "./api";
+import { clientId, clientSecret } from "./api";
 import { Tokens, User, Account } from "./auth";
 import { logger } from "./logger";
 
@@ -63,8 +63,8 @@ export function clearCredentials(account: Account): void {
 function getCredential(tokens: Tokens): RefreshTokenCredential | undefined {
   if (tokens.refresh_token) {
     return {
-      client_id: api.clientId,
-      client_secret: api.clientSecret,
+      client_id: clientId,
+      client_secret: clientSecret,
       refresh_token: tokens.refresh_token,
       type: "authorized_user",
     };

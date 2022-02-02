@@ -52,7 +52,7 @@ function isPermissionError(e: { context?: { body?: { error?: { status?: string }
  *
  * @param projectId Project ID upon which to check enablement.
  */
-export async function ensureCloudBuildEnabled(projectId: string): Promise<void> {
+export async function cloudBuildEnabled(projectId: string): Promise<void> {
   try {
     await ensure(projectId, CLOUD_BUILD_API, "functions");
   } catch (e: any) {
@@ -83,13 +83,33 @@ export async function maybeEnableAR(projectId: string): Promise<boolean> {
 }
 
 /**
+ * Returns a mapping of all secrets declared in a stack to the bound service accounts.
+ */
+function secretsToServiceAccounts(b: backend.Backend): Record<string, Set<string>> {
+  const secretsToSa: Record<string, Set<string>> = {};
+  for (const e of backend.allEndpoints(b)) {
+    const sa = e.serviceAccountEmail || defaultServiceAccount(e.project);
+    for (const s of e.secretEnvironmentVariables! || []) {
+      const serviceAccounts = secretsToSa[s.secret] || new Set();
+      serviceAccounts.add(sa);
+      secretsToSa[s.secret] = serviceAccounts;
+    }
+  }
+  return secretsToSa;
+}
+
+/**
  * Ensures that runtime service account has access to the secrets.
  *
  * To avoid making more than one simultaneous call to setIamPolicy calls per secret, the function batches all
  * service account that requires access to it.
  */
-export async function ensureSecretAccess(b: backend.Backend) {
-  const ensureAccess = async (projectId: string, secret: string, serviceAccounts: string[]) => {
+export async function secretAccess(
+  projectId: string,
+  wantBackend: backend.Backend,
+  haveBackend: backend.Backend
+) {
+  const ensureAccess = async (secret: string, serviceAccounts: string[]) => {
     logLabeledBullet(
       "functions",
       `ensuring ${clc.bold(serviceAccounts.join(", "))} access to ${clc.bold(secret)}.`
@@ -105,27 +125,24 @@ export async function ensureSecretAccess(b: backend.Backend) {
     );
   };
 
-  // Collect all service accounts that requires access to a secret.
-  // projectId -> secretName -> Set of service accounts
-  const toEnsure: Record<string, Record<string, Set<string>>> = {};
-  for (const e of backend.allEndpoints(b)) {
-    const sa = e.serviceAccountEmail || defaultServiceAccount(e.project);
-    for (const s of e.secretEnvironmentVariables! || []) {
-      const secrets = toEnsure[s.projectId] || {};
-      const serviceAccounts = secrets[s.secret] || new Set();
+  const wantSecrets = secretsToServiceAccounts(wantBackend);
+  const haveSecrets = secretsToServiceAccounts(haveBackend);
 
-      serviceAccounts.add(sa);
-
-      secrets[s.secret] = serviceAccounts;
-      toEnsure[s.projectId] = secrets;
+  // Remove secret/service account pairs that already exists to avoid unnecessary IAM calls.
+  for (const [secret, serviceAccounts] of Object.entries(haveSecrets)) {
+    for (const serviceAccount of serviceAccounts) {
+      if (wantSecrets?.[secret].has(serviceAccount)) {
+        wantSecrets[secret].delete(serviceAccount);
+        if (wantSecrets[secret].size === 0) {
+          delete wantSecrets[secret];
+        }
+      }
     }
   }
 
   const ensure = [];
-  for (const [projectId, secrets] of Object.entries(toEnsure)) {
-    for (const [secret, serviceAccounts] of Object.entries(secrets)) {
-      ensure.push(ensureAccess(projectId, secret, Array.from(serviceAccounts)));
-    }
+  for (const [secret, serviceAccounts] of Object.entries(wantSecrets)) {
+    ensure.push(ensureAccess(secret, Array.from(serviceAccounts)));
   }
   await Promise.all(ensure);
 }
