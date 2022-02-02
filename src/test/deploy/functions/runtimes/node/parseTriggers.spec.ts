@@ -314,7 +314,9 @@ describe("addResourcesToBackend", () => {
     const expected: backend.Backend = backend.of({
       ...BASIC_ENDPOINT,
       httpsTrigger: {},
-      vpcConnector: "",
+      vpc: {
+        connector: "",
+      },
     });
 
     expect(result).to.deep.equal(expected);
