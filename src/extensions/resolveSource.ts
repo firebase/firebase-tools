@@ -17,32 +17,6 @@ export interface RegistryEntry {
 }
 
 /**
- * Looks up and returns a entry from the published extensions registry.
- * @param name the name of the extension.
- */
-export async function resolveRegistryEntry(name: string): Promise<RegistryEntry> {
-  const extensionsRegistry = await getExtensionRegistry();
-  const registryEntry = _.get(extensionsRegistry, name);
-  if (!registryEntry) {
-    throw new FirebaseError(`Unable to find extension source named ${clc.bold(name)}.`);
-  }
-  return registryEntry;
-}
-
-/**
- * Resolves a version or label to a version.
- * @param registryEntry A registry entry to get the version from.
- * @param versionOrLabel A version or label to resolve. Defaults to 'latest'.
- */
-export function getTargetVersion(registryEntry: RegistryEntry, versionOrLabel?: string): string {
-  // The version to search for when a user passes a version x.y.z or no version.
-  const seekVersion = versionOrLabel || "latest";
-  // The version to search for when a user passes a label like 'latest'.
-  const versionFromLabel = _.get(registryEntry, ["labels", seekVersion]);
-  return versionFromLabel || seekVersion;
-}
-
-/**
  * Fetches the published extensions registry.
  * @param onlyFeatured If true, only return the featured extensions.
  */
