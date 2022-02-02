@@ -169,7 +169,7 @@ export async function addVersion(
   payloadData: string
 ): Promise<Required<SecretVersion>> {
   const res = await client.post<AddVersionRequest, { name: string; state: SecretVersionState }>(
-    `projects/${secret.projectId}/secrets/${secret.name}:addVersion`,
+    `projects/${projectId}/secrets/${name}:addVersion`,
     {
       payload: {
         data: Buffer.from(payloadData).toString("base64"),
