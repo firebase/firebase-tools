@@ -10,6 +10,7 @@ import { FirebaseError } from "../../../../error";
 import { getRuntimeChoice } from "./parseRuntimeAndValidateSDK";
 import { logger } from "../../../../logger";
 import { previews } from "../../../../previews";
+import { logLabeledWarning } from "../../../../utils";
 import * as backend from "../../backend";
 import * as runtimes from "..";
 import * as validate from "./validate";
@@ -134,8 +135,9 @@ export class Delegate {
   ): Promise<backend.Backend> {
     if (previews.functionsv2) {
       if (semver.lt(this.sdkVersion, MIN_FUNCTIONS_CONTROL_API_VERSION)) {
-        logger.warn(
-          "You are using an old version of firebase-functions SDK" +
+        logLabeledWarning(
+          "functions",
+          "You are using an old version of firebase-functions SDK. " +
             `Please update firebase-functions SDK to >=${MIN_FUNCTIONS_CONTROL_API_VERSION}`
         );
         return parseTriggers.discoverBackend(
