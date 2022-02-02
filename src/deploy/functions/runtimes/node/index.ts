@@ -117,8 +117,6 @@ export class Delegate {
         childProcess.once("error", reject);
       });
 
-      // If we SIGKILL the child process we're actually going to kill the go
-      // runner and the webserver it launched will keep running.
       await fetch(`http://localhost:${adminPort}/__/quitquitquit`);
       setTimeout(() => {
         if (!childProcess.killed) {
