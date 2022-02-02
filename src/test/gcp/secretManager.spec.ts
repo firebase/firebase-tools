@@ -4,7 +4,7 @@ import { expect } from "chai";
 import * as iam from "../../gcp/iam";
 import * as secretManager from "../../gcp/secretManager";
 import { FirebaseError } from "../../error";
-import { ensureServiceAgentRole, setIamPolicyBindings } from "../../gcp/secretManager";
+import { ensureServiceAgentRole } from "../../gcp/secretManager";
 
 describe("secretManager", () => {
   describe("parseSecretResourceName", () => {
@@ -63,26 +63,22 @@ describe("secretManager", () => {
     const role = "test-role";
 
     let getIamPolicyStub: sinon.SinonStub;
-    let setIamPolicyBindingsStub: sinon.SinonStub;
+    let setIamPolicyStub: sinon.SinonStub;
 
     beforeEach(() => {
       getIamPolicyStub = sinon.stub(secretManager, "getIamPolicy").rejects("Unexpected call");
-      setIamPolicyBindingsStub = sinon
-        .stub(secretManager, "setIamPolicyBindings")
-        .rejects("Unexpected call");
+      setIamPolicyStub = sinon.stub(secretManager, "setIamPolicy").rejects("Unexpected call");
     });
 
     afterEach(() => {
       getIamPolicyStub.restore();
-      setIamPolicyBindingsStub.restore();
+      setIamPolicyStub.restore();
     });
 
     function setupStubs(existing: iam.Binding[], expected?: iam.Binding[]) {
       getIamPolicyStub.withArgs(secret).resolves({ bindings: existing });
       if (expected) {
-        setIamPolicyBindingsStub
-          .withArgs(secret, expected)
-          .resolves({ body: { bindings: expected } });
+        setIamPolicyStub.withArgs(secret, expected).resolves({ body: { bindings: expected } });
       }
     }
 

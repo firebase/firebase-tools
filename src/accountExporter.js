@@ -4,9 +4,14 @@ var os = require("os");
 var path = require("path");
 var _ = require("lodash");
 
-var api = require("./api");
-var utils = require("./utils");
+const { Client } = require("./apiv2");
+const { googleOrigin } = require("./api");
 var { FirebaseError } = require("./error");
+var utils = require("./utils");
+
+const apiClient = new Client({
+  urlPrefix: googleOrigin,
+});
 
 // TODO: support for MFA at runtime was added in PR #3173, but this exporter currently ignores `mfaInfo` and loses the data on export.
 var EXPORTED_JSON_KEYS = [
@@ -161,12 +166,9 @@ var serialExportUsers = function (projectId, options) {
   if (!options.timeoutRetryCount) {
     options.timeoutRetryCount = 0;
   }
-  return api
-    .request("POST", "/identitytoolkit/v3/relyingparty/downloadAccount", {
-      auth: true,
-      json: true,
-      data: postBody,
-      origin: api.googleOrigin,
+  return apiClient
+    .post("/identitytoolkit/v3/relyingparty/downloadAccount", postBody, {
+      skipLog: { resBody: true }, // This contains a lot of PII - don't log it.
     })
     .then(function (ret) {
       options.timeoutRetryCount = 0;
