@@ -59,8 +59,10 @@ export async function logAndTrackDeployStats(summary: Summary): Promise<void> {
   let totalAborts = 0;
   const reports: Array<Promise<void>> = [];
 
+  const regions = new Set<string>();
   for (const result of summary.results) {
     const tag = triggerTag(result.endpoint);
+    regions.add(result.endpoint.region);
     totalTime += result.durationMs;
     if (!result.error) {
       totalSuccesses++;
@@ -73,6 +75,9 @@ export async function logAndTrackDeployStats(summary: Summary): Promise<void> {
       reports.push(track.track("function_deploy_failure", tag, result.durationMs));
     }
   }
+
+  const regionCountTag = regions.size < 5 ? regions.size.toString() : ">=5";
+  reports.push(track.track("functions_region_count", regionCountTag, 1));
 
   const gcfv1 = summary.results.find((r) => r.endpoint.platform === "gcfv1");
   const gcfv2 = summary.results.find((r) => r.endpoint.platform === "gcfv2");

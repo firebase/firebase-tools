@@ -24,21 +24,19 @@ describe("cloudfunctionsv2", () => {
     generation: 42,
   };
 
-  const CLOUD_FUNCTION_V2: Omit<
-    cloudfunctionsv2.CloudFunction,
-    cloudfunctionsv2.OutputOnlyFields
-  > = {
-    name: "projects/project/locations/region/functions/id",
-    buildConfig: {
-      entryPoint: "function",
-      runtime: "nodejs16",
-      source: {
-        storageSource: CLOUD_FUNCTION_V2_SOURCE,
+  const CLOUD_FUNCTION_V2: Omit<cloudfunctionsv2.CloudFunction, cloudfunctionsv2.OutputOnlyFields> =
+    {
+      name: "projects/project/locations/region/functions/id",
+      buildConfig: {
+        entryPoint: "function",
+        runtime: "nodejs16",
+        source: {
+          storageSource: CLOUD_FUNCTION_V2_SOURCE,
+        },
+        environmentVariables: {},
       },
-      environmentVariables: {},
-    },
-    serviceConfig: {},
-  };
+      serviceConfig: {},
+    };
 
   const RUN_URI = "https://id-nonce-region-project.run.app";
   const HAVE_CLOUD_FUNCTION_V2: cloudfunctionsv2.CloudFunction = {

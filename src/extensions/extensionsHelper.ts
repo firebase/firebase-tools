@@ -2,7 +2,8 @@ import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as ora from "ora";
 import * as semver from "semver";
-import * as marked from "marked";
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
+const { marked } = require("marked");
 
 const TerminalRenderer = require("marked-terminal");
 marked.setOptions({
@@ -94,7 +95,7 @@ export const resourceTypeToNiceName: Record<string, string> = {
  */
 export function getDBInstanceFromURL(databaseUrl = ""): string {
   const instanceRegex = new RegExp("(?:https://)(.*)(?:.firebaseio.com)");
-  const matches = databaseUrl.match(instanceRegex);
+  const matches = instanceRegex.exec(databaseUrl);
   if (matches && matches.length > 1) {
     return matches[1];
   }
@@ -407,7 +408,7 @@ export async function publishExtensionVersionFromLocalSource(args: {
   let extension;
   try {
     extension = await getExtension(`${args.publisherId}/${args.extensionId}`);
-  } catch (err) {
+  } catch (err: any) {
     // Silently fail and continue the publish flow if extension not found.
   }
 
@@ -415,7 +416,7 @@ export async function publishExtensionVersionFromLocalSource(args: {
   try {
     const changes = getLocalChangelog(args.rootDirectory);
     notes = changes[extensionSpec.version];
-  } catch (err) {
+  } catch (err: any) {
     throw new FirebaseError(
       "No CHANGELOG.md file found. " +
         "Please create one and add an entry for this version. " +
@@ -481,23 +482,23 @@ export async function publishExtensionVersionFromLocalSource(args: {
   const ref = `${args.publisherId}/${args.extensionId}@${extensionSpec.version}`;
   let packageUri: string;
   let objectPath = "";
-  const uploadSpinner = ora.default(" Archiving and uploading extension source code");
+  const uploadSpinner = ora(" Archiving and uploading extension source code");
   try {
     uploadSpinner.start();
     objectPath = await archiveAndUploadSource(args.rootDirectory, EXTENSIONS_BUCKET_NAME);
     uploadSpinner.succeed(" Uploaded extension source code");
     packageUri = storageOrigin + objectPath + "?alt=media";
-  } catch (err) {
+  } catch (err: any) {
     uploadSpinner.fail();
     throw err;
   }
-  const publishSpinner = ora.default(`Publishing ${clc.bold(ref)}`);
+  const publishSpinner = ora(`Publishing ${clc.bold(ref)}`);
   let res;
   try {
     publishSpinner.start();
     res = await publishExtensionVersion(ref, packageUri);
     publishSpinner.succeed(` Successfully published ${clc.bold(ref)}`);
-  } catch (err) {
+  } catch (err: any) {
     publishSpinner.fail();
     if (err.status == 404) {
       throw new FirebaseError(
@@ -527,15 +528,15 @@ export async function createSourceFromLocation(
   let packageUri: string;
   let extensionRoot: string;
   let objectPath = "";
-  if (!URL_REGEX.test(sourceUri)) {
-    const uploadSpinner = ora.default(" Archiving and uploading extension source code");
+  if (!sourceUri.startsWith("https:")) {
+    const uploadSpinner = ora(" Archiving and uploading extension source code");
     try {
       uploadSpinner.start();
       objectPath = await archiveAndUploadSource(sourceUri, EXTENSIONS_BUCKET_NAME);
       uploadSpinner.succeed(" Uploaded extension source code");
       packageUri = storageOrigin + objectPath + "?alt=media";
       extensionRoot = "/";
-    } catch (err) {
+    } catch (err: any) {
       uploadSpinner.fail();
       throw err;
     }
@@ -557,7 +558,7 @@ async function deleteUploadedSource(objectPath: string) {
     try {
       await deleteObject(objectPath);
       logger.debug("Cleaned up uploaded source archive");
-    } catch (err) {
+    } catch (err: any) {
       logger.debug("Unable to clean up uploaded source archive");
     }
   }
@@ -583,6 +584,19 @@ export async function getExtensionSourceFromName(extensionName: string): Promise
     return await getSource(extensionName);
   }
   throw new FirebaseError(`Could not find an extension named '${extensionName}'. `);
+}
+
+/**
+ * Parses the publisher project number from publisher profile name.
+ */
+export function getPublisherProjectFromName(publisherName: string): number {
+  const publisherNameRegex = /projects\/.+\/publisherProfile/;
+
+  if (publisherNameRegex.test(publisherName)) {
+    const [_, projectNumber, __] = publisherName.split("/");
+    return Number.parseInt(projectNumber);
+  }
+  throw new FirebaseError(`Could not find publisher with name '${publisherName}'.`);
 }
 
 /**
@@ -655,25 +669,26 @@ export async function promptForRepeatInstance(
  * @param instanceId ID of the extension instance
  */
 export async function instanceIdExists(projectId: string, instanceId: string): Promise<boolean> {
-  const instanceRes = await getInstance(projectId, instanceId, {
-    resolveOnHTTPError: true,
-  });
-  if (instanceRes.error) {
-    if (_.get(instanceRes, "error.code") === 404) {
-      return false;
+  try {
+    await getInstance(projectId, instanceId);
+  } catch (err: unknown) {
+    if (err instanceof FirebaseError) {
+      if (err.status === 404) {
+        return false;
+      }
+      const msg = `Unexpected error when checking if instance ID exists: ${err}`;
+      throw new FirebaseError(msg, {
+        original: err,
+      });
+    } else {
+      throw err;
     }
-    const msg =
-      "Unexpected error when checking if instance ID exists: " +
-      _.get(instanceRes, "error.message");
-    throw new FirebaseError(msg, {
-      original: instanceRes.error,
-    });
   }
   return true;
 }
 
 export function isUrlPath(extInstallPath: string): boolean {
-  return URL_REGEX.test(extInstallPath);
+  return extInstallPath.startsWith("https:");
 }
 
 export function isLocalPath(extInstallPath: string): boolean {
@@ -708,7 +723,7 @@ export function getSourceOrigin(sourceOrVersion: string): SourceOrigin {
     let ref;
     try {
       ref = refs.parse(sourceOrVersion);
-    } catch (err) {
+    } catch (err: any) {
       // Silently fail.
     }
     if (ref && ref.publisherId && ref.extensionId && !ref.version) {

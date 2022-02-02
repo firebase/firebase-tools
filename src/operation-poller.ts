@@ -67,7 +67,7 @@ export class OperationPoller<T> {
       let res;
       try {
         res = await apiClient.get<OperationResult<T>>(options.operationResourceName);
-      } catch (err) {
+      } catch (err: any) {
         // Responses with 500 or 503 status code are treated as retriable errors.
         if (err.status === 500 || err.status === 503) {
           throw err;

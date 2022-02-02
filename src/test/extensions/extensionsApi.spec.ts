@@ -80,8 +80,7 @@ const TEST_INSTANCE_1 = {
   updateTime: "2019-06-19T00:21:06.722782Z",
   state: "ACTIVE",
   config: {
-    name:
-      "projects/invader-zim/instances/image-resizer-1/configurations/5b1fb749-764d-4bd1-af60-bb7f22d27860",
+    name: "projects/invader-zim/instances/image-resizer-1/configurations/5b1fb749-764d-4bd1-af60-bb7f22d27860",
     createTime: "2019-06-19T00:21:06.722782Z",
   },
 };
@@ -92,8 +91,7 @@ const TEST_INSTANCE_2 = {
   updateTime: "2019-05-19T00:20:10.416947Z",
   state: "ACTIVE",
   config: {
-    name:
-      "projects/invader-zim/instances/image-resizer/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
+    name: "projects/invader-zim/instances/image-resizer/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
     createTime: "2019-05-19T00:20:10.416947Z",
   },
 };
@@ -951,6 +949,38 @@ describe("listExtensionVersions", () => {
       FirebaseError,
       "Unable to parse"
     );
+  });
+});
+
+describe("getPublisherProfile", () => {
+  afterEach(() => {
+    nock.cleanAll();
+  });
+
+  const PUBLISHER_PROFILE = {
+    name: "projects/test-publisher/publisherProfile",
+    publisherId: "test-publisher",
+    registerTime: "2020-06-30T00:21:06.722782Z",
+  };
+  it("should make a GET call to the correct endpoint", async () => {
+    nock(api.extensionsOrigin)
+      .get(`/${VERSION}/projects/${PROJECT_ID}/publisherProfile`)
+      .query(true)
+      .reply(200, PUBLISHER_PROFILE);
+
+    const res = await extensionsApi.getPublisherProfile(PROJECT_ID);
+    expect(res).to.deep.equal(PUBLISHER_PROFILE);
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should throw a FirebaseError if the endpoint returns an error response", async () => {
+    nock(api.extensionsOrigin)
+      .get(`/${VERSION}/projects/${PROJECT_ID}/publisherProfile`)
+      .query(true)
+      .reply(404);
+
+    await expect(extensionsApi.getPublisherProfile(PROJECT_ID)).to.be.rejectedWith(FirebaseError);
+    expect(nock.isDone()).to.be.true;
   });
 });
 

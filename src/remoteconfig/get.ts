@@ -1,4 +1,5 @@
-import * as api from "../api";
+import { remoteConfigApiOrigin } from "../api";
+import { Client } from "../apiv2";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
 import { RemoteConfigTemplate } from "./interfaces";
@@ -7,6 +8,11 @@ const TIMEOUT = 30000;
 
 // Creates a maximum limit of 50 names for each entry
 const MAX_DISPLAY_ITEMS = 50;
+
+const apiClient = new Client({
+  urlPrefix: remoteConfigApiOrigin,
+  apiVersion: "v1",
+});
 
 /**
  * Function retrieves names for parameters and parameter groups
@@ -42,21 +48,22 @@ export async function getTemplate(
   versionNumber?: string
 ): Promise<RemoteConfigTemplate> {
   try {
-    let request = `/v1/projects/${projectId}/remoteConfig`;
+    const params = new URLSearchParams();
     if (versionNumber) {
-      request = request + "?versionNumber=" + versionNumber;
+      params.set("versionNumber", versionNumber);
     }
-    const response = await api.request("GET", request, {
-      auth: true,
-      origin: api.remoteConfigApiOrigin,
+    const res = await apiClient.request<null, RemoteConfigTemplate>({
+      method: "GET",
+      path: `/projects/${projectId}/remoteConfig`,
+      queryParams: params,
       timeout: TIMEOUT,
     });
-    return response.body;
-  } catch (err) {
+    return res.body;
+  } catch (err: any) {
     logger.debug(err.message);
     throw new FirebaseError(
       `Failed to get Firebase Remote Config template for project ${projectId}. `,
-      { exit: 2, original: err }
+      { original: err }
     );
   }
 }

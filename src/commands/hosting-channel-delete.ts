@@ -1,5 +1,6 @@
 import { bold, underline } from "cli-color";
-import marked from "marked";
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
+const { marked } = require("marked");
 
 import { Command } from "../command";
 import { consoleUrl, logLabeledSuccess, logLabeledWarning } from "../utils";
@@ -49,7 +50,7 @@ export default new Command("hosting:channel:delete <channelId>")
       if (channel) {
         try {
           await removeAuthDomain(projectId, channel.url);
-        } catch (e) {
+        } catch (e: any) {
           logLabeledWarning(
             "hosting:channel",
             marked(

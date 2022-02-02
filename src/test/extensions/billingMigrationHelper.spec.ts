@@ -82,39 +82,39 @@ describe("billingMigrationHelper", () => {
     promptStub.restore();
   });
 
-  describe("displayCreateBillingNotice", () => {
-    it("should notify the user if the runtime requires nodejs10", () => {
+  describe("displayNode10CreateBillingNotice", () => {
+    it("should notify the user if the runtime requires nodejs10", async () => {
       promptStub.resolves(true);
       const newSpec = _.cloneDeep(NODE10_SPEC);
 
-      expect(nodejsMigrationHelper.displayNode10CreateBillingNotice(newSpec, true)).not.to.be
+      await expect(nodejsMigrationHelper.displayNode10CreateBillingNotice(newSpec, true)).not.to.be
         .rejected;
       expect(promptStub.callCount).to.equal(1);
     });
 
-    it("should notify the user if the runtime does not require nodejs (explicit)", () => {
+    it("should notify the user if the runtime does not require nodejs (explicit)", async () => {
       promptStub.resolves(true);
       const newSpec = _.cloneDeep(NODE8_SPEC);
 
-      expect(nodejsMigrationHelper.displayNode10CreateBillingNotice(newSpec, true)).not.to.be
+      await expect(nodejsMigrationHelper.displayNode10CreateBillingNotice(newSpec, true)).not.to.be
         .rejected;
       expect(promptStub.callCount).to.equal(0);
     });
 
-    it("should notify the user if the runtime does not require nodejs (implicit)", () => {
+    it("should notify the user if the runtime does not require nodejs (implicit)", async () => {
       promptStub.resolves(true);
       const newSpec = _.cloneDeep(NO_RUNTIME_SPEC);
 
-      expect(nodejsMigrationHelper.displayNode10CreateBillingNotice(newSpec, true)).not.to.be
+      await expect(nodejsMigrationHelper.displayNode10CreateBillingNotice(newSpec, true)).not.to.be
         .rejected;
       expect(promptStub.callCount).to.equal(0);
     });
 
-    it("should error if the user doesn't give consent", () => {
+    it("should error if the user doesn't give consent", async () => {
       promptStub.resolves(false);
       const newSpec = _.cloneDeep(NODE10_SPEC);
 
-      expect(
+      await expect(
         nodejsMigrationHelper.displayNode10CreateBillingNotice(newSpec, true)
       ).to.be.rejectedWith(FirebaseError, "Cancelled");
     });

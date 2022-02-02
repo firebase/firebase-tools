@@ -1,18 +1,17 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
-"use strict";
+import * as clc from "cli-color";
 
-var { Command } = require("../command");
+import { Command } from "../command";
+import { logger } from "../logger";
+import * as utils from "../utils";
 
-var clc = require("cli-color");
-const { logger } = require("../logger");
-var utils = require("../utils");
-
-module.exports = new Command("help [command]")
+export default new Command("help [command]")
   .description("display help information")
+  // This must stay `function (commandName)`.
   .action(function (commandName) {
     // @ts-ignore
-    var client = this.client; // eslint-disable-line no-invalid-this
-    var cmd = client.getCommand(commandName);
+    const client = this.client; // eslint-disable-line @typescript-eslint/no-invalid-this
+    const cmd = client.getCommand(commandName);
     if (cmd) {
       cmd.outputHelp();
     } else if (commandName) {
@@ -30,6 +29,4 @@ module.exports = new Command("help [command]")
       );
       logger.info();
     }
-
-    return Promise.resolve();
   });

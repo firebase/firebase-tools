@@ -117,7 +117,7 @@ export async function upsertQueue(queue: Queue): Promise<boolean> {
 
     await (module.exports.updateQueue as typeof updateQueue)(queue);
     return false;
-  } catch (err) {
+  } catch (err: any) {
     if (err?.context?.response?.statusCode === 404) {
       await (module.exports.createQueue as typeof createQueue)(queue);
       return true;
@@ -189,7 +189,7 @@ export async function setEnqueuer(
     try {
       await (module.exports.setIamPolicy as typeof setIamPolicy)(name, policy);
       return;
-    } catch (err) {
+    } catch (err: any) {
       // Re-fetch on conflict
       if (err?.context?.response?.statusCode === 429) {
         existing = await (module.exports.getIamPolicy as typeof getIamPolicy)(name);

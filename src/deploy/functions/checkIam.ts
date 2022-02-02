@@ -31,7 +31,7 @@ export async function checkServiceAccountIam(projectId: string): Promise<void> {
       ["iam.serviceAccounts.actAs"]
     );
     passed = iamResult.passed;
-  } catch (err) {
+  } catch (err: any) {
     logger.debug("[functions] service account IAM check errored, deploy may fail:", err);
     // we want to fail this check open and not rethrow since it's informational only
     return;
@@ -85,7 +85,7 @@ export async function checkHttpIam(
   try {
     const iamResult = await iam.testIamPermissions(context.projectId, [PERMISSION]);
     passed = iamResult.passed;
-  } catch (e) {
+  } catch (e: any) {
     logger.debug(
       "[functions] failed http create setIamPolicy permission check. deploy may fail:",
       e
@@ -165,7 +165,7 @@ export async function ensureServiceAgentRoles(
   let policy: iam.Policy;
   try {
     policy = await getIamPolicy(projectId);
-  } catch (err) {
+  } catch (err: any) {
     utils.logLabeledBullet(
       "functions",
       "Could not verify the necessary IAM configuration for the following newly-integrated services: " +
@@ -185,7 +185,7 @@ export async function ensureServiceAgentRoles(
   // set the updated policy
   try {
     await setIamPolicy(projectId, policy, "bindings");
-  } catch (err) {
+  } catch (err: any) {
     throw new FirebaseError(
       "We failed to modify the IAM policy for the project. The functions " +
         "deployment requires specific roles to be granted to service agents," +
