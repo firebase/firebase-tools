@@ -473,32 +473,6 @@ async function loginRemotely(userHint?: string): Promise<UserCredentials> {
   };
 }
 
-async function loginWithoutLocalhost(userHint?: string): Promise<UserCredentials> {
-  const callbackUrl = getCallbackUrl();
-  const authUrl = getLoginUrl(callbackUrl, userHint);
-
-  logger.info();
-  logger.info("Visit this URL on any device to log in:");
-  logger.info(clc.bold.underline(authUrl));
-  logger.info();
-
-  open(authUrl);
-
-  const code: string = await promptOnce({
-    type: "input",
-    name: "code",
-    message: "Paste authorization code here:",
-  });
-  const tokens = await getTokensFromAuthorizationCode(code, callbackUrl);
-  // getTokensFromAuthorizationCode doesn't handle the --token case, so we know
-  // that we'll have a valid id_token.
-  return {
-    user: jwt.decode(tokens.id_token!) as User,
-    tokens: tokens,
-    scopes: SCOPES,
-  };
-}
-
 async function loginWithLocalhostGoogle(port: number, userHint?: string): Promise<UserCredentials> {
   const callbackUrl = getCallbackUrl(port);
   const authUrl = getLoginUrl(callbackUrl, userHint);
@@ -586,19 +560,16 @@ export async function loginGoogle(
   userHint?: string,
   remote = false
 ): Promise<UserCredentials> {
-  if (remote) {
-    return loginRemotely(userHint);
-  }
   if (localhost) {
     const port = await getPort();
     try {
       const port = await getPort();
       return await loginWithLocalhostGoogle(port, userHint);
     } catch {
-      return await loginWithoutLocalhost(userHint);
+      return await loginRemotely(userHint);
     }
   }
-  return await loginWithoutLocalhost(userHint);
+  return await loginRemotely(userHint);
 }
 
 export async function loginGithub(): Promise<string> {
