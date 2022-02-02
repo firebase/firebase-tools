@@ -3,7 +3,7 @@
 const _ = require("lodash");
 
 const api = require("../../api");
-const convertConfig = require("./convertConfig");
+const { convertConfig } = require("./convertConfig");
 const deploymentTool = require("../../deploymentTool");
 const { FirebaseError } = require("../../error");
 const { normalizedHostingConfigs } = require("../../hosting/normalizedHostingConfigs");
