@@ -5,7 +5,6 @@ const { marked } = require("marked");
 
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
-import * as resolveSource from "./resolveSource";
 import * as extensionsApi from "./extensionsApi";
 import * as refs from "./refs";
 import {
