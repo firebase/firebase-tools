@@ -72,7 +72,7 @@ export async function detectFromPort(
 
   while (true) {
     try {
-      res = await Promise.race([fetch(`http://localhost:${port}/stack.yaml`), timedOut]);
+      res = await Promise.race([fetch(`http://localhost:${port}/__/stack.yaml`), timedOut]);
       break;
     } catch (err: any) {
       // Allow us to wait until the server is listening.
@@ -84,7 +84,7 @@ export async function detectFromPort(
   }
 
   const text = await res.text();
-  logger.debug("Got response from /stack.yaml", text);
+  logger.debug("Got response from /__/stack.yaml", text);
 
   let parsed: any;
   try {

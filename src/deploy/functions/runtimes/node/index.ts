@@ -97,7 +97,7 @@ export class Delegate {
     adminPort: number,
     envs: backend.EnvironmentVariables
   ): Promise<() => Promise<void>> {
-    const childProcess = spawn("npx firebase-functions", [this.sourceDir], {
+    const childProcess = spawn("./node_modules/.bin/firebase-functions", [this.sourceDir], {
       env: {
         ...envs,
         PORT: port.toString(),
@@ -137,7 +137,7 @@ export class Delegate {
       if (semver.lt(this.sdkVersion, MIN_FUNCTIONS_CONTROL_API_VERSION)) {
         logLabeledWarning(
           "functions",
-          "You are using an old version of firebase-functions SDK. " +
+          `You are using an old version of firebase-functions SDK (${this.sdkVersion}). ` +
             `Please update firebase-functions SDK to >=${MIN_FUNCTIONS_CONTROL_API_VERSION}`
         );
         return parseTriggers.discoverBackend(
