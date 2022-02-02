@@ -6,7 +6,6 @@ import { FirebaseError } from "../../error";
 import { firebaseExtensionsRegistryOrigin } from "../../api";
 import * as extensionsApi from "../../extensions/extensionsApi";
 import * as extensionsHelper from "../../extensions/extensionsHelper";
-import * as prompt from "../../prompt";
 import * as resolveSource from "../../extensions/resolveSource";
 import * as updateHelper from "../../extensions/updateHelper";
 
@@ -245,9 +244,7 @@ describe("updateHelper", () => {
       getExtensionStub = sinon.stub(extensionsApi, "getExtension");
       createSourceStub = sinon.stub(extensionsApi, "getExtensionVersion");
       listExtensionVersionStub = sinon.stub(extensionsApi, "listExtensionVersions");
-      registryStub = sinon.stub(resolveSource, "resolveRegistryEntry");
       registryStub.resolves(REGISTRY_ENTRY);
-      isOfficialStub = sinon.stub(resolveSource, "isOfficialSource");
       isOfficialStub.returns(false);
       getInstanceStub = sinon.stub(extensionsApi, "getInstance").resolves(REGISTRY_INSTANCE);
     });
@@ -301,9 +298,7 @@ describe("updateHelper", () => {
       getExtensionStub = sinon.stub(extensionsApi, "getExtension");
       createSourceStub = sinon.stub(extensionsApi, "getExtensionVersion");
       listExtensionVersionStub = sinon.stub(extensionsApi, "listExtensionVersions");
-      registryStub = sinon.stub(resolveSource, "resolveRegistryEntry");
       registryStub.resolves(REGISTRY_ENTRY);
-      isOfficialStub = sinon.stub(resolveSource, "isOfficialSource");
       isOfficialStub.returns(false);
       getInstanceStub = sinon.stub(extensionsApi, "getInstance").resolves(REGISTRY_INSTANCE);
     });

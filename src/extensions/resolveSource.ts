@@ -1,17 +1,13 @@
 import * as _ from "lodash";
-import * as clc from "cli-color";
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
-import * as semver from "semver";
-import * as api from "../api";
-import { FirebaseError } from "../error";
 import { logger } from "../logger";
-import { promptOnce } from "../prompt";
 import { Client } from "../apiv2";
 import { firebaseExtensionsRegistryOrigin } from "../api";
 
 const EXTENSIONS_REGISTRY_ENDPOINT = "/extensions.json";
 
+/**
+ * An Entry on the deprecated registry.json list.
+ */
 export interface RegistryEntry {
   publisher: string;
 }
