@@ -27,7 +27,7 @@ export default new Command("functions:secrets:set <KEY>")
   )
   .action(async (unvalidatedKey: string, options: Options) => {
     const projectId = needProjectId(options);
-    const key = ensureValidKey(unvalidatedKey, options);
+    const key = await ensureValidKey(unvalidatedKey, options);
     const secret = await ensureSecret(projectId, key, options);
     let secretValue;
 

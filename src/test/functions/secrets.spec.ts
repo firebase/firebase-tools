@@ -13,39 +13,46 @@ describe("functions/secret", () => {
 
   describe("ensureValidKey", () => {
     let warnStub: sinon.SinonStub;
+    let promptStub: sinon.SinonStub;
 
     beforeEach(() => {
       warnStub = sinon.stub(utils, "logWarning").resolves(undefined);
+      promptStub = sinon.stub(prompt, "promptOnce").resolves(true);
     });
 
     afterEach(() => {
       warnStub.restore();
+      promptStub.restore();
     });
 
-    it("returns the original key if it follows convention", () => {
-      expect(secrets.ensureValidKey("MY_KEY", options)).to.equal("MY_KEY");
+    it("returns the original key if it follows convention", async () => {
+      expect(await secrets.ensureValidKey("MY_KEY", options)).to.equal("MY_KEY");
       expect(warnStub).to.not.have.been.called;
     });
 
-    it("returns the transformed key (with warning) if with dashses", () => {
-      expect(secrets.ensureValidKey("MY-KEY", options)).to.equal("MY_KEY");
+    it("returns the transformed key (with warning) if with dashses", async () => {
+      expect(await secrets.ensureValidKey("MY-KEY", options)).to.equal("MY_KEY");
       expect(warnStub).to.have.been.calledOnce;
     });
 
-    it("returns the transformed key (with warning) if with lower cases", () => {
-      expect(secrets.ensureValidKey("my_key", options)).to.equal("MY_KEY");
+    it("returns the transformed key (with warning) if with lower cases", async () => {
+      expect(await secrets.ensureValidKey("my_key", options)).to.equal("MY_KEY");
       expect(warnStub).to.have.been.calledOnce;
     });
 
-    it("returns the transformed key (with warning) if camelCased", () => {
-      expect(secrets.ensureValidKey("myKey", options)).to.equal("MY_KEY");
+    it("returns the transformed key (with warning) if camelCased", async () => {
+      expect(await secrets.ensureValidKey("myKey", options)).to.equal("MY_KEY");
       expect(warnStub).to.have.been.calledOnce;
     });
 
     it("throws error if given non-conventional key w/ forced option", () => {
-      expect(() => secrets.ensureValidKey("throwError", { ...options, force: true })).to.throw(
+      expect(secrets.ensureValidKey("throwError", { ...options, force: true })).to.be.rejectedWith(
         FirebaseError
       );
+    });
+
+    it("throws error if given reserved key", () => {
+      expect(secrets.ensureValidKey("FIREBASE_CONFIG", options)).to.be.rejectedWith(FirebaseError);
     });
   });
 

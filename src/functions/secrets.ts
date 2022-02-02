@@ -3,6 +3,7 @@ import { Options } from "../options";
 import { FirebaseError } from "../error";
 import { logWarning } from "../utils";
 import { promptOnce } from "../prompt";
+import { validateKey } from "./env";
 
 const FIREBASE_MANGED = "firebase-managed";
 
@@ -32,15 +33,30 @@ function transformKey(key: string): string {
 /**
  * Validate and transform keys to match the convention recommended by Firebase.
  */
-export function ensureValidKey(key: string, options: Options): string {
+export async function ensureValidKey(key: string, options: Options): Promise<string> {
   const transformedKey = transformKey(key);
   if (transformedKey !== key) {
     if (options.force) {
       throw new FirebaseError("Secret key must be in UPPER_SNAKE_CASE.");
     }
-    logWarning(
-      `By convention, secret key must be in UPPER_SNAKE_CASE. Using ${transformedKey} as key instead.`
+    logWarning(`By convention, secret key must be in UPPER_SNAKE_CASE.`);
+    const confirm = await promptOnce(
+      {
+        name: "updateKey",
+        type: "confirm",
+        default: true,
+        message: `Would you like to use ${transformedKey} as key instead?`,
+      },
+      options
     );
+    if (!confirm) {
+      throw new FirebaseError("Secret key must be in UPPER_SNAKE_CASE.");
+    }
+  }
+  try {
+    validateKey(transformedKey);
+  } catch (err: any) {
+    throw new FirebaseError(`Invalid secret key ${transformedKey}`, { children: [err] });
   }
   return transformedKey;
 }
