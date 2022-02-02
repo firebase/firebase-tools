@@ -2,7 +2,23 @@ import { expect } from "chai";
 
 import { ExtensionsEmulator } from "../../emulator/extensionsEmulator";
 import { EmulatableBackend } from "../../emulator/functionsEmulator";
+import { ExtensionVersion } from "../../extensions/extensionsApi";
 import * as planner from "../../deploy/extensions/planner";
+
+const TEST_EXTENSION_VERSION: ExtensionVersion = {
+  name: "publishers/firebase/extensions/storage-resize-images/versions/0.1.18",
+  ref: "firebase/storage-resize-images@0.1.18",
+  state: "PUBLISHED",
+  sourceDownloadUri: "https://fake.test",
+  hash: "abc123",
+  spec: {
+    name: "publishers/firebase/extensions/storage-resize-images/versions/0.1.18",
+    resources: [],
+    params: [],
+    version: "0.1.18",
+    sourceUrl: "https://fake.test",
+  },
+};
 
 describe("Extensions Emulator", () => {
   describe("toEmulatableBackends", () => {
@@ -31,6 +47,7 @@ describe("Extensions Emulator", () => {
           params: {
             LOCATION: "us-west1",
           },
+          extensionVersion: TEST_EXTENSION_VERSION,
         },
         expected: {
           env: {
@@ -58,6 +75,7 @@ describe("Extensions Emulator", () => {
               regions: ["us-west1"],
             },
           ],
+          extensionVersion: TEST_EXTENSION_VERSION,
         },
       },
     ];

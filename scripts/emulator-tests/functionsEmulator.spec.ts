@@ -608,6 +608,27 @@ describe("FunctionsEmulator-Hub", () => {
       });
   }).timeout(TIMEOUT_LONG);
 
+  it("should respond to requests to /backends to with info about the running backends", async () => {
+    useFunctions(() => {
+      require("firebase-admin").initializeApp();
+      return {
+        function_id: require("firebase-functions").https.onRequest(
+          (req: express.Request, res: express.Response) => {
+            res.json({ path: req.path });
+          }
+        ),
+      };
+    });
+
+    await supertest(functionsEmulator.createHubServer())
+      .get("/backends")
+      .expect(200)
+      .then((res) => {
+        // TODO(b/216642962): Add tests for this endpoint that validate behavior when there are Extensions running
+        expect(res.body.backends).to.deep.equal([{ env: {}, functionTriggers: [] }]);
+      });
+  }).timeout(TIMEOUT_LONG);
+
   describe("environment variables", () => {
     let emulatorRegistryStub: sinon.SinonStub;
 

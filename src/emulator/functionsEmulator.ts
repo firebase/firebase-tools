@@ -56,6 +56,7 @@ import {
 import * as functionsEnv from "../functions/env";
 import { EventUtils } from "./events/types";
 import { functionIdsAreValid } from "../deploy/functions/validate";
+import { ExtensionVersion } from "../extensions/extensionsApi";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -82,6 +83,17 @@ export interface EmulatableBackend {
   nodeMajorVersion?: number;
   nodeBinary?: string;
   extensionInstanceId?: string;
+  extensionVersion?: ExtensionVersion;
+}
+
+/**
+ * BackendInfo is an API type used by the Emulator UI containing info about an Extension or CF3 module.
+ */
+export interface BackendInfo {
+  env: Record<string, string>;
+  functionTriggers: ParsedTriggerDefinition[];
+  extensionInstanceId?: string;
+  extensionVersion?: ExtensionVersion;
 }
 
 export interface FunctionsEmulatorArgs {
@@ -237,6 +249,9 @@ export class FunctionsEmulator implements EmulatorInstance {
     // A trigger named "foo" needs to respond at "foo" as well as "foo/*" but not "fooBar".
     const httpsFunctionRoutes = [httpsFunctionRoute, `${httpsFunctionRoute}/*`];
 
+    // The URL for the listBackends endpoint, which is used by the Emulator UI.
+    const listBackendsRoute = `/backends`;
+
     const backgroundHandler: express.RequestHandler = (req, res) => {
       const region = req.params.region;
       const triggerId = req.params.trigger_name;
@@ -312,9 +327,14 @@ export class FunctionsEmulator implements EmulatorInstance {
       res.json({ status: "multicast_acknowledged" });
     };
 
+    const listBackendsHandler: express.RequestHandler = (req, res) => {
+      res.json({ backends: this.getBackendInfo() });
+    };
+
     // The ordering here is important. The longer routes (background)
     // need to be registered first otherwise the HTTP functions consume
     // all events.
+    hub.get(listBackendsRoute, dataMiddleware, listBackendsHandler);
     hub.post(backgroundFunctionRoute, dataMiddleware, backgroundHandler);
     hub.post(multicastFunctionRoute, dataMiddleware, multicastHandler);
     hub.all(httpsFunctionRoutes, dataMiddleware, httpsHandler);
@@ -791,8 +811,17 @@ export class FunctionsEmulator implements EmulatorInstance {
     return def.eventTrigger ? `${def.id}-${this.triggerGeneration}` : def.id;
   }
 
-  getBackends(): EmulatableBackend[] {
-    return this.args.emulatableBackends;
+  getBackendInfo(): BackendInfo[] {
+    return this.args.emulatableBackends.map((e: EmulatableBackend) => {
+      return {
+        env: e.env,
+        extensionInstanceId: e.extensionInstanceId,
+        extensionVersion: e.extensionVersion,
+        functionTriggers: e.predefinedTriggers ?? [],
+        // TODO: Right now, functionTriggers will be an empty list for CF3 backends.
+        // We need to figure out how to expose the loaded triggers here here.
+      };
+    });
   }
 
   addTriggerRecord(
