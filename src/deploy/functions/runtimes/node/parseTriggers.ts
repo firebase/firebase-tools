@@ -191,7 +191,7 @@ export function addResourcesToBackend(
       triggered = { taskQueueTrigger: annotation.taskQueueTrigger };
       want.requiredAPIs.push({
         api: "cloudtasks.googleapis.com",
-        reason: "Needed for v1 task queue functions.",
+        reason: "Needed for task queue functions.",
       });
     } else if (annotation.httpsTrigger) {
       const trigger: backend.HttpsTrigger = {};
@@ -201,16 +201,10 @@ export function addResourcesToBackend(
       proto.copyIfPresent(trigger, annotation.httpsTrigger, "invoker");
       triggered = { httpsTrigger: trigger };
     } else if (annotation.schedule) {
-      want.requiredAPIs.push(
-        {
-          api: "pubsub.googleapis.com",
-          reason: "Needed for scheduled functions.",
-        },
-        {
-          api: "cloudscheduler.googleapis.com",
-          reason: "Needed for scheduled functions.",
-        }
-      );
+      want.requiredAPIs.push({
+        api: "cloudscheduler.googleapis.com",
+        reason: "Needed for scheduled functions.",
+      });
       triggered = { scheduleTrigger: annotation.schedule };
     } else {
       triggered = {
