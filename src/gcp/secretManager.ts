@@ -82,6 +82,9 @@ export async function getSecret(projectId: string, name: string): Promise<Secret
   return secret;
 }
 
+/**
+ * List all secret versions associated with a secret.
+ */
 export async function listSecretVersions(
   projectId: string,
   name: string
@@ -127,6 +130,9 @@ export async function getSecretVersion(
   };
 }
 
+/**
+ * Access secret value of a given secret version.
+ */
 export async function accessSecretVersion(
   projectId: string,
   name: string,
@@ -138,6 +144,9 @@ export async function accessSecretVersion(
   return Buffer.from(res.body.payload.data, "base64").toString();
 }
 
+/**
+ * Change state of secret version to destroyed.
+ */
 export async function destroySecretVersion(
   projectId: string,
   name: string,
@@ -145,7 +154,7 @@ export async function destroySecretVersion(
 ): Promise<void> {
   if (version === "latest") {
     const sv = await getSecretVersion(projectId, name, "latest");
-    version = sv.version;
+    version = sv.versionId;
   }
   await client.post(`projects/${projectId}/secrets/${name}/versions/${version}:destroy`);
 }
@@ -225,6 +234,9 @@ export async function createSecret(
   return parseSecretResourceName(createRes.body.name);
 }
 
+/**
+ * Update labels associated with the secret.
+ */
 export async function patchSecret(
   projectId: string,
   name: string,
