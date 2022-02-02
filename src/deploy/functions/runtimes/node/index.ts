@@ -3,6 +3,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as portfinder from "portfinder";
 import * as spawn from "cross-spawn";
+import * as semver from "semver";
 import fetch from "node-fetch";
 
 import { FirebaseError } from "../../../../error";
@@ -16,6 +17,11 @@ import * as versioning from "./versioning";
 import * as parseTriggers from "./parseTriggers";
 import * as discovery from "../discovery";
 
+const MIN_FUNCTIONS_CONTROL_API_VERSION = "3.17.0";
+
+/**
+ *
+ */
 export async function tryCreateDelegate(
   context: runtimes.DelegateContext
 ): Promise<Delegate | undefined> {
@@ -90,8 +96,7 @@ export class Delegate {
     adminPort: number,
     envs: backend.EnvironmentVariables
   ): Promise<() => Promise<void>> {
-    // TODO: Fix command path?
-    const childProcess = spawn("node_modules/.bin/firebase-functions", [this.sourceDir], {
+    const childProcess = spawn("npx firebase-functions", [this.sourceDir], {
       env: {
         ...envs,
         PORT: port.toString(),
@@ -102,7 +107,7 @@ export class Delegate {
       cwd: this.sourceDir,
       stdio: [/* stdin=*/ "ignore", /* stdout=*/ "pipe", /* stderr=*/ "inherit"],
     });
-    childProcess.stdout.on("data", (chunk) => {
+    childProcess.stdout?.on("data", (chunk) => {
       logger.debug(chunk.toString());
     });
     return Promise.resolve(async () => {
@@ -128,8 +133,19 @@ export class Delegate {
     env: backend.EnvironmentVariables
   ): Promise<backend.Backend> {
     if (previews.functionsv2) {
-      // TODO: Use container contract only if user code is using supported SDK v.
-      console.log("Discovering spec via container contract!");
+      if (semver.lt(this.sdkVersion, MIN_FUNCTIONS_CONTROL_API_VERSION)) {
+        logger.warn(
+          "You are using an old version of firebase-functions SDK" +
+            `Please update firebase-functions SDK to >=${MIN_FUNCTIONS_CONTROL_API_VERSION}`
+        );
+        return parseTriggers.discoverBackend(
+          this.projectId,
+          this.sourceDir,
+          this.runtime,
+          config,
+          env
+        );
+      }
       let discovered = await discovery.detectFromYaml(this.sourceDir, this.projectId, this.runtime);
       if (!discovered) {
         const getPort = promisify(portfinder.getPort) as () => Promise<number>;
