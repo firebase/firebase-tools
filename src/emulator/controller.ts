@@ -332,6 +332,7 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
     );
   }
   const hubLogger = EmulatorLogger.forEmulator(Emulators.HUB);
+  // TODO (b/217189992): Support '--only extensions` & add extensions to this logging.
   hubLogger.logLabeled("BULLET", "emulators", `Starting emulators: ${targets.join(", ")}`);
 
   const projectId: string = getProjectId(options) || ""; // TODO: Next breaking change, consider making this fall back to demo project.
