@@ -47,7 +47,7 @@ export default new Command("functions:secrets:set <KEY>")
       secretValue = fs.readFileSync(dataFile, "utf-8");
     }
 
-    const secretVersion = await addVersion(secret, secretValue);
+    const secretVersion = await addVersion(projectId, key, secretValue);
     logSuccess(`Created a new secret version ${toSecretVersionResourceName(secretVersion)}`);
     logBullet(
       "Please deploy your functions for the change to take effect by running:\n\t" +
