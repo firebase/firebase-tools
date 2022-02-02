@@ -178,7 +178,7 @@ export async function secretExists(projectId: string, name: string): Promise<boo
  * Parse full secret resource name.
  */
 export function parseSecretResourceName(resourceName: string): Secret {
-  const match = resourceName.match(SECRET_NAME_REGEX);
+  const match = SECRET_NAME_REGEX.exec(resourceName);
   if (!match?.groups) {
     throw new FirebaseError(`Invalid secret resource name [${resourceName}].`);
   }
@@ -235,7 +235,7 @@ export async function createSecret(
 }
 
 /**
- * Update labels associated with the secret.
+ * Update metadata associated with a secret.
  */
 export async function patchSecret(
   projectId: string,
@@ -251,12 +251,16 @@ export async function patchSecret(
   return parseSecretResourceName(res.body.name);
 }
 
+/**
+ * Add new version the payload as value on the given secret.
+ */
 export async function addVersion(
-  secret: Secret,
+  projectId: string,
+  name: string,
   payloadData: string
 ): Promise<Required<SecretVersion>> {
   const res = await client.post<AddVersionRequest, { name: string; state: SecretVersionState }>(
-    `projects/${secret.projectId}/secrets/${secret.name}:addVersion`,
+    `projects/${projectId}/secrets/${name}:addVersion`,
     {
       payload: {
         data: Buffer.from(payloadData).toString("base64"),
