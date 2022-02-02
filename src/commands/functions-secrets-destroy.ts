@@ -2,7 +2,7 @@ import { Command } from "../command";
 import { logger } from "../logger";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
-import { destroySecretVersion } from "../gcp/secretManager";
+import { destroySecretVersion, getSecretVersion } from "../gcp/secretManager";
 import { promptOnce } from "../prompt";
 
 export default new Command("functions:secrets:destroy <KEY>[@version]")
@@ -14,14 +14,14 @@ export default new Command("functions:secrets:destroy <KEY>[@version]")
     if (!version) {
       version = "latest";
     }
-
+    const sv = await getSecretVersion(projectId, name, version);
     if (!options.force) {
       const confirm = await promptOnce(
         {
           name: "destroy",
           type: "confirm",
           default: true,
-          message: `Are you sure you want to destroy ${name}@${version}`,
+          message: `Are you sure you want to destroy ${sv.secret.name}@${sv.version}`,
         },
         options
       );
@@ -29,7 +29,6 @@ export default new Command("functions:secrets:destroy <KEY>[@version]")
         return;
       }
     }
-
     await destroySecretVersion(projectId, name, version);
     logger.info(`Destroyed secret ${name}@${version}`);
   });
