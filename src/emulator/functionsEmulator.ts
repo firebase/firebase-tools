@@ -81,6 +81,7 @@ export interface EmulatableBackend {
   predefinedTriggers?: ParsedTriggerDefinition[];
   nodeMajorVersion?: number;
   nodeBinary?: string;
+  extensionInstanceId?: string;
 }
 
 export interface FunctionsEmulatorArgs {

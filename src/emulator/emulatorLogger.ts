@@ -61,6 +61,20 @@ export class EmulatorLogger {
     });
   }
 
+  static forExtension(ref?: string, instanceId?: string) {
+    return new EmulatorLogger({
+      metadata: {
+        emulator: {
+          name: "extensions",
+        },
+        extension: {
+          ref,
+          instanceId,
+        },
+      },
+    });
+  }
+
   /**
    * Within this file, utils.logFoo() or logger.Foo() should not be called directly,
    * so that we can respect the "quiet" flag.

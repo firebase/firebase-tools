@@ -24,7 +24,7 @@ import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
 import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
 import { HostingEmulator } from "./hostingEmulator";
 import { FirebaseError } from "../error";
-import { getProjectId, needProjectId } from "../projectUtils";
+import { getProjectId, needProjectId, getAliases, needProjectNumber } from "../projectUtils";
 import { PubsubEmulator } from "./pubsubEmulator";
 import * as commandUtils from "./commandUtils";
 import { EmulatorHub } from "./hub";
@@ -43,6 +43,7 @@ import { getDefaultDatabaseInstance } from "../getDefaultDatabaseInstance";
 import { getProjectDefaultAccount } from "../auth";
 import { Options } from "../options";
 import { ParsedTriggerDefinition } from "./functionsEmulatorShared";
+import { ExtensionsEmulator } from "./extensionsEmulator";
 
 async function getAndCheckAddress(emulator: Emulators, options: Options): Promise<Address> {
   let host = options.config.src.emulators?.[emulator]?.host || Constants.getDefaultHost(emulator);
@@ -331,6 +332,7 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
     );
   }
   const hubLogger = EmulatorLogger.forEmulator(Emulators.HUB);
+  // TODO (b/217189992): Support '--only extensions` & add extensions to this logging.
   hubLogger.logLabeled("BULLET", "emulators", `Starting emulators: ${targets.join(", ")}`);
 
   const projectId: string = getProjectId(options) || ""; // TODO: Next breaking change, consider making this fall back to demo project.
@@ -446,19 +448,37 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
     }
 
     const account = getProjectDefaultAccount(options.projectRoot);
-    // TODO: Go read firebase.json for extensions and add them to emualtableBackends.
     const emulatableBackends: EmulatableBackend[] = [
       {
         functionsDir,
         env: {
           ...options.extensionEnv,
         },
+        // TODO(b/213335255): predefinedTriggers and nodeMajorVersion are here to support ext:dev:emulators:* commands.
+        // Ideally, we should handle that case via ExtensionEmulator.
         predefinedTriggers: options.extensionTriggers as ParsedTriggerDefinition[] | undefined,
         nodeMajorVersion: parseRuntimeVersion(
           options.extensionNodeVersion || options.config.get("functions.runtime")
         ),
       },
     ];
+    if (options.config.has("extensions")) {
+      // TODO: This should not error out when called with a fake project.
+      const projectNumber = await needProjectNumber(options);
+      const aliases = getAliases(options, projectId);
+
+      const extensionEmulator = new ExtensionsEmulator({
+        projectId,
+        projectDir: options.config.projectDir,
+        projectNumber,
+        aliases,
+        extensions: options.config.get("extensions"),
+      });
+      const extensionsBackends = await extensionEmulator.getExtensionBackends();
+      emulatableBackends.push(...extensionsBackends);
+    }
+
+    // TODO(b/213241033): Figure out how to watch for changes to extensions .env files & reload triggers when they change.
     const functionsEmulator = new FunctionsEmulator({
       projectId,
       emulatableBackends,
