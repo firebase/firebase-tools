@@ -10,6 +10,8 @@ import * as runtimes from "../deploy/functions/runtimes";
 import * as iam from "./iam";
 import { Client } from "../apiv2";
 import { functionsOrigin } from "../api";
+import { getFirebaseProject } from "../management/projects";
+import { assertExhaustive } from "../functional";
 
 export const API_VERSION = "v1";
 const client = new Client({ urlPrefix: functionsOrigin, apiVersion: API_VERSION });
@@ -590,11 +592,4 @@ export function functionFromEndpoint(
   );
 
   return gcfFunction;
-}
-
-/**
- *  By default, Google Cloud Function uses App Engine default service account for function execution.
- */
-export function defaultServiceAccount(projectId: string): string {
-  return `${projectId}@appspot.gserviceaccount.com`;
 }

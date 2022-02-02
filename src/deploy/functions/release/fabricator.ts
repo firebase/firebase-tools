@@ -312,11 +312,14 @@ export class Fabricator {
       }
     }
 
-    await this.setConcurrency(
-      endpoint,
-      serviceName,
-      endpoint.concurrency || DEFAULT_GCFV2_CONCURRENCY
-    );
+    const mem = endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;
+    if (mem >= backend.MIN_MEMORY_FOR_CONCURRENCY && endpoint.concurrency != 1) {
+      await this.setConcurrency(
+        endpoint,
+        serviceName,
+        endpoint.concurrency || DEFAULT_GCFV2_CONCURRENCY
+      );
+    }
   }
 
   async updateV1Function(endpoint: backend.Endpoint, scraper: SourceTokenScraper): Promise<void> {
