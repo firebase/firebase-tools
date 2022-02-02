@@ -5,10 +5,12 @@ import { needProjectId } from "../projectUtils";
 import {
   deleteSecret,
   destroySecretVersion,
+  getSecret,
   getSecretVersion,
   listSecretVersions,
 } from "../gcp/secretManager";
 import { promptOnce } from "../prompt";
+import * as secrets from "../functions/secrets";
 
 export default new Command("functions:secrets:destroy <KEY>[@version]")
   .description("Destroy a secret. Defaults to destroying the latest version.")
@@ -35,11 +37,15 @@ export default new Command("functions:secrets:destroy <KEY>[@version]")
       }
     }
     await destroySecretVersion(projectId, name, version);
-    logger.info(`Destroyed secret ${name}@${version}`);
+    logger.info(`Destroyed secret version ${name}@${sv.versionId}`);
 
-    const versions = await listSecretVersions(projectId, name);
-    if (versions.filter((v) => v.state !== "ENABLED").length === 0) {
-      // No active secret version. Remove secret resource.
-      await deleteSecret(projectId, name);
+    const secret = await getSecret(projectId, name);
+    if (secrets.isFirebaseManaged(secret)) {
+      const versions = await listSecretVersions(projectId, name);
+      if (versions.filter((v) => v.state === "ENABLED").length === 0) {
+        logger.info(`No active secret versions left. Destroying secret ${name}`);
+        // No active secret version. Remove secret resource.
+        await deleteSecret(projectId, name);
+      }
     }
   });

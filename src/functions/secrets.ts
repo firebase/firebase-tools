@@ -10,7 +10,7 @@ const FIREBASE_MANGED = "firebase-managed";
 /**
  * Returns true if secret is managed by Firebase.
  */
-function isFirebaseManaged(secret: Secret): boolean {
+export function isFirebaseManaged(secret: Secret): boolean {
   return Object.keys(secret.labels || []).includes(FIREBASE_MANGED);
 }
 
