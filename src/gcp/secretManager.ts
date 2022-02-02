@@ -162,6 +162,9 @@ export async function createSecret(
   return parseSecretResourceName(createRes.body.name);
 }
 
+/**
+ * Update metadata associated with a secret.
+ */
 export async function patchSecret(
   projectId: string,
   name: string,
@@ -185,7 +188,7 @@ export async function addVersion(
   payloadData: string
 ): Promise<Required<SecretVersion>> {
   const res = await client.post<AddVersionRequest, { name: string; state: SecretVersionState }>(
-    `projects/${secret.projectId}/secrets/${secret.name}:addVersion`,
+    `projects/${projectId}/secrets/${name}:addVersion`,
     {
       payload: {
         data: Buffer.from(payloadData).toString("base64"),
