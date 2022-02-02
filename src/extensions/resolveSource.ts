@@ -13,36 +13,7 @@ import { firebaseExtensionsRegistryOrigin } from "../api";
 const EXTENSIONS_REGISTRY_ENDPOINT = "/extensions.json";
 
 export interface RegistryEntry {
-  icons?: { [key: string]: string };
-  labels: { [key: string]: string };
-  versions: { [key: string]: string };
-  updateWarnings?: { [key: string]: UpdateWarning[] };
   publisher: string;
-}
-
-export interface UpdateWarning {
-  from: string;
-  description: string;
-  action?: string;
-}
-
-/**
- * Displays an update warning as markdown, and prompts the user for confirmation.
- * @param updateWarning The update warning to display and prompt for.
- */
-export async function confirmUpdateWarning(updateWarning: UpdateWarning): Promise<void> {
-  logger.info(marked(updateWarning.description));
-  if (updateWarning.action) {
-    logger.info(marked(updateWarning.action));
-  }
-  const continueUpdate = await promptOnce({
-    type: "confirm",
-    message: "Do you wish to continue with this update?",
-    default: false,
-  });
-  if (!continueUpdate) {
-    throw new FirebaseError(`Update cancelled.`, { exit: 2 });
-  }
 }
 
 /**
