@@ -555,11 +555,7 @@ async function loginWithLocalhost<ResultType>(
   });
 }
 
-export async function loginGoogle(
-  localhost: boolean,
-  userHint?: string,
-  remote = false
-): Promise<UserCredentials> {
+export async function loginGoogle(localhost: boolean, userHint?: string): Promise<UserCredentials> {
   if (localhost) {
     const port = await getPort();
     try {
