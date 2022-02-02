@@ -17,28 +17,6 @@ export interface RegistryEntry {
 }
 
 /**
- * Gets the sourceUrl for a given extension name and version from a registry entry
- * @param registryEntry the registry entry to look through.
- * @param name the name of the extension.
- * @param version the version of the extension. Defaults to latest.
- * @returns the source corresponding to extensionName in the registry.
- */
-export function resolveSourceUrl(
-  registryEntry: RegistryEntry,
-  name: string,
-  version?: string
-): string {
-  const targetVersion = getTargetVersion(registryEntry, version);
-  const sourceUrl = _.get(registryEntry, ["versions", targetVersion]);
-  if (!sourceUrl) {
-    throw new FirebaseError(
-      `Could not find version ${clc.bold(version)} of extension ${clc.bold(name)}.`
-    );
-  }
-  return sourceUrl;
-}
-
-/**
  * Looks up and returns a entry from the published extensions registry.
  * @param name the name of the extension.
  */
@@ -62,10 +40,6 @@ export function getTargetVersion(registryEntry: RegistryEntry, versionOrLabel?: 
   // The version to search for when a user passes a label like 'latest'.
   const versionFromLabel = _.get(registryEntry, ["labels", seekVersion]);
   return versionFromLabel || seekVersion;
-}
-
-export function getMinRequiredVersion(registryEntry: RegistryEntry): string {
-  return _.get(registryEntry, ["labels", "minRequired"]);
 }
 
 /**
