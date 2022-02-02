@@ -104,6 +104,7 @@ export async function prepare(
   };
   const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
   const usedDotenv = hasDotenv(userEnvOpt);
+  const environmentVariables = { ...userEnvs, ...firebaseEnvs };
   const tag = hasUserConfig(runtimeConfig)
     ? usedDotenv
       ? "mixed"
@@ -114,8 +115,8 @@ export async function prepare(
   await track("functions_codebase_deploy_env_method", tag);
 
   logger.debug(`Analyzing ${runtimeDelegate.name} backend spec`);
-  const wantBackend = await runtimeDelegate.discoverSpec(runtimeConfig, firebaseEnvs);
-  wantBackend.environmentVariables = { ...userEnvs, ...firebaseEnvs };
+  const wantBackend = await runtimeDelegate.discoverSpec(runtimeConfig, environmentVariables);
+  wantBackend.environmentVariables = environmentVariables;
   payload.functions = { backend: wantBackend };
 
   // Note: Some of these are premium APIs that require billing to be enabled.
