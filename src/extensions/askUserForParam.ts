@@ -240,7 +240,7 @@ async function addNewSecretVersion(
   paramSpec: Param,
   secretValue: string
 ) {
-  const version = await secretManagerApi.addVersion(secret, secretValue);
+  const version = await secretManagerApi.addVersion(projectId, secret.name, secretValue);
   await secretsUtils.grantFirexServiceAgentSecretAdminRole(secret);
   return `projects/${version.secret.projectId}/secrets/${version.secret.name}/versions/${version.versionId}`;
 }
