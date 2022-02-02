@@ -252,6 +252,14 @@ export async function patchSecret(
 }
 
 /**
+ * Delete secret resource.
+ */
+export async function deleteSecret(projectId: string, name: string): Promise<void> {
+  const path = `projects/${projectId}/secrets/${name}`;
+  await client.delete(path);
+}
+
+/**
  * Add new version the payload as value on the given secret.
  */
 export async function addVersion(

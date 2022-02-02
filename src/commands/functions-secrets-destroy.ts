@@ -2,7 +2,12 @@ import { Command } from "../command";
 import { logger } from "../logger";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
-import { destroySecretVersion, getSecretVersion } from "../gcp/secretManager";
+import {
+  deleteSecret,
+  destroySecretVersion,
+  getSecretVersion,
+  listSecretVersions,
+} from "../gcp/secretManager";
 import { promptOnce } from "../prompt";
 
 export default new Command("functions:secrets:destroy <KEY>[@version]")
@@ -21,7 +26,7 @@ export default new Command("functions:secrets:destroy <KEY>[@version]")
           name: "destroy",
           type: "confirm",
           default: true,
-          message: `Are you sure you want to destroy ${sv.secret.name}@${sv.version}`,
+          message: `Are you sure you want to destroy ${sv.secret.name}@${sv.versionId}`,
         },
         options
       );
@@ -31,4 +36,10 @@ export default new Command("functions:secrets:destroy <KEY>[@version]")
     }
     await destroySecretVersion(projectId, name, version);
     logger.info(`Destroyed secret ${name}@${version}`);
+
+    const versions = await listSecretVersions(projectId, name);
+    if (versions.filter((v) => v.state !== "ENABLED").length === 0) {
+      // No active secret version. Remove secret resource.
+      await deleteSecret(projectId, name);
+    }
   });
