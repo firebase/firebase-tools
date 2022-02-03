@@ -128,7 +128,7 @@ export async function secretAccess(
   const ensureAccess = async (secret: string, serviceAccounts: string[]) => {
     logLabeledBullet(
       "functions",
-      `ensuring ${clc.bold(serviceAccounts.join(", "))} access to ${clc.bold(secret)}.`
+      `ensuring ${clc.bold(serviceAccounts.join(", "))} access to secret ${clc.bold(secret)}.`
     );
     await ensureServiceAgentRole(
       { name: secret, projectId },
@@ -147,12 +147,10 @@ export async function secretAccess(
   // Remove secret/service account pairs that already exists to avoid unnecessary IAM calls.
   for (const [secret, serviceAccounts] of Object.entries(haveSecrets)) {
     for (const serviceAccount of serviceAccounts) {
-      if (wantSecrets?.[secret].has(serviceAccount)) {
-        wantSecrets[secret].delete(serviceAccount);
-        if (wantSecrets[secret].size === 0) {
-          delete wantSecrets[secret];
-        }
-      }
+      wantSecrets[secret]?.delete(serviceAccount);
+    }
+    if (wantSecrets[secret]?.size == 0) {
+      delete wantSecrets[secret];
     }
   }
 

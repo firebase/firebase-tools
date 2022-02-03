@@ -3,9 +3,10 @@ import * as clc from "cli-color";
 
 import { FirebaseError } from "../../error";
 import { getSecretVersion, SecretVersion } from "../../gcp/secretManager";
-import { logLabeledSuccess } from "../../utils";
+import { logger } from "../../logger";
 import * as fsutils from "../../fsutils";
 import * as backend from "./backend";
+import * as utils from "../../utils";
 
 /** Validate that the configuration for endpoints are valid. */
 export function endpointsAreValid(wantBackend: backend.Backend): void {
@@ -40,7 +41,6 @@ export function endpointsAreValid(wantBackend: backend.Backend): void {
     throw new FirebaseError(msg);
   }
 }
-import * as utils from "../../utils";
 
 /**
  * Check that functions directory exists.
@@ -134,11 +134,9 @@ async function validateSecretVersions(projectId: string, endpoints: backend.Endp
 
   const results = await utils.allSettled(
     Array.from(toResolve).map(async (secret): Promise<SecretVersion> => {
+      // We resolve the secret to its latest version - we do not allow CF3 customers to pin secret versions.
       const sv = await getSecretVersion(projectId, secret, "latest");
-      logLabeledSuccess(
-        "functions",
-        `resolved secret version of ${clc.bold(secret)} to ${clc.bold(sv.versionId)}.`
-      );
+      logger.debug(`Resolved secret version of ${clc.bold(secret)} to ${clc.bold(sv.versionId)}.`);
       return sv;
     })
   );
@@ -148,7 +146,6 @@ async function validateSecretVersions(projectId: string, endpoints: backend.Endp
   for (const result of results) {
     if (result.status === "fulfilled") {
       const sv = result.value;
-
       if (sv.state != "ENABLED") {
         errs.push(
           new FirebaseError(
@@ -156,7 +153,6 @@ async function validateSecretVersions(projectId: string, endpoints: backend.Endp
           )
         );
       }
-
       secretVersions[sv.secret.name] = sv;
     } else {
       errs.push(new FirebaseError((result.reason as { message: string }).message));
@@ -172,7 +168,9 @@ async function validateSecretVersions(projectId: string, endpoints: backend.Endp
     for (const s of e.secretEnvironmentVariables! || []) {
       s.version = secretVersions[s.secret].versionId;
       if (!s.version) {
-        throw new FirebaseError("Secret version is unexpectedly undefined. Please file a ticket.");
+        throw new FirebaseError(
+          "Secret version is unexpectedly undefined. This should never happen."
+        );
       }
     }
   }
