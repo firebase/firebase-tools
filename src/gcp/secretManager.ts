@@ -39,6 +39,7 @@ export interface SecretVersion {
 }
 
 interface CreateSecretRequest {
+  name: string;
   replication: { automatic: {} };
   labels: Record<string, string>;
 }
@@ -150,6 +151,7 @@ export async function createSecret(
   const createRes = await client.post<CreateSecretRequest, Secret>(
     `projects/${projectId}/secrets`,
     {
+      name,
       replication: {
         automatic: {},
       },
@@ -158,6 +160,23 @@ export async function createSecret(
     { queryParams: { secretId: name } }
   );
   return parseSecretResourceName(createRes.body.name);
+}
+
+/**
+ * Update metadata associated with a secret.
+ */
+export async function patchSecret(
+  projectId: string,
+  name: string,
+  labels: Record<string, string>
+): Promise<Secret> {
+  const fullName = `projects/${projectId}/secrets/${name}`;
+  const res = await client.patch<Omit<Secret, "projectId">, Secret>(
+    fullName,
+    { name: fullName, labels },
+    { queryParams: { updateMask: "labels" } } // Only allow patching labels for now.
+  );
+  return parseSecretResourceName(res.body.name);
 }
 
 /**
