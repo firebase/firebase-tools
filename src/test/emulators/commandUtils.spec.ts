@@ -34,6 +34,16 @@ describe("commandUtils", () => {
     });
   });
 
+  it("Should disallow the user to set the current folder via the --import flag", () => {
+    expect(() => testSetExportOnExitOptions({ import: ".", exportOnExit: true })).to.throw(
+      EXPORT_ON_EXIT_CWD_DANGER
+    );
+    const cwdSubDir = join(".", "some-dir");
+    expect(
+      testSetExportOnExitOptions({ import: cwdSubDir, exportOnExit: true }).exportOnExit
+    ).to.equal(cwdSubDir);
+  });
+
   it("should validate --export-on-exit options", () => {
     expect(testSetExportOnExitOptions({ import: "./data" }).exportOnExit).to.be.undefined;
     expect(
