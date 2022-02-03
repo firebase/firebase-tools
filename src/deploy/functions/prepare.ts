@@ -1,26 +1,24 @@
 import * as clc from "cli-color";
 
-import { Options } from "../../options";
-import { ensureCloudBuildEnabled } from "./ensureCloudBuildEnabled";
-import { functionMatchesAnyGroup, getFilterGroups } from "./functionsDeployHelper";
-import { logBullet } from "../../utils";
-import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload";
-import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import * as args from "./args";
 import * as backend from "./backend";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
 import * as functionsConfig from "../../functionsConfig";
 import * as functionsEnv from "../../functions/env";
+import * as runtimes from "./runtimes";
+import * as validate from "./validate";
+import * as ensure from "./ensure";
+import { Options } from "../../options";
+import { functionMatchesAnyGroup, getFilterGroups } from "./functionsDeployHelper";
+import { logBullet } from "../../utils";
+import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload";
+import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import { previews } from "../../previews";
 import { needProjectId } from "../../projectUtils";
 import { track } from "../../track";
-import * as runtimes from "./runtimes";
-import * as validate from "./validate";
-import * as utils from "../../utils";
 import { logger } from "../../logger";
 import { ensureTriggerRegions } from "./triggerRegionHelper";
 import { ensureServiceAgentRoles } from "./checkIam";
-import { DelegateContext } from "./runtimes";
 import { FirebaseError } from "../../error";
 
 function hasUserConfig(config: Record<string, unknown>): boolean {
@@ -64,7 +62,7 @@ export async function prepare(
   }
   const sourceDir = options.config.path(sourceDirName);
 
-  const delegateContext: DelegateContext = {
+  const delegateContext: runtimes.DelegateContext = {
     projectId,
     sourceDir,
     projectDir: options.config.projectDir,
@@ -85,8 +83,8 @@ export async function prepare(
       "runtimeconfig",
       /* silent=*/ true
     ),
-    ensureCloudBuildEnabled(projectId),
-    maybeEnableAR(projectId),
+    ensure.cloudBuildEnabled(projectId),
+    ensure.maybeEnableAR(projectId),
   ]);
   context.runtimeConfigEnabled = checkAPIsEnabled[1];
   context.artifactRegistryEnabled = checkAPIsEnabled[3];
@@ -186,6 +184,8 @@ export async function prepare(
   await promptForFailurePolicies(options, matchingBackend, haveBackend);
   await promptForMinInstances(options, matchingBackend, haveBackend);
   await backend.checkAvailability(context, wantBackend);
+  await validate.secretsAreValid(projectId, matchingBackend);
+  await ensure.secretAccess(projectId, matchingBackend, haveBackend);
 }
 
 /**

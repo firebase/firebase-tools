@@ -2,8 +2,11 @@ import * as path from "path";
 import * as clc from "cli-color";
 
 import { FirebaseError } from "../../error";
+import { getSecretVersion, SecretVersion } from "../../gcp/secretManager";
+import { logger } from "../../logger";
 import * as fsutils from "../../fsutils";
 import * as backend from "./backend";
+import * as utils from "../../utils";
 
 /** Validate that the configuration for endpoints are valid. */
 export function endpointsAreValid(wantBackend: backend.Backend): void {
@@ -82,5 +85,93 @@ export function functionIdsAreValid(functions: { id: string; platform: string }[
       `${invalidV2Ids.map((f) => f.id).join(", ")} v2 function name(s) can only contin lower ` +
       `case letters, numbers, hyphens, and not exceed 62 characters in length`;
     throw new FirebaseError(msg);
+  }
+}
+
+/**
+ * Validate secret environment variables setting, if any.
+ * A bad secret configuration can lead to a significant delay in function deploys.
+ *
+ * If validation fails for any secret config, throws a FirebaseError.
+ */
+export async function secretsAreValid(projectId: string, wantBackend: backend.Backend) {
+  const endpoints = backend
+    .allEndpoints(wantBackend)
+    .filter((e) => e.secretEnvironmentVariables && e.secretEnvironmentVariables.length > 0);
+  validatePlatformTargets(endpoints);
+  await validateSecretVersions(projectId, endpoints);
+}
+
+/**
+ * Ensures that all endpoints specifying secret environment variables target platform that supports the feature.
+ */
+function validatePlatformTargets(endpoints: backend.Endpoint[]) {
+  const supportedPlatforms = ["gcfv1"];
+  const unsupported = endpoints.filter((e) => !supportedPlatforms.includes(e.platform));
+  if (unsupported.length > 0) {
+    const errs = unsupported.map((e) => `${e.id}[platform=${e.platform}]`);
+    throw new FirebaseError(
+      `Tried to set secret environment variables on ${errs.join(", ")}. ` +
+        `Only ${supportedPlatforms.join(", ")} support secret environments.`
+    );
+  }
+}
+
+/**
+ * Validate each secret version referenced in target endpoints.
+ *
+ * A secret version is valid if:
+ *   1) It exists.
+ *   2) It's in state "enabled".
+ */
+async function validateSecretVersions(projectId: string, endpoints: backend.Endpoint[]) {
+  const toResolve: Set<string> = new Set();
+  for (const e of endpoints) {
+    for (const s of e.secretEnvironmentVariables! || []) {
+      toResolve.add(s.secret);
+    }
+  }
+
+  const results = await utils.allSettled(
+    Array.from(toResolve).map(async (secret): Promise<SecretVersion> => {
+      // We resolve the secret to its latest version - we do not allow CF3 customers to pin secret versions.
+      const sv = await getSecretVersion(projectId, secret, "latest");
+      logger.debug(`Resolved secret version of ${clc.bold(secret)} to ${clc.bold(sv.versionId)}.`);
+      return sv;
+    })
+  );
+
+  const secretVersions: Record<string, SecretVersion> = {};
+  const errs: FirebaseError[] = [];
+  for (const result of results) {
+    if (result.status === "fulfilled") {
+      const sv = result.value;
+      if (sv.state != "ENABLED") {
+        errs.push(
+          new FirebaseError(
+            `Expected secret ${sv.secret.name}@${sv.versionId} to be in state ENABLED not ${sv.state}.`
+          )
+        );
+      }
+      secretVersions[sv.secret.name] = sv;
+    } else {
+      errs.push(new FirebaseError((result.reason as { message: string }).message));
+    }
+  }
+
+  if (errs.length) {
+    throw new FirebaseError("Failed to validate secret versions", { children: errs });
+  }
+
+  // Fill in versions.
+  for (const e of endpoints) {
+    for (const s of e.secretEnvironmentVariables! || []) {
+      s.version = secretVersions[s.secret].versionId;
+      if (!s.version) {
+        throw new FirebaseError(
+          "Secret version is unexpectedly undefined. This should never happen."
+        );
+      }
+    }
   }
 }
