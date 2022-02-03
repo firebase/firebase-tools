@@ -48,6 +48,18 @@ interface AddVersionRequest {
   payload: { data: string };
 }
 
+interface SecretVersionResponse {
+  name: string;
+  state: SecretVersionState;
+}
+
+interface AccessSecretVersionResponse {
+  name: string;
+  payload: {
+    data: string;
+  };
+}
+
 const API_VERSION = "v1beta1";
 
 const client = new Client({ urlPrefix: secretManagerOrigin, apiVersion: API_VERSION });
@@ -71,6 +83,37 @@ export async function getSecret(projectId: string, name: string): Promise<Secret
 }
 
 /**
+ * List all secret versions associated with a secret.
+ */
+export async function listSecretVersions(
+  projectId: string,
+  name: string
+): Promise<Required<SecretVersion[]>> {
+  type Response = { versions: SecretVersionResponse[]; nextPageToken?: string };
+  const secrets: Required<SecretVersion[]> = [];
+  const path = `projects/${projectId}/secrets/${name}/versions`;
+
+  let pageToken = "";
+  while (true) {
+    const opts = pageToken == "" ? {} : { queryParams: { pageToken } };
+    const res = await client.get<Response>(path, opts);
+
+    for (const s of res.body.versions) {
+      secrets.push({
+        ...parseSecretVersionResourceName(s.name),
+        state: s.state,
+      });
+    }
+
+    if (!res.body.nextPageToken) {
+      break;
+    }
+    pageToken = res.body.nextPageToken;
+  }
+  return secrets;
+}
+
+/**
  * Returns secret version resource of given name and version in the project.
  */
 export async function getSecretVersion(
@@ -78,13 +121,42 @@ export async function getSecretVersion(
   name: string,
   version: string
 ): Promise<Required<SecretVersion>> {
-  const getRes = await client.get<{ name: string; state: SecretVersionState }>(
+  const getRes = await client.get<SecretVersionResponse>(
     `projects/${projectId}/secrets/${name}/versions/${version}`
   );
   return {
     ...parseSecretVersionResourceName(getRes.body.name),
     state: getRes.body.state,
   };
+}
+
+/**
+ * Access secret value of a given secret version.
+ */
+export async function accessSecretVersion(
+  projectId: string,
+  name: string,
+  version: string
+): Promise<string> {
+  const res = await client.get<AccessSecretVersionResponse>(
+    `projects/${projectId}/secrets/${name}/versions/${version}:access`
+  );
+  return Buffer.from(res.body.payload.data, "base64").toString();
+}
+
+/**
+ * Change state of secret version to destroyed.
+ */
+export async function destroySecretVersion(
+  projectId: string,
+  name: string,
+  version: string
+): Promise<void> {
+  if (version === "latest") {
+    const sv = await getSecretVersion(projectId, name, "latest");
+    version = sv.versionId;
+  }
+  await client.post(`projects/${projectId}/secrets/${name}/versions/${version}:destroy`);
 }
 
 /**
@@ -177,6 +249,14 @@ export async function patchSecret(
     { queryParams: { updateMask: "labels" } } // Only allow patching labels for now.
   );
   return parseSecretResourceName(res.body.name);
+}
+
+/**
+ * Delete secret resource.
+ */
+export async function deleteSecret(projectId: string, name: string): Promise<void> {
+  const path = `projects/${projectId}/secrets/${name}`;
+  await client.delete(path);
 }
 
 /**
