@@ -45,6 +45,8 @@ export const EXPORT_ON_EXIT_USAGE_ERROR =
   `"${FLAG_EXPORT_ON_EXIT_NAME}" must be used with "${FLAG_IMPORT}"` +
   ` or provide a dir directly to "${FLAG_EXPORT_ON_EXIT}"`;
 
+export const EXPORT_ON_EXIT_CWD_DANGER = `"${FLAG_EXPORT_ON_EXIT_NAME}" must point to a folder outside the CWD path`;
+
 export const FLAG_UI = "--ui";
 export const DESC_UI = "run the Emulator UI";
 
@@ -202,6 +204,10 @@ export function setExportOnExitOptions(options: any) {
       // options.exportOnExit might be an empty string when used as:
       // firebase emulators:start --debug --import '' --export-on-exit ''
       throw new FirebaseError(EXPORT_ON_EXIT_USAGE_ERROR);
+    }
+
+    if (path.resolve(".").includes(path.resolve(options.exportOnExit))) {
+      throw new FirebaseError(EXPORT_ON_EXIT_CWD_DANGER);
     }
   }
   return;
