@@ -20,6 +20,7 @@ import { clearCredentials } from "./defaultCredentials";
 import { v4 as uuidv4 } from "uuid";
 import { randomBytes, createHash } from "crypto";
 import { bold } from "cli-color";
+import track from "./track";
 
 /* eslint-disable camelcase */
 // The wire protocol for an access token returned by Google.
@@ -423,11 +424,12 @@ function urlsafeBase64(base64string: string) {
   return base64string.replace(/\+/g, "-").replace(/=+$/, "").replace(/\//g, "_");
 }
 
-const authProxyClient = new apiv2.Client({
-  urlPrefix: api.authProxyOrigin,
-  auth: false,
-});
 async function loginRemotely(userHint?: string): Promise<UserCredentials> {
+  const authProxyClient = new apiv2.Client({
+    urlPrefix: api.authProxyOrigin,
+    auth: false,
+  });
+
   const sessionId = uuidv4();
   const codeVerifier = randomBytes(32).toString("hex");
   // urlsafe base64 is required for code_challenge in OAuth PKCE
@@ -466,6 +468,8 @@ async function loginRemotely(userHint?: string): Promise<UserCredentials> {
     codeVerifier
   );
 
+  track("login", "google_remote");
+
   return {
     user: jwt.decode(tokens.id_token!) as User,
     tokens: tokens,
@@ -484,6 +488,8 @@ async function loginWithLocalhostGoogle(port: number, userHint?: string): Promis
     successTemplate,
     getTokensFromAuthorizationCode
   );
+
+  track("login", "google_localhost");
   // getTokensFromAuthoirzationCode doesn't handle the --token case, so we know we'll
   // always have an id_token.
   return {
@@ -497,13 +503,15 @@ async function loginWithLocalhostGitHub(port: number): Promise<string> {
   const callbackUrl = getCallbackUrl(port);
   const authUrl = getGithubLoginUrl(callbackUrl);
   const successTemplate = "../templates/loginSuccessGithub.html";
-  return loginWithLocalhost(
+  const tokens = await loginWithLocalhost(
     port,
     callbackUrl,
     authUrl,
     successTemplate,
     getGithubTokensFromAuthorizationCode
   );
+  track("login", "google_localhost");
+  return tokens;
 }
 
 async function loginWithLocalhost<ResultType>(

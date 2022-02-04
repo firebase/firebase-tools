@@ -1,0 +1,1 @@
+- Improves experience for `firebase login --no-localhost`.
