@@ -29,17 +29,19 @@ export default new Command("functions:secrets:destroy <KEY>[@version]")
     const sv = await getSecretVersion(projectId, name, version);
 
     if (sv.state === "DESTROYED") {
-      logBullet(`Secret ${sv.secret.name}@${version} was already destroyed. Nothing to do.`);
+      logBullet(`Secret ${sv.secret.name}@${version} is already destroyed. Nothing to do.`);
       return;
     }
 
-    if (
-      backend.someEndpoint(haveBackend, (e) =>
-        secrets.inUse({ projectId, projectNumber }, sv.secret, e)
-      )
-    ) {
+    const boundEndpoints = backend
+      .allEndpoints(haveBackend)
+      .filter((e) => secrets.inUse({ projectId, projectNumber }, sv.secret, e));
+    if (boundEndpoints.length > 0) {
+      const endpointsMsg = boundEndpoints
+        .map((e) => `${e.id}[${e.platform}](${e.region})`)
+        .join("\t\n");
       logWarning(
-        `Secret ${name}@${version} is currently in use. Destroying it will break your functions.`
+        `Secret ${name}@${version} is currently in use by following functions:\n\t${endpointsMsg}`
       );
       if (!options.force) {
         logWarning("Refusing to destroy secret in use. Use -f to destroy the secret anyway.");
