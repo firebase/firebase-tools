@@ -62,6 +62,7 @@ import * as functionsEnv from "../functions/env";
 import { accessSecretVersion } from "../gcp/secretManager";
 
 const EVENT_INVOKE = "functions:invoke";
+const LOCAL_SECRETS_FILE = ".secret.local";
 
 /*
  * The Realtime Database emulator expects the `path` field in its trigger
@@ -993,16 +994,15 @@ export class FunctionsEmulator implements EmulatorInstance {
   ): Promise<Record<string, string>> {
     let secretEnvs: Record<string, string> = {};
 
-    const overrideFile = ".secrets.local";
     try {
-      const data = fs.readFileSync(path.join(backend.functionsDir, overrideFile), "utf8");
+      const data = fs.readFileSync(path.join(backend.functionsDir, LOCAL_SECRETS_FILE), "utf8");
       secretEnvs = functionsEnv.parseStrict(data);
     } catch (e: any) {
       if (e.code !== "ENOENT") {
         this.logger.logLabeled(
           "ERROR",
           "functions",
-          `Failed to read local secrets file ${overrideFile}: ${e.message}`
+          `Failed to read local secrets file ${LOCAL_SECRETS_FILE}: ${e.message}`
         );
       }
     }
@@ -1031,8 +1031,9 @@ export class FunctionsEmulator implements EmulatorInstance {
       this.logger.logLabeled(
         "ERROR",
         "functions",
-        "Unable to access secret environment variables from Secret Manager. " +
-          `Make sure you have access OR override them in file ${overrideFile}:\n\t` +
+        "Unable to access secret environment variables from Google Cloud Secret Manager. " +
+          "Make sure the credential used for the Functions Emulator have access " +
+          `or provide override values in ${LOCAL_SECRETS_FILE}:\n\t` +
           errs.join("\n\t")
       );
     }
