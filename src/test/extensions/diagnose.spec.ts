@@ -9,7 +9,7 @@ const GOOD_BINDING = {
   members: ["serviceAccount:service-123456@gcp-sa-firebasemods.iam.gserviceaccount.com"],
 };
 
-describe.only("diagnose", () => {
+describe("diagnose", () => {
   let getIamStub: sinon.SinonStub;
   let setIamStub: sinon.SinonStub;
   let getProjectNumber: sinon.SinonStub;
