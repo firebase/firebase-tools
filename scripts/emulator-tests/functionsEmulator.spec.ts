@@ -108,6 +108,7 @@ functionsEmulator.setTriggersForTesting(
       entryPoint: "secrets_function_id",
       secretEnvironmentVariables: [
         {
+          projectId: "fake-project-id",
           secret: "MY_SECRET",
           key: "MY_SECRET",
           version: "1",
