@@ -8,14 +8,13 @@ import { requirePermissions } from "../requirePermissions";
 
 module.exports = new Command("ext:diagnose")
   .description("diagnoses the Firebase project for potential known configuration issues")
-  .option("--fix", "automatically perform basic fixes")
   .before(requirePermissions, [
     "resourcemanager.projects.getIamPolicy",
     "resourcemanager.projects.setIamPolicy",
   ])
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
-  .action((options: Options) => {
+  .action((options: any) => {
     const projectId = needProjectId(options);
-    return diagnose(projectId, !!options.fix);
+    return diagnose(projectId);
   });

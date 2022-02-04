@@ -2,15 +2,15 @@ import { logPrefix } from "./extensionsHelper";
 import { getProjectNumber } from "../getProjectNumber";
 import * as utils from "../utils";
 import * as resourceManager from "../gcp/resourceManager";
+import { promptOnce } from "../prompt";
 
 const SERVICE_AGENT_ROLE = "roles/firebasemods.serviceAgent";
 
 /**
  * Diagnoses and optionally fixes known issues with project configuration, ex. missing Extensions Service Agent permissions.
  * @param projectId ID of the project we're querying
- * @param fix Whether identified issues should be automatically fixed.
  */
-export async function diagnose(projectId: string, fix: boolean): Promise<boolean> {
+export async function diagnose(projectId: string): Promise<boolean> {
   const projectNumber = await getProjectNumber({ projectId });
   const firexSaProjectId = utils.envOverride(
     "FIREBASE_EXTENSIONS_SA_PROJECT_ID",
@@ -33,17 +33,16 @@ export async function diagnose(projectId: string, fix: boolean): Promise<boolean
     return true;
   } else {
     utils.logWarning(
-      "Firebase Extensions Service Agent is missing a required IAM role `Firebase Extensions API Service Agent`."
+      "Firebase Extensions Service Agent is missing a required IAM role " +
+        "`Firebase Extensions API Service Agent`."
     );
+    const fix = await promptOnce({
+      type: "confirm",
+      message:
+        "Would you like to fix the issue by updating IAM policy to include Firebase " +
+        "Extensions Service Agent with role `Firebase Extensions API Service Agent`",
+    });
     if (fix) {
-      utils.logLabeledBullet(
-        logPrefix,
-        "Updating IAM Policy of a project `" +
-          projectId +
-          "` to include a service account `" +
-          saEmail +
-          "` in a role `Firebase Extensions API Service Agent`"
-      );
       policy.bindings.push({
         role: SERVICE_AGENT_ROLE,
         members: ["serviceAccount:" + saEmail],
@@ -51,12 +50,7 @@ export async function diagnose(projectId: string, fix: boolean): Promise<boolean
       await resourceManager.setIamPolicy(projectId, policy, "bindings");
       utils.logSuccess("Project IAM policy updated successfully.");
       return true;
-    } else {
-      utils.logLabeledBullet(
-        logPrefix,
-        "Run `firebase ext:diagnose --project=" + projectId + " --fix`"
-      );
-      return false;
     }
+    return false;
   }
 }

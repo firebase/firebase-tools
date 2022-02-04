@@ -3,6 +3,7 @@ import * as sinon from "sinon";
 import * as resourceManager from "../../gcp/resourceManager";
 import * as pn from "../../getProjectNumber";
 import * as diagnose from "../../extensions/diagnose";
+import * as prompt from "../../prompt";
 
 const GOOD_BINDING = {
   role: "roles/firebasemods.serviceAgent",
@@ -12,7 +13,8 @@ const GOOD_BINDING = {
 describe("diagnose", () => {
   let getIamStub: sinon.SinonStub;
   let setIamStub: sinon.SinonStub;
-  let getProjectNumber: sinon.SinonStub;
+  let getProjectNumberStub: sinon.SinonStub;
+  let promptOnceStub: sinon.SinonStub;
 
   beforeEach(() => {
     getIamStub = sinon
@@ -21,11 +23,14 @@ describe("diagnose", () => {
     setIamStub = sinon
       .stub(resourceManager, "setIamPolicy")
       .throws("unexpected call to resourceManager.setIamPolicy");
-    getProjectNumber = sinon
+    getProjectNumberStub = sinon
       .stub(pn, "getProjectNumber")
       .throws("unexpected call to pn.getProjectNumber");
+    promptOnceStub = sinon
+      .stub(prompt, "promptOnce")
+      .throws("unexpected call to prompt.promptOnce");
 
-    getProjectNumber.resolves(123456);
+    getProjectNumberStub.resolves(123456);
   });
 
   afterEach(() => {
@@ -38,8 +43,9 @@ describe("diagnose", () => {
       version: 3,
       bindings: [GOOD_BINDING],
     });
+    promptOnceStub.resolves(false);
 
-    expect(await diagnose.diagnose("project_id", false)).to.be.true;
+    expect(await diagnose.diagnose("project_id")).to.be.true;
 
     expect(getIamStub).to.have.been.calledWith("project_id");
     expect(setIamStub).to.not.have.been.called;
@@ -51,8 +57,9 @@ describe("diagnose", () => {
       version: 3,
       bindings: [],
     });
+    promptOnceStub.resolves(false);
 
-    expect(await diagnose.diagnose("project_id", false)).to.be.false;
+    expect(await diagnose.diagnose("project_id")).to.be.false;
 
     expect(getIamStub).to.have.been.calledWith("project_id");
     expect(setIamStub).to.not.have.been.called;
@@ -65,8 +72,9 @@ describe("diagnose", () => {
       bindings: [],
     });
     setIamStub.resolves();
+    promptOnceStub.resolves(true);
 
-    expect(await diagnose.diagnose("project_id", true)).to.be.true;
+    expect(await diagnose.diagnose("project_id")).to.be.true;
 
     expect(getIamStub).to.have.been.calledWith("project_id");
     expect(setIamStub).to.have.been.calledWith(

@@ -43,7 +43,6 @@ const SAMPLE_OPTIONS: Options = {
   force: false,
   filteredTargets: ["functions"],
   rc: new RC(),
-  fix: false,
 };
 
 describe("promptForFailurePolicies", () => {
