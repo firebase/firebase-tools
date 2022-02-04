@@ -33,16 +33,11 @@ export default new Command("functions:secrets:destroy <KEY>[@version]")
       return;
     }
 
-    const inUse = secrets
-      .of(backend.allEndpoints(haveBackend))
-      .find(
-        (sev) =>
-          (sev.projectId === projectId || sev.projectId === projectNumber) &&
-          sev.secret &&
-          (sev.version === version || sev.version === sv.versionId)
-      );
-
-    if (inUse) {
+    if (
+      backend.someEndpoint(haveBackend, (e) =>
+        secrets.inUse({ projectId, projectNumber }, sv.secret, e)
+      )
+    ) {
       logWarning(
         `Secret ${name}@${version} is currently in use. Destroying it will break your functions.`
       );
