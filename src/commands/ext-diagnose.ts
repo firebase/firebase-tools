@@ -1,5 +1,6 @@
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
+import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import { diagnose } from "../extensions/diagnose";
 import { ensureExtensionsApiEnabled } from "../extensions/extensionsHelper";
@@ -14,7 +15,7 @@ module.exports = new Command("ext:diagnose")
   ])
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
-  .action((options: any) => {
+  .action((options: Options) => {
     const projectId = needProjectId(options);
     return diagnose(projectId, !!options.fix);
   });

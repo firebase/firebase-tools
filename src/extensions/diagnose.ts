@@ -23,11 +23,11 @@ export async function diagnose(projectId: string, fix: boolean): Promise<boolean
 
   const policy = await resourceManager.getIamPolicy(projectId);
   let foundP4saInPolicy = false;
-  policy.bindings.forEach((b) => {
+  for (const b of policy.bindings) {
     if (b.role === SERVICE_AGENT_ROLE && b.members.includes("serviceAccount:" + saEmail)) {
       foundP4saInPolicy = true;
     }
-  });
+  }
   if (foundP4saInPolicy) {
     utils.logLabeledSuccess(logPrefix, "Project IAM policy OK.");
     return true;

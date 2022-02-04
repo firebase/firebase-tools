@@ -10,6 +10,7 @@ export interface Options {
   except: string;
   config: Config;
   filteredTargets: string[];
+  fix: boolean;
   force: boolean;
 
   // Options which are present on every command
