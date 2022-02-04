@@ -3,7 +3,6 @@ import * as sinon from "sinon";
 import * as resourceManager from "../../gcp/resourceManager";
 import * as pn from "../../getProjectNumber";
 import * as diagnose from "../../extensions/diagnose";
-import { setIamPolicy } from "../../gcp/cloudfunctions";
 
 const GOOD_BINDING = {
   role: "roles/firebasemods.serviceAgent",
