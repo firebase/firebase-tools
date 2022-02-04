@@ -60,17 +60,9 @@ interface AccessSecretVersionResponse {
   };
 }
 
-const API_VERSION = "v1beta1";
+const API_VERSION = "v1";
 
 const client = new Client({ urlPrefix: secretManagerOrigin, apiVersion: API_VERSION });
-
-/**
- * Returns all secret resources of given project.
- */
-export async function listSecrets(projectId: string): Promise<Secret[]> {
-  const listRes = await client.get<{ secrets: Secret[] }>(`projects/${projectId}/secrets`);
-  return listRes.body.secrets.map((s: any) => parseSecretResourceName(s.name));
-}
 
 /**
  * Returns secret resource of given name in the project.
@@ -83,22 +75,59 @@ export async function getSecret(projectId: string, name: string): Promise<Secret
 }
 
 /**
+ * Lists all secret resources associated with a project.
+ */
+export async function listSecrets(projectId: string, filter?: string): Promise<Secret[]> {
+  type Response = { secrets: Secret[]; nextPageToken?: string };
+  const secrets: Secret[] = [];
+  const path = `projects/${projectId}/secrets`;
+  const baseOpts = filter ? { queryParams: { filter } } : {};
+
+  let pageToken = "";
+  while (true) {
+    const opts =
+      pageToken === ""
+        ? baseOpts
+        : { ...baseOpts, queryParams: { ...baseOpts?.queryParams, pageToken } };
+    const res = await client.get<Response>(path, opts);
+
+    for (const s of res.body.secrets) {
+      secrets.push({
+        ...parseSecretResourceName(s.name),
+        labels: s.labels ?? {},
+      });
+    }
+
+    if (!res.body.nextPageToken) {
+      break;
+    }
+    pageToken = res.body.nextPageToken;
+  }
+  return secrets;
+}
+
+/**
  * List all secret versions associated with a secret.
  */
 export async function listSecretVersions(
   projectId: string,
-  name: string
+  name: string,
+  filter?: string
 ): Promise<Required<SecretVersion[]>> {
   type Response = { versions: SecretVersionResponse[]; nextPageToken?: string };
   const secrets: Required<SecretVersion[]> = [];
   const path = `projects/${projectId}/secrets/${name}/versions`;
+  const baseOpts = filter ? { queryParams: { filter } } : {};
 
   let pageToken = "";
   while (true) {
-    const opts = pageToken == "" ? {} : { queryParams: { pageToken } };
+    const opts =
+      pageToken === ""
+        ? baseOpts
+        : { ...baseOpts, queryParams: { ...baseOpts?.queryParams, pageToken } };
     const res = await client.get<Response>(path, opts);
 
-    for (const s of res.body.versions) {
+    for (const s of res.body.versions || []) {
       secrets.push({
         ...parseSecretVersionResourceName(s.name),
         state: s.state,

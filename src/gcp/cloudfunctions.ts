@@ -517,6 +517,7 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     "ingressSettings",
     "labels",
     "environmentVariables",
+    "secretEnvironmentVariables",
     "sourceUploadUrl"
   );
 
