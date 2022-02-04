@@ -6,12 +6,10 @@ import { FirebaseError } from "../../../error";
 import { logger } from "../../../logger";
 import { configstore } from "../../../configstore";
 import { POLL_SETTINGS } from "../../../ensureApiEnabled";
-import { defaultServiceAccount } from "../../../gcp/cloudfunctions";
 import * as api from "../../../api";
 import * as backend from "../../../deploy/functions/backend";
 import * as ensure from "../../../deploy/functions/ensure";
 import * as secretManager from "../../../gcp/secretManager";
-import * as prepare from "../../../deploy/functions";
 
 describe("ensureCloudBuildEnabled()", () => {
   let restoreInterval: number;

@@ -60,17 +60,9 @@ interface AccessSecretVersionResponse {
   };
 }
 
-const API_VERSION = "v1beta1";
+const API_VERSION = "v1";
 
 const client = new Client({ urlPrefix: secretManagerOrigin, apiVersion: API_VERSION });
-
-/**
- * Returns all secret resources of given project.
- */
-export async function listSecrets(projectId: string): Promise<Secret[]> {
-  const listRes = await client.get<{ secrets: Secret[] }>(`projects/${projectId}/secrets`);
-  return listRes.body.secrets.map((s: any) => parseSecretResourceName(s.name));
-}
 
 /**
  * Returns secret resource of given name in the project.
