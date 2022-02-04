@@ -234,9 +234,6 @@ export function getEmulatedTriggersFromDefinitions(
   );
 }
 
-/**
- *
- */
 export function getTemporarySocketPath(pid: number, cwd: string): string {
   // See "net" package docs for information about IPC pipes on Windows
   // https://nodejs.org/api/net.html#net_identifying_paths_for_ipc_connections
@@ -258,9 +255,6 @@ export function getTemporarySocketPath(pid: number, cwd: string): string {
   }
 }
 
-/**
- *
- */
 export function getFunctionService(def: EmulatedTriggerDefinition): string {
   if (def.eventTrigger) {
     return def.eventTrigger.service ?? getServiceFromEventType(def.eventTrigger.eventType);
@@ -269,9 +263,6 @@ export function getFunctionService(def: EmulatedTriggerDefinition): string {
   return "unknown";
 }
 
-/**
- *
- */
 export function getServiceFromEventType(eventType: string): string {
   if (eventType.includes("firestore")) {
     return Constants.SERVICE_FIRESTORE;
@@ -305,9 +296,6 @@ export function getServiceFromEventType(eventType: string): string {
   return "";
 }
 
-/**
- *
- */
 export function waitForBody(req: express.Request): Promise<string> {
   let data = "";
   return new Promise((resolve) => {
@@ -321,9 +309,6 @@ export function waitForBody(req: express.Request): Promise<string> {
   });
 }
 
-/**
- *
- */
 export function findModuleRoot(moduleName: string, filepath: string): string {
   const hierarchy = filepath.split(path.sep);
 
@@ -349,9 +334,6 @@ export function findModuleRoot(moduleName: string, filepath: string): string {
   return "";
 }
 
-/**
- *
- */
 export function formatHost(info: { host: string; port: number }): string {
   if (info.host.includes(":")) {
     return `[${info.host}]:${info.port}`;
@@ -360,9 +342,6 @@ export function formatHost(info: { host: string; port: number }): string {
   }
 }
 
-/**
- *
- */
 export function getSignatureType(def: EmulatedTriggerDefinition): SignatureType {
   if (def.httpsTrigger) {
     return "http";
