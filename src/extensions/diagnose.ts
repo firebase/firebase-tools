@@ -3,6 +3,7 @@ import { getProjectNumber } from "../getProjectNumber";
 import * as utils from "../utils";
 import * as resourceManager from "../gcp/resourceManager";
 import { promptOnce } from "../prompt";
+import { logger } from "../logger";
 
 const SERVICE_AGENT_ROLE = "roles/firebasemods.serviceAgent";
 
@@ -22,6 +23,7 @@ export async function diagnose(projectId: string): Promise<boolean> {
   utils.logLabeledBullet(logPrefix, "Checking project IAM policy...");
 
   const policy = await resourceManager.getIamPolicy(projectId);
+  logger.debug(policy);
   let foundP4saInPolicy = false;
   for (const b of policy.bindings) {
     if (b.role === SERVICE_AGENT_ROLE && b.members.includes("serviceAccount:" + saEmail)) {
