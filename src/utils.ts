@@ -193,7 +193,7 @@ export function logLabeledWarning(
 }
 
 /**
- * Log an info statement with a gray bullet at the start of the line.
+ * Log an rror statement with a red bullet at the start of the line.
  */
 export function logLabeledError(
   label: string,
