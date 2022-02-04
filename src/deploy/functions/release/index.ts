@@ -88,29 +88,29 @@ export async function release(
   if (allErrors.length) {
     const opts = allErrors.length == 1 ? { original: allErrors[0] } : { children: allErrors };
     throw new FirebaseError("There was an error deploying functions", { ...opts, exit: 2 });
-  }
-
-  const projectId = needProjectId(options);
-  const projectNumber = await needProjectNumber(options);
-  const prunedResult = await secrets.pruneAndDestroySecrets(
-    { projectId, projectNumber },
-    haveEndpoints
-  );
-  if (prunedResult.destroyed.length > 0) {
-    logLabeledBullet(
-      "functions",
-      `Destroyed unused secret versions: ${prunedResult.destroyed
-        .map((s) => `${s.secret}@${s.version}`)
-        .join(", ")}`
+  } else {
+    const projectId = needProjectId(options);
+    const projectNumber = await needProjectNumber(options);
+    const prunedResult = await secrets.pruneAndDestroySecrets(
+      { projectId, projectNumber },
+      haveEndpoints
     );
-  }
-  if (prunedResult.erred.length > 0) {
-    logLabeledWarning(
-      "functions",
-      `Failed to destroy unused secret versions:\n\t${prunedResult.erred
-        .map((err) => err.message)
-        .join("\n\t")}`
-    );
+    if (prunedResult.destroyed.length > 0) {
+      logLabeledBullet(
+        "functions",
+        `Destroyed unused secret versions: ${prunedResult.destroyed
+          .map((s) => `${s.secret}@${s.version}`)
+          .join(", ")}`
+      );
+    }
+    if (prunedResult.erred.length > 0) {
+      logLabeledWarning(
+        "functions",
+        `Failed to destroy unused secret versions:\n\t${prunedResult.erred
+          .map((err) => err.message)
+          .join("\n\t")}`
+      );
+    }
   }
 }
 
