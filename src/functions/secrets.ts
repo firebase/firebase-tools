@@ -278,7 +278,11 @@ export async function updateEndpointSecret(
     });
     const cfn = await poller.pollOperation<gcf.CloudFunction>({
       apiOrigin: functionsOrigin,
+      // For some reason, gcf.API_VERSION is undefined when fabricator.gcfV1PollerOptions is imported.
+      // Possibly due to cyclical dependency? Copying the option in verbatim instead.
       apiVersion: gcf.API_VERSION,
+      masterTimeout: 25 * 60 * 1_000, // 25 minutes is the maximum build time for a function
+      maxBackoff: 10_000,
       pollerName: `update-${endpoint.region}-${endpoint.id}`,
       operationResourceName: op.name,
     });

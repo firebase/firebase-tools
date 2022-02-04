@@ -99,7 +99,7 @@ export async function release(
   if (prunedResult.destroyed.length > 0) {
     logLabeledBullet(
       "functions",
-      `Deleted unused secret versions: ${prunedResult.destroyed
+      `Destroyed unused secret versions: ${prunedResult.destroyed
         .map((s) => `${s.secret}@${s.version}`)
         .join(", ")}`
     );
@@ -107,7 +107,7 @@ export async function release(
   if (prunedResult.erred.length > 0) {
     logLabeledWarning(
       "functions",
-      `Failed to delete unused secret versions:\n\t${prunedResult.erred
+      `Failed to destroy unused secret versions:\n\t${prunedResult.erred
         .map((err) => err.message)
         .join("\n\t")}`
     );

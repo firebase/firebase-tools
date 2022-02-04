@@ -8,13 +8,12 @@ import { Command } from "../command";
 import { requirePermissions } from "../requirePermissions";
 import { Options } from "../options";
 import { promptOnce } from "../prompt";
-import { logBullet, logSuccess } from "../utils";
+import { logBullet, logSuccess, logWarning } from "../utils";
 import { needProjectId, needProjectNumber } from "../projectUtils";
 import { addVersion, toSecretVersionResourceName } from "../gcp/secretManager";
 import * as secrets from "../functions/secrets";
 import * as backend from "../deploy/functions/backend";
 import * as args from "../deploy/functions/args";
-import * as gcf from "../gcp/cloudfunctions";
 
 export default new Command("functions:secrets:set <KEY>")
   .description("Create or update a secret for use in Cloud Functions for Firebase.")
@@ -81,7 +80,7 @@ export default new Command("functions:secrets:set <KEY>")
           name: "redeploy",
           type: "confirm",
           default: true,
-          message: `Do you want to re-deploy the functions and delete the stale version of secret ${secret.name}?`,
+          message: `Do you want to re-deploy the functions and destroy the stale version of secret ${secret.name}?`,
         },
         options
       );
@@ -97,5 +96,24 @@ export default new Command("functions:secrets:set <KEY>")
       return updated;
     });
     const updatedEndpoints = await Promise.all(updateOps);
-    await pruneAndDestroySecrets({ projectId, projectNumber }, updatedEndpoints);
+
+    logBullet(`Pruning stale secrets...`);
+    const prunedResult = await pruneAndDestroySecrets(
+      { projectId, projectNumber },
+      updatedEndpoints
+    );
+    if (prunedResult.destroyed.length > 0) {
+      logBullet(
+        `Detroyed unused secret versions: ${prunedResult.destroyed
+          .map((s) => `${s.secret}@${s.version}`)
+          .join(", ")}`
+      );
+    }
+    if (prunedResult.erred.length > 0) {
+      logWarning(
+        `Failed to destroy unused secret versions:\n\t${prunedResult.erred
+          .map((err) => err.message)
+          .join("\n\t")}`
+      );
+    }
   });
