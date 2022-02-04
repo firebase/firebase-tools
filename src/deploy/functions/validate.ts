@@ -2,12 +2,45 @@ import * as path from "path";
 import * as clc from "cli-color";
 
 import { FirebaseError } from "../../error";
-import { getSecretVersion } from "../../gcp/secretManager";
-import { logLabeledSuccess } from "../../utils";
-import * as backend from "./backend";
+import { getSecretVersion, SecretVersion } from "../../gcp/secretManager";
+import { logger } from "../../logger";
 import * as fsutils from "../../fsutils";
+import * as backend from "./backend";
 import * as utils from "../../utils";
-import * as secrets from "../../functions/secrets";
+
+/** Validate that the configuration for endpoints are valid. */
+export function endpointsAreValid(wantBackend: backend.Backend): void {
+  functionIdsAreValid(backend.allEndpoints(wantBackend));
+
+  // Our SDK doesn't let people articulate this, but it's theoretically possible in the manifest syntax.
+  const gcfV1WithConcurrency = backend
+    .allEndpoints(wantBackend)
+    .filter((endpoint) => (endpoint.concurrency || 1) != 1 && endpoint.platform == "gcfv1")
+    .map((endpoint) => endpoint.id);
+  if (gcfV1WithConcurrency.length) {
+    const msg = `Cannot set concurrency on the functions ${gcfV1WithConcurrency.join(
+      ","
+    )} because they are GCF gen 1`;
+    throw new FirebaseError(msg);
+  }
+
+  const tooSmallForConcurrency = backend
+    .allEndpoints(wantBackend)
+    .filter((endpoint) => {
+      if ((endpoint.concurrency || 1) == 1) {
+        return false;
+      }
+      const mem = endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;
+      return mem < backend.MIN_MEMORY_FOR_CONCURRENCY;
+    })
+    .map((endpoint) => endpoint.id);
+  if (tooSmallForConcurrency.length) {
+    const msg = `Cannot set concurency on the functions ${tooSmallForConcurrency.join(
+      ","
+    )} because they have fewer than 2GB memory`;
+    throw new FirebaseError(msg);
+  }
+}
 
 /**
  * Check that functions directory exists.
@@ -61,12 +94,12 @@ export function functionIdsAreValid(functions: { id: string; platform: string }[
  *
  * If validation fails for any secret config, throws a FirebaseError.
  */
-export async function secretsAreValid(b: backend.Backend) {
+export async function secretsAreValid(projectId: string, wantBackend: backend.Backend) {
   const endpoints = backend
-    .allEndpoints(b)
+    .allEndpoints(wantBackend)
     .filter((e) => e.secretEnvironmentVariables && e.secretEnvironmentVariables.length > 0);
   validatePlatformTargets(endpoints);
-  await validateSecretVersions(endpoints);
+  await validateSecretVersions(projectId, endpoints);
 }
 
 /**
@@ -91,34 +124,54 @@ function validatePlatformTargets(endpoints: backend.Endpoint[]) {
  *   1) It exists.
  *   2) It's in state "enabled".
  */
-async function validateSecretVersions(endpoints: backend.Endpoint[]) {
-  const validate = async (s: backend.SecretEnvVar) => {
-    const sv = await getSecretVersion(s.projectId, s.secret, s.version || "latest");
-    if (s.version == null) {
-      logLabeledSuccess(
-        "functions",
-        `resolved secret version of ${clc.bold(s.secret)} to ${clc.bold(sv.version)}.`
-      );
-      s.version = sv.version;
+async function validateSecretVersions(projectId: string, endpoints: backend.Endpoint[]) {
+  const toResolve: Set<string> = new Set();
+  for (const e of endpoints) {
+    for (const s of e.secretEnvironmentVariables! || []) {
+      toResolve.add(s.secret);
     }
-    if (sv.state !== "ENABLED") {
-      throw new FirebaseError(
-        `Expected secret ${s.secret}@${s.version} to be in state ENABLED not ${sv.state}.`
-      );
-    }
-  };
-
-  const validations: Promise<void>[] = [];
-  for (const s of secrets.of(endpoints)) {
-    validations.push(validate(s));
   }
-  const results = await utils.allSettled(validations);
 
-  const errs: { message: string }[] = results
-    .filter((r) => r.status === "rejected")
-    .map((r) => (r as utils.PromiseRejectedResult).reason as { message: string });
+  const results = await utils.allSettled(
+    Array.from(toResolve).map(async (secret): Promise<SecretVersion> => {
+      // We resolve the secret to its latest version - we do not allow CF3 customers to pin secret versions.
+      const sv = await getSecretVersion(projectId, secret, "latest");
+      logger.debug(`Resolved secret version of ${clc.bold(secret)} to ${clc.bold(sv.versionId)}.`);
+      return sv;
+    })
+  );
+
+  const secretVersions: Record<string, SecretVersion> = {};
+  const errs: FirebaseError[] = [];
+  for (const result of results) {
+    if (result.status === "fulfilled") {
+      const sv = result.value;
+      if (sv.state != "ENABLED") {
+        errs.push(
+          new FirebaseError(
+            `Expected secret ${sv.secret.name}@${sv.versionId} to be in state ENABLED not ${sv.state}.`
+          )
+        );
+      }
+      secretVersions[sv.secret.name] = sv;
+    } else {
+      errs.push(new FirebaseError((result.reason as { message: string }).message));
+    }
+  }
+
   if (errs.length) {
-    const msg = errs.map((e) => e.message).join(", ");
-    throw new FirebaseError(`Failed to validate secret versions: ${msg}`);
+    throw new FirebaseError("Failed to validate secret versions", { children: errs });
+  }
+
+  // Fill in versions.
+  for (const e of endpoints) {
+    for (const s of e.secretEnvironmentVariables! || []) {
+      s.version = secretVersions[s.secret].versionId;
+      if (!s.version) {
+        throw new FirebaseError(
+          "Secret version is unexpectedly undefined. This should never happen."
+        );
+      }
+    }
   }
 }

@@ -4,14 +4,30 @@ import { ensure } from "../../ensureApiEnabled";
 import { FirebaseError, isBillingError } from "../../error";
 import { logLabeledBullet, logLabeledSuccess } from "../../utils";
 import { ensureServiceAgentRole } from "../../gcp/secretManager";
-import { defaultServiceAccount } from "../../gcp/cloudfunctions";
 import { previews } from "../../previews";
+import { getFirebaseProject } from "../../management/projects";
+import { assertExhaustive } from "../../functional";
 import * as track from "../../track";
 import * as backend from "./backend";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
 
 const FAQ_URL = "https://firebase.google.com/support/faq#functions-runtime";
 const CLOUD_BUILD_API = "cloudbuild.googleapis.com";
+
+/**
+ *  By default:
+ *    1. GCFv1 uses App Engine default service account.
+ *    2. GCFv2 (Cloud Run) uses Compute Engine default service account.
+ */
+export async function defaultServiceAccount(e: backend.Endpoint): Promise<string> {
+  const metadata = await getFirebaseProject(e.project);
+  if (e.platform === "gcfv1") {
+    return `${metadata.projectId}@appspot.gserviceaccount.com`;
+  } else if (e.platform === "gcfv2") {
+    return `${metadata.projectNumber}-compute@developer.gserviceaccount.com`;
+  }
+  assertExhaustive(e.platform);
+}
 
 function nodeBillingError(projectId: string): FirebaseError {
   track("functions_runtime_notices", "nodejs10_billing_error");
@@ -52,7 +68,7 @@ function isPermissionError(e: { context?: { body?: { error?: { status?: string }
  *
  * @param projectId Project ID upon which to check enablement.
  */
-export async function ensureCloudBuildEnabled(projectId: string): Promise<void> {
+export async function cloudBuildEnabled(projectId: string): Promise<void> {
   try {
     await ensure(projectId, CLOUD_BUILD_API, "functions");
   } catch (e: any) {
@@ -70,7 +86,7 @@ export async function ensureCloudBuildEnabled(projectId: string): Promise<void> 
 // an upgrade warning in the future. If it already is enabled though we want to
 // remember this and still use the cleaner if necessary.
 export async function maybeEnableAR(projectId: string): Promise<boolean> {
-  if (previews.artifactregistry) {
+  if (!previews.artifactregistry) {
     return ensureApiEnabled.check(
       projectId,
       "artifactregistry.googleapis.com",
@@ -83,16 +99,36 @@ export async function maybeEnableAR(projectId: string): Promise<boolean> {
 }
 
 /**
+ * Returns a mapping of all secrets declared in a stack to the bound service accounts.
+ */
+async function secretsToServiceAccounts(b: backend.Backend): Promise<Record<string, Set<string>>> {
+  const secretsToSa: Record<string, Set<string>> = {};
+  for (const e of backend.allEndpoints(b)) {
+    const sa = e.serviceAccountEmail || (await module.exports.defaultServiceAccount(e));
+    for (const s of e.secretEnvironmentVariables! || []) {
+      const serviceAccounts = secretsToSa[s.secret] || new Set();
+      serviceAccounts.add(sa);
+      secretsToSa[s.secret] = serviceAccounts;
+    }
+  }
+  return secretsToSa;
+}
+
+/**
  * Ensures that runtime service account has access to the secrets.
  *
  * To avoid making more than one simultaneous call to setIamPolicy calls per secret, the function batches all
  * service account that requires access to it.
  */
-export async function ensureSecretAccess(b: backend.Backend) {
-  const ensureAccess = async (projectId: string, secret: string, serviceAccounts: string[]) => {
+export async function secretAccess(
+  projectId: string,
+  wantBackend: backend.Backend,
+  haveBackend: backend.Backend
+) {
+  const ensureAccess = async (secret: string, serviceAccounts: string[]) => {
     logLabeledBullet(
       "functions",
-      `ensuring ${clc.bold(serviceAccounts.join(", "))} access to ${clc.bold(secret)}.`
+      `ensuring ${clc.bold(serviceAccounts.join(", "))} access to secret ${clc.bold(secret)}.`
     );
     await ensureServiceAgentRole(
       { name: secret, projectId },
@@ -105,27 +141,22 @@ export async function ensureSecretAccess(b: backend.Backend) {
     );
   };
 
-  // Collect all service accounts that requires access to a secret.
-  // projectId -> secretName -> Set of service accounts
-  const toEnsure: Record<string, Record<string, Set<string>>> = {};
-  for (const e of backend.allEndpoints(b)) {
-    const sa = e.serviceAccountEmail || defaultServiceAccount(e.project);
-    for (const s of e.secretEnvironmentVariables! || []) {
-      const secrets = toEnsure[s.projectId] || {};
-      const serviceAccounts = secrets[s.secret] || new Set();
+  const wantSecrets = await secretsToServiceAccounts(wantBackend);
+  const haveSecrets = await secretsToServiceAccounts(haveBackend);
 
-      serviceAccounts.add(sa);
-
-      secrets[s.secret] = serviceAccounts;
-      toEnsure[s.projectId] = secrets;
+  // Remove secret/service account pairs that already exists to avoid unnecessary IAM calls.
+  for (const [secret, serviceAccounts] of Object.entries(haveSecrets)) {
+    for (const serviceAccount of serviceAccounts) {
+      wantSecrets[secret]?.delete(serviceAccount);
+    }
+    if (wantSecrets[secret]?.size == 0) {
+      delete wantSecrets[secret];
     }
   }
 
   const ensure = [];
-  for (const [projectId, secrets] of Object.entries(toEnsure)) {
-    for (const [secret, serviceAccounts] of Object.entries(secrets)) {
-      ensure.push(ensureAccess(projectId, secret, Array.from(serviceAccounts)));
-    }
+  for (const [secret, serviceAccounts] of Object.entries(wantSecrets)) {
+    ensure.push(ensureAccess(secret, Array.from(serviceAccounts)));
   }
   await Promise.all(ensure);
 }

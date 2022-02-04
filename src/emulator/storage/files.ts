@@ -14,6 +14,10 @@ import * as fse from "fs-extra";
 import * as rimraf from "rimraf";
 import { StorageCloudFunctions } from "./cloudFunctions";
 import { logger } from "../../logger";
+import {
+  constructDefaultAdminSdkConfig,
+  getProjectAdminSdkConfigOrCached,
+} from "../adminSdkConfig";
 
 interface BucketsList {
   buckets: {
@@ -140,9 +144,13 @@ export class StorageLayer {
     }
   }
 
-  listBuckets(): CloudStorageBucketMetadata[] {
+  async listBuckets(): Promise<CloudStorageBucketMetadata[]> {
     if (this._buckets.size == 0) {
-      this.createBucket("default-bucket");
+      let adminSdkConfig = await getProjectAdminSdkConfigOrCached(this._projectId);
+      if (!adminSdkConfig) {
+        adminSdkConfig = constructDefaultAdminSdkConfig(this._projectId);
+      }
+      this.createBucket(adminSdkConfig.storageBucket!);
     }
 
     return [...this._buckets.values()];
@@ -494,7 +502,7 @@ export class StorageLayer {
     const bucketsList: BucketsList = {
       buckets: [],
     };
-    for (const b of this.listBuckets()) {
+    for (const b of await this.listBuckets()) {
       bucketsList.buckets.push({ id: b.id });
     }
     const bucketsFilePath = path.join(storageExportPath, "buckets.json");

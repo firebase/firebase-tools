@@ -1,37 +1,36 @@
 "use strict";
 
-var api = require("../api");
+const { runtimeconfigOrigin } = require("../api");
+const { Client } = require("../apiv2");
 
-var utils = require("../utils");
 const { logger } = require("../logger");
 var _ = require("lodash");
 
-var API_VERSION = "v1beta1";
+const API_VERSION = "v1beta1";
+const apiClient = new Client({ urlPrefix: runtimeconfigOrigin, apiVersion: API_VERSION });
 
 function _listConfigs(projectId) {
-  return api
-    .request("GET", utils.endpoint([API_VERSION, "projects", projectId, "configs"]), {
-      auth: true,
-      origin: api.runtimeconfigOrigin,
+  return apiClient
+    .get(`/projects/${projectId}/configs`, {
       retryCodes: [500, 503],
     })
     .then(function (resp) {
-      return Promise.resolve(resp.body.configs);
+      return resp.body.configs;
     });
 }
 
 function _createConfig(projectId, configId) {
   var path = _.join(["projects", projectId, "configs"], "/");
-  var endpoint = utils.endpoint([API_VERSION, path]);
-  return api
-    .request("POST", endpoint, {
-      auth: true,
-      origin: api.runtimeconfigOrigin,
-      data: {
+  return apiClient
+    .post(
+      `/projects/${projectId}/configs`,
+      {
         name: path + "/" + configId,
       },
-      retryCodes: [500, 503],
-    })
+      {
+        retryCodes: [500, 503],
+      }
+    )
     .catch(function (err) {
       if (_.get(err, "context.response.statusCode") === 409) {
         // Config has already been created as part of a parallel operation during firebase functions:config:set
@@ -42,10 +41,8 @@ function _createConfig(projectId, configId) {
 }
 
 function _deleteConfig(projectId, configId) {
-  return api
-    .request("DELETE", utils.endpoint([API_VERSION, "projects", projectId, "configs", configId]), {
-      auth: true,
-      origin: api.runtimeconfigOrigin,
+  return apiClient
+    .delete(`/projects/${projectId}/configs/${configId}`, {
       retryCodes: [500, 503],
     })
     .catch(function (err) {
@@ -58,10 +55,8 @@ function _deleteConfig(projectId, configId) {
 }
 
 function _listVariables(configPath) {
-  return api
-    .request("GET", utils.endpoint([API_VERSION, configPath, "variables"]), {
-      auth: true,
-      origin: api.runtimeconfigOrigin,
+  return apiClient
+    .get(`${configPath}/variables`, {
       retryCodes: [500, 503],
     })
     .then(function (resp) {
@@ -70,10 +65,8 @@ function _listVariables(configPath) {
 }
 
 function _getVariable(varPath) {
-  return api
-    .request("GET", utils.endpoint([API_VERSION, varPath]), {
-      auth: true,
-      origin: api.runtimeconfigOrigin,
+  return apiClient
+    .get(varPath, {
       retryCodes: [500, 503],
     })
     .then(function (resp) {
@@ -82,18 +75,18 @@ function _getVariable(varPath) {
 }
 
 function _createVariable(projectId, configId, varId, value) {
-  var path = _.join(["projects", projectId, "configs", configId, "variables"], "/");
-  var endpoint = utils.endpoint([API_VERSION, path]);
-  return api
-    .request("POST", endpoint, {
-      auth: true,
-      origin: api.runtimeconfigOrigin,
-      data: {
-        name: path + "/" + varId,
+  const path = `/projects/${projectId}/configs/${configId}/variables`;
+  return apiClient
+    .post(
+      path,
+      {
+        name: `${path}/${varId}`,
         text: value,
       },
-      retryCodes: [500, 503],
-    })
+      {
+        retryCodes: [500, 503],
+      }
+    )
     .catch(function (err) {
       if (_.get(err, "context.response.statusCode") === 404) {
         // parent config doesn't exist yet
@@ -106,18 +99,19 @@ function _createVariable(projectId, configId, varId, value) {
 }
 
 function _updateVariable(projectId, configId, varId, value) {
-  var path = _.join(["projects", projectId, "configs", configId, "variables", varId], "/");
-  var endpoint = utils.endpoint([API_VERSION, path]);
-  return api.request("PUT", endpoint, {
-    auth: true,
-    origin: api.runtimeconfigOrigin,
-    data: {
+  const path = `/projects/${projectId}/configs/${configId}/variables/${varId}`;
+  return apiClient.put(
+    path,
+    {
       name: path,
       text: value,
     },
-    retryCodes: [500, 503],
-  });
+    {
+      retryCodes: [500, 503],
+    }
+  );
 }
+
 function _setVariable(projectId, configId, varId, value) {
   var path = _.join(["projects", projectId, "configs", configId, "variables", varId], "/");
   return _getVariable(path)
@@ -133,14 +127,10 @@ function _setVariable(projectId, configId, varId, value) {
 }
 
 function _deleteVariable(projectId, configId, varId) {
-  var endpoint =
-    utils.endpoint([API_VERSION, "projects", projectId, "configs", configId, "variables", varId]) +
-    "?recursive=true";
-  return api
-    .request("DELETE", endpoint, {
-      auth: true,
-      origin: api.runtimeconfigOrigin,
+  return apiClient
+    .delete(`/projects/${projectId}/configs/${configId}/variables/${varId}`, {
       retryCodes: [500, 503],
+      queryParams: { recursive: "true" },
     })
     .catch(function (err) {
       if (_.get(err, "context.response.statusCode") === 404) {

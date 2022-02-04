@@ -1,5 +1,7 @@
-import * as clc from "cli-color";
+import * as tty from "tty";
 import * as fs from "fs";
+
+import * as clc from "cli-color";
 
 import { ensureValidKey, ensureSecret } from "../functions/secrets";
 import { Command } from "../command";
@@ -27,25 +29,25 @@ export default new Command("functions:secrets:set <KEY>")
   )
   .action(async (unvalidatedKey: string, options: Options) => {
     const projectId = needProjectId(options);
-    const key = ensureValidKey(unvalidatedKey, options);
+    const key = await ensureValidKey(unvalidatedKey, options);
     const secret = await ensureSecret(projectId, key, options);
     let secretValue;
 
-    if (options.dataFile) {
-      let dataFile: string | number = options.dataFile as string;
-      if (dataFile === "-") {
-        dataFile = 0;
-      }
-      secretValue = fs.readFileSync(dataFile, "utf-8");
-    } else {
+    if ((!options.dataFile || options.dataFile === "-") && tty.isatty(0)) {
       secretValue = await promptOnce({
         name: key,
         type: "password",
         message: `Enter a value for ${key}`,
       });
+    } else {
+      let dataFile: string | number = 0;
+      if (options.dataFile && options.dataFile !== "-") {
+        dataFile = options.dataFile as string;
+      }
+      secretValue = fs.readFileSync(dataFile, "utf-8");
     }
 
-    const secretVersion = await addVersion(secret, secretValue);
+    const secretVersion = await addVersion(projectId, key, secretValue);
     logSuccess(`Created a new secret version ${toSecretVersionResourceName(secretVersion)}`);
     logBullet(
       "Please deploy your functions for the change to take effect by running:\n\t" +

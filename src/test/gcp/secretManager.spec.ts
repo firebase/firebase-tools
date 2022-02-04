@@ -4,7 +4,7 @@ import { expect } from "chai";
 import * as iam from "../../gcp/iam";
 import * as secretManager from "../../gcp/secretManager";
 import { FirebaseError } from "../../error";
-import { ensureServiceAgentRole, setIamPolicyBindings } from "../../gcp/secretManager";
+import { ensureServiceAgentRole } from "../../gcp/secretManager";
 
 describe("secretManager", () => {
   describe("parseSecretResourceName", () => {
@@ -37,7 +37,7 @@ describe("secretManager", () => {
         secretManager.parseSecretVersionResourceName(
           "projects/my-project/secrets/my-secret/versions/7"
         )
-      ).to.deep.equal({ secret: { projectId: "my-project", name: "my-secret" }, version: "7" });
+      ).to.deep.equal({ secret: { projectId: "my-project", name: "my-secret" }, versionId: "7" });
     });
 
     it("throws given invalid resource name", () => {
@@ -63,34 +63,29 @@ describe("secretManager", () => {
     const role = "test-role";
 
     let getIamPolicyStub: sinon.SinonStub;
-    let setIamPolicyBindingsStub: sinon.SinonStub;
+    let setIamPolicyStub: sinon.SinonStub;
 
     beforeEach(() => {
       getIamPolicyStub = sinon.stub(secretManager, "getIamPolicy").rejects("Unexpected call");
-      setIamPolicyBindingsStub = sinon
-        .stub(secretManager, "setIamPolicyBindings")
-        .rejects("Unexpected call");
+      setIamPolicyStub = sinon.stub(secretManager, "setIamPolicy").rejects("Unexpected call");
     });
 
     afterEach(() => {
       getIamPolicyStub.restore();
-      setIamPolicyBindingsStub.restore();
+      setIamPolicyStub.restore();
     });
 
     function setupStubs(existing: iam.Binding[], expected?: iam.Binding[]) {
       getIamPolicyStub.withArgs(secret).resolves({ bindings: existing });
       if (expected) {
-        setIamPolicyBindingsStub
-          .withArgs(secret, expected)
-          .resolves({ body: { bindings: expected } });
+        setIamPolicyStub.withArgs(secret, expected).resolves({ body: { bindings: expected } });
       }
     }
 
     it("adds new binding for each member", async () => {
       const existing: iam.Binding[] = [];
       const expected: iam.Binding[] = [
-        { role, members: ["serviceAccount:1@foobar.com"] },
-        { role, members: ["serviceAccount:2@foobar.com"] },
+        { role, members: ["serviceAccount:1@foobar.com", "serviceAccount:2@foobar.com"] },
       ];
 
       setupStubs(existing, expected);
@@ -100,8 +95,7 @@ describe("secretManager", () => {
     it("adds bindings only for missing members", async () => {
       const existing: iam.Binding[] = [{ role, members: ["serviceAccount:1@foobar.com"] }];
       const expected: iam.Binding[] = [
-        { role, members: ["serviceAccount:1@foobar.com"] },
-        { role, members: ["serviceAccount:2@foobar.com"] },
+        { role, members: ["serviceAccount:1@foobar.com", "serviceAccount:2@foobar.com"] },
       ];
 
       setupStubs(existing, expected);
@@ -113,9 +107,14 @@ describe("secretManager", () => {
         { role: "another-role", members: ["serviceAccount:3@foobar.com"] },
       ];
       const expected: iam.Binding[] = [
-        { role: "another-role", members: ["serviceAccount:3@foobar.com"] },
-        { role, members: ["serviceAccount:1@foobar.com"] },
-        { role, members: ["serviceAccount:2@foobar.com"] },
+        {
+          role: "another-role",
+          members: ["serviceAccount:3@foobar.com"],
+        },
+        {
+          role,
+          members: ["serviceAccount:1@foobar.com", "serviceAccount:2@foobar.com"],
+        },
       ];
 
       setupStubs(existing, expected);
