@@ -246,6 +246,7 @@ describe("validate", () => {
         platform: "gcfv2",
         secretEnvironmentVariables: [
           {
+            projectId: project,
             secret: "MY_SECRET",
             key: "MY_SECRET",
           },
@@ -263,6 +264,7 @@ describe("validate", () => {
         platform: "gcfv1",
         secretEnvironmentVariables: [
           {
+            projectId: project,
             secret: "MY_SECRET",
             key: "MY_SECRET",
           },
@@ -283,6 +285,7 @@ describe("validate", () => {
         platform: "gcfv1",
         secretEnvironmentVariables: [
           {
+            projectId: project,
             secret: "MY_SECRET",
             key: "MY_SECRET",
           },
@@ -303,6 +306,7 @@ describe("validate", () => {
         platform: "gcfv1",
         secretEnvironmentVariables: [
           {
+            projectId: project,
             secret: "MY_SECRET",
             key: "MY_SECRET",
           },

@@ -144,7 +144,10 @@ export async function pruneSecrets(
   }
 
   // Prune all project-scoped secrets in use.
-  for (const sev of of(endpoints)) {
+  const sevs = of(endpoints).filter(
+    (sev) => sev.projectId === projectId || sev.projectId === projectNumber
+  );
+  for (const sev of sevs) {
     let name = sev.secret;
     if (name.includes("/")) {
       const secret = parseSecretResourceName(name);

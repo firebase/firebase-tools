@@ -136,6 +136,7 @@ describe("functions/secret", () => {
 
     function makeSecret(name: string, version?: string): backend.SecretEnvVar {
       return {
+        projectId: "project",
         key: name,
         secret: name,
         version: version ?? "1",
@@ -206,6 +207,7 @@ describe("functions/secret", () => {
 
     function toSecretEnvVar(sv: secretManager.SecretVersion): backend.SecretEnvVar {
       return {
+        projectId: "project",
         version: sv.versionId,
         secret: sv.secret.name,
         key: sv.secret.name,

@@ -7,6 +7,7 @@ import { logger } from "../../logger";
 import * as fsutils from "../../fsutils";
 import * as backend from "./backend";
 import * as utils from "../../utils";
+import * as secrets from "../../functions/secrets";
 
 /** Validate that the configuration for endpoints are valid. */
 export function endpointsAreValid(wantBackend: backend.Backend): void {
@@ -126,10 +127,8 @@ function validatePlatformTargets(endpoints: backend.Endpoint[]) {
  */
 async function validateSecretVersions(projectId: string, endpoints: backend.Endpoint[]) {
   const toResolve: Set<string> = new Set();
-  for (const e of endpoints) {
-    for (const s of e.secretEnvironmentVariables! || []) {
-      toResolve.add(s.secret);
-    }
+  for (const s of secrets.of(endpoints)) {
+    toResolve.add(s.secret);
   }
 
   const results = await utils.allSettled(
@@ -164,14 +163,12 @@ async function validateSecretVersions(projectId: string, endpoints: backend.Endp
   }
 
   // Fill in versions.
-  for (const e of endpoints) {
-    for (const s of e.secretEnvironmentVariables! || []) {
-      s.version = secretVersions[s.secret].versionId;
-      if (!s.version) {
-        throw new FirebaseError(
-          "Secret version is unexpectedly undefined. This should never happen."
-        );
-      }
+  for (const s of secrets.of(endpoints)) {
+    s.version = secretVersions[s.secret].versionId;
+    if (!s.version) {
+      throw new FirebaseError(
+        "Secret version is unexpectedly undefined. This should never happen."
+      );
     }
   }
 }
