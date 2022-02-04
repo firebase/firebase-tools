@@ -17,6 +17,7 @@ const SAMPLE_OPTIONS: Options = {
   force: false,
   filteredTargets: [],
   rc: new RC(),
+  fix: false,
 };
 
 const VALID_TARGETS = ["hosting", "functions"];
