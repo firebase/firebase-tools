@@ -17,7 +17,7 @@ export default new Command("functions:secrets:get <KEY>")
       style: { head: ["yellow"] },
     });
     for (const version of versions) {
-      table.push([version.version, version.state]);
+      table.push([version.versionId, version.state]);
     }
     logger.info(table.toString());
   });

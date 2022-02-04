@@ -5,6 +5,7 @@ import * as secretManager from "../../gcp/secretManager";
 import * as secrets from "../../functions/secrets";
 import * as utils from "../../utils";
 import * as prompt from "../../prompt";
+import * as backend from "../../deploy/functions/backend";
 import { Options } from "../../options";
 import { FirebaseError } from "../../error";
 
@@ -13,39 +14,46 @@ describe("functions/secret", () => {
 
   describe("ensureValidKey", () => {
     let warnStub: sinon.SinonStub;
+    let promptStub: sinon.SinonStub;
 
     beforeEach(() => {
       warnStub = sinon.stub(utils, "logWarning").resolves(undefined);
+      promptStub = sinon.stub(prompt, "promptOnce").resolves(true);
     });
 
     afterEach(() => {
       warnStub.restore();
+      promptStub.restore();
     });
 
-    it("returns the original key if it follows convention", () => {
-      expect(secrets.ensureValidKey("MY_KEY", options)).to.equal("MY_KEY");
+    it("returns the original key if it follows convention", async () => {
+      expect(await secrets.ensureValidKey("MY_KEY", options)).to.equal("MY_KEY");
       expect(warnStub).to.not.have.been.called;
     });
 
-    it("returns the transformed key (with warning) if with dashses", () => {
-      expect(secrets.ensureValidKey("MY-KEY", options)).to.equal("MY_KEY");
+    it("returns the transformed key (with warning) if with dashses", async () => {
+      expect(await secrets.ensureValidKey("MY-KEY", options)).to.equal("MY_KEY");
       expect(warnStub).to.have.been.calledOnce;
     });
 
-    it("returns the transformed key (with warning) if with lower cases", () => {
-      expect(secrets.ensureValidKey("my_key", options)).to.equal("MY_KEY");
+    it("returns the transformed key (with warning) if with lower cases", async () => {
+      expect(await secrets.ensureValidKey("my_key", options)).to.equal("MY_KEY");
       expect(warnStub).to.have.been.calledOnce;
     });
 
-    it("returns the transformed key (with warning) if camelCased", () => {
-      expect(secrets.ensureValidKey("myKey", options)).to.equal("MY_KEY");
+    it("returns the transformed key (with warning) if camelCased", async () => {
+      expect(await secrets.ensureValidKey("myKey", options)).to.equal("MY_KEY");
       expect(warnStub).to.have.been.calledOnce;
     });
 
     it("throws error if given non-conventional key w/ forced option", () => {
-      expect(() => secrets.ensureValidKey("throwError", { ...options, force: true })).to.throw(
+      expect(secrets.ensureValidKey("throwError", { ...options, force: true })).to.be.rejectedWith(
         FirebaseError
       );
+    });
+
+    it("throws error if given reserved key", () => {
+      expect(secrets.ensureValidKey("FIREBASE_CONFIG", options)).to.be.rejectedWith(FirebaseError);
     });
   });
 
@@ -112,6 +120,168 @@ describe("functions/secret", () => {
 
       await expect(secrets.ensureSecret("project-id", "MY_SECRET", options)).to.eventually.be
         .rejected;
+    });
+  });
+
+  describe("of", () => {
+    const ENDPOINT = {
+      id: "id",
+      region: "region",
+      project: "project",
+      entryPoint: "id",
+      runtime: "nodejs16",
+      platform: "gcfv1" as const,
+      httpsTrigger: {},
+    };
+
+    function makeSecret(name: string, version?: string): backend.SecretEnvVar {
+      return {
+        projectId: "project",
+        key: name,
+        secret: name,
+        version: version ?? "1",
+      };
+    }
+
+    it("returns empty list given empty list", () => {
+      expect(secrets.of([])).to.be.empty;
+    });
+
+    it("collects all secret environment variables", () => {
+      const secret1 = makeSecret("SECRET1");
+      const secret2 = makeSecret("SECRET2");
+      const secret3 = makeSecret("SECRET3");
+
+      const endpoints: backend.Endpoint[] = [
+        {
+          ...ENDPOINT,
+          secretEnvironmentVariables: [secret1],
+        },
+        ENDPOINT,
+        {
+          ...ENDPOINT,
+          secretEnvironmentVariables: [secret2, secret3],
+        },
+      ];
+      expect(secrets.of(endpoints)).to.have.members([secret1, secret2, secret3]);
+      expect(secrets.of(endpoints)).to.have.length(3);
+    });
+  });
+
+  describe("pruneSecrets", () => {
+    const ENDPOINT = {
+      id: "id",
+      region: "region",
+      project: "project",
+      entryPoint: "id",
+      runtime: "nodejs16",
+      platform: "gcfv1" as const,
+      httpsTrigger: {},
+    };
+
+    let listSecretsStub: sinon.SinonStub;
+    let listSecretVersionsStub: sinon.SinonStub;
+    let getSecretVersionStub: sinon.SinonStub;
+
+    const secret1: secretManager.Secret = {
+      projectId: "project",
+      name: "MY_SECRET1",
+    };
+    const secretVersion11: secretManager.SecretVersion = {
+      secret: secret1,
+      versionId: "1",
+    };
+    const secretVersion12: secretManager.SecretVersion = {
+      secret: secret1,
+      versionId: "2",
+    };
+
+    const secret2: secretManager.Secret = {
+      projectId: "project",
+      name: "MY_SECRET2",
+    };
+    const secretVersion21: secretManager.SecretVersion = {
+      secret: secret2,
+      versionId: "1",
+    };
+
+    function toSecretEnvVar(sv: secretManager.SecretVersion): backend.SecretEnvVar {
+      return {
+        projectId: "project",
+        version: sv.versionId,
+        secret: sv.secret.name,
+        key: sv.secret.name,
+      };
+    }
+
+    beforeEach(() => {
+      listSecretsStub = sinon.stub(secretManager, "listSecrets").rejects("Unexpected call");
+      listSecretVersionsStub = sinon
+        .stub(secretManager, "listSecretVersions")
+        .rejects("Unexpected call");
+      getSecretVersionStub = sinon
+        .stub(secretManager, "getSecretVersion")
+        .rejects("Unexpected call");
+    });
+
+    afterEach(() => {
+      listSecretsStub.restore();
+      listSecretVersionsStub.restore();
+      getSecretVersionStub.restore();
+    });
+
+    it("returns nothing if unused", async () => {
+      listSecretsStub.resolves([]);
+
+      await expect(
+        secrets.pruneSecrets({ projectId: "project", projectNumber: "12345" }, [])
+      ).to.eventually.deep.equal([]);
+    });
+
+    it("returns all secrets given no endpoints", async () => {
+      listSecretsStub.resolves([secret1, secret2]);
+      listSecretVersionsStub.onFirstCall().resolves([secretVersion11, secretVersion12]);
+      listSecretVersionsStub.onSecondCall().resolves([secretVersion21]);
+
+      const pruned = await secrets.pruneSecrets(
+        { projectId: "project", projectNumber: "12345" },
+        []
+      );
+
+      expect(pruned).to.have.deep.members(
+        [secretVersion11, secretVersion12, secretVersion21].map(toSecretEnvVar)
+      );
+      expect(pruned).to.have.length(3);
+    });
+
+    it("does not include secret version in use", async () => {
+      listSecretsStub.resolves([secret1, secret2]);
+      listSecretVersionsStub.onFirstCall().resolves([secretVersion11, secretVersion12]);
+      listSecretVersionsStub.onSecondCall().resolves([secretVersion21]);
+
+      const pruned = await secrets.pruneSecrets({ projectId: "project", projectNumber: "12345" }, [
+        { ...ENDPOINT, secretEnvironmentVariables: [toSecretEnvVar(secretVersion12)] },
+      ]);
+
+      expect(pruned).to.have.deep.members([secretVersion11, secretVersion21].map(toSecretEnvVar));
+      expect(pruned).to.have.length(2);
+    });
+
+    it("resolves 'latest' secrets and properly prunes it", async () => {
+      listSecretsStub.resolves([secret1, secret2]);
+      listSecretVersionsStub.onFirstCall().resolves([secretVersion11, secretVersion12]);
+      listSecretVersionsStub.onSecondCall().resolves([secretVersion21]);
+      getSecretVersionStub.resolves(secretVersion12);
+
+      const pruned = await secrets.pruneSecrets({ projectId: "project", projectNumber: "12345" }, [
+        {
+          ...ENDPOINT,
+          secretEnvironmentVariables: [{ ...toSecretEnvVar(secretVersion12), version: "latest" }],
+        },
+      ]);
+
+      expect(pruned).to.have.deep.members([secretVersion11, secretVersion21].map(toSecretEnvVar));
+      expect(pruned).to.have.length(2);
     });
   });
 });

@@ -150,7 +150,7 @@ export async function prepare(
   );
 
   // Validate the function code that is being deployed.
-  validate.functionIdsAreValid(backend.allEndpoints(wantBackend));
+  validate.endpointsAreValid(wantBackend);
 
   // Check what --only filters have been passed in.
   context.filters = getFilterGroups(options);

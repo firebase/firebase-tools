@@ -146,6 +146,8 @@ export function memoryOptionDisplayName(option: MemoryOptions): string {
   }[option];
 }
 
+export const DEFAULT_MEMORY: MemoryOptions = 256;
+export const MIN_MEMORY_FOR_CONCURRENCY: MemoryOptions = 2048;
 export const SCHEDULED_FUNCTION_LABEL = Object.freeze({ deployment: "firebase-schedule" });
 
 /**
@@ -167,6 +169,9 @@ export interface TargetIds {
 export interface SecretEnvVar {
   key: string;
   secret: string;
+  projectId: string;
+
+  // Internal use only. Users cannot pin secret to a specific version.
   version?: string;
 }
 
