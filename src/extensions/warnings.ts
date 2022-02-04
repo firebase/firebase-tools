@@ -41,6 +41,9 @@ function displayExperimentalWarning() {
   );
 }
 
+/**
+ * Show warning if extension is experimental or developed by 3P.
+ */
 export async function displayWarningPrompts(
   publisherId: string,
   launchStage: RegistryLaunchStage,
