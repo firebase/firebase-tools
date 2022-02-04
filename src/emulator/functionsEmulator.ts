@@ -896,13 +896,13 @@ export class FunctionsEmulator implements EmulatorInstance {
         "functions",
         `Using node@${requestedMajorVersion} from host.`
       );
+    } else {
+      // Otherwise we'll warn and use the version that is currently running this process.
+      this.logger.log(
+        "WARN",
+        `Your requested "node" version "${requestedMajorVersion}" doesn't match your global version "${hostMajorVersion}". Using node@${hostMajorVersion} from host.`
+      );
     }
-
-    // Otherwise we'll warn and use the version that is currently running this process.
-    this.logger.log(
-      "WARN",
-      `Your requested "node" version "${requestedMajorVersion}" doesn't match your global version "${hostMajorVersion}"`
-    );
 
     return process.execPath;
   }
