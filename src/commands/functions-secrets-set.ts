@@ -3,20 +3,22 @@ import * as fs from "fs";
 
 import * as clc from "cli-color";
 
-import { ensureValidKey, ensureSecret } from "../functions/secrets";
+import { ensureValidKey, ensureSecret, pruneAndDestroySecrets } from "../functions/secrets";
 import { Command } from "../command";
 import { requirePermissions } from "../requirePermissions";
 import { Options } from "../options";
 import { promptOnce } from "../prompt";
 import { logBullet, logSuccess } from "../utils";
-import { needProjectId } from "../projectUtils";
+import { needProjectId, needProjectNumber } from "../projectUtils";
 import { addVersion, toSecretVersionResourceName } from "../gcp/secretManager";
+import * as secrets from "../functions/secrets";
+import * as backend from "../deploy/functions/backend";
+import * as args from "../deploy/functions/args";
+import * as gcf from "../gcp/cloudfunctions";
 
 export default new Command("functions:secrets:set <KEY>")
-  .description("Create or update a secret for use in Cloud Functions for Firebase")
-  .withForce(
-    "Does not ensure input keys are valid or upgrade existing secrets to have Firebase manage them."
-  )
+  .description("Create or update a secret for use in Cloud Functions for Firebase.")
+  .withForce("Automatically updates functions to use the new secret.")
   .before(requirePermissions, [
     "secretmanager.secrets.create",
     "secretmanager.secrets.get",
@@ -29,6 +31,7 @@ export default new Command("functions:secrets:set <KEY>")
   )
   .action(async (unvalidatedKey: string, options: Options) => {
     const projectId = needProjectId(options);
+    const projectNumber = await needProjectNumber(options);
     const key = await ensureValidKey(unvalidatedKey, options);
     const secret = await ensureSecret(projectId, key, options);
     let secretValue;
@@ -49,8 +52,50 @@ export default new Command("functions:secrets:set <KEY>")
 
     const secretVersion = await addVersion(projectId, key, secretValue);
     logSuccess(`Created a new secret version ${toSecretVersionResourceName(secretVersion)}`);
+
+    if (!secrets.isFirebaseManaged(secret)) {
+      logBullet(
+        "Please deploy your functions for the change to take effect by running:\n\t" +
+          clc.bold("firebase deploy --only functions")
+      );
+      return;
+    }
+
+    const haveBackend = await backend.existingBackend({ projectId } as args.Context);
+    const endpointsToUpdate = backend
+      .allEndpoints(haveBackend)
+      .filter((e) => secrets.inUse({ projectId, projectNumber }, secret, e));
+
+    if (endpointsToUpdate.length === 0) {
+      return;
+    }
+
     logBullet(
-      "Please deploy your functions for the change to take effect by running:\n\t" +
-        clc.bold("firebase deploy --only functions")
+      `${endpointsToUpdate.length} functions are using stale version of secret ${secret.name}:\n\t` +
+        endpointsToUpdate.map((e) => `${e.id}(${e.region})`).join("\n\t")
     );
+
+    if (!options.force) {
+      const confirm = await promptOnce(
+        {
+          name: "redeploy",
+          type: "confirm",
+          default: true,
+          message: `Do you want to re-deploy the functions and delete the stale version of secret ${secret.name}?`,
+        },
+        options
+      );
+      if (!confirm) {
+        return;
+      }
+    }
+
+    const updateOps = endpointsToUpdate.map(async (e) => {
+      logBullet(`Updating function ${e.id}(${e.region})...`);
+      const updated = await secrets.updateEndpointSecret(secret, e);
+      logBullet(`Updated function ${e.id}(${e.region}).`);
+      return updated;
+    });
+    const updatedEndpoints = await Promise.all(updateOps);
+    await pruneAndDestroySecrets({ projectId, projectNumber }, updatedEndpoints);
   });
