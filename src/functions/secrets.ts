@@ -1,6 +1,10 @@
+import * as utils from "../utils";
+import * as poller from "../operation-poller";
+import * as gcf from "../gcp/cloudfunctions";
 import * as backend from "../deploy/functions/backend";
 import {
   createSecret,
+  destroySecretVersion,
   getSecret,
   getSecretVersion,
   listSecrets,
@@ -14,8 +18,17 @@ import { FirebaseError } from "../error";
 import { logWarning } from "../utils";
 import { promptOnce } from "../prompt";
 import { validateKey } from "./env";
+import { needProjectNumber } from "../projectUtils";
+import { logger } from "../logger";
+import { functionsOrigin } from "../api";
+import { assertExhaustive } from "../functional";
 
 const FIREBASE_MANGED = "firebase-managed";
+
+type ProjectInfo = {
+  projectId: string;
+  projectNumber: string;
+};
 
 /**
  * Returns true if secret is managed by Firebase.
@@ -127,7 +140,7 @@ export function of(endpoints: backend.Endpoint[]): backend.SecretEnvVar[] {
  * Returns all secret versions from Firebase managed secrets unused in the given list of endpoints.
  */
 export async function pruneSecrets(
-  projectInfo: { projectNumber: string; projectId: string },
+  projectInfo: ProjectInfo,
   endpoints: backend.Endpoint[]
 ): Promise<Required<backend.SecretEnvVar>[]> {
   const { projectId, projectNumber } = projectInfo;
@@ -144,10 +157,17 @@ export async function pruneSecrets(
   }
 
   // Prune all project-scoped secrets in use.
-  const sevs = of(endpoints).filter(
-    (sev) => sev.projectId === projectId || sev.projectId === projectNumber
-  );
-  for (const sev of sevs) {
+  const secrets: Required<backend.SecretEnvVar>[] = [];
+  for (const secret of of(endpoints)) {
+    if (secret.projectId === projectId || secret.projectId === projectNumber) {
+      if (secret.version) {
+        // I'm not sure why TS can't infer that version will not be empty in this block.
+        secrets.push({ ...secret, version: secret.version });
+      }
+    }
+  }
+
+  for (const sev of secrets) {
     let name = sev.secret;
     if (name.includes("/")) {
       const secret = parseSecretResourceName(name);
@@ -161,10 +181,112 @@ export async function pruneSecrets(
       version = resolved.versionId;
     }
 
-    prunedSecrets.delete(pruneKey(name, version!));
+    prunedSecrets.delete(pruneKey(name, version));
   }
 
   return Array.from(prunedSecrets)
     .map((key) => key.split("@"))
     .map(([secret, version]) => ({ projectId, version, secret, key: secret }));
+}
+
+type PruneResult = {
+  destroyed: backend.SecretEnvVar[];
+  erred: { message: string }[];
+};
+
+/**
+ * Prune and destroy all unused secret versions. Only Firebase managed secrets will be scanned.
+ */
+export async function pruneAndDestroySecrets(
+  projectInfo: ProjectInfo,
+  endpoints: backend.Endpoint[]
+): Promise<PruneResult> {
+  const destroyed: PruneResult["destroyed"] = [];
+  const erred: PruneResult["erred"] = [];
+
+  const { projectId, projectNumber } = projectInfo;
+  logger.debug("Pruning secrets to find unused secret versions...");
+  const unusedSecrets = await pruneSecrets({ projectId, projectNumber }, endpoints);
+
+  if (unusedSecrets.length === 0) {
+    return { destroyed, erred };
+  }
+
+  const msg = unusedSecrets.map((s) => `${s.secret}@${s.version}`);
+  logger.debug(`Found unused secret versions: ${msg}. Destroying them...`);
+  const destroyResults = await utils.allSettled(
+    unusedSecrets.map(async (sev) => {
+      await destroySecretVersion(sev.projectId, sev.secret, sev.version);
+      return sev;
+    })
+  );
+
+  for (const result of destroyResults) {
+    if (result.status === "fulfilled") {
+      destroyed.push(result.value);
+    } else {
+      erred.push(result.reason as { message: string });
+    }
+  }
+  return { destroyed, erred };
+}
+
+/**
+ * Checks where a secret is in use by the given endpoint.
+ */
+export function inUse(projectInfo: ProjectInfo, secret: Secret, endpoint: backend.Endpoint) {
+  const { projectNumber } = projectInfo;
+  for (const sev of of([endpoint])) {
+    if (
+      (sev.projectId === endpoint.project || sev.projectId === projectNumber) &&
+      sev.secret === secret.name
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Updates given endpoint to use the given secret version.
+ */
+export async function updateEndpointSecret(
+  secret: Secret,
+  endpoint: backend.Endpoint
+): Promise<backend.Endpoint> {
+  const sv = await getSecretVersion(secret.projectId, secret.name, "latest");
+  const projectNumber = await needProjectNumber({ projectId: endpoint.project });
+  const newSecrets: Required<backend.SecretEnvVar>[] = [];
+  for (const secret of of([endpoint])) {
+    const newSecret = { ...secret };
+    if (
+      (newSecret.projectId === endpoint.project || newSecret.projectId === projectNumber) &&
+      newSecret.secret == sv.secret.name
+    ) {
+      newSecret.version = sv.versionId;
+    }
+    newSecrets.push(newSecret as Required<backend.SecretEnvVar>);
+  }
+
+  if (endpoint.platform === "gcfv1") {
+    const fn = gcf.functionFromEndpoint(endpoint, "");
+    const op = await gcf.updateFunction({
+      name: fn.name,
+      runtime: fn.runtime,
+      entryPoint: fn.entryPoint,
+      secretEnvironmentVariables: newSecrets,
+    });
+    const cfn = await poller.pollOperation<gcf.CloudFunction>({
+      apiOrigin: functionsOrigin,
+      apiVersion: gcf.API_VERSION,
+      pollerName: `update-${endpoint.region}-${endpoint.id}`,
+      operationResourceName: op.name,
+    });
+    return gcf.endpointFromFunction(cfn);
+  } else if (endpoint.platform === "gcfv2") {
+    // TODO add support for updating secrets in v2 functions once it's supported
+    throw new FirebaseError(`Unsupported platform ${endpoint.platform}`);
+  } else {
+    assertExhaustive(endpoint.platform);
+  }
 }
