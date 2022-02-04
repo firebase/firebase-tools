@@ -98,7 +98,6 @@ export interface FunctionsEmulatorArgs {
   quiet?: boolean;
   disabledRuntimeFeatures?: FunctionsRuntimeFeatures;
   debugPort?: number;
-  disableDotenv?: boolean;
   remoteEmulators?: { [key: string]: EmulatorInfo };
   adminSdkConfig?: AdminSdkConfig;
 }
@@ -876,7 +875,6 @@ export class FunctionsEmulator implements EmulatorInstance {
     const projectInfo = {
       functionsSource: backend.functionsDir,
       projectId: this.args.projectId,
-      disabled: this.args.disableDotenv ?? false,
       isEmulator: true,
     };
 

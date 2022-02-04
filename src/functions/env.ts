@@ -213,7 +213,6 @@ function findEnvfiles(
 export interface UserEnvsOpts {
   functionsSource: string;
   projectId: string;
-  disabled: boolean;
   projectAlias?: string;
   isEmulator?: boolean;
 }
@@ -251,13 +250,8 @@ export function loadUserEnvs({
   functionsSource,
   projectId,
   projectAlias,
-  disabled,
   isEmulator,
 }: UserEnvsOpts): Record<string, string> {
-  if (disabled) {
-    return {};
-  }
-
   const envFiles = findEnvfiles(functionsSource, projectId, projectAlias, isEmulator);
   if (envFiles.length == 0) {
     return {};

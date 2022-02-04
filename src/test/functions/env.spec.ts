@@ -250,7 +250,6 @@ FOO=foo
     const projectInfo: Omit<env.UserEnvsOpts, "functionsSource"> = {
       projectId: "my-project",
       projectAlias: "dev",
-      disabled: false,
     };
     let tmpdir: string;
 
@@ -267,16 +266,6 @@ FOO=foo
 
     it("loads nothing if .env files are missing", () => {
       expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({});
-    });
-
-    it("loads nothing if explictly disabled", () => {
-      createEnvFiles(tmpdir, {
-        ".env": "FOO=foo\nBAR=bar",
-      });
-
-      expect(
-        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir, disabled: true })
-      ).to.be.deep.equal({});
     });
 
     it("loads envs from .env file", () => {
