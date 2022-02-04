@@ -150,7 +150,7 @@ export async function pruneSecrets(
   // Collect all Firebase managed secret versions
   const haveSecrets = await listSecrets(projectId, `labels.${FIREBASE_MANGED}=true`);
   for (const secret of haveSecrets) {
-    const versions = await listSecretVersions(projectId, secret.name, `state: ENABLED`);
+    const versions = await listSecretVersions(projectId, secret.name, `NOT state: DESTROYED`);
     for (const version of versions) {
       prunedSecrets.add(pruneKey(secret.name, version.versionId));
     }
@@ -288,7 +288,7 @@ export async function updateEndpointSecret(
     });
     return gcf.endpointFromFunction(cfn);
   } else if (endpoint.platform === "gcfv2") {
-    // TODO add support for updating secrets in v2 functions once it's supported
+    // TODO add support for updating secrets in v2 functions once the feature lands.
     throw new FirebaseError(`Unsupported platform ${endpoint.platform}`);
   } else {
     assertExhaustive(endpoint.platform);
