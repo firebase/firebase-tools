@@ -27,15 +27,19 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     next();
   });
 
-  gcloudStorageAPI.get("/b", async (req, res) => {
+  gcloudStorageAPI.get("/b", (req, res) => {
     res.json({
       kind: "storage#buckets",
-      items: await storageLayer.listBuckets(),
+      items: storageLayer.listBuckets(),
     });
   });
 
   gcloudStorageAPI.get(
-    ["/b/:bucketId/o/:objectId", "/download/storage/v1/b/:bucketId/o/:objectId"],
+    [
+      "/b/:bucketId/o/:objectId",
+      "/download/storage/v1/b/:bucketId/o/:objectId",
+      "/storage/v1/b/:bucketId/o/:objectId",
+    ],
     (req, res) => {
       const md = storageLayer.getMetadata(req.params.bucketId, req.params.objectId);
 
@@ -91,17 +95,20 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     res.json(listResult);
   });
 
-  gcloudStorageAPI.delete("/b/:bucketId/o/:objectId", (req, res) => {
-    const md = storageLayer.getMetadata(req.params.bucketId, req.params.objectId);
+  gcloudStorageAPI.delete(
+    ["/b/:bucketId/o/:objectId", "/storage/v1/b/:bucketId/o/:objectId"],
+    (req, res) => {
+      const md = storageLayer.getMetadata(req.params.bucketId, req.params.objectId);
 
-    if (!md) {
-      res.sendStatus(404);
-      return;
+      if (!md) {
+        res.sendStatus(404);
+        return;
+      }
+
+      storageLayer.deleteFile(req.params.bucketId, req.params.objectId);
+      res.status(200).send();
     }
-
-    storageLayer.deleteFile(req.params.bucketId, req.params.objectId);
-    res.status(200).send();
-  });
+  );
 
   gcloudStorageAPI.put("/upload/storage/v1/b/:bucketId/o", async (req, res) => {
     if (!req.query.upload_id) {
