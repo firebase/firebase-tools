@@ -3,6 +3,7 @@ import * as sinon from "sinon";
 import * as resourceManager from "../../gcp/resourceManager";
 import * as pn from "../../getProjectNumber";
 import * as diagnose from "../../extensions/diagnose";
+import * as extensionsApi from "../../extensions/extensionsApi";
 import * as prompt from "../../prompt";
 
 const GOOD_BINDING = {
@@ -15,6 +16,7 @@ describe("diagnose", () => {
   let setIamStub: sinon.SinonStub;
   let getProjectNumberStub: sinon.SinonStub;
   let promptOnceStub: sinon.SinonStub;
+  let listInstancesStub: sinon.SinonStub;
 
   beforeEach(() => {
     getIamStub = sinon
@@ -29,8 +31,12 @@ describe("diagnose", () => {
     promptOnceStub = sinon
       .stub(prompt, "promptOnce")
       .throws("unexpected call to prompt.promptOnce");
+    listInstancesStub = sinon
+      .stub(extensionsApi, "listInstances")
+      .throws("unexpected call to extensionsApi.listInstances");
 
     getProjectNumberStub.resolves(123456);
+    listInstancesStub.resolves([]);
   });
 
   afterEach(() => {
