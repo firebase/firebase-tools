@@ -274,8 +274,8 @@ export default new Command("ext:install [extensionName]")
   .option("--params <paramsFile>", "name of params variables file with .env format.")
   .before(requirePermissions, ["firebaseextensions.instances.create"])
   .before(ensureExtensionsApiEnabled)
-  .before(diagnoseAndFixProject)
   .before(checkMinRequiredVersion, "extMinVersion")
+  .before(diagnoseAndFixProject)
   .action(async (extensionName: string, options: any) => {
     const projectId = needProjectId(options);
     const paramsEnvPath = options.params;
