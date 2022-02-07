@@ -462,19 +462,23 @@ async function loginRemotely(userHint?: string): Promise<UserCredentials> {
     message: "Enter authorization code:",
   });
 
-  const tokens = await getTokensFromAuthorizationCode(
-    code,
-    `${api.authProxyOrigin}/complete`,
-    codeVerifier
-  );
+  try {
+    const tokens = await getTokensFromAuthorizationCode(
+      code,
+      `${api.authProxyOrigin}/complete`,
+      codeVerifier
+    );
 
-  track("login", "google_remote");
+    track("login", "google_remote");
 
-  return {
-    user: jwt.decode(tokens.id_token!) as User,
-    tokens: tokens,
-    scopes: SCOPES,
-  };
+    return {
+      user: jwt.decode(tokens.id_token!) as User,
+      tokens: tokens,
+      scopes: SCOPES,
+    };
+  } catch (e) {
+    throw new FirebaseError("Unable to authenticate using the provided code. Please try again.");
+  }
 }
 
 async function loginWithLocalhostGoogle(port: number, userHint?: string): Promise<UserCredentials> {
