@@ -12,6 +12,7 @@ import {
   parseSecretResourceName,
   patchSecret,
   Secret,
+  SecretVersion,
 } from "../gcp/secretManager";
 import { Options } from "../options";
 import { FirebaseError } from "../error";
@@ -137,6 +138,22 @@ export function of(endpoints: backend.Endpoint[]): backend.SecretEnvVar[] {
 }
 
 /**
+ * Checks whether a secret is in use by the given endpoint.
+ */
+export function inUse(projectInfo: ProjectInfo, secret: Secret, endpoint: backend.Endpoint) {
+  const { projectNumber } = projectInfo;
+  for (const sev of of([endpoint])) {
+    if (
+      (sev.projectId === endpoint.project || sev.projectId === projectNumber) &&
+      sev.secret === secret.name
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * Returns all secret versions from Firebase managed secrets unused in the given list of endpoints.
  */
 export async function pruneSecrets(
@@ -201,12 +218,16 @@ export async function pruneAndDestroySecrets(
   projectInfo: ProjectInfo,
   endpoints: backend.Endpoint[]
 ): Promise<PruneResult> {
+  const { projectId, projectNumber } = projectInfo;
+
   const destroyed: PruneResult["destroyed"] = [];
   const erred: PruneResult["erred"] = [];
 
-  const { projectId, projectNumber } = projectInfo;
   logger.debug("Pruning secrets to find unused secret versions...");
-  const unusedSecrets = await pruneSecrets({ projectId, projectNumber }, endpoints);
+  const unusedSecrets: Required<backend.SecretEnvVar>[] = await module.exports.pruneSecrets(
+    { projectId, projectNumber },
+    endpoints
+  );
 
   if (unusedSecrets.length === 0) {
     return { destroyed, erred };
@@ -214,7 +235,7 @@ export async function pruneAndDestroySecrets(
 
   const msg = unusedSecrets.map((s) => `${s.secret}@${s.version}`);
   logger.debug(`Found unused secret versions: ${msg}. Destroying them...`);
-  const destroyResults = await utils.allSettled(
+  const destroyResults = await utils.allSettled<backend.SecretEnvVar>(
     unusedSecrets.map(async (sev) => {
       await destroySecretVersion(sev.projectId, sev.secret, sev.version);
       return sev;
@@ -232,40 +253,24 @@ export async function pruneAndDestroySecrets(
 }
 
 /**
- * Checks where a secret is in use by the given endpoint.
- */
-export function inUse(projectInfo: ProjectInfo, secret: Secret, endpoint: backend.Endpoint) {
-  const { projectNumber } = projectInfo;
-  for (const sev of of([endpoint])) {
-    if (
-      (sev.projectId === endpoint.project || sev.projectId === projectNumber) &&
-      sev.secret === secret.name
-    ) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/**
  * Updates given endpoint to use the given secret version.
  */
 export async function updateEndpointSecret(
-  secret: Secret,
+  projectInfo: ProjectInfo,
+  secretVersion: SecretVersion,
   endpoint: backend.Endpoint
 ): Promise<backend.Endpoint> {
-  const sv = await getSecretVersion(secret.projectId, secret.name, "latest");
-  const projectNumber = await needProjectNumber({ projectId: endpoint.project });
+  const { projectId, projectNumber } = projectInfo;
   const newSecrets: Required<backend.SecretEnvVar>[] = [];
   for (const secret of of([endpoint])) {
-    const newSecret = { ...secret };
+    const newSecret = { ...secret } as Required<backend.SecretEnvVar>;
     if (
-      (newSecret.projectId === endpoint.project || newSecret.projectId === projectNumber) &&
-      newSecret.secret == sv.secret.name
+      (newSecret.projectId === projectId || newSecret.projectId === projectNumber) &&
+      newSecret.secret == secretVersion.secret.name
     ) {
-      newSecret.version = sv.versionId;
+      newSecret.version = secretVersion.versionId;
     }
-    newSecrets.push(newSecret as Required<backend.SecretEnvVar>);
+    newSecrets.push(newSecret);
   }
 
   if (endpoint.platform === "gcfv1") {
@@ -276,16 +281,17 @@ export async function updateEndpointSecret(
       entryPoint: fn.entryPoint,
       secretEnvironmentVariables: newSecrets,
     });
-    const cfn = await poller.pollOperation<gcf.CloudFunction>({
+    // Using fabricator.gcfV1PollerOptions doesn't work - apiVersion is empty on that object.
+    // Issue due to cyclical dependency? I don't know - instead copying the option in verbatim instead.
+    const gcfV1PollerOptions = {
       apiOrigin: functionsOrigin,
-      // For some reason, gcf.API_VERSION is undefined when fabricator.gcfV1PollerOptions is imported.
-      // Possibly due to cyclical dependency? Copying the option in verbatim instead.
       apiVersion: gcf.API_VERSION,
       masterTimeout: 25 * 60 * 1_000, // 25 minutes is the maximum build time for a function
       maxBackoff: 10_000,
       pollerName: `update-${endpoint.region}-${endpoint.id}`,
       operationResourceName: op.name,
-    });
+    };
+    const cfn = await poller.pollOperation<gcf.CloudFunction>(gcfV1PollerOptions);
     return gcf.endpointFromFunction(cfn);
   } else if (endpoint.platform === "gcfv2") {
     // TODO add support for updating secrets in v2 functions once the feature lands.
