@@ -2,8 +2,10 @@ import { logPrefix } from "./extensionsHelper";
 import { getProjectNumber } from "../getProjectNumber";
 import * as utils from "../utils";
 import * as resourceManager from "../gcp/resourceManager";
+import { listInstances } from "./extensionsApi";
 import { promptOnce } from "../prompt";
 import { logger } from "../logger";
+import { FirebaseError } from "../error";
 
 const SERVICE_AGENT_ROLE = "roles/firebasemods.serviceAgent";
 
@@ -22,16 +24,17 @@ export async function diagnose(projectId: string): Promise<boolean> {
 
   utils.logLabeledBullet(logPrefix, "Checking project IAM policy...");
 
+  // Call ListExtensionInstances to make sure Extensions Service Agent is provisioned.
+  await listInstances(projectId);
+
   const policy = await resourceManager.getIamPolicy(projectId);
   logger.debug(policy);
-  let foundP4saInPolicy = false;
-  for (const b of policy.bindings) {
-    if (b.role === SERVICE_AGENT_ROLE && b.members.includes("serviceAccount:" + saEmail)) {
-      foundP4saInPolicy = true;
-    }
-  }
-  if (foundP4saInPolicy) {
-    utils.logLabeledSuccess(logPrefix, "Project IAM policy OK.");
+  if (
+    policy.bindings.find(
+      (b) => b.role === SERVICE_AGENT_ROLE && b.members.includes("serviceAccount:" + saEmail)
+    )
+  ) {
+    utils.logLabeledSuccess(logPrefix, "Project IAM policy OK");
     return true;
   } else {
     utils.logWarning(
@@ -50,7 +53,7 @@ export async function diagnose(projectId: string): Promise<boolean> {
         members: ["serviceAccount:" + saEmail],
       });
       await resourceManager.setIamPolicy(projectId, policy, "bindings");
-      utils.logSuccess("Project IAM policy updated successfully.");
+      utils.logSuccess("Project IAM policy updated successfully");
       return true;
     }
     return false;

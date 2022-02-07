@@ -64,7 +64,6 @@ module.exports = function (client) {
   client.experimental.functions.shell = loadCommand("experimental-functions-shell");
   client.ext = loadCommand("ext");
   client.ext.configure = loadCommand("ext-configure");
-  client.ext.diagnose = loadCommand("ext-diagnose");
   client.ext.info = loadCommand("ext-info");
   client.ext.export = loadCommand("ext-export");
   client.ext.install = loadCommand("ext-install");
