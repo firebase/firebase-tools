@@ -19,7 +19,6 @@ import { FirebaseError } from "../error";
 import { logWarning } from "../utils";
 import { promptOnce } from "../prompt";
 import { validateKey } from "./env";
-import { needProjectNumber } from "../projectUtils";
 import { logger } from "../logger";
 import { functionsOrigin } from "../api";
 import { assertExhaustive } from "../functional";
@@ -261,16 +260,28 @@ export async function updateEndpointSecret(
   endpoint: backend.Endpoint
 ): Promise<backend.Endpoint> {
   const { projectId, projectNumber } = projectInfo;
-  const newSecrets: Required<backend.SecretEnvVar>[] = [];
-  for (const secret of of([endpoint])) {
-    const newSecret = { ...secret } as Required<backend.SecretEnvVar>;
+
+  if (
+    of([endpoint]).filter(
+      (s) =>
+        (s.projectId === projectId || s.projectId === projectNumber) &&
+        s.secret === secretVersion.secret.name
+    ).length === 0
+  ) {
+    // Secret is not in use - return early.
+    return endpoint;
+  }
+
+  const updatedSevs: Required<backend.SecretEnvVar>[] = [];
+  for (const sev of of([endpoint])) {
+    const updatedSev = { ...sev } as Required<backend.SecretEnvVar>;
     if (
-      (newSecret.projectId === projectId || newSecret.projectId === projectNumber) &&
-      newSecret.secret == secretVersion.secret.name
+      (updatedSev.projectId === projectId || updatedSev.projectId === projectNumber) &&
+      updatedSev.secret == secretVersion.secret.name
     ) {
-      newSecret.version = secretVersion.versionId;
+      updatedSev.version = secretVersion.versionId;
     }
-    newSecrets.push(newSecret);
+    updatedSevs.push(updatedSev);
   }
 
   if (endpoint.platform === "gcfv1") {
@@ -279,10 +290,10 @@ export async function updateEndpointSecret(
       name: fn.name,
       runtime: fn.runtime,
       entryPoint: fn.entryPoint,
-      secretEnvironmentVariables: newSecrets,
+      secretEnvironmentVariables: updatedSevs,
     });
     // Using fabricator.gcfV1PollerOptions doesn't work - apiVersion is empty on that object.
-    // Issue due to cyclical dependency? I don't know - instead copying the option in verbatim instead.
+    // Possibly due to cyclical dependency? Copying the option in verbatim instead.
     const gcfV1PollerOptions = {
       apiOrigin: functionsOrigin,
       apiVersion: gcf.API_VERSION,
