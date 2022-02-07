@@ -184,7 +184,8 @@ export async function uploadObject(
   }
   const storageAPIClient = new Client({ urlPrefix: storageOrigin, apiVersion: "v1" });
   const location = `/${bucketName}/${path.basename(source.file)}`;
-  const res = await storageAPIClient.request({
+  const localAPIClient = new Client({ urlPrefix: storageOrigin });
+  const res = await localAPIClient.request({
     method: "PUT",
     path: location,
     headers: {
