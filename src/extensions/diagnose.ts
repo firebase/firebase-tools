@@ -27,8 +27,21 @@ export async function diagnose(projectId: string): Promise<boolean> {
   // Call ListExtensionInstances to make sure Extensions Service Agent is provisioned.
   await listInstances(projectId);
 
-  const policy = await resourceManager.getIamPolicy(projectId);
-  logger.debug(policy);
+  let policy;
+  try {
+    policy = await resourceManager.getIamPolicy(projectId);
+    logger.debug(policy);
+  } catch (e) {
+    if (e instanceof FirebaseError && e.status === 403) {
+      throw new FirebaseError(
+        "Unable to get project IAM policy, permission denied (403). Please " +
+          "make sure you have sufficient project privileges or if this is a brand new project " +
+          "try again in a few minutes."
+      );
+    }
+    throw e;
+  }
+
   if (
     policy.bindings.find(
       (b) => b.role === SERVICE_AGENT_ROLE && b.members.includes("serviceAccount:" + saEmail)
