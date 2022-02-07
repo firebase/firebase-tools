@@ -29,7 +29,10 @@ function setUpExtensionsCache(): void {
 }
 
 function cleanUpExtensionsCache(): void {
-  if (process.env.FIREBASE_EXTENSIONS_CACHE_PATH && fs.existsSync(process.env.FIREBASE_EXTENSIONS_CACHE_PATH)) {
+  if (
+    process.env.FIREBASE_EXTENSIONS_CACHE_PATH &&
+    fs.existsSync(process.env.FIREBASE_EXTENSIONS_CACHE_PATH)
+  ) {
     rimraf.sync(process.env.FIREBASE_EXTENSIONS_CACHE_PATH);
   }
 }
@@ -61,14 +64,14 @@ describe("CF3 and Extensions emulator", () => {
     const config = readConfig();
     const port = config.emulators!.storage.port;
     process.env.STORAGE_EMULATOR_HOST = `http://localhost:${port}`;
-    
+
     test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, config);
     await test.startEmulators();
 
     admin.initializeApp({
       projectId: FIREBASE_PROJECT,
       credential: admin.credential.applicationDefault(),
-      storageBucket: `${FIREBASE_PROJECT}.appspot.com`
+      storageBucket: `${FIREBASE_PROJECT}.appspot.com`,
     });
   });
 
@@ -95,10 +98,8 @@ describe("CF3 and Extensions emulator", () => {
   });
 
   it("should have have triggered an Extension Firestore function", async () => {
-    const fileResized = await admin.storage().bucket().file(STORAGE_RESIZED_FILE_NAME);
+    const fileResized = await admin.storage().bucket().file(STORAGE_RESIZED_FILE_NAME).exists();
 
-    expect(fileResized.exists()).to.be.true;
+    expect(fileResized).to.be.true;
   });
 });
-
-
