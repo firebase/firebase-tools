@@ -176,8 +176,9 @@ export async function pruneSecrets(
   const secrets: Required<backend.SecretEnvVar>[] = [];
   for (const secret of of(endpoints)) {
     if (secret.projectId === projectId || secret.projectId === projectNumber) {
+      // All bets are off the secret version isn't available. This should never happen for GCFv1 instances,
+      // but just to be safe, we'll skip such configured secrets.
       if (secret.version) {
-        // I'm not sure why TS can't infer that version will not be empty in this block.
         secrets.push({ ...secret, version: secret.version });
       }
     }
@@ -219,9 +220,6 @@ export async function pruneAndDestroySecrets(
 ): Promise<PruneResult> {
   const { projectId, projectNumber } = projectInfo;
 
-  const destroyed: PruneResult["destroyed"] = [];
-  const erred: PruneResult["erred"] = [];
-
   logger.debug("Pruning secrets to find unused secret versions...");
   const unusedSecrets: Required<backend.SecretEnvVar>[] = await module.exports.pruneSecrets(
     { projectId, projectNumber },
@@ -229,9 +227,11 @@ export async function pruneAndDestroySecrets(
   );
 
   if (unusedSecrets.length === 0) {
-    return { destroyed, erred };
+    return { destroyed: [], erred: [] };
   }
 
+  const destroyed: PruneResult["destroyed"] = [];
+  const erred: PruneResult["erred"] = [];
   const msg = unusedSecrets.map((s) => `${s.secret}@${s.version}`);
   logger.debug(`Found unused secret versions: ${msg}. Destroying them...`);
   const destroyResults = await utils.allSettled<backend.SecretEnvVar>(
