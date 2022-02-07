@@ -20,7 +20,7 @@ import { clearCredentials } from "./defaultCredentials";
 import { v4 as uuidv4 } from "uuid";
 import { randomBytes, createHash } from "crypto";
 import { bold } from "cli-color";
-import track from "./track";
+import { track } from "./track";
 
 /* eslint-disable camelcase */
 // The wire protocol for an access token returned by Google.
