@@ -91,7 +91,11 @@ export default new Command("functions:secrets:set <KEY>")
 
     const updateOps = endpointsToUpdate.map(async (e) => {
       logBullet(`Updating function ${e.id}(${e.region})...`);
-      const updated = await secrets.updateEndpointSecret(secret, e);
+      const updated = await secrets.updateEndpointSecret(
+        { projectId, projectNumber },
+        secretVersion,
+        e
+      );
       logBullet(`Updated function ${e.id}(${e.region}).`);
       return updated;
     });
