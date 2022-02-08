@@ -1,2 +1,1 @@
-- Improves experience for `firebase login --no-localhost`.
-- Fixes bug where local extension installation failed to upload source to GCS bucket.
+- Fixes bug where local extension installation and ext:publish failed to upload source to GCS bucket.

@@ -84,7 +84,6 @@ var _appendQueryData = function (path, data) {
 };
 
 var api = {
-  authProxyOrigin: utils.envOverride("FIREBASE_AUTHPROXY_URL", "https://auth.firebase.tools"),
   // "In this context, the client secret is obviously not treated as a secret"
   // https://developers.google.com/identity/protocols/OAuth2InstalledApp
   clientId: utils.envOverride(
