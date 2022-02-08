@@ -5,7 +5,6 @@ import { sync as rimraf } from "rimraf";
 import { expect } from "chai";
 
 import * as env from "../../functions/env";
-import { previews } from "../../previews";
 
 describe("functions/env", () => {
   describe("parse", () => {
@@ -248,16 +247,11 @@ FOO=foo
         fs.writeFileSync(path.join(sourceDir, filename), data);
       }
     };
-    const projectInfo = { projectId: "my-project", projectAlias: "dev" };
+    const projectInfo: Omit<env.UserEnvsOpts, "functionsSource"> = {
+      projectId: "my-project",
+      projectAlias: "dev",
+    };
     let tmpdir: string;
-
-    before(() => {
-      previews.dotenv = true;
-    });
-
-    after(() => {
-      previews.dotenv = false;
-    });
 
     beforeEach(() => {
       tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), "test"));

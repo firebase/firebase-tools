@@ -28,7 +28,7 @@ function hasUserConfig(config: Record<string, unknown>): boolean {
 }
 
 function hasDotenv(opts: functionsEnv.UserEnvsOpts): boolean {
-  return previews.dotenv && functionsEnv.hasUserEnvs(opts);
+  return functionsEnv.hasUserEnvs(opts);
 }
 
 export async function prepare(
@@ -79,7 +79,7 @@ export async function prepare(
   const runtimeConfig = await getFunctionsConfig(context);
 
   const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
-  const userEnvOpt = {
+  const userEnvOpt: functionsEnv.UserEnvsOpts = {
     functionsSource: sourceDir,
     projectId: projectId,
     projectAlias: options.projectAlias,

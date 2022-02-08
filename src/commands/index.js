@@ -95,9 +95,7 @@ module.exports = function (client) {
   client.functions = {};
   client.functions.config = {};
   client.functions.config.clone = loadCommand("functions-config-clone");
-  if (previews.dotenv) {
-    client.functions.config.export = loadCommand("functions-config-export");
-  }
+  client.functions.config.export = loadCommand("functions-config-export");
   client.functions.config.get = loadCommand("functions-config-get");
   client.functions.config.set = loadCommand("functions-config-set");
   client.functions.config.unset = loadCommand("functions-config-unset");

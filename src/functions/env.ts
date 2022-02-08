@@ -252,10 +252,6 @@ export function loadUserEnvs({
   projectAlias,
   isEmulator,
 }: UserEnvsOpts): Record<string, string> {
-  if (!previews.dotenv) {
-    return {};
-  }
-
   const envFiles = findEnvfiles(functionsSource, projectId, projectAlias, isEmulator);
   if (envFiles.length == 0) {
     return {};
