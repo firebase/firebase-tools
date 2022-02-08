@@ -182,9 +182,9 @@ export async function uploadObject(
   if (path.extname(source.file) !== ".zip") {
     throw new FirebaseError(`Expected a file name ending in .zip, got ${source.file}`);
   }
-  const storageAPIClient = new Client({ urlPrefix: storageOrigin, apiVersion: "v1" });
+  const localAPIClient = new Client({ urlPrefix: storageOrigin });
   const location = `/${bucketName}/${path.basename(source.file)}`;
-  const res = await storageAPIClient.request({
+  const res = await localAPIClient.request({
     method: "PUT",
     path: location,
     headers: {
