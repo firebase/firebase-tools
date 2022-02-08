@@ -91,9 +91,11 @@ export async function release(
   } else {
     const projectId = needProjectId(options);
     const projectNumber = await needProjectNumber(options);
+    // Re-load backend with all endpoints, not just the ones deployed.
+    const reloadedBackend = await backend.existingBackend({ projectId } as args.Context);
     const prunedResult = await secrets.pruneAndDestroySecrets(
       { projectId, projectNumber },
-      haveEndpoints
+      backend.allEndpoints(reloadedBackend)
     );
     if (prunedResult.destroyed.length > 0) {
       logLabeledBullet(
