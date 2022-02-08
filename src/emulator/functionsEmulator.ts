@@ -47,7 +47,7 @@ import { RuntimeWorker, RuntimeWorkerPool } from "./functionsRuntimeWorker";
 import { PubsubEmulator } from "./pubsubEmulator";
 import { FirebaseError } from "../error";
 import { WorkQueue } from "./workQueue";
-import { createDestroyer } from "../utils";
+import { allSettled, createDestroyer } from "../utils";
 import { getCredentialPathAsync } from "../defaultCredentials";
 import {
   AdminSdkConfig,
@@ -59,8 +59,10 @@ import { functionIdsAreValid } from "../deploy/functions/validate";
 import { getRuntimeDelegate } from "../deploy/functions/runtimes";
 import * as backend from "../deploy/functions/backend";
 import * as functionsEnv from "../functions/env";
+import { accessSecretVersion } from "../gcp/secretManager";
 
 const EVENT_INVOKE = "functions:invoke";
+const LOCAL_SECRETS_FILE = ".secret.local";
 
 /*
  * The Realtime Database emulator expects the `path` field in its trigger
@@ -329,12 +331,12 @@ export class FunctionsEmulator implements EmulatorInstance {
     return hub;
   }
 
-  startFunctionRuntime(
+  async startFunctionRuntime(
     backend: EmulatableBackend,
     trigger: EmulatedTriggerDefinition,
     proto?: any,
     runtimeOpts?: InvokeRuntimeOpts
-  ): RuntimeWorker {
+  ): Promise<RuntimeWorker> {
     const bundleTemplate = this.getBaseBundle();
     const runtimeBundle: FunctionsRuntimeBundle = {
       ...bundleTemplate,
@@ -347,13 +349,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       nodeBinary: backend.nodeBinary,
       extensionTriggers: backend.predefinedTriggers,
     };
-    const worker = this.invokeRuntime(
-      backend,
-      trigger.id,
-      runtimeBundle,
-      opts,
-      this.getRuntimeEnvs(backend, trigger)
-    );
+    const worker = await this.invokeRuntime(backend, trigger, runtimeBundle, opts);
     return worker;
   }
 
@@ -992,16 +988,67 @@ export class FunctionsEmulator implements EmulatorInstance {
     };
   }
 
-  invokeRuntime(
+  async resolveSecretEnvs(
     backend: EmulatableBackend,
-    triggerId: string,
+    trigger: EmulatedTriggerDefinition
+  ): Promise<Record<string, string>> {
+    let secretEnvs: Record<string, string> = {};
+
+    try {
+      const data = fs.readFileSync(path.join(backend.functionsDir, LOCAL_SECRETS_FILE), "utf8");
+      secretEnvs = functionsEnv.parseStrict(data);
+    } catch (e: any) {
+      if (e.code !== "ENOENT") {
+        this.logger.logLabeled(
+          "ERROR",
+          "functions",
+          `Failed to read local secrets file ${LOCAL_SECRETS_FILE}: ${e.message}`
+        );
+      }
+    }
+
+    const secrets: backend.SecretEnvVar[] = trigger.secretEnvironmentVariables || [];
+    const accesses = secrets
+      .filter((s) => !secretEnvs[s.secret])
+      .map(async (s) => {
+        this.logger.logLabeled("INFO", "functions", `Trying to access secret ${s.key}@latest`);
+        const value = await accessSecretVersion(this.getProjectId(), s.key, "latest");
+        return [s.secret, value];
+      });
+    const accessResults = await allSettled(accesses);
+
+    const errs: string[] = [];
+    for (const result of accessResults) {
+      if (result.status === "rejected") {
+        errs.push(result.reason as string);
+      } else {
+        const [k, v] = result.value;
+        secretEnvs[k] = v;
+      }
+    }
+
+    if (errs.length > 0) {
+      this.logger.logLabeled(
+        "ERROR",
+        "functions",
+        "Unable to access secret environment variables from Google Cloud Secret Manager. " +
+          "Make sure the credential used for the Functions Emulator have access " +
+          `or provide override values in ${LOCAL_SECRETS_FILE}:\n\t` +
+          errs.join("\n\t")
+      );
+    }
+    return secretEnvs;
+  }
+
+  async invokeRuntime(
+    backend: EmulatableBackend,
+    trigger: EmulatedTriggerDefinition,
     frb: FunctionsRuntimeBundle,
-    opts: InvokeRuntimeOpts,
-    runtimeEnv?: Record<string, string>
-  ): RuntimeWorker {
+    opts: InvokeRuntimeOpts
+  ): Promise<RuntimeWorker> {
     // If we can use an existing worker there is almost nothing to do.
-    if (this.workerPool.readyForWork(triggerId)) {
-      return this.workerPool.submitWork(triggerId, frb, opts);
+    if (this.workerPool.readyForWork(trigger.id)) {
+      return this.workerPool.submitWork(trigger.id, frb, opts);
     }
 
     const emitter = new EventEmitter();
@@ -1039,9 +1086,12 @@ export class FunctionsEmulator implements EmulatorInstance {
       );
     }
 
+    const runtimeEnv = this.getRuntimeEnvs(backend, trigger);
+    const secretEnvs = await this.resolveSecretEnvs(backend, trigger);
+
     const childProcess = spawn(opts.nodeBinary, args, {
       cwd: backend.functionsDir,
-      env: { node: opts.nodeBinary, ...process.env, ...(runtimeEnv ?? {}) },
+      env: { node: opts.nodeBinary, ...process.env, ...runtimeEnv, ...secretEnvs },
       stdio: ["pipe", "pipe", "pipe", "ipc"],
     });
 
@@ -1095,8 +1145,8 @@ export class FunctionsEmulator implements EmulatorInstance {
       },
     };
 
-    this.workerPool.addWorker(triggerId, runtime);
-    return this.workerPool.submitWork(triggerId, frb, opts);
+    this.workerPool.addWorker(trigger.id, runtime);
+    return this.workerPool.submitWork(trigger.id, frb, opts);
   }
 
   async disableBackgroundTriggers() {
@@ -1131,7 +1181,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
     const trigger = record.def;
     const service = getFunctionService(trigger);
-    const worker = this.startFunctionRuntime(record.backend, trigger, proto);
+    const worker = await this.startFunctionRuntime(record.backend, trigger, proto);
 
     return new Promise((resolve, reject) => {
       if (projectId !== this.args.projectId) {
@@ -1269,7 +1319,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         );
       }
     }
-    const worker = this.startFunctionRuntime(record.backend, trigger);
+    const worker = await this.startFunctionRuntime(record.backend, trigger);
 
     worker.onLogs((el: EmulatorLog) => {
       if (el.level === "FATAL") {

@@ -13,6 +13,7 @@ import {
   isEventTriggered,
   isHttpsTriggered,
   isScheduleTriggered,
+  SecretEnvVar,
 } from "../deploy/functions/backend";
 import { copyIfPresent } from "../gcp/proto";
 
@@ -34,6 +35,7 @@ export interface ParsedTriggerDefinition {
 export interface EmulatedTriggerDefinition extends ParsedTriggerDefinition {
   id: string; // An unique-id per-function, generated from the name and the region.
   region: string;
+  secretEnvironmentVariables?: SecretEnvVar[]; // Secret env vars needs to be specially loaded in the Emulator.
 }
 
 export interface EventSchedule {
@@ -137,7 +139,15 @@ export function emulatedFunctionsFromEndpoints(endpoints: Endpoint[]): EmulatedT
       name: endpoint.id,
       id: `${endpoint.region}-${endpoint.id}`,
     };
-    copyIfPresent(def, endpoint, "timeout", "availableMemoryMb", "labels", "platform");
+    copyIfPresent(
+      def,
+      endpoint,
+      "timeout",
+      "availableMemoryMb",
+      "labels",
+      "platform",
+      "secretEnvironmentVariables"
+    );
     // TODO: This transformation is confusing but must be kept since the Firestore/RTDB trigger registration
     // process requires it in this form. Need to work in Firestore emulator for a proper fix...
     if (isHttpsTriggered(endpoint)) {
