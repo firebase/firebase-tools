@@ -1,1 +1,0 @@
-- Updates the Storage Emulator to use the actual default storage bucket.

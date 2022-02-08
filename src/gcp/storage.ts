@@ -1,7 +1,7 @@
 import { Readable } from "stream";
 import * as path from "path";
 
-import api, { storageOrigin } from "../api";
+import api, { appengineOrigin, storageOrigin } from "../api";
 import { Client } from "../apiv2";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
@@ -128,11 +128,10 @@ interface StorageServiceAccountResponse {
   kind: string;
 }
 
-const storageAPIClient = new Client({ urlPrefix: storageOrigin, apiVersion: "v1" });
-
 export async function getDefaultBucket(projectId?: string): Promise<string> {
   try {
-    const resp = await storageAPIClient.get<{ defaultBucket: string }>(`/apps/${projectId}`);
+    const appengineClient = new Client({ urlPrefix: appengineOrigin, apiVersion: "v1" });
+    const resp = await appengineClient.get<{ defaultBucket: string }>(`/apps/${projectId}`);
     if (resp.body.defaultBucket === "undefined") {
       logger.debug("Default storage bucket is undefined.");
       throw new FirebaseError(
@@ -183,8 +182,9 @@ export async function uploadObject(
   if (path.extname(source.file) !== ".zip") {
     throw new FirebaseError(`Expected a file name ending in .zip, got ${source.file}`);
   }
+  const localAPIClient = new Client({ urlPrefix: storageOrigin });
   const location = `/${bucketName}/${path.basename(source.file)}`;
-  const res = await storageAPIClient.request({
+  const res = await localAPIClient.request({
     method: "PUT",
     path: location,
     headers: {
