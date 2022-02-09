@@ -46,6 +46,10 @@ import { ParsedTriggerDefinition } from "./functionsEmulatorShared";
 import { ExtensionsEmulator } from "./extensionsEmulator";
 
 async function getAndCheckAddress(emulator: Emulators, options: Options): Promise<Address> {
+  if (emulator === Emulators.EXTENSIONS) {
+    // The Extensions emulator always runs on the same port as the Functions emulator.
+    emulator = Emulators.FUNCTIONS;
+  }
   let host = options.config.src.emulators?.[emulator]?.host || Constants.getDefaultHost(emulator);
   if (host === "localhost" && utils.isRunningInWSL()) {
     // HACK(https://github.com/firebase/firebase-tools-ui/issues/332): Use IPv4
@@ -179,7 +183,7 @@ export async function cleanShutdown(): Promise<void> {
  * @param options
  */
 export function filterEmulatorTargets(options: any): Emulators[] {
-  let targets = ALL_SERVICE_EMULATORS.filter((e) => {
+  let targets = [...ALL_SERVICE_EMULATORS, Emulators.EXTENSIONS].filter((e) => {
     return options.config.has(e) || options.config.has(`emulators.${e}`);
   });
 
@@ -307,7 +311,7 @@ function findExportMetadata(importPath: string): ExportMetadata | undefined {
 }
 
 interface EmulatorOptions extends Options {
-  extensionEnv?: Record<string, string>;
+  extDevEnv?: Record<string, string>;
 }
 
 export async function startAll(options: EmulatorOptions, showUI: boolean = true): Promise<void> {
@@ -404,22 +408,55 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
     }
   }
 
+  const emulatableBackends: EmulatableBackend[] = [];
   if (shouldStart(options, Emulators.FUNCTIONS)) {
-    const functionsLogger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
-    const functionsAddr = await getAndCheckAddress(Emulators.FUNCTIONS, options);
-    const projectId = needProjectId(options);
-
+    // Note: ext:dev:emulators:* commands hit this path, not the Emulators.EXTENSIONS path
     utils.assertDefined(options.config.src.functions);
     utils.assertDefined(
       options.config.src.functions.source,
       "Error: 'functions.source' is not defined"
     );
 
-    utils.assertIsStringOrUndefined(options.extensionDir);
+    utils.assertIsStringOrUndefined(options.extDevDir);
     const functionsDir = path.join(
-      options.extensionDir || options.config.projectDir,
+      options.extDevDir || options.config.projectDir,
       options.config.src.functions.source
     );
+
+    emulatableBackends.push({
+      functionsDir,
+      env: {
+        ...options.extDevEnv,
+      },
+      // TODO(b/213335255): predefinedTriggers and nodeMajorVersion are here to support ext:dev:emulators:* commands.
+      // Ideally, we should handle that case via ExtensionEmulator.
+      predefinedTriggers: options.extDevTriggers as ParsedTriggerDefinition[] | undefined,
+      nodeMajorVersion: parseRuntimeVersion(
+        options.extDevNodeVersion || options.config.get("functions.runtime")
+      ),
+    });
+  }
+
+  if (shouldStart(options, Emulators.EXTENSIONS)) {
+    // TODO: This should not error out when called with a fake project.
+    const projectNumber = await needProjectNumber(options);
+    const aliases = getAliases(options, projectId);
+
+    const extensionEmulator = new ExtensionsEmulator({
+      projectId,
+      projectDir: options.config.projectDir,
+      projectNumber,
+      aliases,
+      extensions: options.config.get("extensions"),
+    });
+    const extensionsBackends = await extensionEmulator.getExtensionBackends();
+    emulatableBackends.push(...extensionsBackends);
+  }
+
+  if (emulatableBackends.length) {
+    const functionsLogger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
+    const functionsAddr = await getAndCheckAddress(Emulators.FUNCTIONS, options);
+    const projectId = needProjectId(options);
 
     let inspectFunctions: number | undefined;
     if (options.inspectFunctions) {
@@ -429,11 +466,11 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
       functionsLogger.logLabeled(
         "WARN",
         "functions",
-        `You are running the functions emulator in debug mode (port=${inspectFunctions}). This means that functions will execute in sequence rather than in parallel.`
+        `You are running the Functions/Extensions emulator in debug mode (port=${inspectFunctions}). This means that functions will execute in sequence rather than in parallel.`
       );
     }
 
-    // Warn the developer that the Functions emulator can call out to production.
+    // Warn the developer that the Functions/Extensions emulator can call out to production.
     const emulatorsNotRunning = ALL_SERVICE_EMULATORS.filter((e) => {
       return e !== Emulators.FUNCTIONS && !shouldStart(options, e);
     });
@@ -441,42 +478,13 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
       functionsLogger.logLabeled(
         "WARN",
         "functions",
-        `The following emulators are not running, calls to these services from the Functions emulator will affect production: ${clc.bold(
+        `The following emulators are not running, calls to these services from the Functions/Extensions emulator will affect production: ${clc.bold(
           emulatorsNotRunning.join(", ")
         )}`
       );
     }
 
     const account = getProjectDefaultAccount(options.projectRoot);
-    const emulatableBackends: EmulatableBackend[] = [
-      {
-        functionsDir,
-        env: {
-          ...options.extensionEnv,
-        },
-        // TODO(b/213335255): predefinedTriggers and nodeMajorVersion are here to support ext:dev:emulators:* commands.
-        // Ideally, we should handle that case via ExtensionEmulator.
-        predefinedTriggers: options.extensionTriggers as ParsedTriggerDefinition[] | undefined,
-        nodeMajorVersion: parseRuntimeVersion(
-          options.extensionNodeVersion || options.config.get("functions.runtime")
-        ),
-      },
-    ];
-    if (options.config.has("extensions")) {
-      // TODO: This should not error out when called with a fake project.
-      const projectNumber = await needProjectNumber(options);
-      const aliases = getAliases(options, projectId);
-
-      const extensionEmulator = new ExtensionsEmulator({
-        projectId,
-        projectDir: options.config.projectDir,
-        projectNumber,
-        aliases,
-        extensions: options.config.get("extensions"),
-      });
-      const extensionsBackends = await extensionEmulator.getExtensionBackends();
-      emulatableBackends.push(...extensionsBackends);
-    }
 
     // TODO(b/213241033): Figure out how to watch for changes to extensions .env files & reload triggers when they change.
     const functionsEmulator = new FunctionsEmulator({
