@@ -70,7 +70,7 @@ describe("Extensions Emulator", () => {
                 resource: "projects/_/buckets/${param:IMG_BUCKET}",
                 service: "storage.googleapis.com",
               },
-              name: "generateResizedImage",
+              name: "ext-ext-test-generateResizedImage",
               platform: "gcfv1",
               regions: ["us-west1"],
             },

@@ -117,6 +117,7 @@ export class ExtensionsEmulator {
     const env = Object.assign(this.autoPopulatedParams(instance), instance.params);
     const { extensionTriggers, nodeMajorVersion } = await getExtensionFunctionInfo(
       extensionDir,
+      instance.instanceId,
       env
     );
     const extensionVersion = await planner.getExtensionVersion(instance);
