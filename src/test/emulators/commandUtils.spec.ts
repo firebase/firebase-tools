@@ -2,13 +2,37 @@ import * as commandUtils from "../../emulator/commandUtils";
 import { expect } from "chai";
 import { FirebaseError } from "../../error";
 import { EXPORT_ON_EXIT_USAGE_ERROR, EXPORT_ON_EXIT_CWD_DANGER } from "../../emulator/commandUtils";
-import { join, resolve } from "path";
+import { delimiter, join, resolve } from "path";
+import * as sinon from "sinon";
 
 describe("commandUtils", () => {
   const testSetExportOnExitOptions = (options: any): any => {
     commandUtils.setExportOnExitOptions(options);
     return options;
   };
+
+  describe("Mocked path resolve", () => {
+    const mockCWD = "/a/resolved/path/example";
+    const mockDestinationDir = "/path/example";
+
+    let pathStub: sinon.SinonStub;
+    beforeEach(() => {
+      pathStub = sinon.stub(require("path"), "resolve").callsFake((path) => {
+        return path === "." ? mockCWD : mockDestinationDir;
+      });
+    });
+
+    afterEach(() => {
+      pathStub.reset();
+    });
+
+    it("Should not block if destination contains a match to the CWD", () => {
+      const directoryToAllow = mockDestinationDir;
+      expect(testSetExportOnExitOptions({ exportOnExit: directoryToAllow }).exportOnExit).to.equal(
+        directoryToAllow
+      );
+    });
+  });
 
   /**
    * Currently, setting the --export-on-exit as the current CWD can inflict on
