@@ -30,6 +30,7 @@ import {
   promptForRepeatInstance,
   promptForValidInstanceId,
   isLocalOrURLPath,
+  diagnoseAndFixProject,
 } from "../extensions/extensionsHelper";
 import { update } from "../extensions/updateHelper";
 import { getRandomString } from "../extensions/utils";
@@ -274,6 +275,7 @@ export default new Command("ext:install [extensionName]")
   .before(requirePermissions, ["firebaseextensions.instances.create"])
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
+  .before(diagnoseAndFixProject)
   .action(async (extensionName: string, options: any) => {
     const projectId = needProjectId(options);
     const paramsEnvPath = options.params;
