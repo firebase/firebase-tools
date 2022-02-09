@@ -18,7 +18,8 @@ import * as versioning from "./versioning";
 import * as parseTriggers from "./parseTriggers";
 import * as discovery from "../discovery";
 
-const MIN_FUNCTIONS_CONTROL_API_VERSION = "3.17.0";
+// TODO: Update this version whenever Functions SDK release w/ the required changes.
+const MIN_FUNCTIONS_CONTROL_API_VERSION = "3.19.0";
 
 /**
  *
@@ -92,16 +93,12 @@ export class Delegate {
     return Promise.resolve(() => Promise.resolve());
   }
 
-  serve(
-    port: number,
-    adminPort: number,
-    envs: backend.EnvironmentVariables
-  ): Promise<() => Promise<void>> {
+  serve(port: number, envs: backend.EnvironmentVariables): Promise<() => Promise<void>> {
     const childProcess = spawn("./node_modules/.bin/firebase-functions", [this.sourceDir], {
       env: {
         ...envs,
         PORT: port.toString(),
-        STACK_CONTROL_API_PORT: adminPort.toString(),
+        FUNCTION_CONTROL_API: "true",
         HOME: process.env.HOME,
         PATH: process.env.PATH,
       },
@@ -117,7 +114,7 @@ export class Delegate {
         childProcess.once("error", reject);
       });
 
-      await fetch(`http://localhost:${adminPort}/__/quitquitquit`);
+      await fetch(`http://localhost:${port}/__/quitquitquit`);
       setTimeout(() => {
         if (!childProcess.killed) {
           childProcess.kill("SIGKILL");
@@ -150,12 +147,9 @@ export class Delegate {
       if (!discovered) {
         const getPort = promisify(portfinder.getPort) as () => Promise<number>;
         const port = await getPort();
-        (portfinder as any).basePort = port + 1;
-        const adminPort = await getPort();
-
-        const kill = await this.serve(port, adminPort, env);
+        const kill = await this.serve(port, env);
         try {
-          discovered = await discovery.detectFromPort(adminPort, this.projectId, this.runtime);
+          discovered = await discovery.detectFromPort(port, this.projectId, this.runtime);
         } finally {
           await kill();
         }

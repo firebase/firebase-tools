@@ -314,7 +314,7 @@ describe("backendFromV1Alpha1", () => {
       const expected = backend.of({
         ...DEFAULTED_ENDPOINT,
         scheduleTrigger,
-        labels: { "deployment-scheduled": "true" },
+        labels: {},
       });
       const parsed = v1alpha1.backendFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
       expect(parsed).to.deep.equal(expected);

@@ -135,7 +135,6 @@ function parseEndpoints(
       copyIfPresent(triggered.httpsTrigger, ep.httpsTrigger, "invoker");
     } else if (backend.isCallableTriggered(ep)) {
       triggered = { callableTrigger: {} };
-      ep.labels = { ...ep.labels, "deployment-callabled": "true" };
     } else if (backend.isScheduleTriggered(ep)) {
       assertKeyTypes(prefix + ".scheduleTrigger", ep.scheduleTrigger, {
         schedule: "string",
@@ -150,7 +149,6 @@ function parseEndpoints(
         maxRetryDuration: "string",
       });
       triggered = { scheduleTrigger: ep.scheduleTrigger };
-      ep.labels = { ...ep.labels, "deployment-scheduled": "true" };
     } else if (backend.isTaskQueueTriggered(ep)) {
       assertKeyTypes(prefix + ".taskQueueTrigger", ep.taskQueueTrigger, {
         rateLimits: "object",

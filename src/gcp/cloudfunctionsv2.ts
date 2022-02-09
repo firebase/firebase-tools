@@ -451,6 +451,8 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
     gcfFunction.labels = { ...gcfFunction.labels, "deployment-scheduled": "true" };
   } else if (backend.isTaskQueueTriggered(endpoint)) {
     gcfFunction.labels = { ...gcfFunction.labels, "deployment-taskqueue": "true" };
+  } else if (backend.isCallableTriggered(endpoint)) {
+    gcfFunction.labels = { ...gcfFunction.labels, "deployment-callable": "true" };
   }
 
   return gcfFunction;

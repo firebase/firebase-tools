@@ -578,6 +578,9 @@ export function functionFromEndpoint(
     gcfFunction.labels = { ...gcfFunction.labels, "deployment-taskqueue": "true" };
   } else {
     gcfFunction.httpsTrigger = {};
+    if (backend.isCallableTriggered(endpoint)) {
+      gcfFunction.labels = { ...gcfFunction.labels, "deployment-callabled": "true" };
+    }
   }
 
   proto.copyIfPresent(
