@@ -8,7 +8,7 @@ import { logBullet } from "../utils";
 
 const FUNCTIONS_EMULATOR_DOTENV = ".env.local";
 
-const RESERVED_PREFIX = ["X_GOOGLE_", "FIREBASE_", "EXT_"];
+const RESERVED_PREFIXES = ["X_GOOGLE_", "FIREBASE_", "EXT_"];
 const RESERVED_KEYS = [
   // Cloud Functions for Firebase
   "FIREBASE_CONFIG",
@@ -149,10 +149,10 @@ export function validateKey(key: string): void {
         ", and then consist of uppercase ASCII letters, digits, and underscores."
     );
   }
-  if (RESERVED_PREFIX.some((prefix) => key.startsWith(prefix))) {
+  if (RESERVED_PREFIXES.some((prefix) => key.startsWith(prefix))) {
     throw new KeyValidationError(
       key,
-      `Key ${key} starts with a reserved prefix (${RESERVED_PREFIX.join(" ")})`
+      `Key ${key} starts with a reserved prefix (${RESERVED_PREFIXES.join(" ")})`
     );
   }
 }
