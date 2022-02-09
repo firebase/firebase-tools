@@ -20,6 +20,7 @@ import {
   getSourceOrigin,
   SourceOrigin,
   confirm,
+  diagnoseAndFixProject,
 } from "../extensions/extensionsHelper";
 import * as paramHelper from "../extensions/paramHelper";
 import {
@@ -69,6 +70,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
   ])
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
+  .before(diagnoseAndFixProject)
   .withForce()
   .option("--params <paramsFile>", "name of params variables file with .env format.")
   .action(async (instanceId: string, updateSource: string, options: any) => {
