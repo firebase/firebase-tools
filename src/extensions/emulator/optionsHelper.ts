@@ -15,9 +15,9 @@ import { needProjectId } from "../../projectUtils";
 import { Emulators } from "../../emulator/types";
 
 export async function buildOptions(options: any): Promise<any> {
-  const extensionDir = localHelper.findExtensionYaml(process.cwd());
-  options.extensionDir = extensionDir;
-  const spec = await specHelper.readExtensionYaml(extensionDir);
+  const extDevDir = localHelper.findExtensionYaml(process.cwd());
+  options.extDevDir = extDevDir;
+  const spec = await specHelper.readExtensionYaml(extDevDir);
   extensionsHelper.validateSpec(spec);
 
   const params = getParams(options, spec);
@@ -34,12 +34,12 @@ export async function buildOptions(options: any): Promise<any> {
     checkTestConfig(testConfig, functionResources);
   }
   options.config = buildConfig(functionResources, testConfig);
-  options.extensionEnv = params;
+  options.extDevEnv = params;
   const functionEmuTriggerDefs: ParsedTriggerDefinition[] = functionResources.map((r) =>
     triggerHelper.functionResourceToEmulatedTriggerDefintion(r)
   );
-  options.extensionTriggers = functionEmuTriggerDefs;
-  options.extensionNodeVersion = specHelper.getNodeVersion(functionResources);
+  options.extDevTriggers = functionEmuTriggerDefs;
+  options.extDevNodeVersion = specHelper.getNodeVersion(functionResources);
   return options;
 }
 

@@ -311,7 +311,7 @@ function findExportMetadata(importPath: string): ExportMetadata | undefined {
 }
 
 interface EmulatorOptions extends Options {
-  extensionEnv?: Record<string, string>;
+  extDevEnv?: Record<string, string>;
 }
 
 export async function startAll(options: EmulatorOptions, showUI: boolean = true): Promise<void> {
@@ -410,28 +410,29 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
 
   const emulatableBackends: EmulatableBackend[] = [];
   if (shouldStart(options, Emulators.FUNCTIONS)) {
+    // Note: ext:dev:emulators:* commands hit this path, not the Emulators.EXTENSIONS path
     utils.assertDefined(options.config.src.functions);
     utils.assertDefined(
       options.config.src.functions.source,
       "Error: 'functions.source' is not defined"
     );
 
-    utils.assertIsStringOrUndefined(options.extensionDir);
+    utils.assertIsStringOrUndefined(options.extDevDir);
     const functionsDir = path.join(
-      options.extensionDir || options.config.projectDir,
+      options.extDevDir || options.config.projectDir,
       options.config.src.functions.source
     );
 
     emulatableBackends.push({
       functionsDir,
       env: {
-        ...options.extensionEnv,
+        ...options.extDevEnv,
       },
       // TODO(b/213335255): predefinedTriggers and nodeMajorVersion are here to support ext:dev:emulators:* commands.
       // Ideally, we should handle that case via ExtensionEmulator.
-      predefinedTriggers: options.extensionTriggers as ParsedTriggerDefinition[] | undefined,
+      predefinedTriggers: options.extDevTriggers as ParsedTriggerDefinition[] | undefined,
       nodeMajorVersion: parseRuntimeVersion(
-        options.extensionNodeVersion || options.config.get("functions.runtime")
+        options.extDevNodeVersion || options.config.get("functions.runtime")
       ),
     });
   }
