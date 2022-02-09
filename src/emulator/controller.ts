@@ -46,7 +46,7 @@ import { ParsedTriggerDefinition } from "./functionsEmulatorShared";
 import { ExtensionsEmulator } from "./extensionsEmulator";
 
 async function getAndCheckAddress(emulator: Emulators, options: Options): Promise<Address> {
-  if (emulator == Emulators.EXTENSIONS) {
+  if (emulator === Emulators.EXTENSIONS) {
     // The Extensions emulator always runs on the same port as the Functions emulator.
     emulator = Emulators.FUNCTIONS;
   }

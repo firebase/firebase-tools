@@ -48,12 +48,13 @@ export class EmulatorRegistry {
       // once shutdown starts
       ui: 0,
 
+      // The Extensions emulator runs on the same process as the Functions emulator
+      // so this is a no-op. We put this before functions for future proofing, since
+      // the Extensions emulator depends on the Functions emulator.
+      extensions: 1,
       // Functions is next since it has side effects and
       // dependencies across all the others
-      functions: 1,
-      // The Extensions emulator runs on the same process as the Functions emulator
-      // so this is a no-op.
-      extensions: 1.1,
+      functions: 1.1,
 
       // Hosting is next because it can trigger functions.
       hosting: 2,

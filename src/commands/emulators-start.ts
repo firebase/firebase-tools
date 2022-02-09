@@ -75,7 +75,7 @@ module.exports = new Command("emulators:start")
           const isSupportedByUi = EMULATORS_SUPPORTED_BY_UI.includes(emulator);
           // The Extensions emulator runs as part of the Functions emulator, so display the Functions emulators info instead.
           const info = EmulatorRegistry.getInfo(
-            emulator == Emulators.EXTENSIONS ? Emulators.FUNCTIONS : emulator
+            emulator === Emulators.EXTENSIONS ? Emulators.FUNCTIONS : emulator
           );
           if (!info) {
             return [emulatorName, "Failed to initialize (see above)", "", ""];
