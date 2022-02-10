@@ -410,6 +410,8 @@ export class Client {
               try {
                 body = JSON.parse(text) as ResT;
               } catch (err: unknown) {
+                // JSON-parse errors are useless. Log the response for better debugging.
+                this.logResponse(res, text, options);
                 throw new FirebaseError(`Unable to parse JSON: ${err}`);
               }
             }
