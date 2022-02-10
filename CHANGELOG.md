@@ -1,1 +1,2 @@
+- Improves experience for `firebase login --no-localhost`.
 - Add support for specifying environment variable of CF3 function using dotenv.
