@@ -21,9 +21,6 @@ import * as discovery from "../discovery";
 // TODO: Update this version whenever Functions SDK release w/ the required changes.
 const MIN_FUNCTIONS_CONTROL_API_VERSION = "3.19.0";
 
-/**
- *
- */
 export async function tryCreateDelegate(
   context: runtimes.DelegateContext
 ): Promise<Delegate | undefined> {
