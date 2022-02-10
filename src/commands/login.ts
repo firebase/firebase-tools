@@ -13,10 +13,7 @@ import { isCloudEnvironment } from "../utils";
 
 module.exports = new Command("login")
   .description("log the CLI into Firebase")
-  .option(
-    "--no-localhost",
-    "copy and paste a code instead of starting a local server for authentication"
-  )
+  .option("--no-localhost", "login from a device without an accessible localhost")
   .option("--reauth", "force reauthentication even if already logged in")
   .action(async (options: any) => {
     if (options.nonInteractive) {
