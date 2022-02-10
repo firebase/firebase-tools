@@ -98,7 +98,7 @@ export class Delegate {
       env: {
         ...envs,
         PORT: port.toString(),
-        FUNCTION_CONTROL_API: "true",
+        FUNCTIONS_CONTROL_API: "true",
         HOME: process.env.HOME,
         PATH: process.env.PATH,
       },
