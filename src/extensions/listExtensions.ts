@@ -57,5 +57,6 @@ export async function listExtensions(projectId: string): Promise<any> {
   });
 
   utils.logLabeledBullet(logPrefix, `list of extensions installed in ${clc.bold(projectId)}:`);
+  logger.info(table.toString());
   return formatted;
 }
