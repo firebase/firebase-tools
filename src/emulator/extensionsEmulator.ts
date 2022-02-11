@@ -11,6 +11,13 @@ import { EmulatableBackend } from "./functionsEmulator";
 import { getExtensionFunctionInfo } from "../extensions/emulator/optionsHelper";
 import { EmulatorLogger } from "./emulatorLogger";
 
+const EMULATED_APIS = [
+  "storage-component.googleapis.com",
+  "firestore.googleapis.com",
+  "pubsub.googleapis.com",
+  "identitytoolkit.googleapis.com",
+  // TODO: Is there a RTDB API we need to add here? I couldn't find one.
+];
 export interface ExtensionEmulatorArgs {
   projectId: string;
   projectNumber: string;
@@ -165,5 +172,19 @@ export class ExtensionsEmulator {
       DATABASE_URL: `https://${projectId}.firebaseio.com`,
       STORAGE_BUCKET: `${projectId}.appspot.com`,
     };
+  }
+
+  private async checkAndWarnAPIs(instances: planner.InstanceSpec[]): Promise<void> {
+    const apisInstancesMap: Record<string, string[]> = {};
+    for (const i of instances) {
+      const extensionVersion = await planner.getExtensionVersion(i);
+      for (const api of extensionVersion.spec.apis ?? []) {
+        if (apisInstancesMap[api.apiName]) {
+          apisInstancesMap[api.apiName].push(i.instanceId);
+        } else {
+          apisInstancesMap[api.apiName] = [i.instanceId];
+        }
+      }
+    }
   }
 }
