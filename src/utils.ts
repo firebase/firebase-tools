@@ -19,6 +19,7 @@ import { Socket } from "net";
 const IS_WINDOWS = process.platform === "win32";
 const SUCCESS_CHAR = IS_WINDOWS ? "+" : "✔";
 const WARNING_CHAR = IS_WINDOWS ? "!" : "⚠";
+const ERROR_CHAR = IS_WINDOWS ? "!!" : "⬢";
 const THIRTY_DAYS_IN_MILLISECONDS = 30 * 24 * 60 * 60 * 1000;
 
 export const envOverrides: string[] = [];
@@ -61,7 +62,7 @@ export function envOverride(
     if (coerce) {
       try {
         return coerce(currentEnvValue, value);
-      } catch (e) {
+      } catch (e: any) {
         return value;
       }
     }
@@ -192,10 +193,77 @@ export function logLabeledWarning(
 }
 
 /**
+ * Log an rror statement with a red bullet at the start of the line.
+ */
+export function logLabeledError(
+  label: string,
+  message: string,
+  type: LogLevel = "error",
+  data: LogDataOrUndefined = undefined
+): void {
+  logger[type](clc.red.bold(`${ERROR_CHAR}  ${label}:`), message, data);
+}
+
+/**
  * Return a promise that rejects with a FirebaseError.
  */
 export function reject(message: string, options?: any): Promise<never> {
   return Promise.reject(new FirebaseError(message, options));
+}
+
+/** An interface for the result of a successful Promise */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export interface PromiseFulfilledResult<T = any> {
+  status: "fulfilled";
+  value: T;
+}
+
+export interface PromiseRejectedResult {
+  status: "rejected";
+  reason: unknown;
+}
+
+export type PromiseResult<T> = PromiseFulfilledResult<T> | PromiseRejectedResult;
+
+/**
+ * Polyfill for Promise.allSettled
+ * TODO: delete once min Node version is 12.9.0 or greater
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function allSettled<T>(promises: Array<Promise<T>>): Promise<Array<PromiseResult<T>>> {
+  if (!promises.length) {
+    return Promise.resolve([]);
+  }
+  return new Promise((resolve) => {
+    let remaining = promises.length;
+    const results: Array<PromiseResult<T>> = [];
+    for (let i = 0; i < promises.length; i++) {
+      // N.B. We use the void operator to silence the linter that we have
+      // a dangling promise (we are, after all, handling all failures).
+      // We resolve the original promise so as not to crash when passed
+      // a non-promise. This is part of the spec.
+      void Promise.resolve(promises[i])
+        .then(
+          (result) => {
+            results[i] = {
+              status: "fulfilled",
+              value: result,
+            };
+          },
+          (err) => {
+            results[i] = {
+              status: "rejected",
+              reason: err,
+            };
+          }
+        )
+        .then(() => {
+          if (!--remaining) {
+            resolve(results);
+          }
+        });
+    }
+  });
 }
 
 /**
@@ -312,7 +380,7 @@ export function promiseAllSettled(promises: Array<Promise<any>>): Promise<Settle
     try {
       const val = await Promise.resolve(p);
       return { state: "fulfilled", value: val } as SettledPromiseResolved;
-    } catch (err) {
+    } catch (err: any) {
       return { state: "rejected", reason: err } as SettledPromiseRejected;
     }
   });
@@ -336,7 +404,7 @@ export async function promiseWhile<T>(
           return resolve(res);
         }
         setTimeout(run, interval);
-      } catch (err) {
+      } catch (err: any) {
         return promiseReject(err);
       }
     };
@@ -389,6 +457,9 @@ export function tryParse(value: any) {
   }
 }
 
+/**
+ *
+ */
 export function setupLoggers() {
   if (process.env.DEBUG) {
     logger.add(
@@ -423,7 +494,7 @@ export async function promiseWithSpinner<T>(action: () => Promise<T>, message: s
   try {
     data = await action();
     spinner.succeed();
-  } catch (err) {
+  } catch (err: any) {
     spinner.fail();
     throw err;
   }
@@ -437,7 +508,7 @@ export async function promiseWithSpinner<T>(action: () => Promise<T>, message: s
  *
  * Inspired by https://github.com/isaacs/server-destroy/blob/master/index.js
  *
- * @returns a function that destroys all connections and closes the server
+ * @return a function that destroys all connections and closes the server
  */
 export function createDestroyer(server: http.Server): () => Promise<void> {
   const connections = new Set<Socket>();
@@ -469,9 +540,10 @@ export function createDestroyer(server: http.Server): () => Promise<void> {
  * @return the formatted date.
  */
 export function datetimeString(d: Date): string {
-  const day = `${d.getFullYear()}-${(d.getMonth() + 1)
+  const day = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, "0")}-${d
+    .getDate()
     .toString()
-    .padStart(2, "0")}-${d.getDate().toString().padStart(2, "0")}`;
+    .padStart(2, "0")}`;
   const time = `${d.getHours().toString().padStart(2, "0")}:${d
     .getMinutes()
     .toString()
@@ -513,6 +585,9 @@ export function assertDefined<T>(val: T, message?: string): asserts val is NonNu
   }
 }
 
+/**
+ *
+ */
 export function assertIsString(val: any, message?: string): asserts val is string {
   if (typeof val !== "string") {
     throw new AssertionError({
@@ -521,6 +596,9 @@ export function assertIsString(val: any, message?: string): asserts val is strin
   }
 }
 
+/**
+ *
+ */
 export function assertIsNumber(val: any, message?: string): asserts val is number {
   if (typeof val !== "number") {
     throw new AssertionError({
@@ -529,6 +607,9 @@ export function assertIsNumber(val: any, message?: string): asserts val is numbe
   }
 }
 
+/**
+ *
+ */
 export function assertIsStringOrUndefined(
   val: any,
   message?: string

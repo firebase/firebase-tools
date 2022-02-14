@@ -27,14 +27,14 @@ const CACHE_DIR =
 
 export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
   database: {
-    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.7.2.jar"),
-    version: "4.7.2",
+    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.7.3.jar"),
+    version: "4.7.3",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.7.2.jar",
-      expectedSize: 28910604,
-      expectedChecksum: "264e5df0c0661c064ef7dc9ce8179aba",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.7.3.jar",
+      expectedSize: 28862098,
+      expectedChecksum: "8f696f24ee89c937a789498a0c0e4899",
       namePrefix: "firebase-database-emulator",
     },
   },
@@ -63,15 +63,15 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
     },
   },
   ui: {
-    version: "1.6.3",
-    downloadPath: path.join(CACHE_DIR, "ui-v1.6.3.zip"),
-    unzipDir: path.join(CACHE_DIR, "ui-v1.6.3"),
-    binaryPath: path.join(CACHE_DIR, "ui-v1.6.3", "server.bundle.js"),
+    version: "1.6.4",
+    downloadPath: path.join(CACHE_DIR, "ui-v1.6.4.zip"),
+    unzipDir: path.join(CACHE_DIR, "ui-v1.6.4"),
+    binaryPath: path.join(CACHE_DIR, "ui-v1.6.4", "server.bundle.js"),
     opts: {
       cacheDir: CACHE_DIR,
-      remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.6.3.zip",
-      expectedSize: 3757268,
-      expectedChecksum: "153090a46072545aadeb307397cc8f45",
+      remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.6.4.zip",
+      expectedSize: 3757300,
+      expectedChecksum: "20d4ee71e4ff7527b1843b6a8636142e",
       namePrefix: "ui",
     },
   },
@@ -299,7 +299,7 @@ async function _runBinary(
         detached: true,
         stdio: ["inherit", "pipe", "pipe"],
       });
-    } catch (e) {
+    } catch (e: any) {
       if (e.code === "EACCES") {
         // Known issue when WSL users don't have java
         // https://github.com/Microsoft/WSL/issues/3886
@@ -325,11 +325,11 @@ async function _runBinary(
       `${description} logging to ${clc.bold(getLogFileName(emulator.name))}`
     );
 
-    emulator.instance.stdout.on("data", (data) => {
+    emulator.instance.stdout?.on("data", (data) => {
       logger.log("DEBUG", data.toString());
       emulator.stdout.write(data);
     });
-    emulator.instance.stderr.on("data", (data) => {
+    emulator.instance.stderr?.on("data", (data) => {
       logger.log("DEBUG", data.toString());
       emulator.stdout.write(data);
 

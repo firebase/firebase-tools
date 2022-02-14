@@ -2,7 +2,8 @@ import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as ora from "ora";
 import * as semver from "semver";
-import * as marked from "marked";
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
+const { marked } = require("marked");
 
 const TerminalRenderer = require("marked-terminal");
 marked.setOptions({
@@ -13,8 +14,9 @@ import { storageOrigin } from "../api";
 import { archiveDirectory } from "../archiveDirectory";
 import { convertOfficialExtensionsToList } from "./utils";
 import { getFirebaseConfig } from "../functionsConfig";
-import { getExtensionRegistry, resolveSourceUrl, resolveRegistryEntry } from "./resolveSource";
+import { getExtensionRegistry } from "./resolveSource";
 import { FirebaseError } from "../error";
+import { diagnose } from "./diagnose";
 import { checkResponse } from "./askUserForParam";
 import { ensure } from "../ensureApiEnabled";
 import { deleteObject, uploadObject } from "../gcp/storage";
@@ -25,17 +27,16 @@ import {
   ExtensionVersion,
   getExtension,
   getInstance,
-  getSource,
   Param,
-  parseRef,
   publishExtensionVersion,
 } from "./extensionsApi";
+import * as refs from "./refs";
 import { getLocalExtensionSpec } from "./localHelper";
 import { promptOnce } from "../prompt";
 import { logger } from "../logger";
 import { envOverride } from "../utils";
-import { getLocalChangelog, parseChangelog } from "./changelog";
-import { utils } from "mocha";
+import { getLocalChangelog } from "./changelog";
+import { getProjectNumber } from "../getProjectNumber";
 
 /**
  * SpecParamType represents the exact strings that the extensions
@@ -48,6 +49,7 @@ export enum SpecParamType {
   MULTISELECT = "multiSelect",
   STRING = "string",
   SELECTRESOURCE = "selectResource",
+  SECRET = "secret",
 }
 
 export enum SourceOrigin {
@@ -93,7 +95,7 @@ export const resourceTypeToNiceName: Record<string, string> = {
  */
 export function getDBInstanceFromURL(databaseUrl = ""): string {
   const instanceRegex = new RegExp("(?:https://)(.*)(?:.firebaseio.com)");
-  const matches = databaseUrl.match(instanceRegex);
+  const matches = instanceRegex.exec(databaseUrl);
   if (matches && matches.length > 1) {
     return matches[1];
   }
@@ -103,9 +105,9 @@ export function getDBInstanceFromURL(databaseUrl = ""): string {
 /**
  * Gets Firebase project specific param values.
  */
-export async function getFirebaseProjectParams(projectId: string): Promise<any> {
+export async function getFirebaseProjectParams(projectId: string): Promise<Record<string, string>> {
   const body = await getFirebaseConfig({ project: projectId });
-
+  const projectNumber = await getProjectNumber({ projectId });
   // This env variable is needed for parameter-less initialization of firebase-admin
   const FIREBASE_CONFIG = JSON.stringify({
     projectId: body.projectId,
@@ -115,6 +117,7 @@ export async function getFirebaseProjectParams(projectId: string): Promise<any> 
 
   return {
     PROJECT_ID: body.projectId,
+    PROJECT_NUMBER: projectNumber,
     DATABASE_URL: body.databaseURL,
     STORAGE_BUCKET: body.storageBucket,
     FIREBASE_CONFIG,
@@ -156,7 +159,7 @@ export function populateDefaultParams(paramVars: Record<string, string>, paramSp
 
   for (const param of paramSpecs) {
     if (!paramVars[param.param]) {
-      if (param.default != undefined) {
+      if (param.default != undefined && param.required) {
         newParams[param.param] = param.default;
       } else if (param.required) {
         throw new FirebaseError(
@@ -405,7 +408,7 @@ export async function publishExtensionVersionFromLocalSource(args: {
   let extension;
   try {
     extension = await getExtension(`${args.publisherId}/${args.extensionId}`);
-  } catch (err) {
+  } catch (err: any) {
     // Silently fail and continue the publish flow if extension not found.
   }
 
@@ -413,7 +416,7 @@ export async function publishExtensionVersionFromLocalSource(args: {
   try {
     const changes = getLocalChangelog(args.rootDirectory);
     notes = changes[extensionSpec.version];
-  } catch (err) {
+  } catch (err: any) {
     throw new FirebaseError(
       "No CHANGELOG.md file found. " +
         "Please create one and add an entry for this version. " +
@@ -471,30 +474,31 @@ export async function publishExtensionVersionFromLocalSource(args: {
         extensionSpec.version
       )}) already exists for the extension '${clc.bold(
         `${args.publisherId}/${args.extensionId}`
-      )}'. Please increment the version inside of extension.yaml.\n`
+      )}'. Please increment the version inside of extension.yaml.\n`,
+      { exit: 103 }
     );
   }
 
   const ref = `${args.publisherId}/${args.extensionId}@${extensionSpec.version}`;
   let packageUri: string;
   let objectPath = "";
-  const uploadSpinner = ora.default(" Archiving and uploading extension source code");
+  const uploadSpinner = ora(" Archiving and uploading extension source code");
   try {
     uploadSpinner.start();
     objectPath = await archiveAndUploadSource(args.rootDirectory, EXTENSIONS_BUCKET_NAME);
     uploadSpinner.succeed(" Uploaded extension source code");
     packageUri = storageOrigin + objectPath + "?alt=media";
-  } catch (err) {
+  } catch (err: any) {
     uploadSpinner.fail();
     throw err;
   }
-  const publishSpinner = ora.default(`Publishing ${clc.bold(ref)}`);
+  const publishSpinner = ora(`Publishing ${clc.bold(ref)}`);
   let res;
   try {
     publishSpinner.start();
     res = await publishExtensionVersion(ref, packageUri);
     publishSpinner.succeed(` Successfully published ${clc.bold(ref)}`);
-  } catch (err) {
+  } catch (err: any) {
     publishSpinner.fail();
     if (err.status == 404) {
       throw new FirebaseError(
@@ -524,15 +528,15 @@ export async function createSourceFromLocation(
   let packageUri: string;
   let extensionRoot: string;
   let objectPath = "";
-  if (!URL_REGEX.test(sourceUri)) {
-    const uploadSpinner = ora.default(" Archiving and uploading extension source code");
+  if (!sourceUri.startsWith("https:")) {
+    const uploadSpinner = ora(" Archiving and uploading extension source code");
     try {
       uploadSpinner.start();
       objectPath = await archiveAndUploadSource(sourceUri, EXTENSIONS_BUCKET_NAME);
       uploadSpinner.succeed(" Uploaded extension source code");
       packageUri = storageOrigin + objectPath + "?alt=media";
       extensionRoot = "/";
-    } catch (err) {
+    } catch (err: any) {
       uploadSpinner.fail();
       throw err;
     }
@@ -554,32 +558,23 @@ async function deleteUploadedSource(objectPath: string) {
     try {
       await deleteObject(objectPath);
       logger.debug("Cleaned up uploaded source archive");
-    } catch (err) {
+    } catch (err: any) {
       logger.debug("Unable to clean up uploaded source archive");
     }
   }
 }
 
 /**
- * Looks up a ExtensionSource from a extensionName. If no source exists for that extensionName, returns undefined.
- * @param extensionName a official extension source name
- *                      or a One-Platform format source name (/project/<projectName>/sources/<sourceId>)
- * @return an ExtensionSource corresponding to extensionName if one exists, undefined otherwise
+ * Parses the publisher project number from publisher profile name.
  */
-export async function getExtensionSourceFromName(extensionName: string): Promise<ExtensionSource> {
-  const officialExtensionRegex = /^[a-zA-Z\-]+[0-9@.]*$/;
-  const existingSourceRegex = /projects\/.+\/sources\/.+/;
-  // if the provided extensionName contains only letters and hyphens, assume it is an official extension
-  if (officialExtensionRegex.test(extensionName)) {
-    const [name, version] = extensionName.split("@");
-    const registryEntry = await resolveRegistryEntry(name);
-    const sourceUrl = resolveSourceUrl(registryEntry, name, version);
-    return await getSource(sourceUrl);
-  } else if (existingSourceRegex.test(extensionName)) {
-    logger.info(`Fetching the source "${extensionName}"...`);
-    return await getSource(extensionName);
+export function getPublisherProjectFromName(publisherName: string): number {
+  const publisherNameRegex = /projects\/.+\/publisherProfile/;
+
+  if (publisherNameRegex.test(publisherName)) {
+    const [_, projectNumber, __] = publisherName.split("/");
+    return Number.parseInt(projectNumber);
   }
-  throw new FirebaseError(`Could not find an extension named '${extensionName}'. `);
+  throw new FirebaseError(`Could not find publisher with name '${publisherName}'.`);
 }
 
 /**
@@ -652,25 +647,26 @@ export async function promptForRepeatInstance(
  * @param instanceId ID of the extension instance
  */
 export async function instanceIdExists(projectId: string, instanceId: string): Promise<boolean> {
-  const instanceRes = await getInstance(projectId, instanceId, {
-    resolveOnHTTPError: true,
-  });
-  if (instanceRes.error) {
-    if (_.get(instanceRes, "error.code") === 404) {
-      return false;
+  try {
+    await getInstance(projectId, instanceId);
+  } catch (err: unknown) {
+    if (err instanceof FirebaseError) {
+      if (err.status === 404) {
+        return false;
+      }
+      const msg = `Unexpected error when checking if instance ID exists: ${err}`;
+      throw new FirebaseError(msg, {
+        original: err,
+      });
+    } else {
+      throw err;
     }
-    const msg =
-      "Unexpected error when checking if instance ID exists: " +
-      _.get(instanceRes, "error.message");
-    throw new FirebaseError(msg, {
-      original: instanceRes.error,
-    });
   }
   return true;
 }
 
 export function isUrlPath(extInstallPath: string): boolean {
-  return URL_REGEX.test(extInstallPath);
+  return extInstallPath.startsWith("https:");
 }
 
 export function isLocalPath(extInstallPath: string): boolean {
@@ -704,8 +700,8 @@ export function getSourceOrigin(sourceOrVersion: string): SourceOrigin {
   if (sourceOrVersion.includes("/")) {
     let ref;
     try {
-      ref = parseRef(sourceOrVersion);
-    } catch (err) {
+      ref = refs.parse(sourceOrVersion);
+    } catch (err: any) {
       // Silently fail.
     }
     if (ref && ref.publisherId && ref.extensionId && !ref.version) {
@@ -740,5 +736,13 @@ export async function confirm(args: {
     throw new FirebaseError("Pass the --force flag to use this command in non-interactive mode");
   } else {
     return true;
+  }
+}
+
+export async function diagnoseAndFixProject(options: any): Promise<void> {
+  const projectId = needProjectId(options);
+  const ok = await diagnose(projectId);
+  if (!ok) {
+    throw new FirebaseError("Unable to proceed until all issues are resolved.");
   }
 }

@@ -1,7 +1,8 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as ora from "ora";
-import * as marked from "marked";
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
+const { marked } = require("marked");
 import TerminalRenderer = require("marked-terminal");
 
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
@@ -9,10 +10,12 @@ import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { needProjectId } from "../projectUtils";
 import * as extensionsApi from "../extensions/extensionsApi";
+import * as secretsUtils from "../extensions/secretsUtils";
 import {
   ensureExtensionsApiEnabled,
   logPrefix,
   resourceTypeToNiceName,
+  diagnoseAndFixProject,
 } from "../extensions/extensionsHelper";
 import { promptOnce } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
@@ -46,13 +49,14 @@ export default new Command("ext:uninstall <extensionInstanceId>")
   .before(requirePermissions, ["firebaseextensions.instances.delete"])
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
+  .before(diagnoseAndFixProject)
   .action(async (instanceId: string, options: any) => {
     const projectId = needProjectId(options);
     let instance;
 
     try {
       instance = await extensionsApi.getInstance(projectId, instanceId);
-    } catch (err) {
+    } catch (err: any) {
       if (err.status === 404) {
         return utils.reject(`No extension instance ${instanceId} in project ${projectId}.`, {
           exit: 1,
@@ -70,6 +74,7 @@ export default new Command("ext:uninstall <extensionInstanceId>")
       const serviceAccountMessage = `Uninstalling deletes the service account used by this extension instance:\n${clc.bold(
         instance.serviceAccountEmail
       )}\n\n`;
+      const managedSecrets = await secretsUtils.getManagedSecrets(instance);
       const resourcesMessage = _.get(instance, "config.source.spec.resources", []).length
         ? "Uninstalling deletes all extension resources created for this extension instance:\n" +
           instance.config.source.spec.resources
@@ -78,6 +83,10 @@ export default new Command("ext:uninstall <extensionInstanceId>")
                 `- ${resourceTypeToNiceName[resource.type] || resource.type}: ${resource.name} \n`
               )
             )
+            .join("") +
+          managedSecrets
+            .map(secretsUtils.prettySecretName)
+            .map((s) => clc.bold(`- Secret: ${s}\n`))
             .join("") +
           "\n"
         : "";
@@ -105,7 +114,7 @@ export default new Command("ext:uninstall <extensionInstanceId>")
       }
     }
 
-    const spinner = ora.default(
+    const spinner = ora(
       ` ${clc.green.bold(logPrefix)}: uninstalling ${clc.bold(
         instanceId
       )}. This usually takes 1 to 2 minutes...`
@@ -119,7 +128,7 @@ export default new Command("ext:uninstall <extensionInstanceId>")
       spinner.succeed(
         ` ${clc.green.bold(logPrefix)}: deleted your extension instance's resources.`
       );
-    } catch (err) {
+    } catch (err: any) {
       if (spinner.isSpinning) {
         spinner.fail();
       }

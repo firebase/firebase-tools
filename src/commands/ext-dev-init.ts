@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
-import * as marked from "marked";
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
+const { marked } = require("marked");
 import TerminalRenderer = require("marked-terminal");
 
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
@@ -172,7 +173,7 @@ export default new Command("ext:dev:init")
 
       const welcome = fs.readFileSync(path.join(TEMPLATE_ROOT, lang, "WELCOME.md"), "utf8");
       return logger.info("\n" + marked(welcome));
-    } catch (err) {
+    } catch (err: any) {
       if (!(err instanceof FirebaseError)) {
         throw new FirebaseError(
           `Error occurred when initializing files for new extension: ${err.message}`,

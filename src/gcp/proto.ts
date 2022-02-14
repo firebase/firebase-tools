@@ -133,10 +133,10 @@ function fieldMasksHelper(
  * @throws {@link FirebaseError} if any invoker string is empty or not of the correct form
  */
 export function getInvokerMembers(invoker: string[], projectId: string): string[] {
-  if (invoker[0] === "private") {
+  if (invoker.includes("private")) {
     return [];
   }
-  if (invoker[0] === "public") {
+  if (invoker.includes("public")) {
     return ["allUsers"];
   }
   return invoker.map((inv) => formatServiceAccount(inv, projectId));

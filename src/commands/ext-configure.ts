@@ -1,6 +1,7 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
-import * as marked from "marked";
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
+const { marked } = require("marked");
 import * as ora from "ora";
 import TerminalRenderer = require("marked-terminal");
 
@@ -9,7 +10,7 @@ import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { needProjectId } from "../projectUtils";
 import * as extensionsApi from "../extensions/extensionsApi";
-import { logPrefix } from "../extensions/extensionsHelper";
+import { logPrefix, diagnoseAndFixProject } from "../extensions/extensionsHelper";
 import * as paramHelper from "../extensions/paramHelper";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
@@ -31,8 +32,9 @@ export default new Command("ext:configure <extensionInstanceId>")
     "firebaseextensions.instances.get",
   ])
   .before(checkMinRequiredVersion, "extMinVersion")
+  .before(diagnoseAndFixProject)
   .action(async (instanceId: string, options: any) => {
-    const spinner = ora.default(
+    const spinner = ora(
       `Configuring ${clc.bold(instanceId)}. This usually takes 3 to 5 minutes...`
     );
     try {
@@ -40,7 +42,7 @@ export default new Command("ext:configure <extensionInstanceId>")
       let existingInstance: extensionsApi.ExtensionInstance;
       try {
         existingInstance = await extensionsApi.getInstance(projectId, instanceId);
-      } catch (err) {
+      } catch (err: any) {
         if (err.status === 404) {
           return utils.reject(
             `No extension instance ${instanceId} found in project ${projectId}.`,
@@ -51,9 +53,8 @@ export default new Command("ext:configure <extensionInstanceId>")
         }
         throw err;
       }
-      const paramSpecWithNewDefaults = paramHelper.getParamsWithCurrentValuesAsDefaults(
-        existingInstance
-      );
+      const paramSpecWithNewDefaults =
+        paramHelper.getParamsWithCurrentValuesAsDefaults(existingInstance);
       const immutableParams = _.remove(paramSpecWithNewDefaults, (param) => {
         return param.immutable || param.param === "LOCATION";
         // TODO: Stop special casing "LOCATION" once all official extensions make it immutable
@@ -64,6 +65,8 @@ export default new Command("ext:configure <extensionInstanceId>")
         paramSpecs: paramSpecWithNewDefaults,
         nonInteractive: options.nonInteractive,
         paramsEnvPath: options.params,
+        instanceId,
+        reconfiguring: true,
       });
       if (immutableParams.length) {
         const plural = immutableParams.length > 1;
@@ -82,7 +85,7 @@ export default new Command("ext:configure <extensionInstanceId>")
       }
 
       spinner.start();
-      const res = await extensionsApi.configureInstance(projectId, instanceId, params);
+      const res = await extensionsApi.configureInstance({ projectId, instanceId, params });
       spinner.stop();
       utils.logLabeledSuccess(logPrefix, `successfully configured ${clc.bold(instanceId)}.`);
       utils.logLabeledBullet(
@@ -95,7 +98,7 @@ export default new Command("ext:configure <extensionInstanceId>")
         )
       );
       return res;
-    } catch (err) {
+    } catch (err: any) {
       if (spinner.isSpinning) {
         spinner.fail();
       }

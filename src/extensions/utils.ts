@@ -20,27 +20,27 @@ interface ListItem {
 
 // Convert extension option to Inquirer-friendly list for the prompt, with all items unchecked.
 export function convertExtensionOptionToLabeledList(options: ParamOption[]): ListItem[] {
-  return options.map(
-    (option: ParamOption): ListItem => {
-      return {
-        checked: false,
-        name: option.label,
-        value: option.value,
-      };
-    }
-  );
+  return options.map((option: ParamOption): ListItem => {
+    return {
+      checked: false,
+      name: option.label,
+      value: option.value,
+    };
+  });
 }
 
 // Convert map of RegistryEntry into Inquirer-friendly list for prompt, with all items unchecked.
 export function convertOfficialExtensionsToList(officialExts: {
   [key: string]: RegistryEntry;
 }): ListItem[] {
-  return _.map(officialExts, (entry: RegistryEntry, key: string) => {
+  const l = _.map(officialExts, (entry: RegistryEntry, key: string) => {
     return {
       checked: false,
-      value: key,
+      value: `${entry.publisher}/${key}`,
     };
   });
+  l.sort((a, b) => a.value.localeCompare(b.value));
+  return l;
 }
 
 /**

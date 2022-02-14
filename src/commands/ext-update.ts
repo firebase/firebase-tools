@@ -1,6 +1,7 @@
 import * as clc from "cli-color";
 import * as _ from "lodash";
-import * as marked from "marked";
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
+const { marked } = require("marked");
 import * as ora from "ora";
 import TerminalRenderer = require("marked-terminal");
 
@@ -11,6 +12,7 @@ import { displayNode10UpdateBillingNotice } from "../extensions/billingMigration
 import { enableBilling } from "../extensions/checkProjectBilling";
 import { checkBillingEnabled } from "../gcp/cloudbilling";
 import * as extensionsApi from "../extensions/extensionsApi";
+import * as secretsUtils from "../extensions/secretsUtils";
 import * as provisioningHelper from "../extensions/provisioningHelper";
 import {
   ensureExtensionsApiEnabled,
@@ -18,6 +20,7 @@ import {
   getSourceOrigin,
   SourceOrigin,
   confirm,
+  diagnoseAndFixProject,
 } from "../extensions/extensionsHelper";
 import * as paramHelper from "../extensions/paramHelper";
 import {
@@ -31,6 +34,7 @@ import {
   getExistingSourceOrigin,
   inferUpdateSource,
 } from "../extensions/updateHelper";
+import * as refs from "../extensions/refs";
 import { needProjectId } from "../projectUtils";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
@@ -66,18 +70,17 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
   ])
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
+  .before(diagnoseAndFixProject)
   .withForce()
   .option("--params <paramsFile>", "name of params variables file with .env format.")
   .action(async (instanceId: string, updateSource: string, options: any) => {
-    const spinner = ora.default(
-      `Updating ${clc.bold(instanceId)}. This usually takes 3 to 5 minutes...`
-    );
+    const spinner = ora(`Updating ${clc.bold(instanceId)}. This usually takes 3 to 5 minutes...`);
     try {
       const projectId = needProjectId(options);
       let existingInstance: extensionsApi.ExtensionInstance;
       try {
         existingInstance = await extensionsApi.getInstance(projectId, instanceId);
-      } catch (err) {
+      } catch (err: any) {
         if (err.status === 404) {
           throw new FirebaseError(
             `Extension instance '${clc.bold(instanceId)}' not found in project '${clc.bold(
@@ -209,7 +212,8 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
 
       await provisioningHelper.checkProductsProvisioned(projectId, newSpec);
 
-      if (newSpec.billingRequired) {
+      const usesSecrets = secretsUtils.usesSecrets(newSpec);
+      if (newSpec.billingRequired || usesSecrets) {
         const enabled = await checkBillingEnabled(projectId);
         displayNode10UpdateBillingNotice(existingSpec, newSpec);
         if (
@@ -223,7 +227,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         }
         if (!enabled) {
           if (!options.nonInteractive) {
-            await enableBilling(projectId, instanceId);
+            await enableBilling(projectId);
           } else {
             throw new FirebaseError(
               "The extension requires your project to be upgraded to the Blaze plan. " +
@@ -234,7 +238,12 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
             );
           }
         }
+        if (usesSecrets) {
+          await secretsUtils.ensureSecretManagerApiEnabled(options);
+        }
       }
+      // make a copy of existingParams -- they get overridden by paramHelper.getParamsForUpdate
+      const oldParamValues = { ...existingParams };
       const newParams = await paramHelper.getParamsForUpdate({
         spec: existingSpec,
         newSpec,
@@ -242,6 +251,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         projectId,
         paramsEnvPath: options.params,
         nonInteractive: options.nonInteractive,
+        instanceId,
       });
       spinner.start();
       const updateOptions: UpdateOptions = {
@@ -249,14 +259,11 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         instanceId,
       };
       if (newSourceName.includes("publisher")) {
-        const { publisherId, extensionId, version } = extensionsApi.parseExtensionVersionName(
-          newSourceName
-        );
-        updateOptions.extRef = `${publisherId}/${extensionId}@${version}`;
+        updateOptions.extRef = refs.toExtensionVersionRef(refs.parse(newSourceName));
       } else {
         updateOptions.source = newSource;
       }
-      if (!_.isEqual(newParams, existingParams)) {
+      if (!_.isEqual(newParams, oldParamValues)) {
         updateOptions.params = newParams;
       }
       await update(updateOptions);
@@ -271,7 +278,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
           )}`
         )
       );
-    } catch (err) {
+    } catch (err: any) {
       if (spinner.isSpinning) {
         spinner.fail();
       }

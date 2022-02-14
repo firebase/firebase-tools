@@ -2,15 +2,19 @@ import * as clc from "cli-color";
 
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
-import * as api from "../api";
+import { previews } from "../previews";
 import * as backend from "../deploy/functions/backend";
 import * as utils from "../utils";
 import * as proto from "./proto";
 import * as runtimes from "../deploy/functions/runtimes";
 import * as iam from "./iam";
-import * as _ from "lodash";
+import { Client } from "../apiv2";
+import { functionsOrigin } from "../api";
+import { getFirebaseProject } from "../management/projects";
+import { assertExhaustive } from "../functional";
 
 export const API_VERSION = "v1";
+const client = new Client({ urlPrefix: functionsOrigin, apiVersion: API_VERSION });
 
 interface Operation {
   name: string;
@@ -174,18 +178,16 @@ function functionsOpLogReject(funcName: string, type: string, err: any): void {
  */
 export async function generateUploadUrl(projectId: string, location: string): Promise<string> {
   const parent = "projects/" + projectId + "/locations/" + location;
-  const endpoint = "/" + API_VERSION + "/" + parent + "/functions:generateUploadUrl";
+  const endpoint = `/${parent}/functions:generateUploadUrl`;
 
   try {
-    const res = await api.request("POST", endpoint, {
-      auth: true,
-      json: false,
-      origin: api.functionsOrigin,
-      retryCodes: [503],
-    });
-    const responseBody = JSON.parse(res.body);
-    return responseBody.uploadUrl;
-  } catch (err) {
+    const res = await client.post<unknown, { uploadUrl: string }>(
+      endpoint,
+      {},
+      { retryCodes: [503] }
+    );
+    return res.body.uploadUrl;
+  } catch (err: any) {
     logger.info(
       "\n\nThere was an issue deploying your functions. Verify that your project has a Google App Engine instance setup at https://console.cloud.google.com/appengine and try again. If this issue persists, please contact support."
     );
@@ -202,20 +204,24 @@ export async function createFunction(
 ): Promise<Operation> {
   // the API is a POST to the collection that owns the function name.
   const apiPath = cloudFunction.name.substring(0, cloudFunction.name.lastIndexOf("/"));
-  const endpoint = `/${API_VERSION}/${apiPath}`;
+  const endpoint = `/${apiPath}`;
 
   try {
-    const res = await api.request("POST", endpoint, {
-      auth: true,
-      data: cloudFunction,
-      origin: api.functionsOrigin,
-    });
+    const headers: Record<string, string> = {};
+    if (previews.artifactregistry) {
+      headers["X-Firebase-Artifact-Registry"] = "optin";
+    }
+    const res = await client.post<Omit<CloudFunction, OutputOnlyFields>, CloudFunction>(
+      endpoint,
+      cloudFunction,
+      { headers }
+    );
     return {
       name: res.body.name,
       type: "create",
       done: false,
     };
-  } catch (err) {
+  } catch (err: any) {
     throw functionsOpLogReject(cloudFunction.name, "create", err);
   }
 }
@@ -234,18 +240,14 @@ interface IamOptions {
  * @param options The Iam options to set.
  */
 export async function setIamPolicy(options: IamOptions): Promise<void> {
-  const endpoint = `/${API_VERSION}/${options.name}:setIamPolicy`;
+  const endpoint = `/${options.name}:setIamPolicy`;
 
   try {
-    await api.request("POST", endpoint, {
-      auth: true,
-      data: {
-        policy: options.policy,
-        updateMask: Object.keys(options.policy).join(","),
-      },
-      origin: api.functionsOrigin,
+    await client.post(endpoint, {
+      policy: options.policy,
+      updateMask: Object.keys(options.policy).join(","),
     });
-  } catch (err) {
+  } catch (err: any) {
     throw new FirebaseError(`Failed to set the IAM Policy on the function ${options.name}`, {
       original: err,
     });
@@ -264,14 +266,12 @@ interface GetIamPolicy {
  * @param fnName The full name and path of the Cloud Function.
  */
 export async function getIamPolicy(fnName: string): Promise<GetIamPolicy> {
-  const endpoint = `/${API_VERSION}/${fnName}:getIamPolicy`;
+  const endpoint = `/${fnName}:getIamPolicy`;
 
   try {
-    return await api.request("GET", endpoint, {
-      auth: true,
-      origin: api.functionsOrigin,
-    });
-  } catch (err) {
+    const res = await client.get<GetIamPolicy>(endpoint);
+    return res.body;
+  } catch (err: any) {
     throw new FirebaseError(`Failed to get the IAM Policy on the function ${fnName}`, {
       original: err,
     });
@@ -283,7 +283,6 @@ export async function getIamPolicy(fnName: string): Promise<GetIamPolicy> {
  * @param projectId id of the project
  * @param fnName function name
  * @param invoker an array of invoker strings
- *
  * @throws {@link FirebaseError} on an empty invoker, when the IAM Polciy fails to be grabbed or set
  */
 export async function setInvokerCreate(
@@ -312,7 +311,6 @@ export async function setInvokerCreate(
  * @param projectId id of the project
  * @param fnName function name
  * @param invoker an array of invoker strings
- *
  * @throws {@link FirebaseError} on an empty invoker, when the IAM Polciy fails to be grabbed or set
  */
 export async function setInvokerUpdate(
@@ -357,7 +355,7 @@ export async function setInvokerUpdate(
 export async function updateFunction(
   cloudFunction: Omit<CloudFunction, OutputOnlyFields>
 ): Promise<Operation> {
-  const endpoint = `/${API_VERSION}/${cloudFunction.name}`;
+  const endpoint = `/${cloudFunction.name}`;
   // Keys in labels and environmentVariables are user defined, so we don't recurse
   // for field masks.
   const fieldMasks = proto.fieldMasks(
@@ -369,20 +367,26 @@ export async function updateFunction(
   // Failure policy is always an explicit policy and is only signified by the presence or absence of
   // a protobuf.Empty value, so we have to manually add it in the missing case.
   try {
-    const res = await api.request("PATCH", endpoint, {
-      qs: {
-        updateMask: fieldMasks.join(","),
-      },
-      auth: true,
-      data: cloudFunction,
-      origin: api.functionsOrigin,
-    });
+    const headers: Record<string, string> = {};
+    if (previews.artifactregistry) {
+      headers["X-Firebase-Artifact-Registry"] = "optin";
+    }
+    const res = await client.patch<Omit<CloudFunction, OutputOnlyFields>, CloudFunction>(
+      endpoint,
+      cloudFunction,
+      {
+        headers,
+        queryParams: {
+          updateMask: fieldMasks.join(","),
+        },
+      }
+    );
     return {
       done: false,
       name: res.body.name,
       type: "update",
     };
-  } catch (err) {
+  } catch (err: any) {
     throw functionsOpLogReject(cloudFunction.name, "update", err);
   }
 }
@@ -392,18 +396,15 @@ export async function updateFunction(
  * @param options the Cloud Function to delete.
  */
 export async function deleteFunction(name: string): Promise<Operation> {
-  const endpoint = `/${API_VERSION}/${name}`;
+  const endpoint = `/${name}`;
   try {
-    const res = await api.request("DELETE", endpoint, {
-      auth: true,
-      origin: api.functionsOrigin,
-    });
+    const res = await client.delete<Operation>(endpoint);
     return {
       done: false,
       name: res.body.name,
       type: "delete",
     };
-  } catch (err) {
+  } catch (err: any) {
     throw functionsOpLogReject(name, "delete", err);
   }
 }
@@ -414,13 +415,9 @@ export type ListFunctionsResponse = {
 };
 
 async function list(projectId: string, region: string): Promise<ListFunctionsResponse> {
-  const endpoint =
-    "/" + API_VERSION + "/projects/" + projectId + "/locations/" + region + "/functions";
+  const endpoint = "/projects/" + projectId + "/locations/" + region + "/functions";
   try {
-    const res = await api.request("GET", endpoint, {
-      auth: true,
-      origin: api.functionsOrigin,
-    });
+    const res = await client.get<ListFunctionsResponse>(endpoint);
     if (res.body.unreachable && res.body.unreachable.length > 0) {
       logger.debug(
         `[functions] unable to reach the following regions: ${res.body.unreachable.join(", ")}`
@@ -431,10 +428,12 @@ async function list(projectId: string, region: string): Promise<ListFunctionsRes
       functions: res.body.functions || [],
       unreachable: res.body.unreachable || [],
     };
-  } catch (err) {
-    logger.debug("[functions] failed to list functions for " + projectId);
+  } catch (err: any) {
+    logger.debug(`[functions] failed to list functions for ${projectId}`);
     logger.debug(`[functions] ${err?.message}`);
-    return Promise.reject(err?.message);
+    throw new FirebaseError(`Failed to list functions for ${projectId}`, {
+      original: err,
+    });
   }
 }
 
@@ -462,134 +461,21 @@ export async function listAllFunctions(projectId: string): Promise<ListFunctions
  * This API exists outside the GCF namespace because GCF returns an Operation<CloudFunction>
  * and code may have to call this method explicitly.
  */
-export function specFromFunction(gcfFunction: CloudFunction): backend.FunctionSpec {
-  const [, project, , region, , id] = gcfFunction.name.split("/");
-  let trigger: backend.EventTrigger | backend.HttpsTrigger;
-  let uri: string | undefined;
-  if (gcfFunction.httpsTrigger) {
-    trigger = {};
-    uri = gcfFunction.httpsTrigger.url;
-  } else {
-    trigger = {
-      eventType: gcfFunction.eventTrigger!.eventType,
-      eventFilters: {
-        resource: gcfFunction.eventTrigger!.resource,
-      },
-      retry: !!gcfFunction.eventTrigger!.failurePolicy?.retry,
-    };
-  }
-
-  if (!runtimes.isValidRuntime(gcfFunction.runtime)) {
-    logger.debug("GCFv1 function has a deprecated runtime:", JSON.stringify(gcfFunction, null, 2));
-  }
-
-  const cloudFunction: backend.FunctionSpec = {
-    platform: "gcfv1",
-    id,
-    project,
-    region,
-    trigger,
-    entryPoint: gcfFunction.entryPoint,
-    runtime: gcfFunction.runtime,
-  };
-  if (uri) {
-    cloudFunction.uri = uri;
-  }
-  proto.copyIfPresent(
-    cloudFunction,
-    gcfFunction,
-    "serviceAccountEmail",
-    "availableMemoryMb",
-    "timeout",
-    "minInstances",
-    "maxInstances",
-    "vpcConnector",
-    "vpcConnectorEgressSettings",
-    "ingressSettings",
-    "labels",
-    "environmentVariables",
-    "sourceUploadUrl"
-  );
-
-  return cloudFunction;
-}
-
-/**
- * Convert the API agnostic FunctionSpec struct to a CloudFunction proto for the v1 API.
- */
-export function functionFromSpec(
-  cloudFunction: backend.FunctionSpec,
-  sourceUploadUrl: string
-): Omit<CloudFunction, OutputOnlyFields> {
-  if (cloudFunction.platform != "gcfv1") {
-    throw new FirebaseError(
-      "Trying to create a v1 CloudFunction with v2 API. This should never happen"
-    );
-  }
-
-  if (!runtimes.isValidRuntime(cloudFunction.runtime)) {
-    throw new FirebaseError(
-      "Failed internal assertion. Trying to deploy a new function with a deprecated runtime." +
-        " This should never happen"
-    );
-  }
-  const gcfFunction: Omit<CloudFunction, OutputOnlyFields> = {
-    name: backend.functionName(cloudFunction),
-    sourceUploadUrl: sourceUploadUrl,
-    entryPoint: cloudFunction.entryPoint,
-    runtime: cloudFunction.runtime,
-  };
-
-  if (backend.isEventTrigger(cloudFunction.trigger)) {
-    gcfFunction.eventTrigger = {
-      eventType: cloudFunction.trigger.eventType,
-      resource: cloudFunction.trigger.eventFilters.resource,
-      // Service is unnecessary and deprecated
-    };
-
-    // For field masks to pick up a deleted failure policy we must inject an undefined
-    // when retry is false
-    gcfFunction.eventTrigger.failurePolicy = cloudFunction.trigger.retry
-      ? { retry: {} }
-      : undefined;
-  } else {
-    gcfFunction.httpsTrigger = {};
-  }
-
-  proto.copyIfPresent(
-    gcfFunction,
-    cloudFunction,
-    "serviceAccountEmail",
-    "timeout",
-    "availableMemoryMb",
-    "minInstances",
-    "maxInstances",
-    "vpcConnector",
-    "vpcConnectorEgressSettings",
-    "ingressSettings",
-    "labels",
-    "environmentVariables"
-  );
-
-  return gcfFunction;
-}
-
-/**
- * Converts a Cloud Function from the v1 API into a version-agnostic FunctionSpec struct.
- * This API exists outside the GCF namespace because GCF returns an Operation<CloudFunction>
- * and code may have to call this method explicitly.
- */
 export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoint {
   const [, project, , region, , id] = gcfFunction.name.split("/");
   let trigger: backend.Triggered;
   let uri: string | undefined;
-  if (gcfFunction.httpsTrigger) {
-    trigger = { httpsTrigger: {} };
-    uri = gcfFunction.httpsTrigger.url;
-  } else if (gcfFunction.labels?.["deployment-scheduled"]) {
+  if (gcfFunction.labels?.["deployment-scheduled"]) {
     trigger = {
       scheduleTrigger: {},
     };
+  } else if (gcfFunction.labels?.["deployment-taskqueue"]) {
+    trigger = {
+      taskQueueTrigger: {},
+    };
+  } else if (gcfFunction.httpsTrigger) {
+    trigger = { httpsTrigger: {} };
+    uri = gcfFunction.httpsTrigger.url;
   } else {
     trigger = {
       eventTrigger: {
@@ -631,6 +517,7 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     "ingressSettings",
     "labels",
     "environmentVariables",
+    "secretEnvironmentVariables",
     "sourceUploadUrl"
   );
 
@@ -683,6 +570,9 @@ export function functionFromEndpoint(
       resource: `projects/${endpoint.project}/topics/${id}`,
     };
     gcfFunction.labels = { ...gcfFunction.labels, "deployment-scheduled": "true" };
+  } else if (backend.isTaskQueueTriggered(endpoint)) {
+    gcfFunction.httpsTrigger = {};
+    gcfFunction.labels = { ...gcfFunction.labels, "deployment-taskqueue": "true" };
   } else {
     gcfFunction.httpsTrigger = {};
   }
@@ -698,7 +588,8 @@ export function functionFromEndpoint(
     "vpcConnector",
     "vpcConnectorEgressSettings",
     "ingressSettings",
-    "environmentVariables"
+    "environmentVariables",
+    "secretEnvironmentVariables"
   );
 
   return gcfFunction;

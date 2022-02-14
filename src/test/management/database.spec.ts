@@ -129,7 +129,7 @@ describe("Database management", () => {
       let err;
       try {
         await getDatabaseInstanceDetails(PROJECT_ID, badInstanceName);
-      } catch (e) {
+      } catch (e: any) {
         err = e;
       }
       expect(err.message).to.equal(
@@ -186,7 +186,7 @@ describe("Database management", () => {
           DatabaseLocation.US_CENTRAL1,
           DatabaseInstanceType.DEFAULT_DATABASE
         );
-      } catch (e) {
+      } catch (e: any) {
         err = e;
       }
 
@@ -302,7 +302,7 @@ describe("Database management", () => {
           DatabaseInstanceType.DEFAULT_DATABASE,
           DatabaseLocation.US_CENTRAL1
         );
-      } catch (e) {
+      } catch (e: any) {
         err = e;
       }
 
@@ -442,7 +442,7 @@ describe("Database management", () => {
       let err;
       try {
         await listDatabaseInstances(PROJECT_ID, DatabaseLocation.ANY);
-      } catch (e) {
+      } catch (e: any) {
         err = e;
       }
 
@@ -483,7 +483,7 @@ describe("Database management", () => {
       let err;
       try {
         await listDatabaseInstances(PROJECT_ID, DatabaseLocation.US_CENTRAL1, pageSize);
-      } catch (e) {
+      } catch (e: any) {
         err = e;
       }
 

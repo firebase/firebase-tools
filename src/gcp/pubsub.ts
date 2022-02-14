@@ -53,13 +53,6 @@ export async function deleteTopic(name: string): Promise<void> {
   await client.delete(name);
 }
 
-export function topicFromSpec(spec: backend.PubSubSpec): Topic {
-  return {
-    name: backend.topicName(spec),
-    labels: { ...spec.labels },
-  };
-}
-
 // NOTE: We currently don't need or have specFromTopic.
 // backend.ExistingBackend infers actual topics by the fact that it sees a function
 // with a scheduled annotation. This may not be good enough when we're

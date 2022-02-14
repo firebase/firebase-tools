@@ -15,6 +15,7 @@ describe("triggerHelper", () => {
         },
       };
       const expected = {
+        platform: "gcfv1",
         availableMemoryMb: 1024,
         entryPoint: "test-resource",
         name: "test-resource",
@@ -36,6 +37,7 @@ describe("triggerHelper", () => {
         },
       };
       const expected = {
+        platform: "gcfv1",
         entryPoint: "test-resource",
         name: "test-resource",
         httpsTrigger: {},
@@ -58,6 +60,7 @@ describe("triggerHelper", () => {
         },
       };
       const expected = {
+        platform: "gcfv1",
         entryPoint: "test-resource",
         name: "test-resource",
         eventTrigger: {
@@ -84,6 +87,7 @@ describe("triggerHelper", () => {
         },
       };
       const expected = {
+        platform: "gcfv1",
         entryPoint: "test-resource",
         name: "test-resource",
         eventTrigger: {
@@ -110,6 +114,7 @@ describe("triggerHelper", () => {
         },
       };
       const expected = {
+        platform: "gcfv1",
         entryPoint: "test-resource",
         name: "test-resource",
         eventTrigger: {

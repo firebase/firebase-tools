@@ -1,6 +1,6 @@
 import * as uuid from "uuid";
-import { FunctionsEmulator } from "./functionsEmulator";
-import { EmulatedTriggerDefinition, EmulatedTriggerType } from "./functionsEmulatorShared";
+import { EmulatableBackend, FunctionsEmulator } from "./functionsEmulator";
+import { EmulatedTriggerDefinition, getSignatureType } from "./functionsEmulatorShared";
 import * as utils from "../utils";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
@@ -15,7 +15,7 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
   emulatedFunctions: string[];
   urls: { [name: string]: string } = {};
 
-  constructor(private emu: FunctionsEmulator) {
+  constructor(private emu: FunctionsEmulator, private backend: EmulatableBackend) {
     this.triggers = emu.getTriggerDefinitions();
     this.emulatedFunctions = this.triggers.map((t) => t.id);
 
@@ -64,7 +64,7 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
       data,
     };
 
-    this.emu.startFunctionRuntime(trigger.id, trigger.name, EmulatedTriggerType.BACKGROUND, proto);
+    this.emu.startFunctionRuntime(this.backend, trigger, proto);
   }
 
   private getTrigger(name: string): EmulatedTriggerDefinition {

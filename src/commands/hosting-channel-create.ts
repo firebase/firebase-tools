@@ -10,7 +10,8 @@ import { requirePermissions } from "../requirePermissions";
 import { needProjectId } from "../projectUtils";
 import { logger } from "../logger";
 import * as requireConfig from "../requireConfig";
-import * as marked from "marked";
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
+const { marked } = require("marked");
 import { requireHostingSite } from "../requireHostingSite";
 
 const LOG_TAG = "hosting:channel";
@@ -54,7 +55,7 @@ export default new Command("hosting:channel:create [channelId]")
       let channel: Channel;
       try {
         channel = await createChannel(projectId, site, channelId, expireTTL);
-      } catch (e) {
+      } catch (e: any) {
         if (e.status === 409) {
           throw new FirebaseError(
             `Channel ${bold(channelId)} already exists on site ${bold(site)}. Deploy to ${bold(
@@ -68,7 +69,7 @@ export default new Command("hosting:channel:create [channelId]")
 
       try {
         await addAuthDomains(projectId, [channel.url]);
-      } catch (e) {
+      } catch (e: any) {
         logLabeledWarning(
           LOG_TAG,
           marked(

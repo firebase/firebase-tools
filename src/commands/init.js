@@ -26,8 +26,7 @@ var _isOutside = function (from, to) {
 const choices = [
   {
     value: "database",
-    name:
-      "Realtime Database: Configure a security rules file for Realtime Database and (optionally) provision default instance",
+    name: "Realtime Database: Configure a security rules file for Realtime Database and (optionally) provision default instance",
     checked: false,
   },
   {
@@ -42,8 +41,7 @@ const choices = [
   },
   {
     value: "hosting",
-    name:
-      "Hosting: Configure files for Firebase Hosting and (optionally) set up GitHub Action deploys",
+    name: "Hosting: Configure files for Firebase Hosting and (optionally) set up GitHub Action deploys",
     checked: false,
   },
   {
@@ -187,6 +185,11 @@ module.exports = new Command("init [feature]")
         const allAccounts = getAllAccounts();
         if (allAccounts.length > 1) {
           setup.features.unshift("account");
+        }
+
+        // "hosting:github" is a part of "hosting", so if both are selected, "hosting:github" is ignored.
+        if (setup.features.includes("hosting") && setup.features.includes("hosting:github")) {
+          setup.features = setup.features.filter((f) => f != "hosting:github");
         }
 
         return init(setup, config, options);

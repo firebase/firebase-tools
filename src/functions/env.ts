@@ -4,11 +4,11 @@ import * as path from "path";
 
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
-import { previews } from "../previews";
 import { logBullet } from "../utils";
 
 const FUNCTIONS_EMULATOR_DOTENV = ".env.local";
 
+const RESERVED_PREFIXES = ["X_GOOGLE_", "FIREBASE_", "EXT_"];
 const RESERVED_KEYS = [
   // Cloud Functions for Firebase
   "FIREBASE_CONFIG",
@@ -45,11 +45,11 @@ const LINE_RE = new RegExp(
   "^" +                      // begin line
   "\\s*" +                   //   leading whitespaces
   "(\\w+)" +                 //   key
-  "\\s*=\\s*" +              //   separator (=)
+  "\\s*=[\\f\\t\\v]*" +              //   separator (=)
   "(" +                      //   begin optional value
   "\\s*'(?:\\\\'|[^'])*'|" + //     single quoted or
   '\\s*"(?:\\\\"|[^"])*"|' + //     double quoted or
-  "[^#\\r\\n]+" +            //     unquoted
+  "[^#\\r\\n]*" +           //     unquoted
   ")?" +                     //   end optional value
   "\\s*" +                   //   trailing whitespaces
   "(?:#[^\\n]*)?" +          //   optional comment
@@ -109,6 +109,7 @@ export function parse(data: string): ParseResult {
         v = v.replace(/\\([\\'"])/g, "$1");
       }
     }
+
     envs[k] = v;
   }
 
@@ -125,7 +126,11 @@ export function parse(data: string): ParseResult {
   return { envs, errors };
 }
 
-class KeyValidationError extends Error {}
+export class KeyValidationError extends Error {
+  constructor(public key: string, public message: string) {
+    super(`Failed to validate key ${key}: ${message}`);
+  }
+}
 
 /**
  * Validates string for use as an env var key.
@@ -135,17 +140,19 @@ class KeyValidationError extends Error {}
  */
 export function validateKey(key: string): void {
   if (RESERVED_KEYS.includes(key)) {
-    throw new KeyValidationError(`Key ${key} is reserved for internal use.`);
+    throw new KeyValidationError(key, `Key ${key} is reserved for internal use.`);
   }
   if (!/^[A-Z_][A-Z0-9_]*$/.test(key)) {
     throw new KeyValidationError(
+      key,
       `Key ${key} must start with an uppercase ASCII letter or underscore` +
         ", and then consist of uppercase ASCII letters, digits, and underscores."
     );
   }
-  if (key.startsWith("X_GOOGLE_") || key.startsWith("FIREBASE_")) {
+  if (RESERVED_PREFIXES.some((prefix) => key.startsWith(prefix))) {
     throw new KeyValidationError(
-      `Key ${key} starts with a reserved prefix (X_GOOGLE_ or FIREBASE_)`
+      key,
+      `Key ${key} starts with a reserved prefix (${RESERVED_PREFIXES.join(" ")})`
     );
   }
 }
@@ -153,7 +160,7 @@ export function validateKey(key: string): void {
 // Parse dotenv file, but throw errors if:
 //   1. Input has any invalid lines.
 //   2. Any env key fails validation.
-function parseStrict(data: string): Record<string, string> {
+export function parseStrict(data: string): Record<string, string> {
   const { envs, errors } = parse(data);
 
   if (errors.length) {
@@ -164,7 +171,7 @@ function parseStrict(data: string): Record<string, string> {
   for (const key of Object.keys(envs)) {
     try {
       validateKey(key);
-    } catch (err) {
+    } catch (err: any) {
       logger.debug(`Failed to validate key ${key}: ${err}`);
       if (err instanceof KeyValidationError) {
         validationErrors.push(err);
@@ -245,10 +252,6 @@ export function loadUserEnvs({
   projectAlias,
   isEmulator,
 }: UserEnvsOpts): Record<string, string> {
-  if (!previews.dotenv) {
-    return {};
-  }
-
   const envFiles = findEnvfiles(functionsSource, projectId, projectAlias, isEmulator);
   if (envFiles.length == 0) {
     return {};
@@ -269,7 +272,7 @@ export function loadUserEnvs({
     try {
       const data = fs.readFileSync(path.join(functionsSource, f), "utf8");
       envs = { ...envs, ...parseStrict(data) };
-    } catch (err) {
+    } catch (err: any) {
       throw new FirebaseError(`Failed to load environment variables from ${f}.`, {
         exit: 2,
         children: err.children?.length > 0 ? err.children : [err],

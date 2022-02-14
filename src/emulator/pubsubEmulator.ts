@@ -1,13 +1,16 @@
 import * as uuid from "uuid";
+import { MessagePublishedData } from "@google/events/cloud/pubsub/v1/MessagePublishedData";
 import { Message, PubSub, Subscription } from "@google-cloud/pubsub";
 
-import * as api from "../api";
 import * as downloadableEmulators from "./downloadableEmulators";
+import { Client } from "../apiv2";
 import { EmulatorLogger } from "./emulatorLogger";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
 import { Constants } from "./constants";
 import { FirebaseError } from "../error";
 import { EmulatorRegistry } from "./registry";
+import { SignatureType } from "./functionsEmulatorShared";
+import { CloudEvent } from "./events/types";
 
 export interface PubsubEmulatorArgs {
   projectId: string;
@@ -16,14 +19,22 @@ export interface PubsubEmulatorArgs {
   auto_download?: boolean;
 }
 
+interface Trigger {
+  triggerKey: string;
+  signatureType: SignatureType;
+}
+
 export class PubsubEmulator implements EmulatorInstance {
   pubsub: PubSub;
 
   // Map of topic name to a list of functions to trigger
-  triggers: Map<string, Set<string>>;
+  triggersForTopic: Map<string, Trigger[]>;
 
   // Map of topic name to a PubSub subscription object
-  subscriptions: Map<string, Subscription>;
+  subscriptionForTopic: Map<string, Subscription>;
+
+  // Client for communicating with the Functions Emulator
+  private client?: Client;
 
   private logger = EmulatorLogger.forEmulator(Emulators.PUBSUB);
 
@@ -33,9 +44,8 @@ export class PubsubEmulator implements EmulatorInstance {
       apiEndpoint: `${host}:${port}`,
       projectId: this.args.projectId,
     });
-
-    this.triggers = new Map();
-    this.subscriptions = new Map();
+    this.triggersForTopic = new Map();
+    this.subscriptionForTopic = new Map();
   }
 
   async start(): Promise<void> {
@@ -66,11 +76,18 @@ export class PubsubEmulator implements EmulatorInstance {
     return Emulators.PUBSUB;
   }
 
-  async addTrigger(topicName: string, trigger: string) {
-    this.logger.logLabeled("DEBUG", "pubsub", `addTrigger(${topicName}, ${trigger})`);
+  async addTrigger(topicName: string, triggerKey: string, signatureType: SignatureType) {
+    this.logger.logLabeled(
+      "DEBUG",
+      "pubsub",
+      `addTrigger(${topicName}, ${triggerKey}, ${signatureType})`
+    );
 
-    const topicTriggers = this.triggers.get(topicName) || new Set();
-    if (topicTriggers.has(topicName) && this.subscriptions.has(topicName)) {
+    const triggers = this.triggersForTopic.get(topicName) || [];
+    if (
+      triggers.some((t) => t.triggerKey === triggerKey) &&
+      this.subscriptionForTopic.has(topicName)
+    ) {
       this.logger.logLabeled("DEBUG", "pubsub", "Trigger already exists");
       return;
     }
@@ -79,7 +96,7 @@ export class PubsubEmulator implements EmulatorInstance {
     try {
       this.logger.logLabeled("DEBUG", "pubsub", `Creating topic: ${topicName}`);
       await topic.create();
-    } catch (e) {
+    } catch (e: any) {
       if (e && e.code === 6) {
         this.logger.logLabeled("DEBUG", "pubsub", `Topic ${topicName} exists`);
       } else {
@@ -92,7 +109,7 @@ export class PubsubEmulator implements EmulatorInstance {
     try {
       this.logger.logLabeled("DEBUG", "pubsub", `Creating sub for topic: ${topicName}`);
       [sub] = await topic.createSubscription(subName);
-    } catch (e) {
+    } catch (e: any) {
       if (e && e.code === 6) {
         this.logger.logLabeled("DEBUG", "pubsub", `Sub for ${topicName} exists`);
         sub = topic.subscription(`emulator-sub-${topicName}`);
@@ -105,72 +122,104 @@ export class PubsubEmulator implements EmulatorInstance {
       this.onMessage(topicName, message);
     });
 
-    topicTriggers.add(trigger);
-    this.triggers.set(topicName, topicTriggers);
-    this.subscriptions.set(topicName, sub);
+    triggers.push({ triggerKey, signatureType });
+    this.triggersForTopic.set(topicName, triggers);
+    this.subscriptionForTopic.set(topicName, sub);
+  }
+
+  private ensureFunctionsClient() {
+    if (this.client != undefined) return;
+
+    const funcEmulator = EmulatorRegistry.get(Emulators.FUNCTIONS);
+    if (!funcEmulator) {
+      throw new FirebaseError(
+        `Attempted to execute pubsub trigger but could not find the Functions emulator`
+      );
+    }
+    this.client = new Client({
+      urlPrefix: `http://${EmulatorRegistry.getInfoHostString(funcEmulator.getInfo())}`,
+      auth: false,
+    });
+  }
+
+  private createLegacyEventRequestBody(topic: string, message: Message) {
+    return {
+      context: {
+        eventId: uuid.v4(),
+        resource: {
+          service: "pubsub.googleapis.com",
+          name: `projects/${this.args.projectId}/topics/${topic}`,
+        },
+        eventType: "google.pubsub.topic.publish",
+        timestamp: message.publishTime.toISOString(),
+      },
+      data: {
+        data: message.data,
+        attributes: message.attributes,
+      },
+    };
+  }
+
+  private createCloudEventRequestBody(
+    topic: string,
+    message: Message
+  ): CloudEvent<MessagePublishedData> {
+    const data: MessagePublishedData = {
+      message: {
+        messageId: message.id,
+        publishTime: message.publishTime,
+        attributes: message.attributes,
+        orderingKey: message.orderingKey,
+        data: message.data.toString("base64"),
+      },
+      subscription: this.subscriptionForTopic.get(topic)!.name,
+    };
+    return {
+      specversion: "1",
+      id: uuid.v4(),
+      time: message.publishTime.toISOString(),
+      type: "google.cloud.pubsub.topic.v1.messagePublished",
+      source: `//pubsub.googleapis.com/projects/${this.args.projectId}/topics/${topic}`,
+      data,
+    };
   }
 
   private async onMessage(topicName: string, message: Message) {
     this.logger.logLabeled("DEBUG", "pubsub", `onMessage(${topicName}, ${message.id})`);
-    const topicTriggers = this.triggers.get(topicName);
-    if (!topicTriggers || topicTriggers.size === 0) {
+    const triggers = this.triggersForTopic.get(topicName);
+    if (!triggers || triggers.length === 0) {
       throw new FirebaseError(`No trigger for topic: ${topicName}`);
-    }
-
-    const functionsEmu = EmulatorRegistry.get(Emulators.FUNCTIONS);
-    if (!functionsEmu) {
-      throw new FirebaseError(
-        `Attempted to execute pubsub trigger for topic ${topicName} but could not find Functions emulator`
-      );
     }
 
     this.logger.logLabeled(
       "DEBUG",
       "pubsub",
-      `Executing ${topicTriggers.size} matching triggers (${JSON.stringify(
-        Array.from(topicTriggers)
+      `Executing ${triggers.length} matching triggers (${JSON.stringify(
+        triggers.map((t) => t.triggerKey)
       )})`
     );
 
-    // We need to do one POST request for each matching trigger and only
-    // 'ack' the message when they are all complete.
-    let remaining = topicTriggers.size;
-    for (const trigger of topicTriggers) {
-      const body = {
-        context: {
-          eventId: uuid.v4(),
-          resource: {
-            service: "pubsub.googleapis.com",
-            name: `projects/${this.args.projectId}/topics/${topicName}`,
-          },
-          eventType: "google.pubsub.topic.publish",
-          timestamp: message.publishTime.toISOString(),
-        },
-        data: {
-          data: message.data,
-          attributes: message.attributes,
-        },
-      };
+    this.ensureFunctionsClient();
 
+    for (const { triggerKey, signatureType } of triggers) {
       try {
-        await api.request(
-          "POST",
-          `/functions/projects/${this.args.projectId}/triggers/${trigger}`,
-          {
-            origin: `http://${EmulatorRegistry.getInfoHostString(functionsEmu.getInfo())}`,
-            data: body,
-          }
-        );
-      } catch (e) {
+        const path = `/functions/projects/${this.args.projectId}/triggers/${triggerKey}`;
+        if (signatureType === "event") {
+          await this.client!.post(path, this.createLegacyEventRequestBody(topicName, message));
+        } else if (signatureType === "cloudevent") {
+          await this.client!.post<CloudEvent<MessagePublishedData>, unknown>(
+            path,
+            this.createCloudEventRequestBody(topicName, message),
+            { headers: { "Content-Type": "application/cloudevents+json; charset=UTF-8" } }
+          );
+        } else {
+          throw new FirebaseError(`Unsupported trigger signature: ${signatureType}`);
+        }
+      } catch (e: any) {
         this.logger.logLabeled("DEBUG", "pubsub", e);
       }
-
-      // If this is the last trigger we need to run, ack the message.
-      remaining--;
-      if (remaining <= 0) {
-        this.logger.logLabeled("DEBUG", "pubsub", `Acking message ${message.id}`);
-        message.ack();
-      }
     }
+    this.logger.logLabeled("DEBUG", "pubsub", `Acking message ${message.id}`);
+    message.ack();
   }
 }

@@ -339,6 +339,46 @@ function addEmulatorOperations(openapi3: any): void {
       tags: ["emulator"],
     },
   };
+  openapi3.paths["/emulator/v1/projects/{targetProjectId}/tenants/{tenantId}/accounts"] = {
+    parameters: [
+      {
+        name: "targetProjectId",
+        in: "path",
+        description: "The ID of the Google Cloud project that the accounts belong to.",
+        required: true,
+        schema: {
+          type: "string",
+        },
+      },
+      {
+        name: "tenantId",
+        in: "path",
+        description:
+          "The ID of the Identity Platform tenant the accounts belongs to. If not specified, accounts on the Identity Platform project are returned.",
+        required: true,
+        schema: { type: "string" },
+      },
+    ],
+    servers: [{ url: "" }],
+    delete: {
+      description: "Remove all accounts in the project, regardless of state.",
+      operationId: "emulator.projects.accounts.delete",
+      responses: {
+        "200": {
+          description: "Successful response",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+              },
+            },
+          },
+        },
+      },
+      security: [],
+      tags: ["emulator"],
+    },
+  };
   openapi3.paths["/emulator/v1/projects/{targetProjectId}/config"] = {
     parameters: [
       {
@@ -446,6 +486,46 @@ function addEmulatorOperations(openapi3: any): void {
       tags: ["emulator"],
     },
   };
+  openapi3.paths["/emulator/v1/projects/{targetProjectId}/tenants/{tenantId}/oobCodes"] = {
+    parameters: [
+      {
+        name: "targetProjectId",
+        in: "path",
+        description: "The ID of the Google Cloud project that the confirmation codes belongs to.",
+        required: true,
+        schema: {
+          type: "string",
+        },
+      },
+      {
+        name: "tenantId",
+        in: "path",
+        description:
+          "The ID of the Identity Platform tenant the accounts belongs to. If not specified, accounts on the Identity Platform project are returned.",
+        required: true,
+        schema: { type: "string" },
+      },
+    ],
+    servers: [{ url: "" }],
+    get: {
+      description: "List all pending confirmation codes for the project.",
+      operationId: "emulator.projects.oobCodes.list",
+      responses: {
+        "200": {
+          description: "Successful response",
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/EmulatorV1ProjectsOobCodes",
+              },
+            },
+          },
+        },
+      },
+      security: [],
+      tags: ["emulator"],
+    },
+  };
   openapi3.components.schemas.EmulatorV1ProjectsOobCodes = {
     type: "object",
     description: "Details of all pending confirmation codes.",
@@ -496,6 +576,46 @@ function addEmulatorOperations(openapi3: any): void {
       tags: ["emulator"],
     },
   };
+  openapi3.paths["/emulator/v1/projects/{targetProjectId}/tenants/{tenantId}/verificationCodes"] = {
+    parameters: [
+      {
+        name: "targetProjectId",
+        in: "path",
+        description: "The ID of the Google Cloud project that the verification codes belongs to.",
+        required: true,
+        schema: {
+          type: "string",
+        },
+      },
+      {
+        name: "tenantId",
+        in: "path",
+        description:
+          "The ID of the Identity Platform tenant the accounts belongs to. If not specified, accounts on the Identity Platform project are returned.",
+        required: true,
+        schema: { type: "string" },
+      },
+    ],
+    servers: [{ url: "" }],
+    get: {
+      description: "List all pending phone verification codes for the project.",
+      operationId: "emulator.projects.verificationCodes.list",
+      responses: {
+        "200": {
+          description: "Successful response",
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/EmulatorV1ProjectsOobCodes",
+              },
+            },
+          },
+        },
+      },
+      security: [],
+      tags: ["emulator"],
+    },
+  };
   openapi3.components.schemas.EmulatorV1ProjectsVerificationCodes = {
     type: "object",
     description: "Details of all pending verification codes.",
@@ -523,7 +643,7 @@ function sortKeys<T>(obj: T): T {
     return obj;
   }
   if (Array.isArray(obj)) {
-    return (obj.map(sortKeys) as unknown) as T;
+    return obj.map(sortKeys) as unknown as T;
   }
   const sortedObj: T = {} as T;
   (Object.keys(obj) as [keyof T]).sort().forEach((key) => {

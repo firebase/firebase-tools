@@ -1,9 +1,10 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
+import { remoteConfigApiOrigin } from "../../api";
+import * as nock from "nock";
 
-import * as api from "../../api";
 import * as remoteconfig from "../../remoteconfig/get";
 import { RemoteConfigTemplate } from "../../remoteconfig/interfaces";
+import { FirebaseError } from "../../error";
 
 const PROJECT_ID = "the-remoteconfig-test-project";
 
@@ -91,51 +92,30 @@ const projectInfoWithTwoParameters: RemoteConfigTemplate = {
 };
 
 describe("Remote Config GET", () => {
-  let sandbox: sinon.SinonSandbox;
-  let apiRequestStub: sinon.SinonStub;
-
-  beforeEach(() => {
-    sandbox = sinon.createSandbox();
-    apiRequestStub = sandbox.stub(api, "request").throws("Unexpected API request call");
-  });
-
-  afterEach(() => {
-    sandbox.restore();
-  });
-
   describe("getTemplate", () => {
+    afterEach(() => {
+      expect(nock.isDone()).to.equal(true, "all nock stubs should have been called");
+      nock.cleanAll();
+    });
+
     it("should return the latest template", async () => {
-      apiRequestStub.onFirstCall().resolves({ body: expectedProjectInfo });
+      nock(remoteConfigApiOrigin)
+        .get(`/v1/projects/${PROJECT_ID}/remoteConfig`)
+        .reply(200, expectedProjectInfo);
 
       const RCtemplate = await remoteconfig.getTemplate(PROJECT_ID);
 
       expect(RCtemplate).to.deep.equal(expectedProjectInfo);
-      expect(apiRequestStub).to.be.calledOnceWith(
-        "GET",
-        `/v1/projects/${PROJECT_ID}/remoteConfig`,
-        {
-          auth: true,
-          origin: api.remoteConfigApiOrigin,
-          timeout: 30000,
-        }
-      );
     });
 
     it("should return the correct version of the template if version is specified", async () => {
-      apiRequestStub.onFirstCall().resolves({ body: expectedProjectInfo });
+      nock(remoteConfigApiOrigin)
+        .get(`/v1/projects/${PROJECT_ID}/remoteConfig?versionNumber=${6}`)
+        .reply(200, expectedProjectInfo);
 
       const RCtemplateVersion = await remoteconfig.getTemplate(PROJECT_ID, "6");
 
       expect(RCtemplateVersion).to.deep.equal(expectedProjectInfo);
-      expect(apiRequestStub).to.be.calledOnceWith(
-        "GET",
-        `/v1/projects/${PROJECT_ID}/remoteConfig?versionNumber=6`,
-        {
-          auth: true,
-          origin: api.remoteConfigApiOrigin,
-          timeout: 30000,
-        }
-      );
     });
 
     it("should return a correctly parsed entry value with one parameter", () => {
@@ -155,29 +135,11 @@ describe("Remote Config GET", () => {
     });
 
     it("should reject if the api call fails", async () => {
-      const expectedError = new Error("HTTP Error 404: Not Found");
+      nock(remoteConfigApiOrigin).get(`/v1/projects/${PROJECT_ID}/remoteConfig`).reply(404, {});
 
-      apiRequestStub.onFirstCall().rejects(expectedError);
-
-      let err;
-      try {
-        await remoteconfig.getTemplate(PROJECT_ID);
-      } catch (e) {
-        err = e;
-      }
-
-      expect(err.message).to.equal(
-        `Failed to get Firebase Remote Config template for project ${PROJECT_ID}. `
-      );
-      expect(err.original).to.equal(expectedError);
-      expect(apiRequestStub).to.be.calledOnceWith(
-        "GET",
-        `/v1/projects/${PROJECT_ID}/remoteConfig`,
-        {
-          auth: true,
-          origin: api.remoteConfigApiOrigin,
-          timeout: 30000,
-        }
+      await expect(remoteconfig.getTemplate(PROJECT_ID)).to.eventually.be.rejectedWith(
+        FirebaseError,
+        /Failed to get Firebase Remote Config template/
       );
     });
   });

@@ -11,6 +11,8 @@ import * as utils from "../../utils";
 import * as prompt from "../../prompt";
 import { ParamType } from "../../extensions/extensionsApi";
 import * as extensionsHelper from "../../extensions/extensionsHelper";
+import * as secretManagerApi from "../../gcp/secretManager";
+import * as secretsUtils from "../../extensions/secretsUtils";
 
 describe("askUserForParam", () => {
   const testSpec = {
@@ -198,7 +200,7 @@ describe("askUserForParam", () => {
       expect(res).to.equal("");
     });
   });
-  describe("askForParam", () => {
+  describe("askForParam with string param", () => {
     let promptStub: sinon.SinonStub;
 
     beforeEach(() => {
@@ -213,8 +215,59 @@ describe("askUserForParam", () => {
     });
 
     it("should keep prompting user until valid input is given", async () => {
-      await askForParam(testSpec);
+      await askForParam("project-id", "instance-id", testSpec, false);
       expect(promptStub.calledThrice).to.be.true;
+    });
+  });
+
+  describe("askForParam with secret param", () => {
+    const stubSecret = {
+      name: "new-secret",
+      projectId: "firebase-project-123",
+    };
+    const stubSecretVersion = {
+      secret: stubSecret,
+      versionId: "1.0.0",
+    };
+    const secretSpec = {
+      param: "API_KEY",
+      type: ParamType.SECRET,
+      label: "API Key",
+      default: "XXX.YYY",
+    };
+
+    let promptStub: sinon.SinonStub;
+    let createSecret: sinon.SinonStub;
+    let secretExists: sinon.SinonStub;
+    let addVersion: sinon.SinonStub;
+    let grantRole: sinon.SinonStub;
+
+    beforeEach(() => {
+      promptStub = sinon.stub(prompt, "promptOnce");
+      promptStub.onCall(0).returns("ABC.123");
+
+      secretExists = sinon.stub(secretManagerApi, "secretExists");
+      secretExists.onCall(0).resolves(false);
+      createSecret = sinon.stub(secretManagerApi, "createSecret");
+      createSecret.onCall(0).resolves(stubSecret);
+      addVersion = sinon.stub(secretManagerApi, "addVersion");
+      addVersion.onCall(0).resolves(stubSecretVersion);
+
+      grantRole = sinon.stub(secretsUtils, "grantFirexServiceAgentSecretAdminRole");
+      grantRole.onCall(0).resolves(undefined);
+    });
+
+    afterEach(() => {
+      promptStub.restore();
+    });
+
+    it("should keep prompting user until valid input is given", async () => {
+      const result = await askForParam("project-id", "instance-id", secretSpec, false);
+      expect(promptStub.calledOnce).to.be.true;
+      expect(grantRole.calledOnce).to.be.true;
+      expect(result).to.be.equal(
+        `projects/${stubSecret.projectId}/secrets/${stubSecret.name}/versions/${stubSecretVersion.versionId}`
+      );
     });
   });
 
@@ -236,7 +289,7 @@ describe("askUserForParam", () => {
     it("should call substituteParams with the right parameters", async () => {
       const spec = [testSpec];
       const firebaseProjectVars = { PROJECT_ID: "my-project" };
-      await ask(spec, firebaseProjectVars);
+      await ask("project-id", "instance-id", spec, firebaseProjectVars, false);
       expect(subVarSpy.calledWith(spec, firebaseProjectVars)).to.be.true;
     });
   });

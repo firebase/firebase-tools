@@ -253,7 +253,7 @@ export class Command {
 
     try {
       options.config = Config.load(options);
-    } catch (e) {
+    } catch (e: any) {
       options.configError = e;
     }
 

@@ -33,6 +33,7 @@ var firebaseAppId = query.get('appId');
 var apn = query.get('apn');
 var ibi = query.get('ibi');
 var appIdentifier = apn || ibi;
+var isSamlProvider = !!providerId.match(/^saml\./);
 assert(
   appName || clientId || firebaseAppId || appIdentifier,
   'Missing one of appName / clientId / appId / apn / ibi query params.'
@@ -157,21 +158,34 @@ var reuseAccountEls = document.querySelectorAll('.js-reuse-account');
 if (reuseAccountEls.length) {
   [].forEach.call(reuseAccountEls, function (el) {
     var urlEncodedIdToken = el.dataset.idToken;
+    const decoded = JSON.parse(decodeURIComponent(urlEncodedIdToken));
     el.addEventListener('click', function (e) {
       e.preventDefault();
-      finishWithUser(urlEncodedIdToken);
+      finishWithUser(urlEncodedIdToken, decoded.email);
     });
   });
 } else {
   document.querySelector('.js-accounts-help-text').textContent = "No " + formattedProviderId + " accounts exist in the Auth Emulator.";
 }
 
-function finishWithUser(urlEncodedIdToken) {
+function finishWithUser(urlEncodedIdToken, email) {
   // Use widget URL, but replace all query parameters (no apiKey etc.).
   var url = window.location.href.split('?')[0];
   // Avoid URLSearchParams for browser compatibility.
   url += '?providerId=' + encodeURIComponent(providerId);
   url += '&id_token=' + urlEncodedIdToken;
+
+  // Save reasonable defaults for SAML providers
+  if (isSamlProvider) {
+    url += '&SAMLResponse=' + encodeURIComponent(JSON.stringify({
+      assertion: {
+        subject: {
+          nameId: email,
+        },
+      },
+    }));
+  }
+
   saveAuthEvent({
     type: authType,
     eventId: eventId,
@@ -220,7 +234,7 @@ document.getElementById('main-form').addEventListener('submit', function(e) {
     if (screenName) claims.screenName = screenName;
     if (photoUrl) claims.photoUrl = photoUrl;
 
-    finishWithUser(createFakeClaims(claims));
+    finishWithUser(createFakeClaims(claims), claims.email);
   }
 });
 

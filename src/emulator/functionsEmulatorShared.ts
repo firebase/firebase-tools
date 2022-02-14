@@ -4,16 +4,24 @@ import * as os from "os";
 import * as path from "path";
 import * as express from "express";
 import * as fs from "fs";
+
 import { Constants } from "./constants";
 import { InvokeRuntimeOpts } from "./functionsEmulator";
+import {
+  Endpoint,
+  FunctionsPlatform,
+  isEventTriggered,
+  isHttpsTriggered,
+  isScheduleTriggered,
+  SecretEnvVar,
+} from "../deploy/functions/backend";
+import { copyIfPresent } from "../gcp/proto";
 
-export enum EmulatedTriggerType {
-  BACKGROUND = "BACKGROUND",
-  HTTPS = "HTTPS",
-}
+export type SignatureType = "http" | "event" | "cloudevent";
 
 export interface ParsedTriggerDefinition {
   entryPoint: string;
+  platform: FunctionsPlatform;
   name: string;
   timeout?: string | number; // Can be "3s" for some reason lol
   regions?: string[];
@@ -27,6 +35,7 @@ export interface ParsedTriggerDefinition {
 export interface EmulatedTriggerDefinition extends ParsedTriggerDefinition {
   id: string; // An unique-id per-function, generated from the name and the region.
   region: string;
+  secretEnvironmentVariables?: SecretEnvVar[]; // Secret env vars needs to be specially loaded in the Emulator.
 }
 
 export interface EventSchedule {
@@ -51,41 +60,14 @@ export interface FunctionsRuntimeArgs {
 }
 
 export interface FunctionsRuntimeBundle {
-  projectId: string;
-  proto?: any;
-  triggerId?: string;
-  targetName?: string;
-  triggerType?: EmulatedTriggerType;
-  emulators: {
-    firestore?: {
-      host: string;
-      port: number;
-    };
-    database?: {
-      host: string;
-      port: number;
-    };
-    pubsub?: {
-      host: string;
-      port: number;
-    };
-    auth?: {
-      host: string;
-      port: number;
-    };
-    storage?: {
-      host: string;
-      port: number;
-    };
-  };
-  adminSdkConfig: {
-    databaseURL?: string;
-    storageBucket?: string;
-  };
+  proto: any;
+  // TODO(danielylee): One day, we hope to get rid of all of the following properties.
+  // Our goal is for the emulator environment to mimic the production environment as much
+  // as possible, and that includes how the emulated functions are called. In prod,
+  // the calls are made over HTTP which provides only the uri path, payload, headers, etc
+  // and none of these extra properties.
   socketPath?: string;
   disabled_features?: FunctionsRuntimeFeatures;
-  nodeMajorVersion?: number;
-  cwd: string;
 }
 
 export interface FunctionsRuntimeFeatures {
@@ -137,6 +119,74 @@ export class EmulatedTrigger {
 }
 
 /**
+ * Creates a unique trigger definition from Endpoints.
+ * @param Endpoints A list of all CloudFunctions in the deployment.
+ * @return A list of all CloudFunctions in the deployment.
+ */
+export function emulatedFunctionsFromEndpoints(endpoints: Endpoint[]): EmulatedTriggerDefinition[] {
+  const regionDefinitions: EmulatedTriggerDefinition[] = [];
+  for (const endpoint of endpoints) {
+    if (!endpoint.region) {
+      endpoint.region = "us-central1";
+    }
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const def: EmulatedTriggerDefinition = {
+      entryPoint: endpoint.entryPoint,
+      platform: endpoint.platform,
+      region: endpoint.region,
+      // TODO: Difference in use of name/id in Endpoint vs Emulator is subtle and confusing.
+      // We should later refactor the emulator to stop using a custom trigger definition.
+      name: endpoint.id,
+      id: `${endpoint.region}-${endpoint.id}`,
+    };
+    copyIfPresent(
+      def,
+      endpoint,
+      "timeout",
+      "availableMemoryMb",
+      "labels",
+      "platform",
+      "secretEnvironmentVariables"
+    );
+    // TODO: This transformation is confusing but must be kept since the Firestore/RTDB trigger registration
+    // process requires it in this form. Need to work in Firestore emulator for a proper fix...
+    if (isHttpsTriggered(endpoint)) {
+      def.httpsTrigger = endpoint.httpsTrigger;
+    } else if (isEventTriggered(endpoint)) {
+      const eventTrigger = endpoint.eventTrigger;
+      if (endpoint.platform === "gcfv1") {
+        def.eventTrigger = {
+          eventType: eventTrigger.eventType,
+          resource: eventTrigger.eventFilters.resource,
+        };
+      } else {
+        // Only pubsub and storage events are supported for gcfv2.
+        const { resource, topic, bucket } = endpoint.eventTrigger.eventFilters;
+        const eventResource = resource || topic || bucket;
+        if (!eventResource) {
+          // Unsupported event type for GCFv2
+          continue;
+        }
+        def.eventTrigger = {
+          eventType: eventTrigger.eventType,
+          resource: eventResource,
+        };
+      }
+    } else if (isScheduleTriggered(endpoint)) {
+      // TODO: This is an awkward transformation. Emulator does not understand scheduled triggers - maybe it should?
+      def.eventTrigger = { eventType: "pubsub", resource: "" };
+      def.schedule = endpoint.scheduleTrigger as EventSchedule;
+    } else {
+      // All other trigger types are not supported by the emulator
+      // We leave both eventTrigger and httpTrigger attributes empty
+      // and let the caller deal with invalid triggers.
+    }
+    regionDefinitions.push(def);
+  }
+  return regionDefinitions;
+}
+
+/**
  * Creates a unique trigger definition for each region a function is defined in.
  * @param definitions A list of all CloudFunctions in the deployment.
  * @return A list of all CloudFunctions in the deployment, with copies for each region.
@@ -157,6 +207,7 @@ export function emulatedFunctionsByRegion(
       defDeepCopy.regions = [region];
       defDeepCopy.region = region;
       defDeepCopy.id = `${region}-${defDeepCopy.name}`;
+      defDeepCopy.platform = defDeepCopy.platform || "gcfv1";
 
       regionDefinitions.push(defDeepCopy);
     }
@@ -275,7 +326,7 @@ export function findModuleRoot(moduleName: string, filepath: string): string {
         return chunks.join("/");
       }
       break;
-    } catch (err) {
+    } catch (err: any) {
       /**/
     }
   }
@@ -289,4 +340,14 @@ export function formatHost(info: { host: string; port: number }): string {
   } else {
     return `${info.host}:${info.port}`;
   }
+}
+
+export function getSignatureType(def: EmulatedTriggerDefinition): SignatureType {
+  if (def.httpsTrigger) {
+    return "http";
+  }
+  // TODO: As implemented, emulated CF3v1 functions cannot receive events in CloudEvent format, and emulated CF3v2
+  // functions cannot receive events in legacy format. This conflicts with our goal of introducing a 'compat' layer
+  // that allows CF3v1 functions to target GCFv2 and vice versa.
+  return def.platform === "gcfv2" ? "cloudevent" : "event";
 }

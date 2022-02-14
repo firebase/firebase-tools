@@ -4,7 +4,6 @@ import { EventEmitter } from "events";
 import {
   FunctionsRuntimeArgs,
   FunctionsRuntimeBundle,
-  EmulatedTriggerType,
 } from "../../emulator/functionsEmulatorShared";
 import {
   RuntimeWorker,
@@ -22,6 +21,7 @@ class MockRuntimeInstance implements FunctionsRuntimeInstance {
   metadata: { [key: string]: any } = {};
   events: EventEmitter = new EventEmitter();
   exit: Promise<number>;
+  cwd = "/home/users/dir";
 
   constructor(private success: boolean) {
     this.exit = new Promise((res) => {
@@ -33,7 +33,7 @@ class MockRuntimeInstance implements FunctionsRuntimeInstance {
     this.events.emit("exit", { reason: "shutdown" });
   }
 
-  kill(signal?: string): void {
+  kill(signal?: number): void {
     this.events.emit("exit", { reason: "kill" });
   }
 
@@ -91,14 +91,8 @@ class WorkerStateCounter {
 
 class MockRuntimeBundle implements FunctionsRuntimeBundle {
   projectId = "project-1234";
-  triggerType = EmulatedTriggerType.HTTPS;
-  cwd = "/home/users/dir";
   emulators = {};
-  adminSdkConfig = {
-    projectId: "project-1234",
-    datbaseURL: "https://project-1234-default-rtdb.firebaseio.com",
-    storageBucket: "project-1234.appspot.com",
-  };
+  proto = {};
 
   constructor(public triggerId: string, public targetName: string) {}
 }

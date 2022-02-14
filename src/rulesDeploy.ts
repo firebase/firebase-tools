@@ -64,7 +64,7 @@ export class RulesDeploy {
     let src;
     try {
       src = fs.readFileSync(fullPath, "utf8");
-    } catch (e) {
+    } catch (e: any) {
       logger.debug("[rules read error]", e.stack);
       throw new FirebaseError("Error reading rules file " + clc.bold(path));
     }
@@ -113,10 +113,8 @@ export class RulesDeploy {
   async createRulesets(service: RulesetServiceType): Promise<string[]> {
     const createdRulesetNames: string[] = [];
 
-    const {
-      latestName: latestRulesetName,
-      latestContent: latestRulesetContent,
-    } = await this.getCurrentRules(service);
+    const { latestName: latestRulesetName, latestContent: latestRulesetContent } =
+      await this.getCurrentRules(service);
 
     // TODO: Make this into a more useful helper method.
     // Gather the files to be uploaded.
@@ -145,7 +143,7 @@ export class RulesDeploy {
         this.rulesetNames[filename] = await rulesetName;
         createdRulesetNames.push(await rulesetName);
       }
-    } catch (err) {
+    } catch (err: any) {
       if (err.status !== QUOTA_EXCEEDED_STATUS_CODE) {
         throw err;
       }

@@ -2,9 +2,11 @@ import * as _ from "lodash";
 
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
-import * as api from "../api";
+import { cloudschedulerOrigin } from "../api";
+import { Client } from "../apiv2";
 import * as backend from "../deploy/functions/backend";
 import * as proto from "./proto";
+import { assertExhaustive } from "../functional";
 
 const VERSION = "v1beta1";
 const DEFAULT_TIME_ZONE = "America/Los_Angeles";
@@ -79,6 +81,8 @@ export function assertValidJob(job: Job) {
   }
 }
 
+const apiClient = new Client({ urlPrefix: cloudschedulerOrigin, apiVersion: VERSION });
+
 /**
  * Creates a cloudScheduler job.
  * If another job with that name already exists, this will return a 409.
@@ -89,11 +93,7 @@ export function createJob(job: Job): Promise<any> {
   // ie: projects/my-proj/locations/us-central1/jobs/firebase-schedule-func-us-east1 would become
   // projects/my-proj/locations/us-central1/jobs
   const strippedName = job.name.substring(0, job.name.lastIndexOf("/"));
-  return api.request("POST", `/${VERSION}/${strippedName}`, {
-    auth: true,
-    origin: api.cloudschedulerOrigin,
-    data: Object.assign({ timeZone: DEFAULT_TIME_ZONE }, job),
-  });
+  return apiClient.post(`/${strippedName}`, Object.assign({ timeZone: DEFAULT_TIME_ZONE }, job));
 }
 
 /**
@@ -102,10 +102,7 @@ export function createJob(job: Job): Promise<any> {
  * @param name The name of the job to delete.
  */
 export function deleteJob(name: string): Promise<any> {
-  return api.request("DELETE", `/${VERSION}/${name}`, {
-    auth: true,
-    origin: api.cloudschedulerOrigin,
-  });
+  return apiClient.delete(`/${name}`);
 }
 
 /**
@@ -114,9 +111,7 @@ export function deleteJob(name: string): Promise<any> {
  * @param name The name of the job to get.
  */
 export function getJob(name: string): Promise<any> {
-  return api.request("GET", `/${VERSION}/${name}`, {
-    auth: true,
-    origin: api.cloudschedulerOrigin,
+  return apiClient.get(`/${name}`, {
     resolveOnHTTPError: true,
   });
 }
@@ -128,11 +123,7 @@ export function getJob(name: string): Promise<any> {
  */
 export function updateJob(job: Job): Promise<any> {
   // Note that name cannot be updated.
-  return api.request("PATCH", `/${VERSION}/${job.name}`, {
-    auth: true,
-    origin: api.cloudschedulerOrigin,
-    data: Object.assign({ timeZone: DEFAULT_TIME_ZONE }, job),
-  });
+  return apiClient.patch(`/${job.name}`, Object.assign({ timeZone: DEFAULT_TIME_ZONE }, job));
 }
 
 /**
@@ -153,7 +144,7 @@ export async function createOrReplaceJob(job: Job): Promise<any> {
     let newJob;
     try {
       newJob = await createJob(job);
-    } catch (err) {
+    } catch (err: any) {
       // Cloud resource location is not set so we error here and exit.
       if (err?.context?.response?.statusCode === 404) {
         throw new FirebaseError(
@@ -194,21 +185,35 @@ function isIdentical(job: Job, otherJob: Job): boolean {
   );
 }
 
-/** Converts a version agnostic ScheduleSpec to a CloudScheduler v1 Job. */
-export function jobFromSpec(schedule: backend.ScheduleSpec, appEngineLocation: string): Job {
-  const job: Job = {
-    name: backend.scheduleName(schedule, appEngineLocation),
-    schedule: schedule.schedule!,
-  };
-  proto.copyIfPresent(job, schedule, "timeZone", "retryConfig");
-  if (schedule.transport === "https") {
-    throw new FirebaseError("HTTPS transport for scheduled functions is not yet supported");
+/** Converts an Endpoint to a CloudScheduler v1 job */
+export function jobFromEndpoint(
+  endpoint: backend.Endpoint & backend.ScheduleTriggered,
+  appEngineLocation: string
+): Job {
+  const job: Partial<Job> = {};
+  if (endpoint.platform === "gcfv1") {
+    const id = backend.scheduleIdForFunction(endpoint);
+    const region = appEngineLocation;
+    job.name = `projects/${endpoint.project}/locations/${region}/jobs/${id}`;
+    job.pubsubTarget = {
+      topicName: `projects/${endpoint.project}/topics/${id}`,
+      attributes: {
+        scheduled: "true",
+      },
+    };
+  } else if (endpoint.platform === "gcfv2") {
+    // NB: We should figure out whether there's a good service account we can use
+    // to get ODIC tokens from while invoking the function. Hopefully either
+    // CloudScheduler has an account we can use or we can use the default compute
+    // account credentials (it's a project editor, so it should have permissions
+    // to invoke a function and editor deployers should have permission to actAs
+    // it)
+    throw new FirebaseError("Do not know how to create a scheduled GCFv2 function");
+  } else {
+    assertExhaustive(endpoint.platform);
   }
-  job.pubsubTarget = {
-    topicName: backend.topicName(schedule),
-    attributes: {
-      scheduled: "true",
-    },
-  };
-  return job;
+  proto.copyIfPresent(job, endpoint.scheduleTrigger, "schedule", "retryConfig", "timeZone");
+
+  // TypeScript compiler isn't noticing that name is defined in all code paths.
+  return job as Job;
 }

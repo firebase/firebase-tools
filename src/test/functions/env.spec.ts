@@ -5,7 +5,6 @@ import { sync as rimraf } from "rimraf";
 import { expect } from "chai";
 
 import * as env from "../../functions/env";
-import { previews } from "../../previews";
 
 describe("functions/env", () => {
   describe("parse", () => {
@@ -135,24 +134,39 @@ BAR=bar
         want: { FOO: "foo" },
       },
       {
+        description: "should handle empty values",
+        input: `
+FOO=
+BAR= "blah"
+`,
+        want: { FOO: "", BAR: "blah" },
+      },
+      {
+        description: "should handle quoted values after a newline",
+        input: `
+FOO=
+"blah"
+`,
+        want: { FOO: "blah" },
+      },
+      {
         description: "should ignore comments",
         input: `
-FOO=foo # comment
-# line comment 1
-# line comment 2
-BAR=bar # another comment
-`,
+      FOO=foo # comment
+      # line comment 1
+      # line comment 2
+      BAR=bar # another comment
+      `,
         want: { FOO: "foo", BAR: "bar" },
       },
       {
         description: "should ignore empty lines",
         input: `
-FOO=foo
+      FOO=foo
 
+      BAR=bar
 
-BAR=bar
-
-`,
+      `,
         want: { FOO: "foo", BAR: "bar" },
       },
     ];
@@ -224,6 +238,10 @@ FOO=foo
       expect(() => {
         env.validateKey("FIREBASE_FOOBAR");
       }).to.throw("starts with a reserved prefix");
+
+      expect(() => {
+        env.validateKey("EXT_INSTANCE_ID");
+      }).to.throw("starts with a reserved prefix");
     });
   });
 
@@ -233,16 +251,11 @@ FOO=foo
         fs.writeFileSync(path.join(sourceDir, filename), data);
       }
     };
-    const projectInfo = { projectId: "my-project", projectAlias: "dev" };
+    const projectInfo: Omit<env.UserEnvsOpts, "functionsSource"> = {
+      projectId: "my-project",
+      projectAlias: "dev",
+    };
     let tmpdir: string;
-
-    before(() => {
-      previews.dotenv = true;
-    });
-
-    after(() => {
-      previews.dotenv = false;
-    });
 
     beforeEach(() => {
       tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), "test"));

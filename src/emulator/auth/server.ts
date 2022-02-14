@@ -6,8 +6,8 @@ import * as _ from "lodash";
 import { OpenAPIObject, PathsObject, ServerObject, OperationObject } from "openapi3-ts";
 import { EmulatorLogger } from "../emulatorLogger";
 import { Emulators } from "../types";
-import { authOperations, AuthOps, AuthOperation } from "./operations";
-import { AgentProjectState, ProjectState, TenantProjectState } from "./state";
+import { authOperations, AuthOps, AuthOperation, FirebaseJwtPayload } from "./operations";
+import { AgentProjectState, ProjectState } from "./state";
 import apiSpecUntyped from "./apiSpec";
 import {
   PromiseController,
@@ -33,6 +33,7 @@ import { camelCase } from "lodash";
 import { registerHandlers } from "./handlers";
 import bodyParser = require("body-parser");
 import { URLSearchParams } from "url";
+import { decode, JwtHeader } from "jsonwebtoken";
 const apiSpec = apiSpecUntyped as OpenAPIObject;
 
 const API_SPEC_PATH = "/emulator/openapi.json";
@@ -103,11 +104,6 @@ function specWithEmulatorServer(protocol: string, host: string | undefined): Ope
   }
 }
 
-export interface AgentProject {
-  state: AgentProjectState;
-  tenantProjects: Map<string, TenantProjectState>;
-}
-
 /**
  * Create an Express app that serves Auth Emulator APIs.
  *
@@ -120,13 +116,21 @@ export interface AgentProject {
  */
 export async function createApp(
   defaultProjectId: string,
-  projectStateForId = new Map<string, AgentProject>()
+  projectStateForId = new Map<string, AgentProjectState>()
 ): Promise<express.Express> {
   const app = express();
   app.set("json spaces", 2);
   // Enable CORS for all APIs, all origins (reflected), and all headers (reflected).
   // This is similar to production behavior. Safe since all APIs are cookieless.
   app.use(cors({ origin: true }));
+
+  // Workaround for clients (e.g. Node.js Admin SDK) that send request bodies
+  // with HTTP DELETE requests. Such requests are tolerated by production, but
+  // exegesis will reject them without the following hack.
+  app.delete("*", (req, _, next) => {
+    delete req.headers["content-type"];
+    next();
+  });
 
   app.get("/", (req, res) => {
     return res.json({
@@ -143,7 +147,9 @@ export async function createApp(
   });
 
   registerLegacyRoutes(app);
-  registerHandlers(app, (apiKey) => getProjectStateById(getProjectIdByApiKey(apiKey)));
+  registerHandlers(app, (apiKey, tenantId) =>
+    getProjectStateById(getProjectIdByApiKey(apiKey), tenantId)
+  );
 
   const apiKeyAuthenticator: PromiseAuthenticator = (ctx, info) => {
     if (info.in !== "query") {
@@ -253,12 +259,22 @@ export async function createApp(
         // TODO
         return true;
       },
+      "google-duration"() {
+        // TODO
+        return true;
+      },
       uint64() {
         // TODO
         return true;
       },
       uint32() {
         // TODO
+        return true;
+      },
+      byte() {
+        // Disable the "byte" format validation to allow stuffing arbitary
+        // strings in passwordHash etc. Needed because the emulator generates
+        // non-base64 hash strings like "fakeHash:salt=foo:password=bar".
         return true;
       },
     },
@@ -333,22 +349,16 @@ export async function createApp(
   }
 
   function getProjectStateById(projectId: string, tenantId?: string): ProjectState {
-    let agentProject = projectStateForId.get(projectId);
-    if (!agentProject) {
-      const state = new AgentProjectState(projectId);
-      agentProject = { state, tenantProjects: new Map<string, TenantProjectState>() };
-      projectStateForId.set(projectId, agentProject);
+    let agentState = projectStateForId.get(projectId);
+    if (!agentState) {
+      agentState = new AgentProjectState(projectId);
+      projectStateForId.set(projectId, agentState);
     }
     if (!tenantId) {
-      return agentProject.state;
+      return agentState;
     }
 
-    let tenantState = agentProject.tenantProjects.get(tenantId);
-    if (!tenantState) {
-      tenantState = new TenantProjectState(projectId, tenantId, agentProject.state);
-      agentProject.tenantProjects.set(tenantId, tenantState);
-    }
-    return tenantState;
+    return agentState.getTenantProject(tenantId);
   }
 }
 
@@ -422,7 +432,7 @@ function registerLegacyRoutes(app: express.Express): void {
 
 function toExegesisController(
   ops: AuthOps,
-  getProjectStateById: (projectId: string, tenantId: string) => ProjectState
+  getProjectStateById: (projectId: string, tenantId?: string) => ProjectState
 ): Record<string, PromiseController> {
   const result: Record<string, PromiseController> = {};
   processNested(ops, "");
@@ -476,10 +486,26 @@ function toExegesisController(
         // See: https://cloud.google.com/identity-platform/docs/reference/rest/v1/accounts/signUp
         targetProjectId = ctx.user;
       }
+
+      let targetTenantId: string | undefined = undefined;
       if (ctx.params.path.tenantId && ctx.requestBody?.tenantId) {
         assert(ctx.params.path.tenantId === ctx.requestBody.tenantId, "TENANT_ID_MISMATCH");
       }
-      const targetTenantId: string = ctx.params.path.tenantId || ctx.requestBody?.tenantId;
+      targetTenantId = ctx.params.path.tenantId || ctx.requestBody?.tenantId;
+
+      // Perform initial token parsing to get correct project state
+      if (ctx.requestBody?.idToken) {
+        const idToken = ctx.requestBody?.idToken;
+        const decoded = decode(idToken, { complete: true }) as {
+          header: JwtHeader;
+          payload: FirebaseJwtPayload;
+        } | null;
+        if (decoded?.payload.firebase.tenant && targetTenantId) {
+          assert(decoded?.payload.firebase.tenant === targetTenantId, "TENANT_ID_MISMATCH");
+        }
+        targetTenantId = targetTenantId || decoded?.payload.firebase.tenant;
+      }
+
       return operation(getProjectStateById(targetProjectId, targetTenantId), ctx.requestBody, ctx);
     };
   }
@@ -487,12 +513,14 @@ function toExegesisController(
 
 function wrapValidateBody(pluginContext: ExegesisPluginContext): void {
   // Apply fixes to body for Google REST API mapping compatibility.
-  const op = ((pluginContext as unknown) as {
-    _operation: {
-      validateBody?: ValidatorFunction;
-      _authEmulatorValidateBodyWrapped?: true;
-    };
-  })._operation;
+  const op = (
+    pluginContext as unknown as {
+      _operation: {
+        validateBody?: ValidatorFunction;
+        _authEmulatorValidateBodyWrapped?: true;
+      };
+    }
+  )._operation;
   if (op.validateBody && !op._authEmulatorValidateBodyWrapped) {
     const validateBody = op.validateBody.bind(op);
     op.validateBody = (body) => {

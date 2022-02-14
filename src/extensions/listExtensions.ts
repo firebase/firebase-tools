@@ -13,16 +13,14 @@ import { logger } from "../logger";
  * @param projectId ID of the project we're querying
  * @return mapping that contains a list of instances under the "instances" key
  */
-export async function listExtensions(
-  projectId: string
-): Promise<{ instances: ExtensionInstance[] }> {
+export async function listExtensions(projectId: string): Promise<any> {
   const instances = await listInstances(projectId);
   if (instances.length < 1) {
     utils.logLabeledBullet(
       logPrefix,
       `there are no extensions installed on project ${clc.bold(projectId)}.`
     );
-    return { instances: [] };
+    return [];
   }
 
   const table = new Table({
@@ -31,6 +29,7 @@ export async function listExtensions(
   });
   // Order instances newest to oldest.
   const sorted = _.sortBy(instances, "createTime", "asc").reverse();
+  const formatted: Record<string, string>[] = [];
   sorted.forEach((instance) => {
     let extension = _.get(instance, "config.extensionRef", "");
     let publisher;
@@ -40,18 +39,24 @@ export async function listExtensions(
     } else {
       publisher = extension.split("/")[0];
     }
-    table.push([
+    const instanceId = _.last(instance.name.split("/")) ?? "";
+    const state =
+      instance.state +
+      (_.get(instance, "config.source.state", "ACTIVE") === "DELETED" ? " (UNPUBLISHED)" : "");
+    const version = instance?.config?.source?.spec?.version;
+    const updateTime = extensionsUtils.formatTimestamp(instance.updateTime);
+    table.push([extension, publisher, instanceId, state, version, updateTime]);
+    formatted.push({
       extension,
       publisher,
-      _.last(instance.name.split("/")),
-      instance.state +
-        (_.get(instance, "config.source.state", "ACTIVE") === "DELETED" ? " (UNPUBLISHED)" : ""),
-      _.get(instance, "config.source.spec.version", ""),
-      extensionsUtils.formatTimestamp(instance.updateTime),
-    ]);
+      instanceId,
+      state,
+      version,
+      updateTime,
+    });
   });
 
   utils.logLabeledBullet(logPrefix, `list of extensions installed in ${clc.bold(projectId)}:`);
   logger.info(table.toString());
-  return { instances: sorted };
+  return formatted;
 }
