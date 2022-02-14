@@ -10,6 +10,8 @@ import * as runtimes from "../deploy/functions/runtimes";
 import * as iam from "./iam";
 import { Client } from "../apiv2";
 import { functionsOrigin } from "../api";
+import { getFirebaseProject } from "../management/projects";
+import { assertExhaustive } from "../functional";
 
 export const API_VERSION = "v1";
 const client = new Client({ urlPrefix: functionsOrigin, apiVersion: API_VERSION });
@@ -513,6 +515,7 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     "ingressSettings",
     "labels",
     "environmentVariables",
+    "secretEnvironmentVariables",
     "sourceUploadUrl"
   );
   if (gcfFunction.vpcConnector) {
@@ -592,7 +595,8 @@ export function functionFromEndpoint(
     "minInstances",
     "maxInstances",
     "ingressSettings",
-    "environmentVariables"
+    "environmentVariables",
+    "secretEnvironmentVariables"
   );
   if (endpoint.vpc) {
     proto.renameIfPresent(gcfFunction, endpoint.vpc, "vpcConnector", "connector");

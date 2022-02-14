@@ -176,10 +176,20 @@ export interface TargetIds {
   project: string;
 }
 
+export interface SecretEnvVar {
+  key: string;
+  secret: string;
+  projectId: string;
+
+  // Internal use only. Users cannot pin secret to a specific version.
+  version?: string;
+}
+
 export interface ServiceConfiguration {
   concurrency?: number;
   labels?: Record<string, string>;
   environmentVariables?: Record<string, string>;
+  secretEnvironmentVariables?: SecretEnvVar[];
   availableMemoryMb?: MemoryOptions;
   timeout?: proto.Duration;
   maxInstances?: number;
@@ -493,6 +503,17 @@ export function someEndpoint(
     }
   }
   return false;
+}
+
+/** A helper utility for finding an endpoint that matches the predicate. */
+export function findEndpoint(
+  backend: Backend,
+  predicate: (endpoint: Endpoint) => boolean
+): Endpoint | undefined {
+  for (const endpoints of Object.values(backend.endpoints)) {
+    const endpoint = Object.values<Endpoint>(endpoints).find(predicate);
+    if (endpoint) return endpoint;
+  }
 }
 
 /** A helper utility function that returns a subset of the backend that includes only matching endpoints */

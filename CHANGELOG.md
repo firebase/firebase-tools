@@ -1,0 +1,1 @@
+- Fixes an issue where ext:list was not printing out information about installed Extension instances.

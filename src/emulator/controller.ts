@@ -414,10 +414,8 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
     );
 
     utils.assertIsStringOrUndefined(options.extensionDir);
-    const functionsDir = path.join(
-      options.extensionDir || options.config.projectDir,
-      options.config.src.functions.source
-    );
+    const projectDir = options.extensionDir || options.config.projectDir;
+    const functionsDir = path.join(projectDir, options.config.src.functions.source);
 
     let inspectFunctions: number | undefined;
     if (options.inspectFunctions) {
@@ -461,6 +459,7 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
     ];
     const functionsEmulator = new FunctionsEmulator({
       projectId,
+      projectDir,
       emulatableBackends,
       account,
       host: functionsAddr.host,
