@@ -24,12 +24,12 @@ describe("convertConfig", () => {
     {
       name: "returns rewrites for glob CF3",
       input: { rewrites: [{ glob: "/foo", function: "foofn" }] },
-      want: { rewrites: [{ glob: "/foo", function: "foofn" }] },
+      want: { rewrites: [{ glob: "/foo", function: "foofn", function_region: "us-central1" }] },
     },
     {
       name: "returns rewrites for regex CF3",
       input: { rewrites: [{ regex: "/foo$", function: "foofn" }] },
-      want: { rewrites: [{ regex: "/foo$", function: "foofn" }] },
+      want: { rewrites: [{ regex: "/foo$", function: "foofn", function_region: "us-central1" }] },
     },
     {
       name: "returns rewrites for glob Run",
