@@ -620,6 +620,9 @@
                                             "function": {
                                                 "type": "string"
                                             },
+                                            "function_region": {
+                                                "type": "string"
+                                            },
                                             "glob": {
                                                 "type": "string"
                                             }
@@ -696,6 +699,9 @@
                                             "function": {
                                                 "type": "string"
                                             },
+                                            "function_region": {
+                                                "type": "string"
+                                            },
                                             "source": {
                                                 "type": "string"
                                             }
@@ -770,6 +776,9 @@
                                         "additionalProperties": false,
                                         "properties": {
                                             "function": {
+                                                "type": "string"
+                                            },
+                                            "function_region": {
                                                 "type": "string"
                                             },
                                             "regex": {
@@ -1093,6 +1102,9 @@
                                                         "function": {
                                                             "type": "string"
                                                         },
+                                                        "function_region": {
+                                                            "type": "string"
+                                                        },
                                                         "glob": {
                                                             "type": "string"
                                                         }
@@ -1169,6 +1181,9 @@
                                                         "function": {
                                                             "type": "string"
                                                         },
+                                                        "function_region": {
+                                                            "type": "string"
+                                                        },
                                                         "source": {
                                                             "type": "string"
                                                         }
@@ -1243,6 +1258,9 @@
                                                     "additionalProperties": false,
                                                     "properties": {
                                                         "function": {
+                                                            "type": "string"
+                                                        },
+                                                        "function_region": {
                                                             "type": "string"
                                                         },
                                                         "regex": {
@@ -1566,6 +1584,9 @@
                                                         "function": {
                                                             "type": "string"
                                                         },
+                                                        "function_region": {
+                                                            "type": "string"
+                                                        },
                                                         "glob": {
                                                             "type": "string"
                                                         }
@@ -1642,6 +1663,9 @@
                                                         "function": {
                                                             "type": "string"
                                                         },
+                                                        "function_region": {
+                                                            "type": "string"
+                                                        },
                                                         "source": {
                                                             "type": "string"
                                                         }
@@ -1716,6 +1740,9 @@
                                                     "additionalProperties": false,
                                                     "properties": {
                                                         "function": {
+                                                            "type": "string"
+                                                        },
+                                                        "function_region": {
                                                             "type": "string"
                                                         },
                                                         "regex": {
