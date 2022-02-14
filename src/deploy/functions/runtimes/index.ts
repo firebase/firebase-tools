@@ -2,6 +2,7 @@ import * as backend from "../backend";
 import * as golang from "./golang";
 import * as node from "./node";
 import * as validate from "../validate";
+import * as projectPath from "../../../projectPath";
 import { FirebaseError } from "../../../error";
 
 /** Supported runtimes for new Cloud Functions. */
@@ -104,7 +105,7 @@ export interface DelegateContext {
   projectDir: string;
   // Absolute path of the source directory.
   sourceDir: string;
-  runtime: string;
+  runtime?: string;
 }
 
 type Factory = (context: DelegateContext) => Promise<RuntimeDelegate | undefined>;

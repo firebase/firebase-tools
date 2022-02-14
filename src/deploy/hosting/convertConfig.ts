@@ -1,23 +1,36 @@
-const _ = require("lodash");
-const { FirebaseError } = require("../../error");
+import { FirebaseError } from "../../error";
+import { HostingConfig, HostingRewrites, HostingHeaders } from "../../firebaseConfig";
+
+function has(obj: { [k: string]: unknown }, k: string): boolean {
+  return obj[k] !== undefined;
+}
 
 /**
  * extractPattern contains the logic for extracting exactly one glob/regexp
  * from a Hosting rewrite/redirect/header specification
  */
-function extractPattern(type, spec) {
-  const glob = spec.source || spec.glob;
-  const regex = spec.regex;
+function extractPattern(type: string, spec: HostingRewrites | HostingHeaders): any {
+  let glob = "";
+  let regex = "";
+  if ("source" in spec) {
+    glob = spec.source;
+  }
+  if ("glob" in spec) {
+    glob = spec.glob;
+  }
+  if ("regex" in spec) {
+    regex = spec.regex;
+  }
 
   if (glob && regex) {
-    throw new FirebaseError("Cannot specify a " + type + " pattern with both a glob and regex.");
+    throw new FirebaseError(`Cannot specify a ${type} pattern with both a glob and regex.`);
   } else if (glob) {
     return { glob: glob };
   } else if (regex) {
     return { regex: regex };
   }
   throw new FirebaseError(
-    "Cannot specify a " + type + " with no pattern (either a glob or regex required)."
+    `Cannot specify a ${type} with no pattern (either a glob or regex required).`
   );
 }
 
@@ -25,29 +38,34 @@ function extractPattern(type, spec) {
  * convertConfig takes a hosting config object from firebase.json and transforms it into
  * the valid format for sending to the Firebase Hosting REST API
  */
-module.exports = function (config) {
-  const out = {};
+export function convertConfig(config?: HostingConfig): { [k: string]: any } {
+  if (Array.isArray(config)) {
+    throw new FirebaseError(`convertConfig should be given a single configuration, not an array.`, {
+      exit: 2,
+    });
+  }
+  const out: { [k: string]: any } = {};
 
   if (!config) {
     return out;
   }
 
   // rewrites
-  if (_.isArray(config.rewrites)) {
-    out.rewrites = config.rewrites.map(function (rewrite) {
+  if (Array.isArray(config.rewrites)) {
+    out.rewrites = config.rewrites.map((rewrite) => {
       const vRewrite = extractPattern("rewrite", rewrite);
-      if (rewrite.destination) {
+      if ("destination" in rewrite) {
         vRewrite.path = rewrite.destination;
-      } else if (rewrite.function) {
+      } else if ("function" in rewrite) {
         vRewrite.function = rewrite.function;
         if (rewrite.function_region) {
           vRewrite.function_region = rewrite.function_region;
         } else {
           vRewrite.function_region = "us-central1";
         }
-      } else if (rewrite.dynamicLinks) {
+      } else if ("dynamicLinks" in rewrite) {
         vRewrite.dynamicLinks = rewrite.dynamicLinks;
-      } else if (rewrite.run) {
+      } else if ("run" in rewrite) {
         vRewrite.run = Object.assign({ region: "us-central1" }, rewrite.run);
       }
       return vRewrite;
@@ -55,8 +73,8 @@ module.exports = function (config) {
   }
 
   // redirects
-  if (_.isArray(config.redirects)) {
-    out.redirects = config.redirects.map(function (redirect) {
+  if (Array.isArray(config.redirects)) {
+    out.redirects = config.redirects.map((redirect) => {
       const vRedirect = extractPattern("redirect", redirect);
       vRedirect.location = redirect.destination;
       if (redirect.type) {
@@ -67,19 +85,21 @@ module.exports = function (config) {
   }
 
   // headers
-  if (_.isArray(config.headers)) {
-    out.headers = config.headers.map(function (header) {
+  if (Array.isArray(config.headers)) {
+    out.headers = config.headers.map((header) => {
       const vHeader = extractPattern("header", header);
       vHeader.headers = {};
-      (header.headers || []).forEach(function (h) {
-        vHeader.headers[h.key] = h.value;
-      });
+      if (Array.isArray(header.headers) && header.headers.length) {
+        header.headers.forEach((h) => {
+          vHeader.headers[h.key] = h.value;
+        });
+      }
       return vHeader;
     });
   }
 
   // cleanUrls
-  if (_.has(config, "cleanUrls")) {
+  if (has(config, "cleanUrls")) {
     out.cleanUrls = config.cleanUrls;
   }
 
@@ -91,14 +111,14 @@ module.exports = function (config) {
   }
 
   // App association files
-  if (_.has(config, "appAssociation")) {
+  if (has(config, "appAssociation")) {
     out.appAssociation = config.appAssociation;
   }
 
   // i18n config
-  if (_.has(config, "i18n")) {
+  if (has(config, "i18n")) {
     out.i18n = config.i18n;
   }
 
   return out;
-};
+}
