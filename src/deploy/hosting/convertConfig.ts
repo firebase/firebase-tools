@@ -58,8 +58,8 @@ export function convertConfig(config?: HostingConfig): { [k: string]: any } {
         vRewrite.path = rewrite.destination;
       } else if ("function" in rewrite) {
         vRewrite.function = rewrite.function;
-        if (rewrite.function_region) {
-          vRewrite.function_region = rewrite.function_region;
+        if (rewrite.region) {
+          vRewrite.function_region = rewrite.region;
         } else {
           vRewrite.function_region = "us-central1";
         }
