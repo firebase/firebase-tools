@@ -89,6 +89,7 @@ function parseEndpoints(
     labels: "object",
     ingressSettings: "string",
     environmentVariables: "object",
+    secretEnvironmentVariables: "array",
     httpsTrigger: "object",
     eventTrigger: "object",
     scheduleTrigger: "object",
