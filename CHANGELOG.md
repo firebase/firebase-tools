@@ -1,2 +1,3 @@
 - Fixes an issue where ext:list was not printing out information about installed Extension instances.
 - Fixes issue where Functions Emulator crashed when parsing triggers if accessing functions config values.
+- `firebase emulators:start --export-on-exit <dir>` now rejects overwriting the current directory or parents (#4127).
