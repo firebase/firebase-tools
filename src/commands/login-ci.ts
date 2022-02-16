@@ -1,12 +1,12 @@
-"use strict";
+import * as clc from "cli-color";
 
-var { Command } = require("../command");
-var clc = require("cli-color");
-var utils = require("../utils");
-const { logger } = require("../logger");
-var auth = require("../auth");
+import { Command } from "../command";
+import { FirebaseError } from "../error";
+import { logger } from "../logger";
+import * as auth from "../auth";
+import * as utils from "../utils";
 
-module.exports = new Command("login:ci")
+export default new Command("login:ci")
   .description("generate an access token for use in non-interactive environments")
   .option(
     "--no-localhost",
@@ -14,9 +14,7 @@ module.exports = new Command("login:ci")
   )
   .action(async (options) => {
     if (options.nonInteractive) {
-      return utils.reject("Cannot run login:ci in non-interactive mode.", {
-        exit: 1,
-      });
+      throw new FirebaseError("Cannot run login:ci in non-interactive mode.");
     }
 
     const userCredentials = await auth.loginGoogle(options.localhost);

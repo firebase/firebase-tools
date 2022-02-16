@@ -374,15 +374,26 @@ describe("Fabricator", () => {
       );
     });
 
-    it("sets invoker and concurrency by default", async () => {
+    it("sets invoker and concurrency by default for large functions", async () => {
       gcfv2.createFunction.resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
       run.setInvokerCreate.resolves();
-      const ep = endpoint({ httpsTrigger: {} }, { platform: "gcfv2" });
+      const ep = endpoint({ httpsTrigger: {} }, { platform: "gcfv2", availableMemoryMb: 2048 });
 
       await fab.createV2Function(ep);
       expect(run.setInvokerCreate).to.have.been.calledWith(ep.project, "service", ["public"]);
       expect(setConcurrency).to.have.been.calledWith(ep, "service", 80);
+    });
+
+    it("does not set concurrency by default for small functions", async () => {
+      gcfv2.createFunction.resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+      run.setInvokerCreate.resolves();
+      const ep = endpoint({ httpsTrigger: {} }, { platform: "gcfv2", availableMemoryMb: 256 });
+
+      await fab.createV2Function(ep);
+      expect(run.setInvokerCreate).to.have.been.calledWith(ep.project, "service", ["public"]);
+      expect(setConcurrency).to.not.have.been.called;
     });
 
     it("sets explicit invoker", async () => {
@@ -426,10 +437,13 @@ describe("Fabricator", () => {
       gcfv2.createFunction.resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
       run.setInvokerCreate.resolves();
-      const ep = endpoint({ httpsTrigger: {} }, { platform: "gcfv2", concurrency: 1 });
+      const ep = endpoint(
+        { httpsTrigger: {} },
+        { platform: "gcfv2", availableMemoryMb: 2048, concurrency: 2 }
+      );
 
       await fab.createV2Function(ep);
-      expect(setConcurrency).to.have.been.calledWith(ep, "service", 1);
+      expect(setConcurrency).to.have.been.calledWith(ep, "service", 2);
     });
   });
 

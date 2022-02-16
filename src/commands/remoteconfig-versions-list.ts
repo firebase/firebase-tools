@@ -5,13 +5,18 @@ import { needProjectId } from "../projectUtils";
 import { requireAuth } from "../requireAuth";
 import { requirePermissions } from "../requirePermissions";
 import { Version, ListVersionsResult } from "../remoteconfig/interfaces";
+import { datetimeString } from "../utils";
 
 import Table = require("cli-table");
 
 const tableHead = ["Update User", "Version Number", "Update Time"];
 
 function pushTableContents(table: Table, version: Version): number {
-  return table.push([version?.updateUser?.email, version?.versionNumber, version?.updateTime]);
+  return table.push([
+    version.updateUser?.email,
+    version.versionNumber,
+    version.updateTime ? datetimeString(new Date(version.updateTime)) : "",
+  ]);
 }
 
 module.exports = new Command("remoteconfig:versions:list")
