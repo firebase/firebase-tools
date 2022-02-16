@@ -419,7 +419,7 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
       options.config.src.functions.source,
       "Error: 'functions.source' is not defined"
     );
-    
+
     const functionsDir = path.join(projectDir, options.config.src.functions.source);
 
     emulatableBackends.push({

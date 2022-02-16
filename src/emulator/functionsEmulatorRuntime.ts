@@ -1007,9 +1007,7 @@ async function invokeTrigger(frb: FunctionsRuntimeBundle): Promise<void> {
   ).log();
 }
 
-async function initializeRuntime(
-  frb: FunctionsRuntimeBundle
-): Promise<void> {
+async function initializeRuntime(frb: FunctionsRuntimeBundle): Promise<void> {
   FUNCTION_TARGET_NAME = process.env.FUNCTION_TARGET || "";
   if (!FUNCTION_TARGET_NAME) {
     new EmulatorLog(
