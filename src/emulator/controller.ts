@@ -484,6 +484,7 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
 
     const account = getProjectDefaultAccount(options.projectRoot);
 
+    const projectDir = (options.extDevDir || options.config.projectDir) as string;
     // TODO(b/213241033): Figure out how to watch for changes to extensions .env files & reload triggers when they change.
     const functionsEmulator = new FunctionsEmulator({
       projectId,
