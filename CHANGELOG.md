@@ -3,3 +3,4 @@
 - `firebase emulators:start --export-on-exit <dir>` now rejects overwriting the current directory or parents (#4127).
 - Fixes broken functions:config:clone command (#4173).
 - Fixes issue where `auth:import` would fail when reading a JSON file. (#4157)
+- Fixes issue where custom claims added in Auth Emulator UI was not properly shown.
