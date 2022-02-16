@@ -4,21 +4,21 @@ import * as backend from "../../../deploy/functions/backend";
 import * as prepare from "../../../deploy/functions/prepare";
 
 describe("prepare", () => {
+  const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {
+    platform: "gcfv2",
+    id: "id",
+    region: "region",
+    project: "project",
+    entryPoint: "entry",
+    runtime: "nodejs16",
+  };
+
+  const ENDPOINT: backend.Endpoint = {
+    ...ENDPOINT_BASE,
+    httpsTrigger: {},
+  };
+
   describe("inferDetailsFromExisting", () => {
-    const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {
-      platform: "gcfv2",
-      id: "id",
-      region: "region",
-      project: "project",
-      entryPoint: "entry",
-      runtime: "nodejs16",
-    };
-
-    const ENDPOINT: backend.Endpoint = {
-      ...ENDPOINT_BASE,
-      httpsTrigger: {},
-    };
-
     it("merges env vars if .env is not used", () => {
       const oldE = {
         ...ENDPOINT,

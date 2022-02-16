@@ -95,9 +95,7 @@ module.exports = function (client) {
   client.functions = {};
   client.functions.config = {};
   client.functions.config.clone = loadCommand("functions-config-clone");
-  if (previews.dotenv) {
-    client.functions.config.export = loadCommand("functions-config-export");
-  }
+  client.functions.config.export = loadCommand("functions-config-export");
   client.functions.config.get = loadCommand("functions-config-get");
   client.functions.config.set = loadCommand("functions-config-set");
   client.functions.config.unset = loadCommand("functions-config-unset");
@@ -108,6 +106,12 @@ module.exports = function (client) {
   if (previews.deletegcfartifacts) {
     client.functions.deletegcfartifacts = loadCommand("functions-deletegcfartifacts");
   }
+  client.functions.secrets = {};
+  client.functions.secrets.access = loadCommand("functions-secrets-access");
+  client.functions.secrets.destroy = loadCommand("functions-secrets-destroy");
+  client.functions.secrets.get = loadCommand("functions-secrets-get");
+  client.functions.secrets.prune = loadCommand("functions-secrets-prune");
+  client.functions.secrets.set = loadCommand("functions-secrets-set");
   client.help = loadCommand("help");
   client.hosting = {};
   client.hosting.channel = {};
