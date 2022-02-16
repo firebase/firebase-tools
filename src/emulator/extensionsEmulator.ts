@@ -126,6 +126,7 @@ export class ExtensionsEmulator {
    */
   public async getExtensionBackends(): Promise<EmulatableBackend[]> {
     await this.readManifest();
+
     return Promise.all(
       this.want.map((i: planner.InstanceSpec) => {
         return this.toEmulatableBackend(i);
@@ -167,5 +168,9 @@ export class ExtensionsEmulator {
       DATABASE_URL: `https://${projectId}.firebaseio.com`,
       STORAGE_BUCKET: `${projectId}.appspot.com`,
     };
+  }
+
+  private checkAndWarnAPIs() {
+
   }
 }
