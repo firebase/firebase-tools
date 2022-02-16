@@ -408,6 +408,9 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
     }
   }
 
+  utils.assertIsStringOrUndefined(options.extDevDir);
+  const projectDir = options.extDevDir || options.config.projectDir;
+
   const emulatableBackends: EmulatableBackend[] = [];
   if (shouldStart(options, Emulators.FUNCTIONS)) {
     // Note: ext:dev:emulators:* commands hit this path, not the Emulators.EXTENSIONS path
@@ -416,9 +419,7 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
       options.config.src.functions.source,
       "Error: 'functions.source' is not defined"
     );
-
-    utils.assertIsStringOrUndefined(options.extDevDir);
-    const projectDir = options.extDevDir || options.config.projectDir;
+    
     const functionsDir = path.join(projectDir, options.config.src.functions.source);
 
     emulatableBackends.push({

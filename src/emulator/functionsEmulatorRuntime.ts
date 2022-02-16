@@ -1009,7 +1009,7 @@ async function invokeTrigger(frb: FunctionsRuntimeBundle): Promise<void> {
 
 async function initializeRuntime(
   frb: FunctionsRuntimeBundle
-): Promise<EmulatedTriggerMap | undefined> {
+): Promise<void> {
   FUNCTION_TARGET_NAME = process.env.FUNCTION_TARGET || "";
   if (!FUNCTION_TARGET_NAME) {
     new EmulatorLog(
@@ -1074,10 +1074,12 @@ async function loadTrigger(
       triggerModule = await dynamicImport(moduleURL);
     }
   }
+  // Note: The problem here is that we are treating extensions code like normal code, and trying to load the id instead of the entry point.
   const maybeTrigger = functionTarget.split(".").reduce((mod, functionTargetPart) => {
     return mod?.[functionTargetPart];
   }, triggerModule);
   if (!maybeTrigger) {
+    console.log(frb);
     throw new Error(`Failed to find function ${functionTarget} in the loaded module`);
   }
   return maybeTrigger;
