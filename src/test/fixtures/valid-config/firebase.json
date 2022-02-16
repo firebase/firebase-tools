@@ -17,6 +17,13 @@
     "type" : 302
   } ],
   "rewrites": [ {
+    "source": "/region",
+    "function": "/foobar",
+    "region": "us-central1"
+  }, {
+    "source": "/default",
+    "function": "/foobar"
+  }, {
     "source": "**",
     "destination": "/index.html"
   } ],
