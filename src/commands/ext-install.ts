@@ -1,7 +1,6 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
+import * as marked from "marked";
 import * as ora from "ora";
 import TerminalRenderer = require("marked-terminal");
 
@@ -30,7 +29,6 @@ import {
   promptForRepeatInstance,
   promptForValidInstanceId,
   isLocalOrURLPath,
-  diagnoseAndFixProject,
 } from "../extensions/extensionsHelper";
 import { update } from "../extensions/updateHelper";
 import { getRandomString } from "../extensions/utils";
@@ -275,7 +273,6 @@ export default new Command("ext:install [extensionName]")
   .before(requirePermissions, ["firebaseextensions.instances.create"])
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
-  .before(diagnoseAndFixProject)
   .action(async (extensionName: string, options: any) => {
     const projectId = needProjectId(options);
     const paramsEnvPath = options.params;

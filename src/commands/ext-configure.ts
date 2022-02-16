@@ -1,7 +1,6 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
+import * as marked from "marked";
 import * as ora from "ora";
 import TerminalRenderer = require("marked-terminal");
 
@@ -10,7 +9,7 @@ import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { needProjectId } from "../projectUtils";
 import * as extensionsApi from "../extensions/extensionsApi";
-import { logPrefix, diagnoseAndFixProject } from "../extensions/extensionsHelper";
+import { logPrefix } from "../extensions/extensionsHelper";
 import * as paramHelper from "../extensions/paramHelper";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
@@ -32,7 +31,6 @@ export default new Command("ext:configure <extensionInstanceId>")
     "firebaseextensions.instances.get",
   ])
   .before(checkMinRequiredVersion, "extMinVersion")
-  .before(diagnoseAndFixProject)
   .action(async (instanceId: string, options: any) => {
     const spinner = ora(
       `Configuring ${clc.bold(instanceId)}. This usually takes 3 to 5 minutes...`

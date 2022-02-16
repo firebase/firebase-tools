@@ -3,18 +3,24 @@ import * as fs from "fs";
 import * as path from "path";
 
 import { FirebaseError } from "../../../../error";
+import { Options } from "../../../../options";
 import { getRuntimeChoice } from "./parseRuntimeAndValidateSDK";
-import { logger } from "../../../../logger";
+import * as args from "../../args";
 import * as backend from "../../backend";
+import { needProjectId } from "../../../../projectUtils";
 import * as runtimes from "..";
 import * as validate from "./validate";
+import { logger } from "../../../../logger";
 import * as versioning from "./versioning";
 import * as parseTriggers from "./parseTriggers";
 
 export async function tryCreateDelegate(
-  context: runtimes.DelegateContext
+  context: args.Context,
+  options: Options
 ): Promise<Delegate | undefined> {
-  const packageJsonPath = path.join(context.sourceDir, "package.json");
+  const projectRelativeSourceDir = options.config.get("functions.source") as string;
+  const sourceDir = options.config.path(projectRelativeSourceDir);
+  const packageJsonPath = path.join(sourceDir, "package.json");
 
   if (!(await promisify(fs.exists)(packageJsonPath))) {
     logger.debug("Customer code is not Node");
@@ -22,9 +28,10 @@ export async function tryCreateDelegate(
   }
 
   // Check what runtime to use, first in firebase.json, then in 'engines' field.
+  let runtime = (options.config.get("functions.runtime") as runtimes.Runtime) || "";
   // TODO: This method loads the Functions SDK version which is then manually loaded elsewhere.
   // We should find a way to refactor this code so we're not repeatedly invoking node.
-  const runtime = getRuntimeChoice(context.sourceDir, context.runtime);
+  runtime = getRuntimeChoice(sourceDir, runtime);
 
   if (!runtime.startsWith("nodejs")) {
     logger.debug(
@@ -33,7 +40,7 @@ export async function tryCreateDelegate(
     throw new FirebaseError(`Unexpected runtime ${runtime}`);
   }
 
-  return new Delegate(context.projectId, context.projectDir, context.sourceDir, runtime);
+  return new Delegate(needProjectId(options), options.config.projectDir, sourceDir, runtime);
 }
 
 // TODO(inlined): Consider moving contents in parseRuntimeAndValidateSDK and validate around.
@@ -53,7 +60,7 @@ export class Delegate {
   // Using a caching interface because we (may/will) eventually depend on the SDK version
   // to decide whether to use the JS export method of discovery or the HTTP container contract
   // method of discovery.
-  _sdkVersion = "";
+  _sdkVersion: string = "";
   get sdkVersion() {
     if (!this._sdkVersion) {
       this._sdkVersion = versioning.getFunctionsSDKVersion(this.sourceDir) || "";

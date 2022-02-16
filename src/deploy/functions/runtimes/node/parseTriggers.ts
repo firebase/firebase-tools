@@ -44,7 +44,6 @@ export interface TriggerAnnotation {
   maxInstances?: number;
   minInstances?: number;
   serviceAccountEmail?: string;
-  secrets?: string[];
   httpsTrigger?: {
     invoker?: string[];
   };
@@ -220,20 +219,6 @@ export function addResourcesToBackend(
       }
       endpoint.vpcConnector = maybeId;
     }
-
-    if (annotation.secrets) {
-      const secretEnvs: backend.SecretEnvVar[] = [];
-      for (const secret of annotation.secrets) {
-        const secretEnv: backend.SecretEnvVar = {
-          secret,
-          projectId,
-          key: secret,
-        };
-        secretEnvs.push(secretEnv);
-      }
-      endpoint.secretEnvironmentVariables = secretEnvs;
-    }
-
     proto.copyIfPresent(
       endpoint,
       annotation,

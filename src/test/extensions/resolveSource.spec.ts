@@ -43,3 +43,21 @@ const testRegistryEntry = {
     ],
   },
 };
+
+describe("isPublishedSource", () => {
+  it("should return true for an published source", () => {
+    const result = resolveSource.isOfficialSource(
+      testRegistryEntry,
+      "projects/firebasemods/sources/2kd"
+    );
+    expect(result).to.be.true;
+  });
+
+  it("should return false for an unpublished source", () => {
+    const result = resolveSource.isOfficialSource(
+      testRegistryEntry,
+      "projects/firebasemods/sources/invalid"
+    );
+    expect(result).to.be.false;
+  });
+});

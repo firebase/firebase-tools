@@ -1,5 +1,4 @@
-import { firedataOrigin } from "../api";
-import { Client } from "../apiv2";
+import * as api from "../api";
 import { logger } from "../logger";
 import * as utils from "../utils";
 
@@ -26,13 +25,10 @@ function _handleErrorResponse(response: any): any {
  * @return the list of databases.
  */
 export async function listDatabaseInstances(projectNumber: string): Promise<DatabaseInstance[]> {
-  const client = new Client({ urlPrefix: firedataOrigin, apiVersion: "v1" });
-  const response = await client.get<{ instance: DatabaseInstance[] }>(
-    `/projects/${projectNumber}/databases`,
-    {
-      resolveOnHTTPError: true,
-    }
-  );
+  const response = await api.request("GET", `/v1/projects/${projectNumber}/databases`, {
+    auth: true,
+    origin: api.firedataOrigin,
+  });
   if (response.status === 200) {
     return response.body.instance;
   }

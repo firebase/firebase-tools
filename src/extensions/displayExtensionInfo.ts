@@ -1,7 +1,6 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
+import * as marked from "marked";
 import TerminalRenderer = require("marked-terminal");
 
 import * as extensionsApi from "./extensionsApi";

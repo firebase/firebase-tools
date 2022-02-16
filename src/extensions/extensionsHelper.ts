@@ -2,8 +2,7 @@ import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as ora from "ora";
 import * as semver from "semver";
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
+import * as marked from "marked";
 
 const TerminalRenderer = require("marked-terminal");
 marked.setOptions({
@@ -14,9 +13,8 @@ import { storageOrigin } from "../api";
 import { archiveDirectory } from "../archiveDirectory";
 import { convertOfficialExtensionsToList } from "./utils";
 import { getFirebaseConfig } from "../functionsConfig";
-import { getExtensionRegistry } from "./resolveSource";
+import { getExtensionRegistry, resolveSourceUrl, resolveRegistryEntry } from "./resolveSource";
 import { FirebaseError } from "../error";
-import { diagnose } from "./diagnose";
 import { checkResponse } from "./askUserForParam";
 import { ensure } from "../ensureApiEnabled";
 import { deleteObject, uploadObject } from "../gcp/storage";
@@ -27,6 +25,7 @@ import {
   ExtensionVersion,
   getExtension,
   getInstance,
+  getSource,
   Param,
   publishExtensionVersion,
 } from "./extensionsApi";
@@ -95,7 +94,7 @@ export const resourceTypeToNiceName: Record<string, string> = {
  */
 export function getDBInstanceFromURL(databaseUrl = ""): string {
   const instanceRegex = new RegExp("(?:https://)(.*)(?:.firebaseio.com)");
-  const matches = instanceRegex.exec(databaseUrl);
+  const matches = databaseUrl.match(instanceRegex);
   if (matches && matches.length > 1) {
     return matches[1];
   }
@@ -528,7 +527,7 @@ export async function createSourceFromLocation(
   let packageUri: string;
   let extensionRoot: string;
   let objectPath = "";
-  if (!sourceUri.startsWith("https:")) {
+  if (!URL_REGEX.test(sourceUri)) {
     const uploadSpinner = ora(" Archiving and uploading extension source code");
     try {
       uploadSpinner.start();
@@ -562,6 +561,28 @@ async function deleteUploadedSource(objectPath: string) {
       logger.debug("Unable to clean up uploaded source archive");
     }
   }
+}
+
+/**
+ * Looks up a ExtensionSource from a extensionName. If no source exists for that extensionName, returns undefined.
+ * @param extensionName a official extension source name
+ *                      or a One-Platform format source name (/project/<projectName>/sources/<sourceId>)
+ * @return an ExtensionSource corresponding to extensionName if one exists, undefined otherwise
+ */
+export async function getExtensionSourceFromName(extensionName: string): Promise<ExtensionSource> {
+  const officialExtensionRegex = /^[a-zA-Z\-]+[0-9@.]*$/;
+  const existingSourceRegex = /projects\/.+\/sources\/.+/;
+  // if the provided extensionName contains only letters and hyphens, assume it is an official extension
+  if (officialExtensionRegex.test(extensionName)) {
+    const [name, version] = extensionName.split("@");
+    const registryEntry = await resolveRegistryEntry(name);
+    const sourceUrl = resolveSourceUrl(registryEntry, name, version);
+    return await getSource(sourceUrl);
+  } else if (existingSourceRegex.test(extensionName)) {
+    logger.info(`Fetching the source "${extensionName}"...`);
+    return await getSource(extensionName);
+  }
+  throw new FirebaseError(`Could not find an extension named '${extensionName}'. `);
 }
 
 /**
@@ -647,26 +668,25 @@ export async function promptForRepeatInstance(
  * @param instanceId ID of the extension instance
  */
 export async function instanceIdExists(projectId: string, instanceId: string): Promise<boolean> {
-  try {
-    await getInstance(projectId, instanceId);
-  } catch (err: unknown) {
-    if (err instanceof FirebaseError) {
-      if (err.status === 404) {
-        return false;
-      }
-      const msg = `Unexpected error when checking if instance ID exists: ${err}`;
-      throw new FirebaseError(msg, {
-        original: err,
-      });
-    } else {
-      throw err;
+  const instanceRes = await getInstance(projectId, instanceId, {
+    resolveOnHTTPError: true,
+  });
+  if (instanceRes.error) {
+    if (_.get(instanceRes, "error.code") === 404) {
+      return false;
     }
+    const msg =
+      "Unexpected error when checking if instance ID exists: " +
+      _.get(instanceRes, "error.message");
+    throw new FirebaseError(msg, {
+      original: instanceRes.error,
+    });
   }
   return true;
 }
 
 export function isUrlPath(extInstallPath: string): boolean {
-  return extInstallPath.startsWith("https:");
+  return URL_REGEX.test(extInstallPath);
 }
 
 export function isLocalPath(extInstallPath: string): boolean {
@@ -736,13 +756,5 @@ export async function confirm(args: {
     throw new FirebaseError("Pass the --force flag to use this command in non-interactive mode");
   } else {
     return true;
-  }
-}
-
-export async function diagnoseAndFixProject(options: any): Promise<void> {
-  const projectId = needProjectId(options);
-  const ok = await diagnose(projectId);
-  if (!ok) {
-    throw new FirebaseError("Unable to proceed until all issues are resolved.");
   }
 }

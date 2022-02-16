@@ -308,28 +308,4 @@ describe("addResourcesToBackend", () => {
 
     expect(result).to.deep.equal(expected);
   });
-
-  it("should parse secret", () => {
-    const trigger: parseTriggers.TriggerAnnotation = {
-      ...BASIC_TRIGGER,
-      httpsTrigger: {},
-      secrets: ["MY_SECRET"],
-    };
-
-    const expected: backend.Backend = backend.of({
-      ...BASIC_ENDPOINT,
-      httpsTrigger: {},
-      secretEnvironmentVariables: [
-        {
-          projectId: "project",
-          secret: "MY_SECRET",
-          key: "MY_SECRET",
-        },
-      ],
-    });
-
-    const result = backend.empty();
-    parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
-    expect(result).to.deep.equal(expected);
-  });
 });

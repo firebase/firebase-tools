@@ -5,6 +5,7 @@ import { sync as rimraf } from "rimraf";
 import { expect } from "chai";
 
 import * as env from "../../functions/env";
+import { previews } from "../../previews";
 
 describe("functions/env", () => {
   describe("parse", () => {
@@ -238,10 +239,6 @@ FOO=foo
       expect(() => {
         env.validateKey("FIREBASE_FOOBAR");
       }).to.throw("starts with a reserved prefix");
-
-      expect(() => {
-        env.validateKey("EXT_INSTANCE_ID");
-      }).to.throw("starts with a reserved prefix");
     });
   });
 
@@ -251,11 +248,16 @@ FOO=foo
         fs.writeFileSync(path.join(sourceDir, filename), data);
       }
     };
-    const projectInfo: Omit<env.UserEnvsOpts, "functionsSource"> = {
-      projectId: "my-project",
-      projectAlias: "dev",
-    };
+    const projectInfo = { projectId: "my-project", projectAlias: "dev" };
     let tmpdir: string;
+
+    before(() => {
+      previews.dotenv = true;
+    });
+
+    after(() => {
+      previews.dotenv = false;
+    });
 
     beforeEach(() => {
       tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), "test"));

@@ -1,25 +1,26 @@
 import * as clc from "cli-color";
 
+import { Options } from "../../options";
+import { ensureCloudBuildEnabled } from "./ensureCloudBuildEnabled";
+import { functionMatchesAnyGroup, getFilterGroups } from "./functionsDeployHelper";
+import { logBullet } from "../../utils";
+import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload";
+import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import * as args from "./args";
 import * as backend from "./backend";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
 import * as functionsConfig from "../../functionsConfig";
 import * as functionsEnv from "../../functions/env";
-import * as runtimes from "./runtimes";
-import * as validate from "./validate";
-import * as ensure from "./ensure";
-import { Options } from "../../options";
-import { functionMatchesAnyGroup, getFilterGroups } from "./functionsDeployHelper";
-import { logBullet } from "../../utils";
-import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload";
-import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import { previews } from "../../previews";
 import { needProjectId } from "../../projectUtils";
 import { track } from "../../track";
+import * as runtimes from "./runtimes";
+import * as validate from "./validate";
+import * as utils from "../../utils";
 import { logger } from "../../logger";
 import { ensureTriggerRegions } from "./triggerRegionHelper";
 import { ensureServiceAgentRoles } from "./checkIam";
-import { FirebaseError } from "../../error";
+import e from "express";
 
 function hasUserConfig(config: Record<string, unknown>): boolean {
   // "firebase" key is always going to exist in runtime config.
@@ -28,7 +29,23 @@ function hasUserConfig(config: Record<string, unknown>): boolean {
 }
 
 function hasDotenv(opts: functionsEnv.UserEnvsOpts): boolean {
-  return functionsEnv.hasUserEnvs(opts);
+  return previews.dotenv && functionsEnv.hasUserEnvs(opts);
+}
+
+// We previously force-enabled AR. We want to wait on this to see if we can give
+// an upgrade warning in the future. If it already is enabled though we want to
+// remember this and still use the cleaner if necessary.
+async function maybeEnableAR(projectId: string): Promise<boolean> {
+  if (previews.artifactregistry) {
+    return ensureApiEnabled.check(
+      projectId,
+      "artifactregistry.googleapis.com",
+      "functions",
+      /* silent= */ true
+    );
+  }
+  await ensureApiEnabled.ensure(projectId, "artifactregistry.googleapis.com", "functions");
+  return true;
 }
 
 export async function prepare(
@@ -36,27 +53,17 @@ export async function prepare(
   options: Options,
   payload: args.Payload
 ): Promise<void> {
-  const projectId = needProjectId(options);
-
-  const sourceDirName = options.config.get("functions.source") as string;
-  if (!sourceDirName) {
-    throw new FirebaseError(
-      `No functions code detected at default location (./functions), and no functions.source defined in firebase.json`
-    );
+  if (!options.config.src.functions) {
+    return;
   }
-  const sourceDir = options.config.path(sourceDirName);
 
-  const delegateContext: runtimes.DelegateContext = {
-    projectId,
-    sourceDir,
-    projectDir: options.config.projectDir,
-    runtime: (options.config.get("functions.runtime") as string) || "",
-  };
-  const runtimeDelegate = await runtimes.getRuntimeDelegate(delegateContext);
+  const runtimeDelegate = await runtimes.getRuntimeDelegate(context, options);
   logger.debug(`Validating ${runtimeDelegate.name} source`);
   await runtimeDelegate.validate();
   logger.debug(`Building ${runtimeDelegate.name} source`);
   await runtimeDelegate.build();
+
+  const projectId = needProjectId(options);
 
   // Check that all necessary APIs are enabled.
   const checkAPIsEnabled = await Promise.all([
@@ -67,8 +74,8 @@ export async function prepare(
       "runtimeconfig",
       /* silent=*/ true
     ),
-    ensure.cloudBuildEnabled(projectId),
-    ensure.maybeEnableAR(projectId),
+    ensureCloudBuildEnabled(projectId),
+    maybeEnableAR(projectId),
   ]);
   context.runtimeConfigEnabled = checkAPIsEnabled[1];
   context.artifactRegistryEnabled = checkAPIsEnabled[3];
@@ -78,9 +85,14 @@ export async function prepare(
   context.firebaseConfig = firebaseConfig;
   const runtimeConfig = await getFunctionsConfig(context);
 
+  utils.assertDefined(
+    options.config.src.functions.source,
+    "Error: 'functions.source' is not defined"
+  );
+  const source = options.config.src.functions.source;
   const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
-  const userEnvOpt: functionsEnv.UserEnvsOpts = {
-    functionsSource: sourceDir,
+  const userEnvOpt = {
+    functionsSource: options.config.path(source),
     projectId: projectId,
     projectAlias: options.projectAlias,
   };
@@ -121,7 +133,7 @@ export async function prepare(
     logBullet(
       clc.cyan.bold("functions:") +
         " preparing " +
-        clc.bold(sourceDirName) +
+        clc.bold(options.config.src.functions.source) +
         " directory for uploading..."
     );
   }
@@ -150,7 +162,7 @@ export async function prepare(
   );
 
   // Validate the function code that is being deployed.
-  validate.endpointsAreValid(wantBackend);
+  validate.functionIdsAreValid(backend.allEndpoints(wantBackend));
 
   // Check what --only filters have been passed in.
   context.filters = getFilterGroups(options);
@@ -168,8 +180,6 @@ export async function prepare(
   await promptForFailurePolicies(options, matchingBackend, haveBackend);
   await promptForMinInstances(options, matchingBackend, haveBackend);
   await backend.checkAvailability(context, wantBackend);
-  await validate.secretsAreValid(projectId, matchingBackend);
-  await ensure.secretAccess(projectId, matchingBackend, haveBackend);
 }
 
 /**

@@ -1,5 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
+import * as marked from "marked";
 import * as clc from "cli-color";
 
 import { ExtensionVersion, RegistryLaunchStage } from "./extensionsApi";
@@ -41,9 +40,6 @@ function displayExperimentalWarning() {
   );
 }
 
-/**
- * Show warning if extension is experimental or developed by 3P.
- */
 export async function displayWarningPrompts(
   publisherId: string,
   launchStage: RegistryLaunchStage,

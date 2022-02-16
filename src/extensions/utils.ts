@@ -33,14 +33,12 @@ export function convertExtensionOptionToLabeledList(options: ParamOption[]): Lis
 export function convertOfficialExtensionsToList(officialExts: {
   [key: string]: RegistryEntry;
 }): ListItem[] {
-  const l = _.map(officialExts, (entry: RegistryEntry, key: string) => {
+  return _.map(officialExts, (entry: RegistryEntry, key: string) => {
     return {
       checked: false,
-      value: `${entry.publisher}/${key}`,
+      value: key,
     };
   });
-  l.sort((a, b) => a.value.localeCompare(b.value));
-  return l;
 }
 
 /**

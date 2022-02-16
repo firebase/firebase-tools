@@ -3,6 +3,7 @@ import * as _ from "lodash";
 
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
+import { resolveRegistryEntry } from "../extensions/resolveSource";
 import * as extensionsApi from "../extensions/extensionsApi";
 import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper";
 import { isLocalExtension, getLocalExtensionSpec } from "../extensions/localHelper";
@@ -10,8 +11,7 @@ import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
+import * as marked from "marked";
 import TerminalRenderer = require("marked-terminal");
 
 const FUNCTION_TYPE_REGEX = /\..+\.function/;

@@ -6,9 +6,12 @@ import * as portfinder from "portfinder";
 import * as spawn from "cross-spawn";
 
 import { FirebaseError } from "../../../../error";
+import { Options } from "../../../../options";
 import { logger } from "../../../../logger";
+import * as args from "../../args";
 import * as backend from "../../backend";
 import * as discovery from "../discovery";
+import { needProjectId } from "../../../../projectUtils";
 import * as gomod from "./gomod";
 import * as runtimes from "..";
 
@@ -24,9 +27,13 @@ export const FUNCTIONS_CODEGEN = FUNCTIONS_SDK + "/support/codegen";
 export const FUNCTIONS_RUNTIME = FUNCTIONS_SDK + "/support/runtime";
 
 export async function tryCreateDelegate(
-  context: runtimes.DelegateContext
+  context: args.Context,
+  options: Options
 ): Promise<Delegate | undefined> {
-  const goModPath = path.join(context.sourceDir, "go.mod");
+  const relativeSourceDir = options.config.get("functions.source") as string;
+  const sourceDir = options.config.path(relativeSourceDir);
+  const goModPath = path.join(sourceDir, "go.mod");
+  const projectId = needProjectId(options);
 
   let module: gomod.Module;
   try {
@@ -37,7 +44,7 @@ export async function tryCreateDelegate(
     return;
   }
 
-  let runtime = context.runtime;
+  let runtime = options.config.get("functions.runtime");
   if (!runtime) {
     if (!module.version) {
       throw new FirebaseError("Could not detect Golang version from go.mod");
@@ -54,7 +61,7 @@ export async function tryCreateDelegate(
     runtime = VERSION_TO_RUNTIME[module.version];
   }
 
-  return new Delegate(context.projectId, context.sourceDir, runtime, module);
+  return new Delegate(projectId, sourceDir, runtime, module);
 }
 
 export class Delegate {
@@ -120,7 +127,7 @@ export class Delegate {
       cwd: this.sourceDir,
       stdio: [/* stdin=*/ "ignore", /* stdout=*/ "pipe", /* stderr=*/ "inherit"],
     });
-    childProcess.stdout?.on("data", (chunk) => {
+    childProcess.stdout.on("data", (chunk) => {
       logger.debug(chunk.toString());
     });
     return Promise.resolve(async () => {

@@ -1,9 +1,8 @@
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
+import * as marked from "marked";
 
 import * as extensionsApi from "./extensionsApi";
-import { firebaseStorageOrigin, firedataOrigin } from "../api";
-import { Client } from "../apiv2";
+import * as api from "../api";
+import * as refs from "./refs";
 import { flattenArray } from "../functional";
 import { FirebaseError } from "../error";
 import { getExtensionVersion, InstanceSpec } from "../deploy/extensions/planner";
@@ -119,8 +118,10 @@ function getTriggerType(propertiesYaml: string | undefined) {
 }
 
 async function isStorageProvisioned(projectId: string): Promise<boolean> {
-  const client = new Client({ urlPrefix: firebaseStorageOrigin, apiVersion: "v1beta" });
-  const resp = await client.get<{ buckets: { name: string }[] }>(`/projects/${projectId}/buckets`);
+  const resp = await api.request("GET", `/v1beta/projects/${projectId}/buckets`, {
+    auth: true,
+    origin: api.firebaseStorageOrigin,
+  });
   return !!resp.body?.buckets?.find((bucket: any) => {
     const bucketResourceName = bucket.name;
     // Bucket resource name looks like: projects/PROJECT_NUMBER/buckets/BUCKET_NAME
@@ -132,9 +133,9 @@ async function isStorageProvisioned(projectId: string): Promise<boolean> {
 }
 
 async function isAuthProvisioned(projectId: string): Promise<boolean> {
-  const client = new Client({ urlPrefix: firedataOrigin, apiVersion: "v1" });
-  const resp = await client.get<{ activation: { service: string }[] }>(
-    `/projects/${projectId}/products`
-  );
+  const resp = await api.request("GET", `/v1/projects/${projectId}/products`, {
+    auth: true,
+    origin: api.firedataOrigin,
+  });
   return !!resp.body?.activation?.map((a: any) => a.service).includes("FIREBASE_AUTH");
 }

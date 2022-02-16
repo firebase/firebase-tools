@@ -4,11 +4,11 @@ import * as path from "path";
 
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
+import { previews } from "../previews";
 import { logBullet } from "../utils";
 
 const FUNCTIONS_EMULATOR_DOTENV = ".env.local";
 
-const RESERVED_PREFIXES = ["X_GOOGLE_", "FIREBASE_", "EXT_"];
 const RESERVED_KEYS = [
   // Cloud Functions for Firebase
   "FIREBASE_CONFIG",
@@ -149,10 +149,10 @@ export function validateKey(key: string): void {
         ", and then consist of uppercase ASCII letters, digits, and underscores."
     );
   }
-  if (RESERVED_PREFIXES.some((prefix) => key.startsWith(prefix))) {
+  if (key.startsWith("X_GOOGLE_") || key.startsWith("FIREBASE_")) {
     throw new KeyValidationError(
       key,
-      `Key ${key} starts with a reserved prefix (${RESERVED_PREFIXES.join(" ")})`
+      `Key ${key} starts with a reserved prefix (X_GOOGLE_ or FIREBASE_)`
     );
   }
 }
@@ -160,7 +160,7 @@ export function validateKey(key: string): void {
 // Parse dotenv file, but throw errors if:
 //   1. Input has any invalid lines.
 //   2. Any env key fails validation.
-export function parseStrict(data: string): Record<string, string> {
+function parseStrict(data: string): Record<string, string> {
   const { envs, errors } = parse(data);
 
   if (errors.length) {
@@ -252,6 +252,10 @@ export function loadUserEnvs({
   projectAlias,
   isEmulator,
 }: UserEnvsOpts): Record<string, string> {
+  if (!previews.dotenv) {
+    return {};
+  }
+
   const envFiles = findEnvfiles(functionsSource, projectId, projectAlias, isEmulator);
   if (envFiles.length == 0) {
     return {};

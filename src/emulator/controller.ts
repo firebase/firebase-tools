@@ -418,8 +418,10 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
     );
 
     utils.assertIsStringOrUndefined(options.extDevDir);
-    const projectDir = options.extDevDir || options.config.projectDir;
-    const functionsDir = path.join(projectDir, options.config.src.functions.source);
+    const functionsDir = path.join(
+      options.extDevDir || options.config.projectDir,
+      options.config.src.functions.source
+    );
 
     emulatableBackends.push({
       functionsDir,
@@ -487,7 +489,6 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
     // TODO(b/213241033): Figure out how to watch for changes to extensions .env files & reload triggers when they change.
     const functionsEmulator = new FunctionsEmulator({
       projectId,
-      projectDir,
       emulatableBackends,
       account,
       host: functionsAddr.host,

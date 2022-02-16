@@ -1,5 +1,4 @@
-import { cloudloggingOrigin } from "../api";
-import { Client } from "../apiv2";
+import * as api from "../api";
 import { FirebaseError } from "../error";
 
 const API_VERSION = "v2";
@@ -33,16 +32,17 @@ export async function listEntries(
   pageSize: number,
   order: string
 ): Promise<LogEntry[]> {
-  const client = new Client({ urlPrefix: cloudloggingOrigin, apiVersion: API_VERSION });
+  const endpoint = `/${API_VERSION}/entries:list`;
   try {
-    const result = await client.post<
-      { resourceNames: string[]; filter: string; orderBy: string; pageSize: number },
-      { entries: LogEntry[] }
-    >("/entries:list", {
-      resourceNames: [`projects/${projectId}`],
-      filter: filter,
-      orderBy: `timestamp ${order}`,
-      pageSize: pageSize,
+    const result = await api.request("POST", endpoint, {
+      auth: true,
+      data: {
+        resourceNames: [`projects/${projectId}`],
+        filter: filter,
+        orderBy: "timestamp " + order,
+        pageSize: pageSize,
+      },
+      origin: api.cloudloggingOrigin,
     });
     return result.body.entries;
   } catch (err: any) {

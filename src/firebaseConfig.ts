@@ -30,14 +30,14 @@ type DatabaseMultiple = ({
 }> &
   Deployable)[];
 
-type HostingSource = { glob: string } | { source: string } | { regex: string };
+type HostingSource = { source: string } | { regex: string };
 
 type HostingRedirects = HostingSource & {
   destination: string;
-  type?: number;
+  type: number;
 };
 
-export type HostingRewrites = HostingSource &
+type HostingRewrites = HostingSource &
   (
     | { destination: string }
     | { function: string }
@@ -50,7 +50,7 @@ export type HostingRewrites = HostingSource &
     | { dynamicLinks: boolean }
   );
 
-export type HostingHeaders = HostingSource & {
+type HostingHeaders = HostingSource & {
   headers: {
     key: string;
     value: string;

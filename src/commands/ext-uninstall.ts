@@ -1,8 +1,7 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as ora from "ora";
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
+import * as marked from "marked";
 import TerminalRenderer = require("marked-terminal");
 
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
@@ -15,7 +14,6 @@ import {
   ensureExtensionsApiEnabled,
   logPrefix,
   resourceTypeToNiceName,
-  diagnoseAndFixProject,
 } from "../extensions/extensionsHelper";
 import { promptOnce } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
@@ -49,7 +47,6 @@ export default new Command("ext:uninstall <extensionInstanceId>")
   .before(requirePermissions, ["firebaseextensions.instances.delete"])
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
-  .before(diagnoseAndFixProject)
   .action(async (instanceId: string, options: any) => {
     const projectId = needProjectId(options);
     let instance;

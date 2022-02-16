@@ -1,7 +1,7 @@
 import { firestoreOriginOrEmulator } from "../api";
-import { Client } from "../apiv2";
+import * as apiv2 from "../apiv2";
 
-const apiClient = new Client({
+const _CLIENT = new apiv2.Client({
   auth: true,
   apiVersion: "v1",
   urlPrefix: firestoreOriginOrEmulator,
@@ -20,7 +20,7 @@ export function listCollectionIds(project: string): Promise<string[]> {
     pageSize: 2147483647,
   };
 
-  return apiClient.post<any, { collectionIds?: string[] }>(url, data).then((res) => {
+  return _CLIENT.post<any, { collectionIds?: string[] }>(url, data).then((res) => {
     return res.body.collectionIds || [];
   });
 }
@@ -35,7 +35,7 @@ export function listCollectionIds(project: string): Promise<string[]> {
  * @return {Promise} a promise for the delete operation.
  */
 export async function deleteDocument(doc: any): Promise<any> {
-  return apiClient.delete(doc.name);
+  return _CLIENT.delete(doc.name);
 }
 
 /**
@@ -56,6 +56,6 @@ export async function deleteDocuments(project: string, docs: any[]): Promise<num
   });
   const data = { writes };
 
-  const res = await apiClient.post<any, { writeResults: any[] }>(url, data);
+  const res = await _CLIENT.post<any, { writeResults: any[] }>(url, data);
   return res.body.writeResults.length;
 }

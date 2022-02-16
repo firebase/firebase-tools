@@ -70,8 +70,8 @@ module.exports = new Command("ext:dev:usage <publisherId>")
 
     const projectNumber = getPublisherProjectFromName(profile.name);
 
-    const past45d = new Date();
-    past45d.setDate(past45d.getDate() - 45);
+    const past30d = new Date();
+    past30d.setDate(past30d.getDate() - 30);
 
     const query: CmQuery = {
       filter:
@@ -79,7 +79,7 @@ module.exports = new Command("ext:dev:usage <publisherId>")
         `resource.type="firebaseextensions.googleapis.com/ExtensionVersion" ` +
         `resource.labels.extension="${extensionName}"`,
       "interval.endTime": new Date().toJSON(),
-      "interval.startTime": past45d.toJSON(),
+      "interval.startTime": past30d.toJSON(),
       view: TimeSeriesView.FULL,
       "aggregation.alignmentPeriod": (60 * 60 * 24).toString() + "s",
       "aggregation.perSeriesAligner": Aligner.ALIGN_MAX,
@@ -117,13 +117,18 @@ module.exports = new Command("ext:dev:usage <publisherId>")
 
     logger.info(table.toString());
 
+    const link = await buildCloudMonitoringLink({
+      projectNumber: projectNumber,
+      extensionName,
+    });
+
     utils.logLabeledBullet(logPrefix, `How to read this table:`);
     logger.info(`* Due to privacy considerations, numbers are reported as ranges.`);
     logger.info(`* In the absence of significant changes, we will render a '-' symbol.`);
     logger.info(
       `* You will need more than 10 installs over a period of more than 28 days to render sufficient data.`
     );
-    // TODO(b/216289102): Add buildCloudMonitoringLink back after UI is fixed.
+    logger.info(`For more detail, visit: ${link}`);
   });
 
 async function buildCloudMonitoringLink(args: {

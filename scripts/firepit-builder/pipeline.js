@@ -42,7 +42,7 @@ if (fs.existsSync(firebaseToolsPackage)) {
   npm("install", packedModule);
   rm(packedModule);
 } else {
-  npm("install", "--omit=dev", firebaseToolsPackage);
+  npm("install", firebaseToolsPackage);
 }
 
 const packageJson = JSON.parse(cat("node_modules/firebase-tools/package.json"));

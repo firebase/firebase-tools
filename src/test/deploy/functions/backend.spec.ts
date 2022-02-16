@@ -550,13 +550,6 @@ describe("Backend", () => {
       expect(backend.someEndpoint(bkend, (fn) => fn.id === "missing")).to.be.false;
     });
 
-    it("findEndpoint", () => {
-      expect(backend.findEndpoint(bkend, (fn) => fn.id === "endpointUS")).to.be.deep.equal(
-        endpointUS
-      );
-      expect(backend.findEndpoint(bkend, (fn) => fn.id === "missing")).to.be.undefined;
-    });
-
     it("regionalEndpoints", () => {
       const have = backend.regionalEndpoints(bkend, endpointUS.region);
       const want = [endpointUS];

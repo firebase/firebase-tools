@@ -2,8 +2,7 @@ import * as _ from "lodash";
 
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
-import { cloudschedulerOrigin } from "../api";
-import { Client } from "../apiv2";
+import * as api from "../api";
 import * as backend from "../deploy/functions/backend";
 import * as proto from "./proto";
 import { assertExhaustive } from "../functional";
@@ -81,8 +80,6 @@ export function assertValidJob(job: Job) {
   }
 }
 
-const apiClient = new Client({ urlPrefix: cloudschedulerOrigin, apiVersion: VERSION });
-
 /**
  * Creates a cloudScheduler job.
  * If another job with that name already exists, this will return a 409.
@@ -93,7 +90,11 @@ export function createJob(job: Job): Promise<any> {
   // ie: projects/my-proj/locations/us-central1/jobs/firebase-schedule-func-us-east1 would become
   // projects/my-proj/locations/us-central1/jobs
   const strippedName = job.name.substring(0, job.name.lastIndexOf("/"));
-  return apiClient.post(`/${strippedName}`, Object.assign({ timeZone: DEFAULT_TIME_ZONE }, job));
+  return api.request("POST", `/${VERSION}/${strippedName}`, {
+    auth: true,
+    origin: api.cloudschedulerOrigin,
+    data: Object.assign({ timeZone: DEFAULT_TIME_ZONE }, job),
+  });
 }
 
 /**
@@ -102,7 +103,10 @@ export function createJob(job: Job): Promise<any> {
  * @param name The name of the job to delete.
  */
 export function deleteJob(name: string): Promise<any> {
-  return apiClient.delete(`/${name}`);
+  return api.request("DELETE", `/${VERSION}/${name}`, {
+    auth: true,
+    origin: api.cloudschedulerOrigin,
+  });
 }
 
 /**
@@ -111,7 +115,9 @@ export function deleteJob(name: string): Promise<any> {
  * @param name The name of the job to get.
  */
 export function getJob(name: string): Promise<any> {
-  return apiClient.get(`/${name}`, {
+  return api.request("GET", `/${VERSION}/${name}`, {
+    auth: true,
+    origin: api.cloudschedulerOrigin,
     resolveOnHTTPError: true,
   });
 }
@@ -123,7 +129,11 @@ export function getJob(name: string): Promise<any> {
  */
 export function updateJob(job: Job): Promise<any> {
   // Note that name cannot be updated.
-  return apiClient.patch(`/${job.name}`, Object.assign({ timeZone: DEFAULT_TIME_ZONE }, job));
+  return api.request("PATCH", `/${VERSION}/${job.name}`, {
+    auth: true,
+    origin: api.cloudschedulerOrigin,
+    data: Object.assign({ timeZone: DEFAULT_TIME_ZONE }, job),
+  });
 }
 
 /**

@@ -1,13 +1,7 @@
-import { remoteConfigApiOrigin } from "../api";
-import { Client } from "../apiv2";
+import api = require("../api");
 import { FirebaseError } from "../error";
 import { ListVersionsResult } from "./interfaces";
 import { logger } from "../logger";
-
-const apiClient = new Client({
-  urlPrefix: remoteConfigApiOrigin,
-  apiVersion: "v1",
-});
 
 const TIMEOUT = 30000;
 
@@ -20,14 +14,13 @@ const TIMEOUT = 30000;
 export async function getVersions(projectId: string, maxResults = 10): Promise<ListVersionsResult> {
   maxResults = maxResults || 300;
   try {
-    const params = new URLSearchParams();
+    let request = `/v1/projects/${projectId}/remoteConfig:listVersions`;
     if (maxResults) {
-      params.set("pageSize", `${maxResults}`);
+      request = request + "?pageSize=" + maxResults;
     }
-    const response = await apiClient.request<void, ListVersionsResult>({
-      method: "GET",
-      path: `/projects/${projectId}/remoteConfig:listVersions`,
-      queryParams: params,
+    const response = await api.request("GET", request, {
+      auth: true,
+      origin: api.remoteConfigApiOrigin,
       timeout: TIMEOUT,
     });
     return response.body;
@@ -35,7 +28,7 @@ export async function getVersions(projectId: string, maxResults = 10): Promise<L
     logger.debug(err.message);
     throw new FirebaseError(
       `Failed to get Remote Config template versions for Firebase project ${projectId}. `,
-      { original: err }
+      { exit: 2, original: err }
     );
   }
 }

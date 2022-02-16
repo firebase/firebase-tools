@@ -1,54 +1,50 @@
-/* eslint-disable @typescript-eslint/no-empty-function */
-import { expect } from "chai";
-import * as nock from "nock";
-import * as os from "os";
-import * as sinon from "sinon";
+"use strict";
 
-import * as accountExporter from "../accountExporter";
+var chai = require("chai");
+var nock = require("nock");
+var os = require("os");
+var sinon = require("sinon");
 
-describe("accountExporter", () => {
-  const validateOptions = accountExporter.validateOptions;
-  const serialExportUsers = accountExporter.serialExportUsers;
+var accountExporter = require("../accountExporter");
 
-  describe("validateOptions", () => {
-    it("should reject when no format provided", () => {
-      expect(() => validateOptions({}, "output_file")).to.throw;
+var expect = chai.expect;
+describe("accountExporter", function () {
+  var validateOptions = accountExporter.validateOptions;
+  var serialExportUsers = accountExporter.serialExportUsers;
+
+  describe("validateOptions", function () {
+    it("should reject when no format provided", function () {
+      return expect(() => validateOptions({}, "output_file")).to.throw;
     });
 
-    it("should reject when format is not csv or json", () => {
-      expect(() => validateOptions({ format: "txt" }, "output_file")).to.throw;
+    it("should reject when format is not csv or json", function () {
+      return expect(() => validateOptions({ format: "txt" }, "output_file")).to.throw;
     });
 
-    it("should ignore format param when implicitly specified in file name", () => {
-      const ret = validateOptions({ format: "JSON" }, "output_file.csv");
+    it("should ignore format param when implicitly specified in file name", function () {
+      var ret = validateOptions({ format: "JSON" }, "output_file.csv");
       expect(ret.format).to.eq("csv");
     });
 
-    it("should use format param when not implicitly specified in file name", () => {
-      const ret = validateOptions({ format: "JSON" }, "output_file");
+    it("should use format param when not implicitly specified in file name", function () {
+      var ret = validateOptions({ format: "JSON" }, "output_file");
       expect(ret.format).to.eq("json");
     });
   });
 
-  describe("serialExportUsers", () => {
-    let sandbox: sinon.SinonSandbox;
-    let userList: {
-      localId: string;
-      email: string;
-      displayName: string;
-      disabled: boolean;
-      customAttributes?: string;
-    }[] = [];
-    const writeStream = {
-      write: () => {},
-      end: () => {},
+  describe("serialExportUsers", function () {
+    var sandbox;
+    var userList = [];
+    var writeStream = {
+      write: function () {},
+      end: function () {},
     };
-    let spyWrite: sinon.SinonSpy;
+    var spyWrite;
 
-    beforeEach(() => {
+    beforeEach(function () {
       sandbox = sinon.createSandbox();
       spyWrite = sandbox.spy(writeStream, "write");
-      for (let i = 0; i < 7; i++) {
+      for (var i = 0; i < 7; i++) {
         userList.push({
           localId: i.toString(),
           email: "test" + i + "@test.org",
@@ -58,13 +54,13 @@ describe("accountExporter", () => {
       }
     });
 
-    afterEach(() => {
+    afterEach(function () {
       sandbox.restore();
       nock.cleanAll();
       userList = [];
     });
 
-    it("should call api.request multiple times for JSON export", async () => {
+    it("should call api.request multiple times for JSON export", function () {
       nock("https://www.googleapis.com")
         .post("/identitytoolkit/v3/relyingparty/downloadAccount", {
           maxResults: 3,
@@ -102,47 +98,47 @@ describe("accountExporter", () => {
           nextPageToken: "7",
         });
 
-      await serialExportUsers("test-project-id", {
+      return serialExportUsers("test-project-id", {
         format: "JSON",
         batchSize: 3,
         writeStream: writeStream,
+      }).then(function () {
+        expect(spyWrite.callCount).to.eq(7);
+        expect(spyWrite.getCall(0).args[0]).to.eq(JSON.stringify(userList[0], null, 2));
+        for (var j = 1; j < 7; j++) {
+          expect(spyWrite.getCall(j).args[0]).to.eq(
+            "," + os.EOL + JSON.stringify(userList[j], null, 2)
+          );
+        }
       });
-      expect(spyWrite.callCount).to.eq(7);
-      expect(spyWrite.getCall(0).args[0]).to.eq(JSON.stringify(userList[0], null, 2));
-      for (let j = 1; j < 7; j++) {
-        expect(spyWrite.getCall(j).args[0]).to.eq(
-          "," + os.EOL + JSON.stringify(userList[j], null, 2)
-        );
-      }
-      expect(nock.isDone()).to.be.true;
     });
 
-    it("should call api.request multiple times for CSV export", async () => {
+    it("should call api.request multiple times for CSV export", function () {
       mockAllUsersRequests();
 
-      await serialExportUsers("test-project-id", {
+      return serialExportUsers("test-project-id", {
         format: "csv",
         batchSize: 3,
         writeStream: writeStream,
+      }).then(function () {
+        expect(spyWrite.callCount).to.eq(userList.length);
+        for (var j = 0; j < userList.length; j++) {
+          var expectedEntry =
+            userList[j].localId +
+            "," +
+            userList[j].email +
+            ",false,,," +
+            userList[j].displayName +
+            Array(22).join(",") + // A lot of empty fields...
+            userList[j].disabled;
+          expect(spyWrite.getCall(j).args[0]).to.eq(expectedEntry + ",," + os.EOL);
+        }
       });
-      expect(spyWrite.callCount).to.eq(userList.length);
-      for (let j = 0; j < userList.length; j++) {
-        const expectedEntry =
-          userList[j].localId +
-          "," +
-          userList[j].email +
-          ",false,,," +
-          userList[j].displayName +
-          Array(22).join(",") + // A lot of empty fields...
-          userList[j].disabled;
-        expect(spyWrite.getCall(j).args[0]).to.eq(expectedEntry + ",," + os.EOL);
-      }
-      expect(nock.isDone()).to.be.true;
     });
 
-    it("should encapsulate displayNames with commas for csv formats", async () => {
+    it("should encapsulate displayNames with commas for csv formats", function () {
       // Initialize user with comma in display name.
-      const singleUser = {
+      var singleUser = {
         localId: "1",
         email: "test1@test.org",
         displayName: "John Tester1, CFA",
@@ -167,59 +163,60 @@ describe("accountExporter", () => {
           nextPageToken: "1",
         });
 
-      await serialExportUsers("test-project-id", {
+      return serialExportUsers("test-project-id", {
         format: "csv",
         batchSize: 1,
         writeStream: writeStream,
+      }).then(function () {
+        expect(spyWrite.callCount).to.eq(1);
+        var expectedEntry =
+          singleUser.localId +
+          "," +
+          singleUser.email +
+          ",false,,," +
+          '"' +
+          singleUser.displayName +
+          '"' +
+          Array(22).join(",") + // A lot of empty fields.
+          singleUser.disabled;
+        expect(spyWrite.getCall(0).args[0]).to.eq(expectedEntry + ",," + os.EOL);
       });
-      expect(spyWrite.callCount).to.eq(1);
-      const expectedEntry =
-        singleUser.localId +
-        "," +
-        singleUser.email +
-        ",false,,," +
-        '"' +
-        singleUser.displayName +
-        '"' +
-        Array(22).join(",") + // A lot of empty fields.
-        singleUser.disabled;
-      expect(spyWrite.getCall(0).args[0]).to.eq(expectedEntry + ",," + os.EOL);
-      expect(nock.isDone()).to.be.true;
     });
 
-    it("should not emit redundant comma in JSON on consecutive calls", async () => {
+    it("should not emit redundant comma in JSON on consecutive calls", function () {
       mockAllUsersRequests();
 
       const correctString =
         '{\n  "localId": "0",\n  "email": "test0@test.org",\n  "displayName": "John Tester0",\n  "disabled": true\n}';
 
       const firstWriteSpy = sinon.spy();
-      await serialExportUsers("test-project-id", {
+      return serialExportUsers("test-project-id", {
         format: "JSON",
         batchSize: 3,
-        writeStream: { write: firstWriteSpy, end: () => {} },
-      });
-      expect(firstWriteSpy.args[0][0]).to.be.eq(
-        correctString,
-        "The first call did not emit the correct string"
-      );
+        writeStream: { write: firstWriteSpy, end: function () {} },
+      }).then(function () {
+        expect(firstWriteSpy.args[0][0]).to.be.eq(
+          correctString,
+          "The first call did not emit the correct string"
+        );
 
-      mockAllUsersRequests();
+        mockAllUsersRequests();
 
-      const secondWriteSpy = sinon.spy();
-      await serialExportUsers("test-project-id", {
-        format: "JSON",
-        batchSize: 3,
-        writeStream: { write: secondWriteSpy, end: () => {} },
+        const secondWriteSpy = sinon.spy();
+        return serialExportUsers("test-project-id", {
+          format: "JSON",
+          batchSize: 3,
+          writeStream: { write: secondWriteSpy, end: function () {} },
+        }).then(() => {
+          expect(secondWriteSpy.args[0][0]).to.be.eq(
+            correctString,
+            "The second call did not emit the correct string"
+          );
+        });
       });
-      expect(secondWriteSpy.args[0][0]).to.be.eq(
-        correctString,
-        "The second call did not emit the correct string"
-      );
-      expect(nock.isDone()).to.be.true;
     });
 
-    it("should export a user's custom attributes", async () => {
+    it("should export a user's custom attributes", function () {
       userList[0].customAttributes =
         '{ "customBoolean": true, "customString": "test", "customInt": 99 }';
       userList[1].customAttributes =
@@ -233,22 +230,22 @@ describe("accountExporter", () => {
           users: userList.slice(0, 3),
           nextPageToken: "3",
         });
-      await serialExportUsers("test-project-id", {
+      return serialExportUsers("test-project-id", {
         format: "JSON",
         batchSize: 3,
         writeStream: writeStream,
+      }).then(function () {
+        expect(spyWrite.getCall(0).args[0]).to.eq(JSON.stringify(userList[0], null, 2));
+        expect(spyWrite.getCall(1).args[0]).to.eq(
+          "," + os.EOL + JSON.stringify(userList[1], null, 2)
+        );
+        expect(spyWrite.getCall(2).args[0]).to.eq(
+          "," + os.EOL + JSON.stringify(userList[2], null, 2)
+        );
       });
-      expect(spyWrite.getCall(0).args[0]).to.eq(JSON.stringify(userList[0], null, 2));
-      expect(spyWrite.getCall(1).args[0]).to.eq(
-        "," + os.EOL + JSON.stringify(userList[1], null, 2)
-      );
-      expect(spyWrite.getCall(2).args[0]).to.eq(
-        "," + os.EOL + JSON.stringify(userList[2], null, 2)
-      );
-      expect(nock.isDone()).to.be.true;
     });
 
-    function mockAllUsersRequests(): void {
+    function mockAllUsersRequests() {
       nock("https://www.googleapis.com")
         .post("/identitytoolkit/v3/relyingparty/downloadAccount", {
           maxResults: 3,

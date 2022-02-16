@@ -1,7 +1,6 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
+import * as marked from "marked";
 
 import { Param, ParamOption, ParamType } from "./extensionsApi";
 import * as secretManagerApi from "../gcp/secretManager";
@@ -240,7 +239,7 @@ async function addNewSecretVersion(
   paramSpec: Param,
   secretValue: string
 ) {
-  const version = await secretManagerApi.addVersion(projectId, secret.name, secretValue);
+  const version = await secretManagerApi.addVersion(secret, secretValue);
   await secretsUtils.grantFirexServiceAgentSecretAdminRole(secret);
   return `projects/${version.secret.projectId}/secrets/${version.secret.name}/versions/${version.versionId}`;
 }

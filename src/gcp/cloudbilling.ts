@@ -1,9 +1,7 @@
-import { cloudbillingOrigin } from "../api";
-import { Client } from "../apiv2";
+import * as api from "../api";
 import * as utils from "../utils";
 
 const API_VERSION = "v1";
-const client = new Client({ urlPrefix: cloudbillingOrigin, apiVersion: API_VERSION });
 
 export interface BillingAccount {
   name: string;
@@ -16,9 +14,14 @@ export interface BillingAccount {
  * @param projectId
  */
 export async function checkBillingEnabled(projectId: string): Promise<boolean> {
-  const res = await client.get<{ billingEnabled: boolean }>(
-    utils.endpoint(["projects", projectId, "billingInfo"]),
-    { retryCodes: [500, 503] }
+  const res = await api.request(
+    "GET",
+    utils.endpoint([API_VERSION, "projects", projectId, "billingInfo"]),
+    {
+      auth: true,
+      origin: api.cloudbillingOrigin,
+      retryCodes: [500, 503],
+    }
   );
   return res.body.billingEnabled;
 }
@@ -32,12 +35,17 @@ export async function setBillingAccount(
   projectId: string,
   billingAccountName: string
 ): Promise<boolean> {
-  const res = await client.put<{ billingAccountName: string }, { billingEnabled: boolean }>(
-    utils.endpoint(["projects", projectId, "billingInfo"]),
+  const res = await api.request(
+    "PUT",
+    utils.endpoint([API_VERSION, "projects", projectId, "billingInfo"]),
     {
-      billingAccountName: billingAccountName,
-    },
-    { retryCodes: [500, 503] }
+      auth: true,
+      origin: api.cloudbillingOrigin,
+      retryCodes: [500, 503],
+      data: {
+        billingAccountName: billingAccountName,
+      },
+    }
   );
   return res.body.billingEnabled;
 }
@@ -47,9 +55,10 @@ export async function setBillingAccount(
  * @return {!Promise<Object[]>}
  */
 export async function listBillingAccounts(): Promise<BillingAccount[]> {
-  const res = await client.get<{ billingAccounts: BillingAccount[] }>(
-    utils.endpoint(["billingAccounts"]),
-    { retryCodes: [500, 503] }
-  );
+  const res = await api.request("GET", utils.endpoint([API_VERSION, "billingAccounts"]), {
+    auth: true,
+    origin: api.cloudbillingOrigin,
+    retryCodes: [500, 503],
+  });
   return res.body.billingAccounts || [];
 }
