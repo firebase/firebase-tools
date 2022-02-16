@@ -6,16 +6,13 @@ import { needProjectId } from "../projectUtils";
 import { EmulatorRegistry } from "../emulator/registry";
 import { Emulators } from "../emulator/types";
 import { FunctionsEmulator } from "../emulator/functionsEmulator";
+import { HostingRewrites } from "../firebaseConfig";
+import { FirebaseError } from "../error";
 
 export interface FunctionsProxyOptions {
   port: number;
   project?: string;
   targets: string[];
-}
-
-export interface FunctionProxyRewrite {
-  function: string;
-  function_region: string;
 }
 
 /**
@@ -25,14 +22,19 @@ export interface FunctionProxyRewrite {
  */
 export function functionsProxy(
   options: FunctionsProxyOptions
-): (r: FunctionProxyRewrite) => Promise<RequestHandler> {
-  return (rewrite: FunctionProxyRewrite) => {
+): (r: HostingRewrites) => Promise<RequestHandler> {
+  return (rewrite: HostingRewrites) => {
     return new Promise((resolve) => {
       const projectId = needProjectId(options);
-      if (!rewrite.function_region) {
-        rewrite.function_region = "us-central1";
+      if (!("function" in rewrite)) {
+        throw new FirebaseError(`A non-function rewrite cannot be used in functionsProxy`, {
+          exit: 2,
+        });
       }
-      let url = `https://${rewrite.function_region}-${projectId}.cloudfunctions.net/${rewrite.function}`;
+      if (!rewrite.region) {
+        rewrite.region = "us-central1";
+      }
+      let url = `https://${rewrite.region}-${projectId}.cloudfunctions.net/${rewrite.function}`;
       let destLabel = "live";
 
       if (includes(options.targets, "functions")) {
@@ -47,16 +49,13 @@ export function functionsProxy(
             functionsEmu.getInfo().port,
             projectId,
             rewrite.function,
-            rewrite.function_region
+            rewrite.region
           );
         }
       }
 
       resolve(
-        proxyRequestHandler(
-          url,
-          `${destLabel} Function ${rewrite.function_region}/${rewrite.function}`
-        )
+        proxyRequestHandler(url, `${destLabel} Function ${rewrite.region}/${rewrite.function}`)
       );
     });
   };

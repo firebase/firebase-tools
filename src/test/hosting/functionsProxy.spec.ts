@@ -5,14 +5,11 @@ import * as nock from "nock";
 import * as sinon from "sinon";
 import * as supertest from "supertest";
 
-import {
-  functionsProxy,
-  FunctionsProxyOptions,
-  FunctionProxyRewrite,
-} from "../../hosting/functionsProxy";
+import { functionsProxy, FunctionsProxyOptions } from "../../hosting/functionsProxy";
 import { EmulatorRegistry } from "../../emulator/registry";
 import { Emulators } from "../../emulator/types";
 import { FakeEmulator } from "../emulators/fakeEmulator";
+import { HostingRewrites } from "../../firebaseConfig";
 
 describe("functionsProxy", () => {
   const fakeOptions: FunctionsProxyOptions = {
@@ -21,11 +18,11 @@ describe("functionsProxy", () => {
     targets: [],
   };
 
-  const fakeRewrite: FunctionProxyRewrite = { function: "bar", function_region: "us-central1" };
-  const fakeRewriteEurope: FunctionProxyRewrite = {
+  const fakeRewrite = { function: "bar", region: "us-central1" } as HostingRewrites;
+  const fakeRewriteEurope = {
     function: "bar",
-    function_region: "europe-west3",
-  };
+    region: "europe-west3",
+  } as HostingRewrites;
 
   beforeEach(async () => {
     const fakeFunctionsEmulator = new FakeEmulator(Emulators.FUNCTIONS, "localhost", 7778);
