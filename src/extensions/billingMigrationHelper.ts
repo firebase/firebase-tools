@@ -1,4 +1,5 @@
-import * as marked from "marked";
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
+const { marked } = require("marked");
 import TerminalRenderer = require("marked-terminal");
 
 import { FirebaseError } from "../error";

@@ -1,17 +1,24 @@
+import * as fs from "fs";
+
 import { expect } from "chai";
 import * as express from "express";
 import * as sinon from "sinon";
 import * as supertest from "supertest";
+import * as winston from "winston";
+import * as logform from "logform";
 
-import { SignatureType } from "../../src/emulator/functionsEmulatorShared";
-import { FunctionsEmulator, InvokeRuntimeOpts } from "../../src/emulator/functionsEmulator";
+import { EmulatedTriggerDefinition } from "../../src/emulator/functionsEmulatorShared";
+import {
+  EmulatableBackend,
+  FunctionsEmulator,
+  InvokeRuntimeOpts,
+} from "../../src/emulator/functionsEmulator";
 import { Emulators } from "../../src/emulator/types";
 import { RuntimeWorker } from "../../src/emulator/functionsRuntimeWorker";
 import { TIMEOUT_LONG, TIMEOUT_MED, MODULE_ROOT } from "./fixtures";
 import { logger } from "../../src/logger";
 import * as registry from "../../src/emulator/registry";
-import * as winston from "winston";
-import * as logform from "logform";
+import * as secretManager from "../../src/gcp/secretManager";
 
 if ((process.env.DEBUG || "").toLowerCase().includes("spec")) {
   const dropLogLevels = (info: logform.TransformableInfo) => info.message;
@@ -28,62 +35,91 @@ if ((process.env.DEBUG || "").toLowerCase().includes("spec")) {
 
 const functionsEmulator = new FunctionsEmulator({
   projectId: "fake-project-id",
-  functionsDir: MODULE_ROOT,
+  projectDir: MODULE_ROOT,
+  emulatableBackends: [
+    {
+      functionsDir: MODULE_ROOT,
+      env: {},
+    },
+  ],
   quiet: true,
 });
 
-// This is normally discovered in FunctionsEmulator#start()
-functionsEmulator.nodeBinary = process.execPath;
+const testBackend = {
+  functionsDir: MODULE_ROOT,
+  env: {},
+  nodeBinary: process.execPath,
+};
 
-functionsEmulator.setTriggersForTesting([
-  {
-    platform: "gcfv1",
-    name: "function_id",
-    id: "us-central1-function_id",
-    region: "us-central1",
-    entryPoint: "function_id",
-    httpsTrigger: {},
-    labels: {},
-  },
-  {
-    platform: "gcfv1",
-    name: "function_id",
-    id: "europe-west2-function_id",
-    region: "europe-west2",
-    entryPoint: "function_id",
-    httpsTrigger: {},
-    labels: {},
-  },
-  {
-    platform: "gcfv1",
-    name: "function_id",
-    id: "europe-west3-function_id",
-    region: "europe-west3",
-    entryPoint: "function_id",
-    httpsTrigger: {},
-    labels: {},
-  },
-  {
-    platform: "gcfv1",
-    name: "callable_function_id",
-    id: "us-central1-callable_function_id",
-    region: "us-central1",
-    entryPoint: "callable_function_id",
-    httpsTrigger: {},
-    labels: {
-      "deployment-callable": "true",
+functionsEmulator.setTriggersForTesting(
+  [
+    {
+      platform: "gcfv1",
+      name: "function_id",
+      id: "us-central1-function_id",
+      region: "us-central1",
+      entryPoint: "function_id",
+      httpsTrigger: {},
+      labels: {},
     },
-  },
-  {
-    platform: "gcfv1",
-    name: "nested-function_id",
-    id: "us-central1-nested-function_id",
-    region: "us-central1",
-    entryPoint: "nested.function_id",
-    httpsTrigger: {},
-    labels: {},
-  },
-]);
+    {
+      platform: "gcfv1",
+      name: "function_id",
+      id: "europe-west2-function_id",
+      region: "europe-west2",
+      entryPoint: "function_id",
+      httpsTrigger: {},
+      labels: {},
+    },
+    {
+      platform: "gcfv1",
+      name: "function_id",
+      id: "europe-west3-function_id",
+      region: "europe-west3",
+      entryPoint: "function_id",
+      httpsTrigger: {},
+      labels: {},
+    },
+    {
+      platform: "gcfv1",
+      name: "callable_function_id",
+      id: "us-central1-callable_function_id",
+      region: "us-central1",
+      entryPoint: "callable_function_id",
+      httpsTrigger: {},
+      labels: {
+        "deployment-callable": "true",
+      },
+    },
+    {
+      platform: "gcfv1",
+      name: "nested-function_id",
+      id: "us-central1-nested-function_id",
+      region: "us-central1",
+      entryPoint: "nested.function_id",
+      httpsTrigger: {},
+      labels: {},
+    },
+    {
+      platform: "gcfv1",
+      name: "secrets_function_id",
+      id: "us-central1-secrets_function_id",
+      region: "us-central1",
+      entryPoint: "secrets_function_id",
+      secretEnvironmentVariables: [
+        {
+          projectId: "fake-project-id",
+          secret: "MY_SECRET",
+          key: "MY_SECRET",
+          version: "1",
+        },
+      ],
+      httpsTrigger: {},
+      labels: {},
+    },
+  ],
+  testBackend
+);
 
 // TODO(samstern): This is an ugly way to just override the InvokeRuntimeOpts on each call
 const startFunctionRuntime = functionsEmulator.startFunctionRuntime.bind(functionsEmulator);
@@ -92,13 +128,12 @@ function useFunctions(triggers: () => {}): void {
 
   // eslint-disable-next-line @typescript-eslint/unbound-method
   functionsEmulator.startFunctionRuntime = (
-    triggerId: string,
-    targetName: string,
-    triggerType: SignatureType,
+    backend: EmulatableBackend,
+    trigger: EmulatedTriggerDefinition,
     proto?: any,
     runtimeOpts?: InvokeRuntimeOpts
-  ): RuntimeWorker => {
-    return startFunctionRuntime(triggerId, targetName, triggerType, proto, {
+  ): Promise<RuntimeWorker> => {
+    return startFunctionRuntime(testBackend, trigger, proto, {
       nodeBinary: process.execPath,
       serializedTriggers,
     });
@@ -683,5 +718,65 @@ describe("FunctionsEmulator-Hub", () => {
           expect(res.body.var).to.eql("localhost:9099");
         });
     }).timeout(TIMEOUT_MED);
+  });
+
+  describe("secrets", () => {
+    let readFileSyncStub: sinon.SinonStub;
+    let accessSecretVersionStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      readFileSyncStub = sinon.stub(fs, "readFileSync").throws("Unexpected call");
+      accessSecretVersionStub = sinon
+        .stub(secretManager, "accessSecretVersion")
+        .rejects("Unexpected call");
+    });
+
+    afterEach(() => {
+      readFileSyncStub.restore();
+      accessSecretVersionStub.restore();
+    });
+
+    it("should load secret values from local secrets file if one exists", async () => {
+      readFileSyncStub.returns("MY_SECRET=local");
+
+      useFunctions(() => {
+        return {
+          secrets_function_id: require("firebase-functions").https.onRequest(
+            (req: express.Request, res: express.Response) => {
+              res.json({ secret: process.env.MY_SECRET });
+            }
+          ),
+        };
+      });
+
+      await supertest(functionsEmulator.createHubServer())
+        .get("/fake-project-id/us-central1/secrets_function_id")
+        .expect(200)
+        .then((res) => {
+          expect(res.body.secret).to.equal("local");
+        });
+    }).timeout(TIMEOUT_LONG);
+
+    it("should try to access secret values from Secret Manager", async () => {
+      readFileSyncStub.throws({ code: "ENOENT" });
+      accessSecretVersionStub.resolves("secretManager");
+
+      useFunctions(() => {
+        return {
+          secrets_function_id: require("firebase-functions").https.onRequest(
+            (req: express.Request, res: express.Response) => {
+              res.json({ secret: process.env.MY_SECRET });
+            }
+          ),
+        };
+      });
+
+      await supertest(functionsEmulator.createHubServer())
+        .get("/fake-project-id/us-central1/secrets_function_id")
+        .expect(200)
+        .then((res) => {
+          expect(res.body.secret).to.equal("secretManager");
+        });
+    }).timeout(TIMEOUT_LONG);
   });
 });

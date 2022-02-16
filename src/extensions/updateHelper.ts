@@ -1,10 +1,10 @@
 import * as clc from "cli-color";
 import * as semver from "semver";
-import * as marked from "marked";
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
+const { marked } = require("marked");
 
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
-import * as resolveSource from "./resolveSource";
 import * as extensionsApi from "./extensionsApi";
 import * as refs from "./refs";
 import {
@@ -242,24 +242,7 @@ export async function updateToVersionFromPublisherSource(
       )}).`
     );
   }
-  let registryEntry;
-  try {
-    registryEntry = await resolveSource.resolveRegistryEntry(existingSpec.name);
-  } catch (err: any) {
-    logger.debug(`Unable to fetch registry.json entry for ${existingSpec.name}`);
-  }
 
-  if (registryEntry) {
-    // Do not allow user to "downgrade" to a version lower than the minimum required version.
-    const minVer = resolveSource.getMinRequiredVersion(registryEntry);
-    if (minVer && semver.gt(minVer, source.spec.version)) {
-      throw new FirebaseError(
-        `The version you are trying to update to (${clc.bold(
-          source.spec.version
-        )}) is less than the minimum version required (${clc.bold(minVer)}) to use this extension.`
-      );
-    }
-  }
   showUpdateVersionInfo(instanceId, existingSpec.version, source.spec.version, extVersionRef);
   warningUpdateToOtherSource(SourceOrigin.PUBLISHED_EXTENSION);
   const releaseNotes = await changelog.getReleaseNotesForUpdate({

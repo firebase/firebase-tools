@@ -17,7 +17,7 @@ import {
   isEmulator,
 } from "./types";
 import { Constants, FIND_AVAILBLE_PORT_BY_DEFAULT } from "./constants";
-import { FunctionsEmulator } from "./functionsEmulator";
+import { EmulatableBackend, FunctionsEmulator } from "./functionsEmulator";
 import { parseRuntimeVersion } from "./functionsEmulatorUtils";
 import { AuthEmulator } from "./auth";
 import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
@@ -305,7 +305,11 @@ function findExportMetadata(importPath: string): ExportMetadata | undefined {
   }
 }
 
-export async function startAll(options: Options, showUI: boolean = true): Promise<void> {
+interface EmulatorOptions extends Options {
+  extensionEnv?: Record<string, string>;
+}
+
+export async function startAll(options: EmulatorOptions, showUI: boolean = true): Promise<void> {
   // Emulators config is specified in firebase.json as:
   // "emulators": {
   //   "firestore": {
@@ -410,10 +414,8 @@ export async function startAll(options: Options, showUI: boolean = true): Promis
     );
 
     utils.assertIsStringOrUndefined(options.extensionDir);
-    const functionsDir = path.join(
-      options.extensionDir || options.config.projectDir,
-      options.config.src.functions.source
-    );
+    const projectDir = options.extensionDir || options.config.projectDir;
+    const functionsDir = path.join(projectDir, options.config.src.functions.source);
 
     let inspectFunctions: number | undefined;
     if (options.inspectFunctions) {
@@ -441,21 +443,28 @@ export async function startAll(options: Options, showUI: boolean = true): Promis
       );
     }
 
-    const account = getProjectDefaultAccount(options.projectRoot as string | null);
+    const account = getProjectDefaultAccount(options.projectRoot);
+    // TODO: Go read firebase.json for extensions and add them to emualtableBackends.
+    const emulatableBackends: EmulatableBackend[] = [
+      {
+        functionsDir,
+        env: {
+          ...options.extensionEnv,
+        },
+        predefinedTriggers: options.extensionTriggers as ParsedTriggerDefinition[] | undefined,
+        nodeMajorVersion: parseRuntimeVersion(
+          options.extensionNodeVersion || options.config.get("functions.runtime")
+        ),
+      },
+    ];
     const functionsEmulator = new FunctionsEmulator({
       projectId,
-      functionsDir,
+      projectDir,
+      emulatableBackends,
       account,
       host: functionsAddr.host,
       port: functionsAddr.port,
       debugPort: inspectFunctions,
-      env: {
-        ...(options.extensionEnv as Record<string, string> | undefined),
-      },
-      predefinedTriggers: options.extensionTriggers as ParsedTriggerDefinition[] | undefined,
-      nodeMajorVersion: parseRuntimeVersion(
-        options.extensionNodeVersion || options.config.get("functions.runtime")
-      ),
     });
     await startEmulator(functionsEmulator);
   }

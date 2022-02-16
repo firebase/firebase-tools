@@ -9,7 +9,7 @@ import { client } from "./client";
 import { needProjectNumber } from "../../projectUtils";
 import { normalizedHostingConfigs } from "../../hosting/normalizedHostingConfigs";
 import { validateDeploy } from "./validate";
-import * as convertConfig from "./convertConfig";
+import { convertConfig } from "./convertConfig";
 import * as deploymentTool from "../../deploymentTool";
 
 /**
