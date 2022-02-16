@@ -59,9 +59,9 @@ export function convertConfig(config?: HostingConfig): { [k: string]: any } {
       } else if ("function" in rewrite) {
         vRewrite.function = rewrite.function;
         if (rewrite.region) {
-          vRewrite.function_region = rewrite.region;
+          vRewrite.functionRegion = rewrite.region;
         } else {
-          vRewrite.function_region = "us-central1";
+          vRewrite.functionRegion = "us-central1";
         }
       } else if ("dynamicLinks" in rewrite) {
         vRewrite.dynamicLinks = rewrite.dynamicLinks;
