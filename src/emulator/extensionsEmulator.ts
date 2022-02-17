@@ -9,6 +9,7 @@ import { toExtensionVersionRef } from "../extensions/refs";
 import { downloadExtensionVersion } from "./download";
 import { EmulatableBackend } from "./functionsEmulator";
 import { getExtensionFunctionInfo } from "../extensions/emulator/optionsHelper";
+import { EmulatorLogger } from "./emulatorLogger";
 
 export interface ExtensionEmulatorArgs {
   projectId: string;
@@ -52,23 +53,45 @@ export class ExtensionsEmulator {
     }
     // TODO: If ref contains 'latest', we need to resolve that to a real version.
 
+    const ref = toExtensionVersionRef(instance.ref);
     const cacheDir =
       process.env.FIREBASE_EXTENSIONS_CACHE_PATH ||
       path.join(os.homedir(), ".cache", "firebase", "extensions");
-    const sourceCodePath = path.join(cacheDir, toExtensionVersionRef(instance.ref));
+    const sourceCodePath = path.join(cacheDir, ref);
 
-    // Check if something is at the cache location already. If so, assume its the extension source code!
-    // TODO(b/216376066): Add some better sanity checking that it is the extension source code & was successfully downloaded.
-    if (!fs.existsSync(sourceCodePath)) {
+    if (!this.hasValidSource({ path: sourceCodePath, extRef: ref })) {
       const extensionVersion = await planner.getExtensionVersion(instance);
-      await downloadExtensionVersion(
-        toExtensionVersionRef(instance.ref),
-        extensionVersion.sourceDownloadUri,
-        sourceCodePath
-      );
+      await downloadExtensionVersion(ref, extensionVersion.sourceDownloadUri, sourceCodePath);
       this.installAndBuildSourceCode(sourceCodePath);
     }
     return sourceCodePath;
+  }
+
+  /**
+   * Returns if the source code at given path is valid.
+   *
+   * Checks against a list of required files or directories that need to be present.
+   */
+  private hasValidSource(args: { path: string; extRef: string }): boolean {
+    const requiredFiles = [
+      "./extension.yaml",
+      "./functions/package.json",
+      "./functions/node_modules",
+    ];
+
+    for (const requiredFile of requiredFiles) {
+      const f = path.join(args.path, requiredFile);
+      if (!fs.existsSync(f)) {
+        EmulatorLogger.forExtension(args.extRef).logLabeled(
+          "BULLET",
+          "extensions",
+          `Detected invalid source code for ${args.extRef}, expected to find ${f}`
+        );
+        return false;
+      }
+    }
+
+    return true;
   }
 
   private installAndBuildSourceCode(sourceCodePath: string): void {

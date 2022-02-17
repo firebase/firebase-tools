@@ -54,7 +54,7 @@ export async function downloadExtensionVersion(
     EmulatorLogger.forExtension(extensionVersionRef).logLabeled(
       "BULLET",
       "extensions",
-      `${extensionVersionRef} already downloaded...`
+      `cache directory for ${extensionVersionRef} already exist...`
     );
   }
   EmulatorLogger.forExtension(extensionVersionRef).logLabeled(
@@ -64,6 +64,7 @@ export async function downloadExtensionVersion(
   );
   const sourceCodeZip = await downloadUtils.downloadToTmp(sourceDownloadUri);
   await unzip(sourceCodeZip, targetDir);
+  fs.chmodSync(targetDir, 0o755);
 
   EmulatorLogger.forExtension(extensionVersionRef).logLabeled(
     "BULLET",
