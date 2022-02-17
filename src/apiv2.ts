@@ -416,7 +416,7 @@ export class Client {
               }
             }
           } else if (options.responseType === "xml") {
-            body = await res.text() as unknown as ResT;
+            body = (await res.text()) as unknown as ResT;
           } else if (options.responseType === "stream") {
             body = res.body as unknown as ResT;
           } else {
