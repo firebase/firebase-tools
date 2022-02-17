@@ -44,6 +44,7 @@ import { getProjectDefaultAccount } from "../auth";
 import { Options } from "../options";
 import { ParsedTriggerDefinition } from "./functionsEmulatorShared";
 import { ExtensionsEmulator } from "./extensionsEmulator";
+import { previews } from "../previews";
 
 async function getAndCheckAddress(emulator: Emulators, options: Options): Promise<Address> {
   if (emulator === Emulators.EXTENSIONS) {
@@ -183,7 +184,12 @@ export async function cleanShutdown(): Promise<void> {
  * @param options
  */
 export function filterEmulatorTargets(options: any): Emulators[] {
-  let targets = [...ALL_SERVICE_EMULATORS, Emulators.EXTENSIONS].filter((e) => {
+  let targets = [...ALL_SERVICE_EMULATORS];
+  if (previews.extensionsemulator) {
+    targets.push(Emulators.EXTENSIONS);
+  }
+
+  targets = targets.filter((e) => {
     return options.config.has(e) || options.config.has(`emulators.${e}`);
   });
 
@@ -336,7 +342,6 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
     );
   }
   const hubLogger = EmulatorLogger.forEmulator(Emulators.HUB);
-  // TODO (b/217189992): Support '--only extensions` & add extensions to this logging.
   hubLogger.logLabeled("BULLET", "emulators", `Starting emulators: ${targets.join(", ")}`);
 
   const projectId: string = getProjectId(options) || ""; // TODO: Next breaking change, consider making this fall back to demo project.
@@ -435,7 +440,7 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
     });
   }
 
-  if (shouldStart(options, Emulators.EXTENSIONS)) {
+  if (shouldStart(options, Emulators.EXTENSIONS) && previews.extensionsemulator) {
     // TODO: This should not error out when called with a fake project.
     const projectNumber = await needProjectNumber(options);
     const aliases = getAliases(options, projectId);
@@ -464,7 +469,7 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
       functionsLogger.logLabeled(
         "WARN",
         "functions",
-        `You are running the Functions/Extensions emulator in debug mode (port=${inspectFunctions}). This means that functions will execute in sequence rather than in parallel.`
+        `You are running the Functions emulator in debug mode (port=${inspectFunctions}). This means that functions will execute in sequence rather than in parallel.`
       );
     }
 
@@ -476,7 +481,7 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
       functionsLogger.logLabeled(
         "WARN",
         "functions",
-        `The following emulators are not running, calls to these services from the Functions/Extensions emulator will affect production: ${clc.bold(
+        `The following emulators are not running, calls to these services from the Functions emulator will affect production: ${clc.bold(
           emulatorsNotRunning.join(", ")
         )}`
       );
