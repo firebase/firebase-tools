@@ -911,7 +911,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     envs.PORT = "80";
 
     if (trigger) {
-      const target = trigger.entryPoint.replace(/-/g, ".");
+      const target = trigger.entryPoint;
       envs.FUNCTION_TARGET = target;
       envs.FUNCTION_SIGNATURE_TYPE = getSignatureType(trigger);
       envs.K_SERVICE = trigger.name;
