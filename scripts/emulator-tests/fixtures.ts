@@ -6,17 +6,6 @@ export const TIMEOUT_MED = 5000;
 export const MODULE_ROOT = findModuleRoot("firebase-tools", __dirname);
 export const FunctionRuntimeBundles: { [key: string]: FunctionsRuntimeBundle } = {
   onCreate: {
-    adminSdkConfig: {
-      databaseURL: "https://fake-project-id-default-rtdb.firebaseio.com",
-      storageBucket: "fake-project-id.appspot.com",
-    },
-    emulators: {
-      firestore: {
-        host: "localhost",
-        port: 8080,
-      },
-    },
-    cwd: MODULE_ROOT,
     proto: {
       data: {
         value: {
@@ -41,22 +30,8 @@ export const FunctionRuntimeBundles: { [key: string]: FunctionsRuntimeBundle } =
         },
       },
     },
-    triggerId: "us-central1-function_id",
-    targetName: "function_id",
-    projectId: "fake-project-id",
   },
   onWrite: {
-    adminSdkConfig: {
-      databaseURL: "https://fake-project-id-default-rtdb.firebaseio.com",
-      storageBucket: "fake-project-id.appspot.com",
-    },
-    emulators: {
-      firestore: {
-        host: "localhost",
-        port: 8080,
-      },
-    },
-    cwd: MODULE_ROOT,
     proto: {
       data: {
         value: {
@@ -81,22 +56,8 @@ export const FunctionRuntimeBundles: { [key: string]: FunctionsRuntimeBundle } =
         },
       },
     },
-    triggerId: "us-central1-function_id",
-    targetName: "function_id",
-    projectId: "fake-project-id",
   },
   onDelete: {
-    adminSdkConfig: {
-      databaseURL: "https://fake-project-id-default-rtdb.firebaseio.com",
-      storageBucket: "fake-project-id.appspot.com",
-    },
-    emulators: {
-      firestore: {
-        host: "localhost",
-        port: 8080,
-      },
-    },
-    cwd: MODULE_ROOT,
     proto: {
       data: {
         oldValue: {
@@ -121,22 +82,8 @@ export const FunctionRuntimeBundles: { [key: string]: FunctionsRuntimeBundle } =
         },
       },
     },
-    triggerId: "us-central1-function_id",
-    targetName: "function_id",
-    projectId: "fake-project-id",
   },
   onUpdate: {
-    adminSdkConfig: {
-      databaseURL: "https://fake-project-id-default-rtdb.firebaseio.com",
-      storageBucket: "fake-project-id.appspot.com",
-    },
-    emulators: {
-      firestore: {
-        host: "localhost",
-        port: 8080,
-      },
-    },
-    cwd: MODULE_ROOT,
     proto: {
       data: {
         oldValue: {
@@ -173,25 +120,9 @@ export const FunctionRuntimeBundles: { [key: string]: FunctionsRuntimeBundle } =
         timestamp: "2019-05-15T16:21:15.148831Z",
       },
     },
-    triggerId: "us-central1-function_id",
-    targetName: "function_id",
-    projectId: "fake-project-id",
   },
   onRequest: {
-    adminSdkConfig: {
-      databaseURL: "https://fake-project-id-default-rtdb.firebaseio.com",
-      storageBucket: "fake-project-id.appspot.com",
-    },
-    emulators: {
-      firestore: {
-        host: "localhost",
-        port: 8080,
-      },
-    },
-    cwd: MODULE_ROOT,
-    triggerId: "us-central1-function_id",
-    targetName: "function_id",
-    projectId: "fake-project-id",
+    proto: {},
   },
 };
 

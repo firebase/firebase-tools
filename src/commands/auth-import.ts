@@ -114,7 +114,7 @@ module.exports = new Command("auth:import [dataFile]")
             if (err) {
               throw new FirebaseError(`Validation Error: ${err}`);
             }
-            currentBatch.push(user);
+            currentBatch.push(value);
             if (currentBatch.length === MAX_BATCH_SIZE) {
               batches.push(currentBatch);
               currentBatch = [];
