@@ -2,7 +2,7 @@ import * as commandUtils from "../../emulator/commandUtils";
 import { expect } from "chai";
 import { FirebaseError } from "../../error";
 import { EXPORT_ON_EXIT_USAGE_ERROR, EXPORT_ON_EXIT_CWD_DANGER } from "../../emulator/commandUtils";
-import { delimiter, join, resolve } from "path";
+import * as path from "path";
 import * as sinon from "sinon";
 
 describe("commandUtils", () => {
@@ -17,13 +17,13 @@ describe("commandUtils", () => {
 
     let pathStub: sinon.SinonStub;
     beforeEach(() => {
-      pathStub = sinon.stub(require("path"), "resolve").callsFake((path) => {
+      pathStub = sinon.stub(path, "resolve").callsFake((path) => {
         return path === "." ? mockCWD : mockDestinationDir;
       });
     });
 
     afterEach(() => {
-      pathStub.reset();
+      pathStub.restore();
     });
 
     it("Should not block if destination contains a match to the CWD", () => {
@@ -41,9 +41,9 @@ describe("commandUtils", () => {
   const directoriesThatShouldFail = [
     ".", // The current dir
     "./", // The current dir with /
-    resolve("."), // An absolute path
-    resolve(".."), // A folder that directs to the CWD
-    resolve("../.."), // Another folder that directs to the CWD
+    path.resolve("."), // An absolute path
+    path.resolve(".."), // A folder that directs to the CWD
+    path.resolve("../.."), // Another folder that directs to the CWD
   ];
 
   directoriesThatShouldFail.forEach((dir) => {
@@ -51,7 +51,7 @@ describe("commandUtils", () => {
       expect(() => testSetExportOnExitOptions({ exportOnExit: dir })).to.throw(
         EXPORT_ON_EXIT_CWD_DANGER
       );
-      const cwdSubDir = join(dir, "some-dir");
+      const cwdSubDir = path.join(dir, "some-dir");
       expect(testSetExportOnExitOptions({ exportOnExit: cwdSubDir }).exportOnExit).to.equal(
         cwdSubDir
       );
@@ -62,7 +62,7 @@ describe("commandUtils", () => {
     expect(() => testSetExportOnExitOptions({ import: ".", exportOnExit: true })).to.throw(
       EXPORT_ON_EXIT_CWD_DANGER
     );
-    const cwdSubDir = join(".", "some-dir");
+    const cwdSubDir = path.join(".", "some-dir");
     expect(
       testSetExportOnExitOptions({ import: cwdSubDir, exportOnExit: true }).exportOnExit
     ).to.equal(cwdSubDir);
