@@ -1,7 +1,8 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
 
-import * as api from "./api";
+import { firebaseApiOrigin } from "./api";
+import { Client } from "./apiv2";
 import { ensure as ensureApiEnabled } from "./ensureApiEnabled";
 import { FirebaseError } from "./error";
 import { needProjectId } from "./projectUtils";
@@ -9,6 +10,8 @@ import * as runtimeconfig from "./gcp/runtimeconfig";
 import * as args from "./deploy/functions/args";
 
 export const RESERVED_NAMESPACES = ["firebase"];
+
+const apiClient = new Client({ urlPrefix: firebaseApiOrigin });
 
 interface Id {
   config: string;
@@ -70,10 +73,9 @@ export function getAppEngineLocation(config: any): string {
 
 export async function getFirebaseConfig(options: any): Promise<args.FirebaseConfig> {
   const projectId = needProjectId(options);
-  const response = await api.request("GET", "/v1beta1/projects/" + projectId + "/adminSdkConfig", {
-    auth: true,
-    origin: api.firebaseApiOrigin,
-  });
+  const response = await apiClient.get<args.FirebaseConfig>(
+    `/v1beta1/projects/${projectId}/adminSdkConfig`
+  );
   return response.body;
 }
 

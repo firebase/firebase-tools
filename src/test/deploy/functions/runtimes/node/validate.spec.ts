@@ -2,7 +2,6 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import { FirebaseError } from "../../../../../error";
-import { RUNTIME_NOT_SET } from "../../../../../deploy/functions/runtimes/node/parseRuntimeAndValidateSDK";
 import * as validate from "../../../../../deploy/functions/runtimes/node/validate";
 import * as fsutils from "../../../../../fsutils";
 
