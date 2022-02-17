@@ -409,6 +409,7 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
   }
 
   const emulatableBackends: EmulatableBackend[] = [];
+  const projectDir = (options.extDevDir || options.config.projectDir) as string;
   if (shouldStart(options, Emulators.FUNCTIONS)) {
     // Note: ext:dev:emulators:* commands hit this path, not the Emulators.EXTENSIONS path
     utils.assertDefined(options.config.src.functions);
@@ -418,7 +419,6 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
     );
 
     utils.assertIsStringOrUndefined(options.extDevDir);
-    const projectDir = options.extDevDir || options.config.projectDir;
     const functionsDir = path.join(projectDir, options.config.src.functions.source);
 
     emulatableBackends.push({
