@@ -2,6 +2,7 @@ import * as _ from "lodash";
 import * as fs from "fs";
 import * as path from "path";
 import * as express from "express";
+import * as cors from "cors";
 import * as clc from "cli-color";
 import * as http from "http";
 import * as jwt from "jsonwebtoken";
@@ -26,7 +27,6 @@ import { ChildProcess, spawnSync } from "child_process";
 import {
   emulatedFunctionsByRegion,
   EmulatedTriggerDefinition,
-  SignatureType,
   EventSchedule,
   EventTrigger,
   formatHost,
@@ -37,6 +37,7 @@ import {
   getSignatureType,
   HttpConstants,
   ParsedTriggerDefinition,
+  SignatureType,
 } from "./functionsEmulatorShared";
 import { EmulatorRegistry } from "./registry";
 import { EventEmitter } from "events";
@@ -224,6 +225,8 @@ export class FunctionsEmulator implements EmulatorInstance {
     this.workQueue.start();
 
     const hub = express();
+
+    hub.use(cors({ origin: true }));
 
     const dataMiddleware: express.RequestHandler = (req, res, next) => {
       const chunks: Buffer[] = [];

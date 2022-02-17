@@ -2,8 +2,6 @@ import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as fs from "fs";
 import * as path from "path";
-
-import { Config } from "../config";
 import { logger } from "../logger";
 import * as track from "../track";
 import * as utils from "../utils";
@@ -24,9 +22,10 @@ import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
 import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
 import { HostingEmulator } from "./hostingEmulator";
 import { FirebaseError } from "../error";
-import { getProjectId, needProjectId, getAliases, needProjectNumber } from "../projectUtils";
+import { getAliases, getProjectId, needProjectId, needProjectNumber } from "../projectUtils";
 import { PubsubEmulator } from "./pubsubEmulator";
 import * as commandUtils from "./commandUtils";
+import { FLAG_EXPORT_ON_EXIT_NAME } from "./commandUtils";
 import { EmulatorHub } from "./hub";
 import { ExportMetadata, HubExport } from "./hubExport";
 import { EmulatorUI } from "./ui";
@@ -36,7 +35,6 @@ import { EmulatorLogger } from "./emulatorLogger";
 import * as portUtils from "./portUtils";
 import { EmulatorHubClient } from "./hubClient";
 import { promptOnce } from "../prompt";
-import { FLAG_EXPORT_ON_EXIT_NAME } from "./commandUtils";
 import { fileExistsSync } from "../fsutils";
 import { StorageEmulator } from "./storage";
 import { getDefaultDatabaseInstance } from "../getDefaultDatabaseInstance";
@@ -720,15 +718,15 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
     );
   }
 
+  const loggingAddr = await getAndCheckAddress(Emulators.LOGGING, options);
+  const loggingEmulator = new LoggingEmulator({
+    host: loggingAddr.host,
+    port: loggingAddr.port,
+  });
+
+  await startEmulator(loggingEmulator);
+
   if (showUI && shouldStart(options, Emulators.UI)) {
-    const loggingAddr = await getAndCheckAddress(Emulators.LOGGING, options);
-    const loggingEmulator = new LoggingEmulator({
-      host: loggingAddr.host,
-      port: loggingAddr.port,
-    });
-
-    await startEmulator(loggingEmulator);
-
     const uiAddr = await getAndCheckAddress(Emulators.UI, options);
     const ui = new EmulatorUI({
       projectId: projectId,
