@@ -1310,7 +1310,7 @@ describe("Storage emulator", () => {
           });
       });
 
-      it("#uploadResumable", async () => {
+      it("#uploadResumableDoesNotRequireMultipleAuthHeaders", async () => {
         const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
           .post(
             `/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`
