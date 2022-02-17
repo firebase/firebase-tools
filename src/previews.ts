@@ -10,6 +10,7 @@ interface PreviewFlags {
   golang: boolean;
   deletegcfartifacts: boolean;
   artifactregistry: boolean;
+  emulatoruisnapshot: boolean;
 }
 
 export const previews: PreviewFlags = {
@@ -22,6 +23,7 @@ export const previews: PreviewFlags = {
   golang: false,
   deletegcfartifacts: false,
   artifactregistry: false,
+  emulatoruisnapshot: false,
 
   ...(configstore.get("previews") as Partial<PreviewFlags>),
 };

@@ -40,7 +40,7 @@ type HostingRedirects = HostingSource & {
 export type HostingRewrites = HostingSource &
   (
     | { destination: string }
-    | { function: string }
+    | { function: string; region?: string }
     | {
         run: {
           serviceId: string;

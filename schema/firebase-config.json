@@ -622,6 +622,9 @@
                                             },
                                             "glob": {
                                                 "type": "string"
+                                            },
+                                            "region": {
+                                                "type": "string"
                                             }
                                         },
                                         "required": [
@@ -694,6 +697,9 @@
                                         "additionalProperties": false,
                                         "properties": {
                                             "function": {
+                                                "type": "string"
+                                            },
+                                            "region": {
                                                 "type": "string"
                                             },
                                             "source": {
@@ -773,6 +779,9 @@
                                                 "type": "string"
                                             },
                                             "regex": {
+                                                "type": "string"
+                                            },
+                                            "region": {
                                                 "type": "string"
                                             }
                                         },
@@ -1095,6 +1104,9 @@
                                                         },
                                                         "glob": {
                                                             "type": "string"
+                                                        },
+                                                        "region": {
+                                                            "type": "string"
                                                         }
                                                     },
                                                     "required": [
@@ -1167,6 +1179,9 @@
                                                     "additionalProperties": false,
                                                     "properties": {
                                                         "function": {
+                                                            "type": "string"
+                                                        },
+                                                        "region": {
                                                             "type": "string"
                                                         },
                                                         "source": {
@@ -1246,6 +1261,9 @@
                                                             "type": "string"
                                                         },
                                                         "regex": {
+                                                            "type": "string"
+                                                        },
+                                                        "region": {
                                                             "type": "string"
                                                         }
                                                     },
@@ -1568,6 +1586,9 @@
                                                         },
                                                         "glob": {
                                                             "type": "string"
+                                                        },
+                                                        "region": {
+                                                            "type": "string"
                                                         }
                                                     },
                                                     "required": [
@@ -1640,6 +1661,9 @@
                                                     "additionalProperties": false,
                                                     "properties": {
                                                         "function": {
+                                                            "type": "string"
+                                                        },
+                                                        "region": {
                                                             "type": "string"
                                                         },
                                                         "source": {
@@ -1719,6 +1743,9 @@
                                                             "type": "string"
                                                         },
                                                         "regex": {
+                                                            "type": "string"
+                                                        },
+                                                        "region": {
                                                             "type": "string"
                                                         }
                                                     },
