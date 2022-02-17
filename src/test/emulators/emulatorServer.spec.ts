@@ -3,11 +3,13 @@ import { EmulatorRegistry } from "../../emulator/registry";
 import { expect } from "chai";
 import { FakeEmulator } from "./fakeEmulator";
 import { EmulatorServer } from "../../emulator/emulatorServer";
+import { findAvailablePort } from "../../emulator/portUtils";
 
 describe("EmulatorServer", () => {
   it("should correctly start and stop an emulator", async () => {
     const name = Emulators.FUNCTIONS;
-    const emulator = new FakeEmulator(name, "localhost", 5000);
+    const port = await findAvailablePort("localhost", 5000);
+    const emulator = new FakeEmulator(name, "localhost", port);
     const server = new EmulatorServer(emulator);
 
     await server.start();

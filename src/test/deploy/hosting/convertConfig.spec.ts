@@ -22,14 +22,19 @@ describe("convertConfig", () => {
       want: { rewrites: [{ glob: "/foo$", path: "https://example.com" }] },
     },
     {
-      name: "returns rewrites for glob CF3",
+      name: "defaults to us-central1 for CF3",
       input: { rewrites: [{ glob: "/foo", function: "foofn" }] },
-      want: { rewrites: [{ glob: "/foo", function: "foofn" }] },
+      want: { rewrites: [{ glob: "/foo", function: "foofn", functionRegion: "us-central1" }] },
+    },
+    {
+      name: "returns rewrites for glob CF3",
+      input: { rewrites: [{ glob: "/foo", function: "foofn", region: "europe-west2" }] },
+      want: { rewrites: [{ glob: "/foo", function: "foofn", functionRegion: "europe-west2" }] },
     },
     {
       name: "returns rewrites for regex CF3",
-      input: { rewrites: [{ regex: "/foo$", function: "foofn" }] },
-      want: { rewrites: [{ regex: "/foo$", function: "foofn" }] },
+      input: { rewrites: [{ regex: "/foo$", function: "foofn", region: "us-central1" }] },
+      want: { rewrites: [{ regex: "/foo$", function: "foofn", functionRegion: "us-central1" }] },
     },
     {
       name: "returns rewrites for glob Run",
