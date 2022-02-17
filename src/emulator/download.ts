@@ -48,6 +48,11 @@ export async function downloadExtensionVersion(
   sourceDownloadUri: string,
   targetDir: string
 ): Promise<void> {
+  EmulatorLogger.forExtension(extensionVersionRef).logLabeled(
+    "BULLET",
+    "extensions",
+    `Starting download for ${extensionVersionRef} source code...`
+  );
   try {
     fs.mkdirSync(targetDir);
   } catch (err) {
