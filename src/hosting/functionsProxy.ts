@@ -6,6 +6,8 @@ import { needProjectId } from "../projectUtils";
 import { EmulatorRegistry } from "../emulator/registry";
 import { Emulators } from "../emulator/types";
 import { FunctionsEmulator } from "../emulator/functionsEmulator";
+import { HostingRewrites } from "../firebaseConfig";
+import { FirebaseError } from "../error";
 
 export interface FunctionsProxyOptions {
   port: number;
@@ -13,24 +15,26 @@ export interface FunctionsProxyOptions {
   targets: string[];
 }
 
-export interface FunctionProxyRewrite {
-  function: string;
-}
-
 /**
  * Returns a function which, given a FunctionProxyRewrite, returns a Promise
  * that resolves with a middleware-like function that proxies the request to a
  * hosted or live function.
  */
-export default function (
+export function functionsProxy(
   options: FunctionsProxyOptions
-): (r: FunctionProxyRewrite) => Promise<RequestHandler> {
-  return (rewrite: FunctionProxyRewrite) => {
+): (r: HostingRewrites) => Promise<RequestHandler> {
+  return (rewrite: HostingRewrites) => {
     return new Promise((resolve) => {
-      // TODO(samstern): This proxy assumes all functions are in the default region, but this is
-      //                 not a safe assumption.
       const projectId = needProjectId(options);
-      let url = `https://us-central1-${projectId}.cloudfunctions.net/${rewrite.function}`;
+      if (!("function" in rewrite)) {
+        throw new FirebaseError(`A non-function rewrite cannot be used in functionsProxy`, {
+          exit: 2,
+        });
+      }
+      if (!rewrite.region) {
+        rewrite.region = "us-central1";
+      }
+      let url = `https://${rewrite.region}-${projectId}.cloudfunctions.net/${rewrite.function}`;
       let destLabel = "live";
 
       if (includes(options.targets, "functions")) {
@@ -45,12 +49,14 @@ export default function (
             functionsEmu.getInfo().port,
             projectId,
             rewrite.function,
-            "us-central1"
+            rewrite.region
           );
         }
       }
 
-      resolve(proxyRequestHandler(url, `${destLabel} Function ${rewrite.function}`));
+      resolve(
+        proxyRequestHandler(url, `${destLabel} Function ${rewrite.region}/${rewrite.function}`)
+      );
     });
   };
 }
