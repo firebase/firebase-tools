@@ -1,6 +1,7 @@
 import * as backend from "../backend";
 import * as iam from "../../../gcp/iam";
 import { obtainStorageBindings, ensureStorageTriggerRegion } from "./storage";
+import { obtainFireAlertsBindings, ensureFirebaseAlertsTriggerRegion } from "./firebaseAlerts";
 
 const noop = (): Promise<void> => Promise.resolve();
 
@@ -29,11 +30,54 @@ export const PubSubService: Service = {
   ensureTriggerRegion: noop,
 };
 /** A storage service object */
-export const StorageService = {
+export const StorageService: Service = {
   name: "storage",
   api: "storage.googleapis.com",
   requiredProjectBindings: obtainStorageBindings,
   ensureTriggerRegion: ensureStorageTriggerRegion,
+};
+/** A firebase alerts service object */
+/**
+
+1. Enable APIs
+
+$ gcloud services enable run.googleapis.com
+$ gcloud services enable logging.googleapis.com
+$ gcloud services enable cloudbuild.googleapis.com
+$ gcloud services enable cloudfunctions.googleapis.com
+$ gcloud services enable eventarc.googleapis.com
+
+$ gcloud services enable artifactregistry.googleapis.com
+
+2. Create your own service account (eg: username-sa). Then grant the eventarc.eventReceiver and run.invoker roles to it.
+
+$ gcloud iam service-accounts create [SERVICE-ACCOUNT-NAME]
+$ gcloud projects add-iam-policy-binding [PROJECT-ID] \
+--member serviceAccount:[SERVICE-ACCOUNT-NAME]@[PROJECT-ID].iam.gserviceaccount.com \
+--role roles/eventarc.eventReceiver
+$ gcloud projects add-iam-policy-binding [PROJECT-ID] \
+--member serviceAccount:[SERVICE-ACCOUNT-NAME]@[PROJECT-ID].iam.gserviceaccount.com \
+--role roles/run.invoker
+
+3. Deploy your v2 function
+
+$ gcloud alpha functions deploy [FUNCTION-NAME] \
+--source=gs://[BUCKET-NAME]/nodejs10event.zip \
+--runtime=nodejs14 \
+--entry-point=hello \
+--region=us-central1 \
+--gen2 \
+--trigger-event-filters=type=google.firebase.firebasealerts.alerts.v1.published,alerttype=[EVENT-FILTER-VALUE] \ (Option 1: with alert type filter)
+--trigger-event-filters=type=google.firebase.firebasealerts.alerts.v1.published,alerttype=[EVENT-FILTER-VALUE],appid=[EVENT-FILTER-VALUE] \ (Option 2: with alert type and app id filters) \
+--trigger-location=global
+
+
+ */
+export const FirebaseAlertsService: Service = {
+  name: "firealerts",
+  api: ["logging.googleapis.com"], // TODO(colerogers): ensure this api is enabled
+  requiredProjectBindings: obtainFireAlertsBindings,
+  ensureTriggerRegion: ensureFirebaseAlertsTriggerRegion,
 };
 
 /** Mapping from event type string to service object */
@@ -43,6 +87,7 @@ export const EVENT_SERVICE_MAPPING: Record<string, any> = {
   "google.cloud.storage.object.v1.archived": StorageService,
   "google.cloud.storage.object.v1.deleted": StorageService,
   "google.cloud.storage.object.v1.metadataUpdated": StorageService,
+  "firebase.firebasealerts.alerts.v1.published": FirebaseAlertsService,
 };
 
 /**
