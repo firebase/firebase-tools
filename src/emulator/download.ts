@@ -48,16 +48,17 @@ export async function downloadExtensionVersion(
   sourceDownloadUri: string,
   targetDir: string
 ): Promise<void> {
+  const emulatorLogger = EmulatorLogger.forExtension({ref: extensionVersionRef});
   try {
     fs.mkdirSync(targetDir);
   } catch (err) {
-    EmulatorLogger.forExtension(extensionVersionRef).logLabeled(
+   emulatorLogger.logLabeled(
       "BULLET",
       "extensions",
       `${extensionVersionRef} already downloaded...`
     );
   }
-  EmulatorLogger.forExtension(extensionVersionRef).logLabeled(
+  emulatorLogger.logLabeled(
     "BULLET",
     "extensions",
     `downloading ${sourceDownloadUri}...`
@@ -65,7 +66,7 @@ export async function downloadExtensionVersion(
   const sourceCodeZip = await downloadUtils.downloadToTmp(sourceDownloadUri);
   await unzip(sourceCodeZip, targetDir);
 
-  EmulatorLogger.forExtension(extensionVersionRef).logLabeled(
+  emulatorLogger.logLabeled(
     "BULLET",
     "extensions",
     `Downloaded to ${targetDir}...`

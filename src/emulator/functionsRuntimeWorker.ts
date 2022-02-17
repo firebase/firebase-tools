@@ -7,7 +7,7 @@ import {
   getTemporarySocketPath,
 } from "./functionsEmulatorShared";
 import { EventEmitter } from "events";
-import { EmulatorLogger } from "./emulatorLogger";
+import { EmulatorLogger, ExtensionLogInfo } from "./emulatorLogger";
 import { FirebaseError } from "../error";
 
 type LogListener = (el: EmulatorLog) => any;
@@ -256,7 +256,7 @@ export class RuntimeWorkerPool {
     return;
   }
 
-  addWorker(triggerId: string | undefined, runtime: FunctionsRuntimeInstance): RuntimeWorker {
+  addWorker(triggerId: string | undefined, runtime: FunctionsRuntimeInstance, extensionLogInfo?: ExtensionLogInfo): RuntimeWorker {
     const worker = new RuntimeWorker(this.getKey(triggerId), runtime);
     this.log(`addWorker(${worker.key})`);
 
@@ -265,7 +265,7 @@ export class RuntimeWorkerPool {
     this.setTriggerWorkers(triggerId, keyWorkers);
 
     const logger = triggerId
-      ? EmulatorLogger.forFunction(triggerId)
+      ? EmulatorLogger.forFunction(triggerId, extensionLogInfo)
       : EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
     worker.onLogs((log: EmulatorLog) => {
       logger.handleRuntimeLog(log);
