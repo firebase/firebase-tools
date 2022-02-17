@@ -911,11 +911,10 @@ export class FunctionsEmulator implements EmulatorInstance {
     envs.PORT = "80";
 
     if (trigger) {
-      const service = trigger.name;
-      const target = service.replace(/-/g, ".");
+      const target = trigger.entryPoint;
       envs.FUNCTION_TARGET = target;
       envs.FUNCTION_SIGNATURE_TYPE = getSignatureType(trigger);
-      envs.K_SERVICE = service;
+      envs.K_SERVICE = trigger.name;
     }
     return envs;
   }
