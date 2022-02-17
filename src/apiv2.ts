@@ -23,7 +23,7 @@ interface BaseRequestOptions<T> extends VerbOptions {
   method: HttpMethod;
   path: string;
   body?: T | string | NodeJS.ReadableStream;
-  responseType?: "json" | "stream";
+  responseType?: "json" | "stream" | "xml";
   redirect?: "error" | "follow" | "manual";
   compress?: boolean;
 }
