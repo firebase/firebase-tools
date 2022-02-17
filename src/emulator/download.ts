@@ -48,29 +48,21 @@ export async function downloadExtensionVersion(
   sourceDownloadUri: string,
   targetDir: string
 ): Promise<void> {
-  const emulatorLogger = EmulatorLogger.forExtension({ref: extensionVersionRef});
+  const emulatorLogger = EmulatorLogger.forExtension({ ref: extensionVersionRef });
   try {
     fs.mkdirSync(targetDir);
   } catch (err) {
-   emulatorLogger.logLabeled(
+    emulatorLogger.logLabeled(
       "BULLET",
       "extensions",
       `${extensionVersionRef} already downloaded...`
     );
   }
-  emulatorLogger.logLabeled(
-    "BULLET",
-    "extensions",
-    `downloading ${sourceDownloadUri}...`
-  );
+  emulatorLogger.logLabeled("BULLET", "extensions", `downloading ${sourceDownloadUri}...`);
   const sourceCodeZip = await downloadUtils.downloadToTmp(sourceDownloadUri);
   await unzip(sourceCodeZip, targetDir);
 
-  emulatorLogger.logLabeled(
-    "BULLET",
-    "extensions",
-    `Downloaded to ${targetDir}...`
-  );
+  emulatorLogger.logLabeled("BULLET", "extensions", `Downloaded to ${targetDir}...`);
   // TODO: We should not need to do this wait
   // However, when I remove this, unzipDir doesn't contain everything yet.
   await new Promise((resolve) => setTimeout(resolve, 1000));

@@ -34,9 +34,9 @@ export enum Verbosity {
   QUIET = 2,
 }
 export type ExtensionLogInfo = {
-  ref?: string,
-  instanceId?: string,
-}
+  ref?: string;
+  instanceId?: string;
+};
 
 export class EmulatorLogger {
   static verbosity: Verbosity = Verbosity.DEBUG;
@@ -54,7 +54,7 @@ export class EmulatorLogger {
     });
   }
 
-  static forFunction(functionName: string, extensionLogInfo?: ExtensionLogInfo ): EmulatorLogger {
+  static forFunction(functionName: string, extensionLogInfo?: ExtensionLogInfo): EmulatorLogger {
     return new EmulatorLogger({
       metadata: {
         emulator: {
@@ -74,7 +74,7 @@ export class EmulatorLogger {
         emulator: {
           name: "extensions",
         },
-        extension: extensionLogInfo
+        extension: extensionLogInfo,
       },
     });
   }

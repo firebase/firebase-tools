@@ -256,7 +256,11 @@ export class RuntimeWorkerPool {
     return;
   }
 
-  addWorker(triggerId: string | undefined, runtime: FunctionsRuntimeInstance, extensionLogInfo?: ExtensionLogInfo): RuntimeWorker {
+  addWorker(
+    triggerId: string | undefined,
+    runtime: FunctionsRuntimeInstance,
+    extensionLogInfo?: ExtensionLogInfo
+  ): RuntimeWorker {
     const worker = new RuntimeWorker(this.getKey(triggerId), runtime);
     this.log(`addWorker(${worker.key})`);
 

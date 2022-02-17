@@ -1188,7 +1188,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     const extensionLogInfo = {
       instanceId: backend.extensionInstanceId,
       ref: backend.extensionVersion?.ref,
-    }
+    };
     this.workerPool.addWorker(trigger.id, runtime, extensionLogInfo);
     return this.workerPool.submitWork(trigger.id, frb, opts);
   }
