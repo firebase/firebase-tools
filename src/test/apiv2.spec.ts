@@ -394,6 +394,36 @@ describe("apiv2", () => {
       expect(nock.isDone()).to.be.true;
     });
 
+    it("should preserve XML messages", async () => {
+      const xml = "<?xml version='1.0' encoding='UTF-8'?><Message>Hello!</Message>";
+      nock("https://example.com").get("/path/to/foo").reply(200, xml);
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = await c.request({
+        method: "GET",
+        path: "/path/to/foo",
+        responseType: "xml",
+      });
+      expect(r.body).to.deep.equal(xml);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should preserve XML messages on error", async () => {
+      const xml =
+        "<?xml version='1.0' encoding='UTF-8'?><Error><Code>EntityTooLarge</Code></Error>";
+      nock("https://example.com").get("/path/to/foo").reply(400, xml);
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      await expect(
+        c.request({
+          method: "GET",
+          path: "/path/to/foo",
+          responseType: "xml",
+        })
+      ).to.eventually.be.rejectedWith(FirebaseError, /EntityTooLarge/);
+      expect(nock.isDone()).to.be.true;
+    });
+
     describe("with a proxy", () => {
       let proxyServer: Server;
       let targetServer: Server;
