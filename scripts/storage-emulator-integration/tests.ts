@@ -1309,6 +1309,29 @@ describe("Storage emulator", () => {
             expect(md.downloadTokens.split(",")).to.not.deep.equal([token]);
           });
       });
+
+      it("#uploadResumable", async () => {
+        const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
+          .post(
+            `/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`
+          )
+          .set({
+            Authorization: "Bearer owner",
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "start",
+          })
+          .expect(200)
+          .then((res) => new URL(res.header["x-goog-upload-url"]));
+
+        await supertest(STORAGE_EMULATOR_HOST)
+          .put(uploadURL.pathname + uploadURL.search)
+          .set({
+            // No Authorization required in finalize
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "upload, finalize",
+          })
+          .expect(200);
+      });
     });
 
     after(async function (this) {

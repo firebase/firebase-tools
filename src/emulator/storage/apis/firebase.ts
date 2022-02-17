@@ -455,6 +455,11 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
           req.body
         );
 
+        // Store auth header for use in the finalize request
+        const app = emulator.getApp();
+        app.locals.authHeader = app.locals.authHeader || {};
+        app.locals.authHeader[upload.uploadId] = req.header("authorization");
+
         storageLayer.uploadBytes(upload.uploadId, Buffer.alloc(0));
 
         const emulatorInfo = EmulatorRegistry.getInfo(Emulators.STORAGE);
@@ -537,6 +542,8 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
 
         res.header("x-goog-upload-status", "final");
 
+        const app = emulator.getApp();
+
         // For resumable uploads, we check auth on finalization in case of byte-dependant rules
         if (
           !(await isPermitted({
@@ -544,7 +551,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
             // TODO This will be either create or update
             method: RulesetOperationMethod.CREATE,
             path: operationPath,
-            authorization: req.header("authorization"),
+            authorization: app.locals.authHeader[uploadId],
             file: {
               after: storageLayer.getMetadata(req.params.bucketId, name)?.asRulesResource(),
             },
