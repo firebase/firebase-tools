@@ -1,8 +1,0 @@
-- Fixes an issue where ext:list was not printing out information about installed Extension instances (#4156)
-- Fixes issue where Functions Emulator crashed when parsing triggers if accessing functions config values (#4162).
-- `firebase emulators:start --export-on-exit <dir>` now rejects overwriting the current directory or parents (#4127).
-- Fixes broken functions:config:clone command (#4173).
-- Fixes issue where `auth:import` would fail when reading a JSON file. (#4157)
-- Fixes issue where custom claims added in Auth Emulator UI was not properly shown.
-- Improves handling of API requests with XML responses (#4180).
-- Updates the underlying request library in Hosting deploys and uses project-scoped URLs. (#2558)
