@@ -2,6 +2,7 @@ import { ALL_EMULATORS, Emulators } from "../../emulator/types";
 import { EmulatorRegistry } from "../../emulator/registry";
 import { expect } from "chai";
 import { FakeEmulator } from "./fakeEmulator";
+import { findAvailablePort } from "../../emulator/portUtils";
 
 describe("EmulatorRegistry", () => {
   afterEach(async () => {
@@ -18,7 +19,8 @@ describe("EmulatorRegistry", () => {
 
   it("should correctly return information about a running emulator", async () => {
     const name = Emulators.FUNCTIONS;
-    const emu = new FakeEmulator(name, "localhost", 5000);
+    const port = await findAvailablePort("localhost", 5000);
+    const emu = new FakeEmulator(name, "localhost", port);
 
     expect(EmulatorRegistry.isRunning(name)).to.be.false;
 
@@ -27,12 +29,13 @@ describe("EmulatorRegistry", () => {
     expect(EmulatorRegistry.isRunning(name)).to.be.true;
     expect(EmulatorRegistry.listRunning()).to.eql([name]);
     expect(EmulatorRegistry.get(name)).to.eql(emu);
-    expect(EmulatorRegistry.getPort(name)).to.eql(5000);
+    expect(EmulatorRegistry.getPort(name)).to.eql(port);
   });
 
   it("once stopped, an emulator is no longer running", async () => {
     const name = Emulators.FUNCTIONS;
-    const emu = new FakeEmulator(name, "localhost", 5000);
+    const port = await findAvailablePort("localhost", 5000);
+    const emu = new FakeEmulator(name, "localhost", port);
 
     expect(EmulatorRegistry.isRunning(name)).to.be.false;
     await EmulatorRegistry.start(emu);
