@@ -451,6 +451,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (emulatableBackend.predefinedTriggers) {
       triggerDefinitions = emulatedFunctionsByRegion(emulatableBackend.predefinedTriggers);
     } else {
+      const runtimeConfig = this.getRuntimeConfig(emulatableBackend);
       const runtimeDelegate = await getRuntimeDelegate({
         projectId: this.args.projectId,
         projectDir: this.args.projectDir,
@@ -462,7 +463,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       await runtimeDelegate.build();
       logger.debug(`Analyzing ${runtimeDelegate.name} backend spec`);
       const discoveredBackend = await runtimeDelegate.discoverSpec(
-        {},
+        runtimeConfig,
         // Don't include user envs when parsing triggers.
         {
           ...this.getSystemEnvs(),
@@ -869,6 +870,17 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     return process.execPath;
+  }
+
+  getRuntimeConfig(backend: EmulatableBackend): Record<string, string> {
+    const configPath = `${backend.functionsDir}/.runtimeconfig.json`;
+    try {
+      const configContent = fs.readFileSync(configPath, "utf8");
+      return JSON.parse(configContent.toString());
+    } catch (e) {
+      // This is fine - runtime config is optional.
+    }
+    return {};
   }
 
   getUserEnvs(backend: EmulatableBackend): Record<string, string> {
