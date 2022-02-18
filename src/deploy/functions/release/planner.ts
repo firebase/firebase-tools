@@ -131,7 +131,8 @@ export function upgradedToGCFv2WithoutSettingConcurrency(
   });
 }
 
-/** Whether a trigger chagned regions. This can happen if, for example,
+/**
+ * Whether a trigger chagned regions. This can happen if, for example,
  *  a user listens to a different bucket, which happens to have a different region.
  */
 export function changedTriggerRegion(want: backend.Endpoint, have: backend.Endpoint): boolean {
@@ -200,6 +201,8 @@ export function checkForIllegalUpdate(want: backend.Endpoint, have: backend.Endp
   const triggerType = (e: backend.Endpoint): string => {
     if (backend.isHttpsTriggered(e)) {
       return "an HTTPS";
+    } else if (backend.isCallableTriggered(e)) {
+      return "a callable";
     } else if (backend.isEventTriggered(e)) {
       return "a background triggered";
     } else if (backend.isScheduleTriggered(e)) {
