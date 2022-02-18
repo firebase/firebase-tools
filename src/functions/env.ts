@@ -13,7 +13,6 @@ const RESERVED_KEYS = [
   // Cloud Functions for Firebase
   "FIREBASE_CONFIG",
   "CLOUD_RUNTIME_CONFIG",
-  // Firebase Extensions
   "EVENTARC_CLOUD_EVENT_SOURCE",
   // Cloud Functions - old runtimes:
   //   https://cloud.google.com/functions/docs/env-var#nodejs_8_python_37_and_go_111
