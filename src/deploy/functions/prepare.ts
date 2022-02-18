@@ -151,7 +151,7 @@ export async function prepare(
   // require cloudscheudler and, in v1, require pub/sub), or can eventually come from
   // explicit dependencies.
   await Promise.all(
-    Object.values(wantBackend.requiredAPIs).map((api) => {
+    Object.values(wantBackend.requiredAPIs).map(({ api }) => {
       return ensureApiEnabled.ensure(projectId, api, "functions", /* silent=*/ false);
     })
   );
