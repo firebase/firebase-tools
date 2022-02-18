@@ -362,14 +362,6 @@ export class Fabricator {
     }
     const apiFunction = gcfV2.functionFromEndpoint(endpoint, this.storage[endpoint.region]);
 
-    // N.B. As of GCFv2 private preview the API chokes on any update call that
-    // includes the pub/sub topic even if that topic is unchanged.
-    // We know that the user hasn't changed the topic between deploys because
-    // of checkForInvalidChangeOfTrigger().
-    if (apiFunction.eventTrigger?.pubsubTopic) {
-      delete apiFunction.eventTrigger.pubsubTopic;
-    }
-
     const resultFunction = await this.functionExecutor
       .run(async () => {
         const op: { name: string } = await gcfV2.updateFunction(apiFunction);
