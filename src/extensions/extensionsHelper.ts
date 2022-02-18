@@ -16,6 +16,7 @@ import { convertOfficialExtensionsToList } from "./utils";
 import { getFirebaseConfig } from "../functionsConfig";
 import { getExtensionRegistry } from "./resolveSource";
 import { FirebaseError } from "../error";
+import { diagnose } from "./diagnose";
 import { checkResponse } from "./askUserForParam";
 import { ensure } from "../ensureApiEnabled";
 import { deleteObject, uploadObject } from "../gcp/storage";
@@ -735,5 +736,13 @@ export async function confirm(args: {
     throw new FirebaseError("Pass the --force flag to use this command in non-interactive mode");
   } else {
     return true;
+  }
+}
+
+export async function diagnoseAndFixProject(options: any): Promise<void> {
+  const projectId = needProjectId(options);
+  const ok = await diagnose(projectId);
+  if (!ok) {
+    throw new FirebaseError("Unable to proceed until all issues are resolved.");
   }
 }

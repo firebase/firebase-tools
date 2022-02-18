@@ -9,7 +9,6 @@ import { parseRuntimeVersion } from "../emulator/functionsEmulatorUtils";
 import { needProjectId } from "../projectUtils";
 import { getProjectDefaultAccount } from "../auth";
 import { Options } from "../options";
-import { Config } from "../config";
 import * as utils from "../utils";
 
 // TODO(samstern): It would be better to convert this to an EmulatorServer
@@ -37,14 +36,15 @@ export class FunctionsServer {
     const nodeMajorVersion = parseRuntimeVersion(options.config.get("functions.runtime"));
     this.backend = {
       functionsDir,
-      env: {},
       nodeMajorVersion,
+      env: {},
     };
     // Normally, these two fields are included in args (and typed as such).
     // However, some poorly-typed tests may not have them and we need to provide
     // default values for those tests to work properly.
     const args: FunctionsEmulatorArgs = {
       projectId,
+      projectDir: options.config.projectDir,
       emulatableBackends: [this.backend],
       account,
       ...partialArgs,

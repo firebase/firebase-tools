@@ -24,6 +24,10 @@ export interface LogData {
     function?: {
       name: string;
     };
+    extension?: {
+      ref?: string;
+      instanceId?: string;
+    };
   };
 }
 

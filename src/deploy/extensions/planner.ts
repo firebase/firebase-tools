@@ -80,6 +80,7 @@ export async function want(args: {
   aliases: string[];
   projectDir: string;
   extensions: Record<string, string>;
+  checkLocal?: boolean;
 }): Promise<InstanceSpec[]> {
   const instanceSpecs: InstanceSpec[] = [];
   const errors: FirebaseError[] = [];
@@ -95,6 +96,7 @@ export async function want(args: {
         projectId: args.projectId,
         projectNumber: args.projectNumber,
         aliases: args.aliases,
+        checkLocal: args.checkLocal,
       });
       const autoPopulatedParams = await getFirebaseProjectParams(args.projectId);
       const subbedParams = substituteParams(params, autoPopulatedParams);
