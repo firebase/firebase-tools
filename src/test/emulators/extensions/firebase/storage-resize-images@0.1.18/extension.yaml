@@ -1,0 +1,226 @@
+# Copyright 2019 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: storage-resize-images
+version: 0.1.18
+specVersion: v1beta
+
+displayName: Resize Images
+description: Resizes images uploaded to Cloud Storage to a specified size, and optionally keeps or deletes the original image.
+
+license: Apache-2.0
+
+sourceUrl: https://github.com/firebase/extensions/tree/master/storage-resize-images
+releaseNotesUrl: https://github.com/firebase/extensions/blob/master/storage-resize-images/CHANGELOG.md
+
+author:
+  authorName: Firebase
+  url: https://firebase.google.com
+
+contributors:
+  - authorName: Tina Liang
+    url: https://github.com/tinaliang
+  - authorName: Chris Bianca
+    email: chris@csfrequency.com
+    url: https://github.com/chrisbianca
+  - authorName: Invertase
+    email: oss@invertase.io
+    url: https://github.com/invertase
+
+billingRequired: true
+
+apis:
+  - apiName: storage-component.googleapis.com
+    reason: Needed to use Cloud Storage
+
+roles:
+  - role: storage.admin
+    reason: Allows the extension to store resized images in Cloud Storage
+
+resources:
+  - name: generateResizedImage
+    type: firebaseextensions.v1beta.function
+    description: >-
+      Listens for new images uploaded to your specified Cloud Storage bucket, resizes the images,
+      then stores the resized images in the same bucket. Optionally keeps or deletes the original images.
+    properties:
+      location: ${param:LOCATION}
+      runtime: nodejs10
+      eventTrigger:
+        eventType: google.storage.object.finalize
+        resource: projects/_/buckets/${param:IMG_BUCKET}
+
+params:
+  - param: LOCATION
+    label: Cloud Functions location
+    description: >-
+      Where do you want to deploy the functions created for this extension?
+      You usually want a location close to your Storage bucket. For help selecting a
+      location, refer to the [location selection
+      guide](https://firebase.google.com/docs/functions/locations).
+    type: select
+    options:
+      - label: Iowa (us-central1)
+        value: us-central1
+      - label: South Carolina (us-east1)
+        value: us-east1
+      - label: Northern Virginia (us-east4)
+        value: us-east4
+      - label: Los Angeles (us-west2)
+        value: us-west2
+      - label: Salt Lake City (us-west3)
+        value: us-west3
+      - label: Las Vegas (us-west4)
+        value: us-west4
+      - label: Belgium (europe-west1)
+        value: europe-west1
+      - label: London (europe-west2)
+        value: europe-west2
+      - label: Frankfurt (europe-west3)
+        value: europe-west3
+      - label: Zurich (europe-west6)
+        value: europe-west6
+      - label: Hong Kong (asia-east2)
+        value: asia-east2
+      - label: Tokyo (asia-northeast1)
+        value: asia-northeast1
+      - label: Osaka (asia-northeast2)
+        value: asia-northeast2
+      - label: Seoul (asia-northeast3)
+        value: asia-northeast3
+      - label: Mumbai (asia-south1)
+        value: asia-south1
+      - label: Jakarta (asia-southeast2)
+        value: asia-southeast2
+      - label: Montreal (northamerica-northeast1)
+        value: northamerica-northeast1
+      - label: Sao Paulo (southamerica-east1)
+        value: southamerica-east1
+      - label: Sydney (australia-southeast1)
+        value: australia-southeast1
+    default: us-central1
+    required: true
+    immutable: true
+
+  - param: IMG_BUCKET
+    label: Cloud Storage bucket for images
+    description: >
+      To which Cloud Storage bucket will you upload images that you want to resize?
+      Resized images will be stored in this bucket. Depending on your extension configuration,
+      original images are either kept or deleted.
+    type: string
+    example: my-project-12345.appspot.com
+    validationRegex: ^([0-9a-z_.-]*)$
+    validationErrorMessage: Invalid storage bucket
+    default: ${STORAGE_BUCKET}
+    required: true
+
+  - param: IMG_SIZES
+    label: Sizes of resized images
+    description: >
+      What sizes of images would you like (in pixels)? Enter the sizes as a
+      comma-separated list of WIDTHxHEIGHT values. Learn more about
+      [how this parameter works](https://firebase.google.com/products/extensions/storage-resize-images).
+    type: string
+    example: "200x200"
+    validationRegex: ^\d+x(\d+,\d+x)*\d+$
+    validationErrorMessage: Invalid sizes, must be a comma-separated list of WIDTHxHEIGHT values.
+    default: "200x200"
+    required: true
+
+  - param: DELETE_ORIGINAL_FILE
+    label: Deletion of original file
+    description: >-
+      Do you want to automatically delete the original file from the Cloud Storage
+      bucket? Note that these deletions cannot be undone.
+    type: select
+    options:
+      - label: Yes
+        value: true
+      - label: No
+        value: false
+      - label: Delete on successful resize
+        value: on_success
+    default: false
+    required: true
+
+  - param: RESIZED_IMAGES_PATH
+    label: Cloud Storage path for resized images
+    description: >
+      A relative path in which to store resized images. For example,
+      if you specify a path here of `thumbs` and you upload an image to
+      `/images/original.jpg`, then the resized image is stored at
+      `/images/thumbs/original_200x200.jpg`. If you prefer to store resized
+      images at the root of your bucket, leave this field empty.
+    example: thumbnails
+    required: false
+
+  - param: INCLUDE_PATH_LIST
+    label: Paths that contain images you want to resize
+    description: >
+      Restrict storage-resize-images to only resize images in specific locations in your Storage bucket by 
+      supplying a comma-separated list of absolute paths. For example, to only resize the images 
+      stored in `/users/pictures` directory, specify the path `/users/pictures`. 
+      If you prefer to resize every image uploaded to the storage bucket, 
+      leave this field empty.
+    type: string
+    example: "/users/avatars,/design/pictures"
+    validationRegex: ^(\/[^\s\/\,]+)+(\,(\/[^\s\/\,]+)+)*$
+    validationErrorMessage: Invalid paths, must be a comma-separated list of absolute path values.
+    required: false
+
+  - param: EXCLUDE_PATH_LIST
+    label: List of absolute paths not included for resized images
+    description: >
+      A comma-separated list of absolute paths to not take into account for 
+      images to be resized. For example, to not resize the images 
+      stored in `/users/pictures/avatars` directory, specify the path 
+      `/users/pictures/avatars`. If you prefer to resize every image uploaded 
+      to the storage bucket, leave this field empty.
+    type: string
+    example: "/users/avatars/thumbs,/design/pictures/thumbs"
+    validationRegex: ^(\/[^\s\/\,]+)+(\,(\/[^\s\/\,]+)+)*$
+    validationErrorMessage: Invalid paths, must be a comma-separated list of absolute path values.
+    required: false
+
+  - param: CACHE_CONTROL_HEADER
+    label: Cache-Control header for resized images
+    description: >
+      This extension automatically copies any `Cache-Control` metadata from the original image
+      to the resized images. For the resized images, do you want to overwrite this copied
+      `Cache-Control` metadata or add `Cache-Control` metadata? Learn more about
+      [`Cache-Control` headers](https://developer.mozilla.org/docs/Web/HTTP/Headers/Cache-Control).
+      If you prefer not to overwrite or add `Cache-Control` metadata, leave this field empty.
+    example: max-age=86400
+    required: false
+
+  - param: IMAGE_TYPE
+    label: Convert image to preferred type
+    description: >
+      The image type you'd like your source image to convert to. The default for this option will 
+      be to keep the original file type.
+    type: select
+    options:
+      - label: jpg
+        value: jpg
+      - label: png
+        value: png
+      - label: webp
+        value: webp
+      - label: tiff
+        value: tiff
+      - label: Do not convert
+        value: false
+    default: false
+    required: false
