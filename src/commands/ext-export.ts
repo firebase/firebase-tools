@@ -1,13 +1,15 @@
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
+import { Config } from "../config";
 import * as planner from "../deploy/extensions/planner";
+import { FirebaseError } from "../error";
 import {
   displayExportInfo,
   parameterizeProject,
   setSecretParamsToLatest,
-  writeFiles,
 } from "../extensions/export";
 import { ensureExtensionsApiEnabled } from "../extensions/extensionsHelper";
+import { writeToManifest } from "../extensions/manifestHelper";
 import { partition } from "../functional";
 import { getProjectNumber } from "../getProjectNumber";
 import { logger } from "../logger";
@@ -63,5 +65,14 @@ module.exports = new Command("ext:export")
       return;
     }
 
-    await writeFiles(withRef, options);
+    const existingConfig = Config.load(options, true);
+    if (!existingConfig) {
+      throw new FirebaseError(
+        "Not currently in a Firebase directory. Please run `firebase init` to create a Firebase directory."
+      );
+    }
+    await writeToManifest(withRef, existingConfig, {
+      nonInteractive: options.nonInteractive,
+      force: options.force,
+    });
   });
