@@ -1326,6 +1326,15 @@ describe("Storage emulator", () => {
         await supertest(STORAGE_EMULATOR_HOST)
           .put(uploadURL.pathname + uploadURL.search)
           .set({
+            // No Authorization required in upload
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "upload",
+          })
+          .expect(200);
+
+        await supertest(STORAGE_EMULATOR_HOST)
+          .put(uploadURL.pathname + uploadURL.search)
+          .set({
             // No Authorization required in finalize
             "X-Goog-Upload-Protocol": "resumable",
             "X-Goog-Upload-Command": "upload, finalize",
