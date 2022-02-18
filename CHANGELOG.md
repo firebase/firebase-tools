@@ -1,0 +1,1 @@
+- Fixes bug where updating gen 2 pubsub functions would always fail (#4198).
