@@ -138,6 +138,15 @@ export async function prepare(
   // Setup environment variables on each function.
   for (const endpoint of backend.allEndpoints(wantBackend)) {
     endpoint.environmentVariables = wantBackend.environmentVariables;
+    if (endpoint.platform === "gcfv2") {
+      if (backend.isEventTriggered(endpoint)) {
+        // By default, Functions Framework in GCFv2 opts to downcast incoming cloudevent messages to legacy formats.
+        // Since Firebase Functions SDK expects messages in cloudevent format, we set FUNCTION_SIGNATURE_TYPE to tell
+        // Functions Framework to disable downcast before passing the cloudevent message to function handler.
+        // See https://github.com/GoogleCloudPlatform/functions-framework-nodejs/blob/master/README.md#configure-the-functions-framework
+        endpoint.environmentVariables["FUNCTION_SIGNATURE_TYPE"] = "cloudevent";
+      }
+    }
   }
 
   // Enable required APIs. This may come implicitly from triggers (e.g. scheduled triggers
