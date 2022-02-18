@@ -1,32 +1,26 @@
 import * as clc from "cli-color";
 
 import * as refs from "./refs";
-import { getProjectNumber } from "../getProjectNumber";
-import { Options } from "../options";
 import { Config } from "../config";
-import { getExtensionVersion, InstanceSpec } from "../deploy/extensions/planner";
-import { humanReadable } from "../deploy/extensions/deploymentSummary";
+import { InstanceSpec } from "../deploy/extensions/planner";
 import { logger } from "../logger";
-import { FirebaseError } from "../error";
 import { promptOnce } from "../prompt";
-import { parseSecretVersionResourceName, toSecretVersionResourceName } from "../gcp/secretManager";
-import { getActiveSecrets } from "./secretsUtils";
 
 /**
  * Write a list of instanceSpecs to extensions manifest.
- * 
+ *
  * The manifest is composed of both the extension instance list in firebase.json, and
  * env-var for each extension instance under ./extensions/*.env
- * 
+ *
+ * @param have a list of InstanceSpec to write to the manifest
  * @param config existing config in firebase.json
- * 
- * @param options nonInteractive will try to do the job without asking for user input. 
+ * @param options nonInteractive will try to do the job without asking for user input.
  * But only when force flag is passed this will overwrite existing .env files
  */
 export async function writeToManifest(
   have: InstanceSpec[],
   config: Config,
-  options: { nonInteractive: boolean; force: boolean },
+  options: { nonInteractive: boolean; force: boolean }
 ): Promise<void> {
   if (
     config.has("extensions") &&
@@ -64,11 +58,7 @@ function writeExtensionsToFirebaseJson(have: InstanceSpec[], config: Config): vo
   config.writeProjectFile("firebase.json", config.src);
 }
 
-async function writeEnvFiles(
-  have: InstanceSpec[],
-  config: Config,
-  force?: boolean
-): Promise<void> {
+async function writeEnvFiles(have: InstanceSpec[], config: Config, force?: boolean): Promise<void> {
   for (const spec of have) {
     const content = Object.entries(spec.params)
       .map((r) => `${r[0]}=${r[1]}`)

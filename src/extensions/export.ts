@@ -1,17 +1,8 @@
-import * as clc from "cli-color";
-
-import * as refs from "./refs";
-import { getProjectNumber } from "../getProjectNumber";
-import { Options } from "../options";
-import { Config } from "../config";
 import { getExtensionVersion, InstanceSpec } from "../deploy/extensions/planner";
 import { humanReadable } from "../deploy/extensions/deploymentSummary";
 import { logger } from "../logger";
-import { FirebaseError } from "../error";
-import { promptOnce } from "../prompt";
 import { parseSecretVersionResourceName, toSecretVersionResourceName } from "../gcp/secretManager";
 import { getActiveSecrets } from "./secretsUtils";
-import { writeEnvFiles, writeExtensionsToFirebaseJson } from "./manifestHelper";
 /**
  * parameterizeProject searchs spec.params for any param that include projectId or projectNumber,
  * and replaces it with a parameterized version that can be used on other projects.
