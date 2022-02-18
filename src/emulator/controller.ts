@@ -46,6 +46,12 @@ import { ParsedTriggerDefinition } from "./functionsEmulatorShared";
 import { ExtensionsEmulator } from "./extensionsEmulator";
 import { previews } from "../previews";
 
+const START_LOGGING_EMULATOR = utils.envOverride(
+  "START_LOGGING_EMULATOR",
+  "false",
+  (val) => val == "true"
+);
+
 async function getAndCheckAddress(emulator: Emulators, options: Options): Promise<Address> {
   if (emulator === Emulators.EXTENSIONS) {
     // The Extensions emulator always runs on the same port as the Functions emulator.
@@ -724,7 +730,7 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
     );
   }
 
-  if (showUI && shouldStart(options, Emulators.UI)) {
+  if (showUI && (shouldStart(options, Emulators.UI) || START_LOGGING_EMULATOR)) {
     const loggingAddr = await getAndCheckAddress(Emulators.LOGGING, options);
     const loggingEmulator = new LoggingEmulator({
       host: loggingAddr.host,
@@ -732,7 +738,9 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
     });
 
     await startEmulator(loggingEmulator);
+  }
 
+  if (showUI && shouldStart(options, Emulators.UI)) {
     const uiAddr = await getAndCheckAddress(Emulators.UI, options);
     const ui = new EmulatorUI({
       projectId: projectId,
