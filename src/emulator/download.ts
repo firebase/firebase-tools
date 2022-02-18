@@ -49,18 +49,24 @@ export async function downloadExtensionVersion(
   targetDir: string
 ): Promise<void> {
   const emulatorLogger = EmulatorLogger.forExtension({ ref: extensionVersionRef });
+  emulatorLogger.logLabeled(
+    "BULLET",
+    "extensions",
+    `Starting download for ${extensionVersionRef} source code...`
+  );
   try {
     fs.mkdirSync(targetDir);
   } catch (err) {
     emulatorLogger.logLabeled(
       "BULLET",
       "extensions",
-      `${extensionVersionRef} already downloaded...`
+      `cache directory for ${extensionVersionRef} already exists...`
     );
   }
   emulatorLogger.logLabeled("BULLET", "extensions", `downloading ${sourceDownloadUri}...`);
   const sourceCodeZip = await downloadUtils.downloadToTmp(sourceDownloadUri);
   await unzip(sourceCodeZip, targetDir);
+  fs.chmodSync(targetDir, 0o755);
 
   emulatorLogger.logLabeled("BULLET", "extensions", `Downloaded to ${targetDir}...`);
   // TODO: We should not need to do this wait
