@@ -59,7 +59,7 @@ export async function downloadExtensionVersion(
     EmulatorLogger.forExtension(extensionVersionRef).logLabeled(
       "BULLET",
       "extensions",
-      `cache directory for ${extensionVersionRef} already exist...`
+      `cache directory for ${extensionVersionRef} already exists...`
     );
   }
   EmulatorLogger.forExtension(extensionVersionRef).logLabeled(

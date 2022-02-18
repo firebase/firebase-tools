@@ -73,6 +73,8 @@ export class ExtensionsEmulator {
    * Checks against a list of required files or directories that need to be present.
    */
   private hasValidSource(args: { path: string; extRef: string }): boolean {
+    // TODO(lihes): Source code can technically exist in other than "functions" dir.
+    // https://source.corp.google.com/piper///depot/google3/firebase/mods/go/worker/fetch_mod_source.go;l=451
     const requiredFiles = [
       "./extension.yaml",
       "./functions/package.json",
