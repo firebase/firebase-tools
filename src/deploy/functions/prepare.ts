@@ -31,9 +31,6 @@ function hasDotenv(opts: functionsEnv.UserEnvsOpts): boolean {
   return functionsEnv.hasUserEnvs(opts);
 }
 
-/**
- *
- */
 export async function prepare(
   context: args.Context,
   options: Options,
