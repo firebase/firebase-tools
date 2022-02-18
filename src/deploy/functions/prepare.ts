@@ -142,7 +142,7 @@ export async function prepare(
       if (backend.isEventTriggered(endpoint)) {
         // By default, Functions Framework in GCFv2 opts to downcast incoming cloudevent messages to legacy formats.
         // Since Firebase Functions SDK expects messages in cloudevent format, we set FUNCTION_SIGNATURE_TYPE to tell
-        // Functions Framework to pass cloudevent messages to function handler.
+        // Functions Framework to disable downcast before passing the cloudevent message to function handler.
         // See https://github.com/GoogleCloudPlatform/functions-framework-nodejs/blob/master/README.md#configure-the-functions-framework
         endpoint.environmentVariables["FUNCTION_SIGNATURE_TYPE"] = "cloudevent";
       }
