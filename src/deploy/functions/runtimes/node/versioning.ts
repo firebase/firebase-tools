@@ -100,7 +100,7 @@ export function checkFunctionsSDKVersion(currentVersion: string): void {
     }
     utils.logWarning(
       clc.bold.yellow("functions: ") +
-        "package.json indicates an outdated version of firebase-functions.\nPlease upgrade using " +
+        "package.json indicates an outdated version of firebase-functions. Please upgrade using " +
         clc.bold("npm install --save firebase-functions@latest") +
         " in your functions directory."
     );
