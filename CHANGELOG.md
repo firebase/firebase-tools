@@ -1,0 +1,1 @@
+- Updates reserved environment variables for CF3 to include 'EVENTARC_CLOUD_EVENT_SOURCE' (#4196).
