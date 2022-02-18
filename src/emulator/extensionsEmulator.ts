@@ -84,7 +84,7 @@ export class ExtensionsEmulator {
     for (const requiredFile of requiredFiles) {
       const f = path.join(args.path, requiredFile);
       if (!fs.existsSync(f)) {
-        EmulatorLogger.forExtension(args.extRef).logLabeled(
+        EmulatorLogger.forExtension({ ref: args.extRef }).logLabeled(
           "BULLET",
           "extensions",
           `Detected invalid source code for ${args.extRef}, expected to find ${f}`
