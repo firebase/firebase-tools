@@ -48,6 +48,7 @@ export async function writeToManifest(
   await writeEnvFiles(specs, config, options.force);
 }
 
+// TODO(lihes): Add some tests.
 function writeExtensionsToFirebaseJson(specs: InstanceSpec[], config: Config): void {
   const extensions = config.get("extensions", {});
   for (const s of specs) {
@@ -58,6 +59,7 @@ function writeExtensionsToFirebaseJson(specs: InstanceSpec[], config: Config): v
   config.writeProjectFile("firebase.json", config.src);
 }
 
+// TODO(lihes): Add some tests.
 async function writeEnvFiles(
   specs: InstanceSpec[],
   config: Config,
