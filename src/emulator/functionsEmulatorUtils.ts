@@ -80,7 +80,7 @@ export function parseRuntimeVersion(runtime?: string): number | undefined {
   }
 
   const runtimeRe = /(nodejs)?([0-9]+)/;
-  const match = runtime.match(runtimeRe);
+  const match = runtimeRe.exec(runtime);
   if (match) {
     return Number.parseInt(match[2]);
   }

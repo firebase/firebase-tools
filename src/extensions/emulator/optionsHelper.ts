@@ -15,9 +15,9 @@ import { needProjectId } from "../../projectUtils";
 import { Emulators } from "../../emulator/types";
 
 export async function buildOptions(options: any): Promise<any> {
-  const extensionDir = localHelper.findExtensionYaml(process.cwd());
-  options.extensionDir = extensionDir;
-  const spec = await specHelper.readExtensionYaml(extensionDir);
+  const extDevDir = localHelper.findExtensionYaml(process.cwd());
+  options.extDevDir = extDevDir;
+  const spec = await specHelper.readExtensionYaml(extDevDir);
   extensionsHelper.validateSpec(spec);
 
   const params = getParams(options, spec);
@@ -34,13 +34,37 @@ export async function buildOptions(options: any): Promise<any> {
     checkTestConfig(testConfig, functionResources);
   }
   options.config = buildConfig(functionResources, testConfig);
-  options.extensionEnv = params;
+  options.extDevEnv = params;
   const functionEmuTriggerDefs: ParsedTriggerDefinition[] = functionResources.map((r) =>
     triggerHelper.functionResourceToEmulatedTriggerDefintion(r)
   );
-  options.extensionTriggers = functionEmuTriggerDefs;
-  options.extensionNodeVersion = specHelper.getNodeVersion(functionResources);
+  options.extDevTriggers = functionEmuTriggerDefs;
+  options.extDevNodeVersion = specHelper.getNodeVersion(functionResources);
   return options;
+}
+
+// TODO: Better name? Also, should this be in extensionsEmulator instead?
+export async function getExtensionFunctionInfo(
+  extensionDir: string,
+  instanceId: string,
+  params: Record<string, string>
+): Promise<{
+  nodeMajorVersion: number;
+  extensionTriggers: ParsedTriggerDefinition[];
+}> {
+  const spec = await specHelper.readExtensionYaml(extensionDir);
+  const functionResources = specHelper.getFunctionResourcesWithParamSubstitution(spec, params);
+  const extensionTriggers: ParsedTriggerDefinition[] = functionResources
+    .map((r) => triggerHelper.functionResourceToEmulatedTriggerDefintion(r))
+    .map((trigger) => {
+      trigger.name = `ext-${instanceId}-${trigger.name}`;
+      return trigger;
+    });
+  const nodeMajorVersion = specHelper.getNodeVersion(functionResources);
+  return {
+    extensionTriggers,
+    nodeMajorVersion,
+  };
 }
 
 // Exported for testing
