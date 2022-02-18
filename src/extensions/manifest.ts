@@ -12,13 +12,13 @@ import { promptOnce } from "../prompt";
  * The manifest is composed of both the extension instance list in firebase.json, and
  * env-var for each extension instance under ./extensions/*.env
  *
- * @param have a list of InstanceSpec to write to the manifest
+ * @param specs a list of InstanceSpec to write to the manifest
  * @param config existing config in firebase.json
- * @param options nonInteractive will try to do the job without asking for user input.
- * But only when force flag is passed this will overwrite existing .env files
+ * @param options.nonInteractive will try to do the job without asking for user input.
+ * @param options.force only when this flag is true this will overwrite existing .env files
  */
 export async function writeToManifest(
-  have: InstanceSpec[],
+  specs: InstanceSpec[],
   config: Config,
   options: { nonInteractive: boolean; force: boolean }
 ): Promise<void> {
@@ -44,13 +44,13 @@ export async function writeToManifest(
     }
   }
 
-  writeExtensionsToFirebaseJson(have, config);
-  await writeEnvFiles(have, config, options.force);
+  writeExtensionsToFirebaseJson(specs, config);
+  await writeEnvFiles(specs, config, options.force);
 }
 
-function writeExtensionsToFirebaseJson(have: InstanceSpec[], config: Config): void {
+function writeExtensionsToFirebaseJson(specs: InstanceSpec[], config: Config): void {
   const extensions = config.get("extensions", {});
-  for (const s of have) {
+  for (const s of specs) {
     extensions[s.instanceId] = refs.toExtensionVersionRef(s.ref!);
   }
   config.set("extensions", extensions);
@@ -58,8 +58,12 @@ function writeExtensionsToFirebaseJson(have: InstanceSpec[], config: Config): vo
   config.writeProjectFile("firebase.json", config.src);
 }
 
-async function writeEnvFiles(have: InstanceSpec[], config: Config, force?: boolean): Promise<void> {
-  for (const spec of have) {
+async function writeEnvFiles(
+  specs: InstanceSpec[],
+  config: Config,
+  force?: boolean
+): Promise<void> {
+  for (const spec of specs) {
     const content = Object.entries(spec.params)
       .map((r) => `${r[0]}=${r[1]}`)
       .join("\n");

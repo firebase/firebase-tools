@@ -9,10 +9,11 @@ import {
   setSecretParamsToLatest,
 } from "../extensions/export";
 import { ensureExtensionsApiEnabled } from "../extensions/extensionsHelper";
-import { writeToManifest } from "../extensions/manifestHelper";
+import { writeToManifest } from "../extensions/manifest";
 import { partition } from "../functional";
 import { getProjectNumber } from "../getProjectNumber";
 import { logger } from "../logger";
+import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import { promptOnce } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
@@ -25,7 +26,7 @@ module.exports = new Command("ext:export")
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
   .withForce()
-  .action(async (options: any) => {
+  .action(async (options: Options) => {
     const projectId = needProjectId(options);
     const projectNumber = await getProjectNumber(options);
     // Look up the instances that already exist,
