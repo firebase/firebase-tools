@@ -159,6 +159,7 @@ export type EmulatorsConfig = {
     host?: string;
     port?: number | string;
   };
+  extensions?: {};
 };
 
 export type ExtensionsConfig = Record<string, string>;

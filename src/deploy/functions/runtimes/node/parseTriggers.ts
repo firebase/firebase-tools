@@ -151,6 +151,23 @@ export async function discoverBackend(
   return want;
 }
 
+/* @internal */
+export function mergeRequiredAPIs(backend: backend.Backend) {
+  const apiToReasons: Record<string, Set<string>> = {};
+  for (const { api, reason } of backend.requiredAPIs) {
+    const reasons = apiToReasons[api] || new Set();
+    reasons.add(reason);
+    apiToReasons[api] = reasons;
+  }
+
+  const merged: backend.RequiredAPI[] = [];
+  for (const [api, reasons] of Object.entries(apiToReasons)) {
+    merged.push({ api, reason: Array.from(reasons).join(" ") });
+  }
+
+  backend.requiredAPIs = merged;
+}
+
 export function addResourcesToBackend(
   projectId: string,
   runtime: runtimes.Runtime,
@@ -173,7 +190,10 @@ export function addResourcesToBackend(
 
     if (annotation.taskQueueTrigger) {
       triggered = { taskQueueTrigger: annotation.taskQueueTrigger };
-      want.requiredAPIs["cloudtasks"] = "cloudtasks.googleapis.com";
+      want.requiredAPIs.push({
+        api: "cloudtasks.googleapis.com",
+        reason: "Needed for task queue functions.",
+      });
     } else if (annotation.httpsTrigger) {
       const trigger: backend.HttpsTrigger = {};
       if (annotation.failurePolicy) {
@@ -182,8 +202,10 @@ export function addResourcesToBackend(
       proto.copyIfPresent(trigger, annotation.httpsTrigger, "invoker");
       triggered = { httpsTrigger: trigger };
     } else if (annotation.schedule) {
-      want.requiredAPIs["pubsub"] = "pubsub.googleapis.com";
-      want.requiredAPIs["scheduler"] = "cloudscheduler.googleapis.com";
+      want.requiredAPIs.push({
+        api: "cloudscheduler.googleapis.com",
+        reason: "Needed for scheduled functions.",
+      });
       triggered = { scheduleTrigger: annotation.schedule };
     } else {
       triggered = {
@@ -204,6 +226,7 @@ export function addResourcesToBackend(
         };
       }
     }
+
     const endpoint: backend.Endpoint = {
       platform: annotation.platform || "gcfv1",
       id: annotation.name,
@@ -218,7 +241,13 @@ export function addResourcesToBackend(
       if (maybeId && !maybeId.includes("/")) {
         maybeId = `projects/${projectId}/locations/${region}/connectors/${maybeId}`;
       }
-      endpoint.vpcConnector = maybeId;
+      endpoint.vpc = { connector: maybeId };
+      proto.renameIfPresent(
+        endpoint.vpc,
+        annotation,
+        "egressSettings",
+        "vpcConnectorEgressSettings"
+      );
     }
 
     if (annotation.secrets) {
@@ -240,7 +269,6 @@ export function addResourcesToBackend(
       "concurrency",
       "serviceAccountEmail",
       "labels",
-      "vpcConnectorEgressSettings",
       "ingressSettings",
       "timeout",
       "maxInstances",
@@ -249,5 +277,7 @@ export function addResourcesToBackend(
     );
     want.endpoints[region] = want.endpoints[region] || {};
     want.endpoints[region][endpoint.id] = endpoint;
+
+    mergeRequiredAPIs(want);
   }
 }
