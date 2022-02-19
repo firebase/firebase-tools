@@ -19,12 +19,12 @@ export function load(cwd: string, name: string): Map<string, HashRecord> {
   try {
     const out = new Map<string, HashRecord>();
     const lines = fs.readFileSync(cachePath(cwd, name), "utf8");
-    lines.split("\n").forEach((line) => {
+    for (const line of lines.split("\n")) {
       const d = line.split(",");
       if (d.length === 3) {
         out.set(d[0], { mtime: parseInt(d[1]), hash: d[2] });
       }
-    });
+    }
     return out;
   } catch (e: any) {
     if (e.code === "ENOENT") {
