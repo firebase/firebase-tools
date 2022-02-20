@@ -343,6 +343,36 @@ describe("backendFromV1Alpha1", () => {
       expect(parsed).to.deep.equal(expected);
     });
 
+    it("expands pubsub topic to full resource path", () => {
+      const eventTrigger: backend.EventTrigger = {
+        eventType: "google.pubsub.topic.v1.publish",
+        eventFilters: {
+          topic: "topic",
+        },
+        region: "us-central1",
+        serviceAccountEmail: "sa@",
+        retry: true,
+      };
+      const yaml: v1alpha1.Manifest = {
+        specVersion: "v1alpha1",
+        endpoints: {
+          id: {
+            ...MIN_ENDPOINT,
+            eventTrigger,
+          },
+        },
+      };
+      const expected = backend.of({
+        ...DEFAULTED_ENDPOINT,
+        eventTrigger: {
+          ...eventTrigger,
+          eventFilters: { topic: "projects/project/topics/topic" },
+        },
+      });
+      const parsed = v1alpha1.backendFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+      expect(parsed).to.deep.equal(expected);
+    });
+
     it("copies optional fields", () => {
       const fields: backend.ServiceConfiguration = {
         concurrency: 42,

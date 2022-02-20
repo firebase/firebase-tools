@@ -35,7 +35,11 @@ describe("cloudfunctionsv2", () => {
         },
         environmentVariables: {},
       },
-      serviceConfig: {},
+      serviceConfig: {
+        environmentVariables: {
+          FUNCTION_SIGNATURE_TYPE: "cloudevent",
+        },
+      },
     };
 
   const RUN_URI = "https://id-nonce-region-project.run.app";
@@ -169,6 +173,7 @@ describe("cloudfunctionsv2", () => {
         serviceConfig: {
           ...CLOUD_FUNCTION_V2.serviceConfig,
           environmentVariables: {
+            ...CLOUD_FUNCTION_V2.serviceConfig.environmentVariables,
             FOO: "bar",
           },
           vpcConnector: "connector",
@@ -190,7 +195,7 @@ describe("cloudfunctionsv2", () => {
         eventTrigger: {
           eventType: cloudfunctionsv2.PUBSUB_PUBLISH_EVENT,
           eventFilters: {
-            resource: "projects/p/topics/t",
+            topic: "projects/p/topics/t",
           },
           retry: false,
         },
@@ -250,7 +255,7 @@ describe("cloudfunctionsv2", () => {
         eventTrigger: {
           eventType: cloudfunctionsv2.PUBSUB_PUBLISH_EVENT,
           eventFilters: {
-            resource: "projects/p/topics/t",
+            topic: "projects/p/topics/t",
           },
           retry: false,
         },

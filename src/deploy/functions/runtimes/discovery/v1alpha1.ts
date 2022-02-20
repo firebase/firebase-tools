@@ -128,8 +128,8 @@ function parseEndpoints(
         serviceAccountEmail: "string",
       });
       triggered = { eventTrigger: ep.eventTrigger };
-      if (!ep.eventTrigger.eventFilters.topic.startsWith("projects/")) {
-        const topic = triggered.eventTrigger.eventFilters.topic;
+      if (ep.eventTrigger.eventFilters.topic && !ep.eventTrigger.eventFilters.topic.startsWith("projects/")) {
+        const topic = ep.eventTrigger.eventFilters.topic;
         triggered.eventTrigger.eventFilters.topic = `projects/${project}/topics/${topic}`;
       }
     } else if (backend.isHttpsTriggered(ep)) {

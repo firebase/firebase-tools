@@ -52,7 +52,7 @@ describe("planner", () => {
           eventTrigger: {
             eventType: gcfv2.PUBSUB_PUBLISH_EVENT,
             eventFilters: {
-              resource: "topic",
+              topic: "topic",
             },
             retry: false,
           },
@@ -61,7 +61,7 @@ describe("planner", () => {
       };
       const changed = JSON.parse(JSON.stringify(original)) as backend.Endpoint;
       if (backend.isEventTriggered(changed)) {
-        changed.eventTrigger.eventFilters["resource"] = "anotherTopic";
+        changed.eventTrigger.eventFilters["topic"] = "anotherTopic";
       }
       expect(planner.calculateUpdate(changed, original)).to.deep.equal({
         endpoint: changed,
@@ -324,7 +324,7 @@ describe("planner", () => {
     const eventTrigger: backend.EventTrigger = {
       eventType: gcfv2.PUBSUB_PUBLISH_EVENT,
       eventFilters: {
-        resource: "projects/p/topics/t",
+        topic: "projects/p/topics/t",
       },
       retry: false,
     };
@@ -355,7 +355,7 @@ describe("planner", () => {
     // to modify only 'want'
     want = JSON.parse(JSON.stringify(want)) as backend.Endpoint;
     if (backend.isEventTriggered(want)) {
-      want.eventTrigger.eventFilters.resource = "projects/p/topics/t2";
+      want.eventTrigger.eventFilters.topic = "projects/p/topics/t2";
     }
     expect(planner.changedV2PubSubTopic(want, have)).to.be.true;
   });

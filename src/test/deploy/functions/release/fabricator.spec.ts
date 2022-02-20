@@ -311,7 +311,7 @@ describe("Fabricator", () => {
           eventTrigger: {
             eventType: gcfv2.PUBSUB_PUBLISH_EVENT,
             eventFilters: {
-              resource: "topic",
+              topic: "topic",
             },
             retry: false,
           },
@@ -334,7 +334,7 @@ describe("Fabricator", () => {
           eventTrigger: {
             eventType: gcfv2.PUBSUB_PUBLISH_EVENT,
             eventFilters: {
-              resource: "topic",
+              topic: "topic",
             },
             retry: false,
           },
