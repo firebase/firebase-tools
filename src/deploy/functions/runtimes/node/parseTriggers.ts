@@ -9,7 +9,7 @@ import * as api from "../../../../api";
 import * as proto from "../../../../gcp/proto";
 import * as args from "../../args";
 import * as runtimes from "../../runtimes";
-import { STORAGE_V2_EVENTS } from "../../eventTypes";
+import * as gcfv2 from "../../../../gcp/cloudfunctionsv2";
 
 const TRIGGER_PARSER = path.resolve(__dirname, "./triggerParser.js");
 
@@ -220,7 +220,12 @@ export function addResourcesToBackend(
 
       // TODO: yank this edge case for a v2 trigger on the pre-container contract
       // once we use container contract for the functionsv2 experiment.
-      if (STORAGE_V2_EVENTS.find((event) => event === (annotation.eventTrigger?.eventType || ""))) {
+      if (annotation.eventTrigger!.eventType === gcfv2.PUBSUB_PUBLISH_EVENT) {
+        triggered.eventTrigger.eventFilters = {
+          topic: annotation.eventTrigger!.resource,
+        };
+      }
+      if (gcfv2.STORAGE_EVENTS.includes(annotation.eventTrigger!.eventType)) {
         triggered.eventTrigger.eventFilters = {
           bucket: annotation.eventTrigger!.resource,
         };

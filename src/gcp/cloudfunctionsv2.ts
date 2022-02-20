@@ -18,6 +18,12 @@ const client = new Client({
 });
 
 export const PUBSUB_PUBLISH_EVENT = "google.cloud.pubsub.topic.v1.messagePublished";
+export const STORAGE_EVENTS = [
+  "google.cloud.storage.object.v1.finalized",
+  "google.cloud.storage.object.v1.archived",
+  "google.cloud.storage.object.v1.deleted",
+  "google.cloud.storage.object.v1.metadataUpdated",
+];
 
 export type VpcConnectorEgressSettings = "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC";
 export type IngressSettings = "ALLOW_ALL" | "ALLOW_INTERNAL_ONLY" | "ALLOW_INTERNAL_AND_GCLB";
@@ -285,7 +291,7 @@ export async function getFunction(
  */
 export async function listFunctions(projectId: string, region: string): Promise<CloudFunction[]> {
   const res = await listFunctionsInternal(projectId, region);
-  if (res.unreachable!.includes(region)) {
+  if (res.unreachable.includes(region)) {
     throw new FirebaseError(`Cloud Functions region ${region} is unavailable`);
   }
   return res.functions;
@@ -429,7 +435,7 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
       eventType: endpoint.eventTrigger.eventType,
     };
     if (gcfFunction.eventTrigger.eventType === PUBSUB_PUBLISH_EVENT) {
-      gcfFunction.eventTrigger.pubsubTopic = endpoint.eventTrigger.eventFilters.resource;
+      gcfFunction.eventTrigger.pubsubTopic = endpoint.eventTrigger.eventFilters.topic;
     } else {
       gcfFunction.eventTrigger.eventFilters = [];
       for (const [attribute, value] of Object.entries(endpoint.eventTrigger.eventFilters)) {
@@ -455,6 +461,15 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
     gcfFunction.labels = { ...gcfFunction.labels, "deployment-callable": "true" };
   }
 
+  // By default, Functions Framework in GCFv2 opts to downcast incoming cloudevent messages to legacy formats.
+  // Since Firebase Functions SDK expects messages in cloudevent format, we set FUNCTION_SIGNATURE_TYPE to tell
+  // Functions Framework to disable downcast before passing the cloudevent message to function handler.
+  // See https://github.com/GoogleCloudPlatform/functions-framework-nodejs/blob/master/README.md#configure-the-functions-
+  gcfFunction.serviceConfig.environmentVariables = {
+    ...gcfFunction.serviceConfig.environmentVariables,
+    FUNCTION_SIGNATURE_TYPE: "cloudevent",
+  };
+
   return gcfFunction;
 }
 
@@ -472,13 +487,13 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
   } else if (gcfFunction.eventTrigger) {
     trigger = {
       eventTrigger: {
-        eventType: gcfFunction.eventTrigger!.eventType,
+        eventType: gcfFunction.eventTrigger.eventType,
         eventFilters: {},
         retry: false,
       },
     };
     if (gcfFunction.eventTrigger.pubsubTopic) {
-      trigger.eventTrigger.eventFilters.resource = gcfFunction.eventTrigger.pubsubTopic;
+      trigger.eventTrigger.eventFilters.topic = gcfFunction.eventTrigger.pubsubTopic;
     } else {
       for (const { attribute, value } of gcfFunction.eventTrigger.eventFilters || []) {
         trigger.eventTrigger.eventFilters[attribute] = value;

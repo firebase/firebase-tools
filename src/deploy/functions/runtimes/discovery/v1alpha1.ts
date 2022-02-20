@@ -128,6 +128,10 @@ function parseEndpoints(
         serviceAccountEmail: "string",
       });
       triggered = { eventTrigger: ep.eventTrigger };
+      if (!ep.eventTrigger.eventFilters.topic.startsWith("projects/")) {
+        const topic = triggered.eventTrigger.eventFilters.topic;
+        triggered.eventTrigger.eventFilters.topic = `projects/${project}/topics/${topic}`;
+      }
     } else if (backend.isHttpsTriggered(ep)) {
       assertKeyTypes(prefix + ".httpsTrigger", ep.httpsTrigger, {
         invoker: "array",

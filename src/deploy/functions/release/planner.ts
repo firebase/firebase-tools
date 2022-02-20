@@ -171,7 +171,7 @@ export function changedV2PubSubTopic(want: backend.Endpoint, have: backend.Endpo
   if (have.eventTrigger.eventType !== gcfv2.PUBSUB_PUBLISH_EVENT) {
     return false;
   }
-  return have.eventTrigger.eventFilters["resource"] != want.eventTrigger.eventFilters["resource"];
+  return have.eventTrigger.eventFilters["topic"] != want.eventTrigger.eventFilters["topic"];
 }
 
 /** Whether a user upgraded a scheduled function (which goes from Pub/Sub to HTTPS). */

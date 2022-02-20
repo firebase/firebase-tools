@@ -49,7 +49,7 @@ export interface CallableTriggered {
 }
 
 /** Well known keys in the eventFilter attribute of an event trigger */
-export type EventFilterKey = "resource";
+export type EventFilterKey = "resource" | "topic" | "bucket";
 
 /** API agnostic version of a Cloud Function's event trigger. */
 export interface EventTrigger {
