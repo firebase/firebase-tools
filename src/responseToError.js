@@ -4,16 +4,24 @@ const _ = require("lodash");
 const { FirebaseError } = require("./error");
 
 module.exports = function (response, body) {
-  if (typeof body === "string" && response.statusCode === 404) {
-    body = {
-      error: {
-        message: "Not Found",
-      },
-    };
-  }
-
   if (response.statusCode < 400) {
     return null;
+  }
+
+  if (typeof body === "string") {
+    if (response.statusCode === 404) {
+      body = {
+        error: {
+          message: "Not Found",
+        },
+      };
+    } else {
+      body = {
+        error: {
+          message: body,
+        },
+      };
+    }
   }
 
   if (typeof body !== "object") {

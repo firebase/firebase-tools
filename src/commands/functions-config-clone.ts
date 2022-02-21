@@ -39,7 +39,7 @@ export default new Command("functions:config:clone")
       throw new FirebaseError("Cannot use both --only and --except at the same time.");
     }
 
-    let only: string[] = [];
+    let only: string[] | undefined;
     let except: string[] = [];
     if (options.only) {
       only = options.only.split(",");
