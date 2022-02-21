@@ -338,6 +338,51 @@ export function scheduleIdForFunction(cloudFunction: TargetIds): string {
   return `firebase-schedule-${cloudFunction.id}-${cloudFunction.region}`;
 }
 
+/**
+
+"blockingFunctions": {
+  "triggers": {
+    "beforeCreate": {
+      "functionUri": "https://us-central1-cole-pineapple.cloudfunctions.net/authBlockerFromPortal",
+      "updateTime": "2022-01-28T18:45:55.252Z"
+    },
+    "beforeSignIn": {
+      "functionUri": "https://us-central1-cole-pineapple.cloudfunctions.net/authBlockerFromPortal",
+      "updateTime": "2022-01-28T18:45:55.252Z"
+    }
+  },
+  "forwardInboundCredentials": {
+    "idToken": true,
+    "accessToken": true,
+    "refreshToken": true
+  }
+}
+ */
+
+interface AuthBlockingEventDetails {
+  functionUri: string;
+  updateTime: string;
+}
+
+interface AuthBlockingOptions {
+  idToken?: string;
+  accessToken?: string;
+  refreshToken?: string;
+}
+
+interface AuthBlockingTriggerDetails {
+  triggers?: {
+    beforeCreate?: AuthBlockingEventDetails;
+    beforeSignIn?: AuthBlockingEventDetails;
+  };
+  forwardInboundCredentials?: AuthBlockingOptions;
+}
+
+/** @internal */
+export interface AdditionalDetailsCache {
+  authBlockingTriggerDetails?: AuthBlockingTriggerDetails;
+}
+
 interface PrivateContextFields {
   existingBackend: Backend;
   loadedExistingBackend?: boolean;
@@ -348,6 +393,7 @@ interface PrivateContextFields {
     gcfV1: string[];
     gcfV2: string[];
   };
+  additionalDetailsCache: AdditionalDetailsCache;
 }
 
 /**
@@ -381,9 +427,10 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
     gcfV1: [],
     gcfV2: [],
   };
+  ctx.additionalDetailsCache = {};
   const gcfV1Results = await gcf.listAllFunctions(ctx.projectId);
   for (const apiFunction of gcfV1Results.functions) {
-    const endpoint = gcf.endpointFromFunction(apiFunction);
+    const endpoint = gcf.endpointFromFunction(apiFunction, ctx.additionalDetailsCache);
     ctx.existingBackend.endpoints[endpoint.region] =
       ctx.existingBackend.endpoints[endpoint.region] || {};
     ctx.existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
