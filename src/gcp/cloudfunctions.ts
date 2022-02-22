@@ -356,11 +356,16 @@ export async function updateFunction(
   cloudFunction: Omit<CloudFunction, OutputOnlyFields>
 ): Promise<Operation> {
   const endpoint = `/${cloudFunction.name}`;
+  // TODO(colerogers): remove cloudFunctionWithoutHttpsTrigger and set securityLevel in functionFromEndpoint during a breaking change release
+  const cloudFunctionWithoutHttpsTrigger = { ...cloudFunction };
+  delete cloudFunctionWithoutHttpsTrigger.httpsTrigger;
   // Keys in labels and environmentVariables are user defined, so we don't recurse
   // for field masks.
-  const fieldMasks = proto
-    .fieldMasks(cloudFunction, /* doNotRecurseIn...=*/ "labels", "environmentVariables")
-    .filter((fm) => fm !== "httpsTrigger"); // TODO(colerogers): remove and set securityLevel in functionFromEndpoint during a breaking change
+  const fieldMasks = proto.fieldMasks(
+    cloudFunctionWithoutHttpsTrigger,
+    /* doNotRecurseIn...=*/ "labels",
+    "environmentVariables"
+  );
 
   // Failure policy is always an explicit policy and is only signified by the presence or absence of
   // a protobuf.Empty value, so we have to manually add it in the missing case.
