@@ -446,6 +446,14 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
     if (endpoint.eventTrigger.retry) {
       logger.warn("Cannot set a retry policy on Cloud Function", endpoint.id);
     }
+    // By default, Functions Framework in GCFv2 opts to downcast incoming cloudevent messages to legacy formats.
+    // Since Firebase Functions SDK expects messages in cloudevent format, we set FUNCTION_SIGNATURE_TYPE to tell
+    // Functions Framework to disable downcast before passing the cloudevent message to function handler.
+    // See https://github.com/GoogleCloudPlatform/functions-framework-nodejs/blob/master/README.md#configure-the-functions-
+    gcfFunction.serviceConfig.environmentVariables = {
+      ...gcfFunction.serviceConfig.environmentVariables,
+      FUNCTION_SIGNATURE_TYPE: "cloudevent",
+    };
   } else if (backend.isScheduleTriggered(endpoint)) {
     // trigger type defaults to HTTPS.
     gcfFunction.labels = { ...gcfFunction.labels, "deployment-scheduled": "true" };
