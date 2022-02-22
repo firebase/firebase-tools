@@ -152,6 +152,48 @@ export default new Command("ext:install [extensionName]")
     }
   });
 
+async function infoInstallBySource(
+  projectId: string,
+  extensionName: string
+): Promise<extensionsApi.ExtensionSource> {
+  // Create a one off source to use for the install flow.
+  let source;
+  try {
+    source = await createSourceFromLocation(projectId, extensionName);
+  } catch (err: any) {
+    throw new FirebaseError(
+      `Unable to find published extension '${clc.bold(extensionName)}', ` +
+        `and encountered the following error when trying to create an instance of extension '${clc.bold(
+          extensionName
+        )}':\n ${err.message}`
+    );
+  }
+  displayExtInfo(extensionName, "", source.spec);
+  return source;
+}
+
+async function infoInstallByReference(
+  extensionName: string,
+  interactive: boolean
+): Promise<extensionsApi.ExtensionVersion> {
+  // Infer firebase if publisher ID not provided.
+  if (extensionName.split("/").length < 2) {
+    const [extensionID, version] = extensionName.split("@");
+    extensionName = `firebase/${extensionID}@${version || "latest"}`;
+  }
+  // Get the correct version for a given extension reference from the Registry API.
+  const ref = refs.parse(extensionName);
+  const extension = await extensionsApi.getExtension(refs.toExtensionRef(ref));
+  if (!ref.version) {
+    track("Extension Install", "Install by Extension Version Ref", interactive ? 1 : 0);
+    extensionName = `${extensionName}@latest`;
+  }
+  const extVersion = await extensionsApi.getExtensionVersion(extensionName);
+  displayExtInfo(extensionName, ref.publisherId, extVersion.spec, true);
+  await displayWarningPrompts(ref.publisherId, extension.registryLaunchStage, extVersion);
+  return extVersion;
+}
+
 async function installExtension(options: InstallExtensionOptions): Promise<void> {
   const { projectId, extensionName, source, extVersion, paramsEnvPath, nonInteractive, force } =
     options;
@@ -313,46 +355,4 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
       original: err,
     });
   }
-}
-
-async function infoInstallBySource(
-  projectId: string,
-  extensionName: string
-): Promise<extensionsApi.ExtensionSource> {
-  // Create a one off source to use for the install flow.
-  let source;
-  try {
-    source = await createSourceFromLocation(projectId, extensionName);
-  } catch (err: any) {
-    throw new FirebaseError(
-      `Unable to find published extension '${clc.bold(extensionName)}', ` +
-        `and encountered the following error when trying to create an instance of extension '${clc.bold(
-          extensionName
-        )}':\n ${err.message}`
-    );
-  }
-  displayExtInfo(extensionName, "", source.spec);
-  return source;
-}
-
-async function infoInstallByReference(
-  extensionName: string,
-  interactive: boolean
-): Promise<extensionsApi.ExtensionVersion> {
-  // Infer firebase if publisher ID not provided.
-  if (extensionName.split("/").length < 2) {
-    const [extensionID, version] = extensionName.split("@");
-    extensionName = `firebase/${extensionID}@${version || "latest"}`;
-  }
-  // Get the correct version for a given extension reference from the Registry API.
-  const ref = refs.parse(extensionName);
-  const extension = await extensionsApi.getExtension(refs.toExtensionRef(ref));
-  if (!ref.version) {
-    track("Extension Install", "Install by Extension Version Ref", interactive ? 1 : 0);
-    extensionName = `${extensionName}@latest`;
-  }
-  const extVersion = await extensionsApi.getExtensionVersion(extensionName);
-  displayExtInfo(extensionName, ref.publisherId, extVersion.spec, true);
-  await displayWarningPrompts(ref.publisherId, extension.registryLaunchStage, extVersion);
-  return extVersion;
 }
