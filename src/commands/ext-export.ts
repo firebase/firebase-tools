@@ -75,5 +75,7 @@ module.exports = new Command("ext:export")
     await writeToManifest(withRef, existingConfig, {
       nonInteractive: options.nonInteractive,
       force: options.force,
-    });
+    },
+  true /** allowOverwrite */,
+    );
   });

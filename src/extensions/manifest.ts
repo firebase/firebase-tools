@@ -16,11 +16,13 @@ import { promptOnce } from "../prompt";
  * @param config existing config in firebase.json
  * @param options.nonInteractive will try to do the job without asking for user input.
  * @param options.force only when this flag is true this will overwrite existing .env files
+ * @param allowOverwrite allows overwriting the entire manifest
  */
 export async function writeToManifest(
   specs: InstanceSpec[],
   config: Config,
-  options: { nonInteractive: boolean; force: boolean }
+  options: { nonInteractive: boolean; force: boolean },
+  allowOverwrite : boolean = false,
 ): Promise<void> {
   if (
     config.has("extensions") &&
@@ -31,17 +33,19 @@ export async function writeToManifest(
     const currentExtensions = Object.entries(config.get("extensions"))
       .map((i) => `${i[0]}: ${i[1]}`)
       .join("\n\t");
-    const overwrite = await promptOnce({
-      type: "list",
-      message: `firebase.json already contains extensions:\n${currentExtensions}\nWould you like to overwrite or merge?`,
-      choices: [
-        { name: "Overwrite", value: true },
-        { name: "Merge", value: false },
-      ],
-    });
-    if (overwrite) {
-      config.set("extensions", {});
-    }
+    if (allowOverwrite) {
+      const overwrite = await promptOnce({
+        type: "list",
+        message: `firebase.json already contains extensions:\n${currentExtensions}\nWould you like to overwrite or merge?`,
+        choices: [
+          { name: "Overwrite", value: true },
+          { name: "Merge", value: false },
+        ],
+      });
+      if (overwrite) {
+        config.set("extensions", {});
+      }
+    }     
   }
 
   writeExtensionsToFirebaseJson(specs, config);
