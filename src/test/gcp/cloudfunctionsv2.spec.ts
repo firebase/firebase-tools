@@ -117,6 +117,10 @@ describe("cloudfunctionsv2", () => {
             },
           ],
         },
+        serviceConfig: {
+          ...CLOUD_FUNCTION_V2.serviceConfig,
+          environmentVariables: { FUNCTION_SIGNATURE_TYPE: "cloudevent" },
+        },
       };
       expect(
         cloudfunctionsv2.functionFromEndpoint(eventEndpoint, CLOUD_FUNCTION_V2_SOURCE)
@@ -215,6 +219,7 @@ describe("cloudfunctionsv2", () => {
           minInstanceCount: 1,
           timeoutSeconds: 15,
           availableMemory: "128M",
+          environmentVariables: { FUNCTION_SIGNATURE_TYPE: "cloudevent" },
         },
       };
 
