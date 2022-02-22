@@ -279,7 +279,7 @@ export class Fabricator {
         .catch(rethrowAs(endpoint, "create topic"));
     }
 
-    const resultFunction = (await this.functionExecutor
+    const resultFunction = await this.functionExecutor
       .run(async () => {
         const op: { name: string } = await gcfV2.createFunction(apiFunction);
         return await poller.pollOperation<gcfV2.CloudFunction>({
@@ -288,7 +288,7 @@ export class Fabricator {
           operationResourceName: op.name,
         });
       })
-      .catch(rethrowAs(endpoint, "create"))) as gcfV2.CloudFunction;
+      .catch(rethrowAs(endpoint, "create"));
 
     endpoint.uri = resultFunction.serviceConfig.uri;
     const serviceName = resultFunction.serviceConfig.service!;
@@ -361,6 +361,14 @@ export class Fabricator {
       throw new Error("Precondition failed");
     }
     const apiFunction = gcfV2.functionFromEndpoint(endpoint, this.storage[endpoint.region]);
+
+    // N.B. As of GCFv2 private preview the API chokes on any update call that
+    // includes the pub/sub topic even if that topic is unchanged.
+    // We know that the user hasn't changed the topic between deploys because
+    // of checkForInvalidChangeOfTrigger().
+    if (apiFunction.eventTrigger?.pubsubTopic) {
+      delete apiFunction.eventTrigger.pubsubTopic;
+    }
 
     const resultFunction = await this.functionExecutor
       .run(async () => {
