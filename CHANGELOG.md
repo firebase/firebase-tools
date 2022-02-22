@@ -1,2 +1,4 @@
 - Updates reserved environment variables for CF3 to include 'EVENTARC_CLOUD_EVENT_SOURCE' (#4196).
 - Fixes arg order for `firebase emulators:start --only storage` (#4195).
+- Fixes iOS auth for resumable uploads in Storage Emulator (#4184).
+- Fixes Storage Emulator crash on iOS auth error for resumable uploads (#4210).
