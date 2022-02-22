@@ -72,10 +72,13 @@ module.exports = new Command("ext:export")
         "Not currently in a Firebase directory. Please run `firebase init` to create a Firebase directory."
       );
     }
-    await writeToManifest(withRef, existingConfig, {
-      nonInteractive: options.nonInteractive,
-      force: options.force,
-    },
-  true /** allowOverwrite */,
+    await writeToManifest(
+      withRef,
+      existingConfig,
+      {
+        nonInteractive: options.nonInteractive,
+        force: options.force,
+      },
+      true /** allowOverwrite */
     );
   });

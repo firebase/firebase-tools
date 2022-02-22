@@ -22,7 +22,7 @@ export async function writeToManifest(
   specs: InstanceSpec[],
   config: Config,
   options: { nonInteractive: boolean; force: boolean },
-  allowOverwrite : boolean = false,
+  allowOverwrite: boolean = false
 ): Promise<void> {
   if (
     config.has("extensions") &&
@@ -45,7 +45,7 @@ export async function writeToManifest(
       if (overwrite) {
         config.set("extensions", {});
       }
-    }     
+    }
   }
 
   writeExtensionsToFirebaseJson(specs, config);
