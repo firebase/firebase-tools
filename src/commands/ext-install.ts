@@ -54,6 +54,104 @@ interface InstallExtensionOptions {
   force?: boolean;
 }
 
+/**
+ * Command for installing an extension
+ */
+export default new Command("ext:install [extensionName]")
+  .description(
+    "install an official extension if [extensionName] or [extensionName@version] is provided; " +
+      (previews.extdev
+        ? "install a local extension if [localPathOrUrl] or [url#root] is provided; install a published extension (not authored by Firebase) if [publisherId/extensionId] is provided "
+        : "") +
+      "or run with `-i` to see all available extensions."
+  )
+  .withForce()
+  .option("--params <paramsFile>", "name of params variables file with .env format.")
+  .before(requirePermissions, ["firebaseextensions.instances.create"])
+  .before(ensureExtensionsApiEnabled)
+  .before(checkMinRequiredVersion, "extMinVersion")
+  .before(diagnoseAndFixProject)
+  .action(async (extensionName: string, options: any) => {
+    const projectId = needProjectId(options);
+    const paramsEnvPath = options.params;
+    let learnMore = false;
+    if (!extensionName) {
+      if (options.interactive) {
+        learnMore = true;
+        extensionName = await promptForOfficialExtension(
+          "Which official extension do you wish to install?\n" +
+            "  Select an extension, then press Enter to learn more."
+        );
+      } else {
+        throw new FirebaseError(
+          `Unable to find published extension '${clc.bold(extensionName)}'. ` +
+            `Run ${clc.bold(
+              "firebase ext:install -i"
+            )} to select from the list of all available published extensions.`
+        );
+      }
+    }
+    let source;
+    let extVersion;
+    // If the user types in URL, or a local path (prefixed with ~/, ../, or ./), install from local/URL source.
+    // Otherwise, treat the input as an extension reference and proceed with reference-based installation.
+    if (isLocalOrURLPath(extensionName)) {
+      track("Extension Install", "Install by Source", options.interactive ? 1 : 0);
+      source = await infoInstallBySource(projectId, extensionName);
+    } else {
+      track("Extension Install", "Install by Extension Ref", options.interactive ? 1 : 0);
+      extVersion = await infoInstallByReference(extensionName, options.interactive);
+    }
+    if (
+      !(await confirm({
+        nonInteractive: options.nonInteractive,
+        force: options.force,
+        default: true,
+      }))
+    ) {
+      return;
+    }
+    if (!source && !extVersion) {
+      throw new FirebaseError(
+        "Could not find a source. Please specify a valid source to continue."
+      );
+    }
+    const spec = source?.spec || extVersion?.spec;
+    if (!spec) {
+      throw new FirebaseError(
+        `Could not find the extension.yaml for extension '${clc.bold(
+          extensionName
+        )}'. Please make sure this is a valid extension and try again.`
+      );
+    }
+    if (learnMore) {
+      utils.logLabeledBullet(
+        logPrefix,
+        `You selected: ${clc.bold(spec.displayName)}.\n` +
+          `${spec.description}\n` +
+          `View details: https://firebase.google.com/products/extensions/${spec.name}\n`
+      );
+    }
+    try {
+      return installExtension({
+        paramsEnvPath,
+        projectId,
+        extensionName,
+        source,
+        extVersion,
+        nonInteractive: options.nonInteractive,
+        force: options.force,
+      });
+    } catch (err: any) {
+      if (!(err instanceof FirebaseError)) {
+        throw new FirebaseError(`Error occurred installing the extension: ${err.message}`, {
+          original: err,
+        });
+      }
+      throw err;
+    }
+  });
+
 async function installExtension(options: InstallExtensionOptions): Promise<void> {
   const { projectId, extensionName, source, extVersion, paramsEnvPath, nonInteractive, force } =
     options;
@@ -258,101 +356,3 @@ async function infoInstallByReference(
   await displayWarningPrompts(ref.publisherId, extension.registryLaunchStage, extVersion);
   return extVersion;
 }
-
-/**
- * Command for installing an extension
- */
-export default new Command("ext:install [extensionName]")
-  .description(
-    "install an official extension if [extensionName] or [extensionName@version] is provided; " +
-      (previews.extdev
-        ? "install a local extension if [localPathOrUrl] or [url#root] is provided; install a published extension (not authored by Firebase) if [publisherId/extensionId] is provided "
-        : "") +
-      "or run with `-i` to see all available extensions."
-  )
-  .withForce()
-  .option("--params <paramsFile>", "name of params variables file with .env format.")
-  .before(requirePermissions, ["firebaseextensions.instances.create"])
-  .before(ensureExtensionsApiEnabled)
-  .before(checkMinRequiredVersion, "extMinVersion")
-  .before(diagnoseAndFixProject)
-  .action(async (extensionName: string, options: any) => {
-    const projectId = needProjectId(options);
-    const paramsEnvPath = options.params;
-    let learnMore = false;
-    if (!extensionName) {
-      if (options.interactive) {
-        learnMore = true;
-        extensionName = await promptForOfficialExtension(
-          "Which official extension do you wish to install?\n" +
-            "  Select an extension, then press Enter to learn more."
-        );
-      } else {
-        throw new FirebaseError(
-          `Unable to find published extension '${clc.bold(extensionName)}'. ` +
-            `Run ${clc.bold(
-              "firebase ext:install -i"
-            )} to select from the list of all available published extensions.`
-        );
-      }
-    }
-    let source;
-    let extVersion;
-    // If the user types in URL, or a local path (prefixed with ~/, ../, or ./), install from local/URL source.
-    // Otherwise, treat the input as an extension reference and proceed with reference-based installation.
-    if (isLocalOrURLPath(extensionName)) {
-      track("Extension Install", "Install by Source", options.interactive ? 1 : 0);
-      source = await infoInstallBySource(projectId, extensionName);
-    } else {
-      track("Extension Install", "Install by Extension Ref", options.interactive ? 1 : 0);
-      extVersion = await infoInstallByReference(extensionName, options.interactive);
-    }
-    if (
-      !(await confirm({
-        nonInteractive: options.nonInteractive,
-        force: options.force,
-        default: true,
-      }))
-    ) {
-      return;
-    }
-    if (!source && !extVersion) {
-      throw new FirebaseError(
-        "Could not find a source. Please specify a valid source to continue."
-      );
-    }
-    const spec = source?.spec || extVersion?.spec;
-    if (!spec) {
-      throw new FirebaseError(
-        `Could not find the extension.yaml for extension '${clc.bold(
-          extensionName
-        )}'. Please make sure this is a valid extension and try again.`
-      );
-    }
-    if (learnMore) {
-      utils.logLabeledBullet(
-        logPrefix,
-        `You selected: ${clc.bold(spec.displayName)}.\n` +
-          `${spec.description}\n` +
-          `View details: https://firebase.google.com/products/extensions/${spec.name}\n`
-      );
-    }
-    try {
-      return installExtension({
-        paramsEnvPath,
-        projectId,
-        extensionName,
-        source,
-        extVersion,
-        nonInteractive: options.nonInteractive,
-        force: options.force,
-      });
-    } catch (err: any) {
-      if (!(err instanceof FirebaseError)) {
-        throw new FirebaseError(`Error occurred installing the extension: ${err.message}`, {
-          original: err,
-        });
-      }
-      throw err;
-    }
-  });
