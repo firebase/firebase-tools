@@ -6,7 +6,9 @@ import * as clc from "cli-color";
 import * as http from "http";
 import * as jwt from "jsonwebtoken";
 import * as cors from "cors";
+import * as stream from "stream";
 import { URL } from "url";
+import { EventEmitter } from "events";
 
 import { Account } from "../auth";
 import * as api from "../api";
@@ -41,8 +43,6 @@ import {
   emulatedFunctionsByRegion,
 } from "./functionsEmulatorShared";
 import { EmulatorRegistry } from "./registry";
-import { EventEmitter } from "events";
-import * as stream from "stream";
 import { EmulatorLogger, Verbosity } from "./emulatorLogger";
 import { RuntimeWorker, RuntimeWorkerPool } from "./functionsRuntimeWorker";
 import { PubsubEmulator } from "./pubsubEmulator";
@@ -58,10 +58,10 @@ import {
 import { EventUtils } from "./events/types";
 import { functionIdsAreValid } from "../deploy/functions/validate";
 import { ExtensionVersion } from "../extensions/extensionsApi";
-import { getRuntimeDelegate } from "../deploy/functions/runtimes";
+import { accessSecretVersion } from "../gcp/secretManager";
+import * as runtimes from "../deploy/functions/runtimes";
 import * as backend from "../deploy/functions/backend";
 import * as functionsEnv from "../functions/env";
-import { accessSecretVersion } from "../gcp/secretManager";
 
 const EVENT_INVOKE = "functions:invoke";
 const LOCAL_SECRETS_FILE = ".secret.local";
@@ -475,11 +475,15 @@ export class FunctionsEmulator implements EmulatorInstance {
       triggerDefinitions = emulatedFunctionsByRegion(emulatableBackend.predefinedTriggers);
     } else {
       const runtimeConfig = this.getRuntimeConfig(emulatableBackend);
-      const runtimeDelegate = await getRuntimeDelegate({
+      const runtimeDelegateContext: runtimes.DelegateContext = {
         projectId: this.args.projectId,
         projectDir: this.args.projectDir,
         sourceDir: emulatableBackend.functionsDir,
-      });
+      };
+      if (emulatableBackend.nodeMajorVersion) {
+        runtimeDelegateContext.runtime = `nodejs${emulatableBackend.nodeMajorVersion}`;
+      }
+      const runtimeDelegate = await runtimes.getRuntimeDelegate(runtimeDelegateContext);
       logger.debug(`Validating ${runtimeDelegate.name} source`);
       await runtimeDelegate.validate();
       logger.debug(`Building ${runtimeDelegate.name} source`);
