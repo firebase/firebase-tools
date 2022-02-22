@@ -221,8 +221,12 @@ export class StorageLayer {
     if (!upload) {
       return undefined;
     }
+
+    if (upload.status !== UploadStatus.FINISHED) {
+      this._persistence.deleteFile(upload.fileLocation);
+    }
     upload.status = UploadStatus.CANCELLED;
-    this._persistence.deleteFile(upload.fileLocation);
+    return upload;
   }
 
   public uploadBytes(uploadId: string, bytes: Buffer): ResumableUpload | undefined {
