@@ -5,6 +5,7 @@ import { Config } from "../config";
 import { InstanceSpec } from "../deploy/extensions/planner";
 import { logger } from "../logger";
 import { promptOnce } from "../prompt";
+import { FirebaseError } from "../error";
 
 /**
  * Write a list of instanceSpecs to extensions manifest.
@@ -16,7 +17,7 @@ import { promptOnce } from "../prompt";
  * @param config existing config in firebase.json
  * @param options.nonInteractive will try to do the job without asking for user input.
  * @param options.force only when this flag is true this will overwrite existing .env files
- * @param allowOverwrite allows overwriting the entire manifest
+ * @param allowOverwrite allows overwriting the entire manifest with the new specs
  */
 export async function writeToManifest(
   specs: InstanceSpec[],
@@ -50,6 +51,26 @@ export async function writeToManifest(
 
   writeExtensionsToFirebaseJson(specs, config);
   await writeEnvFiles(specs, config, options.force);
+}
+
+export function loadConfig(options: any): Config {
+  const existingConfig = Config.load(options, true);
+  if (!existingConfig) {
+    throw new FirebaseError(
+      "Not currently in a Firebase directory. Please run `firebase init` to create a Firebase directory."
+    );
+  }
+  return existingConfig;
+}
+
+// TODO(lihes): Add some tests.
+/**
+ * Checks if an instance name already exists in the manifest.
+ */
+export function instanceExists(instanceName: string, config: Config): boolean {
+  return Object.entries(config.get("extensions")).some(
+    ([manifestKey, _], __) => manifestKey === instanceName
+  );
 }
 
 // TODO(lihes): Add some tests.

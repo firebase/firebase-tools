@@ -41,7 +41,6 @@ import { logger } from "../logger";
 import { previews } from "../previews";
 import { Options } from "../options";
 import * as manifest from "../extensions/manifest";
-import { Config } from "../config";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -60,7 +59,7 @@ export default new Command("ext:install [extensionName]")
   )
   .withForce()
   .option("--params <paramsFile>", "name of params variables file with .env format.")
-  .option("--local", "install to manifest rather than directly at Firebase project")
+  .option("--local", "save to manifest rather than directly install to a Firebase project")
   .before(requirePermissions, ["firebaseextensions.instances.create"])
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
@@ -145,14 +144,18 @@ export default new Command("ext:install [extensionName]")
         });
       } catch (err: any) {
         if (!(err instanceof FirebaseError)) {
-          throw new FirebaseError(`Error occurred installing the extension: ${err.message}`, {
-            original: err,
-          });
+          throw new FirebaseError(
+            `Error occurred saving the extension to manifest: ${err.message}`,
+            {
+              original: err,
+            }
+          );
         }
         throw err;
       }
     }
 
+    // TODO(b/220900194): Remove this and make --local the default behavior.
     try {
       return installExtension({
         ...paramsEnvPath,
@@ -223,7 +226,6 @@ interface InstallExtensionOptions {
   extVersion?: extensionsApi.ExtensionVersion;
   nonInteractive: boolean;
   force?: boolean;
-  local?: boolean;
 }
 
 /**
@@ -233,8 +235,7 @@ interface InstallExtensionOptions {
  * @param options
  */
 async function installToManifest(options: InstallExtensionOptions): Promise<void> {
-  const { projectId, extensionName, extVersion, paramsEnvPath, nonInteractive, force, local } =
-    options;
+  const { projectId, extensionName, extVersion, paramsEnvPath, nonInteractive, force } = options;
   const spec = extVersion?.spec;
   if (!spec) {
     throw new FirebaseError(
@@ -242,12 +243,14 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
     );
   }
 
-  // TODO: check for duplicates in manifest
+  const config = manifest.loadConfig(options);
 
   let instanceId = spec.name;
-  let params: Record<string, string>;
-  instanceId = await promptForValidInstanceId(`${instanceId}-${getRandomString(4)}`);
-  params = await paramHelper.getParams({
+  while (manifest.instanceExists(instanceId, config)) {
+    instanceId = await promptForValidInstanceId(`${spec.name}-${getRandomString(4)}`);
+  }
+
+  const params = await paramHelper.getParams({
     projectId,
     paramSpecs: spec.params,
     nonInteractive,
@@ -255,12 +258,6 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
     instanceId,
   });
 
-  const existingConfig = Config.load(options, true);
-  if (!existingConfig) {
-    throw new FirebaseError(
-      "Not currently in a Firebase directory. Please run `firebase init` to create a Firebase directory."
-    );
-  }
   const ref = refs.parse(extVersion.ref);
   await manifest.writeToManifest(
     [
@@ -270,7 +267,7 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
         params,
       },
     ],
-    existingConfig,
+    config,
     { nonInteractive, force: force ?? false }
   );
 }
@@ -283,23 +280,12 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
  * 3. Asks for permission to grant sa roles.
  * 4. Asks for extension params
  * 5. Install
- *
- * The default behavior of this command is about to be changed to the behavior of
- * --local in the next breaking change.
  * @param options
  * @returns
  */
 async function installExtension(options: InstallExtensionOptions): Promise<void> {
-  const {
-    projectId,
-    extensionName,
-    source,
-    extVersion,
-    paramsEnvPath,
-    nonInteractive,
-    force,
-    local,
-  } = options;
+  const { projectId, extensionName, source, extVersion, paramsEnvPath, nonInteractive, force } =
+    options;
   const spec = source?.spec || extVersion?.spec;
   if (!spec) {
     throw new FirebaseError(

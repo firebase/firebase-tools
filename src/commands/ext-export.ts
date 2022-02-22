@@ -9,7 +9,7 @@ import {
   setSecretParamsToLatest,
 } from "../extensions/export";
 import { ensureExtensionsApiEnabled } from "../extensions/extensionsHelper";
-import { writeToManifest } from "../extensions/manifest";
+import * as manifest from "../extensions/manifest";
 import { partition } from "../functional";
 import { getProjectNumber } from "../getProjectNumber";
 import { logger } from "../logger";
@@ -66,13 +66,8 @@ module.exports = new Command("ext:export")
       return;
     }
 
-    const existingConfig = Config.load(options, true);
-    if (!existingConfig) {
-      throw new FirebaseError(
-        "Not currently in a Firebase directory. Please run `firebase init` to create a Firebase directory."
-      );
-    }
-    await writeToManifest(
+    const existingConfig = manifest.loadConfig(options);
+    await manifest.writeToManifest(
       withRef,
       existingConfig,
       {
