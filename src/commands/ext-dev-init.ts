@@ -28,6 +28,64 @@ function readCommonTemplates() {
 }
 
 /**
+ * Command for setting up boilerplate code for a new extension.
+ */
+export default new Command("ext:dev:init")
+  .description("initialize files for writing an extension in the current directory")
+  .before(checkMinRequiredVersion, "extDevMinVersion")
+  .action(async (options: any) => {
+    const cwd = options.cwd || process.cwd();
+    const config = new Config({}, { projectDir: cwd, cwd: cwd });
+
+    try {
+      const lang = await promptOnce({
+        type: "list",
+        name: "language",
+        message: "In which language do you want to write the Cloud Functions for your extension?",
+        default: "javascript",
+        choices: [
+          {
+            name: "JavaScript",
+            value: "javascript",
+          },
+          {
+            name: "TypeScript",
+            value: "typescript",
+          },
+        ],
+      });
+      switch (lang) {
+        case "javascript": {
+          await javascriptSelected(config);
+          break;
+        }
+        case "typescript": {
+          await typescriptSelected(config);
+          break;
+        }
+        default: {
+          throw new FirebaseError(`${lang} is not supported.`);
+        }
+      }
+
+      await npmDependencies.askInstallDependencies({}, config);
+
+      const welcome = fs.readFileSync(path.join(TEMPLATE_ROOT, lang, "WELCOME.md"), "utf8");
+      return logger.info("\n" + marked(welcome));
+    } catch (err: any) {
+      if (!(err instanceof FirebaseError)) {
+        throw new FirebaseError(
+          `Error occurred when initializing files for new extension: ${err.message}`,
+          {
+            original: err,
+          }
+        );
+      }
+      throw err;
+    }
+  });
+
+/**
  * Sets up Typescript boilerplate code for new extension
  * @param {Config} config configuration options
  */
@@ -127,61 +185,3 @@ async function javascriptSelected(config: Config): Promise<void> {
   }
   await config.askWriteProjectFile("functions/.gitignore", gitignoreTemplate);
 }
-
-/**
- * Command for setting up boilerplate code for a new extension.
- */
-export default new Command("ext:dev:init")
-  .description("initialize files for writing an extension in the current directory")
-  .before(checkMinRequiredVersion, "extDevMinVersion")
-  .action(async (options: any) => {
-    const cwd = options.cwd || process.cwd();
-    const config = new Config({}, { projectDir: cwd, cwd: cwd });
-
-    try {
-      const lang = await promptOnce({
-        type: "list",
-        name: "language",
-        message: "In which language do you want to write the Cloud Functions for your extension?",
-        default: "javascript",
-        choices: [
-          {
-            name: "JavaScript",
-            value: "javascript",
-          },
-          {
-            name: "TypeScript",
-            value: "typescript",
-          },
-        ],
-      });
-      switch (lang) {
-        case "javascript": {
-          await javascriptSelected(config);
-          break;
-        }
-        case "typescript": {
-          await typescriptSelected(config);
-          break;
-        }
-        default: {
-          throw new FirebaseError(`${lang} is not supported.`);
-        }
-      }
-
-      await npmDependencies.askInstallDependencies({}, config);
-
-      const welcome = fs.readFileSync(path.join(TEMPLATE_ROOT, lang, "WELCOME.md"), "utf8");
-      return logger.info("\n" + marked(welcome));
-    } catch (err: any) {
-      if (!(err instanceof FirebaseError)) {
-        throw new FirebaseError(
-          `Error occurred when initializing files for new extension: ${err.message}`,
-          {
-            original: err,
-          }
-        );
-      }
-      throw err;
-    }
-  });
