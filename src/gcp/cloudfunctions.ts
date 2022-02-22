@@ -358,11 +358,9 @@ export async function updateFunction(
   const endpoint = `/${cloudFunction.name}`;
   // Keys in labels and environmentVariables are user defined, so we don't recurse
   // for field masks.
-  const fieldMasks = proto.fieldMasks(
-    cloudFunction,
-    /* doNotRecurseIn...=*/ "labels",
-    "environmentVariables"
-  );
+  const fieldMasks = proto
+    .fieldMasks(cloudFunction, /* doNotRecurseIn...=*/ "labels", "environmentVariables")
+    .filter((fm) => fm !== "httpsTrigger"); // TODO(colerogers): remove and set securityLevel in functionFromEndpoint during a breaking change
 
   // Failure policy is always an explicit policy and is only signified by the presence or absence of
   // a protobuf.Empty value, so we have to manually add it in the missing case.
