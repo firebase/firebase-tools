@@ -44,16 +44,6 @@ marked.setOptions({
   renderer: new TerminalRenderer(),
 });
 
-interface InstallExtensionOptions {
-  paramsEnvPath?: string;
-  projectId: string;
-  extensionName: string;
-  source?: extensionsApi.ExtensionSource;
-  extVersion?: extensionsApi.ExtensionVersion;
-  nonInteractive: boolean;
-  force?: boolean;
-}
-
 /**
  * Command for installing an extension
  */
@@ -192,6 +182,16 @@ async function infoInstallByReference(
   displayExtInfo(extensionName, ref.publisherId, extVersion.spec, true);
   await displayWarningPrompts(ref.publisherId, extension.registryLaunchStage, extVersion);
   return extVersion;
+}
+
+interface InstallExtensionOptions {
+  paramsEnvPath?: string;
+  projectId: string;
+  extensionName: string;
+  source?: extensionsApi.ExtensionSource;
+  extVersion?: extensionsApi.ExtensionVersion;
+  nonInteractive: boolean;
+  force?: boolean;
 }
 
 async function installExtension(options: InstallExtensionOptions): Promise<void> {
