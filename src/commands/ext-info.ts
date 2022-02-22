@@ -15,6 +15,7 @@ const { marked } = require("marked");
 import TerminalRenderer = require("marked-terminal");
 
 const FUNCTION_TYPE_REGEX = /\..+\.function/;
+
 export default new Command("ext:info <extensionName>")
   .description(
     "display information about an extension by name (extensionName@x.y.z for a specific version)"
