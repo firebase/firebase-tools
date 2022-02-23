@@ -89,7 +89,7 @@ export default new Command("ext:install [extensionName]")
     // If the user types in URL, or a local path (prefixed with ~/, ../, or ./), install from local/URL source.
     // Otherwise, treat the input as an extension reference and proceed with reference-based installation.
     if (isLocalOrURLPath(extensionName)) {
-      track("Extension Install", "Install by Source", options.interactive ? 1 : 0);
+      void track("Extension Install", "Install by Source", options.interactive ? 1 : 0);
       if (options.local) {
         throw new FirebaseError(
           "Installing a local source locally is not supported yet, please use ext:dev:emulator commands"
@@ -97,7 +97,7 @@ export default new Command("ext:install [extensionName]")
       }
       source = await infoInstallBySource(projectId, extensionName);
     } else {
-      track("Extension Install", "Install by Extension Ref", options.interactive ? 1 : 0);
+      void track("Extension Install", "Install by Extension Ref", options.interactive ? 1 : 0);
       extVersion = await infoInstallByReference(extensionName, options.interactive);
     }
     if (
