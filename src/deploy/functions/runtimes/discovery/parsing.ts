@@ -28,7 +28,7 @@ export function assertKeyTypes<T extends Object>(
     const fullKey = prefix ? prefix + "." + key : key;
     if (!schema[key] || schema[key] === "omit") {
       throw new FirebaseError(
-        `Unexpected key ${fullKey}. You may need to install a newer version of the Firebase CLI`
+        `Unexpected key ${fullKey}. You may need to install a newer version of the Firebase CLI.`
       );
     }
     if (schema[key] === "string") {

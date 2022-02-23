@@ -20,6 +20,7 @@ import {
   getSourceOrigin,
   SourceOrigin,
   confirm,
+  diagnoseAndFixProject,
 } from "../extensions/extensionsHelper";
 import * as paramHelper from "../extensions/paramHelper";
 import {
@@ -43,17 +44,6 @@ marked.setOptions({
   renderer: new TerminalRenderer(),
 });
 
-function isValidUpdate(existingSourceOrigin: SourceOrigin, newSourceOrigin: SourceOrigin): boolean {
-  if (existingSourceOrigin === SourceOrigin.PUBLISHED_EXTENSION) {
-    return [SourceOrigin.PUBLISHED_EXTENSION, SourceOrigin.PUBLISHED_EXTENSION_VERSION].includes(
-      newSourceOrigin
-    );
-  } else if (existingSourceOrigin === SourceOrigin.LOCAL) {
-    return [SourceOrigin.LOCAL, SourceOrigin.URL].includes(newSourceOrigin);
-  }
-  return false;
-}
-
 /**
  * Command for updating an existing extension instance
  */
@@ -69,6 +59,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
   ])
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
+  .before(diagnoseAndFixProject)
   .withForce()
   .option("--params <paramsFile>", "name of params variables file with .env format.")
   .action(async (instanceId: string, updateSource: string, options: any) => {
@@ -288,3 +279,14 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
       throw err;
     }
   });
+
+function isValidUpdate(existingSourceOrigin: SourceOrigin, newSourceOrigin: SourceOrigin): boolean {
+  if (existingSourceOrigin === SourceOrigin.PUBLISHED_EXTENSION) {
+    return [SourceOrigin.PUBLISHED_EXTENSION, SourceOrigin.PUBLISHED_EXTENSION_VERSION].includes(
+      newSourceOrigin
+    );
+  } else if (existingSourceOrigin === SourceOrigin.LOCAL) {
+    return [SourceOrigin.LOCAL, SourceOrigin.URL].includes(newSourceOrigin);
+  }
+  return false;
+}

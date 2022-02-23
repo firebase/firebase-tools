@@ -10,6 +10,8 @@ import * as runtimes from "../deploy/functions/runtimes";
 import * as iam from "./iam";
 import { Client } from "../apiv2";
 import { functionsOrigin } from "../api";
+import { getFirebaseProject } from "../management/projects";
+import { assertExhaustive } from "../functional";
 
 export const API_VERSION = "v1";
 const client = new Client({ urlPrefix: functionsOrigin, apiVersion: API_VERSION });
@@ -510,15 +512,21 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     "timeout",
     "minInstances",
     "maxInstances",
-    "vpcConnector",
-    "vpcConnectorEgressSettings",
     "ingressSettings",
     "labels",
     "environmentVariables",
     "secretEnvironmentVariables",
     "sourceUploadUrl"
   );
-
+  if (gcfFunction.vpcConnector) {
+    endpoint.vpc = { connector: gcfFunction.vpcConnector };
+    proto.renameIfPresent(
+      endpoint.vpc,
+      gcfFunction,
+      "egressSettings",
+      "vpcConnectorEgressSettings"
+    );
+  }
   return endpoint;
 }
 
@@ -573,6 +581,9 @@ export function functionFromEndpoint(
     gcfFunction.labels = { ...gcfFunction.labels, "deployment-taskqueue": "true" };
   } else {
     gcfFunction.httpsTrigger = {};
+    if (backend.isCallableTriggered(endpoint)) {
+      gcfFunction.labels = { ...gcfFunction.labels, "deployment-callabled": "true" };
+    }
   }
 
   proto.copyIfPresent(
@@ -583,12 +594,18 @@ export function functionFromEndpoint(
     "availableMemoryMb",
     "minInstances",
     "maxInstances",
-    "vpcConnector",
-    "vpcConnectorEgressSettings",
     "ingressSettings",
     "environmentVariables",
     "secretEnvironmentVariables"
   );
-
+  if (endpoint.vpc) {
+    proto.renameIfPresent(gcfFunction, endpoint.vpc, "vpcConnector", "connector");
+    proto.renameIfPresent(
+      gcfFunction,
+      endpoint.vpc,
+      "vpcConnectorEgressSettings",
+      "egressSettings"
+    );
+  }
   return gcfFunction;
 }

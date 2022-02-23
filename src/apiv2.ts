@@ -23,7 +23,7 @@ interface BaseRequestOptions<T> extends VerbOptions {
   method: HttpMethod;
   path: string;
   body?: T | string | NodeJS.ReadableStream;
-  responseType?: "json" | "stream";
+  responseType?: "json" | "stream" | "xml";
   redirect?: "error" | "follow" | "manual";
   compress?: boolean;
 }
@@ -415,6 +415,8 @@ export class Client {
                 throw new FirebaseError(`Unable to parse JSON: ${err}`);
               }
             }
+          } else if (options.responseType === "xml") {
+            body = (await res.text()) as unknown as ResT;
           } else if (options.responseType === "stream") {
             body = res.body as unknown as ResT;
           } else {

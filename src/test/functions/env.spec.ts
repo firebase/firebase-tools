@@ -238,6 +238,10 @@ FOO=foo
       expect(() => {
         env.validateKey("FIREBASE_FOOBAR");
       }).to.throw("starts with a reserved prefix");
+
+      expect(() => {
+        env.validateKey("EXT_INSTANCE_ID");
+      }).to.throw("starts with a reserved prefix");
     });
   });
 

@@ -4,15 +4,16 @@ import * as path from "path";
 
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
-import { previews } from "../previews";
 import { logBullet } from "../utils";
 
 const FUNCTIONS_EMULATOR_DOTENV = ".env.local";
 
+const RESERVED_PREFIXES = ["X_GOOGLE_", "FIREBASE_", "EXT_"];
 const RESERVED_KEYS = [
   // Cloud Functions for Firebase
   "FIREBASE_CONFIG",
   "CLOUD_RUNTIME_CONFIG",
+  "EVENTARC_CLOUD_EVENT_SOURCE",
   // Cloud Functions - old runtimes:
   //   https://cloud.google.com/functions/docs/env-var#nodejs_8_python_37_and_go_111
   "ENTRY_POINT",
@@ -149,10 +150,10 @@ export function validateKey(key: string): void {
         ", and then consist of uppercase ASCII letters, digits, and underscores."
     );
   }
-  if (key.startsWith("X_GOOGLE_") || key.startsWith("FIREBASE_")) {
+  if (RESERVED_PREFIXES.some((prefix) => key.startsWith(prefix))) {
     throw new KeyValidationError(
       key,
-      `Key ${key} starts with a reserved prefix (X_GOOGLE_ or FIREBASE_)`
+      `Key ${key} starts with a reserved prefix (${RESERVED_PREFIXES.join(" ")})`
     );
   }
 }
