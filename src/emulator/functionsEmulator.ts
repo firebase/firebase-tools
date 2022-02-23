@@ -1263,7 +1263,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       });
 
       // For analytics, track the invoked service
-      track(EVENT_INVOKE, getFunctionService(trigger));
+      void track(EVENT_INVOKE, getFunctionService(trigger));
 
       worker.waitForDone().then(() => {
         resolve({ status: "acknowledged" });
@@ -1377,7 +1377,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     // Wait for the worker to set up its internal HTTP server
     await worker.waitForSocketReady();
 
-    track(EVENT_INVOKE, "https");
+    void track(EVENT_INVOKE, "https");
 
     this.logger.log("DEBUG", `[functions] Runtime ready! Sending request!`);
 

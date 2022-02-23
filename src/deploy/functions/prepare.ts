@@ -93,7 +93,7 @@ export async function prepare(
     : usedDotenv
     ? "dotenv"
     : "none";
-  await track("functions_codebase_deploy_env_method", tag);
+  void track("functions_codebase_deploy_env_method", tag);
 
   logger.debug(`Analyzing ${runtimeDelegate.name} backend spec`);
   const wantBackend = await runtimeDelegate.discoverSpec(runtimeConfig, firebaseEnvs);
