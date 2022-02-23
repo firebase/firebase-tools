@@ -452,7 +452,9 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
           req.params.bucketId,
           name,
           objectContentType,
-          req.body
+          req.body,
+          // Store auth header for use in the finalize request
+          req.header("authorization")
         );
 
         storageLayer.uploadBytes(upload.uploadId, Buffer.alloc(0));
@@ -544,7 +546,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
             // TODO This will be either create or update
             method: RulesetOperationMethod.CREATE,
             path: operationPath,
-            authorization: req.header("authorization"),
+            authorization: upload.authorization,
             file: {
               after: storageLayer.getMetadata(req.params.bucketId, name)?.asRulesResource(),
             },

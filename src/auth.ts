@@ -469,7 +469,7 @@ async function loginRemotely(userHint?: string): Promise<UserCredentials> {
       codeVerifier
     );
 
-    track("login", "google_remote");
+    void track("login", "google_remote");
 
     return {
       user: jwt.decode(tokens.id_token!) as User,
@@ -493,7 +493,7 @@ async function loginWithLocalhostGoogle(port: number, userHint?: string): Promis
     getTokensFromAuthorizationCode
   );
 
-  track("login", "google_localhost");
+  void track("login", "google_localhost");
   // getTokensFromAuthoirzationCode doesn't handle the --token case, so we know we'll
   // always have an id_token.
   return {
@@ -514,7 +514,7 @@ async function loginWithLocalhostGitHub(port: number): Promise<string> {
     successTemplate,
     getGithubTokensFromAuthorizationCode
   );
-  track("login", "google_localhost");
+  void track("login", "google_localhost");
   return tokens;
 }
 

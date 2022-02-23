@@ -158,6 +158,7 @@ export async function upload(
     method: "PUT",
     path: url.pathname,
     queryParams: url.searchParams,
+    responseType: "xml",
     headers: {
       "content-type": "application/zip",
       ...extraHeaders,
