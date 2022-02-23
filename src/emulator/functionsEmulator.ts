@@ -816,7 +816,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         env: e.env,
         extensionInstanceId: e.extensionInstanceId,
         extensionVersion: e.extensionVersion,
-        functionTriggers: e.predefinedTriggers || cf3Triggers,
+        functionTriggers: e.predefinedTriggers ?? cf3Triggers,
       };
     });
   }
