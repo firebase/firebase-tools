@@ -209,7 +209,7 @@ async function infoInstallByReference(
   const ref = refs.parse(extensionName);
   const extension = await extensionsApi.getExtension(refs.toExtensionRef(ref));
   if (!ref.version) {
-    track("Extension Install", "Install by Extension Version Ref", interactive ? 1 : 0);
+    void track("Extension Install", "Install by Extension Version Ref", interactive ? 1 : 0);
     extensionName = `${extensionName}@latest`;
   }
   const extVersion = await extensionsApi.getExtensionVersion(extensionName);
