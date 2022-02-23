@@ -86,7 +86,7 @@ export default new Command("functions:secrets:set <KEY>")
       );
       if (!confirm) {
         logBullet(
-            "Please deploy your functions for the change to take effect by running:\n\t" +
+          "Please deploy your functions for the change to take effect by running:\n\t" +
             clc.bold("firebase deploy --only functions")
         );
         return;

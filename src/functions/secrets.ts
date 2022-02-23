@@ -140,10 +140,10 @@ export function of(endpoints: backend.Endpoint[]): backend.SecretEnvVar[] {
  * Checks whether a secret is in use by the given endpoint.
  */
 export function inUse(projectInfo: ProjectInfo, secret: Secret, endpoint: backend.Endpoint) {
-  const { projectNumber } = projectInfo;
+  const { projectId, projectNumber } = projectInfo;
   for (const sev of of([endpoint])) {
     if (
-      (sev.projectId === endpoint.project || sev.projectId === projectNumber) &&
+      (sev.projectId === projectId || sev.projectId === projectNumber) &&
       sev.secret === secret.name
     ) {
       return true;
@@ -175,9 +175,12 @@ export async function pruneSecrets(
   // Prune all project-scoped secrets in use.
   const secrets: Required<backend.SecretEnvVar>[] = [];
   for (const secret of of(endpoints)) {
+    if (!secret.version) {
+      // All bets are off if secret version isn't available in the endpoint definition.
+      // This should never happen for GCFv1 instances.
+      throw new FirebaseError(`Secret ${secret.secret} version is unexpectedly empty.`);
+    }
     if (secret.projectId === projectId || secret.projectId === projectNumber) {
-      // All bets are off the secret version isn't available. This should never happen for GCFv1 instances,
-      // but just to be safe, we'll skip such configured secrets.
       if (secret.version) {
         secrets.push({ ...secret, version: secret.version });
       }
@@ -261,14 +264,7 @@ export async function updateEndpointSecret(
 ): Promise<backend.Endpoint> {
   const { projectId, projectNumber } = projectInfo;
 
-  if (
-    of([endpoint]).filter(
-      (s) =>
-        (s.projectId === projectId || s.projectId === projectNumber) &&
-        s.secret === secretVersion.secret.name
-    ).length === 0
-  ) {
-    // Secret is not in use - return early.
+  if (!inUse(projectInfo, secretVersion.secret, endpoint)) {
     return endpoint;
   }
 
