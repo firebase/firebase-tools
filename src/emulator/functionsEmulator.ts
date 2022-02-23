@@ -808,14 +808,15 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   getBackendInfo(): BackendInfo[] {
+    const cf3Triggers = Object.values(this.triggers)
+      .filter((t) => !t.backend.extensionInstanceId)
+      .map((t) => t.def);
     return this.args.emulatableBackends.map((e: EmulatableBackend) => {
       return {
         env: e.env,
         extensionInstanceId: e.extensionInstanceId,
         extensionVersion: e.extensionVersion,
-        functionTriggers: e.predefinedTriggers ?? [],
-        // TODO: Right now, functionTriggers will be an empty list for CF3 backends.
-        // We need to figure out how to expose the loaded triggers here here.
+        functionTriggers: e.predefinedTriggers ?? cf3Triggers,
       };
     });
   }
