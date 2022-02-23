@@ -57,6 +57,7 @@ export default new Command("ext:install [extensionName]")
       "or run with `-i` to see all available extensions."
   )
   .withForce()
+  // TODO(b/221037520): Deprecate the params flag then remove it in the next breaking version.
   .option("--params <paramsFile>", "name of params variables file with .env format.")
   .option("--local", "save to firebase.json rather than directly install to a Firebase project")
   .before(requirePermissions, ["firebaseextensions.instances.create"])
@@ -65,7 +66,7 @@ export default new Command("ext:install [extensionName]")
   .before(diagnoseAndFixProject)
   .action(async (extensionName: string, options: Options) => {
     const projectId = needProjectId(options);
-    const paramsEnvPath = (options.params ?? {}) as Object;
+    const paramsEnvPath = (options.params ?? {}) as string;
     let learnMore = false;
     if (!extensionName) {
       if (options.interactive) {
@@ -133,7 +134,7 @@ export default new Command("ext:install [extensionName]")
     if (options.local) {
       try {
         return installToManifest({
-          ...paramsEnvPath,
+          paramsEnvPath,
           projectId,
           extensionName,
           source,
@@ -157,7 +158,7 @@ export default new Command("ext:install [extensionName]")
     // TODO(b/220900194): Remove this and make --local the default behavior.
     try {
       return installExtension({
-        ...paramsEnvPath,
+        paramsEnvPath,
         projectId,
         extensionName,
         source,

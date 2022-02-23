@@ -63,13 +63,12 @@ export function loadConfig(options: any): Config {
   return existingConfig;
 }
 
-// TODO(lihes): Add some tests.
 /**
  * Checks if an instance name already exists in the manifest.
  */
-export function instanceExists(instanceName: string, config: Config): boolean {
-  return Object.entries(config.get("extensions")).some(
-    ([manifestKey, _], __) => manifestKey === instanceName
+export function instanceExists(instanceId: string, config: Config): boolean {
+  return Object.keys(config.get("extensions", {})).some(
+    (manifestKey) => manifestKey === instanceId
   );
 }
 
