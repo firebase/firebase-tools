@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import * as clc from "cli-color";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
@@ -59,7 +58,7 @@ export default new Command("ext:install [extensionName]")
   )
   .withForce()
   .option("--params <paramsFile>", "name of params variables file with .env format.")
-  .option("--local", "save to manifest rather than directly install to a Firebase project")
+  .option("--local", "save to firebase.json rather than directly install to a Firebase project")
   .before(requirePermissions, ["firebaseextensions.instances.create"])
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")

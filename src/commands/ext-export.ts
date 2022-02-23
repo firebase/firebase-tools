@@ -1,8 +1,6 @@
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
-import { Config } from "../config";
 import * as planner from "../deploy/extensions/planner";
-import { FirebaseError } from "../error";
 import {
   displayExportInfo,
   parameterizeProject,
