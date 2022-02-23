@@ -75,7 +75,7 @@ $ gcloud alpha functions deploy [FUNCTION-NAME] \
  */
 export const FirebaseAlertsService: Service = {
   name: "firealerts",
-  api: ["logging.googleapis.com"], // TODO(colerogers): ensure this api is enabled
+  api: "logging.googleapis.com",
   requiredProjectBindings: obtainFireAlertsBindings,
   ensureTriggerRegion: ensureFirebaseAlertsTriggerRegion,
 };

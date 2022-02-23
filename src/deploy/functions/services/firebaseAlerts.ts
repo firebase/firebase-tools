@@ -6,7 +6,8 @@ import { getProjectNumber } from "../../../getProjectNumber";
 const SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE = "roles/iam.serviceAccountTokenCreator";
 
 /**
- * Finds the required project level IAM bindings for the Cloud Storage service agent
+ * Finds the required project level IAM bindings for the Pub/Sub service agent
+ * If the user enabled Pub/Sub on or before April 8, 2021 then we must enable the token creator role
  * @param projectId project identifier
  * @param existingPolicy the project level IAM policy
  */
