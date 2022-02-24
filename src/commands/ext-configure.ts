@@ -40,35 +40,57 @@ export default new Command("ext:configure <extensionInstanceId>")
     const projectId = needProjectId(options);
 
     if (options.local) {
+      if (options.noninteractive) {
+        throw new FirebaseError(
+          `Command not supported in non-interactive mode, edit ./extensions/${instanceId}.env directly instead`
+        );
+      }
+
       const config = manifest.loadConfig(options);
       const targetRef = manifest.getInstanceRef(instanceId, config);
       const extVer = await extensionsApi.getExtensionVersion(refs.toExtensionVersionRef(targetRef));
 
-      const oldParamsValues = manifest.getInstanceParams(instanceId, config);
-      const newParams = _.cloneDeep(extVer.spec.params);
+      const oldParamValues = manifest.readInstanceParam({
+        instanceId,
+        projectDir: config.projectDir,
+      });
 
-      paramHelper.setNewDefaults(newParams, oldParamsValues);
-
-      const immutableParams = _.remove(newParams, (param) => param.immutable);
-      infoImmutableParams(immutableParams, oldParamsValues);
+      const tbdParams = _.cloneDeep(extVer.spec.params);
+      const immutableParams = _.remove(tbdParams, (param) => param.immutable);
+      infoImmutableParams(immutableParams, oldParamValues);
 
       // Ask for mutable param values from user.
+      paramHelper.setNewDefaults(tbdParams, oldParamValues);
       const mutableParamsValues = await paramHelper.getParams({
         projectId,
-        paramSpecs: newParams,
+        paramSpecs: tbdParams,
         nonInteractive: options.nonInteractive,
         paramsEnvPath: options.params,
         instanceId,
         reconfiguring: true,
       });
-      const newParamsValues = {
-        ...oldParamsValues,
+
+      // Merge with old immutable params.
+      const newParamValues = {
+        ...oldParamValues,
         ...mutableParamsValues,
       };
-      console.log(newParamsValues);
+
+      await manifest.writeToManifest(
+        [
+          {
+            instanceId,
+            ref: targetRef,
+            params: newParamValues,
+          },
+        ],
+        config,
+        { nonInteractive: options.noninteractive, force: options.force }
+      );
       return;
     }
 
+    // TODO(b/220900194): Remove everything below and make --local the default behavior.
     const spinner = ora(
       `Configuring ${clc.bold(instanceId)}. This usually takes 3 to 5 minutes...`
     );
@@ -151,7 +173,10 @@ function infoImmutableParams(
   }
 
   const plural = immutableParams.length > 1;
-  logger.info(`The following param${plural ? "s are" : " is"} immutable:`);
+  utils.logLabeledWarning(
+    logPrefix,
+    marked(`The following param${plural ? "s are" : " is"} immutable and won't be changed:`)
+  );
 
   for (const { param } of immutableParams) {
     logger.info(`param: ${param}, value: ${paramValues[param]}`);
