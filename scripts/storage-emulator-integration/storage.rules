@@ -3,7 +3,7 @@ service firebase.storage {
   match /b/{bucket}/o {
     match /{allPaths=**} {
       allow read, create, update: if request.auth != null;
-      allow delete: if request.auth != null && resource.name != null;
+      allow delete: if request.auth != null && resource.contentType != 'text/plain';
     }
 
     match /public/{allPaths=**} {
