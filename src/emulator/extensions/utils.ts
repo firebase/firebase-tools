@@ -15,7 +15,11 @@ const EMULATED_APIS = [
  * getNonEmulatedAPIs checks a list of InstanceSpecs for APIs that are not emulated. 
  * It returns a map of API name to list of instanceIds that use that API.
  */
-export async function getNonEmulatedAPIs(instances: planner.InstanceSpec[]): Promise<Record<string, string[]>> {
+export async function getNonEmulatedAPIs(projectId: string, instances: planner.InstanceSpec[]): Promise<{
+  apiName: string,
+  instanceIds: string[],
+  enabled: boolean,
+}[]> {
   const nonEmulatedAPIs: Record<string, string[]> = {};
   for (const i of instances) {
     const extensionVersion = await planner.getExtensionVersion(i);
@@ -25,9 +29,12 @@ export async function getNonEmulatedAPIs(instances: planner.InstanceSpec[]): Pro
       }
     }
   }
-  return nonEmulatedAPIs;
-}
-
-export async function checkAndWarnAPI(projectId: string, apiName: string, instanceIds: string[]) {
-  const enabled = await check(projectId, apiName, "extensions", true);
+  return Promise.all(Object.entries(nonEmulatedAPIs).map(async ([apiName, instanceIds]) => {
+    const enabled = await check(projectId, apiName, "extensions", true);
+    return {
+      apiName,
+      instanceIds,
+      enabled,
+    }
+  }))
 }

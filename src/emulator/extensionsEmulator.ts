@@ -11,6 +11,8 @@ import { EmulatableBackend } from "./functionsEmulator";
 import { getExtensionFunctionInfo } from "../extensions/emulator/optionsHelper";
 import { EmulatorLogger } from "./emulatorLogger";
 import { Emulators } from "./types";
+import { getNonEmulatedAPIs } from "./extensions/utils";
+import { check } from "../ensureApiEnabled";
 
 export interface ExtensionEmulatorArgs {
   projectId: string;
@@ -170,7 +172,22 @@ export class ExtensionsEmulator {
     };
   }
 
-  private checkAndWarnAPIs() {
+  private async checkAndWarnAPIs(instances: planner.InstanceSpec[]) {
+    const apisToCheck = await getNonEmulatedAPIs(instances);
+    for (const [api, instanceIds] of Object.entries(apisToCheck)) {
+      const enabled = await check(this.args.projectId, api, "extensions", true);
+      if (enabled) {
+        this.logger.logLabeled(
+          "WARN",
+          "Extensions",
+          `The following Extensions make calls to Google Cloud APIs that do not have Emulators. ` +
+         ```These calls will affect your production project ${this.args.projectId}`
+          );
+      } else {
 
+      }
+    }
+    
+    }
   }
 }
