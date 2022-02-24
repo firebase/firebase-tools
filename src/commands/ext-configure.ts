@@ -86,8 +86,9 @@ export default new Command("ext:configure <extensionInstanceId>")
           },
         ],
         config,
-        { nonInteractive: false, 
-          force: true // Skip asking for permission again
+        {
+          nonInteractive: false,
+          force: true, // Skip asking for permission again
         }
       );
       return;
