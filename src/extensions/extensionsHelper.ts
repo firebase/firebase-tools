@@ -490,7 +490,9 @@ export async function publishExtensionVersionFromLocalSource(args: {
     packageUri = storageOrigin + objectPath + "?alt=media";
   } catch (err: any) {
     uploadSpinner.fail();
-    throw err;
+    throw new FirebaseError(`Failed to archive and upload extension source, ${err}`, {
+      original: err,
+    });
   }
   const publishSpinner = ora(`Publishing ${clc.bold(ref)}`);
   let res;
@@ -538,7 +540,9 @@ export async function createSourceFromLocation(
       extensionRoot = "/";
     } catch (err: any) {
       uploadSpinner.fail();
-      throw err;
+      throw new FirebaseError(`Failed to archive and upload extension source, ${err}`, {
+        original: err,
+      });
     }
   } else {
     [packageUri, extensionRoot] = sourceUri.split("#");

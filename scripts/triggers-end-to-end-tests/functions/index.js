@@ -126,6 +126,30 @@ exports.writeToSpecificStorageBucket = functions.https.onRequest(async (req, res
   res.json({ created: "ok" });
 });
 
+exports.updateMetadataFromDefaultStorage = functions.https.onRequest(async (req, res) => {
+  await admin.storage().bucket().file(STORAGE_FILE_NAME).save("hello metadata update!");
+  console.log("Wrote to Storage bucket");
+  await admin.storage().bucket().file(STORAGE_FILE_NAME).setMetadata({ somekey: "someval" });
+  console.log("Updated metadata of default Storage bucket");
+  res.json({ done: "ok" });
+});
+
+exports.updateMetadataFromSpecificStorageBucket = functions.https.onRequest(async (req, res) => {
+  await admin
+    .storage()
+    .bucket("test-bucket")
+    .file(STORAGE_FILE_NAME)
+    .save("hello metadata update!");
+  console.log("Wrote to a specific Storage bucket");
+  await admin
+    .storage()
+    .bucket("test-bucket")
+    .file(STORAGE_FILE_NAME)
+    .setMetadata({ somenewkey: "somenewval" });
+  console.log("Updated metadata of a specific Storage bucket");
+  res.json({ done: "ok" });
+});
+
 exports.updateDeleteFromDefaultStorage = functions.https.onRequest(async (req, res) => {
   await admin.storage().bucket().file(STORAGE_FILE_NAME).save("something new!");
   console.log("Wrote to Storage bucket");
