@@ -199,7 +199,7 @@ export async function promptForNewParams(args: {
   return args.currentParams;
 }
 
-export function getParamsFromFile(args: {
+function getParamsFromFile(args: {
   projectId: string;
   paramSpecs: extensionsApi.Param[];
   paramsEnvPath: string;
@@ -217,7 +217,7 @@ export function getParamsFromFile(args: {
   logger.info(`Using param values from ${args.paramsEnvPath}`);
   return params;
 }
-
+ 
 export function readEnvFile(envPath: string) {
   const buf = fs.readFileSync(path.resolve(envPath), "utf8");
   const result = env.parse(buf.toString().trim());

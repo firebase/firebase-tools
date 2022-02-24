@@ -1,11 +1,14 @@
 import * as clc from "cli-color";
-
+import * as path from "path";
 import * as refs from "./refs";
 import { Config } from "../config";
 import { InstanceSpec } from "../deploy/extensions/planner";
 import { logger } from "../logger";
 import { promptOnce } from "../prompt";
+import { readEnvFile } from "./paramHelper";
 import { FirebaseError } from "../error";
+
+const ENV_DIRECTORY = "extensions";
 
 /**
  * Write a list of instanceSpecs to extensions manifest.
@@ -91,4 +94,56 @@ async function writeEnvFiles(
       .join("\n");
     await config.askWriteProjectFile(`extensions/${spec.instanceId}.env`, content, force);
   }
+}
+
+/**
+ * readParams gets the params for an extension instance from the `extensions` folder,
+ * checking for project specific env files, then falling back to generic env files.
+ * This checks the following locations & if a param is defined in multiple places, it prefers
+ * whichever is higher on this list:
+ *  - extensions/{instanceId}.env.{projectID}
+ *  - extensions/{instanceId}.env.{projectNumber}
+ *  - extensions/{instanceId}.env.{projectAlias}
+ *  - extensions/{instanceId}.env
+ */
+export function readInstanceParam(args: {
+  instanceId: string;
+  projectDir: string;
+  projectId?: string;
+  projectNumber?: string;
+  aliases?: string[];
+  checkLocal?: boolean;
+}): Record<string, string> {
+  const aliases = args.aliases ?? [];
+  const filesToCheck = [
+    `${args.instanceId}.env`,
+    ...aliases.map((alias) => `${args.instanceId}.env.${alias}`),
+    ...(args.projectNumber ? [`${args.instanceId}.env.${args.projectNumber}`] : []),
+    ...(args.projectId ? [`${args.instanceId}.env.${args.projectId}`] : []),
+  ];
+  if (args.checkLocal) {
+    filesToCheck.push(`${args.instanceId}.env.local`);
+  }
+  let noFilesFound = true;
+  const combinedParams = {};
+  for (const fileToCheck of filesToCheck) {
+    try {
+      const params = readParamsFile(args.projectDir, fileToCheck);
+      logger.debug(`Successfully read params from ${fileToCheck}`);
+      noFilesFound = false;
+      Object.assign(combinedParams, params);
+    } catch (err: any) {
+      logger.debug(`${err}`);
+    }
+  }
+  if (noFilesFound) {
+    throw new FirebaseError(`No params file found for ${args.instanceId}`);
+  }
+  return combinedParams;
+}
+
+function readParamsFile(projectDir: string, fileName: string): Record<string, string> {
+  const paramPath = path.join(projectDir, ENV_DIRECTORY, fileName);
+  const params = readEnvFile(paramPath);
+  return params as Record<string, string>;
 }

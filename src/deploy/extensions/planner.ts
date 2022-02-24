@@ -5,8 +5,8 @@ import { FirebaseError } from "../../error";
 import * as extensionsApi from "../../extensions/extensionsApi";
 import { getFirebaseProjectParams, substituteParams } from "../../extensions/extensionsHelper";
 import * as refs from "../../extensions/refs";
-import { readParams } from "./params";
 import { logger } from "../../logger";
+import { readInstanceParam } from "../../extensions/manifest";
 
 export interface InstanceSpec {
   instanceId: string;
@@ -90,7 +90,7 @@ export async function want(args: {
       const ref = refs.parse(e[1]);
       ref.version = await resolveVersion(ref);
 
-      const params = readParams({
+      const params = readInstanceParam({
         projectDir: args.projectDir,
         instanceId,
         projectId: args.projectId,
