@@ -81,15 +81,6 @@ export function getInstanceRef(instanceId: string, config: Config): refs.Ref {
   return refs.parse(ref);
 }
 
-export function getInstanceParams(instanceId: string, config: Config): { [key: string]: string } {
-  if (!instanceExists(instanceId, config)) {
-    throw new FirebaseError(`Could not find extension instance ${instanceId} in firebase.json`);
-  }
-  const ref = config.get("extensions", {})[instanceId];
-  // TODO: GET INSTANCE PARAM FROM MANIFEST. Use readParams function
-  return {};
-}
-
 function writeExtensionsToFirebaseJson(specs: InstanceSpec[], config: Config): void {
   const extensions = config.get("extensions", {});
   for (const s of specs) {

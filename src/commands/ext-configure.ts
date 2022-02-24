@@ -17,6 +17,7 @@ import * as utils from "../utils";
 import { logger } from "../logger";
 import * as refs from "../extensions/refs";
 import * as manifest from "../extensions/manifest";
+import { Options } from "../options";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -36,7 +37,7 @@ export default new Command("ext:configure <extensionInstanceId>")
   ])
   .before(checkMinRequiredVersion, "extMinVersion")
   .before(diagnoseAndFixProject)
-  .action(async (instanceId: string, options: any) => {
+  .action(async (instanceId: string, options: Options) => {
     const projectId = needProjectId(options);
 
     if (options.local) {
@@ -64,8 +65,8 @@ export default new Command("ext:configure <extensionInstanceId>")
       const mutableParamsValues = await paramHelper.getParams({
         projectId,
         paramSpecs: tbdParams,
-        nonInteractive: options.nonInteractive,
-        paramsEnvPath: options.params,
+        nonInteractive: false,
+        paramsEnvPath: options.params as string,
         instanceId,
         reconfiguring: true,
       });
@@ -85,7 +86,7 @@ export default new Command("ext:configure <extensionInstanceId>")
           },
         ],
         config,
-        { nonInteractive: options.noninteractive, 
+        { nonInteractive: false, 
           force: true // Skip asking for permission again
         }
       );
@@ -119,7 +120,7 @@ export default new Command("ext:configure <extensionInstanceId>")
         projectId,
         paramSpecs: paramSpecWithNewDefaults,
         nonInteractive: options.nonInteractive,
-        paramsEnvPath: options.params,
+        paramsEnvPath: options.params as string,
         instanceId,
         reconfiguring: true,
       });
