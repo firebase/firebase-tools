@@ -40,7 +40,7 @@ export default new Command("ext:configure <extensionInstanceId>")
     const projectId = needProjectId(options);
 
     if (options.local) {
-      if (options.noninteractive) {
+      if (options.nonInteractive) {
         throw new FirebaseError(
           `Command not supported in non-interactive mode, edit ./extensions/${instanceId}.env directly instead`
         );
@@ -85,7 +85,9 @@ export default new Command("ext:configure <extensionInstanceId>")
           },
         ],
         config,
-        { nonInteractive: options.noninteractive, force: options.force }
+        { nonInteractive: options.noninteractive, 
+          force: true // Skip asking for permission again
+        }
       );
       return;
     }
