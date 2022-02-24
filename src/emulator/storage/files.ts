@@ -270,7 +270,7 @@ export class StorageLayer {
     return this._persistence.deleteAll();
   }
 
-  public finalizeUpload(uploadId: string): FinalizedUpload | undefined {
+  public finishUpload(uploadId: string): FinalizedUpload | undefined {
     const upload = this._uploads.get(uploadId);
 
     if (!upload) {
@@ -296,11 +296,28 @@ export class StorageLayer {
     const file = new StoredFile(finalMetadata, filePath);
     this._files.set(filePath, file);
 
+    return {upload, file};
+  }
+
+  public persistUpload(finalizedUpload: FinalizedUpload): void {
+    const {upload, file} = finalizedUpload;
+    const filePath = this.path(upload.bucketId, upload.objectId);
+
     this._persistence.deleteFile(filePath, true);
     this._persistence.renameFile(upload.fileLocation, filePath);
 
     this._cloudFunctions.dispatch("finalize", new CloudStorageObjectMetadata(file.metadata));
-    return { upload: upload, file: file };
+  }
+
+  public finalizeUpload(uploadId: string): FinalizedUpload | undefined {
+    const finalizedUpload = this.finishUpload(uploadId);
+
+    if (!finalizedUpload) {
+      return undefined;
+    }
+
+    this.persistUpload(finalizedUpload);
+    return finalizedUpload;
   }
 
   public oneShotUpload(

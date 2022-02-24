@@ -530,14 +530,12 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       }
 
       if (uploadCommand.includes("finalize")) {
-        const finalizedUpload = storageLayer.finalizeUpload(uploadId);
+        const finalizedUpload = storageLayer.finishUpload(uploadId);
         if (!finalizedUpload) {
           res.sendStatus(400);
           return;
         }
         upload = finalizedUpload.upload;
-
-        res.header("x-goog-upload-status", "final");
 
         // For resumable uploads, we check auth on finalization in case of byte-dependant rules
         if (
@@ -560,6 +558,9 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
             },
           });
         }
+
+        res.header("x-goog-upload-status", "final");
+        storageLayer.persistUpload(finalizedUpload);
 
         const md = finalizedUpload.file.metadata;
         if (md.downloadTokens.length == 0) {
