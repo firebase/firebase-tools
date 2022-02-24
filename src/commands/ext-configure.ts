@@ -15,6 +15,8 @@ import * as paramHelper from "../extensions/paramHelper";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import { logger } from "../logger";
+import * as refs from "../extensions/refs";
+import * as manifest from "../extensions/manifest";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -27,6 +29,7 @@ export default new Command("ext:configure <extensionInstanceId>")
   .description("configure an existing extension instance")
   .withForce()
   .option("--params <paramsFile>", "path of params file with .env format.")
+  .option("--local", "save to firebase.json rather than directly install to a Firebase project")
   .before(requirePermissions, [
     "firebaseextensions.instances.update",
     "firebaseextensions.instances.get",
@@ -34,11 +37,42 @@ export default new Command("ext:configure <extensionInstanceId>")
   .before(checkMinRequiredVersion, "extMinVersion")
   .before(diagnoseAndFixProject)
   .action(async (instanceId: string, options: any) => {
+    const projectId = needProjectId(options);
+
+    if(options.local) {
+      const config = manifest.loadConfig(options);
+      const targetRef = manifest.getInstanceRef(instanceId, config);
+      const extVer = await extensionsApi.getExtensionVersion(refs.toExtensionVersionRef(targetRef));
+      
+      const oldParamsValues = manifest.getInstanceParams(instanceId, config);
+      const newParams = _.cloneDeep(extVer.spec.params);
+      
+      paramHelper.setNewDefaults(newParams, oldParamsValues);
+      
+      const immutableParams = _.remove(newParams, (param) => param.immutable);
+      infoImmutableParams(immutableParams, oldParamsValues);
+
+      // Ask for mutable param values from user.
+      const mutableParamsValues = await paramHelper.getParams({
+        projectId,
+        paramSpecs: newParams,
+        nonInteractive: options.nonInteractive,
+        paramsEnvPath: options.params,
+        instanceId,
+        reconfiguring: true,
+      });
+      const newParamsValues = {
+        ...oldParamsValues,
+        ...mutableParamsValues,
+      }
+      console.log(newParamsValues);
+      return;
+    }
+    
     const spinner = ora(
       `Configuring ${clc.bold(instanceId)}. This usually takes 3 to 5 minutes...`
     );
     try {
-      const projectId = needProjectId(options);
       let existingInstance: extensionsApi.ExtensionInstance;
       try {
         existingInstance = await extensionsApi.getInstance(projectId, instanceId);
@@ -55,10 +89,7 @@ export default new Command("ext:configure <extensionInstanceId>")
       }
       const paramSpecWithNewDefaults =
         paramHelper.getParamsWithCurrentValuesAsDefaults(existingInstance);
-      const immutableParams = _.remove(paramSpecWithNewDefaults, (param) => {
-        return param.immutable || param.param === "LOCATION";
-        // TODO: Stop special casing "LOCATION" once all official extensions make it immutable
-      });
+      const immutableParams = _.remove(paramSpecWithNewDefaults, (param) => param.immutable);
 
       const params = await paramHelper.getParams({
         projectId,
@@ -110,3 +141,24 @@ export default new Command("ext:configure <extensionInstanceId>")
       throw err;
     }
   });
+  
+function infoImmutableParams(immutableParams: extensionsApi.Param[], paramValues: { [key: string]: string; }) {
+  if (!immutableParams.length) {
+    return;
+  }
+
+  const plural = immutableParams.length > 1;
+  logger.info(`The following param${plural ? "s are" : " is"} immutable:`);
+
+  for (const { param } of immutableParams) {
+    logger.info(`param: ${param}, value: ${paramValues[param]}`);
+  }
+  
+  logger.info(
+    (plural
+      ? "To set different values for these params"
+      : "To set a different value for this param") +
+    ", uninstall the extension, then install a new instance of this extension."
+  );
+}
+
