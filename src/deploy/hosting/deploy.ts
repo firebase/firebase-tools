@@ -83,7 +83,7 @@ export async function deploy(
     try {
       await uploader.start();
     } catch (err: any) {
-      track("Hosting Deploy", "failure");
+      void track("Hosting Deploy", "failure");
       throw err;
     } finally {
       clearInterval(progressInterval);
@@ -97,7 +97,7 @@ export async function deploy(
     const dt = Date.now() - t0;
     logger.debug("[hosting] deploy completed after " + dt + "ms");
 
-    track("Hosting Deploy", "success", dt);
+    void track("Hosting Deploy", "success", dt);
     return runDeploys(deploys, debugging);
   }
 

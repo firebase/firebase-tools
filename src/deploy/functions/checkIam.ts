@@ -95,7 +95,7 @@ export async function checkHttpIam(
   }
 
   if (!passed) {
-    track("Error (User)", "deploy:functions:http_create_missing_iam");
+    void track("Error (User)", "deploy:functions:http_create_missing_iam");
     throw new FirebaseError(
       `Missing required permission on project ${bold(
         context.projectId
