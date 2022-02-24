@@ -217,7 +217,7 @@ function getParamsFromFile(args: {
   logger.info(`Using param values from ${args.paramsEnvPath}`);
   return params;
 }
- 
+
 export function readEnvFile(envPath: string) {
   const buf = fs.readFileSync(path.resolve(envPath), "utf8");
   const result = env.parse(buf.toString().trim());
