@@ -101,6 +101,7 @@ async function writeEnvFiles(
  * checking for project specific env files, then falling back to generic env files.
  * This checks the following locations & if a param is defined in multiple places, it prefers
  * whichever is higher on this list:
+ *  - extensions/{instanceId}.env.local (only if checkLocal is true)
  *  - extensions/{instanceId}.env.{projectID}
  *  - extensions/{instanceId}.env.{projectNumber}
  *  - extensions/{instanceId}.env.{projectAlias}
