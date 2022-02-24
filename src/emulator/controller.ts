@@ -139,7 +139,7 @@ export async function startEmulator(instance: EmulatorInstance): Promise<void> {
   const name = instance.getName();
 
   // Log the command for analytics
-  track("Emulator Run", name);
+  void track("Emulator Run", name);
 
   await EmulatorRegistry.start(instance);
 }
@@ -396,7 +396,7 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
     // since we originally mistakenly reported emulators:start events
     // for each emulator, by reporting the "hub" we ensure that our
     // historical data can still be viewed.
-    track("emulators:start", "hub");
+    void track("emulators:start", "hub");
     await startEmulator(hub);
   }
 

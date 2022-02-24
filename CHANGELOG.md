@@ -2,3 +2,5 @@
 - Fixes arg order for `firebase emulators:start --only storage` (#4195).
 - Fixes iOS auth for resumable uploads in Storage Emulator (#4184).
 - Fixes Storage Emulator crash on iOS auth error for resumable uploads (#4210).
+- Fixes bug where environment variable for gen 2 functions weren't updated on deploy (#4209).
+- Fixes an issue in the storage emulator where a file upload would trigger functions with a metadata update handler (#4213).

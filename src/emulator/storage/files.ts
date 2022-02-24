@@ -290,8 +290,7 @@ export class StorageLayer {
         customMetadata: upload.metadata.metadata,
       },
       this._cloudFunctions,
-      bytes,
-      upload.metadata
+      bytes
     );
     const file = new StoredFile(finalMetadata, filePath);
     this._files.set(filePath, file);
@@ -341,8 +340,7 @@ export class StorageLayer {
         customMetadata: incomingMetadata.metadata,
       },
       this._cloudFunctions,
-      bytes,
-      incomingMetadata
+      bytes
     );
     const file = new StoredFile(md, this._persistence.getDiskPath(filePath));
     this._files.set(filePath, file);

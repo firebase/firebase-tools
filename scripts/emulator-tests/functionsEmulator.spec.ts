@@ -6,6 +6,7 @@ import * as sinon from "sinon";
 import * as supertest from "supertest";
 import * as winston from "winston";
 import * as logform from "logform";
+import * as path from "path";
 
 import { EmulatedTriggerDefinition } from "../../src/emulator/functionsEmulatorShared";
 import {
@@ -644,7 +645,79 @@ describe("FunctionsEmulator-Hub", () => {
       .expect(200)
       .then((res) => {
         // TODO(b/216642962): Add tests for this endpoint that validate behavior when there are Extensions running
-        expect(res.body.backends).to.deep.equal([{ env: {}, functionTriggers: [] }]);
+        const expectedDirectory = path.resolve(`${__dirname}/../..`);
+        expect(res.body.backends).to.deep.equal([
+          {
+            directory: expectedDirectory,
+            env: {},
+            functionTriggers: [
+              {
+                entryPoint: "function_id",
+                httpsTrigger: {},
+                id: "us-central1-function_id",
+                labels: {},
+                name: "function_id",
+                platform: "gcfv1",
+                region: "us-central1",
+              },
+              {
+                entryPoint: "function_id",
+                httpsTrigger: {},
+                id: "europe-west2-function_id",
+                labels: {},
+                name: "function_id",
+                platform: "gcfv1",
+                region: "europe-west2",
+              },
+              {
+                entryPoint: "function_id",
+                httpsTrigger: {},
+                id: "europe-west3-function_id",
+                labels: {},
+                name: "function_id",
+                platform: "gcfv1",
+                region: "europe-west3",
+              },
+              {
+                entryPoint: "callable_function_id",
+                httpsTrigger: {},
+                id: "us-central1-callable_function_id",
+                labels: {
+                  "deployment-callable": "true",
+                },
+                name: "callable_function_id",
+                platform: "gcfv1",
+                region: "us-central1",
+              },
+              {
+                entryPoint: "nested.function_id",
+                httpsTrigger: {},
+                id: "us-central1-nested-function_id",
+                labels: {},
+                name: "nested-function_id",
+                platform: "gcfv1",
+                region: "us-central1",
+              },
+              {
+                entryPoint: "secrets_function_id",
+                httpsTrigger: {},
+                id: "us-central1-secrets_function_id",
+                labels: {},
+                name: "secrets_function_id",
+                platform: "gcfv1",
+                region: "us-central1",
+                secretEnvironmentVariables: [
+                  {
+                    key: "MY_SECRET",
+                    projectId: "fake-project-id",
+                    secret: "MY_SECRET",
+                    version: "1",
+                  },
+                ],
+              },
+            ],
+          },
+        ]);
       });
   }).timeout(TIMEOUT_LONG);
 

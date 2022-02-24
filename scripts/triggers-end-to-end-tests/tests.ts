@@ -270,18 +270,18 @@ describe("storage emulator function triggers", () => {
   });
 
   it("should have triggered cloud functions", () => {
-    /* on object create two events fire (finalize & metadata update) */
+    /* on object create one event fires (finalize) */
     // default bucket
     expect(test.storageFinalizedTriggerCount).to.equal(1);
-    expect(test.storageMetadataTriggerCount).to.equal(1);
     expect(test.storageV2FinalizedTriggerCount).to.equal(1);
-    expect(test.storageV2MetadataTriggerCount).to.equal(1);
+    expect(test.storageMetadataTriggerCount).to.equal(0);
+    expect(test.storageV2MetadataTriggerCount).to.equal(0);
     expect(test.storageDeletedTriggerCount).to.equal(0);
     expect(test.storageV2DeletedTriggerCount).to.equal(0);
     // specific bucket
     expect(test.storageBucketFinalizedTriggerCount).to.equal(0);
-    expect(test.storageBucketMetadataTriggerCount).to.equal(0);
     expect(test.storageBucketV2FinalizedTriggerCount).to.equal(0);
+    expect(test.storageBucketMetadataTriggerCount).to.equal(0);
     expect(test.storageBucketV2MetadataTriggerCount).to.equal(0);
     expect(test.storageBucketDeletedTriggerCount).to.equal(0);
     expect(test.storageBucketV2DeletedTriggerCount).to.equal(0);
@@ -297,25 +297,81 @@ describe("storage emulator function triggers", () => {
   });
 
   it("should have triggered cloud functions", () => {
-    /* on object create two events fire (finalize & metadata update) */
+    /* on object create one event fires (finalize) */
     // default bucket
     expect(test.storageFinalizedTriggerCount).to.equal(0);
-    expect(test.storageMetadataTriggerCount).to.equal(0);
     expect(test.storageV2FinalizedTriggerCount).to.equal(0);
+    expect(test.storageMetadataTriggerCount).to.equal(0);
     expect(test.storageV2MetadataTriggerCount).to.equal(0);
     expect(test.storageDeletedTriggerCount).to.equal(0);
     expect(test.storageV2DeletedTriggerCount).to.equal(0);
     // specific bucket
     expect(test.storageBucketFinalizedTriggerCount).to.equal(1);
-    expect(test.storageBucketMetadataTriggerCount).to.equal(1);
     expect(test.storageBucketV2FinalizedTriggerCount).to.equal(1);
+    expect(test.storageBucketMetadataTriggerCount).to.equal(0);
+    expect(test.storageBucketV2MetadataTriggerCount).to.equal(0);
+    expect(test.storageBucketDeletedTriggerCount).to.equal(0);
+    expect(test.storageBucketV2DeletedTriggerCount).to.equal(0);
+    test.resetCounts();
+  });
+
+  it("should write and update metadata from the default bucket of the storage emulator", async function (this) {
+    this.timeout(EMULATOR_TEST_TIMEOUT);
+
+    const response = await test.updateMetadataDefaultStorage();
+    expect(response.status).to.equal(200);
+    await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+  });
+
+  it("should have triggered cloud functions", () => {
+    /* on object create one event fires (finalize) */
+    /* on update one event fires (metadataUpdate) */
+    // default bucket
+    expect(test.storageFinalizedTriggerCount).to.equal(1);
+    expect(test.storageV2FinalizedTriggerCount).to.equal(1);
+    expect(test.storageMetadataTriggerCount).to.equal(1);
+    expect(test.storageV2MetadataTriggerCount).to.equal(1);
+    expect(test.storageDeletedTriggerCount).to.equal(0);
+    expect(test.storageV2DeletedTriggerCount).to.equal(0);
+    // specific bucket
+    expect(test.storageBucketFinalizedTriggerCount).to.equal(0);
+    expect(test.storageBucketV2FinalizedTriggerCount).to.equal(0);
+    expect(test.storageBucketMetadataTriggerCount).to.equal(0);
+    expect(test.storageBucketV2MetadataTriggerCount).to.equal(0);
+    expect(test.storageBucketDeletedTriggerCount).to.equal(0);
+    expect(test.storageBucketV2DeletedTriggerCount).to.equal(0);
+    test.resetCounts();
+  });
+
+  it("should write and update metadata from a specific bucket of the storage emulator", async function (this) {
+    this.timeout(EMULATOR_TEST_TIMEOUT);
+
+    const response = await test.updateMetadataSpecificStorageBucket();
+    expect(response.status).to.equal(200);
+    await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+  });
+
+  it("should have triggered cloud functions", () => {
+    /* on object create one event fires (finalize) */
+    /* on update one event fires (metadataUpdate) */
+    // default bucket
+    expect(test.storageFinalizedTriggerCount).to.equal(0);
+    expect(test.storageV2FinalizedTriggerCount).to.equal(0);
+    expect(test.storageMetadataTriggerCount).to.equal(0);
+    expect(test.storageV2MetadataTriggerCount).to.equal(0);
+    expect(test.storageDeletedTriggerCount).to.equal(0);
+    expect(test.storageV2DeletedTriggerCount).to.equal(0);
+    // specific bucket
+    expect(test.storageBucketFinalizedTriggerCount).to.equal(1);
+    expect(test.storageBucketV2FinalizedTriggerCount).to.equal(1);
+    expect(test.storageBucketMetadataTriggerCount).to.equal(1);
     expect(test.storageBucketV2MetadataTriggerCount).to.equal(1);
     expect(test.storageBucketDeletedTriggerCount).to.equal(0);
     expect(test.storageBucketV2DeletedTriggerCount).to.equal(0);
     test.resetCounts();
   });
 
-  it("should write, update, and delete from the default bucket of the storage emulator", async function (this) {
+  it("should write and delete from the default bucket of the storage emulator", async function (this) {
     this.timeout(EMULATOR_TEST_TIMEOUT);
 
     const response = await test.updateDeleteFromDefaultStorage();
@@ -324,26 +380,26 @@ describe("storage emulator function triggers", () => {
   });
 
   it("should have triggered cloud functions", () => {
-    /* on update two events fire (finalize & metadata update) */
+    /* on create one event fires (finalize) */
     /* on delete one event fires (delete) */
     // default bucket
     expect(test.storageFinalizedTriggerCount).to.equal(1);
-    expect(test.storageMetadataTriggerCount).to.equal(1);
     expect(test.storageV2FinalizedTriggerCount).to.equal(1);
-    expect(test.storageV2MetadataTriggerCount).to.equal(1);
+    expect(test.storageMetadataTriggerCount).to.equal(0);
+    expect(test.storageV2MetadataTriggerCount).to.equal(0);
     expect(test.storageDeletedTriggerCount).to.equal(1);
     expect(test.storageV2DeletedTriggerCount).to.equal(1);
     // specific bucket
     expect(test.storageBucketFinalizedTriggerCount).to.equal(0);
-    expect(test.storageBucketMetadataTriggerCount).to.equal(0);
     expect(test.storageBucketV2FinalizedTriggerCount).to.equal(0);
+    expect(test.storageBucketMetadataTriggerCount).to.equal(0);
     expect(test.storageBucketV2MetadataTriggerCount).to.equal(0);
     expect(test.storageBucketDeletedTriggerCount).to.equal(0);
     expect(test.storageBucketV2DeletedTriggerCount).to.equal(0);
     test.resetCounts();
   });
 
-  it("should write, update, and delete from a specific bucket of the storage emulator", async function (this) {
+  it("should write and delete from a specific bucket of the storage emulator", async function (this) {
     this.timeout(EMULATOR_TEST_TIMEOUT);
 
     const response = await test.updateDeleteFromSpecificStorageBucket();
@@ -352,20 +408,20 @@ describe("storage emulator function triggers", () => {
   });
 
   it("should have triggered cloud functions", () => {
-    /* on update two events fire (finalize & metadata update) */
+    /* on create one event fires (finalize) */
     /* on delete one event fires (delete) */
     // default bucket
     expect(test.storageFinalizedTriggerCount).to.equal(0);
-    expect(test.storageMetadataTriggerCount).to.equal(0);
     expect(test.storageV2FinalizedTriggerCount).to.equal(0);
+    expect(test.storageMetadataTriggerCount).to.equal(0);
     expect(test.storageV2MetadataTriggerCount).to.equal(0);
     expect(test.storageDeletedTriggerCount).to.equal(0);
     expect(test.storageV2DeletedTriggerCount).to.equal(0);
     // specific bucket
     expect(test.storageBucketFinalizedTriggerCount).to.equal(1);
-    expect(test.storageBucketMetadataTriggerCount).to.equal(1);
     expect(test.storageBucketV2FinalizedTriggerCount).to.equal(1);
-    expect(test.storageBucketV2MetadataTriggerCount).to.equal(1);
+    expect(test.storageBucketMetadataTriggerCount).to.equal(0);
+    expect(test.storageBucketV2MetadataTriggerCount).to.equal(0);
     expect(test.storageBucketDeletedTriggerCount).to.equal(1);
     expect(test.storageBucketV2DeletedTriggerCount).to.equal(1);
     test.resetCounts();
