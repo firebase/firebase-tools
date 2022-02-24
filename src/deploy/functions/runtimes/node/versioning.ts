@@ -85,7 +85,7 @@ export function getLatestSDKVersion(): string | undefined {
 export function checkFunctionsSDKVersion(currentVersion: string): void {
   try {
     if (semver.lt(currentVersion, MIN_SDK_VERSION)) {
-      track("functions_runtime_notices", "functions_sdk_too_old");
+      void track("functions_runtime_notices", "functions_sdk_too_old");
       utils.logWarning(FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING);
     }
 
