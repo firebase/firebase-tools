@@ -199,7 +199,7 @@ export async function promptForNewParams(args: {
   return args.currentParams;
 }
 
-export function getParamsFromFile(args: {
+function getParamsFromFile(args: {
   projectId: string;
   paramSpecs: extensionsApi.Param[];
   paramsEnvPath: string;
