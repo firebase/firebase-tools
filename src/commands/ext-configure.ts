@@ -39,16 +39,16 @@ export default new Command("ext:configure <extensionInstanceId>")
   .action(async (instanceId: string, options: any) => {
     const projectId = needProjectId(options);
 
-    if(options.local) {
+    if (options.local) {
       const config = manifest.loadConfig(options);
       const targetRef = manifest.getInstanceRef(instanceId, config);
       const extVer = await extensionsApi.getExtensionVersion(refs.toExtensionVersionRef(targetRef));
-      
+
       const oldParamsValues = manifest.getInstanceParams(instanceId, config);
       const newParams = _.cloneDeep(extVer.spec.params);
-      
+
       paramHelper.setNewDefaults(newParams, oldParamsValues);
-      
+
       const immutableParams = _.remove(newParams, (param) => param.immutable);
       infoImmutableParams(immutableParams, oldParamsValues);
 
@@ -64,11 +64,11 @@ export default new Command("ext:configure <extensionInstanceId>")
       const newParamsValues = {
         ...oldParamsValues,
         ...mutableParamsValues,
-      }
+      };
       console.log(newParamsValues);
       return;
     }
-    
+
     const spinner = ora(
       `Configuring ${clc.bold(instanceId)}. This usually takes 3 to 5 minutes...`
     );
@@ -141,8 +141,11 @@ export default new Command("ext:configure <extensionInstanceId>")
       throw err;
     }
   });
-  
-function infoImmutableParams(immutableParams: extensionsApi.Param[], paramValues: { [key: string]: string; }) {
+
+function infoImmutableParams(
+  immutableParams: extensionsApi.Param[],
+  paramValues: { [key: string]: string }
+) {
   if (!immutableParams.length) {
     return;
   }
@@ -153,12 +156,11 @@ function infoImmutableParams(immutableParams: extensionsApi.Param[], paramValues
   for (const { param } of immutableParams) {
     logger.info(`param: ${param}, value: ${paramValues[param]}`);
   }
-  
+
   logger.info(
     (plural
       ? "To set different values for these params"
       : "To set a different value for this param") +
-    ", uninstall the extension, then install a new instance of this extension."
+      ", uninstall the extension, then install a new instance of this extension."
   );
 }
-
