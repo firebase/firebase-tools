@@ -67,9 +67,7 @@ export function loadConfig(options: any): Config {
  * Checks if an instance name already exists in the manifest.
  */
 export function instanceExists(instanceId: string, config: Config): boolean {
-  return Object.keys(config.get("extensions", {})).some(
-    (manifestKey) => manifestKey === instanceId
-  );
+  return !!config.get("extensions",{})[instanceId];
 }
 
 function writeExtensionsToFirebaseJson(specs: InstanceSpec[], config: Config): void {
