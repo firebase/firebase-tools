@@ -5,6 +5,7 @@ import { Config } from "../config";
 import { InstanceSpec } from "../deploy/extensions/planner";
 import { logger } from "../logger";
 import { promptOnce } from "../prompt";
+import { FirebaseError } from "../error";
 
 /**
  * Write a list of instanceSpecs to extensions manifest.
@@ -16,11 +17,13 @@ import { promptOnce } from "../prompt";
  * @param config existing config in firebase.json
  * @param options.nonInteractive will try to do the job without asking for user input.
  * @param options.force only when this flag is true this will overwrite existing .env files
+ * @param allowOverwrite allows overwriting the entire manifest with the new specs
  */
 export async function writeToManifest(
   specs: InstanceSpec[],
   config: Config,
-  options: { nonInteractive: boolean; force: boolean }
+  options: { nonInteractive: boolean; force: boolean },
+  allowOverwrite: boolean = false
 ): Promise<void> {
   if (
     config.has("extensions") &&
@@ -31,16 +34,18 @@ export async function writeToManifest(
     const currentExtensions = Object.entries(config.get("extensions"))
       .map((i) => `${i[0]}: ${i[1]}`)
       .join("\n\t");
-    const overwrite = await promptOnce({
-      type: "list",
-      message: `firebase.json already contains extensions:\n${currentExtensions}\nWould you like to overwrite or merge?`,
-      choices: [
-        { name: "Overwrite", value: true },
-        { name: "Merge", value: false },
-      ],
-    });
-    if (overwrite) {
-      config.set("extensions", {});
+    if (allowOverwrite) {
+      const overwrite = await promptOnce({
+        type: "list",
+        message: `firebase.json already contains extensions:\n${currentExtensions}\nWould you like to overwrite or merge?`,
+        choices: [
+          { name: "Overwrite", value: true },
+          { name: "Merge", value: false },
+        ],
+      });
+      if (overwrite) {
+        config.set("extensions", {});
+      }
     }
   }
 
@@ -48,7 +53,23 @@ export async function writeToManifest(
   await writeEnvFiles(specs, config, options.force);
 }
 
-// TODO(lihes): Add some tests.
+export function loadConfig(options: any): Config {
+  const existingConfig = Config.load(options, true);
+  if (!existingConfig) {
+    throw new FirebaseError(
+      "Not currently in a Firebase directory. Please run `firebase init` to create a Firebase directory."
+    );
+  }
+  return existingConfig;
+}
+
+/**
+ * Checks if an instance name already exists in the manifest.
+ */
+export function instanceExists(instanceId: string, config: Config): boolean {
+  return !!config.get("extensions", {})[instanceId];
+}
+
 function writeExtensionsToFirebaseJson(specs: InstanceSpec[], config: Config): void {
   const extensions = config.get("extensions", {});
   for (const s of specs) {
@@ -59,7 +80,6 @@ function writeExtensionsToFirebaseJson(specs: InstanceSpec[], config: Config): v
   config.writeProjectFile("firebase.json", config.src);
 }
 
-// TODO(lihes): Add some tests.
 async function writeEnvFiles(
   specs: InstanceSpec[],
   config: Config,
