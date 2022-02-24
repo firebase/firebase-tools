@@ -356,13 +356,10 @@ export async function updateFunction(
   cloudFunction: Omit<CloudFunction, OutputOnlyFields>
 ): Promise<Operation> {
   const endpoint = `/${cloudFunction.name}`;
-  // TODO(colerogers): remove cloudFunctionWithoutHttpsTrigger and set securityLevel in functionFromEndpoint during a breaking change release
-  const cloudFunctionWithoutHttpsTrigger = { ...cloudFunction };
-  delete cloudFunctionWithoutHttpsTrigger.httpsTrigger;
   // Keys in labels and environmentVariables are user defined, so we don't recurse
   // for field masks.
   const fieldMasks = proto.fieldMasks(
-    cloudFunctionWithoutHttpsTrigger,
+    cloudFunction,
     /* doNotRecurseIn...=*/ "labels",
     "environmentVariables"
   );
@@ -468,6 +465,7 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
   const [, project, , region, , id] = gcfFunction.name.split("/");
   let trigger: backend.Triggered;
   let uri: string | undefined;
+  let securityLevel: SecurityLevel | undefined;
   if (gcfFunction.labels?.["deployment-scheduled"]) {
     trigger = {
       scheduleTrigger: {},
@@ -479,6 +477,7 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
   } else if (gcfFunction.httpsTrigger) {
     trigger = { httpsTrigger: {} };
     uri = gcfFunction.httpsTrigger.url;
+    securityLevel = gcfFunction.httpsTrigger.securityLevel;
   } else {
     trigger = {
       eventTrigger: {
@@ -506,6 +505,9 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
   };
   if (uri) {
     endpoint.uri = uri;
+  }
+  if (securityLevel) {
+    endpoint.securityLevel = securityLevel;
   }
   proto.copyIfPresent(
     endpoint,
@@ -586,6 +588,9 @@ export function functionFromEndpoint(
     gcfFunction.httpsTrigger = {};
     if (backend.isCallableTriggered(endpoint)) {
       gcfFunction.labels = { ...gcfFunction.labels, "deployment-callabled": "true" };
+    }
+    if (endpoint.securityLevel) {
+      gcfFunction.httpsTrigger.securityLevel = endpoint.securityLevel;
     }
   }
 

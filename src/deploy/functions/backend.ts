@@ -204,6 +204,8 @@ export interface ServiceConfiguration {
 
 export type FunctionsPlatform = "gcfv1" | "gcfv2";
 
+export type SecurityLevel = "SECURE_ALWAYS" | "SECURE_OPTIONAL";
+
 export type Triggered =
   | HttpsTriggered
   | CallableTriggered
@@ -255,6 +257,9 @@ export type Endpoint = TargetIds &
     // on GCFv2 always
     uri?: string;
     sourceUploadUrl?: string;
+    // GCFv1 can be http or https and
+    // GCFv2 is always https
+    securityLevel?: SecurityLevel;
   };
 
 export interface RequiredAPI {
