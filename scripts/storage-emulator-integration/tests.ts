@@ -1340,9 +1340,14 @@ describe("Storage emulator", () => {
             "X-Goog-Upload-Command": "upload, finalize",
           })
           .expect(200);
+
+        await supertest(STORAGE_EMULATOR_HOST)
+          .get(`/v0/b/${storageBucket}/o/test_upload.jpg`)
+          .set({ Authorization: "Bearer owner" })
+          .expect(200);
       });
 
-      it("#uploadResumableHandlesAuthError", async () => {
+      it("should return 403 when resumable upload is unauthenticated", async () => {
         const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
           .post(
             `/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`
@@ -1362,14 +1367,117 @@ describe("Storage emulator", () => {
             "X-Goog-Upload-Command": "upload, finalize",
           })
           .expect(403);
+      });
 
-        await supertest(STORAGE_EMULATOR_HOST)
-          .put(uploadURL.pathname + uploadURL.search)
-          .set({
-            "X-Goog-Upload-Protocol": "resumable",
-            "X-Goog-Upload-Command": "cancel",
-          })
-          .expect(200);
+      describe("cancels upload", () => {
+        it("should cancel upload successfully", async () => {
+          const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
+            .post(
+              `/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`
+            )
+            .set({
+              Authorization: "Bearer owner",
+              "X-Goog-Upload-Protocol": "resumable",
+              "X-Goog-Upload-Command": "start",
+            })
+            .expect(200)
+            .then((res) => new URL(res.header["x-goog-upload-url"]));
+
+          await supertest(STORAGE_EMULATOR_HOST)
+            .put(uploadURL.pathname + uploadURL.search)
+            .set({
+              "X-Goog-Upload-Protocol": "resumable",
+              "X-Goog-Upload-Command": "cancel",
+            })
+            .expect(200);
+
+          await supertest(STORAGE_EMULATOR_HOST)
+            .get(`/v0/b/${storageBucket}/o/test_upload.jpg`)
+            .set({ Authorization: "Bearer owner" })
+            .expect(404);
+        });
+
+        it("should return 200 when cancelling already cancelled upload", async () => {
+          const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
+            .post(
+              `/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`
+            )
+            .set({
+              Authorization: "Bearer owner",
+              "X-Goog-Upload-Protocol": "resumable",
+              "X-Goog-Upload-Command": "start",
+            })
+            .expect(200)
+            .then((res) => new URL(res.header["x-goog-upload-url"]));
+
+          await supertest(STORAGE_EMULATOR_HOST)
+            .put(uploadURL.pathname + uploadURL.search)
+            .set({
+              "X-Goog-Upload-Protocol": "resumable",
+              "X-Goog-Upload-Command": "cancel",
+            })
+            .expect(200);
+
+          await supertest(STORAGE_EMULATOR_HOST)
+            .put(uploadURL.pathname + uploadURL.search)
+            .set({
+              "X-Goog-Upload-Protocol": "resumable",
+              "X-Goog-Upload-Command": "cancel",
+            })
+            .expect(200);
+        });
+
+        it("should return 400 when cancelling finalized resumable upload", async () => {
+          const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
+            .post(
+              `/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`
+            )
+            .set({
+              Authorization: "Bearer owner",
+              "X-Goog-Upload-Protocol": "resumable",
+              "X-Goog-Upload-Command": "start",
+            })
+            .expect(200)
+            .then((res) => new URL(res.header["x-goog-upload-url"]));
+
+          await supertest(STORAGE_EMULATOR_HOST)
+            .put(uploadURL.pathname + uploadURL.search)
+            .set({
+              "X-Goog-Upload-Protocol": "resumable",
+              "X-Goog-Upload-Command": "upload, finalize",
+            })
+            .expect(200);
+
+          await supertest(STORAGE_EMULATOR_HOST)
+            .put(uploadURL.pathname + uploadURL.search)
+            .set({
+              "X-Goog-Upload-Protocol": "resumable",
+              "X-Goog-Upload-Command": "cancel",
+            })
+            .expect(400);
+        });
+
+        it("should return 404 when cancelling non-existent upload", async () => {
+          const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
+            .post(
+              `/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`
+            )
+            .set({
+              Authorization: "Bearer owner",
+              "X-Goog-Upload-Protocol": "resumable",
+              "X-Goog-Upload-Command": "start",
+            })
+            .expect(200)
+            .then((res) => new URL(res.header["x-goog-upload-url"]));
+
+          await supertest(STORAGE_EMULATOR_HOST)
+            .put(uploadURL.pathname + uploadURL.search.replace(/(upload_id=).*?(&)/, "$1foo$2"))
+            .set({
+              "X-Goog-Upload-Protocol": "resumable",
+              "X-Goog-Upload-Command": "cancel",
+            })
+            .expect(404);
+        });
       });
     });
 

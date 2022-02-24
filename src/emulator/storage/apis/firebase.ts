@@ -493,12 +493,13 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       }
 
       if (uploadCommand == "cancel") {
-        const upload = storageLayer.cancelUpload(uploadId);
-        if (!upload) {
-          res.sendStatus(400);
-          return;
+        const upload = storageLayer.queryUpload(uploadId);
+        if (upload) {
+          const cancelled = storageLayer.cancelUpload(upload);
+          res.sendStatus(cancelled ? 200 : 400);
+        } else {
+          res.sendStatus(404);
         }
-        res.sendStatus(200);
         return;
       }
 
@@ -530,12 +531,11 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       }
 
       if (uploadCommand.includes("finalize")) {
-        const finalizedUpload = storageLayer.finishUpload(uploadId);
-        if (!finalizedUpload) {
+        upload = storageLayer.queryUpload(uploadId);
+        if (!upload) {
           res.sendStatus(400);
           return;
         }
-        upload = finalizedUpload.upload;
 
         // For resumable uploads, we check auth on finalization in case of byte-dependant rules
         if (
@@ -546,7 +546,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
             path: operationPath,
             authorization: upload.authorization,
             file: {
-              after: storageLayer.getMetadata(req.params.bucketId, name)?.asRulesResource(),
+              after: storageLayer.createMetadata(upload).asRulesResource(),
             },
           }))
         ) {
@@ -560,14 +560,14 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         }
 
         res.header("x-goog-upload-status", "final");
-        storageLayer.persistUpload(finalizedUpload);
+        const uploadedFile = storageLayer.finalizeUpload(upload);
 
-        const md = finalizedUpload.file.metadata;
+        const md = uploadedFile.metadata;
         if (md.downloadTokens.length == 0) {
           md.addDownloadToken();
         }
 
-        res.json(new OutgoingFirebaseMetadata(finalizedUpload.file.metadata));
+        res.json(new OutgoingFirebaseMetadata(uploadedFile.metadata));
       } else if (!upload) {
         res.sendStatus(400);
         return;
