@@ -3,3 +3,4 @@
 - Fixes bug where environment variable for gen 2 functions weren't updated on deploy (#4209).
 - Fixes an issue in the storage emulator where a file upload would trigger functions with a metadata update handler (#4213).
 - Fixes Storage Emulator rules resource evaluation (#4214).
+- Fixes bug where securityLevel is overwritten on https function re-deploys (#4208).
