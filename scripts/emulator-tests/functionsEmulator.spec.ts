@@ -6,6 +6,7 @@ import * as sinon from "sinon";
 import * as supertest from "supertest";
 import * as winston from "winston";
 import * as logform from "logform";
+import * as path from "path";
 
 import { EmulatedTriggerDefinition } from "../../src/emulator/functionsEmulatorShared";
 import {
@@ -644,8 +645,10 @@ describe("FunctionsEmulator-Hub", () => {
       .expect(200)
       .then((res) => {
         // TODO(b/216642962): Add tests for this endpoint that validate behavior when there are Extensions running
+        const expectedDirectory = path.resolve(`${__dirname}/../..`);
         expect(res.body.backends).to.deep.equal([
           {
+            directory: expectedDirectory,
             env: {},
             functionTriggers: [
               {

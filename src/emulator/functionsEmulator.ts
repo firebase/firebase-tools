@@ -57,7 +57,7 @@ import {
 } from "./adminSdkConfig";
 import { EventUtils } from "./events/types";
 import { functionIdsAreValid } from "../deploy/functions/validate";
-import { ExtensionVersion } from "../extensions/extensionsApi";
+import { Extension, ExtensionSpec, ExtensionVersion } from "../extensions/extensionsApi";
 import { getRuntimeDelegate } from "../deploy/functions/runtimes";
 import * as backend from "../deploy/functions/backend";
 import * as functionsEnv from "../functions/env";
@@ -89,17 +89,22 @@ export interface EmulatableBackend {
   nodeMajorVersion?: number;
   nodeBinary?: string;
   extensionInstanceId?: string;
-  extensionVersion?: ExtensionVersion;
+  extension?: Extension; // Only present for published extensions
+  extensionVersion?: ExtensionVersion; // Only present for published extensions
+  extensionSpec?: ExtensionSpec; // Only present for local extensions
 }
 
 /**
  * BackendInfo is an API type used by the Emulator UI containing info about an Extension or CF3 module.
  */
 export interface BackendInfo {
+  directory: string;
   env: Record<string, string>;
   functionTriggers: ParsedTriggerDefinition[];
   extensionInstanceId?: string;
-  extensionVersion?: ExtensionVersion;
+  extension?: Extension; // Only present for published extensions
+  extensionVersion?: ExtensionVersion; // Only present for published extensions
+  extensionSpec?: ExtensionSpec; // Only present for local extensions
 }
 
 export interface FunctionsEmulatorArgs {
@@ -813,10 +818,13 @@ export class FunctionsEmulator implements EmulatorInstance {
       .map((t) => t.def);
     return this.args.emulatableBackends.map((e: EmulatableBackend) => {
       return {
+        directory: e.functionsDir,
         env: e.env,
-        extensionInstanceId: e.extensionInstanceId,
-        extensionVersion: e.extensionVersion,
-        functionTriggers: e.predefinedTriggers ?? cf3Triggers,
+        extensionInstanceId: e.extensionInstanceId, // Present on all extensions
+        extension: e.extension, // Only present on published extensions
+        extensionVersion: e.extensionVersion, // Only present on published extensions
+        extensionSpec: e.extensionSpec, // Only present on local extensions
+        functionTriggers: e.predefinedTriggers ?? cf3Triggers, // If we don't have predefinedTriggers, this is the CF3 backend.
       };
     });
   }
