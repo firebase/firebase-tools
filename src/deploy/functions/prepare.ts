@@ -205,9 +205,7 @@ export function inferDetailsFromExisting(
       wantE.availableMemoryMb = haveE.availableMemoryMb;
     }
 
-    if (haveE.securityLevel) {
-      wantE.securityLevel = haveE.securityLevel;
-    }
+    wantE.securityLevel = (haveE.securityLevel) ? haveE.securityLevel : "SECURE_ALWAYS";
 
     maybeCopyTriggerRegion(wantE, haveE);
   }
