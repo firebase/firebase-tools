@@ -204,8 +204,6 @@ export interface ServiceConfiguration {
 
 export type FunctionsPlatform = "gcfv1" | "gcfv2";
 
-export type SecurityLevel = "SECURE_ALWAYS" | "SECURE_OPTIONAL";
-
 export type Triggered =
   | HttpsTriggered
   | CallableTriggered
@@ -261,7 +259,7 @@ export type Endpoint = TargetIds &
     // in functionFromEndpoint during a breaking change release.
     // This is a temporary fix to address https://github.com/firebase/firebase-tools/issues/4171
     // GCFv1 can be http or https and GCFv2 is always https
-    securityLevel?: SecurityLevel;
+    securityLevel?: gcf.SecurityLevel;
   };
 
 export interface RequiredAPI {
