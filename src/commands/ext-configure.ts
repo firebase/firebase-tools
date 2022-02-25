@@ -18,6 +18,7 @@ import { logger } from "../logger";
 import * as refs from "../extensions/refs";
 import * as manifest from "../extensions/manifest";
 import { Options } from "../options";
+import { partition } from "../functional";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -49,15 +50,19 @@ export default new Command("ext:configure <extensionInstanceId>")
 
       const config = manifest.loadConfig(options);
       const targetRef = manifest.getInstanceRef(instanceId, config);
-      const extVer = await extensionsApi.getExtensionVersion(refs.toExtensionVersionRef(targetRef));
+      const extensionVersion = await extensionsApi.getExtensionVersion(
+        refs.toExtensionVersionRef(targetRef)
+      );
 
       const oldParamValues = manifest.readInstanceParam({
         instanceId,
         projectDir: config.projectDir,
       });
 
-      const tbdParams = _.cloneDeep(extVer.spec.params);
-      const immutableParams = _.remove(tbdParams, (param) => param.immutable);
+      const [immutableParams, tbdParams] = partition(
+        extensionVersion.spec.params,
+        (param) => param.immutable ?? false
+      );
       infoImmutableParams(immutableParams, oldParamValues);
 
       // Ask for mutable param values from user.
