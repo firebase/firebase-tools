@@ -3,9 +3,11 @@ import * as sinon from "sinon";
 
 import * as manifest from "../../extensions/manifest";
 import * as paramHelper from "../../extensions/paramHelper";
+import * as refs from "../../extensions/refs";
 
 import { Config } from "../../config";
 import * as prompt from "../../prompt";
+import { FirebaseError } from "../../error";
 
 const BASE_CONFIG = new Config(
   {
@@ -20,7 +22,7 @@ const BASE_CONFIG = new Config(
 describe("manifest", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
 
-  describe(`${manifest.instanceExists}`, () => {
+  describe(`${manifest.instanceExists.name}`, () => {
     it("should return true for an existing instance", () => {
       const result = manifest.instanceExists("delete-user-data", BASE_CONFIG);
 
@@ -31,6 +33,24 @@ describe("manifest", () => {
       const result = manifest.instanceExists("does-not-exist", BASE_CONFIG);
 
       expect(result).to.be.false;
+    });
+  });
+
+  describe(`${manifest.getInstanceRef.name}`, () => {
+    it("should return the correct ref for an existing instance", () => {
+      const result = manifest.getInstanceRef("delete-user-data", BASE_CONFIG);
+
+      expect(refs.toExtensionVersionRef(result)).to.equal(
+        refs.toExtensionVersionRef({
+          publisherId: "firebase",
+          extensionId: "delete-user-data",
+          version: "0.1.12",
+        })
+      );
+    });
+
+    it("should throw when looking for a non-existing instance", () => {
+      expect(() => manifest.getInstanceRef("does-not-exist", BASE_CONFIG)).to.throw(FirebaseError);
     });
   });
 
@@ -60,7 +80,7 @@ describe("manifest", () => {
     });
   });
 
-  describe(`${manifest.writeToManifest}`, () => {
+  describe(`${manifest.writeToManifest.name}`, () => {
     let askWriteProjectFileStub: sinon.SinonStub;
     let writeProjectFileStub: sinon.SinonStub;
     beforeEach(() => {

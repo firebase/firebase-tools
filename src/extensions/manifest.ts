@@ -91,6 +91,14 @@ export function instanceExists(instanceId: string, config: Config): boolean {
   return !!config.get("extensions", {})[instanceId];
 }
 
+export function getInstanceRef(instanceId: string, config: Config): refs.Ref {
+  if (!instanceExists(instanceId, config)) {
+    throw new FirebaseError(`Could not find extension instance ${instanceId} in firebase.json`);
+  }
+  const ref = config.get("extensions", {})[instanceId];
+  return refs.parse(ref);
+}
+
 function writeExtensionsToFirebaseJson(specs: InstanceSpec[], config: Config): void {
   const extensions = config.get("extensions", {});
   for (const s of specs) {
