@@ -56,7 +56,6 @@ export interface TriggerAnnotation {
   };
   taskQueueTrigger?: {
     rateLimits?: {
-      maxBurstSize?: number;
       maxConcurrentDispatches?: number;
       maxDispatchesPerSecond?: number;
     };

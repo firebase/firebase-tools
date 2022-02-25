@@ -206,7 +206,6 @@ describe("backendFromV1Alpha1", () => {
     describe("taskQueueTriggers", () => {
       const validTrigger: backend.TaskQueueTrigger = {
         rateLimits: {
-          maxBurstSize: 5,
           maxConcurrentDispatches: 10,
           maxDispatchesPerSecond: 20,
         },
@@ -221,7 +220,6 @@ describe("backendFromV1Alpha1", () => {
       };
 
       const invalidRateLimits = {
-        maxBurstSize: "5",
         maxConcurrentDispatches: "10",
         maxDispatchesPerSecond: "20",
       };

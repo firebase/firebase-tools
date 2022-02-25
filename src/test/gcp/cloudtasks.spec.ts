@@ -39,7 +39,6 @@ describe("CloudTasks", () => {
 
     it("handles complex endpoints", () => {
       const rateLimits: backend.TaskQueueRateLimits = {
-        maxBurstSize: 100,
         maxConcurrentDispatches: 5,
         maxDispatchesPerSecond: 5,
       };
@@ -88,7 +87,7 @@ describe("CloudTasks", () => {
         name: "projects/p/locations/r/queues/f",
         ...cloudtasks.DEFAULT_SETTINGS,
         rateLimits: {
-          maxBurstSize: 9_000,
+          maxConcurrentDispatches: 20,
         },
       };
       const haveQueue: cloudtasks.Queue = {

@@ -98,7 +98,6 @@ export interface EventTriggered {
 }
 
 export interface TaskQueueRateLimits {
-  maxBurstSize?: number;
   maxConcurrentDispatches?: number;
   maxDispatchesPerSecond?: number;
 }
