@@ -33,7 +33,7 @@ export default new Command("ext:uninstall <extensionInstanceId>")
   .withForce()
   .option(
     "--local",
-    "remove from firebase.json rather than directly uninstall at a Firebase project"
+    "remove from firebase.json rather than directly uninstall from a Firebase project"
   )
   .before(requirePermissions, ["firebaseextensions.instances.delete"])
   .before(ensureExtensionsApiEnabled)

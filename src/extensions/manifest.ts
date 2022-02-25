@@ -72,6 +72,9 @@ export function removeFromManifest(instanceId: string, config: Config) {
 
   config.deleteProjectFile(`extensions/${instanceId}.env`);
   logger.info(`Removed extension instance environment config extensions/${instanceId}.env`);
+  config.deleteProjectFile(`extensions/${instanceId}.env.local`);
+  logger.info(`Removed extension instance environment config extensions/${instanceId}.env.local`);
+  // TODO(lihes): Remove all project specific env files.
 }
 
 export function loadConfig(options: any): Config {
