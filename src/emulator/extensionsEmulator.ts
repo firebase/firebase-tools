@@ -1,6 +1,7 @@
 import * as fs from "fs-extra";
 import * as os from "os";
 import * as path from "path";
+import Table = require("cli-table");
 import { spawnSync } from "child_process";
 
 import * as planner from "../deploy/extensions/planner";
@@ -11,7 +12,7 @@ import { EmulatableBackend } from "./functionsEmulator";
 import { getExtensionFunctionInfo } from "../extensions/emulator/optionsHelper";
 import { EmulatorLogger } from "./emulatorLogger";
 import { Emulators } from "./types";
-import { getNonEmulatedAPIs } from "./extensions/utils";
+import { getUnemulatedAPIs } from "./extensions/utils";
 import { check } from "../ensureApiEnabled";
 
 export interface ExtensionEmulatorArgs {
@@ -128,7 +129,7 @@ export class ExtensionsEmulator {
    */
   public async getExtensionBackends(): Promise<EmulatableBackend[]> {
     await this.readManifest();
-
+    await this.checkAndWarnAPIs(this.want);
     return Promise.all(
       this.want.map((i: planner.InstanceSpec) => {
         return this.toEmulatableBackend(i);
@@ -175,22 +176,24 @@ export class ExtensionsEmulator {
     };
   }
 
-  private async checkAndWarnAPIs(instances: planner.InstanceSpec[]) {
-    const apisToCheck = await getNonEmulatedAPIs(instances);
-    for (const [api, instanceIds] of Object.entries(apisToCheck)) {
-      const enabled = await check(this.args.projectId, api, "extensions", true);
-      if (enabled) {
-        this.logger.logLabeled(
-          "WARN",
-          "Extensions",
-          `The following Extensions make calls to Google Cloud APIs that do not have Emulators. ` +
-         ```These calls will affect your production project ${this.args.projectId}`
-          );
-      } else {
-
+  private async checkAndWarnAPIs(instances: planner.InstanceSpec[]): Promise<void> {
+    const apisToWarn = await getUnemulatedAPIs(this.args.projectId, instances);
+    if (apisToWarn.length) {
+      const table = new Table({
+        head: ["API Name", "Instances using this API", `Enabled on ${this.args.projectId}`],
+        style: { head: ["yellow"] },
+      });
+      for (const apiToWarn of apisToWarn) {
+        table.push([apiToWarn.apiName, apiToWarn.instanceIds, apiToWarn.enabled]);
       }
-    }
-    
+
+      this.logger.logLabeled(
+        "WARN",
+        "Extensions",
+        `The following Extensions make calls to Google Cloud APIs that do not have Emulators. ` +
+          `These calls will go to production Google Cloud APIs which may have real effects on ${this.args.projectId}.\n` +
+          table.toString()
+      );
     }
   }
 }
