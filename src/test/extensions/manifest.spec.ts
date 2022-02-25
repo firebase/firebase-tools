@@ -34,6 +34,32 @@ describe("manifest", () => {
     });
   });
 
+  describe(`${manifest.removeFromManifest.name}`, () => {
+    let deleteProjectFileStub: sinon.SinonStub;
+    let writeProjectFileStub: sinon.SinonStub;
+    beforeEach(() => {
+      deleteProjectFileStub = sandbox.stub(Config.prototype, "deleteProjectFile");
+      writeProjectFileStub = sandbox.stub(Config.prototype, "writeProjectFile");
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should remove form firebase.json and remove .env file", () => {
+      const result = manifest.removeFromManifest("delete-user-data", BASE_CONFIG);
+
+      expect(writeProjectFileStub).calledWithExactly("firebase.json", {
+        extensions: {
+          "delete-user-data": undefined,
+          "delete-user-data-gm2h": "firebase/delete-user-data@0.1.12",
+        },
+      });
+
+      expect(deleteProjectFileStub).calledWithExactly("extensions/delete-user-data.env");
+    });
+  });
+
   describe(`${manifest.writeToManifest}`, () => {
     let askWriteProjectFileStub: sinon.SinonStub;
     let writeProjectFileStub: sinon.SinonStub;

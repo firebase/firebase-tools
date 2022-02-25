@@ -31,18 +31,21 @@ marked.setOptions({
 export default new Command("ext:uninstall <extensionInstanceId>")
   .description("uninstall an extension that is installed in your Firebase project by instance ID")
   .withForce()
-  .option("--local", "remove from firebase.json rather than directly uninstall at a Firebase project")
+  .option(
+    "--local",
+    "remove from firebase.json rather than directly uninstall at a Firebase project"
+  )
   .before(requirePermissions, ["firebaseextensions.instances.delete"])
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
   .before(diagnoseAndFixProject)
-  .action(async (instanceId: string, options: Options) => {  
+  .action(async (instanceId: string, options: Options) => {
     if (options.local) {
       const config = manifest.loadConfig(options);
       manifest.removeFromManifest(instanceId, config);
       return;
     }
-    
+
     // TODO(b/220900194): Remove everything below and make --local the default behavior.
     const projectId = needProjectId(options);
     let instance;

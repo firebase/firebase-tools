@@ -59,14 +59,9 @@ export async function writeToManifest(
 /**
  * Remove an instance from extensions manifest.
  */
- export function removeFromManifest(
-  instanceId: string,
-  config: Config,
-) {
+export function removeFromManifest(instanceId: string, config: Config) {
   if (!instanceExists(instanceId, config)) {
-    throw new FirebaseError(
-      `Extension instance ${instanceId} not found in firebase.json.`
-    );
+    throw new FirebaseError(`Extension instance ${instanceId} not found in firebase.json.`);
   }
 
   const extensions = config.get("extensions", {});
