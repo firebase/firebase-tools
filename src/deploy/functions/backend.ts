@@ -257,8 +257,10 @@ export type Endpoint = TargetIds &
     // on GCFv2 always
     uri?: string;
     sourceUploadUrl?: string;
-    // GCFv1 can be http or https and
-    // GCFv2 is always https
+    // TODO(colerogers): yank this field and set securityLevel to SECURE_ALWAYS
+    // in functionFromEndpoint during a breaking change release.
+    // This is a temporary fix to address https://github.com/firebase/firebase-tools/issues/4171
+    // GCFv1 can be http or https and GCFv2 is always https
     securityLevel?: SecurityLevel;
   };
 
