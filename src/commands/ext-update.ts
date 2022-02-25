@@ -39,6 +39,7 @@ import { needProjectId } from "../projectUtils";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import { previews } from "../previews";
+import * as manifest from "../extensions/manifest";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -62,7 +63,35 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
   .before(diagnoseAndFixProject)
   .withForce()
   .option("--params <paramsFile>", "name of params variables file with .env format.")
+  .option("--local", "save the update to firebase.json rather than directly update at a Firebase project")
   .action(async (instanceId: string, updateSource: string, options: any) => {
+    if (options.local) {
+      const config = manifest.loadConfig(options);
+      const existingRef = manifest.getInstanceRef(instanceId, config);
+      const extensionVersion = await extensionsApi.getExtensionVersion(
+        refs.toExtensionVersionRef(existingRef)
+      );
+      const existingSpec = extensionVersion.spec;
+
+      // TODO: NEED TO LOOK UP LATEST VERSION AND FILL IN HERE.
+      updateSource = inferUpdateSource(updateSource, refs.toExtensionVersionRef(existingRef));
+      
+      // TODO(b/213335255): Allow local sources after manifest supports that.
+      const newSourceOrigin = getSourceOrigin(updateSource);
+      if (![SourceOrigin.PUBLISHED_EXTENSION, SourceOrigin.PUBLISHED_EXTENSION_VERSION].includes(newSourceOrigin)) {
+        throw new FirebaseError(
+          `Only updating to a published extension version is allowed`
+        );
+      }
+
+      const oldParamValues = manifest.readInstanceParam({
+        instanceId,
+        projectDir: config.projectDir,
+      });
+
+      // TODO: DO THE UPDATES HERE.
+    }
+
     const spinner = ora(`Updating ${clc.bold(instanceId)}. This usually takes 3 to 5 minutes...`);
     try {
       const projectId = needProjectId(options);
