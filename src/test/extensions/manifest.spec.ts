@@ -9,36 +9,37 @@ import { Config } from "../../config";
 import * as prompt from "../../prompt";
 import { FirebaseError } from "../../error";
 
-const BASE_CONFIG = new Config(
-  {
-    extensions: {
-      "delete-user-data": "firebase/delete-user-data@0.1.12",
-      "delete-user-data-gm2h": "firebase/delete-user-data@0.1.12",
-    },
+const BASE_CONFIG_CONTENT = {
+  extensions: {
+    "delete-user-data": "firebase/delete-user-data@0.1.12",
+    "delete-user-data-gm2h": "firebase/delete-user-data@0.1.12",
   },
-  {}
-);
+};
 
 describe("manifest", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
 
   describe(`${manifest.instanceExists.name}`, () => {
+    const config = new Config(BASE_CONFIG_CONTENT, {});
+
     it("should return true for an existing instance", () => {
-      const result = manifest.instanceExists("delete-user-data", BASE_CONFIG);
+      const result = manifest.instanceExists("delete-user-data", config);
 
       expect(result).to.be.true;
     });
 
     it("should return false for a non-existing instance", () => {
-      const result = manifest.instanceExists("does-not-exist", BASE_CONFIG);
+      const result = manifest.instanceExists("does-not-exist", config);
 
       expect(result).to.be.false;
     });
   });
 
   describe(`${manifest.getInstanceRef.name}`, () => {
+    const config = new Config(BASE_CONFIG_CONTENT, {});
+
     it("should return the correct ref for an existing instance", () => {
-      const result = manifest.getInstanceRef("delete-user-data", BASE_CONFIG);
+      const result = manifest.getInstanceRef("delete-user-data", config);
 
       expect(refs.toExtensionVersionRef(result)).to.equal(
         refs.toExtensionVersionRef({
@@ -50,11 +51,13 @@ describe("manifest", () => {
     });
 
     it("should throw when looking for a non-existing instance", () => {
-      expect(() => manifest.getInstanceRef("does-not-exist", BASE_CONFIG)).to.throw(FirebaseError);
+      expect(() => manifest.getInstanceRef("does-not-exist", config)).to.throw(FirebaseError);
     });
   });
 
   describe(`${manifest.removeFromManifest.name}`, () => {
+    const config = new Config(BASE_CONFIG_CONTENT, {});
+
     let deleteProjectFileStub: sinon.SinonStub;
     let writeProjectFileStub: sinon.SinonStub;
     beforeEach(() => {
@@ -67,7 +70,7 @@ describe("manifest", () => {
     });
 
     it("should remove form firebase.json and remove .env file", () => {
-      const result = manifest.removeFromManifest("delete-user-data", BASE_CONFIG);
+      const result = manifest.removeFromManifest("delete-user-data", config);
 
       expect(writeProjectFileStub).calledWithExactly("firebase.json", {
         extensions: {
@@ -81,6 +84,8 @@ describe("manifest", () => {
   });
 
   describe(`${manifest.writeToManifest.name}`, () => {
+    const config = new Config(BASE_CONFIG_CONTENT, {});
+
     let askWriteProjectFileStub: sinon.SinonStub;
     let writeProjectFileStub: sinon.SinonStub;
     beforeEach(() => {
@@ -114,7 +119,7 @@ describe("manifest", () => {
             params: { a: "eevee", b: "squirtle" },
           },
         ],
-        BASE_CONFIG,
+        config,
         { nonInteractive: false, force: false }
       );
       expect(writeProjectFileStub).calledWithExactly("firebase.json", {
@@ -164,7 +169,7 @@ describe("manifest", () => {
             params: { a: "eevee", b: "squirtle" },
           },
         ],
-        BASE_CONFIG,
+        config,
         { nonInteractive: false, force: false },
         true /** allowOverwrite */
       );
