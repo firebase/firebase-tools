@@ -9,18 +9,26 @@ import { Config } from "../../config";
 import * as prompt from "../../prompt";
 import { FirebaseError } from "../../error";
 
-const BASE_CONFIG_CONTENT = {
-  extensions: {
-    "delete-user-data": "firebase/delete-user-data@0.1.12",
-    "delete-user-data-gm2h": "firebase/delete-user-data@0.1.12",
-  },
-};
+/**
+ * Returns a base config in firebase.json style.
+ *
+ * This cannot be a constant because Config edits in-place and mutates
+ * the state between tests.
+ */
+function baseConfigFactory() {
+  return {
+    extensions: {
+      "delete-user-data": "firebase/delete-user-data@0.1.12",
+      "delete-user-data-gm2h": "firebase/delete-user-data@0.1.12",
+    },
+  };
+}
 
 describe("manifest", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
 
   describe(`${manifest.instanceExists.name}`, () => {
-    const config = new Config(BASE_CONFIG_CONTENT, {});
+    const config = new Config(baseConfigFactory(), {});
 
     it("should return true for an existing instance", () => {
       const result = manifest.instanceExists("delete-user-data", config);
@@ -36,7 +44,7 @@ describe("manifest", () => {
   });
 
   describe(`${manifest.getInstanceRef.name}`, () => {
-    const config = new Config(BASE_CONFIG_CONTENT, {});
+    const config = new Config(baseConfigFactory(), {});
 
     it("should return the correct ref for an existing instance", () => {
       const result = manifest.getInstanceRef("delete-user-data", config);
@@ -56,7 +64,7 @@ describe("manifest", () => {
   });
 
   describe(`${manifest.removeFromManifest.name}`, () => {
-    const config = new Config(BASE_CONFIG_CONTENT, {});
+    const config = new Config(baseConfigFactory(), {});
 
     let deleteProjectFileStub: sinon.SinonStub;
     let writeProjectFileStub: sinon.SinonStub;
@@ -84,7 +92,7 @@ describe("manifest", () => {
   });
 
   describe(`${manifest.writeToManifest.name}`, () => {
-    const config = new Config(BASE_CONFIG_CONTENT, {});
+    const config = new Config(baseConfigFactory(), {});
 
     let askWriteProjectFileStub: sinon.SinonStub;
     let writeProjectFileStub: sinon.SinonStub;
