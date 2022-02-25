@@ -1,6 +1,5 @@
 import * as backend from "../backend";
 
-
 export interface BlockingHandler {
   readonly name: string;
   readonly eventName: string;
@@ -10,24 +9,21 @@ export interface BlockingHandler {
 }
 
 export const NoopHandler: BlockingHandler = {
-  name: 'noop',
-  eventName: '',
+  name: "noop",
+  eventName: "",
   enabledApis: [],
-}
+};
 
 export const BeforeCreateHandler: BlockingHandler = {
-  name: 'beforeCreate',
-  eventName: 'providers/cloud.auth/eventTypes/user.beforeCreate',
-  enabledApis: [''],
+  name: "beforeCreate",
+  eventName: "providers/cloud.auth/eventTypes/user.beforeCreate",
+  enabledApis: [""],
 };
 
 export const BeforeSignInHandler: BlockingHandler = {
-  name: 'beforeCreate',
-  eventName: 'providers/cloud.auth/eventTypes/user.beforeSignIn',
-  enabledApis: [''],
+  name: "beforeCreate",
+  eventName: "providers/cloud.auth/eventTypes/user.beforeSignIn",
+  enabledApis: [""],
 };
 
-export const EVENT_HANDLER_MAPPING: Record<string, string> = {
-
-}
-
+export const EVENT_HANDLER_MAPPING: Record<string, string> = {};

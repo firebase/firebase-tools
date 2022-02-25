@@ -12,6 +12,10 @@ export interface Service {
   // dispatch functions
   requiredProjectBindings: ((pId: any, p: any) => Promise<Array<iam.Binding>>) | undefined;
   ensureTriggerRegion: (ep: backend.Endpoint, et: backend.EventTrigger) => Promise<void>;
+  ensureFunctionIsValid: () => void;
+  registerFunctionToResource: () => void;
+  setupFunctionConfig: () => void;
+  unregisterFunctionFromResource: () => void;
 }
 
 /** A noop service object, useful for v1 events */
@@ -20,6 +24,10 @@ export const NoOpService: Service = {
   api: "",
   requiredProjectBindings: undefined,
   ensureTriggerRegion: noop,
+  ensureFunctionIsValid: noop,
+  registerFunctionToResource: noop,
+  setupFunctionConfig: noop,
+  unregisterFunctionFromResource: noop,
 };
 /** A pubsub service object */
 export const PubSubService: Service = {
@@ -27,6 +35,10 @@ export const PubSubService: Service = {
   api: "pubsub.googleapis.com",
   requiredProjectBindings: undefined,
   ensureTriggerRegion: noop,
+  ensureFunctionIsValid: noop,
+  registerFunctionToResource: noop,
+  setupFunctionConfig: noop,
+  unregisterFunctionFromResource: noop,
 };
 /** A storage service object */
 export const StorageService: Service = {
@@ -34,6 +46,10 @@ export const StorageService: Service = {
   api: "storage.googleapis.com",
   requiredProjectBindings: obtainStorageBindings,
   ensureTriggerRegion: ensureStorageTriggerRegion,
+  ensureFunctionIsValid: noop,
+  registerFunctionToResource: noop,
+  setupFunctionConfig: noop,
+  unregisterFunctionFromResource: noop,
 };
 
 /** An auth blocking service object */
@@ -42,8 +58,12 @@ export const AuthBlockingService: Service = {
   api: "identity.googleapis.com",
   requiredProjectBindings: undefined,
   ensureTriggerRegion: noop,
-
-}
+  // TODO(colerogers): update these with the correct dispatch functions
+  ensureFunctionIsValid: noop,
+  registerFunctionToResource: noop,
+  setupFunctionConfig: noop,
+  unregisterFunctionFromResource: noop,
+};
 
 /** Mapping from event type string to service object */
 export const EVENT_SERVICE_MAPPING: Record<string, any> = {

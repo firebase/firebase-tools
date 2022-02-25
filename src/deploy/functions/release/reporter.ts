@@ -240,5 +240,9 @@ export function triggerTag(endpoint: backend.Endpoint): string {
     return `${prefix}.https`;
   }
 
+  if (backend.isBlockingTriggered(endpoint)) {
+    return `${prefix}.blocking`;
+  }
+
   return endpoint.eventTrigger.eventType;
 }

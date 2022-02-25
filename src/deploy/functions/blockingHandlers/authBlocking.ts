@@ -42,23 +42,27 @@ export function oneBeforeSignIn(): boolean {
   }
 }
  */
-export async function updateIdentityPlatformConfig(eventName: string, fnUri: string, fnOpts: AuthBlockingOptions): Promise<identityPlatform.Config> {
+export async function updateIdentityPlatformConfig(
+  eventName: string,
+  fnUri: string,
+  fnOpts: AuthBlockingOptions
+): Promise<identityPlatform.Config> {
   const config = {
     blockingFunctions: {
       triggers: {
         beforeCreate: {
-          // functionUri: 
+          // functionUri:
         },
         beforeSignIn: {
-          // functionUri: 
-        }
+          // functionUri:
+        },
       },
       forwardInboundCredentials: {
         idToken: fnOpts.idToken,
         accessToken: fnOpts.accessToken,
         refreshToken: fnOpts.refreshToken,
-      }
-    }
+      },
+    },
   };
 
   return await identityPlatform.updateConfig({});

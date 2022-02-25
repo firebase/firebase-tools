@@ -203,7 +203,12 @@ export interface ServiceConfiguration {
 
 export type FunctionsPlatform = "gcfv1" | "gcfv2";
 
-export type Triggered = HttpsTriggered | EventTriggered | ScheduleTriggered | TaskQueueTriggered | BlockingTriggered;
+export type Triggered =
+  | HttpsTriggered
+  | EventTriggered
+  | ScheduleTriggered
+  | TaskQueueTriggered
+  | BlockingTriggered;
 
 /** Whether something has an HttpsTrigger */
 export function isHttpsTriggered(triggered: Triggered): triggered is HttpsTriggered {

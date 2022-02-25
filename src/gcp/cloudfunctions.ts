@@ -456,29 +456,33 @@ export async function listAllFunctions(projectId: string): Promise<ListFunctions
   return list(projectId, "-");
 }
 
-function inferAdditionalDetails(gcfFunction: CloudFunction, additionalDetailsCache: backend.AdditionalDetailsCache = {}): backend.Triggered {
+function inferAdditionalDetails(
+  gcfFunction: CloudFunction,
+  additionalDetailsCache: backend.AdditionalDetailsCache = {}
+): backend.Triggered {
   let trigger: backend.Triggered;
-  if (gcfFunction.httpsTrigger?.url === additionalDetailsCache.authBlockingTriggerDetails?.triggers?.beforeCreate) {
+  if (
+    gcfFunction.httpsTrigger?.url ===
+    additionalDetailsCache.authBlockingTriggerDetails?.triggers?.beforeCreate
+  ) {
     trigger = {
       blockingTrigger: {
         eventType: "beforeCreate",
         options: additionalDetailsCache.authBlockingTriggerDetails?.forwardInboundCredentials || {},
-      }
+      },
     };
-  } else if (gcfFunction.httpsTrigger?.url === additionalDetailsCache.authBlockingTriggerDetails?.triggers?.beforeSignIn) {
+  } else if (
+    gcfFunction.httpsTrigger?.url ===
+    additionalDetailsCache.authBlockingTriggerDetails?.triggers?.beforeSignIn
+  ) {
     trigger = {
       blockingTrigger: {
-        eventType: "beforeSignin",
+        eventType: "beforeSignIn",
         options: additionalDetailsCache.authBlockingTriggerDetails?.forwardInboundCredentials || {},
-      }
+      },
     };
   } else {
-    trigger = {
-      blockingTrigger: {
-        eventType: "",
-        options: {},
-      }
-    };
+    trigger = { blockingTrigger: { eventType: "", options: {} } };
   }
 
   return trigger;
@@ -489,7 +493,10 @@ function inferAdditionalDetails(gcfFunction: CloudFunction, additionalDetailsCac
  * This API exists outside the GCF namespace because GCF returns an Operation<CloudFunction>
  * and code may have to call this method explicitly.
  */
-export function endpointFromFunction(gcfFunction: CloudFunction, additionalDetailsCache: backend.AdditionalDetailsCache = {}): backend.Endpoint {
+export function endpointFromFunction(
+  gcfFunction: CloudFunction,
+  additionalDetailsCache: backend.AdditionalDetailsCache = {}
+): backend.Endpoint {
   const [, project, , region, , id] = gcfFunction.name.split("/");
   let trigger: backend.Triggered;
   let uri: string | undefined;
@@ -501,8 +508,7 @@ export function endpointFromFunction(gcfFunction: CloudFunction, additionalDetai
     trigger = {
       taskQueueTrigger: {},
     };
-  } 
-  else if (gcfFunction.labels?.["deployment-blocking"]) {
+  } else if (gcfFunction.labels?.["deployment-blocking"]) {
     if (!additionalDetailsCache.authBlockingTriggerDetails) {
       // call api here to figure out the blocking trigger eventType and options
       // additionalDetailsCache.authBlockingDetails = identityPlatform.getConfig().blockingFunctions || {};
