@@ -22,7 +22,7 @@ const BASE_CONFIG = new Config(
 describe("manifest", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
 
-  describe(`${manifest.instanceExists}`, () => {
+  describe(`${manifest.instanceExists.name}`, () => {
     it("should return true for an existing instance", () => {
       const result = manifest.instanceExists("delete-user-data", BASE_CONFIG);
 
@@ -36,7 +36,7 @@ describe("manifest", () => {
     });
   });
 
-  describe(`${manifest.getInstanceRef}`, () => {
+  describe(`${manifest.getInstanceRef.name}`, () => {
     it("should return the correct ref for an existing instance", () => {
       const result = manifest.getInstanceRef("delete-user-data", BASE_CONFIG);
 
@@ -54,7 +54,7 @@ describe("manifest", () => {
     });
   });
 
-  describe(`${manifest.writeToManifest}`, () => {
+  describe(`${manifest.writeToManifest.name}`, () => {
     let askWriteProjectFileStub: sinon.SinonStub;
     let writeProjectFileStub: sinon.SinonStub;
     beforeEach(() => {
