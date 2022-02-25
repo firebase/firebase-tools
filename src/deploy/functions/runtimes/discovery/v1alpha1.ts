@@ -7,6 +7,7 @@ import { FirebaseError } from "../../../../error";
 export type ManifestEndpoint = backend.ServiceConfiguration &
   backend.Triggered &
   Partial<backend.HttpsTriggered> &
+  Partial<backend.CallableTriggered> &
   Partial<backend.EventTriggered> &
   Partial<backend.TaskQueueTriggered> &
   Partial<backend.BlockingTriggered> &
@@ -18,7 +19,7 @@ export type ManifestEndpoint = backend.ServiceConfiguration &
 
 export interface Manifest {
   specVersion: string;
-  requiredAPIs?: Record<string, string>;
+  requiredAPIs?: backend.RequiredAPI[];
   endpoints: Record<string, ManifestEndpoint>;
 }
 
@@ -35,7 +36,7 @@ export function backendFromV1Alpha1(
   requireKeys("", manifest, "endpoints");
   assertKeyTypes("", manifest, {
     specVersion: "string",
-    requiredAPIs: "object",
+    requiredAPIs: "array",
     endpoints: "object",
   });
   for (const id of Object.keys(manifest.endpoints)) {
@@ -47,19 +48,17 @@ export function backendFromV1Alpha1(
   return bkend;
 }
 
-function parseRequiredAPIs(manifest: Manifest): Record<string, string> {
-  const requiredAPIs: Record<string, string> = {};
-  // Note: this intentionally allows undefined to slip through as {}
-  if (typeof manifest !== "object" || Array.isArray(manifest)) {
-    throw new FirebaseError("Expected requiredApis to be a map of string to string");
-  }
-  for (const [api, reason] of Object.entries(manifest.requiredAPIs || {})) {
+function parseRequiredAPIs(manifest: Manifest): backend.RequiredAPI[] {
+  const requiredAPIs: backend.RequiredAPI[] = manifest.requiredAPIs || [];
+  for (const { api, reason } of requiredAPIs) {
+    if (typeof api !== "string") {
+      throw new FirebaseError(`Invalid api "${JSON.stringify(api)}. Expected string`);
+    }
     if (typeof reason !== "string") {
       throw new FirebaseError(
         `Invalid reason "${JSON.stringify(reason)} for API ${api}. Expected string`
       );
     }
-    requiredAPIs[api] = reason;
   }
   return requiredAPIs;
 }
@@ -85,13 +84,13 @@ function parseEndpoints(
     concurrency: "number",
     serviceAccountEmail: "string",
     timeout: "string",
-    vpcConnector: "string",
-    vpcConnectorEgressSettings: "string",
+    vpc: "object",
     labels: "object",
     ingressSettings: "string",
     environmentVariables: "object",
     secretEnvironmentVariables: "array",
     httpsTrigger: "object",
+    callableTrigger: "object",
     eventTrigger: "object",
     scheduleTrigger: "object",
     taskQueueTrigger: "object",
@@ -99,6 +98,9 @@ function parseEndpoints(
   });
   let triggerCount = 0;
   if (ep.httpsTrigger) {
+    triggerCount++;
+  }
+  if (ep.callableTrigger) {
     triggerCount++;
   }
   if (ep.eventTrigger) {
@@ -114,7 +116,7 @@ function parseEndpoints(
     triggerCount++;
   }
   if (!triggerCount) {
-    throw new FirebaseError("Expected trigger in endpoint" + id);
+    throw new FirebaseError("Expected trigger in endpoint " + id);
   }
   if (triggerCount > 1) {
     throw new FirebaseError("Multiple triggers defined for endpoint" + id);
@@ -137,6 +139,8 @@ function parseEndpoints(
       });
       triggered = { httpsTrigger: {} };
       copyIfPresent(triggered.httpsTrigger, ep.httpsTrigger, "invoker");
+    } else if (backend.isCallableTriggered(ep)) {
+      triggered = { callableTrigger: {} };
     } else if (backend.isScheduleTriggered(ep)) {
       assertKeyTypes(prefix + ".scheduleTrigger", ep.scheduleTrigger, {
         schedule: "string",
@@ -207,8 +211,7 @@ function parseEndpoints(
       "concurrency",
       "serviceAccountEmail",
       "timeout",
-      "vpcConnector",
-      "vpcConnectorEgressSettings",
+      "vpc",
       "labels",
       "ingressSettings",
       "environmentVariables"

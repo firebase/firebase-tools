@@ -1,6 +1,8 @@
 import { promisify } from "util";
 import * as fs from "fs";
 import * as path from "path";
+import * as spawn from "cross-spawn";
+import fetch from "node-fetch";
 
 import { FirebaseError } from "../../../../error";
 import { getRuntimeChoice } from "./parseRuntimeAndValidateSDK";
@@ -78,6 +80,37 @@ export class Delegate {
   watch(): Promise<() => Promise<void>> {
     // TODO: consider running npm run watch if it is defined or tsc watch when tsconfig.json is present.
     return Promise.resolve(() => Promise.resolve());
+  }
+
+  serve(port: number, envs: backend.EnvironmentVariables): Promise<() => Promise<void>> {
+    const childProcess = spawn("./node_modules/.bin/firebase-functions", [this.sourceDir], {
+      env: {
+        ...envs,
+        PORT: port.toString(),
+        FUNCTIONS_CONTROL_API: "true",
+        HOME: process.env.HOME,
+        PATH: process.env.PATH,
+      },
+      cwd: this.sourceDir,
+      stdio: [/* stdin=*/ "ignore", /* stdout=*/ "pipe", /* stderr=*/ "inherit"],
+    });
+    childProcess.stdout?.on("data", (chunk) => {
+      logger.debug(chunk.toString());
+    });
+    return Promise.resolve(async () => {
+      const p = new Promise<void>((resolve, reject) => {
+        childProcess.once("exit", resolve);
+        childProcess.once("error", reject);
+      });
+
+      await fetch(`http://localhost:${port}/__/quitquitquit`);
+      setTimeout(() => {
+        if (!childProcess.killed) {
+          childProcess.kill("SIGKILL");
+        }
+      }, 10_000);
+      return p;
+    });
   }
 
   async discoverSpec(

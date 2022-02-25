@@ -11,6 +11,8 @@ import { EmulatorLogger } from "./emulatorLogger";
  * through the start() and stop() methods which ensures correctness.
  */
 export class EmulatorRegistry {
+  private static extensionsEmulatorRegistered: boolean = false;
+
   static async start(instance: EmulatorInstance): Promise<void> {
     const description = Constants.description(instance.getName());
     if (this.isRunning(instance.getName())) {
@@ -25,6 +27,10 @@ export class EmulatorRegistry {
 
     const info = instance.getInfo();
     await portUtils.waitForPortClosed(info.port, info.host);
+  }
+
+  static registerExtensionsEmulator(): void {
+    this.extensionsEmulatorRegistered = true;
   }
 
   static async stop(name: Emulators): Promise<void> {
@@ -48,9 +54,13 @@ export class EmulatorRegistry {
       // once shutdown starts
       ui: 0,
 
+      // The Extensions emulator runs on the same process as the Functions emulator
+      // so this is a no-op. We put this before functions for future proofing, since
+      // the Extensions emulator depends on the Functions emulator.
+      extensions: 1,
       // Functions is next since it has side effects and
       // dependencies across all the others
-      functions: 1,
+      functions: 1.1,
 
       // Hosting is next because it can trigger functions.
       hosting: 2,
@@ -88,6 +98,9 @@ export class EmulatorRegistry {
   }
 
   static isRunning(emulator: Emulators): boolean {
+    if (emulator === Emulators.EXTENSIONS) {
+      return this.extensionsEmulatorRegistered && this.isRunning(Emulators.FUNCTIONS);
+    }
     const instance = this.INSTANCES.get(emulator);
     return instance !== undefined;
   }
@@ -107,7 +120,10 @@ export class EmulatorRegistry {
   }
 
   static getInfo(emulator: Emulators): EmulatorInfo | undefined {
-    const instance = this.INSTANCES.get(emulator);
+    // For Extensions, return the info for the Functions Emulator.
+    const instance = this.INSTANCES.get(
+      emulator === Emulators.EXTENSIONS ? Emulators.FUNCTIONS : emulator
+    );
     if (!instance) {
       return undefined;
     }

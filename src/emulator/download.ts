@@ -43,6 +43,37 @@ export async function downloadEmulator(name: DownloadableEmulators): Promise<voi
   removeOldFiles(name, emulator);
 }
 
+export async function downloadExtensionVersion(
+  extensionVersionRef: string,
+  sourceDownloadUri: string,
+  targetDir: string
+): Promise<void> {
+  const emulatorLogger = EmulatorLogger.forExtension({ ref: extensionVersionRef });
+  emulatorLogger.logLabeled(
+    "BULLET",
+    "extensions",
+    `Starting download for ${extensionVersionRef} source code...`
+  );
+  try {
+    fs.mkdirSync(targetDir);
+  } catch (err) {
+    emulatorLogger.logLabeled(
+      "BULLET",
+      "extensions",
+      `cache directory for ${extensionVersionRef} already exists...`
+    );
+  }
+  emulatorLogger.logLabeled("BULLET", "extensions", `downloading ${sourceDownloadUri}...`);
+  const sourceCodeZip = await downloadUtils.downloadToTmp(sourceDownloadUri);
+  await unzip(sourceCodeZip, targetDir);
+  fs.chmodSync(targetDir, 0o755);
+
+  emulatorLogger.logLabeled("BULLET", "extensions", `Downloaded to ${targetDir}...`);
+  // TODO: We should not need to do this wait
+  // However, when I remove this, unzipDir doesn't contain everything yet.
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+}
+
 function unzip(zipPath: string, unzipDir: string): Promise<void> {
   return new Promise((resolve, reject) => {
     fs.createReadStream(zipPath)

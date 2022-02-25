@@ -53,6 +53,7 @@ export class ResumableUpload {
   private _bucketId: string;
   private _objectId: string;
   private _contentType: string;
+  private _authorization: string | undefined;
   private _currentBytesUploaded = 0;
   private _status: UploadStatus = UploadStatus.ACTIVE;
   private _fileLocation: string;
@@ -62,13 +63,15 @@ export class ResumableUpload {
     objectId: string,
     uploadId: string,
     contentType: string,
-    metadata: IncomingMetadata
+    metadata: IncomingMetadata,
+    authorization?: string
   ) {
     this._bucketId = bucketId;
     this._objectId = objectId;
     this._uploadId = uploadId;
     this._contentType = contentType;
     this._metadata = metadata;
+    this._authorization = authorization;
     this._fileLocation = encodeURIComponent(`${uploadId}_b_${bucketId}_o_${objectId}`);
     this._currentBytesUploaded = 0;
   }
@@ -90,6 +93,9 @@ export class ResumableUpload {
   }
   public set contentType(contentType: string) {
     this._contentType = contentType;
+  }
+  public get authorization(): string | undefined {
+    return this._authorization;
   }
   public get currentBytesUploaded(): number {
     return this._currentBytesUploaded;
@@ -190,10 +196,18 @@ export class StorageLayer {
     bucket: string,
     object: string,
     contentType: string,
-    metadata: IncomingMetadata
+    metadata: IncomingMetadata,
+    authorization?: string
   ): ResumableUpload {
     const uploadId = v4();
-    const upload = new ResumableUpload(bucket, object, uploadId, contentType, metadata);
+    const upload = new ResumableUpload(
+      bucket,
+      object,
+      uploadId,
+      contentType,
+      metadata,
+      authorization
+    );
     this._uploads.set(uploadId, upload);
     return upload;
   }
@@ -272,8 +286,7 @@ export class StorageLayer {
         customMetadata: upload.metadata.metadata,
       },
       this._cloudFunctions,
-      bytes,
-      upload.metadata
+      bytes
     );
     const file = new StoredFile(finalMetadata, filePath);
     this._files.set(filePath, file);
@@ -306,8 +319,7 @@ export class StorageLayer {
         customMetadata: incomingMetadata.metadata,
       },
       this._cloudFunctions,
-      bytes,
-      incomingMetadata
+      bytes
     );
     const file = new StoredFile(md, this._persistence.getDiskPath(filePath));
     this._files.set(filePath, file);

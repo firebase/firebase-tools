@@ -553,15 +553,21 @@ export function endpointFromFunction(
     "timeout",
     "minInstances",
     "maxInstances",
-    "vpcConnector",
-    "vpcConnectorEgressSettings",
     "ingressSettings",
     "labels",
     "environmentVariables",
     "secretEnvironmentVariables",
     "sourceUploadUrl"
   );
-
+  if (gcfFunction.vpcConnector) {
+    endpoint.vpc = { connector: gcfFunction.vpcConnector };
+    proto.renameIfPresent(
+      endpoint.vpc,
+      gcfFunction,
+      "egressSettings",
+      "vpcConnectorEgressSettings"
+    );
+  }
   return endpoint;
 }
 
@@ -616,6 +622,9 @@ export function functionFromEndpoint(
     gcfFunction.labels = { ...gcfFunction.labels, "deployment-taskqueue": "true" };
   } else {
     gcfFunction.httpsTrigger = {};
+    if (backend.isCallableTriggered(endpoint)) {
+      gcfFunction.labels = { ...gcfFunction.labels, "deployment-callabled": "true" };
+    }
   }
 
   proto.copyIfPresent(
@@ -626,12 +635,18 @@ export function functionFromEndpoint(
     "availableMemoryMb",
     "minInstances",
     "maxInstances",
-    "vpcConnector",
-    "vpcConnectorEgressSettings",
     "ingressSettings",
     "environmentVariables",
     "secretEnvironmentVariables"
   );
-
+  if (endpoint.vpc) {
+    proto.renameIfPresent(gcfFunction, endpoint.vpc, "vpcConnector", "connector");
+    proto.renameIfPresent(
+      gcfFunction,
+      endpoint.vpc,
+      "vpcConnectorEgressSettings",
+      "egressSettings"
+    );
+  }
   return gcfFunction;
 }

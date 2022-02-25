@@ -5,6 +5,7 @@ import * as express from "express";
 import * as clc from "cli-color";
 import * as http from "http";
 import * as jwt from "jsonwebtoken";
+import * as cors from "cors";
 import { URL } from "url";
 
 import { Account } from "../auth";
@@ -56,6 +57,7 @@ import {
 } from "./adminSdkConfig";
 import { EventUtils } from "./events/types";
 import { functionIdsAreValid } from "../deploy/functions/validate";
+import { Extension, ExtensionSpec, ExtensionVersion } from "../extensions/extensionsApi";
 import { getRuntimeDelegate } from "../deploy/functions/runtimes";
 import * as backend from "../deploy/functions/backend";
 import * as functionsEnv from "../functions/env";
@@ -86,6 +88,23 @@ export interface EmulatableBackend {
   predefinedTriggers?: ParsedTriggerDefinition[];
   nodeMajorVersion?: number;
   nodeBinary?: string;
+  extensionInstanceId?: string;
+  extension?: Extension; // Only present for published extensions
+  extensionVersion?: ExtensionVersion; // Only present for published extensions
+  extensionSpec?: ExtensionSpec; // Only present for local extensions
+}
+
+/**
+ * BackendInfo is an API type used by the Emulator UI containing info about an Extension or CF3 module.
+ */
+export interface BackendInfo {
+  directory: string;
+  env: Record<string, string>;
+  functionTriggers: ParsedTriggerDefinition[];
+  extensionInstanceId?: string;
+  extension?: Extension; // Only present for published extensions
+  extensionVersion?: ExtensionVersion; // Only present for published extensions
+  extensionSpec?: ExtensionSpec; // Only present for local extensions
 }
 
 export interface FunctionsEmulatorArgs {
@@ -218,6 +237,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     this.workQueue.start();
 
     const hub = express();
+    hub.use(cors({ origin: true })); // Enable cors so the Emulator UI can call out to the Functions Emulator.
 
     const dataMiddleware: express.RequestHandler = (req, res, next) => {
       const chunks: Buffer[] = [];
@@ -242,6 +262,9 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     // A trigger named "foo" needs to respond at "foo" as well as "foo/*" but not "fooBar".
     const httpsFunctionRoutes = [httpsFunctionRoute, `${httpsFunctionRoute}/*`];
+
+    // The URL for the listBackends endpoint, which is used by the Emulator UI.
+    const listBackendsRoute = `/backends`;
 
     const backgroundHandler: express.RequestHandler = (req, res) => {
       const region = req.params.region;
@@ -318,9 +341,14 @@ export class FunctionsEmulator implements EmulatorInstance {
       res.json({ status: "multicast_acknowledged" });
     };
 
+    const listBackendsHandler: express.RequestHandler = (req, res) => {
+      res.json({ backends: this.getBackendInfo() });
+    };
+
     // The ordering here is important. The longer routes (background)
     // need to be registered first otherwise the HTTP functions consume
     // all events.
+    hub.get(listBackendsRoute, dataMiddleware, listBackendsHandler);
     hub.post(backgroundFunctionRoute, dataMiddleware, backgroundHandler);
     hub.post(multicastFunctionRoute, dataMiddleware, multicastHandler);
     hub.all(httpsFunctionRoutes, dataMiddleware, httpsHandler);
@@ -784,8 +812,21 @@ export class FunctionsEmulator implements EmulatorInstance {
     return def.eventTrigger ? `${def.id}-${this.triggerGeneration}` : def.id;
   }
 
-  getBackends(): EmulatableBackend[] {
-    return this.args.emulatableBackends;
+  getBackendInfo(): BackendInfo[] {
+    const cf3Triggers = Object.values(this.triggers)
+      .filter((t) => !t.backend.extensionInstanceId)
+      .map((t) => t.def);
+    return this.args.emulatableBackends.map((e: EmulatableBackend) => {
+      return {
+        directory: e.functionsDir,
+        env: e.env,
+        extensionInstanceId: e.extensionInstanceId, // Present on all extensions
+        extension: e.extension, // Only present on published extensions
+        extensionVersion: e.extensionVersion, // Only present on published extensions
+        extensionSpec: e.extensionSpec, // Only present on local extensions
+        functionTriggers: e.predefinedTriggers ?? cf3Triggers, // If we don't have predefinedTriggers, this is the CF3 backend.
+      };
+    });
   }
 
   addTriggerRecord(
@@ -911,11 +952,10 @@ export class FunctionsEmulator implements EmulatorInstance {
     envs.PORT = "80";
 
     if (trigger) {
-      const service = trigger.name;
-      const target = service.replace(/-/g, ".");
+      const target = trigger.entryPoint;
       envs.FUNCTION_TARGET = target;
       envs.FUNCTION_SIGNATURE_TYPE = getSignatureType(trigger);
-      envs.K_SERVICE = service;
+      envs.K_SERVICE = trigger.name;
     }
     return envs;
   }
@@ -1156,8 +1196,11 @@ export class FunctionsEmulator implements EmulatorInstance {
         return childProcess.send(JSON.stringify(args));
       },
     };
-
-    this.workerPool.addWorker(trigger.id, runtime);
+    const extensionLogInfo = {
+      instanceId: backend.extensionInstanceId,
+      ref: backend.extensionVersion?.ref,
+    };
+    this.workerPool.addWorker(trigger.id, runtime, extensionLogInfo);
     return this.workerPool.submitWork(trigger.id, frb, opts);
   }
 
@@ -1228,7 +1271,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       });
 
       // For analytics, track the invoked service
-      track(EVENT_INVOKE, getFunctionService(trigger));
+      void track(EVENT_INVOKE, getFunctionService(trigger));
 
       worker.waitForDone().then(() => {
         resolve({ status: "acknowledged" });
@@ -1342,7 +1385,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     // Wait for the worker to set up its internal HTTP server
     await worker.waitForSocketReady();
 
-    track(EVENT_INVOKE, "https");
+    void track(EVENT_INVOKE, "https");
 
     this.logger.log("DEBUG", `[functions] Runtime ready! Sending request!`);
 

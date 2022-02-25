@@ -1187,30 +1187,46 @@ describe("Storage emulator", () => {
         });
       });
 
-      it("#delete()", async () => {
-        const downloadUrl = await page.evaluate((filename) => {
-          return firebase.storage().ref(filename).getDownloadURL();
-        }, filename);
+      describe("deleteFile", () => {
+        it("should delete file", async () => {
+          await page.evaluate((filename) => {
+            return firebase.storage().ref(filename).delete();
+          }, filename);
 
-        expect(downloadUrl).to.be.not.null;
+          const error = await page.evaluate((filename) => {
+            return new Promise((resolve) => {
+              firebase
+                .storage()
+                .ref(filename)
+                .getDownloadURL()
+                .catch((err) => {
+                  resolve(err.message);
+                });
+            });
+          }, filename);
 
-        await page.evaluate((filename) => {
-          return firebase.storage().ref(filename).delete();
-        }, filename);
+          expect(error).to.contain("does not exist.");
+        });
 
-        const error = await page.evaluate((filename) => {
-          return new Promise((resolve) => {
-            firebase
-              .storage()
-              .ref(filename)
-              .getDownloadURL()
-              .catch((err) => {
-                resolve(err.message);
-              });
-          });
-        }, filename);
+        it("should not delete file when security rule on resource object disallows it", async () => {
+          await page.evaluate((filename) => {
+            firebase.storage().ref(filename).updateMetadata({ contentType: "text/plain" });
+          }, filename);
 
-        expect(error).to.contain("does not exist.");
+          const error = await page.evaluate((filename) => {
+            return new Promise((resolve) => {
+              firebase
+                .storage()
+                .ref(filename)
+                .delete()
+                .catch((err) => {
+                  resolve(err.message);
+                });
+            });
+          }, filename);
+
+          expect(error).to.contain("does not have permission to access");
+        });
       });
     });
 
@@ -1308,6 +1324,38 @@ describe("Storage emulator", () => {
             expect(md.downloadTokens.split(",").length).to.deep.equal(1);
             expect(md.downloadTokens.split(",")).to.not.deep.equal([token]);
           });
+      });
+
+      it("#uploadResumableDoesNotRequireMultipleAuthHeaders", async () => {
+        const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
+          .post(
+            `/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`
+          )
+          .set({
+            Authorization: "Bearer owner",
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "start",
+          })
+          .expect(200)
+          .then((res) => new URL(res.header["x-goog-upload-url"]));
+
+        await supertest(STORAGE_EMULATOR_HOST)
+          .put(uploadURL.pathname + uploadURL.search)
+          .set({
+            // No Authorization required in upload
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "upload",
+          })
+          .expect(200);
+
+        await supertest(STORAGE_EMULATOR_HOST)
+          .put(uploadURL.pathname + uploadURL.search)
+          .set({
+            // No Authorization required in finalize
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "upload, finalize",
+          })
+          .expect(200);
       });
     });
 

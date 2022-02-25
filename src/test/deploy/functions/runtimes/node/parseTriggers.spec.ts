@@ -76,9 +76,12 @@ describe("addResourcesToBackend", () => {
 
     const expected: backend.Backend = {
       ...backend.of({ ...BASIC_ENDPOINT, taskQueueTrigger: {} }),
-      requiredAPIs: {
-        cloudtasks: "cloudtasks.googleapis.com",
-      },
+      requiredAPIs: [
+        {
+          api: "cloudtasks.googleapis.com",
+          reason: "Needed for task queue functions.",
+        },
+      ],
     };
     expect(result).to.deep.equal(expected);
   });
@@ -141,8 +144,10 @@ describe("addResourcesToBackend", () => {
       maxInstances: 42,
       minInstances: 1,
       serviceAccountEmail: "inlined@google.com",
-      vpcConnectorEgressSettings: "PRIVATE_RANGES_ONLY",
-      vpcConnector: "projects/project/locations/region/connectors/connector",
+      vpc: {
+        connector: "projects/project/locations/region/connectors/connector",
+        egressSettings: "PRIVATE_RANGES_ONLY",
+      },
       ingressSettings: "ALLOW_ALL",
       timeout: "60s",
       labels: {
@@ -281,10 +286,12 @@ describe("addResourcesToBackend", () => {
           scheduleTrigger: schedule,
         }
       ),
-      requiredAPIs: {
-        pubsub: "pubsub.googleapis.com",
-        scheduler: "cloudscheduler.googleapis.com",
-      },
+      requiredAPIs: [
+        {
+          api: "cloudscheduler.googleapis.com",
+          reason: "Needed for scheduled functions.",
+        },
+      ],
     };
 
     expect(result).to.deep.equal(expected);
@@ -303,7 +310,9 @@ describe("addResourcesToBackend", () => {
     const expected: backend.Backend = backend.of({
       ...BASIC_ENDPOINT,
       httpsTrigger: {},
-      vpcConnector: "",
+      vpc: {
+        connector: "",
+      },
     });
 
     expect(result).to.deep.equal(expected);
