@@ -23,7 +23,7 @@ import * as env from "../functions/env";
  * @param params A list of params
  * @param newDefaults a map of { PARAM_NAME: default_value }
  */
-function setNewDefaults(
+export function setNewDefaults(
   params: extensionsApi.Param[],
   newDefaults: { [key: string]: string }
 ): extensionsApi.Param[] {
@@ -58,10 +58,10 @@ export function getParamsWithCurrentValuesAsDefaults(
  */
 export async function getParams(args: {
   projectId: string;
+  instanceId: string;
   paramSpecs: extensionsApi.Param[];
   nonInteractive?: boolean;
   paramsEnvPath?: string;
-  instanceId: string;
   reconfiguring?: boolean;
 }): Promise<{ [key: string]: string }> {
   let params: any;
