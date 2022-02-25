@@ -56,11 +56,32 @@ export async function writeToManifest(
   await writeEnvFiles(specs, config, options.force);
 }
 
+/**
+ * Remove an instance from extensions manifest.
+ */
+export function removeFromManifest(instanceId: string, config: Config) {
+  if (!instanceExists(instanceId, config)) {
+    throw new FirebaseError(`Extension instance ${instanceId} not found in firebase.json.`);
+  }
+
+  const extensions = config.get("extensions", {});
+  extensions[instanceId] = undefined;
+  config.set("extensions", extensions);
+  config.writeProjectFile("firebase.json", config.src);
+  logger.info(`Removed extension instance ${instanceId} from firebase.json`);
+
+  config.deleteProjectFile(`extensions/${instanceId}.env`);
+  logger.info(`Removed extension instance environment config extensions/${instanceId}.env`);
+  config.deleteProjectFile(`extensions/${instanceId}.env.local`);
+  logger.info(`Removed extension instance environment config extensions/${instanceId}.env.local`);
+  // TODO(lihes): Remove all project specific env files.
+}
+
 export function loadConfig(options: any): Config {
   const existingConfig = Config.load(options, true);
   if (!existingConfig) {
     throw new FirebaseError(
-      "Not currently in a Firebase directory. Please run `firebase init` to create a Firebase directory."
+      "Not currently in a Firebase directory. Run `firebase init` to create a Firebase directory."
     );
   }
   return existingConfig;

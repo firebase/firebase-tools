@@ -66,7 +66,7 @@ export default new Command("ext:install [extensionName]")
   .before(diagnoseAndFixProject)
   .action(async (extensionName: string, options: Options) => {
     const projectId = needProjectId(options);
-    const paramsEnvPath = (options.params ?? {}) as string;
+    const paramsEnvPath = (options.params ?? "") as string;
     let learnMore = false;
     if (!extensionName) {
       if (options.interactive) {
