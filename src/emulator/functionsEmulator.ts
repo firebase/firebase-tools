@@ -58,7 +58,6 @@ import {
 import { EventUtils } from "./events/types";
 import { functionIdsAreValid } from "../deploy/functions/validate";
 import { Extension, ExtensionSpec, ExtensionVersion } from "../extensions/extensionsApi";
-import { ExtensionVersion } from "../extensions/extensionsApi";
 import { accessSecretVersion } from "../gcp/secretManager";
 import * as runtimes from "../deploy/functions/runtimes";
 import * as backend from "../deploy/functions/backend";
