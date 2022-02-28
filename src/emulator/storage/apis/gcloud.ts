@@ -4,6 +4,7 @@ import { Emulators } from "../../types";
 import {
   CloudStorageObjectAccessControlMetadata,
   CloudStorageObjectMetadata,
+  IncomingMetadata,
   StoredFileMetadata,
 } from "../metadata";
 import { EmulatorRegistry } from "../../registry";
@@ -172,89 +173,142 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       .status(200);
   });
 
+  const MULTIPART_RE = /^multipart\/related/i;
+  const BOUNDARY_RE = /;\s*boundary\s*=\s*(?:"([^"]*)"|([^;]*))/i;
+  const SECTIONS_RE = /^(.*?)(\r?\n\r?\n)(.*)$/s;
+  const HEADER_LINES_RE = /\r?\n/;
+  const TRAILING_CRLF_RE = /(\r?\n)$/;
+  const HEADER_KV_RE = /^([^:\s]+)?\s*:\s*?(.*)/;
+
+  type MultipartHeaders = {
+    [key: string]: string;
+  };
+  type MultpartFile = {
+    contentType: string;
+    buffer: Buffer;
+    headers?: MultipartHeaders;
+  };
+  interface UploadMetadata extends IncomingMetadata {
+    name?: string;
+  }
+
+  const getValidName = (req: Request, metadata: UploadMetadata): string | undefined => {
+    const name = req?.query?.name?.toString() || metadata?.name;
+    return name?.startsWith("/") ? name.slice(1) : name;
+  };
+
+  const splitHeaders = (headersString: string): MultipartHeaders => {
+    return headersString.split(HEADER_LINES_RE).reduce((headers, rawHeader) => {
+      const match = HEADER_KV_RE.exec(rawHeader);
+      if (match) {
+        headers[match[1].trim().toLowerCase()] = match[2].trim(); // Convert headers to lowercase to allow easier use later
+      }
+      return headers;
+    }, {} as MultipartHeaders);
+  };
+
+  const splitMultipart = (contentType: string, body: Buffer): MultpartFile[] => {
+    const [boundaryMatch, boundaryWithQuotes, boundaryWithoutQuotes] =
+      BOUNDARY_RE.exec(contentType) || [];
+    const boundary = boundaryMatch
+      ? `--${(boundaryWithQuotes || boundaryWithoutQuotes).trim()}`
+      : null;
+    const files = <MultpartFile[]>[];
+
+    if (boundary) {
+      body
+        .toString("binary")
+        .split(boundary)
+        .reduce((prev, bodyPart, i) => {
+          const position = i * boundary.length + prev;
+          const sections = SECTIONS_RE.exec(bodyPart);
+          if (sections) {
+            // Every file must have headers and body per spec
+            const [, fileHeaders, separator, fileBody] = sections;
+            const trailing = TRAILING_CRLF_RE.exec(fileBody);
+
+            const headers = splitHeaders(fileHeaders);
+            const contentType = headers["content-type"];
+            if (contentType) {
+              const bufferStart = position + fileHeaders.length + separator.length;
+              const bufferEnd = bufferStart + fileBody.length - (trailing ? trailing[1].length : 0);
+              const buffer = Buffer.from(body.slice(bufferStart, bufferEnd));
+              files.push({ contentType, buffer, headers });
+            }
+          }
+          return prev + bodyPart.length;
+        }, 0);
+    }
+    return files.filter((f) => f?.headers);
+  };
+
   gcloudStorageAPI.post("/upload/storage/v1/b/:bucketId/o", (req, res) => {
-    if (!req.query.name) {
-      res.sendStatus(400);
-      return;
-    }
-    let name = req.query.name.toString();
-
-    if (name.startsWith("/")) {
-      name = name.slice(1);
-    }
-
     const contentType = req.header("content-type") || req.header("x-upload-content-type");
+    let metadata: UploadMetadata = {};
+    let meta: MultpartFile | null = null;
+    let blob: MultpartFile | null = null;
 
     if (!contentType) {
       res.sendStatus(400);
       return;
     }
 
-    if (req.query.uploadType == "resumable") {
-      const upload = storageLayer.startUpload(req.params.bucketId, name, contentType, req.body);
-      const emulatorInfo = EmulatorRegistry.getInfo(Emulators.STORAGE);
+    const resumable = req.query.uploadType == "resumable";
+    if (resumable) {
+      metadata = { contentType, ...req.body };
+    } else {
+      if (!MULTIPART_RE.exec(contentType)) {
+        res.sendStatus(400);
+        return;
+      }
+      const files = splitMultipart(contentType, req.body);
+      if (files.length === 2) {
+        [meta, blob] = files;
+        metadata = { contentType: blob.contentType, ...JSON.parse(meta.buffer.toString()) };
+      } else {
+        // Multipart upload is invalid
+        res.sendStatus(400);
+        return;
+      }
+    }
 
+    const name = getValidName(req, metadata);
+    if (!name) {
+      res.sendStatus(400);
+      return;
+    }
+
+    if (resumable) {
+      const emulatorInfo = EmulatorRegistry.getInfo(Emulators.STORAGE);
       if (emulatorInfo == undefined) {
         res.sendStatus(500);
         return;
       }
 
+      const upload = storageLayer.startUpload(req.params.bucketId, name, contentType, metadata);
       const { host, port } = emulatorInfo;
       const uploadUrl = `http://${host}:${port}/upload/storage/v1/b/${upload.bucketId}/o?name=${upload.fileLocation}&uploadType=resumable&upload_id=${upload.uploadId}`;
       res.header("location", uploadUrl).status(200).send();
       return;
+    } else {
+      if (!blob) {
+        res.sendStatus(400);
+        return;
+      }
+      const uploadMetadata = storageLayer.oneShotUpload(
+        req.params.bucketId,
+        name,
+        blob.contentType,
+        metadata,
+        blob.buffer
+      );
+      if (!uploadMetadata) {
+        res.sendStatus(400);
+        return;
+      }
+
+      res.status(200).json(new CloudStorageObjectMetadata(uploadMetadata)).send();
     }
-
-    if (!contentType.startsWith("multipart/related")) {
-      res.sendStatus(400);
-      return;
-    }
-
-    const boundary = `--${contentType.split("boundary=")[1]}`;
-    const bodyString = req.body.toString();
-
-    const bodyStringParts = bodyString.split(boundary).filter((v: string) => v);
-
-    const metadataString = bodyStringParts[0].split(/\r?\n/)[3];
-    const blobParts = bodyStringParts[1].split(/\r?\n/);
-    const blobContentTypeString = blobParts[1];
-
-    if (!blobContentTypeString || !blobContentTypeString.startsWith("Content-Type: ")) {
-      res.sendStatus(400);
-      return;
-    }
-
-    const blobContentType = blobContentTypeString.slice("Content-Type: ".length);
-    const bodyBuffer = req.body as Buffer;
-
-    const metadataSegment = `${boundary}${bodyString.split(boundary)[1]}`;
-    const dataSegment = `${boundary}${bodyString.split(boundary).slice(2)[0]}`;
-    const dataSegmentHeader = (dataSegment.match(/.+Content-Type:.+?\r?\n\r?\n/s) || [])[0];
-
-    if (!dataSegmentHeader) {
-      res.sendStatus(400);
-      return;
-    }
-
-    const bufferOffset = metadataSegment.length + dataSegmentHeader.length;
-
-    const blobBytes = Buffer.from(bodyBuffer.slice(bufferOffset, -`\r\n${boundary}--`.length));
-
-    const metadata = storageLayer.oneShotUpload(
-      req.params.bucketId,
-      name,
-      blobContentType,
-      JSON.parse(metadataString),
-      blobBytes
-    );
-
-    if (!metadata) {
-      res.sendStatus(400);
-      return;
-    }
-
-    res.status(200).json(new CloudStorageObjectMetadata(metadata)).send();
-    return;
   });
 
   gcloudStorageAPI.get("/:bucketId/:objectId(**)", (req, res) => {
