@@ -139,7 +139,7 @@ export async function ensure(
  *
  * @param projectId The project to generate an API enablement link for
  * @param apiName  The name of the API e.g. `someapi.googleapis.com`.
- * @returns A link to Cloud console to enable the API
+ * @return A link to Cloud console to enable the API
  */
 export function enableApiURI(projectId: string, apiName: string): string {
   return `https://console.cloud.google.com/apis/library/${apiName}?project=${projectId}`;

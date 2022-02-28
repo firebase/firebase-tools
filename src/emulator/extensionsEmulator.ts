@@ -13,7 +13,7 @@ import { EmulatableBackend } from "./functionsEmulator";
 import { getExtensionFunctionInfo } from "../extensions/emulator/optionsHelper";
 import { EmulatorLogger } from "./emulatorLogger";
 import { Emulators } from "./types";
-import { getUnemulatedAPIs } from "./extensions/utils";
+import { getUnemulatedAPIs } from "./extensions/validation";
 import { enableApiURI } from "../ensureApiEnabled";
 import { shortenUrl } from "../shortenUrl";
 
@@ -134,7 +134,7 @@ export class ExtensionsEmulator {
    *  getEmulatableBackends reads firebase.json & .env files for a list of extension instances to emulate,
    *  downloads & builds the necessary source code (if it hasn't previously been cached),
    *  then builds returns a list of emulatableBackends
-   *  @returns A list of emulatableBackends, one for each extension instance to be emulated
+   *  @return A list of emulatableBackends, one for each extension instance to be emulated
    */
   public async getExtensionBackends(): Promise<EmulatableBackend[]> {
     await this.readManifest();
