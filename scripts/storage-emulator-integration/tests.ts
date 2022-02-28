@@ -1210,7 +1210,7 @@ describe("Storage emulator", () => {
 
         it("should not delete file when security rule on resource object disallows it", async () => {
           await page.evaluate((filename) => {
-            firebase.storage().ref(filename).updateMetadata({ contentType: "text/plain" });
+            return firebase.storage().ref(filename).updateMetadata({ contentType: "text/plain" });
           }, filename);
 
           const error = await page.evaluate((filename) => {
