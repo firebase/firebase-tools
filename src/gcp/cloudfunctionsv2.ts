@@ -285,7 +285,7 @@ export async function getFunction(
  */
 export async function listFunctions(projectId: string, region: string): Promise<CloudFunction[]> {
   const res = await listFunctionsInternal(projectId, region);
-  if (res.unreachable!.includes(region)) {
+  if (res.unreachable.includes(region)) {
     throw new FirebaseError(`Cloud Functions region ${region} is unavailable`);
   }
   return res.functions;
@@ -333,9 +333,16 @@ async function listFunctionsInternal(
 export async function updateFunction(
   cloudFunction: Omit<CloudFunction, OutputOnlyFields>
 ): Promise<Operation> {
+  // Keys in labels and environmentVariables are user defined, so we don't recurse
+  // for field masks.
+  const fieldMasks = proto.fieldMasks(
+    cloudFunction,
+    /* doNotRecurseIn...=*/ "labels",
+    "serviceConfig.environmentVariables"
+  );
   try {
     const queryParams = {
-      updateMask: proto.fieldMasks(cloudFunction).join(","),
+      updateMask: fieldMasks.join(","),
     };
     const res = await client.patch<typeof cloudFunction, Operation>(
       cloudFunction.name,
@@ -480,7 +487,7 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
   } else if (gcfFunction.eventTrigger) {
     trigger = {
       eventTrigger: {
-        eventType: gcfFunction.eventTrigger!.eventType,
+        eventType: gcfFunction.eventTrigger.eventType,
         eventFilters: {},
         retry: false,
       },

@@ -57,6 +57,7 @@ import {
 } from "./adminSdkConfig";
 import { EventUtils } from "./events/types";
 import { functionIdsAreValid } from "../deploy/functions/validate";
+import { Extension, ExtensionSpec, ExtensionVersion } from "../extensions/extensionsApi";
 import { ExtensionVersion } from "../extensions/extensionsApi";
 import { accessSecretVersion } from "../gcp/secretManager";
 import * as runtimes from "../deploy/functions/runtimes";
@@ -89,17 +90,22 @@ export interface EmulatableBackend {
   nodeMajorVersion?: number;
   nodeBinary?: string;
   extensionInstanceId?: string;
-  extensionVersion?: ExtensionVersion;
+  extension?: Extension; // Only present for published extensions
+  extensionVersion?: ExtensionVersion; // Only present for published extensions
+  extensionSpec?: ExtensionSpec; // Only present for local extensions
 }
 
 /**
  * BackendInfo is an API type used by the Emulator UI containing info about an Extension or CF3 module.
  */
 export interface BackendInfo {
+  directory: string;
   env: Record<string, string>;
   functionTriggers: ParsedTriggerDefinition[];
   extensionInstanceId?: string;
-  extensionVersion?: ExtensionVersion;
+  extension?: Extension; // Only present for published extensions
+  extensionVersion?: ExtensionVersion; // Only present for published extensions
+  extensionSpec?: ExtensionSpec; // Only present for local extensions
 }
 
 export interface FunctionsEmulatorArgs {
@@ -812,14 +818,18 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   getBackendInfo(): BackendInfo[] {
+    const cf3Triggers = Object.values(this.triggers)
+      .filter((t) => !t.backend.extensionInstanceId)
+      .map((t) => t.def);
     return this.args.emulatableBackends.map((e: EmulatableBackend) => {
       return {
+        directory: e.functionsDir,
         env: e.env,
-        extensionInstanceId: e.extensionInstanceId,
-        extensionVersion: e.extensionVersion,
-        functionTriggers: e.predefinedTriggers ?? [],
-        // TODO: Right now, functionTriggers will be an empty list for CF3 backends.
-        // We need to figure out how to expose the loaded triggers here here.
+        extensionInstanceId: e.extensionInstanceId, // Present on all extensions
+        extension: e.extension, // Only present on published extensions
+        extensionVersion: e.extensionVersion, // Only present on published extensions
+        extensionSpec: e.extensionSpec, // Only present on local extensions
+        functionTriggers: e.predefinedTriggers ?? cf3Triggers, // If we don't have predefinedTriggers, this is the CF3 backend.
       };
     });
   }
@@ -1266,7 +1276,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       });
 
       // For analytics, track the invoked service
-      track(EVENT_INVOKE, getFunctionService(trigger));
+      void track(EVENT_INVOKE, getFunctionService(trigger));
 
       worker.waitForDone().then(() => {
         resolve({ status: "acknowledged" });
@@ -1380,7 +1390,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     // Wait for the worker to set up its internal HTTP server
     await worker.waitForSocketReady();
 
-    track(EVENT_INVOKE, "https");
+    void track(EVENT_INVOKE, "https");
 
     this.logger.log("DEBUG", `[functions] Runtime ready! Sending request!`);
 

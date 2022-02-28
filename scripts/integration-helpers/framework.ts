@@ -291,6 +291,14 @@ export class TriggerEndToEndTest {
     return this.invokeHttpFunction("writeToSpecificStorageBucket");
   }
 
+  updateMetadataDefaultStorage(): Promise<Response> {
+    return this.invokeHttpFunction("updateMetadataFromDefaultStorage");
+  }
+
+  updateMetadataSpecificStorageBucket(): Promise<Response> {
+    return this.invokeHttpFunction("updateMetadataFromSpecificStorageBucket");
+  }
+
   updateDeleteFromDefaultStorage(): Promise<Response> {
     return this.invokeHttpFunction("updateDeleteFromDefaultStorage");
   }
