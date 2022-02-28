@@ -1,6 +1,7 @@
 import * as fs from "fs-extra";
 import * as os from "os";
 import * as path from "path";
+import * as clc from "cli-color";
 import Table = require("cli-table");
 import { spawnSync } from "child_process";
 
@@ -13,6 +14,15 @@ import { getExtensionFunctionInfo } from "../extensions/emulator/optionsHelper";
 import { EmulatorLogger } from "./emulatorLogger";
 import { Emulators } from "./types";
 import { getUnemulatedAPIs } from "./extensions/utils";
+import { enableApiURI } from "../ensureApiEnabled";
+import { shortenUrl } from "../shortenUrl";
+
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
+const { marked } = require("marked");
+import TerminalRenderer = require("marked-terminal");
+marked.setOptions({
+  renderer: new TerminalRenderer(),
+});
 
 export interface ExtensionEmulatorArgs {
   projectId: string;
@@ -179,11 +189,25 @@ export class ExtensionsEmulator {
     const apisToWarn = await getUnemulatedAPIs(this.args.projectId, instances);
     if (apisToWarn.length) {
       const table = new Table({
-        head: ["API Name", "Instances using this API", `Enabled on ${this.args.projectId}`],
+        head: [
+          "API Name",
+          "Instances using this API",
+          `Enabled on ${this.args.projectId}`,
+          `Enable this API`,
+        ],
         style: { head: ["yellow"] },
       });
       for (const apiToWarn of apisToWarn) {
-        table.push([apiToWarn.apiName, apiToWarn.instanceIds, apiToWarn.enabled]);
+        // We use a shortened link here instead of a alias because cli-table behaves poorly with aliased links
+        const enablementUri = await shortenUrl(
+          enableApiURI(this.args.projectId, apiToWarn.apiName)
+        );
+        table.push([
+          apiToWarn.apiName,
+          apiToWarn.instanceIds,
+          apiToWarn.enabled ? "Yes" : "No",
+          apiToWarn.enabled ? "" : clc.bold.underline(enablementUri),
+        ]);
       }
 
       this.logger.logLabeled(
