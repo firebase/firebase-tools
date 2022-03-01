@@ -45,23 +45,22 @@ describe("ExtensionsEmulator validation utils", () => {
 
     it("should check only unemulated APIs", async () => {
       const instanceIdWithUnemulatedAPI = "unemulated";
+      const instanceId2WithUnemulatedAPI = "unemulated2";
       const instanceIdWithEmulatedAPI = "emulated";
 
       const result = await utils.getUnemulatedAPIs(testProjectId, [
         getTestInstanceSpecWithAPI(instanceIdWithEmulatedAPI, "firestore.googleapis.com"),
         getTestInstanceSpecWithAPI(instanceIdWithUnemulatedAPI, testAPI),
+        getTestInstanceSpecWithAPI(instanceId2WithUnemulatedAPI, testAPI),
       ]);
 
       expect(result).to.deep.equal([
         {
           apiName: testAPI,
-          instanceIds: [instanceIdWithUnemulatedAPI],
+          instanceIds: [instanceIdWithUnemulatedAPI, instanceId2WithUnemulatedAPI],
           enabled: true,
         },
       ]);
-      // expect(result[0].apiName).to.equal(testAPI);
-      // expect(result[0].instanceIds).to.equal([instanceIdWithEmulatedAPI]);
-      // expect(result[0].enabled).to.equal(true);
     });
   });
 });
