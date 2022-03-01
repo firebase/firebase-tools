@@ -271,7 +271,7 @@ export class StorageLayer {
   }
 
   /** Last step in uploading a file. Validates the request and persists the staging
-   * object to permanent disk.
+   * object to its permanent location on disk.
    */
   public async handleUploadObject(upload: Upload): Promise<StoredFileMetadata> {
     if (upload.status !== UploadStatus.FINISHED) {
