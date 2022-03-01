@@ -122,7 +122,7 @@ functionsEmulator.setTriggersForTesting(
 );
 
 // TODO(samstern): This is an ugly way to just override the InvokeRuntimeOpts on each call
-const startFunctionRuntime = functionsEmulator.invokeTrigger.bind(functionsEmulator);
+const invokeTrigger = functionsEmulator.invokeTrigger.bind(functionsEmulator);
 function useFunctions(triggers: () => {}): void {
   const serializedTriggers = triggers.toString();
 
@@ -133,7 +133,7 @@ function useFunctions(triggers: () => {}): void {
     proto?: any,
     runtimeOpts?: InvokeRuntimeOpts
   ): Promise<RuntimeWorker> => {
-    return startFunctionRuntime(testBackend, trigger, proto, {
+    return invokeTrigger(testBackend, trigger, proto, {
       nodeBinary: process.execPath,
       serializedTriggers,
     });

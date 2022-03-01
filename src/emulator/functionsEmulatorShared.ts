@@ -69,10 +69,10 @@ export interface FunctionsRuntimeBundle {
   socketPath?: string;
   disabled_features?: FunctionsRuntimeFeatures;
   // TODO(danielylee): To make debugging in Functions Emulator w/ --inspect-functions flag a good experience, we run
-  // All functions in a single runtime process. This is drastically different to production environment where each
+  // all functions in a single runtime process. This is drastically different to production environment where each
   // function runs in isolated, independent containers. Until we have better design for supporting --inspect-functions
-  // flag, we begrudgingly include the target function name in the runtime bundle so the "debug" runtime can invoke
-  // correct function accordingly.
+  // flag, we begrudgingly include the target trigger info in the runtime bundle so the "debug" runtime process can
+  // choose which trigger to run at runtime.
   // See https://github.com/firebase/firebase-tools/issues/4189.
   debug?: {
     functionTarget: string;
