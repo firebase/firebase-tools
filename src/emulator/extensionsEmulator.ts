@@ -17,13 +17,6 @@ import { getUnemulatedAPIs } from "./extensions/validation";
 import { enableApiURI } from "../ensureApiEnabled";
 import { shortenUrl } from "../shortenUrl";
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
-import TerminalRenderer = require("marked-terminal");
-marked.setOptions({
-  renderer: new TerminalRenderer(),
-});
-
 export interface ExtensionEmulatorArgs {
   projectId: string;
   projectNumber: string;
