@@ -57,8 +57,8 @@ export class NotCancellableError extends Error {}
  * Service that handles byte transfer and maintains state for file uploads.
  *
  * New file uploads will be persisted to a temp staging directory which will not
- * survive across emulator restarts. Clients should are expected to move staged
- * files to a more permanent location.
+ * survive across emulator restarts. Clients are expected to move staged files
+ * to a more permanent location.
  */
 export class UploadService {
   private _uploads!: Map<string, Upload>;
