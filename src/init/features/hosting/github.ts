@@ -298,7 +298,7 @@ function writeChannelActionYMLFile(
     on: "pull_request",
     jobs: {
       ["build_and_preview"]: {
-        if: "${{ github.event.pull_request.head.repo.full_name === github.repository }}", // secrets aren't accessible on PRs from forks
+        if: "${{ github.event.pull_request.head.repo.full_name == github.repository }}", // secrets aren't accessible on PRs from forks
         "runs-on": "ubuntu-latest",
         steps: [{ uses: CHECKOUT_GITHUB_ACTION_NAME }],
       },

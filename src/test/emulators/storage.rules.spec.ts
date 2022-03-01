@@ -152,7 +152,7 @@ describe.skip("Storage Rules", function () {
             rules_version = '2';
             service firebase.storage {
               match /b/{bucket}/o/{sizeSegment=**} {
-                allow read: if request.auth.uid === 'mock-user';
+                allow read: if request.auth.uid == 'mock-user';
               }
             }
           `,
@@ -219,7 +219,7 @@ describe.skip("Storage Rules", function () {
         service firebase.storage {
           match /b/{bucket}/o {
             match /sizes/{size} {
-              allow read,write: if request.path[1] === "xl";
+              allow read,write: if request.path[1] == "xl";
             }
           }
         }`;
@@ -310,7 +310,7 @@ describe.skip("Storage Rules", function () {
         service firebase.storage {
           match /b/{bucket}/o {
             match /files/{file} {
-              allow read, write: if request.resource.md5Hash === resource.md5Hash;
+              allow read, write: if request.resource.md5Hash == resource.md5Hash;
             }
           }
         }`;
