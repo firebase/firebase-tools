@@ -98,7 +98,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         authorization: req.header("authorization"),
         downloadToken: req.query.token?.toString(),
       }));
-    } catch (err: any) {
+    } catch (err) {
       if (err instanceof NotFoundError) {
         return res.sendStatus(404);
       } else if (err instanceof ForbiddenError) {
