@@ -145,7 +145,6 @@ export type GetObjectResponse = {
 };
 export class StorageLayer {
   private _files!: Map<string, StoredFile>;
-  private _uploads!: Map<string, ResumableUpload>;
   private _buckets!: Map<string, CloudStorageBucketMetadata>;
   private _cloudFunctions: StorageCloudFunctions;
 
@@ -160,7 +159,6 @@ export class StorageLayer {
 
   public reset(): void {
     this._files = new Map();
-    this._uploads = new Map();
     this._buckets = new Map();
   }
 
@@ -243,50 +241,6 @@ export class StorageLayer {
     this._files = value;
   }
 
-  public startUpload(
-    bucket: string,
-    object: string,
-    contentType: string,
-    metadata: IncomingMetadata,
-    authorization?: string
-  ): ResumableUpload {
-    const uploadId = v4();
-    const upload = new ResumableUpload(
-      bucket,
-      object,
-      uploadId,
-      contentType,
-      metadata,
-      authorization
-    );
-    this._uploads.set(uploadId, upload);
-    return upload;
-  }
-
-  public queryUpload(uploadId: string): ResumableUpload | undefined {
-    return this._uploads.get(uploadId);
-  }
-
-  public cancelUpload(uploadId: string): ResumableUpload | undefined {
-    const upload = this._uploads.get(uploadId);
-    if (!upload) {
-      return undefined;
-    }
-    upload.status = UploadStatus.CANCELLED;
-    this._persistence.deleteFile(upload.fileLocation);
-  }
-
-  public uploadBytes(uploadId: string, bytes: Buffer): ResumableUpload | undefined {
-    const upload = this._uploads.get(uploadId);
-
-    if (!upload) {
-      return undefined;
-    }
-    this._persistence.appendBytes(upload.fileLocation, bytes);
-    upload.currentBytesUploaded += bytes.byteLength;
-    return upload;
-  }
-
   public deleteFile(bucketId: string, objectId: string): boolean {
     const isFolder = objectId.toLowerCase().endsWith("%2f");
 
@@ -315,38 +269,6 @@ export class StorageLayer {
 
   public async deleteAll(): Promise<void> {
     return this._persistence.deleteAll();
-  }
-
-  public finalizeUpload(uploadId: string): FinalizedUpload | undefined {
-    const upload = this._uploads.get(uploadId);
-
-    if (!upload) {
-      return undefined;
-    }
-
-    upload.status = UploadStatus.FINISHED;
-    const filePath = this.path(upload.bucketId, upload.objectId);
-
-    const bytes = this._persistence.readBytes(upload.fileLocation, upload.currentBytesUploaded);
-    const finalMetadata = new StoredFileMetadata(
-      {
-        name: upload.objectId,
-        bucket: upload.bucketId,
-        contentType: "",
-        contentEncoding: upload.metadata.contentEncoding,
-        customMetadata: upload.metadata.metadata,
-      },
-      this._cloudFunctions,
-      bytes
-    );
-    const file = new StoredFile(finalMetadata, filePath);
-    this._files.set(filePath, file);
-
-    this._persistence.deleteFile(filePath, true);
-    this._persistence.renameFile(upload.fileLocation, filePath);
-
-    this._cloudFunctions.dispatch("finalize", new CloudStorageObjectMetadata(file.metadata));
-    return { upload: upload, file: file };
   }
 
   /** Last step in uploading a file. Validates the request and persists the staging
@@ -386,7 +308,7 @@ export class StorageLayer {
     // Persist to permanent location on disk.
     this._persistence.deleteFile(filePath, /* failSilently = */ true);
     this._persistence.renameFile(upload.path, filePath);
-    this._files.set(filePath,  new StoredFile(metadata, this._persistence.getDiskPath(filePath));
+    this._files.set(filePath,  new StoredFile(metadata, this._persistence.getDiskPath(filePath)));
     this._cloudFunctions.dispatch("finalize", new CloudStorageObjectMetadata(metadata));
     return metadata;
   }
