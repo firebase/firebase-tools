@@ -48,7 +48,7 @@ export type StartResumableUploadRequest = {
 };
 
 /** Error that signals a resumable upload that's expected to be active is not. */
-export class NotActiveUploadError extends Error {}
+export class UploadNotActiveError extends Error {}
 
 /** Error that signals a resumable upload is not cancellable.  */
 export class NotCancellableError extends Error {}
@@ -130,7 +130,7 @@ export class UploadService {
   public progressResumableUpload(uploadId: string, dataRaw: string): Upload {
     const upload = this.findResumableUpload(uploadId);
     if (upload.status !== UploadStatus.ACTIVE) {
-      throw new NotActiveUploadError();
+      throw new UploadNotActiveError();
     }
     const data = Buffer.from(dataRaw);
     this._persistence.appendBytes(upload.path, data);
@@ -162,11 +162,13 @@ export class UploadService {
 
   /**
    * Marks a ResumableUpload as finalized.
+   * @throws {NotFoundError} if the resumable upload does not exist.
+   * @throws {NotActiveUploadError} if the resumable upload is not ACTIVE.
    */
   public finalizeResumableUpload(uploadId: string): Upload {
     const upload = this.findResumableUpload(uploadId);
     if (upload.status === UploadStatus.CANCELLED) {
-      throw new NotActiveUploadError();
+      throw new UploadNotActiveError();
     }
     upload.status = UploadStatus.FINISHED;
     return upload;
