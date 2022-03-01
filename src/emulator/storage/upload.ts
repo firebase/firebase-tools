@@ -9,11 +9,10 @@ export type Upload = {
   bucketId: string;
   objectId: string;
   type: UploadType;
+  // Path to where the file is stored on disk. May contain incomplete data if
   path: string;
-  // Undefined if upload type is MULTIPART, as MULTIPART uploads are always finished.
-  resumableStatus?: ResumableUploadStatus;
+  status: UploadStatus;
   metadata?: IncomingMetadata;
-  data: Buffer;
   authorization?: string;
 };
 
@@ -22,8 +21,8 @@ export enum UploadType {
   RESUMABLE,
 }
 
-/** The status of a resumable upload. This enum is not applicable to multipart uploads. */
-export enum ResumableUploadStatus {
+/** The status of an upload. Multipart uploads can only ever be FINISHED. */
+export enum UploadStatus {
   ACTIVE,
   CANCELLED,
   FINISHED,
@@ -73,7 +72,7 @@ export class UploadService {
   public multipartUpload(request: MultipartUploadRequest): Upload {
     const upload = this.initMultipartUpload(request);
     this._persistence.deleteFile(upload.path, /* failSilently = */ true);
-    this._persistence.appendBytes(upload.path, upload.data);
+    this._persistence.appendBytes(upload.path, Buffer.from(request.dataRaw));
     return upload;
   }
 
@@ -85,9 +84,8 @@ export class UploadService {
       objectId: request.objectId,
       type: UploadType.MULTIPART,
       path: this.stagingFileName(id, request.bucketId, request.objectId),
-      resumableStatus: undefined,
+      status: UploadStatus.FINISHED,
       metadata: JSON.parse(request.metadataRaw),
-      data: Buffer.from(request.dataRaw),
       authorization: request.authorization,
     };
     this._uploads.set(upload.id, upload);
@@ -106,9 +104,8 @@ export class UploadService {
       objectId: request.objectId,
       type: UploadType.RESUMABLE,
       path: this.stagingFileName(id, request.bucketId, request.objectId),
-      resumableStatus: ResumableUploadStatus.ACTIVE,
+      status: UploadStatus.ACTIVE,
       metadata: request.metadata,
-      data: Buffer.of(),
       authorization: request.authorization,
     };
     this._uploads.set(upload.id, upload);
@@ -123,7 +120,7 @@ export class UploadService {
    */
   public progressResumableUpload(uploadId: string, dataRaw: string): Upload {
     const upload = this.findResumableUpload(uploadId);
-    if (upload.resumableStatus !== ResumableUploadStatus.ACTIVE) {
+    if (upload.status !== UploadStatus.ACTIVE) {
       throw new NotActiveUploadError();
     }
     this._persistence.appendBytes(upload.path, Buffer.from(dataRaw));
@@ -145,10 +142,10 @@ export class UploadService {
    */
   public cancelResumableUpload(uploadId: string): Upload {
     const upload = this.findResumableUpload(uploadId);
-    if (upload.resumableStatus === ResumableUploadStatus.FINISHED) {
+    if (upload.status === UploadStatus.FINISHED) {
       throw new NotCancellableError();
     }
-    upload.resumableStatus = ResumableUploadStatus.CANCELLED;
+    upload.status = UploadStatus.CANCELLED;
     return upload;
   }
 
@@ -157,10 +154,10 @@ export class UploadService {
    */
   public finalizeResumableUpload(uploadId: string): Upload {
     const upload = this.findResumableUpload(uploadId);
-    if (upload.resumableStatus === ResumableUploadStatus.CANCELLED) {
+    if (upload.status === UploadStatus.CANCELLED) {
       throw new NotActiveUploadError();
     }
-    upload.resumableStatus = ResumableUploadStatus.FINISHED;
+    upload.status = UploadStatus.FINISHED;
     return upload;
   }
 
