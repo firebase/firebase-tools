@@ -11,6 +11,9 @@ import { StorageEmulator } from "../index";
 import { EmulatorLogger } from "../../emulatorLogger";
 import { StorageLayer } from "../files";
 import type { Request, Response } from "express";
+import { Upload, UploadNotActiveError } from "../upload";
+import { ForbiddenError, NotFoundError } from "../errors";
+import { parseMultipartRequest } from "../multipart";
 
 /**
  * @param emulator
@@ -19,7 +22,7 @@ import type { Request, Response } from "express";
 export function createCloudEndpoints(emulator: StorageEmulator): Router {
   // eslint-disable-next-line new-cap
   const gcloudStorageAPI = Router();
-  const { storageLayer } = emulator;
+  const { storageLayer, uploadService } = emulator;
 
   // Automatically create a bucket for any route which uses a bucket
   gcloudStorageAPI.use(/.*\/b\/(.+?)\/.*/, (req, res, next) => {
@@ -108,35 +111,30 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       res.sendStatus(400);
       return;
     }
-
     const uploadId = req.query.upload_id.toString();
-
-    const bufs: Buffer[] = [];
-    req.on("data", (data) => {
-      bufs.push(data);
-    });
-
-    await new Promise<void>((resolve) => {
-      req.on("end", () => {
-        req.body = Buffer.concat(bufs);
-        resolve();
-      });
-    });
-
-    let upload = storageLayer.uploadBytes(uploadId, req.body);
-
-    if (!upload) {
-      res.sendStatus(400);
-      return;
+    let upload: Upload;
+    try {
+      uploadService.progressResumableUpload(uploadId, req.body);
+      upload = uploadService.finalizeResumableUpload(uploadId);
+    } catch (err) {
+      if (err instanceof NotFoundError) {
+        return res.sendStatus(404);
+      } else if (err instanceof UploadNotActiveError) {
+        return res.sendStatus(400);
+      }
+      throw err;
     }
 
-    const finalizedUpload = storageLayer.finalizeUpload(uploadId);
-    if (!finalizedUpload) {
-      res.sendStatus(400);
-      return;
+    let metadata: StoredFileMetadata;
+    try {
+      metadata = await storageLayer.handleUploadObject(upload);
+    } catch (err) {
+      if (err instanceof ForbiddenError) {
+        throw new Error("Request failed unexpectedly due to Firebase Rules.");
+      }
+      throw err;
     }
-    upload = finalizedUpload.upload;
-    res.status(200).json(new CloudStorageObjectMetadata(finalizedUpload.file.metadata)).send();
+    return res.sendStatus(200).json(new CloudStorageObjectMetadata(metadata));
   });
 
   gcloudStorageAPI.post("/b/:bucketId/o/:objectId/acl", (req, res) => {
@@ -172,7 +170,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       .status(200);
   });
 
-  gcloudStorageAPI.post("/upload/storage/v1/b/:bucketId/o", (req, res) => {
+  gcloudStorageAPI.post("/upload/storage/v1/b/:bucketId/o", async (req, res) => {
     if (!req.query.name) {
       res.sendStatus(400);
       return;
@@ -186,75 +184,69 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     const contentType = req.header("content-type") || req.header("x-upload-content-type");
 
     if (!contentType) {
-      res.sendStatus(400);
-      return;
+      return res.sendStatus(400);
     }
 
-    if (req.query.uploadType == "resumable") {
-      const upload = storageLayer.startUpload(req.params.bucketId, name, contentType, req.body);
+    if (req.query.uploadType === "resumable") {
+      const upload = uploadService.startResumableUpload({
+        bucketId: req.params.bucketId,
+        objectId: name,
+        metadataRaw: req.body,
+        contentType: contentType,
+        authorization: req.header("authorization"),
+      });
       const emulatorInfo = EmulatorRegistry.getInfo(Emulators.STORAGE);
 
       if (emulatorInfo == undefined) {
-        res.sendStatus(500);
-        return;
+        return res.sendStatus(500);
       }
 
       const { host, port } = emulatorInfo;
       const uploadUrl = `http://${host}:${port}/upload/storage/v1/b/${upload.bucketId}/o?name=${upload.fileLocation}&uploadType=resumable&upload_id=${upload.uploadId}`;
-      res.header("location", uploadUrl).status(200).send();
-      return;
+      return res.header("location", uploadUrl).sendStatus(200);
     }
 
-    if (!contentType.startsWith("multipart/related")) {
-      res.sendStatus(400);
-      return;
-    }
-
-    const boundary = `--${contentType.split("boundary=")[1]}`;
-    const bodyString = req.body.toString();
-
-    const bodyStringParts = bodyString.split(boundary).filter((v: string) => v);
-
-    const metadataString = bodyStringParts[0].split(/\r?\n/)[3];
-    const blobParts = bodyStringParts[1].split(/\r?\n/);
-    const blobContentTypeString = blobParts[1];
-
-    if (!blobContentTypeString || !blobContentTypeString.startsWith("Content-Type: ")) {
-      res.sendStatus(400);
-      return;
-    }
-
-    const blobContentType = blobContentTypeString.slice("Content-Type: ".length);
-    const bodyBuffer = req.body as Buffer;
-
-    const metadataSegment = `${boundary}${bodyString.split(boundary)[1]}`;
-    const dataSegment = `${boundary}${bodyString.split(boundary).slice(2)[0]}`;
-    const dataSegmentHeader = (dataSegment.match(/.+Content-Type:.+?\r?\n\r?\n/s) || [])[0];
-
-    if (!dataSegmentHeader) {
-      res.sendStatus(400);
-      return;
-    }
-
-    const bufferOffset = metadataSegment.length + dataSegmentHeader.length;
-
-    const blobBytes = Buffer.from(bodyBuffer.slice(bufferOffset, -`\r\n${boundary}--`.length));
-
-    const metadata = storageLayer.oneShotUpload(
-      req.params.bucketId,
-      name,
-      blobContentType,
-      JSON.parse(metadataString),
-      blobBytes
-    );
-
-    if (!metadata) {
-      res.sendStatus(400);
-      return;
-    }
-
-    res.status(200).json(new CloudStorageObjectMetadata(metadata)).send();
-    return;
+    // Multipart upload
+      if (!contentType) {
+        return res.sendStatus(400);
+      }
+      let metadataRaw: string;
+      let dataRaw: string;
+      try {
+        ({ metadataRaw, dataRaw } = parseMultipartRequest(contentType!, req.body));
+      } catch (err) {
+        if (err instanceof Error) {
+          return res.status(400).json({
+            error: {
+              code: 400,
+              message: err.toString(),
+            },
+          });
+        }
+        throw err;
+      }
+      const upload = uploadService.multipartUpload({
+        bucketId: req.params.bucketId,
+        objectId: name,
+        metadataRaw: metadataRaw,
+        dataRaw: dataRaw,
+        authorization: req.header("authorization"),
+      });
+      let metadata: StoredFileMetadata;
+      try {
+        metadata = await storageLayer.handleUploadObject(upload);
+      } catch (err) {
+        if (err instanceof ForbiddenError) {
+          return res.status(403).json({
+            error: {
+              code: 403,
+              message: `Permission denied. No WRITE permission.`,
+            },
+          });
+        }
+        throw err;
+      }
+      return res.status(200).json(new CloudStorageObjectMetadata(metadata)).send();
   });
 
   gcloudStorageAPI.get("/:bucketId/:objectId(**)", (req, res) => {

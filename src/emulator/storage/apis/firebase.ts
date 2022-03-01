@@ -135,7 +135,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     }
 
     // Object metadata request
-    return res.json(new OutgoingFirebaseMetadata(metadata));
+    return res.status(200).json(new OutgoingFirebaseMetadata(metadata)).send();
   });
 
   const handleMetadataUpdate = async (req: Request, res: Response) => {
@@ -325,7 +325,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         }
         throw err;
       }
-      return res.json(new OutgoingFirebaseMetadata(metadata));
+      return res.json(new OutgoingFirebaseMetadata(metadata)).status(200);
     } else {
       // Resumable upload
       const uploadCommand = req.header("x-goog-upload-command");
@@ -416,9 +416,12 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
           }
           throw err;
         }
-        res.header("x-goog-upload-status", "active");
-        res.header("x-gupload-uploadid", upload.id);
-        return res.sendStatus(200);
+        if (!uploadCommand.includes("finalize")) {
+          res.header("x-goog-upload-status", "active");
+          res.header("x-gupload-uploadid", upload.id);
+          return res.sendStatus(200);
+        }
+        // Intentional fall through to handle "upload, finalize" case.
       }
 
       if (uploadCommand.includes("finalize")) {
@@ -447,7 +450,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
           }
           throw err;
         }
-        return res.json(new OutgoingFirebaseMetadata(metadata));
+        return res.status(200).json(new OutgoingFirebaseMetadata(metadata)).send();
       }
       return res.sendStatus(400);
     }

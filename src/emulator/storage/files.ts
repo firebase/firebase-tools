@@ -270,8 +270,10 @@ export class StorageLayer {
     return this._persistence.deleteAll();
   }
 
-  /** Last step in uploading a file. Validates the request and persists the staging
+  /** 
+   * Last step in uploading a file. Validates the request and persists the staging
    * object to its permanent location on disk.
+   * @throws {ForbiddenError} if the request fails security rules auth.
    */
   public async handleUploadObject(upload: Upload): Promise<StoredFileMetadata> {
     if (upload.status !== UploadStatus.FINISHED) {
