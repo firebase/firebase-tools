@@ -40,6 +40,7 @@ import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import { previews } from "../previews";
 import * as manifest from "../extensions/manifest";
+import { Options } from "../options";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -64,7 +65,9 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
   .withForce()
   .option("--params <paramsFile>", "name of params variables file with .env format.")
   .option("--local", "save the update to firebase.json rather than directly update at a Firebase project")
-  .action(async (instanceId: string, updateSource: string, options: any) => {
+  .action(async (instanceId: string, updateSource: string, options: Options) => {
+    const projectId = needProjectId(options);
+
     if (options.local) {
       const config = manifest.loadConfig(options);
       const existingRef = manifest.getInstanceRef(instanceId, config);
@@ -73,9 +76,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
       );
       const existingSpec = extensionVersion.spec;
 
-      // TODO: NEED TO LOOK UP LATEST VERSION AND FILL IN HERE.
-      updateSource = inferUpdateSource(updateSource, refs.toExtensionVersionRef(existingRef));
-      
+      updateSource = inferUpdateSource(updateSource, refs.toExtensionRef(existingRef));
       // TODO(b/213335255): Allow local sources after manifest supports that.
       const newSourceOrigin = getSourceOrigin(updateSource);
       if (![SourceOrigin.PUBLISHED_EXTENSION, SourceOrigin.PUBLISHED_EXTENSION_VERSION].includes(newSourceOrigin)) {
@@ -84,17 +85,43 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         );
       }
 
+      const newExtensionVersion = await extensionsApi.getExtensionVersion(updateSource);
+
       const oldParamValues = manifest.readInstanceParam({
         instanceId,
         projectDir: config.projectDir,
       });
 
-      // TODO: DO THE UPDATES HERE.
+      // TODO: THIS SHOULD CHECK ALL EXISTING SPECS EXISTS
+      const newParams = await paramHelper.getParamsForUpdate({
+        spec: existingSpec,
+        newSpec: newExtensionVersion.spec,
+        currentParams: oldParamValues,
+        projectId,
+        paramsEnvPath: (options.params ?? '') as string,
+        nonInteractive: options.nonInteractive,
+        instanceId,
+      });
+      
+      await manifest.writeToManifest(
+        [
+          {
+            instanceId,
+            ref: refs.parse(newExtensionVersion.ref),
+            params: newParams,
+          }
+        ],
+        config,
+        {
+          nonInteractive: options.nonInteractive,
+          force: true, // Skip asking for permission again
+        }
+      )
+      return;
     }
 
     const spinner = ora(`Updating ${clc.bold(instanceId)}. This usually takes 3 to 5 minutes...`);
     try {
-      const projectId = needProjectId(options);
       let existingInstance: extensionsApi.ExtensionInstance;
       try {
         existingInstance = await extensionsApi.getInstance(projectId, instanceId);
