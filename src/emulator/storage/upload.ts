@@ -123,7 +123,7 @@ export class UploadService {
   }
 
   /**
-   * Appends bytes to an existing resumable.
+   * Appends bytes to an existing resumable upload.
    * @throws {NotFoundError} if the resumable upload does not exist.
    * @throws {NotActiveUploadError} if the resumable upload is not in the ACTIVE state.
    */
