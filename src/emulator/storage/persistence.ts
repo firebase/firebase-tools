@@ -19,7 +19,7 @@ export class Persistence {
     return this._dirPath;
   }
 
-  appendBytes(fileName: string, bytes: Buffer, fileOffset?: number): string {
+  appendBytes(fileName: string, bytes: Buffer): string {
     const filepath = this.getDiskPath(fileName);
 
     const encodedSlashIndex = filepath.toLowerCase().lastIndexOf("%2f");
@@ -34,10 +34,6 @@ export class Persistence {
     let fd;
 
     try {
-      // TODO: This is more technically correct, but corrupts multipart files
-      // fd = openSync(path, "w+");
-      // writeSync(fd, bytes, 0, bytes.byteLength, fileOffset);
-
       fs.appendFileSync(filepath, bytes);
       return filepath;
     } finally {

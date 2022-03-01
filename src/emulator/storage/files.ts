@@ -280,7 +280,7 @@ export class StorageLayer {
     if (!upload) {
       return undefined;
     }
-    this._persistence.appendBytes(upload.fileLocation, bytes, upload.currentBytesUploaded);
+    this._persistence.appendBytes(upload.fileLocation, bytes);
     upload.currentBytesUploaded += bytes.byteLength;
     return upload;
   }

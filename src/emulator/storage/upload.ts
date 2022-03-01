@@ -9,11 +9,11 @@ export type Upload = {
   bucketId: string;
   objectId: string;
   type: UploadType;
+  path: string;
   // Undefined if upload type is MULTIPART, as MULTIPART uploads are always finished.
   resumableStatus?: ResumableUploadStatus;
   metadata?: IncomingMetadata;
   data: Buffer;
-  contentType?: string;
   authorization?: string;
 };
 
@@ -38,16 +38,13 @@ export type MultipartUploadRequest = {
   authorization?: string;
 };
 
+/** Request object for {@link UploadService#startResumableUpload}. */
 export type StartResumableUploadRequest = {
   bucketId: string;
   objectId: string;
   metadata: IncomingMetadata;
   contentType: string;
   authorization?: string;
-};
-
-export type ProgressResumableUploadRequest = {
-    uploadId: string;
 };
 
 /** Error that signals a resumable upload that's expected to be active is not. */
@@ -74,17 +71,27 @@ export class UploadService {
    * the file's contents in a single request.
    */
   public multipartUpload(request: MultipartUploadRequest): Upload {
+    const upload = this.initMultipartUpload(request);
+    this._persistence.deleteFile(upload.path, /* failSilently = */ true);
+    this._persistence.appendBytes(upload.path, upload.data);
+    return upload;
+  }
+
+  private initMultipartUpload(request: MultipartUploadRequest): Upload {
+    const id = uuidV4();
     const upload: Upload = {
       id: uuidV4(),
       bucketId: request.bucketId,
       objectId: request.objectId,
       type: UploadType.MULTIPART,
+      path: this.stagingFileName(id, request.bucketId, request.objectId),
       resumableStatus: undefined,
       metadata: JSON.parse(request.metadataRaw),
       data: Buffer.from(request.dataRaw),
       authorization: request.authorization,
     };
     this._uploads.set(upload.id, upload);
+
     return upload;
   }
 
@@ -92,18 +99,20 @@ export class UploadService {
    * Initializes a new ResumableUpload.
    */
   public startResumableUpload(request: StartResumableUploadRequest): Upload {
+    const id = uuidV4();
     const upload: Upload = {
-      id: uuidV4(),
+      id: id,
       bucketId: request.bucketId,
       objectId: request.objectId,
       type: UploadType.RESUMABLE,
+      path: this.stagingFileName(id, request.bucketId, request.objectId),
       resumableStatus: ResumableUploadStatus.ACTIVE,
       metadata: request.metadata,
       data: Buffer.of(),
-      contentType: request.contentType,
       authorization: request.authorization,
     };
     this._uploads.set(upload.id, upload);
+    this._persistence.deleteFile(upload.path, /* failSilently = */ true);
     return upload;
   }
 
@@ -112,11 +121,12 @@ export class UploadService {
    * @throws {NotFoundError} if the resumable upload does not exist.
    * @throws {NotActiveUploadError} if the resumable upload is not in the ACTIVE state.
    */
-  public progressResumableUpload(request: ProgressResumableUploadRequest): Upload {
-    const upload = this.findResumableUpload(request.uploadId);
+  public progressResumableUpload(uploadId: string, dataRaw: string): Upload {
+    const upload = this.findResumableUpload(uploadId);
     if (upload.resumableStatus !== ResumableUploadStatus.ACTIVE) {
-        throw new NotActiveUploadError();
+      throw new NotActiveUploadError();
     }
+    this._persistence.appendBytes(upload.path, Buffer.from(dataRaw));
     return upload;
   }
 
@@ -160,5 +170,9 @@ export class UploadService {
       throw new NotFoundError();
     }
     return upload;
+  }
+
+  private stagingFileName(uploadId: string, bucketId: string, objectId: string): string {
+    return encodeURIComponent(`${uploadId}_b_${bucketId}_o_${objectId}`);
   }
 }
