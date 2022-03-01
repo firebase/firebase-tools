@@ -5,8 +5,12 @@ import * as path from "path";
 
 /** Helper for disk I/O operations. */
 export class Persistence {
-  private _dirPath: string;
+  private _dirPath!: string;
   constructor(dirPath: string) {
+   this.reset(dirPath);
+  }
+
+  public reset(dirPath: string) {
     this._dirPath = dirPath;
     if (!existsSync(dirPath)) {
       mkdirSync(dirPath, {

@@ -12,7 +12,7 @@ export type Upload = {
   // Path to where the file is stored on disk. May contain incomplete data if
   path: string;
   status: UploadStatus;
-  metadata?: IncomingMetadata;
+  metadata: IncomingMetadata;
   authorization?: string;
 };
 
@@ -41,7 +41,7 @@ export type MultipartUploadRequest = {
 export type StartResumableUploadRequest = {
   bucketId: string;
   objectId: string;
-  metadata: IncomingMetadata;
+  metadataRaw: string;
   contentType: string;
   authorization?: string;
 };
@@ -62,6 +62,11 @@ export class NotCancellableError extends Error {}
 export class UploadService {
   private _uploads!: Map<string, Upload>;
   constructor(private _persistence: Persistence) {
+    this.reset();
+  }
+
+  /** Resets the state of the UploadService. */
+  public reset(): void {
     this._uploads = new Map();
   }
 
@@ -105,7 +110,7 @@ export class UploadService {
       type: UploadType.RESUMABLE,
       path: this.stagingFileName(id, request.bucketId, request.objectId),
       status: UploadStatus.ACTIVE,
-      metadata: request.metadata,
+      metadata: JSON.parse(request.metadataRaw),
       authorization: request.authorization,
     };
     this._uploads.set(upload.id, upload);

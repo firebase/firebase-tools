@@ -9,6 +9,7 @@ import { EmulatorRegistry } from "../../registry";
 import { RulesetOperationMethod } from "../rules/types";
 import { isPermitted } from "../rules/utils";
 import { NotFoundError, ForbiddenError } from "../errors";
+import { parseMultipartRequest } from "../multipart";
 
 /**
  * @param emulator
@@ -16,7 +17,7 @@ import { NotFoundError, ForbiddenError } from "../errors";
 export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   // eslint-disable-next-line new-cap
   const firebaseStorageAPI = Router();
-  const { storageLayer } = emulator;
+  const { storageLayer, uploadService } = emulator;
 
   if (process.env.STORAGE_EMULATOR_DEBUG) {
     firebaseStorageAPI.use((req, res, next) => {
@@ -279,6 +280,29 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
 
     const name = req.query.name.toString();
     const uploadType = req.header("x-goog-upload-protocol");
+
+    if (uploadType === "multipart") {
+      const contentType = req.header("content-type");
+      if (!contentType) {
+        return res.sendStatus(400);
+      }
+      let metadataRaw: string;
+      let dataRaw: string;
+      try {
+        ({ metadataRaw, dataRaw } = parseMultipartRequest(contentType!, req.body));
+      } catch (err) {
+        if (err instanceof Error) {
+          return res.status(400).json({
+            error: {
+              code: 400,
+              message: err.toString(),
+            },
+          });
+        }
+        throw err;
+      }
+
+    }
 
     if (uploadType == "multipart") {
       const contentType = req.header("content-type");

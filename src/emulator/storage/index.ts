@@ -1,4 +1,4 @@
-import * as path from "path";
+import { tmpdir } from "os";
 import * as utils from "../../utils";
 import { Constants } from "../constants";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../types";
@@ -12,6 +12,8 @@ import { Source } from "./rules/types";
 import { FirebaseError } from "../../error";
 import { getDownloadDetails } from "../downloadableEmulators";
 import express = require("express");
+import { UploadService } from "./upload";
+import { Persistence } from "./persistence";
 
 export interface StorageEmulatorArgs {
   projectId: string;
@@ -31,15 +33,23 @@ export class StorageEmulator implements EmulatorInstance {
   private _logger = EmulatorLogger.forEmulator(Emulators.STORAGE);
   private _rulesRuntime: StorageRulesRuntime;
   private _storageLayer: StorageLayer;
+  private _persistence: Persistence;
+  private _uploadService: UploadService;
 
   constructor(private args: StorageEmulatorArgs) {
     const downloadDetails = getDownloadDetails(Emulators.STORAGE);
     this._rulesRuntime = new StorageRulesRuntime();
-    this._storageLayer = new StorageLayer(args.projectId, this._rules);
+    this._persistence = new Persistence(this.getPersistenceTmpDir());
+    this._storageLayer = new StorageLayer(args.projectId, this._persistence, this._rules);
+    this._uploadService = new UploadService(this._persistence);
   }
 
   get storageLayer(): StorageLayer {
     return this._storageLayer;
+  }
+
+  get uploadService(): UploadService {
+    return this._uploadService;
   }
 
   get rules(): StorageRulesetInstance | undefined {
@@ -48,6 +58,12 @@ export class StorageEmulator implements EmulatorInstance {
 
   get logger(): EmulatorLogger {
     return this._logger;
+  }
+
+  reset(): void {
+    this._storageLayer.reset();
+    this._persistence.reset(this.getPersistenceTmpDir());
+    this._uploadService.reset();
   }
 
   async start(): Promise<void> {
@@ -174,5 +190,9 @@ export class StorageEmulator implements EmulatorInstance {
 
   getApp(): express.Express {
     return this._app!;
+  }
+
+  private getPersistenceTmpDir(): string {
+    return `${tmpdir()}/firebase/storage/blobs`;
   }
 }

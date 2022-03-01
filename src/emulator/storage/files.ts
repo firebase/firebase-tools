@@ -147,17 +147,20 @@ export class StorageLayer {
   private _files!: Map<string, StoredFile>;
   private _uploads!: Map<string, ResumableUpload>;
   private _buckets!: Map<string, CloudStorageBucketMetadata>;
-  private _persistence!: Persistence;
   private _cloudFunctions: StorageCloudFunctions;
 
-  constructor(private _projectId: string, private _rules: StorageRulesetInstance | undefined) {
+  constructor(
+    private _projectId: string,
+    private _persistence: Persistence,
+    private _rules: StorageRulesetInstance | undefined
+  ) {
     this.reset();
     this._cloudFunctions = new StorageCloudFunctions(this._projectId);
   }
 
   public reset(): void {
     this._files = new Map();
-    this._persistence = new Persistence(`${tmpdir()}/firebase/storage/blobs`);
+    this._persistence.reset(`${tmpdir()}/firebase/storage/blobs`);
     this._uploads = new Map();
     this._buckets = new Map();
   }
