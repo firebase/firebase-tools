@@ -9,7 +9,7 @@ import {
   StoredFileMetadata,
   RulesResourceMetadata,
 } from "./metadata";
-import { NotFoundError, ForbiddenError } from "./errors"
+import { NotFoundError, ForbiddenError } from "./errors";
 import * as path from "path";
 import * as fs from "fs";
 import * as fse from "fs-extra";
@@ -23,7 +23,6 @@ import {
 import { StorageRulesetInstance } from "./rules/runtime";
 import { RulesetOperationMethod } from "./rules/types";
 import { isPermitted } from "./rules/utils";
-
 
 interface BucketsList {
   buckets: {
@@ -135,17 +134,17 @@ export type FinalizedUpload = {
  * Parsed request object for {@link StorageLayer#handleGetObject}.
  */
 export type GetObjectRequest = {
-  decodedObjectId: string,
-  bucketId: string,
-  authorization?: string,
-  downloadToken?: string
-}
+  decodedObjectId: string;
+  bucketId: string;
+  authorization?: string;
+  downloadToken?: string;
+};
 
 /** Response object for {@link StorageLayer#handleGetObject}. */
 export type GetObjectResponse = {
-  metadata: StoredFileMetadata,
-  data: Buffer,
-}
+  metadata: StoredFileMetadata;
+  data: Buffer;
+};
 export class StorageLayer {
   private _files!: Map<string, StoredFile>;
   private _uploads!: Map<string, ResumableUpload>;
@@ -211,7 +210,7 @@ export class StorageLayer {
     if (!metadata!.downloadTokens.length) {
       metadata!.addDownloadToken();
     }
-    return { metadata: metadata!, data: this.getBytes(request.bucketId, request.decodedObjectId)!};
+    return { metadata: metadata!, data: this.getBytes(request.bucketId, request.decodedObjectId)! };
   }
 
   public getMetadata(bucket: string, object: string): StoredFileMetadata | undefined {

@@ -8,7 +8,7 @@ import { StorageEmulator } from "../index";
 import { EmulatorRegistry } from "../../registry";
 import { RulesetOperationMethod } from "../rules/types";
 import { isPermitted } from "../rules/utils";
-import { NotFoundError, ForbiddenError } from "../errors"
+import { NotFoundError, ForbiddenError } from "../errors";
 
 /**
  * @param emulator
@@ -88,16 +88,16 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   });
 
   firebaseStorageAPI.get("/b/:bucketId/o/:objectId", async (req, res) => {
-    let metadata: StoredFileMetadata
-    let data: Buffer
+    let metadata: StoredFileMetadata;
+    let data: Buffer;
     try {
       // Both object data and metadata get can use the same handler since they share auth logic.
       ({ metadata, data } = await storageLayer.handleGetObject({
         decodedObjectId: decodeURIComponent(req.params.objectId),
         bucketId: req.params.bucketId,
         authorization: req.header("authorization"),
-        downloadToken: req.query.token?.toString()
-      }))
+        downloadToken: req.query.token?.toString(),
+      }));
     } catch (err: any) {
       if (err instanceof NotFoundError) {
         return res.sendStatus(404);
@@ -134,7 +134,6 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
 
     // Object metadata request
     return res.json(new OutgoingFirebaseMetadata(metadata));
-
   });
 
   const handleMetadataUpdate = async (req: Request, res: Response) => {
