@@ -11,7 +11,7 @@ export function functionMatchesGroup(func: backend.TargetIds, groupChunks: strin
   const functionNameChunks = func.id.split("-").slice(0, groupChunks.length);
   // Should never happen. It would mean the user has asked to deploy something that is
   // a sub-function. E.g. function foo-bar and group chunks [foo, bar, baz].
-  if (functionNameChunks.length != groupChunks.length) {
+  if (functionNameChunks.length !== groupChunks.length) {
     return false;
   }
   for (let i = 0; i < groupChunks.length; i += 1) {

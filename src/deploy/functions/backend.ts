@@ -568,7 +568,7 @@ export function compareFunctions(
   left: TargetIds & { platform: FunctionsPlatform },
   right: TargetIds & { platform: FunctionsPlatform }
 ): number {
-  if (left.platform != right.platform) {
+  if (left.platform !== right.platform) {
     return right.platform < left.platform ? -1 : 1;
   }
   if (left.region < right.region) {

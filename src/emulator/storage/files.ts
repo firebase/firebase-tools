@@ -365,7 +365,7 @@ export class StorageLayer {
     let items = [];
     const prefixes = new Set<string>();
     for (const [, file] of this._files) {
-      if (file.metadata.bucket != bucket) {
+      if (file.metadata.bucket !== bucket) {
         continue;
       }
 
@@ -393,7 +393,7 @@ export class StorageLayer {
     items.sort();
     if (pageToken) {
       const idx = items.findIndex((v) => v === pageToken);
-      if (idx != -1) {
+      if (idx !== -1) {
         items = items.slice(idx);
       }
     }
@@ -436,7 +436,7 @@ export class StorageLayer {
 
     let items = [];
     for (const [, file] of this._files) {
-      if (file.metadata.bucket != bucket) {
+      if (file.metadata.bucket !== bucket) {
         continue;
       }
 
@@ -456,7 +456,7 @@ export class StorageLayer {
     items.sort();
     if (pageToken) {
       const idx = items.findIndex((v) => v === pageToken);
-      if (idx != -1) {
+      if (idx !== -1) {
         items = items.slice(idx);
       }
     }

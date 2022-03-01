@@ -82,7 +82,7 @@ async function getAndCheckAddress(emulator: Emulators, options: Options): Promis
   if (!portOpen) {
     if (findAvailablePort) {
       const newPort = await portUtils.findAvailablePort(host, port);
-      if (newPort != port) {
+      if (newPort !== port) {
         loggerForEmulator.logLabeled(
           "WARN",
           emulator,

@@ -156,7 +156,7 @@ export class TriggerEndToEndTest {
   startEmulators(additionalArgs: string[] = []): Promise<void> {
     const cli = new CLIProcess("default", this.workdir);
     const started = cli.start("emulators:start", this.project, additionalArgs, (data: unknown) => {
-      if (typeof data != "string" && !Buffer.isBuffer(data)) {
+      if (typeof data !== "string" && !Buffer.isBuffer(data)) {
         throw new Error(`data is not a string or buffer (${typeof data})`);
       }
       return data.includes(ALL_EMULATORS_STARTED_LOG);
@@ -241,7 +241,7 @@ export class TriggerEndToEndTest {
       this.project,
       additionalArgs,
       (data: unknown) => {
-        if (typeof data != "string" && !Buffer.isBuffer(data)) {
+        if (typeof data !== "string" && !Buffer.isBuffer(data)) {
           throw new Error(`data is not a string or buffer (${typeof data})`);
         }
         return data.includes(ALL_EMULATORS_STARTED_LOG);

@@ -159,7 +159,7 @@ export function populateDefaultParams(paramVars: Record<string, string>, paramSp
 
   for (const param of paramSpecs) {
     if (!paramVars[param.param]) {
-      if (param.default != undefined && param.required) {
+      if (param.default !== undefined && param.required) {
         newParams[param.param] = param.default;
       } else if (param.required) {
         throw new FirebaseError(
@@ -389,7 +389,7 @@ export async function publishExtensionVersionFromLocalSource(args: {
   force: boolean;
 }): Promise<ExtensionVersion | undefined> {
   const extensionSpec = await getLocalExtensionSpec(args.rootDirectory);
-  if (extensionSpec.name != args.extensionId) {
+  if (extensionSpec.name !== args.extensionId) {
     throw new FirebaseError(
       `Extension ID '${clc.bold(
         args.extensionId

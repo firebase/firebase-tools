@@ -16,7 +16,7 @@ export function endpointsAreValid(wantBackend: backend.Backend): void {
   // Our SDK doesn't let people articulate this, but it's theoretically possible in the manifest syntax.
   const gcfV1WithConcurrency = backend
     .allEndpoints(wantBackend)
-    .filter((endpoint) => (endpoint.concurrency || 1) != 1 && endpoint.platform === "gcfv1")
+    .filter((endpoint) => (endpoint.concurrency || 1) !== 1 && endpoint.platform === "gcfv1")
     .map((endpoint) => endpoint.id);
   if (gcfV1WithConcurrency.length) {
     const msg = `Cannot set concurrency on the functions ${gcfV1WithConcurrency.join(
@@ -145,7 +145,7 @@ async function validateSecretVersions(projectId: string, endpoints: backend.Endp
   for (const result of results) {
     if (result.status === "fulfilled") {
       const sv = result.value;
-      if (sv.state != "ENABLED") {
+      if (sv.state !== "ENABLED") {
         errs.push(
           new FirebaseError(
             `Expected secret ${sv.secret.name}@${sv.versionId} to be in state ENABLED not ${sv.state}.`

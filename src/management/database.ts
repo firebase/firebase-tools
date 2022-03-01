@@ -276,7 +276,7 @@ function convertDatabaseInstance(serverInstance: any): DatabaseInstance {
     throw new FirebaseError(`DatabaseInstance response is missing field "name"`);
   }
   const m = serverInstance.name.match(INSTANCE_RESOURCE_NAME_REGEX);
-  if (!m || m.length != 4) {
+  if (!m || m.length !== 4) {
     throw new FirebaseError(
       `Error parsing instance resource name: ${serverInstance.name}, matches: ${m}`
     );

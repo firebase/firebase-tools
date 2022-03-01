@@ -66,7 +66,7 @@ export function getSecretLabels(instanceId: string): Record<string, string> {
 
 export function prettySecretName(secretResourceName: string): string {
   const nameTokens = secretResourceName.split("/");
-  if (nameTokens.length != 4 && nameTokens.length != 6) {
+  if (nameTokens.length !== 4 && nameTokens.length !== 6) {
     // not a familiar format, return as is
     logger.debug(`unable to parse secret secretResourceName: ${secretResourceName}`);
     return secretResourceName;

@@ -369,7 +369,7 @@ export async function deleteFunction(cloudFunction: string): Promise<Operation> 
 }
 
 export function functionFromEndpoint(endpoint: backend.Endpoint, source: StorageSource) {
-  if (endpoint.platform != "gcfv2") {
+  if (endpoint.platform !== "gcfv2") {
     throw new FirebaseError(
       "Trying to create a v2 CloudFunction with v1 API. This should never happen"
     );

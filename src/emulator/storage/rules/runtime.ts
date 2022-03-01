@@ -169,7 +169,7 @@ export class StorageRulesRuntime {
 
     this._childprocess.stdout?.on("data", (buf: Buffer) => {
       const serializedRuntimeActionResponse = buf.toString("UTF8").trim();
-      if (serializedRuntimeActionResponse != "") {
+      if (serializedRuntimeActionResponse !== "") {
         let rap;
         try {
           rap = JSON.parse(serializedRuntimeActionResponse) as RuntimeActionResponse;

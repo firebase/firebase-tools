@@ -542,7 +542,7 @@ export function functionFromEndpoint(
   endpoint: backend.Endpoint,
   sourceUploadUrl: string
 ): Omit<CloudFunction, OutputOnlyFields> {
-  if (endpoint.platform != "gcfv1") {
+  if (endpoint.platform !== "gcfv1") {
     throw new FirebaseError(
       "Trying to create a v1 CloudFunction with v2 API. This should never happen"
     );

@@ -322,7 +322,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       let md: StoredFileMetadata | undefined;
 
       if (createTokenParam) {
-        if (createTokenParam != "true") {
+        if (createTokenParam !== "true") {
           res.sendStatus(400);
           return;
         }

@@ -136,10 +136,10 @@ export function upgradedToGCFv2WithoutSettingConcurrency(
  *  a user listens to a different bucket, which happens to have a different region.
  */
 export function changedTriggerRegion(want: backend.Endpoint, have: backend.Endpoint): boolean {
-  if (want.platform != "gcfv2") {
+  if (want.platform !== "gcfv2") {
     return false;
   }
-  if (have.platform != "gcfv2") {
+  if (have.platform !== "gcfv2") {
     return false;
   }
   if (!backend.isEventTriggered(want)) {
@@ -148,7 +148,7 @@ export function changedTriggerRegion(want: backend.Endpoint, have: backend.Endpo
   if (!backend.isEventTriggered(have)) {
     return false;
   }
-  return want.eventTrigger.region != have.eventTrigger.region;
+  return want.eventTrigger.region !== have.eventTrigger.region;
 }
 
 /** Whether a user changed the Pub/Sub topic of a GCFv2 function (which isn't allowed in the API). */
@@ -165,13 +165,13 @@ export function changedV2PubSubTopic(want: backend.Endpoint, have: backend.Endpo
   if (!backend.isEventTriggered(have)) {
     return false;
   }
-  if (want.eventTrigger.eventType != gcfv2.PUBSUB_PUBLISH_EVENT) {
+  if (want.eventTrigger.eventType !== gcfv2.PUBSUB_PUBLISH_EVENT) {
     return false;
   }
   if (have.eventTrigger.eventType !== gcfv2.PUBSUB_PUBLISH_EVENT) {
     return false;
   }
-  return have.eventTrigger.eventFilters["resource"] != want.eventTrigger.eventFilters["resource"];
+  return have.eventTrigger.eventFilters["resource"] !== want.eventTrigger.eventFilters["resource"];
 }
 
 /** Whether a user upgraded a scheduled function (which goes from Pub/Sub to HTTPS). */
@@ -216,7 +216,7 @@ export function checkForIllegalUpdate(want: backend.Endpoint, have: backend.Endp
   };
   const wantType = triggerType(want);
   const haveType = triggerType(have);
-  if (wantType != haveType) {
+  if (wantType !== haveType) {
     throw new FirebaseError(
       `[${getFunctionLabel(
         want

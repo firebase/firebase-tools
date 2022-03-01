@@ -22,13 +22,13 @@ export function parseTimeseriesResponse(series: TimeSeriesResponse): Array<Bucke
     let value28dAgo: Bucket | undefined;
 
     // Extract significant data points and convert them to buckets.
-    if (s.points.length >= 28 && s.points[27].value.int64Value != undefined) {
+    if (s.points.length >= 28 && s.points[27].value.int64Value !== undefined) {
       value28dAgo = parseBucket(s.points[27].value.int64Value);
     }
-    if (s.points.length >= 7 && s.points[6].value.int64Value != undefined) {
+    if (s.points.length >= 7 && s.points[6].value.int64Value !== undefined) {
       value7dAgo = parseBucket(s.points[6].value.int64Value);
     }
-    if (s.points.length >= 1 && s.points[0].value.int64Value != undefined) {
+    if (s.points.length >= 1 && s.points[0].value.int64Value !== undefined) {
       valueToday = parseBucket(s.points[0].value.int64Value);
     }
 
