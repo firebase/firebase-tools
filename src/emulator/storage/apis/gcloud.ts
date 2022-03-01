@@ -202,51 +202,43 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       }
 
       const { host, port } = emulatorInfo;
-      const uploadUrl = `http://${host}:${port}/upload/storage/v1/b/${upload.bucketId}/o?name=${upload.fileLocation}&uploadType=resumable&upload_id=${upload.uploadId}`;
+      const uploadUrl = `http://${host}:${port}/upload/storage/v1/b/${bucketId}/o?name=${name}&uploadType=resumable&upload_id=${upload.id}`;
       return res.header("location", uploadUrl).sendStatus(200);
     }
 
     // Multipart upload
-      if (!contentType) {
-        return res.sendStatus(400);
+    let metadataRaw: string;
+    let dataRaw: string;
+    try {
+      ({ metadataRaw, dataRaw } = parseMultipartRequest(contentType!, req.body));
+    } catch (err) {
+      if (err instanceof Error) {
+        return res.status(400).json({
+          error: {
+            code: 400,
+            message: err.toString(),
+          },
+        });
       }
-      let metadataRaw: string;
-      let dataRaw: string;
-      try {
-        ({ metadataRaw, dataRaw } = parseMultipartRequest(contentType!, req.body));
-      } catch (err) {
-        if (err instanceof Error) {
-          return res.status(400).json({
-            error: {
-              code: 400,
-              message: err.toString(),
-            },
-          });
-        }
-        throw err;
+      throw err;
+    }
+    const upload = uploadService.multipartUpload({
+      bucketId: req.params.bucketId,
+      objectId: name,
+      metadataRaw: metadataRaw,
+      dataRaw: dataRaw,
+      authorization: req.header("authorization"),
+    });
+    let metadata: StoredFileMetadata;
+    try {
+      metadata = await storageLayer.handleUploadObject(upload);
+    } catch (err) {
+      if (err instanceof ForbiddenError) {
+        throw new Error("Request failed unexpectedly due to Firebase Rules.");
       }
-      const upload = uploadService.multipartUpload({
-        bucketId: req.params.bucketId,
-        objectId: name,
-        metadataRaw: metadataRaw,
-        dataRaw: dataRaw,
-        authorization: req.header("authorization"),
-      });
-      let metadata: StoredFileMetadata;
-      try {
-        metadata = await storageLayer.handleUploadObject(upload);
-      } catch (err) {
-        if (err instanceof ForbiddenError) {
-          return res.status(403).json({
-            error: {
-              code: 403,
-              message: `Permission denied. No WRITE permission.`,
-            },
-          });
-        }
-        throw err;
-      }
-      return res.status(200).json(new CloudStorageObjectMetadata(metadata)).send();
+      throw err;
+    }
+    return res.status(200).json(new CloudStorageObjectMetadata(metadata)).send();
   });
 
   gcloudStorageAPI.get("/:bucketId/:objectId(**)", (req, res) => {
