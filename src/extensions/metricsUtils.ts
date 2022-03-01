@@ -12,7 +12,7 @@ export function parseTimeseriesResponse(series: TimeSeriesResponse): Array<Bucke
   for (const s of series) {
     const ref = buildRef(s);
 
-    if (ref == undefined) {
+    if (ref === undefined) {
       // Skip if data point has no valid ref.
       continue;
     }

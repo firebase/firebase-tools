@@ -223,7 +223,7 @@ export function checkForIllegalUpdate(want: backend.Endpoint, have: backend.Endp
       )}] Changing from ${haveType} function to ${wantType} function is not allowed. Please delete your function and create a new one instead.`
     );
   }
-  if (want.platform == "gcfv1" && have.platform == "gcfv2") {
+  if (want.platform === "gcfv1" && have.platform === "gcfv2") {
     throw new FirebaseError(
       `[${getFunctionLabel(want)}] Functions cannot be downgraded from GCFv2 to GCFv1`
     );
@@ -241,7 +241,7 @@ export function checkForIllegalUpdate(want: backend.Endpoint, have: backend.Endp
  * upgrading to v2 in tests before production is ready
  */
 export function checkForV2Upgrade(want: backend.Endpoint, have: backend.Endpoint): void {
-  if (want.platform == "gcfv2" && have.platform == "gcfv1") {
+  if (want.platform === "gcfv2" && have.platform === "gcfv1") {
     throw new FirebaseError(
       `[${getFunctionLabel(
         have

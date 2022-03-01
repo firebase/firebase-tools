@@ -290,7 +290,7 @@ export async function setInvokerCreate(
   fnName: string,
   invoker: string[]
 ): Promise<void> {
-  if (invoker.length == 0) {
+  if (invoker.length === 0) {
     throw new FirebaseError("Invoker cannot be an empty array");
   }
   const invokerMembers = proto.getInvokerMembers(invoker, projectId);
@@ -318,7 +318,7 @@ export async function setInvokerUpdate(
   fnName: string,
   invoker: string[]
 ): Promise<void> {
-  if (invoker.length == 0) {
+  if (invoker.length === 0) {
     throw new FirebaseError("Invoker cannot be an empty array");
   }
   const invokerMembers = proto.getInvokerMembers(invoker, projectId);

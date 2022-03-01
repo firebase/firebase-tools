@@ -30,7 +30,7 @@ export function getFilterGroups(options: { only?: string }): string[][] {
   const only = options.only!.split(",");
   const onlyFunctions = only.filter((filter) => {
     const opts = filter.split(":");
-    return opts[0] == "functions" && opts[1];
+    return opts[0] === "functions" && opts[1];
   });
   return onlyFunctions.map((filter) => {
     return filter.split(":")[1].split(/[.-]/);

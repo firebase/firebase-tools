@@ -309,7 +309,7 @@ async function listFunctionsInternal(
   let pageToken = "";
   while (true) {
     const url = `projects/${projectId}/locations/${region}/functions`;
-    const opts = pageToken == "" ? {} : { queryParams: { pageToken } };
+    const opts = pageToken === "" ? {} : { queryParams: { pageToken } };
     const res = await client.get<Response>(url, opts);
     functions.push(...(res.body.functions || []));
     for (const region of res.body.unreachable || []) {

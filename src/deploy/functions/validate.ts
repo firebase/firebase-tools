@@ -16,7 +16,7 @@ export function endpointsAreValid(wantBackend: backend.Backend): void {
   // Our SDK doesn't let people articulate this, but it's theoretically possible in the manifest syntax.
   const gcfV1WithConcurrency = backend
     .allEndpoints(wantBackend)
-    .filter((endpoint) => (endpoint.concurrency || 1) != 1 && endpoint.platform == "gcfv1")
+    .filter((endpoint) => (endpoint.concurrency || 1) != 1 && endpoint.platform === "gcfv1")
     .map((endpoint) => endpoint.id);
   if (gcfV1WithConcurrency.length) {
     const msg = `Cannot set concurrency on the functions ${gcfV1WithConcurrency.join(
@@ -28,7 +28,7 @@ export function endpointsAreValid(wantBackend: backend.Backend): void {
   const tooSmallForConcurrency = backend
     .allEndpoints(wantBackend)
     .filter((endpoint) => {
-      if ((endpoint.concurrency || 1) == 1) {
+      if ((endpoint.concurrency || 1) === 1) {
         return false;
       }
       const mem = endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;

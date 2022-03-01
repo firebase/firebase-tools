@@ -224,7 +224,7 @@ export class StoredFileMetadata {
 
     const remainingTokens = this.downloadTokens.filter((t) => t != token);
     this.downloadTokens = remainingTokens;
-    if (remainingTokens.length == 0) {
+    if (remainingTokens.length === 0) {
       // if empty after deleting, always add a new token.
       this.addDownloadToken();
     }

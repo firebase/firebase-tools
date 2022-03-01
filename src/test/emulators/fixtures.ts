@@ -137,7 +137,7 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     match /{allPaths=**} {
-      allow read, write: if math.abs(-10) == 10;
+      allow read, write: if math.abs(-10) === 10;
     }
   }
 }
@@ -166,7 +166,7 @@ service firebase.storage {
       allow read: if true
     }
     match /testing/{allPaths=**} {
-      allow write: if request.auth.token.firebase.sign_in_provider == 'anonymous';
+      allow write: if request.auth.token.firebase.sign_in_provider === 'anonymous';
     }
   }
 }
@@ -205,7 +205,7 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     match /num_check/{filename} {
-      allow read, write: if request == 42;
+      allow read, write: if request === 42;
     }
   }
 }
@@ -218,7 +218,7 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     match /num_check/{filename} {
-      allow read, write: if request == 51;
+      allow read, write: if request === 51;
     }
   }
 }
@@ -234,7 +234,7 @@ service firebase.storage {
     }
 
     match /authUidMatchesPath/{uid} {
-      allow read: if request.auth.uid == uid
+      allow read: if request.auth.uid === uid
     }
 
     match /imageSourceSizeUnder5MbAndContentTypeIsImage {
@@ -244,12 +244,12 @@ service firebase.storage {
     }
 
     match /customMetadataAndcustomTokenField {
-      allow read: if resource.metadata.owner == request.auth.token.groupId;
-      allow write: if request.auth.token.groupId == groupId;
+      allow read: if resource.metadata.owner === request.auth.token.groupId;
+      allow write: if request.auth.token.groupId === groupId;
     }
 
     function signedInOrHasVisibility(visibility) {
-      return request.auth.uid != null || resource.metadata.visibility == visibility;
+      return request.auth.uid != null || resource.metadata.visibility === visibility;
     }
     match /signInWithFuntion/{visiblityParams} {
       allow read, write: if signedInOrHasVisibility(visiblityParams);

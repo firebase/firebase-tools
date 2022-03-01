@@ -51,7 +51,7 @@ export class StorageRulesetInstance {
     permitted?: boolean;
     issues: StorageRulesIssues;
   }> {
-    if (opts.method == RulesetOperationMethod.LIST && this.rulesVersion < 2) {
+    if (opts.method === RulesetOperationMethod.LIST && this.rulesVersion < 2) {
       const issues = new StorageRulesIssues();
       issues.warnings.push(
         "Permission denied. List operations are only allowed for rules_version='2'."
@@ -317,16 +317,16 @@ export class StorageRulesRuntime {
 }
 
 function toExpressionValue(obj: any): ExpressionValue {
-  if (typeof obj == "string") {
+  if (typeof obj === "string") {
     return { string_value: obj };
   }
 
-  if (typeof obj == "boolean") {
+  if (typeof obj === "boolean") {
     return { bool_value: obj };
   }
 
-  if (typeof obj == "number") {
-    if (Math.floor(obj) == obj) {
+  if (typeof obj === "number") {
+    if (Math.floor(obj) === obj) {
       return { int_value: obj };
     } else {
       return { float_value: obj };
@@ -361,7 +361,7 @@ function toExpressionValue(obj: any): ExpressionValue {
     };
   }
 
-  if (typeof obj == "object") {
+  if (typeof obj === "object") {
     const fields: { [s: string]: ExpressionValue } = {};
     Object.keys(obj).forEach((key: string) => {
       fields[key] = toExpressionValue(obj[key]);

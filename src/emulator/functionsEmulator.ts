@@ -1140,7 +1140,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     if (this.args.debugPort) {
-      if (process.env.FIREPIT_VERSION && process.execPath == opts.nodeBinary) {
+      if (process.env.FIREPIT_VERSION && process.execPath === opts.nodeBinary) {
         const requestedMajorNodeVersion = this.getNodeBinary(backend);
         this.logger.log(
           "WARN",
