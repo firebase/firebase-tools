@@ -120,11 +120,6 @@ export enum UploadStatus {
   FINISHED,
 }
 
-export type FinalizedUpload = {
-  upload: ResumableUpload;
-  file: StoredFile;
-};
-
 export class StorageLayer {
   private _files!: Map<string, StoredFile>;
   private _uploads!: Map<string, ResumableUpload>;
@@ -173,6 +168,27 @@ export class StorageLayer {
     return;
   }
 
+  /**
+   * Generates metadata for an uploaded file. Generally, this should only be used for finalized
+   * uploads, unless needed for security rule checks.
+   * @param upload The upload corresponding to the file for which to generate metadata.
+   * @returns Metadata for uploaded file.
+   */
+  public createMetadata(upload: ResumableUpload): StoredFileMetadata {
+    const bytes = this._persistence.readBytes(upload.fileLocation, upload.currentBytesUploaded);
+    return new StoredFileMetadata(
+      {
+        name: upload.objectId,
+        bucket: upload.bucketId,
+        contentType: "",
+        contentEncoding: upload.metadata.contentEncoding,
+        customMetadata: upload.metadata.metadata,
+      },
+      this._cloudFunctions,
+      bytes
+    );
+  }
+
   public getBytes(
     bucket: string,
     object: string,
@@ -216,13 +232,18 @@ export class StorageLayer {
     return this._uploads.get(uploadId);
   }
 
-  public cancelUpload(uploadId: string): ResumableUpload | undefined {
-    const upload = this._uploads.get(uploadId);
-    if (!upload) {
-      return undefined;
+  /**
+   * Deletes partially uploaded file from persistence layer and updates its status. Cancelling
+   * an upload is idempotent.
+   * @param upload The upload to be cancelled.
+   * @returns Whether the upload was cancelled (i.e. its initial status was ACTIVE or CANCELLED).
+   */
+  public cancelUpload(upload: ResumableUpload): boolean {
+    if (upload.status === UploadStatus.ACTIVE) {
+      this._persistence.deleteFile(upload.fileLocation);
+      upload.status = UploadStatus.CANCELLED;
     }
-    upload.status = UploadStatus.CANCELLED;
-    this._persistence.deleteFile(upload.fileLocation);
+    return upload.status === UploadStatus.CANCELLED;
   }
 
   public uploadBytes(uploadId: string, bytes: Buffer): ResumableUpload | undefined {
@@ -266,36 +287,26 @@ export class StorageLayer {
     return this._persistence.deleteAll();
   }
 
-  public finalizeUpload(uploadId: string): FinalizedUpload | undefined {
-    const upload = this._uploads.get(uploadId);
-
-    if (!upload) {
-      return undefined;
-    }
-
+  /**
+   * Stores the uploaded file with generated metadata and triggers Object Finalize Cloud Functions.
+   * @param upload The upload to finalize.
+   * @returns The stored file.
+   */
+  public finalizeUpload(upload: ResumableUpload): StoredFile {
     upload.status = UploadStatus.FINISHED;
-    const filePath = this.path(upload.bucketId, upload.objectId);
 
-    const bytes = this._persistence.readBytes(upload.fileLocation, upload.currentBytesUploaded);
-    const finalMetadata = new StoredFileMetadata(
-      {
-        name: upload.objectId,
-        bucket: upload.bucketId,
-        contentType: "",
-        contentEncoding: upload.metadata.contentEncoding,
-        customMetadata: upload.metadata.metadata,
-      },
-      this._cloudFunctions,
-      bytes
-    );
-    const file = new StoredFile(finalMetadata, filePath);
+    const metadata = this.createMetadata(upload);
+    const filePath = this.path(upload.bucketId, upload.objectId);
+    const file = new StoredFile(metadata, filePath);
+
     this._files.set(filePath, file);
 
-    this._persistence.deleteFile(filePath, true);
+    this._persistence.deleteFile(filePath, /* failSilently = */ true);
     this._persistence.renameFile(upload.fileLocation, filePath);
 
     this._cloudFunctions.dispatch("finalize", new CloudStorageObjectMetadata(file.metadata));
-    return { upload: upload, file: file };
+
+    return file;
   }
 
   public oneShotUpload(
