@@ -354,7 +354,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     return hub;
   }
 
-  async startFunctionRuntime(
+  async invokeTrigger(
     backend: EmulatableBackend,
     trigger: EmulatedTriggerDefinition,
     proto?: any,
@@ -365,6 +365,12 @@ export class FunctionsEmulator implements EmulatorInstance {
       ...bundleTemplate,
       proto,
     };
+    if (this.args.debugPort) {
+      runtimeBundle.debug = {
+        functionTarget: trigger.entryPoint,
+        functionSignature: getSignatureType(trigger),
+      };
+    }
     if (!backend.nodeBinary) {
       throw new FirebaseError(`No node binary for ${trigger.id}. This should never happen.`);
     }
@@ -616,6 +622,12 @@ export class FunctionsEmulator implements EmulatorInstance {
           : `${clc.bold(type)} function initialized.`;
         this.logger.logLabeled("SUCCESS", `functions[${definition.id}]`, msg);
       }
+    }
+
+    // In debug mode, we eagerly start a runtime process to allow debuggers to attach
+    // before invoking a function.
+    if (this.args.debugPort) {
+      this.startRuntime(emulatableBackend, { nodeBinary: emulatableBackend.nodeBinary });
     }
   }
 
@@ -994,6 +1006,10 @@ export class FunctionsEmulator implements EmulatorInstance {
       process.env.PUBSUB_EMULATOR_HOST = pubsubHost;
     }
 
+    if (this.args.debugPort) {
+      // Start runtime in debug mode to allow triggers to share single runtime process.
+      envs["FUNCTION_DEBUG_MODE"] = "true";
+    }
     return envs;
   }
 
@@ -1021,7 +1037,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   getRuntimeEnvs(
     backend: EmulatableBackend,
-    trigger: EmulatedTriggerDefinition
+    trigger?: EmulatedTriggerDefinition
   ): Record<string, string> {
     return {
       ...this.getUserEnvs(backend),
@@ -1034,7 +1050,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   async resolveSecretEnvs(
     backend: EmulatableBackend,
-    trigger: EmulatedTriggerDefinition
+    trigger?: EmulatedTriggerDefinition
   ): Promise<Record<string, string>> {
     let secretEnvs: Record<string, string> = {};
 
@@ -1051,36 +1067,39 @@ export class FunctionsEmulator implements EmulatorInstance {
       }
     }
 
-    const secrets: backend.SecretEnvVar[] = trigger.secretEnvironmentVariables || [];
-    const accesses = secrets
-      .filter((s) => !secretEnvs[s.secret])
-      .map(async (s) => {
-        this.logger.logLabeled("INFO", "functions", `Trying to access secret ${s.key}@latest`);
-        const value = await accessSecretVersion(this.getProjectId(), s.key, "latest");
-        return [s.secret, value];
-      });
-    const accessResults = await allSettled(accesses);
+    if (trigger) {
+      const secrets: backend.SecretEnvVar[] = trigger.secretEnvironmentVariables || [];
+      const accesses = secrets
+        .filter((s) => !secretEnvs[s.secret])
+        .map(async (s) => {
+          this.logger.logLabeled("INFO", "functions", `Trying to access secret ${s.key}@latest`);
+          const value = await accessSecretVersion(this.getProjectId(), s.key, "latest");
+          return [s.secret, value];
+        });
+      const accessResults = await allSettled(accesses);
 
-    const errs: string[] = [];
-    for (const result of accessResults) {
-      if (result.status === "rejected") {
-        errs.push(result.reason as string);
-      } else {
-        const [k, v] = result.value;
-        secretEnvs[k] = v;
+      const errs: string[] = [];
+      for (const result of accessResults) {
+        if (result.status === "rejected") {
+          errs.push(result.reason as string);
+        } else {
+          const [k, v] = result.value;
+          secretEnvs[k] = v;
+        }
+      }
+
+      if (errs.length > 0) {
+        this.logger.logLabeled(
+          "ERROR",
+          "functions",
+          "Unable to access secret environment variables from Google Cloud Secret Manager. " +
+            "Make sure the credential used for the Functions Emulator have access " +
+            `or provide override values in ${LOCAL_SECRETS_FILE}:\n\t` +
+            errs.join("\n\t")
+        );
       }
     }
 
-    if (errs.length > 0) {
-      this.logger.logLabeled(
-        "ERROR",
-        "functions",
-        "Unable to access secret environment variables from Google Cloud Secret Manager. " +
-          "Make sure the credential used for the Functions Emulator have access " +
-          `or provide override values in ${LOCAL_SECRETS_FILE}:\n\t` +
-          errs.join("\n\t")
-      );
-    }
     return secretEnvs;
   }
 
@@ -1090,11 +1109,17 @@ export class FunctionsEmulator implements EmulatorInstance {
     frb: FunctionsRuntimeBundle,
     opts: InvokeRuntimeOpts
   ): Promise<RuntimeWorker> {
-    // If we can use an existing worker there is almost nothing to do.
-    if (this.workerPool.readyForWork(trigger.id)) {
-      return this.workerPool.submitWork(trigger.id, frb, opts);
+    if (!this.workerPool.readyForWork(trigger.id)) {
+      await this.startRuntime(backend, opts, trigger);
     }
+    return this.workerPool.submitWork(trigger.id, frb, opts);
+  }
 
+  async startRuntime(
+    backend: EmulatableBackend,
+    opts: InvokeRuntimeOpts,
+    trigger?: EmulatedTriggerDefinition
+  ) {
     const emitter = new EventEmitter();
     const args = [path.join(__dirname, "functionsEmulatorRuntime")];
 
@@ -1192,8 +1217,8 @@ export class FunctionsEmulator implements EmulatorInstance {
       instanceId: backend.extensionInstanceId,
       ref: backend.extensionVersion?.ref,
     };
-    this.workerPool.addWorker(trigger.id, runtime, extensionLogInfo);
-    return this.workerPool.submitWork(trigger.id, frb, opts);
+    this.workerPool.addWorker(trigger?.id, runtime, extensionLogInfo);
+    return;
   }
 
   async disableBackgroundTriggers() {
@@ -1228,7 +1253,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
     const trigger = record.def;
     const service = getFunctionService(trigger);
-    const worker = await this.startFunctionRuntime(record.backend, trigger, proto);
+    const worker = await this.invokeTrigger(record.backend, trigger, proto);
 
     return new Promise((resolve, reject) => {
       if (projectId !== this.args.projectId) {
@@ -1366,7 +1391,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         );
       }
     }
-    const worker = await this.startFunctionRuntime(record.backend, trigger);
+    const worker = await this.invokeTrigger(record.backend, trigger);
 
     worker.onLogs((el: EmulatorLog) => {
       if (el.level === "FATAL") {

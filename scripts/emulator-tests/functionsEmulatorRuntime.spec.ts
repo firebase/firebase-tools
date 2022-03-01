@@ -67,7 +67,7 @@ async function startRuntimeWithFunctions(
     entryPoint: "function_id",
     platform: "gcfv1" as const,
   };
-  return functionsEmulator.startFunctionRuntime(
+  return functionsEmulator.invokeTrigger(
     testBackend,
     {
       ...dummyTriggerDef,
