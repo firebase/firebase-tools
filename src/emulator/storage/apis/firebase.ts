@@ -211,11 +211,13 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   });
 
   const handleUpload = async (req: Request, res: Response) => {
+    const bucketId = req.params.bucketId;
+
     if (req.query.create_token || req.query.delete_token) {
       const decodedObjectId = decodeURIComponent(req.params.objectId);
-      const operationPath = ["b", req.params.bucketId, "o", decodedObjectId].join("/");
+      const operationPath = ["b", bucketId, "o", decodedObjectId].join("/");
 
-      const mdBefore = storageLayer.getMetadata(req.params.bucketId, req.params.objectId);
+      const mdBefore = storageLayer.getMetadata(bucketId, req.params.objectId);
 
       if (
         !(await isPermitted({
@@ -278,7 +280,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       return;
     }
 
-    const name = req.query.name.toString();
+    const objectId = req.query.name.toString();
     const uploadType = req.header("x-goog-upload-protocol");
 
     if (uploadType === "multipart") {
@@ -301,86 +303,31 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         }
         throw err;
       }
-
-    }
-
-    if (uploadType == "multipart") {
-      const contentType = req.header("content-type");
-      if (!contentType || !contentType.startsWith("multipart/related")) {
-        res.sendStatus(400);
-        return;
+      const upload = uploadService.multipartUpload({
+        bucketId: bucketId,
+        objectId: objectId,
+        metadataRaw: metadataRaw,
+        dataRaw: dataRaw,
+        authorization: req.header("authorization"),
+      });
+      let metadata: StoredFileMetadata;
+      try {
+        metadata = await storageLayer.handleUploadObject(upload);
+      } catch (err) {
+        if (err instanceof ForbiddenError) {
+          return res.status(403).json({
+            error: {
+              code: 403,
+              message: `Permission denied. No WRITE permission.`,
+            },
+          });
+        }
+        throw err;
       }
-
-      const boundary = `--${contentType.split("boundary=")[1]}`;
-      const bodyString = req.body.toString();
-      const bodyStringParts = bodyString.split(boundary).filter((v: string) => v);
-
-      const metadataString = bodyStringParts[0].split("\r\n")[3];
-      const blobParts = bodyStringParts[1].split("\r\n");
-      const blobContentTypeString = blobParts[1];
-      if (!blobContentTypeString || !blobContentTypeString.startsWith("Content-Type: ")) {
-        res.sendStatus(400);
-        return;
-      }
-      const blobContentType = blobContentTypeString.slice("Content-Type: ".length);
-      const bodyBuffer = req.body as Buffer;
-
-      const metadataSegment = `${boundary}${bodyString.split(boundary)[1]}`;
-      const dataSegment = `${boundary}${bodyString.split(boundary).slice(2)[0]}`;
-      const dataSegmentHeader = (dataSegment.match(/.+Content-Type:.+?\r\n\r\n/s) || [])[0];
-
-      if (!dataSegmentHeader) {
-        res.sendStatus(400);
-        return;
-      }
-
-      const bufferOffset = metadataSegment.length + dataSegmentHeader.length;
-
-      const blobBytes = Buffer.from(bodyBuffer.slice(bufferOffset, -`\r\n${boundary}--`.length));
-      const md = storageLayer.oneShotUpload(
-        req.params.bucketId,
-        name,
-        blobContentType,
-        JSON.parse(metadataString),
-        Buffer.from(blobBytes)
-      );
-
-      if (!md) {
-        res.sendStatus(400);
-        return;
-      }
-
-      const operationPath = ["b", req.params.bucketId, "o", name].join("/");
-
-      if (
-        !(await isPermitted({
-          ruleset: emulator.rules,
-          // TODO: This will be either create or update
-          method: RulesetOperationMethod.CREATE,
-          path: operationPath,
-          authorization: req.header("authorization"),
-          file: {
-            after: md?.asRulesResource(),
-          },
-        }))
-      ) {
-        storageLayer.deleteFile(md?.bucket, md?.name);
-        return res.status(403).json({
-          error: {
-            code: 403,
-            message: `Permission denied. No WRITE permission.`,
-          },
-        });
-      }
-
-      if (md.downloadTokens.length == 0) {
-        md.addDownloadToken();
-      }
-
-      res.json(new OutgoingFirebaseMetadata(md));
-      return;
+      return res.json(new OutgoingFirebaseMetadata(metadata));
     } else {
-      const operationPath = ["b", req.params.bucketId, "o", name].join("/");
+      // Resumable upload
+      const operationPath = ["b", req.params.bucketId, "o", objectId].join("/");
       const uploadCommand = req.header("x-goog-upload-command");
       if (!uploadCommand) {
         res.sendStatus(400);
@@ -392,7 +339,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
           req.header("x-goog-upload-header-content-type") ||
           req.header("x-goog-upload-content-type");
         if (!objectContentType) {
-          const mimeTypeFromName = mime.getType(name);
+          const mimeTypeFromName = mime.getType(objectId);
           if (!mimeTypeFromName) {
             objectContentType = "application/octet-stream";
           } else {
@@ -401,8 +348,8 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         }
 
         const upload = storageLayer.startUpload(
-          req.params.bucketId,
-          name,
+          bucketId,
+          objectId,
           objectContentType,
           req.body,
           // Store auth header for use in the finalize request
@@ -500,11 +447,11 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
             path: operationPath,
             authorization: upload.authorization,
             file: {
-              after: storageLayer.getMetadata(req.params.bucketId, name)?.asRulesResource(),
+              after: storageLayer.getMetadata(req.params.bucketId, objectId)?.asRulesResource(),
             },
           }))
         ) {
-          storageLayer.deleteFile(upload.bucketId, name);
+          storageLayer.deleteFile(upload.bucketId, objectId);
           return res.status(403).json({
             error: {
               code: 403,

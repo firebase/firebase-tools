@@ -13,6 +13,7 @@ export type Upload = {
   path: string;
   status: UploadStatus;
   metadata: IncomingMetadata;
+  size: number;
   authorization?: string;
 };
 
@@ -75,13 +76,14 @@ export class UploadService {
    * the file's contents in a single request.
    */
   public multipartUpload(request: MultipartUploadRequest): Upload {
-    const upload = this.initMultipartUpload(request);
+    const data = Buffer.from(request.dataRaw);
+    const upload = this.initMultipartUpload(request, data.byteLength);
     this._persistence.deleteFile(upload.path, /* failSilently = */ true);
-    this._persistence.appendBytes(upload.path, Buffer.from(request.dataRaw));
+    this._persistence.appendBytes(upload.path, data);
     return upload;
   }
 
-  private initMultipartUpload(request: MultipartUploadRequest): Upload {
+  private initMultipartUpload(request: MultipartUploadRequest, sizeInBytes: number): Upload {
     const id = uuidV4();
     const upload: Upload = {
       id: uuidV4(),
@@ -91,6 +93,7 @@ export class UploadService {
       path: this.stagingFileName(id, request.bucketId, request.objectId),
       status: UploadStatus.FINISHED,
       metadata: JSON.parse(request.metadataRaw),
+      size: sizeInBytes,
       authorization: request.authorization,
     };
     this._uploads.set(upload.id, upload);
@@ -111,6 +114,7 @@ export class UploadService {
       path: this.stagingFileName(id, request.bucketId, request.objectId),
       status: UploadStatus.ACTIVE,
       metadata: JSON.parse(request.metadataRaw),
+      size: 0,
       authorization: request.authorization,
     };
     this._uploads.set(upload.id, upload);
@@ -128,7 +132,9 @@ export class UploadService {
     if (upload.status !== UploadStatus.ACTIVE) {
       throw new NotActiveUploadError();
     }
-    this._persistence.appendBytes(upload.path, Buffer.from(dataRaw));
+    const data = Buffer.from(dataRaw);
+    this._persistence.appendBytes(upload.path, data);
+    upload.size += data.byteLength;
     return upload;
   }
 

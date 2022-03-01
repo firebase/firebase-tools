@@ -1,4 +1,3 @@
-import { tmpdir } from "os";
 import { v4 } from "uuid";
 import { ListItem, ListResponse } from "./list";
 import {
@@ -21,6 +20,7 @@ import { StorageRulesetInstance } from "./rules/runtime";
 import { RulesetOperationMethod } from "./rules/types";
 import { isPermitted } from "./rules/utils";
 import { Persistence } from "./persistence";
+import { Upload } from "./upload";
 
 interface BucketsList {
   buckets: {
@@ -160,7 +160,6 @@ export class StorageLayer {
 
   public reset(): void {
     this._files = new Map();
-    this._persistence.reset(`${tmpdir()}/firebase/storage/blobs`);
     this._uploads = new Map();
     this._buckets = new Map();
   }
@@ -350,34 +349,46 @@ export class StorageLayer {
     return { upload: upload, file: file };
   }
 
-  public oneShotUpload(
-    bucket: string,
-    object: string,
-    contentType: string,
-    incomingMetadata: IncomingMetadata,
-    bytes: Buffer
-  ) {
-    const filePath = this.path(bucket, object);
+  /** Last step in uploading a file. Validates the request and persists the staging
+   * object to permanent disk.
+   */
+  public async handleUploadObject(upload: Upload): Promise<StoredFileMetadata> {
+    if (upload.status !== UploadStatus.FINISHED) {
+      throw new Error(`Unexpected upload status encountered: ${upload.status}.`)
+    }
 
-    this._persistence.deleteFile(filePath, true);
-
-    this._persistence.appendBytes(filePath, bytes);
-    const md = new StoredFileMetadata(
+    const filePath = this.path(upload.bucketId, upload.objectId);
+    const operationPath = ["b", upload.bucketId, "o", upload.objectId].join("/");
+    const metadata = new StoredFileMetadata(
       {
-        name: object,
-        bucket: bucket,
-        contentType: incomingMetadata.contentType || "application/octet-stream",
-        contentEncoding: incomingMetadata.contentEncoding,
-        customMetadata: incomingMetadata.metadata,
+        name: upload.objectId,
+        bucket: upload.bucketId,
+        contentType: upload.metadata.contentType || "application/octet-stream",
+        contentEncoding: upload.metadata.contentEncoding,
+        customMetadata: upload.metadata.metadata,
       },
       this._cloudFunctions,
-      bytes
+      this._persistence.readBytes(upload.path, upload.size)
     );
-    const file = new StoredFile(md, this._persistence.getDiskPath(filePath));
-    this._files.set(filePath, file);
+    let authorized = await isPermitted({
+      ruleset: this._rules,
+      method: RulesetOperationMethod.CREATE,
+      path: operationPath,
+      file: { before: metadata?.asRulesResource() },
+      authorization: upload.authorization,
+    });
+    if (!authorized) {
+      this._persistence.deleteFile(upload.path);
+      throw new ForbiddenError();
+    }
+    metadata.addDownloadToken();
 
-    this._cloudFunctions.dispatch("finalize", new CloudStorageObjectMetadata(file.metadata));
-    return file.metadata;
+    // Persist to permanent location on disk.
+    this._persistence.deleteFile(filePath, /* failSilently = */ true);
+    this._persistence.renameFile(upload.path, filePath);
+    this._files.set(filePath,  new StoredFile(metadata, this._persistence.getDiskPath(filePath));
+    this._cloudFunctions.dispatch("finalize", new CloudStorageObjectMetadata(metadata));
+    return metadata;
   }
 
   public listItemsAndPrefixes(
