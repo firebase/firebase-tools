@@ -63,6 +63,7 @@ module.exports = {
         "no-fallthrough": "warn", // TODO(bkendall): remove, allow to error.
         "no-unused-vars": "warn", // TODO(bkendall): remove, allow to error.
         camelcase: ["warn", { ignoreDestructuring: true }], // TODO(bkendall): remove, allow to error.
+        eqeqeq: ["error", "always", { null: "ignore" }],
       },
     },
     {

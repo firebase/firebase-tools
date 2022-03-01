@@ -84,7 +84,9 @@ export function breakingChangesInUpdate(versionsInUpdate: string[]): string[] {
   for (let i = 1; i < semvers.length; i++) {
     const hasMajorBump = semvers[i - 1].major < semvers[i].major;
     const hasMinorBumpInPreview =
-      semvers[i - 1].major === 0 && semvers[i].major === 0 && semvers[i - 1].minor < semvers[i].minor;
+      semvers[i - 1].major === 0 &&
+      semvers[i].major === 0 &&
+      semvers[i - 1].minor < semvers[i].minor;
     if (hasMajorBump || hasMinorBumpInPreview) {
       breakingVersions.push(semvers[i].raw);
     }
