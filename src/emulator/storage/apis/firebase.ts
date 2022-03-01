@@ -328,7 +328,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       return res.json(new OutgoingFirebaseMetadata(metadata));
     } else {
       // Resumable upload
-        const uploadCommand = req.header("x-goog-upload-command");
+      const uploadCommand = req.header("x-goog-upload-command");
       if (!uploadCommand) {
         res.sendStatus(400);
         return;
@@ -448,7 +448,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
           throw err;
         }
         return res.json(new OutgoingFirebaseMetadata(metadata));
-      } 
+      }
       return res.sendStatus(400);
     }
   };

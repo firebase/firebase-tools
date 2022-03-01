@@ -1,4 +1,3 @@
-import { v4 } from "uuid";
 import { ListItem, ListResponse } from "./list";
 import {
   CloudStorageBucketMetadata,
@@ -276,7 +275,7 @@ export class StorageLayer {
    */
   public async handleUploadObject(upload: Upload): Promise<StoredFileMetadata> {
     if (upload.status !== UploadStatus.FINISHED) {
-      throw new Error(`Unexpected upload status encountered: ${upload.status}.`)
+      throw new Error(`Unexpected upload status encountered: ${upload.status}.`);
     }
 
     const filePath = this.path(upload.bucketId, upload.objectId);
@@ -308,7 +307,7 @@ export class StorageLayer {
     // Persist to permanent location on disk.
     this._persistence.deleteFile(filePath, /* failSilently = */ true);
     this._persistence.renameFile(upload.path, filePath);
-    this._files.set(filePath,  new StoredFile(metadata, this._persistence.getDiskPath(filePath)));
+    this._files.set(filePath, new StoredFile(metadata, this._persistence.getDiskPath(filePath)));
     this._cloudFunctions.dispatch("finalize", new CloudStorageObjectMetadata(metadata));
     return metadata;
   }
