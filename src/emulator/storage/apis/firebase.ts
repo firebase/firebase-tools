@@ -591,6 +591,13 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   firebaseStorageAPI.delete("/b/:bucketId/o/:objectId", async (req, res) => {
     const decodedObjectId = decodeURIComponent(req.params.objectId);
     const operationPath = ["b", req.params.bucketId, "o", decodedObjectId].join("/");
+    const md = storageLayer.getMetadata(req.params.bucketId, decodedObjectId);
+
+    const rulesFiles: { before?: RulesResourceMetadata } = {};
+
+    if (md) {
+      rulesFiles.before = md.asRulesResource();
+    }
 
     if (
       !(await isPermitted({
@@ -598,9 +605,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         method: RulesetOperationMethod.DELETE,
         path: operationPath,
         authorization: req.header("authorization"),
-        file: {
-          // TODO load before metadata
-        },
+        file: rulesFiles,
       }))
     ) {
       return res.status(403).json({
@@ -610,8 +615,6 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         },
       });
     }
-
-    const md = storageLayer.getMetadata(req.params.bucketId, decodedObjectId);
 
     if (!md) {
       res.sendStatus(404);

@@ -1187,30 +1187,46 @@ describe("Storage emulator", () => {
         });
       });
 
-      it("#delete()", async () => {
-        const downloadUrl = await page.evaluate((filename) => {
-          return firebase.storage().ref(filename).getDownloadURL();
-        }, filename);
+      describe("deleteFile", () => {
+        it("should delete file", async () => {
+          await page.evaluate((filename) => {
+            return firebase.storage().ref(filename).delete();
+          }, filename);
 
-        expect(downloadUrl).to.be.not.null;
+          const error = await page.evaluate((filename) => {
+            return new Promise((resolve) => {
+              firebase
+                .storage()
+                .ref(filename)
+                .getDownloadURL()
+                .catch((err) => {
+                  resolve(err.message);
+                });
+            });
+          }, filename);
 
-        await page.evaluate((filename) => {
-          return firebase.storage().ref(filename).delete();
-        }, filename);
+          expect(error).to.contain("does not exist.");
+        });
 
-        const error = await page.evaluate((filename) => {
-          return new Promise((resolve) => {
-            firebase
-              .storage()
-              .ref(filename)
-              .getDownloadURL()
-              .catch((err) => {
-                resolve(err.message);
-              });
-          });
-        }, filename);
+        it("should not delete file when security rule on resource object disallows it", async () => {
+          await page.evaluate((filename) => {
+            return firebase.storage().ref(filename).updateMetadata({ contentType: "text/plain" });
+          }, filename);
 
-        expect(error).to.contain("does not exist.");
+          const error = await page.evaluate((filename) => {
+            return new Promise((resolve) => {
+              firebase
+                .storage()
+                .ref(filename)
+                .delete()
+                .catch((err) => {
+                  resolve(err.message);
+                });
+            });
+          }, filename);
+
+          expect(error).to.contain("does not have permission to access");
+        });
       });
     });
 
