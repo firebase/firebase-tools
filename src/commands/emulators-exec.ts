@@ -12,5 +12,4 @@ module.exports = new Command("emulators:exec <script>")
   .option(commandUtils.FLAG_IMPORT, commandUtils.DESC_IMPORT)
   .option(commandUtils.FLAG_EXPORT_ON_EXIT, commandUtils.DESC_EXPORT_ON_EXIT)
   .option(commandUtils.FLAG_UI, commandUtils.DESC_UI)
-  .withForce()
   .action(commandUtils.emulatorExec);
