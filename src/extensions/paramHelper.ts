@@ -146,7 +146,7 @@ export async function getParamsForUpdate(args: {
  * @param newSpec A extensionSpec to compare to
  * @param currentParams A set of current params and their values
  */
-export async function promptForNewParams(args: {
+ export async function promptForNewParams(args: {
   spec: extensionsApi.ExtensionSpec;
   newSpec: extensionsApi.ExtensionSpec;
   currentParams: { [option: string]: string };
@@ -157,9 +157,13 @@ export async function promptForNewParams(args: {
   const comparer = (param1: extensionsApi.Param, param2: extensionsApi.Param) => {
     return param1.type === param2.type && param1.param === param2.param;
   };
+
+  // Some params are in the spec but not in currentParams, remove so we can prompt for them.
+  const oldParams = args.spec.params.filter((p) => Object.keys(args.currentParams).includes(p.param));
+  
   let paramsDiffDeletions = _.differenceWith(
-    args.spec.params,
-    _.get(args.newSpec, "params", []),
+    oldParams,
+    args.newSpec.params,
     comparer
   );
   paramsDiffDeletions = substituteParams<extensionsApi.Param[]>(
@@ -169,7 +173,7 @@ export async function promptForNewParams(args: {
 
   let paramsDiffAdditions = _.differenceWith(
     args.newSpec.params,
-    _.get(args.spec, "params", []),
+    oldParams,
     comparer
   );
   paramsDiffAdditions = substituteParams<extensionsApi.Param[]>(
