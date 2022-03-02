@@ -21,9 +21,10 @@ import {
 } from "./functionsEmulatorShared";
 import { compareVersionStrings } from "./functionsEmulatorUtils";
 
-let functionTrigger: CloudFunction<any>;
+let functionModule: any;
 let FUNCTION_TARGET_NAME: string;
 let FUNCTION_SIGNATURE: string;
+let FUNCTION_DEBUG_MODE: string;
 
 let developerPkgJSON: PackageJSON | undefined;
 
@@ -778,7 +779,10 @@ function rawBodySaver(req: express.Request, res: express.Response, buf: Buffer):
   (req as any).rawBody = buf;
 }
 
-async function processHTTPS(frb: FunctionsRuntimeBundle): Promise<void> {
+async function processHTTPS(
+  trigger: CloudFunction<any>,
+  frb: FunctionsRuntimeBundle
+): Promise<void> {
   const ephemeralServer = express();
   const functionRouter = express.Router(); // eslint-disable-line new-cap
   const socketPath = frb.socketPath;
@@ -802,7 +806,7 @@ async function processHTTPS(frb: FunctionsRuntimeBundle): Promise<void> {
           });
         });
 
-        await runHTTPS([req, res]);
+        await runHTTPS(trigger, [req, res]);
       } catch (err: any) {
         rejectEphemeralServer(err);
       }
@@ -850,6 +854,7 @@ async function processHTTPS(frb: FunctionsRuntimeBundle): Promise<void> {
 }
 
 async function processBackground(
+  trigger: CloudFunction<any>,
   frb: FunctionsRuntimeBundle,
   signature: SignatureType
 ): Promise<void> {
@@ -857,7 +862,7 @@ async function processBackground(
   logDebug("ProcessBackground", proto);
 
   if (signature === "cloudevent") {
-    return runCloudEvent(proto);
+    return runCloudEvent(trigger, proto);
   }
 
   // All formats of the payload should carry a "data" property. The "context" property does
@@ -875,7 +880,7 @@ async function processBackground(
     }
   }
 
-  await runBackground({ data, context });
+  await runBackground(trigger, { data, context });
 }
 
 /**
@@ -895,29 +900,29 @@ async function runFunction(func: () => Promise<any>): Promise<any> {
   }
 }
 
-async function runBackground(proto: any): Promise<any> {
+async function runBackground(trigger: CloudFunction<any>, proto: any): Promise<any> {
   logDebug("RunBackground", proto);
 
   await runFunction(() => {
-    return functionTrigger(proto.data, proto.context);
+    return trigger(proto.data, proto.context);
   });
 }
 
-async function runCloudEvent(event: unknown): Promise<any> {
+async function runCloudEvent(trigger: CloudFunction<any>, event: unknown): Promise<any> {
   logDebug("RunCloudEvent", event);
 
   await runFunction(() => {
-    return functionTrigger(event);
+    return trigger(event);
   });
 }
 
-async function runHTTPS(args: any[]): Promise<any> {
+async function runHTTPS(trigger: CloudFunction<any>, args: any[]): Promise<any> {
   if (args.length < 2) {
     throw new Error("Function must be passed 2 args.");
   }
 
   await runFunction(() => {
-    return functionTrigger(args[0], args[1]);
+    return trigger(args[0], args[1]);
   });
 }
 
@@ -955,7 +960,10 @@ function logDebug(msg: string, data?: any): void {
   new EmulatorLog("DEBUG", "runtime-status", `[${process.pid}] ${msg}`, data).log();
 }
 
-async function invokeTrigger(frb: FunctionsRuntimeBundle): Promise<void> {
+async function invokeTrigger(
+  trigger: CloudFunction<any>,
+  frb: FunctionsRuntimeBundle
+): Promise<void> {
   new EmulatorLog("INFO", "runtime-status", `Beginning execution of "${FUNCTION_TARGET_NAME}"`, {
     frb,
   }).log();
@@ -988,10 +996,10 @@ async function invokeTrigger(frb: FunctionsRuntimeBundle): Promise<void> {
   switch (FUNCTION_SIGNATURE) {
     case "event":
     case "cloudevent":
-      await processBackground(frb, FUNCTION_SIGNATURE);
+      await processBackground(trigger, frb, FUNCTION_SIGNATURE);
       break;
     case "http":
-      await processHTTPS(frb);
+      await processHTTPS(trigger, frb);
       break;
   }
 
@@ -1010,24 +1018,28 @@ async function invokeTrigger(frb: FunctionsRuntimeBundle): Promise<void> {
 async function initializeRuntime(
   frb: FunctionsRuntimeBundle
 ): Promise<EmulatedTriggerMap | undefined> {
-  FUNCTION_TARGET_NAME = process.env.FUNCTION_TARGET || "";
-  if (!FUNCTION_TARGET_NAME) {
-    new EmulatorLog(
-      "FATAL",
-      "runtime-status",
-      `Environment variable FUNCTION_TARGET cannot be empty. This shouldn't happen.`
-    ).log();
-    await flushAndExit(1);
-  }
+  FUNCTION_DEBUG_MODE = process.env.FUNCTION_DEBUG_MODE || "";
 
-  FUNCTION_SIGNATURE = process.env.FUNCTION_SIGNATURE_TYPE || "";
-  if (!FUNCTION_SIGNATURE) {
-    new EmulatorLog(
-      "FATAL",
-      "runtime-status",
-      `Environment variable FUNCTION_SIGNATURE_TYPE cannot be empty. This shouldn't happen.`
-    ).log();
-    await flushAndExit(1);
+  if (!FUNCTION_DEBUG_MODE) {
+    FUNCTION_TARGET_NAME = process.env.FUNCTION_TARGET || "";
+    if (!FUNCTION_TARGET_NAME) {
+      new EmulatorLog(
+        "FATAL",
+        "runtime-status",
+        `Environment variable FUNCTION_TARGET cannot be empty. This shouldn't happen.`
+      ).log();
+      await flushAndExit(1);
+    }
+
+    FUNCTION_SIGNATURE = process.env.FUNCTION_SIGNATURE_TYPE || "";
+    if (!FUNCTION_SIGNATURE) {
+      new EmulatorLog(
+        "FATAL",
+        "runtime-status",
+        `Environment variable FUNCTION_SIGNATURE_TYPE cannot be empty. This shouldn't happen.`
+      ).log();
+      await flushAndExit(1);
+    }
   }
 
   logDebug(`Disabled runtime features: ${JSON.stringify(frb.disabled_features)}`);
@@ -1050,11 +1062,10 @@ async function initializeRuntime(
   await initializeFirebaseAdminStubs(frb);
 }
 
-async function loadTrigger(
+async function loadTriggers(
   frb: FunctionsRuntimeBundle,
-  functionTarget: string,
   serializedFunctionTrigger?: string
-): Promise<CloudFunction<any>> {
+): Promise<any> {
   let triggerModule;
   if (serializedFunctionTrigger) {
     /* tslint:disable:no-eval */
@@ -1074,13 +1085,7 @@ async function loadTrigger(
       triggerModule = await dynamicImport(moduleURL);
     }
   }
-  const maybeTrigger = functionTarget.split(".").reduce((mod, functionTargetPart) => {
-    return mod?.[functionTargetPart];
-  }, triggerModule);
-  if (!maybeTrigger) {
-    throw new Error(`Failed to find function ${functionTarget} in the loaded module`);
-  }
-  return maybeTrigger;
+  return triggerModule;
 }
 
 async function flushAndExit(code: number) {
@@ -1103,32 +1108,41 @@ async function handleMessage(message: string) {
     return;
   }
 
-  if (!functionTrigger) {
+  if (!functionModule) {
     try {
       await initializeRuntime(runtimeArgs.frb);
       const serializedTriggers = runtimeArgs.opts ? runtimeArgs.opts.serializedTriggers : undefined;
-      functionTrigger = await loadTrigger(
-        runtimeArgs.frb,
-        FUNCTION_TARGET_NAME,
-        serializedTriggers
-      );
+      functionModule = await loadTriggers(runtimeArgs.frb, serializedTriggers);
     } catch (e: any) {
       logDebug(e);
       new EmulatorLog(
         "FATAL",
         "runtime-status",
-        `Failed to initialize and load trigger. This shouldn't happen: ${e.message}`
+        `Failed to initialize and load triggers. This shouldn't happen: ${e.message}`
       ).log();
       await flushAndExit(1);
       return;
     }
   }
 
-  // If there's no trigger id it's just a diagnostic call. We can go idle right away.
+  if (FUNCTION_DEBUG_MODE) {
+    // In debug mode, all function triggers run in a single process.
+    // Target trigger is dynamically defined in the FunctionRuntimeBundle.
+    FUNCTION_TARGET_NAME = runtimeArgs.frb.debug!.functionTarget;
+    FUNCTION_SIGNATURE = runtimeArgs.frb.debug!.functionSignature;
+  }
+
+  const trigger = FUNCTION_TARGET_NAME.split(".").reduce((mod, functionTargetPart) => {
+    return mod?.[functionTargetPart];
+  }, functionModule) as CloudFunction<any>;
+  if (!trigger) {
+    throw new Error(`Failed to find function ${FUNCTION_TARGET_NAME} in the loaded module`);
+  }
+
   logDebug(`Beginning invocation function ${FUNCTION_TARGET_NAME}!`);
 
   try {
-    await invokeTrigger(runtimeArgs.frb);
+    await invokeTrigger(trigger, runtimeArgs.frb);
     // If we were passed serialized triggers we have to exit the runtime after,
     // otherwise we can go IDLE and await another request.
     if (runtimeArgs.opts && runtimeArgs.opts.serializedTriggers) {

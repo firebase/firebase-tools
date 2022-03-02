@@ -123,18 +123,18 @@ functionsEmulator.setTriggersForTesting(
 );
 
 // TODO(samstern): This is an ugly way to just override the InvokeRuntimeOpts on each call
-const startFunctionRuntime = functionsEmulator.startFunctionRuntime.bind(functionsEmulator);
+const invokeTrigger = functionsEmulator.invokeTrigger.bind(functionsEmulator);
 function useFunctions(triggers: () => {}): void {
   const serializedTriggers = triggers.toString();
 
   // eslint-disable-next-line @typescript-eslint/unbound-method
-  functionsEmulator.startFunctionRuntime = (
+  functionsEmulator.invokeTrigger = (
     backend: EmulatableBackend,
     trigger: EmulatedTriggerDefinition,
     proto?: any,
     runtimeOpts?: InvokeRuntimeOpts
   ): Promise<RuntimeWorker> => {
-    return startFunctionRuntime(testBackend, trigger, proto, {
+    return invokeTrigger(testBackend, trigger, proto, {
       nodeBinary: process.execPath,
       serializedTriggers,
     });
