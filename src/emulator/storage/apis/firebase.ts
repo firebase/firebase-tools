@@ -452,7 +452,9 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
           req.params.bucketId,
           name,
           objectContentType,
-          req.body
+          req.body,
+          // Store auth header for use in the finalize request
+          req.header("authorization")
         );
 
         storageLayer.uploadBytes(upload.uploadId, Buffer.alloc(0));
@@ -491,12 +493,13 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       }
 
       if (uploadCommand == "cancel") {
-        const upload = storageLayer.cancelUpload(uploadId);
-        if (!upload) {
-          res.sendStatus(400);
-          return;
+        const upload = storageLayer.queryUpload(uploadId);
+        if (upload) {
+          const cancelled = storageLayer.cancelUpload(upload);
+          res.sendStatus(cancelled ? 200 : 400);
+        } else {
+          res.sendStatus(404);
         }
-        res.sendStatus(200);
         return;
       }
 
@@ -528,14 +531,11 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       }
 
       if (uploadCommand.includes("finalize")) {
-        const finalizedUpload = storageLayer.finalizeUpload(uploadId);
-        if (!finalizedUpload) {
+        upload = storageLayer.queryUpload(uploadId);
+        if (!upload) {
           res.sendStatus(400);
           return;
         }
-        upload = finalizedUpload.upload;
-
-        res.header("x-goog-upload-status", "final");
 
         // For resumable uploads, we check auth on finalization in case of byte-dependant rules
         if (
@@ -544,9 +544,9 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
             // TODO This will be either create or update
             method: RulesetOperationMethod.CREATE,
             path: operationPath,
-            authorization: req.header("authorization"),
+            authorization: upload.authorization,
             file: {
-              after: storageLayer.getMetadata(req.params.bucketId, name)?.asRulesResource(),
+              after: storageLayer.createMetadata(upload).asRulesResource(),
             },
           }))
         ) {
@@ -559,12 +559,15 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
           });
         }
 
-        const md = finalizedUpload.file.metadata;
+        res.header("x-goog-upload-status", "final");
+        const uploadedFile = storageLayer.finalizeUpload(upload);
+
+        const md = uploadedFile.metadata;
         if (md.downloadTokens.length == 0) {
           md.addDownloadToken();
         }
 
-        res.json(new OutgoingFirebaseMetadata(finalizedUpload.file.metadata));
+        res.json(new OutgoingFirebaseMetadata(uploadedFile.metadata));
       } else if (!upload) {
         res.sendStatus(400);
         return;
@@ -589,6 +592,13 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   firebaseStorageAPI.delete("/b/:bucketId/o/:objectId", async (req, res) => {
     const decodedObjectId = decodeURIComponent(req.params.objectId);
     const operationPath = ["b", req.params.bucketId, "o", decodedObjectId].join("/");
+    const md = storageLayer.getMetadata(req.params.bucketId, decodedObjectId);
+
+    const rulesFiles: { before?: RulesResourceMetadata } = {};
+
+    if (md) {
+      rulesFiles.before = md.asRulesResource();
+    }
 
     if (
       !(await isPermitted({
@@ -596,9 +606,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         method: RulesetOperationMethod.DELETE,
         path: operationPath,
         authorization: req.header("authorization"),
-        file: {
-          // TODO load before metadata
-        },
+        file: rulesFiles,
       }))
     ) {
       return res.status(403).json({
@@ -608,8 +616,6 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         },
       });
     }
-
-    const md = storageLayer.getMetadata(req.params.bucketId, decodedObjectId);
 
     if (!md) {
       res.sendStatus(404);

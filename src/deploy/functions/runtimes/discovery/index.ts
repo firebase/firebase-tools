@@ -41,17 +41,17 @@ export async function detectFromYaml(
 ): Promise<backend.Backend | undefined> {
   let text: string;
   try {
-    text = await exports.readFileAsync(path.join(directory, "backend.yaml"), "utf8");
+    text = await exports.readFileAsync(path.join(directory, "functions.yaml"), "utf8");
   } catch (err: any) {
     if (err.code === "ENOENT") {
-      logger.debug("Could not find backend.yaml. Must use http discovery");
+      logger.debug("Could not find functions.yaml. Must use http discovery");
     } else {
-      logger.debug("Unexpected error looking for backend.yaml file:", err);
+      logger.debug("Unexpected error looking for functions.yaml file:", err);
     }
     return;
   }
 
-  logger.debug("Found backend.yaml. Got spec:", text);
+  logger.debug("Found functions.yaml. Got spec:", text);
   const parsed = yaml.load(text);
   return yamlToBackend(parsed, project, api.functionsDefaultRegion, runtime);
 }
@@ -72,7 +72,7 @@ export async function detectFromPort(
 
   while (true) {
     try {
-      res = await Promise.race([fetch(`http://localhost:${port}/backend.yaml`), timedOut]);
+      res = await Promise.race([fetch(`http://localhost:${port}/__/functions.yaml`), timedOut]);
       break;
     } catch (err: any) {
       // Allow us to wait until the server is listening.
@@ -84,7 +84,7 @@ export async function detectFromPort(
   }
 
   const text = await res.text();
-  logger.debug("Got response from /backend.yaml", text);
+  logger.debug("Got response from /__/functions.yaml", text);
 
   let parsed: any;
   try {

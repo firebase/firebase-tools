@@ -9,7 +9,7 @@ import * as zlib from "zlib";
 import { Client } from "../../apiv2";
 import { Queue } from "../../throttler/queue";
 import { hostingApiOrigin } from "../../api";
-import * as hashcache from "./hashcache";
+import { load, dump, HashRecord } from "./hashcache";
 import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 
@@ -40,8 +40,8 @@ export class Uploader {
   private files: string[];
   private fileCount: number;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private cache: { [key: string]: any };
-  private cacheNew: Map<unknown, unknown>;
+  private cache: Map<string, HashRecord>;
+  private cacheNew: Map<string, HashRecord>;
   private sizeMap: { [key: string]: number };
   private hashMap: { [key: string]: string };
   private pathMap: { [key: string]: string };
@@ -83,7 +83,7 @@ export class Uploader {
     this.files = options.files;
     this.fileCount = this.files.length;
 
-    this.cache = hashcache.load(this.projectRoot, this.hashcacheName());
+    this.cache = load(this.projectRoot, this.hashcacheName());
     this.cacheNew = new Map();
 
     this.sizeMap = {};
@@ -112,7 +112,7 @@ export class Uploader {
       .wait()
       .then(this.queuePopulate.bind(this))
       .then(() => {
-        hashcache.dump(this.projectRoot, this.hashcacheName(), this.cacheNew);
+        dump(this.projectRoot, this.hashcacheName(), this.cacheNew);
         logger.debug("[hosting][hash queue][FINAL]", this.hashQueue.stats());
         this.populateQueue.close();
         return this.populateQueue.wait();
@@ -128,7 +128,7 @@ export class Uploader {
         logger.debug(
           "[hosting][upload queue] upload failed with content hash error. Deleting hash cache"
         );
-        hashcache.dump(this.projectRoot, this.hashcacheName(), new Map());
+        dump(this.projectRoot, this.hashcacheName(), new Map());
       }
     });
 
@@ -170,7 +170,7 @@ export class Uploader {
     const stats = fs.statSync(path.resolve(this.public, filePath));
     const mtime = stats.mtime.getTime();
     this.sizeMap[filePath] = stats.size;
-    const cached = this.cache[filePath];
+    const cached = this.cache.get(filePath);
     if (cached && cached.mtime === mtime) {
       this.cacheNew.set(filePath, cached);
       this.addHash(filePath, cached.hash);

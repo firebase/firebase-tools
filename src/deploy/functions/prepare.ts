@@ -93,7 +93,7 @@ export async function prepare(
     : usedDotenv
     ? "dotenv"
     : "none";
-  await track("functions_codebase_deploy_env_method", tag);
+  void track("functions_codebase_deploy_env_method", tag);
 
   logger.debug(`Analyzing ${runtimeDelegate.name} backend spec`);
   const wantBackend = await runtimeDelegate.discoverSpec(runtimeConfig, firebaseEnvs);
@@ -144,7 +144,7 @@ export async function prepare(
   // require cloudscheudler and, in v1, require pub/sub), or can eventually come from
   // explicit dependencies.
   await Promise.all(
-    Object.values(wantBackend.requiredAPIs).map((api) => {
+    Object.values(wantBackend.requiredAPIs).map(({ api }) => {
       return ensureApiEnabled.ensure(projectId, api, "functions", /* silent=*/ false);
     })
   );
@@ -204,6 +204,8 @@ export function inferDetailsFromExisting(
     if (!wantE.availableMemoryMb && haveE.availableMemoryMb) {
       wantE.availableMemoryMb = haveE.availableMemoryMb;
     }
+
+    wantE.securityLevel = haveE.securityLevel ? haveE.securityLevel : "SECURE_ALWAYS";
 
     maybeCopyTriggerRegion(wantE, haveE);
   }

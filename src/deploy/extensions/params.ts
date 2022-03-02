@@ -22,6 +22,7 @@ export function readParams(args: {
   projectNumber: string;
   aliases: string[];
   instanceId: string;
+  checkLocal?: boolean;
 }): Record<string, string> {
   const filesToCheck = [
     `${args.instanceId}.env`,
@@ -29,6 +30,9 @@ export function readParams(args: {
     `${args.instanceId}.env.${args.projectNumber}`,
     `${args.instanceId}.env.${args.projectId}`,
   ];
+  if (args.checkLocal) {
+    filesToCheck.push(`${args.instanceId}.env.local`);
+  }
   let noFilesFound = true;
   const combinedParams = {};
   for (const fileToCheck of filesToCheck) {

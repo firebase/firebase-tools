@@ -40,6 +40,14 @@ export interface HttpsTriggered {
   httpsTrigger: HttpsTrigger;
 }
 
+/** API agnostic version of a Firebase callable function. */
+export type CallableTrigger = Record<string, never>;
+
+/** Something that has a callable trigger */
+export interface CallableTriggered {
+  callableTrigger: CallableTrigger;
+}
+
 /** Well known keys in the eventFilter attribute of an event trigger */
 export type EventFilterKey = "resource";
 
@@ -119,6 +127,8 @@ export function endpointTriggerType(endpoint: Endpoint): string {
     return "scheduled";
   } else if (isHttpsTriggered(endpoint)) {
     return "https";
+  } else if (isCallableTriggered(endpoint)) {
+    return "callable";
   } else if (isEventTriggered(endpoint)) {
     return endpoint.eventTrigger.eventType;
   } else if (isTaskQueueTriggered(endpoint)) {
@@ -184,19 +194,31 @@ export interface ServiceConfiguration {
   timeout?: proto.Duration;
   maxInstances?: number;
   minInstances?: number;
-  vpcConnector?: string;
-  vpcConnectorEgressSettings?: VpcEgressSettings;
+  vpc?: {
+    connector: string;
+    egressSettings?: VpcEgressSettings;
+  };
   ingressSettings?: IngressSettings;
   serviceAccountEmail?: "default" | string;
 }
 
 export type FunctionsPlatform = "gcfv1" | "gcfv2";
 
-export type Triggered = HttpsTriggered | EventTriggered | ScheduleTriggered | TaskQueueTriggered;
+export type Triggered =
+  | HttpsTriggered
+  | CallableTriggered
+  | EventTriggered
+  | ScheduleTriggered
+  | TaskQueueTriggered;
 
 /** Whether something has an HttpsTrigger */
 export function isHttpsTriggered(triggered: Triggered): triggered is HttpsTriggered {
   return {}.hasOwnProperty.call(triggered, "httpsTrigger");
+}
+
+/** Whether something has a CallableTrigger */
+export function isCallableTriggered(triggered: Triggered): triggered is CallableTriggered {
+  return {}.hasOwnProperty.call(triggered, "callableTrigger");
 }
 
 /** Whether something has an EventTrigger */
@@ -233,16 +255,24 @@ export type Endpoint = TargetIds &
     // on GCFv2 always
     uri?: string;
     sourceUploadUrl?: string;
+    // TODO(colerogers): yank this field and set securityLevel to SECURE_ALWAYS
+    // in functionFromEndpoint during a breaking change release.
+    // This is a temporary fix to address https://github.com/firebase/firebase-tools/issues/4171
+    // GCFv1 can be http or https and GCFv2 is always https
+    securityLevel?: gcf.SecurityLevel;
   };
+
+export interface RequiredAPI {
+  reason: string;
+  api: string;
+}
 
 /** An API agnostic definition of an entire deployment a customer has or wants. */
 export interface Backend {
   /**
    * requiredAPIs will be enabled when a Backend is deployed.
-   * Their format is friendly name -> API name.
-   * E.g. "scheduler" => "cloudscheduler.googleapis.com"
    */
-  requiredAPIs: Record<string, string>;
+  requiredAPIs: RequiredAPI[];
   environmentVariables: EnvironmentVariables;
   // region -> id -> Endpoint
   endpoints: Record<string, Record<string, Endpoint>>;
@@ -255,7 +285,7 @@ export interface Backend {
  */
 export function empty(): Backend {
   return {
-    requiredAPIs: {},
+    requiredAPIs: [],
     endpoints: {},
     environmentVariables: {},
   };

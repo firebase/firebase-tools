@@ -155,6 +155,7 @@ export class StorageRulesRuntime {
     this._childprocess.stderr?.on("data", (buf: Buffer) => {
       const error = buf.toString();
       if (error.includes("jarfile")) {
+        EmulatorLogger.forEmulator(Emulators.STORAGE).log("ERROR", error);
         throw new FirebaseError(
           "There was an issue starting the rules emulator, please run 'firebase setup:emulators:storage` again"
         );
