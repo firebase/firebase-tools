@@ -205,6 +205,10 @@ describe("cloudfunctionsv2", () => {
               attribute: "topic",
               value: "projects/p/topics/t",
             },
+            {
+              attribute: "serviceName",
+              value: "pubsub.googleapis.com",
+            },
           ],
           retry: false,
         },
@@ -222,6 +226,12 @@ describe("cloudfunctionsv2", () => {
         eventTrigger: {
           eventType: v2events.PUBSUB_PUBLISH_EVENT,
           pubsubTopic: "projects/p/topics/t",
+          eventFilters: [
+            {
+              attribute: "serviceName",
+              value: "pubsub.googleapis.com",
+            },
+          ],
         },
         serviceConfig: {
           ...CLOUD_FUNCTION_V2.serviceConfig,
