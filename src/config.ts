@@ -46,9 +46,9 @@ export class Config {
    * @param src incoming firebase.json source, parsed by not validated.
    * @param options command-line options.
    */
-  constructor(src: any, options: any) {
+  constructor(src: any, options?: any) {
     this.options = options || {};
-    this.projectDir = options.projectDir || detectProjectRoot(options);
+    this.projectDir = this.options.projectDir || detectProjectRoot(this.options);
     this._src = src;
 
     if (this._src.firebase) {

@@ -458,7 +458,11 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
       extensions: options.config.get("extensions"),
     });
     const extensionsBackends = await extensionEmulator.getExtensionBackends();
-    emulatableBackends.push(...extensionsBackends);
+    const filteredExtensionsBackends = extensionEmulator.filterUnemulatedTriggers(
+      options,
+      extensionsBackends
+    );
+    emulatableBackends.push(...filteredExtensionsBackends);
 
     // Log the command for analytics
     void track("Emulator Run", Emulators.EXTENSIONS);

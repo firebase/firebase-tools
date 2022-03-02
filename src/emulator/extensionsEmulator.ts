@@ -6,6 +6,7 @@ import Table = require("cli-table");
 import { spawnSync } from "child_process";
 
 import * as planner from "../deploy/extensions/planner";
+import { Options } from "../options";
 import { FirebaseError } from "../error";
 import { toExtensionVersionRef } from "../extensions/refs";
 import { downloadExtensionVersion } from "./download";
@@ -13,7 +14,7 @@ import { EmulatableBackend } from "./functionsEmulator";
 import { getExtensionFunctionInfo } from "../extensions/emulator/optionsHelper";
 import { EmulatorLogger } from "./emulatorLogger";
 import { Emulators } from "./types";
-import { getUnemulatedAPIs } from "./extensions/validation";
+import { checkForUnemulatedTriggerTypes, getUnemulatedAPIs } from "./extensions/validation";
 import { enableApiURI } from "../ensureApiEnabled";
 import { shortenUrl } from "../shortenUrl";
 
@@ -211,5 +212,37 @@ export class ExtensionsEmulator {
           table.toString()
       );
     }
+  }
+
+  /**
+   * Filters out Extension backends that include any unemulated triggers.
+   * @param backends
+   * @return a list of backends that include only emulated triggers.
+   */
+  public filterUnemulatedTriggers(
+    options: Options,
+    backends: EmulatableBackend[]
+  ): EmulatableBackend[] {
+    let foundUnemulatedTrigger = false;
+    const filteredBackends = backends.filter((backend) => {
+      const unemulatedServices = checkForUnemulatedTriggerTypes(options, backend);
+      if (unemulatedServices.length) {
+        foundUnemulatedTrigger = true;
+        const msg = ` ignored becuase it includes ${unemulatedServices.join(
+          ", "
+        )} triggered functions, and the ${unemulatedServices.join(
+          ", "
+        )} emulator does not exist or is not running.`;
+        this.logger.logLabeled("WARN", `extensions[${backend.extensionInstanceId}]`, msg);
+      }
+      return unemulatedServices.length == 0;
+    });
+    if (foundUnemulatedTrigger) {
+      const msg =
+        "No Cloud Functions for these instances will be emulated, because partially emulating an Extension can lead to unexpected behavior. " +
+        "To partially emulate these Extension instance anyway, rerun this command with --force";
+      this.logger.log("WARN", msg);
+    }
+    return filteredBackends;
   }
 }
