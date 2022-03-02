@@ -201,29 +201,36 @@ describe("Storage emulator", () => {
           // Doesn't require an assertion, will throw on failure
         });
 
-        it("should replace existing file on upload", async () => {
+        it.only("should replace existing file on upload", async () => {
           const path = "replace.txt";
           const content1 = createRandomFile("small_content_1", 10);
           const content2 = createRandomFile("small_content_2", 10);
+          console.log("1");
           const file = testBucket.file(path);
+          console.log("2");
 
           await testBucket.upload(content1, {
             destination: path,
           });
+          console.log("3");
 
           const [readContent1] = await file.download();
-
+          console.log("4");
           expect(readContent1).to.deep.equal(fs.readFileSync(content1));
 
+          console.log("5");
           await testBucket.upload(content2, {
             destination: path,
           });
-
+          console.log("6");
           const [readContent2] = await file.download();
+          console.log("7");
           expect(readContent2).to.deep.equal(fs.readFileSync(content2));
+          console.log("8");
 
           fs.unlinkSync(content1);
           fs.unlinkSync(content2);
+          console.log("9");
         });
 
         it("should handle gzip'd uploads", async () => {
