@@ -13,7 +13,7 @@ import { StorageLayer } from "../files";
 import type { Request, Response } from "express";
 import { Upload, UploadNotActiveError } from "../upload";
 import { ForbiddenError, NotFoundError } from "../errors";
-import { parseMultipartRequest } from "../multipart";
+import { parseObjectUploadMultipartRequest } from "../multipart";
 
 /**
  * @param emulator
@@ -217,7 +217,10 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     let dataRaw: string;
     console.log("gcloud 2");
     try {
-      ({ metadataRaw, dataRaw } = parseMultipartRequest(contentType!, req.body.toString()));
+      ({ metadataRaw, dataRaw } = parseObjectUploadMultipartRequest(
+        contentType!,
+        req.body.toString()
+      ));
     } catch (err) {
       if (err instanceof Error) {
         return res.status(400).json({

@@ -9,7 +9,7 @@ import { EmulatorRegistry } from "../../registry";
 import { RulesetOperationMethod } from "../rules/types";
 import { isPermitted } from "../rules/utils";
 import { NotFoundError, ForbiddenError } from "../errors";
-import { parseMultipartRequest } from "../multipart";
+import { parseObjectUploadMultipartRequest } from "../multipart";
 import { NotCancellableError, Upload, UploadNotActiveError } from "../upload";
 
 /**
@@ -290,7 +290,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       let metadataRaw: string;
       let dataRaw: string;
       try {
-        ({ metadataRaw, dataRaw } = parseMultipartRequest(contentType!, req.body));
+        ({ metadataRaw, dataRaw } = parseObjectUploadMultipartRequest(contentType!, req.body));
       } catch (err) {
         if (err instanceof Error) {
           return res.status(400).json({
