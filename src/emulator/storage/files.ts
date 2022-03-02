@@ -145,6 +145,8 @@ export type GetObjectResponse = {
   metadata: StoredFileMetadata;
   data: Buffer;
 };
+
+type RulesetProvider = () => (StorageRulesetInstance | undefined);
 export class StorageLayer {
   private _files!: Map<string, StoredFile>;
   private _uploads!: Map<string, ResumableUpload>;
@@ -152,7 +154,7 @@ export class StorageLayer {
   private _persistence!: Persistence;
   private _cloudFunctions: StorageCloudFunctions;
 
-  constructor(private _projectId: string, private _rules: StorageRulesetInstance | undefined) {
+  constructor(private _projectId: string, private _rulesProvider: RulesetProvider) {
     this.reset();
     this._cloudFunctions = new StorageCloudFunctions(this._projectId);
   }
@@ -162,6 +164,10 @@ export class StorageLayer {
     this._persistence = new Persistence(`${tmpdir()}/firebase/storage/blobs`);
     this._uploads = new Map();
     this._buckets = new Map();
+  }
+
+  private get rules(): StorageRulesetInstance | undefined {
+    return this._rulesProvider();
   }
 
   createBucket(id: string): void {
@@ -194,7 +200,7 @@ export class StorageLayer {
     let authorized = (metadata?.downloadTokens || []).includes(request.downloadToken ?? "");
     if (!authorized) {
       authorized = await isPermitted({
-        ruleset: this._rules,
+        ruleset: this.rules,
         method: RulesetOperationMethod.GET,
         path: operationPath,
         file: { before: metadata?.asRulesResource() },
