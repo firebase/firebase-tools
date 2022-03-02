@@ -211,9 +211,12 @@ describe("cloudfunctions", () => {
         ...ENDPOINT,
         eventTrigger: {
           eventType: "google.pubsub.topic.publish",
-          eventFilters: {
-            resource: "projects/p/topics/t",
-          },
+          eventFilters: [
+            {
+              attribute: "resource",
+              value: "projects/p/topics/t",
+            },
+          ],
           retry: true,
         },
       });
@@ -231,9 +234,12 @@ describe("cloudfunctions", () => {
         ...ENDPOINT,
         eventTrigger: {
           eventType: "google.pubsub.topic.publish",
-          eventFilters: {
-            resource: "projects/p/topics/t",
-          },
+          eventFilters: [
+            {
+              attribute: "resource",
+              value: "projects/p/topics/t",
+            },
+          ],
           retry: false,
         },
       });

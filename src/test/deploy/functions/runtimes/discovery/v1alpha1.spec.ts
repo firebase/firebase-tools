@@ -380,7 +380,7 @@ describe("backendFromV1Alpha1", () => {
           eventFilters: [
             {
               attribute: "topic",
-              value: `projects/${PROJECT}/topic/my-topic`,
+              value: `projects/${PROJECT}/topics/my-topic`,
             },
           ],
         },
