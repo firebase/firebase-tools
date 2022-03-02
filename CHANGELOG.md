@@ -8,3 +8,4 @@
 - Fixes bug where securityLevel is overwritten on https function re-deploys (#4208).
 - Fixes bug where functions emulator ignored functions.runtime option in firebase.json (#4207).
 - Fixes bug where functions emulator triggered wrong functions when started with --inspect-functions flag (#4232).
+- Updates functions init template to use latest versions of dependencies of functions init (#4177).
