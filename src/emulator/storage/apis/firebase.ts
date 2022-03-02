@@ -388,9 +388,8 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       }
 
       if (uploadCommand == "cancel") {
-        let upload: Upload;
         try {
-          upload = uploadService.cancelResumableUpload(uploadId);
+          uploadService.cancelResumableUpload(uploadId);
         } catch (err) {
           if (err instanceof NotFoundError) {
             return res.sendStatus(404);
@@ -450,6 +449,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         }
         return res.status(200).json(new OutgoingFirebaseMetadata(metadata)).send();
       }
+      // Unsupported upload command.
       return res.sendStatus(400);
     }
   };
