@@ -1,7 +1,13 @@
-/** Represents a parsed multipart form body for an upload object request. */
+/** 
+ * Represents a parsed multipart form body for an upload object request. 
+ * 
+ * Note: This class and others in files deal directly with buffers as
+ * converting to String can append unwanted encoding data to the original
+ * blob data in the request.
+ */
 export type ObjectUploadMultipartData = {
   metadataRaw: string;
-  dataRaw: string;
+  dataRaw: Buffer;
 };
 
 /**
@@ -12,29 +18,34 @@ type MultipartRequestBody = {
   dataParts: MultipartRequestBodyPart[];
 };
 
+const LINE_SEPARATOR = `\r\n`;
+
 /**
  * Parses a string into a {@link MultipartRequestBody}.
  * @param boundaryId the boundary id of the multipart request
- * @param body string value of a multipart request body
+ * @param body multipart request body as a Buffer
  */
-function parseMultipartRequestBody(boundaryId: string, body: string): MultipartRequestBody {
+function parseMultipartRequestBody(boundaryId: string, body: Buffer): MultipartRequestBody {
   const boundaryString = `--${boundaryId}`;
-  const bodyParts = body.split(boundaryString).map((part) => {
-    // Strip leading \r\n. Avoid using trim to avoid stripping out intentional whitespace in the data payload.
-    return part.slice(0, 2) === "\r\n" ? part.slice(2) : part;
-  });
-  if (bodyParts[bodyParts.length - 1].trim() !== "--") {
-    throw new Error(`Failed to parse multipart request body: ${body}`);
+  let offset = 0;
+  let nextBoundaryIndex = body.indexOf(boundaryString, offset);
+  const bodyParts: Buffer[] = [];
+  while (nextBoundaryIndex !== -1) {
+    if (offset !== nextBoundaryIndex) {
+      bodyParts.push(Buffer.from(body.slice(offset, nextBoundaryIndex)));
+    }
+    offset = nextBoundaryIndex + boundaryString.length + LINE_SEPARATOR.length;
+    nextBoundaryIndex = body.indexOf(boundaryString, offset);
   }
   const parsedParts: MultipartRequestBodyPart[] = [];
-  for (const bodyPart of bodyParts.slice(1, bodyParts.length - 1)) {
+  for (const bodyPart of bodyParts) {
     parsedParts.push(parseMultipartRequestBodyPart(bodyPart));
   }
   return { dataParts: parsedParts };
 }
 
 /**
- * Represents a single boundary-delineated multipart request body part, 
+ * Represents a single boundary-delineated multipart request body part,
  * Ex: """Content-Type: application/json\r
  * \r
  * {"contentType":"text/plain"}\r
@@ -44,29 +55,35 @@ type MultipartRequestBodyPart = {
   // From the example above: "Content-Type: application/json"
   contentTypeRaw: string;
   // From the example above: '{"contentType":"text/plain"}'
-  dataRaw: string;
+  dataRaw: Buffer;
 };
 
 /**
  * Parses a string into a {@link MultipartRequestBodyPart}.
- * @param bodyPart a multipart request body part string, not including boundaries.
+ * @param bodyPart a multipart request body part as a Buffer
  */
-function parseMultipartRequestBodyPart(bodyPart: string): MultipartRequestBodyPart {
-  const parts = bodyPart.split("\r\n");
-  // Parts:
+function parseMultipartRequestBodyPart(bodyPart: Buffer): MultipartRequestBodyPart {
+  let offset = 0;
+  let nextLineSeparatorIndex = bodyPart.indexOf(LINE_SEPARATOR, offset);
+  const lines: Buffer[] = [];
+  while (nextLineSeparatorIndex !== -1) {
+    lines.push(Buffer.from(bodyPart.slice(offset, nextLineSeparatorIndex)));
+    offset = nextLineSeparatorIndex + LINE_SEPARATOR.length;
+    nextLineSeparatorIndex = bodyPart.indexOf(LINE_SEPARATOR, offset);
+  }
+  // Lines:
   //   0: content type
   //   1: white space
   //   2: data
-  //   3: empty
-  if (parts.length !== 4) {
+  if (lines.length !== 3) {
     throw new Error(`Failed to parse multipart request body part: ${bodyPart}`);
   }
-  if (!parts[0].startsWith("Content-Type: ")) {
+  if (!lines[0].toString().startsWith("Content-Type: ")) {
     throw new Error(
       `Failed to parse multipart request body part: ${bodyPart}. Missing content type.`
     );
   }
-  return { contentTypeRaw: parts[0], dataRaw: parts[2] };
+  return { contentTypeRaw: lines[0].toString(), dataRaw: lines[2] };
 }
 
 /**
@@ -87,7 +104,7 @@ function parseMultipartRequestBodyPart(bodyPart: string): MultipartRequestBodyPa
  */
 export function parseObjectUploadMultipartRequest(
   contentTypeHeader: string,
-  body: string
+  body: Buffer
 ): ObjectUploadMultipartData {
   if (!contentTypeHeader.startsWith("multipart/related")) {
     throw new Error(`Invalid Content-Type: ${contentTypeHeader}`);
@@ -98,10 +115,10 @@ export function parseObjectUploadMultipartRequest(
   }
   const parsed = parseMultipartRequestBody(boundaryId, body);
   if (parsed.dataParts.length !== 2) {
-    throw new Error(`Unexpected number of parts in request body: ${body}`);
+    throw new Error(`Unexpected number of parts in request body: ${body.toString()}`);
   }
   return {
-    metadataRaw: parsed.dataParts[0].dataRaw,
-    dataRaw: parsed.dataParts[1].dataRaw,
+    metadataRaw: parsed.dataParts[0].dataRaw.toString(),
+    dataRaw: Buffer.from(parsed.dataParts[1].dataRaw),
   };
 }

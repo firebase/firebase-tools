@@ -34,7 +34,7 @@ export type MultipartUploadRequest = {
   bucketId: string;
   objectId: string;
   metadataRaw: string;
-  dataRaw: string;
+  dataRaw: Buffer;
   authorization?: string;
 };
 
@@ -76,14 +76,14 @@ export class UploadService {
    * the file's contents in a single request.
    */
   public multipartUpload(request: MultipartUploadRequest): Upload {
-    const data = Buffer.from(request.dataRaw);
-    const upload = this.startMultipartUpload(request, data.byteLength);
+    const upload = this.startMultipartUpload(request, request.dataRaw.byteLength);
     this._persistence.deleteFile(upload.path, /* failSilently = */ true);
-    this._persistence.appendBytes(upload.path, data);
+    this._persistence.appendBytes(upload.path, request.dataRaw);
     return upload;
   }
 
   private startMultipartUpload(request: MultipartUploadRequest, sizeInBytes: number): Upload {
+    console.log(`startMultipartUpload sizeInBytes: ${sizeInBytes}`);
     const id = uuidV4();
     const upload: Upload = {
       id: uuidV4(),
@@ -127,14 +127,13 @@ export class UploadService {
    * @throws {NotFoundError} if the resumable upload does not exist.
    * @throws {NotActiveUploadError} if the resumable upload is not in the ACTIVE state.
    */
-  public continueResumableUpload(uploadId: string, dataRaw: string): Upload {
+  public continueResumableUpload(uploadId: string, dataRaw: Buffer): Upload {
     const upload = this.getResumableUpload(uploadId);
     if (upload.status !== UploadStatus.ACTIVE) {
       throw new UploadNotActiveError();
     }
-    const data = Buffer.from(dataRaw);
-    this._persistence.appendBytes(upload.path, data);
-    upload.size += data.byteLength;
+    this._persistence.appendBytes(upload.path, dataRaw);
+    upload.size += dataRaw.byteLength;
     return upload;
   }
 

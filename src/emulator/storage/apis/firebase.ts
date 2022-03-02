@@ -288,7 +288,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         return res.sendStatus(400);
       }
       let metadataRaw: string;
-      let dataRaw: string;
+      let dataRaw: Buffer;
       try {
         ({ metadataRaw, dataRaw } = parseObjectUploadMultipartRequest(contentType!, req.body));
       } catch (err) {
@@ -306,7 +306,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         bucketId,
         objectId,
         metadataRaw,
-        dataRaw,
+        dataRaw: dataRaw,
         authorization: req.header("authorization"),
       });
       let metadata: StoredFileMetadata;
@@ -323,6 +323,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         }
         throw err;
       }
+      metadata.addDownloadToken();
       return res.status(200).json(new OutgoingFirebaseMetadata(metadata));
     }
     // Resumable upload
@@ -403,7 +404,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     if (uploadCommand.includes("upload")) {
       let upload: Upload;
       try {
-        upload = uploadService.continueResumableUpload(uploadId, req.body);
+        upload = uploadService.continueResumableUpload(uploadId, req.body as Buffer);
       } catch (err) {
         if (err instanceof NotFoundError) {
           return res.sendStatus(404);
@@ -446,6 +447,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         }
         throw err;
       }
+      metadata.addDownloadToken();
       return res.status(200).json(new OutgoingFirebaseMetadata(metadata));
     }
 

@@ -310,10 +310,6 @@ export class StorageLayer {
       this._persistence.deleteFile(upload.path);
       throw new ForbiddenError();
     }
-    metadata.addDownloadToken();
-
-    console.log("handleUploadObject")
-    console.log(`StoredFileMetadata: ${JSON.stringify(metadata, null, 4)}`);
 
     // Persist to permanent location on disk.
     this._persistence.deleteFile(filePath, /* failSilently = */ true);

@@ -114,7 +114,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     const uploadId = req.query.upload_id.toString();
     let upload: Upload;
     try {
-      uploadService.continueResumableUpload(uploadId, req.body);
+      uploadService.continueResumableUpload(uploadId, req.body as Buffer);
       upload = uploadService.finalizeResumableUpload(uploadId);
     } catch (err) {
       if (err instanceof NotFoundError) {
@@ -187,10 +187,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       return res.sendStatus(400);
     }
 
-    console.log("gcloud 1");
     if (req.query.uploadType === "resumable") {
-      console.log("gcloud resumable");
-      console.log("gcloud 2");
       const upload = uploadService.startResumableUpload({
         bucketId: req.params.bucketId,
         objectId: name,
@@ -198,29 +195,22 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
         contentType: contentType,
         authorization: req.header("authorization"),
       });
-      console.log("gcloud 3");
       const emulatorInfo = EmulatorRegistry.getInfo(Emulators.STORAGE);
-      console.log("gcloud 4");
       if (emulatorInfo == undefined) {
         return res.sendStatus(500);
       }
-      console.log("gcloud 5");
       const { host, port } = emulatorInfo;
       const uploadUrl = `http://${host}:${port}/upload/storage/v1/b/${req.params.bucketId}/o?name=${name}&uploadType=resumable&upload_id=${upload.id}`;
-      console.log("gcloud 6");
       return res.header("location", uploadUrl).sendStatus(200);
     }
 
-    console.log("gcloud multipart");
     // Multipart upload
     let metadataRaw: string;
-    let dataRaw: string;
-    console.log("gcloud 2");
-    console.log(JSON.stringify(req.body.toString()));
+    let dataRaw: Buffer;
     try {
       ({ metadataRaw, dataRaw } = parseObjectUploadMultipartRequest(
         contentType!,
-        req.body.toString()
+        req.body as Buffer
       ));
     } catch (err) {
       if (err instanceof Error) {
@@ -233,8 +223,6 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       }
       throw err;
     }
-    console.log("gcloud 3");
-    console.log(`authorization: ${req.header("authorization")}`);
     const upload = uploadService.multipartUpload({
       bucketId: req.params.bucketId,
       objectId: name,
@@ -242,8 +230,6 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       dataRaw: dataRaw,
       authorization: req.header("authorization"),
     });
-
-    console.log("gcloud 4");
     let metadata: StoredFileMetadata;
     try {
       metadata = await storageLayer.handleUploadObject(upload, /* skipAuth = */ true);
@@ -254,8 +240,6 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       throw err;
     }
 
-    console.log("gcloud 5");
-    console.log(JSON.stringify(new CloudStorageObjectMetadata(metadata), null, 4));
     return res.status(200).json(new CloudStorageObjectMetadata(metadata)).send();
   });
 
