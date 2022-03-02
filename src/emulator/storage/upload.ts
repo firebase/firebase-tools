@@ -83,7 +83,6 @@ export class UploadService {
   }
 
   private startMultipartUpload(request: MultipartUploadRequest, sizeInBytes: number): Upload {
-    console.log(`startMultipartUpload sizeInBytes: ${sizeInBytes}`);
     const id = uuidV4();
     const upload: Upload = {
       id: uuidV4(),
