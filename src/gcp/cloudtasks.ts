@@ -173,7 +173,7 @@ export async function setEnqueuer(
   const invokerMembers = proto.getInvokerMembers(invoker, project);
   while (true) {
     const policy: iam.Policy = {
-      bindings: existing.bindings.filter((binding) => binding.role != ENQUEUER_ROLE),
+      bindings: existing.bindings.filter((binding) => binding.role !== ENQUEUER_ROLE),
       etag: existing.etag,
       version: existing.version,
     };

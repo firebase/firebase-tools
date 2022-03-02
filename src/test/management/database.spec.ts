@@ -51,10 +51,10 @@ const INSTANCE_RESPONSE_EUROPE_WEST1 = {
 };
 
 function generateDatabaseUrl(instanceName: string, location: DatabaseLocation): string {
-  if (location == DatabaseLocation.ANY) {
+  if (location === DatabaseLocation.ANY) {
     throw new Error("can't generate url for any location");
   }
-  if (location == DatabaseLocation.US_CENTRAL1) {
+  if (location === DatabaseLocation.US_CENTRAL1) {
     return `https://${instanceName}.firebaseio.com`;
   }
   return `https://${instanceName}.${location}.firebasedatabase.app`;
