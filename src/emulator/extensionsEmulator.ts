@@ -240,7 +240,7 @@ export class ExtensionsEmulator {
     if (foundUnemulatedTrigger) {
       const msg =
         "No Cloud Functions for these instances will be emulated, because partially emulating an Extension can lead to unexpected behavior. ";
-        // TODO(joehanley): "To partially emulate these Extension instance anyway, rerun this command with --force";
+      // TODO(joehanley): "To partially emulate these Extension instance anyway, rerun this command with --force";
       this.logger.log("WARN", msg);
     }
     return filteredBackends;
