@@ -77,20 +77,20 @@ export class UploadService {
    */
   public multipartUpload(request: MultipartUploadRequest): Upload {
     const data = Buffer.from(request.dataRaw);
-    const upload = this.initMultipartUpload(request, data.byteLength);
+    const upload = this.startMultipartUpload(request, data.byteLength);
     this._persistence.deleteFile(upload.path, /* failSilently = */ true);
     this._persistence.appendBytes(upload.path, data);
     return upload;
   }
 
-  private initMultipartUpload(request: MultipartUploadRequest, sizeInBytes: number): Upload {
+  private startMultipartUpload(request: MultipartUploadRequest, sizeInBytes: number): Upload {
     const id = uuidV4();
     const upload: Upload = {
       id: uuidV4(),
       bucketId: request.bucketId,
       objectId: request.objectId,
       type: UploadType.MULTIPART,
-      path: this.stagingFileName(id, request.bucketId, request.objectId),
+      path: this.getStagingFileName(id, request.bucketId, request.objectId),
       status: UploadStatus.FINISHED,
       metadata: JSON.parse(request.metadataRaw),
       size: sizeInBytes,
@@ -111,7 +111,7 @@ export class UploadService {
       bucketId: request.bucketId,
       objectId: request.objectId,
       type: UploadType.RESUMABLE,
-      path: this.stagingFileName(id, request.bucketId, request.objectId),
+      path: this.getStagingFileName(id, request.bucketId, request.objectId),
       status: UploadStatus.ACTIVE,
       metadata: JSON.parse(request.metadataRaw),
       size: 0,
@@ -127,8 +127,8 @@ export class UploadService {
    * @throws {NotFoundError} if the resumable upload does not exist.
    * @throws {NotActiveUploadError} if the resumable upload is not in the ACTIVE state.
    */
-  public progressResumableUpload(uploadId: string, dataRaw: string): Upload {
-    const upload = this.findResumableUpload(uploadId);
+  public continueResumableUpload(uploadId: string, dataRaw: string): Upload {
+    const upload = this.getResumableUpload(uploadId);
     if (upload.status !== UploadStatus.ACTIVE) {
       throw new UploadNotActiveError();
     }
@@ -143,7 +143,11 @@ export class UploadService {
    * @throws {NotFoundError} if the resumable upload does not exist.
    */
   public getResumableUpload(uploadId: string): Upload {
-    return this.findResumableUpload(uploadId);
+    const upload = this._uploads.get(uploadId);
+    if (!upload || upload.type !== UploadType.RESUMABLE) {
+      throw new NotFoundError();
+    }
+    return upload;
   }
 
   /**
@@ -152,7 +156,7 @@ export class UploadService {
    * @throws {NotCancellableError} if the resumable upload can not be cancelled.
    */
   public cancelResumableUpload(uploadId: string): Upload {
-    const upload = this.findResumableUpload(uploadId);
+    const upload = this.getResumableUpload(uploadId);
     if (upload.status === UploadStatus.FINISHED) {
       throw new NotCancellableError();
     }
@@ -166,7 +170,7 @@ export class UploadService {
    * @throws {NotActiveUploadError} if the resumable upload is not ACTIVE.
    */
   public finalizeResumableUpload(uploadId: string): Upload {
-    const upload = this.findResumableUpload(uploadId);
+    const upload = this.getResumableUpload(uploadId);
     if (upload.status === UploadStatus.CANCELLED) {
       throw new UploadNotActiveError();
     }
@@ -174,15 +178,7 @@ export class UploadService {
     return upload;
   }
 
-  private findResumableUpload(uploadId: string): Upload {
-    const upload = this._uploads.get(uploadId);
-    if (!upload || upload.type !== UploadType.RESUMABLE) {
-      throw new NotFoundError();
-    }
-    return upload;
-  }
-
-  private stagingFileName(uploadId: string, bucketId: string, objectId: string): string {
+  private getStagingFileName(uploadId: string, bucketId: string, objectId: string): string {
     return encodeURIComponent(`${uploadId}_b_${bucketId}_o_${objectId}`);
   }
 }

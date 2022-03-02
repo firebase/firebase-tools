@@ -114,7 +114,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     const uploadId = req.query.upload_id.toString();
     let upload: Upload;
     try {
-      uploadService.progressResumableUpload(uploadId, req.body);
+      uploadService.continueResumableUpload(uploadId, req.body);
       upload = uploadService.finalizeResumableUpload(uploadId);
     } catch (err) {
       if (err instanceof NotFoundError) {
