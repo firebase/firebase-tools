@@ -884,10 +884,13 @@ describe("Storage emulator", () => {
             }
           }
 
+          expect(metadata.name).to.equal("small_file");
+          expect(metadata.contentType).to.equal("application/octet-stream");
           expect(metadataTypes).to.deep.equal({
             bucket: "string",
-            contentType: "string",
             contentDisposition: "string",
+            contentEncoding: "string",
+            contentType: "string",
             generation: "string",
             md5Hash: "string",
             crc32c: "string",
@@ -905,6 +908,34 @@ describe("Storage emulator", () => {
             selfLink: "string",
             timeStorageClassUpdated: "string",
           });
+        });
+
+        it("should return generated custom metadata for new upload", async () => {
+          const customMetadata = {
+            contentDisposition: "initialCommit",
+            contentType: "image/jpg",
+            name: "test_upload.jpg",
+          };
+
+          const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
+            .post(
+              `/upload/storage/v1/b/${storageBucket}/o?name=test_upload.jpg&uploadType=resumable`
+            )
+            .send(customMetadata)
+            .set({
+              Authorization: "Bearer owner",
+            })
+            .expect(200)
+            .then((res) => new URL(res.header["location"]));
+
+          const returnedMetadata = await supertest(STORAGE_EMULATOR_HOST)
+            .put(uploadURL.pathname + uploadURL.search)
+            .expect(200)
+            .then((res) => res.body);
+
+          expect(returnedMetadata.name).to.equal(customMetadata.name);
+          expect(returnedMetadata.contentType).to.equal(customMetadata.contentType);
+          expect(returnedMetadata.contentDisposition).to.equal(customMetadata.contentDisposition);
         });
 
         it("should return a functional media link", async () => {
@@ -1002,8 +1033,9 @@ describe("Storage emulator", () => {
           expect(metadata.contentType).to.equal("very/fake");
           expect(metadataTypes).to.deep.equal({
             bucket: "string",
-            contentType: "string",
             contentDisposition: "string",
+            contentEncoding: "string",
+            contentType: "string",
             generation: "string",
             md5Hash: "string",
             crc32c: "string",
@@ -1288,6 +1320,40 @@ describe("Storage emulator", () => {
           }, IMAGE_FILE_BASE64);
 
           expect(uploadState).to.equal("success");
+        });
+
+        it("should set custom metadata on resumable uploads", async () => {
+          const customMetadata = {
+            contentDisposition: "initialCommit",
+            contentType: "image/jpg",
+            name: "test_upload.jpg",
+          };
+
+          const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
+            .post(
+              `/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`
+            )
+            .send(customMetadata)
+            .set({
+              Authorization: "Bearer owner",
+              "X-Goog-Upload-Protocol": "resumable",
+              "X-Goog-Upload-Command": "start",
+            })
+            .expect(200)
+            .then((res) => new URL(res.header["x-goog-upload-url"]));
+
+          const returnedMetadata = await supertest(STORAGE_EMULATOR_HOST)
+            .put(uploadURL.pathname + uploadURL.search)
+            .set({
+              "X-Goog-Upload-Protocol": "resumable",
+              "X-Goog-Upload-Command": "upload, finalize",
+            })
+            .expect(200)
+            .then((res) => res.body);
+
+          expect(returnedMetadata.name).to.equal(customMetadata.name);
+          expect(returnedMetadata.contentType).to.equal(customMetadata.contentType);
+          expect(returnedMetadata.contentDisposition).to.equal(customMetadata.contentDisposition);
         });
 
         it("should return a 403 on rules deny", async () => {

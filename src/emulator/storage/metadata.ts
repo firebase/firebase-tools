@@ -392,6 +392,7 @@ export class CloudStorageObjectMetadata {
   contentLanguage?: string;
   contentDisposition: string;
   cacheControl?: string;
+  contentEncoding?: string;
   customTime?: string;
   id: string;
   timeStorageClassUpdated: string;
@@ -437,6 +438,14 @@ export class CloudStorageObjectMetadata {
 
     if (metadata.cacheControl) {
       this.cacheControl = metadata.cacheControl;
+    }
+
+    if (metadata.contentDisposition) {
+      this.contentDisposition = metadata.contentDisposition;
+    }
+
+    if (metadata.contentEncoding) {
+      this.contentEncoding = metadata.contentEncoding;
     }
 
     if (metadata.customTime) {

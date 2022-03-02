@@ -1,0 +1,1 @@
+- Fixes bug where resumable uploads were not setting custom metadata on upload (#3398).
