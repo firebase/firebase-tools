@@ -444,6 +444,8 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
       eventType: endpoint.eventTrigger.eventType,
     };
     if (gcfFunction.eventTrigger.eventType === PUBSUB_PUBLISH_EVENT) {
+      gcfFunction.eventTrigger.eventFilters = [];
+
       const pubsubFilter = backend.findEventFilter(endpoint, "topic");
       if (!pubsubFilter) {
         throw new FirebaseError(
@@ -451,11 +453,18 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
         );
       }
       gcfFunction.eventTrigger.pubsubTopic = pubsubFilter.value;
-    } else {
-      gcfFunction.eventTrigger.eventFilters = [];
-      for (const { attribute, value } of endpoint.eventTrigger.eventFilters) {
-        gcfFunction.eventTrigger.eventFilters.push({ attribute, value });
+
+      for (const filter of endpoint.eventTrigger.eventFilters) {
+        if (filter.attribute === "topic") {
+          continue;
+        }
+        if (!gcfFunction.eventTrigger.eventFilters) {
+          gcfFunction.eventTrigger.eventFilters = [];
+        }
+        gcfFunction.eventTrigger.eventFilters.push(filter);
       }
+    } else {
+      gcfFunction.eventTrigger.eventFilters = endpoint.eventTrigger.eventFilters;
     }
     proto.renameIfPresent(
       gcfFunction.eventTrigger,
