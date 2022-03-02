@@ -7,6 +7,7 @@ import { logger } from "../logger";
 import { promptOnce } from "../prompt";
 import { readEnvFile } from "./paramHelper";
 import { FirebaseError } from "../error";
+import * as utils from "../utils";
 
 const ENV_DIRECTORY = "extensions";
 
@@ -108,8 +109,8 @@ function writeExtensionsToFirebaseJson(specs: InstanceSpec[], config: Config): v
     extensions[s.instanceId] = refs.toExtensionVersionRef(s.ref!);
   }
   config.set("extensions", extensions);
-  logger.info("Adding Extensions to " + clc.bold("firebase.json") + "...");
   config.writeProjectFile("firebase.json", config.src);
+  utils.logSuccess("Wrote extensions to " + clc.bold("firebase.json") + "...");
 }
 
 async function writeEnvFiles(

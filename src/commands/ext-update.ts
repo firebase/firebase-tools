@@ -41,6 +41,7 @@ import * as utils from "../utils";
 import { previews } from "../previews";
 import * as manifest from "../extensions/manifest";
 import { Options } from "../options";
+import { logger } from "..";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -64,7 +65,10 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
   .before(diagnoseAndFixProject)
   .withForce()
   .option("--params <paramsFile>", "name of params variables file with .env format.")
-  .option("--local", "save the update to firebase.json rather than directly update at a Firebase project")
+  .option(
+    "--local",
+    "save the update to firebase.json rather than directly update at a Firebase project"
+  )
   .action(async (instanceId: string, updateSource: string, options: Options) => {
     const projectId = needProjectId(options);
 
@@ -79,44 +83,70 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
       updateSource = inferUpdateSource(updateSource, refs.toExtensionRef(existingRef));
       // TODO(b/213335255): Allow local sources after manifest supports that.
       const newSourceOrigin = getSourceOrigin(updateSource);
-      if (![SourceOrigin.PUBLISHED_EXTENSION, SourceOrigin.PUBLISHED_EXTENSION_VERSION].includes(newSourceOrigin)) {
-        throw new FirebaseError(
-          `Only updating to a published extension version is allowed`
-        );
+      if (
+        ![SourceOrigin.PUBLISHED_EXTENSION, SourceOrigin.PUBLISHED_EXTENSION_VERSION].includes(
+          newSourceOrigin
+        )
+      ) {
+        throw new FirebaseError(`Only updating to a published extension version is allowed`);
       }
 
       const newExtensionVersion = await extensionsApi.getExtensionVersion(updateSource);
+
+      if (extensionVersion.ref === newExtensionVersion.ref) {
+        utils.logLabeledBullet(
+          logPrefix,
+          `${clc.bold(instanceId)} is already up to date. Its version is ${clc.bold(
+            newExtensionVersion.ref
+          )}.`
+        );
+        return;
+      }
+      utils.logLabeledBullet(
+        logPrefix,
+        `Updating ${clc.bold(instanceId)} from version ${clc.bold(
+          extensionVersion.ref
+        )} to version ${clc.bold(newExtensionVersion.ref)}.`
+      );
+      const confirmed = await confirm({
+        nonInteractive: options.nonInteractive,
+        force: options.force,
+        default: false,
+      });
+      if (!confirmed) {
+        utils.logLabeledBullet(logPrefix, "Update aborted.");
+        return;
+      }
 
       const oldParamValues = manifest.readInstanceParam({
         instanceId,
         projectDir: config.projectDir,
       });
 
-      // TODO: THIS SHOULD CHECK ALL EXISTING SPECS EXISTS
       const newParams = await paramHelper.getParamsForUpdate({
         spec: existingSpec,
         newSpec: newExtensionVersion.spec,
         currentParams: oldParamValues,
         projectId,
-        paramsEnvPath: (options.params ?? '') as string,
+        paramsEnvPath: (options.params ?? "") as string,
         nonInteractive: options.nonInteractive,
         instanceId,
       });
-      
+
       await manifest.writeToManifest(
         [
           {
             instanceId,
             ref: refs.parse(newExtensionVersion.ref),
             params: newParams,
-          }
+          },
         ],
         config,
         {
           nonInteractive: options.nonInteractive,
           force: true, // Skip asking for permission again
         }
-      )
+      );
       return;
     }
 
@@ -294,7 +324,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         newSpec,
         currentParams: existingParams,
         projectId,
-        paramsEnvPath: options.params,
+        paramsEnvPath: (options.params ?? "") as string,
         nonInteractive: options.nonInteractive,
         instanceId,
       });
