@@ -79,13 +79,13 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         refs.toExtensionVersionRef(oldRef)
       );
       updateSource = inferUpdateSource(updateSource, refs.toExtensionRef(oldRef));
-      
+
       // TODO(b/213335255): Allow local sources after manifest supports that.
       const newSourceOrigin = getSourceOrigin(updateSource);
       if (
         ![SourceOrigin.PUBLISHED_EXTENSION, SourceOrigin.PUBLISHED_EXTENSION_VERSION].includes(
           newSourceOrigin
-          )
+        )
       ) {
         throw new FirebaseError(`Only updating to a published extension version is allowed`);
       }
@@ -101,7 +101,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         );
         return;
       }
-      
+
       utils.logLabeledBullet(
         logPrefix,
         `Updating ${clc.bold(instanceId)} from version ${clc.bold(
@@ -109,11 +109,13 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         )} to version ${clc.bold(newExtensionVersion.ref)}.`
       );
 
-      if (!await confirm({
-        nonInteractive: options.nonInteractive,
-        force: options.force,
-        default: false,
-      })) {
+      if (
+        !(await confirm({
+          nonInteractive: options.nonInteractive,
+          force: options.force,
+          default: false,
+        }))
+      ) {
         utils.logLabeledBullet(logPrefix, "Update aborted.");
         return;
       }
