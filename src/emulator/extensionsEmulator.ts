@@ -216,7 +216,7 @@ export class ExtensionsEmulator {
 
   /**
    * Filters out Extension backends that include any unemulated triggers.
-   * @param backends
+   * @param backends a list of backends to filter
    * @return a list of backends that include only emulated triggers.
    */
   public filterUnemulatedTriggers(
@@ -225,7 +225,7 @@ export class ExtensionsEmulator {
   ): EmulatableBackend[] {
     let foundUnemulatedTrigger = false;
     const filteredBackends = backends.filter((backend) => {
-      const unemulatedServices = checkForUnemulatedTriggerTypes(options, backend);
+      const unemulatedServices = checkForUnemulatedTriggerTypes(backend, options);
       if (unemulatedServices.length) {
         foundUnemulatedTrigger = true;
         const msg = ` ignored becuase it includes ${unemulatedServices.join(
@@ -235,12 +235,12 @@ export class ExtensionsEmulator {
         )} emulator does not exist or is not running.`;
         this.logger.logLabeled("WARN", `extensions[${backend.extensionInstanceId}]`, msg);
       }
-      return unemulatedServices.length == 0;
+      return unemulatedServices.length === 0;
     });
     if (foundUnemulatedTrigger) {
       const msg =
-        "No Cloud Functions for these instances will be emulated, because partially emulating an Extension can lead to unexpected behavior. " +
-        "To partially emulate these Extension instance anyway, rerun this command with --force";
+        "No Cloud Functions for these instances will be emulated, because partially emulating an Extension can lead to unexpected behavior. ";
+        // TODO(joehanley): "To partially emulate these Extension instance anyway, rerun this command with --force";
       this.logger.log("WARN", msg);
     }
     return filteredBackends;

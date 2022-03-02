@@ -460,7 +460,7 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
     const extensionsBackends = await extensionEmulator.getExtensionBackends();
     const filteredExtensionsBackends = extensionEmulator.filterUnemulatedTriggers(
       options,
-      extensionsBackends
+      extensionsBackends,
     );
     emulatableBackends.push(...filteredExtensionsBackends);
 

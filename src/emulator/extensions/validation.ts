@@ -55,8 +55,8 @@ export async function getUnemulatedAPIs(
  * @param backend
  */
 export function checkForUnemulatedTriggerTypes(
-  options: Options,
-  backend: EmulatableBackend
+  backend: EmulatableBackend,
+  options: Options
 ): string[] {
   const triggers = backend.predefinedTriggers ?? [];
   const unemulatedTriggers = triggers
