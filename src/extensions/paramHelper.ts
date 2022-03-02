@@ -157,21 +157,19 @@ export async function promptForNewParams(args: {
   const comparer = (param1: extensionsApi.Param, param2: extensionsApi.Param) => {
     return param1.type === param2.type && param1.param === param2.param;
   };
-  let paramsDiffDeletions = _.differenceWith(
-    args.spec.params,
-    _.get(args.newSpec, "params", []),
-    comparer
+
+  // Some params are in the spec but not in currentParams, remove so we can prompt for them.
+  const oldParams = args.spec.params.filter((p) =>
+    Object.keys(args.currentParams).includes(p.param)
   );
+
+  let paramsDiffDeletions = _.differenceWith(oldParams, args.newSpec.params, comparer);
   paramsDiffDeletions = substituteParams<extensionsApi.Param[]>(
     paramsDiffDeletions,
     firebaseProjectParams
   );
 
-  let paramsDiffAdditions = _.differenceWith(
-    args.newSpec.params,
-    _.get(args.spec, "params", []),
-    comparer
-  );
+  let paramsDiffAdditions = _.differenceWith(args.newSpec.params, oldParams, comparer);
   paramsDiffAdditions = substituteParams<extensionsApi.Param[]>(
     paramsDiffAdditions,
     firebaseProjectParams

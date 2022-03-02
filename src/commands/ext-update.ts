@@ -39,6 +39,9 @@ import { needProjectId } from "../projectUtils";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import { previews } from "../previews";
+import * as manifest from "../extensions/manifest";
+import { Options } from "../options";
+import { logger } from "..";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -62,10 +65,95 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
   .before(diagnoseAndFixProject)
   .withForce()
   .option("--params <paramsFile>", "name of params variables file with .env format.")
-  .action(async (instanceId: string, updateSource: string, options: any) => {
+  .option(
+    "--local",
+    "save the update to firebase.json rather than directly update at a Firebase project"
+  )
+  .action(async (instanceId: string, updateSource: string, options: Options) => {
+    const projectId = needProjectId(options);
+
+    if (options.local) {
+      const config = manifest.loadConfig(options);
+      const oldRef = manifest.getInstanceRef(instanceId, config);
+      const oldExtensionVersion = await extensionsApi.getExtensionVersion(
+        refs.toExtensionVersionRef(oldRef)
+      );
+      updateSource = inferUpdateSource(updateSource, refs.toExtensionRef(oldRef));
+
+      // TODO(b/213335255): Allow local sources after manifest supports that.
+      const newSourceOrigin = getSourceOrigin(updateSource);
+      if (
+        ![SourceOrigin.PUBLISHED_EXTENSION, SourceOrigin.PUBLISHED_EXTENSION_VERSION].includes(
+          newSourceOrigin
+        )
+      ) {
+        throw new FirebaseError(`Only updating to a published extension version is allowed`);
+      }
+
+      const newExtensionVersion = await extensionsApi.getExtensionVersion(updateSource);
+
+      if (oldExtensionVersion.ref === newExtensionVersion.ref) {
+        utils.logLabeledBullet(
+          logPrefix,
+          `${clc.bold(instanceId)} is already up to date. Its version is ${clc.bold(
+            newExtensionVersion.ref
+          )}.`
+        );
+        return;
+      }
+
+      utils.logLabeledBullet(
+        logPrefix,
+        `Updating ${clc.bold(instanceId)} from version ${clc.bold(
+          oldExtensionVersion.ref
+        )} to version ${clc.bold(newExtensionVersion.ref)}.`
+      );
+
+      if (
+        !(await confirm({
+          nonInteractive: options.nonInteractive,
+          force: options.force,
+          default: false,
+        }))
+      ) {
+        utils.logLabeledBullet(logPrefix, "Update aborted.");
+        return;
+      }
+
+      const oldParamValues = manifest.readInstanceParam({
+        instanceId,
+        projectDir: config.projectDir,
+      });
+
+      const newParams = await paramHelper.getParamsForUpdate({
+        spec: oldExtensionVersion.spec,
+        newSpec: newExtensionVersion.spec,
+        currentParams: oldParamValues,
+        projectId,
+        paramsEnvPath: (options.params ?? "") as string,
+        nonInteractive: options.nonInteractive,
+        instanceId,
+      });
+
+      await manifest.writeToManifest(
+        [
+          {
+            instanceId,
+            ref: refs.parse(newExtensionVersion.ref),
+            params: newParams,
+          },
+        ],
+        config,
+        {
+          nonInteractive: options.nonInteractive,
+          force: true, // Skip asking for permission again
+        }
+      );
+      return;
+    }
+
     const spinner = ora(`Updating ${clc.bold(instanceId)}. This usually takes 3 to 5 minutes...`);
     try {
-      const projectId = needProjectId(options);
       let existingInstance: extensionsApi.ExtensionInstance;
       try {
         existingInstance = await extensionsApi.getInstance(projectId, instanceId);
@@ -238,7 +326,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         newSpec,
         currentParams: existingParams,
         projectId,
-        paramsEnvPath: options.params,
+        paramsEnvPath: (options.params ?? "") as string,
         nonInteractive: options.nonInteractive,
         instanceId,
       });
