@@ -130,9 +130,7 @@ export type FinalizedUpload = {
   file: StoredFile;
 };
 
-/**
- * Parsed request object for {@link StorageLayer#handleGetObject}.
- */
+/**  Parsed request object for {@link StorageLayer#handleGetObject}. */
 export type GetObjectRequest = {
   decodedObjectId: string;
   bucketId: string;
