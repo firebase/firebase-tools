@@ -49,7 +49,8 @@ export interface CallableTriggered {
 }
 
 /** Well known attributes in the eventFilter attribute of an event trigger */
-export type EventFilterAttribute = "resource" | "topic" | "bucket" | string;
+export const EventFilterKnownAttributes = ["resource", "topic", "bucket"] as const;
+export type EventFilterAttribute = typeof EventFilterKnownAttributes[number] | string;
 
 // One or more event filters restrict the set of events delivered to an EventTrigger.
 interface EventFilter {
@@ -572,7 +573,7 @@ export const missingEndpoint =
 /** A helper utility to find event filter of given attribute */
 export function findEventFilter(
   endpoint: Endpoint & EventTriggered,
-  attribute: string
+  attribute: EventFilterAttribute
 ): EventFilter | undefined {
   return endpoint.eventTrigger.eventFilters.find((ef) => ef.attribute === attribute);
 }
