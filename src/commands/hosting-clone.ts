@@ -119,7 +119,9 @@ export default new Command("hosting:clone <source> <targetChannel>")
     const spinner = ora("Cloning site content...").start();
     try {
       if (!equalSiteIds) {
-        const targetVersion = await cloneVersion(targetSiteId, sourceVersionName, true);
+        const targetVersion = await cloneVersion(targetSiteId, sourceVersionName, {
+          finalize: true,
+        });
         if (!targetVersion) {
           throw new FirebaseError(
             `Could not clone the version ${bold(sourceVersion)} for site ${bold(targetSiteId)}.`

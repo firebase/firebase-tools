@@ -5,6 +5,9 @@ import { normalizedHostingConfigs } from "../../hosting/normalizedHostingConfigs
 import { validateDeploy } from "./validate";
 import { convertConfig } from "./convertConfig";
 import * as deploymentTool from "../../deploymentTool";
+import { cloneVersion, getLatestRelease } from "../../hosting/api";
+import { logger } from "../../logger";
+import { logLabeledBullet } from "../../utils";
 
 /**
  *  Prepare creates versions for each Hosting site to be deployed.
@@ -44,16 +47,38 @@ export async function prepare(context: any, options: any): Promise<void> {
       labels: deploymentTool.labels(),
     };
 
-    versionCreates.push(
-      client
-        .post<{ config: unknown; labels: { [k: string]: string } }, { name: string }>(
-          `/projects/${projectNumber}/sites/${deploy.site}/versions`,
-          data
-        )
-        .then((res) => {
-          deploy.version = res.body.name;
-        })
-    );
+    if (cfg.immutable) {
+      logLabeledBullet(
+        `hosting[${deploy.site}]`,
+        "cloning immutable content from current release..."
+      );
+      versionCreates.push(
+        (async function () {
+          // fetch current version from to-deploy-to channel
+          const currentRelease = await getLatestRelease(deploy.site, context.hostingChannel);
+          // clone it, keeping all immutable files
+          const clonedVersion = await cloneVersion(deploy.site, currentRelease.version.name, {
+            finalize: false,
+            include: { regexes: [...cfg.immutable] },
+          });
+          deploy.version = clonedVersion.name;
+          await client.patch(`/${deploy.version}`, data, {
+            queryParams: { updateMask: "config,labels" },
+          });
+        })()
+      );
+    } else {
+      versionCreates.push(
+        client
+          .post<{ config: unknown; labels: { [k: string]: string } }, { name: string }>(
+            `/projects/${projectNumber}/sites/${deploy.site}/versions`,
+            data
+          )
+          .then((res) => {
+            deploy.version = res.body.name;
+          })
+      );
+    }
   }
 
   await Promise.all(versionCreates);
