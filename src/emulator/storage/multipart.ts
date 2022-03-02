@@ -23,7 +23,7 @@ function parseMultipartRequestBody(boundaryId: string, body: string): MultipartR
     // Strip leading \r\n. Avoid using trim to avoid stripping out intentional whitespace in the data payload.
     return part.slice(0, 2) === "\r\n" ? part.slice(2) : part;
   });
-  if (bodyParts[bodyParts.length - 1] !== "--\r\n") {
+  if (bodyParts[bodyParts.length - 1].trim() !== "--") {
     throw new Error(`Failed to parse multipart request body: ${body}`);
   }
   const parsedParts: MultipartRequestBodyPart[] = [];

@@ -150,7 +150,7 @@ export class StorageLayer {
   constructor(
     private _projectId: string,
     private _persistence: Persistence,
-    private _rulesProvider: RulesetProvider,
+    private _rulesProvider: RulesetProvider
   ) {
     this.reset();
     this._cloudFunctions = new StorageCloudFunctions(this._projectId);
@@ -275,12 +275,13 @@ export class StorageLayer {
     return this._persistence.deleteAll();
   }
 
-  /** 
+  /**
    * Last step in uploading a file. Validates the request and persists the staging
    * object to its permanent location on disk.
+   * TODO(tonyjhuang): Inject a Rules evaluator into StorageLayer to avoid needing skipAuth param
    * @throws {ForbiddenError} if the request fails security rules auth.
    */
-  public async handleUploadObject(upload: Upload): Promise<StoredFileMetadata> {
+  public async handleUploadObject(upload: Upload, skipAuth = false): Promise<StoredFileMetadata> {
     if (upload.status !== UploadStatus.FINISHED) {
       throw new Error(`Unexpected upload status encountered: ${upload.status}.`);
     }
@@ -298,7 +299,7 @@ export class StorageLayer {
       this._cloudFunctions,
       this._persistence.readBytes(upload.path, upload.size)
     );
-    let authorized = await isPermitted({
+    let authorized = skipAuth ||  await isPermitted({
       ruleset: this.rules,
       method: RulesetOperationMethod.CREATE,
       path: operationPath,
@@ -310,6 +311,9 @@ export class StorageLayer {
       throw new ForbiddenError();
     }
     metadata.addDownloadToken();
+
+    console.log("handleUploadObject")
+    console.log(`StoredFileMetadata: ${JSON.stringify(metadata, null, 4)}`);
 
     // Persist to permanent location on disk.
     this._persistence.deleteFile(filePath, /* failSilently = */ true);

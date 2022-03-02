@@ -127,14 +127,14 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
 
     let metadata: StoredFileMetadata;
     try {
-      metadata = await storageLayer.handleUploadObject(upload);
+      metadata = await storageLayer.handleUploadObject(upload, /* skipAuth = */ true);
     } catch (err) {
       if (err instanceof ForbiddenError) {
         throw new Error("Request failed unexpectedly due to Firebase Rules.");
       }
       throw err;
     }
-    return res.sendStatus(200).json(new CloudStorageObjectMetadata(metadata));
+    return res.send(200).json(new CloudStorageObjectMetadata(metadata));
   });
 
   gcloudStorageAPI.post("/b/:bucketId/o/:objectId/acl", (req, res) => {
@@ -216,6 +216,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     let metadataRaw: string;
     let dataRaw: string;
     console.log("gcloud 2");
+    console.log(JSON.stringify(req.body.toString()));
     try {
       ({ metadataRaw, dataRaw } = parseObjectUploadMultipartRequest(
         contentType!,
@@ -233,6 +234,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       throw err;
     }
     console.log("gcloud 3");
+    console.log(`authorization: ${req.header("authorization")}`);
     const upload = uploadService.multipartUpload({
       bucketId: req.params.bucketId,
       objectId: name,
@@ -244,7 +246,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     console.log("gcloud 4");
     let metadata: StoredFileMetadata;
     try {
-      metadata = await storageLayer.handleUploadObject(upload);
+      metadata = await storageLayer.handleUploadObject(upload, /* skipAuth = */ true);
     } catch (err) {
       if (err instanceof ForbiddenError) {
         throw new Error("Request failed unexpectedly due to Firebase Rules.");
@@ -253,6 +255,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     }
 
     console.log("gcloud 5");
+    console.log(JSON.stringify(new CloudStorageObjectMetadata(metadata), null, 4));
     return res.status(200).json(new CloudStorageObjectMetadata(metadata)).send();
   });
 
