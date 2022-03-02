@@ -4,6 +4,7 @@ import { Client } from "../apiv2";
 import { FirebaseError } from "../error";
 import { functionsV2Origin } from "../api";
 import { logger } from "../logger";
+import { PUBSUB_PUBLISH_EVENT } from "../functions/events/v2";
 import * as backend from "../deploy/functions/backend";
 import * as runtimes from "../deploy/functions/runtimes";
 import * as proto from "./proto";
@@ -16,16 +17,6 @@ const client = new Client({
   auth: true,
   apiVersion: API_VERSION,
 });
-
-export const PUBSUB_PUBLISH_EVENT = "google.cloud.pubsub.topic.v1.messagePublished";
-export const STORAGE_EVENTS = [
-  "google.cloud.storage.object.v1.finalized",
-  "google.cloud.storage.object.v1.archived",
-  "google.cloud.storage.object.v1.deleted",
-  "google.cloud.storage.object.v1.metadataUpdated",
-];
-
-export const PUBSUB_V2_EVENT = "google.cloud.pubsub.topic.v1.messagePublished";
 
 export type VpcConnectorEgressSettings = "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC";
 export type IngressSettings = "ALLOW_ALL" | "ALLOW_INTERNAL_ONLY" | "ALLOW_INTERNAL_AND_GCLB";

@@ -9,7 +9,7 @@ import * as api from "../../../../api";
 import * as proto from "../../../../gcp/proto";
 import * as args from "../../args";
 import * as runtimes from "../../runtimes";
-import { STORAGE_EVENTS, PUBSUB_PUBLISH_EVENT } from "../../../../gcp/cloudfunctionsv2";
+import * as v2events from "../../../../functions/events/v2";
 
 const TRIGGER_PARSER = path.resolve(__dirname, "./triggerParser.js");
 
@@ -131,7 +131,7 @@ function parseTriggers(
   });
 }
 
-/** Currently we always use JS trigger parsing **/
+/** Currently we always use JS trigger parsing */
 export function useStrategy(context: args.Context): Promise<boolean> {
   return Promise.resolve(true);
 }
@@ -168,6 +168,9 @@ export function mergeRequiredAPIs(backend: backend.Backend) {
   backend.requiredAPIs = merged;
 }
 
+/**
+ *
+ */
 export function addResourcesToBackend(
   projectId: string,
   runtime: runtimes.Runtime,
@@ -224,7 +227,7 @@ export function addResourcesToBackend(
       // TODO: yank this edge case for a v2 trigger on the pre-container contract
       // once we use container contract for the functionsv2 experiment.
       if (annotation.platform === "gcfv2") {
-        if (annotation.eventTrigger!.eventType === PUBSUB_PUBLISH_EVENT) {
+        if (annotation.eventTrigger!.eventType === v2events.PUBSUB_PUBLISH_EVENT) {
           triggered.eventTrigger.eventFilters = [
             {
               attribute: "topic",
@@ -233,7 +236,11 @@ export function addResourcesToBackend(
           ];
         }
 
-        if (STORAGE_EVENTS.find((event) => event === (annotation.eventTrigger?.eventType || ""))) {
+        if (
+          v2events.STORAGE_EVENTS.find(
+            (event) => event === (annotation.eventTrigger?.eventType || "")
+          )
+        ) {
           triggered.eventTrigger.eventFilters = [
             {
               attribute: "bucket",

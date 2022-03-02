@@ -4,8 +4,8 @@ import * as sinon from "sinon";
 import * as backend from "../../../../deploy/functions/backend";
 import * as planner from "../../../../deploy/functions/release/planner";
 import * as deploymentTool from "../../../../deploymentTool";
-import * as gcfv2 from "../../../../gcp/cloudfunctionsv2";
 import * as utils from "../../../../utils";
+import * as v2events from "../../../../functions/events/v2";
 
 describe("planner", () => {
   let logLabeledBullet: sinon.SinonStub;
@@ -50,7 +50,7 @@ describe("planner", () => {
       const original: backend.Endpoint = {
         ...func("a", "b", {
           eventTrigger: {
-            eventType: gcfv2.PUBSUB_PUBLISH_EVENT,
+            eventType: v2events.PUBSUB_PUBLISH_EVENT,
             eventFilters: [
               {
                 attribute: "topic",
@@ -331,7 +331,7 @@ describe("planner", () => {
 
   it("detects changes to v2 pubsub topics", () => {
     const eventTrigger: backend.EventTrigger = {
-      eventType: gcfv2.PUBSUB_PUBLISH_EVENT,
+      eventType: v2events.PUBSUB_PUBLISH_EVENT,
       eventFilters: [
         {
           attribute: "topic",

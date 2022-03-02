@@ -14,6 +14,7 @@ import * as cloudtasksNS from "../../../../gcp/cloudtasks";
 import * as backend from "../../../../deploy/functions/backend";
 import * as scraper from "../../../../deploy/functions/release/sourceTokenScraper";
 import * as planner from "../../../../deploy/functions/release/planner";
+import * as v2events from "../../../../functions/events/v2";
 
 describe("Fabricator", () => {
   // Stub all GCP APIs to make sure this test is hermetic
@@ -309,7 +310,7 @@ describe("Fabricator", () => {
       const ep = endpoint(
         {
           eventTrigger: {
-            eventType: gcfv2.PUBSUB_PUBLISH_EVENT,
+            eventType: v2events.PUBSUB_PUBLISH_EVENT,
             eventFilters: [
               {
                 attribute: "topic",
@@ -335,7 +336,7 @@ describe("Fabricator", () => {
       const ep = endpoint(
         {
           eventTrigger: {
-            eventType: gcfv2.PUBSUB_PUBLISH_EVENT,
+            eventType: v2events.PUBSUB_PUBLISH_EVENT,
             eventFilters: [
               {
                 attribute: "topic",
@@ -730,7 +731,7 @@ describe("Fabricator", () => {
       // all APIs throw by default
       const ep = endpoint({
         eventTrigger: {
-          eventType: gcfNSV2.PUBSUB_PUBLISH_EVENT,
+          eventType: v2events.PUBSUB_PUBLISH_EVENT,
           eventFilters: [
             {
               attribute: "topic",
@@ -786,7 +787,7 @@ describe("Fabricator", () => {
       // all APIs throw by default
       const ep = endpoint({
         eventTrigger: {
-          eventType: gcfNSV2.PUBSUB_PUBLISH_EVENT,
+          eventType: v2events.PUBSUB_PUBLISH_EVENT,
           eventFilters: [
             {
               attribute: "topic",

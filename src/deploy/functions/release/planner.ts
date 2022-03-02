@@ -1,10 +1,9 @@
-import { functionMatchesAnyGroup } from "../functionsDeployHelper";
-import { getFunctionLabel } from "../functionsDeployHelper";
+import { functionMatchesAnyGroup, getFunctionLabel } from "../functionsDeployHelper";
 import { isFirebaseManaged } from "../../../deploymentTool";
 import { FirebaseError } from "../../../error";
 import * as utils from "../../../utils";
 import * as backend from "../backend";
-import * as gcfv2 from "../../../gcp/cloudfunctionsv2";
+import * as v2events from "../../../functions/events/v2";
 
 export interface EndpointUpdate {
   endpoint: backend.Endpoint;
@@ -165,10 +164,10 @@ export function changedV2PubSubTopic(want: backend.Endpoint, have: backend.Endpo
   if (!backend.isEventTriggered(have)) {
     return false;
   }
-  if (want.eventTrigger.eventType != gcfv2.PUBSUB_PUBLISH_EVENT) {
+  if (want.eventTrigger.eventType != v2events.PUBSUB_PUBLISH_EVENT) {
     return false;
   }
-  if (have.eventTrigger.eventType !== gcfv2.PUBSUB_PUBLISH_EVENT) {
+  if (have.eventTrigger.eventType !== v2events.PUBSUB_PUBLISH_EVENT) {
     return false;
   }
 

@@ -2,6 +2,7 @@ import { expect } from "chai";
 
 import * as cloudfunctionsv2 from "../../gcp/cloudfunctionsv2";
 import * as backend from "../../deploy/functions/backend";
+import * as v2events from "../../functions/events/v2";
 
 describe("cloudfunctionsv2", () => {
   const FUNCTION_NAME: backend.TargetIds = {
@@ -198,7 +199,7 @@ describe("cloudfunctionsv2", () => {
         ...ENDPOINT,
         platform: "gcfv2",
         eventTrigger: {
-          eventType: cloudfunctionsv2.PUBSUB_PUBLISH_EVENT,
+          eventType: v2events.PUBSUB_PUBLISH_EVENT,
           eventFilters: [
             {
               attribute: "topic",
@@ -219,7 +220,7 @@ describe("cloudfunctionsv2", () => {
       > = {
         ...CLOUD_FUNCTION_V2,
         eventTrigger: {
-          eventType: cloudfunctionsv2.PUBSUB_PUBLISH_EVENT,
+          eventType: v2events.PUBSUB_PUBLISH_EVENT,
           pubsubTopic: "projects/p/topics/t",
         },
         serviceConfig: {
@@ -253,7 +254,7 @@ describe("cloudfunctionsv2", () => {
         cloudfunctionsv2.endpointFromFunction({
           ...HAVE_CLOUD_FUNCTION_V2,
           eventTrigger: {
-            eventType: cloudfunctionsv2.PUBSUB_PUBLISH_EVENT,
+            eventType: v2events.PUBSUB_PUBLISH_EVENT,
             pubsubTopic: "projects/p/topics/t",
           },
         })
@@ -262,7 +263,7 @@ describe("cloudfunctionsv2", () => {
         platform: "gcfv2",
         uri: RUN_URI,
         eventTrigger: {
-          eventType: cloudfunctionsv2.PUBSUB_PUBLISH_EVENT,
+          eventType: v2events.PUBSUB_PUBLISH_EVENT,
           eventFilters: [
             {
               attribute: "topic",
