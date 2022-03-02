@@ -425,7 +425,8 @@ export async function publishExtensionVersionFromLocalSource(args: {
         )
     );
   }
-  if (!notes && extension) {
+  // Skip this check for prerelease versions
+  if (!notes && !semver.prerelease(extensionSpec.version) && extension) {
     // If this is not the first version of this extension, we require release notes
     throw new FirebaseError(
       `No entry for version ${extensionSpec.version} found in CHANGELOG.md. ` +

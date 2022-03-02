@@ -1,0 +1,1 @@
+- Improves support for prerelease candidate versions in `ext:dev:publish`.
