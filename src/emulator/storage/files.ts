@@ -197,6 +197,7 @@ export class StorageLayer {
     const operationPath = ["b", request.bucketId, "o", request.decodedObjectId].join("/");
     const metadata = this.getMetadata(request.bucketId, request.decodedObjectId);
 
+    // If a valid download token is present, skip Firebase Rules auth. Mainly used by the js sdk.
     let authorized = (metadata?.downloadTokens || []).includes(request.downloadToken ?? "");
     if (!authorized) {
       authorized = await isPermitted({

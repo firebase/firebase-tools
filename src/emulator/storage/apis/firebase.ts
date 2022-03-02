@@ -103,9 +103,8 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         return res.sendStatus(404);
       } else if (err instanceof ForbiddenError) {
         return res.sendStatus(403);
-      } else {
-        throw err;
       }
+      throw err;
     }
 
     // Object data request
@@ -127,9 +126,8 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         };
         res.setHeader("Content-Range", `bytes ${range.start}-${range.end - 1}/${data.byteLength}`);
         return res.status(206).end(data.slice(range.start, range.end));
-      } else {
-        return res.end(data);
       }
+      return res.end(data);
     }
 
     // Object metadata request
