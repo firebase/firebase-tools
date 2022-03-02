@@ -84,7 +84,7 @@ export default new Command("ext:install [extensionName]")
     }
     let source;
     let extVersion;
-    
+
     // TODO(b/220900194): Track url install usage to determine if we can remove this feature.
     if (isUrlPath(extensionName)) {
       track("Extension Install", "Install by url path", options.interactive ? 1 : 0);
