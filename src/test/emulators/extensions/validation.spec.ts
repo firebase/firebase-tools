@@ -1,11 +1,32 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
-import * as utils from "../../../emulator/extensions/validation";
+import * as validation from "../../../emulator/extensions/validation";
 import * as ensureApiEnabled from "../../../ensureApiEnabled";
+import * as controller from "../../../emulator/controller";
 import { InstanceSpec } from "../../../deploy/extensions/planner";
+import { EmulatableBackend } from "../../../emulator/functionsEmulator";
+import { Emulators } from "../../../emulator/types";
+import { EventTrigger, ParsedTriggerDefinition } from "../../../emulator/functionsEmulatorShared";
+import { Options } from "../../../options";
+import { RC } from "../../../rc";
+import { Config } from "../../../config";
 
-function getTestInstanceSpecWithAPI(instanceId: string, apiName: string): InstanceSpec {
+const TEST_OPTIONS: Options = {
+  cwd: ".",
+  configPath: ".",
+  only: "",
+  except: "",
+  force: false,
+  filteredTargets: [""],
+  nonInteractive: true,
+  interactive: false,
+  json: false,
+  debug: false,
+  rc: new RC(),
+  config: new Config("."),
+};
+function fakeInstanceSpecWithAPI(instanceId: string, apiName: string): InstanceSpec {
   return {
     instanceId,
     params: {},
@@ -27,8 +48,31 @@ function getTestInstanceSpecWithAPI(instanceId: string, apiName: string): Instan
   };
 }
 
-describe("ExtensionsEmulator validation utils", () => {
-  describe(`${utils.getUnemulatedAPIs.name}`, () => {
+function getTestEmulatableBackend(
+  predefinedTriggers: ParsedTriggerDefinition[]
+): EmulatableBackend {
+  return {
+    functionsDir: ".",
+    env: {},
+    predefinedTriggers,
+  };
+}
+
+function getTestParsedTriggerDefinition(args: {
+  httpsTrigger?: {};
+  eventTrigger?: EventTrigger;
+}): ParsedTriggerDefinition {
+  return {
+    entryPoint: "test",
+    platform: "gcfv1",
+    name: "test",
+    eventTrigger: args.eventTrigger,
+    httpsTrigger: args.httpsTrigger,
+  };
+}
+
+describe("ExtensionsEmulator validation validation", () => {
+  describe(`${validation.getUnemulatedAPIs.name}`, () => {
     const testProjectId = "test-project";
     const testAPI = "test.googleapis.com";
     const sandbox = sinon.createSandbox();
@@ -48,10 +92,10 @@ describe("ExtensionsEmulator validation utils", () => {
       const instanceId2WithUnemulatedAPI = "unemulated2";
       const instanceIdWithEmulatedAPI = "emulated";
 
-      const result = await utils.getUnemulatedAPIs(testProjectId, [
-        getTestInstanceSpecWithAPI(instanceIdWithEmulatedAPI, "firestore.googleapis.com"),
-        getTestInstanceSpecWithAPI(instanceIdWithUnemulatedAPI, testAPI),
-        getTestInstanceSpecWithAPI(instanceId2WithUnemulatedAPI, testAPI),
+      const result = await validation.getUnemulatedAPIs(testProjectId, [
+        fakeInstanceSpecWithAPI(instanceIdWithEmulatedAPI, "firestore.googleapis.com"),
+        fakeInstanceSpecWithAPI(instanceIdWithUnemulatedAPI, testAPI),
+        fakeInstanceSpecWithAPI(instanceId2WithUnemulatedAPI, testAPI),
       ]);
 
       expect(result).to.deep.equal([
@@ -62,5 +106,114 @@ describe("ExtensionsEmulator validation utils", () => {
         },
       ]);
     });
+  });
+
+  describe(`${validation.checkForUnemulatedTriggerTypes.name}`, () => {
+    const sandbox = sinon.createSandbox();
+
+    beforeEach(() => {
+      const shouldStartStub = sandbox.stub(controller, "shouldStart");
+      shouldStartStub.withArgs(sinon.match.any, Emulators.STORAGE).returns(true);
+      shouldStartStub.withArgs(sinon.match.any, Emulators.DATABASE).returns(true);
+      shouldStartStub.withArgs(sinon.match.any, Emulators.FIRESTORE).returns(false);
+      shouldStartStub.withArgs(sinon.match.any, Emulators.AUTH).returns(false);
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    const tests: {
+      desc: string;
+      input: ParsedTriggerDefinition[];
+      want: string[];
+    }[] = [
+      {
+        desc: "should return trigger types for emulators that are not running",
+        input: [
+          getTestParsedTriggerDefinition({
+            eventTrigger: {
+              resource: "test/{*}",
+              eventType: "providers/cloud.firestore/eventTypes/document.create",
+            },
+          }),
+          getTestParsedTriggerDefinition({
+            eventTrigger: {
+              resource: "test",
+              eventType: "providers/firebase.auth/eventTypes/user.create",
+            },
+          }),
+        ],
+        want: ["firestore", "auth"],
+      },
+      {
+        desc: "should return trigger types that don't have an emulator",
+        input: [
+          getTestParsedTriggerDefinition({
+            eventTrigger: {
+              resource: "test",
+              eventType: "providers/google.firebase.analytics/eventTypes/event.log",
+            },
+          }),
+        ],
+        want: ["analytics"],
+      },
+      {
+        desc: "should not return duplicates",
+        input: [
+          getTestParsedTriggerDefinition({
+            eventTrigger: {
+              resource: "test/{*}",
+              eventType: "providers/cloud.firestore/eventTypes/document.create",
+            },
+          }),
+          getTestParsedTriggerDefinition({
+            eventTrigger: {
+              resource: "test/{*}",
+              eventType: "providers/cloud.firestore/eventTypes/document.create",
+            },
+          }),
+        ],
+        want: ["firestore"],
+      },
+      {
+        desc: "should not return trigger types for emulators that are running",
+        input: [
+          getTestParsedTriggerDefinition({
+            eventTrigger: {
+              resource: "test/{*}",
+              eventType: "google.storage.object.finalize",
+            },
+          }),
+          getTestParsedTriggerDefinition({
+            eventTrigger: {
+              resource: "test/{*}",
+              eventType: "providers/google.firebase.database/eventTypes/ref.write",
+            },
+          }),
+        ],
+        want: [],
+      },
+      {
+        desc: "should not return trigger types for https triggers",
+        input: [
+          getTestParsedTriggerDefinition({
+            httpsTrigger: {},
+          }),
+        ],
+        want: [],
+      },
+    ];
+
+    for (const test of tests) {
+      it(test.desc, () => {
+        const result = validation.checkForUnemulatedTriggerTypes(
+          getTestEmulatableBackend(test.input),
+          TEST_OPTIONS
+        );
+
+        expect(result).to.have.members(test.want);
+      });
+    }
   });
 });
