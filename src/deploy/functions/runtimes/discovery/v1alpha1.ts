@@ -129,11 +129,12 @@ function parseEndpoints(
       });
       triggered = { eventTrigger: ep.eventTrigger };
       for (const eventFilter of triggered.eventTrigger.eventFilters) {
-        if (backend.EventFilterKnownAttributes.some((attr) => attr === eventFilter.attribute)) {
-          if (!eventFilter.value.startsWith("projects/")) {
-            // Construct full resource name.
-            eventFilter.value = `projects/${project}/${eventFilter.attribute}/${eventFilter.value}`;
-          }
+        if (
+          ["topic", "resource"].includes(eventFilter.attribute) &&
+          !eventFilter.value.startsWith("projects/")
+        ) {
+          // Construct full resource name.
+          eventFilter.value = `projects/${project}/${eventFilter.attribute}/${eventFilter.value}`;
         }
       }
     } else if (backend.isHttpsTriggered(ep)) {

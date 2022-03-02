@@ -48,9 +48,7 @@ export interface CallableTriggered {
   callableTrigger: CallableTrigger;
 }
 
-/** Well known attributes in the eventFilter attribute of an event trigger */
-export const EventFilterKnownAttributes = ["resource", "topic", "bucket"] as const;
-export type EventFilterAttribute = typeof EventFilterKnownAttributes[number] | string;
+type EventFilterAttribute = "resource" | "topic" | "bucket" | string;
 
 // One or more event filters restrict the set of events delivered to an EventTrigger.
 interface EventFilter {
