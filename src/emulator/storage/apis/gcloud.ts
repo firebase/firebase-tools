@@ -13,7 +13,7 @@ import { StorageLayer } from "../files";
 import type { Request, Response } from "express";
 import { Upload, UploadNotActiveError } from "../upload";
 import { ForbiddenError, NotFoundError } from "../errors";
-import { parseObjectUploadMultipartRequest } from "../multipart";
+import { parseObjectUploadMultipartRequest, legacyParse } from "../multipart";
 
 /**
  * @param emulator
@@ -208,7 +208,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     let metadataRaw: string;
     let dataRaw: Buffer;
     try {
-      ({ metadataRaw, dataRaw } = parseObjectUploadMultipartRequest(
+      ({ metadataRaw, dataRaw } = legacyParse (//parseObjectUploadMultipartRequest(
         contentType!,
         req.body as Buffer
       ));
@@ -223,6 +223,18 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       }
       throw err;
     }
+    ({ metadataRaw, dataRaw } = parseObjectUploadMultipartRequest (
+      contentType!,
+      req.body as Buffer
+    ));
+    console.log(`new metadataRaw: ${metadataRaw}, dataRaw: ${dataRaw}`);
+    ({ metadataRaw, dataRaw } = legacyParse (
+      contentType!,
+      req.body as Buffer
+    ));
+    console.log(`legacy metadataRaw: ${metadataRaw}, dataRaw: ${dataRaw}`);
+
+
     const upload = uploadService.multipartUpload({
       bucketId: req.params.bucketId,
       objectId: name,
@@ -240,7 +252,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       throw err;
     }
 
-    return res.status(200).json(new CloudStorageObjectMetadata(metadata)).send();
+    return res.status(200).json(new CloudStorageObjectMetadata(metadata));
   });
 
   gcloudStorageAPI.get("/:bucketId/:objectId(**)", (req, res) => {

@@ -1,6 +1,6 @@
-/** 
- * Represents a parsed multipart form body for an upload object request. 
- * 
+/**
+ * Represents a parsed multipart form body for an upload object request.
+ *
  * Note: This class and others in files deal directly with buffers as
  * converting to String can append unwanted encoding data to the original
  * blob data in the request.
@@ -59,31 +59,30 @@ type MultipartRequestBodyPart = {
 };
 
 /**
- * Parses a string into a {@link MultipartRequestBodyPart}.
+ * Parses a string into a {@link MultipartRequestBodyPart}. We expect 3 sections
+ * delineated by '\r\n':
+ * 1: content type
+ * 2: white space
+ * 3: free form data (that may also contain '\r\n')
  * @param bodyPart a multipart request body part as a Buffer
  */
 function parseMultipartRequestBodyPart(bodyPart: Buffer): MultipartRequestBodyPart {
-  let offset = 0;
-  let nextLineSeparatorIndex = bodyPart.indexOf(LINE_SEPARATOR, offset);
-  const lines: Buffer[] = [];
-  while (nextLineSeparatorIndex !== -1) {
-    lines.push(Buffer.from(bodyPart.slice(offset, nextLineSeparatorIndex)));
-    offset = nextLineSeparatorIndex + LINE_SEPARATOR.length;
-    nextLineSeparatorIndex = bodyPart.indexOf(LINE_SEPARATOR, offset);
+  let nextLineSeparatorIndex = bodyPart.indexOf(LINE_SEPARATOR, 0);
+  let contentTypeRaw = Buffer.from(bodyPart.slice(0, nextLineSeparatorIndex)).toString();
+  if (!contentTypeRaw.startsWith("Content-Type: ")) {
+    throw new Error(`Failed to parse multipart request body part. Missing content type.`);
   }
-  // Lines:
-  //   0: content type
-  //   1: white space
-  //   2: data
-  if (lines.length !== 3) {
-    throw new Error(`Failed to parse multipart request body part: ${bodyPart}`);
+
+  // Skip the next line break to account for white space padding.
+  let offset = nextLineSeparatorIndex + LINE_SEPARATOR.length;
+  nextLineSeparatorIndex = bodyPart.indexOf(LINE_SEPARATOR, offset);
+  if (nextLineSeparatorIndex === -1) {
+    throw new Error("Encountered malformed request body part.");
   }
-  if (!lines[0].toString().startsWith("Content-Type: ")) {
-    throw new Error(
-      `Failed to parse multipart request body part: ${bodyPart}. Missing content type.`
-    );
-  }
-  return { contentTypeRaw: lines[0].toString(), dataRaw: lines[2] };
+  offset = nextLineSeparatorIndex + LINE_SEPARATOR.length;
+
+  let dataRaw = Buffer.from(bodyPart.slice(offset));
+  return { contentTypeRaw, dataRaw };
 }
 
 /**
@@ -122,3 +121,35 @@ export function parseObjectUploadMultipartRequest(
     dataRaw: Buffer.from(parsed.dataParts[1].dataRaw),
   };
 }
+
+export function legacyParse(contentType: string,
+  body: Buffer): ObjectUploadMultipartData {
+      if (!contentType || !contentType.startsWith("multipart/related")) {
+        throw new Error("wrong content type");
+      }
+
+      const boundary = `--${contentType.split("boundary=")[1]}`;
+      const bodyString = body.toString();
+      const bodyStringParts = bodyString.split(boundary).filter((v: string) => v);
+
+      const metadataString = bodyStringParts[0].split("\r\n")[3];
+      const blobParts = bodyStringParts[1].split("\r\n");
+      const blobContentTypeString = blobParts[1];
+      if (!blobContentTypeString || !blobContentTypeString.startsWith("Content-Type: ")) {
+        throw new Error("bad content type");
+      }
+      const blobContentType = blobContentTypeString.slice("Content-Type: ".length);
+
+      const metadataSegment = `${boundary}${bodyString.split(boundary)[1]}`;
+      const dataSegment = `${boundary}${bodyString.split(boundary).slice(2)[0]}`;
+      const dataSegmentHeader = (dataSegment.match(/.+Content-Type:.+?\r\n\r\n/s) || [])[0];
+
+      if (!dataSegmentHeader) {
+        throw new Error("bad segment");
+      }
+
+      const bufferOffset = metadataSegment.length + dataSegmentHeader.length;
+
+      const blobBytes = Buffer.from(body.slice(bufferOffset, -`\r\n${boundary}--`.length));
+      return {metadataRaw: metadataString, dataRaw: blobBytes};
+  }

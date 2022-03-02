@@ -317,7 +317,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
           return res.status(403).json({
             error: {
               code: 403,
-              message: `Permission denied. No WRITE permission.`,
+              message: "Permission denied. No WRITE permission.",
             },
           });
         }
@@ -403,6 +403,19 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
 
     if (uploadCommand.includes("upload")) {
       let upload: Upload;
+      if (!(req.body instanceof Buffer)) {
+        const bufs: Buffer[] = [];
+        req.on("data", (data) => {
+          bufs.push(data);
+        });
+
+        await new Promise<void>((resolve) => {
+          req.on("end", () => {
+            req.body = Buffer.concat(bufs);
+            resolve();
+          });
+        });
+      }
       try {
         upload = uploadService.continueResumableUpload(uploadId, req.body as Buffer);
       } catch (err) {
