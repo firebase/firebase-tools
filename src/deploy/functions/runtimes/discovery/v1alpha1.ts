@@ -129,12 +129,9 @@ function parseEndpoints(
       });
       triggered = { eventTrigger: ep.eventTrigger };
       for (const eventFilter of triggered.eventTrigger.eventFilters) {
-        if (
-          ["topic", "resource"].includes(eventFilter.attribute) &&
-          !eventFilter.value.startsWith("projects/")
-        ) {
-          // Construct full resource name.
-          eventFilter.value = `projects/${project}/${eventFilter.attribute}/${eventFilter.value}`;
+        if (eventFilter.attribute === "topic" && !eventFilter.value.startsWith("projects/")) {
+          // Construct full pubsub topic name.
+          eventFilter.value = `projects/${project}/topics/${eventFilter.value}`;
         }
       }
     } else if (backend.isHttpsTriggered(ep)) {
