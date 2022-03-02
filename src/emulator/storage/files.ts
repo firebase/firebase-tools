@@ -127,9 +127,7 @@ export type FinalizedUpload = {
   file: StoredFile;
 };
 
-/**
- * Parsed request object for {@link StorageLayer#handleGetObject}.
- */
+/**  Parsed request object for {@link StorageLayer#handleGetObject}. */
 export type GetObjectRequest = {
   decodedObjectId: string;
   bucketId: string;
@@ -142,6 +140,8 @@ export type GetObjectResponse = {
   metadata: StoredFileMetadata;
   data: Buffer;
 };
+
+type RulesetProvider = () => StorageRulesetInstance | undefined;
 export class StorageLayer {
   private _files!: Map<string, StoredFile>;
   private _buckets!: Map<string, CloudStorageBucketMetadata>;
@@ -150,7 +150,7 @@ export class StorageLayer {
   constructor(
     private _projectId: string,
     private _persistence: Persistence,
-    private _rules: StorageRulesetInstance | undefined
+    private _rulesProvider: RulesetProvider,
   ) {
     this.reset();
     this._cloudFunctions = new StorageCloudFunctions(this._projectId);
@@ -159,6 +159,10 @@ export class StorageLayer {
   public reset(): void {
     this._files = new Map();
     this._buckets = new Map();
+  }
+
+  private get rules(): StorageRulesetInstance | undefined {
+    return this._rulesProvider();
   }
 
   createBucket(id: string): void {
@@ -188,10 +192,11 @@ export class StorageLayer {
     const operationPath = ["b", request.bucketId, "o", request.decodedObjectId].join("/");
     const metadata = this.getMetadata(request.bucketId, request.decodedObjectId);
 
+    // If a valid download token is present, skip Firebase Rules auth. Mainly used by the js sdk.
     let authorized = (metadata?.downloadTokens || []).includes(request.downloadToken ?? "");
     if (!authorized) {
       authorized = await isPermitted({
-        ruleset: this._rules,
+        ruleset: this.rules,
         method: RulesetOperationMethod.GET,
         path: operationPath,
         file: { before: metadata?.asRulesResource() },
@@ -294,7 +299,7 @@ export class StorageLayer {
       this._persistence.readBytes(upload.path, upload.size)
     );
     let authorized = await isPermitted({
-      ruleset: this._rules,
+      ruleset: this.rules,
       method: RulesetOperationMethod.CREATE,
       path: operationPath,
       file: { before: metadata?.asRulesResource() },

@@ -37,10 +37,9 @@ export class StorageEmulator implements EmulatorInstance {
   private _uploadService: UploadService;
 
   constructor(private args: StorageEmulatorArgs) {
-    const downloadDetails = getDownloadDetails(Emulators.STORAGE);
     this._rulesRuntime = new StorageRulesRuntime();
     this._persistence = new Persistence(this.getPersistenceTmpDir());
-    this._storageLayer = new StorageLayer(args.projectId, this._persistence, this._rules);
+    this._storageLayer = new StorageLayer(args.projectId, this._persistence, () => this.rules);
     this._uploadService = new UploadService(this._persistence);
   }
 
