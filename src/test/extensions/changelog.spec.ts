@@ -142,7 +142,7 @@ describe("changelog", () => {
         },
       },
       {
-        description: "should handle rc versioms",
+        description: "should handle prerelease versions",
         in: "Some random words\n## Version 0.1.0-rc.1\nNotes\n## Version 0.1.1-release-candidate.1.2\nNew notes",
         want: {
           "0.1.0-rc.1": "Notes",
