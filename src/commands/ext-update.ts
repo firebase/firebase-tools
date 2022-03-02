@@ -355,6 +355,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
           )}`
         )
       );
+      manifest.showDeprecationWarning();
     } catch (err: any) {
       if (spinner.isSpinning) {
         spinner.fail();

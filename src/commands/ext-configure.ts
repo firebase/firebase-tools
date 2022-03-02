@@ -159,6 +159,7 @@ export default new Command("ext:configure <extensionInstanceId>")
           )}`
         )
       );
+      manifest.showDeprecationWarning();
       return res;
     } catch (err: any) {
       if (spinner.isSpinning) {

@@ -433,6 +433,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
           "including those to update, reconfigure, or delete your installed extension."
       )
     );
+    manifest.showDeprecationWarning();
   } catch (err: any) {
     if (spinner.isSpinning) {
       spinner.fail();
