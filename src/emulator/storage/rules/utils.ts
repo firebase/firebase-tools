@@ -4,7 +4,7 @@ import { RulesetOperationMethod } from "./types";
 import { EmulatorLogger } from "../../emulatorLogger";
 import { Emulators } from "../../types";
 
-/** Authorizes file access given a set of security rules. */
+/** Authorizes file access based on security rules. */
 export async function isPermitted(opts: {
   ruleset?: StorageRulesetInstance;
   file: {
