@@ -99,7 +99,12 @@ describe("backendFromV1Alpha1", () => {
     describe("Event triggers", () => {
       const validTrigger: backend.EventTrigger = {
         eventType: "google.pubsub.v1.topic.publish",
-        eventFilters: { resource: "projects/p/topics/t" },
+        eventFilters: [
+          {
+            attribute: "resource",
+            value: "projects/p/topics/t",
+          },
+        ],
         retry: true,
         region: "global",
         serviceAccountEmail: "root@",
@@ -322,9 +327,12 @@ describe("backendFromV1Alpha1", () => {
     it("copies event triggers", () => {
       const eventTrigger: backend.EventTrigger = {
         eventType: "google.pubsub.topic.v1.publish",
-        eventFilters: {
-          resource: "projects/project/topics/topic",
-        },
+        eventFilters: [
+          {
+            attribute: "resource",
+            value: "projects/project/topics/topic",
+          },
+        ],
         region: "us-central1",
         serviceAccountEmail: "sa@",
         retry: true,

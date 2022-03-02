@@ -310,9 +310,12 @@ describe("Fabricator", () => {
         {
           eventTrigger: {
             eventType: gcfv2.PUBSUB_PUBLISH_EVENT,
-            eventFilters: {
-              resource: "topic",
-            },
+            eventFilters: [
+              {
+                attribute: "topic",
+                value: "topic",
+              },
+            ],
             retry: false,
           },
         },
@@ -333,9 +336,12 @@ describe("Fabricator", () => {
         {
           eventTrigger: {
             eventType: gcfv2.PUBSUB_PUBLISH_EVENT,
-            eventFilters: {
-              resource: "topic",
-            },
+            eventFilters: [
+              {
+                attribute: "topic",
+                value: "topic",
+              },
+            ],
             retry: false,
           },
         },
@@ -725,9 +731,12 @@ describe("Fabricator", () => {
       const ep = endpoint({
         eventTrigger: {
           eventType: gcfNSV2.PUBSUB_PUBLISH_EVENT,
-          eventFilters: {
-            resource: "topic",
-          },
+          eventFilters: [
+            {
+              attribute: "topic",
+              value: "topic",
+            },
+          ],
           retry: false,
         },
       });
@@ -778,9 +787,12 @@ describe("Fabricator", () => {
       const ep = endpoint({
         eventTrigger: {
           eventType: gcfNSV2.PUBSUB_PUBLISH_EVENT,
-          eventFilters: {
-            resource: "topic",
-          },
+          eventFilters: [
+            {
+              attribute: "topic",
+              value: "topic",
+            },
+          ],
           retry: false,
         },
       });

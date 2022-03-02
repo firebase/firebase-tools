@@ -18,6 +18,14 @@ const client = new Client({
 });
 
 export const PUBSUB_PUBLISH_EVENT = "google.cloud.pubsub.topic.v1.messagePublished";
+export const STORAGE_EVENTS = [
+  "google.cloud.storage.object.v1.finalized",
+  "google.cloud.storage.object.v1.archived",
+  "google.cloud.storage.object.v1.deleted",
+  "google.cloud.storage.object.v1.metadataUpdated",
+];
+
+export const PUBSUB_V2_EVENT = "google.cloud.pubsub.topic.v1.messagePublished";
 
 export type VpcConnectorEgressSettings = "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC";
 export type IngressSettings = "ALLOW_ALL" | "ALLOW_INTERNAL_ONLY" | "ALLOW_INTERNAL_AND_GCLB";
@@ -436,10 +444,16 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
       eventType: endpoint.eventTrigger.eventType,
     };
     if (gcfFunction.eventTrigger.eventType === PUBSUB_PUBLISH_EVENT) {
-      gcfFunction.eventTrigger.pubsubTopic = endpoint.eventTrigger.eventFilters.resource;
+      const pubsubFilter = backend.findEventFilter(endpoint, "topic");
+      if (!pubsubFilter) {
+        throw new FirebaseError(
+          "Invalid pubsub endpoint. Expected eventFilter with 'topic' attribute but found none."
+        );
+      }
+      gcfFunction.eventTrigger.pubsubTopic = pubsubFilter.value;
     } else {
       gcfFunction.eventTrigger.eventFilters = [];
-      for (const [attribute, value] of Object.entries(endpoint.eventTrigger.eventFilters)) {
+      for (const { attribute, value } of endpoint.eventTrigger.eventFilters) {
         gcfFunction.eventTrigger.eventFilters.push({ attribute, value });
       }
     }
@@ -488,15 +502,18 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     trigger = {
       eventTrigger: {
         eventType: gcfFunction.eventTrigger.eventType,
-        eventFilters: {},
+        eventFilters: [],
         retry: false,
       },
     };
     if (gcfFunction.eventTrigger.pubsubTopic) {
-      trigger.eventTrigger.eventFilters.resource = gcfFunction.eventTrigger.pubsubTopic;
+      trigger.eventTrigger.eventFilters.push({
+        attribute: "topic",
+        value: gcfFunction.eventTrigger.pubsubTopic,
+      });
     } else {
       for (const { attribute, value } of gcfFunction.eventTrigger.eventFilters || []) {
-        trigger.eventTrigger.eventFilters[attribute] = value;
+        trigger.eventTrigger.eventFilters.push({ attribute, value });
       }
     }
     proto.renameIfPresent(

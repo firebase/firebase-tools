@@ -92,10 +92,16 @@ describe("cloudfunctionsv2", () => {
         platform: "gcfv2",
         eventTrigger: {
           eventType: "google.cloud.audit.log.v1.written",
-          eventFilters: {
-            resource: "projects/p/regions/r/instances/i",
-            serviceName: "compute.googleapis.com",
-          },
+          eventFilters: [
+            {
+              attribute: "resource",
+              value: "projects/p/regions/r/instances/i",
+            },
+            {
+              attribute: "serviceName",
+              value: "compute.googleapis.com",
+            },
+          ],
           retry: false,
         },
       };
@@ -193,9 +199,12 @@ describe("cloudfunctionsv2", () => {
         platform: "gcfv2",
         eventTrigger: {
           eventType: cloudfunctionsv2.PUBSUB_PUBLISH_EVENT,
-          eventFilters: {
-            resource: "projects/p/topics/t",
-          },
+          eventFilters: [
+            {
+              attribute: "topic",
+              value: "projects/p/topics/t",
+            },
+          ],
           retry: false,
         },
         maxInstances: 42,
@@ -254,9 +263,12 @@ describe("cloudfunctionsv2", () => {
         uri: RUN_URI,
         eventTrigger: {
           eventType: cloudfunctionsv2.PUBSUB_PUBLISH_EVENT,
-          eventFilters: {
-            resource: "projects/p/topics/t",
-          },
+          eventFilters: [
+            {
+              attribute: "topic",
+              value: "projects/p/topics/t",
+            },
+          ],
           retry: false,
         },
       });
@@ -285,10 +297,16 @@ describe("cloudfunctionsv2", () => {
         uri: RUN_URI,
         eventTrigger: {
           eventType: "google.cloud.audit.log.v1.written",
-          eventFilters: {
-            resource: "projects/p/regions/r/instances/i",
-            serviceName: "compute.googleapis.com",
-          },
+          eventFilters: [
+            {
+              attribute: "resource",
+              value: "projects/p/regions/r/instances/i",
+            },
+            {
+              attribute: "serviceName",
+              value: "compute.googleapis.com",
+            },
+          ],
           retry: false,
         },
       });

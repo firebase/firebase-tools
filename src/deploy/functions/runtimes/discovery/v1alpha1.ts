@@ -121,7 +121,7 @@ function parseEndpoints(
     if (backend.isEventTriggered(ep)) {
       requireKeys(prefix + ".eventTrigger", ep.eventTrigger, "eventType", "eventFilters");
       assertKeyTypes(prefix + ".eventTrigger", ep.eventTrigger, {
-        eventFilters: "object",
+        eventFilters: "array",
         eventType: "string",
         retry: "boolean",
         region: "string",
