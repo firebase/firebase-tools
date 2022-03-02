@@ -44,7 +44,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
         return;
       }
 
-      if (req.query.alt == "media") {
+      if (req.query.alt === "media") {
         return sendFileBytes(md, storageLayer, req, res);
       }
 
@@ -184,11 +184,11 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       return;
     }
 
-    if (req.query.uploadType == "resumable") {
+    if (req.query.uploadType === "resumable") {
       const upload = storageLayer.startUpload(req.params.bucketId, name, contentType, req.body);
       const emulatorInfo = EmulatorRegistry.getInfo(Emulators.STORAGE);
 
-      if (emulatorInfo == undefined) {
+      if (emulatorInfo === undefined) {
         res.sendStatus(500);
         return;
       }
@@ -287,7 +287,7 @@ function sendFileBytes(
     return;
   }
 
-  const isGZipped = md.contentEncoding == "gzip";
+  const isGZipped = md.contentEncoding === "gzip";
   if (isGZipped) {
     data = gunzipSync(data);
   }

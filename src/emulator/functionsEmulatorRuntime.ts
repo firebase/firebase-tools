@@ -103,8 +103,8 @@ interface ProxyTarget extends Object {
   px.when("incremented", (original) => original["value"] + 1);
 
   const obj = px.finalize();
-  obj.value == 1;
-  obj.incremented == 2;
+  obj.value === 1;
+  obj.incremented === 2;
    */
 class Proxied<T extends ProxyTarget> {
   /**

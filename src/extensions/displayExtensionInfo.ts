@@ -250,7 +250,7 @@ export async function displayUpdateChangesRequiringConfirmation(args: {
 }
 
 function compareResources(resource1: extensionsApi.Resource, resource2: extensionsApi.Resource) {
-  return resource1.name == resource2.name && resource1.type == resource2.type;
+  return resource1.name === resource2.name && resource1.type === resource2.type;
 }
 
 function getResourceReadableName(resource: extensionsApi.Resource): string {

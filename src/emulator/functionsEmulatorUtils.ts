@@ -117,15 +117,15 @@ export function compareVersionStrings(a?: string, b?: string) {
   const versionA = parseVersionString(a);
   const versionB = parseVersionString(b);
 
-  if (versionA.major != versionB.major) {
+  if (versionA.major !== versionB.major) {
     return versionA.major - versionB.major;
   }
 
-  if (versionA.minor != versionB.minor) {
+  if (versionA.minor !== versionB.minor) {
     return versionA.minor - versionB.minor;
   }
 
-  if (versionA.patch != versionB.patch) {
+  if (versionA.patch !== versionB.patch) {
     return versionA.patch - versionB.patch;
   }
 
