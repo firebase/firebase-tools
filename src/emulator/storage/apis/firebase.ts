@@ -8,8 +8,8 @@ import { StorageEmulator } from "../index";
 import { EmulatorRegistry } from "../../registry";
 import { RulesetOperationMethod } from "../rules/types";
 import { parseObjectUploadMultipartRequest } from "../multipart";
-import { isPermitted } from "../rules/utils";
 import { NotFoundError, ForbiddenError } from "../errors";
+import { StorageRulesetInstance } from "../rules/runtime";
 
 async function isPermitted(opts: {
   ruleset?: StorageRulesetInstance;

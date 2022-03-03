@@ -19,9 +19,8 @@ import {
   constructDefaultAdminSdkConfig,
   getProjectAdminSdkConfigOrCached,
 } from "../adminSdkConfig";
-import { StorageRulesetInstance } from "./rules/runtime";
 import { RulesetOperationMethod } from "./rules/types";
-import { isPermitted, RulesValidator } from "./rules/utils";
+import { RulesValidator } from "./rules/utils";
 
 interface BucketsList {
   buckets: {
