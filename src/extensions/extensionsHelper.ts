@@ -159,7 +159,7 @@ export function populateDefaultParams(paramVars: Record<string, string>, paramSp
 
   for (const param of paramSpecs) {
     if (!paramVars[param.param]) {
-      if (param.default != undefined && param.required) {
+      if (param.default !== undefined && param.required) {
         newParams[param.param] = param.default;
       } else if (param.required) {
         throw new FirebaseError(
@@ -268,7 +268,7 @@ export function validateSpec(spec: any) {
         }. Valid types are ${_.values(SpecParamType).join(", ")}`
       );
     }
-    if (!param.type || param.type == SpecParamType.STRING) {
+    if (!param.type || param.type === SpecParamType.STRING) {
       // ParamType defaults to STRING
       if (param.options) {
         errors.push(
@@ -280,7 +280,7 @@ export function validateSpec(spec: any) {
     }
     if (
       param.type &&
-      (param.type == SpecParamType.SELECT || param.type == SpecParamType.MULTISELECT)
+      (param.type === SpecParamType.SELECT || param.type === SpecParamType.MULTISELECT)
     ) {
       if (param.validationRegex) {
         errors.push(
@@ -297,7 +297,7 @@ export function validateSpec(spec: any) {
         );
       }
       for (const opt of param.options || []) {
-        if (opt.value == undefined) {
+        if (opt.value === undefined) {
           errors.push(
             `Option for param${
               param.param ? ` ${param.param}` : ""
@@ -306,7 +306,7 @@ export function validateSpec(spec: any) {
         }
       }
     }
-    if (param.type && param.type == SpecParamType.SELECTRESOURCE) {
+    if (param.type && param.type === SpecParamType.SELECTRESOURCE) {
       if (!param.resourceType) {
         errors.push(
           `Param${param.param ? ` ${param.param}` : ""} must have resourceType because it is type ${
@@ -389,7 +389,7 @@ export async function publishExtensionVersionFromLocalSource(args: {
   force: boolean;
 }): Promise<ExtensionVersion | undefined> {
   const extensionSpec = await getLocalExtensionSpec(args.rootDirectory);
-  if (extensionSpec.name != args.extensionId) {
+  if (extensionSpec.name !== args.extensionId) {
     throw new FirebaseError(
       `Extension ID '${clc.bold(
         args.extensionId
@@ -502,7 +502,7 @@ export async function publishExtensionVersionFromLocalSource(args: {
     publishSpinner.succeed(` Successfully published ${clc.bold(ref)}`);
   } catch (err: any) {
     publishSpinner.fail();
-    if (err.status == 404) {
+    if (err.status === 404) {
       throw new FirebaseError(
         marked(
           `Couldn't find publisher ID '${clc.bold(

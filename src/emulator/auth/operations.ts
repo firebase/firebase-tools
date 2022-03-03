@@ -1990,7 +1990,7 @@ function mfaSignInFinalize(
 
   let { user, signInProvider } = parsePendingCredential(state, reqBody.mfaPendingCredential);
   const enrollment = user.mfaInfo?.find(
-    (enrollment) => enrollment.unobfuscatedPhoneInfo == phoneNumber
+    (enrollment) => enrollment.unobfuscatedPhoneInfo === phoneNumber
   );
   assert(enrollment && enrollment.mfaEnrollmentId, "MFA_ENROLLMENT_NOT_FOUND");
 

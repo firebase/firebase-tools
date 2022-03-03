@@ -265,7 +265,7 @@ export function getTemporarySocketPath(pid: number, cwd: string): string {
   }
 }
 
-export function getFunctionService(def: EmulatedTriggerDefinition): string {
+export function getFunctionService(def: ParsedTriggerDefinition): string {
   if (def.eventTrigger) {
     return def.eventTrigger.service ?? getServiceFromEventType(def.eventTrigger.eventType);
   }
