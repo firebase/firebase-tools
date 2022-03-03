@@ -119,18 +119,19 @@ export async function getFirebaseProjectParams(
       ? Constants.FAKE_PROJECT_NUMBER
       : await getProjectNumber({ projectId });
   const databaseURL = body?.databaseURL ?? `https://${projectId}.firebaseio.com`;
+  const storageBucket = body?.storageBucket ?? `${projectId}.appspot.com`;
   // This env variable is needed for parameter-less initialization of firebase-admin
   const FIREBASE_CONFIG = JSON.stringify({
     projectId,
     databaseURL,
-    storageBucket: body?.storageBucket ?? `${projectId}.appspot.com`,
+    storageBucket,
   });
 
   return {
     PROJECT_ID: projectId,
     PROJECT_NUMBER: projectNumber,
     DATABASE_URL: databaseURL,
-    STORAGE_BUCKET: body?.storageBucket ?? `${projectId}.appspot.com`,
+    STORAGE_BUCKET: storageBucket,
     FIREBASE_CONFIG,
     DATABASE_INSTANCE: getDBInstanceFromURL(databaseURL),
   };
