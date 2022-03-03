@@ -23,46 +23,25 @@ export interface RulesValidator {
 export type RulesetProvider = () => StorageRulesetInstance | undefined;
 
 /**
- * Returns a {@link RulesValidator} that pulls a Ruleset from a 
+ * Returns a {@link RulesValidator} that pulls a Ruleset from a
  * {@link RulesetProvider} on each run.
  */
 export function getRulesValidator(rulesetProvider: RulesetProvider): RulesValidator {
   return {
-    validate: async (
+    validate: (
       path: string,
       method: RulesetOperationMethod,
       variableOverrides: RulesVariableOverrides,
       authorization?: string
     ) => {
-      const ruleset = rulesetProvider();
-      if (!ruleset) {
-        EmulatorLogger.forEmulator(Emulators.STORAGE).log(
-          "WARN",
-          `Can not process SDK request with no loaded ruleset`
-        );
-        return false;
-      }
-
-      // Skip auth for UI
-      if (["Bearer owner", "Firebase owner"].includes(authorization || "")) {
-        return true;
-      }
-
-      const { permitted, issues } = await ruleset.verify({
-        method: method,
-        path: path,
+      return isPermitted({
+        ruleset: rulesetProvider(),
         file: variableOverrides,
-        token: authorization ? authorization.split(" ")[1] : undefined,
+        path,
+        method,
+        authorization,
       });
-
-      if (issues.exist()) {
-        issues.all.forEach((warningOrError) => {
-          EmulatorLogger.forEmulator(Emulators.STORAGE).log("WARN", warningOrError);
-        });
-      }
-
-      return !!permitted;
-    },
+    };
   };
 }
 
