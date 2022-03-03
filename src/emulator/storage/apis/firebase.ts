@@ -217,10 +217,10 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     req.on("data", (data) => {
       bufs.push(data);
     });
-
     await new Promise<void>((resolve) => {
-      req.body = Buffer.concat(bufs);
-      resolve();
+      req.on("end", () => {
+        resolve();
+      });
     });
     return Buffer.concat(bufs);
   };
@@ -306,7 +306,10 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       let metadataRaw: string;
       let dataRaw: Buffer;
       try {
-        ({ metadataRaw, dataRaw } = parseObjectUploadMultipartRequest(contentType!, req.body));
+        ({ metadataRaw, dataRaw } = parseObjectUploadMultipartRequest(
+          contentType!,
+          await reqBodyToBuffer(req)
+        ));
       } catch (err) {
         if (err instanceof Error) {
           return res.status(400).json({
@@ -349,7 +352,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       return;
     }
 
-    if (uploadCommand == "start") {
+    if (uploadCommand === "start") {
       let contentType =
         req.header("x-goog-upload-header-content-type") || req.header("x-goog-upload-content-type");
       if (!contentType) {
@@ -388,7 +391,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     }
 
     const uploadId = req.query.upload_id.toString();
-    if (uploadCommand == "query") {
+    if (uploadCommand === "query") {
       let upload: Upload;
       try {
         upload = uploadService.getResumableUpload(uploadId);
@@ -402,7 +405,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       return res.sendStatus(200);
     }
 
-    if (uploadCommand == "cancel") {
+    if (uploadCommand === "cancel") {
       try {
         uploadService.cancelResumableUpload(uploadId);
       } catch (err) {

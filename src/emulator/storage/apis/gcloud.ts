@@ -178,10 +178,10 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     req.on("data", (data) => {
       bufs.push(data);
     });
-
     await new Promise<void>((resolve) => {
-      req.body = Buffer.concat(bufs);
-      resolve();
+      req.on("end", () => {
+        resolve();
+      });
     });
     return Buffer.concat(bufs);
   };
@@ -204,6 +204,10 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     }
 
     if (req.query.uploadType === "resumable") {
+      const emulatorInfo = EmulatorRegistry.getInfo(Emulators.STORAGE);
+      if (emulatorInfo === undefined) {
+        return res.sendStatus(500);
+      }
       const upload = uploadService.startResumableUpload({
         bucketId: req.params.bucketId,
         objectId: name,
@@ -211,10 +215,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
         contentType: contentType,
         authorization: req.header("authorization"),
       });
-      const emulatorInfo = EmulatorRegistry.getInfo(Emulators.STORAGE);
-      if (emulatorInfo == undefined) {
-        return res.sendStatus(500);
-      }
+      
       const { host, port } = emulatorInfo;
       const uploadUrl = `http://${host}:${port}/upload/storage/v1/b/${req.params.bucketId}/o?name=${name}&uploadType=resumable&upload_id=${upload.id}`;
       return res.header("location", uploadUrl).sendStatus(200);
@@ -229,15 +230,12 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
         await reqBodyToBuffer(req)
       ));
     } catch (err) {
-      if (err instanceof Error) {
-        return res.status(400).json({
-          error: {
-            code: 400,
-            message: err.toString(),
-          },
-        });
-      }
-      throw err;
+      return res.status(400).json({
+        error: {
+          code: 400,
+          message: err,
+        },
+      });
     }
 
     const upload = uploadService.multipartUpload({

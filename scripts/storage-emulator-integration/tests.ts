@@ -158,7 +158,7 @@ describe("Storage emulator", () => {
 
   const emulatorSpecificDescribe = TEST_CONFIG.useProductionServers ? describe.skip : describe;
 
-  describe.only("Admin SDK Endpoints", function (this) {
+  describe("Admin SDK Endpoints", function (this) {
     // eslint-disable-next-line @typescript-eslint/no-invalid-this
     this.timeout(TEST_SETUP_TIMEOUT);
     let testBucket: Bucket;
@@ -215,12 +215,14 @@ describe("Storage emulator", () => {
           });
 
           const [readContent1] = await file.download();
+
           expect(readContent1).to.deep.equal(fs.readFileSync(content1));
 
           await testBucket.upload(content2, {
             destination: path,
           });
           const [readContent2] = await file.download();
+          
           expect(readContent2).to.deep.equal(fs.readFileSync(content2));
 
           fs.unlinkSync(content1);
