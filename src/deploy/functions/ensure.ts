@@ -149,7 +149,7 @@ export async function secretAccess(
     for (const serviceAccount of serviceAccounts) {
       wantSecrets[secret]?.delete(serviceAccount);
     }
-    if (wantSecrets[secret]?.size == 0) {
+    if (wantSecrets[secret]?.size === 0) {
       delete wantSecrets[secret];
     }
   }

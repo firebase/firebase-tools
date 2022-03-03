@@ -578,7 +578,7 @@ export async function getPublisherProfile(
 ): Promise<PublisherProfile> {
   const res = await apiClient.get(`/projects/${projectId}/publisherProfile`, {
     queryParams:
-      publisherId == undefined
+      publisherId === undefined
         ? undefined
         : {
             publisherId,

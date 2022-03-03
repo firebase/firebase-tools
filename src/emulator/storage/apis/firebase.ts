@@ -248,7 +248,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       let md: StoredFileMetadata | undefined;
 
       if (createTokenParam) {
-        if (createTokenParam != "true") {
+        if (createTokenParam !== "true") {
           res.sendStatus(400);
           return;
         }
@@ -278,7 +278,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     const name = req.query.name.toString();
     const uploadType = req.header("x-goog-upload-protocol");
 
-    if (uploadType == "multipart") {
+    if (uploadType === "multipart") {
       const contentType = req.header("content-type");
       if (!contentType || !contentType.startsWith("multipart/related")) {
         res.sendStatus(400);
@@ -347,7 +347,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         });
       }
 
-      if (md.downloadTokens.length == 0) {
+      if (md.downloadTokens.length === 0) {
         md.addDownloadToken();
       }
 
@@ -361,7 +361,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         return;
       }
 
-      if (uploadCommand == "start") {
+      if (uploadCommand === "start") {
         let objectContentType =
           req.header("x-goog-upload-header-content-type") ||
           req.header("x-goog-upload-content-type");
@@ -406,7 +406,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       }
 
       const uploadId = req.query.upload_id.toString();
-      if (uploadCommand == "query") {
+      if (uploadCommand === "query") {
         const upload = storageLayer.queryUpload(uploadId);
         if (!upload) {
           res.sendStatus(400);
@@ -418,13 +418,14 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         return;
       }
 
-      if (uploadCommand == "cancel") {
-        const upload = storageLayer.cancelUpload(uploadId);
-        if (!upload) {
-          res.sendStatus(400);
-          return;
+      if (uploadCommand === "cancel") {
+        const upload = storageLayer.queryUpload(uploadId);
+        if (upload) {
+          const cancelled = storageLayer.cancelUpload(upload);
+          res.sendStatus(cancelled ? 200 : 400);
+        } else {
+          res.sendStatus(404);
         }
-        res.sendStatus(200);
         return;
       }
 
@@ -456,14 +457,11 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       }
 
       if (uploadCommand.includes("finalize")) {
-        const finalizedUpload = storageLayer.finalizeUpload(uploadId);
-        if (!finalizedUpload) {
+        upload = storageLayer.queryUpload(uploadId);
+        if (!upload) {
           res.sendStatus(400);
           return;
         }
-        upload = finalizedUpload.upload;
-
-        res.header("x-goog-upload-status", "final");
 
         // For resumable uploads, we check auth on finalization in case of byte-dependant rules
         if (
@@ -474,7 +472,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
             path: operationPath,
             authorization: upload.authorization,
             file: {
-              after: storageLayer.getMetadata(req.params.bucketId, name)?.asRulesResource(),
+              after: storageLayer.createMetadata(upload).asRulesResource(),
             },
           }))
         ) {
@@ -487,12 +485,15 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
           });
         }
 
-        const md = finalizedUpload.file.metadata;
-        if (md.downloadTokens.length == 0) {
+        res.header("x-goog-upload-status", "final");
+        const uploadedFile = storageLayer.finalizeUpload(upload);
+
+        const md = uploadedFile.metadata;
+        if (md.downloadTokens.length === 0) {
           md.addDownloadToken();
         }
 
-        res.json(new OutgoingFirebaseMetadata(finalizedUpload.file.metadata));
+        res.json(new OutgoingFirebaseMetadata(uploadedFile.metadata));
       } else if (!upload) {
         res.sendStatus(400);
         return;

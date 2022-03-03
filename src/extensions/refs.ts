@@ -40,7 +40,7 @@ export function parse(refOrName: string): Ref {
 function parseRef(ref: string): Ref | undefined {
   const parts = refRegex.exec(ref);
   // Exec additionally returns original string, index, & input values.
-  if (parts && (parts.length == 5 || parts.length == 7)) {
+  if (parts && (parts.length === 5 || parts.length === 7)) {
     const publisherId = parts[1];
     const extensionId = parts[2];
     const version = parts[4];

@@ -55,14 +55,14 @@ export class StorageEmulator implements EmulatorInstance {
     await this._rulesRuntime.start(this.args.auto_download);
     this._app = await createApp(this.args.projectId, this);
 
-    if (typeof this.args.rules == "string") {
+    if (typeof this.args.rules === "string") {
       const rulesFile = this.args.rules;
       this.updateRulesSource(rulesFile);
     } else {
       this._rulesetSource = this.args.rules;
     }
 
-    if (!this._rulesetSource || this._rulesetSource.files.length == 0) {
+    if (!this._rulesetSource || this._rulesetSource.files.length === 0) {
       throw new FirebaseError("Can not initialize Storage emulator without a rules source / file.");
     } else if (this._rulesetSource.files.length > 1) {
       throw new FirebaseError(
