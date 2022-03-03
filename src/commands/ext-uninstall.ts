@@ -133,6 +133,7 @@ export default new Command("ext:uninstall <extensionInstanceId>")
       return utils.reject(`Error occurred uninstalling extension ${instanceId}`, { original: err });
     }
     utils.logLabeledSuccess(logPrefix, `uninstalled ${clc.bold(instanceId)}`);
+    manifest.showDeprecationWarning();
   });
 
 /**
