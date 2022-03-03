@@ -106,7 +106,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     res.status(200).send();
   });
 
-  const reqBodyToBuffer = async (req: Request) => {
+  const reqBodyToBuffer = async (req: Request): Promise<Buffer> => {
     if (req.body instanceof Buffer) {
       return Buffer.from(req.body);
     }

@@ -14,9 +14,7 @@ export type ObjectUploadMultipartData = {
  * Represents a parsed multipart request body. Request bodies can have an
  * arbitrary number of parts.
  */
-type MultipartRequestBody = {
-  dataParts: MultipartRequestBodyPart[];
-};
+type MultipartRequestBody = MultipartRequestBodyPart[];
 
 const LINE_SEPARATOR = `\r\n`;
 
@@ -63,7 +61,7 @@ function parseMultipartRequestBody(boundaryId: string, body: Buffer): MultipartR
   for (const bodyPart of bodyParts.slice(1, bodyParts.length - 1)) {
     parsedParts.push(parseMultipartRequestBodyPart(bodyPart));
   }
-  return { dataParts: parsedParts };
+  return parsedParts;
 }
 
 /**
@@ -131,12 +129,12 @@ export function parseObjectUploadMultipartRequest(
   if (!boundaryId) {
     throw new Error(`Invalid Content-Type header: ${contentTypeHeader}`);
   }
-  const parsed = parseMultipartRequestBody(boundaryId, body);
-  if (parsed.dataParts.length !== 2) {
+  const parsedBody = parseMultipartRequestBody(boundaryId, body);
+  if (parsedBody.length !== 2) {
     throw new Error(`Unexpected number of parts in request body`);
   }
   return {
-    metadataRaw: parsed.dataParts[0].dataRaw.toString(),
-    dataRaw: Buffer.from(parsed.dataParts[1].dataRaw),
+    metadataRaw: parsedBody[0].dataRaw.toString(),
+    dataRaw: Buffer.from(parsedBody[1].dataRaw),
   };
 }

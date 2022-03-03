@@ -49,11 +49,8 @@ describe("files", () => {
     });
 
     describe("handleUploadObject()", () => {
-      it("should throw if upload is not finished", () => {
-        
-      });
+      it("should throw if upload is not finished", () => {});
     });
-
 
     describe("#handleGetObject()", () => {
       it("should return data and metadata", async () => {
@@ -97,10 +94,9 @@ describe("files", () => {
         ).to.be.rejectedWith(NotFoundError);
       });
     });
-
-    const getStorageLayer = (rulesValidator: RulesValidator): StorageLayer =>
-      new StorageLayer("project", rulesValidator, _persistence);
-
-    const getPersistenceTmpDir = () => `${tmpdir()}/firebase/storage/blobs`;
   });
+
+  const getStorageLayer = (rulesValidator: RulesValidator) =>
+    new StorageLayer("project", rulesValidator, new Persistence(getPersistenceTmpDir()));
+  const getPersistenceTmpDir = () => `${tmpdir()}/firebase/storage/blobs`;
 });

@@ -10,7 +10,10 @@ import { RulesetOperationMethod } from "../rules/types";
 import { parseObjectUploadMultipartRequest } from "../multipart";
 import { NotFoundError, ForbiddenError } from "../errors";
 import { isPermitted } from "../rules/utils";
+<<<<<<< HEAD
 import { NotCancellableError, Upload, UploadNotActiveError } from "../upload";
+=======
+>>>>>>> master
 
 /**
  * @param emulator
@@ -213,7 +216,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     );
   });
 
-  const reqBodyToBuffer = async (req: Request) => {
+  const reqBodyToBuffer = async (req: Request): Promise<Buffer> => {
     if (req.body instanceof Buffer) {
       return Buffer.from(req.body);
     }
@@ -301,15 +304,16 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     const uploadType = req.header("x-goog-upload-protocol");
 
     if (uploadType === "multipart") {
-      const contentType = req.header("content-type");
-      if (!contentType) {
+      const contentTypeHeader = req.header("content-type");
+      if (!contentTypeHeader) {
         return res.sendStatus(400);
       }
+
       let metadataRaw: string;
       let dataRaw: Buffer;
       try {
         ({ metadataRaw, dataRaw } = parseObjectUploadMultipartRequest(
-          contentType!,
+          contentTypeHeader!,
           await reqBodyToBuffer(req)
         ));
       } catch (err) {
