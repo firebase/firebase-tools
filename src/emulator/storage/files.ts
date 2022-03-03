@@ -19,6 +19,7 @@ import {
 import { RulesetOperationMethod } from "./rules/types";
 import { RulesValidator } from "./rules/utils";
 import { Persistence } from "./persistence";
+import { Upload } from "./upload";
 
 interface BucketsList {
   buckets: {
@@ -254,55 +255,6 @@ export class StorageLayer {
     this._files = value;
   }
 
-  public startUpload(
-    bucket: string,
-    object: string,
-    contentType: string,
-    metadata: IncomingMetadata,
-    authorization?: string
-  ): ResumableUpload {
-    const uploadId = v4();
-    const upload = new ResumableUpload(
-      bucket,
-      object,
-      uploadId,
-      contentType,
-      metadata,
-      authorization
-    );
-    this._uploads.set(uploadId, upload);
-    return upload;
-  }
-
-  public queryUpload(uploadId: string): ResumableUpload | undefined {
-    return this._uploads.get(uploadId);
-  }
-
-  /**
-   * Deletes partially uploaded file from persistence layer and updates its status. Cancelling
-   * an upload is idempotent.
-   * @param upload The upload to be cancelled.
-   * @returns Whether the upload was cancelled (i.e. its initial status was ACTIVE or CANCELLED).
-   */
-  public cancelUpload(upload: ResumableUpload): boolean {
-    if (upload.status === UploadStatus.ACTIVE) {
-      this._persistence.deleteFile(upload.fileLocation);
-      upload.status = UploadStatus.CANCELLED;
-    }
-    return upload.status === UploadStatus.CANCELLED;
-  }
-
-  public uploadBytes(uploadId: string, bytes: Buffer): ResumableUpload | undefined {
-    const upload = this._uploads.get(uploadId);
-
-    if (!upload) {
-      return undefined;
-    }
-    this._persistence.appendBytes(upload.fileLocation, bytes);
-    upload.currentBytesUploaded += bytes.byteLength;
-    return upload;
-  }
-
   public deleteFile(bucketId: string, objectId: string): boolean {
     const isFolder = objectId.toLowerCase().endsWith("%2f");
 
@@ -334,55 +286,47 @@ export class StorageLayer {
   }
 
   /**
-   * Stores the uploaded file with generated metadata and triggers Object Finalize Cloud Functions.
-   * @param upload The upload to finalize.
-   * @returns The stored file.
+   * Last step in uploading a file. Validates the request and persists the staging
+   * object to its permanent location on disk.
+   * TODO(tonyjhuang): Inject a Rules evaluator into StorageLayer to avoid needing skipAuth param
+   * @throws {ForbiddenError} if the request fails security rules auth.
    */
-  public finalizeUpload(upload: ResumableUpload): StoredFile {
-    upload.status = UploadStatus.FINISHED;
+  public async handleUploadObject(upload: Upload, skipAuth = false): Promise<StoredFileMetadata> {
+    if (upload.status !== UploadStatus.FINISHED) {
+      throw new Error(`Unexpected upload status encountered: ${upload.status}.`);
+    }
 
-    const metadata = this.createMetadata(upload);
     const filePath = this.path(upload.bucketId, upload.objectId);
-    const file = new StoredFile(metadata, filePath);
-
-    this._files.set(filePath, file);
-
-    this._persistence.deleteFile(filePath, /* failSilently = */ true);
-    this._persistence.renameFile(upload.fileLocation, filePath);
-
-    this._cloudFunctions.dispatch("finalize", new CloudStorageObjectMetadata(file.metadata));
-
-    return file;
-  }
-
-  public oneShotUpload(
-    bucket: string,
-    object: string,
-    contentType: string,
-    incomingMetadata: IncomingMetadata,
-    bytes: Buffer
-  ) {
-    const filePath = this.path(bucket, object);
-
-    this._persistence.deleteFile(filePath, true);
-
-    this._persistence.appendBytes(filePath, bytes);
-    const md = new StoredFileMetadata(
+    const metadata = new StoredFileMetadata(
       {
-        name: object,
-        bucket: bucket,
-        contentType: incomingMetadata.contentType || "application/octet-stream",
-        contentEncoding: incomingMetadata.contentEncoding,
-        customMetadata: incomingMetadata.metadata,
+        name: upload.objectId,
+        bucket: upload.bucketId,
+        contentType: upload.metadata.contentType || "application/octet-stream",
+        contentEncoding: upload.metadata.contentEncoding,
+        customMetadata: upload.metadata.metadata,
       },
       this._cloudFunctions,
-      bytes
+      this._persistence.readBytes(upload.path, upload.size)
     );
-    const file = new StoredFile(md, this._persistence.getDiskPath(filePath));
-    this._files.set(filePath, file);
+    const authorized =
+      skipAuth ||
+      (await this._validator.validate(
+        ["b", upload.bucketId, "o", upload.objectId].join("/"),
+        RulesetOperationMethod.GET,
+        { before: metadata?.asRulesResource() },
+        upload.authorization
+      ));
+    if (!authorized) {
+      this._persistence.deleteFile(upload.path);
+      throw new ForbiddenError();
+    }
 
-    this._cloudFunctions.dispatch("finalize", new CloudStorageObjectMetadata(file.metadata));
-    return file.metadata;
+    // Persist to permanent location on disk.
+    this._persistence.deleteFile(filePath, /* failSilently = */ true);
+    this._persistence.renameFile(upload.path, filePath);
+    this._files.set(filePath, new StoredFile(metadata, this._persistence.getDiskPath(filePath)));
+    this._cloudFunctions.dispatch("finalize", new CloudStorageObjectMetadata(metadata));
+    return metadata;
   }
 
   public listItemsAndPrefixes(
