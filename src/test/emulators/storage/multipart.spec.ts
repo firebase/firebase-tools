@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { parseObjectUploadMultipartRequest } from "../../../emulator/storage/multipart";
 import { randomBytes } from "crypto";
 
-describe.only("Storage Multipart Request Parser", () => {
+describe("Storage Multipart Request Parser", () => {
   const CONTENT_TYPE_HEADER = "multipart/related; boundary=b1d5b2e3-1845-4338-9400-6ac07ce53c1e";
   const BODY = Buffer.from(`--b1d5b2e3-1845-4338-9400-6ac07ce53c1e\r
 Content-Type: application/json\r
@@ -17,14 +17,14 @@ hello there!
 `);
 
   describe("#parseObjectUploadMultipartRequest", () => {
-    it.only("parses an upload object multipart request successfully", () => {
+    it("parses an upload object multipart request successfully", () => {
       const { metadataRaw, dataRaw } = parseObjectUploadMultipartRequest(CONTENT_TYPE_HEADER, BODY);
 
       expect(metadataRaw).to.equal('{"contentType":"text/plain"}');
       expect(dataRaw.toString()).to.equal("hello there!\n");
     });
 
-    it.only("parses an upload object multipart request with non utf-8 data successfully", () => {
+    it("parses an upload object multipart request with non utf-8 data successfully", () => {
       const bodyPart1 = Buffer.from(`--b1d5b2e3-1845-4338-9400-6ac07ce53c1e\r
 Content-Type: application/json\r
 \r
