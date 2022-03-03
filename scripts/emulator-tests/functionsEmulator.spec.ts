@@ -6,6 +6,7 @@ import * as sinon from "sinon";
 import * as supertest from "supertest";
 import * as winston from "winston";
 import * as logform from "logform";
+import * as path from "path";
 
 import { EmulatedTriggerDefinition } from "../../src/emulator/functionsEmulatorShared";
 import {
@@ -122,18 +123,18 @@ functionsEmulator.setTriggersForTesting(
 );
 
 // TODO(samstern): This is an ugly way to just override the InvokeRuntimeOpts on each call
-const startFunctionRuntime = functionsEmulator.startFunctionRuntime.bind(functionsEmulator);
+const invokeTrigger = functionsEmulator.invokeTrigger.bind(functionsEmulator);
 function useFunctions(triggers: () => {}): void {
   const serializedTriggers = triggers.toString();
 
   // eslint-disable-next-line @typescript-eslint/unbound-method
-  functionsEmulator.startFunctionRuntime = (
+  functionsEmulator.invokeTrigger = (
     backend: EmulatableBackend,
     trigger: EmulatedTriggerDefinition,
     proto?: any,
     runtimeOpts?: InvokeRuntimeOpts
   ): Promise<RuntimeWorker> => {
-    return startFunctionRuntime(testBackend, trigger, proto, {
+    return invokeTrigger(testBackend, trigger, proto, {
       nodeBinary: process.execPath,
       serializedTriggers,
     });
@@ -644,8 +645,10 @@ describe("FunctionsEmulator-Hub", () => {
       .expect(200)
       .then((res) => {
         // TODO(b/216642962): Add tests for this endpoint that validate behavior when there are Extensions running
+        const expectedDirectory = path.resolve(`${__dirname}/../..`);
         expect(res.body.backends).to.deep.equal([
           {
+            directory: expectedDirectory,
             env: {},
             functionTriggers: [
               {

@@ -197,7 +197,7 @@ function getFunctionSourceDirectory(functionResources: Resource[]): string {
     }
     if (!sourceDirectory) {
       sourceDirectory = dir;
-    } else if (sourceDirectory != dir) {
+    } else if (sourceDirectory !== dir) {
       throw new FirebaseError(
         `Found function resources with different sourceDirectories: '${sourceDirectory}' and '${dir}'. The extensions emulator only supports a single sourceDirectory.`
       );

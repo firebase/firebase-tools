@@ -127,7 +127,7 @@ export default new Command("functions:config:export")
       }
 
       const errMsg = configExport.hydrateEnvs(pInfos, prefix);
-      if (errMsg.length == 0) {
+      if (errMsg.length === 0) {
         break;
       }
       prefix = await promptForPrefix(errMsg);

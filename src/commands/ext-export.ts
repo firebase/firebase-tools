@@ -39,7 +39,7 @@ module.exports = new Command("ext:export")
       })
     );
 
-    if (have.length == 0) {
+    if (have.length === 0) {
       logger.info(
         `No extension instances installed on ${projectId}, so there is nothing to export.`
       );

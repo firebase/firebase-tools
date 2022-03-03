@@ -1187,30 +1187,46 @@ describe("Storage emulator", () => {
         });
       });
 
-      it("#delete()", async () => {
-        const downloadUrl = await page.evaluate((filename) => {
-          return firebase.storage().ref(filename).getDownloadURL();
-        }, filename);
+      describe("deleteFile", () => {
+        it("should delete file", async () => {
+          await page.evaluate((filename) => {
+            return firebase.storage().ref(filename).delete();
+          }, filename);
 
-        expect(downloadUrl).to.be.not.null;
+          const error = await page.evaluate((filename) => {
+            return new Promise((resolve) => {
+              firebase
+                .storage()
+                .ref(filename)
+                .getDownloadURL()
+                .catch((err) => {
+                  resolve(err.message);
+                });
+            });
+          }, filename);
 
-        await page.evaluate((filename) => {
-          return firebase.storage().ref(filename).delete();
-        }, filename);
+          expect(error).to.contain("does not exist.");
+        });
 
-        const error = await page.evaluate((filename) => {
-          return new Promise((resolve) => {
-            firebase
-              .storage()
-              .ref(filename)
-              .getDownloadURL()
-              .catch((err) => {
-                resolve(err.message);
-              });
-          });
-        }, filename);
+        it("should not delete file when security rule on resource object disallows it", async () => {
+          await page.evaluate((filename) => {
+            return firebase.storage().ref(filename).updateMetadata({ contentType: "text/plain" });
+          }, filename);
 
-        expect(error).to.contain("does not exist.");
+          const error = await page.evaluate((filename) => {
+            return new Promise((resolve) => {
+              firebase
+                .storage()
+                .ref(filename)
+                .delete()
+                .catch((err) => {
+                  resolve(err.message);
+                });
+            });
+          }, filename);
+
+          expect(error).to.contain("does not have permission to access");
+        });
       });
     });
 
@@ -1340,6 +1356,144 @@ describe("Storage emulator", () => {
             "X-Goog-Upload-Command": "upload, finalize",
           })
           .expect(200);
+
+        await supertest(STORAGE_EMULATOR_HOST)
+          .get(`/v0/b/${storageBucket}/o/test_upload.jpg`)
+          .set({ Authorization: "Bearer owner" })
+          .expect(200);
+      });
+
+      it("should return 403 when resumable upload is unauthenticated", async () => {
+        const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
+          .post(
+            `/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`
+          )
+          .set({
+            // Authorization missing
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "start",
+          })
+          .expect(200)
+          .then((res) => new URL(res.header["x-goog-upload-url"]));
+
+        await supertest(STORAGE_EMULATOR_HOST)
+          .put(uploadURL.pathname + uploadURL.search)
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "upload, finalize",
+          })
+          .expect(403);
+      });
+
+      describe("cancels upload", () => {
+        it("should cancel upload successfully", async () => {
+          const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
+            .post(
+              `/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`
+            )
+            .set({
+              Authorization: "Bearer owner",
+              "X-Goog-Upload-Protocol": "resumable",
+              "X-Goog-Upload-Command": "start",
+            })
+            .expect(200)
+            .then((res) => new URL(res.header["x-goog-upload-url"]));
+
+          await supertest(STORAGE_EMULATOR_HOST)
+            .put(uploadURL.pathname + uploadURL.search)
+            .set({
+              "X-Goog-Upload-Protocol": "resumable",
+              "X-Goog-Upload-Command": "cancel",
+            })
+            .expect(200);
+
+          await supertest(STORAGE_EMULATOR_HOST)
+            .get(`/v0/b/${storageBucket}/o/test_upload.jpg`)
+            .set({ Authorization: "Bearer owner" })
+            .expect(404);
+        });
+
+        it("should return 200 when cancelling already cancelled upload", async () => {
+          const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
+            .post(
+              `/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`
+            )
+            .set({
+              Authorization: "Bearer owner",
+              "X-Goog-Upload-Protocol": "resumable",
+              "X-Goog-Upload-Command": "start",
+            })
+            .expect(200)
+            .then((res) => new URL(res.header["x-goog-upload-url"]));
+
+          await supertest(STORAGE_EMULATOR_HOST)
+            .put(uploadURL.pathname + uploadURL.search)
+            .set({
+              "X-Goog-Upload-Protocol": "resumable",
+              "X-Goog-Upload-Command": "cancel",
+            })
+            .expect(200);
+
+          await supertest(STORAGE_EMULATOR_HOST)
+            .put(uploadURL.pathname + uploadURL.search)
+            .set({
+              "X-Goog-Upload-Protocol": "resumable",
+              "X-Goog-Upload-Command": "cancel",
+            })
+            .expect(200);
+        });
+
+        it("should return 400 when cancelling finalized resumable upload", async () => {
+          const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
+            .post(
+              `/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`
+            )
+            .set({
+              Authorization: "Bearer owner",
+              "X-Goog-Upload-Protocol": "resumable",
+              "X-Goog-Upload-Command": "start",
+            })
+            .expect(200)
+            .then((res) => new URL(res.header["x-goog-upload-url"]));
+
+          await supertest(STORAGE_EMULATOR_HOST)
+            .put(uploadURL.pathname + uploadURL.search)
+            .set({
+              "X-Goog-Upload-Protocol": "resumable",
+              "X-Goog-Upload-Command": "upload, finalize",
+            })
+            .expect(200);
+
+          await supertest(STORAGE_EMULATOR_HOST)
+            .put(uploadURL.pathname + uploadURL.search)
+            .set({
+              "X-Goog-Upload-Protocol": "resumable",
+              "X-Goog-Upload-Command": "cancel",
+            })
+            .expect(400);
+        });
+
+        it("should return 404 when cancelling non-existent upload", async () => {
+          const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
+            .post(
+              `/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`
+            )
+            .set({
+              Authorization: "Bearer owner",
+              "X-Goog-Upload-Protocol": "resumable",
+              "X-Goog-Upload-Command": "start",
+            })
+            .expect(200)
+            .then((res) => new URL(res.header["x-goog-upload-url"]));
+
+          await supertest(STORAGE_EMULATOR_HOST)
+            .put(uploadURL.pathname + uploadURL.search.replace(/(upload_id=).*?(&)/, "$1foo$2"))
+            .set({
+              "X-Goog-Upload-Protocol": "resumable",
+              "X-Goog-Upload-Command": "cancel",
+            })
+            .expect(404);
+        });
       });
     });
 

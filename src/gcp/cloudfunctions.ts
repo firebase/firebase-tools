@@ -290,7 +290,7 @@ export async function setInvokerCreate(
   fnName: string,
   invoker: string[]
 ): Promise<void> {
-  if (invoker.length == 0) {
+  if (invoker.length === 0) {
     throw new FirebaseError("Invoker cannot be an empty array");
   }
   const invokerMembers = proto.getInvokerMembers(invoker, projectId);
@@ -318,7 +318,7 @@ export async function setInvokerUpdate(
   fnName: string,
   invoker: string[]
 ): Promise<void> {
-  if (invoker.length == 0) {
+  if (invoker.length === 0) {
     throw new FirebaseError("Invoker cannot be an empty array");
   }
   const invokerMembers = proto.getInvokerMembers(invoker, projectId);
@@ -465,6 +465,7 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
   const [, project, , region, , id] = gcfFunction.name.split("/");
   let trigger: backend.Triggered;
   let uri: string | undefined;
+  let securityLevel: SecurityLevel | undefined;
   if (gcfFunction.labels?.["deployment-scheduled"]) {
     trigger = {
       scheduleTrigger: {},
@@ -476,6 +477,7 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
   } else if (gcfFunction.httpsTrigger) {
     trigger = { httpsTrigger: {} };
     uri = gcfFunction.httpsTrigger.url;
+    securityLevel = gcfFunction.httpsTrigger.securityLevel;
   } else {
     trigger = {
       eventTrigger: {
@@ -503,6 +505,9 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
   };
   if (uri) {
     endpoint.uri = uri;
+  }
+  if (securityLevel) {
+    endpoint.securityLevel = securityLevel;
   }
   proto.copyIfPresent(
     endpoint,
@@ -537,7 +542,7 @@ export function functionFromEndpoint(
   endpoint: backend.Endpoint,
   sourceUploadUrl: string
 ): Omit<CloudFunction, OutputOnlyFields> {
-  if (endpoint.platform != "gcfv1") {
+  if (endpoint.platform !== "gcfv1") {
     throw new FirebaseError(
       "Trying to create a v1 CloudFunction with v2 API. This should never happen"
     );
@@ -583,6 +588,9 @@ export function functionFromEndpoint(
     gcfFunction.httpsTrigger = {};
     if (backend.isCallableTriggered(endpoint)) {
       gcfFunction.labels = { ...gcfFunction.labels, "deployment-callabled": "true" };
+    }
+    if (endpoint.securityLevel) {
+      gcfFunction.httpsTrigger.securityLevel = endpoint.securityLevel;
     }
   }
 

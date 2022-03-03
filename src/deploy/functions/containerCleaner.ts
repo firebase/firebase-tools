@@ -88,7 +88,7 @@ export async function cleanupBuildImages(
       "Unhandled error cleaning up build images. This could result in a small monthly bill if not corrected. ";
     message +=
       "You can attempt to delete these images by redeploying or you can delete them manually at";
-    if (failedDomains.size == 1) {
+    if (failedDomains.size === 1) {
       message += " " + failedDomains.values().next().value;
     } else {
       message += [...failedDomains].map((domain) => "\n\t" + domain).join("");
@@ -295,7 +295,7 @@ export async function listGcfPaths(
     .reduce((acc, val) => [...acc, ...val], [])
     .filter((loc) => locationsSet.has(loc));
 
-  if (failedSubdomains.length == subdomains.size) {
+  if (failedSubdomains.length === subdomains.size) {
     throw new FirebaseError("Failed to search all subdomains.");
   } else if (failedSubdomains.length > 0) {
     throw new FirebaseError(
@@ -343,7 +343,7 @@ export async function deleteGcfArtifacts(
   });
   await Promise.all(deleteLocations);
 
-  if (failedSubdomains.length == subdomains.size) {
+  if (failedSubdomains.length === subdomains.size) {
     throw new FirebaseError("Failed to search all subdomains.");
   } else if (failedSubdomains.length > 0) {
     throw new FirebaseError(

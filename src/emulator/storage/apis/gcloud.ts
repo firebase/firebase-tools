@@ -44,7 +44,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
         return;
       }
 
-      if (req.query.alt == "media") {
+      if (req.query.alt === "media") {
         return sendFileBytes(md, storageLayer, req, res);
       }
 
@@ -123,20 +123,14 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       });
     });
 
-    let upload = storageLayer.uploadBytes(uploadId, req.body);
-
+    const upload = storageLayer.uploadBytes(uploadId, req.body);
     if (!upload) {
       res.sendStatus(400);
       return;
     }
 
-    const finalizedUpload = storageLayer.finalizeUpload(uploadId);
-    if (!finalizedUpload) {
-      res.sendStatus(400);
-      return;
-    }
-    upload = finalizedUpload.upload;
-    res.status(200).json(new CloudStorageObjectMetadata(finalizedUpload.file.metadata)).send();
+    const uploadedFile = storageLayer.finalizeUpload(upload);
+    res.status(200).json(new CloudStorageObjectMetadata(uploadedFile.metadata)).send();
   });
 
   gcloudStorageAPI.post("/b/:bucketId/o/:objectId/acl", (req, res) => {
@@ -190,11 +184,11 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       return;
     }
 
-    if (req.query.uploadType == "resumable") {
+    if (req.query.uploadType === "resumable") {
       const upload = storageLayer.startUpload(req.params.bucketId, name, contentType, req.body);
       const emulatorInfo = EmulatorRegistry.getInfo(Emulators.STORAGE);
 
-      if (emulatorInfo == undefined) {
+      if (emulatorInfo === undefined) {
         res.sendStatus(500);
         return;
       }
@@ -293,7 +287,7 @@ function sendFileBytes(
     return;
   }
 
-  const isGZipped = md.contentEncoding == "gzip";
+  const isGZipped = md.contentEncoding === "gzip";
   if (isGZipped) {
     data = gunzipSync(data);
   }

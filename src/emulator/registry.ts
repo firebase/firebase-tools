@@ -11,6 +11,8 @@ import { EmulatorLogger } from "./emulatorLogger";
  * through the start() and stop() methods which ensures correctness.
  */
 export class EmulatorRegistry {
+  private static extensionsEmulatorRegistered: boolean = false;
+
   static async start(instance: EmulatorInstance): Promise<void> {
     const description = Constants.description(instance.getName());
     if (this.isRunning(instance.getName())) {
@@ -25,6 +27,10 @@ export class EmulatorRegistry {
 
     const info = instance.getInfo();
     await portUtils.waitForPortClosed(info.port, info.host);
+  }
+
+  static registerExtensionsEmulator(): void {
+    this.extensionsEmulatorRegistered = true;
   }
 
   static async stop(name: Emulators): Promise<void> {
@@ -92,6 +98,9 @@ export class EmulatorRegistry {
   }
 
   static isRunning(emulator: Emulators): boolean {
+    if (emulator === Emulators.EXTENSIONS) {
+      return this.extensionsEmulatorRegistered && this.isRunning(Emulators.FUNCTIONS);
+    }
     const instance = this.INSTANCES.get(emulator);
     return instance !== undefined;
   }
@@ -111,7 +120,10 @@ export class EmulatorRegistry {
   }
 
   static getInfo(emulator: Emulators): EmulatorInfo | undefined {
-    const instance = this.INSTANCES.get(emulator);
+    // For Extensions, return the info for the Functions Emulator.
+    const instance = this.INSTANCES.get(
+      emulator === Emulators.EXTENSIONS ? Emulators.FUNCTIONS : emulator
+    );
     if (!instance) {
       return undefined;
     }

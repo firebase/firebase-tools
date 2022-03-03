@@ -26,7 +26,7 @@ export function getTestersOrGroups(value: string, file: string): string[] {
  * returns a string[] of emails.
  */
 export function getEmails(emails: string[], file: string): string[] {
-  if (emails.length == 0) {
+  if (emails.length === 0) {
     ensureFileExists(file);
     const readFile = fs.readFileSync(file, "utf8");
     return splitter(readFile);

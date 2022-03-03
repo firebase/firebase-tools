@@ -30,6 +30,7 @@ import {
   promptForValidInstanceId,
   isLocalOrURLPath,
   diagnoseAndFixProject,
+  isUrlPath,
 } from "../extensions/extensionsHelper";
 import { update } from "../extensions/updateHelper";
 import { getRandomString } from "../extensions/utils";
@@ -86,6 +87,12 @@ export default new Command("ext:install [extensionName]")
     }
     let source;
     let extVersion;
+
+    // TODO(b/220900194): Remove tracking of url install once we remove this feature.
+    if (isUrlPath(extensionName)) {
+      void track("Extension Install", "Install by url path", options.interactive ? 1 : 0);
+    }
+
     // If the user types in URL, or a local path (prefixed with ~/, ../, or ./), install from local/URL source.
     // Otherwise, treat the input as an extension reference and proceed with reference-based installation.
     if (isLocalOrURLPath(extensionName)) {
