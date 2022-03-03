@@ -21,12 +21,13 @@ type MultipartRequestBody = {
 const LINE_SEPARATOR = `\r\n`;
 
 /**
- * Parses a string into a {@link MultipartRequestBody}.
+ * Parses a multipart request body buffer into a {@link MultipartRequestBody}.
  * @param boundaryId the boundary id of the multipart request
  * @param body multipart request body as a Buffer
  */
 function parseMultipartRequestBody(boundaryId: string, body: Buffer): MultipartRequestBody {
   const boundaryString = `--${boundaryId}`;
+  // Iterate through boundary-delineated parts and save to separate Buffers
   let offset = 0;
   let nextBoundaryIndex = body.indexOf(boundaryString, offset);
   const bodyParts: Buffer[] = [];
@@ -37,6 +38,7 @@ function parseMultipartRequestBody(boundaryId: string, body: Buffer): MultipartR
     offset = nextBoundaryIndex + boundaryString.length + LINE_SEPARATOR.length;
     nextBoundaryIndex = body.indexOf(boundaryString, offset);
   }
+  // Parse each part Buffer separately.
   const parsedParts: MultipartRequestBodyPart[] = [];
   for (const bodyPart of bodyParts) {
     parsedParts.push(parseMultipartRequestBodyPart(bodyPart));
@@ -63,10 +65,11 @@ type MultipartRequestBodyPart = {
  * delineated by '\r\n':
  * 1: content type
  * 2: white space
- * 3: free form data (that may also contain '\r\n')
+ * 3: free form data 
  * @param bodyPart a multipart request body part as a Buffer
  */
 function parseMultipartRequestBodyPart(bodyPart: Buffer): MultipartRequestBodyPart {
+  // Parse Content-Type line
   let nextLineSeparatorIndex = bodyPart.indexOf(LINE_SEPARATOR, 0);
   let contentTypeRaw = Buffer.from(bodyPart.slice(0, nextLineSeparatorIndex)).toString();
   if (!contentTypeRaw.startsWith("Content-Type: ")) {
@@ -81,6 +84,7 @@ function parseMultipartRequestBodyPart(bodyPart: Buffer): MultipartRequestBodyPa
   }
   offset = nextLineSeparatorIndex + LINE_SEPARATOR.length;
 
+  // Trim final line separator from data payload.
   let dataRaw = Buffer.from(bodyPart.slice(offset, bodyPart.length - LINE_SEPARATOR.length));
   return { contentTypeRaw, dataRaw };
 }
@@ -121,35 +125,3 @@ export function parseObjectUploadMultipartRequest(
     dataRaw: Buffer.from(parsed.dataParts[1].dataRaw),
   };
 }
-
-export function legacyParse(contentType: string,
-  body: Buffer): ObjectUploadMultipartData {
-      if (!contentType || !contentType.startsWith("multipart/related")) {
-        throw new Error("wrong content type");
-      }
-
-      const boundary = `--${contentType.split("boundary=")[1]}`;
-      const bodyString = body.toString();
-      const bodyStringParts = bodyString.split(boundary).filter((v: string) => v);
-
-      const metadataString = bodyStringParts[0].split("\r\n")[3];
-      const blobParts = bodyStringParts[1].split("\r\n");
-      const blobContentTypeString = blobParts[1];
-      if (!blobContentTypeString || !blobContentTypeString.startsWith("Content-Type: ")) {
-        throw new Error("bad content type");
-      }
-      const blobContentType = blobContentTypeString.slice("Content-Type: ".length);
-
-      const metadataSegment = `${boundary}${bodyString.split(boundary)[1]}`;
-      const dataSegment = `${boundary}${bodyString.split(boundary).slice(2)[0]}`;
-      const dataSegmentHeader = (dataSegment.match(/.+Content-Type:.+?\r\n\r\n/s) || [])[0];
-
-      if (!dataSegmentHeader) {
-        throw new Error("bad segment");
-      }
-
-      const bufferOffset = metadataSegment.length + dataSegmentHeader.length;
-
-      const blobBytes = Buffer.from(body.slice(bufferOffset, -`\r\n${boundary}--`.length));
-      return {metadataRaw: metadataString, dataRaw: blobBytes};
-  }

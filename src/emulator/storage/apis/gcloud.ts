@@ -13,7 +13,7 @@ import { StorageLayer } from "../files";
 import type { Request, Response } from "express";
 import { Upload, UploadNotActiveError } from "../upload";
 import { ForbiddenError, NotFoundError } from "../errors";
-import { parseObjectUploadMultipartRequest, legacyParse } from "../multipart";
+import { parseObjectUploadMultipartRequest } from "../multipart";
 
 /**
  * @param emulator
@@ -225,7 +225,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     let dataRaw: Buffer;
     let bodyBuffer = await reqBodyToBuffer(req);
     try {
-      ({ metadataRaw, dataRaw } = legacyParse (//parseObjectUploadMultipartRequest(
+      ({ metadataRaw, dataRaw } = parseObjectUploadMultipartRequest(
         contentType!,
         bodyBuffer
       ));
@@ -240,17 +240,6 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       }
       throw err;
     }
-    ({ metadataRaw, dataRaw } = parseObjectUploadMultipartRequest (
-      contentType!,
-      bodyBuffer
-    ));
-    console.log(`new metadataRaw: ${metadataRaw}, dataRaw: ${dataRaw}`);
-    ({ metadataRaw, dataRaw } = legacyParse (
-      contentType!,
-      bodyBuffer
-    ));
-    console.log(`legacy metadataRaw: ${metadataRaw}, dataRaw: ${dataRaw}`);
-
 
     const upload = uploadService.multipartUpload({
       bucketId: req.params.bucketId,
