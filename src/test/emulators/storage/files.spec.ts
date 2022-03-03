@@ -5,11 +5,11 @@ import { StorageLayer } from "../../../emulator/storage/files";
 import { ForbiddenError, NotFoundError } from "../../../emulator/storage/errors";
 
 const ALWAYS_TRUE_RULES_VALIDATOR = {
-  validate: async () => true,
+  validate: () => Promise.resolve(true),
 };
 
 const ALWAYS_FALSE_RULES_VALIDATOR = {
-  validate: async () => false,
+  validate: async () => Promise.resolve(false),
 };
 
 describe("files", () => {
@@ -60,7 +60,7 @@ describe("files", () => {
     expect(storageLayer.getMetadata("bucket", "object")).to.equal(undefined);
   });
 
-  describe.only("#handleGetObject()", () => {
+  describe("#handleGetObject()", () => {
     it("should return data and metadata", async () => {
       const storageLayer = new StorageLayer("project", ALWAYS_TRUE_RULES_VALIDATOR);
       storageLayer.oneShotUpload(
@@ -90,9 +90,9 @@ describe("files", () => {
           bucketId: "bucket",
           decodedObjectId: "dir%2Fobject",
         })
-      ).rejectedWith(ForbiddenError);
+      ).to.be.rejectedWith(ForbiddenError);
     });
-    
+
     it("should throw an error if the object does not exist", () => {
       const storageLayer = new StorageLayer("project", ALWAYS_TRUE_RULES_VALIDATOR);
 
@@ -101,7 +101,7 @@ describe("files", () => {
           bucketId: "bucket",
           decodedObjectId: "dir%2Fobject",
         })
-      ).rejectedWith(NotFoundError);
+      ).to.be.rejectedWith(NotFoundError);
     });
   });
 });

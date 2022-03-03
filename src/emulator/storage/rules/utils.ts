@@ -28,13 +28,13 @@ export type RulesetProvider = () => StorageRulesetInstance | undefined;
  */
 export function getRulesValidator(rulesetProvider: RulesetProvider): RulesValidator {
   return {
-    validate: (
+    validate: async (
       path: string,
       method: RulesetOperationMethod,
       variableOverrides: RulesVariableOverrides,
       authorization?: string
     ) => {
-      return isPermitted({
+      return await isPermitted({
         ruleset: rulesetProvider(),
         file: variableOverrides,
         path,
