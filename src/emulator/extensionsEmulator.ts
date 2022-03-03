@@ -33,6 +33,8 @@ export class ExtensionsEmulator {
   private args: ExtensionEmulatorArgs;
   private logger = EmulatorLogger.forEmulator(Emulators.EXTENSIONS);
 
+  private pendingDownloads = new Set();
+
   constructor(args: ExtensionEmulatorArgs) {
     this.args = args;
   }
@@ -66,11 +68,19 @@ export class ExtensionsEmulator {
       process.env.FIREBASE_EXTENSIONS_CACHE_PATH ||
       path.join(os.homedir(), ".cache", "firebase", "extensions");
     const sourceCodePath = path.join(cacheDir, ref);
+    const extensionVersion = await planner.getExtensionVersion(instance);
+
+    // Wait 10s if the source with same ref is being downloaded before checking source validity.
+    // This avoids racing to download the same source multiple times.
+    if (this.pendingDownloads.has(ref)) {
+      await new Promise(_ => setTimeout(_, 10 * 1000)); 
+    }
 
     if (!this.hasValidSource({ path: sourceCodePath, extRef: ref })) {
-      const extensionVersion = await planner.getExtensionVersion(instance);
+      this.pendingDownloads.add(ref);
       await downloadExtensionVersion(ref, extensionVersion.sourceDownloadUri, sourceCodePath);
       this.installAndBuildSourceCode(sourceCodePath);
+      this.pendingDownloads.delete(ref);
     }
     return sourceCodePath;
   }
