@@ -138,7 +138,6 @@ export type GetObjectResponse = {
   data: Buffer;
 };
 
-type RulesetProvider = () => StorageRulesetInstance | undefined;
 export class StorageLayer {
   private _files!: Map<string, StoredFile>;
   private _uploads!: Map<string, ResumableUpload>;
