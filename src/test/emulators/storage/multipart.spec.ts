@@ -16,7 +16,7 @@ hello there!
 --b1d5b2e3-1845-4338-9400-6ac07ce53c1e--\r
 `);
 
-  describe("#parseObjectUploadMultipartRequest", () => {
+  describe("#parseObjectUploadMultipartRequest()", () => {
     it("parses an upload object multipart request successfully", () => {
       const { metadataRaw, dataRaw } = parseObjectUploadMultipartRequest(CONTENT_TYPE_HEADER, BODY);
 

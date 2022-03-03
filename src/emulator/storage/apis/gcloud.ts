@@ -228,20 +228,20 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       }
       throw err;
     }
-    const metadata = JSON.parse(metadataRaw)!;
-    const md = storageLayer.oneShotUpload(
+    const incomingMetadata = JSON.parse(metadataRaw)!;
+    const storedMetadata = storageLayer.oneShotUpload(
       req.params.bucketId,
       name,
-      metadata.contentType!,
-      metadata,
+      incomingMetadata.contentType!,
+      incomingMetadata,
       dataRaw
     );
-    if (!md) {
+    if (!storedMetadata) {
       res.sendStatus(400);
       return;
     }
 
-    res.status(200).json(new CloudStorageObjectMetadata(md)).send();
+    res.status(200).json(new CloudStorageObjectMetadata(storedMetadata)).send();
     return;
   });
 

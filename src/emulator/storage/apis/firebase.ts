@@ -9,46 +9,7 @@ import { EmulatorRegistry } from "../../registry";
 import { RulesetOperationMethod } from "../rules/types";
 import { parseObjectUploadMultipartRequest } from "../multipart";
 import { NotFoundError, ForbiddenError } from "../errors";
-import { StorageRulesetInstance } from "../rules/runtime";
-
-async function isPermitted(opts: {
-  ruleset?: StorageRulesetInstance;
-  file: {
-    before?: RulesResourceMetadata;
-    after?: RulesResourceMetadata;
-  };
-  path: string;
-  method: RulesetOperationMethod;
-  authorization?: string;
-}): Promise<boolean> {
-  if (!opts.ruleset) {
-    EmulatorLogger.forEmulator(Emulators.STORAGE).log(
-      "WARN",
-      `Can not process SDK request with no loaded ruleset`
-    );
-    return false;
-  }
-
-  // Skip auth for UI
-  if (["Bearer owner", "Firebase owner"].includes(opts.authorization || "")) {
-    return true;
-  }
-
-  const { permitted, issues } = await opts.ruleset.verify({
-    method: opts.method,
-    path: opts.path,
-    file: opts.file,
-    token: opts.authorization ? opts.authorization.split(" ")[1] : undefined,
-  });
-
-  if (issues.exist()) {
-    issues.all.forEach((warningOrError) => {
-      EmulatorLogger.forEmulator(Emulators.STORAGE).log("WARN", warningOrError);
-    });
-  }
-
-  return !!permitted;
-}
+import { isPermitted } from "../rules/utils";
 
 /**
  * @param emulator
