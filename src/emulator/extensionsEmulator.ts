@@ -69,7 +69,6 @@ export class ExtensionsEmulator {
       process.env.FIREBASE_EXTENSIONS_CACHE_PATH ||
       path.join(os.homedir(), ".cache", "firebase", "extensions");
     const sourceCodePath = path.join(cacheDir, ref);
-    const extensionVersion = await planner.getExtensionVersion(instance);
 
     // Wait 20s if the source with same ref is being downloaded already before we check source validity.
     // This avoids racing to download the same source multiple times.
@@ -79,8 +78,11 @@ export class ExtensionsEmulator {
 
     if (!this.hasValidSource({ path: sourceCodePath, extRef: ref })) {
       this.pendingDownloads.add(ref);
+
+      const extensionVersion = await planner.getExtensionVersion(instance);
       await downloadExtensionVersion(ref, extensionVersion.sourceDownloadUri, sourceCodePath);
       this.installAndBuildSourceCode(sourceCodePath);
+
       this.pendingDownloads.delete(ref);
     }
     return sourceCodePath;
