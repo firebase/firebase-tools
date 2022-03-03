@@ -80,7 +80,7 @@ export async function want(args: {
   aliases: string[];
   projectDir: string;
   extensions: Record<string, string>;
-  checkLocal?: boolean;
+  emulatorMode?: boolean;
 }): Promise<InstanceSpec[]> {
   const instanceSpecs: InstanceSpec[] = [];
   const errors: FirebaseError[] = [];
@@ -96,9 +96,9 @@ export async function want(args: {
         projectId: args.projectId,
         projectNumber: args.projectNumber,
         aliases: args.aliases,
-        checkLocal: args.checkLocal,
+        checkLocal: args.emulatorMode,
       });
-      const autoPopulatedParams = await getFirebaseProjectParams(args.projectId);
+      const autoPopulatedParams = await getFirebaseProjectParams(args.projectId, args.emulatorMode);
       const subbedParams = substituteParams(params, autoPopulatedParams);
 
       instanceSpecs.push({

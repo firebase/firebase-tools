@@ -17,6 +17,7 @@ import { Emulators } from "./types";
 import { checkForUnemulatedTriggerTypes, getUnemulatedAPIs } from "./extensions/validation";
 import { enableApiURI } from "../ensureApiEnabled";
 import { shortenUrl } from "../shortenUrl";
+import { Constants } from "./constants";
 
 export interface ExtensionEmulatorArgs {
   projectId: string;
@@ -46,7 +47,7 @@ export class ExtensionsEmulator {
       aliases: this.args.aliases ?? [],
       projectDir: this.args.projectDir,
       extensions: this.args.extensions,
-      checkLocal: true,
+      emulatorMode: true,
     });
   }
 
@@ -203,12 +204,18 @@ export class ExtensionsEmulator {
           apiToWarn.enabled ? "" : clc.bold.underline(enablementUri),
         ]);
       }
-
+      const msg = Constants.isDemoProject(this.args.projectId)
+        ? `${clc.bold(
+            this.args.projectId
+          )} is a demo project, so these Extensions may not work as expected.\n`
+        : `These calls will go to production Google Cloud APIs which may have real effects on ${clc.bold(
+            this.args.projectId
+          )}.\n`;
       this.logger.logLabeled(
         "WARN",
         "Extensions",
-        `The following Extensions make calls to Google Cloud APIs that do not have Emulators. ` +
-          `These calls will go to production Google Cloud APIs which may have real effects on ${this.args.projectId}.\n` +
+        "The following Extensions make calls to Google Cloud APIs that do not have Emulators. " +
+          msg +
           table.toString()
       );
     }
