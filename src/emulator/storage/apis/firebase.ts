@@ -402,6 +402,8 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     }
 
     if (uploadCommand.includes("upload")) {
+      console.log(`original body buffer bytelength: ${(req.body as Buffer).byteLength}`)
+      console.log(`stringified body ${JSON.stringify(req.body.toString())}`);
       let upload: Upload;
       if (!(req.body instanceof Buffer)) {
         const bufs: Buffer[] = [];
@@ -416,6 +418,9 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
           });
         });
       }
+
+      console.log(`transformed body buffer bytelength: ${(req.body as Buffer).byteLength}`)
+      console.log(`stringified transformed body ${JSON.stringify(req.body.toString())}`);
       try {
         upload = uploadService.continueResumableUpload(uploadId, req.body as Buffer);
       } catch (err) {

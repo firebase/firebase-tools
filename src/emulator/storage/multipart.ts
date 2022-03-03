@@ -81,7 +81,7 @@ function parseMultipartRequestBodyPart(bodyPart: Buffer): MultipartRequestBodyPa
   }
   offset = nextLineSeparatorIndex + LINE_SEPARATOR.length;
 
-  let dataRaw = Buffer.from(bodyPart.slice(offset));
+  let dataRaw = Buffer.from(bodyPart.slice(offset, bodyPart.length - LINE_SEPARATOR.length));
   return { contentTypeRaw, dataRaw };
 }
 

@@ -1080,7 +1080,7 @@ describe("Storage emulator", () => {
           );
         });
 
-        it("serves the right content", async () => {
+        it.only("serves the right content", async () => {
           const downloadUrl = await page.evaluate((filename) => {
             return firebase.storage().ref(filename).getDownloadURL();
           }, filename);
