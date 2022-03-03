@@ -361,7 +361,7 @@ async function testIfPermitted(
     runtimeVariableOverrides
   );
 
-  if (permitted == undefined) {
+  if (permitted === undefined) {
     throw new Error(JSON.stringify(issues, undefined, 2));
   }
 

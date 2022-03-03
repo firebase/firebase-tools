@@ -135,10 +135,10 @@ export function upgradedToGCFv2WithoutSettingConcurrency(
  *  a user listens to a different bucket, which happens to have a different region.
  */
 export function changedTriggerRegion(want: backend.Endpoint, have: backend.Endpoint): boolean {
-  if (want.platform != "gcfv2") {
+  if (want.platform !== "gcfv2") {
     return false;
   }
-  if (have.platform != "gcfv2") {
+  if (have.platform !== "gcfv2") {
     return false;
   }
   if (!backend.isEventTriggered(want)) {
@@ -147,7 +147,7 @@ export function changedTriggerRegion(want: backend.Endpoint, have: backend.Endpo
   if (!backend.isEventTriggered(have)) {
     return false;
   }
-  return want.eventTrigger.region != have.eventTrigger.region;
+  return want.eventTrigger.region !== have.eventTrigger.region;
 }
 
 /** Whether a user changed the Pub/Sub topic of a GCFv2 function (which isn't allowed in the API). */
@@ -218,14 +218,14 @@ export function checkForIllegalUpdate(want: backend.Endpoint, have: backend.Endp
   };
   const wantType = triggerType(want);
   const haveType = triggerType(have);
-  if (wantType != haveType) {
+  if (wantType !== haveType) {
     throw new FirebaseError(
       `[${getFunctionLabel(
         want
       )}] Changing from ${haveType} function to ${wantType} function is not allowed. Please delete your function and create a new one instead.`
     );
   }
-  if (want.platform == "gcfv1" && have.platform == "gcfv2") {
+  if (want.platform === "gcfv1" && have.platform === "gcfv2") {
     throw new FirebaseError(
       `[${getFunctionLabel(want)}] Functions cannot be downgraded from GCFv2 to GCFv1`
     );
@@ -243,7 +243,7 @@ export function checkForIllegalUpdate(want: backend.Endpoint, have: backend.Endp
  * upgrading to v2 in tests before production is ready
  */
 export function checkForV2Upgrade(want: backend.Endpoint, have: backend.Endpoint): void {
-  if (want.platform == "gcfv2" && have.platform == "gcfv1") {
+  if (want.platform === "gcfv2" && have.platform === "gcfv1") {
     throw new FirebaseError(
       `[${getFunctionLabel(
         have

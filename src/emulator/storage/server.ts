@@ -107,7 +107,7 @@ export function createApp(
   });
 
   app.post("/internal/reset", (req, res) => {
-    storageLayer.reset();
+    emulator.reset();
     res.sendStatus(200);
   });
 

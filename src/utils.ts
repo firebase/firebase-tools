@@ -477,7 +477,7 @@ export function setupLoggers() {
         level: "info",
         format: winston.format.printf((info) =>
           [info.message, ...(info[SPLAT] || [])]
-            .filter((chunk) => typeof chunk == "string")
+            .filter((chunk) => typeof chunk === "string")
             .join(" ")
         ),
       })

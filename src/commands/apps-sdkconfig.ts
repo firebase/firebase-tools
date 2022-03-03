@@ -98,7 +98,7 @@ module.exports = new Command("apps:sdkconfig [platform] [appId]")
       spinner.succeed();
 
       const fileInfo = getAppConfigFile(configData, appPlatform);
-      if (appPlatform == AppPlatform.WEB) {
+      if (appPlatform === AppPlatform.WEB) {
         fileInfo.sdkConfig = configData;
       }
 

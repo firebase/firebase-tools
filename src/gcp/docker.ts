@@ -104,7 +104,7 @@ export class Client {
     if (!response.body) {
       return;
     }
-    if (response.body.errors?.length != 0) {
+    if (response.body.errors?.length !== 0) {
       throw new FirebaseError(`Failed to delete tag ${tag} at path ${path}`, {
         children: response.body.errors,
       });
@@ -116,7 +116,7 @@ export class Client {
     if (!response.body) {
       return;
     }
-    if (response.body.errors?.length != 0) {
+    if (response.body.errors?.length !== 0) {
       throw new FirebaseError(`Failed to delete image ${digest} at path ${path}`, {
         children: response.body.errors,
       });

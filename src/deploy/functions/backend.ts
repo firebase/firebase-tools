@@ -322,7 +322,7 @@ export function of(...endpoints: Endpoint[]): Backend {
  */
 export function isEmptyBackend(backend: Backend): boolean {
   return (
-    Object.keys(backend.requiredAPIs).length == 0 && Object.keys(backend.endpoints).length === 0
+    Object.keys(backend.requiredAPIs).length === 0 && Object.keys(backend.endpoints).length === 0
   );
 }
 
@@ -450,7 +450,7 @@ export async function checkAvailability(context: Context, want: Backend): Promis
   const gcfV1Regions = new Set();
   const gcfV2Regions = new Set();
   for (const ep of allEndpoints(want)) {
-    if (ep.platform == "gcfv1") {
+    if (ep.platform === "gcfv1") {
       gcfV1Regions.add(ep.region);
     } else {
       gcfV2Regions.add(ep.region);
@@ -585,7 +585,7 @@ export function compareFunctions(
   left: TargetIds & { platform: FunctionsPlatform },
   right: TargetIds & { platform: FunctionsPlatform }
 ): number {
-  if (left.platform != right.platform) {
+  if (left.platform !== right.platform) {
     return right.platform < left.platform ? -1 : 1;
   }
   if (left.region < right.region) {

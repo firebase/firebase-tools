@@ -1,4 +1,4 @@
-import * as path from "path";
+import { tmpdir } from "os";
 import * as utils from "../../utils";
 import { Constants } from "../constants";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../types";
@@ -12,6 +12,8 @@ import { Source } from "./rules/types";
 import { FirebaseError } from "../../error";
 import { getDownloadDetails } from "../downloadableEmulators";
 import express = require("express");
+import { getRulesValidator } from "./rules/utils";
+import { Persistence } from "./persistence";
 
 export interface StorageEmulatorArgs {
   projectId: string;
@@ -30,12 +32,18 @@ export class StorageEmulator implements EmulatorInstance {
 
   private _logger = EmulatorLogger.forEmulator(Emulators.STORAGE);
   private _rulesRuntime: StorageRulesRuntime;
+  private _persistence: Persistence;
   private _storageLayer: StorageLayer;
 
   constructor(private args: StorageEmulatorArgs) {
     const downloadDetails = getDownloadDetails(Emulators.STORAGE);
     this._rulesRuntime = new StorageRulesRuntime();
-    this._storageLayer = new StorageLayer(args.projectId);
+    this._persistence = new Persistence(this.getPersistenceTmpDir());
+    this._storageLayer = new StorageLayer(
+      args.projectId,
+      getRulesValidator(() => this.rules),
+      this._persistence
+    );
   }
 
   get storageLayer(): StorageLayer {
@@ -50,19 +58,24 @@ export class StorageEmulator implements EmulatorInstance {
     return this._logger;
   }
 
+  reset(): void {
+    this._storageLayer.reset();
+    this._persistence.reset(this.getPersistenceTmpDir());
+  }
+
   async start(): Promise<void> {
     const { host, port } = this.getInfo();
     await this._rulesRuntime.start(this.args.auto_download);
     this._app = await createApp(this.args.projectId, this);
 
-    if (typeof this.args.rules == "string") {
+    if (typeof this.args.rules === "string") {
       const rulesFile = this.args.rules;
       this.updateRulesSource(rulesFile);
     } else {
       this._rulesetSource = this.args.rules;
     }
 
-    if (!this._rulesetSource || this._rulesetSource.files.length == 0) {
+    if (!this._rulesetSource || this._rulesetSource.files.length === 0) {
       throw new FirebaseError("Can not initialize Storage emulator without a rules source / file.");
     } else if (this._rulesetSource.files.length > 1) {
       throw new FirebaseError(
@@ -174,5 +187,9 @@ export class StorageEmulator implements EmulatorInstance {
 
   getApp(): express.Express {
     return this._app!;
+  }
+
+  private getPersistenceTmpDir(): string {
+    return `${tmpdir()}/firebase/storage/blobs`;
   }
 }

@@ -1097,7 +1097,7 @@ describe("Fabricator", () => {
 
       // Will fail when it hits actual API calls
       const summary = await fab.applyPlan(plan);
-      const ep1Result = summary.results.find((r) => r.endpoint.region == ep1.region);
+      const ep1Result = summary.results.find((r) => r.endpoint.region === ep1.region);
       expect(ep1Result?.error).to.be.instanceOf(reporter.DeploymentError);
       expect(ep1Result?.error?.message).to.match(/create function/);
 

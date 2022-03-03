@@ -48,7 +48,7 @@ import { previews } from "../previews";
 const START_LOGGING_EMULATOR = utils.envOverride(
   "START_LOGGING_EMULATOR",
   "false",
-  (val) => val == "true"
+  (val) => val === "true"
 );
 
 async function getAndCheckAddress(emulator: Emulators, options: Options): Promise<Address> {
@@ -82,7 +82,7 @@ async function getAndCheckAddress(emulator: Emulators, options: Options): Promis
   if (!portOpen) {
     if (findAvailablePort) {
       const newPort = await portUtils.findAvailablePort(host, port);
-      if (newPort != port) {
+      if (newPort !== port) {
         loggerForEmulator.logLabeled(
           "WARN",
           emulator,
@@ -458,7 +458,11 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
       extensions: options.config.get("extensions"),
     });
     const extensionsBackends = await extensionEmulator.getExtensionBackends();
-    emulatableBackends.push(...extensionsBackends);
+    const filteredExtensionsBackends = extensionEmulator.filterUnemulatedTriggers(
+      options,
+      extensionsBackends
+    );
+    emulatableBackends.push(...filteredExtensionsBackends);
 
     // Log the command for analytics
     void track("Emulator Run", Emulators.EXTENSIONS);
