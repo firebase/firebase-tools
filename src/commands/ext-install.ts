@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import * as clc from "cli-color";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
@@ -85,18 +84,18 @@ export default new Command("ext:install [extensionName]")
     let source;
     let extVersion;
 
-    // TODO(b/220900194): Track url install usage to determine if we can remove this feature.
+    // TODO(b/220900194): Remove tracking of url install once we remove this feature.
     if (isUrlPath(extensionName)) {
-      track("Extension Install", "Install by url path", options.interactive ? 1 : 0);
+      void track("Extension Install", "Install by url path", options.interactive ? 1 : 0);
     }
 
     // If the user types in URL, or a local path (prefixed with ~/, ../, or ./), install from local/URL source.
     // Otherwise, treat the input as an extension reference and proceed with reference-based installation.
     if (isLocalOrURLPath(extensionName)) {
-      track("Extension Install", "Install by Source", options.interactive ? 1 : 0);
+      void track("Extension Install", "Install by Source", options.interactive ? 1 : 0);
       source = await infoInstallBySource(projectId, extensionName);
     } else {
-      track("Extension Install", "Install by Extension Ref", options.interactive ? 1 : 0);
+      void track("Extension Install", "Install by Extension Ref", options.interactive ? 1 : 0);
       extVersion = await infoInstallByReference(extensionName, options.interactive);
     }
     if (
@@ -182,7 +181,7 @@ async function infoInstallByReference(
   const ref = refs.parse(extensionName);
   const extension = await extensionsApi.getExtension(refs.toExtensionRef(ref));
   if (!ref.version) {
-    track("Extension Install", "Install by Extension Version Ref", interactive ? 1 : 0);
+    void track("Extension Install", "Install by Extension Version Ref", interactive ? 1 : 0);
     extensionName = `${extensionName}@latest`;
   }
   const extVersion = await extensionsApi.getExtensionVersion(extensionName);
