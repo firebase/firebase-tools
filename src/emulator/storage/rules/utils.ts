@@ -41,7 +41,7 @@ export function getRulesValidator(rulesetProvider: RulesetProvider): RulesValida
         method,
         authorization,
       });
-    };
+    },
   };
 }
 
