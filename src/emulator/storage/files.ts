@@ -8,6 +8,7 @@ import {
   IncomingMetadata,
   StoredFileMetadata,
 } from "./metadata";
+import { NotFoundError, ForbiddenError } from "./errors";
 import * as path from "path";
 import * as fs from "fs";
 import * as fse from "fs-extra";
@@ -18,6 +19,9 @@ import {
   constructDefaultAdminSdkConfig,
   getProjectAdminSdkConfigOrCached,
 } from "../adminSdkConfig";
+import { StorageRulesetInstance } from "./rules/runtime";
+import { RulesetOperationMethod } from "./rules/types";
+import { isPermitted, RulesValidator } from "./rules/utils";
 
 interface BucketsList {
   buckets: {
@@ -120,6 +124,20 @@ export enum UploadStatus {
   FINISHED,
 }
 
+/**  Parsed request object for {@link StorageLayer#handleGetObject}. */
+export type GetObjectRequest = {
+  bucketId: string;
+  decodedObjectId: string;
+  authorization?: string;
+  downloadToken?: string;
+};
+
+/** Response object for {@link StorageLayer#handleGetObject}. */
+export type GetObjectResponse = {
+  metadata: StoredFileMetadata;
+  data: Buffer;
+};
+
 export class StorageLayer {
   private _files!: Map<string, StoredFile>;
   private _uploads!: Map<string, ResumableUpload>;
@@ -127,7 +145,7 @@ export class StorageLayer {
   private _persistence!: Persistence;
   private _cloudFunctions: StorageCloudFunctions;
 
-  constructor(private _projectId: string) {
+  constructor(private _projectId: string, private _validator: RulesValidator) {
     this.reset();
     this._cloudFunctions = new StorageCloudFunctions(this._projectId);
   }
@@ -155,6 +173,35 @@ export class StorageLayer {
     }
 
     return [...this._buckets.values()];
+  }
+
+  /**
+   * Returns an stored object and its metadata.
+   * @throws {NotFoundError} if object does not exist
+   * @throws {ForbiddenError} if request is unauthorized
+   */
+  public async handleGetObject(request: GetObjectRequest): Promise<GetObjectResponse> {
+    const metadata = this.getMetadata(request.bucketId, request.decodedObjectId);
+
+    // If a valid download token is present, skip Firebase Rules auth. Mainly used by the js sdk.
+    let authorized = (metadata?.downloadTokens || []).includes(request.downloadToken ?? "");
+    if (!authorized) {
+      authorized = await this._validator.validate(
+        ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
+        RulesetOperationMethod.GET,
+        { before: metadata?.asRulesResource() },
+        request.authorization
+      );
+    }
+    if (!authorized) {
+      throw new ForbiddenError("Failed auth");
+    }
+
+    if (!metadata) {
+      throw new NotFoundError("File not found");
+    }
+
+    return { metadata: metadata!, data: this.getBytes(request.bucketId, request.decodedObjectId)! };
   }
 
   public getMetadata(bucket: string, object: string): StoredFileMetadata | undefined {

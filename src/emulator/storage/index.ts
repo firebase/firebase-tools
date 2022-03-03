@@ -12,6 +12,7 @@ import { Source } from "./rules/types";
 import { FirebaseError } from "../../error";
 import { getDownloadDetails } from "../downloadableEmulators";
 import express = require("express");
+import { getRulesValidator } from "./rules/utils";
 
 export interface StorageEmulatorArgs {
   projectId: string;
@@ -35,7 +36,10 @@ export class StorageEmulator implements EmulatorInstance {
   constructor(private args: StorageEmulatorArgs) {
     const downloadDetails = getDownloadDetails(Emulators.STORAGE);
     this._rulesRuntime = new StorageRulesRuntime();
-    this._storageLayer = new StorageLayer(args.projectId);
+    this._storageLayer = new StorageLayer(
+      args.projectId,
+      getRulesValidator(() => this.rules)
+    );
   }
 
   get storageLayer(): StorageLayer {
