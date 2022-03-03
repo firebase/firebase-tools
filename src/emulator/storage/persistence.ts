@@ -48,10 +48,10 @@ export class Persistence {
   }
 
   readBytes(fileName: string, size: number, fileOffset?: number): Buffer {
-    const path = this.getDiskPath(fileName);
+    //console.log(`\n\nreadBytes, ${this.getDiskPath(fileName)}`);
     let fd;
     try {
-      fd = openSync(path, "r");
+      fd = openSync(this.getDiskPath(fileName), "r");
       const buf = Buffer.alloc(size);
       const offset = fileOffset && fileOffset > 0 ? fileOffset : 0;
       readSync(fd, buf, 0, size, offset);
@@ -64,6 +64,7 @@ export class Persistence {
   }
 
   deleteFile(fileName: string, failSilently = false): void {
+    //console.log(`\ndeleteFile, ${this.getDiskPath(fileName)}`);
     try {
       unlinkSync(this.getDiskPath(fileName));
     } catch (err: any) {

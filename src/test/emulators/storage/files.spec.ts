@@ -7,7 +7,7 @@ import { StorageLayer } from "../../../emulator/storage/files";
 import { ForbiddenError, NotFoundError } from "../../../emulator/storage/errors";
 import { Persistence } from "../../../emulator/storage/persistence";
 import { RulesValidator } from "../../../emulator/storage/rules/utils";
-import { UploadService } from "../../../emulator/storage/upload";
+import { Upload, UploadService, UploadStatus, UploadType } from "../../../emulator/storage/upload";
 
 const ALWAYS_TRUE_RULES_VALIDATOR = {
   validate: () => Promise.resolve(true),
@@ -43,13 +43,51 @@ describe("files", () => {
     let _persistence: Persistence;
     let _uploadService: UploadService;
 
+    const UPLOAD: Upload = {
+      id: "uploadId",
+      bucketId: "bucket",
+      objectId: "dir%2Fobject",
+      path: "",
+      type: UploadType.RESUMABLE,
+      status: UploadStatus.FINISHED,
+      metadata: {},
+      size: 10,
+    };
+
     beforeEach(() => {
       _persistence = new Persistence(getPersistenceTmpDir());
       _uploadService = new UploadService(_persistence);
     });
 
-    describe("handleUploadObject()", () => {
-      it("should throw if upload is not finished", () => {});
+    describe("#handleUploadObject()", () => {
+      it("should throw if upload is not finished", () => {
+        const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
+        const upload = _uploadService.startResumableUpload({
+          bucketId: "bucket",
+          objectId: "dir%2Fobject",
+          metadataRaw: "{}",
+        });
+
+        expect(storageLayer.handleUploadObject(upload)).to.be.rejectedWith(
+          "Unexpected upload status"
+        );
+      });
+
+      it("should throw if upload is not authorized", async () => {
+        const storageLayer = getStorageLayer(ALWAYS_FALSE_RULES_VALIDATOR);
+        const uploadId = _uploadService.startResumableUpload({
+          bucketId: "bucket",
+          objectId: "dir%2Fobject",
+          metadataRaw: "{}",
+        }).id;
+        const data = Buffer.from("hello world");
+        _uploadService.continueResumableUpload(uploadId, Buffer.from("hello world"));
+        const upload = _uploadService.finalizeResumableUpload(uploadId);
+
+        expect(storageLayer.handleUploadObject(upload)).to.be.rejectedWith(ForbiddenError);
+        // Staging file should be cleaned up
+        expect(_persistence.readBytes(upload.path, 1).byteLength).to.equal(1);
+      });
     });
 
     describe("#handleGetObject()", () => {
@@ -94,9 +132,10 @@ describe("files", () => {
         ).to.be.rejectedWith(NotFoundError);
       });
     });
-  });
 
-  const getStorageLayer = (rulesValidator: RulesValidator) =>
-    new StorageLayer("project", rulesValidator, new Persistence(getPersistenceTmpDir()));
-  const getPersistenceTmpDir = () => `${tmpdir()}/firebase/storage/blobs`;
+    const getStorageLayer = (rulesValidator: RulesValidator) =>
+      new StorageLayer("project", rulesValidator, _persistence);
+
+    const getPersistenceTmpDir = () => `${tmpdir()}/firebase/storage/blobs`;
+  });
 });

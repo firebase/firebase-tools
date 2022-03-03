@@ -1,5 +1,4 @@
-
-    /*
+/*
   it("should store file in memory when upload is finalized", () => {
     const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
     const bytesToWrite = "Hello, World!";

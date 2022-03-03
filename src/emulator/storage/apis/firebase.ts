@@ -10,10 +10,7 @@ import { RulesetOperationMethod } from "../rules/types";
 import { parseObjectUploadMultipartRequest } from "../multipart";
 import { NotFoundError, ForbiddenError } from "../errors";
 import { isPermitted } from "../rules/utils";
-<<<<<<< HEAD
 import { NotCancellableError, Upload, UploadNotActiveError } from "../upload";
-=======
->>>>>>> master
 
 /**
  * @param emulator
@@ -359,21 +356,10 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     }
 
     if (uploadCommand === "start") {
-      let contentType =
-        req.header("x-goog-upload-header-content-type") || req.header("x-goog-upload-content-type");
-      if (!contentType) {
-        const mimeTypeFromName = mime.getType(objectId);
-        if (!mimeTypeFromName) {
-          contentType = "application/octet-stream";
-        } else {
-          contentType = mimeTypeFromName;
-        }
-      }
       const upload = uploadService.startResumableUpload({
         bucketId,
         objectId,
         metadataRaw: JSON.stringify(req.body),
-        contentType,
         // Store auth header for use in the finalize request
         authorization: req.header("authorization"),
       });
@@ -392,8 +378,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     }
 
     if (!req.query.upload_id) {
-      res.sendStatus(400);
-      return;
+      return res.sendStatus(400);
     }
 
     const uploadId = req.query.upload_id.toString();

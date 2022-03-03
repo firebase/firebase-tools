@@ -43,7 +43,6 @@ export type StartResumableUploadRequest = {
   bucketId: string;
   objectId: string;
   metadataRaw: string;
-  contentType: string;
   authorization?: string;
 };
 

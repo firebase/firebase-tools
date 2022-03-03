@@ -212,7 +212,6 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
         bucketId: req.params.bucketId,
         objectId: name,
         metadataRaw: JSON.stringify(req.body),
-        contentType: contentTypeHeader,
         authorization: req.header("authorization"),
       });
 
