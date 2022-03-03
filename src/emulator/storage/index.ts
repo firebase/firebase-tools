@@ -1,4 +1,4 @@
-import * as path from "path";
+import { tmpdir } from "os";
 import * as utils from "../../utils";
 import { Constants } from "../constants";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../types";
@@ -13,6 +13,7 @@ import { FirebaseError } from "../../error";
 import { getDownloadDetails } from "../downloadableEmulators";
 import express = require("express");
 import { getRulesValidator } from "./rules/utils";
+import { Persistence } from "./persistence";
 
 export interface StorageEmulatorArgs {
   projectId: string;
@@ -31,14 +32,17 @@ export class StorageEmulator implements EmulatorInstance {
 
   private _logger = EmulatorLogger.forEmulator(Emulators.STORAGE);
   private _rulesRuntime: StorageRulesRuntime;
+  private _persistence: Persistence;
   private _storageLayer: StorageLayer;
 
   constructor(private args: StorageEmulatorArgs) {
     const downloadDetails = getDownloadDetails(Emulators.STORAGE);
     this._rulesRuntime = new StorageRulesRuntime();
+    this._persistence = new Persistence(this.getPersistenceTmpDir());
     this._storageLayer = new StorageLayer(
       args.projectId,
-      getRulesValidator(() => this.rules)
+      getRulesValidator(() => this.rules),
+      this._persistence
     );
   }
 
@@ -52,6 +56,11 @@ export class StorageEmulator implements EmulatorInstance {
 
   get logger(): EmulatorLogger {
     return this._logger;
+  }
+
+  reset(): void {
+    this._storageLayer.reset();
+    this._persistence.reset(this.getPersistenceTmpDir());
   }
 
   async start(): Promise<void> {
@@ -178,5 +187,9 @@ export class StorageEmulator implements EmulatorInstance {
 
   getApp(): express.Express {
     return this._app!;
+  }
+
+  private getPersistenceTmpDir(): string {
+    return `${tmpdir()}/firebase/storage/blobs`;
   }
 }
