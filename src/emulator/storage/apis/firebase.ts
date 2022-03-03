@@ -212,7 +212,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     );
   });
 
-  const reqBodyToBuffer = async (req: Request) => {
+  const reqBodyToBuffer = async (req: Request): Buffer => {
     if (req.body instanceof Buffer) {
       return Buffer.from(req.body);
     }
