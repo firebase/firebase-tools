@@ -168,9 +168,6 @@ export function mergeRequiredAPIs(backend: backend.Backend) {
   backend.requiredAPIs = merged;
 }
 
-/**
- *
- */
 export function addResourcesToBackend(
   projectId: string,
   runtime: runtimes.Runtime,

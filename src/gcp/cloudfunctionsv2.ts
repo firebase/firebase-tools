@@ -435,8 +435,6 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
       eventType: endpoint.eventTrigger.eventType,
     };
     if (gcfFunction.eventTrigger.eventType === PUBSUB_PUBLISH_EVENT) {
-      gcfFunction.eventTrigger.eventFilters = [];
-
       const pubsubFilter = backend.findEventFilter(endpoint, "topic");
       if (!pubsubFilter) {
         throw new FirebaseError(
