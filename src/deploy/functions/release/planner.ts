@@ -164,7 +164,7 @@ export function changedV2PubSubTopic(want: backend.Endpoint, have: backend.Endpo
   if (!backend.isEventTriggered(have)) {
     return false;
   }
-  if (want.eventTrigger.eventType != v2events.PUBSUB_PUBLISH_EVENT) {
+  if (want.eventTrigger.eventType !== v2events.PUBSUB_PUBLISH_EVENT) {
     return false;
   }
   if (have.eventTrigger.eventType !== v2events.PUBSUB_PUBLISH_EVENT) {
