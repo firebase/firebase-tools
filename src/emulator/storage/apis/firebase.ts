@@ -234,7 +234,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     if (req.query.create_token || req.query.delete_token) {
       const decodedObjectId = decodeURIComponent(req.params.objectId);
       const operationPath = ["b", bucketId, "o", decodedObjectId].join("/");
-      const mdBefore = storageLayer.getMetadata(bucketId, req.params.objectId);
+      const metadataBefore = storageLayer.getMetadata(bucketId, req.params.objectId);
 
       if (
         !(await isPermitted({
@@ -243,7 +243,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
           path: operationPath,
           authorization: req.header("authorization"),
           file: {
-            before: mdBefore?.asRulesResource(),
+            before: metadataBefore?.asRulesResource(),
             // TODO: before and after w/ metadata change
           },
         }))
@@ -256,7 +256,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         });
       }
 
-      if (!mdBefore) {
+      if (!metadataBefore) {
         return res.status(404).json({
           error: {
             code: 404,
@@ -267,29 +267,29 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
 
       const createTokenParam = req.query["create_token"];
       const deleteTokenParam = req.query["delete_token"];
-      let md: StoredFileMetadata | undefined;
+      let metadata: StoredFileMetadata | undefined;
 
       if (createTokenParam) {
         if (createTokenParam !== "true") {
           res.sendStatus(400);
           return;
         }
-        md = storageLayer.addDownloadToken(req.params.bucketId, req.params.objectId);
+        metadata = storageLayer.addDownloadToken(req.params.bucketId, req.params.objectId);
       } else if (deleteTokenParam) {
-        md = storageLayer.deleteDownloadToken(
+        metadata = storageLayer.deleteDownloadToken(
           req.params.bucketId,
           req.params.objectId,
           deleteTokenParam.toString()
         );
       }
 
-      if (!md) {
+      if (!metadata) {
         res.sendStatus(404);
         return;
       }
 
-      setObjectHeaders(res, md);
-      return res.json(new OutgoingFirebaseMetadata(md));
+      setObjectHeaders(res, metadata);
+      return res.json(new OutgoingFirebaseMetadata(metadata));
     }
 
     if (!req.query.name) {
