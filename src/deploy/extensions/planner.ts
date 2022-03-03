@@ -126,7 +126,7 @@ export async function want(args: {
  * @param version a semver or semver range
  */
 export async function resolveVersion(ref: refs.Ref): Promise<string> {
-  if (!ref.version || ref.version == "latest") {
+  if (!ref.version || ref.version === "latest") {
     return "latest";
   }
   const extensionRef = refs.toExtensionRef(ref);

@@ -133,7 +133,7 @@ export function canCalculateMinInstanceCost(endpoint: backend.Endpoint): boolean
     return true;
   }
 
-  if (endpoint.platform == "gcfv1") {
+  if (endpoint.platform === "gcfv1") {
     if (!MB_TO_GHZ[endpoint.availableMemoryMb || 256]) {
       return false;
     }

@@ -248,7 +248,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       let md: StoredFileMetadata | undefined;
 
       if (createTokenParam) {
-        if (createTokenParam != "true") {
+        if (createTokenParam !== "true") {
           res.sendStatus(400);
           return;
         }
@@ -278,7 +278,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     const name = req.query.name.toString();
     const uploadType = req.header("x-goog-upload-protocol");
 
-    if (uploadType == "multipart") {
+    if (uploadType === "multipart") {
       const contentType = req.header("content-type");
       if (!contentType || !contentType.startsWith("multipart/related")) {
         res.sendStatus(400);
@@ -347,7 +347,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         });
       }
 
-      if (md.downloadTokens.length == 0) {
+      if (md.downloadTokens.length === 0) {
         md.addDownloadToken();
       }
 
@@ -361,7 +361,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         return;
       }
 
-      if (uploadCommand == "start") {
+      if (uploadCommand === "start") {
         let objectContentType =
           req.header("x-goog-upload-header-content-type") ||
           req.header("x-goog-upload-content-type");
@@ -406,7 +406,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       }
 
       const uploadId = req.query.upload_id.toString();
-      if (uploadCommand == "query") {
+      if (uploadCommand === "query") {
         const upload = storageLayer.queryUpload(uploadId);
         if (!upload) {
           res.sendStatus(400);
@@ -418,7 +418,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         return;
       }
 
-      if (uploadCommand == "cancel") {
+      if (uploadCommand === "cancel") {
         const upload = storageLayer.queryUpload(uploadId);
         if (upload) {
           const cancelled = storageLayer.cancelUpload(upload);
@@ -489,7 +489,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         const uploadedFile = storageLayer.finalizeUpload(upload);
 
         const md = uploadedFile.metadata;
-        if (md.downloadTokens.length == 0) {
+        if (md.downloadTokens.length === 0) {
           md.addDownloadToken();
         }
 

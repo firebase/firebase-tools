@@ -68,6 +68,16 @@ export interface FunctionsRuntimeBundle {
   // and none of these extra properties.
   socketPath?: string;
   disabled_features?: FunctionsRuntimeFeatures;
+  // TODO(danielylee): To make debugging in Functions Emulator w/ --inspect-functions flag a good experience, we run
+  // all functions in a single runtime process. This is drastically different to production environment where each
+  // function runs in isolated, independent containers. Until we have better design for supporting --inspect-functions
+  // flag, we begrudgingly include the target trigger info in the runtime bundle so the "debug" runtime process can
+  // choose which trigger to run at runtime.
+  // See https://github.com/firebase/firebase-tools/issues/4189.
+  debug?: {
+    functionTarget: string;
+    functionSignature: string;
+  };
 }
 
 export interface FunctionsRuntimeFeatures {
@@ -255,7 +265,7 @@ export function getTemporarySocketPath(pid: number, cwd: string): string {
   }
 }
 
-export function getFunctionService(def: EmulatedTriggerDefinition): string {
+export function getFunctionService(def: ParsedTriggerDefinition): string {
   if (def.eventTrigger) {
     return def.eventTrigger.service ?? getServiceFromEventType(def.eventTrigger.eventType);
   }

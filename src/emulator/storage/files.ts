@@ -171,7 +171,7 @@ export class StorageLayer {
   }
 
   async listBuckets(): Promise<CloudStorageBucketMetadata[]> {
-    if (this._buckets.size == 0) {
+    if (this._buckets.size === 0) {
       let adminSdkConfig = await getProjectAdminSdkConfigOrCached(this._projectId);
       if (!adminSdkConfig) {
         adminSdkConfig = constructDefaultAdminSdkConfig(this._projectId);
@@ -329,7 +329,7 @@ export class StorageLayer {
 
     const file = this._files.get(filePath);
 
-    if (file == undefined) {
+    if (file === undefined) {
       return false;
     } else {
       this._files.delete(filePath);
@@ -422,7 +422,7 @@ export class StorageLayer {
     let items = [];
     const prefixes = new Set<string>();
     for (const [, file] of this._files) {
-      if (file.metadata.bucket != bucket) {
+      if (file.metadata.bucket !== bucket) {
         continue;
       }
 
@@ -437,7 +437,7 @@ export class StorageLayer {
       }
 
       const startAtIndex = name.indexOf(delimiter);
-      if (startAtIndex == -1) {
+      if (startAtIndex === -1) {
         if (!file.metadata.name.endsWith("/")) {
           items.push(file.metadata.name);
         }
@@ -449,8 +449,8 @@ export class StorageLayer {
 
     items.sort();
     if (pageToken) {
-      const idx = items.findIndex((v) => v == pageToken);
-      if (idx != -1) {
+      const idx = items.findIndex((v) => v === pageToken);
+      if (idx !== -1) {
         items = items.slice(idx);
       }
     }
@@ -493,7 +493,7 @@ export class StorageLayer {
 
     let items = [];
     for (const [, file] of this._files) {
-      if (file.metadata.bucket != bucket) {
+      if (file.metadata.bucket !== bucket) {
         continue;
       }
 
@@ -512,8 +512,8 @@ export class StorageLayer {
 
     items.sort();
     if (pageToken) {
-      const idx = items.findIndex((v) => v == pageToken);
-      if (idx != -1) {
+      const idx = items.findIndex((v) => v === pageToken);
+      if (idx !== -1) {
         items = items.slice(idx);
       }
     }

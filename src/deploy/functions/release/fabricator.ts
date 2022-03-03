@@ -313,7 +313,7 @@ export class Fabricator {
     }
 
     const mem = endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;
-    if (mem >= backend.MIN_MEMORY_FOR_CONCURRENCY && endpoint.concurrency != 1) {
+    if (mem >= backend.MIN_MEMORY_FOR_CONCURRENCY && endpoint.concurrency !== 1) {
       await this.setConcurrency(
         endpoint,
         serviceName,
