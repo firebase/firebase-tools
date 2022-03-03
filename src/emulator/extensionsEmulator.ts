@@ -33,7 +33,8 @@ export class ExtensionsEmulator {
   private args: ExtensionEmulatorArgs;
   private logger = EmulatorLogger.forEmulator(Emulators.EXTENSIONS);
 
-  private pendingDownloads = new Set();
+  // Keeps track of all the extension sources that are being downloaded.
+  private pendingDownloads = new Set<string>();
 
   constructor(args: ExtensionEmulatorArgs) {
     this.args = args;
@@ -70,10 +71,10 @@ export class ExtensionsEmulator {
     const sourceCodePath = path.join(cacheDir, ref);
     const extensionVersion = await planner.getExtensionVersion(instance);
 
-    // Wait 10s if the source with same ref is being downloaded before checking source validity.
+    // Wait 20s if the source with same ref is being downloaded already before we check source validity.
     // This avoids racing to download the same source multiple times.
     if (this.pendingDownloads.has(ref)) {
-      await new Promise(_ => setTimeout(_, 10 * 1000)); 
+      await new Promise((_) => setTimeout(_, 20 * 1000));
     }
 
     if (!this.hasValidSource({ path: sourceCodePath, extRef: ref })) {
