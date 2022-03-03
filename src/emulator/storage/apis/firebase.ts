@@ -6,47 +6,9 @@ import * as mime from "mime";
 import { Request, Response, Router } from "express";
 import { StorageEmulator } from "../index";
 import { EmulatorRegistry } from "../../registry";
-import { StorageRulesetInstance } from "../rules/runtime";
 import { RulesetOperationMethod } from "../rules/types";
-
-async function isPermitted(opts: {
-  ruleset?: StorageRulesetInstance;
-  file: {
-    before?: RulesResourceMetadata;
-    after?: RulesResourceMetadata;
-  };
-  path: string;
-  method: RulesetOperationMethod;
-  authorization?: string;
-}): Promise<boolean> {
-  if (!opts.ruleset) {
-    EmulatorLogger.forEmulator(Emulators.STORAGE).log(
-      "WARN",
-      `Can not process SDK request with no loaded ruleset`
-    );
-    return false;
-  }
-
-  // Skip auth for UI
-  if (["Bearer owner", "Firebase owner"].includes(opts.authorization || "")) {
-    return true;
-  }
-
-  const { permitted, issues } = await opts.ruleset.verify({
-    method: opts.method,
-    path: opts.path,
-    file: opts.file,
-    token: opts.authorization ? opts.authorization.split(" ")[1] : undefined,
-  });
-
-  if (issues.exist()) {
-    issues.all.forEach((warningOrError) => {
-      EmulatorLogger.forEmulator(Emulators.STORAGE).log("WARN", warningOrError);
-    });
-  }
-
-  return !!permitted;
-}
+import { isPermitted } from "../rules/utils";
+import { NotFoundError, ForbiddenError } from "../errors";
 
 /**
  * @param emulator
@@ -126,86 +88,54 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   });
 
   firebaseStorageAPI.get("/b/:bucketId/o/:objectId", async (req, res) => {
-    const decodedObjectId = decodeURIComponent(req.params.objectId);
-    const operationPath = ["b", req.params.bucketId, "o", decodedObjectId].join("/");
-    const md = storageLayer.getMetadata(req.params.bucketId, decodedObjectId);
-
-    const rulesFiles: {
-      before?: RulesResourceMetadata;
-    } = {};
-
-    if (md) {
-      rulesFiles.before = md.asRulesResource();
-    }
-
-    // Query values are used for GETs from Web SDKs
-    const isPermittedViaHeader = await isPermitted({
-      ruleset: emulator.rules,
-      method: RulesetOperationMethod.GET,
-      path: operationPath,
-      file: rulesFiles,
-      authorization: req.header("authorization"),
-    });
-
-    // Token headers are used for GETs from Mobile SDKs
-    const isPermittedViaToken =
-      req.query.token && md && md.downloadTokens.includes(req.query.token.toString());
-
-    const isRequestPermitted: boolean = isPermittedViaHeader || !!isPermittedViaToken;
-
-    if (!isRequestPermitted) {
-      res.sendStatus(403);
-      return;
-    }
-
-    if (!md) {
-      res.sendStatus(404);
-      return;
-    }
-
-    let isGZipped = false;
-    if (md.contentEncoding === "gzip") {
-      isGZipped = true;
-    }
-
-    if (req.query.alt === "media") {
-      let data = storageLayer.getBytes(req.params.bucketId, req.params.objectId);
-      if (!data) {
-        res.sendStatus(404);
-        return;
+    let metadata: StoredFileMetadata;
+    let data: Buffer;
+    try {
+      // Both object data and metadata get can use the same handler since they share auth logic.
+      ({ metadata, data } = await storageLayer.handleGetObject({
+        bucketId: req.params.bucketId,
+        decodedObjectId: decodeURIComponent(req.params.objectId),
+        authorization: req.header("authorization"),
+        downloadToken: req.query.token?.toString(),
+      }));
+    } catch (err) {
+      if (err instanceof NotFoundError) {
+        return res.sendStatus(404);
+      } else if (err instanceof ForbiddenError) {
+        return res.sendStatus(403);
       }
+      throw err;
+    }
 
+    if (!metadata!.downloadTokens.length) {
+      metadata!.addDownloadToken();
+    }
+
+    // Object data request
+    if (req.query.alt === "media") {
+      const isGZipped = metadata.contentEncoding === "gzip";
       if (isGZipped) {
         data = gunzipSync(data);
       }
-
       res.setHeader("Accept-Ranges", "bytes");
-      res.setHeader("Content-Type", md.contentType);
-      setObjectHeaders(res, md, { "Content-Encoding": isGZipped ? "identity" : undefined });
+      res.setHeader("Content-Type", metadata.contentType);
+      setObjectHeaders(res, metadata, { "Content-Encoding": isGZipped ? "identity" : undefined });
 
       const byteRange = [...(req.header("range") || "").split("bytes="), "", ""];
-
       const [rangeStart, rangeEnd] = byteRange[1].split("-");
-
       if (rangeStart) {
         const range = {
           start: parseInt(rangeStart),
           end: rangeEnd ? parseInt(rangeEnd) : data.byteLength,
         };
         res.setHeader("Content-Range", `bytes ${range.start}-${range.end - 1}/${data.byteLength}`);
-        res.status(206).end(data.slice(range.start, range.end));
-      } else {
-        res.end(data);
+        return res.status(206).end(data.slice(range.start, range.end));
       }
-
-      return;
+      return res.end(data);
     }
 
-    if (!md.downloadTokens.length) {
-      md.addDownloadToken();
-    }
-
-    res.json(new OutgoingFirebaseMetadata(md));
+    // Object metadata request
+    return res.json(new OutgoingFirebaseMetadata(metadata));
   });
 
   const handleMetadataUpdate = async (req: Request, res: Response) => {
