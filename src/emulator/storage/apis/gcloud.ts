@@ -114,7 +114,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     const uploadId = req.query.upload_id.toString();
     let upload: Upload;
     try {
-      uploadService.continueResumableUpload(uploadId, req.body as Buffer);
+      uploadService.continueResumableUpload(uploadId, await reqBodyToBuffer(req));
       upload = uploadService.finalizeResumableUpload(uploadId);
     } catch (err) {
       if (err instanceof NotFoundError) {
@@ -170,6 +170,22 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       .status(200);
   });
 
+  const reqBodyToBuffer = async (req: Request) => {
+    if (req.body instanceof Buffer) {
+      return Buffer.from(req.body);
+    }
+    const bufs: Buffer[] = [];
+    req.on("data", (data) => {
+      bufs.push(data);
+    });
+
+    await new Promise<void>((resolve) => {
+      req.body = Buffer.concat(bufs);
+      resolve();
+    });
+    return Buffer.concat(bufs);
+  };
+
   gcloudStorageAPI.post("/upload/storage/v1/b/:bucketId/o", async (req, res) => {
     if (!req.query.name) {
       res.sendStatus(400);
@@ -191,7 +207,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       const upload = uploadService.startResumableUpload({
         bucketId: req.params.bucketId,
         objectId: name,
-        metadataRaw: req.body,
+        metadataRaw: JSON.stringify(req.body),
         contentType: contentType,
         authorization: req.header("authorization"),
       });
@@ -207,10 +223,11 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     // Multipart upload
     let metadataRaw: string;
     let dataRaw: Buffer;
+    let bodyBuffer = await reqBodyToBuffer(req);
     try {
       ({ metadataRaw, dataRaw } = legacyParse (//parseObjectUploadMultipartRequest(
         contentType!,
-        req.body as Buffer
+        bodyBuffer
       ));
     } catch (err) {
       if (err instanceof Error) {
@@ -225,12 +242,12 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     }
     ({ metadataRaw, dataRaw } = parseObjectUploadMultipartRequest (
       contentType!,
-      req.body as Buffer
+      bodyBuffer
     ));
     console.log(`new metadataRaw: ${metadataRaw}, dataRaw: ${dataRaw}`);
     ({ metadataRaw, dataRaw } = legacyParse (
       contentType!,
-      req.body as Buffer
+      bodyBuffer
     ));
     console.log(`legacy metadataRaw: ${metadataRaw}, dataRaw: ${dataRaw}`);
 

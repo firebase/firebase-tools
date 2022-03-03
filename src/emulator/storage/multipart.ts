@@ -114,7 +114,7 @@ export function parseObjectUploadMultipartRequest(
   }
   const parsed = parseMultipartRequestBody(boundaryId, body);
   if (parsed.dataParts.length !== 2) {
-    throw new Error(`Unexpected number of parts in request body: ${body.toString()}`);
+    throw new Error(`Unexpected number of parts in request body`);
   }
   return {
     metadataRaw: parsed.dataParts[0].dataRaw.toString(),

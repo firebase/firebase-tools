@@ -209,6 +209,22 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     );
   });
 
+  const reqBodyToBuffer = async (req: Request) => {
+    if (req.body instanceof Buffer) {
+      return Buffer.from(req.body);
+    }
+    const bufs: Buffer[] = [];
+    req.on("data", (data) => {
+      bufs.push(data);
+    });
+
+    await new Promise<void>((resolve) => {
+      req.body = Buffer.concat(bufs);
+      resolve();
+    });
+    return Buffer.concat(bufs);
+  };
+
   const handleUpload = async (req: Request, res: Response) => {
     const bucketId = req.params.bucketId;
 
@@ -344,11 +360,10 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
           contentType = mimeTypeFromName;
         }
       }
-
       const upload = uploadService.startResumableUpload({
         bucketId,
         objectId,
-        metadataRaw: req.body,
+        metadataRaw: JSON.stringify(req.body),
         contentType,
         // Store auth header for use in the finalize request
         authorization: req.header("authorization"),
@@ -402,27 +417,9 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     }
 
     if (uploadCommand.includes("upload")) {
-      console.log(`original body buffer bytelength: ${(req.body as Buffer).byteLength}`)
-      console.log(`stringified body ${JSON.stringify(req.body.toString())}`);
       let upload: Upload;
-      if (!(req.body instanceof Buffer)) {
-        const bufs: Buffer[] = [];
-        req.on("data", (data) => {
-          bufs.push(data);
-        });
-
-        await new Promise<void>((resolve) => {
-          req.on("end", () => {
-            req.body = Buffer.concat(bufs);
-            resolve();
-          });
-        });
-      }
-
-      console.log(`transformed body buffer bytelength: ${(req.body as Buffer).byteLength}`)
-      console.log(`stringified transformed body ${JSON.stringify(req.body.toString())}`);
       try {
-        upload = uploadService.continueResumableUpload(uploadId, req.body as Buffer);
+        upload = uploadService.continueResumableUpload(uploadId, await reqBodyToBuffer(req));
       } catch (err) {
         if (err instanceof NotFoundError) {
           return res.sendStatus(404);

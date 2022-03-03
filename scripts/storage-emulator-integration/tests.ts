@@ -158,7 +158,8 @@ describe("Storage emulator", () => {
 
   const emulatorSpecificDescribe = TEST_CONFIG.useProductionServers ? describe.skip : describe;
 
-  describe("Admin SDK Endpoints", function (this) {
+  
+  describe.only("Admin SDK Endpoints", function (this) {
     // eslint-disable-next-line @typescript-eslint/no-invalid-this
     this.timeout(TEST_SETUP_TIMEOUT);
     let testBucket: Bucket;
@@ -1080,7 +1081,7 @@ describe("Storage emulator", () => {
           );
         });
 
-        it.only("serves the right content", async () => {
+        it("serves the right content", async () => {
           const downloadUrl = await page.evaluate((filename) => {
             return firebase.storage().ref(filename).getDownloadURL();
           }, filename);
