@@ -180,6 +180,7 @@ function readParamsFile(projectDir: string, fileName: string): Record<string, st
   return params as Record<string, string>;
 }
 
+// TODO(lihes): Add a docs link once exists.
 /**
  * Show deprecation warning about --local flag taking over current default bahaviors.
  */
