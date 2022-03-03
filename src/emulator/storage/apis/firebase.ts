@@ -93,8 +93,8 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     try {
       // Both object data and metadata get can use the same handler since they share auth logic.
       ({ metadata, data } = await storageLayer.handleGetObject({
-        decodedObjectId: decodeURIComponent(req.params.objectId),
         bucketId: req.params.bucketId,
+        decodedObjectId: decodeURIComponent(req.params.objectId),
         authorization: req.header("authorization"),
         downloadToken: req.query.token?.toString(),
       }));
@@ -105,6 +105,10 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         return res.sendStatus(403);
       }
       throw err;
+    }
+
+    if (!metadata!.downloadTokens.length) {
+      metadata!.addDownloadToken();
     }
 
     // Object data request

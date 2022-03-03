@@ -4,6 +4,68 @@ import { RulesetOperationMethod } from "./types";
 import { EmulatorLogger } from "../../emulatorLogger";
 import { Emulators } from "../../types";
 
+/** Variable overrides to be passed to the rules evaluator. */
+export type RulesVariableOverrides = {
+  before?: RulesResourceMetadata;
+  after?: RulesResourceMetadata;
+};
+/** A simple interface for fetching Rules verdicts. */
+export interface RulesValidator {
+  validate(
+    path: string,
+    method: RulesetOperationMethod,
+    variableOverrides: RulesVariableOverrides,
+    authorization?: string
+  ): Promise<boolean>;
+}
+
+/** Provider for Storage security rules. */
+export type RulesetProvider = () => StorageRulesetInstance | undefined;
+
+/**
+ * Returns a {@link RulesValidator} that pulls a Ruleset from a 
+ * {@link RulesetProvider} on each run.
+ */
+export function getRulesValidator(rulesetProvider: RulesetProvider): RulesValidator {
+  return {
+    validate: async (
+      path: string,
+      method: RulesetOperationMethod,
+      variableOverrides: RulesVariableOverrides,
+      authorization?: string
+    ) => {
+      const ruleset = rulesetProvider();
+      if (!ruleset) {
+        EmulatorLogger.forEmulator(Emulators.STORAGE).log(
+          "WARN",
+          `Can not process SDK request with no loaded ruleset`
+        );
+        return false;
+      }
+
+      // Skip auth for UI
+      if (["Bearer owner", "Firebase owner"].includes(authorization || "")) {
+        return true;
+      }
+
+      const { permitted, issues } = await ruleset.verify({
+        method: method,
+        path: path,
+        file: variableOverrides,
+        token: authorization ? authorization.split(" ")[1] : undefined,
+      });
+
+      if (issues.exist()) {
+        issues.all.forEach((warningOrError) => {
+          EmulatorLogger.forEmulator(Emulators.STORAGE).log("WARN", warningOrError);
+        });
+      }
+
+      return !!permitted;
+    },
+  };
+}
+
 /** Authorizes file access based on security rules. */
 export async function isPermitted(opts: {
   ruleset?: StorageRulesetInstance;

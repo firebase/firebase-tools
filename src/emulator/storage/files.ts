@@ -21,7 +21,7 @@ import {
 } from "../adminSdkConfig";
 import { StorageRulesetInstance } from "./rules/runtime";
 import { RulesetOperationMethod } from "./rules/types";
-import { isPermitted } from "./rules/utils";
+import { isPermitted, RulesValidator } from "./rules/utils";
 
 interface BucketsList {
   buckets: {
@@ -126,8 +126,8 @@ export enum UploadStatus {
 
 /**  Parsed request object for {@link StorageLayer#handleGetObject}. */
 export type GetObjectRequest = {
-  decodedObjectId: string;
   bucketId: string;
+  decodedObjectId: string;
   authorization?: string;
   downloadToken?: string;
 };
@@ -146,7 +146,7 @@ export class StorageLayer {
   private _persistence!: Persistence;
   private _cloudFunctions: StorageCloudFunctions;
 
-  constructor(private _projectId: string, private _rulesProvider: RulesetProvider) {
+  constructor(private _projectId: string, private _validator: RulesValidator) {
     this.reset();
     this._cloudFunctions = new StorageCloudFunctions(this._projectId);
   }
@@ -156,10 +156,6 @@ export class StorageLayer {
     this._persistence = new Persistence(`${tmpdir()}/firebase/storage/blobs`);
     this._uploads = new Map();
     this._buckets = new Map();
-  }
-
-  private get rules(): StorageRulesetInstance | undefined {
-    return this._rulesProvider();
   }
 
   createBucket(id: string): void {
@@ -186,29 +182,26 @@ export class StorageLayer {
    * @throws {ForbiddenError} if request is unauthorized
    */
   public async handleGetObject(request: GetObjectRequest): Promise<GetObjectResponse> {
-    const operationPath = ["b", request.bucketId, "o", request.decodedObjectId].join("/");
     const metadata = this.getMetadata(request.bucketId, request.decodedObjectId);
 
     // If a valid download token is present, skip Firebase Rules auth. Mainly used by the js sdk.
     let authorized = (metadata?.downloadTokens || []).includes(request.downloadToken ?? "");
     if (!authorized) {
-      authorized = await isPermitted({
-        ruleset: this.rules,
-        method: RulesetOperationMethod.GET,
-        path: operationPath,
-        file: { before: metadata?.asRulesResource() },
-        authorization: request.authorization,
-      });
+      authorized = await this._validator.validate(
+        ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
+        RulesetOperationMethod.GET,
+        { before: metadata?.asRulesResource() },
+        request.authorization
+      );
     }
     if (!authorized) {
-      throw new ForbiddenError();
+      throw new ForbiddenError("Failed auth");
     }
+
     if (!metadata) {
-      throw new NotFoundError();
+      throw new NotFoundError("File not found");
     }
-    if (!metadata!.downloadTokens.length) {
-      metadata!.addDownloadToken();
-    }
+
     return { metadata: metadata!, data: this.getBytes(request.bucketId, request.decodedObjectId)! };
   }
 
