@@ -30,9 +30,12 @@ describe("TriggerRegionHelper", () => {
         platform: "gcfv2",
         eventTrigger: {
           eventType: "google.cloud.storage.object.v1.finalized",
-          eventFilters: {
-            bucket: "my-bucket",
-          },
+          eventFilters: [
+            {
+              attribute: "bucket",
+              value: "my-bucket",
+            },
+          ],
           retry: false,
         },
         ...SPEC,
@@ -50,9 +53,12 @@ describe("TriggerRegionHelper", () => {
         platform: "gcfv1",
         eventTrigger: {
           eventType: "google.storage.object.create",
-          eventFilters: {
-            resource: "projects/_/buckets/myBucket",
-          },
+          eventFilters: [
+            {
+              attribute: "resource",
+              value: "projects/_/buckets/my-bucket",
+            },
+          ],
           retry: false,
         },
         ...SPEC,
@@ -69,9 +75,12 @@ describe("TriggerRegionHelper", () => {
 
       expect(v1EventFn.eventTrigger).to.deep.eq({
         eventType: "google.storage.object.create",
-        eventFilters: {
-          resource: "projects/_/buckets/myBucket",
-        },
+        eventFilters: [
+          {
+            attribute: "resource",
+            value: "projects/_/buckets/my-bucket",
+          },
+        ],
         retry: false,
       });
       expect(v2CallableFn.httpsTrigger).to.deep.eq({});
@@ -85,9 +94,12 @@ describe("TriggerRegionHelper", () => {
         platform: "gcfv2",
         eventTrigger: {
           eventType: "google.cloud.storage.object.v1.finalized",
-          eventFilters: {
-            bucket: "my-bucket",
-          },
+          eventFilters: [
+            {
+              attribute: "bucket",
+              value: "my-bucket",
+            },
+          ],
           retry: false,
         },
         ...SPEC,
@@ -97,9 +109,12 @@ describe("TriggerRegionHelper", () => {
 
       expect(wantFn.eventTrigger).to.deep.eq({
         eventType: "google.cloud.storage.object.v1.finalized",
-        eventFilters: {
-          bucket: "my-bucket",
-        },
+        eventFilters: [
+          {
+            attribute: "bucket",
+            value: "my-bucket",
+          },
+        ],
         retry: false,
         region: "us",
       });
@@ -113,9 +128,12 @@ describe("TriggerRegionHelper", () => {
         platform: "gcfv2",
         eventTrigger: {
           eventType: "google.cloud.storage.object.v1.finalized",
-          eventFilters: {
-            bucket: "my-bucket",
-          },
+          eventFilters: [
+            {
+              attribute: "bucket",
+              value: "my-bucket",
+            },
+          ],
           retry: false,
         },
         ...SPEC,
