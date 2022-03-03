@@ -65,13 +65,13 @@ type MultipartRequestBodyPart = {
  * delineated by '\r\n':
  * 1: content type
  * 2: white space
- * 3: free form data 
+ * 3: free form data
  * @param bodyPart a multipart request body part as a Buffer
  */
 function parseMultipartRequestBodyPart(bodyPart: Buffer): MultipartRequestBodyPart {
   // Parse Content-Type line
   let nextLineSeparatorIndex = bodyPart.indexOf(LINE_SEPARATOR, 0);
-  let contentTypeRaw = Buffer.from(bodyPart.slice(0, nextLineSeparatorIndex)).toString();
+  const contentTypeRaw = Buffer.from(bodyPart.slice(0, nextLineSeparatorIndex)).toString();
   if (!contentTypeRaw.startsWith("Content-Type: ")) {
     throw new Error(`Failed to parse multipart request body part. Missing content type.`);
   }
@@ -85,7 +85,7 @@ function parseMultipartRequestBodyPart(bodyPart: Buffer): MultipartRequestBodyPa
   offset = nextLineSeparatorIndex + LINE_SEPARATOR.length;
 
   // Trim final line separator from data payload.
-  let dataRaw = Buffer.from(bodyPart.slice(offset, bodyPart.length - LINE_SEPARATOR.length));
+  const dataRaw = Buffer.from(bodyPart.slice(offset, bodyPart.length - LINE_SEPARATOR.length));
   return { contentTypeRaw, dataRaw };
 }
 

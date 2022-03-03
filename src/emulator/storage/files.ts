@@ -299,13 +299,15 @@ export class StorageLayer {
       this._cloudFunctions,
       this._persistence.readBytes(upload.path, upload.size)
     );
-    let authorized = skipAuth ||  await isPermitted({
-      ruleset: this.rules,
-      method: RulesetOperationMethod.CREATE,
-      path: operationPath,
-      file: { before: metadata?.asRulesResource() },
-      authorization: upload.authorization,
-    });
+    const authorized =
+      skipAuth ||
+      (await isPermitted({
+        ruleset: this.rules,
+        method: RulesetOperationMethod.CREATE,
+        path: operationPath,
+        file: { before: metadata?.asRulesResource() },
+        authorization: upload.authorization,
+      }));
     if (!authorized) {
       this._persistence.deleteFile(upload.path);
       throw new ForbiddenError();

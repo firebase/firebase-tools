@@ -223,11 +223,10 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     // Multipart upload
     let metadataRaw: string;
     let dataRaw: Buffer;
-    let bodyBuffer = await reqBodyToBuffer(req);
     try {
       ({ metadataRaw, dataRaw } = parseObjectUploadMultipartRequest(
         contentType!,
-        bodyBuffer
+        await reqBodyToBuffer(req)
       ));
     } catch (err) {
       if (err instanceof Error) {

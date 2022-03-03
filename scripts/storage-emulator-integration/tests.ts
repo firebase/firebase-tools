@@ -109,7 +109,7 @@ function getStorageEmulatorHost(emulatorConfig: FrameworkOptions) {
 
 function createRandomFile(filename: string, sizeInBytes: number): string {
   return createFile(filename, crypto.randomBytes(sizeInBytes));
-  }
+}
 
 function createFile(filename: string, bytes: Buffer): string {
   if (!tmpDir) {
@@ -158,7 +158,6 @@ describe("Storage emulator", () => {
 
   const emulatorSpecificDescribe = TEST_CONFIG.useProductionServers ? describe.skip : describe;
 
-  
   describe.only("Admin SDK Endpoints", function (this) {
     // eslint-disable-next-line @typescript-eslint/no-invalid-this
     this.timeout(TEST_SETUP_TIMEOUT);

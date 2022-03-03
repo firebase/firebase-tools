@@ -7,7 +7,7 @@ import * as path from "path";
 export class Persistence {
   private _dirPath!: string;
   constructor(dirPath: string) {
-   this.reset(dirPath);
+    this.reset(dirPath);
   }
 
   public reset(dirPath: string) {
