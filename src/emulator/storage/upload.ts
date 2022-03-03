@@ -10,6 +10,7 @@ export type Upload = {
   objectId: string;
   type: UploadType;
   // Path to where the file is stored on disk. May contain incomplete data if
+  // status !== FINISHED.
   path: string;
   status: UploadStatus;
   metadata: IncomingMetadata;
