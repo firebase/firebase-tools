@@ -34,7 +34,7 @@ export class ExtensionsEmulator {
   private logger = EmulatorLogger.forEmulator(Emulators.EXTENSIONS);
 
   // Keeps track of all the extension sources that are being downloaded.
-  private pendingDownloads = new Set<string>();
+  private pendingDownloads = new Map<string, Promise<void>>();
 
   constructor(args: ExtensionEmulatorArgs) {
     this.args = args;
@@ -70,22 +70,30 @@ export class ExtensionsEmulator {
       path.join(os.homedir(), ".cache", "firebase", "extensions");
     const sourceCodePath = path.join(cacheDir, ref);
 
-    // Wait 20s if the source with same ref is being downloaded already before we check source validity.
+    // Wait for previous download promise to resolve before we check source validity.
     // This avoids racing to download the same source multiple times.
-    if (this.pendingDownloads.has(ref)) {
-      await new Promise((_) => setTimeout(_, 20 * 1000));
+    // Note: The below will not work because it throws the thread to the back of the message queue.
+    // await (this.pendingDownloads.get(ref) ?? Promise.resolve());
+    if (this.pendingDownloads.get(ref)) {
+      await this.pendingDownloads.get(ref);
     }
 
     if (!this.hasValidSource({ path: sourceCodePath, extRef: ref })) {
-      this.pendingDownloads.add(ref);
-
-      const extensionVersion = await planner.getExtensionVersion(instance);
-      await downloadExtensionVersion(ref, extensionVersion.sourceDownloadUri, sourceCodePath);
-      this.installAndBuildSourceCode(sourceCodePath);
-
-      this.pendingDownloads.delete(ref);
+      const promise = this.downloadSource(instance, ref, sourceCodePath);
+      this.pendingDownloads.set(ref, promise);
+      await promise;
     }
     return sourceCodePath;
+  }
+
+  private async downloadSource(
+    instance: planner.InstanceSpec,
+    ref: string,
+    sourceCodePath: string
+  ) {
+    const extensionVersion = await planner.getExtensionVersion(instance);
+    await downloadExtensionVersion(ref, extensionVersion.sourceDownloadUri, sourceCodePath);
+    this.installAndBuildSourceCode(sourceCodePath);
   }
 
   /**
