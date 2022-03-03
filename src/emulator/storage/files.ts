@@ -1,4 +1,3 @@
-import { v4 } from "uuid";
 import { ListItem, ListResponse } from "./list";
 import {
   CloudStorageBucketMetadata,
@@ -138,7 +137,6 @@ export type GetObjectResponse = {
 
 export class StorageLayer {
   private _files!: Map<string, StoredFile>;
-  private _uploads!: Map<string, ResumableUpload>;
   private _buckets!: Map<string, CloudStorageBucketMetadata>;
   private _cloudFunctions: StorageCloudFunctions;
 
@@ -153,7 +151,6 @@ export class StorageLayer {
 
   public reset(): void {
     this._files = new Map();
-    this._uploads = new Map();
     this._buckets = new Map();
   }
 

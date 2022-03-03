@@ -39,35 +39,7 @@ describe("files", () => {
     expect(deserialized).to.deep.equal(metadata);
   });
 
-  /*
-  it("should store file in memory when upload is finalized", () => {
-    const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
-    const bytesToWrite = "Hello, World!";
-
-
-    const upload = storageLayer.startUpload("bucket", "object", "mime/type", {
-      contentType: "mime/type",
-    });
-    storageLayer.uploadBytes(upload.uploadId, Buffer.from(bytesToWrite));
-    storageLayer.finalizeUpload(upload);
-
-    expect(storageLayer.getBytes("bucket", "object")?.includes(bytesToWrite));
-    expect(storageLayer.getMetadata("bucket", "object")?.size).equals(bytesToWrite.length);
-  });
-
-  it("should delete file from persistence layer when upload is cancelled", () => {
-    const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
-
-    const upload = storageLayer.startUpload("bucket", "object", "mime/type", {
-      contentType: "mime/type",
-    });
-    storageLayer.uploadBytes(upload.uploadId, Buffer.alloc(0));
-    storageLayer.cancelUpload(upload);
-
-    expect(storageLayer.getMetadata("bucket", "object")).to.equal(undefined);
-  });*/
-
-  describe("#handleGetObject()", () => {
+  describe("StorageLayer", () => {
     let _persistence: Persistence;
     let _uploadService: UploadService;
 
@@ -76,50 +48,59 @@ describe("files", () => {
       _uploadService = new UploadService(_persistence);
     });
 
-    it("should return data and metadata", async () => {
-      const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
-      const upload = _uploadService.multipartUpload({
-        bucketId: "bucket",
-        objectId: "dir%2Fobject",
-        metadataRaw: `{"contentType": "mime/type"}`,
-        dataRaw: Buffer.from("Hello, World!"),
+    describe("handleUploadObject()", () => {
+      it("should throw if upload is not finished", () => {
+        
       });
-      await storageLayer.handleUploadObject(upload);
-
-      const { metadata, data } = await storageLayer.handleGetObject({
-        bucketId: "bucket",
-        decodedObjectId: "dir%2Fobject",
-      });
-
-      expect(metadata.contentType).to.equal("mime/type");
-      expect(data.toString()).to.equal("Hello, World!");
     });
 
-    it("should throw an error if request is not authorized", () => {
-      const storageLayer = getStorageLayer(ALWAYS_FALSE_RULES_VALIDATOR);
 
-      expect(
-        storageLayer.handleGetObject({
+    describe("#handleGetObject()", () => {
+      it("should return data and metadata", async () => {
+        const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
+        const upload = _uploadService.multipartUpload({
+          bucketId: "bucket",
+          objectId: "dir%2Fobject",
+          metadataRaw: `{"contentType": "mime/type"}`,
+          dataRaw: Buffer.from("Hello, World!"),
+        });
+        await storageLayer.handleUploadObject(upload);
+
+        const { metadata, data } = await storageLayer.handleGetObject({
           bucketId: "bucket",
           decodedObjectId: "dir%2Fobject",
-        })
-      ).to.be.rejectedWith(ForbiddenError);
-    });
+        });
 
-    it("should throw an error if the object does not exist", () => {
-      const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
+        expect(metadata.contentType).to.equal("mime/type");
+        expect(data.toString()).to.equal("Hello, World!");
+      });
 
-      expect(
-        storageLayer.handleGetObject({
-          bucketId: "bucket",
-          decodedObjectId: "dir%2Fobject",
-        })
-      ).to.be.rejectedWith(NotFoundError);
+      it("should throw an error if request is not authorized", () => {
+        const storageLayer = getStorageLayer(ALWAYS_FALSE_RULES_VALIDATOR);
+
+        expect(
+          storageLayer.handleGetObject({
+            bucketId: "bucket",
+            decodedObjectId: "dir%2Fobject",
+          })
+        ).to.be.rejectedWith(ForbiddenError);
+      });
+
+      it("should throw an error if the object does not exist", () => {
+        const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
+
+        expect(
+          storageLayer.handleGetObject({
+            bucketId: "bucket",
+            decodedObjectId: "dir%2Fobject",
+          })
+        ).to.be.rejectedWith(NotFoundError);
+      });
     });
 
     const getStorageLayer = (rulesValidator: RulesValidator): StorageLayer =>
       new StorageLayer("project", rulesValidator, _persistence);
-  });
 
-  const getPersistenceTmpDir = () => `${tmpdir()}/firebase/storage/blobs`;
+    const getPersistenceTmpDir = () => `${tmpdir()}/firebase/storage/blobs`;
+  });
 });
