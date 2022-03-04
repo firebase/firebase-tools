@@ -10,29 +10,12 @@ import { StorageRulesIssues, StorageRulesRuntime, StorageRulesetInstance } from 
  * changes to the file and updates the ruleset accordingly.
  */
 export class StorageRulesManager {
-  private _sourceFile!: SourceFile;
+  private _sourceFile?: SourceFile;
   private _ruleset?: StorageRulesetInstance;
+  private _watcher = new chokidar.FSWatcher();
   private _logger = EmulatorLogger.forEmulator(Emulators.STORAGE);
 
-  private constructor(_rules: SourceFile | string, private _runtime: StorageRulesRuntime) {
-    this.updateSourceFile(_rules);
-
-    const rulesFile = typeof _rules === "string" ? _rules : _rules.name;
-    chokidar.watch(rulesFile, { persistent: true, ignoreInitial: true }).on("change", async () => {
-      // There have been some race conditions reported (on Windows) where reading the
-      // file too quickly after the watcher fires results in an empty file being read.
-      // Adding a small delay prevents that at very little cost.
-      await new Promise((res) => setTimeout(res, 5));
-
-      this._logger.logLabeled(
-        "BULLET",
-        "storage",
-        "Change detected, updating rules for Cloud Storage..."
-      );
-      this.updateSourceFile(this._sourceFile.name);
-      await this.loadRuleset();
-    });
-  }
+  private constructor(private _runtime: StorageRulesRuntime) {}
 
   /**
    * Constructs and initializes a {@link StorageRulesManager}. This must be done in a factory
@@ -42,8 +25,8 @@ export class StorageRulesManager {
     rules: SourceFile | string,
     runtime: StorageRulesRuntime
   ): Promise<StorageRulesManager> {
-    const instance = new StorageRulesManager(rules, runtime);
-    await instance.loadRuleset();
+    const instance = new StorageRulesManager(runtime);
+    await instance.setSourceFile(rules);
     return instance;
   }
 
@@ -51,49 +34,73 @@ export class StorageRulesManager {
     return this._ruleset;
   }
 
+  get watcher(): chokidar.FSWatcher {
+    return this._watcher;
+  }
+
   /**
-   * Manually updates the ruleset from a new source file or its file name. This overrides the
-   * current ruleset.
+   * Updates the source file and, correspondingly, the file watcher and ruleset.
    */
-  public async loadRuleset(rules?: SourceFile | string): Promise<StorageRulesIssues> {
-    if (rules) {
-      this.updateSourceFile(rules);
-    }
-
-    const { ruleset, issues } = await this._runtime.loadRuleset({ files: [this._sourceFile] });
-    if (ruleset) {
-      this._ruleset = ruleset;
+  public async setSourceFile(rules: SourceFile | string): Promise<StorageRulesIssues> {
+    const prevRulesFile = this._sourceFile?.name;
+    let rulesFile: string;
+    if (typeof rules === "string") {
+      this._sourceFile = { name: rules, content: fs.readFileSync(rules).toString() };
+      rulesFile = rules;
     } else {
-      issues.all.forEach((issue) => {
-        let parsedIssue;
-        try {
-          parsedIssue = JSON.parse(issue);
-        } catch {
-          // Parse manually
-        }
-
-        if (parsedIssue) {
-          this._logger.log(
-            "WARN",
-            `${parsedIssue.description_.replace(/\.$/, "")} in ${
-              parsedIssue.sourcePosition_.fileName_
-            }:${parsedIssue.sourcePosition_.line_}`
-          );
-        } else {
-          this._logger.log("WARN", issue);
-        }
-      });
-
-      delete this._ruleset;
+      this._sourceFile = rules;
+      rulesFile = rules.name;
     }
+
+    const issues = await this.loadRuleset();
+    this.updateWatcher(rulesFile, prevRulesFile);
     return issues;
   }
 
-  private updateSourceFile(rules: SourceFile | string): void {
-    if (typeof rules === "string") {
-      this._sourceFile = { name: rules, content: fs.readFileSync(rules).toString() };
-    } else {
-      this._sourceFile = rules;
+  private updateWatcher(rulesFile: string, prevRulesFile?: string): void {
+    if (prevRulesFile) {
+      this._watcher.unwatch(prevRulesFile);
     }
+
+    this._watcher = chokidar
+      .watch(rulesFile, { persistent: true, ignoreInitial: true })
+      .on("change", async () => {
+        // There have been some race conditions reported (on Windows) where reading the
+        // file too quickly after the watcher fires results in an empty file being read.
+        // Adding a small delay prevents that at very little cost.
+        await new Promise((res) => setTimeout(res, 5));
+
+        this._logger.logLabeled(
+          "BULLET",
+          "storage",
+          "Change detected, updating rules for Cloud Storage..."
+        );
+        await this.loadRuleset();
+      });
+  }
+
+  private async loadRuleset(): Promise<StorageRulesIssues> {
+    const { ruleset, issues } = await this._runtime.loadRuleset({ files: [this._sourceFile!] });
+
+    if (ruleset) {
+      this._ruleset = ruleset;
+      return issues;
+    }
+
+    issues.all.forEach((issue) => {
+      try {
+        const parsedIssue = JSON.parse(issue);
+        this._logger.log(
+          "WARN",
+          `${parsedIssue.description_.replace(/\.$/, "")} in ${
+            parsedIssue.sourcePosition_.fileName_
+          }:${parsedIssue.sourcePosition_.line_}`
+        );
+      } catch {
+        this._logger.log("WARN", issue);
+      }
+    });
+    delete this._ruleset;
+    return issues;
   }
 }

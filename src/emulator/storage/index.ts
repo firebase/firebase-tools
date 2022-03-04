@@ -52,7 +52,7 @@ export class StorageEmulator implements EmulatorInstance {
   }
 
   get rules(): StorageRulesetInstance | undefined {
-    return this._rulesManager!.ruleset;
+    return this._rulesManager?.ruleset;
   }
 
   get logger(): EmulatorLogger {
@@ -68,13 +68,7 @@ export class StorageEmulator implements EmulatorInstance {
   async start(): Promise<void> {
     const { host, port } = this.getInfo();
     await this._rulesRuntime.start(this.args.auto_download);
-
-    this._rulesManager = await StorageRulesManager.createInstance(
-      this.args.rules,
-      this._rulesRuntime
-    );
-    await this._rulesManager.loadRuleset();
-
+    await this.createRulesManager(this.args.rules);
     this._app = await createApp(this.args.projectId, this);
     const server = this._app.listen(port, host);
     this.destroyServer = utils.createDestroyer(server);
@@ -85,7 +79,10 @@ export class StorageEmulator implements EmulatorInstance {
   }
 
   async setRules(rules: SourceFile | string): Promise<StorageRulesIssues> {
-    return this._rulesManager!.loadRuleset(rules);
+    if (!this._rulesManager) {
+      this.createRulesManager(rules);
+    }
+    return this._rulesManager!.setSourceFile(rules);
   }
 
   async stop(): Promise<void> {
@@ -114,5 +111,9 @@ export class StorageEmulator implements EmulatorInstance {
 
   private getPersistenceTmpDir(): string {
     return `${tmpdir()}/firebase/storage/blobs`;
+  }
+
+  private async createRulesManager(rules: SourceFile | string): Promise<void> {
+    this._rulesManager = await StorageRulesManager.createInstance(rules, this._rulesRuntime);
   }
 }

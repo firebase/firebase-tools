@@ -1,13 +1,19 @@
-import { RulesetVerificationOpts, StorageRulesRuntime } from "../../emulator/storage/rules/runtime";
+import {
+  RulesetVerificationOpts,
+  StorageRulesRuntime,
+} from "../../../../emulator/storage/rules/runtime";
 import { expect } from "chai";
-import { StorageRulesFiles } from "./fixtures";
+import { StorageRulesFiles } from "../../fixtures";
 import * as jwt from "jsonwebtoken";
-import { EmulatorLogger } from "../../emulator/emulatorLogger";
-import { ExpressionValue } from "../../emulator/storage/rules/expressionValue";
-import { RulesetOperationMethod } from "../../emulator/storage/rules/types";
-import { downloadIfNecessary, getDownloadDetails } from "../../emulator/downloadableEmulators";
-import { Emulators } from "../../emulator/types";
-import { RulesResourceMetadata } from "../../emulator/storage/metadata";
+import { EmulatorLogger } from "../../../../emulator/emulatorLogger";
+import { ExpressionValue } from "../../../../emulator/storage/rules/expressionValue";
+import { RulesetOperationMethod } from "../../../../emulator/storage/rules/types";
+import {
+  downloadIfNecessary,
+  getDownloadDetails,
+} from "../../../../emulator/downloadableEmulators";
+import { Emulators } from "../../../../emulator/types";
+import { RulesResourceMetadata } from "../../../../emulator/storage/metadata";
 
 const TOKENS = {
   signedInUser: jwt.sign(
@@ -40,7 +46,7 @@ function createFakeResourceMetadata(params: {
   };
 }
 
-describe.skip("Storage Rules", function () {
+describe.skip("Storage Rules Runtime", function () {
   let runtime: StorageRulesRuntime;
 
   // eslint-disable-next-line @typescript-eslint/no-invalid-this
