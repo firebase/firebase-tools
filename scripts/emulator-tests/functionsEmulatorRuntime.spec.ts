@@ -6,14 +6,31 @@ import * as _ from "lodash";
 import * as express from "express";
 import * as fs from "fs";
 import * as sinon from "sinon";
+import * as path from "path";
 
 import { EmulatorLog, Emulators } from "../../src/emulator/types";
-import { FunctionRuntimeBundles, TIMEOUT_LONG, TIMEOUT_MED, MODULE_ROOT } from "./fixtures";
+import { FunctionRuntimeBundles, TIMEOUT_LONG, MODULE_ROOT } from "./fixtures";
 import { FunctionsRuntimeBundle, SignatureType } from "../../src/emulator/functionsEmulatorShared";
 import { InvokeRuntimeOpts, FunctionsEmulator } from "../../src/emulator/functionsEmulator";
 import { RuntimeWorker } from "../../src/emulator/functionsRuntimeWorker";
 import { streamToString } from "../../src/utils";
 import * as registry from "../../src/emulator/registry";
+import * as logform from "logform";
+import { logger } from "../../src/logger";
+import * as winston from "winston";
+
+if ((process.env.DEBUG || "").toLowerCase().includes("spec")) {
+  const dropLogLevels = (info: logform.TransformableInfo) => info.message;
+  logger.add(
+    new winston.transports.Console({
+      level: "debug",
+      format: logform.format.combine(
+        logform.format.colorize(),
+        logform.format.printf(dropLogLevels)
+      ),
+    })
+  );
+}
 
 const DO_NOTHING = () => {
   // do nothing.
@@ -22,7 +39,7 @@ const DO_NOTHING = () => {
 const testBackend = {
   functionsDir: MODULE_ROOT,
   env: {},
-  nodeBinary: process.execPath,
+  nodeBinary: "to be overridden",
 };
 
 const functionsEmulator = new FunctionsEmulator({
@@ -51,14 +68,15 @@ async function countLogEntries(worker: RuntimeWorker): Promise<{ [key: string]: 
 async function invokeFunction(
   frb: FunctionsRuntimeBundle,
   triggers: () => {},
-  signatureType: SignatureType,
-  opts?: InvokeRuntimeOpts
+  signatureType: SignatureType
 ): Promise<RuntimeWorker> {
   const serializedTriggers = triggers.toString();
 
-  opts = opts || { nodeBinary: process.execPath };
-  opts.ignore_warnings = true;
-  opts.serializedTriggers = serializedTriggers;
+  const opts = {
+    // Use ts-node to spawn worker process that can load TS modules.
+    nodeBinary: path.join(MODULE_ROOT, "node_modules/.bin/ts-node"),
+    serializedTriggers: serializedTriggers,
+  };
 
   const dummyTriggerDef = {
     name: "function_id",
@@ -225,7 +243,7 @@ describe("FunctionsEmulator-Runtime", () => {
 
         const logs = await countLogEntries(worker);
         expect(logs["default-admin-app-used"]).to.eq(1);
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should provide a stubbed app with custom options", async () => {
         const worker = await invokeFunction(
@@ -255,7 +273,7 @@ describe("FunctionsEmulator-Runtime", () => {
 
         await worker.runtime.exit;
         expect(foundMatch).to.be.true;
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should provide non-stubbed non-default app from initializeApp", async () => {
         const worker = await invokeFunction(
@@ -273,7 +291,7 @@ describe("FunctionsEmulator-Runtime", () => {
         );
         const logs = await countLogEntries(worker);
         expect(logs["non-default-admin-app-used"]).to.eq(1);
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should route all sub-fields accordingly", async () => {
         const worker = await invokeFunction(
@@ -304,7 +322,7 @@ describe("FunctionsEmulator-Runtime", () => {
 
         const logs = await countLogEntries(worker);
         expect(logs["function-log"]).to.eq(1);
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should expose Firestore prod when the emulator is not running", async () => {
         const frb = FunctionRuntimeBundles.onRequest;
@@ -330,7 +348,7 @@ describe("FunctionsEmulator-Runtime", () => {
         expect(info.projectId).to.eql("fake-project-id");
         expect(info.servicePath).to.be.undefined;
         expect(info.port).to.be.undefined;
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should expose a stubbed Firestore when the emulator is running", async () => {
         const frb = FunctionRuntimeBundles.onRequest;
@@ -362,7 +380,7 @@ describe("FunctionsEmulator-Runtime", () => {
         expect(info.projectId).to.eql("fake-project-id");
         expect(info.servicePath).to.eq("localhost");
         expect(info.port).to.eq(9090);
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should expose RTDB prod when the emulator is not running", async () => {
         const frb = FunctionRuntimeBundles.onRequest;
@@ -387,7 +405,7 @@ describe("FunctionsEmulator-Runtime", () => {
         const data = await callHTTPSFunction(worker, frb);
         const info = JSON.parse(data);
         expect(info.url).to.eql("https://fake-project-id-default-rtdb.firebaseio.com/");
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should expose a stubbed RTDB when the emulator is running", async () => {
         const frb = FunctionRuntimeBundles.onRequest;
@@ -417,7 +435,7 @@ describe("FunctionsEmulator-Runtime", () => {
         const data = await callHTTPSFunction(worker, frb);
         const info = JSON.parse(data);
         expect(info.url).to.eql("http://localhost:9090/");
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should return an emulated databaseURL when RTDB emulator is running", async () => {
         const frb = FunctionRuntimeBundles.onRequest;
@@ -445,7 +463,7 @@ describe("FunctionsEmulator-Runtime", () => {
         const data = await callHTTPSFunction(worker, frb);
         const info = JSON.parse(data);
         expect(info.databaseURL).to.eql(`http://localhost:9090/?ns=fake-project-id-default-rtdb`);
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should return a real databaseURL when RTDB emulator is not running", async () => {
         const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest);
@@ -467,7 +485,7 @@ describe("FunctionsEmulator-Runtime", () => {
         const data = await callHTTPSFunction(worker, frb);
         const info = JSON.parse(data);
         expect(info.databaseURL).to.eql("https://fake-project-id-default-rtdb.firebaseio.com");
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
     });
   });
 
@@ -506,7 +524,7 @@ describe("FunctionsEmulator-Runtime", () => {
 
       const logs = await countLogEntries(worker);
       expect(logs["functions-config-missing-value"]).to.eq(2);
-    }).timeout(TIMEOUT_MED);
+    }).timeout(TIMEOUT_LONG);
   });
 
   describe("Runtime", () => {
@@ -529,7 +547,7 @@ describe("FunctionsEmulator-Runtime", () => {
         const data = await callHTTPSFunction(worker, frb);
 
         expect(JSON.parse(data)).to.deep.equal({ from_trigger: true });
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should handle a POST request with form data", async () => {
         const frb = FunctionRuntimeBundles.onRequest;
@@ -560,7 +578,7 @@ describe("FunctionsEmulator-Runtime", () => {
         );
 
         expect(JSON.parse(data)).to.deep.equal({ name: "sparky" });
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should handle a POST request with JSON data", async () => {
         const frb = FunctionRuntimeBundles.onRequest;
@@ -591,7 +609,7 @@ describe("FunctionsEmulator-Runtime", () => {
         );
 
         expect(JSON.parse(data)).to.deep.equal({ name: "sparky" });
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should handle a POST request with text data", async () => {
         const frb = FunctionRuntimeBundles.onRequest;
@@ -622,7 +640,7 @@ describe("FunctionsEmulator-Runtime", () => {
         );
 
         expect(JSON.parse(data)).to.deep.equal("name is sparky");
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should handle a POST request with any other type", async () => {
         const frb = FunctionRuntimeBundles.onRequest;
@@ -654,7 +672,7 @@ describe("FunctionsEmulator-Runtime", () => {
 
         expect(JSON.parse(data).type).to.deep.equal("Buffer");
         expect(JSON.parse(data).data.length).to.deep.equal(14);
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should handle a POST request and store rawBody", async () => {
         const frb = FunctionRuntimeBundles.onRequest;
@@ -685,7 +703,7 @@ describe("FunctionsEmulator-Runtime", () => {
         );
 
         expect(data).to.equal(reqData);
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should forward request to Express app", async () => {
         const frb = FunctionRuntimeBundles.onRequest;
@@ -713,7 +731,7 @@ describe("FunctionsEmulator-Runtime", () => {
         });
 
         expect(JSON.parse(data)).to.deep.equal({ hello: "world" });
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should handle `x-forwarded-host`", async () => {
         const frb = FunctionRuntimeBundles.onRequest;
@@ -737,7 +755,7 @@ describe("FunctionsEmulator-Runtime", () => {
         });
 
         expect(JSON.parse(data)).to.deep.equal({ hostname: "real-hostname" });
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should report GMT time zone", async () => {
         const frb = FunctionRuntimeBundles.onRequest;
@@ -756,7 +774,7 @@ describe("FunctionsEmulator-Runtime", () => {
 
         const data = await callHTTPSFunction(worker, frb);
         expect(JSON.parse(data)).to.deep.equal({ offset: 0 });
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
     });
 
     describe("Cloud Firestore", () => {
@@ -792,7 +810,7 @@ describe("FunctionsEmulator-Runtime", () => {
 
         const logs = await countLogEntries(worker);
         expect(logs["function-log"]).to.eq(1);
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should provide Change for firestore.onUpdate()", async () => {
         const worker = await invokeFunction(
@@ -825,7 +843,7 @@ describe("FunctionsEmulator-Runtime", () => {
 
         const logs = await countLogEntries(worker);
         expect(logs["function-log"]).to.eq(1);
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should provide DocumentSnapshot for firestore.onDelete()", async () => {
         const worker = await invokeFunction(
@@ -857,7 +875,7 @@ describe("FunctionsEmulator-Runtime", () => {
 
         const logs = await countLogEntries(worker);
         expect(logs["function-log"]).to.eq(1);
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should provide DocumentSnapshot for firestore.onCreate()", async () => {
         const worker = await invokeFunction(
@@ -889,7 +907,7 @@ describe("FunctionsEmulator-Runtime", () => {
 
         const logs = await countLogEntries(worker);
         expect(logs["function-log"]).to.eq(1);
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
     });
 
     describe("Error handling", () => {
@@ -917,7 +935,7 @@ describe("FunctionsEmulator-Runtime", () => {
         }
 
         expect((await logs)["runtime-error"]).to.eq(1);
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("Should handle async functions for Express handlers", async () => {
         const frb = FunctionRuntimeBundles.onRequest;
@@ -946,7 +964,7 @@ describe("FunctionsEmulator-Runtime", () => {
         }
 
         expect((await logs)["runtime-error"]).to.eq(1);
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("Should handle async/runWith functions for Express handlers", async () => {
         const frb = FunctionRuntimeBundles.onRequest;
@@ -975,7 +993,7 @@ describe("FunctionsEmulator-Runtime", () => {
         }
 
         expect((await logs)["runtime-error"]).to.eq(1);
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
     });
   });
 });

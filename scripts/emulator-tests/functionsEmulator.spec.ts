@@ -16,7 +16,7 @@ import {
 } from "../../src/emulator/functionsEmulator";
 import { Emulators } from "../../src/emulator/types";
 import { RuntimeWorker } from "../../src/emulator/functionsRuntimeWorker";
-import { TIMEOUT_LONG, TIMEOUT_MED, MODULE_ROOT } from "./fixtures";
+import { TIMEOUT_LONG, MODULE_ROOT } from "./fixtures";
 import { logger } from "../../src/logger";
 import * as registry from "../../src/emulator/registry";
 import * as secretManager from "../../src/gcp/secretManager";
@@ -34,8 +34,10 @@ if ((process.env.DEBUG || "").toLowerCase().includes("spec")) {
   );
 }
 
+const fakeProjectId = "fake-project-id";
+
 const functionsEmulator = new FunctionsEmulator({
-  projectId: "fake-project-id",
+  projectId: fakeProjectId,
   projectDir: MODULE_ROOT,
   emulatableBackends: [
     {
@@ -49,7 +51,7 @@ const functionsEmulator = new FunctionsEmulator({
 const testBackend = {
   functionsDir: MODULE_ROOT,
   env: {},
-  nodeBinary: process.execPath,
+  nodeBinary: "to be overridden",
 };
 
 functionsEmulator.setTriggersForTesting(
@@ -135,7 +137,8 @@ function useFunctions(triggers: () => {}): void {
     runtimeOpts?: InvokeRuntimeOpts
   ): Promise<RuntimeWorker> => {
     return invokeTrigger(testBackend, trigger, proto, {
-      nodeBinary: process.execPath,
+      // Use ts-node to spawn worker process that can load TS modules.
+      nodeBinary: path.join(MODULE_ROOT, "node_modules/.bin/ts-node"),
       serializedTriggers,
     });
   };
@@ -757,7 +760,7 @@ describe("FunctionsEmulator-Hub", () => {
         .then((res) => {
           expect(res.body.var).to.eql("localhost:9090");
         });
-    }).timeout(TIMEOUT_MED);
+    }).timeout(TIMEOUT_LONG);
 
     it("should set FIRESTORE_EMULATOR_HOST when the emulator is running", async () => {
       emulatorRegistryStub.withArgs(Emulators.FIRESTORE).returns({
@@ -784,7 +787,7 @@ describe("FunctionsEmulator-Hub", () => {
         .then((res) => {
           expect(res.body.var).to.eql("localhost:9090");
         });
-    });
+    }).timeout(TIMEOUT_LONG);
 
     it("should set FIREBASE_AUTH_EMULATOR_HOST when the emulator is running", async () => {
       emulatorRegistryStub.withArgs(Emulators.AUTH).returns({
@@ -811,7 +814,7 @@ describe("FunctionsEmulator-Hub", () => {
         .then((res) => {
           expect(res.body.var).to.eql("localhost:9099");
         });
-    }).timeout(TIMEOUT_MED);
+    }).timeout(TIMEOUT_LONG);
   });
 
   describe("secrets", () => {
