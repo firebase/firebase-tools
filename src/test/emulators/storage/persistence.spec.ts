@@ -5,8 +5,8 @@ import { v4 as uuidV4 } from "uuid";
 import { Persistence } from "../../../emulator/storage/persistence";
 
 describe("Persistence", () => {
-  let testDir = `${tmpdir()}/${uuidV4()}`;
-  let _persistence = new Persistence(testDir);
+  const testDir = `${tmpdir()}/${uuidV4()}`;
+  const _persistence = new Persistence(testDir);
   after(async () => {
     await _persistence.deleteAll();
   });

@@ -73,7 +73,7 @@ describe("files", () => {
         );
       });
 
-      it("should throw if upload is not authorized", async () => {
+      it("should throw if upload is not authorized", () => {
         const storageLayer = getStorageLayer(ALWAYS_FALSE_RULES_VALIDATOR);
         const uploadId = _uploadService.startResumableUpload({
           bucketId: "bucket",
