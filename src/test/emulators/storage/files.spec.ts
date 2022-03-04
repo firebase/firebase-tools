@@ -85,8 +85,6 @@ describe("files", () => {
         const upload = _uploadService.finalizeResumableUpload(uploadId);
 
         expect(storageLayer.handleUploadObject(upload)).to.be.rejectedWith(ForbiddenError);
-        // Staging file should be cleaned up
-        expect(_persistence.readBytes(upload.path, 1).byteLength).to.equal(1);
       });
     });
 

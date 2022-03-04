@@ -11,7 +11,7 @@ describe("Persistence", () => {
     await _persistence.deleteAll();
   });
 
-  describe.only("#deleteFile()", () => {
+  describe("#deleteFile()", () => {
     it("should delete files", () => {
       const filename = `${uuidV4()}%2F${uuidV4()}`;
       _persistence.appendBytes(filename, Buffer.from("hello world"));
@@ -21,7 +21,7 @@ describe("Persistence", () => {
     });
   });
 
-  describe.only("#readBytes()", () => {
+  describe("#readBytes()", () => {
     it("should read existing files", () => {
       const filename = `${uuidV4()}%2F${uuidV4()}`;
       const data = Buffer.from("hello world");
