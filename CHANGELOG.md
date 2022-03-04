@@ -1,0 +1,1 @@
+- Fixes bug where function's memory configurations weren't preserved in batched function deploys (#4253).
