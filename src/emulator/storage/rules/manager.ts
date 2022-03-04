@@ -24,7 +24,7 @@ export class StorageRulesManager {
 
   /**
    * Updates the source file and, correspondingly, the file watcher and ruleset.
-   * @throws {@link FirebaseError} if file path is invalid.
+   * @throws {FirebaseError} if file path is invalid.
    */
   public async setSourceFile(rules: SourceFile | string): Promise<StorageRulesIssues> {
     const prevRulesFile = this._sourceFile?.name;
