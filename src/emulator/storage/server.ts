@@ -106,8 +106,8 @@ export function createApp(
     });
   });
 
-  app.post("/internal/reset", (req, res) => {
-    emulator.reset();
+  app.post("/internal/reset", async (req, res) => {
+    await emulator.reset();
     res.sendStatus(200);
   });
 

@@ -2,6 +2,7 @@ import * as chokidar from "chokidar";
 import * as fs from "fs";
 import { EmulatorLogger } from "../../emulatorLogger";
 import { Emulators } from "../../types";
+import { FirebaseError } from "../../../error";
 import { SourceFile } from "./types";
 import { StorageRulesIssues, StorageRulesRuntime, StorageRulesetInstance } from "./runtime";
 
@@ -15,39 +16,24 @@ export class StorageRulesManager {
   private _watcher = new chokidar.FSWatcher();
   private _logger = EmulatorLogger.forEmulator(Emulators.STORAGE);
 
-  private constructor(private _runtime: StorageRulesRuntime) {}
-
-  /**
-   * Constructs and initializes a {@link StorageRulesManager}. This must be done in a factory
-   * method in order to load the ruleset from the runtime asynchronously.
-   */
-  public static async createInstance(
-    rules: SourceFile | string,
-    runtime: StorageRulesRuntime
-  ): Promise<StorageRulesManager> {
-    const instance = new StorageRulesManager(runtime);
-    await instance.setSourceFile(rules);
-    return instance;
-  }
+  constructor(private _runtime: StorageRulesRuntime) {}
 
   get ruleset(): StorageRulesetInstance | undefined {
     return this._ruleset;
   }
 
-  get watcher(): chokidar.FSWatcher {
-    return this._watcher;
-  }
-
   /**
    * Updates the source file and, correspondingly, the file watcher and ruleset.
+   * @throws {@link FirebaseError} if file path is invalid.
    */
   public async setSourceFile(rules: SourceFile | string): Promise<StorageRulesIssues> {
     const prevRulesFile = this._sourceFile?.name;
     let rulesFile: string;
     if (typeof rules === "string") {
-      this._sourceFile = { name: rules, content: fs.readFileSync(rules).toString() };
+      this._sourceFile = { name: rules, content: readSourceFile(rules) };
       rulesFile = rules;
     } else {
+      // Allow invalid file path here for testing
       this._sourceFile = rules;
       rulesFile = rules.name;
     }
@@ -55,6 +41,15 @@ export class StorageRulesManager {
     const issues = await this.loadRuleset();
     this.updateWatcher(rulesFile, prevRulesFile);
     return issues;
+  }
+
+  /**
+   * Deletes source file, ruleset, and removes listeners from all files.
+   */
+  public async reset(): Promise<void> {
+    delete this._sourceFile;
+    delete this._ruleset;
+    await this._watcher.close();
   }
 
   private updateWatcher(rulesFile: string, prevRulesFile?: string): void {
@@ -87,7 +82,8 @@ export class StorageRulesManager {
       return issues;
     }
 
-    issues.all.forEach((issue) => {
+    delete this._ruleset;
+    issues.all.forEach((issue: string) => {
       try {
         const parsedIssue = JSON.parse(issue);
         this._logger.log(
@@ -100,7 +96,17 @@ export class StorageRulesManager {
         this._logger.log("WARN", issue);
       }
     });
-    delete this._ruleset;
     return issues;
+  }
+}
+
+function readSourceFile(fileName: string): string {
+  try {
+    return fs.readFileSync(fileName).toString();
+  } catch (error: any) {
+    if (error.code === "ENOENT") {
+      throw new FirebaseError(`File not found: ${fileName}`);
+    }
+    throw error;
   }
 }

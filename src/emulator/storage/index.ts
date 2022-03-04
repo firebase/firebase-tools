@@ -24,16 +24,17 @@ export interface StorageEmulatorArgs {
 export class StorageEmulator implements EmulatorInstance {
   private destroyServer?: () => Promise<void>;
   private _app?: express.Express;
-  private _rulesManager?: StorageRulesManager;
 
   private _logger = EmulatorLogger.forEmulator(Emulators.STORAGE);
   private _rulesRuntime: StorageRulesRuntime;
+  private _rulesManager: StorageRulesManager;
   private _persistence: Persistence;
   private _storageLayer: StorageLayer;
   private _uploadService: UploadService;
 
   constructor(private args: StorageEmulatorArgs) {
     this._rulesRuntime = new StorageRulesRuntime();
+    this._rulesManager = new StorageRulesManager(this._rulesRuntime);
     this._persistence = new Persistence(this.getPersistenceTmpDir());
     this._storageLayer = new StorageLayer(
       args.projectId,
@@ -52,15 +53,16 @@ export class StorageEmulator implements EmulatorInstance {
   }
 
   get rules(): StorageRulesetInstance | undefined {
-    return this._rulesManager?.ruleset;
+    return this._rulesManager.ruleset;
   }
 
   get logger(): EmulatorLogger {
     return this._logger;
   }
 
-  reset(): void {
+  async reset(): Promise<void> {
     this._storageLayer.reset();
+    await this._rulesManager.reset();
     this._persistence.reset(this.getPersistenceTmpDir());
     this._uploadService.reset();
   }
@@ -68,7 +70,7 @@ export class StorageEmulator implements EmulatorInstance {
   async start(): Promise<void> {
     const { host, port } = this.getInfo();
     await this._rulesRuntime.start(this.args.auto_download);
-    await this.createRulesManager(this.args.rules);
+    await this._rulesManager.setSourceFile(this.args.rules);
     this._app = await createApp(this.args.projectId, this);
     const server = this._app.listen(port, host);
     this.destroyServer = utils.createDestroyer(server);
@@ -78,15 +80,13 @@ export class StorageEmulator implements EmulatorInstance {
     // No-op
   }
 
-  async setRules(rules: SourceFile | string): Promise<StorageRulesIssues> {
-    if (!this._rulesManager) {
-      this.createRulesManager(rules);
-    }
-    return this._rulesManager!.setSourceFile(rules);
+  async setRules(rules: SourceFile): Promise<StorageRulesIssues> {
+    return this._rulesManager.setSourceFile(rules);
   }
 
   async stop(): Promise<void> {
     await this.storageLayer.deleteAll();
+    await this._rulesManager.reset();
     return this.destroyServer ? this.destroyServer() : Promise.resolve();
   }
 
