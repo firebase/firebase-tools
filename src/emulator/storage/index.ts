@@ -112,8 +112,4 @@ export class StorageEmulator implements EmulatorInstance {
   private getPersistenceTmpDir(): string {
     return `${tmpdir()}/firebase/storage/blobs`;
   }
-
-  private async createRulesManager(rules: SourceFile | string): Promise<void> {
-    this._rulesManager = await StorageRulesManager.createInstance(rules, this._rulesRuntime);
-  }
 }

@@ -3,15 +3,18 @@ import { tmpdir } from "os";
 import { v4 as uuidv4 } from "uuid";
 
 import { FirebaseError } from "../../../../error";
-import { StorageRulesFiles } from "../../fixtures";
+import { StorageRulesFiles, TIMEOUT_MED } from "../../fixtures";
 import { StorageRulesManager } from "../../../../emulator/storage/rules/manager";
 import { StorageRulesRuntime } from "../../../../emulator/storage/rules/runtime";
 import { Persistence } from "../../../../emulator/storage/persistence";
 import { RulesetOperationMethod } from "../../../../emulator/storage/rules/types";
 
-describe("Storage Rules Manager", () => {
+describe("Storage Rules Manager", function () {
   const rulesRuntime = new StorageRulesRuntime();
   const rulesManager = new StorageRulesManager(rulesRuntime);
+
+  // eslint-disable-next-line @typescript-eslint/no-invalid-this
+  this.timeout(TIMEOUT_MED);
 
   before(async () => {
     await rulesRuntime.start();
