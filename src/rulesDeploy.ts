@@ -192,7 +192,7 @@ export class RulesDeploy {
    * @param filename The filename to release.
    * @param resourceName The release name to release these as.
    * @param subResourceName An optional sub-resource name to append to the
-   *   release name. This is required if resourceName == FIREBASE_STORAGE.
+   *   release name. This is required if resourceName === FIREBASE_STORAGE.
    */
   async release(
     filename: string,

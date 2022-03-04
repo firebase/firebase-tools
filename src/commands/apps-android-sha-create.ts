@@ -9,8 +9,8 @@ import { promiseWithSpinner } from "../utils";
 function getCertHashType(shaHash: string): string {
   shaHash = shaHash.replace(/:/g, "");
   const shaHashCount = shaHash.length;
-  if (shaHashCount == 40) return ShaCertificateType.SHA_1.toString();
-  if (shaHashCount == 64) return ShaCertificateType.SHA_256.toString();
+  if (shaHashCount === 40) return ShaCertificateType.SHA_1.toString();
+  if (shaHashCount === 64) return ShaCertificateType.SHA_256.toString();
   return ShaCertificateType.SHA_CERTIFICATE_TYPE_UNSPECIFIED.toString();
 }
 

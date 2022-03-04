@@ -35,7 +35,7 @@ export async function promptForFailurePolicies(
     return !(existing && backend.isEventTriggered(existing) && existing.eventTrigger.retry);
   });
 
-  if (newRetryEndpoints.length == 0) {
+  if (newRetryEndpoints.length === 0) {
     return;
   }
 
@@ -193,7 +193,7 @@ export async function promptForMinInstances(
     costLine = `With these options, your minimum bill will be $${cost} in a 30-day month`;
   }
   let cudAnnotation = "";
-  if (backend.someEndpoint(want, (fn) => fn.platform == "gcfv2" && !!fn.minInstances)) {
+  if (backend.someEndpoint(want, (fn) => fn.platform === "gcfv2" && !!fn.minInstances)) {
     cudAnnotation =
       "\nThis bill can be lowered with a one year commitment. See https://cloud.google.com/run/cud for more";
   }

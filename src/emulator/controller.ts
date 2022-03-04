@@ -3,7 +3,6 @@ import * as clc from "cli-color";
 import * as fs from "fs";
 import * as path from "path";
 
-import { Config } from "../config";
 import { logger } from "../logger";
 import * as track from "../track";
 import * as utils from "../utils";
@@ -49,7 +48,7 @@ import { previews } from "../previews";
 const START_LOGGING_EMULATOR = utils.envOverride(
   "START_LOGGING_EMULATOR",
   "false",
-  (val) => val == "true"
+  (val) => val === "true"
 );
 
 async function getAndCheckAddress(emulator: Emulators, options: Options): Promise<Address> {
@@ -83,7 +82,7 @@ async function getAndCheckAddress(emulator: Emulators, options: Options): Promis
   if (!portOpen) {
     if (findAvailablePort) {
       const newPort = await portUtils.findAvailablePort(host, port);
-      if (newPort != port) {
+      if (newPort !== port) {
         loggerForEmulator.logLabeled(
           "WARN",
           emulator,
@@ -139,7 +138,7 @@ export async function startEmulator(instance: EmulatorInstance): Promise<void> {
   const name = instance.getName();
 
   // Log the command for analytics
-  track("Emulator Run", name);
+  void track("Emulator Run", name);
 
   await EmulatorRegistry.start(instance);
 }
@@ -396,7 +395,7 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
     // since we originally mistakenly reported emulators:start events
     // for each emulator, by reporting the "hub" we ensure that our
     // historical data can still be viewed.
-    track("emulators:start", "hub");
+    void track("emulators:start", "hub");
     await startEmulator(hub);
   }
 
@@ -459,7 +458,15 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
       extensions: options.config.get("extensions"),
     });
     const extensionsBackends = await extensionEmulator.getExtensionBackends();
-    emulatableBackends.push(...extensionsBackends);
+    const filteredExtensionsBackends = extensionEmulator.filterUnemulatedTriggers(
+      options,
+      extensionsBackends
+    );
+    emulatableBackends.push(...filteredExtensionsBackends);
+
+    // Log the command for analytics
+    void track("Emulator Run", Emulators.EXTENSIONS);
+    EmulatorRegistry.registerExtensionsEmulator();
   }
 
   if (emulatableBackends.length) {

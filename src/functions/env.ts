@@ -254,7 +254,7 @@ export function loadUserEnvs({
   isEmulator,
 }: UserEnvsOpts): Record<string, string> {
   const envFiles = findEnvfiles(functionsSource, projectId, projectAlias, isEmulator);
-  if (envFiles.length == 0) {
+  if (envFiles.length === 0) {
     return {};
   }
 

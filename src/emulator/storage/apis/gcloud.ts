@@ -11,6 +11,7 @@ import { StorageEmulator } from "../index";
 import { EmulatorLogger } from "../../emulatorLogger";
 import { StorageLayer } from "../files";
 import type { Request, Response } from "express";
+import { parseObjectUploadMultipartRequest } from "../multipart";
 
 /**
  * @param emulator
@@ -44,7 +45,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
         return;
       }
 
-      if (req.query.alt == "media") {
+      if (req.query.alt === "media") {
         return sendFileBytes(md, storageLayer, req, res);
       }
 
@@ -103,6 +104,22 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     res.status(200).send();
   });
 
+  const reqBodyToBuffer = async (req: Request): Promise<Buffer> => {
+    if (req.body instanceof Buffer) {
+      return Buffer.from(req.body);
+    }
+    const bufs: Buffer[] = [];
+    req.on("data", (data) => {
+      bufs.push(data);
+    });
+    await new Promise<void>((resolve) => {
+      req.on("end", () => {
+        resolve();
+      });
+    });
+    return Buffer.concat(bufs);
+  };
+
   gcloudStorageAPI.put("/upload/storage/v1/b/:bucketId/o", async (req, res) => {
     if (!req.query.upload_id) {
       res.sendStatus(400);
@@ -111,32 +128,14 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
 
     const uploadId = req.query.upload_id.toString();
 
-    const bufs: Buffer[] = [];
-    req.on("data", (data) => {
-      bufs.push(data);
-    });
-
-    await new Promise<void>((resolve) => {
-      req.on("end", () => {
-        req.body = Buffer.concat(bufs);
-        resolve();
-      });
-    });
-
-    let upload = storageLayer.uploadBytes(uploadId, req.body);
-
+    const upload = storageLayer.uploadBytes(uploadId, await reqBodyToBuffer(req));
     if (!upload) {
       res.sendStatus(400);
       return;
     }
 
-    const finalizedUpload = storageLayer.finalizeUpload(uploadId);
-    if (!finalizedUpload) {
-      res.sendStatus(400);
-      return;
-    }
-    upload = finalizedUpload.upload;
-    res.status(200).json(new CloudStorageObjectMetadata(finalizedUpload.file.metadata)).send();
+    const uploadedFile = storageLayer.finalizeUpload(upload);
+    res.status(200).json(new CloudStorageObjectMetadata(uploadedFile.metadata)).send();
   });
 
   gcloudStorageAPI.post("/b/:bucketId/o/:objectId/acl", (req, res) => {
@@ -172,7 +171,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       .status(200);
   });
 
-  gcloudStorageAPI.post("/upload/storage/v1/b/:bucketId/o", (req, res) => {
+  gcloudStorageAPI.post("/upload/storage/v1/b/:bucketId/o", async (req, res) => {
     if (!req.query.name) {
       res.sendStatus(400);
       return;
@@ -183,18 +182,23 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       name = name.slice(1);
     }
 
-    const contentType = req.header("content-type") || req.header("x-upload-content-type");
+    const contentTypeHeader = req.header("content-type") || req.header("x-upload-content-type");
 
-    if (!contentType) {
+    if (!contentTypeHeader) {
       res.sendStatus(400);
       return;
     }
 
-    if (req.query.uploadType == "resumable") {
-      const upload = storageLayer.startUpload(req.params.bucketId, name, contentType, req.body);
+    if (req.query.uploadType === "resumable") {
+      const upload = storageLayer.startUpload(
+        req.params.bucketId,
+        name,
+        contentTypeHeader,
+        req.body
+      );
       const emulatorInfo = EmulatorRegistry.getInfo(Emulators.STORAGE);
 
-      if (emulatorInfo == undefined) {
+      if (emulatorInfo === undefined) {
         res.sendStatus(500);
         return;
       }
@@ -205,55 +209,39 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       return;
     }
 
-    if (!contentType.startsWith("multipart/related")) {
-      res.sendStatus(400);
-      return;
+    // Multipart upload
+    let metadataRaw: string;
+    let dataRaw: Buffer;
+    try {
+      ({ metadataRaw, dataRaw } = parseObjectUploadMultipartRequest(
+        contentTypeHeader!,
+        await reqBodyToBuffer(req)
+      ));
+    } catch (err) {
+      if (err instanceof Error) {
+        return res.status(400).json({
+          error: {
+            code: 400,
+            message: err.toString(),
+          },
+        });
+      }
+      throw err;
     }
-
-    const boundary = `--${contentType.split("boundary=")[1]}`;
-    const bodyString = req.body.toString();
-
-    const bodyStringParts = bodyString.split(boundary).filter((v: string) => v);
-
-    const metadataString = bodyStringParts[0].split(/\r?\n/)[3];
-    const blobParts = bodyStringParts[1].split(/\r?\n/);
-    const blobContentTypeString = blobParts[1];
-
-    if (!blobContentTypeString || !blobContentTypeString.startsWith("Content-Type: ")) {
-      res.sendStatus(400);
-      return;
-    }
-
-    const blobContentType = blobContentTypeString.slice("Content-Type: ".length);
-    const bodyBuffer = req.body as Buffer;
-
-    const metadataSegment = `${boundary}${bodyString.split(boundary)[1]}`;
-    const dataSegment = `${boundary}${bodyString.split(boundary).slice(2)[0]}`;
-    const dataSegmentHeader = (dataSegment.match(/.+Content-Type:.+?\r?\n\r?\n/s) || [])[0];
-
-    if (!dataSegmentHeader) {
-      res.sendStatus(400);
-      return;
-    }
-
-    const bufferOffset = metadataSegment.length + dataSegmentHeader.length;
-
-    const blobBytes = Buffer.from(bodyBuffer.slice(bufferOffset, -`\r\n${boundary}--`.length));
-
-    const metadata = storageLayer.oneShotUpload(
+    const incomingMetadata = JSON.parse(metadataRaw)!;
+    const storedMetadata = storageLayer.oneShotUpload(
       req.params.bucketId,
       name,
-      blobContentType,
-      JSON.parse(metadataString),
-      blobBytes
+      incomingMetadata.contentType!,
+      incomingMetadata,
+      dataRaw
     );
-
-    if (!metadata) {
+    if (!storedMetadata) {
       res.sendStatus(400);
       return;
     }
 
-    res.status(200).json(new CloudStorageObjectMetadata(metadata)).send();
+    res.status(200).json(new CloudStorageObjectMetadata(storedMetadata)).send();
     return;
   });
 
@@ -293,7 +281,7 @@ function sendFileBytes(
     return;
   }
 
-  const isGZipped = md.contentEncoding == "gzip";
+  const isGZipped = md.contentEncoding === "gzip";
   if (isGZipped) {
     data = gunzipSync(data);
   }

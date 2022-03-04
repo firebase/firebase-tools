@@ -94,9 +94,12 @@ describe("checkIam", () => {
         platform: "gcfv2",
         eventTrigger: {
           eventType: "google.cloud.storage.object.v1.finalized",
-          eventFilters: {
-            bucket: "my-bucket",
-          },
+          eventFilters: [
+            {
+              attribute: "bucket",
+              value: "my-bucket",
+            },
+          ],
           retry: false,
         },
         ...SPEC,
@@ -117,9 +120,12 @@ describe("checkIam", () => {
         platform: "gcfv1",
         eventTrigger: {
           eventType: "google.storage.object.create",
-          eventFilters: {
-            resource: "projects/_/buckets/myBucket",
-          },
+          eventFilters: [
+            {
+              attribute: "resource",
+              value: "projects/_/buckets/myBucket",
+            },
+          ],
           retry: false,
         },
         ...SPEC,
@@ -137,9 +143,12 @@ describe("checkIam", () => {
         platform: "gcfv2",
         eventTrigger: {
           eventType: "google.cloud.storage.object.v1.finalized",
-          eventFilters: {
-            bucket: "my-bucket",
-          },
+          eventFilters: [
+            {
+              attribute: "bucket",
+              value: "my-bucket",
+            },
+          ],
           retry: false,
         },
         ...SPEC,
@@ -163,9 +172,12 @@ describe("checkIam", () => {
         platform: "gcfv2",
         eventTrigger: {
           eventType: "google.cloud.storage.object.v1.finalized",
-          eventFilters: {
-            bucket: "my-bucket",
-          },
+          eventFilters: [
+            {
+              attribute: "bucket",
+              value: "my-bucket",
+            },
+          ],
           retry: false,
         },
         ...SPEC,
@@ -176,9 +188,12 @@ describe("checkIam", () => {
         platform: "gcfv2",
         eventTrigger: {
           eventType: "google.cloud.storage.object.v1.metadataUpdated",
-          eventFilters: {
-            bucket: "my-bucket",
-          },
+          eventFilters: [
+            {
+              attribute: "bucket",
+              value: "my-bucket",
+            },
+          ],
           retry: false,
         },
         ...SPEC,
@@ -216,9 +231,12 @@ describe("checkIam", () => {
         platform: "gcfv2",
         eventTrigger: {
           eventType: "google.cloud.storage.object.v1.finalized",
-          eventFilters: {
-            bucket: "my-bucket",
-          },
+          eventFilters: [
+            {
+              attribute: "bucket",
+              value: "my-bucket",
+            },
+          ],
           retry: false,
         },
         ...SPEC,

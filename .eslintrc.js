@@ -38,6 +38,7 @@ module.exports = {
 
         "no-invalid-this": "off", // Turned off in favor of @typescript-eslint/no-invalid-this.
         "@typescript-eslint/no-invalid-this": ["error"],
+        eqeqeq: ["error", "always", { null: "ignore" }],
 
         "@typescript-eslint/ban-types": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/explicit-function-return-type": ["warn", { allowExpressions: true }], // TODO(bkendall): SET to error.

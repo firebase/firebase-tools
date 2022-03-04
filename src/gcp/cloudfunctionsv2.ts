@@ -4,6 +4,7 @@ import { Client } from "../apiv2";
 import { FirebaseError } from "../error";
 import { functionsV2Origin } from "../api";
 import { logger } from "../logger";
+import { PUBSUB_PUBLISH_EVENT } from "../functions/events/v2";
 import * as backend from "../deploy/functions/backend";
 import * as runtimes from "../deploy/functions/runtimes";
 import * as proto from "./proto";
@@ -16,8 +17,6 @@ const client = new Client({
   auth: true,
   apiVersion: API_VERSION,
 });
-
-export const PUBSUB_PUBLISH_EVENT = "google.cloud.pubsub.topic.v1.messagePublished";
 
 export type VpcConnectorEgressSettings = "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC";
 export type IngressSettings = "ALLOW_ALL" | "ALLOW_INTERNAL_ONLY" | "ALLOW_INTERNAL_AND_GCLB";
@@ -285,7 +284,7 @@ export async function getFunction(
  */
 export async function listFunctions(projectId: string, region: string): Promise<CloudFunction[]> {
   const res = await listFunctionsInternal(projectId, region);
-  if (res.unreachable!.includes(region)) {
+  if (res.unreachable.includes(region)) {
     throw new FirebaseError(`Cloud Functions region ${region} is unavailable`);
   }
   return res.functions;
@@ -309,7 +308,7 @@ async function listFunctionsInternal(
   let pageToken = "";
   while (true) {
     const url = `projects/${projectId}/locations/${region}/functions`;
-    const opts = pageToken == "" ? {} : { queryParams: { pageToken } };
+    const opts = pageToken === "" ? {} : { queryParams: { pageToken } };
     const res = await client.get<Response>(url, opts);
     functions.push(...(res.body.functions || []));
     for (const region of res.body.unreachable || []) {
@@ -333,9 +332,16 @@ async function listFunctionsInternal(
 export async function updateFunction(
   cloudFunction: Omit<CloudFunction, OutputOnlyFields>
 ): Promise<Operation> {
+  // Keys in labels and environmentVariables are user defined, so we don't recurse
+  // for field masks.
+  const fieldMasks = proto.fieldMasks(
+    cloudFunction,
+    /* doNotRecurseIn...=*/ "labels",
+    "serviceConfig.environmentVariables"
+  );
   try {
     const queryParams = {
-      updateMask: proto.fieldMasks(cloudFunction).join(","),
+      updateMask: fieldMasks.join(","),
     };
     const res = await client.patch<typeof cloudFunction, Operation>(
       cloudFunction.name,
@@ -362,7 +368,7 @@ export async function deleteFunction(cloudFunction: string): Promise<Operation> 
 }
 
 export function functionFromEndpoint(endpoint: backend.Endpoint, source: StorageSource) {
-  if (endpoint.platform != "gcfv2") {
+  if (endpoint.platform !== "gcfv2") {
     throw new FirebaseError(
       "Trying to create a v2 CloudFunction with v1 API. This should never happen"
     );
@@ -429,12 +435,25 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
       eventType: endpoint.eventTrigger.eventType,
     };
     if (gcfFunction.eventTrigger.eventType === PUBSUB_PUBLISH_EVENT) {
-      gcfFunction.eventTrigger.pubsubTopic = endpoint.eventTrigger.eventFilters.resource;
-    } else {
-      gcfFunction.eventTrigger.eventFilters = [];
-      for (const [attribute, value] of Object.entries(endpoint.eventTrigger.eventFilters)) {
-        gcfFunction.eventTrigger.eventFilters.push({ attribute, value });
+      const pubsubFilter = backend.findEventFilter(endpoint, "topic");
+      if (!pubsubFilter) {
+        throw new FirebaseError(
+          "Invalid pubsub endpoint. Expected eventFilter with 'topic' attribute but found none."
+        );
       }
+      gcfFunction.eventTrigger.pubsubTopic = pubsubFilter.value;
+
+      for (const filter of endpoint.eventTrigger.eventFilters) {
+        if (filter.attribute === "topic") {
+          continue;
+        }
+        if (!gcfFunction.eventTrigger.eventFilters) {
+          gcfFunction.eventTrigger.eventFilters = [];
+        }
+        gcfFunction.eventTrigger.eventFilters.push(filter);
+      }
+    } else {
+      gcfFunction.eventTrigger.eventFilters = endpoint.eventTrigger.eventFilters;
     }
     proto.renameIfPresent(
       gcfFunction.eventTrigger,
@@ -480,16 +499,19 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
   } else if (gcfFunction.eventTrigger) {
     trigger = {
       eventTrigger: {
-        eventType: gcfFunction.eventTrigger!.eventType,
-        eventFilters: {},
+        eventType: gcfFunction.eventTrigger.eventType,
+        eventFilters: [],
         retry: false,
       },
     };
     if (gcfFunction.eventTrigger.pubsubTopic) {
-      trigger.eventTrigger.eventFilters.resource = gcfFunction.eventTrigger.pubsubTopic;
+      trigger.eventTrigger.eventFilters.push({
+        attribute: "topic",
+        value: gcfFunction.eventTrigger.pubsubTopic,
+      });
     } else {
       for (const { attribute, value } of gcfFunction.eventTrigger.eventFilters || []) {
-        trigger.eventTrigger.eventFilters[attribute] = value;
+        trigger.eventTrigger.eventFilters.push({ attribute, value });
       }
     }
     proto.renameIfPresent(

@@ -1,10 +1,9 @@
-import { functionMatchesAnyGroup } from "../functionsDeployHelper";
-import { getFunctionLabel } from "../functionsDeployHelper";
+import { functionMatchesAnyGroup, getFunctionLabel } from "../functionsDeployHelper";
 import { isFirebaseManaged } from "../../../deploymentTool";
 import { FirebaseError } from "../../../error";
 import * as utils from "../../../utils";
 import * as backend from "../backend";
-import * as gcfv2 from "../../../gcp/cloudfunctionsv2";
+import * as v2events from "../../../functions/events/v2";
 
 export interface EndpointUpdate {
   endpoint: backend.Endpoint;
@@ -136,10 +135,10 @@ export function upgradedToGCFv2WithoutSettingConcurrency(
  *  a user listens to a different bucket, which happens to have a different region.
  */
 export function changedTriggerRegion(want: backend.Endpoint, have: backend.Endpoint): boolean {
-  if (want.platform != "gcfv2") {
+  if (want.platform !== "gcfv2") {
     return false;
   }
-  if (have.platform != "gcfv2") {
+  if (have.platform !== "gcfv2") {
     return false;
   }
   if (!backend.isEventTriggered(want)) {
@@ -148,7 +147,7 @@ export function changedTriggerRegion(want: backend.Endpoint, have: backend.Endpo
   if (!backend.isEventTriggered(have)) {
     return false;
   }
-  return want.eventTrigger.region != have.eventTrigger.region;
+  return want.eventTrigger.region !== have.eventTrigger.region;
 }
 
 /** Whether a user changed the Pub/Sub topic of a GCFv2 function (which isn't allowed in the API). */
@@ -165,13 +164,16 @@ export function changedV2PubSubTopic(want: backend.Endpoint, have: backend.Endpo
   if (!backend.isEventTriggered(have)) {
     return false;
   }
-  if (want.eventTrigger.eventType != gcfv2.PUBSUB_PUBLISH_EVENT) {
+  if (want.eventTrigger.eventType !== v2events.PUBSUB_PUBLISH_EVENT) {
     return false;
   }
-  if (have.eventTrigger.eventType !== gcfv2.PUBSUB_PUBLISH_EVENT) {
+  if (have.eventTrigger.eventType !== v2events.PUBSUB_PUBLISH_EVENT) {
     return false;
   }
-  return have.eventTrigger.eventFilters["resource"] != want.eventTrigger.eventFilters["resource"];
+
+  return (
+    backend.findEventFilter(have, "topic")?.value !== backend.findEventFilter(want, "topic")?.value
+  );
 }
 
 /** Whether a user upgraded a scheduled function (which goes from Pub/Sub to HTTPS). */
@@ -216,14 +218,14 @@ export function checkForIllegalUpdate(want: backend.Endpoint, have: backend.Endp
   };
   const wantType = triggerType(want);
   const haveType = triggerType(have);
-  if (wantType != haveType) {
+  if (wantType !== haveType) {
     throw new FirebaseError(
       `[${getFunctionLabel(
         want
       )}] Changing from ${haveType} function to ${wantType} function is not allowed. Please delete your function and create a new one instead.`
     );
   }
-  if (want.platform == "gcfv1" && have.platform == "gcfv2") {
+  if (want.platform === "gcfv1" && have.platform === "gcfv2") {
     throw new FirebaseError(
       `[${getFunctionLabel(want)}] Functions cannot be downgraded from GCFv2 to GCFv1`
     );
@@ -241,7 +243,7 @@ export function checkForIllegalUpdate(want: backend.Endpoint, have: backend.Endp
  * upgrading to v2 in tests before production is ready
  */
 export function checkForV2Upgrade(want: backend.Endpoint, have: backend.Endpoint): void {
-  if (want.platform == "gcfv2" && have.platform == "gcfv1") {
+  if (want.platform === "gcfv2" && have.platform === "gcfv1") {
     throw new FirebaseError(
       `[${getFunctionLabel(
         have

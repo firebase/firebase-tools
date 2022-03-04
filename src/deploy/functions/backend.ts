@@ -48,8 +48,16 @@ export interface CallableTriggered {
   callableTrigger: CallableTrigger;
 }
 
-/** Well known keys in the eventFilter attribute of an event trigger */
-export type EventFilterKey = "resource";
+type EventFilterAttribute = "resource" | "topic" | "bucket" | string;
+
+// One or more event filters restrict the set of events delivered to an EventTrigger.
+interface EventFilter {
+  attribute: EventFilterAttribute;
+  value: string;
+
+  // if left unspecified, equality is used.
+  operator?: "match-path-pattern";
+}
 
 /** API agnostic version of a Cloud Function's event trigger. */
 export interface EventTrigger {
@@ -72,7 +80,7 @@ export interface EventTrigger {
    * V2 will have arbitrary filters and some EventArc filters will be
    * top-level keys in the GCF API (e.g. "pubsubTopic").
    */
-  eventFilters: Record<EventFilterKey | string, string>;
+  eventFilters: EventFilter[];
 
   /** Should failures in a function execution cause an event to be retried. */
   retry: boolean;
@@ -255,6 +263,11 @@ export type Endpoint = TargetIds &
     // on GCFv2 always
     uri?: string;
     sourceUploadUrl?: string;
+    // TODO(colerogers): yank this field and set securityLevel to SECURE_ALWAYS
+    // in functionFromEndpoint during a breaking change release.
+    // This is a temporary fix to address https://github.com/firebase/firebase-tools/issues/4171
+    // GCFv1 can be http or https and GCFv2 is always https
+    securityLevel?: gcf.SecurityLevel;
   };
 
 export interface RequiredAPI {
@@ -309,7 +322,7 @@ export function of(...endpoints: Endpoint[]): Backend {
  */
 export function isEmptyBackend(backend: Backend): boolean {
   return (
-    Object.keys(backend.requiredAPIs).length == 0 && Object.keys(backend.endpoints).length === 0
+    Object.keys(backend.requiredAPIs).length === 0 && Object.keys(backend.endpoints).length === 0
   );
 }
 
@@ -437,7 +450,7 @@ export async function checkAvailability(context: Context, want: Backend): Promis
   const gcfV1Regions = new Set();
   const gcfV2Regions = new Set();
   for (const ep of allEndpoints(want)) {
-    if (ep.platform == "gcfv1") {
+    if (ep.platform === "gcfv1") {
       gcfV1Regions.add(ep.region);
     } else {
       gcfV2Regions.add(ep.region);
@@ -555,7 +568,16 @@ export const missingEndpoint =
     return !hasEndpoint(backend)(endpoint);
   };
 
-/** A standard method for sorting endpoints for display.
+/** A helper utility to find event filter of given attribute */
+export function findEventFilter(
+  endpoint: Endpoint & EventTriggered,
+  attribute: EventFilterAttribute
+): EventFilter | undefined {
+  return endpoint.eventTrigger.eventFilters.find((ef) => ef.attribute === attribute);
+}
+
+/**
+ * A standard method for sorting endpoints for display.
  * Future versions might consider sorting region by pricing tier before
  * alphabetically
  */
@@ -563,7 +585,7 @@ export function compareFunctions(
   left: TargetIds & { platform: FunctionsPlatform },
   right: TargetIds & { platform: FunctionsPlatform }
 ): number {
-  if (left.platform != right.platform) {
+  if (left.platform !== right.platform) {
     return right.platform < left.platform ? -1 : 1;
   }
   if (left.region < right.region) {

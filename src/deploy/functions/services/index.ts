@@ -1,5 +1,6 @@
 import * as backend from "../backend";
 import * as iam from "../../../gcp/iam";
+import * as v2events from "../../../functions/events/v2";
 import { obtainStorageBindings, ensureStorageTriggerRegion } from "./storage";
 import { obtainFireAlertsBindings, ensureFirebaseAlertsTriggerRegion } from "./firebaseAlerts";
 
@@ -12,7 +13,7 @@ export interface Service {
 
   // dispatch functions
   requiredProjectBindings: ((pId: any, p: any) => Promise<Array<iam.Binding>>) | undefined;
-  ensureTriggerRegion: (ep: backend.Endpoint, et: backend.EventTrigger) => Promise<void>;
+  ensureTriggerRegion: (ep: backend.Endpoint & backend.EventTriggered) => Promise<void>;
 }
 
 /** A noop service object, useful for v1 events */
@@ -81,7 +82,7 @@ export const FirebaseAlertsService: Service = {
 };
 
 /** Mapping from event type string to service object */
-export const EVENT_SERVICE_MAPPING: Record<string, any> = {
+export const EVENT_SERVICE_MAPPING: Record<v2events.Event, Service> = {
   "google.cloud.pubsub.topic.v1.messagePublished": PubSubService,
   "google.cloud.storage.object.v1.finalized": StorageService,
   "google.cloud.storage.object.v1.archived": StorageService,
@@ -93,12 +94,12 @@ export const EVENT_SERVICE_MAPPING: Record<string, any> = {
 /**
  * Find the Service object for the given endpoint
  * @param endpoint the endpoint that we want the service for
- * @returns a Service object that corresponds to the event type of the endpoint or noop
+ * @return a Service object that corresponds to the event type of the endpoint or noop
  */
 export function serviceForEndpoint(endpoint: backend.Endpoint): Service {
   if (!backend.isEventTriggered(endpoint)) {
     return NoOpService;
   }
 
-  return EVENT_SERVICE_MAPPING[endpoint.eventTrigger.eventType] || NoOpService;
+  return EVENT_SERVICE_MAPPING[endpoint.eventTrigger.eventType as v2events.Event] || NoOpService;
 }

@@ -76,6 +76,7 @@ export const ALL_EMULATORS = [
   Emulators.HUB,
   Emulators.UI,
   Emulators.LOGGING,
+  Emulators.EXTENSIONS,
   ...ALL_SERVICE_EMULATORS,
 ];
 
