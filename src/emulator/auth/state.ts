@@ -467,7 +467,7 @@ export abstract class ProjectState {
   createVerificationCode(phoneNumber: string): PhoneVerificationRecord {
     const sessionInfo = randomBase64UrlStr(226);
     const verification: PhoneVerificationRecord = {
-      code: 123456,
+      code: '123456',
       phoneNumber,
       sessionInfo,
     };
