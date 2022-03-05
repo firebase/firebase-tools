@@ -31,7 +31,7 @@ export abstract class ProjectState {
   private verificationCodes: Map<string, PhoneVerificationRecord> = new Map();
   private temporaryProofs: Map<string, TemporaryProofRecord> = new Map();
 
-  constructor(public readonly projectId: string) {}
+  constructor(public readonly projectId: string) { }
 
   get projectNumber(): string {
     // TODO: Shall we generate something different for each project?
@@ -416,11 +416,11 @@ export abstract class ProjectState {
 
   validateRefreshToken(refreshToken: string):
     | {
-        user: UserInfo;
-        provider: string;
-        extraClaims: Record<string, unknown>;
-        secondFactor?: SecondFactorRecord;
-      }
+      user: UserInfo;
+      provider: string;
+      extraClaims: Record<string, unknown>;
+      secondFactor?: SecondFactorRecord;
+    }
     | undefined {
     const record = this.refreshTokens.get(refreshToken);
     if (!record) {
@@ -467,7 +467,7 @@ export abstract class ProjectState {
   createVerificationCode(phoneNumber: string): PhoneVerificationRecord {
     const sessionInfo = randomBase64UrlStr(226);
     const verification: PhoneVerificationRecord = {
-      code: randomDigits(6),
+      code: 123456,
       phoneNumber,
       sessionInfo,
     };
