@@ -1,8 +1,12 @@
 import { expect } from "chai";
+import { tmpdir } from "os";
+
 import { StoredFileMetadata } from "../../../emulator/storage/metadata";
 import { StorageCloudFunctions } from "../../../emulator/storage/cloudFunctions";
 import { StorageLayer } from "../../../emulator/storage/files";
 import { ForbiddenError, NotFoundError } from "../../../emulator/storage/errors";
+import { Persistence } from "../../../emulator/storage/persistence";
+import { RulesValidator } from "../../../emulator/storage/rules/utils";
 
 const ALWAYS_TRUE_RULES_VALIDATOR = {
   validate: () => Promise.resolve(true),
@@ -35,7 +39,7 @@ describe("files", () => {
   });
 
   it("should store file in memory when upload is finalized", () => {
-    const storageLayer = new StorageLayer("project", ALWAYS_TRUE_RULES_VALIDATOR);
+    const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
     const bytesToWrite = "Hello, World!";
 
     const upload = storageLayer.startUpload("bucket", "object", "mime/type", {
@@ -49,7 +53,7 @@ describe("files", () => {
   });
 
   it("should delete file from persistence layer when upload is cancelled", () => {
-    const storageLayer = new StorageLayer("project", ALWAYS_TRUE_RULES_VALIDATOR);
+    const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
 
     const upload = storageLayer.startUpload("bucket", "object", "mime/type", {
       contentType: "mime/type",
@@ -62,7 +66,7 @@ describe("files", () => {
 
   describe("#handleGetObject()", () => {
     it("should return data and metadata", async () => {
-      const storageLayer = new StorageLayer("project", ALWAYS_TRUE_RULES_VALIDATOR);
+      const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
       storageLayer.oneShotUpload(
         "bucket",
         "dir%2Fobject",
@@ -83,7 +87,7 @@ describe("files", () => {
     });
 
     it("should throw an error if request is not authorized", () => {
-      const storageLayer = new StorageLayer("project", ALWAYS_FALSE_RULES_VALIDATOR);
+      const storageLayer = getStorageLayer(ALWAYS_FALSE_RULES_VALIDATOR);
 
       expect(
         storageLayer.handleGetObject({
@@ -94,7 +98,7 @@ describe("files", () => {
     });
 
     it("should throw an error if the object does not exist", () => {
-      const storageLayer = new StorageLayer("project", ALWAYS_TRUE_RULES_VALIDATOR);
+      const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
 
       expect(
         storageLayer.handleGetObject({
@@ -104,4 +108,8 @@ describe("files", () => {
       ).to.be.rejectedWith(NotFoundError);
     });
   });
+
+  const getStorageLayer = (rulesValidator: RulesValidator) =>
+    new StorageLayer("project", rulesValidator, new Persistence(getPersistenceTmpDir()));
+  const getPersistenceTmpDir = () => `${tmpdir()}/firebase/storage/blobs`;
 });
