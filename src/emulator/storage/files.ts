@@ -309,7 +309,7 @@ export class StorageLayer {
       skipAuth ||
       (await this._validator.validate(
         ["b", upload.bucketId, "o", upload.objectId].join("/"),
-        RulesetOperationMethod.GET,
+        RulesetOperationMethod.CREATE,
         { before: metadata?.asRulesResource() },
         upload.authorization
       ));

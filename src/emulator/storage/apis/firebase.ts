@@ -348,6 +348,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       metadata.addDownloadToken();
       return res.status(200).json(new OutgoingFirebaseMetadata(metadata));
     }
+
     // Resumable upload
     const uploadCommand = req.header("x-goog-upload-command");
     if (!uploadCommand) {

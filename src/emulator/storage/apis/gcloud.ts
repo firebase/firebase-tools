@@ -151,7 +151,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       }
       throw err;
     }
-    return res.send(200).json(new CloudStorageObjectMetadata(metadata));
+    return res.json(new CloudStorageObjectMetadata(metadata));
   });
 
   gcloudStorageAPI.post("/b/:bucketId/o/:objectId/acl", (req, res) => {
