@@ -273,7 +273,7 @@ export async function updateEndpointSecret(
     const updatedSev = { ...sev } as Required<backend.SecretEnvVar>;
     if (
       (updatedSev.projectId === projectId || updatedSev.projectId === projectNumber) &&
-      updatedSev.secret == secretVersion.secret.name
+      updatedSev.secret === secretVersion.secret.name
     ) {
       updatedSev.version = secretVersion.versionId;
     }
