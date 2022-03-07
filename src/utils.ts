@@ -620,3 +620,21 @@ export function assertIsStringOrUndefined(
     });
   }
 }
+
+/**
+ * Polyfill for groupBy.
+ */
+export function groupBy<T, K extends string | number | symbol>(
+  arr: T[],
+  f: (item: T) => K
+): Record<K, T[]> {
+  return arr.reduce((result, item) => {
+    const key = f(item);
+    if (result[key]) {
+      result[key].push(item);
+    } else {
+      result[key] = [item];
+    }
+    return result;
+  }, {} as Record<K, T[]>);
+}

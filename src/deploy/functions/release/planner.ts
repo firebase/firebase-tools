@@ -10,13 +10,13 @@ export interface EndpointUpdate {
   deleteAndRecreate?: backend.Endpoint;
 }
 
-export interface RegionalChanges {
+export interface Changeset {
   endpointsToCreate: backend.Endpoint[];
   endpointsToUpdate: EndpointUpdate[];
   endpointsToDelete: backend.Endpoint[];
 }
 
-export type DeploymentPlan = Record<string, RegionalChanges>;
+export type DeploymentPlan = Record<string, Changeset>;
 
 export interface Options {
   filters?: string[][];
@@ -24,25 +24,49 @@ export interface Options {
   deleteAll?: boolean;
 }
 
-/** Calculate the changes needed for a given region. */
-export function calculateRegionalChanges(
+/** Calculate the changesets of given endpoints by grouping endpoints with keyFn. */
+export function calculateChangesets(
   want: Record<string, backend.Endpoint>,
   have: Record<string, backend.Endpoint>,
+  keyFn: (e: backend.Endpoint) => string,
   options: Options
-): RegionalChanges {
-  const endpointsToCreate = Object.keys(want)
-    .filter((id) => !have[id])
-    .map((id) => want[id]);
+): Record<string, Changeset> {
+  const toCreate = utils.groupBy(
+    Object.keys(want)
+      .filter((id) => !have[id])
+      .map((id) => want[id]),
+    keyFn
+  );
 
-  const endpointsToDelete = Object.keys(have)
-    .filter((id) => !want[id])
-    .filter((id) => options.deleteAll || isFirebaseManaged(have[id].labels || {}))
-    .map((id) => have[id]);
+  const toDelete = utils.groupBy(
+    Object.keys(have)
+      .filter((id) => !want[id])
+      .filter((id) => options.deleteAll || isFirebaseManaged(have[id].labels || {}))
+      .map((id) => have[id]),
+    keyFn
+  );
 
-  const endpointsToUpdate = Object.keys(want)
-    .filter((id) => have[id])
-    .map((id) => calculateUpdate(want[id], have[id]));
-  return { endpointsToCreate, endpointsToUpdate, endpointsToDelete };
+  const toUpdate = utils.groupBy(
+    Object.keys(want)
+      .filter((id) => have[id])
+      .map((id) => calculateUpdate(want[id], have[id])),
+    (eu: EndpointUpdate) => keyFn(eu.endpoint)
+  );
+
+  const result: Record<string, Changeset> = {};
+  const keys = new Set([
+    ...Object.keys(toCreate),
+    ...Object.keys(toDelete),
+    ...Object.keys(toUpdate),
+  ]);
+  for (const key of keys) {
+    result[key] = {
+      endpointsToCreate: toCreate[key] || [],
+      endpointsToUpdate: toUpdate[key] || [],
+      endpointsToDelete: toDelete[key] || [],
+    };
+  }
+  return result;
 }
 
 /**
@@ -78,7 +102,7 @@ export function createDeploymentPlan(
   have: backend.Backend,
   options: Options = {}
 ): DeploymentPlan {
-  const deployment: DeploymentPlan = {};
+  let deployment: DeploymentPlan = {};
   want = backend.matchingBackend(want, (endpoint) => {
     return functionMatchesAnyGroup(endpoint, options.filters || []);
   });
@@ -88,11 +112,13 @@ export function createDeploymentPlan(
 
   const regions = new Set([...Object.keys(want.endpoints), ...Object.keys(have.endpoints)]);
   for (const region of regions) {
-    deployment[region] = calculateRegionalChanges(
+    const changesets = calculateChangesets(
       want.endpoints[region] || {},
       have.endpoints[region] || {},
+      (e) => `${e.region}-${e.availableMemoryMb || "default"}`,
       options
     );
+    deployment = { ...deployment, ...changesets };
   }
 
   if (upgradedToGCFv2WithoutSettingConcurrency(want, have)) {
