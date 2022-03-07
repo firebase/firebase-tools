@@ -196,17 +196,3 @@ export function showDeprecationWarning() {
       `To access this behavior now, pass the ${clc.bold("--local")} flag.`
   );
 }
-
-// TODO(lihes): Add a docs link once exists.
-/**
- * Show preview warning about --local flag needing deploy to take effect in firebase project.
- */
-export function showPreviewWarning() {
-  utils.logLabeledWarning(
-    logPrefix,
-    "These changes will be reflected in your Firebase Emulator after restart. " +
-      `Run ${clc.bold(
-        "firebase deploy (--only extensions)"
-      )} to deploy the changes to your Firebase project. `
-  );
-}
