@@ -1,9 +1,9 @@
 import * as backend from "../backend";
 import * as iam from "../../../gcp/iam";
 import { getProjectNumber } from "../../../getProjectNumber";
-// import { FirebaseError } from "../../../error";
+import { FirebaseError } from "../../../error";
 
-const SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE = "roles/iam.serviceAccountTokenCreator";
+export const SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE = "roles/iam.serviceAccountTokenCreator";
 
 /**
  * Finds the required project level IAM bindings for the Pub/Sub service agent
@@ -11,7 +11,7 @@ const SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE = "roles/iam.serviceAccountTokenCreator
  * @param projectId project identifier
  * @param existingPolicy the project level IAM policy
  */
-export async function obtainFireAlertsBindings(
+export async function obtainFirebaseAlertsBindings(
   projectId: string,
   existingPolicy: iam.Policy
 ): Promise<Array<iam.Binding>> {
@@ -37,9 +37,13 @@ export async function obtainFireAlertsBindings(
  * @param endpoint the storage endpoint
  * @param eventTrigger the endpoints event trigger
  */
-export async function ensureFirebaseAlertsTriggerRegion(
-  endpoint: backend.Endpoint,
-  eventTrigger: backend.EventTrigger
-): Promise<void> {
-  eventTrigger.region = "global";
+export function ensureFirebaseAlertsTriggerRegion(
+  endpoint: backend.Endpoint & backend.EventTriggered
+): void {
+  if (!endpoint.eventTrigger.region) {
+    endpoint.eventTrigger.region = "global";
+  }
+  if (endpoint.eventTrigger.region !== "global") {
+    throw new FirebaseError("A firebase alerts function must have a 'global' trigger location");
+  }
 }

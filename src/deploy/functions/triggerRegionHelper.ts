@@ -7,7 +7,7 @@ import { serviceForEndpoint } from "./services";
  * @param have the list of function specs we have deployed
  */
 export async function ensureTriggerRegions(want: backend.Backend): Promise<void> {
-  const regionLookups: Array<Promise<void>> = [];
+  const regionLookups: Array<Promise<void> | void> = [];
 
   for (const ep of backend.allEndpoints(want)) {
     if (ep.platform === "gcfv1" || !backend.isEventTriggered(ep)) {
