@@ -746,15 +746,11 @@ describe("Storage emulator", () => {
 
         it("should upload a file using put", async () => {
           const uploadState = await page.evaluate(async (IMAGE_FILE_BASE64) => {
-            const auth = (window as any).auth as firebase.auth.Auth;
-            const _file = new File([IMAGE_FILE_BASE64], "toUpload.txt");
-            try {
-              await auth.signInAnonymously();
-              const task = await firebase.storage().ref("testing/image_put.png").put(_file);
-              return task.state;
-            } catch (err) {
-              throw err.message;
-            }
+            const task = await firebase
+              .storage()
+              .ref("testing/image_put.png")
+              .put(new File([IMAGE_FILE_BASE64], "toUpload.txt"));
+            return task.state;
           }, IMAGE_FILE_BASE64);
 
           expect(uploadState).to.equal("success");
@@ -762,17 +758,12 @@ describe("Storage emulator", () => {
 
         it("should upload a file with custom metadata", async () => {
           const uploadState = await page.evaluate(async (IMAGE_FILE_BASE64) => {
-            const _file = new File([IMAGE_FILE_BASE64], "toUpload.txt");
-            try {
-              const task = await firebase
-                .storage()
-                .ref("upload/allowIfContentTypeImage.png")
-                .put(_file, { contentType: "image/blah" });
-              return task.state;
-            } catch (err: any) {
-              return err.message;
-            }
+            await firebase
+              .storage()
+              .ref("upload/allowIfContentTypeImage.png")
+              .put(new File([IMAGE_FILE_BASE64], "toUpload.txt"), { contentType: "image/blah" });
           }, IMAGE_FILE_BASE64);
+
           expect(uploadState).to.equal("success");
         });
 
