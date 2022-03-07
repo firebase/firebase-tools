@@ -2,8 +2,21 @@ import { expect } from "chai";
 
 import { ExtensionsEmulator } from "../../emulator/extensionsEmulator";
 import { EmulatableBackend } from "../../emulator/functionsEmulator";
-import { ExtensionVersion } from "../../extensions/extensionsApi";
+import {
+  Extension,
+  ExtensionVersion,
+  RegistryLaunchStage,
+  Visibility,
+} from "../../extensions/extensionsApi";
 import * as planner from "../../deploy/extensions/planner";
+
+const TEST_EXTENSION: Extension = {
+  name: "publishers/firebase/extensions/storage-resize-images",
+  ref: "firebase/storage-resize-images",
+  visibility: Visibility.PUBLIC,
+  registryLaunchStage: RegistryLaunchStage.BETA,
+  createTime: "0",
+};
 
 const TEST_EXTENSION_VERSION: ExtensionVersion = {
   name: "publishers/firebase/extensions/storage-resize-images/versions/0.1.18",
@@ -47,6 +60,7 @@ describe("Extensions Emulator", () => {
           params: {
             LOCATION: "us-west1",
           },
+          extension: TEST_EXTENSION,
           extensionVersion: TEST_EXTENSION_VERSION,
         },
         expected: {
@@ -70,11 +84,12 @@ describe("Extensions Emulator", () => {
                 resource: "projects/_/buckets/${param:IMG_BUCKET}",
                 service: "storage.googleapis.com",
               },
-              name: "generateResizedImage",
+              name: "ext-ext-test-generateResizedImage",
               platform: "gcfv1",
               regions: ["us-west1"],
             },
           ],
+          extension: TEST_EXTENSION,
           extensionVersion: TEST_EXTENSION_VERSION,
         },
       },

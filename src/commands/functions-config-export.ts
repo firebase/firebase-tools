@@ -7,7 +7,6 @@ import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { testIamPermissions } from "../gcp/iam";
 import { logger } from "../logger";
-import { resolveProjectPath } from "../projectPath";
 import { promptOnce } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 import { logBullet, logWarning } from "../utils";
@@ -128,7 +127,7 @@ export default new Command("functions:config:export")
       }
 
       const errMsg = configExport.hydrateEnvs(pInfos, prefix);
-      if (errMsg.length == 0) {
+      if (errMsg.length === 0) {
         break;
       }
       prefix = await promptForPrefix(errMsg);

@@ -119,7 +119,7 @@ class WebSocketTransport extends TransportStream {
 
     const splat = [info.message, ...(info[SPLAT] || [])]
       .map((value) => {
-        if (typeof value == "string") {
+        if (typeof value === "string") {
           try {
             bundle.data = { ...bundle.data, ...JSON.parse(value) };
             return null;

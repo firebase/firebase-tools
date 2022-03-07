@@ -48,28 +48,27 @@ export async function downloadExtensionVersion(
   sourceDownloadUri: string,
   targetDir: string
 ): Promise<void> {
+  const emulatorLogger = EmulatorLogger.forExtension({ ref: extensionVersionRef });
+  emulatorLogger.logLabeled(
+    "BULLET",
+    "extensions",
+    `Starting download for ${extensionVersionRef} source code...`
+  );
   try {
     fs.mkdirSync(targetDir);
   } catch (err) {
-    EmulatorLogger.forExtension(extensionVersionRef).logLabeled(
+    emulatorLogger.logLabeled(
       "BULLET",
       "extensions",
-      `${extensionVersionRef} already downloaded...`
+      `cache directory for ${extensionVersionRef} already exists...`
     );
   }
-  EmulatorLogger.forExtension(extensionVersionRef).logLabeled(
-    "BULLET",
-    "extensions",
-    `downloading ${sourceDownloadUri}...`
-  );
+  emulatorLogger.logLabeled("BULLET", "extensions", `downloading ${sourceDownloadUri}...`);
   const sourceCodeZip = await downloadUtils.downloadToTmp(sourceDownloadUri);
   await unzip(sourceCodeZip, targetDir);
+  fs.chmodSync(targetDir, 0o755);
 
-  EmulatorLogger.forExtension(extensionVersionRef).logLabeled(
-    "BULLET",
-    "extensions",
-    `Downloaded to ${targetDir}...`
-  );
+  emulatorLogger.logLabeled("BULLET", "extensions", `Downloaded to ${targetDir}...`);
   // TODO: We should not need to do this wait
   // However, when I remove this, unzipDir doesn't contain everything yet.
   await new Promise((resolve) => setTimeout(resolve, 1000));

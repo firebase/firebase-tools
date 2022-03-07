@@ -40,8 +40,24 @@ export interface HttpsTriggered {
   httpsTrigger: HttpsTrigger;
 }
 
-/** Well known keys in the eventFilter attribute of an event trigger */
-export type EventFilterKey = "resource";
+/** API agnostic version of a Firebase callable function. */
+export type CallableTrigger = Record<string, never>;
+
+/** Something that has a callable trigger */
+export interface CallableTriggered {
+  callableTrigger: CallableTrigger;
+}
+
+type EventFilterAttribute = "resource" | "topic" | "bucket" | string;
+
+// One or more event filters restrict the set of events delivered to an EventTrigger.
+interface EventFilter {
+  attribute: EventFilterAttribute;
+  value: string;
+
+  // if left unspecified, equality is used.
+  operator?: "match-path-pattern";
+}
 
 /** API agnostic version of a Cloud Function's event trigger. */
 export interface EventTrigger {
@@ -64,7 +80,7 @@ export interface EventTrigger {
    * V2 will have arbitrary filters and some EventArc filters will be
    * top-level keys in the GCF API (e.g. "pubsubTopic").
    */
-  eventFilters: Record<EventFilterKey | string, string>;
+  eventFilters: EventFilter[];
 
   /** Should failures in a function execution cause an event to be retried. */
   retry: boolean;
@@ -119,6 +135,8 @@ export function endpointTriggerType(endpoint: Endpoint): string {
     return "scheduled";
   } else if (isHttpsTriggered(endpoint)) {
     return "https";
+  } else if (isCallableTriggered(endpoint)) {
+    return "callable";
   } else if (isEventTriggered(endpoint)) {
     return endpoint.eventTrigger.eventType;
   } else if (isTaskQueueTriggered(endpoint)) {
@@ -146,6 +164,8 @@ export function memoryOptionDisplayName(option: MemoryOptions): string {
   }[option];
 }
 
+export const DEFAULT_MEMORY: MemoryOptions = 256;
+export const MIN_MEMORY_FOR_CONCURRENCY: MemoryOptions = 2048;
 export const SCHEDULED_FUNCTION_LABEL = Object.freeze({ deployment: "firebase-schedule" });
 
 /**
@@ -164,27 +184,49 @@ export interface TargetIds {
   project: string;
 }
 
+export interface SecretEnvVar {
+  key: string;
+  secret: string;
+  projectId: string;
+
+  // Internal use only. Users cannot pin secret to a specific version.
+  version?: string;
+}
+
 export interface ServiceConfiguration {
   concurrency?: number;
   labels?: Record<string, string>;
   environmentVariables?: Record<string, string>;
+  secretEnvironmentVariables?: SecretEnvVar[];
   availableMemoryMb?: MemoryOptions;
   timeout?: proto.Duration;
   maxInstances?: number;
   minInstances?: number;
-  vpcConnector?: string;
-  vpcConnectorEgressSettings?: VpcEgressSettings;
+  vpc?: {
+    connector: string;
+    egressSettings?: VpcEgressSettings;
+  };
   ingressSettings?: IngressSettings;
   serviceAccountEmail?: "default" | string;
 }
 
 export type FunctionsPlatform = "gcfv1" | "gcfv2";
 
-export type Triggered = HttpsTriggered | EventTriggered | ScheduleTriggered | TaskQueueTriggered;
+export type Triggered =
+  | HttpsTriggered
+  | CallableTriggered
+  | EventTriggered
+  | ScheduleTriggered
+  | TaskQueueTriggered;
 
 /** Whether something has an HttpsTrigger */
 export function isHttpsTriggered(triggered: Triggered): triggered is HttpsTriggered {
   return {}.hasOwnProperty.call(triggered, "httpsTrigger");
+}
+
+/** Whether something has a CallableTrigger */
+export function isCallableTriggered(triggered: Triggered): triggered is CallableTriggered {
+  return {}.hasOwnProperty.call(triggered, "callableTrigger");
 }
 
 /** Whether something has an EventTrigger */
@@ -221,16 +263,24 @@ export type Endpoint = TargetIds &
     // on GCFv2 always
     uri?: string;
     sourceUploadUrl?: string;
+    // TODO(colerogers): yank this field and set securityLevel to SECURE_ALWAYS
+    // in functionFromEndpoint during a breaking change release.
+    // This is a temporary fix to address https://github.com/firebase/firebase-tools/issues/4171
+    // GCFv1 can be http or https and GCFv2 is always https
+    securityLevel?: gcf.SecurityLevel;
   };
+
+export interface RequiredAPI {
+  reason: string;
+  api: string;
+}
 
 /** An API agnostic definition of an entire deployment a customer has or wants. */
 export interface Backend {
   /**
    * requiredAPIs will be enabled when a Backend is deployed.
-   * Their format is friendly name -> API name.
-   * E.g. "scheduler" => "cloudscheduler.googleapis.com"
    */
-  requiredAPIs: Record<string, string>;
+  requiredAPIs: RequiredAPI[];
   environmentVariables: EnvironmentVariables;
   // region -> id -> Endpoint
   endpoints: Record<string, Record<string, Endpoint>>;
@@ -243,7 +293,7 @@ export interface Backend {
  */
 export function empty(): Backend {
   return {
-    requiredAPIs: {},
+    requiredAPIs: [],
     endpoints: {},
     environmentVariables: {},
   };
@@ -272,7 +322,7 @@ export function of(...endpoints: Endpoint[]): Backend {
  */
 export function isEmptyBackend(backend: Backend): boolean {
   return (
-    Object.keys(backend.requiredAPIs).length == 0 && Object.keys(backend.endpoints).length === 0
+    Object.keys(backend.requiredAPIs).length === 0 && Object.keys(backend.endpoints).length === 0
   );
 }
 
@@ -400,7 +450,7 @@ export async function checkAvailability(context: Context, want: Backend): Promis
   const gcfV1Regions = new Set();
   const gcfV2Regions = new Set();
   for (const ep of allEndpoints(want)) {
-    if (ep.platform == "gcfv1") {
+    if (ep.platform === "gcfv1") {
       gcfV1Regions.add(ep.region);
     } else {
       gcfV2Regions.add(ep.region);
@@ -468,6 +518,17 @@ export function someEndpoint(
   return false;
 }
 
+/** A helper utility for finding an endpoint that matches the predicate. */
+export function findEndpoint(
+  backend: Backend,
+  predicate: (endpoint: Endpoint) => boolean
+): Endpoint | undefined {
+  for (const endpoints of Object.values(backend.endpoints)) {
+    const endpoint = Object.values<Endpoint>(endpoints).find(predicate);
+    if (endpoint) return endpoint;
+  }
+}
+
 /** A helper utility function that returns a subset of the backend that includes only matching endpoints */
 export function matchingBackend(
   backend: Backend,
@@ -507,7 +568,16 @@ export const missingEndpoint =
     return !hasEndpoint(backend)(endpoint);
   };
 
-/** A standard method for sorting endpoints for display.
+/** A helper utility to find event filter of given attribute */
+export function findEventFilter(
+  endpoint: Endpoint & EventTriggered,
+  attribute: EventFilterAttribute
+): EventFilter | undefined {
+  return endpoint.eventTrigger.eventFilters.find((ef) => ef.attribute === attribute);
+}
+
+/**
+ * A standard method for sorting endpoints for display.
  * Future versions might consider sorting region by pricing tier before
  * alphabetically
  */
@@ -515,7 +585,7 @@ export function compareFunctions(
   left: TargetIds & { platform: FunctionsPlatform },
   right: TargetIds & { platform: FunctionsPlatform }
 ): number {
-  if (left.platform != right.platform) {
+  if (left.platform !== right.platform) {
     return right.platform < left.platform ? -1 : 1;
   }
   if (left.region < right.region) {

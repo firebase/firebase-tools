@@ -9,7 +9,7 @@ import { implicitInit, TemplateServerResponse } from "../hosting/implicitInit";
 import { initMiddleware } from "../hosting/initMiddleware";
 import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs";
 import cloudRunProxy from "../hosting/cloudRunProxy";
-import functionsProxy from "../hosting/functionsProxy";
+import { functionsProxy } from "../hosting/functionsProxy";
 import { NextFunction, Request, Response } from "express";
 import { Writable } from "stream";
 import { EmulatorLogger } from "../emulator/emulatorLogger";

@@ -1,16 +1,19 @@
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
+import { Config } from "../config";
 import * as planner from "../deploy/extensions/planner";
+import { FirebaseError } from "../error";
 import {
   displayExportInfo,
   parameterizeProject,
   setSecretParamsToLatest,
-  writeFiles,
 } from "../extensions/export";
 import { ensureExtensionsApiEnabled } from "../extensions/extensionsHelper";
+import { writeToManifest } from "../extensions/manifest";
 import { partition } from "../functional";
 import { getProjectNumber } from "../getProjectNumber";
 import { logger } from "../logger";
+import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import { promptOnce } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
@@ -23,7 +26,7 @@ module.exports = new Command("ext:export")
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
   .withForce()
-  .action(async (options: any) => {
+  .action(async (options: Options) => {
     const projectId = needProjectId(options);
     const projectNumber = await getProjectNumber(options);
     // Look up the instances that already exist,
@@ -38,7 +41,7 @@ module.exports = new Command("ext:export")
       })
     );
 
-    if (have.length == 0) {
+    if (have.length === 0) {
       logger.info(
         `No extension instances installed on ${projectId}, so there is nothing to export.`
       );
@@ -63,5 +66,14 @@ module.exports = new Command("ext:export")
       return;
     }
 
-    await writeFiles(withRef, options);
+    const existingConfig = Config.load(options, true);
+    if (!existingConfig) {
+      throw new FirebaseError(
+        "Not currently in a Firebase directory. Please run `firebase init` to create a Firebase directory."
+      );
+    }
+    await writeToManifest(withRef, existingConfig, {
+      nonInteractive: options.nonInteractive,
+      force: options.force,
+    });
   });

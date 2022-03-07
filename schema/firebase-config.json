@@ -174,6 +174,11 @@
                     },
                     "type": "object"
                 },
+                "extensions": {
+                    "properties": {
+                    },
+                    "type": "object"
+                },
                 "firestore": {
                     "additionalProperties": false,
                     "properties": {
@@ -387,6 +392,38 @@
                                     {
                                         "additionalProperties": false,
                                         "properties": {
+                                            "glob": {
+                                                "type": "string"
+                                            },
+                                            "headers": {
+                                                "items": {
+                                                    "additionalProperties": false,
+                                                    "properties": {
+                                                        "key": {
+                                                            "type": "string"
+                                                        },
+                                                        "value": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "key",
+                                                        "value"
+                                                    ],
+                                                    "type": "object"
+                                                },
+                                                "type": "array"
+                                            }
+                                        },
+                                        "required": [
+                                            "glob",
+                                            "headers"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    {
+                                        "additionalProperties": false,
+                                        "properties": {
                                             "headers": {
                                                 "items": {
                                                     "additionalProperties": false,
@@ -508,6 +545,25 @@
                                             "destination": {
                                                 "type": "string"
                                             },
+                                            "glob": {
+                                                "type": "string"
+                                            },
+                                            "type": {
+                                                "type": "number"
+                                            }
+                                        },
+                                        "required": [
+                                            "destination",
+                                            "glob"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "destination": {
+                                                "type": "string"
+                                            },
                                             "source": {
                                                 "type": "string"
                                             },
@@ -517,8 +573,7 @@
                                         },
                                         "required": [
                                             "destination",
-                                            "source",
-                                            "type"
+                                            "source"
                                         ],
                                         "type": "object"
                                     },
@@ -537,8 +592,7 @@
                                         },
                                         "required": [
                                             "destination",
-                                            "regex",
-                                            "type"
+                                            "regex"
                                         ],
                                         "type": "object"
                                     }
@@ -549,6 +603,85 @@
                         "rewrites": {
                             "items": {
                                 "anyOf": [
+                                    {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "destination": {
+                                                "type": "string"
+                                            },
+                                            "glob": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "destination",
+                                            "glob"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "function": {
+                                                "type": "string"
+                                            },
+                                            "glob": {
+                                                "type": "string"
+                                            },
+                                            "region": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "function",
+                                            "glob"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "glob": {
+                                                "type": "string"
+                                            },
+                                            "run": {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "region": {
+                                                        "type": "string"
+                                                    },
+                                                    "serviceId": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "serviceId"
+                                                ],
+                                                "type": "object"
+                                            }
+                                        },
+                                        "required": [
+                                            "glob",
+                                            "run"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "dynamicLinks": {
+                                                "type": "boolean"
+                                            },
+                                            "glob": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "dynamicLinks",
+                                            "glob"
+                                        ],
+                                        "type": "object"
+                                    },
                                     {
                                         "additionalProperties": false,
                                         "properties": {
@@ -569,6 +702,9 @@
                                         "additionalProperties": false,
                                         "properties": {
                                             "function": {
+                                                "type": "string"
+                                            },
+                                            "region": {
                                                 "type": "string"
                                             },
                                             "source": {
@@ -648,6 +784,9 @@
                                                 "type": "string"
                                             },
                                             "regex": {
+                                                "type": "string"
+                                            },
+                                            "region": {
                                                 "type": "string"
                                             }
                                         },
@@ -735,6 +874,38 @@
                                                 {
                                                     "additionalProperties": false,
                                                     "properties": {
+                                                        "glob": {
+                                                            "type": "string"
+                                                        },
+                                                        "headers": {
+                                                            "items": {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "key": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "value": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "key",
+                                                                    "value"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            "type": "array"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "glob",
+                                                        "headers"
+                                                    ],
+                                                    "type": "object"
+                                                },
+                                                {
+                                                    "additionalProperties": false,
+                                                    "properties": {
                                                         "headers": {
                                                             "items": {
                                                                 "additionalProperties": false,
@@ -856,6 +1027,25 @@
                                                         "destination": {
                                                             "type": "string"
                                                         },
+                                                        "glob": {
+                                                            "type": "string"
+                                                        },
+                                                        "type": {
+                                                            "type": "number"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "destination",
+                                                        "glob"
+                                                    ],
+                                                    "type": "object"
+                                                },
+                                                {
+                                                    "additionalProperties": false,
+                                                    "properties": {
+                                                        "destination": {
+                                                            "type": "string"
+                                                        },
                                                         "source": {
                                                             "type": "string"
                                                         },
@@ -865,8 +1055,7 @@
                                                     },
                                                     "required": [
                                                         "destination",
-                                                        "source",
-                                                        "type"
+                                                        "source"
                                                     ],
                                                     "type": "object"
                                                 },
@@ -885,8 +1074,7 @@
                                                     },
                                                     "required": [
                                                         "destination",
-                                                        "regex",
-                                                        "type"
+                                                        "regex"
                                                     ],
                                                     "type": "object"
                                                 }
@@ -897,6 +1085,85 @@
                                     "rewrites": {
                                         "items": {
                                             "anyOf": [
+                                                {
+                                                    "additionalProperties": false,
+                                                    "properties": {
+                                                        "destination": {
+                                                            "type": "string"
+                                                        },
+                                                        "glob": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "destination",
+                                                        "glob"
+                                                    ],
+                                                    "type": "object"
+                                                },
+                                                {
+                                                    "additionalProperties": false,
+                                                    "properties": {
+                                                        "function": {
+                                                            "type": "string"
+                                                        },
+                                                        "glob": {
+                                                            "type": "string"
+                                                        },
+                                                        "region": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "function",
+                                                        "glob"
+                                                    ],
+                                                    "type": "object"
+                                                },
+                                                {
+                                                    "additionalProperties": false,
+                                                    "properties": {
+                                                        "glob": {
+                                                            "type": "string"
+                                                        },
+                                                        "run": {
+                                                            "additionalProperties": false,
+                                                            "properties": {
+                                                                "region": {
+                                                                    "type": "string"
+                                                                },
+                                                                "serviceId": {
+                                                                    "type": "string"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "serviceId"
+                                                            ],
+                                                            "type": "object"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "glob",
+                                                        "run"
+                                                    ],
+                                                    "type": "object"
+                                                },
+                                                {
+                                                    "additionalProperties": false,
+                                                    "properties": {
+                                                        "dynamicLinks": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "glob": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "dynamicLinks",
+                                                        "glob"
+                                                    ],
+                                                    "type": "object"
+                                                },
                                                 {
                                                     "additionalProperties": false,
                                                     "properties": {
@@ -917,6 +1184,9 @@
                                                     "additionalProperties": false,
                                                     "properties": {
                                                         "function": {
+                                                            "type": "string"
+                                                        },
+                                                        "region": {
                                                             "type": "string"
                                                         },
                                                         "source": {
@@ -996,6 +1266,9 @@
                                                             "type": "string"
                                                         },
                                                         "regex": {
+                                                            "type": "string"
+                                                        },
+                                                        "region": {
                                                             "type": "string"
                                                         }
                                                     },
@@ -1083,6 +1356,38 @@
                                                 {
                                                     "additionalProperties": false,
                                                     "properties": {
+                                                        "glob": {
+                                                            "type": "string"
+                                                        },
+                                                        "headers": {
+                                                            "items": {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "key": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "value": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "key",
+                                                                    "value"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            "type": "array"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "glob",
+                                                        "headers"
+                                                    ],
+                                                    "type": "object"
+                                                },
+                                                {
+                                                    "additionalProperties": false,
+                                                    "properties": {
                                                         "headers": {
                                                             "items": {
                                                                 "additionalProperties": false,
@@ -1204,6 +1509,25 @@
                                                         "destination": {
                                                             "type": "string"
                                                         },
+                                                        "glob": {
+                                                            "type": "string"
+                                                        },
+                                                        "type": {
+                                                            "type": "number"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "destination",
+                                                        "glob"
+                                                    ],
+                                                    "type": "object"
+                                                },
+                                                {
+                                                    "additionalProperties": false,
+                                                    "properties": {
+                                                        "destination": {
+                                                            "type": "string"
+                                                        },
                                                         "source": {
                                                             "type": "string"
                                                         },
@@ -1213,8 +1537,7 @@
                                                     },
                                                     "required": [
                                                         "destination",
-                                                        "source",
-                                                        "type"
+                                                        "source"
                                                     ],
                                                     "type": "object"
                                                 },
@@ -1233,8 +1556,7 @@
                                                     },
                                                     "required": [
                                                         "destination",
-                                                        "regex",
-                                                        "type"
+                                                        "regex"
                                                     ],
                                                     "type": "object"
                                                 }
@@ -1245,6 +1567,85 @@
                                     "rewrites": {
                                         "items": {
                                             "anyOf": [
+                                                {
+                                                    "additionalProperties": false,
+                                                    "properties": {
+                                                        "destination": {
+                                                            "type": "string"
+                                                        },
+                                                        "glob": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "destination",
+                                                        "glob"
+                                                    ],
+                                                    "type": "object"
+                                                },
+                                                {
+                                                    "additionalProperties": false,
+                                                    "properties": {
+                                                        "function": {
+                                                            "type": "string"
+                                                        },
+                                                        "glob": {
+                                                            "type": "string"
+                                                        },
+                                                        "region": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "function",
+                                                        "glob"
+                                                    ],
+                                                    "type": "object"
+                                                },
+                                                {
+                                                    "additionalProperties": false,
+                                                    "properties": {
+                                                        "glob": {
+                                                            "type": "string"
+                                                        },
+                                                        "run": {
+                                                            "additionalProperties": false,
+                                                            "properties": {
+                                                                "region": {
+                                                                    "type": "string"
+                                                                },
+                                                                "serviceId": {
+                                                                    "type": "string"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "serviceId"
+                                                            ],
+                                                            "type": "object"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "glob",
+                                                        "run"
+                                                    ],
+                                                    "type": "object"
+                                                },
+                                                {
+                                                    "additionalProperties": false,
+                                                    "properties": {
+                                                        "dynamicLinks": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "glob": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "dynamicLinks",
+                                                        "glob"
+                                                    ],
+                                                    "type": "object"
+                                                },
                                                 {
                                                     "additionalProperties": false,
                                                     "properties": {
@@ -1265,6 +1666,9 @@
                                                     "additionalProperties": false,
                                                     "properties": {
                                                         "function": {
+                                                            "type": "string"
+                                                        },
+                                                        "region": {
                                                             "type": "string"
                                                         },
                                                         "source": {
@@ -1344,6 +1748,9 @@
                                                             "type": "string"
                                                         },
                                                         "regex": {
+                                                            "type": "string"
+                                                        },
+                                                        "region": {
                                                             "type": "string"
                                                         }
                                                     },

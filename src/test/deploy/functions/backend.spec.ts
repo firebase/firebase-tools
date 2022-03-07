@@ -72,7 +72,7 @@ describe("Backend", () => {
       expect(
         backend.isEmptyBackend({
           ...backend.empty(),
-          requiredAPIs: { foo: "foo.googleapis.com" },
+          requiredAPIs: [{ api: "foo.googleapis.com", reason: "foo" }],
         })
       ).to.be.false;
       expect(backend.isEmptyBackend(backend.of({ ...ENDPOINT, httpsTrigger: {} })));
@@ -548,6 +548,13 @@ describe("Backend", () => {
     it("someEndpoint", () => {
       expect(backend.someEndpoint(bkend, (fn) => fn.id === "endpointUS")).to.be.true;
       expect(backend.someEndpoint(bkend, (fn) => fn.id === "missing")).to.be.false;
+    });
+
+    it("findEndpoint", () => {
+      expect(backend.findEndpoint(bkend, (fn) => fn.id === "endpointUS")).to.be.deep.equal(
+        endpointUS
+      );
+      expect(backend.findEndpoint(bkend, (fn) => fn.id === "missing")).to.be.undefined;
     });
 
     it("regionalEndpoints", () => {

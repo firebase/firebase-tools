@@ -156,13 +156,13 @@ export class TriggerEndToEndTest {
   startEmulators(additionalArgs: string[] = []): Promise<void> {
     const cli = new CLIProcess("default", this.workdir);
     const started = cli.start("emulators:start", this.project, additionalArgs, (data: unknown) => {
-      if (typeof data != "string" && !Buffer.isBuffer(data)) {
+      if (typeof data !== "string" && !Buffer.isBuffer(data)) {
         throw new Error(`data is not a string or buffer (${typeof data})`);
       }
       return data.includes(ALL_EMULATORS_STARTED_LOG);
     });
 
-    cli.process?.stdout.on("data", (data) => {
+    cli.process?.stdout?.on("data", (data) => {
       /* Functions V1 */
       if (data.includes(RTDB_FUNCTION_LOG)) {
         this.rtdbTriggerCount++;
@@ -241,7 +241,7 @@ export class TriggerEndToEndTest {
       this.project,
       additionalArgs,
       (data: unknown) => {
-        if (typeof data != "string" && !Buffer.isBuffer(data)) {
+        if (typeof data !== "string" && !Buffer.isBuffer(data)) {
           throw new Error(`data is not a string or buffer (${typeof data})`);
         }
         return data.includes(ALL_EMULATORS_STARTED_LOG);
@@ -289,6 +289,14 @@ export class TriggerEndToEndTest {
 
   writeToSpecificStorageBucket(): Promise<Response> {
     return this.invokeHttpFunction("writeToSpecificStorageBucket");
+  }
+
+  updateMetadataDefaultStorage(): Promise<Response> {
+    return this.invokeHttpFunction("updateMetadataFromDefaultStorage");
+  }
+
+  updateMetadataSpecificStorageBucket(): Promise<Response> {
+    return this.invokeHttpFunction("updateMetadataFromSpecificStorageBucket");
   }
 
   updateDeleteFromDefaultStorage(): Promise<Response> {

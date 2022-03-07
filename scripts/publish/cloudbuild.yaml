@@ -1,8 +1,9 @@
 steps:
   # Decrypt the SSH key.
-  - name: "gcr.io/cloud-builders/gcloud"
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk:slim"
     args:
       [
+        "gcloud",
         "kms",
         "decrypt",
         "--ciphertext-file=deploy_key.enc",
@@ -13,9 +14,10 @@ steps:
       ]
 
   # Decrypt the Twitter credentials.
-  - name: "gcr.io/cloud-builders/gcloud"
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk:slim"
     args:
       [
+        "gcloud",
         "kms",
         "decrypt",
         "--ciphertext-file=twitter.json.enc",
@@ -26,9 +28,10 @@ steps:
       ]
 
   # Decrypt the npm credentials.
-  - name: "gcr.io/cloud-builders/gcloud"
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk:slim"
     args:
       [
+        "gcloud",
         "kms",
         "decrypt",
         "--ciphertext-file=npmrc.enc",
@@ -39,9 +42,10 @@ steps:
       ]
 
   # Decrypt the hub (GitHub) credentials.
-  - name: "gcr.io/cloud-builders/gcloud"
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk:slim"
     args:
       [
+        "gcloud",
         "kms",
         "decrypt",
         "--ciphertext-file=hub.enc",

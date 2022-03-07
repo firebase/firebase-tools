@@ -279,7 +279,7 @@ export class Fabricator {
         .catch(rethrowAs(endpoint, "create topic"));
     }
 
-    const resultFunction = (await this.functionExecutor
+    const resultFunction = await this.functionExecutor
       .run(async () => {
         const op: { name: string } = await gcfV2.createFunction(apiFunction);
         return await poller.pollOperation<gcfV2.CloudFunction>({
@@ -288,7 +288,7 @@ export class Fabricator {
           operationResourceName: op.name,
         });
       })
-      .catch(rethrowAs(endpoint, "create"))) as gcfV2.CloudFunction;
+      .catch(rethrowAs(endpoint, "create"));
 
     endpoint.uri = resultFunction.serviceConfig.uri;
     const serviceName = resultFunction.serviceConfig.service!;
@@ -312,11 +312,14 @@ export class Fabricator {
       }
     }
 
-    await this.setConcurrency(
-      endpoint,
-      serviceName,
-      endpoint.concurrency || DEFAULT_GCFV2_CONCURRENCY
-    );
+    const mem = endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;
+    if (mem >= backend.MIN_MEMORY_FOR_CONCURRENCY && endpoint.concurrency !== 1) {
+      await this.setConcurrency(
+        endpoint,
+        serviceName,
+        endpoint.concurrency || DEFAULT_GCFV2_CONCURRENCY
+      );
+    }
   }
 
   async updateV1Function(endpoint: backend.Endpoint, scraper: SourceTokenScraper): Promise<void> {

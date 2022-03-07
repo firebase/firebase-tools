@@ -5,15 +5,17 @@ import * as path from "path";
 import * as express from "express";
 import * as fs from "fs";
 
+import * as backend from "../deploy/functions/backend";
 import { Constants } from "./constants";
 import { InvokeRuntimeOpts } from "./functionsEmulator";
-import { FunctionsPlatform } from "../deploy/functions/backend";
+import { copyIfPresent } from "../gcp/proto";
+import { logger } from "../logger";
 
 export type SignatureType = "http" | "event" | "cloudevent";
 
 export interface ParsedTriggerDefinition {
   entryPoint: string;
-  platform: FunctionsPlatform;
+  platform: backend.FunctionsPlatform;
   name: string;
   timeout?: string | number; // Can be "3s" for some reason lol
   regions?: string[];
@@ -27,6 +29,7 @@ export interface ParsedTriggerDefinition {
 export interface EmulatedTriggerDefinition extends ParsedTriggerDefinition {
   id: string; // An unique-id per-function, generated from the name and the region.
   region: string;
+  secretEnvironmentVariables?: backend.SecretEnvVar[]; // Secret env vars needs to be specially loaded in the Emulator.
 }
 
 export interface EventSchedule {
@@ -51,40 +54,24 @@ export interface FunctionsRuntimeArgs {
 }
 
 export interface FunctionsRuntimeBundle {
-  projectId: string;
-  proto?: any;
-  triggerId?: string;
-  targetName?: string;
-  emulators: {
-    firestore?: {
-      host: string;
-      port: number;
-    };
-    database?: {
-      host: string;
-      port: number;
-    };
-    pubsub?: {
-      host: string;
-      port: number;
-    };
-    auth?: {
-      host: string;
-      port: number;
-    };
-    storage?: {
-      host: string;
-      port: number;
-    };
-  };
-  adminSdkConfig: {
-    databaseURL?: string;
-    storageBucket?: string;
-  };
+  proto: any;
+  // TODO(danielylee): One day, we hope to get rid of all of the following properties.
+  // Our goal is for the emulator environment to mimic the production environment as much
+  // as possible, and that includes how the emulated functions are called. In prod,
+  // the calls are made over HTTP which provides only the uri path, payload, headers, etc
+  // and none of these extra properties.
   socketPath?: string;
   disabled_features?: FunctionsRuntimeFeatures;
-  nodeMajorVersion?: number;
-  cwd: string;
+  // TODO(danielylee): To make debugging in Functions Emulator w/ --inspect-functions flag a good experience, we run
+  // all functions in a single runtime process. This is drastically different to production environment where each
+  // function runs in isolated, independent containers. Until we have better design for supporting --inspect-functions
+  // flag, we begrudgingly include the target trigger info in the runtime bundle so the "debug" runtime process can
+  // choose which trigger to run at runtime.
+  // See https://github.com/firebase/firebase-tools/issues/4189.
+  debug?: {
+    functionTarget: string;
+    functionSignature: string;
+  };
 }
 
 export interface FunctionsRuntimeFeatures {
@@ -133,6 +120,89 @@ export class EmulatedTrigger {
     const func = _.get(this.module, this.definition.entryPoint);
     return func.__emulator_func || func;
   }
+}
+
+/**
+ * Creates a unique trigger definition from Endpoints.
+ * @param Endpoints A list of all CloudFunctions in the deployment.
+ * @return A list of all CloudFunctions in the deployment.
+ */
+export function emulatedFunctionsFromEndpoints(
+  endpoints: backend.Endpoint[]
+): EmulatedTriggerDefinition[] {
+  const regionDefinitions: EmulatedTriggerDefinition[] = [];
+  for (const endpoint of endpoints) {
+    if (!endpoint.region) {
+      endpoint.region = "us-central1";
+    }
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const def: EmulatedTriggerDefinition = {
+      entryPoint: endpoint.entryPoint,
+      platform: endpoint.platform,
+      region: endpoint.region,
+      // TODO: Difference in use of name/id in Endpoint vs Emulator is subtle and confusing.
+      // We should later refactor the emulator to stop using a custom trigger definition.
+      name: endpoint.id,
+      id: `${endpoint.region}-${endpoint.id}`,
+    };
+    copyIfPresent(
+      def,
+      endpoint,
+      "timeout",
+      "availableMemoryMb",
+      "labels",
+      "platform",
+      "secretEnvironmentVariables"
+    );
+    // TODO: This transformation is confusing but must be kept since the Firestore/RTDB trigger registration
+    // process requires it in this form. Need to work in Firestore emulator for a proper fix...
+    if (backend.isHttpsTriggered(endpoint)) {
+      def.httpsTrigger = endpoint.httpsTrigger;
+    } else if (backend.isEventTriggered(endpoint)) {
+      const eventTrigger = endpoint.eventTrigger;
+      if (endpoint.platform === "gcfv1") {
+        const resourceFilter = backend.findEventFilter(endpoint, "resource");
+        if (!resourceFilter) {
+          logger.debug(
+            `Invalid event trigger ${JSON.stringify(
+              endpoint
+            )}, expected event filter with resource attribute. Skipping.`
+          );
+          // Silently skip invalid trigger.
+          continue;
+        }
+        def.eventTrigger = {
+          eventType: eventTrigger.eventType,
+          resource: resourceFilter.value,
+        };
+      } else {
+        const [eventFilter] = endpoint.eventTrigger.eventFilters;
+        if (!eventFilter) {
+          logger.debug(
+            `Invalid event trigger ${JSON.stringify(
+              endpoint
+            )}, expected at least one event filter. Skipping.`
+          );
+          // Silently skip invalid trigger.
+          continue;
+        }
+        def.eventTrigger = {
+          eventType: eventTrigger.eventType,
+          resource: eventFilter.value,
+        };
+      }
+    } else if (backend.isScheduleTriggered(endpoint)) {
+      // TODO: This is an awkward transformation. Emulator does not understand scheduled triggers - maybe it should?
+      def.eventTrigger = { eventType: "pubsub", resource: "" };
+      def.schedule = endpoint.scheduleTrigger as EventSchedule;
+    } else {
+      // All other trigger types are not supported by the emulator
+      // We leave both eventTrigger and httpTrigger attributes empty
+      // and let the caller deal with invalid triggers.
+    }
+    regionDefinitions.push(def);
+  }
+  return regionDefinitions;
 }
 
 /**
@@ -204,7 +274,7 @@ export function getTemporarySocketPath(pid: number, cwd: string): string {
   }
 }
 
-export function getFunctionService(def: EmulatedTriggerDefinition): string {
+export function getFunctionService(def: ParsedTriggerDefinition): string {
   if (def.eventTrigger) {
     return def.eventTrigger.service ?? getServiceFromEventType(def.eventTrigger.eventType);
   }

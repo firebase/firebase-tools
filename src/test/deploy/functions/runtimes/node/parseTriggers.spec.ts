@@ -76,9 +76,12 @@ describe("addResourcesToBackend", () => {
 
     const expected: backend.Backend = {
       ...backend.of({ ...BASIC_ENDPOINT, taskQueueTrigger: {} }),
-      requiredAPIs: {
-        cloudtasks: "cloudtasks.googleapis.com",
-      },
+      requiredAPIs: [
+        {
+          api: "cloudtasks.googleapis.com",
+          reason: "Needed for task queue functions.",
+        },
+      ],
     };
     expect(result).to.deep.equal(expected);
   });
@@ -105,9 +108,12 @@ describe("addResourcesToBackend", () => {
 
         const eventTrigger: backend.EventTrigger = {
           eventType: "google.pubsub.topic.publish",
-          eventFilters: {
-            resource: "projects/project/topics/topic",
-          },
+          eventFilters: [
+            {
+              attribute: "resource",
+              value: "projects/project/topics/topic",
+            },
+          ],
           retry: !!failurePolicy,
         };
         const expected: backend.Backend = backend.of({ ...BASIC_ENDPOINT, eventTrigger });
@@ -141,8 +147,10 @@ describe("addResourcesToBackend", () => {
       maxInstances: 42,
       minInstances: 1,
       serviceAccountEmail: "inlined@google.com",
-      vpcConnectorEgressSettings: "PRIVATE_RANGES_ONLY",
-      vpcConnector: "projects/project/locations/region/connectors/connector",
+      vpc: {
+        connector: "projects/project/locations/region/connectors/connector",
+        egressSettings: "PRIVATE_RANGES_ONLY",
+      },
       ingressSettings: "ALLOW_ALL",
       timeout: "60s",
       labels: {
@@ -174,9 +182,12 @@ describe("addResourcesToBackend", () => {
 
     const eventTrigger: backend.EventTrigger = {
       eventType: "google.pubsub.topic.publish",
-      eventFilters: {
-        resource: "projects/p/topics/t",
-      },
+      eventFilters: [
+        {
+          attribute: "resource",
+          value: "projects/p/topics/t",
+        },
+      ],
       retry: false,
     };
 
@@ -281,10 +292,12 @@ describe("addResourcesToBackend", () => {
           scheduleTrigger: schedule,
         }
       ),
-      requiredAPIs: {
-        pubsub: "pubsub.googleapis.com",
-        scheduler: "cloudscheduler.googleapis.com",
-      },
+      requiredAPIs: [
+        {
+          api: "cloudscheduler.googleapis.com",
+          reason: "Needed for scheduled functions.",
+        },
+      ],
     };
 
     expect(result).to.deep.equal(expected);
@@ -303,9 +316,35 @@ describe("addResourcesToBackend", () => {
     const expected: backend.Backend = backend.of({
       ...BASIC_ENDPOINT,
       httpsTrigger: {},
-      vpcConnector: "",
+      vpc: {
+        connector: "",
+      },
     });
 
+    expect(result).to.deep.equal(expected);
+  });
+
+  it("should parse secret", () => {
+    const trigger: parseTriggers.TriggerAnnotation = {
+      ...BASIC_TRIGGER,
+      httpsTrigger: {},
+      secrets: ["MY_SECRET"],
+    };
+
+    const expected: backend.Backend = backend.of({
+      ...BASIC_ENDPOINT,
+      httpsTrigger: {},
+      secretEnvironmentVariables: [
+        {
+          projectId: "project",
+          secret: "MY_SECRET",
+          key: "MY_SECRET",
+        },
+      ],
+    });
+
+    const result = backend.empty();
+    parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
     expect(result).to.deep.equal(expected);
   });
 });

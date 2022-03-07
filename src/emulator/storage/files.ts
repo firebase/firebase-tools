@@ -1,6 +1,3 @@
-import { openSync, closeSync, readSync, unlinkSync, renameSync, existsSync, mkdirSync } from "fs";
-import { tmpdir } from "os";
-import { v4 } from "uuid";
 import { ListItem, ListResponse } from "./list";
 import {
   CloudStorageBucketMetadata,
@@ -8,12 +5,20 @@ import {
   IncomingMetadata,
   StoredFileMetadata,
 } from "./metadata";
+import { NotFoundError, ForbiddenError } from "./errors";
 import * as path from "path";
 import * as fs from "fs";
 import * as fse from "fs-extra";
-import * as rimraf from "rimraf";
 import { StorageCloudFunctions } from "./cloudFunctions";
 import { logger } from "../../logger";
+import {
+  constructDefaultAdminSdkConfig,
+  getProjectAdminSdkConfigOrCached,
+} from "../adminSdkConfig";
+import { RulesetOperationMethod } from "./rules/types";
+import { RulesValidator } from "./rules/utils";
+import { Persistence } from "./persistence";
+import { Upload } from "./upload";
 
 interface BucketsList {
   buckets: {
@@ -49,6 +54,7 @@ export class ResumableUpload {
   private _bucketId: string;
   private _objectId: string;
   private _contentType: string;
+  private _authorization: string | undefined;
   private _currentBytesUploaded = 0;
   private _status: UploadStatus = UploadStatus.ACTIVE;
   private _fileLocation: string;
@@ -58,13 +64,15 @@ export class ResumableUpload {
     objectId: string,
     uploadId: string,
     contentType: string,
-    metadata: IncomingMetadata
+    metadata: IncomingMetadata,
+    authorization?: string
   ) {
     this._bucketId = bucketId;
     this._objectId = objectId;
     this._uploadId = uploadId;
     this._contentType = contentType;
     this._metadata = metadata;
+    this._authorization = authorization;
     this._fileLocation = encodeURIComponent(`${uploadId}_b_${bucketId}_o_${objectId}`);
     this._currentBytesUploaded = 0;
   }
@@ -86,6 +94,9 @@ export class ResumableUpload {
   }
   public set contentType(contentType: string) {
     this._contentType = contentType;
+  }
+  public get authorization(): string | undefined {
+    return this._authorization;
   }
   public get currentBytesUploaded(): number {
     return this._currentBytesUploaded;
@@ -110,27 +121,36 @@ export enum UploadStatus {
   FINISHED,
 }
 
-export type FinalizedUpload = {
-  upload: ResumableUpload;
-  file: StoredFile;
+/**  Parsed request object for {@link StorageLayer#handleGetObject}. */
+export type GetObjectRequest = {
+  bucketId: string;
+  decodedObjectId: string;
+  authorization?: string;
+  downloadToken?: string;
+};
+
+/** Response object for {@link StorageLayer#handleGetObject}. */
+export type GetObjectResponse = {
+  metadata: StoredFileMetadata;
+  data: Buffer;
 };
 
 export class StorageLayer {
   private _files!: Map<string, StoredFile>;
-  private _uploads!: Map<string, ResumableUpload>;
   private _buckets!: Map<string, CloudStorageBucketMetadata>;
-  private _persistence!: Persistence;
   private _cloudFunctions: StorageCloudFunctions;
 
-  constructor(private _projectId: string) {
+  constructor(
+    private _projectId: string,
+    private _validator: RulesValidator,
+    private _persistence: Persistence
+  ) {
     this.reset();
     this._cloudFunctions = new StorageCloudFunctions(this._projectId);
   }
 
   public reset(): void {
     this._files = new Map();
-    this._persistence = new Persistence(`${tmpdir()}/firebase/storage/blobs`);
-    this._uploads = new Map();
     this._buckets = new Map();
   }
 
@@ -140,12 +160,45 @@ export class StorageLayer {
     }
   }
 
-  listBuckets(): CloudStorageBucketMetadata[] {
-    if (this._buckets.size == 0) {
-      this.createBucket("default-bucket");
+  async listBuckets(): Promise<CloudStorageBucketMetadata[]> {
+    if (this._buckets.size === 0) {
+      let adminSdkConfig = await getProjectAdminSdkConfigOrCached(this._projectId);
+      if (!adminSdkConfig) {
+        adminSdkConfig = constructDefaultAdminSdkConfig(this._projectId);
+      }
+      this.createBucket(adminSdkConfig.storageBucket!);
     }
 
     return [...this._buckets.values()];
+  }
+
+  /**
+   * Returns an stored object and its metadata.
+   * @throws {NotFoundError} if object does not exist
+   * @throws {ForbiddenError} if request is unauthorized
+   */
+  public async handleGetObject(request: GetObjectRequest): Promise<GetObjectResponse> {
+    const metadata = this.getMetadata(request.bucketId, request.decodedObjectId);
+
+    // If a valid download token is present, skip Firebase Rules auth. Mainly used by the js sdk.
+    let authorized = (metadata?.downloadTokens || []).includes(request.downloadToken ?? "");
+    if (!authorized) {
+      authorized = await this._validator.validate(
+        ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
+        RulesetOperationMethod.GET,
+        { before: metadata?.asRulesResource() },
+        request.authorization
+      );
+    }
+    if (!authorized) {
+      throw new ForbiddenError("Failed auth");
+    }
+
+    if (!metadata) {
+      throw new NotFoundError("File not found");
+    }
+
+    return { metadata: metadata!, data: this.getBytes(request.bucketId, request.decodedObjectId)! };
   }
 
   public getMetadata(bucket: string, object: string): StoredFileMetadata | undefined {
@@ -157,6 +210,27 @@ export class StorageLayer {
     }
 
     return;
+  }
+
+  /**
+   * Generates metadata for an uploaded file. Generally, this should only be used for finalized
+   * uploads, unless needed for security rule checks.
+   * @param upload The upload corresponding to the file for which to generate metadata.
+   * @returns Metadata for uploaded file.
+   */
+  public createMetadata(upload: ResumableUpload): StoredFileMetadata {
+    const bytes = this._persistence.readBytes(upload.fileLocation, upload.currentBytesUploaded);
+    return new StoredFileMetadata(
+      {
+        name: upload.objectId,
+        bucket: upload.bucketId,
+        contentType: "",
+        contentEncoding: upload.metadata.contentEncoding,
+        customMetadata: upload.metadata.metadata,
+      },
+      this._cloudFunctions,
+      bytes
+    );
   }
 
   public getBytes(
@@ -178,42 +252,6 @@ export class StorageLayer {
     this._files = value;
   }
 
-  public startUpload(
-    bucket: string,
-    object: string,
-    contentType: string,
-    metadata: IncomingMetadata
-  ): ResumableUpload {
-    const uploadId = v4();
-    const upload = new ResumableUpload(bucket, object, uploadId, contentType, metadata);
-    this._uploads.set(uploadId, upload);
-    return upload;
-  }
-
-  public queryUpload(uploadId: string): ResumableUpload | undefined {
-    return this._uploads.get(uploadId);
-  }
-
-  public cancelUpload(uploadId: string): ResumableUpload | undefined {
-    const upload = this._uploads.get(uploadId);
-    if (!upload) {
-      return undefined;
-    }
-    upload.status = UploadStatus.CANCELLED;
-    this._persistence.deleteFile(upload.fileLocation);
-  }
-
-  public uploadBytes(uploadId: string, bytes: Buffer): ResumableUpload | undefined {
-    const upload = this._uploads.get(uploadId);
-
-    if (!upload) {
-      return undefined;
-    }
-    this._persistence.appendBytes(upload.fileLocation, bytes, upload.currentBytesUploaded);
-    upload.currentBytesUploaded += bytes.byteLength;
-    return upload;
-  }
-
   public deleteFile(bucketId: string, objectId: string): boolean {
     const isFolder = objectId.toLowerCase().endsWith("%2f");
 
@@ -229,7 +267,7 @@ export class StorageLayer {
 
     const file = this._files.get(filePath);
 
-    if (file == undefined) {
+    if (file === undefined) {
       return false;
     } else {
       this._files.delete(filePath);
@@ -244,68 +282,48 @@ export class StorageLayer {
     return this._persistence.deleteAll();
   }
 
-  public finalizeUpload(uploadId: string): FinalizedUpload | undefined {
-    const upload = this._uploads.get(uploadId);
-
-    if (!upload) {
-      return undefined;
+  /**
+   * Last step in uploading a file. Validates the request and persists the staging
+   * object to its permanent location on disk.
+   * TODO(tonyjhuang): Inject a Rules evaluator into StorageLayer to avoid needing skipAuth param
+   * @throws {ForbiddenError} if the request fails security rules auth.
+   */
+  public async handleUploadObject(upload: Upload, skipAuth = false): Promise<StoredFileMetadata> {
+    if (upload.status !== UploadStatus.FINISHED) {
+      throw new Error(`Unexpected upload status encountered: ${upload.status}.`);
     }
 
-    upload.status = UploadStatus.FINISHED;
     const filePath = this.path(upload.bucketId, upload.objectId);
-
-    const bytes = this._persistence.readBytes(upload.fileLocation, upload.currentBytesUploaded);
-    const finalMetadata = new StoredFileMetadata(
+    const metadata = new StoredFileMetadata(
       {
         name: upload.objectId,
         bucket: upload.bucketId,
-        contentType: "",
+        contentType: upload.metadata.contentType || "application/octet-stream",
         contentEncoding: upload.metadata.contentEncoding,
         customMetadata: upload.metadata.metadata,
       },
       this._cloudFunctions,
-      bytes,
-      upload.metadata
+      this._persistence.readBytes(upload.path, upload.size)
     );
-    const file = new StoredFile(finalMetadata, filePath);
-    this._files.set(filePath, file);
+    const authorized =
+      skipAuth ||
+      (await this._validator.validate(
+        ["b", upload.bucketId, "o", upload.objectId].join("/"),
+        RulesetOperationMethod.CREATE,
+        { before: metadata?.asRulesResource() },
+        upload.authorization
+      ));
+    if (!authorized) {
+      this._persistence.deleteFile(upload.path);
+      throw new ForbiddenError();
+    }
 
-    this._persistence.deleteFile(filePath, true);
-    this._persistence.renameFile(upload.fileLocation, filePath);
-
-    this._cloudFunctions.dispatch("finalize", new CloudStorageObjectMetadata(file.metadata));
-    return { upload: upload, file: file };
-  }
-
-  public oneShotUpload(
-    bucket: string,
-    object: string,
-    contentType: string,
-    incomingMetadata: IncomingMetadata,
-    bytes: Buffer
-  ) {
-    const filePath = this.path(bucket, object);
-
-    this._persistence.deleteFile(filePath, true);
-
-    this._persistence.appendBytes(filePath, bytes);
-    const md = new StoredFileMetadata(
-      {
-        name: object,
-        bucket: bucket,
-        contentType: incomingMetadata.contentType || "application/octet-stream",
-        contentEncoding: incomingMetadata.contentEncoding,
-        customMetadata: incomingMetadata.metadata,
-      },
-      this._cloudFunctions,
-      bytes,
-      incomingMetadata
-    );
-    const file = new StoredFile(md, this._persistence.getDiskPath(filePath));
-    this._files.set(filePath, file);
-
-    this._cloudFunctions.dispatch("finalize", new CloudStorageObjectMetadata(file.metadata));
-    return file.metadata;
+    // Persist to permanent location on disk.
+    this._persistence.deleteFile(filePath, /* failSilently = */ true);
+    this._persistence.renameFile(upload.path, filePath);
+    this._files.set(filePath, new StoredFile(metadata, this._persistence.getDiskPath(filePath)));
+    this._cloudFunctions.dispatch("finalize", new CloudStorageObjectMetadata(metadata));
+    return metadata;
   }
 
   public listItemsAndPrefixes(
@@ -334,7 +352,7 @@ export class StorageLayer {
     let items = [];
     const prefixes = new Set<string>();
     for (const [, file] of this._files) {
-      if (file.metadata.bucket != bucket) {
+      if (file.metadata.bucket !== bucket) {
         continue;
       }
 
@@ -349,7 +367,7 @@ export class StorageLayer {
       }
 
       const startAtIndex = name.indexOf(delimiter);
-      if (startAtIndex == -1) {
+      if (startAtIndex === -1) {
         if (!file.metadata.name.endsWith("/")) {
           items.push(file.metadata.name);
         }
@@ -361,8 +379,8 @@ export class StorageLayer {
 
     items.sort();
     if (pageToken) {
-      const idx = items.findIndex((v) => v == pageToken);
-      if (idx != -1) {
+      const idx = items.findIndex((v) => v === pageToken);
+      if (idx !== -1) {
         items = items.slice(idx);
       }
     }
@@ -405,7 +423,7 @@ export class StorageLayer {
 
     let items = [];
     for (const [, file] of this._files) {
-      if (file.metadata.bucket != bucket) {
+      if (file.metadata.bucket !== bucket) {
         continue;
       }
 
@@ -424,8 +442,8 @@ export class StorageLayer {
 
     items.sort();
     if (pageToken) {
-      const idx = items.findIndex((v) => v == pageToken);
-      if (idx != -1) {
+      const idx = items.findIndex((v) => v === pageToken);
+      if (idx !== -1) {
         items = items.slice(idx);
       }
     }
@@ -494,7 +512,7 @@ export class StorageLayer {
     const bucketsList: BucketsList = {
       buckets: [],
     };
-    for (const b of this.listBuckets()) {
+    for (const b of await this.listBuckets()) {
       bucketsList.buckets.push({ id: b.id });
     }
     const bucketsFilePath = path.join(storageExportPath, "buckets.json");
@@ -578,103 +596,5 @@ export class StorageLayer {
         yield p;
       }
     }
-  }
-}
-
-export class Persistence {
-  private _dirPath: string;
-  constructor(dirPath: string) {
-    this._dirPath = dirPath;
-    if (!existsSync(dirPath)) {
-      mkdirSync(dirPath, {
-        recursive: true,
-      });
-    }
-  }
-
-  public get dirPath(): string {
-    return this._dirPath;
-  }
-
-  appendBytes(fileName: string, bytes: Buffer, fileOffset?: number): string {
-    const filepath = this.getDiskPath(fileName);
-
-    const encodedSlashIndex = filepath.toLowerCase().lastIndexOf("%2f");
-    const dirPath =
-      encodedSlashIndex >= 0 ? filepath.substring(0, encodedSlashIndex) : path.dirname(filepath);
-
-    if (!existsSync(dirPath)) {
-      mkdirSync(dirPath, {
-        recursive: true,
-      });
-    }
-    let fd;
-
-    try {
-      // TODO: This is more technically correct, but corrupts multipart files
-      // fd = openSync(path, "w+");
-      // writeSync(fd, bytes, 0, bytes.byteLength, fileOffset);
-
-      fs.appendFileSync(filepath, bytes);
-      return filepath;
-    } finally {
-      if (fd) {
-        closeSync(fd);
-      }
-    }
-  }
-
-  readBytes(fileName: string, size: number, fileOffset?: number): Buffer {
-    const path = this.getDiskPath(fileName);
-    let fd;
-    try {
-      fd = openSync(path, "r");
-      const buf = Buffer.alloc(size);
-      const offset = fileOffset && fileOffset > 0 ? fileOffset : 0;
-      readSync(fd, buf, 0, size, offset);
-      return buf;
-    } finally {
-      if (fd) {
-        closeSync(fd);
-      }
-    }
-  }
-
-  deleteFile(fileName: string, failSilently = false): void {
-    try {
-      unlinkSync(this.getDiskPath(fileName));
-    } catch (err: any) {
-      if (!failSilently) {
-        throw err;
-      }
-    }
-  }
-
-  deleteAll(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      rimraf(this._dirPath, (err) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve();
-        }
-      });
-    });
-  }
-
-  renameFile(oldName: string, newName: string): void {
-    const dirPath = this.getDiskPath(path.dirname(newName));
-
-    if (!existsSync(dirPath)) {
-      mkdirSync(dirPath, {
-        recursive: true,
-      });
-    }
-
-    renameSync(this.getDiskPath(oldName), this.getDiskPath(newName));
-  }
-
-  getDiskPath(fileName: string): string {
-    return path.join(this._dirPath, fileName);
   }
 }

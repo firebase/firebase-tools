@@ -45,7 +45,7 @@ function readConfig(): FrameworkOptions {
 
 function logIncludes(msg: string) {
   return (data: unknown) => {
-    if (typeof data != "string" && !Buffer.isBuffer(data)) {
+    if (typeof data !== "string" && !Buffer.isBuffer(data)) {
       throw new Error(`data is not a string or buffer (${typeof data})`);
     }
     return data.includes(msg);
@@ -97,7 +97,7 @@ describe("CF3 and Extensions emulator", () => {
     await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
   });
 
-  it("should have have triggered an Extension Firestore function", async () => {
+  it("should have have triggered an Extension Storage function", async () => {
     const fileResized = await admin.storage().bucket().file(STORAGE_RESIZED_FILE_NAME).exists();
 
     expect(fileResized).to.be.true;

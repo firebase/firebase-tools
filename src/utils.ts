@@ -19,6 +19,7 @@ import { Socket } from "net";
 const IS_WINDOWS = process.platform === "win32";
 const SUCCESS_CHAR = IS_WINDOWS ? "+" : "✔";
 const WARNING_CHAR = IS_WINDOWS ? "!" : "⚠";
+const ERROR_CHAR = IS_WINDOWS ? "!!" : "⬢";
 const THIRTY_DAYS_IN_MILLISECONDS = 30 * 24 * 60 * 60 * 1000;
 
 export const envOverrides: string[] = [];
@@ -189,6 +190,18 @@ export function logLabeledWarning(
   data: LogDataOrUndefined = undefined
 ): void {
   logger[type](clc.yellow.bold(`${WARNING_CHAR}  ${label}:`), message, data);
+}
+
+/**
+ * Log an rror statement with a red bullet at the start of the line.
+ */
+export function logLabeledError(
+  label: string,
+  message: string,
+  type: LogLevel = "error",
+  data: LogDataOrUndefined = undefined
+): void {
+  logger[type](clc.red.bold(`${ERROR_CHAR}  ${label}:`), message, data);
 }
 
 /**
@@ -464,7 +477,7 @@ export function setupLoggers() {
         level: "info",
         format: winston.format.printf((info) =>
           [info.message, ...(info[SPLAT] || [])]
-            .filter((chunk) => typeof chunk == "string")
+            .filter((chunk) => typeof chunk === "string")
             .join(" ")
         ),
       })

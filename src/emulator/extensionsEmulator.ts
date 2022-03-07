@@ -1,14 +1,22 @@
 import * as fs from "fs-extra";
 import * as os from "os";
 import * as path from "path";
+import * as clc from "cli-color";
+import Table = require("cli-table");
 import { spawnSync } from "child_process";
 
 import * as planner from "../deploy/extensions/planner";
+import { Options } from "../options";
 import { FirebaseError } from "../error";
 import { toExtensionVersionRef } from "../extensions/refs";
 import { downloadExtensionVersion } from "./download";
 import { EmulatableBackend } from "./functionsEmulator";
 import { getExtensionFunctionInfo } from "../extensions/emulator/optionsHelper";
+import { EmulatorLogger } from "./emulatorLogger";
+import { Emulators } from "./types";
+import { checkForUnemulatedTriggerTypes, getUnemulatedAPIs } from "./extensions/validation";
+import { enableApiURI } from "../ensureApiEnabled";
+import { shortenUrl } from "../shortenUrl";
 
 export interface ExtensionEmulatorArgs {
   projectId: string;
@@ -23,6 +31,10 @@ export interface ExtensionEmulatorArgs {
 export class ExtensionsEmulator {
   private want: planner.InstanceSpec[] = [];
   private args: ExtensionEmulatorArgs;
+  private logger = EmulatorLogger.forEmulator(Emulators.EXTENSIONS);
+
+  // Keeps track of all the extension sources that are being downloaded.
+  private pendingDownloads = new Map<string, Promise<void>>();
 
   constructor(args: ExtensionEmulatorArgs) {
     this.args = args;
@@ -52,23 +64,65 @@ export class ExtensionsEmulator {
     }
     // TODO: If ref contains 'latest', we need to resolve that to a real version.
 
+    const ref = toExtensionVersionRef(instance.ref);
     const cacheDir =
       process.env.FIREBASE_EXTENSIONS_CACHE_PATH ||
       path.join(os.homedir(), ".cache", "firebase", "extensions");
-    const sourceCodePath = path.join(cacheDir, toExtensionVersionRef(instance.ref));
+    const sourceCodePath = path.join(cacheDir, ref);
 
-    // Check if something is at the cache location already. If so, assume its the extension source code!
-    // TODO(b/216376066): Add some better sanity checking that it is the extension source code & was successfully downloaded.
-    if (!fs.existsSync(sourceCodePath)) {
-      const extensionVersion = await planner.getExtensionVersion(instance);
-      await downloadExtensionVersion(
-        toExtensionVersionRef(instance.ref),
-        extensionVersion.sourceDownloadUri,
-        sourceCodePath
-      );
-      this.installAndBuildSourceCode(sourceCodePath);
+    // Wait for previous download promise to resolve before we check source validity.
+    // This avoids racing to download the same source multiple times.
+    // Note: The below will not work because it throws the thread to the back of the message queue.
+    // await (this.pendingDownloads.get(ref) ?? Promise.resolve());
+    if (this.pendingDownloads.get(ref)) {
+      await this.pendingDownloads.get(ref);
+    }
+
+    if (!this.hasValidSource({ path: sourceCodePath, extRef: ref })) {
+      const promise = this.downloadSource(instance, ref, sourceCodePath);
+      this.pendingDownloads.set(ref, promise);
+      await promise;
     }
     return sourceCodePath;
+  }
+
+  private async downloadSource(
+    instance: planner.InstanceSpec,
+    ref: string,
+    sourceCodePath: string
+  ): Promise<void> {
+    const extensionVersion = await planner.getExtensionVersion(instance);
+    await downloadExtensionVersion(ref, extensionVersion.sourceDownloadUri, sourceCodePath);
+    this.installAndBuildSourceCode(sourceCodePath);
+  }
+
+  /**
+   * Returns if the source code at given path is valid.
+   *
+   * Checks against a list of required files or directories that need to be present.
+   */
+  private hasValidSource(args: { path: string; extRef: string }): boolean {
+    // TODO(lihes): Source code can technically exist in other than "functions" dir.
+    // https://source.corp.google.com/piper///depot/google3/firebase/mods/go/worker/fetch_mod_source.go;l=451
+    const requiredFiles = [
+      "./extension.yaml",
+      "./functions/package.json",
+      "./functions/node_modules",
+    ];
+
+    for (const requiredFile of requiredFiles) {
+      const f = path.join(args.path, requiredFile);
+      if (!fs.existsSync(f)) {
+        EmulatorLogger.forExtension({ ref: args.extRef }).logLabeled(
+          "BULLET",
+          "extensions",
+          `Detected invalid source code for ${args.extRef}, expected to find ${f}`
+        );
+        return false;
+      }
+    }
+
+    return true;
   }
 
   private installAndBuildSourceCode(sourceCodePath: string): void {
@@ -95,10 +149,11 @@ export class ExtensionsEmulator {
    *  getEmulatableBackends reads firebase.json & .env files for a list of extension instances to emulate,
    *  downloads & builds the necessary source code (if it hasn't previously been cached),
    *  then builds returns a list of emulatableBackends
-   *  @returns A list of emulatableBackends, one for each extension instance to be emulated
+   *  @return A list of emulatableBackends, one for each extension instance to be emulated
    */
   public async getExtensionBackends(): Promise<EmulatableBackend[]> {
     await this.readManifest();
+    await this.checkAndWarnAPIs(this.want);
     return Promise.all(
       this.want.map((i: planner.InstanceSpec) => {
         return this.toEmulatableBackend(i);
@@ -114,11 +169,14 @@ export class ExtensionsEmulator {
     const extensionDir = await this.ensureSourceCode(instance);
     // TODO: This should find package.json, then use that as functionsDir.
     const functionsDir = path.join(extensionDir, "functions");
+    // TODO(b/213335255): For local extensions, this should include extensionSpec instead of extensionVersion
     const env = Object.assign(this.autoPopulatedParams(instance), instance.params);
     const { extensionTriggers, nodeMajorVersion } = await getExtensionFunctionInfo(
       extensionDir,
+      instance.instanceId,
       env
     );
+    const extension = await planner.getExtension(instance);
     const extensionVersion = await planner.getExtensionVersion(instance);
     return {
       functionsDir,
@@ -126,6 +184,7 @@ export class ExtensionsEmulator {
       predefinedTriggers: extensionTriggers,
       nodeMajorVersion: nodeMajorVersion,
       extensionInstanceId: instance.instanceId,
+      extension,
       extensionVersion,
     };
   }
@@ -139,5 +198,72 @@ export class ExtensionsEmulator {
       DATABASE_URL: `https://${projectId}.firebaseio.com`,
       STORAGE_BUCKET: `${projectId}.appspot.com`,
     };
+  }
+
+  private async checkAndWarnAPIs(instances: planner.InstanceSpec[]): Promise<void> {
+    const apisToWarn = await getUnemulatedAPIs(this.args.projectId, instances);
+    if (apisToWarn.length) {
+      const table = new Table({
+        head: [
+          "API Name",
+          "Instances using this API",
+          `Enabled on ${this.args.projectId}`,
+          `Enable this API`,
+        ],
+        style: { head: ["yellow"] },
+      });
+      for (const apiToWarn of apisToWarn) {
+        // We use a shortened link here instead of a alias because cli-table behaves poorly with aliased links
+        const enablementUri = await shortenUrl(
+          enableApiURI(this.args.projectId, apiToWarn.apiName)
+        );
+        table.push([
+          apiToWarn.apiName,
+          apiToWarn.instanceIds,
+          apiToWarn.enabled ? "Yes" : "No",
+          apiToWarn.enabled ? "" : clc.bold.underline(enablementUri),
+        ]);
+      }
+
+      this.logger.logLabeled(
+        "WARN",
+        "Extensions",
+        `The following Extensions make calls to Google Cloud APIs that do not have Emulators. ` +
+          `These calls will go to production Google Cloud APIs which may have real effects on ${this.args.projectId}.\n` +
+          table.toString()
+      );
+    }
+  }
+
+  /**
+   * Filters out Extension backends that include any unemulated triggers.
+   * @param backends a list of backends to filter
+   * @return a list of backends that include only emulated triggers.
+   */
+  public filterUnemulatedTriggers(
+    options: Options,
+    backends: EmulatableBackend[]
+  ): EmulatableBackend[] {
+    let foundUnemulatedTrigger = false;
+    const filteredBackends = backends.filter((backend) => {
+      const unemulatedServices = checkForUnemulatedTriggerTypes(backend, options);
+      if (unemulatedServices.length) {
+        foundUnemulatedTrigger = true;
+        const msg = ` ignored becuase it includes ${unemulatedServices.join(
+          ", "
+        )} triggered functions, and the ${unemulatedServices.join(
+          ", "
+        )} emulator does not exist or is not running.`;
+        this.logger.logLabeled("WARN", `extensions[${backend.extensionInstanceId}]`, msg);
+      }
+      return unemulatedServices.length === 0;
+    });
+    if (foundUnemulatedTrigger) {
+      const msg =
+        "No Cloud Functions for these instances will be emulated, because partially emulating an Extension can lead to unexpected behavior. ";
+      // TODO(joehanley): "To partially emulate these Extension instance anyway, rerun this command with --force";
+      this.logger.log("WARN", msg);
+    }
+    return filteredBackends;
   }
 }

@@ -2,6 +2,7 @@ import { expect } from "chai";
 
 import * as cloudfunctionsv2 from "../../gcp/cloudfunctionsv2";
 import * as backend from "../../deploy/functions/backend";
+import * as v2events from "../../functions/events/v2";
 
 describe("cloudfunctionsv2", () => {
   const FUNCTION_NAME: backend.TargetIds = {
@@ -92,10 +93,16 @@ describe("cloudfunctionsv2", () => {
         platform: "gcfv2",
         eventTrigger: {
           eventType: "google.cloud.audit.log.v1.written",
-          eventFilters: {
-            resource: "projects/p/regions/r/instances/i",
-            serviceName: "compute.googleapis.com",
-          },
+          eventFilters: [
+            {
+              attribute: "resource",
+              value: "projects/p/regions/r/instances/i",
+            },
+            {
+              attribute: "serviceName",
+              value: "compute.googleapis.com",
+            },
+          ],
           retry: false,
         },
       };
@@ -116,6 +123,10 @@ describe("cloudfunctionsv2", () => {
               value: "compute.googleapis.com",
             },
           ],
+        },
+        serviceConfig: {
+          ...CLOUD_FUNCTION_V2.serviceConfig,
+          environmentVariables: { FUNCTION_SIGNATURE_TYPE: "cloudevent" },
         },
       };
       expect(
@@ -144,8 +155,10 @@ describe("cloudfunctionsv2", () => {
         ...ENDPOINT,
         httpsTrigger: {},
         platform: "gcfv2",
-        vpcConnector: "connector",
-        vpcConnectorEgressSettings: "ALL_TRAFFIC",
+        vpc: {
+          connector: "connector",
+          egressSettings: "ALL_TRAFFIC",
+        },
         ingressSettings: "ALLOW_ALL",
         serviceAccountEmail: "inlined@google.com",
         labels: {
@@ -186,10 +199,17 @@ describe("cloudfunctionsv2", () => {
         ...ENDPOINT,
         platform: "gcfv2",
         eventTrigger: {
-          eventType: cloudfunctionsv2.PUBSUB_PUBLISH_EVENT,
-          eventFilters: {
-            resource: "projects/p/topics/t",
-          },
+          eventType: v2events.PUBSUB_PUBLISH_EVENT,
+          eventFilters: [
+            {
+              attribute: "topic",
+              value: "projects/p/topics/t",
+            },
+            {
+              attribute: "serviceName",
+              value: "pubsub.googleapis.com",
+            },
+          ],
           retry: false,
         },
         maxInstances: 42,
@@ -204,8 +224,14 @@ describe("cloudfunctionsv2", () => {
       > = {
         ...CLOUD_FUNCTION_V2,
         eventTrigger: {
-          eventType: cloudfunctionsv2.PUBSUB_PUBLISH_EVENT,
+          eventType: v2events.PUBSUB_PUBLISH_EVENT,
           pubsubTopic: "projects/p/topics/t",
+          eventFilters: [
+            {
+              attribute: "serviceName",
+              value: "pubsub.googleapis.com",
+            },
+          ],
         },
         serviceConfig: {
           ...CLOUD_FUNCTION_V2.serviceConfig,
@@ -213,6 +239,7 @@ describe("cloudfunctionsv2", () => {
           minInstanceCount: 1,
           timeoutSeconds: 15,
           availableMemory: "128M",
+          environmentVariables: { FUNCTION_SIGNATURE_TYPE: "cloudevent" },
         },
       };
 
@@ -237,7 +264,7 @@ describe("cloudfunctionsv2", () => {
         cloudfunctionsv2.endpointFromFunction({
           ...HAVE_CLOUD_FUNCTION_V2,
           eventTrigger: {
-            eventType: cloudfunctionsv2.PUBSUB_PUBLISH_EVENT,
+            eventType: v2events.PUBSUB_PUBLISH_EVENT,
             pubsubTopic: "projects/p/topics/t",
           },
         })
@@ -246,10 +273,13 @@ describe("cloudfunctionsv2", () => {
         platform: "gcfv2",
         uri: RUN_URI,
         eventTrigger: {
-          eventType: cloudfunctionsv2.PUBSUB_PUBLISH_EVENT,
-          eventFilters: {
-            resource: "projects/p/topics/t",
-          },
+          eventType: v2events.PUBSUB_PUBLISH_EVENT,
+          eventFilters: [
+            {
+              attribute: "topic",
+              value: "projects/p/topics/t",
+            },
+          ],
           retry: false,
         },
       });
@@ -278,10 +308,16 @@ describe("cloudfunctionsv2", () => {
         uri: RUN_URI,
         eventTrigger: {
           eventType: "google.cloud.audit.log.v1.written",
-          eventFilters: {
-            resource: "projects/p/regions/r/instances/i",
-            serviceName: "compute.googleapis.com",
-          },
+          eventFilters: [
+            {
+              attribute: "resource",
+              value: "projects/p/regions/r/instances/i",
+            },
+            {
+              attribute: "serviceName",
+              value: "compute.googleapis.com",
+            },
+          ],
           retry: false,
         },
       });
@@ -304,13 +340,15 @@ describe("cloudfunctionsv2", () => {
 
     it("should copy optional fields", () => {
       const extraFields: backend.ServiceConfiguration = {
-        vpcConnector: "connector",
-        vpcConnectorEgressSettings: "ALL_TRAFFIC",
         ingressSettings: "ALLOW_ALL",
         serviceAccountEmail: "inlined@google.com",
         environmentVariables: {
           FOO: "bar",
         },
+      };
+      const vpc = {
+        connector: "connector",
+        egressSettings: "ALL_TRAFFIC" as const,
       };
       expect(
         cloudfunctionsv2.endpointFromFunction({
@@ -318,6 +356,8 @@ describe("cloudfunctionsv2", () => {
           serviceConfig: {
             ...HAVE_CLOUD_FUNCTION_V2.serviceConfig,
             ...extraFields,
+            vpcConnector: vpc.connector,
+            vpcConnectorEgressSettings: vpc.egressSettings,
             availableMemory: "128M",
           },
           labels: {
@@ -330,6 +370,7 @@ describe("cloudfunctionsv2", () => {
         httpsTrigger: {},
         uri: RUN_URI,
         ...extraFields,
+        vpc,
         availableMemoryMb: 128,
         labels: {
           foo: "bar",

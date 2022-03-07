@@ -1,4 +1,5 @@
-import * as api from "../api";
+import { cloudMonitoringOrigin } from "../api";
+import { Client } from "../apiv2";
 import { FirebaseError } from "../error";
 
 export const CLOUD_MONITORING_VERSION = "v3";
@@ -133,14 +134,15 @@ export async function queryTimeSeries(
   query: CmQuery,
   projectNumber: number
 ): Promise<TimeSeriesResponse> {
+  const client = new Client({
+    urlPrefix: cloudMonitoringOrigin,
+    apiVersion: CLOUD_MONITORING_VERSION,
+  });
   try {
-    const res = await api.request(
-      "GET",
-      `/${CLOUD_MONITORING_VERSION}/projects/${projectNumber}/timeSeries/`,
+    const res = await client.get<{ timeSeries: TimeSeriesResponse }>(
+      `/projects/${projectNumber}/timeSeries/`,
       {
-        auth: true,
-        origin: api.cloudMonitoringOrigin,
-        data: query,
+        queryParams: query as { [key: string]: any },
       }
     );
     return res.body.timeSeries;
