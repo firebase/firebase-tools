@@ -290,9 +290,29 @@ export class StorageLayer {
     return this._persistence.deleteAll();
   }
 
-  public async handleUpdateObjectMetadata(request: UpdateObjectMetadataRequest): Promise<StoredFileMetadata> {
+  public async handleUpdateObjectMetadata(
+    request: UpdateObjectMetadataRequest
+  ): Promise<StoredFileMetadata> {
+    const storedMetadata = this.getMetadata(request.bucketId, request.decodedObjectId);
 
+    let authorized = await this._validator.validate(
+      ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
+      RulesetOperationMethod.UPDATE,
+      {
+        before: storedMetadata?.asRulesResource(),
+        after: storedMetadata?.asRulesResource(request.metadata),
+      },
+      request.authorization
+    );
+    if (!authorized) {
+      throw new ForbiddenError();
+    }
+    if (!storedMetadata) {
+      throw new NotFoundError();
+    }
 
+    storedMetadata.update(request.metadata);
+    return storedMetadata;
   }
 
   /**

@@ -1,7 +1,12 @@
 import { EmulatorLogger } from "../../emulatorLogger";
 import { Emulators } from "../../types";
 import { gunzipSync } from "zlib";
-import { OutgoingFirebaseMetadata, RulesResourceMetadata, StoredFileMetadata } from "../metadata";
+import {
+  IncomingMetadata,
+  OutgoingFirebaseMetadata,
+  RulesResourceMetadata,
+  StoredFileMetadata,
+} from "../metadata";
 import * as mime from "mime";
 import { Request, Response, Router } from "express";
 import { StorageEmulator } from "../index";
@@ -141,42 +146,30 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   });
 
   const handleMetadataUpdate = async (req: Request, res: Response) => {
-    const md = storageLayer.getMetadata(req.params.bucketId, req.params.objectId);
-
-    if (!md) {
-      res.sendStatus(404);
-      return;
-    }
-
-    const decodedObjectId = decodeURIComponent(req.params.objectId);
-    const operationPath = ["b", req.params.bucketId, "o", decodedObjectId].join("/");
-
-    if (
-      !(await isPermitted({
-        ruleset: emulator.rules,
-        method: RulesetOperationMethod.UPDATE,
-        path: operationPath,
+    let metadata: StoredFileMetadata;
+    try {
+      metadata = await storageLayer.handleUpdateObjectMetadata({
+        bucketId: req.params.bucketId,
+        decodedObjectId: decodeURIComponent(req.params.objectId),
+        metadata: req.body as IncomingMetadata,
         authorization: req.header("authorization"),
-        file: {
-          before: md.asRulesResource(),
-          after: md.asRulesResource(req.body), // TODO
-        },
-      }))
-    ) {
-      return res.status(403).json({
-        error: {
-          code: 403,
-          message: `Permission denied. No WRITE permission.`,
-        },
       });
+    } catch (err) {
+      if (err instanceof ForbiddenError) {
+        return res.status(403).json({
+          error: {
+            code: 403,
+            message: `Permission denied. No WRITE permission.`,
+          },
+        });
+      }
+      if (err instanceof NotFoundError) {
+        return res.sendStatus(404);
+      }
+      throw err;
     }
-
-    md.update(req.body);
-
-    setObjectHeaders(res, md);
-    const outgoingMetadata = new OutgoingFirebaseMetadata(md);
-    res.json(outgoingMetadata);
-    return;
+    setObjectHeaders(res, metadata);
+    return res.json(new OutgoingFirebaseMetadata(metadata));
   };
 
   // list object handler
