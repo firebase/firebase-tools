@@ -758,10 +758,11 @@ describe("Storage emulator", () => {
 
         it("should upload a file with custom metadata", async () => {
           const uploadState = await page.evaluate(async (IMAGE_FILE_BASE64) => {
-            await firebase
+            const task = await firebase
               .storage()
               .ref("upload/allowIfContentTypeImage.png")
               .put(new File([IMAGE_FILE_BASE64], "toUpload.txt"), { contentType: "image/blah" });
+            return task.state;
           }, IMAGE_FILE_BASE64);
 
           expect(uploadState).to.equal("success");
