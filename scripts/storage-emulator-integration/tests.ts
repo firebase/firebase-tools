@@ -154,7 +154,7 @@ async function uploadText(
     filename,
     text,
     format ?? "raw",
-    JSON.stringify(metadata)
+    JSON.stringify(metadata ?? {})
   )!;
 }
 
@@ -209,8 +209,8 @@ describe("Storage emulator", () => {
 
       testBucket = admin.storage().bucket(storageBucket);
 
-      smallFilePath = createRandomFile("testing/storage_ref/small_file", SMALL_FILE_SIZE);
-      largeFilePath = createRandomFile("testing/storage_ref/large_file", LARGE_FILE_SIZE);
+      smallFilePath = createRandomFile("small_file", SMALL_FILE_SIZE);
+      largeFilePath = createRandomFile("large_file", LARGE_FILE_SIZE);
     });
 
     beforeEach(async () => {
@@ -947,39 +947,22 @@ describe("Storage emulator", () => {
         });
 
         it("should list at /", async () => {
-          await page.evaluate(
-            async (IMAGE_FILE_BASE64, filename) => {
-              const auth = (window as any).auth as firebase.auth.Auth;
-              try {
-                await auth.signInAnonymously();
-                const task = await firebase
-                  .storage()
-                  .ref(filename)
-                  .putString(IMAGE_FILE_BASE64, "base64");
-                return task.state;
-              } catch (err: any) {
-                throw err.message;
-              }
-            },
-            IMAGE_FILE_BASE64,
-            `file.jpg`
-          );
+          await uploadText(page, 'list/file.jpg', 'hello');
+          await uploadText(page, 'list/subdir/file.jpg', 'world');
 
-          const listResult = await page.evaluate(() => {
-            return firebase
+          const listResult = await page.evaluate(async () => {
+            const list = await firebase
               .storage()
-              .ref()
-              .listAll()
-              .then((list) => {
-                return {
-                  prefixes: list.prefixes.map((prefix) => prefix.name),
-                  items: list.items.map((item) => item.name),
-                };
-              });
+              .ref("/list")
+              .listAll();
+            return {
+              prefixes: list.prefixes.map((prefix) => prefix.name),
+              items: list.items.map((item) => item.name),
+            };
           });
 
           expect(listResult).to.deep.equal({
-            prefixes: ["testing"],
+            prefixes: ["subdir"],
             items: ["file.jpg"],
           });
         });
