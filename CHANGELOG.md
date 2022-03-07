@@ -1,0 +1,1 @@
+- Adds alerting event provider (#4258).
