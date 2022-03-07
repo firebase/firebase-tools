@@ -947,14 +947,11 @@ describe("Storage emulator", () => {
         });
 
         it("should list at /", async () => {
-          await uploadText(page, 'list/file.jpg', 'hello');
-          await uploadText(page, 'list/subdir/file.jpg', 'world');
+          await uploadText(page, "list/file.jpg", "hello");
+          await uploadText(page, "list/subdir/file.jpg", "world");
 
           const listResult = await page.evaluate(async () => {
-            const list = await firebase
-              .storage()
-              .ref("/list")
-              .listAll();
+            const list = await firebase.storage().ref("/list").listAll();
             return {
               prefixes: list.prefixes.map((prefix) => prefix.name),
               items: list.items.map((item) => item.name),
