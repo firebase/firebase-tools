@@ -33,6 +33,9 @@ export class ExtensionsEmulator {
   private args: ExtensionEmulatorArgs;
   private logger = EmulatorLogger.forEmulator(Emulators.EXTENSIONS);
 
+  // Keeps track of all the extension sources that are being downloaded.
+  private pendingDownloads = new Map<string, Promise<void>>();
+
   constructor(args: ExtensionEmulatorArgs) {
     this.args = args;
   }
@@ -67,12 +70,30 @@ export class ExtensionsEmulator {
       path.join(os.homedir(), ".cache", "firebase", "extensions");
     const sourceCodePath = path.join(cacheDir, ref);
 
+    // Wait for previous download promise to resolve before we check source validity.
+    // This avoids racing to download the same source multiple times.
+    // Note: The below will not work because it throws the thread to the back of the message queue.
+    // await (this.pendingDownloads.get(ref) ?? Promise.resolve());
+    if (this.pendingDownloads.get(ref)) {
+      await this.pendingDownloads.get(ref);
+    }
+
     if (!this.hasValidSource({ path: sourceCodePath, extRef: ref })) {
-      const extensionVersion = await planner.getExtensionVersion(instance);
-      await downloadExtensionVersion(ref, extensionVersion.sourceDownloadUri, sourceCodePath);
-      this.installAndBuildSourceCode(sourceCodePath);
+      const promise = this.downloadSource(instance, ref, sourceCodePath);
+      this.pendingDownloads.set(ref, promise);
+      await promise;
     }
     return sourceCodePath;
+  }
+
+  private async downloadSource(
+    instance: planner.InstanceSpec,
+    ref: string,
+    sourceCodePath: string
+  ): Promise<void> {
+    const extensionVersion = await planner.getExtensionVersion(instance);
+    await downloadExtensionVersion(ref, extensionVersion.sourceDownloadUri, sourceCodePath);
+    this.installAndBuildSourceCode(sourceCodePath);
   }
 
   /**
