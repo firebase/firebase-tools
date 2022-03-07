@@ -203,6 +203,10 @@ export class Config {
     fs.writeFileSync(this.path(p), content, "utf8");
   }
 
+  deleteProjectFile(p: string) {
+    fs.removeSync(this.path(p));
+  }
+
   askWriteProjectFile(p: string, content: any, force?: boolean) {
     const writeTo = this.path(p);
     let next;

@@ -145,7 +145,7 @@ export interface Author {
 }
 
 export interface Param {
-  param: string;
+  param: string; // The key of the {param:value} pair.
   label: string;
   description?: string;
   default?: string;
