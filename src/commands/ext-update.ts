@@ -149,6 +149,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
           force: true, // Skip asking for permission again
         }
       );
+      manifest.showPreviewWarning();
       return;
     }
 

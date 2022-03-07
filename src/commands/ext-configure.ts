@@ -96,6 +96,7 @@ export default new Command("ext:configure <extensionInstanceId>")
           force: true, // Skip asking for permission again
         }
       );
+      manifest.showPreviewWarning();
       return;
     }
 
