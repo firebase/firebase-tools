@@ -187,7 +187,7 @@ function readParamsFile(projectDir: string, fileName: string): Record<string, st
 export function showDeprecationWarning() {
   utils.logLabeledWarning(
     logPrefix,
-    "The behavior of the extensions commands will change in firebase-tools@11.0.0. " +
+    "The behavior of ext:install, ext:update, ext:configure, and ext:uninstall will change in firebase-tools@11.0.0. " +
       "Instead of deploying extensions directly, " +
       "changes to extension instances will be written to firebase.json and ./extensions/*.env. " +
       `Then ${clc.bold(

@@ -67,7 +67,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
   .option("--params <paramsFile>", "name of params variables file with .env format.")
   .option(
     "--local",
-    "save the update to firebase.json rather than directly update at a Firebase project"
+    "save the update to firebase.json rather than directly update an existing Extension instance on a Firebase project"
   )
   .action(async (instanceId: string, updateSource: string, options: Options) => {
     const projectId = needProjectId(options);

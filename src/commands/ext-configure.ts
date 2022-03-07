@@ -71,7 +71,7 @@ export default new Command("ext:configure <extensionInstanceId>")
         projectId,
         paramSpecs: tbdParams,
         nonInteractive: false,
-        paramsEnvPath: options.params as string,
+        paramsEnvPath: (options.params ?? "") as string,
         instanceId,
         reconfiguring: true,
       });

@@ -289,7 +289,6 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
  * 4. Asks for extension params
  * 5. Install
  * @param options
- * @returns
  */
 async function installExtension(options: InstallExtensionOptions): Promise<void> {
   const { projectId, extensionName, source, extVersion, paramsEnvPath, nonInteractive, force } =
