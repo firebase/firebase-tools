@@ -297,4 +297,37 @@ describe("utils", () => {
       ]);
     });
   });
+
+  describe("groupBy", () => {
+    it("should transform simple array by fn", () => {
+      const arr = [3.4, 1.2, 7.7, 2, 3.9];
+      expect(utils.groupBy(arr, Math.floor)).to.deep.equal({
+        1: [1.2],
+        2: [2],
+        3: [3.4, 3.9],
+        7: [7.7],
+      });
+    });
+
+    it("should transform array of objects by fn", () => {
+      const arr = [
+        { id: 1, location: "us" },
+        { id: 2, location: "us" },
+        { id: 3, location: "asia" },
+        { id: 4, location: "europe" },
+        { id: 5, location: "asia" },
+      ];
+      expect(utils.groupBy(arr, (obj) => obj.location)).to.deep.equal({
+        us: [
+          { id: 1, location: "us" },
+          { id: 2, location: "us" },
+        ],
+        asia: [
+          { id: 3, location: "asia" },
+          { id: 5, location: "asia" },
+        ],
+        europe: [{ id: 4, location: "europe" }],
+      });
+    });
+  });
 });
