@@ -43,6 +43,7 @@ export default new Command("ext:uninstall <extensionInstanceId>")
     if (options.local) {
       const config = manifest.loadConfig(options);
       manifest.removeFromManifest(instanceId, config);
+      manifest.showPreviewWarning();
       return;
     }
 

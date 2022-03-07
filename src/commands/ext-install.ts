@@ -277,6 +277,7 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
     config,
     { nonInteractive, force: force ?? false }
   );
+  manifest.showPreviewWarning();
 }
 
 /**
