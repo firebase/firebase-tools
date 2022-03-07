@@ -90,7 +90,7 @@ export class ExtensionsEmulator {
     instance: planner.InstanceSpec,
     ref: string,
     sourceCodePath: string
-  ) {
+  ): Promise<void> {
     const extensionVersion = await planner.getExtensionVersion(instance);
     await downloadExtensionVersion(ref, extensionVersion.sourceDownloadUri, sourceCodePath);
     this.installAndBuildSourceCode(sourceCodePath);
