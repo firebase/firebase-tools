@@ -5,23 +5,17 @@ import * as path from "path";
 import * as express from "express";
 import * as fs from "fs";
 
+import * as backend from "../deploy/functions/backend";
 import { Constants } from "./constants";
 import { InvokeRuntimeOpts } from "./functionsEmulator";
-import {
-  Endpoint,
-  FunctionsPlatform,
-  isEventTriggered,
-  isHttpsTriggered,
-  isScheduleTriggered,
-  SecretEnvVar,
-} from "../deploy/functions/backend";
 import { copyIfPresent } from "../gcp/proto";
+import { logger } from "../logger";
 
 export type SignatureType = "http" | "event" | "cloudevent";
 
 export interface ParsedTriggerDefinition {
   entryPoint: string;
-  platform: FunctionsPlatform;
+  platform: backend.FunctionsPlatform;
   name: string;
   timeout?: string | number; // Can be "3s" for some reason lol
   regions?: string[];
@@ -35,7 +29,7 @@ export interface ParsedTriggerDefinition {
 export interface EmulatedTriggerDefinition extends ParsedTriggerDefinition {
   id: string; // An unique-id per-function, generated from the name and the region.
   region: string;
-  secretEnvironmentVariables?: SecretEnvVar[]; // Secret env vars needs to be specially loaded in the Emulator.
+  secretEnvironmentVariables?: backend.SecretEnvVar[]; // Secret env vars needs to be specially loaded in the Emulator.
 }
 
 export interface EventSchedule {
@@ -133,7 +127,9 @@ export class EmulatedTrigger {
  * @param Endpoints A list of all CloudFunctions in the deployment.
  * @return A list of all CloudFunctions in the deployment.
  */
-export function emulatedFunctionsFromEndpoints(endpoints: Endpoint[]): EmulatedTriggerDefinition[] {
+export function emulatedFunctionsFromEndpoints(
+  endpoints: backend.Endpoint[]
+): EmulatedTriggerDefinition[] {
   const regionDefinitions: EmulatedTriggerDefinition[] = [];
   for (const endpoint of endpoints) {
     if (!endpoint.region) {
@@ -160,29 +156,42 @@ export function emulatedFunctionsFromEndpoints(endpoints: Endpoint[]): EmulatedT
     );
     // TODO: This transformation is confusing but must be kept since the Firestore/RTDB trigger registration
     // process requires it in this form. Need to work in Firestore emulator for a proper fix...
-    if (isHttpsTriggered(endpoint)) {
+    if (backend.isHttpsTriggered(endpoint)) {
       def.httpsTrigger = endpoint.httpsTrigger;
-    } else if (isEventTriggered(endpoint)) {
+    } else if (backend.isEventTriggered(endpoint)) {
       const eventTrigger = endpoint.eventTrigger;
       if (endpoint.platform === "gcfv1") {
-        def.eventTrigger = {
-          eventType: eventTrigger.eventType,
-          resource: eventTrigger.eventFilters.resource,
-        };
-      } else {
-        // Only pubsub and storage events are supported for gcfv2.
-        const { resource, topic, bucket } = endpoint.eventTrigger.eventFilters;
-        const eventResource = resource || topic || bucket;
-        if (!eventResource) {
-          // Unsupported event type for GCFv2
+        const resourceFilter = backend.findEventFilter(endpoint, "resource");
+        if (!resourceFilter) {
+          logger.debug(
+            `Invalid event trigger ${JSON.stringify(
+              endpoint
+            )}, expected event filter with resource attribute. Skipping.`
+          );
+          // Silently skip invalid trigger.
           continue;
         }
         def.eventTrigger = {
           eventType: eventTrigger.eventType,
-          resource: eventResource,
+          resource: resourceFilter.value,
+        };
+      } else {
+        const [eventFilter] = endpoint.eventTrigger.eventFilters;
+        if (!eventFilter) {
+          logger.debug(
+            `Invalid event trigger ${JSON.stringify(
+              endpoint
+            )}, expected at least one event filter. Skipping.`
+          );
+          // Silently skip invalid trigger.
+          continue;
+        }
+        def.eventTrigger = {
+          eventType: eventTrigger.eventType,
+          resource: eventFilter.value,
         };
       }
-    } else if (isScheduleTriggered(endpoint)) {
+    } else if (backend.isScheduleTriggered(endpoint)) {
       // TODO: This is an awkward transformation. Emulator does not understand scheduled triggers - maybe it should?
       def.eventTrigger = { eventType: "pubsub", resource: "" };
       def.schedule = endpoint.scheduleTrigger as EventSchedule;

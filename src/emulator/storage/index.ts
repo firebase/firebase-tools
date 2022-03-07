@@ -10,10 +10,10 @@ import * as fs from "fs";
 import { StorageRulesetInstance, StorageRulesRuntime, StorageRulesIssues } from "./rules/runtime";
 import { Source } from "./rules/types";
 import { FirebaseError } from "../../error";
-import { getDownloadDetails } from "../downloadableEmulators";
 import express = require("express");
 import { getRulesValidator } from "./rules/utils";
 import { Persistence } from "./persistence";
+import { UploadService } from "./upload";
 
 export interface StorageEmulatorArgs {
   projectId: string;
@@ -34,9 +34,9 @@ export class StorageEmulator implements EmulatorInstance {
   private _rulesRuntime: StorageRulesRuntime;
   private _persistence: Persistence;
   private _storageLayer: StorageLayer;
+  private _uploadService: UploadService;
 
   constructor(private args: StorageEmulatorArgs) {
-    const downloadDetails = getDownloadDetails(Emulators.STORAGE);
     this._rulesRuntime = new StorageRulesRuntime();
     this._persistence = new Persistence(this.getPersistenceTmpDir());
     this._storageLayer = new StorageLayer(
@@ -44,10 +44,15 @@ export class StorageEmulator implements EmulatorInstance {
       getRulesValidator(() => this.rules),
       this._persistence
     );
+    this._uploadService = new UploadService(this._persistence);
   }
 
   get storageLayer(): StorageLayer {
     return this._storageLayer;
+  }
+
+  get uploadService(): UploadService {
+    return this._uploadService;
   }
 
   get rules(): StorageRulesetInstance | undefined {
@@ -61,6 +66,7 @@ export class StorageEmulator implements EmulatorInstance {
   reset(): void {
     this._storageLayer.reset();
     this._persistence.reset(this.getPersistenceTmpDir());
+    this._uploadService.reset();
   }
 
   async start(): Promise<void> {
