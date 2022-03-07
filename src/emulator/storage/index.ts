@@ -4,12 +4,10 @@ import { Constants } from "../constants";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../types";
 import { createApp } from "./server";
 import { StorageLayer } from "./files";
-import * as chokidar from "chokidar";
 import { EmulatorLogger } from "../emulatorLogger";
-import * as fs from "fs";
+import { StorageRulesManager } from "./rules/manager";
 import { StorageRulesetInstance, StorageRulesRuntime, StorageRulesIssues } from "./rules/runtime";
-import { Source } from "./rules/types";
-import { FirebaseError } from "../../error";
+import { SourceFile } from "./rules/types";
 import express = require("express");
 import { getRulesValidator } from "./rules/utils";
 import { Persistence } from "./persistence";
@@ -19,25 +17,24 @@ export interface StorageEmulatorArgs {
   projectId: string;
   port?: number;
   host?: string;
-  rules: Source | string;
+  rules: SourceFile | string;
   auto_download?: boolean;
 }
 
 export class StorageEmulator implements EmulatorInstance {
   private destroyServer?: () => Promise<void>;
   private _app?: express.Express;
-  private _rulesWatcher?: chokidar.FSWatcher;
-  private _rules?: StorageRulesetInstance;
-  private _rulesetSource?: Source;
 
   private _logger = EmulatorLogger.forEmulator(Emulators.STORAGE);
   private _rulesRuntime: StorageRulesRuntime;
+  private _rulesManager: StorageRulesManager;
   private _persistence: Persistence;
   private _storageLayer: StorageLayer;
   private _uploadService: UploadService;
 
   constructor(private args: StorageEmulatorArgs) {
     this._rulesRuntime = new StorageRulesRuntime();
+    this._rulesManager = new StorageRulesManager(this._rulesRuntime);
     this._persistence = new Persistence(this.getPersistenceTmpDir());
     this._storageLayer = new StorageLayer(
       args.projectId,
@@ -56,7 +53,7 @@ export class StorageEmulator implements EmulatorInstance {
   }
 
   get rules(): StorageRulesetInstance | undefined {
-    return this._rules;
+    return this._rulesManager.ruleset;
   }
 
   get logger(): EmulatorLogger {
@@ -72,107 +69,23 @@ export class StorageEmulator implements EmulatorInstance {
   async start(): Promise<void> {
     const { host, port } = this.getInfo();
     await this._rulesRuntime.start(this.args.auto_download);
+    await this._rulesManager.setSourceFile(this.args.rules);
     this._app = await createApp(this.args.projectId, this);
-
-    if (typeof this.args.rules === "string") {
-      const rulesFile = this.args.rules;
-      this.updateRulesSource(rulesFile);
-    } else {
-      this._rulesetSource = this.args.rules;
-    }
-
-    if (!this._rulesetSource || this._rulesetSource.files.length === 0) {
-      throw new FirebaseError("Can not initialize Storage emulator without a rules source / file.");
-    } else if (this._rulesetSource.files.length > 1) {
-      throw new FirebaseError(
-        "Can not initialize Storage emulator with more than one rules source / file."
-      );
-    }
-
-    await this.loadRuleset();
-
-    const rulesPath = this._rulesetSource.files[0].name;
-    this._rulesWatcher = chokidar.watch(rulesPath, { persistent: true, ignoreInitial: true });
-    this._rulesWatcher.on("change", async () => {
-      // There have been some race conditions reported (on Windows) where reading the
-      // file too quickly after the watcher fires results in an empty file being read.
-      // Adding a small delay prevents that at very little cost.
-      await new Promise((res) => setTimeout(res, 5));
-
-      this._logger.logLabeled(
-        "BULLET",
-        "storage",
-        `Change detected, updating rules for Cloud Storage...`
-      );
-      this.updateRulesSource(rulesPath);
-      await this.loadRuleset();
-    });
-
     const server = this._app.listen(port, host);
     this.destroyServer = utils.createDestroyer(server);
-  }
-
-  private updateRulesSource(rulesFile: string): void {
-    this._rulesetSource = {
-      files: [
-        {
-          name: rulesFile,
-          content: fs.readFileSync(rulesFile).toString(),
-        },
-      ],
-    };
-  }
-
-  public async loadRuleset(source?: Source): Promise<StorageRulesIssues> {
-    if (source) {
-      this._rulesetSource = source;
-    }
-
-    if (!this._rulesetSource) {
-      const msg = "Attempting to update ruleset without a source.";
-      this._logger.log("WARN", msg);
-
-      const error = JSON.stringify({ error: msg });
-      return new StorageRulesIssues([error], []);
-    }
-
-    const { ruleset, issues } = await this._rulesRuntime.loadRuleset(this._rulesetSource);
-
-    if (!ruleset) {
-      issues.all.forEach((issue) => {
-        let parsedIssue;
-        try {
-          parsedIssue = JSON.parse(issue);
-        } catch {
-          // Parse manually
-        }
-
-        if (parsedIssue) {
-          this._logger.log(
-            "WARN",
-            `${parsedIssue.description_.replace(/\.$/, "")} in ${
-              parsedIssue.sourcePosition_.fileName_
-            }:${parsedIssue.sourcePosition_.line_}`
-          );
-        } else {
-          this._logger.log("WARN", issue);
-        }
-      });
-
-      delete this._rules;
-    } else {
-      this._rules = ruleset;
-    }
-
-    return issues;
   }
 
   async connect(): Promise<void> {
     // No-op
   }
 
+  async setRules(rules: SourceFile): Promise<StorageRulesIssues> {
+    return this._rulesManager.setSourceFile(rules);
+  }
+
   async stop(): Promise<void> {
     await this.storageLayer.deleteAll();
+    await this._rulesManager.close();
     return this.destroyServer ? this.destroyServer() : Promise.resolve();
   }
 
