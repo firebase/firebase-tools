@@ -1,5 +1,3 @@
-import { openSync, closeSync, readSync, unlinkSync, renameSync, existsSync, mkdirSync } from "fs";
-import { tmpdir } from "os";
 import { v4 } from "uuid";
 import { ListItem, ListResponse } from "./list";
 import {
@@ -8,16 +6,19 @@ import {
   IncomingMetadata,
   StoredFileMetadata,
 } from "./metadata";
+import { NotFoundError, ForbiddenError } from "./errors";
 import * as path from "path";
 import * as fs from "fs";
 import * as fse from "fs-extra";
-import * as rimraf from "rimraf";
 import { StorageCloudFunctions } from "./cloudFunctions";
 import { logger } from "../../logger";
 import {
   constructDefaultAdminSdkConfig,
   getProjectAdminSdkConfigOrCached,
 } from "../adminSdkConfig";
+import { RulesetOperationMethod } from "./rules/types";
+import { RulesValidator } from "./rules/utils";
+import { Persistence } from "./persistence";
 
 interface BucketsList {
   buckets: {
@@ -120,21 +121,37 @@ export enum UploadStatus {
   FINISHED,
 }
 
+/**  Parsed request object for {@link StorageLayer#handleGetObject}. */
+export type GetObjectRequest = {
+  bucketId: string;
+  decodedObjectId: string;
+  authorization?: string;
+  downloadToken?: string;
+};
+
+/** Response object for {@link StorageLayer#handleGetObject}. */
+export type GetObjectResponse = {
+  metadata: StoredFileMetadata;
+  data: Buffer;
+};
+
 export class StorageLayer {
   private _files!: Map<string, StoredFile>;
   private _uploads!: Map<string, ResumableUpload>;
   private _buckets!: Map<string, CloudStorageBucketMetadata>;
-  private _persistence!: Persistence;
   private _cloudFunctions: StorageCloudFunctions;
 
-  constructor(private _projectId: string) {
+  constructor(
+    private _projectId: string,
+    private _validator: RulesValidator,
+    private _persistence: Persistence
+  ) {
     this.reset();
     this._cloudFunctions = new StorageCloudFunctions(this._projectId);
   }
 
   public reset(): void {
     this._files = new Map();
-    this._persistence = new Persistence(`${tmpdir()}/firebase/storage/blobs`);
     this._uploads = new Map();
     this._buckets = new Map();
   }
@@ -155,6 +172,35 @@ export class StorageLayer {
     }
 
     return [...this._buckets.values()];
+  }
+
+  /**
+   * Returns an stored object and its metadata.
+   * @throws {NotFoundError} if object does not exist
+   * @throws {ForbiddenError} if request is unauthorized
+   */
+  public async handleGetObject(request: GetObjectRequest): Promise<GetObjectResponse> {
+    const metadata = this.getMetadata(request.bucketId, request.decodedObjectId);
+
+    // If a valid download token is present, skip Firebase Rules auth. Mainly used by the js sdk.
+    let authorized = (metadata?.downloadTokens || []).includes(request.downloadToken ?? "");
+    if (!authorized) {
+      authorized = await this._validator.validate(
+        ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
+        RulesetOperationMethod.GET,
+        { before: metadata?.asRulesResource() },
+        request.authorization
+      );
+    }
+    if (!authorized) {
+      throw new ForbiddenError("Failed auth");
+    }
+
+    if (!metadata) {
+      throw new NotFoundError("File not found");
+    }
+
+    return { metadata: metadata!, data: this.getBytes(request.bucketId, request.decodedObjectId)! };
   }
 
   public getMetadata(bucket: string, object: string): StoredFileMetadata | undefined {
@@ -252,7 +298,7 @@ export class StorageLayer {
     if (!upload) {
       return undefined;
     }
-    this._persistence.appendBytes(upload.fileLocation, bytes, upload.currentBytesUploaded);
+    this._persistence.appendBytes(upload.fileLocation, bytes);
     upload.currentBytesUploaded += bytes.byteLength;
     return upload;
   }
@@ -609,103 +655,5 @@ export class StorageLayer {
         yield p;
       }
     }
-  }
-}
-
-export class Persistence {
-  private _dirPath: string;
-  constructor(dirPath: string) {
-    this._dirPath = dirPath;
-    if (!existsSync(dirPath)) {
-      mkdirSync(dirPath, {
-        recursive: true,
-      });
-    }
-  }
-
-  public get dirPath(): string {
-    return this._dirPath;
-  }
-
-  appendBytes(fileName: string, bytes: Buffer, fileOffset?: number): string {
-    const filepath = this.getDiskPath(fileName);
-
-    const encodedSlashIndex = filepath.toLowerCase().lastIndexOf("%2f");
-    const dirPath =
-      encodedSlashIndex >= 0 ? filepath.substring(0, encodedSlashIndex) : path.dirname(filepath);
-
-    if (!existsSync(dirPath)) {
-      mkdirSync(dirPath, {
-        recursive: true,
-      });
-    }
-    let fd;
-
-    try {
-      // TODO: This is more technically correct, but corrupts multipart files
-      // fd = openSync(path, "w+");
-      // writeSync(fd, bytes, 0, bytes.byteLength, fileOffset);
-
-      fs.appendFileSync(filepath, bytes);
-      return filepath;
-    } finally {
-      if (fd) {
-        closeSync(fd);
-      }
-    }
-  }
-
-  readBytes(fileName: string, size: number, fileOffset?: number): Buffer {
-    const path = this.getDiskPath(fileName);
-    let fd;
-    try {
-      fd = openSync(path, "r");
-      const buf = Buffer.alloc(size);
-      const offset = fileOffset && fileOffset > 0 ? fileOffset : 0;
-      readSync(fd, buf, 0, size, offset);
-      return buf;
-    } finally {
-      if (fd) {
-        closeSync(fd);
-      }
-    }
-  }
-
-  deleteFile(fileName: string, failSilently = false): void {
-    try {
-      unlinkSync(this.getDiskPath(fileName));
-    } catch (err: any) {
-      if (!failSilently) {
-        throw err;
-      }
-    }
-  }
-
-  deleteAll(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      rimraf(this._dirPath, (err) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve();
-        }
-      });
-    });
-  }
-
-  renameFile(oldName: string, newName: string): void {
-    const dirPath = this.getDiskPath(path.dirname(newName));
-
-    if (!existsSync(dirPath)) {
-      mkdirSync(dirPath, {
-        recursive: true,
-      });
-    }
-
-    renameSync(this.getDiskPath(oldName), this.getDiskPath(newName));
-  }
-
-  getDiskPath(fileName: string): string {
-    return path.join(this._dirPath, fileName);
   }
 }
