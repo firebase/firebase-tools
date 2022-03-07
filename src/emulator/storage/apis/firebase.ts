@@ -10,7 +10,6 @@ import { RulesetOperationMethod } from "../rules/types";
 import { parseObjectUploadMultipartRequest } from "../multipart";
 import { NotFoundError, ForbiddenError } from "../errors";
 import { isPermitted } from "../rules/utils";
-import { NotCancellableError, Upload, UploadNotActiveError } from "../upload";
 
 /**
  * @param emulator
@@ -18,7 +17,7 @@ import { NotCancellableError, Upload, UploadNotActiveError } from "../upload";
 export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   // eslint-disable-next-line new-cap
   const firebaseStorageAPI = Router();
-  const { storageLayer, uploadService } = emulator;
+  const { storageLayer } = emulator;
 
   if (process.env.STORAGE_EMULATOR_DEBUG) {
     firebaseStorageAPI.use((req, res, next) => {
@@ -230,11 +229,11 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   };
 
   const handleUpload = async (req: Request, res: Response) => {
-    const bucketId = req.params.bucketId;
     if (req.query.create_token || req.query.delete_token) {
       const decodedObjectId = decodeURIComponent(req.params.objectId);
-      const operationPath = ["b", bucketId, "o", decodedObjectId].join("/");
-      const metadataBefore = storageLayer.getMetadata(bucketId, req.params.objectId);
+      const operationPath = ["b", req.params.bucketId, "o", decodedObjectId].join("/");
+
+      const mdBefore = storageLayer.getMetadata(req.params.bucketId, req.params.objectId);
 
       if (
         !(await isPermitted({
@@ -243,7 +242,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
           path: operationPath,
           authorization: req.header("authorization"),
           file: {
-            before: metadataBefore?.asRulesResource(),
+            before: mdBefore?.asRulesResource(),
             // TODO: before and after w/ metadata change
           },
         }))
@@ -256,7 +255,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         });
       }
 
-      if (!metadataBefore) {
+      if (!mdBefore) {
         return res.status(404).json({
           error: {
             code: 404,
@@ -267,29 +266,29 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
 
       const createTokenParam = req.query["create_token"];
       const deleteTokenParam = req.query["delete_token"];
-      let metadata: StoredFileMetadata | undefined;
+      let md: StoredFileMetadata | undefined;
 
       if (createTokenParam) {
         if (createTokenParam !== "true") {
           res.sendStatus(400);
           return;
         }
-        metadata = storageLayer.addDownloadToken(req.params.bucketId, req.params.objectId);
+        md = storageLayer.addDownloadToken(req.params.bucketId, req.params.objectId);
       } else if (deleteTokenParam) {
-        metadata = storageLayer.deleteDownloadToken(
+        md = storageLayer.deleteDownloadToken(
           req.params.bucketId,
           req.params.objectId,
           deleteTokenParam.toString()
         );
       }
 
-      if (!metadata) {
+      if (!md) {
         res.sendStatus(404);
         return;
       }
 
-      setObjectHeaders(res, metadata);
-      return res.json(new OutgoingFirebaseMetadata(metadata));
+      setObjectHeaders(res, md);
+      return res.json(new OutgoingFirebaseMetadata(md));
     }
 
     if (!req.query.name) {
@@ -297,7 +296,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       return;
     }
 
-    const objectId = req.query.name.toString();
+    const name = req.query.name.toString();
     const uploadType = req.header("x-goog-upload-protocol");
 
     if (uploadType === "multipart") {
@@ -324,130 +323,159 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         }
         throw err;
       }
-      const upload = uploadService.multipartUpload({
-        bucketId,
-        objectId,
-        metadataRaw,
-        dataRaw: dataRaw,
-        authorization: req.header("authorization"),
-      });
-      let metadata: StoredFileMetadata;
-      try {
-        metadata = await storageLayer.handleUploadObject(upload);
-      } catch (err) {
-        if (err instanceof ForbiddenError) {
-          return res.status(403).json({
-            error: {
-              code: 403,
-              message: "Permission denied. No WRITE permission.",
-            },
-          });
-        }
-        throw err;
-      }
-      metadata.addDownloadToken();
-      return res.status(200).json(new OutgoingFirebaseMetadata(metadata));
-    }
-
-    // Resumable upload
-    const uploadCommand = req.header("x-goog-upload-command");
-    if (!uploadCommand) {
-      res.sendStatus(400);
-      return;
-    }
-
-    if (uploadCommand === "start") {
-      const upload = uploadService.startResumableUpload({
-        bucketId,
-        objectId,
-        metadataRaw: JSON.stringify(req.body),
-        // Store auth header for use in the finalize request
-        authorization: req.header("authorization"),
-      });
-
-      res.header("x-goog-upload-chunk-granularity", "10000");
-      res.header("x-goog-upload-control-url", "");
-      res.header("x-goog-upload-status", "active");
-      const emulatorInfo = EmulatorRegistry.getInfo(Emulators.STORAGE);
-      res.header(
-        "x-goog-upload-url",
-        `http://${req.hostname}:${emulatorInfo?.port}/v0/b/${bucketId}/o?name=${objectId}&upload_id=${upload.id}&upload_protocol=resumable`
+      const metadata = JSON.parse(metadataRaw)!;
+      const md = storageLayer.oneShotUpload(
+        req.params.bucketId,
+        name,
+        metadata.contentType!,
+        metadata,
+        dataRaw
       );
-      res.header("x-gupload-uploadid", upload.id);
 
-      return res.sendStatus(200);
-    }
-
-    if (!req.query.upload_id) {
-      return res.sendStatus(400);
-    }
-
-    const uploadId = req.query.upload_id.toString();
-    if (uploadCommand === "query") {
-      let upload: Upload;
-      try {
-        upload = uploadService.getResumableUpload(uploadId);
-      } catch (err) {
-        if (err instanceof NotFoundError) {
-          return res.sendStatus(404);
-        }
-        throw err;
+      if (!md) {
+        res.sendStatus(400);
+        return;
       }
-      res.header("X-Goog-Upload-Size-Received", upload.size.toString());
-      return res.sendStatus(200);
-    }
 
-    if (uploadCommand === "cancel") {
-      try {
-        uploadService.cancelResumableUpload(uploadId);
-      } catch (err) {
-        if (err instanceof NotFoundError) {
-          return res.sendStatus(404);
-        } else if (err instanceof NotCancellableError) {
-          return res.sendStatus(400);
-        }
-        throw err;
-      }
-      return res.sendStatus(200);
-    }
+      const operationPath = ["b", req.params.bucketId, "o", name].join("/");
 
-    if (uploadCommand.includes("upload")) {
-      let upload: Upload;
-      try {
-        upload = uploadService.continueResumableUpload(uploadId, await reqBodyToBuffer(req));
-      } catch (err) {
-        if (err instanceof NotFoundError) {
-          return res.sendStatus(404);
-        } else if (err instanceof UploadNotActiveError) {
-          return res.sendStatus(400);
-        }
-        throw err;
+      if (
+        !(await isPermitted({
+          ruleset: emulator.rules,
+          // TODO: This will be either create or update
+          method: RulesetOperationMethod.CREATE,
+          path: operationPath,
+          authorization: req.header("authorization"),
+          file: {
+            after: md?.asRulesResource(),
+          },
+        }))
+      ) {
+        storageLayer.deleteFile(md?.bucket, md?.name);
+        return res.status(403).json({
+          error: {
+            code: 403,
+            message: `Permission denied. No WRITE permission.`,
+          },
+        });
       }
-      if (!uploadCommand.includes("finalize")) {
+
+      if (md.downloadTokens.length === 0) {
+        md.addDownloadToken();
+      }
+
+      res.json(new OutgoingFirebaseMetadata(md));
+      return;
+    } else {
+      const operationPath = ["b", req.params.bucketId, "o", name].join("/");
+      const uploadCommand = req.header("x-goog-upload-command");
+      if (!uploadCommand) {
+        res.sendStatus(400);
+        return;
+      }
+
+      if (uploadCommand === "start") {
+        let objectContentType =
+          req.header("x-goog-upload-header-content-type") ||
+          req.header("x-goog-upload-content-type");
+        if (!objectContentType) {
+          const mimeTypeFromName = mime.getType(name);
+          if (!mimeTypeFromName) {
+            objectContentType = "application/octet-stream";
+          } else {
+            objectContentType = mimeTypeFromName;
+          }
+        }
+
+        const upload = storageLayer.startUpload(
+          req.params.bucketId,
+          name,
+          objectContentType,
+          req.body,
+          // Store auth header for use in the finalize request
+          req.header("authorization")
+        );
+
+        storageLayer.uploadBytes(upload.uploadId, Buffer.alloc(0));
+
+        const emulatorInfo = EmulatorRegistry.getInfo(Emulators.STORAGE);
+
+        res.header("x-goog-upload-chunk-granularity", "10000");
+        res.header("x-goog-upload-control-url", "");
         res.header("x-goog-upload-status", "active");
-        res.header("x-gupload-uploadid", upload.id);
-        return res.sendStatus(200);
-      }
-      // Intentional fall through to handle "upload, finalize" case.
-    }
+        res.header(
+          "x-goog-upload-url",
+          `http://${req.hostname}:${emulatorInfo?.port}/v0/b/${req.params.bucketId}/o?name=${req.query.name}&upload_id=${upload.uploadId}&upload_protocol=resumable`
+        );
+        res.header("x-gupload-uploadid", upload.uploadId);
 
-    if (uploadCommand.includes("finalize")) {
-      let upload: Upload;
-      try {
-        upload = uploadService.finalizeResumableUpload(uploadId);
-      } catch (err) {
-        if (err instanceof NotFoundError) {
-          return res.sendStatus(404);
-        } else if (err instanceof UploadNotActiveError) {
-          return res.sendStatus(400);
-        }
-        throw err;
+        res.status(200).send();
+        return;
       }
-      let metadata: StoredFileMetadata;
-      try {
-        metadata = await storageLayer.handleUploadObject(upload);
-      } catch (err) {
-        if (err instanceof ForbiddenError) {
+
+      if (!req.query.upload_id) {
+        res.sendStatus(400);
+        return;
+      }
+
+      const uploadId = req.query.upload_id.toString();
+      if (uploadCommand === "query") {
+        const upload = storageLayer.queryUpload(uploadId);
+        if (!upload) {
+          res.sendStatus(400);
+          return;
+        }
+
+        res.header("X-Goog-Upload-Size-Received", upload.currentBytesUploaded.toString());
+        res.sendStatus(200);
+        return;
+      }
+
+      if (uploadCommand === "cancel") {
+        const upload = storageLayer.queryUpload(uploadId);
+        if (upload) {
+          const cancelled = storageLayer.cancelUpload(upload);
+          res.sendStatus(cancelled ? 200 : 400);
+        } else {
+          res.sendStatus(404);
+        }
+        return;
+      }
+
+      let upload;
+      if (uploadCommand.includes("upload")) {
+        upload = storageLayer.uploadBytes(uploadId, await reqBodyToBuffer(req));
+
+        if (!upload) {
+          res.sendStatus(400);
+          return;
+        }
+
+        res.header("x-goog-upload-status", "active");
+        res.header("x-gupload-uploadid", upload.uploadId);
+      }
+
+      if (uploadCommand.includes("finalize")) {
+        upload = storageLayer.queryUpload(uploadId);
+        if (!upload) {
+          res.sendStatus(400);
+          return;
+        }
+
+        // For resumable uploads, we check auth on finalization in case of byte-dependant rules
+        if (
+          !(await isPermitted({
+            ruleset: emulator.rules,
+            // TODO This will be either create or update
+            method: RulesetOperationMethod.CREATE,
+            path: operationPath,
+            authorization: upload.authorization,
+            file: {
+              after: storageLayer.createMetadata(upload).asRulesResource(),
+            },
+          }))
+        ) {
+          storageLayer.deleteFile(upload.bucketId, name);
           return res.status(403).json({
             error: {
               code: 403,
@@ -455,17 +483,26 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
             },
           });
         }
-        throw err;
-      }
-      metadata.addDownloadToken();
-      return res.status(200).json(new OutgoingFirebaseMetadata(metadata));
-    }
 
-    // Unsupported upload command.
-    return res.sendStatus(400);
+        res.header("x-goog-upload-status", "final");
+        const uploadedFile = storageLayer.finalizeUpload(upload);
+
+        const md = uploadedFile.metadata;
+        if (md.downloadTokens.length === 0) {
+          md.addDownloadToken();
+        }
+
+        res.json(new OutgoingFirebaseMetadata(uploadedFile.metadata));
+      } else if (!upload) {
+        res.sendStatus(400);
+        return;
+      } else {
+        res.sendStatus(200);
+      }
+    }
   };
 
-  // update metadata handler
+  // update metata handler
   firebaseStorageAPI.patch("/b/:bucketId/o/:objectId", handleMetadataUpdate);
   firebaseStorageAPI.put("/b/:bucketId/o/:objectId?", async (req, res) => {
     switch (req.header("x-http-method-override")?.toLowerCase()) {
