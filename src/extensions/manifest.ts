@@ -198,6 +198,7 @@ export function showDeprecationWarning() {
 }
 
 // TODO(lihes): Add a docs link once exists.
+
 /**
  * Show preview warning about --local flag needing deploy to take effect in firebase project.
  */
