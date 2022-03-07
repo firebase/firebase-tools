@@ -697,7 +697,7 @@ describe("Storage emulator", () => {
         );
       });
 
-      describe.only("#put()", () => {
+      describe("#put()", () => {
         it("should upload a file", async function (this) {
           this.timeout(TEST_SETUP_TIMEOUT);
 
