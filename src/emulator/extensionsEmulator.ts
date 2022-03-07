@@ -204,20 +204,27 @@ export class ExtensionsEmulator {
           apiToWarn.enabled ? "" : clc.bold.underline(enablementUri),
         ]);
       }
-      const msg = Constants.isDemoProject(this.args.projectId)
-        ? `${clc.bold(
-            this.args.projectId
-          )} is a demo project, so these Extensions may not work as expected.\n`
-        : `These calls will go to production Google Cloud APIs which may have real effects on ${clc.bold(
-            this.args.projectId
-          )}.\n`;
-      this.logger.logLabeled(
-        "WARN",
-        "Extensions",
-        "The following Extensions make calls to Google Cloud APIs that do not have Emulators. " +
-          msg +
-          table.toString()
-      );
+      if (Constants.isDemoProject(this.args.projectId)) {
+        this.logger.logLabeled(
+          "WARN",
+          "Extensions",
+          "The following Extensions make calls to Google Cloud APIs that do not have Emulators. " +
+            `${clc.bold(
+              this.args.projectId
+            )} is a demo project, so these Extensions may not work as expected.\n` +
+            table.toString()
+        );
+      } else {
+        this.logger.logLabeled(
+          "WARN",
+          "Extensions",
+          "The following Extensions make calls to Google Cloud APIs that do not have Emulators. " +
+            `These calls will go to production Google Cloud APIs which may have real effects on ${clc.bold(
+              this.args.projectId
+            )}.\n` +
+            table.toString()
+        );
+      }
     }
   }
 

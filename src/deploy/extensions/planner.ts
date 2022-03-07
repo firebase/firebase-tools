@@ -1,10 +1,9 @@
-import * as path from "path";
 import * as semver from "semver";
 
-import { FirebaseError } from "../../error";
 import * as extensionsApi from "../../extensions/extensionsApi";
-import { getFirebaseProjectParams, substituteParams } from "../../extensions/extensionsHelper";
 import * as refs from "../../extensions/refs";
+import { FirebaseError } from "../../error";
+import { getFirebaseProjectParams, substituteParams } from "../../extensions/extensionsHelper";
 import { readParams } from "./params";
 import { logger } from "../../logger";
 
@@ -71,8 +70,12 @@ export async function have(projectId: string): Promise<InstanceSpec[]> {
  * want checks firebase.json and the extensions directory for which extensions
  * the user wants installed on their project.
  * @param projectId The project we are deploying to
+ * @param projectNumber The project number we are deploying to. Used for checking .env files.
+ * @param aliases An array of aliases for the project we are deploying to. Used for checking .env files.
  * @param projectDir The directory containing firebase.json and extensions/
  * @param extensions The extensions section of firebase.jsonm
+ * @param emulatorMode Whether the output will be used by the Extensions emulator.
+ *                     If true, this will check {instanceId}.env.local for params and will respect `demo-` project rules.
  */
 export async function want(args: {
   projectId: string;
