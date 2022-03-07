@@ -22,7 +22,7 @@ describe("Storage Rules Manager", function () {
 
   after(async () => {
     rulesRuntime.stop();
-    await rulesManager.reset();
+    await rulesManager.close();
   });
 
   it("should load ruleset from SourceFile object", async () => {
@@ -82,11 +82,11 @@ describe("Storage Rules Manager", function () {
     );
   });
 
-  it("should delete ruleset when storage manager is reset", async () => {
+  it("should delete ruleset when storage manager is closed", async () => {
     await rulesManager.setSourceFile(StorageRulesFiles.readWriteIfTrue);
     expect(rulesManager.ruleset).not.to.be.undefined;
 
-    await rulesManager.reset();
+    await rulesManager.close();
     expect(rulesManager.ruleset).to.be.undefined;
   });
 });

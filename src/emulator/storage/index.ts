@@ -60,9 +60,8 @@ export class StorageEmulator implements EmulatorInstance {
     return this._logger;
   }
 
-  async reset(): Promise<void> {
+  reset(): void {
     this._storageLayer.reset();
-    await this._rulesManager.reset();
     this._persistence.reset(this.getPersistenceTmpDir());
     this._uploadService.reset();
   }
@@ -86,7 +85,7 @@ export class StorageEmulator implements EmulatorInstance {
 
   async stop(): Promise<void> {
     await this.storageLayer.deleteAll();
-    await this._rulesManager.reset();
+    await this._rulesManager.close();
     return this.destroyServer ? this.destroyServer() : Promise.resolve();
   }
 

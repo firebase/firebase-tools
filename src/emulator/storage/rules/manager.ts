@@ -46,7 +46,7 @@ export class StorageRulesManager {
   /**
    * Deletes source file, ruleset, and removes listeners from all files.
    */
-  public async reset(): Promise<void> {
+  public async close(): Promise<void> {
     delete this._sourceFile;
     delete this._ruleset;
     await this._watcher.close();
