@@ -128,7 +128,7 @@ export class PubsubEmulator implements EmulatorInstance {
   }
 
   private ensureFunctionsClient() {
-    if (this.client != undefined) return;
+    if (this.client !== undefined) return;
 
     const funcEmulator = EmulatorRegistry.get(Emulators.FUNCTIONS);
     if (!funcEmulator) {

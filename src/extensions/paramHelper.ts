@@ -93,7 +93,7 @@ export async function getParams(args: {
       !!args.reconfiguring
     );
   }
-  track("Extension Params", _.isEmpty(params) ? "Not Present" : "Present", _.size(params));
+  void track("Extension Params", _.isEmpty(params) ? "Not Present" : "Present", _.size(params));
   return params;
 }
 
@@ -134,7 +134,7 @@ export async function getParamsForUpdate(args: {
       instanceId: args.instanceId,
     });
   }
-  track("Extension Params", _.isEmpty(params) ? "Not Present" : "Present", _.size(params));
+  void track("Extension Params", _.isEmpty(params) ? "Not Present" : "Present", _.size(params));
   return params;
 }
 
@@ -207,9 +207,9 @@ export function getParamsFromFile(args: {
   let envParams;
   try {
     envParams = readEnvFile(args.paramsEnvPath);
-    track("Extension Env File", "Present");
+    void track("Extension Env File", "Present");
   } catch (err: any) {
-    track("Extension Env File", "Invalid");
+    void track("Extension Env File", "Invalid");
     throw new FirebaseError(`Error reading env file: ${err.message}\n`, { original: err });
   }
   const params = populateDefaultParams(envParams, args.paramSpecs);

@@ -92,7 +92,7 @@ export function createApp(
 
     const name = file.name;
     const content = file.content;
-    const issues = await emulator.loadRuleset({ files: [{ name, content }] });
+    const issues = await emulator.setRules({ name, content });
 
     if (issues.errors.length > 0) {
       res.status(400).json({
@@ -107,7 +107,7 @@ export function createApp(
   });
 
   app.post("/internal/reset", (req, res) => {
-    storageLayer.reset();
+    emulator.reset();
     res.sendStatus(200);
   });
 

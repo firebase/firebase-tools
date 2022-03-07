@@ -14,6 +14,7 @@ import * as cloudtasksNS from "../../../../gcp/cloudtasks";
 import * as backend from "../../../../deploy/functions/backend";
 import * as scraper from "../../../../deploy/functions/release/sourceTokenScraper";
 import * as planner from "../../../../deploy/functions/release/planner";
+import * as v2events from "../../../../functions/events/v2";
 
 describe("Fabricator", () => {
   // Stub all GCP APIs to make sure this test is hermetic
@@ -309,10 +310,13 @@ describe("Fabricator", () => {
       const ep = endpoint(
         {
           eventTrigger: {
-            eventType: gcfv2.PUBSUB_PUBLISH_EVENT,
-            eventFilters: {
-              resource: "topic",
-            },
+            eventType: v2events.PUBSUB_PUBLISH_EVENT,
+            eventFilters: [
+              {
+                attribute: "topic",
+                value: "topic",
+              },
+            ],
             retry: false,
           },
         },
@@ -332,10 +336,13 @@ describe("Fabricator", () => {
       const ep = endpoint(
         {
           eventTrigger: {
-            eventType: gcfv2.PUBSUB_PUBLISH_EVENT,
-            eventFilters: {
-              resource: "topic",
-            },
+            eventType: v2events.PUBSUB_PUBLISH_EVENT,
+            eventFilters: [
+              {
+                attribute: "topic",
+                value: "topic",
+              },
+            ],
             retry: false,
           },
         },
@@ -724,10 +731,13 @@ describe("Fabricator", () => {
       // all APIs throw by default
       const ep = endpoint({
         eventTrigger: {
-          eventType: gcfNSV2.PUBSUB_PUBLISH_EVENT,
-          eventFilters: {
-            resource: "topic",
-          },
+          eventType: v2events.PUBSUB_PUBLISH_EVENT,
+          eventFilters: [
+            {
+              attribute: "topic",
+              value: "topic",
+            },
+          ],
           retry: false,
         },
       });
@@ -777,10 +787,13 @@ describe("Fabricator", () => {
       // all APIs throw by default
       const ep = endpoint({
         eventTrigger: {
-          eventType: gcfNSV2.PUBSUB_PUBLISH_EVENT,
-          eventFilters: {
-            resource: "topic",
-          },
+          eventType: v2events.PUBSUB_PUBLISH_EVENT,
+          eventFilters: [
+            {
+              attribute: "topic",
+              value: "topic",
+            },
+          ],
           retry: false,
         },
       });
@@ -975,7 +988,7 @@ describe("Fabricator", () => {
       const ep1 = endpoint({ httpsTrigger: {} }, { id: "A" });
       const ep2 = endpoint({ httpsTrigger: {} }, { id: "B" });
       const ep3 = endpoint({ httpsTrigger: {} }, { id: "C" });
-      const changes: planner.RegionalChanges = {
+      const changes: planner.Changeset = {
         endpointsToCreate: [ep1, ep2],
         endpointsToUpdate: [{ endpoint: ep3 }],
         endpointsToDelete: [],
@@ -1001,19 +1014,19 @@ describe("Fabricator", () => {
       const updateEndpoint = sinon.stub(fab, "updateEndpoint");
       updateEndpoint.callsFake(fakeUpsert);
 
-      await fab.applyRegionalChanges(changes);
+      await fab.applyChangeset(changes);
     });
 
     it("handles errors and wraps them in results", async () => {
       // when it hits a real API it will fail.
       const ep = endpoint();
-      const changes: planner.RegionalChanges = {
+      const changes: planner.Changeset = {
         endpointsToCreate: [ep],
         endpointsToUpdate: [],
         endpointsToDelete: [],
       };
 
-      const results = await fab.applyRegionalChanges(changes);
+      const results = await fab.applyChangeset(changes);
       expect(results[0].error).to.be.instanceOf(reporter.DeploymentError);
       expect(results[0].error?.message).to.match(/create function/);
     });
@@ -1023,13 +1036,13 @@ describe("Fabricator", () => {
     // when it hits a real API it will fail.
     const createEP = endpoint({ httpsTrigger: {} }, { id: "A" });
     const deleteEP = endpoint({ httpsTrigger: {} }, { id: "B" });
-    const changes: planner.RegionalChanges = {
+    const changes: planner.Changeset = {
       endpointsToCreate: [createEP],
       endpointsToUpdate: [],
       endpointsToDelete: [deleteEP],
     };
 
-    const results = await fab.applyRegionalChanges(changes);
+    const results = await fab.applyChangeset(changes);
     const result = results.find((r) => r.endpoint.id === deleteEP.id);
     expect(result?.error).to.be.instanceOf(reporter.AbortedDeploymentError);
     expect(result?.durationMs).to.equal(0);
@@ -1040,7 +1053,7 @@ describe("Fabricator", () => {
     const updateEP = endpoint({ httpsTrigger: {} }, { id: "B" });
     const deleteEP = endpoint({ httpsTrigger: {} }, { id: "C" });
     const update: planner.EndpointUpdate = { endpoint: updateEP };
-    const changes: planner.RegionalChanges = {
+    const changes: planner.Changeset = {
       endpointsToCreate: [createEP],
       endpointsToUpdate: [update],
       endpointsToDelete: [deleteEP],
@@ -1053,7 +1066,7 @@ describe("Fabricator", () => {
     const deleteEndpoint = sinon.stub(fab, "deleteEndpoint");
     deleteEndpoint.resolves();
 
-    const results = await fab.applyRegionalChanges(changes);
+    const results = await fab.applyChangeset(changes);
     expect(createEndpoint).to.have.been.calledWithMatch(createEP);
     expect(updateEndpoint).to.have.been.calledWithMatch(update);
     expect(deleteEndpoint).to.have.been.calledWith(deleteEP);
@@ -1084,7 +1097,7 @@ describe("Fabricator", () => {
 
       // Will fail when it hits actual API calls
       const summary = await fab.applyPlan(plan);
-      const ep1Result = summary.results.find((r) => r.endpoint.region == ep1.region);
+      const ep1Result = summary.results.find((r) => r.endpoint.region === ep1.region);
       expect(ep1Result?.error).to.be.instanceOf(reporter.DeploymentError);
       expect(ep1Result?.error?.message).to.match(/create function/);
 

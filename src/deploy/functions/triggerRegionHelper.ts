@@ -13,7 +13,7 @@ export async function ensureTriggerRegions(want: backend.Backend): Promise<void>
     if (ep.platform === "gcfv1" || !backend.isEventTriggered(ep)) {
       continue;
     }
-    regionLookups.push(serviceForEndpoint(ep).ensureTriggerRegion(ep, ep.eventTrigger));
+    regionLookups.push(serviceForEndpoint(ep).ensureTriggerRegion(ep));
   }
   await Promise.all(regionLookups);
 }

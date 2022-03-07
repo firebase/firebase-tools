@@ -1,3 +1,2 @@
-- Updates reserved environment variables for CF3 to include 'EVENTARC_CLOUD_EVENT_SOURCE' (#4196).
-- Fixes arg order for `firebase emulators:start --only storage` (#4195).
+- Fixes bug where functions' memory configurations weren't preserved in batched function deploys (#4253).
 - Updates CF3 secret commands to automatically redeploy functions and delete unused secrets (#4130).
