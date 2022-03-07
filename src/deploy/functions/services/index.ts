@@ -39,7 +39,7 @@ export const StorageService: Service = {
 };
 /** A firebase alerts service object */
 export const FirebaseAlertsService: Service = {
-  name: "firealerts",
+  name: "firebasealerts",
   api: "logging.googleapis.com",
   requiredProjectBindings: obtainFirebaseAlertsBindings,
   ensureTriggerRegion: ensureFirebaseAlertsTriggerRegion,
