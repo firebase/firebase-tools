@@ -24,8 +24,8 @@ export interface Options {
   deleteAll?: boolean;
 }
 
-/** Calculate the changesets needed for a given region by grouping endpoints with keyFn. */
-export function calculateRegionalChanges(
+/** Calculate the changesets of given endpoints by grouping endpoints with keyFn. */
+export function calculateChangesets(
   want: Record<string, backend.Endpoint>,
   have: Record<string, backend.Endpoint>,
   keyFn: (e: backend.Endpoint) => string,
@@ -112,7 +112,7 @@ export function createDeploymentPlan(
 
   const regions = new Set([...Object.keys(want.endpoints), ...Object.keys(have.endpoints)]);
   for (const region of regions) {
-    const changesets = calculateRegionalChanges(
+    const changesets = calculateChangesets(
       want.endpoints[region] || {},
       have.endpoints[region] || {},
       (e) => `${e.region}-${e.availableMemoryMb || "default"}`,

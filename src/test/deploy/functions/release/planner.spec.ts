@@ -150,7 +150,7 @@ describe("planner", () => {
       const have = { updated, deleted, pantheon };
 
       // note: pantheon is not updated in any way
-      expect(planner.calculateRegionalChanges(want, have, (e) => e.region, {})).to.deep.equal({
+      expect(planner.calculateChangesets(want, have, (e) => e.region, {})).to.deep.equal({
         region: {
           endpointsToCreate: [created],
           endpointsToUpdate: [
@@ -175,7 +175,7 @@ describe("planner", () => {
 
       // note: pantheon is deleted because we have deleteAll: true
       expect(
-        planner.calculateRegionalChanges(want, have, (e) => e.region, { deleteAll: true })
+        planner.calculateChangesets(want, have, (e) => e.region, { deleteAll: true })
       ).to.deep.equal({
         region: {
           endpointsToCreate: [created],
