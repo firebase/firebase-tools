@@ -135,6 +135,14 @@ export type GetObjectResponse = {
   data: Buffer;
 };
 
+/**  Parsed request object for {@link StorageLayer#handleUpdateObjectMetadata}. */
+export type UpdateObjectMetadataRequest = {
+  bucketId: string;
+  decodedObjectId: string;
+  metadata: IncomingMetadata;
+  authorization?: string;
+};
+
 export class StorageLayer {
   private _files!: Map<string, StoredFile>;
   private _buckets!: Map<string, CloudStorageBucketMetadata>;
@@ -282,6 +290,11 @@ export class StorageLayer {
     return this._persistence.deleteAll();
   }
 
+  public async handleUpdateObjectMetadata(request: UpdateObjectMetadataRequest): Promise<StoredFileMetadata> {
+
+
+  }
+
   /**
    * Last step in uploading a file. Validates the request and persists the staging
    * object to its permanent location on disk.
@@ -310,7 +323,7 @@ export class StorageLayer {
       (await this._validator.validate(
         ["b", upload.bucketId, "o", upload.objectId].join("/"),
         RulesetOperationMethod.CREATE,
-        { before: metadata?.asRulesResource() },
+        { after: metadata?.asRulesResource() },
         upload.authorization
       ));
     if (!authorized) {
