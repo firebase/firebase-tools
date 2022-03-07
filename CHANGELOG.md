@@ -1,1 +1,2 @@
 - Fixes bug where functions' memory configurations weren't preserved in batched function deploys (#4253).
+- Adds --local flag to ext:install, ext:update, ext:configure, and ext:uninstall, to save changes to firebase.json instead of deploying immediately.
