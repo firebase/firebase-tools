@@ -150,14 +150,16 @@ describe("planner", () => {
       const have = { updated, deleted, pantheon };
 
       // note: pantheon is not updated in any way
-      expect(planner.calculateRegionalChanges(want, have, {})).to.deep.equal({
-        endpointsToCreate: [created],
-        endpointsToUpdate: [
-          {
-            endpoint: updated,
-          },
-        ],
-        endpointsToDelete: [deleted],
+      expect(planner.calculateChangesets(want, have, (e) => e.region, {})).to.deep.equal({
+        region: {
+          endpointsToCreate: [created],
+          endpointsToUpdate: [
+            {
+              endpoint: updated,
+            },
+          ],
+          endpointsToDelete: [deleted],
+        },
       });
     });
 
@@ -172,19 +174,69 @@ describe("planner", () => {
       const have = { updated, deleted, pantheon };
 
       // note: pantheon is deleted because we have deleteAll: true
-      expect(planner.calculateRegionalChanges(want, have, { deleteAll: true })).to.deep.equal({
-        endpointsToCreate: [created],
-        endpointsToUpdate: [
-          {
-            endpoint: updated,
-          },
-        ],
-        endpointsToDelete: [deleted, pantheon],
+      expect(
+        planner.calculateChangesets(want, have, (e) => e.region, { deleteAll: true })
+      ).to.deep.equal({
+        region: {
+          endpointsToCreate: [created],
+          endpointsToUpdate: [
+            {
+              endpoint: updated,
+            },
+          ],
+          endpointsToDelete: [deleted, pantheon],
+        },
       });
     });
   });
 
   describe("createDeploymentPlan", () => {
+    it("groups deployment by region and memory", () => {
+      const region1mem1Created: backend.Endpoint = func("id1", "region1");
+      const region1mem1Updated: backend.Endpoint = func("id2", "region1");
+
+      const region2mem1Created: backend.Endpoint = func("id3", "region2");
+      const region2mem2Updated: backend.Endpoint = func("id4", "region2");
+      region2mem2Updated.availableMemoryMb = 512;
+      const region2mem2Deleted: backend.Endpoint = func("id5", "region2");
+      region2mem2Deleted.availableMemoryMb = 512;
+      region2mem2Deleted.labels = deploymentTool.labels();
+
+      const have = backend.of(region1mem1Updated, region2mem2Updated, region2mem2Deleted);
+      const want = backend.of(
+        region1mem1Created,
+        region1mem1Updated,
+        region2mem1Created,
+        region2mem2Updated
+      );
+
+      expect(planner.createDeploymentPlan(want, have, {})).to.deep.equal({
+        "region1-default": {
+          endpointsToCreate: [region1mem1Created],
+          endpointsToUpdate: [
+            {
+              endpoint: region1mem1Updated,
+            },
+          ],
+          endpointsToDelete: [],
+        },
+        "region2-default": {
+          endpointsToCreate: [region2mem1Created],
+          endpointsToUpdate: [],
+          endpointsToDelete: [],
+        },
+        "region2-512": {
+          endpointsToCreate: [],
+          endpointsToUpdate: [
+            {
+              endpoint: region2mem2Updated,
+            },
+          ],
+          endpointsToDelete: [region2mem2Deleted],
+        },
+      });
+    });
+
     it("applies filters", () => {
       const group1Created = func("g1-created", "region");
       const group1Updated = func("g1-updated", "region");
@@ -201,7 +253,7 @@ describe("planner", () => {
       const have = backend.of(group1Updated, group1Deleted, group2Updated, group2Deleted);
 
       expect(planner.createDeploymentPlan(want, have, { filters: [["g1"]] })).to.deep.equal({
-        region: {
+        "region-default": {
           endpointsToCreate: [group1Created],
           endpointsToUpdate: [
             {
