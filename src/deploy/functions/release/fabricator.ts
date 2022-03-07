@@ -79,12 +79,12 @@ export class Fabricator {
       totalTime: 0,
       results: [],
     };
-    const deployRegions = Object.values(plan).map(async (changes): Promise<void> => {
-      const results = await this.applyRegionalChanges(changes);
+    const deployChangesets = Object.values(plan).map(async (changes): Promise<void> => {
+      const results = await this.applyChangeset(changes);
       summary.results.push(...results);
       return;
     });
-    const promiseResults = await utils.allSettled(deployRegions);
+    const promiseResults = await utils.allSettled(deployChangesets);
 
     const errs = promiseResults
       .filter((r) => r.status === "rejected")
@@ -100,9 +100,7 @@ export class Fabricator {
     return summary;
   }
 
-  async applyRegionalChanges(
-    changes: planner.RegionalChanges
-  ): Promise<Array<reporter.DeployResult>> {
+  async applyChangeset(changes: planner.Changeset): Promise<Array<reporter.DeployResult>> {
     const deployResults: reporter.DeployResult[] = [];
     const handle = async (
       op: reporter.OperationType,
