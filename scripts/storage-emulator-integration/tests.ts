@@ -697,7 +697,7 @@ describe("Storage emulator", () => {
         );
       });
 
-      describe("#putString()", () => {
+      describe("#put()", () => {
         it("should upload a file", async function (this) {
           this.timeout(TEST_SETUP_TIMEOUT);
 
@@ -1256,11 +1256,11 @@ describe("Storage emulator", () => {
           expect(error).to.contain("does not exist.");
         });
 
-        it.only("should not delete file when security rule on resource object disallows it", async () => {
+        it("should not delete file when security rule on resource object disallows it", async () => {
           await uploadText(page, "delete/disallowIfContentTypeText", "some-content", undefined, {
             contentType: "text/plain",
           });
-          console.log("1");
+
           const error: string = await page.evaluate(async (filename) => {
             try {
               await firebase.storage().ref(filename).delete();
@@ -1272,10 +1272,8 @@ describe("Storage emulator", () => {
               throw err;
             }
           }, "delete/disallowIfContentTypeText");
-          console.log("2");
 
           expect(error).to.contain("does not have permission to access");
-          console.log("3");
         });
       });
     });
