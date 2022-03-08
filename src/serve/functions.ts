@@ -9,9 +9,8 @@ import { parseRuntimeVersion } from "../emulator/functionsEmulatorUtils";
 import { needProjectId } from "../projectUtils";
 import { getProjectDefaultAccount } from "../auth";
 import { Options } from "../options";
+import * as functionsConfig from "../functions/normalizeConfig";
 import * as utils from "../utils";
-import { FirebaseError } from "../error";
-import { normalizeConfig } from "../functions/normalizeConfig";
 
 // TODO(samstern): It would be better to convert this to an EmulatorServer
 // but we don't have the "options" object until start() is called.
@@ -27,7 +26,7 @@ export class FunctionsServer {
 
   async start(options: Options, partialArgs: Partial<FunctionsEmulatorArgs>): Promise<void> {
     const projectId = needProjectId(options);
-    const config = normalizeConfig(options.config.src.functions)[0];
+    const config = functionsConfig.normalizeConfig(options.config.src.functions)[0];
     utils.assertDefined(config.source, "Error: 'functions.source' is not defined");
 
     const functionsDir = path.join(options.config.projectDir, config.source);
