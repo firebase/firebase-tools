@@ -14,7 +14,7 @@ import { logBullet } from "../../utils";
 import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload";
 import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import { previews } from "../../previews";
-import { needProjectId } from "../../projectUtils";
+import { needProjectId, needProjectNumber } from "../../projectUtils";
 import { track } from "../../track";
 import { logger } from "../../logger";
 import { ensureTriggerRegions } from "./triggerRegionHelper";
@@ -38,7 +38,7 @@ export async function prepare(
   payload: args.Payload
 ): Promise<void> {
   const projectId = needProjectId(options);
-  const projectNumber = await getProjectNumber({ projectId });
+  const projectNumber = await needProjectNumber(options);
 
   const sourceDirName = options.config.get("functions.source") as string;
   if (!sourceDirName) {
@@ -162,7 +162,7 @@ export async function prepare(
   });
 
   const haveBackend = await backend.existingBackend(context);
-  await ensureServiceAgentRoles({ projectId, projectNumber }, wantBackend, haveBackend);
+  await ensureServiceAgentRoles(projectNumber, wantBackend, haveBackend);
   inferDetailsFromExisting(wantBackend, haveBackend, usedDotenv);
   await ensureTriggerRegions(wantBackend);
 

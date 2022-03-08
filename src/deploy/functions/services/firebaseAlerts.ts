@@ -12,10 +12,10 @@ export const SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE = "roles/iam.serviceAccountToken
  * @param existingPolicy the project level IAM policy
  */
 export function obtainFirebaseAlertsBindings(
-  project: { projectId: string; projectNumber: string },
+  projectNumber: string,
   existingPolicy: iam.Policy
-): Array<iam.Binding> {
-  const pubsubServiceAgent = `serviceAccount:service-${project.projectNumber}@gcp-sa-pubsub.iam.gserviceaccount.com`;
+): Promise<Array<iam.Binding>> {
+  const pubsubServiceAgent = `serviceAccount:service-${projectNumber}@gcp-sa-pubsub.iam.gserviceaccount.com`;
   let pubsubBinding = existingPolicy.bindings.find(
     (b) => b.role === SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE
   );
@@ -28,7 +28,7 @@ export function obtainFirebaseAlertsBindings(
   if (!pubsubBinding.members.find((m) => m === pubsubServiceAgent)) {
     pubsubBinding.members.push(pubsubServiceAgent);
   }
-  return [pubsubBinding];
+  return Promise.resolve([pubsubBinding]);
 }
 
 /**
@@ -38,11 +38,12 @@ export function obtainFirebaseAlertsBindings(
  */
 export function ensureFirebaseAlertsTriggerRegion(
   endpoint: backend.Endpoint & backend.EventTriggered
-): void {
+): Promise<void> {
   if (!endpoint.eventTrigger.region) {
     endpoint.eventTrigger.region = "global";
   }
   if (endpoint.eventTrigger.region !== "global") {
     throw new FirebaseError("A firebase alerts trigger must specify 'global' trigger location");
   }
+  return Promise.resolve();
 }

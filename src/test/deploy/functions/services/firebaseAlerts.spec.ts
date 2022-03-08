@@ -1,17 +1,24 @@
 import { expect } from "chai";
 import { Endpoint } from "../../../../deploy/functions/backend";
 import * as firebaseAlerts from "../../../../deploy/functions/services/firebaseAlerts";
-import * as getProjectNumber from "../../../../getProjectNumber";
-import * as sinon from "sinon";
 
-const project = {
-  projectId: "project",
-  projectNumber: "123456789",
+const projectNumber = "123456789";
+
+const endpoint: Endpoint = {
+  id: "endpoint",
+  region: "us-central1",
+  project: projectNumber,
+  eventTrigger: {
+    retry: false,
+    eventType: "firebase.firebasealerts.alerts.v1.published",
+    eventFilters: [],
+  },
+  entryPoint: "endpoint",
+  platform: "gcfv2",
+  runtime: "nodejs16",
 };
 
 describe("obtainFirebaseAlertsBindings", () => {
-  let projectNumberStub: sinon.SinonStub;
-
   const iamPolicy = {
     etag: "etag",
     version: 3,
@@ -23,18 +30,10 @@ describe("obtainFirebaseAlertsBindings", () => {
     ],
   };
 
-  beforeEach(() => {
-    projectNumberStub = sinon.stub(getProjectNumber, "getProjectNumber").resolves("123456789");
-  });
-
-  afterEach(() => {
-    sinon.verifyAndRestore();
-  });
-
-  it("should add the binding", () => {
+  it("should add the binding", async () => {
     const policy = { ...iamPolicy };
 
-    const bindings = firebaseAlerts.obtainFirebaseAlertsBindings(project, policy);
+    const bindings = await firebaseAlerts.obtainFirebaseAlertsBindings(projectNumber, policy);
 
     expect(bindings.length).to.equal(1);
     expect(bindings[0]).to.deep.equal({
@@ -43,7 +42,7 @@ describe("obtainFirebaseAlertsBindings", () => {
     });
   });
 
-  it("should add the service agent as a member", () => {
+  it("should add the service agent as a member", async () => {
     const policy = { ...iamPolicy };
     policy.bindings = [
       {
@@ -52,7 +51,7 @@ describe("obtainFirebaseAlertsBindings", () => {
       },
     ];
 
-    const bindings = firebaseAlerts.obtainFirebaseAlertsBindings(project, policy);
+    const bindings = await firebaseAlerts.obtainFirebaseAlertsBindings(projectNumber, policy);
 
     expect(bindings.length).to.equal(1);
     expect(bindings[0]).to.deep.equal({
@@ -64,7 +63,7 @@ describe("obtainFirebaseAlertsBindings", () => {
     });
   });
 
-  it("should do nothing if we have the binding", () => {
+  it("should do nothing if we have the binding", async () => {
     const policy = { ...iamPolicy };
     policy.bindings = [
       {
@@ -73,7 +72,7 @@ describe("obtainFirebaseAlertsBindings", () => {
       },
     ];
 
-    const bindings = firebaseAlerts.obtainFirebaseAlertsBindings(project, policy);
+    const bindings = await firebaseAlerts.obtainFirebaseAlertsBindings(projectNumber, policy);
 
     expect(bindings.length).to.equal(1);
     expect(bindings[0]).to.deep.equal({
@@ -84,32 +83,19 @@ describe("obtainFirebaseAlertsBindings", () => {
 });
 
 describe("ensureFirebaseAlertsTriggerRegion", () => {
-  const endpoint: Endpoint = {
-    id: "endpoint",
-    region: "us-central1",
-    project: "my-project",
-    eventTrigger: {
-      retry: false,
-      eventType: "firebase.firebasealerts.alerts.v1.published",
-      eventFilters: [],
-    },
-    entryPoint: "",
-    platform: "gcfv2",
-    runtime: "nodejs16",
-  };
-  it("should set the trigger location to global", () => {
+  it("should set the trigger location to global", async () => {
     const ep = { ...endpoint };
 
-    firebaseAlerts.ensureFirebaseAlertsTriggerRegion(ep);
+    await firebaseAlerts.ensureFirebaseAlertsTriggerRegion(ep);
 
     expect(endpoint.eventTrigger.region).to.eq("global");
   });
 
-  it("should not error if the trigger location is global", () => {
+  it("should not error if the trigger location is global", async () => {
     const ep = { ...endpoint };
     ep.eventTrigger.region = "global";
 
-    firebaseAlerts.ensureFirebaseAlertsTriggerRegion(endpoint);
+    await firebaseAlerts.ensureFirebaseAlertsTriggerRegion(endpoint);
 
     expect(endpoint.eventTrigger.region).to.eq("global");
   });

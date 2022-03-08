@@ -6,11 +6,6 @@ import { obtainFirebaseAlertsBindings, ensureFirebaseAlertsTriggerRegion } from 
 
 const noop = (): Promise<void> => Promise.resolve();
 
-interface Project {
-  projectId: string;
-  projectNumber: string;
-}
-
 /** A service interface for the underlying GCP event services */
 export interface Service {
   readonly name: string;
@@ -18,9 +13,9 @@ export interface Service {
 
   // dispatch functions
   requiredProjectBindings:
-    | ((project: Project, policy: iam.Policy) => Promise<Array<iam.Binding>> | Array<iam.Binding>)
+    | ((projectNumber: string, policy: iam.Policy) => Promise<Array<iam.Binding>>)
     | undefined;
-  ensureTriggerRegion: (ep: backend.Endpoint & backend.EventTriggered) => Promise<void> | void;
+  ensureTriggerRegion: (ep: backend.Endpoint & backend.EventTriggered) => Promise<void>;
 }
 
 /** A noop service object, useful for v1 events */
