@@ -207,11 +207,17 @@ export class StorageLayer {
    * @throws {NotFoundError} if object does not exist
    * @throws {ForbiddenError} if request is unauthorized
    */
-  public async handleGetObject(request: GetObjectRequest): Promise<GetObjectResponse> {
+  public async handleGetObject(
+    request: GetObjectRequest,
+    skipAuth = false
+  ): Promise<GetObjectResponse> {
     const metadata = this.getMetadata(request.bucketId, request.decodedObjectId);
 
+    let authorized = skipAuth;
     // If a valid download token is present, skip Firebase Rules auth. Mainly used by the js sdk.
-    let authorized = (metadata?.downloadTokens || []).includes(request.downloadToken ?? "");
+    if (!authorized) {
+      authorized = (metadata?.downloadTokens || []).includes(request.downloadToken ?? "");
+    }
     if (!authorized) {
       authorized = await this._validator.validate(
         ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
@@ -267,6 +273,7 @@ export class StorageLayer {
    * @throws {NotFoundError} if the object does not exist.
    */
   public async handleDeleteObject(request: DeleteObjectRequest, skipAuth = false): Promise<void> {
+    console.log(`request: ${JSON.stringify(request)}`);
     const storedMetadata = this.getMetadata(request.bucketId, request.decodedObjectId);
     const authorized =
       skipAuth ||
@@ -422,7 +429,7 @@ export class StorageLayer {
     };
   }
 
-  public listItemsAndPrefixes(
+  private listItemsAndPrefixes(
     bucket: string,
     prefix: string,
     delimiter: string,

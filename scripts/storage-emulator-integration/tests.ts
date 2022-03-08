@@ -317,7 +317,7 @@ describe("Storage emulator", () => {
       });
 
       describe("#delete()", () => {
-        it("should properly delete a file from the bucket", async () => {
+        it("should delete a file from the bucket", async () => {
           // We use a nested path to ensure that we don't need to decode
           // the objectId in the gcloud emulator API
           const bucketFilePath = "file/to/delete";

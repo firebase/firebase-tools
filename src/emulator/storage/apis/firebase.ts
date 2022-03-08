@@ -228,6 +228,8 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       const operationPath = ["b", bucketId, "o", decodedObjectId].join("/");
       const metadataBefore = storageLayer.getMetadata(bucketId, req.params.objectId);
 
+      // TODO(tonyjhuang): Replace this Firebase Rules check with an admin-only auth check
+      // as token management endpoints should only accept admin credentials.
       if (
         !(await isPermitted({
           ruleset: emulator.rules,
