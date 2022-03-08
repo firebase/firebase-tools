@@ -4,6 +4,11 @@ import * as firebaseAlerts from "../../../../deploy/functions/services/firebaseA
 import * as getProjectNumber from "../../../../getProjectNumber";
 import * as sinon from "sinon";
 
+const project = {
+  projectId: "project",
+  projectNumber: "123456789",
+};
+
 describe("obtainFirebaseAlertsBindings", () => {
   let projectNumberStub: sinon.SinonStub;
 
@@ -26,10 +31,10 @@ describe("obtainFirebaseAlertsBindings", () => {
     sinon.verifyAndRestore();
   });
 
-  it("should add the binding", async () => {
+  it("should add the binding", () => {
     const policy = { ...iamPolicy };
 
-    const bindings = await firebaseAlerts.obtainFirebaseAlertsBindings("project", policy);
+    const bindings = firebaseAlerts.obtainFirebaseAlertsBindings(project, policy);
 
     expect(bindings.length).to.equal(1);
     expect(bindings[0]).to.deep.equal({
@@ -38,7 +43,7 @@ describe("obtainFirebaseAlertsBindings", () => {
     });
   });
 
-  it("should add the service agent as a member", async () => {
+  it("should add the service agent as a member", () => {
     const policy = { ...iamPolicy };
     policy.bindings = [
       {
@@ -47,7 +52,7 @@ describe("obtainFirebaseAlertsBindings", () => {
       },
     ];
 
-    const bindings = await firebaseAlerts.obtainFirebaseAlertsBindings("project", policy);
+    const bindings = firebaseAlerts.obtainFirebaseAlertsBindings(project, policy);
 
     expect(bindings.length).to.equal(1);
     expect(bindings[0]).to.deep.equal({
@@ -59,7 +64,7 @@ describe("obtainFirebaseAlertsBindings", () => {
     });
   });
 
-  it("should do nothing if we have the binding", async () => {
+  it("should do nothing if we have the binding", () => {
     const policy = { ...iamPolicy };
     policy.bindings = [
       {
@@ -68,7 +73,7 @@ describe("obtainFirebaseAlertsBindings", () => {
       },
     ];
 
-    const bindings = await firebaseAlerts.obtainFirebaseAlertsBindings("project", policy);
+    const bindings = firebaseAlerts.obtainFirebaseAlertsBindings(project, policy);
 
     expect(bindings.length).to.equal(1);
     expect(bindings[0]).to.deep.equal({

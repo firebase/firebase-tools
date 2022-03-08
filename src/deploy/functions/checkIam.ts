@@ -148,7 +148,7 @@ export function mergeBindings(policy: iam.Policy, allRequiredBindings: iam.Bindi
  * @param have backend that we have currently deployed
  */
 export async function ensureServiceAgentRoles(
-  projectId: string,
+  project: { projectId: string; projectNumber: string },
   want: backend.Backend,
   have: backend.Backend
 ): Promise<void> {
@@ -164,7 +164,7 @@ export async function ensureServiceAgentRoles(
   // get the full project iam policy
   let policy: iam.Policy;
   try {
-    policy = await getIamPolicy(projectId);
+    policy = await getIamPolicy(project.projectId);
   } catch (err: any) {
     utils.logLabeledBullet(
       "functions",
@@ -176,15 +176,20 @@ export async function ensureServiceAgentRoles(
     return;
   }
   // run in parallel all the missingProjectBindings jobs
-  const findRequiredBindings: Array<Promise<Array<iam.Binding>>> = [];
+  const findRequiredBindings: Array<Promise<Array<iam.Binding>> | Array<iam.Binding>> = [];
   newServices.forEach((service) =>
-    findRequiredBindings.push(service.requiredProjectBindings!(projectId, policy))
+    findRequiredBindings.push(
+      service.requiredProjectBindings!(
+        { projectId: project.projectId, projectNumber: project.projectNumber },
+        policy
+      )
+    )
   );
   const allRequiredBindings = await Promise.all(findRequiredBindings);
   mergeBindings(policy, allRequiredBindings);
   // set the updated policy
   try {
-    await setIamPolicy(projectId, policy, "bindings");
+    await setIamPolicy(project.projectId, policy, "bindings");
   } catch (err: any) {
     throw new FirebaseError(
       "We failed to modify the IAM policy for the project. The functions " +

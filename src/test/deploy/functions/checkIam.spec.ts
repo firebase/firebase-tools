@@ -5,6 +5,11 @@ import * as storage from "../../../gcp/storage";
 import * as rm from "../../../gcp/resourceManager";
 import * as backend from "../../../deploy/functions/backend";
 
+const project = {
+  projectId: "project",
+  projectNumber: "123456789",
+};
+
 const STORAGE_RES = {
   email_address: "service-123@gs-project-accounts.iam.gserviceaccount.com",
   kind: "storage#serviceAccount",
@@ -105,7 +110,7 @@ describe("checkIam", () => {
         ...SPEC,
       };
 
-      await expect(checkIam.ensureServiceAgentRoles("project", backend.of(wantFn), backend.empty()))
+      await expect(checkIam.ensureServiceAgentRoles(project, backend.of(wantFn), backend.empty()))
         .to.not.be.rejected;
       expect(getIamStub).to.have.been.calledOnce;
       expect(getIamStub).to.have.been.calledWith("project");
@@ -155,7 +160,7 @@ describe("checkIam", () => {
       };
 
       await checkIam.ensureServiceAgentRoles(
-        "project",
+        project,
         backend.of(wantFn),
         backend.of(v1EventFn, v2CallableFn, wantFn)
       );
@@ -199,7 +204,7 @@ describe("checkIam", () => {
         ...SPEC,
       };
 
-      await checkIam.ensureServiceAgentRoles("project", backend.of(wantFn), backend.of(haveFn));
+      await checkIam.ensureServiceAgentRoles(project, backend.of(wantFn), backend.of(haveFn));
 
       expect(storageStub).to.not.have.been.called;
       expect(getIamStub).to.not.have.been.called;
@@ -242,7 +247,7 @@ describe("checkIam", () => {
         ...SPEC,
       };
 
-      await checkIam.ensureServiceAgentRoles("project", backend.of(wantFn), backend.empty());
+      await checkIam.ensureServiceAgentRoles(project, backend.of(wantFn), backend.empty());
 
       expect(storageStub).to.have.been.calledOnce;
       expect(getIamStub).to.have.been.calledOnce;

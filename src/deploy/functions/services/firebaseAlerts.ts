@@ -11,12 +11,11 @@ export const SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE = "roles/iam.serviceAccountToken
  * @param projectId project identifier
  * @param existingPolicy the project level IAM policy
  */
-export async function obtainFirebaseAlertsBindings(
-  projectId: string,
+export function obtainFirebaseAlertsBindings(
+  project: { projectId: string; projectNumber: string },
   existingPolicy: iam.Policy
-): Promise<Array<iam.Binding>> {
-  const projectNumber = await getProjectNumber({ projectId });
-  const pubsubServiceAgent = `serviceAccount:service-${projectNumber}@gcp-sa-pubsub.iam.gserviceaccount.com`;
+): Array<iam.Binding> {
+  const pubsubServiceAgent = `serviceAccount:service-${project.projectNumber}@gcp-sa-pubsub.iam.gserviceaccount.com`;
   let pubsubBinding = existingPolicy.bindings.find(
     (b) => b.role === SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE
   );

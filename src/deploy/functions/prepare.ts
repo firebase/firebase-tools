@@ -20,6 +20,7 @@ import { logger } from "../../logger";
 import { ensureTriggerRegions } from "./triggerRegionHelper";
 import { ensureServiceAgentRoles } from "./checkIam";
 import { FirebaseError } from "../../error";
+import { getProjectNumber } from "../../getProjectNumber";
 
 function hasUserConfig(config: Record<string, unknown>): boolean {
   // "firebase" key is always going to exist in runtime config.
@@ -37,6 +38,7 @@ export async function prepare(
   payload: args.Payload
 ): Promise<void> {
   const projectId = needProjectId(options);
+  const projectNumber = await getProjectNumber({ projectId });
 
   const sourceDirName = options.config.get("functions.source") as string;
   if (!sourceDirName) {
@@ -160,7 +162,7 @@ export async function prepare(
   });
 
   const haveBackend = await backend.existingBackend(context);
-  await ensureServiceAgentRoles(projectId, wantBackend, haveBackend);
+  await ensureServiceAgentRoles({ projectId, projectNumber }, wantBackend, haveBackend);
   inferDetailsFromExisting(wantBackend, haveBackend, usedDotenv);
   await ensureTriggerRegions(wantBackend);
 
