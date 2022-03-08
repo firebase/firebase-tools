@@ -119,7 +119,7 @@ describe("ensureFirebaseAlertsTriggerRegion", () => {
     ep.eventTrigger.region = "us-west1";
 
     expect(() => firebaseAlerts.ensureFirebaseAlertsTriggerRegion(endpoint)).to.throw(
-      "A firebase alerts function must have a 'global' trigger location"
+      "A firebase alerts trigger must specify 'global' trigger location"
     );
   });
 });

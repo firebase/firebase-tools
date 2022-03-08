@@ -43,6 +43,6 @@ export function ensureFirebaseAlertsTriggerRegion(
     endpoint.eventTrigger.region = "global";
   }
   if (endpoint.eventTrigger.region !== "global") {
-    throw new FirebaseError("A firebase alerts function must have a 'global' trigger location");
+    throw new FirebaseError("A firebase alerts trigger must specify 'global' trigger location");
   }
 }
