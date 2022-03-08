@@ -149,6 +149,53 @@ describe("manifest", () => {
       );
     });
 
+    it("should write to env files in stable, alphabetical by key order", async () => {
+      await manifest.writeToManifest(
+        [
+          {
+            instanceId: "instance-1",
+            ref: {
+              publisherId: "firebase",
+              extensionId: "bigquery-export",
+              version: "1.0.0",
+            },
+            params: { b: "bulbasaur", a: "absol" },
+          },
+          {
+            instanceId: "instance-2",
+            ref: {
+              publisherId: "firebase",
+              extensionId: "bigquery-export",
+              version: "2.0.0",
+            },
+            params: { e: "eevee", s: "squirtle" },
+          },
+        ],
+        generateBaseConfig(),
+        { nonInteractive: false, force: false }
+      );
+      expect(writeProjectFileStub).calledWithExactly("firebase.json", {
+        extensions: {
+          "delete-user-data": "firebase/delete-user-data@0.1.12",
+          "delete-user-data-gm2h": "firebase/delete-user-data@0.1.12",
+          "instance-1": "firebase/bigquery-export@1.0.0",
+          "instance-2": "firebase/bigquery-export@2.0.0",
+        },
+      });
+
+      expect(askWriteProjectFileStub).to.have.been.calledTwice;
+      expect(askWriteProjectFileStub).calledWithExactly(
+        "extensions/instance-1.env",
+        `a=absol\nb=bulbasaur`,
+        false
+      );
+      expect(askWriteProjectFileStub).calledWithExactly(
+        "extensions/instance-2.env",
+        `e=eevee\ns=squirtle`,
+        false
+      );
+    });
+
     it("should overwrite when user chooses to", async () => {
       // Chooses to overwrite instead of merge.
       sandbox.stub(prompt, "promptOnce").resolves(true);
