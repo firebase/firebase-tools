@@ -81,13 +81,13 @@ export class Config {
       if (!this.get("functions")) {
         this.set("functions.source", Config.DEFAULT_FUNCTIONS_SOURCE);
       }
-      if (Array.isArray(!this.get("functions"))) {
+      if (Array.isArray(this.get("functions"))) {
         if (!this.get("functions.[0].source")) {
           this.set("functions.[0].source", Config.DEFAULT_FUNCTIONS_SOURCE);
         }
       } else {
         if (!this.get("functions.source")) {
-          this.set("functions..source", Config.DEFAULT_FUNCTIONS_SOURCE);
+          this.set("functions.source", Config.DEFAULT_FUNCTIONS_SOURCE);
         }
       }
     }

@@ -50,7 +50,7 @@ export async function prepare(
     projectId,
     sourceDir,
     projectDir: options.config.projectDir,
-    runtime: (options.config.get("functions.runtime") as string) || "",
+    runtime: context.config.runtime || "",
   };
   const runtimeDelegate = await runtimes.getRuntimeDelegate(delegateContext);
   logger.debug(`Validating ${runtimeDelegate.name} source`);
