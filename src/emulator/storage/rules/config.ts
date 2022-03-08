@@ -6,6 +6,11 @@ function getAbsoluteRulesPath(rules: string, options: Options): string {
   return options.config.path(rules);
 }
 
+/**
+ * Parses rules file for each target specified in the storage config under {@link options}.
+ * @returns Array of project resources and their corresponding rules files.
+ * @throws {FirebaseError} if storage config or rules file is missing from firebase.json.
+ */
 export function getStorageRulesConfig(projectId: string, options: Options): RulesConfig[] {
   const storageConfig = options.config.data.storage;
   if (!storageConfig) {
@@ -14,7 +19,7 @@ export function getStorageRulesConfig(projectId: string, options: Options): Rule
     );
   }
 
-  // Single resource
+  // Single target
   if (!Array.isArray(storageConfig)) {
     if (!storageConfig.rules) {
       throw new FirebaseError(
@@ -23,11 +28,10 @@ export function getStorageRulesConfig(projectId: string, options: Options): Rule
     }
 
     // TODO(hsinpei): set default resource
-    const resource = "default";
-    return [{ resource, rules: getAbsoluteRulesPath(storageConfig.rules, options) }];
+    return [{ resource: "default", rules: getAbsoluteRulesPath(storageConfig.rules, options) }];
   }
 
-  // Multiple resources
+  // Multiple targets
   const results: RulesConfig[] = [];
   const { rc } = options;
   for (const targetConfig of storageConfig) {

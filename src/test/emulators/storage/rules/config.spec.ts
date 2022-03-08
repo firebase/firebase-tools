@@ -1,10 +1,8 @@
+import * as fs from "fs";
 import * as path from "path";
 import { expect } from "chai";
-import { readFileSync } from "fs-extra";
 import { tmpdir } from "os";
-import { v4 as uuidv4 } from "uuid";
 
-import { Config } from "../../../../config";
 import { Options } from "../../../../options";
 import { RC } from "../../../../rc";
 import { getStorageRulesConfig } from "../../../../emulator/storage/rules/config";
@@ -15,7 +13,7 @@ import { FirebaseError } from "../../../../error";
 const PROJECT_ID = "test-project";
 
 describe("Storage Rules Config", () => {
-  const tmpDir = `${tmpdir()}/${uuidv4()}`;
+  const tmpDir = fs.mkdtempSync(path.join(tmpdir(), "storage-files"));
   const persistence = new Persistence(tmpDir);
   const resolvePath = (fileName: string) => path.resolve(tmpDir, fileName);
 
