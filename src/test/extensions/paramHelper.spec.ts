@@ -267,7 +267,7 @@ describe("paramHelper", () => {
               version: "0.1.0",
               roles: [],
               resources: [],
-              params: TEST_PARAMS,
+              params: [...TEST_PARAMS],
               sourceUrl: "",
             },
           },
@@ -389,6 +389,30 @@ describe("paramHelper", () => {
           type: "input",
         },
       ]);
+    });
+
+    it("should prompt for params that are not currently populated", async () => {
+      promptStub.resolves("user input");
+      const newSpec = _.cloneDeep(SPEC);
+      newSpec.params = TEST_PARAMS_2;
+
+      const newParams = await paramHelper.promptForNewParams({
+        spec: SPEC,
+        newSpec,
+        currentParams: {
+          A_PARAMETER: "value",
+          // ANOTHER_PARAMETER is not populated
+        },
+        projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
+      });
+
+      const expected = {
+        ANOTHER_PARAMETER: "user input",
+        NEW_PARAMETER: "user input",
+        THIRD_PARAMETER: "user input",
+      };
+      expect(newParams).to.eql(expected);
     });
 
     it("should not prompt the user for params that did not change type or param", async () => {
