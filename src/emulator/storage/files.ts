@@ -143,6 +143,13 @@ export type UpdateObjectMetadataRequest = {
   authorization?: string;
 };
 
+/**  Parsed request object for {@link StorageLayer#handleDeleteObject}. */
+export type DeleteObjectRequest = {
+  bucketId: string;
+  decodedObjectId: string;
+  authorization?: string;
+};
+
 export class StorageLayer {
   private _files!: Map<string, StoredFile>;
   private _buckets!: Map<string, CloudStorageBucketMetadata>;
@@ -260,6 +267,29 @@ export class StorageLayer {
     this._files = value;
   }
 
+
+  /** 
+   * Deletes an object.
+   * @throws {ForbiddenError} if the request is not authorized.
+   * @throws {NotFoundError} if the object does not exist.
+   */
+  public async handleDeleteObject(request: DeleteObjectRequest): Promise<void> {
+    const storedMetadata = this.getMetadata(request.bucketId, request.decodedObjectId);
+    let authorized = await this._validator.validate(
+      ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
+      RulesetOperationMethod.DELETE,
+      { before: storedMetadata?.asRulesResource() },
+      request.authorization
+    );
+    if (!authorized) {
+      throw new ForbiddenError();
+    }
+    if (!storedMetadata) {
+      throw new NotFoundError();
+    }
+    this.deleteFile(request.bucketId, request.decodedObjectId);
+  }
+
   public deleteFile(bucketId: string, objectId: string): boolean {
     const isFolder = objectId.toLowerCase().endsWith("%2f");
 
@@ -290,6 +320,11 @@ export class StorageLayer {
     return this._persistence.deleteAll();
   }
 
+  /** 
+   * Updates an existing object's metadata. 
+   * @throws {ForbiddenError} if the request is not authorized.
+   * @throws {NotFoundError} if the object does not exist.
+   */
   public async handleUpdateObjectMetadata(
     request: UpdateObjectMetadataRequest
   ): Promise<StoredFileMetadata> {
