@@ -38,6 +38,7 @@ import { promptOnce } from "../prompt";
 import { FLAG_EXPORT_ON_EXIT_NAME } from "./commandUtils";
 import { fileExistsSync } from "../fsutils";
 import { StorageEmulator } from "./storage";
+import { getStorageRulesConfig } from "./storage/rules/config";
 import { getDefaultDatabaseInstance } from "../getDefaultDatabaseInstance";
 import { getProjectDefaultAccount } from "../auth";
 import { Options } from "../options";
@@ -698,19 +699,12 @@ export async function startAll(options: EmulatorOptions, showUI = true): Promise
 
   if (shouldStart(options, Emulators.STORAGE)) {
     const storageAddr = await getAndCheckAddress(Emulators.STORAGE, options);
-    const storageConfig = options.config.data.storage;
-
-    if (!storageConfig?.rules) {
-      throw new FirebaseError(
-        "Cannot start the Storage emulator without rules file specified in firebase.json: run 'firebase init' and set up your Storage configuration"
-      );
-    }
 
     const storageEmulator = new StorageEmulator({
       host: storageAddr.host,
       port: storageAddr.port,
       projectId: projectId,
-      rules: options.config.path(storageConfig.rules),
+      rules: getStorageRulesConfig(projectId, options),
     });
     await startEmulator(storageEmulator);
 

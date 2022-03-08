@@ -310,7 +310,7 @@ export class StorageLayer {
       (await this._validator.validate(
         ["b", upload.bucketId, "o", upload.objectId].join("/"),
         RulesetOperationMethod.CREATE,
-        { before: metadata?.asRulesResource() },
+        { after: metadata?.asRulesResource() },
         upload.authorization
       ));
     if (!authorized) {

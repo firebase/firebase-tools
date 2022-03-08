@@ -78,9 +78,6 @@ export class Config {
 
     // Inject default functions config and source if missing.
     if (this.projectDir && fsutils.dirExistsSync(this.path(Config.DEFAULT_FUNCTIONS_SOURCE))) {
-      if (!this.get("functions")) {
-        this.set("functions.source", Config.DEFAULT_FUNCTIONS_SOURCE);
-      }
       if (Array.isArray(this.get("functions"))) {
         if (!this.get("functions.[0].source")) {
           this.set("functions.[0].source", Config.DEFAULT_FUNCTIONS_SOURCE);
