@@ -180,7 +180,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
 
   // list object handler
   firebaseStorageAPI.get("/b/:bucketId/o", async (req, res) => {
-    let maxResults = req.query.maxResults?.toString();
+    const maxResults = req.query.maxResults?.toString();
     let response: ListObjectsResponse;
     try {
       response = await storageLayer.handleListObjects({
