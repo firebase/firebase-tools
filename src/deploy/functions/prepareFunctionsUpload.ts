@@ -57,7 +57,7 @@ async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream) {
 async function packageSource(
   sourceDir: string,
   config: firebaseConfig.FunctionsSingle,
-  configValues: any
+  runtimeConfig: any
 ) {
   const tmpFile = tmp.fileSync({ prefix: "firebase-functions-", postfix: ".zip" }).name;
   const fileStream = fs.createWriteStream(tmpFile, {
@@ -84,8 +84,8 @@ async function packageSource(
         mode: file.mode,
       });
     });
-    if (typeof configValues !== "undefined") {
-      archive.append(JSON.stringify(configValues, null, 2), {
+    if (typeof runtimeConfig !== "undefined") {
+      archive.append(JSON.stringify(runtimeConfig, null, 2), {
         name: CONFIG_DEST_FILE,
         mode: 420 /* 0o644 */,
       });
