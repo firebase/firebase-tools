@@ -43,10 +43,13 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     async (req, res) => {
       let getObjectResponse: GetObjectResponse;
       try {
-        getObjectResponse = await storageLayer.handleGetObject({
-          bucketId: req.params.bucketId,
-          decodedObjectId: req.params.objectId,
-        });
+        getObjectResponse = await storageLayer.handleGetObject(
+          {
+            bucketId: req.params.bucketId,
+            decodedObjectId: req.params.objectId,
+          },
+          /* skipAuth = */ true
+        );
       } catch (err) {
         if (err instanceof NotFoundError) {
           return res.sendStatus(404);
@@ -184,10 +187,13 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     );
     let getObjectResponse: GetObjectResponse;
     try {
-      getObjectResponse = await storageLayer.handleGetObject({
-        bucketId: req.params.bucketId,
-        decodedObjectId: req.params.objectId,
-      });
+      getObjectResponse = await storageLayer.handleGetObject(
+        {
+          bucketId: req.params.bucketId,
+          decodedObjectId: req.params.objectId,
+        },
+        /* skipAuth = */ true
+      );
     } catch (err) {
       if (err instanceof NotFoundError) {
         return res.sendStatus(404);
@@ -288,10 +294,13 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
   gcloudStorageAPI.get("/:bucketId/:objectId(**)", async (req, res) => {
     let getObjectResponse: GetObjectResponse;
     try {
-      getObjectResponse = await storageLayer.handleGetObject({
-        bucketId: req.params.bucketId,
-        decodedObjectId: req.params.objectId,
-      });
+      getObjectResponse = await storageLayer.handleGetObject(
+        {
+          bucketId: req.params.bucketId,
+          decodedObjectId: req.params.objectId,
+        },
+        /* skipAuth = */ true
+      );
     } catch (err) {
       if (err instanceof NotFoundError) {
         return res.sendStatus(404);

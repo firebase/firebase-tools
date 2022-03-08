@@ -273,7 +273,6 @@ export class StorageLayer {
    * @throws {NotFoundError} if the object does not exist.
    */
   public async handleDeleteObject(request: DeleteObjectRequest, skipAuth = false): Promise<void> {
-    console.log(`request: ${JSON.stringify(request)}`);
     const storedMetadata = this.getMetadata(request.bucketId, request.decodedObjectId);
     const authorized =
       skipAuth ||
