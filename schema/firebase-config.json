@@ -375,10 +375,13 @@
                             "type": "string"
                         }
                     },
+                    "required": [
+                        "source"
+                    ],
                     "type": "object"
                 },
                 {
-                    "items": [{
+                    "items": {
                         "additionalProperties": false,
                         "properties": {
                             "ignore": {
@@ -425,9 +428,12 @@
                             "source": {
                                 "type": "string"
                             }
-                        }
-                    }
-                    ],
+                        },
+                        "required": [
+                            "source"
+                        ],
+                        "type": "object"
+                    },
                     "type": "array"
                 }
             ]
