@@ -10,6 +10,8 @@ import { needProjectId } from "../projectUtils";
 import { getProjectDefaultAccount } from "../auth";
 import { Options } from "../options";
 import * as utils from "../utils";
+import { FirebaseError } from "../error";
+import { normalizeConfig } from "../functions/normalizeConfig";
 
 // TODO(samstern): It would be better to convert this to an EmulatorServer
 // but we don't have the "options" object until start() is called.
@@ -25,15 +27,12 @@ export class FunctionsServer {
 
   async start(options: Options, partialArgs: Partial<FunctionsEmulatorArgs>): Promise<void> {
     const projectId = needProjectId(options);
-    utils.assertDefined(options.config.src.functions);
-    utils.assertDefined(
-      options.config.src.functions.source,
-      "Error: 'functions.source' is not defined"
-    );
+    const config = normalizeConfig(options.config.src.functions)[0];
+    utils.assertDefined(config.source, "Error: 'functions.source' is not defined");
 
-    const functionsDir = path.join(options.config.projectDir, options.config.src.functions.source);
+    const functionsDir = path.join(options.config.projectDir, config.source);
     const account = getProjectDefaultAccount(options.config.projectDir);
-    const nodeMajorVersion = parseRuntimeVersion(options.config.get("functions.runtime"));
+    const nodeMajorVersion = parseRuntimeVersion(config.runtime);
     this.backend = {
       functionsDir,
       nodeMajorVersion,
@@ -62,7 +61,7 @@ export class FunctionsServer {
       utils.assertIsNumber(options.port);
       const targets = options.targets as string[] | undefined;
       const port = options.port;
-      const hostingRunning = targets && targets.indexOf("hosting") >= 0;
+      const hostingRunning = targets && targets.includes("hosting");
       if (hostingRunning) {
         args.port = port + 1;
       } else {

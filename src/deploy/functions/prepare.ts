@@ -13,13 +13,13 @@ import { functionMatchesAnyGroup, getFilterGroups } from "./functionsDeployHelpe
 import { logBullet } from "../../utils";
 import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload";
 import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
-import { previews } from "../../previews";
 import { needProjectId } from "../../projectUtils";
 import { track } from "../../track";
 import { logger } from "../../logger";
 import { ensureTriggerRegions } from "./triggerRegionHelper";
 import { ensureServiceAgentRoles } from "./checkIam";
 import { FirebaseError } from "../../error";
+import { normalizeConfig } from "../../functions/normalizeConfig";
 
 function hasUserConfig(config: Record<string, unknown>): boolean {
   // "firebase" key is always going to exist in runtime config.
@@ -37,11 +37,11 @@ export async function prepare(
   payload: args.Payload
 ): Promise<void> {
   const projectId = needProjectId(options);
-
-  const sourceDirName = options.config.get("functions.source") as string;
+  context.config = normalizeConfig(options.config.src.functions)[0];
+  const sourceDirName = context.config.source;
   if (!sourceDirName) {
     throw new FirebaseError(
-      `No functions code detected at default location (./functions), and no functions.source defined in firebase.json`
+      `No functions code detected at default location (./functions), and no functions source defined in firebase.json`
     );
   }
   const sourceDir = options.config.path(sourceDirName);
@@ -126,12 +126,17 @@ export async function prepare(
     );
   }
   if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv1")) {
-    context.functionsSourceV1 = await prepareFunctionsUpload(runtimeConfig, options);
+    context.functionsSourceV1 = await prepareFunctionsUpload(
+      sourceDir,
+      context.config,
+      runtimeConfig
+    );
   }
   if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
     context.functionsSourceV2 = await prepareFunctionsUpload(
-      /* runtimeConfig= */ undefined,
-      options
+      sourceDir,
+      context.config,
+      /* runtimeConfig= */ undefined
     );
   }
 

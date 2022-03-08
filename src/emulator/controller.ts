@@ -44,6 +44,7 @@ import { Options } from "../options";
 import { ParsedTriggerDefinition } from "./functionsEmulatorShared";
 import { ExtensionsEmulator } from "./extensionsEmulator";
 import { previews } from "../previews";
+import { normalizeConfig } from "../functions/normalizeConfig";
 
 const START_LOGGING_EMULATOR = utils.envOverride(
   "START_LOGGING_EMULATOR",
@@ -240,7 +241,15 @@ export function shouldStart(options: Options, name: Emulators): boolean {
   }
 
   // Don't start the functions emulator if we can't find the source directory
-  if (name === Emulators.FUNCTIONS && emulatorInTargets && !options.config.src.functions?.source) {
+  if (name === Emulators.FUNCTIONS && emulatorInTargets) {
+    try {
+      const functionsCfg = normalizeConfig(options.config.src.functions)[0];
+      if (functionsCfg.source) {
+        return true;
+      }
+    } catch (err: any) {
+      // continue to warn and return false.
+    }
     EmulatorLogger.forEmulator(Emulators.FUNCTIONS).logLabeled(
       "WARN",
       "functions",
@@ -325,7 +334,7 @@ interface EmulatorOptions extends Options {
   extDevEnv?: Record<string, string>;
 }
 
-export async function startAll(options: EmulatorOptions, showUI: boolean = true): Promise<void> {
+export async function startAll(options: EmulatorOptions, showUI = true): Promise<void> {
   // Emulators config is specified in firebase.json as:
   // "emulators": {
   //   "firestore": {
@@ -421,15 +430,12 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
   const emulatableBackends: EmulatableBackend[] = [];
   const projectDir = (options.extDevDir || options.config.projectDir) as string;
   if (shouldStart(options, Emulators.FUNCTIONS)) {
+    const functionsCfg = normalizeConfig(options.config.src.functions)[0];
     // Note: ext:dev:emulators:* commands hit this path, not the Emulators.EXTENSIONS path
-    utils.assertDefined(options.config.src.functions);
-    utils.assertDefined(
-      options.config.src.functions.source,
-      "Error: 'functions.source' is not defined"
-    );
+    utils.assertDefined(functionsCfg.source, "Error: 'functions.source' is not defined");
 
     utils.assertIsStringOrUndefined(options.extDevDir);
-    const functionsDir = path.join(projectDir, options.config.src.functions.source);
+    const functionsDir = path.join(projectDir, functionsCfg.source);
 
     emulatableBackends.push({
       functionsDir,
@@ -440,7 +446,7 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
       // Ideally, we should handle that case via ExtensionEmulator.
       predefinedTriggers: options.extDevTriggers as ParsedTriggerDefinition[] | undefined,
       nodeMajorVersion: parseRuntimeVersion(
-        options.extDevNodeVersion || options.config.get("functions.runtime")
+        (options.extDevNodeVersion as string) || functionsCfg.runtime
       ),
     });
   }

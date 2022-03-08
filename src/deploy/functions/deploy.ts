@@ -47,7 +47,7 @@ export async function deploy(
   options: Options,
   payload: args.Payload
 ): Promise<void> {
-  if (!options.config.src.functions) {
+  if (!context.config) {
     return;
   }
 
@@ -77,16 +77,11 @@ export async function deploy(
     }
     await Promise.all(uploads);
 
-    utils.assertDefined(
-      options.config.src.functions.source,
-      "Error: 'functions.source' is not defined"
-    );
+    const source = context.config.source;
+    utils.assertDefined(source, "Error: 'functions.source' is not defined");
     if (uploads.length) {
       logSuccess(
-        clc.green.bold("functions:") +
-          " " +
-          clc.bold(options.config.src.functions.source) +
-          " folder uploaded successfully"
+        clc.green.bold("functions:") + " " + clc.bold(source) + " folder uploaded successfully"
       );
     }
   } catch (err: any) {

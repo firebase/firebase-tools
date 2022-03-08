@@ -102,12 +102,15 @@ export type FirestoreConfig = {
   indexes?: string;
 } & Deployable;
 
-export type FunctionsConfig = {
-  // TODO: Add types for "backend"
-  source?: string;
+export type FunctionsSingle = {
+  source: string;
   ignore?: string[];
   runtime?: CloudFunctionRuntimes;
 } & Deployable;
+
+export type FunctionsMultiple = [FunctionsSingle, ...FunctionsSingle[]];
+
+export type FunctionsConfig = FunctionsSingle | FunctionsSingle[];
 
 export type HostingConfig = HostingSingle | HostingMultiple;
 
