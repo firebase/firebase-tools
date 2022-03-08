@@ -4,6 +4,7 @@ import { Emulators } from "../../types";
 import {
   CloudStorageObjectAccessControlMetadata,
   CloudStorageObjectMetadata,
+  IncomingMetadata,
   StoredFileMetadata,
 } from "../metadata";
 import { EmulatorRegistry } from "../../registry";
@@ -58,19 +59,27 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     }
   );
 
-  gcloudStorageAPI.patch("/b/:bucketId/o/:objectId", (req, res) => {
-    const md = storageLayer.getMetadata(req.params.bucketId, req.params.objectId);
-
-    if (!md) {
-      res.sendStatus(404);
-      return;
+  gcloudStorageAPI.patch("/b/:bucketId/o/:objectId", async (req, res) => {
+    let updatedMetadata: StoredFileMetadata;
+    try {
+      updatedMetadata = await storageLayer.handleUpdateObjectMetadata(
+        {
+          bucketId: req.params._bucketId,
+          decodedObjectId: req.params.objectId,
+          metadata: req.body as IncomingMetadata,
+        },
+        /* skipAuth = */ true
+      );
+    } catch (err) {
+      if (err instanceof NotFoundError) {
+        return res.sendStatus(404);
+      }
+      if (err instanceof ForbiddenError) {
+        throw new Error("Request failed unexpectedly due to Firebase Rules.");
+      }
+      throw err;
     }
-
-    md.update(req.body);
-
-    const outgoingMetadata = new CloudStorageObjectMetadata(md);
-    res.json(outgoingMetadata).status(200).send();
-    return;
+    return res.json(new CloudStorageObjectMetadata(updatedMetadata));
   });
 
   gcloudStorageAPI.get("/b/:bucketId/o", (req, res) => {
@@ -90,20 +99,28 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       pageToken,
       maxRes
     );
-
     res.json(listResult);
   });
 
-  gcloudStorageAPI.delete("/b/:bucketId/o/:objectId", (req, res) => {
-    const md = storageLayer.getMetadata(req.params.bucketId, req.params.objectId);
-
-    if (!md) {
-      res.sendStatus(404);
-      return;
+  gcloudStorageAPI.delete("/b/:bucketId/o/:objectId", async (req, res) => {
+    try {
+      await storageLayer.handleDeleteObject(
+        {
+          bucketId: req.params._bucketId,
+          decodedObjectId: req.params.objectId,
+        },
+        /* skipAuth = */ true
+      );
+    } catch (err) {
+      if (err instanceof NotFoundError) {
+        return res.sendStatus(404);
+      }
+      if (err instanceof ForbiddenError) {
+        throw new Error("Request failed unexpectedly due to Firebase Rules.");
+      }
+      throw err;
     }
-
-    storageLayer.deleteFile(req.params.bucketId, req.params.objectId);
-    res.status(200).send();
+    return res.sendStatus(204);
   });
 
   const reqBodyToBuffer = async (req: Request): Promise<Buffer> => {

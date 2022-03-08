@@ -16,6 +16,7 @@ import { parseObjectUploadMultipartRequest } from "../multipart";
 import { NotFoundError, ForbiddenError } from "../errors";
 import { isPermitted } from "../rules/utils";
 import { NotCancellableError, Upload, UploadNotActiveError } from "../upload";
+import { ListObjectsResponse } from "../files";
 
 /**
  * @param emulator
@@ -179,36 +180,29 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
 
   // list object handler
   firebaseStorageAPI.get("/b/:bucketId/o", async (req, res) => {
-    let maxRes = undefined;
-    if (req.query.maxResults) {
-      maxRes = +req.query.maxResults.toString();
-    }
-    const delimiter = req.query.delimiter ? req.query.delimiter.toString() : "/";
-    const pageToken = req.query.pageToken ? req.query.pageToken.toString() : undefined;
-    const prefix = req.query.prefix ? req.query.prefix.toString() : "";
-
-    const operationPath = ["b", req.params.bucketId, "o", prefix].join("/");
-
-    if (
-      !(await isPermitted({
-        ruleset: emulator.rules,
-        method: RulesetOperationMethod.LIST,
-        path: operationPath,
-        file: {},
+    let maxResults = req.query.maxResults?.toString;
+    let response: ListObjectsResponse;
+    try {
+      response = await storageLayer.handleListObjects({
+        bucketId: req.params.bucketId,
+        prefix: req.query.prefix ? req.query.prefix.toString() : "",
+        delimiter: req.query.delimiter ? req.query.delimiter.toString() : "/",
+        pageToken: req.query.pageToken?.toString(),
+        maxResults: maxResults ? +maxResults : undefined,
         authorization: req.header("authorization"),
-      }))
-    ) {
-      return res.status(403).json({
-        error: {
-          code: 403,
-          message: `Permission denied. No LIST permission.`,
-        },
       });
+    } catch (err) {
+      if (err instanceof ForbiddenError) {
+        return res.status(403).json({
+          error: {
+            code: 403,
+            message: `Permission denied. No LIST permission.`,
+          },
+        });
+      }
+      throw err;
     }
-
-    res.json(
-      storageLayer.listItemsAndPrefixes(req.params.bucketId, prefix, delimiter, pageToken, maxRes)
-    );
+    return res.json(response.result);
   });
 
   const reqBodyToBuffer = async (req: Request): Promise<Buffer> => {
@@ -481,7 +475,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         bucketId: req.params.bucketId,
         decodedObjectId: decodeURIComponent(req.params.objectId),
         authorization: req.header("authorization"),
-      })
+      });
     } catch (err) {
       if (err instanceof ForbiddenError) {
         return res.status(403).json({

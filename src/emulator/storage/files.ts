@@ -150,6 +150,21 @@ export type DeleteObjectRequest = {
   authorization?: string;
 };
 
+/**  Parsed request object for {@link StorageLayer#handleListObjects}. */
+export type ListObjectsRequest = {
+  bucketId: string;
+  prefix: string;
+  delimiter: string;
+  pageToken?: string;
+  maxResults?: number;
+  authorization?: string;
+};
+
+/**  Response object for {@link StorageLayer#handleListObjects}. */
+export type ListObjectsResponse = {
+  result: ListResponse;
+};
+
 export class StorageLayer {
   private _files!: Map<string, StoredFile>;
   private _buckets!: Map<string, CloudStorageBucketMetadata>;
@@ -227,27 +242,6 @@ export class StorageLayer {
     return;
   }
 
-  /**
-   * Generates metadata for an uploaded file. Generally, this should only be used for finalized
-   * uploads, unless needed for security rule checks.
-   * @param upload The upload corresponding to the file for which to generate metadata.
-   * @returns Metadata for uploaded file.
-   */
-  public createMetadata(upload: ResumableUpload): StoredFileMetadata {
-    const bytes = this._persistence.readBytes(upload.fileLocation, upload.currentBytesUploaded);
-    return new StoredFileMetadata(
-      {
-        name: upload.objectId,
-        bucket: upload.bucketId,
-        contentType: "",
-        contentEncoding: upload.metadata.contentEncoding,
-        customMetadata: upload.metadata.metadata,
-      },
-      this._cloudFunctions,
-      bytes
-    );
-  }
-
   public getBytes(
     bucket: string,
     object: string,
@@ -267,20 +261,21 @@ export class StorageLayer {
     this._files = value;
   }
 
-
-  /** 
+  /**
    * Deletes an object.
    * @throws {ForbiddenError} if the request is not authorized.
    * @throws {NotFoundError} if the object does not exist.
    */
-  public async handleDeleteObject(request: DeleteObjectRequest): Promise<void> {
+  public async handleDeleteObject(request: DeleteObjectRequest, skipAuth = false): Promise<void> {
     const storedMetadata = this.getMetadata(request.bucketId, request.decodedObjectId);
-    let authorized = await this._validator.validate(
-      ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
-      RulesetOperationMethod.DELETE,
-      { before: storedMetadata?.asRulesResource() },
-      request.authorization
-    );
+    const authorized =
+      skipAuth ||
+      (await this._validator.validate(
+        ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
+        RulesetOperationMethod.DELETE,
+        { before: storedMetadata?.asRulesResource() },
+        request.authorization
+      ));
     if (!authorized) {
       throw new ForbiddenError();
     }
@@ -290,7 +285,7 @@ export class StorageLayer {
     this.deleteFile(request.bucketId, request.decodedObjectId);
   }
 
-  public deleteFile(bucketId: string, objectId: string): boolean {
+  private deleteFile(bucketId: string, objectId: string): boolean {
     const isFolder = objectId.toLowerCase().endsWith("%2f");
 
     if (isFolder) {
@@ -320,25 +315,28 @@ export class StorageLayer {
     return this._persistence.deleteAll();
   }
 
-  /** 
-   * Updates an existing object's metadata. 
+  /**
+   * Updates an existing object's metadata.
    * @throws {ForbiddenError} if the request is not authorized.
    * @throws {NotFoundError} if the object does not exist.
    */
   public async handleUpdateObjectMetadata(
-    request: UpdateObjectMetadataRequest
+    request: UpdateObjectMetadataRequest,
+    skipAuth = false
   ): Promise<StoredFileMetadata> {
     const storedMetadata = this.getMetadata(request.bucketId, request.decodedObjectId);
 
-    let authorized = await this._validator.validate(
-      ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
-      RulesetOperationMethod.UPDATE,
-      {
-        before: storedMetadata?.asRulesResource(),
-        after: storedMetadata?.asRulesResource(request.metadata),
-      },
-      request.authorization
-    );
+    const authorized =
+      skipAuth ||
+      (await this._validator.validate(
+        ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
+        RulesetOperationMethod.UPDATE,
+        {
+          before: storedMetadata?.asRulesResource(),
+          after: storedMetadata?.asRulesResource(request.metadata),
+        },
+        request.authorization
+      ));
     if (!authorized) {
       throw new ForbiddenError();
     }
@@ -354,7 +352,7 @@ export class StorageLayer {
    * Last step in uploading a file. Validates the request and persists the staging
    * object to its permanent location on disk.
    * TODO(tonyjhuang): Inject a Rules evaluator into StorageLayer to avoid needing skipAuth param
-   * @throws {ForbiddenError} if the request fails security rules auth.
+   * @throws {ForbiddenError} if the request is not authorized.
    */
   public async handleUploadObject(upload: Upload, skipAuth = false): Promise<StoredFileMetadata> {
     if (upload.status !== UploadStatus.FINISHED) {
@@ -394,6 +392,36 @@ export class StorageLayer {
     return metadata;
   }
 
+  /**
+   * Lists all files and prefixes (folders) at a path.
+   * @throws {ForbiddenError} if the request is not authorized.
+   */
+  public async handleListObjects(
+    request: ListObjectsRequest,
+    skipAuth = false
+  ): Promise<ListObjectsResponse> {
+    const authorized =
+      skipAuth ||
+      (await this._validator.validate(
+        ["b", request.bucketId, "o", request.prefix].join("/"),
+        RulesetOperationMethod.LIST,
+        {},
+        request.authorization
+      ));
+    if (!authorized) {
+      throw new ForbiddenError();
+    }
+    return {
+      result: this.listItemsAndPrefixes(
+        request.bucketId,
+        request.prefix,
+        request.delimiter,
+        request.pageToken,
+        request.maxResults
+      ),
+    };
+  }
+
   public listItemsAndPrefixes(
     bucket: string,
     prefix: string,
@@ -403,10 +431,6 @@ export class StorageLayer {
   ): ListResponse {
     if (!delimiter) {
       delimiter = "/";
-    }
-
-    if (!prefix) {
-      prefix = "";
     }
 
     if (!prefix.endsWith(delimiter)) {
