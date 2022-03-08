@@ -1,1 +1,2 @@
+- Fixes bug where functions' memory configurations weren't preserved in batched function deploys (#4253).
 - Adds alerting event provider (#4258).

@@ -23,7 +23,7 @@ import * as env from "../functions/env";
  * @param params A list of params
  * @param newDefaults a map of { PARAM_NAME: default_value }
  */
-function setNewDefaults(
+export function setNewDefaults(
   params: extensionsApi.Param[],
   newDefaults: { [key: string]: string }
 ): extensionsApi.Param[] {
@@ -58,10 +58,10 @@ export function getParamsWithCurrentValuesAsDefaults(
  */
 export async function getParams(args: {
   projectId: string;
+  instanceId: string;
   paramSpecs: extensionsApi.Param[];
   nonInteractive?: boolean;
   paramsEnvPath?: string;
-  instanceId: string;
   reconfiguring?: boolean;
 }): Promise<{ [key: string]: string }> {
   let params: any;
@@ -157,21 +157,19 @@ export async function promptForNewParams(args: {
   const comparer = (param1: extensionsApi.Param, param2: extensionsApi.Param) => {
     return param1.type === param2.type && param1.param === param2.param;
   };
-  let paramsDiffDeletions = _.differenceWith(
-    args.spec.params,
-    _.get(args.newSpec, "params", []),
-    comparer
+
+  // Some params are in the spec but not in currentParams, remove so we can prompt for them.
+  const oldParams = args.spec.params.filter((p) =>
+    Object.keys(args.currentParams).includes(p.param)
   );
+
+  let paramsDiffDeletions = _.differenceWith(oldParams, args.newSpec.params, comparer);
   paramsDiffDeletions = substituteParams<extensionsApi.Param[]>(
     paramsDiffDeletions,
     firebaseProjectParams
   );
 
-  let paramsDiffAdditions = _.differenceWith(
-    args.newSpec.params,
-    _.get(args.spec, "params", []),
-    comparer
-  );
+  let paramsDiffAdditions = _.differenceWith(args.newSpec.params, oldParams, comparer);
   paramsDiffAdditions = substituteParams<extensionsApi.Param[]>(
     paramsDiffAdditions,
     firebaseProjectParams
@@ -199,7 +197,7 @@ export async function promptForNewParams(args: {
   return args.currentParams;
 }
 
-export function getParamsFromFile(args: {
+function getParamsFromFile(args: {
   projectId: string;
   paramSpecs: extensionsApi.Param[];
   paramsEnvPath: string;

@@ -48,10 +48,9 @@ export class Persistence {
   }
 
   readBytes(fileName: string, size: number, fileOffset?: number): Buffer {
-    const path = this.getDiskPath(fileName);
     let fd;
     try {
-      fd = openSync(path, "r");
+      fd = openSync(this.getDiskPath(fileName), "r");
       const buf = Buffer.alloc(size);
       const offset = fileOffset && fileOffset > 0 ? fileOffset : 0;
       readSync(fd, buf, 0, size, offset);
