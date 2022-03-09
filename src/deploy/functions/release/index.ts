@@ -89,7 +89,7 @@ export async function release(
     const opts = allErrors.length === 1 ? { original: allErrors[0] } : { children: allErrors };
     throw new FirebaseError("There was an error deploying functions", { ...opts, exit: 2 });
   } else {
-    if (secrets.of(backend.allEndpoints(payload.functions!.backend)).length > 0) {
+    if (secrets.of(haveEndpoints).length > 0) {
       const projectId = needProjectId(options);
       const projectNumber = await needProjectNumber(options);
       // Re-load backend with all endpoints, not just the ones deployed.
