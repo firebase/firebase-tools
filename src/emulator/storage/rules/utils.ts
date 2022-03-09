@@ -54,14 +54,18 @@ export function getRulesValidator(rulesetProvider: RulesetProvider): RulesValida
  * Returns a validator that only checks for admin credentials.
  */
 export function getAdminOnlyRulesValidator(): RulesValidator {
-  const adminCredentialValidator = getAdminCredentialValidator();
   return {
     validate: (
       _path: string,
       _method: RulesetOperationMethod,
       _variableOverrides: RulesVariableOverrides,
-      authorization?: string
-    ) => Promise.resolve(adminCredentialValidator.validate(authorization)),
+      _authorization?: string
+    ) => {
+      // TODO(tonyjhuang): This should check for valid admin credentials some day.
+      // Unfortunately today, there's no easy way to set up the GCS SDK to pass
+      // "Bearer owner" along with requests so this is a placeholder.
+      return Promise.resolve(true);
+    },
   };
 }
 
