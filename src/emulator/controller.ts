@@ -512,6 +512,7 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
       host: functionsAddr.host,
       port: functionsAddr.port,
       debugPort: inspectFunctions,
+      projectAlias: options.projectAlias,
     });
     await startEmulator(functionsEmulator);
   }

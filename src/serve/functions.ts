@@ -46,6 +46,7 @@ export class FunctionsServer {
       projectId,
       projectDir: options.config.projectDir,
       emulatableBackends: [this.backend],
+      projectAlias: options.projectAlias,
       account,
       ...partialArgs,
     };
