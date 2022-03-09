@@ -328,6 +328,20 @@ FOO=foo
       });
     });
 
+    it("loads envs, preferring ones from .env.<project> for emulators too", () => {
+      createEnvFiles(tmpdir, {
+        ".env": "FOO=bad\nBAR=bar",
+        [`.env.${projectInfo.projectId}`]: "FOO=good",
+      });
+
+      expect(
+        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir, isEmulator: true })
+      ).to.be.deep.equal({
+        FOO: "good",
+        BAR: "bar",
+      });
+    });
+
     it("loads envs, preferring ones from .env.<alias>", () => {
       createEnvFiles(tmpdir, {
         ".env": "FOO=bad\nBAR=bar",
@@ -335,6 +349,20 @@ FOO=foo
       });
 
       expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+        FOO: "good",
+        BAR: "bar",
+      });
+    });
+
+    it("loads envs, preferring ones from .env.<alias> for emulators too", () => {
+      createEnvFiles(tmpdir, {
+        ".env": "FOO=bad\nBAR=bar",
+        [`.env.${projectInfo.projectAlias}`]: "FOO=good",
+      });
+
+      expect(
+        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir, isEmulator: true })
+      ).to.be.deep.equal({
         FOO: "good",
         BAR: "bar",
       });
