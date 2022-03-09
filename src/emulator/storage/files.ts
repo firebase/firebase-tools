@@ -159,12 +159,6 @@ export type ListObjectsRequest = {
   maxResults?: number;
   authorization?: string;
 };
-
-/**  Response object for {@link StorageLayer#handleListObjects}. */
-export type ListObjectsResponse = {
-  result: ListResponse;
-};
-
 export class StorageLayer {
   private _files!: Map<string, StoredFile>;
   private _buckets!: Map<string, CloudStorageBucketMetadata>;
@@ -215,10 +209,10 @@ export class StorageLayer {
 
     let authorized = skipAuth;
     // If a valid download token is present, skip Firebase Rules auth. Mainly used by the js sdk.
-    if (!authorized) {
-      authorized = (metadata?.downloadTokens || []).includes(request.downloadToken ?? "");
-    }
-    if (!authorized) {
+    let hasValidDownloadToken = (metadata?.downloadTokens || []).includes(
+      request.downloadToken ?? ""
+    );
+    if (!authorized || hasValidDownloadToken) {
       authorized = await this._validator.validate(
         ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
         RulesetOperationMethod.GET,
@@ -405,7 +399,7 @@ export class StorageLayer {
   public async handleListObjects(
     request: ListObjectsRequest,
     skipAuth = false
-  ): Promise<ListObjectsResponse> {
+  ): Promise<ListResponse> {
     const authorized =
       skipAuth ||
       (await this._validator.validate(
@@ -417,15 +411,13 @@ export class StorageLayer {
     if (!authorized) {
       throw new ForbiddenError();
     }
-    return {
-      result: this.listItemsAndPrefixes(
-        request.bucketId,
-        request.prefix,
-        request.delimiter,
-        request.pageToken,
-        request.maxResults
-      ),
-    };
+    return this.listItemsAndPrefixes(
+      request.bucketId,
+      request.prefix,
+      request.delimiter,
+      request.pageToken,
+      request.maxResults
+    );
   }
 
   private listItemsAndPrefixes(
