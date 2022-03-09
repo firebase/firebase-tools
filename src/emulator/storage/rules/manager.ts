@@ -6,9 +6,9 @@ import { StorageRulesIssues, StorageRulesRuntime, StorageRulesetInstance } from 
 import { readFile } from "../../../fsutils";
 import { RulesConfig, RulesType } from "..";
 
-/** 
+/**
  * Keeps track of the rules source file and maintains a generated ruleset for one or more storage
- * resources. 
+ * resources.
  * */
 export interface StorageRulesManager {
   /** Sets source file for each resource using the rules previously passed in the constructor. */

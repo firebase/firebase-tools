@@ -1,6 +1,7 @@
+import * as fs from "fs";
+import * as path from "path";
 import { expect } from "chai";
 import { tmpdir } from "os";
-import { v4 as uuidv4 } from "uuid";
 
 import { FirebaseError } from "../../../src/error";
 import { StorageRulesFiles, TIMEOUT_MED } from "../../../src/test/emulators/fixtures";
@@ -30,7 +31,7 @@ describe("Storage Rules Manager", function () {
     await rulesManager.close();
   });
 
-  it("should load multiple rulesets on start", async () => {
+  it("should load multiple rulesets on start", () => {
     expect(rulesManager.getRuleset("bucket_1")).not.to.be.undefined;
     expect(rulesManager.getRuleset("bucket_2")).not.to.be.undefined;
   });
@@ -55,7 +56,7 @@ describe("Storage Rules Manager", function () {
   it("should load ruleset on update with file path", async () => {
     // Write rules to file
     const fileName = "storage.rules";
-    const testDir = `${tmpdir()}/${uuidv4()}`;
+    const testDir = fs.mkdtempSync(path.join(tmpdir(), "storage-files"));
     const persistence = new Persistence(testDir);
     persistence.appendBytes(fileName, Buffer.from(StorageRulesFiles.readWriteIfTrue.content));
 
@@ -81,7 +82,7 @@ describe("Storage Rules Manager", function () {
 
     // Write rules to file
     const fileName = "storage.rules";
-    const testDir = `${tmpdir()}/${uuidv4()}`;
+    const testDir = fs.mkdtempSync(path.join(tmpdir(), "storage-files"));
     const persistence = new Persistence(testDir);
     persistence.appendBytes(fileName, Buffer.from(StorageRulesFiles.readWriteIfTrue.content));
 

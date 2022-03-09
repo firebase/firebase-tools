@@ -45,7 +45,7 @@ export class StorageEmulator implements EmulatorInstance {
     this._persistence = new Persistence(this.getPersistenceTmpDir());
     this._storageLayer = new StorageLayer(
       args.projectId,
-      getRulesValidator(() => this.getRules("default")), // TODO(hsinpei): Fix
+      getRulesValidator((resource: string) => this.getRules(resource)),
       getAdminCredentialValidator(),
       this._persistence
     );
