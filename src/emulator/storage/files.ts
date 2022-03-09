@@ -278,10 +278,6 @@ export class StorageLayer {
     }
   }
 
-  public async deleteAll(): Promise<void> {
-    return this._persistence.deleteAll();
-  }
-
   /**
    * Last step in uploading a file. Validates the request and persists the staging
    * object to its permanent location on disk.
@@ -310,7 +306,7 @@ export class StorageLayer {
       (await this._validator.validate(
         ["b", upload.bucketId, "o", upload.objectId].join("/"),
         RulesetOperationMethod.CREATE,
-        { before: metadata?.asRulesResource() },
+        { after: metadata?.asRulesResource() },
         upload.authorization
       ));
     if (!authorized) {
