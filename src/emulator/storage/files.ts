@@ -494,9 +494,8 @@ export class StorageLayer {
     };
   }
 
-  public async handleCreateDownloadToken(
-    request: CreateDownloadTokenRequest
-  ): Promise<StoredFileMetadata> {
+  /** Creates a new Firebase download token for an object. */
+  public handleCreateDownloadToken(request: CreateDownloadTokenRequest): StoredFileMetadata {
     if (!this._adminCredsValidator.validate(request.authorization)) {
       throw new ForbiddenError();
     }
@@ -508,9 +507,12 @@ export class StorageLayer {
     return metadata;
   }
 
-  public async handleDeleteDownloadToken(
-    request: DeleteDownloadTokenRequest
-  ): Promise<StoredFileMetadata> {
+  /**
+   * Removes a Firebase download token from an object's metadata. If the token is not already
+   * present, calling this method is a no-op. This method will also regenerate a new token
+   * if the last remaining token is deleted.
+   */
+  public handleDeleteDownloadToken(request: DeleteDownloadTokenRequest): StoredFileMetadata {
     if (!this._adminCredsValidator.validate(request.authorization)) {
       throw new ForbiddenError();
     }

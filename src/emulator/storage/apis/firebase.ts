@@ -361,7 +361,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     return res.sendStatus(400);
   };
 
-  const handleTokenRequest = async (req: Request, res: Response) => {
+  const handleTokenRequest = (req: Request, res: Response) => {
     if (!req.query.create_token && !req.query.delete_token) {
       return res.sendStatus(400);
     }
@@ -374,7 +374,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         return res.sendStatus(400);
       }
       try {
-        metadata = await storageLayer.handleCreateDownloadToken({
+        metadata = storageLayer.handleCreateDownloadToken({
           bucketId,
           decodedObjectId,
           authorization,
@@ -396,7 +396,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     } else {
       // delete download token
       try {
-        metadata = await storageLayer.handleDeleteDownloadToken({
+        metadata = storageLayer.handleDeleteDownloadToken({
           bucketId,
           decodedObjectId,
           token: req.query["delete_token"]?.toString() ?? "",
