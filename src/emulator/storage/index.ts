@@ -3,7 +3,7 @@ import * as utils from "../../utils";
 import { Constants } from "../constants";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../types";
 import { createApp } from "./server";
-import { StorageLayer } from "./files";
+import { StorageLayer, StoredFile } from "./files";
 import { EmulatorLogger } from "../emulatorLogger";
 import { StorageRulesManager } from "./rules/manager";
 import { StorageRulesetInstance, StorageRulesRuntime, StorageRulesIssues } from "./rules/runtime";
@@ -13,9 +13,12 @@ import {
   getAdminCredentialValidator,
   getAdminOnlyRulesValidator,
   getRulesValidator,
+  RulesValidator,
 } from "./rules/utils";
 import { Persistence } from "./persistence";
 import { UploadService } from "./upload";
+import { CloudStorageBucketMetadata } from "./metadata";
+import { StorageCloudFunctions } from "./cloudFunctions";
 
 export interface StorageEmulatorArgs {
   projectId: string;
@@ -32,29 +35,35 @@ export class StorageEmulator implements EmulatorInstance {
   private _logger = EmulatorLogger.forEmulator(Emulators.STORAGE);
   private _rulesRuntime: StorageRulesRuntime;
   private _rulesManager: StorageRulesManager;
+  private _files: Map<string, StoredFile> = new Map();
+  private _buckets: Map<string, CloudStorageBucketMetadata> = new Map();
+  private _cloudFunctions: StorageCloudFunctions;
   private _persistence: Persistence;
+  private _uploadService: UploadService;
   private _storageLayer: StorageLayer;
   /** StorageLayer that validates requests solely based on admin credentials.  */
   private _adminStorageLayer: StorageLayer;
-  private _uploadService: UploadService;
 
   constructor(private args: StorageEmulatorArgs) {
     this._rulesRuntime = new StorageRulesRuntime();
     this._rulesManager = new StorageRulesManager(this._rulesRuntime);
+    this._cloudFunctions = new StorageCloudFunctions(args.projectId);
     this._persistence = new Persistence(this.getPersistenceTmpDir());
-    this._storageLayer = new StorageLayer(
-      args.projectId,
-      getRulesValidator(() => this.rules),
-      getAdminCredentialValidator(),
-      this._persistence
-    );
-    this._adminStorageLayer = new StorageLayer(
-      args.projectId,
-      getAdminOnlyRulesValidator(),
-      getAdminCredentialValidator(),
-      this._persistence
-    );
     this._uploadService = new UploadService(this._persistence);
+
+    const createStorageLayer = (rulesValidator: RulesValidator): StorageLayer => {
+      return new StorageLayer(
+        args.projectId,
+        this._files,
+        this._buckets,
+        rulesValidator,
+        getAdminCredentialValidator(),
+        this._persistence,
+        this._cloudFunctions
+      );
+    };
+    this._storageLayer = createStorageLayer(getRulesValidator(() => this.rules));
+    this._adminStorageLayer = createStorageLayer(getAdminOnlyRulesValidator());
   }
 
   get storageLayer(): StorageLayer {
@@ -78,7 +87,8 @@ export class StorageEmulator implements EmulatorInstance {
   }
 
   reset(): void {
-    this._storageLayer.reset();
+    this._files.clear();
+    this._buckets.clear();
     this._persistence.reset(this.getPersistenceTmpDir());
     this._uploadService.reset();
   }
