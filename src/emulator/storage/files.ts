@@ -233,10 +233,6 @@ export class StorageLayer {
     }
   }
 
-  public async deleteAll(): Promise<void> {
-    return this._persistence.deleteAll();
-  }
-
   /**
    * Updates an existing object's metadata.
    * @throws {ForbiddenError} if the request is not authorized.

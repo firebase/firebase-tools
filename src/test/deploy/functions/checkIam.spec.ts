@@ -5,6 +5,8 @@ import * as storage from "../../../gcp/storage";
 import * as rm from "../../../gcp/resourceManager";
 import * as backend from "../../../deploy/functions/backend";
 
+const projectNumber = "123456789";
+
 const STORAGE_RES = {
   email_address: "service-123@gs-project-accounts.iam.gserviceaccount.com",
   kind: "storage#serviceAccount",
@@ -17,7 +19,7 @@ const BINDING = {
 
 const SPEC = {
   region: "us-west1",
-  project: "my-project",
+  project: projectNumber,
   runtime: "nodejs14",
 };
 
@@ -105,10 +107,11 @@ describe("checkIam", () => {
         ...SPEC,
       };
 
-      await expect(checkIam.ensureServiceAgentRoles("project", backend.of(wantFn), backend.empty()))
-        .to.not.be.rejected;
+      await expect(
+        checkIam.ensureServiceAgentRoles(projectNumber, backend.of(wantFn), backend.empty())
+      ).to.not.be.rejected;
       expect(getIamStub).to.have.been.calledOnce;
-      expect(getIamStub).to.have.been.calledWith("project");
+      expect(getIamStub).to.have.been.calledWith(projectNumber);
       expect(storageStub).to.not.have.been.called;
       expect(setIamStub).to.not.have.been.called;
     });
@@ -155,7 +158,7 @@ describe("checkIam", () => {
       };
 
       await checkIam.ensureServiceAgentRoles(
-        "project",
+        projectNumber,
         backend.of(wantFn),
         backend.of(v1EventFn, v2CallableFn, wantFn)
       );
@@ -199,7 +202,7 @@ describe("checkIam", () => {
         ...SPEC,
       };
 
-      await checkIam.ensureServiceAgentRoles("project", backend.of(wantFn), backend.of(haveFn));
+      await checkIam.ensureServiceAgentRoles(projectNumber, backend.of(wantFn), backend.of(haveFn));
 
       expect(storageStub).to.not.have.been.called;
       expect(getIamStub).to.not.have.been.called;
@@ -242,12 +245,12 @@ describe("checkIam", () => {
         ...SPEC,
       };
 
-      await checkIam.ensureServiceAgentRoles("project", backend.of(wantFn), backend.empty());
+      await checkIam.ensureServiceAgentRoles(projectNumber, backend.of(wantFn), backend.empty());
 
       expect(storageStub).to.have.been.calledOnce;
       expect(getIamStub).to.have.been.calledOnce;
       expect(setIamStub).to.have.been.calledOnce;
-      expect(setIamStub).to.have.been.calledWith("project", newIamPolicy, "bindings");
+      expect(setIamStub).to.have.been.calledWith(projectNumber, newIamPolicy, "bindings");
     });
   });
 });
