@@ -148,6 +148,7 @@
   "devDependencies": {
     "@google/events": "^5.1.1",
     "@manifoldco/swagger-to-ts": "^2.0.0",
+    "@swc/core": "^1.2.151",
     "@types/archiver": "^5.1.0",
     "@types/body-parser": "^1.17.0",
     "@types/chai": "^4.3.0",
@@ -215,7 +216,7 @@
     "source-map-support": "^0.5.9",
     "supertest": "^3.3.0",
     "swagger2openapi": "^6.0.3",
-    "ts-node": "^10.4.0",
+    "ts-node": "^10.7.0",
     "typescript": "^4.5.4",
     "typescript-json-schema": "^0.50.1"
   }

@@ -14,5 +14,8 @@
       "src/types"
     ]
   },
+  "ts-node": {
+    "swc": true
+  },
   "include": ["src/**/*"]
 }
