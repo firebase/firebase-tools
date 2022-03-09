@@ -1043,7 +1043,7 @@ describe("Storage emulator", () => {
 
       describe("#getDownloadURL()", () => {
         it("returns url pointing to the expected host", async () => {
-          let downloadUrl;
+          let downloadUrl: string;
           try {
             downloadUrl = await page.evaluate((filename) => {
               return firebase.storage().ref(filename).getDownloadURL();
@@ -1067,27 +1067,18 @@ describe("Storage emulator", () => {
 
           const requestClient = TEST_CONFIG.useProductionServers ? https : http;
           await new Promise((resolve, reject) => {
-            requestClient.get(
-              downloadUrl,
-              {
-                headers: {
-                  // This is considered an authorized request in the emulator
-                  Authorization: "Bearer owner",
-                },
-              },
-              (response) => {
-                const data: any = [];
-                response
-                  .on("data", (chunk) => data.push(chunk))
-                  .on("end", () => {
-                    expect(Buffer.concat(data)).to.deep.equal(
-                      Buffer.from(IMAGE_FILE_BASE64, "base64")
-                    );
-                  })
-                  .on("close", resolve)
-                  .on("error", reject);
-              }
-            );
+            requestClient.get(downloadUrl, (response) => {
+              const data: any = [];
+              response
+                .on("data", (chunk) => data.push(chunk))
+                .on("end", () => {
+                  expect(Buffer.concat(data)).to.deep.equal(
+                    Buffer.from(IMAGE_FILE_BASE64, "base64")
+                  );
+                })
+                .on("close", resolve)
+                .on("error", reject);
+            });
           });
         });
       });
