@@ -7,7 +7,7 @@ import { StorageLayer } from "./files";
 import { EmulatorLogger } from "../emulatorLogger";
 import { StorageRulesManager } from "./rules/manager";
 import { StorageRulesetInstance, StorageRulesRuntime, StorageRulesIssues } from "./rules/runtime";
-import { RulesetOperationMethod, SourceFile } from "./rules/types";
+import { SourceFile } from "./rules/types";
 import express = require("express");
 import {
   getAdminCredentialValidator,
