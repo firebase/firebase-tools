@@ -1043,14 +1043,9 @@ describe("Storage emulator", () => {
 
       describe("#getDownloadURL()", () => {
         it("returns url pointing to the expected host", async () => {
-          let downloadUrl: string;
-          try {
-            downloadUrl = await page.evaluate((filename) => {
-              return firebase.storage().ref(filename).getDownloadURL();
-            }, filename);
-          } catch (err: any) {
-            expect(err).to.equal("");
-          }
+          const downloadUrl: string = await page.evaluate((filename) => {
+            return firebase.storage().ref(filename).getDownloadURL();
+          }, filename);
           const expectedHost = TEST_CONFIG.useProductionServers
             ? "https://firebasestorage.googleapis.com"
             : STORAGE_EMULATOR_HOST;
