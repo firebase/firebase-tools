@@ -151,13 +151,13 @@ export class StorageLayer {
   ): Promise<GetObjectResponse> {
     const metadata = this.getMetadata(request.bucketId, request.decodedObjectId);
 
-    let authorized = skipAuth;
     // If a valid download token is present, skip Firebase Rules auth. Mainly used by the js sdk.
     const hasValidDownloadToken = (metadata?.downloadTokens || []).includes(
       request.downloadToken ?? ""
     );
-    if (!authorized || hasValidDownloadToken) {
-      authorized = await this._rulesValidator.validate(
+    let authorized = skipAuth || !!hasValidDownloadToken;
+    if (!authorized) {
+      authorized = await this._validator.validate(
         ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
         RulesetOperationMethod.GET,
         { before: metadata?.asRulesResource() },
@@ -248,10 +248,6 @@ export class StorageLayer {
       this._cloudFunctions.dispatch("delete", new CloudStorageObjectMetadata(file.metadata));
       return true;
     }
-  }
-
-  public async deleteAll(): Promise<void> {
-    return this._persistence.deleteAll();
   }
 
   /**
