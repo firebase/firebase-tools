@@ -161,9 +161,6 @@ export function validateKey(key: string): void {
 // Parse dotenv file, but throw errors if:
 //   1. Input has any invalid lines.
 //   2. Any env key fails validation.
-/**
- *
- */
 export function parseStrict(data: string): Record<string, string> {
   const { envs, errors } = parse(data);
 
@@ -203,7 +200,7 @@ function findEnvfiles(
     files.push(FUNCTIONS_EMULATOR_DOTENV);
   }
   files.push(`.env.${projectId}`);
-  if (projectAlias && projectAlias.length) {
+  if (projectAlias) {
     files.push(`.env.${projectAlias}`);
   }
 
