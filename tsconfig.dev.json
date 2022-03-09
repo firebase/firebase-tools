@@ -4,6 +4,9 @@
     "noEmit": true,
     "removeComments": false,
   },
+  "ts-node": {
+    "swc": true
+  },
   "include": [
     "scripts/**/*",
     ".eslintrc.js",
