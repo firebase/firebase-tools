@@ -317,7 +317,7 @@ describe("Storage emulator", () => {
       });
 
       describe("#delete()", () => {
-        it("should properly delete a file from the bucket", async () => {
+        it("should delete a file from the bucket", async () => {
           // We use a nested path to ensure that we don't need to decode
           // the objectId in the gcloud emulator API
           const bucketFilePath = "file/to/delete";
@@ -1043,14 +1043,9 @@ describe("Storage emulator", () => {
 
       describe("#getDownloadURL()", () => {
         it("returns url pointing to the expected host", async () => {
-          let downloadUrl;
-          try {
-            downloadUrl = await page.evaluate((filename) => {
-              return firebase.storage().ref(filename).getDownloadURL();
-            }, filename);
-          } catch (err: any) {
-            expect(err).to.equal("");
-          }
+          const downloadUrl: string = await page.evaluate((filename) => {
+            return firebase.storage().ref(filename).getDownloadURL();
+          }, filename);
           const expectedHost = TEST_CONFIG.useProductionServers
             ? "https://firebasestorage.googleapis.com"
             : STORAGE_EMULATOR_HOST;
@@ -1067,27 +1062,18 @@ describe("Storage emulator", () => {
 
           const requestClient = TEST_CONFIG.useProductionServers ? https : http;
           await new Promise((resolve, reject) => {
-            requestClient.get(
-              downloadUrl,
-              {
-                headers: {
-                  // This is considered an authorized request in the emulator
-                  Authorization: "Bearer owner",
-                },
-              },
-              (response) => {
-                const data: any = [];
-                response
-                  .on("data", (chunk) => data.push(chunk))
-                  .on("end", () => {
-                    expect(Buffer.concat(data)).to.deep.equal(
-                      Buffer.from(IMAGE_FILE_BASE64, "base64")
-                    );
-                  })
-                  .on("close", resolve)
-                  .on("error", reject);
-              }
-            );
+            requestClient.get(downloadUrl, (response) => {
+              const data: any = [];
+              response
+                .on("data", (chunk) => data.push(chunk))
+                .on("end", () => {
+                  expect(Buffer.concat(data)).to.deep.equal(
+                    Buffer.from(IMAGE_FILE_BASE64, "base64")
+                  );
+                })
+                .on("close", resolve)
+                .on("error", reject);
+            });
           });
         });
       });

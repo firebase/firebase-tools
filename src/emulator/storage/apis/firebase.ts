@@ -1,7 +1,12 @@
 import { EmulatorLogger } from "../../emulatorLogger";
 import { Emulators } from "../../types";
 import { gunzipSync } from "zlib";
-import { OutgoingFirebaseMetadata, RulesResourceMetadata, StoredFileMetadata } from "../metadata";
+import {
+  IncomingMetadata,
+  OutgoingFirebaseMetadata,
+  RulesResourceMetadata,
+  StoredFileMetadata,
+} from "../metadata";
 import * as mime from "mime";
 import { Request, Response, Router } from "express";
 import { StorageEmulator } from "../index";
@@ -11,6 +16,7 @@ import { parseObjectUploadMultipartRequest } from "../multipart";
 import { NotFoundError, ForbiddenError } from "../errors";
 import { isPermitted } from "../rules/utils";
 import { NotCancellableError, Upload, UploadNotActiveError } from "../upload";
+import { ListResponse } from "../list";
 
 /**
  * @param emulator
@@ -104,7 +110,12 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       if (err instanceof NotFoundError) {
         return res.sendStatus(404);
       } else if (err instanceof ForbiddenError) {
-        return res.sendStatus(403);
+        return res.status(403).json({
+          error: {
+            code: 403,
+            message: `Permission denied. No READ permission.`,
+          },
+        });
       }
       throw err;
     }
@@ -141,76 +152,57 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   });
 
   const handleMetadataUpdate = async (req: Request, res: Response) => {
-    const md = storageLayer.getMetadata(req.params.bucketId, req.params.objectId);
-
-    if (!md) {
-      res.sendStatus(404);
-      return;
-    }
-
-    const decodedObjectId = decodeURIComponent(req.params.objectId);
-    const operationPath = ["b", req.params.bucketId, "o", decodedObjectId].join("/");
-
-    if (
-      !(await isPermitted({
-        ruleset: emulator.rules,
-        method: RulesetOperationMethod.UPDATE,
-        path: operationPath,
+    let metadata: StoredFileMetadata;
+    try {
+      metadata = await storageLayer.handleUpdateObjectMetadata({
+        bucketId: req.params.bucketId,
+        decodedObjectId: decodeURIComponent(req.params.objectId),
+        metadata: req.body as IncomingMetadata,
         authorization: req.header("authorization"),
-        file: {
-          before: md.asRulesResource(),
-          after: md.asRulesResource(req.body), // TODO
-        },
-      }))
-    ) {
-      return res.status(403).json({
-        error: {
-          code: 403,
-          message: `Permission denied. No WRITE permission.`,
-        },
       });
+    } catch (err) {
+      if (err instanceof ForbiddenError) {
+        return res.status(403).json({
+          error: {
+            code: 403,
+            message: `Permission denied. No WRITE permission.`,
+          },
+        });
+      }
+      if (err instanceof NotFoundError) {
+        return res.sendStatus(404);
+      }
+      throw err;
     }
-
-    md.update(req.body);
-
-    setObjectHeaders(res, md);
-    const outgoingMetadata = new OutgoingFirebaseMetadata(md);
-    res.json(outgoingMetadata);
-    return;
+    setObjectHeaders(res, metadata);
+    return res.json(new OutgoingFirebaseMetadata(metadata));
   };
 
   // list object handler
   firebaseStorageAPI.get("/b/:bucketId/o", async (req, res) => {
-    let maxRes = undefined;
-    if (req.query.maxResults) {
-      maxRes = +req.query.maxResults.toString();
-    }
-    const delimiter = req.query.delimiter ? req.query.delimiter.toString() : "/";
-    const pageToken = req.query.pageToken ? req.query.pageToken.toString() : undefined;
-    const prefix = req.query.prefix ? req.query.prefix.toString() : "";
-
-    const operationPath = ["b", req.params.bucketId, "o", prefix].join("/");
-
-    if (
-      !(await isPermitted({
-        ruleset: emulator.rules,
-        method: RulesetOperationMethod.LIST,
-        path: operationPath,
-        file: {},
+    const maxResults = req.query.maxResults?.toString();
+    let response: ListResponse;
+    try {
+      response = await storageLayer.handleListObjects({
+        bucketId: req.params.bucketId,
+        prefix: req.query.prefix ? req.query.prefix.toString() : "",
+        delimiter: req.query.delimiter ? req.query.delimiter.toString() : "/",
+        pageToken: req.query.pageToken?.toString(),
+        maxResults: maxResults ? +maxResults : undefined,
         authorization: req.header("authorization"),
-      }))
-    ) {
-      return res.status(403).json({
-        error: {
-          code: 403,
-          message: `Permission denied. No LIST permission.`,
-        },
       });
+    } catch (err) {
+      if (err instanceof ForbiddenError) {
+        return res.status(403).json({
+          error: {
+            code: 403,
+            message: `Permission denied. No LIST permission.`,
+          },
+        });
+      }
+      throw err;
     }
-
-    res.json(
-      storageLayer.listItemsAndPrefixes(req.params.bucketId, prefix, delimiter, pageToken, maxRes)
-    );
+    return res.json(response);
   });
 
   const reqBodyToBuffer = async (req: Request): Promise<Buffer> => {
@@ -236,6 +228,8 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       const operationPath = ["b", bucketId, "o", decodedObjectId].join("/");
       const metadataBefore = storageLayer.getMetadata(bucketId, req.params.objectId);
 
+      // TODO(tonyjhuang): Replace this Firebase Rules check with an admin-only auth check
+      // as token management endpoints should only accept admin credentials.
       if (
         !(await isPermitted({
           ruleset: emulator.rules,
@@ -478,40 +472,27 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   firebaseStorageAPI.post("/b/:bucketId/o/:objectId?", handleUpload);
 
   firebaseStorageAPI.delete("/b/:bucketId/o/:objectId", async (req, res) => {
-    const decodedObjectId = decodeURIComponent(req.params.objectId);
-    const operationPath = ["b", req.params.bucketId, "o", decodedObjectId].join("/");
-    const md = storageLayer.getMetadata(req.params.bucketId, decodedObjectId);
-
-    const rulesFiles: { before?: RulesResourceMetadata } = {};
-
-    if (md) {
-      rulesFiles.before = md.asRulesResource();
-    }
-
-    if (
-      !(await isPermitted({
-        ruleset: emulator.rules,
-        method: RulesetOperationMethod.DELETE,
-        path: operationPath,
+    try {
+      await storageLayer.handleDeleteObject({
+        bucketId: req.params.bucketId,
+        decodedObjectId: decodeURIComponent(req.params.objectId),
         authorization: req.header("authorization"),
-        file: rulesFiles,
-      }))
-    ) {
-      return res.status(403).json({
-        error: {
-          code: 403,
-          message: `Permission denied. No WRITE permission.`,
-        },
       });
+    } catch (err) {
+      if (err instanceof ForbiddenError) {
+        return res.status(403).json({
+          error: {
+            code: 403,
+            message: `Permission denied. No WRITE permission.`,
+          },
+        });
+      }
+      if (err instanceof NotFoundError) {
+        return res.sendStatus(404);
+      }
+      throw err;
     }
-
-    if (!md) {
-      res.sendStatus(404);
-      return;
-    }
-
-    storageLayer.deleteFile(req.params.bucketId, req.params.objectId);
-    res.sendStatus(200);
+    res.sendStatus(204);
   });
 
   firebaseStorageAPI.get("/", (req, res) => {
