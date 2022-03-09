@@ -50,6 +50,21 @@ export function getRulesValidator(rulesetProvider: RulesetProvider): RulesValida
   };
 }
 
+/**
+ * Returns a validator that only checks for admin credentials.
+ */
+export function getAdminOnlyRulesValidator(): RulesValidator {
+  const adminCredentialValidator = getAdminCredentialValidator();
+  return {
+    validate: (
+      _path: string,
+      _method: RulesetOperationMethod,
+      _variableOverrides: RulesVariableOverrides,
+      authorization?: string
+    ) => Promise.resolve(adminCredentialValidator.validate(authorization)),
+  };
+}
+
 /** Returns a validator for admin credentials. */
 export function getAdminCredentialValidator(): AdminCredentialValidator {
   return { validate: isValidAdminCredentials };

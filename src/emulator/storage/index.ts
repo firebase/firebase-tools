@@ -7,9 +7,13 @@ import { StorageLayer } from "./files";
 import { EmulatorLogger } from "../emulatorLogger";
 import { StorageRulesManager } from "./rules/manager";
 import { StorageRulesetInstance, StorageRulesRuntime, StorageRulesIssues } from "./rules/runtime";
-import { SourceFile } from "./rules/types";
+import { RulesetOperationMethod, SourceFile } from "./rules/types";
 import express = require("express");
-import { getAdminCredentialValidator, getRulesValidator } from "./rules/utils";
+import {
+  getAdminCredentialValidator,
+  getAdminOnlyRulesValidator,
+  getRulesValidator,
+} from "./rules/utils";
 import { Persistence } from "./persistence";
 import { UploadService } from "./upload";
 
@@ -30,6 +34,8 @@ export class StorageEmulator implements EmulatorInstance {
   private _rulesManager: StorageRulesManager;
   private _persistence: Persistence;
   private _storageLayer: StorageLayer;
+  /** StorageLayer that validates requests solely based on admin credentials.  */
+  private _adminStorageLayer: StorageLayer;
   private _uploadService: UploadService;
 
   constructor(private args: StorageEmulatorArgs) {
@@ -42,11 +48,21 @@ export class StorageEmulator implements EmulatorInstance {
       getAdminCredentialValidator(),
       this._persistence
     );
+    this._adminStorageLayer = new StorageLayer(
+      args.projectId,
+      getAdminOnlyRulesValidator(),
+      getAdminCredentialValidator(),
+      this._persistence
+    );
     this._uploadService = new UploadService(this._persistence);
   }
 
   get storageLayer(): StorageLayer {
     return this._storageLayer;
+  }
+
+  get adminStorageLayer(): StorageLayer {
+    return this._adminStorageLayer;
   }
 
   get uploadService(): UploadService {
