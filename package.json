@@ -25,7 +25,7 @@
     "test": "npm run lint:quiet && npm run test:compile && npm run mocha",
     "test:client-integration": "./scripts/client-integration-tests/run.sh",
     "test:compile": "tsc --project tsconfig.compile.json",
-    "test:emulator": "TS_NODE_PROJECT='./tsconfig.dev.json' mocha 'scripts/emulator-tests/**/*.spec.ts'",
+    "test:emulator": "mocha 'scripts/emulator-tests/**/*.spec.ts'",
     "test:extensions-deploy": "./scripts/extensions-deploy-tests/run.sh",
     "test:extensions-emulator": "./scripts/extensions-emulator-tests/run.sh",
     "test:hosting": "./scripts/hosting-tests/run.sh",
@@ -216,7 +216,7 @@
     "source-map-support": "^0.5.9",
     "supertest": "^3.3.0",
     "swagger2openapi": "^6.0.3",
-    "ts-node": "^10.4.0",
+    "ts-node": "^10.7.0",
     "typescript": "^4.5.4",
     "typescript-json-schema": "^0.50.1"
   }
