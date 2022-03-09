@@ -181,9 +181,7 @@ export async function pruneSecrets(
       throw new FirebaseError(`Secret ${secret.secret} version is unexpectedly empty.`);
     }
     if (secret.projectId === projectId || secret.projectId === projectNumber) {
-      if (secret.version) {
-        secrets.push({ ...secret, version: secret.version });
-      }
+      secrets.push({ ...secret, version: secret.version });
     }
   }
 
