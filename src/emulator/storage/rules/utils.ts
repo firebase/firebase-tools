@@ -20,7 +20,7 @@ export interface RulesValidator {
   ): Promise<boolean>;
 }
 
-/** Authorizes storage requests via admin credientials. */
+/** Authorizes storage requests via admin credentials. */
 export interface AdminCredentialValidator {
   validate(authorization?: string): boolean;
 }
@@ -75,7 +75,7 @@ export async function isPermitted(opts: {
   }
 
   // Skip auth for UI
-  if (isValidAdminCredentials(opts.authorization || "")) {
+  if (isValidAdminCredentials(opts.authorization)) {
     return true;
   }
 

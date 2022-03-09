@@ -461,7 +461,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       case "patch":
         return handleMetadataUpdate(req, res);
       default:
-        return await handleObjectPostRequest(req, res);
+        return handleObjectPostRequest(req, res);
     }
   });
 
