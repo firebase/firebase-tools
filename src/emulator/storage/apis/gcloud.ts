@@ -292,7 +292,6 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
   });
 
   gcloudStorageAPI.get("/:bucketId/:objectId(**)", async (req, res) => {
-    console.log("this cant be right");
     let getObjectResponse: GetObjectResponse;
     try {
       getObjectResponse = await storageLayer.handleGetObject(

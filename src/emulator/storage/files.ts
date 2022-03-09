@@ -138,7 +138,7 @@ export class StorageLayer {
     const hasValidDownloadToken = (metadata?.downloadTokens || []).includes(
       request.downloadToken ?? ""
     );
-    let authorized = skipAuth || !!hasValidDownloadToken;
+    let authorized = skipAuth || hasValidDownloadToken;
     if (!authorized) {
       authorized = await this._validator.validate(
         ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
