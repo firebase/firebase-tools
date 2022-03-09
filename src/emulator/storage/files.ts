@@ -209,7 +209,7 @@ export class StorageLayer {
 
     let authorized = skipAuth;
     // If a valid download token is present, skip Firebase Rules auth. Mainly used by the js sdk.
-    let hasValidDownloadToken = (metadata?.downloadTokens || []).includes(
+    const hasValidDownloadToken = (metadata?.downloadTokens || []).includes(
       request.downloadToken ?? ""
     );
     if (!authorized || hasValidDownloadToken) {
