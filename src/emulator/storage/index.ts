@@ -91,7 +91,7 @@ export class StorageEmulator implements EmulatorInstance {
   }
 
   async stop(): Promise<void> {
-    await this.storageLayer.deleteAll();
+    await this._persistence.deleteAll();
     await this._rulesManager.close();
     return this.destroyServer ? this.destroyServer() : Promise.resolve();
   }
