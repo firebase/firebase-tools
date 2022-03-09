@@ -18,7 +18,7 @@ import {
 import { RulesetOperationMethod } from "./rules/types";
 import { RulesValidator } from "./rules/utils";
 import { Persistence } from "./persistence";
-import { Upload } from "./upload";
+import { Upload, UploadStatus } from "./upload";
 
 interface BucketsList {
   buckets: {
