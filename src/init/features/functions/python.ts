@@ -1,0 +1,24 @@
+import * as fs from "fs";
+import * as path from "path";
+
+import { Config } from "../../../config";
+
+const TEMPLATE_ROOT = path.resolve(__dirname, "../../../../templates/init/functions/python");
+const MAIN_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "functions.py"), "utf8");
+const REQUIREMENTS_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "requirements.txt"), "utf8");
+const GITIGNORE_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_gitignore"), "utf8");
+
+/**
+ * Create a Python Firebase Functions project.
+ */
+async function init(_setup: unknown, config: Config): Promise<void> {
+  await config.askWriteProjectFile("functions/requirements.txt", REQUIREMENTS_TEMPLATE);
+  // TODO pip install, potentially looks something like this:
+  //   py -m pip install -r requirements.txt        (Windows)
+  //   python3 -m pip install -r requirements.txt   (Unix/macOS)
+  //   pip install -r requirements.txt              (Unix/macOS fallback if python3 not in path)
+  await config.askWriteProjectFile("functions/functions.py", MAIN_TEMPLATE);
+  await config.askWriteProjectFile("functions/.gitignore", GITIGNORE_TEMPLATE);
+}
+
+module.exports = init;

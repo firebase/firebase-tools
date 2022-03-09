@@ -9,6 +9,7 @@ interface PreviewFlags {
   rtdbmanagement: boolean;
   functionsv2: boolean;
   golang: boolean;
+  python: boolean;
   deletegcfartifacts: boolean;
   artifactregistry: boolean;
   emulatoruisnapshot: boolean;
@@ -23,6 +24,7 @@ export const previews: PreviewFlags = {
   rtdbmanagement: false,
   functionsv2: false,
   golang: false,
+  python: false,
   deletegcfartifacts: false,
   artifactregistry: false,
   emulatoruisnapshot: false,
