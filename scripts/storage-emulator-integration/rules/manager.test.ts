@@ -11,13 +11,18 @@ import { RulesetOperationMethod } from "../../../src/emulator/storage/rules/type
 
 describe("Storage Rules Manager", function () {
   const rulesRuntime = new StorageRulesRuntime();
-  const rulesManager = new StorageRulesManager(rulesRuntime);
+  const rules = [
+    { resource: "bucket_1", rules: StorageRulesFiles.readWriteIfTrue },
+    { resource: "bucket_2", rules: StorageRulesFiles.readWriteIfAuth },
+  ];
+  let rulesManager = createStorageRulesManager(rules, rulesRuntime);
 
   // eslint-disable-next-line @typescript-eslint/no-invalid-this
   this.timeout(TIMEOUT_MED);
 
   before(async () => {
     await rulesRuntime.start();
+    await rulesManager.start();
   });
 
   after(async () => {
@@ -25,37 +30,54 @@ describe("Storage Rules Manager", function () {
     await rulesManager.close();
   });
 
-  it("should load ruleset from SourceFile object", async () => {
-    await rulesManager.setSourceFile(StorageRulesFiles.readWriteIfTrue);
-    expect(rulesManager.ruleset).not.to.be.undefined;
+  it("should load multiple rulesets on start", async () => {
+    expect(rulesManager.getRuleset("bucket_1")).not.to.be.undefined;
+    expect(rulesManager.getRuleset("bucket_2")).not.to.be.undefined;
   });
 
-  it("should load ruleset from file path", async () => {
+  it("should load single ruleset on start", async () => {
+    const otherRulesManager = createStorageRulesManager(
+      StorageRulesFiles.readWriteIfTrue,
+      rulesRuntime
+    );
+    await otherRulesManager.start();
+
+    expect(otherRulesManager.getRuleset("default")).not.to.be.undefined;
+
+    await otherRulesManager.close();
+  });
+
+  it("should load ruleset on update with SourceFile object", async () => {
+    await rulesManager.setSourceFile(StorageRulesFiles.readWriteIfTrue, "bucket_3");
+    expect(rulesManager.getRuleset("bucket_3")).not.to.be.undefined;
+  });
+
+  it("should load ruleset on update with file path", async () => {
     // Write rules to file
     const fileName = "storage.rules";
     const testDir = `${tmpdir()}/${uuidv4()}`;
     const persistence = new Persistence(testDir);
     persistence.appendBytes(fileName, Buffer.from(StorageRulesFiles.readWriteIfTrue.content));
 
-    await rulesManager.setSourceFile(`${testDir}/${fileName}`);
+    await rulesManager.setSourceFile(`${testDir}/${fileName}`, "bucket_3");
 
-    expect(rulesManager.ruleset).not.to.be.undefined;
+    expect(rulesManager.getRuleset("bucket_3")).not.to.be.undefined;
   });
 
   it("should set source file", async () => {
-    await rulesManager.setSourceFile(StorageRulesFiles.readWriteIfTrue);
-    const opts = { method: RulesetOperationMethod.GET, file: {}, path: "/b/bucket/o/" };
-    expect((await rulesManager.ruleset!.verify(opts)).permitted).to.be.true;
+    await rulesManager.setSourceFile(StorageRulesFiles.readWriteIfTrue, "bucket_3");
+    const opts = { method: RulesetOperationMethod.GET, file: {}, path: "/b/bucket_3/o/" };
+    expect((await rulesManager.getRuleset("bucket_3")!.verify(opts)).permitted).to.be.true;
 
-    const issues = await rulesManager.setSourceFile(StorageRulesFiles.readWriteIfAuth);
+    const issues = await rulesManager.setSourceFile(StorageRulesFiles.readWriteIfAuth, "bucket_3");
 
     expect(issues.errors.length).to.equal(0);
     expect(issues.warnings.length).to.equal(0);
-    expect((await rulesManager.ruleset!.verify(opts)).permitted).to.be.false;
+    expect((await rulesManager.getRuleset("bucket_3")!.verify(opts)).permitted).to.be.false;
   });
 
   it("should reload ruleset on changes to source file", async () => {
-    const opts = { method: RulesetOperationMethod.GET, file: {}, path: "/b/bucket/o/" };
+    const opts = { method: RulesetOperationMethod.GET, file: {}, path: "/b/bucket_3/o/" };
 
     // Write rules to file
     const fileName = "storage.rules";
@@ -63,30 +85,30 @@ describe("Storage Rules Manager", function () {
     const persistence = new Persistence(testDir);
     persistence.appendBytes(fileName, Buffer.from(StorageRulesFiles.readWriteIfTrue.content));
 
-    await rulesManager.setSourceFile(`${testDir}/${fileName}`);
-    expect((await rulesManager.ruleset!.verify(opts)).permitted).to.be.true;
+    await rulesManager.setSourceFile(`${testDir}/${fileName}`, "bucket_3");
+    expect((await rulesManager.getRuleset("bucket_3")!.verify(opts)).permitted).to.be.true;
 
     // Write new rules to file
     persistence.deleteFile(fileName);
     persistence.appendBytes(fileName, Buffer.from(StorageRulesFiles.readWriteIfAuth.content));
 
-    await rulesManager.setSourceFile(`${testDir}/${fileName}`);
-    expect((await rulesManager.ruleset!.verify(opts)).permitted).to.be.false;
+    await rulesManager.setSourceFile(`${testDir}/${fileName}`, "bucket_3");
+    expect((await rulesManager.getRuleset("bucket_3")!.verify(opts)).permitted).to.be.false;
   });
 
   it("should throw FirebaseError when attempting to set invalid source file", async () => {
     const invalidFileName = "foo";
-    await expect(rulesManager.setSourceFile(invalidFileName)).to.be.rejectedWith(
+    await expect(rulesManager.setSourceFile(invalidFileName, "bucket_3")).to.be.rejectedWith(
       FirebaseError,
       `File not found: ${invalidFileName}`
     );
   });
 
   it("should delete ruleset when storage manager is closed", async () => {
-    await rulesManager.setSourceFile(StorageRulesFiles.readWriteIfTrue);
-    expect(rulesManager.ruleset).not.to.be.undefined;
+    await rulesManager.setSourceFile(StorageRulesFiles.readWriteIfTrue, "bucket_3");
+    expect(rulesManager.getRuleset("bucket_3")).not.to.be.undefined;
 
     await rulesManager.close();
-    expect(rulesManager.ruleset).to.be.undefined;
+    expect(rulesManager.getRuleset("bucket_3")).to.be.undefined;
   });
 });

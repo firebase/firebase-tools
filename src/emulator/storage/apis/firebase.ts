@@ -64,8 +64,11 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     });
   }
 
-  firebaseStorageAPI.use((req, res, next) => {
-    if (!emulator.rules) {
+  // Automatically create a bucket for any route which uses a bucket
+  firebaseStorageAPI.use(/.*\/b\/(.+?)\/.*/, (req, res, next) => {
+    const bucketId = req.params[0];
+    storageLayer.createBucket(bucketId);
+    if (!emulator.getRules(bucketId)) {
       EmulatorLogger.forEmulator(Emulators.STORAGE).log(
         "WARN",
         "Permission denied because no Storage ruleset is currently loaded, check your rules for syntax errors."
@@ -77,13 +80,6 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         },
       });
     }
-
-    next();
-  });
-
-  // Automatically create a bucket for any route which uses a bucket
-  firebaseStorageAPI.use(/.*\/b\/(.+?)\/.*/, (req, res, next) => {
-    storageLayer.createBucket(req.params[0]);
     next();
   });
 

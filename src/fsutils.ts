@@ -1,4 +1,5 @@
-import { statSync } from "fs";
+import { readFileSync, statSync } from "fs";
+import { FirebaseError } from "./error";
 
 export function fileExistsSync(path: string): boolean {
   try {
@@ -13,5 +14,16 @@ export function dirExistsSync(path: string): boolean {
     return statSync(path).isDirectory();
   } catch (e: any) {
     return false;
+  }
+}
+
+export function readFile(path: string): string {
+  try {
+    return readFileSync(path).toString();
+  } catch (e: any) {
+    if (e.code === "ENOENT") {
+      throw new FirebaseError(`File not found: ${path}`);
+    }
+    throw e;
   }
 }

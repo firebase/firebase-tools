@@ -5,7 +5,7 @@ import { EmulatorInfo, EmulatorInstance, Emulators } from "../types";
 import { createApp } from "./server";
 import { StorageLayer } from "./files";
 import { EmulatorLogger } from "../emulatorLogger";
-import { StorageRulesManager } from "./rules/manager";
+import { createStorageRulesManager, StorageRulesManager } from "./rules/manager";
 import { StorageRulesetInstance, StorageRulesRuntime, StorageRulesIssues } from "./rules/runtime";
 import { SourceFile } from "./rules/types";
 import express = require("express");
@@ -13,16 +13,18 @@ import { getAdminCredentialValidator, getRulesValidator } from "./rules/utils";
 import { Persistence } from "./persistence";
 import { UploadService } from "./upload";
 
+export type RulesType = SourceFile | string;
+
 export type RulesConfig = {
   resource: string;
-  rules: string;
+  rules: RulesType;
 };
 
 export interface StorageEmulatorArgs {
   projectId: string;
   port?: number;
   host?: string;
-  rules: RulesConfig[];
+  rules: string | RulesConfig[];
   auto_download?: boolean;
 }
 
@@ -39,11 +41,11 @@ export class StorageEmulator implements EmulatorInstance {
 
   constructor(private args: StorageEmulatorArgs) {
     this._rulesRuntime = new StorageRulesRuntime();
-    this._rulesManager = new StorageRulesManager(this._rulesRuntime);
+    this._rulesManager = createStorageRulesManager(this.args.rules, this._rulesRuntime);
     this._persistence = new Persistence(this.getPersistenceTmpDir());
     this._storageLayer = new StorageLayer(
       args.projectId,
-      getRulesValidator(() => this.rules),
+      getRulesValidator(() => this.getRules("default")), // TODO(hsinpei): Fix
       getAdminCredentialValidator(),
       this._persistence
     );
@@ -56,10 +58,6 @@ export class StorageEmulator implements EmulatorInstance {
 
   get uploadService(): UploadService {
     return this._uploadService;
-  }
-
-  get rules(): StorageRulesetInstance | undefined {
-    return this._rulesManager.ruleset;
   }
 
   get logger(): EmulatorLogger {
@@ -75,9 +73,7 @@ export class StorageEmulator implements EmulatorInstance {
   async start(): Promise<void> {
     const { host, port } = this.getInfo();
     await this._rulesRuntime.start(this.args.auto_download);
-
-    // TODO(hsinpei): set source file for multiple resources
-    await this._rulesManager.setSourceFile(this.args.rules[0].rules);
+    await this._rulesManager.start();
     this._app = await createApp(this.args.projectId, this);
     const server = this._app.listen(port, host);
     this.destroyServer = utils.createDestroyer(server);
@@ -87,8 +83,12 @@ export class StorageEmulator implements EmulatorInstance {
     // No-op
   }
 
-  async setRules(rules: SourceFile): Promise<StorageRulesIssues> {
-    return this._rulesManager.setSourceFile(rules);
+  getRules(resource: string): StorageRulesetInstance | undefined {
+    return this._rulesManager.getRuleset(resource);
+  }
+
+  async setRules(rules: RulesType, resource: string): Promise<StorageRulesIssues> {
+    return this._rulesManager.setSourceFile(rules, resource);
   }
 
   async stop(): Promise<void> {

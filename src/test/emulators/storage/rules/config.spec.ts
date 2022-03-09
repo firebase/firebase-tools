@@ -27,8 +27,7 @@ describe("Storage Rules Config", () => {
     });
     const result = getStorageRulesConfig(PROJECT_ID, config);
 
-    expect(result.length).to.equal(1);
-    expect(result[0].rules).to.equal(`${tmpDir}/storage.rules`);
+    expect(result).to.equal(`${tmpDir}/storage.rules`);
   });
 
   it("should parse rules file for multiple targets", () => {

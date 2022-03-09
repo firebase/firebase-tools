@@ -1,36 +1,70 @@
 import * as chokidar from "chokidar";
-import * as fs from "fs";
 import { EmulatorLogger } from "../../emulatorLogger";
 import { Emulators } from "../../types";
-import { FirebaseError } from "../../../error";
 import { SourceFile } from "./types";
 import { StorageRulesIssues, StorageRulesRuntime, StorageRulesetInstance } from "./runtime";
+import { readFile } from "../../../fsutils";
+import { RulesConfig, RulesType } from "..";
+
+/** 
+ * Keeps track of the rules source file and maintains a generated ruleset for one or more storage
+ * resources. 
+ * */
+export interface StorageRulesManager {
+  /** Sets source file for each resource using the rules previously passed in the constructor. */
+  start: () => Promise<StorageRulesIssues>;
+
+  /** Retrieves the generated ruleset for the resource. */
+  getRuleset: (resource: string) => StorageRulesetInstance | undefined;
+
+  /**
+   * Updates the source file and, correspondingly, the file watcher and ruleset for the resource.
+   * @throws {FirebaseError} if file path is invalid.
+   */
+  setSourceFile: (rules: RulesType, resource: string) => Promise<StorageRulesIssues>;
+
+  /** Deletes source file, ruleset, and removes listeners from all files for all resources. */
+  close: () => Promise<void>;
+}
 
 /**
- * Loads and maintains a {@link StorageRulesetInstance} for a given source file. Listens for
- * changes to the file and updates the ruleset accordingly.
+ * Creates either a {@link StorageRulesManagerImplementation} to manage rules for a single resource
+ * or a {@link StorageRulesManagerRegistry} for multiple resources.
  */
-export class StorageRulesManager {
+export function createStorageRulesManager(
+  rules: RulesType | RulesConfig[],
+  runtime: StorageRulesRuntime
+): StorageRulesManager {
+  return Array.isArray(rules)
+    ? new StorageRulesManagerRegistry(rules, runtime)
+    : new StorageRulesManagerImplementation(rules, runtime);
+}
+
+/**
+ * Maintains a {@link StorageRulesetInstance} for a given source file. Listens for changes to the
+ * file and updates the ruleset accordingly.
+ */
+class StorageRulesManagerImplementation implements StorageRulesManager {
   private _sourceFile?: SourceFile;
   private _ruleset?: StorageRulesetInstance;
   private _watcher = new chokidar.FSWatcher();
   private _logger = EmulatorLogger.forEmulator(Emulators.STORAGE);
 
-  constructor(private _runtime: StorageRulesRuntime) {}
+  constructor(private _initRules: RulesType, private _runtime: StorageRulesRuntime) {}
 
-  get ruleset(): StorageRulesetInstance | undefined {
+  async start(): Promise<StorageRulesIssues> {
+    return this.setSourceFile(this._initRules);
+  }
+
+  getRuleset(): StorageRulesetInstance | undefined {
     return this._ruleset;
   }
 
-  /**
-   * Updates the source file and, correspondingly, the file watcher and ruleset.
-   * @throws {FirebaseError} if file path is invalid.
-   */
-  public async setSourceFile(rules: SourceFile | string): Promise<StorageRulesIssues> {
+  async setSourceFile(rules: RulesType): Promise<StorageRulesIssues> {
     const prevRulesFile = this._sourceFile?.name;
     let rulesFile: string;
     if (typeof rules === "string") {
-      this._sourceFile = { name: rules, content: readSourceFile(rules) };
+      this._sourceFile = { name: rules, content: readFile(rules) };
       rulesFile = rules;
     } else {
       // Allow invalid file path here for testing
@@ -43,10 +77,7 @@ export class StorageRulesManager {
     return issues;
   }
 
-  /**
-   * Deletes source file, ruleset, and removes listeners from all files.
-   */
-  public async close(): Promise<void> {
+  async close(): Promise<void> {
     delete this._sourceFile;
     delete this._ruleset;
     await this._watcher.close();
@@ -100,13 +131,50 @@ export class StorageRulesManager {
   }
 }
 
-function readSourceFile(fileName: string): string {
-  try {
-    return fs.readFileSync(fileName).toString();
-  } catch (error: any) {
-    if (error.code === "ENOENT") {
-      throw new FirebaseError(`File not found: ${fileName}`);
+/**
+ * Maintains a mapping from storage resource to {@link StorageRulesManagerImplementation} and
+ * directs calls to the appropriate instance.
+ */
+class StorageRulesManagerRegistry {
+  private _rulesManagers: Map<string, StorageRulesManagerImplementation>;
+
+  constructor(_initRules: RulesConfig[], private _runtime: StorageRulesRuntime) {
+    this._rulesManagers = new Map<string, StorageRulesManagerImplementation>();
+    for (const { resource, rules } of _initRules) {
+      this.createRulesManager(resource, rules);
     }
-    throw error;
+  }
+
+  async start(): Promise<StorageRulesIssues> {
+    const allIssues = new StorageRulesIssues();
+    for (const rulesManager of this._rulesManagers.values()) {
+      allIssues.extend(await rulesManager.start());
+    }
+    return allIssues;
+  }
+
+  getRuleset(resource: string): StorageRulesetInstance | undefined {
+    return this._rulesManagers.get(resource)?.getRuleset();
+  }
+
+  async setSourceFile(rules: RulesType, resource: string): Promise<StorageRulesIssues> {
+    const rulesManager =
+      this._rulesManagers.get(resource) || this.createRulesManager(resource, rules);
+    return rulesManager.setSourceFile(rules);
+  }
+
+  async close(): Promise<void> {
+    for (const rulesManager of this._rulesManagers.values()) {
+      await rulesManager.close();
+    }
+  }
+
+  private createRulesManager(
+    resource: string,
+    rules: RulesType
+  ): StorageRulesManagerImplementation {
+    const rulesManager = new StorageRulesManagerImplementation(rules, this._runtime);
+    this._rulesManagers.set(resource, rulesManager);
+    return rulesManager;
   }
 }
