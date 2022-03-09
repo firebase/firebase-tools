@@ -461,11 +461,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       case "patch":
         return handleMetadataUpdate(req, res);
       default:
-<<<<<<< HEAD
         return await handleObjectPostRequest(req, res);
-=======
-        return handleUpload(req, res);
->>>>>>> origin/tonyjhuang/refactor-rules
     }
   });
 
