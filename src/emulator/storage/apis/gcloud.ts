@@ -10,7 +10,7 @@ import {
 import { EmulatorRegistry } from "../../registry";
 import { StorageEmulator } from "../index";
 import { EmulatorLogger } from "../../emulatorLogger";
-import { GetObjectResponse, StorageLayer } from "../files";
+import { GetObjectResponse } from "../files";
 import type { Request, Response } from "express";
 import { parseObjectUploadMultipartRequest } from "../multipart";
 import { Upload, UploadNotActiveError } from "../upload";
@@ -20,18 +20,19 @@ import { reqBodyToBuffer } from "./request";
 export function createCloudEndpoints(emulator: StorageEmulator): Router {
   // eslint-disable-next-line new-cap
   const gcloudStorageAPI = Router();
-  const { adminStorageLayer: storageLayer, uploadService } = emulator;
+  // Use Admin StorageLayer to ensure Firebase Rules validation is skipped.
+  const { adminStorageLayer, uploadService } = emulator;
 
   // Automatically create a bucket for any route which uses a bucket
-  gcloudStorageAPI.use(/.*\/b\/(.+?)\/.*/, (req, res, next) => {
-    storageLayer.createBucket(req.params[0]);
+  gcloudStorageAPI.use(/.*\/b\/(.+?)\/.*/, (req, _res, next) => {
+    adminStorageLayer.createBucket(req.params[0]);
     next();
   });
 
-  gcloudStorageAPI.get("/b", async (req, res) => {
+  gcloudStorageAPI.get("/b", async (_req, res) => {
     res.json({
       kind: "storage#buckets",
-      items: await storageLayer.listBuckets(),
+      items: await adminStorageLayer.listBuckets(),
     });
   });
 
@@ -40,7 +41,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     async (req, res) => {
       let getObjectResponse: GetObjectResponse;
       try {
-        getObjectResponse = await storageLayer.handleGetObject({
+        getObjectResponse = await adminStorageLayer.handleGetObject({
           bucketId: req.params.bucketId,
           decodedObjectId: req.params.objectId,
         });
@@ -64,7 +65,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
   gcloudStorageAPI.patch("/b/:bucketId/o/:objectId", async (req, res) => {
     let updatedMetadata: StoredFileMetadata;
     try {
-      updatedMetadata = await storageLayer.handleUpdateObjectMetadata({
+      updatedMetadata = await adminStorageLayer.handleUpdateObjectMetadata({
         bucketId: req.params.bucketId,
         decodedObjectId: req.params.objectId,
         metadata: req.body as IncomingMetadata,
@@ -91,7 +92,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     const pageToken = req.query.pageToken ? req.query.pageToken.toString() : undefined;
     const prefix = req.query.prefix ? req.query.prefix.toString() : "";
 
-    const listResult = storageLayer.listItems(
+    const listResult = adminStorageLayer.listItems(
       req.params.bucketId,
       prefix,
       delimiter,
@@ -103,7 +104,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
 
   gcloudStorageAPI.delete("/b/:bucketId/o/:objectId", async (req, res) => {
     try {
-      await storageLayer.handleDeleteObject({
+      await adminStorageLayer.handleDeleteObject({
         bucketId: req.params.bucketId,
         decodedObjectId: req.params.objectId,
       });
@@ -141,7 +142,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
 
     let metadata: StoredFileMetadata;
     try {
-      metadata = await storageLayer.handleUploadObject(upload);
+      metadata = await adminStorageLayer.handleUploadObject(upload);
     } catch (err) {
       if (err instanceof ForbiddenError) {
         return res.sendStatus(403);
@@ -159,7 +160,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     );
     let getObjectResponse: GetObjectResponse;
     try {
-      getObjectResponse = await storageLayer.handleGetObject({
+      getObjectResponse = await adminStorageLayer.handleGetObject({
         bucketId: req.params.bucketId,
         decodedObjectId: req.params.objectId,
       });
@@ -249,7 +250,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     });
     let metadata: StoredFileMetadata;
     try {
-      metadata = await storageLayer.handleUploadObject(upload);
+      metadata = await adminStorageLayer.handleUploadObject(upload);
     } catch (err) {
       if (err instanceof ForbiddenError) {
         return res.sendStatus(403);
@@ -263,7 +264,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
   gcloudStorageAPI.get("/:bucketId/:objectId(**)", async (req, res) => {
     let getObjectResponse: GetObjectResponse;
     try {
-      getObjectResponse = await storageLayer.handleGetObject({
+      getObjectResponse = await adminStorageLayer.handleGetObject({
         bucketId: req.params.bucketId,
         decodedObjectId: req.params.objectId,
       });
