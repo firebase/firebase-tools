@@ -38,8 +38,8 @@ const DO_NOTHING = () => {
 
 const testBackend = {
   functionsDir: MODULE_ROOT,
+  nodeBinary: path.join(MODULE_ROOT, "node_modules/.bin/ts-node"),
   env: {},
-  nodeBinary: "to be overridden",
 };
 
 const functionsEmulator = new FunctionsEmulator({
@@ -73,7 +73,6 @@ async function invokeFunction(
   const serializedTriggers = triggers.toString();
 
   const opts = {
-    // Use ts-node to spawn worker process that can load TS modules.
     nodeBinary: path.join(MODULE_ROOT, "node_modules/.bin/ts-node"),
     serializedTriggers: serializedTriggers,
   };

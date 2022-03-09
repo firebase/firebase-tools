@@ -50,8 +50,8 @@ const functionsEmulator = new FunctionsEmulator({
 
 const testBackend = {
   functionsDir: MODULE_ROOT,
+  nodeBinary: path.join(MODULE_ROOT, "node_modules/.bin/ts-node"),
   env: {},
-  nodeBinary: "to be overridden",
 };
 
 functionsEmulator.setTriggersForTesting(
@@ -137,9 +137,8 @@ function useFunctions(triggers: () => {}): void {
     runtimeOpts?: InvokeRuntimeOpts
   ): Promise<RuntimeWorker> => {
     return invokeTrigger(testBackend, trigger, proto, {
-      // Use ts-node to spawn worker process that can load TS modules.
-      nodeBinary: path.join(MODULE_ROOT, "node_modules/.bin/ts-node"),
       serializedTriggers,
+      nodeBinary: backend.nodeBinary!,
     });
   };
 }
