@@ -48,79 +48,6 @@ export class StoredFile {
   }
 }
 
-export class ResumableUpload {
-  private _uploadId: string;
-  private _metadata: IncomingMetadata;
-  private _bucketId: string;
-  private _objectId: string;
-  private _contentType: string;
-  private _authorization: string | undefined;
-  private _currentBytesUploaded = 0;
-  private _status: UploadStatus = UploadStatus.ACTIVE;
-  private _fileLocation: string;
-
-  constructor(
-    bucketId: string,
-    objectId: string,
-    uploadId: string,
-    contentType: string,
-    metadata: IncomingMetadata,
-    authorization?: string
-  ) {
-    this._bucketId = bucketId;
-    this._objectId = objectId;
-    this._uploadId = uploadId;
-    this._contentType = contentType;
-    this._metadata = metadata;
-    this._authorization = authorization;
-    this._fileLocation = encodeURIComponent(`${uploadId}_b_${bucketId}_o_${objectId}`);
-    this._currentBytesUploaded = 0;
-  }
-
-  public get uploadId(): string {
-    return this._uploadId;
-  }
-  public get metadata(): IncomingMetadata {
-    return this._metadata;
-  }
-  public get bucketId(): string {
-    return this._bucketId;
-  }
-  public get objectId(): string {
-    return this._objectId;
-  }
-  public get contentType(): string {
-    return this._contentType;
-  }
-  public set contentType(contentType: string) {
-    this._contentType = contentType;
-  }
-  public get authorization(): string | undefined {
-    return this._authorization;
-  }
-  public get currentBytesUploaded(): number {
-    return this._currentBytesUploaded;
-  }
-  public set currentBytesUploaded(value: number) {
-    this._currentBytesUploaded = value;
-  }
-  public set status(status: UploadStatus) {
-    this._status = status;
-  }
-  public get status(): UploadStatus {
-    return this._status;
-  }
-  public get fileLocation(): string {
-    return this._fileLocation;
-  }
-}
-
-export enum UploadStatus {
-  ACTIVE,
-  CANCELLED,
-  FINISHED,
-}
-
 /**  Parsed request object for {@link StorageLayer#handleGetObject}. */
 export type GetObjectRequest = {
   bucketId: string;
@@ -256,11 +183,6 @@ export class StorageLayer {
     }
     return undefined;
   }
-
-  public(value: Map<string, StoredFile>) {
-    this._files = value;
-  }
-
   /**
    * Deletes an object.
    * @throws {ForbiddenError} if the request is not authorized.
