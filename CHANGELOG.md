@@ -1,2 +1,4 @@
 - Fixes bug where functions' memory configurations weren't preserved in batched function deploys (#4253).
-- Updates CF3 secret commands to automatically redeploy functions and delete unused secrets (#4130).
+- `ext:export` now uses stable ordering for params in .env files (#4256).
+- Adds alerting event provider (#4258).
+- Adds ergonomic improvements to CF3 secret commands to automatically redeploy functions and delete unused secrets (#4130).
