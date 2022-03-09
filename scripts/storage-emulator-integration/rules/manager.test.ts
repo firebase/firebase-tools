@@ -16,7 +16,7 @@ describe("Storage Rules Manager", function () {
     { resource: "bucket_1", rules: StorageRulesFiles.readWriteIfTrue },
     { resource: "bucket_2", rules: StorageRulesFiles.readWriteIfAuth },
   ];
-  let rulesManager = createStorageRulesManager(rules, rulesRuntime);
+  const rulesManager = createStorageRulesManager(rules, rulesRuntime);
 
   // eslint-disable-next-line @typescript-eslint/no-invalid-this
   this.timeout(TIMEOUT_MED);
