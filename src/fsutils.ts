@@ -20,8 +20,13 @@ export function dirExistsSync(path: string): boolean {
 export function readFile(path: string): string {
   try {
     return readFileSync(path).toString();
+<<<<<<< HEAD
   } catch (e: unknown) {
     if ((e as NodeJS.ErrnoException).code === "ENOENT") {
+=======
+  } catch (e: any) {
+    if (e.code === "ENOENT") {
+>>>>>>> eff938c0 (Make StorageRulesManager an interface; add StorageRulesManagerRegistry)
       throw new FirebaseError(`File not found: ${path}`);
     }
     throw e;

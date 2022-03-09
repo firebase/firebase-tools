@@ -13,6 +13,8 @@ import { getAdminCredentialValidator, getRulesValidator } from "./rules/utils";
 import { Persistence } from "./persistence";
 import { UploadService } from "./upload";
 
+export type RulesType = SourceFile | string;
+
 export type RulesConfig = {
   resource: string;
   rules: SourceFile;
