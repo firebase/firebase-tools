@@ -18,7 +18,7 @@ import {
 import { RulesetOperationMethod } from "./rules/types";
 import { AdminCredentialValidator, RulesValidator } from "./rules/utils";
 import { Persistence } from "./persistence";
-import { Upload } from "./upload";
+import { Upload, UploadStatus } from "./upload";
 
 interface BucketsList {
   buckets: {
@@ -46,79 +46,6 @@ export class StoredFile {
   public set path(value: string) {
     this._path = value;
   }
-}
-
-export class ResumableUpload {
-  private _uploadId: string;
-  private _metadata: IncomingMetadata;
-  private _bucketId: string;
-  private _objectId: string;
-  private _contentType: string;
-  private _authorization: string | undefined;
-  private _currentBytesUploaded = 0;
-  private _status: UploadStatus = UploadStatus.ACTIVE;
-  private _fileLocation: string;
-
-  constructor(
-    bucketId: string,
-    objectId: string,
-    uploadId: string,
-    contentType: string,
-    metadata: IncomingMetadata,
-    authorization?: string
-  ) {
-    this._bucketId = bucketId;
-    this._objectId = objectId;
-    this._uploadId = uploadId;
-    this._contentType = contentType;
-    this._metadata = metadata;
-    this._authorization = authorization;
-    this._fileLocation = encodeURIComponent(`${uploadId}_b_${bucketId}_o_${objectId}`);
-    this._currentBytesUploaded = 0;
-  }
-
-  public get uploadId(): string {
-    return this._uploadId;
-  }
-  public get metadata(): IncomingMetadata {
-    return this._metadata;
-  }
-  public get bucketId(): string {
-    return this._bucketId;
-  }
-  public get objectId(): string {
-    return this._objectId;
-  }
-  public get contentType(): string {
-    return this._contentType;
-  }
-  public set contentType(contentType: string) {
-    this._contentType = contentType;
-  }
-  public get authorization(): string | undefined {
-    return this._authorization;
-  }
-  public get currentBytesUploaded(): number {
-    return this._currentBytesUploaded;
-  }
-  public set currentBytesUploaded(value: number) {
-    this._currentBytesUploaded = value;
-  }
-  public set status(status: UploadStatus) {
-    this._status = status;
-  }
-  public get status(): UploadStatus {
-    return this._status;
-  }
-  public get fileLocation(): string {
-    return this._fileLocation;
-  }
-}
-
-export enum UploadStatus {
-  ACTIVE,
-  CANCELLED,
-  FINISHED,
 }
 
 /**  Parsed request object for {@link StorageLayer#handleGetObject}. */
@@ -158,11 +85,6 @@ export type ListObjectsRequest = {
   pageToken?: string;
   maxResults?: number;
   authorization?: string;
-};
-
-/**  Response object for {@link StorageLayer#handleListObjects}. */
-export type ListObjectsResponse = {
-  result: ListResponse;
 };
 
 /**  Parsed request object for {@link StorageLayer#handleCreateDownloadToken}. */
@@ -231,10 +153,10 @@ export class StorageLayer {
 
     let authorized = skipAuth;
     // If a valid download token is present, skip Firebase Rules auth. Mainly used by the js sdk.
-    if (!authorized) {
-      authorized = (metadata?.downloadTokens || []).includes(request.downloadToken ?? "");
-    }
-    if (!authorized) {
+    const hasValidDownloadToken = (metadata?.downloadTokens || []).includes(
+      request.downloadToken ?? ""
+    );
+    if (!authorized || hasValidDownloadToken) {
       authorized = await this._rulesValidator.validate(
         ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
         RulesetOperationMethod.GET,
@@ -278,11 +200,6 @@ export class StorageLayer {
     }
     return undefined;
   }
-
-  public(value: Map<string, StoredFile>) {
-    this._files = value;
-  }
-
   /**
    * Deletes an object.
    * @throws {ForbiddenError} if the request is not authorized.
@@ -421,7 +338,7 @@ export class StorageLayer {
   public async handleListObjects(
     request: ListObjectsRequest,
     skipAuth = false
-  ): Promise<ListObjectsResponse> {
+  ): Promise<ListResponse> {
     const authorized =
       skipAuth ||
       (await this._rulesValidator.validate(
@@ -433,15 +350,13 @@ export class StorageLayer {
     if (!authorized) {
       throw new ForbiddenError();
     }
-    return {
-      result: this.listItemsAndPrefixes(
-        request.bucketId,
-        request.prefix,
-        request.delimiter,
-        request.pageToken,
-        request.maxResults
-      ),
-    };
+    return this.listItemsAndPrefixes(
+      request.bucketId,
+      request.prefix,
+      request.delimiter,
+      request.pageToken,
+      request.maxResults
+    );
   }
 
   private listItemsAndPrefixes(

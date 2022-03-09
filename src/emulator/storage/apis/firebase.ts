@@ -8,7 +8,7 @@ import { EmulatorRegistry } from "../../registry";
 import { parseObjectUploadMultipartRequest } from "../multipart";
 import { NotFoundError, ForbiddenError } from "../errors";
 import { NotCancellableError, Upload, UploadNotActiveError } from "../upload";
-import { ListObjectsResponse } from "../files";
+import { ListResponse } from "../list";
 
 /**
  * @param emulator
@@ -146,7 +146,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   // list object handler
   firebaseStorageAPI.get("/b/:bucketId/o", async (req, res) => {
     const maxResults = req.query.maxResults?.toString();
-    let response: ListObjectsResponse;
+    let response: ListResponse;
     try {
       response = await storageLayer.handleListObjects({
         bucketId: req.params.bucketId,
@@ -167,7 +167,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       }
       throw err;
     }
-    return res.json(response.result);
+    return res.json(response);
   });
 
   const reqBodyToBuffer = async (req: Request): Promise<Buffer> => {
@@ -459,9 +459,13 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   firebaseStorageAPI.put("/b/:bucketId/o/:objectId?", async (req, res) => {
     switch (req.header("x-http-method-override")?.toLowerCase()) {
       case "patch":
-        return await handleMetadataUpdate(req, res);
+        return handleMetadataUpdate(req, res);
       default:
+<<<<<<< HEAD
         return await handleObjectPostRequest(req, res);
+=======
+        return handleUpload(req, res);
+>>>>>>> origin/tonyjhuang/refactor-rules
     }
   });
 
