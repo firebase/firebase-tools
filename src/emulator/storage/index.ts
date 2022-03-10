@@ -6,25 +6,23 @@ import { createApp } from "./server";
 import { StorageLayer } from "./files";
 import { EmulatorLogger } from "../emulatorLogger";
 import { createStorageRulesManager, StorageRulesManager } from "./rules/manager";
-import { StorageRulesetInstance, StorageRulesRuntime, StorageRulesIssues } from "./rules/runtime";
+import { StorageRulesRuntime } from "./rules/runtime";
 import { SourceFile } from "./rules/types";
 import express = require("express");
 import { getAdminCredentialValidator, getRulesValidator } from "./rules/utils";
 import { Persistence } from "./persistence";
 import { UploadService } from "./upload";
 
-export type RulesType = SourceFile | string;
-
 export type RulesConfig = {
   resource: string;
-  rules: RulesType;
+  rules: SourceFile;
 };
 
 export interface StorageEmulatorArgs {
   projectId: string;
   port?: number;
   host?: string;
-  rules: string | RulesConfig[];
+  rules: SourceFile | RulesConfig[];
   auto_download?: boolean;
 }
 
@@ -45,7 +43,7 @@ export class StorageEmulator implements EmulatorInstance {
     this._persistence = new Persistence(this.getPersistenceTmpDir());
     this._storageLayer = new StorageLayer(
       args.projectId,
-      getRulesValidator((resource: string) => this.getRules(resource)),
+      getRulesValidator((resource: string) => this._rulesManager.getRuleset(resource)),
       getAdminCredentialValidator(),
       this._persistence
     );
@@ -58,6 +56,10 @@ export class StorageEmulator implements EmulatorInstance {
 
   get uploadService(): UploadService {
     return this._uploadService;
+  }
+
+  get rulesManager(): StorageRulesManager {
+    return this._rulesManager;
   }
 
   get logger(): EmulatorLogger {
@@ -81,14 +83,6 @@ export class StorageEmulator implements EmulatorInstance {
 
   async connect(): Promise<void> {
     // No-op
-  }
-
-  getRules(resource: string): StorageRulesetInstance | undefined {
-    return this._rulesManager.getRuleset(resource);
-  }
-
-  async setRules(rules: RulesType, resource: string): Promise<StorageRulesIssues> {
-    return this._rulesManager.setSourceFile(rules, resource);
   }
 
   async stop(): Promise<void> {

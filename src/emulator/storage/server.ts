@@ -92,7 +92,10 @@ export function createApp(
 
     const name = file.name;
     const content = file.content;
-    const issues = await emulator.setRules({ name, content }, req.params.bucketId);
+    const issues = await emulator.rulesManager.setSourceFile(
+      { name, content },
+      req.params.bucketId
+    );
 
     if (issues.errors.length > 0) {
       res.status(400).json({
