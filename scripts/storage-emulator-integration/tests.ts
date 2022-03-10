@@ -475,13 +475,13 @@ describe("Storage emulator", () => {
           });
 
           const cloudFile = testBucket.file(destination);
-          const md = {
+          const incomingMetadata = {
             metadata: {
               firebaseStorageDownloadTokens: "myFirstToken,mySecondToken",
             },
           };
 
-          await cloudFile.setMetadata(md);
+          await cloudFile.setMetadata(incomingMetadata);
 
           // Check that the tokens are saved in Firebase metadata
           await supertest(STORAGE_EMULATOR_HOST)
@@ -489,13 +489,13 @@ describe("Storage emulator", () => {
             .expect(200)
             .then((res) => {
               const firebaseMd = res.body;
-              expect(firebaseMd.downloadTokens).to.equal(md.metadata.firebaseStorageDownloadTokens);
+              expect(firebaseMd.downloadTokens).to.equal(incomingMetadata.metadata.firebaseStorageDownloadTokens);
             });
 
           // Check that the tokens are saved in Cloud metadata
-          const [metadata] = await cloudFile.getMetadata();
-          expect(metadata.metadata.firebaseStorageDownloadTokens).to.deep.equal(
-            md.metadata.firebaseStorageDownloadTokens
+          const [storedMetadata] = await cloudFile.getMetadata();
+          expect(storedMetadata.metadata.firebaseStorageDownloadTokens).to.deep.equal(
+            incomingMetadata.metadata.firebaseStorageDownloadTokens
           );
         });
       });
@@ -1233,8 +1233,8 @@ describe("Storage emulator", () => {
             .set({ Authorization: "Bearer owner" })
             .expect(200)
             .then((res) => {
-              const md = res.body;
-              expect(md.downloadTokens.split(",").length).to.deep.equal(2);
+              const metadata = res.body;
+              expect(metadata.downloadTokens.split(",").length).to.deep.equal(2);
             });
         });
 
@@ -1268,8 +1268,8 @@ describe("Storage emulator", () => {
             .set({ Authorization: "Bearer owner" })
             .expect(200)
             .then((res) => {
-              const md = res.body;
-              expect(md.downloadTokens.split(",")).to.deep.equal([tokens[1]]);
+              const metadata = res.body;
+              expect(metadata.downloadTokens.split(",")).to.deep.equal([tokens[1]]);
             });
         });
 
@@ -1287,9 +1287,9 @@ describe("Storage emulator", () => {
             .set({ Authorization: "Bearer owner" })
             .expect(200)
             .then((res) => {
-              const md = res.body;
-              expect(md.downloadTokens.split(",").length).to.deep.equal(1);
-              expect(md.downloadTokens.split(",")).to.not.deep.equal([token]);
+              const metadata = res.body;
+              expect(metadata.downloadTokens.split(",").length).to.deep.equal(1);
+              expect(metadata.downloadTokens.split(",")).to.not.deep.equal([token]);
             });
         });
 
