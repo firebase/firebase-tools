@@ -24,12 +24,12 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
   const { adminStorageLayer, uploadService } = emulator;
 
   // Automatically create a bucket for any route which uses a bucket
-  gcloudStorageAPI.use(/.*\/b\/(.+?)\/.*/, (req, _res, next) => {
+  gcloudStorageAPI.use(/.*\/b\/(.+?)\/.*/, (req, res, next) => {
     adminStorageLayer.createBucket(req.params[0]);
     next();
   });
 
-  gcloudStorageAPI.get("/b", async (_req, res) => {
+  gcloudStorageAPI.get("/b", async (req, res) => {
     res.json({
       kind: "storage#buckets",
       items: await adminStorageLayer.listBuckets(),
