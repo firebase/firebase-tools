@@ -62,7 +62,7 @@ import { accessSecretVersion } from "../gcp/secretManager";
 import * as runtimes from "../deploy/functions/runtimes";
 import * as backend from "../deploy/functions/backend";
 import * as functionsEnv from "../functions/env";
-import { flatten, flattenArray } from "../functional";
+import { flattenArray } from "../functional";
 import { SecretEnvVar } from "../gcp/cloudfunctions";
 
 const EVENT_INVOKE = "functions:invoke";
@@ -102,8 +102,7 @@ export interface EmulatableBackend {
  */
 export interface BackendInfo {
   directory: string;
-  env: Record<string, string>;
-  secretEnv: backend.SecretEnvVar[];
+  env: Record<string, string>; // TODO: Consider exposing more information about where param values come from & if they are locally overwritten.
   functionTriggers: ParsedTriggerDefinition[];
   extensionInstanceId?: string;
   extension?: Extension; // Only present for published extensions
@@ -839,15 +838,15 @@ export class FunctionsEmulator implements EmulatorInstance {
     const cf3Triggers = Object.values(this.triggers)
       .filter((t) => !t.backend.extensionInstanceId)
       .map((t) => t.def);
-    const cf3SecretEnvVars = [
-      ...flattenArray<SecretEnvVar>(cf3Triggers.map((t) => t.secretEnvironmentVariables ?? [])),
-    ];
     return this.args.emulatableBackends.map((e: EmulatableBackend) => {
-      const secretEnv = e.predefinedTriggers ? e.secretEnv : cf3SecretEnvVars; // If we don't have predefined triggers, this is the CF3 backend.
+      const envWithSecrets = Object.assign({}, e.env);
+      for (const s of e.secretEnv) {
+        envWithSecrets[s.key] = backend.secretVersionName(s);
+      }
+
       return {
         directory: e.functionsDir,
-        env: e.env,
-        secretEnv,
+        env: envWithSecrets,
         extensionInstanceId: e.extensionInstanceId, // Present on all extensions
         extension: e.extension, // Only present on published extensions
         extensionVersion: e.extensionVersion, // Only present on published extensions

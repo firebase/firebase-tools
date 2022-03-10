@@ -158,13 +158,12 @@ export interface Param {
   example?: string;
 }
 
-// TODO: Switch these back - they shiould be capitalized.
 // We need to instead capitalize these values when reading  spec from extension.yaml
 export enum ParamType {
-  STRING = "string",
-  SELECT = "select",
-  MULTISELECT = "multiSelect",
-  SECRET = "secret",
+  STRING = "STRING",
+  SELECT = "SELECT",
+  MULTISELECT = "MULTISELECT",
+  SECRET = "SECRET",
 }
 
 export interface ParamOption {
