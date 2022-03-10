@@ -317,7 +317,7 @@ describe("Storage emulator", () => {
       });
 
       describe("#delete()", () => {
-        it("should properly delete a file from the bucket", async () => {
+        it("should delete a file from the bucket", async () => {
           // We use a nested path to ensure that we don't need to decode
           // the objectId in the gcloud emulator API
           const bucketFilePath = "file/to/delete";
@@ -475,13 +475,13 @@ describe("Storage emulator", () => {
           });
 
           const cloudFile = testBucket.file(destination);
-          const md = {
+          const incomingMetadata = {
             metadata: {
               firebaseStorageDownloadTokens: "myFirstToken,mySecondToken",
             },
           };
 
-          await cloudFile.setMetadata(md);
+          await cloudFile.setMetadata(incomingMetadata);
 
           // Check that the tokens are saved in Firebase metadata
           await supertest(STORAGE_EMULATOR_HOST)
@@ -489,13 +489,15 @@ describe("Storage emulator", () => {
             .expect(200)
             .then((res) => {
               const firebaseMd = res.body;
-              expect(firebaseMd.downloadTokens).to.equal(md.metadata.firebaseStorageDownloadTokens);
+              expect(firebaseMd.downloadTokens).to.equal(
+                incomingMetadata.metadata.firebaseStorageDownloadTokens
+              );
             });
 
           // Check that the tokens are saved in Cloud metadata
-          const [metadata] = await cloudFile.getMetadata();
-          expect(metadata.metadata.firebaseStorageDownloadTokens).to.deep.equal(
-            md.metadata.firebaseStorageDownloadTokens
+          const [storedMetadata] = await cloudFile.getMetadata();
+          expect(storedMetadata.metadata.firebaseStorageDownloadTokens).to.deep.equal(
+            incomingMetadata.metadata.firebaseStorageDownloadTokens
           );
         });
       });
@@ -1043,14 +1045,9 @@ describe("Storage emulator", () => {
 
       describe("#getDownloadURL()", () => {
         it("returns url pointing to the expected host", async () => {
-          let downloadUrl;
-          try {
-            downloadUrl = await page.evaluate((filename) => {
-              return firebase.storage().ref(filename).getDownloadURL();
-            }, filename);
-          } catch (err: any) {
-            expect(err).to.equal("");
-          }
+          const downloadUrl: string = await page.evaluate((filename) => {
+            return firebase.storage().ref(filename).getDownloadURL();
+          }, filename);
           const expectedHost = TEST_CONFIG.useProductionServers
             ? "https://firebasestorage.googleapis.com"
             : STORAGE_EMULATOR_HOST;
@@ -1067,27 +1064,18 @@ describe("Storage emulator", () => {
 
           const requestClient = TEST_CONFIG.useProductionServers ? https : http;
           await new Promise((resolve, reject) => {
-            requestClient.get(
-              downloadUrl,
-              {
-                headers: {
-                  // This is considered an authorized request in the emulator
-                  Authorization: "Bearer owner",
-                },
-              },
-              (response) => {
-                const data: any = [];
-                response
-                  .on("data", (chunk) => data.push(chunk))
-                  .on("end", () => {
-                    expect(Buffer.concat(data)).to.deep.equal(
-                      Buffer.from(IMAGE_FILE_BASE64, "base64")
-                    );
-                  })
-                  .on("close", resolve)
-                  .on("error", reject);
-              }
-            );
+            requestClient.get(downloadUrl, (response) => {
+              const data: any = [];
+              response
+                .on("data", (chunk) => data.push(chunk))
+                .on("end", () => {
+                  expect(Buffer.concat(data)).to.deep.equal(
+                    Buffer.from(IMAGE_FILE_BASE64, "base64")
+                  );
+                })
+                .on("close", resolve)
+                .on("error", reject);
+            });
           });
         });
       });
@@ -1240,74 +1228,84 @@ describe("Storage emulator", () => {
         );
       });
 
-      it("#addToken", async () => {
-        await supertest(STORAGE_EMULATOR_HOST)
-          .post(`/v0/b/${storageBucket}/o/testing%2Fstorage_ref%2Fimage.png?create_token=true`)
-          .set({ Authorization: "Bearer owner" })
-          .expect(200)
-          .then((res) => {
-            const md = res.body;
-            expect(md.downloadTokens.split(",").length).to.deep.equal(2);
-          });
+      describe("tokens", () => {
+        it("should generate new token on create_token", async () => {
+          await supertest(STORAGE_EMULATOR_HOST)
+            .post(`/v0/b/${storageBucket}/o/testing%2Fstorage_ref%2Fimage.png?create_token=true`)
+            .set({ Authorization: "Bearer owner" })
+            .expect(200)
+            .then((res) => {
+              const metadata = res.body;
+              expect(metadata.downloadTokens.split(",").length).to.deep.equal(2);
+            });
+        });
+
+        it("should return a 400 if create_token value is invalid", async () => {
+          await supertest(STORAGE_EMULATOR_HOST)
+            .post(
+              `/v0/b/${storageBucket}/o/testing%2Fstorage_ref%2Fimage.png?create_token=someNonTrueParam`
+            )
+            .set({ Authorization: "Bearer owner" })
+            .expect(400);
+        });
+
+        it("should return a 403 for create_token if auth header is invalid", async () => {
+          await supertest(STORAGE_EMULATOR_HOST)
+            .post(`/v0/b/${storageBucket}/o/testing%2Fstorage_ref%2Fimage.png?create_token=true`)
+            .set({ Authorization: "Bearer somethingElse" })
+            .expect(403);
+        });
+
+        it("should delete a download token", async () => {
+          const tokens = await supertest(STORAGE_EMULATOR_HOST)
+            .post(`/v0/b/${storageBucket}/o/testing%2Fstorage_ref%2Fimage.png?create_token=true`)
+            .set({ Authorization: "Bearer owner" })
+            .expect(200)
+            .then((res) => res.body.downloadTokens.split(","));
+          // delete the newly added token
+          await supertest(STORAGE_EMULATOR_HOST)
+            .post(
+              `/v0/b/${storageBucket}/o/testing%2Fstorage_ref%2Fimage.png?delete_token=${tokens[0]}`
+            )
+            .set({ Authorization: "Bearer owner" })
+            .expect(200)
+            .then((res) => {
+              const metadata = res.body;
+              expect(metadata.downloadTokens.split(",")).to.deep.equal([tokens[1]]);
+            });
+        });
+
+        it("should regenerate a new token if the last remaining one is deleted", async () => {
+          const token = await supertest(STORAGE_EMULATOR_HOST)
+            .get(`/v0/b/${storageBucket}/o/testing%2Fstorage_ref%2Fimage.png`)
+            .set({ Authorization: "Bearer owner" })
+            .expect(200)
+            .then((res) => res.body.downloadTokens);
+
+          await supertest(STORAGE_EMULATOR_HOST)
+            .post(
+              `/v0/b/${storageBucket}/o/testing%2Fstorage_ref%2Fimage.png?delete_token=${token}`
+            )
+            .set({ Authorization: "Bearer owner" })
+            .expect(200)
+            .then((res) => {
+              const metadata = res.body;
+              expect(metadata.downloadTokens.split(",").length).to.deep.equal(1);
+              expect(metadata.downloadTokens.split(",")).to.not.deep.equal([token]);
+            });
+        });
+
+        it("should return a 403 for delete_token if auth header is invalid", async () => {
+          await supertest(STORAGE_EMULATOR_HOST)
+            .post(
+              `/v0/b/${storageBucket}/o/testing%2Fstorage_ref%2Fimage.png?delete_token=someToken`
+            )
+            .set({ Authorization: "Bearer somethingElse" })
+            .expect(403);
+        });
       });
 
-      it("#addTokenWithBadParamIsBadRequest", async () => {
-        await supertest(STORAGE_EMULATOR_HOST)
-          .post(
-            `/v0/b/${storageBucket}/o/testing%2Fstorage_ref%2Fimage.png?create_token=someNonTrueParam`
-          )
-          .set({ Authorization: "Bearer owner" })
-          .expect(400);
-      });
-
-      it("#deleteToken", async () => {
-        const tokens = await supertest(STORAGE_EMULATOR_HOST)
-          .post(`/v0/b/${storageBucket}/o/testing%2Fstorage_ref%2Fimage.png?create_token=true`)
-          .set({ Authorization: "Bearer owner" })
-          .expect(200)
-          .then((res) => {
-            const md = res.body;
-            const tokens = md.downloadTokens.split(",");
-            expect(tokens.length).to.equal(2);
-
-            return tokens;
-          });
-        // delete the newly added token
-        await supertest(STORAGE_EMULATOR_HOST)
-          .post(
-            `/v0/b/${storageBucket}/o/testing%2Fstorage_ref%2Fimage.png?delete_token=${tokens[0]}`
-          )
-          .set({ Authorization: "Bearer owner" })
-          .expect(200)
-          .then((res) => {
-            const md = res.body;
-            expect(md.downloadTokens.split(",")).to.deep.equal([tokens[1]]);
-          });
-      });
-
-      it("#deleteLastTokenStillLeavesOne", async () => {
-        const token = await supertest(STORAGE_EMULATOR_HOST)
-          .get(`/v0/b/${storageBucket}/o/testing%2Fstorage_ref%2Fimage.png`)
-          .set({ Authorization: "Bearer owner" })
-          .expect(200)
-          .then((res) => {
-            const md = res.body;
-            return md.downloadTokens;
-          });
-
-        // deleting the only token still generates one.
-        await supertest(STORAGE_EMULATOR_HOST)
-          .post(`/v0/b/${storageBucket}/o/testing%2Fstorage_ref%2Fimage.png?delete_token=${token}`)
-          .set({ Authorization: "Bearer owner" })
-          .expect(200)
-          .then((res) => {
-            const md = res.body;
-            expect(md.downloadTokens.split(",").length).to.deep.equal(1);
-            expect(md.downloadTokens.split(",")).to.not.deep.equal([token]);
-          });
-      });
-
-      it("#uploadResumableDoesNotRequireMultipleAuthHeaders", async () => {
+      it("should accept subsequent resumable upload commands without an auth header", async () => {
         const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
           .post(
             `/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`
