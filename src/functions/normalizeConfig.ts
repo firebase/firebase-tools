@@ -1,10 +1,10 @@
-import { FunctionsConfig, FunctionsMultiple } from "../firebaseConfig";
+import { FunctionsConfig } from "../firebaseConfig";
 import { FirebaseError } from "../error";
 
 /**
  * Normalize Functions config to return functions config in an array form.
  */
-export function normalizeConfig(config: FunctionsConfig | undefined): FunctionsMultiple {
+export function normalizeConfig(config: FunctionsConfig | undefined): FunctionsConfig {
   if (config === undefined) {
     throw new FirebaseError("No valid functions configuration detected in firebase.json");
   }

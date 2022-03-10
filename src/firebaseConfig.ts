@@ -108,8 +108,6 @@ export type FunctionsSingle = {
   runtime?: CloudFunctionRuntimes;
 } & Deployable;
 
-export type FunctionsMultiple = [FunctionsSingle, ...FunctionsSingle[]];
-
 export type FunctionsConfig = FunctionsSingle | FunctionsSingle[];
 
 export type HostingConfig = HostingSingle | HostingMultiple;
