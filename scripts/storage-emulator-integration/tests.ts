@@ -606,12 +606,12 @@ describe("Storage emulator", () => {
       });
 
       describe("#copy()", () => {
-        const copyDestinationFile = "copied_file";
+        const COPY_DESTINATION_FILENAME = "copied_file";
 
         it("should copy the file", async () => {
           await testBucket.upload(smallFilePath);
 
-          const file = testBucket.file(copyDestinationFile);
+          const file = testBucket.file(COPY_DESTINATION_FILENAME);
           const [, resp] = await testBucket.file(smallFilePath.split("/").slice(-1)[0]).copy(file);
 
           expect(resp)
@@ -633,7 +633,7 @@ describe("Storage emulator", () => {
           await testBucket.upload(smallFilePath);
 
           const otherBucket = testBucket.storage.bucket("other-bucket");
-          const file = otherBucket.file(copyDestinationFile);
+          const file = otherBucket.file(COPY_DESTINATION_FILENAME);
           const [, { resource: metadata }] = await testBucket
             .file(smallFilePath.split("/").slice(-1)[0])
             .copy(file);
@@ -649,7 +649,7 @@ describe("Storage emulator", () => {
         it("should return the metadata of the destination file", async () => {
           await testBucket.upload(smallFilePath);
 
-          const file = testBucket.file(copyDestinationFile);
+          const file = testBucket.file(COPY_DESTINATION_FILENAME);
           const [, { resource: actualMetadata }] = await testBucket
             .file(smallFilePath.split("/").slice(-1)[0])
             .copy(file);
@@ -668,7 +668,7 @@ describe("Storage emulator", () => {
             },
           });
 
-          const file = testBucket.file(copyDestinationFile);
+          const file = testBucket.file(COPY_DESTINATION_FILENAME);
           await testBucket.file(smallFilePath.split("/").slice(-1)[0]).copy(file);
 
           const [metadata] = await file.getMetadata();
@@ -724,7 +724,7 @@ describe("Storage emulator", () => {
             },
           });
 
-          const file = testBucket.file(copyDestinationFile);
+          const file = testBucket.file(COPY_DESTINATION_FILENAME);
           const metadata = { foo: "bar" };
           const cacheControl = "private,max-age=10,immutable";
           // Types for CopyOptions are wrong (@google-cloud/storage sub-dependency needs
@@ -755,7 +755,7 @@ describe("Storage emulator", () => {
         it("should set null custom metadata values to empty strings", async () => {
           const [, source] = await testBucket.upload(smallFilePath);
 
-          const file = testBucket.file(copyDestinationFile);
+          const file = testBucket.file(COPY_DESTINATION_FILENAME);
           const metadata = { foo: "bar", nullMetadata: null };
           const cacheControl = "private,max-age=10,immutable";
           // Types for CopyOptions are wrong (@google-cloud/storage sub-dependency needs
@@ -797,7 +797,7 @@ describe("Storage emulator", () => {
             },
           });
 
-          const file = testBucket.file(copyDestinationFile);
+          const file = testBucket.file(COPY_DESTINATION_FILENAME);
           const [, { resource: metadata }] = await testBucket
             .file(smallFilePath.split("/").slice(-1)[0])
             .copy(file);
@@ -818,7 +818,7 @@ describe("Storage emulator", () => {
             },
           });
 
-          const file = testBucket.file(copyDestinationFile);
+          const file = testBucket.file(COPY_DESTINATION_FILENAME);
           const metadata = { foo: "bar" };
           // Types for CopyOptions are wrong (@google-cloud/storage sub-dependency needs
           // update to include https://github.com/googleapis/nodejs-storage/pull/1406
@@ -836,7 +836,7 @@ describe("Storage emulator", () => {
         it("should not support the use of a rewriteToken", async () => {
           await testBucket.upload(smallFilePath);
 
-          const file = testBucket.file(copyDestinationFile);
+          const file = testBucket.file(COPY_DESTINATION_FILENAME);
           await expect(
             testBucket.file(smallFilePath.split("/").slice(-1)[0]).copy(file, { token: "foo-bar" })
           ).to.eventually.be.rejected.and.have.property("code", 501);
