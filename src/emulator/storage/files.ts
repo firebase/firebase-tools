@@ -16,9 +16,9 @@ import {
   getProjectAdminSdkConfigOrCached,
 } from "../adminSdkConfig";
 import { RulesetOperationMethod } from "./rules/types";
-import { RulesValidator } from "./rules/utils";
+import { AdminCredentialValidator, RulesValidator } from "./rules/utils";
 import { Persistence } from "./persistence";
-import { Upload } from "./upload";
+import { Upload, UploadStatus } from "./upload";
 
 interface BucketsList {
   buckets: {
@@ -48,79 +48,6 @@ export class StoredFile {
   }
 }
 
-export class ResumableUpload {
-  private _uploadId: string;
-  private _metadata: IncomingMetadata;
-  private _bucketId: string;
-  private _objectId: string;
-  private _contentType: string;
-  private _authorization: string | undefined;
-  private _currentBytesUploaded = 0;
-  private _status: UploadStatus = UploadStatus.ACTIVE;
-  private _fileLocation: string;
-
-  constructor(
-    bucketId: string,
-    objectId: string,
-    uploadId: string,
-    contentType: string,
-    metadata: IncomingMetadata,
-    authorization?: string
-  ) {
-    this._bucketId = bucketId;
-    this._objectId = objectId;
-    this._uploadId = uploadId;
-    this._contentType = contentType;
-    this._metadata = metadata;
-    this._authorization = authorization;
-    this._fileLocation = encodeURIComponent(`${uploadId}_b_${bucketId}_o_${objectId}`);
-    this._currentBytesUploaded = 0;
-  }
-
-  public get uploadId(): string {
-    return this._uploadId;
-  }
-  public get metadata(): IncomingMetadata {
-    return this._metadata;
-  }
-  public get bucketId(): string {
-    return this._bucketId;
-  }
-  public get objectId(): string {
-    return this._objectId;
-  }
-  public get contentType(): string {
-    return this._contentType;
-  }
-  public set contentType(contentType: string) {
-    this._contentType = contentType;
-  }
-  public get authorization(): string | undefined {
-    return this._authorization;
-  }
-  public get currentBytesUploaded(): number {
-    return this._currentBytesUploaded;
-  }
-  public set currentBytesUploaded(value: number) {
-    this._currentBytesUploaded = value;
-  }
-  public set status(status: UploadStatus) {
-    this._status = status;
-  }
-  public get status(): UploadStatus {
-    return this._status;
-  }
-  public get fileLocation(): string {
-    return this._fileLocation;
-  }
-}
-
-export enum UploadStatus {
-  ACTIVE,
-  CANCELLED,
-  FINISHED,
-}
-
 /**  Parsed request object for {@link StorageLayer#handleGetObject}. */
 export type GetObjectRequest = {
   bucketId: string;
@@ -135,6 +62,46 @@ export type GetObjectResponse = {
   data: Buffer;
 };
 
+/**  Parsed request object for {@link StorageLayer#handleUpdateObjectMetadata}. */
+export type UpdateObjectMetadataRequest = {
+  bucketId: string;
+  decodedObjectId: string;
+  metadata: IncomingMetadata;
+  authorization?: string;
+};
+
+/**  Parsed request object for {@link StorageLayer#handleDeleteObject}. */
+export type DeleteObjectRequest = {
+  bucketId: string;
+  decodedObjectId: string;
+  authorization?: string;
+};
+
+/**  Parsed request object for {@link StorageLayer#handleListObjects}. */
+export type ListObjectsRequest = {
+  bucketId: string;
+  prefix: string;
+  delimiter: string;
+  pageToken?: string;
+  maxResults?: number;
+  authorization?: string;
+};
+
+/**  Parsed request object for {@link StorageLayer#handleCreateDownloadToken}. */
+export type CreateDownloadTokenRequest = {
+  bucketId: string;
+  decodedObjectId: string;
+  authorization?: string;
+};
+
+/**  Parsed request object for {@link StorageLayer#handleDeleteDownloadToken}. */
+export type DeleteDownloadTokenRequest = {
+  bucketId: string;
+  decodedObjectId: string;
+  token: string;
+  authorization?: string;
+};
+
 export class StorageLayer {
   private _files!: Map<string, StoredFile>;
   private _buckets!: Map<string, CloudStorageBucketMetadata>;
@@ -142,7 +109,8 @@ export class StorageLayer {
 
   constructor(
     private _projectId: string,
-    private _validator: RulesValidator,
+    private _rulesValidator: RulesValidator,
+    private _adminCredsValidator: AdminCredentialValidator,
     private _persistence: Persistence
   ) {
     this.reset();
@@ -177,13 +145,19 @@ export class StorageLayer {
    * @throws {NotFoundError} if object does not exist
    * @throws {ForbiddenError} if request is unauthorized
    */
-  public async handleGetObject(request: GetObjectRequest): Promise<GetObjectResponse> {
+  public async handleGetObject(
+    request: GetObjectRequest,
+    skipAuth = false
+  ): Promise<GetObjectResponse> {
     const metadata = this.getMetadata(request.bucketId, request.decodedObjectId);
 
     // If a valid download token is present, skip Firebase Rules auth. Mainly used by the js sdk.
-    let authorized = (metadata?.downloadTokens || []).includes(request.downloadToken ?? "");
+    const hasValidDownloadToken = (metadata?.downloadTokens || []).includes(
+      request.downloadToken ?? ""
+    );
+    let authorized = skipAuth || hasValidDownloadToken;
     if (!authorized) {
-      authorized = await this._validator.validate(
+      authorized = await this._rulesValidator.validate(
         ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
         RulesetOperationMethod.GET,
         { before: metadata?.asRulesResource() },
@@ -212,28 +186,7 @@ export class StorageLayer {
     return;
   }
 
-  /**
-   * Generates metadata for an uploaded file. Generally, this should only be used for finalized
-   * uploads, unless needed for security rule checks.
-   * @param upload The upload corresponding to the file for which to generate metadata.
-   * @returns Metadata for uploaded file.
-   */
-  public createMetadata(upload: ResumableUpload): StoredFileMetadata {
-    const bytes = this._persistence.readBytes(upload.fileLocation, upload.currentBytesUploaded);
-    return new StoredFileMetadata(
-      {
-        name: upload.objectId,
-        bucket: upload.bucketId,
-        contentType: "",
-        contentEncoding: upload.metadata.contentEncoding,
-        customMetadata: upload.metadata.metadata,
-      },
-      this._cloudFunctions,
-      bytes
-    );
-  }
-
-  public getBytes(
+  private getBytes(
     bucket: string,
     object: string,
     size?: number,
@@ -247,12 +200,31 @@ export class StorageLayer {
     }
     return undefined;
   }
-
-  public(value: Map<string, StoredFile>) {
-    this._files = value;
+  /**
+   * Deletes an object.
+   * @throws {ForbiddenError} if the request is not authorized.
+   * @throws {NotFoundError} if the object does not exist.
+   */
+  public async handleDeleteObject(request: DeleteObjectRequest, skipAuth = false): Promise<void> {
+    const storedMetadata = this.getMetadata(request.bucketId, request.decodedObjectId);
+    const authorized =
+      skipAuth ||
+      (await this._rulesValidator.validate(
+        ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
+        RulesetOperationMethod.DELETE,
+        { before: storedMetadata?.asRulesResource() },
+        request.authorization
+      ));
+    if (!authorized) {
+      throw new ForbiddenError();
+    }
+    if (!storedMetadata) {
+      throw new NotFoundError();
+    }
+    this.deleteFile(request.bucketId, request.decodedObjectId);
   }
 
-  public deleteFile(bucketId: string, objectId: string): boolean {
+  private deleteFile(bucketId: string, objectId: string): boolean {
     const isFolder = objectId.toLowerCase().endsWith("%2f");
 
     if (isFolder) {
@@ -278,15 +250,44 @@ export class StorageLayer {
     }
   }
 
-  public async deleteAll(): Promise<void> {
-    return this._persistence.deleteAll();
+  /**
+   * Updates an existing object's metadata.
+   * @throws {ForbiddenError} if the request is not authorized.
+   * @throws {NotFoundError} if the object does not exist.
+   */
+  public async handleUpdateObjectMetadata(
+    request: UpdateObjectMetadataRequest,
+    skipAuth = false
+  ): Promise<StoredFileMetadata> {
+    const storedMetadata = this.getMetadata(request.bucketId, request.decodedObjectId);
+
+    const authorized =
+      skipAuth ||
+      (await this._rulesValidator.validate(
+        ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
+        RulesetOperationMethod.UPDATE,
+        {
+          before: storedMetadata?.asRulesResource(),
+          after: storedMetadata?.asRulesResource(request.metadata),
+        },
+        request.authorization
+      ));
+    if (!authorized) {
+      throw new ForbiddenError();
+    }
+    if (!storedMetadata) {
+      throw new NotFoundError();
+    }
+
+    storedMetadata.update(request.metadata);
+    return storedMetadata;
   }
 
   /**
    * Last step in uploading a file. Validates the request and persists the staging
    * object to its permanent location on disk.
    * TODO(tonyjhuang): Inject a Rules evaluator into StorageLayer to avoid needing skipAuth param
-   * @throws {ForbiddenError} if the request fails security rules auth.
+   * @throws {ForbiddenError} if the request is not authorized.
    */
   public async handleUploadObject(upload: Upload, skipAuth = false): Promise<StoredFileMetadata> {
     if (upload.status !== UploadStatus.FINISHED) {
@@ -307,7 +308,7 @@ export class StorageLayer {
     );
     const authorized =
       skipAuth ||
-      (await this._validator.validate(
+      (await this._rulesValidator.validate(
         ["b", upload.bucketId, "o", upload.objectId].join("/"),
         RulesetOperationMethod.CREATE,
         { after: metadata?.asRulesResource() },
@@ -326,7 +327,35 @@ export class StorageLayer {
     return metadata;
   }
 
-  public listItemsAndPrefixes(
+  /**
+   * Lists all files and prefixes (folders) at a path.
+   * @throws {ForbiddenError} if the request is not authorized.
+   */
+  public async handleListObjects(
+    request: ListObjectsRequest,
+    skipAuth = false
+  ): Promise<ListResponse> {
+    const authorized =
+      skipAuth ||
+      (await this._rulesValidator.validate(
+        ["b", request.bucketId, "o", request.prefix].join("/"),
+        RulesetOperationMethod.LIST,
+        {},
+        request.authorization
+      ));
+    if (!authorized) {
+      throw new ForbiddenError();
+    }
+    return this.listItemsAndPrefixes(
+      request.bucketId,
+      request.prefix,
+      request.delimiter,
+      request.pageToken,
+      request.maxResults
+    );
+  }
+
+  private listItemsAndPrefixes(
     bucket: string,
     prefix: string,
     delimiter: string,
@@ -335,10 +364,6 @@ export class StorageLayer {
   ): ListResponse {
     if (!delimiter) {
       delimiter = "/";
-    }
-
-    if (!prefix) {
-      prefix = "";
     }
 
     if (!prefix.endsWith(delimiter)) {
@@ -465,30 +490,34 @@ export class StorageLayer {
     };
   }
 
-  public addDownloadToken(bucket: string, object: string): StoredFileMetadata | undefined {
-    const key = this.path(bucket, object);
-    const val = this._files.get(key);
-    if (!val) {
-      return undefined;
+  /** Creates a new Firebase download token for an object. */
+  public handleCreateDownloadToken(request: CreateDownloadTokenRequest): StoredFileMetadata {
+    if (!this._adminCredsValidator.validate(request.authorization)) {
+      throw new ForbiddenError();
     }
-    const md = val.metadata;
-    md.addDownloadToken();
-    return md;
+    const metadata = this.getMetadata(request.bucketId, request.decodedObjectId);
+    if (!metadata) {
+      throw new NotFoundError();
+    }
+    metadata.addDownloadToken();
+    return metadata;
   }
 
-  public deleteDownloadToken(
-    bucket: string,
-    object: string,
-    token: string
-  ): StoredFileMetadata | undefined {
-    const key = this.path(bucket, object);
-    const val = this._files.get(key);
-    if (!val) {
-      return undefined;
+  /**
+   * Removes a Firebase download token from an object's metadata. If the token is not already
+   * present, calling this method is a no-op. This method will also regenerate a new token
+   * if the last remaining token is deleted.
+   */
+  public handleDeleteDownloadToken(request: DeleteDownloadTokenRequest): StoredFileMetadata {
+    if (!this._adminCredsValidator.validate(request.authorization)) {
+      throw new ForbiddenError();
     }
-    const md = val.metadata;
-    md.deleteDownloadToken(token);
-    return md;
+    const metadata = this.getMetadata(request.bucketId, request.decodedObjectId);
+    if (!metadata) {
+      throw new NotFoundError();
+    }
+    metadata.deleteDownloadToken(request.token);
+    return metadata;
   }
 
   private path(bucket: string, object: string): string {
