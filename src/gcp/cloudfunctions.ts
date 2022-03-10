@@ -474,6 +474,10 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     trigger = {
       taskQueueTrigger: {},
     };
+  } else if (gcfFunction.labels?.["deployment-callable"]) {
+    trigger = {
+      callableTrigger: {},
+    };
   } else if (gcfFunction.httpsTrigger) {
     trigger = { httpsTrigger: {} };
     uri = gcfFunction.httpsTrigger.url;

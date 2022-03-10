@@ -121,6 +121,9 @@ async function writeEnvFiles(
 ): Promise<void> {
   for (const spec of specs) {
     const content = Object.entries(spec.params)
+      .sort((a, b) => {
+        return a[0].localeCompare(b[0]);
+      })
       .map((r) => `${r[0]}=${r[1]}`)
       .join("\n");
     await config.askWriteProjectFile(`extensions/${spec.instanceId}.env`, content, force);
