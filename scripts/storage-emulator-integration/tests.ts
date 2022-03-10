@@ -489,7 +489,9 @@ describe("Storage emulator", () => {
             .expect(200)
             .then((res) => {
               const firebaseMd = res.body;
-              expect(firebaseMd.downloadTokens).to.equal(incomingMetadata.metadata.firebaseStorageDownloadTokens);
+              expect(firebaseMd.downloadTokens).to.equal(
+                incomingMetadata.metadata.firebaseStorageDownloadTokens
+              );
             });
 
           // Check that the tokens are saved in Cloud metadata
