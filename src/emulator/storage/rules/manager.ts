@@ -4,6 +4,7 @@ import { Emulators } from "../../types";
 import { SourceFile } from "./types";
 import { StorageRulesIssues, StorageRulesRuntime, StorageRulesetInstance } from "./runtime";
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { RulesConfig } from "..";
 
 /**
@@ -53,6 +54,9 @@ export function createStorageRulesManager(
 =======
 import { readFile } from "../../../fsutils";
 import { RulesConfig, RulesType } from "..";
+=======
+import { RulesConfig } from "..";
+>>>>>>> f54e03ec (Change emulator arg to take SourceFile only)
 
 /**
  * Keeps track of the rules source file and maintains a generated ruleset for one or more storage
@@ -67,9 +71,8 @@ export interface StorageRulesManager {
 
   /**
    * Updates the source file and, correspondingly, the file watcher and ruleset for the resource.
-   * @throws {FirebaseError} if file path is invalid.
    */
-  setSourceFile: (rules: RulesType, resource: string) => Promise<StorageRulesIssues>;
+  setSourceFile: (rules: SourceFile, resource: string) => Promise<StorageRulesIssues>;
 
   /** Deletes source file, ruleset, and removes listeners from all files for all resources. */
   close: () => Promise<void>;
@@ -80,7 +83,7 @@ export interface StorageRulesManager {
  * or a {@link StorageRulesManagerRegistry} for multiple resources.
  */
 export function createStorageRulesManager(
-  rules: RulesType | RulesConfig[],
+  rules: SourceFile | RulesConfig[],
   runtime: StorageRulesRuntime
 ): StorageRulesManager {
   return Array.isArray(rules)
@@ -105,6 +108,7 @@ class StorageRulesManagerImplementation implements StorageRulesManager {
   private _logger = EmulatorLogger.forEmulator(Emulators.STORAGE);
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   constructor(_rules: SourceFile, private _runtime: StorageRulesRuntime) {
     this._rules = _rules;
   }
@@ -113,6 +117,9 @@ class StorageRulesManagerImplementation implements StorageRulesManager {
     return this.updateSourceFile(this._rules);
 =======
   constructor(private _initRules: RulesType, private _runtime: StorageRulesRuntime) {}
+=======
+  constructor(private _initRules: SourceFile, private _runtime: StorageRulesRuntime) {}
+>>>>>>> f54e03ec (Change emulator arg to take SourceFile only)
 
   async start(): Promise<StorageRulesIssues> {
     return this.setSourceFile(this._initRules);
@@ -123,6 +130,7 @@ class StorageRulesManagerImplementation implements StorageRulesManager {
     return this._ruleset;
   }
 
+<<<<<<< HEAD
 <<<<<<< HEAD
   async updateSourceFile(rules: SourceFile): Promise<StorageRulesIssues> {
     const prevRulesFile = this._rules.name;
@@ -141,6 +149,11 @@ class StorageRulesManagerImplementation implements StorageRulesManager {
     }
 
 >>>>>>> eff938c0 (Make StorageRulesManager an interface; add StorageRulesManagerRegistry)
+=======
+  async setSourceFile(rules: SourceFile): Promise<StorageRulesIssues> {
+    const prevRulesFile = this._sourceFile?.name;
+    this._sourceFile = rules;
+>>>>>>> f54e03ec (Change emulator arg to take SourceFile only)
     const issues = await this.loadRuleset();
     this.updateWatcher(rules.name, prevRulesFile);
     return issues;
@@ -217,7 +230,7 @@ class ResourceBasedStorageRulesManager implements StorageRulesManager {
  * Maintains a mapping from storage resource to {@link StorageRulesManagerImplementation} and
  * directs calls to the appropriate instance.
  */
-class StorageRulesManagerRegistry {
+class StorageRulesManagerRegistry implements StorageRulesManager {
   private _rulesManagers: Map<string, StorageRulesManagerImplementation>;
 
   constructor(_initRules: RulesConfig[], private _runtime: StorageRulesRuntime) {
@@ -241,6 +254,7 @@ class StorageRulesManagerRegistry {
   }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   updateSourceFile(rules: SourceFile, resource: string): Promise<StorageRulesIssues> {
     const rulesManager =
       this._rulesManagers.get(resource) || this.createRulesManager(resource, rules);
@@ -257,6 +271,9 @@ class StorageRulesManagerRegistry {
     const rulesManager = new DefaultStorageRulesManager(rules, this._runtime);
 =======
   async setSourceFile(rules: RulesType, resource: string): Promise<StorageRulesIssues> {
+=======
+  async setSourceFile(rules: SourceFile, resource: string): Promise<StorageRulesIssues> {
+>>>>>>> f54e03ec (Change emulator arg to take SourceFile only)
     const rulesManager =
       this._rulesManagers.get(resource) || this.createRulesManager(resource, rules);
     return rulesManager.setSourceFile(rules);
@@ -270,7 +287,7 @@ class StorageRulesManagerRegistry {
 
   private createRulesManager(
     resource: string,
-    rules: RulesType
+    rules: SourceFile
   ): StorageRulesManagerImplementation {
     const rulesManager = new StorageRulesManagerImplementation(rules, this._runtime);
 >>>>>>> eff938c0 (Make StorageRulesManager an interface; add StorageRulesManagerRegistry)
