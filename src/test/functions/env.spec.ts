@@ -368,6 +368,21 @@ FOO=foo
       });
     });
 
+    it("loads envs, preferring .local for the emulator", () => {
+      createEnvFiles(tmpdir, {
+        ".env": "FOO=bad\nBAR=bar",
+        [`.env.${projectInfo.projectId}`]: "FOO=another bad",
+        ".env.local": "FOO=good",
+      });
+
+      expect(
+        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir, isEmulator: true })
+      ).to.be.deep.equal({
+        FOO: "good",
+        BAR: "bar",
+      });
+    });
+
     it("throws an error if both .env.<project> and .env.<alias> exists", () => {
       createEnvFiles(tmpdir, {
         ".env": "FOO=foo\nBAR=bar",

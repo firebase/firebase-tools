@@ -196,12 +196,12 @@ function findEnvfiles(
   isEmulator?: boolean
 ): string[] {
   const files: string[] = [".env"];
-  if (isEmulator) {
-    files.push(FUNCTIONS_EMULATOR_DOTENV);
-  }
   files.push(`.env.${projectId}`);
   if (projectAlias) {
     files.push(`.env.${projectAlias}`);
+  }
+  if (isEmulator) {
+    files.push(FUNCTIONS_EMULATOR_DOTENV);
   }
 
   return files
