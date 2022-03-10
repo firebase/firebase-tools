@@ -172,14 +172,13 @@ export class ExtensionsEmulator {
     // TODO(b/213335255): For local extensions, this should include extensionSpec instead of extensionVersion
     // TODO: Filter out secret envs from here
     const env = Object.assign(this.autoPopulatedParams(instance), instance.params);
-    // TODO: Correctly set secretEnv on extensionTriggers
-    const { extensionTriggers, nodeMajorVersion, secretEnvVariables } =
+    const { extensionTriggers, nodeMajorVersion, nonSecretEnv, secretEnvVariables } =
       await getExtensionFunctionInfo(extensionDir, instance.instanceId, env);
     const extension = await planner.getExtension(instance);
     const extensionVersion = await planner.getExtensionVersion(instance);
     return {
       functionsDir,
-      env,
+      env: nonSecretEnv,
       secretEnv: secretEnvVariables,
       predefinedTriggers: extensionTriggers,
       nodeMajorVersion: nodeMajorVersion,
