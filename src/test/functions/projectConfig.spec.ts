@@ -34,6 +34,10 @@ describe("projectConfig", () => {
     it("fails validation given config w/o source", () => {
       expect(() => projectConfig.validate([{ runtime: "nodejs10" }])).to.throw(FirebaseError);
     });
+
+    it("fails validation given config w/ empty source", () => {
+      expect(() => projectConfig.validate([{ source: "" }])).to.throw(FirebaseError);
+    });
   });
 
   describe("normalizeAndValidate", () => {
@@ -48,6 +52,12 @@ describe("projectConfig", () => {
     it("fails validation given singleton config w/o source", () => {
       expect(() => projectConfig.normalizeAndValidate({ runtime: "nodejs10" })).to.throw(
         FirebaseError
+      );
+    });
+
+    it("fails validation given singleton config w empty source", () => {
+      expect(() => projectConfig.normalizeAndValidate({ source: "" })).to.throw(
+          FirebaseError
       );
     });
 
