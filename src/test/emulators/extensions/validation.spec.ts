@@ -54,6 +54,7 @@ function getTestEmulatableBackend(
   return {
     functionsDir: ".",
     env: {},
+    secretEnv: [],
     predefinedTriggers,
   };
 }
@@ -71,7 +72,7 @@ function getTestParsedTriggerDefinition(args: {
   };
 }
 
-describe("ExtensionsEmulator validation validation", () => {
+describe("ExtensionsEmulator validation", () => {
   describe(`${validation.getUnemulatedAPIs.name}`, () => {
     const testProjectId = "test-project";
     const testAPI = "test.googleapis.com";

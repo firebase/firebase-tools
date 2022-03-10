@@ -436,6 +436,7 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
       env: {
         ...options.extDevEnv,
       },
+      secretEnv: [], // TODO: Figure out how this ought to work for CF3 - right now these are discovered alongside triggers.
       // TODO(b/213335255): predefinedTriggers and nodeMajorVersion are here to support ext:dev:emulators:* commands.
       // Ideally, we should handle that case via ExtensionEmulator.
       predefinedTriggers: options.extDevTriggers as ParsedTriggerDefinition[] | undefined,

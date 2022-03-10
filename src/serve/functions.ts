@@ -38,6 +38,7 @@ export class FunctionsServer {
       functionsDir,
       nodeMajorVersion,
       env: {},
+      secretEnv: [],
     };
     // Normally, these two fields are included in args (and typed as such).
     // However, some poorly-typed tests may not have them and we need to provide

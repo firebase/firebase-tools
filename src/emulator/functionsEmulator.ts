@@ -62,6 +62,8 @@ import { accessSecretVersion } from "../gcp/secretManager";
 import * as runtimes from "../deploy/functions/runtimes";
 import * as backend from "../deploy/functions/backend";
 import * as functionsEnv from "../functions/env";
+import { flatten, flattenArray } from "../functional";
+import { SecretEnvVar } from "../gcp/cloudfunctions";
 
 const EVENT_INVOKE = "functions:invoke";
 const LOCAL_SECRETS_FILE = ".secret.local";
@@ -85,6 +87,7 @@ const DATABASE_PATH_PATTERN = new RegExp("^projects/[^/]+/instances/([^/]+)/refs
 export interface EmulatableBackend {
   functionsDir: string;
   env: Record<string, string>;
+  secretEnv: backend.SecretEnvVar[];
   predefinedTriggers?: ParsedTriggerDefinition[];
   nodeMajorVersion?: number;
   nodeBinary?: string;
@@ -100,6 +103,7 @@ export interface EmulatableBackend {
 export interface BackendInfo {
   directory: string;
   env: Record<string, string>;
+  secretEnv: backend.SecretEnvVar[];
   functionTriggers: ParsedTriggerDefinition[];
   extensionInstanceId?: string;
   extension?: Extension; // Only present for published extensions
@@ -483,7 +487,10 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     let triggerDefinitions: EmulatedTriggerDefinition[];
     if (emulatableBackend.predefinedTriggers) {
-      triggerDefinitions = emulatedFunctionsByRegion(emulatableBackend.predefinedTriggers);
+      triggerDefinitions = emulatedFunctionsByRegion(
+        emulatableBackend.predefinedTriggers,
+        emulatableBackend.secretEnv
+      );
     } else {
       const runtimeConfig = this.getRuntimeConfig(emulatableBackend);
       const runtimeDelegateContext: runtimes.DelegateContext = {
@@ -832,10 +839,15 @@ export class FunctionsEmulator implements EmulatorInstance {
     const cf3Triggers = Object.values(this.triggers)
       .filter((t) => !t.backend.extensionInstanceId)
       .map((t) => t.def);
+    const cf3SecretEnvVars = [
+      ...flattenArray<SecretEnvVar>(cf3Triggers.map((t) => t.secretEnvironmentVariables ?? [])),
+    ];
     return this.args.emulatableBackends.map((e: EmulatableBackend) => {
+      const secretEnv = e.predefinedTriggers ? e.secretEnv : cf3SecretEnvVars; // If we don't have predefined triggers, this is the CF3 backend.
       return {
         directory: e.functionsDir,
         env: e.env,
+        secretEnv,
         extensionInstanceId: e.extensionInstanceId, // Present on all extensions
         extension: e.extension, // Only present on published extensions
         extensionVersion: e.extensionVersion, // Only present on published extensions
@@ -1082,11 +1094,15 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (trigger) {
       const secrets: backend.SecretEnvVar[] = trigger.secretEnvironmentVariables || [];
       const accesses = secrets
-        .filter((s) => !secretEnvs[s.secret])
+        .filter((s) => !secretEnvs[s.key])
         .map(async (s) => {
-          this.logger.logLabeled("INFO", "functions", `Trying to access secret ${s.key}@latest`);
-          const value = await accessSecretVersion(this.getProjectId(), s.key, "latest");
-          return [s.secret, value];
+          this.logger.logLabeled("INFO", "functions", `Trying to access secret ${s.secret}@latest`);
+          const value = await accessSecretVersion(
+            this.getProjectId(),
+            s.secret,
+            s.version ?? "latest"
+          );
+          return [s.key, value];
         });
       const accessResults = await allSettled(accesses);
 

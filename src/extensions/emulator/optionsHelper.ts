@@ -6,13 +6,14 @@ import * as paramHelper from "../paramHelper";
 import * as specHelper from "./specHelper";
 import * as localHelper from "../localHelper";
 import * as triggerHelper from "./triggerHelper";
-import { ExtensionSpec, Resource } from "../extensionsApi";
+import { ExtensionSpec, ParamType, Resource } from "../extensionsApi";
 import * as extensionsHelper from "../extensionsHelper";
 import { Config } from "../../config";
 import { FirebaseError } from "../../error";
 import { EmulatorLogger } from "../../emulator/emulatorLogger";
 import { needProjectId } from "../../projectUtils";
 import { Emulators } from "../../emulator/types";
+import { SecretEnvVar } from "../../deploy/functions/backend";
 
 export async function buildOptions(options: any): Promise<any> {
   const extDevDir = localHelper.findExtensionYaml(process.cwd());
@@ -51,6 +52,7 @@ export async function getExtensionFunctionInfo(
 ): Promise<{
   nodeMajorVersion: number;
   extensionTriggers: ParsedTriggerDefinition[];
+  secretEnvVariables: SecretEnvVar[];
 }> {
   const spec = await specHelper.readExtensionYaml(extensionDir);
   const functionResources = specHelper.getFunctionResourcesWithParamSubstitution(spec, params);
@@ -61,10 +63,32 @@ export async function getExtensionFunctionInfo(
       return trigger;
     });
   const nodeMajorVersion = specHelper.getNodeVersion(functionResources);
+  const secretEnvVariables = getSecretEnvVars(spec, params);
   return {
     extensionTriggers,
     nodeMajorVersion,
+    secretEnvVariables,
   };
+}
+export function getSecretEnvVars(
+  extensionSpec: ExtensionSpec,
+  params: Record<string, string>
+): SecretEnvVar[] {
+  const secretEnvVar: SecretEnvVar[] = [];
+  const secretParams = extensionSpec.params.filter((p) => p.type === ParamType.SECRET);
+  for (const s of secretParams) {
+    if (params[s.param]) {
+      const [, projectId, , secret, , version] = params[s.param].split("/");
+      secretEnvVar.push({
+        key: s.param,
+        secret,
+        projectId,
+        version,
+      });
+    }
+    // TODO: Throw an error if a required secret is missing?
+  }
+  return secretEnvVar;
 }
 
 // Exported for testing
