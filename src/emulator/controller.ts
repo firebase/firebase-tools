@@ -244,7 +244,7 @@ export function shouldStart(options: Options, name: Emulators): boolean {
   // Don't start the functions emulator if we can't find the source directory
   if (name === Emulators.FUNCTIONS && emulatorInTargets) {
     try {
-      normalizeAndValidate(options.config.src.functions)[0];
+      normalizeAndValidate(options.config.src.functions);
       return true;
     } catch (err: any) {
       EmulatorLogger.forEmulator(Emulators.FUNCTIONS).logLabeled(
@@ -430,8 +430,6 @@ export async function startAll(options: EmulatorOptions, showUI = true): Promise
   if (shouldStart(options, Emulators.FUNCTIONS)) {
     const functionsCfg = normalizeAndValidate(options.config.src.functions)[0];
     // Note: ext:dev:emulators:* commands hit this path, not the Emulators.EXTENSIONS path
-    utils.assertDefined(functionsCfg.source, "Error: 'functions.source' is not defined");
-
     utils.assertIsStringOrUndefined(options.extDevDir);
     const functionsDir = path.join(projectDir, functionsCfg.source);
 

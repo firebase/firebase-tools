@@ -13,7 +13,7 @@ import * as functionsConfig from "../../functionsConfig";
 import * as utils from "../../utils";
 import * as fsAsync from "../../fsAsync";
 import * as args from "./args";
-import * as firebaseConfig from "../../firebaseConfig";
+import * as projectConfig from "../../functions/projectConfig";
 
 const CONFIG_DEST_FILE = ".runtimeconfig.json";
 
@@ -56,7 +56,7 @@ async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream) {
 
 async function packageSource(
   sourceDir: string,
-  config: firebaseConfig.FunctionsSingle,
+  config: projectConfig.ValidatedSingle,
   runtimeConfig: any
 ) {
   const tmpFile = tmp.fileSync({ prefix: "firebase-functions-", postfix: ".zip" }).name;
@@ -115,7 +115,7 @@ async function packageSource(
 
 export async function prepareFunctionsUpload(
   sourceDir: string,
-  config: firebaseConfig.FunctionsSingle,
+  config: projectConfig.ValidatedSingle,
   runtimeConfig: backend.RuntimeConfigValues | undefined
 ): Promise<string | undefined> {
   return packageSource(sourceDir, config, runtimeConfig);
