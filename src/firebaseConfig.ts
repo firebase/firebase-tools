@@ -103,7 +103,7 @@ export type FirestoreConfig = {
 } & Deployable;
 
 export type FunctionsSingle = {
-  source: string;
+  source?: string;
   ignore?: string[];
   runtime?: CloudFunctionRuntimes;
 } & Deployable;
