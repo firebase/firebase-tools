@@ -2,7 +2,7 @@ import { FunctionsConfig, FunctionsSingle } from "../firebaseConfig";
 import { FirebaseError } from "../error";
 
 export type NormalizedConfig = [FunctionsSingle, ...FunctionsSingle[]];
-type ValidatedSingle = FunctionsSingle & { source: string };
+export type ValidatedSingle = FunctionsSingle & { source: string };
 export type ValidatedConfig = [ValidatedSingle];
 
 /**
