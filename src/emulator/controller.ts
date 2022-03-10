@@ -244,21 +244,18 @@ export function shouldStart(options: Options, name: Emulators): boolean {
   // Don't start the functions emulator if we can't find the source directory
   if (name === Emulators.FUNCTIONS && emulatorInTargets) {
     try {
-      const functionsCfg = normalizeAndValidate(options.config.src.functions)[0];
-      if (functionsCfg.source) {
-        return true;
-      }
+      normalizeAndValidate(options.config.src.functions)[0];
+      return true;
     } catch (err: any) {
-      // continue to warn and return false.
+      EmulatorLogger.forEmulator(Emulators.FUNCTIONS).logLabeled(
+        "WARN",
+        "functions",
+        `The functions emulator is configured but there is no functions source directory. Have you run ${clc.bold(
+          "firebase init functions"
+        )}?`
+      );
+      return false;
     }
-    EmulatorLogger.forEmulator(Emulators.FUNCTIONS).logLabeled(
-      "WARN",
-      "functions",
-      `The functions emulator is configured but there is no functions source directory. Have you run ${clc.bold(
-        "firebase init functions"
-      )}?`
-    );
-    return false;
   }
 
   if (name === Emulators.HOSTING && emulatorInTargets && !options.config.get("hosting")) {
