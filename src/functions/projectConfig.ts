@@ -2,8 +2,10 @@ import { FunctionsConfig, FunctionsSingle } from "../firebaseConfig";
 import { FirebaseError } from "../error";
 
 export type NormalizedConfig = [FunctionsSingle, ...FunctionsSingle[]];
-export type ValidatedSingle = FunctionsSingle & { source: string };
+export type ValidatedSingle = FunctionsSingle & { source: string; codebase: string };
 export type ValidatedConfig = [ValidatedSingle, ...ValidatedSingle[]];
+
+const DEFAULT_CODEBASE = "default";
 
 /**
  * Normalize functions config to return functions config in an array form.
@@ -27,7 +29,10 @@ function validateSingle(config: FunctionsSingle): ValidatedSingle {
   if (!config.source) {
     throw new FirebaseError("functions.source must be specified");
   }
-  return { ...config, source: config.source };
+  if (!config.codebase) {
+    config.codebase = DEFAULT_CODEBASE;
+  }
+  return { ...config, source: config.source, codebase: config.codebase };
 }
 
 function assertUnique(config: ValidatedConfig, property: keyof ValidatedSingle) {
@@ -36,7 +41,7 @@ function assertUnique(config: ValidatedConfig, property: keyof ValidatedSingle) 
     const value = single[property];
     if (values.has(value)) {
       throw new FirebaseError(
-        `functions.${property} must be unique but ${value} was used more than once.`
+        `functions.${property} must be unique but '${value}' was used more than once.`
       );
     }
     values.add(value);
@@ -51,6 +56,7 @@ export function validate(config: NormalizedConfig): ValidatedConfig {
   const validated = config.map((c) => validateSingle(c)) as ValidatedConfig;
 
   assertUnique(validated, "source");
+  assertUnique(validated, "codebase");
 
   return validated;
 }

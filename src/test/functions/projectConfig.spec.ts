@@ -4,7 +4,7 @@ import * as projectConfig from "../../functions/projectConfig";
 import { FirebaseError } from "../../error";
 
 const TEST_CONFIG_0 = { source: "foo" };
-const TEST_CONFIG_1 = { source: "bar" };
+const TEST_CONFIG_1 = { source: "bar", codebase: "bar" };
 
 describe("projectConfig", () => {
   describe("normalize", () => {
@@ -37,15 +37,29 @@ describe("projectConfig", () => {
     });
 
     it("fails validation given config w/o source", () => {
-      expect(() => projectConfig.validate([{ runtime: "nodejs10" }])).to.throw(FirebaseError);
+      expect(() => projectConfig.validate([{ runtime: "nodejs10" }])).to.throw(
+        FirebaseError,
+        /functions.source/
+      );
     });
 
     it("fails validation given config w/ empty source", () => {
-      expect(() => projectConfig.validate([{ source: "" }])).to.throw(FirebaseError);
+      expect(() => projectConfig.validate([{ source: "" }])).to.throw(
+        FirebaseError,
+        /functions.source/
+      );
     });
 
     it("fails validation given config w/ duplicate source", () => {
-      expect(() => projectConfig.validate([TEST_CONFIG_0, TEST_CONFIG_0])).to.throw(FirebaseError);
+      expect(() =>
+        projectConfig.validate([TEST_CONFIG_0, { ...TEST_CONFIG_0, codebase: "unique" }])
+      ).to.throw(FirebaseError, /functions.source/);
+    });
+
+    it("fails validation given config w/ duplicate codebase", () => {
+      expect(() =>
+        projectConfig.validate([TEST_CONFIG_0, { ...TEST_CONFIG_1, codebase: undefined }])
+      ).to.throw(FirebaseError, /functions.codebase/);
     });
   });
 
@@ -63,22 +77,39 @@ describe("projectConfig", () => {
 
     it("fails validation given singleton config w/o source", () => {
       expect(() => projectConfig.normalizeAndValidate({ runtime: "nodejs10" })).to.throw(
-        FirebaseError
+        FirebaseError,
+        /functions.source/
       );
     });
 
     it("fails validation given singleton config w empty source", () => {
-      expect(() => projectConfig.normalizeAndValidate({ source: "" })).to.throw(FirebaseError);
+      expect(() => projectConfig.normalizeAndValidate({ source: "" })).to.throw(
+        FirebaseError,
+        /functions.source/
+      );
     });
 
     it("fails validation given multi-resource config w/o source", () => {
       expect(() => projectConfig.normalizeAndValidate([{ runtime: "nodejs10" }])).to.throw(
-        FirebaseError
+        FirebaseError,
+        /functions.source/
       );
     });
 
     it("fails validation given config w/ duplicate source", () => {
-      expect(() => projectConfig.validate([TEST_CONFIG_0, TEST_CONFIG_0])).to.throw(FirebaseError);
+      expect(() => projectConfig.normalizeAndValidate([TEST_CONFIG_0, TEST_CONFIG_0])).to.throw(
+        FirebaseError,
+        /functions.source/
+      );
+    });
+
+    it("fails validation given config w/ duplicate codebase", () => {
+      expect(() =>
+        projectConfig.normalizeAndValidate([
+          TEST_CONFIG_0,
+          { ...TEST_CONFIG_1, codebase: undefined },
+        ])
+      ).to.throw(FirebaseError, /functions.codebase/);
     });
   });
 });
