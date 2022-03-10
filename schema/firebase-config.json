@@ -330,6 +330,9 @@
                 {
                     "additionalProperties": false,
                     "properties": {
+                        "codebase": {
+                            "type": "string"
+                        },
                         "ignore": {
                             "items": {
                                 "type": "string"
@@ -375,15 +378,15 @@
                             "type": "string"
                         }
                     },
-                    "required": [
-                        "source"
-                    ],
                     "type": "object"
                 },
                 {
                     "items": {
                         "additionalProperties": false,
                         "properties": {
+                            "codebase": {
+                                "type": "string"
+                            },
                             "ignore": {
                                 "items": {
                                     "type": "string"
@@ -429,9 +432,6 @@
                                 "type": "string"
                             }
                         },
-                        "required": [
-                            "source"
-                        ],
                         "type": "object"
                     },
                     "type": "array"

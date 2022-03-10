@@ -56,9 +56,7 @@ describe("projectConfig", () => {
     });
 
     it("fails validation given singleton config w empty source", () => {
-      expect(() => projectConfig.normalizeAndValidate({ source: "" })).to.throw(
-          FirebaseError
-      );
+      expect(() => projectConfig.normalizeAndValidate({ source: "" })).to.throw(FirebaseError);
     });
 
     it("fails validation given multi-resource config w/o source", () => {
