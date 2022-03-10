@@ -9,7 +9,7 @@ import { parseObjectUploadMultipartRequest } from "../multipart";
 import { NotFoundError, ForbiddenError } from "../errors";
 import { NotCancellableError, Upload, UploadNotActiveError } from "../upload";
 import { ListResponse } from "../list";
-import { reqBodyToBuffer } from "./request";
+import { reqBodyToBuffer } from "../../shared/request";
 
 /**
  * @param emulator

@@ -15,7 +15,7 @@ import type { Request, Response } from "express";
 import { parseObjectUploadMultipartRequest } from "../multipart";
 import { Upload, UploadNotActiveError } from "../upload";
 import { ForbiddenError, NotFoundError } from "../errors";
-import { reqBodyToBuffer } from "./request";
+import { reqBodyToBuffer } from "../../shared/request";
 
 export function createCloudEndpoints(emulator: StorageEmulator): Router {
   // eslint-disable-next-line new-cap
