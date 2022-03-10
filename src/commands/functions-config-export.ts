@@ -15,7 +15,7 @@ import * as configExport from "../functions/runtimeConfigExport";
 import * as requireConfig from "../requireConfig";
 
 import type { Options } from "../options";
-import { normalizeConfig } from "../functions/normalizeConfig";
+import { normalizeAndValidate } from "../functions/projectConfig";
 
 const REQUIRED_PERMISSIONS = [
   "runtimeconfig.configs.list",
@@ -104,7 +104,7 @@ export default new Command("functions:config:export")
   .before(requireConfig)
   .before(requireInteractive)
   .action(async (options: Options) => {
-    const config = normalizeConfig(options.config.src.functions)[0];
+    const config = normalizeAndValidate(options.config.src.functions)[0];
     const functionsDir = config.source;
 
     let pInfos = configExport.getProjectInfos(options);

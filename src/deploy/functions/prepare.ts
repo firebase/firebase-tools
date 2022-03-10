@@ -19,7 +19,7 @@ import { logger } from "../../logger";
 import { ensureTriggerRegions } from "./triggerRegionHelper";
 import { ensureServiceAgentRoles } from "./checkIam";
 import { FirebaseError } from "../../error";
-import { normalizeConfig } from "../../functions/normalizeConfig";
+import { normalizeAndValidate } from "../../functions/projectConfig";
 
 function hasUserConfig(config: Record<string, unknown>): boolean {
   // "firebase" key is always going to exist in runtime config.
@@ -39,7 +39,7 @@ export async function prepare(
   const projectId = needProjectId(options);
   const projectNumber = await needProjectNumber(options);
 
-  context.config = normalizeConfig(options.config.src.functions)[0];
+  context.config = normalizeAndValidate(options.config.src.functions)[0];
   const sourceDirName = context.config.source;
   if (!sourceDirName) {
     throw new FirebaseError(

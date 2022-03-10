@@ -9,7 +9,7 @@ import { parseRuntimeVersion } from "../emulator/functionsEmulatorUtils";
 import { needProjectId } from "../projectUtils";
 import { getProjectDefaultAccount } from "../auth";
 import { Options } from "../options";
-import * as functionsConfig from "../functions/normalizeConfig";
+import * as functionsConfig from "../functions/projectConfig";
 import * as utils from "../utils";
 
 // TODO(samstern): It would be better to convert this to an EmulatorServer
@@ -26,7 +26,7 @@ export class FunctionsServer {
 
   async start(options: Options, partialArgs: Partial<FunctionsEmulatorArgs>): Promise<void> {
     const projectId = needProjectId(options);
-    const config = functionsConfig.normalizeConfig(options.config.src.functions)[0];
+    const config = functionsConfig.normalizeAndValidate(options.config.src.functions)[0];
     utils.assertDefined(config.source, "Error: 'functions.source' is not defined");
 
     const functionsDir = path.join(options.config.projectDir, config.source);

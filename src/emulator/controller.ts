@@ -45,7 +45,7 @@ import { Options } from "../options";
 import { ParsedTriggerDefinition } from "./functionsEmulatorShared";
 import { ExtensionsEmulator } from "./extensionsEmulator";
 import { previews } from "../previews";
-import { normalizeConfig } from "../functions/normalizeConfig";
+import { normalizeAndValidate } from "../functions/projectConfig";
 
 const START_LOGGING_EMULATOR = utils.envOverride(
   "START_LOGGING_EMULATOR",
@@ -244,7 +244,7 @@ export function shouldStart(options: Options, name: Emulators): boolean {
   // Don't start the functions emulator if we can't find the source directory
   if (name === Emulators.FUNCTIONS && emulatorInTargets) {
     try {
-      const functionsCfg = normalizeConfig(options.config.src.functions)[0];
+      const functionsCfg = normalizeAndValidate(options.config.src.functions)[0];
       if (functionsCfg.source) {
         return true;
       }
@@ -431,7 +431,7 @@ export async function startAll(options: EmulatorOptions, showUI = true): Promise
   const emulatableBackends: EmulatableBackend[] = [];
   const projectDir = (options.extDevDir || options.config.projectDir) as string;
   if (shouldStart(options, Emulators.FUNCTIONS)) {
-    const functionsCfg = normalizeConfig(options.config.src.functions)[0];
+    const functionsCfg = normalizeAndValidate(options.config.src.functions)[0];
     // Note: ext:dev:emulators:* commands hit this path, not the Emulators.EXTENSIONS path
     utils.assertDefined(functionsCfg.source, "Error: 'functions.source' is not defined");
 
