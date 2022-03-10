@@ -7,15 +7,15 @@ const TEST_CONFIG = { source: "foo" };
 
 describe("projectConfig", () => {
   describe("normalize", () => {
-    it("normalizes singleton configs", () => {
+    it("normalizes singleton config", () => {
       expect(projectConfig.normalize(TEST_CONFIG)).to.deep.equal([TEST_CONFIG]);
     });
 
-    it("normalizes array configs", () => {
+    it("normalizes array config", () => {
       expect(projectConfig.normalize([TEST_CONFIG])).to.deep.equal([TEST_CONFIG]);
     });
 
-    it("throws error if given empty configs", () => {
+    it("throws error if given empty config", () => {
       expect(() => projectConfig.normalize([])).to.throw(FirebaseError);
     });
   });
