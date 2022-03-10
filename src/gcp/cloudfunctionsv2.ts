@@ -496,6 +496,10 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     trigger = {
       taskQueueTrigger: {},
     };
+  } else if (gcfFunction.labels?.["deployment-callable"] === "true") {
+    trigger = {
+      callableTrigger: {},
+    };
   } else if (gcfFunction.eventTrigger) {
     trigger = {
       eventTrigger: {

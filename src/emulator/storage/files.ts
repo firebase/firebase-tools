@@ -142,12 +142,12 @@ export class StorageLayer {
   ): Promise<GetObjectResponse> {
     const metadata = this.getMetadata(request.bucketId, request.decodedObjectId);
 
-    let authorized = skipAuth;
     // If a valid download token is present, skip Firebase Rules auth. Mainly used by the js sdk.
     const hasValidDownloadToken = (metadata?.downloadTokens || []).includes(
       request.downloadToken ?? ""
     );
-    if (!authorized || hasValidDownloadToken) {
+    let authorized = skipAuth || hasValidDownloadToken;
+    if (!authorized) {
       authorized = await this._rulesValidator.validate(
         ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
         RulesetOperationMethod.GET,
@@ -239,10 +239,6 @@ export class StorageLayer {
       this._cloudFunctions.dispatch("delete", new CloudStorageObjectMetadata(file.metadata));
       return true;
     }
-  }
-
-  public async deleteAll(): Promise<void> {
-    return this._persistence.deleteAll();
   }
 
   /**
@@ -485,9 +481,8 @@ export class StorageLayer {
     };
   }
 
-  public async handleCreateDownloadToken(
-    request: CreateDownloadTokenRequest
-  ): Promise<StoredFileMetadata> {
+  /** Creates a new Firebase download token for an object. */
+  public handleCreateDownloadToken(request: CreateDownloadTokenRequest): StoredFileMetadata {
     if (!this._adminCredsValidator.validate(request.authorization)) {
       throw new ForbiddenError();
     }
@@ -499,9 +494,12 @@ export class StorageLayer {
     return metadata;
   }
 
-  public async handleDeleteDownloadToken(
-    request: DeleteDownloadTokenRequest
-  ): Promise<StoredFileMetadata> {
+  /**
+   * Removes a Firebase download token from an object's metadata. If the token is not already
+   * present, calling this method is a no-op. This method will also regenerate a new token
+   * if the last remaining token is deleted.
+   */
+  public handleDeleteDownloadToken(request: DeleteDownloadTokenRequest): StoredFileMetadata {
     if (!this._adminCredsValidator.validate(request.authorization)) {
       throw new ForbiddenError();
     }

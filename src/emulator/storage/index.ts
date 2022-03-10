@@ -20,11 +20,16 @@ import { UploadService } from "./upload";
 import { CloudStorageBucketMetadata } from "./metadata";
 import { StorageCloudFunctions } from "./cloudFunctions";
 
+export type RulesConfig = {
+  resource: string;
+  rules: string;
+};
+
 export interface StorageEmulatorArgs {
   projectId: string;
   port?: number;
   host?: string;
-  rules: SourceFile | string;
+  rules: RulesConfig[];
   auto_download?: boolean;
 }
 
@@ -96,7 +101,9 @@ export class StorageEmulator implements EmulatorInstance {
   async start(): Promise<void> {
     const { host, port } = this.getInfo();
     await this._rulesRuntime.start(this.args.auto_download);
-    await this._rulesManager.setSourceFile(this.args.rules);
+
+    // TODO(hsinpei): set source file for multiple resources
+    await this._rulesManager.setSourceFile(this.args.rules[0].rules);
     this._app = await createApp(this.args.projectId, this);
     const server = this._app.listen(port, host);
     this.destroyServer = utils.createDestroyer(server);
@@ -111,7 +118,7 @@ export class StorageEmulator implements EmulatorInstance {
   }
 
   async stop(): Promise<void> {
-    await this.storageLayer.deleteAll();
+    await this._persistence.deleteAll();
     await this._rulesManager.close();
     return this.destroyServer ? this.destroyServer() : Promise.resolve();
   }

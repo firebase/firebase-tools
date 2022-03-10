@@ -297,25 +297,25 @@ export class OutgoingFirebaseMetadata {
   downloadTokens: string;
   metadata: object | undefined;
 
-  constructor(md: StoredFileMetadata) {
-    this.name = md.name;
-    this.bucket = md.bucket;
-    this.generation = md.generation.toString();
-    this.metageneration = md.metageneration.toString();
-    this.contentType = md.contentType;
-    this.timeCreated = toSerializedDate(md.timeCreated);
-    this.updated = toSerializedDate(md.updated);
-    this.storageClass = md.storageClass;
-    this.size = md.size.toString();
-    this.md5Hash = md.md5Hash;
-    this.crc32c = md.crc32c;
-    this.etag = md.etag;
-    this.downloadTokens = md.downloadTokens.join(",");
-    this.contentEncoding = md.contentEncoding;
-    this.contentDisposition = md.contentDisposition;
-    this.metadata = md.customMetadata;
-    this.contentLanguage = md.contentLanguage;
-    this.cacheControl = md.cacheControl;
+  constructor(metadata: StoredFileMetadata) {
+    this.name = metadata.name;
+    this.bucket = metadata.bucket;
+    this.generation = metadata.generation.toString();
+    this.metageneration = metadata.metageneration.toString();
+    this.contentType = metadata.contentType;
+    this.timeCreated = toSerializedDate(metadata.timeCreated);
+    this.updated = toSerializedDate(metadata.updated);
+    this.storageClass = metadata.storageClass;
+    this.size = metadata.size.toString();
+    this.md5Hash = metadata.md5Hash;
+    this.crc32c = metadata.crc32c;
+    this.etag = metadata.etag;
+    this.downloadTokens = metadata.downloadTokens.join(",");
+    this.contentEncoding = metadata.contentEncoding;
+    this.contentDisposition = metadata.contentDisposition;
+    this.metadata = metadata.customMetadata;
+    this.contentLanguage = metadata.contentLanguage;
+    this.cacheControl = metadata.cacheControl;
   }
 }
 
@@ -388,31 +388,31 @@ export class CloudStorageObjectMetadata {
   selfLink: string;
   mediaLink: string;
 
-  constructor(md: StoredFileMetadata) {
-    this.name = md.name;
-    this.bucket = md.bucket;
-    this.generation = md.generation.toString();
-    this.metageneration = md.metageneration.toString();
-    this.contentType = md.contentType;
-    this.timeCreated = toSerializedDate(md.timeCreated);
-    this.updated = toSerializedDate(md.updated);
-    this.storageClass = md.storageClass;
-    this.size = md.size.toString();
-    this.md5Hash = md.md5Hash;
-    this.etag = md.etag;
+  constructor(metadata: StoredFileMetadata) {
+    this.name = metadata.name;
+    this.bucket = metadata.bucket;
+    this.generation = metadata.generation.toString();
+    this.metageneration = metadata.metageneration.toString();
+    this.contentType = metadata.contentType;
+    this.timeCreated = toSerializedDate(metadata.timeCreated);
+    this.updated = toSerializedDate(metadata.updated);
+    this.storageClass = metadata.storageClass;
+    this.size = metadata.size.toString();
+    this.md5Hash = metadata.md5Hash;
+    this.etag = metadata.etag;
     this.metadata = {};
 
-    if (Object.keys(md.customMetadata || {})) {
+    if (Object.keys(metadata.customMetadata || {})) {
       this.metadata = {
         ...this.metadata,
-        ...md.customMetadata,
+        ...metadata.customMetadata,
       };
     }
 
-    if (md.downloadTokens.length) {
+    if (metadata.downloadTokens.length) {
       this.metadata = {
         ...this.metadata,
-        firebaseStorageDownloadTokens: md.downloadTokens.join(","),
+        firebaseStorageDownloadTokens: metadata.downloadTokens.join(","),
       };
     }
 
@@ -420,30 +420,30 @@ export class CloudStorageObjectMetadata {
       delete this.metadata;
     }
 
-    if (md.contentLanguage) {
-      this.contentLanguage = md.contentLanguage;
+    if (metadata.contentLanguage) {
+      this.contentLanguage = metadata.contentLanguage;
     }
 
-    if (md.cacheControl) {
-      this.cacheControl = md.cacheControl;
+    if (metadata.cacheControl) {
+      this.cacheControl = metadata.cacheControl;
     }
 
-    if (md.customTime) {
-      this.customTime = toSerializedDate(md.customTime);
+    if (metadata.customTime) {
+      this.customTime = toSerializedDate(metadata.customTime);
     }
 
     // I'm not sure why but @google-cloud/storage calls .substr(4) on this value, so we need to pad it.
-    this.crc32c = "----" + Buffer.from([md.crc32c]).toString("base64");
+    this.crc32c = "----" + Buffer.from([metadata.crc32c]).toString("base64");
 
-    this.timeStorageClassUpdated = toSerializedDate(md.timeCreated);
-    this.id = `${md.bucket}/${md.name}/${md.generation}`;
+    this.timeStorageClassUpdated = toSerializedDate(metadata.timeCreated);
+    this.id = `${metadata.bucket}/${metadata.name}/${metadata.generation}`;
     this.selfLink = `http://${EmulatorRegistry.getInfo(Emulators.STORAGE)?.host}:${
       EmulatorRegistry.getInfo(Emulators.STORAGE)?.port
-    }/storage/v1/b/${md.bucket}/o/${encodeURIComponent(md.name)}`;
+    }/storage/v1/b/${metadata.bucket}/o/${encodeURIComponent(metadata.name)}`;
     this.mediaLink = `http://${EmulatorRegistry.getInfo(Emulators.STORAGE)?.host}:${
       EmulatorRegistry.getInfo(Emulators.STORAGE)?.port
-    }/download/storage/v1/b/${md.bucket}/o/${encodeURIComponent(md.name)}?generation=${
-      md.generation
+    }/download/storage/v1/b/${metadata.bucket}/o/${encodeURIComponent(metadata.name)}?generation=${
+      metadata.generation
     }&alt=media`;
   }
 }

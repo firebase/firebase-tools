@@ -138,9 +138,12 @@ describe("files", () => {
     const getStorageLayer = (rulesValidator: RulesValidator) =>
       new StorageLayer(
         "project",
+        new Map(),
+        new Map(),
         rulesValidator,
         ALWAYS_TRUE_ADMIN_CREDENTIAL_VALIDATOR,
-        _persistence
+        _persistence,
+        new StorageCloudFunctions("project")
       );
 
     const getPersistenceTmpDir = () => `${tmpdir()}/firebase/storage/blobs`;
