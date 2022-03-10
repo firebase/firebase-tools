@@ -106,6 +106,7 @@ export type FunctionsSingle = {
   source?: string;
   ignore?: string[];
   runtime?: CloudFunctionRuntimes;
+  codebase?: string;
 } & Deployable;
 
 export type FunctionsConfig = FunctionsSingle | FunctionsSingle[];

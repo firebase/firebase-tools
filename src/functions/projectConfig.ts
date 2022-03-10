@@ -3,7 +3,7 @@ import { FirebaseError } from "../error";
 
 export type NormalizedConfig = [FunctionsSingle, ...FunctionsSingle[]];
 export type ValidatedSingle = FunctionsSingle & { source: string };
-export type ValidatedConfig = [ValidatedSingle];
+export type ValidatedConfig = [ValidatedSingle, ...ValidatedSingle[]];
 
 /**
  * Normalize functions config to return functions config in an array form.
@@ -17,7 +17,7 @@ export function normalize(config: FunctionsConfig | undefined): NormalizedConfig
     if (config.length < 1) {
       throw new FirebaseError("Requires at least one functions.source in firebase.json.");
     }
-    // Unfortunately, Typescript can't figure out that config has at least one element. We assert the type manually.
+    // Unfortunately, Typescript can't figure out that config has at least one element. Assert type instead.
     return config as NormalizedConfig;
   }
   return [config];
@@ -30,14 +30,29 @@ function validateSingle(config: FunctionsSingle): ValidatedSingle {
   return { ...config, source: config.source };
 }
 
+function assertUnique(config: ValidatedConfig, property: keyof ValidatedSingle) {
+  const values = new Set();
+  for (const single of config) {
+    const value = single[property];
+    if (values.has(value)) {
+      throw new FirebaseError(
+        `functions.${property} must be unique but ${value} was used more than once.`
+      );
+    }
+    values.add(value);
+  }
+}
+
 /**
  * Validate functions config.
  */
 export function validate(config: NormalizedConfig): ValidatedConfig {
-  if (config.length > 1) {
-    throw new FirebaseError("More than one functions.source detected in firebase.json.");
-  }
-  return [validateSingle(config[0])];
+  // Unfortunately, Typescript can't figure out that config has at least one element. Assert type instead.
+  const validated = config.map((c) => validateSingle(c)) as ValidatedConfig;
+
+  assertUnique(validated, "source");
+
+  return validated;
 }
 
 /**
