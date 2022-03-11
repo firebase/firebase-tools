@@ -190,8 +190,7 @@ export class StoredFileMetadata {
     if (incoming.metadata) {
       // Convert all values to strings
       this.customMetadata = this.customMetadata ? { ...this.customMetadata } : {};
-      for (const k of Object.keys(incoming.metadata)) {
-        const v = incoming.metadata[k];
+      for (const [k, v] of Object.entries(incoming.metadata)) {
         this.customMetadata[k] = (v === null ? null : String(v)) as any;
       }
     }
