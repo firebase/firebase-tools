@@ -9,7 +9,7 @@ import { StorageRulesManager } from "./rules/manager";
 import { StorageRulesetInstance, StorageRulesRuntime, StorageRulesIssues } from "./rules/runtime";
 import { SourceFile } from "./rules/types";
 import express = require("express");
-import { getRulesValidator } from "./rules/utils";
+import { getAdminCredentialValidator, getRulesValidator } from "./rules/utils";
 import { Persistence } from "./persistence";
 import { UploadService } from "./upload";
 
@@ -44,6 +44,7 @@ export class StorageEmulator implements EmulatorInstance {
     this._storageLayer = new StorageLayer(
       args.projectId,
       getRulesValidator(() => this.rules),
+      getAdminCredentialValidator(),
       this._persistence
     );
     this._uploadService = new UploadService(this._persistence);
