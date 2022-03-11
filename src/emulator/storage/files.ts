@@ -402,23 +402,13 @@ export class StorageLayer {
     if (!authorized) {
       throw new ForbiddenError();
     }
-    return this.listItemsAndPrefixes(
+    const itemsResults = this.listItems(
       request.bucketId,
       request.prefix,
       request.delimiter,
       request.pageToken,
       request.maxResults
     );
-  }
-
-  private listItemsAndPrefixes(
-    bucket: string,
-    prefix: string,
-    delimiter: string,
-    pageToken: string | undefined,
-    maxResults: number | undefined
-  ): ListResponse {
-    const itemsResults = this.listItems(bucket, prefix, delimiter, pageToken, maxResults);
     return new ListResponse(
       itemsResults.prefixes ?? [],
       itemsResults.items?.map((i) => new ListItem(i.name, i.bucket)) ?? [],
@@ -433,7 +423,6 @@ export class StorageLayer {
     pageToken: string | undefined,
     maxResults: number | undefined
   ): {
-    kind: string;
     prefixes?: string[];
     items?: CloudStorageObjectMetadata[];
     nextPageToken?: string;
@@ -495,7 +484,6 @@ export class StorageLayer {
     }
 
     return {
-      kind: "#storage/objects",
       nextPageToken,
       prefixes: prefixes.size > 0 ? [...prefixes].sort() : undefined,
       items:

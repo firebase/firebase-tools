@@ -108,7 +108,8 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       pageToken,
       maxRes
     );
-    res.json(listResult);
+
+    res.json({ ...listResult, kind: "#storage/objects" });
   });
 
   gcloudStorageAPI.delete("/b/:bucketId/o/:objectId", async (req, res) => {
