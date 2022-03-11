@@ -36,22 +36,7 @@ function wrappedSafeLoad(source: string): any {
 export async function readExtensionYaml(directory: string): Promise<ExtensionSpec> {
   const extensionYaml = await readFileFromDirectory(directory, SPEC_FILE);
   const source = extensionYaml.source;
-  const extensionSpec = wrappedSafeLoad(source);
-  return capitalizeParamTypes(extensionSpec);
-}
-
-/**
- * Loops through an ExtensionSpec and capitalizes all param types.
- * This is necessary because the Extensions backend accepts any capitalization for enums,
- * but returns them in ALL CAPS case.
- */
-function capitalizeParamTypes(spec: ExtensionSpec): ExtensionSpec {
-  for (const p of spec.params) {
-    if (p.type) {
-      p.type = p.type?.toLocaleUpperCase() as ParamType;
-    }
-  }
-  return spec;
+  return wrappedSafeLoad(source);
 }
 
 /**

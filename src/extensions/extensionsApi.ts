@@ -10,6 +10,7 @@ import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import * as operationPoller from "../operation-poller";
 import * as refs from "./refs";
+import { SpecParamType } from "./extensionsHelper";
 
 const VERSION = "v1beta";
 const PAGE_SIZE_MAX = 100;
@@ -149,7 +150,7 @@ export interface Param {
   label: string;
   description?: string;
   default?: string;
-  type?: ParamType;
+  type?: ParamType | SpecParamType;
   options?: ParamOption[];
   required?: boolean;
   validationRegex?: string;
