@@ -368,7 +368,20 @@ FOO=foo
       });
     });
 
-    it("loads envs, preferring .local for the emulator", () => {
+    it("loads envs ignoring .env.local", () => {
+      createEnvFiles(tmpdir, {
+        ".env": "FOO=bad\nBAR=bar",
+        [`.env.${projectInfo.projectId}`]: "FOO=good",
+        ".env.local": "FOO=bad",
+      });
+
+      expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+        FOO: "good",
+        BAR: "bar",
+      });
+    });
+
+    it("loads envs, preferring .env.local for the emulator", () => {
       createEnvFiles(tmpdir, {
         ".env": "FOO=bad\nBAR=bar",
         [`.env.${projectInfo.projectId}`]: "FOO=another bad",
