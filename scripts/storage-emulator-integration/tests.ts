@@ -676,7 +676,6 @@ describe("Storage emulator", () => {
           expect(metadata).to.have.all.keys(source).and.deep.include({
             bucket: source.bucket,
             contentType: source.contentType,
-            etag: source.etag,
             crc32c: source.crc32c,
             cacheControl: source.cacheControl,
             metadata: source.metadata,
@@ -741,7 +740,6 @@ describe("Storage emulator", () => {
           expect(metadata1).to.deep.include({
             bucket: source.bucket,
             contentType: source.contentType,
-            etag: source.etag,
             crc32c: source.crc32c,
             metadata,
             cacheControl,
@@ -772,7 +770,6 @@ describe("Storage emulator", () => {
           expect(metadata1).to.deep.include({
             bucket: source.bucket,
             contentType: source.contentType,
-            etag: source.etag,
             crc32c: source.crc32c,
             metadata: {
               foo: "bar",

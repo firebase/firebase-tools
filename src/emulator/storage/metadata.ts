@@ -68,11 +68,8 @@ export class StoredFileMetadata {
     this.downloadTokens = opts.downloadTokens || [];
     if (opts.etag) {
       this.etag = opts.etag;
-    } else if (bytes) {
-      // If we don't have a provided eTag try to derive from bytes
-      this.etag = generateETag(bytes);
     } else {
-      this.etag = "someETag";
+      this.etag = generateETag(this.generation, this.metageneration);
     }
 
     // Special handling for date fields
@@ -488,9 +485,9 @@ function generateMd5Hash(bytes: Buffer): string {
   return hash.digest("base64");
 }
 
-function generateETag(bytes: Buffer): string {
+function generateETag(generation: number, metadatageneration: number): string {
   const hash = crypto.createHash("sha1");
-  hash.update(bytes);
+  hash.update(`${generation}/${metadatageneration}`);
   // Trim padding
   return hash.digest("base64").slice(0, -1);
 }
