@@ -191,7 +191,7 @@ export class StoredFileMetadata {
       // Convert all values to strings
       this.customMetadata = this.customMetadata ? { ...this.customMetadata } : {};
       for (const [k, v] of Object.entries(incoming.metadata)) {
-        this.customMetadata[k] = (v === null ? null : String(v)) as any;
+        this.customMetadata[k] = v === null ? (null as unknown as string) : String(v);
       }
     }
 
