@@ -174,7 +174,7 @@ export async function promptForNewParams(args: {
   currentParams: { [option: string]: string };
   projectId: string;
   instanceId: string;
-}): Promise<any> {
+}): Promise<{ [option: string]: string }> {
   const firebaseProjectParams = await getFirebaseProjectParams(args.projectId);
   const comparer = (param1: extensionsApi.Param, param2: extensionsApi.Param) => {
     return param1.type === param2.type && param1.param === param2.param;
@@ -213,7 +213,7 @@ export async function promptForNewParams(args: {
         param,
         false
       );
-      args.currentParams[param.param] = chosenValue;
+      args.currentParams[param.param] = chosenValue.default;
     }
   }
   return args.currentParams;
