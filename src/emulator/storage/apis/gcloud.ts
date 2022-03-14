@@ -10,7 +10,7 @@ import {
 import { EmulatorRegistry } from "../../registry";
 import { StorageEmulator } from "../index";
 import { EmulatorLogger } from "../../emulatorLogger";
-import { GetObjectResponse, StorageLayer } from "../files";
+import { GetObjectResponse } from "../files";
 import { crc32cToString } from "../crc";
 import type { Request, Response } from "express";
 import { parseObjectUploadMultipartRequest } from "../multipart";
