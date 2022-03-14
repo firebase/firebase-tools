@@ -2,6 +2,7 @@ import * as backend from "../backend";
 import * as iam from "../../../gcp/iam";
 import * as v2events from "../../../functions/events/v2";
 import { obtainStorageBindings, ensureStorageTriggerRegion } from "./storage";
+import { obtainFirebaseAlertsBindings, ensureFirebaseAlertsTriggerRegion } from "./firebaseAlerts";
 
 const noop = (): Promise<void> => Promise.resolve();
 
@@ -11,7 +12,9 @@ export interface Service {
   readonly api: string;
 
   // dispatch functions
-  requiredProjectBindings: ((pId: any, p: any) => Promise<Array<iam.Binding>>) | undefined;
+  requiredProjectBindings:
+    | ((projectNumber: string, policy: iam.Policy) => Promise<Array<iam.Binding>>)
+    | undefined;
   ensureTriggerRegion: (ep: backend.Endpoint & backend.EventTriggered) => Promise<void>;
 }
 
@@ -30,11 +33,18 @@ export const PubSubService: Service = {
   ensureTriggerRegion: noop,
 };
 /** A storage service object */
-export const StorageService = {
+export const StorageService: Service = {
   name: "storage",
   api: "storage.googleapis.com",
   requiredProjectBindings: obtainStorageBindings,
   ensureTriggerRegion: ensureStorageTriggerRegion,
+};
+/** A firebase alerts service object */
+export const FirebaseAlertsService: Service = {
+  name: "firebasealerts",
+  api: "logging.googleapis.com",
+  requiredProjectBindings: obtainFirebaseAlertsBindings,
+  ensureTriggerRegion: ensureFirebaseAlertsTriggerRegion,
 };
 
 /** Mapping from event type string to service object */
@@ -44,6 +54,7 @@ export const EVENT_SERVICE_MAPPING: Record<v2events.Event, Service> = {
   "google.cloud.storage.object.v1.archived": StorageService,
   "google.cloud.storage.object.v1.deleted": StorageService,
   "google.cloud.storage.object.v1.metadataUpdated": StorageService,
+  "google.firebase.firebasealerts.alerts.v1.published": FirebaseAlertsService,
 };
 
 /**
