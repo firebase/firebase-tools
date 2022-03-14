@@ -4,11 +4,26 @@ import * as projectConfig from "../../functions/projectConfig";
 
 // These types should proably be in a root deploy.ts, but we can only boil the ocean one bit at a time.
 
-// Payload holds the output types of what we're building.
-export interface Payload {
+interface CodebasePayload {
   functions?: {
     backend: backend.Backend;
   };
+}
+
+// Payload holds the output types of what we're building.
+export interface Payload {
+  codebases: Record<string, CodebasePayload>;
+}
+
+// Deploy context for each deployed codebase.
+export interface CodebaseContext {
+  // Filled in the "prepare" phase.
+  functionsSourceV1?: string;
+  functionsSourceV2?: string;
+
+  // Filled in the "deploy" phase.
+  sourceUrl?: string;
+  storage?: Record<string, gcfV2.StorageSource>;
 }
 
 // Context holds cached values of what we've looked up in handling this request.
@@ -19,16 +34,12 @@ export interface Context {
   filters: string[][];
 
   // Filled in the "prepare" phase.
-  config?: projectConfig.ValidatedSingle;
-  functionsSourceV1?: string;
-  functionsSourceV2?: string;
+  config?: projectConfig.ValidatedConfig;
+  codebases: Record<string, CodebaseContext>;
   runtimeConfigEnabled?: boolean;
   artifactRegistryEnabled?: boolean;
   firebaseConfig?: FirebaseConfig;
 
-  // Filled in the "deploy" phase.
-  sourceUrl?: string;
-  storage?: Record<string, gcfV2.StorageSource>;
 }
 
 export interface FirebaseConfig {

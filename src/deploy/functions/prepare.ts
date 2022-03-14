@@ -31,6 +31,9 @@ function hasDotenv(opts: functionsEnv.UserEnvsOpts): boolean {
   return functionsEnv.hasUserEnvs(opts);
 }
 
+/**
+ *
+ */
 export async function prepare(
   context: args.Context,
   options: Options,
@@ -39,26 +42,7 @@ export async function prepare(
   const projectId = needProjectId(options);
   const projectNumber = await needProjectNumber(options);
 
-  context.config = normalizeAndValidate(options.config.src.functions)[0];
-  const sourceDirName = context.config.source;
-  if (!sourceDirName) {
-    throw new FirebaseError(
-      `No functions code detected at default location (./functions), and no functions source defined in firebase.json`
-    );
-  }
-  const sourceDir = options.config.path(sourceDirName);
-
-  const delegateContext: runtimes.DelegateContext = {
-    projectId,
-    sourceDir,
-    projectDir: options.config.projectDir,
-    runtime: context.config.runtime || "",
-  };
-  const runtimeDelegate = await runtimes.getRuntimeDelegate(delegateContext);
-  logger.debug(`Validating ${runtimeDelegate.name} source`);
-  await runtimeDelegate.validate();
-  logger.debug(`Building ${runtimeDelegate.name} source`);
-  await runtimeDelegate.build();
+  context.config = normalizeAndValidate(options.config.src.functions);
 
   // Check that all necessary APIs are enabled.
   const checkAPIsEnabled = await Promise.all([
@@ -80,103 +64,129 @@ export async function prepare(
   context.firebaseConfig = firebaseConfig;
   const runtimeConfig = await getFunctionsConfig(context);
 
-  const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
-  const userEnvOpt: functionsEnv.UserEnvsOpts = {
-    functionsSource: sourceDir,
-    projectId: projectId,
-    projectAlias: options.projectAlias,
-  };
-  const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
-  const usedDotenv = hasDotenv(userEnvOpt);
-  const tag = hasUserConfig(runtimeConfig)
-    ? usedDotenv
-      ? "mixed"
-      : "runtime_config"
-    : usedDotenv
-    ? "dotenv"
-    : "none";
-  void track("functions_codebase_deploy_env_method", tag);
-
-  logger.debug(`Analyzing ${runtimeDelegate.name} backend spec`);
-  const wantBackend = await runtimeDelegate.discoverSpec(runtimeConfig, firebaseEnvs);
-  wantBackend.environmentVariables = { ...userEnvs, ...firebaseEnvs };
-  payload.functions = { backend: wantBackend };
-
-  // Note: Some of these are premium APIs that require billing to be enabled.
-  // We'd eventually have to add special error handling for billing APIs, but
-  // enableCloudBuild is called above and has this special casing already.
-  if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
-    const V2_APIS = [
-      "artifactregistry.googleapis.com",
-      "run.googleapis.com",
-      "eventarc.googleapis.com",
-      "pubsub.googleapis.com",
-      "storage.googleapis.com",
-    ];
-    const enablements = V2_APIS.map((api) => {
-      return ensureApiEnabled.ensure(context.projectId, api, "functions");
-    });
-    await Promise.all(enablements);
-  }
-
-  if (backend.someEndpoint(wantBackend, () => true)) {
-    logBullet(
-      clc.cyan.bold("functions:") +
-        " preparing " +
-        clc.bold(sourceDirName) +
-        " directory for uploading..."
-    );
-  }
-  if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv1")) {
-    context.functionsSourceV1 = await prepareFunctionsUpload(
-      sourceDir,
-      context.config,
-      runtimeConfig
-    );
-  }
-  if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
-    context.functionsSourceV2 = await prepareFunctionsUpload(
-      sourceDir,
-      context.config,
-      /* runtimeConfig= */ undefined
-    );
-  }
-
-  // Setup environment variables on each function.
-  for (const endpoint of backend.allEndpoints(wantBackend)) {
-    endpoint.environmentVariables = wantBackend.environmentVariables;
-  }
-
-  // Enable required APIs. This may come implicitly from triggers (e.g. scheduled triggers
-  // require cloudscheudler and, in v1, require pub/sub), or can eventually come from
-  // explicit dependencies.
-  await Promise.all(
-    Object.values(wantBackend.requiredAPIs).map(({ api }) => {
-      return ensureApiEnabled.ensure(projectId, api, "functions", /* silent=*/ false);
-    })
-  );
-
-  // Validate the function code that is being deployed.
-  validate.endpointsAreValid(wantBackend);
-
   // Check what --only filters have been passed in.
   context.filters = getFilterGroups(options);
 
-  const matchingBackend = backend.matchingBackend(wantBackend, (endpoint) => {
-    return functionMatchesAnyGroup(endpoint, context.filters);
-  });
 
-  const haveBackend = await backend.existingBackend(context);
-  await ensureServiceAgentRoles(projectNumber, wantBackend, haveBackend);
-  inferDetailsFromExisting(wantBackend, haveBackend, usedDotenv);
-  await ensureTriggerRegions(wantBackend);
+  // Load source one by one from each codebase
+  for (const codebaseConfig of context.config) {
+    const sourceDirName = codebaseConfig.source;
 
-  // Display a warning and prompt if any functions in the release have failurePolicies.
-  await promptForFailurePolicies(options, matchingBackend, haveBackend);
-  await promptForMinInstances(options, matchingBackend, haveBackend);
-  await backend.checkAvailability(context, wantBackend);
-  await validate.secretsAreValid(projectId, matchingBackend);
-  await ensure.secretAccess(projectId, matchingBackend, haveBackend);
+    if (!sourceDirName) {
+      throw new FirebaseError(
+        `No functions code detected at default location (./functions), and no functions source defined in firebase.json`
+      );
+    }
+    const sourceDir = options.config.path(sourceDirName);
+
+    const delegateContext: runtimes.DelegateContext = {
+      projectId,
+      sourceDir,
+      projectDir: options.config.projectDir,
+      runtime: codebaseConfig.runtime || "",
+    };
+    const runtimeDelegate = await runtimes.getRuntimeDelegate(delegateContext);
+    logger.debug(`Validating ${runtimeDelegate.name} source`);
+    await runtimeDelegate.validate();
+    logger.debug(`Building ${runtimeDelegate.name} source`);
+    await runtimeDelegate.build();
+
+    const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
+    const userEnvOpt: functionsEnv.UserEnvsOpts = {
+      functionsSource: sourceDir,
+      projectId: projectId,
+      projectAlias: options.projectAlias,
+    };
+    const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
+    const usedDotenv = hasDotenv(userEnvOpt);
+    const tag = hasUserConfig(runtimeConfig)
+      ? usedDotenv
+        ? "mixed"
+        : "runtime_config"
+      : usedDotenv
+      ? "dotenv"
+      : "none";
+    void track("functions_codebase_deploy_env_method", tag);
+
+    logger.debug(`Analyzing ${runtimeDelegate.name} backend spec on codebase ${codebaseConfig.codebase}`);
+    const wantBackend = await runtimeDelegate.discoverSpec(runtimeConfig, firebaseEnvs);
+    wantBackend.environmentVariables = { ...userEnvs, ...firebaseEnvs };
+    payload.codebases[codebaseConfig.codebase].functions = { backend: wantBackend };
+
+    // Note: Some of these are premium APIs that require billing to be enabled.
+    // We'd eventually have to add special error handling for billing APIs, but
+    // enableCloudBuild is called above and has this special casing already.
+    if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
+      const V2_APIS = [
+        "artifactregistry.googleapis.com",
+        "run.googleapis.com",
+        "eventarc.googleapis.com",
+        "pubsub.googleapis.com",
+        "storage.googleapis.com",
+      ];
+      const enablements = V2_APIS.map((api) => {
+        return ensureApiEnabled.ensure(context.projectId, api, "functions");
+      });
+      await Promise.all(enablements);
+    }
+
+    if (backend.someEndpoint(wantBackend, () => true)) {
+      logBullet(
+        clc.cyan.bold("functions:") +
+          " preparing " +
+          clc.bold(sourceDirName) +
+          " directory for uploading..."
+      );
+    }
+    const codebaseContext: args.CodebaseContext = {}
+    if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv1")) {
+      codebaseContext.functionsSourceV1 = await prepareFunctionsUpload(
+        sourceDir,
+        context.config,
+        runtimeConfig
+      );
+    }
+    if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
+      codebaseContext.functionsSourceV2 = await prepareFunctionsUpload(
+        sourceDir,
+        context.config,
+        /* runtimeConfig= */ undefined
+      );
+    }
+
+    // Setup environment variables on each function.
+    for (const endpoint of backend.allEndpoints(wantBackend)) {
+      endpoint.environmentVariables = wantBackend.environmentVariables;
+    }
+
+    // Enable required APIs. This may come implicitly from triggers (e.g. scheduled triggers
+    // require cloudscheudler and, in v1, require pub/sub), or can eventually come from
+    // explicit dependencies.
+    await Promise.all(
+      Object.values(wantBackend.requiredAPIs).map(({ api }) => {
+        return ensureApiEnabled.ensure(projectId, api, "functions", /* silent=*/ false);
+      })
+    );
+
+    // Validate the function code that is being deployed.
+    validate.endpointsAreValid(wantBackend);
+
+    const matchingBackend = backend.matchingBackend(wantBackend, (endpoint) => {
+      return functionMatchesAnyGroup(endpoint, context.filters);
+    });
+
+    const haveBackend = await backend.existingBackend(context);
+    await ensureServiceAgentRoles(projectNumber, wantBackend, haveBackend);
+    inferDetailsFromExisting(wantBackend, haveBackend, usedDotenv);
+    await ensureTriggerRegions(wantBackend);
+
+    // Display a warning and prompt if any functions in the release have failurePolicies.
+    await promptForFailurePolicies(options, matchingBackend, haveBackend);
+    await promptForMinInstances(options, matchingBackend, haveBackend);
+    await backend.checkAvailability(context, wantBackend);
+    await validate.secretsAreValid(projectId, matchingBackend);
+    await ensure.secretAccess(projectId, matchingBackend, haveBackend);
+  }
 }
 
 /**
