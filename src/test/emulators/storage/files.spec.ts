@@ -17,6 +17,10 @@ const ALWAYS_FALSE_RULES_VALIDATOR = {
   validate: async () => Promise.resolve(false),
 };
 
+const ALWAYS_TRUE_ADMIN_CREDENTIAL_VALIDATOR = {
+  validate: () => true,
+};
+
 describe("files", () => {
   it("can serialize and deserialize metadata", () => {
     const cf = new StorageCloudFunctions("demo-project");
@@ -132,7 +136,12 @@ describe("files", () => {
     });
 
     const getStorageLayer = (rulesValidator: RulesValidator) =>
-      new StorageLayer("project", rulesValidator, _persistence);
+      new StorageLayer(
+        "project",
+        rulesValidator,
+        ALWAYS_TRUE_ADMIN_CREDENTIAL_VALIDATOR,
+        _persistence
+      );
 
     const getPersistenceTmpDir = () => `${tmpdir()}/firebase/storage/blobs`;
   });

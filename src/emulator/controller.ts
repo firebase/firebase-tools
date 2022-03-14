@@ -447,10 +447,10 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
   }
 
   if (shouldStart(options, Emulators.EXTENSIONS) && previews.extensionsemulator) {
-    // TODO: This should not error out when called with a fake project.
-    const projectNumber = await needProjectNumber(options);
+    const projectNumber = Constants.isDemoProject(projectId)
+      ? Constants.FAKE_PROJECT_NUMBER
+      : await needProjectNumber(options);
     const aliases = getAliases(options, projectId);
-
     const extensionEmulator = new ExtensionsEmulator({
       projectId,
       projectDir: options.config.projectDir,
