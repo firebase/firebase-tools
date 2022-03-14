@@ -32,7 +32,7 @@ export function getDefaultParamBindings(params: { [key: string]: ParamBindings }
   Object.entries(params).forEach(([k, v]) => {
     ret = {
       ...ret,
-      ...{ [k]: v },
+      ...{ [k]: v.default },
     };
   });
   return ret;
@@ -207,12 +207,12 @@ export async function promptForNewParams(args: {
   if (paramsDiffAdditions.length) {
     logger.info("To update this instance, configure the following new parameters:");
     for (const param of paramsDiffAdditions) {
-      const chosenValue = await askUserForParam.askForParam(
-        args.projectId,
-        args.instanceId,
-        param,
-        false
-      );
+      const chosenValue = await askUserForParam.askForParam({
+        projectId: args.projectId,
+        instanceId: args.instanceId,
+        paramSpec: param,
+        reconfiguring: false,
+      });
       args.currentParams[param.param] = chosenValue.default;
     }
   }

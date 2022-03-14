@@ -75,6 +75,25 @@ const SPEC = {
 };
 
 describe("paramHelper", () => {
+  describe(`${paramHelper.getDefaultParamBindings.name}`, () => {
+    it("should extract the default param bindings", () => {
+      const input = {
+        pokeball: {
+          default: "pikachu",
+          local: "local",
+        },
+        greatball: {
+          default: "eevee",
+        },
+      };
+      const output = paramHelper.getDefaultParamBindings(input);
+      expect(output).to.eql({
+        pokeball: "pikachu",
+        greatball: "eevee",
+      });
+    });
+  });
+
   describe("getParams", () => {
     let envStub: sinon.SinonStub;
     let promptStub: sinon.SinonStub;
@@ -230,8 +249,8 @@ describe("paramHelper", () => {
       });
 
       expect(params).to.eql({
-        A_PARAMETER: "user input",
-        ANOTHER_PARAMETER: "user input",
+        A_PARAMETER: { default: "user input" },
+        ANOTHER_PARAMETER: { default: "user input" },
       });
 
       expect(promptStub).to.have.been.calledTwice;

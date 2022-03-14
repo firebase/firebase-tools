@@ -215,7 +215,12 @@ describe("askUserForParam", () => {
     });
 
     it("should keep prompting user until valid input is given", async () => {
-      await askForParam("project-id", "instance-id", testSpec, false);
+      await askForParam({
+        projectId: "project-id",
+        instanceId: "instance-id",
+        paramSpec: testSpec,
+        reconfiguring: false,
+      });
       expect(promptStub.calledThrice).to.be.true;
     });
   });
@@ -262,12 +267,17 @@ describe("askUserForParam", () => {
     });
 
     it("should keep prompting user until valid input is given", async () => {
-      const result = await askForParam("project-id", "instance-id", secretSpec, false);
+      const result = await askForParam({
+        projectId: "project-id",
+        instanceId: "instance-id",
+        paramSpec: secretSpec,
+        reconfiguring: false,
+      });
       expect(promptStub.calledOnce).to.be.true;
       expect(grantRole.calledOnce).to.be.true;
-      expect(result).to.be.equal(
-        `projects/${stubSecret.projectId}/secrets/${stubSecret.name}/versions/${stubSecretVersion.versionId}`
-      );
+      expect(result).to.be.eql({
+        default: `projects/${stubSecret.projectId}/secrets/${stubSecret.name}/versions/${stubSecretVersion.versionId}`,
+      });
     });
   });
 
