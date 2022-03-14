@@ -11,7 +11,7 @@ import { convertExtensionOptionToLabeledList, getRandomString, onceWithJoin } fr
 import { logger } from "../logger";
 import { promptOnce } from "../prompt";
 import * as utils from "../utils";
-import { ParamBindings } from "./paramHelper";
+import { ParamBindingOptions } from "./paramHelper";
 
 enum SecretUpdateAction {
   LEAVE,
@@ -74,7 +74,7 @@ export async function ask(
   paramSpecs: Param[],
   firebaseProjectParams: { [key: string]: string },
   reconfiguring: boolean
-): Promise<{ [key: string]: ParamBindings }> {
+): Promise<{ [key: string]: ParamBindingOptions }> {
   if (_.isEmpty(paramSpecs)) {
     logger.debug("No params were specified for this extension.");
     return {};
@@ -82,7 +82,7 @@ export async function ask(
 
   utils.logLabeledBullet(logPrefix, "answer the questions below to configure your extension:");
   const substituted = substituteParams<Param[]>(paramSpecs, firebaseProjectParams);
-  const result: { [key: string]: ParamBindings } = {};
+  const result: { [key: string]: ParamBindingOptions } = {};
   const promises = _.map(substituted, (paramSpec: Param) => {
     return async () => {
       result[paramSpec.param] = await askForParam({
@@ -104,7 +104,7 @@ export async function askForParam(args: {
   instanceId: string;
   paramSpec: Param;
   reconfiguring: boolean;
-}): Promise<ParamBindings> {
+}): Promise<ParamBindingOptions> {
   const paramSpec = args.paramSpec;
 
   let valid = false;

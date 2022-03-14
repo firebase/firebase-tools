@@ -17,15 +17,15 @@ import * as track from "../track";
 import * as env from "../functions/env";
 
 /**
- * Interface for holding different param values for different environments.
+ * Interface for holding different param values for different environments/configs.
  */
-export interface ParamBindings {
+export interface ParamBindingOptions {
   default: string;
   local?: string;
   // Add project specific key:value here when we want to support that.
 }
 
-export function getDefaultParamBindings(params: { [key: string]: ParamBindings }): {
+export function getDefaultParamBindings(params: { [key: string]: ParamBindingOptions }): {
   [key: string]: string;
 } {
   let ret = {};
@@ -85,7 +85,7 @@ export async function getParams(args: {
   nonInteractive?: boolean;
   paramsEnvPath?: string;
   reconfiguring?: boolean;
-}): Promise<{ [key: string]: ParamBindings }> {
+}): Promise<{ [key: string]: ParamBindingOptions }> {
   let params: any;
   if (args.nonInteractive && !args.paramsEnvPath) {
     const paramsMessage = args.paramSpecs
@@ -127,7 +127,7 @@ export async function getParamsForUpdate(args: {
   paramsEnvPath?: string;
   nonInteractive?: boolean;
   instanceId: string;
-}): Promise<{ [key: string]: ParamBindings }> {
+}): Promise<{ [key: string]: ParamBindingOptions }> {
   let params: any;
   if (args.nonInteractive && !args.paramsEnvPath) {
     const paramsMessage = args.newSpec.params

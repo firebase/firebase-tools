@@ -41,7 +41,7 @@ import { logger } from "../logger";
 import { previews } from "../previews";
 import { Options } from "../options";
 import * as manifest from "../extensions/manifest";
-import { getDefaultParamBindings, ParamBindings } from "../extensions/paramHelper";
+import { getDefaultParamBindings, ParamBindingOptions } from "../extensions/paramHelper";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -372,7 +372,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
     } else {
       choice = "installNew";
     }
-    let paramBindings: { [key: string]: ParamBindings };
+    let paramBindings: { [key: string]: ParamBindingOptions };
     let params: Record<string, string>;
     switch (choice) {
       case "installNew":
