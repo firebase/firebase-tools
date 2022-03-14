@@ -50,6 +50,7 @@ export class Constants {
   // GCP projects cannot start with 'demo' so we use 'demo-' as a prefix to denote
   // an intentionally fake project.
   static FAKE_PROJECT_ID_PREFIX = "demo-";
+  static FAKE_PROJECT_NUMBER = "0";
 
   static DEFAULT_DATABASE_EMULATOR_NAMESPACE = "fake-server";
 
