@@ -38,13 +38,15 @@ export function getDefaultParamBindings(params: { [key: string]: ParamBindingOpt
   return ret;
 }
 
-export function buildBindingOptionsWithDefault(defaultParams: { [key: string]: string }) : { [key: string]: ParamBindingOptions }{
-  let paramOptions : { [key: string]: ParamBindingOptions } = {};
-  Object.entries(defaultParams).forEach(([k,v]) => {
+export function buildBindingOptionsWithDefault(defaultParams: { [key: string]: string }): {
+  [key: string]: ParamBindingOptions;
+} {
+  let paramOptions: { [key: string]: ParamBindingOptions } = {};
+  Object.entries(defaultParams).forEach(([k, v]) => {
     paramOptions = {
       ...paramOptions,
-      ...{[k]: {default: v}},
-    }
+      ...{ [k]: { default: v } },
+    };
   });
   return paramOptions;
 }
@@ -247,11 +249,11 @@ function getParamsFromFile(args: {
   const params = populateDefaultParams(envParams, args.paramSpecs);
   validateCommandLineParams(params, args.paramSpecs);
   logger.info(`Using param values from ${args.paramsEnvPath}`);
-  
+
   return buildBindingOptionsWithDefault(params);
 }
 
-export function readEnvFile(envPath: string) : Record<string, string>{
+export function readEnvFile(envPath: string): Record<string, string> {
   const buf = fs.readFileSync(path.resolve(envPath), "utf8");
   const result = env.parse(buf.toString().trim());
   if (result.errors.length) {
