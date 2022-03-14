@@ -542,6 +542,39 @@ describe("Storage emulator", () => {
         });
       });
 
+      describe("#exists()", () => {
+        it("should return false for a file that does not exist", async () => {
+          // Ensure that the file exists on the bucket before deleting it
+          const [exists] = await testBucket.file("no-file").exists();
+          expect(exists).to.equal(false);
+        });
+
+        it("should return true for a file that exists", async () => {
+          // We use a nested path to ensure that we don't need to decode
+          // the objectId in the gcloud emulator API
+          const bucketFilePath = "file/to/exists";
+          await testBucket.upload(smallFilePath, {
+            destination: bucketFilePath,
+          });
+
+          const [exists] = await testBucket.file(bucketFilePath).exists();
+          expect(exists).to.equal(true);
+        });
+
+        it("should return false when called on a directory containing files", async () => {
+          // We use a nested path to ensure that we don't need to decode
+          // the objectId in the gcloud emulator API
+          const path = "file/to";
+          const bucketFilePath = path + "/exists";
+          await testBucket.upload(smallFilePath, {
+            destination: bucketFilePath,
+          });
+
+          const [exists] = await testBucket.file(path).exists();
+          expect(exists).to.equal(false);
+        });
+      });
+
       describe("#delete()", () => {
         it("should delete a file from the bucket", async () => {
           // We use a nested path to ensure that we don't need to decode
