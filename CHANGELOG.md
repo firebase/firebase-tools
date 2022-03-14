@@ -3,4 +3,4 @@
 - `ext:export` now uses stable ordering for params in .env files (#4256).
 - Adds alerting event provider (#4258).
 - Fixes bug where project-specific environment variables weren't loaded by the Functions Emulator (#4273).
-- Fixes bug where CORS was enabled too broadly on the Functions emualtor (#4294).
+- Fixes bug where CORS was enabled too broadly on the Functions emulator (#4294).
