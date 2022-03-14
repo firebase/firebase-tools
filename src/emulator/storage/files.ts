@@ -334,7 +334,7 @@ export class StorageLayer {
     sourceFile: StoredFileMetadata,
     destinationBucket: string,
     destinationObject: string,
-    incomingMetadata: IncomingMetadata
+    incomingMetadata?: IncomingMetadata
   ): StoredFileMetadata {
     const filePath = this.path(destinationBucket, destinationObject);
 
@@ -343,20 +343,32 @@ export class StorageLayer {
     const bytes = this.getBytes(sourceFile.bucket, sourceFile.name) as Buffer;
     this._persistence.appendBytes(filePath, bytes);
 
-    const newMetadata = new StoredFileMetadata(
+    const newMetadata: IncomingMetadata = {
+      ...sourceFile,
+      metadata: sourceFile.customMetadata,
+      ...incomingMetadata,
+    };
+    if (newMetadata.metadata) {
+      // Convert null metadata values to empty strings
+      for (const [k, v] of Object.entries(newMetadata.metadata)) {
+        if (v === null) newMetadata.metadata[k] = "";
+      }
+    }
+
+    const copiedFileMetadata = new StoredFileMetadata(
       {
         name: destinationObject,
         bucket: destinationBucket,
-        contentType: incomingMetadata.contentType || "application/octet-stream",
-        contentDisposition: incomingMetadata.contentDisposition,
-        contentEncoding: incomingMetadata.contentEncoding,
-        customMetadata: incomingMetadata.metadata,
+        contentType: newMetadata.contentType || "application/octet-stream",
+        contentDisposition: newMetadata.contentDisposition,
+        contentEncoding: newMetadata.contentEncoding,
+        customMetadata: newMetadata.metadata,
       },
       this._cloudFunctions,
       bytes,
       incomingMetadata
     );
-    const file = new StoredFile(newMetadata, this._persistence.getDiskPath(filePath));
+    const file = new StoredFile(copiedFileMetadata, this._persistence.getDiskPath(filePath));
     this._files.set(filePath, file);
 
     this._cloudFunctions.dispatch("finalize", new CloudStorageObjectMetadata(file.metadata));

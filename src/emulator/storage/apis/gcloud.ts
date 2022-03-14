@@ -328,22 +328,11 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
         return next();
       }
 
-      const newMetadata: IncomingMetadata = {
-        ...md,
-        metadata: md.customMetadata,
-        ...req.body,
-      };
-      if (newMetadata.metadata) {
-        // Convert null metadata values to empty strings
-        for (const [k, v] of Object.entries(newMetadata.metadata)) {
-          if (v === null) newMetadata.metadata[k] = "";
-        }
-      }
       const metadata = storageLayer.copyFile(
         md,
         req.params.destBucketId,
         req.params.destObjectId,
-        newMetadata
+        req.body
       );
 
       if (!metadata) {
@@ -361,8 +350,8 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
         // See https://cloud.google.com/storage/docs/json_api/v1/objects/rewrite#response
         return res.json({
           kind: "storage#rewriteResponse",
-          totalBytesRewritten: resource.size,
-          objectSize: resource.size,
+          totalBytesRewritten: String(metadata.size),
+          objectSize: String(metadata.size),
           done: true,
           resource,
         });
