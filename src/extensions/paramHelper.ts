@@ -20,17 +20,19 @@ import * as env from "../functions/env";
  * Interface for holding different param values for different environments.
  */
 export interface ParamBindings {
-  default: string,
-  local?: string,
+  default: string;
+  local?: string;
+  // Add project specific key:value here when we want to support that.
 }
 
-export function getDefaultParamBindings(params : { [key: string]: ParamBindings } ) 
-  : { [key: string]: string } {
+export function getDefaultParamBindings(params: { [key: string]: ParamBindings }): {
+  [key: string]: string;
+} {
   let ret = {};
-  Object.entries(params).forEach(([k,v]) => {
+  Object.entries(params).forEach(([k, v]) => {
     ret = {
       ...ret,
-      ...{[k]: v},
+      ...{ [k]: v },
     };
   });
   return ret;
@@ -125,7 +127,7 @@ export async function getParamsForUpdate(args: {
   paramsEnvPath?: string;
   nonInteractive?: boolean;
   instanceId: string;
-}): Promise<{ [key: string]: ParamBindings }>  {
+}): Promise<{ [key: string]: ParamBindings }> {
   let params: any;
   if (args.nonInteractive && !args.paramsEnvPath) {
     const paramsMessage = args.newSpec.params

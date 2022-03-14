@@ -372,7 +372,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
     } else {
       choice = "installNew";
     }
-    let paramBindings : { [key: string]: ParamBindings };
+    let paramBindings: { [key: string]: ParamBindings };
     let params: Record<string, string>;
     switch (choice) {
       case "installNew":
