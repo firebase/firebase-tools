@@ -340,7 +340,7 @@ export class StorageLayer {
   ): StoredFileMetadata {
     const filePath = this.path(destinationBucket, destinationObject);
 
-    this._persistence.deleteFile(filePath, true);
+    this._persistence.deleteFile(filePath, /* failSilently = */ true);
 
     const bytes = this.getBytes(sourceFile.bucket, sourceFile.name) as Buffer;
     this._persistence.appendBytes(filePath, bytes);
