@@ -17,6 +17,26 @@ import * as track from "../track";
 import * as env from "../functions/env";
 
 /**
+ * Interface for holding different param values for different environments.
+ */
+export interface ParamBindings {
+  default: string,
+  local?: string,
+}
+
+export function getDefaultParamBindings(params : { [key: string]: ParamBindings } ) 
+  : { [key: string]: string } {
+  let ret = {};
+  Object.entries(params).forEach(([k,v]) => {
+    ret = {
+      ...ret,
+      ...{[k]: v},
+    };
+  });
+  return ret;
+}
+
+/**
  * A mutator to switch the defaults for a list of params to new ones.
  * For convenience, this also returns the params
  *
@@ -63,7 +83,7 @@ export async function getParams(args: {
   nonInteractive?: boolean;
   paramsEnvPath?: string;
   reconfiguring?: boolean;
-}): Promise<{ [key: string]: string }> {
+}): Promise<{ [key: string]: ParamBindings }> {
   let params: any;
   if (args.nonInteractive && !args.paramsEnvPath) {
     const paramsMessage = args.paramSpecs
@@ -105,7 +125,7 @@ export async function getParamsForUpdate(args: {
   paramsEnvPath?: string;
   nonInteractive?: boolean;
   instanceId: string;
-}) {
+}): Promise<{ [key: string]: ParamBindings }>  {
   let params: any;
   if (args.nonInteractive && !args.paramsEnvPath) {
     const paramsMessage = args.newSpec.params

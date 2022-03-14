@@ -19,6 +19,7 @@ import * as refs from "../extensions/refs";
 import * as manifest from "../extensions/manifest";
 import { Options } from "../options";
 import { partition } from "../functional";
+import { getDefaultParamBindings } from "../extensions/paramHelper";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -67,7 +68,7 @@ export default new Command("ext:configure <extensionInstanceId>")
 
       // Ask for mutable param values from user.
       paramHelper.setNewDefaults(tbdParams, oldParamValues);
-      const mutableParamsValues = await paramHelper.getParams({
+      const mutableParamsValueBindings = await paramHelper.getParams({
         projectId,
         paramSpecs: tbdParams,
         nonInteractive: false,
@@ -79,7 +80,7 @@ export default new Command("ext:configure <extensionInstanceId>")
       // Merge with old immutable params.
       const newParamValues = {
         ...oldParamValues,
-        ...mutableParamsValues,
+        ...getDefaultParamBindings(mutableParamsValueBindings),
       };
 
       await manifest.writeToManifest(
@@ -123,7 +124,7 @@ export default new Command("ext:configure <extensionInstanceId>")
         paramHelper.getParamsWithCurrentValuesAsDefaults(existingInstance);
       const immutableParams = _.remove(paramSpecWithNewDefaults, (param) => param.immutable);
 
-      const params = await paramHelper.getParams({
+      const paramBindings = await paramHelper.getParams({
         projectId,
         paramSpecs: paramSpecWithNewDefaults,
         nonInteractive: options.nonInteractive,
@@ -131,6 +132,7 @@ export default new Command("ext:configure <extensionInstanceId>")
         instanceId,
         reconfiguring: true,
       });
+      const params = getDefaultParamBindings(paramBindings);
       if (immutableParams.length) {
         const plural = immutableParams.length > 1;
         logger.info(`The following param${plural ? "s are" : " is"} immutable:`);

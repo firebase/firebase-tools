@@ -41,6 +41,7 @@ import { logger } from "../logger";
 import { previews } from "../previews";
 import { Options } from "../options";
 import * as manifest from "../extensions/manifest";
+import { getDefaultParamBindings, ParamBindings } from "../extensions/paramHelper";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -257,13 +258,14 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
     instanceId = await promptForValidInstanceId(`${spec.name}-${getRandomString(4)}`);
   }
 
-  const params = await paramHelper.getParams({
+  const paramBindings = await paramHelper.getParams({
     projectId,
     paramSpecs: spec.params,
     nonInteractive,
     paramsEnvPath,
     instanceId,
   });
+  const params = getDefaultParamBindings(paramBindings);
 
   const ref = refs.parse(extVersion.ref);
   await manifest.writeToManifest(
@@ -370,17 +372,19 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
     } else {
       choice = "installNew";
     }
+    let paramBindings : { [key: string]: ParamBindings };
     let params: Record<string, string>;
     switch (choice) {
       case "installNew":
         instanceId = await promptForValidInstanceId(`${instanceId}-${getRandomString(4)}`);
-        params = await paramHelper.getParams({
+        paramBindings = await paramHelper.getParams({
           projectId,
           paramSpecs: spec.params,
           nonInteractive,
           paramsEnvPath,
           instanceId,
         });
+        params = getDefaultParamBindings(paramBindings);
         spinner.text = "Installing your extension instance. This usually takes 3 to 5 minutes...";
         spinner.start();
         await extensionsApi.createInstance({
@@ -398,13 +402,14 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
         );
         break;
       case "updateExisting":
-        params = await paramHelper.getParams({
+        paramBindings = await paramHelper.getParams({
           projectId,
           paramSpecs: spec.params,
           nonInteractive,
           paramsEnvPath,
           instanceId,
         });
+        params = getDefaultParamBindings(paramBindings);
         spinner.text = "Updating your extension instance. This usually takes 3 to 5 minutes...";
         spinner.start();
         await update({
