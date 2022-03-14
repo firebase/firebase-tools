@@ -4,7 +4,6 @@ import * as extensionsApi from "../../extensions/extensionsApi";
 import * as refs from "../../extensions/refs";
 import { FirebaseError } from "../../error";
 import { getFirebaseProjectParams, substituteParams } from "../../extensions/extensionsHelper";
-import { readParams } from "./params";
 import { logger } from "../../logger";
 import { readInstanceParam } from "../../extensions/manifest";
 
