@@ -125,7 +125,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         projectDir: config.projectDir,
       });
 
-      const newParamBindings = await paramHelper.getParamsForUpdate({
+      const newParamBindingOptions = await paramHelper.getParamsForUpdate({
         spec: oldExtensionVersion.spec,
         newSpec: newExtensionVersion.spec,
         currentParams: oldParamValues,
@@ -134,14 +134,14 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         nonInteractive: options.nonInteractive,
         instanceId,
       });
-      const newParams = paramHelper.getDefaultParamBindings(newParamBindings);
+      const newParamBindings = paramHelper.getDefaultParamBindings(newParamBindingOptions);
 
       await manifest.writeToManifest(
         [
           {
             instanceId,
             ref: refs.parse(newExtensionVersion.ref),
-            params: newParams,
+            params: newParamBindings,
           },
         ],
         config,

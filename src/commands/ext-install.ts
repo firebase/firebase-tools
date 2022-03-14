@@ -258,14 +258,14 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
     instanceId = await promptForValidInstanceId(`${spec.name}-${getRandomString(4)}`);
   }
 
-  const paramBindings = await paramHelper.getParams({
+  const paramBindingOptions = await paramHelper.getParams({
     projectId,
     paramSpecs: spec.params,
     nonInteractive,
     paramsEnvPath,
     instanceId,
   });
-  const params = getDefaultParamBindings(paramBindings);
+  const params = getDefaultParamBindings(paramBindingOptions);
 
   const ref = refs.parse(extVersion.ref);
   await manifest.writeToManifest(
@@ -372,19 +372,19 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
     } else {
       choice = "installNew";
     }
-    let paramBindings: { [key: string]: ParamBindingOptions };
-    let params: Record<string, string>;
+    let paramBindingOptions: { [key: string]: ParamBindingOptions };
+    let paramBindings: Record<string, string>;
     switch (choice) {
       case "installNew":
         instanceId = await promptForValidInstanceId(`${instanceId}-${getRandomString(4)}`);
-        paramBindings = await paramHelper.getParams({
+        paramBindingOptions = await paramHelper.getParams({
           projectId,
           paramSpecs: spec.params,
           nonInteractive,
           paramsEnvPath,
           instanceId,
         });
-        params = getDefaultParamBindings(paramBindings);
+        paramBindings = getDefaultParamBindings(paramBindingOptions);
         spinner.text = "Installing your extension instance. This usually takes 3 to 5 minutes...";
         spinner.start();
         await extensionsApi.createInstance({
@@ -392,7 +392,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
           instanceId,
           extensionSource: source,
           extensionVersionRef: extVersion?.ref,
-          params,
+          params: paramBindings,
         });
         spinner.stop();
         utils.logLabeledSuccess(
@@ -402,14 +402,14 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
         );
         break;
       case "updateExisting":
-        paramBindings = await paramHelper.getParams({
+        paramBindingOptions = await paramHelper.getParams({
           projectId,
           paramSpecs: spec.params,
           nonInteractive,
           paramsEnvPath,
           instanceId,
         });
-        params = getDefaultParamBindings(paramBindings);
+        paramBindings = getDefaultParamBindings(paramBindingOptions);
         spinner.text = "Updating your extension instance. This usually takes 3 to 5 minutes...";
         spinner.start();
         await update({
@@ -417,7 +417,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
           instanceId,
           source,
           extRef: extVersion?.ref,
-          params,
+          params: paramBindings,
         });
         spinner.stop();
         utils.logLabeledSuccess(
