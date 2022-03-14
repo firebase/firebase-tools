@@ -180,7 +180,7 @@ export function readInstanceParam(args: {
 function readParamsFile(projectDir: string, fileName: string): Record<string, string> {
   const paramPath = path.join(projectDir, ENV_DIRECTORY, fileName);
   const params = readEnvFile(paramPath);
-  return params as Record<string, string>;
+  return params;
 }
 
 // TODO(lihes): Add a docs link once exists.

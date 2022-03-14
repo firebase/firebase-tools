@@ -38,6 +38,17 @@ export function getDefaultParamBindings(params: { [key: string]: ParamBindingOpt
   return ret;
 }
 
+export function buildBindingOptionsWithDefault(defaultParams: { [key: string]: string }) : { [key: string]: ParamBindingOptions }{
+  let paramOptions : { [key: string]: ParamBindingOptions } = {};
+  Object.entries(defaultParams).forEach(([k,v]) => {
+    paramOptions = {
+      ...paramOptions,
+      ...{[k]: {default: v}},
+    }
+  });
+  return paramOptions;
+}
+
 /**
  * A mutator to switch the defaults for a list of params to new ones.
  * For convenience, this also returns the params
@@ -128,7 +139,7 @@ export async function getParamsForUpdate(args: {
   nonInteractive?: boolean;
   instanceId: string;
 }): Promise<{ [key: string]: ParamBindingOptions }> {
-  let params: any;
+  let params: { [key: string]: ParamBindingOptions };
   if (args.nonInteractive && !args.paramsEnvPath) {
     const paramsMessage = args.newSpec.params
       .map((p) => {
@@ -174,7 +185,7 @@ export async function promptForNewParams(args: {
   currentParams: { [option: string]: string };
   projectId: string;
   instanceId: string;
-}): Promise<{ [option: string]: string }> {
+}): Promise<{ [option: string]: ParamBindingOptions }> {
   const firebaseProjectParams = await getFirebaseProjectParams(args.projectId);
   const comparer = (param1: extensionsApi.Param, param2: extensionsApi.Param) => {
     return param1.type === param2.type && param1.param === param2.param;
@@ -216,14 +227,15 @@ export async function promptForNewParams(args: {
       args.currentParams[param.param] = chosenValue.default;
     }
   }
-  return args.currentParams;
+
+  return buildBindingOptionsWithDefault(args.currentParams);
 }
 
 function getParamsFromFile(args: {
   projectId: string;
   paramSpecs: extensionsApi.Param[];
   paramsEnvPath: string;
-}): Record<string, string> {
+}): Record<string, ParamBindingOptions> {
   let envParams;
   try {
     envParams = readEnvFile(args.paramsEnvPath);
@@ -235,10 +247,11 @@ function getParamsFromFile(args: {
   const params = populateDefaultParams(envParams, args.paramSpecs);
   validateCommandLineParams(params, args.paramSpecs);
   logger.info(`Using param values from ${args.paramsEnvPath}`);
-  return params;
+  
+  return buildBindingOptionsWithDefault(params);
 }
 
-export function readEnvFile(envPath: string) {
+export function readEnvFile(envPath: string) : Record<string, string>{
   const buf = fs.readFileSync(path.resolve(envPath), "utf8");
   const result = env.parse(buf.toString().trim());
   if (result.errors.length) {

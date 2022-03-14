@@ -94,6 +94,41 @@ describe("paramHelper", () => {
     });
   });
 
+  describe(`${paramHelper.buildBindingOptionsWithDefault.name}`, () => {
+    it("should build given default values", () => {
+      const input = {
+        pokeball: "pikachu",
+        greatball: "eevee",
+      };
+      const output = paramHelper.buildBindingOptionsWithDefault(input);
+      expect(output).to.eql({
+        pokeball: {
+          default: "pikachu",
+        },
+        greatball: {
+          default: "eevee",
+        },
+      });
+    });
+
+    it("should ignore undefined values", () => {
+      const input = {
+        pokeball: "pikachu",
+        greatball: "eevee",
+        ultraball: undefined,
+      };
+      const output = paramHelper.buildBindingOptionsWithDefault(input);
+      expect(output).to.eql({
+        pokeball: {
+          default: "pikachu",
+        },
+        greatball: {
+          default: "eevee",
+        },
+      });
+    });
+  });
+
   describe("getParams", () => {
     let envStub: sinon.SinonStub;
     let promptStub: sinon.SinonStub;
