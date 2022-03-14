@@ -271,6 +271,8 @@ describe("Storage emulator", () => {
         it("should upload with provided metadata", async () => {
           const metadata = {
             contentDisposition: "attachment",
+            cacheControl: "private,max-age=30",
+            contentLanguage: "de-DE",
             metadata: { foo: "bar" },
           };
           const [, fileMetadata] = await testBucket.upload(smallFilePath, {
