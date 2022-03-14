@@ -1,0 +1,26 @@
+{
+    "functions": {},
+    "storage": [
+      {
+        "target": "main",
+        "rules": "storage.main.rules"
+      },
+      {
+        "target": "other",
+        "rules": "storage.other.rules"
+      }
+    ],
+    "emulators": {
+      "hub": {
+        "port": 4000
+      },
+      "auth": {
+        "port": 9099
+      },
+      "storage": {
+        "port": 9199
+      }
+    }
+  }
+  
+  

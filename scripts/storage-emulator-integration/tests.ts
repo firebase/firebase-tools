@@ -6,23 +6,28 @@ import * as path from "path";
 import * as http from "http";
 import * as https from "https";
 import * as puppeteer from "puppeteer";
-import * as request from "request";
-import * as crypto from "crypto";
-import * as os from "os";
 import { Bucket, Storage } from "@google-cloud/storage";
 import supertest = require("supertest");
 
 import { IMAGE_FILE_BASE64 } from "../../src/test/emulators/fixtures";
-import { FrameworkOptions, TriggerEndToEndTest } from "../integration-helpers/framework";
+import { TriggerEndToEndTest } from "../integration-helpers/framework";
+import {
+  createRandomFile,
+  EMULATORS_SHUTDOWN_DELAY_MS,
+  getAuthEmulatorHost,
+  getStorageEmulatorHost,
+  LARGE_FILE_SIZE,
+  readEmulatorConfig,
+  readJson,
+  readProdAppConfig,
+  resetStorageEmulator,
+  SERVICE_ACCOUNT_KEY,
+  SMALL_FILE_SIZE,
+  TEST_SETUP_TIMEOUT,
+  uploadText,
+} from "./utils";
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "fake-project-id";
-
-/*
- * Various delays that are needed because this test spawns
- * parallel emulator subprocesses.
- */
-const TEST_SETUP_TIMEOUT = 60000;
-const EMULATORS_SHUTDOWN_DELAY_MS = 5000;
 
 // Flip these flags for options during test debugging
 // all should be FALSE on commit
@@ -44,119 +49,8 @@ const TEST_CONFIG = {
   keepBrowserOpen: false,
 };
 
-// Files contianing the Firebase App Config and Service Account key for
-// the app to be used in these tests.This is only applicable if
-// TEST_CONFIG.useProductionServers is true
-const PROD_APP_CONFIG = "storage-integration-config.json";
-const SERVICE_ACCOUNT_KEY = "service-account-key.json";
-
-// Firebase Emulator config, for starting up emulators
-const FIREBASE_EMULATOR_CONFIG = "firebase.json";
-const SMALL_FILE_SIZE = 200 * 1024; /* 200 kB */
-const LARGE_FILE_SIZE = 20 * 1024 * 1024; /* 20 MiB */
 // Temp directory to store generated files.
 let tmpDir: string;
-
-/**
- * Reads a JSON file in the current directory.
- *
- * @param filename name of the JSON file to be read. Must be in the current directory.
- */
-function readJson(filename: string) {
-  const fullPath = path.join(__dirname, filename);
-  if (!fs.existsSync(fullPath)) {
-    throw new Error(`Can't find file at ${filename}`);
-  }
-  const data = fs.readFileSync(fullPath, "utf8");
-  return JSON.parse(data);
-}
-
-function readProdAppConfig() {
-  try {
-    return readJson(PROD_APP_CONFIG);
-  } catch (error) {
-    throw new Error(
-      `Cannot read the integration config. Please ensure that the file ${PROD_APP_CONFIG} is present in the current directory.`
-    );
-  }
-}
-
-function readEmulatorConfig(): FrameworkOptions {
-  try {
-    return readJson(FIREBASE_EMULATOR_CONFIG);
-  } catch (error) {
-    throw new Error(
-      `Cannot read the emulator config. Please ensure that the file ${FIREBASE_EMULATOR_CONFIG} is present in the current directory.`
-    );
-  }
-}
-
-function getAuthEmulatorHost(emulatorConfig: FrameworkOptions) {
-  const port = emulatorConfig.emulators?.auth?.port;
-  if (port) {
-    return `http://localhost:${port}`;
-  }
-  throw new Error("Auth emulator config not found or invalid");
-}
-
-function getStorageEmulatorHost(emulatorConfig: FrameworkOptions) {
-  const port = emulatorConfig.emulators?.storage?.port;
-  if (port) {
-    return `http://localhost:${port}`;
-  }
-  throw new Error("Storage emulator config not found or invalid");
-}
-
-function createRandomFile(filename: string, sizeInBytes: number): string {
-  if (!tmpDir) {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "storage-files"));
-  }
-  const fullPath = path.join(tmpDir, filename);
-  const bytes = crypto.randomBytes(sizeInBytes);
-  fs.writeFileSync(fullPath, bytes);
-
-  return fullPath;
-}
-
-/**
- * Resets the storage layer of the Storage Emulator.
- */
-async function resetStorageEmulator(emulatorHost: string) {
-  await new Promise<void>((resolve) => {
-    request.post(`${emulatorHost}/internal/reset`, () => {
-      resolve();
-    });
-  });
-}
-
-async function uploadText(
-  page: puppeteer.Page,
-  filename: string,
-  text: string,
-  format?: string,
-  metadata?: firebase.storage.UploadMetadata
-): Promise<string> {
-  return page.evaluate(
-    async (filename, text, format, metadata) => {
-      try {
-        const task = await firebase
-          .storage()
-          .ref(filename)
-          .putString(text, format, JSON.parse(metadata));
-        return task.state;
-      } catch (err) {
-        if (err instanceof Error) {
-          throw err.message;
-        }
-        throw err;
-      }
-    },
-    filename,
-    text,
-    format ?? "raw",
-    JSON.stringify(metadata ?? {})
-  )!;
-}
 
 describe("Storage emulator", () => {
   let test: TriggerEndToEndTest;
@@ -209,8 +103,8 @@ describe("Storage emulator", () => {
 
       testBucket = admin.storage().bucket(storageBucket);
 
-      smallFilePath = createRandomFile("small_file", SMALL_FILE_SIZE);
-      largeFilePath = createRandomFile("large_file", LARGE_FILE_SIZE);
+      smallFilePath = createRandomFile("small_file", SMALL_FILE_SIZE, tmpDir);
+      largeFilePath = createRandomFile("large_file", LARGE_FILE_SIZE, tmpDir);
     });
 
     beforeEach(async () => {
@@ -232,8 +126,8 @@ describe("Storage emulator", () => {
 
         it("should replace existing file on upload", async () => {
           const path = "replace.txt";
-          const content1 = createRandomFile("small_content_1", 10);
-          const content2 = createRandomFile("small_content_2", 10);
+          const content1 = createRandomFile("small_content_1", 10, tmpDir);
+          const content2 = createRandomFile("small_content_2", 10, tmpDir);
           const file = testBucket.file(path);
 
           await testBucket.upload(content1, {

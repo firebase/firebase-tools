@@ -12,3 +12,5 @@ mocha \
   --require source-map-support/register \
   --require src/test/helpers/mocha-bootstrap.ts \
   scripts/storage-emulator-integration/tests.ts
+
+mocha scripts/storage-emulator-integration/multiple-targets/tests.ts

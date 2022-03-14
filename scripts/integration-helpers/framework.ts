@@ -256,6 +256,18 @@ export class TriggerEndToEndTest {
     return this.cliProcess ? this.cliProcess.stop() : Promise.resolve();
   }
 
+  applyTargets(additionalArgs: string[]): Promise<void> {
+    const cli = new CLIProcess("default", this.workdir);
+    const started = cli.start("target:apply", this.project, additionalArgs, (data: unknown) => {
+      if (typeof data !== "string" && !Buffer.isBuffer(data)) {
+        throw new Error(`data is not a string or buffer (${typeof data})`);
+      }
+      return data.includes(`Applied ${additionalArgs[0]} target`);
+    });
+    this.cliProcess = cli;
+    return started;
+  }
+
   invokeHttpFunction(name: string, zone = FIREBASE_PROJECT_ZONE): Promise<Response> {
     const url = `http://localhost:${[this.functionsEmulatorPort, this.project, zone, name].join(
       "/"
