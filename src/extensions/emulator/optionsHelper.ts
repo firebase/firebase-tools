@@ -73,7 +73,8 @@ export async function getExtensionFunctionInfo(
     secretEnvVariables,
   };
 }
-
+const isSecretParam = (p: Param) =>
+  p.type === extensionsHelper.SpecParamType.SECRET || p.type === ParamType.SECRET;
 /**
  * getNonSecretEnv checks extension spec for secret params, and returns env without those secret params
  * @param params A list of params to check for secret params
@@ -84,7 +85,7 @@ export function getNonSecretEnv(
   paramValues: Record<string, string>
 ): Record<string, string> {
   const getNonSecretEnv: Record<string, string> = Object.assign({}, paramValues);
-  const secretParams = params.filter((p) => p.type === ParamType.SECRET);
+  const secretParams = params.filter(isSecretParam);
   for (const p of secretParams) {
     delete getNonSecretEnv[p.param];
   }
@@ -101,7 +102,7 @@ export function getSecretEnvVars(
   paramValues: Record<string, string>
 ): SecretEnvVar[] {
   const secretEnvVar: SecretEnvVar[] = [];
-  const secretParams = params.filter((p) => p.type === ParamType.SECRET);
+  const secretParams = params.filter(isSecretParam);
   for (const s of secretParams) {
     if (paramValues[s.param]) {
       const [, projectId, , secret, , version] = paramValues[s.param].split("/");

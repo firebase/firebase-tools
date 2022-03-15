@@ -150,7 +150,7 @@ export interface Param {
   label: string;
   description?: string;
   default?: string;
-  type?: ParamType | SpecParamType;
+  type?: ParamType | SpecParamType; // TODO(b/224618262): This is SpecParamType when publishing & ParamType when looking at API responses. Choose one.
   options?: ParamOption[];
   required?: boolean;
   validationRegex?: string;
