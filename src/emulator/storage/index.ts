@@ -22,7 +22,10 @@ export interface StorageEmulatorArgs {
   projectId: string;
   port?: number;
   host?: string;
+
+  // Either a single rules file or an array of resource/rules pairs
   rules: SourceFile | RulesConfig[];
+
   auto_download?: boolean;
 }
 
@@ -87,7 +90,7 @@ export class StorageEmulator implements EmulatorInstance {
 
   async stop(): Promise<void> {
     await this._persistence.deleteAll();
-    await this._rulesManager.close();
+    await this._rulesManager.stop();
     return this.destroyServer ? this.destroyServer() : Promise.resolve();
   }
 

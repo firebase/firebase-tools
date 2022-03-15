@@ -31,7 +31,7 @@ describe("Storage Rules Manager", function () {
 
   afterEach(async () => {
     rulesRuntime.stop();
-    await rulesManager.close();
+    await rulesManager.stop();
   });
 
   it("should load multiple rulesets on start", () => {
@@ -48,21 +48,24 @@ describe("Storage Rules Manager", function () {
 
     expect(otherRulesManager.getRuleset("default")).not.to.be.undefined;
 
-    await otherRulesManager.close();
+    await otherRulesManager.stop();
   });
 
   it("should load ruleset on update with SourceFile object", async () => {
-    await rulesManager.setSourceFile(StorageRulesFiles.readWriteIfTrue, "bucket_2");
+    await rulesManager.updateSourceFile(StorageRulesFiles.readWriteIfTrue, "bucket_2");
     expect(rulesManager.getRuleset("bucket_2")).not.to.be.undefined;
   });
 
   it("should set source file", async () => {
-    await rulesManager.setSourceFile(StorageRulesFiles.readWriteIfTrue, "bucket_2");
+    await rulesManager.updateSourceFile(StorageRulesFiles.readWriteIfTrue, "bucket_2");
 
     expect(await isPermitted({ ...opts, ruleset: rulesManager.getRuleset("bucket_2")! })).to.be
       .true;
 
-    const issues = await rulesManager.setSourceFile(StorageRulesFiles.readWriteIfAuth, "bucket_2");
+    const issues = await rulesManager.updateSourceFile(
+      StorageRulesFiles.readWriteIfAuth,
+      "bucket_2"
+    );
 
     expect(issues.errors.length).to.equal(0);
     expect(issues.warnings.length).to.equal(0);
@@ -78,7 +81,7 @@ describe("Storage Rules Manager", function () {
     persistence.appendBytes(fileName, Buffer.from(StorageRulesFiles.readWriteIfTrue.content));
 
     const sourceFile = getSourceFile(testDir, fileName);
-    await rulesManager.setSourceFile(sourceFile, "bucket_2");
+    await rulesManager.updateSourceFile(sourceFile, "bucket_2");
     expect(await isPermitted({ ...opts, ruleset: rulesManager.getRuleset("bucket_2")! })).to.be
       .true;
 
@@ -90,11 +93,11 @@ describe("Storage Rules Manager", function () {
     expect(await isPermitted(opts)).to.be.false;
   });
 
-  it("should delete ruleset when storage manager is closed", async () => {
-    await rulesManager.setSourceFile(StorageRulesFiles.readWriteIfTrue, "bucket_2");
+  it("should delete ruleset when storage manager is stopped", async () => {
+    await rulesManager.updateSourceFile(StorageRulesFiles.readWriteIfTrue, "bucket_2");
     expect(rulesManager.getRuleset("bucket_2")).not.to.be.undefined;
 
-    await rulesManager.close();
+    await rulesManager.stop();
     expect(rulesManager.getRuleset("bucket_2")).to.be.undefined;
   });
 });

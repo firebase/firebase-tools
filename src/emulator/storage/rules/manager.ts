@@ -8,67 +8,80 @@ import { RulesConfig } from "..";
 /**
  * Keeps track of the rules source file and maintains a generated ruleset for one or more storage
  * resources.
- * */
+ *
+ * Example usage:
+ *
+ * ```
+ * const rulesManager = createStorageRulesManager(initialRules);
+ * rulesManager.start();
+ * rulesManager.updateSourceFile(newRules);
+ * rulesManager.stop();
+ * ```
+ */
 export interface StorageRulesManager {
   /** Sets source file for each resource using the rules previously passed in the constructor. */
-  start: () => Promise<StorageRulesIssues>;
+  start(): Promise<StorageRulesIssues>;
 
-  /** Retrieves the generated ruleset for the resource. */
-  getRuleset: (resource: string) => StorageRulesetInstance | undefined;
+  /**
+   * Retrieves the generated ruleset for the resource. Returns undefined if the resource is invalid
+   * or if the ruleset has not been generated.
+   */
+  getRuleset(resource: string): StorageRulesetInstance | undefined;
 
   /**
    * Updates the source file and, correspondingly, the file watcher and ruleset for the resource.
+   * Returns an array of errors and/or warnings that arise from loading the ruleset.
    */
-  setSourceFile: (rules: SourceFile, resource: string) => Promise<StorageRulesIssues>;
+  updateSourceFile(rules: SourceFile, resource: string): Promise<StorageRulesIssues>;
 
   /** Deletes source file, ruleset, and removes listeners from all files for all resources. */
-  close: () => Promise<void>;
+  stop(): Promise<void>;
 }
 
 /**
- * Creates either a {@link StorageRulesManagerImplementation} to manage rules for a single resource
- * or a {@link StorageRulesManagerRegistry} for multiple resources.
+ * Creates either a {@link DefaultStorageRulesManager} to manage rules for a single resource
+ * or a {@link ResourceBasedStorageRulesManager} for multiple resources.
  */
 export function createStorageRulesManager(
   rules: SourceFile | RulesConfig[],
   runtime: StorageRulesRuntime
 ): StorageRulesManager {
   return Array.isArray(rules)
-    ? new StorageRulesManagerRegistry(rules, runtime)
-    : new StorageRulesManagerImplementation(rules, runtime);
+    ? new ResourceBasedStorageRulesManager(rules, runtime)
+    : new DefaultStorageRulesManager(rules, runtime);
 }
 
 /**
  * Maintains a {@link StorageRulesetInstance} for a given source file. Listens for changes to the
  * file and updates the ruleset accordingly.
  */
-class StorageRulesManagerImplementation implements StorageRulesManager {
-  private _sourceFile?: SourceFile;
+class DefaultStorageRulesManager implements StorageRulesManager {
+  private _rules: SourceFile;
   private _ruleset?: StorageRulesetInstance;
   private _watcher = new chokidar.FSWatcher();
   private _logger = EmulatorLogger.forEmulator(Emulators.STORAGE);
 
-  constructor(private _initRules: SourceFile, private _runtime: StorageRulesRuntime) {}
+  constructor(_rules: SourceFile, private _runtime: StorageRulesRuntime) {
+    this._rules = _rules;
+  }
 
-  async start(): Promise<StorageRulesIssues> {
-    return this.setSourceFile(this._initRules);
+  start(): Promise<StorageRulesIssues> {
+    return this.updateSourceFile(this._rules);
   }
 
   getRuleset(): StorageRulesetInstance | undefined {
     return this._ruleset;
   }
 
-  async setSourceFile(rules: SourceFile): Promise<StorageRulesIssues> {
-    const prevRulesFile = this._sourceFile?.name;
-    this._sourceFile = rules;
+  async updateSourceFile(rules: SourceFile): Promise<StorageRulesIssues> {
+    const prevRulesFile = this._rules.name;
+    this._rules = rules;
     const issues = await this.loadRuleset();
     this.updateWatcher(rules.name, prevRulesFile);
     return issues;
   }
 
-  async close(): Promise<void> {
-    delete this._sourceFile;
-    delete this._ruleset;
+  async stop(): Promise<void> {
     await this._watcher.close();
   }
 
@@ -95,14 +108,13 @@ class StorageRulesManagerImplementation implements StorageRulesManager {
   }
 
   private async loadRuleset(): Promise<StorageRulesIssues> {
-    const { ruleset, issues } = await this._runtime.loadRuleset({ files: [this._sourceFile!] });
+    const { ruleset, issues } = await this._runtime.loadRuleset({ files: [this._rules] });
 
     if (ruleset) {
       this._ruleset = ruleset;
       return issues;
     }
 
-    delete this._ruleset;
     issues.all.forEach((issue: string) => {
       try {
         const parsedIssue = JSON.parse(issue);
@@ -121,15 +133,14 @@ class StorageRulesManagerImplementation implements StorageRulesManager {
 }
 
 /**
- * Maintains a mapping from storage resource to {@link StorageRulesManagerImplementation} and
+ * Maintains a mapping from storage resource to {@link DefaultStorageRulesManager} and
  * directs calls to the appropriate instance.
  */
-class StorageRulesManagerRegistry implements StorageRulesManager {
-  private _rulesManagers: Map<string, StorageRulesManagerImplementation>;
+class ResourceBasedStorageRulesManager implements StorageRulesManager {
+  private _rulesManagers = new Map<string, DefaultStorageRulesManager>();
 
-  constructor(_initRules: RulesConfig[], private _runtime: StorageRulesRuntime) {
-    this._rulesManagers = new Map<string, StorageRulesManagerImplementation>();
-    for (const { resource, rules } of _initRules) {
+  constructor(_rulesConfig: RulesConfig[], private _runtime: StorageRulesRuntime) {
+    for (const { resource, rules } of _rulesConfig) {
       this.createRulesManager(resource, rules);
     }
   }
@@ -146,23 +157,20 @@ class StorageRulesManagerRegistry implements StorageRulesManager {
     return this._rulesManagers.get(resource)?.getRuleset();
   }
 
-  async setSourceFile(rules: SourceFile, resource: string): Promise<StorageRulesIssues> {
+  updateSourceFile(rules: SourceFile, resource: string): Promise<StorageRulesIssues> {
     const rulesManager =
       this._rulesManagers.get(resource) || this.createRulesManager(resource, rules);
-    return rulesManager.setSourceFile(rules);
+    return rulesManager.updateSourceFile(rules);
   }
 
-  async close(): Promise<void> {
-    for (const rulesManager of this._rulesManagers.values()) {
-      await rulesManager.close();
-    }
+  async stop(): Promise<void> {
+    await Promise.all(
+      Array.from(this._rulesManagers.values(), async (rulesManager) => await rulesManager.stop())
+    );
   }
 
-  private createRulesManager(
-    resource: string,
-    rules: SourceFile
-  ): StorageRulesManagerImplementation {
-    const rulesManager = new StorageRulesManagerImplementation(rules, this._runtime);
+  private createRulesManager(resource: string, rules: SourceFile): DefaultStorageRulesManager {
+    const rulesManager = new DefaultStorageRulesManager(rules, this._runtime);
     this._rulesManagers.set(resource, rulesManager);
     return rulesManager;
   }

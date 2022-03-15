@@ -92,7 +92,7 @@ export function createApp(
 
     const name = file.name;
     const content = file.content;
-    const issues = await emulator.rulesManager.setSourceFile(
+    const issues = await emulator.rulesManager.updateSourceFile(
       { name, content },
       req.params.bucketId
     );
