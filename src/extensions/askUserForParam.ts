@@ -6,15 +6,20 @@ const { marked } = require("marked");
 import { Param, ParamOption, ParamType } from "./extensionsApi";
 import * as secretManagerApi from "../gcp/secretManager";
 import * as secretsUtils from "./secretsUtils";
-import { logPrefix, substituteParams } from "./extensionsHelper";
+import { confirm, logPrefix, substituteParams } from "./extensionsHelper";
 import { convertExtensionOptionToLabeledList, getRandomString, onceWithJoin } from "./utils";
 import { logger } from "../logger";
 import { promptOnce } from "../prompt";
 import * as utils from "../utils";
 import { ParamBindingOptions } from "./paramHelper";
 
+enum SecretCreationAction {
+  CLOUD = 1,
+  LOCAL,
+}
+
 enum SecretUpdateAction {
-  LEAVE,
+  LEAVE = 1,
   SET_NEW,
 }
 
@@ -109,6 +114,8 @@ export async function askForParam(args: {
 
   let valid = false;
   let response = "";
+  let responseForLocal;
+  let secretLocations: string[] = [];
   const description = paramSpec.description || "";
   const label = paramSpec.label.trim();
   logger.info(
@@ -150,16 +157,44 @@ export async function askForParam(args: {
           },
           message:
             "Which options do you want enabled for this parameter? " +
-            "Press Space to select, then Enter to confirm your choices. " +
-            "You may select multiple options.",
+            "Press Space to select, then Enter to confirm your choices. ",
           choices: convertExtensionOptionToLabeledList(paramSpec.options as ParamOption[]),
         });
         valid = checkResponse(response, paramSpec);
         break;
       case ParamType.SECRET:
-        response = args.reconfiguring
-          ? await promptReconfigureSecret(args.projectId, args.instanceId, paramSpec)
-          : await promptCreateSecret(args.projectId, args.instanceId, paramSpec);
+        while (!secretLocations.length) {
+          secretLocations = await promptOnce({
+            name: "input",
+            type: "checkbox",
+            message:
+              "Where would you like to store your secrets? You must select at least one value",
+            choices: [
+              {
+                checked: true,
+                name: "Google Cloud Secret Manager asdf asd f",
+                // return type of string is not actually enforced, need to manually convert.
+                value: SecretCreationAction.CLOUD.toString(),
+              },
+              {
+                checked: false,
+                name: "Local file (Only used by Firebase Emulator)",
+                value: SecretCreationAction.LOCAL.toString(),
+              },
+            ],
+          });
+        }
+
+        if (secretLocations.includes(SecretCreationAction.CLOUD.toString())) {
+          console.log('cloud');
+          response = args.reconfiguring
+            ? await promptReconfigureSecret(args.projectId, args.instanceId, paramSpec)
+            : await promptCreateSecret(args.projectId, args.instanceId, paramSpec);
+        }
+        if (secretLocations.includes(SecretCreationAction.LOCAL.toString())) {
+          console.log('local');
+          responseForLocal = await promptLocalSecret(paramSpec);
+        }
         valid = true;
         break;
       default:
@@ -173,7 +208,19 @@ export async function askForParam(args: {
         valid = checkResponse(response, paramSpec);
     }
   }
-  return { baseValue: response };
+  return { baseValue: response, ...(responseForLocal ? { local: responseForLocal } : {}) };
+}
+
+async function promptLocalSecret(paramSpec: Param): Promise<string | undefined> {
+  utils.logLabeledBullet(logPrefix, "Configure a local secret value for Extensions Emulator");
+  const value = await promptOnce({
+    name: paramSpec.param,
+    type: "input",
+    message:
+      `This secret will be stored in ./extensions/*.secret.local.\n` +
+      `Enter value for "${paramSpec.label.trim()}" to be used by Extensions Emulator:`,
+  });
+  return value;
 }
 
 async function promptReconfigureSecret(
