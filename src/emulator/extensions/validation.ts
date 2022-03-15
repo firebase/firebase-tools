@@ -37,7 +37,9 @@ export async function getUnemulatedAPIs(
         if (unemulatedAPIs[api.apiName]) {
           unemulatedAPIs[api.apiName].instanceIds.push(i.instanceId);
         } else {
-          const enabled = await check(projectId, api.apiName, "extensions", true);
+          const enabled =
+            !Constants.isDemoProject(projectId) &&
+            (await check(projectId, api.apiName, "extensions", true));
           unemulatedAPIs[api.apiName] = {
             apiName: api.apiName,
             instanceIds: [i.instanceId],

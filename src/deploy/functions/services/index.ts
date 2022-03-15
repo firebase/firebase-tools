@@ -54,7 +54,7 @@ export const EVENT_SERVICE_MAPPING: Record<v2events.Event, Service> = {
   "google.cloud.storage.object.v1.archived": StorageService,
   "google.cloud.storage.object.v1.deleted": StorageService,
   "google.cloud.storage.object.v1.metadataUpdated": StorageService,
-  "firebase.firebasealerts.alerts.v1.published": FirebaseAlertsService,
+  "google.firebase.firebasealerts.alerts.v1.published": FirebaseAlertsService,
 };
 
 /**

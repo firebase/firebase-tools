@@ -1,3 +1,0 @@
-- Fixes bug where functions' memory configurations weren't preserved in batched function deploys (#4253).
-- `ext:export` now uses stable ordering for params in .env files (#4256).
-- Adds alerting event provider (#4258).
