@@ -187,6 +187,7 @@ describe("Storage emulator", () => {
             bucket: "string",
             cacheControl: "string",
             contentDisposition: "string",
+            contentEncoding: "string",
             generation: "string",
             metageneration: "string",
             contentType: "string",
