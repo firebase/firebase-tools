@@ -240,7 +240,6 @@ export class FunctionsEmulator implements EmulatorInstance {
     this.workQueue.start();
 
     const hub = express();
-    hub.use(cors({ origin: true })); // Enable cors so the Emulator UI can call out to the Functions Emulator.
 
     const dataMiddleware: express.RequestHandler = (req, res, next) => {
       const chunks: Buffer[] = [];
@@ -351,7 +350,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     // The ordering here is important. The longer routes (background)
     // need to be registered first otherwise the HTTP functions consume
     // all events.
-    hub.get(listBackendsRoute, dataMiddleware, listBackendsHandler);
+    hub.get(listBackendsRoute, cors({ origin: true }), listBackendsHandler); // This route needs CORS so the Emulator UI can call it.
     hub.post(backgroundFunctionRoute, dataMiddleware, backgroundHandler);
     hub.post(multicastFunctionRoute, dataMiddleware, multicastHandler);
     hub.all(httpsFunctionRoutes, dataMiddleware, httpsHandler);
