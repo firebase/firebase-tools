@@ -33,12 +33,9 @@ export const FIND_AVAILBLE_PORT_BY_DEFAULT: Record<Emulators, boolean> = {
   storage: false,
   extensions: false,
   eventarc: true,
-<<<<<<< HEAD
   dataconnect: false,
   tasks: true,
-=======
   remoteconfig: false,
->>>>>>> 986a378b3 (Adds remote config emulator boilerplate)
 };
 
 export const EMULATOR_DESCRIPTION: Record<Emulators, string> = {

@@ -18,7 +18,7 @@ export enum Emulators {
   EVENTARC = "eventarc",
   DATACONNECT = "dataconnect",
   TASKS = "tasks",
-  REMOTE_CONFIG = "remoteconfig",
+  REMOTECONFIG = "remoteconfig",
 }
 
 export type DownloadableEmulators =
@@ -55,12 +55,9 @@ export const ALL_SERVICE_EMULATORS = [
   Emulators.PUBSUB,
   Emulators.STORAGE,
   Emulators.EVENTARC,
-<<<<<<< HEAD
   Emulators.DATACONNECT,
   Emulators.TASKS,
-=======
-  Emulators.REMOTE_CONFIG,
->>>>>>> 986a378b3 (Adds remote config emulator boilerplate)
+  Emulators.REMOTECONFIG,
 ].filter((v) => v);
 
 export const EMULATORS_SUPPORTED_BY_FUNCTIONS = [
@@ -79,7 +76,7 @@ export const EMULATORS_SUPPORTED_BY_UI = [
   Emulators.FUNCTIONS,
   Emulators.STORAGE,
   Emulators.EXTENSIONS,
-  Emulators.REMOTE_CONFIG,
+  Emulators.REMOTECONFIG,
 ];
 
 export const EMULATORS_SUPPORTED_BY_USE_EMULATOR = [
