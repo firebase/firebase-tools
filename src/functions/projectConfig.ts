@@ -5,7 +5,7 @@ export type NormalizedConfig = [FunctionsSingle, ...FunctionsSingle[]];
 export type ValidatedSingle = FunctionsSingle & { source: string; codebase: string };
 export type ValidatedConfig = [ValidatedSingle, ...ValidatedSingle[]];
 
-const DEFAULT_CODEBASE = "default";
+export const DEFAULT_CODEBASE = "default";
 
 /**
  * Normalize functions config to return functions config in an array form.

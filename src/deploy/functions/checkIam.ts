@@ -1,7 +1,7 @@
 import { bold } from "cli-color";
 
 import { logger } from "../../logger";
-import { getFilterGroups, functionMatchesAnyGroup } from "./functionsDeployHelper";
+import { getFunctionFilters, functionMatchesAnyGroup } from "./functionsDeployHelper";
 import { FirebaseError } from "../../error";
 import * as iam from "../../gcp/iam";
 import * as args from "./args";
@@ -61,7 +61,7 @@ export async function checkHttpIam(
   options: Options,
   payload: args.Payload
 ): Promise<void> {
-  const filterGroups = context.filters || getFilterGroups(options);
+  const filterGroups = context.filters || getFunctionFilters(options);
 
   const httpEndpoints = backend
     .allEndpoints(payload.functions!.backend)

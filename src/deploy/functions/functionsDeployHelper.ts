@@ -1,9 +1,9 @@
 import * as backend from "./backend";
+import * as projectConfig from "../../functions/projectConfig";
 
 export interface FunctionFilter {
-  codebase?: string;
-  group?: string;
-  id: string;
+  codebase: string;
+  idChunks: string[];
 }
 
 /**
@@ -35,10 +35,10 @@ export function functionMatchesGroup(func: backend.TargetIds, groupChunks: strin
 }
 
 /**
- * Todo: Add doc on how resource seletor works
+ * Todo: Add doc on how resource selector works
  * @param options
  */
-export function getFilterGroups(options: { only?: string }): FunctionFilter[] {
+export function getFunctionFilters(options: { only?: string }): FunctionFilter[] {
   if (!options.only) {
     return [];
   }
@@ -48,13 +48,23 @@ export function getFilterGroups(options: { only?: string }): FunctionFilter[] {
   for (let selector of selectors) {
     if (selector.startsWith("function:")) {
       selector = selector.replace("function:", "");
-      const maybeCodebase = selector.split(":");
+      const codebaseFragments = selector.split(":");
 
-      if (!Array.isArray(options.config.src.functions)) {
-        
+      if (codebaseFragments.length < 2) {
+        // If "codebase" selector isn't included, use the default codebase.
+        codebaseFragments.unshift(projectConfig.DEFAULT_CODEBASE);
+      } else if (codebaseFragments.length > 2) {
+        // Invalid filter format.  Throw error
       }
+
+      filters.push({
+        codebase: codebaseFragments[0],
+        idChunks: codebaseFragments[1].split(/[-.]/),
+      });
     }
   }
+
+  return filters;
 }
 
 export function getFunctionLabel(fn: backend.TargetIds): string {

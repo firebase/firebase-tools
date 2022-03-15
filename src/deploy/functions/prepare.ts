@@ -9,7 +9,7 @@ import * as runtimes from "./runtimes";
 import * as validate from "./validate";
 import * as ensure from "./ensure";
 import { Options } from "../../options";
-import { functionMatchesAnyGroup, getFilterGroups } from "./functionsDeployHelper";
+import { functionMatchesAnyGroup, getFunctionFilters } from "./functionsDeployHelper";
 import { logBullet } from "../../utils";
 import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload";
 import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
@@ -62,7 +62,7 @@ export async function prepare(
   const runtimeConfig = await getFunctionsConfig(context);
 
   // Check what --only filters have been passed in.
-  context.filters = getFilterGroups(options);
+  context.filters = getFunctionFilters(options);
 
   // Parse triggers from each codebase
   for (const codebaseConfig of context.config) {

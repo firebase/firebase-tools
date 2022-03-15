@@ -59,14 +59,14 @@ describe("functionsDeployHelper", () => {
       const options = {
         only: "functions:myFunc,functions:myOtherFunc",
       } as Options;
-      expect(helper.getFilterGroups(options)).to.deep.equal([["myFunc"], ["myOtherFunc"]]);
+      expect(helper.getFunctionFilters(options)).to.deep.equal([["myFunc"], ["myOtherFunc"]]);
     });
 
     it("should parse nested filters", () => {
       const options = {
         only: "functions:groupA.myFunc",
       } as Options;
-      expect(helper.getFilterGroups(options)).to.deep.equal([["groupA", "myFunc"]]);
+      expect(helper.getFunctionFilters(options)).to.deep.equal([["groupA", "myFunc"]]);
     });
   });
 });
