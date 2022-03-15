@@ -38,6 +38,7 @@ export class FunctionsServer {
       functionsDir,
       nodeMajorVersion,
       env: {},
+      secretEnv: [],
     };
     // Normally, these two fields are included in args (and typed as such).
     // However, some poorly-typed tests may not have them and we need to provide
@@ -46,6 +47,7 @@ export class FunctionsServer {
       projectId,
       projectDir: options.config.projectDir,
       emulatableBackends: [this.backend],
+      projectAlias: options.projectAlias,
       account,
       ...partialArgs,
     };

@@ -62,6 +62,8 @@ import { accessSecretVersion } from "../gcp/secretManager";
 import * as runtimes from "../deploy/functions/runtimes";
 import * as backend from "../deploy/functions/backend";
 import * as functionsEnv from "../functions/env";
+import { flattenArray } from "../functional";
+import { SecretEnvVar } from "../gcp/cloudfunctions";
 
 const EVENT_INVOKE = "functions:invoke";
 const LOCAL_SECRETS_FILE = ".secret.local";
@@ -85,6 +87,7 @@ const DATABASE_PATH_PATTERN = new RegExp("^projects/[^/]+/instances/([^/]+)/refs
 export interface EmulatableBackend {
   functionsDir: string;
   env: Record<string, string>;
+  secretEnv: backend.SecretEnvVar[];
   predefinedTriggers?: ParsedTriggerDefinition[];
   nodeMajorVersion?: number;
   nodeBinary?: string;
@@ -99,7 +102,7 @@ export interface EmulatableBackend {
  */
 export interface BackendInfo {
   directory: string;
-  env: Record<string, string>;
+  env: Record<string, string>; // TODO: Consider exposing more information about where param values come from & if they are locally overwritten.
   functionTriggers: ParsedTriggerDefinition[];
   extensionInstanceId?: string;
   extension?: Extension; // Only present for published extensions
@@ -119,6 +122,7 @@ export interface FunctionsEmulatorArgs {
   debugPort?: number;
   remoteEmulators?: { [key: string]: EmulatorInfo };
   adminSdkConfig?: AdminSdkConfig;
+  projectAlias?: string;
 }
 
 // FunctionsRuntimeInstance is the handler for a running function invocation
@@ -237,7 +241,6 @@ export class FunctionsEmulator implements EmulatorInstance {
     this.workQueue.start();
 
     const hub = express();
-    hub.use(cors({ origin: true })); // Enable cors so the Emulator UI can call out to the Functions Emulator.
 
     const dataMiddleware: express.RequestHandler = (req, res, next) => {
       const chunks: Buffer[] = [];
@@ -348,7 +351,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     // The ordering here is important. The longer routes (background)
     // need to be registered first otherwise the HTTP functions consume
     // all events.
-    hub.get(listBackendsRoute, dataMiddleware, listBackendsHandler);
+    hub.get(listBackendsRoute, cors({ origin: true }), listBackendsHandler); // This route needs CORS so the Emulator UI can call it.
     hub.post(backgroundFunctionRoute, dataMiddleware, backgroundHandler);
     hub.post(multicastFunctionRoute, dataMiddleware, multicastHandler);
     hub.all(httpsFunctionRoutes, dataMiddleware, httpsHandler);
@@ -483,7 +486,10 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     let triggerDefinitions: EmulatedTriggerDefinition[];
     if (emulatableBackend.predefinedTriggers) {
-      triggerDefinitions = emulatedFunctionsByRegion(emulatableBackend.predefinedTriggers);
+      triggerDefinitions = emulatedFunctionsByRegion(
+        emulatableBackend.predefinedTriggers,
+        emulatableBackend.secretEnv
+      );
     } else {
       const runtimeConfig = this.getRuntimeConfig(emulatableBackend);
       const runtimeDelegateContext: runtimes.DelegateContext = {
@@ -833,9 +839,14 @@ export class FunctionsEmulator implements EmulatorInstance {
       .filter((t) => !t.backend.extensionInstanceId)
       .map((t) => t.def);
     return this.args.emulatableBackends.map((e: EmulatableBackend) => {
+      const envWithSecrets = Object.assign({}, e.env);
+      for (const s of e.secretEnv) {
+        envWithSecrets[s.key] = backend.secretVersionName(s);
+      }
+
       return {
         directory: e.functionsDir,
-        env: e.env,
+        env: envWithSecrets,
         extensionInstanceId: e.extensionInstanceId, // Present on all extensions
         extension: e.extension, // Only present on published extensions
         extensionVersion: e.extensionVersion, // Only present on published extensions
@@ -944,6 +955,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     const projectInfo = {
       functionsSource: backend.functionsDir,
       projectId: this.args.projectId,
+      projectAlias: this.args.projectAlias,
       isEmulator: true,
     };
 
@@ -1082,11 +1094,15 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (trigger) {
       const secrets: backend.SecretEnvVar[] = trigger.secretEnvironmentVariables || [];
       const accesses = secrets
-        .filter((s) => !secretEnvs[s.secret])
+        .filter((s) => !secretEnvs[s.key])
         .map(async (s) => {
-          this.logger.logLabeled("INFO", "functions", `Trying to access secret ${s.key}@latest`);
-          const value = await accessSecretVersion(this.getProjectId(), s.key, "latest");
-          return [s.secret, value];
+          this.logger.logLabeled("INFO", "functions", `Trying to access secret ${s.secret}@latest`);
+          const value = await accessSecretVersion(
+            this.getProjectId(),
+            s.secret,
+            s.version ?? "latest"
+          );
+          return [s.key, value];
         });
       const accessResults = await allSettled(accesses);
 
