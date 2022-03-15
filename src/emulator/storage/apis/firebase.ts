@@ -237,8 +237,6 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     }
 
     // Resumable upload
-    console.log("penguin");
-    console.log(req.header("x-goog-upload-command"));
     const uploadCommand = req.header("x-goog-upload-command");
     if (!uploadCommand) {
       res.sendStatus(400);
@@ -301,7 +299,6 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     }
 
     if (uploadCommand.includes("upload")) {
-      console.log("upload stuff");
       let upload: Upload;
       try {
         upload = uploadService.continueResumableUpload(uploadId, await reqBodyToBuffer(req));
@@ -322,7 +319,6 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     }
 
     if (uploadCommand.includes("finalize")) {
-      console.log("finalize stuff");
       let upload: Upload;
       try {
         upload = uploadService.finalizeResumableUpload(uploadId);
