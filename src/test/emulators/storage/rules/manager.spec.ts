@@ -9,7 +9,8 @@ import { StorageRulesRuntime } from "../../../../emulator/storage/rules/runtime"
 import { Persistence } from "../../../../emulator/storage/persistence";
 import { RulesetOperationMethod } from "../../../../emulator/storage/rules/types";
 
-describe("Storage Rules Manager", function () {
+// TODO(hsinpei: Make this an integration test
+describe.skip("Storage Rules Manager", function () {
   const rulesRuntime = new StorageRulesRuntime();
   const rulesManager = new StorageRulesManager(rulesRuntime);
 
