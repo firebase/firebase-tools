@@ -172,7 +172,7 @@ export async function askForParam(args: {
             choices: [
               {
                 checked: true,
-                name: "Google Cloud Secret Manager asdf asd f",
+                name: "Google Cloud Secret Manager",
                 // return type of string is not actually enforced, need to manually convert.
                 value: SecretCreationAction.CLOUD.toString(),
               },
@@ -184,15 +184,12 @@ export async function askForParam(args: {
             ],
           });
         }
-
         if (secretLocations.includes(SecretCreationAction.CLOUD.toString())) {
-          console.log('cloud');
           response = args.reconfiguring
             ? await promptReconfigureSecret(args.projectId, args.instanceId, paramSpec)
             : await promptCreateSecret(args.projectId, args.instanceId, paramSpec);
         }
         if (secretLocations.includes(SecretCreationAction.LOCAL.toString())) {
-          console.log('local');
           responseForLocal = await promptLocalSecret(paramSpec);
         }
         valid = true;
