@@ -9,6 +9,7 @@ import { readEnvFile } from "./paramHelper";
 import { FirebaseError } from "../error";
 import * as utils from "../utils";
 import { logPrefix } from "./extensionsHelper";
+import { ParamType } from "./extensionsApi";
 
 const ENV_DIRECTORY = "extensions";
 
@@ -56,6 +57,25 @@ export async function writeToManifest(
 
   writeExtensionsToFirebaseJson(specs.baseSpec, config);
   await writeEnvFiles(specs.baseSpec, config, options.force);
+  await writeLocalSecrets(specs.localSpec!, config, options.force);
+}
+
+async function writeLocalSecrets(
+  specs: InstanceSpec[] ,
+  config: Config,
+  force?: boolean
+) : Promise<void>{
+  for (const spec of specs) {
+    let buffer : Record<string, string> = {};
+    for (const paramSpec of spec.paramSpecs!) {
+      if (paramSpec) {
+        if (paramSpec.type === ParamType.SECRET) {
+          buffer[paramSpec.param] = spec.params[paramSpec.param];
+        }
+      }
+    }
+    console.log(buffer);
+  }
 }
 
 /**

@@ -13,6 +13,7 @@ export interface InstanceSpec {
   params: Record<string, string>;
   extensionVersion?: extensionsApi.ExtensionVersion;
   extension?: extensionsApi.Extension;
+  paramSpecs?: extensionsApi.Param[];
 }
 
 /**

@@ -41,7 +41,7 @@ import { logger } from "../logger";
 import { previews } from "../previews";
 import { Options } from "../options";
 import * as manifest from "../extensions/manifest";
-import { getBaseParamBindings, ParamBindingOptions } from "../extensions/paramHelper";
+import { getBaseParamBindings, getLocalParamBindings, ParamBindingOptions } from "../extensions/paramHelper";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -266,6 +266,7 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
     instanceId,
   });
   const params = getBaseParamBindings(paramBindingOptions);
+  const localparams = getLocalParamBindings(paramBindingOptions);
 
   const ref = refs.parse(extVersion.ref);
   await manifest.writeToManifest(
@@ -277,6 +278,14 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
           params,
         },
       ],
+      localSpec: [
+        {
+          instanceId,
+          ref,
+          params: localparams,
+          paramSpecs: spec.params,
+        },
+      ]
     },
     config,
     { nonInteractive, force: force ?? false }
