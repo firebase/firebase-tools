@@ -1350,7 +1350,9 @@ describe("Storage emulator", () => {
             })
             .expect(200)
             .then((res) => res.body);
-
+          console.log("++++++");
+          console.log(returnedMetadata);
+          console.log("++++++");
           expect(returnedMetadata.name).to.equal(customMetadata.name);
           expect(returnedMetadata.contentType).to.equal(customMetadata.contentType);
           expect(returnedMetadata.contentDisposition).to.equal(customMetadata.contentDisposition);
