@@ -6,8 +6,8 @@ import { StorageRulesIssues, StorageRulesRuntime, StorageRulesetInstance } from 
 import { RulesConfig } from "..";
 
 /**
- * Keeps track of the rules source file and maintains a generated ruleset for one or more storage
- * resources.
+ * Keeps track of rules source file(s) and generated ruleset(s), either one for all storage
+ * resources or different rules for different resources.
  *
  * Example usage:
  *
@@ -19,7 +19,7 @@ import { RulesConfig } from "..";
  * ```
  */
 export interface StorageRulesManager {
-  /** Sets source file for each resource using the rules previously passed in the constructor. */
+  /** Sets source file for each resource using the most recent rules. */
   start(): Promise<StorageRulesIssues>;
 
   /**
@@ -34,13 +34,13 @@ export interface StorageRulesManager {
    */
   updateSourceFile(rules: SourceFile, resource: string): Promise<StorageRulesIssues>;
 
-  /** Removes listeners from all files for all resources. */
+  /** Removes listeners from all files for all managed resources. */
   stop(): Promise<void>;
 }
 
 /**
- * Creates either a {@link DefaultStorageRulesManager} to manage rules for a single resource
- * or a {@link ResourceBasedStorageRulesManager} for multiple resources.
+ * Creates either a {@link DefaultStorageRulesManager} to manage rules for all resources or a
+ * {@link ResourceBasedStorageRulesManager} for a subset of them, keyed by resource name.
  */
 export function createStorageRulesManager(
   rules: SourceFile | RulesConfig[],

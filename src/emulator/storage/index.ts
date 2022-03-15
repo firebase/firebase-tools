@@ -23,7 +23,7 @@ export interface StorageEmulatorArgs {
   port?: number;
   host?: string;
 
-  // Either a single rules file or an array of resource/rules pairs
+  // Either a single set of rules to be applied to all resources or a mapping of resource to rules
   rules: SourceFile | RulesConfig[];
 
   auto_download?: boolean;
