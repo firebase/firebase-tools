@@ -54,7 +54,7 @@ export class RemoteConfigEmulator implements EmulatorInstance {
 
     this._app = await createApp(this.args.projectId, this);
 
-    if (typeof this.args.template == "string") {
+    if (typeof this.args.template === "string") {
       const templateFile = this.args.template;
       this.updateTemplateSource(templateFile);
     } else {
@@ -128,6 +128,99 @@ export class RemoteConfigEmulator implements EmulatorInstance {
       emulatorParameters[parameterName] = emulatorParameter;
     }
     return emulatorTemplate;
+  }
+
+  /**
+   * Checks if the given RemoteConfigTemplate object is a valid emulator update.
+   * The object must be a valid Remote Config template and have valid !isEmulator values.
+   *
+   * @param {any} template A RemoteConfigTemplate object to be validated.
+   *
+   * @returns {any} Object indicating the validity of template.
+   * The returned object contains two parameters `valid` and `msg`. `valid` is true if
+   * the template is valid and false otherwise. `msg` describes the reason for the `valid`
+   * value.
+   */
+  static validateRemoteConfigEmulatorTemplate(template: any): any {
+    const validationResp = this.validateRemoteConfigTemplate(template);
+    if (!validationResp.valid) {
+      return validationResp;
+    }
+    const templateCopy = cloneDeep(template);
+    // parameters must contain an active value
+    for (const parameterName of Object.keys(templateCopy.parameters)) {
+      const parameter = templateCopy.parameters[parameterName];
+      if (typeof parameter.conditionalValues !== "object") {
+        return {
+          valid: false,
+          msg: `${parameterName} does not contain valid conditionalValues`,
+        };
+      }
+      if (typeof parameter.conditionalValues["!isEmulator"] !== "object") {
+        return {
+          valid: false,
+          msg: `${parameterName} does not contain valid !isEmulator`,
+        };
+      }
+      const isEmulatorValue = parameter.conditionalValues["!isEmulator"].value;
+      let hasMatch = false;
+      if (parameter.defaultValue.value === isEmulatorValue) {
+        hasMatch = true;
+      } else {
+        for (const conditionalValueKey of Object.keys(parameter.conditionalValues)) {
+          if (conditionalValueKey === "!isEmulator") {
+            continue;
+          }
+          if (parameter.conditionalValues[conditionalValueKey].value === isEmulatorValue) {
+            hasMatch = true;
+          }
+        }
+      }
+      if (!hasMatch) {
+        return {
+          valid: false,
+          msg: `${parameterName}'s emulator value does not match default or conditional value`,
+        };
+      }
+    }
+    return {
+      valid: true,
+      msg: "template is valid",
+    };
+  }
+
+  /**
+   * Based on validation in Admin SDK: https://github.com/firebase/firebase-admin-node/blob/19123f816199c51734ea1e4601e3fd95106d00b4/src/remote-config/remote-config-api-client-internal.ts#L267
+   *
+   * Checks if the given RemoteConfigTemplate object is valid.
+   * The object must have valid parameters, parameter groups, conditions, and an etag.
+   *
+   * @param {any} template A RemoteConfigTemplate object to be validated.
+   *
+   * @returns {any} Object indicating the validity of template.
+   * The returned object contains two parameters `valid` and `msg`. `valid` is true if
+   * the template is valid and false otherwise. `msg` describes the reason for the `valid`
+   * value.
+   */
+  static validateRemoteConfigTemplate(template: any): any {
+    const templateCopy = cloneDeep(template);
+    if (typeof templateCopy !== "object") {
+      return {
+        valid: false,
+        msg: "template is not an object",
+      };
+    }
+    if (typeof templateCopy.parameters !== "object") {
+      return {
+        valid: false,
+        msg: "template does not contain valid parameters",
+      };
+    }
+    // TODO(kroikie): complete template validation
+    return {
+      valid: true,
+      msg: "template is valid",
+    };
   }
 
   static extractEmulator(emulatorTemplate: any): any {
