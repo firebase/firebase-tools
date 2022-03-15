@@ -18,36 +18,39 @@ import * as env from "../functions/env";
 
 /**
  * Interface for holding different param values for different environments/configs.
+ *
+ * baseValue: The base value of the configurations.
+ * local: The local value used by extensions emulators.
  */
 export interface ParamBindingOptions {
-  default: string;
+  baseValue: string;
   local?: string;
   // Add project specific key:value here when we want to support that.
 }
 
-export function getDefaultParamBindings(params: { [key: string]: ParamBindingOptions }): {
+export function getBaseParamBindings(params: { [key: string]: ParamBindingOptions }): {
   [key: string]: string;
 } {
   let ret = {};
-  Object.entries(params).forEach(([k, v]) => {
+  for (const [k, v] of Object.entries(params)) {
     ret = {
       ...ret,
-      ...{ [k]: v.default },
+      ...{ [k]: v.baseValue },
     };
-  });
+  }
   return ret;
 }
 
-export function buildBindingOptionsWithDefault(defaultParams: { [key: string]: string }): {
+export function buildBindingOptionsWithBaseValue(baseParams: { [key: string]: string }): {
   [key: string]: ParamBindingOptions;
 } {
   let paramOptions: { [key: string]: ParamBindingOptions } = {};
-  Object.entries(defaultParams).forEach(([k, v]) => {
+  for (const [k, v] of Object.entries(baseParams)) {
     paramOptions = {
       ...paramOptions,
-      ...{ [k]: { default: v } },
+      ...{ [k]: { baseValue: v } },
     };
-  });
+  }
   return paramOptions;
 }
 
@@ -226,11 +229,11 @@ export async function promptForNewParams(args: {
         paramSpec: param,
         reconfiguring: false,
       });
-      args.currentParams[param.param] = chosenValue.default;
+      args.currentParams[param.param] = chosenValue.baseValue;
     }
   }
 
-  return buildBindingOptionsWithDefault(args.currentParams);
+  return buildBindingOptionsWithBaseValue(args.currentParams);
 }
 
 function getParamsFromFile(args: {
@@ -250,7 +253,7 @@ function getParamsFromFile(args: {
   validateCommandLineParams(params, args.paramSpecs);
   logger.info(`Using param values from ${args.paramsEnvPath}`);
 
-  return buildBindingOptionsWithDefault(params);
+  return buildBindingOptionsWithBaseValue(params);
 }
 
 export function readEnvFile(envPath: string): Record<string, string> {

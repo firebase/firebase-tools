@@ -173,7 +173,7 @@ export async function askForParam(args: {
         valid = checkResponse(response, paramSpec);
     }
   }
-  return { default: response };
+  return { baseValue: response };
 }
 
 async function promptReconfigureSecret(

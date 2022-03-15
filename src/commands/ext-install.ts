@@ -41,7 +41,7 @@ import { logger } from "../logger";
 import { previews } from "../previews";
 import { Options } from "../options";
 import * as manifest from "../extensions/manifest";
-import { getDefaultParamBindings, ParamBindingOptions } from "../extensions/paramHelper";
+import { getBaseParamBindings, ParamBindingOptions } from "../extensions/paramHelper";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -265,7 +265,7 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
     paramsEnvPath,
     instanceId,
   });
-  const params = getDefaultParamBindings(paramBindingOptions);
+  const params = getBaseParamBindings(paramBindingOptions);
 
   const ref = refs.parse(extVersion.ref);
   await manifest.writeToManifest(
@@ -384,7 +384,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
           paramsEnvPath,
           instanceId,
         });
-        paramBindings = getDefaultParamBindings(paramBindingOptions);
+        paramBindings = getBaseParamBindings(paramBindingOptions);
         spinner.text = "Installing your extension instance. This usually takes 3 to 5 minutes...";
         spinner.start();
         await extensionsApi.createInstance({
@@ -409,7 +409,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
           paramsEnvPath,
           instanceId,
         });
-        paramBindings = getDefaultParamBindings(paramBindingOptions);
+        paramBindings = getBaseParamBindings(paramBindingOptions);
         spinner.text = "Updating your extension instance. This usually takes 3 to 5 minutes...";
         spinner.start();
         await update({

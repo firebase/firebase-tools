@@ -276,7 +276,7 @@ describe("askUserForParam", () => {
       expect(promptStub.calledOnce).to.be.true;
       expect(grantRole.calledOnce).to.be.true;
       expect(result).to.be.eql({
-        default: `projects/${stubSecret.projectId}/secrets/${stubSecret.name}/versions/${stubSecretVersion.versionId}`,
+        baseValue: `projects/${stubSecret.projectId}/secrets/${stubSecret.name}/versions/${stubSecretVersion.versionId}`,
       });
     });
   });

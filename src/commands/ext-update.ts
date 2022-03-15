@@ -134,7 +134,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         nonInteractive: options.nonInteractive,
         instanceId,
       });
-      const newParamBindings = paramHelper.getDefaultParamBindings(newParamBindingOptions);
+      const newParamBindings = paramHelper.getBaseParamBindings(newParamBindingOptions);
 
       await manifest.writeToManifest(
         [
@@ -332,7 +332,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         nonInteractive: options.nonInteractive,
         instanceId,
       });
-      const newParams = paramHelper.getDefaultParamBindings(newParamBindings);
+      const newParams = paramHelper.getBaseParamBindings(newParamBindings);
 
       spinner.start();
       const updateOptions: UpdateOptions = {
