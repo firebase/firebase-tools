@@ -104,26 +104,28 @@ describe("manifest", () => {
 
     it("should write to both firebase.json and env files", async () => {
       await manifest.writeToManifest(
-        [
-          {
-            instanceId: "instance-1",
-            ref: {
-              publisherId: "firebase",
-              extensionId: "bigquery-export",
-              version: "1.0.0",
+        {
+          baseSpec: [
+            {
+              instanceId: "instance-1",
+              ref: {
+                publisherId: "firebase",
+                extensionId: "bigquery-export",
+                version: "1.0.0",
+              },
+              params: { a: "pikachu", b: "bulbasaur" },
             },
-            params: { a: "pikachu", b: "bulbasaur" },
-          },
-          {
-            instanceId: "instance-2",
-            ref: {
-              publisherId: "firebase",
-              extensionId: "bigquery-export",
-              version: "2.0.0",
+            {
+              instanceId: "instance-2",
+              ref: {
+                publisherId: "firebase",
+                extensionId: "bigquery-export",
+                version: "2.0.0",
+              },
+              params: { a: "eevee", b: "squirtle" },
             },
-            params: { a: "eevee", b: "squirtle" },
-          },
-        ],
+          ],
+        },
         generateBaseConfig(),
         { nonInteractive: false, force: false }
       );
@@ -151,26 +153,28 @@ describe("manifest", () => {
 
     it("should write to env files in stable, alphabetical by key order", async () => {
       await manifest.writeToManifest(
-        [
-          {
-            instanceId: "instance-1",
-            ref: {
-              publisherId: "firebase",
-              extensionId: "bigquery-export",
-              version: "1.0.0",
+        {
+          baseSpec: [
+            {
+              instanceId: "instance-1",
+              ref: {
+                publisherId: "firebase",
+                extensionId: "bigquery-export",
+                version: "1.0.0",
+              },
+              params: { b: "bulbasaur", a: "absol" },
             },
-            params: { b: "bulbasaur", a: "absol" },
-          },
-          {
-            instanceId: "instance-2",
-            ref: {
-              publisherId: "firebase",
-              extensionId: "bigquery-export",
-              version: "2.0.0",
+            {
+              instanceId: "instance-2",
+              ref: {
+                publisherId: "firebase",
+                extensionId: "bigquery-export",
+                version: "2.0.0",
+              },
+              params: { e: "eevee", s: "squirtle" },
             },
-            params: { e: "eevee", s: "squirtle" },
-          },
-        ],
+          ],
+        },
         generateBaseConfig(),
         { nonInteractive: false, force: false }
       );
@@ -201,26 +205,28 @@ describe("manifest", () => {
       sandbox.stub(prompt, "promptOnce").resolves(true);
 
       await manifest.writeToManifest(
-        [
-          {
-            instanceId: "instance-1",
-            ref: {
-              publisherId: "firebase",
-              extensionId: "bigquery-export",
-              version: "1.0.0",
+        {
+          baseSpec: [
+            {
+              instanceId: "instance-1",
+              ref: {
+                publisherId: "firebase",
+                extensionId: "bigquery-export",
+                version: "1.0.0",
+              },
+              params: { a: "pikachu", b: "bulbasaur" },
             },
-            params: { a: "pikachu", b: "bulbasaur" },
-          },
-          {
-            instanceId: "instance-2",
-            ref: {
-              publisherId: "firebase",
-              extensionId: "bigquery-export",
-              version: "2.0.0",
+            {
+              instanceId: "instance-2",
+              ref: {
+                publisherId: "firebase",
+                extensionId: "bigquery-export",
+                version: "2.0.0",
+              },
+              params: { a: "eevee", b: "squirtle" },
             },
-            params: { a: "eevee", b: "squirtle" },
-          },
-        ],
+          ],
+        },
         generateBaseConfig(),
         { nonInteractive: false, force: false },
         true /** allowOverwrite */

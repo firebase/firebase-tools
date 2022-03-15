@@ -269,13 +269,15 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
 
   const ref = refs.parse(extVersion.ref);
   await manifest.writeToManifest(
-    [
-      {
-        instanceId,
-        ref,
-        params,
-      },
-    ],
+    {
+      baseSpec: [
+        {
+          instanceId,
+          ref,
+          params,
+        },
+      ],
+    },
     config,
     { nonInteractive, force: force ?? false }
   );

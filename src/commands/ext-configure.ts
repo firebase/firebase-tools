@@ -84,13 +84,15 @@ export default new Command("ext:configure <extensionInstanceId>")
       };
 
       await manifest.writeToManifest(
-        [
-          {
-            instanceId,
-            ref: targetRef,
-            params: newParamValues,
-          },
-        ],
+        {
+          baseSpec: [
+            {
+              instanceId,
+              ref: targetRef,
+              params: newParamValues,
+            },
+          ],
+        },
         config,
         {
           nonInteractive: false,

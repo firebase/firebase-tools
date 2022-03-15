@@ -25,7 +25,7 @@ const ENV_DIRECTORY = "extensions";
  * @param allowOverwrite allows overwriting the entire manifest with the new specs
  */
 export async function writeToManifest(
-  specs: InstanceSpec[],
+  specs: { baseSpec: InstanceSpec[]; localSpec?: InstanceSpec[] },
   config: Config,
   options: { nonInteractive: boolean; force: boolean },
   allowOverwrite: boolean = false
@@ -54,8 +54,8 @@ export async function writeToManifest(
     }
   }
 
-  writeExtensionsToFirebaseJson(specs, config);
-  await writeEnvFiles(specs, config, options.force);
+  writeExtensionsToFirebaseJson(specs.baseSpec, config);
+  await writeEnvFiles(specs.baseSpec, config, options.force);
 }
 
 /**

@@ -66,7 +66,7 @@ module.exports = new Command("ext:export")
 
     const existingConfig = manifest.loadConfig(options);
     await manifest.writeToManifest(
-      withRef,
+      { baseSpec: withRef },
       existingConfig,
       {
         nonInteractive: options.nonInteractive,
