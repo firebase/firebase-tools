@@ -122,6 +122,7 @@ export interface FunctionsEmulatorArgs {
   debugPort?: number;
   remoteEmulators?: { [key: string]: EmulatorInfo };
   adminSdkConfig?: AdminSdkConfig;
+  projectAlias?: string;
 }
 
 // FunctionsRuntimeInstance is the handler for a running function invocation
@@ -954,6 +955,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     const projectInfo = {
       functionsSource: backend.functionsDir,
       projectId: this.args.projectId,
+      projectAlias: this.args.projectAlias,
       isEmulator: true,
     };
 
