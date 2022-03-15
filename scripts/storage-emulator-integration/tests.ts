@@ -268,7 +268,9 @@ describe("Storage emulator", () => {
           const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
             .post(`/upload/storage/v1/b/${storageBucket}/o?name=${fileName}&uploadType=resumable`)
             .send({})
-            .set({Authorization: "Bearer owner",})
+            .set({
+              Authorization: "Bearer owner",
+            })
             .expect(200)
             .then((res) => new URL(res.header["location"]));
 
