@@ -21,12 +21,17 @@ export function readFile(path: string): string {
   try {
     return readFileSync(path).toString();
 <<<<<<< HEAD
+<<<<<<< HEAD
   } catch (e: unknown) {
     if ((e as NodeJS.ErrnoException).code === "ENOENT") {
 =======
   } catch (e: any) {
     if (e.code === "ENOENT") {
 >>>>>>> eff938c0 (Make StorageRulesManager an interface; add StorageRulesManagerRegistry)
+=======
+  } catch (e: unknown) {
+    if ((e as NodeJS.ErrnoException).code === "ENOENT") {
+>>>>>>> c196f790 (PR feedback, mostly re: API usage)
       throw new FirebaseError(`File not found: ${path}`);
     }
     throw e;
