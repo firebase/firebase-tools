@@ -41,6 +41,7 @@ import {
   ParsedTriggerDefinition,
   emulatedFunctionsFromEndpoints,
   emulatedFunctionsByRegion,
+  getSecretLocalPath,
 } from "./functionsEmulatorShared";
 import { EmulatorRegistry } from "./registry";
 import { EmulatorLogger, Verbosity } from "./emulatorLogger";
@@ -62,12 +63,8 @@ import { accessSecretVersion } from "../gcp/secretManager";
 import * as runtimes from "../deploy/functions/runtimes";
 import * as backend from "../deploy/functions/backend";
 import * as functionsEnv from "../functions/env";
-import { flattenArray } from "../functional";
-import { SecretEnvVar } from "../gcp/cloudfunctions";
-import { ENV_DIRECTORY } from "../extensions/manifest";
 
 const EVENT_INVOKE = "functions:invoke";
-const LOCAL_SECRETS_FILE = ".secret.local";
 
 /*
  * The Realtime Database emulator expects the `path` field in its trigger
@@ -1078,14 +1075,8 @@ export class FunctionsEmulator implements EmulatorInstance {
     trigger?: EmulatedTriggerDefinition
   ): Promise<Record<string, string>> {
     let secretEnvs: Record<string, string> = {};
-    // Extension secret overrides live in {instanceID}.secret.local, CF3 secrets live in .secret.local
-    const secretsFile = backend.extensionInstanceId
-      ? `${backend.extensionInstanceId}${LOCAL_SECRETS_FILE}`
-      : LOCAL_SECRETS_FILE;
-    const secretDirectory = backend.extensionInstanceId
-      ? path.join(this.args.projectDir, ENV_DIRECTORY)
-      : backend.functionsDir;
-    const secretPath = path.join(secretDirectory, secretsFile);
+
+    const secretPath = getSecretLocalPath(backend, this.args.projectDir);
     try {
       const data = fs.readFileSync(secretPath, "utf8");
       secretEnvs = functionsEnv.parseStrict(data);
@@ -1094,7 +1085,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         this.logger.logLabeled(
           "ERROR",
           "functions",
-          `Failed to read local secrets file ${secretsFile}: ${e.message}`
+          `Failed to read local secrets file ${secretPath}: ${e.message}`
         );
       }
     }
