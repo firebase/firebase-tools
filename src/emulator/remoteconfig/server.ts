@@ -41,10 +41,25 @@ export function createApp(
   });
 
   app.put("/v1/projects/:projectId/remoteConfig", express.json({ inflate: false }), (req, res) => {
-    // TODO(kroikie): validate incoming template
-    // Set incoming template as emulator template.
-    emulator.template = RemoteConfigEmulator.prepareEmulatorTemplate(req.body);
-    res.status(200).send("OK");
+    if (req.query.clientType === "emulator") {
+      const validationResp = RemoteConfigEmulator.validateRemoteConfigEmulatorTemplate(req.body);
+      if (validationResp.valid) {
+        // Set incoming template as emulator template.
+        emulator.template = RemoteConfigEmulator.prepareEmulatorTemplate(req.body);
+        res.status(200).send("OK");
+      } else {
+        res.status(400).send(validationResp.msg);
+      }
+    } else {
+      const validationResp = RemoteConfigEmulator.validateRemoteConfigTemplate(req.body);
+      if (validationResp.valid) {
+        // Set incoming template as emulator template.
+        emulator.template = RemoteConfigEmulator.prepareEmulatorTemplate(req.body);
+        res.status(200).send("OK");
+      } else {
+        res.status(400).send(validationResp.msg);
+      }
+    }
   });
 
   return Promise.resolve(app);
