@@ -1,5 +1,14 @@
 import * as backend from "./backend";
 
+export interface FunctionFilter {
+  codebase?: string;
+  group?: string;
+  id: string;
+}
+
+/**
+ *
+ */
 export function functionMatchesAnyGroup(func: backend.TargetIds, filterGroups: string[][]) {
   if (!filterGroups.length) {
     return true;
@@ -7,6 +16,9 @@ export function functionMatchesAnyGroup(func: backend.TargetIds, filterGroups: s
   return filterGroups.some((groupChunk) => functionMatchesGroup(func, groupChunk));
 }
 
+/**
+ *
+ */
 export function functionMatchesGroup(func: backend.TargetIds, groupChunks: string[]): boolean {
   const functionNameChunks = func.id.split("-").slice(0, groupChunks.length);
   // Should never happen. It would mean the user has asked to deploy something that is
@@ -22,19 +34,27 @@ export function functionMatchesGroup(func: backend.TargetIds, groupChunks: strin
   return true;
 }
 
-export function getFilterGroups(options: { only?: string }): string[][] {
+/**
+ * Todo: Add doc on how resource seletor works
+ * @param options
+ */
+export function getFilterGroups(options: { only?: string }): FunctionFilter[] {
   if (!options.only) {
     return [];
   }
 
-  const only = options.only!.split(",");
-  const onlyFunctions = only.filter((filter) => {
-    const opts = filter.split(":");
-    return opts[0] === "functions" && opts[1];
-  });
-  return onlyFunctions.map((filter) => {
-    return filter.split(":")[1].split(/[.-]/);
-  });
+  const selectors = options.only.split(",");
+  const filters: FunctionFilter[] = [];
+  for (let selector of selectors) {
+    if (selector.startsWith("function:")) {
+      selector = selector.replace("function:", "");
+      const maybeCodebase = selector.split(":");
+
+      if (!Array.isArray(options.config.src.functions)) {
+        
+      }
+    }
+  }
 }
 
 export function getFunctionLabel(fn: backend.TargetIds): string {
