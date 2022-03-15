@@ -664,6 +664,7 @@ describe("Storage emulator", () => {
             bucket: "string",
             contentType: "string",
             contentDisposition: "string",
+            contentEncoding: "string",
             generation: "string",
             md5Hash: "string",
             crc32c: "string",
