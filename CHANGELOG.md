@@ -4,3 +4,8 @@
 - Adds alerting event provider (#4258).
 - Fixes bug where project-specific environment variables weren't loaded by the Functions Emulator (#4273).
 - Fixes bug where CORS was enabled too broadly on the Functions emulator (#4294).
+- Adds `rewriteTo` / `copyTo` endpoints to Cloud Storage Emulator (#3647, #3751).
+- Addes `createReadStream` support to Cloud Storage Emulator (#3469).
+- Fixes `list` endpoint in Cloud Storage Emulator (#3647).
+- Fixes `getFiles` for Cloud Storage Emulator (#3778).
+- Fixes `exists` for Cloud Storage Emulator (#3764).
