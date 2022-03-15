@@ -89,16 +89,7 @@ describe("Storage Rules Manager", function () {
     persistence.deleteFile(fileName);
     persistence.appendBytes(fileName, Buffer.from(StorageRulesFiles.readWriteIfAuth.content));
 
-    // await rulesManager.setSourceFile(sourceFile, "bucket_2");
     expect(await isPermitted(opts)).to.be.false;
-  });
-
-  it("should delete ruleset when storage manager is stopped", async () => {
-    await rulesManager.updateSourceFile(StorageRulesFiles.readWriteIfTrue, "bucket_2");
-    expect(rulesManager.getRuleset("bucket_2")).not.to.be.undefined;
-
-    await rulesManager.stop();
-    expect(rulesManager.getRuleset("bucket_2")).to.be.undefined;
   });
 });
 

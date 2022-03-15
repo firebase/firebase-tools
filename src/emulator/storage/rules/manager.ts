@@ -34,7 +34,7 @@ export interface StorageRulesManager {
    */
   updateSourceFile(rules: SourceFile, resource: string): Promise<StorageRulesIssues>;
 
-  /** Deletes source file, ruleset, and removes listeners from all files for all resources. */
+  /** Removes listeners from all files for all resources. */
   stop(): Promise<void>;
 }
 
