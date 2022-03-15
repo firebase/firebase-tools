@@ -263,7 +263,7 @@ describe("Storage emulator", () => {
           });
         });
 
-        it("should handle large (resumable) uploads", async () => {
+        it.only("should handle large (resumable) uploads", async () => {
           const fileName = "test_upload.jpg";
           const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
             .post(`/upload/storage/v1/b/${storageBucket}/o?name=${fileName}&uploadType=resumable`)
