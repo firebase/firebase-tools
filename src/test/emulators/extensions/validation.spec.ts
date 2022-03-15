@@ -76,9 +76,10 @@ describe("ExtensionsEmulator validation validation", () => {
     const testProjectId = "test-project";
     const testAPI = "test.googleapis.com";
     const sandbox = sinon.createSandbox();
+    let checkStub: sinon.SinonStub;
 
     beforeEach(() => {
-      const checkStub = sandbox.stub(ensureApiEnabled, "check");
+      checkStub = sandbox.stub(ensureApiEnabled, "check");
       checkStub.withArgs(testProjectId, testAPI, "extensions", true).resolves(true);
       checkStub.throws("Unexpected API checked in test");
     });
@@ -105,6 +106,27 @@ describe("ExtensionsEmulator validation validation", () => {
           enabled: true,
         },
       ]);
+    });
+
+    it("should not check on demo- projects", async () => {
+      const instanceIdWithUnemulatedAPI = "unemulated";
+      const instanceId2WithUnemulatedAPI = "unemulated2";
+      const instanceIdWithEmulatedAPI = "emulated";
+
+      const result = await validation.getUnemulatedAPIs(`demo-${testProjectId}`, [
+        fakeInstanceSpecWithAPI(instanceIdWithEmulatedAPI, "firestore.googleapis.com"),
+        fakeInstanceSpecWithAPI(instanceIdWithUnemulatedAPI, testAPI),
+        fakeInstanceSpecWithAPI(instanceId2WithUnemulatedAPI, testAPI),
+      ]);
+
+      expect(result).to.deep.equal([
+        {
+          apiName: testAPI,
+          instanceIds: [instanceIdWithUnemulatedAPI, instanceId2WithUnemulatedAPI],
+          enabled: false,
+        },
+      ]);
+      expect(checkStub.callCount).to.equal(0);
     });
   });
 
