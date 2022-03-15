@@ -10,7 +10,7 @@ import { FirebaseError } from "../error";
 import * as utils from "../utils";
 import { logPrefix } from "./extensionsHelper";
 
-const ENV_DIRECTORY = "extensions";
+export const ENV_DIRECTORY = "extensions";
 
 /**
  * Write a list of instanceSpecs to extensions manifest.
