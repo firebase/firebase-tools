@@ -263,14 +263,12 @@ describe("Storage emulator", () => {
           });
         });
 
-        it.only("should handle large (resumable) uploads", async () => {
+        it("should handle resumable uploads", async () => {
           const fileName = "test_upload.jpg";
           const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
             .post(`/upload/storage/v1/b/${storageBucket}/o?name=${fileName}&uploadType=resumable`)
             .send({})
-            .set({
-              Authorization: "Bearer owner",
-            })
+            .set({Authorization: "Bearer owner",})
             .expect(200)
             .then((res) => new URL(res.header["location"]));
 
@@ -293,6 +291,8 @@ describe("Storage emulator", () => {
             kind: "string",
             name: "string",
             bucket: "string",
+            cacheControl: "string",
+            contentDisposition: "string",
             generation: "string",
             metageneration: "string",
             contentType: "string",
