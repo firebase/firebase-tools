@@ -72,6 +72,7 @@ describe("Extensions Emulator", () => {
             PROJECT_ID: "test-project",
             STORAGE_BUCKET: "test-project.appspot.com",
           },
+          secretEnv: [],
           extensionInstanceId: "ext-test",
           functionsDir:
             "src/test/emulators/extensions/firebase/storage-resize-images@0.1.18/functions",

@@ -41,6 +41,7 @@ const functionsEmulator = new FunctionsEmulator({
     {
       functionsDir: MODULE_ROOT,
       env: {},
+      secretEnv: [],
     },
   ],
   quiet: true,
@@ -49,6 +50,7 @@ const functionsEmulator = new FunctionsEmulator({
 const testBackend = {
   functionsDir: MODULE_ROOT,
   env: {},
+  secretEnv: [],
   nodeBinary: process.execPath,
 };
 

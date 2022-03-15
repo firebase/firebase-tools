@@ -172,16 +172,14 @@ export class ExtensionsEmulator {
     const functionsDir = path.join(extensionDir, "functions");
     // TODO(b/213335255): For local extensions, this should include extensionSpec instead of extensionVersion
     const env = Object.assign(this.autoPopulatedParams(instance), instance.params);
-    const { extensionTriggers, nodeMajorVersion } = await getExtensionFunctionInfo(
-      extensionDir,
-      instance.instanceId,
-      env
-    );
+    const { extensionTriggers, nodeMajorVersion, nonSecretEnv, secretEnvVariables } =
+      await getExtensionFunctionInfo(extensionDir, instance.instanceId, env);
     const extension = await planner.getExtension(instance);
     const extensionVersion = await planner.getExtensionVersion(instance);
     return {
       functionsDir,
-      env,
+      env: nonSecretEnv,
+      secretEnv: secretEnvVariables,
       predefinedTriggers: extensionTriggers,
       nodeMajorVersion: nodeMajorVersion,
       extensionInstanceId: instance.instanceId,
