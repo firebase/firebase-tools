@@ -596,9 +596,7 @@ export class StorageLayer {
       // 1) Get the relative path to the metadata export dir
       // 2) Subtract .json from the end
       const metadataRelPath = path.relative(metadataDir, f);
-      const blobPath = decodeURIComponent(
-        metadataRelPath.substring(0, metadataRelPath.length - dotJson.length)
-      );
+      const blobPath = metadataRelPath.substring(0, metadataRelPath.length - dotJson.length);
 
       const blobAbsPath = path.join(blobsDir, blobPath);
       if (!existsSync(blobAbsPath)) {
