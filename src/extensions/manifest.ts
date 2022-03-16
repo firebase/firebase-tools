@@ -55,13 +55,9 @@ export async function writeToManifest(
     }
   }
 
-  try {
-    writeExtensionsToFirebaseJson(specs, config);
-    await writeEnvFiles(specs, config, options.force);
-    await writeLocalSecrets(specs, config, options.force);
-  } catch (e) {
-    console.log(e);
-  }
+  writeExtensionsToFirebaseJson(specs, config);
+  await writeEnvFiles(specs, config, options.force);
+  await writeLocalSecrets(specs, config, options.force);
 }
 
 // TODO(lihes): Add unit tests.
