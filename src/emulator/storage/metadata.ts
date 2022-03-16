@@ -175,7 +175,7 @@ export class StoredFileMetadata {
     }
   }
 
-  update(incoming: IncomingMetadata): void {
+  update(incoming: IncomingMetadata, shouldTrigger = true): void {
     if (incoming.contentDisposition) {
       this.contentDisposition = incoming.contentDisposition;
     }
@@ -213,7 +213,9 @@ export class StoredFileMetadata {
     this.setDownloadTokensFromCustomMetadata();
     this.deleteFieldsSetAsNull();
 
-    this._cloudFunctions.dispatch("metadataUpdate", new CloudStorageObjectMetadata(this));
+    if (shouldTrigger) {
+      this._cloudFunctions.dispatch("metadataUpdate", new CloudStorageObjectMetadata(this));
+    }
   }
 
   addDownloadToken(): void {
