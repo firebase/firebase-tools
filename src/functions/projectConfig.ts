@@ -1,15 +1,15 @@
-import { FunctionsConfig, FunctionsSingle } from "../firebaseConfig";
+import { FunctionsConfig, FunctionConfig } from "../firebaseConfig";
 import { FirebaseError } from "../error";
 
-export type NormalizedConfig = [FunctionsSingle, ...FunctionsSingle[]];
-export type ValidatedSingle = FunctionsSingle & { source: string };
+export type NormalizedConfig = [FunctionConfig, ...FunctionConfig[]];
+export type ValidatedSingle = FunctionConfig & { source: string };
 export type ValidatedConfig = [ValidatedSingle];
 
 /**
  * Normalize functions config to return functions config in an array form.
  */
-export function normalize(config: FunctionsConfig | undefined): NormalizedConfig {
-  if (config === undefined) {
+export function normalize(config?: FunctionsConfig): NormalizedConfig {
+  if (!config) {
     throw new FirebaseError("No valid functions configuration detected in firebase.json");
   }
 
@@ -23,7 +23,7 @@ export function normalize(config: FunctionsConfig | undefined): NormalizedConfig
   return [config];
 }
 
-function validateSingle(config: FunctionsSingle): ValidatedSingle {
+function validateSingle(config: FunctionConfig): ValidatedSingle {
   if (!config.source) {
     throw new FirebaseError("functions.source must be specified");
   }
@@ -45,6 +45,6 @@ export function validate(config: NormalizedConfig): ValidatedConfig {
  *
  * Valid functions config has exactly one config and has all required fields set.
  */
-export function normalizeAndValidate(config: FunctionsConfig | undefined): ValidatedConfig {
+export function normalizeAndValidate(config?: FunctionsConfig): ValidatedConfig {
   return validate(normalize(config));
 }

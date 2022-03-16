@@ -102,13 +102,13 @@ export type FirestoreConfig = {
   indexes?: string;
 } & Deployable;
 
-export type FunctionsSingle = {
+export type FunctionConfig = {
   source?: string;
   ignore?: string[];
   runtime?: CloudFunctionRuntimes;
 } & Deployable;
 
-export type FunctionsConfig = FunctionsSingle | FunctionsSingle[];
+export type FunctionsConfig = FunctionConfig | FunctionConfig[];
 
 export type HostingConfig = HostingSingle | HostingMultiple;
 
