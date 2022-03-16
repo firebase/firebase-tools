@@ -31,7 +31,7 @@ export function createApp(
     if (req.headers["access-control-request-private-network"]) {
       res.setHeader("access-control-allow-private-network", "true");
     }
-    next(null);
+    next();
   });
 
   // Enable CORS for all APIs, all origins (reflected), and all headers (reflected).
