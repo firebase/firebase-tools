@@ -17,6 +17,44 @@ import * as track from "../track";
 import * as env from "../functions/env";
 
 /**
+ * Interface for holding different param values for different environments/configs.
+ *
+ * baseValue: The base value of the configurations, stored in {instance-id}.env.
+ * local: The local value used by extensions emulators. Only used by secrets in {instance-id}.secret.env for now.
+ */
+export interface ParamBindingOptions {
+  baseValue: string;
+  local?: string;
+  // Add project specific key:value here when we want to support that.
+}
+
+export function getBaseParamBindings(params: { [key: string]: ParamBindingOptions }): {
+  [key: string]: string;
+} {
+  let ret = {};
+  for (const [k, v] of Object.entries(params)) {
+    ret = {
+      ...ret,
+      ...{ [k]: v.baseValue },
+    };
+  }
+  return ret;
+}
+
+export function buildBindingOptionsWithBaseValue(baseParams: { [key: string]: string }): {
+  [key: string]: ParamBindingOptions;
+} {
+  let paramOptions: { [key: string]: ParamBindingOptions } = {};
+  for (const [k, v] of Object.entries(baseParams)) {
+    paramOptions = {
+      ...paramOptions,
+      ...{ [k]: { baseValue: v } },
+    };
+  }
+  return paramOptions;
+}
+
+/**
  * A mutator to switch the defaults for a list of params to new ones.
  * For convenience, this also returns the params
  *
@@ -63,7 +101,7 @@ export async function getParams(args: {
   nonInteractive?: boolean;
   paramsEnvPath?: string;
   reconfiguring?: boolean;
-}): Promise<{ [key: string]: string }> {
+}): Promise<{ [key: string]: ParamBindingOptions }> {
   let params: any;
   if (args.nonInteractive && !args.paramsEnvPath) {
     const paramsMessage = args.paramSpecs
@@ -105,8 +143,8 @@ export async function getParamsForUpdate(args: {
   paramsEnvPath?: string;
   nonInteractive?: boolean;
   instanceId: string;
-}) {
-  let params: any;
+}): Promise<{ [key: string]: ParamBindingOptions }> {
+  let params: { [key: string]: ParamBindingOptions };
   if (args.nonInteractive && !args.paramsEnvPath) {
     const paramsMessage = args.newSpec.params
       .map((p) => {
@@ -152,7 +190,7 @@ export async function promptForNewParams(args: {
   currentParams: { [option: string]: string };
   projectId: string;
   instanceId: string;
-}): Promise<any> {
+}): Promise<{ [option: string]: ParamBindingOptions }> {
   const firebaseProjectParams = await getFirebaseProjectParams(args.projectId);
   const comparer = (param1: extensionsApi.Param, param2: extensionsApi.Param) => {
     return param1.type === param2.type && param1.param === param2.param;
@@ -185,23 +223,24 @@ export async function promptForNewParams(args: {
   if (paramsDiffAdditions.length) {
     logger.info("To update this instance, configure the following new parameters:");
     for (const param of paramsDiffAdditions) {
-      const chosenValue = await askUserForParam.askForParam(
-        args.projectId,
-        args.instanceId,
-        param,
-        false
-      );
-      args.currentParams[param.param] = chosenValue;
+      const chosenValue = await askUserForParam.askForParam({
+        projectId: args.projectId,
+        instanceId: args.instanceId,
+        paramSpec: param,
+        reconfiguring: false,
+      });
+      args.currentParams[param.param] = chosenValue.baseValue;
     }
   }
-  return args.currentParams;
+
+  return buildBindingOptionsWithBaseValue(args.currentParams);
 }
 
 function getParamsFromFile(args: {
   projectId: string;
   paramSpecs: extensionsApi.Param[];
   paramsEnvPath: string;
-}): Record<string, string> {
+}): Record<string, ParamBindingOptions> {
   let envParams;
   try {
     envParams = readEnvFile(args.paramsEnvPath);
@@ -213,10 +252,11 @@ function getParamsFromFile(args: {
   const params = populateDefaultParams(envParams, args.paramSpecs);
   validateCommandLineParams(params, args.paramSpecs);
   logger.info(`Using param values from ${args.paramsEnvPath}`);
-  return params;
+
+  return buildBindingOptionsWithBaseValue(params);
 }
 
-export function readEnvFile(envPath: string) {
+export function readEnvFile(envPath: string): Record<string, string> {
   const buf = fs.readFileSync(path.resolve(envPath), "utf8");
   const result = env.parse(buf.toString().trim());
   if (result.errors.length) {
