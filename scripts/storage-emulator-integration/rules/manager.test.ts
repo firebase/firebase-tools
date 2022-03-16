@@ -2,15 +2,14 @@ import { expect } from "chai";
 import { tmpdir } from "os";
 import { v4 as uuidv4 } from "uuid";
 
-import { FirebaseError } from "../../../../error";
-import { StorageRulesFiles, TIMEOUT_MED } from "../../fixtures";
-import { StorageRulesManager } from "../../../../emulator/storage/rules/manager";
-import { StorageRulesRuntime } from "../../../../emulator/storage/rules/runtime";
-import { Persistence } from "../../../../emulator/storage/persistence";
-import { RulesetOperationMethod } from "../../../../emulator/storage/rules/types";
+import { FirebaseError } from "../../../src/error";
+import { StorageRulesFiles, TIMEOUT_MED } from "../../../src/test/emulators/fixtures";
+import { StorageRulesManager } from "../../../src/emulator/storage/rules/manager";
+import { StorageRulesRuntime } from "../../../src/emulator/storage/rules/runtime";
+import { Persistence } from "../../../src/emulator/storage/persistence";
+import { RulesetOperationMethod } from "../../../src/emulator/storage/rules/types";
 
-// TODO(hsinpei: Make this an integration test
-describe.skip("Storage Rules Manager", function () {
+describe("Storage Rules Manager", function () {
   const rulesRuntime = new StorageRulesRuntime();
   const rulesManager = new StorageRulesManager(rulesRuntime);
 
