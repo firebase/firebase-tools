@@ -19,8 +19,8 @@ import * as env from "../functions/env";
 /**
  * Interface for holding different param values for different environments/configs.
  *
- * baseValue: The base value of the configurations.
- * local: The local value used by extensions emulators.
+ * baseValue: The base value of the configurations, stored in {instance-id}.env.
+ * local: The local value used by extensions emulators. Only used by secrets in {instance-id}.secret.env for now.
  */
 export interface ParamBindingOptions {
   baseValue: string;
