@@ -3,12 +3,20 @@ import * as path from "path";
 import { expect } from "chai";
 import { tmpdir } from "os";
 
-import { FirebaseError } from "../../../src/error";
-import { StorageRulesFiles, TIMEOUT_MED } from "../../../src/test/emulators/fixtures";
-import { StorageRulesManager } from "../../../src/emulator/storage/rules/manager";
+import {
+  createTmpDir,
+  StorageRulesFiles,
+  TIMEOUT_LONG,
+} from "../../../src/test/emulators/fixtures";
+import {
+  createStorageRulesManager,
+  StorageRulesManager,
+} from "../../../src/emulator/storage/rules/manager";
 import { StorageRulesRuntime } from "../../../src/emulator/storage/rules/runtime";
 import { Persistence } from "../../../src/emulator/storage/persistence";
-import { RulesetOperationMethod } from "../../../src/emulator/storage/rules/types";
+import { RulesetOperationMethod, SourceFile } from "../../../src/emulator/storage/rules/types";
+import { isPermitted } from "../../../src/emulator/storage/rules/utils";
+import { readFile } from "../../../src/fsutils";
 
 describe("Storage Rules Manager", function () {
   const rulesRuntime = new StorageRulesRuntime();
