@@ -268,7 +268,7 @@ export class TriggerEndToEndTest {
     body: Record<string, unknown>,
     zone = FIREBASE_PROJECT_ZONE
   ): Promise<Response> {
-    const url = `http://localhost:${[this.functionsEmulatorPort, this.project, zone, name].join(
+    const url = `http://localhost:${this.functionsEmulatorPort}/${this.project, zone, name].join(
       "/"
     )}`;
     return fetch(url, {
