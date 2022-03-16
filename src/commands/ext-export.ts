@@ -8,6 +8,7 @@ import {
 } from "../extensions/export";
 import { ensureExtensionsApiEnabled } from "../extensions/extensionsHelper";
 import * as manifest from "../extensions/manifest";
+import { buildBindingOptionsWithBaseValue } from "../extensions/paramHelper";
 import { partition } from "../functional";
 import { getProjectNumber } from "../getProjectNumber";
 import { logger } from "../logger";
@@ -64,9 +65,15 @@ module.exports = new Command("ext:export")
       return;
     }
 
+    const manifestSpecs = withRef.map((spec) => ({
+      instanceId: spec.instanceId,
+      ref: spec.ref,
+      params: buildBindingOptionsWithBaseValue(spec.params),
+    }));
+    
     const existingConfig = manifest.loadConfig(options);
     await manifest.writeToManifest(
-      { baseSpec: withRef },
+      manifestSpecs,
       existingConfig,
       {
         nonInteractive: options.nonInteractive,

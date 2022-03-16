@@ -19,8 +19,8 @@ export interface InstanceSpec {
 
 export interface InstanceSpecV2 {
   instanceId: string;
-  ref: refs.Ref;
   params: Record<string, ParamBindingOptions>;
+  ref?: refs.Ref;
   paramSpecs?: extensionsApi.Param[];
 }
 
