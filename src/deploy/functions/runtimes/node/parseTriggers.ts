@@ -195,12 +195,17 @@ export function addResourcesToBackend(
         reason: "Needed for task queue functions.",
       });
     } else if (annotation.httpsTrigger) {
-      const trigger: backend.HttpsTrigger = {};
-      if (annotation.failurePolicy) {
-        logger.warn(`Ignoring retry policy for HTTPS function ${annotation.name}`);
+      if (annotation.labels?.["deployment-callable"]) {
+        delete annotation.labels["deployment-callable"];
+        triggered = { callableTrigger: {} };
+      } else {
+        const trigger: backend.HttpsTrigger = {};
+        if (annotation.failurePolicy) {
+          logger.warn(`Ignoring retry policy for HTTPS function ${annotation.name}`);
+        }
+        proto.copyIfPresent(trigger, annotation.httpsTrigger, "invoker");
+        triggered = { httpsTrigger: trigger };
       }
-      proto.copyIfPresent(trigger, annotation.httpsTrigger, "invoker");
-      triggered = { httpsTrigger: trigger };
     } else if (annotation.schedule) {
       want.requiredAPIs.push({
         api: "cloudscheduler.googleapis.com",
