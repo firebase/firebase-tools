@@ -1,7 +1,4 @@
-import * as fs from "fs";
-import * as path from "path";
 import { expect } from "chai";
-import { tmpdir } from "os";
 
 import {
   createTmpDir,
@@ -42,9 +39,12 @@ describe("Storage Rules Manager", function () {
     await rulesManager.stop();
   });
 
-  it("should load multiple rulesets on start", () => {
-    expect(rulesManager.getRuleset("bucket_0")).not.to.be.undefined;
-    expect(rulesManager.getRuleset("bucket_1")).not.to.be.undefined;
+  it("should load multiple rulesets on start", async () => {
+    const bucket0Ruleset = rulesManager.getRuleset("bucket_0");
+    expect(await isPermitted({ ...opts, ruleset: bucket0Ruleset! })).to.be.true;
+
+    const bucket1Ruleset = rulesManager.getRuleset("bucket_1");
+    expect(await isPermitted({ ...opts, ruleset: bucket1Ruleset! })).to.be.false;
   });
 
   it("should load single ruleset on start", async () => {
@@ -54,7 +54,8 @@ describe("Storage Rules Manager", function () {
     );
     await otherRulesManager.start();
 
-    expect(otherRulesManager.getRuleset("default")).not.to.be.undefined;
+    const ruleset = otherRulesManager.getRuleset("default");
+    expect(await isPermitted({ ...opts, ruleset: ruleset! })).to.be.true;
 
     await otherRulesManager.stop();
   });
@@ -84,7 +85,7 @@ describe("Storage Rules Manager", function () {
   it("should reload ruleset on changes to source file", async () => {
     // Write rules to file
     const fileName = "storage.rules";
-    const testDir = fs.mkdtempSync(path.join(tmpdir(), "storage-files"));
+    const testDir = createTmpDir("storage-files");
     const persistence = new Persistence(testDir);
     persistence.appendBytes(fileName, Buffer.from(StorageRulesFiles.readWriteIfTrue.content));
 

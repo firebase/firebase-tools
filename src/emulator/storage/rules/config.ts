@@ -26,7 +26,7 @@ export function getStorageRulesConfig(
     );
   }
 
-  // Single target
+  // No target specified
   if (!Array.isArray(storageConfig)) {
     if (!storageConfig.rules) {
       throw new FirebaseError(
