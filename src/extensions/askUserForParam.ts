@@ -11,6 +11,7 @@ import { convertExtensionOptionToLabeledList, getRandomString, onceWithJoin } fr
 import { logger } from "../logger";
 import { promptOnce } from "../prompt";
 import * as utils from "../utils";
+import { ParamBindingOptions } from "./paramHelper";
 
 enum SecretUpdateAction {
   LEAVE,
@@ -61,12 +62,51 @@ export function checkResponse(response: string, spec: Param): boolean {
   return valid;
 }
 
-export async function askForParam(
+/**
+ * Prompt users for params based on paramSpecs defined by the extension developer.
+ * @param paramSpecs Array of params to ask the user about, parsed from extension.yaml.
+ * @param firebaseProjectParams Autopopulated Firebase project-specific params
+ * @return Promisified map of env vars to values.
+ */
+export async function ask(
   projectId: string,
   instanceId: string,
-  paramSpec: Param,
+  paramSpecs: Param[],
+  firebaseProjectParams: { [key: string]: string },
   reconfiguring: boolean
-): Promise<string> {
+): Promise<{ [key: string]: ParamBindingOptions }> {
+  if (_.isEmpty(paramSpecs)) {
+    logger.debug("No params were specified for this extension.");
+    return {};
+  }
+
+  utils.logLabeledBullet(logPrefix, "answer the questions below to configure your extension:");
+  const substituted = substituteParams<Param[]>(paramSpecs, firebaseProjectParams);
+  const result: { [key: string]: ParamBindingOptions } = {};
+  const promises = _.map(substituted, (paramSpec: Param) => {
+    return async () => {
+      result[paramSpec.param] = await askForParam({
+        projectId,
+        instanceId,
+        paramSpec,
+        reconfiguring,
+      });
+    };
+  });
+  // chaining together the promises so they get executed one after another
+  await promises.reduce((prev, cur) => prev.then(cur as any), Promise.resolve());
+  logger.info();
+  return result;
+}
+
+export async function askForParam(args: {
+  projectId: string;
+  instanceId: string;
+  paramSpec: Param;
+  reconfiguring: boolean;
+}): Promise<ParamBindingOptions> {
+  const paramSpec = args.paramSpec;
+
   let valid = false;
   let response = "";
   const description = paramSpec.description || "";
@@ -117,9 +157,9 @@ export async function askForParam(
         valid = checkResponse(response, paramSpec);
         break;
       case ParamType.SECRET:
-        response = reconfiguring
-          ? await promptReconfigureSecret(projectId, instanceId, paramSpec)
-          : await promptCreateSecret(projectId, instanceId, paramSpec);
+        response = args.reconfiguring
+          ? await promptReconfigureSecret(args.projectId, args.instanceId, paramSpec)
+          : await promptCreateSecret(args.projectId, args.instanceId, paramSpec);
         valid = true;
         break;
       default:
@@ -133,7 +173,7 @@ export async function askForParam(
         valid = checkResponse(response, paramSpec);
     }
   }
-  return response;
+  return { baseValue: response };
 }
 
 async function promptReconfigureSecret(
@@ -250,36 +290,4 @@ export function getInquirerDefault(options: ParamOption[], def: string): string 
     return option.value === def;
   });
   return defaultOption ? defaultOption.label || defaultOption.value : "";
-}
-
-/**
- * Prompt users for params based on paramSpecs defined by the extension developer.
- * @param paramSpecs Array of params to ask the user about, parsed from extension.yaml.
- * @param firebaseProjectParams Autopopulated Firebase project-specific params
- * @return Promisified map of env vars to values.
- */
-export async function ask(
-  projectId: string,
-  instanceId: string,
-  paramSpecs: Param[],
-  firebaseProjectParams: { [key: string]: string },
-  reconfiguring: boolean
-): Promise<{ [key: string]: string }> {
-  if (_.isEmpty(paramSpecs)) {
-    logger.debug("No params were specified for this extension.");
-    return {};
-  }
-
-  utils.logLabeledBullet(logPrefix, "answer the questions below to configure your extension:");
-  const substituted = substituteParams<Param[]>(paramSpecs, firebaseProjectParams);
-  const result: any = {};
-  const promises = _.map(substituted, (paramSpec: Param) => {
-    return async () => {
-      result[paramSpec.param] = await askForParam(projectId, instanceId, paramSpec, reconfiguring);
-    };
-  });
-  // chaining together the promises so they get executed one after another
-  await promises.reduce((prev, cur) => prev.then(cur as any), Promise.resolve());
-  logger.info();
-  return result;
 }

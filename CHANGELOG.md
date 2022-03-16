@@ -1,1 +1,2 @@
+- Adds support for configuration with multiple storage targets (#4281).
 - Adds ergonomic improvements to CF3 secret commands to automatically redeploy functions and delete unused secrets (#4130).

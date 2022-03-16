@@ -125,7 +125,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         projectDir: config.projectDir,
       });
 
-      const newParams = await paramHelper.getParamsForUpdate({
+      const newParamBindingOptions = await paramHelper.getParamsForUpdate({
         spec: oldExtensionVersion.spec,
         newSpec: newExtensionVersion.spec,
         currentParams: oldParamValues,
@@ -134,13 +134,14 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         nonInteractive: options.nonInteractive,
         instanceId,
       });
+      const newParamBindings = paramHelper.getBaseParamBindings(newParamBindingOptions);
 
       await manifest.writeToManifest(
         [
           {
             instanceId,
             ref: refs.parse(newExtensionVersion.ref),
-            params: newParams,
+            params: newParamBindings,
           },
         ],
         config,
@@ -322,7 +323,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
       }
       // make a copy of existingParams -- they get overridden by paramHelper.getParamsForUpdate
       const oldParamValues = { ...existingParams };
-      const newParams = await paramHelper.getParamsForUpdate({
+      const newParamBindings = await paramHelper.getParamsForUpdate({
         spec: existingSpec,
         newSpec,
         currentParams: existingParams,
@@ -331,6 +332,8 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         nonInteractive: options.nonInteractive,
         instanceId,
       });
+      const newParams = paramHelper.getBaseParamBindings(newParamBindings);
+
       spinner.start();
       const updateOptions: UpdateOptions = {
         projectId,

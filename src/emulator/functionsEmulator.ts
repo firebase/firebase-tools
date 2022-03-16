@@ -41,6 +41,7 @@ import {
   ParsedTriggerDefinition,
   emulatedFunctionsFromEndpoints,
   emulatedFunctionsByRegion,
+  getSecretLocalPath,
 } from "./functionsEmulatorShared";
 import { EmulatorRegistry } from "./registry";
 import { EmulatorLogger, Verbosity } from "./emulatorLogger";
@@ -62,11 +63,8 @@ import { accessSecretVersion } from "../gcp/secretManager";
 import * as runtimes from "../deploy/functions/runtimes";
 import * as backend from "../deploy/functions/backend";
 import * as functionsEnv from "../functions/env";
-import { flattenArray } from "../functional";
-import { SecretEnvVar } from "../gcp/cloudfunctions";
 
 const EVENT_INVOKE = "functions:invoke";
-const LOCAL_SECRETS_FILE = ".secret.local";
 
 /*
  * The Realtime Database emulator expects the `path` field in its trigger
@@ -1078,15 +1076,16 @@ export class FunctionsEmulator implements EmulatorInstance {
   ): Promise<Record<string, string>> {
     let secretEnvs: Record<string, string> = {};
 
+    const secretPath = getSecretLocalPath(backend, this.args.projectDir);
     try {
-      const data = fs.readFileSync(path.join(backend.functionsDir, LOCAL_SECRETS_FILE), "utf8");
+      const data = fs.readFileSync(secretPath, "utf8");
       secretEnvs = functionsEnv.parseStrict(data);
     } catch (e: any) {
       if (e.code !== "ENOENT") {
         this.logger.logLabeled(
           "ERROR",
           "functions",
-          `Failed to read local secrets file ${LOCAL_SECRETS_FILE}: ${e.message}`
+          `Failed to read local secrets file ${secretPath}: ${e.message}`
         );
       }
     }
@@ -1122,7 +1121,7 @@ export class FunctionsEmulator implements EmulatorInstance {
           "functions",
           "Unable to access secret environment variables from Google Cloud Secret Manager. " +
             "Make sure the credential used for the Functions Emulator have access " +
-            `or provide override values in ${LOCAL_SECRETS_FILE}:\n\t` +
+            `or provide override values in ${secretPath}:\n\t` +
             errs.join("\n\t")
         );
       }
