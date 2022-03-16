@@ -70,7 +70,7 @@ module.exports = new Command("ext:export")
       ref: spec.ref,
       params: buildBindingOptionsWithBaseValue(spec.params),
     }));
-    
+
     const existingConfig = manifest.loadConfig(options);
     await manifest.writeToManifest(
       manifestSpecs,

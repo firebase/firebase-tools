@@ -41,10 +41,7 @@ import { logger } from "../logger";
 import { previews } from "../previews";
 import { Options } from "../options";
 import * as manifest from "../extensions/manifest";
-import {
-  getBaseParamBindings,
-  ParamBindingOptions,
-} from "../extensions/paramHelper";
+import { getBaseParamBindings, ParamBindingOptions } from "../extensions/paramHelper";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),

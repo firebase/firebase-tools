@@ -10,10 +10,10 @@ import { ParamBindingOptions } from "../../extensions/paramHelper";
 
 /**
  * Instance spec used by manifest.
- * 
+ *
  * Params are passed in ParamBindingOptions so we know the param bindings for
  * all environments user has configured.
- * 
+ *
  * So far this is only used for writing to the manifest, but in the future
  * we want to read manifest into this interface.
  */
@@ -27,7 +27,7 @@ export interface ManifestInstanceSpec {
 // TODO(lihes): Rename this to something like DeploymentInstanceSpec.
 /**
  * Instance spec used for deploying extensions to firebase project or emulator.
- * 
+ *
  * Param bindings are expected to be collapsed from ParamBindingOptions into a Record<string, string>.
  */
 export interface InstanceSpec {
