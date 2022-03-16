@@ -269,6 +269,7 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
     paramsEnvPath,
     instanceId,
   });
+
   const ref = refs.parse(extVersion.ref);
   await manifest.writeToManifest(
     [
