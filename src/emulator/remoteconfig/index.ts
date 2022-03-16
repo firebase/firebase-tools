@@ -61,7 +61,7 @@ export class RemoteConfigEmulator implements EmulatorInstance {
       this._templateSource = this.args.template;
     }
 
-    if (!this._templateSource || this._templateSource.files.length == 0) {
+    if (!this._templateSource || this._templateSource.files.length === 0) {
       throw new FirebaseError(
         "Can not initialize Remote Config emulator without a template source / file."
       );
@@ -94,7 +94,11 @@ export class RemoteConfigEmulator implements EmulatorInstance {
     this.destroyServer = utils.createDestroyer(server);
   }
 
-  private loadTemplate(source?: Source): void {
+  public loadTemplate(source?: Source): void {
+    if (!source) {
+      source = this._templateSource;
+    }
+    // TODO(kroikie): validate template before using it.
     this._emulatorTemplate = RemoteConfigEmulator.prepareEmulatorTemplate(
       JSON.parse(source!.files[0].content)
     );
