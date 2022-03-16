@@ -169,25 +169,7 @@ export async function askForParam(args: {
         break;
       case ParamType.SECRET:
         while (!secretLocations.length) {
-          secretLocations = await promptOnce({
-            name: "input",
-            type: "checkbox",
-            message:
-              "Where would you like to store your secrets? You must select at least one value",
-            choices: [
-              {
-                checked: true,
-                name: "Google Cloud Secret Manager",
-                // return type of string is not actually enforced, need to manually convert.
-                value: SecretLocation.CLOUD.toString(),
-              },
-              {
-                checked: false,
-                name: "Local file (Only used by Firebase Emulator)",
-                value: SecretLocation.LOCAL.toString(),
-              },
-            ],
-          });
+          secretLocations = await promptSecretLocations();
         }
         if (secretLocations.includes(SecretLocation.CLOUD.toString())) {
           response = args.reconfiguring
@@ -195,7 +177,7 @@ export async function askForParam(args: {
             : await promptCreateSecret(args.projectId, args.instanceId, paramSpec);
         }
         if (secretLocations.includes(SecretLocation.LOCAL.toString())) {
-          responseForLocal = await promptLocalSecret(paramSpec);
+          responseForLocal = await promptLocalSecret(args.instanceId, paramSpec);
         }
         valid = true;
         break;
@@ -213,13 +195,37 @@ export async function askForParam(args: {
   return { baseValue: response, ...(responseForLocal ? { local: responseForLocal } : {}) };
 }
 
-async function promptLocalSecret(paramSpec: Param): Promise<string | undefined> {
+async function promptSecretLocations(): Promise<string[]> {
+  return await promptOnce({
+    name: "input",
+    type: "checkbox",
+    message: "Where would you like to store your secrets? You must select at least one value",
+    choices: [
+      {
+        checked: true,
+        name: "Google Cloud Secret Manager",
+        // return type of string is not actually enforced, need to manually convert.
+        value: SecretLocation.CLOUD.toString(),
+      },
+      {
+        checked: false,
+        name: "Local file (Only used by Firebase Emulator)",
+        value: SecretLocation.LOCAL.toString(),
+      },
+    ],
+  });
+}
+
+async function promptLocalSecret(
+  instanceId: string,
+  paramSpec: Param
+): Promise<string | undefined> {
   utils.logLabeledBullet(logPrefix, "Configure a local secret value for Extensions Emulator");
   const value = await promptOnce({
     name: paramSpec.param,
     type: "input",
     message:
-      `This secret will be stored in ./extensions/*.secret.local.\n` +
+      `This secret will be stored in ./extensions/${instanceId}.secret.local.\n` +
       `Enter value for "${paramSpec.label.trim()}" to be used by Extensions Emulator:`,
   });
   return value;

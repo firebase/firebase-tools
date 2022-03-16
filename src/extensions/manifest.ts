@@ -71,14 +71,14 @@ async function writeLocalSecrets(
       continue;
     }
 
-    let writeBuffer: Record<string, string> = {};
-    for (const paramSpec of spec.paramSpecs.filter((p) => p.type === ParamType.SECRET)) {
+    const writeBuffer: Record<string, string> = {};
+    const locallyOverridenSecretParams = spec.paramSpecs.filter(
+      (p) => p.type === ParamType.SECRET && spec.params[p.param].local
+    );
+    for (const paramSpec of locallyOverridenSecretParams) {
       const key = paramSpec.param;
-      const localValue = spec.params[key].local;
-      writeBuffer = {
-        ...writeBuffer,
-        ...(localValue ? { [key]: localValue } : {}),
-      };
+      const localValue = spec.params[key].local!;
+      writeBuffer[key] = localValue;
     }
 
     const content = Object.entries(writeBuffer)
