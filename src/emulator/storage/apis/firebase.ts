@@ -68,15 +68,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   firebaseStorageAPI.use(/.*\/b\/(.+?)\/.*/, (req, res, next) => {
     const bucketId = req.params[0];
     storageLayer.createBucket(bucketId);
-<<<<<<< HEAD
-<<<<<<< HEAD
     if (!emulator.rulesManager.getRuleset(bucketId)) {
-=======
-    if (!emulator.getRules(bucketId)) {
->>>>>>> eff938c0 (Make StorageRulesManager an interface; add StorageRulesManagerRegistry)
-=======
-    if (!emulator.rulesManager.getRuleset(bucketId)) {
->>>>>>> f54e03ec (Change emulator arg to take SourceFile only)
       EmulatorLogger.forEmulator(Emulators.STORAGE).log(
         "WARN",
         "Permission denied because no Storage ruleset is currently loaded, check your rules for syntax errors."
