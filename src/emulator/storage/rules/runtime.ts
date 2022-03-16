@@ -84,6 +84,11 @@ export class StorageRulesIssues {
   exist(): boolean {
     return !!(this.errors.length || this.warnings.length);
   }
+
+  extend(other: StorageRulesIssues): void {
+    this.errors.push(...other.errors);
+    this.warnings.push(...other.warnings);
+  }
 }
 
 export class StorageRulesRuntime {
