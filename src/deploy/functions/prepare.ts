@@ -135,10 +135,7 @@ export async function prepare(
     );
   }
   if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
-    context.functionsSourceV2 = await prepareFunctionsUpload(
-      sourceDir,
-      context.config
-    );
+    context.functionsSourceV2 = await prepareFunctionsUpload(sourceDir, context.config);
   }
 
   // Setup environment variables on each function.
