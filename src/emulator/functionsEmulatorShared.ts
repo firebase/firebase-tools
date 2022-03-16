@@ -211,7 +211,8 @@ export function emulatedFunctionsFromEndpoints(
  * @return A list of all CloudFunctions in the deployment, with copies for each region.
  */
 export function emulatedFunctionsByRegion(
-  definitions: ParsedTriggerDefinition[]
+  definitions: ParsedTriggerDefinition[],
+  secretEnvVariables: backend.SecretEnvVar[] = []
 ): EmulatedTriggerDefinition[] {
   const regionDefinitions: EmulatedTriggerDefinition[] = [];
   for (const def of definitions) {
@@ -227,6 +228,7 @@ export function emulatedFunctionsByRegion(
       defDeepCopy.region = region;
       defDeepCopy.id = `${region}-${defDeepCopy.name}`;
       defDeepCopy.platform = defDeepCopy.platform || "gcfv1";
+      defDeepCopy.secretEnvironmentVariables = secretEnvVariables;
 
       regionDefinitions.push(defDeepCopy);
     }
