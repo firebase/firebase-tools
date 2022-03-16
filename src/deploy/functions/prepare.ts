@@ -137,8 +137,7 @@ export async function prepare(
   if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
     context.functionsSourceV2 = await prepareFunctionsUpload(
       sourceDir,
-      context.config,
-      /* runtimeConfig= */ undefined
+      context.config
     );
   }
 

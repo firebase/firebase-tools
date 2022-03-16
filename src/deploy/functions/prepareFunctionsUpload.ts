@@ -116,7 +116,7 @@ async function packageSource(
 export async function prepareFunctionsUpload(
   sourceDir: string,
   config: projectConfig.ValidatedSingle,
-  runtimeConfig: backend.RuntimeConfigValues | undefined
+  runtimeConfig?: backend.RuntimeConfigValues
 ): Promise<string | undefined> {
   return packageSource(sourceDir, config, runtimeConfig);
 }
