@@ -7,9 +7,10 @@ import * as fs from "fs";
 
 import * as backend from "../deploy/functions/backend";
 import { Constants } from "./constants";
-import { InvokeRuntimeOpts } from "./functionsEmulator";
+import { EmulatableBackend, InvokeRuntimeOpts } from "./functionsEmulator";
 import { copyIfPresent } from "../gcp/proto";
 import { logger } from "../logger";
+import { ENV_DIRECTORY } from "../extensions/manifest";
 
 export type SignatureType = "http" | "event" | "cloudevent";
 
@@ -211,7 +212,8 @@ export function emulatedFunctionsFromEndpoints(
  * @return A list of all CloudFunctions in the deployment, with copies for each region.
  */
 export function emulatedFunctionsByRegion(
-  definitions: ParsedTriggerDefinition[]
+  definitions: ParsedTriggerDefinition[],
+  secretEnvVariables: backend.SecretEnvVar[] = []
 ): EmulatedTriggerDefinition[] {
   const regionDefinitions: EmulatedTriggerDefinition[] = [];
   for (const def of definitions) {
@@ -227,6 +229,7 @@ export function emulatedFunctionsByRegion(
       defDeepCopy.region = region;
       defDeepCopy.id = `${region}-${defDeepCopy.name}`;
       defDeepCopy.platform = defDeepCopy.platform || "gcfv1";
+      defDeepCopy.secretEnvironmentVariables = secretEnvVariables;
 
       regionDefinitions.push(defDeepCopy);
     }
@@ -369,4 +372,19 @@ export function getSignatureType(def: EmulatedTriggerDefinition): SignatureType 
   // functions cannot receive events in legacy format. This conflicts with our goal of introducing a 'compat' layer
   // that allows CF3v1 functions to target GCFv2 and vice versa.
   return def.platform === "gcfv2" ? "cloudevent" : "event";
+}
+
+const LOCAL_SECRETS_FILE = ".secret.local";
+
+/**
+ * getSecretLocalPath returns the expected location for a .secret.local override file.
+ */
+export function getSecretLocalPath(backend: EmulatableBackend, projectDir: string) {
+  const secretsFile = backend.extensionInstanceId
+    ? `${backend.extensionInstanceId}${LOCAL_SECRETS_FILE}`
+    : LOCAL_SECRETS_FILE;
+  const secretDirectory = backend.extensionInstanceId
+    ? path.join(projectDir, ENV_DIRECTORY)
+    : backend.functionsDir;
+  return path.join(secretDirectory, secretsFile);
 }

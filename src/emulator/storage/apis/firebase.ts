@@ -64,8 +64,11 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     });
   }
 
-  firebaseStorageAPI.use((req, res, next) => {
-    if (!emulator.rules) {
+  // Automatically create a bucket for any route which uses a bucket
+  firebaseStorageAPI.use(/.*\/b\/(.+?)\/.*/, (req, res, next) => {
+    const bucketId = req.params[0];
+    storageLayer.createBucket(bucketId);
+    if (!emulator.rulesManager.getRuleset(bucketId)) {
       EmulatorLogger.forEmulator(Emulators.STORAGE).log(
         "WARN",
         "Permission denied because no Storage ruleset is currently loaded, check your rules for syntax errors."
@@ -77,13 +80,6 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         },
       });
     }
-
-    next();
-  });
-
-  // Automatically create a bucket for any route which uses a bucket
-  firebaseStorageAPI.use(/.*\/b\/(.+?)\/.*/, (req, res, next) => {
-    storageLayer.createBucket(req.params[0]);
     next();
   });
 
@@ -126,17 +122,20 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       res.setHeader("Content-Type", metadata.contentType);
       setObjectHeaders(res, metadata, { "Content-Encoding": isGZipped ? "identity" : undefined });
 
-      const byteRange = [...(req.header("range") || "").split("bytes="), "", ""];
-      const [rangeStart, rangeEnd] = byteRange[1].split("-");
-      if (rangeStart) {
-        const range = {
-          start: parseInt(rangeStart),
-          end: rangeEnd ? parseInt(rangeEnd) : data.byteLength,
-        };
-        res.setHeader("Content-Range", `bytes ${range.start}-${range.end - 1}/${data.byteLength}`);
-        return res.status(206).end(data.slice(range.start, range.end));
+      const byteRange = req.range(data.byteLength, { combine: true });
+
+      if (Array.isArray(byteRange) && byteRange.type === "bytes" && byteRange.length > 0) {
+        const range = byteRange[0];
+        res.setHeader(
+          "Content-Range",
+          `${byteRange.type} ${range.start}-${range.end}/${data.byteLength}`
+        );
+        // Byte range requests are inclusive for start and end
+        res.status(206).end(data.slice(range.start, range.end + 1));
+      } else {
+        res.end(data);
       }
-      return res.end(data);
+      return;
     }
 
     // Object metadata request
@@ -151,7 +150,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       response = await storageLayer.handleListObjects({
         bucketId: req.params.bucketId,
         prefix: req.query.prefix ? req.query.prefix.toString() : "",
-        delimiter: req.query.delimiter ? req.query.delimiter.toString() : "/",
+        delimiter: req.query.delimiter ? req.query.delimiter.toString() : "",
         pageToken: req.query.pageToken?.toString(),
         maxResults: maxResults ? +maxResults : undefined,
         authorization: req.header("authorization"),

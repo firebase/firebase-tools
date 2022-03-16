@@ -7,7 +7,7 @@ export const STORAGE_EVENTS = [
   "google.cloud.storage.object.v1.metadataUpdated",
 ] as const;
 
-export const FIREBASE_ALERTS_PUBLISH_EVENT = "firebase.firebasealerts.alerts.v1.published";
+export const FIREBASE_ALERTS_PUBLISH_EVENT = "google.firebase.firebasealerts.alerts.v1.published";
 
 export type Event =
   | typeof PUBSUB_PUBLISH_EVENT

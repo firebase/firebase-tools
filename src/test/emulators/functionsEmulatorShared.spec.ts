@@ -1,5 +1,6 @@
 import { expect } from "chai";
-import { getFunctionService } from "../../emulator/functionsEmulatorShared";
+import { EmulatableBackend } from "../../emulator/functionsEmulator";
+import * as functionsEmulatorShared from "../../emulator/functionsEmulatorShared";
 
 const baseDef = {
   platform: "gcfv1" as const,
@@ -10,7 +11,7 @@ const baseDef = {
 };
 
 describe("FunctionsEmulatorShared", () => {
-  describe("getFunctionService", () => {
+  describe(`${functionsEmulatorShared.getFunctionService.name}`, () => {
     it("should get service from event trigger definition", () => {
       const def = {
         ...baseDef,
@@ -20,7 +21,7 @@ describe("FunctionsEmulatorShared", () => {
           service: "pubsub.googleapis.com",
         },
       };
-      expect(getFunctionService(def)).to.be.eql("pubsub.googleapis.com");
+      expect(functionsEmulatorShared.getFunctionService(def)).to.be.eql("pubsub.googleapis.com");
     });
 
     it("should return unknown if trigger definition is not event-based", () => {
@@ -28,7 +29,7 @@ describe("FunctionsEmulatorShared", () => {
         ...baseDef,
         httpsTrigger: {},
       };
-      expect(getFunctionService(def)).to.be.eql("unknown");
+      expect(functionsEmulatorShared.getFunctionService(def)).to.be.eql("unknown");
     });
 
     it("should infer pubsub service based on eventType", () => {
@@ -39,7 +40,7 @@ describe("FunctionsEmulatorShared", () => {
           eventType: "google.cloud.pubsub.topic.v1.messagePublished",
         },
       };
-      expect(getFunctionService(def)).to.be.eql("pubsub.googleapis.com");
+      expect(functionsEmulatorShared.getFunctionService(def)).to.be.eql("pubsub.googleapis.com");
     });
 
     it("should infer firestore service based on eventType", () => {
@@ -50,7 +51,7 @@ describe("FunctionsEmulatorShared", () => {
           eventType: "providers/cloud.firestore/eventTypes/document.write",
         },
       };
-      expect(getFunctionService(def)).to.be.eql("firestore.googleapis.com");
+      expect(functionsEmulatorShared.getFunctionService(def)).to.be.eql("firestore.googleapis.com");
     });
 
     it("should infer database service based on eventType", () => {
@@ -61,7 +62,7 @@ describe("FunctionsEmulatorShared", () => {
           eventType: "providers/google.firebase.database/eventTypes/ref.write",
         },
       };
-      expect(getFunctionService(def)).to.be.eql("firebaseio.com");
+      expect(functionsEmulatorShared.getFunctionService(def)).to.be.eql("firebaseio.com");
     });
 
     it("should infer storage service based on eventType", () => {
@@ -72,7 +73,7 @@ describe("FunctionsEmulatorShared", () => {
           eventType: "google.storage.object.finalize",
         },
       };
-      expect(getFunctionService(def)).to.be.eql("storage.googleapis.com");
+      expect(functionsEmulatorShared.getFunctionService(def)).to.be.eql("storage.googleapis.com");
     });
 
     it("should infer auth service based on eventType", () => {
@@ -83,7 +84,46 @@ describe("FunctionsEmulatorShared", () => {
           eventType: "providers/firebase.auth/eventTypes/user.create",
         },
       };
-      expect(getFunctionService(def)).to.be.eql("firebaseauth.googleapis.com");
+      expect(functionsEmulatorShared.getFunctionService(def)).to.be.eql(
+        "firebaseauth.googleapis.com"
+      );
     });
+  });
+
+  describe(`${functionsEmulatorShared.getSecretLocalPath.name}`, () => {
+    const testProjectDir = "project/dir";
+    const tests: {
+      desc: string;
+      in: EmulatableBackend;
+      expected: string;
+    }[] = [
+      {
+        desc: "should return the correct location for an Extension backend",
+        in: {
+          functionsDir: "extensions/functions",
+          env: {},
+          secretEnv: [],
+          extensionInstanceId: "my-extension-instance",
+        },
+        expected: "project/dir/extensions/my-extension-instance.secret.local",
+      },
+      {
+        desc: "should return the correct location for a CF3 backend",
+        in: {
+          functionsDir: "test/cf3",
+          env: {},
+          secretEnv: [],
+        },
+        expected: "test/cf3/.secret.local",
+      },
+    ];
+
+    for (const t of tests) {
+      it(t.desc, () => {
+        expect(functionsEmulatorShared.getSecretLocalPath(t.in, testProjectDir)).to.equal(
+          t.expected
+        );
+      });
+    }
   });
 });
