@@ -80,7 +80,7 @@ export async function deploy(
     const source = context.config.source;
     if (uploads.length) {
       logSuccess(
-        clc.green.bold("functions:") + " " + clc.bold(source) + " folder uploaded successfully"
+        `${clc.green.bold("functions:")} ${clc.bold(source)} folder uploaded successfully`
       );
     }
   } catch (err: any) {
