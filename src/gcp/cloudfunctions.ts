@@ -474,7 +474,18 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     trigger = {
       taskQueueTrigger: {},
     };
-  } else if (gcfFunction.labels?.["deployment-callable"]) {
+  } else if (
+    gcfFunction.labels?.["deployment-callable"] ||
+    // NOTE: "deployment-callabled" is a typo we introduced in https://github.com/firebase/firebase-tools/pull/4124.
+    // More than a month passed before we caught this typo, and we expect many callable functions in production
+    // to have this typo. It is convenient for users for us to treat the typo-ed label as a valid marker for callable
+    // function, so we do that here.
+    //
+    // The typo will be overwritten as callable functions are re-deployed. Eventually, there may be no callable
+    // functions with the typo-ed label, but we can't ever be sure. Sadly, we may have to carry this scar for a very long
+    // time.
+    gcfFunction.labels?.["deployment-callabled"]
+  ) {
     trigger = {
       callableTrigger: {},
     };
