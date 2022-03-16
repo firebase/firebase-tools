@@ -264,6 +264,11 @@ exports.storageMetadataReaction = functions.storage
     return true;
   });
 
+exports.onCall = functions.https.onCall((data) => {
+  console.log("data", JSON.stringify(data));
+  return data;
+});
+
 exports.storagev2archivedreaction = functionsV2.storage.onObjectArchived((cloudevent) => {
   console.log(STORAGE_FUNCTION_V2_ARCHIVED_LOG);
   console.log("Object", JSON.stringify(cloudevent.data));
@@ -359,3 +364,8 @@ exports.storagebucketv2metadatareaction = functionsV2.storage.onObjectMetadataUp
     return true;
   }
 );
+
+exports.oncallv2 = functionsV2.https.onCall((req) => {
+  console.log("data", JSON.stringify(req.data));
+  return req.data;
+});
