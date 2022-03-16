@@ -90,7 +90,9 @@ async function writeLocalSecrets(
       })
       .map((r) => `${r[0]}=${r[1]}`)
       .join("\n");
-    await config.askWriteProjectFile(`extensions/${spec.instanceId}.secret.local`, content, force);
+    if (content) {
+      await config.askWriteProjectFile(`extensions/${spec.instanceId}.secret.local`, content, force);
+    }
   }
 }
 
