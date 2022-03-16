@@ -1,0 +1,1 @@
+- Fixes bug where deploying callable functions failed (#4310).
