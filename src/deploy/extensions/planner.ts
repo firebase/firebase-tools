@@ -129,11 +129,17 @@ export async function want(args: {
  * @param version a semver or semver range
  */
 export async function resolveVersion(ref: refs.Ref): Promise<string> {
-  if (!ref.version || ref.version === "latest") {
-    return "latest";
-  }
   const extensionRef = refs.toExtensionRef(ref);
   const versions = await extensionsApi.listExtensionVersions(extensionRef);
+  if (versions.length === 0) {
+    throw new FirebaseError(`No versions found for ${extensionRef}`);
+  }
+  if (!ref.version || ref.version === "latest") {
+    return versions
+      .map((ev) => ev.spec.version)
+      .sort(semver.compare)
+      .pop()!;
+  }
   const maxSatisfying = semver.maxSatisfying(
     versions.map((ev) => ev.spec.version),
     ref.version
