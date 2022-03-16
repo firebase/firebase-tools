@@ -61,6 +61,7 @@ describe("Storage Rules Manager", function () {
   });
 
   it("should load ruleset on update with SourceFile object", async () => {
+    expect(rulesManager.getRuleset("bucket_2")).to.be.undefined;
     await rulesManager.updateSourceFile(StorageRulesFiles.readWriteIfTrue, "bucket_2");
     expect(rulesManager.getRuleset("bucket_2")).not.to.be.undefined;
   });
