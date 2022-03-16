@@ -1,1 +1,1 @@
-- Fixes bug where deploying callable functions failed (#4310).
+- Adds support for configuration with multiple storage targets (#4281).
