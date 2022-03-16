@@ -187,9 +187,6 @@ export class TriggerEndToEndTest {
         this.storageFinalizedTriggerCount++;
       }
       if (data.includes(STORAGE_FUNCTION_METADATA_LOG)) {
-        console.log("storage md trigger");
-        console.log(data);
-        console.log("---");
         this.storageMetadataTriggerCount++;
       }
       if (data.includes(STORAGE_BUCKET_FUNCTION_ARCHIVED_LOG)) {
@@ -218,9 +215,6 @@ export class TriggerEndToEndTest {
         this.storageV2FinalizedTriggerCount++;
       }
       if (data.includes(STORAGE_FUNCTION_V2_METADATA_LOG)) {
-        console.log("storage md trigger v2");
-        console.log(data);
-        console.log("---");
         this.storageV2MetadataTriggerCount++;
       }
       if (data.includes(STORAGE_BUCKET_FUNCTION_V2_ARCHIVED_LOG)) {

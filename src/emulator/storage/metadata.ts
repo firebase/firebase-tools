@@ -175,6 +175,10 @@ export class StoredFileMetadata {
     }
   }
 
+  /**
+   * TODO(abhisun): Move all cloud function triggers to the storage layer to
+   * avoid needing the shouldTrigger field  
+   */
   update(incoming: IncomingMetadata, shouldTrigger = true): void {
     if (incoming.contentDisposition) {
       this.contentDisposition = incoming.contentDisposition;

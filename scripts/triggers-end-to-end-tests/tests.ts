@@ -272,10 +272,6 @@ describe("storage emulator function triggers", () => {
   it("should have triggered cloud functions", () => {
     /* on object create one event fires (finalize) */
     // default bucket
-    console.log("++++++");
-    console.log(test.storageMetadataTriggerCount);
-    console.log(test.storageV2MetadataTriggerCount);
-    console.log("++++++");
     expect(test.storageFinalizedTriggerCount).to.equal(1);
     expect(test.storageV2FinalizedTriggerCount).to.equal(1);
     expect(test.storageMetadataTriggerCount).to.equal(0);
