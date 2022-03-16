@@ -134,18 +134,15 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         nonInteractive: options.nonInteractive,
         instanceId,
       });
-      const newParamBindings = paramHelper.getBaseParamBindings(newParamBindingOptions);
 
       await manifest.writeToManifest(
-        {
-          baseSpec: [
-            {
-              instanceId,
-              ref: refs.parse(newExtensionVersion.ref),
-              params: newParamBindings,
-            },
-          ],
-        },
+        [
+          {
+            instanceId,
+            ref: refs.parse(newExtensionVersion.ref),
+            params: newParamBindingOptions,
+          },
+        ],
         config,
         {
           nonInteractive: options.nonInteractive,
