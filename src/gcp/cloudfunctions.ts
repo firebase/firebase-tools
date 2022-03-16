@@ -600,7 +600,7 @@ export function functionFromEndpoint(
   } else {
     gcfFunction.httpsTrigger = {};
     if (backend.isCallableTriggered(endpoint)) {
-      gcfFunction.labels = { ...gcfFunction.labels, "deployment-callabled": "true" };
+      gcfFunction.labels = { ...gcfFunction.labels, "deployment-callable": "true" };
     }
     if (endpoint.securityLevel) {
       gcfFunction.httpsTrigger.securityLevel = endpoint.securityLevel;
