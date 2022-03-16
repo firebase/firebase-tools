@@ -89,6 +89,7 @@ export default new Command("ext:configure <extensionInstanceId>")
             instanceId,
             ref: targetRef,
             params: newParamOptions,
+            paramSpecs: extensionVersion.spec.params,
           },
         ],
         config,

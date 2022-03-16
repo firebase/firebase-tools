@@ -141,6 +141,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
             instanceId,
             ref: refs.parse(newExtensionVersion.ref),
             params: newParamBindingOptions,
+            paramSpecs: newExtensionVersion.spec.params,
           },
         ],
         config,

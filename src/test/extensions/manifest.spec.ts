@@ -104,28 +104,26 @@ describe("manifest", () => {
 
     it("should write to both firebase.json and env files", async () => {
       await manifest.writeToManifest(
-        {
-          baseSpec: [
-            {
-              instanceId: "instance-1",
-              ref: {
-                publisherId: "firebase",
-                extensionId: "bigquery-export",
-                version: "1.0.0",
-              },
-              params: { a: "pikachu", b: "bulbasaur" },
+        [
+          {
+            instanceId: "instance-1",
+            ref: {
+              publisherId: "firebase",
+              extensionId: "bigquery-export",
+              version: "1.0.0",
             },
-            {
-              instanceId: "instance-2",
-              ref: {
-                publisherId: "firebase",
-                extensionId: "bigquery-export",
-                version: "2.0.0",
-              },
-              params: { a: "eevee", b: "squirtle" },
+            params: { a: {baseValue: "pikachu"}, b: {baseValue: "bulbasaur"}, },
+          },
+          {
+            instanceId: "instance-2",
+            ref: {
+              publisherId: "firebase",
+              extensionId: "bigquery-export",
+              version: "2.0.0",
             },
-          ],
-        },
+            params: { a: {baseValue: "eevee"}, b: {baseValue: "squirtle"}, },
+          },
+        ],
         generateBaseConfig(),
         { nonInteractive: false, force: false }
       );
@@ -153,28 +151,26 @@ describe("manifest", () => {
 
     it("should write to env files in stable, alphabetical by key order", async () => {
       await manifest.writeToManifest(
-        {
-          baseSpec: [
-            {
-              instanceId: "instance-1",
-              ref: {
-                publisherId: "firebase",
-                extensionId: "bigquery-export",
-                version: "1.0.0",
-              },
-              params: { b: "bulbasaur", a: "absol" },
+        [
+          {
+            instanceId: "instance-1",
+            ref: {
+              publisherId: "firebase",
+              extensionId: "bigquery-export",
+              version: "1.0.0",
             },
-            {
-              instanceId: "instance-2",
-              ref: {
-                publisherId: "firebase",
-                extensionId: "bigquery-export",
-                version: "2.0.0",
-              },
-              params: { e: "eevee", s: "squirtle" },
+            params: { b: {baseValue: "bulbasaur"}, a: {baseValue: "absol"}, },
+          },
+          {
+            instanceId: "instance-2",
+            ref: {
+              publisherId: "firebase",
+              extensionId: "bigquery-export",
+              version: "2.0.0",
             },
-          ],
-        },
+            params: { e: {baseValue: "eevee"}, s: {baseValue: "squirtle"}, },
+          },
+        ],
         generateBaseConfig(),
         { nonInteractive: false, force: false }
       );
@@ -205,28 +201,26 @@ describe("manifest", () => {
       sandbox.stub(prompt, "promptOnce").resolves(true);
 
       await manifest.writeToManifest(
-        {
-          baseSpec: [
-            {
-              instanceId: "instance-1",
-              ref: {
-                publisherId: "firebase",
-                extensionId: "bigquery-export",
-                version: "1.0.0",
-              },
-              params: { a: "pikachu", b: "bulbasaur" },
+        [
+          {
+            instanceId: "instance-1",
+            ref: {
+              publisherId: "firebase",
+              extensionId: "bigquery-export",
+              version: "1.0.0",
             },
-            {
-              instanceId: "instance-2",
-              ref: {
-                publisherId: "firebase",
-                extensionId: "bigquery-export",
-                version: "2.0.0",
-              },
-              params: { a: "eevee", b: "squirtle" },
+            params: { a:{baseValue:  "pikachu"}, b: {baseValue: "bulbasaur" },},
+          },
+          {
+            instanceId: "instance-2",
+            ref: {
+              publisherId: "firebase",
+              extensionId: "bigquery-export",
+              version: "2.0.0",
             },
-          ],
-        },
+            params: { a: {baseValue: "eevee"}, b: {baseValue: "squirtle"}, },
+          },
+        ],
         generateBaseConfig(),
         { nonInteractive: false, force: false },
         true /** allowOverwrite */
