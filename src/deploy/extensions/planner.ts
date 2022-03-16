@@ -6,6 +6,7 @@ import { FirebaseError } from "../../error";
 import { getFirebaseProjectParams, substituteParams } from "../../extensions/extensionsHelper";
 import { logger } from "../../logger";
 import { readInstanceParam } from "../../extensions/manifest";
+import { ParamBindingOptions } from "../../extensions/paramHelper";
 
 export interface InstanceSpec {
   instanceId: string;
@@ -13,6 +14,13 @@ export interface InstanceSpec {
   params: Record<string, string>;
   extensionVersion?: extensionsApi.ExtensionVersion;
   extension?: extensionsApi.Extension;
+  paramSpecs?: extensionsApi.Param[];
+}
+
+export interface InstanceSpecV2 {
+  instanceId: string;
+  ref: refs.Ref;
+  params: Record<string, ParamBindingOptions>;
   paramSpecs?: extensionsApi.Param[];
 }
 

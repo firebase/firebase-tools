@@ -2,10 +2,10 @@ import * as clc from "cli-color";
 import * as path from "path";
 import * as refs from "./refs";
 import { Config } from "../config";
-import { InstanceSpec } from "../deploy/extensions/planner";
+import { InstanceSpec, InstanceSpecV2 } from "../deploy/extensions/planner";
 import { logger } from "../logger";
 import { promptOnce } from "../prompt";
-import { readEnvFile } from "./paramHelper";
+import { ParamBindingOptions, readEnvFile } from "./paramHelper";
 import { FirebaseError } from "../error";
 import * as utils from "../utils";
 import { logPrefix } from "./extensionsHelper";
@@ -26,7 +26,7 @@ const ENV_DIRECTORY = "extensions";
  * @param allowOverwrite allows overwriting the entire manifest with the new specs
  */
 export async function writeToManifest(
-  specs: { baseSpec: InstanceSpec[]; localSpec?: InstanceSpec[] },
+  specs: InstanceSpecV2[],
   config: Config,
   options: { nonInteractive: boolean; force: boolean },
   allowOverwrite: boolean = false
@@ -55,26 +55,42 @@ export async function writeToManifest(
     }
   }
 
-  writeExtensionsToFirebaseJson(specs.baseSpec, config);
-  await writeEnvFiles(specs.baseSpec, config, options.force);
-  await writeLocalSecrets(specs.localSpec!, config, options.force);
+  try {
+    writeExtensionsToFirebaseJson(specs, config);
+    await writeEnvFiles(specs, config, options.force);
+    await writeLocalSecrets(specs, config, options.force);
+  } catch (e) {
+    console.log(e);
+  }
 }
 
 async function writeLocalSecrets(
-  specs: InstanceSpec[] ,
+  specs: InstanceSpecV2[],
   config: Config,
   force?: boolean
-) : Promise<void>{
+): Promise<void> {
   for (const spec of specs) {
-    let buffer : Record<string, string> = {};
-    for (const paramSpec of spec.paramSpecs!) {
-      if (paramSpec) {
-        if (paramSpec.type === ParamType.SECRET) {
-          buffer[paramSpec.param] = spec.params[paramSpec.param];
-        }
-      }
+    if (!spec.paramSpecs) {
+      continue;
     }
-    console.log(buffer);
+
+    let writeBuffer: Record<string, string> = {};
+    for (const paramSpec of spec.paramSpecs.filter((p) => p.type === ParamType.SECRET)) {
+      const key = paramSpec.param;
+      const localValue = spec.params[key].local;
+      writeBuffer = {
+        ...writeBuffer,
+        ...(localValue ? { [key]: localValue } : {}),
+      };
+    }
+
+    const content = Object.entries(writeBuffer)
+      .sort((a, b) => {
+        return a[0].localeCompare(b[0]);
+      })
+      .map((r) => `${r[0]}=${r[1]}`)
+      .join("\n");
+    await config.askWriteProjectFile(`extensions/${spec.instanceId}.secret.local`, content, force);
   }
 }
 
@@ -124,7 +140,7 @@ export function getInstanceRef(instanceId: string, config: Config): refs.Ref {
   return refs.parse(ref);
 }
 
-function writeExtensionsToFirebaseJson(specs: InstanceSpec[], config: Config): void {
+function writeExtensionsToFirebaseJson(specs: InstanceSpecV2[], config: Config): void {
   const extensions = config.get("extensions", {});
   for (const s of specs) {
     extensions[s.instanceId] = refs.toExtensionVersionRef(s.ref!);
@@ -135,7 +151,7 @@ function writeExtensionsToFirebaseJson(specs: InstanceSpec[], config: Config): v
 }
 
 async function writeEnvFiles(
-  specs: InstanceSpec[],
+  specs: InstanceSpecV2[],
   config: Config,
   force?: boolean
 ): Promise<void> {
@@ -144,7 +160,7 @@ async function writeEnvFiles(
       .sort((a, b) => {
         return a[0].localeCompare(b[0]);
       })
-      .map((r) => `${r[0]}=${r[1]}`)
+      .map((r) => `${r[0]}=${r[1].baseValue}`)
       .join("\n");
     await config.askWriteProjectFile(`extensions/${spec.instanceId}.env`, content, force);
   }
