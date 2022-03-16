@@ -160,9 +160,53 @@ describe("Storage emulator", () => {
           });
         });
 
-        // TODO(abehaskins): This test is temporarily disabled due to a credentials issue
-        it.skip("should handle large (resumable) uploads", async () => {
-          await testBucket.upload(largeFilePath, { resumable: true });
+        it("should handle resumable uploads", async () => {
+          const fileName = "test_upload.jpg";
+          const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
+            .post(`/upload/storage/v1/b/${storageBucket}/o?name=${fileName}&uploadType=resumable`)
+            .send({})
+            .set({
+              Authorization: "Bearer owner",
+            })
+            .expect(200)
+            .then((res) => new URL(res.header["location"]));
+
+          const metadata = await supertest(STORAGE_EMULATOR_HOST)
+            .put(uploadURL.pathname + uploadURL.search)
+            .expect(200)
+            .then((res) => res.body);
+
+          const metadataTypes: { [s: string]: string } = {};
+
+          for (const key in metadata) {
+            if (metadata[key]) {
+              metadataTypes[key] = typeof metadata[key];
+            }
+          }
+
+          expect(metadata.name).to.equal(fileName);
+          expect(metadata.contentType).to.equal("application/octet-stream");
+          expect(metadataTypes).to.deep.equal({
+            kind: "string",
+            name: "string",
+            bucket: "string",
+            cacheControl: "string",
+            contentDisposition: "string",
+            generation: "string",
+            metageneration: "string",
+            contentType: "string",
+            timeCreated: "string",
+            updated: "string",
+            storageClass: "string",
+            size: "string",
+            md5Hash: "string",
+            etag: "string",
+            crc32c: "string",
+            timeStorageClassUpdated: "string",
+            id: "string",
+            selfLink: "string",
+            mediaLink: "string",
+          });
         });
 
         it("should upload with provided metadata", async () => {
