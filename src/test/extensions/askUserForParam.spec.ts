@@ -291,7 +291,6 @@ describe("askUserForParam", () => {
     it("should return the correct user input for secret stored in a local file", async () => {
       promptStub.onCall(0).returns([SecretLocation.LOCAL.toString()]);
       promptStub.onCall(1).returns("ABC.123");
-      promptStub.onCall(2).returns("ABC.123");
 
       const result = await askForParam({
         projectId: "project-id",
@@ -301,11 +300,33 @@ describe("askUserForParam", () => {
       });
       // prompt for secret storage location, then prompt for secret value
       expect(promptStub.calledTwice).to.be.true;
-      // Shouldn't call secret manager.
+      // Shouldn't make any api calls.
       expect(grantRole.calledOnce).to.be.false;
       expect(result).to.be.eql({
         baseValue: "",
         local: "ABC.123",
+      });
+    });
+
+    it("should handle cloud & local secret storage at the same time", async () => {
+      promptStub
+        .onCall(0)
+        .returns([SecretLocation.CLOUD.toString(), SecretLocation.LOCAL.toString()]);
+      promptStub.onCall(1).returns("ABC.123");
+      promptStub.onCall(2).returns("LOCAL.ABC.123");
+
+      const result = await askForParam({
+        projectId: "project-id",
+        instanceId: "instance-id",
+        paramSpec: secretSpec,
+        reconfiguring: false,
+      });
+      // prompt for secret storage location, then prompt for cloud secret value, then local
+      expect(promptStub.calledThrice).to.be.true;
+      expect(grantRole.calledOnce).to.be.true;
+      expect(result).to.be.eql({
+        baseValue: `projects/${stubSecret.projectId}/secrets/${stubSecret.name}/versions/${stubSecretVersion.versionId}`,
+        local: "LOCAL.ABC.123",
       });
     });
   });
