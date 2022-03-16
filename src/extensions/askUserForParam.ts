@@ -192,6 +192,7 @@ export async function askForParam(args: {
         if (secretLocations.includes(SecretCreationAction.LOCAL.toString())) {
           responseForLocal = await promptLocalSecret(paramSpec);
         }
+
         valid = true;
         break;
       default:

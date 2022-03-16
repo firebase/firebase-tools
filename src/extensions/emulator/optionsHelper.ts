@@ -6,13 +6,14 @@ import * as paramHelper from "../paramHelper";
 import * as specHelper from "./specHelper";
 import * as localHelper from "../localHelper";
 import * as triggerHelper from "./triggerHelper";
-import { ExtensionSpec, Resource } from "../extensionsApi";
+import { ExtensionSpec, Param, ParamType, Resource } from "../extensionsApi";
 import * as extensionsHelper from "../extensionsHelper";
 import { Config } from "../../config";
 import { FirebaseError } from "../../error";
 import { EmulatorLogger } from "../../emulator/emulatorLogger";
 import { needProjectId } from "../../projectUtils";
 import { Emulators } from "../../emulator/types";
+import { SecretEnvVar } from "../../deploy/functions/backend";
 
 export async function buildOptions(options: any): Promise<any> {
   const extDevDir = localHelper.findExtensionYaml(process.cwd());
@@ -47,13 +48,15 @@ export async function buildOptions(options: any): Promise<any> {
 export async function getExtensionFunctionInfo(
   extensionDir: string,
   instanceId: string,
-  params: Record<string, string>
+  paramValues: Record<string, string>
 ): Promise<{
   nodeMajorVersion: number;
   extensionTriggers: ParsedTriggerDefinition[];
+  nonSecretEnv: Record<string, string>;
+  secretEnvVariables: SecretEnvVar[];
 }> {
   const spec = await specHelper.readExtensionYaml(extensionDir);
-  const functionResources = specHelper.getFunctionResourcesWithParamSubstitution(spec, params);
+  const functionResources = specHelper.getFunctionResourcesWithParamSubstitution(spec, paramValues);
   const extensionTriggers: ParsedTriggerDefinition[] = functionResources
     .map((r) => triggerHelper.functionResourceToEmulatedTriggerDefintion(r))
     .map((trigger) => {
@@ -61,10 +64,58 @@ export async function getExtensionFunctionInfo(
       return trigger;
     });
   const nodeMajorVersion = specHelper.getNodeVersion(functionResources);
+  const nonSecretEnv = getNonSecretEnv(spec.params, paramValues);
+  const secretEnvVariables = getSecretEnvVars(spec.params, paramValues);
   return {
     extensionTriggers,
     nodeMajorVersion,
+    nonSecretEnv,
+    secretEnvVariables,
   };
+}
+const isSecretParam = (p: Param) =>
+  p.type === extensionsHelper.SpecParamType.SECRET || p.type === ParamType.SECRET;
+/**
+ * getNonSecretEnv checks extension spec for secret params, and returns env without those secret params
+ * @param params A list of params to check for secret params
+ * @param paramValues A Record of all params to their values
+ */
+export function getNonSecretEnv(
+  params: Param[],
+  paramValues: Record<string, string>
+): Record<string, string> {
+  const getNonSecretEnv: Record<string, string> = Object.assign({}, paramValues);
+  const secretParams = params.filter(isSecretParam);
+  for (const p of secretParams) {
+    delete getNonSecretEnv[p.param];
+  }
+  return getNonSecretEnv;
+}
+
+/**
+ * getSecretEnvVars checks which params are secret, and returns a list of SecretEnvVar for each one that is is in use
+ * @param params A list of params to check for secret params
+ * @param paramValues A Record of all params to their values
+ */
+export function getSecretEnvVars(
+  params: Param[],
+  paramValues: Record<string, string>
+): SecretEnvVar[] {
+  const secretEnvVar: SecretEnvVar[] = [];
+  const secretParams = params.filter(isSecretParam);
+  for (const s of secretParams) {
+    if (paramValues[s.param]) {
+      const [, projectId, , secret, , version] = paramValues[s.param].split("/");
+      secretEnvVar.push({
+        key: s.param,
+        secret,
+        projectId,
+        version,
+      });
+    }
+    // TODO: Throw an error if a required secret is missing?
+  }
+  return secretEnvVar;
 }
 
 // Exported for testing
