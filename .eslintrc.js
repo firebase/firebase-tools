@@ -16,12 +16,7 @@ module.exports = {
     "jsdoc/require-jsdoc": ["warn", { publicOnly: true }],
     "no-restricted-globals": ["error", "name", "length"],
     "prefer-arrow-callback": "error",
-    "prettier/prettier": [
-      "error",
-      {
-        endOfLine: "auto",
-      },
-    ],
+    "prettier/prettier": "error",
     "require-atomic-updates": "off", // This rule is so noisy and isn't useful: https://github.com/eslint/eslint/issues/11899
     "require-jsdoc": "off", // This rule is deprecated and superseded by jsdoc/require-jsdoc.
     "valid-jsdoc": "off", // This is deprecated but included in recommended configs.
