@@ -13,7 +13,12 @@ import { promptOnce } from "../prompt";
 import * as utils from "../utils";
 import { ParamBindingOptions } from "./paramHelper";
 
-enum SecretCreationAction {
+/**
+ * Location where the secret value is stored.
+ *
+ * Visible for testing.
+ */
+export enum SecretLocation {
   CLOUD = 1,
   LOCAL,
 }
@@ -174,25 +179,24 @@ export async function askForParam(args: {
                 checked: true,
                 name: "Google Cloud Secret Manager",
                 // return type of string is not actually enforced, need to manually convert.
-                value: SecretCreationAction.CLOUD.toString(),
+                value: SecretLocation.CLOUD.toString(),
               },
               {
                 checked: false,
                 name: "Local file (Only used by Firebase Emulator)",
-                value: SecretCreationAction.LOCAL.toString(),
+                value: SecretLocation.LOCAL.toString(),
               },
             ],
           });
         }
-        if (secretLocations.includes(SecretCreationAction.CLOUD.toString())) {
+        if (secretLocations.includes(SecretLocation.CLOUD.toString())) {
           response = args.reconfiguring
             ? await promptReconfigureSecret(args.projectId, args.instanceId, paramSpec)
             : await promptCreateSecret(args.projectId, args.instanceId, paramSpec);
         }
-        if (secretLocations.includes(SecretCreationAction.LOCAL.toString())) {
+        if (secretLocations.includes(SecretLocation.LOCAL.toString())) {
           responseForLocal = await promptLocalSecret(paramSpec);
         }
-
         valid = true;
         break;
       default:
