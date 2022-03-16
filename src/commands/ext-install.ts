@@ -43,7 +43,6 @@ import { Options } from "../options";
 import * as manifest from "../extensions/manifest";
 import {
   getBaseParamBindings,
-  getLocalParamBindings,
   ParamBindingOptions,
 } from "../extensions/paramHelper";
 

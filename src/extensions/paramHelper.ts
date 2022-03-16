@@ -41,19 +41,6 @@ export function getBaseParamBindings(params: { [key: string]: ParamBindingOption
   return ret;
 }
 
-export function getLocalParamBindings(params: { [key: string]: ParamBindingOptions }): {
-  [key: string]: string;
-} {
-  let ret = {};
-  for (const [k, v] of Object.entries(params)) {
-    ret = {
-      ...ret,
-      ...{ [k]: v.local ?? v.baseValue },
-    };
-  }
-  return ret;
-}
-
 export function buildBindingOptionsWithBaseValue(baseParams: { [key: string]: string }): {
   [key: string]: ParamBindingOptions;
 } {
