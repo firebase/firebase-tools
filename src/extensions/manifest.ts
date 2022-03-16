@@ -10,7 +10,7 @@ import { FirebaseError } from "../error";
 import * as utils from "../utils";
 import { logPrefix } from "./extensionsHelper";
 
-const ENV_DIRECTORY = "extensions";
+export const ENV_DIRECTORY = "extensions";
 
 /**
  * Write a list of instanceSpecs to extensions manifest.
@@ -180,7 +180,7 @@ export function readInstanceParam(args: {
 function readParamsFile(projectDir: string, fileName: string): Record<string, string> {
   const paramPath = path.join(projectDir, ENV_DIRECTORY, fileName);
   const params = readEnvFile(paramPath);
-  return params as Record<string, string>;
+  return params;
 }
 
 // TODO(lihes): Add a docs link once exists.

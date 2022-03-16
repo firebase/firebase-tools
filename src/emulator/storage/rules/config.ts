@@ -1,12 +1,24 @@
 import { RulesConfig } from "..";
 import { FirebaseError } from "../../../error";
+import { readFile } from "../../../fsutils";
 import { Options } from "../../../options";
+import { SourceFile } from "./types";
 
-function getAbsoluteRulesPath(rules: string, options: Options): string {
-  return options.config.path(rules);
+function getSourceFile(rules: string, options: Options): SourceFile {
+  const path = options.config.path(rules);
+  return { name: path, content: readFile(path) };
 }
 
-export function getStorageRulesConfig(projectId: string, options: Options): RulesConfig[] {
+/**
+ * Parses rules file for each target specified in the storage config under {@link options}.
+ * @returns The rules file path if the storage config does not specify a target and an array
+ *     of project resources and their corresponding rules files otherwise.
+ * @throws {FirebaseError} if storage config is missing or rules file is missing or invalid.
+ */
+export function getStorageRulesConfig(
+  projectId: string,
+  options: Options
+): SourceFile | RulesConfig[] {
   const storageConfig = options.config.data.storage;
   if (!storageConfig) {
     throw new FirebaseError(
@@ -14,7 +26,7 @@ export function getStorageRulesConfig(projectId: string, options: Options): Rule
     );
   }
 
-  // Single resource
+  // No target specified
   if (!Array.isArray(storageConfig)) {
     if (!storageConfig.rules) {
       throw new FirebaseError(
@@ -22,12 +34,10 @@ export function getStorageRulesConfig(projectId: string, options: Options): Rule
       );
     }
 
-    // TODO(hsinpei): set default resource
-    const resource = "default";
-    return [{ resource, rules: getAbsoluteRulesPath(storageConfig.rules, options) }];
+    return getSourceFile(storageConfig.rules, options);
   }
 
-  // Multiple resources
+  // Multiple targets
   const results: RulesConfig[] = [];
   const { rc } = options;
   for (const targetConfig of storageConfig) {
@@ -36,7 +46,7 @@ export function getStorageRulesConfig(projectId: string, options: Options): Rule
     }
     rc.requireTarget(projectId, "storage", targetConfig.target);
     rc.target(projectId, "storage", targetConfig.target).forEach((resource: string) => {
-      results.push({ resource, rules: getAbsoluteRulesPath(targetConfig.rules, options) });
+      results.push({ resource, rules: getSourceFile(targetConfig.rules, options) });
     });
   }
   return results;
