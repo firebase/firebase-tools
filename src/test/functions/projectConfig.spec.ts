@@ -32,11 +32,17 @@ describe("projectConfig", () => {
     });
 
     it("fails validation given config w/o source", () => {
-      expect(() => projectConfig.validate([{ runtime: "nodejs10" }])).to.throw(FirebaseError);
+      expect(() => projectConfig.validate([{ runtime: "nodejs10" }])).to.throw(
+        FirebaseError,
+        /functions.source must be specified/
+      );
     });
 
     it("fails validation given config w/ empty source", () => {
-      expect(() => projectConfig.validate([{ source: "" }])).to.throw(FirebaseError);
+      expect(() => projectConfig.validate([{ source: "" }])).to.throw(
+        FirebaseError,
+        /functions.source must be specified/
+      );
     });
   });
 
@@ -51,24 +57,29 @@ describe("projectConfig", () => {
 
     it("fails validation given singleton config w/o source", () => {
       expect(() => projectConfig.normalizeAndValidate({ runtime: "nodejs10" })).to.throw(
-        FirebaseError
+        FirebaseError,
+        /functions.source must be specified/
       );
     });
 
     it("fails validation given singleton config w empty source", () => {
-      expect(() => projectConfig.normalizeAndValidate({ source: "" })).to.throw(FirebaseError);
+      expect(() => projectConfig.normalizeAndValidate({ source: "" })).to.throw(
+        FirebaseError,
+        /functions.source must be specified/
+      );
     });
 
     it("fails validation given multi-resource config w/o source", () => {
       expect(() => projectConfig.normalizeAndValidate([{ runtime: "nodejs10" }])).to.throw(
-        FirebaseError
+        FirebaseError,
+        /functions.source must be specified/
       );
     });
 
     it("fails validation given more than one config", () => {
       expect(() =>
         projectConfig.normalizeAndValidate([TEST_CONFIG, { ...TEST_CONFIG, source: "bar" }])
-      ).to.throw(FirebaseError);
+      ).to.throw(FirebaseError, /More than one functions.source detected/);
     });
   });
 });
