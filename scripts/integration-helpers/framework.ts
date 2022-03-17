@@ -1,6 +1,7 @@
 import fetch, { Response } from "node-fetch";
 
 import { CLIProcess } from "./cli";
+import { Emulators } from "../../src/emulator/types";
 
 const FIREBASE_PROJECT_ZONE = "us-central1";
 
@@ -256,14 +257,19 @@ export class TriggerEndToEndTest {
     return this.cliProcess ? this.cliProcess.stop() : Promise.resolve();
   }
 
-  applyTargets(additionalArgs: string[]): Promise<void> {
+  applyTargets(emulatorType: Emulators, target: string, resource: string): Promise<void> {
     const cli = new CLIProcess("default", this.workdir);
-    const started = cli.start("target:apply", this.project, additionalArgs, (data: unknown) => {
-      if (typeof data !== "string" && !Buffer.isBuffer(data)) {
-        throw new Error(`data is not a string or buffer (${typeof data})`);
+    const started = cli.start(
+      "target:apply",
+      this.project,
+      [emulatorType, target, resource],
+      (data: unknown) => {
+        if (typeof data !== "string" && !Buffer.isBuffer(data)) {
+          throw new Error(`data is not a string or buffer (${typeof data})`);
+        }
+        return data.includes(`Applied ${emulatorType} target`);
       }
-      return data.includes(`Applied ${additionalArgs[0]} target`);
-    });
+    );
     this.cliProcess = cli;
     return started;
   }

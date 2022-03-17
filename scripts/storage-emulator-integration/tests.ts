@@ -6,14 +6,7 @@ import * as path from "path";
 import * as http from "http";
 import * as https from "https";
 import * as puppeteer from "puppeteer";
-<<<<<<< HEAD
-import * as request from "request";
-import * as crypto from "crypto";
-import * as os from "os";
 import { Bucket, Storage, CopyOptions } from "@google-cloud/storage";
-=======
-import { Bucket, Storage } from "@google-cloud/storage";
->>>>>>> 4c7d74c2 (Add integration test for multiple storage targets)
 import supertest = require("supertest");
 
 import { IMAGE_FILE_BASE64 } from "../../src/test/emulators/fixtures";

@@ -1,22 +1,15 @@
 {
-    "functions": {},
     "storage": [
       {
-        "target": "main",
-        "rules": "storage.main.rules"
+        "target": "allowNone",
+        "rules": "allowNone.rules"
       },
       {
-        "target": "other",
-        "rules": "storage.other.rules"
+        "target": "allowAll",
+        "rules": "allowAll.rules"
       }
     ],
     "emulators": {
-      "hub": {
-        "port": 4000
-      },
-      "auth": {
-        "port": 9099
-      },
       "storage": {
         "port": 9199
       }
