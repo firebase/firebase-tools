@@ -191,6 +191,8 @@ export async function promptForNewParams(args: {
   projectId: string;
   instanceId: string;
 }): Promise<{ [option: string]: ParamBindingOptions }> {
+  const newParamBindingOptions = buildBindingOptionsWithBaseValue(args.currentParams);
+
   const firebaseProjectParams = await getFirebaseProjectParams(args.projectId);
   const comparer = (param1: extensionsApi.Param, param2: extensionsApi.Param) => {
     return param1.type === param2.type && param1.param === param2.param;
@@ -217,7 +219,7 @@ export async function promptForNewParams(args: {
     logger.info("The following params will no longer be used:");
     paramsDiffDeletions.forEach((param) => {
       logger.info(clc.red(`- ${param.param}: ${args.currentParams[param.param.toUpperCase()]}`));
-      delete args.currentParams[param.param.toUpperCase()];
+      delete newParamBindingOptions[param.param.toUpperCase()];
     });
   }
   if (paramsDiffAdditions.length) {
@@ -229,11 +231,11 @@ export async function promptForNewParams(args: {
         paramSpec: param,
         reconfiguring: false,
       });
-      args.currentParams[param.param] = chosenValue.baseValue;
+      newParamBindingOptions[param.param] = chosenValue;
     }
   }
 
-  return buildBindingOptionsWithBaseValue(args.currentParams);
+  return newParamBindingOptions;
 }
 
 function getParamsFromFile(args: {

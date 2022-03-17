@@ -7,7 +7,7 @@ import { FirebaseError } from "../error";
 import { getChannel, listChannels, normalizeName } from "../hosting/api";
 import { requirePermissions } from "../requirePermissions";
 import { needProjectId } from "../projectUtils";
-import * as requireConfig from "../requireConfig";
+import { requireConfig } from "../requireConfig";
 import { logLabeledBullet } from "../utils";
 import { promptOnce } from "../prompt";
 import { requireHostingSite } from "../requireHostingSite";

@@ -24,7 +24,7 @@ export async function release(
   options: Options,
   payload: args.Payload
 ): Promise<void> {
-  if (!options.config.has("functions")) {
+  if (!context.config) {
     return;
   }
 

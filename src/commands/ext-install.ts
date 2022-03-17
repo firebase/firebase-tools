@@ -265,7 +265,6 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
     paramsEnvPath,
     instanceId,
   });
-  const params = getBaseParamBindings(paramBindingOptions);
 
   const ref = refs.parse(extVersion.ref);
   await manifest.writeToManifest(
@@ -273,7 +272,8 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
       {
         instanceId,
         ref,
-        params,
+        params: paramBindingOptions,
+        paramSpecs: spec.params,
       },
     ],
     config,
