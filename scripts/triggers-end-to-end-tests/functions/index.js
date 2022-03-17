@@ -123,11 +123,11 @@ exports.writeToDefaultStorage = functions.https.onRequest(async (req, res) => {
 
 exports.abhisunTest = functions.https.onRequest(async (req, res) => {
   await firebase
-  .storage()
-  .ref("test-bucket/image_put.png")
-  .putString("Testing string", "base64", JSON.parse({
-    contentType: "text/plain",
-  }))
+    .storage()
+    .ref("test-bucket/image_put.png")
+    .putString("Testing string", "base64", JSON.parse({
+      contentType: "text/plain",
+    }))
   console.log("Wrote to default Storage bucket, abhisun test");
   res.json({ created: "ok" });
 });
