@@ -14,6 +14,9 @@ import { getIamPolicy, setIamPolicy } from "../../gcp/resourceManager";
 import { Service, serviceForEndpoint } from "./services";
 
 const PERMISSION = "cloudfunctions.functions.setIamPolicy";
+export const SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE = "roles/iam.serviceAccountTokenCreator";
+export const RUN_INVOKER_ROLE = "roles/run.invoker";
+export const EVENTARC_EVENT_RECIEVER_ROLE = "roles/eventarc.eventReceiver";
 
 /**
  * Checks to see if the authenticated account has `iam.serviceAccounts.actAs` permissions
@@ -141,9 +144,59 @@ export function mergeBindings(policy: iam.Policy, allRequiredBindings: iam.Bindi
   }
 }
 
+export function obtainBinding(
+  existingPolicy: iam.Policy,
+  serviceAccount: string,
+  role: string
+): iam.Binding {
+  let binding = existingPolicy.bindings.find(
+    (b) => b.role === role
+  );
+  if (!binding) {
+    binding = {
+      role,
+      members: [],
+    };
+  }
+  if (!binding.members.find((m) => m === serviceAccount)) {
+    binding.members.push(serviceAccount);
+  }
+  return binding;
+}
+
+/**
+ * Finds the required project level IAM bindings for the Pub/Sub service agent
+ * If the user enabled Pub/Sub on or before April 8, 2021, then we must enable the token creator role
+ * @param projectId project identifier
+ * @param existingPolicy the project level IAM policy
+ */
+export function obtainPubSubServiceAgentBindings(
+  projectNumber: string,
+  existingPolicy: iam.Policy
+): iam.Binding[] {
+  const pubsubServiceAgent = `serviceAccount:service-${projectNumber}@gcp-sa-pubsub.iam.gserviceaccount.com`;
+  return [obtainBinding(existingPolicy, pubsubServiceAgent, SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE)];
+}
+
+/**
+ * Finds the required project level IAM bindings for the Pub/Sub service agent
+ * If the user enabled Pub/Sub on or before April 8, 2021, then we must enable the token creator role
+ * @param projectId project identifier
+ * @param existingPolicy the project level IAM policy
+ */
+export function obtainDefaultComputeServiceAgentBindings(
+  projectNumber: string,
+  existingPolicy: iam.Policy
+): iam.Binding[] {
+  const defaultComputeServiceAgent = `serviceAccount:${projectNumber}-compute@developer.gserviceaccount.com`;
+  const invokerBinding = obtainBinding(existingPolicy, defaultComputeServiceAgent, RUN_INVOKER_ROLE);
+  const eventReceiverBinding = obtainBinding(existingPolicy, defaultComputeServiceAgent, EVENTARC_EVENT_RECIEVER_ROLE);
+  return [invokerBinding, eventReceiverBinding];
+}
+
 /**
  * Checks and sets the roles for specific resource service agents
- * @param projectId project identifier
+ * @param projectNumber project number
  * @param want backend that we want to deploy
  * @param have backend that we have currently deployed
  */
@@ -181,6 +234,8 @@ export async function ensureServiceAgentRoles(
     findRequiredBindings.push(service.requiredProjectBindings!(projectNumber, policy))
   );
   const allRequiredBindings = await Promise.all(findRequiredBindings);
+  allRequiredBindings.push(obtainPubSubServiceAgentBindings(projectNumber, policy));
+  allRequiredBindings.push(obtainDefaultComputeServiceAgentBindings(projectNumber, policy));
   mergeBindings(policy, allRequiredBindings);
   // set the updated policy
   try {

@@ -2,7 +2,7 @@ import * as backend from "../backend";
 import * as iam from "../../../gcp/iam";
 import * as v2events from "../../../functions/events/v2";
 import { obtainStorageBindings, ensureStorageTriggerRegion } from "./storage";
-import { obtainFirebaseAlertsBindings, ensureFirebaseAlertsTriggerRegion } from "./firebaseAlerts";
+import { ensureFirebaseAlertsTriggerRegion } from "./firebaseAlerts";
 
 const noop = (): Promise<void> => Promise.resolve();
 
@@ -43,7 +43,7 @@ export const StorageService: Service = {
 export const FirebaseAlertsService: Service = {
   name: "firebasealerts",
   api: "logging.googleapis.com",
-  requiredProjectBindings: obtainFirebaseAlertsBindings,
+  requiredProjectBindings: undefined,
   ensureTriggerRegion: ensureFirebaseAlertsTriggerRegion,
 };
 
