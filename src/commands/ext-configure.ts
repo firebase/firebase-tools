@@ -19,7 +19,7 @@ import * as refs from "../extensions/refs";
 import * as manifest from "../extensions/manifest";
 import { Options } from "../options";
 import { partition } from "../functional";
-import { getBaseParamBindings } from "../extensions/paramHelper";
+import { buildBindingOptionsWithBaseValue, getBaseParamBindings } from "../extensions/paramHelper";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -78,9 +78,9 @@ export default new Command("ext:configure <extensionInstanceId>")
       });
 
       // Merge with old immutable params.
-      const newParamValues = {
-        ...oldParamValues,
-        ...getBaseParamBindings(mutableParamsBindingOptions),
+      const newParamOptions = {
+        ...buildBindingOptionsWithBaseValue(oldParamValues),
+        ...mutableParamsBindingOptions,
       };
 
       await manifest.writeToManifest(
@@ -88,7 +88,8 @@ export default new Command("ext:configure <extensionInstanceId>")
           {
             instanceId,
             ref: targetRef,
-            params: newParamValues,
+            params: newParamOptions,
+            paramSpecs: extensionVersion.spec.params,
           },
         ],
         config,
