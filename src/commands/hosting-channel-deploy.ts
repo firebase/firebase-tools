@@ -16,7 +16,7 @@ import { requirePermissions } from "../requirePermissions";
 import * as deploy from "../deploy";
 import { needProjectId } from "../projectUtils";
 import { logger } from "../logger";
-import * as requireConfig from "../requireConfig";
+import { requireConfig } from "../requireConfig";
 import { DEFAULT_DURATION, calculateChannelExpireTTL } from "../hosting/expireUtils";
 import { logLabeledSuccess, datetimeString, logLabeledWarning, consoleUrl } from "../utils";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
