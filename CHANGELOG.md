@@ -1,0 +1,1 @@
+- Fixes error handling in `auth:export` when API calls would fail.
