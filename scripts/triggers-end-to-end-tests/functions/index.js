@@ -1,5 +1,6 @@
 const admin = require("firebase-admin");
 const functions = require("firebase-functions");
+const firebase = require("firebase");
 let functionsV2;
 try {
   functionsV2 = require("firebase-functions/v2");
@@ -117,6 +118,17 @@ exports.writeToAuth = functions.https.onRequest(async (req, res) => {
 exports.writeToDefaultStorage = functions.https.onRequest(async (req, res) => {
   await admin.storage().bucket().file(STORAGE_FILE_NAME).save("hello world!");
   console.log("Wrote to default Storage bucket");
+  res.json({ created: "ok" });
+});
+
+exports.abhisunTest = functions.https.onRequest(async (req, res) => {
+  await firebase
+  .storage()
+  .ref("test-bucket/image_put.png")
+  .putString("Testing string", "base64", JSON.parse({
+    contentType: "text/plain",
+  }))
+  console.log("Wrote to default Storage bucket, abhisun test");
   res.json({ created: "ok" });
 });
 
