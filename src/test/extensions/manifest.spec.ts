@@ -8,6 +8,7 @@ import * as refs from "../../extensions/refs";
 import { Config } from "../../config";
 import * as prompt from "../../prompt";
 import { FirebaseError } from "../../error";
+import { ParamType } from "../../extensions/extensionsApi";
 
 /**
  * Returns a base Config with some extensions data.
@@ -112,7 +113,7 @@ describe("manifest", () => {
               extensionId: "bigquery-export",
               version: "1.0.0",
             },
-            params: { a: "pikachu", b: "bulbasaur" },
+            params: { a: { baseValue: "pikachu" }, b: { baseValue: "bulbasaur" } },
           },
           {
             instanceId: "instance-2",
@@ -121,7 +122,7 @@ describe("manifest", () => {
               extensionId: "bigquery-export",
               version: "2.0.0",
             },
-            params: { a: "eevee", b: "squirtle" },
+            params: { a: { baseValue: "eevee" }, b: { baseValue: "squirtle" } },
           },
         ],
         generateBaseConfig(),
@@ -159,7 +160,7 @@ describe("manifest", () => {
               extensionId: "bigquery-export",
               version: "1.0.0",
             },
-            params: { b: "bulbasaur", a: "absol" },
+            params: { b: { baseValue: "bulbasaur" }, a: { baseValue: "absol" } },
           },
           {
             instanceId: "instance-2",
@@ -168,7 +169,7 @@ describe("manifest", () => {
               extensionId: "bigquery-export",
               version: "2.0.0",
             },
-            params: { e: "eevee", s: "squirtle" },
+            params: { e: { baseValue: "eevee" }, s: { baseValue: "squirtle" } },
           },
         ],
         generateBaseConfig(),
@@ -209,7 +210,7 @@ describe("manifest", () => {
               extensionId: "bigquery-export",
               version: "1.0.0",
             },
-            params: { a: "pikachu", b: "bulbasaur" },
+            params: { a: { baseValue: "pikachu" }, b: { baseValue: "bulbasaur" } },
           },
           {
             instanceId: "instance-2",
@@ -218,7 +219,7 @@ describe("manifest", () => {
               extensionId: "bigquery-export",
               version: "2.0.0",
             },
-            params: { a: "eevee", b: "squirtle" },
+            params: { a: { baseValue: "eevee" }, b: { baseValue: "squirtle" } },
           },
         ],
         generateBaseConfig(),
@@ -244,6 +245,203 @@ describe("manifest", () => {
         `a=eevee\nb=squirtle`,
         false
       );
+    });
+  });
+
+  describe(`${manifest.writeLocalSecrets.name}`, () => {
+    let askWriteProjectFileStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      askWriteProjectFileStub = sandbox.stub(Config.prototype, "askWriteProjectFile");
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should write all secret params that have local values", async () => {
+      await manifest.writeLocalSecrets(
+        [
+          {
+            instanceId: "instance-1",
+            ref: {
+              publisherId: "firebase",
+              extensionId: "bigquery-export",
+              version: "1.0.0",
+            },
+            params: {
+              a: { baseValue: "base", local: "pikachu" },
+              b: { baseValue: "base", local: "bulbasaur" },
+            },
+            paramSpecs: [
+              {
+                param: "a",
+                label: "",
+                type: ParamType.SECRET,
+              },
+              {
+                param: "b",
+                label: "",
+                type: ParamType.SECRET,
+              },
+            ],
+          },
+          {
+            instanceId: "instance-2",
+            ref: {
+              publisherId: "firebase",
+              extensionId: "bigquery-export",
+              version: "2.0.0",
+            },
+            params: {
+              a: { baseValue: "base", local: "eevee" },
+              b: { baseValue: "base", local: "squirtle" },
+            },
+            paramSpecs: [
+              {
+                param: "a",
+                label: "",
+                type: ParamType.SECRET,
+              },
+              {
+                param: "b",
+                label: "",
+                type: ParamType.SECRET,
+              },
+            ],
+          },
+        ],
+        generateBaseConfig(),
+        true
+      );
+
+      expect(askWriteProjectFileStub).to.have.been.calledTwice;
+      expect(askWriteProjectFileStub).calledWithExactly(
+        "extensions/instance-1.secret.local",
+        `a=pikachu\nb=bulbasaur`,
+        true
+      );
+      expect(askWriteProjectFileStub).calledWithExactly(
+        "extensions/instance-2.secret.local",
+        `a=eevee\nb=squirtle`,
+        true
+      );
+    });
+
+    it("should write only secret with local values", async () => {
+      await manifest.writeLocalSecrets(
+        [
+          {
+            instanceId: "instance-1",
+            ref: {
+              publisherId: "firebase",
+              extensionId: "bigquery-export",
+              version: "1.0.0",
+            },
+            params: {
+              a: { baseValue: "base", local: "pikachu" },
+              b: { baseValue: "base" },
+            },
+            paramSpecs: [
+              {
+                param: "a",
+                label: "",
+                type: ParamType.SECRET,
+              },
+              {
+                param: "b",
+                label: "",
+                type: ParamType.SECRET,
+              },
+            ],
+          },
+        ],
+        generateBaseConfig(),
+        true
+      );
+
+      expect(askWriteProjectFileStub).to.have.been.calledOnce;
+      expect(askWriteProjectFileStub).calledWithExactly(
+        "extensions/instance-1.secret.local",
+        `a=pikachu`,
+        true
+      );
+    });
+
+    it("should write only local values that are ParamType.SECRET", async () => {
+      await manifest.writeLocalSecrets(
+        [
+          {
+            instanceId: "instance-1",
+            ref: {
+              publisherId: "firebase",
+              extensionId: "bigquery-export",
+              version: "1.0.0",
+            },
+            params: {
+              a: { baseValue: "base", local: "pikachu" },
+              b: { baseValue: "base", local: "bulbasaur" },
+            },
+            paramSpecs: [
+              {
+                param: "a",
+                label: "",
+                type: ParamType.SECRET,
+              },
+              {
+                param: "b",
+                label: "",
+                type: ParamType.STRING,
+              },
+            ],
+          },
+        ],
+        generateBaseConfig(),
+        true
+      );
+
+      expect(askWriteProjectFileStub).to.have.been.calledOnce;
+      expect(askWriteProjectFileStub).calledWithExactly(
+        "extensions/instance-1.secret.local",
+        `a=pikachu`,
+        true
+      );
+    });
+
+    it("should not write the file if there's no matching params", async () => {
+      await manifest.writeLocalSecrets(
+        [
+          {
+            instanceId: "instance-1",
+            ref: {
+              publisherId: "firebase",
+              extensionId: "bigquery-export",
+              version: "1.0.0",
+            },
+            params: {
+              // No local values
+              a: { baseValue: "base" },
+              b: { baseValue: "base" },
+            },
+            paramSpecs: [
+              {
+                param: "a",
+                label: "",
+                type: ParamType.SECRET,
+              },
+              {
+                param: "b",
+                label: "",
+                type: ParamType.STRING,
+              },
+            ],
+          },
+        ],
+        generateBaseConfig(),
+        true
+      );
+
+      expect(askWriteProjectFileStub).to.not.have.been.called;
     });
   });
 
