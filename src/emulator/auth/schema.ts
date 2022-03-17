@@ -1858,6 +1858,24 @@ export interface components {
       suggestedTimeout?: string;
     };
     /**
+     * Defines a policy of allowing every region by default and adding disallowed regions to a disallow list.
+     */
+    GoogleCloudIdentitytoolkitAdminV2AllowByDefault: {
+      /**
+       * Two letter unicode region codes to disallow as defined by https://cldr.unicode.org/ The full list of these region codes is here: https://github.com/unicode-cldr/cldr-localenames-full/blob/master/main/en/territories.json
+       */
+      disallowedRegions?: string[];
+    };
+    /**
+     * Defines a policy of only allowing regions by explicitly adding them to an allowlist.
+     */
+    GoogleCloudIdentitytoolkitAdminV2AllowlistOnly: {
+      /**
+       * Two letter unicode region codes to allow as defined by https://cldr.unicode.org/ The full list of these region codes is here: https://github.com/unicode-cldr/cldr-localenames-full/blob/master/main/en/territories.json
+       */
+      allowedRegions?: string[];
+    };
+    /**
      * Configuration options related to authenticating an anonymous user.
      */
     GoogleCloudIdentitytoolkitAdminV2Anonymous: {
@@ -2409,6 +2427,13 @@ export interface components {
       phoneNumber?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2PhoneNumber"];
     };
     /**
+     * Configures the regions where users are allowed to send verification SMS for the project or tenant. This is based on the calling code of the destination phone number.
+     */
+    GoogleCloudIdentitytoolkitAdminV2SmsRegionConfig: {
+      allowByDefault?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2AllowByDefault"];
+      allowlistOnly?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2AllowlistOnly"];
+    };
+    /**
      * The template to use when sending an SMS.
      */
     GoogleCloudIdentitytoolkitAdminV2SmsTemplate: {
@@ -2524,6 +2549,7 @@ export interface components {
        * Output only. Resource name of a tenant. For example: "projects/{project-id}/tenants/{tenant-id}"
        */
       name?: string;
+      smsRegionConfig?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2SmsRegionConfig"];
       /**
        * A map of pairs that can be used for MFA. The phone number should be in E.164 format (https://www.itu.int/rec/T-REC-E.164/) and a maximum of 10 pairs can be added (error will be thrown once exceeded).
        */

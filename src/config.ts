@@ -207,6 +207,10 @@ export class Config {
     fs.writeFileSync(this.path(p), content, "utf8");
   }
 
+  projectFileExists(p: string): boolean {
+    return fs.existsSync(this.path(p));
+  }
+
   deleteProjectFile(p: string) {
     fs.removeSync(this.path(p));
   }

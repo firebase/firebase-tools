@@ -9,7 +9,7 @@ import { promptOnce } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 import { needProjectId } from "../projectUtils";
 import { logger } from "../logger";
-import * as requireConfig from "../requireConfig";
+import { requireConfig } from "../requireConfig";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
 import { requireHostingSite } from "../requireHostingSite";

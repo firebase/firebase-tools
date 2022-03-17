@@ -134,14 +134,14 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         nonInteractive: options.nonInteractive,
         instanceId,
       });
-      const newParamBindings = paramHelper.getBaseParamBindings(newParamBindingOptions);
 
       await manifest.writeToManifest(
         [
           {
             instanceId,
             ref: refs.parse(newExtensionVersion.ref),
-            params: newParamBindings,
+            params: newParamBindingOptions,
+            paramSpecs: newExtensionVersion.spec.params,
           },
         ],
         config,

@@ -1,1 +1,0 @@
-- Adds support for configuration with multiple storage targets (#4281).

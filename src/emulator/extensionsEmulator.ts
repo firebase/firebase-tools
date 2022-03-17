@@ -110,7 +110,10 @@ export class ExtensionsEmulator {
       "./functions/package.json",
       "./functions/node_modules",
     ];
-
+    // If the directory isn't found, no need to check for files or print errors.
+    if (!fs.existsSync(args.path)) {
+      return false;
+    }
     for (const requiredFile of requiredFiles) {
       const f = path.join(args.path, requiredFile);
       if (!fs.existsSync(f)) {
