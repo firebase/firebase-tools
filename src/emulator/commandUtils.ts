@@ -155,7 +155,7 @@ export async function beforeEmulatorCommand(options: any): Promise<any> {
     utils.logWarning("Could not find config (firebase.json) so using defaults.");
     options.config = DEFAULT_CONFIG;
   } else {
-    requireConfig(options);
+    await requireConfig(options);
   }
 }
 

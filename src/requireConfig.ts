@@ -1,7 +1,8 @@
 import { FirebaseError } from "./error";
 import { Options } from "./options";
 
-export function requireConfig(options: Options): void {
+export async function requireConfig(options: Options): Promise<void> {
+  await Promise.resolve(); // Allows this function to remain `async`.
   if (!options.config) {
     throw options.configError
       ? options.configError
