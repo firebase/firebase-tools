@@ -17,7 +17,7 @@ export interface Setup {
   projectLocation?: string;
 }
 
-const featureFns = new Map<string, any>([
+const featureFns = new Map<string, (setup: any, config: any, options?: any) => Promise<unknown>>([
   ["account", features.account],
   ["database", features.database],
   ["firestore", features.firestore],
@@ -31,7 +31,7 @@ const featureFns = new Map<string, any>([
 ]);
 
 export async function init(setup: Setup, config: any, options: any): Promise<any> {
-  const nextFeature = setup.features ? setup.features.shift() : undefined;
+  const nextFeature = setup.features?.shift();
   if (nextFeature) {
     if (!featureFns.has(nextFeature)) {
       const availableFeatures = Object.keys(features)
@@ -44,7 +44,12 @@ export async function init(setup: Setup, config: any, options: any): Promise<any
 
     logger.info(clc.bold(`\n${clc.white("===")} ${capitalize(nextFeature)} Setup`));
 
-    await Promise.resolve(featureFns.get(nextFeature)(setup, config, options));
+    const fn = featureFns.get(nextFeature);
+    if (!fn) {
+      // We've already checked that the function exists, so this really should never happen.
+      throw new FirebaseError(`We've lost the function to init ${nextFeature}`, { exit: 2 });
+    }
+    await fn(setup, config, options);
     return init(setup, config, options);
   }
 }
