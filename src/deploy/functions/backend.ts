@@ -184,13 +184,21 @@ export interface TargetIds {
   project: string;
 }
 
+/**
+ * Represents a Secret or Secret Version resource.
+ * Based on https://cloud.google.com/functions/docs/reference/rest/v1/projects.locations.functions#secretenvvar
+ */
 export interface SecretEnvVar {
-  key: string;
-  secret: string;
-  projectId: string;
+  key: string; // The environment variable this secret is accessible at
+  secret: string; // The id of the SecretVersion - ie for projects/myproject/secrets/mysecret, this is 'mysecret'
+  projectId: string; // The project containing the Secret
 
   // Internal use only. Users cannot pin secret to a specific version.
   version?: string;
+}
+
+export function secretVersionName(s: SecretEnvVar): string {
+  return `projects/${s.projectId}/secrets/${s.secret}/versions/${s.version ?? "latest"}`;
 }
 
 export interface ServiceConfiguration {

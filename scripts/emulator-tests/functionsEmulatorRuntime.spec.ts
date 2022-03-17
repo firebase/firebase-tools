@@ -22,6 +22,7 @@ const DO_NOTHING = () => {
 const testBackend = {
   functionsDir: MODULE_ROOT,
   env: {},
+  secretEnv: [],
   nodeBinary: process.execPath,
 };
 

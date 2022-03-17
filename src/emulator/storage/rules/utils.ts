@@ -14,6 +14,7 @@ export type RulesVariableOverrides = {
 export interface RulesValidator {
   validate(
     path: string,
+    bucketId: string,
     method: RulesetOperationMethod,
     variableOverrides: RulesVariableOverrides,
     authorization?: string
@@ -26,7 +27,7 @@ export interface AdminCredentialValidator {
 }
 
 /** Provider for Storage security rules. */
-export type RulesetProvider = () => StorageRulesetInstance | undefined;
+export type RulesetProvider = (resource: string) => StorageRulesetInstance | undefined;
 
 /**
  * Returns a validator that pulls a Ruleset from a {@link RulesetProvider} on each run.
@@ -35,12 +36,13 @@ export function getRulesValidator(rulesetProvider: RulesetProvider): RulesValida
   return {
     validate: async (
       path: string,
+      bucketId: string,
       method: RulesetOperationMethod,
       variableOverrides: RulesVariableOverrides,
       authorization?: string
     ) => {
       return await isPermitted({
-        ruleset: rulesetProvider(),
+        ruleset: rulesetProvider(bucketId),
         file: variableOverrides,
         path,
         method,

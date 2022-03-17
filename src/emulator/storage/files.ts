@@ -1,3 +1,6 @@
+import { existsSync, readFileSync, readdirSync, statSync } from "fs";
+import { tmpdir } from "os";
+import { v4 } from "uuid";
 import { ListItem, ListResponse } from "./list";
 import {
   CloudStorageBucketMetadata,
@@ -7,7 +10,6 @@ import {
 } from "./metadata";
 import { NotFoundError, ForbiddenError } from "./errors";
 import * as path from "path";
-import * as fs from "fs";
 import * as fse from "fs-extra";
 import { StorageCloudFunctions } from "./cloudFunctions";
 import { logger } from "../../logger";
@@ -150,6 +152,7 @@ export class StorageLayer {
     if (!authorized) {
       authorized = await this._rulesValidator.validate(
         ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
+        request.bucketId,
         RulesetOperationMethod.GET,
         { before: metadata?.asRulesResource() },
         request.authorization
@@ -202,6 +205,7 @@ export class StorageLayer {
       skipAuth ||
       (await this._rulesValidator.validate(
         ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
+        request.bucketId,
         RulesetOperationMethod.DELETE,
         { before: storedMetadata?.asRulesResource() },
         request.authorization
@@ -256,6 +260,7 @@ export class StorageLayer {
       skipAuth ||
       (await this._rulesValidator.validate(
         ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
+        request.bucketId,
         RulesetOperationMethod.UPDATE,
         {
           before: storedMetadata?.asRulesResource(),
@@ -291,7 +296,10 @@ export class StorageLayer {
         name: upload.objectId,
         bucket: upload.bucketId,
         contentType: upload.metadata.contentType || "application/octet-stream",
+        contentDisposition: upload.metadata.contentDisposition,
         contentEncoding: upload.metadata.contentEncoding,
+        contentLanguage: upload.metadata.contentLanguage,
+        cacheControl: upload.metadata.cacheControl,
         customMetadata: upload.metadata.metadata,
       },
       this._cloudFunctions,
@@ -301,6 +309,7 @@ export class StorageLayer {
       skipAuth ||
       (await this._rulesValidator.validate(
         ["b", upload.bucketId, "o", upload.objectId].join("/"),
+        upload.bucketId,
         RulesetOperationMethod.CREATE,
         { after: metadata?.asRulesResource() },
         upload.authorization
@@ -318,6 +327,61 @@ export class StorageLayer {
     return metadata;
   }
 
+  public copyFile(
+    sourceFile: StoredFileMetadata,
+    destinationBucket: string,
+    destinationObject: string,
+    incomingMetadata?: IncomingMetadata
+  ): StoredFileMetadata {
+    const filePath = this.path(destinationBucket, destinationObject);
+
+    this._persistence.deleteFile(filePath, /* failSilently = */ true);
+
+    const bytes = this.getBytes(sourceFile.bucket, sourceFile.name) as Buffer;
+    this._persistence.appendBytes(filePath, bytes);
+
+    const newMetadata: IncomingMetadata = {
+      ...sourceFile,
+      metadata: sourceFile.customMetadata,
+      ...incomingMetadata,
+    };
+    if (
+      sourceFile.downloadTokens.length &&
+      // Only copy download tokens if we're not overwriting any custom metadata
+      !(incomingMetadata?.metadata && Object.keys(incomingMetadata?.metadata).length)
+    ) {
+      if (!newMetadata.metadata) newMetadata.metadata = {};
+      newMetadata.metadata.firebaseStorageDownloadTokens = sourceFile.downloadTokens.join(",");
+    }
+    if (newMetadata.metadata) {
+      // Convert null metadata values to empty strings
+      for (const [k, v] of Object.entries(newMetadata.metadata)) {
+        if (v === null) newMetadata.metadata[k] = "";
+      }
+    }
+
+    const copiedFileMetadata = new StoredFileMetadata(
+      {
+        name: destinationObject,
+        bucket: destinationBucket,
+        contentType: newMetadata.contentType || "application/octet-stream",
+        contentDisposition: newMetadata.contentDisposition,
+        contentEncoding: newMetadata.contentEncoding,
+        contentLanguage: newMetadata.contentLanguage,
+        cacheControl: newMetadata.cacheControl,
+        customMetadata: newMetadata.metadata,
+      },
+      this._cloudFunctions,
+      bytes,
+      incomingMetadata
+    );
+    const file = new StoredFile(copiedFileMetadata, this._persistence.getDiskPath(filePath));
+    this._files.set(filePath, file);
+
+    this._cloudFunctions.dispatch("finalize", new CloudStorageObjectMetadata(file.metadata));
+    return file.metadata;
+  }
+
   /**
    * Lists all files and prefixes (folders) at a path.
    * @throws {ForbiddenError} if the request is not authorized.
@@ -330,6 +394,7 @@ export class StorageLayer {
       skipAuth ||
       (await this._rulesValidator.validate(
         ["b", request.bucketId, "o", request.prefix].join("/"),
+        request.bucketId,
         RulesetOperationMethod.LIST,
         {},
         request.authorization
@@ -337,65 +402,72 @@ export class StorageLayer {
     if (!authorized) {
       throw new ForbiddenError();
     }
-    return this.listItemsAndPrefixes(
+    const itemsResults = this.listItems(
       request.bucketId,
       request.prefix,
       request.delimiter,
       request.pageToken,
       request.maxResults
     );
+    return new ListResponse(
+      itemsResults.prefixes ?? [],
+      itemsResults.items?.map((i) => new ListItem(i.name, i.bucket)) ?? [],
+      itemsResults.nextPageToken
+    );
   }
 
-  private listItemsAndPrefixes(
+  public listItems(
     bucket: string,
     prefix: string,
     delimiter: string,
     pageToken: string | undefined,
     maxResults: number | undefined
-  ): ListResponse {
-    if (!delimiter) {
-      delimiter = "/";
-    }
-
-    if (!prefix.endsWith(delimiter)) {
-      prefix += delimiter;
-    }
-
-    if (!prefix.startsWith(delimiter)) {
-      prefix = delimiter + prefix;
-    }
-
-    let items = [];
+  ): {
+    prefixes?: string[];
+    items?: CloudStorageObjectMetadata[];
+    nextPageToken?: string;
+  } {
+    let items: Array<StoredFileMetadata> = [];
     const prefixes = new Set<string>();
     for (const [, file] of this._files) {
       if (file.metadata.bucket !== bucket) {
         continue;
       }
 
-      let name = `${delimiter}${file.metadata.name}`;
+      const name = file.metadata.name;
       if (!name.startsWith(prefix)) {
         continue;
       }
 
-      name = name.substring(prefix.length);
-      if (name.startsWith(delimiter)) {
-        name = name.substring(prefix.length);
+      let includeMetadata = true;
+      if (delimiter) {
+        const delimiterIdx = name.indexOf(delimiter);
+        const delimiterAfterPrefixIdx = name.indexOf(delimiter, prefix.length);
+        // items[] contains object metadata for objects whose names do not contain delimiter, or whose names only have instances of delimiter in their prefix.
+        includeMetadata = delimiterIdx === -1 || delimiterAfterPrefixIdx === -1;
+        if (delimiterAfterPrefixIdx !== -1) {
+          // prefixes[] contains truncated object names for objects whose names contain delimiter after any prefix. Object names are truncated beyond the first applicable instance of the delimiter.
+          prefixes.add(name.slice(0, delimiterAfterPrefixIdx + delimiter.length));
+        }
       }
 
-      const startAtIndex = name.indexOf(delimiter);
-      if (startAtIndex === -1) {
-        if (!file.metadata.name.endsWith("/")) {
-          items.push(file.metadata.name);
-        }
-      } else {
-        const prefixPath = prefix + name.substring(0, startAtIndex + 1);
-        prefixes.add(prefixPath);
+      if (includeMetadata) {
+        items.push(file.metadata);
       }
     }
 
-    items.sort();
+    // Order items by name
+    items.sort((a, b) => {
+      if (a.name === b.name) {
+        return 0;
+      } else if (a.name < b.name) {
+        return -1;
+      } else {
+        return 1;
+      }
+    });
     if (pageToken) {
-      const idx = items.findIndex((v) => v === pageToken);
+      const idx = items.findIndex((v) => v.name === pageToken);
       if (idx !== -1) {
         items = items.slice(idx);
       }
@@ -407,77 +479,15 @@ export class StorageLayer {
 
     let nextPageToken = undefined;
     if (items.length > maxResults) {
-      nextPageToken = items[maxResults];
+      nextPageToken = items[maxResults].name;
       items = items.slice(0, maxResults);
     }
 
-    return new ListResponse(
-      [...prefixes].sort(),
-      items.map((i) => new ListItem(i, bucket)),
-      nextPageToken
-    );
-  }
-
-  public listItems(
-    bucket: string,
-    prefix: string,
-    delimiter: string,
-    pageToken: string | undefined,
-    maxResults: number | undefined
-  ) {
-    if (!delimiter) {
-      delimiter = "/";
-    }
-
-    if (!prefix) {
-      prefix = "";
-    }
-
-    if (!prefix.endsWith(delimiter)) {
-      prefix += delimiter;
-    }
-
-    let items = [];
-    for (const [, file] of this._files) {
-      if (file.metadata.bucket !== bucket) {
-        continue;
-      }
-
-      let name = file.metadata.name;
-      if (!name.startsWith(prefix)) {
-        continue;
-      }
-
-      name = name.substring(prefix.length);
-      if (name.startsWith(delimiter)) {
-        name = name.substring(prefix.length);
-      }
-
-      items.push(this.path(file.metadata.bucket, file.metadata.name));
-    }
-
-    items.sort();
-    if (pageToken) {
-      const idx = items.findIndex((v) => v === pageToken);
-      if (idx !== -1) {
-        items = items.slice(idx);
-      }
-    }
-
-    if (!maxResults) {
-      maxResults = 1000;
-    }
-
     return {
-      kind: "#storage/objects",
-      items: items.map((item) => {
-        const storedFile = this._files.get(item);
-        if (!storedFile) {
-          return console.warn(`No file ${item}`);
-        }
-
-        return new CloudStorageObjectMetadata(storedFile.metadata);
-      }),
+      nextPageToken,
+      prefixes: prefixes.size > 0 ? [...prefixes].sort() : undefined,
+      items:
+        items.length > 0 ? items.map((item) => new CloudStorageObjectMetadata(item)) : undefined,
     };
   }
 
@@ -512,10 +522,7 @@ export class StorageLayer {
   }
 
   private path(bucket: string, object: string): string {
-    const directory = path.dirname(object);
-    const filename = path.basename(object) + (object.endsWith("/") ? "/" : "");
-
-    return path.join(bucket, directory, encodeURIComponent(filename));
+    return path.join(bucket, object);
   }
 
   public get dirPath(): string {
@@ -548,10 +555,8 @@ export class StorageLayer {
     await fse.ensureDir(metadataDirPath);
 
     for await (const [p, file] of this._files.entries()) {
-      const metadataExportPath = path.join(metadataDirPath, p) + ".json";
-      const metadataExportDirPath = path.dirname(metadataExportPath);
+      const metadataExportPath = path.join(metadataDirPath, encodeURIComponent(p)) + ".json";
 
-      await fse.ensureDir(metadataExportDirPath);
       await fse.writeFile(metadataExportPath, StoredFileMetadata.toJSON(file.metadata));
     }
   }
@@ -563,7 +568,7 @@ export class StorageLayer {
   import(storageExportPath: string) {
     // Restore list of buckets
     const bucketsFile = path.join(storageExportPath, "buckets.json");
-    const bucketsList = JSON.parse(fs.readFileSync(bucketsFile, "utf-8")) as BucketsList;
+    const bucketsList = JSON.parse(readFileSync(bucketsFile, "utf-8")) as BucketsList;
     for (const b of bucketsList.buckets) {
       const bucketMetadata = new CloudStorageBucketMetadata(b.id);
       this._buckets.set(b.id, bucketMetadata);
@@ -581,10 +586,7 @@ export class StorageLayer {
         logger.debug(`Skipping unexpected storage metadata file: ${f}`);
         continue;
       }
-      const metadata = StoredFileMetadata.fromJSON(
-        fs.readFileSync(f, "utf-8"),
-        this._cloudFunctions
-      );
+      const metadata = StoredFileMetadata.fromJSON(readFileSync(f, "utf-8"), this._cloudFunctions);
 
       // To get the blob path from the metadata path:
       // 1) Get the relative path to the metadata export dir
@@ -593,7 +595,7 @@ export class StorageLayer {
       const blobPath = metadataRelPath.substring(0, metadataRelPath.length - dotJson.length);
 
       const blobAbsPath = path.join(blobsDir, blobPath);
-      if (!fs.existsSync(blobAbsPath)) {
+      if (!existsSync(blobAbsPath)) {
         logger.warn(`Could not find file "${blobPath}" in storage export.`);
         continue;
       }
@@ -607,10 +609,10 @@ export class StorageLayer {
   }
 
   private *walkDirSync(dir: string): Generator<string> {
-    const files = fs.readdirSync(dir);
+    const files = readdirSync(dir);
     for (const file of files) {
       const p = path.join(dir, file);
-      if (fs.statSync(p).isDirectory()) {
+      if (statSync(p).isDirectory()) {
         yield* this.walkDirSync(p);
       } else {
         yield p;

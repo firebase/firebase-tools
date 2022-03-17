@@ -75,6 +75,43 @@ const SPEC = {
 };
 
 describe("paramHelper", () => {
+  describe(`${paramHelper.getBaseParamBindings.name}`, () => {
+    it("should extract the baseValue param bindings", () => {
+      const input = {
+        pokeball: {
+          baseValue: "pikachu",
+          local: "local",
+        },
+        greatball: {
+          baseValue: "eevee",
+        },
+      };
+      const output = paramHelper.getBaseParamBindings(input);
+      expect(output).to.eql({
+        pokeball: "pikachu",
+        greatball: "eevee",
+      });
+    });
+  });
+
+  describe(`${paramHelper.buildBindingOptionsWithBaseValue.name}`, () => {
+    it("should build given baseValue values", () => {
+      const input = {
+        pokeball: "pikachu",
+        greatball: "eevee",
+      };
+      const output = paramHelper.buildBindingOptionsWithBaseValue(input);
+      expect(output).to.eql({
+        pokeball: {
+          baseValue: "pikachu",
+        },
+        greatball: {
+          baseValue: "eevee",
+        },
+      });
+    });
+  });
+
   describe("getParams", () => {
     let envStub: sinon.SinonStub;
     let promptStub: sinon.SinonStub;
@@ -110,8 +147,8 @@ describe("paramHelper", () => {
       });
 
       expect(params).to.eql({
-        A_PARAMETER: "aValue",
-        ANOTHER_PARAMETER: "value",
+        A_PARAMETER: { baseValue: "aValue" },
+        ANOTHER_PARAMETER: { baseValue: "value" },
       });
     });
 
@@ -132,8 +169,8 @@ describe("paramHelper", () => {
       });
 
       expect(params).to.eql({
-        A_PARAMETER: "aValue",
-        ANOTHER_PARAMETER: "default",
+        A_PARAMETER: { baseValue: "aValue" },
+        ANOTHER_PARAMETER: { baseValue: "default" },
       });
     });
 
@@ -154,7 +191,7 @@ describe("paramHelper", () => {
       });
 
       expect(params).to.eql({
-        A_PARAMETER: "aValue",
+        A_PARAMETER: { baseValue: "aValue" },
       });
     });
 
@@ -230,8 +267,8 @@ describe("paramHelper", () => {
       });
 
       expect(params).to.eql({
-        A_PARAMETER: "user input",
-        ANOTHER_PARAMETER: "user input",
+        A_PARAMETER: { baseValue: "user input" },
+        ANOTHER_PARAMETER: { baseValue: "user input" },
       });
 
       expect(promptStub).to.have.been.calledTwice;
@@ -367,9 +404,9 @@ describe("paramHelper", () => {
       });
 
       const expected = {
-        ANOTHER_PARAMETER: "value",
-        NEW_PARAMETER: "user input",
-        THIRD_PARAMETER: "user input",
+        ANOTHER_PARAMETER: { baseValue: "value" },
+        NEW_PARAMETER: { baseValue: "user input" },
+        THIRD_PARAMETER: { baseValue: "user input" },
       };
       expect(newParams).to.eql(expected);
       expect(promptStub.callCount).to.equal(2);
@@ -408,9 +445,9 @@ describe("paramHelper", () => {
       });
 
       const expected = {
-        ANOTHER_PARAMETER: "user input",
-        NEW_PARAMETER: "user input",
-        THIRD_PARAMETER: "user input",
+        ANOTHER_PARAMETER: { baseValue: "user input" },
+        NEW_PARAMETER: { baseValue: "user input" },
+        THIRD_PARAMETER: { baseValue: "user input" },
       };
       expect(newParams).to.eql(expected);
     });
@@ -432,8 +469,8 @@ describe("paramHelper", () => {
       });
 
       const expected = {
-        ANOTHER_PARAMETER: "value",
-        A_PARAMETER: "value",
+        ANOTHER_PARAMETER: { baseValue: "value" },
+        A_PARAMETER: { baseValue: "value" },
       };
       expect(newParams).to.eql(expected);
       expect(promptStub).not.to.have.been.called;
@@ -457,9 +494,9 @@ describe("paramHelper", () => {
       });
 
       const expected = {
-        ANOTHER_PARAMETER: "value",
-        NEW_PARAMETER: "test-proj",
-        THIRD_PARAMETER: "user input",
+        ANOTHER_PARAMETER: { baseValue: "value" },
+        NEW_PARAMETER: { baseValue: "test-proj" },
+        THIRD_PARAMETER: { baseValue: "user input" },
       };
       expect(newParams).to.eql(expected);
       expect(promptStub.callCount).to.equal(2);
@@ -497,8 +534,8 @@ describe("paramHelper", () => {
       });
 
       const expected = {
-        ANOTHER_PARAMETER: "value",
-        A_PARAMETER: "value",
+        ANOTHER_PARAMETER: { baseValue: "value" },
+        A_PARAMETER: { baseValue: "value" },
       };
       expect(newParams).to.eql(expected);
       expect(promptStub).not.to.have.been.called;

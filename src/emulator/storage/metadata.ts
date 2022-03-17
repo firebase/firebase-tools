@@ -3,7 +3,7 @@ import * as crypto from "crypto";
 import { EmulatorRegistry } from "../registry";
 import { Emulators } from "../types";
 import { StorageCloudFunctions } from "./cloudFunctions";
-import { crc32c } from "./crc";
+import { crc32c, crc32cToString } from "./crc";
 
 type RulesResourceMetadataOverrides = {
   [Property in keyof RulesResourceMetadata]?: RulesResourceMetadata[Property];
@@ -32,7 +32,7 @@ export class StoredFileMetadata {
   contentEncoding: string;
   contentDisposition: string;
   contentLanguage?: string;
-  cacheControl?: string;
+  cacheControl: string;
   customTime?: Date;
   crc32c: string;
   etag: string;
@@ -58,14 +58,19 @@ export class StoredFileMetadata {
     this.metageneration = opts.metageneration || 1;
     this.generation = opts.generation || Date.now();
     this.storageClass = opts.storageClass || "STANDARD";
-    this.etag = opts.etag || "someETag";
     this.contentDisposition = opts.contentDisposition || "inline";
-    this.cacheControl = opts.cacheControl;
+    // Use same default value GCS uses (see https://cloud.google.com/storage/docs/metadata#caching_data)
+    this.cacheControl = opts.cacheControl || "public, max-age=3600";
     this.contentLanguage = opts.contentLanguage;
     this.customTime = opts.customTime;
     this.contentEncoding = opts.contentEncoding || "identity";
     this.customMetadata = opts.customMetadata;
     this.downloadTokens = opts.downloadTokens || [];
+    if (opts.etag) {
+      this.etag = opts.etag;
+    } else {
+      this.etag = generateETag(this.generation, this.metageneration);
+    }
 
     // Special handling for date fields
     this.timeCreated = opts.timeCreated ? new Date(opts.timeCreated) : new Date();
@@ -180,7 +185,11 @@ export class StoredFileMetadata {
     }
 
     if (incoming.metadata) {
-      this.customMetadata = incoming.metadata;
+      // Convert all values to strings
+      this.customMetadata = this.customMetadata ? { ...this.customMetadata } : {};
+      for (const [k, v] of Object.entries(incoming.metadata)) {
+        this.customMetadata[k] = v === null ? (null as unknown as string) : String(v);
+      }
     }
 
     if (incoming.contentLanguage) {
@@ -381,6 +390,7 @@ export class CloudStorageObjectMetadata {
   etag: string;
   metadata?: { [s: string]: string };
   contentLanguage?: string;
+  contentDisposition: string;
   cacheControl?: string;
   customTime?: string;
   id: string;
@@ -394,6 +404,7 @@ export class CloudStorageObjectMetadata {
     this.generation = metadata.generation.toString();
     this.metageneration = metadata.metageneration.toString();
     this.contentType = metadata.contentType;
+    this.contentDisposition = metadata.contentDisposition;
     this.timeCreated = toSerializedDate(metadata.timeCreated);
     this.updated = toSerializedDate(metadata.updated);
     this.storageClass = metadata.storageClass;
@@ -432,8 +443,7 @@ export class CloudStorageObjectMetadata {
       this.customTime = toSerializedDate(metadata.customTime);
     }
 
-    // I'm not sure why but @google-cloud/storage calls .substr(4) on this value, so we need to pad it.
-    this.crc32c = "----" + Buffer.from([metadata.crc32c]).toString("base64");
+    this.crc32c = crc32cToString(metadata.crc32c);
 
     this.timeStorageClassUpdated = toSerializedDate(metadata.timeCreated);
     this.id = `${metadata.bucket}/${metadata.name}/${metadata.generation}`;
@@ -473,4 +483,11 @@ function generateMd5Hash(bytes: Buffer): string {
   const hash = crypto.createHash("md5");
   hash.update(bytes);
   return hash.digest("base64");
+}
+
+function generateETag(generation: number, metadatageneration: number): string {
+  const hash = crypto.createHash("sha1");
+  hash.update(`${generation}/${metadatageneration}`);
+  // Trim padding
+  return hash.digest("base64").slice(0, -1);
 }

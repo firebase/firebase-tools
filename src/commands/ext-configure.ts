@@ -19,6 +19,7 @@ import * as refs from "../extensions/refs";
 import * as manifest from "../extensions/manifest";
 import { Options } from "../options";
 import { partition } from "../functional";
+import { buildBindingOptionsWithBaseValue, getBaseParamBindings } from "../extensions/paramHelper";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -67,7 +68,7 @@ export default new Command("ext:configure <extensionInstanceId>")
 
       // Ask for mutable param values from user.
       paramHelper.setNewDefaults(tbdParams, oldParamValues);
-      const mutableParamsValues = await paramHelper.getParams({
+      const mutableParamsBindingOptions = await paramHelper.getParams({
         projectId,
         paramSpecs: tbdParams,
         nonInteractive: false,
@@ -77,9 +78,9 @@ export default new Command("ext:configure <extensionInstanceId>")
       });
 
       // Merge with old immutable params.
-      const newParamValues = {
-        ...oldParamValues,
-        ...mutableParamsValues,
+      const newParamOptions = {
+        ...buildBindingOptionsWithBaseValue(oldParamValues),
+        ...mutableParamsBindingOptions,
       };
 
       await manifest.writeToManifest(
@@ -87,7 +88,8 @@ export default new Command("ext:configure <extensionInstanceId>")
           {
             instanceId,
             ref: targetRef,
-            params: newParamValues,
+            params: newParamOptions,
+            paramSpecs: extensionVersion.spec.params,
           },
         ],
         config,
@@ -123,7 +125,7 @@ export default new Command("ext:configure <extensionInstanceId>")
         paramHelper.getParamsWithCurrentValuesAsDefaults(existingInstance);
       const immutableParams = _.remove(paramSpecWithNewDefaults, (param) => param.immutable);
 
-      const params = await paramHelper.getParams({
+      const paramBindingOptions = await paramHelper.getParams({
         projectId,
         paramSpecs: paramSpecWithNewDefaults,
         nonInteractive: options.nonInteractive,
@@ -131,13 +133,14 @@ export default new Command("ext:configure <extensionInstanceId>")
         instanceId,
         reconfiguring: true,
       });
+      const paramBindings = getBaseParamBindings(paramBindingOptions);
       if (immutableParams.length) {
         const plural = immutableParams.length > 1;
         logger.info(`The following param${plural ? "s are" : " is"} immutable:`);
         for (const { param } of immutableParams) {
           const value = _.get(existingInstance, `config.params.${param}`);
           logger.info(`param: ${param}, value: ${value}`);
-          params[param] = value;
+          paramBindings[param] = value;
         }
         logger.info(
           (plural
@@ -148,7 +151,11 @@ export default new Command("ext:configure <extensionInstanceId>")
       }
 
       spinner.start();
-      const res = await extensionsApi.configureInstance({ projectId, instanceId, params });
+      const res = await extensionsApi.configureInstance({
+        projectId,
+        instanceId,
+        params: paramBindings,
+      });
       spinner.stop();
       utils.logLabeledSuccess(logPrefix, `successfully configured ${clc.bold(instanceId)}.`);
       utils.logLabeledBullet(

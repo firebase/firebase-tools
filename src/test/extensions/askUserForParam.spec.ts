@@ -6,6 +6,7 @@ import {
   askForParam,
   checkResponse,
   getInquirerDefault,
+  SecretLocation,
 } from "../../extensions/askUserForParam";
 import * as utils from "../../utils";
 import * as prompt from "../../prompt";
@@ -215,7 +216,12 @@ describe("askUserForParam", () => {
     });
 
     it("should keep prompting user until valid input is given", async () => {
-      await askForParam("project-id", "instance-id", testSpec, false);
+      await askForParam({
+        projectId: "project-id",
+        instanceId: "instance-id",
+        paramSpec: testSpec,
+        reconfiguring: false,
+      });
       expect(promptStub.calledThrice).to.be.true;
     });
   });
@@ -244,30 +250,84 @@ describe("askUserForParam", () => {
 
     beforeEach(() => {
       promptStub = sinon.stub(prompt, "promptOnce");
-      promptStub.onCall(0).returns("ABC.123");
-
       secretExists = sinon.stub(secretManagerApi, "secretExists");
-      secretExists.onCall(0).resolves(false);
       createSecret = sinon.stub(secretManagerApi, "createSecret");
-      createSecret.onCall(0).resolves(stubSecret);
       addVersion = sinon.stub(secretManagerApi, "addVersion");
-      addVersion.onCall(0).resolves(stubSecretVersion);
-
       grantRole = sinon.stub(secretsUtils, "grantFirexServiceAgentSecretAdminRole");
+
+      secretExists.onCall(0).resolves(false);
+      createSecret.onCall(0).resolves(stubSecret);
+      addVersion.onCall(0).resolves(stubSecretVersion);
       grantRole.onCall(0).resolves(undefined);
     });
 
     afterEach(() => {
       promptStub.restore();
+      secretExists.restore();
+      createSecret.restore();
+      addVersion.restore();
+      grantRole.restore();
     });
 
-    it("should keep prompting user until valid input is given", async () => {
-      const result = await askForParam("project-id", "instance-id", secretSpec, false);
-      expect(promptStub.calledOnce).to.be.true;
+    it("should return the correct user input for secret stored with Secret Manager", async () => {
+      promptStub.onCall(0).returns([SecretLocation.CLOUD.toString()]);
+      promptStub.onCall(1).returns("ABC.123");
+
+      const result = await askForParam({
+        projectId: "project-id",
+        instanceId: "instance-id",
+        paramSpec: secretSpec,
+        reconfiguring: false,
+      });
+
+      // prompt for secret storage location, then prompt for secret value
+      expect(promptStub.calledTwice).to.be.true;
       expect(grantRole.calledOnce).to.be.true;
-      expect(result).to.be.equal(
-        `projects/${stubSecret.projectId}/secrets/${stubSecret.name}/versions/${stubSecretVersion.versionId}`
-      );
+      expect(result).to.be.eql({
+        baseValue: `projects/${stubSecret.projectId}/secrets/${stubSecret.name}/versions/${stubSecretVersion.versionId}`,
+      });
+    });
+
+    it("should return the correct user input for secret stored in a local file", async () => {
+      promptStub.onCall(0).returns([SecretLocation.LOCAL.toString()]);
+      promptStub.onCall(1).returns("ABC.123");
+
+      const result = await askForParam({
+        projectId: "project-id",
+        instanceId: "instance-id",
+        paramSpec: secretSpec,
+        reconfiguring: false,
+      });
+      // prompt for secret storage location, then prompt for secret value
+      expect(promptStub.calledTwice).to.be.true;
+      // Shouldn't make any api calls.
+      expect(grantRole.calledOnce).to.be.false;
+      expect(result).to.be.eql({
+        baseValue: "",
+        local: "ABC.123",
+      });
+    });
+
+    it("should handle cloud & local secret storage at the same time", async () => {
+      promptStub
+        .onCall(0)
+        .returns([SecretLocation.CLOUD.toString(), SecretLocation.LOCAL.toString()]);
+      promptStub.onCall(1).returns("ABC.123");
+      promptStub.onCall(2).returns("LOCAL.ABC.123");
+
+      const result = await askForParam({
+        projectId: "project-id",
+        instanceId: "instance-id",
+        paramSpec: secretSpec,
+        reconfiguring: false,
+      });
+      // prompt for secret storage location, then prompt for cloud secret value, then local
+      expect(promptStub.calledThrice).to.be.true;
+      expect(grantRole.calledOnce).to.be.true;
+      expect(result).to.be.eql({
+        baseValue: `projects/${stubSecret.projectId}/secrets/${stubSecret.name}/versions/${stubSecretVersion.versionId}`,
+        local: "LOCAL.ABC.123",
+      });
     });
   });
 

@@ -437,6 +437,7 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
       env: {
         ...options.extDevEnv,
       },
+      secretEnv: [], // CF3 secrets are bound to specific functions, so we'll get them during trigger discovery.
       // TODO(b/213335255): predefinedTriggers and nodeMajorVersion are here to support ext:dev:emulators:* commands.
       // Ideally, we should handle that case via ExtensionEmulator.
       predefinedTriggers: options.extDevTriggers as ParsedTriggerDefinition[] | undefined,
@@ -447,10 +448,10 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
   }
 
   if (shouldStart(options, Emulators.EXTENSIONS) && previews.extensionsemulator) {
-    // TODO: This should not error out when called with a fake project.
-    const projectNumber = await needProjectNumber(options);
+    const projectNumber = Constants.isDemoProject(projectId)
+      ? Constants.FAKE_PROJECT_NUMBER
+      : await needProjectNumber(options);
     const aliases = getAliases(options, projectId);
-
     const extensionEmulator = new ExtensionsEmulator({
       projectId,
       projectDir: options.config.projectDir,
@@ -512,6 +513,7 @@ export async function startAll(options: EmulatorOptions, showUI: boolean = true)
       host: functionsAddr.host,
       port: functionsAddr.port,
       debugPort: inspectFunctions,
+      projectAlias: options.projectAlias,
     });
     await startEmulator(functionsEmulator);
   }

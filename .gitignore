@@ -6,6 +6,7 @@ node_modules
 firebase-debug.log
 firebase-debug.*.log
 npm-debug.log
+ui-debug.log
 yarn.lock
 .npmrc
 
