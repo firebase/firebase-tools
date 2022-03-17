@@ -786,7 +786,7 @@ describe("FunctionsEmulator-Hub", () => {
         .then((res) => {
           expect(res.body.var).to.eql("localhost:9090");
         });
-    });
+    }).timeout(5000);
 
     it("should set FIREBASE_AUTH_EMULATOR_HOST when the emulator is running", async () => {
       emulatorRegistryStub.withArgs(Emulators.AUTH).returns({

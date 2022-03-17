@@ -12,7 +12,7 @@ import { requirePermissions } from "../requirePermissions";
 import { logBullet, logWarning } from "../utils";
 import { zip } from "../functional";
 import * as configExport from "../functions/runtimeConfigExport";
-import * as requireConfig from "../requireConfig";
+import { requireConfig } from "../requireConfig";
 
 import type { Options } from "../options";
 
