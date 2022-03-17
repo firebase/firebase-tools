@@ -16,7 +16,7 @@ import { Service, serviceForEndpoint } from "./services";
 const PERMISSION = "cloudfunctions.functions.setIamPolicy";
 export const SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE = "roles/iam.serviceAccountTokenCreator";
 export const RUN_INVOKER_ROLE = "roles/run.invoker";
-export const EVENTARC_EVENT_RECIEVER_ROLE = "roles/eventarc.eventReceiver";
+export const EVENTARC_EVENT_RECEIVER_ROLE = "roles/eventarc.eventReceiver";
 
 /**
  * Checks to see if the authenticated account has `iam.serviceAccounts.actAs` permissions
@@ -121,37 +121,12 @@ function reduceEventsToServices(services: Array<Service>, endpoint: backend.Endp
   return services;
 }
 
-/** Helper to merge all required bindings into the IAM policy */
-export function mergeBindings(policy: iam.Policy, allRequiredBindings: iam.Binding[][]) {
-  for (const requiredBindings of allRequiredBindings) {
-    if (requiredBindings.length === 0) {
-      continue;
-    }
-    for (const requiredBinding of requiredBindings) {
-      const ndx = policy.bindings.findIndex(
-        (policyBinding) => policyBinding.role === requiredBinding.role
-      );
-      if (ndx === -1) {
-        policy.bindings.push(requiredBinding);
-        continue;
-      }
-      requiredBinding.members.forEach((updatedMember) => {
-        if (!policy.bindings[ndx].members.find((member) => member === updatedMember)) {
-          policy.bindings[ndx].members.push(updatedMember);
-        }
-      });
-    }
-  }
-}
-
 export function obtainBinding(
   existingPolicy: iam.Policy,
   serviceAccount: string,
   role: string
 ): iam.Binding {
-  let binding = existingPolicy.bindings.find(
-    (b) => b.role === role
-  );
+  let binding = existingPolicy.bindings.find((b) => b.role === role);
   if (!binding) {
     binding = {
       role,
@@ -189,9 +164,40 @@ export function obtainDefaultComputeServiceAgentBindings(
   existingPolicy: iam.Policy
 ): iam.Binding[] {
   const defaultComputeServiceAgent = `serviceAccount:${projectNumber}-compute@developer.gserviceaccount.com`;
-  const invokerBinding = obtainBinding(existingPolicy, defaultComputeServiceAgent, RUN_INVOKER_ROLE);
-  const eventReceiverBinding = obtainBinding(existingPolicy, defaultComputeServiceAgent, EVENTARC_EVENT_RECIEVER_ROLE);
+  const invokerBinding = obtainBinding(
+    existingPolicy,
+    defaultComputeServiceAgent,
+    RUN_INVOKER_ROLE
+  );
+  const eventReceiverBinding = obtainBinding(
+    existingPolicy,
+    defaultComputeServiceAgent,
+    EVENTARC_EVENT_RECEIVER_ROLE
+  );
   return [invokerBinding, eventReceiverBinding];
+}
+
+/** Helper to merge all required bindings into the IAM policy */
+export function mergeBindings(policy: iam.Policy, allRequiredBindings: iam.Binding[][]) {
+  for (const requiredBindings of allRequiredBindings) {
+    if (requiredBindings.length === 0) {
+      continue;
+    }
+    for (const requiredBinding of requiredBindings) {
+      const ndx = policy.bindings.findIndex(
+        (policyBinding) => policyBinding.role === requiredBinding.role
+      );
+      if (ndx === -1) {
+        policy.bindings.push(requiredBinding);
+        continue;
+      }
+      requiredBinding.members.forEach((updatedMember) => {
+        if (!policy.bindings[ndx].members.find((member) => member === updatedMember)) {
+          policy.bindings[ndx].members.push(updatedMember);
+        }
+      });
+    }
+  }
 }
 
 /**

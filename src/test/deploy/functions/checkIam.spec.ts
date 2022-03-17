@@ -23,6 +23,12 @@ const SPEC = {
   runtime: "nodejs14",
 };
 
+const iamPolicy = {
+  etag: "etag",
+  version: 3,
+  bindings: [BINDING],
+};
+
 describe("checkIam", () => {
   let storageStub: sinon.SinonStub;
   let getIamStub: sinon.SinonStub;
@@ -42,6 +48,141 @@ describe("checkIam", () => {
 
   afterEach(() => {
     sinon.verifyAndRestore();
+  });
+
+  const iamPolicy = {
+    etag: "etag",
+    version: 3,
+    bindings: [
+      {
+        role: "some/role",
+        members: ["someuser"],
+      },
+    ],
+  };
+
+  describe("obtainBinding", () => {
+    it("should add the binding", () => {
+      const policy = { ...iamPolicy };
+      const serviceAccount = "myServiceAccount";
+      const role = "role/myrole";
+
+      const bindings = checkIam.obtainBinding(policy, serviceAccount, role);
+
+      expect(bindings).to.deep.equal({
+        role,
+        members: [serviceAccount],
+      });
+    });
+
+    it("should add the service agent as a member", () => {
+      const policy = { ...iamPolicy };
+      const serviceAccount = "myServiceAccount";
+      const role = "role/myrole";
+      policy.bindings = [
+        {
+          role,
+          members: ["someuser"],
+        },
+      ];
+
+      const bindings = checkIam.obtainBinding(policy, serviceAccount, role);
+
+      expect(bindings).to.deep.equal({
+        role,
+        members: ["someuser", serviceAccount],
+      });
+    });
+
+    it("should do nothing if we have the binding", () => {
+      const policy = { ...iamPolicy };
+      const serviceAccount = "myServiceAccount";
+      const role = "role/myrole";
+      policy.bindings = [
+        {
+          role,
+          members: [serviceAccount],
+        },
+      ];
+
+      const bindings = checkIam.obtainBinding(policy, serviceAccount, role);
+
+      expect(bindings).to.deep.equal({
+        role,
+        members: [serviceAccount],
+      });
+    });
+  });
+
+  describe("obtainPubSubServiceAgentBindings", () => {
+    it("should add the binding", () => {
+      const policy = { ...iamPolicy };
+
+      const bindings = checkIam.obtainPubSubServiceAgentBindings(projectNumber, policy);
+
+      expect(bindings.length).to.equal(1);
+      expect(bindings[0]).to.deep.equal({
+        role: checkIam.SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE,
+        members: ["serviceAccount:service-123456789@gcp-sa-pubsub.iam.gserviceaccount.com"],
+      });
+    });
+
+    it("should add the service agent as a member", () => {
+      const policy = { ...iamPolicy };
+      policy.bindings = [
+        {
+          role: checkIam.SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE,
+          members: ["someuser"],
+        },
+      ];
+
+      const bindings = checkIam.obtainPubSubServiceAgentBindings(projectNumber, policy);
+
+      expect(bindings.length).to.equal(1);
+      expect(bindings[0]).to.deep.equal({
+        role: checkIam.SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE,
+        members: [
+          "someuser",
+          "serviceAccount:service-123456789@gcp-sa-pubsub.iam.gserviceaccount.com",
+        ],
+      });
+    });
+
+    it("should do nothing if we have the binding", () => {
+      const policy = { ...iamPolicy };
+      policy.bindings = [
+        {
+          role: checkIam.SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE,
+          members: ["serviceAccount:service-123456789@gcp-sa-pubsub.iam.gserviceaccount.com"],
+        },
+      ];
+
+      const bindings = checkIam.obtainPubSubServiceAgentBindings(projectNumber, policy);
+
+      expect(bindings.length).to.equal(1);
+      expect(bindings[0]).to.deep.equal({
+        role: checkIam.SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE,
+        members: ["serviceAccount:service-123456789@gcp-sa-pubsub.iam.gserviceaccount.com"],
+      });
+    });
+  });
+
+  describe("obtainDefaultComputeServiceAgentBindings", () => {
+    it("should add both bindings", () => {
+      const policy = { ...iamPolicy };
+
+      const bindings = checkIam.obtainDefaultComputeServiceAgentBindings(projectNumber, policy);
+
+      expect(bindings.length).to.equal(2);
+      expect(bindings[0]).to.deep.equal({
+        role: checkIam.RUN_INVOKER_ROLE,
+        members: [`serviceAccount:${projectNumber}-compute@developer.gserviceaccount.com`],
+      });
+      expect(bindings[1]).to.deep.equal({
+        role: checkIam.EVENTARC_EVENT_RECEIVER_ROLE,
+        members: [`serviceAccount:${projectNumber}-compute@developer.gserviceaccount.com`],
+      });
+    });
   });
 
   describe("mergeBindings", () => {
@@ -218,6 +359,20 @@ describe("checkIam", () => {
           {
             role: "roles/pubsub.publisher",
             members: [`serviceAccount:${STORAGE_RES.email_address}`],
+          },
+          {
+            role: checkIam.SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE,
+            members: [
+              `serviceAccount:service-${projectNumber}@gcp-sa-pubsub.iam.gserviceaccount.com`,
+            ],
+          },
+          {
+            role: checkIam.RUN_INVOKER_ROLE,
+            members: [`serviceAccount:${projectNumber}-compute@developer.gserviceaccount.com`],
+          },
+          {
+            role: checkIam.EVENTARC_EVENT_RECEIVER_ROLE,
+            members: [`serviceAccount:${projectNumber}-compute@developer.gserviceaccount.com`],
           },
         ],
       };
