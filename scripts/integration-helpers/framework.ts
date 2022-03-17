@@ -275,6 +275,21 @@ export class TriggerEndToEndTest {
     return fetch(url);
   }
 
+  invokeCallableFunction(
+    name: string,
+    body: Record<string, unknown>,
+    zone = FIREBASE_PROJECT_ZONE
+  ): Promise<Response> {
+    const url = `http://localhost:${this.functionsEmulatorPort}/${[this.project, zone, name].join(
+      "/"
+    )}`;
+    return fetch(url, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   writeToRtdb(): Promise<Response> {
     return this.invokeHttpFunction("writeToRtdb");
   }
