@@ -119,11 +119,15 @@ export function removeFromManifest(instanceId: string, config: Config) {
   logger.info(`Removed extension instance environment config extensions/${instanceId}.env`);
   if (config.projectFileExists(`extensions/${instanceId}.env.local`)) {
     config.deleteProjectFile(`extensions/${instanceId}.env.local`);
-    logger.info(`Removed extension instance local environment config extensions/${instanceId}.env.local`);  
+    logger.info(
+      `Removed extension instance local environment config extensions/${instanceId}.env.local`
+    );
   }
   if (config.projectFileExists(`extensions/${instanceId}.secret.local`)) {
     config.deleteProjectFile(`extensions/${instanceId}.secret.local`);
-    logger.info(`Removed extension instance local secret config extensions/${instanceId}.secret.local`);
+    logger.info(
+      `Removed extension instance local secret config extensions/${instanceId}.secret.local`
+    );
   }
   // TODO(lihes): Remove all project specific env files.
 }
