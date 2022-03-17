@@ -1254,6 +1254,55 @@ describe("Storage emulator", () => {
       });
 
       describe("#put()", () => {
+        it.skip("should write to the default bucket of storage emulator", async function (this) {
+          const TEST_SETUP_TIMEOUT = 60000;
+          const EMULATORS_WRITE_DELAY_MS = 5000;
+          const EMULATORS_SHUTDOWN_DELAY_MS = 5000;
+          const EMULATOR_TEST_TIMEOUT = EMULATORS_WRITE_DELAY_MS * 2;
+
+          this.timeout(EMULATOR_TEST_TIMEOUT);
+          const response = await test.abhisunTest();
+          console.log("&&&");
+          console.log(response.status);
+          console.log("&&&");
+          expect(response.status).to.equal(200);
+          await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+        });
+
+        it.skip("should have triggered cloud functions", () => {
+          console.log("+++++");
+          console.log(test.storageFinalizedTriggerCount);
+          console.log(test.storageV2FinalizedTriggerCount);
+          console.log(test.storageMetadataTriggerCount);
+          console.log(test.storageV2MetadataTriggerCount);
+          console.log(test.storageDeletedTriggerCount);
+          console.log(test.storageV2DeletedTriggerCount);
+
+          console.log(test.storageBucketFinalizedTriggerCount);
+          console.log(test.storageBucketV2FinalizedTriggerCount);
+          console.log(test.storageBucketMetadataTriggerCount);
+          console.log(test.storageBucketV2MetadataTriggerCount);
+          console.log(test.storageBucketDeletedTriggerCount);
+          console.log(test.storageBucketV2DeletedTriggerCount);
+          console.log("+++++");
+          /* on object create one event fires (finalize) */
+          // default bucket
+          expect(test.storageFinalizedTriggerCount).to.equal(1);
+          expect(test.storageV2FinalizedTriggerCount).to.equal(1);
+          expect(test.storageMetadataTriggerCount).to.equal(0);
+          expect(test.storageV2MetadataTriggerCount).to.equal(0);
+          expect(test.storageDeletedTriggerCount).to.equal(0);
+          expect(test.storageV2DeletedTriggerCount).to.equal(0);
+          // specific bucket
+          expect(test.storageBucketFinalizedTriggerCount).to.equal(0);
+          expect(test.storageBucketV2FinalizedTriggerCount).to.equal(0);
+          expect(test.storageBucketMetadataTriggerCount).to.equal(0);
+          expect(test.storageBucketV2MetadataTriggerCount).to.equal(0);
+          expect(test.storageBucketDeletedTriggerCount).to.equal(0);
+          expect(test.storageBucketV2DeletedTriggerCount).to.equal(0);
+          test.resetCounts();
+        });
+
         it("should upload a file", async function (this) {
           this.timeout(TEST_SETUP_TIMEOUT);
 
