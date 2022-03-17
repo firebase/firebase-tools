@@ -60,8 +60,12 @@ export async function writeToManifest(
   await writeLocalSecrets(specs, config, options.force);
 }
 
-// TODO(lihes): Add unit tests.
-async function writeLocalSecrets(
+/**
+ * Write the secrets in a list of ManifestInstanceSpec into extensions/{instance-id}.secret.local.
+ *
+ * Exported for testing.
+ */
+export async function writeLocalSecrets(
   specs: ManifestInstanceSpec[],
   config: Config,
   force?: boolean
