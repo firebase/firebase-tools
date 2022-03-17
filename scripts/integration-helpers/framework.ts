@@ -320,10 +320,6 @@ export class TriggerEndToEndTest {
     return this.invokeHttpFunction("writeToDefaultStorage");
   }
 
-  abhisunTest(): Promise<Response> {
-    return this.invokeHttpFunction("abhisunTest");
-  }
-
   writeToSpecificStorageBucket(): Promise<Response> {
     return this.invokeHttpFunction("writeToSpecificStorageBucket");
   }
