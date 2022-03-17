@@ -1,1 +1,2 @@
 - Adds support for configuration with multiple storage targets (#4281).
+- Fixes bug where callable functions couldn't be emulated (#4314).

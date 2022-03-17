@@ -6,7 +6,30 @@ import { FirebaseError } from "../../error";
 import { getFirebaseProjectParams, substituteParams } from "../../extensions/extensionsHelper";
 import { logger } from "../../logger";
 import { readInstanceParam } from "../../extensions/manifest";
+import { ParamBindingOptions } from "../../extensions/paramHelper";
 
+/**
+ * Instance spec used by manifest.
+ *
+ * Params are passed in ParamBindingOptions so we know the param bindings for
+ * all environments user has configured.
+ *
+ * So far this is only used for writing to the manifest, but in the future
+ * we want to read manifest into this interface.
+ */
+export interface ManifestInstanceSpec {
+  instanceId: string;
+  params: Record<string, ParamBindingOptions>;
+  ref?: refs.Ref;
+  paramSpecs?: extensionsApi.Param[];
+}
+
+// TODO(lihes): Rename this to something like DeploymentInstanceSpec.
+/**
+ * Instance spec used for deploying extensions to firebase project or emulator.
+ *
+ * Param bindings are expected to be collapsed from ParamBindingOptions into a Record<string, string>.
+ */
 export interface InstanceSpec {
   instanceId: string;
   ref?: refs.Ref;
@@ -129,11 +152,17 @@ export async function want(args: {
  * @param version a semver or semver range
  */
 export async function resolveVersion(ref: refs.Ref): Promise<string> {
-  if (!ref.version || ref.version === "latest") {
-    return "latest";
-  }
   const extensionRef = refs.toExtensionRef(ref);
   const versions = await extensionsApi.listExtensionVersions(extensionRef);
+  if (versions.length === 0) {
+    throw new FirebaseError(`No versions found for ${extensionRef}`);
+  }
+  if (!ref.version || ref.version === "latest") {
+    return versions
+      .map((ev) => ev.spec.version)
+      .sort(semver.compare)
+      .pop()!;
+  }
   const maxSatisfying = semver.maxSatisfying(
     versions.map((ev) => ev.spec.version),
     ref.version
