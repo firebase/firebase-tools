@@ -1,1 +1,1 @@
-- Fix for issue introduced where callable functions were not having their invoker property correctly set to "public" (#4327).
+- Fixes bug where new callable functions were not publicly accessible (#4327).
