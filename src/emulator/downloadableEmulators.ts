@@ -51,14 +51,14 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
     },
   },
   storage: {
-    downloadPath: path.join(CACHE_DIR, "cloud-storage-rules-runtime-v1.0.1.jar"),
-    version: "1.0.1",
+    downloadPath: path.join(CACHE_DIR, "cloud-storage-rules-runtime-v1.0.2.jar"),
+    version: "1.0.2",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-storage-rules-runtime-v1.0.1.jar",
-      expectedSize: 32729999,
-      expectedChecksum: "1a441f5e16c17aa7a27db71c9c9186d5",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-storage-rules-runtime-v1.0.2.jar",
+      expectedSize: 35704306,
+      expectedChecksum: "0dd3e17939610fc3dbdf53fb24cfda86",
       namePrefix: "cloud-storage-rules-emulator",
     },
   },
