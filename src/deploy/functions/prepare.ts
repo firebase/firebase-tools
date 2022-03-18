@@ -13,13 +13,13 @@ import { functionMatchesAnyGroup, getFilterGroups } from "./functionsDeployHelpe
 import { logBullet } from "../../utils";
 import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload";
 import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
-import { previews } from "../../previews";
 import { needProjectId, needProjectNumber } from "../../projectUtils";
 import { track } from "../../track";
 import { logger } from "../../logger";
 import { ensureTriggerRegions } from "./triggerRegionHelper";
 import { ensureServiceAgentRoles } from "./checkIam";
 import { FirebaseError } from "../../error";
+import { normalizeAndValidate } from "../../functions/projectConfig";
 
 function hasUserConfig(config: Record<string, unknown>): boolean {
   // "firebase" key is always going to exist in runtime config.
@@ -39,10 +39,11 @@ export async function prepare(
   const projectId = needProjectId(options);
   const projectNumber = await needProjectNumber(options);
 
-  const sourceDirName = options.config.get("functions.source") as string;
+  context.config = normalizeAndValidate(options.config.src.functions)[0];
+  const sourceDirName = context.config.source;
   if (!sourceDirName) {
     throw new FirebaseError(
-      `No functions code detected at default location (./functions), and no functions.source defined in firebase.json`
+      `No functions code detected at default location (./functions), and no functions source defined in firebase.json`
     );
   }
   const sourceDir = options.config.path(sourceDirName);
@@ -51,7 +52,7 @@ export async function prepare(
     projectId,
     sourceDir,
     projectDir: options.config.projectDir,
-    runtime: (options.config.get("functions.runtime") as string) || "",
+    runtime: context.config.runtime || "",
   };
   const runtimeDelegate = await runtimes.getRuntimeDelegate(delegateContext);
   logger.debug(`Validating ${runtimeDelegate.name} source`);
@@ -127,13 +128,14 @@ export async function prepare(
     );
   }
   if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv1")) {
-    context.functionsSourceV1 = await prepareFunctionsUpload(runtimeConfig, options);
+    context.functionsSourceV1 = await prepareFunctionsUpload(
+      sourceDir,
+      context.config,
+      runtimeConfig
+    );
   }
   if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
-    context.functionsSourceV2 = await prepareFunctionsUpload(
-      /* runtimeConfig= */ undefined,
-      options
-    );
+    context.functionsSourceV2 = await prepareFunctionsUpload(sourceDir, context.config);
   }
 
   // Setup environment variables on each function.
