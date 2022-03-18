@@ -37,12 +37,12 @@ const EXPORTED_PROVIDER_USER_INFO_KEYS = [
   "displayName",
   "photoUrl",
 ];
-const PROVIDER_ID_INDEX_MAP: Record<string, number> = {
-  "google.com": 7,
-  "facebook.com": 11,
-  "twitter.com": 15,
-  "github.com": 19,
-};
+const PROVIDER_ID_INDEX_MAP = new Map<string, number>([
+  ["google.com", 7],
+  ["facebook.com", 11],
+  ["twitter.com", 15],
+  ["github.com", 19],
+]);
 
 function escapeComma(str: string): string {
   if (str.includes(",")) {
@@ -74,8 +74,11 @@ function transUserToArray(user: any): any[] {
   arr[6] = user.photoUrl || "";
   for (let i = 0; i < (!user.providerUserInfo ? 0 : user.providerUserInfo.length); i++) {
     const providerInfo = user.providerUserInfo[i];
-    if (providerInfo && PROVIDER_ID_INDEX_MAP[providerInfo.providerId]) {
-      addProviderUserInfo(providerInfo, arr, PROVIDER_ID_INDEX_MAP[providerInfo.providerId]);
+    if (providerInfo) {
+      const providerIndex = PROVIDER_ID_INDEX_MAP.get(providerInfo.providerId);
+      if (providerIndex) {
+        addProviderUserInfo(providerInfo, arr, providerIndex);
+      }
     }
   }
   arr[23] = user.createdAt;
@@ -100,12 +103,11 @@ function transUserJson(user: any): any {
   }
   if (user.providerUserInfo) {
     newUser.providerUserInfo = [];
-    user.providerUserInfo.forEach((providerInfo: any) => {
-      if (!_.includes(Object.keys(PROVIDER_ID_INDEX_MAP), providerInfo.providerId)) {
-        return;
+    for (const providerInfo of user.providerUserInfo) {
+      if (PROVIDER_ID_INDEX_MAP.has(providerInfo.providerId)) {
+        newUser.providerUserInfo.push(_.pick(providerInfo, EXPORTED_PROVIDER_USER_INFO_KEYS));
       }
-      newUser.providerUserInfo.push(_.pick(providerInfo, EXPORTED_PROVIDER_USER_INFO_KEYS));
-    });
+    }
   }
   return newUser;
 }
@@ -205,7 +207,7 @@ export async function serialExportUsers(projectId: string, options: any): Promis
     if (err instanceof FirebaseError) {
       throw err;
     } else {
-      throw new FirebaseError(`Ffailed to export accounts: ${err}`, { original: err });
+      throw new FirebaseError(`Failed to export accounts: ${err}`, { original: err });
     }
   }
 }
