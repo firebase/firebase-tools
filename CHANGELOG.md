@@ -1,0 +1,2 @@
+- Lowers the number of concurrent uploads the CLI will attempt to Firebase Hosting.
+- Adds support for an environment variable `FIREBASE_HOSTING_UPLOAD_CONCURRENCY` to specify custom levels of Hosting upload concurrency.
