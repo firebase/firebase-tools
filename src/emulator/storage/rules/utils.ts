@@ -32,7 +32,9 @@ export type RulesetProvider = (resource: string) => StorageRulesetInstance | und
 /**
  * Returns a validator that pulls a Ruleset from a {@link RulesetProvider} on each run.
  */
-export function getFirebaseRulesValidator(rulesetProvider: RulesetProvider): FirebaseRulesValidator {
+export function getFirebaseRulesValidator(
+  rulesetProvider: RulesetProvider
+): FirebaseRulesValidator {
   return {
     validate: async (
       path: string,
@@ -73,7 +75,7 @@ export function getAdminOnlyFirebaseRulesValidator(): FirebaseRulesValidator {
   };
 }
 
-/** 
+/**
  * Returns a validator for OAuth (admin) credentials. This typically takes the shape of
  * "Authorization: Bearer owner" headers.
  */
