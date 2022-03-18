@@ -551,9 +551,7 @@ describe("Fabricator", () => {
         const ep = endpoint({ callableTrigger: {} }, { platform: "gcfv2" });
 
         await fab.createV2Function(ep);
-        expect(run.setInvokerCreate).to.have.been.calledWith(ep.project, backend.functionName(ep), [
-          "public",
-        ]);
+        expect(run.setInvokerCreate).to.have.been.calledWith(ep.project, "service", ["public"]);
       });
     });
 
@@ -580,11 +578,8 @@ describe("Fabricator", () => {
           },
           { platform: "gcfv2" }
         );
-
         await fab.createV2Function(ep);
-        expect(run.setInvokerCreate).to.have.been.calledWith(ep.project, backend.functionName(ep), [
-          "custom@",
-        ]);
+        expect(run.setInvokerCreate).to.have.been.calledWith(ep.project, "service", ["custom@"]);
       });
     });
 

@@ -318,7 +318,7 @@ export class Fabricator {
       if (invoker && !invoker.includes("private")) {
         await this.executor
           .run(async () => {
-            await gcf.setInvokerCreate(endpoint.project, backend.functionName(endpoint), invoker);
+            await run.setInvokerCreate(endpoint.project, serviceName, invoker);
           })
           .catch(rethrowAs(endpoint, "set invoker"));
       }
