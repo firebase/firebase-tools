@@ -1223,12 +1223,12 @@ describe("Storage emulator", () => {
     before(async function (this) {
       this.timeout(TEST_SETUP_TIMEOUT);
 
-      if (!TEST_CONFIG.useProductionServers) {
-        test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, emulatorConfig);
-        await test.startEmulators(["--only", "auth,storage"]);
-      } else {
+      if (TEST_CONFIG.useProductionServers) {
         process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, SERVICE_ACCOUNT_KEY);
         storage = new Storage();
+      } else {
+        test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, emulatorConfig);
+        await test.startEmulators(["--only", "auth,storage"]);
       }
 
       browser = await puppeteer.launch({
@@ -1284,10 +1284,10 @@ describe("Storage emulator", () => {
       beforeEach(async function (this) {
         this.timeout(TEST_SETUP_TIMEOUT);
 
-        if (!TEST_CONFIG.useProductionServers) {
-          await resetStorageEmulator(STORAGE_EMULATOR_HOST);
-        } else {
+        if (TEST_CONFIG.useProductionServers) {
           await storage.bucket(storageBucket).deleteFiles();
+        } else {
+          await resetStorageEmulator(STORAGE_EMULATOR_HOST);
         }
 
         await page.evaluate(
@@ -2095,11 +2095,135 @@ describe("Storage emulator", () => {
       if (!TEST_CONFIG.keepBrowserOpen) {
         await browser.close();
       }
-      if (!TEST_CONFIG.useProductionServers) {
-        await test.stopEmulators();
-      } else {
+      if (TEST_CONFIG.useProductionServers) {
         delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+      } else {
+        await test.stopEmulators();
       }
+    });
+  });
+
+  emulatorSpecificDescribe("Emulator Integrity", function (this) {
+    // eslint-disable-next-line @typescript-eslint/no-invalid-this
+    this.timeout(TEST_SETUP_TIMEOUT);
+
+    let testGcsBucket: Bucket;
+    let storage: Storage;
+
+    const initFirebaseSdkPage = async () => {
+      page = await browser.newPage();
+      await page.goto("https://example.com", { waitUntil: "networkidle2" });
+
+      await page.addScriptTag({
+        url: "https://www.gstatic.com/firebasejs/7.24.0/firebase-app.js",
+      });
+      await page.addScriptTag({
+        url: "https://www.gstatic.com/firebasejs/7.24.0/firebase-auth.js",
+      });
+      // url: "https://storage.googleapis.com/fir-tools-builds/firebase-storage-new.js",
+      await page.addScriptTag({
+        url: TEST_CONFIG.useProductionServers
+          ? "https://www.gstatic.com/firebasejs/7.24.0/firebase-storage.js"
+          : "https://storage.googleapis.com/fir-tools-builds/firebase-storage.js",
+      });
+
+      await page.evaluate(
+        (appConfig, useProductionServers, emulatorHost) => {
+          firebase.initializeApp(appConfig);
+          // Wiring the app to use either the auth emulator or production auth
+          // based on the config flag.
+          const auth = firebase.auth();
+          if (!useProductionServers) {
+            auth.useEmulator(emulatorHost);
+          }
+          (window as any).auth = auth;
+        },
+        appConfig,
+        TEST_CONFIG.useProductionServers,
+        AUTH_EMULATOR_HOST
+      );
+
+      if (!TEST_CONFIG.useProductionServers) {
+        await page.evaluate((hostAndPort) => {
+          const [host, port] = hostAndPort.split(":") as string[];
+          (firebase.storage() as any).useEmulator(host, port);
+        }, STORAGE_EMULATOR_HOST.replace(/^(https?:|)\/\//, ""));
+      }
+    };
+
+    before(async () => {
+      this.timeout(TEST_SETUP_TIMEOUT);
+
+      // Start emulators
+      process.env.STORAGE_EMULATOR_HOST = STORAGE_EMULATOR_HOST;
+      test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, emulatorConfig);
+      await test.startEmulators(["--only", "auth,storage"]);
+
+      // Initialize GCS SDK
+      const adminCredential = fs.existsSync(path.join(__dirname, SERVICE_ACCOUNT_KEY))
+        ? admin.credential.cert(readJson(SERVICE_ACCOUNT_KEY))
+        : admin.credential.applicationDefault();
+      admin.initializeApp({ credential: adminCredential });
+
+      testGcsBucket = admin.storage().bucket(storageBucket);
+
+      // Initialize browser container for Firebase Storage SDK
+      browser = await puppeteer.launch({
+        headless: !TEST_CONFIG.showBrowser,
+        devtools: true,
+      });
+    });
+
+    beforeEach(async () => {
+      await resetStorageEmulator(STORAGE_EMULATOR_HOST);
+      await initFirebaseSdkPage();
+    });
+
+    after(async () => {
+      this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
+
+      if (tmpDir) {
+        fs.rmdirSync(tmpDir, { recursive: true });
+      }
+      if (!TEST_CONFIG.keepBrowserOpen) {
+        await browser.close();
+      }
+      if (TEST_CONFIG.useProductionServers) {
+        delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+      } else {
+        delete process.env.STORAGE_EMULATOR_HOST;
+        await test.stopEmulators();
+      }
+    });
+
+    it.only("gcloud API persisted files should be accessible via Firebase SDK", async () => {
+      const smallFilePath = createRandomFile("testFile", SMALL_FILE_SIZE);
+      await testGcsBucket.upload(smallFilePath, { destination: "public/testFile" });
+
+      const downloadUrl = await page.evaluate(async () => {
+        return firebase.storage().ref("public/testFile").getDownloadURL();
+      });
+      const requestClient = TEST_CONFIG.useProductionServers ? https : http;
+      const data = await new Promise((resolve, reject) => {
+        requestClient.get(downloadUrl, (response) => {
+          const bufs: any = [];
+          response
+            .on("data", (chunk) => bufs.push(chunk))
+            .on("end", () => resolve(Buffer.concat(bufs)))
+            .on("close", resolve)
+            .on("error", reject);
+        });
+      });
+
+      expect(data).to.deep.equal(fs.readFileSync(smallFilePath));
+    });
+
+    it.only("Firebase SDK persisted files should be accessible via gcloud API", async () => {
+      const fileContent = "some-file-content";
+      await uploadText(page, "public/testFile", fileContent);
+
+      const [downloadedFileContent] = await testGcsBucket.file("public/testFile").download();
+      expect(downloadedFileContent).to.deep.equal(Buffer.from(fileContent));
     });
   });
 });

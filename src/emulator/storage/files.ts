@@ -18,7 +18,7 @@ import {
   getProjectAdminSdkConfigOrCached,
 } from "../adminSdkConfig";
 import { RulesetOperationMethod } from "./rules/types";
-import { AdminCredentialValidator, RulesValidator } from "./rules/utils";
+import { AdminCredentialValidator, FirebaseRulesValidator } from "./rules/utils";
 import { Persistence } from "./persistence";
 import { Upload, UploadStatus } from "./upload";
 
@@ -109,7 +109,7 @@ export class StorageLayer {
     private _projectId: string,
     private _files: Map<string, StoredFile>,
     private _buckets: Map<string, CloudStorageBucketMetadata>,
-    private _rulesValidator: RulesValidator,
+    private _rulesValidator: FirebaseRulesValidator,
     private _adminCredsValidator: AdminCredentialValidator,
     private _persistence: Persistence,
     private _cloudFunctions: StorageCloudFunctions

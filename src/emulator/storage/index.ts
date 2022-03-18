@@ -11,9 +11,9 @@ import { SourceFile } from "./rules/types";
 import express = require("express");
 import {
   getAdminCredentialValidator,
-  getAdminOnlyRulesValidator,
-  getRulesValidator,
-  RulesValidator,
+  getAdminOnlyFirebaseRulesValidator,
+  getFirebaseRulesValidator,
+  FirebaseRulesValidator,
 } from "./rules/utils";
 import { Persistence } from "./persistence";
 import { UploadService } from "./upload";
@@ -59,7 +59,7 @@ export class StorageEmulator implements EmulatorInstance {
     this._persistence = new Persistence(this.getPersistenceTmpDir());
     this._uploadService = new UploadService(this._persistence);
 
-    const createStorageLayer = (rulesValidator: RulesValidator): StorageLayer => {
+    const createStorageLayer = (rulesValidator: FirebaseRulesValidator): StorageLayer => {
       return new StorageLayer(
         args.projectId,
         this._files,
@@ -71,9 +71,9 @@ export class StorageEmulator implements EmulatorInstance {
       );
     };
     this._storageLayer = createStorageLayer(
-      getRulesValidator((resource: string) => this._rulesManager.getRuleset(resource))
+      getFirebaseRulesValidator((resource: string) => this._rulesManager.getRuleset(resource))
     );
-    this._adminStorageLayer = createStorageLayer(getAdminOnlyRulesValidator());
+    this._adminStorageLayer = createStorageLayer(getAdminOnlyFirebaseRulesValidator());
   }
 
   get storageLayer(): StorageLayer {

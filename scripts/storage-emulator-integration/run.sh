@@ -7,6 +7,6 @@ set -e # Immediately exit on failure
 # Prepare the storage emulator rules runtime
 firebase setup:emulators:storage
 
-mocha scripts/storage-emulator-integration/rules/*.test.ts
+#mocha scripts/storage-emulator-integration/rules/*.test.ts
 
 mocha scripts/storage-emulator-integration/tests.ts
