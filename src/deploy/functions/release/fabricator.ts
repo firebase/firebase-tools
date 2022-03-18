@@ -242,7 +242,7 @@ export class Fabricator {
         })
         .catch(rethrowAs(endpoint, "set invoker"));
     } else if (backend.isTaskQueueTriggered(endpoint)) {
-      // Like HTTPS triggers, taskQueueTriggers have an invoker, but unlike HTTPS they don't default
+      // Like other triggers, taskQueueTriggers can have an invoker, but they don't default
       // public.
       const invoker = endpoint.taskQueueTrigger.invoker;
       if (invoker && !invoker.includes("private")) {
@@ -312,7 +312,7 @@ export class Fabricator {
         .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
         .catch(rethrowAs(endpoint, "set invoker"));
     } else if (backend.isTaskQueueTriggered(endpoint)) {
-      // Like HTTPS triggers, taskQueueTriggers have an invoker, but unlike HTTPS they don't default
+      // Like other triggers, taskQueueTriggers can have an invoker, but they don't default
       // public.
       const invoker = endpoint.taskQueueTrigger.invoker;
       if (invoker && !invoker.includes("private")) {
