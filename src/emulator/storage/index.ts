@@ -6,7 +6,7 @@ import { createApp } from "./server";
 import { StorageLayer } from "./files";
 import { EmulatorLogger } from "../emulatorLogger";
 import { createStorageRulesManager, StorageRulesManager } from "./rules/manager";
-import { StorageRulesRuntime } from "./rules/runtime";
+import { StorageRulesIssues, StorageRulesRuntime } from "./rules/runtime";
 import { SourceFile } from "./rules/types";
 import express = require("express");
 import { getAdminCredentialValidator, getRulesValidator } from "./rules/utils";
@@ -35,14 +35,14 @@ export class StorageEmulator implements EmulatorInstance {
 
   private _logger = EmulatorLogger.forEmulator(Emulators.STORAGE);
   private _rulesRuntime: StorageRulesRuntime;
-  private _rulesManager: StorageRulesManager;
+  private _rulesManager!: StorageRulesManager;
   private _persistence: Persistence;
   private _storageLayer: StorageLayer;
   private _uploadService: UploadService;
 
   constructor(private args: StorageEmulatorArgs) {
     this._rulesRuntime = new StorageRulesRuntime();
-    this._rulesManager = createStorageRulesManager(this.args.rules, this._rulesRuntime);
+    this.createRulesManager(this.args.rules);
     this._persistence = new Persistence(this.getPersistenceTmpDir());
     this._storageLayer = new StorageLayer(
       args.projectId,
@@ -111,6 +111,16 @@ export class StorageEmulator implements EmulatorInstance {
 
   getApp(): express.Express {
     return this._app!;
+  }
+
+  async replaceRules(rules: SourceFile | RulesConfig[]): Promise<StorageRulesIssues> {
+    await this._rulesManager.stop();
+    this.createRulesManager(rules);
+    return this._rulesManager.start();
+  }
+
+  private createRulesManager(rules: SourceFile | RulesConfig[]): void {
+    this._rulesManager = createStorageRulesManager(rules, this._rulesRuntime);
   }
 
   private getPersistenceTmpDir(): string {
