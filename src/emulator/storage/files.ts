@@ -323,7 +323,7 @@ export class StorageLayer {
         storedMetadata ? RulesetOperationMethod.UPDATE : RulesetOperationMethod.CREATE,
         {
           before: storedMetadata?.asRulesResource(),
-          after: metadata?.asRulesResource()
+          after: metadata?.asRulesResource(),
         },
         upload.authorization
       ));
