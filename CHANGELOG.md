@@ -1,1 +1,2 @@
+- Upgrade Storage Rules Runtime to v1.0.2
 - Fixes error handling in `auth:export` when API calls would fail.
