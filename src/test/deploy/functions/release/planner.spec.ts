@@ -1,11 +1,13 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
+import * as args from "../../../../deploy/functions/args";
 import * as backend from "../../../../deploy/functions/backend";
 import * as planner from "../../../../deploy/functions/release/planner";
 import * as deploymentTool from "../../../../deploymentTool";
 import * as utils from "../../../../utils";
 import * as v2events from "../../../../functions/events/v2";
+import * as projectConfig from "../../../../functions/projectConfig";
 
 describe("planner", () => {
   let logLabeledBullet: sinon.SinonStub;
@@ -150,7 +152,7 @@ describe("planner", () => {
       const have = { updated, deleted, pantheon };
 
       // note: pantheon is not updated in any way
-      expect(planner.calculateChangesets(want, have, (e) => e.region, {})).to.deep.equal({
+      expect(planner.calculateChangesets(want, have, (e) => e.region)).to.deep.equal({
         region: {
           endpointsToCreate: [created],
           endpointsToUpdate: [
@@ -174,9 +176,7 @@ describe("planner", () => {
       const have = { updated, deleted, pantheon };
 
       // note: pantheon is deleted because we have deleteAll: true
-      expect(
-        planner.calculateChangesets(want, have, (e) => e.region, { deleteAll: true })
-      ).to.deep.equal({
+      expect(planner.calculateChangesets(want, have, (e) => e.region, true)).to.deep.equal({
         region: {
           endpointsToCreate: [created],
           endpointsToUpdate: [
@@ -191,6 +191,14 @@ describe("planner", () => {
   });
 
   describe("createDeploymentPlan", () => {
+    const CONTEXT: args.Context = {
+      projectId: "test-project",
+      config: {
+        source: "functions",
+        codebase: projectConfig.DEFAULT_CODEBASE,
+      },
+    };
+
     it("groups deployment by region and memory", () => {
       const region1mem1Created: backend.Endpoint = func("id1", "region1");
       const region1mem1Updated: backend.Endpoint = func("id2", "region1");
@@ -210,7 +218,7 @@ describe("planner", () => {
         region2mem2Updated
       );
 
-      expect(planner.createDeploymentPlan(want, have, {})).to.deep.equal({
+      expect(planner.createDeploymentPlan(CONTEXT, want, have)).to.deep.equal({
         "region1-default": {
           endpointsToCreate: [region1mem1Created],
           endpointsToUpdate: [
@@ -252,7 +260,13 @@ describe("planner", () => {
       const want = backend.of(group1Updated, group1Created, group2Updated, group2Created);
       const have = backend.of(group1Updated, group1Deleted, group2Updated, group2Deleted);
 
-      expect(planner.createDeploymentPlan(want, have, { filters: [["g1"]] })).to.deep.equal({
+      expect(
+        planner.createDeploymentPlan(
+          { ...CONTEXT, filters: [{ codebase: projectConfig.DEFAULT_CODEBASE, idChunks: ["g1"] }] },
+          want,
+          have
+        )
+      ).to.deep.equal({
         "region-default": {
           endpointsToCreate: [group1Created],
           endpointsToUpdate: [
@@ -275,35 +289,39 @@ describe("planner", () => {
       const want = backend.of(upgraded);
 
       allowV2Upgrades();
-      planner.createDeploymentPlan(want, have);
+      planner.createDeploymentPlan(CONTEXT, want, have);
       expect(logLabeledBullet).to.have.been.calledOnceWith(
         "functions",
         sinon.match(/change this with the 'concurrency' option/)
       );
     });
-  });
 
-  it("does not warn users about concurrency when inappropriate", () => {
-    allowV2Upgrades();
-    // Concurrency isn't set but this isn't an upgrade operation, so there
-    // should be no warning
-    const v2Function: backend.Endpoint = { ...func("id", "region"), platform: "gcfv2" };
+    it("does not warn users about concurrency when inappropriate", () => {
+      allowV2Upgrades();
+      // Concurrency isn't set but this isn't an upgrade operation, so there
+      // should be no warning
+      const v2Function: backend.Endpoint = { ...func("id", "region"), platform: "gcfv2" };
 
-    planner.createDeploymentPlan(backend.of(v2Function), backend.of(v2Function));
-    expect(logLabeledBullet).to.not.have.been.called;
+      planner.createDeploymentPlan(CONTEXT, backend.of(v2Function), backend.of(v2Function));
+      expect(logLabeledBullet).to.not.have.been.called;
 
-    const v1Function: backend.Endpoint = { ...func("id", "region"), platform: "gcfv1" };
-    planner.createDeploymentPlan(backend.of(v1Function), backend.of(v1Function));
-    expect(logLabeledBullet).to.not.have.been.called;
+      const v1Function: backend.Endpoint = { ...func("id", "region"), platform: "gcfv1" };
+      planner.createDeploymentPlan(CONTEXT, backend.of(v1Function), backend.of(v1Function));
+      expect(logLabeledBullet).to.not.have.been.called;
 
-    // Upgraded but specified concurrency
-    const concurrencyUpgraded: backend.Endpoint = {
-      ...v1Function,
-      platform: "gcfv2",
-      concurrency: 80,
-    };
-    planner.createDeploymentPlan(backend.of(concurrencyUpgraded), backend.of(v1Function));
-    expect(logLabeledBullet).to.not.have.been.called;
+      // Upgraded but specified concurrency
+      const concurrencyUpgraded: backend.Endpoint = {
+        ...v1Function,
+        platform: "gcfv2",
+        concurrency: 80,
+      };
+      planner.createDeploymentPlan(
+        CONTEXT,
+        backend.of(concurrencyUpgraded),
+        backend.of(v1Function)
+      );
+      expect(logLabeledBullet).to.not.have.been.called;
+    });
   });
 
   describe("checkForIllegalUpdate", () => {

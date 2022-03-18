@@ -1,40 +1,128 @@
 import * as backend from "./backend";
+import * as projectConfig from "../../functions/projectConfig";
 
-export function functionMatchesAnyGroup(func: backend.TargetIds, filterGroups: string[][]) {
-  if (!filterGroups.length) {
-    return true;
-  }
-  return filterGroups.some((groupChunk) => functionMatchesGroup(func, groupChunk));
+export interface FunctionFilter {
+  // If codebase is undefined, match all functions in all codebase that mathces the idChunks.
+  // This is useful when running functions:delete command.
+  codebase?: string;
+  // If id chunks is undefined, match all function in the said codebase.
+  idChunks?: string[];
 }
 
-export function functionMatchesGroup(func: backend.TargetIds, groupChunks: string[]): boolean {
-  const functionNameChunks = func.id.split("-").slice(0, groupChunks.length);
-  // Should never happen. It would mean the user has asked to deploy something that is
-  // a sub-function. E.g. function foo-bar and group chunks [foo, bar, baz].
-  if (functionNameChunks.length !== groupChunks.length) {
+/**
+ * Returns true if function matches any of the given filter.
+ *
+ * If no filter is passed, always returns true.
+ */
+export function functionMatchesAnyFilter(
+  config: projectConfig.ValidatedSingle,
+  func: backend.TargetIds,
+  filters?: FunctionFilter[]
+) {
+  if (!filters) {
+    return true;
+  }
+  return filters.some((filter) => functionMatchesFilter(config, func, filter));
+}
+
+/**
+ * Returns true if function matches the given filter.
+ */
+export function functionMatchesFilter(
+  config: projectConfig.ValidatedSingle,
+  func: backend.TargetIds,
+  filter: FunctionFilter
+): boolean {
+  if (filter.codebase && filter.codebase !== config.codebase) {
     return false;
   }
-  for (let i = 0; i < groupChunks.length; i += 1) {
-    if (groupChunks[i] !== functionNameChunks[i]) {
+
+  if (!filter.idChunks) {
+    // Undefined idChunks = match all functions in the codebase.
+    return true;
+  }
+
+  const idChunks = func.id.split("-");
+  if (idChunks.length < filter.idChunks.length) {
+    return false;
+  }
+  for (let i = 0; i < filter.idChunks.length; i += 1) {
+    if (idChunks[i] !== filter.idChunks[i]) {
       return false;
     }
   }
   return true;
 }
 
-export function getFilterGroups(options: { only?: string }): string[][] {
+/**
+ * Returns list of filters after parsing selector.
+ */
+export function parseFunctionSelector(selector: string): FunctionFilter[] {
+  const fragments = selector.split(":");
+  if (fragments.length < 2) {
+    // This is a plain selector w/o codebase prefix (e.g. "abc" not "abc:efg") .
+    // This could mean 2 things:
+    //
+    //   1. Only the codebase selector (i.e. "abc" refers to a codebase).
+    //   2. Id filter for the DEFAULT codebase (i.e. "abc" refers to a function id in the default codebase).
+    //
+    // We decide here to create filter for both conditions. This sounds sloppy, but it's only troublesome if there is
+    // conflict between a codebase name as function id in the default codebase.
+    return [
+      { codebase: fragments[0] },
+      { codebase: projectConfig.DEFAULT_CODEBASE, idChunks: fragments[0].split(/[-.]/) },
+    ];
+  }
+  return [
+    {
+      codebase: fragments[0],
+      idChunks: fragments[1].split(/[-.]/),
+    },
+  ];
+}
+
+/**
+ * Returns parsed --only commandline argument for functions product.
+ *
+ * For example, when user pass the following commandline argument:
+ *   options.only = "functions:abc,functions:g1-gfn,hosting,functions:python:another-func
+ *
+ * We process the input as follows:
+ *
+ *   "functions:abc": Filter function w/ id "abc" in the default codebase OR all functions in the "func" codebase.
+ *   "functions:g1-gfn": Filter function w/ id "gfn" in function group g1 OR all functions in the "g1.gfn" codebase.
+ *   "hosting": Ignored.
+ *   "functions:python:another-func": Filter function w/ id "another-func" in "python" codebase.
+ *
+ *   Note that filters like "functions:abc" are ambiguous. Is it referring to:
+ *     1) Function id "abc" in the default codebase?
+ *     2) Grouped functions w/ "abc" prefix in the default codebase?
+ *     3) All functions in the "abc" codebase?
+ *
+ *   Current implementation creates filters that match against all conditions.
+ *
+ *   If no filter exists, we return undefined which the caller should interpret as "match all functions".
+ */
+export function getFunctionFilters(options: { only?: string }): FunctionFilter[] | undefined {
   if (!options.only) {
-    return [];
+    return undefined;
   }
 
-  const only = options.only!.split(",");
-  const onlyFunctions = only.filter((filter) => {
-    const opts = filter.split(":");
-    return opts[0] === "functions" && opts[1];
-  });
-  return onlyFunctions.map((filter) => {
-    return filter.split(":")[1].split(/[.-]/);
-  });
+  const selectors = options.only.split(",");
+  const filters: FunctionFilter[] = [];
+  for (let selector of selectors) {
+    if (selector.startsWith("functions:")) {
+      selector = selector.replace("functions:", "");
+      if (selector.length > 0) {
+        filters.push(...parseFunctionSelector(selector));
+      }
+    }
+  }
+
+  if (filters.length === 0) {
+    return undefined;
+  }
+  return filters;
 }
 
 export function getFunctionLabel(fn: backend.TargetIds): string {

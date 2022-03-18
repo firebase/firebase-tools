@@ -9,7 +9,7 @@ import * as runtimes from "./runtimes";
 import * as validate from "./validate";
 import * as ensure from "./ensure";
 import { Options } from "../../options";
-import { functionMatchesAnyGroup, getFilterGroups } from "./functionsDeployHelper";
+import { functionMatchesAnyFilter, getFunctionFilters } from "./functionsDeployHelper";
 import { logBullet } from "../../utils";
 import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload";
 import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
@@ -40,6 +40,15 @@ export async function prepare(
   const projectNumber = await needProjectNumber(options);
 
   context.config = normalizeAndValidate(options.config.src.functions)[0];
+  context.filters = getFunctionFilters(options); // Parse --only filters for functions.
+
+  if (
+    context.filters &&
+    !context.filters.map((f) => f.codebase).includes(context.config.codebase)
+  ) {
+    throw new FirebaseError("No function matches given --only filters. Stopping deployment.");
+  }
+
   const sourceDirName = context.config.source;
   if (!sourceDirName) {
     throw new FirebaseError(
@@ -100,6 +109,16 @@ export async function prepare(
   logger.debug(`Analyzing ${runtimeDelegate.name} backend spec`);
   const wantBackend = await runtimeDelegate.discoverSpec(runtimeConfig, firebaseEnvs);
   wantBackend.environmentVariables = { ...userEnvs, ...firebaseEnvs };
+  for (const endpoint of backend.allEndpoints(wantBackend)) {
+    // Setup environment variables on each function.
+    endpoint.environmentVariables = wantBackend.environmentVariables;
+    // Tag each endpoint with the current codebase.
+    endpoint.labels = {
+      ...endpoint.labels,
+      "firebase-functions-codebase": context.config.codebase,
+    };
+  }
+
   payload.functions = { backend: wantBackend };
 
   // Note: Some of these are premium APIs that require billing to be enabled.
@@ -138,11 +157,6 @@ export async function prepare(
     context.functionsSourceV2 = await prepareFunctionsUpload(sourceDir, context.config);
   }
 
-  // Setup environment variables on each function.
-  for (const endpoint of backend.allEndpoints(wantBackend)) {
-    endpoint.environmentVariables = wantBackend.environmentVariables;
-  }
-
   // Enable required APIs. This may come implicitly from triggers (e.g. scheduled triggers
   // require cloudscheudler and, in v1, require pub/sub), or can eventually come from
   // explicit dependencies.
@@ -155,11 +169,8 @@ export async function prepare(
   // Validate the function code that is being deployed.
   validate.endpointsAreValid(wantBackend);
 
-  // Check what --only filters have been passed in.
-  context.filters = getFilterGroups(options);
-
   const matchingBackend = backend.matchingBackend(wantBackend, (endpoint) => {
-    return functionMatchesAnyGroup(endpoint, context.filters);
+    return functionMatchesAnyFilter(context.config!, endpoint, context.filters);
   });
 
   const haveBackend = await backend.existingBackend(context);

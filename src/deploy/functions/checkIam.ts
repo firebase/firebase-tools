@@ -1,7 +1,7 @@
 import { bold } from "cli-color";
 
 import { logger } from "../../logger";
-import { getFilterGroups, functionMatchesAnyGroup } from "./functionsDeployHelper";
+import { getFunctionFilters, functionMatchesAnyFilter } from "./functionsDeployHelper";
 import { FirebaseError } from "../../error";
 import * as iam from "../../gcp/iam";
 import * as args from "./args";
@@ -61,12 +61,12 @@ export async function checkHttpIam(
   options: Options,
   payload: args.Payload
 ): Promise<void> {
-  const filterGroups = context.filters || getFilterGroups(options);
+  const functionFilters = context.filters || getFunctionFilters(options);
 
   const httpEndpoints = backend
     .allEndpoints(payload.functions!.backend)
     .filter(backend.isHttpsTriggered)
-    .filter((f) => functionMatchesAnyGroup(f, filterGroups));
+    .filter((f) => functionMatchesAnyFilter(context.config!, f, functionFilters));
 
   const existing = await backend.existingBackend(context);
   const newHttpsEndpoints = httpEndpoints.filter(backend.missingEndpoint(existing));

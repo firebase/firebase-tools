@@ -18,6 +18,8 @@ import * as fabricator from "../deploy/functions/release/fabricator";
 import * as executor from "../deploy/functions/release/executor";
 import * as reporter from "../deploy/functions/release/reporter";
 import * as containerCleaner from "../deploy/functions/containerCleaner";
+import * as deployHelper from "../deploy/functions/functionsDeployHelper";
+import * as projectConfig from "../functions/projectConfig";
 
 export default new Command("functions:delete [filters...]")
   .description("delete one or more Cloud Functions by name or group name.")
@@ -33,9 +35,28 @@ export default new Command("functions:delete [filters...]")
       return utils.reject("Must supply at least function or group name.");
     }
 
+    const funcFilters: deployHelper.FunctionFilter[] = [];
+    // For user convenience, filters provided in delete command is more lenient than when
+    // provided in the deploy command. For example, given filter "func-id", delete command
+    // will look for the function in all codebases whereas deploy command will default to
+    // filter func-id in the default codebase.
+    for (const filter of filters) {
+      if (filter.length < 1) {
+        continue;
+      }
+      const fragments = filter.split(":");
+      if (fragments.length === 1) {
+        // This is a simple filter. Check id against all codebases.
+        funcFilters.push({ idChunks: [fragments[0]] });
+      } else {
+        funcFilters.push({ codebase: fragments[0], idChunks: fragments.splice(1) });
+      }
+    }
+
     const context: args.Context = {
+      config: projectConfig.normalizeAndValidate(options.config.src.functions)[0],
       projectId: needProjectId(options),
-      filters: filters.map((f) => f.split(".")),
+      filters: funcFilters,
     };
 
     const [config, existingBackend] = await Promise.all([
@@ -48,10 +69,12 @@ export default new Command("functions:delete [filters...]")
     if (options.region) {
       existingBackend.endpoints = { [options.region]: existingBackend.endpoints[options.region] };
     }
-    const plan = planner.createDeploymentPlan(/* want= */ backend.empty(), existingBackend, {
-      filters: context.filters,
-      deleteAll: true,
-    });
+    const plan = planner.createDeploymentPlan(
+      context,
+      backend.empty(),
+      existingBackend,
+      /* deleteAll= */ true
+    );
     const allEpToDelete = Object.values(plan)
       .map((changes) => changes.endpointsToDelete)
       .reduce(reduceFlat, [])
