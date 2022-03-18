@@ -235,10 +235,9 @@ export class Fabricator {
       }
     } else if (backend.isCallableTriggered(endpoint)) {
       // Callable functions should always be public
-      const invoker = ["public"];
       await this.executor
         .run(async () => {
-          await gcf.setInvokerCreate(endpoint.project, backend.functionName(endpoint), invoker);
+          await gcf.setInvokerCreate(endpoint.project, backend.functionName(endpoint), ["public"]);
         })
         .catch(rethrowAs(endpoint, "set invoker"));
     } else if (backend.isTaskQueueTriggered(endpoint)) {
@@ -307,9 +306,8 @@ export class Fabricator {
       }
     } else if (backend.isCallableTriggered(endpoint)) {
       // Callable functions should always be public
-      const invoker = ["public"];
       await this.executor
-        .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
+        .run(() => run.setInvokerCreate(endpoint.project, serviceName, ["public"]))
         .catch(rethrowAs(endpoint, "set invoker"));
     } else if (backend.isTaskQueueTriggered(endpoint)) {
       // Like other triggers, taskQueueTriggers can have an invoker, but they don't default
