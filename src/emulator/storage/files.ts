@@ -299,6 +299,7 @@ export class StorageLayer {
       throw new Error(`Unexpected upload status encountered: ${upload.status}.`);
     }
 
+    const storedMetadata = this.getMetadata(upload.bucketId, upload.objectId);
     const filePath = this.path(upload.bucketId, upload.objectId);
     const metadata = new StoredFileMetadata(
       {
@@ -319,8 +320,11 @@ export class StorageLayer {
       (await this._rulesValidator.validate(
         ["b", upload.bucketId, "o", upload.objectId].join("/"),
         upload.bucketId,
-        RulesetOperationMethod.CREATE,
-        { after: metadata?.asRulesResource() },
+        storedMetadata ? RulesetOperationMethod.UPDATE : RulesetOperationMethod.CREATE,
+        {
+          before: storedMetadata?.asRulesResource(),
+          after: metadata?.asRulesResource()
+        },
         upload.authorization
       ));
     if (!authorized) {
