@@ -2,8 +2,10 @@ import { FunctionsConfig, FunctionConfig } from "../firebaseConfig";
 import { FirebaseError } from "../error";
 
 export type NormalizedConfig = [FunctionConfig, ...FunctionConfig[]];
-export type ValidatedSingle = FunctionConfig & { source: string };
+export type ValidatedSingle = FunctionConfig & { source: string; codebase: string };
 export type ValidatedConfig = [ValidatedSingle];
+
+export const DEFAULT_CODEBASE = "default";
 
 /**
  * Normalize functions config to return functions config in an array form.
@@ -27,7 +29,30 @@ function validateSingle(config: FunctionConfig): ValidatedSingle {
   if (!config.source) {
     throw new FirebaseError("functions.source must be specified");
   }
-  return { ...config, source: config.source };
+  if (!config.codebase) {
+    config.codebase = DEFAULT_CODEBASE;
+  }
+  if (config.codebase.length > 63 || !/^[a-z0-9_-]+$/.test(config.codebase)) {
+    throw new FirebaseError(
+      "Invalid codebase name. Codebase must be less than 63 characters and " +
+        "can contain only lowercase letters, numeric characters, underscores, and dashes."
+    );
+  }
+
+  return { ...config, source: config.source, codebase: config.codebase };
+}
+
+function assertUnique(config: ValidatedConfig, property: keyof ValidatedSingle) {
+  const values = new Set();
+  for (const single of config) {
+    const value = single[property];
+    if (values.has(value)) {
+      throw new FirebaseError(
+        `functions.${property} must be unique but '${value}' was used more than once.`
+      );
+    }
+    values.add(value);
+  }
 }
 
 /**
@@ -37,7 +62,10 @@ export function validate(config: NormalizedConfig): ValidatedConfig {
   if (config.length > 1) {
     throw new FirebaseError("More than one functions.source detected in firebase.json.");
   }
-  return [validateSingle(config[0])];
+  const validated = validateSingle(config[0]);
+  assertUnique([validated], "source");
+  assertUnique([validated], "codebase");
+  return [validated];
 }
 
 /**
