@@ -68,9 +68,12 @@ describe("manifest", () => {
   describe(`${manifest.removeFromManifest.name}`, () => {
     let deleteProjectFileStub: sinon.SinonStub;
     let writeProjectFileStub: sinon.SinonStub;
+    let projectFileExistsStub: sinon.SinonStub;
     beforeEach(() => {
       deleteProjectFileStub = sandbox.stub(Config.prototype, "deleteProjectFile");
       writeProjectFileStub = sandbox.stub(Config.prototype, "writeProjectFile");
+      projectFileExistsStub = sandbox.stub(Config.prototype, "projectFileExists");
+      projectFileExistsStub.returns(true);
     });
 
     afterEach(() => {
