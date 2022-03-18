@@ -76,13 +76,17 @@ export class Config {
       }
     });
 
-    // Auto-detect functions from package.json in directory
-    if (
-      this.projectDir &&
-      !this.get("functions.source") &&
-      fsutils.dirExistsSync(this.path("functions"))
-    ) {
-      this.set("functions.source", Config.DEFAULT_FUNCTIONS_SOURCE);
+    // Inject default functions config and source if missing.
+    if (this.projectDir && fsutils.dirExistsSync(this.path(Config.DEFAULT_FUNCTIONS_SOURCE))) {
+      if (Array.isArray(this.get("functions"))) {
+        if (!this.get("functions.[0].source")) {
+          this.set("functions.[0].source", Config.DEFAULT_FUNCTIONS_SOURCE);
+        }
+      } else {
+        if (!this.get("functions.source")) {
+          this.set("functions.source", Config.DEFAULT_FUNCTIONS_SOURCE);
+        }
+      }
     }
   }
 
