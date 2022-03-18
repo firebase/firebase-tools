@@ -1,0 +1,1 @@
+- Upgrade Storage Rules Runtime to v1.0.2
