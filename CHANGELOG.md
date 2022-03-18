@@ -1,1 +1,2 @@
-- Fixes bug where new callable functions were not publicly accessible (#4327).
+- Upgrade Storage Rules Runtime to v1.0.2 (#4334)
+- Fixes bug where new callable functions were not publicly accessible (#4327)
