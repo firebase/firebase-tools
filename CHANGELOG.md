@@ -1,4 +1,3 @@
 - Upgrade Storage Rules Runtime to v1.0.2.
-- Lowers the number of concurrent uploads the CLI will attempt to Firebase Hosting.
-- Adds support for an environment variable `FIREBASE_HOSTING_UPLOAD_CONCURRENCY` to specify custom levels of Hosting upload concurrency.
+- Adds support for an environment variable `FIREBASE_HOSTING_UPLOAD_CONCURRENCY` to specify custom levels of Hosting upload concurrency (defaults to 200).
 - Fixes error handling in `auth:export` when API calls would fail.

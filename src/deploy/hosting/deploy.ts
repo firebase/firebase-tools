@@ -67,7 +67,7 @@ export async function deploy(
       `found ${files.length} files in ${clc.bold(deploy.config.public)}`
     );
 
-    let concurrency = 10;
+    let concurrency = 200;
     const envConcurrency = envOverride("FIREBASE_HOSTING_UPLOAD_CONCURRENCY", "");
     if (envConcurrency) {
       const c = parseInt(envConcurrency, 10);
