@@ -262,9 +262,11 @@ export async function ensureServiceAgentRoles(
     findRequiredBindings.push(service.requiredProjectBindings!(projectNumber, policy))
   );
   const allRequiredBindings = await Promise.all(findRequiredBindings);
-  allRequiredBindings.push(obtainPubSubServiceAgentBindings(projectNumber, policy));
-  allRequiredBindings.push(obtainDefaultComputeServiceAgentBindings(projectNumber, policy));
-  allRequiredBindings.push(obtainEventarcServiceAgentBindings(projectNumber, policy));
+  if (haveServices.length === 0) {
+    allRequiredBindings.push(obtainPubSubServiceAgentBindings(projectNumber, policy));
+    allRequiredBindings.push(obtainDefaultComputeServiceAgentBindings(projectNumber, policy));
+    allRequiredBindings.push(obtainEventarcServiceAgentBindings(projectNumber, policy));
+  }
   mergeBindings(policy, allRequiredBindings);
   // set the updated policy
   try {

@@ -366,7 +366,7 @@ describe("checkIam", () => {
       expect(setIamStub).to.not.have.been.called;
     });
 
-    it("should add the binding with the service agent", async () => {
+    it("should add the pubsub publisher role and all default bindings for a new v2 storage function without v2 deployed functions", async () => {
       const newIamPolicy = {
         etag: "etag",
         version: 3,
@@ -429,5 +429,175 @@ describe("checkIam", () => {
       expect(setIamStub).to.have.been.calledOnce;
       expect(setIamStub).to.have.been.calledWith(projectNumber, newIamPolicy, "bindings");
     });
+  });
+
+  it("should add the pubsub publisher role for a new v2 storage function with v2 deployed functions", async () => {
+    const newIamPolicy = {
+      etag: "etag",
+      version: 3,
+      bindings: [
+        BINDING,
+        {
+          role: "roles/pubsub.publisher",
+          members: [`serviceAccount:${STORAGE_RES.email_address}`],
+        },
+      ],
+    };
+    storageStub.resolves(STORAGE_RES);
+    getIamStub.resolves({
+      etag: "etag",
+      version: 3,
+      bindings: [BINDING],
+    });
+    setIamStub.resolves(newIamPolicy);
+    const wantFn: backend.Endpoint = {
+      id: "wantFn",
+      entryPoint: "wantFn",
+      platform: "gcfv2",
+      eventTrigger: {
+        eventType: "google.cloud.storage.object.v1.finalized",
+        eventFilters: [
+          {
+            attribute: "bucket",
+            value: "my-bucket",
+          },
+        ],
+        retry: false,
+      },
+      ...SPEC,
+    };
+    const haveFn: backend.Endpoint = {
+      id: "haveFn",
+      entryPoint: "haveFn",
+      platform: "gcfv2",
+      eventTrigger: {
+        eventType: "google.firebase.firebasealerts.alerts.v1.published",
+        eventFilters: [
+          {
+            attribute: "alerttype",
+            value: "crashlytics.newFatalIssue",
+          },
+        ],
+        retry: false,
+      },
+      ...SPEC,
+    };
+
+    await checkIam.ensureServiceAgentRoles(projectNumber, backend.of(wantFn), backend.of(haveFn));
+
+    expect(storageStub).to.have.been.calledOnce;
+    expect(getIamStub).to.have.been.calledOnce;
+    expect(setIamStub).to.have.been.calledOnce;
+    expect(setIamStub).to.have.been.calledWith(projectNumber, newIamPolicy, "bindings");
+  });
+
+  it("should add the default bindings for a new v2 alerts function without v2 deployed functions", async () => {
+    const newIamPolicy = {
+      etag: "etag",
+      version: 3,
+      bindings: [
+        BINDING,
+        {
+          role: checkIam.SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE,
+          members: [
+            `serviceAccount:service-${projectNumber}@gcp-sa-pubsub.iam.gserviceaccount.com`,
+          ],
+        },
+        {
+          role: checkIam.RUN_INVOKER_ROLE,
+          members: [`serviceAccount:${projectNumber}-compute@developer.gserviceaccount.com`],
+        },
+        {
+          role: checkIam.EVENTARC_EVENT_RECEIVER_ROLE,
+          members: [`serviceAccount:${projectNumber}-compute@developer.gserviceaccount.com`],
+        },
+        {
+          role: checkIam.EVENTARC_SERVICE_AGENT_ROLE,
+          members: [
+            `serviceAccount:service-${projectNumber}@gcp-sa-eventarc.iam.gserviceaccount.com`,
+          ],
+        },
+      ],
+    };
+    getIamStub.resolves({
+      etag: "etag",
+      version: 3,
+      bindings: [BINDING],
+    });
+    setIamStub.resolves(newIamPolicy);
+    const wantFn: backend.Endpoint = {
+      id: "wantFn",
+      entryPoint: "wantFn",
+      platform: "gcfv2",
+      eventTrigger: {
+        eventType: "google.firebase.firebasealerts.alerts.v1.published",
+        eventFilters: [
+          {
+            attribute: "alerttype",
+            value: "crashlytics.newFatalIssue",
+          },
+        ],
+        retry: false,
+      },
+      ...SPEC,
+    };
+
+    await checkIam.ensureServiceAgentRoles(projectNumber, backend.of(wantFn), backend.empty());
+
+    expect(getIamStub).to.have.been.calledOnce;
+    expect(setIamStub).to.have.been.calledOnce;
+    expect(setIamStub).to.have.been.calledWith(projectNumber, newIamPolicy, "bindings");
+  });
+
+  it("should not add bindings for a new v2 alerts function with v2 deployed functions", async () => {
+    const newIamPolicy = {
+      etag: "etag",
+      version: 3,
+      bindings: [BINDING],
+    };
+    getIamStub.resolves({
+      etag: "etag",
+      version: 3,
+      bindings: [BINDING],
+    });
+    setIamStub.resolves(newIamPolicy);
+    const wantFn: backend.Endpoint = {
+      id: "wantFn",
+      entryPoint: "wantFn",
+      platform: "gcfv2",
+      eventTrigger: {
+        eventType: "google.firebase.firebasealerts.alerts.v1.published",
+        eventFilters: [
+          {
+            attribute: "alerttype",
+            value: "crashlytics.newFatalIssue",
+          },
+        ],
+        retry: false,
+      },
+      ...SPEC,
+    };
+    const haveFn: backend.Endpoint = {
+      id: "haveFn",
+      entryPoint: "haveFn",
+      platform: "gcfv2",
+      eventTrigger: {
+        eventType: "google.cloud.storage.object.v1.finalized",
+        eventFilters: [
+          {
+            attribute: "bucket",
+            value: "my-bucket",
+          },
+        ],
+        retry: false,
+      },
+      ...SPEC,
+    };
+
+    await checkIam.ensureServiceAgentRoles(projectNumber, backend.of(wantFn), backend.of(haveFn));
+
+    expect(getIamStub).to.have.been.calledOnce;
+    expect(setIamStub).to.have.been.calledOnce;
+    expect(setIamStub).to.have.been.calledWith(projectNumber, newIamPolicy, "bindings");
   });
 });

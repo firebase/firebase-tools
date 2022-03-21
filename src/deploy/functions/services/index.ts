@@ -4,7 +4,11 @@ import * as v2events from "../../../functions/events/v2";
 import { obtainStorageBindings, ensureStorageTriggerRegion } from "./storage";
 import { ensureFirebaseAlertsTriggerRegion } from "./firebaseAlerts";
 
+/** A standard void No Op */
 const noop = (): Promise<void> => Promise.resolve();
+
+/** A No Op that's useful for Services that don't have specific bindings but should still try to set default bindings */
+const noopProjectBindings = (): Promise<Array<iam.Binding>> => Promise.resolve([]);
 
 /** A service interface for the underlying GCP event services */
 export interface Service {
@@ -43,7 +47,7 @@ export const StorageService: Service = {
 export const FirebaseAlertsService: Service = {
   name: "firebasealerts",
   api: "logging.googleapis.com",
-  requiredProjectBindings: undefined,
+  requiredProjectBindings: noopProjectBindings,
   ensureTriggerRegion: ensureFirebaseAlertsTriggerRegion,
 };
 
