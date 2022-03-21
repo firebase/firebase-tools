@@ -2019,8 +2019,6 @@ describe("Storage emulator", () => {
       await page.evaluate(
         (appConfig, emulatorHost) => {
           firebase.initializeApp(appConfig);
-          // Wiring the app to use either the auth emulator or production auth
-          // based on the config flag.
           const auth = firebase.auth();
           auth.useEmulator(emulatorHost);
           (window as any).auth = auth;
@@ -2072,12 +2070,8 @@ describe("Storage emulator", () => {
       if (!TEST_CONFIG.keepBrowserOpen) {
         await browser.close();
       }
-      if (TEST_CONFIG.useProductionServers) {
-        delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
-      } else {
-        delete process.env.STORAGE_EMULATOR_HOST;
-        await test.stopEmulators();
-      }
+      delete process.env.STORAGE_EMULATOR_HOST;
+      await test.stopEmulators();
     });
 
     it("gcloud API persisted files should be accessible via Firebase SDK", async () => {
