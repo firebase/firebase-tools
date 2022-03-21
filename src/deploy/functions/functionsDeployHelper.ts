@@ -1,9 +1,9 @@
 import * as backend from "./backend";
 import * as projectConfig from "../../functions/projectConfig";
 
-export interface FunctionFilter {
-  // If codebase is undefined, match all functions in all codebase that mathces the idChunks.
-  // This is useful when running functions:delete command.
+export interface EndpointFilter {
+  // If codebase is undefined, match all functions in all codebase that matches the idChunks.
+  // This is useful when trying to filter just using id chunks.
   codebase?: string;
   // If id chunks is undefined, match all function in the said codebase.
   idChunks?: string[];
@@ -15,25 +15,25 @@ export interface FunctionFilter {
  * If no filter is passed, always returns true.
  */
 export function functionMatchesAnyFilter(
-  config: projectConfig.ValidatedSingle,
+  b: backend.Backend,
   func: backend.TargetIds,
-  filters?: FunctionFilter[]
+  filters?: EndpointFilter[]
 ) {
   if (!filters) {
     return true;
   }
-  return filters.some((filter) => functionMatchesFilter(config, func, filter));
+  return filters.some((filter) => functionMatchesFilter(b, func, filter));
 }
 
 /**
  * Returns true if function matches the given filter.
  */
 export function functionMatchesFilter(
-  config: projectConfig.ValidatedSingle,
+  b: backend.Backend,
   func: backend.TargetIds,
-  filter: FunctionFilter
+  filter: EndpointFilter
 ): boolean {
-  if (filter.codebase && filter.codebase !== config.codebase) {
+  if (filter.codebase && filter.codebase !== b.codebase) {
     return false;
   }
 
@@ -57,7 +57,7 @@ export function functionMatchesFilter(
 /**
  * Returns list of filters after parsing selector.
  */
-export function parseFunctionSelector(selector: string): FunctionFilter[] {
+export function parseFunctionSelector(selector: string): EndpointFilter[] {
   const fragments = selector.split(":");
   if (fragments.length < 2) {
     // This is a plain selector w/o codebase prefix (e.g. "abc" not "abc:efg") .
@@ -103,13 +103,13 @@ export function parseFunctionSelector(selector: string): FunctionFilter[] {
  *
  *   If no filter exists, we return undefined which the caller should interpret as "match all functions".
  */
-export function getFunctionFilters(options: { only?: string }): FunctionFilter[] | undefined {
+export function getFunctionFilters(options: { only?: string }): EndpointFilter[] | undefined {
   if (!options.only) {
     return undefined;
   }
 
   const selectors = options.only.split(",");
-  const filters: FunctionFilter[] = [];
+  const filters: EndpointFilter[] = [];
   for (let selector of selectors) {
     if (selector.startsWith("functions:")) {
       selector = selector.replace("functions:", "");

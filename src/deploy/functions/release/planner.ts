@@ -1,5 +1,5 @@
 import {
-  FunctionFilter,
+  EndpointFilter,
   functionMatchesAnyFilter,
   getFunctionLabel,
 } from "../functionsDeployHelper";
@@ -105,10 +105,10 @@ export function createDeploymentPlan(
 ): DeploymentPlan {
   let deployment: DeploymentPlan = {};
   want = backend.matchingBackend(want, (endpoint) => {
-    return functionMatchesAnyFilter(context.config!, endpoint, context.filters);
+    return functionMatchesAnyFilter(want, endpoint, context.filters);
   });
   have = backend.matchingBackend(have, (endpoint) => {
-    return functionMatchesAnyFilter(context.config!, endpoint, context.filters);
+    return functionMatchesAnyFilter(have, endpoint, context.filters);
   });
 
   const regions = new Set([...Object.keys(want.endpoints), ...Object.keys(have.endpoints)]);

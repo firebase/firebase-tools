@@ -17,7 +17,7 @@ export interface Payload {
 // details.
 export interface Context {
   projectId: string;
-  filters?: deployHelper.FunctionFilter[];
+  filters?: deployHelper.EndpointFilter[];
 
   // Filled in the "prepare" phase.
   config?: projectConfig.ValidatedSingle;
