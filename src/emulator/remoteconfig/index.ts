@@ -8,6 +8,7 @@ import * as fs from "fs";
 import { FirebaseError } from "../../error";
 import * as chokidar from "chokidar";
 import { cloneDeep } from "lodash";
+import { RemoteConfigCloudFunctions } from "./cloudFunctions";
 
 export interface RemoteConfigEmulatorArgs {
   projectId: string;
@@ -31,10 +32,13 @@ export class RemoteConfigEmulator implements EmulatorInstance {
   private _templateWatcher?: chokidar.FSWatcher;
   private _templateSource?: Source;
   private _emulatorTemplate?: any;
+  private _cloudFunctions: RemoteConfigCloudFunctions;
 
   private _logger = EmulatorLogger.forEmulator(Emulators.REMOTE_CONFIG);
 
-  constructor(private args: RemoteConfigEmulatorArgs) {}
+  constructor(private args: RemoteConfigEmulatorArgs) {
+    this._cloudFunctions = new RemoteConfigCloudFunctions(args.projectId);
+  }
 
   get logger(): EmulatorLogger {
     return this._logger;
@@ -46,6 +50,16 @@ export class RemoteConfigEmulator implements EmulatorInstance {
 
   set template(newTemplate: any) {
     this._emulatorTemplate = newTemplate;
+    this._cloudFunctions.dispatch("update", {
+      description: "i am working",
+      updateOrigin: "REST_API",
+      updateTime: new Date().toISOString(),
+      updateType: "FORCED_UPDATE",
+      updateUser: {
+        email: "me@you.com",
+      },
+      versionNumber: 1,
+    });
   }
 
   async start(): Promise<void> {
