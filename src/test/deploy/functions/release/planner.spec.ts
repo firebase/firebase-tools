@@ -155,6 +155,7 @@ describe("planner", () => {
       // note: pantheon is not updated in any way
       expect(planner.calculateChangesets(context, want, have, (e) => e.region)).to.deep.equal({
         region: {
+          context,
           endpointsToCreate: [created],
           endpointsToUpdate: [
             {
@@ -180,6 +181,7 @@ describe("planner", () => {
       expect(planner.calculateChangesets(context, want, have, (e) => e.region, true)).to.deep.equal(
         {
           region: {
+            context,
             endpointsToCreate: [created],
             endpointsToUpdate: [
               {
@@ -212,9 +214,11 @@ describe("planner", () => {
         region2mem1Created,
         region2mem2Updated
       );
+      want.codebase = "default";
 
       expect(planner.createDeploymentPlan(want, have)).to.deep.equal({
         "region1-default": {
+          context: { codebase: "default" },
           endpointsToCreate: [region1mem1Created],
           endpointsToUpdate: [
             {
@@ -224,11 +228,13 @@ describe("planner", () => {
           endpointsToDelete: [],
         },
         "region2-default": {
+          context: { codebase: "default" },
           endpointsToCreate: [region2mem1Created],
           endpointsToUpdate: [],
           endpointsToDelete: [],
         },
         "region2-512": {
+          context: { codebase: "default" },
           endpointsToCreate: [],
           endpointsToUpdate: [
             {
@@ -253,6 +259,7 @@ describe("planner", () => {
       group2Deleted.labels = deploymentTool.labels();
 
       const want = backend.of(group1Updated, group1Created, group2Updated, group2Created);
+      want.codebase = "default";
       const have = backend.of(group1Updated, group1Deleted, group2Updated, group2Deleted);
 
       expect(
@@ -261,6 +268,7 @@ describe("planner", () => {
         ])
       ).to.deep.equal({
         "region-default": {
+          context: { codebase: "default" },
           endpointsToCreate: [group1Created],
           endpointsToUpdate: [
             {

@@ -33,8 +33,14 @@ export function functionMatchesFilter(
   func: backend.TargetIds,
   filter: EndpointFilter
 ): boolean {
-  if (filter.codebase && filter.codebase !== b.codebase) {
-    return false;
+  // Only enforce codebase-based filtering when backend provides it.
+  if (b.codebase) {
+    // If filter.codebase is undefined, that means we apply filter.idChuncks to all codebases.
+    if (filter.codebase) {
+      if (b.codebase !== filter.codebase) {
+        return false;
+      }
+    }
   }
 
   if (!filter.idChunks) {

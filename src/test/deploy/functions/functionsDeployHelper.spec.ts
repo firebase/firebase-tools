@@ -61,7 +61,7 @@ describe("functionsDeployHelper", () => {
         .to.be.false;
     });
 
-    it("should not match function in wrong codebase", () => {
+    it("should not match function in different codebase", () => {
       const func = { ...ENDPOINT, id: "group-subgroup-func" };
       const config = { ...BACKEND, codebase: "another-codebase" };
 
@@ -81,6 +81,28 @@ describe("functionsDeployHelper", () => {
       ).to.be.false;
       expect(helper.functionMatchesFilter(config, func, { ...BASE_FILTER, idChunks: ["group"] })).to
         .be.false;
+    });
+
+    it("should match function if backend's codebase is undefined", () => {
+      const func = { ...ENDPOINT, id: "group-subgroup-func" };
+      const backend = { ...BACKEND, codebase: undefined };
+
+      expect(
+        helper.functionMatchesFilter(backend, func, {
+          ...BASE_FILTER,
+          codebase: "my-codebase",
+          idChunks: ["group", "subgroup", "func"],
+        })
+      ).to.be.true;
+      expect(
+        helper.functionMatchesFilter(backend, func, {
+          ...BASE_FILTER,
+          codebase: "my-codebase",
+          idChunks: ["group", "subgroup"],
+        })
+      ).to.be.true;
+      expect(helper.functionMatchesFilter(backend, func, { ...BASE_FILTER, idChunks: ["group"] })).to
+        .be.true;
     });
 
     it("should match function matching ids given no codebase", () => {
