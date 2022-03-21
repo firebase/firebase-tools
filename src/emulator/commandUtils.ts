@@ -484,7 +484,7 @@ export async function checkJavaSupported(): Promise<boolean> {
       );
     });
 
-    child.once("exit", async (code, signal) => {
+    child.once("exit", (code, signal) => {
       if (signal) {
         // This is an unlikely situation where the short-lived Java process to
         // check version was killed by a signal.
