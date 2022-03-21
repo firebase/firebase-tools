@@ -294,7 +294,7 @@ export interface Backend {
   endpoints: Record<string, Record<string, Endpoint>>;
 
   // Output only.
-  // "Codebase" is not part of the container contract - instead, it's part of firebase.json.
+  // "Codebase" is not part of the container contract. Instead, it's value is provided by firebase.json.
   codebase?: string;
 }
 

@@ -26,9 +26,9 @@ export async function release(
   }
 
   const plan = planner.createDeploymentPlan(
-    context,
     payload.functions!.backend,
-    await backend.existingBackend(context)
+    await backend.existingBackend(context),
+    context.filters
   );
 
   const fnsToDelete = Object.values(plan)

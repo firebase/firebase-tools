@@ -194,14 +194,6 @@ describe("planner", () => {
   });
 
   describe("createDeploymentPlan", () => {
-    const CONTEXT: args.Context = {
-      projectId: "test-project",
-      config: {
-        source: "functions",
-        codebase: projectConfig.DEFAULT_CODEBASE,
-      },
-    };
-
     it("groups deployment by region and memory", () => {
       const region1mem1Created: backend.Endpoint = func("id1", "region1");
       const region1mem1Updated: backend.Endpoint = func("id2", "region1");
@@ -221,7 +213,7 @@ describe("planner", () => {
         region2mem2Updated
       );
 
-      expect(planner.createDeploymentPlan(CONTEXT, want, have)).to.deep.equal({
+      expect(planner.createDeploymentPlan(want, have)).to.deep.equal({
         "region1-default": {
           endpointsToCreate: [region1mem1Created],
           endpointsToUpdate: [
@@ -264,11 +256,9 @@ describe("planner", () => {
       const have = backend.of(group1Updated, group1Deleted, group2Updated, group2Deleted);
 
       expect(
-        planner.createDeploymentPlan(
-          { ...CONTEXT, filters: [{ codebase: projectConfig.DEFAULT_CODEBASE, idChunks: ["g1"] }] },
-          want,
-          have
-        )
+        planner.createDeploymentPlan(want, have, [
+          { codebase: projectConfig.DEFAULT_CODEBASE, idChunks: ["g1"] },
+        ])
       ).to.deep.equal({
         "region-default": {
           endpointsToCreate: [group1Created],
@@ -292,7 +282,7 @@ describe("planner", () => {
       const want = backend.of(upgraded);
 
       allowV2Upgrades();
-      planner.createDeploymentPlan(CONTEXT, want, have);
+      planner.createDeploymentPlan(want, have);
       expect(logLabeledBullet).to.have.been.calledOnceWith(
         "functions",
         sinon.match(/change this with the 'concurrency' option/)
@@ -305,11 +295,11 @@ describe("planner", () => {
       // should be no warning
       const v2Function: backend.Endpoint = { ...func("id", "region"), platform: "gcfv2" };
 
-      planner.createDeploymentPlan(CONTEXT, backend.of(v2Function), backend.of(v2Function));
+      planner.createDeploymentPlan(backend.of(v2Function), backend.of(v2Function));
       expect(logLabeledBullet).to.not.have.been.called;
 
       const v1Function: backend.Endpoint = { ...func("id", "region"), platform: "gcfv1" };
-      planner.createDeploymentPlan(CONTEXT, backend.of(v1Function), backend.of(v1Function));
+      planner.createDeploymentPlan(backend.of(v1Function), backend.of(v1Function));
       expect(logLabeledBullet).to.not.have.been.called;
 
       // Upgraded but specified concurrency
@@ -318,11 +308,7 @@ describe("planner", () => {
         platform: "gcfv2",
         concurrency: 80,
       };
-      planner.createDeploymentPlan(
-        CONTEXT,
-        backend.of(concurrencyUpgraded),
-        backend.of(v1Function)
-      );
+      planner.createDeploymentPlan(backend.of(concurrencyUpgraded), backend.of(v1Function));
       expect(logLabeledBullet).to.not.have.been.called;
     });
   });

@@ -100,23 +100,22 @@ export function calculateUpdate(want: backend.Endpoint, have: backend.Endpoint):
 
 /**
  * Create a plan for deploying all functions in one region.
- * @param context Deployment context (should contain both deployment config and filters).
  * @param want the desired state
  * @param have the current state
  * @param deleteAll Deletes all functions if set.
  */
 export function createDeploymentPlan(
-  context: args.Context,
   want: backend.Backend,
   have: backend.Backend,
+  filters?: EndpointFilter[],
   deleteAll?: boolean
 ): DeploymentPlan {
   let deployment: DeploymentPlan = {};
   want = backend.matchingBackend(want, (endpoint) => {
-    return functionMatchesAnyFilter(want, endpoint, context.filters);
+    return functionMatchesAnyFilter(want, endpoint, filters);
   });
   have = backend.matchingBackend(have, (endpoint) => {
-    return functionMatchesAnyFilter(have, endpoint, context.filters);
+    return functionMatchesAnyFilter(have, endpoint, filters);
   });
 
   const regions = new Set([...Object.keys(want.endpoints), ...Object.keys(have.endpoints)]);
