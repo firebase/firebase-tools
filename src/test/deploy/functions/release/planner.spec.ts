@@ -141,6 +141,7 @@ describe("planner", () => {
   });
 
   describe("calculateRegionalChanges", () => {
+    const context = { codebase: "default" };
     it("passes a smoke test", () => {
       const created = func("created", "region");
       const updated = func("updated", "region");
@@ -152,7 +153,7 @@ describe("planner", () => {
       const have = { updated, deleted, pantheon };
 
       // note: pantheon is not updated in any way
-      expect(planner.calculateChangesets(want, have, (e) => e.region)).to.deep.equal({
+      expect(planner.calculateChangesets(context, want, have, (e) => e.region)).to.deep.equal({
         region: {
           endpointsToCreate: [created],
           endpointsToUpdate: [
@@ -176,17 +177,19 @@ describe("planner", () => {
       const have = { updated, deleted, pantheon };
 
       // note: pantheon is deleted because we have deleteAll: true
-      expect(planner.calculateChangesets(want, have, (e) => e.region, true)).to.deep.equal({
-        region: {
-          endpointsToCreate: [created],
-          endpointsToUpdate: [
-            {
-              endpoint: updated,
-            },
-          ],
-          endpointsToDelete: [deleted, pantheon],
-        },
-      });
+      expect(planner.calculateChangesets(context, want, have, (e) => e.region, true)).to.deep.equal(
+        {
+          region: {
+            endpointsToCreate: [created],
+            endpointsToUpdate: [
+              {
+                endpoint: updated,
+              },
+            ],
+            endpointsToDelete: [deleted, pantheon],
+          },
+        }
+      );
     });
   });
 

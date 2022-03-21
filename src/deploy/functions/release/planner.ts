@@ -15,7 +15,13 @@ export interface EndpointUpdate {
   deleteAndRecreate?: backend.Endpoint;
 }
 
+/** Additional context associated with a changeset **/
+export interface ChangeContext {
+  codebase: string;
+}
+
 export interface Changeset {
+  context: ChangeContext;
   endpointsToCreate: backend.Endpoint[];
   endpointsToUpdate: EndpointUpdate[];
   endpointsToDelete: backend.Endpoint[];
@@ -25,6 +31,7 @@ export type DeploymentPlan = Record<string, Changeset>;
 
 /** Calculate the changesets of given endpoints by grouping endpoints with keyFn. */
 export function calculateChangesets(
+  context: ChangeContext,
   want: Record<string, backend.Endpoint>,
   have: Record<string, backend.Endpoint>,
   keyFn: (e: backend.Endpoint) => string,
@@ -60,6 +67,7 @@ export function calculateChangesets(
   ]);
   for (const key of keys) {
     result[key] = {
+      context,
       endpointsToCreate: toCreate[key] || [],
       endpointsToUpdate: toUpdate[key] || [],
       endpointsToDelete: toDelete[key] || [],
@@ -114,6 +122,7 @@ export function createDeploymentPlan(
   const regions = new Set([...Object.keys(want.endpoints), ...Object.keys(have.endpoints)]);
   for (const region of regions) {
     const changesets = calculateChangesets(
+      { codebase: want.codebase! },
       want.endpoints[region] || {},
       have.endpoints[region] || {},
       (e) => `${e.region}-${e.availableMemoryMb || "default"}`,

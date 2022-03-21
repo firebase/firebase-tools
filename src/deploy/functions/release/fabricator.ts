@@ -123,11 +123,17 @@ export class Fabricator {
     const scraper = new SourceTokenScraper();
     for (const endpoint of changes.endpointsToCreate) {
       this.logOpStart("creating", endpoint);
-      upserts.push(handle("create", endpoint, () => this.createEndpoint(endpoint, scraper)));
+      upserts.push(
+        handle("create", endpoint, () => this.createEndpoint(changes.context, endpoint, scraper))
+      );
     }
     for (const update of changes.endpointsToUpdate) {
       this.logOpStart("updating", update.endpoint);
-      upserts.push(handle("update", update.endpoint, () => this.updateEndpoint(update, scraper)));
+      upserts.push(
+        handle("update", update.endpoint, () =>
+          this.updateEndpoint(changes.context, update, scraper)
+        )
+      );
     }
     await utils.allSettled(upserts);
 
@@ -147,15 +153,25 @@ export class Fabricator {
     const deletes: Array<Promise<void>> = [];
     for (const endpoint of changes.endpointsToDelete) {
       this.logOpStart("deleting", endpoint);
-      deletes.push(handle("delete", endpoint, () => this.deleteEndpoint(endpoint)));
+      deletes.push(
+        handle("delete", endpoint, () => this.deleteEndpoint(changes.context, endpoint))
+      );
     }
     await utils.allSettled(deletes);
 
     return deployResults;
   }
 
-  async createEndpoint(endpoint: backend.Endpoint, scraper: SourceTokenScraper): Promise<void> {
-    endpoint.labels = { ...endpoint.labels, ...deploymentTool.labels() };
+  async createEndpoint(
+    context: planner.ChangeContext,
+    endpoint: backend.Endpoint,
+    scraper: SourceTokenScraper
+  ): Promise<void> {
+    endpoint.labels = {
+      ...endpoint.labels,
+      ...deploymentTool.labels(),
+      "firebase-functions-codebase": context.codebase,
+    };
     if (endpoint.platform === "gcfv1") {
       await this.createV1Function(endpoint, scraper);
     } else if (endpoint.platform === "gcfv2") {
@@ -167,14 +183,22 @@ export class Fabricator {
     await this.setTrigger(endpoint);
   }
 
-  async updateEndpoint(update: planner.EndpointUpdate, scraper: SourceTokenScraper): Promise<void> {
+  async updateEndpoint(
+    context: planner.ChangeContext,
+    update: planner.EndpointUpdate,
+    scraper: SourceTokenScraper
+  ): Promise<void> {
     // GCF team wants us to stop setting the deployment-tool labels on updates for gen 2
     if (update.deleteAndRecreate || update.endpoint.platform !== "gcfv2") {
       update.endpoint.labels = { ...update.endpoint.labels, ...deploymentTool.labels() };
     }
+    update.endpoint.labels = {
+      ...update.endpoint.labels,
+      "firebase-functions-codebase": context.codebase,
+    };
     if (update.deleteAndRecreate) {
-      await this.deleteEndpoint(update.deleteAndRecreate);
-      await this.createEndpoint(update.endpoint, scraper);
+      await this.deleteEndpoint(context, update.deleteAndRecreate);
+      await this.createEndpoint(context, update.endpoint, scraper);
       return;
     }
 
@@ -189,7 +213,7 @@ export class Fabricator {
     await this.setTrigger(update.endpoint);
   }
 
-  async deleteEndpoint(endpoint: backend.Endpoint): Promise<void> {
+  async deleteEndpoint(context: planner.ChangeContext, endpoint: backend.Endpoint): Promise<void> {
     await this.deleteTrigger(endpoint);
     if (endpoint.platform === "gcfv1") {
       await this.deleteV1Function(endpoint);

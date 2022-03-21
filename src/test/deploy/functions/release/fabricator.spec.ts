@@ -990,14 +990,23 @@ describe("Fabricator", () => {
   });
 
   describe("createEndpoint", () => {
+    const context = { codebase: "default" };
+
     it("creates v1 functions", async () => {
       const ep = endpoint();
       const setTrigger = sinon.stub(fab, "setTrigger");
       setTrigger.resolves();
       const createV1Function = sinon.stub(fab, "createV1Function");
-      createV1Function.resolves();
+      const fakeCreateV1Function = (
+        endpoint: backend.Endpoint,
+        s: scraper.SourceTokenScraper
+      ): Promise<void> => {
+        expect(endpoint.labels).to.have.property("firebase-functions-codebase", context.codebase);
+        return Promise.resolve();
+      };
+      createV1Function.callsFake(fakeCreateV1Function);
 
-      await fab.createEndpoint(ep, new scraper.SourceTokenScraper());
+      await fab.createEndpoint(context, ep, new scraper.SourceTokenScraper());
       expect(createV1Function).is.calledOnce;
       expect(setTrigger).is.calledOnce;
       expect(setTrigger).is.calledAfter(createV1Function);
@@ -1008,9 +1017,13 @@ describe("Fabricator", () => {
       const setTrigger = sinon.stub(fab, "setTrigger");
       setTrigger.resolves();
       const createV2Function = sinon.stub(fab, "createV2Function");
-      createV2Function.resolves();
+      const fakeCreateV2Function = (endpoint: backend.Endpoint): Promise<void> => {
+        expect(endpoint.labels).to.have.property("firebase-functions-codebase", context.codebase);
+        return Promise.resolve();
+      };
+      createV2Function.callsFake(fakeCreateV2Function);
 
-      await fab.createEndpoint(ep, new scraper.SourceTokenScraper());
+      await fab.createEndpoint(context, ep, new scraper.SourceTokenScraper());
       expect(createV2Function).is.calledOnce;
       expect(setTrigger).is.calledOnce;
       expect(setTrigger).is.calledAfter(createV2Function);
@@ -1022,24 +1035,32 @@ describe("Fabricator", () => {
       const createV1Function = sinon.stub(fab, "createV1Function");
       createV1Function.rejects(new reporter.DeploymentError(ep, "set invoker", undefined));
 
-      await expect(fab.createEndpoint(ep, new scraper.SourceTokenScraper())).to.be.rejectedWith(
-        reporter.DeploymentError,
-        "set invoker"
-      );
+      await expect(
+        fab.createEndpoint(context, ep, new scraper.SourceTokenScraper())
+      ).to.be.rejectedWith(reporter.DeploymentError, "set invoker");
       expect(createV1Function).is.calledOnce;
       expect(setTrigger).is.not.called;
     });
   });
 
   describe("updateEndpoint", () => {
+    const context = { codebase: "default" };
+
     it("updates v1 functions", async () => {
       const ep = endpoint();
       const setTrigger = sinon.stub(fab, "setTrigger");
       setTrigger.resolves();
       const updateV1Function = sinon.stub(fab, "updateV1Function");
-      updateV1Function.resolves();
+      const fakeUpdateV1Function = (
+        endpoint: backend.Endpoint,
+        s: scraper.SourceTokenScraper
+      ): Promise<void> => {
+        expect(endpoint.labels).to.have.property("firebase-functions-codebase", context.codebase);
+        return Promise.resolve();
+      };
+      updateV1Function.callsFake(fakeUpdateV1Function);
 
-      await fab.updateEndpoint({ endpoint: ep }, new scraper.SourceTokenScraper());
+      await fab.updateEndpoint(context, { endpoint: ep }, new scraper.SourceTokenScraper());
       expect(updateV1Function).is.calledOnce;
       expect(setTrigger).is.calledOnce;
       expect(setTrigger).is.calledAfter(updateV1Function);
@@ -1050,9 +1071,13 @@ describe("Fabricator", () => {
       const setTrigger = sinon.stub(fab, "setTrigger");
       setTrigger.resolves();
       const updateV2Function = sinon.stub(fab, "updateV2Function");
-      updateV2Function.resolves();
+      const fakeUpdateV2Function = (endpoint: backend.Endpoint): Promise<void> => {
+        expect(endpoint.labels).to.have.property("firebase-functions-codebase", context.codebase);
+        return Promise.resolve();
+      };
+      updateV2Function.callsFake(fakeUpdateV2Function);
 
-      await fab.updateEndpoint({ endpoint: ep }, new scraper.SourceTokenScraper());
+      await fab.updateEndpoint(context, { endpoint: ep }, new scraper.SourceTokenScraper());
       expect(updateV2Function).is.calledOnce;
       expect(setTrigger).is.calledOnce;
       expect(setTrigger).is.calledAfter(updateV2Function);
@@ -1065,7 +1090,7 @@ describe("Fabricator", () => {
       updateV1Function.rejects(new reporter.DeploymentError(ep, "set invoker", undefined));
 
       await expect(
-        fab.updateEndpoint({ endpoint: ep }, new scraper.SourceTokenScraper())
+        fab.updateEndpoint(context, { endpoint: ep }, new scraper.SourceTokenScraper())
       ).to.be.rejectedWith(reporter.DeploymentError, "set invoker");
       expect(updateV1Function).is.calledOnce;
       expect(setTrigger).is.not.called;
@@ -1094,7 +1119,7 @@ describe("Fabricator", () => {
       const createV2Function = sinon.stub(fab, "createV2Function");
       createV2Function.resolves();
 
-      await fab.updateEndpoint(update, new scraper.SourceTokenScraper());
+      await fab.updateEndpoint(context, update, new scraper.SourceTokenScraper());
 
       expect(deleteTrigger).to.have.been.called;
       expect(deleteV1Function).to.have.been.calledImmediatelyAfter(deleteTrigger);
@@ -1104,6 +1129,8 @@ describe("Fabricator", () => {
   });
 
   describe("deleteEndpoint", () => {
+    const context = { codebase: "default" };
+
     it("deletes v1 functions", async () => {
       const ep = endpoint();
       const deleteTrigger = sinon.stub(fab, "deleteTrigger");
@@ -1111,7 +1138,7 @@ describe("Fabricator", () => {
       const deleteV1Function = sinon.stub(fab, "deleteV1Function");
       deleteV1Function.resolves();
 
-      await fab.deleteEndpoint(ep);
+      await fab.deleteEndpoint(context, ep);
       expect(deleteTrigger).to.have.been.called;
       expect(deleteV1Function).to.have.been.calledImmediatelyAfter(deleteTrigger);
     });
@@ -1123,7 +1150,7 @@ describe("Fabricator", () => {
       const deleteV2Function = sinon.stub(fab, "deleteV2Function");
       deleteV2Function.resolves();
 
-      await fab.deleteEndpoint(ep);
+      await fab.deleteEndpoint(context, ep);
       expect(deleteTrigger).to.have.been.called;
       expect(deleteV2Function).to.have.been.calledImmediatelyAfter(deleteTrigger);
     });
@@ -1135,17 +1162,20 @@ describe("Fabricator", () => {
       deleteTrigger.rejects(new reporter.DeploymentError(ep, "delete schedule", undefined));
       deleteV2Function.resolves();
 
-      await expect(fab.deleteEndpoint(ep)).to.eventually.be.rejected;
+      await expect(fab.deleteEndpoint(context, ep)).to.eventually.be.rejected;
       expect(deleteV2Function).to.not.have.been.called;
     });
   });
 
   describe("applyRegionalUpdates", () => {
+    const context = { codebase: "default" };
+
     it("shares source token scrapers across upserts", async () => {
       const ep1 = endpoint({ httpsTrigger: {} }, { id: "A" });
       const ep2 = endpoint({ httpsTrigger: {} }, { id: "B" });
       const ep3 = endpoint({ httpsTrigger: {} }, { id: "C" });
       const changes: planner.Changeset = {
+        context,
         endpointsToCreate: [ep1, ep2],
         endpointsToUpdate: [{ endpoint: ep3 }],
         endpointsToDelete: [],
@@ -1154,6 +1184,7 @@ describe("Fabricator", () => {
       let sourceTokenScraper: scraper.SourceTokenScraper | undefined;
       let callCount = 0;
       const fakeUpsert = (
+        context: planner.ChangeContext,
         unused: backend.Endpoint | planner.EndpointUpdate,
         s: scraper.SourceTokenScraper
       ): Promise<void> => {
@@ -1178,6 +1209,7 @@ describe("Fabricator", () => {
       // when it hits a real API it will fail.
       const ep = endpoint();
       const changes: planner.Changeset = {
+        context,
         endpointsToCreate: [ep],
         endpointsToUpdate: [],
         endpointsToDelete: [],
@@ -1187,65 +1219,71 @@ describe("Fabricator", () => {
       expect(results[0].error).to.be.instanceOf(reporter.DeploymentError);
       expect(results[0].error?.message).to.match(/create function/);
     });
-  });
 
-  it("does not delete if there are upsert errors", async () => {
-    // when it hits a real API it will fail.
-    const createEP = endpoint({ httpsTrigger: {} }, { id: "A" });
-    const deleteEP = endpoint({ httpsTrigger: {} }, { id: "B" });
-    const changes: planner.Changeset = {
-      endpointsToCreate: [createEP],
-      endpointsToUpdate: [],
-      endpointsToDelete: [deleteEP],
-    };
+    it("does not delete if there are upsert errors", async () => {
+      // when it hits a real API it will fail.
+      const createEP = endpoint({ httpsTrigger: {} }, { id: "A" });
+      const deleteEP = endpoint({ httpsTrigger: {} }, { id: "B" });
+      const changes: planner.Changeset = {
+        context,
+        endpointsToCreate: [createEP],
+        endpointsToUpdate: [],
+        endpointsToDelete: [deleteEP],
+      };
 
-    const results = await fab.applyChangeset(changes);
-    const result = results.find((r) => r.endpoint.id === deleteEP.id);
-    expect(result?.error).to.be.instanceOf(reporter.AbortedDeploymentError);
-    expect(result?.durationMs).to.equal(0);
-  });
+      const results = await fab.applyChangeset(changes);
+      const result = results.find((r) => r.endpoint.id === deleteEP.id);
+      expect(result?.error).to.be.instanceOf(reporter.AbortedDeploymentError);
+      expect(result?.durationMs).to.equal(0);
+    });
 
-  it("applies all kinds of changes", async () => {
-    const createEP = endpoint({ httpsTrigger: {} }, { id: "A" });
-    const updateEP = endpoint({ httpsTrigger: {} }, { id: "B" });
-    const deleteEP = endpoint({ httpsTrigger: {} }, { id: "C" });
-    const update: planner.EndpointUpdate = { endpoint: updateEP };
-    const changes: planner.Changeset = {
-      endpointsToCreate: [createEP],
-      endpointsToUpdate: [update],
-      endpointsToDelete: [deleteEP],
-    };
+    it("applies all kinds of changes", async () => {
+      const createEP = endpoint({ httpsTrigger: {} }, { id: "A" });
+      const updateEP = endpoint({ httpsTrigger: {} }, { id: "B" });
+      const deleteEP = endpoint({ httpsTrigger: {} }, { id: "C" });
+      const update: planner.EndpointUpdate = { endpoint: updateEP };
+      const changes: planner.Changeset = {
+        context,
+        endpointsToCreate: [createEP],
+        endpointsToUpdate: [update],
+        endpointsToDelete: [deleteEP],
+      };
 
-    const createEndpoint = sinon.stub(fab, "createEndpoint");
-    createEndpoint.resolves();
-    const updateEndpoint = sinon.stub(fab, "updateEndpoint");
-    updateEndpoint.resolves();
-    const deleteEndpoint = sinon.stub(fab, "deleteEndpoint");
-    deleteEndpoint.resolves();
+      const createEndpoint = sinon.stub(fab, "createEndpoint");
+      createEndpoint.resolves();
+      const updateEndpoint = sinon.stub(fab, "updateEndpoint");
+      updateEndpoint.resolves();
+      const deleteEndpoint = sinon.stub(fab, "deleteEndpoint");
+      deleteEndpoint.resolves();
 
-    const results = await fab.applyChangeset(changes);
-    expect(createEndpoint).to.have.been.calledWithMatch(createEP);
-    expect(updateEndpoint).to.have.been.calledWithMatch(update);
-    expect(deleteEndpoint).to.have.been.calledWith(deleteEP);
+      const results = await fab.applyChangeset(changes);
+      expect(createEndpoint).to.have.been.calledWithMatch(context, createEP);
+      expect(updateEndpoint).to.have.been.calledWithMatch(context, update);
+      expect(deleteEndpoint).to.have.been.calledWith(context, deleteEP);
 
-    // We can't actually verify that the timing isn't zero because tests
-    // have run in <1ms and failed.
-    expect(results[0].error).to.be.undefined;
-    expect(results[1].error).to.be.undefined;
-    expect(results[2].error).to.be.undefined;
+      // We can't actually verify that the timing isn't zero because tests
+      // have run in <1ms and failed.
+      expect(results[0].error).to.be.undefined;
+      expect(results[1].error).to.be.undefined;
+      expect(results[2].error).to.be.undefined;
+    });
   });
 
   describe("applyPlan", () => {
+    const context = { codebase: "default" };
+
     it("fans out to regions", async () => {
       const ep1 = endpoint({ httpsTrigger: {} }, { region: "us-central1" });
       const ep2 = endpoint({ httpsTrigger: {} }, { region: "us-west1" });
       const plan: planner.DeploymentPlan = {
         "us-central1": {
+          context,
           endpointsToCreate: [ep1],
           endpointsToUpdate: [],
           endpointsToDelete: [],
         },
         "us-west1": {
+          context,
           endpointsToCreate: [],
           endpointsToUpdate: [],
           endpointsToDelete: [ep2],

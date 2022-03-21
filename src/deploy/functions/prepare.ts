@@ -113,11 +113,6 @@ export async function prepare(
   for (const endpoint of backend.allEndpoints(wantBackend)) {
     // Setup environment variables on each function.
     endpoint.environmentVariables = wantBackend.environmentVariables;
-    // Tag each endpoint with the current codebase.
-    endpoint.labels = {
-      ...endpoint.labels,
-      "firebase-functions-codebase": context.config.codebase,
-    };
   }
 
   payload.functions = { backend: wantBackend };
