@@ -161,6 +161,9 @@ export function emulatedFunctionsFromEndpoints(
     // process requires it in this form. Need to work in Firestore emulator for a proper fix...
     if (backend.isHttpsTriggered(endpoint)) {
       def.httpsTrigger = endpoint.httpsTrigger;
+    } else if (backend.isCallableTriggered(endpoint)) {
+      def.httpsTrigger = {};
+      def.labels = { ...def.labels, "deployment-callable": "true" };
     } else if (backend.isEventTriggered(endpoint)) {
       const eventTrigger = endpoint.eventTrigger;
       if (endpoint.platform === "gcfv1") {
