@@ -12,7 +12,7 @@ import { checkBillingEnabled } from "../gcp/cloudbilling";
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
-import { assertProjectId, getProjectId, needProjectId } from "../projectUtils";
+import { assertProjectId, getProjectId } from "../projectUtils";
 import * as extensionsApi from "../extensions/extensionsApi";
 import * as secretsUtils from "../extensions/secretsUtils";
 import * as provisioningHelper from "../extensions/provisioningHelper";

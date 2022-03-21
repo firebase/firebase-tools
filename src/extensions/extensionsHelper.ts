@@ -21,7 +21,7 @@ import { diagnose } from "./diagnose";
 import { checkResponse } from "./askUserForParam";
 import { ensure } from "../ensureApiEnabled";
 import { deleteObject, uploadObject } from "../gcp/storage";
-import { assertProjectId, getProjectId, needProjectId } from "../projectUtils";
+import { getProjectId } from "../projectUtils";
 import {
   createSource,
   ExtensionSource,

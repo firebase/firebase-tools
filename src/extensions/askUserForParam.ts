@@ -6,7 +6,7 @@ const { marked } = require("marked");
 import { Param, ParamOption, ParamType } from "./extensionsApi";
 import * as secretManagerApi from "../gcp/secretManager";
 import * as secretsUtils from "./secretsUtils";
-import { confirm, logPrefix, substituteParams } from "./extensionsHelper";
+import { logPrefix, substituteParams } from "./extensionsHelper";
 import { convertExtensionOptionToLabeledList, getRandomString, onceWithJoin } from "./utils";
 import { logger } from "../logger";
 import { promptOnce } from "../prompt";

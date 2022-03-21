@@ -1,5 +1,5 @@
 import { bold } from "cli-color";
-import { getProjectId, needProjectId } from "./projectUtils";
+import { getProjectId } from "./projectUtils";
 import { requireAuth } from "./requireAuth";
 import { logger } from "./logger";
 import { FirebaseError } from "./error";

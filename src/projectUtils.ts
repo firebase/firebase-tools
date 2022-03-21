@@ -24,7 +24,7 @@ export function getProjectId({
 }
 
 export function assertProjectId(projectId: string | undefined): string {
-  if (projectId != undefined) {
+  if (projectId) {
     return projectId;
   }
   throw new FirebaseError(

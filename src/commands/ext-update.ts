@@ -35,13 +35,12 @@ import {
   inferUpdateSource,
 } from "../extensions/updateHelper";
 import * as refs from "../extensions/refs";
-import { assertProjectId, getProjectId, needProjectId } from "../projectUtils";
+import { getProjectId, needProjectId } from "../projectUtils";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import { previews } from "../previews";
 import * as manifest from "../extensions/manifest";
 import { Options } from "../options";
-import { logger } from "..";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
