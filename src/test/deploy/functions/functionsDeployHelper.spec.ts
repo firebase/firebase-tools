@@ -5,7 +5,7 @@ import * as helper from "../../../deploy/functions/functionsDeployHelper";
 import { Options } from "../../../options";
 import { DEFAULT_CODEBASE, ValidatedSingle } from "../../../functions/projectConfig";
 import {
-  FunctionFilter,
+  EndpointFilter,
   parseFunctionSelector,
 } from "../../../deploy/functions/functionsDeployHelper";
 
@@ -18,10 +18,7 @@ describe("functionsDeployHelper", () => {
     entryPoint: "function",
   };
 
-  const CONFIG: ValidatedSingle = {
-    source: "functions",
-    codebase: DEFAULT_CODEBASE,
-  };
+  const BACKEND = { ...backend.empty(), codebase: DEFAULT_CODEBASE };
 
   const BASE_FILTER = {
     codebase: DEFAULT_CODEBASE,
@@ -30,43 +27,43 @@ describe("functionsDeployHelper", () => {
   describe("functionMatchesFilter", () => {
     it("should match empty filter", () => {
       const func = { ...ENDPOINT, id: "id" };
-      expect(helper.functionMatchesFilter(CONFIG, func, { ...BASE_FILTER, idChunks: [] })).to.be
+      expect(helper.functionMatchesFilter(BACKEND, func, { ...BASE_FILTER, idChunks: [] })).to.be
         .true;
     });
 
     it("should match full names", () => {
       const func = { ...ENDPOINT, id: "id" };
-      expect(helper.functionMatchesFilter(CONFIG, func, { ...BASE_FILTER, idChunks: ["id"] })).to.be
-        .true;
+      expect(helper.functionMatchesFilter(BACKEND, func, { ...BASE_FILTER, idChunks: ["id"] })).to
+        .be.true;
     });
 
     it("should match group prefixes", () => {
       const func = { ...ENDPOINT, id: "group-subgroup-func" };
       expect(
-        helper.functionMatchesFilter(CONFIG, func, {
+        helper.functionMatchesFilter(BACKEND, func, {
           ...BASE_FILTER,
           idChunks: ["group", "subgroup", "func"],
         })
       ).to.be.true;
       expect(
-        helper.functionMatchesFilter(CONFIG, func, {
+        helper.functionMatchesFilter(BACKEND, func, {
           ...BASE_FILTER,
           idChunks: ["group", "subgroup"],
         })
       ).to.be.true;
-      expect(helper.functionMatchesFilter(CONFIG, func, { ...BASE_FILTER, idChunks: ["group"] })).to
-        .be.true;
+      expect(helper.functionMatchesFilter(BACKEND, func, { ...BASE_FILTER, idChunks: ["group"] }))
+        .to.be.true;
     });
 
     it("should not match function that id that don't match", () => {
       const func = { ...ENDPOINT, id: "id" };
-      expect(helper.functionMatchesFilter(CONFIG, func, { ...BASE_FILTER, idChunks: ["group"] })).to
-        .be.false;
+      expect(helper.functionMatchesFilter(BACKEND, func, { ...BASE_FILTER, idChunks: ["group"] }))
+        .to.be.false;
     });
 
     it("should not match function in wrong codebase", () => {
       const func = { ...ENDPOINT, id: "group-subgroup-func" };
-      const config = { ...CONFIG, codebase: "another-codebase" };
+      const config = { ...BACKEND, codebase: "another-codebase" };
 
       expect(
         helper.functionMatchesFilter(config, func, {
@@ -90,21 +87,21 @@ describe("functionsDeployHelper", () => {
       const func = { ...ENDPOINT, id: "group-subgroup-func" };
 
       expect(
-        helper.functionMatchesFilter(CONFIG, func, {
+        helper.functionMatchesFilter(BACKEND, func, {
           ...BASE_FILTER,
           codebase: undefined,
           idChunks: ["group", "subgroup", "func"],
         })
       ).to.be.true;
       expect(
-        helper.functionMatchesFilter(CONFIG, func, {
+        helper.functionMatchesFilter(BACKEND, func, {
           ...BASE_FILTER,
           codebase: undefined,
           idChunks: ["group", "subgroup"],
         })
       ).to.be.true;
       expect(
-        helper.functionMatchesFilter(CONFIG, func, {
+        helper.functionMatchesFilter(BACKEND, func, {
           ...BASE_FILTER,
           codebase: undefined,
           idChunks: ["group"],
@@ -116,13 +113,13 @@ describe("functionsDeployHelper", () => {
   describe("functionMatchesAnyFilters", () => {
     it("should match given no filters", () => {
       const func = { ...ENDPOINT, id: "id" };
-      expect(helper.functionMatchesAnyFilter(CONFIG, func)).to.be.true;
+      expect(helper.functionMatchesAnyFilter(BACKEND, func)).to.be.true;
     });
 
     it("should match against one filter", () => {
       const func = { ...ENDPOINT, id: "id" };
       expect(
-        helper.functionMatchesAnyFilter(CONFIG, func, [
+        helper.functionMatchesAnyFilter(BACKEND, func, [
           { ...BASE_FILTER, idChunks: ["id"] },
           { ...BASE_FILTER, idChunks: ["group"] },
         ])
@@ -132,7 +129,7 @@ describe("functionsDeployHelper", () => {
     it("should exclude functions that don't match", () => {
       const func = { ...ENDPOINT, id: "id" };
       expect(
-        helper.functionMatchesAnyFilter(CONFIG, func, [
+        helper.functionMatchesAnyFilter(BACKEND, func, [
           { ...BASE_FILTER, idChunks: ["group"] },
           { ...BASE_FILTER, idChunks: ["other-group"] },
         ])
@@ -144,7 +141,7 @@ describe("functionsDeployHelper", () => {
     interface Testcase {
       desc: string;
       selector: string;
-      expected: FunctionFilter[];
+      expected: EndpointFilter[];
     }
 
     const testcases: Testcase[] = [
@@ -213,7 +210,7 @@ describe("functionsDeployHelper", () => {
     interface Testcase {
       desc: string;
       only: string;
-      expected: FunctionFilter[];
+      expected: EndpointFilter[];
     }
 
     const testcases: Testcase[] = [

@@ -109,6 +109,7 @@ export async function prepare(
   logger.debug(`Analyzing ${runtimeDelegate.name} backend spec`);
   const wantBackend = await runtimeDelegate.discoverSpec(runtimeConfig, firebaseEnvs);
   wantBackend.environmentVariables = { ...userEnvs, ...firebaseEnvs };
+  wantBackend.codebase = context.config.codebase;
   for (const endpoint of backend.allEndpoints(wantBackend)) {
     // Setup environment variables on each function.
     endpoint.environmentVariables = wantBackend.environmentVariables;
@@ -170,7 +171,7 @@ export async function prepare(
   validate.endpointsAreValid(wantBackend);
 
   const matchingBackend = backend.matchingBackend(wantBackend, (endpoint) => {
-    return functionMatchesAnyFilter(context.config!, endpoint, context.filters);
+    return functionMatchesAnyFilter(wantBackend, endpoint, context.filters);
   });
 
   const haveBackend = await backend.existingBackend(context);

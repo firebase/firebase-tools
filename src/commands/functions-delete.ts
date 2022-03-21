@@ -19,7 +19,6 @@ import * as executor from "../deploy/functions/release/executor";
 import * as reporter from "../deploy/functions/release/reporter";
 import * as containerCleaner from "../deploy/functions/containerCleaner";
 import * as deployHelper from "../deploy/functions/functionsDeployHelper";
-import * as projectConfig from "../functions/projectConfig";
 
 export default new Command("functions:delete [filters...]")
   .description("delete one or more Cloud Functions by name or group name.")
@@ -35,7 +34,7 @@ export default new Command("functions:delete [filters...]")
       return utils.reject("Must supply at least function or group name.");
     }
 
-    const funcFilters: deployHelper.FunctionFilter[] = [];
+    const endpointFilters: deployHelper.EndpointFilter[] = [];
     // For user convenience, filters provided in delete command is more lenient than when
     // provided in the deploy command. For example, given filter "func-id", delete command
     // will look for the function in all codebases whereas deploy command will default to
@@ -47,16 +46,15 @@ export default new Command("functions:delete [filters...]")
       const fragments = filter.split(":");
       if (fragments.length === 1) {
         // This is a simple filter. Check id against all codebases.
-        funcFilters.push({ idChunks: [fragments[0]] });
+        endpointFilters.push({ idChunks: [fragments[0]] });
       } else {
-        funcFilters.push({ codebase: fragments[0], idChunks: fragments.splice(1) });
+        endpointFilters.push({ codebase: fragments[0], idChunks: fragments.splice(1) });
       }
     }
 
     const context: args.Context = {
-      config: projectConfig.normalizeAndValidate(options.config.src.functions)[0],
       projectId: needProjectId(options),
-      filters: funcFilters,
+      filters: endpointFilters,
     };
 
     const [config, existingBackend] = await Promise.all([

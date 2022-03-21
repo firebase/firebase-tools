@@ -6,6 +6,7 @@ import * as runtimes from "./runtimes";
 import { FirebaseError } from "../../error";
 import { Context } from "./args";
 import { previews } from "../../previews";
+import { DEFAULT_CODEBASE } from "../../functions/projectConfig";
 
 /** Retry settings for a ScheduleSpec. */
 export interface ScheduleRetryConfig {
@@ -292,6 +293,10 @@ export interface Backend {
   environmentVariables: EnvironmentVariables;
   // region -> id -> Endpoint
   endpoints: Record<string, Record<string, Endpoint>>;
+
+  // Output only.
+  // "Codebase" is not part of the container contract - instead, it's part of firebase.json.
+  codebase?: string;
 }
 
 /**
@@ -304,6 +309,7 @@ export function empty(): Backend {
     requiredAPIs: [],
     endpoints: {},
     environmentVariables: {},
+    codebase: DEFAULT_CODEBASE,
   };
 }
 
@@ -543,7 +549,8 @@ export function matchingBackend(
   predicate: (endpoint: Endpoint) => boolean
 ): Backend {
   const filtered: Backend = {
-    ...empty(),
+    ...backend,
+    endpoints: {},
   };
   for (const endpoint of allEndpoints(backend)) {
     if (!predicate(endpoint)) {

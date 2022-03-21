@@ -62,11 +62,12 @@ export async function checkHttpIam(
   payload: args.Payload
 ): Promise<void> {
   const functionFilters = context.filters || getFunctionFilters(options);
+  const wantBackend = payload.functions!.backend;
 
   const httpEndpoints = backend
-    .allEndpoints(payload.functions!.backend)
+    .allEndpoints(wantBackend)
     .filter(backend.isHttpsTriggered)
-    .filter((f) => functionMatchesAnyFilter(context.config!, f, functionFilters));
+    .filter((f) => functionMatchesAnyFilter(wantBackend, f, functionFilters));
 
   const existing = await backend.existingBackend(context);
   const newHttpsEndpoints = httpEndpoints.filter(backend.missingEndpoint(existing));
