@@ -525,6 +525,7 @@ describe("Backend", () => {
     };
     bkend.endpoints[endpointUS.region] = { [endpointUS.id]: endpointUS };
     bkend.endpoints[endpointEU.region] = { [endpointEU.id]: endpointEU };
+    bkend.requiredAPIs = [{ api: "api.google.com", reason: "required" }];
 
     it("allEndpoints", () => {
       const have = backend.allEndpoints(bkend).sort(backend.compareFunctions);
@@ -541,6 +542,7 @@ describe("Backend", () => {
             [endpointUS.id]: endpointUS,
           },
         },
+        requiredAPIs: [{ api: "api.google.com", reason: "required" }],
       };
       expect(have).to.deep.equal(want);
     });
