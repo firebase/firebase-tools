@@ -64,7 +64,6 @@ import { accessSecretVersion } from "../gcp/secretManager";
 import * as runtimes from "../deploy/functions/runtimes";
 import * as backend from "../deploy/functions/backend";
 import * as functionsEnv from "../functions/env";
-import { substituteParams } from "../extensions/extensionsHelper";
 
 const EVENT_INVOKE = "functions:invoke";
 
