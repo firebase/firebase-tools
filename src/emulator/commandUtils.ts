@@ -416,13 +416,18 @@ export async function emulatorExec(script: string, options: any) {
     extraEnv.GCLOUD_PROJECT = projectId;
   }
   let exitCode = 0;
+  let deprecationNotices;
   try {
     const showUI = !!options.ui;
-    await controller.startAll(options, showUI);
+    ({ deprecationNotices } = await controller.startAll(options, showUI));
     exitCode = await runScript(script, extraEnv);
     await onExit(options);
   } finally {
     await controller.cleanShutdown();
+  }
+
+  for (const notice of deprecationNotices) {
+    utils.logLabeledWarning("emulators", notice, "warn");
   }
 
   if (exitCode !== 0) {
@@ -431,3 +436,99 @@ export async function emulatorExec(script: string, options: any) {
     });
   }
 }
+
+// Regex to extract Java major version. Only works with Java >= 9.
+// See: http://openjdk.java.net/jeps/223
+const JAVA_VERSION_REGEX = /version "([1-9][0-9]*)/;
+const MIN_SUPPORTED_JAVA_MAJOR_VERSION = 11;
+const JAVA_HINT = "Please make sure Java is installed and on your system PATH.";
+
+/**
+ * Return whether Java major verion is supported. Throws if Java not available.
+ *
+ * @returns true if Java >= 11, false otherwise
+ */
+export async function checkJavaSupported(): Promise<boolean> {
+  return new Promise<string>((resolve, reject) => {
+    let child;
+    try {
+      child = childProcess.spawn(
+        "java",
+        ["-Duser.language=en", "-Dfile.encoding=UTF-8", "-version"],
+        {
+          stdio: ["inherit", "pipe", "pipe"],
+        }
+      );
+    } catch (err: any) {
+      return reject(
+        new FirebaseError(`Could not spawn \`java -version\`. ${JAVA_HINT}`, { original: err })
+      );
+    }
+
+    let output = "";
+    let error = "";
+    child.stdout?.on("data", (data) => {
+      const str = data.toString("utf8");
+      logger.debug(str);
+      output += str;
+    });
+    child.stderr?.on("data", (data) => {
+      const str = data.toString("utf8");
+      logger.debug(str);
+      error += str;
+    });
+
+    child.once("error", (err) => {
+      reject(
+        new FirebaseError(`Could not spawn \`java -version\`. ${JAVA_HINT}`, { original: err })
+      );
+    });
+
+    child.once("exit", async (code, signal) => {
+      if (signal) {
+        // This is an unlikely situation where the short-lived Java process to
+        // check version was killed by a signal.
+        reject(new FirebaseError(`Process \`java -version\` was killed by signal ${signal}.`));
+      } else if (code && code !== 0) {
+        // `java -version` failed. For example, this may happen on some OS X
+        // where `java` is by default a stub that prints out more information on
+        // how to install Java. It is critical for us to relay stderr/stdout.
+        reject(
+          new FirebaseError(
+            `Process \`java -version\` has exited with code ${code}. ${JAVA_HINT}\n` +
+              `-----Original stdout-----\n${output}` +
+              `-----Original stderr-----\n${error}`
+          )
+        );
+      } else {
+        // Join child process stdout and stderr for further parsing. Order does
+        // not matter here because we'll parse only a small part later.
+        resolve(`${output}\n${error}`);
+      }
+    });
+  }).then((output) => {
+    const match = output.match(JAVA_VERSION_REGEX);
+    if (match) {
+      const version = match[1];
+      const versionInt = parseInt(version, 10);
+      if (!versionInt) {
+        utils.logLabeledWarning(
+          "emulators",
+          `Failed to parse Java version. Got "${match[0]}".`,
+          "warn"
+        );
+      } else {
+        logger.debug(`Parsed Java major version: ${versionInt}`);
+        return versionInt >= MIN_SUPPORTED_JAVA_MAJOR_VERSION;
+      }
+    } else {
+      logger.debug("java -version outputs:", output);
+      logger.warn(`Failed to parse Java version.`);
+    }
+    return false;
+  });
+}
+
+export const JAVA_DEPRECATION_WARNING =
+  "Support for Java version <= 10 will be dropped soon in firebase-tools@11. " +
+  "Please upgrade to Java version 11 or above to continue using the emulators.";
