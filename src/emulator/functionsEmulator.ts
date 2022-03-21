@@ -715,6 +715,8 @@ export class FunctionsEmulator implements EmulatorInstance {
               key,
               definition.eventTrigger,
             );
+          case Constants.SERVICE_REMOTECONFIG:
+            added = this.addRemoteConfigTrigger(this.args.projectId, key, definition.eventTrigger);
             break;
           default:
             this.logger.log("DEBUG", `Unsupported trigger: ${JSON.stringify(definition)}`);
@@ -1204,6 +1206,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     return true;
   }
 
+<<<<<<< HEAD
   async addTaskQueueTrigger(
     projectId: string,
     location: string,
@@ -1231,6 +1234,15 @@ export class FunctionsEmulator implements EmulatorInstance {
       this.logger.log("WARN", "Error adding Task Queue function: " + err);
       return false;
     }
+  addRemoteConfigTrigger(projectId: string, key: string, eventTrigger: EventTrigger): boolean {
+    logger.debug(`addRemoteConfigTrigger`, JSON.stringify(eventTrigger));
+
+    const eventTriggerId = `${projectId}:${eventTrigger.eventType}`;
+    const triggers = this.multicastTriggers[eventTriggerId] || [];
+    triggers.push(key);
+    this.multicastTriggers[eventTriggerId] = triggers;
+
+    return true
   }
 
   getProjectId(): string {

@@ -18,7 +18,7 @@ export function createApp(
     res.send("Oh yes, it's me, remote config 🥸");
   });
 
-  app.put("/revert", async (req, res) => {
+  app.put("/revert", (req, res) => {
     emulator.loadTemplate();
     res.json(emulator.template);
   });
