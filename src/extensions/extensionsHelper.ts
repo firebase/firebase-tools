@@ -108,9 +108,12 @@ export function getDBInstanceFromURL(databaseUrl = ""): string {
  * Gets Firebase project specific param values.
  */
 export async function getFirebaseProjectParams(
-  projectId: string,
+  projectId: string | undefined,
   emulatorMode: boolean = false
 ): Promise<Record<string, string>> {
+  if (!projectId) {
+    return {};
+  }
   const body = emulatorMode
     ? await getProjectAdminSdkConfigOrCached(projectId)
     : await getFirebaseConfig({ project: projectId });

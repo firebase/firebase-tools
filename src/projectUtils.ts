@@ -23,6 +23,28 @@ export function getProjectId({
   return projectId || project;
 }
 
+export function assertProjectId(projectId: string | undefined): string {
+  if (projectId != undefined) {
+    return projectId;
+  }
+  throw new FirebaseError(
+    "No currently active project.\n" +
+      "To run this command, you need to specify a project. You have two options:\n" +
+      "- Run this command with " +
+      clc.bold("--project <alias_or_project_id>") +
+      ".\n" +
+      "- Set an active project by running " +
+      clc.bold("firebase use --add") +
+      ", then rerun this command.\n" +
+      "To list all the Firebase projects to which you have access, run " +
+      clc.bold("firebase projects:list") +
+      ".\n" +
+      marked(
+        "To learn about active projects for the CLI, visit https://firebase.google.com/docs/cli#project_aliases"
+      )
+  );
+}
+
 /**
  * Tries to determine the correct projectId given current
  * command context. Errors out if unable to determine.

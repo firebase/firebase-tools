@@ -35,7 +35,7 @@ import {
   inferUpdateSource,
 } from "../extensions/updateHelper";
 import * as refs from "../extensions/refs";
-import { needProjectId } from "../projectUtils";
+import { assertProjectId, getProjectId, needProjectId } from "../projectUtils";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import { previews } from "../previews";
@@ -70,9 +70,9 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
     "save the update to firebase.json rather than directly update an existing Extension instance on a Firebase project"
   )
   .action(async (instanceId: string, updateSource: string, options: Options) => {
-    const projectId = needProjectId(options);
-
     if (options.local) {
+      const projectId = getProjectId(options);
+
       const config = manifest.loadConfig(options);
       const oldRef = manifest.getInstanceRef(instanceId, config);
       const oldExtensionVersion = await extensionsApi.getExtensionVersion(
@@ -156,6 +156,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
 
     const spinner = ora(`Updating ${clc.bold(instanceId)}. This usually takes 3 to 5 minutes...`);
     try {
+      const projectId = needProjectId(options);
       let existingInstance: extensionsApi.ExtensionInstance;
       try {
         existingInstance = await extensionsApi.getInstance(projectId, instanceId);

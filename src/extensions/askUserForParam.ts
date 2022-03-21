@@ -12,6 +12,7 @@ import { logger } from "../logger";
 import { promptOnce } from "../prompt";
 import * as utils from "../utils";
 import { ParamBindingOptions } from "./paramHelper";
+import { assertProjectId } from "../projectUtils";
 
 /**
  * Location where the secret value is stored.
@@ -79,7 +80,7 @@ export function checkResponse(response: string, spec: Param): boolean {
  * @return Promisified map of env vars to values.
  */
 export async function ask(
-  projectId: string,
+  projectId: string | undefined,
   instanceId: string,
   paramSpecs: Param[],
   firebaseProjectParams: { [key: string]: string },
@@ -110,7 +111,7 @@ export async function ask(
 }
 
 export async function askForParam(args: {
-  projectId: string;
+  projectId?: string;
   instanceId: string;
   paramSpec: Param;
   reconfiguring: boolean;
@@ -172,9 +173,10 @@ export async function askForParam(args: {
           secretLocations = await promptSecretLocations();
         }
         if (secretLocations.includes(SecretLocation.CLOUD.toString())) {
+          const projectId = assertProjectId(args.projectId);
           response = args.reconfiguring
-            ? await promptReconfigureSecret(args.projectId, args.instanceId, paramSpec)
-            : await promptCreateSecret(args.projectId, args.instanceId, paramSpec);
+            ? await promptReconfigureSecret(projectId, args.instanceId, paramSpec)
+            : await promptCreateSecret(projectId, args.instanceId, paramSpec);
         }
         if (secretLocations.includes(SecretLocation.LOCAL.toString())) {
           responseForLocal = await promptLocalSecret(args.instanceId, paramSpec);
