@@ -1143,7 +1143,6 @@ describe("Storage emulator", () => {
       await page.addScriptTag({
         url: "https://www.gstatic.com/firebasejs/7.24.0/firebase-auth.js",
       });
-      // url: "https://storage.googleapis.com/fir-tools-builds/firebase-storage-new.js",
       await page.addScriptTag({
         url: TEST_CONFIG.useProductionServers
           ? "https://www.gstatic.com/firebasejs/7.24.0/firebase-storage.js"
@@ -1997,12 +1996,11 @@ describe("Storage emulator", () => {
     });
   });
 
-  emulatorSpecificDescribe("Emulator Integrity", function (this) {
+  emulatorSpecificDescribe("Emulator Internals", function (this) {
     // eslint-disable-next-line @typescript-eslint/no-invalid-this
     this.timeout(TEST_SETUP_TIMEOUT);
 
     let testGcsBucket: Bucket;
-    let storage: Storage;
 
     const initFirebaseSdkPage = async () => {
       page = await browser.newPage();
@@ -2014,35 +2012,27 @@ describe("Storage emulator", () => {
       await page.addScriptTag({
         url: "https://www.gstatic.com/firebasejs/7.24.0/firebase-auth.js",
       });
-      // url: "https://storage.googleapis.com/fir-tools-builds/firebase-storage-new.js",
       await page.addScriptTag({
-        url: TEST_CONFIG.useProductionServers
-          ? "https://www.gstatic.com/firebasejs/7.24.0/firebase-storage.js"
-          : "https://storage.googleapis.com/fir-tools-builds/firebase-storage.js",
+        url: "https://storage.googleapis.com/fir-tools-builds/firebase-storage.js",
       });
 
       await page.evaluate(
-        (appConfig, useProductionServers, emulatorHost) => {
+        (appConfig, emulatorHost) => {
           firebase.initializeApp(appConfig);
           // Wiring the app to use either the auth emulator or production auth
           // based on the config flag.
           const auth = firebase.auth();
-          if (!useProductionServers) {
-            auth.useEmulator(emulatorHost);
-          }
+          auth.useEmulator(emulatorHost);
           (window as any).auth = auth;
         },
         appConfig,
-        TEST_CONFIG.useProductionServers,
         AUTH_EMULATOR_HOST
       );
 
-      if (!TEST_CONFIG.useProductionServers) {
-        await page.evaluate((hostAndPort) => {
-          const [host, port] = hostAndPort.split(":") as string[];
-          (firebase.storage() as any).useEmulator(host, port);
-        }, STORAGE_EMULATOR_HOST.replace(/^(https?:|)\/\//, ""));
-      }
+      await page.evaluate((hostAndPort) => {
+        const [host, port] = hostAndPort.split(":") as string[];
+        (firebase.storage() as any).useEmulator(host, port);
+      }, STORAGE_EMULATOR_HOST.replace(/^(https?:|)\/\//, ""));
     };
 
     before(async () => {
@@ -2090,7 +2080,7 @@ describe("Storage emulator", () => {
       }
     });
 
-    it.only("gcloud API persisted files should be accessible via Firebase SDK", async () => {
+    it("gcloud API persisted files should be accessible via Firebase SDK", async () => {
       const smallFilePath = createRandomFile("testFile", SMALL_FILE_SIZE);
       await testGcsBucket.upload(smallFilePath, { destination: "public/testFile" });
 
@@ -2112,7 +2102,7 @@ describe("Storage emulator", () => {
       expect(data).to.deep.equal(fs.readFileSync(smallFilePath));
     });
 
-    it.only("Firebase SDK persisted files should be accessible via gcloud API", async () => {
+    it("Firebase SDK persisted files should be accessible via gcloud API", async () => {
       const fileContent = "some-file-content";
       await uploadText(page, "public/testFile", fileContent);
 
