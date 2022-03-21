@@ -227,7 +227,9 @@ async function promptSecretLocations(paramSpec: Param): Promise<string[]> {
   return await promptOnce({
     name: "input",
     type: "checkbox",
-    message: "Where would you like to store your secrets? Unselect both to skip",
+    message:
+      "Where would you like to store your secrets? " +
+      "If you don't want to set this optional secret, leave both options unselected to skip it",
     choices: [
       {
         checked: false,
