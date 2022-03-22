@@ -180,7 +180,7 @@ export class StorageLayer {
     return { metadata: metadata!, data: this.getBytes(request.bucketId, request.decodedObjectId)! };
   }
 
-  public getMetadata(bucket: string, object: string): StoredFileMetadata | undefined {
+  private getMetadata(bucket: string, object: string): StoredFileMetadata | undefined {
     const key = this.path(bucket, object);
     const val = this._files.get(key);
 
