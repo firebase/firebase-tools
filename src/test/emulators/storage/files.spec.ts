@@ -72,9 +72,7 @@ describe("files", () => {
           metadataRaw: "{}",
         });
 
-        expect(storageLayer.uploadObject(upload)).to.be.rejectedWith(
-          "Unexpected upload status"
-        );
+        expect(storageLayer.uploadObject(upload)).to.be.rejectedWith("Unexpected upload status");
       });
 
       it("should throw if upload is not authorized", () => {

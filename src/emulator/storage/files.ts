@@ -142,10 +142,7 @@ export class StorageLayer {
    * @throws {NotFoundError} if object does not exist
    * @throws {ForbiddenError} if request is unauthorized
    */
-  public async getObject(
-    request: GetObjectRequest,
-    skipAuth = false
-  ): Promise<GetObjectResponse> {
+  public async getObject(request: GetObjectRequest, skipAuth = false): Promise<GetObjectResponse> {
     const metadata = this.getMetadata(request.bucketId, request.decodedObjectId);
 
     // If a valid download token is present, skip Firebase Rules auth. Mainly used by the js sdk.
@@ -394,7 +391,7 @@ export class StorageLayer {
     request: ListObjectsRequest,
     skipAuth = false
   ): Promise<ListObjectsResponse> {
-    const {bucketId, prefix, delimiter, pageToken, authorization}  = request;
+    const { bucketId, prefix, delimiter, pageToken, authorization } = request;
     const authorized =
       skipAuth ||
       (await this._rulesValidator.validate(
@@ -464,7 +461,7 @@ export class StorageLayer {
     return {
       nextPageToken,
       prefixes: prefixes.size > 0 ? [...prefixes].sort() : undefined,
-      items: items.length > 0 ? items : undefined
+      items: items.length > 0 ? items : undefined,
     };
   }
 
