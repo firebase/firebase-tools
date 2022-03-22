@@ -1107,7 +1107,7 @@ describe("Storage emulator", () => {
     });
   });
 
-  describe.only("Firebase Endpoints", () => {
+  describe("Firebase Endpoints", () => {
     let storage: Storage;
     let browser: puppeteer.Browser;
     let page: puppeteer.Page;
