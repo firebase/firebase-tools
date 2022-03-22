@@ -8,7 +8,7 @@ import TerminalRenderer = require("marked-terminal");
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
-import { assertProjectId, getProjectId } from "../projectUtils";
+import { needProjectId, getProjectId } from "../projectUtils";
 import * as extensionsApi from "../extensions/extensionsApi";
 import { logPrefix, diagnoseAndFixProject } from "../extensions/extensionsHelper";
 import * as paramHelper from "../extensions/paramHelper";
@@ -109,7 +109,10 @@ export default new Command("ext:configure <extensionInstanceId>")
     try {
       let existingInstance: extensionsApi.ExtensionInstance;
       try {
-        existingInstance = await extensionsApi.getInstance(assertProjectId(projectId), instanceId);
+        existingInstance = await extensionsApi.getInstance(
+          needProjectId({ projectId }),
+          instanceId
+        );
       } catch (err: any) {
         if (err.status === 404) {
           return utils.reject(
@@ -152,7 +155,7 @@ export default new Command("ext:configure <extensionInstanceId>")
 
       spinner.start();
       const res = await extensionsApi.configureInstance({
-        projectId: assertProjectId(projectId),
+        projectId: needProjectId({ projectId }),
         instanceId,
         params: paramBindings,
       });
@@ -162,7 +165,7 @@ export default new Command("ext:configure <extensionInstanceId>")
         logPrefix,
         marked(
           `You can view your reconfigured instance in the Firebase console: ${utils.consoleUrl(
-            assertProjectId(projectId),
+            needProjectId({ projectId }),
             `/extensions/instances/${instanceId}?tab=config`
           )}`
         )

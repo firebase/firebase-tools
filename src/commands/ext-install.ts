@@ -12,7 +12,7 @@ import { checkBillingEnabled } from "../gcp/cloudbilling";
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
-import { assertProjectId, getProjectId } from "../projectUtils";
+import { getProjectId, needProjectId } from "../projectUtils";
 import * as extensionsApi from "../extensions/extensionsApi";
 import * as secretsUtils from "../extensions/secretsUtils";
 import * as provisioningHelper from "../extensions/provisioningHelper";
@@ -103,7 +103,7 @@ export default new Command("ext:install [extensionName]")
           "Installing a local source locally is not supported yet, please use ext:dev:emulator commands"
         );
       }
-      source = await infoInstallBySource(assertProjectId(projectId), extensionName);
+      source = await infoInstallBySource(needProjectId({ projectId }), extensionName);
     } else {
       void track("Extension Install", "Install by Extension Ref", options.interactive ? 1 : 0);
       extVersion = await infoInstallByReference(extensionName, options.interactive);
@@ -294,7 +294,7 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
  */
 async function installExtension(options: InstallExtensionOptions): Promise<void> {
   const { extensionName, source, extVersion, paramsEnvPath, nonInteractive, force } = options;
-  const projectId = assertProjectId(options.projectId);
+  const projectId = needProjectId({ projectId: options.projectId });
 
   const spec = source?.spec || extVersion?.spec;
   if (!spec) {

@@ -122,13 +122,13 @@ export async function getParams(args: {
     });
   } else {
     const firebaseProjectParams = await getFirebaseProjectParams(args.projectId);
-    params = await askUserForParam.ask(
-      args.projectId,
-      args.instanceId,
-      args.paramSpecs,
+    params = await askUserForParam.ask({
+      projectId: args.projectId,
+      instanceId: args.instanceId,
+      paramSpecs: args.paramSpecs,
       firebaseProjectParams,
-      !!args.reconfiguring
-    );
+      reconfiguring: !!args.reconfiguring,
+    });
   }
   void track("Extension Params", _.isEmpty(params) ? "Not Present" : "Present", _.size(params));
   return params;

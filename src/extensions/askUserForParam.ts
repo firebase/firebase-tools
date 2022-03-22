@@ -12,7 +12,7 @@ import { logger } from "../logger";
 import { promptOnce } from "../prompt";
 import * as utils from "../utils";
 import { ParamBindingOptions } from "./paramHelper";
-import { assertProjectId } from "../projectUtils";
+import { needProjectId } from "../projectUtils";
 
 /**
  * Location where the secret value is stored.
@@ -79,28 +79,28 @@ export function checkResponse(response: string, spec: Param): boolean {
  * @param firebaseProjectParams Autopopulated Firebase project-specific params
  * @return Promisified map of env vars to values.
  */
-export async function ask(
-  projectId: string | undefined,
-  instanceId: string,
-  paramSpecs: Param[],
-  firebaseProjectParams: { [key: string]: string },
-  reconfiguring: boolean
-): Promise<{ [key: string]: ParamBindingOptions }> {
-  if (_.isEmpty(paramSpecs)) {
+export async function ask(args: {
+  projectId: string | undefined;
+  instanceId: string;
+  paramSpecs: Param[];
+  firebaseProjectParams: { [key: string]: string };
+  reconfiguring: boolean;
+}): Promise<{ [key: string]: ParamBindingOptions }> {
+  if (_.isEmpty(args.paramSpecs)) {
     logger.debug("No params were specified for this extension.");
     return {};
   }
 
   utils.logLabeledBullet(logPrefix, "answer the questions below to configure your extension:");
-  const substituted = substituteParams<Param[]>(paramSpecs, firebaseProjectParams);
+  const substituted = substituteParams<Param[]>(args.paramSpecs, args.firebaseProjectParams);
   const result: { [key: string]: ParamBindingOptions } = {};
   const promises = _.map(substituted, (paramSpec: Param) => {
     return async () => {
       result[paramSpec.param] = await askForParam({
-        projectId,
-        instanceId,
-        paramSpec,
-        reconfiguring,
+        projectId: args.projectId,
+        instanceId: args.instanceId,
+        paramSpec: paramSpec,
+        reconfiguring: args.reconfiguring,
       });
     };
   });
@@ -173,7 +173,8 @@ export async function askForParam(args: {
           secretLocations = await promptSecretLocations();
         }
         if (secretLocations.includes(SecretLocation.CLOUD.toString())) {
-          const projectId = assertProjectId(args.projectId);
+          // TODO(lihes): evaluate the UX of this error message.
+          const projectId = needProjectId({ projectId: args.projectId });
           response = args.reconfiguring
             ? await promptReconfigureSecret(projectId, args.instanceId, paramSpec)
             : await promptCreateSecret(projectId, args.instanceId, paramSpec);
