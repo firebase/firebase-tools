@@ -7,10 +7,12 @@ import * as fs from "fs";
 
 import * as backend from "../deploy/functions/backend";
 import { Constants } from "./constants";
-import { EmulatableBackend, InvokeRuntimeOpts } from "./functionsEmulator";
+import { BackendInfo, EmulatableBackend, InvokeRuntimeOpts } from "./functionsEmulator";
 import { copyIfPresent } from "../gcp/proto";
 import { logger } from "../logger";
 import { ENV_DIRECTORY } from "../extensions/manifest";
+import { substituteParams } from "../extensions/extensionsHelper";
+import { ExtensionSpec, ExtensionVersion } from "../extensions/extensionsApi";
 
 export type SignatureType = "http" | "event" | "cloudevent";
 
@@ -390,4 +392,40 @@ export function getSecretLocalPath(backend: EmulatableBackend, projectDir: strin
     ? path.join(projectDir, ENV_DIRECTORY)
     : backend.functionsDir;
   return path.join(secretDirectory, secretsFile);
+}
+
+/**
+ * toBackendInfo transforms an EmulatableBackend into its correspondign API type, BackendInfo
+ * @param e the emulatableBackend to transform
+ * @param cf3Triggers a list of CF3 triggers. If e does not include predefinedTriggers, these will be used instead.
+ */
+export function toBackendInfo(
+  e: EmulatableBackend,
+  cf3Triggers: ParsedTriggerDefinition[]
+): BackendInfo {
+  const envWithSecrets = Object.assign({}, e.env);
+  for (const s of e.secretEnv) {
+    envWithSecrets[s.key] = backend.secretVersionName(s);
+  }
+  let extensionVersion = e.extensionVersion;
+  if (extensionVersion) {
+    extensionVersion = substituteParams<ExtensionVersion>(extensionVersion, e.env);
+  }
+  let extensionSpec = e.extensionSpec;
+  if (extensionSpec) {
+    extensionSpec = substituteParams<ExtensionSpec>(extensionSpec, e.env);
+  }
+
+  // Parse and stringify to get rid of undefined values
+  return JSON.parse(
+    JSON.stringify({
+      directory: e.functionsDir,
+      env: envWithSecrets,
+      extensionInstanceId: e.extensionInstanceId, // Present on all extensions
+      extension: e.extension, // Only present on published extensions
+      extensionVersion: extensionVersion, // Only present on published extensions
+      extensionSpec: extensionSpec, // Only present on local extensions
+      functionTriggers: e.predefinedTriggers ?? cf3Triggers, // If we don't have predefinedTriggers, this is the CF3 backend.
+    })
+  );
 }
