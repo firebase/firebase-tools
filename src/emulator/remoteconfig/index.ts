@@ -51,12 +51,12 @@ export class RemoteConfigEmulator implements EmulatorInstance {
   set template(newTemplate: any) {
     this._emulatorTemplate = newTemplate;
     this._cloudFunctions.dispatch("update", {
-      description: "i am working",
-      updateOrigin: "REST_API",
+      description: "Emulator template updated.",
+      updateOrigin: "REMOTE_CONFIG_UPDATE_ORIGIN_UNSPECIFIED",
       updateTime: new Date().toISOString(),
-      updateType: "FORCED_UPDATE",
+      updateType: "REMOTE_CONFIG_UPDATE_TYPE_UNSPECIFIED",
       updateUser: {
-        email: "me@you.com",
+        email: "emulator@example.com",
       },
       versionNumber: 1,
     });
