@@ -168,9 +168,10 @@ export async function askForParam(args: {
         valid = checkResponse(response, paramSpec);
         break;
       case ParamType.SECRET:
-        while (!secretLocations.length) {
-          secretLocations = await promptSecretLocations();
-        }
+        do {
+          secretLocations = await promptSecretLocations(paramSpec);
+        } while (!isValidSecretLocations(secretLocations, paramSpec));
+
         if (secretLocations.includes(SecretLocation.CLOUD.toString())) {
           response = args.reconfiguring
             ? await promptReconfigureSecret(args.projectId, args.instanceId, paramSpec)
@@ -195,14 +196,43 @@ export async function askForParam(args: {
   return { baseValue: response, ...(responseForLocal ? { local: responseForLocal } : {}) };
 }
 
-async function promptSecretLocations(): Promise<string[]> {
+function isValidSecretLocations(secretLocations: string[], paramSpec: Param): boolean {
+  if (paramSpec.required) {
+    return !!secretLocations.length;
+  }
+  return true;
+}
+
+async function promptSecretLocations(paramSpec: Param): Promise<string[]> {
+  if (paramSpec.required) {
+    return await promptOnce({
+      name: "input",
+      type: "checkbox",
+      message: "Where would you like to store your secrets? You must select at least one value",
+      choices: [
+        {
+          checked: true,
+          name: "Google Cloud Secret Manager",
+          // return type of string is not actually enforced, need to manually convert.
+          value: SecretLocation.CLOUD.toString(),
+        },
+        {
+          checked: false,
+          name: "Local file (Only used by Firebase Emulator)",
+          value: SecretLocation.LOCAL.toString(),
+        },
+      ],
+    });
+  }
   return await promptOnce({
     name: "input",
     type: "checkbox",
-    message: "Where would you like to store your secrets? You must select at least one value",
+    message:
+      "Where would you like to store your secrets? " +
+      "If you don't want to set this optional secret, leave both options unselected to skip it",
     choices: [
       {
-        checked: true,
+        checked: false,
         name: "Google Cloud Secret Manager",
         // return type of string is not actually enforced, need to manually convert.
         value: SecretLocation.CLOUD.toString(),
