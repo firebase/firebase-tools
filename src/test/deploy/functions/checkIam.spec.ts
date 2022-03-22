@@ -62,7 +62,7 @@ describe("checkIam", () => {
   };
 
   describe("obtainBinding", () => {
-    it("should add the binding", () => {
+    it("should assign the service account the role if they don't exist in the policy", () => {
       const policy = { ...iamPolicy };
       const serviceAccount = "myServiceAccount";
       const role = "role/myrole";
@@ -75,7 +75,7 @@ describe("checkIam", () => {
       });
     });
 
-    it("should add the service agent as a member", () => {
+    it("should append the service account as a member of the role when the role exists in the policy", () => {
       const policy = { ...iamPolicy };
       const serviceAccount = "myServiceAccount";
       const role = "role/myrole";
@@ -94,7 +94,7 @@ describe("checkIam", () => {
       });
     });
 
-    it("should do nothing if we have the binding", () => {
+    it("should not add the role or service account if the policy already has the binding", () => {
       const policy = { ...iamPolicy };
       const serviceAccount = "myServiceAccount";
       const role = "role/myrole";
@@ -123,7 +123,7 @@ describe("checkIam", () => {
       expect(bindings.length).to.equal(1);
       expect(bindings[0]).to.deep.equal({
         role: checkIam.SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE,
-        members: ["serviceAccount:service-123456789@gcp-sa-pubsub.iam.gserviceaccount.com"],
+        members: [`serviceAccount:service-${projectNumber}@gcp-sa-pubsub.iam.gserviceaccount.com`],
       });
     });
 
@@ -143,7 +143,7 @@ describe("checkIam", () => {
         role: checkIam.SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE,
         members: [
           "someuser",
-          "serviceAccount:service-123456789@gcp-sa-pubsub.iam.gserviceaccount.com",
+          `serviceAccount:service-${projectNumber}@gcp-sa-pubsub.iam.gserviceaccount.com`,
         ],
       });
     });
@@ -153,7 +153,9 @@ describe("checkIam", () => {
       policy.bindings = [
         {
           role: checkIam.SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE,
-          members: ["serviceAccount:service-123456789@gcp-sa-pubsub.iam.gserviceaccount.com"],
+          members: [
+            `serviceAccount:service-${projectNumber}@gcp-sa-pubsub.iam.gserviceaccount.com`,
+          ],
         },
       ];
 
@@ -162,7 +164,7 @@ describe("checkIam", () => {
       expect(bindings.length).to.equal(1);
       expect(bindings[0]).to.deep.equal({
         role: checkIam.SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE,
-        members: ["serviceAccount:service-123456789@gcp-sa-pubsub.iam.gserviceaccount.com"],
+        members: [`serviceAccount:service-${projectNumber}@gcp-sa-pubsub.iam.gserviceaccount.com`],
       });
     });
   });
@@ -174,14 +176,16 @@ describe("checkIam", () => {
       const bindings = checkIam.obtainDefaultComputeServiceAgentBindings(projectNumber, policy);
 
       expect(bindings.length).to.equal(2);
-      expect(bindings[0]).to.deep.equal({
-        role: checkIam.RUN_INVOKER_ROLE,
-        members: [`serviceAccount:${projectNumber}-compute@developer.gserviceaccount.com`],
-      });
-      expect(bindings[1]).to.deep.equal({
-        role: checkIam.EVENTARC_EVENT_RECEIVER_ROLE,
-        members: [`serviceAccount:${projectNumber}-compute@developer.gserviceaccount.com`],
-      });
+      expect(bindings).to.include.deep.members([
+        {
+          role: checkIam.RUN_INVOKER_ROLE,
+          members: [`serviceAccount:${projectNumber}-compute@developer.gserviceaccount.com`],
+        },
+        {
+          role: checkIam.EVENTARC_EVENT_RECEIVER_ROLE,
+          members: [`serviceAccount:${projectNumber}-compute@developer.gserviceaccount.com`],
+        },
+      ]);
     });
   });
 
@@ -597,7 +601,6 @@ describe("checkIam", () => {
     await checkIam.ensureServiceAgentRoles(projectNumber, backend.of(wantFn), backend.of(haveFn));
 
     expect(getIamStub).to.have.been.calledOnce;
-    expect(setIamStub).to.have.been.calledOnce;
-    expect(setIamStub).to.have.been.calledWith(projectNumber, newIamPolicy, "bindings");
+    expect(setIamStub).to.not.have.been.called;
   });
 });

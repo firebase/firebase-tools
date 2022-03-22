@@ -267,6 +267,9 @@ export async function ensureServiceAgentRoles(
     allRequiredBindings.push(obtainDefaultComputeServiceAgentBindings(projectNumber, policy));
     allRequiredBindings.push(obtainEventarcServiceAgentBindings(projectNumber, policy));
   }
+  if (!allRequiredBindings.find((bindings) => bindings.length > 0)) {
+    return;
+  }
   mergeBindings(policy, allRequiredBindings);
   // set the updated policy
   try {
