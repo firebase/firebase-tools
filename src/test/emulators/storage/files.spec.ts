@@ -72,7 +72,7 @@ describe("files", () => {
           metadataRaw: "{}",
         });
 
-        expect(storageLayer.handleUploadObject(upload)).to.be.rejectedWith(
+        expect(storageLayer.uploadObject(upload)).to.be.rejectedWith(
           "Unexpected upload status"
         );
       });
@@ -88,7 +88,7 @@ describe("files", () => {
         _uploadService.continueResumableUpload(uploadId, Buffer.from("hello world"));
         const upload = _uploadService.finalizeResumableUpload(uploadId);
 
-        expect(storageLayer.handleUploadObject(upload)).to.be.rejectedWith(ForbiddenError);
+        expect(storageLayer.uploadObject(upload)).to.be.rejectedWith(ForbiddenError);
       });
     });
 
@@ -101,9 +101,9 @@ describe("files", () => {
           metadataRaw: `{"contentType": "mime/type"}`,
           dataRaw: Buffer.from("Hello, World!"),
         });
-        await storageLayer.handleUploadObject(upload);
+        await storageLayer.uploadObject(upload);
 
-        const { metadata, data } = await storageLayer.handleGetObject({
+        const { metadata, data } = await storageLayer.getObject({
           bucketId: "bucket",
           decodedObjectId: "dir%2Fobject",
         });
@@ -116,7 +116,7 @@ describe("files", () => {
         const storageLayer = getStorageLayer(ALWAYS_FALSE_RULES_VALIDATOR);
 
         expect(
-          storageLayer.handleGetObject({
+          storageLayer.getObject({
             bucketId: "bucket",
             decodedObjectId: "dir%2Fobject",
           })
@@ -127,7 +127,7 @@ describe("files", () => {
         const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
 
         expect(
-          storageLayer.handleGetObject({
+          storageLayer.getObject({
             bucketId: "bucket",
             decodedObjectId: "dir%2Fobject",
           })
