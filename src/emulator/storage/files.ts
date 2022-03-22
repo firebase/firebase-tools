@@ -108,6 +108,16 @@ export type DeleteDownloadTokenRequest = {
   authorization?: string;
 };
 
+/**  Parsed request object for {@link StorageLayer#copyObject}. */
+export type CopyObjectRequest = {
+  sourceBucket: string;
+  sourceObject: string;
+  destinationBucket: string;
+  destinationObject: string;
+  incomingMetadata?: IncomingMetadata;
+  authorization?: string;
+};
+
 export class StorageLayer {
   constructor(
     private _projectId: string,
@@ -328,31 +338,39 @@ export class StorageLayer {
     return metadata;
   }
 
-  public copyFile(
-    sourceFile: StoredFileMetadata,
-    destinationBucket: string,
-    destinationObject: string,
-    incomingMetadata?: IncomingMetadata
-  ): StoredFileMetadata {
-    const filePath = this.path(destinationBucket, destinationObject);
+  public copyObject({
+    sourceBucket,
+    sourceObject,
+    destinationBucket,
+    destinationObject,
+    incomingMetadata,
+    authorization,
+  }: CopyObjectRequest): StoredFileMetadata {
+    if (!this._adminCredsValidator.validate(authorization)) {
+      throw new ForbiddenError();
+    }
+    const sourceMetadata = this.getMetadata(sourceBucket, sourceObject);
+    if (!sourceMetadata) {
+      throw new NotFoundError();
+    }
+    const sourceBytes = this.getBytes(sourceBucket, sourceObject) as Buffer;
 
-    this._persistence.deleteFile(filePath, /* failSilently = */ true);
-
-    const bytes = this.getBytes(sourceFile.bucket, sourceFile.name) as Buffer;
-    this._persistence.appendBytes(filePath, bytes);
+    const destinationFilePath = this.path(destinationBucket, destinationObject);
+    this._persistence.deleteFile(destinationFilePath, /* failSilently = */ true);
+    this._persistence.appendBytes(destinationFilePath, sourceBytes);
 
     const newMetadata: IncomingMetadata = {
-      ...sourceFile,
-      metadata: sourceFile.customMetadata,
+      ...sourceMetadata,
+      metadata: sourceMetadata.customMetadata,
       ...incomingMetadata,
     };
     if (
-      sourceFile.downloadTokens.length &&
+      sourceMetadata.downloadTokens.length &&
       // Only copy download tokens if we're not overwriting any custom metadata
       !(incomingMetadata?.metadata && Object.keys(incomingMetadata?.metadata).length)
     ) {
       if (!newMetadata.metadata) newMetadata.metadata = {};
-      newMetadata.metadata.firebaseStorageDownloadTokens = sourceFile.downloadTokens.join(",");
+      newMetadata.metadata.firebaseStorageDownloadTokens = sourceMetadata.downloadTokens.join(",");
     }
     if (newMetadata.metadata) {
       // Convert null metadata values to empty strings
@@ -373,11 +391,14 @@ export class StorageLayer {
         customMetadata: newMetadata.metadata,
       },
       this._cloudFunctions,
-      bytes,
+      sourceBytes,
       incomingMetadata
     );
-    const file = new StoredFile(copiedFileMetadata, this._persistence.getDiskPath(filePath));
-    this._files.set(filePath, file);
+    const file = new StoredFile(
+      copiedFileMetadata,
+      this._persistence.getDiskPath(destinationFilePath)
+    );
+    this._files.set(destinationFilePath, file);
 
     this._cloudFunctions.dispatch("finalize", new CloudStorageObjectMetadata(file.metadata));
     return file.metadata;
