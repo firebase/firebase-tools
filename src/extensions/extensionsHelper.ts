@@ -21,7 +21,7 @@ import { diagnose } from "./diagnose";
 import { checkResponse } from "./askUserForParam";
 import { ensure } from "../ensureApiEnabled";
 import { deleteObject, uploadObject } from "../gcp/storage";
-import { needProjectId } from "../projectUtils";
+import { getProjectId } from "../projectUtils";
 import {
   createSource,
   ExtensionSource,
@@ -108,9 +108,12 @@ export function getDBInstanceFromURL(databaseUrl = ""): string {
  * Gets Firebase project specific param values.
  */
 export async function getFirebaseProjectParams(
-  projectId: string,
+  projectId: string | undefined,
   emulatorMode: boolean = false
 ): Promise<Record<string, string>> {
+  if (!projectId) {
+    return {};
+  }
   const body = emulatorMode
     ? await getProjectAdminSdkConfigOrCached(projectId)
     : await getFirebaseConfig({ project: projectId });
@@ -366,7 +369,10 @@ export async function promptForValidInstanceId(instanceId: string): Promise<stri
 }
 
 export async function ensureExtensionsApiEnabled(options: any): Promise<void> {
-  const projectId = needProjectId(options);
+  const projectId = getProjectId(options);
+  if (!projectId) {
+    return;
+  }
   return await ensure(
     projectId,
     "firebaseextensions.googleapis.com",
@@ -759,7 +765,10 @@ export async function confirm(args: {
 }
 
 export async function diagnoseAndFixProject(options: any): Promise<void> {
-  const projectId = needProjectId(options);
+  const projectId = getProjectId(options);
+  if (!projectId) {
+    return;
+  }
   const ok = await diagnose(projectId);
   if (!ok) {
     throw new FirebaseError("Unable to proceed until all issues are resolved.");
