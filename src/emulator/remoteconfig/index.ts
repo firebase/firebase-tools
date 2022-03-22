@@ -26,6 +26,11 @@ export interface SourceFile {
   content: string;
 }
 
+export interface ValidTemplate {
+  valid: boolean;
+  msg: string;
+}
+
 export class RemoteConfigEmulator implements EmulatorInstance {
   private destroyServer?: () => Promise<void>;
   private _app?: express.Express;
@@ -159,7 +164,7 @@ export class RemoteConfigEmulator implements EmulatorInstance {
    * the template is valid and false otherwise. `msg` describes the reason for the `valid`
    * value.
    */
-  static validateRemoteConfigEmulatorTemplate(template: any): any {
+  static validateRemoteConfigEmulatorTemplate(template: any): ValidTemplate {
     const validationResp = this.validateRemoteConfigTemplate(template);
     if (!validationResp.valid) {
       return validationResp;
@@ -215,12 +220,12 @@ export class RemoteConfigEmulator implements EmulatorInstance {
    *
    * @param {any} template A RemoteConfigTemplate object to be validated.
    *
-   * @returns {any} Object indicating the validity of template.
+   * @returns {ValidTemplate} indicating the validity of template.
    * The returned object contains two parameters `valid` and `msg`. `valid` is true if
    * the template is valid and false otherwise. `msg` describes the reason for the `valid`
    * value.
    */
-  static validateRemoteConfigTemplate(template: any): any {
+  static validateRemoteConfigTemplate(template: any): ValidTemplate {
     const templateCopy = cloneDeep(template);
     if (typeof templateCopy !== "object") {
       return {
@@ -234,7 +239,7 @@ export class RemoteConfigEmulator implements EmulatorInstance {
         msg: "template does not contain valid parameters",
       };
     }
-    // TODO(kroikie): complete template validation
+    // TODO(b/226152522): complete template validation
     return {
       valid: true,
       msg: "template is valid",
