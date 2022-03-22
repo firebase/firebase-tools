@@ -4,6 +4,7 @@ import {
   mirrorFieldTo,
   randomDigits,
   isValidPhoneNumber,
+  DeepPartial,
 } from "./utils";
 import { MakeRequired } from "./utils";
 import { AuthCloudFunction } from "./cloudFunctions";
@@ -581,11 +582,71 @@ export abstract class ProjectState {
   }
 }
 
+/**
+ * Updates fields based on specified update mask. Note that this is a no-op if
+ * the update mask is empty.
+ *
+ * @param updateMask a comma separated list of fully qualified names of fields
+ * @param dest the destination to apply updates to
+ * @param update the updates to apply
+ * @returns the updated destination object
+ */
+function applyMask<T>(updateMask: string, dest: T, update: DeepPartial<T>): T {
+  const paths = updateMask.split(",");
+  for (const path of paths) {
+    const fields = path.split(".");
+    // Using `any` here to recurse over destination objects
+    let updateField: any = update;
+    let existingField: any = dest;
+    let field;
+    for (let i = 0; i < fields.length - 1; i++) {
+      field = fields[i];
+
+      // Doesn't exist on update
+      if (updateField[field] == null) {
+        console.warn(`Unable to find field '${field}' in update '${updateField}`);
+        break;
+      }
+
+      // Field on existing is an array or is a primitive (i.e. cannot index
+      // any further)
+      if (Array.isArray(updateField[field]) || Object(updateField[field]) !== updateField[field]) {
+        console.warn(`Field '${field}' is singular and cannot have sub-fields`);
+        break;
+      }
+
+      // Non-standard behavior, this creates new fields regardless of if the
+      // final field is set. Typical behavior would not modify the config
+      // payload if the final field is not successfully set.
+      if (!existingField[field]) {
+        existingField[field] = {};
+      }
+
+      updateField = updateField[field];
+      existingField = existingField[field];
+    }
+    // Reassign final field if possible
+    field = fields[fields.length - 1];
+    if (updateField[field] == null) {
+      console.warn(`Unable to find field '${field}' in update '${JSON.stringify(updateField)}`);
+      continue;
+    }
+    existingField[field] = updateField[field];
+  }
+
+  return dest;
+}
+
 export class AgentProjectState extends ProjectState {
   private _oneAccountPerEmail = true;
   private _usageMode = UsageMode.DEFAULT;
   private tenantProjectForTenantId: Map<string, TenantProjectState> = new Map();
   private readonly _authCloudFunction = new AuthCloudFunction(this.projectId);
+  private _config: Config = {
+    signIn: { allowDuplicateEmails: false },
+    usageMode: UsageMode.DEFAULT,
+    blockingFunctions: {},
+  };
 
   constructor(projectId: string) {
     super(projectId);
@@ -596,19 +657,19 @@ export class AgentProjectState extends ProjectState {
   }
 
   get oneAccountPerEmail() {
-    return this._oneAccountPerEmail;
+    return !this._config.signIn.allowDuplicateEmails;
   }
 
   set oneAccountPerEmail(oneAccountPerEmail: boolean) {
-    this._oneAccountPerEmail = oneAccountPerEmail;
+    this._config.signIn.allowDuplicateEmails = !oneAccountPerEmail;
   }
 
   get usageMode() {
-    return this._usageMode;
+    return this._config.usageMode;
   }
 
   set usageMode(usageMode: UsageMode) {
-    this._usageMode = usageMode;
+    this._config.usageMode = usageMode;
   }
 
   get allowPasswordSignup() {
@@ -629,6 +690,34 @@ export class AgentProjectState extends ProjectState {
 
   get enableEmailLinkSignin() {
     return true;
+  }
+
+  get config() {
+    return this._config;
+  }
+
+  get blockingFunctionsConfig() {
+    return this._config.blockingFunctions;
+  }
+
+  set blockingFunctionsConfig(blockingFunctions: BlockingFunctionsConfig) {
+    this._config.blockingFunctions = blockingFunctions;
+  }
+
+  // TODO(lisajian): Once v2 API discovery is updated, type of update should be
+  // changed to Schemas["GoogleCloudIdentitytoolkitAdminV2Config"].
+  updateConfig(
+    update: Schemas["GoogleCloudIdentitytoolkitAdminV2Config"] & { usageMode?: UsageMode },
+    updateMask: string | undefined
+  ): Config {
+    // Empty masks indicate a full update.
+    if (!updateMask) {
+      this.oneAccountPerEmail = !update.signIn?.allowDuplicateEmails ?? true;
+      this.blockingFunctionsConfig = update.blockingFunctions ?? {};
+      this.usageMode = update.usageMode ?? UsageMode.DEFAULT;
+      return this.config;
+    }
+    return applyMask(updateMask, this.config, update);
   }
 
   getTenantProject(tenantId: string): TenantProjectState {
@@ -779,52 +868,7 @@ export class TenantProjectState extends ProjectState {
       return this.tenantConfig;
     }
 
-    const paths = updateMask.split(",");
-    for (const path of paths) {
-      const fields = path.split(".");
-      // Using `any` here to recurse over Tenant config objects
-      let updateField: any = update;
-      let existingField: any = this._tenantConfig;
-      let field;
-      for (let i = 0; i < fields.length - 1; i++) {
-        field = fields[i];
-
-        // Doesn't exist on update
-        if (updateField[field] == null) {
-          console.warn(`Unable to find field '${field}' in update '${updateField}`);
-          break;
-        }
-
-        // Field on existing is an array or is a primitive (i.e. cannot index
-        // any further)
-        if (
-          Array.isArray(updateField[field]) ||
-          Object(updateField[field]) !== updateField[field]
-        ) {
-          console.warn(`Field '${field}' is singular and cannot have sub-fields`);
-          break;
-        }
-
-        // Non-standard behavior, this creates new fields regardless of if the
-        // final field is set. Typical behavior would not modify the config
-        // payload if the final field is not successfully set.
-        if (!existingField[field]) {
-          existingField[field] = {};
-        }
-
-        updateField = updateField[field];
-        existingField = existingField[field];
-      }
-      // Reassign final field if possible
-      field = fields[fields.length - 1];
-      if (updateField[field] == null) {
-        console.warn(`Unable to find field '${field}' in update '${JSON.stringify(updateField)}`);
-        continue;
-      }
-      existingField[field] = updateField[field];
-    }
-
-    return this.tenantConfig;
+    return applyMask(updateMask, this.tenantConfig, update);
   }
 }
 
@@ -850,6 +894,24 @@ export type Tenant = Omit<
   >,
   "testPhoneNumbers" | "mfaConfig"
 > & { tenantId: string; mfaConfig: MfaConfig };
+
+export type SignInConfig = MakeRequired<
+  Schemas["GoogleCloudIdentitytoolkitAdminV2SignInConfig"],
+  "allowDuplicateEmails"
+>;
+
+export type BlockingFunctionsConfig =
+  Schemas["GoogleCloudIdentitytoolkitAdminV2BlockingFunctionsConfig"];
+
+// Serves as a substitute for Schemas["GoogleCloudIdentitytoolkitAdminV2Config"],
+// i.e. the configuration object for top-level AgentProjectStates. Emulator
+// fixes certain configurations for ease of use / testing, so as non-standard
+// behavior, Config only stores the configurable fields.
+export type Config = {
+  signIn: SignInConfig;
+  usageMode: UsageMode;
+  blockingFunctions: BlockingFunctionsConfig;
+};
 
 interface RefreshTokenRecord {
   localId: string;

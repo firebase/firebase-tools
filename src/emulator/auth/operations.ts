@@ -73,6 +73,7 @@ export const authOperations: AuthOps = {
     projects: {
       createSessionCookie,
       queryAccounts,
+      updateConfig,
       accounts: {
         _: signUp,
         delete: deleteAccount,
@@ -1739,31 +1740,25 @@ function getEmulatorProjectConfig(state: ProjectState): Schemas["EmulatorV1Proje
 
 function updateEmulatorProjectConfig(
   state: ProjectState,
-  reqBody: Schemas["EmulatorV1ProjectsConfig"]
+  reqBody: Schemas["EmulatorV1ProjectsConfig"],
+  ctx: ExegesisContext
 ): Schemas["EmulatorV1ProjectsConfig"] {
-  const allowDuplicateEmails = reqBody.signIn?.allowDuplicateEmails;
-  if (allowDuplicateEmails != null) {
-    assert(
-      state instanceof AgentProjectState,
-      "((Only top level projects can set oneAccountPerEmail.))"
-    );
-    state.oneAccountPerEmail = !allowDuplicateEmails;
+  // New developers should not use updateEmulatorProjectConfig to update the
+  // allowDuplicateEmails and usageMode settings and should instead use
+  // updateConfig to do so.
+  let updateMask = "";
+  if (reqBody.signIn?.allowDuplicateEmails) {
+    updateMask += "signIn.allowDupliateEmails";
   }
-  const usageMode = reqBody.usageMode;
-  if (usageMode != null) {
-    assert(state instanceof AgentProjectState, "((Only top level projects can set usageMode.))");
-    switch (usageMode) {
-      case "PASSTHROUGH":
-        assert(state.getUserCount() === 0, "Users are present, unable to set passthrough mode");
-        state.usageMode = UsageMode.PASSTHROUGH;
-        break;
-      case "DEFAULT":
-        state.usageMode = UsageMode.DEFAULT;
-        break;
-      default:
-        throw new BadRequestError("Invalid usage mode provided");
+  if (reqBody.usageMode) {
+    assert(reqBody.usageMode !== "USAGE_MODE_UNSPECIFIED", "Invalid usage mode provided");
+    if (reqBody.usageMode === "PASSTHROUGH") {
+      assert(state.getUserCount() === 0, "Users are present, unable to set passthrough mode");
     }
+    updateMask += ",usageMode";
   }
+
+  updateConfig(state, reqBody, ctx);
   return getEmulatorProjectConfig(state);
 }
 
@@ -2005,6 +2000,18 @@ function mfaSignInFinalize(
     idToken,
     refreshToken,
   };
+}
+
+function updateConfig(
+  state: ProjectState,
+  reqBody: Schemas["GoogleCloudIdentitytoolkitAdminV2Config"],
+  ctx: ExegesisContext
+): Schemas["GoogleCloudIdentitytoolkitAdminV2Config"] {
+  assert(
+    state instanceof AgentProjectState,
+    "((Can only update top-level configurations on agent projects.))"
+  );
+  return state.updateConfig(reqBody, ctx.params.query.updateMask);
 }
 
 export type AuthOperation = (
