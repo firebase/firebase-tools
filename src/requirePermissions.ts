@@ -1,5 +1,5 @@
 import { bold } from "cli-color";
-import { needProjectId } from "./projectUtils";
+import { getProjectId } from "./projectUtils";
 import { requireAuth } from "./requireAuth";
 import { logger } from "./logger";
 import { FirebaseError } from "./error";
@@ -16,7 +16,10 @@ const BASE_PERMISSIONS = ["firebase.projects.get"];
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function requirePermissions(options: any, permissions: string[] = []): Promise<void> {
-  const projectId = needProjectId(options);
+  const projectId = getProjectId(options);
+  if (!projectId) {
+    return;
+  }
   const requiredPermissions = BASE_PERMISSIONS.concat(permissions).sort();
 
   await requireAuth(options);
