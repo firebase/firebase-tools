@@ -9,7 +9,7 @@ import { RemoteConfigEventData } from "@google/events/firebase/remoteconfig/v1/R
 
 type RemoteConfigFunctionAction = "update";
 const REMOTE_CONFIG_V2_ACTION_MAP: Record<RemoteConfigFunctionAction, string> = {
-  update: "update",
+  update: "updated",
 };
 
 export interface RemoteConfigEventPayload {
@@ -58,22 +58,20 @@ export class RemoteConfigCloudFunctions {
       const eventBody = this.createLegacyEventRequestBody(action, object);
       const eventRes = await this.client!.post(this.multicastPath, eventBody);
       if (eventRes.status !== 200) {
-        console.log("iaw: pushing events");
         errStatus.push(eventRes.status);
       }
       /** Modern CloudEvents */
-      // const cloudEventBody = this.createCloudEventRequestBody(action, object);
-      // const cloudEventRes = await this.client!.post<CloudEvent<RemoteConfigEventData>, any>(
-      //   this.multicastPath,
-      //   cloudEventBody,
-      //   {
-      //     headers: { "Content-Type": "application/cloudevents+json; charset=UTF-8" },
-      //   }
-      // );
-      // if (cloudEventRes.status !== 200) {
-      //   console.log("iaw: pushing cloud events");
-      //   errStatus.push(cloudEventRes.status);
-      // }
+      const cloudEventBody = this.createCloudEventRequestBody(action, object);
+      const cloudEventRes = await this.client!.post<CloudEvent<RemoteConfigEventData>, any>(
+        this.multicastPath,
+        cloudEventBody,
+        {
+          headers: { "Content-Type": "application/cloudevents+json; charset=UTF-8" },
+        }
+      );
+      if (cloudEventRes.status !== 200) {
+        errStatus.push(cloudEventRes.status);
+      }
     } catch (e: any) {
       err = e as Error;
     }
@@ -98,27 +96,30 @@ export class RemoteConfigCloudFunctions {
       eventType: `google.firebase.remoteconfig.${action}`,
       resource: {
         service: "firebseremoteconfig.googleapis.com",
-        name: `projects/_/remoteConfig`,
-        type: "remoteconfig",
+        name: `projects/_`,
+        type: "remoteConfig",
       },
       data: templateVersion,
     };
   }
 
-  // private createCloudEventRequestBody(
-  //   action: RemoteConfigFunctionAction,
-  //   templateVersion: RemoteConfigEventPayload
-  // ): CloudEvent<RemoteConfigEventData> {
-  //   const timestamp = new Date();
-  //   const data = templateVersion as unknown as RemoteConfigEventData;
-  //   const time = new Date().toISOString();
-  //   return {
-  //     specversion: "1",
-  //     id: uuid.v4(),
-  //     type: `google.firebase.remoteconfig.v1.${action}`,
-  //     source: `//firebaseremoteconfig.googleapis.com/projects/_/remoteConfig`,
-  //     time,
-  //     data,
-  //   };
-  // }
+  private createCloudEventRequestBody(
+    action: RemoteConfigFunctionAction,
+    templateVersion: RemoteConfigEventPayload
+  ): CloudEvent<RemoteConfigEventData> {
+    const ceAction = REMOTE_CONFIG_V2_ACTION_MAP[action];
+    if (!ceAction) {
+      throw new Error(`${action} is not defined as a CloudEvent action`);
+    }
+    const data = templateVersion as unknown as RemoteConfigEventData;
+    const time = new Date().toISOString();
+    return {
+      specversion: "1",
+      id: uuid.v4(),
+      type: `google.firebase.remoteconfig.remoteConfig.v1.${action}`,
+      source: `//firebaseremoteconfig.googleapis.com/projects/_`,
+      time,
+      data,
+    };
+  }
 }
