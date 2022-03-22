@@ -553,7 +553,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       try {
         // Note - in the emulator, functionId = {region}-{functionName}, but in prod, functionId=functionName.
         // To match prod behavior, only validate functionName
-        functionIdsAreValid([{ id: definition.name, platform: definition.platform }]);
+        functionIdsAreValid([{ ...definition, id: definition.name }]);
       } catch (e: any) {
         this.logger.logLabeled(
           "WARN",
