@@ -69,7 +69,7 @@ export type UpdateObjectMetadataRequest = {
   authorization?: string;
 };
 
-/**  Parsed request object for {@link StorageLayer#handleDeleteObject}. */
+/**  Parsed request object for {@link StorageLayer#deleteObject}. */
 export type DeleteObjectRequest = {
   bucketId: string;
   decodedObjectId: string;
@@ -203,7 +203,7 @@ export class StorageLayer {
    * @throws {ForbiddenError} if the request is not authorized.
    * @throws {NotFoundError} if the object does not exist.
    */
-  public async handleDeleteObject(request: DeleteObjectRequest, skipAuth = false): Promise<void> {
+  public async deleteObject(request: DeleteObjectRequest, skipAuth = false): Promise<void> {
     const storedMetadata = this.getMetadata(request.bucketId, request.decodedObjectId);
     const authorized =
       skipAuth ||
