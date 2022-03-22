@@ -54,8 +54,6 @@ let tmpDir: string;
 
 describe("Storage emulator", () => {
   let test: TriggerEndToEndTest;
-  let browser: puppeteer.Browser;
-  let page: puppeteer.Page;
 
   let smallFilePath: string;
   let largeFilePath: string;
@@ -1109,8 +1107,10 @@ describe("Storage emulator", () => {
     });
   });
 
-  describe("Firebase Endpoints", () => {
+  describe.only("Firebase Endpoints", () => {
     let storage: Storage;
+    let browser: puppeteer.Browser;
+    let page: puppeteer.Page;
 
     const filename = "testing/storage_ref/image.png";
 
@@ -1170,6 +1170,21 @@ describe("Storage emulator", () => {
           const [host, port] = hostAndPort.split(":") as string[];
           (firebase.storage() as any).useEmulator(host, port);
         }, STORAGE_EMULATOR_HOST.replace(/^(https?:|)\/\//, ""));
+      }
+    });
+
+    afterEach(async () => {
+      await page.close();
+    });
+
+    after(async function (this) {
+      this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
+
+      await browser.close();
+      if (TEST_CONFIG.useProductionServers) {
+        delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+      } else {
+        await test.stopEmulators();
       }
     });
 
@@ -1707,11 +1722,7 @@ describe("Storage emulator", () => {
 
     emulatorSpecificDescribe("Non-SDK Endpoints", () => {
       beforeEach(async () => {
-        if (!TEST_CONFIG.useProductionServers) {
-          await resetStorageEmulator(STORAGE_EMULATOR_HOST);
-        } else {
-          await storage.bucket(storageBucket).deleteFiles();
-        }
+        await resetStorageEmulator(STORAGE_EMULATOR_HOST);
 
         await page.evaluate(
           (IMAGE_FILE_BASE64, filename) => {
@@ -1981,29 +1992,39 @@ describe("Storage emulator", () => {
         });
       });
     });
-
-    after(async function (this) {
-      this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
-
-      if (!TEST_CONFIG.keepBrowserOpen) {
-        await browser.close();
-      }
-      if (TEST_CONFIG.useProductionServers) {
-        delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
-      } else {
-        await test.stopEmulators();
-      }
-    });
   });
 
   emulatorSpecificDescribe("Emulator Internals", function (this) {
     // eslint-disable-next-line @typescript-eslint/no-invalid-this
     this.timeout(TEST_SETUP_TIMEOUT);
 
+    let browser: puppeteer.Browser;
+    let page: puppeteer.Page;
     let testGcsBucket: Bucket;
 
+    before(async () => {
+      this.timeout(TEST_SETUP_TIMEOUT);
+
+      // Start emulators
+      process.env.STORAGE_EMULATOR_HOST = STORAGE_EMULATOR_HOST;
+      test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, emulatorConfig);
+      await test.startEmulators(["--only", "auth,storage"]);
+
+      // Initialize GCS SDK
+      const adminCredential = fs.existsSync(path.join(__dirname, SERVICE_ACCOUNT_KEY))
+        ? admin.credential.cert(readJson(SERVICE_ACCOUNT_KEY))
+        : admin.credential.applicationDefault();
+      admin.initializeApp({ credential: adminCredential });
+
+      testGcsBucket = admin.storage().bucket(storageBucket);
+    });
+
     const initFirebaseSdkPage = async () => {
-      page = await browser.newPage();
+      const browser = await puppeteer.launch({
+        headless: !TEST_CONFIG.showBrowser,
+        devtools: true,
+      });
+      const page = await browser.newPage();
       await page.goto("https://example.com", { waitUntil: "networkidle2" });
 
       await page.addScriptTag({
@@ -2031,34 +2052,17 @@ describe("Storage emulator", () => {
         const [host, port] = hostAndPort.split(":") as string[];
         (firebase.storage() as any).useEmulator(host, port);
       }, STORAGE_EMULATOR_HOST.replace(/^(https?:|)\/\//, ""));
+      return { browser, page };
     };
-
-    before(async () => {
-      this.timeout(TEST_SETUP_TIMEOUT);
-
-      // Start emulators
-      process.env.STORAGE_EMULATOR_HOST = STORAGE_EMULATOR_HOST;
-      test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, emulatorConfig);
-      await test.startEmulators(["--only", "auth,storage"]);
-
-      // Initialize GCS SDK
-      const adminCredential = fs.existsSync(path.join(__dirname, SERVICE_ACCOUNT_KEY))
-        ? admin.credential.cert(readJson(SERVICE_ACCOUNT_KEY))
-        : admin.credential.applicationDefault();
-      admin.initializeApp({ credential: adminCredential });
-
-      testGcsBucket = admin.storage().bucket(storageBucket);
-
-      // Initialize browser container for Firebase Storage SDK
-      browser = await puppeteer.launch({
-        headless: !TEST_CONFIG.showBrowser,
-        devtools: true,
-      });
-    });
 
     beforeEach(async () => {
       await resetStorageEmulator(STORAGE_EMULATOR_HOST);
-      await initFirebaseSdkPage();
+      ({ browser, page } = await initFirebaseSdkPage());
+    });
+
+    this.afterEach(async () => {
+      await page.close();
+      await browser.close();
     });
 
     after(async () => {
@@ -2066,9 +2070,6 @@ describe("Storage emulator", () => {
 
       if (tmpDir) {
         fs.rmdirSync(tmpDir, { recursive: true });
-      }
-      if (!TEST_CONFIG.keepBrowserOpen) {
-        await browser.close();
       }
       delete process.env.STORAGE_EMULATOR_HOST;
       await test.stopEmulators();
