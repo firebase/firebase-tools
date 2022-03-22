@@ -15,6 +15,7 @@ import * as configExport from "../functions/runtimeConfigExport";
 import { requireConfig } from "../requireConfig";
 
 import type { Options } from "../options";
+import { normalizeAndValidate } from "../functions/projectConfig";
 
 const REQUIRED_PERMISSIONS = [
   "runtimeconfig.configs.list",
@@ -103,6 +104,9 @@ export default new Command("functions:config:export")
   .before(requireConfig)
   .before(requireInteractive)
   .action(async (options: Options) => {
+    const config = normalizeAndValidate(options.config.src.functions)[0];
+    const functionsDir = config.source;
+
     let pInfos = configExport.getProjectInfos(options);
     checkReservedAliases(pInfos);
 
@@ -145,7 +149,6 @@ export default new Command("functions:config:export")
       ".env"
     ] = `${header}# .env file contains environment variables that applies to all projects.\n`;
 
-    const functionsDir = options.config.get("functions.source", ".");
     for (const [filename, content] of Object.entries(filesToWrite)) {
       await options.config.askWriteProjectFile(path.join(functionsDir, filename), content);
     }

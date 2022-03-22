@@ -326,54 +326,111 @@
             "type": "object"
         },
         "functions": {
-            "additionalProperties": false,
-            "properties": {
-                "ignore": {
+            "anyOf": [
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "ignore": {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        "postdeploy": {
+                            "anyOf": [
+                                {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
+                                },
+                                {
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "predeploy": {
+                            "anyOf": [
+                                {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
+                                },
+                                {
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "runtime": {
+                            "enum": [
+                                "nodejs10",
+                                "nodejs12",
+                                "nodejs14",
+                                "nodejs16"
+                            ],
+                            "type": "string"
+                        },
+                        "source": {
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
+                },
+                {
                     "items": {
-                        "type": "string"
+                        "additionalProperties": false,
+                        "properties": {
+                            "ignore": {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            "postdeploy": {
+                                "anyOf": [
+                                    {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    {
+                                        "type": "string"
+                                    }
+                                ]
+                            },
+                            "predeploy": {
+                                "anyOf": [
+                                    {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    {
+                                        "type": "string"
+                                    }
+                                ]
+                            },
+                            "runtime": {
+                                "enum": [
+                                    "nodejs10",
+                                    "nodejs12",
+                                    "nodejs14",
+                                    "nodejs16"
+                                ],
+                                "type": "string"
+                            },
+                            "source": {
+                                "type": "string"
+                            }
+                        },
+                        "type": "object"
                     },
                     "type": "array"
-                },
-                "postdeploy": {
-                    "anyOf": [
-                        {
-                            "items": {
-                                "type": "string"
-                            },
-                            "type": "array"
-                        },
-                        {
-                            "type": "string"
-                        }
-                    ]
-                },
-                "predeploy": {
-                    "anyOf": [
-                        {
-                            "items": {
-                                "type": "string"
-                            },
-                            "type": "array"
-                        },
-                        {
-                            "type": "string"
-                        }
-                    ]
-                },
-                "runtime": {
-                    "enum": [
-                        "nodejs10",
-                        "nodejs12",
-                        "nodejs14",
-                        "nodejs16"
-                    ],
-                    "type": "string"
-                },
-                "source": {
-                    "type": "string"
                 }
-            },
-            "type": "object"
+            ]
         },
         "hosting": {
             "anyOf": [

@@ -1,6 +1,13 @@
 import { expect } from "chai";
-import { EmulatableBackend } from "../../emulator/functionsEmulator";
+import { BackendInfo, EmulatableBackend } from "../../emulator/functionsEmulator";
 import * as functionsEmulatorShared from "../../emulator/functionsEmulatorShared";
+import {
+  Extension,
+  ExtensionSpec,
+  ExtensionVersion,
+  RegistryLaunchStage,
+  Visibility,
+} from "../../extensions/extensionsApi";
 
 const baseDef = {
   platform: "gcfv1" as const,
@@ -122,6 +129,158 @@ describe("FunctionsEmulatorShared", () => {
       it(t.desc, () => {
         expect(functionsEmulatorShared.getSecretLocalPath(t.in, testProjectDir)).to.equal(
           t.expected
+        );
+      });
+    }
+  });
+
+  describe(`${functionsEmulatorShared.toBackendInfo.name}`, () => {
+    const testCF3Triggers: functionsEmulatorShared.ParsedTriggerDefinition[] = [
+      {
+        entryPoint: "cf3",
+        platform: "gcfv1",
+        name: "cf3-trigger",
+      },
+    ];
+    const testExtTriggers: functionsEmulatorShared.ParsedTriggerDefinition[] = [
+      {
+        entryPoint: "ext",
+        platform: "gcfv1",
+        name: "ext-trigger",
+      },
+    ];
+    const testSpec: ExtensionSpec = {
+      name: "my-extension",
+      version: "0.1.0",
+      resources: [],
+      sourceUrl: "test.com",
+      params: [],
+      postinstallContent: "Should subsitute ${param:KEY}",
+    };
+    const testSubbedSpec: ExtensionSpec = {
+      name: "my-extension",
+      version: "0.1.0",
+      resources: [],
+      sourceUrl: "test.com",
+      params: [],
+      postinstallContent: "Should subsitute value",
+    };
+    const testExtension: Extension = {
+      name: "my-extension",
+      ref: "pubby/my-extensions",
+      createTime: "",
+      visibility: Visibility.PUBLIC,
+      registryLaunchStage: RegistryLaunchStage.BETA,
+    };
+    const testExtensionVersion = (spec: ExtensionSpec): ExtensionVersion => {
+      return {
+        name: "my-extension",
+        ref: "pubby/my-extensions@0.1.0",
+        state: "PUBLISHED",
+        spec,
+        hash: "abc123",
+        sourceDownloadUri: "test.com",
+      };
+    };
+
+    const tests: {
+      desc: string;
+      in: EmulatableBackend;
+      expected: BackendInfo;
+    }[] = [
+      {
+        desc: "should transform a published Extension backend",
+        in: {
+          functionsDir: "test",
+          env: {
+            KEY: "value",
+          },
+          secretEnv: [],
+          predefinedTriggers: testExtTriggers,
+          extension: testExtension,
+          extensionVersion: testExtensionVersion(testSpec),
+          extensionInstanceId: "my-instance",
+        },
+        expected: {
+          directory: "test",
+          env: {
+            KEY: "value",
+          },
+          functionTriggers: testExtTriggers,
+          extension: testExtension,
+          extensionVersion: testExtensionVersion(testSubbedSpec),
+          extensionInstanceId: "my-instance",
+        },
+      },
+      {
+        desc: "should transform a local Extension backend",
+        in: {
+          functionsDir: "test",
+          env: {
+            KEY: "value",
+          },
+          secretEnv: [],
+          predefinedTriggers: testExtTriggers,
+          extensionSpec: testSpec,
+          extensionInstanceId: "my-local-instance",
+        },
+        expected: {
+          directory: "test",
+          env: {
+            KEY: "value",
+          },
+          functionTriggers: testExtTriggers,
+          extensionSpec: testSubbedSpec,
+          extensionInstanceId: "my-local-instance",
+        },
+      },
+      {
+        desc: "should transform a CF3 backend",
+        in: {
+          functionsDir: "test",
+          env: {
+            KEY: "value",
+          },
+          secretEnv: [],
+        },
+        expected: {
+          directory: "test",
+          env: {
+            KEY: "value",
+          },
+          functionTriggers: testCF3Triggers,
+        },
+      },
+      {
+        desc: "should add secretEnvVar into env",
+        in: {
+          functionsDir: "test",
+          env: {
+            KEY: "value",
+          },
+          secretEnv: [
+            {
+              key: "secret",
+              secret: "asecret",
+              projectId: "test",
+            },
+          ],
+        },
+        expected: {
+          directory: "test",
+          env: {
+            KEY: "value",
+            secret: "projects/test/secrets/asecret/versions/latest",
+          },
+          functionTriggers: testCF3Triggers,
+        },
+      },
+    ];
+
+    for (const tc of tests) {
+      it(tc.desc, () => {
+        expect(functionsEmulatorShared.toBackendInfo(tc.in, testCF3Triggers)).to.deep.equal(
+          tc.expected
         );
       });
     }
