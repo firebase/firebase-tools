@@ -9,8 +9,10 @@ import * as backend from "../deploy/functions/backend";
 import * as runtimes from "../deploy/functions/runtimes";
 import * as proto from "./proto";
 import * as utils from "../utils";
+import * as projectConfig from "../functions/projectConfig";
 
 export const API_VERSION = "v2alpha";
+export const CODEBASE_LABEL = "firebase-functions-codebase";
 
 const client = new Client({
   urlPrefix: functionsV2Origin,
@@ -481,7 +483,10 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
   } else if (backend.isCallableTriggered(endpoint)) {
     gcfFunction.labels = { ...gcfFunction.labels, "deployment-callable": "true" };
   }
-
+  gcfFunction.labels = {
+    ...gcfFunction.labels,
+    [CODEBASE_LABEL]: endpoint.codebase || projectConfig.DEFAULT_CODEBASE,
+  };
   return gcfFunction;
 }
 
@@ -566,7 +571,6 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
   proto.renameIfPresent(endpoint, gcfFunction.serviceConfig, "minInstances", "minInstanceCount");
   proto.renameIfPresent(endpoint, gcfFunction.serviceConfig, "maxInstances", "maxInstanceCount");
   proto.copyIfPresent(endpoint, gcfFunction, "labels");
-
   if (gcfFunction.serviceConfig.vpcConnector) {
     endpoint.vpc = { connector: gcfFunction.serviceConfig.vpcConnector };
     proto.renameIfPresent(
@@ -576,6 +580,6 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
       "vpcConnectorEgressSettings"
     );
   }
-
+  endpoint.codebase = gcfFunction.labels?.[CODEBASE_LABEL] || projectConfig.DEFAULT_CODEBASE;
   return endpoint;
 }

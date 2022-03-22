@@ -24,12 +24,12 @@ export async function release(
   if (!context.config) {
     return;
   }
+  if (!payload.functions) {
+    return;
+  }
 
-  const plan = planner.createDeploymentPlan(
-    payload.functions!.backend,
-    await backend.existingBackend(context),
-    { filters: context.filters }
-  );
+  const { wantBackend, haveBackend } = payload.functions;
+  const plan = planner.createDeploymentPlan(wantBackend, haveBackend, context.filters);
 
   const fnsToDelete = Object.values(plan)
     .map((regionalChanges) => regionalChanges.endpointsToDelete)
@@ -69,9 +69,9 @@ export async function release(
   // uri field. createDeploymentPlan copies endpoints by reference. Both of these
   // subtleties are so we can take out a round trip API call to get the latest
   // trigger URLs by calling existingBackend again.
-  printTriggerUrls(payload.functions!.backend);
+  printTriggerUrls(payload.functions!.wantBackend);
 
-  const haveEndpoints = backend.allEndpoints(payload.functions!.backend);
+  const haveEndpoints = backend.allEndpoints(payload.functions!.wantBackend);
   const deletedEndpoints = Object.values(plan)
     .map((r) => r.endpointsToDelete)
     .reduce(reduceFlat, []);
