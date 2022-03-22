@@ -1,0 +1,1 @@
+- Fixes an issue where some valid Cloud Functions for Firebase names would not pass validation in the Functions emulator (#4352).
