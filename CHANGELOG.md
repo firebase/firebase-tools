@@ -1,4 +1,0 @@
-- Upgrade Storage Rules Runtime to v1.0.2.
-- Adds support for an environment variable `FIREBASE_HOSTING_UPLOAD_CONCURRENCY` to specify custom levels of Hosting upload concurrency (defaults to 200).
-- Fixes error handling in `auth:export` when API calls would fail.
-- Fixes bug where new callable functions were not publicly accessible. (#4327)
