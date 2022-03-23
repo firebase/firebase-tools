@@ -302,7 +302,11 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
           destinationBucket: req.params.destBucketId,
           destinationObject: req.params.destObjectId,
           incomingMetadata: req.body,
-          authorization: req.header("authorization"),
+          // TODO(tonyjhuang): Until we have a way of validating OAuth tokens passed by
+          // the GCS sdk or gcloud tool, we must assume all requests have valid admin creds.
+          // authorization: req.header("authorization")
+          authorization: "Bearer owner"
+          
         });
       } catch (err) {
         if (err instanceof NotFoundError) {
