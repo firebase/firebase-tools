@@ -93,7 +93,7 @@ export type ListObjectsResponse = {
   nextPageToken?: string;
 };
 
-/**  Parsed request object for {@link StorageLayer#handleCreateDownloadToken}. */
+/**  Parsed request object for {@link StorageLayer#createDownloadToken}. */
 export type CreateDownloadTokenRequest = {
   bucketId: string;
   decodedObjectId: string;
@@ -466,7 +466,7 @@ export class StorageLayer {
   }
 
   /** Creates a new Firebase download token for an object. */
-  public handleCreateDownloadToken(request: CreateDownloadTokenRequest): StoredFileMetadata {
+  public createDownloadToken(request: CreateDownloadTokenRequest): StoredFileMetadata {
     if (!this._adminCredsValidator.validate(request.authorization)) {
       throw new ForbiddenError();
     }

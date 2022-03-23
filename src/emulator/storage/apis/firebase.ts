@@ -363,7 +363,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         return res.sendStatus(400);
       }
       try {
-        metadata = storageLayer.handleCreateDownloadToken({
+        metadata = storageLayer.createDownloadToken({
           bucketId,
           decodedObjectId,
           authorization,
