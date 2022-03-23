@@ -117,8 +117,6 @@ describe("manifest", () => {
               version: "1.0.0",
             },
             params: { a: { baseValue: "pikachu" }, b: { baseValue: "bulbasaur" } },
-            allowedEventTypes: [],
-            eventarcChannel: "",
           },
           {
             instanceId: "instance-2",
@@ -128,8 +126,6 @@ describe("manifest", () => {
               version: "2.0.0",
             },
             params: { a: { baseValue: "eevee" }, b: { baseValue: "squirtle" } },
-            allowedEventTypes: [],
-            eventarcChannel: "",
           },
         ],
         generateBaseConfig(),
@@ -168,8 +164,6 @@ describe("manifest", () => {
               version: "1.0.0",
             },
             params: { b: { baseValue: "bulbasaur" }, a: { baseValue: "absol" } },
-            allowedEventTypes: [],
-            eventarcChannel: "",
           },
           {
             instanceId: "instance-2",
@@ -179,8 +173,6 @@ describe("manifest", () => {
               version: "2.0.0",
             },
             params: { e: { baseValue: "eevee" }, s: { baseValue: "squirtle" } },
-            allowedEventTypes: [],
-            eventarcChannel: "",
           },
         ],
         generateBaseConfig(),
@@ -208,6 +200,57 @@ describe("manifest", () => {
       );
     });
 
+    it("should write events-related env vars", async () => {
+      await manifest.writeToManifest(
+        [
+          {
+            instanceId: "instance-1",
+            ref: {
+              publisherId: "firebase",
+              extensionId: "bigquery-export",
+              version: "1.0.0",
+            },
+            params: { b: { baseValue: "bulbasaur" }, a: { baseValue: "absol" } },
+            eventarcChannel: "projects/test-project/locations/us-central1/channels/firebase",
+            allowedEventTypes: ["google.firebase.custom-event-occurred"],
+          },
+          {
+            instanceId: "instance-2",
+            ref: {
+              publisherId: "firebase",
+              extensionId: "bigquery-export",
+              version: "2.0.0",
+            },
+            params: { e: { baseValue: "eevee" }, s: { baseValue: "squirtle" } },
+            eventarcChannel: "projects/test-project/locations/us-central1/channels/firebase",
+            allowedEventTypes: ["google.firebase.custom-event-occurred"],
+          },
+        ],
+        generateBaseConfig(),
+        { nonInteractive: false, force: false }
+      );
+      expect(writeProjectFileStub).calledWithExactly("firebase.json", {
+        extensions: {
+          "delete-user-data": "firebase/delete-user-data@0.1.12",
+          "delete-user-data-gm2h": "firebase/delete-user-data@0.1.12",
+          "instance-1": "firebase/bigquery-export@1.0.0",
+          "instance-2": "firebase/bigquery-export@2.0.0",
+        },
+      });
+
+      expect(askWriteProjectFileStub).to.have.been.calledTwice;
+      expect(askWriteProjectFileStub).calledWithExactly(
+        "extensions/instance-1.env",
+        `a=absol\nALLOWED_EVENT_TYPES=google.firebase.custom-event-occurred\nb=bulbasaur\nEVENTARC_CHANNEL=projects/test-project/locations/us-central1/channels/firebase`,
+        false
+      );
+      expect(askWriteProjectFileStub).calledWithExactly(
+        "extensions/instance-2.env",
+        `ALLOWED_EVENT_TYPES=google.firebase.custom-event-occurred\ne=eevee\nEVENTARC_CHANNEL=projects/test-project/locations/us-central1/channels/firebase\ns=squirtle`,
+        false
+      );
+    });
+
     it("should overwrite when user chooses to", async () => {
       // Chooses to overwrite instead of merge.
       sandbox.stub(prompt, "promptOnce").resolves(true);
@@ -222,8 +265,6 @@ describe("manifest", () => {
               version: "1.0.0",
             },
             params: { a: { baseValue: "pikachu" }, b: { baseValue: "bulbasaur" } },
-            allowedEventTypes: [],
-            eventarcChannel: "",
           },
           {
             instanceId: "instance-2",
@@ -233,8 +274,6 @@ describe("manifest", () => {
               version: "2.0.0",
             },
             params: { a: { baseValue: "eevee" }, b: { baseValue: "squirtle" } },
-            allowedEventTypes: [],
-            eventarcChannel: "",
           },
         ],
         generateBaseConfig(),

@@ -50,8 +50,6 @@ const testInstanceSpec = (
       version: "0.1.0",
     },
     params: {},
-    eventarcChannel: "",
-    allowedEventTypes: [],
     extensionVersion: testExtensionVersion,
     extension: testExtension(publisherId, launchStage),
   };
