@@ -10,7 +10,7 @@ import * as validate from "./validate";
 import * as ensure from "./ensure";
 import { Options } from "../../options";
 import { functionMatchesAnyGroup, getFilterGroups } from "./functionsDeployHelper";
-import { logBullet } from "../../utils";
+import { logBullet, logLabeledError } from "../../utils";
 import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload";
 import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import { needProjectId, needProjectNumber } from "../../projectUtils";
@@ -20,6 +20,7 @@ import { ensureTriggerRegions } from "./triggerRegionHelper";
 import { ensureServiceAgentRoles } from "./checkIam";
 import { FirebaseError } from "../../error";
 import { normalizeAndValidate } from "../../functions/projectConfig";
+import { previews } from "../../previews";
 
 function hasUserConfig(config: Record<string, unknown>): boolean {
   // "firebase" key is always going to exist in runtime config.
@@ -93,8 +94,8 @@ export async function prepare(
       ? "mixed"
       : "runtime_config"
     : usedDotenv
-    ? "dotenv"
-    : "none";
+      ? "dotenv"
+      : "none";
   void track("functions_codebase_deploy_env_method", tag);
 
   logger.debug(`Analyzing ${runtimeDelegate.name} backend spec`);
@@ -122,10 +123,24 @@ export async function prepare(
   if (backend.someEndpoint(wantBackend, () => true)) {
     logBullet(
       clc.cyan.bold("functions:") +
-        " preparing " +
-        clc.bold(sourceDirName) +
-        " directory for uploading..."
+      " preparing " +
+      clc.bold(sourceDirName) +
+      " directory for uploading..."
     );
+  }
+  if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
+    if (!previews.functionsv2) {
+      throw new FirebaseError(
+        "This version of firebase-tools does not support Google Cloud " +
+        "Functions gen 2\n" +
+        "If Cloud Functions for Firebase gen 2 is still in alpha, sign up " +
+        "for the alpha program at " +
+        "https://services.google.com/fb/forms/firebasealphaprogram/\n" +
+        "If Cloud Functions for Firebase gen 2 is in beta, get the latest " +
+        "version of Firebse Tools with `npm i -g firebase-tools@latest`"
+      );
+    }
+    context.functionsSourceV2 = await prepareFunctionsUpload(sourceDir, context.config);
   }
   if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv1")) {
     context.functionsSourceV1 = await prepareFunctionsUpload(
@@ -133,9 +148,6 @@ export async function prepare(
       context.config,
       runtimeConfig
     );
-  }
-  if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
-    context.functionsSourceV2 = await prepareFunctionsUpload(sourceDir, context.config);
   }
 
   // Setup environment variables on each function.
