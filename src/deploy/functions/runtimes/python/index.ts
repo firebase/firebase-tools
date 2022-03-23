@@ -60,7 +60,6 @@ class Delegate implements runtimes.RuntimeDelegate {
         childProcess.once("exit", resolve);
         childProcess.once("error", reject);
       });
-      console.log("FETCHING QUIT");
       // If we SIGKILL the child process we're actually going to kill the go
       // runner and the webserver it launched will keep running.
       await fetch(`http://localhost:${adminPort}/__/quitquitquit`);
@@ -85,9 +84,7 @@ class Delegate implements runtimes.RuntimeDelegate {
       });
       const kill = await this.serve(port, adminPort, envs);
       try {
-        console.log("calling discover from port");
         discovered = await discovery.detectFromPort(adminPort, this.projectId, this.runtime);
-        console.log("after discover from port");
       } finally {
         await kill();
       }

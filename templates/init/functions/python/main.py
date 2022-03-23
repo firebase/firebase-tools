@@ -6,9 +6,9 @@
 
 # @functions.https(memory_mb=256)
 def hellofunction(request):
-    return ('Hello World!', 200, {})
+    return ('HELLO World!', 200, {})
 
 
 # @functions.https(memory_mb=256)
 def foofunction(request):
-    return ('Hello World!', 200, {})
+    return ('FOO World!', 200, {})
