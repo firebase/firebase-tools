@@ -1,7 +1,4 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "fs";
-import { tmpdir } from "os";
-import { v4 } from "uuid";
-import { ListItem, ListResponse } from "./list";
 import {
   CloudStorageBucketMetadata,
   CloudStorageObjectMetadata,
@@ -50,7 +47,7 @@ export class StoredFile {
   }
 }
 
-/**  Parsed request object for {@link StorageLayer#handleGetObject}. */
+/**  Parsed request object for {@link StorageLayer#getObject}. */
 export type GetObjectRequest = {
   bucketId: string;
   decodedObjectId: string;
@@ -58,13 +55,13 @@ export type GetObjectRequest = {
   downloadToken?: string;
 };
 
-/** Response object for {@link StorageLayer#handleGetObject}. */
+/** Response object for {@link StorageLayer#getObject}. */
 export type GetObjectResponse = {
   metadata: StoredFileMetadata;
   data: Buffer;
 };
 
-/**  Parsed request object for {@link StorageLayer#handleUpdateObjectMetadata}. */
+/**  Parsed request object for {@link StorageLayer#updateObjectMetadata}. */
 export type UpdateObjectMetadataRequest = {
   bucketId: string;
   decodedObjectId: string;
@@ -72,14 +69,14 @@ export type UpdateObjectMetadataRequest = {
   authorization?: string;
 };
 
-/**  Parsed request object for {@link StorageLayer#handleDeleteObject}. */
+/**  Parsed request object for {@link StorageLayer#deleteObject}. */
 export type DeleteObjectRequest = {
   bucketId: string;
   decodedObjectId: string;
   authorization?: string;
 };
 
-/**  Parsed request object for {@link StorageLayer#handleListObjects}. */
+/**  Parsed request object for {@link StorageLayer#listObjects}. */
 export type ListObjectsRequest = {
   bucketId: string;
   prefix: string;
@@ -89,14 +86,21 @@ export type ListObjectsRequest = {
   authorization?: string;
 };
 
-/**  Parsed request object for {@link StorageLayer#handleCreateDownloadToken}. */
+/** Response object for {@link StorageLayer#listObjects}. */
+export type ListObjectsResponse = {
+  prefixes?: string[];
+  items?: StoredFileMetadata[];
+  nextPageToken?: string;
+};
+
+/**  Parsed request object for {@link StorageLayer#createDownloadToken}. */
 export type CreateDownloadTokenRequest = {
   bucketId: string;
   decodedObjectId: string;
   authorization?: string;
 };
 
-/**  Parsed request object for {@link StorageLayer#handleDeleteDownloadToken}. */
+/**  Parsed request object for {@link StorageLayer#deleteDownloadToken}. */
 export type DeleteDownloadTokenRequest = {
   bucketId: string;
   decodedObjectId: string;
@@ -138,7 +142,7 @@ export class StorageLayer {
    * @throws {NotFoundError} if object does not exist
    * @throws {ForbiddenError} if request is unauthorized
    */
-  public async handleGetObject(request: GetObjectRequest): Promise<GetObjectResponse> {
+  public async getObject(request: GetObjectRequest): Promise<GetObjectResponse> {
     const metadata = this.getMetadata(request.bucketId, request.decodedObjectId);
 
     // If a valid download token is present, skip Firebase Rules auth. Mainly used by the js sdk.
@@ -196,7 +200,7 @@ export class StorageLayer {
    * @throws {ForbiddenError} if the request is not authorized.
    * @throws {NotFoundError} if the object does not exist.
    */
-  public async handleDeleteObject(request: DeleteObjectRequest): Promise<void> {
+  public async deleteObject(request: DeleteObjectRequest): Promise<void> {
     const storedMetadata = this.getMetadata(request.bucketId, request.decodedObjectId);
     const authorized = await this._rulesValidator.validate(
       ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
@@ -245,7 +249,7 @@ export class StorageLayer {
    * @throws {ForbiddenError} if the request is not authorized.
    * @throws {NotFoundError} if the object does not exist.
    */
-  public async handleUpdateObjectMetadata(
+  public async updateObjectMetadata(
     request: UpdateObjectMetadataRequest
   ): Promise<StoredFileMetadata> {
     const storedMetadata = this.getMetadata(request.bucketId, request.decodedObjectId);
@@ -275,7 +279,7 @@ export class StorageLayer {
    * Last step in uploading a file. Validates the request and persists the staging
    * object to its permanent location on disk.
    */
-  public async handleUploadObject(upload: Upload): Promise<StoredFileMetadata> {
+  public async uploadObject(upload: Upload): Promise<StoredFileMetadata> {
     if (upload.status !== UploadStatus.FINISHED) {
       throw new Error(`Unexpected upload status encountered: ${upload.status}.`);
     }
@@ -374,46 +378,23 @@ export class StorageLayer {
    * Lists all files and prefixes (folders) at a path.
    * @throws {ForbiddenError} if the request is not authorized.
    */
-  public async handleListObjects(request: ListObjectsRequest): Promise<ListResponse> {
+  public async listObjects(request: ListObjectsRequest): Promise<ListObjectsResponse> {
+    const { bucketId, prefix, delimiter, pageToken, authorization } = request;
     const authorized = await this._rulesValidator.validate(
-      ["b", request.bucketId, "o", request.prefix].join("/"),
-      request.bucketId,
+      ["b", bucketId, "o", prefix].join("/"),
+      bucketId,
       RulesetOperationMethod.LIST,
       {},
-      request.authorization
+      authorization
     );
     if (!authorized) {
       throw new ForbiddenError();
     }
-    const itemsResults = this.listItems(
-      request.bucketId,
-      request.prefix,
-      request.delimiter,
-      request.pageToken,
-      request.maxResults
-    );
-    return new ListResponse(
-      itemsResults.prefixes ?? [],
-      itemsResults.items?.map((i) => new ListItem(i.name, i.bucket)) ?? [],
-      itemsResults.nextPageToken
-    );
-  }
 
-  public listItems(
-    bucket: string,
-    prefix: string,
-    delimiter: string,
-    pageToken: string | undefined,
-    maxResults: number | undefined
-  ): {
-    prefixes?: string[];
-    items?: CloudStorageObjectMetadata[];
-    nextPageToken?: string;
-  } {
     let items: Array<StoredFileMetadata> = [];
     const prefixes = new Set<string>();
     for (const [, file] of this._files) {
-      if (file.metadata.bucket !== bucket) {
+      if (file.metadata.bucket !== bucketId) {
         continue;
       }
 
@@ -456,10 +437,7 @@ export class StorageLayer {
       }
     }
 
-    if (!maxResults) {
-      maxResults = 1000;
-    }
-
+    const maxResults = request.maxResults ?? 1000;
     let nextPageToken = undefined;
     if (items.length > maxResults) {
       nextPageToken = items[maxResults].name;
@@ -469,13 +447,12 @@ export class StorageLayer {
     return {
       nextPageToken,
       prefixes: prefixes.size > 0 ? [...prefixes].sort() : undefined,
-      items:
-        items.length > 0 ? items.map((item) => new CloudStorageObjectMetadata(item)) : undefined,
+      items: items.length > 0 ? items : undefined,
     };
   }
 
   /** Creates a new Firebase download token for an object. */
-  public handleCreateDownloadToken(request: CreateDownloadTokenRequest): StoredFileMetadata {
+  public createDownloadToken(request: CreateDownloadTokenRequest): StoredFileMetadata {
     if (!this._adminCredsValidator.validate(request.authorization)) {
       throw new ForbiddenError();
     }
@@ -492,7 +469,7 @@ export class StorageLayer {
    * present, calling this method is a no-op. This method will also regenerate a new token
    * if the last remaining token is deleted.
    */
-  public handleDeleteDownloadToken(request: DeleteDownloadTokenRequest): StoredFileMetadata {
+  public deleteDownloadToken(request: DeleteDownloadTokenRequest): StoredFileMetadata {
     if (!this._adminCredsValidator.validate(request.authorization)) {
       throw new ForbiddenError();
     }
