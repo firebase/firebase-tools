@@ -4,8 +4,8 @@ import * as sinon from "sinon";
 import * as backend from "../../../../deploy/functions/backend";
 import * as planner from "../../../../deploy/functions/release/planner";
 import * as deploymentTool from "../../../../deploymentTool";
-import * as gcfv2 from "../../../../gcp/cloudfunctionsv2";
 import * as utils from "../../../../utils";
+import * as v2events from "../../../../functions/events/v2";
 
 describe("planner", () => {
   let logLabeledBullet: sinon.SinonStub;
@@ -50,10 +50,13 @@ describe("planner", () => {
       const original: backend.Endpoint = {
         ...func("a", "b", {
           eventTrigger: {
-            eventType: gcfv2.PUBSUB_PUBLISH_EVENT,
-            eventFilters: {
-              resource: "topic",
-            },
+            eventType: v2events.PUBSUB_PUBLISH_EVENT,
+            eventFilters: [
+              {
+                attribute: "topic",
+                value: "topic",
+              },
+            ],
             retry: false,
           },
         }),
@@ -61,7 +64,7 @@ describe("planner", () => {
       };
       const changed = JSON.parse(JSON.stringify(original)) as backend.Endpoint;
       if (backend.isEventTriggered(changed)) {
-        changed.eventTrigger.eventFilters["resource"] = "anotherTopic";
+        changed.eventTrigger.eventFilters = [{ attribute: "topic", value: "anotherTopic" }];
       }
       expect(planner.calculateUpdate(changed, original)).to.deep.equal({
         endpoint: changed,
@@ -86,10 +89,13 @@ describe("planner", () => {
     it("knows to delete & recreate when trigger regions change", () => {
       const original: backend.Endpoint = func("a", "b", {
         eventTrigger: {
-          eventType: "google.cloud.storage.object.v1.finalzied",
-          eventFilters: {
-            bucket: "mybucket",
-          },
+          eventType: "google.cloud.storage.object.v1.finalized",
+          eventFilters: [
+            {
+              attribute: "bucket",
+              value: "my-bucket",
+            },
+          ],
           region: "us-west1",
           retry: false,
         },
@@ -98,9 +104,12 @@ describe("planner", () => {
       const changed: backend.Endpoint = func("a", "b", {
         eventTrigger: {
           eventType: "google.cloud.storage.object.v1.finalzied",
-          eventFilters: {
-            bucket: "bucket2",
-          },
+          eventFilters: [
+            {
+              attribute: "bucket",
+              value: "my-bucket",
+            },
+          ],
           region: "us",
           retry: false,
         },
@@ -141,14 +150,16 @@ describe("planner", () => {
       const have = { updated, deleted, pantheon };
 
       // note: pantheon is not updated in any way
-      expect(planner.calculateRegionalChanges(want, have, {})).to.deep.equal({
-        endpointsToCreate: [created],
-        endpointsToUpdate: [
-          {
-            endpoint: updated,
-          },
-        ],
-        endpointsToDelete: [deleted],
+      expect(planner.calculateChangesets(want, have, (e) => e.region, {})).to.deep.equal({
+        region: {
+          endpointsToCreate: [created],
+          endpointsToUpdate: [
+            {
+              endpoint: updated,
+            },
+          ],
+          endpointsToDelete: [deleted],
+        },
       });
     });
 
@@ -163,19 +174,69 @@ describe("planner", () => {
       const have = { updated, deleted, pantheon };
 
       // note: pantheon is deleted because we have deleteAll: true
-      expect(planner.calculateRegionalChanges(want, have, { deleteAll: true })).to.deep.equal({
-        endpointsToCreate: [created],
-        endpointsToUpdate: [
-          {
-            endpoint: updated,
-          },
-        ],
-        endpointsToDelete: [deleted, pantheon],
+      expect(
+        planner.calculateChangesets(want, have, (e) => e.region, { deleteAll: true })
+      ).to.deep.equal({
+        region: {
+          endpointsToCreate: [created],
+          endpointsToUpdate: [
+            {
+              endpoint: updated,
+            },
+          ],
+          endpointsToDelete: [deleted, pantheon],
+        },
       });
     });
   });
 
   describe("createDeploymentPlan", () => {
+    it("groups deployment by region and memory", () => {
+      const region1mem1Created: backend.Endpoint = func("id1", "region1");
+      const region1mem1Updated: backend.Endpoint = func("id2", "region1");
+
+      const region2mem1Created: backend.Endpoint = func("id3", "region2");
+      const region2mem2Updated: backend.Endpoint = func("id4", "region2");
+      region2mem2Updated.availableMemoryMb = 512;
+      const region2mem2Deleted: backend.Endpoint = func("id5", "region2");
+      region2mem2Deleted.availableMemoryMb = 512;
+      region2mem2Deleted.labels = deploymentTool.labels();
+
+      const have = backend.of(region1mem1Updated, region2mem2Updated, region2mem2Deleted);
+      const want = backend.of(
+        region1mem1Created,
+        region1mem1Updated,
+        region2mem1Created,
+        region2mem2Updated
+      );
+
+      expect(planner.createDeploymentPlan(want, have, {})).to.deep.equal({
+        "region1-default": {
+          endpointsToCreate: [region1mem1Created],
+          endpointsToUpdate: [
+            {
+              endpoint: region1mem1Updated,
+            },
+          ],
+          endpointsToDelete: [],
+        },
+        "region2-default": {
+          endpointsToCreate: [region2mem1Created],
+          endpointsToUpdate: [],
+          endpointsToDelete: [],
+        },
+        "region2-512": {
+          endpointsToCreate: [],
+          endpointsToUpdate: [
+            {
+              endpoint: region2mem2Updated,
+            },
+          ],
+          endpointsToDelete: [region2mem2Deleted],
+        },
+      });
+    });
+
     it("applies filters", () => {
       const group1Created = func("g1-created", "region");
       const group1Updated = func("g1-updated", "region");
@@ -192,7 +253,7 @@ describe("planner", () => {
       const have = backend.of(group1Updated, group1Deleted, group2Updated, group2Deleted);
 
       expect(planner.createDeploymentPlan(want, have, { filters: [["g1"]] })).to.deep.equal({
-        region: {
+        "region-default": {
           endpointsToCreate: [group1Created],
           endpointsToUpdate: [
             {
@@ -258,7 +319,7 @@ describe("planner", () => {
       const want = func("a", "b", {
         eventTrigger: {
           eventType: "google.pubsub.topic.publish",
-          eventFilters: {},
+          eventFilters: [],
           retry: false,
         },
       });
@@ -272,7 +333,7 @@ describe("planner", () => {
       const have = func("a", "b", {
         eventTrigger: {
           eventType: "google.pubsub.topic.publish",
-          eventFilters: {},
+          eventFilters: [],
           retry: false,
         },
       });
@@ -290,7 +351,7 @@ describe("planner", () => {
     it("should not throw if a event triggered function keeps the same trigger", () => {
       const eventTrigger: backend.EventTrigger = {
         eventType: "google.pubsub.topic.publish",
-        eventFilters: {},
+        eventFilters: [],
         retry: false,
       };
       const want = func("a", "b", { eventTrigger });
@@ -322,10 +383,13 @@ describe("planner", () => {
 
   it("detects changes to v2 pubsub topics", () => {
     const eventTrigger: backend.EventTrigger = {
-      eventType: gcfv2.PUBSUB_PUBLISH_EVENT,
-      eventFilters: {
-        resource: "projects/p/topics/t",
-      },
+      eventType: v2events.PUBSUB_PUBLISH_EVENT,
+      eventFilters: [
+        {
+          attribute: "topic",
+          value: "projects/p/topic/t",
+        },
+      ],
       retry: false,
     };
 
@@ -355,7 +419,7 @@ describe("planner", () => {
     // to modify only 'want'
     want = JSON.parse(JSON.stringify(want)) as backend.Endpoint;
     if (backend.isEventTriggered(want)) {
-      want.eventTrigger.eventFilters.resource = "projects/p/topics/t2";
+      want.eventTrigger.eventFilters = [{ attribute: "topic", value: "projects/p/topics/t2" }];
     }
     expect(planner.changedV2PubSubTopic(want, have)).to.be.true;
   });

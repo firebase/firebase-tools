@@ -10,8 +10,8 @@ export const humanReadable = (dep: planner.InstanceSpec) =>
 
 const humanReadableUpdate = (from: planner.InstanceSpec, to: planner.InstanceSpec) => {
   if (
-    from.ref?.publisherId == to.ref?.publisherId &&
-    from.ref?.extensionId == to.ref?.extensionId
+    from.ref?.publisherId === to.ref?.publisherId &&
+    from.ref?.extensionId === to.ref?.extensionId
   ) {
     return `\t${clc.bold(from.instanceId)} (${refs.toExtensionVersionRef(from.ref!)} => ${
       to.ref?.version
@@ -37,7 +37,7 @@ export function updatesSummary(
 ): string {
   const instancesToUpdate = toUpdate
     .map((to) => {
-      const from = have.find((exists) => exists.instanceId == to.instanceId);
+      const from = have.find((exists) => exists.instanceId === to.instanceId);
       return humanReadableUpdate(from!, to);
     })
     .join("\n");

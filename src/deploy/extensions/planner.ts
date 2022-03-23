@@ -1,13 +1,35 @@
-import * as path from "path";
 import * as semver from "semver";
 
-import { FirebaseError } from "../../error";
 import * as extensionsApi from "../../extensions/extensionsApi";
-import { getFirebaseProjectParams, substituteParams } from "../../extensions/extensionsHelper";
 import * as refs from "../../extensions/refs";
-import { readParams } from "./params";
+import { FirebaseError } from "../../error";
+import { getFirebaseProjectParams, substituteParams } from "../../extensions/extensionsHelper";
 import { logger } from "../../logger";
+import { readInstanceParam } from "../../extensions/manifest";
+import { ParamBindingOptions } from "../../extensions/paramHelper";
 
+/**
+ * Instance spec used by manifest.
+ *
+ * Params are passed in ParamBindingOptions so we know the param bindings for
+ * all environments user has configured.
+ *
+ * So far this is only used for writing to the manifest, but in the future
+ * we want to read manifest into this interface.
+ */
+export interface ManifestInstanceSpec {
+  instanceId: string;
+  params: Record<string, ParamBindingOptions>;
+  ref?: refs.Ref;
+  paramSpecs?: extensionsApi.Param[];
+}
+
+// TODO(lihes): Rename this to something like DeploymentInstanceSpec.
+/**
+ * Instance spec used for deploying extensions to firebase project or emulator.
+ *
+ * Param bindings are expected to be collapsed from ParamBindingOptions into a Record<string, string>.
+ */
 export interface InstanceSpec {
   instanceId: string;
   ref?: refs.Ref;
@@ -71,8 +93,12 @@ export async function have(projectId: string): Promise<InstanceSpec[]> {
  * want checks firebase.json and the extensions directory for which extensions
  * the user wants installed on their project.
  * @param projectId The project we are deploying to
+ * @param projectNumber The project number we are deploying to. Used for checking .env files.
+ * @param aliases An array of aliases for the project we are deploying to. Used for checking .env files.
  * @param projectDir The directory containing firebase.json and extensions/
  * @param extensions The extensions section of firebase.jsonm
+ * @param emulatorMode Whether the output will be used by the Extensions emulator.
+ *                     If true, this will check {instanceId}.env.local for params and will respect `demo-` project rules.
  */
 export async function want(args: {
   projectId: string;
@@ -80,7 +106,7 @@ export async function want(args: {
   aliases: string[];
   projectDir: string;
   extensions: Record<string, string>;
-  checkLocal?: boolean;
+  emulatorMode?: boolean;
 }): Promise<InstanceSpec[]> {
   const instanceSpecs: InstanceSpec[] = [];
   const errors: FirebaseError[] = [];
@@ -90,15 +116,15 @@ export async function want(args: {
       const ref = refs.parse(e[1]);
       ref.version = await resolveVersion(ref);
 
-      const params = readParams({
+      const params = readInstanceParam({
         projectDir: args.projectDir,
         instanceId,
         projectId: args.projectId,
         projectNumber: args.projectNumber,
         aliases: args.aliases,
-        checkLocal: args.checkLocal,
+        checkLocal: args.emulatorMode,
       });
-      const autoPopulatedParams = await getFirebaseProjectParams(args.projectId);
+      const autoPopulatedParams = await getFirebaseProjectParams(args.projectId, args.emulatorMode);
       const subbedParams = substituteParams(params, autoPopulatedParams);
 
       instanceSpecs.push({
@@ -126,11 +152,17 @@ export async function want(args: {
  * @param version a semver or semver range
  */
 export async function resolveVersion(ref: refs.Ref): Promise<string> {
-  if (!ref.version || ref.version == "latest") {
-    return "latest";
-  }
   const extensionRef = refs.toExtensionRef(ref);
   const versions = await extensionsApi.listExtensionVersions(extensionRef);
+  if (versions.length === 0) {
+    throw new FirebaseError(`No versions found for ${extensionRef}`);
+  }
+  if (!ref.version || ref.version === "latest") {
+    return versions
+      .map((ev) => ev.spec.version)
+      .sort(semver.compare)
+      .pop()!;
+  }
   const maxSatisfying = semver.maxSatisfying(
     versions.map((ev) => ev.spec.version),
     ref.version

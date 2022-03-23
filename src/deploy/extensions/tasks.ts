@@ -6,7 +6,7 @@ import * as utils from "../../utils";
 import { ErrorHandler } from "./errors";
 import { InstanceSpec } from "./planner";
 
-const isRetryable = (err: any) => err.status == 429 || err.status == 409;
+const isRetryable = (err: any) => err.status === 429 || err.status === 409;
 
 export type DeploymentType = "create" | "update" | "configure" | "delete";
 export interface ExtensionDeploymentTask {

@@ -9,7 +9,7 @@ import { promptOnce } from "../prompt";
 import { requireHostingSite } from "../requireHostingSite";
 import { requirePermissions } from "../requirePermissions";
 import { needProjectId } from "../projectUtils";
-import * as requireConfig from "../requireConfig";
+import { requireConfig } from "../requireConfig";
 import { logger } from "../logger";
 
 export default new Command("hosting:channel:delete <channelId>")

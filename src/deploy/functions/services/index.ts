@@ -1,8 +1,14 @@
 import * as backend from "../backend";
 import * as iam from "../../../gcp/iam";
+import * as v2events from "../../../functions/events/v2";
 import { obtainStorageBindings, ensureStorageTriggerRegion } from "./storage";
+import { ensureFirebaseAlertsTriggerRegion } from "./firebaseAlerts";
 
+/** A standard void No Op */
 const noop = (): Promise<void> => Promise.resolve();
+
+/** A No Op that's useful for Services that don't have specific bindings but should still try to set default bindings */
+const noopProjectBindings = (): Promise<Array<iam.Binding>> => Promise.resolve([]);
 
 /** A service interface for the underlying GCP event services */
 export interface Service {
@@ -10,8 +16,10 @@ export interface Service {
   readonly api: string;
 
   // dispatch functions
-  requiredProjectBindings: ((pId: any, p: any) => Promise<Array<iam.Binding>>) | undefined;
-  ensureTriggerRegion: (ep: backend.Endpoint, et: backend.EventTrigger) => Promise<void>;
+  requiredProjectBindings:
+    | ((projectNumber: string, policy: iam.Policy) => Promise<Array<iam.Binding>>)
+    | undefined;
+  ensureTriggerRegion: (ep: backend.Endpoint & backend.EventTriggered) => Promise<void>;
   ensureFunctionIsValid: () => void;
   registerFunctionToResource: () => void;
   setupFunctionConfig: () => void;
@@ -51,8 +59,18 @@ export const StorageService: Service = {
   setupFunctionConfig: noop,
   unregisterFunctionFromResource: noop,
 };
-
-/** An auth blocking service object */
+/** A firebase alerts service object */
+export const FirebaseAlertsService: Service = {
+  name: "firebasealerts",
+  api: "logging.googleapis.com",
+  requiredProjectBindings: noopProjectBindings,
+  ensureTriggerRegion: ensureFirebaseAlertsTriggerRegion,
+  ensureFunctionIsValid: noop,
+  registerFunctionToResource: noop,
+  setupFunctionConfig: noop,
+  unregisterFunctionFromResource: noop,
+};
+/** A auth blocking service object */
 export const AuthBlockingService: Service = {
   name: "authBlocking",
   api: "identity.googleapis.com",
@@ -66,23 +84,24 @@ export const AuthBlockingService: Service = {
 };
 
 /** Mapping from event type string to service object */
-export const EVENT_SERVICE_MAPPING: Record<string, any> = {
+export const EVENT_SERVICE_MAPPING: Record<v2events.Event, Service> = {
   "google.cloud.pubsub.topic.v1.messagePublished": PubSubService,
   "google.cloud.storage.object.v1.finalized": StorageService,
   "google.cloud.storage.object.v1.archived": StorageService,
   "google.cloud.storage.object.v1.deleted": StorageService,
   "google.cloud.storage.object.v1.metadataUpdated": StorageService,
+  "google.firebase.firebasealerts.alerts.v1.published": FirebaseAlertsService,
 };
 
 /**
  * Find the Service object for the given endpoint
  * @param endpoint the endpoint that we want the service for
- * @returns a Service object that corresponds to the event type of the endpoint or noop
+ * @return a Service object that corresponds to the event type of the endpoint or noop
  */
 export function serviceForEndpoint(endpoint: backend.Endpoint): Service {
   if (!backend.isEventTriggered(endpoint)) {
     return NoOpService;
   }
 
-  return EVENT_SERVICE_MAPPING[endpoint.eventTrigger.eventType] || NoOpService;
+  return EVENT_SERVICE_MAPPING[endpoint.eventTrigger.eventType as v2events.Event] || NoOpService;
 }

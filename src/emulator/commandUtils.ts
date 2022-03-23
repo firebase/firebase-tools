@@ -8,7 +8,7 @@ import { logger } from "../logger";
 import * as path from "path";
 import { Constants } from "./constants";
 import { requireAuth } from "../requireAuth";
-import requireConfig = require("../requireConfig");
+import { requireConfig } from "../requireConfig";
 import { Emulators, ALL_SERVICE_EMULATORS } from "./types";
 import { FirebaseError } from "../error";
 import { EmulatorRegistry } from "./registry";

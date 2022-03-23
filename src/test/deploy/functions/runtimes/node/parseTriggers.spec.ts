@@ -65,6 +65,26 @@ describe("addResourcesToBackend", () => {
     expect(result).to.deep.equal(expected);
   });
 
+  it("should handle a callable trigger", () => {
+    const trigger: parseTriggers.TriggerAnnotation = {
+      ...BASIC_TRIGGER,
+      httpsTrigger: {},
+      labels: {
+        "deployment-callable": "true",
+      },
+    };
+
+    const result = backend.empty();
+    parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
+
+    const expected: backend.Backend = backend.of({
+      ...BASIC_ENDPOINT,
+      callableTrigger: {},
+      labels: {},
+    });
+    expect(result).to.deep.equal(expected);
+  });
+
   it("should handle a minimal task queue trigger", () => {
     const trigger: parseTriggers.TriggerAnnotation = {
       ...BASIC_TRIGGER,
@@ -108,9 +128,12 @@ describe("addResourcesToBackend", () => {
 
         const eventTrigger: backend.EventTrigger = {
           eventType: "google.pubsub.topic.publish",
-          eventFilters: {
-            resource: "projects/project/topics/topic",
-          },
+          eventFilters: [
+            {
+              attribute: "resource",
+              value: "projects/project/topics/topic",
+            },
+          ],
           retry: !!failurePolicy,
         };
         const expected: backend.Backend = backend.of({ ...BASIC_ENDPOINT, eventTrigger });
@@ -179,9 +202,12 @@ describe("addResourcesToBackend", () => {
 
     const eventTrigger: backend.EventTrigger = {
       eventType: "google.pubsub.topic.publish",
-      eventFilters: {
-        resource: "projects/p/topics/t",
-      },
+      eventFilters: [
+        {
+          attribute: "resource",
+          value: "projects/p/topics/t",
+        },
+      ],
       retry: false,
     };
 

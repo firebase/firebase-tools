@@ -126,13 +126,19 @@ function parseEndpoints(
     if (backend.isEventTriggered(ep)) {
       requireKeys(prefix + ".eventTrigger", ep.eventTrigger, "eventType", "eventFilters");
       assertKeyTypes(prefix + ".eventTrigger", ep.eventTrigger, {
-        eventFilters: "object",
+        eventFilters: "array",
         eventType: "string",
         retry: "boolean",
         region: "string",
         serviceAccountEmail: "string",
       });
       triggered = { eventTrigger: ep.eventTrigger };
+      for (const eventFilter of triggered.eventTrigger.eventFilters) {
+        if (eventFilter.attribute === "topic" && !eventFilter.value.startsWith("projects/")) {
+          // Construct full pubsub topic name.
+          eventFilter.value = `projects/${project}/topics/${eventFilter.value}`;
+        }
+      }
     } else if (backend.isHttpsTriggered(ep)) {
       assertKeyTypes(prefix + ".httpsTrigger", ep.httpsTrigger, {
         invoker: "array",

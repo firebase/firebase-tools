@@ -75,7 +75,7 @@ export function proxyRequestHandler(url: string, rewriteIdentifier: string): Req
         continue;
       }
       const value = req.headers[key];
-      if (value == undefined) {
+      if (value === undefined) {
         headers.delete(key);
       } else if (Array.isArray(value)) {
         headers.delete(key);
@@ -155,7 +155,7 @@ export function proxyRequestHandler(url: string, rewriteIdentifier: string): Req
         const locationURL = new URL(location);
         // Only assume we can fix the location header if the origin of the
         // "fixed" header is the same as the origin of the outbound request.
-        if (locationURL.origin == u.origin) {
+        if (locationURL.origin === u.origin) {
           const unborkedLocation = location.replace(locationURL.origin, "");
           proxyRes.response.headers.set("location", unborkedLocation);
         }

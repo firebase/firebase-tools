@@ -79,12 +79,12 @@ export class Fabricator {
       totalTime: 0,
       results: [],
     };
-    const deployRegions = Object.values(plan).map(async (changes): Promise<void> => {
-      const results = await this.applyRegionalChanges(changes);
+    const deployChangesets = Object.values(plan).map(async (changes): Promise<void> => {
+      const results = await this.applyChangeset(changes);
       summary.results.push(...results);
       return;
     });
-    const promiseResults = await utils.allSettled(deployRegions);
+    const promiseResults = await utils.allSettled(deployChangesets);
 
     const errs = promiseResults
       .filter((r) => r.status === "rejected")
@@ -100,9 +100,7 @@ export class Fabricator {
     return summary;
   }
 
-  async applyRegionalChanges(
-    changes: planner.RegionalChanges
-  ): Promise<Array<reporter.DeployResult>> {
+  async applyChangeset(changes: planner.Changeset): Promise<Array<reporter.DeployResult>> {
     const deployResults: reporter.DeployResult[] = [];
     const handle = async (
       op: reporter.OperationType,
@@ -235,6 +233,13 @@ export class Fabricator {
           })
           .catch(rethrowAs(endpoint, "set invoker"));
       }
+    } else if (backend.isCallableTriggered(endpoint)) {
+      // Callable functions should always be public
+      await this.executor
+        .run(async () => {
+          await gcf.setInvokerCreate(endpoint.project, backend.functionName(endpoint), ["public"]);
+        })
+        .catch(rethrowAs(endpoint, "set invoker"));
     } else if (backend.isTaskQueueTriggered(endpoint)) {
       // Like HTTPS triggers, taskQueueTriggers have an invoker, but unlike HTTPS they don't default
       // public.
@@ -299,6 +304,11 @@ export class Fabricator {
           .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
           .catch(rethrowAs(endpoint, "set invoker"));
       }
+    } else if (backend.isCallableTriggered(endpoint)) {
+      // Callable functions should always be public
+      await this.executor
+        .run(() => run.setInvokerCreate(endpoint.project, serviceName, ["public"]))
+        .catch(rethrowAs(endpoint, "set invoker"));
     } else if (backend.isTaskQueueTriggered(endpoint)) {
       // Like HTTPS triggers, taskQueueTriggers have an invoker, but unlike HTTPS they don't default
       // public.
@@ -306,14 +316,14 @@ export class Fabricator {
       if (invoker && !invoker.includes("private")) {
         await this.executor
           .run(async () => {
-            await gcf.setInvokerCreate(endpoint.project, backend.functionName(endpoint), invoker);
+            await run.setInvokerCreate(endpoint.project, serviceName, invoker);
           })
           .catch(rethrowAs(endpoint, "set invoker"));
       }
     }
 
     const mem = endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;
-    if (mem >= backend.MIN_MEMORY_FOR_CONCURRENCY && endpoint.concurrency != 1) {
+    if (mem >= backend.MIN_MEMORY_FOR_CONCURRENCY && endpoint.concurrency !== 1) {
       await this.setConcurrency(
         endpoint,
         serviceName,

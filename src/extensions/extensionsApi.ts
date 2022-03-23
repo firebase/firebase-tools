@@ -10,6 +10,7 @@ import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import * as operationPoller from "../operation-poller";
 import * as refs from "./refs";
+import { SpecParamType } from "./extensionsHelper";
 
 const VERSION = "v1beta";
 const PAGE_SIZE_MAX = 100;
@@ -145,11 +146,11 @@ export interface Author {
 }
 
 export interface Param {
-  param: string;
+  param: string; // The key of the {param:value} pair.
   label: string;
   description?: string;
   default?: string;
-  type?: ParamType;
+  type?: ParamType | SpecParamType; // TODO(b/224618262): This is SpecParamType when publishing & ParamType when looking at API responses. Choose one.
   options?: ParamOption[];
   required?: boolean;
   validationRegex?: string;
@@ -578,7 +579,7 @@ export async function getPublisherProfile(
 ): Promise<PublisherProfile> {
   const res = await apiClient.get(`/projects/${projectId}/publisherProfile`, {
     queryParams:
-      publisherId == undefined
+      publisherId === undefined
         ? undefined
         : {
             publisherId,

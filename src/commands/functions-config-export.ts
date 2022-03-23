@@ -12,9 +12,10 @@ import { requirePermissions } from "../requirePermissions";
 import { logBullet, logWarning } from "../utils";
 import { zip } from "../functional";
 import * as configExport from "../functions/runtimeConfigExport";
-import * as requireConfig from "../requireConfig";
+import { requireConfig } from "../requireConfig";
 
 import type { Options } from "../options";
+import { normalizeAndValidate } from "../functions/projectConfig";
 
 const REQUIRED_PERMISSIONS = [
   "runtimeconfig.configs.list",
@@ -103,6 +104,9 @@ export default new Command("functions:config:export")
   .before(requireConfig)
   .before(requireInteractive)
   .action(async (options: Options) => {
+    const config = normalizeAndValidate(options.config.src.functions)[0];
+    const functionsDir = config.source;
+
     let pInfos = configExport.getProjectInfos(options);
     checkReservedAliases(pInfos);
 
@@ -127,7 +131,7 @@ export default new Command("functions:config:export")
       }
 
       const errMsg = configExport.hydrateEnvs(pInfos, prefix);
-      if (errMsg.length == 0) {
+      if (errMsg.length === 0) {
         break;
       }
       prefix = await promptForPrefix(errMsg);
@@ -145,7 +149,6 @@ export default new Command("functions:config:export")
       ".env"
     ] = `${header}# .env file contains environment variables that applies to all projects.\n`;
 
-    const functionsDir = options.config.get("functions.source", ".");
     for (const [filename, content] of Object.entries(filesToWrite)) {
       await options.config.askWriteProjectFile(path.join(functionsDir, filename), content);
     }
