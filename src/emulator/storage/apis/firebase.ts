@@ -170,9 +170,10 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     return res.status(200).json({
       nextPageToken: listResponse.nextPageToken,
       prefixes: listResponse.prefixes ?? [],
-      items: listResponse.items?.map((item) => {
-        return { name: item.name, bucket: item.bucket };
-      }) ?? [],
+      items:
+        listResponse.items?.map((item) => {
+          return { name: item.name, bucket: item.bucket };
+        }) ?? [],
     });
   });
 
