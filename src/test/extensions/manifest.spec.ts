@@ -407,7 +407,7 @@ describe("manifest", () => {
                 label: "",
                 type: ParamType.SECRET,
               },
-            ]
+            ],
           },
         ],
         generateBaseConfig(),
@@ -447,7 +447,7 @@ describe("manifest", () => {
                 label: "",
                 type: ParamType.STRING,
               },
-            ]
+            ],
           },
         ],
         generateBaseConfig(),
@@ -488,7 +488,7 @@ describe("manifest", () => {
                 label: "",
                 type: ParamType.STRING,
               },
-            ]
+            ],
           },
         ],
         generateBaseConfig(),
