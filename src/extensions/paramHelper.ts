@@ -95,7 +95,7 @@ export function getParamsWithCurrentValuesAsDefaults(
  * @throws FirebaseError if an invalid env file is passed in
  */
 export async function getParams(args: {
-  projectId: string;
+  projectId?: string;
   instanceId: string;
   paramSpecs: extensionsApi.Param[];
   nonInteractive?: boolean;
@@ -117,19 +117,18 @@ export async function getParams(args: {
     );
   } else if (args.paramsEnvPath) {
     params = getParamsFromFile({
-      projectId: args.projectId,
       paramSpecs: args.paramSpecs,
       paramsEnvPath: args.paramsEnvPath,
     });
   } else {
     const firebaseProjectParams = await getFirebaseProjectParams(args.projectId);
-    params = await askUserForParam.ask(
-      args.projectId,
-      args.instanceId,
-      args.paramSpecs,
+    params = await askUserForParam.ask({
+      projectId: args.projectId,
+      instanceId: args.instanceId,
+      paramSpecs: args.paramSpecs,
       firebaseProjectParams,
-      !!args.reconfiguring
-    );
+      reconfiguring: !!args.reconfiguring,
+    });
   }
   void track("Extension Params", _.isEmpty(params) ? "Not Present" : "Present", _.size(params));
   return params;
@@ -139,7 +138,7 @@ export async function getParamsForUpdate(args: {
   spec: extensionsApi.ExtensionSpec;
   newSpec: extensionsApi.ExtensionSpec;
   currentParams: { [option: string]: string };
-  projectId: string;
+  projectId?: string;
   paramsEnvPath?: string;
   nonInteractive?: boolean;
   instanceId: string;
@@ -159,7 +158,6 @@ export async function getParamsForUpdate(args: {
     );
   } else if (args.paramsEnvPath) {
     params = getParamsFromFile({
-      projectId: args.projectId,
       paramSpecs: args.newSpec.params,
       paramsEnvPath: args.paramsEnvPath,
     });
@@ -188,7 +186,7 @@ export async function promptForNewParams(args: {
   spec: extensionsApi.ExtensionSpec;
   newSpec: extensionsApi.ExtensionSpec;
   currentParams: { [option: string]: string };
-  projectId: string;
+  projectId?: string;
   instanceId: string;
 }): Promise<{ [option: string]: ParamBindingOptions }> {
   const newParamBindingOptions = buildBindingOptionsWithBaseValue(args.currentParams);
@@ -239,7 +237,6 @@ export async function promptForNewParams(args: {
 }
 
 function getParamsFromFile(args: {
-  projectId: string;
   paramSpecs: extensionsApi.Param[];
   paramsEnvPath: string;
 }): Record<string, ParamBindingOptions> {
