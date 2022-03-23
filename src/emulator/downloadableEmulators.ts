@@ -298,6 +298,13 @@ export async function handleEmulatorProcessError(emulator: Emulators, err: any):
   }
 }
 
+export function requiresJava(emulator: Emulators): boolean {
+  if (emulator in Commands) {
+    return Commands[emulator as keyof typeof Commands].binary === "java";
+  }
+  return false;
+}
+
 async function _runBinary(
   emulator: DownloadableEmulatorDetails,
   command: DownloadableEmulatorCommand,
