@@ -6,6 +6,7 @@ import { fileExistsSync } from "../fsutils";
 import { FirebaseError } from "../error";
 import { ExtensionSpec } from "./extensionsApi";
 import { logger } from "../logger";
+import { parse, Ref } from "./refs";
 
 const EXTENSIONS_SPEC_FILE = "extension.yaml";
 const EXTENSIONS_PREINSTALL_FILE = "PREINSTALL.md";
@@ -56,6 +57,22 @@ export function readFile(pathToFile: string): string {
       throw new FirebaseError(`Could not find "${pathToFile}""`, { original: err });
     }
     throw new FirebaseError(`Failed to read file at "${pathToFile}"`, { original: err });
+  }
+}
+
+/**
+ * getRefOrLocalPath detects if refOrPath is an extension ref or a path to a local extension.
+ * @param refOrPath a string that may be an extension ref or path to a local extension
+ */
+export function getRefOrLocalPath(refOrPath: string): {
+  ref?: Ref;
+  localPath?: string;
+} {
+  try {
+    const ref = parse(refOrPath);
+    return { ref };
+  } catch (e) {
+    return { localPath: refOrPath };
   }
 }
 

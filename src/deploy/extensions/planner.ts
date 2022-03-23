@@ -7,6 +7,7 @@ import { getFirebaseProjectParams, substituteParams } from "../../extensions/ext
 import { logger } from "../../logger";
 import { readInstanceParam } from "../../extensions/manifest";
 import { ParamBindingOptions } from "../../extensions/paramHelper";
+import { getRefOrLocalPath, isLocalExtension } from "../../extensions/localHelper";
 
 /**
  * Instance spec used by manifest.
@@ -32,8 +33,11 @@ export interface ManifestInstanceSpec {
  */
 export interface InstanceSpec {
   instanceId: string;
-  ref?: refs.Ref;
   params: Record<string, string>;
+  // An InstanceSpec has a ref iff it is an instance of a published Extension version
+  ref?: refs.Ref;
+  // An InstanceSpec has a localPath iff it is an instance of a local Extension.
+  localPath?: string;
   extensionVersion?: extensionsApi.ExtensionVersion;
   extension?: extensionsApi.Extension;
 }
@@ -113,8 +117,10 @@ export async function want(args: {
   for (const e of Object.entries(args.extensions)) {
     try {
       const instanceId = e[0];
-      const ref = refs.parse(e[1]);
-      ref.version = await resolveVersion(ref);
+      const { ref, localPath } = getRefOrLocalPath(e[1]);
+      if (ref) {
+        ref.version = await resolveVersion(ref);
+      }
 
       const params = readInstanceParam({
         projectDir: args.projectDir,
@@ -130,6 +136,7 @@ export async function want(args: {
       instanceSpecs.push({
         instanceId,
         ref,
+        localPath,
         params: subbedParams,
       });
     } catch (err: any) {
