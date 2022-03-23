@@ -453,11 +453,7 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
       "triggerRegion",
       "region"
     );
-    proto.copyIfPresent(
-      gcfFunction.eventTrigger,
-      endpoint.eventTrigger,
-      "channel"
-    )
+    proto.copyIfPresent(gcfFunction.eventTrigger, endpoint.eventTrigger, "channel");
 
     if (endpoint.eventTrigger.retry) {
       logger.warn("Cannot set a retry policy on Cloud Function", endpoint.id);

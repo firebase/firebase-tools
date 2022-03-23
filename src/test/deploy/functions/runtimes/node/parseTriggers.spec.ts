@@ -360,4 +360,144 @@ describe("addResourcesToBackend", () => {
     parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
     expect(result).to.deep.equal(expected);
   });
+
+  describe("custom events", () => {
+    it("should pass through fully qualified channel name", () => {
+      const trigger: parseTriggers.TriggerAnnotation = {
+        ...BASIC_TRIGGER,
+        eventTrigger: {
+          eventType: "custom-event",
+          channel: "projects/project123/locations/us-west1/channels/foo",
+        },
+      };
+
+      const result = backend.empty();
+      parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
+
+      const expected: backend.Backend = {
+        ...backend.of({
+          ...BASIC_ENDPOINT,
+          eventTrigger: {
+            channel: "projects/project123/locations/us-west1/channels/foo",
+            eventFilters: [],
+            eventType: "custom-event",
+            retry: false,
+          },
+        }),
+      };
+      expect(result).to.deep.equal(expected);
+    });
+
+    it("should resolve partial (channel id only) channel", () => {
+      const trigger: parseTriggers.TriggerAnnotation = {
+        ...BASIC_TRIGGER,
+        eventTrigger: {
+          eventType: "custom-event",
+          channel: "foo",
+        },
+      };
+
+      const result = backend.empty();
+      parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
+
+      const expected: backend.Backend = {
+        ...backend.of({
+          ...BASIC_ENDPOINT,
+          eventTrigger: {
+            channel: "projects/project/locations/us-central1/channels/foo",
+            eventFilters: [],
+            eventType: "custom-event",
+            retry: false,
+          },
+        }),
+      };
+      expect(result).to.deep.equal(expected);
+    });
+
+    it("should resolve partial (location + channel) channel", () => {
+      const trigger: parseTriggers.TriggerAnnotation = {
+        ...BASIC_TRIGGER,
+        eventTrigger: {
+          eventType: "custom-event",
+          channel: "locations/us-west1/channels/foo",
+        },
+      };
+
+      const result = backend.empty();
+      parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
+
+      const expected: backend.Backend = {
+        ...backend.of({
+          ...BASIC_ENDPOINT,
+          eventTrigger: {
+            channel: "projects/project/locations/us-west1/channels/foo",
+            eventFilters: [],
+            eventType: "custom-event",
+            retry: false,
+          },
+        }),
+      };
+      expect(result).to.deep.equal(expected);
+    });
+
+    it("should assert valid channel format", () => {
+      const result = backend.empty();
+      expect(() =>
+        parseTriggers.addResourcesToBackend(
+          "project",
+          "nodejs16",
+          {
+            ...BASIC_TRIGGER,
+            eventTrigger: {
+              eventType: "custom-event",
+              channel: "channels/foo",
+            },
+          },
+          result
+        )
+      ).to.throw(FirebaseError);
+      expect(() =>
+        parseTriggers.addResourcesToBackend(
+          "project",
+          "nodejs16",
+          {
+            ...BASIC_TRIGGER,
+            eventTrigger: {
+              eventType: "custom-event",
+              channel: "us-west1/channels/foo",
+            },
+          },
+          result
+        )
+      ).to.throw(FirebaseError);
+      expect(() =>
+        parseTriggers.addResourcesToBackend(
+          "project",
+          "nodejs16",
+          {
+            ...BASIC_TRIGGER,
+            eventTrigger: {
+              eventType: "custom-event",
+              channel: "projectid/locations/us-west1/channels/foo",
+            },
+          },
+          result
+        )
+      ).to.throw(FirebaseError);
+      expect(() =>
+        parseTriggers.addResourcesToBackend(
+          "project",
+          "nodejs16",
+          {
+            ...BASIC_TRIGGER,
+            eventTrigger: {
+              eventType: "custom-event",
+              channel: "blah/projects/projectid/locations/us-west1/channels/foo",
+            },
+          },
+          result
+        )
+      ).to.throw(FirebaseError);
+    });
+  });
 });
