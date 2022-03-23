@@ -1434,8 +1434,8 @@ describe("Storage emulator", () => {
           });
 
           expect(listResult).to.deep.equal({
-            prefixes: [],
-            items: [],
+            prefixes: ["subdir"],
+            items: ["file.jpg"],
           });
         });
 
@@ -1449,8 +1449,8 @@ describe("Storage emulator", () => {
           });
 
           expect(listResult).to.deep.equal({
-            prefixes: ["subdir"],
-            items: ["file.jpg"],
+            prefixes: [],
+            items: [],
           });
         });
       });
