@@ -42,7 +42,7 @@ export class StorageEmulator implements EmulatorInstance {
 
   constructor(private args: StorageEmulatorArgs) {
     this._rulesRuntime = new StorageRulesRuntime();
-    this.createRulesManager(this.args.rules);
+    this._rulesManager = this.createRulesManager(this.args.rules);
     this._persistence = new Persistence(this.getPersistenceTmpDir());
     this._storageLayer = new StorageLayer(
       args.projectId,
@@ -115,12 +115,12 @@ export class StorageEmulator implements EmulatorInstance {
 
   async replaceRules(rules: SourceFile | RulesConfig[]): Promise<StorageRulesIssues> {
     await this._rulesManager.stop();
-    this.createRulesManager(rules);
+    this._rulesManager = this.createRulesManager(rules);
     return this._rulesManager.start();
   }
 
-  private createRulesManager(rules: SourceFile | RulesConfig[]): void {
-    this._rulesManager = createStorageRulesManager(rules, this._rulesRuntime);
+  private createRulesManager(rules: SourceFile | RulesConfig[]): StorageRulesManager {
+    return createStorageRulesManager(rules, this._rulesRuntime);
   }
 
   private getPersistenceTmpDir(): string {

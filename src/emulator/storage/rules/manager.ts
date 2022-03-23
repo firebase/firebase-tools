@@ -73,11 +73,7 @@ class DefaultStorageRulesManager implements StorageRulesManager {
     await this._watcher.close();
   }
 
-  private updateWatcher(rulesFile: string, prevRulesFile?: string): void {
-    if (prevRulesFile) {
-      this._watcher.unwatch(prevRulesFile);
-    }
-
+  private updateWatcher(rulesFile: string): void {
     this._watcher = chokidar
       .watch(rulesFile, { persistent: true, ignoreInitial: true })
       .on("change", async () => {
@@ -91,13 +87,9 @@ class DefaultStorageRulesManager implements StorageRulesManager {
           "storage",
           "Change detected, updating rules for Cloud Storage..."
         );
-        this.updateRulesSource(rulesFile);
+        this._rules.content = readFile(rulesFile);
         await this.loadRuleset();
       });
-  }
-
-  private updateRulesSource(rulesFile: string): void {
-    this._rules = { name: rulesFile, content: readFile(rulesFile) };
   }
 
   private async loadRuleset(): Promise<StorageRulesIssues> {

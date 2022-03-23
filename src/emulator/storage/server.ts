@@ -163,7 +163,11 @@ export function createApp(
   return Promise.resolve(app);
 }
 
-type RulesFile = { name: string; content: string; resource?: string };
+interface RulesFile {
+  name: string;
+  content: string;
+  resource?: string;
+}
 
 function isRulesFile(file: unknown): file is RulesFile {
   return (
