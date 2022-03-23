@@ -196,13 +196,12 @@ function findEnvfiles(
   isEmulator?: boolean
 ): string[] {
   const files: string[] = [".env"];
+  files.push(`.env.${projectId}`);
+  if (projectAlias) {
+    files.push(`.env.${projectAlias}`);
+  }
   if (isEmulator) {
     files.push(FUNCTIONS_EMULATOR_DOTENV);
-  } else {
-    files.push(`.env.${projectId}`);
-    if (projectAlias && projectAlias.length) {
-      files.push(`.env.${projectAlias}`);
-    }
   }
 
   return files
@@ -254,7 +253,7 @@ export function loadUserEnvs({
   isEmulator,
 }: UserEnvsOpts): Record<string, string> {
   const envFiles = findEnvfiles(functionsSource, projectId, projectAlias, isEmulator);
-  if (envFiles.length == 0) {
+  if (envFiles.length === 0) {
     return {};
   }
 

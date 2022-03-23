@@ -1,5 +1,6 @@
 import * as backend from "./backend";
 import * as gcfV2 from "../../gcp/cloudfunctionsv2";
+import * as projectConfig from "../../functions/projectConfig";
 
 // These types should proably be in a root deploy.ts, but we can only boil the ocean one bit at a time.
 
@@ -18,6 +19,7 @@ export interface Context {
   filters: string[][];
 
   // Filled in the "prepare" phase.
+  config?: projectConfig.ValidatedSingle;
   functionsSourceV1?: string;
   functionsSourceV2?: string;
   runtimeConfigEnabled?: boolean;

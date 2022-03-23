@@ -2,7 +2,7 @@ import * as clc from "cli-color";
 
 import { Command } from "../command";
 import { logger } from "../logger";
-import * as requireConfig from "../requireConfig";
+import { requireConfig } from "../requireConfig";
 import * as utils from "../utils";
 
 interface targetMap {

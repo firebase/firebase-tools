@@ -34,10 +34,10 @@ export function validateInputRemoteConfigTemplate(
   template: RemoteConfigTemplate
 ): RemoteConfigTemplate {
   const templateCopy = JSON.parse(JSON.stringify(template));
-  if (!templateCopy || templateCopy == "null" || templateCopy == "undefined") {
+  if (!templateCopy || templateCopy === "null" || templateCopy === "undefined") {
     throw new FirebaseError(`Invalid Remote Config template: ${JSON.stringify(templateCopy)}`);
   }
-  if (typeof templateCopy.etag !== "string" || templateCopy.etag == "") {
+  if (typeof templateCopy.etag !== "string" || templateCopy.etag === "") {
     throw new FirebaseError("ETag must be a non-empty string");
   }
   if (templateCopy.conditions && !Array.isArray(templateCopy.conditions)) {

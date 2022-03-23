@@ -132,3 +132,15 @@ export async function ensure(
   }
   return enableApiWithRetries(projectId, apiName, prefix, silent);
 }
+
+/**
+ * Returns a link to enable an API on a project in Cloud console. This can be used instead of ensure
+ * in contexts where automatically enabling APIs is not desirable (ie emulator commands).
+ *
+ * @param projectId The project to generate an API enablement link for
+ * @param apiName  The name of the API e.g. `someapi.googleapis.com`.
+ * @return A link to Cloud console to enable the API
+ */
+export function enableApiURI(projectId: string, apiName: string): string {
+  return `https://console.cloud.google.com/apis/library/${apiName}?project=${projectId}`;
+}

@@ -48,8 +48,16 @@ export interface CallableTriggered {
   callableTrigger: CallableTrigger;
 }
 
-/** Well known keys in the eventFilter attribute of an event trigger */
-export type EventFilterKey = "resource";
+type EventFilterAttribute = "resource" | "topic" | "bucket" | string;
+
+// One or more event filters restrict the set of events delivered to an EventTrigger.
+interface EventFilter {
+  attribute: EventFilterAttribute;
+  value: string;
+
+  // if left unspecified, equality is used.
+  operator?: "match-path-pattern";
+}
 
 /** API agnostic version of a Cloud Function's event trigger. */
 export interface EventTrigger {
@@ -72,7 +80,7 @@ export interface EventTrigger {
    * V2 will have arbitrary filters and some EventArc filters will be
    * top-level keys in the GCF API (e.g. "pubsubTopic").
    */
-  eventFilters: Record<EventFilterKey | string, string>;
+  eventFilters: EventFilter[];
 
   /** Should failures in a function execution cause an event to be retried. */
   retry: boolean;
@@ -176,13 +184,21 @@ export interface TargetIds {
   project: string;
 }
 
+/**
+ * Represents a Secret or Secret Version resource.
+ * Based on https://cloud.google.com/functions/docs/reference/rest/v1/projects.locations.functions#secretenvvar
+ */
 export interface SecretEnvVar {
-  key: string;
-  secret: string;
-  projectId: string;
+  key: string; // The environment variable this secret is accessible at
+  secret: string; // The id of the SecretVersion - ie for projects/myproject/secrets/mysecret, this is 'mysecret'
+  projectId: string; // The project containing the Secret
 
   // Internal use only. Users cannot pin secret to a specific version.
   version?: string;
+}
+
+export function secretVersionName(s: SecretEnvVar): string {
+  return `projects/${s.projectId}/secrets/${s.secret}/versions/${s.version ?? "latest"}`;
 }
 
 export interface ServiceConfiguration {
@@ -314,7 +330,7 @@ export function of(...endpoints: Endpoint[]): Backend {
  */
 export function isEmptyBackend(backend: Backend): boolean {
   return (
-    Object.keys(backend.requiredAPIs).length == 0 && Object.keys(backend.endpoints).length === 0
+    Object.keys(backend.requiredAPIs).length === 0 && Object.keys(backend.endpoints).length === 0
   );
 }
 
@@ -442,7 +458,7 @@ export async function checkAvailability(context: Context, want: Backend): Promis
   const gcfV1Regions = new Set();
   const gcfV2Regions = new Set();
   for (const ep of allEndpoints(want)) {
-    if (ep.platform == "gcfv1") {
+    if (ep.platform === "gcfv1") {
       gcfV1Regions.add(ep.region);
     } else {
       gcfV2Regions.add(ep.region);
@@ -560,7 +576,16 @@ export const missingEndpoint =
     return !hasEndpoint(backend)(endpoint);
   };
 
-/** A standard method for sorting endpoints for display.
+/** A helper utility to find event filter of given attribute */
+export function findEventFilter(
+  endpoint: Endpoint & EventTriggered,
+  attribute: EventFilterAttribute
+): EventFilter | undefined {
+  return endpoint.eventTrigger.eventFilters.find((ef) => ef.attribute === attribute);
+}
+
+/**
+ * A standard method for sorting endpoints for display.
  * Future versions might consider sorting region by pricing tier before
  * alphabetically
  */
@@ -568,7 +593,7 @@ export function compareFunctions(
   left: TargetIds & { platform: FunctionsPlatform },
   right: TargetIds & { platform: FunctionsPlatform }
 ): number {
-  if (left.platform != right.platform) {
+  if (left.platform !== right.platform) {
     return right.platform < left.platform ? -1 : 1;
   }
   if (left.region < right.region) {

@@ -20,7 +20,7 @@ const tableHead = ["Entry Name", "Value"];
 const MAX_DISPLAY_ITEMS = 20;
 
 function checkValidOptionalNumber(versionNumber?: string): string | undefined {
-  if (!versionNumber || typeof Number(versionNumber) == "number") {
+  if (!versionNumber || typeof Number(versionNumber) === "number") {
     return versionNumber;
   }
   throw new FirebaseError(`Could not interpret "${versionNumber}" as a valid number.`);

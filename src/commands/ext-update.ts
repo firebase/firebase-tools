@@ -35,10 +35,12 @@ import {
   inferUpdateSource,
 } from "../extensions/updateHelper";
 import * as refs from "../extensions/refs";
-import { needProjectId } from "../projectUtils";
+import { getProjectId, needProjectId } from "../projectUtils";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import { previews } from "../previews";
+import * as manifest from "../extensions/manifest";
+import { Options } from "../options";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -62,7 +64,95 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
   .before(diagnoseAndFixProject)
   .withForce()
   .option("--params <paramsFile>", "name of params variables file with .env format.")
-  .action(async (instanceId: string, updateSource: string, options: any) => {
+  .option(
+    "--local",
+    "save the update to firebase.json rather than directly update an existing Extension instance on a Firebase project"
+  )
+  .action(async (instanceId: string, updateSource: string, options: Options) => {
+    if (options.local) {
+      const projectId = getProjectId(options);
+
+      const config = manifest.loadConfig(options);
+      const oldRef = manifest.getInstanceRef(instanceId, config);
+      const oldExtensionVersion = await extensionsApi.getExtensionVersion(
+        refs.toExtensionVersionRef(oldRef)
+      );
+      updateSource = inferUpdateSource(updateSource, refs.toExtensionRef(oldRef));
+
+      // TODO(b/213335255): Allow local sources after manifest supports that.
+      const newSourceOrigin = getSourceOrigin(updateSource);
+      if (
+        ![SourceOrigin.PUBLISHED_EXTENSION, SourceOrigin.PUBLISHED_EXTENSION_VERSION].includes(
+          newSourceOrigin
+        )
+      ) {
+        throw new FirebaseError(`Only updating to a published extension version is allowed`);
+      }
+
+      const newExtensionVersion = await extensionsApi.getExtensionVersion(updateSource);
+
+      if (oldExtensionVersion.ref === newExtensionVersion.ref) {
+        utils.logLabeledBullet(
+          logPrefix,
+          `${clc.bold(instanceId)} is already up to date. Its version is ${clc.bold(
+            newExtensionVersion.ref
+          )}.`
+        );
+        return;
+      }
+
+      utils.logLabeledBullet(
+        logPrefix,
+        `Updating ${clc.bold(instanceId)} from version ${clc.bold(
+          oldExtensionVersion.ref
+        )} to version ${clc.bold(newExtensionVersion.ref)}.`
+      );
+
+      if (
+        !(await confirm({
+          nonInteractive: options.nonInteractive,
+          force: options.force,
+          default: false,
+        }))
+      ) {
+        utils.logLabeledBullet(logPrefix, "Update aborted.");
+        return;
+      }
+
+      const oldParamValues = manifest.readInstanceParam({
+        instanceId,
+        projectDir: config.projectDir,
+      });
+
+      const newParamBindingOptions = await paramHelper.getParamsForUpdate({
+        spec: oldExtensionVersion.spec,
+        newSpec: newExtensionVersion.spec,
+        currentParams: oldParamValues,
+        projectId,
+        paramsEnvPath: (options.params ?? "") as string,
+        nonInteractive: options.nonInteractive,
+        instanceId,
+      });
+
+      await manifest.writeToManifest(
+        [
+          {
+            instanceId,
+            ref: refs.parse(newExtensionVersion.ref),
+            params: newParamBindingOptions,
+            paramSpecs: newExtensionVersion.spec.params,
+          },
+        ],
+        config,
+        {
+          nonInteractive: options.nonInteractive,
+          force: true, // Skip asking for permission again
+        }
+      );
+      manifest.showPreviewWarning();
+      return;
+    }
+
     const spinner = ora(`Updating ${clc.bold(instanceId)}. This usually takes 3 to 5 minutes...`);
     try {
       const projectId = needProjectId(options);
@@ -233,15 +323,17 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
       }
       // make a copy of existingParams -- they get overridden by paramHelper.getParamsForUpdate
       const oldParamValues = { ...existingParams };
-      const newParams = await paramHelper.getParamsForUpdate({
+      const newParamBindings = await paramHelper.getParamsForUpdate({
         spec: existingSpec,
         newSpec,
         currentParams: existingParams,
         projectId,
-        paramsEnvPath: options.params,
+        paramsEnvPath: (options.params ?? "") as string,
         nonInteractive: options.nonInteractive,
         instanceId,
       });
+      const newParams = paramHelper.getBaseParamBindings(newParamBindings);
+
       spinner.start();
       const updateOptions: UpdateOptions = {
         projectId,
@@ -267,6 +359,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
           )}`
         )
       );
+      manifest.showDeprecationWarning();
     } catch (err: any) {
       if (spinner.isSpinning) {
         spinner.fail();
