@@ -8,7 +8,6 @@ import { EmulatorRegistry } from "../../registry";
 import { parseObjectUploadMultipartRequest } from "../multipart";
 import { NotFoundError, ForbiddenError } from "../errors";
 import { NotCancellableError, Upload, UploadNotActiveError } from "../upload";
-import { ListItem, ListResponse } from "../list";
 import { reqBodyToBuffer } from "../../shared/request";
 import { ListObjectsResponse } from "../files";
 
@@ -170,8 +169,11 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     }
     return res.status(200).json({
       nextPageToken: listResponse.nextPageToken,
-      prefixes: listResponse.prefixes,
-      items: listResponse.items?.map((item) => new ListItem(item.name, item.bucket)),
+      prefixes: listResponse.prefixes ?? [],
+      items:
+        listResponse.items?.map((item) => {
+          return { name: item.name, bucket: item.bucket };
+        }) ?? [],
     });
   });
 
@@ -363,7 +365,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         return res.sendStatus(400);
       }
       try {
-        metadata = storageLayer.handleCreateDownloadToken({
+        metadata = storageLayer.createDownloadToken({
           bucketId,
           decodedObjectId,
           authorization,

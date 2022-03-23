@@ -93,7 +93,7 @@ export type ListObjectsResponse = {
   nextPageToken?: string;
 };
 
-/**  Parsed request object for {@link StorageLayer#handleCreateDownloadToken}. */
+/**  Parsed request object for {@link StorageLayer#createDownloadToken}. */
 export type CreateDownloadTokenRequest = {
   bucketId: string;
   decodedObjectId: string;
@@ -152,14 +152,14 @@ export class StorageLayer {
    * @throws {NotFoundError} if object does not exist
    * @throws {ForbiddenError} if request is unauthorized
    */
-  public async getObject(request: GetObjectRequest, skipAuth = false): Promise<GetObjectResponse> {
+  public async getObject(request: GetObjectRequest): Promise<GetObjectResponse> {
     const metadata = this.getMetadata(request.bucketId, request.decodedObjectId);
 
     // If a valid download token is present, skip Firebase Rules auth. Mainly used by the js sdk.
     const hasValidDownloadToken = (metadata?.downloadTokens || []).includes(
       request.downloadToken ?? ""
     );
-    let authorized = skipAuth || hasValidDownloadToken;
+    let authorized = hasValidDownloadToken;
     if (!authorized) {
       authorized = await this._rulesValidator.validate(
         ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
@@ -210,17 +210,15 @@ export class StorageLayer {
    * @throws {ForbiddenError} if the request is not authorized.
    * @throws {NotFoundError} if the object does not exist.
    */
-  public async deleteObject(request: DeleteObjectRequest, skipAuth = false): Promise<void> {
+  public async deleteObject(request: DeleteObjectRequest): Promise<void> {
     const storedMetadata = this.getMetadata(request.bucketId, request.decodedObjectId);
-    const authorized =
-      skipAuth ||
-      (await this._rulesValidator.validate(
-        ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
-        request.bucketId,
-        RulesetOperationMethod.DELETE,
-        { before: storedMetadata?.asRulesResource() },
-        request.authorization
-      ));
+    const authorized = await this._rulesValidator.validate(
+      ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
+      request.bucketId,
+      RulesetOperationMethod.DELETE,
+      { before: storedMetadata?.asRulesResource() },
+      request.authorization
+    );
     if (!authorized) {
       throw new ForbiddenError();
     }
@@ -262,23 +260,20 @@ export class StorageLayer {
    * @throws {NotFoundError} if the object does not exist.
    */
   public async updateObjectMetadata(
-    request: UpdateObjectMetadataRequest,
-    skipAuth = false
+    request: UpdateObjectMetadataRequest
   ): Promise<StoredFileMetadata> {
     const storedMetadata = this.getMetadata(request.bucketId, request.decodedObjectId);
 
-    const authorized =
-      skipAuth ||
-      (await this._rulesValidator.validate(
-        ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
-        request.bucketId,
-        RulesetOperationMethod.UPDATE,
-        {
-          before: storedMetadata?.asRulesResource(),
-          after: storedMetadata?.asRulesResource(request.metadata),
-        },
-        request.authorization
-      ));
+    const authorized = await this._rulesValidator.validate(
+      ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
+      request.bucketId,
+      RulesetOperationMethod.UPDATE,
+      {
+        before: storedMetadata?.asRulesResource(),
+        after: storedMetadata?.asRulesResource(request.metadata),
+      },
+      request.authorization
+    );
     if (!authorized) {
       throw new ForbiddenError();
     }
@@ -293,10 +288,8 @@ export class StorageLayer {
   /**
    * Last step in uploading a file. Validates the request and persists the staging
    * object to its permanent location on disk.
-   * TODO(tonyjhuang): Inject a Rules evaluator into StorageLayer to avoid needing skipAuth param
-   * @throws {ForbiddenError} if the request is not authorized.
    */
-  public async uploadObject(upload: Upload, skipAuth = false): Promise<StoredFileMetadata> {
+  public async uploadObject(upload: Upload): Promise<StoredFileMetadata> {
     if (upload.status !== UploadStatus.FINISHED) {
       throw new Error(`Unexpected upload status encountered: ${upload.status}.`);
     }
@@ -316,15 +309,13 @@ export class StorageLayer {
       this._cloudFunctions,
       this._persistence.readBytes(upload.path, upload.size)
     );
-    const authorized =
-      skipAuth ||
-      (await this._rulesValidator.validate(
-        ["b", upload.bucketId, "o", upload.objectId].join("/"),
-        upload.bucketId,
-        RulesetOperationMethod.CREATE,
-        { after: metadata?.asRulesResource() },
-        upload.authorization
-      ));
+    const authorized = await this._rulesValidator.validate(
+      ["b", upload.bucketId, "o", upload.objectId].join("/"),
+      upload.bucketId,
+      RulesetOperationMethod.CREATE,
+      { after: metadata?.asRulesResource() },
+      upload.authorization
+    );
     if (!authorized) {
       this._persistence.deleteFile(upload.path);
       throw new ForbiddenError();
@@ -408,20 +399,15 @@ export class StorageLayer {
    * Lists all files and prefixes (folders) at a path.
    * @throws {ForbiddenError} if the request is not authorized.
    */
-  public async listObjects(
-    request: ListObjectsRequest,
-    skipAuth = false
-  ): Promise<ListObjectsResponse> {
+  public async listObjects(request: ListObjectsRequest): Promise<ListObjectsResponse> {
     const { bucketId, prefix, delimiter, pageToken, authorization } = request;
-    const authorized =
-      skipAuth ||
-      (await this._rulesValidator.validate(
-        ["b", bucketId, "o", prefix].join("/"),
-        bucketId,
-        RulesetOperationMethod.LIST,
-        {},
-        authorization
-      ));
+    const authorized = await this._rulesValidator.validate(
+      ["b", bucketId, "o", prefix].join("/"),
+      bucketId,
+      RulesetOperationMethod.LIST,
+      {},
+      authorization
+    );
     if (!authorized) {
       throw new ForbiddenError();
     }
@@ -487,7 +473,7 @@ export class StorageLayer {
   }
 
   /** Creates a new Firebase download token for an object. */
-  public handleCreateDownloadToken(request: CreateDownloadTokenRequest): StoredFileMetadata {
+  public createDownloadToken(request: CreateDownloadTokenRequest): StoredFileMetadata {
     if (!this._adminCredsValidator.validate(request.authorization)) {
       throw new ForbiddenError();
     }
