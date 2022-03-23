@@ -378,20 +378,15 @@ export class StorageLayer {
    * Lists all files and prefixes (folders) at a path.
    * @throws {ForbiddenError} if the request is not authorized.
    */
-  public async listObjects(
-    request: ListObjectsRequest,
-    skipAuth = false
-  ): Promise<ListObjectsResponse> {
+  public async listObjects(request: ListObjectsRequest): Promise<ListObjectsResponse> {
     const { bucketId, prefix, delimiter, pageToken, authorization } = request;
-    const authorized =
-      skipAuth ||
-      (await this._rulesValidator.validate(
-        ["b", bucketId, "o", prefix].join("/"),
-        bucketId,
-        RulesetOperationMethod.LIST,
-        {},
-        authorization
-      ));
+    const authorized = await this._rulesValidator.validate(
+      ["b", bucketId, "o", prefix].join("/"),
+      bucketId,
+      RulesetOperationMethod.LIST,
+      {},
+      authorization
+    );
     if (!authorized) {
       throw new ForbiddenError();
     }
