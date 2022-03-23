@@ -8,8 +8,8 @@ import { EmulatorRegistry } from "../../registry";
 import { parseObjectUploadMultipartRequest } from "../multipart";
 import { NotFoundError, ForbiddenError } from "../errors";
 import { NotCancellableError, Upload, UploadNotActiveError } from "../upload";
-import { ListResponse } from "../list";
 import { reqBodyToBuffer } from "../../shared/request";
+import { ListObjectsResponse } from "../files";
 
 /**
  * @param emulator
@@ -89,7 +89,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     let data: Buffer;
     try {
       // Both object data and metadata get can use the same handler since they share auth logic.
-      ({ metadata, data } = await storageLayer.handleGetObject({
+      ({ metadata, data } = await storageLayer.getObject({
         bucketId: req.params.bucketId,
         decodedObjectId: decodeURIComponent(req.params.objectId),
         authorization: req.header("authorization"),
@@ -146,9 +146,9 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   // list object handler
   firebaseStorageAPI.get("/b/:bucketId/o", async (req, res) => {
     const maxResults = req.query.maxResults?.toString();
-    let response: ListResponse;
+    let listResponse: ListObjectsResponse;
     try {
-      response = await storageLayer.handleListObjects({
+      listResponse = await storageLayer.listObjects({
         bucketId: req.params.bucketId,
         prefix: req.query.prefix ? req.query.prefix.toString() : "",
         delimiter: req.query.delimiter ? req.query.delimiter.toString() : "",
@@ -167,7 +167,14 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       }
       throw err;
     }
-    return res.json(response);
+    return res.status(200).json({
+      nextPageToken: listResponse.nextPageToken,
+      prefixes: listResponse.prefixes ?? [],
+      items:
+        listResponse.items?.map((item) => {
+          return { name: item.name, bucket: item.bucket };
+        }) ?? [],
+    });
   });
 
   const handleUpload = async (req: Request, res: Response) => {
@@ -213,7 +220,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       });
       let metadata: StoredFileMetadata;
       try {
-        metadata = await storageLayer.handleUploadObject(upload);
+        metadata = await storageLayer.uploadObject(upload);
       } catch (err) {
         if (err instanceof ForbiddenError) {
           return res.status(403).json({
@@ -325,7 +332,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       }
       let metadata: StoredFileMetadata;
       try {
-        metadata = await storageLayer.handleUploadObject(upload);
+        metadata = await storageLayer.uploadObject(upload);
       } catch (err) {
         if (err instanceof ForbiddenError) {
           return res.status(403).json({
@@ -358,7 +365,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         return res.sendStatus(400);
       }
       try {
-        metadata = storageLayer.handleCreateDownloadToken({
+        metadata = storageLayer.createDownloadToken({
           bucketId,
           decodedObjectId,
           authorization,
@@ -380,7 +387,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     } else {
       // delete download token
       try {
-        metadata = storageLayer.handleDeleteDownloadToken({
+        metadata = storageLayer.deleteDownloadToken({
           bucketId,
           decodedObjectId,
           token: req.query["delete_token"]?.toString() ?? "",
@@ -415,7 +422,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   const handleMetadataUpdate = async (req: Request, res: Response) => {
     let metadata: StoredFileMetadata;
     try {
-      metadata = await storageLayer.handleUpdateObjectMetadata({
+      metadata = await storageLayer.updateObjectMetadata({
         bucketId: req.params.bucketId,
         decodedObjectId: decodeURIComponent(req.params.objectId),
         metadata: req.body as IncomingMetadata,
@@ -453,7 +460,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
 
   firebaseStorageAPI.delete("/b/:bucketId/o/:objectId", async (req, res) => {
     try {
-      await storageLayer.handleDeleteObject({
+      await storageLayer.deleteObject({
         bucketId: req.params.bucketId,
         decodedObjectId: decodeURIComponent(req.params.objectId),
         authorization: req.header("authorization"),

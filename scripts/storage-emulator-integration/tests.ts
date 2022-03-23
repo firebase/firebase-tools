@@ -1438,6 +1438,21 @@ describe("Storage emulator", () => {
             items: ["file.jpg"],
           });
         });
+
+        it("zero element list array should still be present in response", async () => {
+          const listResult = await page.evaluate(async () => {
+            const list = await firebase.storage().ref("/list").listAll();
+            return {
+              prefixes: list.prefixes.map((prefix) => prefix.name),
+              items: list.items.map((item) => item.name),
+            };
+          });
+
+          expect(listResult).to.deep.equal({
+            prefixes: [],
+            items: [],
+          });
+        });
       });
 
       describe("#list()", () => {
