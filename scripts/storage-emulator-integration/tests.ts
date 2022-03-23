@@ -1439,7 +1439,7 @@ describe("Storage emulator", () => {
           });
         });
 
-        it.only("no list items should still be present in response", async () => {
+        it("zero element list array should still be present in response", async () => {
           const listResult = await page.evaluate(async () => {
             const list = await firebase.storage().ref("/list").listAll();
             return {
