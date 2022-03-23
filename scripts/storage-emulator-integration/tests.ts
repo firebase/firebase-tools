@@ -1434,6 +1434,21 @@ describe("Storage emulator", () => {
           });
 
           expect(listResult).to.deep.equal({
+            prefixes: [],
+            items: [],
+          });
+        });
+
+        it.only("no list items should still be present in response", async () => {
+          const listResult = await page.evaluate(async () => {
+            const list = await firebase.storage().ref("/list").listAll();
+            return {
+              prefixes: list.prefixes.map((prefix) => prefix.name),
+              items: list.items.map((item) => item.name),
+            };
+          });
+
+          expect(listResult).to.deep.equal({
             prefixes: ["subdir"],
             items: ["file.jpg"],
           });
