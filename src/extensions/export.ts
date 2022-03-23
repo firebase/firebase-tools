@@ -70,8 +70,12 @@ function displaySpecs(specs: InstanceSpec[]): void {
     for (const p of Object.entries(spec.params)) {
       logger.info(`\t${p[0]}=${p[1]}`);
     }
-    logger.info(`\tAllowed events=${spec.allowedEventTypes}`);
-    logger.info(`\tEventarc Channel=${spec.eventarcChannel}`);
+    if (spec.allowedEventTypes && spec.allowedEventTypes.length) {
+      logger.info(`\tAllowed events=${spec.allowedEventTypes}`);
+    }
+    if (spec.eventarcChannel) {
+      logger.info(`\tEventarc Channel=${spec.eventarcChannel}`);
+    }
     logger.info("");
   }
 }
