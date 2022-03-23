@@ -134,8 +134,6 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         instanceId,
       });
 
-      // @TODO(b/226391124): Ask user for events configuration and pass user input into writeToManifest.
-
       await manifest.writeToManifest(
         [
           {
@@ -143,8 +141,6 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
             ref: refs.parse(newExtensionVersion.ref),
             params: newParamBindingOptions,
             paramSpecs: newExtensionVersion.spec.params,
-            allowedEventTypes: [],
-            eventarcChannel: "",
           },
         ],
         config,

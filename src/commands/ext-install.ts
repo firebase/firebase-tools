@@ -276,8 +276,6 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
         ref,
         params: paramBindingOptions,
         paramSpecs: spec.params,
-        allowedEventTypes: [],
-        eventarcChannel: "",
       },
     ],
     config,

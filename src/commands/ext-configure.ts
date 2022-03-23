@@ -83,8 +83,6 @@ export default new Command("ext:configure <extensionInstanceId>")
         ...mutableParamsBindingOptions,
       };
 
-      // @TODO(b/226375036): Ask for events config from user.
-
       await manifest.writeToManifest(
         [
           {
@@ -92,8 +90,6 @@ export default new Command("ext:configure <extensionInstanceId>")
             ref: targetRef,
             params: newParamOptions,
             paramSpecs: extensionVersion.spec.params,
-            eventarcChannel: "",
-            allowedEventTypes: [],
           },
         ],
         config,
