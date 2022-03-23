@@ -551,7 +551,9 @@ export class FunctionsEmulator implements EmulatorInstance {
     for (const definition of toSetup) {
       // Skip function with invalid id.
       try {
-        functionIdsAreValid([definition]);
+        // Note - in the emulator, functionId = {region}-{functionName}, but in prod, functionId=functionName.
+        // To match prod behavior, only validate functionName
+        functionIdsAreValid([{ ...definition, id: definition.name }]);
       } catch (e: any) {
         this.logger.logLabeled(
           "WARN",
