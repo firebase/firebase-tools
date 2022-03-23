@@ -30,8 +30,6 @@ function fakeInstanceSpecWithAPI(instanceId: string, apiName: string): InstanceS
   return {
     instanceId,
     params: {},
-    allowedEventTypes: [],
-    eventarcChannel: "",
     extensionVersion: {
       name: "publishers/test/extensions/test/versions/0.1.0",
       ref: "test/test@0.1.0",

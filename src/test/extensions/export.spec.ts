@@ -82,8 +82,6 @@ describe("ext:export helpers", () => {
         const testSpec: InstanceSpec = {
           instanceId: "my-instance",
           params: t.params,
-          allowedEventTypes: [],
-          eventarcChannel: "",
           extensionVersion: {
             name: "test",
             ref: "test/test@0.1.0",
