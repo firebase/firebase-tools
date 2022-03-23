@@ -20,8 +20,8 @@ import { ParamBindingOptions } from "../../extensions/paramHelper";
 export interface ManifestInstanceSpec {
   instanceId: string;
   params: Record<string, ParamBindingOptions>;
-  allowedEventTypes: string[];
-  eventarcChannel: string;
+  allowedEventTypes?: string[];
+  eventarcChannel?: string;
   ref?: refs.Ref;
   paramSpecs?: extensionsApi.Param[];
 }
@@ -36,8 +36,8 @@ export interface InstanceSpec {
   instanceId: string;
   ref?: refs.Ref;
   params: Record<string, string>;
-  allowedEventTypes: string[];
-  eventarcChannel: string;
+  allowedEventTypes?: string[];
+  eventarcChannel?: string;
   extensionVersion?: extensionsApi.ExtensionVersion;
   extension?: extensionsApi.Extension;
 }
