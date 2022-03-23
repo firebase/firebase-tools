@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { expectStatusCode } from "./helpers";
+import { expectStatusCode, registerAnonUser } from "./helpers";
 import { describeAuthEmulator, PROJECT_ID } from "./setup";
 
 describeAuthEmulator("config management", ({ authApi }) => {
@@ -77,7 +77,7 @@ describeAuthEmulator("config management", ({ authApi }) => {
           expect(res.body.usageMode).to.eql("PASSTHROUGH");
         });
 
-      // Check that production defaults are set
+      // Perform a full update and check that production defaults are set
       await authApi()
         .patch(`/identitytoolkit.googleapis.com/v2/projects/${PROJECT_ID}/config`)
         .set("Authorization", "Bearer owner")
@@ -87,6 +87,36 @@ describeAuthEmulator("config management", ({ authApi }) => {
           expect(res.body.signIn?.allowDuplicateEmails).to.be.false;
           expect(res.body.blockingFunctions).to.eql({});
           expect(res.body.usageMode).to.eql("DEFAULT");
+        });
+    });
+
+    it("should error on unspecified usageMode", async () => {
+      await authApi()
+        .patch(`/identitytoolkit.googleapis.com/v2/projects/${PROJECT_ID}/config`)
+        .set("Authorization", "Bearer owner")
+        .send({
+          usageMode: "USAGE_MODE_UNSPECIFIED",
+        })
+        .then((res) => {
+          expectStatusCode(400, res);
+          expect(res.body.error).to.have.property("message").equals("Invalid usage mode provided");
+        });
+    });
+
+    it("should error when users are present for passthrough mode", async () => {
+      await registerAnonUser(authApi());
+
+      await authApi()
+        .patch(`/identitytoolkit.googleapis.com/v2/projects/${PROJECT_ID}/config`)
+        .set("Authorization", "Bearer owner")
+        .send({
+          usageMode: "PASSTHROUGH",
+        })
+        .then((res) => {
+          expectStatusCode(400, res);
+          expect(res.body.error)
+            .to.have.property("message")
+            .equals("Users are present, unable to set passthrough mode");
         });
     });
   });

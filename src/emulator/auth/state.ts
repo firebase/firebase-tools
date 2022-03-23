@@ -582,61 +582,6 @@ export abstract class ProjectState {
   }
 }
 
-/**
- * Updates fields based on specified update mask. Note that this is a no-op if
- * the update mask is empty.
- *
- * @param updateMask a comma separated list of fully qualified names of fields
- * @param dest the destination to apply updates to
- * @param update the updates to apply
- * @returns the updated destination object
- */
-function applyMask<T>(updateMask: string, dest: T, update: DeepPartial<T>): T {
-  const paths = updateMask.split(",");
-  for (const path of paths) {
-    const fields = path.split(".");
-    // Using `any` here to recurse over destination objects
-    let updateField: any = update;
-    let existingField: any = dest;
-    let field;
-    for (let i = 0; i < fields.length - 1; i++) {
-      field = fields[i];
-
-      // Doesn't exist on update
-      if (updateField[field] == null) {
-        console.warn(`Unable to find field '${field}' in update '${updateField}`);
-        break;
-      }
-
-      // Field on existing is an array or is a primitive (i.e. cannot index
-      // any further)
-      if (Array.isArray(updateField[field]) || Object(updateField[field]) !== updateField[field]) {
-        console.warn(`Field '${field}' is singular and cannot have sub-fields`);
-        break;
-      }
-
-      // Non-standard behavior, this creates new fields regardless of if the
-      // final field is set. Typical behavior would not modify the config
-      // payload if the final field is not successfully set.
-      if (!existingField[field]) {
-        existingField[field] = {};
-      }
-
-      updateField = updateField[field];
-      existingField = existingField[field];
-    }
-    // Reassign final field if possible
-    field = fields[fields.length - 1];
-    if (updateField[field] == null) {
-      console.warn(`Unable to find field '${field}' in update '${JSON.stringify(updateField)}`);
-      continue;
-    }
-    existingField[field] = updateField[field];
-  }
-
-  return dest;
-}
-
 export class AgentProjectState extends ProjectState {
   private _oneAccountPerEmail = true;
   private _usageMode = UsageMode.DEFAULT;
@@ -710,6 +655,13 @@ export class AgentProjectState extends ProjectState {
     update: Schemas["GoogleCloudIdentitytoolkitAdminV2Config"] & { usageMode?: UsageMode },
     updateMask: string | undefined
   ): Config {
+    if (update.usageMode) {
+      assert(update.usageMode !== UsageMode.USAGE_MODE_UNSPECIFIED, "Invalid usage mode provided");
+      if (update.usageMode === UsageMode.PASSTHROUGH) {
+        assert(this.getUserCount() === 0, "Users are present, unable to set passthrough mode");
+      }
+    }
+
     // Empty masks indicate a full update.
     if (!updateMask) {
       this.oneAccountPerEmail = !update.signIn?.allowDuplicateEmails ?? true;
@@ -943,6 +895,14 @@ export interface PhoneVerificationRecord {
   sessionInfo: string;
 }
 
+export enum UsageMode {
+  DEFAULT = "DEFAULT",
+  PASSTHROUGH = "PASSTHROUGH",
+
+  // Should never be used
+  USAGE_MODE_UNSPECIFIED = "USAGE_MODE_UNSPECIFIED",
+}
+
 interface TemporaryProofRecord {
   phoneNumber: string;
   temporaryProof: string;
@@ -961,7 +921,57 @@ function getProviderEmailsForUser(user: UserInfo): Set<string> {
   return emails;
 }
 
-export enum UsageMode {
-  DEFAULT = "DEFAULT",
-  PASSTHROUGH = "PASSTHROUGH",
+/**
+ * Updates fields based on specified update mask. Note that this is a no-op if
+ * the update mask is empty.
+ *
+ * @param updateMask a comma separated list of fully qualified names of fields
+ * @param dest the destination to apply updates to
+ * @param update the updates to apply
+ * @returns the updated destination object
+ */
+function applyMask<T>(updateMask: string, dest: T, update: DeepPartial<T>): T {
+  const paths = updateMask.split(",");
+  for (const path of paths) {
+    const fields = path.split(".");
+    // Using `any` here to recurse over destination objects
+    let updateField: any = update;
+    let existingField: any = dest;
+    let field;
+    for (let i = 0; i < fields.length - 1; i++) {
+      field = fields[i];
+
+      // Doesn't exist on update
+      if (updateField[field] == null) {
+        console.warn(`Unable to find field '${field}' in update '${updateField}`);
+        break;
+      }
+
+      // Field on existing is an array or is a primitive (i.e. cannot index
+      // any further)
+      if (Array.isArray(updateField[field]) || Object(updateField[field]) !== updateField[field]) {
+        console.warn(`Field '${field}' is singular and cannot have sub-fields`);
+        break;
+      }
+
+      // Non-standard behavior, this creates new fields regardless of if the
+      // final field is set. Typical behavior would not modify the config
+      // payload if the final field is not successfully set.
+      if (!existingField[field]) {
+        existingField[field] = {};
+      }
+
+      updateField = updateField[field];
+      existingField = existingField[field];
+    }
+    // Reassign final field if possible
+    field = fields[fields.length - 1];
+    if (updateField[field] == null) {
+      console.warn(`Unable to find field '${field}' in update '${JSON.stringify(updateField)}`);
+      continue;
+    }
+    existingField[field] = updateField[field];
+  }
+
+  return dest;
 }

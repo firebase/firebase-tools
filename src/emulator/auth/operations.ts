@@ -1746,17 +1746,14 @@ function updateEmulatorProjectConfig(
   // New developers should not use updateEmulatorProjectConfig to update the
   // allowDuplicateEmails and usageMode settings and should instead use
   // updateConfig to do so.
-  let updateMask = "";
-  if (reqBody.signIn?.allowDuplicateEmails) {
-    updateMask += "signIn.allowDupliateEmails";
+  const updateMask = [];
+  if (reqBody.signIn?.allowDuplicateEmails != null) {
+    updateMask.push("signIn.allowDuplicateEmails");
   }
   if (reqBody.usageMode) {
-    assert(reqBody.usageMode !== "USAGE_MODE_UNSPECIFIED", "Invalid usage mode provided");
-    if (reqBody.usageMode === "PASSTHROUGH") {
-      assert(state.getUserCount() === 0, "Users are present, unable to set passthrough mode");
-    }
-    updateMask += ",usageMode";
+    updateMask.push("usageMode");
   }
+  ctx.params.query.updateMask = updateMask.join();
 
   updateConfig(state, reqBody, ctx);
   return getEmulatorProjectConfig(state);
