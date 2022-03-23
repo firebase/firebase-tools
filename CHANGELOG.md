@@ -1,0 +1,1 @@
+- Fixes Storage Emulator ruleset file watcher (#4337).
