@@ -305,8 +305,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
           // TODO(tonyjhuang): Until we have a way of validating OAuth tokens passed by
           // the GCS sdk or gcloud tool, we must assume all requests have valid admin creds.
           // authorization: req.header("authorization")
-          authorization: "Bearer owner"
-          
+          authorization: "Bearer owner",
         });
       } catch (err) {
         if (err instanceof NotFoundError) {
