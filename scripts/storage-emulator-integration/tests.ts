@@ -54,8 +54,6 @@ let tmpDir: string;
 
 describe("Storage emulator", () => {
   let test: TriggerEndToEndTest;
-  let browser: puppeteer.Browser;
-  let page: puppeteer.Page;
 
   let smallFilePath: string;
   let largeFilePath: string;
@@ -1250,18 +1248,20 @@ describe("Storage emulator", () => {
 
   describe("Firebase Endpoints", () => {
     let storage: Storage;
+    let browser: puppeteer.Browser;
+    let page: puppeteer.Page;
 
     const filename = "testing/storage_ref/image.png";
 
     before(async function (this) {
       this.timeout(TEST_SETUP_TIMEOUT);
 
-      if (!TEST_CONFIG.useProductionServers) {
-        test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, emulatorConfig);
-        await test.startEmulators(["--only", "auth,storage"]);
-      } else {
+      if (TEST_CONFIG.useProductionServers) {
         process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, SERVICE_ACCOUNT_KEY);
         storage = new Storage();
+      } else {
+        test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, emulatorConfig);
+        await test.startEmulators(["--only", "auth,storage"]);
       }
 
       browser = await puppeteer.launch({
@@ -1282,7 +1282,6 @@ describe("Storage emulator", () => {
       await page.addScriptTag({
         url: "https://www.gstatic.com/firebasejs/7.24.0/firebase-auth.js",
       });
-      // url: "https://storage.googleapis.com/fir-tools-builds/firebase-storage-new.js",
       await page.addScriptTag({
         url: TEST_CONFIG.useProductionServers
           ? "https://www.gstatic.com/firebasejs/7.24.0/firebase-storage.js"
@@ -1313,14 +1312,29 @@ describe("Storage emulator", () => {
       }
     });
 
+    afterEach(async () => {
+      await page.close();
+    });
+
+    after(async function (this) {
+      this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
+
+      await browser.close();
+      if (TEST_CONFIG.useProductionServers) {
+        delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+      } else {
+        await test.stopEmulators();
+      }
+    });
+
     describe(".ref()", () => {
       beforeEach(async function (this) {
         this.timeout(TEST_SETUP_TIMEOUT);
 
-        if (!TEST_CONFIG.useProductionServers) {
-          await resetStorageEmulator(STORAGE_EMULATOR_HOST);
-        } else {
+        if (TEST_CONFIG.useProductionServers) {
           await storage.bucket(storageBucket).deleteFiles();
+        } else {
+          await resetStorageEmulator(STORAGE_EMULATOR_HOST);
         }
 
         await page.evaluate(
@@ -1561,6 +1575,21 @@ describe("Storage emulator", () => {
           expect(listResult).to.deep.equal({
             prefixes: ["subdir"],
             items: ["file.jpg"],
+          });
+        });
+
+        it("zero element list array should still be present in response", async () => {
+          const listResult = await page.evaluate(async () => {
+            const list = await firebase.storage().ref("/list").listAll();
+            return {
+              prefixes: list.prefixes.map((prefix) => prefix.name),
+              items: list.items.map((item) => item.name),
+            };
+          });
+
+          expect(listResult).to.deep.equal({
+            prefixes: [],
+            items: [],
           });
         });
       });
@@ -1847,11 +1876,7 @@ describe("Storage emulator", () => {
 
     emulatorSpecificDescribe("Non-SDK Endpoints", () => {
       beforeEach(async () => {
-        if (!TEST_CONFIG.useProductionServers) {
-          await resetStorageEmulator(STORAGE_EMULATOR_HOST);
-        } else {
-          await storage.bucket(storageBucket).deleteFiles();
-        }
+        await resetStorageEmulator(STORAGE_EMULATOR_HOST);
 
         await page.evaluate(
           (IMAGE_FILE_BASE64, filename) => {
@@ -2120,19 +2145,6 @@ describe("Storage emulator", () => {
             .expect(404);
         });
       });
-    });
-
-    after(async function (this) {
-      this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
-
-      if (!TEST_CONFIG.keepBrowserOpen) {
-        await browser.close();
-      }
-      if (!TEST_CONFIG.useProductionServers) {
-        await test.stopEmulators();
-      } else {
-        delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
-      }
     });
   });
 });
