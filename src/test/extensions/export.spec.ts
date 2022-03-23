@@ -54,6 +54,8 @@ describe("ext:export helpers", () => {
         const testSpec = {
           instanceId: "my-instance",
           params: t.in,
+          allowedEventTypes: [],
+          eventarcChannel: "",
         };
 
         expect(parameterizeProject(TEST_PROJECT_ID, TEST_PROJECT_NUMBER, testSpec)).to.deep.equal({
@@ -82,6 +84,8 @@ describe("ext:export helpers", () => {
         const testSpec: InstanceSpec = {
           instanceId: "my-instance",
           params: t.params,
+          allowedEventTypes: [],
+          eventarcChannel: "",
           extensionVersion: {
             name: "test",
             ref: "test/test@0.1.0",

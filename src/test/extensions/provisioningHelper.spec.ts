@@ -79,6 +79,8 @@ const instanceSpec = (version: string) => {
       extensionId: "test",
       version,
     },
+    allowedEventTypes: [],
+    eventarcChannel: "",
   };
 };
 

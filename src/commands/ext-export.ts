@@ -69,6 +69,8 @@ module.exports = new Command("ext:export")
       instanceId: spec.instanceId,
       ref: spec.ref,
       params: buildBindingOptionsWithBaseValue(spec.params),
+      allowedEventTypes: spec.allowedEventTypes,
+      eventarcChannel: spec.eventarcChannel,
     }));
 
     const existingConfig = manifest.loadConfig(options);

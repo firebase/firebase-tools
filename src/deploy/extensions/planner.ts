@@ -20,6 +20,8 @@ import { ParamBindingOptions } from "../../extensions/paramHelper";
 export interface ManifestInstanceSpec {
   instanceId: string;
   params: Record<string, ParamBindingOptions>;
+  allowedEventTypes: string[];
+  eventarcChannel: string;
   ref?: refs.Ref;
   paramSpecs?: extensionsApi.Param[];
 }
@@ -34,6 +36,8 @@ export interface InstanceSpec {
   instanceId: string;
   ref?: refs.Ref;
   params: Record<string, string>;
+  allowedEventTypes: string[];
+  eventarcChannel: string;
   extensionVersion?: extensionsApi.ExtensionVersion;
   extension?: extensionsApi.Extension;
 }
@@ -79,6 +83,8 @@ export async function have(projectId: string): Promise<InstanceSpec[]> {
     const dep: InstanceSpec = {
       instanceId: i.name.split("/").pop()!,
       params: i.config.params,
+      allowedEventTypes: (i.config.params.ALLOWED_EVENT_TYPES || "").split(","),
+      eventarcChannel: i.config.params.EVENTARC_CHANNEL,
     };
     if (i.config.extensionRef) {
       const ref = refs.parse(i.config.extensionRef);
@@ -131,6 +137,8 @@ export async function want(args: {
         instanceId,
         ref,
         params: subbedParams,
+        allowedEventTypes: (subbedParams.ALLOWED_EVENT_TYPES || "").split(","),
+        eventarcChannel: subbedParams.EVENTARC_CHANNEL,
       });
     } catch (err: any) {
       logger.debug(`Got error reading extensions entry ${e}: ${err}`);

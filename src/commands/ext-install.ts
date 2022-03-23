@@ -266,6 +266,8 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
     instanceId,
   });
 
+  // @TODO(b/226390898): Ask user for events configuration and pass user input into writeToManifest.
+
   const ref = refs.parse(extVersion.ref);
   await manifest.writeToManifest(
     [
@@ -274,6 +276,8 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
         ref,
         params: paramBindingOptions,
         paramSpecs: spec.params,
+        allowedEventTypes: [],
+        eventarcChannel: "",
       },
     ],
     config,
