@@ -200,7 +200,7 @@ export class ExtensionsEmulator {
       DATABASE_URL: `https://${projectId}.firebaseio.com`,
       STORAGE_BUCKET: `${projectId}.appspot.com`,
       ALLOWED_EVENT_TYPES: instance.allowedEventTypes ? instance.allowedEventTypes.join(",") : "",
-      EVENTARC_CHANNEL: instance.eventarcChannel,
+      EVENTARC_CHANNEL: instance.eventarcChannel ?? "",
     };
   }
 
