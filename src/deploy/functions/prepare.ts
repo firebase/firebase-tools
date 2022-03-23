@@ -94,8 +94,8 @@ export async function prepare(
       ? "mixed"
       : "runtime_config"
     : usedDotenv
-      ? "dotenv"
-      : "none";
+    ? "dotenv"
+    : "none";
   void track("functions_codebase_deploy_env_method", tag);
 
   logger.debug(`Analyzing ${runtimeDelegate.name} backend spec`);
@@ -123,21 +123,21 @@ export async function prepare(
   if (backend.someEndpoint(wantBackend, () => true)) {
     logBullet(
       clc.cyan.bold("functions:") +
-      " preparing " +
-      clc.bold(sourceDirName) +
-      " directory for uploading..."
+        " preparing " +
+        clc.bold(sourceDirName) +
+        " directory for uploading..."
     );
   }
   if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
     if (!previews.functionsv2) {
       throw new FirebaseError(
         "This version of firebase-tools does not support Google Cloud " +
-        "Functions gen 2\n" +
-        "If Cloud Functions for Firebase gen 2 is still in alpha, sign up " +
-        "for the alpha program at " +
-        "https://services.google.com/fb/forms/firebasealphaprogram/\n" +
-        "If Cloud Functions for Firebase gen 2 is in beta, get the latest " +
-        "version of Firebse Tools with `npm i -g firebase-tools@latest`"
+          "Functions gen 2\n" +
+          "If Cloud Functions for Firebase gen 2 is still in alpha, sign up " +
+          "for the alpha program at " +
+          "https://services.google.com/fb/forms/firebasealphaprogram/\n" +
+          "If Cloud Functions for Firebase gen 2 is in beta, get the latest " +
+          "version of Firebse Tools with `npm i -g firebase-tools@latest`"
       );
     }
     context.functionsSourceV2 = await prepareFunctionsUpload(sourceDir, context.config);
