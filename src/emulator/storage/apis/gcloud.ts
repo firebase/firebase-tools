@@ -290,27 +290,31 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
   gcloudStorageAPI.post(
     "/b/:bucketId/o/:objectId/:method(rewriteTo|copyTo)/b/:destBucketId/o/:destObjectId",
     (req, res, next) => {
-      const md = adminStorageLayer.getMetadata(req.params.bucketId, req.params.objectId);
-
-      if (!md) {
-        return sendObjectNotFound(req, res);
-      }
-
       if (req.params.method === "rewriteTo" && req.query.rewriteToken) {
         // Don't yet support multi-request copying
         return next();
       }
-
-      const metadata = adminStorageLayer.copyFile(
-        md,
-        req.params.destBucketId,
-        req.params.destObjectId,
-        req.body
-      );
-
-      if (!metadata) {
-        res.sendStatus(400);
-        return;
+      let metadata: StoredFileMetadata;
+      try {
+        metadata = adminStorageLayer.copyObject({
+          sourceBucket: req.params.bucketId,
+          sourceObject: req.params.objectId,
+          destinationBucket: req.params.destBucketId,
+          destinationObject: req.params.destObjectId,
+          incomingMetadata: req.body,
+          // TODO(tonyjhuang): Until we have a way of validating OAuth tokens passed by
+          // the GCS sdk or gcloud tool, we must assume all requests have valid admin creds.
+          // authorization: req.header("authorization")
+          authorization: "Bearer owner",
+        });
+      } catch (err) {
+        if (err instanceof NotFoundError) {
+          return sendObjectNotFound(req, res);
+        }
+        if (err instanceof ForbiddenError) {
+          return res.sendStatus(403);
+        }
+        throw err;
       }
 
       const resource = new CloudStorageObjectMetadata(metadata);
