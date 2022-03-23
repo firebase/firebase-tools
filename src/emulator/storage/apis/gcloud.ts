@@ -16,26 +16,24 @@ import type { Request, Response } from "express";
 import { parseObjectUploadMultipartRequest } from "../multipart";
 import { Upload, UploadNotActiveError } from "../upload";
 import { ForbiddenError, NotFoundError } from "../errors";
+import { reqBodyToBuffer } from "../../shared/request";
 
-/**
- * @param emulator
- * @param storage
- */
 export function createCloudEndpoints(emulator: StorageEmulator): Router {
   // eslint-disable-next-line new-cap
   const gcloudStorageAPI = Router();
-  const { storageLayer, uploadService } = emulator;
+  // Use Admin StorageLayer to ensure Firebase Rules validation is skipped.
+  const { adminStorageLayer, uploadService } = emulator;
 
   // Automatically create a bucket for any route which uses a bucket
   gcloudStorageAPI.use(/.*\/b\/(.+?)\/.*/, (req, res, next) => {
-    storageLayer.createBucket(req.params[0]);
+    adminStorageLayer.createBucket(req.params[0]);
     next();
   });
 
   gcloudStorageAPI.get("/b", async (req, res) => {
     res.json({
       kind: "storage#buckets",
-      items: await storageLayer.listBuckets(),
+      items: await adminStorageLayer.listBuckets(),
     });
   });
 
@@ -44,19 +42,16 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     async (req, res) => {
       let getObjectResponse: GetObjectResponse;
       try {
-        getObjectResponse = await storageLayer.handleGetObject(
-          {
-            bucketId: req.params.bucketId,
-            decodedObjectId: req.params.objectId,
-          },
-          /* skipAuth = */ true
-        );
+        getObjectResponse = await adminStorageLayer.handleGetObject({
+          bucketId: req.params.bucketId,
+          decodedObjectId: req.params.objectId,
+        });
       } catch (err) {
         if (err instanceof NotFoundError) {
           return sendObjectNotFound(req, res);
         }
         if (err instanceof ForbiddenError) {
-          throw new Error("Request failed unexpectedly due to Firebase Rules.");
+          return res.sendStatus(403);
         }
         throw err;
       }
@@ -71,20 +66,17 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
   gcloudStorageAPI.patch("/b/:bucketId/o/:objectId", async (req, res) => {
     let updatedMetadata: StoredFileMetadata;
     try {
-      updatedMetadata = await storageLayer.handleUpdateObjectMetadata(
-        {
-          bucketId: req.params.bucketId,
-          decodedObjectId: req.params.objectId,
-          metadata: req.body as IncomingMetadata,
-        },
-        /* skipAuth = */ true
-      );
+      updatedMetadata = await adminStorageLayer.handleUpdateObjectMetadata({
+        bucketId: req.params.bucketId,
+        decodedObjectId: req.params.objectId,
+        metadata: req.body as IncomingMetadata,
+      });
     } catch (err) {
       if (err instanceof NotFoundError) {
         return sendObjectNotFound(req, res);
       }
       if (err instanceof ForbiddenError) {
-        throw new Error("Request failed unexpectedly due to Firebase Rules.");
+        return res.sendStatus(403);
       }
       throw err;
     }
@@ -101,7 +93,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     const pageToken = req.query.pageToken ? req.query.pageToken.toString() : undefined;
     const prefix = req.query.prefix ? req.query.prefix.toString() : "";
 
-    const listResult = storageLayer.listItems(
+    const listResult = adminStorageLayer.listItems(
       req.params.bucketId,
       prefix,
       delimiter,
@@ -114,40 +106,21 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
 
   gcloudStorageAPI.delete("/b/:bucketId/o/:objectId", async (req, res) => {
     try {
-      await storageLayer.handleDeleteObject(
-        {
-          bucketId: req.params.bucketId,
-          decodedObjectId: req.params.objectId,
-        },
-        /* skipAuth = */ true
-      );
+      await adminStorageLayer.handleDeleteObject({
+        bucketId: req.params.bucketId,
+        decodedObjectId: req.params.objectId,
+      });
     } catch (err) {
       if (err instanceof NotFoundError) {
         return sendObjectNotFound(req, res);
       }
       if (err instanceof ForbiddenError) {
-        throw new Error("Request failed unexpectedly due to Firebase Rules.");
+        return res.sendStatus(403);
       }
       throw err;
     }
     return res.sendStatus(204);
   });
-
-  const reqBodyToBuffer = async (req: Request): Promise<Buffer> => {
-    if (req.body instanceof Buffer) {
-      return Buffer.from(req.body);
-    }
-    const bufs: Buffer[] = [];
-    req.on("data", (data) => {
-      bufs.push(data);
-    });
-    await new Promise<void>((resolve) => {
-      req.on("end", () => {
-        resolve();
-      });
-    });
-    return Buffer.concat(bufs);
-  };
 
   gcloudStorageAPI.put("/upload/storage/v1/b/:bucketId/o", async (req, res) => {
     if (!req.query.upload_id) {
@@ -171,10 +144,10 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
 
     let metadata: StoredFileMetadata;
     try {
-      metadata = await storageLayer.handleUploadObject(upload, /* skipAuth = */ true);
+      metadata = await adminStorageLayer.handleUploadObject(upload);
     } catch (err) {
       if (err instanceof ForbiddenError) {
-        throw new Error("Request failed unexpectedly due to Firebase Rules.");
+        return res.sendStatus(403);
       }
       throw err;
     }
@@ -189,19 +162,16 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     );
     let getObjectResponse: GetObjectResponse;
     try {
-      getObjectResponse = await storageLayer.handleGetObject(
-        {
-          bucketId: req.params.bucketId,
-          decodedObjectId: req.params.objectId,
-        },
-        /* skipAuth = */ true
-      );
+      getObjectResponse = await adminStorageLayer.handleGetObject({
+        bucketId: req.params.bucketId,
+        decodedObjectId: req.params.objectId,
+      });
     } catch (err) {
       if (err instanceof NotFoundError) {
         return sendObjectNotFound(req, res);
       }
       if (err instanceof ForbiddenError) {
-        throw new Error("Request failed unexpectedly due to Firebase Rules.");
+        return res.sendStatus(403);
       }
       throw err;
     }
@@ -282,10 +252,10 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     });
     let metadata: StoredFileMetadata;
     try {
-      metadata = await storageLayer.handleUploadObject(upload, /* skipAuth = */ true);
+      metadata = await adminStorageLayer.handleUploadObject(upload);
     } catch (err) {
       if (err instanceof ForbiddenError) {
-        throw new Error("Request failed unexpectedly due to Firebase Rules.");
+        return res.sendStatus(403);
       }
       throw err;
     }
@@ -296,19 +266,16 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
   gcloudStorageAPI.get("/:bucketId/:objectId(**)", async (req, res) => {
     let getObjectResponse: GetObjectResponse;
     try {
-      getObjectResponse = await storageLayer.handleGetObject(
-        {
-          bucketId: req.params.bucketId,
-          decodedObjectId: req.params.objectId,
-        },
-        /* skipAuth = */ true
-      );
+      getObjectResponse = await adminStorageLayer.handleGetObject({
+        bucketId: req.params.bucketId,
+        decodedObjectId: req.params.objectId,
+      });
     } catch (err) {
       if (err instanceof NotFoundError) {
         return sendObjectNotFound(req, res);
       }
       if (err instanceof ForbiddenError) {
-        throw new Error("Request failed unexpectedly due to Firebase Rules.");
+        return res.sendStatus(403);
       }
       throw err;
     }
@@ -318,7 +285,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
   gcloudStorageAPI.post(
     "/b/:bucketId/o/:objectId/:method(rewriteTo|copyTo)/b/:destBucketId/o/:destObjectId",
     (req, res, next) => {
-      const md = storageLayer.getMetadata(req.params.bucketId, req.params.objectId);
+      const md = adminStorageLayer.getMetadata(req.params.bucketId, req.params.objectId);
 
       if (!md) {
         return sendObjectNotFound(req, res);
@@ -329,7 +296,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
         return next();
       }
 
-      const metadata = storageLayer.copyFile(
+      const metadata = adminStorageLayer.copyFile(
         md,
         req.params.destBucketId,
         req.params.destObjectId,

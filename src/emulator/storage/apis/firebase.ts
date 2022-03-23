@@ -9,6 +9,7 @@ import { parseObjectUploadMultipartRequest } from "../multipart";
 import { NotFoundError, ForbiddenError } from "../errors";
 import { NotCancellableError, Upload, UploadNotActiveError } from "../upload";
 import { ListResponse } from "../list";
+import { reqBodyToBuffer } from "../../shared/request";
 
 /**
  * @param emulator
@@ -168,22 +169,6 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     }
     return res.json(response);
   });
-
-  const reqBodyToBuffer = async (req: Request): Promise<Buffer> => {
-    if (req.body instanceof Buffer) {
-      return Buffer.from(req.body);
-    }
-    const bufs: Buffer[] = [];
-    req.on("data", (data) => {
-      bufs.push(data);
-    });
-    await new Promise<void>((resolve) => {
-      req.on("end", () => {
-        resolve();
-      });
-    });
-    return Buffer.concat(bufs);
-  };
 
   const handleUpload = async (req: Request, res: Response) => {
     if (!req.query.name) {

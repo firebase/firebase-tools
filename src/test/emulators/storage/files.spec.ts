@@ -6,7 +6,7 @@ import { StorageCloudFunctions } from "../../../emulator/storage/cloudFunctions"
 import { StorageLayer } from "../../../emulator/storage/files";
 import { ForbiddenError, NotFoundError } from "../../../emulator/storage/errors";
 import { Persistence } from "../../../emulator/storage/persistence";
-import { RulesValidator } from "../../../emulator/storage/rules/utils";
+import { FirebaseRulesValidator } from "../../../emulator/storage/rules/utils";
 import { Upload, UploadService, UploadStatus, UploadType } from "../../../emulator/storage/upload";
 
 const ALWAYS_TRUE_RULES_VALIDATOR = {
@@ -135,12 +135,15 @@ describe("files", () => {
       });
     });
 
-    const getStorageLayer = (rulesValidator: RulesValidator) =>
+    const getStorageLayer = (rulesValidator: FirebaseRulesValidator) =>
       new StorageLayer(
         "project",
+        new Map(),
+        new Map(),
         rulesValidator,
         ALWAYS_TRUE_ADMIN_CREDENTIAL_VALIDATOR,
-        _persistence
+        _persistence,
+        new StorageCloudFunctions("project")
       );
 
     const getPersistenceTmpDir = () => `${tmpdir()}/firebase/storage/blobs`;
