@@ -1,4 +1,6 @@
+import * as path from "path";
 import supertest = require("supertest");
+
 import { Emulators } from "../../../src/emulator/types";
 import { TriggerEndToEndTest } from "../../integration-helpers/framework";
 import {
@@ -9,9 +11,8 @@ import {
   TEST_SETUP_TIMEOUT,
 } from "../utils";
 
-const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "fake-project-id";
-
 describe("Import Emulator Data", () => {
+  const FIREBASE_PROJECT = "fake-project-id";
   const bucket = `${FIREBASE_PROJECT}.appspot.com`;
   const emulatorConfig = readEmulatorConfig(FIREBASE_EMULATOR_CONFIG);
   const STORAGE_EMULATOR_HOST = getStorageEmulatorHost(emulatorConfig);
@@ -19,21 +20,31 @@ describe("Import Emulator Data", () => {
 
   it("retrieves file from imported flattened emulator data", async function (this) {
     this.timeout(TEST_SETUP_TIMEOUT);
-    await test.startEmulators(["--only", Emulators.STORAGE, "--import=./flattened-emulator-data"]);
+    await test.startEmulators([
+      "--only",
+      Emulators.STORAGE,
+      "--import",
+      path.join(__dirname, "flattened-emulator-data"),
+    ]);
 
     await supertest(STORAGE_EMULATOR_HOST)
       .get(`/v0/b/${bucket}/o/test_upload.jpg`)
-      .set({Authorization: "Bearer owner"})
+      .set({ Authorization: "Bearer owner" })
       .expect(200);
   });
 
   it("retrieves file from imported nested emulator data", async function (this) {
     this.timeout(TEST_SETUP_TIMEOUT);
-    await test.startEmulators(["--only", Emulators.STORAGE, "--import=./nested-emulator-data"]);
+    await test.startEmulators([
+      "--only",
+      Emulators.STORAGE,
+      "--import",
+      path.join(__dirname, "flattened-emulator-data"),
+    ]);
 
     await supertest(STORAGE_EMULATOR_HOST)
       .get(`/v0/b/${bucket}/o/test_upload.jpg`)
-      .set({Authorization: "Bearer owner"})
+      .set({ Authorization: "Bearer owner" })
       .expect(200);
   });
 
