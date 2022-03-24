@@ -286,15 +286,8 @@ export class StorageLayer {
   }
 
   /**
-<<<<<<< HEAD
    * Last step in uploading a file. Validates the request and persists the staging
-   * object to its permanent location on disk.
-=======
-   * Last step in uploading a file. Validates the request, persists the staging
    * object to its permanent location on disk, updates metadata.
-   * TODO(tonyjhuang): Inject a Rules evaluator into StorageLayer to avoid needing skipAuth param
-   * @throws {ForbiddenError} if the request is not authorized.
->>>>>>> 77c25377 (Initial commit, test)
    */
   public async uploadObject(upload: Upload): Promise<StoredFileMetadata> {
     if (upload.status !== UploadStatus.FINISHED) {
