@@ -222,14 +222,14 @@ export class StoredFileMetadata {
     }
   }
 
-  addDownloadToken(): void {
+  addDownloadToken(shouldTrigger = true): void {
     if (!this.downloadTokens.length) {
       this.downloadTokens.push(uuid.v4());
       return;
     }
 
     this.downloadTokens = [...this.downloadTokens, uuid.v4()];
-    this.update({}, /* shouldTrigger = */ false);
+    this.update({}, shouldTrigger);
   }
 
   deleteDownloadToken(token: string): void {
@@ -241,9 +241,10 @@ export class StoredFileMetadata {
     this.downloadTokens = remainingTokens;
     if (remainingTokens.length === 0) {
       // if empty after deleting, always add a new token.
-      this.addDownloadToken();
+      // shouldTrigger is false as it's taken care of in the subsequent update
+      this.addDownloadToken(/* shouldTrigger = */ false);
     }
-    this.update({}, /* shouldTrigger = */ false);
+    this.update({});
   }
 
   static fromJSON(data: string, cloudFunctions: StorageCloudFunctions): StoredFileMetadata {

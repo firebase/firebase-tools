@@ -232,7 +232,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         }
         throw err;
       }
-      metadata.addDownloadToken();
+      metadata.addDownloadToken(/* shouldTrigger = */ false);
       return res.status(200).json(new OutgoingFirebaseMetadata(metadata));
     }
 
@@ -346,7 +346,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         throw err;
       }
 
-      storedMetadata.addDownloadToken();
+      storedMetadata.addDownloadToken(/* shouldTrigger = */ false);
       return res.status(200).json(new OutgoingFirebaseMetadata(storedMetadata));
     }
 
