@@ -182,7 +182,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     }
     const { metadata } = getObjectResponse;
     // We do an empty update to step metageneration forward;
-    metadata.update({}, /* shouldTrigger = */ false);
+    metadata.update({});
     return res.json({
       kind: "storage#objectAccessControl",
       object: metadata.name,
