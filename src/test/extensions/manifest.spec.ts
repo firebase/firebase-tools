@@ -210,11 +210,13 @@ describe("manifest", () => {
               extensionId: "bigquery-export",
               version: "1.0.0",
             },
-            params: { 
-              b: { baseValue: "bulbasaur" }, 
-              a: { baseValue: "absol" }, 
-              EVENTARC_CHANNEL: { baseValue: "projects/test-project/locations/us-central1/channels/firebase" }, 
-              ALLOWED_EVENT_TYPES: { baseValue: "google.firebase.custom-event-occurred" }
+            params: {
+              b: { baseValue: "bulbasaur" },
+              a: { baseValue: "absol" },
+              EVENTARC_CHANNEL: {
+                baseValue: "projects/test-project/locations/us-central1/channels/firebase",
+              },
+              ALLOWED_EVENT_TYPES: { baseValue: "google.firebase.custom-event-occurred" },
             },
           },
           {
@@ -224,11 +226,13 @@ describe("manifest", () => {
               extensionId: "bigquery-export",
               version: "2.0.0",
             },
-            params: { 
-              e: { baseValue: "eevee" }, 
+            params: {
+              e: { baseValue: "eevee" },
               s: { baseValue: "squirtle" },
-              EVENTARC_CHANNEL: { baseValue: "projects/test-project/locations/us-central1/channels/firebase" }, 
-              ALLOWED_EVENT_TYPES: { baseValue: "google.firebase.custom-event-occurred" }
+              EVENTARC_CHANNEL: {
+                baseValue: "projects/test-project/locations/us-central1/channels/firebase",
+              },
+              ALLOWED_EVENT_TYPES: { baseValue: "google.firebase.custom-event-occurred" },
             },
           },
         ],
