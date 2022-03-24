@@ -649,27 +649,21 @@ export class AgentProjectState extends ProjectState {
   }
 
   // TODO(lisajian): Once v2 API discovery is updated, type of update should be
-  // changed to Schemas["GoogleCloudIdentitytoolkitAdminV2Config"].
+  // changed to Schemas["GoogleCloudIdentitytoolkitAdminV2Config"] and validation
+  // of update.usageMode should be moved to operations.ts
   updateConfig(
     update: Schemas["GoogleCloudIdentitytoolkitAdminV2Config"] & { usageMode?: UsageMode },
     updateMask: string | undefined
   ): Config {
     if (update.usageMode) {
-      assert(update.usageMode !== UsageMode.USAGE_MODE_UNSPECIFIED, "Invalid usage mode provided");
+      assert(
+        update.usageMode !== UsageMode.USAGE_MODE_UNSPECIFIED,
+        "INVALID_USAGE_MODE: ((Invalid usage mode provided.))"
+      );
       if (update.usageMode === UsageMode.PASSTHROUGH) {
-        assert(this.getUserCount() === 0, "Users are present, unable to set passthrough mode");
-      }
-    }
-
-    for (const event in update.blockingFunctions?.triggers) {
-      if (Object.prototype.hasOwnProperty.call(update.blockingFunctions!.triggers, event)) {
         assert(
-          Object.values(BlockingFunctionEvents).includes(event as BlockingFunctionEvents),
-          "INVALID_BLOCKING_FUNCTION ((Event type is invalid.))"
-        );
-        assert(
-          parseAbsoluteUri(update.blockingFunctions!.triggers[event].functionUri!),
-          "INVALID_BLOCKING_FUNCTION ((Expected an absolute URI with valid scheme and host.))"
+          this.getUserCount() === 0,
+          "USERS_STILL_EXIST: ((Users are present, unable to set passthrough mode.))"
         );
       }
     }
@@ -908,14 +902,14 @@ export interface PhoneVerificationRecord {
 }
 
 export enum UsageMode {
-  DEFAULT = "DEFAULT",
-  PASSTHROUGH = "PASSTHROUGH",
-
   // Should never be used
   USAGE_MODE_UNSPECIFIED = "USAGE_MODE_UNSPECIFIED",
+
+  DEFAULT = "DEFAULT",
+  PASSTHROUGH = "PASSTHROUGH",
 }
 
-enum BlockingFunctionEvents {
+export enum BlockingFunctionEvents {
   BEFORE_CREATE = "beforeCreate",
   BEFORE_SIGN_IN = "beforeSignIn",
 }

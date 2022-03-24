@@ -99,7 +99,7 @@ describeAuthEmulator("config management", ({ authApi }) => {
         })
         .then((res) => {
           expectStatusCode(400, res);
-          expect(res.body.error).to.have.property("message").equals("Invalid usage mode provided");
+          expect(res.body.error).to.have.property("message").contains("INVALID_USAGE_MODE");
         });
     });
 
@@ -114,9 +114,7 @@ describeAuthEmulator("config management", ({ authApi }) => {
         })
         .then((res) => {
           expectStatusCode(400, res);
-          expect(res.body.error)
-            .to.have.property("message")
-            .equals("Users are present, unable to set passthrough mode");
+          expect(res.body.error).to.have.property("message").contains("USERS_STILL_EXIST");
         });
     });
 
