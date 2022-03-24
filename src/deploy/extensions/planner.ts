@@ -83,7 +83,9 @@ export async function have(projectId: string): Promise<InstanceSpec[]> {
     const dep: InstanceSpec = {
       instanceId: i.name.split("/").pop()!,
       params: i.config.params,
-      allowedEventTypes: i.config.params.ALLOWED_EVENT_TYPES ? i.config.params.ALLOWED_EVENT_TYPES .split(",") : [],
+      allowedEventTypes: i.config.params.ALLOWED_EVENT_TYPES
+        ? i.config.params.ALLOWED_EVENT_TYPES.split(",")
+        : [],
       eventarcChannel: i.config.params.EVENTARC_CHANNEL,
     };
     if (i.config.extensionRef) {
@@ -137,7 +139,9 @@ export async function want(args: {
         instanceId,
         ref,
         params: subbedParams,
-        allowedEventTypes: subbedParams.ALLOWED_EVENT_TYPES ? subbedParams.ALLOWED_EVENT_TYPES .split(",") : [],
+        allowedEventTypes: subbedParams.ALLOWED_EVENT_TYPES
+          ? subbedParams.ALLOWED_EVENT_TYPES.split(",")
+          : [],
         eventarcChannel: subbedParams.EVENTARC_CHANNEL,
       });
     } catch (err: any) {

@@ -91,7 +91,7 @@ describe("Extensions Deployment Planner", () => {
       });
     }
   });
-  
+
   describe("have", () => {
     let listInstancesStub: sinon.SinonStub;
 
@@ -105,7 +105,7 @@ describe("Extensions Deployment Planner", () => {
       name: "",
       sourceUrl: "",
       params: [],
-    }
+    };
 
     const INSTANCE_WITH_EVENTS = {
       name: "projects/my-test-proj/instances/image-resizer",
@@ -128,7 +128,7 @@ describe("Extensions Deployment Planner", () => {
           hash: "",
         },
       },
-    }
+    };
 
     const INSTANCE_SPEC_WITH_EVENTS = {
       instanceId: "image-resizer",
@@ -149,10 +149,10 @@ describe("Extensions Deployment Planner", () => {
         ref: "firebase/image-resizer",
         state: "PUBLISHED",
         createTime: "2019-05-19T00:20:10.416947Z",
-      }
-    }
+      },
+    };
 
-    before(() => {      
+    before(() => {
       listInstancesStub = sinon
         .stub(extensionsApi, "listInstances")
         .resolves([INSTANCE_WITH_EVENTS]);
@@ -172,10 +172,8 @@ describe("Extensions Deployment Planner", () => {
 
     for (const c of cases) {
       it(c.description, () => {
-        expect(
-          planner.have("test")
-        ).to.eventually.equal(c.instanceSpecs);
+        expect(planner.have("test")).to.eventually.equal(c.instanceSpecs);
       });
     }
-  })
-})
+  });
+});
