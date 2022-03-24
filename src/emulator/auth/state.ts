@@ -5,6 +5,7 @@ import {
   randomDigits,
   isValidPhoneNumber,
   DeepPartial,
+  parseAbsoluteUri,
 } from "./utils";
 import { MakeRequired } from "./utils";
 import { AuthCloudFunction } from "./cloudFunctions";
@@ -583,8 +584,6 @@ export abstract class ProjectState {
 }
 
 export class AgentProjectState extends ProjectState {
-  private _oneAccountPerEmail = true;
-  private _usageMode = UsageMode.DEFAULT;
   private tenantProjectForTenantId: Map<string, TenantProjectState> = new Map();
   private readonly _authCloudFunction = new AuthCloudFunction(this.projectId);
   private _config: Config = {
@@ -659,6 +658,19 @@ export class AgentProjectState extends ProjectState {
       assert(update.usageMode !== UsageMode.USAGE_MODE_UNSPECIFIED, "Invalid usage mode provided");
       if (update.usageMode === UsageMode.PASSTHROUGH) {
         assert(this.getUserCount() === 0, "Users are present, unable to set passthrough mode");
+      }
+    }
+
+    for (const event in update.blockingFunctions?.triggers) {
+      if (Object.prototype.hasOwnProperty.call(update.blockingFunctions!.triggers, event)) {
+        assert(
+          Object.values(BlockingFunctionEvents).includes(event as BlockingFunctionEvents),
+          "INVALID_BLOCKING_FUNCTION ((Event type is invalid.))"
+        );
+        assert(
+          parseAbsoluteUri(update.blockingFunctions!.triggers[event].functionUri!),
+          "INVALID_BLOCKING_FUNCTION ((Expected an absolute URI with valid scheme and host.))"
+        );
       }
     }
 
@@ -901,6 +913,11 @@ export enum UsageMode {
 
   // Should never be used
   USAGE_MODE_UNSPECIFIED = "USAGE_MODE_UNSPECIFIED",
+}
+
+enum BlockingFunctionEvents {
+  BEFORE_CREATE = "beforeCreate",
+  BEFORE_SIGN_IN = "beforeSignIn",
 }
 
 interface TemporaryProofRecord {

@@ -119,5 +119,43 @@ describeAuthEmulator("config management", ({ authApi }) => {
             .equals("Users are present, unable to set passthrough mode");
         });
     });
+
+    it("should error when updating an invalid blocking function event", async () => {
+      await authApi()
+        .patch(`/identitytoolkit.googleapis.com/v2/projects/${PROJECT_ID}/config`)
+        .set("Authorization", "Bearer owner")
+        .send({
+          blockingFunctions: {
+            triggers: {
+              invalidEventTrigger: {
+                functionUri: "http://localhost",
+              },
+            },
+          },
+        })
+        .then((res) => {
+          expectStatusCode(400, res);
+          expect(res.body.error).to.have.property("message").contains("INVALID_BLOCKING_FUNCTION");
+        });
+    });
+
+    it("should error if functionUri is invalid", async () => {
+      await authApi()
+        .patch(`/identitytoolkit.googleapis.com/v2/projects/${PROJECT_ID}/config`)
+        .set("Authorization", "Bearer owner")
+        .send({
+          blockingFunctions: {
+            triggers: {
+              beforeCreate: {
+                functionUri: "invalidUri",
+              },
+            },
+          },
+        })
+        .then((res) => {
+          expectStatusCode(400, res);
+          expect(res.body.error).to.have.property("message").contains("INVALID_BLOCKING_FUNCTION");
+        });
+    });
   });
 });
