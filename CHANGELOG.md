@@ -1,0 +1,2 @@
+- Fixes bug where resumable uploads were not setting custom metadata on upload (#3398).
+- Fixes bug where GCS metadataUpdate cloud functions were triggered in incorrect situations (#3398).
