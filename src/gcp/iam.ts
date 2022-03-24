@@ -12,7 +12,12 @@ const apiClient = new Client({ urlPrefix: iamOrigin, apiVersion: API_VERSION });
 export interface Binding {
   role: string;
   members: string[];
-  condition?: { [key: string]: string };
+  condition?: {
+    expression: string;
+    title?: string;
+    condition?: string;
+    location?: string;
+  };
 }
 
 export interface Policy {
