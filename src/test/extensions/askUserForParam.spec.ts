@@ -349,7 +349,13 @@ describe("askUserForParam", () => {
     it("should call substituteParams with the right parameters", async () => {
       const spec = [testSpec];
       const firebaseProjectVars = { PROJECT_ID: "my-project" };
-      await ask("project-id", "instance-id", spec, firebaseProjectVars, false);
+      await ask({
+        projectId: "project-id",
+        instanceId: "instance-id",
+        paramSpecs: spec,
+        firebaseProjectParams: firebaseProjectVars,
+        reconfiguring: false,
+      });
       expect(subVarSpy.calledWith(spec, firebaseProjectVars)).to.be.true;
     });
   });

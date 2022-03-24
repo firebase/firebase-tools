@@ -6,12 +6,13 @@ const { marked } = require("marked");
 import { Param, ParamOption, ParamType } from "./extensionsApi";
 import * as secretManagerApi from "../gcp/secretManager";
 import * as secretsUtils from "./secretsUtils";
-import { confirm, logPrefix, substituteParams } from "./extensionsHelper";
+import { logPrefix, substituteParams } from "./extensionsHelper";
 import { convertExtensionOptionToLabeledList, getRandomString, onceWithJoin } from "./utils";
 import { logger } from "../logger";
 import { promptOnce } from "../prompt";
 import * as utils from "../utils";
 import { ParamBindingOptions } from "./paramHelper";
+import { needProjectId } from "../projectUtils";
 
 /**
  * Location where the secret value is stored.
@@ -78,28 +79,28 @@ export function checkResponse(response: string, spec: Param): boolean {
  * @param firebaseProjectParams Autopopulated Firebase project-specific params
  * @return Promisified map of env vars to values.
  */
-export async function ask(
-  projectId: string,
-  instanceId: string,
-  paramSpecs: Param[],
-  firebaseProjectParams: { [key: string]: string },
-  reconfiguring: boolean
-): Promise<{ [key: string]: ParamBindingOptions }> {
-  if (_.isEmpty(paramSpecs)) {
+export async function ask(args: {
+  projectId: string | undefined;
+  instanceId: string;
+  paramSpecs: Param[];
+  firebaseProjectParams: { [key: string]: string };
+  reconfiguring: boolean;
+}): Promise<{ [key: string]: ParamBindingOptions }> {
+  if (_.isEmpty(args.paramSpecs)) {
     logger.debug("No params were specified for this extension.");
     return {};
   }
 
   utils.logLabeledBullet(logPrefix, "answer the questions below to configure your extension:");
-  const substituted = substituteParams<Param[]>(paramSpecs, firebaseProjectParams);
+  const substituted = substituteParams<Param[]>(args.paramSpecs, args.firebaseProjectParams);
   const result: { [key: string]: ParamBindingOptions } = {};
   const promises = _.map(substituted, (paramSpec: Param) => {
     return async () => {
       result[paramSpec.param] = await askForParam({
-        projectId,
-        instanceId,
-        paramSpec,
-        reconfiguring,
+        projectId: args.projectId,
+        instanceId: args.instanceId,
+        paramSpec: paramSpec,
+        reconfiguring: args.reconfiguring,
       });
     };
   });
@@ -110,7 +111,7 @@ export async function ask(
 }
 
 export async function askForParam(args: {
-  projectId: string;
+  projectId?: string;
   instanceId: string;
   paramSpec: Param;
   reconfiguring: boolean;
@@ -168,13 +169,16 @@ export async function askForParam(args: {
         valid = checkResponse(response, paramSpec);
         break;
       case ParamType.SECRET:
-        while (!secretLocations.length) {
-          secretLocations = await promptSecretLocations();
-        }
+        do {
+          secretLocations = await promptSecretLocations(paramSpec);
+        } while (!isValidSecretLocations(secretLocations, paramSpec));
+
         if (secretLocations.includes(SecretLocation.CLOUD.toString())) {
+          // TODO(lihes): evaluate the UX of this error message.
+          const projectId = needProjectId({ projectId: args.projectId });
           response = args.reconfiguring
-            ? await promptReconfigureSecret(args.projectId, args.instanceId, paramSpec)
-            : await promptCreateSecret(args.projectId, args.instanceId, paramSpec);
+            ? await promptReconfigureSecret(projectId, args.instanceId, paramSpec)
+            : await promptCreateSecret(projectId, args.instanceId, paramSpec);
         }
         if (secretLocations.includes(SecretLocation.LOCAL.toString())) {
           responseForLocal = await promptLocalSecret(args.instanceId, paramSpec);
@@ -195,14 +199,43 @@ export async function askForParam(args: {
   return { baseValue: response, ...(responseForLocal ? { local: responseForLocal } : {}) };
 }
 
-async function promptSecretLocations(): Promise<string[]> {
+function isValidSecretLocations(secretLocations: string[], paramSpec: Param): boolean {
+  if (paramSpec.required) {
+    return !!secretLocations.length;
+  }
+  return true;
+}
+
+async function promptSecretLocations(paramSpec: Param): Promise<string[]> {
+  if (paramSpec.required) {
+    return await promptOnce({
+      name: "input",
+      type: "checkbox",
+      message: "Where would you like to store your secrets? You must select at least one value",
+      choices: [
+        {
+          checked: true,
+          name: "Google Cloud Secret Manager",
+          // return type of string is not actually enforced, need to manually convert.
+          value: SecretLocation.CLOUD.toString(),
+        },
+        {
+          checked: false,
+          name: "Local file (Only used by Firebase Emulator)",
+          value: SecretLocation.LOCAL.toString(),
+        },
+      ],
+    });
+  }
   return await promptOnce({
     name: "input",
     type: "checkbox",
-    message: "Where would you like to store your secrets? You must select at least one value",
+    message:
+      "Where would you like to store your secrets? " +
+      "If you don't want to set this optional secret, leave both options unselected to skip it",
     choices: [
       {
-        checked: true,
+        checked: false,
         name: "Google Cloud Secret Manager",
         // return type of string is not actually enforced, need to manually convert.
         value: SecretLocation.CLOUD.toString(),
