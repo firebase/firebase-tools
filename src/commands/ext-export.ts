@@ -65,13 +65,21 @@ module.exports = new Command("ext:export")
       return;
     }
 
-    const manifestSpecs = withRef.map((spec) => ({
-      instanceId: spec.instanceId,
-      ref: spec.ref,
-      params: buildBindingOptionsWithBaseValue(spec.params),
-      allowedEventTypes: spec.allowedEventTypes,
-      eventarcChannel: spec.eventarcChannel,
-    }));
+    const manifestSpecs = withRef.map((spec) => {
+      const paramCopy = Object.assign({}, spec.params);
+      if (spec.eventarcChannel) {
+        paramCopy.EVENTARC_CHANNEL = spec.eventarcChannel
+      }
+      if (spec.allowedEventTypes) {
+        paramCopy.ALLOWED_EVENT_TYPES = spec.allowedEventTypes.join(",")
+      }
+      return {
+        instanceId: spec.instanceId,
+        ref: spec.ref,
+        params: buildBindingOptionsWithBaseValue(paramCopy)
+      }
+
+    });
 
     const existingConfig = manifest.loadConfig(options);
     await manifest.writeToManifest(

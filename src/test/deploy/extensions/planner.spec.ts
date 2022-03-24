@@ -107,7 +107,7 @@ describe("Extensions Deployment Planner", () => {
       params: [],
     };
 
-    const INSTANCE_WITH_EVENTS = {
+    const INSTANCE_WITH_EVENTS: extensionsApi.ExtensionInstance = {
       name: "projects/my-test-proj/instances/image-resizer",
       createTime: "2019-05-19T00:20:10.416947Z",
       updateTime: "2019-05-19T00:20:10.416947Z",
