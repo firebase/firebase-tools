@@ -91,4 +91,91 @@ describe("Extensions Deployment Planner", () => {
       });
     }
   });
-});
+  
+  describe("have", () => {
+    let listInstancesStub: sinon.SinonStub;
+
+    const SPEC = {
+      version: "0.1.0",
+      author: {
+        authorName: "Firebase",
+        url: "https://firebase.google.com",
+      },
+      resources: [],
+      name: "",
+      sourceUrl: "",
+      params: [],
+    }
+
+    const INSTANCE_WITH_EVENTS = {
+      name: "projects/my-test-proj/instances/image-resizer",
+      createTime: "2019-05-19T00:20:10.416947Z",
+      updateTime: "2019-05-19T00:20:10.416947Z",
+      state: "ACTIVE",
+      serviceAccountEmail: "",
+      config: {
+        params: [],
+        extensionRef: "firebase/image-resizer",
+        name: "projects/my-test-proj/instances/image-resizer/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
+        createTime: "2019-05-19T00:20:10.416947Z",
+        eventarcChannel: "projects/my-test-proj/locations/us-central1/channels/firebase",
+        allowedEventTypes: ["google.firebase.custom-event-occurred"],
+        source: {
+          state: "ACTIVE",
+          spec: SPEC,
+          name: "",
+          packageUri: "",
+          hash: "",
+        },
+      },
+    }
+
+    const INSTANCE_SPEC_WITH_EVENTS = {
+      instanceId: "image-resizer",
+      ref: "firebase/image-resizer",
+      params: {},
+      allowedEventTypes: ["google.firebase.custom-event-occurred"],
+      eventarcChannel: "projects/my-test-proj/locations/us-central1/channels/firebase",
+      extensionVersion: {
+        name: "publishers/firebase/extensions/image-resizer/versions/0.1.0",
+        ref: "firebase/image-resizer@0.1.0",
+        state: "PUBLISHED",
+        spec: SPEC,
+        hash: "",
+        sourceDownloadUri: "",
+      },
+      extension: {
+        name: "publishers/firebase/extensions/image-resizer",
+        ref: "firebase/image-resizer",
+        state: "PUBLISHED",
+        createTime: "2019-05-19T00:20:10.416947Z",
+      }
+    }
+
+    before(() => {      
+      listInstancesStub = sinon
+        .stub(extensionsApi, "listInstances")
+        .resolves([INSTANCE_WITH_EVENTS]);
+    });
+
+    after(() => {
+      listInstancesStub.restore();
+    });
+
+    const cases = [
+      {
+        description: "have() should return correct instance spec with events",
+        instances: [INSTANCE_WITH_EVENTS],
+        instanceSpecs: [INSTANCE_SPEC_WITH_EVENTS],
+      },
+    ];
+
+    for (const c of cases) {
+      it(c.description, () => {
+        expect(
+          planner.have("test")
+        ).to.eventually.equal(c.instanceSpecs);
+      });
+    }
+  })
+})

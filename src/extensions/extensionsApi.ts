@@ -82,6 +82,8 @@ export interface ExtensionConfig {
   populatedPostinstallContent?: string;
   extensionRef?: string;
   extensionVersion?: string;
+  eventarcChannel?: string;
+  allowedEventTypes?: string[];
 }
 
 export interface ExtensionSource {
