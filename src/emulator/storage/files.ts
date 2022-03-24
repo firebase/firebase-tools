@@ -320,7 +320,9 @@ export class StorageLayer {
       (await this._rulesValidator.validate(
         ["b", upload.bucketId, "o", upload.objectId].join("/"),
         upload.bucketId,
-        storedMetadata ? RulesetOperationMethod.UPDATE : RulesetOperationMethod.CREATE,
+        // Uploading a file always evaluates 'create' and 'write'
+        // 'update' is only evaluated on metadata update
+        RulesetOperationMethod.CREATE,
         {
           before: storedMetadata?.asRulesResource(),
           after: metadata?.asRulesResource(),
