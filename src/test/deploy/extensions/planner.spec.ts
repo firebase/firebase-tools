@@ -131,7 +131,7 @@ describe("Extensions Deployment Planner", () => {
       },
     };
 
-    const INSTANCE_SPEC_WITH_EVENTS : planner.InstanceSpec = {
+    const INSTANCE_SPEC_WITH_EVENTS: planner.InstanceSpec = {
       instanceId: "image-resizer",
       params: {},
       allowedEventTypes: ["google.firebase.custom-event-occurred"],
@@ -140,7 +140,7 @@ describe("Extensions Deployment Planner", () => {
         publisherId: "firebase",
         extensionId: "image-resizer",
         version: "0.1.0",
-      }
+      },
     };
 
     before(() => {
