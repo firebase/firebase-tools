@@ -139,7 +139,7 @@ describe("Extensions Deployment Planner", () => {
         version: "0.1.0",
       },
       params: [],
-      allowedEventTypes: ["google.firebase.custom-event1-occurred"],
+      allowedEventTypes: ["google.firebase.custom-event-occurred"],
       eventarcChannel: "projects/my-test-proj/locations/us-central1/channels/firebase",
     };
 
