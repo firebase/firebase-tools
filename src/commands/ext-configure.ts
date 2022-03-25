@@ -8,7 +8,7 @@ import TerminalRenderer = require("marked-terminal");
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
-import { needProjectId } from "../projectUtils";
+import { needProjectId, getProjectId } from "../projectUtils";
 import * as extensionsApi from "../extensions/extensionsApi";
 import { logPrefix, diagnoseAndFixProject } from "../extensions/extensionsHelper";
 import * as paramHelper from "../extensions/paramHelper";
@@ -19,7 +19,7 @@ import * as refs from "../extensions/refs";
 import * as manifest from "../extensions/manifest";
 import { Options } from "../options";
 import { partition } from "../functional";
-import { getBaseParamBindings } from "../extensions/paramHelper";
+import { buildBindingOptionsWithBaseValue, getBaseParamBindings } from "../extensions/paramHelper";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -40,7 +40,7 @@ export default new Command("ext:configure <extensionInstanceId>")
   .before(checkMinRequiredVersion, "extMinVersion")
   .before(diagnoseAndFixProject)
   .action(async (instanceId: string, options: Options) => {
-    const projectId = needProjectId(options);
+    const projectId = getProjectId(options);
 
     if (options.local) {
       if (options.nonInteractive) {
@@ -78,9 +78,9 @@ export default new Command("ext:configure <extensionInstanceId>")
       });
 
       // Merge with old immutable params.
-      const newParamValues = {
-        ...oldParamValues,
-        ...getBaseParamBindings(mutableParamsBindingOptions),
+      const newParamOptions = {
+        ...buildBindingOptionsWithBaseValue(oldParamValues),
+        ...mutableParamsBindingOptions,
       };
 
       await manifest.writeToManifest(
@@ -88,7 +88,8 @@ export default new Command("ext:configure <extensionInstanceId>")
           {
             instanceId,
             ref: targetRef,
-            params: newParamValues,
+            params: newParamOptions,
+            paramSpecs: extensionVersion.spec.params,
           },
         ],
         config,
@@ -108,7 +109,10 @@ export default new Command("ext:configure <extensionInstanceId>")
     try {
       let existingInstance: extensionsApi.ExtensionInstance;
       try {
-        existingInstance = await extensionsApi.getInstance(projectId, instanceId);
+        existingInstance = await extensionsApi.getInstance(
+          needProjectId({ projectId }),
+          instanceId
+        );
       } catch (err: any) {
         if (err.status === 404) {
           return utils.reject(
@@ -151,7 +155,7 @@ export default new Command("ext:configure <extensionInstanceId>")
 
       spinner.start();
       const res = await extensionsApi.configureInstance({
-        projectId,
+        projectId: needProjectId({ projectId }),
         instanceId,
         params: paramBindings,
       });
@@ -161,7 +165,7 @@ export default new Command("ext:configure <extensionInstanceId>")
         logPrefix,
         marked(
           `You can view your reconfigured instance in the Firebase console: ${utils.consoleUrl(
-            projectId,
+            needProjectId({ projectId }),
             `/extensions/instances/${instanceId}?tab=config`
           )}`
         )

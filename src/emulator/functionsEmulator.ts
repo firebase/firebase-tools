@@ -42,6 +42,7 @@ import {
   emulatedFunctionsFromEndpoints,
   emulatedFunctionsByRegion,
   getSecretLocalPath,
+  toBackendInfo,
 } from "./functionsEmulatorShared";
 import { EmulatorRegistry } from "./registry";
 import { EmulatorLogger, Verbosity } from "./emulatorLogger";
@@ -550,7 +551,9 @@ export class FunctionsEmulator implements EmulatorInstance {
     for (const definition of toSetup) {
       // Skip function with invalid id.
       try {
-        functionIdsAreValid([definition]);
+        // Note - in the emulator, functionId = {region}-{functionName}, but in prod, functionId=functionName.
+        // To match prod behavior, only validate functionName
+        functionIdsAreValid([{ ...definition, id: definition.name }]);
       } catch (e: any) {
         this.logger.logLabeled(
           "WARN",
@@ -833,25 +836,16 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   getBackendInfo(): BackendInfo[] {
-    const cf3Triggers = Object.values(this.triggers)
+    const cf3Triggers = this.getCF3Triggers();
+    return this.args.emulatableBackends.map((e: EmulatableBackend) => {
+      return toBackendInfo(e, cf3Triggers);
+    });
+  }
+
+  getCF3Triggers(): ParsedTriggerDefinition[] {
+    return Object.values(this.triggers)
       .filter((t) => !t.backend.extensionInstanceId)
       .map((t) => t.def);
-    return this.args.emulatableBackends.map((e: EmulatableBackend) => {
-      const envWithSecrets = Object.assign({}, e.env);
-      for (const s of e.secretEnv) {
-        envWithSecrets[s.key] = backend.secretVersionName(s);
-      }
-
-      return {
-        directory: e.functionsDir,
-        env: envWithSecrets,
-        extensionInstanceId: e.extensionInstanceId, // Present on all extensions
-        extension: e.extension, // Only present on published extensions
-        extensionVersion: e.extensionVersion, // Only present on published extensions
-        extensionSpec: e.extensionSpec, // Only present on local extensions
-        functionTriggers: e.predefinedTriggers ?? cf3Triggers, // If we don't have predefinedTriggers, this is the CF3 backend.
-      };
-    });
   }
 
   addTriggerRecord(

@@ -7,7 +7,7 @@ const { checkServiceAccountIam } = require("../deploy/functions/checkIam");
 const checkValidTargetFilters = require("../checkValidTargetFilters");
 const { Command } = require("../command");
 const deploy = require("../deploy");
-const requireConfig = require("../requireConfig");
+const { requireConfig } = require("../requireConfig");
 const { filterTargets } = require("../filterTargets");
 const { requireHostingSite } = require("../requireHostingSite");
 

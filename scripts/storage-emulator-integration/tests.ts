@@ -6,23 +6,28 @@ import * as path from "path";
 import * as http from "http";
 import * as https from "https";
 import * as puppeteer from "puppeteer";
-import * as request from "request";
-import * as crypto from "crypto";
-import * as os from "os";
 import { Bucket, Storage, CopyOptions } from "@google-cloud/storage";
 import supertest = require("supertest");
 
 import { IMAGE_FILE_BASE64 } from "../../src/test/emulators/fixtures";
-import { FrameworkOptions, TriggerEndToEndTest } from "../integration-helpers/framework";
+import { TriggerEndToEndTest } from "../integration-helpers/framework";
+import {
+  createRandomFile,
+  EMULATORS_SHUTDOWN_DELAY_MS,
+  getAuthEmulatorHost,
+  getStorageEmulatorHost,
+  LARGE_FILE_SIZE,
+  readEmulatorConfig,
+  readJson,
+  readProdAppConfig,
+  resetStorageEmulator,
+  SERVICE_ACCOUNT_KEY,
+  SMALL_FILE_SIZE,
+  TEST_SETUP_TIMEOUT,
+  uploadText,
+} from "./utils";
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "fake-project-id";
-
-/*
- * Various delays that are needed because this test spawns
- * parallel emulator subprocesses.
- */
-const TEST_SETUP_TIMEOUT = 60000;
-const EMULATORS_SHUTDOWN_DELAY_MS = 5000;
 
 // Flip these flags for options during test debugging
 // all should be FALSE on commit
@@ -44,124 +49,11 @@ const TEST_CONFIG = {
   keepBrowserOpen: false,
 };
 
-// Files contianing the Firebase App Config and Service Account key for
-// the app to be used in these tests.This is only applicable if
-// TEST_CONFIG.useProductionServers is true
-const PROD_APP_CONFIG = "storage-integration-config.json";
-const SERVICE_ACCOUNT_KEY = "service-account-key.json";
-
-// Firebase Emulator config, for starting up emulators
-const FIREBASE_EMULATOR_CONFIG = "firebase.json";
-const SMALL_FILE_SIZE = 200 * 1024; /* 200 kB */
-const LARGE_FILE_SIZE = 20 * 1024 * 1024; /* 20 MiB */
 // Temp directory to store generated files.
 let tmpDir: string;
 
-/**
- * Reads a JSON file in the current directory.
- *
- * @param filename name of the JSON file to be read. Must be in the current directory.
- */
-function readJson(filename: string) {
-  const fullPath = path.join(__dirname, filename);
-  if (!fs.existsSync(fullPath)) {
-    throw new Error(`Can't find file at ${filename}`);
-  }
-  const data = fs.readFileSync(fullPath, "utf8");
-  return JSON.parse(data);
-}
-
-function readProdAppConfig() {
-  try {
-    return readJson(PROD_APP_CONFIG);
-  } catch (error) {
-    throw new Error(
-      `Cannot read the integration config. Please ensure that the file ${PROD_APP_CONFIG} is present in the current directory.`
-    );
-  }
-}
-
-function readEmulatorConfig(): FrameworkOptions {
-  try {
-    return readJson(FIREBASE_EMULATOR_CONFIG);
-  } catch (error) {
-    throw new Error(
-      `Cannot read the emulator config. Please ensure that the file ${FIREBASE_EMULATOR_CONFIG} is present in the current directory.`
-    );
-  }
-}
-
-function getAuthEmulatorHost(emulatorConfig: FrameworkOptions) {
-  const port = emulatorConfig.emulators?.auth?.port;
-  if (port) {
-    return `http://localhost:${port}`;
-  }
-  throw new Error("Auth emulator config not found or invalid");
-}
-
-function getStorageEmulatorHost(emulatorConfig: FrameworkOptions) {
-  const port = emulatorConfig.emulators?.storage?.port;
-  if (port) {
-    return `http://localhost:${port}`;
-  }
-  throw new Error("Storage emulator config not found or invalid");
-}
-
-function createRandomFile(filename: string, sizeInBytes: number): string {
-  if (!tmpDir) {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "storage-files"));
-  }
-  const fullPath = path.join(tmpDir, filename);
-  const bytes = crypto.randomBytes(sizeInBytes);
-  fs.writeFileSync(fullPath, bytes);
-
-  return fullPath;
-}
-
-/**
- * Resets the storage layer of the Storage Emulator.
- */
-async function resetStorageEmulator(emulatorHost: string) {
-  await new Promise<void>((resolve) => {
-    request.post(`${emulatorHost}/internal/reset`, () => {
-      resolve();
-    });
-  });
-}
-
-async function uploadText(
-  page: puppeteer.Page,
-  filename: string,
-  text: string,
-  format?: string,
-  metadata?: firebase.storage.UploadMetadata
-): Promise<string> {
-  return page.evaluate(
-    async (filename, text, format, metadata) => {
-      try {
-        const task = await firebase
-          .storage()
-          .ref(filename)
-          .putString(text, format, JSON.parse(metadata));
-        return task.state;
-      } catch (err) {
-        if (err instanceof Error) {
-          throw err.message;
-        }
-        throw err;
-      }
-    },
-    filename,
-    text,
-    format ?? "raw",
-    JSON.stringify(metadata ?? {})
-  )!;
-}
-
 describe("Storage emulator", () => {
   let test: TriggerEndToEndTest;
-  let browser: puppeteer.Browser;
-  let page: puppeteer.Page;
 
   let smallFilePath: string;
   let largeFilePath: string;
@@ -209,8 +101,8 @@ describe("Storage emulator", () => {
 
       testBucket = admin.storage().bucket(storageBucket);
 
-      smallFilePath = createRandomFile("small_file", SMALL_FILE_SIZE);
-      largeFilePath = createRandomFile("large_file", LARGE_FILE_SIZE);
+      smallFilePath = createRandomFile("small_file", SMALL_FILE_SIZE, tmpDir);
+      largeFilePath = createRandomFile("large_file", LARGE_FILE_SIZE, tmpDir);
     });
 
     beforeEach(async () => {
@@ -232,8 +124,8 @@ describe("Storage emulator", () => {
 
         it("should replace existing file on upload", async () => {
           const path = "replace.txt";
-          const content1 = createRandomFile("small_content_1", 10);
-          const content2 = createRandomFile("small_content_2", 10);
+          const content1 = createRandomFile("small_content_1", 10, tmpDir);
+          const content2 = createRandomFile("small_content_2", 10, tmpDir);
           const file = testBucket.file(path);
 
           await testBucket.upload(content1, {
@@ -295,6 +187,7 @@ describe("Storage emulator", () => {
             bucket: "string",
             cacheControl: "string",
             contentDisposition: "string",
+            contentEncoding: "string",
             generation: "string",
             metageneration: "string",
             contentType: "string",
@@ -772,6 +665,7 @@ describe("Storage emulator", () => {
             bucket: "string",
             contentType: "string",
             contentDisposition: "string",
+            contentEncoding: "string",
             generation: "string",
             md5Hash: "string",
             crc32c: "string",
@@ -992,10 +886,13 @@ describe("Storage emulator", () => {
             }
           }
 
+          expect(metadata.name).to.equal("small_file");
+          expect(metadata.contentType).to.equal("application/octet-stream");
           expect(metadataTypes).to.deep.equal({
             bucket: "string",
-            contentType: "string",
             contentDisposition: "string",
+            contentEncoding: "string",
+            contentType: "string",
             generation: "string",
             md5Hash: "string",
             crc32c: "string",
@@ -1013,6 +910,34 @@ describe("Storage emulator", () => {
             selfLink: "string",
             timeStorageClassUpdated: "string",
           });
+        });
+
+        it("should return generated custom metadata for new upload", async () => {
+          const customMetadata = {
+            contentDisposition: "initialCommit",
+            contentType: "image/jpg",
+            name: "test_upload.jpg",
+          };
+
+          const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
+            .post(
+              `/upload/storage/v1/b/${storageBucket}/o?name=test_upload.jpg&uploadType=resumable`
+            )
+            .send(customMetadata)
+            .set({
+              Authorization: "Bearer owner",
+            })
+            .expect(200)
+            .then((res) => new URL(res.header["location"]));
+
+          const returnedMetadata = await supertest(STORAGE_EMULATOR_HOST)
+            .put(uploadURL.pathname + uploadURL.search)
+            .expect(200)
+            .then((res) => res.body);
+
+          expect(returnedMetadata.name).to.equal(customMetadata.name);
+          expect(returnedMetadata.contentType).to.equal(customMetadata.contentType);
+          expect(returnedMetadata.contentDisposition).to.equal(customMetadata.contentDisposition);
         });
 
         it("should return a functional media link", async () => {
@@ -1110,8 +1035,9 @@ describe("Storage emulator", () => {
           expect(metadata.contentType).to.equal("very/fake");
           expect(metadataTypes).to.deep.equal({
             bucket: "string",
-            contentType: "string",
             contentDisposition: "string",
+            contentEncoding: "string",
+            contentType: "string",
             generation: "string",
             md5Hash: "string",
             crc32c: "string",
@@ -1215,20 +1141,25 @@ describe("Storage emulator", () => {
     });
   });
 
+  /**
+   * TODO(abhisun): Add test coverage to validate how many times various cloud functions are triggered.
+   */
   describe("Firebase Endpoints", () => {
     let storage: Storage;
+    let browser: puppeteer.Browser;
+    let page: puppeteer.Page;
 
     const filename = "testing/storage_ref/image.png";
 
     before(async function (this) {
       this.timeout(TEST_SETUP_TIMEOUT);
 
-      if (!TEST_CONFIG.useProductionServers) {
-        test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, emulatorConfig);
-        await test.startEmulators(["--only", "auth,storage"]);
-      } else {
+      if (TEST_CONFIG.useProductionServers) {
         process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, SERVICE_ACCOUNT_KEY);
         storage = new Storage();
+      } else {
+        test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, emulatorConfig);
+        await test.startEmulators(["--only", "auth,storage"]);
       }
 
       browser = await puppeteer.launch({
@@ -1249,7 +1180,6 @@ describe("Storage emulator", () => {
       await page.addScriptTag({
         url: "https://www.gstatic.com/firebasejs/7.24.0/firebase-auth.js",
       });
-      // url: "https://storage.googleapis.com/fir-tools-builds/firebase-storage-new.js",
       await page.addScriptTag({
         url: TEST_CONFIG.useProductionServers
           ? "https://www.gstatic.com/firebasejs/7.24.0/firebase-storage.js"
@@ -1280,14 +1210,29 @@ describe("Storage emulator", () => {
       }
     });
 
+    afterEach(async () => {
+      await page.close();
+    });
+
+    after(async function (this) {
+      this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
+
+      await browser.close();
+      if (TEST_CONFIG.useProductionServers) {
+        delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+      } else {
+        await test.stopEmulators();
+      }
+    });
+
     describe(".ref()", () => {
       beforeEach(async function (this) {
         this.timeout(TEST_SETUP_TIMEOUT);
 
-        if (!TEST_CONFIG.useProductionServers) {
-          await resetStorageEmulator(STORAGE_EMULATOR_HOST);
-        } else {
+        if (TEST_CONFIG.useProductionServers) {
           await storage.bucket(storageBucket).deleteFiles();
+        } else {
+          await resetStorageEmulator(STORAGE_EMULATOR_HOST);
         }
 
         await page.evaluate(
@@ -1380,6 +1325,39 @@ describe("Storage emulator", () => {
           }, IMAGE_FILE_BASE64);
 
           expect(uploadState).to.equal("success");
+        });
+
+        it("should set custom metadata on resumable uploads", async () => {
+          const customMetadata = {
+            contentDisposition: "initialCommit",
+            contentType: "image/jpg",
+            name: "test_upload.jpg",
+          };
+
+          const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
+            .post(
+              `/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`
+            )
+            .send(customMetadata)
+            .set({
+              Authorization: "Bearer owner",
+              "X-Goog-Upload-Protocol": "resumable",
+              "X-Goog-Upload-Command": "start",
+            })
+            .expect(200)
+            .then((res) => new URL(res.header["x-goog-upload-url"]));
+
+          const returnedMetadata = await supertest(STORAGE_EMULATOR_HOST)
+            .put(uploadURL.pathname + uploadURL.search)
+            .set({
+              "X-Goog-Upload-Protocol": "resumable",
+              "X-Goog-Upload-Command": "upload, finalize",
+            })
+            .expect(200)
+            .then((res) => res.body);
+          expect(returnedMetadata.name).to.equal(customMetadata.name);
+          expect(returnedMetadata.contentType).to.equal(customMetadata.contentType);
+          expect(returnedMetadata.contentDisposition).to.equal(customMetadata.contentDisposition);
         });
 
         it("should return a 403 on rules deny", async () => {
@@ -1528,6 +1506,21 @@ describe("Storage emulator", () => {
           expect(listResult).to.deep.equal({
             prefixes: ["subdir"],
             items: ["file.jpg"],
+          });
+        });
+
+        it("zero element list array should still be present in response", async () => {
+          const listResult = await page.evaluate(async () => {
+            const list = await firebase.storage().ref("/list").listAll();
+            return {
+              prefixes: list.prefixes.map((prefix) => prefix.name),
+              items: list.items.map((item) => item.name),
+            };
+          });
+
+          expect(listResult).to.deep.equal({
+            prefixes: [],
+            items: [],
           });
         });
       });
@@ -1814,11 +1807,7 @@ describe("Storage emulator", () => {
 
     emulatorSpecificDescribe("Non-SDK Endpoints", () => {
       beforeEach(async () => {
-        if (!TEST_CONFIG.useProductionServers) {
-          await resetStorageEmulator(STORAGE_EMULATOR_HOST);
-        } else {
-          await storage.bucket(storageBucket).deleteFiles();
-        }
+        await resetStorageEmulator(STORAGE_EMULATOR_HOST);
 
         await page.evaluate(
           (IMAGE_FILE_BASE64, filename) => {
@@ -2087,19 +2076,6 @@ describe("Storage emulator", () => {
             .expect(404);
         });
       });
-    });
-
-    after(async function (this) {
-      this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
-
-      if (!TEST_CONFIG.keepBrowserOpen) {
-        await browser.close();
-      }
-      if (!TEST_CONFIG.useProductionServers) {
-        await test.stopEmulators();
-      } else {
-        delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
-      }
     });
   });
 });

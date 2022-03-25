@@ -12,9 +12,20 @@ import { logger } from "../logger";
 import { promptOnce } from "../prompt";
 import * as utils from "../utils";
 import { ParamBindingOptions } from "./paramHelper";
+import { needProjectId } from "../projectUtils";
+
+/**
+ * Location where the secret value is stored.
+ *
+ * Visible for testing.
+ */
+export enum SecretLocation {
+  CLOUD = 1,
+  LOCAL,
+}
 
 enum SecretUpdateAction {
-  LEAVE,
+  LEAVE = 1,
   SET_NEW,
 }
 
@@ -68,28 +79,28 @@ export function checkResponse(response: string, spec: Param): boolean {
  * @param firebaseProjectParams Autopopulated Firebase project-specific params
  * @return Promisified map of env vars to values.
  */
-export async function ask(
-  projectId: string,
-  instanceId: string,
-  paramSpecs: Param[],
-  firebaseProjectParams: { [key: string]: string },
-  reconfiguring: boolean
-): Promise<{ [key: string]: ParamBindingOptions }> {
-  if (_.isEmpty(paramSpecs)) {
+export async function ask(args: {
+  projectId: string | undefined;
+  instanceId: string;
+  paramSpecs: Param[];
+  firebaseProjectParams: { [key: string]: string };
+  reconfiguring: boolean;
+}): Promise<{ [key: string]: ParamBindingOptions }> {
+  if (_.isEmpty(args.paramSpecs)) {
     logger.debug("No params were specified for this extension.");
     return {};
   }
 
   utils.logLabeledBullet(logPrefix, "answer the questions below to configure your extension:");
-  const substituted = substituteParams<Param[]>(paramSpecs, firebaseProjectParams);
+  const substituted = substituteParams<Param[]>(args.paramSpecs, args.firebaseProjectParams);
   const result: { [key: string]: ParamBindingOptions } = {};
   const promises = _.map(substituted, (paramSpec: Param) => {
     return async () => {
       result[paramSpec.param] = await askForParam({
-        projectId,
-        instanceId,
-        paramSpec,
-        reconfiguring,
+        projectId: args.projectId,
+        instanceId: args.instanceId,
+        paramSpec: paramSpec,
+        reconfiguring: args.reconfiguring,
       });
     };
   });
@@ -100,7 +111,7 @@ export async function ask(
 }
 
 export async function askForParam(args: {
-  projectId: string;
+  projectId?: string;
   instanceId: string;
   paramSpec: Param;
   reconfiguring: boolean;
@@ -109,6 +120,8 @@ export async function askForParam(args: {
 
   let valid = false;
   let response = "";
+  let responseForLocal;
+  let secretLocations: string[] = [];
   const description = paramSpec.description || "";
   const label = paramSpec.label.trim();
   logger.info(
@@ -150,16 +163,26 @@ export async function askForParam(args: {
           },
           message:
             "Which options do you want enabled for this parameter? " +
-            "Press Space to select, then Enter to confirm your choices. " +
-            "You may select multiple options.",
+            "Press Space to select, then Enter to confirm your choices. ",
           choices: convertExtensionOptionToLabeledList(paramSpec.options as ParamOption[]),
         });
         valid = checkResponse(response, paramSpec);
         break;
       case ParamType.SECRET:
-        response = args.reconfiguring
-          ? await promptReconfigureSecret(args.projectId, args.instanceId, paramSpec)
-          : await promptCreateSecret(args.projectId, args.instanceId, paramSpec);
+        do {
+          secretLocations = await promptSecretLocations(paramSpec);
+        } while (!isValidSecretLocations(secretLocations, paramSpec));
+
+        if (secretLocations.includes(SecretLocation.CLOUD.toString())) {
+          // TODO(lihes): evaluate the UX of this error message.
+          const projectId = needProjectId({ projectId: args.projectId });
+          response = args.reconfiguring
+            ? await promptReconfigureSecret(projectId, args.instanceId, paramSpec)
+            : await promptCreateSecret(projectId, args.instanceId, paramSpec);
+        }
+        if (secretLocations.includes(SecretLocation.LOCAL.toString())) {
+          responseForLocal = await promptLocalSecret(args.instanceId, paramSpec);
+        }
         valid = true;
         break;
       default:
@@ -173,7 +196,72 @@ export async function askForParam(args: {
         valid = checkResponse(response, paramSpec);
     }
   }
-  return { baseValue: response };
+  return { baseValue: response, ...(responseForLocal ? { local: responseForLocal } : {}) };
+}
+
+function isValidSecretLocations(secretLocations: string[], paramSpec: Param): boolean {
+  if (paramSpec.required) {
+    return !!secretLocations.length;
+  }
+  return true;
+}
+
+async function promptSecretLocations(paramSpec: Param): Promise<string[]> {
+  if (paramSpec.required) {
+    return await promptOnce({
+      name: "input",
+      type: "checkbox",
+      message: "Where would you like to store your secrets? You must select at least one value",
+      choices: [
+        {
+          checked: true,
+          name: "Google Cloud Secret Manager",
+          // return type of string is not actually enforced, need to manually convert.
+          value: SecretLocation.CLOUD.toString(),
+        },
+        {
+          checked: false,
+          name: "Local file (Only used by Firebase Emulator)",
+          value: SecretLocation.LOCAL.toString(),
+        },
+      ],
+    });
+  }
+  return await promptOnce({
+    name: "input",
+    type: "checkbox",
+    message:
+      "Where would you like to store your secrets? " +
+      "If you don't want to set this optional secret, leave both options unselected to skip it",
+    choices: [
+      {
+        checked: false,
+        name: "Google Cloud Secret Manager",
+        // return type of string is not actually enforced, need to manually convert.
+        value: SecretLocation.CLOUD.toString(),
+      },
+      {
+        checked: false,
+        name: "Local file (Only used by Firebase Emulator)",
+        value: SecretLocation.LOCAL.toString(),
+      },
+    ],
+  });
+}
+
+async function promptLocalSecret(
+  instanceId: string,
+  paramSpec: Param
+): Promise<string | undefined> {
+  utils.logLabeledBullet(logPrefix, "Configure a local secret value for Extensions Emulator");
+  const value = await promptOnce({
+    name: paramSpec.param,
+    type: "input",
+    message:
+      `This secret will be stored in ./extensions/${instanceId}.secret.local.\n` +
+      `Enter value for "${paramSpec.label.trim()}" to be used by Extensions Emulator:`,
+  });
+  return value;
 }
 
 async function promptReconfigureSecret(

@@ -12,7 +12,7 @@ import { checkBillingEnabled } from "../gcp/cloudbilling";
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
-import { needProjectId } from "../projectUtils";
+import { getProjectId, needProjectId } from "../projectUtils";
 import * as extensionsApi from "../extensions/extensionsApi";
 import * as secretsUtils from "../extensions/secretsUtils";
 import * as provisioningHelper from "../extensions/provisioningHelper";
@@ -67,7 +67,7 @@ export default new Command("ext:install [extensionName]")
   .before(checkMinRequiredVersion, "extMinVersion")
   .before(diagnoseAndFixProject)
   .action(async (extensionName: string, options: Options) => {
-    const projectId = needProjectId(options);
+    const projectId = getProjectId(options);
     const paramsEnvPath = (options.params ?? "") as string;
     let learnMore = false;
     if (!extensionName) {
@@ -103,7 +103,7 @@ export default new Command("ext:install [extensionName]")
           "Installing a local source locally is not supported yet, please use ext:dev:emulator commands"
         );
       }
-      source = await infoInstallBySource(projectId, extensionName);
+      source = await infoInstallBySource(needProjectId({ projectId }), extensionName);
     } else {
       void track("Extension Install", "Install by Extension Ref", options.interactive ? 1 : 0);
       extVersion = await infoInstallByReference(extensionName, options.interactive);
@@ -167,7 +167,7 @@ export default new Command("ext:install [extensionName]")
     try {
       return installExtension({
         paramsEnvPath,
-        projectId,
+        projectId: projectId,
         extensionName,
         source,
         extVersion,
@@ -228,7 +228,7 @@ async function infoInstallByReference(
 
 interface InstallExtensionOptions {
   paramsEnvPath?: string;
-  projectId: string;
+  projectId?: string;
   extensionName: string;
   source?: extensionsApi.ExtensionSource;
   extVersion?: extensionsApi.ExtensionVersion;
@@ -265,7 +265,6 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
     paramsEnvPath,
     instanceId,
   });
-  const params = getBaseParamBindings(paramBindingOptions);
 
   const ref = refs.parse(extVersion.ref);
   await manifest.writeToManifest(
@@ -273,7 +272,8 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
       {
         instanceId,
         ref,
-        params,
+        params: paramBindingOptions,
+        paramSpecs: spec.params,
       },
     ],
     config,
@@ -293,8 +293,9 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
  * @param options
  */
 async function installExtension(options: InstallExtensionOptions): Promise<void> {
-  const { projectId, extensionName, source, extVersion, paramsEnvPath, nonInteractive, force } =
-    options;
+  const { extensionName, source, extVersion, paramsEnvPath, nonInteractive, force } = options;
+  const projectId = needProjectId({ projectId: options.projectId });
+
   const spec = source?.spec || extVersion?.spec;
   if (!spec) {
     throw new FirebaseError(

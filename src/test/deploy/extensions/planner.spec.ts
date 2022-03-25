@@ -52,14 +52,14 @@ describe("Extensions Deployment Planner", () => {
         err: false,
       },
       {
-        description: "should allow latest",
+        description: "should resolve latest to a version",
         in: "latest",
-        out: "latest",
+        out: "0.2.0",
         err: false,
       },
       {
-        description: "should default to latest",
-        out: "latest",
+        description: "should default to latest version",
+        out: "0.2.0",
         err: false,
       },
       {
