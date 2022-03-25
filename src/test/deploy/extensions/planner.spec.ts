@@ -163,7 +163,7 @@ describe("Extensions Deployment Planner", () => {
 
     for (const c of cases) {
       it(c.description, () => {
-        expect(planner.have("test")).to.eventually.equal(c.instanceSpecs);
+        expect(planner.have("test")).to.eventually.have.same.members(c.instanceSpecs);
       });
     }
   });
