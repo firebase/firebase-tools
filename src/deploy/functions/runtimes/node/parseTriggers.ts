@@ -116,7 +116,6 @@ function parseTriggers(
 
     parser.on("message", (message) => {
       if (message.triggers) {
-        console.log(message.triggers);
         resolve(message.triggers);
       } else if (message.error) {
         reject(new FirebaseError(message.error, { exit: 1 }));
