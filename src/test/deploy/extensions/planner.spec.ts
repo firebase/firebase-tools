@@ -116,6 +116,7 @@ describe("Extensions Deployment Planner", () => {
       config: {
         params: [],
         extensionRef: "firebase/image-resizer",
+        extensionVersion: "0.1.0",
         name: "projects/my-test-proj/instances/image-resizer/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
         createTime: "2019-05-19T00:20:10.416947Z",
         eventarcChannel: "projects/my-test-proj/locations/us-central1/channels/firebase",
@@ -132,24 +133,14 @@ describe("Extensions Deployment Planner", () => {
 
     const INSTANCE_SPEC_WITH_EVENTS = {
       instanceId: "image-resizer",
-      ref: "firebase/image-resizer",
-      params: {},
+      ref: {
+        extensionId: "image-resizer",
+        publisherId: "firebase",
+        version: "0.1.0",
+      },
+      params: [],
       allowedEventTypes: ["google.firebase.custom-event-occurred"],
       eventarcChannel: "projects/my-test-proj/locations/us-central1/channels/firebase",
-      extensionVersion: {
-        name: "publishers/firebase/extensions/image-resizer/versions/0.1.0",
-        ref: "firebase/image-resizer@0.1.0",
-        state: "PUBLISHED",
-        spec: SPEC,
-        hash: "",
-        sourceDownloadUri: "",
-      },
-      extension: {
-        name: "publishers/firebase/extensions/image-resizer",
-        ref: "firebase/image-resizer",
-        state: "PUBLISHED",
-        createTime: "2019-05-19T00:20:10.416947Z",
-      },
     };
 
     before(() => {

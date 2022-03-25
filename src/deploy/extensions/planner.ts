@@ -20,6 +20,8 @@ import { ParamBindingOptions } from "../../extensions/paramHelper";
 export interface ManifestInstanceSpec {
   instanceId: string;
   params: Record<string, ParamBindingOptions>;
+  allowedEventTypes?: string[];
+  eventarcChannel?: string;
   ref?: refs.Ref;
   paramSpecs?: extensionsApi.Param[];
 }
@@ -81,10 +83,8 @@ export async function have(projectId: string): Promise<InstanceSpec[]> {
     const dep: InstanceSpec = {
       instanceId: i.name.split("/").pop()!,
       params: i.config.params,
-      allowedEventTypes: i.config.params.ALLOWED_EVENT_TYPES
-        ? i.config.params.ALLOWED_EVENT_TYPES.split(",")
-        : [],
-      eventarcChannel: i.config.params.EVENTARC_CHANNEL,
+      allowedEventTypes: i.config.allowedEventTypes,
+      eventarcChannel: i.config.eventarcChannel,
     };
     if (i.config.extensionRef) {
       const ref = refs.parse(i.config.extensionRef);
