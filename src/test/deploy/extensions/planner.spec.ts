@@ -114,7 +114,7 @@ describe("Extensions Deployment Planner", () => {
       state: "ACTIVE",
       serviceAccountEmail: "",
       config: {
-        params: [],
+        params: {},
         extensionRef: "firebase/image-resizer",
         extensionVersion: "0.1.0",
         name: "projects/my-test-proj/instances/image-resizer/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
@@ -131,16 +131,16 @@ describe("Extensions Deployment Planner", () => {
       },
     };
 
-    const INSTANCE_SPEC_WITH_EVENTS = {
+    const INSTANCE_SPEC_WITH_EVENTS : planner.InstanceSpec = {
       instanceId: "image-resizer",
-      ref: {
-        extensionId: "image-resizer",
-        publisherId: "firebase",
-        version: "0.1.0",
-      },
-      params: [],
+      params: {},
       allowedEventTypes: ["google.firebase.custom-event-occurred"],
       eventarcChannel: "projects/my-test-proj/locations/us-central1/channels/firebase",
+      ref: {
+        publisherId: "firebase",
+        extensionId: "image-resizer",
+        version: "0.1.0",
+      }
     };
 
     before(() => {
@@ -162,9 +162,9 @@ describe("Extensions Deployment Planner", () => {
     ];
 
     for (const c of cases) {
-      it(c.description, async () => {
+      it.only(c.description, async () => {
         const have = await planner.have("test");
-        expect(have[0]).to.equal(c.instanceSpecs[0]);
+        expect(have[0]).to.deep.equal(c.instanceSpecs[0]);
       });
     }
   });
