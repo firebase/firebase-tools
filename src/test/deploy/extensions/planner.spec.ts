@@ -139,7 +139,7 @@ describe("Extensions Deployment Planner", () => {
         version: "0.1.0",
       },
       params: [],
-      allowedEventTypes: ["google.firebase.custom-event-occurred"],
+      allowedEventTypes: ["google.firebase.custom-event1-occurred"],
       eventarcChannel: "projects/my-test-proj/locations/us-central1/channels/firebase",
     };
 
@@ -162,8 +162,9 @@ describe("Extensions Deployment Planner", () => {
     ];
 
     for (const c of cases) {
-      it(c.description, () => {
-        expect(planner.have("test")).to.eventually.have.same.members(c.instanceSpecs);
+      it(c.description, async () => {
+        const have = await planner.have("test");
+        expect(have).to.have.same.members(c.instanceSpecs);
       });
     }
   });
