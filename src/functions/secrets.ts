@@ -34,8 +34,7 @@ export function labels(): Record<string, string> {
 
 function toUpperSnakeCase(key: string): string {
   return key
-    .replace("-", "_")
-    .replace(".", "_")
+    .replace(/[.-]/g, "_")
     .replace(/([a-z])([A-Z])/g, "$1_$2")
     .toUpperCase();
 }
