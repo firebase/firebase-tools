@@ -119,7 +119,7 @@ function parseEndpoints(
   for (const region of ep.region || [defaultRegion]) {
     let triggered: backend.Triggered;
     if (backend.isEventTriggered(ep)) {
-      requireKeys(prefix + ".eventTrigger", ep.eventTrigger, "eventType", "eventFilters");
+      requireKeys(prefix + ".eventTrigger", ep.eventTrigger, "eventType");
       assertKeyTypes(prefix + ".eventTrigger", ep.eventTrigger, {
         eventFilters: "object",
         eventFilterPathPatterns: "object",

@@ -104,17 +104,15 @@ describe("backendFromV1Alpha1", () => {
         region: "global",
         serviceAccountEmail: "root@",
       };
-      for (const key of ["eventType", "eventFilters"]) {
-        it(`missing event trigger key ${key}`, () => {
-          const eventTrigger = { ...validTrigger } as Record<string, unknown>;
-          delete eventTrigger[key];
-          assertParserError({
-            endpoints: {
-              func: { ...MIN_ENDPOINT, eventTrigger },
-            },
-          });
+      it(`missing event trigger key eventType`, () => {
+        const eventTrigger = { ...validTrigger } as Record<string, unknown>;
+        delete eventTrigger["eventType"];
+        assertParserError({
+          endpoints: {
+            func: { ...MIN_ENDPOINT, eventTrigger },
+          },
         });
-      }
+      });
 
       const invalidEntries = {
         eventType: { foo: "bar" },
