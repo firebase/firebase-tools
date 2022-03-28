@@ -21,7 +21,11 @@ export interface ManifestInstanceSpec {
   instanceId: string;
   params: Record<string, ParamBindingOptions>;
   ref?: refs.Ref;
-  paramSpecs?: extensionsApi.Param[];
+  // Used by getExtensionVersion, getExtension, and getExtensionSpec.
+  // You should stronly prefer accessing via those methods
+  extensionVersion?: extensionsApi.ExtensionVersion;
+  extension?: extensionsApi.Extension;
+  extensionSpec?: extensionsApi.ExtensionSpec;
 }
 
 // TODO(lihes): Rename this to something like DeploymentInstanceSpec.
@@ -32,17 +36,20 @@ export interface ManifestInstanceSpec {
  */
 export interface InstanceSpec {
   instanceId: string;
-  ref?: refs.Ref;
   params: Record<string, string>;
+  ref?: refs.Ref;
+  // Used by getExtensionVersion, getExtension, and getExtensionSpec.
+  // You should stronly prefer accessing via those methods
   extensionVersion?: extensionsApi.ExtensionVersion;
   extension?: extensionsApi.Extension;
+  extensionSpec?: extensionsApi.ExtensionSpec;
 }
 
 /**
  * Caching fetcher for the corresponding ExtensionVersion for an instance spec.
  */
 export async function getExtensionVersion(
-  i: InstanceSpec
+  i: InstanceSpec | ManifestInstanceSpec
 ): Promise<extensionsApi.ExtensionVersion> {
   if (!i.extensionVersion) {
     if (!i.ref) {
@@ -58,7 +65,7 @@ export async function getExtensionVersion(
 /**
  * Caching fetcher for the corresponding Extension for an instance spec.
  */
-export async function getExtension(i: InstanceSpec): Promise<extensionsApi.Extension> {
+export async function getExtension(i: InstanceSpec | ManifestInstanceSpec): Promise<extensionsApi.Extension> {
   if (!i.ref) {
     throw new FirebaseError(`Can't get Extensionfor ${i.instanceId} because it has no ref`);
   }
@@ -66,6 +73,20 @@ export async function getExtension(i: InstanceSpec): Promise<extensionsApi.Exten
     i.extension = await extensionsApi.getExtension(refs.toExtensionRef(i.ref));
   }
   return i.extension;
+}
+
+/** Caching fetcher for the corresponding Extension for an instance spec.
+*/
+export async function getExtensionSpec(i: InstanceSpec | ManifestInstanceSpec): Promise<extensionsApi.ExtensionSpec> {
+ if (!i.ref) {
+   // TODO: Implement handling for this.
+   throw new FirebaseError(`Fetching extensionSpec for local extensons not implemented yet`);
+ }
+ if (!i.extensionSpec) {
+   const extensionVersion = await getExtensionVersion(i);
+   i.extensionSpec = extensionVersion.spec;
+ }
+ return i.extensionSpec;
 }
 
 /**

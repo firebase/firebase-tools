@@ -2,7 +2,7 @@ import * as clc from "cli-color";
 import * as path from "path";
 import * as refs from "./refs";
 import { Config } from "../config";
-import { InstanceSpec, ManifestInstanceSpec } from "../deploy/extensions/planner";
+import { getExtensionSpec, ManifestInstanceSpec } from "../deploy/extensions/planner";
 import { logger } from "../logger";
 import { promptOnce } from "../prompt";
 import { ParamBindingOptions, readEnvFile } from "./paramHelper";
@@ -71,12 +71,13 @@ export async function writeLocalSecrets(
   force?: boolean
 ): Promise<void> {
   for (const spec of specs) {
-    if (!spec.paramSpecs) {
+    const extensionSpec = await getExtensionSpec(spec);
+    if (!extensionSpec.params) {
       continue;
     }
 
     const writeBuffer: Record<string, string> = {};
-    const locallyOverridenSecretParams = spec.paramSpecs.filter(
+    const locallyOverridenSecretParams = extensionSpec.params.filter(
       (p) => p.type === ParamType.SECRET && spec.params[p.param].local
     );
     for (const paramSpec of locallyOverridenSecretParams) {
