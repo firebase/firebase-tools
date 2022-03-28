@@ -287,7 +287,7 @@ export class StorageLayer {
 
   /**
    * Last step in uploading a file. Validates the request and persists the staging
-   * object to its permanent location on disk.
+   * object to its permanent location on disk, updates metadata.
    */
   public async uploadObject(upload: Upload): Promise<StoredFileMetadata> {
     if (upload.status !== UploadStatus.FINISHED) {
@@ -309,6 +309,8 @@ export class StorageLayer {
       this._cloudFunctions,
       this._persistence.readBytes(upload.path, upload.size)
     );
+    metadata.update(upload.metadata, /* shouldTrigger = */ false);
+
     const authorized = await this._rulesValidator.validate(
       ["b", upload.bucketId, "o", upload.objectId].join("/"),
       upload.bucketId,

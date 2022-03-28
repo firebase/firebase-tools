@@ -232,7 +232,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         }
         throw err;
       }
-      metadata.addDownloadToken();
+      metadata.addDownloadToken(/* shouldTrigger = */ false);
       return res.status(200).json(new OutgoingFirebaseMetadata(metadata));
     }
 
@@ -330,9 +330,10 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         }
         throw err;
       }
-      let metadata: StoredFileMetadata;
+
+      let storedMetadata: StoredFileMetadata;
       try {
-        metadata = await storageLayer.uploadObject(upload);
+        storedMetadata = await storageLayer.uploadObject(upload);
       } catch (err) {
         if (err instanceof ForbiddenError) {
           return res.status(403).json({
@@ -344,8 +345,9 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         }
         throw err;
       }
-      metadata.addDownloadToken();
-      return res.status(200).json(new OutgoingFirebaseMetadata(metadata));
+
+      storedMetadata.addDownloadToken(/* shouldTrigger = */ false);
+      return res.status(200).json(new OutgoingFirebaseMetadata(storedMetadata));
     }
 
     // Unsupported upload command.
