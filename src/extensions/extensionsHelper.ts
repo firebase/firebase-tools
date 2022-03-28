@@ -14,13 +14,14 @@ import { storageOrigin } from "../api";
 import { archiveDirectory } from "../archiveDirectory";
 import { convertOfficialExtensionsToList } from "./utils";
 import { getFirebaseConfig } from "../functionsConfig";
+import { getProjectAdminSdkConfigOrCached } from "../emulator/adminSdkConfig";
 import { getExtensionRegistry } from "./resolveSource";
 import { FirebaseError } from "../error";
 import { diagnose } from "./diagnose";
 import { checkResponse } from "./askUserForParam";
 import { ensure } from "../ensureApiEnabled";
 import { deleteObject, uploadObject } from "../gcp/storage";
-import { needProjectId } from "../projectUtils";
+import { getProjectId } from "../projectUtils";
 import {
   createSource,
   ExtensionSource,
@@ -37,6 +38,7 @@ import { logger } from "../logger";
 import { envOverride } from "../utils";
 import { getLocalChangelog } from "./changelog";
 import { getProjectNumber } from "../getProjectNumber";
+import { Constants } from "../emulator/constants";
 
 /**
  * SpecParamType represents the exact strings that the extensions
@@ -105,23 +107,36 @@ export function getDBInstanceFromURL(databaseUrl = ""): string {
 /**
  * Gets Firebase project specific param values.
  */
-export async function getFirebaseProjectParams(projectId: string): Promise<Record<string, string>> {
-  const body = await getFirebaseConfig({ project: projectId });
-  const projectNumber = await getProjectNumber({ projectId });
+export async function getFirebaseProjectParams(
+  projectId: string | undefined,
+  emulatorMode: boolean = false
+): Promise<Record<string, string>> {
+  if (!projectId) {
+    return {};
+  }
+  const body = emulatorMode
+    ? await getProjectAdminSdkConfigOrCached(projectId)
+    : await getFirebaseConfig({ project: projectId });
+  const projectNumber =
+    emulatorMode && Constants.isDemoProject(projectId)
+      ? Constants.FAKE_PROJECT_NUMBER
+      : await getProjectNumber({ projectId });
+  const databaseURL = body?.databaseURL ?? `https://${projectId}.firebaseio.com`;
+  const storageBucket = body?.storageBucket ?? `${projectId}.appspot.com`;
   // This env variable is needed for parameter-less initialization of firebase-admin
   const FIREBASE_CONFIG = JSON.stringify({
-    projectId: body.projectId,
-    databaseURL: body.databaseURL,
-    storageBucket: body.storageBucket,
+    projectId,
+    databaseURL,
+    storageBucket,
   });
 
   return {
-    PROJECT_ID: body.projectId,
+    PROJECT_ID: projectId,
     PROJECT_NUMBER: projectNumber,
-    DATABASE_URL: body.databaseURL,
-    STORAGE_BUCKET: body.storageBucket,
+    DATABASE_URL: databaseURL,
+    STORAGE_BUCKET: storageBucket,
     FIREBASE_CONFIG,
-    DATABASE_INSTANCE: getDBInstanceFromURL(body.databaseURL),
+    DATABASE_INSTANCE: getDBInstanceFromURL(databaseURL),
   };
 }
 
@@ -154,12 +169,15 @@ export function substituteParams<T>(original: T, params: Record<string, string>)
  * @param paramSpec information on params parsed from extension.yaml
  * @return JSON object of params
  */
-export function populateDefaultParams(paramVars: Record<string, string>, paramSpecs: Param[]): any {
+export function populateDefaultParams(
+  paramVars: Record<string, string>,
+  paramSpecs: Param[]
+): Record<string, string> {
   const newParams = paramVars;
 
   for (const param of paramSpecs) {
     if (!paramVars[param.param]) {
-      if (param.default != undefined && param.required) {
+      if (param.default !== undefined && param.required) {
         newParams[param.param] = param.default;
       } else if (param.required) {
         throw new FirebaseError(
@@ -268,7 +286,7 @@ export function validateSpec(spec: any) {
         }. Valid types are ${_.values(SpecParamType).join(", ")}`
       );
     }
-    if (!param.type || param.type == SpecParamType.STRING) {
+    if (!param.type || param.type === SpecParamType.STRING) {
       // ParamType defaults to STRING
       if (param.options) {
         errors.push(
@@ -280,7 +298,7 @@ export function validateSpec(spec: any) {
     }
     if (
       param.type &&
-      (param.type == SpecParamType.SELECT || param.type == SpecParamType.MULTISELECT)
+      (param.type === SpecParamType.SELECT || param.type === SpecParamType.MULTISELECT)
     ) {
       if (param.validationRegex) {
         errors.push(
@@ -297,7 +315,7 @@ export function validateSpec(spec: any) {
         );
       }
       for (const opt of param.options || []) {
-        if (opt.value == undefined) {
+        if (opt.value === undefined) {
           errors.push(
             `Option for param${
               param.param ? ` ${param.param}` : ""
@@ -306,7 +324,7 @@ export function validateSpec(spec: any) {
         }
       }
     }
-    if (param.type && param.type == SpecParamType.SELECTRESOURCE) {
+    if (param.type && param.type === SpecParamType.SELECTRESOURCE) {
       if (!param.resourceType) {
         errors.push(
           `Param${param.param ? ` ${param.param}` : ""} must have resourceType because it is type ${
@@ -351,7 +369,10 @@ export async function promptForValidInstanceId(instanceId: string): Promise<stri
 }
 
 export async function ensureExtensionsApiEnabled(options: any): Promise<void> {
-  const projectId = needProjectId(options);
+  const projectId = getProjectId(options);
+  if (!projectId) {
+    return;
+  }
   return await ensure(
     projectId,
     "firebaseextensions.googleapis.com",
@@ -389,7 +410,7 @@ export async function publishExtensionVersionFromLocalSource(args: {
   force: boolean;
 }): Promise<ExtensionVersion | undefined> {
   const extensionSpec = await getLocalExtensionSpec(args.rootDirectory);
-  if (extensionSpec.name != args.extensionId) {
+  if (extensionSpec.name !== args.extensionId) {
     throw new FirebaseError(
       `Extension ID '${clc.bold(
         args.extensionId
@@ -502,7 +523,7 @@ export async function publishExtensionVersionFromLocalSource(args: {
     publishSpinner.succeed(` Successfully published ${clc.bold(ref)}`);
   } catch (err: any) {
     publishSpinner.fail();
-    if (err.status == 404) {
+    if (err.status === 404) {
       throw new FirebaseError(
         marked(
           `Couldn't find publisher ID '${clc.bold(
@@ -744,7 +765,10 @@ export async function confirm(args: {
 }
 
 export async function diagnoseAndFixProject(options: any): Promise<void> {
-  const projectId = needProjectId(options);
+  const projectId = getProjectId(options);
+  if (!projectId) {
+    return;
+  }
   const ok = await diagnose(projectId);
   if (!ok) {
     throw new FirebaseError("Unable to proceed until all issues are resolved.");

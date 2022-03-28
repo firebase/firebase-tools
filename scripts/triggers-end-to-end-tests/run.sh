@@ -8,11 +8,6 @@ source scripts/set-default-credentials.sh
   npm install
 )
 
-npx mocha \
-  --require ts-node/register \
-  --require source-map-support/register \
-  --require src/test/helpers/mocha-bootstrap.ts \
-  --exit \
-  scripts/triggers-end-to-end-tests/tests.ts
+npx mocha --exit scripts/triggers-end-to-end-tests/tests.ts
 
 rm scripts/triggers-end-to-end-tests/functions/package.json

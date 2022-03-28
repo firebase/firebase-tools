@@ -192,7 +192,7 @@ export async function setInvokerCreate(
   invoker: string[],
   httpClient: Client = client // for unit testing
 ) {
-  if (invoker.length == 0) {
+  if (invoker.length === 0) {
     throw new FirebaseError("Invoker cannot be an empty array");
   }
   const invokerMembers = proto.getInvokerMembers(invoker, projectId);
@@ -222,7 +222,7 @@ export async function setInvokerUpdate(
   invoker: string[],
   httpClient: Client = client // for unit testing
 ) {
-  if (invoker.length == 0) {
+  if (invoker.length === 0) {
     throw new FirebaseError("Invoker cannot be an empty array");
   }
   const invokerMembers = proto.getInvokerMembers(invoker, projectId);

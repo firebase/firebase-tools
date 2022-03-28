@@ -88,7 +88,7 @@ describe("reporter", () => {
           platform: "gcfv2",
           eventTrigger: {
             eventType: "google.pubsub.topic.publish",
-            eventFilters: {},
+            eventFilters: [],
             retry: false,
           },
         })

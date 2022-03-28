@@ -87,7 +87,7 @@ export class Delegate {
       },
       stdio: [/* stdin=*/ "ignore", /* stdout=*/ "pipe", /* stderr=*/ "pipe"],
     });
-    if (genBinary.status != 0) {
+    if (genBinary.status !== 0) {
       throw new FirebaseError("Failed to run codegen", {
         children: [new Error(genBinary.stderr.toString())],
       });

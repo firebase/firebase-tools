@@ -44,7 +44,7 @@ function readConfig(): FrameworkOptions {
 
 function logIncludes(msg: string) {
   return (data: unknown) => {
-    if (typeof data != "string" && !Buffer.isBuffer(data)) {
+    if (typeof data !== "string" && !Buffer.isBuffer(data)) {
       throw new Error(`data is not a string or buffer (${typeof data})`);
     }
     return data.includes(msg);
@@ -428,6 +428,43 @@ describe("storage emulator function triggers", () => {
   });
 });
 
+describe("onCall function triggers", () => {
+  let test: TriggerEndToEndTest;
+
+  before(async function (this) {
+    this.timeout(TEST_SETUP_TIMEOUT);
+
+    expect(FIREBASE_PROJECT).to.exist.and.not.be.empty;
+
+    const config = readConfig();
+    test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, config);
+    await test.startEmulators(["--only", "functions"]);
+  });
+
+  after(async function (this) {
+    this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
+    await test.stopEmulators();
+  });
+
+  it("should make a call to v1 callable function", async function (this) {
+    this.timeout(EMULATOR_TEST_TIMEOUT);
+
+    const response = await test.invokeCallableFunction("onCall", { data: "foobar" });
+    expect(response.status).to.equal(200);
+    const body = await response.json();
+    expect(body).to.deep.equal({ result: "foobar" });
+  });
+
+  it("should make a call to v2 callable function", async function (this) {
+    this.timeout(EMULATOR_TEST_TIMEOUT);
+
+    const response = await test.invokeCallableFunction("oncallv2", { data: "foobar" });
+    expect(response.status).to.equal(200);
+    const body = await response.json();
+    expect(body).to.deep.equal({ result: "foobar" });
+  });
+});
+
 describe("import/export end to end", () => {
   it("should be able to import/export firestore data", async function (this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);
@@ -440,7 +477,7 @@ describe("import/export end to end", () => {
       FIREBASE_PROJECT,
       ["--only", "firestore"],
       (data: unknown) => {
-        if (typeof data != "string" && !Buffer.isBuffer(data)) {
+        if (typeof data !== "string" && !Buffer.isBuffer(data)) {
           throw new Error(`data is not a string or buffer (${typeof data})`);
         }
         return data.includes(ALL_EMULATORS_STARTED_LOG);
@@ -451,7 +488,7 @@ describe("import/export end to end", () => {
     const exportCLI = new CLIProcess("2", __dirname);
     const exportPath = fs.mkdtempSync(path.join(os.tmpdir(), "emulator-data"));
     await exportCLI.start("emulators:export", FIREBASE_PROJECT, [exportPath], (data: unknown) => {
-      if (typeof data != "string" && !Buffer.isBuffer(data)) {
+      if (typeof data !== "string" && !Buffer.isBuffer(data)) {
         throw new Error(`data is not a string or buffer (${typeof data})`);
       }
       return data.includes("Export complete");
@@ -468,7 +505,7 @@ describe("import/export end to end", () => {
       FIREBASE_PROJECT,
       ["--only", "firestore", "--import", exportPath],
       (data: unknown) => {
-        if (typeof data != "string" && !Buffer.isBuffer(data)) {
+        if (typeof data !== "string" && !Buffer.isBuffer(data)) {
           throw new Error(`data is not a string or buffer (${typeof data})`);
         }
         return data.includes(ALL_EMULATORS_STARTED_LOG);
@@ -491,7 +528,7 @@ describe("import/export end to end", () => {
       FIREBASE_PROJECT,
       ["--only", "database"],
       (data: unknown) => {
-        if (typeof data != "string" && !Buffer.isBuffer(data)) {
+        if (typeof data !== "string" && !Buffer.isBuffer(data)) {
           throw new Error(`data is not a string or buffer (${typeof data})`);
         }
         return data.includes(ALL_EMULATORS_STARTED_LOG);
@@ -540,7 +577,7 @@ describe("import/export end to end", () => {
     const exportCLI = new CLIProcess("2", __dirname);
     const exportPath = fs.mkdtempSync(path.join(os.tmpdir(), "emulator-data"));
     await exportCLI.start("emulators:export", FIREBASE_PROJECT, [exportPath], (data: unknown) => {
-      if (typeof data != "string" && !Buffer.isBuffer(data)) {
+      if (typeof data !== "string" && !Buffer.isBuffer(data)) {
         throw new Error(`data is not a string or buffer (${typeof data})`);
       }
       return data.includes("Export complete");
@@ -562,7 +599,7 @@ describe("import/export end to end", () => {
       FIREBASE_PROJECT,
       ["--only", "database", "--import", exportPath, "--export-on-exit"],
       (data: unknown) => {
-        if (typeof data != "string" && !Buffer.isBuffer(data)) {
+        if (typeof data !== "string" && !Buffer.isBuffer(data)) {
           throw new Error(`data is not a string or buffer (${typeof data})`);
         }
         return data.includes(ALL_EMULATORS_STARTED_LOG);
@@ -606,7 +643,7 @@ describe("import/export end to end", () => {
     const emulatorsCLI = new CLIProcess("1", __dirname);
 
     await emulatorsCLI.start("emulators:start", project, ["--only", "auth"], (data: unknown) => {
-      if (typeof data != "string" && !Buffer.isBuffer(data)) {
+      if (typeof data !== "string" && !Buffer.isBuffer(data)) {
         throw new Error(`data is not a string or buffer (${typeof data})`);
       }
       return data.includes(ALL_EMULATORS_STARTED_LOG);
@@ -635,7 +672,7 @@ describe("import/export end to end", () => {
       const exportCLI = new CLIProcess("2", __dirname);
       const exportPath = fs.mkdtempSync(path.join(os.tmpdir(), "emulator-data"));
       await exportCLI.start("emulators:export", project, [exportPath], (data: unknown) => {
-        if (typeof data != "string" && !Buffer.isBuffer(data)) {
+        if (typeof data !== "string" && !Buffer.isBuffer(data)) {
           throw new Error(`data is not a string or buffer (${typeof data})`);
         }
         return data.includes("Export complete");
@@ -685,7 +722,7 @@ describe("import/export end to end", () => {
         project,
         ["--only", "auth", "--import", exportPath],
         (data: unknown) => {
-          if (typeof data != "string" && !Buffer.isBuffer(data)) {
+          if (typeof data !== "string" && !Buffer.isBuffer(data)) {
             throw new Error(`data is not a string or buffer (${typeof data})`);
           }
           return data.includes(ALL_EMULATORS_STARTED_LOG);
@@ -797,7 +834,7 @@ describe("import/export end to end", () => {
     const emulatorsCLI = new CLIProcess("1", __dirname);
 
     await emulatorsCLI.start("emulators:start", project, ["--only", "auth"], (data: unknown) => {
-      if (typeof data != "string" && !Buffer.isBuffer(data)) {
+      if (typeof data !== "string" && !Buffer.isBuffer(data)) {
         throw new Error(`data is not a string or buffer (${typeof data})`);
       }
       return data.includes(ALL_EMULATORS_STARTED_LOG);
@@ -807,7 +844,7 @@ describe("import/export end to end", () => {
     const exportCLI = new CLIProcess("2", __dirname);
     const exportPath = fs.mkdtempSync(path.join(os.tmpdir(), "emulator-data"));
     await exportCLI.start("emulators:export", project, [exportPath], (data: unknown) => {
-      if (typeof data != "string" && !Buffer.isBuffer(data)) {
+      if (typeof data !== "string" && !Buffer.isBuffer(data)) {
         throw new Error(`data is not a string or buffer (${typeof data})`);
       }
       return data.includes("Export complete");
@@ -838,7 +875,7 @@ describe("import/export end to end", () => {
       project,
       ["--only", "auth", "--import", exportPath],
       (data: unknown) => {
-        if (typeof data != "string" && !Buffer.isBuffer(data)) {
+        if (typeof data !== "string" && !Buffer.isBuffer(data)) {
           throw new Error(`data is not a string or buffer (${typeof data})`);
         }
         return data.includes(ALL_EMULATORS_STARTED_LOG);

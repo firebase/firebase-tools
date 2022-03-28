@@ -6,7 +6,7 @@ import { promptOnce } from "../prompt";
 import { FirebaseError } from "../error";
 import { requirePermissions } from "../requirePermissions";
 import { needProjectId } from "../projectUtils";
-import * as requireConfig from "../requireConfig";
+import { requireConfig } from "../requireConfig";
 import { logger } from "../logger";
 
 const LOG_TAG = "hosting:sites";

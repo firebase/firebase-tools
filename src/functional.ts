@@ -67,7 +67,7 @@ export function reduceFlat<T = any>(accum: T[] | undefined, next: unknown): T[] 
  * [...zip([1, 2, 3], ['a', 'b', 'c'])] = [[1, 'a], [2, 'b'], [3, 'c']]
  */
 export function* zip<T, V>(left: T[], right: V[]): Generator<[T, V]> {
-  if (left.length != right.length) {
+  if (left.length !== right.length) {
     throw new Error("Cannot zip between two lists of differen lengths");
   }
   for (let i = 0; i < left.length; i++) {

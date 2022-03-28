@@ -13,10 +13,10 @@ const PUBSUB_PUBLISHER_ROLE = "roles/pubsub.publisher";
  * @param existingPolicy the project level IAM policy
  */
 export async function obtainStorageBindings(
-  projectId: string,
+  projectNumber: string,
   existingPolicy: iam.Policy
 ): Promise<Array<iam.Binding>> {
-  const storageResponse = await storage.getServiceAccount(projectId);
+  const storageResponse = await storage.getServiceAccount(projectNumber);
   const storageServiceAgent = `serviceAccount:${storageResponse.email_address}`;
   let pubsubBinding = existingPolicy.bindings.find((b) => b.role === PUBSUB_PUBLISHER_ROLE);
   if (!pubsubBinding) {
@@ -38,15 +38,19 @@ export async function obtainStorageBindings(
  * @param eventTrigger the endpoints event trigger
  */
 export async function ensureStorageTriggerRegion(
-  endpoint: backend.Endpoint,
-  eventTrigger: backend.EventTrigger
+  endpoint: backend.Endpoint & backend.EventTriggered
 ): Promise<void> {
+  const { eventTrigger } = endpoint;
   if (!eventTrigger.region) {
     logger.debug("Looking up bucket region for the storage event trigger");
-    try {
-      const bucket: { location: string } = await storage.getBucket(
-        eventTrigger.eventFilters.bucket!
+    const bucketFilter = backend.findEventFilter(endpoint, "bucket");
+    if (!bucketFilter) {
+      throw new FirebaseError(
+        "Storage event trigger unexpectedly missing event filter with bucket attribute."
       );
+    }
+    try {
+      const bucket: { location: string } = await storage.getBucket(bucketFilter.value);
       eventTrigger.region = bucket.location.toLowerCase();
       logger.debug("Setting the event trigger region to", eventTrigger.region, ".");
     } catch (err: any) {
@@ -57,7 +61,7 @@ export async function ensureStorageTriggerRegion(
   if (
     endpoint.region !== eventTrigger.region &&
     eventTrigger.region !== "us-central1" && // GCF allows any trigger to be in us-central1
-    !regionInLocation(endpoint.region, eventTrigger.region!)
+    !regionInLocation(endpoint.region, eventTrigger.region)
   ) {
     throw new FirebaseError(
       `A function in region ${endpoint.region} cannot listen to a bucket in region ${eventTrigger.region}`

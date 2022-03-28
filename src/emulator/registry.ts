@@ -99,9 +99,7 @@ export class EmulatorRegistry {
 
   static isRunning(emulator: Emulators): boolean {
     if (emulator === Emulators.EXTENSIONS) {
-      return (
-        this.extensionsEmulatorRegistered && this.INSTANCES.get(Emulators.FUNCTIONS) !== undefined
-      );
+      return this.extensionsEmulatorRegistered && this.isRunning(Emulators.FUNCTIONS);
     }
     const instance = this.INSTANCES.get(emulator);
     return instance !== undefined;

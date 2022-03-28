@@ -1,0 +1,19 @@
+{
+    "storage": [
+      {
+        "target": "allowNone",
+        "rules": "allowNone.rules"
+      },
+      {
+        "target": "allowAll",
+        "rules": "allowAll.rules"
+      }
+    ],
+    "emulators": {
+      "storage": {
+        "port": 9199
+      }
+    }
+  }
+  
+  
