@@ -401,6 +401,17 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
           instanceId,
         });
         paramBindings = getBaseParamBindings(paramBindingOptions);
+
+        let eventarcConfig: askUserForEventsConfig.EventArcConfig = { location: "" };
+        let allowedEventTypes: string[] = [];
+        if (spec.events) {
+          allowedEventTypes = await askUserForEventsConfig.askForSelectedEvents(spec.events);
+        }
+        if (allowedEventTypes.length > 0) {
+          eventarcConfig = await askUserForEventsConfig.askForEventArcConfig();
+        }
+        eventarcChannel = `projects/${projectId}/locations/${eventarcConfig.location}/channels/${eventarcConfig.channel}`;
+      
         spinner.text = "Installing your extension instance. This usually takes 3 to 5 minutes...";
         spinner.start();
         await extensionsApi.createInstance({
@@ -409,6 +420,8 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
           extensionSource: source,
           extensionVersionRef: extVersion?.ref,
           params: paramBindings,
+          allowedEventTypes,
+          eventarcChannel
         });
         spinner.stop();
         utils.logLabeledSuccess(
