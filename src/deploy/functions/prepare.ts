@@ -20,6 +20,7 @@ import { ensureTriggerRegions } from "./triggerRegionHelper";
 import { ensureServiceAgentRoles } from "./checkIam";
 import { FirebaseError } from "../../error";
 import { normalizeAndValidate } from "../../functions/projectConfig";
+import { serviceForEndpoint } from "./services";
 
 function hasUserConfig(config: Record<string, unknown>): boolean {
   // "firebase" key is always going to exist in runtime config.
@@ -185,7 +186,9 @@ export function inferDetailsFromExisting(
   have: backend.Backend,
   usedDotenv: boolean
 ): void {
+  maybeCopyResourceOptions(want, have);
   for (const wantE of backend.allEndpoints(want)) {
+    serviceForEndpoint(wantE).copyResourceOptionsToEndpoint(wantE as any, want);
     const haveE = have.endpoints[wantE.region]?.[wantE.id];
     if (!haveE) {
       continue;
@@ -211,6 +214,25 @@ export function inferDetailsFromExisting(
     wantE.securityLevel = haveE.securityLevel ? haveE.securityLevel : "SECURE_ALWAYS";
 
     maybeCopyTriggerRegion(wantE, haveE);
+  }
+}
+
+function maybeCopyResourceOptions(
+  want: backend.Backend,
+  have: backend.Backend,
+) {
+  const wantBlockingFns = backend.allEndpoints(want).filter((ep) => backend.isBlockingTriggered(ep)) as (backend.Endpoint & backend.BlockingTriggered)[];
+  const haveBlockingFns = backend.allEndpoints(have).filter((ep) => backend.isBlockingTriggered(ep)) as (backend.Endpoint & backend.BlockingTriggered)[];
+  if (haveBlockingFns.length === 0 && wantBlockingFns.length === 0) {
+    return;
+  }
+  if (haveBlockingFns.length === 0 || wantBlockingFns.length === 0) {
+    return;
+  }
+
+  if (!wantBlockingFns.some((wantEp) => !haveBlockingFns.find((haveEp) => haveEp.id === wantEp.id))) {
+    // all blocking functions are deployed, we to use the deployed options
+    want.resourceOptions.identityPlatform = have.resourceOptions.identityPlatform
   }
 }
 

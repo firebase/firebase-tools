@@ -4,7 +4,10 @@ import { Client } from "../apiv2";
 
 const API_VERSION = "v2";
 
-const apiClient = new Client({ urlPrefix: identityOrigin + "/admin", apiVersion: API_VERSION });
+const adminApiClient = new Client({
+  urlPrefix: identityOrigin + "/admin",
+  apiVersion: API_VERSION,
+});
 
 export type HashAlgorithm =
   | "HASH_ALGORITHM_UNSPECIFIED"
@@ -35,8 +38,8 @@ export interface EmailTemplate {
 export type Provider = "PROVIDER_UNSPECIFIED" | "PHONE_SMS";
 
 export interface BlockingFunctionsEventDetails {
-  functionUri: string;
-  updateTime: string;
+  functionUri?: string;
+  updateTime?: string;
 }
 
 export interface BlockingFunctionsOptions {
@@ -54,8 +57,8 @@ export interface BlockingFunctions {
 }
 
 export interface Config {
-  name: string;
-  signIn: {
+  name?: string;
+  signIn?: {
     email?: {
       enabled: boolean;
       passwordRequired: boolean;
@@ -76,7 +79,7 @@ export interface Config {
       memoryCost: number;
     };
   };
-  notification: {
+  notification?: {
     sendEmail: {
       method: "METHOD_UNSPECIFIED" | "DEFAULT" | "CUSTOM_SMTP";
       resetPasswordTemplate: EmailTemplate;
@@ -114,25 +117,25 @@ export interface Config {
     };
     defaultLocale?: string;
   };
-  quota: {
+  quota?: {
     signUpQuotaConfig?: {
       quota?: string;
       startTime?: string;
       quotaDuration?: string;
     };
   };
-  monitoring: {
+  monitoring?: {
     requestLogging?: {
       enabled?: boolean;
     };
   };
-  multiTenant: {
+  multiTenant?: {
     allowTenants?: boolean;
     defaultTenantLocation?: string;
   };
   authorizedDomains?: Array<string>;
-  subtype: "SUBTYPE_UNSPECIFIED" | "IDENTITY_PLATFORM" | "FIREBASE_AUTH";
-  client: {
+  subtype?: "SUBTYPE_UNSPECIFIED" | "IDENTITY_PLATFORM" | "FIREBASE_AUTH";
+  client?: {
     apiKey?: string;
     permissions?: {
       disabledUserSignup?: boolean;
@@ -140,24 +143,47 @@ export interface Config {
     };
     firebaseSubdomain?: string;
   };
-  mfa: {
+  mfa?: {
     state?: "STATE_UNSPECIFIED" | "DISABLED" | "ENABLED" | "MANDATORY";
     enabledProviders?: Array<Provider>;
   };
   blockingFunctions?: BlockingFunctions;
 }
 
+export async function getBlockingFunctionsConfig(project: string): Promise<BlockingFunctions> {
+  const config = (await getConfig(project)) || {};
+  if (!config.blockingFunctions) {
+    return {};
+  }
+  return config.blockingFunctions;
+}
+
+export async function setBlockingFunctionsConfig(
+  project: string,
+  blockingConfig: BlockingFunctions
+): Promise<BlockingFunctions> {
+  const config = (await updateConfig(project, { blockingFunctions: blockingConfig })) || {};
+  if (!config.blockingFunctions) {
+    return {};
+  }
+  return config.blockingFunctions;
+}
+
 export async function getConfig(projectId: string): Promise<Config> {
-  const response = await apiClient.get<Config>(`projects/${projectId}/config`);
+  const response = await adminApiClient.get<Config>(`projects/${projectId}/config`);
   return response.body;
 }
 
 export async function updateConfig(projectId: string, config: Config): Promise<Config> {
   const fieldMasks = proto.fieldMasks(config);
-  const response = await apiClient.patch<Config, Config>(`projects/${projectId}/config`, config, {
-    queryParams: {
-      updateMask: fieldMasks.join(","),
-    },
-  });
+  const response = await adminApiClient.patch<Config, Config>(
+    `projects/${projectId}/config`,
+    config,
+    {
+      queryParams: {
+        updateMask: fieldMasks.join(","),
+      },
+    }
+  );
   return response.body;
 }

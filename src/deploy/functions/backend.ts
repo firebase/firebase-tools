@@ -1,3 +1,4 @@
+import * as identityPlatform from "../../gcp/identityPlatform";
 import * as proto from "../../gcp/proto";
 import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfV2 from "../../gcp/cloudfunctionsv2";
@@ -131,7 +132,9 @@ export interface TaskQueueTriggered {
 
 export interface BlockingTrigger {
   eventType: string;
-  options: Record<string, any>;
+  accessToken?: boolean;
+  idToken?: boolean;
+  refreshToken?: boolean;
 }
 
 export interface BlockingTriggered {
@@ -265,7 +268,7 @@ export function isTaskQueueTriggered(triggered: Triggered): triggered is TaskQue
 }
 
 /** Whether something has a BlockingTrigger */
-export function isBlockingTriggered(triggered: Triggered): triggered is TaskQueueTriggered {
+export function isBlockingTriggered(triggered: Triggered): triggered is BlockingTriggered {
   return {}.hasOwnProperty.call(triggered, "blockingTrigger");
 }
 
@@ -300,6 +303,16 @@ export interface RequiredAPI {
   api: string;
 }
 
+interface ResourceOptions {
+  identityPlatform?: {
+    // auth blocking trigger options at the resource level
+    // these options are the OR'd options from the trigger
+    accessToken: boolean;
+    idToken: boolean;
+    refreshToken: boolean;
+  }
+}
+
 /** An API agnostic definition of an entire deployment a customer has or wants. */
 export interface Backend {
   /**
@@ -309,6 +322,7 @@ export interface Backend {
   environmentVariables: EnvironmentVariables;
   // region -> id -> Endpoint
   endpoints: Record<string, Record<string, Endpoint>>;
+  resourceOptions: ResourceOptions;
 }
 
 /**
@@ -321,6 +335,7 @@ export function empty(): Backend {
     requiredAPIs: [],
     endpoints: {},
     environmentVariables: {},
+    resourceOptions: {},
   };
 }
 
@@ -385,49 +400,9 @@ export function scheduleIdForFunction(cloudFunction: TargetIds): string {
   return `firebase-schedule-${cloudFunction.id}-${cloudFunction.region}`;
 }
 
-/**
-
-"blockingFunctions": {
-  "triggers": {
-    "beforeCreate": {
-      "functionUri": "https://us-central1-cole-pineapple.cloudfunctions.net/authBlockerFromPortal",
-      "updateTime": "2022-01-28T18:45:55.252Z"
-    },
-    "beforeSignIn": {
-      "functionUri": "https://us-central1-cole-pineapple.cloudfunctions.net/authBlockerFromPortal",
-      "updateTime": "2022-01-28T18:45:55.252Z"
-    }
-  },
-  "forwardInboundCredentials": {
-    "idToken": true,
-    "accessToken": true,
-    "refreshToken": true
-  }
-}
- */
-
-interface AuthBlockingEventDetails {
-  functionUri: string;
-  updateTime: string;
-}
-
-interface AuthBlockingOptions {
-  idToken?: string;
-  accessToken?: string;
-  refreshToken?: string;
-}
-
-interface AuthBlockingTriggerDetails {
-  triggers?: {
-    beforeCreate?: AuthBlockingEventDetails;
-    beforeSignIn?: AuthBlockingEventDetails;
-  };
-  forwardInboundCredentials?: AuthBlockingOptions;
-}
-
 /** @internal */
 export interface AdditionalDetailsCache {
-  authBlockingTriggerDetails?: AuthBlockingTriggerDetails;
+  authBlockingTriggerDetails?: identityPlatform.BlockingFunctions;
 }
 
 interface PrivateContextFields {
@@ -476,11 +451,21 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
   };
   ctx.additionalDetailsCache = {};
   const gcfV1Results = await gcf.listAllFunctions(ctx.projectId);
+  if (gcfV1Results.functions.find((fn) => fn.labels?.["deployment-blocking"])) {
+    ctx.additionalDetailsCache.authBlockingTriggerDetails =
+      await identityPlatform.getBlockingFunctionsConfig(ctx.projectId);
+    ctx.existingBackend.resourceOptions = { identityPlatform: { accessToken: false, idToken: false, refreshToken: false }};
+  }
   for (const apiFunction of gcfV1Results.functions) {
     const endpoint = gcf.endpointFromFunction(apiFunction, ctx.additionalDetailsCache);
     ctx.existingBackend.endpoints[endpoint.region] =
       ctx.existingBackend.endpoints[endpoint.region] || {};
     ctx.existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
+    if (isBlockingTriggered(endpoint)) {
+      ctx.existingBackend.resourceOptions.identityPlatform!.accessToken ||= endpoint.blockingTrigger.accessToken || false;
+      ctx.existingBackend.resourceOptions.identityPlatform!.idToken ||= endpoint.blockingTrigger.idToken || false;
+      ctx.existingBackend.resourceOptions.identityPlatform!.refreshToken ||= endpoint.blockingTrigger.refreshToken || false;
+    }
   }
   ctx.unreachableRegions.gcfV1 = gcfV1Results.unreachable;
 

@@ -4,6 +4,7 @@ import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { previews } from "../previews";
 import * as backend from "../deploy/functions/backend";
+import * as events from "../functions/events";
 import * as utils from "../utils";
 import * as proto from "./proto";
 import * as runtimes from "../deploy/functions/runtimes";
@@ -456,36 +457,50 @@ export async function listAllFunctions(projectId: string): Promise<ListFunctions
   return list(projectId, "-");
 }
 
-function inferAdditionalDetails(
+/**
+ * Helper function to create an auth blocking trigger from the result of a cached API call to the identity platform.
+ * On ambiguous event types or un-registered functions, we will pass back an https trigger
+ * @param gcfFunction the function we are processing
+ * @param additionalDetailsCache the cached API call
+ * @returns the trigger details
+ */
+export function inferAuthBlockingDetailsFromFunction(
   gcfFunction: CloudFunction,
-  additionalDetailsCache: backend.AdditionalDetailsCache = {}
+  additionalDetailsCache: backend.AdditionalDetailsCache
 ): backend.Triggered {
-  let trigger: backend.Triggered;
-  if (
-    gcfFunction.httpsTrigger?.url ===
-    additionalDetailsCache.authBlockingTriggerDetails?.triggers?.beforeCreate
-  ) {
-    trigger = {
-      blockingTrigger: {
-        eventType: "beforeCreate",
-        options: additionalDetailsCache.authBlockingTriggerDetails?.forwardInboundCredentials || {},
-      },
-    };
-  } else if (
-    gcfFunction.httpsTrigger?.url ===
-    additionalDetailsCache.authBlockingTriggerDetails?.triggers?.beforeSignIn
-  ) {
-    trigger = {
-      blockingTrigger: {
-        eventType: "beforeSignIn",
-        options: additionalDetailsCache.authBlockingTriggerDetails?.forwardInboundCredentials || {},
-      },
-    };
-  } else {
-    trigger = { blockingTrigger: { eventType: "", options: {} } };
+  if (!additionalDetailsCache.authBlockingTriggerDetails) {
+    return { httpsTrigger: {} };
   }
+  const beforeCreateUri =
+    additionalDetailsCache.authBlockingTriggerDetails.triggers?.beforeCreate?.functionUri || "";
+  const beforeSignInUri =
+    additionalDetailsCache.authBlockingTriggerDetails.triggers?.beforeSignIn?.functionUri || "";
+  // options
+  const idToken =
+    additionalDetailsCache.authBlockingTriggerDetails.forwardInboundCredentials?.idToken ===
+    "true";
+  const accessToken =
+    additionalDetailsCache.authBlockingTriggerDetails.forwardInboundCredentials?.accessToken ===
+    "true";
+  const refreshToken =
+    additionalDetailsCache.authBlockingTriggerDetails.forwardInboundCredentials?.refreshToken ===
+    "true";
 
-  return trigger;
+  if (
+    (gcfFunction.httpsTrigger?.url === beforeCreateUri && gcfFunction.httpsTrigger?.url === beforeSignInUri) ||
+    (gcfFunction.httpsTrigger?.url !== beforeCreateUri && gcfFunction.httpsTrigger?.url !== beforeSignInUri)
+  ) {
+    // ambiguous event type, we default to httpsTrigger
+    return { httpsTrigger: {} };
+  }
+  return {
+    blockingTrigger: {
+      eventType: (gcfFunction.httpsTrigger?.url === beforeCreateUri) ? events.v1.AUTH_BLOCKING_EVENTS[0]: events.v1.AUTH_BLOCKING_EVENTS[1],
+      idToken,
+      accessToken,
+      refreshToken,
+    },
+  };
 }
 
 /**
@@ -525,11 +540,9 @@ export function endpointFromFunction(
       callableTrigger: {},
     };
   } else if (gcfFunction.labels?.["deployment-blocking"]) {
-    if (!additionalDetailsCache.authBlockingTriggerDetails) {
-      // call api here to figure out the blocking trigger eventType and options
-      // additionalDetailsCache.authBlockingDetails = identityPlatform.getConfig().blockingFunctions || {};
-    }
-    trigger = inferAdditionalDetails(gcfFunction, additionalDetailsCache);
+    trigger = inferAuthBlockingDetailsFromFunction(gcfFunction, additionalDetailsCache);
+    uri = gcfFunction.httpsTrigger!.url;
+    securityLevel = gcfFunction.httpsTrigger!.securityLevel;
   } else if (gcfFunction.httpsTrigger) {
     trigger = { httpsTrigger: {} };
     uri = gcfFunction.httpsTrigger.url;
@@ -649,6 +662,9 @@ export function functionFromEndpoint(
   } else if (backend.isTaskQueueTriggered(endpoint)) {
     gcfFunction.httpsTrigger = {};
     gcfFunction.labels = { ...gcfFunction.labels, "deployment-taskqueue": "true" };
+  } else if (backend.isBlockingTriggered(endpoint)) {
+    gcfFunction.httpsTrigger = {};
+    gcfFunction.labels = { ...gcfFunction.labels, "deployment-blocking": "true" };
   } else {
     gcfFunction.httpsTrigger = {};
     if (backend.isCallableTriggered(endpoint)) {

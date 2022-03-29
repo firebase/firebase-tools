@@ -8,14 +8,17 @@ import * as fsutils from "../../fsutils";
 import * as backend from "./backend";
 import * as utils from "../../utils";
 import * as secrets from "../../functions/secrets";
+import * as v1Events from "../../functions/events/v1";
+import { serviceForEndpoint } from "./services";
 
 /** Validate that the configuration for endpoints are valid. */
 export function endpointsAreValid(wantBackend: backend.Backend): void {
-  functionIdsAreValid(backend.allEndpoints(wantBackend));
+  const endpoints = backend.allEndpoints(wantBackend);
+  functionIdsAreValid(endpoints);
+  endpoints.forEach((ep) => serviceForEndpoint(ep).ensureTriggerIsValid(ep as any, wantBackend));
 
   // Our SDK doesn't let people articulate this, but it's theoretically possible in the manifest syntax.
-  const gcfV1WithConcurrency = backend
-    .allEndpoints(wantBackend)
+  const gcfV1WithConcurrency = endpoints
     .filter((endpoint) => (endpoint.concurrency || 1) !== 1 && endpoint.platform === "gcfv1")
     .map((endpoint) => endpoint.id);
   if (gcfV1WithConcurrency.length) {
@@ -25,8 +28,7 @@ export function endpointsAreValid(wantBackend: backend.Backend): void {
     throw new FirebaseError(msg);
   }
 
-  const tooSmallForConcurrency = backend
-    .allEndpoints(wantBackend)
+  const tooSmallForConcurrency = endpoints
     .filter((endpoint) => {
       if ((endpoint.concurrency || 1) === 1) {
         return false;

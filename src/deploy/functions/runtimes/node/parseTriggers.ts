@@ -69,6 +69,10 @@ export interface TriggerAnnotation {
     };
     invoker?: string[];
   };
+  blockingTrigger?: {
+    eventType: string;
+    options: Record<string, any>;
+  }
   failurePolicy?: {};
   schedule?: ScheduleAnnotation;
   timeZone?: string;
@@ -212,6 +216,19 @@ export function addResourcesToBackend(
         reason: "Needed for scheduled functions.",
       });
       triggered = { scheduleTrigger: annotation.schedule };
+    } else if (annotation.blockingTrigger) {
+      want.requiredAPIs.push({
+        api: "identityplatform.googleapis.com",
+        reason: "Needed for auth blocking functions.",
+      });
+      triggered = { 
+        blockingTrigger: {
+          eventType: annotation.blockingTrigger!.eventType,
+          accessToken: annotation.blockingTrigger.options["accessToken"] || false,
+          idToken: annotation.blockingTrigger.options["idToken"] || false,
+          refreshToken: annotation.blockingTrigger.options["refreshToken"] || false,
+        }
+      };
     } else {
       triggered = {
         eventTrigger: {

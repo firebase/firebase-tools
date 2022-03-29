@@ -21,6 +21,10 @@ import * as reporter from "./reporter";
 import * as run from "../../../gcp/run";
 import * as scheduler from "../../../gcp/cloudscheduler";
 import * as utils from "../../../utils";
+import {
+  registerAuthBlockingTriggerToIdentityPlatform,
+  unregisterAuthBlockingTriggerFromIdentityPlatform,
+} from "../services/authBlocking";
 
 // TODO: Tune this for better performance.
 const gcfV1PollerOptions = {
@@ -251,6 +255,13 @@ export class Fabricator {
           })
           .catch(rethrowAs(endpoint, "set invoker"));
       }
+    } else if (backend.isBlockingTriggered(endpoint)) {
+      // set invoker to all users
+      await this.executor
+        .run(async () => {
+          await gcf.setInvokerCreate(endpoint.project, backend.functionName(endpoint), ["public"]);
+        })
+        .catch(rethrowAs(endpoint, "set invoker"));
     }
   }
 
@@ -475,6 +486,8 @@ export class Fabricator {
       assertExhaustive(endpoint.platform);
     } else if (backend.isTaskQueueTriggered(endpoint)) {
       await this.upsertTaskQueue(endpoint);
+    } else if (backend.isBlockingTriggered(endpoint)) {
+      await this.registerBlockingTrigger(endpoint);
     }
   }
 
@@ -490,6 +503,8 @@ export class Fabricator {
       assertExhaustive(endpoint.platform);
     } else if (backend.isTaskQueueTriggered(endpoint)) {
       await this.disableTaskQueue(endpoint);
+    } else if (backend.isBlockingTriggered(endpoint)) {
+      await this.unregisterBlockingTrigger(endpoint);
     }
   }
 
@@ -522,6 +537,14 @@ export class Fabricator {
     }
   }
 
+  async registerBlockingTrigger(
+    endpoint: backend.Endpoint & backend.BlockingTriggered
+  ): Promise<void> {
+    await this.executor
+      .run(async () => await registerAuthBlockingTriggerToIdentityPlatform(endpoint))
+      .catch(rethrowAs(endpoint, "register blocking trigger"));
+  }
+
   async deleteScheduleV1(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
     const job = scheduler.jobFromEndpoint(endpoint, this.appEngineLocation);
     await this.executor
@@ -547,6 +570,14 @@ export class Fabricator {
     await this.executor
       .run(() => cloudtasks.updateQueue(update))
       .catch(rethrowAs(endpoint, "disable task queue"));
+  }
+
+  async unregisterBlockingTrigger(
+    endpoint: backend.Endpoint & backend.BlockingTriggered
+  ): Promise<void> {
+    await this.executor
+      .run(async () => await unregisterAuthBlockingTriggerFromIdentityPlatform(endpoint))
+      .catch(rethrowAs(endpoint, "register blocking trigger"));
   }
 
   logOpStart(op: string, endpoint: backend.Endpoint): void {

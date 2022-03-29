@@ -185,10 +185,12 @@ function parseEndpoints(
       }
       triggered = { taskQueueTrigger: ep.taskQueueTrigger };
     } else if (backend.isBlockingTriggered(ep)) {
-      requireKeys(prefix + ".blockingTrigger", ep.blockingTrigger, "eventType", "options");
+      requireKeys(prefix + ".blockingTrigger", ep.blockingTrigger, "eventType");
       assertKeyTypes(prefix + ".blockingTrigger", ep.blockingTrigger, {
         eventType: "string",
-        options: "object",
+        accessToken: "boolean",
+        idToken: "boolean",
+        refreshToken: "boolean",
       });
       triggered = { blockingTrigger: ep.blockingTrigger };
     } else {
