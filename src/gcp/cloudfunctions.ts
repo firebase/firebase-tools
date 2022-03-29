@@ -477,8 +477,7 @@ export function inferAuthBlockingDetailsFromFunction(
     additionalDetailsCache.authBlockingTriggerDetails.triggers?.beforeSignIn?.functionUri || "";
   // options
   const idToken =
-    additionalDetailsCache.authBlockingTriggerDetails.forwardInboundCredentials?.idToken ===
-    "true";
+    additionalDetailsCache.authBlockingTriggerDetails.forwardInboundCredentials?.idToken === "true";
   const accessToken =
     additionalDetailsCache.authBlockingTriggerDetails.forwardInboundCredentials?.accessToken ===
     "true";
@@ -487,15 +486,20 @@ export function inferAuthBlockingDetailsFromFunction(
     "true";
 
   if (
-    (gcfFunction.httpsTrigger?.url === beforeCreateUri && gcfFunction.httpsTrigger?.url === beforeSignInUri) ||
-    (gcfFunction.httpsTrigger?.url !== beforeCreateUri && gcfFunction.httpsTrigger?.url !== beforeSignInUri)
+    (gcfFunction.httpsTrigger?.url === beforeCreateUri &&
+      gcfFunction.httpsTrigger?.url === beforeSignInUri) ||
+    (gcfFunction.httpsTrigger?.url !== beforeCreateUri &&
+      gcfFunction.httpsTrigger?.url !== beforeSignInUri)
   ) {
     // ambiguous event type, we default to httpsTrigger
     return { httpsTrigger: {} };
   }
   return {
     blockingTrigger: {
-      eventType: (gcfFunction.httpsTrigger?.url === beforeCreateUri) ? events.v1.AUTH_BLOCKING_EVENTS[0]: events.v1.AUTH_BLOCKING_EVENTS[1],
+      eventType:
+        gcfFunction.httpsTrigger?.url === beforeCreateUri
+          ? events.v1.AUTH_BLOCKING_EVENTS[0]
+          : events.v1.AUTH_BLOCKING_EVENTS[1],
       idToken,
       accessToken,
       refreshToken,

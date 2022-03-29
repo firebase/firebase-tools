@@ -3,7 +3,10 @@ import * as iam from "../../../gcp/iam";
 import * as events from "../../../functions/events";
 import { obtainStorageBindings, ensureStorageTriggerRegion } from "./storage";
 import { ensureFirebaseAlertsTriggerRegion } from "./firebaseAlerts";
-import { ensureAuthBlockingTriggerIsValid, copyIdentityPlatformOptionsToEndpoint } from "./authBlocking";
+import {
+  ensureAuthBlockingTriggerIsValid,
+  copyIdentityPlatformOptionsToEndpoint,
+} from "./authBlocking";
 
 /** A standard void No Op */
 const noop = (): Promise<void> => Promise.resolve();
@@ -28,8 +31,10 @@ export interface Service {
     ep: backend.Endpoint & backend.BlockingTriggered,
     want: backend.Backend
   ) => void;
-  copyResourceOptionsToEndpoint: (ep: backend.Endpoint & backend.BlockingTriggered,
-    want: backend.Backend) => void;
+  copyResourceOptionsToEndpoint: (
+    ep: backend.Endpoint & backend.BlockingTriggered,
+    want: backend.Backend
+  ) => void;
 }
 
 /** A noop service object, useful for v1 events */

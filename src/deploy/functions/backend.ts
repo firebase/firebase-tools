@@ -310,7 +310,7 @@ interface ResourceOptions {
     accessToken: boolean;
     idToken: boolean;
     refreshToken: boolean;
-  }
+  };
 }
 
 /** An API agnostic definition of an entire deployment a customer has or wants. */
@@ -454,7 +454,9 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
   if (gcfV1Results.functions.find((fn) => fn.labels?.["deployment-blocking"])) {
     ctx.additionalDetailsCache.authBlockingTriggerDetails =
       await identityPlatform.getBlockingFunctionsConfig(ctx.projectId);
-    ctx.existingBackend.resourceOptions = { identityPlatform: { accessToken: false, idToken: false, refreshToken: false }};
+    ctx.existingBackend.resourceOptions = {
+      identityPlatform: { accessToken: false, idToken: false, refreshToken: false },
+    };
   }
   for (const apiFunction of gcfV1Results.functions) {
     const endpoint = gcf.endpointFromFunction(apiFunction, ctx.additionalDetailsCache);
@@ -462,9 +464,12 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
       ctx.existingBackend.endpoints[endpoint.region] || {};
     ctx.existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
     if (isBlockingTriggered(endpoint)) {
-      ctx.existingBackend.resourceOptions.identityPlatform!.accessToken ||= endpoint.blockingTrigger.accessToken || false;
-      ctx.existingBackend.resourceOptions.identityPlatform!.idToken ||= endpoint.blockingTrigger.idToken || false;
-      ctx.existingBackend.resourceOptions.identityPlatform!.refreshToken ||= endpoint.blockingTrigger.refreshToken || false;
+      ctx.existingBackend.resourceOptions.identityPlatform!.accessToken ||=
+        endpoint.blockingTrigger.accessToken || false;
+      ctx.existingBackend.resourceOptions.identityPlatform!.idToken ||=
+        endpoint.blockingTrigger.idToken || false;
+      ctx.existingBackend.resourceOptions.identityPlatform!.refreshToken ||=
+        endpoint.blockingTrigger.refreshToken || false;
     }
   }
   ctx.unreachableRegions.gcfV1 = gcfV1Results.unreachable;

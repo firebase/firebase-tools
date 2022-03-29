@@ -11,9 +11,10 @@ export function ensureAuthBlockingTriggerIsValid(
   endpoint: backend.Endpoint & backend.BlockingTriggered,
   wantBackend: backend.Backend
 ): void {
-  const blockingEndpoints = backend.allEndpoints(wantBackend).filter((ep) =>
-    backend.isBlockingTriggered(ep)
-  ) as (backend.Endpoint & backend.BlockingTriggered)[];
+  const blockingEndpoints = backend
+    .allEndpoints(wantBackend)
+    .filter((ep) => backend.isBlockingTriggered(ep)) as (backend.Endpoint &
+    backend.BlockingTriggered)[];
   if (
     blockingEndpoints.find(
       (ep) =>
@@ -26,21 +27,30 @@ export function ensureAuthBlockingTriggerIsValid(
   }
   // combine the auth blocking options
   if (!wantBackend.resourceOptions.identityPlatform) {
-    wantBackend.resourceOptions.identityPlatform = { accessToken: false, idToken: false, refreshToken: false }
+    wantBackend.resourceOptions.identityPlatform = {
+      accessToken: false,
+      idToken: false,
+      refreshToken: false,
+    };
   }
   // we find the OR of all the resource options
-  wantBackend.resourceOptions.identityPlatform.accessToken ||= endpoint.blockingTrigger.accessToken || false;
-  wantBackend.resourceOptions.identityPlatform.idToken ||= endpoint.blockingTrigger.idToken || false;
-  wantBackend.resourceOptions.identityPlatform.refreshToken ||= endpoint.blockingTrigger.refreshToken || false;
+  wantBackend.resourceOptions.identityPlatform.accessToken ||=
+    endpoint.blockingTrigger.accessToken || false;
+  wantBackend.resourceOptions.identityPlatform.idToken ||=
+    endpoint.blockingTrigger.idToken || false;
+  wantBackend.resourceOptions.identityPlatform.refreshToken ||=
+    endpoint.blockingTrigger.refreshToken || false;
 }
 
 export function copyIdentityPlatformOptionsToEndpoint(
   endpoint: backend.Endpoint & backend.BlockingTriggered,
   wantBackend: backend.Backend
 ): void {
-  endpoint.blockingTrigger.accessToken = wantBackend.resourceOptions.identityPlatform?.accessToken || false;
+  endpoint.blockingTrigger.accessToken =
+    wantBackend.resourceOptions.identityPlatform?.accessToken || false;
   endpoint.blockingTrigger.idToken = wantBackend.resourceOptions.identityPlatform?.idToken || false;
-  endpoint.blockingTrigger.refreshToken = wantBackend.resourceOptions.identityPlatform?.refreshToken || false;
+  endpoint.blockingTrigger.refreshToken =
+    wantBackend.resourceOptions.identityPlatform?.refreshToken || false;
 }
 
 /**

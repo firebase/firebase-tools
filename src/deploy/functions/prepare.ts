@@ -217,12 +217,15 @@ export function inferDetailsFromExisting(
   }
 }
 
-function maybeCopyResourceOptions(
-  want: backend.Backend,
-  have: backend.Backend,
-) {
-  const wantBlockingFns = backend.allEndpoints(want).filter((ep) => backend.isBlockingTriggered(ep)) as (backend.Endpoint & backend.BlockingTriggered)[];
-  const haveBlockingFns = backend.allEndpoints(have).filter((ep) => backend.isBlockingTriggered(ep)) as (backend.Endpoint & backend.BlockingTriggered)[];
+function maybeCopyResourceOptions(want: backend.Backend, have: backend.Backend) {
+  const wantBlockingFns = backend
+    .allEndpoints(want)
+    .filter((ep) => backend.isBlockingTriggered(ep)) as (backend.Endpoint &
+    backend.BlockingTriggered)[];
+  const haveBlockingFns = backend
+    .allEndpoints(have)
+    .filter((ep) => backend.isBlockingTriggered(ep)) as (backend.Endpoint &
+    backend.BlockingTriggered)[];
   if (haveBlockingFns.length === 0 && wantBlockingFns.length === 0) {
     return;
   }
@@ -230,9 +233,11 @@ function maybeCopyResourceOptions(
     return;
   }
 
-  if (!wantBlockingFns.some((wantEp) => !haveBlockingFns.find((haveEp) => haveEp.id === wantEp.id))) {
+  if (
+    !wantBlockingFns.some((wantEp) => !haveBlockingFns.find((haveEp) => haveEp.id === wantEp.id))
+  ) {
     // all blocking functions are deployed, we to use the deployed options
-    want.resourceOptions.identityPlatform = have.resourceOptions.identityPlatform
+    want.resourceOptions.identityPlatform = have.resourceOptions.identityPlatform;
   }
 }
 

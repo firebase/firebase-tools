@@ -72,7 +72,7 @@ export interface TriggerAnnotation {
   blockingTrigger?: {
     eventType: string;
     options: Record<string, any>;
-  }
+  };
   failurePolicy?: {};
   schedule?: ScheduleAnnotation;
   timeZone?: string;
@@ -221,13 +221,13 @@ export function addResourcesToBackend(
         api: "identityplatform.googleapis.com",
         reason: "Needed for auth blocking functions.",
       });
-      triggered = { 
+      triggered = {
         blockingTrigger: {
           eventType: annotation.blockingTrigger!.eventType,
           accessToken: annotation.blockingTrigger.options["accessToken"] || false,
           idToken: annotation.blockingTrigger.options["idToken"] || false,
           refreshToken: annotation.blockingTrigger.options["refreshToken"] || false,
-        }
+        },
       };
     } else {
       triggered = {
