@@ -226,8 +226,8 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
         authorization: req.header("authorization"),
       });
 
-      const { host, port } = emulatorInfo;
-      const uploadUrl = `http://${host}:${port}/upload/storage/v1/b/${req.params.bucketId}/o?name=${name}&uploadType=resumable&upload_id=${upload.id}`;
+      const { port } = emulatorInfo;
+      const uploadUrl = `http://${req.hostname}:${port}/upload/storage/v1/b/${req.params.bucketId}/o?name=${name}&uploadType=resumable&upload_id=${upload.id}`;
       return res.header("location", uploadUrl).sendStatus(200);
     }
 
