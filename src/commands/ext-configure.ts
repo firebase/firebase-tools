@@ -50,6 +50,8 @@ export default new Command("ext:configure <extensionInstanceId>")
       }
 
       const config = manifest.loadConfig(options);
+
+      // TODO: READ REF OR LOCAL SOURCE.
       const targetRef = manifest.getInstanceRef(instanceId, config);
       const extensionVersion = await extensionsApi.getExtensionVersion(
         refs.toExtensionVersionRef(targetRef)
