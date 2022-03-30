@@ -184,7 +184,6 @@ export async function pruneSecrets(
       if (secret.version) {
         secrets.push({ ...secret, version: secret.version });
       }
-      secrets.push({ ...secret, version: secret.version });
     }
   }
 
