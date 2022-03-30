@@ -37,6 +37,14 @@ export interface EmailTemplate {
 
 export type Provider = "PROVIDER_UNSPECIFIED" | "PHONE_SMS";
 
+export interface BlockingFunctionsConfig {
+  triggers?: {
+    beforeCreate?: BlockingFunctionsEventDetails;
+    beforeSignIn?: BlockingFunctionsEventDetails;
+  };
+  forwardInboundCredentials?: BlockingFunctionsOptions;
+}
+
 export interface BlockingFunctionsEventDetails {
   functionUri?: string;
   updateTime?: string;
@@ -46,14 +54,6 @@ export interface BlockingFunctionsOptions {
   idToken?: string;
   accessToken?: string;
   refreshToken?: string;
-}
-
-export interface BlockingFunctions {
-  triggers?: {
-    beforeCreate?: BlockingFunctionsEventDetails;
-    beforeSignIn?: BlockingFunctionsEventDetails;
-  };
-  forwardInboundCredentials?: BlockingFunctionsOptions;
 }
 
 export interface Config {
@@ -147,10 +147,15 @@ export interface Config {
     state?: "STATE_UNSPECIFIED" | "DISABLED" | "ENABLED" | "MANDATORY";
     enabledProviders?: Array<Provider>;
   };
-  blockingFunctions?: BlockingFunctions;
+  blockingFunctions?: BlockingFunctionsConfig;
 }
 
-export async function getBlockingFunctionsConfig(project: string): Promise<BlockingFunctions> {
+/**
+ * Helper function to get the blocking function config from identity platform.
+ * @param project GCP project ID or number
+ * @returns the blocking functions config
+ */
+export async function getBlockingFunctionsConfig(project: string): Promise<BlockingFunctionsConfig> {
   const config = (await getConfig(project)) || {};
   if (!config.blockingFunctions) {
     return {};
@@ -158,20 +163,31 @@ export async function getBlockingFunctionsConfig(project: string): Promise<Block
   return config.blockingFunctions;
 }
 
+/**
+ * 
+ * @param project GCP project ID or number
+ * @returns the identity platform config
+ */
+export async function getConfig(project: string): Promise<Config> {
+  const response = await adminApiClient.get<Config>(`projects/${project}/config`);
+  return response.body;
+}
+
+/**
+ * Helper function to set the blocking function config to identity platform.
+ * @param project GCP project ID or number
+ * @param blockingConfig 
+ * @returns the blocking functions config
+ */
 export async function setBlockingFunctionsConfig(
   project: string,
-  blockingConfig: BlockingFunctions
-): Promise<BlockingFunctions> {
+  blockingConfig: BlockingFunctionsConfig
+): Promise<BlockingFunctionsConfig> {
   const config = (await updateConfig(project, { blockingFunctions: blockingConfig })) || {};
   if (!config.blockingFunctions) {
     return {};
   }
   return config.blockingFunctions;
-}
-
-export async function getConfig(projectId: string): Promise<Config> {
-  const response = await adminApiClient.get<Config>(`projects/${projectId}/config`);
-  return response.body;
 }
 
 export async function updateConfig(projectId: string, config: Config): Promise<Config> {
