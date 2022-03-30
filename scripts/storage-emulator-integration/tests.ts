@@ -9,7 +9,7 @@ import * as puppeteer from "puppeteer";
 import { Bucket, Storage, CopyOptions } from "@google-cloud/storage";
 import supertest = require("supertest");
 
-import { IMAGE_FILE_BASE64 } from "../../src/test/emulators/fixtures";
+import { IMAGE_FILE_BASE64, StorageRulesFiles } from "../../src/test/emulators/fixtures";
 import { TriggerEndToEndTest } from "../integration-helpers/framework";
 import {
   createRandomFile,
@@ -187,6 +187,7 @@ describe("Storage emulator", () => {
             bucket: "string",
             cacheControl: "string",
             contentDisposition: "string",
+            contentEncoding: "string",
             generation: "string",
             metageneration: "string",
             contentType: "string",
@@ -664,6 +665,7 @@ describe("Storage emulator", () => {
             bucket: "string",
             contentType: "string",
             contentDisposition: "string",
+            contentEncoding: "string",
             generation: "string",
             md5Hash: "string",
             crc32c: "string",
@@ -884,10 +886,13 @@ describe("Storage emulator", () => {
             }
           }
 
+          expect(metadata.name).to.equal("small_file");
+          expect(metadata.contentType).to.equal("application/octet-stream");
           expect(metadataTypes).to.deep.equal({
             bucket: "string",
-            contentType: "string",
             contentDisposition: "string",
+            contentEncoding: "string",
+            contentType: "string",
             generation: "string",
             md5Hash: "string",
             crc32c: "string",
@@ -905,6 +910,34 @@ describe("Storage emulator", () => {
             selfLink: "string",
             timeStorageClassUpdated: "string",
           });
+        });
+
+        it("should return generated custom metadata for new upload", async () => {
+          const customMetadata = {
+            contentDisposition: "initialCommit",
+            contentType: "image/jpg",
+            name: "test_upload.jpg",
+          };
+
+          const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
+            .post(
+              `/upload/storage/v1/b/${storageBucket}/o?name=test_upload.jpg&uploadType=resumable`
+            )
+            .send(customMetadata)
+            .set({
+              Authorization: "Bearer owner",
+            })
+            .expect(200)
+            .then((res) => new URL(res.header["location"]));
+
+          const returnedMetadata = await supertest(STORAGE_EMULATOR_HOST)
+            .put(uploadURL.pathname + uploadURL.search)
+            .expect(200)
+            .then((res) => res.body);
+
+          expect(returnedMetadata.name).to.equal(customMetadata.name);
+          expect(returnedMetadata.contentType).to.equal(customMetadata.contentType);
+          expect(returnedMetadata.contentDisposition).to.equal(customMetadata.contentDisposition);
         });
 
         it("should return a functional media link", async () => {
@@ -1002,8 +1035,9 @@ describe("Storage emulator", () => {
           expect(metadata.contentType).to.equal("very/fake");
           expect(metadataTypes).to.deep.equal({
             bucket: "string",
-            contentType: "string",
             contentDisposition: "string",
+            contentEncoding: "string",
+            contentType: "string",
             generation: "string",
             md5Hash: "string",
             crc32c: "string",
@@ -1107,6 +1141,148 @@ describe("Storage emulator", () => {
     });
   });
 
+  emulatorSpecificDescribe("Internal Endpoints", () => {
+    before(async function (this) {
+      this.timeout(TEST_SETUP_TIMEOUT);
+      test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, emulatorConfig);
+      await test.startEmulators(["--only", "storage"]);
+    });
+
+    after(async () => {
+      await test.stopEmulators();
+    });
+
+    describe("setRules", () => {
+      it("should set single ruleset", async () => {
+        await supertest(STORAGE_EMULATOR_HOST)
+          .put("/internal/setRules")
+          .send({
+            rules: {
+              files: [StorageRulesFiles.readWriteIfTrue],
+            },
+          })
+          .expect(200);
+      });
+
+      it("should set multiple rules/resource objects", async () => {
+        await supertest(STORAGE_EMULATOR_HOST)
+          .put("/internal/setRules")
+          .send({
+            rules: {
+              files: [
+                { resource: "bucket_0", ...StorageRulesFiles.readWriteIfTrue },
+                { resource: "bucket_1", ...StorageRulesFiles.readWriteIfAuth },
+              ],
+            },
+          })
+          .expect(200);
+      });
+
+      it("should overwrite single ruleset with multiple rules/resource objects", async () => {
+        await supertest(STORAGE_EMULATOR_HOST)
+          .put("/internal/setRules")
+          .send({
+            rules: {
+              files: [StorageRulesFiles.readWriteIfTrue],
+            },
+          })
+          .expect(200);
+
+        await supertest(STORAGE_EMULATOR_HOST)
+          .put("/internal/setRules")
+          .send({
+            rules: {
+              files: [
+                { resource: "bucket_0", ...StorageRulesFiles.readWriteIfTrue },
+                { resource: "bucket_1", ...StorageRulesFiles.readWriteIfAuth },
+              ],
+            },
+          })
+          .expect(200);
+      });
+
+      it("should return 400 if rules.files array is missing", async () => {
+        const errorMessage = await supertest(STORAGE_EMULATOR_HOST)
+          .put("/internal/setRules")
+          .send({ rules: {} })
+          .expect(400)
+          .then((res) => res.body.message);
+
+        expect(errorMessage).to.equal("Request body must include 'rules.files' array");
+      });
+
+      it("should return 400 if rules.files array has missing name field", async () => {
+        const errorMessage = await supertest(STORAGE_EMULATOR_HOST)
+          .put("/internal/setRules")
+          .send({
+            rules: {
+              files: [{ content: StorageRulesFiles.readWriteIfTrue.content }],
+            },
+          })
+          .expect(400)
+          .then((res) => res.body.message);
+
+        expect(errorMessage).to.equal(
+          "Each member of 'rules.files' array must contain 'name' and 'content'"
+        );
+      });
+
+      it("should return 400 if rules.files array has missing content field", async () => {
+        const errorMessage = await supertest(STORAGE_EMULATOR_HOST)
+          .put("/internal/setRules")
+          .send({
+            rules: {
+              files: [{ name: StorageRulesFiles.readWriteIfTrue.name }],
+            },
+          })
+          .expect(400)
+          .then((res) => res.body.message);
+
+        expect(errorMessage).to.equal(
+          "Each member of 'rules.files' array must contain 'name' and 'content'"
+        );
+      });
+
+      it("should return 400 if rules.files array has missing resource field", async () => {
+        const errorMessage = await supertest(STORAGE_EMULATOR_HOST)
+          .put("/internal/setRules")
+          .send({
+            rules: {
+              files: [
+                { resource: "bucket_0", ...StorageRulesFiles.readWriteIfTrue },
+                StorageRulesFiles.readWriteIfAuth,
+              ],
+            },
+          })
+          .expect(400)
+          .then((res) => res.body.message);
+
+        expect(errorMessage).to.equal(
+          "Each member of 'rules.files' array must contain 'name', 'content', and 'resource'"
+        );
+      });
+
+      it("should return 400 if rules.files array has invalid content", async () => {
+        const errorMessage = await supertest(STORAGE_EMULATOR_HOST)
+          .put("/internal/setRules")
+          .send({
+            rules: {
+              files: [{ name: StorageRulesFiles.readWriteIfTrue.name, content: "foo" }],
+            },
+          })
+          .expect(400)
+          .then((res) => res.body.message);
+
+        expect(errorMessage).to.equal(
+          "There was an error updating rules, see logs for more details"
+        );
+      });
+    });
+  });
+
+  /**
+   * TODO(abhisun): Add test coverage to validate how many times various cloud functions are triggered.
+   */
   describe("Firebase Endpoints", () => {
     let storage: Storage;
     let browser: puppeteer.Browser;
@@ -1290,6 +1466,39 @@ describe("Storage emulator", () => {
           expect(uploadState).to.equal("success");
         });
 
+        it("should set custom metadata on resumable uploads", async () => {
+          const customMetadata = {
+            contentDisposition: "initialCommit",
+            contentType: "image/jpg",
+            name: "test_upload.jpg",
+          };
+
+          const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
+            .post(
+              `/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`
+            )
+            .send(customMetadata)
+            .set({
+              Authorization: "Bearer owner",
+              "X-Goog-Upload-Protocol": "resumable",
+              "X-Goog-Upload-Command": "start",
+            })
+            .expect(200)
+            .then((res) => new URL(res.header["x-goog-upload-url"]));
+
+          const returnedMetadata = await supertest(STORAGE_EMULATOR_HOST)
+            .put(uploadURL.pathname + uploadURL.search)
+            .set({
+              "X-Goog-Upload-Protocol": "resumable",
+              "X-Goog-Upload-Command": "upload, finalize",
+            })
+            .expect(200)
+            .then((res) => res.body);
+          expect(returnedMetadata.name).to.equal(customMetadata.name);
+          expect(returnedMetadata.contentType).to.equal(customMetadata.contentType);
+          expect(returnedMetadata.contentDisposition).to.equal(customMetadata.contentDisposition);
+        });
+
         it("should return a 403 on rules deny", async () => {
           const uploadState = await page.evaluate(async (IMAGE_FILE_BASE64) => {
             const _file = new File([IMAGE_FILE_BASE64], "toUpload.txt");
@@ -1436,6 +1645,21 @@ describe("Storage emulator", () => {
           expect(listResult).to.deep.equal({
             prefixes: ["subdir"],
             items: ["file.jpg"],
+          });
+        });
+
+        it("zero element list array should still be present in response", async () => {
+          const listResult = await page.evaluate(async () => {
+            const list = await firebase.storage().ref("/list").listAll();
+            return {
+              prefixes: list.prefixes.map((prefix) => prefix.name),
+              items: list.items.map((item) => item.name),
+            };
+          });
+
+          expect(listResult).to.deep.equal({
+            prefixes: [],
+            items: [],
           });
         });
       });

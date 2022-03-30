@@ -10,7 +10,7 @@ import {
 import { EmulatorRegistry } from "../../registry";
 import { StorageEmulator } from "../index";
 import { EmulatorLogger } from "../../emulatorLogger";
-import { GetObjectResponse } from "../files";
+import { GetObjectResponse, ListObjectsResponse } from "../files";
 import { crc32cToString } from "../crc";
 import type { Request, Response } from "express";
 import { parseObjectUploadMultipartRequest } from "../multipart";
@@ -42,7 +42,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     async (req, res) => {
       let getObjectResponse: GetObjectResponse;
       try {
-        getObjectResponse = await adminStorageLayer.handleGetObject({
+        getObjectResponse = await adminStorageLayer.getObject({
           bucketId: req.params.bucketId,
           decodedObjectId: req.params.objectId,
         });
@@ -66,7 +66,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
   gcloudStorageAPI.patch("/b/:bucketId/o/:objectId", async (req, res) => {
     let updatedMetadata: StoredFileMetadata;
     try {
-      updatedMetadata = await adminStorageLayer.handleUpdateObjectMetadata({
+      updatedMetadata = await adminStorageLayer.updateObjectMetadata({
         bucketId: req.params.bucketId,
         decodedObjectId: req.params.objectId,
         metadata: req.body as IncomingMetadata,
@@ -83,30 +83,35 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     return res.json(new CloudStorageObjectMetadata(updatedMetadata));
   });
 
-  gcloudStorageAPI.get("/b/:bucketId/o", (req, res) => {
+  gcloudStorageAPI.get("/b/:bucketId/o", async (req, res) => {
+    let listResponse: ListObjectsResponse;
     // TODO validate that all query params are single strings and are not repeated.
-    let maxRes = undefined;
-    if (req.query.maxResults) {
-      maxRes = +req.query.maxResults.toString();
+    try {
+      listResponse = await adminStorageLayer.listObjects({
+        bucketId: req.params.bucketId,
+        prefix: req.query.prefix ? req.query.prefix.toString() : "",
+        delimiter: req.query.delimiter ? req.query.delimiter.toString() : "",
+        pageToken: req.query.pageToken ? req.query.pageToken.toString() : undefined,
+        maxResults: req.query.maxResults ? +req.query.maxResults.toString() : undefined,
+        authorization: req.header("authorization"),
+      });
+    } catch (err) {
+      if (err instanceof ForbiddenError) {
+        return res.sendStatus(403);
+      }
+      throw err;
     }
-    const delimiter = req.query.delimiter ? req.query.delimiter.toString() : "";
-    const pageToken = req.query.pageToken ? req.query.pageToken.toString() : undefined;
-    const prefix = req.query.prefix ? req.query.prefix.toString() : "";
-
-    const listResult = adminStorageLayer.listItems(
-      req.params.bucketId,
-      prefix,
-      delimiter,
-      pageToken,
-      maxRes
-    );
-
-    res.json({ ...listResult, kind: "#storage/objects" });
+    return res.status(200).json({
+      kind: "#storage/objects",
+      nextPageToken: listResponse.nextPageToken,
+      prefixes: listResponse.prefixes,
+      items: listResponse.items?.map((item) => new CloudStorageObjectMetadata(item)),
+    });
   });
 
   gcloudStorageAPI.delete("/b/:bucketId/o/:objectId", async (req, res) => {
     try {
-      await adminStorageLayer.handleDeleteObject({
+      await adminStorageLayer.deleteObject({
         bucketId: req.params.bucketId,
         decodedObjectId: req.params.objectId,
       });
@@ -144,7 +149,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
 
     let metadata: StoredFileMetadata;
     try {
-      metadata = await adminStorageLayer.handleUploadObject(upload);
+      metadata = await adminStorageLayer.uploadObject(upload);
     } catch (err) {
       if (err instanceof ForbiddenError) {
         return res.sendStatus(403);
@@ -162,7 +167,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     );
     let getObjectResponse: GetObjectResponse;
     try {
-      getObjectResponse = await adminStorageLayer.handleGetObject({
+      getObjectResponse = await adminStorageLayer.getObject({
         bucketId: req.params.bucketId,
         decodedObjectId: req.params.objectId,
       });
@@ -252,7 +257,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     });
     let metadata: StoredFileMetadata;
     try {
-      metadata = await adminStorageLayer.handleUploadObject(upload);
+      metadata = await adminStorageLayer.uploadObject(upload);
     } catch (err) {
       if (err instanceof ForbiddenError) {
         return res.sendStatus(403);
@@ -266,7 +271,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
   gcloudStorageAPI.get("/:bucketId/:objectId(**)", async (req, res) => {
     let getObjectResponse: GetObjectResponse;
     try {
-      getObjectResponse = await adminStorageLayer.handleGetObject({
+      getObjectResponse = await adminStorageLayer.getObject({
         bucketId: req.params.bucketId,
         decodedObjectId: req.params.objectId,
       });
@@ -285,27 +290,31 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
   gcloudStorageAPI.post(
     "/b/:bucketId/o/:objectId/:method(rewriteTo|copyTo)/b/:destBucketId/o/:destObjectId",
     (req, res, next) => {
-      const md = adminStorageLayer.getMetadata(req.params.bucketId, req.params.objectId);
-
-      if (!md) {
-        return sendObjectNotFound(req, res);
-      }
-
       if (req.params.method === "rewriteTo" && req.query.rewriteToken) {
         // Don't yet support multi-request copying
         return next();
       }
-
-      const metadata = adminStorageLayer.copyFile(
-        md,
-        req.params.destBucketId,
-        req.params.destObjectId,
-        req.body
-      );
-
-      if (!metadata) {
-        res.sendStatus(400);
-        return;
+      let metadata: StoredFileMetadata;
+      try {
+        metadata = adminStorageLayer.copyObject({
+          sourceBucket: req.params.bucketId,
+          sourceObject: req.params.objectId,
+          destinationBucket: req.params.destBucketId,
+          destinationObject: req.params.destObjectId,
+          incomingMetadata: req.body,
+          // TODO(tonyjhuang): Until we have a way of validating OAuth tokens passed by
+          // the GCS sdk or gcloud tool, we must assume all requests have valid admin creds.
+          // authorization: req.header("authorization")
+          authorization: "Bearer owner",
+        });
+      } catch (err) {
+        if (err instanceof NotFoundError) {
+          return sendObjectNotFound(req, res);
+        }
+        if (err instanceof ForbiddenError) {
+          return res.sendStatus(403);
+        }
+        throw err;
       }
 
       const resource = new CloudStorageObjectMetadata(metadata);

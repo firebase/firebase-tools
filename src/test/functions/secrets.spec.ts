@@ -40,22 +40,27 @@ describe("functions/secret", () => {
     });
 
     it("returns the original key if it follows convention", async () => {
-      expect(await secrets.ensureValidKey("MY_KEY", options)).to.equal("MY_KEY");
+      expect(await secrets.ensureValidKey("MY_SECRET_KEY", options)).to.equal("MY_SECRET_KEY");
       expect(warnStub).to.not.have.been.called;
     });
 
-    it("returns the transformed key (with warning) if with dashses", async () => {
-      expect(await secrets.ensureValidKey("MY-KEY", options)).to.equal("MY_KEY");
+    it("returns the transformed key (with warning) if with dashes", async () => {
+      expect(await secrets.ensureValidKey("MY-SECRET-KEY", options)).to.equal("MY_SECRET_KEY");
+      expect(warnStub).to.have.been.calledOnce;
+    });
+
+    it("returns the transformed key (with warning) if with periods", async () => {
+      expect(await secrets.ensureValidKey("MY.SECRET.KEY", options)).to.equal("MY_SECRET_KEY");
       expect(warnStub).to.have.been.calledOnce;
     });
 
     it("returns the transformed key (with warning) if with lower cases", async () => {
-      expect(await secrets.ensureValidKey("my_key", options)).to.equal("MY_KEY");
+      expect(await secrets.ensureValidKey("my_secret_key", options)).to.equal("MY_SECRET_KEY");
       expect(warnStub).to.have.been.calledOnce;
     });
 
     it("returns the transformed key (with warning) if camelCased", async () => {
-      expect(await secrets.ensureValidKey("myKey", options)).to.equal("MY_KEY");
+      expect(await secrets.ensureValidKey("mySecretKey", options)).to.equal("MY_SECRET_KEY");
       expect(warnStub).to.have.been.calledOnce;
     });
 
