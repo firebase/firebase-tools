@@ -103,7 +103,6 @@ describe("cloudfunctions", () => {
           egressSettings: "ALL_TRAFFIC",
         },
         ingressSettings: "ALLOW_ALL",
-        timeout: "15s",
         serviceAccountEmail: "inlined@google.com",
         labels: {
           foo: "bar",
@@ -129,7 +128,6 @@ describe("cloudfunctions", () => {
         vpcConnectorEgressSettings: "ALL_TRAFFIC",
         ingressSettings: "ALLOW_ALL",
         availableMemoryMb: 128,
-        timeout: "15s",
         serviceAccountEmail: "inlined@google.com",
       };
 
@@ -142,6 +140,7 @@ describe("cloudfunctions", () => {
       const complexEndpoint: backend.Endpoint = {
         ...ENDPOINT,
         scheduleTrigger: {},
+        timeoutSeconds: 20,
       };
 
       const complexGcfFunction: Omit<
@@ -154,6 +153,7 @@ describe("cloudfunctions", () => {
           eventType: "google.pubsub.topic.publish",
           resource: `projects/project/topics/${backend.scheduleIdForFunction(FUNCTION_NAME)}`,
         },
+        timeout: "20s",
         labels: {
           "deployment-scheduled": "true",
         },
@@ -288,7 +288,21 @@ describe("cloudfunctions", () => {
     });
 
     it("should copy optional fields", () => {
-      const extraFields: Partial<backend.Endpoint> = {
+      const wantExtraFields: Partial<backend.Endpoint> = {
+        availableMemoryMb: 128,
+        minInstances: 1,
+        maxInstances: 42,
+        ingressSettings: "ALLOW_ALL",
+        serviceAccountEmail: "inlined@google.com",
+        timeoutSeconds: 15,
+        labels: {
+          foo: "bar",
+        },
+        environmentVariables: {
+          FOO: "bar",
+        },
+      };
+      const haveExtraFields: Partial<cloudfunctions.CloudFunction> = {
         availableMemoryMb: 128,
         minInstances: 1,
         maxInstances: 42,
@@ -308,14 +322,14 @@ describe("cloudfunctions", () => {
       expect(
         cloudfunctions.endpointFromFunction({
           ...HAVE_CLOUD_FUNCTION,
-          ...extraFields,
+          ...haveExtraFields,
           vpcConnector,
           vpcConnectorEgressSettings,
           httpsTrigger: {},
         } as cloudfunctions.CloudFunction)
       ).to.deep.equal({
         ...ENDPOINT,
-        ...extraFields,
+        ...wantExtraFields,
         vpc: {
           connector: vpcConnector,
           egressSettings: vpcConnectorEgressSettings,

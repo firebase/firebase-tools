@@ -154,7 +154,6 @@ describe("addResourcesToBackend", () => {
       vpcConnectorEgressSettings: "PRIVATE_RANGES_ONLY",
       vpcConnector: "projects/project/locations/region/connectors/connector",
       ingressSettings: "ALLOW_ALL",
-      timeout: "60s",
       labels: {
         test: "testing",
       },
@@ -172,7 +171,6 @@ describe("addResourcesToBackend", () => {
         egressSettings: "PRIVATE_RANGES_ONLY",
       },
       ingressSettings: "ALLOW_ALL",
-      timeout: "60s",
       labels: {
         test: "testing",
       },
@@ -195,6 +193,7 @@ describe("addResourcesToBackend", () => {
         resource: "projects/p/topics/t",
         service: "pubsub.googleapis.com",
       },
+      timeout: "60s",
     };
 
     const result = backend.empty();
@@ -211,7 +210,11 @@ describe("addResourcesToBackend", () => {
       retry: false,
     };
 
-    const expected: backend.Backend = backend.of({ ...BASIC_ENDPOINT, eventTrigger });
+    const expected: backend.Backend = backend.of({
+      ...BASIC_ENDPOINT,
+      eventTrigger,
+      timeoutSeconds: 60,
+    });
     expect(result).to.deep.equal(expected);
   });
 

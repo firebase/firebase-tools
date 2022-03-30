@@ -77,7 +77,7 @@ describe("backendFromV1Alpha1", () => {
         maxInstances: "2",
         minInstances: "1",
         serviceAccountEmail: { ldap: "inlined" },
-        timeout: 60,
+        timeoutSeconds: "60s",
         trigger: [],
         vpcConnector: 2,
         vpcConnectorEgressSettings: {},
@@ -393,7 +393,7 @@ describe("backendFromV1Alpha1", () => {
         labels: { hello: "world" },
         environmentVariables: { foo: "bar" },
         availableMemoryMb: 256,
-        timeout: "60s",
+        timeoutSeconds: 60,
         maxInstances: 20,
         minInstances: 1,
         vpc: {

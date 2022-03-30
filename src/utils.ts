@@ -638,3 +638,10 @@ export function groupBy<T, K extends string | number | symbol>(
     return result;
   }, {} as Record<K, T[]>);
 }
+
+/**
+ * replacement for lodash cloneDeep that preserves type.
+ */
+export function cloneDeep<T>(obj: T): T {
+  return JSON.parse(JSON.stringify(obj)) as T;
+}
