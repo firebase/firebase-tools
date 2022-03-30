@@ -1,0 +1,374 @@
+import * as backend from "./backend";
+import { FirebaseError } from "../../error";
+
+/* The union of a customer-controlled deployment and potentially deploy-time defined parameters */
+export interface Build {
+  requiredAPIs: RequiredApi[];
+  endpoints: Record<string, Endpoint>;
+  params: Param[];
+}
+
+interface RequiredApi {
+  // The API that should be enabled. For Google APIs, this should be a googleapis.com subdomain
+  // (e.g. vision.googleapis.com)
+  apiName: string;
+
+  // A reason why this codebase requires this API.
+  // Will be considered required for all Extensions codebases. Considered optional for Functions
+  // codebases.
+  reason?: string;
+}
+
+// Defining a StringParam with { param: "FOO" } declares that "{{ params.FOO }}" is a valid
+// Expression<string> elsewhere.
+// Expression<number> is always an int. Float Params, list params, and secret params cannot be used in
+// expressions.
+// `Expression<Foo> == Expression<Foo>` is an Expression<boolean>
+// `Expression<boolean> ? Expression<T> : Expression<T>` is an Expression<T>
+type Expression<T extends string | number | boolean> = string;
+
+// A service account must either:
+// 1. Be a project-relative email that ends with "@" (e.g. database-users@)
+// 2. Be a well-known shorthand (e..g "public" and "private")
+type ServiceAccount = string;
+
+// Trigger definition for arbitrary HTTPS endpoints
+interface HttpsTrigger {
+  // Which service account should be able to trigger this function. No value means "make public
+  // on create and don't do anything on update." For more, see go/cf3-http-access-control
+  invoker?: ServiceAccount | null;
+}
+
+// Trigger definitions for RPCs servers using the HTTP protocol defined at
+// https://firebase.google.com/docs/functions/callable-reference
+// eslint-disable-next-line
+interface CallableTrigger { }
+
+// Trigger definitions for endpoints that should be called as a delegate for other operations.
+// For example, before user login.
+interface BlockingTrigger {
+  eventType: string;
+}
+
+// One or more event filters restrict the set of events delivered to an EventTrigger.
+interface EventFilter {
+  attribute: string;
+  value: string | Expression<string>;
+
+  // if left unspecified, equality is used.
+  operator?: "match-path-pattern";
+}
+
+// Trigger definitions for endpoints that listen to CloudEvents emitted by other systems (or legacy
+// Google events for GCF gen 1)
+interface EventTrigger {
+  eventType: string;
+  eventFilters: Array<EventFilter>;
+
+  // whether failed function executions should retry the event execution.
+  // Retries are indefinite, so developers should be sure to add some end condition (e.g. event
+  // age)
+  retry: boolean | null;
+
+  // Region of the EventArc trigger. Must be the same region or multi-region as the event
+  // trigger or be us-central1. All first party triggers (all triggers as of Jan 2022) need not
+  // specify this field because tooling determines the correct value automatically.
+  region?: string;
+
+  // The service account that EventArc should use to invoke this function. Setting this field
+  // requires the EventArc P4SA to be granted the "ActAs" permission to this service account and
+  // will cause the "invoker" role to be granted to this service account on the endpoint
+  // (Function or Route)
+  serviceAccount?: ServiceAccount | null;
+}
+
+interface TaskQueueRateLimits {
+  maxConcurrentDispatches?: number | Expression<number> | null;
+  maxDispatchesPerSecond?: number | Expression<number> | null;
+}
+
+interface TaskQueueRetryConfig {
+  maxAttempts?: number | Expression<number> | null;
+  maxRetryDurationSeconds: number | Expression<number> | null;
+  minBackoffSeconds?: number | Expression<number> | null;
+  maxBackoffSeconds?: number | Expression<number> | null;
+  maxDoublings?: number | Expression<number> | null;
+}
+
+interface TaskQueueTrigger {
+  rateLimits?: TaskQueueRateLimits | null;
+  retryConfig?: TaskQueueRetryConfig | null;
+
+  // empty array means private
+  invoker?: Array<ServiceAccount> | null;
+}
+
+interface ScheduleRetryConfig {
+  retryCount?: number | Expression<number> | null;
+  maxRetrySeconds?: number | Expression<number> | null;
+  minBackoffSeconds?: number | Expression<number> | null;
+  maxBackoffSeconds?: number | Expression<number> | null;
+  maxDoublings?: number | Expression<number> | null;
+}
+
+interface ScheduleTrigger {
+  schedule: string | Expression<string>;
+  timeZone: string;
+  retryConfig: ScheduleRetryConfig;
+}
+
+type Triggered =
+  | { httpsTrigger: HttpsTrigger }
+  | { callableTrigger: CallableTrigger }
+  | { blockingTrigger: BlockingTrigger }
+  | { eventTrigger: EventTrigger }
+  | { scheduleTrigger: ScheduleTrigger }
+  | { taskQueueTrigger: TaskQueueTrigger };
+
+interface VpcSettings {
+  connector: string | Expression<string>;
+  egressSettings?: "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC";
+}
+
+type Endpoint = Triggered & {
+  // Defaults to "gcfv2". "Run" will be an additional option defined later
+  platform?: "gcfv1" | "gcfv2";
+
+  // Necessary for the GCF API to determine what code to load with the Functions Framework.
+  // Will become optional once "run" is supported as a platform
+  entryPoint: string;
+
+  // The services account that this function should run as. Has no effect for a Run service.
+  // defaults to the GAE service account when a function is first created as a GCF gen 1 function.
+  // Defaults to the compute service account when a function is first created as a GCF gen 2 function
+  // or when using Cloud Run.
+  serviceAccount: ServiceAccount | null;
+
+  // defaults to ["us-central1"], overridable in firebase-tools with
+  //  process.env.FIREBASE_FUNCTIONS_DEFAULT_REGION
+  region?: string[];
+
+  // Firebase default of 80. Cloud default of 1
+  concurrency?: number | Expression<number> | null;
+
+  // Default of 256
+  availableMemoryMb?: number | Expression<number> | null;
+
+  // Default of 60
+  timeoutSeconds?: number | Expression<number> | null;
+
+  // Default of 1000
+  maxInstances?: number | Expression<number> | null;
+
+  // Default of 0
+  minInstances?: number | Expression<number> | null;
+
+  vpc?: VpcSettings | null;
+  ingressSettings?: "ALLOW_ALL" | "ALLOW_INTERNAL_ONLY" | "ALLOW_INTERNAL_AND_GCLB" | null;
+
+  environmentVariables?: Record<string, string | Expression<string>>;
+  labels?: Record<string, string | Expression<string>>;
+};
+
+interface ParamBase<T> {
+  // name of the param. Will be exposed as an environment variable with this name
+  param: string;
+
+  // A human friendly name for the param. Will be used in install/configure flows to describe
+  // what param is being updated. If omitted, UX will use the value of "param" instead.
+  label?: string;
+
+  // A long description of the parameter's purpose and allowed values. If omitted, UX will not
+  // provide a description of the parameter
+  description?: string;
+
+  // Default value. If not provided, a param must be supplied.
+  default?: T | Expression<string> | Expression<number> | Expression<boolean>;
+
+  // default: false
+  immutable?: boolean;
+}
+
+interface StringParam extends ParamBase<string> {
+  type?: "string";
+
+  // If omitted, defaults to TextInput<string>
+  input?: any;
+}
+
+type Param = StringParam;
+
+function isMemoryOption(value: backend.MemoryOptions | any): value is backend.MemoryOptions {
+  return value == null || [128, 256, 512, 1024, 2048, 4096, 8192].includes(value);
+}
+
+/** Converts a build specification into a Backend representation, with all Params resolved and interpolated */
+// TODO(vsfan): resolve build.Params
+// TODO(vsfan): handle Expression<T> types
+export function discoverParams(build: Build): backend.Backend {
+  const bkend = backend.empty();
+
+  for (const requiredAPI of build.requiredAPIs) {
+    bkend.requiredAPIs.push({
+      reason: requiredAPI.reason,
+      api: requiredAPI.apiName,
+    });
+  }
+
+  const bkEndpoints: Record<string, Record<string, backend.Endpoint>> = {};
+  for (const endpointId of Object.keys(build.endpoints)) {
+    const endpoint = build.endpoints[endpointId];
+    let trigger: backend.Triggered;
+    if ("httpsTrigger" in endpoint) {
+      const bkHttps: backend.HttpsTrigger = {};
+      if (endpoint.httpsTrigger.invoker) {
+        bkHttps.invoker = [endpoint.httpsTrigger.invoker];
+      }
+      trigger = { httpsTrigger: bkHttps };
+    } else if ("callableTrigger" in endpoint) {
+      trigger = { callableTrigger: {} };
+    } else if ("blockingTrigger" in endpoint) {
+      throw new FirebaseError("blocking triggers not supported");
+    } else if ("eventTrigger" in endpoint) {
+      const bkEvent: backend.EventTrigger = {
+        eventType: endpoint.eventTrigger.eventType,
+        eventFilters: endpoint.eventTrigger.eventFilters,
+        region: endpoint.eventTrigger.region,
+        retry: false,
+      };
+      if (endpoint.eventTrigger.retry) {
+        bkEvent.retry = true;
+      }
+      if (endpoint.eventTrigger.serviceAccount) {
+        bkEvent.serviceAccountEmail = endpoint.eventTrigger.serviceAccount;
+      }
+      trigger = { eventTrigger: bkEvent };
+    } else if ("scheduleTrigger" in endpoint) {
+      const bkSchedule: backend.ScheduleTrigger = {
+        schedule: endpoint.scheduleTrigger.schedule,
+        timeZone: endpoint.scheduleTrigger.timeZone,
+      };
+      if (typeof endpoint.scheduleTrigger.retryConfig === "number") {
+        bkSchedule.retryConfig = endpoint.scheduleTrigger.retryConfig;
+      }
+      trigger = { scheduleTrigger: bkSchedule };
+    } else if ("taskQueueTrigger" in endpoint) {
+      const bkTaskQueue: backend.TaskQueueTrigger = {};
+      if (endpoint.taskQueueTrigger.rateLimits) {
+        const bkRateLimits: backend.TaskQueueRateLimits = {};
+        if (typeof endpoint.taskQueueTrigger.rateLimits.maxConcurrentDispatches !== "number") {
+          throw new FirebaseError("rateLimits.maxConcurrentDispatches must be a number");
+        }
+        bkRateLimits.maxConcurrentDispatches =
+          endpoint.taskQueueTrigger.rateLimits.maxConcurrentDispatches;
+        if (typeof endpoint.taskQueueTrigger.rateLimits.maxDispatchesPerSecond !== "number") {
+          throw new FirebaseError("rateLimits.maxDispatchesPerSecond must be a number");
+        }
+        bkRateLimits.maxDispatchesPerSecond =
+          endpoint.taskQueueTrigger.rateLimits.maxDispatchesPerSecond;
+        bkTaskQueue.rateLimits = bkRateLimits;
+      }
+      if (endpoint.taskQueueTrigger.retryConfig) {
+        const bkRetryConfig: backend.TaskQueueRetryConfig = {};
+        if (typeof endpoint.taskQueueTrigger.retryConfig.maxAttempts !== "number") {
+          throw new FirebaseError("retryConfig.maxAttempts must be a number");
+        }
+        bkRetryConfig.maxAttempts = endpoint.taskQueueTrigger.retryConfig.maxAttempts;
+        if (typeof endpoint.taskQueueTrigger.retryConfig.maxBackoffSeconds !== "number") {
+          throw new FirebaseError("retryConfig.maxBackoffSeconds must be a number");
+        }
+        bkRetryConfig.maxBackoff =
+          String(endpoint.taskQueueTrigger.retryConfig.maxBackoffSeconds | 0) + "s";
+        if (typeof endpoint.taskQueueTrigger.retryConfig.minBackoffSeconds !== "number") {
+          throw new FirebaseError("retryConfig.minBackoffSeconds must be a number");
+        }
+        bkRetryConfig.minBackoff =
+          String(endpoint.taskQueueTrigger.retryConfig.minBackoffSeconds | 0) + "s";
+        if (typeof endpoint.taskQueueTrigger.retryConfig.maxRetryDurationSeconds !== "number") {
+          throw new FirebaseError("retryConfig.maxRetryDurationSeconds must be a number");
+        }
+        bkRetryConfig.maxRetryDuration =
+          String(endpoint.taskQueueTrigger.retryConfig.maxRetryDurationSeconds | 0) + "s";
+        if (typeof endpoint.taskQueueTrigger.retryConfig.maxDoublings !== "number") {
+          throw new FirebaseError("retryConfig.maxDoublings must be a number");
+        }
+        bkRetryConfig.maxDoublings = endpoint.taskQueueTrigger.retryConfig.maxDoublings;
+        bkTaskQueue.retryConfig = bkRetryConfig;
+      }
+      if (endpoint.taskQueueTrigger.invoker) {
+        bkTaskQueue.invoker = endpoint.taskQueueTrigger.invoker;
+      }
+      trigger = { taskQueueTrigger: bkTaskQueue };
+    } else {
+      throw new FirebaseError("unknown trigger type");
+    }
+
+    let region: string;
+    if (typeof endpoint.region === "undefined") {
+      throw new FirebaseError("region can't be undefined");
+    } else {
+      region = endpoint.region[0]; // can this be right?
+    }
+    if (typeof endpoint.platform === "undefined") {
+      throw new FirebaseError("platform can't be undefined");
+    }
+    if (typeof endpoint.concurrency !== "number") {
+      throw new FirebaseError("concurrency must be a number");
+    }
+    if (!isMemoryOption(endpoint.availableMemoryMb)) {
+      throw new FirebaseError("available memory must be a supported value, if present");
+    }
+    if (
+      typeof endpoint.timeoutSeconds !== "string" &&
+      typeof endpoint.timeoutSeconds !== "undefined"
+    ) {
+      throw new FirebaseError("timeout must be a string, if present");
+    }
+    if (typeof endpoint.maxInstances !== "number") {
+      throw new FirebaseError("max instance count must be a number");
+    }
+    if (typeof endpoint.minInstances !== "number") {
+      throw new FirebaseError("min instance count must be a number");
+    }
+
+    const bkEndpoint: backend.Endpoint = {
+      id: endpointId,
+      project: "",
+      region: region,
+      entryPoint: endpoint.entryPoint,
+      platform: endpoint.platform,
+      runtime: "",
+      concurrency: endpoint.concurrency,
+      labels: endpoint.labels,
+      environmentVariables: endpoint.environmentVariables,
+      secretEnvironmentVariables: undefined,
+      availableMemoryMb: endpoint.availableMemoryMb,
+      timeout: endpoint.timeoutSeconds,
+      maxInstances: endpoint.maxInstances,
+      minInstances: endpoint.minInstances,
+      ...trigger,
+    };
+    if (endpoint.vpc) {
+      bkEndpoint.vpc = {
+        connector: endpoint.vpc.connector,
+        egressSettings: endpoint.vpc.egressSettings,
+      };
+    }
+    if (endpoint.ingressSettings) {
+      bkEndpoint.ingressSettings = endpoint.ingressSettings;
+    }
+    if (endpoint.serviceAccount) {
+      bkEndpoint.serviceAccountEmail = endpoint.serviceAccount;
+    } else {
+      bkEndpoint.serviceAccountEmail = "default";
+    }
+
+    if (bkEndpoints.hasOwnProperty(region)) {
+      bkEndpoints[region][endpointId] = bkEndpoint;
+    } else {
+      bkEndpoints[region] = { endpointId: bkEndpoint };
+    }
+  }
+
+  return bkend;
+}

@@ -283,7 +283,7 @@ export type Endpoint = TargetIds &
   };
 
 export interface RequiredAPI {
-  reason: string;
+  reason?: string;
   api: string;
 }
 
