@@ -360,7 +360,7 @@ function sendFileBytes(md: StoredFileMetadata, data: Buffer, req: Request, res: 
   res.setHeader("Accept-Ranges", "bytes");
   res.setHeader("Content-Type", md.contentType);
   res.setHeader("Content-Disposition", md.contentDisposition);
-  res.setHeader("Content-Encoding", md.contentEncoding);
+  res.setHeader("Content-Encoding", isGZipped ? "identity" : md.contentEncoding);
   res.setHeader("ETag", md.etag);
   res.setHeader("Cache-Control", md.cacheControl);
   res.setHeader("x-goog-generation", `${md.generation}`);
