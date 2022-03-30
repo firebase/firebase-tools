@@ -26,8 +26,6 @@ describe("Import Emulator Data", () => {
       Emulators.STORAGE,
       "--import",
       path.join(__dirname, "flattened-emulator-data"),
-      "--export-on-exit",
-      path.join(__dirname, "other-emulator-data"),
     ]);
 
     await supertest(STORAGE_EMULATOR_HOST)
@@ -42,7 +40,7 @@ describe("Import Emulator Data", () => {
       "--only",
       Emulators.STORAGE,
       "--import",
-      path.join(__dirname, "flattened-emulator-data"),
+      path.join(__dirname, "nested-emulator-data"),
     ]);
 
     await supertest(STORAGE_EMULATOR_HOST)
