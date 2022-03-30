@@ -583,12 +583,18 @@ export class StorageLayer {
         continue;
       }
 
-      const file = new StoredFile(metadata, blobPath);
-      this._files.set(blobPath, file);
-    }
+      const decodedBlobPath = decodeURIComponent(blobPath);
+      const decodedMetadataPath = decodeURIComponent(metadataRelPath);
 
-    // Recursively copy all blobs
-    fse.copySync(blobsDir, this.dirPath);
+      const blobDiskPath = this._persistence.getDiskPath(decodedBlobPath);
+      const metadataDiskPath = this._persistence.getDiskPath(decodedMetadataPath);
+
+      const file = new StoredFile(metadata, blobDiskPath);
+      this._files.set(decodedBlobPath, file);
+
+      fse.copyFileSync(f, metadataDiskPath);
+      fse.copyFileSync(blobAbsPath, blobDiskPath);
+    }
   }
 
   private *walkDirSync(dir: string): Generator<string> {
