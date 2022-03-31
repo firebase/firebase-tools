@@ -215,13 +215,13 @@ async function promptSecretLocations(paramSpec: Param): Promise<string[]> {
       choices: [
         {
           checked: true,
-          name: "Google Cloud Secret Manager",
+          name: "Google Cloud Secret Manager (Used by deployed extensions and emulator)",
           // return type of string is not actually enforced, need to manually convert.
           value: SecretLocation.CLOUD.toString(),
         },
         {
           checked: false,
-          name: "Local file (Only used by Firebase Emulator)",
+          name: "Local file (Used by emulator only)",
           value: SecretLocation.LOCAL.toString(),
         },
       ],
@@ -236,13 +236,13 @@ async function promptSecretLocations(paramSpec: Param): Promise<string[]> {
     choices: [
       {
         checked: false,
-        name: "Google Cloud Secret Manager",
+        name: "Google Cloud Secret Manager (Used by deployed extensions and emulator)",
         // return type of string is not actually enforced, need to manually convert.
         value: SecretLocation.CLOUD.toString(),
       },
       {
         checked: false,
-        name: "Local file (Only used by Firebase Emulator)",
+        name: "Local file (Used by emulator only)",
         value: SecretLocation.LOCAL.toString(),
       },
     ],
