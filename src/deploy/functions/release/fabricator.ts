@@ -168,10 +168,7 @@ export class Fabricator {
   }
 
   async updateEndpoint(update: planner.EndpointUpdate, scraper: SourceTokenScraper): Promise<void> {
-    // GCF team wants us to stop setting the deployment-tool labels on updates for gen 2
-    if (update.deleteAndRecreate || update.endpoint.platform !== "gcfv2") {
-      update.endpoint.labels = { ...update.endpoint.labels, ...deploymentTool.labels() };
-    }
+    update.endpoint.labels = { ...update.endpoint.labels, ...deploymentTool.labels() };
     if (update.deleteAndRecreate) {
       await this.deleteEndpoint(update.deleteAndRecreate);
       await this.createEndpoint(update.endpoint, scraper);

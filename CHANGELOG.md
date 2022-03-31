@@ -1,1 +1,5 @@
-- Fixes an issue where some valid Cloud Functions for Firebase names would not pass validation in the Functions emulator (#4352).
+- Fixes bug where resumable uploads were not setting custom metadata on upload (#3398).
+- Fixes bug where GCS metadataUpdate cloud functions were triggered in incorrect situations (#3398).
+- Fixes bug where quoted escape sequences in .env files were incompletely unescaped. (#4270)
+- Fixes Storage Emulator ruleset file watcher (#4337).
+- Fixes issue with importing Storage Emulator data exported prior to v10.3.0 (#4358).
