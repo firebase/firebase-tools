@@ -3,4 +3,4 @@
 - Fixes bug where quoted escape sequences in .env files were incompletely unescaped. (#4270)
 - Fixes Storage Emulator ruleset file watcher (#4337).
 - Fixes issue with importing Storage Emulator data exported prior to v10.3.0 (#4358).
-- Adds ergonomic improvements to CF3 secret commands to automatically redeploy functions and delete unused secrets (#4130). 
+- Adds ergonomic improvements to CF3 secret commands to automatically redeploy functions and delete unused secrets (#4130).
