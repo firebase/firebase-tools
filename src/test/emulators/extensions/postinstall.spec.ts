@@ -57,6 +57,12 @@ describe("replaceConsoleLinks", () => {
       expected: " Go to your [Auth dashboard](http://localhost:4000/auth) in the Firebase console.",
     },
     {
+      desc: "should replace multiple GAIA user links ",
+      input:
+        " Go to your [Auth dashboard](https://console.firebase.google.com/u/0/project/test-project/authentication/users) in the Firebase console.",
+      expected: " Go to your [Auth dashboard](http://localhost:4000/auth) in the Firebase console.",
+    },
+    {
       desc: "should replace multiple links",
       input:
         " Go to your [Cloud Firestore dashboard](https://console.firebase.google.com/project/jh-walkthrough/firestore/data) or [Realtime database dashboard](https://console.firebase.google.com/project/test-project/database/test-walkthrough/data)in the Firebase console.",
