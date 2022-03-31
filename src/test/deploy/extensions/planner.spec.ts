@@ -162,9 +162,9 @@ describe("Extensions Deployment Planner", () => {
     ];
 
     for (const c of cases) {
-      it.only(c.description, async () => {
+      it(c.description, async () => {
         const have = await planner.have("test");
-        expect(have[0]).to.deep.equal(c.instanceSpecs[0]);
+        expect(have).to.have.same.members(c.instanceSpecs);
       });
     }
   });
