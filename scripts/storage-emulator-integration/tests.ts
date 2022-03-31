@@ -1107,7 +1107,7 @@ describe("Storage emulator", () => {
 
           // Check that the tokens are saved in Cloud metadata
           const [storedMetadata] = await cloudFile.getMetadata();
-          expect(storedMetadata.metadata.firebaseStorageDownloadTokens).to.deep.equal(
+          expect(storedMetadata.metadata.firebaseStorageDownloadTokens).to.equal(
             incomingMetadata.metadata.firebaseStorageDownloadTokens
           );
         });
