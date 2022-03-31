@@ -9,7 +9,7 @@ import * as puppeteer from "puppeteer";
 import { Bucket, Storage, CopyOptions } from "@google-cloud/storage";
 import supertest = require("supertest");
 
-import { IMAGE_FILE_BASE64 } from "../../src/test/emulators/fixtures";
+import { IMAGE_FILE_BASE64, StorageRulesFiles } from "../../src/test/emulators/fixtures";
 import { TriggerEndToEndTest } from "../integration-helpers/framework";
 import {
   createRandomFile,
@@ -1138,6 +1138,145 @@ describe("Storage emulator", () => {
         delete process.env.STORAGE_EMULATOR_HOST;
         await test.stopEmulators();
       }
+    });
+  });
+
+  emulatorSpecificDescribe("Internal Endpoints", () => {
+    before(async function (this) {
+      this.timeout(TEST_SETUP_TIMEOUT);
+      test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, emulatorConfig);
+      await test.startEmulators(["--only", "storage"]);
+    });
+
+    after(async () => {
+      await test.stopEmulators();
+    });
+
+    describe("setRules", () => {
+      it("should set single ruleset", async () => {
+        await supertest(STORAGE_EMULATOR_HOST)
+          .put("/internal/setRules")
+          .send({
+            rules: {
+              files: [StorageRulesFiles.readWriteIfTrue],
+            },
+          })
+          .expect(200);
+      });
+
+      it("should set multiple rules/resource objects", async () => {
+        await supertest(STORAGE_EMULATOR_HOST)
+          .put("/internal/setRules")
+          .send({
+            rules: {
+              files: [
+                { resource: "bucket_0", ...StorageRulesFiles.readWriteIfTrue },
+                { resource: "bucket_1", ...StorageRulesFiles.readWriteIfAuth },
+              ],
+            },
+          })
+          .expect(200);
+      });
+
+      it("should overwrite single ruleset with multiple rules/resource objects", async () => {
+        await supertest(STORAGE_EMULATOR_HOST)
+          .put("/internal/setRules")
+          .send({
+            rules: {
+              files: [StorageRulesFiles.readWriteIfTrue],
+            },
+          })
+          .expect(200);
+
+        await supertest(STORAGE_EMULATOR_HOST)
+          .put("/internal/setRules")
+          .send({
+            rules: {
+              files: [
+                { resource: "bucket_0", ...StorageRulesFiles.readWriteIfTrue },
+                { resource: "bucket_1", ...StorageRulesFiles.readWriteIfAuth },
+              ],
+            },
+          })
+          .expect(200);
+      });
+
+      it("should return 400 if rules.files array is missing", async () => {
+        const errorMessage = await supertest(STORAGE_EMULATOR_HOST)
+          .put("/internal/setRules")
+          .send({ rules: {} })
+          .expect(400)
+          .then((res) => res.body.message);
+
+        expect(errorMessage).to.equal("Request body must include 'rules.files' array");
+      });
+
+      it("should return 400 if rules.files array has missing name field", async () => {
+        const errorMessage = await supertest(STORAGE_EMULATOR_HOST)
+          .put("/internal/setRules")
+          .send({
+            rules: {
+              files: [{ content: StorageRulesFiles.readWriteIfTrue.content }],
+            },
+          })
+          .expect(400)
+          .then((res) => res.body.message);
+
+        expect(errorMessage).to.equal(
+          "Each member of 'rules.files' array must contain 'name' and 'content'"
+        );
+      });
+
+      it("should return 400 if rules.files array has missing content field", async () => {
+        const errorMessage = await supertest(STORAGE_EMULATOR_HOST)
+          .put("/internal/setRules")
+          .send({
+            rules: {
+              files: [{ name: StorageRulesFiles.readWriteIfTrue.name }],
+            },
+          })
+          .expect(400)
+          .then((res) => res.body.message);
+
+        expect(errorMessage).to.equal(
+          "Each member of 'rules.files' array must contain 'name' and 'content'"
+        );
+      });
+
+      it("should return 400 if rules.files array has missing resource field", async () => {
+        const errorMessage = await supertest(STORAGE_EMULATOR_HOST)
+          .put("/internal/setRules")
+          .send({
+            rules: {
+              files: [
+                { resource: "bucket_0", ...StorageRulesFiles.readWriteIfTrue },
+                StorageRulesFiles.readWriteIfAuth,
+              ],
+            },
+          })
+          .expect(400)
+          .then((res) => res.body.message);
+
+        expect(errorMessage).to.equal(
+          "Each member of 'rules.files' array must contain 'name', 'content', and 'resource'"
+        );
+      });
+
+      it("should return 400 if rules.files array has invalid content", async () => {
+        const errorMessage = await supertest(STORAGE_EMULATOR_HOST)
+          .put("/internal/setRules")
+          .send({
+            rules: {
+              files: [{ name: StorageRulesFiles.readWriteIfTrue.name, content: "foo" }],
+            },
+          })
+          .expect(400)
+          .then((res) => res.body.message);
+
+        expect(errorMessage).to.equal(
+          "There was an error updating rules, see logs for more details"
+        );
+      });
     });
   });
 
