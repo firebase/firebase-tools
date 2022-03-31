@@ -13,6 +13,7 @@ import { logger } from "../logger";
 import { ENV_DIRECTORY } from "../extensions/manifest";
 import { substituteParams } from "../extensions/extensionsHelper";
 import { ExtensionSpec, ExtensionVersion } from "../extensions/extensionsApi";
+import { replaceConsoleLinks } from "./extensions/postinstall";
 
 export type SignatureType = "http" | "event" | "cloudevent";
 
@@ -406,10 +407,18 @@ export function toBackendInfo(
   let extensionVersion = e.extensionVersion;
   if (extensionVersion) {
     extensionVersion = substituteParams<ExtensionVersion>(extensionVersion, e.env);
+    if (extensionVersion.spec?.postinstallContent) {
+      extensionVersion.spec.postinstallContent = replaceConsoleLinks(
+        extensionVersion.spec.postinstallContent
+      );
+    }
   }
   let extensionSpec = e.extensionSpec;
   if (extensionSpec) {
     extensionSpec = substituteParams<ExtensionSpec>(extensionSpec, e.env);
+    if (extensionSpec?.postinstallContent) {
+      extensionSpec.postinstallContent = replaceConsoleLinks(extensionSpec.postinstallContent);
+    }
   }
 
   // Parse and stringify to get rid of undefined values
