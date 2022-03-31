@@ -1075,6 +1075,43 @@ describe("Storage emulator", () => {
           expect(metadata.contentLanguage).to.equal("en");
         });
 
+        it("should not duplicate data when called repeatedly", async () => {
+          const destination = "public/small_file";
+          await testBucket.upload(smallFilePath, {
+            destination,
+            metadata: {},
+          });
+
+          const cloudFile = testBucket.file(destination);
+          const incomingMetadata = {
+            metadata: {
+              firebaseStorageDownloadTokens: "myFirstToken,mySecondToken",
+            },
+          };
+
+          // Check that metadata isn't duplicated when setting multiple times in a row
+          await cloudFile.setMetadata(incomingMetadata);
+          await cloudFile.setMetadata(incomingMetadata);
+          await cloudFile.setMetadata(incomingMetadata);
+
+          // Check that the tokens are saved in Firebase metadata
+          await supertest(STORAGE_EMULATOR_HOST)
+            .get(`/v0/b/${testBucket.name}/o/${encodeURIComponent(destination)}`)
+            .expect(200)
+            .then((res) => {
+              const firebaseMd = res.body;
+              expect(firebaseMd.downloadTokens).to.equal(
+                incomingMetadata.metadata.firebaseStorageDownloadTokens
+              );
+            });
+
+          // Check that the tokens are saved in Cloud metadata
+          const [storedMetadata] = await cloudFile.getMetadata();
+          expect(storedMetadata.metadata.firebaseStorageDownloadTokens).to.equal(
+            incomingMetadata.metadata.firebaseStorageDownloadTokens
+          );
+        });
+
         it("should allow fields under .metadata", async () => {
           await testBucket.upload(smallFilePath);
           const [metadata] = await testBucket
