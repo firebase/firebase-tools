@@ -164,7 +164,6 @@ function parseEndpoints(
       });
       if (ep.taskQueueTrigger.rateLimits) {
         assertKeyTypes(prefix + ".taskQueueTrigger.rateLimits", ep.taskQueueTrigger.rateLimits, {
-          maxBurstSize: "number",
           maxConcurrentDispatches: "number",
           maxDispatchesPerSecond: "number",
         });

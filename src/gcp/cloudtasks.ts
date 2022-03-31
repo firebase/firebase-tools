@@ -22,7 +22,6 @@ export interface AppEngineRouting {
 
 export interface RateLimits {
   maxDispatchesPerSecond?: number;
-  maxBurstSize?: number;
   maxConcurrentDispatches?: number;
 }
 
@@ -69,7 +68,6 @@ export interface Queue {
 export const DEFAULT_SETTINGS: Omit<Queue, "name"> = {
   rateLimits: {
     maxConcurrentDispatches: 1000,
-    maxBurstSize: 100,
     maxDispatchesPerSecond: 500,
   },
   state: "RUNNING",
@@ -217,7 +215,6 @@ export function queueFromEndpoint(endpoint: backend.Endpoint & backend.TaskQueue
     proto.copyIfPresent(
       queue.rateLimits,
       endpoint.taskQueueTrigger.rateLimits,
-      "maxBurstSize",
       "maxConcurrentDispatches",
       "maxDispatchesPerSecond"
     );

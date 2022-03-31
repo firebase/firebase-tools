@@ -10,6 +10,13 @@ import { EmulatorLogger } from "../emulatorLogger";
 export type MakeRequired<T, K extends keyof T> = T & Required<Pick<T, K>>;
 
 /**
+ * Utility type to make all fields recursively optional.
+ */
+export type DeepPartial<T> = {
+  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
+};
+
+/**
  * Checks if email looks like a valid email address.
  *
  * The testing only checks if the email has two parts joined by an "@" symbol.
