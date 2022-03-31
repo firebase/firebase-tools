@@ -45,10 +45,10 @@ describe("CloudTasks", () => {
       };
       const retryConfig: backend.TaskQueueRetryConfig = {
         maxAttempts: 10,
-        maxBackoff: "60s",
         maxDoublings: 9,
-        maxRetryDuration: "300s",
-        minBackoff: "1s",
+        maxBackoffSeconds: 60,
+        maxRetrySeconds: 300,
+        minBackoffSeconds: 1,
       };
 
       const ep: backend.Endpoint = {
@@ -62,7 +62,13 @@ describe("CloudTasks", () => {
       expect(cloudtasks.queueFromEndpoint(ep)).to.deep.equal({
         name: "projects/project/locations/region/queues/id",
         rateLimits,
-        retryConfig,
+        retryConfig: {
+          maxAttempts: 10,
+          maxDoublings: 9,
+          maxRetryDuration: "300s",
+          maxBackoff: "60s",
+          minBackoff: "1s",
+        },
         state: "RUNNING",
       });
     });

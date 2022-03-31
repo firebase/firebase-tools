@@ -113,10 +113,10 @@ export interface TaskQueueRateLimits {
 
 export interface TaskQueueRetryConfig {
   maxAttempts?: number;
-  maxRetryDuration?: proto.Duration;
-  minBackoff?: proto.Duration;
-  maxBackoff?: proto.Duration;
+  maxRetrySeconds?: number;
+  maxBackoffSeconds?: number;
   maxDoublings?: number;
+  minBackoffSeconds?: number;
 }
 
 export interface TaskQueueTrigger {

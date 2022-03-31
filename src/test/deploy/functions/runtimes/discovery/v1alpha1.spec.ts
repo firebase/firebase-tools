@@ -217,9 +217,9 @@ describe("backendFromV1Alpha1", () => {
         },
         retryConfig: {
           maxAttempts: 3,
-          maxRetryDuration: "120s",
-          minBackoff: "1s",
-          maxBackoff: "30s",
+          maxRetrySeconds: 120,
+          minBackoffSeconds: 1,
+          maxBackoffSeconds: 30,
           maxDoublings: 5,
         },
         invoker: ["custom@"],
