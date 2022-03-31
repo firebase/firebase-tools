@@ -136,7 +136,7 @@ export async function want(args: {
         ref,
         params: subbedParams,
         allowedEventTypes: subbedParams.ALLOWED_EVENT_TYPES !== undefined
-          ? subbedParams.ALLOWED_EVENT_TYPES.split(",")
+          ? subbedParams.ALLOWED_EVENT_TYPES.split(",").filter(e => e !== "")
           : undefined,
         eventarcChannel: subbedParams.EVENTARC_CHANNEL,
       });
