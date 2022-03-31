@@ -48,7 +48,7 @@ export interface CallableTriggered {
   callableTrigger: CallableTrigger;
 }
 
-type EventFilterKey = "resource" | "topic" | "bucket" | "alerttype" | string;
+type EventFilterKey = "resource" | "topic" | "bucket" | "alerttype" | "appid" | string;
 
 /** API agnostic version of a Cloud Function's event trigger. */
 export interface EventTrigger {
