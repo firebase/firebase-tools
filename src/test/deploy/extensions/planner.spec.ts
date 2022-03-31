@@ -164,7 +164,7 @@ describe("Extensions Deployment Planner", () => {
     for (const c of cases) {
       it(c.description, async () => {
         const have = await planner.have("test");
-        expect(have).to.have.same.members(c.instanceSpecs);
+        expect(have).to.have.same.deep.members(c.instanceSpecs);
       });
     }
   });
