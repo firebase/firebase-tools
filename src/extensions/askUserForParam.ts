@@ -249,10 +249,7 @@ async function promptSecretLocations(paramSpec: Param): Promise<string[]> {
   });
 }
 
-async function promptLocalSecret(
-  instanceId: string,
-  paramSpec: Param
-): Promise<string> {
+async function promptLocalSecret(instanceId: string, paramSpec: Param): Promise<string> {
   let value;
   do {
     utils.logLabeledBullet(logPrefix, "Configure a local secret value for Extensions Emulator");
