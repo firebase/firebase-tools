@@ -142,10 +142,10 @@ export class StoredFileMetadata {
     }
 
     if (this.customMetadata.firebaseStorageDownloadTokens) {
-      this.downloadTokens = [
+      this.downloadTokens = [...new Set([
         ...this.downloadTokens,
         ...this.customMetadata.firebaseStorageDownloadTokens.split(","),
-      ];
+      ])];
       delete this.customMetadata.firebaseStorageDownloadTokens;
     }
   }
