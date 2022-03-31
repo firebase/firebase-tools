@@ -14,7 +14,10 @@ export interface EndpointFilter {
  *
  * If no filter is passed, always returns true.
  */
-export function endpointMatchesAnyFilter(endpoint: backend.Endpoint, filters?: EndpointFilter[]) {
+export function endpointMatchesAnyFilter(
+  endpoint: backend.Endpoint,
+  filters?: EndpointFilter[]
+): boolean {
   if (!filters) {
     return true;
   }
