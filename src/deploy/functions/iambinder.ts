@@ -1,14 +1,15 @@
 import { createHash } from "crypto";
 
 import * as iam from "../../gcp/iam";
+import * as secretManager from "../../gcp/secretManager";
+import * as resourceManager from "../../gcp/resourceManager";
 import * as backend from "./backend";
 import * as storage from "../../gcp/storage";
 import * as v2Events from "../../functions/events/v2";
 import { assertExhaustive } from "../../functional";
-import { Client, ClientResponse } from "../../apiv2";
 
-type ResourceManagerResource = `//cloudresourcemanager.googleapis.com/${string}`;
-type SecretManagerResource = `//secretmanager.googleapis.com/${string}`;
+type ResourceManagerResource = `//cloudresourcemanager.googleapis.com/projects/${string}`;
+type SecretManagerResource = `//secretmanager.googleapis.com/projects/${string}/secrets/${string}`;
 type Resource = ResourceManagerResource | SecretManagerResource;
 
 function isResourceManagerResource(r: Resource): r is ResourceManagerResource {
@@ -49,7 +50,7 @@ export class IamBindings {
     this.additions = {};
   }
 
-  add(role: Role, members: string[], condition?: iam.Binding["condition"]) {
+  add(role: Role, members: string[], condition?: iam.Binding["condition"]): void {
     const conditions = this.additions[role] || {};
     const conditionKey = condition ? IamBindings.getConditionKey(condition) : "";
     const binding = conditions[conditionKey] || { role, members: new Set() };
@@ -248,51 +249,38 @@ export class IamBinder {
   }
 
   static async getPolicy(resource: Resource): Promise<iam.Policy> {
-    // Some GCP APIs use GET for getIamPolicy. Some uses POST. What in the world?
+    const parts = splitResource(resource);
+    if (!parts) {
+      throw new Error(`Invalid resource name: ${resource}`);
+    }
+    const resourceName = parts.resource;
+
     if (isSecreteManagerResource(resource)) {
-      const resp = await IamBinder.clientReq<unknown, iam.Policy>("GET", resource, ":getIamPolicy");
-      return resp.body;
+      const [, projectId, , secretId] = resourceName.split("/");
+      return await secretManager.getIamPolicy({ name: secretId, projectId });
     } else if (isResourceManagerResource(resource)) {
-      const resp = await IamBinder.clientReq<unknown, iam.Policy>(
-        "POST",
-        resource,
-        ":getIamPolicy"
-      );
-      return resp.body;
+      const [, projectId] = resourceName.split("/");
+      return await resourceManager.getIamPolicy(projectId);
     } else {
       assertExhaustive(resource);
     }
   }
 
   static async setPolicy(resource: Resource, policy: iam.Policy): Promise<iam.Policy> {
-    const resp = await IamBinder.clientReq<{ policy: iam.Policy }, iam.Policy>(
-      "POST",
-      resource,
-      ":setIamPolicy",
-      { policy }
-    );
-    return resp.body;
-  }
-
-  private static clientReq<ReqT, ResT>(
-    method: "GET" | "POST",
-    resource: Resource,
-    path: string,
-    body?: ReqT
-  ): Promise<ClientResponse<ResT>> {
-    let apiVersion;
-    if (isResourceManagerResource(resource)) {
-      apiVersion = "v3";
-    } else if (isSecreteManagerResource(resource)) {
-      apiVersion = "v1";
-    } else {
-      assertExhaustive(resource);
-    }
     const parts = splitResource(resource);
     if (!parts) {
       throw new Error(`Invalid resource name: ${resource}`);
     }
-    const client = new Client({ urlPrefix: `https://${parts.service}`, apiVersion });
-    return client.request<ReqT, ResT>({ method, body, path: `${parts.resource}${path}` });
+    const resourceName = parts.resource;
+
+    if (isSecreteManagerResource(resource)) {
+      const [, projectId, , secretId] = resourceName.split("/");
+      return await secretManager.setIamPolicy({ name: secretId, projectId }, policy);
+    } else if (isResourceManagerResource(resource)) {
+      const [, projectId] = resourceName.split("/");
+      return await resourceManager.setIamPolicy(projectId, policy);
+    } else {
+      assertExhaustive(resource);
+    }
   }
 }

@@ -78,7 +78,9 @@ describe("secretManager", () => {
     function setupStubs(existing: iam.Binding[], expected?: iam.Binding[]) {
       getIamPolicyStub.withArgs(secret).resolves({ bindings: existing });
       if (expected) {
-        setIamPolicyStub.withArgs(secret, expected).resolves({ body: { bindings: expected } });
+        setIamPolicyStub
+          .withArgs(secret, { bindings: expected })
+          .resolves({ body: { bindings: expected } });
       }
     }
 

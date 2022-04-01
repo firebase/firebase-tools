@@ -323,16 +323,19 @@ export async function getIamPolicy(secret: Secret): Promise<iam.Policy> {
 /**
  * Sets IAM policy on a secret resource.
  */
-export async function setIamPolicy(secret: Secret, bindings: iam.Binding[]): Promise<void> {
-  await client.post<{ policy: Partial<iam.Policy>; updateMask: string }, iam.Policy>(
+export async function setIamPolicy(
+  secret: Secret,
+  policy: iam.Policy,
+  updateMask = ""
+): Promise<iam.Policy> {
+  const resp = await client.post<{ policy: iam.Policy; updateMask: string }, iam.Policy>(
     `projects/${secret.projectId}/secrets/${secret.name}:setIamPolicy`,
     {
-      policy: {
-        bindings,
-      },
-      updateMask: "bindings",
+      policy,
+      updateMask,
     }
   );
+  return resp.body;
 }
 
 /**
@@ -361,7 +364,7 @@ export async function ensureServiceAgentRole(
 
   if (shouldShortCircuit) return;
 
-  await module.exports.setIamPolicy(secret, bindings);
+  await module.exports.setIamPolicy(secret, { ...policy, bindings });
 
   // SecretManager would like us to _always_ inform users when we grant access to one of their secrets.
   // As a safeguard against forgetting to do so, we log it here.
