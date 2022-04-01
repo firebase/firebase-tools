@@ -257,12 +257,7 @@ describe("checkIam", () => {
         platform: "gcfv2",
         eventTrigger: {
           eventType: "google.cloud.storage.object.v1.finalized",
-          eventFilters: [
-            {
-              attribute: "bucket",
-              value: "my-bucket",
-            },
-          ],
+          eventFilters: { bucket: "my-bucket" },
           retry: false,
         },
         ...SPEC,
@@ -284,12 +279,7 @@ describe("checkIam", () => {
         platform: "gcfv1",
         eventTrigger: {
           eventType: "google.storage.object.create",
-          eventFilters: [
-            {
-              attribute: "resource",
-              value: "projects/_/buckets/myBucket",
-            },
-          ],
+          eventFilters: { resource: "projects/_/buckets/my-bucket" },
           retry: false,
         },
         ...SPEC,
@@ -307,12 +297,7 @@ describe("checkIam", () => {
         platform: "gcfv2",
         eventTrigger: {
           eventType: "google.cloud.storage.object.v1.finalized",
-          eventFilters: [
-            {
-              attribute: "bucket",
-              value: "my-bucket",
-            },
-          ],
+          eventFilters: { bucket: "my-bucket" },
           retry: false,
         },
         ...SPEC,
@@ -336,12 +321,7 @@ describe("checkIam", () => {
         platform: "gcfv2",
         eventTrigger: {
           eventType: "google.cloud.storage.object.v1.finalized",
-          eventFilters: [
-            {
-              attribute: "bucket",
-              value: "my-bucket",
-            },
-          ],
+          eventFilters: { bucket: "my-bucket" },
           retry: false,
         },
         ...SPEC,
@@ -352,12 +332,7 @@ describe("checkIam", () => {
         platform: "gcfv2",
         eventTrigger: {
           eventType: "google.cloud.storage.object.v1.metadataUpdated",
-          eventFilters: [
-            {
-              attribute: "bucket",
-              value: "my-bucket",
-            },
-          ],
+          eventFilters: { bucket: "my-bucket" },
           retry: false,
         },
         ...SPEC,
@@ -415,12 +390,7 @@ describe("checkIam", () => {
         platform: "gcfv2",
         eventTrigger: {
           eventType: "google.cloud.storage.object.v1.finalized",
-          eventFilters: [
-            {
-              attribute: "bucket",
-              value: "my-bucket",
-            },
-          ],
+          eventFilters: { bucket: "my-bucket" },
           retry: false,
         },
         ...SPEC,
@@ -460,12 +430,7 @@ describe("checkIam", () => {
       platform: "gcfv2",
       eventTrigger: {
         eventType: "google.cloud.storage.object.v1.finalized",
-        eventFilters: [
-          {
-            attribute: "bucket",
-            value: "my-bucket",
-          },
-        ],
+        eventFilters: { bucket: "my-bucket" },
         retry: false,
       },
       ...SPEC,
@@ -476,12 +441,7 @@ describe("checkIam", () => {
       platform: "gcfv2",
       eventTrigger: {
         eventType: "google.firebase.firebasealerts.alerts.v1.published",
-        eventFilters: [
-          {
-            attribute: "alerttype",
-            value: "crashlytics.newFatalIssue",
-          },
-        ],
+        eventFilters: { alertype: "crashlytics.newFatalIssue" },
         retry: false,
       },
       ...SPEC,
@@ -535,12 +495,7 @@ describe("checkIam", () => {
       platform: "gcfv2",
       eventTrigger: {
         eventType: "google.firebase.firebasealerts.alerts.v1.published",
-        eventFilters: [
-          {
-            attribute: "alerttype",
-            value: "crashlytics.newFatalIssue",
-          },
-        ],
+        eventFilters: { alertype: "crashlytics.newFatalIssue" },
         retry: false,
       },
       ...SPEC,
@@ -571,12 +526,7 @@ describe("checkIam", () => {
       platform: "gcfv2",
       eventTrigger: {
         eventType: "google.firebase.firebasealerts.alerts.v1.published",
-        eventFilters: [
-          {
-            attribute: "alerttype",
-            value: "crashlytics.newFatalIssue",
-          },
-        ],
+        eventFilters: { alertype: "crashlytics.newFatalIssue" },
         retry: false,
       },
       ...SPEC,
@@ -587,12 +537,7 @@ describe("checkIam", () => {
       platform: "gcfv2",
       eventTrigger: {
         eventType: "google.cloud.storage.object.v1.finalized",
-        eventFilters: [
-          {
-            attribute: "bucket",
-            value: "my-bucket",
-          },
-        ],
+        eventFilters: { bucket: "my-bucket" },
         retry: false,
       },
       ...SPEC,

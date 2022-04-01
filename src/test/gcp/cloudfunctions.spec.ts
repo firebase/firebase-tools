@@ -68,12 +68,7 @@ describe("cloudfunctions", () => {
         ...ENDPOINT,
         eventTrigger: {
           eventType: "google.pubsub.topic.publish",
-          eventFilters: [
-            {
-              attribute: "resource",
-              value: "projects/p/topics/t",
-            },
-          ],
+          eventFilters: { resource: "projects/p/topics/t" },
           retry: false,
         },
       };
@@ -196,6 +191,14 @@ describe("cloudfunctions", () => {
     });
 
     it("should translate event triggers", () => {
+      let want: backend.Endpoint = {
+        ...ENDPOINT,
+        eventTrigger: {
+          eventType: "google.pubsub.topic.publish",
+          eventFilters: { resource: "projects/p/topics/t" },
+          retry: true,
+        },
+      };
       expect(
         cloudfunctions.endpointFromFunction({
           ...HAVE_CLOUD_FUNCTION,
@@ -207,21 +210,16 @@ describe("cloudfunctions", () => {
             },
           },
         })
-      ).to.deep.equal({
-        ...ENDPOINT,
-        eventTrigger: {
-          eventType: "google.pubsub.topic.publish",
-          eventFilters: [
-            {
-              attribute: "resource",
-              value: "projects/p/topics/t",
-            },
-          ],
-          retry: true,
-        },
-      });
+      ).to.deep.equal(want);
 
       // And again w/o the failure policy
+      want = {
+        ...want,
+        eventTrigger: {
+          ...want.eventTrigger,
+          retry: false,
+        },
+      };
       expect(
         cloudfunctions.endpointFromFunction({
           ...HAVE_CLOUD_FUNCTION,
@@ -230,19 +228,7 @@ describe("cloudfunctions", () => {
             resource: "projects/p/topics/t",
           },
         })
-      ).to.deep.equal({
-        ...ENDPOINT,
-        eventTrigger: {
-          eventType: "google.pubsub.topic.publish",
-          eventFilters: [
-            {
-              attribute: "resource",
-              value: "projects/p/topics/t",
-            },
-          ],
-          retry: false,
-        },
-      });
+      ).to.deep.equal(want);
     });
 
     it("should transalte scheduled triggers", () => {

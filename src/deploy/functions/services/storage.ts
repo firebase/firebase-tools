@@ -43,14 +43,10 @@ export async function ensureStorageTriggerRegion(
   const { eventTrigger } = endpoint;
   if (!eventTrigger.region) {
     logger.debug("Looking up bucket region for the storage event trigger");
-    const bucketFilter = backend.findEventFilter(endpoint, "bucket");
-    if (!bucketFilter) {
-      throw new FirebaseError(
-        "Storage event trigger unexpectedly missing event filter with bucket attribute."
-      );
-    }
     try {
-      const bucket: { location: string } = await storage.getBucket(bucketFilter.value);
+      const bucket: { location: string } = await storage.getBucket(
+        eventTrigger.eventFilters.bucket!
+      );
       eventTrigger.region = bucket.location.toLowerCase();
       logger.debug("Setting the event trigger region to", eventTrigger.region, ".");
     } catch (err: any) {
