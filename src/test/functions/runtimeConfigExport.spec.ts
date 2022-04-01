@@ -133,11 +133,11 @@ describe("functions-config-export", () => {
 
     it("should preserve newline characters", () => {
       const dotenv = configExport.toDotenvFormat([
-        { origKey: "service.api.url", newKey: "SERVICE_API_URL", value: "hello\nworld" },
+        { origKey: "service.api.url", newKey: "SERVICE_API_URL", value: "hello\nthere\nworld" },
       ]);
       const { envs, errors } = env.parse(dotenv);
       expect(envs).to.be.deep.equal({
-        SERVICE_API_URL: "hello\nworld",
+        SERVICE_API_URL: "hello\nthere\nworld",
       });
       expect(errors).to.be.empty;
     });

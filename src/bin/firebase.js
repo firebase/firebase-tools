@@ -26,7 +26,7 @@ marked.setOptions({
 });
 const updateMessage =
   `Update available ${clc.xterm(240)("{currentVersion}")} → ${clc.green("{latestVersion}")}\n` +
-  `To update to the latest version using npm, run ${clc.cyan("npm install -g firebase-tools")}\n` +
+  `To update to the latest version using npm, run\n${clc.cyan("npm install -g firebase-tools")}\n` +
   `For other CLI management options, visit the ${marked(
     "[CLI documentation](https://firebase.google.com/docs/cli#update-cli)"
   )}`;

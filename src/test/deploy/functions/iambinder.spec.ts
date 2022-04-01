@@ -261,7 +261,7 @@ describe("iambinder", () => {
           },
           {
             ...BASE_ENDPOINT,
-            eventTrigger: { eventType: "some-event", eventFilters: [], retry: false },
+            eventTrigger: { eventType: "some-event", eventFilters: {}, retry: false },
           },
         ];
 
@@ -365,7 +365,7 @@ describe("iambinder", () => {
               platform: "gcfv2",
               eventTrigger: {
                 eventType: "some-event",
-                eventFilters: [],
+                eventFilters: {},
                 retry: false,
               },
             },
@@ -392,7 +392,7 @@ describe("iambinder", () => {
               platform: "gcfv2",
               eventTrigger: {
                 eventType: "some-event",
-                eventFilters: [],
+                eventFilters: {},
                 retry: false,
               },
             },
@@ -418,7 +418,7 @@ describe("iambinder", () => {
               platform: "gcfv2",
               eventTrigger: {
                 eventType: "google.cloud.storage.object.v1.finalized",
-                eventFilters: [],
+                eventFilters: {},
                 retry: false,
               },
             },
