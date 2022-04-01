@@ -5,11 +5,13 @@ import { normalizedHostingConfigs } from "../../hosting/normalizedHostingConfigs
 import { validateDeploy } from "./validate";
 import { convertConfig } from "./convertConfig";
 import * as deploymentTool from "../../deploymentTool";
+import { prepare as prepareFirebaseFrameworks } from 'firebase-frameworks';
 
 /**
  *  Prepare creates versions for each Hosting site to be deployed.
  */
 export async function prepare(context: any, options: any): Promise<void> {
+
   // Allow the public directory to be overridden by the --public flag
   if (options.public) {
     if (Array.isArray(options.config.get("hosting"))) {
@@ -31,6 +33,10 @@ export async function prepare(context: any, options: any): Promise<void> {
       return { config: cfg, site: cfg.site };
     }),
   };
+
+  if (options.config.get('hosting.source')) {
+    await prepareFirebaseFrameworks(context, { includeCloudFunctions: false });
+  }
 
   const versionCreates: unknown[] = [];
 
