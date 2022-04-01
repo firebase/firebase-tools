@@ -202,7 +202,7 @@ describe("cloudfunctionsv2", () => {
         },
         maxInstances: 42,
         minInstances: 1,
-        timeout: "15s",
+        timeoutSeconds: 15,
         availableMemoryMb: 128,
       };
 
@@ -319,6 +319,7 @@ describe("cloudfunctionsv2", () => {
       const extraFields: backend.ServiceConfiguration = {
         ingressSettings: "ALLOW_ALL",
         serviceAccountEmail: "inlined@google.com",
+        timeoutSeconds: 15,
         environmentVariables: {
           FOO: "bar",
         },
@@ -359,13 +360,11 @@ describe("cloudfunctionsv2", () => {
       const extraFields: backend.ServiceConfiguration = {
         minInstances: 1,
         maxInstances: 42,
-        timeout: "15s",
       };
 
       const extraGcfFields: Partial<cloudfunctionsv2.ServiceConfig> = {
         minInstanceCount: 1,
         maxInstanceCount: 42,
-        timeoutSeconds: 15,
       };
 
       expect(

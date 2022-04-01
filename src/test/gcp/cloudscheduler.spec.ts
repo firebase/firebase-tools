@@ -1,11 +1,11 @@
 import { expect } from "chai";
-import * as _ from "lodash";
 import * as nock from "nock";
 
 import { FirebaseError } from "../../error";
 import * as api from "../../api";
 import * as backend from "../../deploy/functions/backend";
 import * as cloudscheduler from "../../gcp/cloudscheduler";
+import { cloneDeep } from "../../utils";
 
 const VERSION = "v1beta1";
 
@@ -41,7 +41,7 @@ describe("cloudscheduler", () => {
     });
 
     it("should do nothing if a functionally identical job exists", async () => {
-      const otherJob = _.cloneDeep(TEST_JOB);
+      const otherJob = cloneDeep(TEST_JOB);
       otherJob.name = "something-different";
       nock(api.cloudschedulerOrigin).get(`/${VERSION}/${TEST_JOB.name}`).reply(200, otherJob);
 
@@ -52,7 +52,7 @@ describe("cloudscheduler", () => {
     });
 
     it("should update if a job exists with the same name and a different schedule", async () => {
-      const otherJob = _.cloneDeep(TEST_JOB);
+      const otherJob = cloneDeep(TEST_JOB);
       otherJob.schedule = "every 6 minutes";
       nock(api.cloudschedulerOrigin).get(`/${VERSION}/${TEST_JOB.name}`).reply(200, otherJob);
       nock(api.cloudschedulerOrigin).patch(`/${VERSION}/${TEST_JOB.name}`).reply(200, otherJob);
@@ -64,7 +64,7 @@ describe("cloudscheduler", () => {
     });
 
     it("should update if a job exists with the same name but a different timeZone", async () => {
-      const otherJob = _.cloneDeep(TEST_JOB);
+      const otherJob = cloneDeep(TEST_JOB);
       otherJob.timeZone = "America/New_York";
       nock(api.cloudschedulerOrigin).get(`/${VERSION}/${TEST_JOB.name}`).reply(200, otherJob);
       nock(api.cloudschedulerOrigin).patch(`/${VERSION}/${TEST_JOB.name}`).reply(200, otherJob);
@@ -76,7 +76,7 @@ describe("cloudscheduler", () => {
     });
 
     it("should update if a job exists with the same name but a different retry config", async () => {
-      const otherJob = _.cloneDeep(TEST_JOB);
+      const otherJob = cloneDeep(TEST_JOB);
       otherJob.retryConfig = { maxDoublings: 10 };
       nock(api.cloudschedulerOrigin).get(`/${VERSION}/${TEST_JOB.name}`).reply(200, otherJob);
       nock(api.cloudschedulerOrigin).patch(`/${VERSION}/${TEST_JOB.name}`).reply(200, otherJob);

@@ -525,7 +525,6 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     gcfFunction,
     "serviceAccountEmail",
     "availableMemoryMb",
-    "timeout",
     "minInstances",
     "maxInstances",
     "ingressSettings",
@@ -533,6 +532,13 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     "environmentVariables",
     "secretEnvironmentVariables",
     "sourceUploadUrl"
+  );
+  proto.renameIfPresent(
+    endpoint,
+    gcfFunction,
+    "timeoutSeconds",
+    "timeout",
+    proto.secondsFromDuration
   );
   if (gcfFunction.vpcConnector) {
     endpoint.vpc = { connector: gcfFunction.vpcConnector };
@@ -609,13 +615,19 @@ export function functionFromEndpoint(
     gcfFunction,
     endpoint,
     "serviceAccountEmail",
-    "timeout",
     "availableMemoryMb",
     "minInstances",
     "maxInstances",
     "ingressSettings",
     "environmentVariables",
     "secretEnvironmentVariables"
+  );
+  proto.renameIfPresent(
+    gcfFunction,
+    endpoint,
+    "timeout",
+    "timeoutSeconds",
+    proto.durationFromSeconds
   );
   if (endpoint.vpc) {
     proto.renameIfPresent(gcfFunction, endpoint.vpc, "vpcConnector", "connector");
