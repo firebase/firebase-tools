@@ -128,12 +128,7 @@ describe("addResourcesToBackend", () => {
 
         const eventTrigger: backend.EventTrigger = {
           eventType: "google.pubsub.topic.publish",
-          eventFilters: [
-            {
-              attribute: "resource",
-              value: "projects/project/topics/topic",
-            },
-          ],
+          eventFilters: { resource: "projects/project/topics/topic" },
           retry: !!failurePolicy,
         };
         const expected: backend.Backend = backend.of({ ...BASIC_ENDPOINT, eventTrigger });
@@ -201,12 +196,7 @@ describe("addResourcesToBackend", () => {
 
     const eventTrigger: backend.EventTrigger = {
       eventType: "google.pubsub.topic.publish",
-      eventFilters: [
-        {
-          attribute: "resource",
-          value: "projects/p/topics/t",
-        },
-      ],
+      eventFilters: { resource: "projects/p/topics/t" },
       retry: false,
     };
 
