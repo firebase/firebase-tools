@@ -6,13 +6,13 @@ import * as storage from "../../../gcp/storage";
 import * as backend from "../../../deploy/functions/backend";
 import { IamBindings, IamBinder, splitResource } from "../../../deploy/functions/iambinder";
 
-function expectBindings(a: IamBindings, want: iam.Binding[]) {
+function expectBindings(a: IamBindings, want: iam.Binding[]): void {
   const b = IamBindings.fromIamBindings(want);
   const diff = b.diff(a);
   expect(diff.additions).to.be.empty;
 }
 
-function expectExactBindings(a: IamBindings, want: iam.Binding[]) {
+function expectExactBindings(a: IamBindings, want: iam.Binding[]): void {
   const b = IamBindings.fromIamBindings(want);
 
   const abdiff = a.diff(b);
@@ -452,6 +452,30 @@ describe("iambinder", () => {
 
       afterEach(() => {
         sinon.verifyAndRestore();
+      });
+
+      it("updates empty policy binding", async () => {
+        const existingPolicy: Partial<iam.Policy> = { etag: "abc" };
+        const newBindings: iam.Policy["bindings"] = [
+          {
+            role: "roles/someRole",
+            members: ["a", "b"],
+          },
+        ];
+
+        getPolicyStub.resolves(existingPolicy);
+        setPolicyStub.resolves();
+
+        const newPolicy = await IamBinder.updatePolicy(
+          "//secretmanager.googleapis.com/projects/my-project/secrets/MY_SECRET",
+          IamBindings.fromIamBindings(newBindings)
+        );
+
+        expect(newPolicy).to.deep.equal({
+          etag: "abc",
+          bindings: newBindings,
+        });
+        expect(setPolicyStub).to.have.been.calledOnce;
       });
 
       it("updates simple policy bindings", async () => {

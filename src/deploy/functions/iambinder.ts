@@ -233,7 +233,7 @@ export class IamBinder {
 
   static async updatePolicy(resource: Resource, bindings: IamBindings): Promise<iam.Policy> {
     const existingPolicy = await IamBinder.getPolicy(resource);
-    const existingBindings = IamBindings.fromIamBindings(existingPolicy.bindings);
+    const existingBindings = IamBindings.fromIamBindings(existingPolicy.bindings || []);
 
     const diffBindings = bindings.diff(existingBindings);
     if (Object.keys(diffBindings.additions).length === 0) {
