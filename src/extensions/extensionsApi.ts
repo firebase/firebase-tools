@@ -10,7 +10,11 @@ import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import * as operationPoller from "../operation-poller";
 import * as refs from "./refs";
+import * as proto from "../gcp/proto";
 import { SpecParamType } from "./extensionsHelper";
+import { Runtime } from "../deploy/functions/runtimes";
+import { HttpsTriggered, EventTriggered } from "../deploy/functions/backend";
+import { StringifyOptions } from "querystring";
 
 const VERSION = "v1beta";
 const PAGE_SIZE_MAX = 100;
@@ -134,13 +138,36 @@ export interface Role {
   reason: string;
 }
 
-export interface Resource {
-  name: string;
-  type: string;
-  description?: string;
-  properties?: { [key: string]: any };
-  propertiesYaml?: string;
+// Docs at https://firebase.google.com/docs/extensions/alpha/ref-extension-yaml
+export const FUNCTIONS_RESOURCE_TYPE = "firebaseextensions.v1beta.function";
+export interface FunctionResourceProperties {
+  type: typeof FUNCTIONS_RESOURCE_TYPE;
+  properties?: {
+    location?: string;
+    entryPoint?: string;
+    sourceDirectory?: string;
+    timeout?: proto.Duration;
+    availableMemoryMb?: number;
+    runtime?: Runtime;
+    httpsTrigger?: Record<string, never>;
+    eventTrigger?: {
+      eventType: string;
+      resource: string;
+      service?: string;
+    };
+  };
 }
+
+// Union of all valid property types so we can have a strongly typed "property"
+// field depending on the actual value of "type"
+type ResourceProperties = FunctionResourceProperties;
+
+export type Resource = ResourceProperties & {
+  name: string;
+  description?: string;
+  propertiesYaml?: string;
+  entryPoint?: string;
+};
 
 export interface Author {
   authorName: string;

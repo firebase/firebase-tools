@@ -1,4 +1,6 @@
 import * as path from "path";
+import * as fs from "fs-extra";
+import { expect } from "chai";
 import supertest = require("supertest");
 
 import { createTmpDir } from "../../../src/test/emulators/fixtures";
@@ -34,6 +36,27 @@ describe("Import Emulator Data", () => {
       .expect(200);
   });
 
+  it("stores only the files as blobs when importing emulator data", async function (this) {
+    this.timeout(TEST_SETUP_TIMEOUT);
+    const exportedData = createTmpDir("exported-emulator-data");
+
+    // Import data and export it again on exit
+    await test.startEmulators([
+      "--only",
+      Emulators.STORAGE,
+      "--import",
+      path.join(__dirname, "nested-emulator-data"),
+      "--export-on-exit",
+      exportedData,
+    ]);
+    await test.stopEmulators();
+
+    expect(fs.readdirSync(path.join(exportedData, "storage_export", "blobs")).length).to.equal(1);
+    expect(fs.readdirSync(path.join(exportedData, "storage_export", "blobs"))[0]).to.equal(
+      encodeURIComponent(`${BUCKET}/test_upload.jpg`)
+    );
+  });
+
   it("retrieves file from imported nested emulator data", async function (this) {
     this.timeout(TEST_SETUP_TIMEOUT);
     await test.startEmulators([
@@ -51,10 +74,10 @@ describe("Import Emulator Data", () => {
 
   it("retrieves file from importing previously exported emulator data", async function (this) {
     this.timeout(TEST_SETUP_TIMEOUT);
-    const tmpDir = createTmpDir("exported-emulator-data");
+    const exportedData = createTmpDir("exported-emulator-data");
 
     // Upload file to Storage and export emulator data to tmp directory
-    await test.startEmulators(["--only", Emulators.STORAGE, "--export-on-exit", tmpDir]);
+    await test.startEmulators(["--only", Emulators.STORAGE, "--export-on-exit", exportedData]);
     const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
       .post(`/v0/b/${BUCKET}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`)
       .set({
@@ -73,8 +96,8 @@ describe("Import Emulator Data", () => {
 
     await test.stopEmulators();
 
-    // Import emulator data from tmp directory and retrieve file from Storage
-    await test.startEmulators(["--only", Emulators.STORAGE, "--import", tmpDir]);
+    // Import previously exported emulator data and retrieve file from Storage
+    await test.startEmulators(["--only", Emulators.STORAGE, "--import", exportedData]);
     await supertest(STORAGE_EMULATOR_HOST)
       .get(`/v0/b/${BUCKET}/o/test_upload.jpg`)
       .set({ Authorization: "Bearer owner" })
