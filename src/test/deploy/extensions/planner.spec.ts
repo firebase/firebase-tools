@@ -174,13 +174,11 @@ describe("Extensions Deployment Planner", () => {
         instances: [INSTANCE_WITH_UNDEFINED_EVENTS_CONFIG],
         instanceSpecs: [INSTANCE_SPEC_WITH_UNDEFINED_EVENTS_CONFIG],
       },
-      /*
       {
         description: "have() should return correct instance spec with empty events config",
         instances: [INSTANCE_WITH_EMPTY_EVENTS_CONFIG],
         instanceSpecs: [INSTANCE_SPEC_WITH_EMPTY_EVENTS_CONFIG],
       },
-      */
     ];
 
     for (const c of cases) {
