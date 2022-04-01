@@ -140,7 +140,7 @@ export async function want(args: {
       const eventarcChannel = subbedParams.EVENTARC_CHANNEL;
 
       // Remove special params that are stored in the .env file but aren't actually params specified by the publisher.
-      // Currently, only environment variables needed for Events features are considered special params stored in .env files.  
+      // Currently, only environment variables needed for Events features are considered special params stored in .env files.
       delete subbedParams["EVENTARC_CHANNEL"];
       delete subbedParams["ALLOWED_EVENT_TYPES"];
 
