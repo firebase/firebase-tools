@@ -96,16 +96,10 @@ describe("cloudfunctionsv2", () => {
         platform: "gcfv2",
         eventTrigger: {
           eventType: "google.cloud.audit.log.v1.written",
-          eventFilters: [
-            {
-              attribute: "resource",
-              value: "projects/p/regions/r/instances/i",
-            },
-            {
-              attribute: "serviceName",
-              value: "compute.googleapis.com",
-            },
-          ],
+          eventFilters: {
+            resource: "projects/p/regions/r/instances/i",
+            serviceName: "compute.googleapis.com",
+          },
           retry: false,
         },
       };
@@ -205,16 +199,10 @@ describe("cloudfunctionsv2", () => {
         platform: "gcfv2",
         eventTrigger: {
           eventType: v2events.PUBSUB_PUBLISH_EVENT,
-          eventFilters: [
-            {
-              attribute: "topic",
-              value: "projects/p/topics/t",
-            },
-            {
-              attribute: "serviceName",
-              value: "pubsub.googleapis.com",
-            },
-          ],
+          eventFilters: {
+            topic: "projects/p/topics/t",
+            serviceName: "pubsub.googleapis.com",
+          },
           retry: false,
         },
         maxInstances: 42,
@@ -277,6 +265,16 @@ describe("cloudfunctionsv2", () => {
     });
 
     it("should translate event triggers", () => {
+      let want: backend.Endpoint = {
+        ...ENDPOINT,
+        platform: "gcfv2",
+        uri: RUN_URI,
+        eventTrigger: {
+          eventType: v2events.PUBSUB_PUBLISH_EVENT,
+          eventFilters: { topic: "projects/p/topics/t" },
+          retry: false,
+        },
+      };
       expect(
         cloudfunctionsv2.endpointFromFunction({
           ...HAVE_CLOUD_FUNCTION_V2,
@@ -285,23 +283,20 @@ describe("cloudfunctionsv2", () => {
             pubsubTopic: "projects/p/topics/t",
           },
         })
-      ).to.deep.equal({
-        ...ENDPOINT,
-        platform: "gcfv2",
-        uri: RUN_URI,
-        eventTrigger: {
-          eventType: v2events.PUBSUB_PUBLISH_EVENT,
-          eventFilters: [
-            {
-              attribute: "topic",
-              value: "projects/p/topics/t",
-            },
-          ],
-          retry: false,
-        },
-      });
+      ).to.deep.equal(want);
 
       // And again w/ a normal event trigger
+      want = {
+        ...want,
+        eventTrigger: {
+          eventType: "google.cloud.audit.log.v1.written",
+          eventFilters: {
+            resource: "projects/p/regions/r/instances/i",
+            serviceName: "compute.googleapis.com",
+          },
+          retry: false,
+        },
+      };
       expect(
         cloudfunctionsv2.endpointFromFunction({
           ...HAVE_CLOUD_FUNCTION_V2,
@@ -319,25 +314,7 @@ describe("cloudfunctionsv2", () => {
             ],
           },
         })
-      ).to.deep.equal({
-        ...ENDPOINT,
-        platform: "gcfv2",
-        uri: RUN_URI,
-        eventTrigger: {
-          eventType: "google.cloud.audit.log.v1.written",
-          eventFilters: [
-            {
-              attribute: "resource",
-              value: "projects/p/regions/r/instances/i",
-            },
-            {
-              attribute: "serviceName",
-              value: "compute.googleapis.com",
-            },
-          ],
-          retry: false,
-        },
-      });
+      ).to.deep.equal(want);
     });
 
     it("should translate task queue functions", () => {

@@ -215,13 +215,13 @@ async function promptSecretLocations(paramSpec: Param): Promise<string[]> {
       choices: [
         {
           checked: true,
-          name: "Google Cloud Secret Manager",
+          name: "Google Cloud Secret Manager (Used by deployed extensions and emulator)",
           // return type of string is not actually enforced, need to manually convert.
           value: SecretLocation.CLOUD.toString(),
         },
         {
           checked: false,
-          name: "Local file (Only used by Firebase Emulator)",
+          name: "Local file (Used by emulator only)",
           value: SecretLocation.LOCAL.toString(),
         },
       ],
@@ -236,31 +236,31 @@ async function promptSecretLocations(paramSpec: Param): Promise<string[]> {
     choices: [
       {
         checked: false,
-        name: "Google Cloud Secret Manager",
+        name: "Google Cloud Secret Manager (Used by deployed extensions and emulator)",
         // return type of string is not actually enforced, need to manually convert.
         value: SecretLocation.CLOUD.toString(),
       },
       {
         checked: false,
-        name: "Local file (Only used by Firebase Emulator)",
+        name: "Local file (Used by emulator only)",
         value: SecretLocation.LOCAL.toString(),
       },
     ],
   });
 }
 
-async function promptLocalSecret(
-  instanceId: string,
-  paramSpec: Param
-): Promise<string | undefined> {
-  utils.logLabeledBullet(logPrefix, "Configure a local secret value for Extensions Emulator");
-  const value = await promptOnce({
-    name: paramSpec.param,
-    type: "input",
-    message:
-      `This secret will be stored in ./extensions/${instanceId}.secret.local.\n` +
-      `Enter value for "${paramSpec.label.trim()}" to be used by Extensions Emulator:`,
-  });
+async function promptLocalSecret(instanceId: string, paramSpec: Param): Promise<string> {
+  let value;
+  do {
+    utils.logLabeledBullet(logPrefix, "Configure a local secret value for Extensions Emulator");
+    value = await promptOnce({
+      name: paramSpec.param,
+      type: "input",
+      message:
+        `This secret will be stored in ./extensions/${instanceId}.secret.local.\n` +
+        `Enter value for "${paramSpec.label.trim()}" to be used by Extensions Emulator:`,
+    });
+  } while (!value);
   return value;
 }
 

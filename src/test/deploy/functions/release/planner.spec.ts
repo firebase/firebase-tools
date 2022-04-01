@@ -52,12 +52,7 @@ describe("planner", () => {
         ...func("a", "b", {
           eventTrigger: {
             eventType: v2events.PUBSUB_PUBLISH_EVENT,
-            eventFilters: [
-              {
-                attribute: "topic",
-                value: "topic",
-              },
-            ],
+            eventFilters: { topic: "topic" },
             retry: false,
           },
         }),
@@ -65,7 +60,7 @@ describe("planner", () => {
       };
       const changed = JSON.parse(JSON.stringify(original)) as backend.Endpoint;
       if (backend.isEventTriggered(changed)) {
-        changed.eventTrigger.eventFilters = [{ attribute: "topic", value: "anotherTopic" }];
+        changed.eventTrigger.eventFilters = { topic: "anotherTopic" };
       }
       expect(planner.calculateUpdate(changed, original)).to.deep.equal({
         endpoint: changed,
@@ -91,12 +86,7 @@ describe("planner", () => {
       const original: backend.Endpoint = func("a", "b", {
         eventTrigger: {
           eventType: "google.cloud.storage.object.v1.finalized",
-          eventFilters: [
-            {
-              attribute: "bucket",
-              value: "my-bucket",
-            },
-          ],
+          eventFilters: { bucket: "my-bucket" },
           region: "us-west1",
           retry: false,
         },
@@ -105,12 +95,7 @@ describe("planner", () => {
       const changed: backend.Endpoint = func("a", "b", {
         eventTrigger: {
           eventType: "google.cloud.storage.object.v1.finalzied",
-          eventFilters: [
-            {
-              attribute: "bucket",
-              value: "my-bucket",
-            },
-          ],
+          eventFilters: { bucket: "my-bucket" },
           region: "us",
           retry: false,
         },
@@ -322,7 +307,7 @@ describe("planner", () => {
       const want = func("a", "b", {
         eventTrigger: {
           eventType: "google.pubsub.topic.publish",
-          eventFilters: [],
+          eventFilters: {},
           retry: false,
         },
       });
@@ -336,7 +321,7 @@ describe("planner", () => {
       const have = func("a", "b", {
         eventTrigger: {
           eventType: "google.pubsub.topic.publish",
-          eventFilters: [],
+          eventFilters: {},
           retry: false,
         },
       });
@@ -354,7 +339,7 @@ describe("planner", () => {
     it("should not throw if a event triggered function keeps the same trigger", () => {
       const eventTrigger: backend.EventTrigger = {
         eventType: "google.pubsub.topic.publish",
-        eventFilters: [],
+        eventFilters: {},
         retry: false,
       };
       const want = func("a", "b", { eventTrigger });
@@ -387,12 +372,7 @@ describe("planner", () => {
   it("detects changes to v2 pubsub topics", () => {
     const eventTrigger: backend.EventTrigger = {
       eventType: v2events.PUBSUB_PUBLISH_EVENT,
-      eventFilters: [
-        {
-          attribute: "topic",
-          value: "projects/p/topic/t",
-        },
-      ],
+      eventFilters: { topic: "projects/p/topics/t" },
       retry: false,
     };
 
@@ -422,7 +402,7 @@ describe("planner", () => {
     // to modify only 'want'
     want = JSON.parse(JSON.stringify(want)) as backend.Endpoint;
     if (backend.isEventTriggered(want)) {
-      want.eventTrigger.eventFilters = [{ attribute: "topic", value: "projects/p/topics/t2" }];
+      want.eventTrigger.eventFilters = { topic: "projects/p/topics/t2" };
     }
     expect(planner.changedV2PubSubTopic(want, have)).to.be.true;
   });

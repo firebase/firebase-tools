@@ -437,25 +437,17 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
       eventType: endpoint.eventTrigger.eventType,
     };
     if (gcfFunction.eventTrigger.eventType === PUBSUB_PUBLISH_EVENT) {
-      const pubsubFilter = backend.findEventFilter(endpoint, "topic");
-      if (!pubsubFilter) {
-        throw new FirebaseError(
-          "Invalid pubsub endpoint. Expected eventFilter with 'topic' attribute but found none."
-        );
-      }
-      gcfFunction.eventTrigger.pubsubTopic = pubsubFilter.value;
-
-      for (const filter of endpoint.eventTrigger.eventFilters) {
-        if (filter.attribute === "topic") {
-          continue;
-        }
-        if (!gcfFunction.eventTrigger.eventFilters) {
-          gcfFunction.eventTrigger.eventFilters = [];
-        }
-        gcfFunction.eventTrigger.eventFilters.push(filter);
+      gcfFunction.eventTrigger.pubsubTopic = endpoint.eventTrigger.eventFilters.topic;
+      gcfFunction.eventTrigger.eventFilters = [];
+      for (const [attribute, value] of Object.entries(endpoint.eventTrigger.eventFilters)) {
+        if (attribute === "topic") continue;
+        gcfFunction.eventTrigger.eventFilters.push({ attribute, value });
       }
     } else {
-      gcfFunction.eventTrigger.eventFilters = endpoint.eventTrigger.eventFilters;
+      gcfFunction.eventTrigger.eventFilters = [];
+      for (const [attribute, value] of Object.entries(endpoint.eventTrigger.eventFilters)) {
+        gcfFunction.eventTrigger.eventFilters.push({ attribute, value });
+      }
     }
     proto.renameIfPresent(
       gcfFunction.eventTrigger,
@@ -490,6 +482,9 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
   return gcfFunction;
 }
 
+/**
+ *
+ */
 export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoint {
   const [, project, , region, , id] = gcfFunction.name.split("/");
   let trigger: backend.Triggered;
@@ -509,18 +504,15 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     trigger = {
       eventTrigger: {
         eventType: gcfFunction.eventTrigger.eventType,
-        eventFilters: [],
+        eventFilters: {},
         retry: false,
       },
     };
     if (gcfFunction.eventTrigger.pubsubTopic) {
-      trigger.eventTrigger.eventFilters.push({
-        attribute: "topic",
-        value: gcfFunction.eventTrigger.pubsubTopic,
-      });
+      trigger.eventTrigger.eventFilters.topic = gcfFunction.eventTrigger.pubsubTopic;
     } else {
       for (const { attribute, value } of gcfFunction.eventTrigger.eventFilters || []) {
-        trigger.eventTrigger.eventFilters.push({ attribute, value });
+        trigger.eventTrigger.eventFilters[attribute] = value;
       }
     }
     proto.renameIfPresent(

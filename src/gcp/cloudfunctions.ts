@@ -497,12 +497,7 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     trigger = {
       eventTrigger: {
         eventType: gcfFunction.eventTrigger!.eventType,
-        eventFilters: [
-          {
-            attribute: "resource",
-            value: gcfFunction.eventTrigger!.resource,
-          },
-        ],
+        eventFilters: { resource: gcfFunction.eventTrigger!.resource },
         retry: !!gcfFunction.eventTrigger!.failurePolicy?.retry,
       },
     };
@@ -582,15 +577,9 @@ export function functionFromEndpoint(
 
   proto.copyIfPresent(gcfFunction, endpoint, "labels");
   if (backend.isEventTriggered(endpoint)) {
-    const resourceFilter = backend.findEventFilter(endpoint, "resource");
-    if (!resourceFilter) {
-      throw new FirebaseError(
-        "Invalid event trigger definition. Expected event filter with 'resource' attribute."
-      );
-    }
     gcfFunction.eventTrigger = {
       eventType: endpoint.eventTrigger.eventType,
-      resource: resourceFilter.value,
+      resource: endpoint.eventTrigger.eventFilters.resource,
       // Service is unnecessary and deprecated
     };
 
