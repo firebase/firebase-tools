@@ -66,7 +66,7 @@ module.exports = new Command("ext:export")
     }
 
     const manifestSpecs = withRef.map((spec) => {
-      const paramCopy = Object.assign({}, spec.params);
+      const paramCopy = { ...spec.params };
       if (spec.eventarcChannel) {
         paramCopy.EVENTARC_CHANNEL = spec.eventarcChannel;
       }

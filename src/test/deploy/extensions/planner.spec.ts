@@ -143,15 +143,21 @@ describe("Extensions Deployment Planner", () => {
       },
     };
 
-    before(() => {
-      listInstancesStub = sinon
-        .stub(extensionsApi, "listInstances")
-        .resolves([INSTANCE_WITH_EVENTS]);
-    });
+    const INSTANCE_WITH_UNDEFINED_EVENTS_CONFIG = { ...INSTANCE_WITH_EVENTS };
+    INSTANCE_WITH_UNDEFINED_EVENTS_CONFIG.config.eventarcChannel = undefined;
+    INSTANCE_WITH_UNDEFINED_EVENTS_CONFIG.config.allowedEventTypes = undefined;
 
-    after(() => {
-      listInstancesStub.restore();
-    });
+    const INSTANCE_SPEC_WITH_UNDEFINED_EVENTS_CONFIG = { ...INSTANCE_SPEC_WITH_EVENTS };
+    INSTANCE_SPEC_WITH_UNDEFINED_EVENTS_CONFIG.eventarcChannel = undefined;
+    INSTANCE_SPEC_WITH_UNDEFINED_EVENTS_CONFIG.allowedEventTypes = undefined;
+
+    const INSTANCE_WITH_EMPTY_EVENTS_CONFIG = { ...INSTANCE_WITH_EVENTS };
+    INSTANCE_WITH_EMPTY_EVENTS_CONFIG.config.eventarcChannel = "";
+    INSTANCE_WITH_EMPTY_EVENTS_CONFIG.config.allowedEventTypes = [];
+
+    const INSTANCE_SPEC_WITH_EMPTY_EVENTS_CONFIG = { ...INSTANCE_SPEC_WITH_EVENTS };
+    INSTANCE_SPEC_WITH_EMPTY_EVENTS_CONFIG.eventarcChannel = "";
+    INSTANCE_SPEC_WITH_EMPTY_EVENTS_CONFIG.allowedEventTypes = [];
 
     const cases = [
       {
@@ -159,12 +165,24 @@ describe("Extensions Deployment Planner", () => {
         instances: [INSTANCE_WITH_EVENTS],
         instanceSpecs: [INSTANCE_SPEC_WITH_EVENTS],
       },
+      {
+        description: "have() should return correct instance spec with undefined events config",
+        instances: [INSTANCE_WITH_UNDEFINED_EVENTS_CONFIG],
+        instanceSpecs: [INSTANCE_SPEC_WITH_UNDEFINED_EVENTS_CONFIG],
+      },
+      {
+        description: "have() should return correct instance spec with empty events config",
+        instances: [INSTANCE_WITH_EMPTY_EVENTS_CONFIG],
+        instanceSpecs: [INSTANCE_SPEC_WITH_EMPTY_EVENTS_CONFIG],
+      },
     ];
 
     for (const c of cases) {
       it(c.description, async () => {
+        listInstancesStub = sinon.stub(extensionsApi, "listInstances").resolves(c.instances);
         const have = await planner.have("test");
         expect(have).to.have.same.deep.members(c.instanceSpecs);
+        listInstancesStub.restore();
       });
     }
   });

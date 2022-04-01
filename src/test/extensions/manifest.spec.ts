@@ -251,12 +251,18 @@ describe("manifest", () => {
       expect(askWriteProjectFileStub).to.have.been.calledTwice;
       expect(askWriteProjectFileStub).calledWithExactly(
         "extensions/instance-1.env",
-        `a=absol\nALLOWED_EVENT_TYPES=google.firebase.custom-event-occurred\nb=bulbasaur\nEVENTARC_CHANNEL=projects/test-project/locations/us-central1/channels/firebase`,
+        "a=absol\n" +
+          "ALLOWED_EVENT_TYPES=google.firebase.custom-event-occurred\n" +
+          "b=bulbasaur\n" +
+          "EVENTARC_CHANNEL=projects/test-project/locations/us-central1/channels/firebase",
         false
       );
       expect(askWriteProjectFileStub).calledWithExactly(
         "extensions/instance-2.env",
-        `ALLOWED_EVENT_TYPES=google.firebase.custom-event-occurred\ne=eevee\nEVENTARC_CHANNEL=projects/test-project/locations/us-central1/channels/firebase\ns=squirtle`,
+        "ALLOWED_EVENT_TYPES=google.firebase.custom-event-occurred\n" +
+          "e=eevee\n" +
+          "EVENTARC_CHANNEL=projects/test-project/locations/us-central1/channels/firebase\n" +
+          "s=squirtle",
         false
       );
     });
