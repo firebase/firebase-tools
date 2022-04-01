@@ -77,7 +77,7 @@ describe("backendFromV1Alpha1", () => {
         maxInstances: "2",
         minInstances: "1",
         serviceAccountEmail: { ldap: "inlined" },
-        timeout: 60,
+        timeoutSeconds: "60s",
         trigger: [],
         vpcConnector: 2,
         vpcConnectorEgressSettings: {},
@@ -99,12 +99,7 @@ describe("backendFromV1Alpha1", () => {
     describe("Event triggers", () => {
       const validTrigger: backend.EventTrigger = {
         eventType: "google.pubsub.v1.topic.publish",
-        eventFilters: [
-          {
-            attribute: "resource",
-            value: "projects/p/topics/t",
-          },
-        ],
+        eventFilters: { resource: "projects/p/topics/t" },
         retry: true,
         region: "global",
         serviceAccountEmail: "root@",
@@ -211,22 +206,20 @@ describe("backendFromV1Alpha1", () => {
     describe("taskQueueTriggers", () => {
       const validTrigger: backend.TaskQueueTrigger = {
         rateLimits: {
-          maxBurstSize: 5,
           maxConcurrentDispatches: 10,
           maxDispatchesPerSecond: 20,
         },
         retryConfig: {
           maxAttempts: 3,
-          maxRetryDuration: "120s",
-          minBackoff: "1s",
-          maxBackoff: "30s",
+          maxRetrySeconds: 120,
+          minBackoffSeconds: 1,
+          maxBackoffSeconds: 30,
           maxDoublings: 5,
         },
         invoker: ["custom@"],
       };
 
       const invalidRateLimits = {
-        maxBurstSize: "5",
         maxConcurrentDispatches: "10",
         maxDispatchesPerSecond: "20",
       };
@@ -327,12 +320,7 @@ describe("backendFromV1Alpha1", () => {
     it("copies event triggers", () => {
       const eventTrigger: backend.EventTrigger = {
         eventType: "google.pubsub.topic.v1.publish",
-        eventFilters: [
-          {
-            attribute: "resource",
-            value: "projects/project/topics/topic",
-          },
-        ],
+        eventFilters: { resource: "projects/project/topics/t" },
         region: "us-central1",
         serviceAccountEmail: "sa@",
         retry: true,
@@ -354,12 +342,7 @@ describe("backendFromV1Alpha1", () => {
     it("copies event triggers with full resource path", () => {
       const eventTrigger: backend.EventTrigger = {
         eventType: "google.pubsub.topic.v1.publish",
-        eventFilters: [
-          {
-            attribute: "topic",
-            value: "my-topic",
-          },
-        ],
+        eventFilters: { topic: "my-topic" },
         region: "us-central1",
         serviceAccountEmail: "sa@",
         retry: true,
@@ -377,12 +360,7 @@ describe("backendFromV1Alpha1", () => {
         ...DEFAULTED_ENDPOINT,
         eventTrigger: {
           ...eventTrigger,
-          eventFilters: [
-            {
-              attribute: "topic",
-              value: `projects/${PROJECT}/topics/my-topic`,
-            },
-          ],
+          eventFilters: { topic: `projects/${PROJECT}/topics/my-topic` },
         },
       });
       const parsed = v1alpha1.backendFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
@@ -395,7 +373,7 @@ describe("backendFromV1Alpha1", () => {
         labels: { hello: "world" },
         environmentVariables: { foo: "bar" },
         availableMemoryMb: 256,
-        timeout: "60s",
+        timeoutSeconds: 60,
         maxInstances: 20,
         minInstances: 1,
         vpc: {

@@ -260,7 +260,10 @@ export async function createSecret(
     },
     { queryParams: { secretId: name } }
   );
-  return parseSecretResourceName(createRes.body.name);
+  return {
+    ...parseSecretResourceName(createRes.body.name),
+    labels,
+  };
 }
 
 /**
