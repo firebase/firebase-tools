@@ -584,15 +584,11 @@ export class StorageLayer {
       }
 
       const decodedBlobPath = decodeURIComponent(blobPath);
-      const decodedMetadataPath = decodeURIComponent(metadataRelPath);
-
       const blobDiskPath = this._persistence.getDiskPath(decodedBlobPath);
-      const metadataDiskPath = this._persistence.getDiskPath(decodedMetadataPath);
 
       const file = new StoredFile(metadata, blobDiskPath);
       this._files.set(decodedBlobPath, file);
 
-      fse.copyFileSync(f, metadataDiskPath);
       fse.copyFileSync(blobAbsPath, blobDiskPath);
     }
   }
