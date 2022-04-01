@@ -131,15 +131,20 @@ export async function want(args: {
       const autoPopulatedParams = await getFirebaseProjectParams(args.projectId, args.emulatorMode);
       const subbedParams = substituteParams(params, autoPopulatedParams);
 
+      // ALLOWED_EVENT_TYPES can be undefined (user input not provided) or empty string (no events selected).
+      // If empty string, we want to pass an empty array. If it's undefined we want to pass through undefined.
+      const allowedEventTypes =
+        subbedParams.ALLOWED_EVENT_TYPES !== undefined
+          ? subbedParams.ALLOWED_EVENT_TYPES.split(",").filter((e) => e !== "")
+          : undefined;
+      const eventarcChannel = subbedParams.EVENTARC_CHANNEL;
+
       instanceSpecs.push({
         instanceId,
         ref,
         params: subbedParams,
-        allowedEventTypes:
-          subbedParams.ALLOWED_EVENT_TYPES !== undefined
-            ? subbedParams.ALLOWED_EVENT_TYPES.split(",").filter((e) => e !== "")
-            : undefined,
-        eventarcChannel: subbedParams.EVENTARC_CHANNEL,
+        allowedEventTypes: allowedEventTypes,
+        eventarcChannel: eventarcChannel,
       });
     } catch (err: any) {
       logger.debug(`Got error reading extensions entry ${e}: ${err}`);
