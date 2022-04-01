@@ -171,9 +171,9 @@ function parseEndpoints(
       if (ep.taskQueueTrigger.retryConfig) {
         assertKeyTypes(prefix + ".taskQueueTrigger.retryConfig", ep.taskQueueTrigger.retryConfig, {
           maxAttempts: "number",
-          maxRetryDuration: "string",
-          minBackoff: "string",
-          maxBackoff: "string",
+          maxRetrySeconds: "number",
+          minBackoffSeconds: "number",
+          maxBackoffSeconds: "number",
           maxDoublings: "number",
         });
       }
