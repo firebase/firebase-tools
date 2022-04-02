@@ -1,7 +1,4 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "fs";
-import { tmpdir } from "os";
-import { v4 } from "uuid";
-import { ListItem, ListResponse } from "./list";
 import {
   CloudStorageBucketMetadata,
   CloudStorageObjectMetadata,
@@ -50,7 +47,7 @@ export class StoredFile {
   }
 }
 
-/**  Parsed request object for {@link StorageLayer#handleGetObject}. */
+/**  Parsed request object for {@link StorageLayer#getObject}. */
 export type GetObjectRequest = {
   bucketId: string;
   decodedObjectId: string;
@@ -58,13 +55,13 @@ export type GetObjectRequest = {
   downloadToken?: string;
 };
 
-/** Response object for {@link StorageLayer#handleGetObject}. */
+/** Response object for {@link StorageLayer#getObject}. */
 export type GetObjectResponse = {
   metadata: StoredFileMetadata;
   data: Buffer;
 };
 
-/**  Parsed request object for {@link StorageLayer#handleUpdateObjectMetadata}. */
+/**  Parsed request object for {@link StorageLayer#updateObjectMetadata}. */
 export type UpdateObjectMetadataRequest = {
   bucketId: string;
   decodedObjectId: string;
@@ -72,14 +69,14 @@ export type UpdateObjectMetadataRequest = {
   authorization?: string;
 };
 
-/**  Parsed request object for {@link StorageLayer#handleDeleteObject}. */
+/**  Parsed request object for {@link StorageLayer#deleteObject}. */
 export type DeleteObjectRequest = {
   bucketId: string;
   decodedObjectId: string;
   authorization?: string;
 };
 
-/**  Parsed request object for {@link StorageLayer#handleListObjects}. */
+/**  Parsed request object for {@link StorageLayer#listObjects}. */
 export type ListObjectsRequest = {
   bucketId: string;
   prefix: string;
@@ -89,18 +86,35 @@ export type ListObjectsRequest = {
   authorization?: string;
 };
 
-/**  Parsed request object for {@link StorageLayer#handleCreateDownloadToken}. */
+/** Response object for {@link StorageLayer#listObjects}. */
+export type ListObjectsResponse = {
+  prefixes?: string[];
+  items?: StoredFileMetadata[];
+  nextPageToken?: string;
+};
+
+/**  Parsed request object for {@link StorageLayer#createDownloadToken}. */
 export type CreateDownloadTokenRequest = {
   bucketId: string;
   decodedObjectId: string;
   authorization?: string;
 };
 
-/**  Parsed request object for {@link StorageLayer#handleDeleteDownloadToken}. */
+/**  Parsed request object for {@link StorageLayer#deleteDownloadToken}. */
 export type DeleteDownloadTokenRequest = {
   bucketId: string;
   decodedObjectId: string;
   token: string;
+  authorization?: string;
+};
+
+/**  Parsed request object for {@link StorageLayer#copyObject}. */
+export type CopyObjectRequest = {
+  sourceBucket: string;
+  sourceObject: string;
+  destinationBucket: string;
+  destinationObject: string;
+  incomingMetadata?: IncomingMetadata;
   authorization?: string;
 };
 
@@ -138,7 +152,7 @@ export class StorageLayer {
    * @throws {NotFoundError} if object does not exist
    * @throws {ForbiddenError} if request is unauthorized
    */
-  public async handleGetObject(request: GetObjectRequest): Promise<GetObjectResponse> {
+  public async getObject(request: GetObjectRequest): Promise<GetObjectResponse> {
     const metadata = this.getMetadata(request.bucketId, request.decodedObjectId);
 
     // If a valid download token is present, skip Firebase Rules auth. Mainly used by the js sdk.
@@ -166,7 +180,7 @@ export class StorageLayer {
     return { metadata: metadata!, data: this.getBytes(request.bucketId, request.decodedObjectId)! };
   }
 
-  public getMetadata(bucket: string, object: string): StoredFileMetadata | undefined {
+  private getMetadata(bucket: string, object: string): StoredFileMetadata | undefined {
     const key = this.path(bucket, object);
     const val = this._files.get(key);
 
@@ -196,7 +210,7 @@ export class StorageLayer {
    * @throws {ForbiddenError} if the request is not authorized.
    * @throws {NotFoundError} if the object does not exist.
    */
-  public async handleDeleteObject(request: DeleteObjectRequest): Promise<void> {
+  public async deleteObject(request: DeleteObjectRequest): Promise<void> {
     const storedMetadata = this.getMetadata(request.bucketId, request.decodedObjectId);
     const authorized = await this._rulesValidator.validate(
       ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
@@ -245,7 +259,7 @@ export class StorageLayer {
    * @throws {ForbiddenError} if the request is not authorized.
    * @throws {NotFoundError} if the object does not exist.
    */
-  public async handleUpdateObjectMetadata(
+  public async updateObjectMetadata(
     request: UpdateObjectMetadataRequest
   ): Promise<StoredFileMetadata> {
     const storedMetadata = this.getMetadata(request.bucketId, request.decodedObjectId);
@@ -273,9 +287,9 @@ export class StorageLayer {
 
   /**
    * Last step in uploading a file. Validates the request and persists the staging
-   * object to its permanent location on disk.
+   * object to its permanent location on disk, updates metadata.
    */
-  public async handleUploadObject(upload: Upload): Promise<StoredFileMetadata> {
+  public async uploadObject(upload: Upload): Promise<StoredFileMetadata> {
     if (upload.status !== UploadStatus.FINISHED) {
       throw new Error(`Unexpected upload status encountered: ${upload.status}.`);
     }
@@ -295,6 +309,8 @@ export class StorageLayer {
       this._cloudFunctions,
       this._persistence.readBytes(upload.path, upload.size)
     );
+    metadata.update(upload.metadata, /* shouldTrigger = */ false);
+
     const authorized = await this._rulesValidator.validate(
       ["b", upload.bucketId, "o", upload.objectId].join("/"),
       upload.bucketId,
@@ -315,31 +331,39 @@ export class StorageLayer {
     return metadata;
   }
 
-  public copyFile(
-    sourceFile: StoredFileMetadata,
-    destinationBucket: string,
-    destinationObject: string,
-    incomingMetadata?: IncomingMetadata
-  ): StoredFileMetadata {
-    const filePath = this.path(destinationBucket, destinationObject);
+  public copyObject({
+    sourceBucket,
+    sourceObject,
+    destinationBucket,
+    destinationObject,
+    incomingMetadata,
+    authorization,
+  }: CopyObjectRequest): StoredFileMetadata {
+    if (!this._adminCredsValidator.validate(authorization)) {
+      throw new ForbiddenError();
+    }
+    const sourceMetadata = this.getMetadata(sourceBucket, sourceObject);
+    if (!sourceMetadata) {
+      throw new NotFoundError();
+    }
+    const sourceBytes = this.getBytes(sourceBucket, sourceObject) as Buffer;
 
-    this._persistence.deleteFile(filePath, /* failSilently = */ true);
-
-    const bytes = this.getBytes(sourceFile.bucket, sourceFile.name) as Buffer;
-    this._persistence.appendBytes(filePath, bytes);
+    const destinationFilePath = this.path(destinationBucket, destinationObject);
+    this._persistence.deleteFile(destinationFilePath, /* failSilently = */ true);
+    this._persistence.appendBytes(destinationFilePath, sourceBytes);
 
     const newMetadata: IncomingMetadata = {
-      ...sourceFile,
-      metadata: sourceFile.customMetadata,
+      ...sourceMetadata,
+      metadata: sourceMetadata.customMetadata,
       ...incomingMetadata,
     };
     if (
-      sourceFile.downloadTokens.length &&
+      sourceMetadata.downloadTokens.length &&
       // Only copy download tokens if we're not overwriting any custom metadata
       !(incomingMetadata?.metadata && Object.keys(incomingMetadata?.metadata).length)
     ) {
       if (!newMetadata.metadata) newMetadata.metadata = {};
-      newMetadata.metadata.firebaseStorageDownloadTokens = sourceFile.downloadTokens.join(",");
+      newMetadata.metadata.firebaseStorageDownloadTokens = sourceMetadata.downloadTokens.join(",");
     }
     if (newMetadata.metadata) {
       // Convert null metadata values to empty strings
@@ -360,11 +384,14 @@ export class StorageLayer {
         customMetadata: newMetadata.metadata,
       },
       this._cloudFunctions,
-      bytes,
+      sourceBytes,
       incomingMetadata
     );
-    const file = new StoredFile(copiedFileMetadata, this._persistence.getDiskPath(filePath));
-    this._files.set(filePath, file);
+    const file = new StoredFile(
+      copiedFileMetadata,
+      this._persistence.getDiskPath(destinationFilePath)
+    );
+    this._files.set(destinationFilePath, file);
 
     this._cloudFunctions.dispatch("finalize", new CloudStorageObjectMetadata(file.metadata));
     return file.metadata;
@@ -374,46 +401,23 @@ export class StorageLayer {
    * Lists all files and prefixes (folders) at a path.
    * @throws {ForbiddenError} if the request is not authorized.
    */
-  public async handleListObjects(request: ListObjectsRequest): Promise<ListResponse> {
+  public async listObjects(request: ListObjectsRequest): Promise<ListObjectsResponse> {
+    const { bucketId, prefix, delimiter, pageToken, authorization } = request;
     const authorized = await this._rulesValidator.validate(
-      ["b", request.bucketId, "o", request.prefix].join("/"),
-      request.bucketId,
+      ["b", bucketId, "o", prefix].join("/"),
+      bucketId,
       RulesetOperationMethod.LIST,
       {},
-      request.authorization
+      authorization
     );
     if (!authorized) {
       throw new ForbiddenError();
     }
-    const itemsResults = this.listItems(
-      request.bucketId,
-      request.prefix,
-      request.delimiter,
-      request.pageToken,
-      request.maxResults
-    );
-    return new ListResponse(
-      itemsResults.prefixes ?? [],
-      itemsResults.items?.map((i) => new ListItem(i.name, i.bucket)) ?? [],
-      itemsResults.nextPageToken
-    );
-  }
 
-  public listItems(
-    bucket: string,
-    prefix: string,
-    delimiter: string,
-    pageToken: string | undefined,
-    maxResults: number | undefined
-  ): {
-    prefixes?: string[];
-    items?: CloudStorageObjectMetadata[];
-    nextPageToken?: string;
-  } {
     let items: Array<StoredFileMetadata> = [];
     const prefixes = new Set<string>();
     for (const [, file] of this._files) {
-      if (file.metadata.bucket !== bucket) {
+      if (file.metadata.bucket !== bucketId) {
         continue;
       }
 
@@ -456,10 +460,7 @@ export class StorageLayer {
       }
     }
 
-    if (!maxResults) {
-      maxResults = 1000;
-    }
-
+    const maxResults = request.maxResults ?? 1000;
     let nextPageToken = undefined;
     if (items.length > maxResults) {
       nextPageToken = items[maxResults].name;
@@ -469,13 +470,12 @@ export class StorageLayer {
     return {
       nextPageToken,
       prefixes: prefixes.size > 0 ? [...prefixes].sort() : undefined,
-      items:
-        items.length > 0 ? items.map((item) => new CloudStorageObjectMetadata(item)) : undefined,
+      items: items.length > 0 ? items : undefined,
     };
   }
 
   /** Creates a new Firebase download token for an object. */
-  public handleCreateDownloadToken(request: CreateDownloadTokenRequest): StoredFileMetadata {
+  public createDownloadToken(request: CreateDownloadTokenRequest): StoredFileMetadata {
     if (!this._adminCredsValidator.validate(request.authorization)) {
       throw new ForbiddenError();
     }
@@ -492,7 +492,7 @@ export class StorageLayer {
    * present, calling this method is a no-op. This method will also regenerate a new token
    * if the last remaining token is deleted.
    */
-  public handleDeleteDownloadToken(request: DeleteDownloadTokenRequest): StoredFileMetadata {
+  public deleteDownloadToken(request: DeleteDownloadTokenRequest): StoredFileMetadata {
     if (!this._adminCredsValidator.validate(request.authorization)) {
       throw new ForbiddenError();
     }
@@ -583,12 +583,14 @@ export class StorageLayer {
         continue;
       }
 
-      const file = new StoredFile(metadata, blobPath);
-      this._files.set(blobPath, file);
-    }
+      const decodedBlobPath = decodeURIComponent(blobPath);
+      const blobDiskPath = this._persistence.getDiskPath(decodedBlobPath);
 
-    // Recursively copy all blobs
-    fse.copySync(blobsDir, this.dirPath);
+      const file = new StoredFile(metadata, blobDiskPath);
+      this._files.set(decodedBlobPath, file);
+
+      fse.copyFileSync(blobAbsPath, blobDiskPath);
+    }
   }
 
   private *walkDirSync(dir: string): Generator<string> {

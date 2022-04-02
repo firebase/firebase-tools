@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import { expect } from "chai";
 import * as nock from "nock";
 
@@ -6,6 +5,7 @@ import * as api from "../../api";
 import { FirebaseError } from "../../error";
 import * as extensionsApi from "../../extensions/extensionsApi";
 import * as refs from "../../extensions/refs";
+import { cloneDeep } from "../../utils";
 
 const VERSION = "v1beta";
 const PROJECT_ID = "test-project";
@@ -100,7 +100,7 @@ const TEST_INSTANCES_RESPONSE = {
   instances: [TEST_INSTANCE_1, TEST_INSTANCE_2],
 };
 
-const TEST_INSTANCES_RESPONSE_NEXT_PAGE_TOKEN: any = _.cloneDeep(TEST_INSTANCES_RESPONSE);
+const TEST_INSTANCES_RESPONSE_NEXT_PAGE_TOKEN: any = cloneDeep(TEST_INSTANCES_RESPONSE);
 TEST_INSTANCES_RESPONSE_NEXT_PAGE_TOKEN.nextPageToken = "abc123";
 
 const PACKAGE_URI = "https://storage.googleapis.com/ABCD.zip";

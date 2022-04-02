@@ -27,14 +27,14 @@ import {
 } from "../services/authBlocking";
 
 // TODO: Tune this for better performance.
-const gcfV1PollerOptions = {
+const gcfV1PollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
   apiOrigin: functionsOrigin,
   apiVersion: gcf.API_VERSION,
   masterTimeout: 25 * 60 * 1_000, // 25 minutes is the maximum build time for a function
   maxBackoff: 10_000,
 };
 
-const gcfV2PollerOptions = {
+const gcfV2PollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
   apiOrigin: functionsV2Origin,
   apiVersion: gcfV2.API_VERSION,
   masterTimeout: 25 * 60 * 1_000, // 25 minutes is the maximum build time for a function
@@ -172,10 +172,7 @@ export class Fabricator {
   }
 
   async updateEndpoint(update: planner.EndpointUpdate, scraper: SourceTokenScraper): Promise<void> {
-    // GCF team wants us to stop setting the deployment-tool labels on updates for gen 2
-    if (update.deleteAndRecreate || update.endpoint.platform !== "gcfv2") {
-      update.endpoint.labels = { ...update.endpoint.labels, ...deploymentTool.labels() };
-    }
+    update.endpoint.labels = { ...update.endpoint.labels, ...deploymentTool.labels() };
     if (update.deleteAndRecreate) {
       await this.deleteEndpoint(update.deleteAndRecreate);
       await this.createEndpoint(update.endpoint, scraper);

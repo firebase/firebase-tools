@@ -56,7 +56,6 @@ export interface TriggerAnnotation {
   };
   taskQueueTrigger?: {
     rateLimits?: {
-      maxBurstSize?: number;
       maxConcurrentDispatches?: number;
       maxDispatchesPerSecond?: number;
     };
@@ -233,12 +232,7 @@ export function addResourcesToBackend(
       triggered = {
         eventTrigger: {
           eventType: annotation.eventTrigger!.eventType,
-          eventFilters: [
-            {
-              attribute: "resource",
-              value: annotation.eventTrigger!.resource,
-            },
-          ],
+          eventFilters: { resource: annotation.eventTrigger!.resource },
           retry: !!annotation.failurePolicy,
         },
       };
@@ -247,12 +241,7 @@ export function addResourcesToBackend(
       // once we use container contract for the functionsv2 experiment.
       if (annotation.platform === "gcfv2") {
         if (annotation.eventTrigger!.eventType === v2events.PUBSUB_PUBLISH_EVENT) {
-          triggered.eventTrigger.eventFilters = [
-            {
-              attribute: "topic",
-              value: annotation.eventTrigger!.resource,
-            },
-          ];
+          triggered.eventTrigger.eventFilters = { topic: annotation.eventTrigger!.resource };
         }
 
         if (
@@ -260,12 +249,7 @@ export function addResourcesToBackend(
             (event) => event === (annotation.eventTrigger?.eventType || "")
           )
         ) {
-          triggered.eventTrigger.eventFilters = [
-            {
-              attribute: "bucket",
-              value: annotation.eventTrigger!.resource,
-            },
-          ];
+          triggered.eventTrigger.eventFilters = { bucket: annotation.eventTrigger!.resource };
         }
       }
     }
@@ -313,10 +297,16 @@ export function addResourcesToBackend(
       "serviceAccountEmail",
       "labels",
       "ingressSettings",
-      "timeout",
       "maxInstances",
       "minInstances",
       "availableMemoryMb"
+    );
+    proto.renameIfPresent(
+      endpoint,
+      annotation,
+      "timeoutSeconds",
+      "timeout",
+      proto.secondsFromDuration
     );
     want.endpoints[region] = want.endpoints[region] || {};
     want.endpoints[region][endpoint.id] = endpoint;

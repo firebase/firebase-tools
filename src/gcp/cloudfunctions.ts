@@ -11,8 +11,6 @@ import * as runtimes from "../deploy/functions/runtimes";
 import * as iam from "./iam";
 import { Client } from "../apiv2";
 import { functionsOrigin } from "../api";
-import { getFirebaseProject } from "../management/projects";
-import { assertExhaustive } from "../functional";
 
 export const API_VERSION = "v1";
 const client = new Client({ urlPrefix: functionsOrigin, apiVersion: API_VERSION });
@@ -555,12 +553,7 @@ export function endpointFromFunction(
     trigger = {
       eventTrigger: {
         eventType: gcfFunction.eventTrigger!.eventType,
-        eventFilters: [
-          {
-            attribute: "resource",
-            value: gcfFunction.eventTrigger!.resource,
-          },
-        ],
+        eventFilters: { resource: gcfFunction.eventTrigger!.resource },
         retry: !!gcfFunction.eventTrigger!.failurePolicy?.retry,
       },
     };
@@ -590,7 +583,6 @@ export function endpointFromFunction(
     gcfFunction,
     "serviceAccountEmail",
     "availableMemoryMb",
-    "timeout",
     "minInstances",
     "maxInstances",
     "ingressSettings",
@@ -598,6 +590,13 @@ export function endpointFromFunction(
     "environmentVariables",
     "secretEnvironmentVariables",
     "sourceUploadUrl"
+  );
+  proto.renameIfPresent(
+    endpoint,
+    gcfFunction,
+    "timeoutSeconds",
+    "timeout",
+    proto.secondsFromDuration
   );
   if (gcfFunction.vpcConnector) {
     endpoint.vpc = { connector: gcfFunction.vpcConnector };
@@ -639,15 +638,9 @@ export function functionFromEndpoint(
 
   proto.copyIfPresent(gcfFunction, endpoint, "labels");
   if (backend.isEventTriggered(endpoint)) {
-    const resourceFilter = backend.findEventFilter(endpoint, "resource");
-    if (!resourceFilter) {
-      throw new FirebaseError(
-        "Invalid event trigger definition. Expected event filter with 'resource' attribute."
-      );
-    }
     gcfFunction.eventTrigger = {
       eventType: endpoint.eventTrigger.eventType,
-      resource: resourceFilter.value,
+      resource: endpoint.eventTrigger.eventFilters.resource,
       // Service is unnecessary and deprecated
     };
 
@@ -683,13 +676,19 @@ export function functionFromEndpoint(
     gcfFunction,
     endpoint,
     "serviceAccountEmail",
-    "timeout",
     "availableMemoryMb",
     "minInstances",
     "maxInstances",
     "ingressSettings",
     "environmentVariables",
     "secretEnvironmentVariables"
+  );
+  proto.renameIfPresent(
+    gcfFunction,
+    endpoint,
+    "timeout",
+    "timeoutSeconds",
+    proto.durationFromSeconds
   );
   if (endpoint.vpc) {
     proto.renameIfPresent(gcfFunction, endpoint.vpc, "vpcConnector", "connector");
