@@ -466,6 +466,11 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
     gcfFunction.labels = { ...gcfFunction.labels, "deployment-taskqueue": "true" };
   } else if (backend.isCallableTriggered(endpoint)) {
     gcfFunction.labels = { ...gcfFunction.labels, "deployment-callable": "true" };
+  } else if (backend.isBlockingTriggered(endpoint)) {
+    gcfFunction.labels = {
+      ...gcfFunction.labels,
+      "deployment-blocking": `${endpoint.blockingTrigger.eventType.replace(/\./g, "_")}`,
+    };
   }
 
   return gcfFunction;
@@ -488,6 +493,12 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
   } else if (gcfFunction.labels?.["deployment-callable"] === "true") {
     trigger = {
       callableTrigger: {},
+    };
+  } else if (gcfFunction.labels?.["deployment-blocking"]) {
+    trigger = {
+      blockingTrigger: {
+        eventType: gcfFunction.labels["deployment-blocking"].replace(/_/g, "."),
+      },
     };
   } else if (gcfFunction.eventTrigger) {
     trigger = {

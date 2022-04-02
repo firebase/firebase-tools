@@ -189,10 +189,12 @@ function parseEndpoints(
       requireKeys(prefix + ".blockingTrigger", ep.blockingTrigger, "eventType");
       assertKeyTypes(prefix + ".blockingTrigger", ep.blockingTrigger, {
         eventType: "string",
+        // options: "object",
         accessToken: "boolean",
         idToken: "boolean",
         refreshToken: "boolean",
       });
+      // assertKeyTypes(prefix + ".blockingTrigger", ep.blockingTrigger.options)
       triggered = { blockingTrigger: ep.blockingTrigger };
     } else {
       throw new FirebaseError(

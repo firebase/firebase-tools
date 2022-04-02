@@ -1,9 +1,11 @@
 import * as backend from "../backend";
 import * as identityPlatform from "../../../gcp/identityPlatform";
+import * as events from "../../../functions/events";
 import { FirebaseError } from "../../../error";
+import { logger } from "../../../logger";
 
 /**
- * Ensure that at most one blocking function of that type exists and merge options on the endpoint
+ * Ensure that at most one blocking function of that type exists and merges identity platform options on the backend.
  * @param endpoint the Auth Blocking endpoint
  * @param wantEndpoints all of the endpoints
  */
@@ -58,19 +60,27 @@ export function copyIdentityPlatformOptionsToEndpoint(
  * @param endpoint
  */
 export async function registerAuthBlockingTriggerToIdentityPlatform(
-  endpoint: backend.Endpoint & backend.BlockingTriggered
+  endpoint: backend.Endpoint & backend.BlockingTriggered,
+  update: boolean
 ): Promise<void> {
   // we need to get the config, then save the blocking function object
   // then update the triggers (beforeCreate or beforeUpdate)
   const blockingConfig = await identityPlatform.getBlockingFunctionsConfig(endpoint.project);
-  if (endpoint.blockingTrigger.eventType === "beforeCreate") {
+
+  if (
+    endpoint.blockingTrigger.eventType === events.v1.BEFORE_CREATE_EVENT ||
+    endpoint.blockingTrigger.eventType === events.v2.BEFORE_CREATE_EVENT
+  ) {
     blockingConfig.triggers = {
       beforeCreate: {
         functionUri: endpoint.uri!,
       },
       beforeSignIn: blockingConfig.triggers?.beforeSignIn,
     };
-  } else if (endpoint.blockingTrigger.eventType === "beforeSignIn") {
+  } else if (
+    endpoint.blockingTrigger.eventType === events.v1.BEFORE_SIGNIN_EVENT ||
+    endpoint.blockingTrigger.eventType === events.v2.BEFORE_SIGNIN_EVENT
+  ) {
     blockingConfig.triggers = {
       beforeCreate: blockingConfig.triggers?.beforeCreate,
       beforeSignIn: {
@@ -78,14 +88,17 @@ export async function registerAuthBlockingTriggerToIdentityPlatform(
       },
     };
   } else {
-    throw new FirebaseError("Invalid auth blocking trigger type");
+    throw new FirebaseError("Invalid auth blocking trigger type.");
   }
 
-  blockingConfig.forwardInboundCredentials = {
-    idToken: (endpoint.blockingTrigger.idToken || false).toString(),
-    accessToken: (endpoint.blockingTrigger.accessToken || false).toString(),
-    refreshToken: (endpoint.blockingTrigger.refreshToken || false).toString(),
-  };
+  if (!update) {
+    blockingConfig.forwardInboundCredentials = {
+      idToken: (endpoint.blockingTrigger.idToken || false).toString(),
+      accessToken: (endpoint.blockingTrigger.accessToken || false).toString(),
+      refreshToken: (endpoint.blockingTrigger.refreshToken || false).toString(),
+    };
+  }
+
   await identityPlatform.setBlockingFunctionsConfig(endpoint.project, blockingConfig);
 }
 
@@ -93,12 +106,18 @@ export async function unregisterAuthBlockingTriggerFromIdentityPlatform(
   endpoint: backend.Endpoint & backend.BlockingTriggered
 ): Promise<void> {
   const blockingConfig = await identityPlatform.getBlockingFunctionsConfig(endpoint.project);
-  if (endpoint.blockingTrigger.eventType === "beforeCreate") {
+  if (
+    endpoint.blockingTrigger.eventType === events.v1.BEFORE_CREATE_EVENT ||
+    endpoint.blockingTrigger.eventType === events.v2.BEFORE_CREATE_EVENT
+  ) {
     blockingConfig.triggers = {
       beforeCreate: {},
       beforeSignIn: blockingConfig.triggers?.beforeSignIn,
     };
-  } else if (endpoint.blockingTrigger.eventType === "beforeSignIn") {
+  } else if (
+    endpoint.blockingTrigger.eventType === events.v1.BEFORE_SIGNIN_EVENT ||
+    endpoint.blockingTrigger.eventType === events.v2.BEFORE_SIGNIN_EVENT
+  ) {
     blockingConfig.triggers = {
       beforeCreate: blockingConfig.triggers?.beforeCreate,
       beforeSignIn: {},

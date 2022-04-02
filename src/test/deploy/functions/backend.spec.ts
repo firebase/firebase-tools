@@ -90,14 +90,12 @@ describe("Backend", () => {
     let listAllFunctions: sinon.SinonStub;
     let listAllFunctionsV2: sinon.SinonStub;
     let logLabeledWarning: sinon.SinonSpy;
-    let getBlockingFunctionsConfig: sinon.SinonStub;
 
     beforeEach(() => {
       previews.functionsv2 = false;
       listAllFunctions = sinon.stub(gcf, "listAllFunctions").rejects("Unexpected call");
       listAllFunctionsV2 = sinon.stub(gcfV2, "listAllFunctions").rejects("Unexpected v2 call");
       logLabeledWarning = sinon.spy(utils, "logLabeledWarning");
-      getBlockingFunctionsConfig = sinon.stub(identityPlatform, "getBlockingFunctionsConfig").rejects("Unexpected call");
     });
 
     afterEach(() => {

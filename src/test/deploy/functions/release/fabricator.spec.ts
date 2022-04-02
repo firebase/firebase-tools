@@ -871,7 +871,7 @@ describe("Fabricator", () => {
   describe("setTrigger", () => {
     it("does nothing for HTTPS functions", async () => {
       // all APIs throw by default
-      await fab.setTrigger(endpoint({ httpsTrigger: {} }));
+      await fab.setTrigger(endpoint({ httpsTrigger: {} }), false);
     });
 
     it("does nothing for event triggers", async () => {
@@ -883,7 +883,7 @@ describe("Fabricator", () => {
           retry: false,
         },
       });
-      await fab.setTrigger(ep);
+      await fab.setTrigger(ep, false);
     });
 
     it("sets schedule triggers", async () => {
@@ -895,7 +895,7 @@ describe("Fabricator", () => {
       const upsertScheduleV1 = sinon.stub(fab, "upsertScheduleV1");
       upsertScheduleV1.resolves();
 
-      await fab.setTrigger(ep);
+      await fab.setTrigger(ep, false);
       expect(upsertScheduleV1).to.have.been.called;
       upsertScheduleV1.restore();
 
@@ -903,7 +903,7 @@ describe("Fabricator", () => {
       const upsertScheduleV2 = sinon.stub(fab, "upsertScheduleV2");
       upsertScheduleV2.resolves();
 
-      await fab.setTrigger(ep);
+      await fab.setTrigger(ep, false);
       expect(upsertScheduleV2).to.have.been.called;
     });
 
@@ -914,7 +914,7 @@ describe("Fabricator", () => {
       const upsertTaskQueue = sinon.stub(fab, "upsertTaskQueue");
       upsertTaskQueue.resolves();
 
-      await fab.setTrigger(ep);
+      await fab.setTrigger(ep, false);
       expect(upsertTaskQueue).to.have.been.called;
     });
   });

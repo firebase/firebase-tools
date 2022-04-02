@@ -456,63 +456,12 @@ export async function listAllFunctions(projectId: string): Promise<ListFunctions
 }
 
 /**
- * Helper function to create an auth blocking trigger from the result of a cached API call to the identity platform.
- * On ambiguous event types or un-registered functions, we will pass back an https trigger
- * @param gcfFunction the function we are processing
- * @param additionalDetailsCache the cached API call
- * @returns the trigger details
- */
-export function inferAuthBlockingDetailsFromFunction(
-  gcfFunction: CloudFunction,
-  additionalDetailsCache: backend.AdditionalDetailsCache
-): backend.Triggered {
-  if (!additionalDetailsCache.authBlockingTriggerDetails) {
-    return { httpsTrigger: {} };
-  }
-  const beforeCreateUri =
-    additionalDetailsCache.authBlockingTriggerDetails.triggers?.beforeCreate?.functionUri || "";
-  const beforeSignInUri =
-    additionalDetailsCache.authBlockingTriggerDetails.triggers?.beforeSignIn?.functionUri || "";
-  // options
-  const idToken =
-    additionalDetailsCache.authBlockingTriggerDetails.forwardInboundCredentials?.idToken === "true";
-  const accessToken =
-    additionalDetailsCache.authBlockingTriggerDetails.forwardInboundCredentials?.accessToken ===
-    "true";
-  const refreshToken =
-    additionalDetailsCache.authBlockingTriggerDetails.forwardInboundCredentials?.refreshToken ===
-    "true";
-
-  if (
-    (gcfFunction.httpsTrigger?.url === beforeCreateUri &&
-      gcfFunction.httpsTrigger?.url === beforeSignInUri) ||
-    (gcfFunction.httpsTrigger?.url !== beforeCreateUri &&
-      gcfFunction.httpsTrigger?.url !== beforeSignInUri)
-  ) {
-    // ambiguous event type, we default to httpsTrigger
-    return { httpsTrigger: {} };
-  }
-  return {
-    blockingTrigger: {
-      eventType:
-        gcfFunction.httpsTrigger?.url === beforeCreateUri
-          ? events.v1.AUTH_BLOCKING_EVENTS[0]
-          : events.v1.AUTH_BLOCKING_EVENTS[1],
-      idToken,
-      accessToken,
-      refreshToken,
-    },
-  };
-}
-
-/**
  * Converts a Cloud Function from the v1 API into a version-agnostic FunctionSpec struct.
  * This API exists outside the GCF namespace because GCF returns an Operation<CloudFunction>
  * and code may have to call this method explicitly.
  */
 export function endpointFromFunction(
-  gcfFunction: CloudFunction,
-  additionalDetailsCache: backend.AdditionalDetailsCache = {}
+  gcfFunction: CloudFunction
 ): backend.Endpoint {
   const [, project, , region, , id] = gcfFunction.name.split("/");
   let trigger: backend.Triggered;
@@ -542,7 +491,13 @@ export function endpointFromFunction(
       callableTrigger: {},
     };
   } else if (gcfFunction.labels?.["deployment-blocking"]) {
-    trigger = inferAuthBlockingDetailsFromFunction(gcfFunction, additionalDetailsCache);
+    // trigger = inferAuthBlockingDetailsFromFunction(gcfFunction, additionalDetailsCache);
+    trigger = {
+      blockingTrigger: {
+        eventType: gcfFunction.labels["deployment-blocking"].replace(/_/g, "."),
+      },
+    };
+
     uri = gcfFunction.httpsTrigger!.url;
     securityLevel = gcfFunction.httpsTrigger!.securityLevel;
   } else if (gcfFunction.httpsTrigger) {
@@ -661,7 +616,10 @@ export function functionFromEndpoint(
     gcfFunction.labels = { ...gcfFunction.labels, "deployment-taskqueue": "true" };
   } else if (backend.isBlockingTriggered(endpoint)) {
     gcfFunction.httpsTrigger = {};
-    gcfFunction.labels = { ...gcfFunction.labels, "deployment-blocking": "true" };
+    gcfFunction.labels = {
+      ...gcfFunction.labels,
+      "deployment-blocking": `${endpoint.blockingTrigger.eventType.replace(/\./g, "_")}`,
+    };
   } else {
     gcfFunction.httpsTrigger = {};
     if (backend.isCallableTriggered(endpoint)) {

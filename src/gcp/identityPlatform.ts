@@ -1,6 +1,7 @@
 import * as proto from "./proto";
 import { identityOrigin } from "../api";
 import { Client } from "../apiv2";
+import { logger } from "../logger";
 
 const API_VERSION = "v2";
 
@@ -155,16 +156,28 @@ export interface Config {
  * @param project GCP project ID or number
  * @returns the blocking functions config
  */
-export async function getBlockingFunctionsConfig(project: string): Promise<BlockingFunctionsConfig> {
+export async function getBlockingFunctionsConfig(
+  project: string
+): Promise<BlockingFunctionsConfig> {
   const config = (await getConfig(project)) || {};
   if (!config.blockingFunctions) {
-    return {};
+    config.blockingFunctions = {
+      triggers: {
+        beforeCreate: {
+          functionUri: "",
+        },
+        beforeSignIn: {
+          functionUri: "",
+        },
+      },
+      forwardInboundCredentials: {},
+    };
   }
   return config.blockingFunctions;
 }
 
 /**
- * 
+ *
  * @param project GCP project ID or number
  * @returns the identity platform config
  */
@@ -176,28 +189,37 @@ export async function getConfig(project: string): Promise<Config> {
 /**
  * Helper function to set the blocking function config to identity platform.
  * @param project GCP project ID or number
- * @param blockingConfig 
+ * @param blockingConfig
  * @returns the blocking functions config
  */
 export async function setBlockingFunctionsConfig(
   project: string,
   blockingConfig: BlockingFunctionsConfig
 ): Promise<BlockingFunctionsConfig> {
-  const config = (await updateConfig(project, { blockingFunctions: blockingConfig })) || {};
+  const config =
+    (await updateConfig(project, { blockingFunctions: blockingConfig }, "blockingFunctions")) || {};
   if (!config.blockingFunctions) {
     return {};
   }
   return config.blockingFunctions;
 }
 
-export async function updateConfig(projectId: string, config: Config): Promise<Config> {
-  const fieldMasks = proto.fieldMasks(config);
+export async function updateConfig(
+  projectId: string,
+  config: Config,
+  updateMask?: string
+): Promise<Config> {
+  logger.info("UPDATING CONFIG");
+  logger.info(config);
+  if (!updateMask) {
+    updateMask = proto.fieldMasks(config).join(",");
+  }
   const response = await adminApiClient.patch<Config, Config>(
     `projects/${projectId}/config`,
     config,
     {
       queryParams: {
-        updateMask: fieldMasks.join(","),
+        updateMask,
       },
     }
   );

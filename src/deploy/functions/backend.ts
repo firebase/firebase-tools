@@ -1,4 +1,3 @@
-import * as identityPlatform from "../../gcp/identityPlatform";
 import * as proto from "../../gcp/proto";
 import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfV2 from "../../gcp/cloudfunctionsv2";
@@ -402,11 +401,6 @@ export function scheduleIdForFunction(cloudFunction: TargetIds): string {
   return `firebase-schedule-${cloudFunction.id}-${cloudFunction.region}`;
 }
 
-/** @internal */
-export interface AdditionalDetailsCache {
-  authBlockingTriggerDetails?: identityPlatform.BlockingFunctions;
-}
-
 interface PrivateContextFields {
   existingBackend: Backend;
   loadedExistingBackend?: boolean;
@@ -417,7 +411,6 @@ interface PrivateContextFields {
     gcfV1: string[];
     gcfV2: string[];
   };
-  additionalDetailsCache: AdditionalDetailsCache;
 }
 
 /**
@@ -451,28 +444,12 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
     gcfV1: [],
     gcfV2: [],
   };
-  ctx.additionalDetailsCache = {};
   const gcfV1Results = await gcf.listAllFunctions(ctx.projectId);
-  if (gcfV1Results.functions.find((fn) => fn.labels?.["deployment-blocking"])) {
-    ctx.additionalDetailsCache.authBlockingTriggerDetails =
-      await identityPlatform.getBlockingFunctionsConfig(ctx.projectId);
-    ctx.existingBackend.resourceOptions = {
-      identityPlatform: { accessToken: false, idToken: false, refreshToken: false },
-    };
-  }
   for (const apiFunction of gcfV1Results.functions) {
-    const endpoint = gcf.endpointFromFunction(apiFunction, ctx.additionalDetailsCache);
+    const endpoint = gcf.endpointFromFunction(apiFunction);
     ctx.existingBackend.endpoints[endpoint.region] =
       ctx.existingBackend.endpoints[endpoint.region] || {};
     ctx.existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
-    if (isBlockingTriggered(endpoint)) {
-      ctx.existingBackend.resourceOptions.identityPlatform!.accessToken ||=
-        endpoint.blockingTrigger.accessToken || false;
-      ctx.existingBackend.resourceOptions.identityPlatform!.idToken ||=
-        endpoint.blockingTrigger.idToken || false;
-      ctx.existingBackend.resourceOptions.identityPlatform!.refreshToken ||=
-        endpoint.blockingTrigger.refreshToken || false;
-    }
   }
   ctx.unreachableRegions.gcfV1 = gcfV1Results.unreachable;
 
