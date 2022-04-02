@@ -2,7 +2,6 @@ import { Change } from "firebase-functions";
 import { DocumentSnapshot } from "firebase-functions/lib/providers/firestore";
 import { expect } from "chai";
 import { IncomingMessage, request } from "http";
-import * as _ from "lodash";
 import * as express from "express";
 import * as fs from "fs";
 import * as sinon from "sinon";
@@ -12,7 +11,7 @@ import { FunctionRuntimeBundles, TIMEOUT_LONG, TIMEOUT_MED, MODULE_ROOT } from "
 import { FunctionsRuntimeBundle, SignatureType } from "../../src/emulator/functionsEmulatorShared";
 import { InvokeRuntimeOpts, FunctionsEmulator } from "../../src/emulator/functionsEmulator";
 import { RuntimeWorker } from "../../src/emulator/functionsRuntimeWorker";
-import { streamToString } from "../../src/utils";
+import { streamToString, cloneDeep } from "../../src/utils";
 import * as registry from "../../src/emulator/registry";
 
 const DO_NOTHING = () => {
@@ -449,7 +448,7 @@ describe("FunctionsEmulator-Runtime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("should return a real databaseURL when RTDB emulator is not running", async () => {
-        const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest);
+        const frb = cloneDeep(FunctionRuntimeBundles.onRequest);
         const worker = await invokeFunction(
           frb,
           () => {

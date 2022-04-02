@@ -82,7 +82,7 @@ function parseEndpoints(
     minInstances: "number",
     concurrency: "number",
     serviceAccountEmail: "string",
-    timeout: "string",
+    timeoutSeconds: "number",
     vpc: "object",
     labels: "object",
     ingressSettings: "string",
@@ -121,17 +121,19 @@ function parseEndpoints(
     if (backend.isEventTriggered(ep)) {
       requireKeys(prefix + ".eventTrigger", ep.eventTrigger, "eventType", "eventFilters");
       assertKeyTypes(prefix + ".eventTrigger", ep.eventTrigger, {
-        eventFilters: "array",
+        eventFilters: "object",
+        eventFilterPathPatterns: "object",
         eventType: "string",
         retry: "boolean",
         region: "string",
         serviceAccountEmail: "string",
+        channel: "string",
       });
       triggered = { eventTrigger: ep.eventTrigger };
-      for (const eventFilter of triggered.eventTrigger.eventFilters) {
-        if (eventFilter.attribute === "topic" && !eventFilter.value.startsWith("projects/")) {
+      for (const [k, v] of Object.entries(triggered.eventTrigger.eventFilters)) {
+        if (k === "topic" && !v.startsWith("projects/")) {
           // Construct full pubsub topic name.
-          eventFilter.value = `projects/${project}/topics/${eventFilter.value}`;
+          triggered.eventTrigger.eventFilters[k] = `projects/${project}/topics/${v}`;
         }
       }
     } else if (backend.isHttpsTriggered(ep)) {
@@ -171,9 +173,9 @@ function parseEndpoints(
       if (ep.taskQueueTrigger.retryConfig) {
         assertKeyTypes(prefix + ".taskQueueTrigger.retryConfig", ep.taskQueueTrigger.retryConfig, {
           maxAttempts: "number",
-          maxRetryDuration: "string",
-          minBackoff: "string",
-          maxBackoff: "string",
+          maxRetrySeconds: "number",
+          minBackoffSeconds: "number",
+          maxBackoffSeconds: "number",
           maxDoublings: "number",
         });
       }
@@ -203,7 +205,7 @@ function parseEndpoints(
       "minInstances",
       "concurrency",
       "serviceAccountEmail",
-      "timeout",
+      "timeoutSeconds",
       "vpc",
       "labels",
       "ingressSettings",

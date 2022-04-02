@@ -275,7 +275,7 @@ describe("Fabricator", () => {
       const ep1 = endpoint({
         eventTrigger: {
           eventType: "some.event",
-          eventFilters: [{ attribute: "resource", value: "some-resource" }],
+          eventFilters: { resource: "some-resource" },
           retry: false,
         },
       });
@@ -400,12 +400,7 @@ describe("Fabricator", () => {
         {
           eventTrigger: {
             eventType: v2events.PUBSUB_PUBLISH_EVENT,
-            eventFilters: [
-              {
-                attribute: "topic",
-                value: "topic",
-              },
-            ],
+            eventFilters: { topic: "topic" },
             retry: false,
           },
         },
@@ -426,12 +421,7 @@ describe("Fabricator", () => {
         {
           eventTrigger: {
             eventType: v2events.PUBSUB_PUBLISH_EVENT,
-            eventFilters: [
-              {
-                attribute: "topic",
-                value: "topic",
-              },
-            ],
+            eventFilters: { topic: "topic" },
             retry: false,
           },
         },
@@ -889,12 +879,7 @@ describe("Fabricator", () => {
       const ep = endpoint({
         eventTrigger: {
           eventType: v2events.PUBSUB_PUBLISH_EVENT,
-          eventFilters: [
-            {
-              attribute: "topic",
-              value: "topic",
-            },
-          ],
+          eventFilters: { topic: "topic" },
           retry: false,
         },
       });
@@ -945,12 +930,7 @@ describe("Fabricator", () => {
       const ep = endpoint({
         eventTrigger: {
           eventType: v2events.PUBSUB_PUBLISH_EVENT,
-          eventFilters: [
-            {
-              attribute: "topic",
-              value: "topic",
-            },
-          ],
+          eventFilters: { topic: "topic" },
           retry: false,
         },
       });

@@ -48,16 +48,7 @@ export interface CallableTriggered {
   callableTrigger: CallableTrigger;
 }
 
-type EventFilterAttribute = "resource" | "topic" | "bucket" | string;
-
-// One or more event filters restrict the set of events delivered to an EventTrigger.
-interface EventFilter {
-  attribute: EventFilterAttribute;
-  value: string;
-
-  // if left unspecified, equality is used.
-  operator?: "match-path-pattern";
-}
+type EventFilterKey = "resource" | "topic" | "bucket" | "alerttype" | "appid" | string;
 
 /** API agnostic version of a Cloud Function's event trigger. */
 export interface EventTrigger {
@@ -73,14 +64,20 @@ export interface EventTrigger {
   eventType: string;
 
   /**
-   * Additional filters for narrowing down which events to receive.
+   * Additional exact-match filters for narrowing down which events to receive.
+   *
    * While not required by the GCF API, this is always provided in
    * the Cloud Console, and we are likely to always require it as well.
    * V1 functions will always (and only) have the "resource" filter.
    * V2 will have arbitrary filters and some EventArc filters will be
    * top-level keys in the GCF API (e.g. "pubsubTopic").
    */
-  eventFilters: EventFilter[];
+  eventFilters: Record<EventFilterKey, string>;
+
+  /**
+   * Additional path-pattern filters for narrowing down which events to receive.
+   */
+  eventFilterPathPatterns?: Record<string, string>;
 
   /** Should failures in a function execution cause an event to be retried. */
   retry: boolean;
@@ -98,6 +95,12 @@ export interface EventTrigger {
    * This field is ignored for v1 and defaults to the
    */
   serviceAccountEmail?: string;
+
+  /**
+   * The name of the channel where the function receive events.
+   * Must be provided to receive custom events.
+   */
+  channel?: string;
 }
 
 /** Something that has an EventTrigger */
@@ -112,10 +115,10 @@ export interface TaskQueueRateLimits {
 
 export interface TaskQueueRetryConfig {
   maxAttempts?: number;
-  maxRetryDuration?: proto.Duration;
-  minBackoff?: proto.Duration;
-  maxBackoff?: proto.Duration;
+  maxRetrySeconds?: number;
+  maxBackoffSeconds?: number;
   maxDoublings?: number;
+  minBackoffSeconds?: number;
 }
 
 export interface TaskQueueTrigger {
@@ -206,7 +209,7 @@ export interface ServiceConfiguration {
   environmentVariables?: Record<string, string>;
   secretEnvironmentVariables?: SecretEnvVar[];
   availableMemoryMb?: MemoryOptions;
-  timeout?: proto.Duration;
+  timeoutSeconds?: number;
   maxInstances?: number;
   minInstances?: number;
   vpc?: {
@@ -574,14 +577,6 @@ export const missingEndpoint =
   (endpoint: Endpoint): boolean => {
     return !hasEndpoint(backend)(endpoint);
   };
-
-/** A helper utility to find event filter of given attribute */
-export function findEventFilter(
-  endpoint: Endpoint & EventTriggered,
-  attribute: EventFilterAttribute
-): EventFilter | undefined {
-  return endpoint.eventTrigger.eventFilters.find((ef) => ef.attribute === attribute);
-}
 
 /**
  * A standard method for sorting endpoints for display.
