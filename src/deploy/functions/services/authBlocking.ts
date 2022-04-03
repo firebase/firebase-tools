@@ -5,9 +5,9 @@ import { FirebaseError } from "../../../error";
 import { logger } from "../../../logger";
 
 /**
- * Ensure that at most one blocking function of that type exists and merges identity platform options on the backend.
+ * Ensure that at most one blocking function of that type exists and merges identity platform options on our backend to deploy.
  * @param endpoint the Auth Blocking endpoint
- * @param wantEndpoints all of the endpoints
+ * @param wantBackend the backend we are deploying
  */
 export function ensureAuthBlockingTriggerIsValid(
   endpoint: backend.Endpoint & backend.BlockingTriggered,
@@ -61,8 +61,9 @@ export function copyIdentityPlatformOptionsToEndpoint(
 }
 
 /**
- * Registers the
- * @param endpoint
+ * Registers the auth blocking trigger to identity platform. On updates, we don't touch the options.
+ * @param endpoint the blocking endpoint
+ * @param update if this registration is an update
  */
 export async function registerAuthBlockingTriggerToIdentityPlatform(
   endpoint: backend.Endpoint & backend.BlockingTriggered,
@@ -105,6 +106,10 @@ export async function registerAuthBlockingTriggerToIdentityPlatform(
   await identityPlatform.setBlockingFunctionsConfig(endpoint.project, blockingConfig);
 }
 
+/**
+ * Un-registers the auth blocking trigger from identity platform. If the endpoint uri is not on the resource, we do nothing.
+ * @param endpoint the blocking endpoint
+ */
 export async function unregisterAuthBlockingTriggerFromIdentityPlatform(
   endpoint: backend.Endpoint & backend.BlockingTriggered
 ): Promise<void> {

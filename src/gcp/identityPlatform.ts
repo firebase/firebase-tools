@@ -177,7 +177,7 @@ export async function getBlockingFunctionsConfig(
 }
 
 /**
- *
+ * Gets the identity platform configuration.
  * @param project GCP project ID or number
  * @returns the identity platform config
  */
@@ -189,7 +189,7 @@ export async function getConfig(project: string): Promise<Config> {
 /**
  * Helper function to set the blocking function config to identity platform.
  * @param project GCP project ID or number
- * @param blockingConfig
+ * @param blockingConfig the blocking functions configuration to update
  * @returns the blocking functions config
  */
 export async function setBlockingFunctionsConfig(
@@ -204,8 +204,15 @@ export async function setBlockingFunctionsConfig(
   return config.blockingFunctions;
 }
 
+/**
+ * Sets the identity platform configuration.
+ * @param project GCP project ID or number
+ * @param config the configuration to update
+ * @param updateMask optional update mask for the API
+ * @returns the updated config
+ */
 export async function updateConfig(
-  projectId: string,
+  project: string,
   config: Config,
   updateMask?: string
 ): Promise<Config> {
@@ -215,7 +222,7 @@ export async function updateConfig(
     updateMask = proto.fieldMasks(config).join(",");
   }
   const response = await adminApiClient.patch<Config, Config>(
-    `projects/${projectId}/config`,
+    `projects/${project}/config`,
     config,
     {
       queryParams: {

@@ -106,13 +106,11 @@ export const EVENT_SERVICE_MAPPING: Record<events.Event, Service> = {
  */
 export function serviceForEndpoint(endpoint: backend.Endpoint): Service {
   if (backend.isEventTriggered(endpoint)) {
-    return EVENT_SERVICE_MAPPING[endpoint.eventTrigger.eventType as events.v2.Event] || NoOpService;
+    return EVENT_SERVICE_MAPPING[endpoint.eventTrigger.eventType as events.Event] || NoOpService;
   }
 
   if (backend.isBlockingTriggered(endpoint)) {
-    return (
-      EVENT_SERVICE_MAPPING[endpoint.blockingTrigger.eventType as events.v1.Event] || NoOpService
-    );
+    return EVENT_SERVICE_MAPPING[endpoint.blockingTrigger.eventType as events.Event] || NoOpService;
   }
 
   return NoOpService;
