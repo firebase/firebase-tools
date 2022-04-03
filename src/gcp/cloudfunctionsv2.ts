@@ -403,7 +403,8 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
     endpoint,
     "environmentVariables",
     "serviceAccountEmail",
-    "ingressSettings"
+    "ingressSettings",
+    "timeoutSeconds"
   );
   proto.renameIfPresent(
     gcfFunction.serviceConfig,
@@ -411,13 +412,6 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
     "availableMemory",
     "availableMemoryMb",
     (mb: string) => `${mb}M`
-  );
-  proto.renameIfPresent(
-    gcfFunction.serviceConfig,
-    endpoint,
-    "timeoutSeconds",
-    "timeout",
-    proto.secondsFromDuration
   );
   proto.renameIfPresent(gcfFunction.serviceConfig, endpoint, "minInstanceCount", "minInstances");
   proto.renameIfPresent(gcfFunction.serviceConfig, endpoint, "maxInstanceCount", "maxInstances");
@@ -544,7 +538,8 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     gcfFunction.serviceConfig,
     "serviceAccountEmail",
     "ingressSettings",
-    "environmentVariables"
+    "environmentVariables",
+    "timeoutSeconds"
   );
   proto.renameIfPresent(
     endpoint,
@@ -552,13 +547,6 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     "availableMemoryMb",
     "availableMemory",
     megabytes
-  );
-  proto.renameIfPresent(
-    endpoint,
-    gcfFunction.serviceConfig,
-    "timeout",
-    "timeoutSeconds",
-    proto.durationFromSeconds
   );
   proto.renameIfPresent(endpoint, gcfFunction.serviceConfig, "minInstances", "minInstanceCount");
   proto.renameIfPresent(endpoint, gcfFunction.serviceConfig, "maxInstances", "maxInstanceCount");

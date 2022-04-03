@@ -209,7 +209,7 @@ export interface ServiceConfiguration {
   environmentVariables?: Record<string, string>;
   secretEnvironmentVariables?: SecretEnvVar[];
   availableMemoryMb?: MemoryOptions;
-  timeout?: proto.Duration;
+  timeoutSeconds?: number;
   maxInstances?: number;
   minInstances?: number;
   vpc?: {

@@ -280,10 +280,16 @@ export function addResourcesToBackend(
       "serviceAccountEmail",
       "labels",
       "ingressSettings",
-      "timeout",
       "maxInstances",
       "minInstances",
       "availableMemoryMb"
+    );
+    proto.renameIfPresent(
+      endpoint,
+      annotation,
+      "timeoutSeconds",
+      "timeout",
+      proto.secondsFromDuration
     );
     want.endpoints[region] = want.endpoints[region] || {};
     want.endpoints[region][endpoint.id] = endpoint;
