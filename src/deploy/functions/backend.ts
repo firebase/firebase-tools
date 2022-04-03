@@ -307,7 +307,7 @@ export interface RequiredAPI {
 interface ResourceOptions {
   identityPlatform?: {
     // auth blocking trigger options at the resource level
-    // these options are the OR'd options from the trigger
+    // these are set as the OR of each auth blocking trigger
     accessToken: boolean;
     idToken: boolean;
     refreshToken: boolean;

@@ -15,6 +15,8 @@ import * as backend from "../../../../deploy/functions/backend";
 import * as scraper from "../../../../deploy/functions/release/sourceTokenScraper";
 import * as planner from "../../../../deploy/functions/release/planner";
 import * as v2events from "../../../../functions/events/v2";
+import * as v1events from "../../../../functions/events/v1";
+import * as authBlockingNS from "../../../../deploy/functions/services/authBlocking";
 
 describe("Fabricator", () => {
   // Stub all GCP APIs to make sure this test is hermetic
@@ -25,6 +27,7 @@ describe("Fabricator", () => {
   let scheduler: sinon.SinonStubbedInstance<typeof schedulerNS>;
   let run: sinon.SinonStubbedInstance<typeof runNS>;
   let tasks: sinon.SinonStubbedInstance<typeof cloudtasksNS>;
+  let authBlocking: sinon.SinonStubbedInstance<typeof authBlockingNS>;
 
   beforeEach(() => {
     gcf = sinon.stub(gcfNS);
@@ -34,6 +37,7 @@ describe("Fabricator", () => {
     scheduler = sinon.stub(schedulerNS);
     run = sinon.stub(runNS);
     tasks = sinon.stub(cloudtasksNS);
+    authBlocking = sinon.stub(authBlockingNS);
 
     gcf.functionFromEndpoint.restore();
     gcfv2.functionFromEndpoint.restore();
@@ -67,6 +71,12 @@ describe("Fabricator", () => {
     tasks.setEnqueuer.rejects(new Error("unexpected tasks.setEnqueuer"));
     tasks.setIamPolicy.rejects(new Error("unexpected tasks.setIamPolicy"));
     tasks.getIamPolicy.rejects(new Error("unexpected tasks.getIamPolicy"));
+    authBlocking.registerAuthBlockingTriggerToIdentityPlatform.rejects(
+      new Error("unexpected authBlocking.registerAuthBlockingTriggerToIdentityPlatform")
+    );
+    authBlocking.unregisterAuthBlockingTriggerFromIdentityPlatform.rejects(
+      new Error("unexpected authBlocking.unregisterAuthBlockingTriggerFromIdentityPlatform")
+    );
   });
 
   afterEach(() => {
@@ -265,6 +275,21 @@ describe("Fabricator", () => {
       });
     });
 
+    describe("blockingTrigger", () => {
+      it("sets the invoker to public", async () => {
+        gcf.createFunction.resolves({ name: "op", type: "create", done: false });
+        poller.pollOperation.resolves();
+        gcf.setInvokerCreate.resolves();
+        const ep = endpoint({ blockingTrigger: { eventType: v1events.BEFORE_CREATE_EVENT } });
+
+        await fab.createV1Function(ep, new scraper.SourceTokenScraper());
+
+        expect(gcf.setInvokerCreate).to.have.been.calledWith(ep.project, backend.functionName(ep), [
+          "public",
+        ]);
+      });
+    });
+
     it("doesn't set invoker on non-http functions", async () => {
       gcf.createFunction.resolves({ name: "op", type: "create", done: false });
       poller.pollOperation.resolves();
@@ -331,14 +356,23 @@ describe("Fabricator", () => {
           invoker: ["custom@"],
         },
       });
+      const ep2 = endpoint({
+        blockingTrigger: {
+          eventType: v1events.BEFORE_CREATE_EVENT,
+        },
+      });
 
       await fab.updateV1Function(ep0, new scraper.SourceTokenScraper());
       await fab.updateV1Function(ep1, new scraper.SourceTokenScraper());
+      await fab.updateV1Function(ep2, new scraper.SourceTokenScraper());
       expect(gcf.setInvokerUpdate).to.have.been.calledWith(ep0.project, backend.functionName(ep0), [
         "custom@",
       ]);
       expect(gcf.setInvokerUpdate).to.have.been.calledWith(ep1.project, backend.functionName(ep1), [
         "custom@",
+      ]);
+      expect(gcf.setInvokerUpdate).to.have.been.calledWith(ep2.project, backend.functionName(ep2), [
+        "public",
       ]);
     });
 
@@ -573,6 +607,21 @@ describe("Fabricator", () => {
       });
     });
 
+    describe("blockingTrigger", () => {
+      it("always sets invoker to public", async () => {
+        gcfv2.createFunction.resolves({ name: "op", done: false });
+        poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+        run.setInvokerCreate.resolves();
+        const ep = endpoint(
+          { blockingTrigger: { eventType: v2events.BEFORE_CREATE_EVENT } },
+          { platform: "gcfv2" }
+        );
+
+        await fab.createV2Function(ep);
+        expect(run.setInvokerCreate).to.have.been.calledWith(ep.project, "service", ["public"]);
+      });
+    });
+
     it("doesn't set invoker on non-http functions", async () => {
       gcfv2.createFunction.resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
@@ -640,6 +689,23 @@ describe("Fabricator", () => {
 
       await fab.updateV2Function(ep);
       expect(run.setInvokerUpdate).to.have.been.calledWith(ep.project, "service", ["custom@"]);
+    });
+
+    it("sets explicit invoker on blockingTrigger", async () => {
+      gcfv2.updateFunction.resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+      run.setInvokerUpdate.resolves();
+      const ep = endpoint(
+        {
+          blockingTrigger: {
+            eventType: v2events.BEFORE_CREATE_EVENT,
+          },
+        },
+        { platform: "gcfv2" }
+      );
+
+      await fab.updateV2Function(ep);
+      expect(run.setInvokerUpdate).to.have.been.calledWith(ep.project, "service", ["public"]);
     });
 
     it("does not set invoker by default", async () => {
@@ -864,6 +930,50 @@ describe("Fabricator", () => {
       await expect(fab.disableTaskQueue(ep)).to.eventually.be.rejectedWith(
         reporter.DeploymentError,
         "disable task queue"
+      );
+    });
+  });
+
+  describe("registerBlockingTrigger", () => {
+    const ep = endpoint({
+      blockingTrigger: {
+        eventType: v1events.BEFORE_CREATE_EVENT,
+      },
+    }) as backend.Endpoint & backend.BlockingTriggered;
+
+    it("registers blocking trigger", async () => {
+      authBlocking.registerAuthBlockingTriggerToIdentityPlatform.resolves();
+      await fab.registerBlockingTrigger(ep, false);
+      expect(authBlocking.registerAuthBlockingTriggerToIdentityPlatform).to.have.been.called;
+    });
+
+    it("wraps errors", async () => {
+      authBlocking.registerAuthBlockingTriggerToIdentityPlatform.rejects(new Error("Fail"));
+      await expect(fab.registerBlockingTrigger(ep, false)).to.eventually.be.rejectedWith(
+        reporter.DeploymentError,
+        "register blocking trigger"
+      );
+    });
+  });
+
+  describe("unregisterBlockingTrigger", () => {
+    const ep = endpoint({
+      blockingTrigger: {
+        eventType: v1events.BEFORE_CREATE_EVENT,
+      },
+    }) as backend.Endpoint & backend.BlockingTriggered;
+
+    it("registers blocking trigger", async () => {
+      authBlocking.unregisterAuthBlockingTriggerFromIdentityPlatform.resolves();
+      await fab.unregisterBlockingTrigger(ep);
+      expect(authBlocking.unregisterAuthBlockingTriggerFromIdentityPlatform).to.have.been.called;
+    });
+
+    it("wraps errors", async () => {
+      authBlocking.unregisterAuthBlockingTriggerFromIdentityPlatform.rejects(new Error("Fail"));
+      await expect(fab.unregisterBlockingTrigger(ep)).to.eventually.be.rejectedWith(
+        reporter.DeploymentError,
+        "unregister blocking trigger"
       );
     });
   });

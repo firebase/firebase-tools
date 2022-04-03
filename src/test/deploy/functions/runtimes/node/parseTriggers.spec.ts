@@ -4,6 +4,7 @@ import { FirebaseError } from "../../../../../error";
 import * as backend from "../../../../../deploy/functions/backend";
 import * as parseTriggers from "../../../../../deploy/functions/runtimes/node/parseTriggers";
 import * as api from "../../../../../api";
+import { BEFORE_CREATE_EVENT } from "../../../../../functions/events/v1";
 
 describe("addResourcesToBackend", () => {
   const oldDefaultRegion = api.functionsDefaultRegion;
@@ -358,6 +359,71 @@ describe("addResourcesToBackend", () => {
 
     const result = backend.empty();
     parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
+    expect(result).to.deep.equal(expected);
+  });
+
+  it("should parse a basic blocking trigger", () => {
+    const trigger: parseTriggers.TriggerAnnotation = {
+      ...BASIC_TRIGGER,
+      blockingTrigger: {
+        eventType: BEFORE_CREATE_EVENT,
+      },
+    };
+    const expected: backend.Backend = {
+      ...backend.of({
+        ...BASIC_ENDPOINT,
+        blockingTrigger: {
+          eventType: BEFORE_CREATE_EVENT,
+          accessToken: false,
+          idToken: false,
+          refreshToken: false,
+        },
+      }),
+      requiredAPIs: [
+        {
+          api: "identityplatform.googleapis.com",
+          reason: "Needed for auth blocking functions.",
+        },
+      ],
+    };
+    const result = backend.empty();
+
+    parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
+
+    expect(result).to.deep.equal(expected);
+  });
+
+  it("should parse a blocking trigger with options", () => {
+    const trigger: parseTriggers.TriggerAnnotation = {
+      ...BASIC_TRIGGER,
+      blockingTrigger: {
+        eventType: BEFORE_CREATE_EVENT,
+        accessToken: true,
+        idToken: false,
+        refreshToken: true,
+      },
+    };
+    const expected: backend.Backend = {
+      ...backend.of({
+        ...BASIC_ENDPOINT,
+        blockingTrigger: {
+          eventType: BEFORE_CREATE_EVENT,
+          accessToken: true,
+          idToken: false,
+          refreshToken: true,
+        },
+      }),
+      requiredAPIs: [
+        {
+          api: "identityplatform.googleapis.com",
+          reason: "Needed for auth blocking functions.",
+        },
+      ],
+    };
+    const result = backend.empty();
+
+    parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
+
     expect(result).to.deep.equal(expected);
   });
 });

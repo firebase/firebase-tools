@@ -44,6 +44,11 @@ export function ensureAuthBlockingTriggerIsValid(
     endpoint.blockingTrigger.refreshToken || false;
 }
 
+/**
+ * Takes the combined options from every blocking trigger and copies them to the endpoint
+ * @param endpoint the current endpoint we are processing
+ * @param wantBackend the current backend we are deploying
+ */
 export function copyIdentityPlatformOptionsToEndpoint(
   endpoint: backend.Endpoint & backend.BlockingTriggered,
   wantBackend: backend.Backend
@@ -63,8 +68,6 @@ export async function registerAuthBlockingTriggerToIdentityPlatform(
   endpoint: backend.Endpoint & backend.BlockingTriggered,
   update: boolean
 ): Promise<void> {
-  // we need to get the config, then save the blocking function object
-  // then update the triggers (beforeCreate or beforeUpdate)
   const blockingConfig = await identityPlatform.getBlockingFunctionsConfig(endpoint.project);
 
   if (
@@ -78,8 +81,8 @@ export async function registerAuthBlockingTriggerToIdentityPlatform(
       beforeSignIn: blockingConfig.triggers?.beforeSignIn,
     };
   } else if (
-    endpoint.blockingTrigger.eventType === events.v1.BEFORE_SIGNIN_EVENT ||
-    endpoint.blockingTrigger.eventType === events.v2.BEFORE_SIGNIN_EVENT
+    endpoint.blockingTrigger.eventType === events.v1.BEFORE_SIGN_IN_EVENT ||
+    endpoint.blockingTrigger.eventType === events.v2.BEFORE_SIGN_IN_EVENT
   ) {
     blockingConfig.triggers = {
       beforeCreate: blockingConfig.triggers?.beforeCreate,
@@ -110,14 +113,26 @@ export async function unregisterAuthBlockingTriggerFromIdentityPlatform(
     endpoint.blockingTrigger.eventType === events.v1.BEFORE_CREATE_EVENT ||
     endpoint.blockingTrigger.eventType === events.v2.BEFORE_CREATE_EVENT
   ) {
+    if (
+      !blockingConfig.triggers?.beforeCreate?.functionUri ||
+      endpoint.uri !== blockingConfig.triggers.beforeCreate.functionUri
+    ) {
+      return;
+    }
     blockingConfig.triggers = {
       beforeCreate: {},
       beforeSignIn: blockingConfig.triggers?.beforeSignIn,
     };
   } else if (
-    endpoint.blockingTrigger.eventType === events.v1.BEFORE_SIGNIN_EVENT ||
-    endpoint.blockingTrigger.eventType === events.v2.BEFORE_SIGNIN_EVENT
+    endpoint.blockingTrigger.eventType === events.v1.BEFORE_SIGN_IN_EVENT ||
+    endpoint.blockingTrigger.eventType === events.v2.BEFORE_SIGN_IN_EVENT
   ) {
+    if (
+      !blockingConfig.triggers?.beforeSignIn?.functionUri ||
+      endpoint.uri !== blockingConfig.triggers.beforeSignIn.functionUri
+    ) {
+      return;
+    }
     blockingConfig.triggers = {
       beforeCreate: blockingConfig.triggers?.beforeCreate,
       beforeSignIn: {},

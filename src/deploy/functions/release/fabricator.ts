@@ -21,10 +21,7 @@ import * as reporter from "./reporter";
 import * as run from "../../../gcp/run";
 import * as scheduler from "../../../gcp/cloudscheduler";
 import * as utils from "../../../utils";
-import {
-  registerAuthBlockingTriggerToIdentityPlatform,
-  unregisterAuthBlockingTriggerFromIdentityPlatform,
-} from "../services/authBlocking";
+import * as authBlocking from "../services/authBlocking";
 
 // TODO: Tune this for better performance.
 const gcfV1PollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
@@ -371,6 +368,8 @@ export class Fabricator {
       invoker = endpoint.httpsTrigger.invoker;
     } else if (backend.isTaskQueueTriggered(endpoint)) {
       invoker = endpoint.taskQueueTrigger.invoker;
+    } else if (backend.isBlockingTriggered(endpoint)) {
+      invoker = ["public"];
     }
     if (invoker) {
       await this.executor
@@ -412,6 +411,8 @@ export class Fabricator {
       invoker = endpoint.httpsTrigger.invoker;
     } else if (backend.isTaskQueueTriggered(endpoint)) {
       invoker = endpoint.taskQueueTrigger.invoker;
+    } else if (backend.isBlockingTriggered(endpoint)) {
+      invoker = ["public"];
     }
     if (invoker) {
       await this.executor
@@ -545,7 +546,7 @@ export class Fabricator {
     update: boolean
   ): Promise<void> {
     await this.executor
-      .run(async () => await registerAuthBlockingTriggerToIdentityPlatform(endpoint, update))
+      .run(() => authBlocking.registerAuthBlockingTriggerToIdentityPlatform(endpoint, update))
       .catch(rethrowAs(endpoint, "register blocking trigger"));
   }
 
@@ -580,7 +581,7 @@ export class Fabricator {
     endpoint: backend.Endpoint & backend.BlockingTriggered
   ): Promise<void> {
     await this.executor
-      .run(async () => await unregisterAuthBlockingTriggerFromIdentityPlatform(endpoint))
+      .run(() => authBlocking.unregisterAuthBlockingTriggerFromIdentityPlatform(endpoint))
       .catch(rethrowAs(endpoint, "unregister blocking trigger"));
   }
 

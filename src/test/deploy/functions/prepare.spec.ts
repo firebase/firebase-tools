@@ -2,6 +2,7 @@ import { expect } from "chai";
 
 import * as backend from "../../../deploy/functions/backend";
 import * as prepare from "../../../deploy/functions/prepare";
+import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../../functions/events/v1";
 
 describe("prepare", () => {
   const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {
@@ -120,6 +121,46 @@ describe("prepare", () => {
 
       prepare.inferDetailsFromExisting(backend.of(want), backend.of(have), /* usedDotEnv= */ false);
       expect(want.availableMemoryMb).to.equal(512);
+    });
+
+    it("copies identity platform options to blocking endpoints", () => {
+      const beforeCreate: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        id: "beforeCreate",
+        blockingTrigger: {
+          eventType: BEFORE_CREATE_EVENT,
+          accessToken: true,
+          refreshToken: false,
+        },
+      };
+      const beforeSignIn: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        id: "beforeSignIn",
+        blockingTrigger: {
+          eventType: BEFORE_SIGN_IN_EVENT,
+          accessToken: false,
+          idToken: true,
+        },
+      };
+      const want: backend.Backend = {
+        ...backend.of(beforeCreate, beforeSignIn),
+        resourceOptions: {
+          identityPlatform: {
+            accessToken: true,
+            idToken: true,
+            refreshToken: false,
+          },
+        },
+      };
+
+      prepare.inferDetailsFromExisting(want, backend.empty(), false);
+
+      expect(beforeCreate.blockingTrigger.accessToken).to.be.true;
+      expect(beforeCreate.blockingTrigger.idToken).to.be.true;
+      expect(beforeCreate.blockingTrigger.refreshToken).to.be.false;
+      expect(beforeSignIn.blockingTrigger.accessToken).to.be.true;
+      expect(beforeSignIn.blockingTrigger.idToken).to.be.true;
+      expect(beforeSignIn.blockingTrigger.refreshToken).to.be.false;
     });
   });
 });

@@ -7,7 +7,6 @@ import * as args from "../../../deploy/functions/args";
 import * as backend from "../../../deploy/functions/backend";
 import * as gcf from "../../../gcp/cloudfunctions";
 import * as gcfV2 from "../../../gcp/cloudfunctionsv2";
-import * as identityPlatform from "../../../gcp/identityPlatform";
 import * as utils from "../../../utils";
 
 describe("Backend", () => {

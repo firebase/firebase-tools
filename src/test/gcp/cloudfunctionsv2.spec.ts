@@ -142,6 +142,42 @@ describe("cloudfunctionsv2", () => {
           "deployment-taskqueue": "true",
         },
       });
+
+      expect(
+        cloudfunctionsv2.functionFromEndpoint(
+          {
+            ...ENDPOINT,
+            platform: "gcfv2",
+            blockingTrigger: {
+              eventType: v2events.BEFORE_CREATE_EVENT,
+            },
+          },
+          CLOUD_FUNCTION_V2_SOURCE
+        )
+      ).to.deep.equal({
+        ...CLOUD_FUNCTION_V2,
+        labels: {
+          "deployment-blocking": "before-create",
+        },
+      });
+
+      expect(
+        cloudfunctionsv2.functionFromEndpoint(
+          {
+            ...ENDPOINT,
+            platform: "gcfv2",
+            blockingTrigger: {
+              eventType: v2events.BEFORE_SIGN_IN_EVENT,
+            },
+          },
+          CLOUD_FUNCTION_V2_SOURCE
+        )
+      ).to.deep.equal({
+        ...CLOUD_FUNCTION_V2,
+        labels: {
+          "deployment-blocking": "before-sign-in",
+        },
+      });
     });
 
     it("should copy trival fields", () => {
@@ -312,6 +348,40 @@ describe("cloudfunctionsv2", () => {
         platform: "gcfv2",
         uri: RUN_URI,
         labels: { "deployment-taskqueue": "true" },
+      });
+    });
+
+    it("should translate beforeCreate blocking functions", () => {
+      expect(
+        cloudfunctionsv2.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION_V2,
+          labels: { "deployment-blocking": "before-create" },
+        })
+      ).to.deep.equal({
+        ...ENDPOINT,
+        blockingTrigger: {
+          eventType: v2events.BEFORE_CREATE_EVENT,
+        },
+        platform: "gcfv2",
+        uri: RUN_URI,
+        labels: { "deployment-blocking": "before-create" },
+      });
+    });
+
+    it("should translate beforeSignIn blocking functions", () => {
+      expect(
+        cloudfunctionsv2.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION_V2,
+          labels: { "deployment-blocking": "before-sign-in" },
+        })
+      ).to.deep.equal({
+        ...ENDPOINT,
+        blockingTrigger: {
+          eventType: v2events.BEFORE_SIGN_IN_EVENT,
+        },
+        platform: "gcfv2",
+        uri: RUN_URI,
+        labels: { "deployment-blocking": "before-sign-in" },
       });
     });
 

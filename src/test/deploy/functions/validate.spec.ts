@@ -7,6 +7,7 @@ import * as validate from "../../../deploy/functions/validate";
 import * as projectPath from "../../../projectPath";
 import * as secretManager from "../../../gcp/secretManager";
 import * as backend from "../../../deploy/functions/backend";
+import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../../functions/events/v1";
 
 describe("validate", () => {
   describe("functionsDirectoryExists", () => {
@@ -197,6 +198,74 @@ describe("validate", () => {
       expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
         /they have fewer than 2GB memory/
       );
+    });
+
+    it("Disallows multiple blocking functions of the same event type", () => {
+      const ep1: backend.Endpoint = {
+        platform: "gcfv1",
+        id: "id1",
+        region: "us-east1",
+        project: "project",
+        entryPoint: "func1",
+        runtime: "nodejs16",
+        blockingTrigger: {
+          eventType: BEFORE_CREATE_EVENT,
+        },
+      };
+      const ep2: backend.Endpoint = {
+        platform: "gcfv1",
+        id: "id2",
+        region: "us-east1",
+        project: "project",
+        entryPoint: "func2",
+        runtime: "nodejs16",
+        blockingTrigger: {
+          eventType: BEFORE_CREATE_EVENT,
+        },
+      };
+
+      expect(() => validate.endpointsAreValid(backend.of(ep1, ep2))).to.throw(
+        `Can only create at most one Auth Blocking Trigger for ${BEFORE_CREATE_EVENT} events`
+      );
+    });
+
+    it("Allows valid blocking functions and populates identity platform backend options", () => {
+      const ep1: backend.Endpoint = {
+        platform: "gcfv1",
+        id: "id1",
+        region: "us-east1",
+        project: "project",
+        entryPoint: "func1",
+        runtime: "nodejs16",
+        blockingTrigger: {
+          eventType: BEFORE_CREATE_EVENT,
+          accessToken: false,
+          idToken: true,
+        },
+      };
+      const ep2: backend.Endpoint = {
+        platform: "gcfv1",
+        id: "id2",
+        region: "us-east1",
+        project: "project",
+        entryPoint: "func2",
+        runtime: "nodejs16",
+        blockingTrigger: {
+          eventType: BEFORE_SIGN_IN_EVENT,
+          accessToken: true,
+        },
+      };
+      const want: backend.Backend = {
+        ...backend.of(ep1, ep2),
+      };
+
+      validate.endpointsAreValid(want);
+
+      expect(want.resourceOptions.identityPlatform).to.deep.equal({
+        accessToken: true,
+        idToken: true,
+        refreshToken: false,
+      });
     });
   });
 

@@ -8,7 +8,6 @@ import * as fsutils from "../../fsutils";
 import * as backend from "./backend";
 import * as utils from "../../utils";
 import * as secrets from "../../functions/secrets";
-import * as v1Events from "../../functions/events/v1";
 import { serviceForEndpoint } from "./services";
 
 /** Validate that the configuration for endpoints are valid. */

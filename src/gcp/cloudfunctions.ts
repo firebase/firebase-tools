@@ -11,9 +11,28 @@ import * as runtimes from "../deploy/functions/runtimes";
 import * as iam from "./iam";
 import { Client } from "../apiv2";
 import { functionsOrigin } from "../api";
+import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../functions/events/v1";
 
 export const API_VERSION = "v1";
 const client = new Client({ urlPrefix: functionsOrigin, apiVersion: API_VERSION });
+
+const BLOCKING_LABEL = "deployment-blocking";
+
+const BLOCKING_LABEL_KEY_TO_EVENT: Record<
+  string,
+  typeof BEFORE_CREATE_EVENT | typeof BEFORE_SIGN_IN_EVENT
+> = {
+  "before-create": "providers/cloud.auth/eventTypes/user.beforeCreate",
+  "before-sign-in": "providers/cloud.auth/eventTypes/user.beforeSignIn",
+};
+
+const BLOCKING_EVENT_TO_LABEL_KEY: Record<
+  typeof BEFORE_CREATE_EVENT | typeof BEFORE_SIGN_IN_EVENT,
+  string
+> = {
+  "providers/cloud.auth/eventTypes/user.beforeCreate": "before-create",
+  "providers/cloud.auth/eventTypes/user.beforeSignIn": "before-sign-in",
+};
 
 interface Operation {
   name: string;
@@ -460,9 +479,7 @@ export async function listAllFunctions(projectId: string): Promise<ListFunctions
  * This API exists outside the GCF namespace because GCF returns an Operation<CloudFunction>
  * and code may have to call this method explicitly.
  */
-export function endpointFromFunction(
-  gcfFunction: CloudFunction
-): backend.Endpoint {
+export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoint {
   const [, project, , region, , id] = gcfFunction.name.split("/");
   let trigger: backend.Triggered;
   let uri: string | undefined;
@@ -490,11 +507,11 @@ export function endpointFromFunction(
     trigger = {
       callableTrigger: {},
     };
-  } else if (gcfFunction.labels?.["deployment-blocking"]) {
+  } else if (gcfFunction.labels?.[BLOCKING_LABEL]) {
     // trigger = inferAuthBlockingDetailsFromFunction(gcfFunction, additionalDetailsCache);
     trigger = {
       blockingTrigger: {
-        eventType: gcfFunction.labels["deployment-blocking"].replace(/_/g, "."),
+        eventType: BLOCKING_LABEL_KEY_TO_EVENT[gcfFunction.labels[BLOCKING_LABEL]],
       },
     };
 
@@ -618,7 +635,12 @@ export function functionFromEndpoint(
     gcfFunction.httpsTrigger = {};
     gcfFunction.labels = {
       ...gcfFunction.labels,
-      "deployment-blocking": `${endpoint.blockingTrigger.eventType.replace(/\./g, "_")}`,
+      "deployment-blocking":
+        BLOCKING_EVENT_TO_LABEL_KEY[
+          endpoint.blockingTrigger.eventType as
+            | typeof BEFORE_CREATE_EVENT
+            | typeof BEFORE_SIGN_IN_EVENT
+        ],
     };
   } else {
     gcfFunction.httpsTrigger = {};

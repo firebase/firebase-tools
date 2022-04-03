@@ -95,8 +95,8 @@ export const EVENT_SERVICE_MAPPING: Record<events.Event, Service> = {
   "google.cloud.storage.object.v1.deleted": StorageService,
   "google.cloud.storage.object.v1.metadataUpdated": StorageService,
   "google.firebase.firebasealerts.alerts.v1.published": FirebaseAlertsService,
-  "google.cloud.auth.user.v1.beforecreate": AuthBlockingService,
-  "google.cloud.auth.user.v1.beforesignin": AuthBlockingService,
+  "providers/cloud.auth/eventTypes/user.beforeCreate": AuthBlockingService,
+  "providers/cloud.auth/eventTypes/user.beforeSignIn": AuthBlockingService,
 };
 
 /**

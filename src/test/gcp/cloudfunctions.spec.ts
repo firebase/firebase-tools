@@ -4,6 +4,7 @@ import * as nock from "nock";
 import { functionsOrigin } from "../../api";
 
 import * as backend from "../../deploy/functions/backend";
+import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../functions/events/v1";
 import * as cloudfunctions from "../../gcp/cloudfunctions";
 
 describe("cloudfunctions", () => {
@@ -178,6 +179,50 @@ describe("cloudfunctions", () => {
         taskQueueFunction
       );
     });
+
+    it("detects beforeCreate blocking functions", () => {
+      const blockingEndpoint: backend.Endpoint = {
+        ...ENDPOINT,
+        blockingTrigger: {
+          eventType: BEFORE_CREATE_EVENT,
+        },
+      };
+      const blockingFunction: Omit<cloudfunctions.CloudFunction, cloudfunctions.OutputOnlyFields> =
+        {
+          ...CLOUD_FUNCTION,
+          sourceUploadUrl: UPLOAD_URL,
+          httpsTrigger: {},
+          labels: {
+            "deployment-blocking": "before-create",
+          },
+        };
+
+      expect(cloudfunctions.functionFromEndpoint(blockingEndpoint, UPLOAD_URL)).to.deep.equal(
+        blockingFunction
+      );
+    });
+
+    it("detects beforeSignIn blocking functions", () => {
+      const blockingEndpoint: backend.Endpoint = {
+        ...ENDPOINT,
+        blockingTrigger: {
+          eventType: BEFORE_SIGN_IN_EVENT,
+        },
+      };
+      const blockingFunction: Omit<cloudfunctions.CloudFunction, cloudfunctions.OutputOnlyFields> =
+        {
+          ...CLOUD_FUNCTION,
+          sourceUploadUrl: UPLOAD_URL,
+          httpsTrigger: {},
+          labels: {
+            "deployment-blocking": "before-sign-in",
+          },
+        };
+
+      expect(cloudfunctions.functionFromEndpoint(blockingEndpoint, UPLOAD_URL)).to.deep.equal(
+        blockingFunction
+      );
+    });
   });
 
   describe("endpointFromFunction", () => {
@@ -269,6 +314,46 @@ describe("cloudfunctions", () => {
         taskQueueTrigger: {},
         labels: {
           "deployment-taskqueue": "true",
+        },
+      });
+    });
+
+    it("should translate beforeCreate blocking triggers", () => {
+      expect(
+        cloudfunctions.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION,
+          httpsTrigger: {},
+          labels: {
+            "deployment-blocking": "before-create",
+          },
+        })
+      ).to.deep.equal({
+        ...ENDPOINT,
+        blockingTrigger: {
+          eventType: BEFORE_CREATE_EVENT,
+        },
+        labels: {
+          "deployment-blocking": "before-create",
+        },
+      });
+    });
+
+    it("should translate beforeSignIn blocking triggers", () => {
+      expect(
+        cloudfunctions.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION,
+          httpsTrigger: {},
+          labels: {
+            "deployment-blocking": "before-sign-in",
+          },
+        })
+      ).to.deep.equal({
+        ...ENDPOINT,
+        blockingTrigger: {
+          eventType: BEFORE_SIGN_IN_EVENT,
+        },
+        labels: {
+          "deployment-blocking": "before-sign-in",
         },
       });
     });

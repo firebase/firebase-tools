@@ -4,6 +4,7 @@ import { FirebaseError } from "../../../../../error";
 import * as backend from "../../../../../deploy/functions/backend";
 import { Runtime } from "../../../../../deploy/functions/runtimes";
 import * as v1alpha1 from "../../../../../deploy/functions/runtimes/discovery/v1alpha1";
+import { BEFORE_CREATE_EVENT } from "../../../../../functions/events/v1";
 
 const PROJECT = "project";
 const REGION = "region";
@@ -257,6 +258,35 @@ describe("backendFromV1Alpha1", () => {
       }
     });
 
+    describe("blockingTriggers", () => {
+      const validTrigger: backend.BlockingTrigger = {
+        eventType: BEFORE_CREATE_EVENT,
+        accessToken: true,
+        idToken: false,
+        refreshToken: true,
+      };
+
+      const invalidOptions = {
+        accessToken: 11,
+        idToken: "true",
+        refreshToken: "9",
+      };
+
+      for (const [key, value] of Object.entries(invalidOptions)) {
+        it(`invalid value for blocking trigger key ${key}`, () => {
+          const blockingTrigger = {
+            ...validTrigger,
+            [key]: value,
+          };
+          assertParserError({
+            endpoints: {
+              func: { ...MIN_ENDPOINT, blockingTrigger },
+            },
+          });
+        });
+      }
+    });
+
     it("detects missing triggers", () => {
       assertParserError({ endpoints: MIN_ENDPOINT });
     });
@@ -363,6 +393,27 @@ describe("backendFromV1Alpha1", () => {
           eventFilters: { topic: `projects/${PROJECT}/topics/my-topic` },
         },
       });
+      const parsed = v1alpha1.backendFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+      expect(parsed).to.deep.equal(expected);
+    });
+
+    it("copies blocking triggers", () => {
+      const blockingTrigger: backend.BlockingTrigger = {
+        eventType: BEFORE_CREATE_EVENT,
+        accessToken: true,
+        idToken: false,
+        refreshToken: true,
+      };
+      const yaml: v1alpha1.Manifest = {
+        specVersion: "v1alpha1",
+        endpoints: {
+          id: {
+            ...MIN_ENDPOINT,
+            blockingTrigger,
+          },
+        },
+      };
+      const expected = backend.of({ ...DEFAULTED_ENDPOINT, blockingTrigger });
       const parsed = v1alpha1.backendFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
       expect(parsed).to.deep.equal(expected);
     });
