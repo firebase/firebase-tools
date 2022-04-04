@@ -32,6 +32,9 @@ function hasDotenv(opts: functionsEnv.UserEnvsOpts): boolean {
   return functionsEnv.hasUserEnvs(opts);
 }
 
+/**
+ *
+ */
 export async function prepare(
   context: args.Context,
   options: Options,
@@ -143,6 +146,8 @@ export async function prepare(
       `preparing ${clc.bold(sourceDirName)} directory for uploading...`
     );
   }
+
+  const source = context.sources?.[context.config.codebase] || {};
   if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
     if (!previews.functionsv2) {
       throw new FirebaseError(
@@ -155,15 +160,16 @@ export async function prepare(
           "version of Firebse Tools with `npm i -g firebase-tools@latest`"
       );
     }
-    context.functionsSourceV2 = await prepareFunctionsUpload(sourceDir, context.config);
+    source.functionsSourceV2 = await prepareFunctionsUpload(sourceDir, context.config);
   }
   if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv1")) {
-    context.functionsSourceV1 = await prepareFunctionsUpload(
+    source.functionsSourceV1 = await prepareFunctionsUpload(
       sourceDir,
       context.config,
       runtimeConfig
     );
   }
+  context.sources = { ...context.sources, [context.config.codebase]: source };
 
   // Enable required APIs. This may come implicitly from triggers (e.g. scheduled triggers
   // require cloudscheudler and, in v1, require pub/sub), or can eventually come from

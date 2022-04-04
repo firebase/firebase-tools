@@ -5,35 +5,57 @@ import * as fs from "fs";
 import { checkHttpIam } from "./checkIam";
 import { logSuccess, logWarning } from "../../utils";
 import { Options } from "../../options";
+import { FirebaseError } from "../../error";
 import * as args from "./args";
 import * as gcs from "../../gcp/storage";
 import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfv2 from "../../gcp/cloudfunctionsv2";
-import * as utils from "../../utils";
 import * as backend from "./backend";
 
 setGracefulCleanup();
 
-async function uploadSourceV1(context: args.Context, region: string): Promise<void> {
+async function uploadSourceV1(
+  context: args.Context,
+  codebase: string,
+  region: string
+): Promise<void> {
   const uploadUrl = await gcf.generateUploadUrl(context.projectId, region);
-  context.sourceUrl = uploadUrl;
+  const source = context.sources?.[codebase];
+  if (!source) {
+    throw new FirebaseError(
+      `Source for codebase ${codebase} unexpectedly empty. ` +
+        "This should never happen. Please file a bug at https://github.com/firebase/firebase-tools"
+    );
+  }
+  source.sourceUrl = uploadUrl;
   const uploadOpts = {
-    file: context.functionsSourceV1!,
-    stream: fs.createReadStream(context.functionsSourceV1!),
+    file: source.functionsSourceV1!,
+    stream: fs.createReadStream(source.functionsSourceV1!),
   };
   await gcs.upload(uploadOpts, uploadUrl, {
     "x-goog-content-length-range": "0,104857600",
   });
 }
 
-async function uploadSourceV2(context: args.Context, region: string): Promise<void> {
+async function uploadSourceV2(
+  context: args.Context,
+  codebase: string,
+  region: string
+): Promise<void> {
   const res = await gcfv2.generateUploadUrl(context.projectId, region);
+  const source = context.sources?.[codebase];
+  if (!source) {
+    throw new FirebaseError(
+      `Source for codebase ${codebase} unexpectedly empty. ` +
+        "This should never happen. Please file a bug at https://github.com/firebase/firebase-tools"
+    );
+  }
   const uploadOpts = {
-    file: context.functionsSourceV2!,
-    stream: fs.createReadStream(context.functionsSourceV2!),
+    file: source.functionsSourceV2!,
+    stream: fs.createReadStream(source.functionsSourceV2!),
   };
   await gcs.upload(uploadOpts, res.uploadUrl);
-  context.storage = { ...context.storage, [region]: res.storageSource };
+  source.storage = { ...source.storage, [region]: res.storageSource };
 }
 
 /**
@@ -51,7 +73,10 @@ export async function deploy(
     return;
   }
 
-  if (!context.functionsSourceV1 && !context.functionsSourceV2) {
+  if (
+    !context.sources?.[context.config.codebase].functionsSourceV1 &&
+    !context.sources?.[context.config.codebase].functionsSourceV2
+  ) {
     return;
   }
 
@@ -64,7 +89,7 @@ export async function deploy(
     const v1Endpoints = backend.allEndpoints(want).filter((e) => e.platform === "gcfv1");
     if (v1Endpoints.length > 0) {
       // Choose one of the function region for source upload.
-      uploads.push(uploadSourceV1(context, v1Endpoints[0].region));
+      uploads.push(uploadSourceV1(context, context.config.codebase, v1Endpoints[0].region));
     }
 
     for (const region of Object.keys(want.endpoints)) {
@@ -72,7 +97,7 @@ export async function deploy(
       // regions. At minimum, the implementation would consider it user-owned source and
       // would break download URLs + console source viewing.
       if (backend.regionalEndpoints(want, region).some((e) => e.platform === "gcfv2")) {
-        uploads.push(uploadSourceV2(context, region));
+        uploads.push(uploadSourceV2(context, context.config.codebase, region));
       }
     }
     await Promise.all(uploads);

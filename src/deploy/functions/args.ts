@@ -13,6 +13,16 @@ export interface Payload {
   };
 }
 
+export interface Source {
+  // Filled in the "prepare" phase.
+  functionsSourceV1?: string;
+  functionsSourceV2?: string;
+
+  // Filled in the "deploy" phase.
+  sourceUrl?: string;
+  storage?: Record<string, gcfV2.StorageSource>;
+}
+
 // Context holds cached values of what we've looked up in handling this request.
 // For non-trivial values, use helper functions that cache automatically and/or hide implementation
 // details.
@@ -22,15 +32,11 @@ export interface Context {
 
   // Filled in the "prepare" phase.
   config?: projectConfig.ValidatedSingle;
-  functionsSourceV1?: string;
-  functionsSourceV2?: string;
   runtimeConfigEnabled?: boolean;
   artifactRegistryEnabled?: boolean;
   firebaseConfig?: FirebaseConfig;
 
-  // Filled in the "deploy" phase.
-  sourceUrl?: string;
-  storage?: Record<string, gcfV2.StorageSource>;
+  sources?: Record<string, Source>; // codebase -> source info.
 }
 
 export interface FirebaseConfig {

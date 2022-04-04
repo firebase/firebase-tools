@@ -58,8 +58,7 @@ export async function release(
   const fab = new fabricator.Fabricator({
     functionExecutor,
     executor: new executor.QueueExecutor({}),
-    sourceUrl: context.sourceUrl!,
-    storage: context.storage!,
+    sources: context.sources,
     appEngineLocation: getAppEngineLocation(context.firebaseConfig),
   });
 
