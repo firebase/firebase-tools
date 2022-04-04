@@ -41,6 +41,7 @@ import * as utils from "../utils";
 import { previews } from "../previews";
 import * as manifest from "../extensions/manifest";
 import { Options } from "../options";
+import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -133,7 +134,19 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         nonInteractive: options.nonInteractive,
         instanceId,
       });
-
+      let allowedEventTypes: string[] = [];
+      if (newExtensionVersion.spec.events) {
+        // @TODO: Preselect allowed events in existing instance config.
+        allowedEventTypes = await askUserForEventsConfig.askForSelectedEvents(
+          newExtensionVersion.spec.events
+        );
+      }
+      if (allowedEventTypes.length > 0) {
+        const location = await askUserForEventsConfig.askForEventArcLocation();
+        const eventarcChannel = `projects/${projectId}/locations/${location}/channels/firebase`;
+        newParamBindingOptions.EVENTARC_CHANNEL = { baseValue: eventarcChannel };
+        newParamBindingOptions.ALLOWED_EVENT_TYPES = { baseValue: allowedEventTypes.join(",") };
+      }
       await manifest.writeToManifest(
         [
           {
@@ -332,8 +345,19 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         nonInteractive: options.nonInteractive,
         instanceId,
       });
+      let allowedEventTypes: string[] = [];
+      if (newSpec.events) {
+        // @TODO: Ask user if they'd like to allow this extension to emit events.
+        // @TODO: pre-select existing values for allowed events.
+        allowedEventTypes = await askUserForEventsConfig.askForSelectedEvents(newSpec.events);
+      }
+      let eventarcChannel = "";
+      if (allowedEventTypes.length > 0) {
+        // @TODO: pre-select existing values for eventarc location.
+        const location = await askUserForEventsConfig.askForEventArcLocation();
+        eventarcChannel = `projects/${projectId}/locations/${location}/channels/firebase`;
+      }
       const newParams = paramHelper.getBaseParamBindings(newParamBindings);
-
       spinner.start();
       const updateOptions: UpdateOptions = {
         projectId,
@@ -347,6 +371,9 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
       if (!_.isEqual(newParams, oldParamValues)) {
         updateOptions.params = newParams;
       }
+      // @TODO: Check if existingInstance.config.eventarcChannel and existingInstance.config.allowedEventTypes have changed
+      // If so, then need to set values in updateOptions.
+     
       await update(updateOptions);
       spinner.stop();
       utils.logLabeledSuccess(logPrefix, `successfully updated ${clc.bold(instanceId)}.`);

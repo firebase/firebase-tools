@@ -20,7 +20,6 @@ import {
   displayExtInfo,
 } from "./displayExtensionInfo";
 import * as changelog from "./changelog";
-import { EventArcConfig } from "./askUserForEventsConfig";
 
 function invalidSourceErrMsgTemplate(instanceId: string, source: string): string {
   return `Unable to update from the source \`${clc.bold(
@@ -136,7 +135,8 @@ export interface UpdateOptions {
  * @param updateOptions Info on the instance and associated resources to update
  */
 export async function update(updateOptions: UpdateOptions): Promise<any> {
-  const { projectId, instanceId, source, extRef, params, allowedEventTypes, eventarcChannel } = updateOptions;
+  const { projectId, instanceId, source, extRef, params, allowedEventTypes, eventarcChannel } =
+    updateOptions;
   if (extRef) {
     return await extensionsApi.updateInstanceFromRegistry({
       projectId,

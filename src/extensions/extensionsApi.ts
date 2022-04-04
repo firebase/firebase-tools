@@ -267,7 +267,7 @@ export async function createInstance(args: {
   const config: any = {
     params: args.params,
     allowedEventTypes: args.allowedEventTypes,
-    eventarcChannel: args.eventarcChannel
+    eventarcChannel: args.eventarcChannel,
   };
 
   if (args.extensionSource && args.extensionVersionRef) {
@@ -285,6 +285,8 @@ export async function createInstance(args: {
   }
   if (args.allowedEventTypes) {
     config.allowedEventTypes = args.allowedEventTypes;
+  }
+  if (args.eventarcChannel) {
     config.eventarcChannel = args.eventarcChannel;
   }
   return createInstanceHelper(args.projectId, args.instanceId, config, args.validateOnly);
@@ -365,7 +367,7 @@ export async function configureInstance(args: {
   eventarcChannel?: string;
   validateOnly?: boolean;
 }): Promise<any> {
-  let reqBody : any = {
+  const reqBody: any = {
     projectId: args.projectId,
     instanceId: args.instanceId,
     updateMask: "config.params",
@@ -375,15 +377,15 @@ export async function configureInstance(args: {
         params: args.params,
       },
     },
-  }
-  if (args.allowedEventTypes != undefined) {
+  };
+  if (args.allowedEventTypes !== undefined) {
     reqBody.data.config.allowedEventTypes = args.allowedEventTypes;
     reqBody.updateMask += ",config.allowed_event_types";
   }
 
-  if (args.eventarcChannel != undefined) {
+  if (args.eventarcChannel !== undefined) {
     reqBody.data.config.eventarcChannel = args.eventarcChannel;
-    reqBody.updateMask += ",config.eventarc_channel";    
+    reqBody.updateMask += ",config.eventarc_channel";
   }
 
   const res = await patchInstance(reqBody);
@@ -420,14 +422,14 @@ export async function updateInstance(args: {
     body.config.params = args.params;
     updateMask += ",config.params";
   }
-  if (args.allowedEventTypes != undefined) {
+  if (args.allowedEventTypes !== undefined) {
     body.config.allowedEventTypes = args.allowedEventTypes;
     updateMask += ",config.allowed_event_types";
   }
 
-  if (args.eventarcChannel != undefined) {
+  if (args.eventarcChannel !== undefined) {
     body.config.eventarcChannel = args.eventarcChannel;
-    updateMask += ",config.eventarc_channel";    
+    updateMask += ",config.eventarc_channel";
   }
   return await patchInstance({
     projectId: args.projectId,
@@ -470,14 +472,14 @@ export async function updateInstanceFromRegistry(args: {
     body.config.params = args.params;
     updateMask += ",config.params";
   }
-  if (args.allowedEventTypes != undefined) {
+  if (args.allowedEventTypes !== undefined) {
     body.config.allowedEventTypes = args.allowedEventTypes;
     updateMask += ",config.allowed_event_types";
   }
 
-  if (args.eventarcChannel != undefined) {
+  if (args.eventarcChannel !== undefined) {
     body.config.eventarcChannel = args.eventarcChannel;
-    updateMask += ",config.eventarc_channel";    
+    updateMask += ",config.eventarc_channel";
   }
   return await patchInstance({
     projectId: args.projectId,
