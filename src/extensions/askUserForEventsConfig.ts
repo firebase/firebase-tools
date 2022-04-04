@@ -3,7 +3,7 @@ import { onceWithJoin } from "./utils";
 import { promptOnce } from "../prompt";
 import { EventDescriptor } from "./extensionsApi";
 
-export function checkSelectedEventsResponse(
+export function checkAllowedEventTypesResponse(
   response: string,
   validEventTypes: EventDescriptor[]
 ): boolean {
@@ -13,7 +13,7 @@ export function checkSelectedEventsResponse(
   return valid;
 }
 
-export async function askForSelectedEvents(eventDescriptors: EventDescriptor[]): Promise<string[]> {
+export async function askForAllowedEventTypes(eventDescriptors: EventDescriptor[]): Promise<string[]> {
   let valid = false;
   let response = "";
   const eventTypes = _.map(eventDescriptors, (e) => ({ checked: false, value: e.type }));
@@ -28,7 +28,7 @@ export async function askForSelectedEvents(eventDescriptors: EventDescriptor[]):
         "Please select the events that this extension is permitted to emit. ",
       choices: eventTypes,
     });
-    valid = checkSelectedEventsResponse(response, eventDescriptors);
+    valid = checkAllowedEventTypesResponse(response, eventDescriptors);
   }
   return response.split(",").filter((e) => e !== "");
 }

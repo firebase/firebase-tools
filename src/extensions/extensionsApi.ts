@@ -83,8 +83,6 @@ export interface ExtensionConfig {
   params: {
     [key: string]: any;
   };
-  eventarcChannel?: string;
-  allowedEventTypes?: string[];
   populatedPostinstallContent?: string;
   extensionRef?: string;
   extensionVersion?: string;
