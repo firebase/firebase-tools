@@ -21,7 +21,7 @@ export interface ParsedTriggerDefinition {
   entryPoint: string;
   platform: backend.FunctionsPlatform;
   name: string;
-  timeout?: string | number; // Can be "3s" for some reason lol
+  timeoutSeconds?: number;
   regions?: string[];
   availableMemoryMb?: "128MB" | "256MB" | "512MB" | "1GB" | "2GB" | "4GB";
   httpsTrigger?: any;
@@ -109,11 +109,7 @@ export class EmulatedTrigger {
   }
 
   get timeoutMs(): number {
-    if (typeof this.definition.timeout === "number") {
-      return this.definition.timeout * 1000;
-    } else {
-      return parseInt((this.definition.timeout || "60s").split("s")[0], 10) * 1000;
-    }
+    return (this.definition.timeoutSeconds || 60) * 1000;
   }
 
   getRawFunction(): CloudFunction<any> {
@@ -152,9 +148,9 @@ export function emulatedFunctionsFromEndpoints(
     copyIfPresent(
       def,
       endpoint,
-      "timeout",
       "availableMemoryMb",
       "labels",
+      "timeoutSeconds",
       "platform",
       "secretEnvironmentVariables"
     );
@@ -168,34 +164,21 @@ export function emulatedFunctionsFromEndpoints(
     } else if (backend.isEventTriggered(endpoint)) {
       const eventTrigger = endpoint.eventTrigger;
       if (endpoint.platform === "gcfv1") {
-        const resourceFilter = backend.findEventFilter(endpoint, "resource");
-        if (!resourceFilter) {
-          logger.debug(
-            `Invalid event trigger ${JSON.stringify(
-              endpoint
-            )}, expected event filter with resource attribute. Skipping.`
-          );
-          // Silently skip invalid trigger.
-          continue;
-        }
         def.eventTrigger = {
           eventType: eventTrigger.eventType,
-          resource: resourceFilter.value,
+          resource: eventTrigger.eventFilters.resource,
         };
       } else {
-        const [eventFilter] = endpoint.eventTrigger.eventFilters;
-        if (!eventFilter) {
-          logger.debug(
-            `Invalid event trigger ${JSON.stringify(
-              endpoint
-            )}, expected at least one event filter. Skipping.`
-          );
-          // Silently skip invalid trigger.
+        // Only pubsub and storage events are supported for gcfv2.
+        const { resource, topic, bucket } = endpoint.eventTrigger.eventFilters;
+        const eventResource = resource || topic || bucket;
+        if (!eventResource) {
+          // Unsupported event type for GCFv2
           continue;
         }
         def.eventTrigger = {
           eventType: eventTrigger.eventType,
-          resource: eventFilter.value,
+          resource: eventResource,
         };
       }
     } else if (backend.isScheduleTriggered(endpoint)) {
