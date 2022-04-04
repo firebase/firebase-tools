@@ -268,7 +268,7 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
   });
   let allowedEventTypes: string[] = [];
   if (spec.events) {
-    allowedEventTypes = await askUserForEventsConfig.askForSelectedEvents(spec.events);
+    allowedEventTypes = await askUserForEventsConfig.askForAllowedEventTypes(spec.events);
   }
   if (allowedEventTypes.length > 0) {
     const location = await askUserForEventsConfig.askForEventArcLocation();
@@ -399,7 +399,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
         });
         allowedEventTypes = [];
         if (spec.events) {
-          allowedEventTypes = await askUserForEventsConfig.askForSelectedEvents(spec.events);
+          allowedEventTypes = await askUserForEventsConfig.askForAllowedEventTypes(spec.events);
         }
         if (allowedEventTypes.length > 0) {
           const location = await askUserForEventsConfig.askForEventArcLocation();
@@ -436,7 +436,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
         });
         allowedEventTypes = [];
         if (spec.events) {
-          allowedEventTypes = await askUserForEventsConfig.askForSelectedEvents(spec.events);
+          allowedEventTypes = await askUserForEventsConfig.askForAllowedEventTypes(spec.events);
         }
         if (allowedEventTypes.length > 0) {
           const location = await askUserForEventsConfig.askForEventArcLocation();

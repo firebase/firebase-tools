@@ -137,7 +137,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
       let allowedEventTypes: string[] = [];
       if (newExtensionVersion.spec.events) {
         // @TODO: Preselect allowed events in existing instance config.
-        allowedEventTypes = await askUserForEventsConfig.askForSelectedEvents(
+        allowedEventTypes = await askUserForEventsConfig.askForAllowedEventTypes(
           newExtensionVersion.spec.events
         );
       }
@@ -349,7 +349,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
       if (newSpec.events) {
         // @TODO: Ask user if they'd like to allow this extension to emit events.
         // @TODO: pre-select existing values for allowed events.
-        allowedEventTypes = await askUserForEventsConfig.askForSelectedEvents(newSpec.events);
+        allowedEventTypes = await askUserForEventsConfig.askForAllowedEventTypes(newSpec.events);
       }
       let eventarcChannel = "";
       if (allowedEventTypes.length > 0) {
