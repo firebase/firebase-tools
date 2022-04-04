@@ -287,7 +287,7 @@ export class StorageLayer {
 
   /**
    * Last step in uploading a file. Validates the request and persists the staging
-   * object to its permanent location on disk.
+   * object to its permanent location on disk, updates metadata.
    */
   public async uploadObject(upload: Upload): Promise<StoredFileMetadata> {
     if (upload.status !== UploadStatus.FINISHED) {
@@ -309,6 +309,8 @@ export class StorageLayer {
       this._cloudFunctions,
       this._persistence.readBytes(upload.path, upload.size)
     );
+    metadata.update(upload.metadata, /* shouldTrigger = */ false);
+
     const authorized = await this._rulesValidator.validate(
       ["b", upload.bucketId, "o", upload.objectId].join("/"),
       upload.bucketId,
@@ -581,12 +583,14 @@ export class StorageLayer {
         continue;
       }
 
-      const file = new StoredFile(metadata, blobPath);
-      this._files.set(blobPath, file);
-    }
+      const decodedBlobPath = decodeURIComponent(blobPath);
+      const blobDiskPath = this._persistence.getDiskPath(decodedBlobPath);
 
-    // Recursively copy all blobs
-    fse.copySync(blobsDir, this.dirPath);
+      const file = new StoredFile(metadata, blobDiskPath);
+      this._files.set(decodedBlobPath, file);
+
+      fse.copyFileSync(blobAbsPath, blobDiskPath);
+    }
   }
 
   private *walkDirSync(dir: string): Generator<string> {

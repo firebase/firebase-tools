@@ -6,6 +6,7 @@ import { EmulatorRegistry } from "../emulator/registry";
 import { Emulators, EMULATORS_SUPPORTED_BY_UI } from "../emulator/types";
 import * as clc from "cli-color";
 import { Constants } from "../emulator/constants";
+import { logLabeledWarning } from "../utils";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const Table = require("cli-table");
@@ -26,8 +27,9 @@ module.exports = new Command("emulators:start")
   .action(async (options: any) => {
     const killSignalPromise = commandUtils.shutdownWhenKilled(options);
 
+    let deprecationNotices;
     try {
-      await controller.startAll(options);
+      ({ deprecationNotices } = await controller.startAll(options));
     } catch (e: any) {
       await controller.cleanShutdown();
       throw e;
@@ -110,6 +112,10 @@ Issues? Report them at ${stylizeLink(
 
     // Add this line above once connect page is implemented
     // It is now safe to connect your app. Instructions: http://${uiInfo?.host}:${uiInfo?.port}/connect
+
+    for (const notice of deprecationNotices) {
+      logLabeledWarning("emulators", notice, "warn");
+    }
 
     // Hang until explicitly killed
     await killSignalPromise;

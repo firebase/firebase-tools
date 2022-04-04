@@ -18,7 +18,7 @@ import * as validate from "./validate";
 import * as versioning from "./versioning";
 import * as parseTriggers from "./parseTriggers";
 
-const MIN_FUNCTIONS_SDK_VERSION = "3.19.0";
+const MIN_FUNCTIONS_SDK_VERSION = "3.20.0";
 
 export async function tryCreateDelegate(
   context: runtimes.DelegateContext

@@ -90,7 +90,7 @@ export class StoredFileMetadata {
     }
 
     if (incomingMetadata) {
-      this.update(incomingMetadata);
+      this.update(incomingMetadata, /* shouldTrigger = */ false);
     }
 
     this.deleteFieldsSetAsNull();
@@ -143,8 +143,10 @@ export class StoredFileMetadata {
 
     if (this.customMetadata.firebaseStorageDownloadTokens) {
       this.downloadTokens = [
-        ...this.downloadTokens,
-        ...this.customMetadata.firebaseStorageDownloadTokens.split(","),
+        ...new Set([
+          ...this.downloadTokens,
+          ...this.customMetadata.firebaseStorageDownloadTokens.split(","),
+        ]),
       ];
       delete this.customMetadata.firebaseStorageDownloadTokens;
     }
@@ -175,7 +177,11 @@ export class StoredFileMetadata {
     }
   }
 
-  update(incoming: IncomingMetadata): void {
+  /**
+   * TODO(abhisun): Move all cloud function triggers to the storage layer to
+   * avoid needing the shouldTrigger field
+   */
+  update(incoming: IncomingMetadata, shouldTrigger = true): void {
     if (incoming.contentDisposition) {
       this.contentDisposition = incoming.contentDisposition;
     }
@@ -213,17 +219,19 @@ export class StoredFileMetadata {
     this.setDownloadTokensFromCustomMetadata();
     this.deleteFieldsSetAsNull();
 
-    this._cloudFunctions.dispatch("metadataUpdate", new CloudStorageObjectMetadata(this));
+    if (shouldTrigger) {
+      this._cloudFunctions.dispatch("metadataUpdate", new CloudStorageObjectMetadata(this));
+    }
   }
 
-  addDownloadToken(): void {
+  addDownloadToken(shouldTrigger = true): void {
     if (!this.downloadTokens.length) {
       this.downloadTokens.push(uuid.v4());
       return;
     }
 
     this.downloadTokens = [...this.downloadTokens, uuid.v4()];
-    this.update({});
+    this.update({}, shouldTrigger);
   }
 
   deleteDownloadToken(token: string): void {
@@ -235,7 +243,8 @@ export class StoredFileMetadata {
     this.downloadTokens = remainingTokens;
     if (remainingTokens.length === 0) {
       // if empty after deleting, always add a new token.
-      this.addDownloadToken();
+      // shouldTrigger is false as it's taken care of in the subsequent update
+      this.addDownloadToken(/* shouldTrigger = */ false);
     }
     this.update({});
   }
@@ -392,6 +401,7 @@ export class CloudStorageObjectMetadata {
   contentLanguage?: string;
   contentDisposition: string;
   cacheControl?: string;
+  contentEncoding?: string;
   customTime?: string;
   id: string;
   timeStorageClassUpdated: string;
@@ -437,6 +447,14 @@ export class CloudStorageObjectMetadata {
 
     if (metadata.cacheControl) {
       this.cacheControl = metadata.cacheControl;
+    }
+
+    if (metadata.contentDisposition) {
+      this.contentDisposition = metadata.contentDisposition;
+    }
+
+    if (metadata.contentEncoding) {
+      this.contentEncoding = metadata.contentEncoding;
     }
 
     if (metadata.customTime) {

@@ -18,9 +18,11 @@ module.exports = new Command("ext:dev:emulators:start")
   .action(async (options: any) => {
     const killSignalPromise = commandUtils.shutdownWhenKilled(options);
     const emulatorOptions = await optionsHelper.buildOptions(options);
+
+    let deprecationNotices;
     try {
       commandUtils.beforeEmulatorCommand(emulatorOptions);
-      await controller.startAll(emulatorOptions);
+      ({ deprecationNotices } = await controller.startAll(emulatorOptions));
     } catch (e: any) {
       await controller.cleanShutdown();
       if (!(e instanceof FirebaseError)) {
@@ -30,6 +32,9 @@ module.exports = new Command("ext:dev:emulators:start")
     }
 
     utils.logSuccess("All emulators ready, it is now safe to connect.");
+    for (const notice of deprecationNotices) {
+      utils.logLabeledWarning("emulators", notice, "warn");
+    }
 
     // Hang until explicitly killed
     await killSignalPromise;
