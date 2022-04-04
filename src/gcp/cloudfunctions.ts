@@ -9,14 +9,16 @@ import * as utils from "../utils";
 import * as proto from "./proto";
 import * as runtimes from "../deploy/functions/runtimes";
 import * as iam from "./iam";
+import * as projectConfig from "../functions/projectConfig";
 import { Client } from "../apiv2";
 import { functionsOrigin } from "../api";
 import { AUTH_BLOCKING_EVENTS } from "../functions/events/v1";
 
 export const API_VERSION = "v1";
+export const CODEBASE_LABEL = "firebase-functions-codebase";
 const client = new Client({ urlPrefix: functionsOrigin, apiVersion: API_VERSION });
 
-const BLOCKING_LABEL = "deployment-blocking";
+export const BLOCKING_LABEL = "deployment-blocking";
 
 const BLOCKING_LABEL_KEY_TO_EVENT: Record<string, typeof AUTH_BLOCKING_EVENTS[number]> = {
   "before-create": "providers/cloud.auth/eventTypes/user.beforeCreate",
@@ -572,6 +574,7 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
       "vpcConnectorEgressSettings"
     );
   }
+  endpoint.codebase = gcfFunction.labels?.[CODEBASE_LABEL] || projectConfig.DEFAULT_CODEBASE;
   return endpoint;
 }
 
@@ -670,5 +673,9 @@ export function functionFromEndpoint(
       "egressSettings"
     );
   }
+  gcfFunction.labels = {
+    ...gcfFunction.labels,
+    [CODEBASE_LABEL]: endpoint.codebase || projectConfig.DEFAULT_CODEBASE,
+  };
   return gcfFunction;
 }
