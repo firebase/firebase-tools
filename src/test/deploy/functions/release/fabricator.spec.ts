@@ -71,12 +71,8 @@ describe("Fabricator", () => {
     tasks.setEnqueuer.rejects(new Error("unexpected tasks.setEnqueuer"));
     tasks.setIamPolicy.rejects(new Error("unexpected tasks.setIamPolicy"));
     tasks.getIamPolicy.rejects(new Error("unexpected tasks.getIamPolicy"));
-    authBlocking.registerAuthBlockingTriggerToIdentityPlatform.rejects(
-      new Error("unexpected authBlocking.registerAuthBlockingTriggerToIdentityPlatform")
-    );
-    authBlocking.unregisterAuthBlockingTriggerFromIdentityPlatform.rejects(
-      new Error("unexpected authBlocking.unregisterAuthBlockingTriggerFromIdentityPlatform")
-    );
+    authBlocking.registerTrigger.rejects(new Error("unexpected authBlocking.registerTrigger"));
+    authBlocking.unregisterTrigger.rejects(new Error("unexpected authBlocking.unregisterTrigger"));
   });
 
   afterEach(() => {
@@ -942,13 +938,13 @@ describe("Fabricator", () => {
     }) as backend.Endpoint & backend.BlockingTriggered;
 
     it("registers blocking trigger", async () => {
-      authBlocking.registerAuthBlockingTriggerToIdentityPlatform.resolves();
+      authBlocking.registerTrigger.resolves();
       await fab.registerBlockingTrigger(ep, false);
-      expect(authBlocking.registerAuthBlockingTriggerToIdentityPlatform).to.have.been.called;
+      expect(authBlocking.registerTrigger).to.have.been.called;
     });
 
     it("wraps errors", async () => {
-      authBlocking.registerAuthBlockingTriggerToIdentityPlatform.rejects(new Error("Fail"));
+      authBlocking.registerTrigger.rejects(new Error("Fail"));
       await expect(fab.registerBlockingTrigger(ep, false)).to.eventually.be.rejectedWith(
         reporter.DeploymentError,
         "register blocking trigger"
@@ -964,13 +960,13 @@ describe("Fabricator", () => {
     }) as backend.Endpoint & backend.BlockingTriggered;
 
     it("registers blocking trigger", async () => {
-      authBlocking.unregisterAuthBlockingTriggerFromIdentityPlatform.resolves();
+      authBlocking.unregisterTrigger.resolves();
       await fab.unregisterBlockingTrigger(ep);
-      expect(authBlocking.unregisterAuthBlockingTriggerFromIdentityPlatform).to.have.been.called;
+      expect(authBlocking.unregisterTrigger).to.have.been.called;
     });
 
     it("wraps errors", async () => {
-      authBlocking.unregisterAuthBlockingTriggerFromIdentityPlatform.rejects(new Error("Fail"));
+      authBlocking.unregisterTrigger.rejects(new Error("Fail"));
       await expect(fab.unregisterBlockingTrigger(ep)).to.eventually.be.rejectedWith(
         reporter.DeploymentError,
         "unregister blocking trigger"

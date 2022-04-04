@@ -251,7 +251,7 @@ export class Fabricator {
           .catch(rethrowAs(endpoint, "set invoker"));
       }
     } else if (backend.isBlockingTriggered(endpoint)) {
-      // set invoker to all users
+      // Blocking functions should always be public
       await this.executor
         .run(async () => {
           await gcf.setInvokerCreate(endpoint.project, backend.functionName(endpoint), ["public"]);
@@ -327,7 +327,7 @@ export class Fabricator {
           .catch(rethrowAs(endpoint, "set invoker"));
       }
     } else if (backend.isBlockingTriggered(endpoint)) {
-      // set invoker to all users
+      // Blocking functions should always be public
       await this.executor
         .run(() => run.setInvokerCreate(endpoint.project, serviceName, ["public"]))
         .catch(rethrowAs(endpoint, "set invoker"));
@@ -546,7 +546,7 @@ export class Fabricator {
     update: boolean
   ): Promise<void> {
     await this.executor
-      .run(() => authBlocking.registerAuthBlockingTriggerToIdentityPlatform(endpoint, update))
+      .run(() => authBlocking.registerTrigger(endpoint, update))
       .catch(rethrowAs(endpoint, "register blocking trigger"));
   }
 
@@ -581,7 +581,7 @@ export class Fabricator {
     endpoint: backend.Endpoint & backend.BlockingTriggered
   ): Promise<void> {
     await this.executor
-      .run(() => authBlocking.unregisterAuthBlockingTriggerFromIdentityPlatform(endpoint))
+      .run(() => authBlocking.unregisterTrigger(endpoint))
       .catch(rethrowAs(endpoint, "unregister blocking trigger"));
   }
 

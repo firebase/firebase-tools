@@ -11,25 +11,19 @@ import * as runtimes from "../deploy/functions/runtimes";
 import * as iam from "./iam";
 import { Client } from "../apiv2";
 import { functionsOrigin } from "../api";
-import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../functions/events/v1";
+import { AUTH_BLOCKING_EVENTS } from "../functions/events/v1";
 
 export const API_VERSION = "v1";
 const client = new Client({ urlPrefix: functionsOrigin, apiVersion: API_VERSION });
 
 const BLOCKING_LABEL = "deployment-blocking";
 
-const BLOCKING_LABEL_KEY_TO_EVENT: Record<
-  string,
-  typeof BEFORE_CREATE_EVENT | typeof BEFORE_SIGN_IN_EVENT
-> = {
+const BLOCKING_LABEL_KEY_TO_EVENT: Record<string, typeof AUTH_BLOCKING_EVENTS[number]> = {
   "before-create": "providers/cloud.auth/eventTypes/user.beforeCreate",
   "before-sign-in": "providers/cloud.auth/eventTypes/user.beforeSignIn",
 };
 
-const BLOCKING_EVENT_TO_LABEL_KEY: Record<
-  typeof BEFORE_CREATE_EVENT | typeof BEFORE_SIGN_IN_EVENT,
-  string
-> = {
+const BLOCKING_EVENT_TO_LABEL_KEY: Record<typeof AUTH_BLOCKING_EVENTS[number], string> = {
   "providers/cloud.auth/eventTypes/user.beforeCreate": "before-create",
   "providers/cloud.auth/eventTypes/user.beforeSignIn": "before-sign-in",
 };
@@ -508,7 +502,6 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
       callableTrigger: {},
     };
   } else if (gcfFunction.labels?.[BLOCKING_LABEL]) {
-    // trigger = inferAuthBlockingDetailsFromFunction(gcfFunction, additionalDetailsCache);
     trigger = {
       blockingTrigger: {
         eventType: BLOCKING_LABEL_KEY_TO_EVENT[gcfFunction.labels[BLOCKING_LABEL]],
@@ -635,11 +628,9 @@ export function functionFromEndpoint(
     gcfFunction.httpsTrigger = {};
     gcfFunction.labels = {
       ...gcfFunction.labels,
-      "deployment-blocking":
+      [BLOCKING_LABEL]:
         BLOCKING_EVENT_TO_LABEL_KEY[
-          endpoint.blockingTrigger.eventType as
-            | typeof BEFORE_CREATE_EVENT
-            | typeof BEFORE_SIGN_IN_EVENT
+          endpoint.blockingTrigger.eventType as typeof AUTH_BLOCKING_EVENTS[number]
         ],
     };
   } else {

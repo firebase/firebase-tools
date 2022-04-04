@@ -52,9 +52,9 @@ export interface BlockingFunctionsEventDetails {
 }
 
 export interface BlockingFunctionsOptions {
-  idToken?: string;
-  accessToken?: string;
-  refreshToken?: string;
+  idToken?: boolean;
+  accessToken?: boolean;
+  refreshToken?: boolean;
 }
 
 export interface Config {

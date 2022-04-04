@@ -3,10 +3,7 @@ import * as iam from "../../../gcp/iam";
 import * as events from "../../../functions/events";
 import { obtainStorageBindings, ensureStorageTriggerRegion } from "./storage";
 import { ensureFirebaseAlertsTriggerRegion } from "./firebaseAlerts";
-import {
-  ensureAuthBlockingTriggerIsValid,
-  copyIdentityPlatformOptionsToEndpoint,
-} from "./authBlocking";
+import { validateAuthBlockingTrigger, copyIdentityPlatformOptionsToEndpoint } from "./authBlocking";
 
 /** A standard void No Op */
 const noop = (): Promise<void> => Promise.resolve();
@@ -27,7 +24,7 @@ export interface Service {
     | ((projectNumber: string, policy: iam.Policy) => Promise<Array<iam.Binding>>)
     | undefined;
   ensureTriggerRegion: (ep: backend.Endpoint & backend.EventTriggered) => Promise<void>;
-  ensureTriggerIsValid: (
+  validateTrigger: (
     ep: backend.Endpoint & backend.BlockingTriggered,
     want: backend.Backend
   ) => void;
@@ -43,7 +40,7 @@ export const NoOpService: Service = {
   api: "",
   requiredProjectBindings: undefined,
   ensureTriggerRegion: noop,
-  ensureTriggerIsValid: noop,
+  validateTrigger: noop,
   copyResourceOptionsToEndpoint: noop,
 };
 
@@ -53,7 +50,7 @@ export const PubSubService: Service = {
   api: "pubsub.googleapis.com",
   requiredProjectBindings: undefined,
   ensureTriggerRegion: noop,
-  ensureTriggerIsValid: noop,
+  validateTrigger: noop,
   copyResourceOptionsToEndpoint: noop,
 };
 
@@ -63,7 +60,7 @@ export const StorageService: Service = {
   api: "storage.googleapis.com",
   requiredProjectBindings: obtainStorageBindings,
   ensureTriggerRegion: ensureStorageTriggerRegion,
-  ensureTriggerIsValid: noop,
+  validateTrigger: noop,
   copyResourceOptionsToEndpoint: noop,
 };
 
@@ -73,7 +70,7 @@ export const FirebaseAlertsService: Service = {
   api: "firebasealerts.googleapis.com",
   requiredProjectBindings: noopProjectBindings,
   ensureTriggerRegion: ensureFirebaseAlertsTriggerRegion,
-  ensureTriggerIsValid: noop,
+  validateTrigger: noop,
   copyResourceOptionsToEndpoint: noop,
 };
 
@@ -83,7 +80,7 @@ export const AuthBlockingService: Service = {
   api: "identityplatform.googleapis.com",
   requiredProjectBindings: undefined,
   ensureTriggerRegion: noop,
-  ensureTriggerIsValid: ensureAuthBlockingTriggerIsValid,
+  validateTrigger: validateAuthBlockingTrigger,
   copyResourceOptionsToEndpoint: copyIdentityPlatformOptionsToEndpoint,
 };
 

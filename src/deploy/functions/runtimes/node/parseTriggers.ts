@@ -227,7 +227,7 @@ export function addResourcesToBackend(
       });
       triggered = {
         blockingTrigger: {
-          eventType: annotation.blockingTrigger!.eventType,
+          eventType: annotation.blockingTrigger.eventType,
           accessToken: annotation.blockingTrigger.accessToken || false,
           idToken: annotation.blockingTrigger.idToken || false,
           refreshToken: annotation.blockingTrigger.refreshToken || false,

@@ -30,7 +30,7 @@ describe("authBlocking", () => {
     sinon.verifyAndRestore();
   });
 
-  describe("ensureAuthBlockingTriggerIsValid", () => {
+  describe("validateAuthBlockingTrigger", () => {
     it("should throw an error if more than one beforeCreate blocking endpoint", () => {
       const ep1: backend.Endpoint = {
         ...BASE_EP,
@@ -51,9 +51,7 @@ describe("authBlocking", () => {
         },
       };
 
-      expect(() =>
-        authBlocking.ensureAuthBlockingTriggerIsValid(ep1, backend.of(ep1, ep2))
-      ).to.throw(
+      expect(() => authBlocking.validateAuthBlockingTrigger(ep1, backend.of(ep1, ep2))).to.throw(
         `Can only create at most one Auth Blocking Trigger for ${BEFORE_CREATE_EVENT} events`
       );
     });
@@ -78,9 +76,7 @@ describe("authBlocking", () => {
         },
       };
 
-      expect(() =>
-        authBlocking.ensureAuthBlockingTriggerIsValid(ep1, backend.of(ep1, ep2))
-      ).to.throw(
+      expect(() => authBlocking.validateAuthBlockingTrigger(ep1, backend.of(ep1, ep2))).to.throw(
         `Can only create at most one Auth Blocking Trigger for ${BEFORE_SIGN_IN_EVENT} events`
       );
     });
@@ -111,7 +107,7 @@ describe("authBlocking", () => {
         ...backend.of(ep1, ep2),
       };
 
-      authBlocking.ensureAuthBlockingTriggerIsValid(ep1, want);
+      authBlocking.validateAuthBlockingTrigger(ep1, want);
 
       expect(want.resourceOptions.identityPlatform).to.deep.equal({
         accessToken: false,
@@ -153,7 +149,7 @@ describe("authBlocking", () => {
         },
       };
 
-      authBlocking.ensureAuthBlockingTriggerIsValid(ep2, want);
+      authBlocking.validateAuthBlockingTrigger(ep2, want);
 
       expect(want.resourceOptions.identityPlatform).to.deep.equal({
         accessToken: true,
@@ -205,7 +201,7 @@ describe("authBlocking", () => {
     });
   });
 
-  describe("registerAuthBlockingTriggerToIdentityPlatform", () => {
+  describe("registerTrigger", () => {
     it("should register on a new beforeCreate endpoint", async () => {
       const blockingConfig: identityPlatform.BlockingFunctionsConfig = {
         triggers: {
@@ -217,7 +213,7 @@ describe("authBlocking", () => {
           },
         },
         forwardInboundCredentials: {
-          accessToken: "true",
+          accessToken: true,
         },
       };
       const newBlockingConfig: identityPlatform.BlockingFunctionsConfig = {
@@ -230,9 +226,9 @@ describe("authBlocking", () => {
           },
         },
         forwardInboundCredentials: {
-          accessToken: "false",
-          idToken: "true",
-          refreshToken: "false",
+          accessToken: false,
+          idToken: true,
+          refreshToken: false,
         },
       };
       const ep: backend.Endpoint = {
@@ -249,7 +245,7 @@ describe("authBlocking", () => {
       getConfig.resolves(blockingConfig);
       setConfig.resolves(newBlockingConfig);
 
-      await authBlocking.registerAuthBlockingTriggerToIdentityPlatform(ep, false);
+      await authBlocking.registerTrigger(ep, false);
 
       expect(blockingConfig).to.deep.equal(newBlockingConfig);
       expect(setConfig).to.have.been.calledWith("project", newBlockingConfig);
@@ -266,7 +262,7 @@ describe("authBlocking", () => {
           },
         },
         forwardInboundCredentials: {
-          accessToken: "true",
+          accessToken: true,
         },
       };
       const newBlockingConfig: identityPlatform.BlockingFunctionsConfig = {
@@ -279,9 +275,9 @@ describe("authBlocking", () => {
           },
         },
         forwardInboundCredentials: {
-          accessToken: "false",
-          idToken: "true",
-          refreshToken: "false",
+          accessToken: false,
+          idToken: true,
+          refreshToken: false,
         },
       };
       const ep: backend.Endpoint = {
@@ -298,7 +294,7 @@ describe("authBlocking", () => {
       getConfig.resolves(blockingConfig);
       setConfig.resolves(newBlockingConfig);
 
-      await authBlocking.registerAuthBlockingTriggerToIdentityPlatform(ep, false);
+      await authBlocking.registerTrigger(ep, false);
 
       expect(blockingConfig).to.deep.equal(newBlockingConfig);
       expect(setConfig).to.have.been.calledWith("project", newBlockingConfig);
@@ -315,7 +311,7 @@ describe("authBlocking", () => {
           },
         },
         forwardInboundCredentials: {
-          accessToken: "true",
+          accessToken: true,
         },
       };
       const newBlockingConfig: identityPlatform.BlockingFunctionsConfig = {
@@ -328,7 +324,7 @@ describe("authBlocking", () => {
           },
         },
         forwardInboundCredentials: {
-          accessToken: "true",
+          accessToken: true,
         },
       };
       const ep: backend.Endpoint = {
@@ -345,7 +341,7 @@ describe("authBlocking", () => {
       getConfig.resolves(blockingConfig);
       setConfig.resolves(newBlockingConfig);
 
-      await authBlocking.registerAuthBlockingTriggerToIdentityPlatform(ep, true);
+      await authBlocking.registerTrigger(ep, true);
 
       expect(blockingConfig).to.deep.equal(newBlockingConfig);
       expect(setConfig).to.have.been.calledWith("project", newBlockingConfig);
@@ -362,7 +358,7 @@ describe("authBlocking", () => {
           },
         },
         forwardInboundCredentials: {
-          accessToken: "true",
+          accessToken: true,
         },
       };
       const newBlockingConfig: identityPlatform.BlockingFunctionsConfig = {
@@ -375,7 +371,7 @@ describe("authBlocking", () => {
           },
         },
         forwardInboundCredentials: {
-          accessToken: "true",
+          accessToken: true,
         },
       };
       const ep: backend.Endpoint = {
@@ -392,7 +388,7 @@ describe("authBlocking", () => {
       getConfig.resolves(blockingConfig);
       setConfig.resolves(newBlockingConfig);
 
-      await authBlocking.registerAuthBlockingTriggerToIdentityPlatform(ep, true);
+      await authBlocking.registerTrigger(ep, true);
 
       expect(blockingConfig).to.deep.equal(newBlockingConfig);
       expect(setConfig).to.have.been.calledWith("project", newBlockingConfig);
@@ -411,7 +407,7 @@ describe("authBlocking", () => {
           },
         },
         forwardInboundCredentials: {
-          accessToken: "true",
+          accessToken: true,
         },
       };
       const ep: backend.Endpoint = {
@@ -427,7 +423,7 @@ describe("authBlocking", () => {
       };
       getConfig.resolves(blockingConfig);
 
-      await authBlocking.unregisterAuthBlockingTriggerFromIdentityPlatform(ep);
+      await authBlocking.unregisterTrigger(ep);
 
       expect(setConfig).to.not.have.been.called;
     });
@@ -443,7 +439,7 @@ describe("authBlocking", () => {
           },
         },
         forwardInboundCredentials: {
-          accessToken: "true",
+          accessToken: true,
         },
       };
       const ep: backend.Endpoint = {
@@ -459,7 +455,7 @@ describe("authBlocking", () => {
       };
       getConfig.resolves(blockingConfig);
 
-      await authBlocking.unregisterAuthBlockingTriggerFromIdentityPlatform(ep);
+      await authBlocking.unregisterTrigger(ep);
 
       expect(setConfig).to.not.have.been.called;
     });
@@ -475,7 +471,7 @@ describe("authBlocking", () => {
           },
         },
         forwardInboundCredentials: {
-          accessToken: "true",
+          accessToken: true,
         },
       };
       const newBlockingConfig: identityPlatform.BlockingFunctionsConfig = {
@@ -486,7 +482,7 @@ describe("authBlocking", () => {
           },
         },
         forwardInboundCredentials: {
-          accessToken: "true",
+          accessToken: true,
         },
       };
       const ep: backend.Endpoint = {
@@ -503,7 +499,7 @@ describe("authBlocking", () => {
       getConfig.resolves(blockingConfig);
       setConfig.resolves(newBlockingConfig);
 
-      await authBlocking.unregisterAuthBlockingTriggerFromIdentityPlatform(ep);
+      await authBlocking.unregisterTrigger(ep);
 
       expect(blockingConfig).to.deep.equal(newBlockingConfig);
       expect(setConfig).to.have.been.calledWith("project", newBlockingConfig);
@@ -520,7 +516,7 @@ describe("authBlocking", () => {
           },
         },
         forwardInboundCredentials: {
-          accessToken: "true",
+          accessToken: true,
         },
       };
       const newBlockingConfig: identityPlatform.BlockingFunctionsConfig = {
@@ -531,7 +527,7 @@ describe("authBlocking", () => {
           beforeSignIn: {},
         },
         forwardInboundCredentials: {
-          accessToken: "true",
+          accessToken: true,
         },
       };
       const ep: backend.Endpoint = {
@@ -548,7 +544,7 @@ describe("authBlocking", () => {
       getConfig.resolves(blockingConfig);
       setConfig.resolves(newBlockingConfig);
 
-      await authBlocking.unregisterAuthBlockingTriggerFromIdentityPlatform(ep);
+      await authBlocking.unregisterTrigger(ep);
 
       expect(blockingConfig).to.deep.equal(newBlockingConfig);
       expect(setConfig).to.have.been.calledWith("project", newBlockingConfig);
