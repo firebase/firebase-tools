@@ -2,14 +2,21 @@ import * as _ from "lodash";
 import { onceWithJoin } from "./utils";
 import { promptOnce } from "../prompt";
 import { EventDescriptor } from "./extensionsApi";
+import * as utils from "../utils";
 
 export function checkAllowedEventTypesResponse(
   response: string,
-  validEventTypes: EventDescriptor[]
+  validEvents: EventDescriptor[]
 ): boolean {
   const valid = true;
   const responses = response.split(","); // multiselect
-  // @todo: check responses and validate against events
+  const validEventTypes = validEvents.map(e => e.type);
+  for (const response of responses) {
+    if (!validEventTypes.includes(response)) {
+      utils.logWarning(`Unexpected event type '${response}' was marked as allowed to be emitted. This event type is not part of the extension spec.`);
+      return false;
+    }
+  }
   return valid;
 }
 
@@ -36,8 +43,6 @@ export async function askForAllowedEventTypes(
 }
 
 export async function askForEventArcLocation(): Promise<string> {
-  // Ask user for location (default to us-central1)
-  // This should be a select prompt
   let valid = false;
   const allowedRegions = ["us-central1", "us-west1", "europe-west4", "asia-northeast1"];
   let location = "";
@@ -50,6 +55,9 @@ export async function askForEventArcLocation(): Promise<string> {
       choices: _.map(allowedRegions, (e) => ({ checked: false, value: e })),
     });
     valid = allowedRegions.includes(location);
+    if (!valid) {
+      utils.logWarning(`Unexpected EventArc region '${location}' was specified. Allowed regions: ${allowedRegions.join(", ")}`);
+    }
   }
   return location;
 }
