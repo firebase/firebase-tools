@@ -446,7 +446,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
         spinner.text = "Updating your extension instance. This usually takes 3 to 5 minutes...";
         spinner.start();
         // @TODO: Make getInstance() call to query the existing config values.
-        // @TODO: Check if eventarcChannel or location have changed when compared to existing instance config. 
+        // @TODO: Check if eventarcChannel or location have changed when compared to existing instance config.
         // If there are changes, then update in UpdateOptions object below (inlined).
         await update({
           projectId,

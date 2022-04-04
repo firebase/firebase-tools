@@ -13,7 +13,9 @@ export function checkAllowedEventTypesResponse(
   return valid;
 }
 
-export async function askForAllowedEventTypes(eventDescriptors: EventDescriptor[]): Promise<string[]> {
+export async function askForAllowedEventTypes(
+  eventDescriptors: EventDescriptor[]
+): Promise<string[]> {
   let valid = false;
   let response = "";
   const eventTypes = _.map(eventDescriptors, (e) => ({ checked: false, value: e.type }));

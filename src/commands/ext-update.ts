@@ -373,7 +373,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
       }
       // @TODO: Check if existingInstance.config.eventarcChannel and existingInstance.config.allowedEventTypes have changed
       // If so, then need to set values in updateOptions.
-     
+
       await update(updateOptions);
       spinner.stop();
       utils.logLabeledSuccess(logPrefix, `successfully updated ${clc.bold(instanceId)}.`);
