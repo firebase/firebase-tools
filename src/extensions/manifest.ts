@@ -173,14 +173,7 @@ async function writeEnvFiles(
   force?: boolean
 ): Promise<void> {
   for (const spec of specs) {
-    const paramCopy = Object.assign({}, spec.params);
-    if (spec.allowedEventTypes && spec.allowedEventTypes.length) {
-      paramCopy["ALLOWED_EVENT_TYPES"] = { baseValue: spec.allowedEventTypes.join(",") };
-    }
-    if (spec.eventarcChannel) {
-      paramCopy["EVENTARC_CHANNEL"] = { baseValue: spec.eventarcChannel };
-    }
-    const content = Object.entries(paramCopy)
+    const content = Object.entries(spec.params)
       .sort((a, b) => {
         return a[0].localeCompare(b[0]);
       })
@@ -267,7 +260,7 @@ export function showDeprecationWarning() {
 export function showPreviewWarning() {
   utils.logLabeledWarning(
     logPrefix,
-    "These changes will be reflected in your Firebase Emulator after restart. " +
+    `See these changes in your Firebase Emulator by running "firebase emulators:start". ` +
       `Run ${clc.bold(
         "firebase deploy (--only extensions)"
       )} to deploy the changes to your Firebase project. `

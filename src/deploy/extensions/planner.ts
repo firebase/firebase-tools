@@ -20,8 +20,6 @@ import { ParamBindingOptions } from "../../extensions/paramHelper";
 export interface ManifestInstanceSpec {
   instanceId: string;
   params: Record<string, ParamBindingOptions>;
-  allowedEventTypes?: string[];
-  eventarcChannel?: string;
   ref?: refs.Ref;
   paramSpecs?: extensionsApi.Param[];
 }
@@ -83,8 +81,8 @@ export async function have(projectId: string): Promise<InstanceSpec[]> {
     const dep: InstanceSpec = {
       instanceId: i.name.split("/").pop()!,
       params: i.config.params,
-      allowedEventTypes: i.config.params.ALLOWED_EVENT_TYPES ? i.config.params.ALLOWED_EVENT_TYPES .split(",") : [],
-      eventarcChannel: i.config.params.EVENTARC_CHANNEL,
+      allowedEventTypes: i.config.allowedEventTypes,
+      eventarcChannel: i.config.eventarcChannel,
     };
     if (i.config.extensionRef) {
       const ref = refs.parse(i.config.extensionRef);
@@ -133,12 +131,25 @@ export async function want(args: {
       const autoPopulatedParams = await getFirebaseProjectParams(args.projectId, args.emulatorMode);
       const subbedParams = substituteParams(params, autoPopulatedParams);
 
+      // ALLOWED_EVENT_TYPES can be undefined (user input not provided) or empty string (no events selected).
+      // If empty string, we want to pass an empty array. If it's undefined we want to pass through undefined.
+      const allowedEventTypes =
+        subbedParams.ALLOWED_EVENT_TYPES !== undefined
+          ? subbedParams.ALLOWED_EVENT_TYPES.split(",").filter((e) => e !== "")
+          : undefined;
+      const eventarcChannel = subbedParams.EVENTARC_CHANNEL;
+
+      // Remove special params that are stored in the .env file but aren't actually params specified by the publisher.
+      // Currently, only environment variables needed for Events features are considered special params stored in .env files.
+      delete subbedParams["EVENTARC_CHANNEL"];
+      delete subbedParams["ALLOWED_EVENT_TYPES"];
+
       instanceSpecs.push({
         instanceId,
         ref,
         params: subbedParams,
-        allowedEventTypes: subbedParams.ALLOWED_EVENT_TYPES ? subbedParams.ALLOWED_EVENT_TYPES .split(",") : [],
-        eventarcChannel: subbedParams.EVENTARC_CHANNEL,
+        allowedEventTypes: allowedEventTypes,
+        eventarcChannel: eventarcChannel,
       });
     } catch (err: any) {
       logger.debug(`Got error reading extensions entry ${e}: ${err}`);
