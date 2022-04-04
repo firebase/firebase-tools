@@ -10,10 +10,12 @@ export function checkAllowedEventTypesResponse(
 ): boolean {
   const valid = true;
   const responses = response.split(","); // multiselect
-  const validEventTypes = validEvents.map(e => e.type);
+  const validEventTypes = validEvents.map((e) => e.type);
   for (const response of responses) {
     if (!validEventTypes.includes(response)) {
-      utils.logWarning(`Unexpected event type '${response}' was marked as allowed to be emitted. This event type is not part of the extension spec.`);
+      utils.logWarning(
+        `Unexpected event type '${response}' was marked as allowed to be emitted. This event type is not part of the extension spec.`
+      );
       return false;
     }
   }
@@ -56,7 +58,11 @@ export async function askForEventArcLocation(): Promise<string> {
     });
     valid = allowedRegions.includes(location);
     if (!valid) {
-      utils.logWarning(`Unexpected EventArc region '${location}' was specified. Allowed regions: ${allowedRegions.join(", ")}`);
+      utils.logWarning(
+        `Unexpected EventArc region '${location}' was specified. Allowed regions: ${allowedRegions.join(
+          ", "
+        )}`
+      );
     }
   }
   return location;
