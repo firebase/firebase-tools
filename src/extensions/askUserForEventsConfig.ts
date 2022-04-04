@@ -27,10 +27,7 @@ export async function askForSelectedEvents(eventDescriptors: EventDescriptor[]):
           });
           valid = checkSelectedEventsResponse(response, eventDescriptors);
     }
-    if (response === "") {
-        return [];
-    }
-    return response.split(",");
+    return response.split(",").filter(e => e !== "");
 }
 
 export async function askForEventArcLocation(): Promise<string> {
