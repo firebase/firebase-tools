@@ -3,6 +3,7 @@ import { expect } from "chai";
 import * as cloudfunctionsv2 from "../../gcp/cloudfunctionsv2";
 import * as backend from "../../deploy/functions/backend";
 import * as v2events from "../../functions/events/v2";
+import * as projectConfig from "../../functions/projectConfig";
 
 describe("cloudfunctionsv2", () => {
   const FUNCTION_NAME: backend.TargetIds = {
@@ -17,6 +18,8 @@ describe("cloudfunctionsv2", () => {
     ...FUNCTION_NAME,
     entryPoint: "function",
     runtime: "nodejs16",
+    codebase: projectConfig.DEFAULT_CODEBASE,
+    labels: { [cloudfunctionsv2.CODEBASE_LABEL]: projectConfig.DEFAULT_CODEBASE },
   };
 
   const CLOUD_FUNCTION_V2_SOURCE: cloudfunctionsv2.StorageSource = {
@@ -37,6 +40,7 @@ describe("cloudfunctionsv2", () => {
         environmentVariables: {},
       },
       serviceConfig: {},
+      labels: { [cloudfunctionsv2.CODEBASE_LABEL]: projectConfig.DEFAULT_CODEBASE },
     };
 
   const RUN_URI = "https://id-nonce-region-project.run.app";
@@ -66,7 +70,6 @@ describe("cloudfunctionsv2", () => {
     });
   });
   describe("functionFromEndpoint", () => {
-    const UPLOAD_URL = "https://storage.googleapis.com/projects/-/buckets/sample/source.zip";
     it("should guard against version mixing", () => {
       expect(() => {
         cloudfunctionsv2.functionFromEndpoint(
@@ -139,6 +142,7 @@ describe("cloudfunctionsv2", () => {
       ).to.deep.equal({
         ...CLOUD_FUNCTION_V2,
         labels: {
+          ...CLOUD_FUNCTION_V2.labels,
           "deployment-taskqueue": "true",
         },
       });
@@ -169,6 +173,7 @@ describe("cloudfunctionsv2", () => {
       > = {
         ...CLOUD_FUNCTION_V2,
         labels: {
+          ...CLOUD_FUNCTION_V2.labels,
           foo: "bar",
         },
         serviceConfig: {
@@ -234,6 +239,18 @@ describe("cloudfunctionsv2", () => {
       expect(
         cloudfunctionsv2.functionFromEndpoint(complexEndpoint, CLOUD_FUNCTION_V2_SOURCE)
       ).to.deep.equal(complexGcfFunction);
+    });
+
+    it("should export codebase as label", () => {
+      expect(
+        cloudfunctionsv2.functionFromEndpoint(
+          { ...ENDPOINT, codebase: "my-codebase", httpsTrigger: {} },
+          CLOUD_FUNCTION_V2_SOURCE
+        )
+      ).to.deep.equal({
+        ...CLOUD_FUNCTION_V2,
+        labels: { ...CLOUD_FUNCTION_V2.labels, [cloudfunctionsv2.CODEBASE_LABEL]: "my-codebase" },
+      });
     });
   });
 
@@ -381,6 +398,28 @@ describe("cloudfunctionsv2", () => {
         uri: RUN_URI,
         httpsTrigger: {},
         ...extraFields,
+      });
+    });
+
+    it("should derive codebase from labels", () => {
+      expect(
+        cloudfunctionsv2.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION_V2,
+          labels: {
+            ...CLOUD_FUNCTION_V2.labels,
+            [cloudfunctionsv2.CODEBASE_LABEL]: "my-codebase",
+          },
+        })
+      ).to.deep.equal({
+        ...ENDPOINT,
+        platform: "gcfv2",
+        uri: RUN_URI,
+        httpsTrigger: {},
+        labels: {
+          ...ENDPOINT.labels,
+          [cloudfunctionsv2.CODEBASE_LABEL]: "my-codebase",
+        },
+        codebase: "my-codebase",
       });
     });
   });

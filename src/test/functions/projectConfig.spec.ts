@@ -3,16 +3,20 @@ import { expect } from "chai";
 import * as projectConfig from "../../functions/projectConfig";
 import { FirebaseError } from "../../error";
 
-const TEST_CONFIG = { source: "foo" };
+const TEST_CONFIG_0 = { source: "foo" };
+const TEST_CONFIG_1 = { source: "bar", codebase: "bar" };
 
 describe("projectConfig", () => {
   describe("normalize", () => {
     it("normalizes singleton config", () => {
-      expect(projectConfig.normalize(TEST_CONFIG)).to.deep.equal([TEST_CONFIG]);
+      expect(projectConfig.normalize(TEST_CONFIG_0)).to.deep.equal([TEST_CONFIG_0]);
     });
 
     it("normalizes array config", () => {
-      expect(projectConfig.normalize([TEST_CONFIG])).to.deep.equal([TEST_CONFIG]);
+      expect(projectConfig.normalize([TEST_CONFIG_0, TEST_CONFIG_0])).to.deep.equal([
+        TEST_CONFIG_0,
+        TEST_CONFIG_0,
+      ]);
     });
 
     it("throws error if given empty config", () => {
@@ -22,13 +26,14 @@ describe("projectConfig", () => {
 
   describe("validate", () => {
     it("passes validation for simple config", () => {
-      expect(projectConfig.validate([TEST_CONFIG])).to.deep.equal([TEST_CONFIG]);
+      expect(projectConfig.validate([TEST_CONFIG_0])).to.deep.equal([TEST_CONFIG_0]);
     });
 
     it("fails validation given more than one config", () => {
-      expect(() =>
-        projectConfig.validate([TEST_CONFIG, { ...TEST_CONFIG, source: "bar" }])
-      ).to.throw(FirebaseError);
+      expect(() => projectConfig.validate([TEST_CONFIG_0, TEST_CONFIG_1])).to.throw(
+        FirebaseError,
+        /More than one functions.source detected/
+      );
     });
 
     it("fails validation given config w/o source", () => {
@@ -44,15 +49,46 @@ describe("projectConfig", () => {
         /functions.source must be specified/
       );
     });
+
+    it("fails validation given config w/ duplicate source", () => {
+      expect(() =>
+        projectConfig.validate([TEST_CONFIG_0, { ...TEST_CONFIG_0, codebase: "unique-codebase" }])
+      ).to.throw(FirebaseError, /functions.source/);
+    });
+
+    it("fails validation given codebase name with capital letters", () => {
+      expect(() => projectConfig.validate([{ ...TEST_CONFIG_0, codebase: "ABCDE" }])).to.throw(
+        FirebaseError,
+        /Invalid codebase name/
+      );
+    });
+
+    it("fails validation given codebase name with invalid characters", () => {
+      expect(() => projectConfig.validate([{ ...TEST_CONFIG_0, codebase: "abc.efg" }])).to.throw(
+        FirebaseError,
+        /Invalid codebase name/
+      );
+    });
+
+    it("fails validation given long codebase name", () => {
+      expect(() =>
+        projectConfig.validate([
+          {
+            ...TEST_CONFIG_0,
+            codebase: "thisismorethan63characterslongxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          },
+        ])
+      ).to.throw(FirebaseError, /Invalid codebase name/);
+    });
   });
 
   describe("normalizeAndValidate", () => {
     it("returns normalized config for singleton config", () => {
-      expect(projectConfig.normalizeAndValidate(TEST_CONFIG)).to.deep.equal([TEST_CONFIG]);
+      expect(projectConfig.normalizeAndValidate(TEST_CONFIG_0)).to.deep.equal([TEST_CONFIG_0]);
     });
 
     it("returns normalized config for multi-resource config", () => {
-      expect(projectConfig.normalizeAndValidate([TEST_CONFIG])).to.deep.equal([TEST_CONFIG]);
+      expect(projectConfig.normalizeAndValidate([TEST_CONFIG_0])).to.deep.equal([TEST_CONFIG_0]);
     });
 
     it("fails validation given singleton config w/o source", () => {
@@ -76,9 +112,16 @@ describe("projectConfig", () => {
       );
     });
 
+    it("fails validation given config w/ duplicate source", () => {
+      expect(() => projectConfig.normalizeAndValidate([TEST_CONFIG_0, TEST_CONFIG_0])).to.throw(
+        FirebaseError,
+        /More than one functions.source detected/
+      );
+    });
+
     it("fails validation given more than one config", () => {
       expect(() =>
-        projectConfig.normalizeAndValidate([TEST_CONFIG, { ...TEST_CONFIG, source: "bar" }])
+        projectConfig.normalizeAndValidate([TEST_CONFIG_0, { ...TEST_CONFIG_0, source: "bar" }])
       ).to.throw(FirebaseError, /More than one functions.source detected/);
     });
   });

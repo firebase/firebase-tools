@@ -5,6 +5,7 @@ import { functionsOrigin } from "../../api";
 
 import * as backend from "../../deploy/functions/backend";
 import * as cloudfunctions from "../../gcp/cloudfunctions";
+import * as projectConfig from "../../functions/projectConfig";
 
 describe("cloudfunctions", () => {
   const FUNCTION_NAME: backend.TargetIds = {
@@ -19,12 +20,15 @@ describe("cloudfunctions", () => {
     ...FUNCTION_NAME,
     entryPoint: "function",
     runtime: "nodejs16",
+    codebase: projectConfig.DEFAULT_CODEBASE,
+    labels: { [cloudfunctions.CODEBASE_LABEL]: projectConfig.DEFAULT_CODEBASE },
   };
 
   const CLOUD_FUNCTION: Omit<cloudfunctions.CloudFunction, cloudfunctions.OutputOnlyFields> = {
     name: "projects/project/locations/region/functions/id",
     entryPoint: "function",
     runtime: "nodejs16",
+    labels: { [cloudfunctions.CODEBASE_LABEL]: projectConfig.DEFAULT_CODEBASE },
   };
 
   const HAVE_CLOUD_FUNCTION: cloudfunctions.CloudFunction = {
@@ -112,6 +116,7 @@ describe("cloudfunctions", () => {
         sourceUploadUrl: UPLOAD_URL,
         httpsTrigger: {},
         labels: {
+          ...CLOUD_FUNCTION.labels,
           foo: "bar",
         },
         environmentVariables: {
@@ -150,6 +155,7 @@ describe("cloudfunctions", () => {
         },
         timeout: "20s",
         labels: {
+          ...CLOUD_FUNCTION.labels,
           "deployment-scheduled": "true",
         },
       };
@@ -170,6 +176,7 @@ describe("cloudfunctions", () => {
           sourceUploadUrl: UPLOAD_URL,
           httpsTrigger: {},
           labels: {
+            ...CLOUD_FUNCTION.labels,
             "deployment-taskqueue": "true",
           },
         };
@@ -177,6 +184,24 @@ describe("cloudfunctions", () => {
       expect(cloudfunctions.functionFromEndpoint(taskEndpoint, UPLOAD_URL)).to.deep.equal(
         taskQueueFunction
       );
+    });
+
+    it("should export codebase as label", () => {
+      expect(
+        cloudfunctions.functionFromEndpoint(
+          {
+            ...ENDPOINT,
+            codebase: "my-codebase",
+            httpsTrigger: {},
+          },
+          UPLOAD_URL
+        )
+      ).to.deep.equal({
+        ...CLOUD_FUNCTION,
+        sourceUploadUrl: UPLOAD_URL,
+        httpsTrigger: {},
+        labels: { ...CLOUD_FUNCTION.labels, [cloudfunctions.CODEBASE_LABEL]: "my-codebase" },
+      });
     });
   });
 
@@ -321,6 +346,27 @@ describe("cloudfunctions", () => {
           egressSettings: vpcConnectorEgressSettings,
         },
         httpsTrigger: {},
+      });
+    });
+
+    it("should derive codebase from labels", () => {
+      expect(
+        cloudfunctions.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION,
+          httpsTrigger: {},
+          labels: {
+            ...CLOUD_FUNCTION.labels,
+            [cloudfunctions.CODEBASE_LABEL]: "my-codebase",
+          },
+        })
+      ).to.deep.equal({
+        ...ENDPOINT,
+        httpsTrigger: {},
+        labels: {
+          ...ENDPOINT.labels,
+          [cloudfunctions.CODEBASE_LABEL]: "my-codebase",
+        },
+        codebase: "my-codebase",
       });
     });
   });
