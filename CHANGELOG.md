@@ -1,3 +1,4 @@
+- Improve error messages when using alpha features without being in the alpha program (#4354)
 - Fixes bug where resumable uploads were not setting custom metadata on upload (#3398).
 - Fixes bug where GCS metadataUpdate cloud functions were triggered in incorrect situations (#3398).
 - Fixes bug where quoted escape sequences in .env files were incompletely unescaped. (#4270)
