@@ -266,17 +266,16 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
     paramsEnvPath,
     instanceId,
   });
-  let eventarcConfig: askUserForEventsConfig.EventArcConfig = { location: "" };
-  let eventarcChannel = "";
   let allowedEventTypes: string[] = [];
   if (spec.events) {
     allowedEventTypes = await askUserForEventsConfig.askForSelectedEvents(spec.events);
   }
   if (allowedEventTypes.length > 0) {
-    eventarcConfig = await askUserForEventsConfig.askForEventArcConfig();
+    const location = await askUserForEventsConfig.askForEventArcLocation();
+    const eventarcChannel = `projects/${projectId}/locations/${location}/channels/firebase`;
+    paramBindingOptions.EVENTARC_CHANNEL = {baseValue: eventarcChannel};
+    paramBindingOptions.ALLOWED_EVENT_TYPES = {baseValue: allowedEventTypes.join(",")};
   }
-  eventarcChannel = `projects/${projectId}/locations/${eventarcConfig.location}/channels/${eventarcConfig.channel}`;
-
   const ref = refs.parse(extVersion.ref);
   await manifest.writeToManifest(
     [
@@ -285,8 +284,6 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
         ref,
         params: paramBindingOptions,
         paramSpecs: spec.params,
-        allowedEventTypes: allowedEventTypes,
-        eventarcChannel: eventarcChannel
       },
     ],
     config,
