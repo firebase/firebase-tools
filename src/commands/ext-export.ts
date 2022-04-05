@@ -31,14 +31,7 @@ module.exports = new Command("ext:export")
     // Look up the instances that already exist,
     // set any secrets to latest version,
     // and strip project IDs from the param values.
-    const have = await Promise.all(
-      (
-        await planner.have(projectId)
-      ).map(async (i) => {
-        const subbed = await setSecretParamsToLatest(i);
-        return parameterizeProject(projectId, projectNumber, subbed);
-      })
-    );
+    const have = await Promise.all(await planner.have(projectId));
 
     if (have.length === 0) {
       logger.info(
@@ -49,6 +42,12 @@ module.exports = new Command("ext:export")
 
     // If an instance spec is missing a ref, that instance must have been installed from a local source.
     const [withRef, withoutRef] = partition(have, (s) => !!s.ref);
+    const withRefSubbed = await Promise.all(
+      withRef.map(async (i) => {
+        const subbed = await setSecretParamsToLatest(i);
+        return parameterizeProject(projectId, projectNumber, subbed);
+      })
+    );
 
     displayExportInfo(withRef, withoutRef);
 
