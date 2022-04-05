@@ -5,12 +5,15 @@ import * as deployHelper from "./functionsDeployHelper";
 
 // These types should probably be in a root deploy.ts, but we can only boil the ocean one bit at a time.
 
+interface CodebasePayload {
+  wantBackend: backend.Backend;
+  haveBackend: backend.Backend;
+}
+
 // Payload holds the output of what we want to build + what we already have.
 export interface Payload {
-  functions?: {
-    wantBackend: backend.Backend;
-    haveBackend: backend.Backend;
-  };
+  // codebase -> backend.
+  functions?: Record<string, CodebasePayload>;
 }
 
 export interface Source {
@@ -31,7 +34,7 @@ export interface Context {
   filters?: deployHelper.EndpointFilter[];
 
   // Filled in the "prepare" phase.
-  config?: projectConfig.ValidatedSingle;
+  config?: projectConfig.ValidatedConfig;
   runtimeConfigEnabled?: boolean;
   artifactRegistryEnabled?: boolean;
   firebaseConfig?: FirebaseConfig;

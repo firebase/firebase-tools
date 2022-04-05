@@ -3,12 +3,13 @@ import { bold } from "cli-color";
 import { logger } from "../../logger";
 import { getEndpointFilters, endpointMatchesAnyFilter } from "./functionsDeployHelper";
 import { FirebaseError } from "../../error";
+import { Options } from "../../options";
+import { flatten } from "../../functional";
 import * as iam from "../../gcp/iam";
 import * as args from "./args";
 import * as backend from "./backend";
 import * as track from "../../track";
 import * as utils from "../../utils";
-import { Options } from "../../options";
 
 import { getIamPolicy, setIamPolicy } from "../../gcp/resourceManager";
 import { Service, serviceForEndpoint } from "./services";
@@ -66,10 +67,7 @@ export async function checkHttpIam(
   payload: args.Payload
 ): Promise<void> {
   const filters = context.filters || getEndpointFilters(options);
-  const wantBackend = payload.functions!.wantBackend;
-
-  const httpEndpoints = backend
-    .allEndpoints(wantBackend)
+  const httpEndpoints = [...flatten<backend.Endpoint>(Object.values(payload.functions!))]
     .filter(backend.isHttpsTriggered)
     .filter((f) => endpointMatchesAnyFilter(f, filters));
 
@@ -128,7 +126,7 @@ function reduceEventsToServices(services: Array<Service>, endpoint: backend.Endp
  * @param existingPolicy the project level IAM policy
  * @param serviceAccount the IAM service account
  * @param role the role you want to grant
- * @returns
+ * @return
  */
 export function obtainBinding(
   existingPolicy: iam.Policy,

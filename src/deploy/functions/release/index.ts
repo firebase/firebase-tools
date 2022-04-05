@@ -31,8 +31,10 @@ export async function release(
     return;
   }
 
-  const { wantBackend, haveBackend } = payload.functions;
-  const plan = planner.createDeploymentPlan(wantBackend, haveBackend, context.filters);
+  let plan: planner.DeploymentPlan = {};
+  for (const { wantBackend, haveBackend } of Object.values(payload.functions)) {
+    plan = { ...plan, ...planner.createDeploymentPlan(wantBackend, haveBackend, context.filters) };
+  }
 
   const fnsToDelete = Object.values(plan)
     .map((regionalChanges) => regionalChanges.endpointsToDelete)
@@ -71,9 +73,13 @@ export async function release(
   // uri field. createDeploymentPlan copies endpoints by reference. Both of these
   // subtleties are so we can take out a round trip API call to get the latest
   // trigger URLs by calling existingBackend again.
-  printTriggerUrls(payload.functions!.wantBackend);
-
-  const haveEndpoints = backend.allEndpoints(payload.functions!.wantBackend);
+  const allWantEndpoints: backend.Endpoint[] = [];
+  const allHaveEndpoints: backend.Endpoint[] = [];
+  for (const { haveBackend, wantBackend } of Object.values(payload.functions)) {
+    allWantEndpoints.push(...backend.allEndpoints(wantBackend));
+    allHaveEndpoints.push(...backend.allEndpoints(haveBackend));
+  }
+  printTriggerUrls(allWantEndpoints);
   const deletedEndpoints = Object.values(plan)
     .map((r) => r.endpointsToDelete)
     .reduce(reduceFlat, []);
@@ -81,14 +87,14 @@ export async function release(
   if (!context.artifactRegistryEnabled) {
     opts.ar = new containerCleaner.NoopArtifactRegistryCleaner();
   }
-  await containerCleaner.cleanupBuildImages(haveEndpoints, deletedEndpoints, opts);
+  await containerCleaner.cleanupBuildImages(allHaveEndpoints, deletedEndpoints, opts);
 
   const allErrors = summary.results.filter((r) => r.error).map((r) => r.error) as Error[];
   if (allErrors.length) {
     const opts = allErrors.length === 1 ? { original: allErrors[0] } : { children: allErrors };
     throw new FirebaseError("There was an error deploying functions", { ...opts, exit: 2 });
   } else {
-    if (secrets.of(haveEndpoints).length > 0) {
+    if (secrets.of(allHaveEndpoints).length > 0) {
       const projectId = needProjectId(options);
       const projectNumber = await needProjectNumber(options);
       // Re-load backend with all endpoints, not just the ones deployed.
@@ -122,8 +128,8 @@ export async function release(
  * Caller must eitehr force refresh the backend or assume the fabricator
  * has updated the URI of endpoints after deploy.
  */
-export function printTriggerUrls(results: backend.Backend): void {
-  const httpsFunctions = backend.allEndpoints(results).filter(backend.isHttpsTriggered);
+export function printTriggerUrls(results: backend.Endpoint[]): void {
+  const httpsFunctions = results.filter(backend.isHttpsTriggered);
   if (httpsFunctions.length === 0) {
     return;
   }
