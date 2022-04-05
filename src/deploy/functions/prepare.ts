@@ -205,6 +205,7 @@ export async function prepare(
 
   await ensureServiceAgentRoles(projectNumber, wantBackend, haveBackend);
   inferDetailsFromExisting(wantBackend, haveBackend, usedDotenv);
+  inferBlockingDetails(wantBackend);
   await ensureTriggerRegions(wantBackend);
 
   // Display a warning and prompt if any functions in the release have failurePolicies.
@@ -226,7 +227,6 @@ export function inferDetailsFromExisting(
   usedDotenv: boolean
 ): void {
   for (const wantE of backend.allEndpoints(want)) {
-    serviceForEndpoint(wantE).copyResourceOptionsToEndpoint(wantE as any, want);
     const haveE = have.endpoints[wantE.region]?.[wantE.id];
     if (!haveE) {
       continue;
@@ -272,4 +272,30 @@ function maybeCopyTriggerRegion(wantE: backend.Endpoint, haveE: backend.Endpoint
     return;
   }
   wantE.eventTrigger.region = haveE.eventTrigger.region;
+}
+
+/** Merges the blocking function options together */
+export function inferBlockingDetails(want: backend.Backend): void {
+  const blockingEndpoints = backend
+    .allEndpoints(want)
+    .filter((ep) => backend.isBlockingTriggered(ep)) as (backend.Endpoint &
+    backend.BlockingTriggered)[];
+
+  if (blockingEndpoints.length === 0) {
+    return;
+  }
+
+  let accessToken = false;
+  let idToken = false;
+  let refreshToken = false;
+  for (const blockingEp of blockingEndpoints) {
+    accessToken ||= !!blockingEp.blockingTrigger.accessToken;
+    idToken ||= !!blockingEp.blockingTrigger.idToken;
+    refreshToken ||= !!blockingEp.blockingTrigger.refreshToken;
+  }
+  for (const blockingEp of blockingEndpoints) {
+    blockingEp.blockingTrigger.accessToken = accessToken;
+    blockingEp.blockingTrigger.idToken = idToken;
+    blockingEp.blockingTrigger.refreshToken = refreshToken;
+  }
 }

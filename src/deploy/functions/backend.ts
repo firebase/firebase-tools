@@ -309,16 +309,6 @@ export interface RequiredAPI {
   api: string;
 }
 
-interface ResourceOptions {
-  identityPlatform?: {
-    // auth blocking trigger options at the resource level
-    // these are set as the OR of each auth blocking trigger
-    accessToken: boolean;
-    idToken: boolean;
-    refreshToken: boolean;
-  };
-}
-
 /** An API agnostic definition of an entire deployment a customer has or wants. */
 export interface Backend {
   /**
@@ -328,7 +318,6 @@ export interface Backend {
   environmentVariables: EnvironmentVariables;
   // region -> id -> Endpoint
   endpoints: Record<string, Record<string, Endpoint>>;
-  resourceOptions: ResourceOptions;
 }
 
 /**
@@ -341,7 +330,6 @@ export function empty(): Backend {
     requiredAPIs: [],
     endpoints: {},
     environmentVariables: {},
-    resourceOptions: {},
   };
 }
 

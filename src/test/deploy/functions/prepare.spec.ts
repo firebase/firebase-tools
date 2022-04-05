@@ -122,8 +122,10 @@ describe("prepare", () => {
       prepare.inferDetailsFromExisting(backend.of(want), backend.of(have), /* usedDotEnv= */ false);
       expect(want.availableMemoryMb).to.equal(512);
     });
+  });
 
-    it("copies identity platform options to blocking endpoints", () => {
+  describe("inferBlockingDetails", () => {
+    it("should merge the blocking options and set default value", () => {
       const beforeCreate: backend.Endpoint = {
         ...ENDPOINT_BASE,
         id: "beforeCreate",
@@ -142,18 +144,8 @@ describe("prepare", () => {
           idToken: true,
         },
       };
-      const want: backend.Backend = {
-        ...backend.of(beforeCreate, beforeSignIn),
-        resourceOptions: {
-          identityPlatform: {
-            accessToken: true,
-            idToken: true,
-            refreshToken: false,
-          },
-        },
-      };
 
-      prepare.inferDetailsFromExisting(want, backend.empty(), false);
+      prepare.inferBlockingDetails(backend.of(beforeCreate, beforeSignIn));
 
       expect(beforeCreate.blockingTrigger.accessToken).to.be.true;
       expect(beforeCreate.blockingTrigger.idToken).to.be.true;

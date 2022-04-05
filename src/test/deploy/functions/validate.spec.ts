@@ -200,7 +200,7 @@ describe("validate", () => {
       );
     });
 
-    it("Disallows multiple blocking functions of the same event type", () => {
+    it("Disallows multiple beforeCreate blocking", () => {
       const ep1: backend.Endpoint = {
         platform: "gcfv1",
         id: "id1",
@@ -229,7 +229,36 @@ describe("validate", () => {
       );
     });
 
-    it("Allows valid blocking functions and populates identity platform backend options", () => {
+    it("Disallows multiple beforeSignIn blocking", () => {
+      const ep1: backend.Endpoint = {
+        platform: "gcfv1",
+        id: "id1",
+        region: "us-east1",
+        project: "project",
+        entryPoint: "func1",
+        runtime: "nodejs16",
+        blockingTrigger: {
+          eventType: BEFORE_SIGN_IN_EVENT,
+        },
+      };
+      const ep2: backend.Endpoint = {
+        platform: "gcfv1",
+        id: "id2",
+        region: "us-east1",
+        project: "project",
+        entryPoint: "func2",
+        runtime: "nodejs16",
+        blockingTrigger: {
+          eventType: BEFORE_SIGN_IN_EVENT,
+        },
+      };
+
+      expect(() => validate.endpointsAreValid(backend.of(ep1, ep2))).to.throw(
+        `Can only create at most one Auth Blocking Trigger for ${BEFORE_SIGN_IN_EVENT} events`
+      );
+    });
+
+    it("Allows valid blocking functions", () => {
       const ep1: backend.Endpoint = {
         platform: "gcfv1",
         id: "id1",
@@ -259,13 +288,7 @@ describe("validate", () => {
         ...backend.of(ep1, ep2),
       };
 
-      validate.endpointsAreValid(want);
-
-      expect(want.resourceOptions.identityPlatform).to.deep.equal({
-        accessToken: true,
-        idToken: true,
-        refreshToken: false,
-      });
+      expect(() => validate.endpointsAreValid(want)).to.not.throw();
     });
   });
 

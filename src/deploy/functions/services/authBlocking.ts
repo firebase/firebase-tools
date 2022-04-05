@@ -28,36 +28,6 @@ export function validateAuthBlockingTrigger(
       `Can only create at most one Auth Blocking Trigger for ${endpoint.blockingTrigger.eventType} events`
     );
   }
-  // combine the auth blocking options
-  if (!wantBackend.resourceOptions.identityPlatform) {
-    wantBackend.resourceOptions.identityPlatform = {
-      accessToken: false,
-      idToken: false,
-      refreshToken: false,
-    };
-  }
-  // we find the OR of all the resource options
-  wantBackend.resourceOptions.identityPlatform.accessToken ||=
-    !!endpoint.blockingTrigger.accessToken;
-  wantBackend.resourceOptions.identityPlatform.idToken ||= !!endpoint.blockingTrigger.idToken;
-  wantBackend.resourceOptions.identityPlatform.refreshToken ||=
-    !!endpoint.blockingTrigger.refreshToken;
-}
-
-/**
- * Takes the combined options from every blocking trigger and copies them to the endpoint
- * @param endpoint the current endpoint we are processing
- * @param wantBackend the current backend we are deploying
- */
-export function copyIdentityPlatformOptionsToEndpoint(
-  endpoint: backend.Endpoint & backend.BlockingTriggered,
-  wantBackend: backend.Backend
-): void {
-  endpoint.blockingTrigger.accessToken =
-    !!wantBackend.resourceOptions.identityPlatform?.accessToken;
-  endpoint.blockingTrigger.idToken = !!wantBackend.resourceOptions.identityPlatform?.idToken;
-  endpoint.blockingTrigger.refreshToken =
-    !!wantBackend.resourceOptions.identityPlatform?.refreshToken;
 }
 
 /**

@@ -3,7 +3,7 @@ import * as iam from "../../../gcp/iam";
 import * as events from "../../../functions/events";
 import { obtainStorageBindings, ensureStorageTriggerRegion } from "./storage";
 import { ensureFirebaseAlertsTriggerRegion } from "./firebaseAlerts";
-import { validateAuthBlockingTrigger, copyIdentityPlatformOptionsToEndpoint } from "./authBlocking";
+import { validateAuthBlockingTrigger } from "./authBlocking";
 
 /** A standard void No Op */
 const noop = (): Promise<void> => Promise.resolve();
@@ -28,10 +28,6 @@ export interface Service {
     ep: backend.Endpoint & backend.BlockingTriggered,
     want: backend.Backend
   ) => void;
-  copyResourceOptionsToEndpoint: (
-    ep: backend.Endpoint & backend.BlockingTriggered,
-    want: backend.Backend
-  ) => void;
 }
 
 /** A noop service object, useful for v1 events */
@@ -41,17 +37,15 @@ export const NoOpService: Service = {
   requiredProjectBindings: undefined,
   ensureTriggerRegion: noop,
   validateTrigger: noop,
-  copyResourceOptionsToEndpoint: noop,
 };
 
 /** A pubsub service object */
 export const PubSubService: Service = {
   name: "pubsub",
   api: "pubsub.googleapis.com",
-  requiredProjectBindings: undefined,
+  requiredProjectBindings: noopProjectBindings,
   ensureTriggerRegion: noop,
   validateTrigger: noop,
-  copyResourceOptionsToEndpoint: noop,
 };
 
 /** A storage service object */
@@ -61,7 +55,6 @@ export const StorageService: Service = {
   requiredProjectBindings: obtainStorageBindings,
   ensureTriggerRegion: ensureStorageTriggerRegion,
   validateTrigger: noop,
-  copyResourceOptionsToEndpoint: noop,
 };
 
 /** A firebase alerts service object */
@@ -71,7 +64,6 @@ export const FirebaseAlertsService: Service = {
   requiredProjectBindings: noopProjectBindings,
   ensureTriggerRegion: ensureFirebaseAlertsTriggerRegion,
   validateTrigger: noop,
-  copyResourceOptionsToEndpoint: noop,
 };
 
 /** A auth blocking service object */
@@ -81,7 +73,6 @@ export const AuthBlockingService: Service = {
   requiredProjectBindings: undefined,
   ensureTriggerRegion: noop,
   validateTrigger: validateAuthBlockingTrigger,
-  copyResourceOptionsToEndpoint: copyIdentityPlatformOptionsToEndpoint,
 };
 
 /** Mapping from event type string to service object */

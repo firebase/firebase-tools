@@ -81,7 +81,7 @@ describe("authBlocking", () => {
       );
     });
 
-    it("should create the identity platform options on the backend and default them", () => {
+    it("should not throw on valid blocking endpoints", () => {
       const ep1: backend.Endpoint = {
         ...BASE_EP,
         platform: "gcfv1",
@@ -107,97 +107,7 @@ describe("authBlocking", () => {
         ...backend.of(ep1, ep2),
       };
 
-      authBlocking.validateAuthBlockingTrigger(ep1, want);
-
-      expect(want.resourceOptions.identityPlatform).to.deep.equal({
-        accessToken: false,
-        idToken: true,
-        refreshToken: false,
-      });
-    });
-
-    it("should correctly OR the identity platform options on the backend", () => {
-      const ep1: backend.Endpoint = {
-        ...BASE_EP,
-        platform: "gcfv1",
-        id: "id1",
-        entryPoint: "func1",
-        blockingTrigger: {
-          eventType: BEFORE_CREATE_EVENT,
-          accessToken: false,
-          idToken: true,
-        },
-      };
-      const ep2: backend.Endpoint = {
-        ...BASE_EP,
-        platform: "gcfv1",
-        id: "id2",
-        entryPoint: "func2",
-        blockingTrigger: {
-          eventType: BEFORE_SIGN_IN_EVENT,
-          accessToken: true,
-        },
-      };
-      const want: backend.Backend = {
-        ...backend.of(ep1, ep2),
-        resourceOptions: {
-          identityPlatform: {
-            accessToken: false,
-            idToken: true,
-            refreshToken: false,
-          },
-        },
-      };
-
-      authBlocking.validateAuthBlockingTrigger(ep2, want);
-
-      expect(want.resourceOptions.identityPlatform).to.deep.equal({
-        accessToken: true,
-        idToken: true,
-        refreshToken: false,
-      });
-    });
-  });
-
-  describe("copyIdentityPlatformOptionsToEndpoint", () => {
-    it("should copy the backend options to the endpoint", () => {
-      const ep1: backend.Endpoint = {
-        ...BASE_EP,
-        platform: "gcfv1",
-        id: "id1",
-        entryPoint: "func1",
-        blockingTrigger: {
-          eventType: BEFORE_CREATE_EVENT,
-          accessToken: false,
-          idToken: true,
-        },
-      };
-      const ep2: backend.Endpoint = {
-        ...BASE_EP,
-        platform: "gcfv1",
-        id: "id2",
-        entryPoint: "func2",
-        blockingTrigger: {
-          eventType: BEFORE_SIGN_IN_EVENT,
-          accessToken: true,
-        },
-      };
-      const want: backend.Backend = {
-        ...backend.of(ep1, ep2),
-        resourceOptions: {
-          identityPlatform: {
-            accessToken: true,
-            idToken: true,
-            refreshToken: false,
-          },
-        },
-      };
-
-      authBlocking.copyIdentityPlatformOptionsToEndpoint(ep1, want);
-
-      expect(ep1.blockingTrigger.accessToken).to.be.true;
-      expect(ep1.blockingTrigger.idToken).to.be.true;
-      expect(ep1.blockingTrigger.refreshToken).to.be.false;
+      expect(() => authBlocking.validateAuthBlockingTrigger(ep1, want)).to.not.throw();
     });
   });
 
