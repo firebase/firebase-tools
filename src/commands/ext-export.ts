@@ -49,7 +49,7 @@ module.exports = new Command("ext:export")
       })
     );
 
-    displayExportInfo(withRef, withoutRef);
+    displayExportInfo(withRefSubbed, withoutRef);
 
     if (
       !options.nonInteractive &&
