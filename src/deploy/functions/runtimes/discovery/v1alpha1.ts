@@ -193,7 +193,14 @@ function parseEndpoints(
         idToken: "boolean",
         refreshToken: "boolean",
       });
-      triggered = { blockingTrigger: ep.blockingTrigger };
+      triggered = {
+        blockingTrigger: {
+          ...ep.blockingTrigger,
+          accessToken: !!ep.blockingTrigger.accessToken,
+          idToken: !!ep.blockingTrigger.idToken,
+          refreshToken: !!ep.blockingTrigger.refreshToken,
+        },
+      };
     } else {
       throw new FirebaseError(
         `Do not recognize trigger type for endpoint ${id}. Try upgrading ` +

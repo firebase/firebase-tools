@@ -418,6 +418,32 @@ describe("backendFromV1Alpha1", () => {
       expect(parsed).to.deep.equal(expected);
     });
 
+    it("copies blocking triggers and defaults options to false", () => {
+      const blockingTrigger: backend.BlockingTrigger = {
+        eventType: BEFORE_CREATE_EVENT,
+      };
+      const yaml: v1alpha1.Manifest = {
+        specVersion: "v1alpha1",
+        endpoints: {
+          id: {
+            ...MIN_ENDPOINT,
+            blockingTrigger,
+          },
+        },
+      };
+      const expected = backend.of({
+        ...DEFAULTED_ENDPOINT,
+        blockingTrigger: {
+          ...blockingTrigger,
+          accessToken: false,
+          idToken: false,
+          refreshToken: false,
+        },
+      });
+      const parsed = v1alpha1.backendFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+      expect(parsed).to.deep.equal(expected);
+    });
+
     it("copies optional fields", () => {
       const fields: backend.ServiceConfiguration = {
         concurrency: 42,

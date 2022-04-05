@@ -38,11 +38,10 @@ export function validateAuthBlockingTrigger(
   }
   // we find the OR of all the resource options
   wantBackend.resourceOptions.identityPlatform.accessToken ||=
-    endpoint.blockingTrigger.accessToken || false;
-  wantBackend.resourceOptions.identityPlatform.idToken ||=
-    endpoint.blockingTrigger.idToken || false;
+    !!endpoint.blockingTrigger.accessToken;
+  wantBackend.resourceOptions.identityPlatform.idToken ||= !!endpoint.blockingTrigger.idToken;
   wantBackend.resourceOptions.identityPlatform.refreshToken ||=
-    endpoint.blockingTrigger.refreshToken || false;
+    !!endpoint.blockingTrigger.refreshToken;
 }
 
 /**

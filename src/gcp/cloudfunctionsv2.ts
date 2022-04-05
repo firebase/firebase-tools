@@ -483,7 +483,7 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
   } else if (backend.isBlockingTriggered(endpoint)) {
     gcfFunction.labels = {
       ...gcfFunction.labels,
-      "deployment-blocking":
+      [BLOCKING_LABEL]:
         BLOCKING_EVENT_TO_LABEL_KEY[
           endpoint.blockingTrigger.eventType as typeof AUTH_BLOCKING_EVENTS[number]
         ],
