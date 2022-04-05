@@ -1,7 +1,6 @@
 import * as proto from "./proto";
 import { identityOrigin } from "../api";
 import { Client } from "../apiv2";
-import { logger } from "../logger";
 
 const API_VERSION = "v2";
 
@@ -161,17 +160,7 @@ export async function getBlockingFunctionsConfig(
 ): Promise<BlockingFunctionsConfig> {
   const config = (await getConfig(project)) || {};
   if (!config.blockingFunctions) {
-    config.blockingFunctions = {
-      triggers: {
-        beforeCreate: {
-          functionUri: "",
-        },
-        beforeSignIn: {
-          functionUri: "",
-        },
-      },
-      forwardInboundCredentials: {},
-    };
+    config.blockingFunctions = {};
   }
   return config.blockingFunctions;
 }
@@ -199,7 +188,7 @@ export async function setBlockingFunctionsConfig(
   const config =
     (await updateConfig(project, { blockingFunctions: blockingConfig }, "blockingFunctions")) || {};
   if (!config.blockingFunctions) {
-    return {};
+    config.blockingFunctions = {};
   }
   return config.blockingFunctions;
 }
@@ -216,8 +205,6 @@ export async function updateConfig(
   config: Config,
   updateMask?: string
 ): Promise<Config> {
-  logger.info("UPDATING CONFIG");
-  logger.info(config);
   if (!updateMask) {
     updateMask = proto.fieldMasks(config).join(",");
   }

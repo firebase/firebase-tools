@@ -202,6 +202,40 @@ describe("authBlocking", () => {
   });
 
   describe("registerTrigger", () => {
+    it("should handle an empty config", async () => {
+      const blockingConfig = {};
+      const newBlockingConfig: identityPlatform.BlockingFunctionsConfig = {
+        triggers: {
+          beforeCreate: {
+            functionUri: "somethingnew.url",
+          },
+        },
+        forwardInboundCredentials: {
+          accessToken: false,
+          idToken: true,
+          refreshToken: false,
+        },
+      };
+      const ep: backend.Endpoint = {
+        ...BASE_EP,
+        platform: "gcfv1",
+        uri: "somethingnew.url",
+        blockingTrigger: {
+          eventType: BEFORE_CREATE_EVENT,
+          accessToken: false,
+          idToken: true,
+          refreshToken: false,
+        },
+      };
+      getConfig.resolves(blockingConfig);
+      setConfig.resolves(newBlockingConfig);
+
+      await authBlocking.registerTrigger(ep, false);
+
+      expect(blockingConfig).to.deep.equal(newBlockingConfig);
+      expect(setConfig).to.have.been.calledWith("project", newBlockingConfig);
+    });
+
     it("should register on a new beforeCreate endpoint", async () => {
       const blockingConfig: identityPlatform.BlockingFunctionsConfig = {
         triggers: {
