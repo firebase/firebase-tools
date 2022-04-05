@@ -58,6 +58,16 @@ const LINE_RE = new RegExp(
   "gms"                      // flags: global, multiline, dotall
 );
 
+const ESCAPE_SEQUENCES_TO_CHARACTERS: Record<string, string> = {
+  "\\n": "\n",
+  "\\r": "\r",
+  "\\t": "\t",
+  "\\v": "\v",
+  "\\\\": "\\",
+  "\\'": "'",
+  '\\"': '"',
+};
+
 interface ParseResult {
   envs: Record<string, string>;
   errors: string[];
@@ -104,10 +114,9 @@ export function parse(data: string): ParseResult {
       // Remove surrounding single/double quotes.
       v = quotesMatch[2];
       if (quotesMatch[1] === '"') {
-        // Unescape newlines and tabs.
-        v = v.replace("\\n", "\n").replace("\\r", "\r").replace("\\t", "\t").replace("\\v", "\v");
-        // Unescape other escapable characters.
-        v = v.replace(/\\([\\'"])/g, "$1");
+        // Substitute escape sequences. The regex passed to replace() must
+        // match every key in ESCAPE_SEQUENCES_TO_CHARACTERS.
+        v = v.replace(/\\[nrtv\\'"]/g, (match) => ESCAPE_SEQUENCES_TO_CHARACTERS[match]);
       }
     }
 
