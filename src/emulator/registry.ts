@@ -3,6 +3,7 @@ import { FirebaseError } from "../error";
 import * as portUtils from "./portUtils";
 import { Constants } from "./constants";
 import { EmulatorLogger } from "./emulatorLogger";
+import { ExtensionsEmulator } from "./extensionsEmulator";
 
 /**
  * Static registry for running emulators to discover each other.
@@ -11,8 +12,6 @@ import { EmulatorLogger } from "./emulatorLogger";
  * through the start() and stop() methods which ensures correctness.
  */
 export class EmulatorRegistry {
-  private static extensionsEmulatorRegistered: boolean = false;
-
   static async start(instance: EmulatorInstance): Promise<void> {
     const description = Constants.description(instance.getName());
     if (this.isRunning(instance.getName())) {
@@ -24,13 +23,11 @@ export class EmulatorRegistry {
 
     // Start the emulator and wait for it to grab its assigned port.
     await instance.start();
-
-    const info = instance.getInfo();
-    await portUtils.waitForPortClosed(info.port, info.host);
-  }
-
-  static registerExtensionsEmulator(): void {
-    this.extensionsEmulatorRegistered = true;
+    // No need to wait for the Extensions emulator to close its port, since it runs on the Functions emulator.
+    if (instance.getName() !== Emulators.EXTENSIONS) {
+      const info = instance.getInfo();
+      await portUtils.waitForPortClosed(info.port, info.host);
+    }
   }
 
   static async stop(name: Emulators): Promise<void> {
@@ -99,7 +96,8 @@ export class EmulatorRegistry {
 
   static isRunning(emulator: Emulators): boolean {
     if (emulator === Emulators.EXTENSIONS) {
-      return this.extensionsEmulatorRegistered && this.isRunning(Emulators.FUNCTIONS);
+      // Check if the functions emulator is also running - if not, the Extensions emulator won't work.
+      return this.INSTANCES.get(emulator) !== undefined && this.isRunning(Emulators.FUNCTIONS);
     }
     const instance = this.INSTANCES.get(emulator);
     return instance !== undefined;
