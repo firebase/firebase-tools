@@ -20,7 +20,6 @@ import { ensureTriggerRegions } from "./triggerRegionHelper";
 import { ensureServiceAgentRoles } from "./checkIam";
 import { FirebaseError } from "../../error";
 import { normalizeAndValidate } from "../../functions/projectConfig";
-import { serviceForEndpoint } from "./services";
 import { previews } from "../../previews";
 
 function hasUserConfig(config: Record<string, unknown>): boolean {
@@ -274,7 +273,7 @@ function maybeCopyTriggerRegion(wantE: backend.Endpoint, haveE: backend.Endpoint
   wantE.eventTrigger.region = haveE.eventTrigger.region;
 }
 
-/** Merges the blocking function options together */
+/** Figures out the blocking endpoint options by taking the OR of every trigger option and reassigning that value back to the endpoint. */
 export function inferBlockingDetails(want: backend.Backend): void {
   const blockingEndpoints = backend
     .allEndpoints(want)

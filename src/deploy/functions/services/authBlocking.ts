@@ -30,17 +30,23 @@ export function validateAuthBlockingTrigger(
   }
 }
 
-function configChanged(newConfig: identityPlatform.BlockingFunctionsConfig, config: identityPlatform.BlockingFunctionsConfig) {
+function configChanged(
+  newConfig: identityPlatform.BlockingFunctionsConfig,
+  config: identityPlatform.BlockingFunctionsConfig
+) {
   if (
-    newConfig.triggers?.beforeCreate?.functionUri !== config.triggers?.beforeCreate?.functionUri
-    || newConfig.triggers?.beforeSignIn?.functionUri !== config.triggers?.beforeSignIn?.functionUri
+    newConfig.triggers?.beforeCreate?.functionUri !== config.triggers?.beforeCreate?.functionUri ||
+    newConfig.triggers?.beforeSignIn?.functionUri !== config.triggers?.beforeSignIn?.functionUri
   ) {
     return true;
   }
   if (
-    !!newConfig.forwardInboundCredentials?.accessToken !== !!config.forwardInboundCredentials?.accessToken ||
-    !!newConfig.forwardInboundCredentials?.idToken !== !!config.forwardInboundCredentials?.idToken ||
-    !!newConfig.forwardInboundCredentials?.refreshToken !== !!config.forwardInboundCredentials?.refreshToken
+    !!newConfig.forwardInboundCredentials?.accessToken !==
+      !!config.forwardInboundCredentials?.accessToken ||
+    !!newConfig.forwardInboundCredentials?.idToken !==
+      !!config.forwardInboundCredentials?.idToken ||
+    !!newConfig.forwardInboundCredentials?.refreshToken !==
+      !!config.forwardInboundCredentials?.refreshToken
   ) {
     return true;
   }
@@ -57,7 +63,7 @@ export async function registerTrigger(
   update: boolean
 ): Promise<void> {
   const newBlockingConfig = await identityPlatform.getBlockingFunctionsConfig(endpoint.project);
-  const oldBlockingConfig = { ...newBlockingConfig, };
+  const oldBlockingConfig = { ...newBlockingConfig };
 
   if (endpoint.blockingTrigger.eventType === BEFORE_CREATE) {
     newBlockingConfig.triggers = {
