@@ -55,7 +55,7 @@ var deploy = function (targetNames, options, customContext = {}) {
 
   return new Promise((resolve) => {
     if (targetNames.includes("hosting") && options.config.get("hosting.source")) {
-      resolve(require("firebase-frameworks").prepare(targetNames, context, options, payload));
+      resolve(require("firebase-frameworks").prepare(targetNames, context, options));
     } else {
       resolve();
     }
