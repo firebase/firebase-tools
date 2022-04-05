@@ -30,6 +30,23 @@ export function validateAuthBlockingTrigger(
   }
 }
 
+function configChanged(newConfig: identityPlatform.BlockingFunctionsConfig, config: identityPlatform.BlockingFunctionsConfig) {
+  if (
+    newConfig.triggers?.beforeCreate?.functionUri !== config.triggers?.beforeCreate?.functionUri
+    || newConfig.triggers?.beforeSignIn?.functionUri !== config.triggers?.beforeSignIn?.functionUri
+  ) {
+    return true;
+  }
+  if (
+    !!newConfig.forwardInboundCredentials?.accessToken !== !!config.forwardInboundCredentials?.accessToken ||
+    !!newConfig.forwardInboundCredentials?.idToken !== !!config.forwardInboundCredentials?.idToken ||
+    !!newConfig.forwardInboundCredentials?.refreshToken !== !!config.forwardInboundCredentials?.refreshToken
+  ) {
+    return true;
+  }
+  return false;
+}
+
 /**
  * Registers the auth blocking trigger to identity platform. On updates, we don't touch the options.
  * @param endpoint the blocking endpoint
@@ -39,18 +56,19 @@ export async function registerTrigger(
   endpoint: backend.Endpoint & backend.BlockingTriggered,
   update: boolean
 ): Promise<void> {
-  const blockingConfig = await identityPlatform.getBlockingFunctionsConfig(endpoint.project);
+  const newBlockingConfig = await identityPlatform.getBlockingFunctionsConfig(endpoint.project);
+  const oldBlockingConfig = { ...newBlockingConfig, };
 
   if (endpoint.blockingTrigger.eventType === BEFORE_CREATE) {
-    blockingConfig.triggers = {
-      ...blockingConfig.triggers,
+    newBlockingConfig.triggers = {
+      ...newBlockingConfig.triggers,
       beforeCreate: {
         functionUri: endpoint.uri!,
       },
     };
   } else {
-    blockingConfig.triggers = {
-      ...blockingConfig.triggers,
+    newBlockingConfig.triggers = {
+      ...newBlockingConfig.triggers,
       beforeSignIn: {
         functionUri: endpoint.uri!,
       },
@@ -58,14 +76,18 @@ export async function registerTrigger(
   }
 
   if (!update) {
-    blockingConfig.forwardInboundCredentials = {
+    newBlockingConfig.forwardInboundCredentials = {
       idToken: endpoint.blockingTrigger.idToken || false,
       accessToken: endpoint.blockingTrigger.accessToken || false,
       refreshToken: endpoint.blockingTrigger.refreshToken || false,
     };
   }
 
-  await identityPlatform.setBlockingFunctionsConfig(endpoint.project, blockingConfig);
+  if (!configChanged(newBlockingConfig, oldBlockingConfig)) {
+    return;
+  }
+
+  await identityPlatform.setBlockingFunctionsConfig(endpoint.project, newBlockingConfig);
 }
 
 /**

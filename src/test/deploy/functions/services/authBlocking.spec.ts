@@ -337,6 +337,36 @@ describe("authBlocking", () => {
       expect(blockingConfig).to.deep.equal(newBlockingConfig);
       expect(setConfig).to.have.been.calledWith("project", newBlockingConfig);
     });
+
+    it("should do not set the config if the config is unchanged", async () => {
+      const blockingConfig: identityPlatform.BlockingFunctionsConfig = {
+        triggers: {
+          beforeCreate: {
+            functionUri: "somethingnew.url",
+          },
+          beforeSignIn: {
+            functionUri: "beforesignin.url",
+          },
+        },
+        forwardInboundCredentials: {
+          accessToken: true,
+        },
+      };
+      const ep: backend.Endpoint = {
+        ...BASE_EP,
+        platform: "gcfv1",
+        uri: "somethingnew.url",
+        blockingTrigger: {
+          eventType: BEFORE_CREATE_EVENT,
+          accessToken: true,
+        },
+      };
+      getConfig.resolves(blockingConfig);
+
+      await authBlocking.registerTrigger(ep, false);
+
+      expect(setConfig).to.not.have.been.called;
+    });
   });
 
   describe("unregisterAuthBlockingTriggerFromIdentityPlatform", () => {
