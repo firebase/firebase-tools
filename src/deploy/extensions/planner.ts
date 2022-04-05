@@ -80,7 +80,7 @@ export async function getExtension(
   return i.extension;
 }
 
-/** Caching fetcher for the corresponding Extension for an instance spec.
+/** Caching fetcher for the corresponding ExtensionSpec for an instance spec.
  */
 export async function getExtensionSpec(
   i: InstanceSpec | ManifestInstanceSpec
