@@ -5,6 +5,7 @@
   "requires": true,
   "packages": {
     "": {
+      "name": "firebase-tools",
       "version": "10.6.0",
       "license": "MIT",
       "dependencies": {
