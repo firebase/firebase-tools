@@ -273,7 +273,7 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
         instanceId,
         ref,
         params: paramBindingOptions,
-        paramSpecs: spec.params,
+        extensionSpec: spec,
       },
     ],
     config,
