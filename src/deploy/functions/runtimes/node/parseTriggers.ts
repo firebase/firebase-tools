@@ -9,7 +9,11 @@ import * as api from "../../../../api";
 import * as proto from "../../../../gcp/proto";
 import * as args from "../../args";
 import * as runtimes from "../../runtimes";
-import * as v2events from "../../../../functions/events/v2";
+import * as events from "../../../../functions/events";
+
+type BEFORE_CREATE = typeof events.v1.BEFORE_CREATE_EVENT | typeof events.v2.BEFORE_CREATE_EVENT;
+
+type BEFORE_SIGN_IN = typeof events.v1.BEFORE_SIGN_IN_EVENT | typeof events.v2.BEFORE_SIGN_IN_EVENT;
 
 const TRIGGER_PARSER = path.resolve(__dirname, "./triggerParser.js");
 
@@ -227,10 +231,10 @@ export function addResourcesToBackend(
       });
       triggered = {
         blockingTrigger: {
-          eventType: annotation.blockingTrigger.eventType,
-          accessToken: annotation.blockingTrigger.accessToken || false,
-          idToken: annotation.blockingTrigger.idToken || false,
-          refreshToken: annotation.blockingTrigger.refreshToken || false,
+          eventType: annotation.blockingTrigger.eventType as BEFORE_CREATE | BEFORE_SIGN_IN,
+          accessToken: !!annotation.blockingTrigger.accessToken,
+          idToken: !!annotation.blockingTrigger.idToken,
+          refreshToken: !!annotation.blockingTrigger.refreshToken,
         },
       };
     } else {
@@ -245,12 +249,12 @@ export function addResourcesToBackend(
       // TODO: yank this edge case for a v2 trigger on the pre-container contract
       // once we use container contract for the functionsv2 experiment.
       if (annotation.platform === "gcfv2") {
-        if (annotation.eventTrigger!.eventType === v2events.PUBSUB_PUBLISH_EVENT) {
+        if (annotation.eventTrigger!.eventType === events.v2.PUBSUB_PUBLISH_EVENT) {
           triggered.eventTrigger.eventFilters = { topic: annotation.eventTrigger!.resource };
         }
 
         if (
-          v2events.STORAGE_EVENTS.find(
+          events.v2.STORAGE_EVENTS.find(
             (event) => event === (annotation.eventTrigger?.eventType || "")
           )
         ) {

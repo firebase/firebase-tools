@@ -509,13 +509,8 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
         eventType: BLOCKING_LABEL_KEY_TO_EVENT[gcfFunction.labels[BLOCKING_LABEL]],
       },
     };
-
-    uri = gcfFunction.httpsTrigger!.url;
-    securityLevel = gcfFunction.httpsTrigger!.securityLevel;
   } else if (gcfFunction.httpsTrigger) {
     trigger = { httpsTrigger: {} };
-    uri = gcfFunction.httpsTrigger.url;
-    securityLevel = gcfFunction.httpsTrigger.securityLevel;
   } else {
     trigger = {
       eventTrigger: {
@@ -524,6 +519,11 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
         retry: !!gcfFunction.eventTrigger!.failurePolicy?.retry,
       },
     };
+  }
+
+  if (gcfFunction.httpsTrigger) {
+    uri = gcfFunction.httpsTrigger.url;
+    securityLevel = gcfFunction.httpsTrigger.securityLevel;
   }
 
   if (!runtimes.isValidRuntime(gcfFunction.runtime)) {
