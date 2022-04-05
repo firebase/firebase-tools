@@ -54,12 +54,12 @@ var deploy = function (targetNames, options, customContext = {}) {
   var startTime = Date.now();
 
   return new Promise((resolve) => {
-      if (targetNames.includes("hosting") && options.config.get("hosting.source")) {
-        resolve(require("firebase-frameworks").prepare(targetNames, context, options, payload));
-      } else {
-        resolve();
-      }
-    })
+    if (targetNames.includes("hosting") && options.config.get("hosting.source")) {
+      resolve(require("firebase-frameworks").prepare(targetNames, context, options, payload));
+    } else {
+      resolve();
+    }
+  })
     .then(function () {
       for (var i = 0; i < targetNames.length; i++) {
         var targetName = targetNames[i];
