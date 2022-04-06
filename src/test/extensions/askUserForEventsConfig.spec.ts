@@ -9,7 +9,7 @@ import {
 import * as utils from "../../utils";
 import * as prompt from "../../prompt";
 
-describe("checkSelectedEventsResponse", () => {
+describe("checkAllowedEventTypesResponse", () => {
   let logWarningSpy: sinon.SinonSpy;
   beforeEach(() => {
     logWarningSpy = sinon.spy(utils, "logWarning");
