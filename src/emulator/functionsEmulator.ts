@@ -615,6 +615,18 @@ export class FunctionsEmulator implements EmulatorInstance {
             this.logger.log("DEBUG", `Unsupported trigger: ${JSON.stringify(definition)}`);
             break;
         }
+      } else if (definition.blockingTrigger) {
+        const { host, port } = this.getInfo();
+        added = true;
+        url = FunctionsEmulator.getHttpFunctionUrl(
+          host,
+          port,
+          this.args.projectId,
+          definition.name,
+          definition.region
+        );
+        console.log("Need to register the blocking function here.");
+        console.log(`URL: ${url}`);
       } else {
         this.logger.log(
           "WARN",

@@ -26,6 +26,7 @@ export interface ParsedTriggerDefinition {
   availableMemoryMb?: "128MB" | "256MB" | "512MB" | "1GB" | "2GB" | "4GB";
   httpsTrigger?: any;
   eventTrigger?: EventTrigger;
+  blockingTrigger?: backend.BlockingTrigger;
   schedule?: EventSchedule;
   labels?: { [key: string]: any };
 }
@@ -185,6 +186,10 @@ export function emulatedFunctionsFromEndpoints(
       // TODO: This is an awkward transformation. Emulator does not understand scheduled triggers - maybe it should?
       def.eventTrigger = { eventType: "pubsub", resource: "" };
       def.schedule = endpoint.scheduleTrigger as EventSchedule;
+    } else if (backend.isBlockingTriggered(endpoint)) {
+      def.blockingTrigger = {
+        ...endpoint.blockingTrigger,
+      }
     } else {
       // All other trigger types are not supported by the emulator
       // We leave both eventTrigger and httpTrigger attributes empty
