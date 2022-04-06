@@ -255,21 +255,12 @@ export function discoverParams(build: Build): backend.Backend {
         environmentVariables: endpoint.environmentVariables,
         secretEnvironmentVariables: undefined,
         availableMemoryMb: endpoint.availableMemoryMb,
-        timeout: proto.durationFromSeconds(timeout),
+        timeoutSeconds: timeout,
         ...trigger,
       };
       proto.renameIfPresent(bkEndpoint, endpoint, "maxInstances", "maxInstances", resolveInt);
       proto.renameIfPresent(bkEndpoint, endpoint, "minInstances", "minInstances", resolveInt);
       proto.renameIfPresent(bkEndpoint, endpoint, "concurrency", "concurrency", resolveInt);
-      proto.renameIfPresent(
-        bkEndpoint,
-        endpoint,
-        "timeout",
-        "timeoutSeconds",
-        (from: number | Expression<number> | null): string => {
-          return proto.durationFromSeconds(resolveInt(from));
-        }
-      );
       if (endpoint.vpc) {
         bkEndpoint.vpc = {
           connector: endpoint.vpc.connector,
@@ -314,15 +305,9 @@ function discoverTrigger(endpoint: Endpoint): backend.Triggered {
   } else if ("eventTrigger" in endpoint) {
     const bkEvent: backend.EventTrigger = {
       eventType: endpoint.eventTrigger.eventType,
-      eventFilters: [],
+      eventFilters: endpoint.eventTrigger.eventFilters,
       retry: resolveBoolean(endpoint.eventTrigger.retry),
     };
-    for (const filterAttr in endpoint.eventTrigger.eventFilters) {
-      if ({}.hasOwnProperty.call(endpoint.eventTrigger.eventFilters, filterAttr)) {
-        const filterValue = resolveString(endpoint.eventTrigger.eventFilters[filterAttr]);
-        bkEvent.eventFilters.push({ attribute: filterAttr, value: filterValue });
-      }
-    }
     if (endpoint.eventTrigger.serviceAccount) {
       bkEvent.serviceAccountEmail = endpoint.eventTrigger.serviceAccount;
     }
@@ -375,7 +360,7 @@ function discoverTrigger(endpoint: Endpoint): backend.Triggered {
       proto.renameIfPresent(
         bkRetryConfig,
         endpoint.taskQueueTrigger.retryConfig,
-        "maxBackoff",
+        "maxBackoffSeconds",
         "maxBackoffSeconds",
         (from: number | Expression<number> | null): string => {
           return proto.durationFromSeconds(resolveInt(from));
@@ -384,7 +369,7 @@ function discoverTrigger(endpoint: Endpoint): backend.Triggered {
       proto.renameIfPresent(
         bkRetryConfig,
         endpoint.taskQueueTrigger.retryConfig,
-        "minBackoff",
+        "minBackoffSeconds",
         "minBackoffSeconds",
         (from: number | Expression<number> | null): string => {
           return proto.durationFromSeconds(resolveInt(from));
@@ -393,7 +378,7 @@ function discoverTrigger(endpoint: Endpoint): backend.Triggered {
       proto.renameIfPresent(
         bkRetryConfig,
         endpoint.taskQueueTrigger.retryConfig,
-        "maxRetryDuration",
+        "maxRetrySeconds",
         "maxRetryDurationSeconds",
         (from: number | Expression<number> | null): string => {
           return proto.durationFromSeconds(resolveInt(from));
