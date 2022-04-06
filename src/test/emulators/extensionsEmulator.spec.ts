@@ -60,7 +60,7 @@ describe("Extensions Emulator", () => {
     });
     const testCases: {
       desc: string;
-      input: planner.InstanceSpec;
+      input: planner.DeploymentInstanceSpec;
       expected: EmulatableBackend;
     }[] = [
       {

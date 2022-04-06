@@ -372,6 +372,24 @@ describe("manifest", () => {
               version: "1.0.0",
             },
             params: { a: { baseValue: "pikachu" }, b: { baseValue: "" } },
+            extensionSpec: {
+              name: "bigquery-export",
+              version: "1.0.0",
+              resources: [],
+              sourceUrl: "",
+              params: [
+                {
+                  param: "a",
+                  label: "",
+                  type: ParamType.STRING,
+                },
+                {
+                  param: "b",
+                  label: "",
+                  type: ParamType.STRING,
+                },
+              ],
+            },
           },
         ],
         generateBaseConfig(),

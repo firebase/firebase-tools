@@ -9,6 +9,18 @@ import { readInstanceParam } from "../../extensions/manifest";
 import { ParamBindingOptions } from "../../extensions/paramHelper";
 import { readExtensionYaml } from "../../extensions/emulator/specHelper";
 
+export interface InstanceSpec {
+  instanceId: string;
+  // OneOf:
+  ref?: refs.Ref; // For published extensions
+  localPath?: string; // For local extensions
+  // Used by getExtensionVersion, getExtension, and getExtensionSpec.
+  // You should stronly prefer accessing via those methods
+  extensionVersion?: extensionsApi.ExtensionVersion;
+  extension?: extensionsApi.Extension;
+  extensionSpec?: extensionsApi.ExtensionSpec;
+}
+
 /**
  * Instance spec used by manifest.
  *
@@ -18,16 +30,8 @@ import { readExtensionYaml } from "../../extensions/emulator/specHelper";
  * So far this is only used for writing to the manifest, but in the future
  * we want to read manifest into this interface.
  */
-export interface ManifestInstanceSpec {
-  instanceId: string;
+export interface ManifestInstanceSpec extends InstanceSpec {
   params: Record<string, ParamBindingOptions>;
-  ref?: refs.Ref;
-  localPath?: string;
-  // Used by getExtensionVersion, getExtension, and getExtensionSpec.
-  // You should stronly prefer accessing via those methods
-  extensionVersion?: extensionsApi.ExtensionVersion;
-  extension?: extensionsApi.Extension;
-  extensionSpec?: extensionsApi.ExtensionSpec;
 }
 
 // TODO(lihes): Rename this to something like DeploymentInstanceSpec.
@@ -36,23 +40,15 @@ export interface ManifestInstanceSpec {
  *
  * Param bindings are expected to be collapsed from ParamBindingOptions into a Record<string, string>.
  */
-export interface InstanceSpec {
-  instanceId: string;
+export interface DeploymentInstanceSpec extends InstanceSpec {
   params: Record<string, string>;
-  ref?: refs.Ref;
-  localPath?: string;
-  // Used by getExtensionVersion, getExtension, and getExtensionSpec.
-  // You should stronly prefer accessing via those methods
-  extensionVersion?: extensionsApi.ExtensionVersion;
-  extension?: extensionsApi.Extension;
-  extensionSpec?: extensionsApi.ExtensionSpec;
 }
 
 /**
  * Caching fetcher for the corresponding ExtensionVersion for an instance spec.
  */
 export async function getExtensionVersion(
-  i: InstanceSpec | ManifestInstanceSpec
+  i: InstanceSpec
 ): Promise<extensionsApi.ExtensionVersion> {
   if (!i.extensionVersion) {
     if (!i.ref) {
@@ -68,9 +64,7 @@ export async function getExtensionVersion(
 /**
  * Caching fetcher for the corresponding Extension for an instance spec.
  */
-export async function getExtension(
-  i: InstanceSpec | ManifestInstanceSpec
-): Promise<extensionsApi.Extension> {
+export async function getExtension(i: InstanceSpec): Promise<extensionsApi.Extension> {
   if (!i.ref) {
     throw new FirebaseError(`Can't get Extensionfor ${i.instanceId} because it has no ref`);
   }
@@ -82,9 +76,7 @@ export async function getExtension(
 
 /** Caching fetcher for the corresponding ExtensionSpec for an instance spec.
  */
-export async function getExtensionSpec(
-  i: InstanceSpec | ManifestInstanceSpec
-): Promise<extensionsApi.ExtensionSpec> {
+export async function getExtensionSpec(i: InstanceSpec): Promise<extensionsApi.ExtensionSpec> {
   if (!i.extensionSpec) {
     if (i.ref) {
       const extensionVersion = await getExtensionVersion(i);
@@ -103,10 +95,10 @@ export async function getExtensionSpec(
  * and returns them as a list of instanceSpecs.
  * @param projectId
  */
-export async function have(projectId: string): Promise<InstanceSpec[]> {
+export async function have(projectId: string): Promise<DeploymentInstanceSpec[]> {
   const instances = await extensionsApi.listInstances(projectId);
   return instances.map((i) => {
-    const dep: InstanceSpec = {
+    const dep: DeploymentInstanceSpec = {
       instanceId: i.name.split("/").pop()!,
       params: i.config.params,
     };
@@ -137,8 +129,8 @@ export async function want(args: {
   projectDir: string;
   extensions: Record<string, string>;
   emulatorMode?: boolean;
-}): Promise<InstanceSpec[]> {
-  const instanceSpecs: InstanceSpec[] = [];
+}): Promise<DeploymentInstanceSpec[]> {
+  const instanceSpecs: DeploymentInstanceSpec[] = [];
   const errors: FirebaseError[] = [];
   for (const e of Object.entries(args.extensions)) {
     try {

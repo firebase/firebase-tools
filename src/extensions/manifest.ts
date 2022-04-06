@@ -5,7 +5,7 @@ import { Config } from "../config";
 import { getExtensionSpec, ManifestInstanceSpec } from "../deploy/extensions/planner";
 import { logger } from "../logger";
 import { promptOnce } from "../prompt";
-import { ParamBindingOptions, readEnvFile } from "./paramHelper";
+import { readEnvFile } from "./paramHelper";
 import { FirebaseError } from "../error";
 import * as utils from "../utils";
 import { logPrefix } from "./extensionsHelper";
