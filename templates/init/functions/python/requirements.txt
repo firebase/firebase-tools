@@ -1,0 +1,4 @@
+# TODO using from git for now:
+git+https://github.com/invertase/firebase-functions-python@main
+# TODO using from local for now
+# /Users/mike/Documents/Projects/firebase-functions-python

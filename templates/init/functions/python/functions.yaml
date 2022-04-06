@@ -1,8 +1,0 @@
-specVersion: v1alpha1
-endpoints:
-  hellofunction:
-    entryPoint: hellofunction
-    httpsTrigger: {}
-  foofunction:
-    entryPoint: foofunction
-    httpsTrigger: {}
