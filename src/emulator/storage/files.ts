@@ -583,7 +583,12 @@ export class StorageLayer {
         continue;
       }
 
-      const decodedBlobPath = decodeURIComponent(blobPath);
+      let decodedBlobPath = decodeURIComponent(blobPath);
+      if (decodedBlobPath.indexOf(path.sep) === -1) {
+        const otherSep = path.sep === path.posix.sep ? path.win32.sep : path.posix.sep;
+        decodedBlobPath = decodedBlobPath.replace(otherSep, path.sep);
+      }
+
       const blobDiskPath = this._persistence.getDiskPath(decodedBlobPath);
 
       const file = new StoredFile(metadata, blobDiskPath);

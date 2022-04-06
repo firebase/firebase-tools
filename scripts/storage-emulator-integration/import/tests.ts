@@ -104,6 +104,21 @@ describe("Import Emulator Data", () => {
       .expect(200);
   });
 
+  it("retrieves file from importing emulator data previously exported on Windows", async function (this) {
+    this.timeout(TEST_SETUP_TIMEOUT);
+    await test.startEmulators([
+      "--only",
+      Emulators.STORAGE,
+      "--import",
+      path.join(__dirname, "windows-emulator-data"),
+    ]);
+
+    await supertest(STORAGE_EMULATOR_HOST)
+      .get(`/v0/b/${BUCKET}/o/test_upload.jpg`)
+      .set({ Authorization: "Bearer owner" })
+      .expect(200);
+  });
+
   afterEach(async function (this) {
     this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
     await test.stopEmulators();
