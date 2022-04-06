@@ -100,16 +100,9 @@ export default new Command("ext:install [extensionName]")
     // If the user types in URL, or a local path (prefixed with ~/, ../, or ./), install from local/URL source.
     // Otherwise, treat the input as an extension reference and proceed with reference-based installation.
     if (isLocalPath(extensionName)) {
-      try {
-        source = await createSourceFromLocation(needProjectId({projectId}), extensionName);
-      } catch (err: any) {
-        throw new FirebaseError(
-          `Encountered the following error when trying to create an instance of extension '${clc.bold(
-              extensionName
-            )}':\n ${err.message}`
-        );
-      }
-      source = await fetchExtensionBySource(needProjectId({ projectId }), extensionName);
+      // TODO: Create source should happen at deploy time.
+      // Should parse spec locally so we don't need project ID.
+      source = await createSourceFromLocation(needProjectId({ projectId }), extensionName);
       displayExtInfo(extensionName, "", source.spec);
       void track("Extension Install", "Install by Source", options.interactive ? 1 : 0);
     } else {
@@ -119,7 +112,7 @@ export default new Command("ext:install [extensionName]")
       infoExtensionVersion({
         extensionName,
         extensionVersion,
-      })
+      });
     }
     if (
       !(await confirm({
@@ -197,32 +190,7 @@ export default new Command("ext:install [extensionName]")
     }
   });
 
-/**
- * Fetch an Extension Source
- * @param projectId 
- * @param extensionName 
- * @returns 
- */
-  async function fetchExtensionBySource(
-  projectId: string,
-  extensionName: string
-): Promise<extensionsApi.ExtensionSource> {
-  try {
-    return await createSourceFromLocation(projectId, extensionName);
-  } catch (err: any) {
-    throw new FirebaseError(
-      `Unable to find published extension '${clc.bold(extensionName)}', ` +
-        `and encountered the following error when trying to create an instance of extension '${clc.bold(
-          extensionName
-        )}':\n ${err.message}`
-    );
-  }
-}
-
-function canonicalizeRefName(
-  extensionName: string,
-  interactive: boolean
-): string {
+function canonicalizeRefName(extensionName: string, interactive: boolean): string {
   // Infer firebase if publisher ID not provided.
   if (extensionName.split("/").length < 2) {
     const [extensionID, version] = extensionName.split("@");
@@ -238,13 +206,17 @@ function canonicalizeRefName(
 }
 
 async function infoExtensionVersion(args: {
-  extensionName : string;
+  extensionName: string;
   extensionVersion: extensionsApi.ExtensionVersion;
 }) {
   const ref = refs.parse(args.extensionName);
   const extension = await extensionsApi.getExtension(refs.toExtensionRef(ref));
   displayExtInfo(args.extensionName, ref.publisherId, args.extensionVersion.spec, true);
-  await displayWarningPrompts(ref.publisherId, extension.registryLaunchStage, args.extensionVersion);
+  await displayWarningPrompts(
+    ref.publisherId,
+    extension.registryLaunchStage,
+    args.extensionVersion
+  );
 }
 
 interface InstallExtensionOptions {
@@ -264,7 +236,8 @@ interface InstallExtensionOptions {
  * @param options
  */
 async function installToManifest(options: InstallExtensionOptions): Promise<void> {
-  const { projectId, extensionName, extVersion, source, paramsEnvPath, nonInteractive, force } = options;
+  const { projectId, extensionName, extVersion, source, paramsEnvPath, nonInteractive, force } =
+    options;
   const isLocalSource = isLocalPath(extensionName);
 
   const spec = extVersion?.spec ?? source?.spec;
@@ -294,7 +267,7 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
     [
       {
         instanceId,
-        ref : !isLocalSource ? ref : undefined,
+        ref: !isLocalSource ? ref : undefined,
         localPath: isLocalSource ? extensionName : undefined,
         params: paramBindingOptions,
         paramSpecs: spec.params,

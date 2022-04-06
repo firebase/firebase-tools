@@ -548,31 +548,35 @@ export async function createSourceFromLocation(
   projectId: string,
   sourceUri: string
 ): Promise<ExtensionSource> {
+  const extensionRoot = "/";
   let packageUri: string;
-  let extensionRoot: string;
   let objectPath = "";
-  if (!sourceUri.startsWith("https:")) {
-    const uploadSpinner = ora(" Archiving and uploading extension source code");
-    try {
-      uploadSpinner.start();
-      objectPath = await archiveAndUploadSource(sourceUri, EXTENSIONS_BUCKET_NAME);
-      uploadSpinner.succeed(" Uploaded extension source code");
-      packageUri = storageOrigin + objectPath + "?alt=media";
-      extensionRoot = "/";
-    } catch (err: any) {
-      uploadSpinner.fail();
-      throw new FirebaseError(`Failed to archive and upload extension source, ${err}`, {
+
+  let spinner = ora(" Archiving and uploading extension source code");
+  try {
+    spinner.start();
+    objectPath = await archiveAndUploadSource(sourceUri, EXTENSIONS_BUCKET_NAME);
+    spinner.info(" Uploaded extension source code");
+
+    spinner = ora(" Creating an extension source based on uploaded source code");
+    spinner.start();
+    packageUri = storageOrigin + objectPath + "?alt=media";
+    const res = await createSource(projectId, packageUri, extensionRoot);
+    logger.debug("Created new Extension Source %s", res.name);
+    spinner.succeed(" Created extension source code");
+
+    // if we uploaded an object to user's bucket, delete it after "createSource" copies it into extension service's bucket.
+    await deleteUploadedSource(objectPath);
+    return res;
+  } catch (err: any) {
+    spinner.fail();
+    throw new FirebaseError(
+      `Failed to archive and upload extension source from ${sourceUri}, ${err}`,
+      {
         original: err,
-      });
-    }
-  } else {
-    [packageUri, extensionRoot] = sourceUri.split("#");
+      }
+    );
   }
-  const res = await createSource(projectId, packageUri, extensionRoot);
-  logger.debug("Created new Extension Source %s", res.name);
-  // if we uploaded an object, delete it
-  await deleteUploadedSource(objectPath);
-  return res;
 }
 
 /**

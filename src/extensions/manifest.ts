@@ -162,10 +162,12 @@ export function getInstanceSource(instanceId: string, config: Config): string {
 /**
  * Gets the instance's extension ref if exists.
  */
-export function getInstanceRef(instanceId: string, config: Config): refs.Ref { 
+export function getInstanceRef(instanceId: string, config: Config): refs.Ref {
   const source = getInstanceSource(instanceId, config);
   if (isLocalPath(source)) {
-    throw new FirebaseError(`Extension instance ${instanceId} doesn't have a ref because it is from a local source`);
+    throw new FirebaseError(
+      `Extension instance ${instanceId} doesn't have a ref because it is from a local source`
+    );
   }
   return refs.parse(source);
 }
@@ -175,11 +177,13 @@ function writeExtensionsToFirebaseJson(specs: ManifestInstanceSpec[], config: Co
   for (const s of specs) {
     let target;
     if (s.ref) {
-      target = refs.toExtensionVersionRef(s.ref!)
+      target = refs.toExtensionVersionRef(s.ref!);
     } else if (s.localPath) {
-      target=s.localPath
+      target = s.localPath;
     } else {
-      throw new FirebaseError(`Unable to resolve ManifestInstanceSpec, make sure you provide either extension ref or a local path to extension source code`);
+      throw new FirebaseError(
+        `Unable to resolve ManifestInstanceSpec, make sure you provide either extension ref or a local path to extension source code`
+      );
     }
 
     extensions[s.instanceId] = target;
