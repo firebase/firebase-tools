@@ -4,9 +4,7 @@ import * as fs from "fs";
 import * as rimraf from "rimraf";
 import * as path from "path";
 
-import { CLIProcess } from "../integration-helpers/cli";
 import { FrameworkOptions, TriggerEndToEndTest } from "../integration-helpers/framework";
-import { file } from "tmp";
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
 
@@ -18,7 +16,7 @@ const ALL_EMULATORS_STARTED_LOG = "All emulators ready";
  */
 const TEST_SETUP_TIMEOUT = 60000;
 const EMULATORS_WRITE_DELAY_MS = 5000;
-const EMULATORS_SHUTDOWN_DELAY_MS = 5000;
+const EMULATORS_SHUTDOWN_DELAY_MS = 25000;
 const EMULATOR_TEST_TIMEOUT = EMULATORS_WRITE_DELAY_MS * 2;
 const STORAGE_RESIZED_FILE_NAME = "test_200x200.png";
 
@@ -100,6 +98,6 @@ describe("CF3 and Extensions emulator", () => {
   it("should have have triggered an Extension Storage function", async () => {
     const fileResized = await admin.storage().bucket().file(STORAGE_RESIZED_FILE_NAME).exists();
 
-    expect(fileResized).to.be.true;
+    expect(fileResized[0]).to.be.true;
   });
 });
