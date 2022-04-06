@@ -477,10 +477,9 @@ export async function startAll(
       extensionsBackends
     );
     emulatableBackends.push(...filteredExtensionsBackends);
-
     // Log the command for analytics
     void track("Emulator Run", Emulators.EXTENSIONS);
-    EmulatorRegistry.registerExtensionsEmulator();
+    await startEmulator(extensionEmulator);
   }
 
   if (emulatableBackends.length) {
