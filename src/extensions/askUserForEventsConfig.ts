@@ -24,7 +24,7 @@ export function checkAllowedEventTypesResponse(
 
 export async function askForAllowedEventTypes(
   eventDescriptors: EventDescriptor[],
-  preselectedTypes?: string[],
+  preselectedTypes?: string[]
 ): Promise<string[]> {
   let valid = false;
   let response = "";
@@ -51,7 +51,7 @@ export async function askShouldCollectEventsConfig(): Promise<boolean> {
     name: "shouldCollectEvents",
     message: `Would you like to enable events? If you enable events, this extension will publish events to Eventarc at key points in its lifecycle. Eventarc usage fees apply. You can write custom event handlers that respond to these events. You can always enable events later.`,
     default: false,
-  })
+  });
 }
 
 export async function askForEventArcLocation(preselectedLocation?: string): Promise<string> {
@@ -63,7 +63,8 @@ export async function askForEventArcLocation(preselectedLocation?: string): Prom
       name: "input",
       type: "list",
       default: preselectedLocation ?? "us-central1",
-      message: "Which location would you like the Eventarc channel to live in? We recommend using the default option. A channel location that differs from the extension's Cloud Functions location can incur egress cost.",
+      message:
+        "Which location would you like the Eventarc channel to live in? We recommend using the default option. A channel location that differs from the extension's Cloud Functions location can incur egress cost.",
       choices: _.map(allowedRegions, (e) => ({ checked: false, value: e })),
     });
     valid = allowedRegions.includes(location);

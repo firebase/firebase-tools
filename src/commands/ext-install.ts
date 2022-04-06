@@ -457,7 +457,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
             location = await askUserForEventsConfig.askForEventArcLocation(preexistingLocation);
           } else {
             location = await askUserForEventsConfig.askForEventArcLocation();
-          }   
+          }
           eventarcChannel = `projects/${projectId}/locations/${location}/channels/firebase`;
           allowedEventTypes = await askUserForEventsConfig.askForAllowedEventTypes(spec.events);
         }
@@ -470,7 +470,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
           source,
           extRef: extVersion?.ref,
           params: paramBindings,
-        }
+        };
         if (existingInstance.config.eventarcChannel !== eventarcChannel) {
           updateOptions.eventarcChannel = eventarcChannel;
         }
