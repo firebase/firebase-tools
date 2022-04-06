@@ -8,7 +8,7 @@ import { promptOnce } from "../prompt";
 import { ParamBindingOptions, readEnvFile } from "./paramHelper";
 import { FirebaseError } from "../error";
 import * as utils from "../utils";
-import { logPrefix } from "./extensionsHelper";
+import { isLocalPath, logPrefix } from "./extensionsHelper";
 import { ParamType } from "./extensionsApi";
 
 export const ENV_DIRECTORY = "extensions";
@@ -149,12 +149,25 @@ export function instanceExists(instanceId: string, config: Config): boolean {
   return !!config.get("extensions", {})[instanceId];
 }
 
-export function getInstanceRef(instanceId: string, config: Config): refs.Ref {
+/**
+ * Gets the instance's extension ref string or local path given an instanceId.
+ */
+export function getInstanceSource(instanceId: string, config: Config): string {
   if (!instanceExists(instanceId, config)) {
     throw new FirebaseError(`Could not find extension instance ${instanceId} in firebase.json`);
   }
-  const ref = config.get("extensions", {})[instanceId];
-  return refs.parse(ref);
+  return config.get("extensions", {})[instanceId];
+}
+
+/**
+ * Gets the instance's extension ref if exists.
+ */
+export function getInstanceRef(instanceId: string, config: Config): refs.Ref { 
+  const source = getInstanceSource(instanceId, config);
+  if (isLocalPath(source)) {
+    throw new FirebaseError(`Extension instance ${instanceId} doesn't have a ref because it is from a local source`);
+  }
+  return refs.parse(source);
 }
 
 function writeExtensionsToFirebaseJson(specs: ManifestInstanceSpec[], config: Config): void {
@@ -168,7 +181,7 @@ function writeExtensionsToFirebaseJson(specs: ManifestInstanceSpec[], config: Co
     } else {
       throw new FirebaseError(`Unable to resolve ManifestInstanceSpec, make sure you provide either extension ref or a local path to extension source code`);
     }
-    
+
     extensions[s.instanceId] = target;
   }
   config.set("extensions", extensions);

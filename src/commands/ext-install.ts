@@ -88,7 +88,7 @@ export default new Command("ext:install [extensionName]")
       }
     }
     let source;
-    let extVersion;
+    let extensionVersion;
 
     // TODO(b/220900194): Remove when deprecating old install flow.
     if (isUrlPath(extensionName)) {
@@ -100,11 +100,26 @@ export default new Command("ext:install [extensionName]")
     // If the user types in URL, or a local path (prefixed with ~/, ../, or ./), install from local/URL source.
     // Otherwise, treat the input as an extension reference and proceed with reference-based installation.
     if (isLocalPath(extensionName)) {
+      try {
+        source = await createSourceFromLocation(needProjectId({projectId}), extensionName);
+      } catch (err: any) {
+        throw new FirebaseError(
+          `Encountered the following error when trying to create an instance of extension '${clc.bold(
+              extensionName
+            )}':\n ${err.message}`
+        );
+      }
+      source = await fetchExtensionBySource(needProjectId({ projectId }), extensionName);
+      displayExtInfo(extensionName, "", source.spec);
       void track("Extension Install", "Install by Source", options.interactive ? 1 : 0);
-      source = await infoInstallBySource(needProjectId({ projectId }), extensionName);
     } else {
       void track("Extension Install", "Install by Extension Ref", options.interactive ? 1 : 0);
-      extVersion = await infoInstallByReference(extensionName, options.interactive);
+      extensionName = canonicalizeRefName(extensionName, options.interactive);
+      extensionVersion = await extensionsApi.getExtensionVersion(extensionName);
+      infoExtensionVersion({
+        extensionName,
+        extensionVersion,
+      })
     }
     if (
       !(await confirm({
@@ -115,12 +130,12 @@ export default new Command("ext:install [extensionName]")
     ) {
       return;
     }
-    if (!source && !extVersion) {
+    if (!source && !extensionVersion) {
       throw new FirebaseError(
         "Could not find a source. Please specify a valid source to continue."
       );
     }
-    const spec = source?.spec || extVersion?.spec;
+    const spec = source?.spec ?? extensionVersion?.spec;
     if (!spec) {
       throw new FirebaseError(
         `Could not find the extension.yaml for extension '${clc.bold(
@@ -144,7 +159,7 @@ export default new Command("ext:install [extensionName]")
           projectId,
           extensionName,
           source,
-          extVersion,
+          extVersion: extensionVersion,
           nonInteractive: options.nonInteractive,
           force: options.force,
         });
@@ -168,7 +183,7 @@ export default new Command("ext:install [extensionName]")
         projectId: projectId,
         extensionName,
         source,
-        extVersion,
+        extVersion: extensionVersion,
         nonInteractive: options.nonInteractive,
         force: options.force,
       });
@@ -182,14 +197,18 @@ export default new Command("ext:install [extensionName]")
     }
   });
 
-async function infoInstallBySource(
+/**
+ * Fetch an Extension Source
+ * @param projectId 
+ * @param extensionName 
+ * @returns 
+ */
+  async function fetchExtensionBySource(
   projectId: string,
   extensionName: string
 ): Promise<extensionsApi.ExtensionSource> {
-  // Create a one off source to use for the install flow.
-  let source;
   try {
-    source = await createSourceFromLocation(projectId, extensionName);
+    return await createSourceFromLocation(projectId, extensionName);
   } catch (err: any) {
     throw new FirebaseError(
       `Unable to find published extension '${clc.bold(extensionName)}', ` +
@@ -198,14 +217,12 @@ async function infoInstallBySource(
         )}':\n ${err.message}`
     );
   }
-  displayExtInfo(extensionName, "", source.spec);
-  return source;
 }
 
-async function infoInstallByReference(
+function canonicalizeRefName(
   extensionName: string,
   interactive: boolean
-): Promise<extensionsApi.ExtensionVersion> {
+): string {
   // Infer firebase if publisher ID not provided.
   if (extensionName.split("/").length < 2) {
     const [extensionID, version] = extensionName.split("@");
@@ -213,15 +230,21 @@ async function infoInstallByReference(
   }
   // Get the correct version for a given extension reference from the Registry API.
   const ref = refs.parse(extensionName);
-  const extension = await extensionsApi.getExtension(refs.toExtensionRef(ref));
   if (!ref.version) {
     void track("Extension Install", "Install by Extension Version Ref", interactive ? 1 : 0);
     extensionName = `${extensionName}@latest`;
   }
-  const extVersion = await extensionsApi.getExtensionVersion(extensionName);
-  displayExtInfo(extensionName, ref.publisherId, extVersion.spec, true);
-  await displayWarningPrompts(ref.publisherId, extension.registryLaunchStage, extVersion);
-  return extVersion;
+  return extensionName;
+}
+
+async function infoExtensionVersion(args: {
+  extensionName : string;
+  extensionVersion: extensionsApi.ExtensionVersion;
+}) {
+  const ref = refs.parse(args.extensionName);
+  const extension = await extensionsApi.getExtension(refs.toExtensionRef(ref));
+  displayExtInfo(args.extensionName, ref.publisherId, args.extensionVersion.spec, true);
+  await displayWarningPrompts(ref.publisherId, extension.registryLaunchStage, args.extensionVersion);
 }
 
 interface InstallExtensionOptions {
