@@ -134,17 +134,44 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         nonInteractive: options.nonInteractive,
         instanceId,
       });
-      let allowedEventTypes: string[] = [];
-      if (newExtensionVersion.spec.events) {
-        // @TODO: Preselect allowed events in existing instance config.
-        allowedEventTypes = await askUserForEventsConfig.askForAllowedEventTypes(
-          newExtensionVersion.spec.events
-        );
+
+      let existingInstance : extensionsApi.ExtensionInstance | undefined;
+      let preselectedTypes: string[] = [];
+      if (projectId) {
+        try {
+          existingInstance = await extensionsApi.getInstance(projectId, instanceId);
+          preselectedTypes = (existingInstance?.config.allowedEventTypes) ?? [];
+        } catch (err: any) {
+          if (err.status === 404) {
+            throw new FirebaseError(
+              `Extension instance '${clc.bold(instanceId)}' not found in project '${clc.bold(
+                projectId
+              )}'.`
+            );
+          }
+          throw err;
+        }
       }
-      if (allowedEventTypes.length > 0) {
-        const location = await askUserForEventsConfig.askForEventArcLocation();
+      let allowedEventTypes: string[] | undefined;
+      let shouldCollectEventsConfig = false;
+      if (newExtensionVersion.spec.events) {
+        shouldCollectEventsConfig = await askUserForEventsConfig.askShouldCollectEventsConfig();
+      }
+      if (newExtensionVersion.spec.events && shouldCollectEventsConfig) {
+        let location: string;
+        // Check that channel is a valid resource name and follows the format `projects/{}/locations/{}/channels/{}`
+        if (existingInstance?.config.eventarcChannel && existingInstance?.config.eventarcChannel.split("/").length === 6) {
+          const preexistingLocation = existingInstance.config.eventarcChannel.split("/")[3];
+          location = await askUserForEventsConfig.askForEventArcLocation(preexistingLocation);
+        } else {
+          location = await askUserForEventsConfig.askForEventArcLocation();
+        }   
         const eventarcChannel = `projects/${projectId}/locations/${location}/channels/firebase`;
         newParamBindingOptions.EVENTARC_CHANNEL = { baseValue: eventarcChannel };
+        allowedEventTypes = await askUserForEventsConfig.askForAllowedEventTypes(
+          newExtensionVersion.spec.events,
+          preselectedTypes
+        );
         newParamBindingOptions.ALLOWED_EVENT_TYPES = { baseValue: allowedEventTypes.join(",") };
       }
       await manifest.writeToManifest(
@@ -345,17 +372,23 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         nonInteractive: options.nonInteractive,
         instanceId,
       });
-      let allowedEventTypes: string[] = [];
+      let allowedEventTypes: string[] | undefined;
+      let eventarcChannel: string | undefined;
+      let shouldCollectEventsConfig = false;
       if (newSpec.events) {
-        // @TODO: Ask user if they'd like to allow this extension to emit events.
-        // @TODO: pre-select existing values for allowed events.
-        allowedEventTypes = await askUserForEventsConfig.askForAllowedEventTypes(newSpec.events);
+        shouldCollectEventsConfig = await askUserForEventsConfig.askShouldCollectEventsConfig();
       }
-      let eventarcChannel = "";
-      if (allowedEventTypes.length > 0) {
-        // @TODO: pre-select existing values for eventarc location.
-        const location = await askUserForEventsConfig.askForEventArcLocation();
+      if (newSpec.events && shouldCollectEventsConfig) {
+        let location: string;
+        // Check that channel is a valid resource name and follows the format `projects/{}/locations/{}/channels/{}`
+        if (existingInstance.config.eventarcChannel?.split("/").length === 6) {
+          const preexistingLocation = existingInstance.config.eventarcChannel.split("/")[3];
+          location = await askUserForEventsConfig.askForEventArcLocation(preexistingLocation);
+        } else {
+          location = await askUserForEventsConfig.askForEventArcLocation();
+        }   
         eventarcChannel = `projects/${projectId}/locations/${location}/channels/firebase`;
+        allowedEventTypes = await askUserForEventsConfig.askForAllowedEventTypes(newSpec.events, existingInstance.config.allowedEventTypes);
       }
       const newParams = paramHelper.getBaseParamBindings(newParamBindings);
       spinner.start();
@@ -371,9 +404,12 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
       if (!_.isEqual(newParams, oldParamValues)) {
         updateOptions.params = newParams;
       }
-      // @TODO: Check if existingInstance.config.eventarcChannel and existingInstance.config.allowedEventTypes have changed
-      // If so, then need to set values in updateOptions.
-
+      if (existingInstance.config.eventarcChannel !== eventarcChannel) {
+        updateOptions.eventarcChannel = eventarcChannel
+      }
+      if (existingInstance.config.allowedEventTypes !== allowedEventTypes) {
+        updateOptions.allowedEventTypes = allowedEventTypes
+      }
       await update(updateOptions);
       spinner.stop();
       utils.logLabeledSuccess(logPrefix, `successfully updated ${clc.bold(instanceId)}.`);

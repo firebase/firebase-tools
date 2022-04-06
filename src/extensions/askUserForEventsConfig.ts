@@ -23,7 +23,8 @@ export function checkAllowedEventTypesResponse(
 }
 
 export async function askForAllowedEventTypes(
-  eventDescriptors: EventDescriptor[]
+  eventDescriptors: EventDescriptor[],
+  preselectedTypes?: string[],
 ): Promise<string[]> {
   let valid = false;
   let response = "";
@@ -32,7 +33,7 @@ export async function askForAllowedEventTypes(
     response = await onceWithJoin({
       name: "selectedEventTypesInput",
       type: "checkbox",
-      default: [],
+      default: preselectedTypes ?? [],
       message:
         "The publisher has configured this extension to emit custom events. " +
         "You can implement your own handlers that trigger when these events are emitted to customize the extension's behavior. " +
@@ -44,7 +45,16 @@ export async function askForAllowedEventTypes(
   return response.split(",").filter((e) => e !== "");
 }
 
-export async function askForEventArcLocation(): Promise<string> {
+export async function askShouldCollectEventsConfig(): Promise<boolean> {
+  return promptOnce({
+    type: "confirm",
+    name: "shouldCollectEvents",
+    message: `Would you like to enable events? If you enable events, this extension will publish events to Eventarc at key points in its lifecycle. Eventarc usage fees apply. You can write custom event handlers that respond to these events. You can always enable events later.`,
+    default: false,
+  })
+}
+
+export async function askForEventArcLocation(preselectedLocation?: string): Promise<string> {
   let valid = false;
   const allowedRegions = ["us-central1", "us-west1", "europe-west4", "asia-northeast1"];
   let location = "";
@@ -52,8 +62,8 @@ export async function askForEventArcLocation(): Promise<string> {
     location = await promptOnce({
       name: "input",
       type: "list",
-      default: "us-central1",
-      message: "Which region would you like the Eventarc channel to live in?",
+      default: preselectedLocation ?? "us-central1",
+      message: "Which location would you like the Eventarc channel to live in? We recommend using the default option. A channel location that differs from the extension's Cloud Functions location can incur egress cost.",
       choices: _.map(allowedRegions, (e) => ({ checked: false, value: e })),
     });
     valid = allowedRegions.includes(location);
