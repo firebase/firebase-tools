@@ -6,6 +6,7 @@ import * as runtimes from "./runtimes";
 import { FirebaseError } from "../../error";
 import { Context } from "./args";
 import { previews } from "../../previews";
+import { flatten } from "../../functional";
 
 /** Retry settings for a ScheduleSpec. */
 export interface ScheduleRetryConfig {
@@ -199,6 +200,9 @@ export interface SecretEnvVar {
   version?: string;
 }
 
+/**
+ *
+ */
 export function secretVersionName(s: SecretEnvVar): string {
   return `projects/${s.projectId}/secrets/${s.secret}/versions/${s.version ?? "latest"}`;
 }
@@ -320,11 +324,31 @@ export function of(...endpoints: Endpoint[]): Backend {
   for (const endpoint of endpoints) {
     bkend.endpoints[endpoint.region] = bkend.endpoints[endpoint.region] || {};
     if (bkend.endpoints[endpoint.region][endpoint.id]) {
-      throw new Error("Trying to create a backend with the same endpiont twice");
+      throw new Error("Trying to create a backend with the same endpoint twice");
     }
     bkend.endpoints[endpoint.region][endpoint.id] = endpoint;
   }
   return bkend;
+}
+
+/**
+ * A helper utility to merge backends.
+ */
+export function merge(...backends: Backend[]): Backend {
+  const merged = of(...flatten<Endpoint>(backends.map((b) => allEndpoints(b))));
+  const apiToReasons: Record<string, Set<string>> = {};
+  for (const b of backends) {
+    for (const { api, reason } of b.requiredAPIs) {
+      const reasons = apiToReasons[api] || new Set();
+      reasons.add(reason);
+      apiToReasons[api] = reasons;
+    }
+    merged.environmentVariables = { ...merged.environmentVariables, ...b.environmentVariables };
+  }
+  for (const [api, reasons] of Object.entries(apiToReasons)) {
+    merged.requiredAPIs.push({ api, reason: Array.from(reasons).join(" ") });
+  }
+  return merged;
 }
 
 /**

@@ -122,4 +122,60 @@ describe("prepare", () => {
       expect(want.availableMemoryMb).to.equal(512);
     });
   });
+
+  describe("groupByCodebase", () => {
+    function endpointsOf(b: backend.Backend): string[] {
+      return backend.allEndpoints(b).map((e) => `${e.region}-${e.id}`);
+    }
+
+    it("groups codebase using codebase property", () => {
+      const wantBackends: Record<string, backend.Backend> = {
+        default: backend.of(
+          { ...ENDPOINT, id: "default-0", codebase: "default" },
+          { ...ENDPOINT, id: "default-1", codebase: "default" }
+        ),
+        cb: backend.of(
+          { ...ENDPOINT, id: "cb-0", codebase: "cb" },
+          { ...ENDPOINT, id: "cb-1", codebase: "cb" }
+        ),
+      };
+      const haveBackend = backend.of(
+        { ...ENDPOINT, id: "default-0", codebase: "default" },
+        { ...ENDPOINT, id: "default-1", codebase: "default" },
+        { ...ENDPOINT, id: "cb-0", codebase: "cb" },
+        { ...ENDPOINT, id: "cb-1", codebase: "cb" },
+        { ...ENDPOINT, id: "orphan", codebase: "orphan" }
+      );
+
+      const got = prepare.groupByCodebase(wantBackends, haveBackend);
+      for (const codebase of Object.keys(got)) {
+        expect(endpointsOf(got[codebase])).to.have.members(endpointsOf(wantBackends[codebase]));
+      }
+    });
+
+    it("claims endpoint with matching name with conflicting codebase property", () => {
+      const wantBackends: Record<string, backend.Backend> = {
+        default: backend.of(
+          { ...ENDPOINT, id: "default-0", codebase: "default" },
+          { ...ENDPOINT, id: "default-1", codebase: "default" }
+        ),
+        cb: backend.of(
+          { ...ENDPOINT, id: "cb-0", codebase: "cb" },
+          { ...ENDPOINT, id: "cb-1", codebase: "cb" }
+        ),
+      };
+      const haveBackend = backend.of(
+        { ...ENDPOINT, id: "default-0", codebase: "cb" },
+        { ...ENDPOINT, id: "default-1", codebase: "cb" },
+        { ...ENDPOINT, id: "cb-0", codebase: "cb" },
+        { ...ENDPOINT, id: "cb-1", codebase: "cb" },
+        { ...ENDPOINT, id: "orphan", codebase: "orphan" }
+      );
+
+      const got = prepare.groupByCodebase(wantBackends, haveBackend);
+      for (const codebase of Object.keys(got)) {
+        expect(endpointsOf(got[codebase])).to.have.members(endpointsOf(wantBackends[codebase]));
+      }
+    });
+  });
 });
