@@ -132,8 +132,12 @@ function parseEndpoints(
         channel: "string",
       });
       triggered = { eventTrigger: ep.eventTrigger };
-      if (typeof triggered.eventTrigger.channel !== 'undefined')  {
-        triggered.eventTrigger.channel = resolveChannelName(project, triggered.eventTrigger.channel, defaultRegion);
+      if (typeof triggered.eventTrigger.channel !== "undefined") {
+        triggered.eventTrigger.channel = resolveChannelName(
+          project,
+          triggered.eventTrigger.channel,
+          defaultRegion
+        );
       }
       for (const [k, v] of Object.entries(triggered.eventTrigger.eventFilters)) {
         if (k === "topic" && !v.startsWith("projects/")) {

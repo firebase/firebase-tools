@@ -389,8 +389,8 @@ describe("backendFromV1Alpha1", () => {
           ...DEFAULTED_ENDPOINT,
           eventTrigger: {
             ...eventTrigger,
-            eventFilters: { },
-            channel: "projects/project/locations/region/channels/my-channel"
+            eventFilters: {},
+            channel: "projects/project/locations/region/channels/my-channel",
           },
         });
         const parsed = v1alpha1.backendFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
@@ -419,8 +419,8 @@ describe("backendFromV1Alpha1", () => {
           ...DEFAULTED_ENDPOINT,
           eventTrigger: {
             ...eventTrigger,
-            eventFilters: { },
-            channel: "projects/project/locations/us-wildwest11/channels/my-channel"
+            eventFilters: {},
+            channel: "projects/project/locations/us-wildwest11/channels/my-channel",
           },
         });
         const parsed = v1alpha1.backendFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
@@ -449,8 +449,8 @@ describe("backendFromV1Alpha1", () => {
           ...DEFAULTED_ENDPOINT,
           eventTrigger: {
             ...eventTrigger,
-            eventFilters: { },
-            channel: "projects/newyearresolution1/locations/us-wildwest11/channels/my-channel"
+            eventFilters: {},
+            channel: "projects/newyearresolution1/locations/us-wildwest11/channels/my-channel",
           },
         });
         const parsed = v1alpha1.backendFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
