@@ -9,17 +9,17 @@ import * as args from "./args";
 import * as gcs from "../../gcp/storage";
 import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfv2 from "../../gcp/cloudfunctionsv2";
-import * as utils from "../../utils";
 import * as backend from "./backend";
+import { FirebaseError } from "../../error";
 
 setGracefulCleanup();
 
 async function uploadSourceV1(context: args.Context, region: string): Promise<void> {
   const uploadUrl = await gcf.generateUploadUrl(context.projectId, region);
-  context.sourceUrl = uploadUrl;
+  context.source!.sourceUrl = uploadUrl;
   const uploadOpts = {
-    file: context.functionsSourceV1!,
-    stream: fs.createReadStream(context.functionsSourceV1!),
+    file: context.source!.functionsSourceV1!,
+    stream: fs.createReadStream(context.source!.functionsSourceV1!),
   };
   await gcs.upload(uploadOpts, uploadUrl, {
     "x-goog-content-length-range": "0,104857600",
@@ -29,11 +29,27 @@ async function uploadSourceV1(context: args.Context, region: string): Promise<vo
 async function uploadSourceV2(context: args.Context, region: string): Promise<void> {
   const res = await gcfv2.generateUploadUrl(context.projectId, region);
   const uploadOpts = {
-    file: context.functionsSourceV2!,
-    stream: fs.createReadStream(context.functionsSourceV2!),
+    file: context.source!.functionsSourceV2!,
+    stream: fs.createReadStream(context.source!.functionsSourceV2!),
   };
   await gcs.upload(uploadOpts, res.uploadUrl);
-  context.storage = { ...context.storage, [region]: res.storageSource };
+  context.source!.storage = { ...context.source!.storage, [region]: res.storageSource };
+}
+
+function assertPreconditions(context: args.Context, options: Options, payload: args.Payload): void {
+  const assertExists = function (v: unknown, msg?: string): void {
+    const errMsg = `${msg || "Value unexpectedly empty."}`;
+    if (!v) {
+      throw new FirebaseError(
+        errMsg +
+          "This should never happen. Please file a bug at https://github.com/firebase/firebase-tools"
+      );
+    }
+  };
+  assertExists(context.config, "Functions config unexpectedly empty.");
+  assertExists(context.source, "Functions sources unexpectedly empty.");
+  assertExists(context.source?.functionsSourceV1, "Functions v1 source unexpectedly empty.");
+  assertExists(payload.codebase, "Functions payload unexpectedly empty.");
 }
 
 /**
@@ -47,18 +63,11 @@ export async function deploy(
   options: Options,
   payload: args.Payload
 ): Promise<void> {
-  if (!context.config) {
-    return;
-  }
-
-  if (!context.functionsSourceV1 && !context.functionsSourceV2) {
-    return;
-  }
-
+  assertPreconditions(context, options, payload);
   await checkHttpIam(context, options, payload);
 
   try {
-    const want = payload.functions!.wantBackend;
+    const want = payload.codebase!.wantBackend;
     const uploads: Promise<void>[] = [];
 
     const v1Endpoints = backend.allEndpoints(want).filter((e) => e.platform === "gcfv1");
@@ -77,7 +86,7 @@ export async function deploy(
     }
     await Promise.all(uploads);
 
-    const source = context.config.source;
+    const source = context.config!.source;
     if (uploads.length) {
       logSuccess(
         `${clc.green.bold("functions:")} ${clc.bold(source)} folder uploaded successfully`

@@ -18,20 +18,29 @@ import { FirebaseError } from "../../../error";
 import { needProjectId, needProjectNumber } from "../../../projectUtils";
 import { logLabeledBullet, logLabeledWarning } from "../../../utils";
 
+function assertPreconditions(context: args.Context, options: Options, payload: args.Payload): void {
+  const assertExists = function (v: unknown, msg?: string): void {
+    const errMsg = `${msg || "Value unexpectedly empty."}`;
+    if (!v) {
+      throw new FirebaseError(
+        errMsg +
+          "This should never happen. Please file a bug at https://github.com/firebase/firebase-tools"
+      );
+    }
+  };
+  assertExists(context.config, "Functions config unexpectedly empty.");
+  assertExists(context.source, "Functions sources unexpectedly empty.");
+  assertExists(payload.codebase, "Functions payload unexpectedly empty.");
+}
 /** Releases new versions of functions to prod. */
 export async function release(
   context: args.Context,
   options: Options,
   payload: args.Payload
 ): Promise<void> {
-  if (!context.config) {
-    return;
-  }
-  if (!payload.functions) {
-    return;
-  }
+  assertPreconditions(context, options, payload);
 
-  const { wantBackend, haveBackend } = payload.functions;
+  const { wantBackend, haveBackend } = payload.codebase!;
   const plan = planner.createDeploymentPlan(wantBackend, haveBackend, context.filters);
 
   const fnsToDelete = Object.values(plan)
@@ -58,8 +67,8 @@ export async function release(
   const fab = new fabricator.Fabricator({
     functionExecutor,
     executor: new executor.QueueExecutor({}),
-    sourceUrl: context.sourceUrl!,
-    storage: context.storage!,
+    sourceUrl: context.source!.sourceUrl!,
+    storage: context.source!.storage!,
     appEngineLocation: getAppEngineLocation(context.firebaseConfig),
   });
 
@@ -72,9 +81,9 @@ export async function release(
   // uri field. createDeploymentPlan copies endpoints by reference. Both of these
   // subtleties are so we can take out a round trip API call to get the latest
   // trigger URLs by calling existingBackend again.
-  printTriggerUrls(payload.functions!.wantBackend);
+  printTriggerUrls(payload.codebase!.wantBackend);
 
-  const haveEndpoints = backend.allEndpoints(payload.functions!.wantBackend);
+  const haveEndpoints = backend.allEndpoints(payload.codebase!.wantBackend);
   const deletedEndpoints = Object.values(plan)
     .map((r) => r.endpointsToDelete)
     .reduce(reduceFlat, []);
