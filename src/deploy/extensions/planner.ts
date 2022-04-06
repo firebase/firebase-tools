@@ -34,7 +34,6 @@ export interface ManifestInstanceSpec extends InstanceSpec {
   params: Record<string, ParamBindingOptions>;
 }
 
-// TODO(lihes): Rename this to something like DeploymentInstanceSpec.
 /**
  * Instance spec used for deploying extensions to firebase project or emulator.
  *
