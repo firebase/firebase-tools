@@ -4,6 +4,8 @@ import { copyIfPresent } from "../../../../gcp/proto";
 import { assertKeyTypes, requireKeys } from "./parsing";
 import { FirebaseError } from "../../../../error";
 
+const CHANNEL_NAME_REGEX = /^(projects\/([^/]+)\/)?locations\/([^/]+)\/channels\/([^/]+)$/;
+
 export type ManifestEndpoint = backend.ServiceConfiguration &
   backend.Triggered &
   Partial<backend.HttpsTriggered> &
@@ -130,6 +132,9 @@ function parseEndpoints(
         channel: "string",
       });
       triggered = { eventTrigger: ep.eventTrigger };
+      if (typeof triggered.eventTrigger.channel !== 'undefined')  {
+        triggered.eventTrigger.channel = resolveChannelName(project, triggered.eventTrigger.channel, defaultRegion);
+      }
       for (const [k, v] of Object.entries(triggered.eventTrigger.eventFilters)) {
         if (k === "topic" && !v.startsWith("projects/")) {
           // Construct full pubsub topic name.
@@ -215,4 +220,24 @@ function parseEndpoints(
   }
 
   return allParsed;
+}
+
+function resolveChannelName(projectId: string, channel: string, defaultRegion: string): string {
+  if (!channel.includes("/")) {
+    const location = defaultRegion;
+    const channelId = channel;
+    return "projects/" + projectId + "/locations/" + location + "/channels/" + channelId;
+  }
+  const match = CHANNEL_NAME_REGEX.exec(channel);
+  if (match === null) {
+    throw new FirebaseError("Invalid channel name format.");
+  }
+  const matchedProjectId = match[2];
+  const location = match[3];
+  const channelId = match[4];
+  if (matchedProjectId) {
+    return "projects/" + matchedProjectId + "/locations/" + location + "/channels/" + channelId;
+  } else {
+    return "projects/" + projectId + "/locations/" + location + "/channels/" + channelId;
+  }
 }

@@ -10,11 +10,8 @@ import * as proto from "../../../../gcp/proto";
 import * as args from "../../args";
 import * as runtimes from "../../runtimes";
 import * as v2events from "../../../../functions/events/v2";
-import { normalizeRulesConfig } from "../../../../database/rulesConfig";
 
 const TRIGGER_PARSER = path.resolve(__dirname, "./triggerParser.js");
-const DEFAULT_CHANNEL_REGION = "us-central1";
-const CHANNEL_NAME_REGEX = /^(projects\/([^/]+)\/)?locations\/([^/]+)\/channels\/([^/]+)$/;
 
 export interface ScheduleRetryConfig {
   retryCount?: number;
@@ -53,11 +50,9 @@ export interface TriggerAnnotation {
   };
   eventTrigger?: {
     eventType: string;
-    resource?: string;
-    channel?: string;
-    filters?: Record<string, string>;
+    resource: string;
     // Deprecated
-    service?: string;
+    service: string;
   };
   taskQueueTrigger?: {
     rateLimits?: {
@@ -220,25 +215,14 @@ export function addResourcesToBackend(
       triggered = {
         eventTrigger: {
           eventType: annotation.eventTrigger!.eventType,
+          eventFilters: { resource: annotation.eventTrigger!.resource },
           retry: !!annotation.failurePolicy,
-          eventFilters: {},
-          channel: getChannel(projectId, annotation?.eventTrigger?.channel,  annotation?.eventTrigger?.channelLocation),
         },
       };
-      if (annotation?.eventTrigger?.channel) {
-        triggered.eventTrigger.channel = resolveChannelName(
-          projectId,
-          annotation?.eventTrigger?.channel
-        );
-      }
-
-      if (annotation.eventTrigger!.resource) {
-        triggered.eventTrigger.eventFilters['resource'] = annotation.eventTrigger!.resource;
-      }
 
       // TODO: yank this edge case for a v2 trigger on the pre-container contract
       // once we use container contract for the functionsv2 experiment.
-      if (annotation.platform === "gcfv2" && annotation.eventTrigger!.resource) {
+      if (annotation.platform === "gcfv2") {
         if (annotation.eventTrigger!.eventType === v2events.PUBSUB_PUBLISH_EVENT) {
           triggered.eventTrigger.eventFilters = { topic: annotation.eventTrigger!.resource };
         }
@@ -311,25 +295,5 @@ export function addResourcesToBackend(
     want.endpoints[region][endpoint.id] = endpoint;
 
     mergeRequiredAPIs(want);
-  }
-}
-
-function resolveChannelName(projectId: string, channel: string): string {
-  if (!channel.includes("/")) {
-    const location = DEFAULT_CHANNEL_REGION;
-    const channelId = channel;
-    return "projects/" + projectId + "/locations/" + location + "/channels/" + channelId;
-  }
-  const match = CHANNEL_NAME_REGEX.exec(channel);
-  if (match === null) {
-    throw new FirebaseError("Invalid channel name format.");
-  }
-  const matchedProjectId = match[2];
-  const location = match[3];
-  const channelId = match[4];
-  if (matchedProjectId) {
-    return "projects/" + matchedProjectId + "/locations/" + location + "/channels/" + channelId;
-  } else {
-    return "projects/" + projectId + "/locations/" + location + "/channels/" + channelId;
   }
 }
