@@ -514,9 +514,7 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
         trigger.eventTrigger.eventFilters[attribute] = value;
       }
     }
-    if (gcfFunction.eventTrigger.channel) {
-      trigger.eventTrigger.channel = gcfFunction.eventTrigger.channel;
-    }
+    proto.copyIfPresent(trigger.eventTrigger, gcfFunction.eventTrigger, "channel");
     proto.renameIfPresent(
       trigger.eventTrigger,
       gcfFunction.eventTrigger,

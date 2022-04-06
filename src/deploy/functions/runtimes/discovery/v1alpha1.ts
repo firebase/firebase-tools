@@ -1,10 +1,17 @@
 import * as backend from "../../backend";
 import * as runtimes from "..";
-import { copyIfPresent } from "../../../../gcp/proto";
+import { copyIfPresent, renameIfPresent } from "../../../../gcp/proto";
 import { assertKeyTypes, requireKeys } from "./parsing";
 import { FirebaseError } from "../../../../error";
 
-const CHANNEL_NAME_REGEX = /^(projects\/([^/]+)\/)?locations\/([^/]+)\/channels\/([^/]+)$/;
+const CHANNEL_NAME_REGEX = new RegExp(
+  "(projects\\/" +
+    "(?<project>(?:\\d+)|(?:[A-Za-z]+[A-Za-z\\d-]*[A-Za-z\\d]?))\\/)?" +
+    "locations\\/" +
+    "(?<location>[A-Za-z\\d\\-_]+)\\/" +
+    "channels\\/" +
+    "(?<channel>[A-Za-z\\d\\-_]+)"
+);
 
 export type ManifestEndpoint = backend.ServiceConfiguration &
   backend.Triggered &
@@ -121,7 +128,7 @@ function parseEndpoints(
   for (const region of ep.region || [defaultRegion]) {
     let triggered: backend.Triggered;
     if (backend.isEventTriggered(ep)) {
-      requireKeys(prefix + ".eventTrigger", ep.eventTrigger, "eventType");
+      requireKeys(prefix + ".eventTrigger", ep.eventTrigger, "eventType", "eventFilters");
       assertKeyTypes(prefix + ".eventTrigger", ep.eventTrigger, {
         eventFilters: "object",
         eventFilterPathPatterns: "object",
@@ -132,13 +139,9 @@ function parseEndpoints(
         channel: "string",
       });
       triggered = { eventTrigger: ep.eventTrigger };
-      if (typeof triggered.eventTrigger.channel !== "undefined") {
-        triggered.eventTrigger.channel = resolveChannelName(
-          project,
-          triggered.eventTrigger.channel,
-          defaultRegion
-        );
-      }
+      renameIfPresent(triggered.eventTrigger, ep.eventTrigger, "channel", "channel", (c) =>
+        resolveChannelName(project, c, defaultRegion)
+      );
       for (const [k, v] of Object.entries(triggered.eventTrigger.eventFilters)) {
         if (k === "topic" && !v.startsWith("projects/")) {
           // Construct full pubsub topic name.
@@ -233,12 +236,12 @@ function resolveChannelName(projectId: string, channel: string, defaultRegion: s
     return "projects/" + projectId + "/locations/" + location + "/channels/" + channelId;
   }
   const match = CHANNEL_NAME_REGEX.exec(channel);
-  if (match === null) {
+  if (!match?.groups) {
     throw new FirebaseError("Invalid channel name format.");
   }
-  const matchedProjectId = match[2];
-  const location = match[3];
-  const channelId = match[4];
+  const matchedProjectId = match.groups.project;
+  const location = match.groups.location;
+  const channelId = match.groups.channel;
   if (matchedProjectId) {
     return "projects/" + matchedProjectId + "/locations/" + location + "/channels/" + channelId;
   } else {
