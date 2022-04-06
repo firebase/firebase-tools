@@ -31,6 +31,7 @@ import {
   isLocalOrURLPath,
   diagnoseAndFixProject,
   isUrlPath,
+  isLocalPath,
 } from "../extensions/extensionsHelper";
 import { update } from "../extensions/updateHelper";
 import { getRandomString } from "../extensions/utils";
@@ -89,20 +90,17 @@ export default new Command("ext:install [extensionName]")
     let source;
     let extVersion;
 
-    // TODO(b/220900194): Remove tracking of url install once we remove this feature.
+    // TODO(b/220900194): Remove when deprecating old install flow.
     if (isUrlPath(extensionName)) {
-      void track("Extension Install", "Install by url path", options.interactive ? 1 : 0);
+      throw new FirebaseError(
+        `Installing with a source url is no longer supported in the CLI. Please use Firebase Console instead.`
+      );
     }
 
     // If the user types in URL, or a local path (prefixed with ~/, ../, or ./), install from local/URL source.
     // Otherwise, treat the input as an extension reference and proceed with reference-based installation.
-    if (isLocalOrURLPath(extensionName)) {
+    if (isLocalPath(extensionName)) {
       void track("Extension Install", "Install by Source", options.interactive ? 1 : 0);
-      if (options.local) {
-        throw new FirebaseError(
-          "Installing a local source locally is not supported yet, please use ext:dev:emulator commands"
-        );
-      }
       source = await infoInstallBySource(needProjectId({ projectId }), extensionName);
     } else {
       void track("Extension Install", "Install by Extension Ref", options.interactive ? 1 : 0);
@@ -243,8 +241,10 @@ interface InstallExtensionOptions {
  * @param options
  */
 async function installToManifest(options: InstallExtensionOptions): Promise<void> {
-  const { projectId, extensionName, extVersion, paramsEnvPath, nonInteractive, force } = options;
-  const spec = extVersion?.spec;
+  const { projectId, extensionName, extVersion, source, paramsEnvPath, nonInteractive, force } = options;
+  const isLocalSource = isLocalPath(extensionName);
+
+  const spec = extVersion?.spec ?? source?.spec;
   if (!spec) {
     throw new FirebaseError(
       `Could not find the extension.yaml for ${extensionName}. Please make sure this is a valid extension and try again.`
@@ -266,12 +266,13 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
     instanceId,
   });
 
-  const ref = refs.parse(extVersion.ref);
+  const ref = extVersion ? refs.parse(extVersion.ref) : undefined;
   await manifest.writeToManifest(
     [
       {
         instanceId,
-        ref,
+        ref : !isLocalSource ? ref : undefined,
+        localPath: isLocalSource ? extensionName : undefined,
         params: paramBindingOptions,
         paramSpecs: spec.params,
       },

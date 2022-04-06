@@ -21,6 +21,7 @@ export interface ManifestInstanceSpec {
   instanceId: string;
   params: Record<string, ParamBindingOptions>;
   ref?: refs.Ref;
+  localPath?: string;
   paramSpecs?: extensionsApi.Param[];
 }
 

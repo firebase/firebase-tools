@@ -160,7 +160,16 @@ export function getInstanceRef(instanceId: string, config: Config): refs.Ref {
 function writeExtensionsToFirebaseJson(specs: ManifestInstanceSpec[], config: Config): void {
   const extensions = config.get("extensions", {});
   for (const s of specs) {
-    extensions[s.instanceId] = refs.toExtensionVersionRef(s.ref!);
+    let target;
+    if (s.ref) {
+      target = refs.toExtensionVersionRef(s.ref!)
+    } else if (s.localPath) {
+      target=s.localPath
+    } else {
+      throw new FirebaseError(`Unable to resolve ManifestInstanceSpec, make sure you provide either extension ref or a local path to extension source code`);
+    }
+    
+    extensions[s.instanceId] = target;
   }
   config.set("extensions", extensions);
   config.writeProjectFile("firebase.json", config.src);
