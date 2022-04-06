@@ -6,7 +6,7 @@ import * as utils from "../../utils";
 /**
  *  Release finalized a Hosting release.
  */
-export async function release(context: any, options: any): Promise<void> {
+export async function release(context: any, options: any, payload: any): Promise<void> {
   if (!context.hosting || !context.hosting.deploys) {
     return;
   }
@@ -17,10 +17,16 @@ export async function release(context: any, options: any): Promise<void> {
   await Promise.all(
     context.hosting.deploys.map(async (deploy: any) => {
       utils.logLabeledBullet(`hosting[${deploy.site}]`, "finalizing version...");
+
+      const config = payload.hosting?.config?.[deploy.site];
+      const data = { status: "FINALIZED", config };
+      const queryParams = { updateMask: "status" };
+      if (config) queryParams.updateMask += ",config";
+
       const finalizeResult = await client.patch(
         `/${deploy.version}`,
-        { status: "FINALIZED" },
-        { queryParams: { updateMask: "status" } }
+        data,
+        { queryParams }
       );
 
       logger.debug(`[hosting] finalized version for ${deploy.site}:${finalizeResult.body}`);
