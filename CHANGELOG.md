@@ -1,0 +1,1 @@
+- Fix URL with wrong host returned in storage resumable upload (#4374).
