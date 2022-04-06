@@ -8,6 +8,7 @@ source scripts/set-default-credentials.sh
   npm install
 )
 
+<<<<<<< HEAD
 npx mocha \
   --require ts-node/register \
   --require source-map-support/register \
@@ -16,3 +17,6 @@ npx mocha \
   scripts/extensions-emulator-tests/tests.ts
 
 rm scripts/extensions-emulator-tests/functions/package.json
+=======
+mocha scripts/extensions-emulator-tests/tests.ts
+>>>>>>> public/master

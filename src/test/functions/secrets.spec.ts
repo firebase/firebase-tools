@@ -2,12 +2,25 @@ import * as sinon from "sinon";
 import { expect } from "chai";
 
 import * as secretManager from "../../gcp/secretManager";
+import * as gcf from "../../gcp/cloudfunctions";
 import * as secrets from "../../functions/secrets";
 import * as utils from "../../utils";
 import * as prompt from "../../prompt";
 import * as backend from "../../deploy/functions/backend";
+import * as poller from "../../operation-poller";
 import { Options } from "../../options";
 import { FirebaseError } from "../../error";
+import { updateEndpointSecret } from "../../functions/secrets";
+
+const ENDPOINT = {
+  id: "id",
+  region: "region",
+  project: "project",
+  entryPoint: "id",
+  runtime: "nodejs16",
+  platform: "gcfv1" as const,
+  httpsTrigger: {},
+};
 
 describe("functions/secret", () => {
   const options = { force: false } as Options;
@@ -27,22 +40,27 @@ describe("functions/secret", () => {
     });
 
     it("returns the original key if it follows convention", async () => {
-      expect(await secrets.ensureValidKey("MY_KEY", options)).to.equal("MY_KEY");
+      expect(await secrets.ensureValidKey("MY_SECRET_KEY", options)).to.equal("MY_SECRET_KEY");
       expect(warnStub).to.not.have.been.called;
     });
 
-    it("returns the transformed key (with warning) if with dashses", async () => {
-      expect(await secrets.ensureValidKey("MY-KEY", options)).to.equal("MY_KEY");
+    it("returns the transformed key (with warning) if with dashes", async () => {
+      expect(await secrets.ensureValidKey("MY-SECRET-KEY", options)).to.equal("MY_SECRET_KEY");
+      expect(warnStub).to.have.been.calledOnce;
+    });
+
+    it("returns the transformed key (with warning) if with periods", async () => {
+      expect(await secrets.ensureValidKey("MY.SECRET.KEY", options)).to.equal("MY_SECRET_KEY");
       expect(warnStub).to.have.been.calledOnce;
     });
 
     it("returns the transformed key (with warning) if with lower cases", async () => {
-      expect(await secrets.ensureValidKey("my_key", options)).to.equal("MY_KEY");
+      expect(await secrets.ensureValidKey("my_secret_key", options)).to.equal("MY_SECRET_KEY");
       expect(warnStub).to.have.been.calledOnce;
     });
 
     it("returns the transformed key (with warning) if camelCased", async () => {
-      expect(await secrets.ensureValidKey("myKey", options)).to.equal("MY_KEY");
+      expect(await secrets.ensureValidKey("mySecretKey", options)).to.equal("MY_SECRET_KEY");
       expect(warnStub).to.have.been.calledOnce;
     });
 
@@ -124,16 +142,6 @@ describe("functions/secret", () => {
   });
 
   describe("of", () => {
-    const ENDPOINT = {
-      id: "id",
-      region: "region",
-      project: "project",
-      entryPoint: "id",
-      runtime: "nodejs16",
-      platform: "gcfv1" as const,
-      httpsTrigger: {},
-    };
-
     function makeSecret(name: string, version?: string): backend.SecretEnvVar {
       return {
         projectId: "project",
@@ -169,16 +177,6 @@ describe("functions/secret", () => {
   });
 
   describe("pruneSecrets", () => {
-    const ENDPOINT = {
-      id: "id",
-      region: "region",
-      project: "project",
-      entryPoint: "id",
-      runtime: "nodejs16",
-      platform: "gcfv1" as const,
-      httpsTrigger: {},
-    };
-
     let listSecretsStub: sinon.SinonStub;
     let listSecretVersionsStub: sinon.SinonStub;
     let getSecretVersionStub: sinon.SinonStub;
@@ -282,6 +280,181 @@ describe("functions/secret", () => {
 
       expect(pruned).to.have.deep.members([secretVersion11, secretVersion21].map(toSecretEnvVar));
       expect(pruned).to.have.length(2);
+    });
+  });
+
+  describe("inUse", () => {
+    const projectId = "project";
+    const projectNumber = "12345";
+    const secret: secretManager.Secret = {
+      projectId,
+      name: "MY_SECRET",
+    };
+
+    it("returns true if secret is in use", () => {
+      expect(
+        secrets.inUse({ projectId, projectNumber }, secret, {
+          ...ENDPOINT,
+          secretEnvironmentVariables: [
+            { projectId, key: secret.name, secret: secret.name, version: "1" },
+          ],
+        })
+      ).to.be.true;
+    });
+
+    it("returns true if secret is in use by project number", () => {
+      expect(
+        secrets.inUse({ projectId, projectNumber }, secret, {
+          ...ENDPOINT,
+          secretEnvironmentVariables: [
+            { projectId: projectNumber, key: secret.name, secret: secret.name, version: "1" },
+          ],
+        })
+      ).to.be.true;
+    });
+
+    it("returns false if secret is not in use", () => {
+      expect(secrets.inUse({ projectId, projectNumber }, secret, ENDPOINT)).to.be.false;
+    });
+
+    it("returns false if secret of same name from another project is in use", () => {
+      expect(
+        secrets.inUse({ projectId, projectNumber }, secret, {
+          ...ENDPOINT,
+          secretEnvironmentVariables: [
+            { projectId: "another-project", key: secret.name, secret: secret.name, version: "1" },
+          ],
+        })
+      ).to.be.false;
+    });
+  });
+
+  describe("pruneAndDestroySecrets", () => {
+    let pruneSecretsStub: sinon.SinonStub;
+    let destroySecretVersionStub: sinon.SinonStub;
+
+    const projectId = "projectId";
+    const projectNumber = "12345";
+    const secret0: backend.SecretEnvVar = {
+      projectId,
+      key: "MY_SECRET",
+      secret: "MY_SECRET",
+      version: "1",
+    };
+    const secret1: backend.SecretEnvVar = {
+      projectId,
+      key: "MY_SECRET",
+      secret: "MY_SECRET",
+      version: "1",
+    };
+
+    beforeEach(() => {
+      pruneSecretsStub = sinon.stub(secrets, "pruneSecrets").rejects("Unexpected call");
+      destroySecretVersionStub = sinon
+        .stub(secretManager, "destroySecretVersion")
+        .rejects("Unexpected call");
+    });
+
+    afterEach(() => {
+      pruneSecretsStub.restore();
+      destroySecretVersionStub.restore();
+    });
+
+    it("destroys pruned secrets", async () => {
+      pruneSecretsStub.resolves([secret1]);
+      destroySecretVersionStub.resolves();
+
+      await expect(
+        secrets.pruneAndDestroySecrets({ projectId, projectNumber }, [
+          {
+            ...ENDPOINT,
+            secretEnvironmentVariables: [secret0],
+          },
+          {
+            ...ENDPOINT,
+            secretEnvironmentVariables: [secret1],
+          },
+        ])
+      ).to.eventually.deep.equal({ erred: [], destroyed: [secret1] });
+    });
+
+    it("collects errors", async () => {
+      pruneSecretsStub.resolves([secret0, secret1]);
+      destroySecretVersionStub.onFirstCall().resolves();
+      destroySecretVersionStub.onSecondCall().rejects({ message: "an error" });
+
+      await expect(
+        secrets.pruneAndDestroySecrets({ projectId, projectNumber }, [
+          {
+            ...ENDPOINT,
+            secretEnvironmentVariables: [secret0],
+          },
+          {
+            ...ENDPOINT,
+            secretEnvironmentVariables: [secret1],
+          },
+        ])
+      ).to.eventually.deep.equal({ erred: [{ message: "an error" }], destroyed: [secret0] });
+    });
+  });
+
+  describe("updateEndpointsSecret", () => {
+    const projectId = "project";
+    const projectNumber = "12345";
+    const secretVersion: secretManager.SecretVersion = {
+      secret: {
+        projectId,
+        name: "MY_SECRET",
+      },
+      versionId: "2",
+    };
+
+    let gcfMock: sinon.SinonMock;
+    let pollerStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      gcfMock = sinon.mock(gcf);
+      pollerStub = sinon.stub(poller, "pollOperation").rejects("Unexpected call");
+    });
+
+    afterEach(() => {
+      gcfMock.verify();
+      gcfMock.restore();
+      pollerStub.restore();
+    });
+
+    it("returns early if secret is not in use", async () => {
+      const endpoint: backend.Endpoint = {
+        ...ENDPOINT,
+        secretEnvironmentVariables: [],
+      };
+
+      gcfMock.expects("updateFunction").never();
+      await updateEndpointSecret({ projectId, projectNumber }, secretVersion, endpoint);
+    });
+
+    it("updates function with the version of the given secret", async () => {
+      const sev: backend.SecretEnvVar = {
+        projectId: projectNumber,
+        secret: secretVersion.secret.name,
+        key: secretVersion.secret.name,
+        version: "1",
+      };
+      const endpoint: backend.Endpoint = {
+        ...ENDPOINT,
+        secretEnvironmentVariables: [sev],
+      };
+      const fn: Omit<gcf.CloudFunction, gcf.OutputOnlyFields> = {
+        name: `projects/${endpoint.project}/locations/${endpoint.region}/functions/${endpoint.id}`,
+        runtime: endpoint.runtime,
+        entryPoint: endpoint.entryPoint,
+        secretEnvironmentVariables: [{ ...sev, version: "2" }],
+      };
+
+      pollerStub.resolves({ ...fn, httpsTrigger: {} });
+      gcfMock.expects("updateFunction").once().withArgs(fn).resolves({});
+
+      await updateEndpointSecret({ projectId, projectNumber }, secretVersion, endpoint);
     });
   });
 });

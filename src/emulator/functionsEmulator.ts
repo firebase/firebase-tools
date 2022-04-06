@@ -41,6 +41,8 @@ import {
   ParsedTriggerDefinition,
   emulatedFunctionsFromEndpoints,
   emulatedFunctionsByRegion,
+  getSecretLocalPath,
+  toBackendInfo,
 } from "./functionsEmulatorShared";
 import { EmulatorRegistry } from "./registry";
 import { EmulatorLogger, Verbosity } from "./emulatorLogger";
@@ -64,7 +66,6 @@ import * as backend from "../deploy/functions/backend";
 import * as functionsEnv from "../functions/env";
 
 const EVENT_INVOKE = "functions:invoke";
-const LOCAL_SECRETS_FILE = ".secret.local";
 
 /*
  * The Realtime Database emulator expects the `path` field in its trigger
@@ -85,6 +86,7 @@ const DATABASE_PATH_PATTERN = new RegExp("^projects/[^/]+/instances/([^/]+)/refs
 export interface EmulatableBackend {
   functionsDir: string;
   env: Record<string, string>;
+  secretEnv: backend.SecretEnvVar[];
   predefinedTriggers?: ParsedTriggerDefinition[];
   nodeMajorVersion?: number;
   nodeBinary?: string;
@@ -99,7 +101,7 @@ export interface EmulatableBackend {
  */
 export interface BackendInfo {
   directory: string;
-  env: Record<string, string>;
+  env: Record<string, string>; // TODO: Consider exposing more information about where param values come from & if they are locally overwritten.
   functionTriggers: ParsedTriggerDefinition[];
   extensionInstanceId?: string;
   extension?: Extension; // Only present for published extensions
@@ -119,6 +121,7 @@ export interface FunctionsEmulatorArgs {
   debugPort?: number;
   remoteEmulators?: { [key: string]: EmulatorInfo };
   adminSdkConfig?: AdminSdkConfig;
+  projectAlias?: string;
 }
 
 // FunctionsRuntimeInstance is the handler for a running function invocation
@@ -237,7 +240,6 @@ export class FunctionsEmulator implements EmulatorInstance {
     this.workQueue.start();
 
     const hub = express();
-    hub.use(cors({ origin: true })); // Enable cors so the Emulator UI can call out to the Functions Emulator.
 
     const dataMiddleware: express.RequestHandler = (req, res, next) => {
       const chunks: Buffer[] = [];
@@ -348,7 +350,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     // The ordering here is important. The longer routes (background)
     // need to be registered first otherwise the HTTP functions consume
     // all events.
-    hub.get(listBackendsRoute, dataMiddleware, listBackendsHandler);
+    hub.get(listBackendsRoute, cors({ origin: true }), listBackendsHandler); // This route needs CORS so the Emulator UI can call it.
     hub.post(backgroundFunctionRoute, dataMiddleware, backgroundHandler);
     hub.post(multicastFunctionRoute, dataMiddleware, multicastHandler);
     hub.all(httpsFunctionRoutes, dataMiddleware, httpsHandler);
@@ -483,7 +485,10 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     let triggerDefinitions: EmulatedTriggerDefinition[];
     if (emulatableBackend.predefinedTriggers) {
-      triggerDefinitions = emulatedFunctionsByRegion(emulatableBackend.predefinedTriggers);
+      triggerDefinitions = emulatedFunctionsByRegion(
+        emulatableBackend.predefinedTriggers,
+        emulatableBackend.secretEnv
+      );
     } else {
       const runtimeConfig = this.getRuntimeConfig(emulatableBackend);
       const runtimeDelegateContext: runtimes.DelegateContext = {
@@ -546,7 +551,9 @@ export class FunctionsEmulator implements EmulatorInstance {
     for (const definition of toSetup) {
       // Skip function with invalid id.
       try {
-        functionIdsAreValid([definition]);
+        // Note - in the emulator, functionId = {region}-{functionName}, but in prod, functionId=functionName.
+        // To match prod behavior, only validate functionName
+        functionIdsAreValid([{ ...definition, id: definition.name }]);
       } catch (e: any) {
         this.logger.logLabeled(
           "WARN",
@@ -737,12 +744,10 @@ export class FunctionsEmulator implements EmulatorInstance {
     signatureType: SignatureType,
     schedule: EventSchedule | undefined
   ): Promise<boolean> {
-    const pubsubPort = EmulatorRegistry.getPort(Emulators.PUBSUB);
-    if (!pubsubPort) {
+    const pubsubEmulator = EmulatorRegistry.get(Emulators.PUBSUB) as PubsubEmulator | undefined;
+    if (!pubsubEmulator) {
       return false;
     }
-
-    const pubsubEmulator = EmulatorRegistry.get(Emulators.PUBSUB) as PubsubEmulator;
 
     logger.debug(`addPubsubTrigger`, JSON.stringify({ eventTrigger }));
 
@@ -829,20 +834,16 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   getBackendInfo(): BackendInfo[] {
-    const cf3Triggers = Object.values(this.triggers)
+    const cf3Triggers = this.getCF3Triggers();
+    return this.args.emulatableBackends.map((e: EmulatableBackend) => {
+      return toBackendInfo(e, cf3Triggers);
+    });
+  }
+
+  getCF3Triggers(): ParsedTriggerDefinition[] {
+    return Object.values(this.triggers)
       .filter((t) => !t.backend.extensionInstanceId)
       .map((t) => t.def);
-    return this.args.emulatableBackends.map((e: EmulatableBackend) => {
-      return {
-        directory: e.functionsDir,
-        env: e.env,
-        extensionInstanceId: e.extensionInstanceId, // Present on all extensions
-        extension: e.extension, // Only present on published extensions
-        extensionVersion: e.extensionVersion, // Only present on published extensions
-        extensionSpec: e.extensionSpec, // Only present on local extensions
-        functionTriggers: e.predefinedTriggers ?? cf3Triggers, // If we don't have predefinedTriggers, this is the CF3 backend.
-      };
-    });
   }
 
   addTriggerRecord(
@@ -944,6 +945,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     const projectInfo = {
       functionsSource: backend.functionsDir,
       projectId: this.args.projectId,
+      projectAlias: this.args.projectAlias,
       isEmulator: true,
     };
 
@@ -1066,15 +1068,16 @@ export class FunctionsEmulator implements EmulatorInstance {
   ): Promise<Record<string, string>> {
     let secretEnvs: Record<string, string> = {};
 
+    const secretPath = getSecretLocalPath(backend, this.args.projectDir);
     try {
-      const data = fs.readFileSync(path.join(backend.functionsDir, LOCAL_SECRETS_FILE), "utf8");
+      const data = fs.readFileSync(secretPath, "utf8");
       secretEnvs = functionsEnv.parseStrict(data);
     } catch (e: any) {
       if (e.code !== "ENOENT") {
         this.logger.logLabeled(
           "ERROR",
           "functions",
-          `Failed to read local secrets file ${LOCAL_SECRETS_FILE}: ${e.message}`
+          `Failed to read local secrets file ${secretPath}: ${e.message}`
         );
       }
     }
@@ -1082,11 +1085,15 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (trigger) {
       const secrets: backend.SecretEnvVar[] = trigger.secretEnvironmentVariables || [];
       const accesses = secrets
-        .filter((s) => !secretEnvs[s.secret])
+        .filter((s) => !secretEnvs[s.key])
         .map(async (s) => {
-          this.logger.logLabeled("INFO", "functions", `Trying to access secret ${s.key}@latest`);
-          const value = await accessSecretVersion(this.getProjectId(), s.key, "latest");
-          return [s.secret, value];
+          this.logger.logLabeled("INFO", "functions", `Trying to access secret ${s.secret}@latest`);
+          const value = await accessSecretVersion(
+            this.getProjectId(),
+            s.secret,
+            s.version ?? "latest"
+          );
+          return [s.key, value];
         });
       const accessResults = await allSettled(accesses);
 
@@ -1106,7 +1113,7 @@ export class FunctionsEmulator implements EmulatorInstance {
           "functions",
           "Unable to access secret environment variables from Google Cloud Secret Manager. " +
             "Make sure the credential used for the Functions Emulator have access " +
-            `or provide override values in ${LOCAL_SECRETS_FILE}:\n\t` +
+            `or provide override values in ${secretPath}:\n\t` +
             errs.join("\n\t")
         );
       }

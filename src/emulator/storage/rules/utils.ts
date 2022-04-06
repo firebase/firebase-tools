@@ -9,33 +9,42 @@ export type RulesVariableOverrides = {
   before?: RulesResourceMetadata;
   after?: RulesResourceMetadata;
 };
-/** A simple interface for fetching Rules verdicts. */
-export interface RulesValidator {
+
+/** Authorizes storage requests via Firebase Rules rulesets. */
+export interface FirebaseRulesValidator {
   validate(
     path: string,
+    bucketId: string,
     method: RulesetOperationMethod,
     variableOverrides: RulesVariableOverrides,
     authorization?: string
   ): Promise<boolean>;
 }
 
+/** Authorizes storage requests via admin credentials. */
+export interface AdminCredentialValidator {
+  validate(authorization?: string): boolean;
+}
+
 /** Provider for Storage security rules. */
-export type RulesetProvider = () => StorageRulesetInstance | undefined;
+export type RulesetProvider = (resource: string) => StorageRulesetInstance | undefined;
 
 /**
- * Returns a {@link RulesValidator} that pulls a Ruleset from a
- * {@link RulesetProvider} on each run.
+ * Returns a validator that pulls a Ruleset from a {@link RulesetProvider} on each run.
  */
-export function getRulesValidator(rulesetProvider: RulesetProvider): RulesValidator {
+export function getFirebaseRulesValidator(
+  rulesetProvider: RulesetProvider
+): FirebaseRulesValidator {
   return {
     validate: async (
       path: string,
+      bucketId: string,
       method: RulesetOperationMethod,
       variableOverrides: RulesVariableOverrides,
       authorization?: string
     ) => {
       return await isPermitted({
-        ruleset: rulesetProvider(),
+        ruleset: rulesetProvider(bucketId),
         file: variableOverrides,
         path,
         method,
@@ -43,6 +52,35 @@ export function getRulesValidator(rulesetProvider: RulesetProvider): RulesValida
       });
     },
   };
+}
+
+/**
+ * Returns a Firebase Rules validator returns true iff a valid OAuth (admin) credential
+ * is available. This validator does *not* check Firebase Rules directly.
+ */
+export function getAdminOnlyFirebaseRulesValidator(): FirebaseRulesValidator {
+  return {
+    validate: (
+      _path: string,
+      _bucketId: string,
+      _method: RulesetOperationMethod,
+      _variableOverrides: RulesVariableOverrides,
+      _authorization?: string
+    ) => {
+      // TODO(tonyjhuang): This should check for valid admin credentials some day.
+      // Unfortunately today, there's no easy way to set up the GCS SDK to pass
+      // "Bearer owner" along with requests so this is a placeholder.
+      return Promise.resolve(true);
+    },
+  };
+}
+
+/**
+ * Returns a validator for OAuth (admin) credentials. This typically takes the shape of
+ * "Authorization: Bearer owner" headers.
+ */
+export function getAdminCredentialValidator(): AdminCredentialValidator {
+  return { validate: isValidAdminCredentials };
 }
 
 /** Authorizes file access based on security rules. */
@@ -65,7 +103,7 @@ export async function isPermitted(opts: {
   }
 
   // Skip auth for UI
-  if (["Bearer owner", "Firebase owner"].includes(opts.authorization || "")) {
+  if (isValidAdminCredentials(opts.authorization)) {
     return true;
   }
 
@@ -83,4 +121,8 @@ export async function isPermitted(opts: {
   }
 
   return !!permitted;
+}
+
+function isValidAdminCredentials(authorization?: string) {
+  return ["Bearer owner", "Firebase owner"].includes(authorization ?? "");
 }

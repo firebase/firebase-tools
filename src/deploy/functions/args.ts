@@ -1,12 +1,15 @@
 import * as backend from "./backend";
 import * as gcfV2 from "../../gcp/cloudfunctionsv2";
+import * as projectConfig from "../../functions/projectConfig";
+import * as deployHelper from "./functionsDeployHelper";
 
-// These types should proably be in a root deploy.ts, but we can only boil the ocean one bit at a time.
+// These types should probably be in a root deploy.ts, but we can only boil the ocean one bit at a time.
 
-// Payload holds the output types of what we're building.
+// Payload holds the output of what we want to build + what we already have.
 export interface Payload {
   functions?: {
-    backend: backend.Backend;
+    wantBackend: backend.Backend;
+    haveBackend: backend.Backend;
   };
 }
 
@@ -15,9 +18,10 @@ export interface Payload {
 // details.
 export interface Context {
   projectId: string;
-  filters: string[][];
+  filters?: deployHelper.EndpointFilter[];
 
   // Filled in the "prepare" phase.
+  config?: projectConfig.ValidatedSingle;
   functionsSourceV1?: string;
   functionsSourceV2?: string;
   runtimeConfigEnabled?: boolean;

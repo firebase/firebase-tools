@@ -13,10 +13,12 @@ import { downloadExtensionVersion } from "./download";
 import { EmulatableBackend } from "./functionsEmulator";
 import { getExtensionFunctionInfo } from "../extensions/emulator/optionsHelper";
 import { EmulatorLogger } from "./emulatorLogger";
-import { Emulators } from "./types";
+import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
 import { checkForUnemulatedTriggerTypes, getUnemulatedAPIs } from "./extensions/validation";
 import { enableApiURI } from "../ensureApiEnabled";
 import { shortenUrl } from "../shortenUrl";
+import { Constants } from "./constants";
+import { EmulatorRegistry } from "./registry";
 
 export interface ExtensionEmulatorArgs {
   projectId: string;
@@ -28,8 +30,9 @@ export interface ExtensionEmulatorArgs {
 // TODO: Consider a different name, since this does not implement the EmulatorInstance interface
 // Note: At the moment, this doesn't really seem like it needs to be a class. However, I think the
 // statefulness that enables will be useful once we want to watch .env files for config changes.
-export class ExtensionsEmulator {
+export class ExtensionsEmulator implements EmulatorInstance {
   private want: planner.InstanceSpec[] = [];
+  private backends: EmulatableBackend[] = [];
   private args: ExtensionEmulatorArgs;
   private logger = EmulatorLogger.forEmulator(Emulators.EXTENSIONS);
 
@@ -38,6 +41,39 @@ export class ExtensionsEmulator {
 
   constructor(args: ExtensionEmulatorArgs) {
     this.args = args;
+  }
+
+  public start(): Promise<void> {
+    this.logger.logLabeled("DEBUG", "Extensions", "Started Extensions emulator, this is a noop.");
+    return Promise.resolve();
+  }
+
+  public stop(): Promise<void> {
+    this.logger.logLabeled("DEBUG", "Extensions", "Stopping Extensions emulator, this is a noop.");
+    return Promise.resolve();
+  }
+
+  public connect(): Promise<void> {
+    this.logger.logLabeled(
+      "DEBUG",
+      "Extensions",
+      "Connecting Extensions emulator, this is a noop."
+    );
+    return Promise.resolve();
+  }
+
+  public getInfo(): EmulatorInfo {
+    const info = EmulatorRegistry.getInfo(Emulators.FUNCTIONS);
+    if (!info) {
+      throw new FirebaseError(
+        "Extensions Emulator is running but Functions emulator is not. This should never happen."
+      );
+    }
+    return info;
+  }
+
+  public getName(): Emulators {
+    return Emulators.EXTENSIONS;
   }
 
   // readManifest checks the `extensions` section of `firebase.json` for the extension instances to emulate,
@@ -49,7 +85,7 @@ export class ExtensionsEmulator {
       aliases: this.args.aliases ?? [],
       projectDir: this.args.projectDir,
       extensions: this.args.extensions,
-      checkLocal: true,
+      emulatorMode: true,
     });
   }
 
@@ -109,7 +145,10 @@ export class ExtensionsEmulator {
       "./functions/package.json",
       "./functions/node_modules",
     ];
-
+    // If the directory isn't found, no need to check for files or print errors.
+    if (!fs.existsSync(args.path)) {
+      return false;
+    }
     for (const requiredFile of requiredFiles) {
       const f = path.join(args.path, requiredFile);
       if (!fs.existsSync(f)) {
@@ -154,11 +193,12 @@ export class ExtensionsEmulator {
   public async getExtensionBackends(): Promise<EmulatableBackend[]> {
     await this.readManifest();
     await this.checkAndWarnAPIs(this.want);
-    return Promise.all(
+    this.backends = await Promise.all(
       this.want.map((i: planner.InstanceSpec) => {
         return this.toEmulatableBackend(i);
       })
     );
+    return this.backends;
   }
 
   /**
@@ -171,16 +211,14 @@ export class ExtensionsEmulator {
     const functionsDir = path.join(extensionDir, "functions");
     // TODO(b/213335255): For local extensions, this should include extensionSpec instead of extensionVersion
     const env = Object.assign(this.autoPopulatedParams(instance), instance.params);
-    const { extensionTriggers, nodeMajorVersion } = await getExtensionFunctionInfo(
-      extensionDir,
-      instance.instanceId,
-      env
-    );
+    const { extensionTriggers, nodeMajorVersion, nonSecretEnv, secretEnvVariables } =
+      await getExtensionFunctionInfo(extensionDir, instance.instanceId, env);
     const extension = await planner.getExtension(instance);
     const extensionVersion = await planner.getExtensionVersion(instance);
     return {
       functionsDir,
-      env,
+      env: nonSecretEnv,
+      secretEnv: secretEnvVariables,
       predefinedTriggers: extensionTriggers,
       nodeMajorVersion: nodeMajorVersion,
       extensionInstanceId: instance.instanceId,
@@ -224,14 +262,27 @@ export class ExtensionsEmulator {
           apiToWarn.enabled ? "" : clc.bold.underline(enablementUri),
         ]);
       }
-
-      this.logger.logLabeled(
-        "WARN",
-        "Extensions",
-        `The following Extensions make calls to Google Cloud APIs that do not have Emulators. ` +
-          `These calls will go to production Google Cloud APIs which may have real effects on ${this.args.projectId}.\n` +
-          table.toString()
-      );
+      if (Constants.isDemoProject(this.args.projectId)) {
+        this.logger.logLabeled(
+          "WARN",
+          "Extensions",
+          "The following Extensions make calls to Google Cloud APIs that do not have Emulators. " +
+            `${clc.bold(
+              this.args.projectId
+            )} is a demo project, so these Extensions may not work as expected.\n` +
+            table.toString()
+        );
+      } else {
+        this.logger.logLabeled(
+          "WARN",
+          "Extensions",
+          "The following Extensions make calls to Google Cloud APIs that do not have Emulators. " +
+            `These calls will go to production Google Cloud APIs which may have real effects on ${clc.bold(
+              this.args.projectId
+            )}.\n` +
+            table.toString()
+        );
+      }
     }
   }
 
@@ -265,5 +316,35 @@ export class ExtensionsEmulator {
       this.logger.log("WARN", msg);
     }
     return filteredBackends;
+  }
+
+  private extensionDetailsUILink(backend: EmulatableBackend): string {
+    const uiInfo = EmulatorRegistry.getInfo(Emulators.UI);
+    if (!uiInfo || !backend.extensionInstanceId) {
+      // If the Emulator UI is not running, or if this is not an Extension backend, return an empty string
+      return "";
+    }
+    const uiUrl = EmulatorRegistry.getInfoHostString(uiInfo);
+    return clc.underline(
+      clc.bold(`http://${uiUrl}/${Emulators.EXTENSIONS}/${backend.extensionInstanceId}`)
+    );
+  }
+
+  public extensionsInfoTable(options: Options): string {
+    const filtedBackends = this.filterUnemulatedTriggers(options, this.backends);
+    const uiRunning = EmulatorRegistry.isRunning(Emulators.UI);
+    const tableHead = ["Extension Instance Name", "Extension Ref"];
+    if (uiRunning) {
+      tableHead.push("View in Emulator UI");
+    }
+    const table = new Table({ head: tableHead, style: { head: ["yellow"] } });
+    for (const b of filtedBackends) {
+      if (b.extensionInstanceId) {
+        const tableEntry = [b.extensionInstanceId, b.extensionVersion?.ref || "Local Extension"];
+        if (uiRunning) tableEntry.push(this.extensionDetailsUILink(b));
+        table.push(tableEntry);
+      }
+    }
+    return table.toString();
   }
 }

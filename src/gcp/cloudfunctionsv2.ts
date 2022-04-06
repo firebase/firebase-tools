@@ -9,8 +9,10 @@ import * as backend from "../deploy/functions/backend";
 import * as runtimes from "../deploy/functions/runtimes";
 import * as proto from "./proto";
 import * as utils from "../utils";
+import * as projectConfig from "../functions/projectConfig";
 
 export const API_VERSION = "v2alpha";
+export const CODEBASE_LABEL = "firebase-functions-codebase";
 
 const client = new Client({
   urlPrefix: functionsV2Origin,
@@ -401,7 +403,8 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
     endpoint,
     "environmentVariables",
     "serviceAccountEmail",
-    "ingressSettings"
+    "ingressSettings",
+    "timeoutSeconds"
   );
   proto.renameIfPresent(
     gcfFunction.serviceConfig,
@@ -409,13 +412,6 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
     "availableMemory",
     "availableMemoryMb",
     (mb: string) => `${mb}M`
-  );
-  proto.renameIfPresent(
-    gcfFunction.serviceConfig,
-    endpoint,
-    "timeoutSeconds",
-    "timeout",
-    proto.secondsFromDuration
   );
   proto.renameIfPresent(gcfFunction.serviceConfig, endpoint, "minInstanceCount", "minInstances");
   proto.renameIfPresent(gcfFunction.serviceConfig, endpoint, "maxInstanceCount", "maxInstances");
@@ -435,25 +431,17 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
       eventType: endpoint.eventTrigger.eventType,
     };
     if (gcfFunction.eventTrigger.eventType === PUBSUB_PUBLISH_EVENT) {
-      const pubsubFilter = backend.findEventFilter(endpoint, "topic");
-      if (!pubsubFilter) {
-        throw new FirebaseError(
-          "Invalid pubsub endpoint. Expected eventFilter with 'topic' attribute but found none."
-        );
-      }
-      gcfFunction.eventTrigger.pubsubTopic = pubsubFilter.value;
-
-      for (const filter of endpoint.eventTrigger.eventFilters) {
-        if (filter.attribute === "topic") {
-          continue;
-        }
-        if (!gcfFunction.eventTrigger.eventFilters) {
-          gcfFunction.eventTrigger.eventFilters = [];
-        }
-        gcfFunction.eventTrigger.eventFilters.push(filter);
+      gcfFunction.eventTrigger.pubsubTopic = endpoint.eventTrigger.eventFilters.topic;
+      gcfFunction.eventTrigger.eventFilters = [];
+      for (const [attribute, value] of Object.entries(endpoint.eventTrigger.eventFilters)) {
+        if (attribute === "topic") continue;
+        gcfFunction.eventTrigger.eventFilters.push({ attribute, value });
       }
     } else {
-      gcfFunction.eventTrigger.eventFilters = endpoint.eventTrigger.eventFilters;
+      gcfFunction.eventTrigger.eventFilters = [];
+      for (const [attribute, value] of Object.entries(endpoint.eventTrigger.eventFilters)) {
+        gcfFunction.eventTrigger.eventFilters.push({ attribute, value });
+      }
     }
     proto.renameIfPresent(
       gcfFunction.eventTrigger,
@@ -481,10 +469,16 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
   } else if (backend.isCallableTriggered(endpoint)) {
     gcfFunction.labels = { ...gcfFunction.labels, "deployment-callable": "true" };
   }
-
+  gcfFunction.labels = {
+    ...gcfFunction.labels,
+    [CODEBASE_LABEL]: endpoint.codebase || projectConfig.DEFAULT_CODEBASE,
+  };
   return gcfFunction;
 }
 
+/**
+ *
+ */
 export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoint {
   const [, project, , region, , id] = gcfFunction.name.split("/");
   let trigger: backend.Triggered;
@@ -496,22 +490,23 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     trigger = {
       taskQueueTrigger: {},
     };
+  } else if (gcfFunction.labels?.["deployment-callable"] === "true") {
+    trigger = {
+      callableTrigger: {},
+    };
   } else if (gcfFunction.eventTrigger) {
     trigger = {
       eventTrigger: {
         eventType: gcfFunction.eventTrigger.eventType,
-        eventFilters: [],
+        eventFilters: {},
         retry: false,
       },
     };
     if (gcfFunction.eventTrigger.pubsubTopic) {
-      trigger.eventTrigger.eventFilters.push({
-        attribute: "topic",
-        value: gcfFunction.eventTrigger.pubsubTopic,
-      });
+      trigger.eventTrigger.eventFilters.topic = gcfFunction.eventTrigger.pubsubTopic;
     } else {
       for (const { attribute, value } of gcfFunction.eventTrigger.eventFilters || []) {
-        trigger.eventTrigger.eventFilters.push({ attribute, value });
+        trigger.eventTrigger.eventFilters[attribute] = value;
       }
     }
     proto.renameIfPresent(
@@ -543,7 +538,8 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     gcfFunction.serviceConfig,
     "serviceAccountEmail",
     "ingressSettings",
-    "environmentVariables"
+    "environmentVariables",
+    "timeoutSeconds"
   );
   proto.renameIfPresent(
     endpoint,
@@ -552,17 +548,9 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     "availableMemory",
     megabytes
   );
-  proto.renameIfPresent(
-    endpoint,
-    gcfFunction.serviceConfig,
-    "timeout",
-    "timeoutSeconds",
-    proto.durationFromSeconds
-  );
   proto.renameIfPresent(endpoint, gcfFunction.serviceConfig, "minInstances", "minInstanceCount");
   proto.renameIfPresent(endpoint, gcfFunction.serviceConfig, "maxInstances", "maxInstanceCount");
   proto.copyIfPresent(endpoint, gcfFunction, "labels");
-
   if (gcfFunction.serviceConfig.vpcConnector) {
     endpoint.vpc = { connector: gcfFunction.serviceConfig.vpcConnector };
     proto.renameIfPresent(
@@ -572,6 +560,6 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
       "vpcConnectorEgressSettings"
     );
   }
-
+  endpoint.codebase = gcfFunction.labels?.[CODEBASE_LABEL] || projectConfig.DEFAULT_CODEBASE;
   return endpoint;
 }

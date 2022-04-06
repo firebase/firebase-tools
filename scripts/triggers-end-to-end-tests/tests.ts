@@ -428,6 +428,43 @@ describe("storage emulator function triggers", () => {
   });
 });
 
+describe("onCall function triggers", () => {
+  let test: TriggerEndToEndTest;
+
+  before(async function (this) {
+    this.timeout(TEST_SETUP_TIMEOUT);
+
+    expect(FIREBASE_PROJECT).to.exist.and.not.be.empty;
+
+    const config = readConfig();
+    test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, config);
+    await test.startEmulators(["--only", "functions"]);
+  });
+
+  after(async function (this) {
+    this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
+    await test.stopEmulators();
+  });
+
+  it("should make a call to v1 callable function", async function (this) {
+    this.timeout(EMULATOR_TEST_TIMEOUT);
+
+    const response = await test.invokeCallableFunction("onCall", { data: "foobar" });
+    expect(response.status).to.equal(200);
+    const body = await response.json();
+    expect(body).to.deep.equal({ result: "foobar" });
+  });
+
+  it("should make a call to v2 callable function", async function (this) {
+    this.timeout(EMULATOR_TEST_TIMEOUT);
+
+    const response = await test.invokeCallableFunction("oncallv2", { data: "foobar" });
+    expect(response.status).to.equal(200);
+    const body = await response.json();
+    expect(body).to.deep.equal({ result: "foobar" });
+  });
+});
+
 describe("import/export end to end", () => {
   it("should be able to import/export firestore data", async function (this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);

@@ -1,7 +1,7 @@
 import * as clc from "cli-color";
 
 import { Command } from "../command";
-import * as requireConfig from "../requireConfig";
+import { requireConfig } from "../requireConfig";
 import * as utils from "../utils";
 
 export default new Command("target:clear <type> <target>")

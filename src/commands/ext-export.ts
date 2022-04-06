@@ -1,15 +1,14 @@
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
-import { Config } from "../config";
 import * as planner from "../deploy/extensions/planner";
-import { FirebaseError } from "../error";
 import {
   displayExportInfo,
   parameterizeProject,
   setSecretParamsToLatest,
 } from "../extensions/export";
 import { ensureExtensionsApiEnabled } from "../extensions/extensionsHelper";
-import { writeToManifest } from "../extensions/manifest";
+import * as manifest from "../extensions/manifest";
+import { buildBindingOptionsWithBaseValue } from "../extensions/paramHelper";
 import { partition } from "../functional";
 import { getProjectNumber } from "../getProjectNumber";
 import { logger } from "../logger";
@@ -66,14 +65,20 @@ module.exports = new Command("ext:export")
       return;
     }
 
-    const existingConfig = Config.load(options, true);
-    if (!existingConfig) {
-      throw new FirebaseError(
-        "Not currently in a Firebase directory. Please run `firebase init` to create a Firebase directory."
-      );
-    }
-    await writeToManifest(withRef, existingConfig, {
-      nonInteractive: options.nonInteractive,
-      force: options.force,
-    });
+    const manifestSpecs = withRef.map((spec) => ({
+      instanceId: spec.instanceId,
+      ref: spec.ref,
+      params: buildBindingOptionsWithBaseValue(spec.params),
+    }));
+
+    const existingConfig = manifest.loadConfig(options);
+    await manifest.writeToManifest(
+      manifestSpecs,
+      existingConfig,
+      {
+        nonInteractive: options.nonInteractive,
+        force: options.force,
+      },
+      true /** allowOverwrite */
+    );
   });

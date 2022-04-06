@@ -6,7 +6,7 @@ import { StorageCloudFunctions } from "../../../emulator/storage/cloudFunctions"
 import { StorageLayer } from "../../../emulator/storage/files";
 import { ForbiddenError, NotFoundError } from "../../../emulator/storage/errors";
 import { Persistence } from "../../../emulator/storage/persistence";
-import { RulesValidator } from "../../../emulator/storage/rules/utils";
+import { FirebaseRulesValidator } from "../../../emulator/storage/rules/utils";
 import { Upload, UploadService, UploadStatus, UploadType } from "../../../emulator/storage/upload";
 
 const ALWAYS_TRUE_RULES_VALIDATOR = {
@@ -15,6 +15,10 @@ const ALWAYS_TRUE_RULES_VALIDATOR = {
 
 const ALWAYS_FALSE_RULES_VALIDATOR = {
   validate: async () => Promise.resolve(false),
+};
+
+const ALWAYS_TRUE_ADMIN_CREDENTIAL_VALIDATOR = {
+  validate: () => true,
 };
 
 describe("files", () => {
@@ -68,9 +72,7 @@ describe("files", () => {
           metadataRaw: "{}",
         });
 
-        expect(storageLayer.handleUploadObject(upload)).to.be.rejectedWith(
-          "Unexpected upload status"
-        );
+        expect(storageLayer.uploadObject(upload)).to.be.rejectedWith("Unexpected upload status");
       });
 
       it("should throw if upload is not authorized", () => {
@@ -84,7 +86,7 @@ describe("files", () => {
         _uploadService.continueResumableUpload(uploadId, Buffer.from("hello world"));
         const upload = _uploadService.finalizeResumableUpload(uploadId);
 
-        expect(storageLayer.handleUploadObject(upload)).to.be.rejectedWith(ForbiddenError);
+        expect(storageLayer.uploadObject(upload)).to.be.rejectedWith(ForbiddenError);
       });
     });
 
@@ -97,9 +99,9 @@ describe("files", () => {
           metadataRaw: `{"contentType": "mime/type"}`,
           dataRaw: Buffer.from("Hello, World!"),
         });
-        await storageLayer.handleUploadObject(upload);
+        await storageLayer.uploadObject(upload);
 
-        const { metadata, data } = await storageLayer.handleGetObject({
+        const { metadata, data } = await storageLayer.getObject({
           bucketId: "bucket",
           decodedObjectId: "dir%2Fobject",
         });
@@ -112,7 +114,7 @@ describe("files", () => {
         const storageLayer = getStorageLayer(ALWAYS_FALSE_RULES_VALIDATOR);
 
         expect(
-          storageLayer.handleGetObject({
+          storageLayer.getObject({
             bucketId: "bucket",
             decodedObjectId: "dir%2Fobject",
           })
@@ -123,7 +125,7 @@ describe("files", () => {
         const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
 
         expect(
-          storageLayer.handleGetObject({
+          storageLayer.getObject({
             bucketId: "bucket",
             decodedObjectId: "dir%2Fobject",
           })
@@ -131,8 +133,16 @@ describe("files", () => {
       });
     });
 
-    const getStorageLayer = (rulesValidator: RulesValidator) =>
-      new StorageLayer("project", rulesValidator, _persistence);
+    const getStorageLayer = (rulesValidator: FirebaseRulesValidator) =>
+      new StorageLayer(
+        "project",
+        new Map(),
+        new Map(),
+        rulesValidator,
+        ALWAYS_TRUE_ADMIN_CREDENTIAL_VALIDATOR,
+        _persistence,
+        new StorageCloudFunctions("project")
+      );
 
     const getPersistenceTmpDir = () => `${tmpdir()}/firebase/storage/blobs`;
   });

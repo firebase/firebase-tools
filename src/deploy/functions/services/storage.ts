@@ -13,10 +13,10 @@ const PUBSUB_PUBLISHER_ROLE = "roles/pubsub.publisher";
  * @param existingPolicy the project level IAM policy
  */
 export async function obtainStorageBindings(
-  projectId: string,
+  projectNumber: string,
   existingPolicy: iam.Policy
 ): Promise<Array<iam.Binding>> {
-  const storageResponse = await storage.getServiceAccount(projectId);
+  const storageResponse = await storage.getServiceAccount(projectNumber);
   const storageServiceAgent = `serviceAccount:${storageResponse.email_address}`;
   let pubsubBinding = existingPolicy.bindings.find((b) => b.role === PUBSUB_PUBLISHER_ROLE);
   if (!pubsubBinding) {
@@ -43,14 +43,10 @@ export async function ensureStorageTriggerRegion(
   const { eventTrigger } = endpoint;
   if (!eventTrigger.region) {
     logger.debug("Looking up bucket region for the storage event trigger");
-    const bucketFilter = backend.findEventFilter(endpoint, "bucket");
-    if (!bucketFilter) {
-      throw new FirebaseError(
-        "Storage event trigger unexpectedly missing event filter with bucket attribute."
-      );
-    }
     try {
-      const bucket: { location: string } = await storage.getBucket(bucketFilter.value);
+      const bucket: { location: string } = await storage.getBucket(
+        eventTrigger.eventFilters.bucket!
+      );
       eventTrigger.region = bucket.location.toLowerCase();
       logger.debug("Setting the event trigger region to", eventTrigger.region, ".");
     } catch (err: any) {
