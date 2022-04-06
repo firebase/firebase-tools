@@ -2105,14 +2105,17 @@ describe("Storage emulator", () => {
           })
           .expect(200);
 
-        await supertest(STORAGE_EMULATOR_HOST)
+        const uploadStatus = await supertest(STORAGE_EMULATOR_HOST)
           .put(uploadURL.pathname + uploadURL.search)
           .set({
             // No Authorization required in finalize
             "X-Goog-Upload-Protocol": "resumable",
             "X-Goog-Upload-Command": "upload, finalize",
           })
-          .expect(200);
+          .expect(200)
+          .then((res) => res.header["x-goog-upload-status"]);
+
+        expect(uploadStatus).to.equal("final");
 
         await supertest(STORAGE_EMULATOR_HOST)
           .get(`/v0/b/${storageBucket}/o/test_upload.jpg`)
