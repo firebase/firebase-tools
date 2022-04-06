@@ -268,7 +268,9 @@ export type Endpoint = TargetIds &
     runtime: runtimes.Runtime | runtimes.DeprecatedRuntime;
 
     // Output only
-
+    // "Codebase" is not part of the container contract. Instead, it's value is provided by firebase.json or derived
+    // from function labels.
+    codebase?: string;
     // URI is available on GCFv1 for HTTPS triggers and
     // on GCFv2 always
     uri?: string;
@@ -545,7 +547,8 @@ export function matchingBackend(
   predicate: (endpoint: Endpoint) => boolean
 ): Backend {
   const filtered: Backend = {
-    ...empty(),
+    ...backend,
+    endpoints: {},
   };
   for (const endpoint of allEndpoints(backend)) {
     if (!predicate(endpoint)) {
