@@ -556,7 +556,7 @@ export async function createSourceFromLocation(
   try {
     spinner.start();
     objectPath = await archiveAndUploadSource(sourceUri, EXTENSIONS_BUCKET_NAME);
-    spinner.info(" Uploaded extension source code");
+    spinner.succeed(" Uploaded extension source code");
 
     spinner = ora(" Creating an extension source based on uploaded source code");
     spinner.start();
