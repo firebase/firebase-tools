@@ -5,12 +5,11 @@ import { normalizedHostingConfigs } from "../../hosting/normalizedHostingConfigs
 import { validateDeploy } from "./validate";
 import { convertConfig } from "./convertConfig";
 import * as deploymentTool from "../../deploymentTool";
-import * as args from '../functions/args';
 
 /**
  *  Prepare creates versions for each Hosting site to be deployed.
  */
-export async function prepare(context: any, options: any, payload: args.Payload & {hosting: any}): Promise<void> {
+export async function prepare(context: any, options: any, payload: any): Promise<void> {
   // Allow the public directory to be overridden by the --public flag
   if (options.public) {
     if (Array.isArray(options.config.get("hosting"))) {
@@ -52,11 +51,10 @@ export async function prepare(context: any, options: any, payload: args.Payload 
 
     // Filter out any rewrites that point to GCFv2 functions that are being deployed
     Object.entries(payload.functions?.backend?.endpoints || {}).forEach(([region, endpoints]) => {
-      Object.entries(endpoints).forEach(([serviceId, { platform }]) => {
-        if (platform === 'gcfv2') {
-          data.config.rewrites = data.config.rewrites.filter((rewrite: any) =>
-            rewrite.run?.serviceId !== serviceId &&
-            rewrite.run?.region !== region
+      Object.entries(endpoints as {}).forEach(([serviceId, endpoint]) => {
+        if ((endpoint as any).platform === "gcfv2") {
+          data.config.rewrites = data.config.rewrites.filter(
+            (rewrite: any) => rewrite.run?.serviceId !== serviceId && rewrite.run?.region !== region
           );
         }
       });

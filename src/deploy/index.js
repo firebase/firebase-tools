@@ -61,15 +61,13 @@ var deploy = function (targetNames, options, customContext = {}) {
     }
   })
     .then(function () {
-      // Ensure that functions predeploy gets called before hosting that way
-      // we can tell if we're deploying a gen2 function it needs
-      if (targetNames.includes('hosting') && targetNames.includes('functions')) {
-        const hostingIndex = targetNames.indexOf('hosting');
-        const functionsIndex = targetNames.indexOf('functions');
-        if (hostingIndex < functionsIndex) {
-          targetNames[hostingIndex] = 'functions';
-          targetNames[functionsIndex] = 'hosting';
-        }
+      // Ensure that functions predeploy & deploy gets called before hosting that way
+      // we can handle gen2 functions referred to in hosting config
+      const hostingIndex = targetNames.indexOf("hosting");
+      const functionsIndex = targetNames.indexOf("functions");
+      if (hostingIndex > -1 && hostingIndex < functionsIndex) {
+        targetNames[hostingIndex] = "functions";
+        targetNames[functionsIndex] = "hosting";
       }
 
       for (var i = 0; i < targetNames.length; i++) {

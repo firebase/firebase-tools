@@ -23,11 +23,7 @@ export async function release(context: any, options: any, payload: any): Promise
       const queryParams = { updateMask: "status" };
       if (config) queryParams.updateMask += ",config";
 
-      const finalizeResult = await client.patch(
-        `/${deploy.version}`,
-        data,
-        { queryParams }
-      );
+      const finalizeResult = await client.patch(`/${deploy.version}`, data, { queryParams });
 
       logger.debug(`[hosting] finalized version for ${deploy.site}:${finalizeResult.body}`);
       utils.logLabeledSuccess(`hosting[${deploy.site}]`, "version finalized");
