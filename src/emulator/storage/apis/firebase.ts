@@ -205,7 +205,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
           return res.status(400).json({
             error: {
               code: 400,
-              message: err.toString(),
+              message: err.message,
             },
           });
         }

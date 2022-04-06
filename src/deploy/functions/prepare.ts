@@ -9,8 +9,8 @@ import * as runtimes from "./runtimes";
 import * as validate from "./validate";
 import * as ensure from "./ensure";
 import { Options } from "../../options";
-import { functionMatchesAnyGroup, getFilterGroups } from "./functionsDeployHelper";
-import { logBullet, logLabeledError } from "../../utils";
+import { endpointMatchesAnyFilter, getEndpointFilters } from "./functionsDeployHelper";
+import { logLabeledBullet, logLabeledError } from "../../utils";
 import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload";
 import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import { needProjectId, needProjectNumber } from "../../projectUtils";
@@ -41,6 +41,20 @@ export async function prepare(
   const projectNumber = await needProjectNumber(options);
 
   context.config = normalizeAndValidate(options.config.src.functions)[0];
+  context.filters = getEndpointFilters(options); // Parse --only filters for functions.
+
+  if (
+    context.filters &&
+    !context.filters.map((f) => f.codebase).includes(context.config.codebase)
+  ) {
+    throw new FirebaseError("No function matches given --only filters. Aborting deployment.");
+  }
+
+  logLabeledBullet(
+    "functions",
+    `preparing codebase ${clc.bold(context.config.codebase)} for deployment`
+  );
+
   const sourceDirName = context.config.source;
   if (!sourceDirName) {
     throw new FirebaseError(
@@ -101,7 +115,10 @@ export async function prepare(
   logger.debug(`Analyzing ${runtimeDelegate.name} backend spec`);
   const wantBackend = await runtimeDelegate.discoverSpec(runtimeConfig, firebaseEnvs);
   wantBackend.environmentVariables = { ...userEnvs, ...firebaseEnvs };
-  payload.functions = { backend: wantBackend };
+  for (const endpoint of backend.allEndpoints(wantBackend)) {
+    endpoint.environmentVariables = wantBackend.environmentVariables;
+    endpoint.codebase = context.config.codebase;
+  }
 
   // Note: Some of these are premium APIs that require billing to be enabled.
   // We'd eventually have to add special error handling for billing APIs, but
@@ -121,11 +138,9 @@ export async function prepare(
   }
 
   if (backend.someEndpoint(wantBackend, () => true)) {
-    logBullet(
-      clc.cyan.bold("functions:") +
-        " preparing " +
-        clc.bold(sourceDirName) +
-        " directory for uploading..."
+    logLabeledBullet(
+      "functions",
+      `preparing ${clc.bold(sourceDirName)} directory for uploading...`
     );
   }
   if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
@@ -150,11 +165,6 @@ export async function prepare(
     );
   }
 
-  // Setup environment variables on each function.
-  for (const endpoint of backend.allEndpoints(wantBackend)) {
-    endpoint.environmentVariables = wantBackend.environmentVariables;
-  }
-
   // Enable required APIs. This may come implicitly from triggers (e.g. scheduled triggers
   // require cloudscheudler and, in v1, require pub/sub), or can eventually come from
   // explicit dependencies.
@@ -167,14 +177,31 @@ export async function prepare(
   // Validate the function code that is being deployed.
   validate.endpointsAreValid(wantBackend);
 
-  // Check what --only filters have been passed in.
-  context.filters = getFilterGroups(options);
-
   const matchingBackend = backend.matchingBackend(wantBackend, (endpoint) => {
-    return functionMatchesAnyGroup(endpoint, context.filters);
+    return endpointMatchesAnyFilter(endpoint, context.filters);
   });
 
-  const haveBackend = await backend.existingBackend(context);
+  // Load all endpoints for the project, then filter out functions from other codebases.
+  //
+  // An endpoint is part a codebase if:
+  //   1. Endpoint is associated w/ the current codebase (duh).
+  //   2. Endpoint name matches name of an endoint we want to deploy
+  //
+  //   Condition (2) might feel wrong but is a practical conflict resolution strategy. It allows user to "claim" an
+  //   endpoint for current codebase without much hassel.
+  const wantEndpointNames = backend.allEndpoints(wantBackend).map((e) => backend.functionName(e));
+  const haveBackend = backend.matchingBackend(
+    await backend.existingBackend(context),
+    (endpoint) => {
+      if (endpoint.codebase === context.config?.codebase) {
+        return true;
+      }
+      return wantEndpointNames.includes(backend.functionName(endpoint));
+    }
+  );
+
+  payload.functions = { wantBackend: wantBackend, haveBackend: haveBackend };
+
   await ensureServiceAgentRoles(projectNumber, wantBackend, haveBackend);
   inferDetailsFromExisting(wantBackend, haveBackend, usedDotenv);
   await ensureTriggerRegions(wantBackend);

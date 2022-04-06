@@ -8,10 +8,12 @@ import * as utils from "../utils";
 import * as proto from "./proto";
 import * as runtimes from "../deploy/functions/runtimes";
 import * as iam from "./iam";
+import * as projectConfig from "../functions/projectConfig";
 import { Client } from "../apiv2";
 import { functionsOrigin } from "../api";
 
 export const API_VERSION = "v1";
+export const CODEBASE_LABEL = "firebase-functions-codebase";
 const client = new Client({ urlPrefix: functionsOrigin, apiVersion: API_VERSION });
 
 interface Operation {
@@ -549,6 +551,7 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
       "vpcConnectorEgressSettings"
     );
   }
+  endpoint.codebase = gcfFunction.labels?.[CODEBASE_LABEL] || projectConfig.DEFAULT_CODEBASE;
   return endpoint;
 }
 
@@ -638,5 +641,9 @@ export function functionFromEndpoint(
       "egressSettings"
     );
   }
+  gcfFunction.labels = {
+    ...gcfFunction.labels,
+    [CODEBASE_LABEL]: endpoint.codebase || projectConfig.DEFAULT_CODEBASE,
+  };
   return gcfFunction;
 }
