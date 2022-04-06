@@ -269,7 +269,7 @@ export function showDeprecationWarning() {
 export function showPreviewWarning() {
   utils.logLabeledWarning(
     logPrefix,
-    "These changes will be reflected in your Firebase Emulator after restart. " +
+    `See these changes in your Firebase Emulator by running "firebase emulators:start". ` +
       `Run ${clc.bold(
         "firebase deploy (--only extensions)"
       )} to deploy the changes to your Firebase project. `

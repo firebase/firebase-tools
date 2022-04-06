@@ -1,5 +1,4 @@
 import * as fs from "fs-extra";
-import * as _ from "lodash";
 import { ParsedTriggerDefinition } from "../../emulator/functionsEmulatorShared";
 import * as path from "path";
 import * as paramHelper from "../paramHelper";
@@ -25,10 +24,7 @@ export async function buildOptions(options: any): Promise<any> {
 
   extensionsHelper.validateCommandLineParams(params, spec.params);
 
-  const functionResources = specHelper.getFunctionResourcesWithParamSubstitution(
-    spec,
-    params
-  ) as Resource[];
+  const functionResources = specHelper.getFunctionResourcesWithParamSubstitution(spec, params);
   let testConfig;
   if (options.testConfig) {
     testConfig = readTestConfigFile(options.testConfig);
@@ -241,11 +237,8 @@ function buildConfig(
 function getFunctionSourceDirectory(functionResources: Resource[]): string {
   let sourceDirectory;
   for (const r of functionResources) {
-    let dir = _.get(r, "properties.sourceDirectory");
     // If not specified, default sourceDirectory to "functions"
-    if (!dir) {
-      dir = "functions";
-    }
+    const dir = r.properties?.sourceDirectory || "functions";
     if (!sourceDirectory) {
       sourceDirectory = dir;
     } else if (sourceDirectory !== dir) {
@@ -254,7 +247,7 @@ function getFunctionSourceDirectory(functionResources: Resource[]): string {
       );
     }
   }
-  return sourceDirectory;
+  return sourceDirectory || "functions";
 }
 
 function shouldEmulateFunctions(resources: Resource[]): boolean {
@@ -263,7 +256,7 @@ function shouldEmulateFunctions(resources: Resource[]): boolean {
 
 function shouldEmulate(emulatorName: string, resources: Resource[]): boolean {
   for (const r of resources) {
-    const eventType: string = _.get(r, "properties.eventTrigger.eventType", "");
+    const eventType: string = r.properties?.eventTrigger?.eventType || "";
     if (eventType.includes(emulatorName)) {
       return true;
     }

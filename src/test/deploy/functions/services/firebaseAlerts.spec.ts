@@ -11,7 +11,7 @@ const endpoint: Endpoint = {
   eventTrigger: {
     retry: false,
     eventType: "firebase.firebasealerts.alerts.v1.published",
-    eventFilters: [],
+    eventFilters: {},
   },
   entryPoint: "endpoint",
   platform: "gcfv2",

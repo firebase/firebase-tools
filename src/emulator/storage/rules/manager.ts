@@ -4,6 +4,7 @@ import { Emulators } from "../../types";
 import { SourceFile } from "./types";
 import { StorageRulesIssues, StorageRulesRuntime, StorageRulesetInstance } from "./runtime";
 import { RulesConfig } from "..";
+import { readFile } from "../../../fsutils";
 
 /**
  * Keeps track of rules source file(s) and generated ruleset(s), either one for all storage
@@ -14,7 +15,6 @@ import { RulesConfig } from "..";
  * ```
  * const rulesManager = createStorageRulesManager(initialRules);
  * rulesManager.start();
- * rulesManager.updateSourceFile(newRules);
  * rulesManager.stop();
  * ```
  */
@@ -27,12 +27,6 @@ export interface StorageRulesManager {
    * or if the ruleset has not been generated.
    */
   getRuleset(resource: string): StorageRulesetInstance | undefined;
-
-  /**
-   * Updates the source file and, correspondingly, the file watcher and ruleset for the resource.
-   * Returns an array of errors and/or warnings that arise from loading the ruleset.
-   */
-  updateSourceFile(rules: SourceFile, resource: string): Promise<StorageRulesIssues>;
 
   /** Removes listeners from all files for all managed resources. */
   stop(): Promise<void>;
@@ -65,31 +59,21 @@ class DefaultStorageRulesManager implements StorageRulesManager {
     this._rules = _rules;
   }
 
-  start(): Promise<StorageRulesIssues> {
-    return this.updateSourceFile(this._rules);
+  async start(): Promise<StorageRulesIssues> {
+    const issues = await this.loadRuleset();
+    this.updateWatcher(this._rules.name);
+    return issues;
   }
 
   getRuleset(): StorageRulesetInstance | undefined {
     return this._ruleset;
   }
 
-  async updateSourceFile(rules: SourceFile): Promise<StorageRulesIssues> {
-    const prevRulesFile = this._rules.name;
-    this._rules = rules;
-    const issues = await this.loadRuleset();
-    this.updateWatcher(rules.name, prevRulesFile);
-    return issues;
-  }
-
   async stop(): Promise<void> {
     await this._watcher.close();
   }
 
-  private updateWatcher(rulesFile: string, prevRulesFile?: string): void {
-    if (prevRulesFile) {
-      this._watcher.unwatch(prevRulesFile);
-    }
-
+  private updateWatcher(rulesFile: string): void {
     this._watcher = chokidar
       .watch(rulesFile, { persistent: true, ignoreInitial: true })
       .on("change", async () => {
@@ -103,6 +87,7 @@ class DefaultStorageRulesManager implements StorageRulesManager {
           "storage",
           "Change detected, updating rules for Cloud Storage..."
         );
+        this._rules.content = readFile(rulesFile);
         await this.loadRuleset();
       });
   }
@@ -155,12 +140,6 @@ class ResourceBasedStorageRulesManager implements StorageRulesManager {
 
   getRuleset(resource: string): StorageRulesetInstance | undefined {
     return this._rulesManagers.get(resource)?.getRuleset();
-  }
-
-  updateSourceFile(rules: SourceFile, resource: string): Promise<StorageRulesIssues> {
-    const rulesManager =
-      this._rulesManagers.get(resource) || this.createRulesManager(resource, rules);
-    return rulesManager.updateSourceFile(rules);
   }
 
   async stop(): Promise<void> {

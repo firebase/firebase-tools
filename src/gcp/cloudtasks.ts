@@ -154,7 +154,7 @@ const ENQUEUER_ROLE = "roles/cloudtasks.enqueuer";
 export async function setEnqueuer(
   name: string,
   invoker: string[],
-  assumeEmpty: boolean = false
+  assumeEmpty = false
 ): Promise<void> {
   let existing: iam.Policy;
   if (assumeEmpty) {
@@ -224,10 +224,28 @@ export function queueFromEndpoint(endpoint: backend.Endpoint & backend.TaskQueue
       queue.retryConfig,
       endpoint.taskQueueTrigger.retryConfig,
       "maxAttempts",
-      "maxBackoff",
-      "maxDoublings",
+      "maxDoublings"
+    );
+    proto.renameIfPresent(
+      queue.retryConfig,
+      endpoint.taskQueueTrigger.retryConfig,
       "maxRetryDuration",
-      "minBackoff"
+      "maxRetrySeconds",
+      proto.durationFromSeconds
+    );
+    proto.renameIfPresent(
+      queue.retryConfig,
+      endpoint.taskQueueTrigger.retryConfig,
+      "maxBackoff",
+      "maxBackoffSeconds",
+      proto.durationFromSeconds
+    );
+    proto.renameIfPresent(
+      queue.retryConfig,
+      endpoint.taskQueueTrigger.retryConfig,
+      "minBackoff",
+      "minBackoffSeconds",
+      proto.durationFromSeconds
     );
   }
   return queue;
