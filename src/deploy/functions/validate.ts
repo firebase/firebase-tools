@@ -14,7 +14,9 @@ import { serviceForEndpoint } from "./services";
 export function endpointsAreValid(wantBackend: backend.Backend): void {
   const endpoints = backend.allEndpoints(wantBackend);
   functionIdsAreValid(endpoints);
-  endpoints.forEach((ep) => serviceForEndpoint(ep).validateTrigger(ep as any, wantBackend));
+  for (const ep of endpoints) {
+    serviceForEndpoint(ep).validateTrigger(ep as any, wantBackend);
+  }
 
   // Our SDK doesn't let people articulate this, but it's theoretically possible in the manifest syntax.
   const gcfV1WithConcurrency = endpoints

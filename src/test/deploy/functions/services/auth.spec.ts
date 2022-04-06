@@ -1,4 +1,4 @@
-import * as authBlocking from "../../../../deploy/functions/services/authBlocking";
+import * as auth from "../../../../deploy/functions/services/auth";
 import * as backend from "../../../../deploy/functions/backend";
 import * as identityPlatform from "../../../../gcp/identityPlatform";
 import * as sinon from "sinon";
@@ -51,7 +51,7 @@ describe("authBlocking", () => {
         },
       };
 
-      expect(() => authBlocking.validateAuthBlockingTrigger(ep1, backend.of(ep1, ep2))).to.throw(
+      expect(() => auth.validateAuthBlockingTrigger(ep1, backend.of(ep1, ep2))).to.throw(
         `Can only create at most one Auth Blocking Trigger for ${BEFORE_CREATE_EVENT} events`
       );
     });
@@ -76,7 +76,7 @@ describe("authBlocking", () => {
         },
       };
 
-      expect(() => authBlocking.validateAuthBlockingTrigger(ep1, backend.of(ep1, ep2))).to.throw(
+      expect(() => auth.validateAuthBlockingTrigger(ep1, backend.of(ep1, ep2))).to.throw(
         `Can only create at most one Auth Blocking Trigger for ${BEFORE_SIGN_IN_EVENT} events`
       );
     });
@@ -107,7 +107,7 @@ describe("authBlocking", () => {
         ...backend.of(ep1, ep2),
       };
 
-      expect(() => authBlocking.validateAuthBlockingTrigger(ep1, want)).to.not.throw();
+      expect(() => auth.validateAuthBlockingTrigger(ep1, want)).to.not.throw();
     });
   });
 
@@ -140,7 +140,7 @@ describe("authBlocking", () => {
       getConfig.resolves(blockingConfig);
       setConfig.resolves(newBlockingConfig);
 
-      await authBlocking.registerTrigger(ep, false);
+      await auth.registerTrigger(ep, false);
 
       expect(blockingConfig).to.deep.equal(newBlockingConfig);
       expect(setConfig).to.have.been.calledWith("project", newBlockingConfig);
@@ -189,7 +189,7 @@ describe("authBlocking", () => {
       getConfig.resolves(blockingConfig);
       setConfig.resolves(newBlockingConfig);
 
-      await authBlocking.registerTrigger(ep, false);
+      await auth.registerTrigger(ep, false);
 
       expect(blockingConfig).to.deep.equal(newBlockingConfig);
       expect(setConfig).to.have.been.calledWith("project", newBlockingConfig);
@@ -238,7 +238,7 @@ describe("authBlocking", () => {
       getConfig.resolves(blockingConfig);
       setConfig.resolves(newBlockingConfig);
 
-      await authBlocking.registerTrigger(ep, false);
+      await auth.registerTrigger(ep, false);
 
       expect(blockingConfig).to.deep.equal(newBlockingConfig);
       expect(setConfig).to.have.been.calledWith("project", newBlockingConfig);
@@ -285,7 +285,7 @@ describe("authBlocking", () => {
       getConfig.resolves(blockingConfig);
       setConfig.resolves(newBlockingConfig);
 
-      await authBlocking.registerTrigger(ep, true);
+      await auth.registerTrigger(ep, true);
 
       expect(blockingConfig).to.deep.equal(newBlockingConfig);
       expect(setConfig).to.have.been.calledWith("project", newBlockingConfig);
@@ -332,7 +332,7 @@ describe("authBlocking", () => {
       getConfig.resolves(blockingConfig);
       setConfig.resolves(newBlockingConfig);
 
-      await authBlocking.registerTrigger(ep, true);
+      await auth.registerTrigger(ep, true);
 
       expect(blockingConfig).to.deep.equal(newBlockingConfig);
       expect(setConfig).to.have.been.calledWith("project", newBlockingConfig);
@@ -363,13 +363,13 @@ describe("authBlocking", () => {
       };
       getConfig.resolves(blockingConfig);
 
-      await authBlocking.registerTrigger(ep, false);
+      await auth.registerTrigger(ep, false);
 
       expect(setConfig).to.not.have.been.called;
     });
   });
 
-  describe("unregisterAuthBlockingTriggerFromIdentityPlatform", () => {
+  describe("unregisterTrigger", () => {
     it("should not unregister a beforeCreate endpoint if uri does not match", async () => {
       const blockingConfig: identityPlatform.BlockingFunctionsConfig = {
         triggers: {
@@ -397,7 +397,7 @@ describe("authBlocking", () => {
       };
       getConfig.resolves(blockingConfig);
 
-      await authBlocking.unregisterTrigger(ep);
+      await auth.unregisterTrigger(ep);
 
       expect(setConfig).to.not.have.been.called;
     });
@@ -429,7 +429,7 @@ describe("authBlocking", () => {
       };
       getConfig.resolves(blockingConfig);
 
-      await authBlocking.unregisterTrigger(ep);
+      await auth.unregisterTrigger(ep);
 
       expect(setConfig).to.not.have.been.called;
     });
@@ -473,7 +473,7 @@ describe("authBlocking", () => {
       getConfig.resolves(blockingConfig);
       setConfig.resolves(newBlockingConfig);
 
-      await authBlocking.unregisterTrigger(ep);
+      await auth.unregisterTrigger(ep);
 
       expect(blockingConfig).to.deep.equal(newBlockingConfig);
       expect(setConfig).to.have.been.calledWith("project", newBlockingConfig);
@@ -518,7 +518,7 @@ describe("authBlocking", () => {
       getConfig.resolves(blockingConfig);
       setConfig.resolves(newBlockingConfig);
 
-      await authBlocking.unregisterTrigger(ep);
+      await auth.unregisterTrigger(ep);
 
       expect(blockingConfig).to.deep.equal(newBlockingConfig);
       expect(setConfig).to.have.been.calledWith("project", newBlockingConfig);

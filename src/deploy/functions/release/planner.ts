@@ -236,7 +236,7 @@ export function checkForIllegalUpdate(want: backend.Endpoint, have: backend.Endp
     } else if (backend.isTaskQueueTriggered(e)) {
       return "a task queue";
     } else if (backend.isBlockingTriggered(e)) {
-      return "a blocking";
+      return e.blockingTrigger.eventType;
     }
     // Unfortunately TypeScript isn't like Scala and I can't prove to it
     // that all cases have been handled

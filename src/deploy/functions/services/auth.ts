@@ -2,6 +2,7 @@ import * as backend from "../backend";
 import * as identityPlatform from "../../../gcp/identityPlatform";
 import * as events from "../../../functions/events";
 import { FirebaseError } from "../../../error";
+import { cloneDeep } from "../../../utils";
 
 const BEFORE_CREATE = events.v1.BEFORE_CREATE_EVENT || events.v2.BEFORE_CREATE_EVENT;
 
@@ -63,7 +64,7 @@ export async function registerTrigger(
   update: boolean
 ): Promise<void> {
   const newBlockingConfig = await identityPlatform.getBlockingFunctionsConfig(endpoint.project);
-  const oldBlockingConfig = { ...newBlockingConfig };
+  const oldBlockingConfig = cloneDeep(newBlockingConfig);
 
   if (endpoint.blockingTrigger.eventType === BEFORE_CREATE) {
     newBlockingConfig.triggers = {

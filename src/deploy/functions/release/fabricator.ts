@@ -21,7 +21,7 @@ import * as reporter from "./reporter";
 import * as run from "../../../gcp/run";
 import * as scheduler from "../../../gcp/cloudscheduler";
 import * as utils from "../../../utils";
-import * as authBlocking from "../services/authBlocking";
+import * as auth from "../services/auth";
 
 // TODO: Tune this for better performance.
 const gcfV1PollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
@@ -546,7 +546,7 @@ export class Fabricator {
     update: boolean
   ): Promise<void> {
     await this.executor
-      .run(() => authBlocking.registerTrigger(endpoint, update))
+      .run(() => auth.registerTrigger(endpoint, update))
       .catch(rethrowAs(endpoint, "register blocking trigger"));
   }
 
@@ -581,7 +581,7 @@ export class Fabricator {
     endpoint: backend.Endpoint & backend.BlockingTriggered
   ): Promise<void> {
     await this.executor
-      .run(() => authBlocking.unregisterTrigger(endpoint))
+      .run(() => auth.unregisterTrigger(endpoint))
       .catch(rethrowAs(endpoint, "unregister blocking trigger"));
   }
 

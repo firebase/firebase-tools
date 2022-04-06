@@ -158,7 +158,7 @@ export function endpointTriggerType(endpoint: Endpoint): string {
   } else if (isTaskQueueTriggered(endpoint)) {
     return "taskQueue";
   } else if (isBlockingTriggered(endpoint)) {
-    return "blocking";
+    return endpoint.blockingTrigger.eventType;
   } else {
     throw new Error("Unexpected trigger type for endpoint " + JSON.stringify(endpoint));
   }

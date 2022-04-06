@@ -3,7 +3,7 @@ import * as iam from "../../../gcp/iam";
 import * as events from "../../../functions/events";
 import { obtainStorageBindings, ensureStorageTriggerRegion } from "./storage";
 import { ensureFirebaseAlertsTriggerRegion } from "./firebaseAlerts";
-import { validateAuthBlockingTrigger } from "./authBlocking";
+import { validateAuthBlockingTrigger } from "./auth";
 
 /** A standard void No Op */
 const noop = (): Promise<void> => Promise.resolve();

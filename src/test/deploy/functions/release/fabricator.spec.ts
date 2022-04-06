@@ -16,7 +16,7 @@ import * as scraper from "../../../../deploy/functions/release/sourceTokenScrape
 import * as planner from "../../../../deploy/functions/release/planner";
 import * as v2events from "../../../../functions/events/v2";
 import * as v1events from "../../../../functions/events/v1";
-import * as authBlockingNS from "../../../../deploy/functions/services/authBlocking";
+import * as authNS from "../../../../deploy/functions/services/auth";
 
 describe("Fabricator", () => {
   // Stub all GCP APIs to make sure this test is hermetic
@@ -27,7 +27,7 @@ describe("Fabricator", () => {
   let scheduler: sinon.SinonStubbedInstance<typeof schedulerNS>;
   let run: sinon.SinonStubbedInstance<typeof runNS>;
   let tasks: sinon.SinonStubbedInstance<typeof cloudtasksNS>;
-  let authBlocking: sinon.SinonStubbedInstance<typeof authBlockingNS>;
+  let auth: sinon.SinonStubbedInstance<typeof authNS>;
 
   beforeEach(() => {
     gcf = sinon.stub(gcfNS);
@@ -37,7 +37,7 @@ describe("Fabricator", () => {
     scheduler = sinon.stub(schedulerNS);
     run = sinon.stub(runNS);
     tasks = sinon.stub(cloudtasksNS);
-    authBlocking = sinon.stub(authBlockingNS);
+    auth = sinon.stub(authNS);
 
     gcf.functionFromEndpoint.restore();
     gcfv2.functionFromEndpoint.restore();
@@ -71,8 +71,8 @@ describe("Fabricator", () => {
     tasks.setEnqueuer.rejects(new Error("unexpected tasks.setEnqueuer"));
     tasks.setIamPolicy.rejects(new Error("unexpected tasks.setIamPolicy"));
     tasks.getIamPolicy.rejects(new Error("unexpected tasks.getIamPolicy"));
-    authBlocking.registerTrigger.rejects(new Error("unexpected authBlocking.registerTrigger"));
-    authBlocking.unregisterTrigger.rejects(new Error("unexpected authBlocking.unregisterTrigger"));
+    auth.registerTrigger.rejects(new Error("unexpected auth.registerTrigger"));
+    auth.unregisterTrigger.rejects(new Error("unexpected auth.unregisterTrigger"));
   });
 
   afterEach(() => {
@@ -938,13 +938,13 @@ describe("Fabricator", () => {
     }) as backend.Endpoint & backend.BlockingTriggered;
 
     it("registers blocking trigger", async () => {
-      authBlocking.registerTrigger.resolves();
+      auth.registerTrigger.resolves();
       await fab.registerBlockingTrigger(ep, false);
-      expect(authBlocking.registerTrigger).to.have.been.called;
+      expect(auth.registerTrigger).to.have.been.called;
     });
 
     it("wraps errors", async () => {
-      authBlocking.registerTrigger.rejects(new Error("Fail"));
+      auth.registerTrigger.rejects(new Error("Fail"));
       await expect(fab.registerBlockingTrigger(ep, false)).to.eventually.be.rejectedWith(
         reporter.DeploymentError,
         "register blocking trigger"
@@ -960,13 +960,13 @@ describe("Fabricator", () => {
     }) as backend.Endpoint & backend.BlockingTriggered;
 
     it("registers blocking trigger", async () => {
-      authBlocking.unregisterTrigger.resolves();
+      auth.unregisterTrigger.resolves();
       await fab.unregisterBlockingTrigger(ep);
-      expect(authBlocking.unregisterTrigger).to.have.been.called;
+      expect(auth.unregisterTrigger).to.have.been.called;
     });
 
     it("wraps errors", async () => {
-      authBlocking.unregisterTrigger.rejects(new Error("Fail"));
+      auth.unregisterTrigger.rejects(new Error("Fail"));
       await expect(fab.unregisterBlockingTrigger(ep)).to.eventually.be.rejectedWith(
         reporter.DeploymentError,
         "unregister blocking trigger"
