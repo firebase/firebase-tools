@@ -90,7 +90,7 @@ interface EventTrigger {
   // Region of the EventArc trigger. Must be the same region or multi-region as the event
   // trigger or be us-central1. All first party triggers (all triggers as of Jan 2022) need not
   // specify this field because tooling determines the correct value automatically.
-  region?: string;
+  region?: string | Expression<string>;
 
   // The service account that EventArc should use to invoke this function. Setting this field
   // requires the EventArc P4SA to be granted the "ActAs" permission to this service account and
@@ -117,7 +117,7 @@ interface TaskQueueTrigger {
   retryConfig?: TaskQueueRetryConfig | null;
 
   // empty array means private
-  invoker?: Array<ServiceAccount> | null;
+  invoker?: Array<ServiceAccount | Expression<string>> | null;
 }
 
 interface ScheduleRetryConfig {
@@ -208,9 +208,6 @@ interface ParamBase<T extends string | number | boolean> {
 
 interface StringParam extends ParamBase<string> {
   type?: "string";
-
-  // If omitted, defaults to TextInput<string>
-  input?: any;
 }
 
 type Param = StringParam;
@@ -240,11 +237,11 @@ export function discoverParams(build: Build): backend.Backend {
       if (!isMemoryOption(endpoint.availableMemoryMb)) {
         throw new FirebaseError("available memory must be a supported value, if present");
       }
-      if (
-        typeof endpoint.timeoutSeconds !== "string" &&
-        typeof endpoint.timeoutSeconds !== "undefined"
-      ) {
-        throw new FirebaseError("timeout must be a string, if present");
+      let timeout: number;
+      if (endpoint.timeoutSeconds) {
+        timeout = resolveInt(endpoint.timeoutSeconds);
+      } else {
+        timeout = 60;
       }
 
       const bkEndpoint: backend.Endpoint = {
@@ -258,7 +255,7 @@ export function discoverParams(build: Build): backend.Backend {
         environmentVariables: endpoint.environmentVariables,
         secretEnvironmentVariables: undefined,
         availableMemoryMb: endpoint.availableMemoryMb,
-        timeout: endpoint.timeoutSeconds,
+        timeout: proto.durationFromSeconds(timeout),
         ...trigger,
       };
       proto.renameIfPresent(bkEndpoint, endpoint, "maxInstances", "maxInstances", resolveInt);
@@ -318,7 +315,6 @@ function discoverTrigger(endpoint: Endpoint): backend.Triggered {
     const bkEvent: backend.EventTrigger = {
       eventType: endpoint.eventTrigger.eventType,
       eventFilters: [],
-      region: endpoint.eventTrigger.region,
       retry: resolveBoolean(endpoint.eventTrigger.retry),
     };
     for (const filterAttr in endpoint.eventTrigger.eventFilters) {
@@ -329,6 +325,9 @@ function discoverTrigger(endpoint: Endpoint): backend.Triggered {
     }
     if (endpoint.eventTrigger.serviceAccount) {
       bkEvent.serviceAccountEmail = endpoint.eventTrigger.serviceAccount;
+    }
+    if (endpoint.eventTrigger.region) {
+      bkEvent.region = resolveString(endpoint.eventTrigger.region);
     }
     trigger = { eventTrigger: bkEvent };
   } else if ("scheduleTrigger" in endpoint) {
@@ -410,7 +409,7 @@ function discoverTrigger(endpoint: Endpoint): backend.Triggered {
       bkTaskQueue.retryConfig = bkRetryConfig;
     }
     if (endpoint.taskQueueTrigger.invoker) {
-      bkTaskQueue.invoker = endpoint.taskQueueTrigger.invoker;
+      bkTaskQueue.invoker = endpoint.taskQueueTrigger.invoker.map((sa) => resolveString(sa));
     }
     trigger = { taskQueueTrigger: bkTaskQueue };
   } else {
