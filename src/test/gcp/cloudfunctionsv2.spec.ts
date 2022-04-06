@@ -320,13 +320,13 @@ describe("cloudfunctionsv2", () => {
     });
 
     it("should translate custom event triggers", () => {
-      let want: backend.Endpoint = {
+      const want: backend.Endpoint = {
         ...ENDPOINT,
         platform: "gcfv2",
         uri: RUN_URI,
         eventTrigger: {
           eventType: "com.custom.event",
-          eventFilters: {"customattr": "customvalue"},
+          eventFilters: { customattr: "customvalue" },
           channel: "projects/myproject/locations/us-wildwest11/channels/mychannel",
           retry: false,
         },
