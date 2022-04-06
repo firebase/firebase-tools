@@ -76,25 +76,16 @@ interface BlockingTrigger {
   eventType: string;
 }
 
-// One or more event filters restrict the set of events delivered to an EventTrigger.
-interface EventFilter {
-  attribute: string;
-  value: string | Expression<string>;
-
-  // if left unspecified, equality is used.
-  operator?: "match-path-pattern";
-}
-
 // Trigger definitions for endpoints that listen to CloudEvents emitted by other systems (or legacy
 // Google events for GCF gen 1)
 interface EventTrigger {
   eventType: string;
-  eventFilters: Array<EventFilter>;
+  eventFilters: Record<string, Expression<string>>;
 
   // whether failed function executions should retry the event execution.
   // Retries are indefinite, so developers should be sure to add some end condition (e.g. event
   // age)
-  retry: boolean | null;
+  retry: boolean | Expression<boolean> | null;
 
   // Region of the EventArc trigger. Must be the same region or multi-region as the event
   // trigger or be us-central1. All first party triggers (all triggers as of Jan 2022) need not
@@ -232,195 +223,198 @@ function isMemoryOption(value: backend.MemoryOptions | any): value is backend.Me
 // TODO(vsfan): resolve build.Params
 // TODO(vsfan): handle Expression<T> types
 export function discoverParams(build: Build): backend.Backend {
-  const bkend = backend.empty();
+  const bkEndpoints: Array<backend.Endpoint> = [];
+  for (const endpointId of Object.keys(build.endpoints)) {
+    const endpoint = build.endpoints[endpointId];
 
+    let regions = endpoint.region;
+    if (typeof regions === "undefined") {
+      regions = ["functionsDefaultRegion"];
+    }
+    for (const region of regions) {
+      const trigger = discoverTrigger(endpoint);
+
+      if (typeof endpoint.platform === "undefined") {
+        throw new FirebaseError("platform can't be undefined");
+      }
+      if (!isMemoryOption(endpoint.availableMemoryMb)) {
+        throw new FirebaseError("available memory must be a supported value, if present");
+      }
+      if (
+        typeof endpoint.timeoutSeconds !== "string" &&
+        typeof endpoint.timeoutSeconds !== "undefined"
+      ) {
+        throw new FirebaseError("timeout must be a string, if present");
+      }
+
+      const bkEndpoint: backend.Endpoint = {
+        id: endpointId,
+        project: "",
+        region: region,
+        entryPoint: endpoint.entryPoint,
+        platform: endpoint.platform,
+        runtime: "",
+        labels: endpoint.labels,
+        environmentVariables: endpoint.environmentVariables,
+        secretEnvironmentVariables: undefined,
+        availableMemoryMb: endpoint.availableMemoryMb,
+        timeout: endpoint.timeoutSeconds,
+        ...trigger,
+      };
+      proto.renameIfPresent(bkEndpoint, endpoint, "maxInstances", "maxInstances", resolveInt);
+      proto.renameIfPresent(bkEndpoint, endpoint, "minInstances", "minInstances", resolveInt);
+      proto.renameIfPresent(bkEndpoint, endpoint, "concurrency", "concurrency", resolveInt);
+      proto.renameIfPresent(
+        bkEndpoint,
+        endpoint,
+        "timeout",
+        "timeoutSeconds",
+        (from: number | Expression<number> | null): string => {
+          return proto.durationFromSeconds(resolveInt(from));
+        }
+      );
+      if (endpoint.vpc) {
+        bkEndpoint.vpc = {
+          connector: endpoint.vpc.connector,
+          egressSettings: endpoint.vpc.egressSettings,
+        };
+      }
+      if (endpoint.ingressSettings) {
+        bkEndpoint.ingressSettings = endpoint.ingressSettings;
+      }
+      if (endpoint.serviceAccount) {
+        bkEndpoint.serviceAccountEmail = endpoint.serviceAccount;
+      } else {
+        bkEndpoint.serviceAccountEmail = "default";
+      }
+
+      bkEndpoints.push(bkEndpoint);
+    }
+  }
+
+  const bkend = backend.of(...bkEndpoints);
   for (const requiredAPI of build.requiredAPIs) {
     bkend.requiredAPIs.push({
       reason: requiredAPI.reason,
       api: requiredAPI.apiName,
     });
   }
+  return bkend;
+}
 
-  const bkEndpoints: Record<string, Record<string, backend.Endpoint>> = {};
-  for (const endpointId of Object.keys(build.endpoints)) {
-    const endpoint = build.endpoints[endpointId];
-    let trigger: backend.Triggered;
-    if ("httpsTrigger" in endpoint) {
-      const bkHttps: backend.HttpsTrigger = {};
-      if (endpoint.httpsTrigger.invoker) {
-        bkHttps.invoker = [endpoint.httpsTrigger.invoker];
+function discoverTrigger(endpoint: Endpoint): backend.Triggered {
+  let trigger: backend.Triggered;
+  if ("httpsTrigger" in endpoint) {
+    const bkHttps: backend.HttpsTrigger = {};
+    if (endpoint.httpsTrigger.invoker) {
+      bkHttps.invoker = [endpoint.httpsTrigger.invoker];
+    }
+    trigger = { httpsTrigger: bkHttps };
+  } else if ("callableTrigger" in endpoint) {
+    trigger = { callableTrigger: {} };
+  } else if ("blockingTrigger" in endpoint) {
+    throw new FirebaseError("blocking triggers not supported");
+  } else if ("eventTrigger" in endpoint) {
+    const bkEvent: backend.EventTrigger = {
+      eventType: endpoint.eventTrigger.eventType,
+      eventFilters: [],
+      region: endpoint.eventTrigger.region,
+      retry: resolveBoolean(endpoint.eventTrigger.retry),
+    };
+    for (const filterAttr in endpoint.eventTrigger.eventFilters) {
+      if ({}.hasOwnProperty.call(endpoint.eventTrigger.eventFilters, filterAttr)) {
+        const filterValue = resolveString(endpoint.eventTrigger.eventFilters[filterAttr]);
+        bkEvent.eventFilters.push({ attribute: filterAttr, value: filterValue });
       }
-      trigger = { httpsTrigger: bkHttps };
-    } else if ("callableTrigger" in endpoint) {
-      trigger = { callableTrigger: {} };
-    } else if ("blockingTrigger" in endpoint) {
-      throw new FirebaseError("blocking triggers not supported");
-    } else if ("eventTrigger" in endpoint) {
-      const bkEvent: backend.EventTrigger = {
-        eventType: endpoint.eventTrigger.eventType,
-        eventFilters: endpoint.eventTrigger.eventFilters,
-        region: endpoint.eventTrigger.region,
-        retry: false,
-      };
-      if (endpoint.eventTrigger.retry) {
-        bkEvent.retry = true;
-      }
-      if (endpoint.eventTrigger.serviceAccount) {
-        bkEvent.serviceAccountEmail = endpoint.eventTrigger.serviceAccount;
-      }
-      trigger = { eventTrigger: bkEvent };
-    } else if ("scheduleTrigger" in endpoint) {
-      const bkSchedule: backend.ScheduleTrigger = {
-        schedule: endpoint.scheduleTrigger.schedule,
-        timeZone: endpoint.scheduleTrigger.timeZone,
-      };
+    }
+    if (endpoint.eventTrigger.serviceAccount) {
+      bkEvent.serviceAccountEmail = endpoint.eventTrigger.serviceAccount;
+    }
+    trigger = { eventTrigger: bkEvent };
+  } else if ("scheduleTrigger" in endpoint) {
+    const bkSchedule: backend.ScheduleTrigger = {
+      schedule: endpoint.scheduleTrigger.schedule,
+      timeZone: endpoint.scheduleTrigger.timeZone,
+    };
+    proto.renameIfPresent(
+      bkSchedule,
+      endpoint.scheduleTrigger,
+      "retryConfig",
+      "retryConfig",
+      resolveInt
+    );
+    trigger = { scheduleTrigger: bkSchedule };
+  } else if ("taskQueueTrigger" in endpoint) {
+    const bkTaskQueue: backend.TaskQueueTrigger = {};
+    if (endpoint.taskQueueTrigger.rateLimits) {
+      const bkRateLimits: backend.TaskQueueRateLimits = {};
       proto.renameIfPresent(
-        bkSchedule,
-        endpoint.scheduleTrigger,
-        "retryConfig",
-        "retryConfig",
+        bkRateLimits,
+        endpoint.taskQueueTrigger.rateLimits,
+        "maxConcurrentDispatches",
+        "maxConcurrentDispatches",
         resolveInt
       );
-      trigger = { scheduleTrigger: bkSchedule };
-    } else if ("taskQueueTrigger" in endpoint) {
-      const bkTaskQueue: backend.TaskQueueTrigger = {};
-      if (endpoint.taskQueueTrigger.rateLimits) {
-        const bkRateLimits: backend.TaskQueueRateLimits = {};
-        proto.renameIfPresent(
-          bkRateLimits,
-          endpoint.taskQueueTrigger.rateLimits,
-          "maxConcurrentDispatches",
-          "maxConcurrentDispatches",
-          resolveInt
-        );
-        proto.renameIfPresent(
-          bkRateLimits,
-          endpoint.taskQueueTrigger.rateLimits,
-          "maxDispatchesPerSecond",
-          "maxDispatchesPerSecond",
-          resolveInt
-        );
-        bkTaskQueue.rateLimits = bkRateLimits;
-      }
-      if (endpoint.taskQueueTrigger.retryConfig) {
-        const bkRetryConfig: backend.TaskQueueRetryConfig = {};
-        proto.renameIfPresent(
-          bkRetryConfig,
-          endpoint.taskQueueTrigger.retryConfig,
-          "maxAttempts",
-          "maxAttempts",
-          resolveInt
-        );
-        proto.renameIfPresent(
-          bkRetryConfig,
-          endpoint.taskQueueTrigger.retryConfig,
-          "maxBackoff",
-          "maxBackoffSeconds",
-          (from: number | Expression<number> | null): string => {
-            return proto.durationFromSeconds(resolveInt(from));
-          }
-        );
-        proto.renameIfPresent(
-          bkRetryConfig,
-          endpoint.taskQueueTrigger.retryConfig,
-          "minBackoff",
-          "minBackoffSeconds",
-          (from: number | Expression<number> | null): string => {
-            return proto.durationFromSeconds(resolveInt(from));
-          }
-        );
-        proto.renameIfPresent(
-          bkRetryConfig,
-          endpoint.taskQueueTrigger.retryConfig,
-          "maxRetryDuration",
-          "maxRetryDurationSeconds",
-          (from: number | Expression<number> | null): string => {
-            return proto.durationFromSeconds(resolveInt(from));
-          }
-        );
-        proto.renameIfPresent(
-          bkRetryConfig,
-          endpoint.taskQueueTrigger.retryConfig,
-          "maxDoublings",
-          "maxDoublings",
-          resolveInt
-        );
-        bkTaskQueue.retryConfig = bkRetryConfig;
-      }
-      if (endpoint.taskQueueTrigger.invoker) {
-        bkTaskQueue.invoker = endpoint.taskQueueTrigger.invoker;
-      }
-      trigger = { taskQueueTrigger: bkTaskQueue };
-    } else {
-      throw new FirebaseError("unknown trigger type");
+      proto.renameIfPresent(
+        bkRateLimits,
+        endpoint.taskQueueTrigger.rateLimits,
+        "maxDispatchesPerSecond",
+        "maxDispatchesPerSecond",
+        resolveInt
+      );
+      bkTaskQueue.rateLimits = bkRateLimits;
     }
-
-    let region: string;
-    if (typeof endpoint.region === "undefined") {
-      region = "functionsDefaultRegion";
-    } else {
-      region = endpoint.region[0]; // can this be right?
+    if (endpoint.taskQueueTrigger.retryConfig) {
+      const bkRetryConfig: backend.TaskQueueRetryConfig = {};
+      proto.renameIfPresent(
+        bkRetryConfig,
+        endpoint.taskQueueTrigger.retryConfig,
+        "maxAttempts",
+        "maxAttempts",
+        resolveInt
+      );
+      proto.renameIfPresent(
+        bkRetryConfig,
+        endpoint.taskQueueTrigger.retryConfig,
+        "maxBackoff",
+        "maxBackoffSeconds",
+        (from: number | Expression<number> | null): string => {
+          return proto.durationFromSeconds(resolveInt(from));
+        }
+      );
+      proto.renameIfPresent(
+        bkRetryConfig,
+        endpoint.taskQueueTrigger.retryConfig,
+        "minBackoff",
+        "minBackoffSeconds",
+        (from: number | Expression<number> | null): string => {
+          return proto.durationFromSeconds(resolveInt(from));
+        }
+      );
+      proto.renameIfPresent(
+        bkRetryConfig,
+        endpoint.taskQueueTrigger.retryConfig,
+        "maxRetryDuration",
+        "maxRetryDurationSeconds",
+        (from: number | Expression<number> | null): string => {
+          return proto.durationFromSeconds(resolveInt(from));
+        }
+      );
+      proto.renameIfPresent(
+        bkRetryConfig,
+        endpoint.taskQueueTrigger.retryConfig,
+        "maxDoublings",
+        "maxDoublings",
+        resolveInt
+      );
+      bkTaskQueue.retryConfig = bkRetryConfig;
     }
-    if (typeof endpoint.platform === "undefined") {
-      throw new FirebaseError("platform can't be undefined");
+    if (endpoint.taskQueueTrigger.invoker) {
+      bkTaskQueue.invoker = endpoint.taskQueueTrigger.invoker;
     }
-    if (!isMemoryOption(endpoint.availableMemoryMb)) {
-      throw new FirebaseError("available memory must be a supported value, if present");
-    }
-    if (
-      typeof endpoint.timeoutSeconds !== "string" &&
-      typeof endpoint.timeoutSeconds !== "undefined"
-    ) {
-      throw new FirebaseError("timeout must be a string, if present");
-    }
-
-    const bkEndpoint: backend.Endpoint = {
-      id: endpointId,
-      project: "",
-      region: region,
-      entryPoint: endpoint.entryPoint,
-      platform: endpoint.platform,
-      runtime: "",
-      labels: endpoint.labels,
-      environmentVariables: endpoint.environmentVariables,
-      secretEnvironmentVariables: undefined,
-      availableMemoryMb: endpoint.availableMemoryMb,
-      timeout: endpoint.timeoutSeconds,
-      ...trigger,
-    };
-    proto.renameIfPresent(bkEndpoint, endpoint, "maxInstances", "maxInstances", resolveInt);
-    proto.renameIfPresent(bkEndpoint, endpoint, "minInstances", "minInstances", resolveInt);
-    proto.renameIfPresent(bkEndpoint, endpoint, "concurrency", "concurrency", resolveInt);
-    proto.renameIfPresent(
-      bkEndpoint,
-      endpoint,
-      "timeout",
-      "timeoutSeconds",
-      (from: number | Expression<number> | null): string => {
-        return proto.durationFromSeconds(resolveInt(from));
-      }
-    );
-    if (endpoint.vpc) {
-      bkEndpoint.vpc = {
-        connector: endpoint.vpc.connector,
-        egressSettings: endpoint.vpc.egressSettings,
-      };
-    }
-    if (endpoint.ingressSettings) {
-      bkEndpoint.ingressSettings = endpoint.ingressSettings;
-    }
-    if (endpoint.serviceAccount) {
-      bkEndpoint.serviceAccountEmail = endpoint.serviceAccount;
-    } else {
-      bkEndpoint.serviceAccountEmail = "default";
-    }
-
-    if (bkEndpoints.hasOwnProperty(region)) {
-      bkEndpoints[region][endpointId] = bkEndpoint;
-    } else {
-      bkEndpoints[region] = { endpointId: bkEndpoint };
-    }
+    trigger = { taskQueueTrigger: bkTaskQueue };
+  } else {
+    throw new FirebaseError("unknown trigger type");
   }
-
-  return bkend;
+  return trigger;
 }
