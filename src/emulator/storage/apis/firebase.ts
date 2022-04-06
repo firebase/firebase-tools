@@ -255,12 +255,14 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       res.header("x-goog-upload-chunk-granularity", "10000");
       res.header("x-goog-upload-control-url", "");
       res.header("x-goog-upload-status", "active");
-      const emulatorInfo = EmulatorRegistry.getInfo(Emulators.STORAGE);
-      res.header(
-        "x-goog-upload-url",
-        `http://${req.hostname}:${emulatorInfo?.port}/v0/b/${bucketId}/o?name=${objectId}&upload_id=${upload.id}&upload_protocol=resumable`
-      );
       res.header("x-gupload-uploadid", upload.id);
+
+      const uploadUrl = EmulatorRegistry.url(Emulators.STORAGE, req);
+      uploadUrl.pathname = `/v0/b/${bucketId}/o`;
+      uploadUrl.searchParams.set("name", objectId);
+      uploadUrl.searchParams.set("upload_id", upload.id);
+      uploadUrl.searchParams.set("upload_protocol", "resumable");
+      res.header("x-goog-upload-url", uploadUrl.toString());
 
       return res.sendStatus(200);
     }
