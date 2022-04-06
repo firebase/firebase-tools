@@ -1,4 +1,5 @@
 import * as backend from "./backend";
+import * as proto from "../../gcp/proto";
 import { FirebaseError } from "../../error";
 
 /* The union of a customer-controlled deployment and potentially deploy-time defined parameters */
@@ -26,6 +27,31 @@ interface RequiredApi {
 // `Expression<Foo> == Expression<Foo>` is an Expression<boolean>
 // `Expression<boolean> ? Expression<T> : Expression<T>` is an Expression<T>
 type Expression<T extends string | number | boolean> = string;
+
+function resolveInt(from: number | Expression<number> | null): number {
+  if (from == null) {
+    return 0;
+  } else if (typeof from === "string") {
+    throw new FirebaseError("CEL evaluation of expression '" + from + "' not yet supported");
+  }
+  return from;
+}
+
+function resolveString(from: string | Expression<string> | null): string {
+  if (from == null) {
+    return "";
+  }
+  return from;
+}
+
+function resolveBoolean(from: boolean | Expression<boolean> | null): boolean {
+  if (from == null) {
+    return false;
+  } else if (typeof from === "string") {
+    throw new FirebaseError("CEL evaluation of expression '" + from + "' not yet supported");
+  }
+  return from;
+}
 
 // A service account must either:
 // 1. Be a project-relative email that ends with "@" (e.g. database-users@)
@@ -170,7 +196,7 @@ type Endpoint = Triggered & {
   labels?: Record<string, string | Expression<string>>;
 };
 
-interface ParamBase<T> {
+interface ParamBase<T extends string | number | boolean> {
   // name of the param. Will be exposed as an environment variable with this name
   param: string;
 
@@ -183,7 +209,7 @@ interface ParamBase<T> {
   description?: string;
 
   // Default value. If not provided, a param must be supplied.
-  default?: T | Expression<string> | Expression<number> | Expression<boolean>;
+  default?: T | Expression<T>;
 
   // default: false
   immutable?: boolean;
@@ -248,51 +274,77 @@ export function discoverParams(build: Build): backend.Backend {
         schedule: endpoint.scheduleTrigger.schedule,
         timeZone: endpoint.scheduleTrigger.timeZone,
       };
-      if (typeof endpoint.scheduleTrigger.retryConfig === "number") {
-        bkSchedule.retryConfig = endpoint.scheduleTrigger.retryConfig;
-      }
+      proto.renameIfPresent(
+        bkSchedule,
+        endpoint.scheduleTrigger,
+        "retryConfig",
+        "retryConfig",
+        resolveInt
+      );
       trigger = { scheduleTrigger: bkSchedule };
     } else if ("taskQueueTrigger" in endpoint) {
       const bkTaskQueue: backend.TaskQueueTrigger = {};
       if (endpoint.taskQueueTrigger.rateLimits) {
         const bkRateLimits: backend.TaskQueueRateLimits = {};
-        if (typeof endpoint.taskQueueTrigger.rateLimits.maxConcurrentDispatches !== "number") {
-          throw new FirebaseError("rateLimits.maxConcurrentDispatches must be a number");
-        }
-        bkRateLimits.maxConcurrentDispatches =
-          endpoint.taskQueueTrigger.rateLimits.maxConcurrentDispatches;
-        if (typeof endpoint.taskQueueTrigger.rateLimits.maxDispatchesPerSecond !== "number") {
-          throw new FirebaseError("rateLimits.maxDispatchesPerSecond must be a number");
-        }
-        bkRateLimits.maxDispatchesPerSecond =
-          endpoint.taskQueueTrigger.rateLimits.maxDispatchesPerSecond;
+        proto.renameIfPresent(
+          bkRateLimits,
+          endpoint.taskQueueTrigger.rateLimits,
+          "maxConcurrentDispatches",
+          "maxConcurrentDispatches",
+          resolveInt
+        );
+        proto.renameIfPresent(
+          bkRateLimits,
+          endpoint.taskQueueTrigger.rateLimits,
+          "maxDispatchesPerSecond",
+          "maxDispatchesPerSecond",
+          resolveInt
+        );
         bkTaskQueue.rateLimits = bkRateLimits;
       }
       if (endpoint.taskQueueTrigger.retryConfig) {
         const bkRetryConfig: backend.TaskQueueRetryConfig = {};
-        if (typeof endpoint.taskQueueTrigger.retryConfig.maxAttempts !== "number") {
-          throw new FirebaseError("retryConfig.maxAttempts must be a number");
-        }
-        bkRetryConfig.maxAttempts = endpoint.taskQueueTrigger.retryConfig.maxAttempts;
-        if (typeof endpoint.taskQueueTrigger.retryConfig.maxBackoffSeconds !== "number") {
-          throw new FirebaseError("retryConfig.maxBackoffSeconds must be a number");
-        }
-        bkRetryConfig.maxBackoff =
-          String(endpoint.taskQueueTrigger.retryConfig.maxBackoffSeconds | 0) + "s";
-        if (typeof endpoint.taskQueueTrigger.retryConfig.minBackoffSeconds !== "number") {
-          throw new FirebaseError("retryConfig.minBackoffSeconds must be a number");
-        }
-        bkRetryConfig.minBackoff =
-          String(endpoint.taskQueueTrigger.retryConfig.minBackoffSeconds | 0) + "s";
-        if (typeof endpoint.taskQueueTrigger.retryConfig.maxRetryDurationSeconds !== "number") {
-          throw new FirebaseError("retryConfig.maxRetryDurationSeconds must be a number");
-        }
-        bkRetryConfig.maxRetryDuration =
-          String(endpoint.taskQueueTrigger.retryConfig.maxRetryDurationSeconds | 0) + "s";
-        if (typeof endpoint.taskQueueTrigger.retryConfig.maxDoublings !== "number") {
-          throw new FirebaseError("retryConfig.maxDoublings must be a number");
-        }
-        bkRetryConfig.maxDoublings = endpoint.taskQueueTrigger.retryConfig.maxDoublings;
+        proto.renameIfPresent(
+          bkRetryConfig,
+          endpoint.taskQueueTrigger.retryConfig,
+          "maxAttempts",
+          "maxAttempts",
+          resolveInt
+        );
+        proto.renameIfPresent(
+          bkRetryConfig,
+          endpoint.taskQueueTrigger.retryConfig,
+          "maxBackoff",
+          "maxBackoffSeconds",
+          (from: number | Expression<number> | null): string => {
+            return proto.durationFromSeconds(resolveInt(from));
+          }
+        );
+        proto.renameIfPresent(
+          bkRetryConfig,
+          endpoint.taskQueueTrigger.retryConfig,
+          "minBackoff",
+          "minBackoffSeconds",
+          (from: number | Expression<number> | null): string => {
+            return proto.durationFromSeconds(resolveInt(from));
+          }
+        );
+        proto.renameIfPresent(
+          bkRetryConfig,
+          endpoint.taskQueueTrigger.retryConfig,
+          "maxRetryDuration",
+          "maxRetryDurationSeconds",
+          (from: number | Expression<number> | null): string => {
+            return proto.durationFromSeconds(resolveInt(from));
+          }
+        );
+        proto.renameIfPresent(
+          bkRetryConfig,
+          endpoint.taskQueueTrigger.retryConfig,
+          "maxDoublings",
+          "maxDoublings",
+          resolveInt
+        );
         bkTaskQueue.retryConfig = bkRetryConfig;
       }
       if (endpoint.taskQueueTrigger.invoker) {
@@ -305,15 +357,12 @@ export function discoverParams(build: Build): backend.Backend {
 
     let region: string;
     if (typeof endpoint.region === "undefined") {
-      throw new FirebaseError("region can't be undefined");
+      region = "functionsDefaultRegion";
     } else {
       region = endpoint.region[0]; // can this be right?
     }
     if (typeof endpoint.platform === "undefined") {
       throw new FirebaseError("platform can't be undefined");
-    }
-    if (typeof endpoint.concurrency !== "number") {
-      throw new FirebaseError("concurrency must be a number");
     }
     if (!isMemoryOption(endpoint.availableMemoryMb)) {
       throw new FirebaseError("available memory must be a supported value, if present");
@@ -324,12 +373,6 @@ export function discoverParams(build: Build): backend.Backend {
     ) {
       throw new FirebaseError("timeout must be a string, if present");
     }
-    if (typeof endpoint.maxInstances !== "number") {
-      throw new FirebaseError("max instance count must be a number");
-    }
-    if (typeof endpoint.minInstances !== "number") {
-      throw new FirebaseError("min instance count must be a number");
-    }
 
     const bkEndpoint: backend.Endpoint = {
       id: endpointId,
@@ -338,16 +381,25 @@ export function discoverParams(build: Build): backend.Backend {
       entryPoint: endpoint.entryPoint,
       platform: endpoint.platform,
       runtime: "",
-      concurrency: endpoint.concurrency,
       labels: endpoint.labels,
       environmentVariables: endpoint.environmentVariables,
       secretEnvironmentVariables: undefined,
       availableMemoryMb: endpoint.availableMemoryMb,
       timeout: endpoint.timeoutSeconds,
-      maxInstances: endpoint.maxInstances,
-      minInstances: endpoint.minInstances,
       ...trigger,
     };
+    proto.renameIfPresent(bkEndpoint, endpoint, "maxInstances", "maxInstances", resolveInt);
+    proto.renameIfPresent(bkEndpoint, endpoint, "minInstances", "minInstances", resolveInt);
+    proto.renameIfPresent(bkEndpoint, endpoint, "concurrency", "concurrency", resolveInt);
+    proto.renameIfPresent(
+      bkEndpoint,
+      endpoint,
+      "timeout",
+      "timeoutSeconds",
+      (from: number | Expression<number> | null): string => {
+        return proto.durationFromSeconds(resolveInt(from));
+      }
+    );
     if (endpoint.vpc) {
       bkEndpoint.vpc = {
         connector: endpoint.vpc.connector,
