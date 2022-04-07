@@ -21,7 +21,11 @@ export async function serve(options: any): Promise<void> {
   const targetNames = options.targets;
   options.port = parseInt(options.port, 10);
   if (targetNames.includes("hosting") && options.config.get("hosting.source")) {
-    await require("firebase-frameworks").prepare(targetNames, { project: options.projectId }, options);
+    await require("firebase-frameworks").prepare(
+      targetNames,
+      { project: options.projectId },
+      options
+    );
   }
   await Promise.all(
     _.map(targetNames, (targetName: string) => {
