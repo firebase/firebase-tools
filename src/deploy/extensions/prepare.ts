@@ -32,7 +32,7 @@ export async function prepare(context: Context, options: Options, payload: Paylo
 
   // Check if any extension instance that we want is using secrets,
   // and ensure the API is enabled if so.
-  const usingSecrets = await Promise.all(context.have?.map(checkSpecForSecrets));
+  const usingSecrets = await Promise.all(context.want?.map(checkSpecForSecrets));
   if (usingSecrets.some((i) => i)) {
     await ensureSecretManagerApiEnabled(options);
   }
