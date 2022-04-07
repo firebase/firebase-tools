@@ -117,6 +117,11 @@ describe("Import Emulator Data", () => {
       .get(`/v0/b/${BUCKET}/o/test_upload.jpg`)
       .set({ Authorization: "Bearer owner" })
       .expect(200);
+
+    await supertest(STORAGE_EMULATOR_HOST)
+      .get(`/v0/b/${BUCKET}/o/test-directory%2Ftest_nested_upload.jpg`)
+      .set({ Authorization: "Bearer owner" })
+      .expect(200);
   });
 
   afterEach(async function (this) {

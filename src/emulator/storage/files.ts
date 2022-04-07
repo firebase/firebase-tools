@@ -589,7 +589,7 @@ export class StorageLayer {
       const decodedBlobPathSep = getPathSep(decodedBlobPath);
       // Replace all file separators with that of current platform for compatibility
       if (decodedBlobPathSep !== path.sep) {
-        decodedBlobPath = decodedBlobPath.replace(decodedBlobPathSep, path.sep);
+        decodedBlobPath = decodedBlobPath.split(decodedBlobPathSep).join(path.sep);
       }
 
       const blobDiskPath = this._persistence.getDiskPath(decodedBlobPath);
