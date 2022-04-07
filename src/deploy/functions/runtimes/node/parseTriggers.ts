@@ -71,9 +71,6 @@ export interface TriggerAnnotation {
   blockingTrigger?: {
     eventType: string;
     options?: Record<string, any>;
-    // accessToken?: boolean;
-    // idToken?: boolean;
-    // refreshToken?: boolean;
   };
   failurePolicy?: {};
   schedule?: ScheduleAnnotation;
