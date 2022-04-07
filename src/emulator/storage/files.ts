@@ -525,6 +525,8 @@ export class StorageLayer {
     for (const b of await this.listBuckets()) {
       bucketsList.buckets.push({ id: b.id });
     }
+    // Resulting path is platform-specific, e.g. foo%5Cbar on Windows, foo%2Fbar on Linux
+    // after URI encoding. Similarly for metadata paths below.
     const bucketsFilePath = path.join(storageExportPath, "buckets.json");
     await fse.writeFile(bucketsFilePath, JSON.stringify(bucketsList, undefined, 2));
 
@@ -584,9 +586,10 @@ export class StorageLayer {
       }
 
       let decodedBlobPath = decodeURIComponent(blobPath);
-      if (decodedBlobPath.indexOf(path.sep) === -1) {
-        const otherSep = path.sep === path.posix.sep ? path.win32.sep : path.posix.sep;
-        decodedBlobPath = decodedBlobPath.replace(otherSep, path.sep);
+      const decodedBlobPathSep = getPathSep(decodedBlobPath);
+      // Replace all file separators with that of current platform for compatibility
+      if (decodedBlobPathSep !== path.sep) {
+        decodedBlobPath = decodedBlobPath.replace(decodedBlobPathSep, path.sep);
       }
 
       const blobDiskPath = this._persistence.getDiskPath(decodedBlobPath);
@@ -609,4 +612,12 @@ export class StorageLayer {
       }
     }
   }
+}
+
+/** Returns file separator used in given path, either '\\' or '/'. */
+function getPathSep(decodedPath: string): string {
+  // Suffices to check first separator, which occurs immediately after bucket name
+  const bucketSuffix = ".appspot.com";
+  const firstSepIndex = decodedPath.indexOf(bucketSuffix) + bucketSuffix.length;
+  return decodedPath[firstSepIndex];
 }
