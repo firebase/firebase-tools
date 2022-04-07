@@ -22,6 +22,7 @@ import * as run from "../../../gcp/run";
 import * as scheduler from "../../../gcp/cloudscheduler";
 import * as utils from "../../../utils";
 import * as auth from "../services/auth";
+import { AUTH_BLOCKING_EVENTS } from "../../../functions/events/v2";
 
 // TODO: Tune this for better performance.
 const gcfV1PollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
@@ -250,8 +251,11 @@ export class Fabricator {
           })
           .catch(rethrowAs(endpoint, "set invoker"));
       }
-    } else if (backend.isBlockingTriggered(endpoint)) {
-      // Blocking functions should always be public
+    } else if (
+      backend.isBlockingTriggered(endpoint) &&
+      AUTH_BLOCKING_EVENTS.includes(endpoint.blockingTrigger.eventType)
+    ) {
+      // Auth Blocking functions should always be public
       await this.executor
         .run(async () => {
           await gcf.setInvokerCreate(endpoint.project, backend.functionName(endpoint), ["public"]);
@@ -326,8 +330,11 @@ export class Fabricator {
           })
           .catch(rethrowAs(endpoint, "set invoker"));
       }
-    } else if (backend.isBlockingTriggered(endpoint)) {
-      // Blocking functions should always be public
+    } else if (
+      backend.isBlockingTriggered(endpoint) &&
+      AUTH_BLOCKING_EVENTS.includes(endpoint.blockingTrigger.eventType)
+    ) {
+      // Auth Blocking functions should always be public
       await this.executor
         .run(() => run.setInvokerCreate(endpoint.project, serviceName, ["public"]))
         .catch(rethrowAs(endpoint, "set invoker"));
@@ -368,7 +375,10 @@ export class Fabricator {
       invoker = endpoint.httpsTrigger.invoker;
     } else if (backend.isTaskQueueTriggered(endpoint)) {
       invoker = endpoint.taskQueueTrigger.invoker;
-    } else if (backend.isBlockingTriggered(endpoint)) {
+    } else if (
+      backend.isBlockingTriggered(endpoint) &&
+      AUTH_BLOCKING_EVENTS.includes(endpoint.blockingTrigger.eventType)
+    ) {
       invoker = ["public"];
     }
     if (invoker) {
@@ -411,7 +421,10 @@ export class Fabricator {
       invoker = endpoint.httpsTrigger.invoker;
     } else if (backend.isTaskQueueTriggered(endpoint)) {
       invoker = endpoint.taskQueueTrigger.invoker;
-    } else if (backend.isBlockingTriggered(endpoint)) {
+    } else if (
+      backend.isBlockingTriggered(endpoint) &&
+      AUTH_BLOCKING_EVENTS.includes(endpoint.blockingTrigger.eventType)
+    ) {
       invoker = ["public"];
     }
     if (invoker) {
@@ -545,9 +558,11 @@ export class Fabricator {
     endpoint: backend.Endpoint & backend.BlockingTriggered,
     update: boolean
   ): Promise<void> {
-    await this.executor
-      .run(() => auth.registerTrigger(endpoint, update))
-      .catch(rethrowAs(endpoint, "register blocking trigger"));
+    if (AUTH_BLOCKING_EVENTS.includes(endpoint.blockingTrigger.eventType)) {
+      await this.executor
+        .run(() => auth.registerTrigger(endpoint, update))
+        .catch(rethrowAs(endpoint, "register blocking trigger"));
+    }
   }
 
   async deleteScheduleV1(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
@@ -580,9 +595,11 @@ export class Fabricator {
   async unregisterBlockingTrigger(
     endpoint: backend.Endpoint & backend.BlockingTriggered
   ): Promise<void> {
-    await this.executor
-      .run(() => auth.unregisterTrigger(endpoint))
-      .catch(rethrowAs(endpoint, "unregister blocking trigger"));
+    if (AUTH_BLOCKING_EVENTS.includes(endpoint.blockingTrigger.eventType)) {
+      await this.executor
+        .run(() => auth.unregisterTrigger(endpoint))
+        .catch(rethrowAs(endpoint, "unregister blocking trigger"));
+    }
   }
 
   logOpStart(op: string, endpoint: backend.Endpoint): void {

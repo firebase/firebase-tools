@@ -69,7 +69,7 @@ export const FirebaseAlertsService: Service = {
 /** A auth blocking service object */
 export const AuthBlockingService: Service = {
   name: "authblocking",
-  api: "identityplatform.googleapis.com",
+  api: "identitytoolkit.googleapis.com",
   requiredProjectBindings: undefined,
   ensureTriggerRegion: noop,
   validateTrigger: validateAuthBlockingTrigger,

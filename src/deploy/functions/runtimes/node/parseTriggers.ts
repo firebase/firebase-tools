@@ -226,7 +226,7 @@ export function addResourcesToBackend(
       triggered = { scheduleTrigger: annotation.schedule };
     } else if (annotation.blockingTrigger) {
       want.requiredAPIs.push({
-        api: "identityplatform.googleapis.com",
+        api: "identitytoolkit.googleapis.com",
         reason: "Needed for auth blocking functions.",
       });
       triggered = {

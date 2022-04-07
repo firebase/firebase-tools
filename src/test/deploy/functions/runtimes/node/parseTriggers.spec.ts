@@ -381,7 +381,7 @@ describe("addResourcesToBackend", () => {
       }),
       requiredAPIs: [
         {
-          api: "identityplatform.googleapis.com",
+          api: "identitytoolkit.googleapis.com",
           reason: "Needed for auth blocking functions.",
         },
       ],
@@ -415,7 +415,7 @@ describe("addResourcesToBackend", () => {
       }),
       requiredAPIs: [
         {
-          api: "identityplatform.googleapis.com",
+          api: "identitytoolkit.googleapis.com",
           reason: "Needed for auth blocking functions.",
         },
       ],
