@@ -10,7 +10,12 @@ import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { needProjectId, getProjectId } from "../projectUtils";
 import * as extensionsApi from "../extensions/extensionsApi";
-import { logPrefix, diagnoseAndFixProject } from "../extensions/extensionsHelper";
+import {
+  logPrefix,
+  diagnoseAndFixProject,
+  createSourceFromLocation,
+  isLocalPath,
+} from "../extensions/extensionsHelper";
 import * as paramHelper from "../extensions/paramHelper";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
@@ -50,10 +55,18 @@ export default new Command("ext:configure <extensionInstanceId>")
       }
 
       const config = manifest.loadConfig(options);
-      const targetRef = manifest.getInstanceRef(instanceId, config);
-      const extensionVersion = await extensionsApi.getExtensionVersion(
-        refs.toExtensionVersionRef(targetRef)
-      );
+
+      const refOrPath = manifest.getInstanceTarget(instanceId, config);
+      const isLocalSource = isLocalPath(refOrPath);
+
+      let spec: extensionsApi.ExtensionSpec;
+      if (isLocalSource) {
+        const source = await createSourceFromLocation(needProjectId({ projectId }), refOrPath);
+        spec = source.spec;
+      } else {
+        const extensionVersion = await extensionsApi.getExtensionVersion(refOrPath);
+        spec = extensionVersion.spec;
+      }
 
       const oldParamValues = manifest.readInstanceParam({
         instanceId,
@@ -61,7 +74,7 @@ export default new Command("ext:configure <extensionInstanceId>")
       });
 
       const [immutableParams, tbdParams] = partition(
-        extensionVersion.spec.params,
+        spec.params,
         (param) => param.immutable ?? false
       );
       infoImmutableParams(immutableParams, oldParamValues);
@@ -87,10 +100,10 @@ export default new Command("ext:configure <extensionInstanceId>")
         [
           {
             instanceId,
-            ref: targetRef,
+            ref: !isLocalSource ? refs.parse(refOrPath) : undefined,
+            localPath: isLocalSource ? refOrPath : undefined,
             params: newParamOptions,
-            extensionSpec: extensionVersion.spec,
-            extensionVersion,
+            extensionSpec: spec,
           },
         ],
         config,

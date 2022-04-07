@@ -12,6 +12,7 @@ import * as prompt from "../../prompt";
 import { ExtensionSource } from "../../extensions/extensionsApi";
 import { Readable } from "stream";
 import { ArchiveResult } from "../../archiveDirectory";
+import { canonicalizeRefInput } from "../../extensions/extensionsHelper";
 
 describe("extensionsHelper", () => {
   describe("substituteParams", () => {
@@ -774,18 +775,6 @@ describe("extensionsHelper", () => {
       );
     });
 
-    it("should create an ExtensionSource with url sources", async () => {
-      const url = "https://storage.com/my.zip";
-
-      const result = await extensionsHelper.createSourceFromLocation("test-proj", url);
-
-      expect(result).to.equal(testSource);
-      expect(createSourceStub).to.have.been.calledWith("test-proj", url);
-      expect(archiveStub).not.to.have.been.called;
-      expect(uploadStub).not.to.have.been.called;
-      expect(deleteStub).not.to.have.been.called;
-    });
-
     it("should throw an error if one is thrown while uploading a local source", async () => {
       uploadStub.throws(new FirebaseError("something bad happened"));
 
@@ -888,6 +877,30 @@ describe("extensionsHelper", () => {
       });
       expect(projectNumberStub).to.have.been.called;
       expect(getFirebaseConfigStub).to.have.been.called;
+    });
+  });
+
+  describe(`${canonicalizeRefInput.name}`, () => {
+    it("should do nothing to a valid ref", () => {
+      expect(canonicalizeRefInput("firebase/bigquery-export@10.1.1")).to.equal(
+        "firebase/bigquery-export@10.1.1"
+      );
+    });
+
+    it("should infer latest version", () => {
+      expect(canonicalizeRefInput("firebase/bigquery-export")).to.equal(
+        "firebase/bigquery-export@latest"
+      );
+    });
+
+    it("should infer publisher name as firebase", () => {
+      expect(canonicalizeRefInput("firebase/bigquery-export")).to.equal(
+        "firebase/bigquery-export@latest"
+      );
+    });
+
+    it("should infer publisher name as firebase and also infer latest as version", () => {
+      expect(canonicalizeRefInput("bigquery-export")).to.equal("firebase/bigquery-export@latest");
     });
   });
 });

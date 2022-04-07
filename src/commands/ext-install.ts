@@ -28,9 +28,10 @@ import {
   promptForOfficialExtension,
   promptForRepeatInstance,
   promptForValidInstanceId,
-  isLocalOrURLPath,
   diagnoseAndFixProject,
   isUrlPath,
+  isLocalPath,
+  canonicalizeRefInput,
 } from "../extensions/extensionsHelper";
 import { update } from "../extensions/updateHelper";
 import { getRandomString } from "../extensions/utils";
@@ -87,26 +88,32 @@ export default new Command("ext:install [extensionName]")
       }
     }
     let source;
-    let extVersion;
+    let extensionVersion;
 
-    // TODO(b/220900194): Remove tracking of url install once we remove this feature.
+    // TODO(b/220900194): Remove when deprecating old install flow.
+    // --local doesn't support urlPath so this will become dead codepath.
     if (isUrlPath(extensionName)) {
-      void track("Extension Install", "Install by url path", options.interactive ? 1 : 0);
+      throw new FirebaseError(
+        `Installing with a source url is no longer supported in the CLI. Please use Firebase Console instead.`
+      );
     }
 
-    // If the user types in URL, or a local path (prefixed with ~/, ../, or ./), install from local/URL source.
+    // If the user types in a local path (prefixed with ~/, ../, or ./), install from local source.
     // Otherwise, treat the input as an extension reference and proceed with reference-based installation.
-    if (isLocalOrURLPath(extensionName)) {
+    if (isLocalPath(extensionName)) {
+      // TODO(b/228444119): Create source should happen at deploy time.
+      // Should parse spec locally so we don't need project ID.
+      source = await createSourceFromLocation(needProjectId({ projectId }), extensionName);
+      displayExtInfo(extensionName, "", source.spec);
       void track("Extension Install", "Install by Source", options.interactive ? 1 : 0);
-      if (options.local) {
-        throw new FirebaseError(
-          "Installing a local source locally is not supported yet, please use ext:dev:emulator commands"
-        );
-      }
-      source = await infoInstallBySource(needProjectId({ projectId }), extensionName);
     } else {
       void track("Extension Install", "Install by Extension Ref", options.interactive ? 1 : 0);
-      extVersion = await infoInstallByReference(extensionName, options.interactive);
+      extensionName = canonicalizeRefInput(extensionName);
+      extensionVersion = await extensionsApi.getExtensionVersion(extensionName);
+      await infoExtensionVersion({
+        extensionName,
+        extensionVersion,
+      });
     }
     if (
       !(await confirm({
@@ -117,12 +124,12 @@ export default new Command("ext:install [extensionName]")
     ) {
       return;
     }
-    if (!source && !extVersion) {
+    if (!source && !extensionVersion) {
       throw new FirebaseError(
         "Could not find a source. Please specify a valid source to continue."
       );
     }
-    const spec = source?.spec || extVersion?.spec;
+    const spec = source?.spec ?? extensionVersion?.spec;
     if (!spec) {
       throw new FirebaseError(
         `Could not find the extension.yaml for extension '${clc.bold(
@@ -146,7 +153,7 @@ export default new Command("ext:install [extensionName]")
           projectId,
           extensionName,
           source,
-          extVersion,
+          extVersion: extensionVersion,
           nonInteractive: options.nonInteractive,
           force: options.force,
         });
@@ -170,7 +177,7 @@ export default new Command("ext:install [extensionName]")
         projectId: projectId,
         extensionName,
         source,
-        extVersion,
+        extVersion: extensionVersion,
         nonInteractive: options.nonInteractive,
         force: options.force,
       });
@@ -184,46 +191,18 @@ export default new Command("ext:install [extensionName]")
     }
   });
 
-async function infoInstallBySource(
-  projectId: string,
-  extensionName: string
-): Promise<extensionsApi.ExtensionSource> {
-  // Create a one off source to use for the install flow.
-  let source;
-  try {
-    source = await createSourceFromLocation(projectId, extensionName);
-  } catch (err: any) {
-    throw new FirebaseError(
-      `Unable to find published extension '${clc.bold(extensionName)}', ` +
-        `and encountered the following error when trying to create an instance of extension '${clc.bold(
-          extensionName
-        )}':\n ${err.message}`
-    );
-  }
-  displayExtInfo(extensionName, "", source.spec);
-  return source;
-}
-
-async function infoInstallByReference(
-  extensionName: string,
-  interactive: boolean
-): Promise<extensionsApi.ExtensionVersion> {
-  // Infer firebase if publisher ID not provided.
-  if (extensionName.split("/").length < 2) {
-    const [extensionID, version] = extensionName.split("@");
-    extensionName = `firebase/${extensionID}@${version || "latest"}`;
-  }
-  // Get the correct version for a given extension reference from the Registry API.
-  const ref = refs.parse(extensionName);
+async function infoExtensionVersion(args: {
+  extensionName: string;
+  extensionVersion: extensionsApi.ExtensionVersion;
+}): Promise<void> {
+  const ref = refs.parse(args.extensionName);
   const extension = await extensionsApi.getExtension(refs.toExtensionRef(ref));
-  if (!ref.version) {
-    void track("Extension Install", "Install by Extension Version Ref", interactive ? 1 : 0);
-    extensionName = `${extensionName}@latest`;
-  }
-  const extVersion = await extensionsApi.getExtensionVersion(extensionName);
-  displayExtInfo(extensionName, ref.publisherId, extVersion.spec, true);
-  await displayWarningPrompts(ref.publisherId, extension.registryLaunchStage, extVersion);
-  return extVersion;
+  displayExtInfo(args.extensionName, ref.publisherId, args.extensionVersion.spec, true);
+  await displayWarningPrompts(
+    ref.publisherId,
+    extension.registryLaunchStage,
+    args.extensionVersion
+  );
 }
 
 interface InstallExtensionOptions {
@@ -243,8 +222,11 @@ interface InstallExtensionOptions {
  * @param options
  */
 async function installToManifest(options: InstallExtensionOptions): Promise<void> {
-  const { projectId, extensionName, extVersion, paramsEnvPath, nonInteractive, force } = options;
-  const spec = extVersion?.spec;
+  const { projectId, extensionName, extVersion, source, paramsEnvPath, nonInteractive, force } =
+    options;
+  const isLocalSource = isLocalPath(extensionName);
+
+  const spec = extVersion?.spec ?? source?.spec;
   if (!spec) {
     throw new FirebaseError(
       `Could not find the extension.yaml for ${extensionName}. Please make sure this is a valid extension and try again.`
@@ -266,12 +248,13 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
     instanceId,
   });
 
-  const ref = refs.parse(extVersion.ref);
+  const ref = extVersion ? refs.parse(extVersion.ref) : undefined;
   await manifest.writeToManifest(
     [
       {
         instanceId,
-        ref,
+        ref: !isLocalSource ? ref : undefined,
+        localPath: isLocalSource ? extensionName : undefined,
         params: paramBindingOptions,
         extensionSpec: spec,
       },
