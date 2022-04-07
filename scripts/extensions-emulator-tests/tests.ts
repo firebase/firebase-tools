@@ -41,15 +41,6 @@ function readConfig(): FrameworkOptions {
   return JSON.parse(data);
 }
 
-function logIncludes(msg: string) {
-  return (data: unknown) => {
-    if (typeof data !== "string" && !Buffer.isBuffer(data)) {
-      throw new Error(`data is not a string or buffer (${typeof data})`);
-    }
-    return data.includes(msg);
-  };
-}
-
 describe("CF3 and Extensions emulator", () => {
   let test: TriggerEndToEndTest;
 
@@ -79,23 +70,18 @@ describe("CF3 and Extensions emulator", () => {
     await test.stopEmulators();
   });
 
-  it("should call a CF3 HTTPS function to write to the default Storage bucket", async function (this) {
+  it("should call a CF3 HTTPS function to write to the default Storage bucket, then trigger the resize images extension", async function (this) {
     this.timeout(EMULATOR_TEST_TIMEOUT);
 
     const response = await test.writeToDefaultStorage();
     expect(response.status).to.equal(200);
 
     /*
-     * We delay again here because the functions triggered
-     * by the previous two writes run parallel to this and
-     * we need to give them and previous installed test
-     * fixture state handlers to complete before we check
-     * that state in the next test.
+     * We delay here so that the functions have time to write and trigger -
+     * this is happening in real time in a different process, so we have to wait like this.
      */
     await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
-  });
 
-  it("should have have triggered an Extension Storage function", async () => {
     const fileResized = await admin.storage().bucket().file(STORAGE_RESIZED_FILE_NAME).exists();
 
     expect(fileResized[0]).to.be.true;
