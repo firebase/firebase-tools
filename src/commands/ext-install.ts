@@ -28,7 +28,6 @@ import {
   promptForOfficialExtension,
   promptForRepeatInstance,
   promptForValidInstanceId,
-  isLocalOrURLPath,
   diagnoseAndFixProject,
   isUrlPath,
   isLocalPath,
