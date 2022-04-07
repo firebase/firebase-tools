@@ -27,6 +27,18 @@ function generateBaseConfig(): Config {
     {}
   );
 }
+function generateConfigWithLocal(): Config {
+  return new Config(
+    {
+      extensions: {
+        "delete-user-data": "firebase/delete-user-data@0.1.12",
+        "delete-user-data-gm2h": "firebase/delete-user-data@0.1.12",
+        "delete-user-data-local": "./delete-user-data",
+      },
+    },
+    {}
+  );
+}
 
 describe("manifest", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
@@ -45,9 +57,32 @@ describe("manifest", () => {
     });
   });
 
+  describe(`${manifest.getInstanceTarget.name}`, () => {
+    it("should return the correct source for a local instance", () => {
+      const result = manifest.getInstanceTarget(
+        "delete-user-data-local",
+        generateConfigWithLocal()
+      );
+
+      expect(result).to.equal("./delete-user-data");
+    });
+
+    it("should return the correct source for an instance with ref", () => {
+      const result = manifest.getInstanceTarget("delete-user-data", generateConfigWithLocal());
+
+      expect(result).to.equal("firebase/delete-user-data@0.1.12");
+    });
+
+    it("should throw when looking for a non-existing instance", () => {
+      expect(() =>
+        manifest.getInstanceTarget("does-not-exist", generateConfigWithLocal())
+      ).to.throw(FirebaseError);
+    });
+  });
+
   describe(`${manifest.getInstanceRef.name}`, () => {
     it("should return the correct ref for an existing instance", () => {
-      const result = manifest.getInstanceRef("delete-user-data", generateBaseConfig());
+      const result = manifest.getInstanceRef("delete-user-data", generateConfigWithLocal());
 
       expect(refs.toExtensionVersionRef(result)).to.equal(
         refs.toExtensionVersionRef({
@@ -59,9 +94,15 @@ describe("manifest", () => {
     });
 
     it("should throw when looking for a non-existing instance", () => {
-      expect(() => manifest.getInstanceRef("does-not-exist", generateBaseConfig())).to.throw(
+      expect(() => manifest.getInstanceRef("does-not-exist", generateConfigWithLocal())).to.throw(
         FirebaseError
       );
+    });
+
+    it("should throw when looking for a instance with local source", () => {
+      expect(() =>
+        manifest.getInstanceRef("delete-user-data-local", generateConfigWithLocal())
+      ).to.throw(FirebaseError);
     });
   });
 
