@@ -78,7 +78,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
       if (isLocalPath(oldRefOrPath)) {
         throw new FirebaseError(
           `Updating an extension with local source is not neccessary. ` +
-            `Rerun "firebase deploy" or restart the emulator after making changes to your local extension source.` +
+            `Rerun "firebase deploy" or restart the emulator after making changes to your local extension source. ` +
             `If you've edited the extension param spec, you can edit an extension instance's params ` +
             `interactively by running "firebase ext:configure --local {instance-id}"`
         );
