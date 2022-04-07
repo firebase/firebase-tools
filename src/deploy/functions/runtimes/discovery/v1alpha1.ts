@@ -1,8 +1,17 @@
 import * as backend from "../../backend";
 import * as runtimes from "..";
-import { copyIfPresent } from "../../../../gcp/proto";
+import { copyIfPresent, renameIfPresent } from "../../../../gcp/proto";
 import { assertKeyTypes, requireKeys } from "./parsing";
 import { FirebaseError } from "../../../../error";
+
+const CHANNEL_NAME_REGEX = new RegExp(
+  "(projects\\/" +
+    "(?<project>(?:\\d+)|(?:[A-Za-z]+[A-Za-z\\d-]*[A-Za-z\\d]?))\\/)?" +
+    "locations\\/" +
+    "(?<location>[A-Za-z\\d\\-_]+)\\/" +
+    "channels\\/" +
+    "(?<channel>[A-Za-z\\d\\-_]+)"
+);
 
 export type ManifestEndpoint = backend.ServiceConfiguration &
   backend.Triggered &
@@ -82,7 +91,7 @@ function parseEndpoints(
     minInstances: "number",
     concurrency: "number",
     serviceAccountEmail: "string",
-    timeout: "string",
+    timeoutSeconds: "number",
     vpc: "object",
     labels: "object",
     ingressSettings: "string",
@@ -122,12 +131,23 @@ function parseEndpoints(
       requireKeys(prefix + ".eventTrigger", ep.eventTrigger, "eventType", "eventFilters");
       assertKeyTypes(prefix + ".eventTrigger", ep.eventTrigger, {
         eventFilters: "object",
+        eventFilterPathPatterns: "object",
         eventType: "string",
         retry: "boolean",
         region: "string",
         serviceAccountEmail: "string",
+        channel: "string",
       });
       triggered = { eventTrigger: ep.eventTrigger };
+      renameIfPresent(triggered.eventTrigger, ep.eventTrigger, "channel", "channel", (c) =>
+        resolveChannelName(project, c, defaultRegion)
+      );
+      for (const [k, v] of Object.entries(triggered.eventTrigger.eventFilters)) {
+        if (k === "topic" && !v.startsWith("projects/")) {
+          // Construct full pubsub topic name.
+          triggered.eventTrigger.eventFilters[k] = `projects/${project}/topics/${v}`;
+        }
+      }
     } else if (backend.isHttpsTriggered(ep)) {
       assertKeyTypes(prefix + ".httpsTrigger", ep.httpsTrigger, {
         invoker: "array",
@@ -158,7 +178,6 @@ function parseEndpoints(
       });
       if (ep.taskQueueTrigger.rateLimits) {
         assertKeyTypes(prefix + ".taskQueueTrigger.rateLimits", ep.taskQueueTrigger.rateLimits, {
-          maxBurstSize: "number",
           maxConcurrentDispatches: "number",
           maxDispatchesPerSecond: "number",
         });
@@ -166,9 +185,9 @@ function parseEndpoints(
       if (ep.taskQueueTrigger.retryConfig) {
         assertKeyTypes(prefix + ".taskQueueTrigger.retryConfig", ep.taskQueueTrigger.retryConfig, {
           maxAttempts: "number",
-          maxRetryDuration: "string",
-          minBackoff: "string",
-          maxBackoff: "string",
+          maxRetrySeconds: "number",
+          minBackoffSeconds: "number",
+          maxBackoffSeconds: "number",
           maxDoublings: "number",
         });
       }
@@ -198,7 +217,7 @@ function parseEndpoints(
       "minInstances",
       "concurrency",
       "serviceAccountEmail",
-      "timeout",
+      "timeoutSeconds",
       "vpc",
       "labels",
       "ingressSettings",
@@ -208,4 +227,24 @@ function parseEndpoints(
   }
 
   return allParsed;
+}
+
+function resolveChannelName(projectId: string, channel: string, defaultRegion: string): string {
+  if (!channel.includes("/")) {
+    const location = defaultRegion;
+    const channelId = channel;
+    return "projects/" + projectId + "/locations/" + location + "/channels/" + channelId;
+  }
+  const match = CHANNEL_NAME_REGEX.exec(channel);
+  if (!match?.groups) {
+    throw new FirebaseError("Invalid channel name format.");
+  }
+  const matchedProjectId = match.groups.project;
+  const location = match.groups.location;
+  const channelId = match.groups.channel;
+  if (matchedProjectId) {
+    return "projects/" + matchedProjectId + "/locations/" + location + "/channels/" + channelId;
+  } else {
+    return "projects/" + projectId + "/locations/" + location + "/channels/" + channelId;
+  }
 }

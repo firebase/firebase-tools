@@ -9,7 +9,7 @@ import * as api from "../../../../api";
 import * as proto from "../../../../gcp/proto";
 import * as args from "../../args";
 import * as runtimes from "../../runtimes";
-import { STORAGE_V2_EVENTS } from "../../eventTypes";
+import * as v2events from "../../../../functions/events/v2";
 
 const TRIGGER_PARSER = path.resolve(__dirname, "./triggerParser.js");
 
@@ -56,7 +56,6 @@ export interface TriggerAnnotation {
   };
   taskQueueTrigger?: {
     rateLimits?: {
-      maxBurstSize?: number;
       maxConcurrentDispatches?: number;
       maxDispatchesPerSecond?: number;
     };
@@ -131,7 +130,7 @@ function parseTriggers(
   });
 }
 
-// Currently we always use JS trigger parsing
+/** Currently we always use JS trigger parsing */
 export function useStrategy(context: args.Context): Promise<boolean> {
   return Promise.resolve(true);
 }
@@ -195,12 +194,17 @@ export function addResourcesToBackend(
         reason: "Needed for task queue functions.",
       });
     } else if (annotation.httpsTrigger) {
-      const trigger: backend.HttpsTrigger = {};
-      if (annotation.failurePolicy) {
-        logger.warn(`Ignoring retry policy for HTTPS function ${annotation.name}`);
+      if (annotation.labels?.["deployment-callable"]) {
+        delete annotation.labels["deployment-callable"];
+        triggered = { callableTrigger: {} };
+      } else {
+        const trigger: backend.HttpsTrigger = {};
+        if (annotation.failurePolicy) {
+          logger.warn(`Ignoring retry policy for HTTPS function ${annotation.name}`);
+        }
+        proto.copyIfPresent(trigger, annotation.httpsTrigger, "invoker");
+        triggered = { httpsTrigger: trigger };
       }
-      proto.copyIfPresent(trigger, annotation.httpsTrigger, "invoker");
-      triggered = { httpsTrigger: trigger };
     } else if (annotation.schedule) {
       want.requiredAPIs.push({
         api: "cloudscheduler.googleapis.com",
@@ -211,19 +215,25 @@ export function addResourcesToBackend(
       triggered = {
         eventTrigger: {
           eventType: annotation.eventTrigger!.eventType,
-          eventFilters: {
-            resource: annotation.eventTrigger!.resource,
-          },
+          eventFilters: { resource: annotation.eventTrigger!.resource },
           retry: !!annotation.failurePolicy,
         },
       };
 
       // TODO: yank this edge case for a v2 trigger on the pre-container contract
       // once we use container contract for the functionsv2 experiment.
-      if (STORAGE_V2_EVENTS.find((event) => event === (annotation.eventTrigger?.eventType || ""))) {
-        triggered.eventTrigger.eventFilters = {
-          bucket: annotation.eventTrigger!.resource,
-        };
+      if (annotation.platform === "gcfv2") {
+        if (annotation.eventTrigger!.eventType === v2events.PUBSUB_PUBLISH_EVENT) {
+          triggered.eventTrigger.eventFilters = { topic: annotation.eventTrigger!.resource };
+        }
+
+        if (
+          v2events.STORAGE_EVENTS.find(
+            (event) => event === (annotation.eventTrigger?.eventType || "")
+          )
+        ) {
+          triggered.eventTrigger.eventFilters = { bucket: annotation.eventTrigger!.resource };
+        }
       }
     }
 
@@ -270,10 +280,16 @@ export function addResourcesToBackend(
       "serviceAccountEmail",
       "labels",
       "ingressSettings",
-      "timeout",
       "maxInstances",
       "minInstances",
       "availableMemoryMb"
+    );
+    proto.renameIfPresent(
+      endpoint,
+      annotation,
+      "timeoutSeconds",
+      "timeout",
+      proto.secondsFromDuration
     );
     want.endpoints[region] = want.endpoints[region] || {};
     want.endpoints[region][endpoint.id] = endpoint;

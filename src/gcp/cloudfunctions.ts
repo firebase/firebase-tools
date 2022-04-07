@@ -8,12 +8,12 @@ import * as utils from "../utils";
 import * as proto from "./proto";
 import * as runtimes from "../deploy/functions/runtimes";
 import * as iam from "./iam";
+import * as projectConfig from "../functions/projectConfig";
 import { Client } from "../apiv2";
 import { functionsOrigin } from "../api";
-import { getFirebaseProject } from "../management/projects";
-import { assertExhaustive } from "../functional";
 
 export const API_VERSION = "v1";
+export const CODEBASE_LABEL = "firebase-functions-codebase";
 const client = new Client({ urlPrefix: functionsOrigin, apiVersion: API_VERSION });
 
 interface Operation {
@@ -474,6 +474,21 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     trigger = {
       taskQueueTrigger: {},
     };
+  } else if (
+    gcfFunction.labels?.["deployment-callable"] ||
+    // NOTE: "deployment-callabled" is a typo we introduced in https://github.com/firebase/firebase-tools/pull/4124.
+    // More than a month passed before we caught this typo, and we expect many callable functions in production
+    // to have this typo. It is convenient for users for us to treat the typo-ed label as a valid marker for callable
+    // function, so we do that here.
+    //
+    // The typo will be overwritten as callable functions are re-deployed. Eventually, there may be no callable
+    // functions with the typo-ed label, but we can't ever be sure. Sadly, we may have to carry this scar for a very long
+    // time.
+    gcfFunction.labels?.["deployment-callabled"]
+  ) {
+    trigger = {
+      callableTrigger: {},
+    };
   } else if (gcfFunction.httpsTrigger) {
     trigger = { httpsTrigger: {} };
     uri = gcfFunction.httpsTrigger.url;
@@ -482,9 +497,7 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     trigger = {
       eventTrigger: {
         eventType: gcfFunction.eventTrigger!.eventType,
-        eventFilters: {
-          resource: gcfFunction.eventTrigger!.resource,
-        },
+        eventFilters: { resource: gcfFunction.eventTrigger!.resource },
         retry: !!gcfFunction.eventTrigger!.failurePolicy?.retry,
       },
     };
@@ -514,7 +527,6 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     gcfFunction,
     "serviceAccountEmail",
     "availableMemoryMb",
-    "timeout",
     "minInstances",
     "maxInstances",
     "ingressSettings",
@@ -522,6 +534,13 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     "environmentVariables",
     "secretEnvironmentVariables",
     "sourceUploadUrl"
+  );
+  proto.renameIfPresent(
+    endpoint,
+    gcfFunction,
+    "timeoutSeconds",
+    "timeout",
+    proto.secondsFromDuration
   );
   if (gcfFunction.vpcConnector) {
     endpoint.vpc = { connector: gcfFunction.vpcConnector };
@@ -532,6 +551,7 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
       "vpcConnectorEgressSettings"
     );
   }
+  endpoint.codebase = gcfFunction.labels?.[CODEBASE_LABEL] || projectConfig.DEFAULT_CODEBASE;
   return endpoint;
 }
 
@@ -587,7 +607,7 @@ export function functionFromEndpoint(
   } else {
     gcfFunction.httpsTrigger = {};
     if (backend.isCallableTriggered(endpoint)) {
-      gcfFunction.labels = { ...gcfFunction.labels, "deployment-callabled": "true" };
+      gcfFunction.labels = { ...gcfFunction.labels, "deployment-callable": "true" };
     }
     if (endpoint.securityLevel) {
       gcfFunction.httpsTrigger.securityLevel = endpoint.securityLevel;
@@ -598,13 +618,19 @@ export function functionFromEndpoint(
     gcfFunction,
     endpoint,
     "serviceAccountEmail",
-    "timeout",
     "availableMemoryMb",
     "minInstances",
     "maxInstances",
     "ingressSettings",
     "environmentVariables",
     "secretEnvironmentVariables"
+  );
+  proto.renameIfPresent(
+    gcfFunction,
+    endpoint,
+    "timeout",
+    "timeoutSeconds",
+    proto.durationFromSeconds
   );
   if (endpoint.vpc) {
     proto.renameIfPresent(gcfFunction, endpoint.vpc, "vpcConnector", "connector");
@@ -615,5 +641,9 @@ export function functionFromEndpoint(
       "egressSettings"
     );
   }
+  gcfFunction.labels = {
+    ...gcfFunction.labels,
+    [CODEBASE_LABEL]: endpoint.codebase || projectConfig.DEFAULT_CODEBASE,
+  };
   return gcfFunction;
 }

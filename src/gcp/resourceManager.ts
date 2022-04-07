@@ -19,10 +19,12 @@ export const firebaseRoles = {
  * Fetches the IAM Policy of a project.
  * https://cloud.google.com/resource-manager/reference/rest/v1/projects/getIamPolicy
  *
- * @param projectId the id of the project whose IAM Policy you want to get
+ * @param projectIdOrNumber the id of the project whose IAM Policy you want to get
  */
-export async function getIamPolicy(projectId: string): Promise<Policy> {
-  const response = await apiClient.post<void, Policy>(`/projects/${projectId}:getIamPolicy`);
+export async function getIamPolicy(projectIdOrNumber: string): Promise<Policy> {
+  const response = await apiClient.post<void, Policy>(
+    `/projects/${projectIdOrNumber}:getIamPolicy`
+  );
   return response.body;
 }
 
@@ -30,17 +32,17 @@ export async function getIamPolicy(projectId: string): Promise<Policy> {
  * Sets the IAM Policy of a project.
  * https://cloud.google.com/resource-manager/reference/rest/v1/projects/setIamPolicy
  *
- * @param projectId the id of the project for which you want to set a new IAM Policy
+ * @param projectIdOrNumber the id of the project for which you want to set a new IAM Policy
  * @param newPolicy the new IAM policy for the project
  * @param updateMask A FieldMask specifying which fields of the policy to modify
  */
 export async function setIamPolicy(
-  projectId: string,
+  projectIdOrNumber: string,
   newPolicy: Policy,
   updateMask = ""
 ): Promise<Policy> {
   const response = await apiClient.post<{ policy: Policy; updateMask: string }, Policy>(
-    `/projects/${projectId}:setIamPolicy`,
+    `/projects/${projectIdOrNumber}:setIamPolicy`,
     {
       policy: newPolicy,
       updateMask: updateMask,

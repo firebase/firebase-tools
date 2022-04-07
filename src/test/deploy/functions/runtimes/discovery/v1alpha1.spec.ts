@@ -77,7 +77,7 @@ describe("backendFromV1Alpha1", () => {
         maxInstances: "2",
         minInstances: "1",
         serviceAccountEmail: { ldap: "inlined" },
-        timeout: 60,
+        timeoutSeconds: "60s",
         trigger: [],
         vpcConnector: 2,
         vpcConnectorEgressSettings: {},
@@ -104,17 +104,15 @@ describe("backendFromV1Alpha1", () => {
         region: "global",
         serviceAccountEmail: "root@",
       };
-      for (const key of ["eventType", "eventFilters"]) {
-        it(`missing event trigger key ${key}`, () => {
-          const eventTrigger = { ...validTrigger } as Record<string, unknown>;
-          delete eventTrigger[key];
-          assertParserError({
-            endpoints: {
-              func: { ...MIN_ENDPOINT, eventTrigger },
-            },
-          });
+      it(`missing event trigger key eventType`, () => {
+        const eventTrigger = { ...validTrigger } as Record<string, unknown>;
+        delete eventTrigger["eventType"];
+        assertParserError({
+          endpoints: {
+            func: { ...MIN_ENDPOINT, eventTrigger },
+          },
         });
-      }
+      });
 
       const invalidEntries = {
         eventType: { foo: "bar" },
@@ -122,6 +120,7 @@ describe("backendFromV1Alpha1", () => {
         retry: {},
         region: ["us-central1"],
         serviceAccountEmail: ["ldap"],
+        channel: "foo/bar/channel-id",
       };
       for (const [key, value] of Object.entries(invalidEntries)) {
         it(`invalid value for event trigger key ${key}`, () => {
@@ -206,22 +205,20 @@ describe("backendFromV1Alpha1", () => {
     describe("taskQueueTriggers", () => {
       const validTrigger: backend.TaskQueueTrigger = {
         rateLimits: {
-          maxBurstSize: 5,
           maxConcurrentDispatches: 10,
           maxDispatchesPerSecond: 20,
         },
         retryConfig: {
           maxAttempts: 3,
-          maxRetryDuration: "120s",
-          minBackoff: "1s",
-          maxBackoff: "30s",
+          maxRetrySeconds: 120,
+          minBackoffSeconds: 1,
+          maxBackoffSeconds: 30,
           maxDoublings: 5,
         },
         invoker: ["custom@"],
       };
 
       const invalidRateLimits = {
-        maxBurstSize: "5",
         maxConcurrentDispatches: "10",
         maxDispatchesPerSecond: "20",
       };
@@ -322,9 +319,7 @@ describe("backendFromV1Alpha1", () => {
     it("copies event triggers", () => {
       const eventTrigger: backend.EventTrigger = {
         eventType: "google.pubsub.topic.v1.publish",
-        eventFilters: {
-          resource: "projects/project/topics/topic",
-        },
+        eventFilters: { resource: "projects/project/topics/t" },
         region: "us-central1",
         serviceAccountEmail: "sa@",
         retry: true,
@@ -343,13 +338,133 @@ describe("backendFromV1Alpha1", () => {
       expect(parsed).to.deep.equal(expected);
     });
 
+    it("copies event triggers with full resource path", () => {
+      const eventTrigger: backend.EventTrigger = {
+        eventType: "google.pubsub.topic.v1.publish",
+        eventFilters: { topic: "my-topic" },
+        region: "us-central1",
+        serviceAccountEmail: "sa@",
+        retry: true,
+      };
+      const yaml: v1alpha1.Manifest = {
+        specVersion: "v1alpha1",
+        endpoints: {
+          id: {
+            ...MIN_ENDPOINT,
+            eventTrigger,
+          },
+        },
+      };
+      const expected = backend.of({
+        ...DEFAULTED_ENDPOINT,
+        eventTrigger: {
+          ...eventTrigger,
+          eventFilters: { topic: `projects/${PROJECT}/topics/my-topic` },
+        },
+      });
+      const parsed = v1alpha1.backendFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+      expect(parsed).to.deep.equal(expected);
+    });
+
+    describe("channel name", () => {
+      it("resolves partial (channel ID only) channel resource name", () => {
+        const eventTrigger: backend.EventTrigger = {
+          eventType: "com.custom.event.type",
+          eventFilters: {},
+          channel: "my-channel",
+          region: "us-central1",
+          serviceAccountEmail: "sa@",
+          retry: true,
+        };
+        const yaml: v1alpha1.Manifest = {
+          specVersion: "v1alpha1",
+          endpoints: {
+            id: {
+              ...MIN_ENDPOINT,
+              eventTrigger,
+            },
+          },
+        };
+        const expected = backend.of({
+          ...DEFAULTED_ENDPOINT,
+          eventTrigger: {
+            ...eventTrigger,
+            eventFilters: {},
+            channel: "projects/project/locations/region/channels/my-channel",
+          },
+        });
+        const parsed = v1alpha1.backendFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+        expect(parsed).to.deep.equal(expected);
+      });
+
+      it("resolves partial (channel ID and loaction) channel resource name", () => {
+        const eventTrigger: backend.EventTrigger = {
+          eventType: "com.custom.event.type",
+          eventFilters: {},
+          channel: "locations/us-wildwest11/channels/my-channel",
+          region: "us-central1",
+          serviceAccountEmail: "sa@",
+          retry: true,
+        };
+        const yaml: v1alpha1.Manifest = {
+          specVersion: "v1alpha1",
+          endpoints: {
+            id: {
+              ...MIN_ENDPOINT,
+              eventTrigger,
+            },
+          },
+        };
+        const expected = backend.of({
+          ...DEFAULTED_ENDPOINT,
+          eventTrigger: {
+            ...eventTrigger,
+            eventFilters: {},
+            channel: "projects/project/locations/us-wildwest11/channels/my-channel",
+          },
+        });
+        const parsed = v1alpha1.backendFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+        expect(parsed).to.deep.equal(expected);
+      });
+
+      it("uses full channel resource name as is", () => {
+        const eventTrigger: backend.EventTrigger = {
+          eventType: "com.custom.event.type",
+          eventFilters: {},
+          channel: "projects/newyearresolution1/locations/us-wildwest11/channels/my-channel",
+          region: "us-central1",
+          serviceAccountEmail: "sa@",
+          retry: true,
+        };
+        const yaml: v1alpha1.Manifest = {
+          specVersion: "v1alpha1",
+          endpoints: {
+            id: {
+              ...MIN_ENDPOINT,
+              eventTrigger,
+            },
+          },
+        };
+        const expected = backend.of({
+          ...DEFAULTED_ENDPOINT,
+          eventTrigger: {
+            ...eventTrigger,
+            eventFilters: {},
+            channel: "projects/newyearresolution1/locations/us-wildwest11/channels/my-channel",
+          },
+        });
+        const parsed = v1alpha1.backendFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+        expect(parsed).to.deep.equal(expected);
+      });
+    });
+
     it("copies optional fields", () => {
       const fields: backend.ServiceConfiguration = {
         concurrency: 42,
         labels: { hello: "world" },
         environmentVariables: { foo: "bar" },
         availableMemoryMb: 256,
-        timeout: "60s",
+        timeoutSeconds: 60,
         maxInstances: 20,
         minInstances: 1,
         vpc: {

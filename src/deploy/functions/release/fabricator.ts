@@ -23,14 +23,14 @@ import * as scheduler from "../../../gcp/cloudscheduler";
 import * as utils from "../../../utils";
 
 // TODO: Tune this for better performance.
-const gcfV1PollerOptions = {
+const gcfV1PollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
   apiOrigin: functionsOrigin,
   apiVersion: gcf.API_VERSION,
   masterTimeout: 25 * 60 * 1_000, // 25 minutes is the maximum build time for a function
   maxBackoff: 10_000,
 };
 
-const gcfV2PollerOptions = {
+const gcfV2PollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
   apiOrigin: functionsV2Origin,
   apiVersion: gcfV2.API_VERSION,
   masterTimeout: 25 * 60 * 1_000, // 25 minutes is the maximum build time for a function
@@ -79,12 +79,12 @@ export class Fabricator {
       totalTime: 0,
       results: [],
     };
-    const deployRegions = Object.values(plan).map(async (changes): Promise<void> => {
-      const results = await this.applyRegionalChanges(changes);
+    const deployChangesets = Object.values(plan).map(async (changes): Promise<void> => {
+      const results = await this.applyChangeset(changes);
       summary.results.push(...results);
       return;
     });
-    const promiseResults = await utils.allSettled(deployRegions);
+    const promiseResults = await utils.allSettled(deployChangesets);
 
     const errs = promiseResults
       .filter((r) => r.status === "rejected")
@@ -100,9 +100,7 @@ export class Fabricator {
     return summary;
   }
 
-  async applyRegionalChanges(
-    changes: planner.RegionalChanges
-  ): Promise<Array<reporter.DeployResult>> {
+  async applyChangeset(changes: planner.Changeset): Promise<Array<reporter.DeployResult>> {
     const deployResults: reporter.DeployResult[] = [];
     const handle = async (
       op: reporter.OperationType,
@@ -170,10 +168,7 @@ export class Fabricator {
   }
 
   async updateEndpoint(update: planner.EndpointUpdate, scraper: SourceTokenScraper): Promise<void> {
-    // GCF team wants us to stop setting the deployment-tool labels on updates for gen 2
-    if (update.deleteAndRecreate || update.endpoint.platform !== "gcfv2") {
-      update.endpoint.labels = { ...update.endpoint.labels, ...deploymentTool.labels() };
-    }
+    update.endpoint.labels = { ...update.endpoint.labels, ...deploymentTool.labels() };
     if (update.deleteAndRecreate) {
       await this.deleteEndpoint(update.deleteAndRecreate);
       await this.createEndpoint(update.endpoint, scraper);
@@ -235,6 +230,13 @@ export class Fabricator {
           })
           .catch(rethrowAs(endpoint, "set invoker"));
       }
+    } else if (backend.isCallableTriggered(endpoint)) {
+      // Callable functions should always be public
+      await this.executor
+        .run(async () => {
+          await gcf.setInvokerCreate(endpoint.project, backend.functionName(endpoint), ["public"]);
+        })
+        .catch(rethrowAs(endpoint, "set invoker"));
     } else if (backend.isTaskQueueTriggered(endpoint)) {
       // Like HTTPS triggers, taskQueueTriggers have an invoker, but unlike HTTPS they don't default
       // public.
@@ -299,6 +301,11 @@ export class Fabricator {
           .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
           .catch(rethrowAs(endpoint, "set invoker"));
       }
+    } else if (backend.isCallableTriggered(endpoint)) {
+      // Callable functions should always be public
+      await this.executor
+        .run(() => run.setInvokerCreate(endpoint.project, serviceName, ["public"]))
+        .catch(rethrowAs(endpoint, "set invoker"));
     } else if (backend.isTaskQueueTriggered(endpoint)) {
       // Like HTTPS triggers, taskQueueTriggers have an invoker, but unlike HTTPS they don't default
       // public.
@@ -306,7 +313,7 @@ export class Fabricator {
       if (invoker && !invoker.includes("private")) {
         await this.executor
           .run(async () => {
-            await gcf.setInvokerCreate(endpoint.project, backend.functionName(endpoint), invoker);
+            await run.setInvokerCreate(endpoint.project, serviceName, invoker);
           })
           .catch(rethrowAs(endpoint, "set invoker"));
       }

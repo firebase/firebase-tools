@@ -79,9 +79,7 @@ describe("prepare", () => {
         ...ENDPOINT_BASE,
         eventTrigger: {
           eventType: "google.cloud.storage.object.v1.finalized",
-          eventFilters: {
-            bucket: "bucket",
-          },
+          eventFilters: { bucket: "bucket" },
           retry: false,
         },
       };
@@ -98,15 +96,13 @@ describe("prepare", () => {
         ...ENDPOINT_BASE,
         eventTrigger: {
           eventType: "google.cloud.storage.object.v1.finalzied",
-          eventFilters: {
-            bucket: "us-bucket",
-          },
+          eventFilters: { bucket: "us-bucket" },
           retry: false,
         },
       };
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const have: backend.Endpoint & backend.EventTriggered = JSON.parse(JSON.stringify(want));
-      have.eventTrigger.eventFilters["bucket"] = "us-central1-bucket";
+      have.eventTrigger.eventFilters = { bucket: "us-central1-bucket" };
       have.eventTrigger.region = "us-central1";
 
       prepare.inferDetailsFromExisting(backend.of(want), backend.of(have), /* usedDotEnv= */ false);

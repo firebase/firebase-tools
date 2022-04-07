@@ -620,3 +620,56 @@ export function assertIsStringOrUndefined(
     });
   }
 }
+
+/**
+ * Polyfill for groupBy.
+ */
+export function groupBy<T, K extends string | number | symbol>(
+  arr: T[],
+  f: (item: T) => K
+): Record<K, T[]> {
+  return arr.reduce((result, item) => {
+    const key = f(item);
+    if (result[key]) {
+      result[key].push(item);
+    } else {
+      result[key] = [item];
+    }
+    return result;
+  }, {} as Record<K, T[]>);
+}
+
+function cloneArray<T>(arr: T[]): T[] {
+  return arr.map((e) => cloneDeep(e));
+}
+
+function cloneObject<T extends Record<string, unknown>>(obj: T): T {
+  const clone: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    clone[k] = cloneDeep(v);
+  }
+  return clone as T;
+}
+
+/**
+ * replacement for lodash cloneDeep that preserves type.
+ */
+// TODO: replace with builtin once Node 18 becomes the min version.
+export function cloneDeep<T>(obj: T): T {
+  if (typeof obj !== "object" || !obj) {
+    return obj;
+  }
+  if (obj instanceof RegExp) {
+    return RegExp(obj, obj.flags) as typeof obj;
+  }
+  if (obj instanceof Date) {
+    return new Date(obj) as typeof obj;
+  }
+  if (Array.isArray(obj)) {
+    return cloneArray(obj) as typeof obj;
+  }
+  if (obj instanceof Map) {
+    return new Map(obj.entries()) as typeof obj;
+  }
+  return cloneObject(obj as Record<string, unknown>) as typeof obj;
+}

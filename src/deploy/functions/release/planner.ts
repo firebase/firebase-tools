@@ -1,49 +1,71 @@
-import { functionMatchesAnyGroup } from "../functionsDeployHelper";
-import { getFunctionLabel } from "../functionsDeployHelper";
+import {
+  EndpointFilter,
+  endpointMatchesAnyFilter,
+  getFunctionLabel,
+} from "../functionsDeployHelper";
 import { isFirebaseManaged } from "../../../deploymentTool";
 import { FirebaseError } from "../../../error";
+import * as args from "../args";
 import * as utils from "../../../utils";
 import * as backend from "../backend";
-import * as gcfv2 from "../../../gcp/cloudfunctionsv2";
+import * as v2events from "../../../functions/events/v2";
 
 export interface EndpointUpdate {
   endpoint: backend.Endpoint;
   deleteAndRecreate?: backend.Endpoint;
 }
 
-export interface RegionalChanges {
+export interface Changeset {
   endpointsToCreate: backend.Endpoint[];
   endpointsToUpdate: EndpointUpdate[];
   endpointsToDelete: backend.Endpoint[];
 }
 
-export type DeploymentPlan = Record<string, RegionalChanges>;
+export type DeploymentPlan = Record<string, Changeset>;
 
-export interface Options {
-  filters?: string[][];
-  // If set to false, will delete only functions that are managed by firebase
-  deleteAll?: boolean;
-}
-
-/** Calculate the changes needed for a given region. */
-export function calculateRegionalChanges(
+/** Calculate the changesets of given endpoints by grouping endpoints with keyFn. */
+export function calculateChangesets(
   want: Record<string, backend.Endpoint>,
   have: Record<string, backend.Endpoint>,
-  options: Options
-): RegionalChanges {
-  const endpointsToCreate = Object.keys(want)
-    .filter((id) => !have[id])
-    .map((id) => want[id]);
+  keyFn: (e: backend.Endpoint) => string,
+  deleteAll?: boolean
+): Record<string, Changeset> {
+  const toCreate = utils.groupBy(
+    Object.keys(want)
+      .filter((id) => !have[id])
+      .map((id) => want[id]),
+    keyFn
+  );
 
-  const endpointsToDelete = Object.keys(have)
-    .filter((id) => !want[id])
-    .filter((id) => options.deleteAll || isFirebaseManaged(have[id].labels || {}))
-    .map((id) => have[id]);
+  const toDelete = utils.groupBy(
+    Object.keys(have)
+      .filter((id) => !want[id])
+      .filter((id) => deleteAll || isFirebaseManaged(have[id].labels || {}))
+      .map((id) => have[id]),
+    keyFn
+  );
 
-  const endpointsToUpdate = Object.keys(want)
-    .filter((id) => have[id])
-    .map((id) => calculateUpdate(want[id], have[id]));
-  return { endpointsToCreate, endpointsToUpdate, endpointsToDelete };
+  const toUpdate = utils.groupBy(
+    Object.keys(want)
+      .filter((id) => have[id])
+      .map((id) => calculateUpdate(want[id], have[id])),
+    (eu: EndpointUpdate) => keyFn(eu.endpoint)
+  );
+
+  const result: Record<string, Changeset> = {};
+  const keys = new Set([
+    ...Object.keys(toCreate),
+    ...Object.keys(toDelete),
+    ...Object.keys(toUpdate),
+  ]);
+  for (const key of keys) {
+    result[key] = {
+      endpointsToCreate: toCreate[key] || [],
+      endpointsToUpdate: toUpdate[key] || [],
+      endpointsToDelete: toDelete[key] || [],
+    };
+  }
+  return result;
 }
 
 /**
@@ -72,28 +94,32 @@ export function calculateUpdate(want: backend.Endpoint, have: backend.Endpoint):
  * Create a plan for deploying all functions in one region.
  * @param want the desired state
  * @param have the current state
- * @param filters The filters, passed in by the user via  `--only functions:`
+ * @param filters filters to apply to backend, passed from users by --only flag.
+ * @param deleteAll Deletes all functions if set.
  */
 export function createDeploymentPlan(
   want: backend.Backend,
   have: backend.Backend,
-  options: Options = {}
+  filters?: EndpointFilter[],
+  deleteAll?: boolean
 ): DeploymentPlan {
-  const deployment: DeploymentPlan = {};
+  let deployment: DeploymentPlan = {};
   want = backend.matchingBackend(want, (endpoint) => {
-    return functionMatchesAnyGroup(endpoint, options.filters || []);
+    return endpointMatchesAnyFilter(endpoint, filters);
   });
   have = backend.matchingBackend(have, (endpoint) => {
-    return functionMatchesAnyGroup(endpoint, options.filters || []);
+    return endpointMatchesAnyFilter(endpoint, filters);
   });
 
   const regions = new Set([...Object.keys(want.endpoints), ...Object.keys(have.endpoints)]);
   for (const region of regions) {
-    deployment[region] = calculateRegionalChanges(
+    const changesets = calculateChangesets(
       want.endpoints[region] || {},
       have.endpoints[region] || {},
-      options
+      (e) => `${e.region}-${e.availableMemoryMb || "default"}`,
+      deleteAll
     );
+    deployment = { ...deployment, ...changesets };
   }
 
   if (upgradedToGCFv2WithoutSettingConcurrency(want, have)) {
@@ -165,13 +191,13 @@ export function changedV2PubSubTopic(want: backend.Endpoint, have: backend.Endpo
   if (!backend.isEventTriggered(have)) {
     return false;
   }
-  if (want.eventTrigger.eventType !== gcfv2.PUBSUB_PUBLISH_EVENT) {
+  if (want.eventTrigger.eventType !== v2events.PUBSUB_PUBLISH_EVENT) {
     return false;
   }
-  if (have.eventTrigger.eventType !== gcfv2.PUBSUB_PUBLISH_EVENT) {
+  if (have.eventTrigger.eventType !== v2events.PUBSUB_PUBLISH_EVENT) {
     return false;
   }
-  return have.eventTrigger.eventFilters["resource"] !== want.eventTrigger.eventFilters["resource"];
+  return have.eventTrigger.eventFilters.topic !== want.eventTrigger.eventFilters.topic;
 }
 
 /** Whether a user upgraded a scheduled function (which goes from Pub/Sub to HTTPS). */

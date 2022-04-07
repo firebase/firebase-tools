@@ -41,6 +41,7 @@ const functionsEmulator = new FunctionsEmulator({
     {
       functionsDir: MODULE_ROOT,
       env: {},
+      secretEnv: [],
     },
   ],
   quiet: true,
@@ -49,6 +50,7 @@ const functionsEmulator = new FunctionsEmulator({
 const testBackend = {
   functionsDir: MODULE_ROOT,
   env: {},
+  secretEnv: [],
   nodeBinary: process.execPath,
 };
 
@@ -784,7 +786,7 @@ describe("FunctionsEmulator-Hub", () => {
         .then((res) => {
           expect(res.body.var).to.eql("localhost:9090");
         });
-    });
+    }).timeout(5000);
 
     it("should set FIREBASE_AUTH_EMULATOR_HOST when the emulator is running", async () => {
       emulatorRegistryStub.withArgs(Emulators.AUTH).returns({

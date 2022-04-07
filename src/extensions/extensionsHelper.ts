@@ -14,13 +14,14 @@ import { storageOrigin } from "../api";
 import { archiveDirectory } from "../archiveDirectory";
 import { convertOfficialExtensionsToList } from "./utils";
 import { getFirebaseConfig } from "../functionsConfig";
+import { getProjectAdminSdkConfigOrCached } from "../emulator/adminSdkConfig";
 import { getExtensionRegistry } from "./resolveSource";
 import { FirebaseError } from "../error";
 import { diagnose } from "./diagnose";
 import { checkResponse } from "./askUserForParam";
 import { ensure } from "../ensureApiEnabled";
 import { deleteObject, uploadObject } from "../gcp/storage";
-import { needProjectId } from "../projectUtils";
+import { getProjectId } from "../projectUtils";
 import {
   createSource,
   ExtensionSource,
@@ -37,6 +38,7 @@ import { logger } from "../logger";
 import { envOverride } from "../utils";
 import { getLocalChangelog } from "./changelog";
 import { getProjectNumber } from "../getProjectNumber";
+import { Constants } from "../emulator/constants";
 
 /**
  * SpecParamType represents the exact strings that the extensions
@@ -105,23 +107,36 @@ export function getDBInstanceFromURL(databaseUrl = ""): string {
 /**
  * Gets Firebase project specific param values.
  */
-export async function getFirebaseProjectParams(projectId: string): Promise<Record<string, string>> {
-  const body = await getFirebaseConfig({ project: projectId });
-  const projectNumber = await getProjectNumber({ projectId });
+export async function getFirebaseProjectParams(
+  projectId: string | undefined,
+  emulatorMode: boolean = false
+): Promise<Record<string, string>> {
+  if (!projectId) {
+    return {};
+  }
+  const body = emulatorMode
+    ? await getProjectAdminSdkConfigOrCached(projectId)
+    : await getFirebaseConfig({ project: projectId });
+  const projectNumber =
+    emulatorMode && Constants.isDemoProject(projectId)
+      ? Constants.FAKE_PROJECT_NUMBER
+      : await getProjectNumber({ projectId });
+  const databaseURL = body?.databaseURL ?? `https://${projectId}.firebaseio.com`;
+  const storageBucket = body?.storageBucket ?? `${projectId}.appspot.com`;
   // This env variable is needed for parameter-less initialization of firebase-admin
   const FIREBASE_CONFIG = JSON.stringify({
-    projectId: body.projectId,
-    databaseURL: body.databaseURL,
-    storageBucket: body.storageBucket,
+    projectId,
+    databaseURL,
+    storageBucket,
   });
 
   return {
-    PROJECT_ID: body.projectId,
+    PROJECT_ID: projectId,
     PROJECT_NUMBER: projectNumber,
-    DATABASE_URL: body.databaseURL,
-    STORAGE_BUCKET: body.storageBucket,
+    DATABASE_URL: databaseURL,
+    STORAGE_BUCKET: storageBucket,
     FIREBASE_CONFIG,
-    DATABASE_INSTANCE: getDBInstanceFromURL(body.databaseURL),
+    DATABASE_INSTANCE: getDBInstanceFromURL(databaseURL),
   };
 }
 
@@ -154,7 +169,10 @@ export function substituteParams<T>(original: T, params: Record<string, string>)
  * @param paramSpec information on params parsed from extension.yaml
  * @return JSON object of params
  */
-export function populateDefaultParams(paramVars: Record<string, string>, paramSpecs: Param[]): any {
+export function populateDefaultParams(
+  paramVars: Record<string, string>,
+  paramSpecs: Param[]
+): Record<string, string> {
   const newParams = paramVars;
 
   for (const param of paramSpecs) {
@@ -351,7 +369,10 @@ export async function promptForValidInstanceId(instanceId: string): Promise<stri
 }
 
 export async function ensureExtensionsApiEnabled(options: any): Promise<void> {
-  const projectId = needProjectId(options);
+  const projectId = getProjectId(options);
+  if (!projectId) {
+    return;
+  }
   return await ensure(
     projectId,
     "firebaseextensions.googleapis.com",
@@ -745,7 +766,10 @@ export async function confirm(args: {
 }
 
 export async function diagnoseAndFixProject(options: any): Promise<void> {
-  const projectId = needProjectId(options);
+  const projectId = getProjectId(options);
+  if (!projectId) {
+    return;
+  }
   const ok = await diagnose(projectId);
   if (!ok) {
     throw new FirebaseError("Unable to proceed until all issues are resolved.");

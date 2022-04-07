@@ -1,5 +1,12 @@
 import * as planner from "../../deploy/extensions/planner";
+import { shouldStart } from "../controller";
+import { Constants } from "../constants";
 import { check } from "../../ensureApiEnabled";
+import { getFunctionService } from "../functionsEmulatorShared";
+import { EmulatableBackend } from "../functionsEmulator";
+import { ParsedTriggerDefinition } from "../functionsEmulatorShared";
+import { Emulators } from "../types";
+import { Options } from "../../options";
 
 const EMULATED_APIS = [
   "storage-component.googleapis.com",
@@ -30,7 +37,9 @@ export async function getUnemulatedAPIs(
         if (unemulatedAPIs[api.apiName]) {
           unemulatedAPIs[api.apiName].instanceIds.push(i.instanceId);
         } else {
-          const enabled = await check(projectId, api.apiName, "extensions", true);
+          const enabled =
+            !Constants.isDemoProject(projectId) &&
+            (await check(projectId, api.apiName, "extensions", true));
           unemulatedAPIs[api.apiName] = {
             apiName: api.apiName,
             instanceIds: [i.instanceId],
@@ -41,4 +50,42 @@ export async function getUnemulatedAPIs(
     }
   }
   return Object.values(unemulatedAPIs);
+}
+
+/**
+ * Checks a EmulatableBackend for any functions that trigger off of emulators that are not running or not implemented.
+ * @param backend
+ */
+export function checkForUnemulatedTriggerTypes(
+  backend: EmulatableBackend,
+  options: Options
+): string[] {
+  const triggers = backend.predefinedTriggers ?? [];
+  const unemulatedTriggers = triggers
+    .filter((definition: ParsedTriggerDefinition) => {
+      if (definition.httpsTrigger) {
+        // HTTPS triggers can always be emulated.
+        return false;
+      }
+      if (definition.eventTrigger) {
+        const service: string = getFunctionService(definition);
+        switch (service) {
+          case Constants.SERVICE_FIRESTORE:
+            return !shouldStart(options, Emulators.FIRESTORE);
+          case Constants.SERVICE_REALTIME_DATABASE:
+            return !shouldStart(options, Emulators.DATABASE);
+          case Constants.SERVICE_PUBSUB:
+            return !shouldStart(options, Emulators.PUBSUB);
+          case Constants.SERVICE_AUTH:
+            return !shouldStart(options, Emulators.AUTH);
+          case Constants.SERVICE_STORAGE:
+            return !shouldStart(options, Emulators.STORAGE);
+          default:
+            return true;
+        }
+      }
+    })
+    .map((definition) => Constants.getServiceName(getFunctionService(definition)));
+  // Remove duplicates
+  return [...new Set(unemulatedTriggers)];
 }

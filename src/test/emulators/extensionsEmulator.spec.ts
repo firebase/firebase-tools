@@ -26,7 +26,22 @@ const TEST_EXTENSION_VERSION: ExtensionVersion = {
   hash: "abc123",
   spec: {
     name: "publishers/firebase/extensions/storage-resize-images/versions/0.1.18",
-    resources: [],
+    resources: [
+      {
+        type: "firebaseextensions.v1beta.function",
+        name: "generateResizedImage",
+        description: `Listens for new images uploaded to your specified Cloud Storage bucket, resizes the images,
+      then stores the resized images in the same bucket. Optionally keeps or deletes the original images.`,
+        properties: {
+          location: "${param:LOCATION}",
+          runtime: "nodejs10",
+          eventTrigger: {
+            eventType: "google.storage.object.finalize",
+            resource: "projects/_/buckets/${param:IMG_BUCKET}",
+          },
+        },
+      },
+    ],
     params: [],
     version: "0.1.18",
     sourceUrl: "https://fake.test",
@@ -45,7 +60,7 @@ describe("Extensions Emulator", () => {
     });
     const testCases: {
       desc: string;
-      input: planner.InstanceSpec;
+      input: planner.DeploymentInstanceSpec;
       expected: EmulatableBackend;
     }[] = [
       {
@@ -72,6 +87,7 @@ describe("Extensions Emulator", () => {
             PROJECT_ID: "test-project",
             STORAGE_BUCKET: "test-project.appspot.com",
           },
+          secretEnv: [],
           extensionInstanceId: "ext-test",
           functionsDir:
             "src/test/emulators/extensions/firebase/storage-resize-images@0.1.18/functions",

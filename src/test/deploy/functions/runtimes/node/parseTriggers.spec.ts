@@ -65,6 +65,26 @@ describe("addResourcesToBackend", () => {
     expect(result).to.deep.equal(expected);
   });
 
+  it("should handle a callable trigger", () => {
+    const trigger: parseTriggers.TriggerAnnotation = {
+      ...BASIC_TRIGGER,
+      httpsTrigger: {},
+      labels: {
+        "deployment-callable": "true",
+      },
+    };
+
+    const result = backend.empty();
+    parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
+
+    const expected: backend.Backend = backend.of({
+      ...BASIC_ENDPOINT,
+      callableTrigger: {},
+      labels: {},
+    });
+    expect(result).to.deep.equal(expected);
+  });
+
   it("should handle a minimal task queue trigger", () => {
     const trigger: parseTriggers.TriggerAnnotation = {
       ...BASIC_TRIGGER,
@@ -108,9 +128,7 @@ describe("addResourcesToBackend", () => {
 
         const eventTrigger: backend.EventTrigger = {
           eventType: "google.pubsub.topic.publish",
-          eventFilters: {
-            resource: "projects/project/topics/topic",
-          },
+          eventFilters: { resource: "projects/project/topics/topic" },
           retry: !!failurePolicy,
         };
         const expected: backend.Backend = backend.of({ ...BASIC_ENDPOINT, eventTrigger });
@@ -131,7 +149,6 @@ describe("addResourcesToBackend", () => {
       vpcConnectorEgressSettings: "PRIVATE_RANGES_ONLY",
       vpcConnector: "projects/project/locations/region/connectors/connector",
       ingressSettings: "ALLOW_ALL",
-      timeout: "60s",
       labels: {
         test: "testing",
       },
@@ -149,7 +166,6 @@ describe("addResourcesToBackend", () => {
         egressSettings: "PRIVATE_RANGES_ONLY",
       },
       ingressSettings: "ALLOW_ALL",
-      timeout: "60s",
       labels: {
         test: "testing",
       },
@@ -172,6 +188,7 @@ describe("addResourcesToBackend", () => {
         resource: "projects/p/topics/t",
         service: "pubsub.googleapis.com",
       },
+      timeout: "60s",
     };
 
     const result = backend.empty();
@@ -179,13 +196,15 @@ describe("addResourcesToBackend", () => {
 
     const eventTrigger: backend.EventTrigger = {
       eventType: "google.pubsub.topic.publish",
-      eventFilters: {
-        resource: "projects/p/topics/t",
-      },
+      eventFilters: { resource: "projects/p/topics/t" },
       retry: false,
     };
 
-    const expected: backend.Backend = backend.of({ ...BASIC_ENDPOINT, eventTrigger });
+    const expected: backend.Backend = backend.of({
+      ...BASIC_ENDPOINT,
+      eventTrigger,
+      timeoutSeconds: 60,
+    });
     expect(result).to.deep.equal(expected);
   });
 
