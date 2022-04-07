@@ -8,8 +8,6 @@ import { FrameworkOptions, TriggerEndToEndTest } from "../integration-helpers/fr
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
 
-const ALL_EMULATORS_STARTED_LOG = "All emulators ready";
-
 /*
  * Various delays that are needed because this test spawns
  * parallel emulator subprocesses.
