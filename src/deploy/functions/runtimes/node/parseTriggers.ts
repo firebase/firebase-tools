@@ -155,8 +155,8 @@ export function mergeRequiredAPIs(backend: backend.Backend) {
   const apiToReasons: Record<string, Set<string>> = {};
   for (const { api, reason } of backend.requiredAPIs) {
     const reasons = apiToReasons[api] || new Set();
-    if (typeof reason === "string") {
-      reasons.add(reason);
+    if (reason) {
+      reasons.add(reason)
     }
     apiToReasons[api] = reasons;
   }

@@ -261,14 +261,12 @@ export function discoverParams(build: Build): backend.Backend {
       proto.renameIfPresent(bkEndpoint, endpoint, "maxInstances", "maxInstances", resolveInt);
       proto.renameIfPresent(bkEndpoint, endpoint, "minInstances", "minInstances", resolveInt);
       proto.renameIfPresent(bkEndpoint, endpoint, "concurrency", "concurrency", resolveInt);
+      proto.copyIfPresent(bkEndpoint, endpoint, "ingressSettings")
       if (endpoint.vpc) {
         bkEndpoint.vpc = {
           connector: endpoint.vpc.connector,
           egressSettings: endpoint.vpc.egressSettings,
         };
-      }
-      if (endpoint.ingressSettings) {
-        bkEndpoint.ingressSettings = endpoint.ingressSettings;
       }
       if (endpoint.serviceAccount) {
         bkEndpoint.serviceAccountEmail = endpoint.serviceAccount;
