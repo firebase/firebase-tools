@@ -616,8 +616,8 @@ export class StorageLayer {
 
 /** Returns file separator used in given path, either '\\' or '/'. */
 function getPathSep(decodedPath: string): string {
-  // Suffices to check first separator, which occurs immediately after bucket name
-  const bucketSuffix = ".appspot.com";
-  const firstSepIndex = decodedPath.indexOf(bucketSuffix) + bucketSuffix.length;
+  // Suffices to check first separator, which occurs immediately after bucket name.
+  // Bucket naming guidelines: https://cloud.google.com/storage/docs/naming-buckets
+  const firstSepIndex = decodedPath.search(/[^a-z0-9-_.]/g);
   return decodedPath[firstSepIndex];
 }
