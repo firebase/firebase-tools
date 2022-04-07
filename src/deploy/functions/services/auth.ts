@@ -4,8 +4,6 @@ import * as events from "../../../functions/events";
 import { FirebaseError } from "../../../error";
 import { cloneDeep } from "../../../utils";
 
-const BEFORE_CREATE = events.v1.BEFORE_CREATE_EVENT || events.v2.BEFORE_CREATE_EVENT;
-
 /**
  * Ensure that at most one blocking function of that type exists and merges identity platform options on our backend to deploy.
  * @param endpoint the Auth Blocking endpoint
@@ -66,7 +64,7 @@ export async function registerBlockingTrigger(
   const newBlockingConfig = await identityPlatform.getBlockingFunctionsConfig(endpoint.project);
   const oldBlockingConfig = cloneDeep(newBlockingConfig);
 
-  if (endpoint.blockingTrigger.eventType === BEFORE_CREATE) {
+  if (endpoint.blockingTrigger.eventType === events.v1.BEFORE_CREATE_EVENT) {
     newBlockingConfig.triggers = {
       ...newBlockingConfig.triggers,
       beforeCreate: {
@@ -84,9 +82,9 @@ export async function registerBlockingTrigger(
 
   if (!update) {
     newBlockingConfig.forwardInboundCredentials = {
-      idToken: endpoint.blockingTrigger.idToken || false,
-      accessToken: endpoint.blockingTrigger.accessToken || false,
-      refreshToken: endpoint.blockingTrigger.refreshToken || false,
+      idToken: endpoint.blockingTrigger.options?.idToken || false,
+      accessToken: endpoint.blockingTrigger.options?.accessToken || false,
+      refreshToken: endpoint.blockingTrigger.options?.refreshToken || false,
     };
   }
 
@@ -112,7 +110,7 @@ export async function unregisterBlockingTrigger(
     return;
   }
 
-  if (endpoint.blockingTrigger.eventType === BEFORE_CREATE) {
+  if (endpoint.blockingTrigger.eventType === events.v1.BEFORE_CREATE_EVENT) {
     blockingConfig.triggers = {
       ...blockingConfig.triggers,
       beforeCreate: {},

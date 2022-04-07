@@ -609,7 +609,7 @@ describe("Fabricator", () => {
         poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
         run.setInvokerCreate.resolves();
         const ep = endpoint(
-          { blockingTrigger: { eventType: v2events.BEFORE_CREATE_EVENT } },
+          { blockingTrigger: { eventType: v1events.BEFORE_CREATE_EVENT } },
           { platform: "gcfv2" }
         );
 
@@ -694,7 +694,7 @@ describe("Fabricator", () => {
       const ep = endpoint(
         {
           blockingTrigger: {
-            eventType: v2events.BEFORE_CREATE_EVENT,
+            eventType: v1events.BEFORE_CREATE_EVENT,
           },
         },
         { platform: "gcfv2" }

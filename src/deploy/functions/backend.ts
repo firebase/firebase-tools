@@ -133,12 +133,8 @@ export interface TaskQueueTriggered {
 }
 
 export interface BlockingTrigger {
-  eventType:
-    | typeof events.v1.AUTH_BLOCKING_EVENTS[number]
-    | typeof events.v2.AUTH_BLOCKING_EVENTS[number];
-  accessToken?: boolean;
-  idToken?: boolean;
-  refreshToken?: boolean;
+  eventType: string;
+  options?: Record<string, any>;
 }
 
 export interface BlockingTriggered {

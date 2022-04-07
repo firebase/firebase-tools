@@ -22,7 +22,7 @@ import * as run from "../../../gcp/run";
 import * as scheduler from "../../../gcp/cloudscheduler";
 import * as utils from "../../../utils";
 import * as services from "../services";
-import { AUTH_BLOCKING_EVENTS } from "../../../functions/events/v2";
+import { AUTH_BLOCKING_EVENTS } from "../../../functions/events/v1";
 
 // TODO: Tune this for better performance.
 const gcfV1PollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
@@ -253,7 +253,7 @@ export class Fabricator {
       }
     } else if (
       backend.isBlockingTriggered(endpoint) &&
-      AUTH_BLOCKING_EVENTS.includes(endpoint.blockingTrigger.eventType)
+      AUTH_BLOCKING_EVENTS.includes(endpoint.blockingTrigger.eventType as any)
     ) {
       // Auth Blocking functions should always be public
       await this.executor
@@ -332,7 +332,7 @@ export class Fabricator {
       }
     } else if (
       backend.isBlockingTriggered(endpoint) &&
-      AUTH_BLOCKING_EVENTS.includes(endpoint.blockingTrigger.eventType)
+      AUTH_BLOCKING_EVENTS.includes(endpoint.blockingTrigger.eventType as any)
     ) {
       // Auth Blocking functions should always be public
       await this.executor
@@ -377,7 +377,7 @@ export class Fabricator {
       invoker = endpoint.taskQueueTrigger.invoker;
     } else if (
       backend.isBlockingTriggered(endpoint) &&
-      AUTH_BLOCKING_EVENTS.includes(endpoint.blockingTrigger.eventType)
+      AUTH_BLOCKING_EVENTS.includes(endpoint.blockingTrigger.eventType as any)
     ) {
       invoker = ["public"];
     }
@@ -423,7 +423,7 @@ export class Fabricator {
       invoker = endpoint.taskQueueTrigger.invoker;
     } else if (
       backend.isBlockingTriggered(endpoint) &&
-      AUTH_BLOCKING_EVENTS.includes(endpoint.blockingTrigger.eventType)
+      AUTH_BLOCKING_EVENTS.includes(endpoint.blockingTrigger.eventType as any)
     ) {
       invoker = ["public"];
     }

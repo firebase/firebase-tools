@@ -374,9 +374,7 @@ describe("addResourcesToBackend", () => {
         ...BASIC_ENDPOINT,
         blockingTrigger: {
           eventType: BEFORE_CREATE_EVENT,
-          accessToken: false,
-          idToken: false,
-          refreshToken: false,
+          options: undefined,
         },
       }),
       requiredAPIs: [
@@ -398,9 +396,11 @@ describe("addResourcesToBackend", () => {
       ...BASIC_TRIGGER,
       blockingTrigger: {
         eventType: BEFORE_CREATE_EVENT,
-        accessToken: true,
-        idToken: false,
-        refreshToken: true,
+        options: {
+          accessToken: true,
+          idToken: false,
+          refreshToken: true,
+        },
       },
     };
     const expected: backend.Backend = {
@@ -408,9 +408,11 @@ describe("addResourcesToBackend", () => {
         ...BASIC_ENDPOINT,
         blockingTrigger: {
           eventType: BEFORE_CREATE_EVENT,
-          accessToken: true,
-          idToken: false,
-          refreshToken: true,
+          options: {
+            accessToken: true,
+            idToken: false,
+            refreshToken: true,
+          },
         },
       }),
       requiredAPIs: [

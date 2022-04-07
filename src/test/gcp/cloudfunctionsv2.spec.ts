@@ -2,7 +2,7 @@ import { expect } from "chai";
 
 import * as cloudfunctionsv2 from "../../gcp/cloudfunctionsv2";
 import * as backend from "../../deploy/functions/backend";
-import * as v2events from "../../functions/events/v2";
+import * as events from "../../functions/events";
 import * as projectConfig from "../../functions/projectConfig";
 
 describe("cloudfunctionsv2", () => {
@@ -153,7 +153,7 @@ describe("cloudfunctionsv2", () => {
             ...ENDPOINT,
             platform: "gcfv2",
             blockingTrigger: {
-              eventType: v2events.BEFORE_CREATE_EVENT,
+              eventType: events.v1.BEFORE_CREATE_EVENT,
             },
           },
           CLOUD_FUNCTION_V2_SOURCE
@@ -172,7 +172,7 @@ describe("cloudfunctionsv2", () => {
             ...ENDPOINT,
             platform: "gcfv2",
             blockingTrigger: {
-              eventType: v2events.BEFORE_SIGN_IN_EVENT,
+              eventType: events.v1.BEFORE_SIGN_IN_EVENT,
             },
           },
           CLOUD_FUNCTION_V2_SOURCE
@@ -236,7 +236,7 @@ describe("cloudfunctionsv2", () => {
         ...ENDPOINT,
         platform: "gcfv2",
         eventTrigger: {
-          eventType: v2events.PUBSUB_PUBLISH_EVENT,
+          eventType: events.v2.PUBSUB_PUBLISH_EVENT,
           eventFilters: {
             topic: "projects/p/topics/t",
             serviceName: "pubsub.googleapis.com",
@@ -255,7 +255,7 @@ describe("cloudfunctionsv2", () => {
       > = {
         ...CLOUD_FUNCTION_V2,
         eventTrigger: {
-          eventType: v2events.PUBSUB_PUBLISH_EVENT,
+          eventType: events.v2.PUBSUB_PUBLISH_EVENT,
           pubsubTopic: "projects/p/topics/t",
           eventFilters: [
             {
@@ -308,7 +308,7 @@ describe("cloudfunctionsv2", () => {
         platform: "gcfv2",
         uri: RUN_URI,
         eventTrigger: {
-          eventType: v2events.PUBSUB_PUBLISH_EVENT,
+          eventType: events.v2.PUBSUB_PUBLISH_EVENT,
           eventFilters: { topic: "projects/p/topics/t" },
           retry: false,
         },
@@ -317,7 +317,7 @@ describe("cloudfunctionsv2", () => {
         cloudfunctionsv2.endpointFromFunction({
           ...HAVE_CLOUD_FUNCTION_V2,
           eventTrigger: {
-            eventType: v2events.PUBSUB_PUBLISH_EVENT,
+            eventType: events.v2.PUBSUB_PUBLISH_EVENT,
             pubsubTopic: "projects/p/topics/t",
           },
         })
@@ -379,7 +379,7 @@ describe("cloudfunctionsv2", () => {
       ).to.deep.equal({
         ...ENDPOINT,
         blockingTrigger: {
-          eventType: v2events.BEFORE_CREATE_EVENT,
+          eventType: events.v1.BEFORE_CREATE_EVENT,
         },
         platform: "gcfv2",
         uri: RUN_URI,
@@ -396,7 +396,7 @@ describe("cloudfunctionsv2", () => {
       ).to.deep.equal({
         ...ENDPOINT,
         blockingTrigger: {
-          eventType: v2events.BEFORE_SIGN_IN_EVENT,
+          eventType: events.v1.BEFORE_SIGN_IN_EVENT,
         },
         platform: "gcfv2",
         uri: RUN_URI,

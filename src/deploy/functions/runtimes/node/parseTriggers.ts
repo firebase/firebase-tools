@@ -11,10 +11,6 @@ import * as args from "../../args";
 import * as runtimes from "../../runtimes";
 import * as events from "../../../../functions/events";
 
-type BEFORE_CREATE = typeof events.v1.BEFORE_CREATE_EVENT | typeof events.v2.BEFORE_CREATE_EVENT;
-
-type BEFORE_SIGN_IN = typeof events.v1.BEFORE_SIGN_IN_EVENT | typeof events.v2.BEFORE_SIGN_IN_EVENT;
-
 const TRIGGER_PARSER = path.resolve(__dirname, "./triggerParser.js");
 
 export interface ScheduleRetryConfig {
@@ -74,9 +70,10 @@ export interface TriggerAnnotation {
   };
   blockingTrigger?: {
     eventType: string;
-    accessToken?: boolean;
-    idToken?: boolean;
-    refreshToken?: boolean;
+    options?: Record<string, any>;
+    // accessToken?: boolean;
+    // idToken?: boolean;
+    // refreshToken?: boolean;
   };
   failurePolicy?: {};
   schedule?: ScheduleAnnotation;
@@ -225,16 +222,16 @@ export function addResourcesToBackend(
       });
       triggered = { scheduleTrigger: annotation.schedule };
     } else if (annotation.blockingTrigger) {
-      want.requiredAPIs.push({
-        api: "identitytoolkit.googleapis.com",
-        reason: "Needed for auth blocking functions.",
-      });
+      if (events.v1.AUTH_BLOCKING_EVENTS.includes(annotation.blockingTrigger.eventType as any)) {
+        want.requiredAPIs.push({
+          api: "identitytoolkit.googleapis.com",
+          reason: "Needed for auth blocking functions.",
+        });
+      }
       triggered = {
         blockingTrigger: {
-          eventType: annotation.blockingTrigger.eventType as BEFORE_CREATE | BEFORE_SIGN_IN,
-          accessToken: !!annotation.blockingTrigger.accessToken,
-          idToken: !!annotation.blockingTrigger.idToken,
-          refreshToken: !!annotation.blockingTrigger.refreshToken,
+          eventType: annotation.blockingTrigger.eventType,
+          options: annotation.blockingTrigger.options,
         },
       };
     } else {

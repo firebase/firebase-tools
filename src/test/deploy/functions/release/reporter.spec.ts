@@ -96,7 +96,7 @@ describe("reporter", () => {
         reporter.triggerTag({
           ...ENDPOINT_BASE,
           platform: "gcfv2",
-          blockingTrigger: { eventType: events.v2.BEFORE_CREATE_EVENT },
+          blockingTrigger: { eventType: events.v1.BEFORE_CREATE_EVENT },
         })
       ).to.equal("v2.blocking");
     });

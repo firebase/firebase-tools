@@ -261,15 +261,16 @@ describe("backendFromV1Alpha1", () => {
     describe("blockingTriggers", () => {
       const validTrigger: backend.BlockingTrigger = {
         eventType: BEFORE_CREATE_EVENT,
-        accessToken: true,
-        idToken: false,
-        refreshToken: true,
+        options: {
+          accessToken: true,
+          idToken: false,
+          refreshToken: true,
+        },
       };
 
       const invalidOptions = {
-        accessToken: 11,
-        idToken: "true",
-        refreshToken: "9",
+        eventType: true,
+        options: 11,
       };
 
       for (const [key, value] of Object.entries(invalidOptions)) {
@@ -400,9 +401,11 @@ describe("backendFromV1Alpha1", () => {
     it("copies blocking triggers", () => {
       const blockingTrigger: backend.BlockingTrigger = {
         eventType: BEFORE_CREATE_EVENT,
-        accessToken: true,
-        idToken: false,
-        refreshToken: true,
+        options: {
+          accessToken: true,
+          idToken: false,
+          refreshToken: true,
+        },
       };
       const yaml: v1alpha1.Manifest = {
         specVersion: "v1alpha1",
@@ -418,7 +421,7 @@ describe("backendFromV1Alpha1", () => {
       expect(parsed).to.deep.equal(expected);
     });
 
-    it("copies blocking triggers and defaults options to false", () => {
+    it("copies blocking triggers without options", () => {
       const blockingTrigger: backend.BlockingTrigger = {
         eventType: BEFORE_CREATE_EVENT,
       };
@@ -435,9 +438,6 @@ describe("backendFromV1Alpha1", () => {
         ...DEFAULTED_ENDPOINT,
         blockingTrigger: {
           ...blockingTrigger,
-          accessToken: false,
-          idToken: false,
-          refreshToken: false,
         },
       });
       const parsed = v1alpha1.backendFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);

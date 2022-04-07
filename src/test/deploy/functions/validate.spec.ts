@@ -268,8 +268,10 @@ describe("validate", () => {
         runtime: "nodejs16",
         blockingTrigger: {
           eventType: BEFORE_CREATE_EVENT,
-          accessToken: false,
-          idToken: true,
+          options: {
+            accessToken: false,
+            idToken: true,
+          },
         },
       };
       const ep2: backend.Endpoint = {
@@ -281,7 +283,9 @@ describe("validate", () => {
         runtime: "nodejs16",
         blockingTrigger: {
           eventType: BEFORE_SIGN_IN_EVENT,
-          accessToken: true,
+          options: {
+            accessToken: true,
+          },
         },
       };
       const want: backend.Backend = {

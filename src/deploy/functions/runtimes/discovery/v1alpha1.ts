@@ -1,5 +1,6 @@
 import * as backend from "../../backend";
 import * as runtimes from "..";
+import * as events from "../../../../functions/events";
 import { copyIfPresent } from "../../../../gcp/proto";
 import { assertKeyTypes, requireKeys } from "./parsing";
 import { FirebaseError } from "../../../../error";
@@ -189,18 +190,9 @@ function parseEndpoints(
       requireKeys(prefix + ".blockingTrigger", ep.blockingTrigger, "eventType");
       assertKeyTypes(prefix + ".blockingTrigger", ep.blockingTrigger, {
         eventType: "string",
-        accessToken: "boolean",
-        idToken: "boolean",
-        refreshToken: "boolean",
+        options: "object",
       });
-      triggered = {
-        blockingTrigger: {
-          ...ep.blockingTrigger,
-          accessToken: !!ep.blockingTrigger.accessToken,
-          idToken: !!ep.blockingTrigger.idToken,
-          refreshToken: !!ep.blockingTrigger.refreshToken,
-        },
-      };
+      triggered = { blockingTrigger: ep.blockingTrigger };
     } else {
       throw new FirebaseError(
         `Do not recognize trigger type for endpoint ${id}. Try upgrading ` +

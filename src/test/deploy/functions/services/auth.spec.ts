@@ -89,8 +89,10 @@ describe("authBlocking", () => {
         entryPoint: "func1",
         blockingTrigger: {
           eventType: BEFORE_CREATE_EVENT,
-          accessToken: false,
-          idToken: true,
+          options: {
+            accessToken: false,
+            idToken: true,
+          },
         },
       };
       const ep2: backend.Endpoint = {
@@ -100,7 +102,9 @@ describe("authBlocking", () => {
         entryPoint: "func2",
         blockingTrigger: {
           eventType: BEFORE_SIGN_IN_EVENT,
-          accessToken: true,
+          options: {
+            accessToken: true,
+          },
         },
       };
       const want: backend.Backend = {
@@ -132,9 +136,11 @@ describe("authBlocking", () => {
         uri: "somethingnew.url",
         blockingTrigger: {
           eventType: BEFORE_CREATE_EVENT,
-          accessToken: false,
-          idToken: true,
-          refreshToken: false,
+          options: {
+            accessToken: false,
+            idToken: true,
+            refreshToken: false,
+          },
         },
       };
       getConfig.resolves(blockingConfig);
@@ -181,9 +187,11 @@ describe("authBlocking", () => {
         uri: "somethingnew.url",
         blockingTrigger: {
           eventType: BEFORE_CREATE_EVENT,
-          accessToken: false,
-          idToken: true,
-          refreshToken: false,
+          options: {
+            accessToken: false,
+            idToken: true,
+            refreshToken: false,
+          },
         },
       };
       getConfig.resolves(blockingConfig);
@@ -230,9 +238,11 @@ describe("authBlocking", () => {
         uri: "somethingnew.url",
         blockingTrigger: {
           eventType: BEFORE_SIGN_IN_EVENT,
-          accessToken: false,
-          idToken: true,
-          refreshToken: false,
+          options: {
+            accessToken: false,
+            idToken: true,
+            refreshToken: false,
+          },
         },
       };
       getConfig.resolves(blockingConfig);
@@ -277,9 +287,11 @@ describe("authBlocking", () => {
         uri: "somethingnew.url",
         blockingTrigger: {
           eventType: BEFORE_CREATE_EVENT,
-          accessToken: false,
-          idToken: true,
-          refreshToken: false,
+          options: {
+            accessToken: false,
+            idToken: true,
+            refreshToken: false,
+          },
         },
       };
       getConfig.resolves(blockingConfig);
@@ -324,9 +336,11 @@ describe("authBlocking", () => {
         uri: "somethingnew.url",
         blockingTrigger: {
           eventType: BEFORE_SIGN_IN_EVENT,
-          accessToken: false,
-          idToken: true,
-          refreshToken: false,
+          options: {
+            accessToken: false,
+            idToken: true,
+            refreshToken: false,
+          },
         },
       };
       getConfig.resolves(blockingConfig);
@@ -358,7 +372,9 @@ describe("authBlocking", () => {
         uri: "somethingnew.url",
         blockingTrigger: {
           eventType: BEFORE_CREATE_EVENT,
-          accessToken: true,
+          options: {
+            accessToken: true,
+          },
         },
       };
       getConfig.resolves(blockingConfig);
@@ -390,9 +406,11 @@ describe("authBlocking", () => {
         uri: "somethingnew.url",
         blockingTrigger: {
           eventType: BEFORE_CREATE_EVENT,
-          accessToken: false,
-          idToken: true,
-          refreshToken: false,
+          options: {
+            accessToken: false,
+            idToken: true,
+            refreshToken: false,
+          },
         },
       };
       getConfig.resolves(blockingConfig);
@@ -422,9 +440,11 @@ describe("authBlocking", () => {
         uri: "somethingnew.url",
         blockingTrigger: {
           eventType: BEFORE_SIGN_IN_EVENT,
-          accessToken: false,
-          idToken: true,
-          refreshToken: false,
+          options: {
+            accessToken: false,
+            idToken: true,
+            refreshToken: false,
+          },
         },
       };
       getConfig.resolves(blockingConfig);
@@ -465,9 +485,11 @@ describe("authBlocking", () => {
         uri: "somethingnew.url",
         blockingTrigger: {
           eventType: BEFORE_CREATE_EVENT,
-          accessToken: false,
-          idToken: true,
-          refreshToken: false,
+          options: {
+            accessToken: false,
+            idToken: true,
+            refreshToken: false,
+          },
         },
       };
       getConfig.resolves(blockingConfig);
@@ -510,9 +532,11 @@ describe("authBlocking", () => {
         uri: "somethingnew.url",
         blockingTrigger: {
           eventType: BEFORE_SIGN_IN_EVENT,
-          accessToken: false,
-          idToken: true,
-          refreshToken: false,
+          options: {
+            accessToken: false,
+            idToken: true,
+            refreshToken: false,
+          },
         },
       };
       getConfig.resolves(blockingConfig);

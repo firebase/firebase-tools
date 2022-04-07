@@ -131,8 +131,10 @@ describe("prepare", () => {
         id: "beforeCreate",
         blockingTrigger: {
           eventType: BEFORE_CREATE_EVENT,
-          accessToken: true,
-          refreshToken: false,
+          options: {
+            accessToken: true,
+            refreshToken: false,
+          },
         },
       };
       const beforeSignIn: backend.Endpoint = {
@@ -140,19 +142,21 @@ describe("prepare", () => {
         id: "beforeSignIn",
         blockingTrigger: {
           eventType: BEFORE_SIGN_IN_EVENT,
-          accessToken: false,
-          idToken: true,
+          options: {
+            accessToken: false,
+            idToken: true,
+          },
         },
       };
 
       prepare.inferBlockingDetails(backend.of(beforeCreate, beforeSignIn));
 
-      expect(beforeCreate.blockingTrigger.accessToken).to.be.true;
-      expect(beforeCreate.blockingTrigger.idToken).to.be.true;
-      expect(beforeCreate.blockingTrigger.refreshToken).to.be.false;
-      expect(beforeSignIn.blockingTrigger.accessToken).to.be.true;
-      expect(beforeSignIn.blockingTrigger.idToken).to.be.true;
-      expect(beforeSignIn.blockingTrigger.refreshToken).to.be.false;
+      expect(beforeCreate.blockingTrigger.options?.accessToken).to.be.true;
+      expect(beforeCreate.blockingTrigger.options?.idToken).to.be.true;
+      expect(beforeCreate.blockingTrigger.options?.refreshToken).to.be.false;
+      expect(beforeSignIn.blockingTrigger.options?.accessToken).to.be.true;
+      expect(beforeSignIn.blockingTrigger.options?.idToken).to.be.true;
+      expect(beforeSignIn.blockingTrigger.options?.refreshToken).to.be.false;
     });
   });
 });
