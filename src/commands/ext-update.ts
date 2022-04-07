@@ -21,6 +21,7 @@ import {
   SourceOrigin,
   confirm,
   diagnoseAndFixProject,
+  isLocalPath,
 } from "../extensions/extensionsHelper";
 import * as paramHelper from "../extensions/paramHelper";
 import {
@@ -71,8 +72,18 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
   .action(async (instanceId: string, updateSource: string, options: Options) => {
     if (options.local) {
       const projectId = getProjectId(options);
-
       const config = manifest.loadConfig(options);
+
+      const oldRefOrPath = manifest.getInstanceSource(instanceId, config);
+      if (isLocalPath(oldRefOrPath)) {
+        throw new FirebaseError(
+          `Updating an extension with local source is not neccessary. ` +
+            `Rerun "firebase deploy" or restart the emulator after making changes to your local extension source.` +
+            `If you've edited the extension param spec, you can edit an extension instance's params ` +
+            `interactively by running "firebase ext:configure --local {instance-id}"`
+        );
+      }
+
       const oldRef = manifest.getInstanceRef(instanceId, config);
       const oldExtensionVersion = await extensionsApi.getExtensionVersion(
         refs.toExtensionVersionRef(oldRef)
@@ -80,14 +91,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
       updateSource = inferUpdateSource(updateSource, refs.toExtensionRef(oldRef));
 
       const newSourceOrigin = getSourceOrigin(updateSource);
-      if (newSourceOrigin === SourceOrigin.LOCAL) {
-        throw new FirebaseError(
-          `Updating an extension with local source is not neccessary. ` +
-            `Rerun "firebase deploy" or restart the emulator after making changes to your local extension source.` +
-            `If you've edited the extension param spec, you can edit an extension instance's params ` +
-            `interactively by running "firebase ext:configure --local {instance-id}"`
-        );
-      } else if (
+      if (
         ![SourceOrigin.PUBLISHED_EXTENSION, SourceOrigin.PUBLISHED_EXTENSION_VERSION].includes(
           newSourceOrigin
         )

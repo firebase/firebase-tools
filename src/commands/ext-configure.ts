@@ -59,8 +59,7 @@ export default new Command("ext:configure <extensionInstanceId>")
       const refOrPath = manifest.getInstanceSource(instanceId, config);
       const isLocalSource = isLocalPath(refOrPath);
 
-      // TODO: LOAD spec FROM LOCAL AND EXTVER
-      let spec;
+      let spec: extensionsApi.ExtensionSpec;
       if (isLocalSource) {
         const source = await createSourceFromLocation(needProjectId({ projectId }), refOrPath);
         spec = source.spec;

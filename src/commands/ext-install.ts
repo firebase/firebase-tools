@@ -91,16 +91,17 @@ export default new Command("ext:install [extensionName]")
     let extensionVersion;
 
     // TODO(b/220900194): Remove when deprecating old install flow.
+    // --local doesn't support urlPath so this will become dead codepath.
     if (isUrlPath(extensionName)) {
       throw new FirebaseError(
         `Installing with a source url is no longer supported in the CLI. Please use Firebase Console instead.`
       );
     }
 
-    // If the user types in URL, or a local path (prefixed with ~/, ../, or ./), install from local/URL source.
+    // If the user types in a local path (prefixed with ~/, ../, or ./), install from local source.
     // Otherwise, treat the input as an extension reference and proceed with reference-based installation.
     if (isLocalPath(extensionName)) {
-      // TODO: Create source should happen at deploy time.
+      // TODO(b/228444119): Create source should happen at deploy time.
       // Should parse spec locally so we don't need project ID.
       source = await createSourceFromLocation(needProjectId({ projectId }), extensionName);
       displayExtInfo(extensionName, "", source.spec);
@@ -109,7 +110,7 @@ export default new Command("ext:install [extensionName]")
       void track("Extension Install", "Install by Extension Ref", options.interactive ? 1 : 0);
       extensionName = canonicalizeRefName(extensionName, options.interactive);
       extensionVersion = await extensionsApi.getExtensionVersion(extensionName);
-      infoExtensionVersion({
+      await infoExtensionVersion({
         extensionName,
         extensionVersion,
       });
@@ -190,6 +191,11 @@ export default new Command("ext:install [extensionName]")
     }
   });
 
+/**
+ * Canonicalize a user-inputted ref string.
+ * 1. Infer firebase publisher if not provided
+ * 2. Infer "latest" as the version if not provided
+ */
 function canonicalizeRefName(extensionName: string, interactive: boolean): string {
   // Infer firebase if publisher ID not provided.
   if (extensionName.split("/").length < 2) {
@@ -208,7 +214,7 @@ function canonicalizeRefName(extensionName: string, interactive: boolean): strin
 async function infoExtensionVersion(args: {
   extensionName: string;
   extensionVersion: extensionsApi.ExtensionVersion;
-}) {
+}): Promise<void> {
   const ref = refs.parse(args.extensionName);
   const extension = await extensionsApi.getExtension(refs.toExtensionRef(ref));
   displayExtInfo(args.extensionName, ref.publisherId, args.extensionVersion.spec, true);
