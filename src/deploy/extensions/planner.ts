@@ -7,6 +7,19 @@ import { getFirebaseProjectParams, substituteParams } from "../../extensions/ext
 import { logger } from "../../logger";
 import { readInstanceParam } from "../../extensions/manifest";
 import { ParamBindingOptions } from "../../extensions/paramHelper";
+import { readExtensionYaml } from "../../extensions/emulator/specHelper";
+
+export interface InstanceSpec {
+  instanceId: string;
+  // OneOf:
+  ref?: refs.Ref; // For published extensions
+  localPath?: string; // For local extensions
+  // Used by getExtensionVersion, getExtension, and getExtensionSpec.
+  // You should stronly prefer accessing via those methods
+  extensionVersion?: extensionsApi.ExtensionVersion;
+  extension?: extensionsApi.Extension;
+  extensionSpec?: extensionsApi.ExtensionSpec;
+}
 
 /**
  * Instance spec used by manifest.
@@ -17,26 +30,17 @@ import { ParamBindingOptions } from "../../extensions/paramHelper";
  * So far this is only used for writing to the manifest, but in the future
  * we want to read manifest into this interface.
  */
-export interface ManifestInstanceSpec {
-  instanceId: string;
+export interface ManifestInstanceSpec extends InstanceSpec {
   params: Record<string, ParamBindingOptions>;
-  ref?: refs.Ref;
-  localPath?: string;
-  paramSpecs?: extensionsApi.Param[];
 }
 
-// TODO(lihes): Rename this to something like DeploymentInstanceSpec.
 /**
  * Instance spec used for deploying extensions to firebase project or emulator.
  *
  * Param bindings are expected to be collapsed from ParamBindingOptions into a Record<string, string>.
  */
-export interface InstanceSpec {
-  instanceId: string;
-  ref?: refs.Ref;
+export interface DeploymentInstanceSpec extends InstanceSpec {
   params: Record<string, string>;
-  extensionVersion?: extensionsApi.ExtensionVersion;
-  extension?: extensionsApi.Extension;
 }
 
 /**
@@ -69,15 +73,31 @@ export async function getExtension(i: InstanceSpec): Promise<extensionsApi.Exten
   return i.extension;
 }
 
+/** Caching fetcher for the corresponding ExtensionSpec for an instance spec.
+ */
+export async function getExtensionSpec(i: InstanceSpec): Promise<extensionsApi.ExtensionSpec> {
+  if (!i.extensionSpec) {
+    if (i.ref) {
+      const extensionVersion = await getExtensionVersion(i);
+      i.extensionSpec = extensionVersion.spec;
+    } else if (i.localPath) {
+      i.extensionSpec = await readExtensionYaml(i.localPath);
+    } else {
+      throw new FirebaseError("InstanceSpec had no ref or localPath, unable to get extensionSpec");
+    }
+  }
+  return i.extensionSpec;
+}
+
 /**
  * have checks a project for what extension instances are currently installed,
  * and returns them as a list of instanceSpecs.
  * @param projectId
  */
-export async function have(projectId: string): Promise<InstanceSpec[]> {
+export async function have(projectId: string): Promise<DeploymentInstanceSpec[]> {
   const instances = await extensionsApi.listInstances(projectId);
   return instances.map((i) => {
-    const dep: InstanceSpec = {
+    const dep: DeploymentInstanceSpec = {
       instanceId: i.name.split("/").pop()!,
       params: i.config.params,
     };
@@ -108,8 +128,8 @@ export async function want(args: {
   projectDir: string;
   extensions: Record<string, string>;
   emulatorMode?: boolean;
-}): Promise<InstanceSpec[]> {
-  const instanceSpecs: InstanceSpec[] = [];
+}): Promise<DeploymentInstanceSpec[]> {
+  const instanceSpecs: DeploymentInstanceSpec[] = [];
   const errors: FirebaseError[] = [];
   for (const e of Object.entries(args.extensions)) {
     try {

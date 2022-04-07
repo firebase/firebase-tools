@@ -256,7 +256,7 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
         ref: !isLocalSource ? ref : undefined,
         localPath: isLocalSource ? extensionName : undefined,
         params: paramBindingOptions,
-        paramSpecs: spec.params,
+        extensionSpec: spec,
       },
     ],
     config,

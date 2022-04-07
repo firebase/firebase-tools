@@ -158,6 +158,24 @@ describe("manifest", () => {
               version: "1.0.0",
             },
             params: { a: { baseValue: "pikachu" }, b: { baseValue: "bulbasaur" } },
+            extensionSpec: {
+              name: "bigquery-export",
+              version: "1.0.0",
+              resources: [],
+              sourceUrl: "",
+              params: [
+                {
+                  param: "a",
+                  label: "",
+                  type: ParamType.STRING,
+                },
+                {
+                  param: "b",
+                  label: "",
+                  type: ParamType.STRING,
+                },
+              ],
+            },
           },
           {
             instanceId: "instance-2",
@@ -167,6 +185,24 @@ describe("manifest", () => {
               version: "2.0.0",
             },
             params: { a: { baseValue: "eevee" }, b: { baseValue: "squirtle" } },
+            extensionSpec: {
+              name: "bigquery-export",
+              version: "1.0.0",
+              resources: [],
+              sourceUrl: "",
+              params: [
+                {
+                  param: "a",
+                  label: "",
+                  type: ParamType.SECRET,
+                },
+                {
+                  param: "b",
+                  label: "",
+                  type: ParamType.SECRET,
+                },
+              ],
+            },
           },
         ],
         generateBaseConfig(),
@@ -205,6 +241,24 @@ describe("manifest", () => {
               version: "1.0.0",
             },
             params: { b: { baseValue: "bulbasaur" }, a: { baseValue: "absol" } },
+            extensionSpec: {
+              name: "bigquery-export",
+              version: "1.0.0",
+              resources: [],
+              sourceUrl: "",
+              params: [
+                {
+                  param: "a",
+                  label: "",
+                  type: ParamType.STRING,
+                },
+                {
+                  param: "b",
+                  label: "",
+                  type: ParamType.STRING,
+                },
+              ],
+            },
           },
           {
             instanceId: "instance-2",
@@ -214,6 +268,24 @@ describe("manifest", () => {
               version: "2.0.0",
             },
             params: { e: { baseValue: "eevee" }, s: { baseValue: "squirtle" } },
+            extensionSpec: {
+              name: "bigquery-export",
+              version: "1.0.0",
+              resources: [],
+              sourceUrl: "",
+              params: [
+                {
+                  param: "a",
+                  label: "",
+                  type: ParamType.STRING,
+                },
+                {
+                  param: "b",
+                  label: "",
+                  type: ParamType.STRING,
+                },
+              ],
+            },
           },
         ],
         generateBaseConfig(),
@@ -255,6 +327,24 @@ describe("manifest", () => {
               version: "1.0.0",
             },
             params: { a: { baseValue: "pikachu" }, b: { baseValue: "bulbasaur" } },
+            extensionSpec: {
+              name: "bigquery-export",
+              version: "1.0.0",
+              resources: [],
+              sourceUrl: "",
+              params: [
+                {
+                  param: "a",
+                  label: "",
+                  type: ParamType.STRING,
+                },
+                {
+                  param: "b",
+                  label: "",
+                  type: ParamType.STRING,
+                },
+              ],
+            },
           },
           {
             instanceId: "instance-2",
@@ -264,6 +354,24 @@ describe("manifest", () => {
               version: "2.0.0",
             },
             params: { a: { baseValue: "eevee" }, b: { baseValue: "squirtle" } },
+            extensionSpec: {
+              name: "bigquery-export",
+              version: "1.0.0",
+              resources: [],
+              sourceUrl: "",
+              params: [
+                {
+                  param: "a",
+                  label: "",
+                  type: ParamType.STRING,
+                },
+                {
+                  param: "b",
+                  label: "",
+                  type: ParamType.STRING,
+                },
+              ],
+            },
           },
         ],
         generateBaseConfig(),
@@ -305,6 +413,24 @@ describe("manifest", () => {
               version: "1.0.0",
             },
             params: { a: { baseValue: "pikachu" }, b: { baseValue: "" } },
+            extensionSpec: {
+              name: "bigquery-export",
+              version: "1.0.0",
+              resources: [],
+              sourceUrl: "",
+              params: [
+                {
+                  param: "a",
+                  label: "",
+                  type: ParamType.STRING,
+                },
+                {
+                  param: "b",
+                  label: "",
+                  type: ParamType.STRING,
+                },
+              ],
+            },
           },
         ],
         generateBaseConfig(),
@@ -352,18 +478,24 @@ describe("manifest", () => {
               a: { baseValue: "base", local: "pikachu" },
               b: { baseValue: "base", local: "bulbasaur" },
             },
-            paramSpecs: [
-              {
-                param: "a",
-                label: "",
-                type: ParamType.SECRET,
-              },
-              {
-                param: "b",
-                label: "",
-                type: ParamType.SECRET,
-              },
-            ],
+            extensionSpec: {
+              name: "bigquery-export",
+              version: "1.0.0",
+              resources: [],
+              sourceUrl: "",
+              params: [
+                {
+                  param: "a",
+                  label: "",
+                  type: ParamType.SECRET,
+                },
+                {
+                  param: "b",
+                  label: "",
+                  type: ParamType.SECRET,
+                },
+              ],
+            },
           },
           {
             instanceId: "instance-2",
@@ -376,18 +508,24 @@ describe("manifest", () => {
               a: { baseValue: "base", local: "eevee" },
               b: { baseValue: "base", local: "squirtle" },
             },
-            paramSpecs: [
-              {
-                param: "a",
-                label: "",
-                type: ParamType.SECRET,
-              },
-              {
-                param: "b",
-                label: "",
-                type: ParamType.SECRET,
-              },
-            ],
+            extensionSpec: {
+              name: "bigquery-export",
+              version: "1.0.0",
+              resources: [],
+              sourceUrl: "",
+              params: [
+                {
+                  param: "a",
+                  label: "",
+                  type: ParamType.SECRET,
+                },
+                {
+                  param: "b",
+                  label: "",
+                  type: ParamType.SECRET,
+                },
+              ],
+            },
           },
         ],
         generateBaseConfig(),
@@ -421,18 +559,24 @@ describe("manifest", () => {
               a: { baseValue: "base", local: "pikachu" },
               b: { baseValue: "base" },
             },
-            paramSpecs: [
-              {
-                param: "a",
-                label: "",
-                type: ParamType.SECRET,
-              },
-              {
-                param: "b",
-                label: "",
-                type: ParamType.SECRET,
-              },
-            ],
+            extensionSpec: {
+              name: "bigquery-export",
+              version: "1.0.0",
+              resources: [],
+              sourceUrl: "",
+              params: [
+                {
+                  param: "a",
+                  label: "",
+                  type: ParamType.SECRET,
+                },
+                {
+                  param: "b",
+                  label: "",
+                  type: ParamType.SECRET,
+                },
+              ],
+            },
           },
         ],
         generateBaseConfig(),
@@ -461,18 +605,24 @@ describe("manifest", () => {
               a: { baseValue: "base", local: "pikachu" },
               b: { baseValue: "base", local: "bulbasaur" },
             },
-            paramSpecs: [
-              {
-                param: "a",
-                label: "",
-                type: ParamType.SECRET,
-              },
-              {
-                param: "b",
-                label: "",
-                type: ParamType.STRING,
-              },
-            ],
+            extensionSpec: {
+              name: "bigquery-export",
+              version: "1.0.0",
+              resources: [],
+              sourceUrl: "",
+              params: [
+                {
+                  param: "a",
+                  label: "",
+                  type: ParamType.SECRET,
+                },
+                {
+                  param: "b",
+                  label: "",
+                  type: ParamType.STRING,
+                },
+              ],
+            },
           },
         ],
         generateBaseConfig(),
@@ -502,18 +652,24 @@ describe("manifest", () => {
               a: { baseValue: "base" },
               b: { baseValue: "base" },
             },
-            paramSpecs: [
-              {
-                param: "a",
-                label: "",
-                type: ParamType.SECRET,
-              },
-              {
-                param: "b",
-                label: "",
-                type: ParamType.STRING,
-              },
-            ],
+            extensionSpec: {
+              name: "bigquery-export",
+              version: "1.0.0",
+              resources: [],
+              sourceUrl: "",
+              params: [
+                {
+                  param: "a",
+                  label: "",
+                  type: ParamType.SECRET,
+                },
+                {
+                  param: "b",
+                  label: "",
+                  type: ParamType.STRING,
+                },
+              ],
+            },
           },
         ],
         generateBaseConfig(),
