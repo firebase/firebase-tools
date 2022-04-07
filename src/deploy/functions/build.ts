@@ -12,7 +12,7 @@ export interface Build {
 interface RequiredApi {
   // The API that should be enabled. For Google APIs, this should be a googleapis.com subdomain
   // (e.g. vision.googleapis.com)
-  apiName: string;
+  api: string;
 
   // A reason why this codebase requires this API.
   // Will be considered required for all Extensions codebases. Considered optional for Functions
@@ -261,7 +261,7 @@ export function discoverParams(build: Build): backend.Backend {
       proto.renameIfPresent(bkEndpoint, endpoint, "maxInstances", "maxInstances", resolveInt);
       proto.renameIfPresent(bkEndpoint, endpoint, "minInstances", "minInstances", resolveInt);
       proto.renameIfPresent(bkEndpoint, endpoint, "concurrency", "concurrency", resolveInt);
-      proto.copyIfPresent(bkEndpoint, endpoint, "ingressSettings")
+      proto.copyIfPresent(bkEndpoint, endpoint, "ingressSettings");
       if (endpoint.vpc) {
         bkEndpoint.vpc = {
           connector: endpoint.vpc.connector,
@@ -279,12 +279,7 @@ export function discoverParams(build: Build): backend.Backend {
   }
 
   const bkend = backend.of(...bkEndpoints);
-  for (const requiredAPI of build.requiredAPIs) {
-    bkend.requiredAPIs.push({
-      reason: requiredAPI.reason,
-      api: requiredAPI.apiName,
-    });
-  }
+  bkend.requiredAPIs = build.requiredAPIs;
   return bkend;
 }
 
