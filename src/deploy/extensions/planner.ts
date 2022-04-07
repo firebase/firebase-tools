@@ -3,7 +3,11 @@ import * as semver from "semver";
 import * as extensionsApi from "../../extensions/extensionsApi";
 import * as refs from "../../extensions/refs";
 import { FirebaseError } from "../../error";
-import { getFirebaseProjectParams, substituteParams } from "../../extensions/extensionsHelper";
+import {
+  getFirebaseProjectParams,
+  isLocalPath,
+  substituteParams,
+} from "../../extensions/extensionsHelper";
 import { logger } from "../../logger";
 import { readInstanceParam } from "../../extensions/manifest";
 import { ParamBindingOptions } from "../../extensions/paramHelper";
@@ -134,6 +138,13 @@ export async function want(args: {
   for (const e of Object.entries(args.extensions)) {
     try {
       const instanceId = e[0];
+      // TODO(lihes): Remove once firebase deploy supports ext with local source.
+      if (isLocalPath(e[1])) {
+        logger.warn(
+          `Unable to deploy instance ${instanceId} because it has a local source, please use "firebase ext:install" instead.`
+        );
+        continue;
+      }
       const ref = refs.parse(e[1]);
       ref.version = await resolveVersion(ref);
 
