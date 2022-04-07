@@ -56,7 +56,7 @@ export default new Command("ext:configure <extensionInstanceId>")
 
       const config = manifest.loadConfig(options);
 
-      const refOrPath = manifest.getInstanceSource(instanceId, config);
+      const refOrPath = manifest.getInstanceTarget(instanceId, config);
       const isLocalSource = isLocalPath(refOrPath);
 
       let spec: extensionsApi.ExtensionSpec;
@@ -104,7 +104,6 @@ export default new Command("ext:configure <extensionInstanceId>")
             localPath: isLocalSource ? refOrPath : undefined,
             params: newParamOptions,
             extensionSpec: spec,
-            extensionVersion,
           },
         ],
         config,

@@ -57,9 +57,9 @@ describe("manifest", () => {
     });
   });
 
-  describe(`${manifest.getInstanceSource.name}`, () => {
+  describe(`${manifest.getInstanceTarget.name}`, () => {
     it("should return the correct source for a local instance", () => {
-      const result = manifest.getInstanceSource(
+      const result = manifest.getInstanceTarget(
         "delete-user-data-local",
         generateConfigWithLocal()
       );
@@ -68,14 +68,14 @@ describe("manifest", () => {
     });
 
     it("should return the correct source for an instance with ref", () => {
-      const result = manifest.getInstanceSource("delete-user-data", generateConfigWithLocal());
+      const result = manifest.getInstanceTarget("delete-user-data", generateConfigWithLocal());
 
       expect(result).to.equal("firebase/delete-user-data@0.1.12");
     });
 
     it("should throw when looking for a non-existing instance", () => {
       expect(() =>
-        manifest.getInstanceSource("does-not-exist", generateConfigWithLocal())
+        manifest.getInstanceTarget("does-not-exist", generateConfigWithLocal())
       ).to.throw(FirebaseError);
     });
   });

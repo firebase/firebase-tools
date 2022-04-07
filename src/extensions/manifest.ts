@@ -153,7 +153,7 @@ export function instanceExists(instanceId: string, config: Config): boolean {
 /**
  * Gets the instance's extension ref string or local path given an instanceId.
  */
-export function getInstanceSource(instanceId: string, config: Config): string {
+export function getInstanceTarget(instanceId: string, config: Config): string {
   if (!instanceExists(instanceId, config)) {
     throw new FirebaseError(`Could not find extension instance ${instanceId} in firebase.json`);
   }
@@ -164,7 +164,7 @@ export function getInstanceSource(instanceId: string, config: Config): string {
  * Gets the instance's extension ref if exists.
  */
 export function getInstanceRef(instanceId: string, config: Config): refs.Ref {
-  const source = getInstanceSource(instanceId, config);
+  const source = getInstanceTarget(instanceId, config);
   if (isLocalPath(source)) {
     throw new FirebaseError(
       `Extension instance ${instanceId} doesn't have a ref because it is from a local source`

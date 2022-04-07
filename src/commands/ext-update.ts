@@ -74,7 +74,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
       const projectId = getProjectId(options);
       const config = manifest.loadConfig(options);
 
-      const oldRefOrPath = manifest.getInstanceSource(instanceId, config);
+      const oldRefOrPath = manifest.getInstanceTarget(instanceId, config);
       if (isLocalPath(oldRefOrPath)) {
         throw new FirebaseError(
           `Updating an extension with local source is not neccessary. ` +
