@@ -1,9 +1,9 @@
 import * as backend from "../backend";
 import * as iam from "../../../gcp/iam";
 import * as events from "../../../functions/events";
+import * as auth from "./auth";
 import { obtainStorageBindings, ensureStorageTriggerRegion } from "./storage";
 import { ensureFirebaseAlertsTriggerRegion } from "./firebaseAlerts";
-import { validateAuthBlockingTrigger } from "./auth";
 
 /** A standard void No Op */
 const noop = (): Promise<void> => Promise.resolve();
@@ -28,6 +28,8 @@ export interface Service {
     ep: backend.Endpoint & backend.BlockingTriggered,
     want: backend.Backend
   ) => void;
+  registerTrigger: (ep: backend.Endpoint & backend.BlockingTriggered, u: boolean) => Promise<void>;
+  unregisterTrigger: (ep: backend.Endpoint & backend.BlockingTriggered) => Promise<void>;
 }
 
 /** A noop service object, useful for v1 events */
@@ -37,6 +39,8 @@ export const NoOpService: Service = {
   requiredProjectBindings: undefined,
   ensureTriggerRegion: noop,
   validateTrigger: noop,
+  registerTrigger: noop,
+  unregisterTrigger: noop,
 };
 
 /** A pubsub service object */
@@ -46,6 +50,8 @@ export const PubSubService: Service = {
   requiredProjectBindings: noopProjectBindings,
   ensureTriggerRegion: noop,
   validateTrigger: noop,
+  registerTrigger: noop,
+  unregisterTrigger: noop,
 };
 
 /** A storage service object */
@@ -55,6 +61,8 @@ export const StorageService: Service = {
   requiredProjectBindings: obtainStorageBindings,
   ensureTriggerRegion: ensureStorageTriggerRegion,
   validateTrigger: noop,
+  registerTrigger: noop,
+  unregisterTrigger: noop,
 };
 
 /** A firebase alerts service object */
@@ -64,6 +72,8 @@ export const FirebaseAlertsService: Service = {
   requiredProjectBindings: noopProjectBindings,
   ensureTriggerRegion: ensureFirebaseAlertsTriggerRegion,
   validateTrigger: noop,
+  registerTrigger: noop,
+  unregisterTrigger: noop,
 };
 
 /** A auth blocking service object */
@@ -72,7 +82,9 @@ export const AuthBlockingService: Service = {
   api: "identitytoolkit.googleapis.com",
   requiredProjectBindings: undefined,
   ensureTriggerRegion: noop,
-  validateTrigger: validateAuthBlockingTrigger,
+  validateTrigger: auth.validateBlockingTrigger,
+  registerTrigger: auth.registerBlockingTrigger,
+  unregisterTrigger: auth.unregisterBlockingTrigger,
 };
 
 /** Mapping from event type string to service object */

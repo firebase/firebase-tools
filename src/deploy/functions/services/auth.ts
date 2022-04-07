@@ -11,7 +11,7 @@ const BEFORE_CREATE = events.v1.BEFORE_CREATE_EVENT || events.v2.BEFORE_CREATE_E
  * @param endpoint the Auth Blocking endpoint
  * @param wantBackend the backend we are deploying
  */
-export function validateAuthBlockingTrigger(
+export function validateBlockingTrigger(
   endpoint: backend.Endpoint & backend.BlockingTriggered,
   wantBackend: backend.Backend
 ): void {
@@ -59,7 +59,7 @@ function configChanged(
  * @param endpoint the blocking endpoint
  * @param update if this registration is an update
  */
-export async function registerTrigger(
+export async function registerBlockingTrigger(
   endpoint: backend.Endpoint & backend.BlockingTriggered,
   update: boolean
 ): Promise<void> {
@@ -101,7 +101,7 @@ export async function registerTrigger(
  * Un-registers the auth blocking trigger from identity platform. If the endpoint uri is not on the resource, we do nothing.
  * @param endpoint the blocking endpoint
  */
-export async function unregisterTrigger(
+export async function unregisterBlockingTrigger(
   endpoint: backend.Endpoint & backend.BlockingTriggered
 ): Promise<void> {
   const blockingConfig = await identityPlatform.getBlockingFunctionsConfig(endpoint.project);

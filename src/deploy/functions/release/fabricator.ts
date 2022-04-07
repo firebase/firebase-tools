@@ -21,7 +21,7 @@ import * as reporter from "./reporter";
 import * as run from "../../../gcp/run";
 import * as scheduler from "../../../gcp/cloudscheduler";
 import * as utils from "../../../utils";
-import * as auth from "../services/auth";
+import * as services from "../services";
 import { AUTH_BLOCKING_EVENTS } from "../../../functions/events/v2";
 
 // TODO: Tune this for better performance.
@@ -558,11 +558,9 @@ export class Fabricator {
     endpoint: backend.Endpoint & backend.BlockingTriggered,
     update: boolean
   ): Promise<void> {
-    if (AUTH_BLOCKING_EVENTS.includes(endpoint.blockingTrigger.eventType)) {
-      await this.executor
-        .run(() => auth.registerTrigger(endpoint, update))
-        .catch(rethrowAs(endpoint, "register blocking trigger"));
-    }
+    await this.executor
+      .run(() => services.serviceForEndpoint(endpoint).registerTrigger(endpoint, update))
+      .catch(rethrowAs(endpoint, "register blocking trigger"));
   }
 
   async deleteScheduleV1(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
@@ -595,11 +593,9 @@ export class Fabricator {
   async unregisterBlockingTrigger(
     endpoint: backend.Endpoint & backend.BlockingTriggered
   ): Promise<void> {
-    if (AUTH_BLOCKING_EVENTS.includes(endpoint.blockingTrigger.eventType)) {
-      await this.executor
-        .run(() => auth.unregisterTrigger(endpoint))
-        .catch(rethrowAs(endpoint, "unregister blocking trigger"));
-    }
+    await this.executor
+      .run(() => services.serviceForEndpoint(endpoint).unregisterTrigger(endpoint))
+      .catch(rethrowAs(endpoint, "unregister blocking trigger"));
   }
 
   logOpStart(op: string, endpoint: backend.Endpoint): void {
