@@ -290,6 +290,41 @@ describe("manifest", () => {
         false
       );
     });
+
+    it("should not write empty values", async () => {
+      // Chooses to overwrite instead of merge.
+      sandbox.stub(prompt, "promptOnce").resolves(true);
+
+      await manifest.writeToManifest(
+        [
+          {
+            instanceId: "instance-1",
+            ref: {
+              publisherId: "firebase",
+              extensionId: "bigquery-export",
+              version: "1.0.0",
+            },
+            params: { a: { baseValue: "pikachu" }, b: { baseValue: "" } },
+          },
+        ],
+        generateBaseConfig(),
+        { nonInteractive: false, force: false },
+        true /** allowOverwrite */
+      );
+      expect(writeProjectFileStub).calledWithExactly("firebase.json", {
+        extensions: {
+          // Original list deleted here.
+          "instance-1": "firebase/bigquery-export@1.0.0",
+        },
+      });
+
+      expect(askWriteProjectFileStub).to.have.been.calledOnce;
+      expect(askWriteProjectFileStub).calledWithExactly(
+        "extensions/instance-1.env",
+        `a=pikachu`,
+        false
+      );
+    });
   });
 
   describe(`${manifest.writeLocalSecrets.name}`, () => {

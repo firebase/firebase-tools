@@ -744,12 +744,10 @@ export class FunctionsEmulator implements EmulatorInstance {
     signatureType: SignatureType,
     schedule: EventSchedule | undefined
   ): Promise<boolean> {
-    const pubsubPort = EmulatorRegistry.getPort(Emulators.PUBSUB);
-    if (!pubsubPort) {
+    const pubsubEmulator = EmulatorRegistry.get(Emulators.PUBSUB) as PubsubEmulator | undefined;
+    if (!pubsubEmulator) {
       return false;
     }
-
-    const pubsubEmulator = EmulatorRegistry.get(Emulators.PUBSUB) as PubsubEmulator;
 
     logger.debug(`addPubsubTrigger`, JSON.stringify({ eventTrigger }));
 
