@@ -32,6 +32,7 @@ import {
   diagnoseAndFixProject,
   isUrlPath,
   isLocalPath,
+  canonicalizeRefInput,
 } from "../extensions/extensionsHelper";
 import { update } from "../extensions/updateHelper";
 import { getRandomString } from "../extensions/utils";
@@ -108,7 +109,7 @@ export default new Command("ext:install [extensionName]")
       void track("Extension Install", "Install by Source", options.interactive ? 1 : 0);
     } else {
       void track("Extension Install", "Install by Extension Ref", options.interactive ? 1 : 0);
-      extensionName = canonicalizeRefName(extensionName, options.interactive);
+      extensionName = canonicalizeRefInput(extensionName, options.interactive);
       extensionVersion = await extensionsApi.getExtensionVersion(extensionName);
       await infoExtensionVersion({
         extensionName,
@@ -190,26 +191,6 @@ export default new Command("ext:install [extensionName]")
       throw err;
     }
   });
-
-/**
- * Canonicalize a user-inputted ref string.
- * 1. Infer firebase publisher if not provided
- * 2. Infer "latest" as the version if not provided
- */
-function canonicalizeRefName(extensionName: string, interactive: boolean): string {
-  // Infer firebase if publisher ID not provided.
-  if (extensionName.split("/").length < 2) {
-    const [extensionID, version] = extensionName.split("@");
-    extensionName = `firebase/${extensionID}@${version || "latest"}`;
-  }
-  // Get the correct version for a given extension reference from the Registry API.
-  const ref = refs.parse(extensionName);
-  if (!ref.version) {
-    void track("Extension Install", "Install by Extension Version Ref", interactive ? 1 : 0);
-    extensionName = `${extensionName}@latest`;
-  }
-  return extensionName;
-}
 
 async function infoExtensionVersion(args: {
   extensionName: string;

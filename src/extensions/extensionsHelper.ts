@@ -778,3 +778,22 @@ export async function diagnoseAndFixProject(options: any): Promise<void> {
     throw new FirebaseError("Unable to proceed until all issues are resolved.");
   }
 }
+
+/**
+ * Canonicalize a user-inputted ref string.
+ * 1. Infer firebase publisher if not provided
+ * 2. Infer "latest" as the version if not provided
+ */
+export function canonicalizeRefInput(extensionName: string): string {
+  // Infer firebase if publisher ID not provided.
+  if (extensionName.split("/").length < 2) {
+    const [extensionID, version] = extensionName.split("@");
+    extensionName = `firebase/${extensionID}@${version || "latest"}`;
+  }
+  // Get the correct version for a given extension reference from the Registry API.
+  const ref = refs.parse(extensionName);
+  if (!ref.version) {
+    extensionName = `${extensionName}@latest`;
+  }
+  return extensionName;
+}
