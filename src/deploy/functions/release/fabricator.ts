@@ -8,6 +8,7 @@ import { assertExhaustive } from "../../../functional";
 import { getHumanFriendlyRuntimeName } from "../runtimes";
 import { functionsOrigin, functionsV2Origin } from "../../../api";
 import { logger } from "../../../logger";
+import * as args from "../args";
 import * as backend from "../backend";
 import * as cloudtasks from "../../../gcp/cloudtasks";
 import * as deploymentTool from "../../../deploymentTool";
@@ -43,12 +44,7 @@ export interface FabricatorArgs {
   executor: Executor;
   functionExecutor: Executor;
   appEngineLocation: string;
-
-  // Required if creating or updating any GCFv1 functions
-  sourceUrl?: string;
-
-  // Required if creating or updating any GCFv2 functions
-  storage?: Record<string, gcfV2.StorageSource>;
+  sources?: args.Context["sources"];
 }
 
 const rethrowAs =
@@ -61,15 +57,13 @@ const rethrowAs =
 export class Fabricator {
   executor: Executor;
   functionExecutor: Executor;
-  sourceUrl: string | undefined;
-  storage: Record<string, gcfV2.StorageSource> | undefined;
+  sources: args.Context["sources"];
   appEngineLocation: string;
 
   constructor(args: FabricatorArgs) {
     this.executor = args.executor;
     this.functionExecutor = args.functionExecutor;
-    this.sourceUrl = args.sourceUrl;
-    this.storage = args.storage;
+    this.sources = args.sources;
     this.appEngineLocation = args.appEngineLocation;
   }
 
@@ -196,11 +190,12 @@ export class Fabricator {
   }
 
   async createV1Function(endpoint: backend.Endpoint, scraper: SourceTokenScraper): Promise<void> {
-    if (!this.sourceUrl) {
+    const sourceUrl = this.sources?.[endpoint.codebase!]?.sourceUrl;
+    if (!sourceUrl) {
       logger.debug("Precondition failed. Cannot create a GCF function without sourceUrl");
       throw new Error("Precondition failed");
     }
-    const apiFunction = gcf.functionFromEndpoint(endpoint, this.sourceUrl);
+    const apiFunction = gcf.functionFromEndpoint(endpoint, sourceUrl);
     // As a general security practice and way to smooth out the upgrade path
     // for GCF gen 2, we are enforcing that all new GCFv1 deploys will require
     // HTTPS
@@ -252,11 +247,12 @@ export class Fabricator {
   }
 
   async createV2Function(endpoint: backend.Endpoint): Promise<void> {
-    if (!this.storage) {
+    const storage = this.sources?.[endpoint.codebase!]?.storage;
+    if (!storage) {
       logger.debug("Precondition failed. Cannot create a GCFv2 function without storage");
       throw new Error("Precondition failed");
     }
-    const apiFunction = gcfV2.functionFromEndpoint(endpoint, this.storage[endpoint.region]);
+    const apiFunction = gcfV2.functionFromEndpoint(endpoint, storage[endpoint.region]);
 
     // N.B. As of GCFv2 private preview GCF no longer creates Pub/Sub topics
     // for Pub/Sub event handlers. This may change, at which point this code
@@ -330,11 +326,12 @@ export class Fabricator {
   }
 
   async updateV1Function(endpoint: backend.Endpoint, scraper: SourceTokenScraper): Promise<void> {
-    if (!this.sourceUrl) {
+    const sourceUrl = this.sources?.[endpoint.codebase!]?.sourceUrl;
+    if (!sourceUrl) {
       logger.debug("Precondition failed. Cannot update a GCF function without sourceUrl");
       throw new Error("Precondition failed");
     }
-    const apiFunction = gcf.functionFromEndpoint(endpoint, this.sourceUrl);
+    const apiFunction = gcf.functionFromEndpoint(endpoint, sourceUrl);
     apiFunction.sourceToken = await scraper.tokenPromise();
     const resultFunction = await this.functionExecutor
       .run(async () => {
@@ -363,11 +360,12 @@ export class Fabricator {
   }
 
   async updateV2Function(endpoint: backend.Endpoint): Promise<void> {
-    if (!this.storage) {
+    const storage = this.sources?.[endpoint.codebase!]?.storage;
+    if (!storage) {
       logger.debug("Precondition failed. Cannot update a GCFv2 function without storage");
       throw new Error("Precondition failed");
     }
-    const apiFunction = gcfV2.functionFromEndpoint(endpoint, this.storage[endpoint.region]);
+    const apiFunction = gcfV2.functionFromEndpoint(endpoint, storage[endpoint.region]);
 
     // N.B. As of GCFv2 private preview the API chokes on any update call that
     // includes the pub/sub topic even if that topic is unchanged.

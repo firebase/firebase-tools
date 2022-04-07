@@ -1,5 +1,7 @@
 import * as backend from "./backend";
 import * as projectConfig from "../../functions/projectConfig";
+import { DEFAULT_CODEBASE, ValidatedConfig } from "../../functions/projectConfig";
+import { FirebaseError } from "../../error";
 
 export interface EndpointFilter {
   // If codebase is undefined, match all functions in all codebase that matches the idChunks.
@@ -129,4 +131,77 @@ export function getEndpointFilters(options: { only?: string }): EndpointFilter[]
  */
 export function getFunctionLabel(fn: backend.TargetIds): string {
   return `${fn.id}(${fn.region})`;
+}
+
+/**
+ * Returns list of codebases specified in firebase.json filtered by --only filters if present.
+ */
+export function targetCodebases(config: ValidatedConfig, filters?: EndpointFilter[]): string[] {
+  const codebasesFromConfig = new Set(Object.values(config).map((c) => c.codebase));
+  if (!filters) {
+    return [...codebasesFromConfig];
+  }
+
+  const codebasesFromFilters = new Set(
+    filters.map((f) => f.codebase).filter((c) => c !== undefined)
+  );
+
+  if (codebasesFromFilters.size === 0) {
+    return [...codebasesFromConfig];
+  }
+
+  const intersections = new Set<string>();
+  for (const codebase of codebasesFromConfig) {
+    if (codebasesFromFilters.has(codebase)) {
+      intersections.add(codebase);
+    }
+  }
+  return [...intersections];
+}
+
+/**
+ * Breakup backends by codebase.
+ *
+ * An endpoint is part a codebase if:
+ *   1. Endpoint is associated w/ the current codebase (duh).
+ *   2. Endpoint name matches name of an endoint we want to deploy
+ *
+ * Condition (2) might feel wrong but is a practical conflict resolution strategy. It allows user to "claim" an endpoint
+ * for current codebase without much hassel.
+ */
+export function groupByCodebase(
+  wantBackends: Record<string, backend.Backend>,
+  haveBackend: backend.Backend
+): Record<string, backend.Backend> {
+  const grouped: Record<string, backend.Backend> = {};
+  // currentBackends will hold endpoints not assigned to any codebase.
+  let currentBackend: backend.Backend = haveBackend;
+
+  // First, dole out endpoints using names. If resource name matches, endpoint belongs to that codebase regardless
+  // of the codebase annotation. This might feel wrong but is a practical conflict resolution strategy. It allows user
+  // to "claim" an endpoint.
+  for (const codebase of Object.keys(wantBackends)) {
+    const names = backend.allEndpoints(wantBackends[codebase]).map((e) => backend.functionName(e));
+    grouped[codebase] = backend.matchingBackend(currentBackend, (endpoint) => {
+      return names.includes(backend.functionName(endpoint));
+    });
+    // Update current backend, removing all endpoints we've assigned in this iteration.
+    currentBackend = backend.matchingBackend(currentBackend, (endpoint) => {
+      return !names.includes(backend.functionName(endpoint));
+    });
+  }
+
+  // Next, dole out endpoints using codebase annotation.
+  for (const codebase of Object.keys(wantBackends)) {
+    const matchedBackend = backend.matchingBackend(currentBackend, (endpoint) => {
+      return endpoint.codebase === codebase;
+    });
+    grouped[codebase] = backend.merge(grouped[codebase], matchedBackend);
+    // Update current backend, removing all endpoints we've assigned in this iteration.
+    const matchedNames = backend.allEndpoints(matchedBackend).map((e) => backend.functionName(e));
+    currentBackend = backend.matchingBackend(currentBackend, (endpoint) => {
+      return !matchedNames.includes(backend.functionName(endpoint));
+    });
+  }
+  return grouped;
 }

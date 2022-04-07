@@ -29,7 +29,7 @@ function assertPreconditions(context: args.Context, options: Options, payload: a
     }
   };
   assertExists(context.config, "Functions config unexpectedly empty.");
-  assertExists(context.source, "Functions sources unexpectedly empty.");
+  assertExists(context.sources, "Functions sources unexpectedly empty.");
   assertExists(payload.codebase, "Functions payload unexpectedly empty.");
 }
 /** Releases new versions of functions to prod. */
@@ -40,8 +40,18 @@ export async function release(
 ): Promise<void> {
   assertPreconditions(context, options, payload);
 
-  const { wantBackend, haveBackend } = payload.codebase!;
-  const plan = planner.createDeploymentPlan(wantBackend, haveBackend, context.filters);
+  let plan: planner.DeploymentPlan = {};
+  for (const [codebase, { wantBackend, haveBackend }] of Object.entries(payload.codebase!)) {
+    plan = {
+      ...plan,
+      ...planner.createDeploymentPlan({
+        codebase,
+        wantBackend,
+        haveBackend,
+        filters: context.filters,
+      }),
+    };
+  }
 
   const fnsToDelete = Object.values(plan)
     .map((regionalChanges) => regionalChanges.endpointsToDelete)
@@ -67,8 +77,7 @@ export async function release(
   const fab = new fabricator.Fabricator({
     functionExecutor,
     executor: new executor.QueueExecutor({}),
-    sourceUrl: context.source!.sourceUrl!,
-    storage: context.source!.storage!,
+    sources: context.sources,
     appEngineLocation: getAppEngineLocation(context.firebaseConfig),
   });
 
@@ -81,9 +90,10 @@ export async function release(
   // uri field. createDeploymentPlan copies endpoints by reference. Both of these
   // subtleties are so we can take out a round trip API call to get the latest
   // trigger URLs by calling existingBackend again.
-  printTriggerUrls(payload.codebase!.wantBackend);
+  const wantBackend = backend.merge(...Object.values(payload.codebase!).map((p) => p.wantBackend));
+  printTriggerUrls(wantBackend);
 
-  const haveEndpoints = backend.allEndpoints(payload.codebase!.wantBackend);
+  const haveEndpoints = backend.allEndpoints(wantBackend);
   const deletedEndpoints = Object.values(plan)
     .map((r) => r.endpointsToDelete)
     .reduce(reduceFlat, []);

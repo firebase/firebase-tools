@@ -5,35 +5,81 @@ import * as fs from "fs";
 import { checkHttpIam } from "./checkIam";
 import { logSuccess, logWarning } from "../../utils";
 import { Options } from "../../options";
+import { FirebaseError } from "../../error";
+import { configForCodebase } from "../../functions/projectConfig";
 import * as args from "./args";
 import * as gcs from "../../gcp/storage";
 import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfv2 from "../../gcp/cloudfunctionsv2";
 import * as backend from "./backend";
-import { FirebaseError } from "../../error";
 
 setGracefulCleanup();
 
-async function uploadSourceV1(context: args.Context, region: string): Promise<void> {
-  const uploadUrl = await gcf.generateUploadUrl(context.projectId, region);
-  context.source!.sourceUrl = uploadUrl;
+async function uploadSourceV1(
+  projectId: string,
+  source: args.Source,
+  wantBackend: backend.Backend
+): Promise<string | undefined> {
+  const v1Endpoints = backend.allEndpoints(wantBackend).filter((e) => e.platform === "gcfv1");
+  if (v1Endpoints.length === 0) {
+    return;
+  }
+  const region = backend.allEndpoints(wantBackend)[0].region; // Just pick a region to upload the source.
+  const uploadUrl = await gcf.generateUploadUrl(projectId, region);
   const uploadOpts = {
-    file: context.source!.functionsSourceV1!,
-    stream: fs.createReadStream(context.source!.functionsSourceV1!),
+    file: source.functionsSourceV1!,
+    stream: fs.createReadStream(source.functionsSourceV1!),
   };
   await gcs.upload(uploadOpts, uploadUrl, {
     "x-goog-content-length-range": "0,104857600",
   });
+  return uploadUrl;
 }
 
-async function uploadSourceV2(context: args.Context, region: string): Promise<void> {
-  const res = await gcfv2.generateUploadUrl(context.projectId, region);
+async function uploadSourceRegionV2(
+  projectId: string,
+  source: args.Source,
+  region: string
+): Promise<gcfv2.StorageSource> {
+  const res = await gcfv2.generateUploadUrl(projectId, region);
   const uploadOpts = {
-    file: context.source!.functionsSourceV2!,
-    stream: fs.createReadStream(context.source!.functionsSourceV2!),
+    file: source.functionsSourceV2!,
+    stream: fs.createReadStream(source.functionsSourceV2!),
   };
   await gcs.upload(uploadOpts, res.uploadUrl);
-  context.source!.storage = { ...context.source!.storage, [region]: res.storageSource };
+  return res.storageSource;
+}
+
+async function uploadSourceV2(
+  projectId: string,
+  source: args.Source,
+  b: backend.Backend
+): Promise<Record<string, gcfv2.StorageSource> | undefined> {
+  // GCFv2 cares about data residency and will possibly block deploys coming from other
+  // regions. At minimum, the implementation would consider it user-owned source and
+  // would break download URLs + console source viewing.
+  const uploads: Promise<Record<string, gcfv2.StorageSource>>[] = [];
+  const regions = Object.keys(b.endpoints);
+  for (const region of regions) {
+    if (backend.regionalEndpoints(b, region).some((e) => e.platform === "gcfv2")) {
+      uploads.push(
+        (async (): Promise<Record<string, gcfv2.StorageSource>> => {
+          const storage = await uploadSourceRegionV2(projectId, source, region);
+          return { [region]: storage };
+        })()
+      );
+    }
+  }
+
+  const storages = await Promise.all(uploads);
+  let sources: Record<string, gcfv2.StorageSource> = {};
+  for (const storage of storages) {
+    sources = { ...sources, ...storage };
+  }
+  if (Object.keys(sources).length < 1) {
+    return;
+  }
+  return sources;
 }
 
 function assertPreconditions(context: args.Context, options: Options, payload: args.Payload): void {
@@ -47,9 +93,49 @@ function assertPreconditions(context: args.Context, options: Options, payload: a
     }
   };
   assertExists(context.config, "Functions config unexpectedly empty.");
-  assertExists(context.source, "Functions sources unexpectedly empty.");
-  assertExists(context.source?.functionsSourceV1, "Functions v1 source unexpectedly empty.");
+  assertExists(context.sources, "Functions sources unexpectedly empty.");
+  for (const source of Object.values(context.sources || {})) {
+    assertExists(
+      source.functionsSourceV1 || source.functionsSourceV2,
+      "Functions source (v1 & v2) both unexpectedly empty."
+    );
+  }
   assertExists(payload.codebase, "Functions payload unexpectedly empty.");
+}
+
+async function uploadCodebase(
+  context: args.Context,
+  codebase: string,
+  wantBackend: backend.Backend
+) {
+  const uploads: Promise<unknown>[] = [];
+  const source = context.sources![codebase];
+  if (!source) {
+    throw new FirebaseError("TODO FIX Me");
+  }
+
+  try {
+    uploads.push(uploadSourceV1(context.projectId, source, wantBackend));
+    uploads.push(uploadSourceV2(context.projectId, source, wantBackend));
+
+    const [sourceUrl, storage] = await Promise.all(uploads);
+    if (sourceUrl) {
+      source.sourceUrl = sourceUrl as string;
+    }
+    if (storage) {
+      source.storage = { ...source.storage, [codebase]: storage as gcfv2.StorageSource };
+    }
+
+    const sourceDir = configForCodebase(context.config!, codebase).source;
+    if (uploads.length) {
+      logSuccess(
+        `${clc.green.bold("functions:")} ${clc.bold(sourceDir)} folder uploaded successfully`
+      );
+    }
+  } catch (err: any) {
+    logWarning(clc.yellow("functions:") + " Upload Error: " + err.message);
+    throw err;
+  }
 }
 
 /**
@@ -65,35 +151,9 @@ export async function deploy(
 ): Promise<void> {
   assertPreconditions(context, options, payload);
   await checkHttpIam(context, options, payload);
-
-  try {
-    const want = payload.codebase!.wantBackend;
-    const uploads: Promise<void>[] = [];
-
-    const v1Endpoints = backend.allEndpoints(want).filter((e) => e.platform === "gcfv1");
-    if (v1Endpoints.length > 0) {
-      // Choose one of the function region for source upload.
-      uploads.push(uploadSourceV1(context, v1Endpoints[0].region));
-    }
-
-    for (const region of Object.keys(want.endpoints)) {
-      // GCFv2 cares about data residency and will possibly block deploys coming from other
-      // regions. At minimum, the implementation would consider it user-owned source and
-      // would break download URLs + console source viewing.
-      if (backend.regionalEndpoints(want, region).some((e) => e.platform === "gcfv2")) {
-        uploads.push(uploadSourceV2(context, region));
-      }
-    }
-    await Promise.all(uploads);
-
-    const source = context.config!.source;
-    if (uploads.length) {
-      logSuccess(
-        `${clc.green.bold("functions:")} ${clc.bold(source)} folder uploaded successfully`
-      );
-    }
-  } catch (err: any) {
-    logWarning(clc.yellow("functions:") + " Upload Error: " + err.message);
-    throw err;
+  const uploads: Promise<void>[] = [];
+  for (const codebase of Object.keys(payload.codebase!)) {
+    uploads.push(uploadCodebase(context, codebase, payload.codebase![codebase].wantBackend));
   }
+  await Promise.all(uploads);
 }

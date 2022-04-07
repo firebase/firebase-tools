@@ -43,6 +43,36 @@ export function endpointsAreValid(wantBackend: backend.Backend): void {
   }
 }
 
+/** Validate that all endpoints in the given set of backends are unique */
+export function endpointsAreUnique(backends: Record<string, backend.Backend>): void {
+  const endpointToCodebases: Record<string, Set<string>> = {}; // function name -> codebases
+
+  for (const [codebase, b] of Object.entries(backends)) {
+    for (const endpoint of backend.allEndpoints(b)) {
+      const key = backend.functionName(endpoint);
+      const cs = endpointToCodebases[key] || new Set();
+      cs.add(codebase);
+      endpointToCodebases[key] = cs;
+    }
+  }
+
+  const conflicts: Record<string, string[]> = {};
+  for (const [fn, codebases] of Object.entries(endpointToCodebases)) {
+    if (codebases.size > 1) {
+      conflicts[fn] = Array.from(codebases);
+    }
+  }
+
+  if (Object.keys(conflicts).length === 0) {
+    return;
+  }
+
+  const msgs = Object.entries(conflicts).map(([fn, codebases]) => `${fn}: ${codebases.join(",")}`);
+  throw new FirebaseError(
+    "More than one codebase claims following functions:\n\t" + `${msgs.join("\n\t")}`
+  );
+}
+
 /**
  * Check that functions directory exists.
  * @param sourceDir Absolute path to source directory.

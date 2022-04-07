@@ -10,11 +10,12 @@ interface CodebasePayload {
   haveBackend: backend.Backend;
 }
 
-// Payload holds the output of what we want to build + what we already have.
+// Payload holds the current/desired output for per codebase.
 export interface Payload {
-  codebase?: CodebasePayload;
+  codebase?: Record<string, CodebasePayload>; // codebase -> payload
 }
 
+// Source holds details on location of packaged and uploaded source code.
 export interface Source {
   // Filled in the "prepare" phase.
   functionsSourceV1?: string;
@@ -33,12 +34,12 @@ export interface Context {
   filters?: deployHelper.EndpointFilter[];
 
   // Filled in the "prepare" phase.
-  config?: projectConfig.ValidatedSingle;
+  config?: projectConfig.ValidatedConfig;
   artifactRegistryEnabled?: boolean;
   firebaseConfig?: FirebaseConfig;
 
   // Filled in the "prepare" and "deploy" phase.
-  source?: Source;
+  sources?: Record<string, Source>; // codebase -> source
 }
 
 export interface FirebaseConfig {
