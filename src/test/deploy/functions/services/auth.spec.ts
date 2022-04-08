@@ -470,7 +470,6 @@ describe("authBlocking", () => {
       };
       const newBlockingConfig: identityPlatform.BlockingFunctionsConfig = {
         triggers: {
-          beforeCreate: {},
           beforeSignIn: {
             functionUri: "beforesignin.url",
           },
@@ -520,8 +519,49 @@ describe("authBlocking", () => {
           beforeCreate: {
             functionUri: "beforecreate.url",
           },
-          beforeSignIn: {},
         },
+        forwardInboundCredentials: {
+          accessToken: true,
+        },
+      };
+      const ep: backend.Endpoint = {
+        ...BASE_EP,
+        platform: "gcfv1",
+        uri: "somethingnew.url",
+        blockingTrigger: {
+          eventType: BEFORE_SIGN_IN_EVENT,
+          options: {
+            accessToken: false,
+            idToken: true,
+            refreshToken: false,
+          },
+        },
+      };
+      getConfig.resolves(blockingConfig);
+      setConfig.resolves(newBlockingConfig);
+
+      await auth.unregisterBlockingTrigger(ep);
+
+      expect(blockingConfig).to.deep.equal(newBlockingConfig);
+      expect(setConfig).to.have.been.calledWith("project", newBlockingConfig);
+    });
+
+    it("should unregister a beforeSignIn endpoint that was registered to both event types", async () => {
+      const blockingConfig: identityPlatform.BlockingFunctionsConfig = {
+        triggers: {
+          beforeCreate: {
+            functionUri: "somethingnew.url",
+          },
+          beforeSignIn: {
+            functionUri: "somethingnew.url",
+          },
+        },
+        forwardInboundCredentials: {
+          accessToken: true,
+        },
+      };
+      const newBlockingConfig: identityPlatform.BlockingFunctionsConfig = {
+        triggers: {},
         forwardInboundCredentials: {
           accessToken: true,
         },

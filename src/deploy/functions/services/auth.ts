@@ -110,16 +110,14 @@ export async function unregisterBlockingTrigger(
     return;
   }
 
-  if (endpoint.blockingTrigger.eventType === events.v1.BEFORE_CREATE_EVENT) {
-    blockingConfig.triggers = {
-      ...blockingConfig.triggers,
-      beforeCreate: {},
-    };
-  } else {
-    blockingConfig.triggers = {
-      ...blockingConfig.triggers,
-      beforeSignIn: {},
-    };
+  // There is a possibility that the user changed the registration on identity platform,
+  // to prevent 400 errors on every create and/or sign in on the app, we will treat
+  // the blockingConfig as the source of truth and only delete matching uri's.
+  if (endpoint.uri === blockingConfig.triggers?.beforeCreate?.functionUri) {
+    delete blockingConfig.triggers?.beforeCreate;
+  }
+  if (endpoint.uri === blockingConfig.triggers?.beforeSignIn?.functionUri) {
+    delete blockingConfig.triggers?.beforeSignIn;
   }
 
   await identityPlatform.setBlockingFunctionsConfig(endpoint.project, blockingConfig);
