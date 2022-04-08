@@ -71,15 +71,15 @@ async function uploadSourceV2(
     }
   }
 
-  const storages = await Promise.all(uploads);
-  let sources: Record<string, gcfv2.StorageSource> = {};
-  for (const storage of storages) {
-    sources = { ...sources, ...storage };
+  const regionalStorages = await Promise.all(uploads);
+  let storage: Record<string, gcfv2.StorageSource> = {};
+  for (const region of regionalStorages) {
+    storage = { ...storage, ...region };
   }
-  if (Object.keys(sources).length < 1) {
+  if (Object.keys(storage).length < 1) {
     return;
   }
-  return sources;
+  return storage;
 }
 
 function assertPreconditions(context: args.Context, options: Options, payload: args.Payload): void {
@@ -123,7 +123,7 @@ async function uploadCodebase(
       source.sourceUrl = sourceUrl as string;
     }
     if (storage) {
-      source.storage = { ...source.storage, [codebase]: storage as gcfv2.StorageSource };
+      source.storage = storage as Record<string, gcfv2.StorageSource>;
     }
 
     const sourceDir = configForCodebase(context.config!, codebase).source;

@@ -10,7 +10,7 @@ interface CodebasePayload {
   haveBackend: backend.Backend;
 }
 
-// Payload holds the current/desired output for per codebase.
+// Payload holds the current/desired output per codebase.
 export interface Payload {
   codebase?: Record<string, CodebasePayload>; // codebase -> payload
 }
