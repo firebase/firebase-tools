@@ -68,7 +68,7 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
       execSync(`lsof -i :${port}`);
       portInUse();
       return;
-    } catch(e) {
+    } catch (e) {
       // if lsof errored the port is NOT in use, continue
     }
   }
