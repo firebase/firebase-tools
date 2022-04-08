@@ -38,7 +38,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
   });
 
   gcloudStorageAPI.get(
-    ["/b/:bucketId/o/:objectId", "/download/storage/v1/b/:bucketId/o/:objectId"],
+    ["/b/:bucketId/o/:objectId", "/storage/v1/b/:bucketId/o/:objectId", "/download/storage/v1/b/:bucketId/o/:objectId"],
     async (req, res) => {
       let getObjectResponse: GetObjectResponse;
       try {
