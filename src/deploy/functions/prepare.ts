@@ -181,6 +181,9 @@ export async function prepare(
     : "none";
   void track("functions_codebase_deploy_env_method", tag);
 
+  const codebaseCnt = Object.keys(payload.codebase).length;
+  void track("functions_codebase_deploy_count", codebaseCnt >= 5 ? "5+" : codebaseCnt.toString());
+
   // ===Phase 4. Enable APIs required by the deploying backends.
   const wantBackend = backend.merge(...Object.values(wantBackends));
   const haveBackend = backend.merge(...Object.values(haveBackends));
