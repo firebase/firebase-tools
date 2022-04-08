@@ -129,10 +129,10 @@ export function getEndpointFilters(options: { only?: string }): EndpointFilter[]
 /**
  * Generate label for a function.
  */
-export function getFunctionLabel(e: backend.Endpoint): string {
-  let id = `${e.id}(${e.region})`;
-  if (e.codebase) {
-    id = `[${e.codebase}]${id}`;
+export function getFunctionLabel(fn: backend.TargetIds & { codebase?: string }): string {
+  let id = `${fn.id}(${fn.region})`;
+  if (fn.codebase) {
+    id = `[${fn.codebase}]${id}`;
   }
   return id;
 }
