@@ -67,6 +67,7 @@ export class Fabricator {
   sourceUrl: string | undefined;
   storage: Record<string, gcfV2.StorageSource> | undefined;
   appEngineLocation: string;
+  triggerQueue: Promise<void>;
 
   constructor(args: FabricatorArgs) {
     this.executor = args.executor;
@@ -74,6 +75,7 @@ export class Fabricator {
     this.sourceUrl = args.sourceUrl;
     this.storage = args.storage;
     this.appEngineLocation = args.appEngineLocation;
+    this.triggerQueue = Promise.resolve();
   }
 
   async applyPlan(plan: planner.DeploymentPlan): Promise<reporter.Summary> {
@@ -558,9 +560,12 @@ export class Fabricator {
     endpoint: backend.Endpoint & backend.BlockingTriggered,
     update: boolean
   ): Promise<void> {
-    await this.executor
-      .run(() => services.serviceForEndpoint(endpoint).registerTrigger(endpoint, update))
-      .catch(rethrowAs(endpoint, "register blocking trigger"));
+    this.triggerQueue = this.triggerQueue.then(async () => {
+      await this.executor
+        .run(() => services.serviceForEndpoint(endpoint).registerTrigger(endpoint, update))
+        .catch(rethrowAs(endpoint, "register blocking trigger"));
+    });
+    return this.triggerQueue;
   }
 
   async deleteScheduleV1(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
@@ -593,9 +598,12 @@ export class Fabricator {
   async unregisterBlockingTrigger(
     endpoint: backend.Endpoint & backend.BlockingTriggered
   ): Promise<void> {
-    await this.executor
-      .run(() => services.serviceForEndpoint(endpoint).unregisterTrigger(endpoint))
-      .catch(rethrowAs(endpoint, "unregister blocking trigger"));
+    this.triggerQueue = this.triggerQueue.then(async () => {
+      await this.executor
+        .run(() => services.serviceForEndpoint(endpoint).unregisterTrigger(endpoint))
+        .catch(rethrowAs(endpoint, "unregister blocking trigger"));
+    });
+    return this.triggerQueue;
   }
 
   logOpStart(op: string, endpoint: backend.Endpoint): void {
