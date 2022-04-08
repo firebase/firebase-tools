@@ -1,7 +1,5 @@
 import * as backend from "./backend";
-import * as projectConfig from "../../functions/projectConfig";
 import { DEFAULT_CODEBASE, ValidatedConfig } from "../../functions/projectConfig";
-import { FirebaseError } from "../../error";
 
 export interface EndpointFilter {
   // If codebase is undefined, match all functions in all codebase that matches the idChunks.
@@ -71,7 +69,7 @@ export function parseFunctionSelector(selector: string): EndpointFilter[] {
     // conflict between a codebase name as function id in the default codebase.
     return [
       { codebase: fragments[0] },
-      { codebase: projectConfig.DEFAULT_CODEBASE, idChunks: fragments[0].split(/[-.]/) },
+      { codebase: DEFAULT_CODEBASE, idChunks: fragments[0].split(/[-.]/) },
     ];
   }
   return [
@@ -131,7 +129,7 @@ export function getEndpointFilters(options: { only?: string }): EndpointFilter[]
  */
 export function getFunctionLabel(fn: backend.TargetIds & { codebase?: string }): string {
   let id = `${fn.id}(${fn.region})`;
-  if (fn.codebase) {
+  if (fn.codebase && fn.codebase !== DEFAULT_CODEBASE) {
     id = `[${fn.codebase}]${id}`;
   }
   return id;
