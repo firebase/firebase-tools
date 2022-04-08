@@ -31,7 +31,7 @@ export interface ExtensionEmulatorArgs {
 // Note: At the moment, this doesn't really seem like it needs to be a class. However, I think the
 // statefulness that enables will be useful once we want to watch .env files for config changes.
 export class ExtensionsEmulator implements EmulatorInstance {
-  private want: planner.InstanceSpec[] = [];
+  private want: planner.DeploymentInstanceSpec[] = [];
   private backends: EmulatableBackend[] = [];
   private args: ExtensionEmulatorArgs;
   private logger = EmulatorLogger.forEmulator(Emulators.EXTENSIONS);
@@ -194,7 +194,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
     await this.readManifest();
     await this.checkAndWarnAPIs(this.want);
     this.backends = await Promise.all(
-      this.want.map((i: planner.InstanceSpec) => {
+      this.want.map((i: planner.DeploymentInstanceSpec) => {
         return this.toEmulatableBackend(i);
       })
     );
@@ -205,14 +205,16 @@ export class ExtensionsEmulator implements EmulatorInstance {
    * toEmulatableBackend turns a InstanceSpec into an EmulatableBackend which can be run by the Functions emulator.
    * It is exported for testing.
    */
-  public async toEmulatableBackend(instance: planner.InstanceSpec): Promise<EmulatableBackend> {
+  public async toEmulatableBackend(
+    instance: planner.DeploymentInstanceSpec
+  ): Promise<EmulatableBackend> {
     const extensionDir = await this.ensureSourceCode(instance);
     // TODO: This should find package.json, then use that as functionsDir.
     const functionsDir = path.join(extensionDir, "functions");
     // TODO(b/213335255): For local extensions, this should include extensionSpec instead of extensionVersion
     const env = Object.assign(this.autoPopulatedParams(instance), instance.params);
     const { extensionTriggers, nodeMajorVersion, nonSecretEnv, secretEnvVariables } =
-      await getExtensionFunctionInfo(extensionDir, instance.instanceId, env);
+      await getExtensionFunctionInfo(instance, env);
     const extension = await planner.getExtension(instance);
     const extensionVersion = await planner.getExtensionVersion(instance);
     return {
