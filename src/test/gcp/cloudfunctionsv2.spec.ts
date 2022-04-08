@@ -101,6 +101,7 @@ describe("cloudfunctionsv2", () => {
             serviceName: "compute.googleapis.com",
           },
           retry: false,
+          channel: "projects/myproject/locations/us-wildwest11/channels/mychannel",
         },
       };
       const eventGcfFunction: Omit<
@@ -120,6 +121,7 @@ describe("cloudfunctionsv2", () => {
               value: "compute.googleapis.com",
             },
           ],
+          channel: "projects/myproject/locations/us-wildwest11/channels/mychannel",
         },
         serviceConfig: {
           ...CLOUD_FUNCTION_V2.serviceConfig,
@@ -350,6 +352,35 @@ describe("cloudfunctionsv2", () => {
                 value: "compute.googleapis.com",
               },
             ],
+          },
+        })
+      ).to.deep.equal(want);
+    });
+
+    it("should translate custom event triggers", () => {
+      const want: backend.Endpoint = {
+        ...ENDPOINT,
+        platform: "gcfv2",
+        uri: RUN_URI,
+        eventTrigger: {
+          eventType: "com.custom.event",
+          eventFilters: { customattr: "customvalue" },
+          channel: "projects/myproject/locations/us-wildwest11/channels/mychannel",
+          retry: false,
+        },
+      };
+      expect(
+        cloudfunctionsv2.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION_V2,
+          eventTrigger: {
+            eventType: "com.custom.event",
+            eventFilters: [
+              {
+                attribute: "customattr",
+                value: "customvalue",
+              },
+            ],
+            channel: "projects/myproject/locations/us-wildwest11/channels/mychannel",
           },
         })
       ).to.deep.equal(want);

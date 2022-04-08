@@ -132,6 +132,10 @@ export interface EventTrigger {
   // run.routes.invoke permission on the target service. Defaults
   // to the defualt compute service account.
   serviceAccountEmail?: string;
+
+  // The name of the channel associated with the trigger in
+  // `projects/{project}/locations/{location}/channels/{channel}` format.
+  channel?: string;
 }
 
 export interface CloudFunction {
@@ -462,6 +466,7 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
       "triggerRegion",
       "region"
     );
+    proto.copyIfPresent(gcfFunction.eventTrigger, endpoint.eventTrigger, "channel");
 
     if (endpoint.eventTrigger.retry) {
       logger.warn("Cannot set a retry policy on Cloud Function", endpoint.id);
@@ -536,6 +541,7 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
         trigger.eventTrigger.eventFilters[attribute] = value;
       }
     }
+    proto.copyIfPresent(trigger.eventTrigger, gcfFunction.eventTrigger, "channel");
     proto.renameIfPresent(
       trigger.eventTrigger,
       gcfFunction.eventTrigger,
