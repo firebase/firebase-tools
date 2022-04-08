@@ -8,9 +8,9 @@ import { secretManagerOrigin } from "../api";
 // Matches projects/{PROJECT}/secrets/{SECRET}
 const SECRET_NAME_REGEX = new RegExp(
   "projects\\/" +
-  "(?<project>(?:\\d+)|(?:[A-Za-z]+[A-Za-z\\d-]*[A-Za-z\\d]?))\\/" +
-  "secrets\\/" +
-  "(?<secret>[A-Za-z\\d\\-_]+)"
+    "(?<project>(?:\\d+)|(?:[A-Za-z]+[A-Za-z\\d-]*[A-Za-z\\d]?))\\/" +
+    "secrets\\/" +
+    "(?<secret>[A-Za-z\\d\\-_]+)"
 );
 
 // Matches projects/{PROJECT}/secrets/{SECRET}/versions/{latest|VERSION}
@@ -91,7 +91,7 @@ export async function listSecrets(projectId: string, filter?: string): Promise<S
         : { ...baseOpts, queryParams: { ...baseOpts?.queryParams, pageToken } };
     const res = await client.get<Response>(path, opts);
 
-    for (const s of (res.body.secrets || [])) {
+    for (const s of res.body.secrets || []) {
       secrets.push({
         ...parseSecretResourceName(s.name),
         labels: s.labels ?? {},
@@ -370,7 +370,8 @@ export async function ensureServiceAgentRole(
   // As a safeguard against forgetting to do so, we log it here.
   logLabeledSuccess(
     "secretmanager",
-    `Granted ${role} on projects/${secret.projectId}/secrets/${secret.name
+    `Granted ${role} on projects/${secret.projectId}/secrets/${
+      secret.name
     } to ${serviceAccountEmails.join(", ")}`
   );
 }
