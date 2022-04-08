@@ -2,11 +2,12 @@ import { client } from "./client";
 import { logger } from "../../logger";
 import { needProjectNumber } from "../../projectUtils";
 import * as utils from "../../utils";
+import { convertConfig } from "./convertConfig";
 
 /**
  *  Release finalized a Hosting release.
  */
-export async function release(context: any, options: any, payload: any): Promise<void> {
+export async function release(context: any, options: any): Promise<void> {
   if (!context.hosting || !context.hosting.deploys) {
     return;
   }
@@ -18,10 +19,9 @@ export async function release(context: any, options: any, payload: any): Promise
     context.hosting.deploys.map(async (deploy: any) => {
       utils.logLabeledBullet(`hosting[${deploy.site}]`, "finalizing version...");
 
-      const config = payload.hosting?.config?.[deploy.site];
+      const config = convertConfig(deploy.config);
       const data = { status: "FINALIZED", config };
-      const queryParams = { updateMask: "status" };
-      if (config) queryParams.updateMask += ",config";
+      const queryParams = { updateMask: "status,config" };
 
       const finalizeResult = await client.patch(`/${deploy.version}`, data, { queryParams });
 

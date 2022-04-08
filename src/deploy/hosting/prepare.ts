@@ -5,11 +5,12 @@ import { normalizedHostingConfigs } from "../../hosting/normalizedHostingConfigs
 import { validateDeploy } from "./validate";
 import { convertConfig } from "./convertConfig";
 import * as deploymentTool from "../../deploymentTool";
+import { Payload } from "./args";
 
 /**
  *  Prepare creates versions for each Hosting site to be deployed.
  */
-export async function prepare(context: any, options: any, payload: any): Promise<void> {
+export async function prepare(context: any, options: any, payload: Payload): Promise<void> {
   // Allow the public directory to be overridden by the --public flag
   if (options.public) {
     if (Array.isArray(options.config.get("hosting"))) {
@@ -44,21 +45,16 @@ export async function prepare(context: any, options: any, payload: any): Promise
       labels: deploymentTool.labels(),
     };
 
-    // Keep a copy of the data in the payload, to patch in later
-    payload.hosting ||= {};
-    payload.hosting.config ||= {};
-    payload.hosting.config[deploy.site] = { ...data.config };
-
-    // Filter out any rewrites that point to GCFv2 functions that are being deployed
-    Object.entries(payload.functions?.backend?.endpoints || {}).forEach(([region, endpoints]) => {
-      Object.entries(endpoints as {}).forEach(([serviceId, endpoint]) => {
-        if ((endpoint as any).platform === "gcfv2") {
-          data.config.rewrites = data.config.rewrites.filter(
-            (rewrite: any) => rewrite.run?.serviceId !== serviceId && rewrite.run?.region !== region
-          );
-        }
-      });
-    });
+    const functionsEndpoints = payload.functions?.wantBackend?.endpoints;
+    if (data.config.rewrites?.length && functionsEndpoints) {
+      // Filter out any rewrites that point to GCFv2 functions that are being deployed
+      // Cloud Run instances don't have detirminstic URLs, so hosting doesn't know how to rewrite to
+      // instances that haven't been deployed yet. We'll patch these back in after the deploy.
+      data.config.rewrites = data.config.rewrites.filter(
+        (rewrite: any) =>
+          !rewrite.run || !functionsEndpoints[rewrite.run.region][rewrite.run.serviceId]
+      );
+    }
 
     versionCreates.push(
       client
