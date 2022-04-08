@@ -45,7 +45,6 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
     stream: morganStream,
   });
 
-
   const portInUse = () => {
     const message = "Port " + options.port + " is not available.";
     logger.log("WARN", clc.yellow("hosting: ") + message + " Trying another port...");
@@ -61,15 +60,17 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
     }
   };
 
-  // On OSX, some ports may be reserved by the OS in a way that node http doesn't detect
-  // namely port 5000, the default used by Firebase Hosting emulator. Test for this.
-  if (process.platform === 'darwin') {
+  // On OSX, some ports may be reserved by the OS in a way that node http doesn't detect.
+  // Starting in MacOS 12.3 it does this with port 5000 our default port. This is a bad
+  // enough devexp that we should special case and ensure it's available.
+  if (process.platform === "darwin") {
     try {
-      // lsof will exit 1, if the port is NOT in use
       execSync(`lsof -i :${port}`);
       portInUse();
       return;
-    } catch(e) {}
+    } catch(e) {
+      // if lsof errored the port is NOT in use, continue
+    }
   }
 
   const server = superstatic({
