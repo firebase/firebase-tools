@@ -125,7 +125,11 @@ export function parseObjectUploadMultipartRequest(
   if (!contentTypeHeader.startsWith("multipart/related")) {
     throw new Error(`Invalid Content-Type: ${contentTypeHeader}`);
   }
-  const boundaryId = contentTypeHeader.split("boundary=")[1];
+  let boundaryId = contentTypeHeader.split("boundary=")[1];
+
+  // fix for supporting boundaryId with quotes
+  boundaryId = boundaryId.replace(/"/g, "");
+
   if (!boundaryId) {
     throw new Error(`Invalid Content-Type header: ${contentTypeHeader}`);
   }
