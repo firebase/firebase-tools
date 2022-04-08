@@ -9,6 +9,7 @@ var utils = require("../utils");
 var { FirebaseError } = require("../error");
 var track = require("../track");
 var lifecycleHooks = require("./lifecycleHooks");
+const { previews } = require("../previews");
 
 var TARGETS = {
   hosting: require("./hosting"),
@@ -54,7 +55,11 @@ var deploy = function (targetNames, options, customContext = {}) {
   var startTime = Date.now();
 
   return new Promise((resolve) => {
-    if (targetNames.includes("hosting") && options.config.get("hosting.source")) {
+    if (
+      previews.frameworkawareness &&
+      targetNames.includes("hosting") &&
+      options.config.get("hosting.source")
+    ) {
       resolve(require("firebase-frameworks").prepare(targetNames, context, options));
     } else {
       resolve();

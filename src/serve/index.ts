@@ -1,6 +1,7 @@
 import { EmulatorServer } from "../emulator/emulatorServer";
 import * as _ from "lodash";
 import { logger } from "../logger";
+import { previews } from "../previews";
 
 const { FunctionsServer } = require("./functions");
 
@@ -20,7 +21,11 @@ const TARGETS: {
 export async function serve(options: any): Promise<void> {
   const targetNames = options.targets;
   options.port = parseInt(options.port, 10);
-  if (targetNames.includes("hosting") && options.config.get("hosting.source")) {
+  if (
+    previews.frameworkawareness &&
+    targetNames.includes("hosting") &&
+    options.config.get("hosting.source")
+  ) {
     await require("firebase-frameworks").prepare(
       targetNames,
       { project: options.projectId },
