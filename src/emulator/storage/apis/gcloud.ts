@@ -109,7 +109,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     });
   });
 
-  gcloudStorageAPI.delete("/b/:bucketId/o/:objectId", async (req, res) => {
+  gcloudStorageAPI.delete(["/b/:bucketId/o/:objectId", "/storage/v1/b/:bucketId/o/:objectId"], async (req, res) => {
     try {
       await adminStorageLayer.deleteObject({
         bucketId: req.params.bucketId,
