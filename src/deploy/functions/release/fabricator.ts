@@ -208,7 +208,7 @@ export class Fabricator {
         const op: { name: string } = await gcf.createFunction(apiFunction);
         return poller.pollOperation<gcf.CloudFunction>({
           ...gcfV1PollerOptions,
-          pollerName: `create-${endpoint.region}-${endpoint.id}`,
+          pollerName: `create-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
           operationResourceName: op.name,
           onPoll: scraper.poller,
         });
@@ -282,7 +282,7 @@ export class Fabricator {
         const op: { name: string } = await gcfV2.createFunction(apiFunction);
         return await poller.pollOperation<gcfV2.CloudFunction>({
           ...gcfV2PollerOptions,
-          pollerName: `create-${endpoint.region}-${endpoint.id}`,
+          pollerName: `create-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
           operationResourceName: op.name,
         });
       })
@@ -338,7 +338,7 @@ export class Fabricator {
         const op: { name: string } = await gcf.updateFunction(apiFunction);
         return await poller.pollOperation<gcf.CloudFunction>({
           ...gcfV1PollerOptions,
-          pollerName: `update-${endpoint.region}-${endpoint.id}`,
+          pollerName: `update-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
           operationResourceName: op.name,
           onPoll: scraper.poller,
         });
@@ -380,7 +380,7 @@ export class Fabricator {
         const op: { name: string } = await gcfV2.updateFunction(apiFunction);
         return await poller.pollOperation<gcfV2.CloudFunction>({
           ...gcfV2PollerOptions,
-          pollerName: `update-${endpoint.region}-${endpoint.id}`,
+          pollerName: `update-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
           operationResourceName: op.name,
         });
       })
@@ -412,7 +412,7 @@ export class Fabricator {
         const op: { name: string } = await gcf.deleteFunction(fnName);
         const pollerOptions = {
           ...gcfV1PollerOptions,
-          pollerName: `delete-${endpoint.region}-${endpoint.id}`,
+          pollerName: `delete-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
           operationResourceName: op.name,
         };
         await poller.pollOperation<void>(pollerOptions);
@@ -427,7 +427,7 @@ export class Fabricator {
         const op: { name: string } = await gcfV2.deleteFunction(fnName);
         const pollerOptions = {
           ...gcfV2PollerOptions,
-          pollerName: `delete-${endpoint.region}-${endpoint.id}`,
+          pollerName: `delete-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
           operationResourceName: op.name,
         };
         await poller.pollOperation<void>(pollerOptions);
@@ -547,9 +547,7 @@ export class Fabricator {
   logOpStart(op: string, endpoint: backend.Endpoint): void {
     const runtime = getHumanFriendlyRuntimeName(endpoint.runtime);
     const label = helper.getFunctionLabel(endpoint);
-    utils.logBullet(
-      `${clc.bold.cyan("functions:")} ${op} ${runtime} function ${clc.bold(label)}...`
-    );
+    utils.logLabeledBullet("functions", `${op} ${runtime} function ${clc.bold(label)}...`);
   }
 
   logOpSuccess(op: string, endpoint: backend.Endpoint): void {
