@@ -19,7 +19,6 @@ describe("cloudfunctionsv2", () => {
     entryPoint: "function",
     runtime: "nodejs16",
     codebase: projectConfig.DEFAULT_CODEBASE,
-    labels: { [cloudfunctionsv2.CODEBASE_LABEL]: projectConfig.DEFAULT_CODEBASE },
   };
 
   const CLOUD_FUNCTION_V2_SOURCE: cloudfunctionsv2.StorageSource = {
@@ -40,7 +39,6 @@ describe("cloudfunctionsv2", () => {
         environmentVariables: {},
       },
       serviceConfig: {},
-      labels: { [cloudfunctionsv2.CODEBASE_LABEL]: projectConfig.DEFAULT_CODEBASE },
     };
 
   const RUN_URI = "https://id-nonce-region-project.run.app";
