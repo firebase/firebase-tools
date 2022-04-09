@@ -58,7 +58,7 @@ var deploy = function (targetNames, options, customContext = {}) {
     if (
       previews.frameworkawareness &&
       targetNames.includes("hosting") &&
-      [].concat(options.config.get("hosting")).some(it => it.source)
+      [].concat(options.config.get("hosting")).some((it) => it.source)
     ) {
       resolve(require("firebase-frameworks").prepare(targetNames, context, options));
     } else {
