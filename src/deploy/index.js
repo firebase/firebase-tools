@@ -58,7 +58,7 @@ var deploy = function (targetNames, options, customContext = {}) {
     if (
       previews.frameworkawareness &&
       targetNames.includes("hosting") &&
-      options.config.get("hosting.source")
+      [].concat(options.config.get("hosting")).some(it => it.source)
     ) {
       resolve(require("firebase-frameworks").prepare(targetNames, context, options));
     } else {
@@ -66,15 +66,6 @@ var deploy = function (targetNames, options, customContext = {}) {
     }
   })
     .then(function () {
-      // Ensure that functions predeploy & deploy gets called before hosting that way
-      // we can handle gen2 functions referred to in hosting config
-      const hostingIndex = targetNames.indexOf("hosting");
-      const functionsIndex = targetNames.indexOf("functions");
-      if (hostingIndex > -1 && hostingIndex < functionsIndex) {
-        targetNames[hostingIndex] = "functions";
-        targetNames[functionsIndex] = "hosting";
-      }
-
       for (var i = 0; i < targetNames.length; i++) {
         var targetName = targetNames[i];
         var target = TARGETS[targetName];

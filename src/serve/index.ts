@@ -24,7 +24,7 @@ export async function serve(options: any): Promise<void> {
   if (
     previews.frameworkawareness &&
     targetNames.includes("hosting") &&
-    options.config.get("hosting.source")
+    [].concat(options.config.get("hosting")).some((it: any) => it.source)
   ) {
     await require("firebase-frameworks").prepare(
       targetNames,

@@ -5,5 +5,3 @@
 - Improves support for prerelease versions in `ext:dev:publish` (#4244).
 - Fixes console error on large uploads to Storage Emulator (#4407).
 - Fixes cross-platform incompatibility with Storage Emulator exports (#4411).
-- Allow use of the source option in hosting config (#4391).
-- Allow hosting rewrites to Cloud Run instances that are part of the same deploy (#4391).
