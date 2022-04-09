@@ -45,15 +45,16 @@ export async function prepare(context: any, options: any, payload: Payload): Pro
       labels: deploymentTool.labels(),
     };
 
-    const functionsEndpoints = payload.functions?.wantBackend?.endpoints;
-    if (data.config.rewrites?.length && functionsEndpoints) {
+    const endpoints = payload.functions?.wantBackend?.endpoints;
+    if (data.config.rewrites?.length && endpoints) {
       // Filter out any rewrites that point to GCFv2 functions that are being deployed
       // Cloud Run instances don't have detirminstic URLs, so hosting doesn't know how to rewrite to
       // instances that haven't been deployed yet. We'll patch these back in after the deploy.
-      data.config.rewrites = data.config.rewrites.filter(
-        (rewrite: any) =>
-          !rewrite.run || !functionsEndpoints[rewrite.run.region][rewrite.run.serviceId]
-      );
+      data.config.rewrites = data.config.rewrites.filter((rewrite: any) => {
+        if (!rewrite.run) return true;
+        const endpoint = endpoints[rewrite.run.region][rewrite.run.serviceId];
+        return endpoint?.platform !== "gcfv2";
+      });
     }
 
     versionCreates.push(
