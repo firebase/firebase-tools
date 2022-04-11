@@ -525,6 +525,8 @@ export class StorageLayer {
     for (const b of await this.listBuckets()) {
       bucketsList.buckets.push({ id: b.id });
     }
+    // Resulting path is platform-specific, e.g. foo%5Cbar on Windows, foo%2Fbar on Linux
+    // after URI encoding. Similarly for metadata paths below.
     const bucketsFilePath = path.join(storageExportPath, "buckets.json");
     await fse.writeFile(bucketsFilePath, JSON.stringify(bucketsList, undefined, 2));
 
@@ -583,7 +585,13 @@ export class StorageLayer {
         continue;
       }
 
-      const decodedBlobPath = decodeURIComponent(blobPath);
+      let decodedBlobPath = decodeURIComponent(blobPath);
+      const decodedBlobPathSep = getPathSep(decodedBlobPath);
+      // Replace all file separators with that of current platform for compatibility
+      if (decodedBlobPathSep !== path.sep) {
+        decodedBlobPath = decodedBlobPath.split(decodedBlobPathSep).join(path.sep);
+      }
+
       const blobDiskPath = this._persistence.getDiskPath(decodedBlobPath);
 
       const file = new StoredFile(metadata, blobDiskPath);
@@ -604,4 +612,12 @@ export class StorageLayer {
       }
     }
   }
+}
+
+/** Returns file separator used in given path, either '\\' or '/'. */
+function getPathSep(decodedPath: string): string {
+  // Suffices to check first separator, which occurs immediately after bucket name.
+  // Bucket naming guidelines: https://cloud.google.com/storage/docs/naming-buckets
+  const firstSepIndex = decodedPath.search(/[^a-z0-9-_.]/g);
+  return decodedPath[firstSepIndex];
 }

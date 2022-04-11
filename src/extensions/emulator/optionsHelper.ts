@@ -7,6 +7,7 @@ import * as localHelper from "../localHelper";
 import * as triggerHelper from "./triggerHelper";
 import { ExtensionSpec, Param, ParamType, Resource } from "../extensionsApi";
 import * as extensionsHelper from "../extensionsHelper";
+import * as planner from "../../deploy/extensions/planner";
 import { Config } from "../../config";
 import { FirebaseError } from "../../error";
 import { EmulatorLogger } from "../../emulator/emulatorLogger";
@@ -42,8 +43,7 @@ export async function buildOptions(options: any): Promise<any> {
 
 // TODO: Better name? Also, should this be in extensionsEmulator instead?
 export async function getExtensionFunctionInfo(
-  extensionDir: string,
-  instanceId: string,
+  instance: planner.InstanceSpec,
   paramValues: Record<string, string>
 ): Promise<{
   nodeMajorVersion: number;
@@ -51,12 +51,12 @@ export async function getExtensionFunctionInfo(
   nonSecretEnv: Record<string, string>;
   secretEnvVariables: SecretEnvVar[];
 }> {
-  const spec = await specHelper.readExtensionYaml(extensionDir);
+  const spec = await planner.getExtensionSpec(instance);
   const functionResources = specHelper.getFunctionResourcesWithParamSubstitution(spec, paramValues);
   const extensionTriggers: ParsedTriggerDefinition[] = functionResources
     .map((r) => triggerHelper.functionResourceToEmulatedTriggerDefintion(r))
     .map((trigger) => {
-      trigger.name = `ext-${instanceId}-${trigger.name}`;
+      trigger.name = `ext-${instance.instanceId}-${trigger.name}`;
       return trigger;
     });
   const nodeMajorVersion = specHelper.getNodeVersion(functionResources);
@@ -69,8 +69,10 @@ export async function getExtensionFunctionInfo(
     secretEnvVariables,
   };
 }
+
 const isSecretParam = (p: Param) =>
   p.type === extensionsHelper.SpecParamType.SECRET || p.type === ParamType.SECRET;
+
 /**
  * getNonSecretEnv checks extension spec for secret params, and returns env without those secret params
  * @param params A list of params to check for secret params
