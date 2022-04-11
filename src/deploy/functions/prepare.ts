@@ -32,6 +32,9 @@ function hasDotenv(opts: functionsEnv.UserEnvsOpts): boolean {
   return functionsEnv.hasUserEnvs(opts);
 }
 
+/**
+ *
+ */
 export async function prepare(
   context: args.Context,
   options: Options,
@@ -64,6 +67,15 @@ export async function prepare(
   ]);
   context.artifactRegistryEnabled = checkAPIsEnabled[3];
 
+  // Get the Firebase Config, and set it on each function in the deployment.
+  const firebaseConfig = await functionsConfig.getFirebaseConfig(options);
+  context.firebaseConfig = firebaseConfig;
+  let runtimeConfig: Record<string, unknown> = { firebase: firebaseConfig };
+  if (checkAPIsEnabled[1]) {
+    // If runtime config API is enabled, load the runtime config.
+    runtimeConfig = { ...runtimeConfig, ...(await getFunctionsConfig(projectId)) };
+  }
+
   // ===Phase 1. Load codebase from source.
   logLabeledBullet(
     "functions",
@@ -87,15 +99,6 @@ export async function prepare(
   await runtimeDelegate.validate();
   logger.debug(`Building ${runtimeDelegate.name} source`);
   await runtimeDelegate.build();
-
-  // Get the Firebase Config, and set it on each function in the deployment.
-  const firebaseConfig = await functionsConfig.getFirebaseConfig(options);
-  context.firebaseConfig = firebaseConfig;
-  let runtimeConfig: Record<string, unknown> = { firebase: firebaseConfig };
-  if (checkAPIsEnabled[1]) {
-    // If runtime config API is enabled, load the runtime config.
-    runtimeConfig = { ...runtimeConfig, ...(await getFunctionsConfig(projectId)) };
-  }
 
   const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
   const userEnvOpt: functionsEnv.UserEnvsOpts = {
