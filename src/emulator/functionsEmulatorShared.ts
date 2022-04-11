@@ -44,6 +44,7 @@ export interface EventSchedule {
 export interface EventTrigger {
   resource: string;
   eventType: string;
+  channel?: string;
   // Deprecated
   service?: string;
 }
@@ -172,13 +173,14 @@ export function emulatedFunctionsFromEndpoints(
         // Only pubsub and storage events are supported for gcfv2.
         const { resource, topic, bucket } = endpoint.eventTrigger.eventFilters;
         const eventResource = resource || topic || bucket;
-        if (!eventResource) {
+        if (!eventResource && !eventTrigger.channel) {
           // Unsupported event type for GCFv2
           continue;
         }
         def.eventTrigger = {
           eventType: eventTrigger.eventType,
           resource: eventResource,
+          channel: eventTrigger.channel,
         };
       }
     } else if (backend.isScheduleTriggered(endpoint)) {

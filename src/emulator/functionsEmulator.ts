@@ -605,6 +605,9 @@ export class FunctionsEmulator implements EmulatorInstance {
               definition.schedule
             );
             break;
+          case Constants.SERVICE_EVENTARC:
+            added = await this.addEventarcTrigger(this.args.projectId, key, definition.eventTrigger);
+            break;
           case Constants.SERVICE_AUTH:
             added = this.addAuthTrigger(this.args.projectId, key, definition.eventTrigger);
             break;
@@ -645,6 +648,31 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (this.args.debugPort) {
       this.startRuntime(emulatableBackend, { nodeBinary: emulatableBackend.nodeBinary });
     }
+  }
+
+  addEventarcTrigger(projectId: string, key: string, eventTrigger: EventTrigger): Promise<boolean> {
+    const eventarcEmu = EmulatorRegistry.get(Emulators.EVENTARC);
+    if (!eventarcEmu) {
+      return Promise.resolve(false);
+    }
+    const bundle = JSON.stringify({
+      eventTrigger: {
+        ...eventTrigger,
+        service: "eventarc.googleapis.com",
+      },
+    });
+    logger.debug(`addEventarcTrigger`, JSON.stringify(bundle));
+    return api
+      .request("PUT", `/emulator/v1/projects/${projectId}/triggers/${key}`, {
+        origin: `http://${EmulatorRegistry.getInfoHostString(eventarcEmu.getInfo())}`,
+        data: bundle,
+        json: false,
+      })
+      .then(() => true)
+      .catch((err) => {
+        this.logger.log("WARN", "Error adding Eventarc function: " + err);
+        throw err;
+      });
   }
 
   addRealtimeDatabaseTrigger(
@@ -830,7 +858,12 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   getTriggerKey(def: EmulatedTriggerDefinition): string {
     // For background triggers we attach the current generation as a suffix
-    return def.eventTrigger ? `${def.id}-${this.triggerGeneration}` : def.id;
+    if (def.eventTrigger) {
+      const triggerKey = `${def.id}-${this.triggerGeneration}`;
+      return def.eventTrigger.channel ? `${triggerKey}-${def.eventTrigger.channel}` : triggerKey;
+    } else {
+      return def.id;
+    }
   }
 
   getBackendInfo(): BackendInfo[] {
