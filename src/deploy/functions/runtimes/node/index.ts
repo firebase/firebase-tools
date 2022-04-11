@@ -139,6 +139,7 @@ export class Delegate {
           env
         );
       }
+      env.CLOUD_RUNTIME_CONFIG = JSON.stringify(config);
       let discovered = await discovery.detectFromYaml(this.sourceDir, this.projectId, this.runtime);
       if (!discovered) {
         const getPort = promisify(portfinder.getPort) as () => Promise<number>;
