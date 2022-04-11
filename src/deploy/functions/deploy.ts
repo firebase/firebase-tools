@@ -3,7 +3,7 @@ import * as clc from "cli-color";
 import * as fs from "fs";
 
 import { checkHttpIam } from "./checkIam";
-import { logSuccess, logWarning } from "../../utils";
+import { logSuccess, logWarning, groupBy, endpoint } from "../../utils";
 import { Options } from "../../options";
 import * as args from "./args";
 import * as gcs from "../../gcp/storage";
@@ -49,7 +49,7 @@ function assertPreconditions(context: args.Context, options: Options, payload: a
   assertExists(context.config, "Functions config unexpectedly empty.");
   assertExists(context.source, "Functions sources unexpectedly empty.");
   assertExists(context.source?.functionsSourceV1, "Functions v1 source unexpectedly empty.");
-  assertExists(payload.codebase, "Functions payload unexpectedly empty.");
+  assertExists(payload.functions, "Functions payload unexpectedly empty.");
 }
 
 /**
@@ -67,22 +67,15 @@ export async function deploy(
   await checkHttpIam(context, options, payload);
 
   try {
-    const want = payload.codebase!.wantBackend;
+    const want = payload.functions!.wantBackend;
     const uploads: Promise<void>[] = [];
 
-    const v1Endpoints = backend.allEndpoints(want).filter((e) => e.platform === "gcfv1");
-    if (v1Endpoints.length > 0) {
-      // Choose one of the function region for source upload.
-      uploads.push(uploadSourceV1(context, v1Endpoints[0].region));
-    }
-
-    for (const region of Object.keys(want.endpoints)) {
-      // GCFv2 cares about data residency and will possibly block deploys coming from other
-      // regions. At minimum, the implementation would consider it user-owned source and
-      // would break download URLs + console source viewing.
-      if (backend.regionalEndpoints(want, region).some((e) => e.platform === "gcfv2")) {
-        uploads.push(uploadSourceV2(context, region));
-      }
+    // Choose one of the function region for source upload.
+    const byPlatform = groupBy(backend.allEndpoints(want), (e) => e.platform);
+    if (byPlatform.gcfv1.length > 0) {
+      uploads.push(uploadSourceV1(context, byPlatform.gcfv1[0].region));
+    } else if (byPlatform.gcfv2.length > 0) {
+      uploads.push(uploadSourceV2(context, byPlatform.gcfv2[0].region));
     }
     await Promise.all(uploads);
 
