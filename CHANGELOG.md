@@ -6,3 +6,4 @@
 - Fixes console error on large uploads to Storage Emulator (#4407).
 - Fixes cross-platform incompatibility with Storage Emulator exports (#4411).
 - Fixes issue where function deployment errored on projects without secrets (#4425).
+- Removes verbose HTTP responses from debug logs (#4428)
