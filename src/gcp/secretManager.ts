@@ -91,7 +91,7 @@ export async function listSecrets(projectId: string, filter?: string): Promise<S
         : { ...baseOpts, queryParams: { ...baseOpts?.queryParams, pageToken } };
     const res = await client.get<Response>(path, opts);
 
-    for (const s of res.body.secrets) {
+    for (const s of res.body.secrets || []) {
       secrets.push({
         ...parseSecretResourceName(s.name),
         labels: s.labels ?? {},

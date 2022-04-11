@@ -58,7 +58,7 @@ export async function deploy(
   await checkHttpIam(context, options, payload);
 
   try {
-    const want = payload.functions!.backend;
+    const want = payload.functions!.wantBackend;
     const uploads: Promise<void>[] = [];
 
     const v1Endpoints = backend.allEndpoints(want).filter((e) => e.platform === "gcfv1");

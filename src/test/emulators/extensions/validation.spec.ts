@@ -4,7 +4,7 @@ import * as sinon from "sinon";
 import * as validation from "../../../emulator/extensions/validation";
 import * as ensureApiEnabled from "../../../ensureApiEnabled";
 import * as controller from "../../../emulator/controller";
-import { InstanceSpec } from "../../../deploy/extensions/planner";
+import { DeploymentInstanceSpec } from "../../../deploy/extensions/planner";
 import { EmulatableBackend } from "../../../emulator/functionsEmulator";
 import { Emulators } from "../../../emulator/types";
 import { EventTrigger, ParsedTriggerDefinition } from "../../../emulator/functionsEmulatorShared";
@@ -26,7 +26,7 @@ const TEST_OPTIONS: Options = {
   rc: new RC(),
   config: new Config("."),
 };
-function fakeInstanceSpecWithAPI(instanceId: string, apiName: string): InstanceSpec {
+function fakeInstanceSpecWithAPI(instanceId: string, apiName: string): DeploymentInstanceSpec {
   return {
     instanceId,
     params: {},
