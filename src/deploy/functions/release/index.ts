@@ -18,27 +18,18 @@ import { FirebaseError } from "../../../error";
 import { needProjectId, needProjectNumber } from "../../../projectUtils";
 import { logLabeledBullet, logLabeledWarning } from "../../../utils";
 
-function assertPreconditions(context: args.Context, options: Options, payload: args.Payload): void {
-  const assertExists = function (v: unknown, msg?: string): void {
-    const errMsg = `${msg || "Value unexpectedly empty."}`;
-    if (!v) {
-      throw new FirebaseError(
-        errMsg +
-          "This should never happen. Please file a bug at https://github.com/firebase/firebase-tools"
-      );
-    }
-  };
-  assertExists(context.config, "Functions config unexpectedly empty.");
-  assertExists(context.source, "Functions sources unexpectedly empty.");
-  assertExists(payload.functions, "Functions payload unexpectedly empty.");
-}
 /** Releases new versions of functions to prod. */
 export async function release(
   context: args.Context,
   options: Options,
   payload: args.Payload
 ): Promise<void> {
-  assertPreconditions(context, options, payload);
+  if (!context.config) {
+    return;
+  }
+  if (!payload.functions) {
+    return;
+  }
 
   const { wantBackend, haveBackend } = payload.functions!;
   const plan = planner.createDeploymentPlan(wantBackend, haveBackend, context.filters);
