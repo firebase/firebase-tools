@@ -30,7 +30,7 @@ function assertPreconditions(context: args.Context, options: Options, payload: a
   };
   assertExists(context.config, "Functions config unexpectedly empty.");
   assertExists(context.source, "Functions sources unexpectedly empty.");
-  assertExists(payload.function, "Functions payload unexpectedly empty.");
+  assertExists(payload.functions, "Functions payload unexpectedly empty.");
 }
 /** Releases new versions of functions to prod. */
 export async function release(
@@ -40,7 +40,7 @@ export async function release(
 ): Promise<void> {
   assertPreconditions(context, options, payload);
 
-  const { wantBackend, haveBackend } = payload.function!;
+  const { wantBackend, haveBackend } = payload.functions!;
   const plan = planner.createDeploymentPlan(wantBackend, haveBackend, context.filters);
 
   const fnsToDelete = Object.values(plan)
@@ -81,9 +81,9 @@ export async function release(
   // uri field. createDeploymentPlan copies endpoints by reference. Both of these
   // subtleties are so we can take out a round trip API call to get the latest
   // trigger URLs by calling existingBackend again.
-  printTriggerUrls(payload.function!.wantBackend);
+  printTriggerUrls(payload.functions!.wantBackend);
 
-  const haveEndpoints = backend.allEndpoints(payload.function!.wantBackend);
+  const haveEndpoints = backend.allEndpoints(payload.functions!.wantBackend);
   const deletedEndpoints = Object.values(plan)
     .map((r) => r.endpointsToDelete)
     .reduce(reduceFlat, []);

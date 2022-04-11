@@ -36,22 +36,6 @@ async function uploadSourceV2(context: args.Context, region: string): Promise<vo
   context.source!.storage = { ...context.source!.storage, [region]: res.storageSource };
 }
 
-function assertPreconditions(context: args.Context, options: Options, payload: args.Payload): void {
-  const assertExists = function (v: unknown, msg?: string): void {
-    const errMsg = `${msg || "Value unexpectedly empty."}`;
-    if (!v) {
-      throw new FirebaseError(
-        errMsg +
-          "This should never happen. Please file a bug at https://github.com/firebase/firebase-tools"
-      );
-    }
-  };
-  assertExists(context.config, "Functions config unexpectedly empty.");
-  assertExists(context.source, "Functions sources unexpectedly empty.");
-  assertExists(context.source?.functionsSourceV1, "Functions v1 source unexpectedly empty.");
-  assertExists(payload.functions, "Functions payload unexpectedly empty.");
-}
-
 /**
  * The "deploy" stage for Cloud Functions -- uploads source code to a generated URL.
  * @param context The deploy context.
@@ -63,7 +47,14 @@ export async function deploy(
   options: Options,
   payload: args.Payload
 ): Promise<void> {
-  assertPreconditions(context, options, payload);
+  if (!context.config) {
+    return;
+  }
+
+  if (!context.source?.functionsSourceV1 && !context.source?.functionsSourceV2) {
+    return;
+  }
+
   await checkHttpIam(context, options, payload);
 
   try {
@@ -79,7 +70,7 @@ export async function deploy(
     }
     await Promise.all(uploads);
 
-    const source = context.config!.source;
+    const source = context.config.source;
     if (uploads.length) {
       logSuccess(
         `${clc.green.bold("functions:")} ${clc.bold(source)} folder uploaded successfully`

@@ -178,7 +178,7 @@ export async function prepare(
   await ensureTriggerRegions(wantBackend);
   validate.endpointsAreValid(wantBackend);
 
-  payload.function = { wantBackend: wantBackend, haveBackend: haveBackend };
+  payload.functions = { wantBackend: wantBackend, haveBackend: haveBackend };
 
   // ===Phase 4. Enable APIs required by the deploying backend.
 

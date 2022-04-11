@@ -12,7 +12,7 @@ interface CodebasePayload {
 
 // Payload holds the output of what we want to build + what we already have.
 export interface Payload {
-  function?: CodebasePayload;
+  functions?: CodebasePayload;
 }
 
 export interface Source {
