@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { SameType, RecursiveKeyOf, RecursiveElem, DeepPick, DeepOmit } from "../metaprogramming";
+import { SameType, RecursiveKeyOf, LeafElems, DeepPick, DeepOmit } from "../metaprogramming";
 
 describe("metaprogramming", () => {
   it("can calcluate recursive keys", () => {
@@ -19,7 +19,7 @@ describe("metaprogramming", () => {
   });
 
   it("can detect recursive elems", () => {
-    const test: SameType<RecursiveElem<[[["a"], "b"], ["c"]]>, "a" | "b" | "c"> = true;
+    const test: SameType<LeafElems<[[["a"], "b"], ["c"]]>, "a" | "b" | "c"> = true;
     expect(test).to.be.true;
   });
 

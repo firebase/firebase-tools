@@ -59,17 +59,17 @@ type DeepPickUnsafe<T, Keys extends string> = {
     : DeepPickUnsafe<T[Key], TailsOf<Keys, Key>>;
 };
 
-/** In the array RecursiveElem<[[["a"], "b"], ["c"]]> is "a" | "b" | "c" */
-export type RecursiveElem<T> = T extends Array<infer Elem>
+/** In the array LeafElems<[[["a"], "b"], ["c"]]> is "a" | "b" | "c" */
+export type LeafElems<T> = T extends Array<infer Elem>
   ? Elem extends unknown[]
-    ? RecursiveElem<Elem>
+    ? LeafElems<Elem>
     : Elem
   : T;
 
 /**
  * In the object {a: number, b: { c: string } },
- * RecursiveValue is number | string
+ * LeafValues is number | string
  */
-export type RecursiveValue<T extends object> = {
-  [Key in keyof T]: T[Key] extends object ? RecursiveValue<T[Key]> : T[Key];
+export type LeafValues<T extends object> = {
+  [Key in keyof T]: T[Key] extends object ? LeafValues<T[Key]> : T[Key];
 }[keyof T];

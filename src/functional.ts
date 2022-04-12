@@ -1,4 +1,4 @@
-import { LeafKeysOf, RecursiveElem, RecursiveKeyOf, RecursiveValue } from "./metaprogramming";
+import { SameType, LeafElems } from "./metaprogramming";
 
 /**
  * Flattens an object so that the return value's keys are the path
@@ -27,12 +27,12 @@ export function* flattenObject<T extends object>(obj: T): Generator<[string, unk
  * [...flatten([[[1]], [2], 3])] = [1, 2, 3]
  */
 // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-export function* flattenArray<T extends unknown[]>(arr: T): Generator<RecursiveElem<T>> {
+export function* flattenArray<T extends unknown[]>(arr: T): Generator<LeafElems<T>> {
   for (const val of arr) {
     if (Array.isArray(val)) {
       yield* flattenArray(val);
     } else {
-      yield val as RecursiveElem<T>;
+      yield val as LeafElems<T>;
     }
   }
 }
@@ -41,7 +41,7 @@ export function* flattenArray<T extends unknown[]>(arr: T): Generator<RecursiveE
 export function flatten<T extends object>(obj: T): Generator<[string, string]>;
 /** Shorthand for flattenArray. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function flatten<T extends unknown[]>(arr: T): Generator<RecursiveElem<T>>;
+export function flatten<T extends unknown[]>(arr: T): Generator<LeafElems<T>>;
 
 /** Flattens an object or array. */
 export function flatten<T extends unknown[] | object>(objOrArr: T): unknown {
@@ -52,6 +52,10 @@ export function flatten<T extends unknown[] | object>(objOrArr: T): unknown {
   }
 }
 
+type RecursiveElems<T extends unknown[]> = {
+  [Key in keyof T]: T[Key] extends unknown[] ? T[Key] | RecursiveElems<T[Key]> : T[Key];
+}[number];
+
 /**
  * Used with reduce to flatten in place.
  * Due to the quirks of TypeScript, callers must pass [] as the
@@ -59,7 +63,7 @@ export function flatten<T extends unknown[] | object>(objOrArr: T): unknown {
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function reduceFlat<T = any>(accum: T[] | undefined, next: unknown): T[] {
-  return [...(accum || []), ...flatten<T>([next])];
+  return [...(accum || []), ...(flatten([next]) as Generator<T>)];
 }
 
 /**
