@@ -6,7 +6,7 @@ import { firebaseStorageOrigin, firedataOrigin } from "../api";
 import { Client } from "../apiv2";
 import { flattenArray } from "../functional";
 import { FirebaseError } from "../error";
-import { getExtensionVersion, InstanceSpec } from "../deploy/extensions/planner";
+import { getExtensionSpec, InstanceSpec } from "../deploy/extensions/planner";
 
 /** Product for which provisioning can be (or is) deferred */
 export enum DeferredProduct {
@@ -38,8 +38,8 @@ export async function bulkCheckProductsProvisioned(
 ): Promise<void> {
   const usedProducts = await Promise.all(
     instanceSpecs.map(async (i) => {
-      const extensionVersion = await getExtensionVersion(i);
-      return getUsedProducts(extensionVersion.spec);
+      const extensionSpec = await getExtensionSpec(i);
+      return getUsedProducts(extensionSpec);
     })
   );
   await checkProducts(projectId, [...flattenArray(usedProducts)]);
