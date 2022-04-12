@@ -22,10 +22,10 @@ describe("authBlocking", () => {
   beforeEach(() => {
     getConfig = sinon
       .stub(identityPlatform, "getBlockingFunctionsConfig")
-      .throws("Unexpected call to getBlockingFunctionsConfig");
+      .rejects(new Error("Unexpected call to getBlockingFunctionsConfig"));
     setConfig = sinon
       .stub(identityPlatform, "setBlockingFunctionsConfig")
-      .throws("Unexpected call to setBlockingFunctionsConfig");
+      .rejects(new Error("Unexpected call to setBlockingFunctionsConfig"));
   });
 
   afterEach(() => {

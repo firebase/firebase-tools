@@ -3,7 +3,6 @@ import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfV2 from "../../gcp/cloudfunctionsv2";
 import * as utils from "../../utils";
 import * as runtimes from "./runtimes";
-import * as events from "../../functions/events";
 import { FirebaseError } from "../../error";
 import { Context } from "./args";
 import { previews } from "../../previews";
@@ -134,7 +133,7 @@ export interface TaskQueueTriggered {
 
 export interface BlockingTrigger {
   eventType: string;
-  options?: Record<string, any>;
+  options?: Record<string, unknown>;
 }
 
 export interface BlockingTriggered {

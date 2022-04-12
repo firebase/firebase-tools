@@ -25,12 +25,9 @@ export interface Service {
     policy: iam.Policy
   ) => Promise<Array<iam.Binding>>;
   ensureTriggerRegion: (ep: backend.Endpoint & backend.EventTriggered) => Promise<void>;
-  validateTrigger: (
-    ep: backend.Endpoint & backend.BlockingTriggered,
-    want: backend.Backend
-  ) => void;
-  registerTrigger: (ep: backend.Endpoint & backend.BlockingTriggered) => Promise<void>;
-  unregisterTrigger: (ep: backend.Endpoint & backend.BlockingTriggered) => Promise<void>;
+  validateTrigger: (ep: backend.Endpoint, want: backend.Backend) => void;
+  registerTrigger: (ep: backend.Endpoint) => Promise<void>;
+  unregisterTrigger: (ep: backend.Endpoint) => Promise<void>;
 }
 
 /** A noop service object, useful for v1 events */
