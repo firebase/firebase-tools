@@ -325,14 +325,17 @@ export async function deleteChannel(
 export async function cloneVersion(
   site: string,
   versionName: string,
-  finalize = false
+  options: {
+    finalize?: boolean;
+    include?: { regexes: string[] };
+    exclude?: { regexes: string[] };
+  } = {}
 ): Promise<Version> {
+  options.finalize ||= false;
+  const body = { ...options, sourceVersion: versionName };
   const res = await apiClient.post<CloneVersionRequest, LongRunningOperation<Version>>(
     `/projects/-/sites/${site}/versions:clone`,
-    {
-      sourceVersion: versionName,
-      finalize,
-    }
+    body
   );
   const { name: operationName } = res.body;
   const pollRes = await operationPoller.pollOperation<Version>({
@@ -361,6 +364,15 @@ export async function createRelease(
     queryParams: { versionName: version },
   });
   return res.body;
+}
+
+export async function getLatestRelease(site: string, channel?: string): Promise<Release> {
+  const { releases } = (
+    await apiClient.get<{ releases: Release[] }>(
+      `/projects/-/sites/${site}/channels/${channel || "live"}/releases?page_size=1`
+    )
+  ).body;
+  return releases[0];
 }
 
 /**
