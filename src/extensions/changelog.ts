@@ -17,7 +17,9 @@ marked.setOptions({
 });
 
 const EXTENSIONS_CHANGELOG = "CHANGELOG.md";
-const VERSION_LINE_REGEX = /##.*(\d+\.\d+\.\d+).*/;
+// Simplifed version of https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
+const VERSION_LINE_REGEX =
+  /##.*(\d+\.\d+\.\d+(?:-((\d+|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(\d+|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?).*/;
 
 /*
  * getReleaseNotesForUpdate fetches all version between toVersion and fromVersion and returns the relase notes

@@ -31,8 +31,8 @@ export async function getUnemulatedAPIs(
 ): Promise<APIInfo[]> {
   const unemulatedAPIs: Record<string, APIInfo> = {};
   for (const i of instances) {
-    const extensionVersion = await planner.getExtensionVersion(i);
-    for (const api of extensionVersion.spec.apis ?? []) {
+    const extensionSpec = await planner.getExtensionSpec(i);
+    for (const api of extensionSpec.apis ?? []) {
       if (!EMULATED_APIS.includes(api.apiName)) {
         if (unemulatedAPIs[api.apiName]) {
           unemulatedAPIs[api.apiName].instanceIds.push(i.instanceId);
