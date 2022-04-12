@@ -37,7 +37,6 @@ export interface Service {
 const NoOpService: Service = {
   name: "noop",
   api: "",
-  // requiredProjectBindings: undefined,
   ensureTriggerRegion: noop,
   validateTrigger: noop,
   registerTrigger: noop,
