@@ -31,7 +31,7 @@ export async function release(
     return;
   }
 
-  const { wantBackend, haveBackend } = payload.functions;
+  const { wantBackend, haveBackend } = payload.functions!;
   const plan = planner.createDeploymentPlan(wantBackend, haveBackend, context.filters);
 
   const fnsToDelete = Object.values(plan)
@@ -58,8 +58,8 @@ export async function release(
   const fab = new fabricator.Fabricator({
     functionExecutor,
     executor: new executor.QueueExecutor({}),
-    sourceUrl: context.sourceUrl!,
-    storage: context.storage!,
+    sourceUrl: context.source!.sourceUrl!,
+    storage: context.source!.storage!,
     appEngineLocation: getAppEngineLocation(context.firebaseConfig),
   });
 
