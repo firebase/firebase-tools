@@ -1,6 +1,8 @@
 import * as backend from "./backend";
 import * as proto from "../../gcp/proto";
+import * as api from "../../.../../api";
 import { FirebaseError } from "../../error";
+import { assertExhaustive } from "../../functional";
 
 /* The union of a customer-controlled deployment and potentially deploy-time defined parameters */
 export interface Build {
@@ -27,6 +29,7 @@ interface RequiredApi {
 // `Expression<Foo> == Expression<Foo>` is an Expression<boolean>
 // `Expression<boolean> ? Expression<T> : Expression<T>` is an Expression<T>
 type Expression<T extends string | number | boolean> = string;
+type Field<T extends string | number | boolean> = T | Expression<T> | null;
 
 function resolveInt(from: number | Expression<number> | null): number {
   if (from == null) {
@@ -40,6 +43,8 @@ function resolveInt(from: number | Expression<number> | null): number {
 function resolveString(from: string | Expression<string> | null): string {
   if (from == null) {
     return "";
+  } else if (from.includes("{{") && from.includes("}}")) {
+    throw new FirebaseError("CEL evaluation of expression '" + from + "' not yet supported");
   }
   return from;
 }
@@ -85,12 +90,12 @@ interface EventTrigger {
   // whether failed function executions should retry the event execution.
   // Retries are indefinite, so developers should be sure to add some end condition (e.g. event
   // age)
-  retry: boolean | Expression<boolean> | null;
+  retry: Field<boolean>;
 
   // Region of the EventArc trigger. Must be the same region or multi-region as the event
   // trigger or be us-central1. All first party triggers (all triggers as of Jan 2022) need not
   // specify this field because tooling determines the correct value automatically.
-  region?: string | Expression<string>;
+  region?: Field<string>;
 
   // The service account that EventArc should use to invoke this function. Setting this field
   // requires the EventArc P4SA to be granted the "ActAs" permission to this service account and
@@ -100,16 +105,16 @@ interface EventTrigger {
 }
 
 interface TaskQueueRateLimits {
-  maxConcurrentDispatches?: number | Expression<number> | null;
-  maxDispatchesPerSecond?: number | Expression<number> | null;
+  maxConcurrentDispatches?: Field<number>;
+  maxDispatchesPerSecond?: Field<number>;
 }
 
 interface TaskQueueRetryConfig {
-  maxAttempts?: number | Expression<number> | null;
-  maxRetryDurationSeconds: number | Expression<number> | null;
-  minBackoffSeconds?: number | Expression<number> | null;
-  maxBackoffSeconds?: number | Expression<number> | null;
-  maxDoublings?: number | Expression<number> | null;
+  maxAttempts?: Field<number>;
+  maxRetryDurationSeconds: Field<number>;
+  minBackoffSeconds?: Field<number>;
+  maxBackoffSeconds?: Field<number>;
+  maxDoublings?: Field<number>;
 }
 
 interface TaskQueueTrigger {
@@ -121,16 +126,16 @@ interface TaskQueueTrigger {
 }
 
 interface ScheduleRetryConfig {
-  retryCount?: number | Expression<number> | null;
-  maxRetrySeconds?: number | Expression<number> | null;
-  minBackoffSeconds?: number | Expression<number> | null;
-  maxBackoffSeconds?: number | Expression<number> | null;
-  maxDoublings?: number | Expression<number> | null;
+  retryCount?: Field<number>;
+  maxRetrySeconds?: Field<number>;
+  minBackoffSeconds?: Field<number>;
+  maxBackoffSeconds?: Field<number>;
+  maxDoublings?: Field<number>;
 }
 
 interface ScheduleTrigger {
   schedule: string | Expression<string>;
-  timeZone: string;
+  timeZone: string | Expression<string>;
   retryConfig: ScheduleRetryConfig;
 }
 
@@ -166,19 +171,19 @@ type Endpoint = Triggered & {
   region?: string[];
 
   // Firebase default of 80. Cloud default of 1
-  concurrency?: number | Expression<number> | null;
+  concurrency?: Field<number>;
 
   // Default of 256
-  availableMemoryMb?: number | Expression<number> | null;
+  availableMemoryMb?: Field<number>;
 
   // Default of 60
-  timeoutSeconds?: number | Expression<number> | null;
+  timeoutSeconds?: Field<number>;
 
   // Default of 1000
-  maxInstances?: number | Expression<number> | null;
+  maxInstances?: Field<number>;
 
   // Default of 0
-  minInstances?: number | Expression<number> | null;
+  minInstances?: Field<number>;
 
   vpc?: VpcSettings | null;
   ingressSettings?: "ALLOW_ALL" | "ALLOW_INTERNAL_ONLY" | "ALLOW_INTERNAL_AND_GCLB" | null;
@@ -219,14 +224,14 @@ function isMemoryOption(value: backend.MemoryOptions | any): value is backend.Me
 /** Converts a build specification into a Backend representation, with all Params resolved and interpolated */
 // TODO(vsfan): resolve build.Params
 // TODO(vsfan): handle Expression<T> types
-export function discoverParams(build: Build): backend.Backend {
+export function resolveBackend(build: Build): backend.Backend {
   const bkEndpoints: Array<backend.Endpoint> = [];
   for (const endpointId of Object.keys(build.endpoints)) {
     const endpoint = build.endpoints[endpointId];
 
     let regions = endpoint.region;
     if (typeof regions === "undefined") {
-      regions = ["functionsDefaultRegion"];
+      regions = [api.functionsDefaultRegion];
     }
     for (const region of regions) {
       const trigger = discoverTrigger(endpoint);
@@ -264,7 +269,7 @@ export function discoverParams(build: Build): backend.Backend {
       proto.copyIfPresent(bkEndpoint, endpoint, "ingressSettings");
       if (endpoint.vpc) {
         bkEndpoint.vpc = {
-          connector: endpoint.vpc.connector,
+          connector: resolveString(endpoint.vpc.connector),
           egressSettings: endpoint.vpc.egressSettings,
         };
       }
@@ -296,9 +301,15 @@ function discoverTrigger(endpoint: Endpoint): backend.Triggered {
   } else if ("blockingTrigger" in endpoint) {
     throw new FirebaseError("blocking triggers not supported");
   } else if ("eventTrigger" in endpoint) {
+    const bkEventFilters: Record<string, string> = {};
+    for (const key in endpoint.eventTrigger.eventFilters) {
+      if (typeof key === "string") {
+        bkEventFilters[key] = resolveString(endpoint.eventTrigger.eventFilters[key]);
+      }
+    }
     const bkEvent: backend.EventTrigger = {
       eventType: endpoint.eventTrigger.eventType,
-      eventFilters: endpoint.eventTrigger.eventFilters,
+      eventFilters: bkEventFilters,
       retry: resolveBoolean(endpoint.eventTrigger.retry),
     };
     if (endpoint.eventTrigger.serviceAccount) {
@@ -310,8 +321,8 @@ function discoverTrigger(endpoint: Endpoint): backend.Triggered {
     trigger = { eventTrigger: bkEvent };
   } else if ("scheduleTrigger" in endpoint) {
     const bkSchedule: backend.ScheduleTrigger = {
-      schedule: endpoint.scheduleTrigger.schedule,
-      timeZone: endpoint.scheduleTrigger.timeZone,
+      schedule: resolveString(endpoint.scheduleTrigger.schedule),
+      timeZone: resolveString(endpoint.scheduleTrigger.timeZone),
     };
     proto.renameIfPresent(
       bkSchedule,
@@ -391,7 +402,7 @@ function discoverTrigger(endpoint: Endpoint): backend.Triggered {
     }
     trigger = { taskQueueTrigger: bkTaskQueue };
   } else {
-    throw new FirebaseError("unknown trigger type");
+    assertExhaustive(endpoint);
   }
   return trigger;
 }
