@@ -1,4 +1,5 @@
 import * as backend from "../backend";
+import * as build from "../build";
 import * as golang from "./golang";
 import * as node from "./node";
 import * as validate from "../validate";
@@ -93,6 +94,11 @@ export interface RuntimeDelegate {
   // for this to reuse or keep alive an HTTP server. This will speed up the emulator
   // by only loading customer code once. This part of the interface will be easier
   // to figure out as we go.
+  discoverBuild(
+    configValues: backend.RuntimeConfigValues,
+    envs: backend.EnvironmentVariables
+  ): Promise<build.Build>;
+
   discoverSpec(
     configValues: backend.RuntimeConfigValues,
     envs: backend.EnvironmentVariables

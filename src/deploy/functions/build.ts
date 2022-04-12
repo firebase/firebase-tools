@@ -64,7 +64,7 @@ function resolveBoolean(from: boolean | Expression<boolean> | null): boolean {
 type ServiceAccount = string;
 
 // Trigger definition for arbitrary HTTPS endpoints
-interface HttpsTrigger {
+export interface HttpsTrigger {
   // Which service account should be able to trigger this function. No value means "make public
   // on create and don't do anything on update." For more, see go/cf3-http-access-control
   invoker?: ServiceAccount | null;
@@ -77,13 +77,13 @@ interface CallableTrigger { }
 
 // Trigger definitions for endpoints that should be called as a delegate for other operations.
 // For example, before user login.
-interface BlockingTrigger {
+export interface BlockingTrigger {
   eventType: string;
 }
 
 // Trigger definitions for endpoints that listen to CloudEvents emitted by other systems (or legacy
 // Google events for GCF gen 1)
-interface EventTrigger {
+export interface EventTrigger {
   eventType: string;
   eventFilters: Record<string, Expression<string>>;
 
@@ -117,7 +117,7 @@ interface TaskQueueRetryConfig {
   maxDoublings?: Field<number>;
 }
 
-interface TaskQueueTrigger {
+export interface TaskQueueTrigger {
   rateLimits?: TaskQueueRateLimits | null;
   retryConfig?: TaskQueueRetryConfig | null;
 
@@ -133,13 +133,13 @@ interface ScheduleRetryConfig {
   maxDoublings?: Field<number>;
 }
 
-interface ScheduleTrigger {
+export interface ScheduleTrigger {
   schedule: string | Expression<string>;
   timeZone: string | Expression<string>;
   retryConfig: ScheduleRetryConfig;
 }
 
-type Triggered =
+export type Triggered =
   | { httpsTrigger: HttpsTrigger }
   | { callableTrigger: CallableTrigger }
   | { blockingTrigger: BlockingTrigger }
@@ -152,7 +152,7 @@ interface VpcSettings {
   egressSettings?: "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC";
 }
 
-type Endpoint = Triggered & {
+export type Endpoint = Triggered & {
   // Defaults to "gcfv2". "Run" will be an additional option defined later
   platform?: "gcfv1" | "gcfv2";
 
@@ -269,7 +269,7 @@ export function resolveBackend(build: Build): backend.Backend {
       proto.copyIfPresent(bkEndpoint, endpoint, "ingressSettings");
       if (endpoint.vpc) {
         bkEndpoint.vpc = {
-          connector: resolveString(endpoint.vpc.connector),
+          connector: resolveString(endpoint.vpc.connector).replace("$REGION", region),
           egressSettings: endpoint.vpc.egressSettings,
         };
       }
