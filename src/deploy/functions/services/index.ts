@@ -1,15 +1,15 @@
 import * as backend from "../backend";
 import * as iam from "../../../gcp/iam";
 import * as events from "../../../functions/events";
-import * as auth from "./auth";
+import { AuthBlockingService } from "./auth";
 import { obtainStorageBindings, ensureStorageTriggerRegion } from "./storage";
 import { ensureFirebaseAlertsTriggerRegion } from "./firebaseAlerts";
 
 /** A standard void No Op */
-const noop = (): Promise<void> => Promise.resolve();
+export const noop = (): Promise<void> => Promise.resolve();
 
 /** A No Op that's useful for Services that don't have specific bindings but should still try to set default bindings */
-const noopProjectBindings = (): Promise<Array<iam.Binding>> => Promise.resolve([]);
+export const noopProjectBindings = (): Promise<Array<iam.Binding>> => Promise.resolve([]);
 
 /** A name of a service */
 export type Name = "noop" | "pubsub" | "storage" | "firebasealerts" | "authblocking";
@@ -20,23 +20,24 @@ export interface Service {
   readonly api: string;
 
   // dispatch functions
-  requiredProjectBindings:
-    | ((projectNumber: string, policy: iam.Policy) => Promise<Array<iam.Binding>>)
-    | undefined;
+  requiredProjectBindings?: (
+    projectNumber: string,
+    policy: iam.Policy
+  ) => Promise<Array<iam.Binding>>;
   ensureTriggerRegion: (ep: backend.Endpoint & backend.EventTriggered) => Promise<void>;
   validateTrigger: (
     ep: backend.Endpoint & backend.BlockingTriggered,
     want: backend.Backend
   ) => void;
-  registerTrigger: (ep: backend.Endpoint & backend.BlockingTriggered, u: boolean) => Promise<void>;
+  registerTrigger: (ep: backend.Endpoint & backend.BlockingTriggered) => Promise<void>;
   unregisterTrigger: (ep: backend.Endpoint & backend.BlockingTriggered) => Promise<void>;
 }
 
 /** A noop service object, useful for v1 events */
-export const NoOpService: Service = {
+const NoOpService: Service = {
   name: "noop",
   api: "",
-  requiredProjectBindings: undefined,
+  // requiredProjectBindings: undefined,
   ensureTriggerRegion: noop,
   validateTrigger: noop,
   registerTrigger: noop,
@@ -44,7 +45,7 @@ export const NoOpService: Service = {
 };
 
 /** A pubsub service object */
-export const PubSubService: Service = {
+const PubSubService: Service = {
   name: "pubsub",
   api: "pubsub.googleapis.com",
   requiredProjectBindings: noopProjectBindings,
@@ -55,7 +56,7 @@ export const PubSubService: Service = {
 };
 
 /** A storage service object */
-export const StorageService: Service = {
+const StorageService: Service = {
   name: "storage",
   api: "storage.googleapis.com",
   requiredProjectBindings: obtainStorageBindings,
@@ -66,7 +67,7 @@ export const StorageService: Service = {
 };
 
 /** A firebase alerts service object */
-export const FirebaseAlertsService: Service = {
+const FirebaseAlertsService: Service = {
   name: "firebasealerts",
   api: "firebasealerts.googleapis.com",
   requiredProjectBindings: noopProjectBindings,
@@ -77,26 +78,18 @@ export const FirebaseAlertsService: Service = {
 };
 
 /** A auth blocking service object */
-export const AuthBlockingService: Service = {
-  name: "authblocking",
-  api: "identitytoolkit.googleapis.com",
-  requiredProjectBindings: undefined,
-  ensureTriggerRegion: noop,
-  validateTrigger: auth.validateBlockingTrigger,
-  registerTrigger: auth.registerBlockingTrigger,
-  unregisterTrigger: auth.unregisterBlockingTrigger,
-};
+const authBlockingService = new AuthBlockingService();
 
 /** Mapping from event type string to service object */
-export const EVENT_SERVICE_MAPPING: Record<events.Event, Service> = {
+const EVENT_SERVICE_MAPPING: Record<events.Event, Service> = {
   "google.cloud.pubsub.topic.v1.messagePublished": PubSubService,
   "google.cloud.storage.object.v1.finalized": StorageService,
   "google.cloud.storage.object.v1.archived": StorageService,
   "google.cloud.storage.object.v1.deleted": StorageService,
   "google.cloud.storage.object.v1.metadataUpdated": StorageService,
   "google.firebase.firebasealerts.alerts.v1.published": FirebaseAlertsService,
-  "providers/cloud.auth/eventTypes/user.beforeCreate": AuthBlockingService,
-  "providers/cloud.auth/eventTypes/user.beforeSignIn": AuthBlockingService,
+  "providers/cloud.auth/eventTypes/user.beforeCreate": authBlockingService,
+  "providers/cloud.auth/eventTypes/user.beforeSignIn": authBlockingService,
 };
 
 /**

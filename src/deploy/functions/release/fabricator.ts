@@ -67,7 +67,6 @@ export class Fabricator {
   sourceUrl: string | undefined;
   storage: Record<string, gcfV2.StorageSource> | undefined;
   appEngineLocation: string;
-  triggerQueue: Promise<void>;
 
   constructor(args: FabricatorArgs) {
     this.executor = args.executor;
@@ -75,7 +74,6 @@ export class Fabricator {
     this.sourceUrl = args.sourceUrl;
     this.storage = args.storage;
     this.appEngineLocation = args.appEngineLocation;
-    this.triggerQueue = Promise.resolve();
   }
 
   async applyPlan(plan: planner.DeploymentPlan): Promise<reporter.Summary> {
@@ -169,7 +167,7 @@ export class Fabricator {
       assertExhaustive(endpoint.platform);
     }
 
-    await this.setTrigger(endpoint, false);
+    await this.setTrigger(endpoint);
   }
 
   async updateEndpoint(update: planner.EndpointUpdate, scraper: SourceTokenScraper): Promise<void> {
@@ -188,7 +186,7 @@ export class Fabricator {
       assertExhaustive(update.endpoint.platform);
     }
 
-    await this.setTrigger(update.endpoint, true);
+    await this.setTrigger(update.endpoint);
   }
 
   async deleteEndpoint(endpoint: backend.Endpoint): Promise<void> {
@@ -493,7 +491,7 @@ export class Fabricator {
 
   // Set/Delete trigger is responsible for wiring up a function with any trigger not owned
   // by the GCF API. This includes schedules, task queues, and blocking function triggers.
-  async setTrigger(endpoint: backend.Endpoint, update: boolean): Promise<void> {
+  async setTrigger(endpoint: backend.Endpoint): Promise<void> {
     if (backend.isScheduleTriggered(endpoint)) {
       if (endpoint.platform === "gcfv1") {
         await this.upsertScheduleV1(endpoint);
@@ -506,7 +504,7 @@ export class Fabricator {
     } else if (backend.isTaskQueueTriggered(endpoint)) {
       await this.upsertTaskQueue(endpoint);
     } else if (backend.isBlockingTriggered(endpoint)) {
-      await this.registerBlockingTrigger(endpoint, update);
+      await this.registerBlockingTrigger(endpoint);
     }
   }
 
@@ -557,15 +555,11 @@ export class Fabricator {
   }
 
   async registerBlockingTrigger(
-    endpoint: backend.Endpoint & backend.BlockingTriggered,
-    update: boolean
+    endpoint: backend.Endpoint & backend.BlockingTriggered
   ): Promise<void> {
-    this.triggerQueue = this.triggerQueue.then(async () => {
-      await this.executor
-        .run(() => services.serviceForEndpoint(endpoint).registerTrigger(endpoint, update))
-        .catch(rethrowAs(endpoint, "register blocking trigger"));
-    });
-    return this.triggerQueue;
+    await this.executor
+      .run(() => services.serviceForEndpoint(endpoint).registerTrigger(endpoint))
+      .catch(rethrowAs(endpoint, "register blocking trigger"));
   }
 
   async deleteScheduleV1(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
@@ -598,12 +592,9 @@ export class Fabricator {
   async unregisterBlockingTrigger(
     endpoint: backend.Endpoint & backend.BlockingTriggered
   ): Promise<void> {
-    this.triggerQueue = this.triggerQueue.then(async () => {
-      await this.executor
-        .run(() => services.serviceForEndpoint(endpoint).unregisterTrigger(endpoint))
-        .catch(rethrowAs(endpoint, "unregister blocking trigger"));
-    });
-    return this.triggerQueue;
+    await this.executor
+      .run(() => services.serviceForEndpoint(endpoint).unregisterTrigger(endpoint))
+      .catch(rethrowAs(endpoint, "unregister blocking trigger"));
   }
 
   logOpStart(op: string, endpoint: backend.Endpoint): void {

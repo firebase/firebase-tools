@@ -16,7 +16,9 @@ import * as scraper from "../../../../deploy/functions/release/sourceTokenScrape
 import * as planner from "../../../../deploy/functions/release/planner";
 import * as v2events from "../../../../functions/events/v2";
 import * as v1events from "../../../../functions/events/v1";
+import * as servicesNS from "../../../../deploy/functions/services";
 import * as identityPlatformNS from "../../../../gcp/identityPlatform";
+import { AuthBlockingService } from "../../../../deploy/functions/services/auth";
 
 describe("Fabricator", () => {
   // Stub all GCP APIs to make sure this test is hermetic
@@ -27,6 +29,7 @@ describe("Fabricator", () => {
   let scheduler: sinon.SinonStubbedInstance<typeof schedulerNS>;
   let run: sinon.SinonStubbedInstance<typeof runNS>;
   let tasks: sinon.SinonStubbedInstance<typeof cloudtasksNS>;
+  let services: sinon.SinonStubbedInstance<typeof servicesNS>;
   let identityPlatform: sinon.SinonStubbedInstance<typeof identityPlatformNS>;
 
   beforeEach(() => {
@@ -37,6 +40,7 @@ describe("Fabricator", () => {
     scheduler = sinon.stub(schedulerNS);
     run = sinon.stub(runNS);
     tasks = sinon.stub(cloudtasksNS);
+    services = sinon.stub(servicesNS);
     identityPlatform = sinon.stub(identityPlatformNS);
 
     gcf.functionFromEndpoint.restore();
@@ -71,8 +75,13 @@ describe("Fabricator", () => {
     tasks.setEnqueuer.rejects(new Error("unexpected tasks.setEnqueuer"));
     tasks.setIamPolicy.rejects(new Error("unexpected tasks.setIamPolicy"));
     tasks.getIamPolicy.rejects(new Error("unexpected tasks.getIamPolicy"));
-    identityPlatform.getBlockingFunctionsConfig.resolves({});
-    identityPlatform.setBlockingFunctionsConfig.resolves({});
+    services.serviceForEndpoint.throws("unexpected services.serviceForEndpoint");
+    identityPlatform.getBlockingFunctionsConfig.rejects(
+      new Error("unexpected identityPlatform.getBlockingFunctionsConfig")
+    );
+    identityPlatform.setBlockingFunctionsConfig.rejects(
+      new Error("unexpected identityPlatform.setBlockingFunctionsConfig")
+    );
   });
 
   afterEach(() => {
@@ -939,18 +948,21 @@ describe("Fabricator", () => {
       },
       { uri: "myuri.net" }
     ) as backend.Endpoint & backend.BlockingTriggered;
+    const authBlockingService = new AuthBlockingService();
 
     it("registers auth blocking trigger", async () => {
+      services.serviceForEndpoint.returns(authBlockingService);
       identityPlatform.getBlockingFunctionsConfig.resolves({});
       identityPlatform.setBlockingFunctionsConfig.resolves({});
-      await fab.registerBlockingTrigger(ep, false);
+      await fab.registerBlockingTrigger(ep);
       expect(identityPlatform.getBlockingFunctionsConfig).to.have.been.called;
       expect(identityPlatform.setBlockingFunctionsConfig).to.have.been.called;
     });
 
     it("wraps errors", async () => {
+      services.serviceForEndpoint.returns(authBlockingService);
       identityPlatform.getBlockingFunctionsConfig.rejects(new Error("Fail"));
-      await expect(fab.registerBlockingTrigger(ep, false)).to.eventually.be.rejectedWith(
+      await expect(fab.registerBlockingTrigger(ep)).to.eventually.be.rejectedWith(
         reporter.DeploymentError,
         "register blocking trigger"
       );
@@ -966,8 +978,10 @@ describe("Fabricator", () => {
       },
       { uri: "myuri.net" }
     ) as backend.Endpoint & backend.BlockingTriggered;
+    const authBlockingService = new AuthBlockingService();
 
-    it("registers auth blocking trigger", async () => {
+    it("unregisters auth blocking trigger", async () => {
+      services.serviceForEndpoint.returns(authBlockingService);
       identityPlatform.getBlockingFunctionsConfig.resolves({
         triggers: { beforeCreate: { functionUri: "myuri.net" } },
       });
@@ -978,6 +992,7 @@ describe("Fabricator", () => {
     });
 
     it("wraps errors", async () => {
+      services.serviceForEndpoint.returns(authBlockingService);
       identityPlatform.getBlockingFunctionsConfig.rejects(new Error("Fail"));
       await expect(fab.unregisterBlockingTrigger(ep)).to.eventually.be.rejectedWith(
         reporter.DeploymentError,
@@ -989,7 +1004,7 @@ describe("Fabricator", () => {
   describe("setTrigger", () => {
     it("does nothing for HTTPS functions", async () => {
       // all APIs throw by default
-      await fab.setTrigger(endpoint({ httpsTrigger: {} }), false);
+      await fab.setTrigger(endpoint({ httpsTrigger: {} }));
     });
 
     it("does nothing for event triggers", async () => {
@@ -1001,7 +1016,7 @@ describe("Fabricator", () => {
           retry: false,
         },
       });
-      await fab.setTrigger(ep, false);
+      await fab.setTrigger(ep);
     });
 
     it("sets schedule triggers", async () => {
@@ -1013,7 +1028,7 @@ describe("Fabricator", () => {
       const upsertScheduleV1 = sinon.stub(fab, "upsertScheduleV1");
       upsertScheduleV1.resolves();
 
-      await fab.setTrigger(ep, false);
+      await fab.setTrigger(ep);
       expect(upsertScheduleV1).to.have.been.called;
       upsertScheduleV1.restore();
 
@@ -1021,7 +1036,7 @@ describe("Fabricator", () => {
       const upsertScheduleV2 = sinon.stub(fab, "upsertScheduleV2");
       upsertScheduleV2.resolves();
 
-      await fab.setTrigger(ep, false);
+      await fab.setTrigger(ep);
       expect(upsertScheduleV2).to.have.been.called;
     });
 
@@ -1032,7 +1047,7 @@ describe("Fabricator", () => {
       const upsertTaskQueue = sinon.stub(fab, "upsertTaskQueue");
       upsertTaskQueue.resolves();
 
-      await fab.setTrigger(ep, false);
+      await fab.setTrigger(ep);
       expect(upsertTaskQueue).to.have.been.called;
     });
   });
