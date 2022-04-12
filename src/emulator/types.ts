@@ -14,7 +14,7 @@ export enum Emulators {
   LOGGING = "logging",
   STORAGE = "storage",
   EXTENSIONS = "extensions",
-  EVENTARC = "eventarc"
+  EVENTARC = "eventarc",
 }
 
 export type DownloadableEmulators =

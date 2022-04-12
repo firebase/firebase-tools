@@ -747,8 +747,6 @@ export async function startAll(
     await startEmulator(hostingEmulator);
   }
 
-
-
   if (showUI && !shouldStart(options, Emulators.UI)) {
     hubLogger.logLabeled(
       "WARN",

@@ -60,7 +60,14 @@ export const DESC_TEST_PARAMS =
   "A .env file containing test param values for your emulated extension.";
 
 const DEFAULT_CONFIG = new Config(
-  { eventarc: {}, database: {}, firestore: {}, functions: {}, hosting: {}, emulators: { auth: {}, pubsub: {} } },
+  {
+    eventarc: {},
+    database: {},
+    firestore: {},
+    functions: {},
+    hosting: {},
+    emulators: { auth: {}, pubsub: {} },
+  },
   {}
 );
 

@@ -3,11 +3,7 @@ import * as express from "express";
 import * as cors from "cors";
 import { logger } from "../logger";
 import { Constants } from "./constants";
-import {
-  EmulatorInfo,
-  EmulatorInstance,
-  Emulators,
-} from "./types";
+import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
 import { createDestroyer } from "../utils";
 import { EmulatorLogger } from "./emulatorLogger";
 
@@ -16,12 +12,11 @@ interface RequestWithRawBody extends express.Request {
 }
 
 export interface EventarcEmulatorArgs {
-    port?: number;
-    host?: string;
-  }
+  port?: number;
+  host?: string;
+}
 
 export class EventarcEmulator implements EmulatorInstance {
-
   private destroyServer?: () => Promise<void>;
 
   private logger = EmulatorLogger.forEmulator(Emulators.EVENTARC);
@@ -42,7 +37,6 @@ export class EventarcEmulator implements EmulatorInstance {
         next();
       });
     };
-
 
     const helloWorldRoute = `/hello_world`;
 
@@ -93,4 +87,4 @@ export class EventarcEmulator implements EmulatorInstance {
   getName(): Emulators {
     return Emulators.EVENTARC;
   }
-};
+}
