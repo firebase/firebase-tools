@@ -94,8 +94,10 @@ export class ExtensionsEmulator implements EmulatorInstance {
   private async ensureSourceCode(instance: planner.InstanceSpec): Promise<string> {
     // TODO(b/213335255): Handle local extensions.
     if (instance.localPath) {
-      if (!this.hasValidSource({path: instance.localPath, extTarget: instance.localPath})){
-        throw new FirebaseError(`Tried to emulate local extension at ${instance.localPath}, but it was missing required files.`)
+      if (!this.hasValidSource({ path: instance.localPath, extTarget: instance.localPath })) {
+        throw new FirebaseError(
+          `Tried to emulate local extension at ${instance.localPath}, but it was missing required files.`
+        );
       }
       return instance.localPath;
     } else if (instance.ref) {
@@ -120,7 +122,9 @@ export class ExtensionsEmulator implements EmulatorInstance {
       }
       return sourceCodePath;
     } else {
-      throw new FirebaseError("Tried to emulate an extension instance without a ref or localPath. This should never happen.");
+      throw new FirebaseError(
+        "Tried to emulate an extension instance without a ref or localPath. This should never happen."
+      );
     }
   }
 

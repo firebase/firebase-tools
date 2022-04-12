@@ -9,7 +9,7 @@ import { substituteParams } from "../extensionsHelper";
 import { parseRuntimeVersion } from "../../emulator/functionsEmulatorUtils";
 
 const SPEC_FILE = "extension.yaml";
-const POSTINSTALL_FILE = "POSTINSTALL.md"
+const POSTINSTALL_FILE = "POSTINSTALL.md";
 const validFunctionTypes = [
   "firebaseextensions.v1beta.function",
   "firebaseextensions.v1beta.scheduledFunction",
@@ -55,7 +55,7 @@ export async function readPostinstall(directory: string): Promise<string> {
 export function readFileFromDirectory(
   directory: string,
   file: string
-): Promise<{ source: string, sourceDirectory: string }> {
+): Promise<{ source: string; sourceDirectory: string }> {
   return new Promise<string>((resolve, reject) => {
     fs.readFile(path.resolve(directory, file), "utf8", (err, data) => {
       if (err) {

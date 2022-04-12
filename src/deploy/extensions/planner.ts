@@ -155,10 +155,10 @@ export async function want(args: {
       // TODO(lihes): Remove once firebase deploy supports ext with local source.
       if (isLocalPath(e[1])) {
         if (!args.emulatorMode) {
-        logger.warn(
-          `Unable to deploy instance ${instanceId} because it has a local source, please use "firebase ext:install" instead.`
-        );
-        continue;
+          logger.warn(
+            `Unable to deploy instance ${instanceId} because it has a local source, please use "firebase ext:install" instead.`
+          );
+          continue;
         } else {
           instanceSpecs.push({
             instanceId,
@@ -175,9 +175,6 @@ export async function want(args: {
           params: subbedParams,
         });
       }
-
-
-      
     } catch (err: any) {
       logger.debug(`Got error reading extensions entry ${e}: ${err}`);
       errors.push(err as FirebaseError);
