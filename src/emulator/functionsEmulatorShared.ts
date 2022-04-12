@@ -45,6 +45,7 @@ export interface EventTrigger {
   resource: string;
   eventType: string;
   channel?: string;
+  customFilters?: Record<string, string>;
   // Deprecated
   service?: string;
 }
@@ -171,6 +172,7 @@ export function emulatedFunctionsFromEndpoints(
         };
       } else {
         // Only pubsub and storage events are supported for gcfv2.
+        // Custom events require a channel.
         const { resource, topic, bucket } = endpoint.eventTrigger.eventFilters;
         const eventResource = resource || topic || bucket;
         if (!eventResource && !eventTrigger.channel) {
@@ -181,6 +183,7 @@ export function emulatedFunctionsFromEndpoints(
           eventType: eventTrigger.eventType,
           resource: eventResource,
           channel: eventTrigger.channel,
+          customFilters: eventTrigger.eventFilters,
         };
       }
     } else if (backend.isScheduleTriggered(endpoint)) {
