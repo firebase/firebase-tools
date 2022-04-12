@@ -14,6 +14,7 @@ const DEFAULT_PORTS: { [s in Emulators]: number } = {
   database: 9000,
   auth: 9099,
   storage: 9199,
+  eventarc: 10000, // TODO: FIGURE OUT REAL PORT!
 };
 
 export const FIND_AVAILBLE_PORT_BY_DEFAULT: Record<Emulators, boolean> = {
@@ -28,6 +29,7 @@ export const FIND_AVAILBLE_PORT_BY_DEFAULT: Record<Emulators, boolean> = {
   auth: false,
   storage: false,
   extensions: false,
+  eventarc: false,
 };
 
 export const EMULATOR_DESCRIPTION: Record<Emulators, string> = {
@@ -42,6 +44,7 @@ export const EMULATOR_DESCRIPTION: Record<Emulators, string> = {
   auth: "Authentication Emulator",
   storage: "Storage Emulator",
   extensions: "Extensions Emulator",
+  eventarc: "EventArc Emulator",
 };
 
 const DEFAULT_HOST = "localhost";
@@ -70,6 +73,9 @@ export class Constants {
   // for firebase-admin <= 9.6.0. Unlike the FIREBASE_STORAGE_EMULATOR_HOST variable
   // this one must start with 'http://'.
   static CLOUD_STORAGE_EMULATOR_HOST = "STORAGE_EMULATOR_HOST";
+
+  // Environment variable to discover the eventarc emulator.
+  static EVENTARC_EMULATOR_HOST = "EVENTARC_EMULATOR_HOST";
 
   // Environment variable to discover the Emulator HUB
   static FIREBASE_EMULATOR_HUB = "FIREBASE_EMULATOR_HUB";

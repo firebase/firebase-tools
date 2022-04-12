@@ -22,6 +22,7 @@ import { AuthEmulator } from "./auth";
 import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
 import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
 import { HostingEmulator } from "./hostingEmulator";
+import { EventarcEmulator } from "./eventarcEmulator";
 import { FirebaseError } from "../error";
 import { getProjectId, needProjectId, getAliases, needProjectNumber } from "../projectUtils";
 import { PubsubEmulator } from "./pubsubEmulator";
@@ -705,6 +706,15 @@ export async function startAll(
     await startEmulator(pubsubEmulator);
   }
 
+  if (shouldStart(options, Emulators.EVENTARC)) {
+    const eventarcAddr = await getAndCheckAddress(Emulators.EVENTARC, options);
+    const eventarcEmulator = new EventarcEmulator({
+      host: eventarcAddr.host,
+      port: eventarcAddr.port,
+    });
+    await startEmulator(eventarcEmulator);
+  }
+
   if (shouldStart(options, Emulators.STORAGE)) {
     const storageAddr = await getAndCheckAddress(Emulators.STORAGE, options);
 
@@ -736,6 +746,8 @@ export async function startAll(
 
     await startEmulator(hostingEmulator);
   }
+
+
 
   if (showUI && !shouldStart(options, Emulators.UI)) {
     hubLogger.logLabeled(

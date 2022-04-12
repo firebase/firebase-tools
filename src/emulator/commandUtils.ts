@@ -60,7 +60,7 @@ export const DESC_TEST_PARAMS =
   "A .env file containing test param values for your emulated extension.";
 
 const DEFAULT_CONFIG = new Config(
-  { database: {}, firestore: {}, functions: {}, hosting: {}, emulators: { auth: {}, pubsub: {} } },
+  { eventarc: {}, database: {}, firestore: {}, functions: {}, hosting: {}, emulators: { auth: {}, pubsub: {} } },
   {}
 );
 
@@ -358,6 +358,13 @@ async function runScript(script: string, extraEnv: Record<string, string>): Prom
     const info = hubInstance.getInfo();
     const address = EmulatorRegistry.getInfoHostString(info);
     env[Constants.FIREBASE_EMULATOR_HUB] = address;
+  }
+
+  const eventarcInstance = EmulatorRegistry.get(Emulators.EVENTARC);
+  if (eventarcInstance) {
+    const info = eventarcInstance.getInfo();
+    const address = EmulatorRegistry.getInfoHostString(info);
+    env[Constants.EVENTARC_EMULATOR_HOST] = address;
   }
 
   const proc = childProcess.spawn(script, {
