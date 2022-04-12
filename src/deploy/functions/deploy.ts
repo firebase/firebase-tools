@@ -10,7 +10,6 @@ import * as gcs from "../../gcp/storage";
 import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfv2 from "../../gcp/cloudfunctionsv2";
 import * as backend from "./backend";
-import { FirebaseError } from "../../error";
 
 setGracefulCleanup();
 
@@ -33,7 +32,7 @@ async function uploadSourceV2(context: args.Context, region: string): Promise<vo
     stream: fs.createReadStream(context.source!.functionsSourceV2!),
   };
   await gcs.upload(uploadOpts, res.uploadUrl);
-  context.source!.storage = { ...context.source!.storage, [region]: res.storageSource };
+  context.source!.storage = res.storageSource;
 }
 
 /**
@@ -65,7 +64,8 @@ export async function deploy(
     const byPlatform = groupBy(backend.allEndpoints(want), (e) => e.platform);
     if (byPlatform.gcfv1.length > 0) {
       uploads.push(uploadSourceV1(context, byPlatform.gcfv1[0].region));
-    } else if (byPlatform.gcfv2.length > 0) {
+    }
+    if (byPlatform.gcfv2.length > 0) {
       uploads.push(uploadSourceV2(context, byPlatform.gcfv2[0].region));
     }
     await Promise.all(uploads);

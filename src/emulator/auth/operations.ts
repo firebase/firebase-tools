@@ -74,6 +74,7 @@ export const authOperations: AuthOps = {
     projects: {
       createSessionCookie,
       queryAccounts,
+      getConfig,
       updateConfig,
       accounts: {
         _: signUp,
@@ -1998,6 +1999,19 @@ function mfaSignInFinalize(
     idToken,
     refreshToken,
   };
+}
+
+function getConfig(
+  state: ProjectState,
+  reqBody: unknown,
+  ctx: ExegesisContext
+): Schemas["GoogleCloudIdentitytoolkitAdminV2Config"] {
+  // Shouldn't error on this but need assertion for type checking
+  assert(
+    state instanceof AgentProjectState,
+    "((Can only get top-level configurations on agent projects.))"
+  );
+  return state.config;
 }
 
 function updateConfig(
