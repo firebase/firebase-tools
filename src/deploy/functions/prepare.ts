@@ -21,6 +21,7 @@ import { ensureServiceAgentRoles } from "./checkIam";
 import { FirebaseError } from "../../error";
 import { normalizeAndValidate } from "../../functions/projectConfig";
 import { previews } from "../../previews";
+import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 
 function hasUserConfig(config: Record<string, unknown>): boolean {
   // "firebase" key is always going to exist in runtime config.
@@ -180,6 +181,7 @@ export async function prepare(
   inferDetailsFromExisting(wantBackend, haveBackend, usedDotenv);
   await ensureTriggerRegions(wantBackend);
   validate.endpointsAreValid(wantBackend);
+  inferBlockingDetails(wantBackend);
 
   payload.functions = { wantBackend: wantBackend, haveBackend: haveBackend };
 
@@ -282,4 +284,36 @@ function maybeCopyTriggerRegion(wantE: backend.Endpoint, haveE: backend.Endpoint
     return;
   }
   wantE.eventTrigger.region = haveE.eventTrigger.region;
+}
+
+/** Figures out the blocking endpoint options by taking the OR of every trigger option and reassigning that value back to the endpoint. */
+export function inferBlockingDetails(want: backend.Backend): void {
+  const authBlockingEndpoints = backend
+    .allEndpoints(want)
+    .filter(
+      (ep) =>
+        backend.isBlockingTriggered(ep) &&
+        AUTH_BLOCKING_EVENTS.includes(ep.blockingTrigger.eventType as any)
+    ) as (backend.Endpoint & backend.BlockingTriggered)[];
+
+  if (authBlockingEndpoints.length === 0) {
+    return;
+  }
+
+  let accessToken = false;
+  let idToken = false;
+  let refreshToken = false;
+  for (const blockingEp of authBlockingEndpoints) {
+    accessToken ||= !!blockingEp.blockingTrigger.options?.accessToken;
+    idToken ||= !!blockingEp.blockingTrigger.options?.idToken;
+    refreshToken ||= !!blockingEp.blockingTrigger.options?.refreshToken;
+  }
+  for (const blockingEp of authBlockingEndpoints) {
+    if (!blockingEp.blockingTrigger.options) {
+      blockingEp.blockingTrigger.options = {};
+    }
+    blockingEp.blockingTrigger.options.accessToken = accessToken;
+    blockingEp.blockingTrigger.options.idToken = idToken;
+    blockingEp.blockingTrigger.options.refreshToken = refreshToken;
+  }
 }
