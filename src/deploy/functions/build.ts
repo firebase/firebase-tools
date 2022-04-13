@@ -11,7 +11,10 @@ export interface Build {
   params: Param[];
 }
 
-export function empty():Build {
+/**
+ *
+ */
+export function empty(): Build {
   return {
     requiredAPIs: [],
     endpoints: {},
@@ -19,12 +22,14 @@ export function empty():Build {
   };
 }
 
+/**
+ *
+ */
 export function of(endpoints: Record<string, Endpoint>): Build {
-  const build = empty()
+  const build = empty();
   build.endpoints = endpoints;
   return build;
 }
-
 
 interface RequiredApi {
   // The API that should be enabled. For Google APIs, this should be a googleapis.com subdomain
@@ -282,10 +287,10 @@ export function resolveBackend(build: Build): backend.Backend {
       proto.renameIfPresent(bkEndpoint, endpoint, "minInstances", "minInstances", resolveInt);
       proto.renameIfPresent(bkEndpoint, endpoint, "concurrency", "concurrency", resolveInt);
       proto.copyIfPresent(bkEndpoint, endpoint, "ingressSettings");
-      proto.copyIfPresent(bkEndpoint, endpoint, "availableMemoryMb" );
+      proto.copyIfPresent(bkEndpoint, endpoint, "availableMemoryMb");
       proto.copyIfPresent(bkEndpoint, endpoint, "environmentVariables");
       proto.copyIfPresent(bkEndpoint, endpoint, "labels");
-      //proto.copyIfPresent(bkEndpoint, endpoint, "secretEnvironmentVariables");
+      // proto.copyIfPresent(bkEndpoint, endpoint, "secretEnvironmentVariables");
       if (endpoint.vpc) {
         bkEndpoint.vpc = {
           connector: resolveString(endpoint.vpc.connector).replace("$REGION", region),

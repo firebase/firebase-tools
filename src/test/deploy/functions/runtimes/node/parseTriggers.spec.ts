@@ -7,7 +7,9 @@ import * as parseTriggers from "../../../../../deploy/functions/runtimes/node/pa
 import * as api from "../../../../../api";
 import { BEFORE_CREATE_EVENT } from "../../../../../functions/events/v1";
 
-function applyBuildDefaults(endpoint: Omit<backend.Endpoint, "httpsTrigger">): Omit<backend.Endpoint, "httpsTrigger"> {
+function applyBuildDefaults(
+  endpoint: Omit<backend.Endpoint, "httpsTrigger">
+): Omit<backend.Endpoint, "httpsTrigger"> {
   if (!endpoint.timeoutSeconds) {
     endpoint.timeoutSeconds = 60;
   }
@@ -38,7 +40,7 @@ describe("addResourcesToBuild", () => {
     project: "project",
     runtime: "nodejs16",
     entryPoint: "func",
-    serviceAccount: "default"
+    serviceAccount: "default",
   });
 
   const BASIC_FUNCTION_NAME: backend.TargetIds = Object.freeze({
@@ -47,12 +49,14 @@ describe("addResourcesToBuild", () => {
     project: "project",
   });
 
-  const BASIC_BACKEND_ENDPOINT: Omit<backend.Endpoint, "httpsTrigger"> = Object.freeze(applyBuildDefaults({
-    platform: "gcfv1",
-    ...BASIC_FUNCTION_NAME,
-    runtime: "nodejs16",
-    entryPoint: "func",
-  }));
+  const BASIC_BACKEND_ENDPOINT: Omit<backend.Endpoint, "httpsTrigger"> = Object.freeze(
+    applyBuildDefaults({
+      platform: "gcfv1",
+      ...BASIC_FUNCTION_NAME,
+      runtime: "nodejs16",
+      entryPoint: "func",
+    })
+  );
 
   it("should handle a minimal https trigger, yielding a build reversibly equivalent to the corresponding backend", () => {
     const trigger: parseTriggers.TriggerAnnotation = {
@@ -63,10 +67,13 @@ describe("addResourcesToBuild", () => {
     const result = build.empty();
     parseTriggers.addResourcesToBuild("project", "nodejs16", trigger, result);
 
-    const expected: build.Build = build.of( { "func":{ ...BASIC_ENDPOINT, httpsTrigger: {}}} );
+    const expected: build.Build = build.of({ func: { ...BASIC_ENDPOINT, httpsTrigger: {} } });
     expect(result).to.deep.equal(expected);
 
-    const expectedBackend: backend.Backend =  backend.of({ ...BASIC_BACKEND_ENDPOINT, httpsTrigger: {} });
+    const expectedBackend: backend.Backend = backend.of({
+      ...BASIC_BACKEND_ENDPOINT,
+      httpsTrigger: {},
+    });
     const convertedBackend: backend.Backend = build.resolveBackend(expected);
     expect(convertedBackend).to.deep.equal(expectedBackend);
   });
@@ -83,11 +90,13 @@ describe("addResourcesToBuild", () => {
     const result = build.empty();
     parseTriggers.addResourcesToBuild("project", "nodejs16", trigger, result);
 
-    const expected: build.Build = build.of({ "func":{
-      ...BASIC_ENDPOINT, 
-      callableTrigger: {},
-      labels: {}
-    }});
+    const expected: build.Build = build.of({
+      func: {
+        ...BASIC_ENDPOINT,
+        callableTrigger: {},
+        labels: {},
+      },
+    });
     expect(result).to.deep.equal(expected);
 
     const expectedBackend: backend.Backend = backend.of({
@@ -108,15 +117,17 @@ describe("addResourcesToBuild", () => {
     const result = build.empty();
     parseTriggers.addResourcesToBuild("project", "nodejs16", trigger, result);
 
-    const expected: build.Build = build.of({ "func":{
-      ...BASIC_ENDPOINT, 
-      taskQueueTrigger: {},
-    }});
+    const expected: build.Build = build.of({
+      func: {
+        ...BASIC_ENDPOINT,
+        taskQueueTrigger: {},
+      },
+    });
     expected.requiredAPIs = [
       {
         api: "cloudtasks.googleapis.com",
         reason: "Needed for task queue functions.",
-      }
+      },
     ];
     expect(result).to.deep.equal(expected);
 
@@ -153,7 +164,7 @@ describe("addResourcesToBuild", () => {
     const result = build.empty();
     parseTriggers.addResourcesToBuild("project", "nodejs16", trigger, result);
 
-    const config:Partial<build.Endpoint> = {
+    const config: Partial<build.Endpoint> = {
       maxInstances: 42,
       minInstances: 1,
       serviceAccount: "inlined@google.com",
@@ -166,13 +177,15 @@ describe("addResourcesToBuild", () => {
         test: "testing",
       },
     };
-    const expected: build.Build = build.of({ "func":{
-      ...BASIC_ENDPOINT, 
-      ...config,
-      httpsTrigger: {
-        invoker: "public",
+    const expected: build.Build = build.of({
+      func: {
+        ...BASIC_ENDPOINT,
+        ...config,
+        httpsTrigger: {
+          invoker: "public",
+        },
       },
-    }});
+    });
     expect(result).to.deep.equal(expected);
 
     const backendConfig: backend.ServiceConfiguration = {
@@ -218,11 +231,13 @@ describe("addResourcesToBuild", () => {
       eventFilters: { resource: "projects/p/topics/t" },
       retry: false,
     };
-    const expected: build.Build = build.of({ "func":{
-      ...BASIC_ENDPOINT, 
-      eventTrigger,
-      timeoutSeconds: 60,
-    }});
+    const expected: build.Build = build.of({
+      func: {
+        ...BASIC_ENDPOINT,
+        eventTrigger,
+        timeoutSeconds: 60,
+      },
+    });
     expect(result).to.deep.equal(expected);
 
     const expectedBackend: backend.Backend = backend.of({
@@ -242,11 +257,13 @@ describe("addResourcesToBuild", () => {
 
     const result = build.empty();
     parseTriggers.addResourcesToBuild("project", "nodejs16", trigger, result);
-    const expected: build.Build = build.of({ "func":{
-      ...BASIC_ENDPOINT, 
-      httpsTrigger: {},
-      region: ["us-central1", "europe-west1"]
-    }});
+    const expected: build.Build = build.of({
+      func: {
+        ...BASIC_ENDPOINT,
+        httpsTrigger: {},
+        region: ["us-central1", "europe-west1"],
+      },
+    });
     expect(result).to.deep.equal(expected);
 
     const expectedBackend: backend.Backend = backend.of(
@@ -299,14 +316,16 @@ describe("addResourcesToBuild", () => {
       region: "europe-west1",
     };
 
-    const expected: build.Build = build.of({ "func":{
-      ...BASIC_ENDPOINT, 
-      scheduleTrigger: schedule,
-      labels: {
-        test: "testing",
+    const expected: build.Build = build.of({
+      func: {
+        ...BASIC_ENDPOINT,
+        scheduleTrigger: schedule,
+        labels: {
+          test: "testing",
+        },
+        region: ["us-central1", "europe-west1"],
       },
-      region: ["us-central1", "europe-west1"]
-    }});
+    });
     expected.requiredAPIs = [
       {
         api: "cloudscheduler.googleapis.com",
@@ -355,13 +374,15 @@ describe("addResourcesToBuild", () => {
     const result = build.empty();
     parseTriggers.addResourcesToBuild("project", "nodejs16", trigger, result);
 
-    const expected: build.Build = build.of({ "func":{
-      ...BASIC_ENDPOINT, 
-      httpsTrigger: {},
-      vpc: {
-        connector: "",
-      }
-    }});
+    const expected: build.Build = build.of({
+      func: {
+        ...BASIC_ENDPOINT,
+        httpsTrigger: {},
+        vpc: {
+          connector: "",
+        },
+      },
+    });
     expect(result).to.deep.equal(expected);
 
     const expectedBackend: backend.Backend = backend.of({

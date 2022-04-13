@@ -238,7 +238,10 @@ export function addResourcesToBuild(
     proto.copyIfPresent(triggered.taskQueueTrigger, annotation.taskQueueTrigger, "invoker");
     proto.copyIfPresent(triggered.taskQueueTrigger, annotation.taskQueueTrigger, "rateLimits");
     if (annotation.taskQueueTrigger.retryConfig) {
-      triggered.taskQueueTrigger.retryConfig = Object.assign(annotation.taskQueueTrigger.retryConfig, {maxRetryDurationSeconds: 0})
+      triggered.taskQueueTrigger.retryConfig = Object.assign(
+        annotation.taskQueueTrigger.retryConfig,
+        { maxRetryDurationSeconds: 0 }
+      );
       if (
         triggered.taskQueueTrigger.retryConfig &&
         annotation.taskQueueTrigger.retryConfig?.maxRetryDuration

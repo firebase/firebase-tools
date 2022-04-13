@@ -117,6 +117,9 @@ export interface DelegateContext {
 type Factory = (context: DelegateContext) => Promise<RuntimeDelegate | undefined>;
 const factories: Factory[] = [node.tryCreateDelegate, golang.tryCreateDelegate];
 
+/**
+ *
+ */
 export async function getRuntimeDelegate(context: DelegateContext): Promise<RuntimeDelegate> {
   const { projectDir, sourceDir, runtime } = context;
   validate.functionsDirectoryExists(sourceDir, projectDir);
