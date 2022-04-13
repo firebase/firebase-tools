@@ -11,6 +11,21 @@ export interface Build {
   params: Param[];
 }
 
+export function empty():Build {
+  return {
+    requiredAPIs: [],
+    endpoints: {},
+    params: [],
+  };
+}
+
+export function of(endpoints: Record<string, Endpoint>): Build {
+  const build = empty()
+  build.endpoints = endpoints;
+  return build;
+}
+
+
 interface RequiredApi {
   // The API that should be enabled. For Google APIs, this should be a googleapis.com subdomain
   // (e.g. vision.googleapis.com)
@@ -170,6 +185,10 @@ export type Endpoint = Triggered & {
   //  process.env.FIREBASE_FUNCTIONS_DEFAULT_REGION
   region?: string[];
 
+  project: string;
+
+  runtime: string;
+
   // Firebase default of 80. Cloud default of 1
   concurrency?: Field<number>;
 
@@ -251,15 +270,11 @@ export function resolveBackend(build: Build): backend.Backend {
 
       const bkEndpoint: backend.Endpoint = {
         id: endpointId,
-        project: "",
+        project: endpoint.project,
         region: region,
         entryPoint: endpoint.entryPoint,
         platform: endpoint.platform,
-        runtime: "",
-        labels: endpoint.labels,
-        environmentVariables: endpoint.environmentVariables,
-        secretEnvironmentVariables: undefined,
-        availableMemoryMb: endpoint.availableMemoryMb,
+        runtime: endpoint.runtime,
         timeoutSeconds: timeout,
         ...trigger,
       };
@@ -267,16 +282,18 @@ export function resolveBackend(build: Build): backend.Backend {
       proto.renameIfPresent(bkEndpoint, endpoint, "minInstances", "minInstances", resolveInt);
       proto.renameIfPresent(bkEndpoint, endpoint, "concurrency", "concurrency", resolveInt);
       proto.copyIfPresent(bkEndpoint, endpoint, "ingressSettings");
+      proto.copyIfPresent(bkEndpoint, endpoint, "availableMemoryMb" );
+      proto.copyIfPresent(bkEndpoint, endpoint, "environmentVariables");
+      proto.copyIfPresent(bkEndpoint, endpoint, "labels");
+      //proto.copyIfPresent(bkEndpoint, endpoint, "secretEnvironmentVariables");
       if (endpoint.vpc) {
         bkEndpoint.vpc = {
           connector: resolveString(endpoint.vpc.connector).replace("$REGION", region),
-          egressSettings: endpoint.vpc.egressSettings,
         };
+        proto.copyIfPresent(bkEndpoint.vpc, endpoint.vpc, "egressSettings");
       }
       if (endpoint.serviceAccount) {
         bkEndpoint.serviceAccountEmail = endpoint.serviceAccount;
-      } else {
-        bkEndpoint.serviceAccountEmail = "default";
       }
 
       bkEndpoints.push(bkEndpoint);

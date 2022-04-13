@@ -233,22 +233,20 @@ export function addResourcesToBuild(
       reason: "Needed for task queue functions.",
     });
     triggered = {
-      taskQueueTrigger: {
-        invoker: annotation.taskQueueTrigger.invoker,
-        rateLimits: annotation.taskQueueTrigger.rateLimits,
-        // is this sensible default behavior for the case in which the annotation has no explicit retry duration?
-        retryConfig: Object.assign(annotation.taskQueueTrigger.retryConfig, {
-          maxRetryDurationSeconds: 0,
-        }),
-      },
+      taskQueueTrigger: {},
     };
-    if (
-      triggered.taskQueueTrigger.retryConfig &&
-      annotation.taskQueueTrigger.retryConfig?.maxRetryDuration
-    ) {
-      triggered.taskQueueTrigger.retryConfig.maxRetryDurationSeconds = proto.secondsFromDuration(
-        annotation.taskQueueTrigger.retryConfig.maxRetryDuration
-      );
+    proto.copyIfPresent(triggered.taskQueueTrigger, annotation.taskQueueTrigger, "invoker");
+    proto.copyIfPresent(triggered.taskQueueTrigger, annotation.taskQueueTrigger, "rateLimits");
+    if (annotation.taskQueueTrigger.retryConfig) {
+      triggered.taskQueueTrigger.retryConfig = Object.assign(annotation.taskQueueTrigger.retryConfig, {maxRetryDurationSeconds: 0})
+      if (
+        triggered.taskQueueTrigger.retryConfig &&
+        annotation.taskQueueTrigger.retryConfig?.maxRetryDuration
+      ) {
+        triggered.taskQueueTrigger.retryConfig.maxRetryDurationSeconds = proto.secondsFromDuration(
+          annotation.taskQueueTrigger.retryConfig.maxRetryDuration
+        );
+      }
     }
   } else if (annotation.httpsTrigger) {
     if (annotation.labels?.["deployment-callable"]) {
@@ -259,7 +257,9 @@ export function addResourcesToBuild(
       if (annotation.failurePolicy) {
         logger.warn(`Ignoring retry policy for HTTPS function ${annotation.name}`);
       }
-      proto.copyIfPresent(trigger, annotation.httpsTrigger, "invoker");
+      if (annotation.httpsTrigger.invoker) {
+        trigger.invoker = annotation.httpsTrigger.invoker[0];
+      }
       triggered = { httpsTrigger: trigger };
     }
   } else if (annotation.schedule) {
@@ -301,9 +301,9 @@ export function addResourcesToBuild(
   const endpoint: build.Endpoint = {
     platform: annotation.platform || "gcfv1",
     region: regions,
-    // project: projectId,
+    project: projectId,
     entryPoint: annotation.entryPoint,
-    // runtime: runtime,
+    runtime: runtime,
     serviceAccount: annotation.serviceAccountEmail || "default",
     ...triggered,
   };
