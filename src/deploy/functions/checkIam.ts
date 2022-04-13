@@ -8,7 +8,7 @@ import { flatten } from "../../functional";
 import * as iam from "../../gcp/iam";
 import * as args from "./args";
 import * as backend from "./backend";
-import * as track from "../../track";
+import { track } from "../../track";
 import * as utils from "../../utils";
 
 import { getIamPolicy, setIamPolicy } from "../../gcp/resourceManager";

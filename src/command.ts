@@ -8,7 +8,7 @@ import { loadRC, RC } from "./rc";
 import { Config } from "./config";
 import { configstore } from "./configstore";
 import { detectProjectRoot } from "./detectProjectRoot";
-import track = require("./track");
+import { track } from "./track";
 import clc = require("cli-color");
 import { selectAccount, setActiveAccount } from "./auth";
 import { getFirebaseProject } from "./management/projects";

@@ -144,7 +144,9 @@ export function printTriggerUrls(results: backend.Backend): void {
 
   for (const httpsFunc of httpsFunctions) {
     if (!httpsFunc.uri) {
-      logger.debug("Missing URI for HTTPS function in printTriggerUrls. This shouldn't happen");
+      logger.debug(
+        "Not printing URL for HTTPS function. Typically this means it didn't match a filter or we failed deployment"
+      );
       continue;
     }
     logger.info(clc.bold("Function URL"), `(${getFunctionLabel(httpsFunc)}):`, httpsFunc.uri);
