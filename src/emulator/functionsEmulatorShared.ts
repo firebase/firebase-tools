@@ -44,6 +44,8 @@ export interface EventSchedule {
 export interface EventTrigger {
   resource: string;
   eventType: string;
+  channel?: string;
+  customFilters?: Record<string, string>;
   // Deprecated
   service?: string;
 }
