@@ -109,7 +109,7 @@ export class AuthBlockingService implements Service {
    */
   registerTrigger(ep: backend.Endpoint): Promise<void> {
     if (!backend.isBlockingTriggered(ep)) {
-      throw new FirebaseError("This should never happen");
+      return Promise.resolve(); // this should never happen
     }
     this.triggerQueue = this.triggerQueue.then(() => this.registerTriggerLocked(ep));
     return this.triggerQueue;
@@ -145,7 +145,7 @@ export class AuthBlockingService implements Service {
    */
   unregisterTrigger(ep: backend.Endpoint): Promise<void> {
     if (!backend.isBlockingTriggered(ep)) {
-      throw new FirebaseError("This should never happen");
+      return Promise.resolve(); // this should never happen
     }
     this.triggerQueue = this.triggerQueue.then(() => this.unregisterTriggerLocked(ep));
     return this.triggerQueue;
