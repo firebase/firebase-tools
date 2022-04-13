@@ -606,7 +606,11 @@ export class FunctionsEmulator implements EmulatorInstance {
             );
             break;
           case Constants.SERVICE_EVENTARC:
-            added = await this.addEventarcTrigger(this.args.projectId, key, definition.eventTrigger);
+            added = await this.addEventarcTrigger(
+              this.args.projectId,
+              key,
+              definition.eventTrigger
+            );
             break;
           case Constants.SERVICE_AUTH:
             added = this.addAuthTrigger(this.args.projectId, key, definition.eventTrigger);

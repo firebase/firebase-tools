@@ -162,6 +162,10 @@ export type EmulatorsConfig = {
     port?: number | string;
   };
   extensions?: {};
+  eventarc?: {
+    host?: string;
+    port?: number;
+  };
 };
 
 export type ExtensionsConfig = Record<string, string>;
