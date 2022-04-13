@@ -2,7 +2,7 @@ import { expect } from "chai";
 
 import * as cloudfunctionsv2 from "../../gcp/cloudfunctionsv2";
 import * as backend from "../../deploy/functions/backend";
-import * as v2events from "../../functions/events/v2";
+import * as events from "../../functions/events";
 import * as projectConfig from "../../functions/projectConfig";
 
 describe("cloudfunctionsv2", () => {
@@ -99,6 +99,7 @@ describe("cloudfunctionsv2", () => {
             serviceName: "compute.googleapis.com",
           },
           retry: false,
+          channel: "projects/myproject/locations/us-wildwest11/channels/mychannel",
         },
       };
       const eventGcfFunction: Omit<
@@ -118,6 +119,7 @@ describe("cloudfunctionsv2", () => {
               value: "compute.googleapis.com",
             },
           ],
+          channel: "projects/myproject/locations/us-wildwest11/channels/mychannel",
         },
         serviceConfig: {
           ...CLOUD_FUNCTION_V2.serviceConfig,
@@ -142,6 +144,44 @@ describe("cloudfunctionsv2", () => {
         labels: {
           ...CLOUD_FUNCTION_V2.labels,
           "deployment-taskqueue": "true",
+        },
+      });
+
+      expect(
+        cloudfunctionsv2.functionFromEndpoint(
+          {
+            ...ENDPOINT,
+            platform: "gcfv2",
+            blockingTrigger: {
+              eventType: events.v1.BEFORE_CREATE_EVENT,
+            },
+          },
+          CLOUD_FUNCTION_V2_SOURCE
+        )
+      ).to.deep.equal({
+        ...CLOUD_FUNCTION_V2,
+        labels: {
+          ...CLOUD_FUNCTION_V2.labels,
+          [cloudfunctionsv2.BLOCKING_LABEL]: "before-create",
+        },
+      });
+
+      expect(
+        cloudfunctionsv2.functionFromEndpoint(
+          {
+            ...ENDPOINT,
+            platform: "gcfv2",
+            blockingTrigger: {
+              eventType: events.v1.BEFORE_SIGN_IN_EVENT,
+            },
+          },
+          CLOUD_FUNCTION_V2_SOURCE
+        )
+      ).to.deep.equal({
+        ...CLOUD_FUNCTION_V2,
+        labels: {
+          ...CLOUD_FUNCTION_V2.labels,
+          [cloudfunctionsv2.BLOCKING_LABEL]: "before-sign-in",
         },
       });
     });
@@ -196,7 +236,7 @@ describe("cloudfunctionsv2", () => {
         ...ENDPOINT,
         platform: "gcfv2",
         eventTrigger: {
-          eventType: v2events.PUBSUB_PUBLISH_EVENT,
+          eventType: events.v2.PUBSUB_PUBLISH_EVENT,
           eventFilters: {
             topic: "projects/p/topics/t",
             serviceName: "pubsub.googleapis.com",
@@ -215,7 +255,7 @@ describe("cloudfunctionsv2", () => {
       > = {
         ...CLOUD_FUNCTION_V2,
         eventTrigger: {
-          eventType: v2events.PUBSUB_PUBLISH_EVENT,
+          eventType: events.v2.PUBSUB_PUBLISH_EVENT,
           pubsubTopic: "projects/p/topics/t",
           eventFilters: [
             {
@@ -268,7 +308,7 @@ describe("cloudfunctionsv2", () => {
         platform: "gcfv2",
         uri: RUN_URI,
         eventTrigger: {
-          eventType: v2events.PUBSUB_PUBLISH_EVENT,
+          eventType: events.v2.PUBSUB_PUBLISH_EVENT,
           eventFilters: { topic: "projects/p/topics/t" },
           retry: false,
         },
@@ -277,7 +317,7 @@ describe("cloudfunctionsv2", () => {
         cloudfunctionsv2.endpointFromFunction({
           ...HAVE_CLOUD_FUNCTION_V2,
           eventTrigger: {
-            eventType: v2events.PUBSUB_PUBLISH_EVENT,
+            eventType: events.v2.PUBSUB_PUBLISH_EVENT,
             pubsubTopic: "projects/p/topics/t",
           },
         })
@@ -315,6 +355,35 @@ describe("cloudfunctionsv2", () => {
       ).to.deep.equal(want);
     });
 
+    it("should translate custom event triggers", () => {
+      const want: backend.Endpoint = {
+        ...ENDPOINT,
+        platform: "gcfv2",
+        uri: RUN_URI,
+        eventTrigger: {
+          eventType: "com.custom.event",
+          eventFilters: { customattr: "customvalue" },
+          channel: "projects/myproject/locations/us-wildwest11/channels/mychannel",
+          retry: false,
+        },
+      };
+      expect(
+        cloudfunctionsv2.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION_V2,
+          eventTrigger: {
+            eventType: "com.custom.event",
+            eventFilters: [
+              {
+                attribute: "customattr",
+                value: "customvalue",
+              },
+            ],
+            channel: "projects/myproject/locations/us-wildwest11/channels/mychannel",
+          },
+        })
+      ).to.deep.equal(want);
+    });
+
     it("should translate task queue functions", () => {
       expect(
         cloudfunctionsv2.endpointFromFunction({
@@ -327,6 +396,40 @@ describe("cloudfunctionsv2", () => {
         platform: "gcfv2",
         uri: RUN_URI,
         labels: { "deployment-taskqueue": "true" },
+      });
+    });
+
+    it("should translate beforeCreate blocking functions", () => {
+      expect(
+        cloudfunctionsv2.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION_V2,
+          labels: { "deployment-blocking": "before-create" },
+        })
+      ).to.deep.equal({
+        ...ENDPOINT,
+        blockingTrigger: {
+          eventType: events.v1.BEFORE_CREATE_EVENT,
+        },
+        platform: "gcfv2",
+        uri: RUN_URI,
+        labels: { "deployment-blocking": "before-create" },
+      });
+    });
+
+    it("should translate beforeSignIn blocking functions", () => {
+      expect(
+        cloudfunctionsv2.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION_V2,
+          labels: { "deployment-blocking": "before-sign-in" },
+        })
+      ).to.deep.equal({
+        ...ENDPOINT,
+        blockingTrigger: {
+          eventType: events.v1.BEFORE_SIGN_IN_EVENT,
+        },
+        platform: "gcfv2",
+        uri: RUN_URI,
+        labels: { "deployment-blocking": "before-sign-in" },
       });
     });
 

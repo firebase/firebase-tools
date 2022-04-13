@@ -26,15 +26,12 @@ import { ensureServiceAgentRoles } from "./checkIam";
 import { FirebaseError } from "../../error";
 import { configForCodebase, normalizeAndValidate } from "../../functions/projectConfig";
 import { previews } from "../../previews";
+import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 
 function hasUserConfig(config: Record<string, unknown>): boolean {
   // "firebase" key is always going to exist in runtime config.
   // If any other key exists, we can assume that user is using runtime config.
   return Object.keys(config).length > 1;
-}
-
-function hasDotenv(opts: functionsEnv.UserEnvsOpts): boolean {
-  return functionsEnv.hasUserEnvs(opts);
 }
 
 export async function prepare(
@@ -160,16 +157,17 @@ export async function prepare(
 
   // ===Phase 3. Fill in details and validate endpoints. We run the check for ALL endpoints - we think it's useful for
   // validations to fail even for endpoints that aren't being deployed so any errors are caught early.
-  payload.codebase = {};
+  payload.functions = {};
   const haveBackends = groupByCodebase(wantBackends, await backend.existingBackend(context));
   for (const [codebase, wantBackend] of Object.entries(wantBackends)) {
     const haveBackend = haveBackends[codebase] || { ...backend.empty() };
-    payload.codebase[codebase] = { wantBackend, haveBackend };
+    payload.functions[codebase] = { wantBackend, haveBackend };
   }
-  for (const [codebase, { wantBackend, haveBackend }] of Object.entries(payload.codebase)) {
+  for (const [codebase, { wantBackend, haveBackend }] of Object.entries(payload.functions)) {
     inferDetailsFromExisting(wantBackend, haveBackend, codebaseUsesEnvs.has(codebase));
     await ensureTriggerRegions(wantBackend);
     validate.endpointsAreValid(wantBackend);
+    inferBlockingDetails(wantBackend);
   }
 
   const tag = hasUserConfig(runtimeConfig)
@@ -181,7 +179,7 @@ export async function prepare(
     : "none";
   void track("functions_codebase_deploy_env_method", tag);
 
-  const codebaseCnt = Object.keys(payload.codebase).length;
+  const codebaseCnt = Object.keys(payload.functions).length;
   void track("functions_codebase_deploy_count", codebaseCnt >= 5 ? "5+" : codebaseCnt.toString());
 
   // ===Phase 4. Enable APIs required by the deploying backends.
@@ -284,4 +282,36 @@ function maybeCopyTriggerRegion(wantE: backend.Endpoint, haveE: backend.Endpoint
     return;
   }
   wantE.eventTrigger.region = haveE.eventTrigger.region;
+}
+
+/** Figures out the blocking endpoint options by taking the OR of every trigger option and reassigning that value back to the endpoint. */
+export function inferBlockingDetails(want: backend.Backend): void {
+  const authBlockingEndpoints = backend
+    .allEndpoints(want)
+    .filter(
+      (ep) =>
+        backend.isBlockingTriggered(ep) &&
+        AUTH_BLOCKING_EVENTS.includes(ep.blockingTrigger.eventType as any)
+    ) as (backend.Endpoint & backend.BlockingTriggered)[];
+
+  if (authBlockingEndpoints.length === 0) {
+    return;
+  }
+
+  let accessToken = false;
+  let idToken = false;
+  let refreshToken = false;
+  for (const blockingEp of authBlockingEndpoints) {
+    accessToken ||= !!blockingEp.blockingTrigger.options?.accessToken;
+    idToken ||= !!blockingEp.blockingTrigger.options?.idToken;
+    refreshToken ||= !!blockingEp.blockingTrigger.options?.refreshToken;
+  }
+  for (const blockingEp of authBlockingEndpoints) {
+    if (!blockingEp.blockingTrigger.options) {
+      blockingEp.blockingTrigger.options = {};
+    }
+    blockingEp.blockingTrigger.options.accessToken = accessToken;
+    blockingEp.blockingTrigger.options.idToken = idToken;
+    blockingEp.blockingTrigger.options.refreshToken = refreshToken;
+  }
 }

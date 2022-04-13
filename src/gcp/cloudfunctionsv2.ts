@@ -4,6 +4,7 @@ import { Client } from "../apiv2";
 import { FirebaseError } from "../error";
 import { functionsV2Origin } from "../api";
 import { logger } from "../logger";
+import { AUTH_BLOCKING_EVENTS } from "../functions/events/v1";
 import { PUBSUB_PUBLISH_EVENT } from "../functions/events/v2";
 import * as backend from "../deploy/functions/backend";
 import * as runtimes from "../deploy/functions/runtimes";
@@ -19,6 +20,18 @@ const client = new Client({
   auth: true,
   apiVersion: API_VERSION,
 });
+
+export const BLOCKING_LABEL = "deployment-blocking";
+
+const BLOCKING_LABEL_KEY_TO_EVENT: Record<string, typeof AUTH_BLOCKING_EVENTS[number]> = {
+  "before-create": "providers/cloud.auth/eventTypes/user.beforeCreate",
+  "before-sign-in": "providers/cloud.auth/eventTypes/user.beforeSignIn",
+};
+
+const BLOCKING_EVENT_TO_LABEL_KEY: Record<typeof AUTH_BLOCKING_EVENTS[number], string> = {
+  "providers/cloud.auth/eventTypes/user.beforeCreate": "before-create",
+  "providers/cloud.auth/eventTypes/user.beforeSignIn": "before-sign-in",
+};
 
 export type VpcConnectorEgressSettings = "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC";
 export type IngressSettings = "ALLOW_ALL" | "ALLOW_INTERNAL_ONLY" | "ALLOW_INTERNAL_AND_GCLB";
@@ -119,6 +132,10 @@ export interface EventTrigger {
   // run.routes.invoke permission on the target service. Defaults
   // to the defualt compute service account.
   serviceAccountEmail?: string;
+
+  // The name of the channel associated with the trigger in
+  // `projects/{project}/locations/{location}/channels/{channel}` format.
+  channel?: string;
 }
 
 export interface CloudFunction {
@@ -449,6 +466,7 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
       "triggerRegion",
       "region"
     );
+    proto.copyIfPresent(gcfFunction.eventTrigger, endpoint.eventTrigger, "channel");
 
     if (endpoint.eventTrigger.retry) {
       logger.warn("Cannot set a retry policy on Cloud Function", endpoint.id);
@@ -468,6 +486,14 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
     gcfFunction.labels = { ...gcfFunction.labels, "deployment-taskqueue": "true" };
   } else if (backend.isCallableTriggered(endpoint)) {
     gcfFunction.labels = { ...gcfFunction.labels, "deployment-callable": "true" };
+  } else if (backend.isBlockingTriggered(endpoint)) {
+    gcfFunction.labels = {
+      ...gcfFunction.labels,
+      [BLOCKING_LABEL]:
+        BLOCKING_EVENT_TO_LABEL_KEY[
+          endpoint.blockingTrigger.eventType as typeof AUTH_BLOCKING_EVENTS[number]
+        ],
+    };
   }
   const codebase = endpoint.codebase || projectConfig.DEFAULT_CODEBASE;
   if (codebase !== projectConfig.DEFAULT_CODEBASE) {
@@ -496,6 +522,12 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     trigger = {
       callableTrigger: {},
     };
+  } else if (gcfFunction.labels?.[BLOCKING_LABEL]) {
+    trigger = {
+      blockingTrigger: {
+        eventType: BLOCKING_LABEL_KEY_TO_EVENT[gcfFunction.labels[BLOCKING_LABEL]],
+      },
+    };
   } else if (gcfFunction.eventTrigger) {
     trigger = {
       eventTrigger: {
@@ -511,6 +543,7 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
         trigger.eventTrigger.eventFilters[attribute] = value;
       }
     }
+    proto.copyIfPresent(trigger.eventTrigger, gcfFunction.eventTrigger, "channel");
     proto.renameIfPresent(
       trigger.eventTrigger,
       gcfFunction.eventTrigger,

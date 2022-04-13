@@ -24,7 +24,7 @@ async function uploadSourceV1(
   if (v1Endpoints.length === 0) {
     return;
   }
-  const region = backend.allEndpoints(wantBackend)[0].region; // Just pick a region to upload the source.
+  const region = v1Endpoints[0].region; // Just pick a region to upload the source.
   const uploadUrl = await gcf.generateUploadUrl(projectId, region);
   const uploadOpts = {
     file: source.functionsSourceV1!,
@@ -36,11 +36,16 @@ async function uploadSourceV1(
   return uploadUrl;
 }
 
-async function uploadSourceRegionV2(
+async function uploadSourceV2(
   projectId: string,
   source: args.Source,
-  region: string
-): Promise<gcfv2.StorageSource> {
+  wantBackend: backend.Backend
+): Promise<gcfv2.StorageSource | undefined> {
+  const v2Endpoints = backend.allEndpoints(wantBackend).filter((e) => e.platform === "gcfv2");
+  if (v2Endpoints.length === 0) {
+    return;
+  }
+  const region = v2Endpoints[0].region; // Just pick a region to upload the source.
   const res = await gcfv2.generateUploadUrl(projectId, region);
   const uploadOpts = {
     file: source.functionsSourceV2!,
@@ -50,70 +55,17 @@ async function uploadSourceRegionV2(
   return res.storageSource;
 }
 
-async function uploadSourceV2(
-  projectId: string,
-  source: args.Source,
-  b: backend.Backend
-): Promise<Record<string, gcfv2.StorageSource> | undefined> {
-  // GCFv2 cares about data residency and will possibly block deploys coming from other
-  // regions. At minimum, the implementation would consider it user-owned source and
-  // would break download URLs + console source viewing.
-  const uploads: Promise<Record<string, gcfv2.StorageSource>>[] = [];
-  const regions = Object.keys(b.endpoints);
-  for (const region of regions) {
-    if (backend.regionalEndpoints(b, region).some((e) => e.platform === "gcfv2")) {
-      uploads.push(
-        (async (): Promise<Record<string, gcfv2.StorageSource>> => {
-          const storage = await uploadSourceRegionV2(projectId, source, region);
-          return { [region]: storage };
-        })()
-      );
-    }
-  }
-
-  const regionalStorages = await Promise.all(uploads);
-  let storage: Record<string, gcfv2.StorageSource> = {};
-  for (const region of regionalStorages) {
-    storage = { ...storage, ...region };
-  }
-  if (Object.keys(storage).length < 1) {
-    return;
-  }
-  return storage;
-}
-
-function assertPreconditions(context: args.Context, options: Options, payload: args.Payload): void {
-  const assertExists = function (v: unknown, msg?: string): void {
-    const errMsg = `${msg || "Value unexpectedly empty."}`;
-    if (!v) {
-      throw new FirebaseError(
-        errMsg +
-          "This should never happen. Please file a bug at https://github.com/firebase/firebase-tools"
-      );
-    }
-  };
-  assertExists(context.config, "Functions config unexpectedly empty.");
-  assertExists(context.sources, "Functions sources unexpectedly empty.");
-  for (const source of Object.values(context.sources || {})) {
-    assertExists(
-      source.functionsSourceV1 || source.functionsSourceV2,
-      "Functions source (v1 & v2) both unexpectedly empty."
-    );
-  }
-  assertExists(payload.codebase, "Functions payload unexpectedly empty.");
-}
-
 async function uploadCodebase(
   context: args.Context,
   codebase: string,
   wantBackend: backend.Backend
 ) {
-  const uploads: Promise<unknown>[] = [];
-  const source = context.sources![codebase];
-  if (!source) {
-    throw new FirebaseError("TODO FIX Me");
+  const source = context.sources?.[codebase];
+  if (!source || (source.functionsSourceV1 && source.functionsSourceV2)) {
+    return;
   }
 
+  const uploads: Promise<unknown>[] = [];
   try {
     uploads.push(uploadSourceV1(context.projectId, source, wantBackend));
     uploads.push(uploadSourceV2(context.projectId, source, wantBackend));
@@ -123,7 +75,7 @@ async function uploadCodebase(
       source.sourceUrl = sourceUrl as string;
     }
     if (storage) {
-      source.storage = storage as Record<string, gcfv2.StorageSource>;
+      source.storage = storage as gcfv2.StorageSource;
     }
 
     const sourceDir = configForCodebase(context.config!, codebase).source;
@@ -149,11 +101,18 @@ export async function deploy(
   options: Options,
   payload: args.Payload
 ): Promise<void> {
-  assertPreconditions(context, options, payload);
+  if (!context.config) {
+    return;
+  }
+
+  if (!payload.functions) {
+    return;
+  }
+
   await checkHttpIam(context, options, payload);
   const uploads: Promise<void>[] = [];
-  for (const codebase of Object.keys(payload.codebase!)) {
-    uploads.push(uploadCodebase(context, codebase, payload.codebase![codebase].wantBackend));
+  for (const codebase of Object.keys(payload.functions)) {
+    uploads.push(uploadCodebase(context, codebase, payload.functions[codebase].wantBackend));
   }
   await Promise.all(uploads);
 }

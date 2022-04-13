@@ -156,4 +156,49 @@ describeAuthEmulator("config management", ({ authApi }) => {
         });
     });
   });
+
+  describe("getConfig", () => {
+    it("should return the project level config", async () => {
+      await authApi()
+        .get(`/identitytoolkit.googleapis.com/v2/projects/${PROJECT_ID}/config`)
+        .set("Authorization", "Bearer owner")
+        .send()
+        .then((res) => {
+          expectStatusCode(200, res);
+          expect(res.body).to.have.property("signIn").eql({
+            allowDuplicateEmails: false /* default value */,
+          });
+          expect(res.body).to.have.property("usageMode").eql("DEFAULT");
+          expect(res.body).to.have.property("blockingFunctions").eql({});
+        });
+    });
+
+    it("should return updated config fields", async () => {
+      await authApi()
+        .patch(`/identitytoolkit.googleapis.com/v2/projects/${PROJECT_ID}/config`)
+        .set("Authorization", "Bearer owner")
+        .send({
+          signIn: { allowDuplicateEmails: true },
+          blockingFunctions: { forwardInboundCredentials: { idToken: true } },
+          usageMode: "PASSTHROUGH",
+        });
+
+      await authApi()
+        .get(`/identitytoolkit.googleapis.com/v2/projects/${PROJECT_ID}/config`)
+        .set("Authorization", "Bearer owner")
+        .send()
+        .then((res) => {
+          expectStatusCode(200, res);
+          expect(res.body).to.have.property("signIn").eql({
+            allowDuplicateEmails: true,
+          });
+          expect(res.body).to.have.property("usageMode").eql("PASSTHROUGH");
+          expect(res.body)
+            .to.have.property("blockingFunctions")
+            .eql({
+              forwardInboundCredentials: { idToken: true },
+            });
+        });
+    });
+  });
 });

@@ -6,7 +6,6 @@ import * as provisioningHelper from "../../extensions/provisioningHelper";
 import * as extensionsApi from "../../extensions/extensionsApi";
 import { FirebaseError } from "../../error";
 
-const TEST_INSTANCES_RESPONSE = {};
 const PROJECT_ID = "test-project";
 
 const SPEC_WITH_NOTHING = {
