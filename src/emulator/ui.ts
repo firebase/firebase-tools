@@ -3,6 +3,7 @@ import * as downloadableEmulators from "./downloadableEmulators";
 import { EmulatorRegistry } from "./registry";
 import { FirebaseError } from "../error";
 import { Constants } from "./constants";
+import { emulatorClientId, EMULATOR_GA4_MEASUREMENT_ID, usageEnabled } from "../track";
 
 export interface EmulatorUIOptions {
   port: number;
@@ -30,6 +31,12 @@ export class EmulatorUI implements EmulatorInstance {
       GCLOUD_PROJECT: projectId,
       [Constants.FIREBASE_EMULATOR_HUB]: EmulatorRegistry.getInfoHostString(hubInfo),
     };
+
+    if (usageEnabled()) {
+      env[Constants.FIREBASE_GA_MEASUREMENT_ID] = EMULATOR_GA4_MEASUREMENT_ID;
+      env[Constants.FIREBASE_GA_CLIENT_ID] = emulatorClientId();
+      env[Constants.FIREBASE_GA_ENABLED] = "true";
+    }
 
     return downloadableEmulators.start(Emulators.UI, { auto_download }, env);
   }
