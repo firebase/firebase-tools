@@ -20,10 +20,10 @@ export default new Command("database:rules:list")
     const rulesets = await metadata.listAllRulesets(options.instance);
     for (const ruleset of rulesets) {
       const labels = [];
-      if (ruleset.id == labeled.stable) {
+      if (ruleset.id === labeled.stable) {
         labels.push("stable");
       }
-      if (ruleset.id == labeled.canary) {
+      if (ruleset.id === labeled.canary) {
         labels.push("canary");
       }
       logger.info(`${ruleset.id}  ${ruleset.createdAt}  ${labels.join(",")}`);

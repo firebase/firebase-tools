@@ -11,9 +11,7 @@ import { RC } from "../../../rc";
 
 const SAMPLE_EVENT_TRIGGER: backend.EventTrigger = {
   eventType: "google.pubsub.topic.publish",
-  eventFilters: {
-    resource: "projects/a/topics/b",
-  },
+  eventFilters: { resource: "projects/a/topics/b" },
   retry: false,
 };
 

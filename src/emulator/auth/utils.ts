@@ -10,6 +10,13 @@ import { EmulatorLogger } from "../emulatorLogger";
 export type MakeRequired<T, K extends keyof T> = T & Required<Pick<T, K>>;
 
 /**
+ * Utility type to make all fields recursively optional.
+ */
+export type DeepPartial<T> = {
+  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
+};
+
+/**
  * Checks if email looks like a valid email address.
  *
  * The testing only checks if the email has two parts joined by an "@" symbol.
@@ -163,48 +170,18 @@ export function logError(err: Error): void {
 
 /**
  * Return a URL object with Auth Emulator protocol, host, and port populated.
- * @param req a express request to emulator server; used to infer host
- * @return the construted URL object
+ *
+ * Compared to EmulatorRegistry.url, this functions prefers the configured host
+ * and port, which are likely more useful when the link is opened on the same
+ * device running the emulator (assuming developers click on the link printed on
+ * terminal or Emulator UI).
  */
 export function authEmulatorUrl(req: express.Request): URL {
-  // WHATWG URL API has no way to create from parts, so let's use a minimal
-  // working URL as a starting point. (Let's avoid legacy Node.js `url.format`).
-  const url = new URL("http://localhost/");
-
-  // Prefer configured host and port since the link will be most likely opened
-  // on the same device running the emulator (assuming developers click on the
-  // link printed on terminal or Emulator UI).
-  // TODO(yuchenshi): Extract these logic into common emulator utils.
-  const info = EmulatorRegistry.getInfo(Emulators.AUTH);
-  if (info) {
-    // If listening to all IPv4/6 addresses, use loopback addresses instead.
-    // All-zero addresses are invalid and not tolerated by some browsers / platforms.
-    // See: https://github.com/firebase/firebase-tools-ui/issues/286
-    if (info.host === "0.0.0.0") {
-      url.hostname = "127.0.0.1";
-    } else if (info.host === "::") {
-      url.hostname = "[::1]";
-    } else if (info.host.includes(":")) {
-      url.hostname = `[${info.host}]`; // IPv6 addresses need to be quoted using brackets.
-    } else {
-      url.hostname = info.host;
-    }
-    url.port = info.port.toString();
+  if (EmulatorRegistry.getInfo(Emulators.AUTH)) {
+    return EmulatorRegistry.url(Emulators.AUTH);
   } else {
-    // Or we can try the Host request header, since it contains hostname + port
-    // already and has been proven working (since we've got the client request).
-    const host = req.headers.host;
-    url.protocol = req.protocol;
-
-    if (host) {
-      url.host = host;
-    } else {
-      // This can probably only happen during testing, but let's warn anyway.
-      console.warn("Cannot determine host and port of auth emulator server.");
-    }
+    return EmulatorRegistry.url(Emulators.AUTH, req);
   }
-
-  return url;
 }
 
 /**

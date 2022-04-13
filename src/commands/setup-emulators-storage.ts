@@ -1,11 +1,11 @@
 import { Command } from "../command";
 import { downloadEmulator } from "../emulator/download";
-import { DownloadableEmulators } from "../emulator/types";
+import { Emulators } from "../emulator/types";
 
-const EMULATOR_NAME = "storage";
+const EMULATOR_NAME = Emulators.STORAGE;
 
-module.exports = new Command(`setup:emulators:${EMULATOR_NAME}`)
+export default new Command(`setup:emulators:${EMULATOR_NAME}`)
   .description(`downloads the ${EMULATOR_NAME} emulator`)
   .action(() => {
-    return downloadEmulator(EMULATOR_NAME as DownloadableEmulators);
+    return downloadEmulator(EMULATOR_NAME);
   });

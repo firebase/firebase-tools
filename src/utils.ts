@@ -19,6 +19,7 @@ import { Socket } from "net";
 const IS_WINDOWS = process.platform === "win32";
 const SUCCESS_CHAR = IS_WINDOWS ? "+" : "✔";
 const WARNING_CHAR = IS_WINDOWS ? "!" : "⚠";
+const ERROR_CHAR = IS_WINDOWS ? "!!" : "⬢";
 const THIRTY_DAYS_IN_MILLISECONDS = 30 * 24 * 60 * 60 * 1000;
 
 export const envOverrides: string[] = [];
@@ -189,6 +190,18 @@ export function logLabeledWarning(
   data: LogDataOrUndefined = undefined
 ): void {
   logger[type](clc.yellow.bold(`${WARNING_CHAR}  ${label}:`), message, data);
+}
+
+/**
+ * Log an rror statement with a red bullet at the start of the line.
+ */
+export function logLabeledError(
+  label: string,
+  message: string,
+  type: LogLevel = "error",
+  data: LogDataOrUndefined = undefined
+): void {
+  logger[type](clc.red.bold(`${ERROR_CHAR}  ${label}:`), message, data);
 }
 
 /**
@@ -464,7 +477,7 @@ export function setupLoggers() {
         level: "info",
         format: winston.format.printf((info) =>
           [info.message, ...(info[SPLAT] || [])]
-            .filter((chunk) => typeof chunk == "string")
+            .filter((chunk) => typeof chunk === "string")
             .join(" ")
         ),
       })
@@ -606,4 +619,57 @@ export function assertIsStringOrUndefined(
       message: message || `expected "string" or "undefined" but got "${typeof val}"`,
     });
   }
+}
+
+/**
+ * Polyfill for groupBy.
+ */
+export function groupBy<T, K extends string | number | symbol>(
+  arr: T[],
+  f: (item: T) => K
+): Record<K, T[]> {
+  return arr.reduce((result, item) => {
+    const key = f(item);
+    if (result[key]) {
+      result[key].push(item);
+    } else {
+      result[key] = [item];
+    }
+    return result;
+  }, {} as Record<K, T[]>);
+}
+
+function cloneArray<T>(arr: T[]): T[] {
+  return arr.map((e) => cloneDeep(e));
+}
+
+function cloneObject<T extends Record<string, unknown>>(obj: T): T {
+  const clone: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    clone[k] = cloneDeep(v);
+  }
+  return clone as T;
+}
+
+/**
+ * replacement for lodash cloneDeep that preserves type.
+ */
+// TODO: replace with builtin once Node 18 becomes the min version.
+export function cloneDeep<T>(obj: T): T {
+  if (typeof obj !== "object" || !obj) {
+    return obj;
+  }
+  if (obj instanceof RegExp) {
+    return RegExp(obj, obj.flags) as typeof obj;
+  }
+  if (obj instanceof Date) {
+    return new Date(obj) as typeof obj;
+  }
+  if (Array.isArray(obj)) {
+    return cloneArray(obj) as typeof obj;
+  }
+  if (obj instanceof Map) {
+    return new Map(obj.entries()) as typeof obj;
+  }
+  return cloneObject(obj as Record<string, unknown>) as typeof obj;
 }

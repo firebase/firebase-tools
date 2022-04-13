@@ -1,17 +1,12 @@
-import * as clc from "cli-color";
-
-import * as refs from "./refs";
-import { getProjectNumber } from "../getProjectNumber";
-import { Options } from "../options";
-import { Config } from "../config";
-import { getExtensionVersion, InstanceSpec } from "../deploy/extensions/planner";
+import {
+  getExtensionVersion,
+  DeploymentInstanceSpec,
+  InstanceSpec,
+} from "../deploy/extensions/planner";
 import { humanReadable } from "../deploy/extensions/deploymentSummary";
 import { logger } from "../logger";
-import { FirebaseError } from "../error";
-import { promptOnce } from "../prompt";
 import { parseSecretVersionResourceName, toSecretVersionResourceName } from "../gcp/secretManager";
 import { getActiveSecrets } from "./secretsUtils";
-
 /**
  * parameterizeProject searchs spec.params for any param that include projectId or projectNumber,
  * and replaces it with a parameterized version that can be used on other projects.
@@ -20,8 +15,8 @@ import { getActiveSecrets } from "./secretsUtils";
 export function parameterizeProject(
   projectId: string,
   projectNumber: string,
-  spec: InstanceSpec
-): InstanceSpec {
+  spec: DeploymentInstanceSpec
+): DeploymentInstanceSpec {
   const newParams: Record<string, string> = {};
   for (const [key, val] of Object.entries(spec.params)) {
     const p1 = val.replace(projectId, "${param:PROJECT_ID}");
@@ -37,7 +32,9 @@ export function parameterizeProject(
  * setSecretParamsToLatest searches spec.params for any secret paramsthat are active, and changes their version to latest.
  * We do this because old secret versions are destroyed on instance update, and to ensure that cross project installs work smoothly.
  */
-export async function setSecretParamsToLatest(spec: InstanceSpec): Promise<InstanceSpec> {
+export async function setSecretParamsToLatest(
+  spec: DeploymentInstanceSpec
+): Promise<DeploymentInstanceSpec> {
   const newParams = { ...spec.params };
   const extensionVersion = await getExtensionVersion(spec);
   const activeSecrets = getActiveSecrets(extensionVersion.spec, newParams);
@@ -51,7 +48,10 @@ export async function setSecretParamsToLatest(spec: InstanceSpec): Promise<Insta
   return { ...spec, params: newParams };
 }
 
-export function displayExportInfo(withRef: InstanceSpec[], withoutRef: InstanceSpec[]): void {
+export function displayExportInfo(
+  withRef: DeploymentInstanceSpec[],
+  withoutRef: DeploymentInstanceSpec[]
+): void {
   logger.info("The following Extension instances will be saved locally:");
   logger.info("");
 
@@ -71,7 +71,7 @@ export function displayExportInfo(withRef: InstanceSpec[], withoutRef: InstanceS
  * Displays a summary of the Extension instances and configurations that will be saved locally.
  * @param specs The instances that will be saved locally.
  */
-function displaySpecs(specs: InstanceSpec[]): void {
+function displaySpecs(specs: DeploymentInstanceSpec[]): void {
   for (let i = 0; i < specs.length; i++) {
     const spec = specs[i];
     logger.info(`${i + 1}. ${humanReadable(spec)}`);
@@ -80,56 +80,5 @@ function displaySpecs(specs: InstanceSpec[]): void {
       logger.info(`\t${p[0]}=${p[1]}`);
     }
     logger.info("");
-  }
-}
-
-function writeExtensionsToFirebaseJson(have: InstanceSpec[], existingConfig: Config): void {
-  const extensions = existingConfig.get("extensions", {});
-  for (const s of have) {
-    extensions[s.instanceId] = refs.toExtensionVersionRef(s.ref!);
-  }
-  existingConfig.set("extensions", extensions);
-  logger.info("Adding Extensions to " + clc.bold("firebase.json") + "...");
-  existingConfig.writeProjectFile("firebase.json", existingConfig.src);
-}
-
-async function writeEnvFile(spec: InstanceSpec, existingConfig: Config, force?: boolean) {
-  const content = Object.entries(spec.params)
-    .map((r) => `${r[0]}=${r[1]}`)
-    .join("\n");
-  await existingConfig.askWriteProjectFile(`extensions/${spec.instanceId}.env`, content, force);
-}
-
-export async function writeFiles(have: InstanceSpec[], options: Options) {
-  const existingConfig = Config.load(options, true);
-  if (!existingConfig) {
-    throw new FirebaseError(
-      "Not currently in a Firebase directory. Please run `firebase init` to create a Firebase directory."
-    );
-  }
-  if (
-    existingConfig.has("extensions") &&
-    Object.keys(existingConfig.get("extensions")).length &&
-    !options.nonInteractive &&
-    !options.force
-  ) {
-    const currentExtensions = Object.entries(existingConfig.get("extensions"))
-      .map((i) => `${i[0]}: ${i[1]}`)
-      .join("\n\t");
-    const overwrite = await promptOnce({
-      type: "list",
-      message: `firebase.json already contains extensions:\n${currentExtensions}\nWould you like to overwrite or merge?`,
-      choices: [
-        { name: "Overwrite", value: true },
-        { name: "Merge", value: false },
-      ],
-    });
-    if (overwrite) {
-      existingConfig.set("extensions", {});
-    }
-  }
-  writeExtensionsToFirebaseJson(have, existingConfig);
-  for (const spec of have) {
-    await writeEnvFile(spec, existingConfig, options.force);
   }
 }

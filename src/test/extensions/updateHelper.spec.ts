@@ -6,11 +6,9 @@ import { FirebaseError } from "../../error";
 import { firebaseExtensionsRegistryOrigin } from "../../api";
 import * as extensionsApi from "../../extensions/extensionsApi";
 import * as extensionsHelper from "../../extensions/extensionsHelper";
-import * as prompt from "../../prompt";
-import * as resolveSource from "../../extensions/resolveSource";
 import * as updateHelper from "../../extensions/updateHelper";
 
-const SPEC = {
+const SPEC: extensionsApi.ExtensionSpec = {
   name: "test",
   displayName: "Old",
   description: "descriptive",
@@ -26,7 +24,7 @@ const SPEC = {
   ],
   resources: [
     { name: "resource1", type: "firebaseextensions.v1beta.function", description: "desc" },
-    { name: "resource2", type: "other", description: "" },
+    { name: "resource2", type: "other", description: "" } as unknown as extensionsApi.Resource,
   ],
   author: { authorName: "Tester" },
   contributors: [{ authorName: "Tester 2" }],
@@ -34,8 +32,6 @@ const SPEC = {
   sourceUrl: "test.com",
   params: [],
 };
-
-const OLD_SPEC = Object.assign({}, SPEC, { version: "0.1.0" });
 
 const SOURCE = {
   name: "projects/firebasemods/sources/new-test-source",
@@ -59,47 +55,6 @@ const EXTENSION = {
   state: "PUBLISHED",
   createTime: "2020-06-30T00:21:06.722782Z",
   latestVersion: "0.2.0",
-};
-
-const REGISTRY_ENTRY = {
-  name: "test",
-  labels: {
-    latest: "0.2.0",
-    minRequired: "0.1.1",
-  },
-  versions: {
-    "0.1.0": "projects/firebasemods/sources/2kd",
-    "0.1.1": "projects/firebasemods/sources/xyz",
-    "0.1.2": "projects/firebasemods/sources/123",
-    "0.2.0": "projects/firebasemods/sources/abc",
-  },
-  updateWarnings: {
-    ">0.1.0 <0.2.0": [
-      {
-        from: "0.1.0",
-        description:
-          "Starting Jan 15, HTTP functions will be private by default. [Learn more](https://someurl.com)",
-        action:
-          "After updating, it is highly recommended that you switch your Cloud Scheduler jobs to <b>PubSub</b>",
-      },
-    ],
-    ">=0.2.0": [
-      {
-        from: "0.1.0",
-        description:
-          "Starting Jan 15, HTTP functions will be private by default. [Learn more](https://someurl.com)",
-        action:
-          "After updating, you must switch your Cloud Scheduler jobs to <b>PubSub</b>, otherwise your extension will stop running.",
-      },
-      {
-        from: ">0.1.0",
-        description:
-          "Starting Jan 15, HTTP functions will be private by default. [Learn more](https://someurl.com)",
-        action:
-          "If you have not already done so during a previous update, after updating, you must switch your Cloud Scheduler jobs to <b>PubSub</b>, otherwise your extension will stop running.",
-      },
-    ],
-  },
 };
 
 const INSTANCE = {
@@ -237,18 +192,12 @@ describe("updateHelper", () => {
     let getExtensionStub: sinon.SinonStub;
     let createSourceStub: sinon.SinonStub;
     let listExtensionVersionStub: sinon.SinonStub;
-    let registryStub: sinon.SinonStub;
-    let isOfficialStub: sinon.SinonStub;
     let getInstanceStub: sinon.SinonStub;
 
     beforeEach(() => {
       getExtensionStub = sinon.stub(extensionsApi, "getExtension");
       createSourceStub = sinon.stub(extensionsApi, "getExtensionVersion");
       listExtensionVersionStub = sinon.stub(extensionsApi, "listExtensionVersions");
-      registryStub = sinon.stub(resolveSource, "resolveRegistryEntry");
-      registryStub.resolves(REGISTRY_ENTRY);
-      isOfficialStub = sinon.stub(resolveSource, "isOfficialSource");
-      isOfficialStub.returns(false);
       getInstanceStub = sinon.stub(extensionsApi, "getInstance").resolves(REGISTRY_INSTANCE);
     });
 
@@ -256,8 +205,6 @@ describe("updateHelper", () => {
       getExtensionStub.restore();
       createSourceStub.restore();
       listExtensionVersionStub.restore();
-      registryStub.restore();
-      isOfficialStub.restore();
       getInstanceStub.restore();
     });
 
@@ -293,18 +240,12 @@ describe("updateHelper", () => {
     let getExtensionStub: sinon.SinonStub;
     let createSourceStub: sinon.SinonStub;
     let listExtensionVersionStub: sinon.SinonStub;
-    let registryStub: sinon.SinonStub;
-    let isOfficialStub: sinon.SinonStub;
     let getInstanceStub: sinon.SinonStub;
 
     beforeEach(() => {
       getExtensionStub = sinon.stub(extensionsApi, "getExtension");
       createSourceStub = sinon.stub(extensionsApi, "getExtensionVersion");
       listExtensionVersionStub = sinon.stub(extensionsApi, "listExtensionVersions");
-      registryStub = sinon.stub(resolveSource, "resolveRegistryEntry");
-      registryStub.resolves(REGISTRY_ENTRY);
-      isOfficialStub = sinon.stub(resolveSource, "isOfficialSource");
-      isOfficialStub.returns(false);
       getInstanceStub = sinon.stub(extensionsApi, "getInstance").resolves(REGISTRY_INSTANCE);
     });
 
@@ -312,8 +253,6 @@ describe("updateHelper", () => {
       getExtensionStub.restore();
       createSourceStub.restore();
       listExtensionVersionStub.restore();
-      registryStub.restore();
-      isOfficialStub.restore();
       getInstanceStub.restore();
     });
 

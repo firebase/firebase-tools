@@ -3,7 +3,7 @@
 var { Command } = require("../command");
 var { requirePermissions } = require("../requirePermissions");
 var { actionFunction } = require("../functionsShellCommandAction");
-var requireConfig = require("../requireConfig");
+var { requireConfig } = require("../requireConfig");
 var commandUtils = require("../emulator/commandUtils");
 
 module.exports = new Command("functions:shell")

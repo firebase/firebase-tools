@@ -51,7 +51,7 @@ export class StorageRulesetInstance {
     permitted?: boolean;
     issues: StorageRulesIssues;
   }> {
-    if (opts.method == RulesetOperationMethod.LIST && this.rulesVersion < 2) {
+    if (opts.method === RulesetOperationMethod.LIST && this.rulesVersion < 2) {
       const issues = new StorageRulesIssues();
       issues.warnings.push(
         "Permission denied. List operations are only allowed for rules_version='2'."
@@ -83,6 +83,11 @@ export class StorageRulesIssues {
 
   exist(): boolean {
     return !!(this.errors.length || this.warnings.length);
+  }
+
+  extend(other: StorageRulesIssues): void {
+    this.errors.push(...other.errors);
+    this.warnings.push(...other.warnings);
   }
 }
 
@@ -152,9 +157,10 @@ export class StorageRulesRuntime {
     });
 
     // This catches errors from the java process (i.e. missing jar file)
-    this._childprocess.stderr.on("data", (buf: Buffer) => {
+    this._childprocess.stderr?.on("data", (buf: Buffer) => {
       const error = buf.toString();
       if (error.includes("jarfile")) {
+        EmulatorLogger.forEmulator(Emulators.STORAGE).log("ERROR", error);
         throw new FirebaseError(
           "There was an issue starting the rules emulator, please run 'firebase setup:emulators:storage` again"
         );
@@ -166,9 +172,9 @@ export class StorageRulesRuntime {
       }
     });
 
-    this._childprocess.stdout.on("data", (buf: Buffer) => {
+    this._childprocess.stdout?.on("data", (buf: Buffer) => {
       const serializedRuntimeActionResponse = buf.toString("UTF8").trim();
-      if (serializedRuntimeActionResponse != "") {
+      if (serializedRuntimeActionResponse !== "") {
         let rap;
         try {
           rap = JSON.parse(serializedRuntimeActionResponse) as RuntimeActionResponse;
@@ -225,7 +231,7 @@ export class StorageRulesRuntime {
       };
 
       const serializedRequest = JSON.stringify(runtimeActionRequest);
-      this._childprocess?.stdin.write(serializedRequest + "\n");
+      this._childprocess?.stdin?.write(serializedRequest + "\n");
     });
   }
 
@@ -316,16 +322,16 @@ export class StorageRulesRuntime {
 }
 
 function toExpressionValue(obj: any): ExpressionValue {
-  if (typeof obj == "string") {
+  if (typeof obj === "string") {
     return { string_value: obj };
   }
 
-  if (typeof obj == "boolean") {
+  if (typeof obj === "boolean") {
     return { bool_value: obj };
   }
 
-  if (typeof obj == "number") {
-    if (Math.floor(obj) == obj) {
+  if (typeof obj === "number") {
+    if (Math.floor(obj) === obj) {
       return { int_value: obj };
     } else {
       return { float_value: obj };
@@ -360,7 +366,7 @@ function toExpressionValue(obj: any): ExpressionValue {
     };
   }
 
-  if (typeof obj == "object") {
+  if (typeof obj === "object") {
     const fields: { [s: string]: ExpressionValue } = {};
     Object.keys(obj).forEach((key: string) => {
       fields[key] = toExpressionValue(obj[key]);

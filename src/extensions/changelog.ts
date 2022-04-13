@@ -1,5 +1,6 @@
 import * as clc from "cli-color";
-import * as marked from "marked";
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
+const { marked } = require("marked");
 import * as path from "path";
 import * as semver from "semver";
 import TerminalRenderer = require("marked-terminal");
@@ -16,7 +17,9 @@ marked.setOptions({
 });
 
 const EXTENSIONS_CHANGELOG = "CHANGELOG.md";
-const VERSION_LINE_REGEX = /##.*(\d+\.\d+\.\d+).*/;
+// Simplifed version of https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
+const VERSION_LINE_REGEX =
+  /##.*(\d+\.\d+\.\d+(?:-((\d+|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(\d+|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?).*/;
 
 /*
  * getReleaseNotesForUpdate fetches all version between toVersion and fromVersion and returns the relase notes
@@ -83,7 +86,9 @@ export function breakingChangesInUpdate(versionsInUpdate: string[]): string[] {
   for (let i = 1; i < semvers.length; i++) {
     const hasMajorBump = semvers[i - 1].major < semvers[i].major;
     const hasMinorBumpInPreview =
-      semvers[i - 1].major == 0 && semvers[i].major == 0 && semvers[i - 1].minor < semvers[i].minor;
+      semvers[i - 1].major === 0 &&
+      semvers[i].major === 0 &&
+      semvers[i - 1].minor < semvers[i].minor;
     if (hasMajorBump || hasMinorBumpInPreview) {
       breakingVersions.push(semvers[i].raw);
     }

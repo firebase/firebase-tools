@@ -5,7 +5,6 @@ import { sync as rimraf } from "rimraf";
 import { expect } from "chai";
 
 import * as env from "../../functions/env";
-import { previews } from "../../previews";
 
 describe("functions/env", () => {
   describe("parse", () => {
@@ -53,6 +52,43 @@ BAR=bar
         description: "should parse double quoted with escaped newlines",
         input: 'FOO="foo1\\nfoo2"\nBAR=bar',
         want: { FOO: "foo1\nfoo2", BAR: "bar" },
+      },
+      {
+        description: "should parse escape sequences in order, from start to end",
+        input: `BAZ=baz
+ONE_NEWLINE="foo1\\nfoo2"
+ONE_BSLASH_AND_N="foo3\\\\nfoo4"
+ONE_BSLASH_AND_NEWLINE="foo5\\\\\\nfoo6"
+TWO_BSLASHES_AND_N="foo7\\\\\\\\nfoo8"
+BAR=bar`,
+        want: {
+          BAZ: "baz",
+          ONE_NEWLINE: "foo1\nfoo2",
+          ONE_BSLASH_AND_N: "foo3\\nfoo4",
+          ONE_BSLASH_AND_NEWLINE: "foo5\\\nfoo6",
+          TWO_BSLASHES_AND_N: "foo7\\\\nfoo8",
+          BAR: "bar",
+        },
+      },
+      {
+        description: "should parse double quoted with multiple escaped newlines",
+        input: 'FOO="foo1\\nfoo2\\nfoo3"\nBAR=bar',
+        want: { FOO: "foo1\nfoo2\nfoo3", BAR: "bar" },
+      },
+      {
+        description: "should parse double quoted with multiple escaped horizontal tabs",
+        input: 'FOO="foo1\\tfoo2\\tfoo3"\nBAR=bar',
+        want: { FOO: "foo1\tfoo2\tfoo3", BAR: "bar" },
+      },
+      {
+        description: "should parse double quoted with multiple escaped vertical tabs",
+        input: 'FOO="foo1\\vfoo2\\vfoo3"\nBAR=bar',
+        want: { FOO: "foo1\vfoo2\vfoo3", BAR: "bar" },
+      },
+      {
+        description: "should parse double quoted with multiple escaped carriage returns",
+        input: 'FOO="foo1\\rfoo2\\rfoo3"\nBAR=bar',
+        want: { FOO: "foo1\rfoo2\rfoo3", BAR: "bar" },
       },
       {
         description: "should leave single quotes when double quoted",
@@ -239,6 +275,10 @@ FOO=foo
       expect(() => {
         env.validateKey("FIREBASE_FOOBAR");
       }).to.throw("starts with a reserved prefix");
+
+      expect(() => {
+        env.validateKey("EXT_INSTANCE_ID");
+      }).to.throw("starts with a reserved prefix");
     });
   });
 
@@ -248,16 +288,11 @@ FOO=foo
         fs.writeFileSync(path.join(sourceDir, filename), data);
       }
     };
-    const projectInfo = { projectId: "my-project", projectAlias: "dev" };
+    const projectInfo: Omit<env.UserEnvsOpts, "functionsSource"> = {
+      projectId: "my-project",
+      projectAlias: "dev",
+    };
     let tmpdir: string;
-
-    before(() => {
-      previews.dotenv = true;
-    });
-
-    after(() => {
-      previews.dotenv = false;
-    });
 
     beforeEach(() => {
       tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), "test"));
@@ -330,6 +365,20 @@ FOO=foo
       });
     });
 
+    it("loads envs, preferring ones from .env.<project> for emulators too", () => {
+      createEnvFiles(tmpdir, {
+        ".env": "FOO=bad\nBAR=bar",
+        [`.env.${projectInfo.projectId}`]: "FOO=good",
+      });
+
+      expect(
+        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir, isEmulator: true })
+      ).to.be.deep.equal({
+        FOO: "good",
+        BAR: "bar",
+      });
+    });
+
     it("loads envs, preferring ones from .env.<alias>", () => {
       createEnvFiles(tmpdir, {
         ".env": "FOO=bad\nBAR=bar",
@@ -337,6 +386,48 @@ FOO=foo
       });
 
       expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+        FOO: "good",
+        BAR: "bar",
+      });
+    });
+
+    it("loads envs, preferring ones from .env.<alias> for emulators too", () => {
+      createEnvFiles(tmpdir, {
+        ".env": "FOO=bad\nBAR=bar",
+        [`.env.${projectInfo.projectAlias}`]: "FOO=good",
+      });
+
+      expect(
+        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir, isEmulator: true })
+      ).to.be.deep.equal({
+        FOO: "good",
+        BAR: "bar",
+      });
+    });
+
+    it("loads envs ignoring .env.local", () => {
+      createEnvFiles(tmpdir, {
+        ".env": "FOO=bad\nBAR=bar",
+        [`.env.${projectInfo.projectId}`]: "FOO=good",
+        ".env.local": "FOO=bad",
+      });
+
+      expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+        FOO: "good",
+        BAR: "bar",
+      });
+    });
+
+    it("loads envs, preferring .env.local for the emulator", () => {
+      createEnvFiles(tmpdir, {
+        ".env": "FOO=bad\nBAR=bar",
+        [`.env.${projectInfo.projectId}`]: "FOO=another bad",
+        ".env.local": "FOO=good",
+      });
+
+      expect(
+        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir, isEmulator: true })
+      ).to.be.deep.equal({
         FOO: "good",
         BAR: "bar",
       });

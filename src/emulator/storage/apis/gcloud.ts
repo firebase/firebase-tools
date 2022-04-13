@@ -4,103 +4,127 @@ import { Emulators } from "../../types";
 import {
   CloudStorageObjectAccessControlMetadata,
   CloudStorageObjectMetadata,
+  IncomingMetadata,
   StoredFileMetadata,
 } from "../metadata";
 import { EmulatorRegistry } from "../../registry";
 import { StorageEmulator } from "../index";
 import { EmulatorLogger } from "../../emulatorLogger";
-import { StorageLayer } from "../files";
+import { GetObjectResponse, ListObjectsResponse } from "../files";
+import { crc32cToString } from "../crc";
 import type { Request, Response } from "express";
+import { parseObjectUploadMultipartRequest } from "../multipart";
+import { Upload, UploadNotActiveError } from "../upload";
+import { ForbiddenError, NotFoundError } from "../errors";
+import { reqBodyToBuffer } from "../../shared/request";
 
-/**
- * @param emulator
- * @param storage
- */
 export function createCloudEndpoints(emulator: StorageEmulator): Router {
   // eslint-disable-next-line new-cap
   const gcloudStorageAPI = Router();
-  const { storageLayer } = emulator;
+  // Use Admin StorageLayer to ensure Firebase Rules validation is skipped.
+  const { adminStorageLayer, uploadService } = emulator;
 
   // Automatically create a bucket for any route which uses a bucket
   gcloudStorageAPI.use(/.*\/b\/(.+?)\/.*/, (req, res, next) => {
-    storageLayer.createBucket(req.params[0]);
+    adminStorageLayer.createBucket(req.params[0]);
     next();
   });
 
-  gcloudStorageAPI.get("/b", (req, res) => {
+  gcloudStorageAPI.get("/b", async (req, res) => {
     res.json({
       kind: "storage#buckets",
-      items: storageLayer.listBuckets(),
+      items: await adminStorageLayer.listBuckets(),
     });
   });
 
   gcloudStorageAPI.get(
     ["/b/:bucketId/o/:objectId", "/download/storage/v1/b/:bucketId/o/:objectId"],
-    (req, res) => {
-      const md = storageLayer.getMetadata(req.params.bucketId, req.params.objectId);
-
-      if (!md) {
-        res.sendStatus(404);
-        return;
+    async (req, res) => {
+      let getObjectResponse: GetObjectResponse;
+      try {
+        getObjectResponse = await adminStorageLayer.getObject({
+          bucketId: req.params.bucketId,
+          decodedObjectId: req.params.objectId,
+        });
+      } catch (err) {
+        if (err instanceof NotFoundError) {
+          return sendObjectNotFound(req, res);
+        }
+        if (err instanceof ForbiddenError) {
+          return res.sendStatus(403);
+        }
+        throw err;
       }
 
-      if (req.query.alt == "media") {
-        return sendFileBytes(md, storageLayer, req, res);
+      if (req.query.alt === "media") {
+        return sendFileBytes(getObjectResponse.metadata, getObjectResponse.data, req, res);
       }
-
-      const outgoingMd = new CloudStorageObjectMetadata(md);
-
-      res.json(outgoingMd).status(200).send();
-      return;
+      return res.json(new CloudStorageObjectMetadata(getObjectResponse.metadata));
     }
   );
 
-  gcloudStorageAPI.patch("/b/:bucketId/o/:objectId", (req, res) => {
-    const md = storageLayer.getMetadata(req.params.bucketId, req.params.objectId);
-
-    if (!md) {
-      res.sendStatus(404);
-      return;
+  gcloudStorageAPI.patch("/b/:bucketId/o/:objectId", async (req, res) => {
+    let updatedMetadata: StoredFileMetadata;
+    try {
+      updatedMetadata = await adminStorageLayer.updateObjectMetadata({
+        bucketId: req.params.bucketId,
+        decodedObjectId: req.params.objectId,
+        metadata: req.body as IncomingMetadata,
+      });
+    } catch (err) {
+      if (err instanceof NotFoundError) {
+        return sendObjectNotFound(req, res);
+      }
+      if (err instanceof ForbiddenError) {
+        return res.sendStatus(403);
+      }
+      throw err;
     }
-
-    md.update(req.body);
-
-    const outgoingMetadata = new CloudStorageObjectMetadata(md);
-    res.json(outgoingMetadata).status(200).send();
-    return;
+    return res.json(new CloudStorageObjectMetadata(updatedMetadata));
   });
 
-  gcloudStorageAPI.get("/b/:bucketId/o", (req, res) => {
+  gcloudStorageAPI.get("/b/:bucketId/o", async (req, res) => {
+    let listResponse: ListObjectsResponse;
     // TODO validate that all query params are single strings and are not repeated.
-    let maxRes = undefined;
-    if (req.query.maxResults) {
-      maxRes = +req.query.maxResults.toString();
+    try {
+      listResponse = await adminStorageLayer.listObjects({
+        bucketId: req.params.bucketId,
+        prefix: req.query.prefix ? req.query.prefix.toString() : "",
+        delimiter: req.query.delimiter ? req.query.delimiter.toString() : "",
+        pageToken: req.query.pageToken ? req.query.pageToken.toString() : undefined,
+        maxResults: req.query.maxResults ? +req.query.maxResults.toString() : undefined,
+        authorization: req.header("authorization"),
+      });
+    } catch (err) {
+      if (err instanceof ForbiddenError) {
+        return res.sendStatus(403);
+      }
+      throw err;
     }
-    const delimiter = req.query.delimiter ? req.query.delimiter.toString() : "/";
-    const pageToken = req.query.pageToken ? req.query.pageToken.toString() : undefined;
-    const prefix = req.query.prefix ? req.query.prefix.toString() : "";
-
-    const listResult = storageLayer.listItems(
-      req.params.bucketId,
-      prefix,
-      delimiter,
-      pageToken,
-      maxRes
-    );
-
-    res.json(listResult);
+    return res.status(200).json({
+      kind: "#storage/objects",
+      nextPageToken: listResponse.nextPageToken,
+      prefixes: listResponse.prefixes,
+      items: listResponse.items?.map((item) => new CloudStorageObjectMetadata(item)),
+    });
   });
 
-  gcloudStorageAPI.delete("/b/:bucketId/o/:objectId", (req, res) => {
-    const md = storageLayer.getMetadata(req.params.bucketId, req.params.objectId);
-
-    if (!md) {
-      res.sendStatus(404);
-      return;
+  gcloudStorageAPI.delete("/b/:bucketId/o/:objectId", async (req, res) => {
+    try {
+      await adminStorageLayer.deleteObject({
+        bucketId: req.params.bucketId,
+        decodedObjectId: req.params.objectId,
+      });
+    } catch (err) {
+      if (err instanceof NotFoundError) {
+        return sendObjectNotFound(req, res);
+      }
+      if (err instanceof ForbiddenError) {
+        return res.sendStatus(403);
+      }
+      throw err;
     }
-
-    storageLayer.deleteFile(req.params.bucketId, req.params.objectId);
-    res.status(200).send();
+    return res.sendStatus(204);
   });
 
   gcloudStorageAPI.put("/upload/storage/v1/b/:bucketId/o", async (req, res) => {
@@ -110,69 +134,71 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     }
 
     const uploadId = req.query.upload_id.toString();
-
-    const bufs: Buffer[] = [];
-    req.on("data", (data) => {
-      bufs.push(data);
-    });
-
-    await new Promise<void>((resolve) => {
-      req.on("end", () => {
-        req.body = Buffer.concat(bufs);
-        resolve();
-      });
-    });
-
-    let upload = storageLayer.uploadBytes(uploadId, req.body);
-
-    if (!upload) {
-      res.sendStatus(400);
-      return;
+    let upload: Upload;
+    try {
+      uploadService.continueResumableUpload(uploadId, await reqBodyToBuffer(req));
+      upload = uploadService.finalizeResumableUpload(uploadId);
+    } catch (err) {
+      if (err instanceof NotFoundError) {
+        return res.sendStatus(404);
+      } else if (err instanceof UploadNotActiveError) {
+        return res.sendStatus(400);
+      }
+      throw err;
     }
 
-    const finalizedUpload = storageLayer.finalizeUpload(uploadId);
-    if (!finalizedUpload) {
-      res.sendStatus(400);
-      return;
+    let metadata: StoredFileMetadata;
+    try {
+      metadata = await adminStorageLayer.uploadObject(upload);
+    } catch (err) {
+      if (err instanceof ForbiddenError) {
+        return res.sendStatus(403);
+      }
+      throw err;
     }
-    upload = finalizedUpload.upload;
-    res.status(200).json(new CloudStorageObjectMetadata(finalizedUpload.file.metadata)).send();
+    return res.json(new CloudStorageObjectMetadata(metadata));
   });
 
-  gcloudStorageAPI.post("/b/:bucketId/o/:objectId/acl", (req, res) => {
+  gcloudStorageAPI.post("/b/:bucketId/o/:objectId/acl", async (req, res) => {
     // TODO(abehaskins) Link to a doc with more info
     EmulatorLogger.forEmulator(Emulators.STORAGE).log(
       "WARN_ONCE",
       "Cloud Storage ACLs are not supported in the Storage Emulator. All related methods will succeed, but have no effect."
     );
-    const md = storageLayer.getMetadata(req.params.bucketId, req.params.objectId);
-
-    if (!md) {
-      res.sendStatus(404);
-      return;
+    let getObjectResponse: GetObjectResponse;
+    try {
+      getObjectResponse = await adminStorageLayer.getObject({
+        bucketId: req.params.bucketId,
+        decodedObjectId: req.params.objectId,
+      });
+    } catch (err) {
+      if (err instanceof NotFoundError) {
+        return sendObjectNotFound(req, res);
+      }
+      if (err instanceof ForbiddenError) {
+        return res.sendStatus(403);
+      }
+      throw err;
     }
-
+    const { metadata } = getObjectResponse;
     // We do an empty update to step metageneration forward;
-    md.update({});
-
-    res
-      .json({
-        kind: "storage#objectAccessControl",
-        object: md.name,
-        id: `${req.params.bucketId}/${md.name}/${md.generation}/allUsers`,
-        selfLink: `http://${EmulatorRegistry.getInfo(Emulators.STORAGE)?.host}:${
-          EmulatorRegistry.getInfo(Emulators.STORAGE)?.port
-        }/storage/v1/b/${md.bucket}/o/${encodeURIComponent(md.name)}/acl/allUsers`,
-        bucket: md.bucket,
-        entity: req.body.entity,
-        role: req.body.role,
-        etag: "someEtag",
-        generation: md.generation.toString(),
-      } as CloudStorageObjectAccessControlMetadata)
-      .status(200);
+    metadata.update({});
+    return res.json({
+      kind: "storage#objectAccessControl",
+      object: metadata.name,
+      id: `${req.params.bucketId}/${metadata.name}/${metadata.generation}/allUsers`,
+      selfLink: `http://${EmulatorRegistry.getInfo(Emulators.STORAGE)?.host}:${
+        EmulatorRegistry.getInfo(Emulators.STORAGE)?.port
+      }/storage/v1/b/${metadata.bucket}/o/${encodeURIComponent(metadata.name)}/acl/allUsers`,
+      bucket: metadata.bucket,
+      entity: req.body.entity,
+      role: req.body.role,
+      etag: "someEtag",
+      generation: metadata.generation.toString(),
+    } as CloudStorageObjectAccessControlMetadata);
   });
 
-  gcloudStorageAPI.post("/upload/storage/v1/b/:bucketId/o", (req, res) => {
+  gcloudStorageAPI.post("/upload/storage/v1/b/:bucketId/o", async (req, res) => {
     if (!req.query.name) {
       res.sendStatus(400);
       return;
@@ -183,96 +209,146 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       name = name.slice(1);
     }
 
-    const contentType = req.header("content-type") || req.header("x-upload-content-type");
+    const contentTypeHeader = req.header("content-type") || req.header("x-upload-content-type");
 
-    if (!contentType) {
-      res.sendStatus(400);
-      return;
+    if (!contentTypeHeader) {
+      return res.sendStatus(400);
+    }
+    if (req.query.uploadType === "resumable") {
+      const emulatorInfo = EmulatorRegistry.getInfo(Emulators.STORAGE);
+      if (emulatorInfo === undefined) {
+        return res.sendStatus(500);
+      }
+      const upload = uploadService.startResumableUpload({
+        bucketId: req.params.bucketId,
+        objectId: name,
+        metadataRaw: JSON.stringify(req.body),
+        authorization: req.header("authorization"),
+      });
+
+      const uploadUrl = EmulatorRegistry.url(Emulators.STORAGE, req);
+      uploadUrl.pathname = `/upload/storage/v1/b/${req.params.bucketId}/o`;
+      uploadUrl.searchParams.set("name", name);
+      uploadUrl.searchParams.set("uploadType", "resumable");
+      uploadUrl.searchParams.set("upload_id", upload.id);
+      return res.header("location", uploadUrl.toString()).sendStatus(200);
     }
 
-    if (req.query.uploadType == "resumable") {
-      const upload = storageLayer.startUpload(req.params.bucketId, name, contentType, req.body);
-      const emulatorInfo = EmulatorRegistry.getInfo(Emulators.STORAGE);
+    // Multipart upload
+    let metadataRaw: string;
+    let dataRaw: Buffer;
+    try {
+      ({ metadataRaw, dataRaw } = parseObjectUploadMultipartRequest(
+        contentTypeHeader!,
+        await reqBodyToBuffer(req)
+      ));
+    } catch (err) {
+      if (err instanceof Error) {
+        return res.status(400).json({
+          error: {
+            code: 400,
+            message: err.message,
+          },
+        });
+      }
+      throw err;
+    }
 
-      if (emulatorInfo == undefined) {
-        res.sendStatus(500);
-        return;
+    const upload = uploadService.multipartUpload({
+      bucketId: req.params.bucketId,
+      objectId: name,
+      metadataRaw: metadataRaw,
+      dataRaw: dataRaw,
+      authorization: req.header("authorization"),
+    });
+    let metadata: StoredFileMetadata;
+    try {
+      metadata = await adminStorageLayer.uploadObject(upload);
+    } catch (err) {
+      if (err instanceof ForbiddenError) {
+        return res.sendStatus(403);
+      }
+      throw err;
+    }
+
+    return res.status(200).json(new CloudStorageObjectMetadata(metadata));
+  });
+
+  gcloudStorageAPI.get("/:bucketId/:objectId(**)", async (req, res) => {
+    let getObjectResponse: GetObjectResponse;
+    try {
+      getObjectResponse = await adminStorageLayer.getObject({
+        bucketId: req.params.bucketId,
+        decodedObjectId: req.params.objectId,
+      });
+    } catch (err) {
+      if (err instanceof NotFoundError) {
+        return sendObjectNotFound(req, res);
+      }
+      if (err instanceof ForbiddenError) {
+        return res.sendStatus(403);
+      }
+      throw err;
+    }
+    return sendFileBytes(getObjectResponse.metadata, getObjectResponse.data, req, res);
+  });
+
+  gcloudStorageAPI.post(
+    "/b/:bucketId/o/:objectId/:method(rewriteTo|copyTo)/b/:destBucketId/o/:destObjectId",
+    (req, res, next) => {
+      if (req.params.method === "rewriteTo" && req.query.rewriteToken) {
+        // Don't yet support multi-request copying
+        return next();
+      }
+      let metadata: StoredFileMetadata;
+      try {
+        metadata = adminStorageLayer.copyObject({
+          sourceBucket: req.params.bucketId,
+          sourceObject: req.params.objectId,
+          destinationBucket: req.params.destBucketId,
+          destinationObject: req.params.destObjectId,
+          incomingMetadata: req.body,
+          // TODO(tonyjhuang): Until we have a way of validating OAuth tokens passed by
+          // the GCS sdk or gcloud tool, we must assume all requests have valid admin creds.
+          // authorization: req.header("authorization")
+          authorization: "Bearer owner",
+        });
+      } catch (err) {
+        if (err instanceof NotFoundError) {
+          return sendObjectNotFound(req, res);
+        }
+        if (err instanceof ForbiddenError) {
+          return res.sendStatus(403);
+        }
+        throw err;
       }
 
-      const { host, port } = emulatorInfo;
-      const uploadUrl = `http://${host}:${port}/upload/storage/v1/b/${upload.bucketId}/o?name=${upload.fileLocation}&uploadType=resumable&upload_id=${upload.uploadId}`;
-      res.header("location", uploadUrl).status(200).send();
-      return;
+      const resource = new CloudStorageObjectMetadata(metadata);
+
+      res.status(200);
+      if (req.params.method === "copyTo") {
+        // See https://cloud.google.com/storage/docs/json_api/v1/objects/copy#response
+        return res.json(resource);
+      } else if (req.params.method === "rewriteTo") {
+        // See https://cloud.google.com/storage/docs/json_api/v1/objects/rewrite#response
+        return res.json({
+          kind: "storage#rewriteResponse",
+          totalBytesRewritten: String(metadata.size),
+          objectSize: String(metadata.size),
+          done: true,
+          resource,
+        });
+      } else {
+        return next();
+      }
     }
-
-    if (!contentType.startsWith("multipart/related")) {
-      res.sendStatus(400);
-      return;
-    }
-
-    const boundary = `--${contentType.split("boundary=")[1]}`;
-    const bodyString = req.body.toString();
-
-    const bodyStringParts = bodyString.split(boundary).filter((v: string) => v);
-
-    const metadataString = bodyStringParts[0].split(/\r?\n/)[3];
-    const blobParts = bodyStringParts[1].split(/\r?\n/);
-    const blobContentTypeString = blobParts[1];
-
-    if (!blobContentTypeString || !blobContentTypeString.startsWith("Content-Type: ")) {
-      res.sendStatus(400);
-      return;
-    }
-
-    const blobContentType = blobContentTypeString.slice("Content-Type: ".length);
-    const bodyBuffer = req.body as Buffer;
-
-    const metadataSegment = `${boundary}${bodyString.split(boundary)[1]}`;
-    const dataSegment = `${boundary}${bodyString.split(boundary).slice(2)[0]}`;
-    const dataSegmentHeader = (dataSegment.match(/.+Content-Type:.+?\r?\n\r?\n/s) || [])[0];
-
-    if (!dataSegmentHeader) {
-      res.sendStatus(400);
-      return;
-    }
-
-    const bufferOffset = metadataSegment.length + dataSegmentHeader.length;
-
-    const blobBytes = Buffer.from(bodyBuffer.slice(bufferOffset, -`\r\n${boundary}--`.length));
-
-    const metadata = storageLayer.oneShotUpload(
-      req.params.bucketId,
-      name,
-      blobContentType,
-      JSON.parse(metadataString),
-      blobBytes
-    );
-
-    if (!metadata) {
-      res.sendStatus(400);
-      return;
-    }
-
-    res.status(200).json(new CloudStorageObjectMetadata(metadata)).send();
-    return;
-  });
-
-  gcloudStorageAPI.get("/:bucketId/:objectId(**)", (req, res) => {
-    const md = storageLayer.getMetadata(req.params.bucketId, req.params.objectId);
-
-    if (!md) {
-      res.sendStatus(404);
-      return;
-    }
-
-    return sendFileBytes(md, storageLayer, req, res);
-  });
+  );
 
   gcloudStorageAPI.all("/**", (req, res) => {
     if (process.env.STORAGE_EMULATOR_DEBUG) {
       console.table(req.headers);
       console.log(req.method, req.url);
-      res.json("endpoint not implemented");
+      res.status(501).json("endpoint not implemented");
     } else {
       res.sendStatus(501);
     }
@@ -281,19 +357,8 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
   return gcloudStorageAPI;
 }
 
-function sendFileBytes(
-  md: StoredFileMetadata,
-  storageLayer: StorageLayer,
-  req: Request,
-  res: Response
-) {
-  let data = storageLayer.getBytes(req.params.bucketId, req.params.objectId);
-  if (!data) {
-    res.sendStatus(404);
-    return;
-  }
-
-  const isGZipped = md.contentEncoding == "gzip";
+function sendFileBytes(md: StoredFileMetadata, data: Buffer, req: Request, res: Response): void {
+  const isGZipped = md.contentEncoding === "gzip";
   if (isGZipped) {
     data = gunzipSync(data);
   }
@@ -301,21 +366,48 @@ function sendFileBytes(
   res.setHeader("Accept-Ranges", "bytes");
   res.setHeader("Content-Type", md.contentType);
   res.setHeader("Content-Disposition", md.contentDisposition);
-  res.setHeader("Content-Encoding", "identity");
+  res.setHeader("Content-Encoding", md.contentEncoding);
+  res.setHeader("ETag", md.etag);
+  res.setHeader("Cache-Control", md.cacheControl);
+  res.setHeader("x-goog-generation", `${md.generation}`);
+  res.setHeader("x-goog-metadatageneration", `${md.metageneration}`);
+  res.setHeader("x-goog-storage-class", md.storageClass);
+  res.setHeader("x-goog-hash", `crc32c=${crc32cToString(md.crc32c)},md5=${md.md5Hash}`);
 
-  const byteRange = [...(req.header("range") || "").split("bytes="), "", ""];
+  const byteRange = req.range(data.byteLength, { combine: true });
 
-  const [rangeStart, rangeEnd] = byteRange[1].split("-");
-
-  if (rangeStart) {
-    const range = {
-      start: parseInt(rangeStart),
-      end: rangeEnd ? parseInt(rangeEnd) : data.byteLength,
-    };
-    res.setHeader("Content-Range", `bytes ${range.start}-${range.end - 1}/${data.byteLength}`);
-    res.status(206).end(data.slice(range.start, range.end));
+  if (Array.isArray(byteRange) && byteRange.type === "bytes" && byteRange.length > 0) {
+    const range = byteRange[0];
+    res.setHeader(
+      "Content-Range",
+      `${byteRange.type} ${range.start}-${range.end}/${data.byteLength}`
+    );
+    // Byte range requests are inclusive for start and end
+    res.status(206).end(data.slice(range.start, range.end + 1));
   } else {
     res.end(data);
   }
-  return;
+}
+
+/** Sends 404 matching API */
+function sendObjectNotFound(req: Request, res: Response): void {
+  res.status(404);
+  const message = `No such object: ${req.params.bucketId}/${req.params.objectId}`;
+  if (req.method === "GET" && req.query.alt === "media") {
+    res.send(message);
+  } else {
+    res.json({
+      error: {
+        code: 404,
+        message,
+        errors: [
+          {
+            message,
+            domain: "global",
+            reason: "notFound",
+          },
+        ],
+      },
+    });
+  }
 }

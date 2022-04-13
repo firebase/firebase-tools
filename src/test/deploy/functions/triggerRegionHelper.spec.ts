@@ -30,9 +30,7 @@ describe("TriggerRegionHelper", () => {
         platform: "gcfv2",
         eventTrigger: {
           eventType: "google.cloud.storage.object.v1.finalized",
-          eventFilters: {
-            bucket: "my-bucket",
-          },
+          eventFilters: { bucket: "my-bucket" },
           retry: false,
         },
         ...SPEC,
@@ -50,9 +48,7 @@ describe("TriggerRegionHelper", () => {
         platform: "gcfv1",
         eventTrigger: {
           eventType: "google.storage.object.create",
-          eventFilters: {
-            resource: "projects/_/buckets/myBucket",
-          },
+          eventFilters: { resource: "projects/_/buckets/my-bucket" },
           retry: false,
         },
         ...SPEC,
@@ -67,13 +63,13 @@ describe("TriggerRegionHelper", () => {
 
       await triggerRegionHelper.ensureTriggerRegions(backend.of(v1EventFn, v2CallableFn));
 
-      expect(v1EventFn.eventTrigger).to.deep.eq({
+      const want: backend.EventTrigger = {
         eventType: "google.storage.object.create",
-        eventFilters: {
-          resource: "projects/_/buckets/myBucket",
-        },
+        eventFilters: { resource: "projects/_/buckets/my-bucket" },
         retry: false,
-      });
+      };
+
+      expect(v1EventFn.eventTrigger).to.deep.eq(want);
       expect(v2CallableFn.httpsTrigger).to.deep.eq({});
     });
 
@@ -85,9 +81,7 @@ describe("TriggerRegionHelper", () => {
         platform: "gcfv2",
         eventTrigger: {
           eventType: "google.cloud.storage.object.v1.finalized",
-          eventFilters: {
-            bucket: "my-bucket",
-          },
+          eventFilters: { bucket: "my-bucket" },
           retry: false,
         },
         ...SPEC,
@@ -95,14 +89,13 @@ describe("TriggerRegionHelper", () => {
 
       await triggerRegionHelper.ensureTriggerRegions(backend.of(wantFn));
 
-      expect(wantFn.eventTrigger).to.deep.eq({
+      const want: backend.EventTrigger = {
         eventType: "google.cloud.storage.object.v1.finalized",
-        eventFilters: {
-          bucket: "my-bucket",
-        },
+        eventFilters: { bucket: "my-bucket" },
         retry: false,
         region: "us",
-      });
+      };
+      expect(wantFn.eventTrigger).to.deep.eq(want);
     });
 
     it("should set trigger region from API then reject on invalid function region", async () => {
@@ -113,9 +106,7 @@ describe("TriggerRegionHelper", () => {
         platform: "gcfv2",
         eventTrigger: {
           eventType: "google.cloud.storage.object.v1.finalized",
-          eventFilters: {
-            bucket: "my-bucket",
-          },
+          eventFilters: { bucket: "my-bucket" },
           retry: false,
         },
         ...SPEC,

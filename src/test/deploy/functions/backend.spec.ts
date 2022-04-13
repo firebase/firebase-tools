@@ -8,6 +8,7 @@ import * as backend from "../../../deploy/functions/backend";
 import * as gcf from "../../../gcp/cloudfunctions";
 import * as gcfV2 from "../../../gcp/cloudfunctionsv2";
 import * as utils from "../../../utils";
+import * as projectConfig from "../../../functions/projectConfig";
 
 describe("Backend", () => {
   const FUNCTION_NAME: backend.TargetIds = {
@@ -21,6 +22,7 @@ describe("Backend", () => {
     ...FUNCTION_NAME,
     entryPoint: "function",
     runtime: "nodejs16",
+    codebase: projectConfig.DEFAULT_CODEBASE,
   };
 
   const CLOUD_FUNCTION: Omit<gcf.CloudFunction, gcf.OutputOnlyFields> = {
@@ -72,7 +74,7 @@ describe("Backend", () => {
       expect(
         backend.isEmptyBackend({
           ...backend.empty(),
-          requiredAPIs: { foo: "foo.googleapis.com" },
+          requiredAPIs: [{ api: "foo.googleapis.com", reason: "foo" }],
         })
       ).to.be.false;
       expect(backend.isEmptyBackend(backend.of({ ...ENDPOINT, httpsTrigger: {} })));
@@ -525,6 +527,7 @@ describe("Backend", () => {
     };
     bkend.endpoints[endpointUS.region] = { [endpointUS.id]: endpointUS };
     bkend.endpoints[endpointEU.region] = { [endpointEU.id]: endpointEU };
+    bkend.requiredAPIs = [{ api: "api.google.com", reason: "required" }];
 
     it("allEndpoints", () => {
       const have = backend.allEndpoints(bkend).sort(backend.compareFunctions);
@@ -541,6 +544,7 @@ describe("Backend", () => {
             [endpointUS.id]: endpointUS,
           },
         },
+        requiredAPIs: [{ api: "api.google.com", reason: "required" }],
       };
       expect(have).to.deep.equal(want);
     });
@@ -548,6 +552,13 @@ describe("Backend", () => {
     it("someEndpoint", () => {
       expect(backend.someEndpoint(bkend, (fn) => fn.id === "endpointUS")).to.be.true;
       expect(backend.someEndpoint(bkend, (fn) => fn.id === "missing")).to.be.false;
+    });
+
+    it("findEndpoint", () => {
+      expect(backend.findEndpoint(bkend, (fn) => fn.id === "endpointUS")).to.be.deep.equal(
+        endpointUS
+      );
+      expect(backend.findEndpoint(bkend, (fn) => fn.id === "missing")).to.be.undefined;
     });
 
     it("regionalEndpoints", () => {

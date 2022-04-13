@@ -1,6 +1,7 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
-import * as marked from "marked";
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
+const { marked } = require("marked");
 import TerminalRenderer = require("marked-terminal");
 
 import * as extensionsApi from "./extensionsApi";
@@ -249,7 +250,7 @@ export async function displayUpdateChangesRequiringConfirmation(args: {
 }
 
 function compareResources(resource1: extensionsApi.Resource, resource2: extensionsApi.Resource) {
-  return resource1.name == resource2.name && resource1.type == resource2.type;
+  return resource1.name === resource2.name && resource1.type === resource2.type;
 }
 
 function getResourceReadableName(resource: extensionsApi.Resource): string {

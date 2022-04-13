@@ -6,7 +6,7 @@ import * as spawn from "cross-spawn";
 
 import * as utils from "../../../../utils";
 import { logger } from "../../../../logger";
-import * as track from "../../../../track";
+import { track } from "../../../../track";
 
 interface NpmListResult {
   name: string;
@@ -85,7 +85,7 @@ export function getLatestSDKVersion(): string | undefined {
 export function checkFunctionsSDKVersion(currentVersion: string): void {
   try {
     if (semver.lt(currentVersion, MIN_SDK_VERSION)) {
-      track("functions_runtime_notices", "functions_sdk_too_old");
+      void track("functions_runtime_notices", "functions_sdk_too_old");
       utils.logWarning(FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING);
     }
 
@@ -100,7 +100,7 @@ export function checkFunctionsSDKVersion(currentVersion: string): void {
     }
     utils.logWarning(
       clc.bold.yellow("functions: ") +
-        "package.json indicates an outdated version of firebase-functions.\nPlease upgrade using " +
+        "package.json indicates an outdated version of firebase-functions. Please upgrade using " +
         clc.bold("npm install --save firebase-functions@latest") +
         " in your functions directory."
     );

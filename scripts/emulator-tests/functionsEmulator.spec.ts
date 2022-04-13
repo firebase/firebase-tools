@@ -1,9 +1,14 @@
+import * as fs from "fs";
+
 import { expect } from "chai";
 import * as express from "express";
 import * as sinon from "sinon";
 import * as supertest from "supertest";
+import * as winston from "winston";
+import * as logform from "logform";
+import * as path from "path";
 
-import { SignatureType } from "../../src/emulator/functionsEmulatorShared";
+import { EmulatedTriggerDefinition } from "../../src/emulator/functionsEmulatorShared";
 import {
   EmulatableBackend,
   FunctionsEmulator,
@@ -14,8 +19,7 @@ import { RuntimeWorker } from "../../src/emulator/functionsRuntimeWorker";
 import { TIMEOUT_LONG, TIMEOUT_MED, MODULE_ROOT } from "./fixtures";
 import { logger } from "../../src/logger";
 import * as registry from "../../src/emulator/registry";
-import * as winston from "winston";
-import * as logform from "logform";
+import * as secretManager from "../../src/gcp/secretManager";
 
 if ((process.env.DEBUG || "").toLowerCase().includes("spec")) {
   const dropLogLevels = (info: logform.TransformableInfo) => info.message;
@@ -32,10 +36,12 @@ if ((process.env.DEBUG || "").toLowerCase().includes("spec")) {
 
 const functionsEmulator = new FunctionsEmulator({
   projectId: "fake-project-id",
+  projectDir: MODULE_ROOT,
   emulatableBackends: [
     {
       functionsDir: MODULE_ROOT,
       env: {},
+      secretEnv: [],
     },
   ],
   quiet: true,
@@ -44,6 +50,7 @@ const functionsEmulator = new FunctionsEmulator({
 const testBackend = {
   functionsDir: MODULE_ROOT,
   env: {},
+  secretEnv: [],
   nodeBinary: process.execPath,
 };
 
@@ -96,25 +103,40 @@ functionsEmulator.setTriggersForTesting(
       httpsTrigger: {},
       labels: {},
     },
+    {
+      platform: "gcfv1",
+      name: "secrets_function_id",
+      id: "us-central1-secrets_function_id",
+      region: "us-central1",
+      entryPoint: "secrets_function_id",
+      secretEnvironmentVariables: [
+        {
+          projectId: "fake-project-id",
+          secret: "MY_SECRET",
+          key: "MY_SECRET",
+          version: "1",
+        },
+      ],
+      httpsTrigger: {},
+      labels: {},
+    },
   ],
   testBackend
 );
 
 // TODO(samstern): This is an ugly way to just override the InvokeRuntimeOpts on each call
-const startFunctionRuntime = functionsEmulator.startFunctionRuntime.bind(functionsEmulator);
+const invokeTrigger = functionsEmulator.invokeTrigger.bind(functionsEmulator);
 function useFunctions(triggers: () => {}): void {
   const serializedTriggers = triggers.toString();
 
   // eslint-disable-next-line @typescript-eslint/unbound-method
-  functionsEmulator.startFunctionRuntime = (
+  functionsEmulator.invokeTrigger = (
     backend: EmulatableBackend,
-    triggerId: string,
-    targetName: string,
-    triggerType: SignatureType,
+    trigger: EmulatedTriggerDefinition,
     proto?: any,
     runtimeOpts?: InvokeRuntimeOpts
-  ): RuntimeWorker => {
-    return startFunctionRuntime(testBackend, triggerId, targetName, triggerType, proto, {
+  ): Promise<RuntimeWorker> => {
+    return invokeTrigger(testBackend, trigger, proto, {
       nodeBinary: process.execPath,
       serializedTriggers,
     });
@@ -608,6 +630,99 @@ describe("FunctionsEmulator-Hub", () => {
       });
   }).timeout(TIMEOUT_LONG);
 
+  it("should respond to requests to /backends to with info about the running backends", async () => {
+    useFunctions(() => {
+      require("firebase-admin").initializeApp();
+      return {
+        function_id: require("firebase-functions").https.onRequest(
+          (req: express.Request, res: express.Response) => {
+            res.json({ path: req.path });
+          }
+        ),
+      };
+    });
+
+    await supertest(functionsEmulator.createHubServer())
+      .get("/backends")
+      .expect(200)
+      .then((res) => {
+        // TODO(b/216642962): Add tests for this endpoint that validate behavior when there are Extensions running
+        const expectedDirectory = path.resolve(`${__dirname}/../..`);
+        expect(res.body.backends).to.deep.equal([
+          {
+            directory: expectedDirectory,
+            env: {},
+            functionTriggers: [
+              {
+                entryPoint: "function_id",
+                httpsTrigger: {},
+                id: "us-central1-function_id",
+                labels: {},
+                name: "function_id",
+                platform: "gcfv1",
+                region: "us-central1",
+              },
+              {
+                entryPoint: "function_id",
+                httpsTrigger: {},
+                id: "europe-west2-function_id",
+                labels: {},
+                name: "function_id",
+                platform: "gcfv1",
+                region: "europe-west2",
+              },
+              {
+                entryPoint: "function_id",
+                httpsTrigger: {},
+                id: "europe-west3-function_id",
+                labels: {},
+                name: "function_id",
+                platform: "gcfv1",
+                region: "europe-west3",
+              },
+              {
+                entryPoint: "callable_function_id",
+                httpsTrigger: {},
+                id: "us-central1-callable_function_id",
+                labels: {
+                  "deployment-callable": "true",
+                },
+                name: "callable_function_id",
+                platform: "gcfv1",
+                region: "us-central1",
+              },
+              {
+                entryPoint: "nested.function_id",
+                httpsTrigger: {},
+                id: "us-central1-nested-function_id",
+                labels: {},
+                name: "nested-function_id",
+                platform: "gcfv1",
+                region: "us-central1",
+              },
+              {
+                entryPoint: "secrets_function_id",
+                httpsTrigger: {},
+                id: "us-central1-secrets_function_id",
+                labels: {},
+                name: "secrets_function_id",
+                platform: "gcfv1",
+                region: "us-central1",
+                secretEnvironmentVariables: [
+                  {
+                    key: "MY_SECRET",
+                    projectId: "fake-project-id",
+                    secret: "MY_SECRET",
+                    version: "1",
+                  },
+                ],
+              },
+            ],
+          },
+        ]);
+      });
+  }).timeout(TIMEOUT_LONG);
+
   describe("environment variables", () => {
     let emulatorRegistryStub: sinon.SinonStub;
 
@@ -671,7 +786,7 @@ describe("FunctionsEmulator-Hub", () => {
         .then((res) => {
           expect(res.body.var).to.eql("localhost:9090");
         });
-    });
+    }).timeout(5000);
 
     it("should set FIREBASE_AUTH_EMULATOR_HOST when the emulator is running", async () => {
       emulatorRegistryStub.withArgs(Emulators.AUTH).returns({
@@ -699,5 +814,65 @@ describe("FunctionsEmulator-Hub", () => {
           expect(res.body.var).to.eql("localhost:9099");
         });
     }).timeout(TIMEOUT_MED);
+  });
+
+  describe("secrets", () => {
+    let readFileSyncStub: sinon.SinonStub;
+    let accessSecretVersionStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      readFileSyncStub = sinon.stub(fs, "readFileSync").throws("Unexpected call");
+      accessSecretVersionStub = sinon
+        .stub(secretManager, "accessSecretVersion")
+        .rejects("Unexpected call");
+    });
+
+    afterEach(() => {
+      readFileSyncStub.restore();
+      accessSecretVersionStub.restore();
+    });
+
+    it("should load secret values from local secrets file if one exists", async () => {
+      readFileSyncStub.returns("MY_SECRET=local");
+
+      useFunctions(() => {
+        return {
+          secrets_function_id: require("firebase-functions").https.onRequest(
+            (req: express.Request, res: express.Response) => {
+              res.json({ secret: process.env.MY_SECRET });
+            }
+          ),
+        };
+      });
+
+      await supertest(functionsEmulator.createHubServer())
+        .get("/fake-project-id/us-central1/secrets_function_id")
+        .expect(200)
+        .then((res) => {
+          expect(res.body.secret).to.equal("local");
+        });
+    }).timeout(TIMEOUT_LONG);
+
+    it("should try to access secret values from Secret Manager", async () => {
+      readFileSyncStub.throws({ code: "ENOENT" });
+      accessSecretVersionStub.resolves("secretManager");
+
+      useFunctions(() => {
+        return {
+          secrets_function_id: require("firebase-functions").https.onRequest(
+            (req: express.Request, res: express.Response) => {
+              res.json({ secret: process.env.MY_SECRET });
+            }
+          ),
+        };
+      });
+
+      await supertest(functionsEmulator.createHubServer())
+        .get("/fake-project-id/us-central1/secrets_function_id")
+        .expect(200)
+        .then((res) => {
+          expect(res.body.secret).to.equal("secretManager");
+        });
+    }).timeout(TIMEOUT_LONG);
   });
 });

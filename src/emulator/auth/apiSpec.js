@@ -112,8 +112,7 @@ export default {
             content: {
               "*/*": {
                 schema: {
-                  $ref:
-                    "#/components/schemas/GoogleCloudIdentitytoolkitV1IssueSamlResponseResponse",
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1IssueSamlResponseResponse",
                 },
               },
             },
@@ -265,8 +264,7 @@ export default {
             content: {
               "*/*": {
                 schema: {
-                  $ref:
-                    "#/components/schemas/GoogleCloudIdentitytoolkitV1SendVerificationCodeResponse",
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1SendVerificationCodeResponse",
                 },
               },
             },
@@ -276,8 +274,7 @@ export default {
           content: {
             "application/json": {
               schema: {
-                $ref:
-                  "#/components/schemas/GoogleCloudIdentitytoolkitV1SendVerificationCodeRequest",
+                $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1SendVerificationCodeRequest",
               },
             },
           },
@@ -308,8 +305,7 @@ export default {
             content: {
               "*/*": {
                 schema: {
-                  $ref:
-                    "#/components/schemas/GoogleCloudIdentitytoolkitV1SignInWithCustomTokenResponse",
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1SignInWithCustomTokenResponse",
                 },
               },
             },
@@ -319,8 +315,7 @@ export default {
           content: {
             "application/json": {
               schema: {
-                $ref:
-                  "#/components/schemas/GoogleCloudIdentitytoolkitV1SignInWithCustomTokenRequest",
+                $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1SignInWithCustomTokenRequest",
               },
             },
           },
@@ -351,8 +346,7 @@ export default {
             content: {
               "*/*": {
                 schema: {
-                  $ref:
-                    "#/components/schemas/GoogleCloudIdentitytoolkitV1SignInWithEmailLinkResponse",
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1SignInWithEmailLinkResponse",
                 },
               },
             },
@@ -393,8 +387,7 @@ export default {
             content: {
               "*/*": {
                 schema: {
-                  $ref:
-                    "#/components/schemas/GoogleCloudIdentitytoolkitV1SignInWithGameCenterResponse",
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1SignInWithGameCenterResponse",
                 },
               },
             },
@@ -404,8 +397,7 @@ export default {
           content: {
             "application/json": {
               schema: {
-                $ref:
-                  "#/components/schemas/GoogleCloudIdentitytoolkitV1SignInWithGameCenterRequest",
+                $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1SignInWithGameCenterRequest",
               },
             },
           },
@@ -477,8 +469,7 @@ export default {
             content: {
               "*/*": {
                 schema: {
-                  $ref:
-                    "#/components/schemas/GoogleCloudIdentitytoolkitV1SignInWithPasswordResponse",
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1SignInWithPasswordResponse",
                 },
               },
             },
@@ -519,8 +510,7 @@ export default {
             content: {
               "*/*": {
                 schema: {
-                  $ref:
-                    "#/components/schemas/GoogleCloudIdentitytoolkitV1SignInWithPhoneNumberResponse",
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1SignInWithPhoneNumberResponse",
                 },
               },
             },
@@ -530,8 +520,7 @@ export default {
           content: {
             "application/json": {
               schema: {
-                $ref:
-                  "#/components/schemas/GoogleCloudIdentitytoolkitV1SignInWithPhoneNumberRequest",
+                $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1SignInWithPhoneNumberRequest",
               },
             },
           },
@@ -714,8 +703,7 @@ export default {
             content: {
               "*/*": {
                 schema: {
-                  $ref:
-                    "#/components/schemas/GoogleCloudIdentitytoolkitV1CreateSessionCookieResponse",
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1CreateSessionCookieResponse",
                 },
               },
             },
@@ -856,8 +844,7 @@ export default {
             content: {
               "*/*": {
                 schema: {
-                  $ref:
-                    "#/components/schemas/GoogleCloudIdentitytoolkitV1BatchDeleteAccountsResponse",
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1BatchDeleteAccountsResponse",
                 },
               },
             },
@@ -1251,8 +1238,7 @@ export default {
             content: {
               "*/*": {
                 schema: {
-                  $ref:
-                    "#/components/schemas/GoogleCloudIdentitytoolkitV1CreateSessionCookieResponse",
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1CreateSessionCookieResponse",
                 },
               },
             },
@@ -1359,8 +1345,7 @@ export default {
             content: {
               "*/*": {
                 schema: {
-                  $ref:
-                    "#/components/schemas/GoogleCloudIdentitytoolkitV1BatchDeleteAccountsResponse",
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1BatchDeleteAccountsResponse",
                 },
               },
             },
@@ -1838,8 +1823,7 @@ export default {
             content: {
               "*/*": {
                 schema: {
-                  $ref:
-                    "#/components/schemas/GoogleCloudIdentitytoolkitV1GetRecaptchaParamResponse",
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1GetRecaptchaParamResponse",
                 },
               },
             },
@@ -1871,8 +1855,7 @@ export default {
             content: {
               "*/*": {
                 schema: {
-                  $ref:
-                    "#/components/schemas/GoogleCloudIdentitytoolkitV1GetSessionCookiePublicKeysResponse",
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1GetSessionCookiePublicKeysResponse",
                 },
               },
             },
@@ -1903,8 +1886,7 @@ export default {
             content: {
               "*/*": {
                 schema: {
-                  $ref:
-                    "#/components/schemas/GoogleCloudIdentitytoolkitV2FinalizeMfaEnrollmentResponse",
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV2FinalizeMfaEnrollmentResponse",
                 },
               },
             },
@@ -1914,8 +1896,7 @@ export default {
           content: {
             "application/json": {
               schema: {
-                $ref:
-                  "#/components/schemas/GoogleCloudIdentitytoolkitV2FinalizeMfaEnrollmentRequest",
+                $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV2FinalizeMfaEnrollmentRequest",
               },
             },
           },
@@ -1946,8 +1927,7 @@ export default {
             content: {
               "*/*": {
                 schema: {
-                  $ref:
-                    "#/components/schemas/GoogleCloudIdentitytoolkitV2StartMfaEnrollmentResponse",
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV2StartMfaEnrollmentResponse",
                 },
               },
             },
@@ -2027,8 +2007,7 @@ export default {
             content: {
               "*/*": {
                 schema: {
-                  $ref:
-                    "#/components/schemas/GoogleCloudIdentitytoolkitV2FinalizeMfaSignInResponse",
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV2FinalizeMfaSignInResponse",
                 },
               },
             },
@@ -2108,8 +2087,7 @@ export default {
             content: {
               "*/*": {
                 schema: {
-                  $ref:
-                    "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2ListDefaultSupportedIdpsResponse",
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2ListDefaultSupportedIdpsResponse",
                 },
               },
             },
@@ -2228,8 +2206,7 @@ export default {
             content: {
               "*/*": {
                 schema: {
-                  $ref:
-                    "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdpConfig",
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdpConfig",
                 },
               },
             },
@@ -2246,8 +2223,7 @@ export default {
           },
         ],
         requestBody: {
-          $ref:
-            "#/components/requestBodies/GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdpConfig",
+          $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdpConfig",
         },
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
@@ -2266,8 +2242,7 @@ export default {
             content: {
               "*/*": {
                 schema: {
-                  $ref:
-                    "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2ListDefaultSupportedIdpConfigsResponse",
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2ListDefaultSupportedIdpConfigsResponse",
                 },
               },
             },
@@ -2344,8 +2319,7 @@ export default {
             content: {
               "*/*": {
                 schema: {
-                  $ref:
-                    "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdpConfig",
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdpConfig",
                 },
               },
             },
@@ -2377,8 +2351,7 @@ export default {
             content: {
               "*/*": {
                 schema: {
-                  $ref:
-                    "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdpConfig",
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdpConfig",
                 },
               },
             },
@@ -2401,8 +2374,7 @@ export default {
           },
         ],
         requestBody: {
-          $ref:
-            "#/components/requestBodies/GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdpConfig",
+          $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdpConfig",
         },
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
@@ -2467,8 +2439,7 @@ export default {
             content: {
               "*/*": {
                 schema: {
-                  $ref:
-                    "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2ListInboundSamlConfigsResponse",
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2ListInboundSamlConfigsResponse",
                 },
               },
             },
@@ -2647,8 +2618,7 @@ export default {
             content: {
               "*/*": {
                 schema: {
-                  $ref:
-                    "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2ListOAuthIdpConfigsResponse",
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2ListOAuthIdpConfigsResponse",
                 },
               },
             },
@@ -3086,8 +3056,7 @@ export default {
             content: {
               "*/*": {
                 schema: {
-                  $ref:
-                    "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdpConfig",
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdpConfig",
                 },
               },
             },
@@ -3105,8 +3074,7 @@ export default {
           },
         ],
         requestBody: {
-          $ref:
-            "#/components/requestBodies/GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdpConfig",
+          $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdpConfig",
         },
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
@@ -3125,8 +3093,7 @@ export default {
             content: {
               "*/*": {
                 schema: {
-                  $ref:
-                    "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2ListDefaultSupportedIdpConfigsResponse",
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2ListDefaultSupportedIdpConfigsResponse",
                 },
               },
             },
@@ -3167,125 +3134,123 @@ export default {
         { $ref: "#/components/parameters/upload_protocol" },
       ],
     },
-    "/v2/projects/{targetProjectId}/tenants/{tenantId}/defaultSupportedIdpConfigs/{defaultSupportedIdpConfigsId}": {
-      delete: {
-        description:
-          "Delete a default supported Idp configuration for an Identity Toolkit project.",
-        operationId: "identitytoolkit.projects.tenants.defaultSupportedIdpConfigs.delete",
-        responses: {
-          200: {
-            description: "Successful response",
-            content: { "*/*": { schema: { $ref: "#/components/schemas/GoogleProtobufEmpty" } } },
+    "/v2/projects/{targetProjectId}/tenants/{tenantId}/defaultSupportedIdpConfigs/{defaultSupportedIdpConfigsId}":
+      {
+        delete: {
+          description:
+            "Delete a default supported Idp configuration for an Identity Toolkit project.",
+          operationId: "identitytoolkit.projects.tenants.defaultSupportedIdpConfigs.delete",
+          responses: {
+            200: {
+              description: "Successful response",
+              content: { "*/*": { schema: { $ref: "#/components/schemas/GoogleProtobufEmpty" } } },
+            },
           },
+          parameters: [
+            { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+            { name: "tenantId", in: "path", required: true, schema: { type: "string" } },
+            {
+              name: "defaultSupportedIdpConfigsId",
+              in: "path",
+              required: true,
+              schema: { type: "string" },
+            },
+          ],
+          security: [
+            { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+            { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
+            { apiKey: [] },
+          ],
+          tags: ["projects"],
         },
-        parameters: [
-          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
-          { name: "tenantId", in: "path", required: true, schema: { type: "string" } },
-          {
-            name: "defaultSupportedIdpConfigsId",
-            in: "path",
-            required: true,
-            schema: { type: "string" },
-          },
-        ],
-        security: [
-          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
-          { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
-        ],
-        tags: ["projects"],
-      },
-      get: {
-        description:
-          "Retrieve a default supported Idp configuration for an Identity Toolkit project.",
-        operationId: "identitytoolkit.projects.tenants.defaultSupportedIdpConfigs.get",
-        responses: {
-          200: {
-            description: "Successful response",
-            content: {
-              "*/*": {
-                schema: {
-                  $ref:
-                    "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdpConfig",
+        get: {
+          description:
+            "Retrieve a default supported Idp configuration for an Identity Toolkit project.",
+          operationId: "identitytoolkit.projects.tenants.defaultSupportedIdpConfigs.get",
+          responses: {
+            200: {
+              description: "Successful response",
+              content: {
+                "*/*": {
+                  schema: {
+                    $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdpConfig",
+                  },
                 },
               },
             },
           },
+          parameters: [
+            { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+            { name: "tenantId", in: "path", required: true, schema: { type: "string" } },
+            {
+              name: "defaultSupportedIdpConfigsId",
+              in: "path",
+              required: true,
+              schema: { type: "string" },
+            },
+          ],
+          security: [
+            { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+            { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
+            { apiKey: [] },
+          ],
+          tags: ["projects"],
         },
-        parameters: [
-          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
-          { name: "tenantId", in: "path", required: true, schema: { type: "string" } },
-          {
-            name: "defaultSupportedIdpConfigsId",
-            in: "path",
-            required: true,
-            schema: { type: "string" },
-          },
-        ],
-        security: [
-          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
-          { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
-        ],
-        tags: ["projects"],
-      },
-      patch: {
-        description:
-          "Update a default supported Idp configuration for an Identity Toolkit project.",
-        operationId: "identitytoolkit.projects.tenants.defaultSupportedIdpConfigs.patch",
-        responses: {
-          200: {
-            description: "Successful response",
-            content: {
-              "*/*": {
-                schema: {
-                  $ref:
-                    "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdpConfig",
+        patch: {
+          description:
+            "Update a default supported Idp configuration for an Identity Toolkit project.",
+          operationId: "identitytoolkit.projects.tenants.defaultSupportedIdpConfigs.patch",
+          responses: {
+            200: {
+              description: "Successful response",
+              content: {
+                "*/*": {
+                  schema: {
+                    $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdpConfig",
+                  },
                 },
               },
             },
           },
+          parameters: [
+            { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+            { name: "tenantId", in: "path", required: true, schema: { type: "string" } },
+            {
+              name: "defaultSupportedIdpConfigsId",
+              in: "path",
+              required: true,
+              schema: { type: "string" },
+            },
+            {
+              name: "updateMask",
+              in: "query",
+              description:
+                "The update mask applies to the resource. For the `FieldMask` definition, see https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#fieldmask",
+              schema: { type: "string" },
+            },
+          ],
+          requestBody: {
+            $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdpConfig",
+          },
+          security: [
+            { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+            { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
+            { apiKey: [] },
+          ],
+          tags: ["projects"],
         },
         parameters: [
-          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
-          { name: "tenantId", in: "path", required: true, schema: { type: "string" } },
-          {
-            name: "defaultSupportedIdpConfigsId",
-            in: "path",
-            required: true,
-            schema: { type: "string" },
-          },
-          {
-            name: "updateMask",
-            in: "query",
-            description:
-              "The update mask applies to the resource. For the `FieldMask` definition, see https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#fieldmask",
-            schema: { type: "string" },
-          },
+          { $ref: "#/components/parameters/access_token" },
+          { $ref: "#/components/parameters/alt" },
+          { $ref: "#/components/parameters/callback" },
+          { $ref: "#/components/parameters/fields" },
+          { $ref: "#/components/parameters/oauth_token" },
+          { $ref: "#/components/parameters/prettyPrint" },
+          { $ref: "#/components/parameters/quotaUser" },
+          { $ref: "#/components/parameters/uploadType" },
+          { $ref: "#/components/parameters/upload_protocol" },
         ],
-        requestBody: {
-          $ref:
-            "#/components/requestBodies/GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdpConfig",
-        },
-        security: [
-          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
-          { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
-        ],
-        tags: ["projects"],
       },
-      parameters: [
-        { $ref: "#/components/parameters/access_token" },
-        { $ref: "#/components/parameters/alt" },
-        { $ref: "#/components/parameters/callback" },
-        { $ref: "#/components/parameters/fields" },
-        { $ref: "#/components/parameters/oauth_token" },
-        { $ref: "#/components/parameters/prettyPrint" },
-        { $ref: "#/components/parameters/quotaUser" },
-        { $ref: "#/components/parameters/uploadType" },
-        { $ref: "#/components/parameters/upload_protocol" },
-      ],
-    },
     "/v2/projects/{targetProjectId}/tenants/{tenantId}/inboundSamlConfigs": {
       post: {
         description: "Create an inbound SAML configuration for an Identity Toolkit project.",
@@ -3331,8 +3296,7 @@ export default {
             content: {
               "*/*": {
                 schema: {
-                  $ref:
-                    "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2ListInboundSamlConfigsResponse",
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2ListInboundSamlConfigsResponse",
                 },
               },
             },
@@ -3516,8 +3480,7 @@ export default {
             content: {
               "*/*": {
                 schema: {
-                  $ref:
-                    "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2ListOAuthIdpConfigsResponse",
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2ListOAuthIdpConfigsResponse",
                 },
               },
             },
@@ -6050,6 +6013,32 @@ export default {
         },
         type: "object",
       },
+      GoogleCloudIdentitytoolkitAdminV2AllowByDefault: {
+        description:
+          "Defines a policy of allowing every region by default and adding disallowed regions to a disallow list.",
+        properties: {
+          disallowedRegions: {
+            description:
+              "Two letter unicode region codes to disallow as defined by https://cldr.unicode.org/ The full list of these region codes is here: https://github.com/unicode-cldr/cldr-localenames-full/blob/master/main/en/territories.json",
+            items: { type: "string" },
+            type: "array",
+          },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitAdminV2AllowlistOnly: {
+        description:
+          "Defines a policy of only allowing regions by explicitly adding them to an allowlist.",
+        properties: {
+          allowedRegions: {
+            description:
+              "Two letter unicode region codes to allow as defined by https://cldr.unicode.org/ The full list of these region codes is here: https://github.com/unicode-cldr/cldr-localenames-full/blob/master/main/en/territories.json",
+            items: { type: "string" },
+            type: "array",
+          },
+        },
+        type: "object",
+      },
       GoogleCloudIdentitytoolkitAdminV2Anonymous: {
         description: "Configuration options related to authenticating an anonymous user.",
         properties: {
@@ -6405,8 +6394,7 @@ export default {
           defaultSupportedIdpConfigs: {
             description: "The set of configs.",
             items: {
-              $ref:
-                "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdpConfig",
+              $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdpConfig",
             },
             type: "array",
           },
@@ -6695,6 +6683,19 @@ export default {
         },
         type: "object",
       },
+      GoogleCloudIdentitytoolkitAdminV2SmsRegionConfig: {
+        description:
+          "Configures the regions where users are allowed to send verification SMS for the project or tenant. This is based on the calling code of the destination phone number.",
+        properties: {
+          allowByDefault: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2AllowByDefault",
+          },
+          allowlistOnly: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2AllowlistOnly",
+          },
+        },
+        type: "object",
+      },
       GoogleCloudIdentitytoolkitAdminV2SmsTemplate: {
         description: "The template to use when sending an SMS.",
         properties: {
@@ -6809,6 +6810,9 @@ export default {
               'Output only. Resource name of a tenant. For example: "projects/{project-id}/tenants/{tenant-id}"',
             readOnly: true,
             type: "string",
+          },
+          smsRegionConfig: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2SmsRegionConfig",
           },
           testPhoneNumbers: {
             additionalProperties: { type: "string" },
@@ -7480,8 +7484,7 @@ export default {
         content: {
           "application/json": {
             schema: {
-              $ref:
-                "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdpConfig",
+              $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdpConfig",
             },
           },
         },

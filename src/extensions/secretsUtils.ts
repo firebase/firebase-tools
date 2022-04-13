@@ -14,7 +14,7 @@ export async function ensureSecretManagerApiEnabled(options: any): Promise<void>
 }
 
 export function usesSecrets(spec: extensionsApi.ExtensionSpec): boolean {
-  return spec.params && !!spec.params.find((p) => p.type == extensionsApi.ParamType.SECRET);
+  return spec.params && !!spec.params.find((p) => p.type === extensionsApi.ParamType.SECRET);
 }
 
 export async function grantFirexServiceAgentSecretAdminRole(
@@ -27,7 +27,7 @@ export async function grantFirexServiceAgentSecretAdminRole(
   );
   const saEmail = `service-${projectNumber}@${firexSaProjectId}.iam.gserviceaccount.com`;
 
-  return secretManagerApi.grantServiceAgentRole(secret, saEmail, "roles/secretmanager.admin");
+  return secretManagerApi.ensureServiceAgentRole(secret, [saEmail], "roles/secretmanager.admin");
 }
 
 export async function getManagedSecrets(
@@ -54,7 +54,7 @@ export function getActiveSecrets(
   params: Record<string, string>
 ): string[] {
   return spec.params
-    .map((p) => (p.type == extensionsApi.ParamType.SECRET ? params[p.param] : ""))
+    .map((p) => (p.type === extensionsApi.ParamType.SECRET ? params[p.param] : ""))
     .filter((pv) => !!pv);
 }
 
@@ -66,7 +66,7 @@ export function getSecretLabels(instanceId: string): Record<string, string> {
 
 export function prettySecretName(secretResourceName: string): string {
   const nameTokens = secretResourceName.split("/");
-  if (nameTokens.length != 4 && nameTokens.length != 6) {
+  if (nameTokens.length !== 4 && nameTokens.length !== 6) {
     // not a familiar format, return as is
     logger.debug(`unable to parse secret secretResourceName: ${secretResourceName}`);
     return secretResourceName;

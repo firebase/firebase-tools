@@ -1,14 +1,25 @@
 import * as backend from "../../backend";
 import * as runtimes from "..";
-import { copyIfPresent } from "../../../../gcp/proto";
+import { copyIfPresent, renameIfPresent } from "../../../../gcp/proto";
 import { assertKeyTypes, requireKeys } from "./parsing";
 import { FirebaseError } from "../../../../error";
+
+const CHANNEL_NAME_REGEX = new RegExp(
+  "(projects\\/" +
+    "(?<project>(?:\\d+)|(?:[A-Za-z]+[A-Za-z\\d-]*[A-Za-z\\d]?))\\/)?" +
+    "locations\\/" +
+    "(?<location>[A-Za-z\\d\\-_]+)\\/" +
+    "channels\\/" +
+    "(?<channel>[A-Za-z\\d\\-_]+)"
+);
 
 export type ManifestEndpoint = backend.ServiceConfiguration &
   backend.Triggered &
   Partial<backend.HttpsTriggered> &
+  Partial<backend.CallableTriggered> &
   Partial<backend.EventTriggered> &
   Partial<backend.TaskQueueTriggered> &
+  Partial<backend.BlockingTriggered> &
   Partial<backend.ScheduleTriggered> & {
     region?: string[];
     entryPoint: string;
@@ -17,7 +28,7 @@ export type ManifestEndpoint = backend.ServiceConfiguration &
 
 export interface Manifest {
   specVersion: string;
-  requiredAPIs?: Record<string, string>;
+  requiredAPIs?: backend.RequiredAPI[];
   endpoints: Record<string, ManifestEndpoint>;
 }
 
@@ -34,7 +45,7 @@ export function backendFromV1Alpha1(
   requireKeys("", manifest, "endpoints");
   assertKeyTypes("", manifest, {
     specVersion: "string",
-    requiredAPIs: "object",
+    requiredAPIs: "array",
     endpoints: "object",
   });
   for (const id of Object.keys(manifest.endpoints)) {
@@ -46,19 +57,17 @@ export function backendFromV1Alpha1(
   return bkend;
 }
 
-function parseRequiredAPIs(manifest: Manifest): Record<string, string> {
-  const requiredAPIs: Record<string, string> = {};
-  // Note: this intentionally allows undefined to slip through as {}
-  if (typeof manifest !== "object" || Array.isArray(manifest)) {
-    throw new FirebaseError("Expected requiredApis to be a map of string to string");
-  }
-  for (const [api, reason] of Object.entries(manifest.requiredAPIs || {})) {
+function parseRequiredAPIs(manifest: Manifest): backend.RequiredAPI[] {
+  const requiredAPIs: backend.RequiredAPI[] = manifest.requiredAPIs || [];
+  for (const { api, reason } of requiredAPIs) {
+    if (typeof api !== "string") {
+      throw new FirebaseError(`Invalid api "${JSON.stringify(api)}. Expected string`);
+    }
     if (typeof reason !== "string") {
       throw new FirebaseError(
         `Invalid reason "${JSON.stringify(reason)} for API ${api}. Expected string`
       );
     }
-    requiredAPIs[api] = reason;
   }
   return requiredAPIs;
 }
@@ -83,19 +92,24 @@ function parseEndpoints(
     minInstances: "number",
     concurrency: "number",
     serviceAccountEmail: "string",
-    timeout: "string",
-    vpcConnector: "string",
-    vpcConnectorEgressSettings: "string",
+    timeoutSeconds: "number",
+    vpc: "object",
     labels: "object",
     ingressSettings: "string",
     environmentVariables: "object",
+    secretEnvironmentVariables: "array",
     httpsTrigger: "object",
+    callableTrigger: "object",
     eventTrigger: "object",
     scheduleTrigger: "object",
     taskQueueTrigger: "object",
+    blockingTrigger: "object",
   });
   let triggerCount = 0;
   if (ep.httpsTrigger) {
+    triggerCount++;
+  }
+  if (ep.callableTrigger) {
     triggerCount++;
   }
   if (ep.eventTrigger) {
@@ -107,8 +121,11 @@ function parseEndpoints(
   if (ep.taskQueueTrigger) {
     triggerCount++;
   }
+  if (ep.blockingTrigger) {
+    triggerCount++;
+  }
   if (!triggerCount) {
-    throw new FirebaseError("Expected trigger in endpoint" + id);
+    throw new FirebaseError("Expected trigger in endpoint " + id);
   }
   if (triggerCount > 1) {
     throw new FirebaseError("Multiple triggers defined for endpoint" + id);
@@ -119,18 +136,31 @@ function parseEndpoints(
       requireKeys(prefix + ".eventTrigger", ep.eventTrigger, "eventType", "eventFilters");
       assertKeyTypes(prefix + ".eventTrigger", ep.eventTrigger, {
         eventFilters: "object",
+        eventFilterPathPatterns: "object",
         eventType: "string",
         retry: "boolean",
         region: "string",
         serviceAccountEmail: "string",
+        channel: "string",
       });
       triggered = { eventTrigger: ep.eventTrigger };
+      renameIfPresent(triggered.eventTrigger, ep.eventTrigger, "channel", "channel", (c) =>
+        resolveChannelName(project, c, defaultRegion)
+      );
+      for (const [k, v] of Object.entries(triggered.eventTrigger.eventFilters)) {
+        if (k === "topic" && !v.startsWith("projects/")) {
+          // Construct full pubsub topic name.
+          triggered.eventTrigger.eventFilters[k] = `projects/${project}/topics/${v}`;
+        }
+      }
     } else if (backend.isHttpsTriggered(ep)) {
       assertKeyTypes(prefix + ".httpsTrigger", ep.httpsTrigger, {
         invoker: "array",
       });
       triggered = { httpsTrigger: {} };
       copyIfPresent(triggered.httpsTrigger, ep.httpsTrigger, "invoker");
+    } else if (backend.isCallableTriggered(ep)) {
+      triggered = { callableTrigger: {} };
     } else if (backend.isScheduleTriggered(ep)) {
       assertKeyTypes(prefix + ".scheduleTrigger", ep.scheduleTrigger, {
         schedule: "string",
@@ -153,7 +183,6 @@ function parseEndpoints(
       });
       if (ep.taskQueueTrigger.rateLimits) {
         assertKeyTypes(prefix + ".taskQueueTrigger.rateLimits", ep.taskQueueTrigger.rateLimits, {
-          maxBurstSize: "number",
           maxConcurrentDispatches: "number",
           maxDispatchesPerSecond: "number",
         });
@@ -161,13 +190,20 @@ function parseEndpoints(
       if (ep.taskQueueTrigger.retryConfig) {
         assertKeyTypes(prefix + ".taskQueueTrigger.retryConfig", ep.taskQueueTrigger.retryConfig, {
           maxAttempts: "number",
-          maxRetryDuration: "string",
-          minBackoff: "string",
-          maxBackoff: "string",
+          maxRetrySeconds: "number",
+          minBackoffSeconds: "number",
+          maxBackoffSeconds: "number",
           maxDoublings: "number",
         });
       }
       triggered = { taskQueueTrigger: ep.taskQueueTrigger };
+    } else if (backend.isBlockingTriggered(ep)) {
+      requireKeys(prefix + ".blockingTrigger", ep.blockingTrigger, "eventType");
+      assertKeyTypes(prefix + ".blockingTrigger", ep.blockingTrigger, {
+        eventType: "string",
+        options: "object",
+      });
+      triggered = { blockingTrigger: ep.blockingTrigger };
     } else {
       throw new FirebaseError(
         `Do not recognize trigger type for endpoint ${id}. Try upgrading ` +
@@ -193,9 +229,8 @@ function parseEndpoints(
       "minInstances",
       "concurrency",
       "serviceAccountEmail",
-      "timeout",
-      "vpcConnector",
-      "vpcConnectorEgressSettings",
+      "timeoutSeconds",
+      "vpc",
       "labels",
       "ingressSettings",
       "environmentVariables"
@@ -204,4 +239,24 @@ function parseEndpoints(
   }
 
   return allParsed;
+}
+
+function resolveChannelName(projectId: string, channel: string, defaultRegion: string): string {
+  if (!channel.includes("/")) {
+    const location = defaultRegion;
+    const channelId = channel;
+    return "projects/" + projectId + "/locations/" + location + "/channels/" + channelId;
+  }
+  const match = CHANNEL_NAME_REGEX.exec(channel);
+  if (!match?.groups) {
+    throw new FirebaseError("Invalid channel name format.");
+  }
+  const matchedProjectId = match.groups.project;
+  const location = match.groups.location;
+  const channelId = match.groups.channel;
+  if (matchedProjectId) {
+    return "projects/" + matchedProjectId + "/locations/" + location + "/channels/" + channelId;
+  } else {
+    return "projects/" + projectId + "/locations/" + location + "/channels/" + channelId;
+  }
 }
