@@ -1,13 +1,12 @@
-import ua from "universal-analytics";
+import ua = require("universal-analytics");
+import { v4 as uuidV4 } from "uuid";
 
 import { configstore } from "./configstore";
-import uuid from "uuid";
-import { logger } from "./logger";
 const pkg = require("../package.json");
 
 let anonId = configstore.get("analytics-uuid");
 if (!anonId) {
-  anonId = uuid.v4();
+  anonId = uuidV4();
   configstore.set("analytics-uuid", anonId);
 }
 
