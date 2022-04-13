@@ -120,9 +120,7 @@ export async function prepare(
   void track("functions_codebase_deploy_env_method", tag);
 
   logger.debug(`Analyzing ${runtimeDelegate.name} backend spec`);
-  const wantBackend = build.resolveBackend(
-    await runtimeDelegate.discoverBuild(runtimeConfig, firebaseEnvs)
-  );
+  const wantBackend = await runtimeDelegate.discoverSpec(runtimeConfig, firebaseEnvs);
   wantBackend.environmentVariables = { ...userEnvs, ...firebaseEnvs };
   for (const endpoint of backend.allEndpoints(wantBackend)) {
     endpoint.environmentVariables = wantBackend.environmentVariables;
