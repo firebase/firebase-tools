@@ -62,8 +62,7 @@ export const deploy = async function (
     }
   }
 
-  for (let i = 0; i < targetNames.length; i++) {
-    const targetName = targetNames[i];
+  for (const targetName of targetNames) {
     const target = TARGETS[targetName];
 
     if (!target) {
