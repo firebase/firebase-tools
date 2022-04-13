@@ -78,40 +78,38 @@ export async function convertConfig(
 
   // rewrites
   if (Array.isArray(config.rewrites)) {
-    const rewrites = await Promise.all(
-      config.rewrites.map(async (rewrite) => {
-        const vRewrite = extractPattern("rewrite", rewrite);
-        if ("destination" in rewrite) {
-          vRewrite.path = rewrite.destination;
-        } else if ("function" in rewrite) {
-          // Skip these rewrites during hosting prepare
-          if (!finalize && endpointBeingDeployed(rewrite.function, rewrite.region))
-            return undefined;
-          // Convert function references to GCFv2 to their equivalent run config
-          // we can't use the already fetched endpoints, since those are scoped to the codebase
-          const endpoint = await matchingEndpoint(rewrite.function, rewrite.region);
-          if (endpoint) {
-            vRewrite.run = { serviceId: endpoint.id, region: endpoint.region };
+    out.rewrites = [];
+    for (const rewrite of config.rewrites) {
+      const vRewrite = extractPattern("rewrite", rewrite);
+      if ("destination" in rewrite) {
+        vRewrite.path = rewrite.destination;
+      } else if ("function" in rewrite) {
+        // Skip these rewrites during hosting prepare
+        if (!finalize && endpointBeingDeployed(rewrite.function, rewrite.region))
+          continue;
+        // Convert function references to GCFv2 to their equivalent run config
+        // we can't use the already fetched endpoints, since those are scoped to the codebase
+        const endpoint = await matchingEndpoint(rewrite.function, rewrite.region);
+        if (endpoint) {
+          vRewrite.run = { serviceId: endpoint.id, region: endpoint.region };
+        } else {
+          vRewrite.function = rewrite.function;
+          if (rewrite.region) {
+            vRewrite.functionRegion = rewrite.region;
           } else {
-            vRewrite.function = rewrite.function;
-            if (rewrite.region) {
-              vRewrite.functionRegion = rewrite.region;
-            } else {
-              vRewrite.functionRegion = "us-central1";
-            }
+            vRewrite.functionRegion = "us-central1";
           }
-        } else if ("dynamicLinks" in rewrite) {
-          vRewrite.dynamicLinks = rewrite.dynamicLinks;
-        } else if ("run" in rewrite) {
-          // Skip these rewrites during hosting prepare
-          if (!finalize && endpointBeingDeployed(rewrite.run.serviceId, rewrite.run.region))
-            return undefined;
-          vRewrite.run = Object.assign({ region: "us-central1" }, rewrite.run);
         }
-        return vRewrite;
-      })
-    );
-    out.rewrites = rewrites.filter((it) => it);
+      } else if ("dynamicLinks" in rewrite) {
+        vRewrite.dynamicLinks = rewrite.dynamicLinks;
+      } else if ("run" in rewrite) {
+        // Skip these rewrites during hosting prepare
+        if (!finalize && endpointBeingDeployed(rewrite.run.serviceId, rewrite.run.region))
+          continue;
+        vRewrite.run = Object.assign({ region: "us-central1" }, rewrite.run);
+      }
+      out.rewrites.push(vRewrite);
+    }
   }
 
   // redirects
