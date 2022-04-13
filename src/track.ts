@@ -1,12 +1,10 @@
-"use strict";
+import ua from "universal-analytics";
 
-var ua = require("universal-analytics");
-
-var _ = require("lodash");
-var { configstore } = require("./configstore");
-var pkg = require("../package.json");
-var uuid = require("uuid");
-const { logger } = require("./logger");
+import _ from "lodash";
+import { configstore } from "./configstore";
+import uuid from "uuid";
+import { logger } from "./logger";
+const pkg = require("../package.json");
 
 var anonId = configstore.get("analytics-uuid");
 if (!anonId) {
@@ -23,16 +21,15 @@ visitor.set("cd1", process.platform); // Platform
 visitor.set("cd2", process.version); // NodeVersion
 visitor.set("cd3", process.env.FIREPIT_VERSION || "none"); // FirepitVersion
 
-function track(action, label, duration) {
+export function track(action: string, label: string, duration: number = 0): Promise<void> {
   return new Promise(function (resolve) {
     if (!_.isString(action) || !_.isString(label)) {
       logger.debug("track received non-string arguments:", action, label);
       resolve();
     }
-    duration = duration || 0;
 
     if (configstore.get("tokens") && configstore.get("usage")) {
-      visitor.event("Firebase CLI " + pkg.version, action, label, duration).send(function () {
+      visitor.event("Firebase CLI " + pkg.version, action, label, duration).send(() => {
         // we could handle errors here, but we won't
         resolve();
       });
@@ -44,5 +41,4 @@ function track(action, label, duration) {
 
 // New code should import track by name so that it can be stubbed
 // in unit tests. Legacy code still imports as default.
-track.track = track;
-module.exports = track;
+export default track;
