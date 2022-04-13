@@ -31,7 +31,7 @@ export interface Service {
 }
 
 /** A noop service object, useful for v1 events */
-const NoOpService: Service = {
+const noOpService: Service = {
   name: "noop",
   api: "",
   ensureTriggerRegion: noop,
@@ -41,7 +41,7 @@ const NoOpService: Service = {
 };
 
 /** A pubsub service object */
-const PubSubService: Service = {
+const pubSubService: Service = {
   name: "pubsub",
   api: "pubsub.googleapis.com",
   requiredProjectBindings: noopProjectBindings,
@@ -52,7 +52,7 @@ const PubSubService: Service = {
 };
 
 /** A storage service object */
-const StorageService: Service = {
+const storageService: Service = {
   name: "storage",
   api: "storage.googleapis.com",
   requiredProjectBindings: obtainStorageBindings,
@@ -63,7 +63,7 @@ const StorageService: Service = {
 };
 
 /** A firebase alerts service object */
-const FirebaseAlertsService: Service = {
+const firebaseAlertsService: Service = {
   name: "firebasealerts",
   api: "firebasealerts.googleapis.com",
   requiredProjectBindings: noopProjectBindings,
@@ -78,12 +78,12 @@ const authBlockingService = new AuthBlockingService();
 
 /** Mapping from event type string to service object */
 const EVENT_SERVICE_MAPPING: Record<events.Event, Service> = {
-  "google.cloud.pubsub.topic.v1.messagePublished": PubSubService,
-  "google.cloud.storage.object.v1.finalized": StorageService,
-  "google.cloud.storage.object.v1.archived": StorageService,
-  "google.cloud.storage.object.v1.deleted": StorageService,
-  "google.cloud.storage.object.v1.metadataUpdated": StorageService,
-  "google.firebase.firebasealerts.alerts.v1.published": FirebaseAlertsService,
+  "google.cloud.pubsub.topic.v1.messagePublished": pubSubService,
+  "google.cloud.storage.object.v1.finalized": storageService,
+  "google.cloud.storage.object.v1.archived": storageService,
+  "google.cloud.storage.object.v1.deleted": storageService,
+  "google.cloud.storage.object.v1.metadataUpdated": storageService,
+  "google.firebase.firebasealerts.alerts.v1.published": firebaseAlertsService,
   "providers/cloud.auth/eventTypes/user.beforeCreate": authBlockingService,
   "providers/cloud.auth/eventTypes/user.beforeSignIn": authBlockingService,
 };
@@ -95,12 +95,12 @@ const EVENT_SERVICE_MAPPING: Record<events.Event, Service> = {
  */
 export function serviceForEndpoint(endpoint: backend.Endpoint): Service {
   if (backend.isEventTriggered(endpoint)) {
-    return EVENT_SERVICE_MAPPING[endpoint.eventTrigger.eventType as events.Event] || NoOpService;
+    return EVENT_SERVICE_MAPPING[endpoint.eventTrigger.eventType as events.Event] || noOpService;
   }
 
   if (backend.isBlockingTriggered(endpoint)) {
-    return EVENT_SERVICE_MAPPING[endpoint.blockingTrigger.eventType as events.Event] || NoOpService;
+    return EVENT_SERVICE_MAPPING[endpoint.blockingTrigger.eventType as events.Event] || noOpService;
   }
 
-  return NoOpService;
+  return noOpService;
 }
