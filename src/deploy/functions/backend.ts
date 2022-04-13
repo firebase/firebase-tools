@@ -3,6 +3,7 @@ import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfV2 from "../../gcp/cloudfunctionsv2";
 import * as utils from "../../utils";
 import * as runtimes from "./runtimes";
+import * as events from "../../functions/events";
 import { FirebaseError } from "../../error";
 import { Context } from "./args";
 import { previews } from "../../previews";
@@ -131,6 +132,15 @@ export interface TaskQueueTriggered {
   taskQueueTrigger: TaskQueueTrigger;
 }
 
+export interface BlockingTrigger {
+  eventType: string;
+  options?: Record<string, any>;
+}
+
+export interface BlockingTriggered {
+  blockingTrigger: BlockingTrigger;
+}
+
 /** A user-friendly string for the kind of trigger of an endpoint. */
 export function endpointTriggerType(endpoint: Endpoint): string {
   if (isScheduleTriggered(endpoint)) {
@@ -143,6 +153,8 @@ export function endpointTriggerType(endpoint: Endpoint): string {
     return endpoint.eventTrigger.eventType;
   } else if (isTaskQueueTriggered(endpoint)) {
     return "taskQueue";
+  } else if (isBlockingTriggered(endpoint)) {
+    return endpoint.blockingTrigger.eventType;
   } else {
     throw new Error("Unexpected trigger type for endpoint " + JSON.stringify(endpoint));
   }
@@ -227,7 +239,8 @@ export type Triggered =
   | CallableTriggered
   | EventTriggered
   | ScheduleTriggered
-  | TaskQueueTriggered;
+  | TaskQueueTriggered
+  | BlockingTriggered;
 
 /** Whether something has an HttpsTrigger */
 export function isHttpsTriggered(triggered: Triggered): triggered is HttpsTriggered {
@@ -252,6 +265,11 @@ export function isScheduleTriggered(triggered: Triggered): triggered is Schedule
 /** Whether something has a TaskQueueTrigger */
 export function isTaskQueueTriggered(triggered: Triggered): triggered is TaskQueueTriggered {
   return {}.hasOwnProperty.call(triggered, "taskQueueTrigger");
+}
+
+/** Whether something has a BlockingTrigger */
+export function isBlockingTriggered(triggered: Triggered): triggered is BlockingTriggered {
+  return {}.hasOwnProperty.call(triggered, "blockingTrigger");
 }
 
 /**
@@ -283,7 +301,7 @@ export type Endpoint = TargetIds &
   };
 
 export interface RequiredAPI {
-  reason: string;
+  reason?: string;
   api: string;
 }
 
