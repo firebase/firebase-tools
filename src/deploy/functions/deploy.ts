@@ -61,7 +61,7 @@ async function uploadCodebase(
   wantBackend: backend.Backend
 ) {
   const source = context.sources?.[codebase];
-  if (!source || (source.functionsSourceV1 && source.functionsSourceV2)) {
+  if (!source || (!source.functionsSourceV1 && !source.functionsSourceV2)) {
     return;
   }
 
