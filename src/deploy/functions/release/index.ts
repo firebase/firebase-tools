@@ -30,6 +30,9 @@ export async function release(
   if (!payload.functions) {
     return;
   }
+  if (!context.sources) {
+    return;
+  }
 
   let plan: planner.DeploymentPlan = {};
   for (const [codebase, { wantBackend, haveBackend }] of Object.entries(payload.functions)) {

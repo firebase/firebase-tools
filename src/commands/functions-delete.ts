@@ -94,8 +94,9 @@ export default new Command("functions:delete [filters...]")
     try {
       const fab = new fabricator.Fabricator({
         functionExecutor,
-        executor: new executor.QueueExecutor({}),
         appEngineLocation,
+        executor: new executor.QueueExecutor({}),
+        sources: {},
       });
       const summary = await fab.applyPlan(plan);
       await reporter.logAndTrackDeployStats(summary);

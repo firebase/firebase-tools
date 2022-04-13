@@ -46,7 +46,7 @@ export interface FabricatorArgs {
   executor: Executor;
   functionExecutor: Executor;
   appEngineLocation: string;
-  sources?: args.Context["sources"];
+  sources: Record<string, args.Source>;
 }
 
 const rethrowAs =
@@ -60,7 +60,7 @@ const rethrowAs =
 export class Fabricator {
   executor: Executor;
   functionExecutor: Executor;
-  sources: args.Context["sources"];
+  sources: Record<string, args.Source>;
   appEngineLocation: string;
 
   constructor(args: FabricatorArgs) {
@@ -193,7 +193,7 @@ export class Fabricator {
   }
 
   async createV1Function(endpoint: backend.Endpoint, scraper: SourceTokenScraper): Promise<void> {
-    const sourceUrl = this.sources?.[endpoint.codebase!]?.sourceUrl;
+    const sourceUrl = this.sources[endpoint.codebase!]?.sourceUrl;
     if (!sourceUrl) {
       logger.debug("Precondition failed. Cannot create a GCF function without sourceUrl");
       throw new Error("Precondition failed");
@@ -260,7 +260,7 @@ export class Fabricator {
   }
 
   async createV2Function(endpoint: backend.Endpoint): Promise<void> {
-    const storage = this.sources?.[endpoint.codebase!]?.storage;
+    const storage = this.sources[endpoint.codebase!]?.storage;
     if (!storage) {
       logger.debug("Precondition failed. Cannot create a GCFv2 function without storage");
       throw new Error("Precondition failed");
@@ -347,7 +347,7 @@ export class Fabricator {
   }
 
   async updateV1Function(endpoint: backend.Endpoint, scraper: SourceTokenScraper): Promise<void> {
-    const sourceUrl = this.sources?.[endpoint.codebase!]?.sourceUrl;
+    const sourceUrl = this.sources[endpoint.codebase!]?.sourceUrl;
     if (!sourceUrl) {
       logger.debug("Precondition failed. Cannot update a GCF function without sourceUrl");
       throw new Error("Precondition failed");
@@ -386,7 +386,7 @@ export class Fabricator {
   }
 
   async updateV2Function(endpoint: backend.Endpoint): Promise<void> {
-    const storage = this.sources?.[endpoint.codebase!]?.storage;
+    const storage = this.sources[endpoint.codebase!]?.storage;
     if (!storage) {
       logger.debug("Precondition failed. Cannot update a GCFv2 function without storage");
       throw new Error("Precondition failed");
