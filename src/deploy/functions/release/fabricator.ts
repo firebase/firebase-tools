@@ -340,14 +340,7 @@ export class Fabricator {
         .catch(rethrowAs(endpoint, "set invoker"));
     }
 
-    const mem = endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;
-    if (mem >= backend.MIN_MEMORY_FOR_CONCURRENCY && endpoint.concurrency !== 1) {
-      await this.setConcurrency(
-        endpoint,
-        serviceName,
-        endpoint.concurrency || DEFAULT_GCFV2_CONCURRENCY
-      );
-    }
+    await this.setRunTraits(serviceName, endpoint);
   }
 
   async updateV1Function(endpoint: backend.Endpoint, scraper: SourceTokenScraper): Promise<void> {
@@ -433,8 +426,11 @@ export class Fabricator {
         .catch(rethrowAs(endpoint, "set invoker"));
     }
 
-    if (endpoint.concurrency) {
-      await this.setConcurrency(endpoint, serviceName, endpoint.concurrency);
+    const hasConcurency = endpoint.concurrency != 1;
+    const hasCustomCpu =
+      endpoint.cpu != backend.memoryToGen1Cpu(endpoint.availableMemoryMb || backend.DEFAULT_MEMORY);
+    if (hasConcurency || hasCustomCpu) {
+      await this.setRunTraits(resultFunction.serviceConfig.service, endpoint);
     }
   }
 
@@ -468,22 +464,28 @@ export class Fabricator {
       .catch(rethrowAs(endpoint, "delete"));
   }
 
-  async setConcurrency(
-    endpoint: backend.Endpoint,
-    serviceName: string,
-    concurrency: number
-  ): Promise<void> {
+  async setRunTraits(serviceName: string, endpoint: backend.Endpoint): Promise<void> {
     await this.functionExecutor
       .run(async () => {
         const service = await run.getService(serviceName);
-        if (service.spec.template.spec.containerConcurrency === concurrency) {
-          logger.debug("Skipping setConcurrency on", serviceName, " because it already matches");
+        let changed = false;
+        if (service.spec.template.spec.containerConcurrency !== endpoint.concurrency) {
+          service.spec.template.spec.containerConcurrency = endpoint.concurrency;
+          changed = true;
+        }
+
+        if (+service.spec.template.spec.containers[0].resources.limits.cpu !== endpoint.cpu) {
+          service.spec.template.spec.containers[0].resources.limits.cpu = `${endpoint.cpu}`;
+          changed = true;
+        }
+
+        if (!changed) {
+          logger.debug("Skipping setRunTraits on", serviceName, " because it already matches");
           return;
         }
 
         delete service.status;
         delete (service.spec.template.metadata as any).name;
-        service.spec.template.spec.containerConcurrency = concurrency;
         await run.replaceService(serviceName, service);
       })
       .catch(rethrowAs(endpoint, "set concurrency"));

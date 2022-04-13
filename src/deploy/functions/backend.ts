@@ -1,11 +1,13 @@
 import * as proto from "../../gcp/proto";
 import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfV2 from "../../gcp/cloudfunctionsv2";
+import * as run from "../../gcp/run";
 import * as utils from "../../utils";
 import * as runtimes from "./runtimes";
 import { FirebaseError } from "../../error";
 import { Context } from "./args";
 import { previews } from "../../previews";
+import { zip } from "../../functional";
 
 /** Retry settings for a ScheduleSpec. */
 export interface ScheduleRetryConfig {
@@ -135,7 +137,6 @@ export interface BlockingTrigger {
   eventType: string;
   options?: Record<string, any>;
 }
-
 export interface BlockingTriggered {
   blockingTrigger: BlockingTrigger;
 }
@@ -184,8 +185,37 @@ export function memoryOptionDisplayName(option: MemoryOptions): string {
   }[option];
 }
 
+/** Returns the gen 1 mapping of CPU for RAM. Used whenever a customer sets cpu to "gcf_gen1" */
+export function memoryToGen1Cpu(memory: MemoryOptions): number {
+  return {
+    128: 1 / 12,
+    256: 1 / 6,
+    512: 1 / 3,
+    1024: 7 / 12,
+    2048: 1,
+    4096: 2,
+    8192: 2,
+  }[memory];
+}
+
+/**
+ *
+ */
+export function memoryToGen2Cpu(memory: MemoryOptions): number {
+  return {
+    128: 1,
+    256: 1,
+    512: 1,
+    1024: 1,
+    2048: 1,
+    4096: 2,
+    8192: 2,
+  }[memory];
+}
+
+export const DEFAULT_CONCURRENCY = 80;
 export const DEFAULT_MEMORY: MemoryOptions = 256;
-export const MIN_MEMORY_FOR_CONCURRENCY: MemoryOptions = 2048;
+export const MIN_CPU_FOR_CONCURRENCY = 1;
 export const SCHEDULED_FUNCTION_LABEL = Object.freeze({ deployment: "firebase-schedule" });
 
 /**
@@ -457,17 +487,19 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
     return;
   }
 
-  let gcfV2Results;
-  try {
-    gcfV2Results = await gcfV2.listAllFunctions(ctx.projectId);
-  } catch (err: any) {
-    if (err.status === 404 && err.message?.toLowerCase().includes("method not found")) {
-      return; // customer has preview enabled without allowlist set
-    }
-    throw err;
-  }
-  for (const apiFunction of gcfV2Results.functions) {
+  const gcfV2Results = await gcfV2.listAllFunctions(ctx.projectId);
+  const runResults = await Promise.all(
+    gcfV2Results.functions.map((fn) => run.getService(fn.serviceConfig.service!))
+  );
+  for (const [apiFunction, runService] of zip(gcfV2Results.functions, runResults)) {
     const endpoint = gcfV2.endpointFromFunction(apiFunction);
+    endpoint.concurrency = runService.spec.template.spec.containerConcurrency || 1;
+    // N.B. We don't generally do anything with ultiple containers, but we
+    // might have to figure out WTF to do here if we're updating multiple containers
+    // and our only reference point is the image. Hopefully by then we'll be
+    // on the next gen infrastructure and have state we can refer back to.
+    endpoint.cpu = +runService.spec.template.spec.containers[0].resources.limits.cpu;
+
     ctx.existingBackend.endpoints[endpoint.region] =
       ctx.existingBackend.endpoints[endpoint.region] || {};
     ctx.existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
