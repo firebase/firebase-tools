@@ -6,6 +6,7 @@ import { validateDeploy } from "./validate";
 import { convertConfig } from "./convertConfig";
 import * as deploymentTool from "../../deploymentTool";
 import { Payload } from "./args";
+import { allEndpoints } from "../functions/backend";
 
 /**
  *  Prepare creates versions for each Hosting site to be deployed.
@@ -41,21 +42,9 @@ export async function prepare(context: any, options: any, payload: Payload): Pro
     validateDeploy(deploy, options);
 
     const data = {
-      config: convertConfig(cfg),
+      config: await convertConfig(context, payload, cfg, false),
       labels: deploymentTool.labels(),
     };
-
-    const endpoints = payload.functions?.wantBackend?.endpoints;
-    if (data.config.rewrites?.length && endpoints) {
-      // Filter out any rewrites that point to GCFv2 functions that are being deployed
-      // Cloud Run instances don't have detirminstic URLs, so hosting doesn't know how to rewrite to
-      // instances that haven't been deployed yet. We'll patch these back in after the deploy.
-      data.config.rewrites = data.config.rewrites.filter((rewrite: any) => {
-        if (!rewrite.run) return true;
-        const endpoint = endpoints[rewrite.run.region][rewrite.run.serviceId];
-        return endpoint?.platform !== "gcfv2";
-      });
-    }
 
     versionCreates.push(
       client
