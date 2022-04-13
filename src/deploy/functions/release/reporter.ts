@@ -28,7 +28,9 @@ export type OperationType =
   | "create topic"
   | "delete topic"
   | "set invoker"
-  | "set concurrency";
+  | "set concurrency"
+  | "register blocking trigger"
+  | "unregister blocking trigger";
 
 /** An error with a deployment phase. */
 export class DeploymentError extends Error {
@@ -243,6 +245,10 @@ export function triggerTag(endpoint: backend.Endpoint): string {
       return `${prefix}.callable`;
     }
     return `${prefix}.https`;
+  }
+
+  if (backend.isBlockingTriggered(endpoint)) {
+    return `${prefix}.blocking`;
   }
 
   return endpoint.eventTrigger.eventType;
