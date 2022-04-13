@@ -187,7 +187,6 @@ describe("planner", () => {
       region2mem2Deleted.availableMemoryMb = 512;
       region2mem2Deleted.labels = deploymentTool.labels();
 
-      const codebase = "default";
       const haveBackend = backend.of(region1mem1Updated, region2mem2Updated, region2mem2Deleted);
       const wantBackend = backend.of(
         region1mem1Created,

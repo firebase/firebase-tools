@@ -348,7 +348,7 @@ describe("validate", () => {
       );
     });
 
-    it("throws multiple conflicts", () => {
+    it("throws given multiple conflicts", () => {
       const b1 = backend.of(
         { ...ENDPOINT_BASE, id: "i1", region: "r1" },
         { ...ENDPOINT_BASE, id: "i2", region: "r2" }

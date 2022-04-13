@@ -59,7 +59,7 @@ async function uploadCodebase(
   context: args.Context,
   codebase: string,
   wantBackend: backend.Backend
-) {
+): Promise<void> {
   const source = context.sources?.[codebase];
   if (!source || (!source.functionsSourceV1 && !source.functionsSourceV2)) {
     return;

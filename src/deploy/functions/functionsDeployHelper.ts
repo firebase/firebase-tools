@@ -204,5 +204,7 @@ export function groupByCodebase(
       return !matchedNames.includes(backend.functionName(endpoint));
     });
   }
+  // What about unassigned endpoints? We leave them, as it's possible that these endpoints belong to codebases
+  // defined in other project repositories.
   return grouped;
 }
