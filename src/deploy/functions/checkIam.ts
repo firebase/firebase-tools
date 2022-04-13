@@ -66,8 +66,11 @@ export async function checkHttpIam(
   options: Options,
   payload: args.Payload
 ): Promise<void> {
+  if (!payload.functions) {
+    return;
+  }
   const filters = context.filters || getEndpointFilters(options);
-  const wantBackends = Object.values(payload.functions || {}).map(({ wantBackend }) => wantBackend);
+  const wantBackends = Object.values(payload.functions).map(({ wantBackend }) => wantBackend);
   const httpEndpoints = [
     ...flatten<backend.Endpoint>(wantBackends.map((b) => backend.allEndpoints(b))),
   ]

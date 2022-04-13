@@ -111,8 +111,8 @@ export async function deploy(
 
   await checkHttpIam(context, options, payload);
   const uploads: Promise<void>[] = [];
-  for (const codebase of Object.keys(payload.functions)) {
-    uploads.push(uploadCodebase(context, codebase, payload.functions[codebase].wantBackend));
+  for (const [codebase, { wantBackend }] of Object.entries(payload.functions)) {
+    uploads.push(uploadCodebase(context, codebase, wantBackend));
   }
   await Promise.all(uploads);
 }

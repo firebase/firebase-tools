@@ -168,8 +168,8 @@ export function targetCodebases(config: ValidatedConfig, filters?: EndpointFilte
  *   1. Endpoint is associated w/ the current codebase (duh).
  *   2. Endpoint name matches name of an endoint we want to deploy
  *
- * Condition (2) might feel wrong but is a practical conflict resolution strategy. It allows user to "claim" an endpoint
- * for current codebase without much hassel.
+ * Condition (2) might feel wrong but is a practical conflict resolution strategy as it makes migrating a function
+ * from one codebase to another straightforward.
  */
 export function groupByCodebase(
   wantBackends: Record<string, backend.Backend>,
@@ -180,8 +180,7 @@ export function groupByCodebase(
   let currentBackend: backend.Backend = haveBackend;
 
   // First, dole out endpoints using names. If resource name matches, endpoint belongs to that codebase regardless
-  // of the codebase annotation. This might feel wrong but is a practical conflict resolution strategy. It allows user
-  // to "claim" an endpoint.
+  // of the codebase annotation.
   for (const codebase of Object.keys(wantBackends)) {
     const names = backend.allEndpoints(wantBackends[codebase]).map((e) => backend.functionName(e));
     grouped[codebase] = backend.matchingBackend(currentBackend, (endpoint) => {
