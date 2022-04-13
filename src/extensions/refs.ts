@@ -65,7 +65,7 @@ export function toExtensionRef(ref: Ref): string {
 }
 
 /**
- * To an extension bersion ref: publisherId/extensionId@version
+ * To an extension version ref: publisherId/extensionId@version
  */
 export function toExtensionVersionRef(ref: Ref): string {
   if (!ref.version) {
