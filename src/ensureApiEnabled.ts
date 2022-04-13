@@ -1,6 +1,6 @@
 import { bold } from "cli-color";
 
-import * as track from "./track";
+import { track } from "./track";
 import { serviceUsageOrigin } from "./api";
 import { Client } from "./apiv2";
 import * as utils from "./utils";

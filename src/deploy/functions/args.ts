@@ -22,7 +22,7 @@ export interface Source {
 
   // Filled in the "deploy" phase.
   sourceUrl?: string;
-  storage?: Record<string, gcfV2.StorageSource>;
+  storage?: gcfV2.StorageSource;
 }
 
 // Context holds cached values of what we've looked up in handling this request.

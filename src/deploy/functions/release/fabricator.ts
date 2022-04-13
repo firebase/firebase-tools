@@ -50,7 +50,7 @@ export interface FabricatorArgs {
   sourceUrl?: string;
 
   // Required if creating or updating any GCFv2 functions
-  storage?: Record<string, gcfV2.StorageSource>;
+  storage?: gcfV2.StorageSource;
 }
 
 const rethrowAs =
@@ -64,8 +64,8 @@ const rethrowAs =
 export class Fabricator {
   executor: Executor;
   functionExecutor: Executor;
-  sourceUrl: string | undefined;
-  storage: Record<string, gcfV2.StorageSource> | undefined;
+  sourceUrl?: string;
+  storage?: gcfV2.StorageSource;
   appEngineLocation: string;
 
   constructor(args: FabricatorArgs) {
@@ -269,7 +269,7 @@ export class Fabricator {
       logger.debug("Precondition failed. Cannot create a GCFv2 function without storage");
       throw new Error("Precondition failed");
     }
-    const apiFunction = gcfV2.functionFromEndpoint(endpoint, this.storage[endpoint.region]);
+    const apiFunction = gcfV2.functionFromEndpoint(endpoint, this.storage);
 
     // N.B. As of GCFv2 private preview GCF no longer creates Pub/Sub topics
     // for Pub/Sub event handlers. This may change, at which point this code
@@ -393,7 +393,7 @@ export class Fabricator {
       logger.debug("Precondition failed. Cannot update a GCFv2 function without storage");
       throw new Error("Precondition failed");
     }
-    const apiFunction = gcfV2.functionFromEndpoint(endpoint, this.storage[endpoint.region]);
+    const apiFunction = gcfV2.functionFromEndpoint(endpoint, this.storage);
 
     // N.B. As of GCFv2 private preview the API chokes on any update call that
     // includes the pub/sub topic even if that topic is unchanged.
