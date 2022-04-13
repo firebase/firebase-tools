@@ -218,7 +218,7 @@ export interface SecretEnvVar {
 }
 
 /**
- *
+ * Returns full resource name of a secret version.
  */
 export function secretVersionName(s: SecretEnvVar): string {
   return `projects/${s.projectId}/secrets/${s.secret}/versions/${s.version ?? "latest"}`;

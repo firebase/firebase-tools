@@ -17,7 +17,7 @@ export type KeyType<T> =
   | "omit"
   | ((t: T) => boolean);
 /**
- *
+ * Asserts that all yaml contains all required keys specified in the schema.
  */
 export function requireKeys<T extends object>(prefix: string, yaml: T, ...keys: (keyof T)[]): void {
   if (prefix) {
@@ -31,7 +31,7 @@ export function requireKeys<T extends object>(prefix: string, yaml: T, ...keys: 
 }
 
 /**
- *
+ * Asserts that runtime types of the given object matches the type specified in the schema.
  */
 export function assertKeyTypes<T extends object>(
   prefix: string,
