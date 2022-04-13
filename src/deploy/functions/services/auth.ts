@@ -9,13 +9,11 @@ export class AuthBlockingService implements Service {
   name: Name;
   api: string;
   triggerQueue: Promise<void>;
-  unregisterQueue: Promise<void>;
 
   constructor() {
     this.name = "authblocking";
     this.api = "identitytoolkit.googleapis.com";
     this.triggerQueue = Promise.resolve();
-    this.unregisterQueue = Promise.resolve();
     this.ensureTriggerRegion = noop;
   }
 
@@ -26,10 +24,10 @@ export class AuthBlockingService implements Service {
    * @param endpoint the Auth Blocking endpoint
    * @param wantBackend the backend we are deploying
    */
-  validateTrigger(
-    endpoint: backend.Endpoint & backend.BlockingTriggered,
-    wantBackend: backend.Backend
-  ): void {
+  validateTrigger(endpoint: backend.Endpoint, wantBackend: backend.Backend): void {
+    if (!backend.isBlockingTriggered(endpoint)) {
+      return; // this should never happen
+    }
     const blockingEndpoints = backend
       .allEndpoints(wantBackend)
       .filter((ep) => backend.isBlockingTriggered(ep)) as (backend.Endpoint &
@@ -94,9 +92,8 @@ export class AuthBlockingService implements Service {
     }
 
     newBlockingConfig.forwardInboundCredentials = {
-      idToken: endpoint.blockingTrigger.options?.idToken || false,
-      accessToken: endpoint.blockingTrigger.options?.accessToken || false,
-      refreshToken: endpoint.blockingTrigger.options?.refreshToken || false,
+      ...oldBlockingConfig.forwardInboundCredentials,
+      ...endpoint.blockingTrigger.options,
     };
 
     if (!this.configChanged(newBlockingConfig, oldBlockingConfig)) {
@@ -110,7 +107,10 @@ export class AuthBlockingService implements Service {
    * Registers the auth blocking trigger to identity platform.
    * @param ep the blocking endpoint
    */
-  registerTrigger(ep: backend.Endpoint & backend.BlockingTriggered): Promise<void> {
+  registerTrigger(ep: backend.Endpoint): Promise<void> {
+    if (!backend.isBlockingTriggered(ep)) {
+      throw new FirebaseError("This should never happen");
+    }
     this.triggerQueue = this.triggerQueue.then(() => this.registerTriggerLocked(ep));
     return this.triggerQueue;
   }
@@ -143,7 +143,10 @@ export class AuthBlockingService implements Service {
    * Un-registers the auth blocking trigger from identity platform. If the endpoint uri is not on the resource, we do nothing.
    * @param ep the blocking endpoint
    */
-  unregisterTrigger(ep: backend.Endpoint & backend.BlockingTriggered): Promise<void> {
+  unregisterTrigger(ep: backend.Endpoint): Promise<void> {
+    if (!backend.isBlockingTriggered(ep)) {
+      throw new FirebaseError("This should never happen");
+    }
     this.triggerQueue = this.triggerQueue.then(() => this.unregisterTriggerLocked(ep));
     return this.triggerQueue;
   }
