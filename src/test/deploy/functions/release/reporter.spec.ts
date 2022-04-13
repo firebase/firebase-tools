@@ -4,7 +4,7 @@ import * as sinon from "sinon";
 import { logger } from "../../../../logger";
 import * as backend from "../../../../deploy/functions/backend";
 import * as reporter from "../../../../deploy/functions/release/reporter";
-import { track } from "../../../../track";
+import * as track from "../../../../track";
 import * as events from "../../../../functions/events";
 
 const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {
