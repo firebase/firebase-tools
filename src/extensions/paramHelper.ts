@@ -12,7 +12,7 @@ import {
   validateCommandLineParams,
 } from "./extensionsHelper";
 import * as askUserForParam from "./askUserForParam";
-import * as track from "../track";
+import { track } from "../track";
 import * as env from "../functions/env";
 import { cloneDeep } from "../utils";
 

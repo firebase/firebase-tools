@@ -2,7 +2,7 @@ import * as backend from "../backend";
 import * as clc from "cli-color";
 
 import { logger } from "../../../logger";
-import * as track from "../../../track";
+import { track } from "../../../track";
 import * as utils from "../../../utils";
 import { getFunctionLabel } from "../functionsDeployHelper";
 

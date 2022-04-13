@@ -38,7 +38,3 @@ export function track(action: string, label: string, duration: number = 0): Prom
     }
   });
 }
-
-// New code should import track by name so that it can be stubbed
-// in unit tests. Legacy code still imports as default.
-export default track;
