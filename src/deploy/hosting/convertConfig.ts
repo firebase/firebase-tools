@@ -85,8 +85,7 @@ export async function convertConfig(
         vRewrite.path = rewrite.destination;
       } else if ("function" in rewrite) {
         // Skip these rewrites during hosting prepare
-        if (!finalize && endpointBeingDeployed(rewrite.function, rewrite.region))
-          continue;
+        if (!finalize && endpointBeingDeployed(rewrite.function, rewrite.region)) continue;
         // Convert function references to GCFv2 to their equivalent run config
         // we can't use the already fetched endpoints, since those are scoped to the codebase
         const endpoint = await matchingEndpoint(rewrite.function, rewrite.region);
@@ -104,8 +103,7 @@ export async function convertConfig(
         vRewrite.dynamicLinks = rewrite.dynamicLinks;
       } else if ("run" in rewrite) {
         // Skip these rewrites during hosting prepare
-        if (!finalize && endpointBeingDeployed(rewrite.run.serviceId, rewrite.run.region))
-          continue;
+        if (!finalize && endpointBeingDeployed(rewrite.run.serviceId, rewrite.run.region)) continue;
         vRewrite.run = Object.assign({ region: "us-central1" }, rewrite.run);
       }
       out.rewrites.push(vRewrite);
