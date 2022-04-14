@@ -73,6 +73,7 @@ export class EventarcEmulator implements EmulatorInstance {
       for (const event of events) {
         if (!event.type) {
           res.sendStatus(400);
+          return;
         }
         this.triggerCustomEventFunction(channel, event);
       }
