@@ -315,8 +315,19 @@ export async function deleteInstance(projectId: string, instanceId: string): Pro
  * @param instanceId the id of the instance to delete
  */
 export async function getInstance(projectId: string, instanceId: string): Promise<any> {
-  const res = await apiClient.get(`/projects/${projectId}/instances/${instanceId}`);
-  return res.body;
+  try {
+    const res = await apiClient.get(`/projects/${projectId}/instances/${instanceId}`);
+    return res.body;
+  } catch (err: any) {
+    if (err.status === 404) {
+      throw new FirebaseError(
+        `Extension instance '${clc.bold(instanceId)}' not found in project '${clc.bold(
+          projectId
+        )}'.`
+      );
+    }
+    throw err;
+  }
 }
 
 /**
@@ -385,9 +396,7 @@ export async function configureInstance(args: {
     reqBody.data.config.eventarcChannel = args.eventarcChannel;
     reqBody.updateMask += ",config.eventarc_channel";
   }
-
-  const res = await patchInstance(reqBody);
-  return res;
+  return await patchInstance(reqBody);
 }
 
 /**

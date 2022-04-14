@@ -266,16 +266,19 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
     paramsEnvPath,
     instanceId,
   });
-  let allowedEventTypes: string[] = [];
-  if (spec.events) {
-    allowedEventTypes = await askUserForEventsConfig.askForAllowedEventTypes(spec.events);
+
+  // @TODO: projectId can be undefined. Does that cause issues? Since channel is a function of that.
+  const eventsConfig =
+    spec.events && projectId
+      ? await askUserForEventsConfig.askForEventsConfig(spec.events, projectId, instanceId)
+      : undefined;
+  if (eventsConfig) {
+    paramBindingOptions.EVENTARC_CHANNEL = { baseValue: eventsConfig.channel };
+    paramBindingOptions.ALLOWED_EVENT_TYPES = {
+      baseValue: eventsConfig.allowedEventTypes.join(","),
+    };
   }
-  if (allowedEventTypes.length > 0) {
-    const location = await askUserForEventsConfig.askForEventArcLocation();
-    const eventarcChannel = `projects/${projectId}/locations/${location}/channels/firebase`;
-    paramBindingOptions.EVENTARC_CHANNEL = { baseValue: eventarcChannel };
-    paramBindingOptions.ALLOWED_EVENT_TYPES = { baseValue: allowedEventTypes.join(",") };
-  }
+
   const ref = refs.parse(extVersion.ref);
   await manifest.writeToManifest(
     [
@@ -385,9 +388,11 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
     }
     let paramBindingOptions: { [key: string]: ParamBindingOptions };
     let paramBindings: Record<string, string>;
-    let shouldCollectEventsConfig = false;
+    const shouldCollectEventsConfig = false;
     let eventarcChannel: string | undefined;
     let allowedEventTypes: string[] | undefined;
+
+    let eventsConfig: askUserForEventsConfig.InstanceEventsConfig | undefined;
     switch (choice) {
       case "installNew":
         instanceId = await promptForValidInstanceId(`${instanceId}-${getRandomString(4)}`);
@@ -398,14 +403,9 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
           paramsEnvPath,
           instanceId,
         });
-        if (spec.events) {
-          shouldCollectEventsConfig = await askUserForEventsConfig.askShouldCollectEventsConfig();
-        }
-        if (spec.events && shouldCollectEventsConfig) {
-          const location = await askUserForEventsConfig.askForEventArcLocation();
-          eventarcChannel = `projects/${projectId}/locations/${location}/channels/firebase`;
-          allowedEventTypes = await askUserForEventsConfig.askForAllowedEventTypes(spec.events);
-        }
+        eventsConfig = spec.events
+          ? await askUserForEventsConfig.askForEventsConfig(spec.events, projectId, instanceId)
+          : undefined;
         paramBindings = getBaseParamBindings(paramBindingOptions);
         spinner.text = "Installing your extension instance. This usually takes 3 to 5 minutes...";
         spinner.start();
@@ -415,8 +415,8 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
           extensionSource: source,
           extensionVersionRef: extVersion?.ref,
           params: paramBindings,
-          allowedEventTypes,
-          eventarcChannel,
+          allowedEventTypes: eventsConfig?.allowedEventTypes,
+          eventarcChannel: eventsConfig?.channel,
         });
         spinner.stop();
         utils.logLabeledSuccess(
@@ -446,21 +446,9 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
           }
           throw err;
         }
-        if (spec.events) {
-          shouldCollectEventsConfig = await askUserForEventsConfig.askShouldCollectEventsConfig();
-        }
-        if (spec.events && shouldCollectEventsConfig) {
-          let location: string;
-          // Check that channel is a valid resource name and follows the format `projects/{}/locations/{}/channels/{}`
-          if (existingInstance.config.eventarcChannel?.split("/").length === 6) {
-            const preexistingLocation = existingInstance.config.eventarcChannel.split("/")[3];
-            location = await askUserForEventsConfig.askForEventArcLocation(preexistingLocation);
-          } else {
-            location = await askUserForEventsConfig.askForEventArcLocation();
-          }
-          eventarcChannel = `projects/${projectId}/locations/${location}/channels/firebase`;
-          allowedEventTypes = await askUserForEventsConfig.askForAllowedEventTypes(spec.events);
-        }
+        eventsConfig = spec.events
+          ? await askUserForEventsConfig.askForEventsConfig(spec.events, projectId, instanceId)
+          : undefined;
         paramBindings = getBaseParamBindings(paramBindingOptions);
         spinner.text = "Updating your extension instance. This usually takes 3 to 5 minutes...";
         spinner.start();
@@ -471,11 +459,14 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
           extRef: extVersion?.ref,
           params: paramBindings,
         };
-        if (existingInstance.config.eventarcChannel !== eventarcChannel) {
-          updateOptions.eventarcChannel = eventarcChannel;
+        if (existingInstance.config.eventarcChannel !== eventsConfig?.channel) {
+          updateOptions.eventarcChannel = eventsConfig?.channel;
         }
-        if (existingInstance.config.allowedEventTypes !== allowedEventTypes) {
-          updateOptions.allowedEventTypes = allowedEventTypes;
+        if (
+          JSON.stringify((existingInstance.config.allowedEventTypes || []).sort()) !==
+          JSON.stringify((eventsConfig?.allowedEventTypes || []).sort())
+        ) {
+          updateOptions.allowedEventTypes = eventsConfig?.allowedEventTypes;
         }
         await update(updateOptions);
         spinner.stop();

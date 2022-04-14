@@ -21,9 +21,10 @@ describe("checkAllowedEventTypesResponse", () => {
 
   it("should return false if allowed events is not part of extension spec's events list", () => {
     expect(
-      checkAllowedEventTypesResponse("google.firebase.nonexistent-event-occurred", [
-        { type: "google.firebase.custom-event-occurred", description: "A custom event occurred" },
-      ])
+      checkAllowedEventTypesResponse(
+        ["google.firebase.nonexistent-event-occurred"],
+        [{ type: "google.firebase.custom-event-occurred", description: "A custom event occurred" }]
+      )
     ).to.equal(false);
     expect(
       logWarningSpy.calledWith(
@@ -34,9 +35,10 @@ describe("checkAllowedEventTypesResponse", () => {
 
   it("should return true if every allowed event exists in extension spec's events list", () => {
     expect(
-      checkAllowedEventTypesResponse("google.firebase.custom-event-occurred", [
-        { type: "google.firebase.custom-event-occurred", description: "A custom event occurred" },
-      ])
+      checkAllowedEventTypesResponse(
+        ["google.firebase.custom-event-occurred"],
+        [{ type: "google.firebase.custom-event-occurred", description: "A custom event occurred" }]
+      )
     ).to.equal(true);
   });
 });
