@@ -1,6 +1,6 @@
 import * as _ from "lodash";
 import * as express from "express";
-import * as cors from "cors";
+import * as api from "../api";
 import { logger } from "../logger";
 import { Constants } from "./constants";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
@@ -8,6 +8,7 @@ import { createDestroyer } from "../utils";
 import { EmulatorLogger } from "./emulatorLogger";
 import { EventTrigger } from "./functionsEmulatorShared";
 import { CloudEvent } from "./events/types";
+import { EmulatorRegistry } from "./registry";
 
 interface RequestWithRawBody extends express.Request {
   rawBody: Buffer;
@@ -28,14 +29,14 @@ export class EventarcEmulator implements EmulatorInstance {
   private destroyServer?: () => Promise<void>;
 
   private logger = EmulatorLogger.forEmulator(Emulators.EVENTARC);
-  private customEvents: { [key: string]: CustomEventTrigger } = {};
+  private customEvents: { [key: string]: CustomEventTrigger[] } = {};
 
   constructor(private args: EventarcEmulatorArgs) {}
 
   createHubServer(): express.Application {
     const hub = express();
 
-    hub.use(express.json())
+    hub.use(express.json());
 
     const helloWorldRoute = `/hello_world`;
     const registerTriggerRoute = `/emulator/v1/projects/:project_id/triggers/:trigger_name`;
@@ -44,16 +45,16 @@ export class EventarcEmulator implements EmulatorInstance {
       const projectId = req.params.project_id;
       const triggerName = req.params.trigger_name;
       logger.info(`Registering custom event trigger for ${triggerName}.`);
-      const reqBody = (req as RequestWithRawBody).rawBody;
-      const proto = JSON.parse(reqBody.toString());
-      const eventTrigger = proto.eventTrigger as EventTrigger;
+      const eventTrigger = req.body.eventTrigger as EventTrigger;
       if (!eventTrigger) {
         logger.debug(`Missing event trigger for ${triggerName}.`);
         res.status(400);
         return;
       }
       const key = `${eventTrigger.eventType}-${eventTrigger.channel}`;
-      this.customEvents[key] = { projectId, triggerName, eventTrigger };
+      const customEventTriggers = this.customEvents[key] || [];
+      customEventTriggers.push({ projectId, triggerName, eventTrigger });
+      this.customEvents[key] = customEventTriggers;
     };
 
     /*
@@ -70,13 +71,13 @@ export class EventarcEmulator implements EmulatorInstance {
       const channel = req.params.channel;
       const events = req.body.events;
       for (const event of events) {
-        // @todo: Call background handler. 
         if (!event.type) {
           res.sendStatus(400);
         }
+        this.triggerCustomEventFunction(channel, event);
       }
       res.sendStatus(200);
-    }
+    };
 
     hub.all([helloWorldRoute], helloWorldHandler);
     hub.post([registerTriggerRoute], registerTriggerHandler);
@@ -86,6 +87,39 @@ export class EventarcEmulator implements EmulatorInstance {
       res.sendStatus(404);
     });
     return hub;
+  }
+
+  async triggerCustomEventFunction(channel: string, event: CloudEvent<any>) {
+    const functionsEmulator = EmulatorRegistry.get(Emulators.FUNCTIONS);
+    if (!functionsEmulator) {
+      logger.debug("Functions emulator not found. This should not happen.");
+      return Promise.reject();
+    }
+    const key = `${event.type}-${channel}`;
+    const triggers = this.customEvents[key] || [];
+    return await Promise.all(
+      triggers
+        .filter(
+          (trigger) =>
+            !trigger.eventTrigger.eventFilters ||
+            Object.entries(trigger.eventTrigger.eventFilters).every(([k, v]) => event[k] === v)
+        )
+        .map((trigger) =>
+          api
+            .request(
+              "POST",
+              `/functions/projects/${trigger.projectId}/triggers/${trigger.triggerName}`,
+              {
+                origin: `http://${EmulatorRegistry.getInfoHostString(functionsEmulator.getInfo())}`,
+              }
+            )
+            .then(() => true)
+            .catch((err) => {
+              logger.debug(`Failed to trigger Functions emulator for ${trigger.triggerName}.`);
+              throw err;
+            })
+        )
+    );
   }
 
   async start(): Promise<void> {
