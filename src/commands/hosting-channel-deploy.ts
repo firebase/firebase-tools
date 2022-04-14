@@ -13,7 +13,7 @@ import {
 } from "../hosting/api";
 import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs";
 import { requirePermissions } from "../requirePermissions";
-import * as deploy from "../deploy";
+import { deploy } from "../deploy";
 import { needProjectId } from "../projectUtils";
 import { logger } from "../logger";
 import { requireConfig } from "../requireConfig";

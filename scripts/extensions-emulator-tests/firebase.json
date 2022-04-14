@@ -1,0 +1,20 @@
+{
+  "extensions": {
+    "resize-images": "firebase/storage-resize-images@0.1.27"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "functions": {},
+  "emulators": {
+    "hub": {
+      "port": 4000
+    },
+    "storage": {
+      "port": 9199
+    },
+    "functions": {
+      "port": 9002
+    }
+  }
+}
