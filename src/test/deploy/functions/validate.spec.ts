@@ -128,7 +128,7 @@ describe("validate", () => {
       httpsTrigger: {},
     };
 
-    it("Disallows concurrency for GCF gen 1", () => {
+    it("disallows concurrency for GCF gen 1", () => {
       const ep: backend.Endpoint = {
         ...ENDPOINT_BASE,
         platform: "gcfv1",
@@ -179,7 +179,7 @@ describe("validate", () => {
       }
     });
 
-    it("Disallows concurrency with too little memory (implicit)", () => {
+    it("disallows concurrency with too little memory (implicit)", () => {
       const ep: backend.Endpoint = {
         ...ENDPOINT_BASE,
         concurrency: 2,
@@ -189,7 +189,7 @@ describe("validate", () => {
       );
     });
 
-    it("Disallows concurrency with too little memory (explicit)", () => {
+    it("disallows concurrency with too little memory (explicit)", () => {
       const ep: backend.Endpoint = {
         ...ENDPOINT_BASE,
         concurrency: 2,
@@ -200,7 +200,7 @@ describe("validate", () => {
       );
     });
 
-    it("Disallows multiple beforeCreate blocking", () => {
+    it("disallows multiple beforeCreate blocking", () => {
       const ep1: backend.Endpoint = {
         platform: "gcfv1",
         id: "id1",
@@ -229,7 +229,7 @@ describe("validate", () => {
       );
     });
 
-    it("Disallows multiple beforeSignIn blocking", () => {
+    it("disallows multiple beforeSignIn blocking", () => {
       const ep1: backend.Endpoint = {
         platform: "gcfv1",
         id: "id1",
