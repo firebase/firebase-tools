@@ -1,4 +1,4 @@
-import { SameType, LeafElems } from "./metaprogramming";
+import { LeafElems } from "./metaprogramming";
 
 /**
  * Flattens an object so that the return value's keys are the path

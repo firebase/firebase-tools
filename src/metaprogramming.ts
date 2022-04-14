@@ -1,15 +1,23 @@
+type Primitive = string | number | boolean | Function;
+
 /**
  * RecursiveKeyOf is a type for keys of an objet usind dots for subfields.
  * For a given object: {a: {b: {c: number}}, d } the RecursiveKeysOf are
  * 'a' | 'a.b' | 'a.b.c' | 'd'
  */
-export type RecursiveKeyOf<T extends object> = {
-  [Key in keyof T & (string | number)]: T[Key] extends unknown[]
-    ? `${Key}`
-    : T[Key] extends object
-    ? `${Key}` | `${Key}.${RecursiveKeyOf<T[Key]>}`
-    : `${Key}`;
-}[keyof T & (string | number)];
+export type RecursiveKeyOf<T> = T extends Primitive
+  ? never
+  :
+      | (keyof T & string)
+      | {
+          [P in keyof T & string]: RecursiveSubKeys<T, P>;
+        }[keyof T & string];
+
+type RecursiveSubKeys<T, P extends keyof T & string> = T[P] extends (infer Elem)[]
+  ? `${P}.${RecursiveKeyOf<Elem>}`
+  : T[P] extends object
+  ? `${P}.${RecursiveKeyOf<T[P]>}`
+  : never;
 
 /**
  * LeafKeysOf is like RecursiveKeysOf but omits the keys for any object.
