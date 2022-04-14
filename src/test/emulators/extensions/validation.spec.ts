@@ -30,6 +30,11 @@ function fakeInstanceSpecWithAPI(instanceId: string, apiName: string): Deploymen
   return {
     instanceId,
     params: {},
+    ref: {
+      publisherId: "test",
+      extensionId: "test",
+      version: "0.1.0",
+    },
     extensionVersion: {
       name: "publishers/test/extensions/test/versions/0.1.0",
       ref: "test/test@0.1.0",

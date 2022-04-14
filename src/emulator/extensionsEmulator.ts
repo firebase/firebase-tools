@@ -93,33 +93,39 @@ export class ExtensionsEmulator implements EmulatorInstance {
   // downloads and builds it if it is not found, then returns the path to that source code.
   private async ensureSourceCode(instance: planner.InstanceSpec): Promise<string> {
     // TODO(b/213335255): Handle local extensions.
-    if (!instance.ref) {
+    if (instance.localPath) {
+      if (!this.hasValidSource({ path: instance.localPath, extTarget: instance.localPath })) {
+        throw new FirebaseError(
+          `Tried to emulate local extension at ${instance.localPath}, but it was missing required files.`
+        );
+      }
+      return instance.localPath;
+    } else if (instance.ref) {
+      const ref = toExtensionVersionRef(instance.ref);
+      const cacheDir =
+        process.env.FIREBASE_EXTENSIONS_CACHE_PATH ||
+        path.join(os.homedir(), ".cache", "firebase", "extensions");
+      const sourceCodePath = path.join(cacheDir, ref);
+
+      // Wait for previous download promise to resolve before we check source validity.
+      // This avoids racing to download the same source multiple times.
+      // Note: The below will not work because it throws the thread to the back of the message queue.
+      // await (this.pendingDownloads.get(ref) ?? Promise.resolve());
+      if (this.pendingDownloads.get(ref)) {
+        await this.pendingDownloads.get(ref);
+      }
+
+      if (!this.hasValidSource({ path: sourceCodePath, extTarget: ref })) {
+        const promise = this.downloadSource(instance, ref, sourceCodePath);
+        this.pendingDownloads.set(ref, promise);
+        await promise;
+      }
+      return sourceCodePath;
+    } else {
       throw new FirebaseError(
-        `No ref found for ${instance.instanceId}. Emulating local extensions is not yet supported.`
+        "Tried to emulate an extension instance without a ref or localPath. This should never happen."
       );
     }
-    // TODO: If ref contains 'latest', we need to resolve that to a real version.
-
-    const ref = toExtensionVersionRef(instance.ref);
-    const cacheDir =
-      process.env.FIREBASE_EXTENSIONS_CACHE_PATH ||
-      path.join(os.homedir(), ".cache", "firebase", "extensions");
-    const sourceCodePath = path.join(cacheDir, ref);
-
-    // Wait for previous download promise to resolve before we check source validity.
-    // This avoids racing to download the same source multiple times.
-    // Note: The below will not work because it throws the thread to the back of the message queue.
-    // await (this.pendingDownloads.get(ref) ?? Promise.resolve());
-    if (this.pendingDownloads.get(ref)) {
-      await this.pendingDownloads.get(ref);
-    }
-
-    if (!this.hasValidSource({ path: sourceCodePath, extRef: ref })) {
-      const promise = this.downloadSource(instance, ref, sourceCodePath);
-      this.pendingDownloads.set(ref, promise);
-      await promise;
-    }
-    return sourceCodePath;
   }
 
   private async downloadSource(
@@ -137,7 +143,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
    *
    * Checks against a list of required files or directories that need to be present.
    */
-  private hasValidSource(args: { path: string; extRef: string }): boolean {
+  private hasValidSource(args: { path: string; extTarget: string }): boolean {
     // TODO(lihes): Source code can technically exist in other than "functions" dir.
     // https://source.corp.google.com/piper///depot/google3/firebase/mods/go/worker/fetch_mod_source.go;l=451
     const requiredFiles = [
@@ -152,10 +158,10 @@ export class ExtensionsEmulator implements EmulatorInstance {
     for (const requiredFile of requiredFiles) {
       const f = path.join(args.path, requiredFile);
       if (!fs.existsSync(f)) {
-        EmulatorLogger.forExtension({ ref: args.extRef }).logLabeled(
+        EmulatorLogger.forExtension({ ref: args.extTarget }).logLabeled(
           "BULLET",
           "extensions",
-          `Detected invalid source code for ${args.extRef}, expected to find ${f}`
+          `Detected invalid source code for ${args.extTarget}, expected to find ${f}`
         );
         return false;
       }
@@ -215,18 +221,21 @@ export class ExtensionsEmulator implements EmulatorInstance {
     const env = Object.assign(this.autoPopulatedParams(instance), instance.params);
     const { extensionTriggers, nodeMajorVersion, nonSecretEnv, secretEnvVariables } =
       await getExtensionFunctionInfo(instance, env);
-    const extension = await planner.getExtension(instance);
-    const extensionVersion = await planner.getExtensionVersion(instance);
-    return {
+    const emulatableBackend: EmulatableBackend = {
       functionsDir,
       env: nonSecretEnv,
       secretEnv: secretEnvVariables,
       predefinedTriggers: extensionTriggers,
       nodeMajorVersion: nodeMajorVersion,
       extensionInstanceId: instance.instanceId,
-      extension,
-      extensionVersion,
     };
+    if (instance.ref) {
+      emulatableBackend.extension = await planner.getExtension(instance);
+      emulatableBackend.extensionVersion = await planner.getExtensionVersion(instance);
+    } else if (instance.localPath) {
+      emulatableBackend.extensionSpec = await planner.getExtensionSpec(instance);
+    }
+    return emulatableBackend;
   }
 
   private autoPopulatedParams(instance: planner.InstanceSpec): Record<string, string> {
