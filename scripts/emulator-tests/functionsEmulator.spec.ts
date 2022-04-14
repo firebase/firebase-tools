@@ -131,12 +131,11 @@ function useFunctions(triggers: () => {}): void {
 
   // eslint-disable-next-line @typescript-eslint/unbound-method
   functionsEmulator.invokeTrigger = (
-    backend: EmulatableBackend,
     trigger: EmulatedTriggerDefinition,
     proto?: any,
     runtimeOpts?: InvokeRuntimeOpts
   ): Promise<RuntimeWorker> => {
-    return invokeTrigger(testBackend, trigger, proto, {
+    return invokeTrigger(trigger, proto, {
       nodeBinary: process.execPath,
       serializedTriggers,
     });

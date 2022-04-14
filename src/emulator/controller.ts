@@ -439,24 +439,24 @@ export async function startAll(
   const emulatableBackends: EmulatableBackend[] = [];
   const projectDir = (options.extDevDir || options.config.projectDir) as string;
   if (shouldStart(options, Emulators.FUNCTIONS)) {
-    const functionsCfg = normalizeAndValidate(options.config.src.functions)[0];
+    const functionsCfg = normalizeAndValidate(options.config.src.functions);
     // Note: ext:dev:emulators:* commands hit this path, not the Emulators.EXTENSIONS path
     utils.assertIsStringOrUndefined(options.extDevDir);
-    const functionsDir = path.join(projectDir, functionsCfg.source);
 
-    emulatableBackends.push({
-      functionsDir,
-      env: {
-        ...options.extDevEnv,
-      },
-      secretEnv: [], // CF3 secrets are bound to specific functions, so we'll get them during trigger discovery.
-      // TODO(b/213335255): predefinedTriggers and nodeMajorVersion are here to support ext:dev:emulators:* commands.
-      // Ideally, we should handle that case via ExtensionEmulator.
-      predefinedTriggers: options.extDevTriggers as ParsedTriggerDefinition[] | undefined,
-      nodeMajorVersion: parseRuntimeVersion(
-        (options.extDevNodeVersion as string) || functionsCfg.runtime
-      ),
-    });
+    for (const cfg of functionsCfg) {
+      const functionsDir = path.join(projectDir, cfg.source);
+      emulatableBackends.push({
+        functionsDir,
+        env: {
+          ...options.extDevEnv,
+        },
+        secretEnv: [], // CF3 secrets are bound to specific functions, so we'll get them during trigger discovery.
+        // TODO(b/213335255): predefinedTriggers and nodeMajorVersion are here to support ext:dev:emulators:* commands.
+        // Ideally, we should handle that case via ExtensionEmulator.
+        predefinedTriggers: options.extDevTriggers as ParsedTriggerDefinition[] | undefined,
+        nodeMajorVersion: parseRuntimeVersion((options.extDevNodeVersion as string) || cfg.runtime),
+      });
+    }
   }
 
   if (shouldStart(options, Emulators.EXTENSIONS) && previews.extensionsemulator) {
