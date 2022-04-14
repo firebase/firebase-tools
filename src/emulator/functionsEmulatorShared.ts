@@ -45,7 +45,7 @@ export interface EventTrigger {
   resource: string;
   eventType: string;
   channel?: string;
-  customFilters?: Record<string, string>;
+  eventFilters?: Record<string, string>;
   // Deprecated
   service?: string;
 }
@@ -183,7 +183,7 @@ export function emulatedFunctionsFromEndpoints(
           eventType: eventTrigger.eventType,
           resource: eventResource,
           channel: eventTrigger.channel,
-          customFilters: eventTrigger.eventFilters,
+          eventFilters: eventTrigger.eventFilters,
         };
       }
     } else if (backend.isScheduleTriggered(endpoint)) {
