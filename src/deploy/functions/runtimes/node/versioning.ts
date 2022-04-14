@@ -6,7 +6,7 @@ import * as spawn from "cross-spawn";
 
 import * as utils from "../../../../utils";
 import { logger } from "../../../../logger";
-import * as track from "../../../../track";
+import { track } from "../../../../track";
 
 interface NpmListResult {
   name: string;
