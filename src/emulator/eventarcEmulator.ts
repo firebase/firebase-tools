@@ -35,20 +35,10 @@ export class EventarcEmulator implements EmulatorInstance {
   createHubServer(): express.Application {
     const hub = express();
 
-    // @TODO(huangjeff): What exactly is this doing? Copied and pasted from functions emulator.
-    const dataMiddleware: express.RequestHandler = (req, res, next) => {
-      const chunks: Buffer[] = [];
-      req.on("data", (chunk: Buffer) => {
-        chunks.push(chunk);
-      });
-      req.on("end", () => {
-        (req as RequestWithRawBody).rawBody = Buffer.concat(chunks);
-        next();
-      });
-    };
+    hub.use(express.json())
 
     const helloWorldRoute = `/hello_world`;
-    const registerRoute = `/emulator/v1/projects/:project_id/triggers/:trigger_name`;
+    const registerTriggerRoute = `/emulator/v1/projects/:project_id/triggers/:trigger_name`;
 
     const registerTriggerHandler: express.RequestHandler = (req, res) => {
       const projectId = req.params.project_id;
@@ -70,13 +60,28 @@ export class EventarcEmulator implements EmulatorInstance {
     // A trigger named "foo" needs to respond at "foo" as well as "foo/*" but not "fooBar".
     const httpsFunctionRoutes = [httpsFunctionRoute, `${httpsFunctionRoute}/*`];
     */
+    const publishEventsRoute = `/v1/projects/:project_id/locations/:location/channels/:channel::publishEvents`;
 
     const helloWorldHandler: express.RequestHandler = (req, res) => {
-      console.log("hello world");
+      res.sendStatus(200);
     };
-    hub.all([helloWorldRoute], dataMiddleware, helloWorldHandler);
-    hub.all([registerRoute], dataMiddleware, registerTriggerHandler);
-    hub.all("*", dataMiddleware, (req, res) => {
+
+    const publishEventsHandler: express.RequestHandler = (req, res) => {
+      const channel = req.params.channel;
+      const events = req.body.events;
+      for (const event of events) {
+        // @todo: Call background handler. 
+        if (!event.type) {
+          res.sendStatus(400);
+        }
+      }
+      res.sendStatus(200);
+    }
+
+    hub.all([helloWorldRoute], helloWorldHandler);
+    hub.post([registerTriggerRoute], registerTriggerHandler);
+    hub.post([publishEventsRoute], publishEventsHandler);
+    hub.all("*", (req, res) => {
       logger.debug(`Eventarc emulator received unknown request at path ${req.path}`);
       res.sendStatus(404);
     });
