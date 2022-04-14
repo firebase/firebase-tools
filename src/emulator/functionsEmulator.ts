@@ -675,23 +675,23 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
   }
 
-  performPostLoadOperations(): Promise<void> {
+  async performPostLoadOperations(): Promise<void> {
     if (
       this.blockingFunctionsConfig.triggers?.beforeCreate?.functionUri === "" &&
-      this.blockingFunctionsConfig.triggers.beforeSignIn?.functionUri === ""
+      this.blockingFunctionsConfig.triggers?.beforeSignIn?.functionUri === ""
     ) {
-      return Promise.resolve();
+      return;
     }
 
     const authEmu = EmulatorRegistry.get(Emulators.AUTH);
     if (!authEmu) {
-      return Promise.resolve();
+      return;
     }
 
     const path = `/identitytoolkit.googleapis.com/v2/projects/${this.getProjectId()}/config?updateMask=blockingFunctions`;
 
-    return api
-      .request("PATCH", path, {
+    try {
+      await api.request("PATCH", path, {
         origin: `http://${EmulatorRegistry.getInfoHostString(authEmu.getInfo())}`,
         headers: {
           Authorization: "Bearer owner",
@@ -700,17 +700,14 @@ export class FunctionsEmulator implements EmulatorInstance {
           blockingFunctions: this.blockingFunctionsConfig,
         },
         json: true,
-      })
-      .then(() => {
-        return Promise.resolve();
-      })
-      .catch((err) => {
-        this.logger.log(
-          "WARN",
-          "Error updating blocking functions config to the auth emulator: " + err
-        );
-        throw err;
       });
+    } catch (err) {
+      this.logger.log(
+        "WARN",
+        "Error updating blocking functions config to the auth emulator: " + err
+      );
+      throw err;
+    }
   }
 
   addRealtimeDatabaseTrigger(
@@ -866,9 +863,6 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     const eventType = blockingTrigger.eventType;
     if (AUTH_BLOCKING_EVENTS.includes(eventType as any)) {
-      const accessToken = blockingTrigger.options!.accessToken as boolean;
-      const idToken = blockingTrigger.options!.idToken as boolean;
-      const refreshToken = blockingTrigger.options!.refreshToken as boolean;
       if (blockingTrigger.eventType === BEFORE_CREATE_EVENT) {
         this.blockingFunctionsConfig.triggers = {
           ...this.blockingFunctionsConfig.triggers,
@@ -885,10 +879,12 @@ export class FunctionsEmulator implements EmulatorInstance {
         };
       }
       this.blockingFunctionsConfig.forwardInboundCredentials = {
-        accessToken,
-        idToken,
-        refreshToken,
+        accessToken: blockingTrigger.options!.accessToken as boolean,
+        idToken: blockingTrigger.options!.idToken as boolean,
+        refreshToken: blockingTrigger.options!.refreshToken as boolean,
       };
+    } else {
+      return false;
     }
 
     return true;
