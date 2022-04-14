@@ -161,8 +161,15 @@ export function endpointTriggerType(endpoint: Endpoint): string {
 
 // TODO(inlined): Enum types should be singularly named
 export type VpcEgressSettings = "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC";
+export const AllVpcEgressSettings: VpcEgressSettings[] = ["PRIVATE_RANGES_ONLY", "ALL_TRAFFIC"];
 export type IngressSettings = "ALLOW_ALL" | "ALLOW_INTERNAL_ONLY" | "ALLOW_INTERNAL_AND_GCLB";
+export const AllIngressSettings: IngressSettings[] = [
+  "ALLOW_ALL",
+  "ALLOW_INTERNAL_ONLY",
+  "ALLOW_INTERNAL_AND_GCLB",
+];
 export type MemoryOptions = 128 | 256 | 512 | 1024 | 2048 | 4096 | 8192;
+export const AllMemoryOptions: MemoryOptions[] = [128, 256, 512, 1024, 2048, 4096, 8192];
 
 /** Returns a human-readable name with MB or GB suffix for a MemoryOption (MB). */
 export function memoryOptionDisplayName(option: MemoryOptions): string {
@@ -210,6 +217,9 @@ export interface SecretEnvVar {
   version?: string;
 }
 
+/**
+ * Returns full resource name of a secret version.
+ */
 export function secretVersionName(s: SecretEnvVar): string {
   return `projects/${s.projectId}/secrets/${s.secret}/versions/${s.version ?? "latest"}`;
 }
@@ -220,6 +230,7 @@ export interface ServiceConfiguration {
   environmentVariables?: Record<string, string>;
   secretEnvironmentVariables?: SecretEnvVar[];
   availableMemoryMb?: MemoryOptions;
+  cpu?: number | "gcf_gen1";
   timeoutSeconds?: number;
   maxInstances?: number;
   minInstances?: number;
@@ -232,6 +243,7 @@ export interface ServiceConfiguration {
 }
 
 export type FunctionsPlatform = "gcfv1" | "gcfv2";
+export const AllFunctionsPlatforms: FunctionsPlatform[] = ["gcfv1", "gcfv2"];
 
 export type Triggered =
   | HttpsTriggered
