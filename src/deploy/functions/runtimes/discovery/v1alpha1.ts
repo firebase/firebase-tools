@@ -85,9 +85,9 @@ function parseEndpoints(
 
   assertKeyTypes(prefix, ep, {
     region: "array",
-    platform: "string",
+    platform: (platform) => backend.AllFunctionsPlatforms.includes(platform),
     entryPoint: "string",
-    availableMemoryMb: "number",
+    availableMemoryMb: (mem) => backend.AllMemoryOptions.includes(mem),
     maxInstances: "number",
     minInstances: "number",
     concurrency: "number",
@@ -95,7 +95,7 @@ function parseEndpoints(
     timeoutSeconds: "number",
     vpc: "object",
     labels: "object",
-    ingressSettings: "string",
+    ingressSettings: (setting) => backend.AllIngressSettings.includes(setting),
     environmentVariables: "object",
     secretEnvironmentVariables: "array",
     httpsTrigger: "object",
@@ -104,7 +104,15 @@ function parseEndpoints(
     scheduleTrigger: "object",
     taskQueueTrigger: "object",
     blockingTrigger: "object",
+    cpu: (cpu: backend.Endpoint["cpu"]) => typeof cpu === "number" || cpu === "gcf_gen1",
   });
+  if (ep.vpc) {
+    assertKeyTypes(prefix + ".vpc", ep.vpc, {
+      connector: "string",
+      egressSettings: (setting) => backend.AllVpcEgressSettings.includes(setting),
+    });
+    requireKeys(prefix + ".vpc", ep.vpc, "connector");
+  }
   let triggerCount = 0;
   if (ep.httpsTrigger) {
     triggerCount++;

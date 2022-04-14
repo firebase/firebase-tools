@@ -2,7 +2,7 @@ import { Uploader } from "./uploader";
 import { detectProjectRoot } from "../../detectProjectRoot";
 import { listFiles } from "../../listFiles";
 import { logger } from "../../logger";
-import * as track from "../../track";
+import { track } from "../../track";
 import { envOverride, logLabeledBullet, logLabeledSuccess } from "../../utils";
 import { HostingDeploy } from "./hostingDeploy";
 

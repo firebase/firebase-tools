@@ -13,7 +13,7 @@ import { EventEmitter } from "events";
 import { Account } from "../auth";
 import * as api from "../api";
 import { logger } from "../logger";
-import * as track from "../track";
+import { track } from "../track";
 import { Constants } from "./constants";
 import {
   EmulatorInfo,

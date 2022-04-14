@@ -12,6 +12,7 @@ interface PreviewFlags {
   deletegcfartifacts: boolean;
   artifactregistry: boolean;
   emulatoruisnapshot: boolean;
+  frameworkawareness: boolean;
 }
 
 export const previews: PreviewFlags = {
@@ -26,6 +27,7 @@ export const previews: PreviewFlags = {
   deletegcfartifacts: false,
   artifactregistry: false,
   emulatoruisnapshot: false,
+  frameworkawareness: false,
 
   ...(configstore.get("previews") as Partial<PreviewFlags>),
 };
