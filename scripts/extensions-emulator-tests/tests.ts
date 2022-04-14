@@ -12,7 +12,7 @@ const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
  * Various delays that are needed because this test spawns
  * parallel emulator subprocesses.
  */
-const TEST_SETUP_TIMEOUT = 60000;
+const TEST_SETUP_TIMEOUT = 120000;
 const EMULATORS_WRITE_DELAY_MS = 5000;
 const EMULATORS_SHUTDOWN_DELAY_MS = 25000;
 const EMULATOR_TEST_TIMEOUT = EMULATORS_WRITE_DELAY_MS * 2;
