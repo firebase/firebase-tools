@@ -135,14 +135,13 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         instanceId,
       });
       // @TODO: If projectId is not provided, what should we do here?
-      const eventsConfig =
-        newExtensionVersion.spec.events && projectId
-          ? await askUserForEventsConfig.askForEventsConfig(
-              newExtensionVersion.spec.events,
-              projectId,
-              instanceId
-            )
-          : undefined;
+      const eventsConfig = newExtensionVersion.spec.events
+        ? await askUserForEventsConfig.askForEventsConfig(
+            newExtensionVersion.spec.events,
+            "${param:PROJECT_ID}",
+            instanceId
+          )
+        : undefined;
       if (eventsConfig) {
         newParamBindingOptions.EVENTARC_CHANNEL = { baseValue: eventsConfig.channel };
         newParamBindingOptions.ALLOWED_EVENT_TYPES = {

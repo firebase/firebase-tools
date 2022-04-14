@@ -268,10 +268,13 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
   });
 
   // @TODO: projectId can be undefined. Does that cause issues? Since channel is a function of that.
-  const eventsConfig =
-    spec.events && projectId
-      ? await askUserForEventsConfig.askForEventsConfig(spec.events, projectId, instanceId)
-      : undefined;
+  const eventsConfig = spec.events
+    ? await askUserForEventsConfig.askForEventsConfig(
+        spec.events,
+        "${param:PROJECT_ID}",
+        instanceId
+      )
+    : undefined;
   if (eventsConfig) {
     paramBindingOptions.EVENTARC_CHANNEL = { baseValue: eventsConfig.channel };
     paramBindingOptions.ALLOWED_EVENT_TYPES = {
@@ -388,10 +391,6 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
     }
     let paramBindingOptions: { [key: string]: ParamBindingOptions };
     let paramBindings: Record<string, string>;
-    const shouldCollectEventsConfig = false;
-    let eventarcChannel: string | undefined;
-    let allowedEventTypes: string[] | undefined;
-
     let eventsConfig: askUserForEventsConfig.InstanceEventsConfig | undefined;
     switch (choice) {
       case "installNew":
