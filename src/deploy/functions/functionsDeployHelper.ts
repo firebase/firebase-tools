@@ -139,26 +139,26 @@ export function getFunctionLabel(fn: backend.TargetIds & { codebase?: string }):
  * Returns list of codebases specified in firebase.json filtered by --only filters if present.
  */
 export function targetCodebases(config: ValidatedConfig, filters?: EndpointFilter[]): string[] {
-  const codebasesFromConfig = new Set(Object.values(config).map((c) => c.codebase));
+  const codebasesFromConfig = [...new Set(Object.values(config).map((c) => c.codebase))];
   if (!filters) {
     return [...codebasesFromConfig];
   }
 
-  const codebasesFromFilters = new Set(
-    filters.map((f) => f.codebase).filter((c) => c !== undefined)
-  );
+  const codebasesFromFilters = [
+    ...new Set(filters.map((f) => f.codebase).filter((c) => c !== undefined)),
+  ];
 
-  if (codebasesFromFilters.size === 0) {
+  if (codebasesFromFilters.length === 0) {
     return [...codebasesFromConfig];
   }
 
-  const intersections = new Set<string>();
+  const intersections: string[] = [];
   for (const codebase of codebasesFromConfig) {
-    if (codebasesFromFilters.has(codebase)) {
-      intersections.add(codebase);
+    if (codebasesFromFilters.includes(codebase)) {
+      intersections.push(codebase);
     }
   }
-  return [...intersections];
+  return intersections;
 }
 
 /**

@@ -345,6 +345,18 @@ describe("functionsDeployHelper", () => {
       expect(helper.targetCodebases(config, filters)).to.have.members(["default"]);
     });
 
+    it("correctly deals with duplicate entries", () => {
+      const filters: EndpointFilter[] = [
+        {
+          codebase: "default",
+        },
+        {
+          codebase: "default",
+        },
+      ];
+      expect(helper.targetCodebases(config, filters)).to.have.members(["default"]);
+    });
+
     it("returns all codebases given filter without codebase specified", () => {
       const filters: EndpointFilter[] = [
         {
