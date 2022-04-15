@@ -133,7 +133,7 @@ export interface TaskQueueTriggered {
 
 export interface BlockingTrigger {
   eventType: string;
-  options?: Record<string, any>;
+  options?: Record<string, unknown>;
 }
 
 export interface BlockingTriggered {
