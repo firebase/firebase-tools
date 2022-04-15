@@ -132,7 +132,7 @@ function reduceEventsToServices(services: Array<Service>, endpoint: backend.Endp
  * @param existingPolicy the project level IAM policy
  * @param serviceAccount the IAM service account
  * @param role the role you want to grant
- * @return
+ * @returns the correct IAM binding
  */
 export function obtainBinding(
   existingPolicy: iam.Policy,
