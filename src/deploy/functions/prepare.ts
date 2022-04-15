@@ -12,7 +12,7 @@ import { Options } from "../../options";
 import {
   endpointMatchesAnyFilter,
   getEndpointFilters,
-  groupByCodebase,
+  groupEndpointsByCodebase,
   targetCodebases,
 } from "./functionsDeployHelper";
 import { logLabeledBullet } from "../../utils";
@@ -158,7 +158,10 @@ export async function prepare(
   // ===Phase 3. Fill in details and validate endpoints. We run the check for ALL endpoints - we think it's useful for
   // validations to fail even for endpoints that aren't being deployed so any errors are caught early.
   payload.functions = {};
-  const haveBackends = groupByCodebase(wantBackends, await backend.existingBackend(context));
+  const haveBackends = groupEndpointsByCodebase(
+    wantBackends,
+    backend.allEndpoints(await backend.existingBackend(context))
+  );
   for (const [codebase, wantBackend] of Object.entries(wantBackends)) {
     const haveBackend = haveBackends[codebase] || { ...backend.empty() };
     payload.functions[codebase] = { wantBackend, haveBackend };

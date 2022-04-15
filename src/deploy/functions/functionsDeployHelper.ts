@@ -162,7 +162,7 @@ export function targetCodebases(config: ValidatedConfig, filters?: EndpointFilte
 }
 
 /**
- * Breakup backends by codebase.
+ * Assign each endpoint deployed in the project to a codebase.
  *
  * An endpoint is part a codebase if:
  *   1. Endpoint is associated w/ the current codebase (duh).
@@ -171,37 +171,33 @@ export function targetCodebases(config: ValidatedConfig, filters?: EndpointFilte
  * Condition (2) might feel wrong but is a practical conflict resolution strategy as it makes migrating a function
  * from one codebase to another straightforward.
  */
-export function groupByCodebase(
+export function groupEndpointsByCodebase(
   wantBackends: Record<string, backend.Backend>,
-  haveBackend: backend.Backend
+  haveEndpoints: backend.Endpoint[]
 ): Record<string, backend.Backend> {
   const grouped: Record<string, backend.Backend> = {};
-  // currentBackends will hold endpoints not assigned to any codebase.
-  let currentBackend: backend.Backend = haveBackend;
+  // endpointsToAssign will hold endpoints not assigned to any codebase.
+  let endpointsToAssign: backend.Endpoint[] = haveEndpoints;
 
   // First, dole out endpoints using names. If resource name matches, endpoint belongs to that codebase regardless
   // of the codebase annotation.
   for (const codebase of Object.keys(wantBackends)) {
     const names = backend.allEndpoints(wantBackends[codebase]).map((e) => backend.functionName(e));
-    grouped[codebase] = backend.matchingBackend(currentBackend, (endpoint) => {
-      return names.includes(backend.functionName(endpoint));
-    });
-    // Update current backend, removing all endpoints we've assigned in this iteration.
-    currentBackend = backend.matchingBackend(currentBackend, (endpoint) => {
-      return !names.includes(backend.functionName(endpoint));
-    });
+    grouped[codebase] = backend.of(
+      ...endpointsToAssign.filter((e) => names.includes(backend.functionName(e)))
+    );
+    // Remove all endpoints we've assigned in this iteration.
+    endpointsToAssign = endpointsToAssign.filter((e) => !names.includes(backend.functionName(e)));
   }
 
   // Next, dole out endpoints using codebase annotation.
   for (const codebase of Object.keys(wantBackends)) {
-    const matchedBackend = backend.matchingBackend(currentBackend, (endpoint) => {
-      return endpoint.codebase === codebase;
-    });
-    grouped[codebase] = backend.merge(grouped[codebase], matchedBackend);
+    const matchedEndpoints = endpointsToAssign.filter((e) => e.codebase === codebase);
+    grouped[codebase] = backend.merge(grouped[codebase], backend.of(...matchedEndpoints));
     // Update current backend, removing all endpoints we've assigned in this iteration.
-    const matchedNames = backend.allEndpoints(matchedBackend).map((e) => backend.functionName(e));
-    currentBackend = backend.matchingBackend(currentBackend, (endpoint) => {
-      return !matchedNames.includes(backend.functionName(endpoint));
+    const matchedNames = matchedEndpoints.map((e) => backend.functionName(e));
+    endpointsToAssign = endpointsToAssign.filter((e) => {
+      return !matchedNames.includes(backend.functionName(e));
     });
   }
   // What about unassigned endpoints? We leave them, as it's possible that these endpoints belong to codebases
