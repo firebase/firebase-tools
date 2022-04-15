@@ -180,7 +180,7 @@ export async function prepare(
   );
   inferDetailsFromExisting(wantBackend, haveBackend, usedDotenv);
   await ensureTriggerRegions(wantBackend);
-  resolveCpuAndConcurrency(wantBackend);
+  resolveCpu(wantBackend);
   validate.endpointsAreValid(wantBackend);
   inferBlockingDetails(wantBackend);
 
@@ -335,7 +335,7 @@ export function inferBlockingDetails(want: backend.Backend): void {
  * provided and sets concurrency based on the CPU level if not provided.
  * After this function, CPU will be a real number and not "gcf_gen1".
  */
-export function resolveCpuAndConcurrency(want: backend.Backend): void {
+export function resolveCpu(want: backend.Backend): void {
   for (const e of backend.allEndpoints(want)) {
     if (e.platform === "gcfv1") {
       continue;
@@ -344,9 +344,6 @@ export function resolveCpuAndConcurrency(want: backend.Backend): void {
       e.cpu = backend.memoryToGen1Cpu(e.availableMemoryMb || backend.DEFAULT_MEMORY);
     } else if (!e.cpu) {
       e.cpu = backend.memoryToGen2Cpu(e.availableMemoryMb || backend.DEFAULT_MEMORY);
-    }
-    if (!e.concurrency) {
-      e.concurrency = e.cpu < 1 ? 1 : backend.DEFAULT_CONCURRENCY;
     }
   }
 }

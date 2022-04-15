@@ -23,6 +23,7 @@ import * as scheduler from "../../../gcp/cloudscheduler";
 import * as utils from "../../../utils";
 import * as services from "../services";
 import { AUTH_BLOCKING_EVENTS } from "../../../functions/events/v1";
+import { backoff } from "../../../throttler/throttler";
 
 // TODO: Tune this for better performance.
 const gcfV1PollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
@@ -340,7 +341,21 @@ export class Fabricator {
         .catch(rethrowAs(endpoint, "set invoker"));
     }
 
-    await this.setRunTraits(serviceName, endpoint);
+    const mem = endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;
+    const hasCustomCPU = endpoint.cpu !== backend.memoryToGen1Cpu(mem);
+    // I don't love editing an input in this function, but the code gets ugly
+    // otherwise. It's nice to not resolve concurrency in the prepare stage
+    // because it helps us know whether we should call setRunTraits on update.
+    if (!endpoint.concurrency) {
+      endpoint.concurrency =
+        (endpoint.cpu as number) >= backend.MIN_CPU_FOR_CONCURRENCY
+          ? backend.DEFAULT_CONCURRENCY
+          : 1;
+    }
+    const hasConcurrency = endpoint.concurrency !== 1;
+    if (hasCustomCPU || hasConcurrency) {
+      await this.setRunTraits(serviceName, endpoint);
+    }
   }
 
   async updateV1Function(endpoint: backend.Endpoint, scraper: SourceTokenScraper): Promise<void> {
@@ -426,11 +441,24 @@ export class Fabricator {
         .catch(rethrowAs(endpoint, "set invoker"));
     }
 
-    const hasConcurency = endpoint.concurrency != 1;
-    const hasCustomCpu =
-      endpoint.cpu != backend.memoryToGen1Cpu(endpoint.availableMemoryMb || backend.DEFAULT_MEMORY);
-    if (hasConcurency || hasCustomCpu) {
-      await this.setRunTraits(resultFunction.serviceConfig.service, endpoint);
+    // Ideally we'd avoid a read of the Cloud Run service. We need to read if we
+    // believe a setting (CPU or concurrency) has changed because the user
+    // changed their mind or if GCF has stamped over the user's choice (we're
+    // using custom VM shapes).
+    const usingCustomCPU =
+      endpoint.cpu !==
+      backend.memoryToGen1Cpu(endpoint.availableMemoryMb || backend.DEFAULT_MEMORY);
+    const explicitConcurrency = endpoint.concurrency !== undefined;
+    if (usingCustomCPU || explicitConcurrency) {
+      // GCF may have stamped over the CPU to be <1 which would reset concurrency.
+      // We may have to reapply defaults.
+      if (endpoint.concurrency === undefined) {
+        endpoint.concurrency =
+          (endpoint.cpu as number) < backend.MIN_CPU_FOR_CONCURRENCY
+            ? 1
+            : backend.DEFAULT_CONCURRENCY;
+      }
+      await this.setRunTraits(serviceName, endpoint);
     }
   }
 
@@ -467,7 +495,7 @@ export class Fabricator {
   async setRunTraits(serviceName: string, endpoint: backend.Endpoint): Promise<void> {
     await this.functionExecutor
       .run(async () => {
-        const service = await run.getService(serviceName);
+        let service = await run.getService(serviceName);
         let changed = false;
         if (service.spec.template.spec.containerConcurrency !== endpoint.concurrency) {
           service.spec.template.spec.containerConcurrency = endpoint.concurrency;
@@ -475,7 +503,9 @@ export class Fabricator {
         }
 
         if (+service.spec.template.spec.containers[0].resources.limits.cpu !== endpoint.cpu) {
-          service.spec.template.spec.containers[0].resources.limits.cpu = `${endpoint.cpu}`;
+          service.spec.template.spec.containers[0].resources.limits.cpu = `${
+            endpoint.cpu as number
+          }`;
           changed = true;
         }
 
@@ -486,7 +516,16 @@ export class Fabricator {
 
         delete service.status;
         delete (service.spec.template.metadata as any).name;
-        await run.replaceService(serviceName, service);
+        service = await run.replaceService(serviceName, service);
+
+        // Now we need to wait for reconciliation or we might delete the docker
+        // image while the service is still rolling out a new revision.
+        let retry = 0;
+        while (!serviceIsResolved(service)) {
+          await backoff(retry, 2, 30);
+          retry = retry + 1;
+          service = await run.getService(serviceName);
+        }
       })
       .catch(rethrowAs(endpoint, "set concurrency"));
   }
@@ -611,4 +650,36 @@ export class Fabricator {
     const label = helper.getFunctionLabel(endpoint);
     utils.logSuccess(`${clc.bold.green(`functions[${label}]`)} Successful ${op} operation.`);
   }
+}
+
+function serviceIsResolved(service: run.Service): boolean {
+  if (service.status?.observedGeneration !== service.metadata.generation) {
+    logger.debug(
+      `Service ${service.metadata.name} is not resolved because` +
+        `observed generation ${service.status?.observedGeneration} does not ` +
+        `match spec generation ${service.metadata.generation}`
+    );
+    return false;
+  }
+  const readyCondition = service.status?.conditions?.find((condition) => {
+    return condition.type === "Ready";
+  });
+
+  if (readyCondition?.status === "Undefined") {
+    logger.debug(
+      `Waiting for service ${service.metadata.name} to be ready. ` +
+        `Status is ${JSON.stringify(service.status?.conditions)}`
+    );
+    return false;
+  } else if (readyCondition?.status === "True") {
+    return true;
+  }
+  logger.debug(
+    `Service ${service.metadata.name} has unexpected ready status ${JSON.stringify(
+      readyCondition
+    )}. It may have failed rollout.`
+  );
+  throw new FirebaseError(
+    `Unexpected Status ${readyCondition?.status} for service ${service.metadata.name}`
+  );
 }

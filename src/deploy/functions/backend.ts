@@ -185,13 +185,19 @@ export function memoryOptionDisplayName(option: MemoryOptions): string {
   }[option];
 }
 
-/** Returns the gen 1 mapping of CPU for RAM. Used whenever a customer sets cpu to "gcf_gen1" */
+/**
+ * Returns the gen 1 mapping of CPU for RAM. Used whenever a customer sets cpu to "gcf_gen1".
+ * Note that these values must be the right number of decimal places and include
+ * rounding errors (e.g. 0.1666 instead of 0.1667) so that we match GCF's
+ * behavior and don't unnecessarily create a new Run revision because our target
+ * CPU doesn't exactly match their CPU.
+ */
 export function memoryToGen1Cpu(memory: MemoryOptions): number {
   return {
-    128: 1 / 12,
-    256: 1 / 6,
-    512: 1 / 3,
-    1024: 7 / 12,
+    128: 0.0833, // ~1/12
+    256: 0.1666, // ~1/6
+    512: 0.3333, // ~1/3
+    1024: 0.5833, // ~5/7
     2048: 1,
     4096: 2,
     8192: 2,

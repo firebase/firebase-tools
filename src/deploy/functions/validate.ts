@@ -38,9 +38,10 @@ export function endpointsAreValid(wantBackend: backend.Backend): void {
     })
     .map((endpoint) => endpoint.id);
   if (tooSmallForConcurrency.length) {
-    const msg = `Cannot set concurency on the functions ${tooSmallForConcurrency.join(
-      ","
-    )} because they have less than 1CPU`;
+    const msg =
+      "The following functions are configured to allow concurrent " +
+      "execution and less than one full CPU. This is not supported: " +
+      tooSmallForConcurrency.join(",");
     throw new FirebaseError(msg);
   }
 }

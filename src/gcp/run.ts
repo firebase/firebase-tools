@@ -84,7 +84,7 @@ export interface Service {
 
 export interface Container {
   image: string;
-  ports: { name: string; containerPort: number };
+  ports: Array<{ name: string; containerPort: number }>;
   env: Record<string, string>;
   resources: {
     limits: {
