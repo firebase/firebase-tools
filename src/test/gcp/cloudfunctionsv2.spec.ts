@@ -205,6 +205,13 @@ describe("cloudfunctionsv2", () => {
         environmentVariables: {
           FOO: "bar",
         },
+        secretEnvironmentVariables: [
+          {
+            secret: "MY_SECRET",
+            key: "MY_SECRET",
+            projectId: "project",
+          },
+        ],
       };
 
       const fullGcfFunction: Omit<
@@ -221,6 +228,13 @@ describe("cloudfunctionsv2", () => {
           environmentVariables: {
             FOO: "bar",
           },
+          secretEnvironmentVariables: [
+            {
+              secret: "MY_SECRET",
+              key: "MY_SECRET",
+              projectId: "project",
+            },
+          ],
           vpcConnector: "connector",
           vpcConnectorEgressSettings: "ALL_TRAFFIC",
           ingressSettings: "ALLOW_ALL",

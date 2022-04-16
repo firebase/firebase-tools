@@ -92,6 +92,13 @@ export interface EventFilter {
   value: string;
 }
 
+export interface SecretEnvVar {
+  key: string;
+  projectId: string;
+  secret: string;
+  version?: string;
+}
+
 /** The Cloud Run service that underlies a Cloud Function. */
 export interface ServiceConfig {
   // Output only
@@ -104,6 +111,7 @@ export interface ServiceConfig {
   timeoutSeconds?: number;
   availableMemory?: string;
   environmentVariables?: Record<string, string>;
+  secretEnvironmentVariables?: Array<SecretEnvVar>;
   maxInstanceCount?: number;
   minInstanceCount?: number;
   vpcConnector?: string;
@@ -419,6 +427,7 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
     gcfFunction.serviceConfig,
     endpoint,
     "environmentVariables",
+    "secretEnvironmentVariables",
     "serviceAccountEmail",
     "ingressSettings",
     "timeoutSeconds"
@@ -502,9 +511,6 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
   return gcfFunction;
 }
 
-/**
- *
- */
 export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoint {
   const [, project, , region, , id] = gcfFunction.name.split("/");
   let trigger: backend.Triggered;
@@ -572,6 +578,7 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     "serviceAccountEmail",
     "ingressSettings",
     "environmentVariables",
+    "secretEnvironmentVariables",
     "timeoutSeconds"
   );
   proto.renameIfPresent(

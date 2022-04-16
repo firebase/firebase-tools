@@ -241,7 +241,8 @@ function parseEndpoints(
       "vpc",
       "labels",
       "ingressSettings",
-      "environmentVariables"
+      "environmentVariables",
+      "secretEnvironmentVariables"
     );
     allParsed.push(parsed);
   }

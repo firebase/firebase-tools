@@ -110,7 +110,7 @@ export async function secretsAreValid(projectId: string, wantBackend: backend.Ba
  * Ensures that all endpoints specifying secret environment variables target platform that supports the feature.
  */
 function validatePlatformTargets(endpoints: backend.Endpoint[]) {
-  const supportedPlatforms = ["gcfv1"];
+  const supportedPlatforms = ["gcfv1", "gcfv2"];
   const unsupported = endpoints.filter((e) => !supportedPlatforms.includes(e.platform));
   if (unsupported.length > 0) {
     const errs = unsupported.map((e) => `${e.id}[platform=${e.platform}]`);
