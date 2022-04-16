@@ -76,7 +76,7 @@ export interface ServiceStatus {
 
 export interface Service {
   apiVersion: "serving.knative.dev/v1";
-  kind: "service";
+  kind: "Service";
   metadata: ObjectMetadata;
   spec: ServiceSpec;
   status?: ServiceStatus;

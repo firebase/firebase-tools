@@ -19,6 +19,7 @@ import * as v1events from "../../../../functions/events/v1";
 import * as servicesNS from "../../../../deploy/functions/services";
 import * as identityPlatformNS from "../../../../gcp/identityPlatform";
 import { AuthBlockingService } from "../../../../deploy/functions/services/auth";
+import { define } from "mime";
 
 describe("Fabricator", () => {
   // Stub all GCP APIs to make sure this test is hermetic
@@ -801,10 +802,16 @@ describe("Fabricator", () => {
 
   describe("setRunTraits", () => {
     let service: runNS.Service;
+    let serviceIsResolved: sinon.SinonStub;
+
     beforeEach(() => {
+      serviceIsResolved = sinon
+        .stub(fabricator, "serviceIsResolved")
+        .throws(new Error("Unexpected serviceIsResolved call"));
+
       service = {
         apiVersion: "serving.knative.dev/v1",
-        kind: "service",
+        kind: "Service",
         metadata: {
           name: "service",
           namespace: "project",
@@ -842,6 +849,10 @@ describe("Fabricator", () => {
       };
     });
 
+    afterEach(() => {
+      serviceIsResolved.restore();
+    });
+
     it("replaces the service to set concurrency", async () => {
       run.getService.resolves(service);
       run.replaceService.callsFake((name: string, svc: runNS.Service) => {
@@ -851,6 +862,8 @@ describe("Fabricator", () => {
         expect(svc.spec.template.metadata.name).is.undefined;
         return Promise.resolve(service);
       });
+
+      serviceIsResolved.onFirstCall().returns(false).onSecondCall().returns(true);
 
       await fab.setRunTraits(
         service.metadata.name,
@@ -863,6 +876,7 @@ describe("Fabricator", () => {
         )
       );
       expect(run.replaceService).to.have.been.called;
+      expect(serviceIsResolved).to.have.been.calledTwice;
     });
 
     it("replaces the service to set CPU", async () => {
@@ -875,6 +889,7 @@ describe("Fabricator", () => {
         expect(svc.spec.template.metadata.name).is.undefined;
         return Promise.resolve(service);
       });
+      serviceIsResolved.onFirstCall().returns(false).onSecondCall().returns(true);
 
       await fab.setRunTraits(
         service.metadata.name,
@@ -887,6 +902,7 @@ describe("Fabricator", () => {
         )
       );
       expect(run.replaceService).to.have.been.called;
+      expect(serviceIsResolved).to.have.been.calledTwice;
     });
 
     it("doesn't setRunTraits when already at the correct value", async () => {
@@ -907,6 +923,7 @@ describe("Fabricator", () => {
         )
       );
       expect(run.replaceService).to.not.have.been.called;
+      expect(serviceIsResolved).to.not.have.been.called;
     });
 
     it("wraps errors", async () => {
@@ -923,6 +940,104 @@ describe("Fabricator", () => {
         reporter.DeploymentError,
         "set concurrency"
       );
+    });
+  });
+
+  describe("serviceIsResolved", () => {
+    let service: runNS.Service;
+    beforeEach(() => {
+      service = {
+        apiVersion: "serving.knative.dev/v1",
+        kind: "Service",
+        metadata: {
+          name: "service",
+          namespace: "project",
+          generation: 2,
+        },
+        spec: {
+          template: {
+            metadata: {
+              name: "service",
+              namespace: "project",
+            },
+            spec: {
+              containerConcurrency: 1,
+              containers: [
+                {
+                  image: "image",
+                  ports: [
+                    {
+                      name: "main",
+                      containerPort: 8080,
+                    },
+                  ],
+                  env: {},
+                  resources: {
+                    limits: {
+                      memory: "256M",
+                      cpu: "0.1667",
+                    },
+                  },
+                },
+              ],
+            },
+          },
+          traffic: [],
+        },
+        status: {
+          observedGeneration: 2,
+          conditions: [
+            {
+              status: "True",
+              type: "Ready",
+              reason: "Testing",
+              lastTransitionTime: "",
+              message: "",
+              severity: "Info",
+            },
+          ],
+          latestCreatedRevisionName: "",
+          latestRevisionName: "",
+          traffic: [],
+          url: "",
+          address: {
+            url: "",
+          },
+        },
+      };
+    });
+
+    it("returns false if the observed generation isn't hte metageneration", () => {
+      service.status!.observedGeneration = 1;
+      service.metadata.generation = 2;
+      expect(fabricator.serviceIsResolved(service)).to.be.false;
+    });
+
+    it("returns false if the status is not ready", () => {
+      service.status!.observedGeneration = 2;
+      service.metadata.generation = 2;
+      service.status!.conditions[0].status = "Undefined";
+      service.status!.conditions[0].type = "Ready";
+
+      expect(fabricator.serviceIsResolved(service)).to.be.false;
+    });
+
+    it("throws if we have an failed status", () => {
+      service.status!.observedGeneration = 2;
+      service.metadata.generation = 2;
+      service.status!.conditions[0].status = "False";
+      service.status!.conditions[0].type = "Ready";
+
+      expect(() => fabricator.serviceIsResolved(service)).to.throw;
+    });
+
+    it("returns true if resolved", () => {
+      service.status!.observedGeneration = 2;
+      service.metadata.generation = 2;
+      service.status!.conditions[0].status = "True";
+      service.status!.conditions[0].type = "Ready";
+
+      expect(() => fabricator.serviceIsResolved(service)).to.throw;
     });
   });
 

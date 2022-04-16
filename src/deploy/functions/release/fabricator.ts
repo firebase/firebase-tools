@@ -521,7 +521,7 @@ export class Fabricator {
         // Now we need to wait for reconciliation or we might delete the docker
         // image while the service is still rolling out a new revision.
         let retry = 0;
-        while (!serviceIsResolved(service)) {
+        while (!exports.serviceIsResolved(service)) {
           await backoff(retry, 2, 30);
           retry = retry + 1;
           service = await run.getService(serviceName);
@@ -652,7 +652,10 @@ export class Fabricator {
   }
 }
 
-function serviceIsResolved(service: run.Service): boolean {
+/**
+ * Returns whether a service is resolved (all transitions have completed).
+ */
+export function serviceIsResolved(service: run.Service): boolean {
   if (service.status?.observedGeneration !== service.metadata.generation) {
     logger.debug(
       `Service ${service.metadata.name} is not resolved because` +

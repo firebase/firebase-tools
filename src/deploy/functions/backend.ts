@@ -493,24 +493,32 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
     return;
   }
 
-  const gcfV2Results = await gcfV2.listAllFunctions(ctx.projectId);
-  const runResults = await Promise.all(
-    gcfV2Results.functions.map((fn) => run.getService(fn.serviceConfig.service!))
-  );
-  for (const [apiFunction, runService] of zip(gcfV2Results.functions, runResults)) {
-    const endpoint = gcfV2.endpointFromFunction(apiFunction);
-    endpoint.concurrency = runService.spec.template.spec.containerConcurrency || 1;
-    // N.B. We don't generally do anything with ultiple containers, but we
-    // might have to figure out WTF to do here if we're updating multiple containers
-    // and our only reference point is the image. Hopefully by then we'll be
-    // on the next gen infrastructure and have state we can refer back to.
-    endpoint.cpu = +runService.spec.template.spec.containers[0].resources.limits.cpu;
+  let gcfV2Results;
+  try {
+    gcfV2Results = await gcfV2.listAllFunctions(ctx.projectId);
+    const runResults = await Promise.all(
+      gcfV2Results.functions.map((fn) => run.getService(fn.serviceConfig.service!))
+    );
+    for (const [apiFunction, runService] of zip(gcfV2Results.functions, runResults)) {
+      const endpoint = gcfV2.endpointFromFunction(apiFunction);
+      endpoint.concurrency = runService.spec.template.spec.containerConcurrency || 1;
+      // N.B. We don't generally do anything with ultiple containers, but we
+      // might have to figure out WTF to do here if we're updating multiple containers
+      // and our only reference point is the image. Hopefully by then we'll be
+      // on the next gen infrastructure and have state we can refer back to.
+      endpoint.cpu = +runService.spec.template.spec.containers[0].resources.limits.cpu;
 
-    ctx.existingBackend.endpoints[endpoint.region] =
-      ctx.existingBackend.endpoints[endpoint.region] || {};
-    ctx.existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
+      ctx.existingBackend.endpoints[endpoint.region] =
+        ctx.existingBackend.endpoints[endpoint.region] || {};
+      ctx.existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
+    }
+    ctx.unreachableRegions.gcfV2 = gcfV2Results.unreachable;
+  } catch (err: any) {
+    if (err.status === 404 && err.message?.toLowerCase().includes("method not found")) {
+      return; // customer has preview enabled without allowlist set
+    }
+    throw err;
   }
-  ctx.unreachableRegions.gcfV2 = gcfV2Results.unreachable;
 }
 
 /**
