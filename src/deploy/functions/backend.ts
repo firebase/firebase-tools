@@ -500,9 +500,11 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
       gcfV2Results.functions.map((fn) => run.getService(fn.serviceConfig.service!))
     );
     for (const [apiFunction, runService] of zip(gcfV2Results.functions, runResults)) {
-      const endpoint = gcfV2.endpointFromFunction(apiFunction);
+      // I don't know why but code complete knows apiFunction is a gcfv2.CloudFunction
+      // and the compiler thinks it's type {}.
+      const endpoint = gcfV2.endpointFromFunction(apiFunction as any);
       endpoint.concurrency = runService.spec.template.spec.containerConcurrency || 1;
-      // N.B. We don't generally do anything with ultiple containers, but we
+      // N.B. We don't generally do anything with multiple containers, but we
       // might have to figure out WTF to do here if we're updating multiple containers
       // and our only reference point is the image. Hopefully by then we'll be
       // on the next gen infrastructure and have state we can refer back to.
