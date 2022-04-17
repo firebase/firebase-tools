@@ -420,6 +420,7 @@ describe("promptForMinInstances", () => {
     const endpoint: backend.Endpoint = {
       ...SAMPLE_ENDPOINT,
       platform: "gcfv2",
+      cpu: 1,
       minInstances: 2,
     };
     promptStub.resolves(true);
