@@ -1,3 +1,5 @@
+import { LeafElems } from "./metaprogramming";
+
 /**
  * Flattens an object so that the return value's keys are the path
  * to a value in the source object. E.g. flattenObject({the: {answer: 42}})
@@ -5,14 +7,14 @@
  * @param obj An object to be flattened
  * @return An array where values come from obj and keys are the path in obj to that value.
  */
-export function* flattenObject(obj: Record<string, unknown>): Generator<[string, unknown]> {
-  function* helper(path: string[], obj: Record<string, unknown>): Generator<[string, unknown]> {
+export function* flattenObject<T extends object>(obj: T): Generator<[string, unknown]> {
+  function* helper<V extends object>(path: string[], obj: V): Generator<[string, unknown]> {
     for (const [k, v] of Object.entries(obj)) {
       if (typeof v !== "object" || v === null) {
         yield [[...path, k].join("."), v];
       } else {
         // Object.entries loses type info, so we must cast
-        yield* helper([...path, k], v as Record<string, unknown>);
+        yield* helper([...path, k], v);
       }
     }
   }
@@ -25,32 +27,34 @@ export function* flattenObject(obj: Record<string, unknown>): Generator<[string,
  * [...flatten([[[1]], [2], 3])] = [1, 2, 3]
  */
 // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-export function* flattenArray<T = any>(arr: unknown[]): Generator<T> {
+export function* flattenArray<T extends unknown[]>(arr: T): Generator<LeafElems<T>> {
   for (const val of arr) {
     if (Array.isArray(val)) {
       yield* flattenArray(val);
     } else {
-      yield val as T;
+      yield val as LeafElems<T>;
     }
   }
 }
 
 /** Shorthand for flattenObject. */
-export function flatten(obj: Record<string, unknown>): Generator<[string, unknown]>;
+export function flatten<T extends object>(obj: T): Generator<[string, string]>;
 /** Shorthand for flattenArray. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function flatten<T = any>(arr: unknown[]): Generator<T>;
+export function flatten<T extends unknown[]>(arr: T): Generator<LeafElems<T>>;
 
 /** Flattens an object or array. */
-export function flatten<T>(
-  objOrArr: Record<string, unknown> | unknown[]
-): Generator<[string, unknown]> | Generator<T> {
+export function flatten<T extends unknown[] | object>(objOrArr: T): unknown {
   if (Array.isArray(objOrArr)) {
-    return flattenArray<T>(objOrArr);
+    return flattenArray(objOrArr);
   } else {
     return flattenObject(objOrArr);
   }
 }
+
+type RecursiveElems<T extends unknown[]> = {
+  [Key in keyof T]: T[Key] extends unknown[] ? T[Key] | RecursiveElems<T[Key]> : T[Key];
+}[number];
 
 /**
  * Used with reduce to flatten in place.
@@ -59,7 +63,7 @@ export function flatten<T>(
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function reduceFlat<T = any>(accum: T[] | undefined, next: unknown): T[] {
-  return [...(accum || []), ...flatten<T>([next])];
+  return [...(accum || []), ...(flatten([next]) as Generator<T>)];
 }
 
 /**
