@@ -4,9 +4,9 @@ import * as extensionsApi from "../../extensions/extensionsApi";
 import * as refs from "../../extensions/refs";
 import * as utils from "../../utils";
 import { ErrorHandler } from "./errors";
-import { InstanceSpec } from "./planner";
+import { DeploymentInstanceSpec, InstanceSpec } from "./planner";
 
-const isRetryable = (err: any) => err.status == 429 || err.status == 409;
+const isRetryable = (err: any) => err.status === 429 || err.status === 409;
 
 export type DeploymentType = "create" | "update" | "configure" | "delete";
 export interface ExtensionDeploymentTask {
@@ -38,11 +38,11 @@ export function extensionsDeploymentHandler(
 
 export function createExtensionInstanceTask(
   projectId: string,
-  instanceSpec: InstanceSpec,
+  instanceSpec: DeploymentInstanceSpec,
   validateOnly: boolean = false
 ): ExtensionDeploymentTask {
   const run = async () => {
-    const res = await extensionsApi.createInstance({
+    await extensionsApi.createInstance({
       projectId,
       instanceId: instanceSpec.instanceId,
       params: instanceSpec.params,
@@ -61,11 +61,11 @@ export function createExtensionInstanceTask(
 
 export function updateExtensionInstanceTask(
   projectId: string,
-  instanceSpec: InstanceSpec,
+  instanceSpec: DeploymentInstanceSpec,
   validateOnly: boolean = false
 ): ExtensionDeploymentTask {
   const run = async () => {
-    const res = await extensionsApi.updateInstanceFromRegistry({
+    await extensionsApi.updateInstanceFromRegistry({
       projectId,
       instanceId: instanceSpec.instanceId,
       extRef: refs.toExtensionVersionRef(instanceSpec.ref!),
@@ -84,11 +84,11 @@ export function updateExtensionInstanceTask(
 
 export function configureExtensionInstanceTask(
   projectId: string,
-  instanceSpec: InstanceSpec,
+  instanceSpec: DeploymentInstanceSpec,
   validateOnly: boolean = false
 ): ExtensionDeploymentTask {
   const run = async () => {
-    const res = await extensionsApi.configureInstance({
+    await extensionsApi.configureInstance({
       projectId,
       instanceId: instanceSpec.instanceId,
       params: instanceSpec.params,
@@ -109,7 +109,7 @@ export function deleteExtensionInstanceTask(
   instanceSpec: InstanceSpec
 ): ExtensionDeploymentTask {
   const run = async () => {
-    const res = await extensionsApi.deleteInstance(projectId, instanceSpec.instanceId);
+    await extensionsApi.deleteInstance(projectId, instanceSpec.instanceId);
     printSuccess(instanceSpec.instanceId, "delete", false);
     return;
   };

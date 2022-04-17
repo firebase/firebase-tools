@@ -4,13 +4,15 @@ import * as sinon from "sinon";
 import { FirebaseError } from "../../error";
 import * as extensionsApi from "../../extensions/extensionsApi";
 import * as extensionsHelper from "../../extensions/extensionsHelper";
-import * as resolveSource from "../../extensions/resolveSource";
+import * as getProjectNumber from "../../getProjectNumber";
+import * as functionsConfig from "../../functionsConfig";
 import { storage } from "../../gcp";
 import * as archiveDirectory from "../../archiveDirectory";
 import * as prompt from "../../prompt";
 import { ExtensionSource } from "../../extensions/extensionsApi";
 import { Readable } from "stream";
 import { ArchiveResult } from "../../archiveDirectory";
+import { canonicalizeRefInput } from "../../extensions/extensionsHelper";
 
 describe("extensionsHelper", () => {
   describe("substituteParams", () => {
@@ -773,18 +775,6 @@ describe("extensionsHelper", () => {
       );
     });
 
-    it("should create an ExtensionSource with url sources", async () => {
-      const url = "https://storage.com/my.zip";
-
-      const result = await extensionsHelper.createSourceFromLocation("test-proj", url);
-
-      expect(result).to.equal(testSource);
-      expect(createSourceStub).to.have.been.calledWith("test-proj", url);
-      expect(archiveStub).not.to.have.been.called;
-      expect(uploadStub).not.to.have.been.called;
-      expect(deleteStub).not.to.have.been.called;
-    });
-
     it("should throw an error if one is thrown while uploading a local source", async () => {
       uploadStub.throws(new FirebaseError("something bad happened"));
 
@@ -835,6 +825,82 @@ describe("extensionsHelper", () => {
         FirebaseError,
         "Unexpected error when checking if instance ID exists: FirebaseError: Internal Error"
       );
+    });
+  });
+
+  describe("getFirebaseProjectParams", () => {
+    const sandbox = sinon.createSandbox();
+    let projectNumberStub: sinon.SinonStub;
+    let getFirebaseConfigStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      projectNumberStub = sandbox.stub(getProjectNumber, "getProjectNumber").resolves("1");
+      getFirebaseConfigStub = sandbox.stub(functionsConfig, "getFirebaseConfig").resolves({
+        projectId: "test",
+        storageBucket: "real-test.appspot.com",
+        databaseURL: "https://real-test.firebaseio.com",
+        locationId: "us-west1",
+      });
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should not call prodution when using a demo- project in emulator mode", async () => {
+      const res = await extensionsHelper.getFirebaseProjectParams("demo-test", true);
+
+      expect(res).to.deep.equal({
+        DATABASE_INSTANCE: "demo-test",
+        DATABASE_URL: "https://demo-test.firebaseio.com",
+        FIREBASE_CONFIG:
+          '{"projectId":"demo-test","databaseURL":"https://demo-test.firebaseio.com","storageBucket":"demo-test.appspot.com"}',
+        PROJECT_ID: "demo-test",
+        PROJECT_NUMBER: "0",
+        STORAGE_BUCKET: "demo-test.appspot.com",
+      });
+      expect(projectNumberStub).not.to.have.been.called;
+      expect(getFirebaseConfigStub).not.to.have.been.called;
+    });
+
+    it("should return real values for non 'demo-' projects", async () => {
+      const res = await extensionsHelper.getFirebaseProjectParams("real-test", false);
+
+      expect(res).to.deep.equal({
+        DATABASE_INSTANCE: "real-test",
+        DATABASE_URL: "https://real-test.firebaseio.com",
+        FIREBASE_CONFIG:
+          '{"projectId":"real-test","databaseURL":"https://real-test.firebaseio.com","storageBucket":"real-test.appspot.com"}',
+        PROJECT_ID: "real-test",
+        PROJECT_NUMBER: "1",
+        STORAGE_BUCKET: "real-test.appspot.com",
+      });
+      expect(projectNumberStub).to.have.been.called;
+      expect(getFirebaseConfigStub).to.have.been.called;
+    });
+  });
+
+  describe(`${canonicalizeRefInput.name}`, () => {
+    it("should do nothing to a valid ref", () => {
+      expect(canonicalizeRefInput("firebase/bigquery-export@10.1.1")).to.equal(
+        "firebase/bigquery-export@10.1.1"
+      );
+    });
+
+    it("should infer latest version", () => {
+      expect(canonicalizeRefInput("firebase/bigquery-export")).to.equal(
+        "firebase/bigquery-export@latest"
+      );
+    });
+
+    it("should infer publisher name as firebase", () => {
+      expect(canonicalizeRefInput("firebase/bigquery-export")).to.equal(
+        "firebase/bigquery-export@latest"
+      );
+    });
+
+    it("should infer publisher name as firebase and also infer latest as version", () => {
+      expect(canonicalizeRefInput("bigquery-export")).to.equal("firebase/bigquery-export@latest");
     });
   });
 });

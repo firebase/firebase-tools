@@ -4,17 +4,31 @@ import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { previews } from "../previews";
 import * as backend from "../deploy/functions/backend";
+import * as events from "../functions/events";
 import * as utils from "../utils";
 import * as proto from "./proto";
 import * as runtimes from "../deploy/functions/runtimes";
 import * as iam from "./iam";
+import * as projectConfig from "../functions/projectConfig";
 import { Client } from "../apiv2";
 import { functionsOrigin } from "../api";
-import { getFirebaseProject } from "../management/projects";
-import { assertExhaustive } from "../functional";
+import { AUTH_BLOCKING_EVENTS } from "../functions/events/v1";
 
 export const API_VERSION = "v1";
+export const CODEBASE_LABEL = "firebase-functions-codebase";
 const client = new Client({ urlPrefix: functionsOrigin, apiVersion: API_VERSION });
+
+export const BLOCKING_LABEL = "deployment-blocking";
+
+const BLOCKING_LABEL_KEY_TO_EVENT: Record<string, typeof AUTH_BLOCKING_EVENTS[number]> = {
+  "before-create": "providers/cloud.auth/eventTypes/user.beforeCreate",
+  "before-sign-in": "providers/cloud.auth/eventTypes/user.beforeSignIn",
+};
+
+const BLOCKING_EVENT_TO_LABEL_KEY: Record<typeof AUTH_BLOCKING_EVENTS[number], string> = {
+  "providers/cloud.auth/eventTypes/user.beforeCreate": "before-create",
+  "providers/cloud.auth/eventTypes/user.beforeSignIn": "before-sign-in",
+};
 
 interface Operation {
   name: string;
@@ -290,7 +304,7 @@ export async function setInvokerCreate(
   fnName: string,
   invoker: string[]
 ): Promise<void> {
-  if (invoker.length == 0) {
+  if (invoker.length === 0) {
     throw new FirebaseError("Invoker cannot be an empty array");
   }
   const invokerMembers = proto.getInvokerMembers(invoker, projectId);
@@ -318,7 +332,7 @@ export async function setInvokerUpdate(
   fnName: string,
   invoker: string[]
 ): Promise<void> {
-  if (invoker.length == 0) {
+  if (invoker.length === 0) {
     throw new FirebaseError("Invoker cannot be an empty array");
   }
   const invokerMembers = proto.getInvokerMembers(invoker, projectId);
@@ -465,6 +479,7 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
   const [, project, , region, , id] = gcfFunction.name.split("/");
   let trigger: backend.Triggered;
   let uri: string | undefined;
+  let securityLevel: SecurityLevel | undefined;
   if (gcfFunction.labels?.["deployment-scheduled"]) {
     trigger = {
       scheduleTrigger: {},
@@ -473,19 +488,42 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     trigger = {
       taskQueueTrigger: {},
     };
+  } else if (
+    gcfFunction.labels?.["deployment-callable"] ||
+    // NOTE: "deployment-callabled" is a typo we introduced in https://github.com/firebase/firebase-tools/pull/4124.
+    // More than a month passed before we caught this typo, and we expect many callable functions in production
+    // to have this typo. It is convenient for users for us to treat the typo-ed label as a valid marker for callable
+    // function, so we do that here.
+    //
+    // The typo will be overwritten as callable functions are re-deployed. Eventually, there may be no callable
+    // functions with the typo-ed label, but we can't ever be sure. Sadly, we may have to carry this scar for a very long
+    // time.
+    gcfFunction.labels?.["deployment-callabled"]
+  ) {
+    trigger = {
+      callableTrigger: {},
+    };
+  } else if (gcfFunction.labels?.[BLOCKING_LABEL]) {
+    trigger = {
+      blockingTrigger: {
+        eventType: BLOCKING_LABEL_KEY_TO_EVENT[gcfFunction.labels[BLOCKING_LABEL]],
+      },
+    };
   } else if (gcfFunction.httpsTrigger) {
     trigger = { httpsTrigger: {} };
-    uri = gcfFunction.httpsTrigger.url;
   } else {
     trigger = {
       eventTrigger: {
         eventType: gcfFunction.eventTrigger!.eventType,
-        eventFilters: {
-          resource: gcfFunction.eventTrigger!.resource,
-        },
+        eventFilters: { resource: gcfFunction.eventTrigger!.resource },
         retry: !!gcfFunction.eventTrigger!.failurePolicy?.retry,
       },
     };
+  }
+
+  if (gcfFunction.httpsTrigger) {
+    uri = gcfFunction.httpsTrigger.url;
+    securityLevel = gcfFunction.httpsTrigger.securityLevel;
   }
 
   if (!runtimes.isValidRuntime(gcfFunction.runtime)) {
@@ -504,12 +542,14 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
   if (uri) {
     endpoint.uri = uri;
   }
+  if (securityLevel) {
+    endpoint.securityLevel = securityLevel;
+  }
   proto.copyIfPresent(
     endpoint,
     gcfFunction,
     "serviceAccountEmail",
     "availableMemoryMb",
-    "timeout",
     "minInstances",
     "maxInstances",
     "ingressSettings",
@@ -517,6 +557,13 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     "environmentVariables",
     "secretEnvironmentVariables",
     "sourceUploadUrl"
+  );
+  proto.renameIfPresent(
+    endpoint,
+    gcfFunction,
+    "timeoutSeconds",
+    "timeout",
+    proto.secondsFromDuration
   );
   if (gcfFunction.vpcConnector) {
     endpoint.vpc = { connector: gcfFunction.vpcConnector };
@@ -527,6 +574,7 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
       "vpcConnectorEgressSettings"
     );
   }
+  endpoint.codebase = gcfFunction.labels?.[CODEBASE_LABEL] || projectConfig.DEFAULT_CODEBASE;
   return endpoint;
 }
 
@@ -537,7 +585,7 @@ export function functionFromEndpoint(
   endpoint: backend.Endpoint,
   sourceUploadUrl: string
 ): Omit<CloudFunction, OutputOnlyFields> {
-  if (endpoint.platform != "gcfv1") {
+  if (endpoint.platform !== "gcfv1") {
     throw new FirebaseError(
       "Trying to create a v1 CloudFunction with v2 API. This should never happen"
     );
@@ -579,10 +627,22 @@ export function functionFromEndpoint(
   } else if (backend.isTaskQueueTriggered(endpoint)) {
     gcfFunction.httpsTrigger = {};
     gcfFunction.labels = { ...gcfFunction.labels, "deployment-taskqueue": "true" };
+  } else if (backend.isBlockingTriggered(endpoint)) {
+    gcfFunction.httpsTrigger = {};
+    gcfFunction.labels = {
+      ...gcfFunction.labels,
+      [BLOCKING_LABEL]:
+        BLOCKING_EVENT_TO_LABEL_KEY[
+          endpoint.blockingTrigger.eventType as typeof AUTH_BLOCKING_EVENTS[number]
+        ],
+    };
   } else {
     gcfFunction.httpsTrigger = {};
     if (backend.isCallableTriggered(endpoint)) {
-      gcfFunction.labels = { ...gcfFunction.labels, "deployment-callabled": "true" };
+      gcfFunction.labels = { ...gcfFunction.labels, "deployment-callable": "true" };
+    }
+    if (endpoint.securityLevel) {
+      gcfFunction.httpsTrigger.securityLevel = endpoint.securityLevel;
     }
   }
 
@@ -590,13 +650,19 @@ export function functionFromEndpoint(
     gcfFunction,
     endpoint,
     "serviceAccountEmail",
-    "timeout",
     "availableMemoryMb",
     "minInstances",
     "maxInstances",
     "ingressSettings",
     "environmentVariables",
     "secretEnvironmentVariables"
+  );
+  proto.renameIfPresent(
+    gcfFunction,
+    endpoint,
+    "timeout",
+    "timeoutSeconds",
+    proto.durationFromSeconds
   );
   if (endpoint.vpc) {
     proto.renameIfPresent(gcfFunction, endpoint.vpc, "vpcConnector", "connector");
@@ -607,5 +673,9 @@ export function functionFromEndpoint(
       "egressSettings"
     );
   }
+  gcfFunction.labels = {
+    ...gcfFunction.labels,
+    [CODEBASE_LABEL]: endpoint.codebase || projectConfig.DEFAULT_CODEBASE,
+  };
   return gcfFunction;
 }

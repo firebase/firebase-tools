@@ -8,7 +8,7 @@ import * as extensionsApi from "../../extensions/extensionsApi";
 import * as extensionsHelper from "../../extensions/extensionsHelper";
 import * as updateHelper from "../../extensions/updateHelper";
 
-const SPEC = {
+const SPEC: extensionsApi.ExtensionSpec = {
   name: "test",
   displayName: "Old",
   description: "descriptive",
@@ -24,7 +24,7 @@ const SPEC = {
   ],
   resources: [
     { name: "resource1", type: "firebaseextensions.v1beta.function", description: "desc" },
-    { name: "resource2", type: "other", description: "" },
+    { name: "resource2", type: "other", description: "" } as unknown as extensionsApi.Resource,
   ],
   author: { authorName: "Tester" },
   contributors: [{ authorName: "Tester 2" }],

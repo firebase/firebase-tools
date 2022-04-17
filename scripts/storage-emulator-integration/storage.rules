@@ -1,12 +1,37 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    match /{allPaths=**} {
-      allow read, write: if request.auth != null;
+    match /topLevel {
+      allow list;
+    }
+
+    match /testing/{allPaths=**} {
+      allow read, create, update, delete: if request.auth != null;
+    }
+
+    match /list/{allPaths=**} {
+      allow list;
+      allow create;
+    }
+
+    match /delete {
+      match /disallowIfContentTypeText {
+        allow create;
+        allow delete: if resource.contentType != 'text/plain';
+      }
+    }
+
+    match /upload {
+      match /allowIfContentTypeImage.png {
+        allow create: if request.resource.contentType == 'image/blah';
+      }
+      match /replace.txt {
+        allow read, create;
+      }
     }
 
     match /public/{allPaths=**} {
-      allow read;
+      allow read, write;
     }
   }
 }

@@ -49,7 +49,7 @@ export class AuthCloudFunction {
       err = e;
     }
 
-    if (err || res?.status != 200) {
+    if (err || res?.status !== 200) {
       this.logger.logLabeled(
         "WARN",
         "functions",

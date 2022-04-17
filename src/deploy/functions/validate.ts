@@ -8,15 +8,19 @@ import * as fsutils from "../../fsutils";
 import * as backend from "./backend";
 import * as utils from "../../utils";
 import * as secrets from "../../functions/secrets";
+import { serviceForEndpoint } from "./services";
 
 /** Validate that the configuration for endpoints are valid. */
 export function endpointsAreValid(wantBackend: backend.Backend): void {
-  functionIdsAreValid(backend.allEndpoints(wantBackend));
+  const endpoints = backend.allEndpoints(wantBackend);
+  functionIdsAreValid(endpoints);
+  for (const ep of endpoints) {
+    serviceForEndpoint(ep).validateTrigger(ep, wantBackend);
+  }
 
   // Our SDK doesn't let people articulate this, but it's theoretically possible in the manifest syntax.
-  const gcfV1WithConcurrency = backend
-    .allEndpoints(wantBackend)
-    .filter((endpoint) => (endpoint.concurrency || 1) != 1 && endpoint.platform == "gcfv1")
+  const gcfV1WithConcurrency = endpoints
+    .filter((endpoint) => (endpoint.concurrency || 1) !== 1 && endpoint.platform === "gcfv1")
     .map((endpoint) => endpoint.id);
   if (gcfV1WithConcurrency.length) {
     const msg = `Cannot set concurrency on the functions ${gcfV1WithConcurrency.join(
@@ -25,10 +29,9 @@ export function endpointsAreValid(wantBackend: backend.Backend): void {
     throw new FirebaseError(msg);
   }
 
-  const tooSmallForConcurrency = backend
-    .allEndpoints(wantBackend)
+  const tooSmallForConcurrency = endpoints
     .filter((endpoint) => {
-      if ((endpoint.concurrency || 1) == 1) {
+      if ((endpoint.concurrency || 1) === 1) {
         return false;
       }
       const mem = endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;
@@ -145,7 +148,7 @@ async function validateSecretVersions(projectId: string, endpoints: backend.Endp
   for (const result of results) {
     if (result.status === "fulfilled") {
       const sv = result.value;
-      if (sv.state != "ENABLED") {
+      if (sv.state !== "ENABLED") {
         errs.push(
           new FirebaseError(
             `Expected secret ${sv.secret.name}@${sv.versionId} to be in state ENABLED not ${sv.state}.`

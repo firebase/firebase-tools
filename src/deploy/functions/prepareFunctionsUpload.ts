@@ -13,38 +13,31 @@ import * as functionsConfig from "../../functionsConfig";
 import * as utils from "../../utils";
 import * as fsAsync from "../../fsAsync";
 import * as args from "./args";
-import { Options } from "../../options";
-import { Config } from "../../config";
+import * as projectConfig from "../../functions/projectConfig";
 
 const CONFIG_DEST_FILE = ".runtimeconfig.json";
 
 // TODO(inlined): move to a file that's not about uploading source code
-export async function getFunctionsConfig(context: args.Context): Promise<{ [key: string]: any }> {
-  let config: Record<string, any> = {};
-  if (context.runtimeConfigEnabled) {
-    try {
-      config = await functionsConfig.materializeAll(context.firebaseConfig!.projectId);
-    } catch (err: any) {
-      logger.debug(err);
-      let errorCode = err?.context?.response?.statusCode;
-      if (!errorCode) {
-        logger.debug("Got unexpected error from Runtime Config; it has no status code:", err);
-        errorCode = 500;
-      }
-      if (errorCode === 500 || errorCode === 503) {
-        throw new FirebaseError(
-          "Cloud Runtime Config is currently experiencing issues, " +
-            "which is preventing your functions from being deployed. " +
-            "Please wait a few minutes and then try to deploy your functions again." +
-            "\nRun `firebase deploy --except functions` if you want to continue deploying the rest of your project."
-        );
-      }
-      config = {};
+export async function getFunctionsConfig(projectId: string): Promise<Record<string, unknown>> {
+  try {
+    return await functionsConfig.materializeAll(projectId);
+  } catch (err: any) {
+    logger.debug(err);
+    let errorCode = err?.context?.response?.statusCode;
+    if (!errorCode) {
+      logger.debug("Got unexpected error from Runtime Config; it has no status code:", err);
+      errorCode = 500;
+    }
+    if (errorCode === 500 || errorCode === 503) {
+      throw new FirebaseError(
+        "Cloud Runtime Config is currently experiencing issues, " +
+          "which is preventing your functions from being deployed. " +
+          "Please wait a few minutes and then try to deploy your functions again." +
+          "\nRun `firebase deploy --except functions` if you want to continue deploying the rest of your project."
+      );
     }
   }
-
-  config.firebase = context.firebaseConfig;
-  return config;
+  return {};
 }
 
 async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream) {
@@ -55,7 +48,11 @@ async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream) {
   });
 }
 
-async function packageSource(options: Options, sourceDir: string, configValues: any) {
+async function packageSource(
+  sourceDir: string,
+  config: projectConfig.ValidatedSingle,
+  runtimeConfig: any
+) {
   const tmpFile = tmp.fileSync({ prefix: "firebase-functions-", postfix: ".zip" }).name;
   const fileStream = fs.createWriteStream(tmpFile, {
     flags: "w",
@@ -67,7 +64,7 @@ async function packageSource(options: Options, sourceDir: string, configValues: 
   // you're in the public dir when you deploy.
   // We ignore any CONFIG_DEST_FILE that already exists, and write another one
   // with current config values into the archive in the "end" handler for reader
-  const ignore = options.config.src.functions?.ignore || ["node_modules", ".git"];
+  const ignore = config.ignore || ["node_modules", ".git"];
   ignore.push(
     "firebase-debug.log",
     "firebase-debug.*.log",
@@ -81,8 +78,8 @@ async function packageSource(options: Options, sourceDir: string, configValues: 
         mode: file.mode,
       });
     });
-    if (typeof configValues !== "undefined") {
-      archive.append(JSON.stringify(configValues, null, 2), {
+    if (typeof runtimeConfig !== "undefined") {
+      archive.append(JSON.stringify(runtimeConfig, null, 2), {
         name: CONFIG_DEST_FILE,
         mode: 420 /* 0o644 */,
       });
@@ -99,15 +96,10 @@ async function packageSource(options: Options, sourceDir: string, configValues: 
     );
   }
 
-  utils.assertDefined(options.config.src.functions);
-  utils.assertDefined(
-    options.config.src.functions.source,
-    "Error: 'functions.source' is not defined"
-  );
   utils.logBullet(
     clc.cyan.bold("functions:") +
       " packaged " +
-      clc.bold(options.config.src.functions.source) +
+      clc.bold(sourceDir) +
       " (" +
       filesize(archive.pointer()) +
       ") for uploading"
@@ -116,15 +108,9 @@ async function packageSource(options: Options, sourceDir: string, configValues: 
 }
 
 export async function prepareFunctionsUpload(
-  runtimeConfig: backend.RuntimeConfigValues | undefined,
-  options: Options
+  sourceDir: string,
+  config: projectConfig.ValidatedSingle,
+  runtimeConfig?: backend.RuntimeConfigValues
 ): Promise<string | undefined> {
-  utils.assertDefined(options.config.src.functions);
-  utils.assertDefined(
-    options.config.src.functions.source,
-    "Error: 'functions.source' is not defined"
-  );
-
-  const sourceDir = options.config.path(options.config.src.functions.source);
-  return packageSource(options, sourceDir, runtimeConfig);
+  return packageSource(sourceDir, config, runtimeConfig);
 }

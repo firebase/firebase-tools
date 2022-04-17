@@ -4,6 +4,7 @@ import { FirebaseError } from "../../../../../error";
 import * as backend from "../../../../../deploy/functions/backend";
 import * as parseTriggers from "../../../../../deploy/functions/runtimes/node/parseTriggers";
 import * as api from "../../../../../api";
+import { BEFORE_CREATE_EVENT } from "../../../../../functions/events/v1";
 
 describe("addResourcesToBackend", () => {
   const oldDefaultRegion = api.functionsDefaultRegion;
@@ -65,6 +66,26 @@ describe("addResourcesToBackend", () => {
     expect(result).to.deep.equal(expected);
   });
 
+  it("should handle a callable trigger", () => {
+    const trigger: parseTriggers.TriggerAnnotation = {
+      ...BASIC_TRIGGER,
+      httpsTrigger: {},
+      labels: {
+        "deployment-callable": "true",
+      },
+    };
+
+    const result = backend.empty();
+    parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
+
+    const expected: backend.Backend = backend.of({
+      ...BASIC_ENDPOINT,
+      callableTrigger: {},
+      labels: {},
+    });
+    expect(result).to.deep.equal(expected);
+  });
+
   it("should handle a minimal task queue trigger", () => {
     const trigger: parseTriggers.TriggerAnnotation = {
       ...BASIC_TRIGGER,
@@ -108,9 +129,7 @@ describe("addResourcesToBackend", () => {
 
         const eventTrigger: backend.EventTrigger = {
           eventType: "google.pubsub.topic.publish",
-          eventFilters: {
-            resource: "projects/project/topics/topic",
-          },
+          eventFilters: { resource: "projects/project/topics/topic" },
           retry: !!failurePolicy,
         };
         const expected: backend.Backend = backend.of({ ...BASIC_ENDPOINT, eventTrigger });
@@ -131,7 +150,6 @@ describe("addResourcesToBackend", () => {
       vpcConnectorEgressSettings: "PRIVATE_RANGES_ONLY",
       vpcConnector: "projects/project/locations/region/connectors/connector",
       ingressSettings: "ALLOW_ALL",
-      timeout: "60s",
       labels: {
         test: "testing",
       },
@@ -149,7 +167,6 @@ describe("addResourcesToBackend", () => {
         egressSettings: "PRIVATE_RANGES_ONLY",
       },
       ingressSettings: "ALLOW_ALL",
-      timeout: "60s",
       labels: {
         test: "testing",
       },
@@ -172,6 +189,7 @@ describe("addResourcesToBackend", () => {
         resource: "projects/p/topics/t",
         service: "pubsub.googleapis.com",
       },
+      timeout: "60s",
     };
 
     const result = backend.empty();
@@ -179,13 +197,15 @@ describe("addResourcesToBackend", () => {
 
     const eventTrigger: backend.EventTrigger = {
       eventType: "google.pubsub.topic.publish",
-      eventFilters: {
-        resource: "projects/p/topics/t",
-      },
+      eventFilters: { resource: "projects/p/topics/t" },
       retry: false,
     };
 
-    const expected: backend.Backend = backend.of({ ...BASIC_ENDPOINT, eventTrigger });
+    const expected: backend.Backend = backend.of({
+      ...BASIC_ENDPOINT,
+      eventTrigger,
+      timeoutSeconds: 60,
+    });
     expect(result).to.deep.equal(expected);
   });
 
@@ -339,6 +359,73 @@ describe("addResourcesToBackend", () => {
 
     const result = backend.empty();
     parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
+    expect(result).to.deep.equal(expected);
+  });
+
+  it("should parse a basic blocking trigger", () => {
+    const trigger: parseTriggers.TriggerAnnotation = {
+      ...BASIC_TRIGGER,
+      blockingTrigger: {
+        eventType: BEFORE_CREATE_EVENT,
+      },
+    };
+    const expected: backend.Backend = {
+      ...backend.of({
+        ...BASIC_ENDPOINT,
+        blockingTrigger: {
+          eventType: BEFORE_CREATE_EVENT,
+          options: undefined,
+        },
+      }),
+      requiredAPIs: [
+        {
+          api: "identitytoolkit.googleapis.com",
+          reason: "Needed for auth blocking functions.",
+        },
+      ],
+    };
+    const result = backend.empty();
+
+    parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
+
+    expect(result).to.deep.equal(expected);
+  });
+
+  it("should parse a blocking trigger with options", () => {
+    const trigger: parseTriggers.TriggerAnnotation = {
+      ...BASIC_TRIGGER,
+      blockingTrigger: {
+        eventType: BEFORE_CREATE_EVENT,
+        options: {
+          accessToken: true,
+          idToken: false,
+          refreshToken: true,
+        },
+      },
+    };
+    const expected: backend.Backend = {
+      ...backend.of({
+        ...BASIC_ENDPOINT,
+        blockingTrigger: {
+          eventType: BEFORE_CREATE_EVENT,
+          options: {
+            accessToken: true,
+            idToken: false,
+            refreshToken: true,
+          },
+        },
+      }),
+      requiredAPIs: [
+        {
+          api: "identitytoolkit.googleapis.com",
+          reason: "Needed for auth blocking functions.",
+        },
+      ],
+    };
+    const result = backend.empty();
+
+    parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
+
     expect(result).to.deep.equal(expected);
   });
 });

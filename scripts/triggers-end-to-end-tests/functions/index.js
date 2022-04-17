@@ -126,6 +126,30 @@ exports.writeToSpecificStorageBucket = functions.https.onRequest(async (req, res
   res.json({ created: "ok" });
 });
 
+exports.updateMetadataFromDefaultStorage = functions.https.onRequest(async (req, res) => {
+  await admin.storage().bucket().file(STORAGE_FILE_NAME).save("hello metadata update!");
+  console.log("Wrote to Storage bucket");
+  await admin.storage().bucket().file(STORAGE_FILE_NAME).setMetadata({ somekey: "someval" });
+  console.log("Updated metadata of default Storage bucket");
+  res.json({ done: "ok" });
+});
+
+exports.updateMetadataFromSpecificStorageBucket = functions.https.onRequest(async (req, res) => {
+  await admin
+    .storage()
+    .bucket("test-bucket")
+    .file(STORAGE_FILE_NAME)
+    .save("hello metadata update!");
+  console.log("Wrote to a specific Storage bucket");
+  await admin
+    .storage()
+    .bucket("test-bucket")
+    .file(STORAGE_FILE_NAME)
+    .setMetadata({ somenewkey: "somenewval" });
+  console.log("Updated metadata of a specific Storage bucket");
+  res.json({ done: "ok" });
+});
+
 exports.updateDeleteFromDefaultStorage = functions.https.onRequest(async (req, res) => {
   await admin.storage().bucket().file(STORAGE_FILE_NAME).save("something new!");
   console.log("Wrote to Storage bucket");
@@ -240,6 +264,11 @@ exports.storageMetadataReaction = functions.storage
     return true;
   });
 
+exports.onCall = functions.https.onCall((data) => {
+  console.log("data", JSON.stringify(data));
+  return data;
+});
+
 exports.storagev2archivedreaction = functionsV2.storage.onObjectArchived((cloudevent) => {
   console.log(STORAGE_FUNCTION_V2_ARCHIVED_LOG);
   console.log("Object", JSON.stringify(cloudevent.data));
@@ -335,3 +364,8 @@ exports.storagebucketv2metadatareaction = functionsV2.storage.onObjectMetadataUp
     return true;
   }
 );
+
+exports.oncallv2 = functionsV2.https.onCall((req) => {
+  console.log("data", JSON.stringify(req.data));
+  return req.data;
+});

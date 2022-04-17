@@ -1,9 +1,7 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
 
 import { parameterizeProject, setSecretParamsToLatest } from "../../extensions/export";
-import { InstanceSpec } from "../../deploy/extensions/planner";
-import * as secretUtils from "../../extensions/secretsUtils";
+import { DeploymentInstanceSpec } from "../../deploy/extensions/planner";
 import { ParamType } from "../../extensions/extensionsApi";
 
 describe("ext:export helpers", () => {
@@ -79,7 +77,7 @@ describe("ext:export helpers", () => {
     ];
     for (const t of tests) {
       it(t.desc, async () => {
-        const testSpec: InstanceSpec = {
+        const testSpec: DeploymentInstanceSpec = {
           instanceId: "my-instance",
           params: t.params,
           extensionVersion: {

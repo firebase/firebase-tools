@@ -38,7 +38,7 @@ async function promptForAccount() {
     choices,
   });
 
-  if (emailChoice == "__add__") {
+  if (emailChoice === "__add__") {
     const newAccount = await loginAdditionalAccount(/* useLocalhost= */ true);
     if (!newAccount) {
       throw new FirebaseError("Failed to add new account", { exit: 1 });
