@@ -1,0 +1,15 @@
+{
+  "name": "functions",
+  "description": "Cloud Functions for Firebase",
+  "scripts": {},
+  "engines": {
+    "node": "14"
+  },
+  "dependencies": {
+    "firebase-admin": "^9.3.0",
+    "firebase-functions": "^3.16",
+    "rimraf": "^3.0.0",
+    "fs-extra": "^5.0.0"
+  },
+  "private": true
+}

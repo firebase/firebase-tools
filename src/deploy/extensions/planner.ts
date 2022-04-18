@@ -11,7 +11,7 @@ import {
 import { logger } from "../../logger";
 import { readInstanceParam } from "../../extensions/manifest";
 import { ParamBindingOptions } from "../../extensions/paramHelper";
-import { readExtensionYaml } from "../../extensions/emulator/specHelper";
+import { readExtensionYaml, readPostinstall } from "../../extensions/emulator/specHelper";
 
 export interface InstanceSpec {
   instanceId: string;
@@ -69,7 +69,7 @@ export async function getExtensionVersion(
  */
 export async function getExtension(i: InstanceSpec): Promise<extensionsApi.Extension> {
   if (!i.ref) {
-    throw new FirebaseError(`Can't get Extensionfor ${i.instanceId} because it has no ref`);
+    throw new FirebaseError(`Can't get Extension for ${i.instanceId} because it has no ref`);
   }
   if (!i.extension) {
     i.extension = await extensionsApi.getExtension(refs.toExtensionRef(i.ref));
@@ -86,6 +86,7 @@ export async function getExtensionSpec(i: InstanceSpec): Promise<extensionsApi.E
       i.extensionSpec = extensionVersion.spec;
     } else if (i.localPath) {
       i.extensionSpec = await readExtensionYaml(i.localPath);
+      i.extensionSpec.postinstallContent = await readPostinstall(i.localPath);
     } else {
       throw new FirebaseError("InstanceSpec had no ref or localPath, unable to get extensionSpec");
     }
@@ -138,15 +139,6 @@ export async function want(args: {
   for (const e of Object.entries(args.extensions)) {
     try {
       const instanceId = e[0];
-      // TODO(lihes): Remove once firebase deploy supports ext with local source.
-      if (isLocalPath(e[1])) {
-        logger.warn(
-          `Unable to deploy instance ${instanceId} because it has a local source, please use "firebase ext:install" instead.`
-        );
-        continue;
-      }
-      const ref = refs.parse(e[1]);
-      ref.version = await resolveVersion(ref);
 
       const params = readInstanceParam({
         projectDir: args.projectDir,
@@ -159,11 +151,21 @@ export async function want(args: {
       const autoPopulatedParams = await getFirebaseProjectParams(args.projectId, args.emulatorMode);
       const subbedParams = substituteParams(params, autoPopulatedParams);
 
-      instanceSpecs.push({
-        instanceId,
-        ref,
-        params: subbedParams,
-      });
+      if (isLocalPath(e[1])) {
+        instanceSpecs.push({
+          instanceId,
+          localPath: e[1],
+          params: subbedParams,
+        });
+      } else {
+        const ref = refs.parse(e[1]);
+        ref.version = await resolveVersion(ref);
+        instanceSpecs.push({
+          instanceId,
+          ref,
+          params: subbedParams,
+        });
+      }
     } catch (err: any) {
       logger.debug(`Got error reading extensions entry ${e}: ${err}`);
       errors.push(err as FirebaseError);
