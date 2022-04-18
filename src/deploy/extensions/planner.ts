@@ -151,21 +151,12 @@ export async function want(args: {
       const autoPopulatedParams = await getFirebaseProjectParams(args.projectId, args.emulatorMode);
       const subbedParams = substituteParams(params, autoPopulatedParams);
 
-      let localPath: string;
-      // TODO(lihes): Remove once firebase deploy supports ext with local source.
       if (isLocalPath(e[1])) {
-        if (!args.emulatorMode) {
-          logger.warn(
-            `Unable to deploy instance ${instanceId} because it has a local source, please use "firebase ext:install" instead.`
-          );
-          continue;
-        } else {
-          instanceSpecs.push({
-            instanceId,
-            localPath: e[1],
-            params: subbedParams,
-          });
-        }
+        instanceSpecs.push({
+          instanceId,
+          localPath: e[1],
+          params: subbedParams,
+        });
       } else {
         const ref = refs.parse(e[1]);
         ref.version = await resolveVersion(ref);
