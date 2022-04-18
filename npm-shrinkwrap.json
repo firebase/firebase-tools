@@ -30,6 +30,7 @@
         "exit-code": "^1.0.2",
         "express": "^4.16.4",
         "filesize": "^6.1.0",
+        "firebase-frameworks": "^0.3.0",
         "fs-extra": "^5.0.0",
         "glob": "^7.1.2",
         "google-auth-library": "^7.11.0",
@@ -114,6 +115,7 @@
         "@types/tcp-port-used": "^1.0.0",
         "@types/tmp": "^0.1.0",
         "@types/triple-beam": "^1.3.0",
+        "@types/universal-analytics": "^0.4.5",
         "@types/unzipper": "^0.10.0",
         "@types/uuid": "^8.3.1",
         "@types/ws": "^7.2.3",
@@ -2824,6 +2826,12 @@
       "version": "1.3.0",
       "resolved": "https://registry.npmjs.org/@types/triple-beam/-/triple-beam-1.3.0.tgz",
       "integrity": "sha512-tl34wMtk3q+fSdRSJ+N83f47IyXLXPPuLjHm7cmAx0fE2Wml2TZCQV3FmQdSR5J6UEGV3qafG054e0cVVFCqPA==",
+      "dev": true
+    },
+    "node_modules/@types/universal-analytics": {
+      "version": "0.4.5",
+      "resolved": "https://registry.npmjs.org/@types/universal-analytics/-/universal-analytics-0.4.5.tgz",
+      "integrity": "sha512-Opb+Un786PS3te24VtJR/QPmX00P/pXaJQtLQYJklQefP4xP0Ic3mPc2z6SDz97OrITzR+RHTBEwjtNRjZ/nLQ==",
       "dev": true
     },
     "node_modules/@types/unzipper": {
@@ -6429,6 +6437,19 @@
       "dependencies": {
         "@firebase/app-types": "0.6.3"
       }
+    },
+    "node_modules/firebase-frameworks": {
+      "version": "0.3.0",
+      "resolved": "https://registry.npmjs.org/firebase-frameworks/-/firebase-frameworks-0.3.0.tgz",
+      "integrity": "sha512-Zxtx5WsD8ZZdItIeDjjpM+JgaIWDdwBujmLYLKf2Ou6onyRsd8bNRrnVsqrnq4S3FN9TcNYliXdwMu7AwYdW7Q==",
+      "dependencies": {
+        "tslib": "^2.3.1"
+      }
+    },
+    "node_modules/firebase-frameworks/node_modules/tslib": {
+      "version": "2.3.1",
+      "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.3.1.tgz",
+      "integrity": "sha512-77EbyPPpMz+FRFRuAFlWMtmgUWGe9UOG2Z25NqCwiIjRhOf5iKGuzSe5P2w1laq+FkRy4p+PCuVkJSGkzTEKVw=="
     },
     "node_modules/firebase-functions": {
       "version": "3.18.1",
@@ -16617,6 +16638,12 @@
       "integrity": "sha512-tl34wMtk3q+fSdRSJ+N83f47IyXLXPPuLjHm7cmAx0fE2Wml2TZCQV3FmQdSR5J6UEGV3qafG054e0cVVFCqPA==",
       "dev": true
     },
+    "@types/universal-analytics": {
+      "version": "0.4.5",
+      "resolved": "https://registry.npmjs.org/@types/universal-analytics/-/universal-analytics-0.4.5.tgz",
+      "integrity": "sha512-Opb+Un786PS3te24VtJR/QPmX00P/pXaJQtLQYJklQefP4xP0Ic3mPc2z6SDz97OrITzR+RHTBEwjtNRjZ/nLQ==",
+      "dev": true
+    },
     "@types/unzipper": {
       "version": "0.10.0",
       "resolved": "https://registry.npmjs.org/@types/unzipper/-/unzipper-0.10.0.tgz",
@@ -19413,6 +19440,21 @@
           "requires": {
             "@firebase/app-types": "0.6.3"
           }
+        }
+      }
+    },
+    "firebase-frameworks": {
+      "version": "0.3.0",
+      "resolved": "https://registry.npmjs.org/firebase-frameworks/-/firebase-frameworks-0.3.0.tgz",
+      "integrity": "sha512-Zxtx5WsD8ZZdItIeDjjpM+JgaIWDdwBujmLYLKf2Ou6onyRsd8bNRrnVsqrnq4S3FN9TcNYliXdwMu7AwYdW7Q==",
+      "requires": {
+        "tslib": "^2.3.1"
+      },
+      "dependencies": {
+        "tslib": {
+          "version": "2.3.1",
+          "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.3.1.tgz",
+          "integrity": "sha512-77EbyPPpMz+FRFRuAFlWMtmgUWGe9UOG2Z25NqCwiIjRhOf5iKGuzSe5P2w1laq+FkRy4p+PCuVkJSGkzTEKVw=="
         }
       }
     },

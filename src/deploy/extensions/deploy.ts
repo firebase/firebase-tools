@@ -33,18 +33,19 @@ export async function deploy(context: Context, options: Options, payload: Payloa
   });
 
   // Validate all creates, updates and configures.
+  // Skip validating local extensions, since doing so requires us to create a new source.
   // No need to validate deletes.
-  for (const create of payload.instancesToCreate ?? []) {
+  for (const create of payload.instancesToCreate?.filter((i) => !!i.ref) ?? []) {
     const task = tasks.createExtensionInstanceTask(projectId, create, /* validateOnly=*/ true);
     void validationQueue.run(task);
   }
 
-  for (const update of payload.instancesToUpdate ?? []) {
+  for (const update of payload.instancesToUpdate?.filter((i) => !!i.ref) ?? []) {
     const task = tasks.updateExtensionInstanceTask(projectId, update, /* validateOnly=*/ true);
     void validationQueue.run(task);
   }
 
-  for (const configure of payload.instancesToConfigure ?? []) {
+  for (const configure of payload.instancesToConfigure?.filter((i) => !!i.ref) ?? []) {
     const task = tasks.configureExtensionInstanceTask(
       projectId,
       configure,
