@@ -31,7 +31,7 @@ export async function release(
     return;
   }
 
-  const { wantBackend, haveBackend } = payload.functions;
+  const { wantBackend, haveBackend } = payload.functions!;
   const plan = planner.createDeploymentPlan(wantBackend, haveBackend, context.filters);
 
   const fnsToDelete = Object.values(plan)
@@ -58,8 +58,8 @@ export async function release(
   const fab = new fabricator.Fabricator({
     functionExecutor,
     executor: new executor.QueueExecutor({}),
-    sourceUrl: context.sourceUrl!,
-    storage: context.storage!,
+    sourceUrl: context.source!.sourceUrl!,
+    storage: context.source!.storage!,
     appEngineLocation: getAppEngineLocation(context.firebaseConfig),
   });
 
@@ -131,7 +131,9 @@ export function printTriggerUrls(results: backend.Backend): void {
 
   for (const httpsFunc of httpsFunctions) {
     if (!httpsFunc.uri) {
-      logger.debug("Missing URI for HTTPS function in printTriggerUrls. This shouldn't happen");
+      logger.debug(
+        "Not printing URL for HTTPS function. Typically this means it didn't match a filter or we failed deployment"
+      );
       continue;
     }
     logger.info(clc.bold("Function URL"), `(${getFunctionLabel(httpsFunc)}):`, httpsFunc.uri);
