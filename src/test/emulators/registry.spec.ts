@@ -77,7 +77,7 @@ describe("EmulatorRegistry", () => {
       expect(EmulatorRegistry.url(name).host).to.eql(`localhost:${port}`);
     });
 
-    it("should quote IPv6 addresses", async function () {
+    it("should quote IPv6 addresses", async function (this) {
       if (!ipv6Supported) {
         return this.skip();
       }
@@ -87,7 +87,7 @@ describe("EmulatorRegistry", () => {
       expect(EmulatorRegistry.url(name).host).to.eql(`[::1]:${port}`);
     });
 
-    it("should use 127.0.0.1 instead of 0.0.0.0", async function () {
+    it("should use 127.0.0.1 instead of 0.0.0.0", async function (this) {
       if (!ipv4Supported) {
         return this.skip();
       }
@@ -98,7 +98,7 @@ describe("EmulatorRegistry", () => {
       expect(EmulatorRegistry.url(name).host).to.eql(`127.0.0.1:${port}`);
     });
 
-    it("should use ::1 instead of ::", async function () {
+    it("should use ::1 instead of ::", async function (this) {
       if (!ipv6Supported) {
         return this.skip();
       }
