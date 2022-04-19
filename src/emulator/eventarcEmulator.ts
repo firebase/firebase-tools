@@ -7,10 +7,6 @@ import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
 import { createDestroyer } from "../utils";
 import { EmulatorLogger } from "./emulatorLogger";
 
-interface RequestWithRawBody extends express.Request {
-  rawBody: Buffer;
-}
-
 export interface EventarcEmulatorArgs {
   port?: number;
   host?: string;
@@ -25,16 +21,9 @@ export class EventarcEmulator implements EmulatorInstance {
 
   createHubServer(): express.Application {
     const hub = express();
-
     hub.use(express.json())
 
-    const helloWorldRoute = `/hello_world`;
     const publishEventsRoute = `/v1/projects/:project_id/locations/:location/channels/:channel::publishEvents`;
-
-    const helloWorldHandler: express.RequestHandler = (req, res) => {
-      res.sendStatus(200);
-    };
-
     const publishEventsHandler: express.RequestHandler = (req, res) => {
       const channel = req.params.channel;
       const events = req.body.events;
@@ -46,8 +35,6 @@ export class EventarcEmulator implements EmulatorInstance {
       }
       res.sendStatus(200);
     }
-
-    hub.all([helloWorldRoute], helloWorldHandler);
     hub.post([publishEventsRoute], publishEventsHandler);
     hub.all("*", (req, res) => {
       logger.debug(`Eventarc emulator received unknown request at path ${req.path}`);
