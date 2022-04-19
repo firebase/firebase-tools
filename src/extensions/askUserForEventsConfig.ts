@@ -39,8 +39,11 @@ export async function askForEventsConfig(
   let existingInstance: extensionsApi.ExtensionInstance | undefined;
   try {
     existingInstance = instanceId
-    ? await extensionsApi.getInstance(projectId, instanceId) : undefined;
-  } catch {}
+      ? await extensionsApi.getInstance(projectId, instanceId)
+      : undefined;
+  } catch {
+    /* If instance was not found, then this is an instance ID for a new instance. Don't preselected any values when displaying prompts to the user. */
+  }
   const preselectedTypes = existingInstance?.config.allowedEventTypes ?? [];
   const oldLocation = existingInstance?.config.eventarcChannel?.split("/")[3];
   const location = await askForEventArcLocation(oldLocation);
