@@ -8,3 +8,4 @@
 - Fixes issue where function deployment errored on projects without secrets (#4425).
 - Adds a blocking trigger type (#4395).
 - Removes verbose HTTP responses from debug logs (#4428)
+- Releases Cloud Firestore Emulator v1.14.3: fixes #4336.
