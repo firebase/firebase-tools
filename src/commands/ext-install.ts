@@ -267,7 +267,6 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
     instanceId,
   });
 
-  // @TODO: projectId can be undefined. Does that cause issues? Since channel is a function of that.
   const eventsConfig = spec.events
     ? await askUserForEventsConfig.askForEventsConfig(
         spec.events,

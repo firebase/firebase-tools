@@ -20,7 +20,7 @@ export function checkAllowedEventTypesResponse(
   for (const e of response) {
     if (!validEventTypes.includes(e)) {
       utils.logWarning(
-        `Unexpected event type '${response}' was marked as allowed to be emitted. This event type is not part of the extension spec.`
+        `Unexpected event type '${response}' was configured to be emitted. This event type is not part of the extension spec.`
       );
       return false;
     }
@@ -31,7 +31,7 @@ export function checkAllowedEventTypesResponse(
 export async function askForEventsConfig(
   events: extensionsApi.EventDescriptor[],
   projectId: string,
-  instanceId?: string
+  instanceId: string
 ): Promise<InstanceEventsConfig | undefined> {
   if (!(await askShouldCollectEventsConfig())) {
     return undefined;
@@ -42,7 +42,7 @@ export async function askForEventsConfig(
       ? await extensionsApi.getInstance(projectId, instanceId)
       : undefined;
   } catch {
-    /* If instance was not found, then this is an instance ID for a new instance. Don't preselected any values when displaying prompts to the user. */
+    /* If instance was not found, then this is an instance ID for a new instance. Don't preselect any values when displaying prompts to the user. */
   }
   const preselectedTypes = existingInstance?.config.allowedEventTypes ?? [];
   const oldLocation = existingInstance?.config.eventarcChannel?.split("/")[3];
