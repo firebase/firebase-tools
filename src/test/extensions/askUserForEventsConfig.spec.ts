@@ -28,7 +28,7 @@ describe("checkAllowedEventTypesResponse", () => {
     ).to.equal(false);
     expect(
       logWarningSpy.calledWith(
-        "Unexpected event type 'google.firebase.nonexistent-event-occurred' was marked as allowed to be emitted. This event type is not part of the extension spec."
+        "Unexpected event type 'google.firebase.nonexistent-event-occurred' was configured to be emitted. This event type is not part of the extension spec."
       )
     ).to.equal(true);
   });
