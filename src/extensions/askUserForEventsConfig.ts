@@ -33,13 +33,15 @@ export async function askForEventsConfig(
   projectId: string,
   instanceId?: string
 ): Promise<InstanceEventsConfig | undefined> {
-  const existingInstance = instanceId
-    ? await extensionsApi.getInstance(projectId, instanceId)
-    : undefined;
-  const preselectedTypes = existingInstance?.config.allowedEventTypes ?? [];
   if (!(await askShouldCollectEventsConfig())) {
     return undefined;
   }
+  let existingInstance: extensionsApi.ExtensionInstance | undefined;
+  try {
+    existingInstance = instanceId
+    ? await extensionsApi.getInstance(projectId, instanceId) : undefined;
+  } catch {}
+  const preselectedTypes = existingInstance?.config.allowedEventTypes ?? [];
   const oldLocation = existingInstance?.config.eventarcChannel?.split("/")[3];
   const location = await askForEventArcLocation(oldLocation);
   const channel = `projects/${projectId}/locations/${location}/channels/firebase`;

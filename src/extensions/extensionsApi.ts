@@ -396,7 +396,7 @@ export async function configureInstance(args: {
     reqBody.data.config.eventarcChannel = args.eventarcChannel;
     reqBody.updateMask += ",config.eventarc_channel";
   }
-  return await patchInstance(reqBody);
+  return patchInstance(reqBody);
 }
 
 /**
@@ -438,7 +438,7 @@ export async function updateInstance(args: {
     body.config.eventarcChannel = args.eventarcChannel;
     updateMask += ",config.eventarc_channel";
   }
-  return await patchInstance({
+  return patchInstance({
     projectId: args.projectId,
     instanceId: args.instanceId,
     updateMask,
@@ -488,7 +488,7 @@ export async function updateInstanceFromRegistry(args: {
     body.config.eventarcChannel = args.eventarcChannel;
     updateMask += ",config.eventarc_channel";
   }
-  return await patchInstance({
+  return patchInstance({
     projectId: args.projectId,
     instanceId: args.instanceId,
     updateMask,

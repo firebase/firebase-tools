@@ -432,19 +432,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
           paramsEnvPath,
           instanceId,
         });
-        let existingInstance: extensionsApi.ExtensionInstance;
-        try {
-          existingInstance = await extensionsApi.getInstance(projectId, instanceId);
-        } catch (err: any) {
-          if (err.status === 404) {
-            throw new FirebaseError(
-              `Extension instance '${clc.bold(instanceId)}' not found in project '${clc.bold(
-                projectId
-              )}'.`
-            );
-          }
-          throw err;
-        }
+        const existingInstance = await extensionsApi.getInstance(projectId, instanceId);
         eventsConfig = spec.events
           ? await askUserForEventsConfig.askForEventsConfig(spec.events, projectId, instanceId)
           : undefined;
