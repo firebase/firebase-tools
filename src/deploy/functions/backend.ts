@@ -6,7 +6,7 @@ import * as runtimes from "./runtimes";
 import { FirebaseError } from "../../error";
 import { Context } from "./args";
 import { previews } from "../../previews";
-import { flatten } from "../../functional";
+import { flattenArray } from "../../functional";
 
 /** Retry settings for a ScheduleSpec. */
 export interface ScheduleRetryConfig {
@@ -362,7 +362,7 @@ export function of(...endpoints: Endpoint[]): Backend {
  */
 export function merge(...backends: Backend[]): Backend {
   // Merge all endpoints
-  const merged = of(...flatten<Endpoint>(backends.map((b) => allEndpoints(b))));
+  const merged = of(...flattenArray(backends.map((b) => allEndpoints(b))));
 
   // Merge all APIs
   const apiToReasons: Record<string, Set<string>> = {};
