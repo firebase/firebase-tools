@@ -29,13 +29,6 @@ describe("projectConfig", () => {
       expect(projectConfig.validate([TEST_CONFIG_0])).to.deep.equal([TEST_CONFIG_0]);
     });
 
-    it("fails validation given more than one config", () => {
-      expect(() => projectConfig.validate([TEST_CONFIG_0, TEST_CONFIG_1])).to.throw(
-        FirebaseError,
-        /More than one functions.source detected/
-      );
-    });
-
     it("fails validation given config w/o source", () => {
       expect(() => projectConfig.validate([{ runtime: "nodejs10" }])).to.throw(
         FirebaseError,
@@ -115,14 +108,17 @@ describe("projectConfig", () => {
     it("fails validation given config w/ duplicate source", () => {
       expect(() => projectConfig.normalizeAndValidate([TEST_CONFIG_0, TEST_CONFIG_0])).to.throw(
         FirebaseError,
-        /More than one functions.source detected/
+        /functions.source must be unique/
       );
     });
 
-    it("fails validation given more than one config", () => {
+    it("fails validation given config w/ duplicate codebase", () => {
       expect(() =>
-        projectConfig.normalizeAndValidate([TEST_CONFIG_0, { ...TEST_CONFIG_0, source: "bar" }])
-      ).to.throw(FirebaseError, /More than one functions.source detected/);
+        projectConfig.normalizeAndValidate([
+          { ...TEST_CONFIG_0, codebase: "foo" },
+          { ...TEST_CONFIG_0, codebase: "foo", source: "bar" },
+        ])
+      ).to.throw(FirebaseError, /functions.codebase must be unique/);
     });
   });
 });

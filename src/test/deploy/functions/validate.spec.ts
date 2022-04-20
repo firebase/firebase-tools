@@ -296,6 +296,69 @@ describe("validate", () => {
     });
   });
 
+  describe("endpointsAreUnqiue", () => {
+    const ENDPOINT_BASE: backend.Endpoint = {
+      platform: "gcfv2",
+      id: "id",
+      region: "us-east1",
+      project: "project",
+      entryPoint: "func",
+      runtime: "nodejs16",
+      httpsTrigger: {},
+    };
+
+    it("passes given unqiue ids", () => {
+      const b1 = backend.of(
+        { ...ENDPOINT_BASE, id: "i1", region: "r1" },
+        { ...ENDPOINT_BASE, id: "i2", region: "r1" }
+      );
+      const b2 = backend.of(
+        { ...ENDPOINT_BASE, id: "i3", region: "r2" },
+        { ...ENDPOINT_BASE, id: "i4", region: "r2" }
+      );
+      expect(() => validate.endpointsAreUnique({ b1, b2 })).to.not.throw;
+    });
+
+    it("passes given unique id, region pairs", () => {
+      const b1 = backend.of(
+        { ...ENDPOINT_BASE, id: "i1", region: "r1" },
+        { ...ENDPOINT_BASE, id: "i2", region: "r1" }
+      );
+      const b2 = backend.of(
+        { ...ENDPOINT_BASE, id: "i1", region: "r2" },
+        { ...ENDPOINT_BASE, id: "i2", region: "r2" }
+      );
+      expect(() => validate.endpointsAreUnique({ b1, b2 })).to.not.throw;
+    });
+
+    it("throws given non-unique id region pairs", () => {
+      const b1 = backend.of({ ...ENDPOINT_BASE, id: "i1", region: "r1" });
+      const b2 = backend.of({ ...ENDPOINT_BASE, id: "i1", region: "r1" });
+      expect(() => validate.endpointsAreUnique({ b1, b2 })).to.throw(
+        /projects\/project\/locations\/r1\/functions\/i1: b1,b2/
+      );
+    });
+
+    it("throws given non-unique id region pairs across all codebases", () => {
+      const b1 = backend.of({ ...ENDPOINT_BASE, id: "i1", region: "r1" });
+      const b2 = backend.of({ ...ENDPOINT_BASE, id: "i1", region: "r1" });
+      const b3 = backend.of({ ...ENDPOINT_BASE, id: "i1", region: "r1" });
+      expect(() => validate.endpointsAreUnique({ b1, b2, b3 })).to.throw(
+        /projects\/project\/locations\/r1\/functions\/i1: b1,b2,b3/
+      );
+    });
+
+    it("throws given multiple conflicts", () => {
+      const b1 = backend.of(
+        { ...ENDPOINT_BASE, id: "i1", region: "r1" },
+        { ...ENDPOINT_BASE, id: "i2", region: "r2" }
+      );
+      const b2 = backend.of({ ...ENDPOINT_BASE, id: "i1", region: "r1" });
+      const b3 = backend.of({ ...ENDPOINT_BASE, id: "i2", region: "r2" });
+      expect(() => validate.endpointsAreUnique({ b1, b2, b3 })).to.throw(/b1,b2.*b1,b3/s);
+    });
+  });
+
   describe("secretsAreValid", () => {
     const project = "project";
 

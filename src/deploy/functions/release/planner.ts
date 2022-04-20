@@ -5,7 +5,6 @@ import {
 } from "../functionsDeployHelper";
 import { isFirebaseManaged } from "../../../deploymentTool";
 import { FirebaseError } from "../../../error";
-import * as args from "../args";
 import * as utils from "../../../utils";
 import * as backend from "../backend";
 import * as v2events from "../../../functions/events/v2";
@@ -22,6 +21,14 @@ export interface Changeset {
 }
 
 export type DeploymentPlan = Record<string, Changeset>;
+
+export interface PlanArgs {
+  wantBackend: backend.Backend; // the desired state
+  haveBackend: backend.Backend; // the current state
+  codebase: string; // target codebase of the deployment
+  filters?: EndpointFilter[]; // filters to apply to backend, passed from users by --only flag
+  deleteAll?: boolean; // deletes all functions if set
+}
 
 /** Calculate the changesets of given endpoints by grouping endpoints with keyFn. */
 export function calculateChangesets(
@@ -92,37 +99,33 @@ export function calculateUpdate(want: backend.Endpoint, have: backend.Endpoint):
 
 /**
  * Create a plan for deploying all functions in one region.
- * @param want the desired state
- * @param have the current state
- * @param filters filters to apply to backend, passed from users by --only flag.
- * @param deleteAll Deletes all functions if set.
  */
-export function createDeploymentPlan(
-  want: backend.Backend,
-  have: backend.Backend,
-  filters?: EndpointFilter[],
-  deleteAll?: boolean
-): DeploymentPlan {
+export function createDeploymentPlan(args: PlanArgs): DeploymentPlan {
+  let { wantBackend, haveBackend, codebase, filters, deleteAll } = args;
   let deployment: DeploymentPlan = {};
-  want = backend.matchingBackend(want, (endpoint) => {
+  wantBackend = backend.matchingBackend(wantBackend, (endpoint) => {
     return endpointMatchesAnyFilter(endpoint, filters);
   });
-  have = backend.matchingBackend(have, (endpoint) => {
-    return endpointMatchesAnyFilter(endpoint, filters);
+  const wantedEndpoint = backend.hasEndpoint(wantBackend);
+  haveBackend = backend.matchingBackend(haveBackend, (endpoint) => {
+    return wantedEndpoint(endpoint) || endpointMatchesAnyFilter(endpoint, filters);
   });
 
-  const regions = new Set([...Object.keys(want.endpoints), ...Object.keys(have.endpoints)]);
+  const regions = new Set([
+    ...Object.keys(wantBackend.endpoints),
+    ...Object.keys(haveBackend.endpoints),
+  ]);
   for (const region of regions) {
     const changesets = calculateChangesets(
-      want.endpoints[region] || {},
-      have.endpoints[region] || {},
-      (e) => `${e.region}-${e.availableMemoryMb || "default"}`,
+      wantBackend.endpoints[region] || {},
+      haveBackend.endpoints[region] || {},
+      (e) => `${codebase}-${e.region}-${e.availableMemoryMb || "default"}`,
       deleteAll
     );
     deployment = { ...deployment, ...changesets };
   }
 
-  if (upgradedToGCFv2WithoutSettingConcurrency(want, have)) {
+  if (upgradedToGCFv2WithoutSettingConcurrency(wantBackend, haveBackend)) {
     utils.logLabeledBullet(
       "functions",
       "You are updating one or more functions to Google Cloud Functions v2, " +

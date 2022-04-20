@@ -58,8 +58,10 @@ export async function convertConfig(
   }
 
   const endpointBeingDeployed = (serviceId: string, region: string = "us-central1") => {
-    const endpoint = payload.functions?.wantBackend?.endpoints[region]?.[serviceId];
-    if (endpoint && isHttpsTriggered(endpoint) && endpoint.platform === "gcfv2") return endpoint;
+    for (const { wantBackend } of Object.values(payload.functions || {})) {
+      const endpoint = wantBackend?.endpoints[region]?.[serviceId];
+      if (endpoint && isHttpsTriggered(endpoint) && endpoint.platform === "gcfv2") return endpoint;
+    }
     return undefined;
   };
 

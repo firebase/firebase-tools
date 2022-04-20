@@ -9,7 +9,12 @@ import * as runtimes from "./runtimes";
 import * as validate from "./validate";
 import * as ensure from "./ensure";
 import { Options } from "../../options";
-import { endpointMatchesAnyFilter, getEndpointFilters } from "./functionsDeployHelper";
+import {
+  endpointMatchesAnyFilter,
+  getEndpointFilters,
+  groupEndpointsByCodebase,
+  targetCodebases,
+} from "./functionsDeployHelper";
 import { logLabeledBullet } from "../../utils";
 import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload";
 import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
@@ -19,7 +24,7 @@ import { logger } from "../../logger";
 import { ensureTriggerRegions } from "./triggerRegionHelper";
 import { ensureServiceAgentRoles } from "./checkIam";
 import { FirebaseError } from "../../error";
-import { normalizeAndValidate } from "../../functions/projectConfig";
+import { configForCodebase, normalizeAndValidate } from "../../functions/projectConfig";
 import { previews } from "../../previews";
 import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 
@@ -29,13 +34,6 @@ function hasUserConfig(config: Record<string, unknown>): boolean {
   return Object.keys(config).length > 1;
 }
 
-function hasDotenv(opts: functionsEnv.UserEnvsOpts): boolean {
-  return functionsEnv.hasUserEnvs(opts);
-}
-
-/**
- *
- */
 export async function prepare(
   context: args.Context,
   options: Options,
@@ -44,13 +42,11 @@ export async function prepare(
   const projectId = needProjectId(options);
   const projectNumber = await needProjectNumber(options);
 
-  context.config = normalizeAndValidate(options.config.src.functions)[0];
+  context.config = normalizeAndValidate(options.config.src.functions);
   context.filters = getEndpointFilters(options); // Parse --only filters for functions.
 
-  if (
-    context.filters &&
-    !context.filters.map((f) => f.codebase).includes(context.config.codebase)
-  ) {
+  const codebases = targetCodebases(context.config, context.filters);
+  if (codebases.length === 0) {
     throw new FirebaseError("No function matches given --only filters. Aborting deployment.");
   }
 
@@ -78,114 +74,120 @@ export async function prepare(
   }
 
   // ===Phase 1. Load codebase from source.
-  logLabeledBullet(
-    "functions",
-    `preparing codebase ${clc.bold(context.config.codebase)} for deployment`
-  );
-  const sourceDirName = context.config.source;
-  if (!sourceDirName) {
-    throw new FirebaseError(
-      `No functions code detected at default location (./functions), and no functions source defined in firebase.json`
-    );
-  }
-  const sourceDir = options.config.path(sourceDirName);
-  const delegateContext: runtimes.DelegateContext = {
-    projectId,
-    sourceDir,
-    projectDir: options.config.projectDir,
-    runtime: context.config.runtime || "",
-  };
-  const runtimeDelegate = await runtimes.getRuntimeDelegate(delegateContext);
-  logger.debug(`Validating ${runtimeDelegate.name} source`);
-  await runtimeDelegate.validate();
-  logger.debug(`Building ${runtimeDelegate.name} source`);
-  await runtimeDelegate.build();
+  context.sources = {};
+  const codebaseUsesEnvs: string[] = [];
+  const wantBackends: Record<string, backend.Backend> = {};
+  for (const codebase of codebases) {
+    logLabeledBullet("functions", `preparing codebase ${clc.bold(codebase)} for deployment`);
 
-  const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
-  const userEnvOpt: functionsEnv.UserEnvsOpts = {
-    functionsSource: sourceDir,
-    projectId: projectId,
-    projectAlias: options.projectAlias,
-  };
-  const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
-  const usedDotenv = hasDotenv(userEnvOpt);
+    const config = configForCodebase(context.config, codebase);
+    const sourceDirName = config.source;
+    if (!sourceDirName) {
+      throw new FirebaseError(
+        `No functions code detected at default location (./functions), and no functions source defined in firebase.json`
+      );
+    }
+    const sourceDir = options.config.path(sourceDirName);
+    const delegateContext: runtimes.DelegateContext = {
+      projectId,
+      sourceDir,
+      projectDir: options.config.projectDir,
+      runtime: config.runtime || "",
+    };
+    const runtimeDelegate = await runtimes.getRuntimeDelegate(delegateContext);
+    logger.debug(`Validating ${runtimeDelegate.name} source`);
+    await runtimeDelegate.validate();
+    logger.debug(`Building ${runtimeDelegate.name} source`);
+    await runtimeDelegate.build();
+
+    const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
+    const userEnvOpt: functionsEnv.UserEnvsOpts = {
+      functionsSource: sourceDir,
+      projectId: projectId,
+      projectAlias: options.projectAlias,
+    };
+    const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
+    logger.debug(`Analyzing ${runtimeDelegate.name} backend spec`);
+    const wantBackend = await runtimeDelegate.discoverSpec(runtimeConfig, firebaseEnvs);
+    wantBackend.environmentVariables = { ...userEnvs, ...firebaseEnvs };
+    for (const endpoint of backend.allEndpoints(wantBackend)) {
+      endpoint.environmentVariables = wantBackend.environmentVariables;
+      endpoint.codebase = codebase;
+    }
+    wantBackends[codebase] = wantBackend;
+    if (functionsEnv.hasUserEnvs(userEnvOpt)) {
+      codebaseUsesEnvs.push(codebase);
+    }
+  }
+
+  // ===Phase 1.5. Before proceeding further, let's make sure that we don't have conflicting function names.
+  validate.endpointsAreUnique(wantBackends);
+
+  // ===Phase 2. Prepare source for upload.
+  for (const [codebase, wantBackend] of Object.entries(wantBackends)) {
+    const config = configForCodebase(context.config, codebase);
+    const sourceDirName = config.source;
+    const sourceDir = options.config.path(sourceDirName);
+    const source: args.Source = {};
+    if (backend.someEndpoint(wantBackend, () => true)) {
+      logLabeledBullet(
+        "functions",
+        `preparing ${clc.bold(sourceDirName)} directory for uploading...`
+      );
+    }
+    if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
+      if (!previews.functionsv2) {
+        throw new FirebaseError(
+          "This version of firebase-tools does not support Google Cloud " +
+            "Functions gen 2\n" +
+            "If Cloud Functions for Firebase gen 2 is still in alpha, sign up " +
+            "for the alpha program at " +
+            "https://services.google.com/fb/forms/firebasealphaprogram/\n" +
+            "If Cloud Functions for Firebase gen 2 is in beta, get the latest " +
+            "version of Firebse Tools with `npm i -g firebase-tools@latest`"
+        );
+      }
+      source.functionsSourceV2 = await prepareFunctionsUpload(sourceDir, config);
+    }
+    if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv1")) {
+      source.functionsSourceV1 = await prepareFunctionsUpload(sourceDir, config, runtimeConfig);
+    }
+    context.sources[codebase] = source;
+  }
+
+  // ===Phase 3. Fill in details and validate endpoints. We run the check for ALL endpoints - we think it's useful for
+  // validations to fail even for endpoints that aren't being deployed so any errors are caught early.
+  payload.functions = {};
+  const haveBackends = groupEndpointsByCodebase(
+    wantBackends,
+    backend.allEndpoints(await backend.existingBackend(context))
+  );
+  for (const [codebase, wantBackend] of Object.entries(wantBackends)) {
+    const haveBackend = haveBackends[codebase] || { ...backend.empty() };
+    payload.functions[codebase] = { wantBackend, haveBackend };
+  }
+  for (const [codebase, { wantBackend, haveBackend }] of Object.entries(payload.functions)) {
+    inferDetailsFromExisting(wantBackend, haveBackend, codebaseUsesEnvs.includes(codebase));
+    await ensureTriggerRegions(wantBackend);
+    validate.endpointsAreValid(wantBackend);
+    inferBlockingDetails(wantBackend);
+  }
+
   const tag = hasUserConfig(runtimeConfig)
-    ? usedDotenv
+    ? codebaseUsesEnvs.length > 0
       ? "mixed"
       : "runtime_config"
-    : usedDotenv
+    : codebaseUsesEnvs.length > 0
     ? "dotenv"
     : "none";
   void track("functions_codebase_deploy_env_method", tag);
 
-  logger.debug(`Analyzing ${runtimeDelegate.name} backend spec`);
-  const wantBackend = await runtimeDelegate.discoverSpec(runtimeConfig, firebaseEnvs);
-  wantBackend.environmentVariables = { ...userEnvs, ...firebaseEnvs };
-  for (const endpoint of backend.allEndpoints(wantBackend)) {
-    endpoint.environmentVariables = wantBackend.environmentVariables;
-    endpoint.codebase = context.config.codebase;
-  }
+  const codebaseCnt = Object.keys(payload.functions).length;
+  void track("functions_codebase_deploy_count", codebaseCnt >= 5 ? "5+" : codebaseCnt.toString());
 
-  // ===Phase 2. Prepare source for upload.
-  const source: args.Source = {};
-  if (backend.someEndpoint(wantBackend, () => true)) {
-    logLabeledBullet(
-      "functions",
-      `preparing ${clc.bold(sourceDirName)} directory for uploading...`
-    );
-  }
-  if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
-    if (!previews.functionsv2) {
-      throw new FirebaseError(
-        "This version of firebase-tools does not support Google Cloud " +
-          "Functions gen 2\n" +
-          "If Cloud Functions for Firebase gen 2 is still in alpha, sign up " +
-          "for the alpha program at " +
-          "https://services.google.com/fb/forms/firebasealphaprogram/\n" +
-          "If Cloud Functions for Firebase gen 2 is in beta, get the latest " +
-          "version of Firebse Tools with `npm i -g firebase-tools@latest`"
-      );
-    }
-    source.functionsSourceV2 = await prepareFunctionsUpload(sourceDir, context.config);
-  }
-  if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv1")) {
-    source.functionsSourceV1 = await prepareFunctionsUpload(
-      sourceDir,
-      context.config,
-      runtimeConfig
-    );
-  }
-  context.source = source;
-
-  // ===Phase 3. Fill in details and validate endpoints. We run the check for ALL endpoints - we think it's useful for
-  // validations to fail even for endpoints that aren't being deployed so any errors are caught early.
-
-  // Load all existing endpoints for the project, then filter out functions from other codebases.
-  //
-  // An endpoint is part a codebase if:
-  //   1. Endpoint is associated w/ the current codebase (duh).
-  //   2. Endpoint name matches name of an endpoint we want to deploy
-  //
-  //   Condition (2) might feel wrong but is a practical conflict resolution strategy. It allows user to "claim" an
-  //   endpoint for current codebase without much hassel.
-  const wantEndpointNames = backend.allEndpoints(wantBackend).map((e) => backend.functionName(e));
-  const haveBackend = backend.matchingBackend(
-    await backend.existingBackend(context),
-    (endpoint) => {
-      if (endpoint.codebase === context.config?.codebase) {
-        return true;
-      }
-      return wantEndpointNames.includes(backend.functionName(endpoint));
-    }
-  );
-  inferDetailsFromExisting(wantBackend, haveBackend, usedDotenv);
-  await ensureTriggerRegions(wantBackend);
-  validate.endpointsAreValid(wantBackend);
-  inferBlockingDetails(wantBackend);
-
-  payload.functions = { wantBackend: wantBackend, haveBackend: haveBackend };
-
-  // ===Phase 4. Enable APIs required by the deploying backend.
+  // ===Phase 4. Enable APIs required by the deploying backends.
+  const wantBackend = backend.merge(...Object.values(wantBackends));
+  const haveBackend = backend.merge(...Object.values(haveBackends));
 
   // Enable required APIs. This may come implicitly from triggers (e.g. scheduled triggers
   // require cloudscheudler and, in v1, require pub/sub), or can eventually come from
@@ -245,8 +247,7 @@ export function inferDetailsFromExisting(
     }
 
     // By default, preserve existing environment variables.
-    // Only overwrite environment variables when the dotenv preview is enabled
-    // AND there are user specified environment variables.
+    // Only overwrite environment variables when there are user specified environment variables.
     if (!usedDotenv) {
       wantE.environmentVariables = {
         ...haveE.environmentVariables,
