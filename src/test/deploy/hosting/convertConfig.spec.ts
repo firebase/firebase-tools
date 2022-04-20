@@ -1,7 +1,8 @@
 import { expect } from "chai";
 import { HostingConfig } from "../../../firebaseConfig";
-
 import { convertConfig } from "../../../deploy/hosting/convertConfig";
+import * as args from "../../../deploy/functions/args";
+import * as backend from "../../../deploy/functions/backend";
 
 const DEFAULT_CONTEXT = {
   loadedExistingBackend: true,
@@ -17,7 +18,7 @@ describe("convertConfig", () => {
     name: string;
     input: HostingConfig | undefined;
     want: any;
-    payload?: any;
+    payload?: args.Payload;
     finalize?: boolean;
     context?: any;
   }> = [
@@ -57,17 +58,17 @@ describe("convertConfig", () => {
       input: { rewrites: [{ regex: "/foo$", function: "foofn", region: "us-central1" }] },
       payload: {
         functions: {
-          wantBackend: {
-            endpoints: {
-              "us-central1": {
-                foofn: {
-                  id: "foofn",
-                  region: "us-central1",
-                  platform: "gcfv2",
-                  httpsTrigger: true,
-                },
-              },
-            },
+          default: {
+            wantBackend: backend.of({
+              id: "foofn",
+              project: "my-project",
+              entryPoint: "foofn",
+              runtime: "nodejs14",
+              region: "us-central1",
+              platform: "gcfv2",
+              httpsTrigger: {},
+            }),
+            haveBackend: backend.empty(),
           },
         },
       },
@@ -79,17 +80,17 @@ describe("convertConfig", () => {
       input: { rewrites: [{ regex: "/foo$", function: "foofn", region: "us-central1" }] },
       payload: {
         functions: {
-          wantBackend: {
-            endpoints: {
-              "us-central1": {
-                foofn: {
-                  id: "foofn",
-                  region: "us-central1",
-                  platform: "gcfv2",
-                  httpsTrigger: true,
-                },
-              },
-            },
+          default: {
+            wantBackend: backend.of({
+              id: "foofn",
+              project: "my-project",
+              entryPoint: "foofn",
+              runtime: "nodejs14",
+              region: "us-central1",
+              platform: "gcfv2",
+              httpsTrigger: {},
+            }),
+            haveBackend: backend.empty(),
           },
         },
       },
@@ -144,17 +145,17 @@ describe("convertConfig", () => {
       want: { rewrites: [] },
       payload: {
         functions: {
-          wantBackend: {
-            endpoints: {
-              "us-central1": {
-                hello: {
-                  id: "hello",
-                  region: "us-central1",
-                  platform: "gcfv2",
-                  httpsTrigger: true,
-                },
-              },
-            },
+          default: {
+            wantBackend: backend.of({
+              id: "hello",
+              project: "my-project",
+              entryPoint: "hello",
+              runtime: "nodejs14",
+              region: "us-central1",
+              platform: "gcfv2",
+              httpsTrigger: {},
+            }),
+            haveBackend: backend.empty(),
           },
         },
       },
@@ -166,17 +167,17 @@ describe("convertConfig", () => {
       want: { rewrites: [{ regex: "/foo$", run: { region: "us-central1", serviceId: "hello" } }] },
       payload: {
         functions: {
-          wantBackend: {
-            endpoints: {
-              "us-central1": {
-                hello: {
-                  id: "hello",
-                  region: "us-central1",
-                  platform: "gcfv2",
-                  httpsTrigger: true,
-                },
-              },
-            },
+          default: {
+            wantBackend: backend.of({
+              id: "hello",
+              project: "my-project",
+              entryPoint: "hello",
+              runtime: "nodejs14",
+              region: "us-central1",
+              platform: "gcfv2",
+              httpsTrigger: {},
+            }),
+            haveBackend: backend.empty(),
           },
         },
       },
