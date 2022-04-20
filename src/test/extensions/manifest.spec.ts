@@ -331,6 +331,30 @@ describe("manifest", () => {
               },
               ALLOWED_EVENT_TYPES: { baseValue: "google.firebase.custom-event-occurred" },
             },
+            extensionSpec: {
+              name: "bigquery-export",
+              version: "1.0.0",
+              resources: [],
+              sourceUrl: "",
+              events: [
+                {
+                  type: "google.firebase.custom-event-occurred",
+                  description: "Custom event occurred",
+                },
+              ],
+              params: [
+                {
+                  param: "a",
+                  label: "",
+                  type: ParamType.STRING,
+                },
+                {
+                  param: "b",
+                  label: "",
+                  type: ParamType.STRING,
+                },
+              ],
+            },
           },
           {
             instanceId: "instance-2",
@@ -346,6 +370,30 @@ describe("manifest", () => {
                 baseValue: "projects/test-project/locations/us-central1/channels/firebase",
               },
               ALLOWED_EVENT_TYPES: { baseValue: "google.firebase.custom-event-occurred" },
+            },
+            extensionSpec: {
+              name: "bigquery-export",
+              version: "2.0.0",
+              resources: [],
+              sourceUrl: "",
+              events: [
+                {
+                  type: "google.firebase.custom-event-occurred",
+                  description: "Custom event occurred",
+                },
+              ],
+              params: [
+                {
+                  param: "a",
+                  label: "",
+                  type: ParamType.STRING,
+                },
+                {
+                  param: "b",
+                  label: "",
+                  type: ParamType.STRING,
+                },
+              ],
             },
           },
         ],
