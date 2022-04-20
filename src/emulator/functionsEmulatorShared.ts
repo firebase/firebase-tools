@@ -294,6 +294,9 @@ export function getTemporarySocketPath(pid: number, cwd: string): string {
 
 export function getFunctionService(def: ParsedTriggerDefinition): string {
   if (def.eventTrigger) {
+    if (def.eventTrigger.channel) {
+      return Constants.SERVICE_EVENTARC;
+    }
     return def.eventTrigger.service ?? getServiceFromEventType(def.eventTrigger.eventType);
   }
   if (def.blockingTrigger) {
