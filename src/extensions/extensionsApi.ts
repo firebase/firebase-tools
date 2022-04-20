@@ -324,7 +324,7 @@ export async function getInstance(projectId: string, instanceId: string): Promis
         `Extension instance '${clc.bold(instanceId)}' not found in project '${clc.bold(
           projectId
         )}'.`
-      );
+      , {status: 404});
     }
     throw err;
   }
