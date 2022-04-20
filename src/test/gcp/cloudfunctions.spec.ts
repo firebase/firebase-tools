@@ -22,14 +22,12 @@ describe("cloudfunctions", () => {
     entryPoint: "function",
     runtime: "nodejs16",
     codebase: projectConfig.DEFAULT_CODEBASE,
-    labels: { [cloudfunctions.CODEBASE_LABEL]: projectConfig.DEFAULT_CODEBASE },
   };
 
   const CLOUD_FUNCTION: Omit<cloudfunctions.CloudFunction, cloudfunctions.OutputOnlyFields> = {
     name: "projects/project/locations/region/functions/id",
     entryPoint: "function",
     runtime: "nodejs16",
-    labels: { [cloudfunctions.CODEBASE_LABEL]: projectConfig.DEFAULT_CODEBASE },
   };
 
   const HAVE_CLOUD_FUNCTION: cloudfunctions.CloudFunction = {
