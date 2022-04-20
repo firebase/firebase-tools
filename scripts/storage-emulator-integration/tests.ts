@@ -220,6 +220,17 @@ describe("Storage emulator", () => {
           expect(fileMetadata).to.deep.include(metadata);
         });
 
+        it("should return an error message when uploading a file with invalid metadata", async () => {
+          const fileName = "test_upload.jpg";
+          const errorMessage = await supertest(STORAGE_EMULATOR_HOST)
+            .post(`/upload/storage/v1/b/${storageBucket}/o?name=${fileName}`)
+            .set({ Authorization: "Bearer owner", "X-Upload-Content-Type": "foo" })
+            .expect(400)
+            .then((res) => res.body.error.message);
+
+          expect(errorMessage).to.equal("Invalid Content-Type: foo");
+        });
+
         it("should be able to upload file named 'prefix/file.txt' when file named 'prefix' already exists", async () => {
           await testBucket.upload(smallFilePath, {
             destination: "prefix",
@@ -2083,6 +2094,17 @@ describe("Storage emulator", () => {
         });
       });
 
+      it("should return an error message when uploading a file with invalid metadata", async () => {
+        const fileName = "test_upload.jpg";
+        const errorMessage = await supertest(STORAGE_EMULATOR_HOST)
+          .post(`/v0/b/${storageBucket}/o/${fileName}?name=${fileName}`)
+          .set({ "x-goog-upload-protocol": "multipart", "content-type": "foo" })
+          .expect(400)
+          .then((res) => res.body.error.message);
+
+        expect(errorMessage).to.equal("Invalid Content-Type: foo");
+      });
+
       it("should accept subsequent resumable upload commands without an auth header", async () => {
         const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
           .post(
@@ -2105,14 +2127,17 @@ describe("Storage emulator", () => {
           })
           .expect(200);
 
-        await supertest(STORAGE_EMULATOR_HOST)
+        const uploadStatus = await supertest(STORAGE_EMULATOR_HOST)
           .put(uploadURL.pathname + uploadURL.search)
           .set({
             // No Authorization required in finalize
             "X-Goog-Upload-Protocol": "resumable",
             "X-Goog-Upload-Command": "upload, finalize",
           })
-          .expect(200);
+          .expect(200)
+          .then((res) => res.header["x-goog-upload-status"]);
+
+        expect(uploadStatus).to.equal("final");
 
         await supertest(STORAGE_EMULATOR_HOST)
           .get(`/v0/b/${storageBucket}/o/test_upload.jpg`)

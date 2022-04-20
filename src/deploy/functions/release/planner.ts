@@ -1,6 +1,11 @@
-import { functionMatchesAnyGroup, getFunctionLabel } from "../functionsDeployHelper";
+import {
+  EndpointFilter,
+  endpointMatchesAnyFilter,
+  getFunctionLabel,
+} from "../functionsDeployHelper";
 import { isFirebaseManaged } from "../../../deploymentTool";
 import { FirebaseError } from "../../../error";
+import * as args from "../args";
 import * as utils from "../../../utils";
 import * as backend from "../backend";
 import * as v2events from "../../../functions/events/v2";
@@ -18,18 +23,12 @@ export interface Changeset {
 
 export type DeploymentPlan = Record<string, Changeset>;
 
-export interface Options {
-  filters?: string[][];
-  // If set to false, will delete only functions that are managed by firebase
-  deleteAll?: boolean;
-}
-
 /** Calculate the changesets of given endpoints by grouping endpoints with keyFn. */
 export function calculateChangesets(
   want: Record<string, backend.Endpoint>,
   have: Record<string, backend.Endpoint>,
   keyFn: (e: backend.Endpoint) => string,
-  options: Options
+  deleteAll?: boolean
 ): Record<string, Changeset> {
   const toCreate = utils.groupBy(
     Object.keys(want)
@@ -41,7 +40,7 @@ export function calculateChangesets(
   const toDelete = utils.groupBy(
     Object.keys(have)
       .filter((id) => !want[id])
-      .filter((id) => options.deleteAll || isFirebaseManaged(have[id].labels || {}))
+      .filter((id) => deleteAll || isFirebaseManaged(have[id].labels || {}))
       .map((id) => have[id]),
     keyFn
   );
@@ -95,19 +94,21 @@ export function calculateUpdate(want: backend.Endpoint, have: backend.Endpoint):
  * Create a plan for deploying all functions in one region.
  * @param want the desired state
  * @param have the current state
- * @param filters The filters, passed in by the user via  `--only functions:`
+ * @param filters filters to apply to backend, passed from users by --only flag.
+ * @param deleteAll Deletes all functions if set.
  */
 export function createDeploymentPlan(
   want: backend.Backend,
   have: backend.Backend,
-  options: Options = {}
+  filters?: EndpointFilter[],
+  deleteAll?: boolean
 ): DeploymentPlan {
   let deployment: DeploymentPlan = {};
   want = backend.matchingBackend(want, (endpoint) => {
-    return functionMatchesAnyGroup(endpoint, options.filters || []);
+    return endpointMatchesAnyFilter(endpoint, filters);
   });
   have = backend.matchingBackend(have, (endpoint) => {
-    return functionMatchesAnyGroup(endpoint, options.filters || []);
+    return endpointMatchesAnyFilter(endpoint, filters);
   });
 
   const regions = new Set([...Object.keys(want.endpoints), ...Object.keys(have.endpoints)]);
@@ -116,7 +117,7 @@ export function createDeploymentPlan(
       want.endpoints[region] || {},
       have.endpoints[region] || {},
       (e) => `${e.region}-${e.availableMemoryMb || "default"}`,
-      options
+      deleteAll
     );
     deployment = { ...deployment, ...changesets };
   }
@@ -234,6 +235,8 @@ export function checkForIllegalUpdate(want: backend.Endpoint, have: backend.Endp
       return "a scheduled";
     } else if (backend.isTaskQueueTriggered(e)) {
       return "a task queue";
+    } else if (backend.isBlockingTriggered(e)) {
+      return e.blockingTrigger.eventType;
     }
     // Unfortunately TypeScript isn't like Scala and I can't prove to it
     // that all cases have been handled

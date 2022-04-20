@@ -13,11 +13,12 @@ import { downloadExtensionVersion } from "./download";
 import { EmulatableBackend } from "./functionsEmulator";
 import { getExtensionFunctionInfo } from "../extensions/emulator/optionsHelper";
 import { EmulatorLogger } from "./emulatorLogger";
-import { Emulators } from "./types";
+import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
 import { checkForUnemulatedTriggerTypes, getUnemulatedAPIs } from "./extensions/validation";
 import { enableApiURI } from "../ensureApiEnabled";
 import { shortenUrl } from "../shortenUrl";
 import { Constants } from "./constants";
+import { EmulatorRegistry } from "./registry";
 
 export interface ExtensionEmulatorArgs {
   projectId: string;
@@ -29,8 +30,9 @@ export interface ExtensionEmulatorArgs {
 // TODO: Consider a different name, since this does not implement the EmulatorInstance interface
 // Note: At the moment, this doesn't really seem like it needs to be a class. However, I think the
 // statefulness that enables will be useful once we want to watch .env files for config changes.
-export class ExtensionsEmulator {
-  private want: planner.InstanceSpec[] = [];
+export class ExtensionsEmulator implements EmulatorInstance {
+  private want: planner.DeploymentInstanceSpec[] = [];
+  private backends: EmulatableBackend[] = [];
   private args: ExtensionEmulatorArgs;
   private logger = EmulatorLogger.forEmulator(Emulators.EXTENSIONS);
 
@@ -39,6 +41,39 @@ export class ExtensionsEmulator {
 
   constructor(args: ExtensionEmulatorArgs) {
     this.args = args;
+  }
+
+  public start(): Promise<void> {
+    this.logger.logLabeled("DEBUG", "Extensions", "Started Extensions emulator, this is a noop.");
+    return Promise.resolve();
+  }
+
+  public stop(): Promise<void> {
+    this.logger.logLabeled("DEBUG", "Extensions", "Stopping Extensions emulator, this is a noop.");
+    return Promise.resolve();
+  }
+
+  public connect(): Promise<void> {
+    this.logger.logLabeled(
+      "DEBUG",
+      "Extensions",
+      "Connecting Extensions emulator, this is a noop."
+    );
+    return Promise.resolve();
+  }
+
+  public getInfo(): EmulatorInfo {
+    const info = EmulatorRegistry.getInfo(Emulators.FUNCTIONS);
+    if (!info) {
+      throw new FirebaseError(
+        "Extensions Emulator is running but Functions emulator is not. This should never happen."
+      );
+    }
+    return info;
+  }
+
+  public getName(): Emulators {
+    return Emulators.EXTENSIONS;
   }
 
   // readManifest checks the `extensions` section of `firebase.json` for the extension instances to emulate,
@@ -58,33 +93,39 @@ export class ExtensionsEmulator {
   // downloads and builds it if it is not found, then returns the path to that source code.
   private async ensureSourceCode(instance: planner.InstanceSpec): Promise<string> {
     // TODO(b/213335255): Handle local extensions.
-    if (!instance.ref) {
+    if (instance.localPath) {
+      if (!this.hasValidSource({ path: instance.localPath, extTarget: instance.localPath })) {
+        throw new FirebaseError(
+          `Tried to emulate local extension at ${instance.localPath}, but it was missing required files.`
+        );
+      }
+      return instance.localPath;
+    } else if (instance.ref) {
+      const ref = toExtensionVersionRef(instance.ref);
+      const cacheDir =
+        process.env.FIREBASE_EXTENSIONS_CACHE_PATH ||
+        path.join(os.homedir(), ".cache", "firebase", "extensions");
+      const sourceCodePath = path.join(cacheDir, ref);
+
+      // Wait for previous download promise to resolve before we check source validity.
+      // This avoids racing to download the same source multiple times.
+      // Note: The below will not work because it throws the thread to the back of the message queue.
+      // await (this.pendingDownloads.get(ref) ?? Promise.resolve());
+      if (this.pendingDownloads.get(ref)) {
+        await this.pendingDownloads.get(ref);
+      }
+
+      if (!this.hasValidSource({ path: sourceCodePath, extTarget: ref })) {
+        const promise = this.downloadSource(instance, ref, sourceCodePath);
+        this.pendingDownloads.set(ref, promise);
+        await promise;
+      }
+      return sourceCodePath;
+    } else {
       throw new FirebaseError(
-        `No ref found for ${instance.instanceId}. Emulating local extensions is not yet supported.`
+        "Tried to emulate an extension instance without a ref or localPath. This should never happen."
       );
     }
-    // TODO: If ref contains 'latest', we need to resolve that to a real version.
-
-    const ref = toExtensionVersionRef(instance.ref);
-    const cacheDir =
-      process.env.FIREBASE_EXTENSIONS_CACHE_PATH ||
-      path.join(os.homedir(), ".cache", "firebase", "extensions");
-    const sourceCodePath = path.join(cacheDir, ref);
-
-    // Wait for previous download promise to resolve before we check source validity.
-    // This avoids racing to download the same source multiple times.
-    // Note: The below will not work because it throws the thread to the back of the message queue.
-    // await (this.pendingDownloads.get(ref) ?? Promise.resolve());
-    if (this.pendingDownloads.get(ref)) {
-      await this.pendingDownloads.get(ref);
-    }
-
-    if (!this.hasValidSource({ path: sourceCodePath, extRef: ref })) {
-      const promise = this.downloadSource(instance, ref, sourceCodePath);
-      this.pendingDownloads.set(ref, promise);
-      await promise;
-    }
-    return sourceCodePath;
   }
 
   private async downloadSource(
@@ -102,7 +143,7 @@ export class ExtensionsEmulator {
    *
    * Checks against a list of required files or directories that need to be present.
    */
-  private hasValidSource(args: { path: string; extRef: string }): boolean {
+  private hasValidSource(args: { path: string; extTarget: string }): boolean {
     // TODO(lihes): Source code can technically exist in other than "functions" dir.
     // https://source.corp.google.com/piper///depot/google3/firebase/mods/go/worker/fetch_mod_source.go;l=451
     const requiredFiles = [
@@ -117,10 +158,10 @@ export class ExtensionsEmulator {
     for (const requiredFile of requiredFiles) {
       const f = path.join(args.path, requiredFile);
       if (!fs.existsSync(f)) {
-        EmulatorLogger.forExtension({ ref: args.extRef }).logLabeled(
+        EmulatorLogger.forExtension({ ref: args.extTarget }).logLabeled(
           "BULLET",
           "extensions",
-          `Detected invalid source code for ${args.extRef}, expected to find ${f}`
+          `Detected invalid source code for ${args.extTarget}, expected to find ${f}`
         );
         return false;
       }
@@ -158,37 +199,43 @@ export class ExtensionsEmulator {
   public async getExtensionBackends(): Promise<EmulatableBackend[]> {
     await this.readManifest();
     await this.checkAndWarnAPIs(this.want);
-    return Promise.all(
-      this.want.map((i: planner.InstanceSpec) => {
+    this.backends = await Promise.all(
+      this.want.map((i: planner.DeploymentInstanceSpec) => {
         return this.toEmulatableBackend(i);
       })
     );
+    return this.backends;
   }
 
   /**
    * toEmulatableBackend turns a InstanceSpec into an EmulatableBackend which can be run by the Functions emulator.
    * It is exported for testing.
    */
-  public async toEmulatableBackend(instance: planner.InstanceSpec): Promise<EmulatableBackend> {
+  public async toEmulatableBackend(
+    instance: planner.DeploymentInstanceSpec
+  ): Promise<EmulatableBackend> {
     const extensionDir = await this.ensureSourceCode(instance);
     // TODO: This should find package.json, then use that as functionsDir.
     const functionsDir = path.join(extensionDir, "functions");
     // TODO(b/213335255): For local extensions, this should include extensionSpec instead of extensionVersion
     const env = Object.assign(this.autoPopulatedParams(instance), instance.params);
     const { extensionTriggers, nodeMajorVersion, nonSecretEnv, secretEnvVariables } =
-      await getExtensionFunctionInfo(extensionDir, instance.instanceId, env);
-    const extension = await planner.getExtension(instance);
-    const extensionVersion = await planner.getExtensionVersion(instance);
-    return {
+      await getExtensionFunctionInfo(instance, env);
+    const emulatableBackend: EmulatableBackend = {
       functionsDir,
       env: nonSecretEnv,
       secretEnv: secretEnvVariables,
       predefinedTriggers: extensionTriggers,
       nodeMajorVersion: nodeMajorVersion,
       extensionInstanceId: instance.instanceId,
-      extension,
-      extensionVersion,
     };
+    if (instance.ref) {
+      emulatableBackend.extension = await planner.getExtension(instance);
+      emulatableBackend.extensionVersion = await planner.getExtensionVersion(instance);
+    } else if (instance.localPath) {
+      emulatableBackend.extensionSpec = await planner.getExtensionSpec(instance);
+    }
+    return emulatableBackend;
   }
 
   private autoPopulatedParams(instance: planner.InstanceSpec): Record<string, string> {
@@ -282,5 +329,35 @@ export class ExtensionsEmulator {
       this.logger.log("WARN", msg);
     }
     return filteredBackends;
+  }
+
+  private extensionDetailsUILink(backend: EmulatableBackend): string {
+    const uiInfo = EmulatorRegistry.getInfo(Emulators.UI);
+    if (!uiInfo || !backend.extensionInstanceId) {
+      // If the Emulator UI is not running, or if this is not an Extension backend, return an empty string
+      return "";
+    }
+    const uiUrl = EmulatorRegistry.getInfoHostString(uiInfo);
+    return clc.underline(
+      clc.bold(`http://${uiUrl}/${Emulators.EXTENSIONS}/${backend.extensionInstanceId}`)
+    );
+  }
+
+  public extensionsInfoTable(options: Options): string {
+    const filtedBackends = this.filterUnemulatedTriggers(options, this.backends);
+    const uiRunning = EmulatorRegistry.isRunning(Emulators.UI);
+    const tableHead = ["Extension Instance Name", "Extension Ref"];
+    if (uiRunning) {
+      tableHead.push("View in Emulator UI");
+    }
+    const table = new Table({ head: tableHead, style: { head: ["yellow"] } });
+    for (const b of filtedBackends) {
+      if (b.extensionInstanceId) {
+        const tableEntry = [b.extensionInstanceId, b.extensionVersion?.ref || "Local Extension"];
+        if (uiRunning) tableEntry.push(this.extensionDetailsUILink(b));
+        table.push(tableEntry);
+      }
+    }
+    return table.toString();
   }
 }

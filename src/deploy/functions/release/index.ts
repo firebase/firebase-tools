@@ -27,12 +27,12 @@ export async function release(
   if (!context.config) {
     return;
   }
+  if (!payload.functions) {
+    return;
+  }
 
-  const plan = planner.createDeploymentPlan(
-    payload.functions!.backend,
-    await backend.existingBackend(context),
-    { filters: context.filters }
-  );
+  const { wantBackend, haveBackend } = payload.functions!;
+  const plan = planner.createDeploymentPlan(wantBackend, haveBackend, context.filters);
 
   const fnsToDelete = Object.values(plan)
     .map((regionalChanges) => regionalChanges.endpointsToDelete)
@@ -58,8 +58,8 @@ export async function release(
   const fab = new fabricator.Fabricator({
     functionExecutor,
     executor: new executor.QueueExecutor({}),
-    sourceUrl: context.sourceUrl!,
-    storage: context.storage!,
+    sourceUrl: context.source!.sourceUrl!,
+    storage: context.source!.storage!,
     appEngineLocation: getAppEngineLocation(context.firebaseConfig),
   });
 
@@ -72,9 +72,9 @@ export async function release(
   // uri field. createDeploymentPlan copies endpoints by reference. Both of these
   // subtleties are so we can take out a round trip API call to get the latest
   // trigger URLs by calling existingBackend again.
-  printTriggerUrls(payload.functions!.backend);
+  printTriggerUrls(payload.functions!.wantBackend);
 
-  const haveEndpoints = backend.allEndpoints(payload.functions!.backend);
+  const haveEndpoints = backend.allEndpoints(payload.functions!.wantBackend);
   const deletedEndpoints = Object.values(plan)
     .map((r) => r.endpointsToDelete)
     .reduce(reduceFlat, []);
@@ -131,7 +131,9 @@ export function printTriggerUrls(results: backend.Backend): void {
 
   for (const httpsFunc of httpsFunctions) {
     if (!httpsFunc.uri) {
-      logger.debug("Missing URI for HTTPS function in printTriggerUrls. This shouldn't happen");
+      logger.debug(
+        "Not printing URL for HTTPS function. Typically this means it didn't match a filter or we failed deployment"
+      );
       continue;
     }
     logger.info(clc.bold("Function URL"), `(${getFunctionLabel(httpsFunc)}):`, httpsFunc.uri);

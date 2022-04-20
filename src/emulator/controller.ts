@@ -4,7 +4,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 import { logger } from "../logger";
-import * as track from "../track";
+import { track } from "../track";
 import * as utils from "../utils";
 import { EmulatorRegistry } from "./registry";
 import {
@@ -477,10 +477,9 @@ export async function startAll(
       extensionsBackends
     );
     emulatableBackends.push(...filteredExtensionsBackends);
-
     // Log the command for analytics
     void track("Emulator Run", Emulators.EXTENSIONS);
-    EmulatorRegistry.registerExtensionsEmulator();
+    await startEmulator(extensionEmulator);
   }
 
   if (emulatableBackends.length) {

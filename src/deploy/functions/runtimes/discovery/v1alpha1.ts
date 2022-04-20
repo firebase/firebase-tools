@@ -1,8 +1,17 @@
 import * as backend from "../../backend";
 import * as runtimes from "..";
-import { copyIfPresent } from "../../../../gcp/proto";
+import { copyIfPresent, renameIfPresent } from "../../../../gcp/proto";
 import { assertKeyTypes, requireKeys } from "./parsing";
 import { FirebaseError } from "../../../../error";
+
+const CHANNEL_NAME_REGEX = new RegExp(
+  "(projects\\/" +
+    "(?<project>(?:\\d+)|(?:[A-Za-z]+[A-Za-z\\d-]*[A-Za-z\\d]?))\\/)?" +
+    "locations\\/" +
+    "(?<location>[A-Za-z\\d\\-_]+)\\/" +
+    "channels\\/" +
+    "(?<channel>[A-Za-z\\d\\-_]+)"
+);
 
 export type ManifestEndpoint = backend.ServiceConfiguration &
   backend.Triggered &
@@ -10,6 +19,7 @@ export type ManifestEndpoint = backend.ServiceConfiguration &
   Partial<backend.CallableTriggered> &
   Partial<backend.EventTriggered> &
   Partial<backend.TaskQueueTriggered> &
+  Partial<backend.BlockingTriggered> &
   Partial<backend.ScheduleTriggered> & {
     region?: string[];
     entryPoint: string;
@@ -75,9 +85,9 @@ function parseEndpoints(
 
   assertKeyTypes(prefix, ep, {
     region: "array",
-    platform: "string",
+    platform: (platform) => backend.AllFunctionsPlatforms.includes(platform),
     entryPoint: "string",
-    availableMemoryMb: "number",
+    availableMemoryMb: (mem) => backend.AllMemoryOptions.includes(mem),
     maxInstances: "number",
     minInstances: "number",
     concurrency: "number",
@@ -85,7 +95,7 @@ function parseEndpoints(
     timeoutSeconds: "number",
     vpc: "object",
     labels: "object",
-    ingressSettings: "string",
+    ingressSettings: (setting) => backend.AllIngressSettings.includes(setting),
     environmentVariables: "object",
     secretEnvironmentVariables: "array",
     httpsTrigger: "object",
@@ -93,7 +103,16 @@ function parseEndpoints(
     eventTrigger: "object",
     scheduleTrigger: "object",
     taskQueueTrigger: "object",
+    blockingTrigger: "object",
+    cpu: (cpu: backend.Endpoint["cpu"]) => typeof cpu === "number" || cpu === "gcf_gen1",
   });
+  if (ep.vpc) {
+    assertKeyTypes(prefix + ".vpc", ep.vpc, {
+      connector: "string",
+      egressSettings: (setting) => backend.AllVpcEgressSettings.includes(setting),
+    });
+    requireKeys(prefix + ".vpc", ep.vpc, "connector");
+  }
   let triggerCount = 0;
   if (ep.httpsTrigger) {
     triggerCount++;
@@ -108,6 +127,9 @@ function parseEndpoints(
     triggerCount++;
   }
   if (ep.taskQueueTrigger) {
+    triggerCount++;
+  }
+  if (ep.blockingTrigger) {
     triggerCount++;
   }
   if (!triggerCount) {
@@ -130,6 +152,9 @@ function parseEndpoints(
         channel: "string",
       });
       triggered = { eventTrigger: ep.eventTrigger };
+      renameIfPresent(triggered.eventTrigger, ep.eventTrigger, "channel", "channel", (c) =>
+        resolveChannelName(project, c, defaultRegion)
+      );
       for (const [k, v] of Object.entries(triggered.eventTrigger.eventFilters)) {
         if (k === "topic" && !v.startsWith("projects/")) {
           // Construct full pubsub topic name.
@@ -180,6 +205,13 @@ function parseEndpoints(
         });
       }
       triggered = { taskQueueTrigger: ep.taskQueueTrigger };
+    } else if (backend.isBlockingTriggered(ep)) {
+      requireKeys(prefix + ".blockingTrigger", ep.blockingTrigger, "eventType");
+      assertKeyTypes(prefix + ".blockingTrigger", ep.blockingTrigger, {
+        eventType: "string",
+        options: "object",
+      });
+      triggered = { blockingTrigger: ep.blockingTrigger };
     } else {
       throw new FirebaseError(
         `Do not recognize trigger type for endpoint ${id}. Try upgrading ` +
@@ -215,4 +247,24 @@ function parseEndpoints(
   }
 
   return allParsed;
+}
+
+function resolveChannelName(projectId: string, channel: string, defaultRegion: string): string {
+  if (!channel.includes("/")) {
+    const location = defaultRegion;
+    const channelId = channel;
+    return "projects/" + projectId + "/locations/" + location + "/channels/" + channelId;
+  }
+  const match = CHANNEL_NAME_REGEX.exec(channel);
+  if (!match?.groups) {
+    throw new FirebaseError("Invalid channel name format.");
+  }
+  const matchedProjectId = match.groups.project;
+  const location = match.groups.location;
+  const channelId = match.groups.channel;
+  if (matchedProjectId) {
+    return "projects/" + matchedProjectId + "/locations/" + location + "/channels/" + channelId;
+  } else {
+    return "projects/" + projectId + "/locations/" + location + "/channels/" + channelId;
+  }
 }
