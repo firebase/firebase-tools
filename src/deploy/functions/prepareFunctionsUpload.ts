@@ -12,38 +12,31 @@ import * as backend from "./backend";
 import * as functionsConfig from "../../functionsConfig";
 import * as utils from "../../utils";
 import * as fsAsync from "../../fsAsync";
-import * as args from "./args";
 import * as projectConfig from "../../functions/projectConfig";
 
 const CONFIG_DEST_FILE = ".runtimeconfig.json";
 
 // TODO(inlined): move to a file that's not about uploading source code
-export async function getFunctionsConfig(context: args.Context): Promise<{ [key: string]: any }> {
-  let config: Record<string, any> = {};
-  if (context.runtimeConfigEnabled) {
-    try {
-      config = await functionsConfig.materializeAll(context.firebaseConfig!.projectId);
-    } catch (err: any) {
-      logger.debug(err);
-      let errorCode = err?.context?.response?.statusCode;
-      if (!errorCode) {
-        logger.debug("Got unexpected error from Runtime Config; it has no status code:", err);
-        errorCode = 500;
-      }
-      if (errorCode === 500 || errorCode === 503) {
-        throw new FirebaseError(
-          "Cloud Runtime Config is currently experiencing issues, " +
-            "which is preventing your functions from being deployed. " +
-            "Please wait a few minutes and then try to deploy your functions again." +
-            "\nRun `firebase deploy --except functions` if you want to continue deploying the rest of your project."
-        );
-      }
-      config = {};
+export async function getFunctionsConfig(projectId: string): Promise<Record<string, unknown>> {
+  try {
+    return await functionsConfig.materializeAll(projectId);
+  } catch (err: any) {
+    logger.debug(err);
+    let errorCode = err?.context?.response?.statusCode;
+    if (!errorCode) {
+      logger.debug("Got unexpected error from Runtime Config; it has no status code:", err);
+      errorCode = 500;
+    }
+    if (errorCode === 500 || errorCode === 503) {
+      throw new FirebaseError(
+        "Cloud Runtime Config is currently experiencing issues, " +
+          "which is preventing your functions from being deployed. " +
+          "Please wait a few minutes and then try to deploy your functions again." +
+          "\nRun `firebase deploy --except functions` if you want to continue deploying the rest of your project."
+      );
     }
   }
-
-  config.firebase = context.firebaseConfig;
-  return config;
+  return {};
 }
 
 async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream) {

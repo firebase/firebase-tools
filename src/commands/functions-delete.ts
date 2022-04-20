@@ -35,7 +35,7 @@ export default new Command("functions:delete [filters...]")
 
     const context: args.Context = {
       projectId: needProjectId(options),
-      filters: filters.map((f) => f.split(".")),
+      filters: filters.map((f) => ({ idChunks: f.split(".") })),
     };
 
     const [config, existingBackend] = await Promise.all([
@@ -48,7 +48,10 @@ export default new Command("functions:delete [filters...]")
     if (options.region) {
       existingBackend.endpoints = { [options.region]: existingBackend.endpoints[options.region] };
     }
-    const plan = planner.createDeploymentPlan(/* want= */ backend.empty(), existingBackend, {
+    const plan = planner.createDeploymentPlan({
+      wantBackend: backend.empty(),
+      haveBackend: existingBackend,
+      codebase: "",
       filters: context.filters,
       deleteAll: true,
     });
@@ -91,8 +94,9 @@ export default new Command("functions:delete [filters...]")
     try {
       const fab = new fabricator.Fabricator({
         functionExecutor,
-        executor: new executor.QueueExecutor({}),
         appEngineLocation,
+        executor: new executor.QueueExecutor({}),
+        sources: {},
       });
       const summary = await fab.applyPlan(plan);
       await reporter.logAndTrackDeployStats(summary);

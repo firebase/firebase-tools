@@ -2,13 +2,13 @@ import * as clc from "cli-color";
 import * as path from "path";
 import * as refs from "./refs";
 import { Config } from "../config";
-import { InstanceSpec, ManifestInstanceSpec } from "../deploy/extensions/planner";
+import { getExtensionSpec, ManifestInstanceSpec } from "../deploy/extensions/planner";
 import { logger } from "../logger";
 import { promptOnce } from "../prompt";
-import { ParamBindingOptions, readEnvFile } from "./paramHelper";
+import { readEnvFile } from "./paramHelper";
 import { FirebaseError } from "../error";
 import * as utils from "../utils";
-import { logPrefix } from "./extensionsHelper";
+import { isLocalPath, logPrefix } from "./extensionsHelper";
 import { ParamType } from "./extensionsApi";
 
 export const ENV_DIRECTORY = "extensions";
@@ -71,12 +71,13 @@ export async function writeLocalSecrets(
   force?: boolean
 ): Promise<void> {
   for (const spec of specs) {
-    if (!spec.paramSpecs) {
+    const extensionSpec = await getExtensionSpec(spec);
+    if (!extensionSpec.params) {
       continue;
     }
 
     const writeBuffer: Record<string, string> = {};
-    const locallyOverridenSecretParams = spec.paramSpecs.filter(
+    const locallyOverridenSecretParams = extensionSpec.params.filter(
       (p) => p.type === ParamType.SECRET && spec.params[p.param].local
     );
     for (const paramSpec of locallyOverridenSecretParams) {
@@ -149,18 +150,44 @@ export function instanceExists(instanceId: string, config: Config): boolean {
   return !!config.get("extensions", {})[instanceId];
 }
 
-export function getInstanceRef(instanceId: string, config: Config): refs.Ref {
+/**
+ * Gets the instance's extension ref string or local path given an instanceId.
+ */
+export function getInstanceTarget(instanceId: string, config: Config): string {
   if (!instanceExists(instanceId, config)) {
     throw new FirebaseError(`Could not find extension instance ${instanceId} in firebase.json`);
   }
-  const ref = config.get("extensions", {})[instanceId];
-  return refs.parse(ref);
+  return config.get("extensions", {})[instanceId];
+}
+
+/**
+ * Gets the instance's extension ref if exists.
+ */
+export function getInstanceRef(instanceId: string, config: Config): refs.Ref {
+  const source = getInstanceTarget(instanceId, config);
+  if (isLocalPath(source)) {
+    throw new FirebaseError(
+      `Extension instance ${instanceId} doesn't have a ref because it is from a local source`
+    );
+  }
+  return refs.parse(source);
 }
 
 function writeExtensionsToFirebaseJson(specs: ManifestInstanceSpec[], config: Config): void {
   const extensions = config.get("extensions", {});
   for (const s of specs) {
-    extensions[s.instanceId] = refs.toExtensionVersionRef(s.ref!);
+    let target;
+    if (s.ref) {
+      target = refs.toExtensionVersionRef(s.ref!);
+    } else if (s.localPath) {
+      target = s.localPath;
+    } else {
+      throw new FirebaseError(
+        `Unable to resolve ManifestInstanceSpec, make sure you provide either extension ref or a local path to extension source code`
+      );
+    }
+
+    extensions[s.instanceId] = target;
   }
   config.set("extensions", extensions);
   config.writeProjectFile("firebase.json", config.src);
@@ -174,6 +201,7 @@ async function writeEnvFiles(
 ): Promise<void> {
   for (const spec of specs) {
     const content = Object.entries(spec.params)
+      .filter((r) => r[1].baseValue !== "") // Don't write empty values
       .sort((a, b) => {
         return a[0].localeCompare(b[0]);
       })

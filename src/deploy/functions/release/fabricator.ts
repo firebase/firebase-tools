@@ -8,6 +8,7 @@ import { assertExhaustive } from "../../../functional";
 import { getHumanFriendlyRuntimeName } from "../runtimes";
 import { functionsOrigin, functionsV2Origin } from "../../../api";
 import { logger } from "../../../logger";
+import * as args from "../args";
 import * as backend from "../backend";
 import * as cloudtasks from "../../../gcp/cloudtasks";
 import * as deploymentTool from "../../../deploymentTool";
@@ -21,6 +22,8 @@ import * as reporter from "./reporter";
 import * as run from "../../../gcp/run";
 import * as scheduler from "../../../gcp/cloudscheduler";
 import * as utils from "../../../utils";
+import * as services from "../services";
+import { AUTH_BLOCKING_EVENTS } from "../../../functions/events/v1";
 
 // TODO: Tune this for better performance.
 const gcfV1PollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
@@ -43,17 +46,13 @@ export interface FabricatorArgs {
   executor: Executor;
   functionExecutor: Executor;
   appEngineLocation: string;
-
-  // Required if creating or updating any GCFv1 functions
-  sourceUrl?: string;
-
-  // Required if creating or updating any GCFv2 functions
-  storage?: Record<string, gcfV2.StorageSource>;
+  sources: Record<string, args.Source>;
 }
 
 const rethrowAs =
   <T>(endpoint: backend.Endpoint, op: reporter.OperationType) =>
   (err: unknown): T => {
+    logger.error((err as Error).message);
     throw new reporter.DeploymentError(endpoint, op, err);
   };
 
@@ -61,15 +60,13 @@ const rethrowAs =
 export class Fabricator {
   executor: Executor;
   functionExecutor: Executor;
-  sourceUrl: string | undefined;
-  storage: Record<string, gcfV2.StorageSource> | undefined;
+  sources: Record<string, args.Source>;
   appEngineLocation: string;
 
   constructor(args: FabricatorArgs) {
     this.executor = args.executor;
     this.functionExecutor = args.functionExecutor;
-    this.sourceUrl = args.sourceUrl;
-    this.storage = args.storage;
+    this.sources = args.sources;
     this.appEngineLocation = args.appEngineLocation;
   }
 
@@ -196,11 +193,12 @@ export class Fabricator {
   }
 
   async createV1Function(endpoint: backend.Endpoint, scraper: SourceTokenScraper): Promise<void> {
-    if (!this.sourceUrl) {
+    const sourceUrl = this.sources[endpoint.codebase!]?.sourceUrl;
+    if (!sourceUrl) {
       logger.debug("Precondition failed. Cannot create a GCF function without sourceUrl");
       throw new Error("Precondition failed");
     }
-    const apiFunction = gcf.functionFromEndpoint(endpoint, this.sourceUrl);
+    const apiFunction = gcf.functionFromEndpoint(endpoint, sourceUrl);
     // As a general security practice and way to smooth out the upgrade path
     // for GCF gen 2, we are enforcing that all new GCFv1 deploys will require
     // HTTPS
@@ -213,7 +211,7 @@ export class Fabricator {
         const op: { name: string } = await gcf.createFunction(apiFunction);
         return poller.pollOperation<gcf.CloudFunction>({
           ...gcfV1PollerOptions,
-          pollerName: `create-${endpoint.region}-${endpoint.id}`,
+          pollerName: `create-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
           operationResourceName: op.name,
           onPoll: scraper.poller,
         });
@@ -248,15 +246,26 @@ export class Fabricator {
           })
           .catch(rethrowAs(endpoint, "set invoker"));
       }
+    } else if (
+      backend.isBlockingTriggered(endpoint) &&
+      AUTH_BLOCKING_EVENTS.includes(endpoint.blockingTrigger.eventType as any)
+    ) {
+      // Auth Blocking functions should always be public
+      await this.executor
+        .run(async () => {
+          await gcf.setInvokerCreate(endpoint.project, backend.functionName(endpoint), ["public"]);
+        })
+        .catch(rethrowAs(endpoint, "set invoker"));
     }
   }
 
   async createV2Function(endpoint: backend.Endpoint): Promise<void> {
-    if (!this.storage) {
+    const storage = this.sources[endpoint.codebase!]?.storage;
+    if (!storage) {
       logger.debug("Precondition failed. Cannot create a GCFv2 function without storage");
       throw new Error("Precondition failed");
     }
-    const apiFunction = gcfV2.functionFromEndpoint(endpoint, this.storage[endpoint.region]);
+    const apiFunction = gcfV2.functionFromEndpoint(endpoint, storage);
 
     // N.B. As of GCFv2 private preview GCF no longer creates Pub/Sub topics
     // for Pub/Sub event handlers. This may change, at which point this code
@@ -286,7 +295,7 @@ export class Fabricator {
         const op: { name: string } = await gcfV2.createFunction(apiFunction);
         return await poller.pollOperation<gcfV2.CloudFunction>({
           ...gcfV2PollerOptions,
-          pollerName: `create-${endpoint.region}-${endpoint.id}`,
+          pollerName: `create-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
           operationResourceName: op.name,
         });
       })
@@ -317,6 +326,14 @@ export class Fabricator {
           })
           .catch(rethrowAs(endpoint, "set invoker"));
       }
+    } else if (
+      backend.isBlockingTriggered(endpoint) &&
+      AUTH_BLOCKING_EVENTS.includes(endpoint.blockingTrigger.eventType as any)
+    ) {
+      // Auth Blocking functions should always be public
+      await this.executor
+        .run(() => run.setInvokerCreate(endpoint.project, serviceName, ["public"]))
+        .catch(rethrowAs(endpoint, "set invoker"));
     }
 
     const mem = endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;
@@ -330,18 +347,19 @@ export class Fabricator {
   }
 
   async updateV1Function(endpoint: backend.Endpoint, scraper: SourceTokenScraper): Promise<void> {
-    if (!this.sourceUrl) {
+    const sourceUrl = this.sources[endpoint.codebase!]?.sourceUrl;
+    if (!sourceUrl) {
       logger.debug("Precondition failed. Cannot update a GCF function without sourceUrl");
       throw new Error("Precondition failed");
     }
-    const apiFunction = gcf.functionFromEndpoint(endpoint, this.sourceUrl);
+    const apiFunction = gcf.functionFromEndpoint(endpoint, sourceUrl);
     apiFunction.sourceToken = await scraper.tokenPromise();
     const resultFunction = await this.functionExecutor
       .run(async () => {
         const op: { name: string } = await gcf.updateFunction(apiFunction);
         return await poller.pollOperation<gcf.CloudFunction>({
           ...gcfV1PollerOptions,
-          pollerName: `update-${endpoint.region}-${endpoint.id}`,
+          pollerName: `update-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
           operationResourceName: op.name,
           onPoll: scraper.poller,
         });
@@ -354,6 +372,11 @@ export class Fabricator {
       invoker = endpoint.httpsTrigger.invoker;
     } else if (backend.isTaskQueueTriggered(endpoint)) {
       invoker = endpoint.taskQueueTrigger.invoker;
+    } else if (
+      backend.isBlockingTriggered(endpoint) &&
+      AUTH_BLOCKING_EVENTS.includes(endpoint.blockingTrigger.eventType as any)
+    ) {
+      invoker = ["public"];
     }
     if (invoker) {
       await this.executor
@@ -363,11 +386,12 @@ export class Fabricator {
   }
 
   async updateV2Function(endpoint: backend.Endpoint): Promise<void> {
-    if (!this.storage) {
+    const storage = this.sources[endpoint.codebase!]?.storage;
+    if (!storage) {
       logger.debug("Precondition failed. Cannot update a GCFv2 function without storage");
       throw new Error("Precondition failed");
     }
-    const apiFunction = gcfV2.functionFromEndpoint(endpoint, this.storage[endpoint.region]);
+    const apiFunction = gcfV2.functionFromEndpoint(endpoint, storage);
 
     // N.B. As of GCFv2 private preview the API chokes on any update call that
     // includes the pub/sub topic even if that topic is unchanged.
@@ -382,7 +406,7 @@ export class Fabricator {
         const op: { name: string } = await gcfV2.updateFunction(apiFunction);
         return await poller.pollOperation<gcfV2.CloudFunction>({
           ...gcfV2PollerOptions,
-          pollerName: `update-${endpoint.region}-${endpoint.id}`,
+          pollerName: `update-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
           operationResourceName: op.name,
         });
       })
@@ -395,6 +419,11 @@ export class Fabricator {
       invoker = endpoint.httpsTrigger.invoker;
     } else if (backend.isTaskQueueTriggered(endpoint)) {
       invoker = endpoint.taskQueueTrigger.invoker;
+    } else if (
+      backend.isBlockingTriggered(endpoint) &&
+      AUTH_BLOCKING_EVENTS.includes(endpoint.blockingTrigger.eventType as any)
+    ) {
+      invoker = ["public"];
     }
     if (invoker) {
       await this.executor
@@ -414,7 +443,7 @@ export class Fabricator {
         const op: { name: string } = await gcf.deleteFunction(fnName);
         const pollerOptions = {
           ...gcfV1PollerOptions,
-          pollerName: `delete-${endpoint.region}-${endpoint.id}`,
+          pollerName: `delete-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
           operationResourceName: op.name,
         };
         await poller.pollOperation<void>(pollerOptions);
@@ -429,7 +458,7 @@ export class Fabricator {
         const op: { name: string } = await gcfV2.deleteFunction(fnName);
         const pollerOptions = {
           ...gcfV2PollerOptions,
-          pollerName: `delete-${endpoint.region}-${endpoint.id}`,
+          pollerName: `delete-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
           operationResourceName: op.name,
         };
         await poller.pollOperation<void>(pollerOptions);
@@ -472,6 +501,8 @@ export class Fabricator {
       assertExhaustive(endpoint.platform);
     } else if (backend.isTaskQueueTriggered(endpoint)) {
       await this.upsertTaskQueue(endpoint);
+    } else if (backend.isBlockingTriggered(endpoint)) {
+      await this.registerBlockingTrigger(endpoint);
     }
   }
 
@@ -487,6 +518,8 @@ export class Fabricator {
       assertExhaustive(endpoint.platform);
     } else if (backend.isTaskQueueTriggered(endpoint)) {
       await this.disableTaskQueue(endpoint);
+    } else if (backend.isBlockingTriggered(endpoint)) {
+      await this.unregisterBlockingTrigger(endpoint);
     }
   }
 
@@ -519,6 +552,14 @@ export class Fabricator {
     }
   }
 
+  async registerBlockingTrigger(
+    endpoint: backend.Endpoint & backend.BlockingTriggered
+  ): Promise<void> {
+    await this.executor
+      .run(() => services.serviceForEndpoint(endpoint).registerTrigger(endpoint))
+      .catch(rethrowAs(endpoint, "register blocking trigger"));
+  }
+
   async deleteScheduleV1(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
     const job = scheduler.jobFromEndpoint(endpoint, this.appEngineLocation);
     await this.executor
@@ -546,12 +587,18 @@ export class Fabricator {
       .catch(rethrowAs(endpoint, "disable task queue"));
   }
 
+  async unregisterBlockingTrigger(
+    endpoint: backend.Endpoint & backend.BlockingTriggered
+  ): Promise<void> {
+    await this.executor
+      .run(() => services.serviceForEndpoint(endpoint).unregisterTrigger(endpoint))
+      .catch(rethrowAs(endpoint, "unregister blocking trigger"));
+  }
+
   logOpStart(op: string, endpoint: backend.Endpoint): void {
     const runtime = getHumanFriendlyRuntimeName(endpoint.runtime);
     const label = helper.getFunctionLabel(endpoint);
-    utils.logBullet(
-      `${clc.bold.cyan("functions:")} ${op} ${runtime} function ${clc.bold(label)}...`
-    );
+    utils.logLabeledBullet("functions", `${op} ${runtime} function ${clc.bold(label)}...`);
   }
 
   logOpSuccess(op: string, endpoint: backend.Endpoint): void {

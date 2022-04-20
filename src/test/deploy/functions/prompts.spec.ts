@@ -415,19 +415,4 @@ describe("promptForMinInstances", () => {
     expect(promptStub).to.have.been.called;
     expect(logStub.firstCall.args[1]).to.match(/Cannot calculate the minimum monthly bill/);
   });
-
-  it("Should advise customers of possible discounts", async () => {
-    const endpoint: backend.Endpoint = {
-      ...SAMPLE_ENDPOINT,
-      platform: "gcfv2",
-      minInstances: 2,
-    };
-    promptStub.resolves(true);
-
-    await expect(
-      functionPrompts.promptForMinInstances(SAMPLE_OPTIONS, backend.of(endpoint), backend.empty())
-    ).to.eventually.be.fulfilled;
-    expect(promptStub).to.have.been.called;
-    expect(logStub.firstCall.args[1]).to.match(new RegExp("https://cloud.google.com/run/cud"));
-  });
 });

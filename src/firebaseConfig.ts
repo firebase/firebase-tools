@@ -106,6 +106,7 @@ export type FunctionConfig = {
   source?: string;
   ignore?: string[];
   runtime?: CloudFunctionRuntimes;
+  codebase?: string;
 } & Deployable;
 
 export type FunctionsConfig = FunctionConfig | FunctionConfig[];
