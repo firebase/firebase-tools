@@ -1,43 +1,55 @@
-import * as _ from "lodash";
+import { capitalize } from "lodash";
 import * as clc from "cli-color";
-import { logger } from "../logger";
-import * as _features from "./features";
-import * as utils from "../utils";
 
-export interface Indexable<T = any> {
-  [key: string]: T;
-}
-export interface RCFile {
-  projects: Indexable;
-}
+import { FirebaseError } from "../error";
+import { logger } from "../logger";
+import * as features from "./features";
+
 export interface Setup {
-  config: Indexable;
-  rcfile: RCFile;
+  config: Record<string, any>;
+  rcfile: {
+    projects: Record<string, any>;
+  };
   features?: string[];
   featureArg?: boolean;
-  project?: Indexable;
+  project?: Record<string, any>;
   projectId?: string;
   projectLocation?: string;
 }
 
-// TODO: Convert features/index.js to TypeScript so it exports
-// as an indexable type instead of doing this cast.
-const features = _features as Indexable;
+const featureFns = new Map<string, (setup: any, config: any, options?: any) => Promise<unknown>>([
+  ["account", features.account],
+  ["database", features.database],
+  ["firestore", features.firestore],
+  ["functions", features.functions],
+  ["hosting", features.hosting],
+  ["storage", features.storage],
+  ["emulators", features.emulators],
+  ["project", features.project], // always runs, sets up .firebaserc
+  ["remoteconfig", features.remoteconfig],
+  ["hosting:github", features.hostingGithub],
+]);
 
 export async function init(setup: Setup, config: any, options: any): Promise<any> {
-  const nextFeature = setup.features ? setup.features.shift() : undefined;
+  const nextFeature = setup.features?.shift();
   if (nextFeature) {
-    if (!features[nextFeature]) {
-      return utils.reject(
-        clc.bold(nextFeature) +
-          " is not a valid feature. Must be one of " +
-          _.without(_.keys(features), "project").join(", ")
+    if (!featureFns.has(nextFeature)) {
+      const availableFeatures = Object.keys(features)
+        .filter((f) => f !== "project")
+        .join(", ");
+      throw new FirebaseError(
+        `${clc.bold(nextFeature)} is not a valid feature. Must be one of ${availableFeatures}`
       );
     }
 
-    logger.info(clc.bold("\n" + clc.white("=== ") + _.capitalize(nextFeature) + " Setup"));
+    logger.info(clc.bold(`\n${clc.white("===")} ${capitalize(nextFeature)} Setup`));
 
-    await Promise.resolve(features[nextFeature](setup, config, options));
+    const fn = featureFns.get(nextFeature);
+    if (!fn) {
+      // We've already checked that the function exists, so this really should never happen.
+      throw new FirebaseError(`We've lost the function to init ${nextFeature}`, { exit: 2 });
+    }
+    await fn(setup, config, options);
     return init(setup, config, options);
   }
 }

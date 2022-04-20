@@ -1,11 +1,12 @@
-import * as marked from "marked";
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
+const { marked } = require("marked");
 
 import * as extensionsApi from "./extensionsApi";
-import * as api from "../api";
-import * as refs from "./refs";
+import { firebaseStorageOrigin, firedataOrigin } from "../api";
+import { Client } from "../apiv2";
 import { flattenArray } from "../functional";
 import { FirebaseError } from "../error";
-import { getExtensionVersion, InstanceSpec } from "../deploy/extensions/planner";
+import { getExtensionSpec, InstanceSpec } from "../deploy/extensions/planner";
 
 /** Product for which provisioning can be (or is) deferred */
 export enum DeferredProduct {
@@ -37,8 +38,8 @@ export async function bulkCheckProductsProvisioned(
 ): Promise<void> {
   const usedProducts = await Promise.all(
     instanceSpecs.map(async (i) => {
-      const extensionVersion = await getExtensionVersion(i);
-      return getUsedProducts(extensionVersion.spec);
+      const extensionSpec = await getExtensionSpec(i);
+      return getUsedProducts(extensionSpec);
     })
   );
   await checkProducts(projectId, [...flattenArray(usedProducts)]);
@@ -118,10 +119,8 @@ function getTriggerType(propertiesYaml: string | undefined) {
 }
 
 async function isStorageProvisioned(projectId: string): Promise<boolean> {
-  const resp = await api.request("GET", `/v1beta/projects/${projectId}/buckets`, {
-    auth: true,
-    origin: api.firebaseStorageOrigin,
-  });
+  const client = new Client({ urlPrefix: firebaseStorageOrigin, apiVersion: "v1beta" });
+  const resp = await client.get<{ buckets: { name: string }[] }>(`/projects/${projectId}/buckets`);
   return !!resp.body?.buckets?.find((bucket: any) => {
     const bucketResourceName = bucket.name;
     // Bucket resource name looks like: projects/PROJECT_NUMBER/buckets/BUCKET_NAME
@@ -133,9 +132,9 @@ async function isStorageProvisioned(projectId: string): Promise<boolean> {
 }
 
 async function isAuthProvisioned(projectId: string): Promise<boolean> {
-  const resp = await api.request("GET", `/v1/projects/${projectId}/products`, {
-    auth: true,
-    origin: api.firedataOrigin,
-  });
+  const client = new Client({ urlPrefix: firedataOrigin, apiVersion: "v1" });
+  const resp = await client.get<{ activation: { service: string }[] }>(
+    `/projects/${projectId}/products`
+  );
   return !!resp.body?.activation?.map((a: any) => a.service).includes("FIREBASE_AUTH");
 }

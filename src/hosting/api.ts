@@ -217,7 +217,7 @@ export async function getChannel(
       `/projects/${project}/sites/${site}/channels/${channelId}`
     );
     return res.body;
-  } catch (e) {
+  } catch (e: any) {
     if (e.status === 404) {
       return null;
     }
@@ -250,7 +250,7 @@ export async function listChannels(
       if (!nextPageToken) {
         return channels;
       }
-    } catch (e) {
+    } catch (e: any) {
       if (e.status === 404) {
         throw new FirebaseError(`could not find channels for site "${site}"`, {
           original: e,
@@ -385,7 +385,7 @@ export async function listSites(project: string): Promise<Site[]> {
       if (!nextPageToken) {
         return sites;
       }
-    } catch (e) {
+    } catch (e: any) {
       if (e.status === 404) {
         throw new FirebaseError(`could not find sites for project "${project}"`, {
           original: e,
@@ -406,7 +406,7 @@ export async function getSite(project: string, site: string): Promise<Site> {
   try {
     const res = await apiClient.get<Site>(`/projects/${project}/sites/${site}`);
     return res.body;
-  } catch (e) {
+  } catch (e: any) {
     if (e.status === 404) {
       throw new FirebaseError(`could not find site "${site}" for project "${project}"`, {
         original: e,
@@ -485,7 +485,7 @@ export async function removeAuthDomain(project: string, url: string): Promise<st
     return domains;
   }
   const targetDomain = url.replace("https://", "");
-  const authDomains = domains.filter((domain: string) => domain != targetDomain);
+  const authDomains = domains.filter((domain: string) => domain !== targetDomain);
   return updateAuthDomains(project, authDomains);
 }
 

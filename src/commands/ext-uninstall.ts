@@ -1,7 +1,8 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as ora from "ora";
-import * as marked from "marked";
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
+const { marked } = require("marked");
 import TerminalRenderer = require("marked-terminal");
 
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
@@ -14,46 +15,44 @@ import {
   ensureExtensionsApiEnabled,
   logPrefix,
   resourceTypeToNiceName,
+  diagnoseAndFixProject,
 } from "../extensions/extensionsHelper";
 import { promptOnce } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import { logger } from "../logger";
+import * as manifest from "../extensions/manifest";
+import { Options } from "../options";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
 });
 
-/**
- * We do not currently support uninstalling extensions that require additional uninstall steps to be taken in the CLI. Direct them to the Console to uninstall the extension.
- *
- * @param projectId ID of the user's project
- * @param instanceId ID of the extension instance
- * @return a void Promise
- */
-function consoleUninstallOnly(projectId: string, instanceId: string): Promise<void> {
-  const instanceURL = `https://console.firebase.google.com/project/${projectId}/extensions/instances/${instanceId}`;
-  const consoleUninstall =
-    "This extension has additional uninstall checks that are not currently supported by the CLI, and can only be uninstalled through the Firebase Console. " +
-    `Please visit **[${instanceURL}](${instanceURL})** to uninstall this extension.`;
-  logger.info("\n");
-  utils.logLabeledWarning(logPrefix, marked(consoleUninstall));
-  return Promise.resolve();
-}
-
 export default new Command("ext:uninstall <extensionInstanceId>")
   .description("uninstall an extension that is installed in your Firebase project by instance ID")
   .withForce()
+  .option(
+    "--local",
+    "remove from firebase.json rather than directly uninstall from a Firebase project"
+  )
   .before(requirePermissions, ["firebaseextensions.instances.delete"])
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
-  .action(async (instanceId: string, options: any) => {
+  .before(diagnoseAndFixProject)
+  .action(async (instanceId: string, options: Options) => {
+    if (options.local) {
+      const config = manifest.loadConfig(options);
+      manifest.removeFromManifest(instanceId, config);
+      manifest.showPreviewWarning();
+      return;
+    }
+
+    // TODO(b/220900194): Remove everything below and make --local the default behavior.
     const projectId = needProjectId(options);
     let instance;
-
     try {
       instance = await extensionsApi.getInstance(projectId, instanceId);
-    } catch (err) {
+    } catch (err: any) {
       if (err.status === 404) {
         return utils.reject(`No extension instance ${instanceId} in project ${projectId}.`, {
           exit: 1,
@@ -111,7 +110,7 @@ export default new Command("ext:uninstall <extensionInstanceId>")
       }
     }
 
-    const spinner = ora.default(
+    const spinner = ora(
       ` ${clc.green.bold(logPrefix)}: uninstalling ${clc.bold(
         instanceId
       )}. This usually takes 1 to 2 minutes...`
@@ -125,7 +124,7 @@ export default new Command("ext:uninstall <extensionInstanceId>")
       spinner.succeed(
         ` ${clc.green.bold(logPrefix)}: deleted your extension instance's resources.`
       );
-    } catch (err) {
+    } catch (err: any) {
       if (spinner.isSpinning) {
         spinner.fail();
       }
@@ -135,4 +134,22 @@ export default new Command("ext:uninstall <extensionInstanceId>")
       return utils.reject(`Error occurred uninstalling extension ${instanceId}`, { original: err });
     }
     utils.logLabeledSuccess(logPrefix, `uninstalled ${clc.bold(instanceId)}`);
+    manifest.showDeprecationWarning();
   });
+
+/**
+ * We do not currently support uninstalling extensions that require additional uninstall steps to be taken in the CLI. Direct them to the Console to uninstall the extension.
+ *
+ * @param projectId ID of the user's project
+ * @param instanceId ID of the extension instance
+ * @return a void Promise
+ */
+function consoleUninstallOnly(projectId: string, instanceId: string): Promise<void> {
+  const instanceURL = `https://console.firebase.google.com/project/${projectId}/extensions/instances/${instanceId}`;
+  const consoleUninstall =
+    "This extension has additional uninstall checks that are not currently supported by the CLI, and can only be uninstalled through the Firebase Console. " +
+    `Please visit **[${instanceURL}](${instanceURL})** to uninstall this extension.`;
+  logger.info("\n");
+  utils.logLabeledWarning(logPrefix, marked(consoleUninstall));
+  return Promise.resolve();
+}

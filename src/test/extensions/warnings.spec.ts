@@ -10,7 +10,7 @@ import {
   RegistryLaunchStage,
   Visibility,
 } from "../../extensions/extensionsApi";
-import { InstanceSpec } from "../../deploy/extensions/planner";
+import { DeploymentInstanceSpec } from "../../deploy/extensions/planner";
 
 const testExtensionVersion: ExtensionVersion = {
   name: "test",
@@ -41,7 +41,7 @@ const testInstanceSpec = (
   publisherId: string,
   instanceId: string,
   launchStage: RegistryLaunchStage
-): InstanceSpec => {
+): DeploymentInstanceSpec => {
   return {
     instanceId,
     ref: {

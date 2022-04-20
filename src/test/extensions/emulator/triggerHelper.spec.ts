@@ -1,25 +1,28 @@
 import { expect } from "chai";
 import * as triggerHelper from "../../../extensions/emulator/triggerHelper";
+import { Resource } from "../../../extensions/extensionsApi";
 
 describe("triggerHelper", () => {
   describe("functionResourceToEmulatedTriggerDefintion", () => {
     it("should assign valid properties from the resource to the ETD and ignore others", () => {
-      const testResource = {
+      const testResource: Resource = {
         name: "test-resource",
         entryPoint: "functionName",
+        type: "firebaseextensions.v1beta.function",
         properties: {
           timeout: "3s",
           location: "us-east1",
           availableMemoryMb: 1024,
-          somethingInvalid: "a value",
         },
       };
+      (testResource.properties as Record<string, string>).somethingInvalid = "a value";
       const expected = {
+        platform: "gcfv1",
         availableMemoryMb: 1024,
         entryPoint: "test-resource",
         name: "test-resource",
         regions: ["us-east1"],
-        timeout: "3s",
+        timeoutSeconds: 3,
       };
 
       const result = triggerHelper.functionResourceToEmulatedTriggerDefintion(testResource);
@@ -28,14 +31,16 @@ describe("triggerHelper", () => {
     });
 
     it("should handle HTTPS triggers", () => {
-      const testResource = {
+      const testResource: Resource = {
         name: "test-resource",
         entryPoint: "functionName",
+        type: "firebaseextensions.v1beta.function",
         properties: {
           httpsTrigger: {},
         },
       };
       const expected = {
+        platform: "gcfv1",
         entryPoint: "test-resource",
         name: "test-resource",
         httpsTrigger: {},
@@ -47,9 +52,10 @@ describe("triggerHelper", () => {
     });
 
     it("should handle firestore triggers", () => {
-      const testResource = {
+      const testResource: Resource = {
         name: "test-resource",
         entryPoint: "functionName",
+        type: "firebaseextensions.v1beta.function",
         properties: {
           eventTrigger: {
             eventType: "providers/cloud.firestore/eventTypes/document.write",
@@ -58,6 +64,7 @@ describe("triggerHelper", () => {
         },
       };
       const expected = {
+        platform: "gcfv1",
         entryPoint: "test-resource",
         name: "test-resource",
         eventTrigger: {
@@ -73,9 +80,10 @@ describe("triggerHelper", () => {
     });
 
     it("should handle database triggers", () => {
-      const testResource = {
+      const testResource: Resource = {
         name: "test-resource",
         entryPoint: "functionName",
+        type: "firebaseextensions.v1beta.function",
         properties: {
           eventTrigger: {
             eventType: "providers/google.firebase.database/eventTypes/ref.create",
@@ -84,6 +92,7 @@ describe("triggerHelper", () => {
         },
       };
       const expected = {
+        platform: "gcfv1",
         entryPoint: "test-resource",
         name: "test-resource",
         eventTrigger: {
@@ -99,9 +108,10 @@ describe("triggerHelper", () => {
     });
 
     it("should handle pubsub triggers", () => {
-      const testResource = {
+      const testResource: Resource = {
         name: "test-resource",
         entryPoint: "functionName",
+        type: "firebaseextensions.v1beta.function",
         properties: {
           eventTrigger: {
             eventType: "google.pubsub.topic.publish",
@@ -110,6 +120,7 @@ describe("triggerHelper", () => {
         },
       };
       const expected = {
+        platform: "gcfv1",
         entryPoint: "test-resource",
         name: "test-resource",
         eventTrigger: {

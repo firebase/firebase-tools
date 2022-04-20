@@ -5,9 +5,9 @@ import { promptOnce } from "../../../prompt";
 import { requirePermissions } from "../../../requirePermissions";
 import { previews } from "../../../previews";
 import { Options } from "../../../options";
-import * as ensureApiEnabled from "../../../ensureApiEnabled";
+import { ensure } from "../../../ensureApiEnabled";
 
-module.exports = async function (setup: any, config: any, options: Options) {
+export async function doSetup(setup: any, config: any, options: Options) {
   logger.info();
   logger.info(
     "A " + clc.bold("functions") + " directory will be created in your project with sample code"
@@ -22,8 +22,8 @@ module.exports = async function (setup: any, config: any, options: Options) {
   if (projectId) {
     await requirePermissions({ ...options, project: projectId });
     await Promise.all([
-      ensureApiEnabled.enable(projectId, "cloudfunctions.googleapis.com"),
-      ensureApiEnabled.enable(projectId, "runtimeconfig.googleapis.com"),
+      ensure(projectId, "cloudfunctions.googleapis.com", "unused", true),
+      ensure(projectId, "runtimeconfig.googleapis.com", "unused", true),
     ]);
   }
   const choices = [
@@ -49,4 +49,4 @@ module.exports = async function (setup: any, config: any, options: Options) {
     choices,
   });
   return require("./" + language)(setup, config);
-};
+}

@@ -643,7 +643,7 @@ function sortKeys<T>(obj: T): T {
     return obj;
   }
   if (Array.isArray(obj)) {
-    return (obj.map(sortKeys) as unknown) as T;
+    return obj.map(sortKeys) as unknown as T;
   }
   const sortedObj: T = {} as T;
   (Object.keys(obj) as [keyof T]).sort().forEach((key) => {

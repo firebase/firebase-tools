@@ -33,6 +33,7 @@ import {
   AgentProjectState,
   TenantProjectState,
   MfaConfig,
+  BlockingFunctionEvents,
 } from "./state";
 import { MfaEnrollments, Schemas } from "./types";
 
@@ -73,6 +74,8 @@ export const authOperations: AuthOps = {
     projects: {
       createSessionCookie,
       queryAccounts,
+      getConfig,
+      updateConfig,
       accounts: {
         _: signUp,
         delete: deleteAccount,
@@ -462,7 +465,7 @@ function batchCreate(
         );
       }
       state.overwriteUserWithLocalId(userInfo.localId, fields);
-    } catch (e) {
+    } catch (e: any) {
       if (e instanceof BadRequestError) {
         // Use friendlier messages for some codes, consistent with production.
         let message = e.message;
@@ -1460,7 +1463,27 @@ function signInWithIdp(
     }
   }
 
-  let { response, rawId } = fakeFetchUserInfoFromIdp(providerId, claims);
+  // Generic SAML flow
+  let samlResponse: SamlResponse | undefined;
+  let signInAttributes = undefined;
+  if (normalizedUri.searchParams.get("SAMLResponse")) {
+    // Auth emulator purposefully does not parse SAML and expects SAML-related
+    // fields to be JSON objects.
+    samlResponse = JSON.parse(normalizedUri.searchParams.get("SAMLResponse")!) as SamlResponse;
+    signInAttributes = samlResponse.assertion?.attributeStatements;
+
+    assert(samlResponse.assertion, "INVALID_IDP_RESPONSE ((Missing assertion in SAMLResponse.))");
+    assert(
+      samlResponse.assertion.subject,
+      "INVALID_IDP_RESPONSE ((Missing assertion.subject in SAMLResponse.))"
+    );
+    assert(
+      samlResponse.assertion.subject.nameId,
+      "INVALID_IDP_RESPONSE ((Missing assertion.subject.nameId in SAMLResponse.))"
+    );
+  }
+
+  let { response, rawId } = fakeFetchUserInfoFromIdp(providerId, claims, samlResponse);
 
   // Always return an access token, so that clients depending on it sorta work.
   // e.g. JS SDK creates credentials from accessTokens for most providers:
@@ -1492,7 +1515,7 @@ function signInWithIdp(
         userMatchingProvider
       ));
     }
-  } catch (err) {
+  } catch (err: any) {
     if (reqBody.returnIdpCredential && err instanceof BadRequestError) {
       response.errorMessage = err.message;
       return response;
@@ -1556,7 +1579,7 @@ function signInWithIdp(
     return { ...response, ...mfaPending(state, user, providerId) };
   } else {
     user = state.updateUserByLocalId(user.localId, { lastLoginAt: Date.now().toString() });
-    return { ...response, ...issueTokens(state, user, providerId) };
+    return { ...response, ...issueTokens(state, user, providerId, { signInAttributes }) };
   }
 }
 
@@ -1719,31 +1742,22 @@ function getEmulatorProjectConfig(state: ProjectState): Schemas["EmulatorV1Proje
 
 function updateEmulatorProjectConfig(
   state: ProjectState,
-  reqBody: Schemas["EmulatorV1ProjectsConfig"]
+  reqBody: Schemas["EmulatorV1ProjectsConfig"],
+  ctx: ExegesisContext
 ): Schemas["EmulatorV1ProjectsConfig"] {
-  const allowDuplicateEmails = reqBody.signIn?.allowDuplicateEmails;
-  if (allowDuplicateEmails != null) {
-    assert(
-      state instanceof AgentProjectState,
-      "((Only top level projects can set oneAccountPerEmail.))"
-    );
-    state.oneAccountPerEmail = !allowDuplicateEmails;
+  // New developers should not use updateEmulatorProjectConfig to update the
+  // allowDuplicateEmails and usageMode settings and should instead use
+  // updateConfig to do so.
+  const updateMask = [];
+  if (reqBody.signIn?.allowDuplicateEmails != null) {
+    updateMask.push("signIn.allowDuplicateEmails");
   }
-  const usageMode = reqBody.usageMode;
-  if (usageMode != null) {
-    assert(state instanceof AgentProjectState, "((Only top level projects can set usageMode.))");
-    switch (usageMode) {
-      case "PASSTHROUGH":
-        assert(state.getUserCount() === 0, "Users are present, unable to set passthrough mode");
-        state.usageMode = UsageMode.PASSTHROUGH;
-        break;
-      case "DEFAULT":
-        state.usageMode = UsageMode.DEFAULT;
-        break;
-      default:
-        throw new BadRequestError("Invalid usage mode provided");
-    }
+  if (reqBody.usageMode) {
+    updateMask.push("usageMode");
   }
+  ctx.params.query.updateMask = updateMask.join();
+
+  updateConfig(state, reqBody, ctx);
   return getEmulatorProjectConfig(state);
 }
 
@@ -1970,7 +1984,7 @@ function mfaSignInFinalize(
 
   let { user, signInProvider } = parsePendingCredential(state, reqBody.mfaPendingCredential);
   const enrollment = user.mfaInfo?.find(
-    (enrollment) => enrollment.unobfuscatedPhoneInfo == phoneNumber
+    (enrollment) => enrollment.unobfuscatedPhoneInfo === phoneNumber
   );
   assert(enrollment && enrollment.mfaEnrollmentId, "MFA_ENROLLMENT_NOT_FOUND");
 
@@ -1985,6 +1999,43 @@ function mfaSignInFinalize(
     idToken,
     refreshToken,
   };
+}
+
+function getConfig(
+  state: ProjectState,
+  reqBody: unknown,
+  ctx: ExegesisContext
+): Schemas["GoogleCloudIdentitytoolkitAdminV2Config"] {
+  // Shouldn't error on this but need assertion for type checking
+  assert(
+    state instanceof AgentProjectState,
+    "((Can only get top-level configurations on agent projects.))"
+  );
+  return state.config;
+}
+
+function updateConfig(
+  state: ProjectState,
+  reqBody: Schemas["GoogleCloudIdentitytoolkitAdminV2Config"],
+  ctx: ExegesisContext
+): Schemas["GoogleCloudIdentitytoolkitAdminV2Config"] {
+  assert(
+    state instanceof AgentProjectState,
+    "((Can only update top-level configurations on agent projects.))"
+  );
+  for (const event in reqBody.blockingFunctions?.triggers) {
+    if (Object.prototype.hasOwnProperty.call(reqBody.blockingFunctions!.triggers, event)) {
+      assert(
+        Object.values(BlockingFunctionEvents).includes(event as BlockingFunctionEvents),
+        "INVALID_BLOCKING_FUNCTION: ((Event type is invalid.))"
+      );
+      assert(
+        parseAbsoluteUri(reqBody.blockingFunctions!.triggers[event].functionUri!),
+        "INVALID_BLOCKING_FUNCTION: ((Expected an absolute URI with valid scheme and host.))"
+      );
+    }
+  }
+  return state.updateConfig(reqBody, ctx.params.query.updateMask);
 }
 
 export type AuthOperation = (
@@ -2031,9 +2082,11 @@ function issueTokens(
   {
     extraClaims,
     secondFactor,
+    signInAttributes,
   }: {
     extraClaims?: Record<string, unknown>;
     secondFactor?: SecondFactorRecord;
+    signInAttributes?: unknown;
   } = {}
 ): { idToken: string; refreshToken?: string; expiresIn: string } {
   user = state.updateUserByLocalId(user.localId, { lastRefreshAt: new Date().toISOString() });
@@ -2051,6 +2104,7 @@ function issueTokens(
     secondFactor,
     usageMode,
     tenantId,
+    signInAttributes,
   });
   const refreshToken =
     state.usageMode === UsageMode.DEFAULT
@@ -2119,6 +2173,7 @@ function generateJwt(
     secondFactor,
     usageMode,
     tenantId,
+    signInAttributes,
   }: {
     projectId: string;
     signInProvider: string;
@@ -2127,6 +2182,7 @@ function generateJwt(
     secondFactor?: SecondFactorRecord;
     usageMode?: string;
     tenantId?: string;
+    signInAttributes?: unknown;
   }
 ): string {
   const identities: Record<string, string[]> = {};
@@ -2173,6 +2229,7 @@ function generateJwt(
       sign_in_second_factor: secondFactor?.provider,
       usage_mode: usageMode,
       tenant: tenantId,
+      sign_in_attributes: signInAttributes,
     },
   };
   /* eslint-enable camelcase */
@@ -2371,7 +2428,8 @@ function parseClaims(idTokenOrJsonClaims: string | undefined): IdpJwtPayload | u
 
 function fakeFetchUserInfoFromIdp(
   providerId: string,
-  claims: IdpJwtPayload
+  claims: IdpJwtPayload,
+  samlResponse?: SamlResponse
 ): {
   response: SignInWithIdpResponse;
   rawId: string;
@@ -2397,7 +2455,7 @@ function fakeFetchUserInfoFromIdp(
     photoUrl,
   };
 
-  let federatedId: string;
+  let federatedId = rawId;
   /* eslint-disable camelcase */
   switch (providerId) {
     case "google.com": {
@@ -2421,8 +2479,14 @@ function fakeFetchUserInfoFromIdp(
       });
       break;
     }
+    case providerId.match(/^saml\./)?.input:
+      const nameId = samlResponse?.assertion?.subject?.nameId;
+      response.email = nameId && isValidEmailAddress(nameId) ? nameId : response.email;
+      response.emailVerified = true;
+      response.rawUserInfo = JSON.stringify(samlResponse?.assertion?.attributeStatements);
+      break;
+    case providerId.match(/^oidc\./)?.input:
     default:
-      federatedId = rawId;
       response.rawUserInfo = JSON.stringify(claims);
       break;
   }
@@ -2766,6 +2830,17 @@ function updateTenant(
   return state.updateTenant(reqBody, ctx.params.query.updateMask);
 }
 
+export interface SamlAssertion {
+  subject?: {
+    nameId?: string;
+  };
+  attributeStatements?: unknown;
+}
+
+export interface SamlResponse {
+  assertion?: SamlAssertion;
+}
+
 /* eslint-disable camelcase */
 export interface FirebaseJwtPayload {
   // Standard fields:
@@ -2796,6 +2871,7 @@ export interface FirebaseJwtPayload {
     second_factor_identifier?: string;
     usage_mode?: string;
     tenant?: string;
+    sign_in_attributes?: unknown;
   };
   // ...and other fields that we don't care for now.
 }

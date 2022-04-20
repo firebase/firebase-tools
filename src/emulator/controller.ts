@@ -3,9 +3,8 @@ import * as clc from "cli-color";
 import * as fs from "fs";
 import * as path from "path";
 
-import { Config } from "../config";
 import { logger } from "../logger";
-import * as track from "../track";
+import { track } from "../track";
 import * as utils from "../utils";
 import { EmulatorRegistry } from "./registry";
 import {
@@ -17,14 +16,14 @@ import {
   isEmulator,
 } from "./types";
 import { Constants, FIND_AVAILBLE_PORT_BY_DEFAULT } from "./constants";
-import { FunctionsEmulator } from "./functionsEmulator";
+import { EmulatableBackend, FunctionsEmulator } from "./functionsEmulator";
 import { parseRuntimeVersion } from "./functionsEmulatorUtils";
 import { AuthEmulator } from "./auth";
 import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
 import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
 import { HostingEmulator } from "./hostingEmulator";
 import { FirebaseError } from "../error";
-import { getProjectId, needProjectId } from "../projectUtils";
+import { getProjectId, needProjectId, getAliases, needProjectNumber } from "../projectUtils";
 import { PubsubEmulator } from "./pubsubEmulator";
 import * as commandUtils from "./commandUtils";
 import { EmulatorHub } from "./hub";
@@ -36,15 +35,30 @@ import { EmulatorLogger } from "./emulatorLogger";
 import * as portUtils from "./portUtils";
 import { EmulatorHubClient } from "./hubClient";
 import { promptOnce } from "../prompt";
-import { FLAG_EXPORT_ON_EXIT_NAME } from "./commandUtils";
+import { FLAG_EXPORT_ON_EXIT_NAME, JAVA_DEPRECATION_WARNING } from "./commandUtils";
 import { fileExistsSync } from "../fsutils";
 import { StorageEmulator } from "./storage";
+import { getStorageRulesConfig } from "./storage/rules/config";
 import { getDefaultDatabaseInstance } from "../getDefaultDatabaseInstance";
 import { getProjectDefaultAccount } from "../auth";
 import { Options } from "../options";
 import { ParsedTriggerDefinition } from "./functionsEmulatorShared";
+import { ExtensionsEmulator } from "./extensionsEmulator";
+import { previews } from "../previews";
+import { normalizeAndValidate } from "../functions/projectConfig";
+import { requiresJava } from "./downloadableEmulators";
+
+const START_LOGGING_EMULATOR = utils.envOverride(
+  "START_LOGGING_EMULATOR",
+  "false",
+  (val) => val === "true"
+);
 
 async function getAndCheckAddress(emulator: Emulators, options: Options): Promise<Address> {
+  if (emulator === Emulators.EXTENSIONS) {
+    // The Extensions emulator always runs on the same port as the Functions emulator.
+    emulator = Emulators.FUNCTIONS;
+  }
   let host = options.config.src.emulators?.[emulator]?.host || Constants.getDefaultHost(emulator);
   if (host === "localhost" && utils.isRunningInWSL()) {
     // HACK(https://github.com/firebase/firebase-tools-ui/issues/332): Use IPv4
@@ -71,7 +85,7 @@ async function getAndCheckAddress(emulator: Emulators, options: Options): Promis
   if (!portOpen) {
     if (findAvailablePort) {
       const newPort = await portUtils.findAvailablePort(host, port);
-      if (newPort != port) {
+      if (newPort !== port) {
         loggerForEmulator.logLabeled(
           "WARN",
           emulator,
@@ -127,7 +141,7 @@ export async function startEmulator(instance: EmulatorInstance): Promise<void> {
   const name = instance.getName();
 
   // Log the command for analytics
-  track("Emulator Run", name);
+  void track("Emulator Run", name);
 
   await EmulatorRegistry.start(instance);
 }
@@ -145,7 +159,7 @@ export async function exportOnExit(options: any) {
           "please wait for the export to finish..."
       );
       await exportEmulatorData(exportOnExitDir, options);
-    } catch (e) {
+    } catch (e: any) {
       utils.logWarning(e);
       utils.logWarning(`Automatic export to "${exportOnExitDir}" failed, going to exit now...`);
     }
@@ -178,7 +192,12 @@ export async function cleanShutdown(): Promise<void> {
  * @param options
  */
 export function filterEmulatorTargets(options: any): Emulators[] {
-  let targets = ALL_SERVICE_EMULATORS.filter((e) => {
+  let targets = [...ALL_SERVICE_EMULATORS];
+  if (previews.extensionsemulator) {
+    targets.push(Emulators.EXTENSIONS);
+  }
+
+  targets = targets.filter((e) => {
     return options.config.has(e) || options.config.has(`emulators.${e}`);
   });
 
@@ -224,15 +243,20 @@ export function shouldStart(options: Options, name: Emulators): boolean {
   }
 
   // Don't start the functions emulator if we can't find the source directory
-  if (name === Emulators.FUNCTIONS && emulatorInTargets && !options.config.src.functions?.source) {
-    EmulatorLogger.forEmulator(Emulators.FUNCTIONS).logLabeled(
-      "WARN",
-      "functions",
-      `The functions emulator is configured but there is no functions source directory. Have you run ${clc.bold(
-        "firebase init functions"
-      )}?`
-    );
-    return false;
+  if (name === Emulators.FUNCTIONS && emulatorInTargets) {
+    try {
+      normalizeAndValidate(options.config.src.functions);
+      return true;
+    } catch (err: any) {
+      EmulatorLogger.forEmulator(Emulators.FUNCTIONS).logLabeled(
+        "WARN",
+        "functions",
+        `The functions emulator is configured but there is no functions source directory. Have you run ${clc.bold(
+          "firebase init functions"
+        )}?`
+      );
+      return false;
+    }
   }
 
   if (name === Emulators.HOSTING && emulatorInTargets && !options.config.get("hosting")) {
@@ -305,7 +329,14 @@ function findExportMetadata(importPath: string): ExportMetadata | undefined {
   }
 }
 
-export async function startAll(options: Options, showUI: boolean = true): Promise<void> {
+interface EmulatorOptions extends Options {
+  extDevEnv?: Record<string, string>;
+}
+
+export async function startAll(
+  options: EmulatorOptions,
+  showUI = true
+): Promise<{ deprecationNotices: string[] }> {
   // Emulators config is specified in firebase.json as:
   // "emulators": {
   //   "firestore": {
@@ -325,6 +356,13 @@ export async function startAll(options: Options, showUI: boolean = true): Promis
     throw new FirebaseError(
       `No emulators to start, run ${clc.bold("firebase init emulators")} to get started.`
     );
+  }
+  const deprecationNotices = [];
+  if (targets.some(requiresJava)) {
+    if (!(await commandUtils.checkJavaSupported())) {
+      utils.logLabeledWarning("emulators", JAVA_DEPRECATION_WARNING, "warn");
+      deprecationNotices.push(JAVA_DEPRECATION_WARNING);
+    }
   }
   const hubLogger = EmulatorLogger.forEmulator(Emulators.HUB);
   hubLogger.logLabeled("BULLET", "emulators", `Starting emulators: ${targets.join(", ")}`);
@@ -375,7 +413,7 @@ export async function startAll(options: Options, showUI: boolean = true): Promis
     // since we originally mistakenly reported emulators:start events
     // for each emulator, by reporting the "hub" we ensure that our
     // historical data can still be viewed.
-    track("emulators:start", "hub");
+    void track("emulators:start", "hub");
     await startEmulator(hub);
   }
 
@@ -398,22 +436,56 @@ export async function startAll(options: Options, showUI: boolean = true): Promis
     }
   }
 
+  const emulatableBackends: EmulatableBackend[] = [];
+  const projectDir = (options.extDevDir || options.config.projectDir) as string;
   if (shouldStart(options, Emulators.FUNCTIONS)) {
+    const functionsCfg = normalizeAndValidate(options.config.src.functions)[0];
+    // Note: ext:dev:emulators:* commands hit this path, not the Emulators.EXTENSIONS path
+    utils.assertIsStringOrUndefined(options.extDevDir);
+    const functionsDir = path.join(projectDir, functionsCfg.source);
+
+    emulatableBackends.push({
+      functionsDir,
+      env: {
+        ...options.extDevEnv,
+      },
+      secretEnv: [], // CF3 secrets are bound to specific functions, so we'll get them during trigger discovery.
+      // TODO(b/213335255): predefinedTriggers and nodeMajorVersion are here to support ext:dev:emulators:* commands.
+      // Ideally, we should handle that case via ExtensionEmulator.
+      predefinedTriggers: options.extDevTriggers as ParsedTriggerDefinition[] | undefined,
+      nodeMajorVersion: parseRuntimeVersion(
+        (options.extDevNodeVersion as string) || functionsCfg.runtime
+      ),
+    });
+  }
+
+  if (shouldStart(options, Emulators.EXTENSIONS) && previews.extensionsemulator) {
+    const projectNumber = Constants.isDemoProject(projectId)
+      ? Constants.FAKE_PROJECT_NUMBER
+      : await needProjectNumber(options);
+    const aliases = getAliases(options, projectId);
+    const extensionEmulator = new ExtensionsEmulator({
+      projectId,
+      projectDir: options.config.projectDir,
+      projectNumber,
+      aliases,
+      extensions: options.config.get("extensions"),
+    });
+    const extensionsBackends = await extensionEmulator.getExtensionBackends();
+    const filteredExtensionsBackends = extensionEmulator.filterUnemulatedTriggers(
+      options,
+      extensionsBackends
+    );
+    emulatableBackends.push(...filteredExtensionsBackends);
+    // Log the command for analytics
+    void track("Emulator Run", Emulators.EXTENSIONS);
+    await startEmulator(extensionEmulator);
+  }
+
+  if (emulatableBackends.length) {
     const functionsLogger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
     const functionsAddr = await getAndCheckAddress(Emulators.FUNCTIONS, options);
     const projectId = needProjectId(options);
-
-    utils.assertDefined(options.config.src.functions);
-    utils.assertDefined(
-      options.config.src.functions.source,
-      "Error: 'functions.source' is not defined"
-    );
-
-    utils.assertIsStringOrUndefined(options.extensionDir);
-    const functionsDir = path.join(
-      options.extensionDir || options.config.projectDir,
-      options.config.src.functions.source
-    );
 
     let inspectFunctions: number | undefined;
     if (options.inspectFunctions) {
@@ -423,11 +495,11 @@ export async function startAll(options: Options, showUI: boolean = true): Promis
       functionsLogger.logLabeled(
         "WARN",
         "functions",
-        `You are running the functions emulator in debug mode (port=${inspectFunctions}). This means that functions will execute in sequence rather than in parallel.`
+        `You are running the Functions emulator in debug mode (port=${inspectFunctions}). This means that functions will execute in sequence rather than in parallel.`
       );
     }
 
-    // Warn the developer that the Functions emulator can call out to production.
+    // Warn the developer that the Functions/Extensions emulator can call out to production.
     const emulatorsNotRunning = ALL_SERVICE_EMULATORS.filter((e) => {
       return e !== Emulators.FUNCTIONS && !shouldStart(options, e);
     });
@@ -441,21 +513,18 @@ export async function startAll(options: Options, showUI: boolean = true): Promis
       );
     }
 
-    const account = getProjectDefaultAccount(options.projectRoot as string | null);
+    const account = getProjectDefaultAccount(options.projectRoot);
+
+    // TODO(b/213241033): Figure out how to watch for changes to extensions .env files & reload triggers when they change.
     const functionsEmulator = new FunctionsEmulator({
       projectId,
-      functionsDir,
+      projectDir,
+      emulatableBackends,
       account,
       host: functionsAddr.host,
       port: functionsAddr.port,
       debugPort: inspectFunctions,
-      env: {
-        ...(options.extensionEnv as Record<string, string> | undefined),
-      },
-      predefinedTriggers: options.extensionTriggers as ParsedTriggerDefinition[] | undefined,
-      nodeMajorVersion: parseRuntimeVersion(
-        options.extensionNodeVersion || options.config.get("functions.runtime")
-      ),
+      projectAlias: options.projectAlias,
     });
     await startEmulator(functionsEmulator);
   }
@@ -539,7 +608,7 @@ export async function startAll(options: Options, showUI: boolean = true): Promis
       if (!options.instance) {
         options.instance = await getDefaultDatabaseInstance(options);
       }
-    } catch (e) {
+    } catch (e: any) {
       databaseLogger.log(
         "DEBUG",
         `Failed to retrieve default database instance: ${JSON.stringify(e)}`
@@ -637,19 +706,12 @@ export async function startAll(options: Options, showUI: boolean = true): Promis
 
   if (shouldStart(options, Emulators.STORAGE)) {
     const storageAddr = await getAndCheckAddress(Emulators.STORAGE, options);
-    const storageConfig = options.config.data.storage;
-
-    if (!storageConfig?.rules) {
-      throw new FirebaseError(
-        "Cannot start the Storage emulator without rules file specified in firebase.json: run 'firebase init' and set up your Storage configuration"
-      );
-    }
 
     const storageEmulator = new StorageEmulator({
       host: storageAddr.host,
       port: storageAddr.port,
       projectId: projectId,
-      rules: options.config.path(storageConfig.rules),
+      rules: getStorageRulesConfig(projectId, options),
     });
     await startEmulator(storageEmulator);
 
@@ -682,7 +744,7 @@ export async function startAll(options: Options, showUI: boolean = true): Promis
     );
   }
 
-  if (showUI && shouldStart(options, Emulators.UI)) {
+  if (showUI && (shouldStart(options, Emulators.UI) || START_LOGGING_EMULATOR)) {
     const loggingAddr = await getAndCheckAddress(Emulators.LOGGING, options);
     const loggingEmulator = new LoggingEmulator({
       host: loggingAddr.host,
@@ -690,7 +752,9 @@ export async function startAll(options: Options, showUI: boolean = true): Promis
     });
 
     await startEmulator(loggingEmulator);
+  }
 
+  if (showUI && shouldStart(options, Emulators.UI)) {
     const uiAddr = await getAndCheckAddress(Emulators.UI, options);
     const ui = new EmulatorUI({
       projectId: projectId,
@@ -707,6 +771,8 @@ export async function startAll(options: Options, showUI: boolean = true): Promis
       await instance.connect();
     }
   }
+
+  return { deprecationNotices };
 }
 
 /**
@@ -733,7 +799,7 @@ export async function exportEmulatorData(exportPath: string, options: any) {
 
   try {
     await hubClient.getStatus();
-  } catch (e) {
+  } catch (e: any) {
     const filePath = EmulatorHub.getLocatorFilePath(projectId);
     throw new FirebaseError(
       `The emulator hub for ${projectId} did not respond to a status check. If this error continues try shutting down all running emulators and deleting the file ${filePath}`,
@@ -776,7 +842,7 @@ export async function exportEmulatorData(exportPath: string, options: any) {
   utils.logBullet(`Exporting data to: ${exportAbsPath}`);
   try {
     await hubClient.postExport(exportAbsPath);
-  } catch (e) {
+  } catch (e: any) {
     throw new FirebaseError("Export request failed, see emulator logs for more information.", {
       exit: 1,
       original: e,

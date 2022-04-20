@@ -40,7 +40,7 @@ function makeVary(vary: string | null = ""): string {
  * the Firebase Hosting origin.
  */
 export function proxyRequestHandler(url: string, rewriteIdentifier: string): RequestHandler {
-  return async (req: IncomingMessage, res: ServerResponse, next: () => void): Promise<void> => {
+  return async (req: IncomingMessage, res: ServerResponse, next: () => void): Promise<unknown> => {
     logger.info(`[hosting] Rewriting ${req.url} to ${url} for ${rewriteIdentifier}`);
     // Extract the __session cookie from headers to forward it to the
     // functions cookie is not a string[].
@@ -75,7 +75,7 @@ export function proxyRequestHandler(url: string, rewriteIdentifier: string): Req
         continue;
       }
       const value = req.headers[key];
-      if (value == undefined) {
+      if (value === undefined) {
         headers.delete(key);
       } else if (Array.isArray(value)) {
         headers.delete(key);
@@ -101,7 +101,7 @@ export function proxyRequestHandler(url: string, rewriteIdentifier: string): Req
         timeout: 60000,
         compress: false,
       });
-    } catch (err) {
+    } catch (err: any) {
       const isAbortError =
         err instanceof FirebaseError && err.original?.name.includes("AbortError");
       const isTimeoutError =
@@ -155,11 +155,11 @@ export function proxyRequestHandler(url: string, rewriteIdentifier: string): Req
         const locationURL = new URL(location);
         // Only assume we can fix the location header if the origin of the
         // "fixed" header is the same as the origin of the outbound request.
-        if (locationURL.origin == u.origin) {
+        if (locationURL.origin === u.origin) {
           const unborkedLocation = location.replace(locationURL.origin, "");
           proxyRes.response.headers.set("location", unborkedLocation);
         }
-      } catch (e) {
+      } catch (e: any) {
         logger.debug(
           `[hosting] had trouble parsing location header, but this may be okay: "${location}"`
         );

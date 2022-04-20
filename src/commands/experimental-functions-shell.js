@@ -3,7 +3,7 @@
 var { Command } = require("../command");
 var { requirePermissions } = require("../requirePermissions");
 var { actionFunction } = require("../functionsShellCommandAction");
-var requireConfig = require("../requireConfig");
+var { requireConfig } = require("../requireConfig");
 
 module.exports = new Command("experimental:functions:shell")
   .description(

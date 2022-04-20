@@ -17,6 +17,10 @@ import { logger } from "./logger";
 import { promptOnce } from "./prompt";
 import * as scopes from "./scopes";
 import { clearCredentials } from "./defaultCredentials";
+import { v4 as uuidv4 } from "uuid";
+import { randomBytes, createHash } from "crypto";
+import { bold } from "cli-color";
+import { track } from "./track";
 
 /* eslint-disable camelcase */
 // The wire protocol for an access token returned by Google.
@@ -74,7 +78,7 @@ interface GitHubAuthResponse {
 // Typescript emulates modules, which have constant exports. We can
 // overcome this by casting to any
 // TODO fix after https://github.com/http-party/node-portfinder/pull/115
-((portfinder as unknown) as { basePort: number }).basePort = 9005;
+(portfinder as unknown as { basePort: number }).basePort = 9005;
 
 /**
  * Get the global default account. Before multi-auth was implemented
@@ -324,24 +328,34 @@ function getLoginUrl(callbackUrl: string, userHint?: string) {
   );
 }
 
-async function getTokensFromAuthorizationCode(code: string, callbackUrl: string) {
+async function getTokensFromAuthorizationCode(
+  code: string,
+  callbackUrl: string,
+  verifier?: string
+) {
   let res: {
     body?: TokensWithTTL;
     statusCode: number;
   };
 
+  const params: Record<string, string> = {
+    code: code,
+    client_id: api.clientId,
+    client_secret: api.clientSecret,
+    redirect_uri: callbackUrl,
+    grant_type: "authorization_code",
+  };
+
+  if (verifier) {
+    params["code_verifier"] = verifier;
+  }
+
   try {
     res = await api.request("POST", "/o/oauth2/token", {
       origin: api.authOrigin,
-      form: {
-        code: code,
-        client_id: api.clientId,
-        client_secret: api.clientSecret,
-        redirect_uri: callbackUrl,
-        grant_type: "authorization_code",
-      },
+      form: params,
     });
-  } catch (err) {
+  } catch (err: any) {
     if (err instanceof Error) {
       logger.debug("Token Fetch Error:", err.stack || "");
     } else {
@@ -406,30 +420,65 @@ async function respondWithFile(
   req.socket.destroy();
 }
 
-async function loginWithoutLocalhost(userHint?: string): Promise<UserCredentials> {
-  const callbackUrl = getCallbackUrl();
-  const authUrl = getLoginUrl(callbackUrl, userHint);
+function urlsafeBase64(base64string: string) {
+  return base64string.replace(/\+/g, "-").replace(/=+$/, "").replace(/\//g, "_");
+}
 
-  logger.info();
-  logger.info("Visit this URL on any device to log in:");
-  logger.info(clc.bold.underline(authUrl));
-  logger.info();
-
-  open(authUrl);
-
-  const code: string = await promptOnce({
-    type: "input",
-    name: "code",
-    message: "Paste authorization code here:",
+async function loginRemotely(userHint?: string): Promise<UserCredentials> {
+  const authProxyClient = new apiv2.Client({
+    urlPrefix: api.authProxyOrigin,
+    auth: false,
   });
-  const tokens = await getTokensFromAuthorizationCode(code, callbackUrl);
-  // getTokensFromAuthorizationCode doesn't handle the --token case, so we know
-  // that we'll have a valid id_token.
-  return {
-    user: jwt.decode(tokens.id_token!) as User,
-    tokens: tokens,
-    scopes: SCOPES,
-  };
+
+  const sessionId = uuidv4();
+  const codeVerifier = randomBytes(32).toString("hex");
+  // urlsafe base64 is required for code_challenge in OAuth PKCE
+  const codeChallenge = urlsafeBase64(createHash("sha256").update(codeVerifier).digest("base64"));
+
+  const attestToken = (
+    await authProxyClient.post<{ session_id: string }, { token: string }>("/attest", {
+      session_id: sessionId,
+    })
+  ).body?.token;
+
+  const loginUrl = `${api.authProxyOrigin}/login?code_challenge=${codeChallenge}&session=${sessionId}&attest=${attestToken}`;
+
+  logger.info();
+  logger.info("To sign in to the Firebase CLI:");
+  logger.info();
+  logger.info("1. Take note of your session ID:");
+  logger.info();
+  logger.info(`   ${bold(sessionId.substring(0, 5).toUpperCase())}`);
+  logger.info();
+  logger.info("2. Visit the URL below on any device and follow the instructions to get your code:");
+  logger.info();
+  logger.info(`   ${loginUrl}`);
+  logger.info();
+  logger.info("3. Paste or enter the authorization code below once you have it:");
+  logger.info();
+
+  const code = await promptOnce({
+    type: "input",
+    message: "Enter authorization code:",
+  });
+
+  try {
+    const tokens = await getTokensFromAuthorizationCode(
+      code,
+      `${api.authProxyOrigin}/complete`,
+      codeVerifier
+    );
+
+    void track("login", "google_remote");
+
+    return {
+      user: jwt.decode(tokens.id_token!) as User,
+      tokens: tokens,
+      scopes: SCOPES,
+    };
+  } catch (e) {
+    throw new FirebaseError("Unable to authenticate using the provided code. Please try again.");
+  }
 }
 
 async function loginWithLocalhostGoogle(port: number, userHint?: string): Promise<UserCredentials> {
@@ -443,6 +492,8 @@ async function loginWithLocalhostGoogle(port: number, userHint?: string): Promis
     successTemplate,
     getTokensFromAuthorizationCode
   );
+
+  void track("login", "google_localhost");
   // getTokensFromAuthoirzationCode doesn't handle the --token case, so we know we'll
   // always have an id_token.
   return {
@@ -456,13 +507,15 @@ async function loginWithLocalhostGitHub(port: number): Promise<string> {
   const callbackUrl = getCallbackUrl(port);
   const authUrl = getGithubLoginUrl(callbackUrl);
   const successTemplate = "../templates/loginSuccessGithub.html";
-  return loginWithLocalhost(
+  const tokens = await loginWithLocalhost(
     port,
     callbackUrl,
     authUrl,
     successTemplate,
     getGithubTokensFromAuthorizationCode
   );
+  void track("login", "google_localhost");
+  return tokens;
 }
 
 async function loginWithLocalhost<ResultType>(
@@ -490,7 +543,7 @@ async function loginWithLocalhost<ResultType>(
         const tokens = await getTokens(queryCode, callbackUrl);
         await respondWithFile(req, res, 200, successTemplate);
         resolve(tokens);
-      } catch (err) {
+      } catch (err: any) {
         await respondWithFile(req, res, 400, "../templates/loginFailure.html");
         reject(err);
       }
@@ -521,10 +574,10 @@ export async function loginGoogle(localhost: boolean, userHint?: string): Promis
       const port = await getPort();
       return await loginWithLocalhostGoogle(port, userHint);
     } catch {
-      return await loginWithoutLocalhost(userHint);
+      return await loginRemotely(userHint);
     }
   }
-  return await loginWithoutLocalhost(userHint);
+  return await loginRemotely(userHint);
 }
 
 export async function loginGithub(): Promise<string> {
@@ -651,7 +704,7 @@ async function refreshTokens(
     }
 
     return lastAccessToken!;
-  } catch (err) {
+  } catch (err: any) {
     if (err?.context?.body?.error === "invalid_scope") {
       throw new FirebaseError(
         "This command requires new authorization scopes not granted to your current session. Please run " +
@@ -687,7 +740,7 @@ export async function logout(refreshToken: string) {
         token: refreshToken,
       },
     });
-  } catch (thrown) {
+  } catch (thrown: any) {
     const err: Error = thrown instanceof Error ? thrown : new Error(thrown);
     throw new FirebaseError("Authentication Error.", {
       exit: 1,

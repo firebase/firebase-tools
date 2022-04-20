@@ -1,8 +1,8 @@
-import * as _ from "lodash";
 import { bold } from "cli-color";
 
-import * as track from "./track";
-import * as api from "./api";
+import { track } from "./track";
+import { serviceUsageOrigin } from "./api";
+import { Client } from "./apiv2";
 import * as utils from "./utils";
 import { FirebaseError, isBillingError } from "./error";
 
@@ -10,6 +10,11 @@ export const POLL_SETTINGS = {
   pollInterval: 10000,
   pollsBeforeRetry: 12,
 };
+
+const apiClient = new Client({
+  urlPrefix: serviceUsageOrigin,
+  apiVersion: "v1",
+});
 
 /**
  * Check if the specified API is enabled.
@@ -24,12 +29,10 @@ export async function check(
   prefix: string,
   silent = false
 ): Promise<boolean> {
-  const response = await api.request("GET", `/v1/projects/${projectId}/services/${apiName}`, {
-    auth: true,
-    origin: api.serviceUsageOrigin,
+  const res = await apiClient.get<{ state: string }>(`/projects/${projectId}/services/${apiName}`, {
+    skipLog: { resBody: true },
   });
-
-  const isEnabled = _.get(response.body, "state") === "ENABLED";
+  const isEnabled = res.body.state === "ENABLED";
   if (isEnabled && !silent) {
     utils.logLabeledSuccess(prefix, `required API ${bold(apiName)} is enabled`);
   }
@@ -39,16 +42,18 @@ export async function check(
 /**
  * Attempt to enable an API on the specified project (just once).
  *
+ * If enabling an API for a customer, prefer `ensure` which will check for the
+ * API first, which is a seperate permission than enabling.
+ *
  * @param projectId The project in which to enable the API.
  * @param apiName The name of the API e.g. `someapi.googleapis.com`.
  */
-export async function enable(projectId: string, apiName: string): Promise<void> {
+async function enable(projectId: string, apiName: string): Promise<void> {
   try {
-    await api.request("POST", `/v1/projects/${projectId}/services/${apiName}:enable`, {
-      auth: true,
-      origin: api.serviceUsageOrigin,
+    await apiClient.post(`/projects/${projectId}/services/${apiName}:enable`, {
+      skipLog: { resBody: true },
     });
-  } catch (err) {
+  } catch (err: any) {
     if (isBillingError(err)) {
       throw new FirebaseError(`Your project ${bold(
         projectId
@@ -80,7 +85,7 @@ async function pollCheckEnabled(
   });
   const isEnabled = await check(projectId, apiName, prefix, silent);
   if (isEnabled) {
-    track("api_enabled", apiName);
+    void track("api_enabled", apiName);
     return;
   }
   if (!silent) {
@@ -130,4 +135,16 @@ export async function ensure(
     utils.logLabeledWarning(prefix, `missing required API ${bold(apiName)}. Enabling now...`);
   }
   return enableApiWithRetries(projectId, apiName, prefix, silent);
+}
+
+/**
+ * Returns a link to enable an API on a project in Cloud console. This can be used instead of ensure
+ * in contexts where automatically enabling APIs is not desirable (ie emulator commands).
+ *
+ * @param projectId The project to generate an API enablement link for
+ * @param apiName  The name of the API e.g. `someapi.googleapis.com`.
+ * @return A link to Cloud console to enable the API
+ */
+export function enableApiURI(projectId: string, apiName: string): string {
+  return `https://console.cloud.google.com/apis/library/${apiName}?project=${projectId}`;
 }

@@ -56,7 +56,7 @@ let cmd = new Command("database:instances:list")
       const projectId = needProjectId(options);
       try {
         instances = await listDatabaseInstances(projectId, location);
-      } catch (err) {
+      } catch (err: any) {
         spinner.fail();
         throw err;
       }
@@ -68,7 +68,7 @@ let cmd = new Command("database:instances:list")
     const projectNumber = await needProjectNumber(options);
     try {
       instances = await firedata.listDatabaseInstances(projectNumber);
-    } catch (err) {
+    } catch (err: any) {
       spinner.fail();
       throw err;
     }

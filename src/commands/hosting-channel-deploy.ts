@@ -13,13 +13,14 @@ import {
 } from "../hosting/api";
 import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs";
 import { requirePermissions } from "../requirePermissions";
-import * as deploy from "../deploy";
+import { deploy } from "../deploy";
 import { needProjectId } from "../projectUtils";
 import { logger } from "../logger";
-import * as requireConfig from "../requireConfig";
+import { requireConfig } from "../requireConfig";
 import { DEFAULT_DURATION, calculateChannelExpireTTL } from "../hosting/expireUtils";
 import { logLabeledSuccess, datetimeString, logLabeledWarning, consoleUrl } from "../utils";
-import * as marked from "marked";
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
+const { marked } = require("marked");
 import { requireHostingSite } from "../requireHostingSite";
 
 const LOG_TAG = "hosting:channel";
@@ -192,7 +193,7 @@ async function syncAuthState(projectId: string, sites: ChannelInfo[]) {
   try {
     await addAuthDomains(projectId, urlNames);
     logger.debug("[hosting] added auth domain for urls", urlNames);
-  } catch (e) {
+  } catch (e: any) {
     logLabeledWarning(
       LOG_TAG,
       marked(
@@ -206,7 +207,7 @@ async function syncAuthState(projectId: string, sites: ChannelInfo[]) {
   }
   try {
     await cleanAuthState(projectId, siteNames);
-  } catch (e) {
+  } catch (e: any) {
     logLabeledWarning(LOG_TAG, "Unable to sync Firebase Auth state.");
     logger.debug("[hosting] unable to sync auth domain", e);
   }

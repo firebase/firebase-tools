@@ -6,11 +6,9 @@ import { FirebaseError } from "../../error";
 import { firebaseExtensionsRegistryOrigin } from "../../api";
 import * as extensionsApi from "../../extensions/extensionsApi";
 import * as extensionsHelper from "../../extensions/extensionsHelper";
-import * as prompt from "../../prompt";
-import * as resolveSource from "../../extensions/resolveSource";
 import * as updateHelper from "../../extensions/updateHelper";
 
-const SPEC = {
+const SPEC: extensionsApi.ExtensionSpec = {
   name: "test",
   displayName: "Old",
   description: "descriptive",
@@ -26,7 +24,7 @@ const SPEC = {
   ],
   resources: [
     { name: "resource1", type: "firebaseextensions.v1beta.function", description: "desc" },
-    { name: "resource2", type: "other", description: "" },
+    { name: "resource2", type: "other", description: "" } as unknown as extensionsApi.Resource,
   ],
   author: { authorName: "Tester" },
   contributors: [{ authorName: "Tester 2" }],
@@ -34,8 +32,6 @@ const SPEC = {
   sourceUrl: "test.com",
   params: [],
 };
-
-const OLD_SPEC = Object.assign({}, SPEC, { version: "0.1.0" });
 
 const SOURCE = {
   name: "projects/firebasemods/sources/new-test-source",
@@ -61,55 +57,13 @@ const EXTENSION = {
   latestVersion: "0.2.0",
 };
 
-const REGISTRY_ENTRY = {
-  name: "test",
-  labels: {
-    latest: "0.2.0",
-    minRequired: "0.1.1",
-  },
-  versions: {
-    "0.1.0": "projects/firebasemods/sources/2kd",
-    "0.1.1": "projects/firebasemods/sources/xyz",
-    "0.1.2": "projects/firebasemods/sources/123",
-    "0.2.0": "projects/firebasemods/sources/abc",
-  },
-  updateWarnings: {
-    ">0.1.0 <0.2.0": [
-      {
-        from: "0.1.0",
-        description:
-          "Starting Jan 15, HTTP functions will be private by default. [Learn more](https://someurl.com)",
-        action:
-          "After updating, it is highly recommended that you switch your Cloud Scheduler jobs to <b>PubSub</b>",
-      },
-    ],
-    ">=0.2.0": [
-      {
-        from: "0.1.0",
-        description:
-          "Starting Jan 15, HTTP functions will be private by default. [Learn more](https://someurl.com)",
-        action:
-          "After updating, you must switch your Cloud Scheduler jobs to <b>PubSub</b>, otherwise your extension will stop running.",
-      },
-      {
-        from: ">0.1.0",
-        description:
-          "Starting Jan 15, HTTP functions will be private by default. [Learn more](https://someurl.com)",
-        action:
-          "If you have not already done so during a previous update, after updating, you must switch your Cloud Scheduler jobs to <b>PubSub</b>, otherwise your extension will stop running.",
-      },
-    ],
-  },
-};
-
 const INSTANCE = {
   name: "projects/invader-zim/instances/instance-of-official-ext",
   createTime: "2019-05-19T00:20:10.416947Z",
   updateTime: "2019-05-19T00:20:10.416947Z",
   state: "ACTIVE",
   config: {
-    name:
-      "projects/invader-zim/instances/instance-of-official-ext/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
+    name: "projects/invader-zim/instances/instance-of-official-ext/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
     createTime: "2019-05-19T00:20:10.416947Z",
     sourceId: "fake-official-source",
     sourceName: "projects/firebasemods/sources/fake-official-source",
@@ -125,8 +79,7 @@ const REGISTRY_INSTANCE = {
   updateTime: "2019-05-19T00:20:10.416947Z",
   state: "ACTIVE",
   config: {
-    name:
-      "projects/invader-zim/instances/instance-of-registry-ext/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
+    name: "projects/invader-zim/instances/instance-of-registry-ext/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
     createTime: "2019-05-19T00:20:10.416947Z",
     sourceId: "fake-registry-source",
     sourceName: "projects/firebasemods/sources/fake-registry-source",
@@ -143,8 +96,7 @@ const LOCAL_INSTANCE = {
   updateTime: "2019-05-19T00:20:10.416947Z",
   state: "ACTIVE",
   config: {
-    name:
-      "projects/invader-zim/instances/instance-of-local-ext/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
+    name: "projects/invader-zim/instances/instance-of-local-ext/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
     createTime: "2019-05-19T00:20:10.416947Z",
     sourceId: "fake-registry-source",
     sourceName: "projects/firebasemods/sources/fake-local-source",
@@ -240,18 +192,12 @@ describe("updateHelper", () => {
     let getExtensionStub: sinon.SinonStub;
     let createSourceStub: sinon.SinonStub;
     let listExtensionVersionStub: sinon.SinonStub;
-    let registryStub: sinon.SinonStub;
-    let isOfficialStub: sinon.SinonStub;
     let getInstanceStub: sinon.SinonStub;
 
     beforeEach(() => {
       getExtensionStub = sinon.stub(extensionsApi, "getExtension");
       createSourceStub = sinon.stub(extensionsApi, "getExtensionVersion");
       listExtensionVersionStub = sinon.stub(extensionsApi, "listExtensionVersions");
-      registryStub = sinon.stub(resolveSource, "resolveRegistryEntry");
-      registryStub.resolves(REGISTRY_ENTRY);
-      isOfficialStub = sinon.stub(resolveSource, "isOfficialSource");
-      isOfficialStub.returns(false);
       getInstanceStub = sinon.stub(extensionsApi, "getInstance").resolves(REGISTRY_INSTANCE);
     });
 
@@ -259,8 +205,6 @@ describe("updateHelper", () => {
       getExtensionStub.restore();
       createSourceStub.restore();
       listExtensionVersionStub.restore();
-      registryStub.restore();
-      isOfficialStub.restore();
       getInstanceStub.restore();
     });
 
@@ -296,18 +240,12 @@ describe("updateHelper", () => {
     let getExtensionStub: sinon.SinonStub;
     let createSourceStub: sinon.SinonStub;
     let listExtensionVersionStub: sinon.SinonStub;
-    let registryStub: sinon.SinonStub;
-    let isOfficialStub: sinon.SinonStub;
     let getInstanceStub: sinon.SinonStub;
 
     beforeEach(() => {
       getExtensionStub = sinon.stub(extensionsApi, "getExtension");
       createSourceStub = sinon.stub(extensionsApi, "getExtensionVersion");
       listExtensionVersionStub = sinon.stub(extensionsApi, "listExtensionVersions");
-      registryStub = sinon.stub(resolveSource, "resolveRegistryEntry");
-      registryStub.resolves(REGISTRY_ENTRY);
-      isOfficialStub = sinon.stub(resolveSource, "isOfficialSource");
-      isOfficialStub.returns(false);
       getInstanceStub = sinon.stub(extensionsApi, "getInstance").resolves(REGISTRY_INSTANCE);
     });
 
@@ -315,8 +253,6 @@ describe("updateHelper", () => {
       getExtensionStub.restore();
       createSourceStub.restore();
       listExtensionVersionStub.restore();
-      registryStub.restore();
-      isOfficialStub.restore();
       getInstanceStub.restore();
     });
 

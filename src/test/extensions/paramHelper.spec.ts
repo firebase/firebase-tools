@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import { expect } from "chai";
 import * as sinon from "sinon";
 import * as fs from "fs-extra";
@@ -10,6 +9,7 @@ import * as extensionsHelper from "../../extensions/extensionsHelper";
 import * as paramHelper from "../../extensions/paramHelper";
 import * as env from "../../functions/env";
 import * as prompt from "../../prompt";
+import { cloneDeep } from "../../utils";
 
 const PROJECT_ID = "test-proj";
 const INSTANCE_ID = "ext-instance";
@@ -75,6 +75,43 @@ const SPEC = {
 };
 
 describe("paramHelper", () => {
+  describe(`${paramHelper.getBaseParamBindings.name}`, () => {
+    it("should extract the baseValue param bindings", () => {
+      const input = {
+        pokeball: {
+          baseValue: "pikachu",
+          local: "local",
+        },
+        greatball: {
+          baseValue: "eevee",
+        },
+      };
+      const output = paramHelper.getBaseParamBindings(input);
+      expect(output).to.eql({
+        pokeball: "pikachu",
+        greatball: "eevee",
+      });
+    });
+  });
+
+  describe(`${paramHelper.buildBindingOptionsWithBaseValue.name}`, () => {
+    it("should build given baseValue values", () => {
+      const input = {
+        pokeball: "pikachu",
+        greatball: "eevee",
+      };
+      const output = paramHelper.buildBindingOptionsWithBaseValue(input);
+      expect(output).to.eql({
+        pokeball: {
+          baseValue: "pikachu",
+        },
+        greatball: {
+          baseValue: "eevee",
+        },
+      });
+    });
+  });
+
   describe("getParams", () => {
     let envStub: sinon.SinonStub;
     let promptStub: sinon.SinonStub;
@@ -110,8 +147,8 @@ describe("paramHelper", () => {
       });
 
       expect(params).to.eql({
-        A_PARAMETER: "aValue",
-        ANOTHER_PARAMETER: "value",
+        A_PARAMETER: { baseValue: "aValue" },
+        ANOTHER_PARAMETER: { baseValue: "value" },
       });
     });
 
@@ -132,8 +169,8 @@ describe("paramHelper", () => {
       });
 
       expect(params).to.eql({
-        A_PARAMETER: "aValue",
-        ANOTHER_PARAMETER: "default",
+        A_PARAMETER: { baseValue: "aValue" },
+        ANOTHER_PARAMETER: { baseValue: "default" },
       });
     });
 
@@ -154,7 +191,7 @@ describe("paramHelper", () => {
       });
 
       expect(params).to.eql({
-        A_PARAMETER: "aValue",
+        A_PARAMETER: { baseValue: "aValue" },
       });
     });
 
@@ -230,8 +267,8 @@ describe("paramHelper", () => {
       });
 
       expect(params).to.eql({
-        A_PARAMETER: "user input",
-        ANOTHER_PARAMETER: "user input",
+        A_PARAMETER: { baseValue: "user input" },
+        ANOTHER_PARAMETER: { baseValue: "user input" },
       });
 
       expect(promptStub).to.have.been.calledTwice;
@@ -267,7 +304,7 @@ describe("paramHelper", () => {
               version: "0.1.0",
               roles: [],
               resources: [],
-              params: TEST_PARAMS,
+              params: [...TEST_PARAMS],
               sourceUrl: "",
             },
           },
@@ -304,7 +341,7 @@ describe("paramHelper", () => {
     });
 
     it("should change existing defaults to the current state and leave other values unchanged", () => {
-      _.get(testInstance, "config.source.spec.params", []).push({
+      (testInstance.config?.source?.spec?.params || []).push({
         param: "THIRD",
         label: "3rd",
         default: "default",
@@ -352,7 +389,7 @@ describe("paramHelper", () => {
 
     it("should prompt the user for any params in the new spec that are not in the current one", async () => {
       promptStub.resolves("user input");
-      const newSpec = _.cloneDeep(SPEC);
+      const newSpec = cloneDeep(SPEC);
       newSpec.params = TEST_PARAMS_2;
 
       const newParams = await paramHelper.promptForNewParams({
@@ -367,9 +404,9 @@ describe("paramHelper", () => {
       });
 
       const expected = {
-        ANOTHER_PARAMETER: "value",
-        NEW_PARAMETER: "user input",
-        THIRD_PARAMETER: "user input",
+        ANOTHER_PARAMETER: { baseValue: "value" },
+        NEW_PARAMETER: { baseValue: "user input" },
+        THIRD_PARAMETER: { baseValue: "user input" },
       };
       expect(newParams).to.eql(expected);
       expect(promptStub.callCount).to.equal(2);
@@ -391,9 +428,33 @@ describe("paramHelper", () => {
       ]);
     });
 
+    it("should prompt for params that are not currently populated", async () => {
+      promptStub.resolves("user input");
+      const newSpec = cloneDeep(SPEC);
+      newSpec.params = TEST_PARAMS_2;
+
+      const newParams = await paramHelper.promptForNewParams({
+        spec: SPEC,
+        newSpec,
+        currentParams: {
+          A_PARAMETER: "value",
+          // ANOTHER_PARAMETER is not populated
+        },
+        projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
+      });
+
+      const expected = {
+        ANOTHER_PARAMETER: { baseValue: "user input" },
+        NEW_PARAMETER: { baseValue: "user input" },
+        THIRD_PARAMETER: { baseValue: "user input" },
+      };
+      expect(newParams).to.eql(expected);
+    });
+
     it("should not prompt the user for params that did not change type or param", async () => {
       promptStub.resolves("Fail");
-      const newSpec = _.cloneDeep(SPEC);
+      const newSpec = cloneDeep(SPEC);
       newSpec.params = TEST_PARAMS_3;
 
       const newParams = await paramHelper.promptForNewParams({
@@ -408,8 +469,8 @@ describe("paramHelper", () => {
       });
 
       const expected = {
-        ANOTHER_PARAMETER: "value",
-        A_PARAMETER: "value",
+        ANOTHER_PARAMETER: { baseValue: "value" },
+        A_PARAMETER: { baseValue: "value" },
       };
       expect(newParams).to.eql(expected);
       expect(promptStub).not.to.have.been.called;
@@ -418,7 +479,7 @@ describe("paramHelper", () => {
     it("should populate the spec with the default value if it is returned by prompt", async () => {
       promptStub.onFirstCall().resolves("test-proj");
       promptStub.onSecondCall().resolves("user input");
-      const newSpec = _.cloneDeep(SPEC);
+      const newSpec = cloneDeep(SPEC);
       newSpec.params = TEST_PARAMS_2;
 
       const newParams = await paramHelper.promptForNewParams({
@@ -433,9 +494,9 @@ describe("paramHelper", () => {
       });
 
       const expected = {
-        ANOTHER_PARAMETER: "value",
-        NEW_PARAMETER: "test-proj",
-        THIRD_PARAMETER: "user input",
+        ANOTHER_PARAMETER: { baseValue: "value" },
+        NEW_PARAMETER: { baseValue: "test-proj" },
+        THIRD_PARAMETER: { baseValue: "user input" },
       };
       expect(newParams).to.eql(expected);
       expect(promptStub.callCount).to.equal(2);
@@ -459,7 +520,7 @@ describe("paramHelper", () => {
 
     it("shouldn't prompt if there are no new params", async () => {
       promptStub.resolves("Fail");
-      const newSpec = _.cloneDeep(SPEC);
+      const newSpec = cloneDeep(SPEC);
 
       const newParams = await paramHelper.promptForNewParams({
         spec: SPEC,
@@ -473,8 +534,8 @@ describe("paramHelper", () => {
       });
 
       const expected = {
-        ANOTHER_PARAMETER: "value",
-        A_PARAMETER: "value",
+        ANOTHER_PARAMETER: { baseValue: "value" },
+        A_PARAMETER: { baseValue: "value" },
       };
       expect(newParams).to.eql(expected);
       expect(promptStub).not.to.have.been.called;
@@ -482,7 +543,7 @@ describe("paramHelper", () => {
 
     it("should exit if a prompt fails", async () => {
       promptStub.rejects(new FirebaseError("this is an error"));
-      const newSpec = _.cloneDeep(SPEC);
+      const newSpec = cloneDeep(SPEC);
       newSpec.params = TEST_PARAMS_2;
 
       await expect(

@@ -3,7 +3,7 @@ import * as deploymentSummary from "./deploymentSummary";
 import * as prompt from "../../prompt";
 import * as refs from "../../extensions/refs";
 import { Options } from "../../options";
-import { needProjectId } from "../../projectUtils";
+import { getAliases, needProjectId, needProjectNumber } from "../../projectUtils";
 import { logger } from "../../logger";
 import { Context, Payload } from "./args";
 import { FirebaseError } from "../../error";
@@ -15,20 +15,24 @@ import { displayWarningsForDeploy } from "../../extensions/warnings";
 
 export async function prepare(context: Context, options: Options, payload: Payload) {
   const projectId = needProjectId(options);
+  const projectNumber = await needProjectNumber(options);
+  const aliases = getAliases(options, projectId);
 
   await ensureExtensionsApiEnabled(options);
   await requirePermissions(options, ["firebaseextensions.instances.list"]);
 
   context.have = await planner.have(projectId);
-  context.want = await planner.want(
+  context.want = await planner.want({
     projectId,
-    options.config.projectDir,
-    options.config.get("extensions")
-  );
+    projectNumber,
+    aliases,
+    projectDir: options.config.projectDir,
+    extensions: options.config.get("extensions"),
+  });
 
   // Check if any extension instance that we want is using secrets,
   // and ensure the API is enabled if so.
-  const usingSecrets = await Promise.all(context.have?.map(checkSpecForSecrets));
+  const usingSecrets = await Promise.all(context.want?.map(checkSpecForSecrets));
   if (usingSecrets.some((i) => i)) {
     await ensureSecretManagerApiEnabled(options);
   }

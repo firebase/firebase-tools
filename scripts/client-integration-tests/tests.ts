@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { join } from "path";
 import { readFileSync, writeFileSync, unlinkSync } from "fs";
-import * as uuid from "uuid";
+import { v4 as uuidv4 } from "uuid";
 import * as tmp from "tmp";
 
 import firebase = require("../../src");
@@ -93,12 +93,12 @@ describe("apps:sdkconfig", () => {
 describe("database:set|get|remove", () => {
   it("should be able to interact with the database", async () => {
     const opts = { project: process.env.FBTOOLS_TARGET_PROJECT };
-    const path = `/${uuid()}`;
+    const path = `/${uuidv4()}`;
     const data = { foo: "bar" };
 
     await client.database.set(
       path,
-      Object.assign({ data: JSON.stringify(data), confirm: true }, opts)
+      Object.assign({ data: JSON.stringify(data), force: true }, opts)
     );
 
     // Have to read to a file in order to get data.
@@ -107,7 +107,7 @@ describe("database:set|get|remove", () => {
     await client.database.get(path, Object.assign({ output: file.name }, opts));
     expect(JSON.parse(readFileSync(file.name).toString())).to.deep.equal(data);
 
-    await client.database.remove(path, Object.assign({ confirm: true }, opts));
+    await client.database.remove(path, Object.assign({ force: true }, opts));
 
     await client.database.get(path, Object.assign({ output: file.name }, opts));
     expect(JSON.parse(readFileSync(file.name, "utf-8"))).to.equal(null);

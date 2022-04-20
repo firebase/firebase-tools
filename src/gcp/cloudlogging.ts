@@ -1,4 +1,5 @@
-import * as api from "../api";
+import { cloudloggingOrigin } from "../api";
+import { Client } from "../apiv2";
 import { FirebaseError } from "../error";
 
 const API_VERSION = "v2";
@@ -32,20 +33,19 @@ export async function listEntries(
   pageSize: number,
   order: string
 ): Promise<LogEntry[]> {
-  const endpoint = `/${API_VERSION}/entries:list`;
+  const client = new Client({ urlPrefix: cloudloggingOrigin, apiVersion: API_VERSION });
   try {
-    const result = await api.request("POST", endpoint, {
-      auth: true,
-      data: {
-        resourceNames: [`projects/${projectId}`],
-        filter: filter,
-        orderBy: "timestamp " + order,
-        pageSize: pageSize,
-      },
-      origin: api.cloudloggingOrigin,
+    const result = await client.post<
+      { resourceNames: string[]; filter: string; orderBy: string; pageSize: number },
+      { entries: LogEntry[] }
+    >("/entries:list", {
+      resourceNames: [`projects/${projectId}`],
+      filter: filter,
+      orderBy: `timestamp ${order}`,
+      pageSize: pageSize,
     });
     return result.body.entries;
-  } catch (err) {
+  } catch (err: any) {
     throw new FirebaseError("Failed to retrieve log entries from Google Cloud.", {
       original: err,
     });

@@ -312,7 +312,7 @@ import { FirebaseError } from "../error";
 async function myFunc(options: any): void {
   try {
     return await somethingThatMayFail(options.projectId);
-  } catch (err) {
+  } catch (err: any) {
     throw FirebaseError(`Project ${clc.bold(projectId)} caused an issue.', { original: err });
   }
 }

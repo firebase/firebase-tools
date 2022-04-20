@@ -6,6 +6,7 @@ import * as runtimes from "./runtimes";
 import { FirebaseError } from "../../error";
 import { Context } from "./args";
 import { previews } from "../../previews";
+import { flattenArray } from "../../functional";
 
 /** Retry settings for a ScheduleSpec. */
 export interface ScheduleRetryConfig {
@@ -40,8 +41,15 @@ export interface HttpsTriggered {
   httpsTrigger: HttpsTrigger;
 }
 
-/** Well known keys in the eventFilter attribute of an event trigger */
-export type EventFilterKey = "resource";
+/** API agnostic version of a Firebase callable function. */
+export type CallableTrigger = Record<string, never>;
+
+/** Something that has a callable trigger */
+export interface CallableTriggered {
+  callableTrigger: CallableTrigger;
+}
+
+type EventFilterKey = "resource" | "topic" | "bucket" | "alerttype" | "appid" | string;
 
 /** API agnostic version of a Cloud Function's event trigger. */
 export interface EventTrigger {
@@ -57,14 +65,20 @@ export interface EventTrigger {
   eventType: string;
 
   /**
-   * Additional filters for narrowing down which events to receive.
+   * Additional exact-match filters for narrowing down which events to receive.
+   *
    * While not required by the GCF API, this is always provided in
    * the Cloud Console, and we are likely to always require it as well.
    * V1 functions will always (and only) have the "resource" filter.
    * V2 will have arbitrary filters and some EventArc filters will be
    * top-level keys in the GCF API (e.g. "pubsubTopic").
    */
-  eventFilters: Record<EventFilterKey | string, string>;
+  eventFilters: Record<EventFilterKey, string>;
+
+  /**
+   * Additional path-pattern filters for narrowing down which events to receive.
+   */
+  eventFilterPathPatterns?: Record<string, string>;
 
   /** Should failures in a function execution cause an event to be retried. */
   retry: boolean;
@@ -82,6 +96,12 @@ export interface EventTrigger {
    * This field is ignored for v1 and defaults to the
    */
   serviceAccountEmail?: string;
+
+  /**
+   * The name of the channel where the function receive events.
+   * Must be provided to receive custom events.
+   */
+  channel?: string;
 }
 
 /** Something that has an EventTrigger */
@@ -90,17 +110,16 @@ export interface EventTriggered {
 }
 
 export interface TaskQueueRateLimits {
-  maxBurstSize?: number;
   maxConcurrentDispatches?: number;
   maxDispatchesPerSecond?: number;
 }
 
 export interface TaskQueueRetryConfig {
   maxAttempts?: number;
-  maxRetryDuration?: proto.Duration;
-  minBackoff?: proto.Duration;
-  maxBackoff?: proto.Duration;
+  maxRetrySeconds?: number;
+  maxBackoffSeconds?: number;
   maxDoublings?: number;
+  minBackoffSeconds?: number;
 }
 
 export interface TaskQueueTrigger {
@@ -113,16 +132,29 @@ export interface TaskQueueTriggered {
   taskQueueTrigger: TaskQueueTrigger;
 }
 
+export interface BlockingTrigger {
+  eventType: string;
+  options?: Record<string, unknown>;
+}
+
+export interface BlockingTriggered {
+  blockingTrigger: BlockingTrigger;
+}
+
 /** A user-friendly string for the kind of trigger of an endpoint. */
 export function endpointTriggerType(endpoint: Endpoint): string {
   if (isScheduleTriggered(endpoint)) {
     return "scheduled";
   } else if (isHttpsTriggered(endpoint)) {
     return "https";
+  } else if (isCallableTriggered(endpoint)) {
+    return "callable";
   } else if (isEventTriggered(endpoint)) {
     return endpoint.eventTrigger.eventType;
   } else if (isTaskQueueTriggered(endpoint)) {
     return "taskQueue";
+  } else if (isBlockingTriggered(endpoint)) {
+    return endpoint.blockingTrigger.eventType;
   } else {
     throw new Error("Unexpected trigger type for endpoint " + JSON.stringify(endpoint));
   }
@@ -130,8 +162,15 @@ export function endpointTriggerType(endpoint: Endpoint): string {
 
 // TODO(inlined): Enum types should be singularly named
 export type VpcEgressSettings = "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC";
+export const AllVpcEgressSettings: VpcEgressSettings[] = ["PRIVATE_RANGES_ONLY", "ALL_TRAFFIC"];
 export type IngressSettings = "ALLOW_ALL" | "ALLOW_INTERNAL_ONLY" | "ALLOW_INTERNAL_AND_GCLB";
+export const AllIngressSettings: IngressSettings[] = [
+  "ALLOW_ALL",
+  "ALLOW_INTERNAL_ONLY",
+  "ALLOW_INTERNAL_AND_GCLB",
+];
 export type MemoryOptions = 128 | 256 | 512 | 1024 | 2048 | 4096 | 8192;
+export const AllMemoryOptions: MemoryOptions[] = [128, 256, 512, 1024, 2048, 4096, 8192];
 
 /** Returns a human-readable name with MB or GB suffix for a MemoryOption (MB). */
 export function memoryOptionDisplayName(option: MemoryOptions): string {
@@ -146,6 +185,8 @@ export function memoryOptionDisplayName(option: MemoryOptions): string {
   }[option];
 }
 
+export const DEFAULT_MEMORY: MemoryOptions = 256;
+export const MIN_MEMORY_FOR_CONCURRENCY: MemoryOptions = 2048;
 export const SCHEDULED_FUNCTION_LABEL = Object.freeze({ deployment: "firebase-schedule" });
 
 /**
@@ -164,27 +205,63 @@ export interface TargetIds {
   project: string;
 }
 
+/**
+ * Represents a Secret or Secret Version resource.
+ * Based on https://cloud.google.com/functions/docs/reference/rest/v1/projects.locations.functions#secretenvvar
+ */
+export interface SecretEnvVar {
+  key: string; // The environment variable this secret is accessible at
+  secret: string; // The id of the SecretVersion - ie for projects/myproject/secrets/mysecret, this is 'mysecret'
+  projectId: string; // The project containing the Secret
+
+  // Internal use only. Users cannot pin secret to a specific version.
+  version?: string;
+}
+
+/**
+ * Returns full resource name of a secret version.
+ */
+export function secretVersionName(s: SecretEnvVar): string {
+  return `projects/${s.projectId}/secrets/${s.secret}/versions/${s.version ?? "latest"}`;
+}
+
 export interface ServiceConfiguration {
   concurrency?: number;
   labels?: Record<string, string>;
   environmentVariables?: Record<string, string>;
+  secretEnvironmentVariables?: SecretEnvVar[];
   availableMemoryMb?: MemoryOptions;
-  timeout?: proto.Duration;
+  cpu?: number | "gcf_gen1";
+  timeoutSeconds?: number;
   maxInstances?: number;
   minInstances?: number;
-  vpcConnector?: string;
-  vpcConnectorEgressSettings?: VpcEgressSettings;
+  vpc?: {
+    connector: string;
+    egressSettings?: VpcEgressSettings;
+  };
   ingressSettings?: IngressSettings;
   serviceAccountEmail?: "default" | string;
 }
 
 export type FunctionsPlatform = "gcfv1" | "gcfv2";
+export const AllFunctionsPlatforms: FunctionsPlatform[] = ["gcfv1", "gcfv2"];
 
-export type Triggered = HttpsTriggered | EventTriggered | ScheduleTriggered | TaskQueueTriggered;
+export type Triggered =
+  | HttpsTriggered
+  | CallableTriggered
+  | EventTriggered
+  | ScheduleTriggered
+  | TaskQueueTriggered
+  | BlockingTriggered;
 
 /** Whether something has an HttpsTrigger */
 export function isHttpsTriggered(triggered: Triggered): triggered is HttpsTriggered {
   return {}.hasOwnProperty.call(triggered, "httpsTrigger");
+}
+
+/** Whether something has a CallableTrigger */
+export function isCallableTriggered(triggered: Triggered): triggered is CallableTriggered {
+  return {}.hasOwnProperty.call(triggered, "callableTrigger");
 }
 
 /** Whether something has an EventTrigger */
@@ -202,6 +279,11 @@ export function isTaskQueueTriggered(triggered: Triggered): triggered is TaskQue
   return {}.hasOwnProperty.call(triggered, "taskQueueTrigger");
 }
 
+/** Whether something has a BlockingTrigger */
+export function isBlockingTriggered(triggered: Triggered): triggered is BlockingTriggered {
+  return {}.hasOwnProperty.call(triggered, "blockingTrigger");
+}
+
 /**
  * An endpoint that serves traffic to a stack of services.
  * For now, this is always a Cloud Function. Future iterations may use complex
@@ -216,21 +298,31 @@ export type Endpoint = TargetIds &
     runtime: runtimes.Runtime | runtimes.DeprecatedRuntime;
 
     // Output only
-
+    // "Codebase" is not part of the container contract. Instead, it's value is provided by firebase.json or derived
+    // from function labels.
+    codebase?: string;
     // URI is available on GCFv1 for HTTPS triggers and
     // on GCFv2 always
     uri?: string;
     sourceUploadUrl?: string;
+    // TODO(colerogers): yank this field and set securityLevel to SECURE_ALWAYS
+    // in functionFromEndpoint during a breaking change release.
+    // This is a temporary fix to address https://github.com/firebase/firebase-tools/issues/4171
+    // GCFv1 can be http or https and GCFv2 is always https
+    securityLevel?: gcf.SecurityLevel;
   };
+
+export interface RequiredAPI {
+  reason?: string;
+  api: string;
+}
 
 /** An API agnostic definition of an entire deployment a customer has or wants. */
 export interface Backend {
   /**
    * requiredAPIs will be enabled when a Backend is deployed.
-   * Their format is friendly name -> API name.
-   * E.g. "scheduler" => "cloudscheduler.googleapis.com"
    */
-  requiredAPIs: Record<string, string>;
+  requiredAPIs: RequiredAPI[];
   environmentVariables: EnvironmentVariables;
   // region -> id -> Endpoint
   endpoints: Record<string, Record<string, Endpoint>>;
@@ -243,7 +335,7 @@ export interface Backend {
  */
 export function empty(): Backend {
   return {
-    requiredAPIs: {},
+    requiredAPIs: [],
     endpoints: {},
     environmentVariables: {},
   };
@@ -266,13 +358,39 @@ export function of(...endpoints: Endpoint[]): Backend {
 }
 
 /**
+ * A helper utility to merge backends.
+ */
+export function merge(...backends: Backend[]): Backend {
+  // Merge all endpoints
+  const merged = of(...flattenArray(backends.map((b) => allEndpoints(b))));
+
+  // Merge all APIs
+  const apiToReasons: Record<string, Set<string>> = {};
+  for (const b of backends) {
+    for (const { api, reason } of b.requiredAPIs) {
+      const reasons = apiToReasons[api] || new Set();
+      if (reason) {
+        reasons.add(reason);
+      }
+      apiToReasons[api] = reasons;
+    }
+    // Mere all environment variables.
+    merged.environmentVariables = { ...merged.environmentVariables, ...b.environmentVariables };
+  }
+  for (const [api, reasons] of Object.entries(apiToReasons)) {
+    merged.requiredAPIs.push({ api, reason: Array.from(reasons).join(" ") });
+  }
+  return merged;
+}
+
+/**
  * A helper utility to test whether a backend is empty.
  * Consumers should use this before assuming a backend is empty (e.g. nooping
  * deploy processes) because it's possible that fields have been added.
  */
 export function isEmptyBackend(backend: Backend): boolean {
   return (
-    Object.keys(backend.requiredAPIs).length == 0 && Object.keys(backend.endpoints).length === 0
+    Object.keys(backend.requiredAPIs).length === 0 && Object.keys(backend.endpoints).length === 0
   );
 }
 
@@ -369,7 +487,7 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
   let gcfV2Results;
   try {
     gcfV2Results = await gcfV2.listAllFunctions(ctx.projectId);
-  } catch (err) {
+  } catch (err: any) {
     if (err.status === 404 && err.message?.toLowerCase().includes("method not found")) {
       return; // customer has preview enabled without allowlist set
     }
@@ -400,7 +518,7 @@ export async function checkAvailability(context: Context, want: Backend): Promis
   const gcfV1Regions = new Set();
   const gcfV2Regions = new Set();
   for (const ep of allEndpoints(want)) {
-    if (ep.platform == "gcfv1") {
+    if (ep.platform === "gcfv1") {
       gcfV1Regions.add(ep.region);
     } else {
       gcfV2Regions.add(ep.region);
@@ -468,13 +586,25 @@ export function someEndpoint(
   return false;
 }
 
+/** A helper utility for finding an endpoint that matches the predicate. */
+export function findEndpoint(
+  backend: Backend,
+  predicate: (endpoint: Endpoint) => boolean
+): Endpoint | undefined {
+  for (const endpoints of Object.values(backend.endpoints)) {
+    const endpoint = Object.values<Endpoint>(endpoints).find(predicate);
+    if (endpoint) return endpoint;
+  }
+}
+
 /** A helper utility function that returns a subset of the backend that includes only matching endpoints */
 export function matchingBackend(
   backend: Backend,
   predicate: (endpoint: Endpoint) => boolean
 ): Backend {
   const filtered: Backend = {
-    ...empty(),
+    ...backend,
+    endpoints: {},
   };
   for (const endpoint of allEndpoints(backend)) {
     if (!predicate(endpoint)) {
@@ -492,16 +622,23 @@ export function regionalEndpoints(backend: Backend, region: string): Endpoint[] 
 }
 
 /** A curried function used for filters, returns a matcher for functions in a backend. */
-export const hasEndpoint = (backend: Backend) => (endpoint: Endpoint): boolean => {
-  return !!backend.endpoints[endpoint.region] && !!backend.endpoints[endpoint.region][endpoint.id];
-};
+export const hasEndpoint =
+  (backend: Backend) =>
+  (endpoint: Endpoint): boolean => {
+    return (
+      !!backend.endpoints[endpoint.region] && !!backend.endpoints[endpoint.region][endpoint.id]
+    );
+  };
 
 /** A curried function that is the opposite of hasEndpoint */
-export const missingEndpoint = (backend: Backend) => (endpoint: Endpoint): boolean => {
-  return !hasEndpoint(backend)(endpoint);
-};
+export const missingEndpoint =
+  (backend: Backend) =>
+  (endpoint: Endpoint): boolean => {
+    return !hasEndpoint(backend)(endpoint);
+  };
 
-/** A standard method for sorting endpoints for display.
+/**
+ * A standard method for sorting endpoints for display.
  * Future versions might consider sorting region by pricing tier before
  * alphabetically
  */
@@ -509,7 +646,7 @@ export function compareFunctions(
   left: TargetIds & { platform: FunctionsPlatform },
   right: TargetIds & { platform: FunctionsPlatform }
 ): number {
-  if (left.platform != right.platform) {
+  if (left.platform !== right.platform) {
     return right.platform < left.platform ? -1 : 1;
   }
   if (left.region < right.region) {

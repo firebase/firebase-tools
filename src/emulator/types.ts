@@ -13,6 +13,7 @@ export enum Emulators {
   UI = "ui",
   LOGGING = "logging",
   STORAGE = "storage",
+  EXTENSIONS = "extensions",
 }
 
 export type DownloadableEmulators =
@@ -60,6 +61,7 @@ export const EMULATORS_SUPPORTED_BY_UI = [
   Emulators.FIRESTORE,
   Emulators.FUNCTIONS,
   Emulators.STORAGE,
+  Emulators.EXTENSIONS,
 ];
 
 export const EMULATORS_SUPPORTED_BY_USE_EMULATOR = [
@@ -74,6 +76,7 @@ export const ALL_EMULATORS = [
   Emulators.HUB,
   Emulators.UI,
   Emulators.LOGGING,
+  Emulators.EXTENSIONS,
   ...ALL_SERVICE_EMULATORS,
 ];
 
@@ -232,7 +235,7 @@ export class EmulatorLog {
     let isNotJSON = false;
     try {
       parsedLog = JSON.parse(json);
-    } catch (err) {
+    } catch (err: any) {
       isNotJSON = true;
     }
 

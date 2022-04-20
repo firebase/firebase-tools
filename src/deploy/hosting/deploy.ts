@@ -2,8 +2,8 @@ import { Uploader } from "./uploader";
 import { detectProjectRoot } from "../../detectProjectRoot";
 import { listFiles } from "../../listFiles";
 import { logger } from "../../logger";
-import * as track from "../../track";
-import { logLabeledBullet, logLabeledSuccess } from "../../utils";
+import { track } from "../../track";
+import { envOverride, logLabeledBullet, logLabeledSuccess } from "../../utils";
 import { HostingDeploy } from "./hostingDeploy";
 
 import * as clc from "cli-color";
@@ -67,12 +67,23 @@ export async function deploy(
       `found ${files.length} files in ${clc.bold(deploy.config.public)}`
     );
 
+    let concurrency = 200;
+    const envConcurrency = envOverride("FIREBASE_HOSTING_UPLOAD_CONCURRENCY", "");
+    if (envConcurrency) {
+      const c = parseInt(envConcurrency, 10);
+      if (!isNaN(c) && c > 0) {
+        concurrency = c;
+      }
+    }
+
+    logger.debug(`[hosting] uploading with ${concurrency} concurrency`);
     const uploader = new Uploader({
       version: deploy.version,
       files: files,
       public: publicDir,
       cwd: options.cwd,
       projectRoot: detectProjectRoot(options),
+      uploadConcurrency: concurrency,
     });
 
     const progressInterval = setInterval(
@@ -82,8 +93,8 @@ export async function deploy(
 
     try {
       await uploader.start();
-    } catch (err) {
-      track("Hosting Deploy", "failure");
+    } catch (err: any) {
+      void track("Hosting Deploy", "failure");
       throw err;
     } finally {
       clearInterval(progressInterval);
@@ -97,7 +108,7 @@ export async function deploy(
     const dt = Date.now() - t0;
     logger.debug("[hosting] deploy completed after " + dt + "ms");
 
-    track("Hosting Deploy", "success", dt);
+    void track("Hosting Deploy", "success", dt);
     return runDeploys(deploys, debugging);
   }
 

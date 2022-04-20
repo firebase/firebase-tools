@@ -12,11 +12,11 @@ const SPEC = {
 };
 
 describe("TriggerRegionHelper", () => {
-  describe("setTriggerRegion", () => {
+  describe("ensureTriggerRegions", () => {
     let storageStub: sinon.SinonStub;
 
     beforeEach(() => {
-      storageStub = sinon.stub(storage, "getBucket").throws("Do not call");
+      storageStub = sinon.stub(storage, "getBucket").throws("unexpected call to storage.getBucket");
     });
 
     afterEach(() => {
@@ -30,17 +30,15 @@ describe("TriggerRegionHelper", () => {
         platform: "gcfv2",
         eventTrigger: {
           eventType: "google.cloud.storage.object.v1.finalized",
-          eventFilters: {
-            bucket: "my-bucket",
-          },
+          eventFilters: { bucket: "my-bucket" },
           retry: false,
         },
         ...SPEC,
       };
 
-      await expect(
-        triggerRegionHelper.lookupMissingTriggerRegions(backend.of(ep))
-      ).to.be.rejectedWith("Can't find the storage bucket region");
+      await expect(triggerRegionHelper.ensureTriggerRegions(backend.of(ep))).to.be.rejectedWith(
+        "Can't find the storage bucket region"
+      );
     });
 
     it("should skip v1 and callable functions", async () => {
@@ -50,9 +48,7 @@ describe("TriggerRegionHelper", () => {
         platform: "gcfv1",
         eventTrigger: {
           eventType: "google.storage.object.create",
-          eventFilters: {
-            resource: "projects/_/buckets/myBucket",
-          },
+          eventFilters: { resource: "projects/_/buckets/my-bucket" },
           retry: false,
         },
         ...SPEC,
@@ -65,15 +61,15 @@ describe("TriggerRegionHelper", () => {
         ...SPEC,
       };
 
-      await triggerRegionHelper.lookupMissingTriggerRegions(backend.of(v1EventFn, v2CallableFn));
+      await triggerRegionHelper.ensureTriggerRegions(backend.of(v1EventFn, v2CallableFn));
 
-      expect(v1EventFn.eventTrigger).to.deep.eq({
+      const want: backend.EventTrigger = {
         eventType: "google.storage.object.create",
-        eventFilters: {
-          resource: "projects/_/buckets/myBucket",
-        },
+        eventFilters: { resource: "projects/_/buckets/my-bucket" },
         retry: false,
-      });
+      };
+
+      expect(v1EventFn.eventTrigger).to.deep.eq(want);
       expect(v2CallableFn.httpsTrigger).to.deep.eq({});
     });
 
@@ -85,24 +81,41 @@ describe("TriggerRegionHelper", () => {
         platform: "gcfv2",
         eventTrigger: {
           eventType: "google.cloud.storage.object.v1.finalized",
-          eventFilters: {
-            bucket: "my-bucket",
-          },
+          eventFilters: { bucket: "my-bucket" },
           retry: false,
         },
         ...SPEC,
       };
 
-      await triggerRegionHelper.lookupMissingTriggerRegions(backend.of(wantFn));
+      await triggerRegionHelper.ensureTriggerRegions(backend.of(wantFn));
 
-      expect(wantFn.eventTrigger).to.deep.eq({
+      const want: backend.EventTrigger = {
         eventType: "google.cloud.storage.object.v1.finalized",
-        eventFilters: {
-          bucket: "my-bucket",
-        },
+        eventFilters: { bucket: "my-bucket" },
         retry: false,
         region: "us",
-      });
+      };
+      expect(wantFn.eventTrigger).to.deep.eq(want);
+    });
+
+    it("should set trigger region from API then reject on invalid function region", async () => {
+      storageStub.resolves({ location: "US" });
+      const wantFn: backend.Endpoint = {
+        id: "wantFn",
+        entryPoint: "wantFn",
+        platform: "gcfv2",
+        eventTrigger: {
+          eventType: "google.cloud.storage.object.v1.finalized",
+          eventFilters: { bucket: "my-bucket" },
+          retry: false,
+        },
+        ...SPEC,
+        region: "europe-west4",
+      };
+
+      await expect(triggerRegionHelper.ensureTriggerRegions(backend.of(wantFn))).to.be.rejectedWith(
+        "A function in region europe-west4 cannot listen to a bucket in region us"
+      );
     });
   });
 });

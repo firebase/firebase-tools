@@ -1,7 +1,7 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
+import { remoteConfigApiOrigin } from "../../api";
+import * as nock from "nock";
 
-import * as api from "../../api";
 import * as remoteconfig from "../../remoteconfig/versionslist";
 import { ListVersionsResult, Version } from "../../remoteconfig/interfaces";
 
@@ -47,94 +47,58 @@ const expectedProjectInfoNoLimit: ListVersionsResult = {
 };
 
 describe("RemoteConfig ListVersions", () => {
-  let sandbox: sinon.SinonSandbox;
-  let apiRequestStub: sinon.SinonStub;
-
-  beforeEach(() => {
-    sandbox = sinon.createSandbox();
-    apiRequestStub = sandbox.stub(api, "request").throws("Unexpected API request call");
-  });
-
-  afterEach(() => {
-    sandbox.restore();
-  });
-
   describe("getVersionTemplate", () => {
+    afterEach(() => {
+      expect(nock.isDone()).to.equal(true, "all nock stubs should have been called");
+      nock.cleanAll();
+    });
+
     it("should return the list of versions up to the limit", async () => {
-      apiRequestStub.onFirstCall().resolves({ body: expectedProjectInfoLimit });
+      nock(remoteConfigApiOrigin)
+        .get(`/v1/projects/${PROJECT_ID}/remoteConfig:listVersions?pageSize=${2}`)
+        .reply(200, expectedProjectInfoLimit);
 
       const RCtemplate = await remoteconfig.getVersions(PROJECT_ID, 2);
 
       expect(RCtemplate).to.deep.equal(expectedProjectInfoLimit);
-      expect(apiRequestStub).to.be.calledOnceWith(
-        "GET",
-        `/v1/projects/${PROJECT_ID}/remoteConfig:listVersions?pageSize=` + 2,
-        {
-          auth: true,
-          origin: api.remoteConfigApiOrigin,
-          timeout: 30000,
-        }
-      );
     });
 
     it("should return all the versions when the limit is 0", async () => {
-      apiRequestStub.onFirstCall().resolves({ body: expectedProjectInfoNoLimit });
+      nock(remoteConfigApiOrigin)
+        .get(`/v1/projects/${PROJECT_ID}/remoteConfig:listVersions?pageSize=${300}`)
+        .reply(200, expectedProjectInfoNoLimit);
 
       const RCtemplate = await remoteconfig.getVersions(PROJECT_ID, 0);
 
       expect(RCtemplate).to.deep.equal(expectedProjectInfoNoLimit);
-      expect(apiRequestStub).to.be.calledOnceWith(
-        "GET",
-        `/v1/projects/${PROJECT_ID}/remoteConfig:listVersions?pageSize=` + 300,
-        {
-          auth: true,
-          origin: api.remoteConfigApiOrigin,
-          timeout: 30000,
-        }
-      );
     });
 
     it("should return with default 10 versions when no limit is set", async () => {
-      apiRequestStub.onFirstCall().resolves({ body: expectedProjectInfoDefault });
+      nock(remoteConfigApiOrigin)
+        .get(`/v1/projects/${PROJECT_ID}/remoteConfig:listVersions?pageSize=${10}`)
+        .reply(200, expectedProjectInfoDefault);
 
       const RCtemplateVersion = await remoteconfig.getVersions(PROJECT_ID);
 
       expect(RCtemplateVersion.versions.length).to.deep.equal(10);
       expect(RCtemplateVersion).to.deep.equal(expectedProjectInfoDefault);
-      expect(apiRequestStub).to.be.calledOnceWith(
-        "GET",
-        `/v1/projects/${PROJECT_ID}/remoteConfig:listVersions?pageSize=` + 10,
-        {
-          auth: true,
-          origin: api.remoteConfigApiOrigin,
-          timeout: 30000,
-        }
-      );
     });
 
     it("should reject if the api call fails", async () => {
-      const expectedError = new Error("HTTP Error 404: Not Found");
-      apiRequestStub.onFirstCall().rejects(expectedError);
+      nock(remoteConfigApiOrigin)
+        .get(`/v1/projects/${PROJECT_ID}/remoteConfig:listVersions?pageSize=${10}`)
+        .reply(404, "Not Found");
 
       let err;
       try {
         await remoteconfig.getVersions(PROJECT_ID);
-      } catch (e) {
+      } catch (e: any) {
         err = e;
       }
 
+      expect(err).to.not.be.undefined;
       expect(err.message).to.equal(
         `Failed to get Remote Config template versions for Firebase project ${PROJECT_ID}. `
-      );
-      expect(err.original).to.equal(expectedError);
-      expect(apiRequestStub).to.be.calledOnceWith(
-        "GET",
-        `/v1/projects/${PROJECT_ID}/remoteConfig:listVersions?pageSize=10`,
-        {
-          auth: true,
-          origin: api.remoteConfigApiOrigin,
-          timeout: 30000,
-        }
       );
     });
   });

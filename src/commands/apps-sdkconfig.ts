@@ -91,14 +91,14 @@ module.exports = new Command("apps:sdkconfig [platform] [appId]")
       ).start();
       try {
         configData = await getAppConfig(appId, appPlatform);
-      } catch (err) {
+      } catch (err: any) {
         spinner.fail();
         throw err;
       }
       spinner.succeed();
 
       const fileInfo = getAppConfigFile(configData, appPlatform);
-      if (appPlatform == AppPlatform.WEB) {
+      if (appPlatform === AppPlatform.WEB) {
         fileInfo.sdkConfig = configData;
       }
 

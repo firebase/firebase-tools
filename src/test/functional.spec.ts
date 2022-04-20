@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import { flatten } from "lodash";
+import { SameType } from "../metaprogramming";
 
 import * as f from "../functional";
 
@@ -11,6 +12,13 @@ describe("functional", () => {
 
     it("can iterate an object that's already flat", () => {
       expect([...f.flatten({ a: "b" })]).to.deep.equal([["a", "b"]]);
+    });
+
+    it("Gets the right type for flattening arrays", () => {
+      const arr = [[["a"], "b"], ["c"]];
+      const flattened = [...f.flattenArray(arr)];
+      const test: SameType<typeof flattened, string[]> = true;
+      expect(test).to.be.true;
     });
 
     it("can handle nested objects", () => {
@@ -125,18 +133,14 @@ describe("functional", () => {
   describe("partition", () => {
     it("should split an array into true and false", () => {
       const arr = ["T1", "F1", "T2", "F2"];
-      expect(
-        f.partition<string>(arr, (s: string) => s.startsWith("T"))
-      ).to.deep.equal([
+      expect(f.partition<string>(arr, (s: string) => s.startsWith("T"))).to.deep.equal([
         ["T1", "T2"],
         ["F1", "F2"],
       ]);
     });
 
     it("can handle an empty array", () => {
-      expect(
-        f.partition<string>([], (s: string) => s.startsWith("T"))
-      ).to.deep.equal([[], []]);
+      expect(f.partition<string>([], (s: string) => s.startsWith("T"))).to.deep.equal([[], []]);
     });
   });
 });

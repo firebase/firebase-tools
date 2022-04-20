@@ -19,6 +19,7 @@ import { Socket } from "net";
 const IS_WINDOWS = process.platform === "win32";
 const SUCCESS_CHAR = IS_WINDOWS ? "+" : "✔";
 const WARNING_CHAR = IS_WINDOWS ? "!" : "⚠";
+const ERROR_CHAR = IS_WINDOWS ? "!!" : "⬢";
 const THIRTY_DAYS_IN_MILLISECONDS = 30 * 24 * 60 * 60 * 1000;
 
 export const envOverrides: string[] = [];
@@ -61,7 +62,7 @@ export function envOverride(
     if (coerce) {
       try {
         return coerce(currentEnvValue, value);
-      } catch (e) {
+      } catch (e: any) {
         return value;
       }
     }
@@ -192,6 +193,18 @@ export function logLabeledWarning(
 }
 
 /**
+ * Log an rror statement with a red bullet at the start of the line.
+ */
+export function logLabeledError(
+  label: string,
+  message: string,
+  type: LogLevel = "error",
+  data: LogDataOrUndefined = undefined
+): void {
+  logger[type](clc.red.bold(`${ERROR_CHAR}  ${label}:`), message, data);
+}
+
+/**
  * Return a promise that rejects with a FirebaseError.
  */
 export function reject(message: string, options?: any): Promise<never> {
@@ -217,9 +230,7 @@ export type PromiseResult<T> = PromiseFulfilledResult<T> | PromiseRejectedResult
  * TODO: delete once min Node version is 12.9.0 or greater
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function allSettled<T extends any>(
-  promises: Array<Promise<T>>
-): Promise<Array<PromiseResult<T>>> {
+export function allSettled<T>(promises: Array<Promise<T>>): Promise<Array<PromiseResult<T>>> {
   if (!promises.length) {
     return Promise.resolve([]);
   }
@@ -369,7 +380,7 @@ export function promiseAllSettled(promises: Array<Promise<any>>): Promise<Settle
     try {
       const val = await Promise.resolve(p);
       return { state: "fulfilled", value: val } as SettledPromiseResolved;
-    } catch (err) {
+    } catch (err: any) {
       return { state: "rejected", reason: err } as SettledPromiseRejected;
     }
   });
@@ -393,7 +404,7 @@ export async function promiseWhile<T>(
           return resolve(res);
         }
         setTimeout(run, interval);
-      } catch (err) {
+      } catch (err: any) {
         return promiseReject(err);
       }
     };
@@ -446,6 +457,9 @@ export function tryParse(value: any) {
   }
 }
 
+/**
+ *
+ */
 export function setupLoggers() {
   if (process.env.DEBUG) {
     logger.add(
@@ -463,7 +477,7 @@ export function setupLoggers() {
         level: "info",
         format: winston.format.printf((info) =>
           [info.message, ...(info[SPLAT] || [])]
-            .filter((chunk) => typeof chunk == "string")
+            .filter((chunk) => typeof chunk === "string")
             .join(" ")
         ),
       })
@@ -480,7 +494,7 @@ export async function promiseWithSpinner<T>(action: () => Promise<T>, message: s
   try {
     data = await action();
     spinner.succeed();
-  } catch (err) {
+  } catch (err: any) {
     spinner.fail();
     throw err;
   }
@@ -494,7 +508,7 @@ export async function promiseWithSpinner<T>(action: () => Promise<T>, message: s
  *
  * Inspired by https://github.com/isaacs/server-destroy/blob/master/index.js
  *
- * @returns a function that destroys all connections and closes the server
+ * @return a function that destroys all connections and closes the server
  */
 export function createDestroyer(server: http.Server): () => Promise<void> {
   const connections = new Set<Socket>();
@@ -526,9 +540,10 @@ export function createDestroyer(server: http.Server): () => Promise<void> {
  * @return the formatted date.
  */
 export function datetimeString(d: Date): string {
-  const day = `${d.getFullYear()}-${(d.getMonth() + 1)
+  const day = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, "0")}-${d
+    .getDate()
     .toString()
-    .padStart(2, "0")}-${d.getDate().toString().padStart(2, "0")}`;
+    .padStart(2, "0")}`;
   const time = `${d.getHours().toString().padStart(2, "0")}:${d
     .getMinutes()
     .toString()
@@ -578,6 +593,9 @@ export function assertDefined<T>(val: T, message?: string): asserts val is NonNu
   }
 }
 
+/**
+ *
+ */
 export function assertIsString(val: any, message?: string): asserts val is string {
   if (typeof val !== "string") {
     throw new AssertionError({
@@ -586,6 +604,9 @@ export function assertIsString(val: any, message?: string): asserts val is strin
   }
 }
 
+/**
+ *
+ */
 export function assertIsNumber(val: any, message?: string): asserts val is number {
   if (typeof val !== "number") {
     throw new AssertionError({
@@ -594,6 +615,9 @@ export function assertIsNumber(val: any, message?: string): asserts val is numbe
   }
 }
 
+/**
+ *
+ */
 export function assertIsStringOrUndefined(
   val: any,
   message?: string
@@ -603,4 +627,57 @@ export function assertIsStringOrUndefined(
       message: message || `expected "string" or "undefined" but got "${typeof val}"`,
     });
   }
+}
+
+/**
+ * Polyfill for groupBy.
+ */
+export function groupBy<T, K extends string | number | symbol>(
+  arr: T[],
+  f: (item: T) => K
+): Record<K, T[]> {
+  return arr.reduce((result, item) => {
+    const key = f(item);
+    if (result[key]) {
+      result[key].push(item);
+    } else {
+      result[key] = [item];
+    }
+    return result;
+  }, {} as Record<K, T[]>);
+}
+
+function cloneArray<T>(arr: T[]): T[] {
+  return arr.map((e) => cloneDeep(e));
+}
+
+function cloneObject<T extends Record<string, unknown>>(obj: T): T {
+  const clone: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    clone[k] = cloneDeep(v);
+  }
+  return clone as T;
+}
+
+/**
+ * replacement for lodash cloneDeep that preserves type.
+ */
+// TODO: replace with builtin once Node 18 becomes the min version.
+export function cloneDeep<T>(obj: T): T {
+  if (typeof obj !== "object" || !obj) {
+    return obj;
+  }
+  if (obj instanceof RegExp) {
+    return RegExp(obj, obj.flags) as typeof obj;
+  }
+  if (obj instanceof Date) {
+    return new Date(obj) as typeof obj;
+  }
+  if (Array.isArray(obj)) {
+    return cloneArray(obj) as typeof obj;
+  }
+  if (obj instanceof Map) {
+    return new Map(obj.entries()) as typeof obj;
+  }
+  return cloneObject(obj as Record<string, unknown>) as typeof obj;
 }

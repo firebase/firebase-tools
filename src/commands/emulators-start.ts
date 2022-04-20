@@ -6,6 +6,8 @@ import { EmulatorRegistry } from "../emulator/registry";
 import { Emulators, EMULATORS_SUPPORTED_BY_UI } from "../emulator/types";
 import * as clc from "cli-color";
 import { Constants } from "../emulator/constants";
+import { logLabeledWarning } from "../utils";
+import { ExtensionsEmulator } from "../emulator/extensionsEmulator";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const Table = require("cli-table");
@@ -26,9 +28,10 @@ module.exports = new Command("emulators:start")
   .action(async (options: any) => {
     const killSignalPromise = commandUtils.shutdownWhenKilled(options);
 
+    let deprecationNotices;
     try {
-      await controller.startAll(options);
-    } catch (e) {
+      ({ deprecationNotices } = await controller.startAll(options));
+    } catch (e: any) {
       await controller.cleanShutdown();
       throw e;
     }
@@ -71,10 +74,10 @@ module.exports = new Command("emulators:start")
       ...controller
         .filterEmulatorTargets(options)
         .map((emulator) => {
-          const info = EmulatorRegistry.getInfo(emulator);
           const emulatorName = Constants.description(emulator).replace(/ emulator/i, "");
           const isSupportedByUi = EMULATORS_SUPPORTED_BY_UI.includes(emulator);
-
+          // The Extensions emulator runs as part of the Functions emulator, so display the Functions emulators info instead.
+          const info = EmulatorRegistry.getInfo(emulator);
           if (!info) {
             return [emulatorName, "Failed to initialize (see above)", "", ""];
           }
@@ -90,7 +93,13 @@ module.exports = new Command("emulators:start")
         .map((col) => col.slice(0, head.length))
         .filter((v) => v)
     );
-
+    let extensionsTable: string = "";
+    if (EmulatorRegistry.isRunning(Emulators.EXTENSIONS)) {
+      const extensionsEmulatorInstance = EmulatorRegistry.get(
+        Emulators.EXTENSIONS
+      ) as ExtensionsEmulator;
+      extensionsTable = extensionsEmulatorInstance.extensionsInfoTable(options);
+    }
     logger.info(`\n${successMessageTable}
 
 ${emulatorsTable}
@@ -100,7 +109,7 @@ ${
     : clc.blackBright("  Emulator Hub not running.")
 }
 ${clc.blackBright("  Other reserved ports:")} ${reservedPortsString}
-
+${extensionsTable}
 Issues? Report them at ${stylizeLink(
       "https://github.com/firebase/firebase-tools/issues"
     )} and attach the *-debug.log files.
@@ -108,6 +117,10 @@ Issues? Report them at ${stylizeLink(
 
     // Add this line above once connect page is implemented
     // It is now safe to connect your app. Instructions: http://${uiInfo?.host}:${uiInfo?.port}/connect
+
+    for (const notice of deprecationNotices) {
+      logLabeledWarning("emulators", notice, "warn");
+    }
 
     // Hang until explicitly killed
     await killSignalPromise;

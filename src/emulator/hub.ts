@@ -81,9 +81,10 @@ export class EmulatorHub implements EmulatorInstance {
 
     this.hub.get(EmulatorHub.PATH_EMULATORS, (req, res) => {
       const body: GetEmulatorsResponse = {};
-      EmulatorRegistry.listRunning().forEach((name) => {
-        body[name] = EmulatorRegistry.get(name)!.getInfo();
-      });
+      for (const emulator of EmulatorRegistry.listRunning()) {
+        const info = EmulatorRegistry.getInfo(emulator);
+        body[emulator] = info!;
+      }
       res.json(body);
     });
 
@@ -99,7 +100,7 @@ export class EmulatorHub implements EmulatorInstance {
         res.status(200).send({
           message: "OK",
         });
-      } catch (e) {
+      } catch (e: any) {
         const errorString = e.message || JSON.stringify(e);
         utils.logLabeledWarning("emulators", `Export failed: ${errorString}`);
         res.status(500).json({

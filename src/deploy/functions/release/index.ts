@@ -11,9 +11,12 @@ import * as fabricator from "./fabricator";
 import * as reporter from "./reporter";
 import * as executor from "./executor";
 import * as prompts from "../prompts";
+import * as secrets from "../../../functions/secrets";
 import { getAppEngineLocation } from "../../../functionsConfig";
 import { getFunctionLabel } from "../functionsDeployHelper";
 import { FirebaseError } from "../../../error";
+import { needProjectId, needProjectNumber } from "../../../projectUtils";
+import { logLabeledBullet, logLabeledWarning } from "../../../utils";
 
 /** Releases new versions of functions to prod. */
 export async function release(
@@ -21,15 +24,28 @@ export async function release(
   options: Options,
   payload: args.Payload
 ): Promise<void> {
-  if (!options.config.has("functions")) {
+  if (!context.config) {
+    return;
+  }
+  if (!payload.functions) {
+    return;
+  }
+  if (!context.sources) {
     return;
   }
 
-  const plan = planner.createDeploymentPlan(
-    payload.functions!.backend,
-    await backend.existingBackend(context),
-    { filters: context.filters }
-  );
+  let plan: planner.DeploymentPlan = {};
+  for (const [codebase, { wantBackend, haveBackend }] of Object.entries(payload.functions)) {
+    plan = {
+      ...plan,
+      ...planner.createDeploymentPlan({
+        codebase,
+        wantBackend,
+        haveBackend,
+        filters: context.filters,
+      }),
+    };
+  }
 
   const fnsToDelete = Object.values(plan)
     .map((regionalChanges) => regionalChanges.endpointsToDelete)
@@ -55,8 +71,7 @@ export async function release(
   const fab = new fabricator.Fabricator({
     functionExecutor,
     executor: new executor.QueueExecutor({}),
-    sourceUrl: context.uploadUrl!,
-    storage: context.storage!,
+    sources: context.sources,
     appEngineLocation: getAppEngineLocation(context.firebaseConfig),
   });
 
@@ -69,18 +84,50 @@ export async function release(
   // uri field. createDeploymentPlan copies endpoints by reference. Both of these
   // subtleties are so we can take out a round trip API call to get the latest
   // trigger URLs by calling existingBackend again.
-  printTriggerUrls(payload.functions!.backend);
+  const wantBackend = backend.merge(...Object.values(payload.functions).map((p) => p.wantBackend));
+  printTriggerUrls(wantBackend);
 
-  const haveEndpoints = backend.allEndpoints(payload.functions!.backend);
+  const haveEndpoints = backend.allEndpoints(wantBackend);
   const deletedEndpoints = Object.values(plan)
     .map((r) => r.endpointsToDelete)
     .reduce(reduceFlat, []);
-  await containerCleaner.cleanupBuildImages(haveEndpoints, deletedEndpoints);
+  const opts: { ar?: containerCleaner.ArtifactRegistryCleaner } = {};
+  if (!context.artifactRegistryEnabled) {
+    opts.ar = new containerCleaner.NoopArtifactRegistryCleaner();
+  }
+  await containerCleaner.cleanupBuildImages(haveEndpoints, deletedEndpoints, opts);
 
   const allErrors = summary.results.filter((r) => r.error).map((r) => r.error) as Error[];
   if (allErrors.length) {
-    const opts = allErrors.length == 1 ? { original: allErrors[0] } : { children: allErrors };
+    const opts = allErrors.length === 1 ? { original: allErrors[0] } : { children: allErrors };
     throw new FirebaseError("There was an error deploying functions", { ...opts, exit: 2 });
+  } else {
+    if (secrets.of(haveEndpoints).length > 0) {
+      const projectId = needProjectId(options);
+      const projectNumber = await needProjectNumber(options);
+      // Re-load backend with all endpoints, not just the ones deployed.
+      const reloadedBackend = await backend.existingBackend({ projectId } as args.Context);
+      const prunedResult = await secrets.pruneAndDestroySecrets(
+        { projectId, projectNumber },
+        backend.allEndpoints(reloadedBackend)
+      );
+      if (prunedResult.destroyed.length > 0) {
+        logLabeledBullet(
+          "functions",
+          `Destroyed unused secret versions: ${prunedResult.destroyed
+            .map((s) => `${s.secret}@${s.version}`)
+            .join(", ")}`
+        );
+      }
+      if (prunedResult.erred.length > 0) {
+        logLabeledWarning(
+          "functions",
+          `Failed to destroy unused secret versions:\n\t${prunedResult.erred
+            .map((err) => err.message)
+            .join("\n\t")}`
+        );
+      }
+    }
   }
 }
 
@@ -97,7 +144,9 @@ export function printTriggerUrls(results: backend.Backend): void {
 
   for (const httpsFunc of httpsFunctions) {
     if (!httpsFunc.uri) {
-      logger.debug("Missing URI for HTTPS function in printTriggerUrls. This shouldn't happen");
+      logger.debug(
+        "Not printing URL for HTTPS function. Typically this means it didn't match a filter or we failed deployment"
+      );
       continue;
     }
     logger.info(clc.bold("Function URL"), `(${getFunctionLabel(httpsFunc)}):`, httpsFunc.uri);

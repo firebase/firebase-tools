@@ -3,13 +3,13 @@ import * as _ from "lodash";
 import * as path from "path";
 import * as fs from "fs-extra";
 
-import { ExtensionSpec, Resource } from "../extensionsApi";
+import { ExtensionSpec, ParamType, Resource } from "../extensionsApi";
 import { FirebaseError } from "../../error";
 import { substituteParams } from "../extensionsHelper";
-import { EmulatorLogger } from "../../emulator/emulatorLogger";
-import { Emulators } from "../../emulator/types";
+import { parseRuntimeVersion } from "../../emulator/functionsEmulatorUtils";
 
 const SPEC_FILE = "extension.yaml";
+const POSTINSTALL_FILE = "POSTINSTALL.md";
 const validFunctionTypes = [
   "firebaseextensions.v1beta.function",
   "firebaseextensions.v1beta.scheduledFunction",
@@ -22,7 +22,7 @@ const validFunctionTypes = [
 function wrappedSafeLoad(source: string): any {
   try {
     return yaml.safeLoad(source);
-  } catch (err) {
+  } catch (err: any) {
     if (err instanceof yaml.YAMLException) {
       throw new FirebaseError(`YAML Error: ${err.message}`, { original: err });
     }
@@ -41,12 +41,21 @@ export async function readExtensionYaml(directory: string): Promise<ExtensionSpe
 }
 
 /**
+ * Reads a POSTINSTALL file and returns its content as a string
+ * @param directory the directory to look for POSTINSTALL.md in.
+ */
+export async function readPostinstall(directory: string): Promise<string> {
+  const content = await readFileFromDirectory(directory, POSTINSTALL_FILE);
+  return content.source;
+}
+
+/**
  * Retrieves a file from the directory.
  */
 export function readFileFromDirectory(
   directory: string,
   file: string
-): Promise<{ [key: string]: any }> {
+): Promise<{ source: string; sourceDirectory: string }> {
   return new Promise<string>((resolve, reject) => {
     fs.readFile(path.resolve(directory, file), "utf8", (err, data) => {
       if (err) {
@@ -73,7 +82,7 @@ export function readFileFromDirectory(
 export function getFunctionResourcesWithParamSubstitution(
   extensionSpec: ExtensionSpec,
   params: { [key: string]: string }
-): object[] {
+): Resource[] {
   const rawResources = extensionSpec.resources.filter((resource) =>
     validFunctionTypes.includes(resource.type)
   );
@@ -84,37 +93,19 @@ export function getFunctionProperties(resources: Resource[]) {
   return resources.map((r) => r.properties);
 }
 
-/**
- * Choses a node version to use based on the 'nodeVersion' field in resources.
- * Currently, the emulator will use 1 node version for all functions, even though
- * an extension can specify different node versions for each function when deployed.
- * For now, we choose the newest version that a user lists in their function resources,
- * and fall back to node 8 if none is listed.
- */
-export function getNodeVersion(resources: Resource[]): string {
-  const functionNamesWithoutRuntime: string[] = [];
+export function getNodeVersion(resources: Resource[]): number {
+  const invalidRuntimes: string[] = [];
   const versions = resources.map((r: Resource) => {
-    if (_.includes(r.type, "function")) {
-      if (r.properties?.runtime) {
-        return r.properties?.runtime;
+    if (r.properties?.runtime) {
+      const runtimeName = r.properties?.runtime as string;
+      const runtime = parseRuntimeVersion(runtimeName);
+      if (!runtime) {
+        invalidRuntimes.push(runtimeName);
       } else {
-        functionNamesWithoutRuntime.push(r.name);
+        return runtime;
       }
     }
-    return "nodejs8";
-  });
-
-  if (functionNamesWithoutRuntime.length) {
-    EmulatorLogger.forEmulator(Emulators.FUNCTIONS).logLabeled(
-      "WARN",
-      "extensions",
-      `No 'runtime' property found for the following functions, defaulting to nodejs8: ${functionNamesWithoutRuntime.join(
-        ", "
-      )}`
-    );
-  }
-  const invalidRuntimes = _.filter(versions, (v) => {
-    return !_.includes(v, "nodejs");
+    return 14;
   });
 
   if (invalidRuntimes.length) {
@@ -124,16 +115,5 @@ export function getNodeVersion(resources: Resource[]): string {
       )}. \n Only Node runtimes are supported.`
     );
   }
-  if (_.includes(versions, "nodejs10")) {
-    return "10";
-  }
-  if (_.includes(versions, "nodejs6")) {
-    EmulatorLogger.forEmulator(Emulators.FUNCTIONS).logLabeled(
-      "WARN",
-      "extensions",
-      "Node 6 is deprecated. We recommend upgrading to a newer version."
-    );
-    return "6";
-  }
-  return "8";
+  return Math.max(...versions);
 }

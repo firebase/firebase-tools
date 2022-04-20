@@ -107,7 +107,7 @@ export function convertKey(configKey: string, prefix: string): string {
   let envKey = baseKey;
   try {
     env.validateKey(envKey);
-  } catch (err) {
+  } catch (err: any) {
     if (err instanceof env.KeyValidationError) {
       envKey = prefix + envKey;
       env.validateKey(envKey);
@@ -127,7 +127,7 @@ export function configToEnv(configs: Record<string, unknown>, prefix: string): C
     try {
       const envKey = convertKey(configKey, prefix);
       success.push({ origKey: configKey, newKey: envKey, value: value as string });
-    } catch (err) {
+    } catch (err: any) {
       if (err instanceof env.KeyValidationError) {
         errors.push({
           origKey: configKey,
@@ -169,14 +169,19 @@ export function hydrateEnvs(pInfos: ProjectConfigInfo[], prefix: string): string
   return errMsg;
 }
 
+const CHARACTERS_TO_ESCAPE_SEQUENCES: Record<string, string> = {
+  "\n": "\\n",
+  "\r": "\\r",
+  "\t": "\\t",
+  "\v": "\\v",
+  "\\": "\\\\",
+  '"': '\\"',
+  "'": "\\'",
+};
+
 function escape(s: string): string {
-  // Escape newlines and tabs
-  const result = s
-    .replace("\n", "\\n")
-    .replace("\r", "\\r")
-    .replace("\t", "\\t")
-    .replace("\v", "\\v");
-  return result.replace(/(['"])/g, "\\$1");
+  // Escape newlines, tabs, backslashes and quotes
+  return s.replace(/[\n\r\t\v\\"']/g, (ch) => CHARACTERS_TO_ESCAPE_SEQUENCES[ch]);
 }
 
 /**

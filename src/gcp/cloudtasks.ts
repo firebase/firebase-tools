@@ -22,7 +22,6 @@ export interface AppEngineRouting {
 
 export interface RateLimits {
   maxDispatchesPerSecond?: number;
-  maxBurstSize?: number;
   maxConcurrentDispatches?: number;
 }
 
@@ -69,7 +68,6 @@ export interface Queue {
 export const DEFAULT_SETTINGS: Omit<Queue, "name"> = {
   rateLimits: {
     maxConcurrentDispatches: 1000,
-    maxBurstSize: 100,
     maxDispatchesPerSecond: 500,
   },
   state: "RUNNING",
@@ -117,7 +115,7 @@ export async function upsertQueue(queue: Queue): Promise<boolean> {
 
     await (module.exports.updateQueue as typeof updateQueue)(queue);
     return false;
-  } catch (err) {
+  } catch (err: any) {
     if (err?.context?.response?.statusCode === 404) {
       await (module.exports.createQueue as typeof createQueue)(queue);
       return true;
@@ -156,7 +154,7 @@ const ENQUEUER_ROLE = "roles/cloudtasks.enqueuer";
 export async function setEnqueuer(
   name: string,
   invoker: string[],
-  assumeEmpty: boolean = false
+  assumeEmpty = false
 ): Promise<void> {
   let existing: iam.Policy;
   if (assumeEmpty) {
@@ -173,7 +171,7 @@ export async function setEnqueuer(
   const invokerMembers = proto.getInvokerMembers(invoker, project);
   while (true) {
     const policy: iam.Policy = {
-      bindings: existing.bindings.filter((binding) => binding.role != ENQUEUER_ROLE),
+      bindings: existing.bindings.filter((binding) => binding.role !== ENQUEUER_ROLE),
       etag: existing.etag,
       version: existing.version,
     };
@@ -189,7 +187,7 @@ export async function setEnqueuer(
     try {
       await (module.exports.setIamPolicy as typeof setIamPolicy)(name, policy);
       return;
-    } catch (err) {
+    } catch (err: any) {
       // Re-fetch on conflict
       if (err?.context?.response?.statusCode === 429) {
         existing = await (module.exports.getIamPolicy as typeof getIamPolicy)(name);
@@ -217,7 +215,6 @@ export function queueFromEndpoint(endpoint: backend.Endpoint & backend.TaskQueue
     proto.copyIfPresent(
       queue.rateLimits,
       endpoint.taskQueueTrigger.rateLimits,
-      "maxBurstSize",
       "maxConcurrentDispatches",
       "maxDispatchesPerSecond"
     );
@@ -227,10 +224,28 @@ export function queueFromEndpoint(endpoint: backend.Endpoint & backend.TaskQueue
       queue.retryConfig,
       endpoint.taskQueueTrigger.retryConfig,
       "maxAttempts",
-      "maxBackoff",
-      "maxDoublings",
+      "maxDoublings"
+    );
+    proto.renameIfPresent(
+      queue.retryConfig,
+      endpoint.taskQueueTrigger.retryConfig,
       "maxRetryDuration",
-      "minBackoff"
+      "maxRetrySeconds",
+      proto.durationFromSeconds
+    );
+    proto.renameIfPresent(
+      queue.retryConfig,
+      endpoint.taskQueueTrigger.retryConfig,
+      "maxBackoff",
+      "maxBackoffSeconds",
+      proto.durationFromSeconds
+    );
+    proto.renameIfPresent(
+      queue.retryConfig,
+      endpoint.taskQueueTrigger.retryConfig,
+      "minBackoff",
+      "minBackoffSeconds",
+      proto.durationFromSeconds
     );
   }
   return queue;

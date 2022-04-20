@@ -46,9 +46,9 @@ export class Config {
    * @param src incoming firebase.json source, parsed by not validated.
    * @param options command-line options.
    */
-  constructor(src: any, options: any) {
-    this.options = options || {};
-    this.projectDir = options.projectDir || detectProjectRoot(options);
+  constructor(src: any, options: any = {}) {
+    this.options = options;
+    this.projectDir = this.options.projectDir || detectProjectRoot(this.options);
     this._src = src;
 
     if (this._src.firebase) {
@@ -76,13 +76,17 @@ export class Config {
       }
     });
 
-    // Auto-detect functions from package.json in directory
-    if (
-      this.projectDir &&
-      !this.get("functions.source") &&
-      fsutils.dirExistsSync(this.path("functions"))
-    ) {
-      this.set("functions.source", Config.DEFAULT_FUNCTIONS_SOURCE);
+    // Inject default functions config and source if missing.
+    if (this.projectDir && fsutils.dirExistsSync(this.path(Config.DEFAULT_FUNCTIONS_SOURCE))) {
+      if (Array.isArray(this.get("functions"))) {
+        if (!this.get("functions.[0].source")) {
+          this.set("functions.[0].source", Config.DEFAULT_FUNCTIONS_SOURCE);
+        }
+      } else {
+        if (!this.get("functions.source")) {
+          this.set("functions.source", Config.DEFAULT_FUNCTIONS_SOURCE);
+        }
+      }
     }
   }
 
@@ -123,7 +127,7 @@ export class Config {
           this.notes.databaseRulesFile = filePath;
           try {
             return fs.readFileSync(fullPath, "utf8");
-          } catch (e) {
+          } catch (e: any) {
             if (e.code === "ENOENT") {
               throw new FirebaseError(`File not found: ${fullPath}`, { original: e });
             }
@@ -183,7 +187,7 @@ export class Config {
         return JSON.parse(content);
       }
       return content;
-    } catch (e) {
+    } catch (e: any) {
       if (options.fallback) {
         return options.fallback;
       }
@@ -201,6 +205,14 @@ export class Config {
 
     fs.ensureFileSync(this.path(p));
     fs.writeFileSync(this.path(p), content, "utf8");
+  }
+
+  projectFileExists(p: string): boolean {
+    return fs.existsSync(this.path(p));
+  }
+
+  deleteProjectFile(p: string) {
+    fs.removeSync(this.path(p));
   }
 
   askWriteProjectFile(p: string, content: any, force?: boolean) {
@@ -248,7 +260,7 @@ export class Config {
         }
 
         return new Config(data, options);
-      } catch (e) {
+      } catch (e: any) {
         throw new FirebaseError(`There was an error loading ${filename}:\n\n` + e.message, {
           exit: 1,
         });

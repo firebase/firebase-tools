@@ -7,7 +7,7 @@ import {
   getTemporarySocketPath,
 } from "./functionsEmulatorShared";
 import { EventEmitter } from "events";
-import { EmulatorLogger } from "./emulatorLogger";
+import { EmulatorLogger, ExtensionLogInfo } from "./emulatorLogger";
 import { FirebaseError } from "../error";
 
 type LogListener = (el: EmulatorLog) => any;
@@ -69,7 +69,7 @@ export class RuntimeWorker {
 
     // TODO(samstern): I would like to do this elsewhere...
     if (!execFrb.socketPath) {
-      execFrb.socketPath = getTemporarySocketPath(this.runtime.pid, execFrb.cwd);
+      execFrb.socketPath = getTemporarySocketPath(this.runtime.pid, this.runtime.cwd);
       this.log(`Assigning socketPath: ${execFrb.socketPath}`);
     }
 
@@ -126,7 +126,7 @@ export class RuntimeWorker {
       return Promise.resolve();
     }
 
-    return new Promise((res) => {
+    return new Promise<void>((res) => {
       const listener = () => {
         this.stateEvents.removeListener(RuntimeWorkerState.IDLE, listener);
         this.stateEvents.removeListener(RuntimeWorkerState.FINISHED, listener);
@@ -256,7 +256,11 @@ export class RuntimeWorkerPool {
     return;
   }
 
-  addWorker(triggerId: string | undefined, runtime: FunctionsRuntimeInstance): RuntimeWorker {
+  addWorker(
+    triggerId: string | undefined,
+    runtime: FunctionsRuntimeInstance,
+    extensionLogInfo?: ExtensionLogInfo
+  ): RuntimeWorker {
     const worker = new RuntimeWorker(this.getKey(triggerId), runtime);
     this.log(`addWorker(${worker.key})`);
 
@@ -265,7 +269,7 @@ export class RuntimeWorkerPool {
     this.setTriggerWorkers(triggerId, keyWorkers);
 
     const logger = triggerId
-      ? EmulatorLogger.forFunction(triggerId)
+      ? EmulatorLogger.forFunction(triggerId, extensionLogInfo)
       : EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
     worker.onLogs((log: EmulatorLog) => {
       logger.handleRuntimeLog(log);

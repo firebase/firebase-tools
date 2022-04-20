@@ -23,11 +23,11 @@ export class CLIProcess {
     }
     this.process = p;
 
-    this.process.stdout.on("data", (data: unknown) => {
+    this.process.stdout?.on("data", (data: unknown) => {
       process.stdout.write(`[${this.name} stdout] ` + data);
     });
 
-    this.process.stderr.on("data", (data: unknown) => {
+    this.process.stderr?.on("data", (data: unknown) => {
       console.log(`[${this.name} stderr] ` + data);
     });
 
@@ -66,7 +66,7 @@ export class CLIProcess {
       return Promise.resolve();
     }
 
-    const stopped = new Promise((resolve) => {
+    const stopped = new Promise<void>((resolve) => {
       p.once("exit", (/* exitCode, signal */) => {
         this.process = undefined;
         resolve();

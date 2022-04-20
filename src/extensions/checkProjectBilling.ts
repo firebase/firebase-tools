@@ -30,7 +30,7 @@ async function openBillingAccount(projectId: string, url: string, open: boolean)
   if (open) {
     try {
       opn(url);
-    } catch (err) {
+    } catch (err: any) {
       logger.debug("Unable to open billing URL: " + err.stack);
     }
   }
@@ -68,7 +68,7 @@ Please select the one that you would like to associate with this project:`,
     const billingURL = `https://console.cloud.google.com/billing/linkedaccount?project=${projectId}`;
     billingEnabled = await openBillingAccount(projectId, billingURL, true);
   } else {
-    const billingAccount = accounts.find((a) => a.displayName == answer);
+    const billingAccount = accounts.find((a) => a.displayName === answer);
     billingEnabled = await cloudbilling.setBillingAccount(projectId, billingAccount!.name);
   }
 

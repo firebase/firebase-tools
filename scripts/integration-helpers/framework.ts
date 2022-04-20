@@ -1,6 +1,7 @@
 import fetch, { Response } from "node-fetch";
 
 import { CLIProcess } from "./cli";
+import { Emulators } from "../../src/emulator/types";
 
 const FIREBASE_PROJECT_ZONE = "us-central1";
 
@@ -14,6 +15,14 @@ const STORAGE_FUNCTION_V2_ARCHIVED_LOG = "========== STORAGE V2 FUNCTION ARCHIVE
 const STORAGE_FUNCTION_V2_DELETED_LOG = "========== STORAGE V2 FUNCTION DELETED ==========";
 const STORAGE_FUNCTION_V2_FINALIZED_LOG = "========== STORAGE V2 FUNCTION FINALIZED ==========";
 const STORAGE_FUNCTION_V2_METADATA_LOG = "========== STORAGE V2 FUNCTION METADATA ==========";
+const STORAGE_BUCKET_FUNCTION_V2_ARCHIVED_LOG =
+  "========== STORAGE BUCKET V2 FUNCTION ARCHIVED ==========";
+const STORAGE_BUCKET_FUNCTION_V2_DELETED_LOG =
+  "========== STORAGE BUCKET V2 FUNCTION DELETED ==========";
+const STORAGE_BUCKET_FUNCTION_V2_FINALIZED_LOG =
+  "========== STORAGE BUCKET V2 FUNCTION FINALIZED ==========";
+const STORAGE_BUCKET_FUNCTION_V2_METADATA_LOG =
+  "========== STORAGE BUCKET V2 FUNCTION METADATA ==========";
 /* Functions V1 */
 const RTDB_FUNCTION_LOG = "========== RTDB FUNCTION ==========";
 const FIRESTORE_FUNCTION_LOG = "========== FIRESTORE FUNCTION ==========";
@@ -23,6 +32,13 @@ const STORAGE_FUNCTION_ARCHIVED_LOG = "========== STORAGE FUNCTION ARCHIVED ====
 const STORAGE_FUNCTION_DELETED_LOG = "========== STORAGE FUNCTION DELETED ==========";
 const STORAGE_FUNCTION_FINALIZED_LOG = "========== STORAGE FUNCTION FINALIZED ==========";
 const STORAGE_FUNCTION_METADATA_LOG = "========== STORAGE FUNCTION METADATA ==========";
+const STORAGE_BUCKET_FUNCTION_ARCHIVED_LOG =
+  "========== STORAGE BUCKET FUNCTION ARCHIVED ==========";
+const STORAGE_BUCKET_FUNCTION_DELETED_LOG = "========== STORAGE BUCKET FUNCTION DELETED ==========";
+const STORAGE_BUCKET_FUNCTION_FINALIZED_LOG =
+  "========== STORAGE BUCKET FUNCTION FINALIZED ==========";
+const STORAGE_BUCKET_FUNCTION_METADATA_LOG =
+  "========== STORAGE BUCKET FUNCTION METADATA ==========";
 const ALL_EMULATORS_STARTED_LOG = "All emulators ready";
 
 interface ConnectionInfo {
@@ -65,6 +81,10 @@ export class TriggerEndToEndTest {
   storageDeletedTriggerCount = 0;
   storageFinalizedTriggerCount = 0;
   storageMetadataTriggerCount = 0;
+  storageBucketArchivedTriggerCount = 0;
+  storageBucketDeletedTriggerCount = 0;
+  storageBucketFinalizedTriggerCount = 0;
+  storageBucketMetadataTriggerCount = 0;
 
   /* Functions V2 */
   pubsubV2TriggerCount = 0;
@@ -72,6 +92,10 @@ export class TriggerEndToEndTest {
   storageV2DeletedTriggerCount = 0;
   storageV2FinalizedTriggerCount = 0;
   storageV2MetadataTriggerCount = 0;
+  storageBucketV2ArchivedTriggerCount = 0;
+  storageBucketV2DeletedTriggerCount = 0;
+  storageBucketV2FinalizedTriggerCount = 0;
+  storageBucketV2MetadataTriggerCount = 0;
 
   rtdbFromFirestore = false;
   firestoreFromRtdb = false;
@@ -90,6 +114,33 @@ export class TriggerEndToEndTest {
     }
   }
 
+  resetCounts(): void {
+    /* Functions V1 */
+    this.firestoreTriggerCount = 0;
+    this.rtdbTriggerCount = 0;
+    this.pubsubTriggerCount = 0;
+    this.authTriggerCount = 0;
+    this.storageArchivedTriggerCount = 0;
+    this.storageDeletedTriggerCount = 0;
+    this.storageFinalizedTriggerCount = 0;
+    this.storageMetadataTriggerCount = 0;
+    this.storageBucketArchivedTriggerCount = 0;
+    this.storageBucketDeletedTriggerCount = 0;
+    this.storageBucketFinalizedTriggerCount = 0;
+    this.storageBucketMetadataTriggerCount = 0;
+
+    /* Functions V2 */
+    this.pubsubV2TriggerCount = 0;
+    this.storageV2ArchivedTriggerCount = 0;
+    this.storageV2DeletedTriggerCount = 0;
+    this.storageV2FinalizedTriggerCount = 0;
+    this.storageV2MetadataTriggerCount = 0;
+    this.storageBucketV2ArchivedTriggerCount = 0;
+    this.storageBucketV2DeletedTriggerCount = 0;
+    this.storageBucketV2FinalizedTriggerCount = 0;
+    this.storageBucketV2MetadataTriggerCount = 0;
+  }
+
   /*
    * Check that all directions of database <-> functions <-> firestore
    * worked.
@@ -106,13 +157,13 @@ export class TriggerEndToEndTest {
   startEmulators(additionalArgs: string[] = []): Promise<void> {
     const cli = new CLIProcess("default", this.workdir);
     const started = cli.start("emulators:start", this.project, additionalArgs, (data: unknown) => {
-      if (typeof data != "string" && !Buffer.isBuffer(data)) {
+      if (typeof data !== "string" && !Buffer.isBuffer(data)) {
         throw new Error(`data is not a string or buffer (${typeof data})`);
       }
       return data.includes(ALL_EMULATORS_STARTED_LOG);
     });
 
-    cli.process?.stdout.on("data", (data) => {
+    cli.process?.stdout?.on("data", (data) => {
       /* Functions V1 */
       if (data.includes(RTDB_FUNCTION_LOG)) {
         this.rtdbTriggerCount++;
@@ -138,6 +189,18 @@ export class TriggerEndToEndTest {
       if (data.includes(STORAGE_FUNCTION_METADATA_LOG)) {
         this.storageMetadataTriggerCount++;
       }
+      if (data.includes(STORAGE_BUCKET_FUNCTION_ARCHIVED_LOG)) {
+        this.storageBucketArchivedTriggerCount++;
+      }
+      if (data.includes(STORAGE_BUCKET_FUNCTION_DELETED_LOG)) {
+        this.storageBucketDeletedTriggerCount++;
+      }
+      if (data.includes(STORAGE_BUCKET_FUNCTION_FINALIZED_LOG)) {
+        this.storageBucketFinalizedTriggerCount++;
+      }
+      if (data.includes(STORAGE_BUCKET_FUNCTION_METADATA_LOG)) {
+        this.storageBucketMetadataTriggerCount++;
+      }
       /* Functions V2 */
       if (data.includes(PUBSUB_FUNCTION_V2_LOG)) {
         this.pubsubV2TriggerCount++;
@@ -154,6 +217,18 @@ export class TriggerEndToEndTest {
       if (data.includes(STORAGE_FUNCTION_V2_METADATA_LOG)) {
         this.storageV2MetadataTriggerCount++;
       }
+      if (data.includes(STORAGE_BUCKET_FUNCTION_V2_ARCHIVED_LOG)) {
+        this.storageBucketV2ArchivedTriggerCount++;
+      }
+      if (data.includes(STORAGE_BUCKET_FUNCTION_V2_DELETED_LOG)) {
+        this.storageBucketV2DeletedTriggerCount++;
+      }
+      if (data.includes(STORAGE_BUCKET_FUNCTION_V2_FINALIZED_LOG)) {
+        this.storageBucketV2FinalizedTriggerCount++;
+      }
+      if (data.includes(STORAGE_BUCKET_FUNCTION_V2_METADATA_LOG)) {
+        this.storageBucketV2MetadataTriggerCount++;
+      }
     });
 
     this.cliProcess = cli;
@@ -167,7 +242,7 @@ export class TriggerEndToEndTest {
       this.project,
       additionalArgs,
       (data: unknown) => {
-        if (typeof data != "string" && !Buffer.isBuffer(data)) {
+        if (typeof data !== "string" && !Buffer.isBuffer(data)) {
           throw new Error(`data is not a string or buffer (${typeof data})`);
         }
         return data.includes(ALL_EMULATORS_STARTED_LOG);
@@ -182,11 +257,43 @@ export class TriggerEndToEndTest {
     return this.cliProcess ? this.cliProcess.stop() : Promise.resolve();
   }
 
+  applyTargets(emulatorType: Emulators, target: string, resource: string): Promise<void> {
+    const cli = new CLIProcess("default", this.workdir);
+    const started = cli.start(
+      "target:apply",
+      this.project,
+      [emulatorType, target, resource],
+      (data: unknown) => {
+        if (typeof data !== "string" && !Buffer.isBuffer(data)) {
+          throw new Error(`data is not a string or buffer (${typeof data})`);
+        }
+        return data.includes(`Applied ${emulatorType} target`);
+      }
+    );
+    this.cliProcess = cli;
+    return started;
+  }
+
   invokeHttpFunction(name: string, zone = FIREBASE_PROJECT_ZONE): Promise<Response> {
     const url = `http://localhost:${[this.functionsEmulatorPort, this.project, zone, name].join(
       "/"
     )}`;
     return fetch(url);
+  }
+
+  invokeCallableFunction(
+    name: string,
+    body: Record<string, unknown>,
+    zone = FIREBASE_PROJECT_ZONE
+  ): Promise<Response> {
+    const url = `http://localhost:${this.functionsEmulatorPort}/${[this.project, zone, name].join(
+      "/"
+    )}`;
+    return fetch(url, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   writeToRtdb(): Promise<Response> {
@@ -209,12 +316,28 @@ export class TriggerEndToEndTest {
     return this.invokeHttpFunction("writeToScheduledPubsub");
   }
 
-  writeToStorage(): Promise<Response> {
-    return this.invokeHttpFunction("writeToStorage");
+  writeToDefaultStorage(): Promise<Response> {
+    return this.invokeHttpFunction("writeToDefaultStorage");
   }
 
-  updateDeleteFromStorage(): Promise<Response> {
-    return this.invokeHttpFunction("updateDeleteFromStorage");
+  writeToSpecificStorageBucket(): Promise<Response> {
+    return this.invokeHttpFunction("writeToSpecificStorageBucket");
+  }
+
+  updateMetadataDefaultStorage(): Promise<Response> {
+    return this.invokeHttpFunction("updateMetadataFromDefaultStorage");
+  }
+
+  updateMetadataSpecificStorageBucket(): Promise<Response> {
+    return this.invokeHttpFunction("updateMetadataFromSpecificStorageBucket");
+  }
+
+  updateDeleteFromDefaultStorage(): Promise<Response> {
+    return this.invokeHttpFunction("updateDeleteFromDefaultStorage");
+  }
+
+  updateDeleteFromSpecificStorageBucket(): Promise<Response> {
+    return this.invokeHttpFunction("updateDeleteFromSpecificStorageBucket");
   }
 
   waitForCondition(

@@ -9,12 +9,13 @@ import { implicitInit, TemplateServerResponse } from "../hosting/implicitInit";
 import { initMiddleware } from "../hosting/initMiddleware";
 import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs";
 import cloudRunProxy from "../hosting/cloudRunProxy";
-import functionsProxy from "../hosting/functionsProxy";
+import { functionsProxy } from "../hosting/functionsProxy";
 import { NextFunction, Request, Response } from "express";
 import { Writable } from "stream";
 import { EmulatorLogger } from "../emulator/emulatorLogger";
 import { Emulators } from "../emulator/types";
 import { createDestroyer } from "../utils";
+import { execSync } from "child_process";
 
 const MAX_PORT_ATTEMPTS = 10;
 let attempts = 0;
@@ -43,6 +44,34 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
   const morganMiddleware = morgan("combined", {
     stream: morganStream,
   });
+
+  const portInUse = () => {
+    const message = "Port " + options.port + " is not available.";
+    logger.log("WARN", clc.yellow("hosting: ") + message + " Trying another port...");
+    if (attempts < MAX_PORT_ATTEMPTS) {
+      // Another project that's running takes up to 4 ports: 1 hosting port and 3 functions ports
+      attempts++;
+      startServer(options, config, port + 5, init);
+    } else {
+      logger.log("WARN", message);
+      throw new FirebaseError("Could not find an open port for hosting development server.", {
+        exit: 1,
+      });
+    }
+  };
+
+  // On OSX, some ports may be reserved by the OS in a way that node http doesn't detect.
+  // Starting in MacOS 12.3 it does this with port 5000 our default port. This is a bad
+  // enough devexp that we should special case and ensure it's available.
+  if (process.platform === "darwin") {
+    try {
+      execSync(`lsof -i :${port}`);
+      portInUse();
+      return;
+    } catch (e) {
+      // if lsof errored the port is NOT in use, continue
+    }
+  }
 
   const server = superstatic({
     debug: false,
@@ -85,18 +114,7 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   server.on("error", (err: any) => {
     if (err.code === "EADDRINUSE") {
-      const message = "Port " + options.port + " is not available.";
-      logger.log("WARN", clc.yellow("hosting: ") + message + " Trying another port...");
-      if (attempts < MAX_PORT_ATTEMPTS) {
-        // Another project that's running takes up to 4 ports: 1 hosting port and 3 functions ports
-        attempts++;
-        startServer(options, config, port + 5, init);
-      } else {
-        logger.log("WARN", message);
-        throw new FirebaseError("Could not find an open port for hosting development server.", {
-          exit: 1,
-        });
-      }
+      portInUse();
     } else {
       throw new FirebaseError(
         "An error occurred while starting the hosting development server:\n\n" + err.toString(),

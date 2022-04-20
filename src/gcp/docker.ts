@@ -8,6 +8,36 @@
 import { FirebaseError } from "../error";
 import * as api from "../apiv2";
 
+// A mapping from geographical region to subdomain, useful for Container Registry
+export const GCR_SUBDOMAIN_MAPPING: Record<string, string> = {
+  "us-west1": "us",
+  "us-west2": "us",
+  "us-west3": "us",
+  "us-west4": "us",
+  "us-central1": "us",
+  "us-central2": "us",
+  "us-east1": "us",
+  "us-east4": "us",
+  "northamerica-northeast1": "us",
+  "southamerica-east1": "us",
+  "europe-west1": "eu",
+  "europe-west2": "eu",
+  "europe-west3": "eu",
+  "europe-west4": "eu",
+  "europe-west5": "eu",
+  "europe-west6": "eu",
+  "europe-central2": "eu",
+  "europe-north1": "eu",
+  "asia-east1": "asia",
+  "asia-east2": "asia",
+  "asia-northeast1": "asia",
+  "asia-northeast2": "asia",
+  "asia-northeast3": "asia",
+  "asia-south1": "asia",
+  "asia-southeast2": "asia",
+  "australia-southeast1": "asia",
+};
+
 // A Digest is a string in the format <algorithm>:<hex>. For example:
 // sha256:146d8c9dff0344fb01417ef28673ed196e38215f3c94837ae733d3b064ba439e
 export type Digest = string;
@@ -74,7 +104,7 @@ export class Client {
     if (!response.body) {
       return;
     }
-    if (response.body.errors?.length != 0) {
+    if (response.body.errors?.length !== 0) {
       throw new FirebaseError(`Failed to delete tag ${tag} at path ${path}`, {
         children: response.body.errors,
       });
@@ -86,7 +116,7 @@ export class Client {
     if (!response.body) {
       return;
     }
-    if (response.body.errors?.length != 0) {
+    if (response.body.errors?.length !== 0) {
       throw new FirebaseError(`Failed to delete image ${digest} at path ${path}`, {
         children: response.body.errors,
       });
