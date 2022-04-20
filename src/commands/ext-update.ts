@@ -42,6 +42,7 @@ import * as utils from "../utils";
 import { previews } from "../previews";
 import * as manifest from "../extensions/manifest";
 import { Options } from "../options";
+import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -143,7 +144,19 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         nonInteractive: options.nonInteractive,
         instanceId,
       });
-
+      const eventsConfig = newExtensionVersion.spec.events
+        ? await askUserForEventsConfig.askForEventsConfig(
+            newExtensionVersion.spec.events,
+            "${param:PROJECT_ID}",
+            instanceId
+          )
+        : undefined;
+      if (eventsConfig) {
+        newParamBindingOptions.EVENTARC_CHANNEL = { baseValue: eventsConfig.channel };
+        newParamBindingOptions.ALLOWED_EVENT_TYPES = {
+          baseValue: eventsConfig.allowedEventTypes.join(","),
+        };
+      }
       await manifest.writeToManifest(
         [
           {
@@ -167,20 +180,8 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
     const spinner = ora(`Updating ${clc.bold(instanceId)}. This usually takes 3 to 5 minutes...`);
     try {
       const projectId = needProjectId(options);
-      let existingInstance: extensionsApi.ExtensionInstance;
-      try {
-        existingInstance = await extensionsApi.getInstance(projectId, instanceId);
-      } catch (err: any) {
-        if (err.status === 404) {
-          throw new FirebaseError(
-            `Extension instance '${clc.bold(instanceId)}' not found in project '${clc.bold(
-              projectId
-            )}'.`
-          );
-        }
-        throw err;
-      }
-      const existingSpec: extensionsApi.ExtensionSpec = existingInstance.config.source.spec;
+      const existingInstance = await extensionsApi.getInstance(projectId, instanceId);
+      const existingSpec = existingInstance.config.source.spec;
       if (existingInstance.config.source.state === "DELETED") {
         throw new FirebaseError(
           `Instance '${clc.bold(
@@ -343,8 +344,10 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         nonInteractive: options.nonInteractive,
         instanceId,
       });
+      const eventsConfig = newSpec.events
+        ? await askUserForEventsConfig.askForEventsConfig(newSpec.events, projectId, instanceId)
+        : undefined;
       const newParams = paramHelper.getBaseParamBindings(newParamBindings);
-
       spinner.start();
       const updateOptions: UpdateOptions = {
         projectId,
@@ -357,6 +360,12 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
       }
       if (!_.isEqual(newParams, oldParamValues)) {
         updateOptions.params = newParams;
+      }
+      if (existingInstance.config.eventarcChannel !== eventsConfig?.channel) {
+        updateOptions.eventarcChannel = eventsConfig?.channel;
+      }
+      if (existingInstance.config.allowedEventTypes !== eventsConfig?.allowedEventTypes) {
+        updateOptions.allowedEventTypes = eventsConfig?.allowedEventTypes;
       }
       await update(updateOptions);
       spinner.stop();

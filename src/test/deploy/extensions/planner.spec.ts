@@ -91,4 +91,103 @@ describe("Extensions Deployment Planner", () => {
       });
     }
   });
+
+  describe("have", () => {
+    let listInstancesStub: sinon.SinonStub;
+
+    const SPEC = {
+      version: "0.1.0",
+      author: {
+        authorName: "Firebase",
+        url: "https://firebase.google.com",
+      },
+      resources: [],
+      name: "",
+      sourceUrl: "",
+      params: [],
+    };
+
+    const INSTANCE_WITH_EVENTS: extensionsApi.ExtensionInstance = {
+      name: "projects/my-test-proj/instances/image-resizer",
+      createTime: "2019-05-19T00:20:10.416947Z",
+      updateTime: "2019-05-19T00:20:10.416947Z",
+      state: "ACTIVE",
+      serviceAccountEmail: "",
+      config: {
+        params: {},
+        extensionRef: "firebase/image-resizer",
+        extensionVersion: "0.1.0",
+        name: "projects/my-test-proj/instances/image-resizer/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
+        createTime: "2019-05-19T00:20:10.416947Z",
+        eventarcChannel: "projects/my-test-proj/locations/us-central1/channels/firebase",
+        allowedEventTypes: ["google.firebase.custom-event-occurred"],
+        source: {
+          state: "ACTIVE",
+          spec: SPEC,
+          name: "",
+          packageUri: "",
+          hash: "",
+        },
+      },
+    };
+
+    const INSTANCE_SPEC_WITH_EVENTS: planner.DeploymentInstanceSpec = {
+      instanceId: "image-resizer",
+      params: {},
+      allowedEventTypes: ["google.firebase.custom-event-occurred"],
+      eventarcChannel: "projects/my-test-proj/locations/us-central1/channels/firebase",
+      ref: {
+        publisherId: "firebase",
+        extensionId: "image-resizer",
+        version: "0.1.0",
+      },
+    };
+
+    const INSTANCE_WITH_UNDEFINED_EVENTS_CONFIG = JSON.parse(JSON.stringify(INSTANCE_WITH_EVENTS));
+    INSTANCE_WITH_UNDEFINED_EVENTS_CONFIG.config.eventarcChannel = undefined;
+    INSTANCE_WITH_UNDEFINED_EVENTS_CONFIG.config.allowedEventTypes = undefined;
+
+    const INSTANCE_SPEC_WITH_UNDEFINED_EVENTS_CONFIG = JSON.parse(
+      JSON.stringify(INSTANCE_SPEC_WITH_EVENTS)
+    );
+    INSTANCE_SPEC_WITH_UNDEFINED_EVENTS_CONFIG.eventarcChannel = undefined;
+    INSTANCE_SPEC_WITH_UNDEFINED_EVENTS_CONFIG.allowedEventTypes = undefined;
+
+    const INSTANCE_WITH_EMPTY_EVENTS_CONFIG = JSON.parse(JSON.stringify(INSTANCE_WITH_EVENTS));
+    INSTANCE_WITH_EMPTY_EVENTS_CONFIG.config.eventarcChannel = "";
+    INSTANCE_WITH_EMPTY_EVENTS_CONFIG.config.allowedEventTypes = [];
+
+    const INSTANCE_SPEC_WITH_EMPTY_EVENTS_CONFIG = JSON.parse(
+      JSON.stringify(INSTANCE_SPEC_WITH_EVENTS)
+    );
+    INSTANCE_SPEC_WITH_EMPTY_EVENTS_CONFIG.eventarcChannel = "";
+    INSTANCE_SPEC_WITH_EMPTY_EVENTS_CONFIG.allowedEventTypes = [];
+
+    const cases = [
+      {
+        description: "have() should return correct instance spec with events",
+        instances: [INSTANCE_WITH_EVENTS],
+        instanceSpecs: [INSTANCE_SPEC_WITH_EVENTS],
+      },
+      {
+        description: "have() should return correct instance spec with undefined events config",
+        instances: [INSTANCE_WITH_UNDEFINED_EVENTS_CONFIG],
+        instanceSpecs: [INSTANCE_SPEC_WITH_UNDEFINED_EVENTS_CONFIG],
+      },
+      {
+        description: "have() should return correct instance spec with empty events config",
+        instances: [INSTANCE_WITH_EMPTY_EVENTS_CONFIG],
+        instanceSpecs: [INSTANCE_SPEC_WITH_EMPTY_EVENTS_CONFIG],
+      },
+    ];
+
+    for (const c of cases) {
+      it(c.description, async () => {
+        listInstancesStub = sinon.stub(extensionsApi, "listInstances").resolves(c.instances);
+        const have = await planner.have("test");
+        expect(have).to.have.same.deep.members(c.instanceSpecs);
+        listInstancesStub.restore();
+      });
+    }
+  });
 });

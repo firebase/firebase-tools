@@ -86,6 +86,8 @@ export interface ExtensionConfig {
   populatedPostinstallContent?: string;
   extensionRef?: string;
   extensionVersion?: string;
+  eventarcChannel?: string;
+  allowedEventTypes?: string[];
 }
 
 export interface ExtensionSource {
@@ -119,6 +121,12 @@ export interface ExtensionSpec {
   postinstallContent?: string;
   readmeContent?: string;
   externalServices?: ExternalService[];
+  events?: EventDescriptor[];
+}
+
+export interface EventDescriptor {
+  type: string;
+  description: string;
 }
 
 export interface ExternalService {
@@ -250,10 +258,14 @@ export async function createInstance(args: {
   extensionSource?: ExtensionSource;
   extensionVersionRef?: string;
   params: { [key: string]: string };
+  allowedEventTypes?: string[];
+  eventarcChannel?: string;
   validateOnly?: boolean;
 }): Promise<ExtensionInstance> {
   const config: any = {
     params: args.params,
+    allowedEventTypes: args.allowedEventTypes,
+    eventarcChannel: args.eventarcChannel,
   };
 
   if (args.extensionSource && args.extensionVersionRef) {
@@ -268,6 +280,12 @@ export async function createInstance(args: {
     config.extensionVersion = ref.version ?? "";
   } else {
     throw new FirebaseError("No ExtensionVersion or ExtensionSource provided but one is required.");
+  }
+  if (args.allowedEventTypes) {
+    config.allowedEventTypes = args.allowedEventTypes;
+  }
+  if (args.eventarcChannel) {
+    config.eventarcChannel = args.eventarcChannel;
   }
   return createInstanceHelper(args.projectId, args.instanceId, config, args.validateOnly);
 }
@@ -297,8 +315,19 @@ export async function deleteInstance(projectId: string, instanceId: string): Pro
  * @param instanceId the id of the instance to delete
  */
 export async function getInstance(projectId: string, instanceId: string): Promise<any> {
-  const res = await apiClient.get(`/projects/${projectId}/instances/${instanceId}`);
-  return res.body;
+  try {
+    const res = await apiClient.get(`/projects/${projectId}/instances/${instanceId}`);
+    return res.body;
+  } catch (err: any) {
+    if (err.status === 404) {
+      throw new FirebaseError(
+        `Extension instance '${clc.bold(instanceId)}' not found in project '${clc.bold(
+          projectId
+        )}'.`
+      );
+    }
+    throw err;
+  }
 }
 
 /**
@@ -335,15 +364,19 @@ export async function listInstances(projectId: string): Promise<ExtensionInstanc
  * @param projectId the project the instance is in
  * @param instanceId the id of the instance to configure
  * @param params params to configure the extension instance
+ * @param allowedEventTypes types of events (selected by consumer) that the extension is allowed to emit
+ * @param eventarcChannel fully qualified eventarc channel resource name to emit events to
  * @param validateOnly if true, only validates the update and makes no changes
  */
 export async function configureInstance(args: {
   projectId: string;
   instanceId: string;
   params: { [option: string]: string };
+  allowedEventTypes?: string[];
+  eventarcChannel?: string;
   validateOnly?: boolean;
 }): Promise<any> {
-  const res = await patchInstance({
+  const reqBody: any = {
     projectId: args.projectId,
     instanceId: args.instanceId,
     updateMask: "config.params",
@@ -353,8 +386,17 @@ export async function configureInstance(args: {
         params: args.params,
       },
     },
-  });
-  return res;
+  };
+  if (args.allowedEventTypes !== undefined) {
+    reqBody.data.config.allowedEventTypes = args.allowedEventTypes;
+    reqBody.updateMask += ",config.allowed_event_types";
+  }
+
+  if (args.eventarcChannel !== undefined) {
+    reqBody.data.config.eventarcChannel = args.eventarcChannel;
+    reqBody.updateMask += ",config.eventarc_channel";
+  }
+  return patchInstance(reqBody);
 }
 
 /**
@@ -364,6 +406,8 @@ export async function configureInstance(args: {
  * @param instanceId the id of the instance to configure
  * @param extensionSource the source for the version of the extension to update to
  * @param params params to configure the extension instance
+ * @param allowedEventTypes types of events (selected by consumer) that the extension is allowed to emit
+ * @param eventarcChannel fully qualified eventarc channel resource name to emit events to
  * @param validateOnly if true, only validates the update and makes no changes
  */
 export async function updateInstance(args: {
@@ -371,6 +415,8 @@ export async function updateInstance(args: {
   instanceId: string;
   extensionSource: ExtensionSource;
   params?: { [option: string]: string };
+  allowedEventTypes?: string[];
+  eventarcChannel?: string;
   validateOnly?: boolean;
 }): Promise<any> {
   const body: any = {
@@ -383,7 +429,16 @@ export async function updateInstance(args: {
     body.config.params = args.params;
     updateMask += ",config.params";
   }
-  return await patchInstance({
+  if (args.allowedEventTypes !== undefined) {
+    body.config.allowedEventTypes = args.allowedEventTypes;
+    updateMask += ",config.allowed_event_types";
+  }
+
+  if (args.eventarcChannel !== undefined) {
+    body.config.eventarcChannel = args.eventarcChannel;
+    updateMask += ",config.eventarc_channel";
+  }
+  return patchInstance({
     projectId: args.projectId,
     instanceId: args.instanceId,
     updateMask,
@@ -399,6 +454,8 @@ export async function updateInstance(args: {
  * @param instanceId the id of the instance to configure
  * @param extRef reference for the extension to update to
  * @param params params to configure the extension instance
+ * @param allowedEventTypes types of events (selected by consumer) that the extension is allowed to emit
+ * @param eventarcChannel fully qualified eventarc channel resource name to emit events to
  * @param validateOnly if true, only validates the update and makes no changes
  */
 export async function updateInstanceFromRegistry(args: {
@@ -406,6 +463,8 @@ export async function updateInstanceFromRegistry(args: {
   instanceId: string;
   extRef: string;
   params?: { [option: string]: string };
+  allowedEventTypes?: string[];
+  eventarcChannel?: string;
   validateOnly?: boolean;
 }): Promise<any> {
   const ref = refs.parse(args.extRef);
@@ -420,7 +479,16 @@ export async function updateInstanceFromRegistry(args: {
     body.config.params = args.params;
     updateMask += ",config.params";
   }
-  return await patchInstance({
+  if (args.allowedEventTypes !== undefined) {
+    body.config.allowedEventTypes = args.allowedEventTypes;
+    updateMask += ",config.allowed_event_types";
+  }
+
+  if (args.eventarcChannel !== undefined) {
+    body.config.eventarcChannel = args.eventarcChannel;
+    updateMask += ",config.eventarc_channel";
+  }
+  return patchInstance({
     projectId: args.projectId,
     instanceId: args.instanceId,
     updateMask,
