@@ -10,10 +10,6 @@ import { EventTrigger } from "./functionsEmulatorShared";
 import { CloudEvent } from "./events/types";
 import { EmulatorRegistry } from "./registry";
 
-interface RequestWithRawBody extends express.Request {
-  rawBody: Buffer;
-}
-
 interface CustomEventTrigger {
   projectId: string;
   triggerName: string;
@@ -34,13 +30,8 @@ export class EventarcEmulator implements EmulatorInstance {
   constructor(private args: EventarcEmulatorArgs) {}
 
   createHubServer(): express.Application {
-    const hub = express();
 
-    hub.use(express.json());
-
-    const helloWorldRoute = `/hello_world`;
-    const registerTriggerRoute = `/emulator/v1/projects/:project_id/triggers/:trigger_name`;
-
+    const registerTriggerRoute = `/v1/projects/:project_id/triggers/:trigger_name`;
     const registerTriggerHandler: express.RequestHandler = (req, res) => {
       const projectId = req.params.project_id;
       const triggerName = req.params.trigger_name;
@@ -57,16 +48,7 @@ export class EventarcEmulator implements EmulatorInstance {
       this.customEvents[key] = customEventTriggers;
     };
 
-    /*
-    // A trigger named "foo" needs to respond at "foo" as well as "foo/*" but not "fooBar".
-    const httpsFunctionRoutes = [httpsFunctionRoute, `${httpsFunctionRoute}/*`];
-    */
     const publishEventsRoute = `/v1/projects/:project_id/locations/:location/channels/:channel::publishEvents`;
-
-    const helloWorldHandler: express.RequestHandler = (req, res) => {
-      res.sendStatus(200);
-    };
-
     const publishEventsHandler: express.RequestHandler = (req, res) => {
       const channel = req.params.channel;
       const events = req.body.events;
@@ -80,7 +62,8 @@ export class EventarcEmulator implements EmulatorInstance {
       res.sendStatus(200);
     };
 
-    hub.all([helloWorldRoute], helloWorldHandler);
+    const hub = express();
+    hub.use(express.json());
     hub.post([registerTriggerRoute], registerTriggerHandler);
     hub.post([publishEventsRoute], publishEventsHandler);
     hub.all("*", (req, res) => {
