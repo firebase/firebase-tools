@@ -238,7 +238,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
     return emulatableBackend;
   }
 
-  private autoPopulatedParams(instance: planner.InstanceSpec): Record<string, string> {
+  private autoPopulatedParams(instance: planner.DeploymentInstanceSpec): Record<string, string> {
     const projectId = this.args.projectId;
     return {
       PROJECT_ID: projectId ?? "", // TODO: Should this fallback to a default?
