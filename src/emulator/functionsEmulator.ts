@@ -43,6 +43,8 @@ import {
   emulatedFunctionsByRegion,
   getSecretLocalPath,
   toBackendInfo,
+  prepareEndpoints,
+  BlockingTrigger,
 } from "./functionsEmulatorShared";
 import { EmulatorRegistry } from "./registry";
 import { EmulatorLogger, Verbosity } from "./emulatorLogger";
@@ -64,6 +66,8 @@ import { accessSecretVersion } from "../gcp/secretManager";
 import * as runtimes from "../deploy/functions/runtimes";
 import * as backend from "../deploy/functions/backend";
 import * as functionsEnv from "../functions/env";
+import { AUTH_BLOCKING_EVENTS, BEFORE_CREATE_EVENT } from "../functions/events/v1";
+import { BlockingFunctionsConfig } from "../gcp/identityPlatform";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -187,6 +191,8 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   private adminSdkConfig: AdminSdkConfig;
 
+  private blockingFunctionsConfig: BlockingFunctionsConfig;
+
   constructor(private args: FunctionsEmulatorArgs) {
     // TODO: Would prefer not to have static state but here we are!
     EmulatorLogger.verbosity = this.args.quiet ? Verbosity.QUIET : Verbosity.DEBUG;
@@ -204,6 +210,16 @@ export class FunctionsEmulator implements EmulatorInstance {
       : FunctionsExecutionMode.AUTO;
     this.workerPool = new RuntimeWorkerPool(mode);
     this.workQueue = new WorkQueue(mode);
+    this.blockingFunctionsConfig = {
+      triggers: {
+        beforeCreate: {
+          functionUri: "",
+        },
+        beforeSignIn: {
+          functionUri: "",
+        },
+      },
+    };
   }
 
   private async getCredentialsEnvironment(): Promise<Record<string, string>> {
@@ -446,6 +462,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       loadTriggerPromises.push(this.loadTriggers(backend, /* force= */ true));
     }
     await Promise.all(loadTriggerPromises);
+    await this.performPostLoadOperations();
     return;
   }
 
@@ -516,6 +533,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         }
       );
       const endpoints = backend.allEndpoints(discoveredBackend);
+      prepareEndpoints(endpoints);
       triggerDefinitions = emulatedFunctionsFromEndpoints(endpoints);
     }
     // When force is true we set up all triggers, otherwise we only set up
@@ -615,6 +633,16 @@ export class FunctionsEmulator implements EmulatorInstance {
             this.logger.log("DEBUG", `Unsupported trigger: ${JSON.stringify(definition)}`);
             break;
         }
+      } else if (definition.blockingTrigger) {
+        const { host, port } = this.getInfo();
+        url = FunctionsEmulator.getHttpFunctionUrl(
+          host,
+          port,
+          this.args.projectId,
+          definition.name,
+          definition.region
+        );
+        added = this.addBlockingTrigger(url, definition.blockingTrigger);
       } else {
         this.logger.log(
           "WARN",
@@ -644,6 +672,41 @@ export class FunctionsEmulator implements EmulatorInstance {
     // before invoking a function.
     if (this.args.debugPort) {
       this.startRuntime(emulatableBackend, { nodeBinary: emulatableBackend.nodeBinary });
+    }
+  }
+
+  async performPostLoadOperations(): Promise<void> {
+    if (
+      this.blockingFunctionsConfig.triggers?.beforeCreate?.functionUri === "" &&
+      this.blockingFunctionsConfig.triggers?.beforeSignIn?.functionUri === ""
+    ) {
+      return;
+    }
+
+    const authEmu = EmulatorRegistry.get(Emulators.AUTH);
+    if (!authEmu) {
+      return;
+    }
+
+    const path = `/identitytoolkit.googleapis.com/v2/projects/${this.getProjectId()}/config?updateMask=blockingFunctions`;
+
+    try {
+      await api.request("PATCH", path, {
+        origin: `http://${EmulatorRegistry.getInfoHostString(authEmu.getInfo())}`,
+        headers: {
+          Authorization: "Bearer owner",
+        },
+        data: {
+          blockingFunctions: this.blockingFunctionsConfig,
+        },
+        json: true,
+      });
+    } catch (err) {
+      this.logger.log(
+        "WARN",
+        "Error updating blocking functions config to the auth emulator: " + err
+      );
+      throw err;
     }
   }
 
@@ -792,6 +855,38 @@ export class FunctionsEmulator implements EmulatorInstance {
     const triggers = this.multicastTriggers[eventTriggerId] || [];
     triggers.push(key);
     this.multicastTriggers[eventTriggerId] = triggers;
+    return true;
+  }
+
+  addBlockingTrigger(url: string, blockingTrigger: BlockingTrigger): boolean {
+    logger.debug(`addBlockingTrigger`, JSON.stringify({ blockingTrigger }));
+
+    const eventType = blockingTrigger.eventType;
+    if (AUTH_BLOCKING_EVENTS.includes(eventType as any)) {
+      if (blockingTrigger.eventType === BEFORE_CREATE_EVENT) {
+        this.blockingFunctionsConfig.triggers = {
+          ...this.blockingFunctionsConfig.triggers,
+          beforeCreate: {
+            functionUri: url,
+          },
+        };
+      } else {
+        this.blockingFunctionsConfig.triggers = {
+          ...this.blockingFunctionsConfig.triggers,
+          beforeSignIn: {
+            functionUri: url,
+          },
+        };
+      }
+      this.blockingFunctionsConfig.forwardInboundCredentials = {
+        accessToken: blockingTrigger.options!.accessToken as boolean,
+        idToken: blockingTrigger.options!.idToken as boolean,
+        refreshToken: blockingTrigger.options!.refreshToken as boolean,
+      };
+    } else {
+      return false;
+    }
+
     return true;
   }
 
@@ -1261,7 +1356,9 @@ export class FunctionsEmulator implements EmulatorInstance {
     for (const backend of this.args.emulatableBackends) {
       loadTriggerPromises.push(this.loadTriggers(backend));
     }
-    return Promise.all(loadTriggerPromises);
+    await Promise.all(loadTriggerPromises);
+    await this.performPostLoadOperations();
+    return;
   }
 
   private async handleBackgroundTrigger(projectId: string, triggerKey: string, proto: any) {

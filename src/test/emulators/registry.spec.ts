@@ -4,6 +4,7 @@ import { expect } from "chai";
 import { FakeEmulator } from "./fakeEmulator";
 import { findAvailablePort } from "../../emulator/portUtils";
 import * as express from "express";
+import * as os from "os";
 
 describe("EmulatorRegistry", () => {
   afterEach(async () => {
@@ -46,6 +47,24 @@ describe("EmulatorRegistry", () => {
   });
 
   describe("#url", () => {
+    // Only run IPv4 / IPv6 tests if supported respectively.
+    let ipv4Supported = false;
+    let ipv6Supported = false;
+    before(() => {
+      for (const ifaces of Object.values(os.networkInterfaces())) {
+        for (const iface of ifaces) {
+          switch (iface.family) {
+            case "IPv4":
+              ipv4Supported = true;
+              break;
+            case "IPv6":
+              ipv6Supported = true;
+              break;
+          }
+        }
+      }
+    });
+
     const name = Emulators.FUNCTIONS;
     afterEach(() => {
       return EmulatorRegistry.stopAll();
@@ -58,21 +77,32 @@ describe("EmulatorRegistry", () => {
       expect(EmulatorRegistry.url(name).host).to.eql(`localhost:${port}`);
     });
 
-    it("should quote IPv6 addresses", async () => {
+    it("should quote IPv6 addresses", async function (this) {
+      if (!ipv6Supported) {
+        return this.skip();
+      }
       const port = await findAvailablePort("::1", 5000);
       await EmulatorRegistry.start(new FakeEmulator(name, "::1", port));
 
       expect(EmulatorRegistry.url(name).host).to.eql(`[::1]:${port}`);
     });
 
-    it("should use 127.0.0.1 instead of 0.0.0.0", async () => {
+    it("should use 127.0.0.1 instead of 0.0.0.0", async function (this) {
+      if (!ipv4Supported) {
+        return this.skip();
+      }
+
       const port = await findAvailablePort("0.0.0.0", 5000);
       await EmulatorRegistry.start(new FakeEmulator(name, "0.0.0.0", port));
 
       expect(EmulatorRegistry.url(name).host).to.eql(`127.0.0.1:${port}`);
     });
 
-    it("should use ::1 instead of ::", async () => {
+    it("should use ::1 instead of ::", async function (this) {
+      if (!ipv6Supported) {
+        return this.skip();
+      }
+
       const port = await findAvailablePort("::", 5000);
       await EmulatorRegistry.start(new FakeEmulator(name, "::", port));
 
