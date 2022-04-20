@@ -122,6 +122,8 @@ export interface UpdateOptions {
   source?: extensionsApi.ExtensionSource;
   extRef?: string;
   params?: { [key: string]: string };
+  allowedEventTypes?: string[];
+  eventarcChannel?: string;
 }
 
 /**
@@ -133,13 +135,16 @@ export interface UpdateOptions {
  * @param updateOptions Info on the instance and associated resources to update
  */
 export async function update(updateOptions: UpdateOptions): Promise<any> {
-  const { projectId, instanceId, source, extRef, params } = updateOptions;
+  const { projectId, instanceId, source, extRef, params, allowedEventTypes, eventarcChannel } =
+    updateOptions;
   if (extRef) {
     return await extensionsApi.updateInstanceFromRegistry({
       projectId,
       instanceId,
       extRef,
       params,
+      allowedEventTypes,
+      eventarcChannel,
     });
   } else if (source) {
     return await extensionsApi.updateInstance({
@@ -147,6 +152,8 @@ export async function update(updateOptions: UpdateOptions): Promise<any> {
       instanceId,
       extensionSource: source,
       params,
+      allowedEventTypes,
+      eventarcChannel,
     });
   }
   throw new FirebaseError(
