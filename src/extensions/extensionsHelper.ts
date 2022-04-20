@@ -553,18 +553,15 @@ export async function createSourceFromLocation(
   let packageUri: string;
   let objectPath = "";
 
-  let spinner = ora(" Archiving and uploading extension source code");
+  const spinner = ora(" Archiving and uploading extension source code");
   try {
     spinner.start();
     objectPath = await archiveAndUploadSource(sourceUri, EXTENSIONS_BUCKET_NAME);
     spinner.succeed(" Uploaded extension source code");
 
-    spinner = ora(" Creating an extension source based on uploaded source code");
-    spinner.start();
     packageUri = storageOrigin + objectPath + "?alt=media";
     const res = await createSource(projectId, packageUri, extensionRoot);
     logger.debug("Created new Extension Source %s", res.name);
-    spinner.succeed(" Created extension source code");
 
     // if we uploaded an object to user's bucket, delete it after "createSource" copies it into extension service's bucket.
     await deleteUploadedSource(objectPath);

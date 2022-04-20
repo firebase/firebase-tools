@@ -4,7 +4,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 import { logger } from "../logger";
-import * as track from "../track";
+import { track } from "../track";
 import * as utils from "../utils";
 import { EmulatorRegistry } from "./registry";
 import {
@@ -22,6 +22,7 @@ import { AuthEmulator } from "./auth";
 import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
 import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
 import { HostingEmulator } from "./hostingEmulator";
+import { EventarcEmulator } from "./eventarcEmulator";
 import { FirebaseError } from "../error";
 import { getProjectId, needProjectId, getAliases, needProjectNumber } from "../projectUtils";
 import { PubsubEmulator } from "./pubsubEmulator";
@@ -702,6 +703,15 @@ export async function startAll(
       auto_download: true,
     });
     await startEmulator(pubsubEmulator);
+  }
+
+  if (shouldStart(options, Emulators.EVENTARC)) {
+    const eventarcAddr = await getAndCheckAddress(Emulators.EVENTARC, options);
+    const eventarcEmulator = new EventarcEmulator({
+      host: eventarcAddr.host,
+      port: eventarcAddr.port,
+    });
+    await startEmulator(eventarcEmulator);
   }
 
   if (shouldStart(options, Emulators.STORAGE)) {
