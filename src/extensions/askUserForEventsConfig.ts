@@ -1,10 +1,7 @@
 import * as _ from "lodash";
-import { onceWithJoin } from "./utils";
 import { promptOnce } from "../prompt";
 import * as extensionsApi from "../extensions/extensionsApi";
 import * as utils from "../utils";
-import { FirebaseError } from "../error";
-import * as clc from "cli-color";
 
 export interface InstanceEventsConfig {
   channel: string;
