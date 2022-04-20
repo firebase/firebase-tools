@@ -30,7 +30,6 @@ export class EventarcEmulator implements EmulatorInstance {
   constructor(private args: EventarcEmulatorArgs) {}
 
   createHubServer(): express.Application {
-
     const registerTriggerRoute = `/emulator/v1/projects/:project_id/triggers/:trigger_name`;
     const registerTriggerHandler: express.RequestHandler = (req, res) => {
       const projectId = req.params.project_id;
