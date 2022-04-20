@@ -206,6 +206,9 @@ export function emulatedFunctionsFromEndpoints(
         eventType: endpoint.blockingTrigger.eventType,
         options: endpoint.blockingTrigger.options || {},
       };
+    } else if (backend.isTaskQueueTriggered(endpoint)) {
+      // Just expose TQ trigger as HTTPS. Useful for debugging.
+      def.httpsTrigger = {};
     } else {
       // All other trigger types are not supported by the emulator
       // We leave both eventTrigger and httpTrigger attributes empty
