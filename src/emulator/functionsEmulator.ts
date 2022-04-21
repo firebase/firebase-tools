@@ -91,6 +91,7 @@ export interface EmulatableBackend {
   functionsDir: string;
   env: Record<string, string>;
   secretEnv: backend.SecretEnvVar[];
+  codebase?: string;
   predefinedTriggers?: ParsedTriggerDefinition[];
   nodeMajorVersion?: number;
   nodeBinary?: string;
@@ -535,6 +536,9 @@ export class FunctionsEmulator implements EmulatorInstance {
       );
       const endpoints = backend.allEndpoints(discoveredBackend);
       prepareEndpoints(endpoints);
+      for (const e of endpoints) {
+        e.codebase = emulatableBackend.codebase;
+      }
       triggerDefinitions = emulatedFunctionsFromEndpoints(endpoints);
     }
     // When force is true we set up all triggers, otherwise we only set up

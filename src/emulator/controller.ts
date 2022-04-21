@@ -447,6 +447,7 @@ export async function startAll(
       const functionsDir = path.join(projectDir, cfg.source);
       emulatableBackends.push({
         functionsDir,
+        codebase: cfg.codebase,
         env: {
           ...options.extDevEnv,
         },
