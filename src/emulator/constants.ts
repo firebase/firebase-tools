@@ -14,7 +14,7 @@ const DEFAULT_PORTS: { [s in Emulators]: number } = {
   database: 9000,
   auth: 9099,
   storage: 9199,
-  eventarc: 10000, // TODO: FIGURE OUT REAL PORT!
+  eventarc: 9299,
 };
 
 export const FIND_AVAILBLE_PORT_BY_DEFAULT: Record<Emulators, boolean> = {
@@ -83,6 +83,7 @@ export class Constants {
   static SERVICE_FIRESTORE = "firestore.googleapis.com";
   static SERVICE_REALTIME_DATABASE = "firebaseio.com";
   static SERVICE_PUBSUB = "pubsub.googleapis.com";
+  static SERVICE_EVENTARC = "eventarc.googleapis.com";
   // Note: the service name below are here solely for logging purposes.
   // There is not an emulator available for these.
   static SERVICE_ANALYTICS = "app-measurement.com";
@@ -112,6 +113,8 @@ export class Constants {
         return "storage";
       case this.SERVICE_TEST_LAB:
         return "test lab";
+      case this.SERVICE_EVENTARC:
+        return "eventarc";
       default:
         return service;
     }

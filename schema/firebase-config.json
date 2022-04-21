@@ -342,6 +342,9 @@
                 {
                     "additionalProperties": false,
                     "properties": {
+                        "codebase": {
+                            "type": "string"
+                        },
                         "ignore": {
                             "items": {
                                 "type": "string"
@@ -393,6 +396,9 @@
                     "items": {
                         "additionalProperties": false,
                         "properties": {
+                            "codebase": {
+                                "type": "string"
+                            },
                             "ignore": {
                                 "items": {
                                     "type": "string"

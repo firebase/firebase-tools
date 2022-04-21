@@ -1,5 +1,7 @@
 import { FirebaseError } from "../../error";
 import { HostingConfig, HostingRewrites, HostingHeaders } from "../../firebaseConfig";
+import { existingBackend, allEndpoints, isHttpsTriggered } from "../functions/backend";
+import { Payload } from "./args";
 
 function has(obj: { [k: string]: unknown }, k: string): boolean {
   return obj[k] !== undefined;
@@ -38,7 +40,12 @@ function extractPattern(type: string, spec: HostingRewrites | HostingHeaders): a
  * convertConfig takes a hosting config object from firebase.json and transforms it into
  * the valid format for sending to the Firebase Hosting REST API
  */
-export function convertConfig(config?: HostingConfig): { [k: string]: any } {
+export async function convertConfig(
+  context: any,
+  payload: Payload,
+  config: HostingConfig | undefined,
+  finalize: boolean
+): Promise<{ [k: string]: any }> {
   if (Array.isArray(config)) {
     throw new FirebaseError(`convertConfig should be given a single configuration, not an array.`, {
       exit: 2,
@@ -50,26 +57,59 @@ export function convertConfig(config?: HostingConfig): { [k: string]: any } {
     return out;
   }
 
+  const endpointBeingDeployed = (serviceId: string, region: string = "us-central1") => {
+    for (const { wantBackend } of Object.values(payload.functions || {})) {
+      const endpoint = wantBackend?.endpoints[region]?.[serviceId];
+      if (endpoint && isHttpsTriggered(endpoint) && endpoint.platform === "gcfv2") return endpoint;
+    }
+    return undefined;
+  };
+
+  const matchingEndpoint = async (serviceId: string, region: string = "us-central1") => {
+    const pendingEndpoint = endpointBeingDeployed(serviceId, region);
+    if (pendingEndpoint) return pendingEndpoint;
+    const backend = await existingBackend(context);
+    return allEndpoints(backend).find(
+      (it) =>
+        isHttpsTriggered(it) &&
+        it.platform === "gcfv2" &&
+        it.id === serviceId &&
+        it.region === region
+    );
+  };
+
   // rewrites
   if (Array.isArray(config.rewrites)) {
-    out.rewrites = config.rewrites.map((rewrite) => {
+    out.rewrites = [];
+    for (const rewrite of config.rewrites) {
       const vRewrite = extractPattern("rewrite", rewrite);
       if ("destination" in rewrite) {
         vRewrite.path = rewrite.destination;
       } else if ("function" in rewrite) {
-        vRewrite.function = rewrite.function;
-        if (rewrite.region) {
-          vRewrite.functionRegion = rewrite.region;
+        // Skip these rewrites during hosting prepare
+        if (!finalize && endpointBeingDeployed(rewrite.function, rewrite.region)) continue;
+        // Convert function references to GCFv2 to their equivalent run config
+        // we can't use the already fetched endpoints, since those are scoped to the codebase
+        const endpoint = await matchingEndpoint(rewrite.function, rewrite.region);
+        if (endpoint) {
+          vRewrite.run = { serviceId: endpoint.id, region: endpoint.region };
         } else {
-          vRewrite.functionRegion = "us-central1";
+          vRewrite.function = rewrite.function;
+          if (rewrite.region) {
+            vRewrite.functionRegion = rewrite.region;
+          } else {
+            vRewrite.functionRegion = "us-central1";
+          }
         }
       } else if ("dynamicLinks" in rewrite) {
         vRewrite.dynamicLinks = rewrite.dynamicLinks;
       } else if ("run" in rewrite) {
+        // Skip these rewrites during hosting prepare
+        if (!finalize && endpointBeingDeployed(rewrite.run.serviceId, rewrite.run.region)) continue;
         vRewrite.run = Object.assign({ region: "us-central1" }, rewrite.run);
       }
-      return vRewrite;
-    });
+      out.rewrites.push(vRewrite);
+    }
   }
 
   // redirects

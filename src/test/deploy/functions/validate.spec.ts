@@ -7,6 +7,7 @@ import * as validate from "../../../deploy/functions/validate";
 import * as projectPath from "../../../projectPath";
 import * as secretManager from "../../../gcp/secretManager";
 import * as backend from "../../../deploy/functions/backend";
+import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../../functions/events/v1";
 
 describe("validate", () => {
   describe("functionsDirectoryExists", () => {
@@ -127,7 +128,7 @@ describe("validate", () => {
       httpsTrigger: {},
     };
 
-    it("Disallows concurrency for GCF gen 1", () => {
+    it("disallows concurrency for GCF gen 1", () => {
       const ep: backend.Endpoint = {
         ...ENDPOINT_BASE,
         platform: "gcfv1",
@@ -178,7 +179,7 @@ describe("validate", () => {
       }
     });
 
-    it("Disallows concurrency with too little memory (implicit)", () => {
+    it("disallows concurrency with too little memory (implicit)", () => {
       const ep: backend.Endpoint = {
         ...ENDPOINT_BASE,
         concurrency: 2,
@@ -188,7 +189,7 @@ describe("validate", () => {
       );
     });
 
-    it("Disallows concurrency with too little memory (explicit)", () => {
+    it("disallows concurrency with too little memory (explicit)", () => {
       const ep: backend.Endpoint = {
         ...ENDPOINT_BASE,
         concurrency: 2,
@@ -197,6 +198,164 @@ describe("validate", () => {
       expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
         /they have fewer than 2GB memory/
       );
+    });
+
+    it("disallows multiple beforeCreate blocking", () => {
+      const ep1: backend.Endpoint = {
+        platform: "gcfv1",
+        id: "id1",
+        region: "us-east1",
+        project: "project",
+        entryPoint: "func1",
+        runtime: "nodejs16",
+        blockingTrigger: {
+          eventType: BEFORE_CREATE_EVENT,
+        },
+      };
+      const ep2: backend.Endpoint = {
+        platform: "gcfv1",
+        id: "id2",
+        region: "us-east1",
+        project: "project",
+        entryPoint: "func2",
+        runtime: "nodejs16",
+        blockingTrigger: {
+          eventType: BEFORE_CREATE_EVENT,
+        },
+      };
+
+      expect(() => validate.endpointsAreValid(backend.of(ep1, ep2))).to.throw(
+        `Can only create at most one Auth Blocking Trigger for ${BEFORE_CREATE_EVENT} events`
+      );
+    });
+
+    it("disallows multiple beforeSignIn blocking", () => {
+      const ep1: backend.Endpoint = {
+        platform: "gcfv1",
+        id: "id1",
+        region: "us-east1",
+        project: "project",
+        entryPoint: "func1",
+        runtime: "nodejs16",
+        blockingTrigger: {
+          eventType: BEFORE_SIGN_IN_EVENT,
+        },
+      };
+      const ep2: backend.Endpoint = {
+        platform: "gcfv1",
+        id: "id2",
+        region: "us-east1",
+        project: "project",
+        entryPoint: "func2",
+        runtime: "nodejs16",
+        blockingTrigger: {
+          eventType: BEFORE_SIGN_IN_EVENT,
+        },
+      };
+
+      expect(() => validate.endpointsAreValid(backend.of(ep1, ep2))).to.throw(
+        `Can only create at most one Auth Blocking Trigger for ${BEFORE_SIGN_IN_EVENT} events`
+      );
+    });
+
+    it("Allows valid blocking functions", () => {
+      const ep1: backend.Endpoint = {
+        platform: "gcfv1",
+        id: "id1",
+        region: "us-east1",
+        project: "project",
+        entryPoint: "func1",
+        runtime: "nodejs16",
+        blockingTrigger: {
+          eventType: BEFORE_CREATE_EVENT,
+          options: {
+            accessToken: false,
+            idToken: true,
+          },
+        },
+      };
+      const ep2: backend.Endpoint = {
+        platform: "gcfv1",
+        id: "id2",
+        region: "us-east1",
+        project: "project",
+        entryPoint: "func2",
+        runtime: "nodejs16",
+        blockingTrigger: {
+          eventType: BEFORE_SIGN_IN_EVENT,
+          options: {
+            accessToken: true,
+          },
+        },
+      };
+      const want: backend.Backend = {
+        ...backend.of(ep1, ep2),
+      };
+
+      expect(() => validate.endpointsAreValid(want)).to.not.throw();
+    });
+  });
+
+  describe("endpointsAreUnqiue", () => {
+    const ENDPOINT_BASE: backend.Endpoint = {
+      platform: "gcfv2",
+      id: "id",
+      region: "us-east1",
+      project: "project",
+      entryPoint: "func",
+      runtime: "nodejs16",
+      httpsTrigger: {},
+    };
+
+    it("passes given unqiue ids", () => {
+      const b1 = backend.of(
+        { ...ENDPOINT_BASE, id: "i1", region: "r1" },
+        { ...ENDPOINT_BASE, id: "i2", region: "r1" }
+      );
+      const b2 = backend.of(
+        { ...ENDPOINT_BASE, id: "i3", region: "r2" },
+        { ...ENDPOINT_BASE, id: "i4", region: "r2" }
+      );
+      expect(() => validate.endpointsAreUnique({ b1, b2 })).to.not.throw;
+    });
+
+    it("passes given unique id, region pairs", () => {
+      const b1 = backend.of(
+        { ...ENDPOINT_BASE, id: "i1", region: "r1" },
+        { ...ENDPOINT_BASE, id: "i2", region: "r1" }
+      );
+      const b2 = backend.of(
+        { ...ENDPOINT_BASE, id: "i1", region: "r2" },
+        { ...ENDPOINT_BASE, id: "i2", region: "r2" }
+      );
+      expect(() => validate.endpointsAreUnique({ b1, b2 })).to.not.throw;
+    });
+
+    it("throws given non-unique id region pairs", () => {
+      const b1 = backend.of({ ...ENDPOINT_BASE, id: "i1", region: "r1" });
+      const b2 = backend.of({ ...ENDPOINT_BASE, id: "i1", region: "r1" });
+      expect(() => validate.endpointsAreUnique({ b1, b2 })).to.throw(
+        /projects\/project\/locations\/r1\/functions\/i1: b1,b2/
+      );
+    });
+
+    it("throws given non-unique id region pairs across all codebases", () => {
+      const b1 = backend.of({ ...ENDPOINT_BASE, id: "i1", region: "r1" });
+      const b2 = backend.of({ ...ENDPOINT_BASE, id: "i1", region: "r1" });
+      const b3 = backend.of({ ...ENDPOINT_BASE, id: "i1", region: "r1" });
+      expect(() => validate.endpointsAreUnique({ b1, b2, b3 })).to.throw(
+        /projects\/project\/locations\/r1\/functions\/i1: b1,b2,b3/
+      );
+    });
+
+    it("throws given multiple conflicts", () => {
+      const b1 = backend.of(
+        { ...ENDPOINT_BASE, id: "i1", region: "r1" },
+        { ...ENDPOINT_BASE, id: "i2", region: "r2" }
+      );
+      const b2 = backend.of({ ...ENDPOINT_BASE, id: "i1", region: "r1" });
+      const b3 = backend.of({ ...ENDPOINT_BASE, id: "i2", region: "r2" });
+      expect(() => validate.endpointsAreUnique({ b1, b2, b3 })).to.throw(/b1,b2.*b1,b3/s);
     });
   });
 

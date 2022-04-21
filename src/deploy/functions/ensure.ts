@@ -7,7 +7,7 @@ import { ensureServiceAgentRole } from "../../gcp/secretManager";
 import { previews } from "../../previews";
 import { getFirebaseProject } from "../../management/projects";
 import { assertExhaustive } from "../../functional";
-import * as track from "../../track";
+import { track } from "../../track";
 import * as backend from "./backend";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
 
@@ -33,7 +33,7 @@ function nodeBillingError(projectId: string): FirebaseError {
   void track("functions_runtime_notices", "nodejs10_billing_error");
   return new FirebaseError(
     `Cloud Functions deployment requires the pay-as-you-go (Blaze) billing plan. To upgrade your project, visit the following URL:
-      
+
 https://console.firebase.google.com/project/${projectId}/usage/details
 
 For additional information about this requirement, see Firebase FAQs:

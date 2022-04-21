@@ -6,6 +6,7 @@ import * as runtimes from "./runtimes";
 import { FirebaseError } from "../../error";
 import { Context } from "./args";
 import { previews } from "../../previews";
+import { flattenArray } from "../../functional";
 
 /** Retry settings for a ScheduleSpec. */
 export interface ScheduleRetryConfig {
@@ -131,6 +132,15 @@ export interface TaskQueueTriggered {
   taskQueueTrigger: TaskQueueTrigger;
 }
 
+export interface BlockingTrigger {
+  eventType: string;
+  options?: Record<string, unknown>;
+}
+
+export interface BlockingTriggered {
+  blockingTrigger: BlockingTrigger;
+}
+
 /** A user-friendly string for the kind of trigger of an endpoint. */
 export function endpointTriggerType(endpoint: Endpoint): string {
   if (isScheduleTriggered(endpoint)) {
@@ -143,6 +153,8 @@ export function endpointTriggerType(endpoint: Endpoint): string {
     return endpoint.eventTrigger.eventType;
   } else if (isTaskQueueTriggered(endpoint)) {
     return "taskQueue";
+  } else if (isBlockingTriggered(endpoint)) {
+    return endpoint.blockingTrigger.eventType;
   } else {
     throw new Error("Unexpected trigger type for endpoint " + JSON.stringify(endpoint));
   }
@@ -150,8 +162,15 @@ export function endpointTriggerType(endpoint: Endpoint): string {
 
 // TODO(inlined): Enum types should be singularly named
 export type VpcEgressSettings = "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC";
+export const AllVpcEgressSettings: VpcEgressSettings[] = ["PRIVATE_RANGES_ONLY", "ALL_TRAFFIC"];
 export type IngressSettings = "ALLOW_ALL" | "ALLOW_INTERNAL_ONLY" | "ALLOW_INTERNAL_AND_GCLB";
+export const AllIngressSettings: IngressSettings[] = [
+  "ALLOW_ALL",
+  "ALLOW_INTERNAL_ONLY",
+  "ALLOW_INTERNAL_AND_GCLB",
+];
 export type MemoryOptions = 128 | 256 | 512 | 1024 | 2048 | 4096 | 8192;
+export const AllMemoryOptions: MemoryOptions[] = [128, 256, 512, 1024, 2048, 4096, 8192];
 
 /** Returns a human-readable name with MB or GB suffix for a MemoryOption (MB). */
 export function memoryOptionDisplayName(option: MemoryOptions): string {
@@ -199,6 +218,9 @@ export interface SecretEnvVar {
   version?: string;
 }
 
+/**
+ * Returns full resource name of a secret version.
+ */
 export function secretVersionName(s: SecretEnvVar): string {
   return `projects/${s.projectId}/secrets/${s.secret}/versions/${s.version ?? "latest"}`;
 }
@@ -209,6 +231,7 @@ export interface ServiceConfiguration {
   environmentVariables?: Record<string, string>;
   secretEnvironmentVariables?: SecretEnvVar[];
   availableMemoryMb?: MemoryOptions;
+  cpu?: number | "gcf_gen1";
   timeoutSeconds?: number;
   maxInstances?: number;
   minInstances?: number;
@@ -221,13 +244,15 @@ export interface ServiceConfiguration {
 }
 
 export type FunctionsPlatform = "gcfv1" | "gcfv2";
+export const AllFunctionsPlatforms: FunctionsPlatform[] = ["gcfv1", "gcfv2"];
 
 export type Triggered =
   | HttpsTriggered
   | CallableTriggered
   | EventTriggered
   | ScheduleTriggered
-  | TaskQueueTriggered;
+  | TaskQueueTriggered
+  | BlockingTriggered;
 
 /** Whether something has an HttpsTrigger */
 export function isHttpsTriggered(triggered: Triggered): triggered is HttpsTriggered {
@@ -254,6 +279,11 @@ export function isTaskQueueTriggered(triggered: Triggered): triggered is TaskQue
   return {}.hasOwnProperty.call(triggered, "taskQueueTrigger");
 }
 
+/** Whether something has a BlockingTrigger */
+export function isBlockingTriggered(triggered: Triggered): triggered is BlockingTriggered {
+  return {}.hasOwnProperty.call(triggered, "blockingTrigger");
+}
+
 /**
  * An endpoint that serves traffic to a stack of services.
  * For now, this is always a Cloud Function. Future iterations may use complex
@@ -268,7 +298,9 @@ export type Endpoint = TargetIds &
     runtime: runtimes.Runtime | runtimes.DeprecatedRuntime;
 
     // Output only
-
+    // "Codebase" is not part of the container contract. Instead, it's value is provided by firebase.json or derived
+    // from function labels.
+    codebase?: string;
     // URI is available on GCFv1 for HTTPS triggers and
     // on GCFv2 always
     uri?: string;
@@ -281,7 +313,7 @@ export type Endpoint = TargetIds &
   };
 
 export interface RequiredAPI {
-  reason: string;
+  reason?: string;
   api: string;
 }
 
@@ -323,6 +355,32 @@ export function of(...endpoints: Endpoint[]): Backend {
     bkend.endpoints[endpoint.region][endpoint.id] = endpoint;
   }
   return bkend;
+}
+
+/**
+ * A helper utility to merge backends.
+ */
+export function merge(...backends: Backend[]): Backend {
+  // Merge all endpoints
+  const merged = of(...flattenArray(backends.map((b) => allEndpoints(b))));
+
+  // Merge all APIs
+  const apiToReasons: Record<string, Set<string>> = {};
+  for (const b of backends) {
+    for (const { api, reason } of b.requiredAPIs) {
+      const reasons = apiToReasons[api] || new Set();
+      if (reason) {
+        reasons.add(reason);
+      }
+      apiToReasons[api] = reasons;
+    }
+    // Mere all environment variables.
+    merged.environmentVariables = { ...merged.environmentVariables, ...b.environmentVariables };
+  }
+  for (const [api, reasons] of Object.entries(apiToReasons)) {
+    merged.requiredAPIs.push({ api, reason: Array.from(reasons).join(" ") });
+  }
+  return merged;
 }
 
 /**
@@ -545,7 +603,8 @@ export function matchingBackend(
   predicate: (endpoint: Endpoint) => boolean
 ): Backend {
   const filtered: Backend = {
-    ...empty(),
+    ...backend,
+    endpoints: {},
   };
   for (const endpoint of allEndpoints(backend)) {
     if (!predicate(endpoint)) {

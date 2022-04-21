@@ -8,6 +8,7 @@ import * as backend from "../../../deploy/functions/backend";
 import * as gcf from "../../../gcp/cloudfunctions";
 import * as gcfV2 from "../../../gcp/cloudfunctionsv2";
 import * as utils from "../../../utils";
+import * as projectConfig from "../../../functions/projectConfig";
 
 describe("Backend", () => {
   const FUNCTION_NAME: backend.TargetIds = {
@@ -21,6 +22,7 @@ describe("Backend", () => {
     ...FUNCTION_NAME,
     entryPoint: "function",
     runtime: "nodejs16",
+    codebase: projectConfig.DEFAULT_CODEBASE,
   };
 
   const CLOUD_FUNCTION: Omit<gcf.CloudFunction, gcf.OutputOnlyFields> = {
@@ -82,6 +84,35 @@ describe("Backend", () => {
       expect(backend.functionName(ENDPOINT)).to.equal(
         "projects/project/locations/region/functions/id"
       );
+    });
+
+    it("merge", () => {
+      const BASE_ENDPOINT = { ...ENDPOINT, httpsTrigger: {} };
+      const e1 = { ...BASE_ENDPOINT, id: "1" };
+      const e21 = { ...BASE_ENDPOINT, id: "2.1" };
+      const e22 = { ...BASE_ENDPOINT, id: "2.2" };
+      const e3 = { ...BASE_ENDPOINT, id: "3" };
+
+      const b1 = backend.of(e1);
+      b1.environmentVariables = { foo: "bar" };
+      b1.requiredAPIs = [
+        { reason: "a", api: "a.com" },
+        { reason: "b", api: "b.com" },
+      ];
+
+      const b2 = backend.of(e21, e22);
+      b2.environmentVariables = { bar: "foo" };
+
+      const b3 = backend.of(e3);
+      b3.requiredAPIs = [{ reason: "a", api: "a.com" }];
+
+      const got = backend.merge(b3, b2, b1);
+      expect(backend.allEndpoints(got)).to.have.deep.members([e1, e21, e22, e3]);
+      expect(got.environmentVariables).to.deep.equal({ foo: "bar", bar: "foo" });
+      expect(got.requiredAPIs).to.have.deep.members([
+        { reason: "a", api: "a.com" },
+        { reason: "b", api: "b.com" },
+      ]);
     });
   });
 
@@ -525,6 +556,7 @@ describe("Backend", () => {
     };
     bkend.endpoints[endpointUS.region] = { [endpointUS.id]: endpointUS };
     bkend.endpoints[endpointEU.region] = { [endpointEU.id]: endpointEU };
+    bkend.requiredAPIs = [{ api: "api.google.com", reason: "required" }];
 
     it("allEndpoints", () => {
       const have = backend.allEndpoints(bkend).sort(backend.compareFunctions);
@@ -541,6 +573,7 @@ describe("Backend", () => {
             [endpointUS.id]: endpointUS,
           },
         },
+        requiredAPIs: [{ api: "api.google.com", reason: "required" }],
       };
       expect(have).to.deep.equal(want);
     });

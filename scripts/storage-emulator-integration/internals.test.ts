@@ -126,7 +126,7 @@ describe("Emulator Internals", function (this) {
     const smallFilePath = createRandomFile("testFile", SMALL_FILE_SIZE);
     await testGcsBucket.upload(smallFilePath, { destination: "public/testFile" });
 
-    const downloadUrl = await page.evaluate(async () => {
+    const downloadUrl = await page.evaluate(() => {
       return firebase.storage().ref("public/testFile").getDownloadURL();
     });
     const requestClient = http;

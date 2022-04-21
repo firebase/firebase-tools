@@ -122,9 +122,9 @@ export async function promptForFunctionDeletion(
 /**
  * Checks whether a deploy will increase the min instance idle time bill of
  * any function. Cases include:
- * * Setting minInstances on a new or existing function
- * * Increasing the minInstances of an existing function
- * * Increasing the CPU or memory of a function with min instances
+ * Setting minInstances on a new or existing function
+ * Increasing the minInstances of an existing function
+ * Increasing the CPU or memory of a function with min instances
  * If there are any, prompts the user to confirm a minimum bill.
  */
 export async function promptForMinInstances(
@@ -192,11 +192,6 @@ export async function promptForMinInstances(
     const cost = pricing.monthlyMinInstanceCost(backend.allEndpoints(want)).toFixed(2);
     costLine = `With these options, your minimum bill will be $${cost} in a 30-day month`;
   }
-  let cudAnnotation = "";
-  if (backend.someEndpoint(want, (fn) => fn.platform === "gcfv2" && !!fn.minInstances)) {
-    cudAnnotation =
-      "\nThis bill can be lowered with a one year commitment. See https://cloud.google.com/run/cud for more";
-  }
   const warnMessage =
     "The following functions have reserved minimum instances. This will " +
     "reduce the frequency of cold starts but increases the minimum cost. " +
@@ -204,8 +199,7 @@ export async function promptForMinInstances(
     "CPU allocation of instances while they are idle.\n\n" +
     functionLines +
     "\n\n" +
-    costLine +
-    cudAnnotation;
+    costLine;
 
   utils.logLabeledWarning("functions", warnMessage);
 

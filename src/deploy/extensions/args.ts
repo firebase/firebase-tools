@@ -1,13 +1,13 @@
 import * as planner from "./planner";
 
 export interface Payload {
-  instancesToCreate?: planner.InstanceSpec[];
-  instancesToConfigure?: planner.InstanceSpec[];
-  instancesToUpdate?: planner.InstanceSpec[];
-  instancesToDelete?: planner.InstanceSpec[];
+  instancesToCreate?: planner.DeploymentInstanceSpec[];
+  instancesToConfigure?: planner.DeploymentInstanceSpec[];
+  instancesToUpdate?: planner.DeploymentInstanceSpec[];
+  instancesToDelete?: planner.DeploymentInstanceSpec[];
 }
 
 export interface Context {
-  have?: planner.InstanceSpec[];
-  want?: planner.InstanceSpec[];
+  have?: planner.DeploymentInstanceSpec[];
+  want?: planner.DeploymentInstanceSpec[];
 }
