@@ -34,6 +34,7 @@ export class FunctionsServer {
       const nodeMajorVersion = parseRuntimeVersion(cfg.runtime);
       backends.push({
         functionsDir,
+        codebase: cfg.codebase,
         nodeMajorVersion,
         env: {},
         secretEnv: [],

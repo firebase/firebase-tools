@@ -345,6 +345,18 @@ describe("functionsDeployHelper", () => {
       expect(helper.targetCodebases(config, filters)).to.have.members(["default"]);
     });
 
+    it("correctly deals with duplicate entries", () => {
+      const filters: EndpointFilter[] = [
+        {
+          codebase: "default",
+        },
+        {
+          codebase: "default",
+        },
+      ];
+      expect(helper.targetCodebases(config, filters)).to.have.members(["default"]);
+    });
+
     it("returns all codebases given filter without codebase specified", () => {
       const filters: EndpointFilter[] = [
         {
@@ -355,7 +367,7 @@ describe("functionsDeployHelper", () => {
     });
   });
 
-  describe("groupByCodebase", () => {
+  describe("groupEndpointsByCodebase", () => {
     function endpointsOf(b: backend.Backend): string[] {
       return backend.allEndpoints(b).map((e) => backend.functionName(e));
     }
@@ -379,7 +391,7 @@ describe("functionsDeployHelper", () => {
         { ...ENDPOINT, id: "orphan", codebase: "orphan" }
       );
 
-      const got = helper.groupByCodebase(wantBackends, haveBackend);
+      const got = helper.groupEndpointsByCodebase(wantBackends, backend.allEndpoints(haveBackend));
       for (const codebase of Object.keys(got)) {
         expect(endpointsOf(got[codebase])).to.have.members(endpointsOf(wantBackends[codebase]));
       }
@@ -404,7 +416,7 @@ describe("functionsDeployHelper", () => {
         { ...ENDPOINT, id: "orphan", codebase: "orphan" }
       );
 
-      let got = helper.groupByCodebase(wantBackends, haveBackend);
+      let got = helper.groupEndpointsByCodebase(wantBackends, backend.allEndpoints(haveBackend));
       for (const codebase of Object.keys(got)) {
         expect(endpointsOf(got[codebase])).to.have.members(endpointsOf(wantBackends[codebase]));
       }
@@ -417,7 +429,7 @@ describe("functionsDeployHelper", () => {
         { ...ENDPOINT, id: "cb-1", codebase: "default" },
         { ...ENDPOINT, id: "orphan", codebase: "orphan" }
       );
-      got = helper.groupByCodebase(wantBackends, haveBackend);
+      got = helper.groupEndpointsByCodebase(wantBackends, backend.allEndpoints(haveBackend));
       for (const codebase of Object.keys(got)) {
         expect(endpointsOf(got[codebase])).to.have.members(endpointsOf(wantBackends[codebase]));
       }

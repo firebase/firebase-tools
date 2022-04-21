@@ -9,11 +9,7 @@ import * as logform from "logform";
 import * as path from "path";
 
 import { EmulatedTriggerDefinition } from "../../src/emulator/functionsEmulatorShared";
-import {
-  EmulatableBackend,
-  FunctionsEmulator,
-  InvokeRuntimeOpts,
-} from "../../src/emulator/functionsEmulator";
+import { FunctionsEmulator, InvokeRuntimeOpts } from "../../src/emulator/functionsEmulator";
 import { Emulators } from "../../src/emulator/types";
 import { RuntimeWorker } from "../../src/emulator/functionsRuntimeWorker";
 import { TIMEOUT_LONG, TIMEOUT_MED, MODULE_ROOT } from "./fixtures";

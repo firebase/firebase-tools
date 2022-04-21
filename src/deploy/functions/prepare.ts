@@ -12,7 +12,7 @@ import { Options } from "../../options";
 import {
   endpointMatchesAnyFilter,
   getEndpointFilters,
-  groupByCodebase,
+  groupEndpointsByCodebase,
   targetCodebases,
 } from "./functionsDeployHelper";
 import { logLabeledBullet } from "../../utils";
@@ -75,7 +75,7 @@ export async function prepare(
 
   // ===Phase 1. Load codebase from source.
   context.sources = {};
-  const codebaseUsesEnvs = new Set<string>();
+  const codebaseUsesEnvs: string[] = [];
   const wantBackends: Record<string, backend.Backend> = {};
   for (const codebase of codebases) {
     logLabeledBullet("functions", `preparing codebase ${clc.bold(codebase)} for deployment`);
@@ -116,7 +116,7 @@ export async function prepare(
     }
     wantBackends[codebase] = wantBackend;
     if (functionsEnv.hasUserEnvs(userEnvOpt)) {
-      codebaseUsesEnvs.add(codebase);
+      codebaseUsesEnvs.push(codebase);
     }
   }
 
@@ -158,23 +158,26 @@ export async function prepare(
   // ===Phase 3. Fill in details and validate endpoints. We run the check for ALL endpoints - we think it's useful for
   // validations to fail even for endpoints that aren't being deployed so any errors are caught early.
   payload.functions = {};
-  const haveBackends = groupByCodebase(wantBackends, await backend.existingBackend(context));
+  const haveBackends = groupEndpointsByCodebase(
+    wantBackends,
+    backend.allEndpoints(await backend.existingBackend(context))
+  );
   for (const [codebase, wantBackend] of Object.entries(wantBackends)) {
     const haveBackend = haveBackends[codebase] || { ...backend.empty() };
     payload.functions[codebase] = { wantBackend, haveBackend };
   }
   for (const [codebase, { wantBackend, haveBackend }] of Object.entries(payload.functions)) {
-    inferDetailsFromExisting(wantBackend, haveBackend, codebaseUsesEnvs.has(codebase));
+    inferDetailsFromExisting(wantBackend, haveBackend, codebaseUsesEnvs.includes(codebase));
     await ensureTriggerRegions(wantBackend);
     validate.endpointsAreValid(wantBackend);
     inferBlockingDetails(wantBackend);
   }
 
   const tag = hasUserConfig(runtimeConfig)
-    ? codebaseUsesEnvs.size > 0
+    ? codebaseUsesEnvs.length > 0
       ? "mixed"
       : "runtime_config"
-    : codebaseUsesEnvs.size > 0
+    : codebaseUsesEnvs.length > 0
     ? "dotenv"
     : "none";
   void track("functions_codebase_deploy_env_method", tag);

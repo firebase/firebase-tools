@@ -22,10 +22,10 @@ describe("authBlocking", () => {
   beforeEach(() => {
     getConfig = sinon
       .stub(identityPlatform, "getBlockingFunctionsConfig")
-      .throws("Unexpected call to getBlockingFunctionsConfig");
+      .rejects(new Error("Unexpected call to getBlockingFunctionsConfig"));
     setConfig = sinon
       .stub(identityPlatform, "setBlockingFunctionsConfig")
-      .throws("Unexpected call to setBlockingFunctionsConfig");
+      .rejects(new Error("Unexpected call to setBlockingFunctionsConfig"));
   });
 
   afterEach(() => {
@@ -150,7 +150,6 @@ describe("authBlocking", () => {
 
       await authBlockingService.registerTrigger(ep);
 
-      expect(blockingConfig).to.deep.equal(newBlockingConfig);
       expect(setConfig).to.have.been.calledWith("project", newBlockingConfig);
     });
 
@@ -201,7 +200,6 @@ describe("authBlocking", () => {
 
       await authBlockingService.registerTrigger(ep);
 
-      expect(blockingConfig).to.deep.equal(newBlockingConfig);
       expect(setConfig).to.have.been.calledWith("project", newBlockingConfig);
     });
 
@@ -252,7 +250,6 @@ describe("authBlocking", () => {
 
       await authBlockingService.registerTrigger(ep);
 
-      expect(blockingConfig).to.deep.equal(newBlockingConfig);
       expect(setConfig).to.have.been.calledWith("project", newBlockingConfig);
     });
 
@@ -400,7 +397,6 @@ describe("authBlocking", () => {
 
       await authBlockingService.unregisterTrigger(ep);
 
-      expect(blockingConfig).to.deep.equal(newBlockingConfig);
       expect(setConfig).to.have.been.calledWith("project", newBlockingConfig);
     });
 
@@ -446,7 +442,6 @@ describe("authBlocking", () => {
 
       await authBlockingService.unregisterTrigger(ep);
 
-      expect(blockingConfig).to.deep.equal(newBlockingConfig);
       expect(setConfig).to.have.been.calledWith("project", newBlockingConfig);
     });
 
@@ -488,7 +483,6 @@ describe("authBlocking", () => {
 
       await authBlockingService.unregisterTrigger(ep);
 
-      expect(blockingConfig).to.deep.equal(newBlockingConfig);
       expect(setConfig).to.have.been.calledWith("project", newBlockingConfig);
     });
   });
