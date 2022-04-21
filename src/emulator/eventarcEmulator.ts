@@ -21,20 +21,20 @@ export class EventarcEmulator implements EmulatorInstance {
 
   createHubServer(): express.Application {
     const hub = express();
-    hub.use(express.json())
+    hub.use(express.json());
 
     const publishEventsRoute = `/v1/projects/:project_id/locations/:location/channels/:channel::publishEvents`;
     const publishEventsHandler: express.RequestHandler = (req, res) => {
       const channel = req.params.channel;
       const events = req.body.events;
       for (const event of events) {
-        // @todo: Call background handler. 
+        // @todo: Call background handler.
         if (!event.type) {
           res.sendStatus(400);
         }
       }
       res.sendStatus(200);
-    }
+    };
     hub.post([publishEventsRoute], publishEventsHandler);
     hub.all("*", (req, res) => {
       logger.debug(`Eventarc emulator received unknown request at path ${req.path}`);
