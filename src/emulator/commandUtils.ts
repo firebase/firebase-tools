@@ -371,7 +371,7 @@ async function runScript(script: string, extraEnv: Record<string, string>): Prom
   if (eventarcInstance) {
     const info = eventarcInstance.getInfo();
     const address = EmulatorRegistry.getInfoHostString(info);
-    env[Constants.EVENTARC_EMULATOR_HOST] = address;
+    env[Constants.CLOUD_EVENTARC_EMULATOR_HOST] = address;
   }
 
   const proc = childProcess.spawn(script, {
