@@ -209,7 +209,6 @@ export class PubsubEmulator implements EmulatorInstance {
 
     this.ensureFunctionsClient();
 
-    console.log(JSON.stringify(triggers));
     for (const { triggerKey, signatureType } of triggers) {
       try {
         const path = `/functions/projects/${this.args.projectId}/triggers/${triggerKey}`;
