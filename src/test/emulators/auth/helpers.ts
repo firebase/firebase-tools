@@ -17,6 +17,8 @@ export const TEST_MFA_INFO = {
   phoneInfo: TEST_PHONE_NUMBER,
 };
 export const TEST_INVALID_PHONE_NUMBER = "5555550100"; /* no country code */
+export const DISPLAY_NAME = "Example User";
+export const PHOTO_URL = "fakephotourl";
 export const FAKE_GOOGLE_ACCOUNT = {
   displayName: "Example User",
   email: "example@gmail.com",
@@ -49,6 +51,13 @@ export const REAL_GOOGLE_ACCOUNT = {
   idTokenNoEmail:
     "eyJhbGciOiJSUzI1NiIsImtpZCI6IjZiYzYzZTlmMThkNTYxYjM0ZjU2NjhmODhhZTI3ZDQ4ODc2ZDgwNzMiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJhY2NvdW50cy5nb29nbGUuY29tIiwiYXpwIjoiMjI4NzQ2ODI4NDQtYjBzOHM3NWIzaWVkYjJtZDRobHMydm9xNnNsbGJzbTMuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiIyMjg3NDY4Mjg0NC1iMHM4czc1YjNpZWRiMm1kNGhsczJ2b3E2c2xsYnNtMy5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbSIsInN1YiI6IjExNTExMzIzNjU2NjY4MzM5ODMwMSIsImF0X2hhc2giOiJJRHA0UFFldFItLUFyaWhXX2NYMmd3IiwiaWF0IjoxNTk3ODgyNDQyLCJleHAiOjE1OTc4ODYwNDJ9.000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
 };
+
+// Used for testing blocking functions
+export const BLOCKING_FUNCTION_HOST = "http://localhost";
+export const BEFORE_CREATE_PATH = "/beforeCreate";
+export const BEFORE_SIGN_IN_PATH = "/beforeSignIn";
+export const BEFORE_CREATE_URL = BLOCKING_FUNCTION_HOST + BEFORE_CREATE_PATH;
+export const BEFORE_SIGN_IN_URL = BLOCKING_FUNCTION_HOST + BEFORE_SIGN_IN_PATH;
 
 /**
  * Asserts that the response has the expected status code.
@@ -417,5 +426,21 @@ export function registerTenant(
     .then((res) => {
       expectStatusCode(200, res);
       return res.body;
+    });
+}
+
+export async function updateConfig(
+  testAgent: TestAgent,
+  projectId: string,
+  config: Schemas["GoogleCloudIdentitytoolkitAdminV2Config"],
+  updateMask?: string
+): Promise<void> {
+  await testAgent
+    .patch(`/identitytoolkit.googleapis.com/v2/projects/${projectId}/config`)
+    .set("Authorization", "Bearer owner")
+    .query({ updateMask })
+    .send(config)
+    .then((res) => {
+      expectStatusCode(200, res);
     });
 }

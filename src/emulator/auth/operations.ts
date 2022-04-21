@@ -1,7 +1,7 @@
 import { URLSearchParams } from "url";
 import { decode as decodeJwt, sign as signJwt, JwtHeader } from "jsonwebtoken";
 import * as express from "express";
-import fetch, { Response } from "node-fetch";
+import fetch from "node-fetch";
 import AbortController from "abort-controller";
 import { ExegesisContext } from "exegesis-express";
 import {
@@ -154,7 +154,7 @@ async function signUp(
 ): Promise<Schemas["GoogleCloudIdentitytoolkitV1SignUpResponse"]> {
   assert(!state.disableAuth, "PROJECT_DISABLED");
   let provider: string | undefined;
-  const updates: Omit<Partial<UserInfo>, "localId" | "providerUserInfo"> = {
+  let updates: Omit<Partial<UserInfo>, "localId" | "providerUserInfo"> = {
     lastLoginAt: Date.now().toString(),
   };
 
@@ -229,11 +229,12 @@ async function signUp(
   let extraClaims;
   if (!user) {
     if (reqBody.email) {
-      await fetchBlockingFunctionWithTimeoutAndUpdateUser(
+      const fetchResponse = await fetchBlockingFunction(
         state,
         BlockingFunctionEvents.BEFORE_CREATE,
         updates
       );
+      updates = fetchResponse.user;
     }
     if (reqBody.localId) {
       user = state.createUserWithLocalId(reqBody.localId, updates);
@@ -243,11 +244,13 @@ async function signUp(
     }
   } else {
     if (reqBody.email) {
-      extraClaims = await fetchBlockingFunctionWithTimeoutAndUpdateUser(
+      const fetchResponse = await fetchBlockingFunction(
         state,
         BlockingFunctionEvents.BEFORE_SIGN_IN,
         updates
       );
+      updates = fetchResponse.user;
+      extraClaims = fetchResponse.extraClaims;
     }
     user = state.updateUserByLocalId(user.localId, updates);
   }
@@ -257,7 +260,7 @@ async function signUp(
     localId: user.localId,
     displayName: user.displayName,
     email: user.email,
-    ...(provider ? issueTokens(state, user, provider, extraClaims) : {}),
+    ...(provider ? issueTokens(state, user, provider, { extraClaims }) : {}),
   };
 }
 
@@ -1380,7 +1383,7 @@ async function signInWithEmailLink(
 
   state.deleteOobCode(reqBody.oobCode);
 
-  const updates: Omit<Partial<UserInfo>, "localId" | "providerUserInfo"> = {
+  let updates: Omit<Partial<UserInfo>, "localId" | "providerUserInfo"> = {
     email,
     emailVerified: true,
     emailLinkSignin: true,
@@ -1396,11 +1399,12 @@ async function signInWithEmailLink(
     if (userFromIdToken) {
       user = state.updateUserByLocalId(userFromIdToken.localId, updates);
     } else {
-      await fetchBlockingFunctionWithTimeoutAndUpdateUser(
+      const fetchResponse = await fetchBlockingFunction(
         state,
         BlockingFunctionEvents.BEFORE_CREATE,
         updates
       );
+      updates = fetchResponse.user;
       user = state.createUser(updates);
     }
   } else {
@@ -1408,11 +1412,13 @@ async function signInWithEmailLink(
     assert(!userFromIdToken || userFromIdToken.localId === user.localId, "EMAIL_EXISTS");
     user = state.updateUserByLocalId(user.localId, updates);
   }
-  const { extraClaims } = await fetchBlockingFunctionWithTimeoutAndUpdateUser(
+  const fetchResponse = await fetchBlockingFunction(
     state,
     BlockingFunctionEvents.BEFORE_SIGN_IN,
     updates
   );
+  updates = fetchResponse.user;
+  const extraClaims = fetchResponse.extraClaims;
   user = state.updateUserByLocalId(user.localId, updates);
 
   const response = {
@@ -1568,33 +1574,36 @@ async function signInWithIdp(
     oauthExpiresIn: coercePrimitiveToString(response.oauthExpireIn),
   };
   if (response.isNewUser) {
-    const updates = {
+    let updates: Partial<UserInfo> = {
       ...accountUpdates.fields,
       lastLoginAt: Date.now().toString(),
       providerUserInfo: [providerUserInfo],
       tenantId: state instanceof TenantProjectState ? state.tenantId : undefined,
     };
-    await fetchBlockingFunctionWithTimeoutAndUpdateUser(
+    const fetchResponse = await fetchBlockingFunction(
       state,
       BlockingFunctionEvents.BEFORE_CREATE,
       updates,
       oauthTokens
     );
+    updates = fetchResponse.user;
     user = state.createUser(updates);
     response.localId = user.localId;
   } else {
     if (!response.localId) {
       throw new Error("Internal assertion error: localId not set for exising user.");
     }
-    const updates = {
+    let updates = {
       ...accountUpdates.fields,
     };
-    extraClaims = await fetchBlockingFunctionWithTimeoutAndUpdateUser(
+    const fetchResponse = await fetchBlockingFunction(
       state,
       BlockingFunctionEvents.BEFORE_SIGN_IN,
       updates,
       oauthTokens
     );
+    extraClaims = fetchResponse.extraClaims;
+    updates = fetchResponse.user;
     user = state.updateUserByLocalId(response.localId, updates, {
       upsertProviders: [providerUserInfo],
     });
@@ -1617,7 +1626,7 @@ async function signInWithIdp(
     user = state.updateUserByLocalId(user.localId, { lastLoginAt: Date.now().toString() });
     return {
       ...response,
-      ...issueTokens(state, user, providerId, { signInAttributes, ...extraClaims }),
+      ...issueTokens(state, user, providerId, { signInAttributes, extraClaims }),
     };
   }
 }
@@ -1646,12 +1655,12 @@ async function signInWithPassword(
   assert(user.passwordHash && user.salt, "INVALID_PASSWORD");
   assert(user.passwordHash === hashPassword(reqBody.password, user.salt), "INVALID_PASSWORD");
 
-  const { extraClaims } = await fetchBlockingFunctionWithTimeoutAndUpdateUser(
+  const { user: updates, extraClaims } = await fetchBlockingFunction(
     state,
     BlockingFunctionEvents.BEFORE_SIGN_IN,
     user
   );
-  user = state.updateUserByLocalId(user.localId, user);
+  user = state.updateUserByLocalId(user.localId, updates);
 
   const response = {
     kind: "identitytoolkit#VerifyPasswordResponse",
@@ -1692,7 +1701,7 @@ async function signInWithPhoneNumber(
 
   let user = state.getUserByPhoneNumber(phoneNumber);
   let isNewUser = false;
-  const updates = {
+  let updates: Partial<UserInfo> = {
     phoneNumber,
     lastLoginAt: Date.now().toString(),
   };
@@ -1707,11 +1716,12 @@ async function signInWithPhoneNumber(
       user = state.updateUserByLocalId(userFromIdToken.localId, updates);
     } else {
       isNewUser = true;
-      await fetchBlockingFunctionWithTimeoutAndUpdateUser(
+      const fetchResponse = await fetchBlockingFunction(
         state,
         BlockingFunctionEvents.BEFORE_CREATE,
         updates
       );
+      updates = fetchResponse.user;
       user = state.createUser(updates);
     }
   } else {
@@ -1729,14 +1739,17 @@ async function signInWithPhoneNumber(
     }
     user = state.updateUserByLocalId(user.localId, updates);
   }
-  const { extraClaims } = await fetchBlockingFunctionWithTimeoutAndUpdateUser(
+  const fetchResponse = await fetchBlockingFunction(
     state,
     BlockingFunctionEvents.BEFORE_SIGN_IN,
     updates
   );
+  updates = fetchResponse.user;
   user = state.updateUserByLocalId(user.localId, updates);
 
-  const tokens = issueTokens(state, user, PROVIDER_PHONE, { extraClaims });
+  const tokens = issueTokens(state, user, PROVIDER_PHONE, {
+    extraClaims: fetchResponse.extraClaims,
+  });
 
   return {
     isNewUser,
@@ -2036,12 +2049,15 @@ async function mfaSignInFinalize(
   );
   assert(enrollment && enrollment.mfaEnrollmentId, "MFA_ENROLLMENT_NOT_FOUND");
 
-  const { extraClaims } = await fetchBlockingFunctionWithTimeoutAndUpdateUser(
+  const { user: updatedUser, extraClaims } = await fetchBlockingFunction(
     state,
     BlockingFunctionEvents.BEFORE_SIGN_IN,
     user
   );
-  user = state.updateUserByLocalId(user.localId, { ...user, lastLoginAt: Date.now().toString() });
+  user = state.updateUserByLocalId(user.localId, {
+    ...updatedUser,
+    lastLoginAt: Date.now().toString(),
+  });
 
   assert(!user.disabled, "USER_DISABLED");
 
@@ -2875,7 +2891,7 @@ function updateTenant(
 }
 
 // TODO: Timeout is 60s. Should we make the timeout an emulator configuration?
-async function fetchBlockingFunctionWithTimeoutAndUpdateUser(
+async function fetchBlockingFunction(
   state: ProjectState,
   event: BlockingFunctionEvents,
   user: Partial<UserInfo>,
@@ -2888,15 +2904,14 @@ async function fetchBlockingFunctionWithTimeoutAndUpdateUser(
   } = {},
   timeoutMs: number = 60000
 ): Promise<{
+  user: Partial<UserInfo>;
   extraClaims?: Record<string, unknown>;
 }> {
-  // TODO: test these changes, consider using `nock` (import * as nock from "nock";)
-
   const url = state.getBlockingFunctionUri(event);
 
   // No-op if blocking function is not present
   if (!url) {
-    return {};
+    return { user };
   }
 
   const jwt = generateBlockingFunctionJwt(state, event, url, timeoutMs, user, oauthTokens);
@@ -2919,29 +2934,40 @@ async function fetchBlockingFunctionWithTimeoutAndUpdateUser(
       body: JSON.stringify(reqBody),
       signal: controller.signal,
     });
+    const text = await res.text();
     assert(
       res.ok,
-      `BLOCKING_FUNCTION_ERROR_RESPONSE: ((HTTP request to ${url} returned an error: ${res.text()}))`
+      `BLOCKING_FUNCTION_ERROR_RESPONSE: ((HTTP request to ${url} returned an error: ${text}))`
     );
-    response = (await res.json()) as BlockingFunctionResponsePayload;
+    response = JSON.parse(text) as BlockingFunctionResponsePayload;
   } catch (thrown: any) {
     const err = thrown instanceof Error ? thrown : new Error(thrown);
     const isAbortError = err.name.includes("AbortError");
     if (isAbortError) {
       throw new InternalError(
         `BLOCKING_FUNCTION_ERROR_RESPONSE: ((Deadline exceeded making request to ${url}.))`,
-        err.toString()
+        err.message
       );
     }
     throw new InternalError(
       `BLOCKING_FUNCTION_ERROR_RESPONSE: ((Failed to make request to ${url}.))`,
-      err.toString()
+      err.message
     );
   } finally {
     clearTimeout(timeout);
   }
 
-  // Update with modifiable fields if present in response
+  return processBlockingFunctionResponse(user, response);
+}
+
+function processBlockingFunctionResponse(
+  user: Partial<UserInfo>,
+  response: BlockingFunctionResponsePayload
+): {
+  user: Partial<UserInfo>;
+  extraClaims?: Record<string, unknown>;
+} {
+  // Update user info with modifiable fields if present in response
   let extraClaims;
   if (response.userRecord) {
     const userRecord = response.userRecord;
@@ -2957,7 +2983,7 @@ async function fetchBlockingFunctionWithTimeoutAndUpdateUser(
         Object.values(BlockingFunctionModifiableFields).includes(
           field as BlockingFunctionModifiableFields
         ) &&
-        userRecord.hasOwnProperty(field)
+        Object.prototype.hasOwnProperty.call(userRecord, field)
       ) {
         switch (field) {
           case BlockingFunctionModifiableFields.CUSTOM_CLAIMS:
@@ -2982,7 +3008,7 @@ async function fetchBlockingFunctionWithTimeoutAndUpdateUser(
       }
     }
   }
-  return { extraClaims };
+  return { user, extraClaims };
 }
 
 function generateBlockingFunctionJwt(
@@ -3107,8 +3133,6 @@ function generateBlockingFunctionJwt(
 
   const jwtStr = signJwt(jwt, "", {
     algorithm: "none",
-    issuer: `https://securetoken.google.com/${state.projectId}`,
-    audience: url,
   });
 
   return jwtStr;

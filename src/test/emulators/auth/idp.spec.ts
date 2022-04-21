@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import * as nock from "nock";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import { FirebaseJwtPayload } from "../../../emulator/auth/operations";
 import { PROVIDER_PASSWORD, SIGNIN_METHOD_EMAIL_LINK } from "../../../emulator/auth/state";
@@ -21,6 +22,14 @@ import {
   enrollPhoneMfa,
   getAccountInfoByLocalId,
   registerTenant,
+  updateConfig,
+  BEFORE_CREATE_PATH,
+  BEFORE_CREATE_URL,
+  BEFORE_SIGN_IN_PATH,
+  BEFORE_SIGN_IN_URL,
+  BLOCKING_FUNCTION_HOST,
+  DISPLAY_NAME,
+  PHOTO_URL,
 } from "./helpers";
 
 // Many JWT fields from IDPs use snake_case and we need to match that.
@@ -1124,5 +1133,211 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
           .to.have.property("sign_in_attributes")
           .eql(attributeStatements);
       });
+  });
+
+  describe("when blocking functions are present", () => {
+    afterEach(async () => {
+      await updateConfig(
+        authApi(),
+        PROJECT_ID,
+        {
+          blockingFunctions: {},
+        },
+        "blockingFunctions"
+      );
+      expect(nock.isDone()).to.be.true;
+      nock.cleanAll();
+    });
+
+    it("should update modifiable fields for new users", async () => {
+      await updateConfig(
+        authApi(),
+        PROJECT_ID,
+        {
+          blockingFunctions: {
+            triggers: {
+              beforeCreate: {
+                functionUri: BEFORE_CREATE_URL,
+              },
+            },
+          },
+        },
+        "blockingFunctions"
+      );
+      nock(BLOCKING_FUNCTION_HOST)
+        .post(BEFORE_CREATE_PATH)
+        .reply(200, {
+          userRecord: {
+            updateMask: "displayName,photoUrl,emailVerified,customClaims",
+            displayName: DISPLAY_NAME,
+            photoUrl: PHOTO_URL,
+            emailVerified: true,
+            customClaims: JSON.stringify({ customAttribute: "custom" }),
+          },
+        });
+
+      await authApi()
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+        .query({ key: "fake-api-key" })
+        .send({
+          postBody: `providerId=google.com&id_token=${FAKE_GOOGLE_ACCOUNT.idToken}`,
+          requestUri: "http://localhost",
+          returnIdpCredential: true,
+          returnSecureToken: true,
+        })
+        .then((res) => {
+          expectStatusCode(200, res);
+          expect(res.body.isNewUser).to.equal(true);
+
+          const idToken = res.body.idToken;
+          const decoded = decodeJwt(idToken, { complete: true }) as {
+            header: JwtHeader;
+            payload: FirebaseJwtPayload;
+          } | null;
+          expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
+          expect(decoded!.header.alg).to.eql("none");
+          expect(decoded!.payload.firebase)
+            .to.have.property("identities")
+            .eql({
+              "google.com": [FAKE_GOOGLE_ACCOUNT.rawId],
+              email: [FAKE_GOOGLE_ACCOUNT.email],
+            });
+
+          expect(decoded!.payload.name).to.equal(DISPLAY_NAME);
+          expect(decoded!.payload.picture).to.equal(PHOTO_URL);
+          expect(decoded!.payload.email_verified).to.be.true;
+          expect(decoded!.payload).to.have.property("customAttribute").equals("custom");
+        });
+    });
+
+    it("should update modifiable fields for existing users", async () => {
+      const user = await registerUser(authApi(), {
+        email: "foo@example.com",
+        password: "notasecret",
+      });
+      const claims = fakeClaims({
+        sub: "123456789012345678901",
+        name: "Foo",
+      });
+      const fakeIdToken = JSON.stringify(claims);
+      await updateConfig(
+        authApi(),
+        PROJECT_ID,
+        {
+          blockingFunctions: {
+            triggers: {
+              beforeSignIn: {
+                functionUri: BEFORE_SIGN_IN_URL,
+              },
+            },
+          },
+        },
+        "blockingFunctions"
+      );
+      nock(BLOCKING_FUNCTION_HOST)
+        .post(BEFORE_SIGN_IN_PATH)
+        .reply(200, {
+          userRecord: {
+            updateMask: "displayName,photoUrl,emailVerified,customClaims,sessionClaims",
+            displayName: DISPLAY_NAME,
+            photoUrl: PHOTO_URL,
+            emailVerified: true,
+            customClaims: JSON.stringify({ customAttribute: "custom" }),
+            sessionClaims: JSON.stringify({ sessionAttribute: "session" }),
+          },
+        });
+
+      await authApi()
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+        .query({ key: "fake-api-key" })
+        .send({
+          idToken: user.idToken,
+          postBody: `providerId=google.com&id_token=${encodeURIComponent(fakeIdToken)}`,
+          requestUri: "http://localhost",
+          returnIdpCredential: true,
+        })
+        .then((res) => {
+          expectStatusCode(200, res);
+          expect(!!res.body.isNewUser).to.equal(false);
+
+          const idToken = res.body.idToken;
+          const decoded = decodeJwt(idToken, { complete: true }) as {
+            header: JwtHeader;
+            payload: FirebaseJwtPayload;
+          } | null;
+          expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
+          expect(decoded!.header.alg).to.eql("none");
+          expect(decoded!.payload.firebase)
+            .to.have.property("identities")
+            .eql({
+              "google.com": [claims.sub],
+              email: [user.email],
+            });
+
+          expect(decoded!.payload.name).to.equal(DISPLAY_NAME);
+          expect(decoded!.payload.picture).to.equal(PHOTO_URL);
+          expect(decoded!.payload.email_verified).to.be.true;
+          expect(decoded!.payload).to.have.property("customAttribute").equals("custom");
+          expect(decoded!.payload).to.have.property("sessionAttribute").equals("session");
+        });
+    });
+
+    it("should disable user if set", async () => {
+      await updateConfig(
+        authApi(),
+        PROJECT_ID,
+        {
+          blockingFunctions: {
+            triggers: {
+              beforeCreate: {
+                functionUri: BEFORE_CREATE_URL,
+              },
+            },
+          },
+        },
+        "blockingFunctions"
+      );
+      nock(BLOCKING_FUNCTION_HOST)
+        .post(BEFORE_CREATE_PATH)
+        .reply(200, {
+          userRecord: {
+            updateMask: "disabled",
+            disabled: true,
+          },
+        });
+
+      // Creates the user and sets user to disabled
+      const idToken = await authApi()
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+        .query({ key: "fake-api-key" })
+        .send({
+          postBody: `providerId=google.com&id_token=${FAKE_GOOGLE_ACCOUNT.idToken}`,
+          requestUri: "http://localhost",
+          returnIdpCredential: true,
+          returnSecureToken: true,
+        })
+        .then((res) => {
+          expectStatusCode(200, res);
+          expect(res.body.isNewUser).to.equal(true);
+          return res.body.idToken;
+        });
+
+      // Next sign in attempt will throw error because user is disabled
+      await authApi()
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+        .query({ key: "fake-api-key" })
+        .send({
+          idToken,
+          postBody: `providerId=google.com&id_token=${encodeURIComponent(
+            FAKE_GOOGLE_ACCOUNT.idToken
+          )}`,
+          requestUri: "http://localhost",
+          returnIdpCredential: true,
+        })
+        .then((res) => {
+          expectStatusCode(400, res);
+          expect(res.body.error.message).to.equal("USER_DISABLED");
+        });
+    });
   });
 });

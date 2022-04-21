@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import * as nock from "nock";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import { FirebaseJwtPayload } from "../../../emulator/auth/operations";
 import { describeAuthEmulator, PROJECT_ID } from "./setup";
@@ -14,6 +15,14 @@ import {
   TEST_MFA_INFO,
   registerTenant,
   getAccountInfoByLocalId,
+  updateConfig,
+  BEFORE_CREATE_URL,
+  BLOCKING_FUNCTION_HOST,
+  BEFORE_CREATE_PATH,
+  BEFORE_SIGN_IN_PATH,
+  BEFORE_SIGN_IN_URL,
+  DISPLAY_NAME,
+  PHOTO_URL,
 } from "./helpers";
 
 describeAuthEmulator("email link sign-in", ({ authApi }) => {
@@ -306,5 +315,245 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
         expect(res.body.mfaPendingCredential).to.be.a("string");
         expect(res.body.mfaInfo).to.be.an("array").with.lengthOf(1);
       });
+  });
+
+  describe("when blocking functions are present", () => {
+    afterEach(async () => {
+      await updateConfig(
+        authApi(),
+        PROJECT_ID,
+        {
+          blockingFunctions: {},
+        },
+        "blockingFunctions"
+      );
+      expect(nock.isDone()).to.be.true;
+      nock.cleanAll();
+    });
+
+    it("should update modifiable fields for account creation", async () => {
+      await updateConfig(
+        authApi(),
+        PROJECT_ID,
+        {
+          blockingFunctions: {
+            triggers: {
+              beforeCreate: {
+                functionUri: BEFORE_CREATE_URL,
+              },
+            },
+          },
+        },
+        "blockingFunctions"
+      );
+      nock(BLOCKING_FUNCTION_HOST)
+        .post(BEFORE_CREATE_PATH)
+        .reply(200, {
+          userRecord: {
+            updateMask: "displayName,photoUrl,emailVerified,customClaims",
+            displayName: DISPLAY_NAME,
+            photoUrl: PHOTO_URL,
+            emailVerified: true,
+            customClaims: JSON.stringify({ customAttribute: "custom" }),
+          },
+        });
+
+      const email = "alice@example.com";
+      await createEmailSignInOob(authApi(), email);
+      const oobs = await inspectOobs(authApi());
+      await authApi()
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithEmailLink")
+        .query({ key: "fake-api-key" })
+        .send({ oobCode: oobs[0].oobCode, email })
+        .then((res) => {
+          expectStatusCode(200, res);
+          expect(res.body).to.have.property("idToken").that.is.a("string");
+          expect(res.body.email).to.equal(email);
+          expect(res.body.isNewUser).to.equal(true);
+
+          const idToken = res.body.idToken;
+          const decoded = decodeJwt(idToken, { complete: true }) as {
+            header: JwtHeader;
+            payload: FirebaseJwtPayload;
+          } | null;
+          expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
+
+          expect(decoded!.payload.name).to.equal(DISPLAY_NAME);
+          expect(decoded!.payload.picture).to.equal(PHOTO_URL);
+          expect(decoded!.payload.email_verified).to.be.true;
+          expect(decoded!.payload).to.have.property("customAttribute").equals("custom");
+        });
+    });
+
+    it("should update modifiable fields before sign in", async () => {
+      await updateConfig(
+        authApi(),
+        PROJECT_ID,
+        {
+          blockingFunctions: {
+            triggers: {
+              beforeSignIn: {
+                functionUri: BEFORE_SIGN_IN_URL,
+              },
+            },
+          },
+        },
+        "blockingFunctions"
+      );
+      nock(BLOCKING_FUNCTION_HOST)
+        .post(BEFORE_SIGN_IN_PATH)
+        .reply(200, {
+          userRecord: {
+            updateMask: "displayName,photoUrl,emailVerified,customClaims,sessionClaims",
+            displayName: DISPLAY_NAME,
+            photoUrl: PHOTO_URL,
+            emailVerified: true,
+            customClaims: JSON.stringify({ customAttribute: "custom" }),
+            sessionClaims: JSON.stringify({ sessionAttribute: "session" }),
+          },
+        });
+      const email = "alice@example.com";
+      await createEmailSignInOob(authApi(), email);
+      const oobs = await inspectOobs(authApi());
+
+      await authApi()
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithEmailLink")
+        .query({ key: "fake-api-key" })
+        .send({ oobCode: oobs[0].oobCode, email })
+        .then((res) => {
+          expectStatusCode(200, res);
+          expect(res.body).to.have.property("idToken").that.is.a("string");
+          expect(res.body.email).to.equal(email);
+          expect(res.body.isNewUser).to.equal(true);
+
+          const idToken = res.body.idToken;
+          const decoded = decodeJwt(idToken, { complete: true }) as {
+            header: JwtHeader;
+            payload: FirebaseJwtPayload;
+          } | null;
+          expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
+
+          expect(decoded!.payload.name).to.equal(DISPLAY_NAME);
+          expect(decoded!.payload.picture).to.equal(PHOTO_URL);
+          expect(decoded!.payload.email_verified).to.be.true;
+          expect(decoded!.payload).to.have.property("customAttribute").equals("custom");
+          expect(decoded!.payload).to.have.property("sessionAttribute").equals("session");
+        });
+    });
+
+    it("beforeSignIn fields should overwrite beforeCreate fields", async () => {
+      await updateConfig(
+        authApi(),
+        PROJECT_ID,
+        {
+          blockingFunctions: {
+            triggers: {
+              beforeCreate: {
+                functionUri: BEFORE_CREATE_URL,
+              },
+              beforeSignIn: {
+                functionUri: BEFORE_SIGN_IN_URL,
+              },
+            },
+          },
+        },
+        "blockingFunctions"
+      );
+      nock(BLOCKING_FUNCTION_HOST)
+        .post(BEFORE_CREATE_PATH)
+        .reply(200, {
+          updateMask: "displayName,photoUrl,emailVerified,customClaims",
+          displayName: "oldDisplayName",
+          photoUrl: "oldPhotoUrl",
+          emailVerified: false,
+          customClaims: JSON.stringify({ customAttribute: "oldCustom" }),
+        })
+        .post(BEFORE_SIGN_IN_PATH)
+        .reply(200, {
+          userRecord: {
+            updateMask: "displayName,photoUrl,emailVerified,customClaims,sessionClaims",
+            displayName: DISPLAY_NAME,
+            photoUrl: PHOTO_URL,
+            emailVerified: true,
+            customClaims: JSON.stringify({ customAttribute: "custom" }),
+            sessionClaims: JSON.stringify({ sessionAttribute: "session" }),
+          },
+        });
+      const email = "alice@example.com";
+      await createEmailSignInOob(authApi(), email);
+      const oobs = await inspectOobs(authApi());
+
+      await authApi()
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithEmailLink")
+        .query({ key: "fake-api-key" })
+        .send({ oobCode: oobs[0].oobCode, email })
+        .then((res) => {
+          expectStatusCode(200, res);
+          expect(res.body).to.have.property("idToken").that.is.a("string");
+          expect(res.body.email).to.equal(email);
+          expect(res.body.isNewUser).to.equal(true);
+
+          const idToken = res.body.idToken;
+          const decoded = decodeJwt(idToken, { complete: true }) as {
+            header: JwtHeader;
+            payload: FirebaseJwtPayload;
+          } | null;
+          expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
+
+          expect(decoded!.payload.name).to.equal(DISPLAY_NAME);
+          expect(decoded!.payload.picture).to.equal(PHOTO_URL);
+          expect(decoded!.payload.email_verified).to.be.true;
+          expect(decoded!.payload).to.have.property("customAttribute").equals("custom");
+          expect(decoded!.payload).to.have.property("sessionAttribute").equals("session");
+        });
+    });
+
+    it("should error after disabling user", async () => {
+      await updateConfig(
+        authApi(),
+        PROJECT_ID,
+        {
+          blockingFunctions: {
+            triggers: {
+              beforeCreate: {
+                functionUri: BEFORE_CREATE_URL,
+              },
+            },
+          },
+        },
+        "blockingFunctions"
+      );
+      nock(BLOCKING_FUNCTION_HOST)
+        .post(BEFORE_CREATE_PATH)
+        .reply(200, {
+          userRecord: {
+            updateMask: "disabled",
+            disabled: true,
+          },
+        });
+      const email = "alice@example.com";
+      await createEmailSignInOob(authApi(), email);
+      const oobs = await inspectOobs(authApi());
+
+      // Creates the user and sets user to disabled
+      await authApi()
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithEmailLink")
+        .query({ key: "fake-api-key" })
+        .send({ oobCode: oobs[0].oobCode, email })
+        .then((res) => {
+          expectStatusCode(200, res);
+        });
+
+      // Next sign in attempt will throw error because user is disabled
+      const { oobCode } = await createEmailSignInOob(authApi(), email);
+      await authApi()
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithEmailLink")
+        .query({ key: "fake-api-key" })
+        .send({ email, oobCode })
+        .then((res) => {
+          expectStatusCode(400, res);
+          expect(res.body.error.message).to.equal("USER_DISABLED");
+        });
+    });
   });
 });
