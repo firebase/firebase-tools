@@ -38,13 +38,14 @@ export class EventarcEmulator implements EmulatorInstance {
       const eventTrigger = req.body.eventTrigger as EventTrigger;
       if (!eventTrigger) {
         logger.debug(`Missing event trigger for ${triggerName}.`);
-        res.status(400);
+        res.sendStatus(400);
         return;
       }
       const key = `${eventTrigger.eventType}-${eventTrigger.channel}`;
       const customEventTriggers = this.customEvents[key] || [];
       customEventTriggers.push({ projectId, triggerName, eventTrigger });
       this.customEvents[key] = customEventTriggers;
+      res.sendStatus(200);
     };
 
     const publishEventsRoute = `/v1/projects/:project_id/locations/:location/channels/:channel::publishEvents`;
@@ -63,7 +64,7 @@ export class EventarcEmulator implements EmulatorInstance {
 
     const hub = express();
     hub.use(express.json());
-    hub.post([registerTriggerRoute], registerTriggerHandler);
+    hub.post([registerTriggerRoute, `${registerTriggerRoute}/*`], registerTriggerHandler);
     hub.post([publishEventsRoute], publishEventsHandler);
     hub.all("*", (req, res) => {
       logger.debug(`Eventarc emulator received unknown request at path ${req.path}`);

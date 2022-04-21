@@ -692,18 +692,18 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (!eventarcEmu) {
       return Promise.resolve(false);
     }
-    const bundle = JSON.stringify({
+    const bundle = {
       eventTrigger: {
         ...eventTrigger,
         service: "eventarc.googleapis.com",
       },
-    });
+    };
     logger.debug(`addEventarcTrigger`, JSON.stringify(bundle));
     return api
-      .request("PUT", `/emulator/v1/projects/${projectId}/triggers/${key}`, {
+      .request("POST", `/emulator/v1/projects/${projectId}/triggers/${key}`, {
         origin: `http://${EmulatorRegistry.getInfoHostString(eventarcEmu.getInfo())}`,
         data: bundle,
-        json: false,
+        json: true,
       })
       .then(() => true)
       .catch((err) => {
