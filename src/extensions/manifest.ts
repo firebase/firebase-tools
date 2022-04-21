@@ -281,6 +281,22 @@ export function showDeprecationWarning() {
   );
 }
 
+/**
+ * Show post deprecation notice about --local flag taking over current default bahaviors.
+ */
+ export function showPostDeprecationNotice() {
+  utils.logLabeledBullet(
+    logPrefix,
+    "The behavior of ext:install, ext:update, ext:configure, and ext:uninstall has changed in firebase-tools@11.0.0. " +
+      "Instead of deploying extensions directly, " +
+      "changes to extension instances will be written to firebase.json and ./extensions/*.env. " +
+      `Then ${clc.bold(
+        "firebase deploy (--only extensions)"
+      )} will deploy the changes to your Firebase project. `
+  );
+}
+
+
 // TODO(lihes): Add a docs link once exists.
 /**
  * Show preview warning about --local flag needing deploy to take effect in firebase project.
