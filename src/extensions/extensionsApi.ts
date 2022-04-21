@@ -323,8 +323,9 @@ export async function getInstance(projectId: string, instanceId: string): Promis
       throw new FirebaseError(
         `Extension instance '${clc.bold(instanceId)}' not found in project '${clc.bold(
           projectId
-        )}'.`
-      , {status: 404});
+        )}'.`,
+        { status: 404 }
+      );
     }
     throw err;
   }
