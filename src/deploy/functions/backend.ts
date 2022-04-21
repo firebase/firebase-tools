@@ -169,8 +169,10 @@ export const AllIngressSettings: IngressSettings[] = [
   "ALLOW_INTERNAL_ONLY",
   "ALLOW_INTERNAL_AND_GCLB",
 ];
-export type MemoryOptions = 128 | 256 | 512 | 1024 | 2048 | 4096 | 8192;
-export const AllMemoryOptions: MemoryOptions[] = [128, 256, 512, 1024, 2048, 4096, 8192];
+export type MemoryOptions = 128 | 256 | 512 | 1024 | 2048 | 4096 | 8192 | 16384 | 32768;
+export const AllMemoryOptions: MemoryOptions[] = [
+  128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768,
+];
 
 /** Returns a human-readable name with MB or GB suffix for a MemoryOption (MB). */
 export function memoryOptionDisplayName(option: MemoryOptions): string {
@@ -182,6 +184,8 @@ export function memoryOptionDisplayName(option: MemoryOptions): string {
     2048: "2GB",
     4096: "4GB",
     8192: "8GB",
+    16384: "16GB",
+    32768: "32GB",
   }[option];
 }
 
@@ -201,6 +205,8 @@ export function memoryToGen1Cpu(memory: MemoryOptions): number {
     2048: 1,
     4096: 2,
     8192: 2,
+    16384: 3,
+    32768: 4,
   }[memory];
 }
 
@@ -216,6 +222,8 @@ export function memoryToGen2Cpu(memory: MemoryOptions): number {
     2048: 1,
     4096: 2,
     8192: 2,
+    16384: 3,
+    32768: 4,
   }[memory];
 }
 

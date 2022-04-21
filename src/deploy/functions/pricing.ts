@@ -123,8 +123,10 @@ const MB_TO_GHZ = {
   512: 0.8,
   1024: 1.4,
   2048: 2.4,
-  4096: 4.8,
-  8192: 4.8,
+  4096: 2.4 * 2,
+  8192: 2.4 * 2,
+  16384: 2.4 * 3,
+  32768: 2.4 * 4,
 };
 
 /** Whether we have information in our price sheet to calculate the minInstance cost. */
