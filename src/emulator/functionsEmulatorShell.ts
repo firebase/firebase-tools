@@ -15,7 +15,7 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
   emulatedFunctions: string[];
   urls: { [name: string]: string } = {};
 
-  constructor(private emu: FunctionsEmulator, private backend: EmulatableBackend) {
+  constructor(private emu: FunctionsEmulator) {
     this.triggers = emu.getTriggerDefinitions();
     this.emulatedFunctions = this.triggers.map((t) => t.id);
 
@@ -64,7 +64,7 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
       data,
     };
 
-    this.emu.invokeTrigger(this.backend, trigger, proto);
+    this.emu.invokeTrigger(trigger, proto);
   }
 
   private getTrigger(name: string): EmulatedTriggerDefinition {

@@ -91,6 +91,7 @@ export interface EmulatableBackend {
   functionsDir: string;
   env: Record<string, string>;
   secretEnv: backend.SecretEnvVar[];
+  codebase?: string;
   predefinedTriggers?: ParsedTriggerDefinition[];
   nodeMajorVersion?: number;
   nodeBinary?: string;
@@ -378,11 +379,12 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   async invokeTrigger(
-    backend: EmulatableBackend,
     trigger: EmulatedTriggerDefinition,
     proto?: any,
     runtimeOpts?: InvokeRuntimeOpts
   ): Promise<RuntimeWorker> {
+    const record = this.getTriggerRecordByKey(this.getTriggerKey(trigger));
+    const backend = record.backend;
     const bundleTemplate = this.getBaseBundle();
     const runtimeBundle: FunctionsRuntimeBundle = {
       ...bundleTemplate,
@@ -534,6 +536,9 @@ export class FunctionsEmulator implements EmulatorInstance {
       );
       const endpoints = backend.allEndpoints(discoveredBackend);
       prepareEndpoints(endpoints);
+      for (const e of endpoints) {
+        e.codebase = emulatableBackend.codebase;
+      }
       triggerDefinitions = emulatedFunctionsFromEndpoints(endpoints);
     }
     // When force is true we set up all triggers, otherwise we only set up
@@ -997,6 +1002,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   setTriggersForTesting(triggers: EmulatedTriggerDefinition[], backend: EmulatableBackend) {
+    this.triggers = {};
     triggers.forEach((def) => this.addTriggerRecord(def, { backend, ignored: false }));
   }
 
@@ -1416,7 +1422,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
     const trigger = record.def;
     const service = getFunctionService(trigger);
-    const worker = await this.invokeTrigger(record.backend, trigger, proto);
+    const worker = await this.invokeTrigger(trigger, proto);
 
     return new Promise((resolve, reject) => {
       if (projectId !== this.args.projectId) {
@@ -1554,7 +1560,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         );
       }
     }
-    const worker = await this.invokeTrigger(record.backend, trigger);
+    const worker = await this.invokeTrigger(trigger);
 
     worker.onLogs((el: EmulatorLog) => {
       if (el.level === "FATAL") {
