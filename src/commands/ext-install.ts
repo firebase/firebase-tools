@@ -4,18 +4,12 @@ const { marked } = require("marked");
 import * as ora from "ora";
 import TerminalRenderer = require("marked-terminal");
 
-import * as askUserForConsent from "../extensions/askUserForConsent";
 import { displayExtInfo } from "../extensions/displayExtensionInfo";
-import { displayNode10CreateBillingNotice } from "../extensions/billingMigrationHelper";
-import { enableBilling } from "../extensions/checkProjectBilling";
-import { checkBillingEnabled } from "../gcp/cloudbilling";
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { getProjectId, needProjectId } from "../projectUtils";
 import * as extensionsApi from "../extensions/extensionsApi";
-import * as secretsUtils from "../extensions/secretsUtils";
-import * as provisioningHelper from "../extensions/provisioningHelper";
 import * as refs from "../extensions/refs";
 import { displayWarningPrompts } from "../extensions/warnings";
 import * as paramHelper from "../extensions/paramHelper";
@@ -23,26 +17,21 @@ import {
   confirm,
   createSourceFromLocation,
   ensureExtensionsApiEnabled,
-  instanceIdExists,
   logPrefix,
   promptForOfficialExtension,
-  promptForRepeatInstance,
   promptForValidInstanceId,
   diagnoseAndFixProject,
   isUrlPath,
   isLocalPath,
   canonicalizeRefInput,
 } from "../extensions/extensionsHelper";
-import { update } from "../extensions/updateHelper";
 import { getRandomString } from "../extensions/utils";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import { track } from "../track";
-import { logger } from "../logger";
 import { previews } from "../previews";
 import { Options } from "../options";
 import * as manifest from "../extensions/manifest";
-import { getBaseParamBindings, ParamBindingOptions } from "../extensions/paramHelper";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -62,7 +51,6 @@ export default new Command("ext:install [extensionName]")
   .withForce()
   // TODO(b/221037520): Deprecate the params flag then remove it in the next breaking version.
   .option("--params <paramsFile>", "name of params variables file with .env format.")
-  .option("--local", "save to firebase.json rather than directly install to a Firebase project")
   .before(requirePermissions, ["firebaseextensions.instances.create"])
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
@@ -158,12 +146,9 @@ export default new Command("ext:install [extensionName]")
       });
     } catch (err: any) {
       if (!(err instanceof FirebaseError)) {
-        throw new FirebaseError(
-          `Error occurred saving the extension to manifest: ${err.message}`,
-          {
-            original: err,
-          }
-        );
+        throw new FirebaseError(`Error occurred saving the extension to manifest: ${err.message}`, {
+          original: err,
+        });
       }
       throw err;
     }
@@ -240,5 +225,5 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
     config,
     { nonInteractive, force: force ?? false }
   );
-  manifest.showPreviewWarning();
+  manifest.showPostDeprecationNotice();
 }

@@ -284,7 +284,7 @@ export function showDeprecationWarning() {
 /**
  * Show post deprecation notice about --local flag taking over current default bahaviors.
  */
- export function showPostDeprecationNotice() {
+export function showPostDeprecationNotice() {
   utils.logLabeledBullet(
     logPrefix,
     "The behavior of ext:install, ext:update, ext:configure, and ext:uninstall has changed in firebase-tools@11.0.0. " +
@@ -295,7 +295,6 @@ export function showDeprecationWarning() {
       )} will deploy the changes to your Firebase project. `
   );
 }
-
 
 // TODO(lihes): Add a docs link once exists.
 /**
