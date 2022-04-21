@@ -706,7 +706,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         throw err;
       });
   }
-  
+
   async performPostLoadOperations(): Promise<void> {
     if (
       this.blockingFunctionsConfig.triggers?.beforeCreate?.functionUri === "" &&
@@ -1157,7 +1157,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       const eventarcHost = formatHost(eventarcEmulator);
 
       // TODO: Why does pubsub emulator use process.env? As opposed to the envs object?
-      //process.env.EVENTARC_EMULATOR_HOST = eventarcHost;
+      // process.env.EVENTARC_EMULATOR_HOST = eventarcHost;
       // Similarly, why does Cloud Storage add http:// in front of the host but others don't?
       envs[Constants.CLOUD_EVENTARC_EMULATOR_HOST] = eventarcHost;
     }
