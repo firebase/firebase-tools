@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
 import TerminalRenderer = require("marked-terminal");
@@ -17,15 +16,11 @@ marked.setOptions({
 export default new Command("ext:uninstall <extensionInstanceId>")
   .description("uninstall an extension that is installed in your Firebase project by instance ID")
   .withForce()
-  .option(
-    "--local",
-    "remove from firebase.json rather than directly uninstall from a Firebase project"
-  )
   .before(requirePermissions, ["firebaseextensions.instances.delete"])
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
   .before(diagnoseAndFixProject)
-  .action(async (instanceId: string, options: Options) => {
+  .action((instanceId: string, options: Options) => {
     const config = manifest.loadConfig(options);
     manifest.removeFromManifest(instanceId, config);
     manifest.showPostDeprecationNotice();

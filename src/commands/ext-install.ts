@@ -1,7 +1,6 @@
 import * as clc from "cli-color";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
-import * as ora from "ora";
 import TerminalRenderer = require("marked-terminal");
 
 import { displayExtInfo } from "../extensions/displayExtensionInfo";

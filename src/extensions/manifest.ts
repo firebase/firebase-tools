@@ -264,23 +264,6 @@ function readParamsFile(projectDir: string, fileName: string): Record<string, st
   return params;
 }
 
-// TODO(lihes): Add a docs link once exists.
-/**
- * Show deprecation warning about --local flag taking over current default bahaviors.
- */
-export function showDeprecationWarning() {
-  utils.logLabeledWarning(
-    logPrefix,
-    "The behavior of ext:install, ext:update, ext:configure, and ext:uninstall will change in firebase-tools@11.0.0. " +
-      "Instead of deploying extensions directly, " +
-      "changes to extension instances will be written to firebase.json and ./extensions/*.env. " +
-      `Then ${clc.bold(
-        "firebase deploy (--only extensions)"
-      )} will deploy the changes to your Firebase project. ` +
-      `To access this behavior now, pass the ${clc.bold("--local")} flag.`
-  );
-}
-
 /**
  * Show post deprecation notice about --local flag taking over current default bahaviors.
  */
@@ -293,19 +276,5 @@ export function showPostDeprecationNotice() {
       `Then ${clc.bold(
         "firebase deploy (--only extensions)"
       )} will deploy the changes to your Firebase project. `
-  );
-}
-
-// TODO(lihes): Add a docs link once exists.
-/**
- * Show preview warning about --local flag needing deploy to take effect in firebase project.
- */
-export function showPreviewWarning() {
-  utils.logLabeledWarning(
-    logPrefix,
-    `See these changes in your Firebase Emulator by running "firebase emulators:start". ` +
-      `Run ${clc.bold(
-        "firebase deploy (--only extensions)"
-      )} to deploy the changes to your Firebase project. `
   );
 }
