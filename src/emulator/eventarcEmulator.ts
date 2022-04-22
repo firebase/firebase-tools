@@ -79,7 +79,11 @@ export class EventarcEmulator implements EmulatorInstance {
     };
 
     const hub = express();
-    hub.post([registerTriggerRoute, `${registerTriggerRoute}/*`], dataMiddleware, registerTriggerHandler);
+    hub.post(
+      [registerTriggerRoute, `${registerTriggerRoute}/*`],
+      dataMiddleware,
+      registerTriggerHandler
+    );
     hub.post([publishEventsRoute], dataMiddleware, publishEventsHandler);
     hub.all("*", (req, res) => {
       logger.debug(`Eventarc emulator received unknown request at path ${req.path}`);
@@ -91,7 +95,7 @@ export class EventarcEmulator implements EmulatorInstance {
   async triggerCustomEventFunction(channel: string, event: CloudEvent<any>) {
     const functionsEmulator = EmulatorRegistry.get(Emulators.FUNCTIONS);
     if (!functionsEmulator) {
-      logger.debug("Functions emulator not found. This should not happen.");
+      logger.info("Functions emulator not found. This should not happen.");
       return Promise.reject();
     }
     const key = `${event.type}-${channel}`;
@@ -114,7 +118,7 @@ export class EventarcEmulator implements EmulatorInstance {
             )
             .then(() => true)
             .catch((err) => {
-              logger.debug(`Failed to trigger Functions emulator for ${trigger.triggerName}.`);
+              logger.info(`Failed to trigger Functions emulator for ${trigger.triggerName}.`);
               throw err;
             })
         )
