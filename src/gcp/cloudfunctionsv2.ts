@@ -495,16 +495,18 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
         ],
     };
   }
-  gcfFunction.labels = {
-    ...gcfFunction.labels,
-    [CODEBASE_LABEL]: endpoint.codebase || projectConfig.DEFAULT_CODEBASE,
-  };
+  const codebase = endpoint.codebase || projectConfig.DEFAULT_CODEBASE;
+  if (codebase !== projectConfig.DEFAULT_CODEBASE) {
+    gcfFunction.labels = {
+      ...gcfFunction.labels,
+      [CODEBASE_LABEL]: codebase,
+    };
+  } else {
+    delete gcfFunction.labels?.[CODEBASE_LABEL];
+  }
   return gcfFunction;
 }
 
-/**
- *
- */
 export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoint {
   const [, project, , region, , id] = gcfFunction.name.split("/");
   let trigger: backend.Triggered;

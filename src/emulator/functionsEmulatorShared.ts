@@ -31,6 +31,7 @@ export interface ParsedTriggerDefinition {
   schedule?: EventSchedule;
   blockingTrigger?: BlockingTrigger;
   labels?: { [key: string]: any };
+  codebase?: string;
 }
 
 export interface EmulatedTriggerDefinition extends ParsedTriggerDefinition {
@@ -160,6 +161,7 @@ export function emulatedFunctionsFromEndpoints(
       // We should later refactor the emulator to stop using a custom trigger definition.
       name: endpoint.id,
       id: `${endpoint.region}-${endpoint.id}`,
+      codebase: endpoint.codebase,
     };
     copyIfPresent(
       def,
@@ -444,7 +446,9 @@ export function toBackendInfo(
       extension: e.extension, // Only present on published extensions
       extensionVersion: extensionVersion, // Only present on published extensions
       extensionSpec: extensionSpec, // Only present on local extensions
-      functionTriggers: e.predefinedTriggers ?? cf3Triggers, // If we don't have predefinedTriggers, this is the CF3 backend.
+      functionTriggers:
+        // If we don't have predefinedTriggers, this is the CF3 backend.
+        e.predefinedTriggers ?? cf3Triggers.filter((t) => t.codebase === e.codebase),
     })
   );
 }
