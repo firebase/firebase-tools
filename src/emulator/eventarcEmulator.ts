@@ -16,6 +16,10 @@ interface CustomEventTrigger {
   eventTrigger: EventTrigger;
 }
 
+interface RequestWithRawBody extends express.Request {
+  rawBody: Buffer;
+}
+
 export interface EventarcEmulatorArgs {
   port?: number;
   host?: string;
@@ -35,9 +39,10 @@ export class EventarcEmulator implements EmulatorInstance {
       const projectId = req.params.project_id;
       const triggerName = req.params.trigger_name;
       logger.info(`Registering custom event trigger for ${triggerName}.`);
-      const eventTrigger = req.body.eventTrigger as EventTrigger;
+      const body = JSON.parse((req as RequestWithRawBody).rawBody.toString());
+      const eventTrigger = body.eventTrigger as EventTrigger;
       if (!eventTrigger) {
-        logger.debug(`Missing event trigger for ${triggerName}.`);
+        logger.info(`Missing event trigger for ${triggerName}.`);
         res.sendStatus(400);
         return;
       }
@@ -48,11 +53,11 @@ export class EventarcEmulator implements EmulatorInstance {
       res.sendStatus(200);
     };
 
-    const publishEventsRoute = `/v1/projects/:project_id/locations/:location/channels/:channel::publishEvents`;
+    const publishEventsRoute = `/projects/:project_id/locations/:location/channels/:channel::publishEvents`;
     const publishEventsHandler: express.RequestHandler = (req, res) => {
       const channel = req.params.channel;
-      const events = req.body.events;
-      for (const event of events) {
+      const body = JSON.parse((req as RequestWithRawBody).rawBody.toString());
+      for (const event of body.events) {
         if (!event.type) {
           res.sendStatus(400);
           return;
@@ -62,10 +67,20 @@ export class EventarcEmulator implements EmulatorInstance {
       res.sendStatus(200);
     };
 
+    const dataMiddleware: express.RequestHandler = (req, res, next) => {
+      const chunks: Buffer[] = [];
+      req.on("data", (chunk: Buffer) => {
+        chunks.push(chunk);
+      });
+      req.on("end", () => {
+        (req as RequestWithRawBody).rawBody = Buffer.concat(chunks);
+        next();
+      });
+    };
+
     const hub = express();
-    hub.use(express.json());
-    hub.post([registerTriggerRoute, `${registerTriggerRoute}/*`], registerTriggerHandler);
-    hub.post([publishEventsRoute], publishEventsHandler);
+    hub.post([registerTriggerRoute, `${registerTriggerRoute}/*`], dataMiddleware, registerTriggerHandler);
+    hub.post([publishEventsRoute], dataMiddleware, publishEventsHandler);
     hub.all("*", (req, res) => {
       logger.debug(`Eventarc emulator received unknown request at path ${req.path}`);
       res.sendStatus(404);
