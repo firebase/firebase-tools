@@ -79,11 +79,7 @@ export class EventarcEmulator implements EmulatorInstance {
     };
 
     const hub = express();
-    hub.post(
-      [registerTriggerRoute, `${registerTriggerRoute}/*`],
-      dataMiddleware,
-      registerTriggerHandler
-    );
+    hub.post([registerTriggerRoute], dataMiddleware, registerTriggerHandler);
     hub.post([publishEventsRoute], dataMiddleware, publishEventsHandler);
     hub.all("*", (req, res) => {
       logger.debug(`Eventarc emulator received unknown request at path ${req.path}`);
