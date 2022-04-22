@@ -121,7 +121,9 @@ export class EventarcEmulator implements EmulatorInstance {
             )
             .then(() => true)
             .catch((err) => {
-              logger.error(`Failed to trigger Functions emulator for ${trigger.triggerName}: ${err}`);
+              logger.error(
+                `Failed to trigger Functions emulator for ${trigger.triggerName}: ${err}`
+              );
             })
         )
     );
