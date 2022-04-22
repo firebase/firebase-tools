@@ -34,11 +34,10 @@ export class EventarcEmulator implements EmulatorInstance {
   constructor(private args: EventarcEmulatorArgs) {}
 
   createHubServer(): express.Application {
-    const registerTriggerRoute = `/emulator/v1/projects/:project_id/triggers/:trigger_name`;
+    const registerTriggerRoute = `/emulator/v1/projects/:project_id/triggers/:trigger_name(*)`;
     const registerTriggerHandler: express.RequestHandler = (req, res) => {
       const projectId = req.params.project_id;
       const triggerName = req.params.trigger_name;
-      logger.info(`Registering custom event trigger for ${triggerName}.`);
       const body = JSON.parse((req as RequestWithRawBody).rawBody.toString());
       const eventTrigger = body.eventTrigger as EventTrigger;
       if (!eventTrigger) {
@@ -47,6 +46,7 @@ export class EventarcEmulator implements EmulatorInstance {
         return;
       }
       const key = `${eventTrigger.eventType}-${eventTrigger.channel}`;
+      logger.info(`Registering custom event trigger for ${key} with trigger name ${triggerName}.`);
       const customEventTriggers = this.customEvents[key] || [];
       customEventTriggers.push({ projectId, triggerName, eventTrigger });
       this.customEvents[key] = customEventTriggers;
@@ -55,7 +55,7 @@ export class EventarcEmulator implements EmulatorInstance {
 
     const publishEventsRoute = `/projects/:project_id/locations/:location/channels/:channel::publishEvents`;
     const publishEventsHandler: express.RequestHandler = (req, res) => {
-      const channel = req.params.channel;
+      const channel = `projects/${req.params.project_id}/locations/${req.params.location}/channels/${req.params.channel}`;
       const body = JSON.parse((req as RequestWithRawBody).rawBody.toString());
       for (const event of body.events) {
         if (!event.type) {
@@ -67,7 +67,7 @@ export class EventarcEmulator implements EmulatorInstance {
       res.sendStatus(200);
     };
 
-    const dataMiddleware: express.RequestHandler = (req, res, next) => {
+    const dataMiddleware: express.RequestHandler = (req, _, next) => {
       const chunks: Buffer[] = [];
       req.on("data", (chunk: Buffer) => {
         chunks.push(chunk);
@@ -100,6 +100,7 @@ export class EventarcEmulator implements EmulatorInstance {
     }
     const key = `${event.type}-${channel}`;
     const triggers = this.customEvents[key] || [];
+    logger.info(`For key ${key} found triggers: ${JSON.stringify(triggers)}`);
     return await Promise.all(
       triggers
         .filter(
@@ -114,12 +115,13 @@ export class EventarcEmulator implements EmulatorInstance {
               `/functions/projects/${trigger.projectId}/triggers/${trigger.triggerName}`,
               {
                 origin: `http://${EmulatorRegistry.getInfoHostString(functionsEmulator.getInfo())}`,
+                data: JSON.stringify({}),
+                json: false,
               }
             )
             .then(() => true)
             .catch((err) => {
-              logger.info(`Failed to trigger Functions emulator for ${trigger.triggerName}.`);
-              throw err;
+              logger.error(`Failed to trigger Functions emulator for ${trigger.triggerName}: ${err}`);
             })
         )
     );
