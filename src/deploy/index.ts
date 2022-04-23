@@ -58,7 +58,7 @@ export const deploy = async function (
   if (previews.frameworkawareness && targetNames.includes("hosting")) {
     const config = options.config.get("hosting");
     if (Array.isArray(config) ? config.some((it) => it.source) : config.source) {
-      await require("firebase-frameworks").prepare(targetNames, context, options, false);
+      await require("firebase-frameworks").prepare(targetNames, context, options);
     }
   }
 

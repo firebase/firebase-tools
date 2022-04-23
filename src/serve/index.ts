@@ -30,7 +30,6 @@ export async function serve(options: any): Promise<void> {
       targetNames,
       options,
       options,
-      true,
     );
   }
   await Promise.all(
