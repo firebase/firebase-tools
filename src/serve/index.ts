@@ -28,8 +28,9 @@ export async function serve(options: any): Promise<void> {
   ) {
     await require("firebase-frameworks").prepare(
       targetNames,
-      { project: options.projectId },
-      options
+      options,
+      options,
+      true,
     );
   }
   await Promise.all(
