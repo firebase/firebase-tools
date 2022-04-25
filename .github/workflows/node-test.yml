@@ -26,7 +26,7 @@ jobs:
           cache-dependency-path: npm-shrinkwrap.json
       - uses: actions/cache@v3
         with:
-          path: node_modules
+          path: "**/node_modules"
           key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/npm-shrinkwrap.json') }}
 
       - run: npm i -g npm@8.5
@@ -50,7 +50,7 @@ jobs:
           cache-dependency-path: npm-shrinkwrap.json
       - uses: actions/cache@v3
         with:
-          path: node_modules
+          path: "**/node_modules"
           key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/npm-shrinkwrap.json') }}
 
       - run: npm i -g npm@8.5
@@ -92,7 +92,7 @@ jobs:
           cache-dependency-path: npm-shrinkwrap.json
       - uses: actions/cache@v3
         with:
-          path: node_modules
+          path: "**/node_modules"
           key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/npm-shrinkwrap.json') }}
 
       - name: Cache firebase emulators
@@ -129,7 +129,7 @@ jobs:
           cache-dependency-path: npm-shrinkwrap.json
       - uses: actions/cache@v3
         with:
-          path: node_modules
+          path: "**/node_modules"
           key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/npm-shrinkwrap.json') }}
       - run: npm i -g npm@8.5
       # --ignore-scripts prevents the `prepare` script from being run.
@@ -154,7 +154,7 @@ jobs:
           cache-dependency-path: npm-shrinkwrap.json
       - uses: actions/cache@v3
         with:
-          path: node_modules
+          path: "**/node_modules"
           key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/npm-shrinkwrap.json') }}
       - run: npm install
       - run: npm run generate:json-schema
