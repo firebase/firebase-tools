@@ -664,7 +664,7 @@ export function serviceIsResolved(service: run.Service): boolean {
     return condition.type === "Ready";
   });
 
-  if (readyCondition?.status === "Undefined") {
+  if (readyCondition?.status === "Unknown") {
     logger.debug(
       `Waiting for service ${service.metadata.name} to be ready. ` +
         `Status is ${JSON.stringify(service.status?.conditions)}`
