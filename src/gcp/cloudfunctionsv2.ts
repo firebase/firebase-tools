@@ -431,7 +431,13 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
     endpoint,
     "availableMemory",
     "availableMemoryMb",
-    (mb: string) => `${mb}Mi`
+    (mb: number) => {
+      if (mb > 1024) {
+        return `${mb / 1024}Gi`;
+      } else {
+        return `${mb}Mi`;
+      }
+    }
   );
   proto.renameIfPresent(gcfFunction.serviceConfig, endpoint, "minInstanceCount", "minInstances");
   proto.renameIfPresent(gcfFunction.serviceConfig, endpoint, "maxInstanceCount", "maxInstances");
