@@ -14,12 +14,12 @@ jobs:
     strategy:
       matrix:
         node-version:
-          - 14.x
+          - '16'
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v2
+      - uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
@@ -34,12 +34,12 @@ jobs:
     strategy:
       matrix:
         node-version:
-          - 14.x
-          - 16.x
-          - 18.x
+          - '14'
+          - '16'
+          - '18'
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
@@ -66,7 +66,7 @@ jobs:
       fail-fast: false
       matrix:
         node-version:
-          - 14.x
+          - '14'
         script:
           - npm run test:hosting
           - npm run test:client-integration
@@ -76,15 +76,15 @@ jobs:
           - npm run test:storage-deploy
           - npm run test:storage-emulator-integration
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
           cache-dependency-path: npm-shrinkwrap.json
 
       - name: Cache firebase emulators
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ${{ env.FIREBASE_EMULATORS_PATH }}
           key: ${{ runner.os }}-firebase-emulators-${{ hashFiles('emulator-cache/**') }}
@@ -105,12 +105,12 @@ jobs:
     strategy:
       matrix:
         node-version:
-          - 14.x
+          - '14'
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
       - run: npm i -g npm@8.5
@@ -124,12 +124,12 @@ jobs:
     strategy:
       matrix:
         node-version:
-          - 14.x
+          - '14'
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
       - run: npm install
