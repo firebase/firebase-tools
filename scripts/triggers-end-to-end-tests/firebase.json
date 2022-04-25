@@ -6,7 +6,21 @@
   "storage": {
     "rules": "storage.rules"
   },
-  "functions": {},
+  "functions": [
+    {
+      "codebase": "triggers",
+      "source": "triggers"
+    },
+    {
+      "codebase": "v1",
+      "source": "v1"
+    },
+    {
+      "codebase": "v2",
+      "source": "v2"
+    }
+
+  ],
   "emulators": {
     "hub": {
       "port": 4000

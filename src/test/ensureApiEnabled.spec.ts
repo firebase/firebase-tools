@@ -74,7 +74,7 @@ describe("ensureApiEnabled", () => {
         .reply(200, { state: "DISABLED" });
 
       nock("https://serviceusage.googleapis.com")
-        .post(`/v1/projects/${FAKE_PROJECT_ID}/services/${FAKE_API}:enable`)
+        .post(`/v1/projects/${FAKE_PROJECT_ID}/services/${FAKE_API}:enable`, (body) => !body)
         .once()
         .reply(200);
 

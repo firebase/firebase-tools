@@ -7,7 +7,7 @@ import * as runtimes from "./runtimes";
 import { FirebaseError } from "../../error";
 import { Context } from "./args";
 import { previews } from "../../previews";
-import { zip } from "../../functional";
+import { flattenArray, zip } from "../../functional";
 
 /** Retry settings for a ScheduleSpec. */
 export interface ScheduleRetryConfig {
@@ -398,6 +398,32 @@ export function of(...endpoints: Endpoint[]): Backend {
     bkend.endpoints[endpoint.region][endpoint.id] = endpoint;
   }
   return bkend;
+}
+
+/**
+ * A helper utility to merge backends.
+ */
+export function merge(...backends: Backend[]): Backend {
+  // Merge all endpoints
+  const merged = of(...flattenArray(backends.map((b) => allEndpoints(b))));
+
+  // Merge all APIs
+  const apiToReasons: Record<string, Set<string>> = {};
+  for (const b of backends) {
+    for (const { api, reason } of b.requiredAPIs) {
+      const reasons = apiToReasons[api] || new Set();
+      if (reason) {
+        reasons.add(reason);
+      }
+      apiToReasons[api] = reasons;
+    }
+    // Mere all environment variables.
+    merged.environmentVariables = { ...merged.environmentVariables, ...b.environmentVariables };
+  }
+  for (const [api, reasons] of Object.entries(apiToReasons)) {
+    merged.requiredAPIs.push({ api, reason: Array.from(reasons).join(" ") });
+  }
+  return merged;
 }
 
 /**

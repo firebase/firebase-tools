@@ -97,8 +97,12 @@ describe("Fabricator", () => {
   const ctorArgs: fabricator.FabricatorArgs = {
     executor: new executor.InlineExecutor(),
     functionExecutor: new executor.InlineExecutor(),
-    sourceUrl: "https://example.com",
-    storage: storage,
+    sources: {
+      default: {
+        sourceUrl: "https://example.com",
+        storage: storage,
+      },
+    },
     appEngineLocation: "us-central1",
   };
   let fab: fabricator.Fabricator;
@@ -122,6 +126,7 @@ describe("Fabricator", () => {
       runtime: "nodejs16",
       availableMemoryMb: 256,
       cpu: backend.memoryToGen1Cpu(256),
+      codebase: "default",
       ...JSON.parse(JSON.stringify(base)),
       ...trigger,
     } as backend.Endpoint;
