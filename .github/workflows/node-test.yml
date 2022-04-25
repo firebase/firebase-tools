@@ -28,7 +28,7 @@ jobs:
         with:
           path: |
             **/node_modules
-          key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/npm-shrinkwrap.json') }}
+          key: ${{ runner.os }}-cache-${{ secrets.CACHE_VERSION }}-node-${{ matrix.node-version }}-${{ hashFiles('**/npm-shrinkwrap.json') }}
 
       - run: npm i -g npm@8.5
       - run: npm ci
@@ -53,7 +53,7 @@ jobs:
         with:
           path: |
             **/node_modules
-          key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/npm-shrinkwrap.json') }}
+          key: ${{ runner.os }}-cache-${{ secrets.CACHE_VERSION }}-node-${{ matrix.node-version }}-${{ hashFiles('**/npm-shrinkwrap.json') }}
 
       - run: npm i -g npm@8.5
       - run: npm ci
@@ -96,7 +96,7 @@ jobs:
         with:
           path: |
             **/node_modules
-          key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/npm-shrinkwrap.json') }}
+          key: ${{ runner.os }}-cache-${{ secrets.CACHE_VERSION }}-node-${{ matrix.node-version }}-${{ hashFiles('**/npm-shrinkwrap.json') }}
 
       - name: Cache firebase emulators
         uses: actions/cache@v3
@@ -134,7 +134,7 @@ jobs:
         with:
           path: |
             **/node_modules
-          key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/npm-shrinkwrap.json') }}
+          key: ${{ runner.os }}-cache-${{ secrets.CACHE_VERSION }}-node-${{ matrix.node-version }}-${{ hashFiles('**/npm-shrinkwrap.json') }}
       - run: npm i -g npm@8.5
       # --ignore-scripts prevents the `prepare` script from being run.
       - run: npm install --package-lock-only --ignore-scripts
@@ -160,7 +160,7 @@ jobs:
         with:
           path: |
             **/node_modules
-          key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/npm-shrinkwrap.json') }}
+          key: ${{ runner.os }}-cache-${{ secrets.CACHE_VERSION }}-node-${{ matrix.node-version }}-${{ hashFiles('**/npm-shrinkwrap.json') }}
       - run: npm install
       - run: npm run generate:json-schema
       - run: "git diff --exit-code -- schema/*.json || (echo 'Error: JSON schema is changed! Please run npm run generate:json-schema and commit the results.' && false)"
