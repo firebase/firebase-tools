@@ -9,7 +9,7 @@ import {
 } from "./utils";
 import { MakeRequired } from "./utils";
 import { AuthCloudFunction } from "./cloudFunctions";
-import { assert } from "./errors";
+import { assert, BadRequestError } from "./errors";
 import { MfaEnrollments, Schemas } from "./types";
 
 export const PROVIDER_PASSWORD = "password";
@@ -27,7 +27,7 @@ export abstract class ProjectState {
   private localIdForPhoneNumber: Map<string, string> = new Map();
   private localIdsForProviderEmail: Map<string, Set<string>> = new Map();
   private userIdForProviderRawId: Map<string, Map<string, string>> = new Map();
-  private refreshTokens: Map<string, RefreshTokenRecord> = new Map();
+  private refreshTokens: Set<string> = new Set();
   private refreshTokensForLocalId: Map<string, Set<string>> = new Map();
   private oobs: Map<string, OobRecord> = new Map();
   private verificationCodes: Map<string, PhoneVerificationRecord> = new Map();
@@ -399,14 +399,15 @@ export abstract class ProjectState {
     } = {}
   ): string {
     const localId = userInfo.localId;
-    const refreshToken = randomBase64UrlStr(204);
-    this.refreshTokens.set(refreshToken, {
+    const refreshTokenRecord = {
       localId,
       provider,
       extraClaims,
       secondFactor,
       tenantId: userInfo.tenantId,
-    });
+    };
+    const refreshToken = encodeRefreshToken(refreshTokenRecord);
+    this.refreshTokens.add(refreshToken);
     let refreshTokens = this.refreshTokensForLocalId.get(localId);
     if (!refreshTokens) {
       refreshTokens = new Set();
@@ -424,10 +425,10 @@ export abstract class ProjectState {
         secondFactor?: SecondFactorRecord;
       }
     | undefined {
-    const record = this.refreshTokens.get(refreshToken);
-    if (!record) {
+    if (!this.refreshTokens.has(refreshToken)) {
       return undefined;
     }
+    const record = decodeRefreshToken(refreshToken);
     return {
       user: this.getUserByLocalIdAssertingExists(record.localId),
       provider: record.provider,
@@ -920,6 +921,19 @@ interface TemporaryProofRecord {
   temporaryProofExpiresIn: string;
   // Temporary proofs in emulator never expire to make interactive debugging
   // a bit easier. Therefore, there's no need to record createdAt timestamps.
+}
+
+function encodeRefreshToken(refreshTokenRecord: RefreshTokenRecord): string {
+  return Buffer.from(JSON.stringify(refreshTokenRecord), "utf8").toString("base64");
+}
+
+export function decodeRefreshToken(refreshTokenString: string): RefreshTokenRecord {
+  try {
+    const json = Buffer.from(refreshTokenString, "base64").toString("utf8");
+    return JSON.parse(json) as RefreshTokenRecord;
+  } catch {
+    throw new BadRequestError("INVALID_REFRESH_TOKEN");
+  }
 }
 
 function getProviderEmailsForUser(user: UserInfo): Set<string> {
