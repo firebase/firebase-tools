@@ -62,24 +62,7 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
       namePrefix: "cloud-storage-rules-emulator",
     },
   },
-  ui: previews.extensionsemulator
-    ? {
-        version: "EXTENSIONS",
-        downloadPath: path.join(CACHE_DIR, "ui-vEXTENSIONS.zip"),
-        unzipDir: path.join(CACHE_DIR, "ui-vEXTENSIONS"),
-        binaryPath: path.join(CACHE_DIR, "ui-vEXTENSIONS", "server.bundle.js"),
-        opts: {
-          cacheDir: CACHE_DIR,
-          remoteUrl:
-            "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-vEXTENSIONS.zip",
-          expectedSize: -1,
-          expectedChecksum: "",
-          skipCache: true,
-          skipChecksumAndSize: true,
-          namePrefix: "ui",
-        },
-      }
-    : previews.emulatoruisnapshot
+  ui: previews.emulatoruisnapshot
     ? {
         version: "SNAPSHOT",
         downloadPath: path.join(CACHE_DIR, "ui-vSNAPSHOT.zip"),
