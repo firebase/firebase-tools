@@ -12,6 +12,9 @@ export interface Build {
 }
 
 /* A utility function that returns an empty Build. */
+/**
+ *
+ */
 export function empty(): Build {
   return {
     requiredAPIs: [],
@@ -21,6 +24,9 @@ export function empty(): Build {
 }
 
 /* A utility function that creates a Build containing a map of IDs to Endpoints. */
+/**
+ *
+ */
 export function of(endpoints: Record<string, Endpoint>): Build {
   const build = empty();
   build.endpoints = endpoints;
@@ -284,10 +290,18 @@ export function resolveBackend(build: Build): backend.Backend {
       proto.renameIfPresent(bkEndpoint, endpoint, "maxInstances", "maxInstances", resolveInt);
       proto.renameIfPresent(bkEndpoint, endpoint, "minInstances", "minInstances", resolveInt);
       proto.renameIfPresent(bkEndpoint, endpoint, "concurrency", "concurrency", resolveInt);
-      proto.copyIfPresent(bkEndpoint, endpoint, "ingressSettings", "availableMemoryMb", "environmentVariables", "labels");
+      proto.copyIfPresent(
+        bkEndpoint,
+        endpoint,
+        "ingressSettings",
+        "availableMemoryMb",
+        "environmentVariables",
+        "labels"
+      );
       // proto.copyIfPresent(bkEndpoint, endpoint, "secretEnvironmentVariables");
       if (endpoint.vpc) {
         bkEndpoint.vpc = {
+          // $REGION is a token in the Build VPC connector because Build endpoints can have multiple regions, so we unroll here
           connector: resolveString(endpoint.vpc.connector).replace("$REGION", region),
         };
         proto.copyIfPresent(bkEndpoint.vpc, endpoint.vpc, "egressSettings");

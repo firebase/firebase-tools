@@ -240,7 +240,11 @@ export function addResourcesToBuild(
     if (annotation.taskQueueTrigger.retryConfig) {
       triggered.taskQueueTrigger.retryConfig = Object.assign(
         annotation.taskQueueTrigger.retryConfig,
-        { maxRetryDurationSeconds: proto.secondsFromDuration(annotation.taskQueueTrigger.retryConfig.maxRetryDuration || "0") }
+        {
+          maxRetryDurationSeconds: proto.secondsFromDuration(
+            annotation.taskQueueTrigger.retryConfig.maxRetryDuration || "0"
+          ),
+        }
       );
     }
   } else if (annotation.httpsTrigger) {
@@ -269,20 +273,19 @@ export function addResourcesToBuild(
         retryConfig: annotation.schedule.retryConfig || {},
       },
     };
-  } /* else if (annotation.blockingTrigger) { 
-        if (events.v1.AUTH_BLOCKING_EVENTS.includes(annotation.blockingTrigger.eventType as any)) {
-          want.requiredAPIs.push({
-            api: "identitytoolkit.googleapis.com",
-            reason: "Needed for auth blocking functions.",
-          });
-        }
-        triggered = {
-          blockingTrigger: {
-            eventType: annotation.blockingTrigger.eventType,
-            options: annotation.blockingTrigger.options,
-          },
-        }; 
-      } */ else {
+  } else if (annotation.blockingTrigger) { 
+    if (events.v1.AUTH_BLOCKING_EVENTS.includes(annotation.blockingTrigger.eventType as any)) {
+      want.requiredAPIs.push({
+        api: "identitytoolkit.googleapis.com",
+        reason: "Needed for auth blocking functions.",
+      });
+    }
+    triggered = {
+      blockingTrigger: {
+        eventType: annotation.blockingTrigger.eventType,
+      },
+    }; 
+    } else {
     triggered = {
       eventTrigger: {
         eventType: annotation.eventTrigger!.eventType,
