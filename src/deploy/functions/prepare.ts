@@ -2,7 +2,6 @@ import * as clc from "cli-color";
 
 import * as args from "./args";
 import * as backend from "./backend";
-import * as build from "./build";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
 import * as functionsConfig from "../../functionsConfig";
 import * as functionsEnv from "../../functions/env";

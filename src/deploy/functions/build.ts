@@ -11,9 +11,7 @@ export interface Build {
   params: Param[];
 }
 
-/**
- *
- */
+/* A utility function that returns an empty Build. */
 export function empty(): Build {
   return {
     requiredAPIs: [],
@@ -22,9 +20,7 @@ export function empty(): Build {
   };
 }
 
-/**
- *
- */
+/* A utility function that creates a Build containing a map of IDs to Endpoints. */
 export function of(endpoints: Record<string, Endpoint>): Build {
   const build = empty();
   build.endpoints = endpoints;
@@ -190,8 +186,10 @@ export type Endpoint = Triggered & {
   //  process.env.FIREBASE_FUNCTIONS_DEFAULT_REGION
   region?: string[];
 
+  // The Cloud project associated with this endpoint.
   project: string;
 
+  // The runtime being deployed to this endpoint. Currently targeting "nodejs16."
   runtime: string;
 
   // Firebase default of 80. Cloud default of 1
@@ -286,10 +284,7 @@ export function resolveBackend(build: Build): backend.Backend {
       proto.renameIfPresent(bkEndpoint, endpoint, "maxInstances", "maxInstances", resolveInt);
       proto.renameIfPresent(bkEndpoint, endpoint, "minInstances", "minInstances", resolveInt);
       proto.renameIfPresent(bkEndpoint, endpoint, "concurrency", "concurrency", resolveInt);
-      proto.copyIfPresent(bkEndpoint, endpoint, "ingressSettings");
-      proto.copyIfPresent(bkEndpoint, endpoint, "availableMemoryMb");
-      proto.copyIfPresent(bkEndpoint, endpoint, "environmentVariables");
-      proto.copyIfPresent(bkEndpoint, endpoint, "labels");
+      proto.copyIfPresent(bkEndpoint, endpoint, "ingressSettings", "availableMemoryMb", "environmentVariables", "labels");
       // proto.copyIfPresent(bkEndpoint, endpoint, "secretEnvironmentVariables");
       if (endpoint.vpc) {
         bkEndpoint.vpc = {

@@ -150,6 +150,7 @@ export class Delegate {
     configValues: backend.RuntimeConfigValues,
     envs: backend.EnvironmentVariables
   ): Promise<build.Build> {
+    // Unimplemented. Build discovery is not currently supported in Go.
     return { requiredAPIs: [], endpoints: {}, params: [] };
   }
 

@@ -240,16 +240,8 @@ export function addResourcesToBuild(
     if (annotation.taskQueueTrigger.retryConfig) {
       triggered.taskQueueTrigger.retryConfig = Object.assign(
         annotation.taskQueueTrigger.retryConfig,
-        { maxRetryDurationSeconds: 0 }
+        { maxRetryDurationSeconds: proto.secondsFromDuration(annotation.taskQueueTrigger.retryConfig.maxRetryDuration || "0") }
       );
-      if (
-        triggered.taskQueueTrigger.retryConfig &&
-        annotation.taskQueueTrigger.retryConfig?.maxRetryDuration
-      ) {
-        triggered.taskQueueTrigger.retryConfig.maxRetryDurationSeconds = proto.secondsFromDuration(
-          annotation.taskQueueTrigger.retryConfig.maxRetryDuration
-        );
-      }
     }
   } else if (annotation.httpsTrigger) {
     if (annotation.labels?.["deployment-callable"]) {

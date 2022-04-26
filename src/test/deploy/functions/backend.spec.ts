@@ -5,7 +5,6 @@ import { FirebaseError } from "../../../error";
 import { previews } from "../../../previews";
 import * as args from "../../../deploy/functions/args";
 import * as backend from "../../../deploy/functions/backend";
-import * as build from "../../../deploy/functions/build";
 import * as gcf from "../../../gcp/cloudfunctions";
 import * as gcfV2 from "../../../gcp/cloudfunctionsv2";
 import * as utils from "../../../utils";
