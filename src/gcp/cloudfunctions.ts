@@ -673,9 +673,14 @@ export function functionFromEndpoint(
       "egressSettings"
     );
   }
-  gcfFunction.labels = {
-    ...gcfFunction.labels,
-    [CODEBASE_LABEL]: endpoint.codebase || projectConfig.DEFAULT_CODEBASE,
-  };
+  const codebase = endpoint.codebase || projectConfig.DEFAULT_CODEBASE;
+  if (codebase !== projectConfig.DEFAULT_CODEBASE) {
+    gcfFunction.labels = {
+      ...gcfFunction.labels,
+      [CODEBASE_LABEL]: codebase,
+    };
+  } else {
+    delete gcfFunction.labels?.[CODEBASE_LABEL];
+  }
   return gcfFunction;
 }

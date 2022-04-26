@@ -71,7 +71,7 @@ export interface TriggerAnnotation {
   };
   blockingTrigger?: {
     eventType: string;
-    options?: Record<string, any>;
+    options?: Record<string, unknown>;
   };
   failurePolicy?: {};
   schedule?: ScheduleAnnotation;

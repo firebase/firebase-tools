@@ -10,8 +10,10 @@ export const humanReadable = (dep: planner.InstanceSpec) =>
 
 const humanReadableUpdate = (from: planner.InstanceSpec, to: planner.InstanceSpec) => {
   if (
-    from.ref?.publisherId === to.ref?.publisherId &&
-    from.ref?.extensionId === to.ref?.extensionId
+    from.ref &&
+    to.ref &&
+    from.ref.publisherId === to.ref.publisherId &&
+    from.ref.extensionId === to.ref.extensionId
   ) {
     return `\t${clc.bold(from.instanceId)} (${refs.toExtensionVersionRef(from.ref!)} => ${
       to.ref?.version
@@ -20,7 +22,8 @@ const humanReadableUpdate = (from: planner.InstanceSpec, to: planner.InstanceSpe
     const fromRef = from.ref
       ? `${refs.toExtensionVersionRef(from.ref)}`
       : `Installed from local source`;
-    return `\t${clc.bold(from.instanceId)} (${fromRef} => ${refs.toExtensionVersionRef(to.ref!)})`;
+    const toRef = to.ref ? `${refs.toExtensionVersionRef(to.ref)}` : `Installed from local source`;
+    return `\t${clc.bold(from.instanceId)} (${fromRef} => ${toRef})`;
   }
 };
 

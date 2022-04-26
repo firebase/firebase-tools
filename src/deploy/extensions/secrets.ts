@@ -4,7 +4,12 @@ import * as secretUtils from "../../extensions/secretsUtils";
 import * as secretManager from "../../gcp/secretManager";
 
 import { Payload } from "./args";
-import { getExtensionVersion, DeploymentInstanceSpec, InstanceSpec } from "./planner";
+import {
+  getExtensionVersion,
+  DeploymentInstanceSpec,
+  InstanceSpec,
+  getExtensionSpec,
+} from "./planner";
 import { promptCreateSecret } from "../../extensions/askUserForParam";
 import { ExtensionSpec, Param, ParamType } from "../../extensions/extensionsApi";
 import { FirebaseError } from "../../error";
@@ -41,8 +46,8 @@ export async function handleSecretParams(
 }
 
 export async function checkSpecForSecrets(i: InstanceSpec): Promise<boolean> {
-  const extensionVersion = await getExtensionVersion(i);
-  return secretUtils.usesSecrets(extensionVersion.spec);
+  const extensionSpec = await getExtensionSpec(i);
+  return secretUtils.usesSecrets(extensionSpec);
 }
 
 const secretsInSpec = (spec: ExtensionSpec): Param[] => {

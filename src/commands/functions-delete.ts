@@ -48,12 +48,13 @@ export default new Command("functions:delete [filters...]")
     if (options.region) {
       existingBackend.endpoints = { [options.region]: existingBackend.endpoints[options.region] };
     }
-    const plan = planner.createDeploymentPlan(
-      backend.empty(),
-      existingBackend,
-      context.filters,
-      /* deleteAll= */ true
-    );
+    const plan = planner.createDeploymentPlan({
+      wantBackend: backend.empty(),
+      haveBackend: existingBackend,
+      codebase: "",
+      filters: context.filters,
+      deleteAll: true,
+    });
     const allEpToDelete = Object.values(plan)
       .map((changes) => changes.endpointsToDelete)
       .reduce(reduceFlat, [])
@@ -93,8 +94,9 @@ export default new Command("functions:delete [filters...]")
     try {
       const fab = new fabricator.Fabricator({
         functionExecutor,
-        executor: new executor.QueueExecutor({}),
         appEngineLocation,
+        executor: new executor.QueueExecutor({}),
+        sources: {},
       });
       const summary = await fab.applyPlan(plan);
       await reporter.logAndTrackDeployStats(summary);

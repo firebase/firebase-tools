@@ -80,16 +80,16 @@ const toListEntry = (i: InstanceSpec) => {
  */
 export async function displayWarningsForDeploy(instancesToCreate: InstanceSpec[]) {
   const trustedPublishers = await getTrustedPublishers();
-  for (const i of instancesToCreate) {
+  const publishedExtensionInstances = instancesToCreate.filter((i) => i.ref);
+  for (const i of publishedExtensionInstances) {
     await getExtension(i);
-    await getExtensionVersion(i);
   }
 
   const [eapExtensions, nonEapExtensions] = partition(
-    instancesToCreate,
+    publishedExtensionInstances,
     (i) => !trustedPublishers.includes(i.ref?.publisherId ?? "")
   );
-  // Only mark non-eap extensions as expeirmental.
+  // Only mark non-eap extensions as experimental.
   const experimental = nonEapExtensions.filter(
     (i) => i.extension!.registryLaunchStage === RegistryLaunchStage.EXPERIMENTAL
   );
