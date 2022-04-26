@@ -273,7 +273,7 @@ export function addResourcesToBuild(
         retryConfig: annotation.schedule.retryConfig || {},
       },
     };
-  } else if (annotation.blockingTrigger) { 
+  } else if (annotation.blockingTrigger) {
     if (events.v1.AUTH_BLOCKING_EVENTS.includes(annotation.blockingTrigger.eventType as any)) {
       want.requiredAPIs.push({
         api: "identitytoolkit.googleapis.com",
@@ -284,8 +284,8 @@ export function addResourcesToBuild(
       blockingTrigger: {
         eventType: annotation.blockingTrigger.eventType,
       },
-    }; 
-    } else {
+    };
+  } else {
     triggered = {
       eventTrigger: {
         eventType: annotation.eventTrigger!.eventType,
