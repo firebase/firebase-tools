@@ -1021,7 +1021,7 @@ describe("Fabricator", () => {
     it("returns false if the status is not ready", () => {
       service.status!.observedGeneration = 2;
       service.metadata.generation = 2;
-      service.status!.conditions[0].status = "Undefined";
+      service.status!.conditions[0].status = "Unknown";
       service.status!.conditions[0].type = "Ready";
 
       expect(fabricator.serviceIsResolved(service)).to.be.false;
