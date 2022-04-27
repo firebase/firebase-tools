@@ -389,7 +389,7 @@ export abstract class ProjectState {
   ): string {
     const localId = userInfo.localId;
     const refreshTokenRecord = {
-      _AuthEmulatorRefreshTokenRecord: "DO NOT MODIFY",
+      _AuthEmulatorRefreshToken: "DO NOT MODIFY",
       localId,
       provider,
       extraClaims,
@@ -854,8 +854,8 @@ export type Config = {
   blockingFunctions: BlockingFunctionsConfig;
 };
 
-interface RefreshTokenRecord {
-  _AuthEmulatorRefreshTokenRecord: string;
+export interface RefreshTokenRecord {
+  _AuthEmulatorRefreshToken: string;
   localId: string;
   provider: string;
   extraClaims: Record<string, unknown>;
@@ -912,12 +912,15 @@ export function encodeRefreshToken(refreshTokenRecord: RefreshTokenRecord): stri
 }
 
 export function decodeRefreshToken(refreshTokenString: string): RefreshTokenRecord {
+  let refreshTokenRecord: RefreshTokenRecord;
   try {
     const json = Buffer.from(refreshTokenString, "base64").toString("utf8");
-    return JSON.parse(json) as RefreshTokenRecord;
+    refreshTokenRecord = JSON.parse(json) as RefreshTokenRecord;
   } catch {
     throw new BadRequestError("INVALID_REFRESH_TOKEN");
   }
+  assert(refreshTokenRecord._AuthEmulatorRefreshToken, "INVALID_REFRESH_TOKEN");
+  return refreshTokenRecord;
 }
 
 function getProviderEmailsForUser(user: UserInfo): Set<string> {

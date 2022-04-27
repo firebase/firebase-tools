@@ -1,6 +1,11 @@
 import { expect } from "chai";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
-import { decodeRefreshToken, encodeRefreshToken, UserInfo } from "../../../emulator/auth/state";
+import {
+  decodeRefreshToken,
+  encodeRefreshToken,
+  RefreshTokenRecord,
+  UserInfo,
+} from "../../../emulator/auth/state";
 import {
   deleteAccount,
   getAccountInfoByIdToken,
@@ -200,13 +205,33 @@ describeAuthEmulator("token refresh", ({ authApi, getClock }) => {
 
   it("should error when refresh tokens are from a different project", async () => {
     const refreshTokenRecord = {
-      _AuthEmulatorRefreshTokenRecord: "DO NOT MODIFY",
+      _AuthEmulatorRefreshToken: "DO NOT MODIFY",
       localId: "localId",
       provider: "provider",
       extraClaims: {},
       projectId: "notMatchingProjectId",
     };
     const refreshToken = encodeRefreshToken(refreshTokenRecord);
+
+    await authApi()
+      .post("/securetoken.googleapis.com/v1/token")
+      .type("form")
+      .send({ refresh_token: refreshToken, grantType: "refresh_token" })
+      .query({ key: "fake-api-key" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("INVALID_REFRESH_TOKEN");
+      });
+  });
+
+  it("should error on refresh tokens without required fields", async () => {
+    const refreshTokenRecord = {
+      localId: "localId",
+      provider: "provider",
+      extraClaims: {},
+      projectId: "notMatchingProjectId",
+    };
+    const refreshToken = encodeRefreshToken(refreshTokenRecord as RefreshTokenRecord);
 
     await authApi()
       .post("/securetoken.googleapis.com/v1/token")
