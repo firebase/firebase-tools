@@ -50,9 +50,13 @@ export async function check(
  */
 async function enable(projectId: string, apiName: string): Promise<void> {
   try {
-    await apiClient.post(`/projects/${projectId}/services/${apiName}:enable`, {
-      skipLog: { resBody: true },
-    });
+    await apiClient.post<undefined, unknown>(
+      `/projects/${projectId}/services/${apiName}:enable`,
+      undefined,
+      {
+        skipLog: { resBody: true },
+      }
+    );
   } catch (err: any) {
     if (isBillingError(err)) {
       throw new FirebaseError(`Your project ${bold(
