@@ -14086,13 +14086,15 @@
       "version": "0.1.5",
       "resolved": "https://registry.npmjs.org/@firebase/auth-interop-types/-/auth-interop-types-0.1.5.tgz",
       "integrity": "sha512-88h74TMQ6wXChPA6h9Q3E1Jg6TkTHep2+k63OWg3s0ozyGVMeY+TTOti7PFPzq5RhszQPQOoCi59es4MaRvgCw==",
-      "dev": true
+      "dev": true,
+      "requires": {}
     },
     "@firebase/auth-types": {
       "version": "0.10.1",
       "resolved": "https://registry.npmjs.org/@firebase/auth-types/-/auth-types-0.10.1.tgz",
       "integrity": "sha512-/+gBHb1O9x/YlG7inXfxff/6X3BPZt4zgBv4kql6HEmdzNQCodIRlEYnI+/da+lN+dha7PjaFH7C7ewMmfV7rw==",
-      "dev": true
+      "dev": true,
+      "requires": {}
     },
     "@firebase/component": {
       "version": "0.1.19",
@@ -14165,7 +14167,8 @@
           "version": "0.1.6",
           "resolved": "https://registry.npmjs.org/@firebase/auth-interop-types/-/auth-interop-types-0.1.6.tgz",
           "integrity": "sha512-etIi92fW3CctsmR9e3sYM3Uqnoq861M0Id9mdOPF6PWIg38BXL5k4upCNBggGUpLIS0H1grMOvy/wn1xymwe2g==",
-          "dev": true
+          "dev": true,
+          "requires": {}
         },
         "@firebase/component": {
           "version": "0.5.10",
@@ -14283,7 +14286,8 @@
       "version": "1.14.0",
       "resolved": "https://registry.npmjs.org/@firebase/firestore-types/-/firestore-types-1.14.0.tgz",
       "integrity": "sha512-WF8IBwHzZDhwyOgQnmB0pheVrLNP78A8PGxk1nxb/Nrgh1amo4/zYvFMGgSsTeaQK37xMYS/g7eS948te/dJxw==",
-      "dev": true
+      "dev": true,
+      "requires": {}
     },
     "@firebase/functions": {
       "version": "0.5.1",
@@ -14340,7 +14344,8 @@
       "version": "0.3.4",
       "resolved": "https://registry.npmjs.org/@firebase/installations-types/-/installations-types-0.3.4.tgz",
       "integrity": "sha512-RfePJFovmdIXb6rYwtngyxuEcWnOrzdZd9m7xAW0gRxDIjBT20n3BOhjpmgRWXo/DAxRmS7bRjWAyTHY9cqN7Q==",
-      "dev": true
+      "dev": true,
+      "requires": {}
     },
     "@firebase/logger": {
       "version": "0.2.6",
@@ -14377,7 +14382,8 @@
       "version": "0.5.0",
       "resolved": "https://registry.npmjs.org/@firebase/messaging-types/-/messaging-types-0.5.0.tgz",
       "integrity": "sha512-QaaBswrU6umJYb/ZYvjR5JDSslCGOH6D9P136PhabFAHLTR4TWjsaACvbBXuvwrfCXu10DtcjMxqfhdNIB1Xfg==",
-      "dev": true
+      "dev": true,
+      "requires": {}
     },
     "@firebase/performance": {
       "version": "0.4.2",
@@ -14479,7 +14485,8 @@
       "version": "0.3.13",
       "resolved": "https://registry.npmjs.org/@firebase/storage-types/-/storage-types-0.3.13.tgz",
       "integrity": "sha512-pL7b8d5kMNCCL0w9hF7pr16POyKkb3imOW7w0qYrhBnbyJTdVxMWZhb0HxCFyQWC0w3EiIFFmxoz8NTFZDEFog==",
-      "dev": true
+      "dev": true,
+      "requires": {}
     },
     "@firebase/webchannel-wrapper": {
       "version": "0.4.0",
@@ -15846,7 +15853,8 @@
       "version": "5.3.2",
       "resolved": "https://registry.npmjs.org/acorn-jsx/-/acorn-jsx-5.3.2.tgz",
       "integrity": "sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ==",
-      "dev": true
+      "dev": true,
+      "requires": {}
     },
     "acorn-walk": {
       "version": "8.2.0",
@@ -17790,13 +17798,15 @@
       "version": "0.14.0",
       "resolved": "https://registry.npmjs.org/eslint-config-google/-/eslint-config-google-0.14.0.tgz",
       "integrity": "sha512-WsbX4WbjuMvTdeVL6+J3rK1RGhCTqjsFjX7UMSMgZiyxxaNLkoJENbrGExzERFeoTpGw3F3FypTiWAP9ZXzkEw==",
-      "dev": true
+      "dev": true,
+      "requires": {}
     },
     "eslint-config-prettier": {
       "version": "8.3.0",
       "resolved": "https://registry.npmjs.org/eslint-config-prettier/-/eslint-config-prettier-8.3.0.tgz",
       "integrity": "sha512-BgZuLUSeKzvlL/VUjx/Yb787VQ26RU3gGjA3iiFvdsp/2bMfVIWUVP7tjxtjS0e+HP409cPlPvNkQloz8C91ew==",
-      "dev": true
+      "dev": true,
+      "requires": {}
     },
     "eslint-plugin-jsdoc": {
       "version": "37.5.1",
@@ -22636,7 +22646,8 @@
       "version": "3.6.0",
       "resolved": "https://registry.npmjs.org/sinon-chai/-/sinon-chai-3.6.0.tgz",
       "integrity": "sha512-bk2h+0xyKnmvazAnc7HE5esttqmCerSMcBtuB2PS2T4tG6x8woXAxZeJaOJWD+8reXHngnXn0RtIbfEW9OTHFg==",
-      "dev": true
+      "dev": true,
+      "requires": {}
     },
     "slash": {
       "version": "3.0.0",
@@ -24151,7 +24162,8 @@
     "ws": {
       "version": "7.4.6",
       "resolved": "https://registry.npmjs.org/ws/-/ws-7.4.6.tgz",
-      "integrity": "sha512-YmhHDO4MzaDLB+M9ym/mDA5z0naX8j7SIlT8f8z+I0VtzsRbekxEutHSme7NPS2qE8StCYQNUnfWdXta/Yu85A=="
+      "integrity": "sha512-YmhHDO4MzaDLB+M9ym/mDA5z0naX8j7SIlT8f8z+I0VtzsRbekxEutHSme7NPS2qE8StCYQNUnfWdXta/Yu85A==",
+      "requires": {}
     },
     "xdg-basedir": {
       "version": "4.0.0",
