@@ -143,7 +143,6 @@ function resolveParamOrLiteral(
   return paramValue;
 }
 
-// TODO: error-checcking; there's no guarantee that value is actually sensibly convertable to T at this point in the call chain
 function resolveLiteral(wantType: L, value: string): Literal {
   if (paramRegexp.exec(value)) {
     throw new FirebaseError(
@@ -157,7 +156,7 @@ function resolveLiteral(wantType: L, value: string): Literal {
     }
     return parseInt(value);
   } else if (wantType === "string") {
-    if (value[0] != "'" || value.slice(-1) != "'") {
+    if (value[0] !== "'" || value.slice(-1) !== "'") {
       throw new FirebaseError("CEL literal " + value + " does not seem to be a '-delimited string");
     }
     return value.slice(1, -1);
