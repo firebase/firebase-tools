@@ -181,13 +181,11 @@ export class DatabaseEmulator implements EmulatorInstance {
       if (e.context && e.context.body) {
         throw e.context.body.error;
       }
-      if (e.original) {
-        throw e.original;
-      }
-      throw e;
+      throw e.original ?? e;
     }
   }
 
+  // TODO: tests
   private prettyPrintRulesError(filePath: string, error: unknown): string {
     let errStr;
     switch (typeof error) {
