@@ -158,7 +158,7 @@ function resolveLiteral(wantType: L, value: string): Literal {
     return parseInt(value);
   } else if (wantType === "string") {
     if (value[0] != "'" || value.slice(-1) != "'") {
-      throw new FirebaseError("CEL literal " + value + " does not seem to be a '-delimited string")
+      throw new FirebaseError("CEL literal " + value + " does not seem to be a '-delimited string");
     }
     return value.slice(1, -1);
   } else if (wantType === "boolean") {
@@ -167,7 +167,7 @@ function resolveLiteral(wantType: L, value: string): Literal {
     } else if (value === "false") {
       return false;
     } else {
-      throw new FirebaseError("CEL literal " + value + "does not seem to be a true/false boolean")
+      throw new FirebaseError("CEL literal " + value + "does not seem to be a true/false boolean");
     }
   } else {
     throw new FirebaseError(
