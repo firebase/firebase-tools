@@ -27,8 +27,6 @@ export abstract class ProjectState {
   private localIdForPhoneNumber: Map<string, string> = new Map();
   private localIdsForProviderEmail: Map<string, Set<string>> = new Map();
   private userIdForProviderRawId: Map<string, Map<string, string>> = new Map();
-  private refreshTokens: Set<string> = new Set();
-  private refreshTokensForLocalId: Map<string, Set<string>> = new Map();
   private oobs: Map<string, OobRecord> = new Map();
   private verificationCodes: Map<string, PhoneVerificationRecord> = new Map();
   private temporaryProofs: Map<string, TemporaryProofRecord> = new Map();
@@ -123,15 +121,6 @@ export abstract class ProjectState {
   deleteUser(user: UserInfo): void {
     this.users.delete(user.localId);
     this.removeUserFromIndex(user);
-
-    const refreshTokens = this.refreshTokensForLocalId.get(user.localId);
-    if (refreshTokens) {
-      this.refreshTokensForLocalId.delete(user.localId);
-      for (const refreshToken of refreshTokens) {
-        this.refreshTokens.delete(refreshToken);
-      }
-    }
-
     this.authCloudFunction.dispatch("delete", user);
   }
 
@@ -400,35 +389,30 @@ export abstract class ProjectState {
   ): string {
     const localId = userInfo.localId;
     const refreshTokenRecord = {
+      _AuthEmulatorRefreshTokenRecord: "DO NOT MODIFY",
       localId,
       provider,
       extraClaims,
+      projectId: this.projectId,
       secondFactor,
       tenantId: userInfo.tenantId,
     };
     const refreshToken = encodeRefreshToken(refreshTokenRecord);
-    this.refreshTokens.add(refreshToken);
-    let refreshTokens = this.refreshTokensForLocalId.get(localId);
-    if (!refreshTokens) {
-      refreshTokens = new Set();
-      this.refreshTokensForLocalId.set(localId, refreshTokens);
-    }
-    refreshTokens.add(refreshToken);
     return refreshToken;
   }
 
-  validateRefreshToken(refreshToken: string):
-    | {
-        user: UserInfo;
-        provider: string;
-        extraClaims: Record<string, unknown>;
-        secondFactor?: SecondFactorRecord;
-      }
-    | undefined {
-    if (!this.refreshTokens.has(refreshToken)) {
-      return undefined;
-    }
+  validateRefreshToken(refreshToken: string): {
+    user: UserInfo;
+    provider: string;
+    extraClaims: Record<string, unknown>;
+    secondFactor?: SecondFactorRecord;
+  } {
     const record = decodeRefreshToken(refreshToken);
+    assert(record.projectId === this.projectId, "INVALID_REFRESH_TOKEN");
+    if (this instanceof TenantProjectState) {
+      // Shouldn't ever reach this assertion, but adding for completeness
+      assert(record.tenantId === this.tenantId, "TENANT_ID_MISMATCH");
+    }
     return {
       user: this.getUserByLocalIdAssertingExists(record.localId),
       provider: record.provider,
@@ -496,8 +480,6 @@ export abstract class ProjectState {
     this.localIdForPhoneNumber.clear();
     this.localIdsForProviderEmail.clear();
     this.userIdForProviderRawId.clear();
-    this.refreshTokens.clear();
-    this.refreshTokensForLocalId.clear();
 
     // We do not clear OOBs / phone verification codes since some of those may
     // still be valid (e.g. email link / phone sign-in may still create a new
@@ -873,9 +855,11 @@ export type Config = {
 };
 
 interface RefreshTokenRecord {
+  _AuthEmulatorRefreshTokenRecord: string;
   localId: string;
   provider: string;
   extraClaims: Record<string, unknown>;
+  projectId: string;
   secondFactor?: SecondFactorRecord;
   tenantId?: string;
 }
@@ -923,7 +907,7 @@ interface TemporaryProofRecord {
   // a bit easier. Therefore, there's no need to record createdAt timestamps.
 }
 
-function encodeRefreshToken(refreshTokenRecord: RefreshTokenRecord): string {
+export function encodeRefreshToken(refreshTokenRecord: RefreshTokenRecord): string {
   return Buffer.from(JSON.stringify(refreshTokenRecord), "utf8").toString("base64");
 }
 
