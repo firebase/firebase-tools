@@ -45,7 +45,8 @@ export default new Command("ext:configure <extensionInstanceId>")
 
     if (options.nonInteractive) {
       throw new FirebaseError(
-        `Command not supported in non-interactive mode, edit ./extensions/${instanceId}.env directly instead`
+        `Command not supported in non-interactive mode, edit ./extensions/${instanceId}.env directly instead. ` +
+          `See https://firebase.google.com/docs/extensions/manifest for more details.`
       );
     }
 

@@ -275,6 +275,6 @@ export function showPostDeprecationNotice() {
       "changes to extension instances will be written to firebase.json and ./extensions/*.env. " +
       `Then ${clc.bold(
         "firebase deploy (--only extensions)"
-      )} will deploy the changes to your Firebase project. `
+      )} will deploy the changes to your Firebase project. See https://firebase.google.com/docs/extensions/manifest for more details.`
   );
 }
