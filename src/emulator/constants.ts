@@ -44,7 +44,7 @@ export const EMULATOR_DESCRIPTION: Record<Emulators, string> = {
   auth: "Authentication Emulator",
   storage: "Storage Emulator",
   extensions: "Extensions Emulator",
-  eventarc: "EventArc Emulator",
+  eventarc: "Eventarc Emulator",
 };
 
 const DEFAULT_HOST = "localhost";
