@@ -268,7 +268,7 @@ export async function ensureServiceAgentRoles(
   if (haveServices.length === 0) {
     allRequiredBindings.push(obtainPubSubServiceAgentBindings(projectNumber, policy));
     allRequiredBindings.push(obtainDefaultComputeServiceAgentBindings(projectNumber, policy));
-    allRequiredBindings.push(obtainEventarcServiceAgentBindings(projectNumber, policy));
+    // allRequiredBindings.push(obtainEventarcServiceAgentBindings(projectNumber, policy));
   }
   if (!allRequiredBindings.find((bindings) => bindings.length > 0)) {
     return;
