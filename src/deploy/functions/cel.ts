@@ -6,8 +6,8 @@ export type IdentityExpression = CelExpression;
 export type EqualityExpression = CelExpression;
 export type TernaryExpression = CelExpression;
 
-type Literal = string|number|boolean;
-type L = String|Number|Boolean;
+type Literal = string | number | boolean;
+type L = "string" | "number" | "boolean";
 
 const identityRegexp = /{{ params\.(\w+) }}/;
 const equalityRegexp = /{{ params\.(\w+) == (\w+) }}/;
@@ -15,7 +15,7 @@ const ternaryRegexp = /{{ (.*) == (.*) ? (\w+) : (\w+) }/;
 const paramRegexp = /params\.(\w+)/;
 
 export function isCelExpression(value: any): value is CelExpression {
-  return (typeof value === 'string') && value.startsWith("{{") && value.endsWith("}}");
+  return typeof value === "string" && value.startsWith("{{") && value.endsWith("}}");
 }
 function isIdentityExpression(value: CelExpression): value is IdentityExpression {
   return identityRegexp.test(value);
@@ -27,106 +27,136 @@ function isTernaryExpression(value: CelExpression): value is TernaryExpression {
   return ternaryRegexp.test(value);
 }
 
-export function resolveExpression<T extends Literal>(ctor: new(...a: any) => L, expr: CelExpression, params: Record<string, Literal>): T {
+export function resolveExpression(
+  wantType: L,
+  expr: CelExpression,
+  params: Record<string, Literal>
+): Literal {
   if (isIdentityExpression(expr)) {
-    return resolveIdentity<T>(ctor, expr, params);
+    return resolveIdentity(wantType, expr, params);
   } else if (isEqualityExpression(expr)) {
     return resolveEquality(expr, params);
   } else if (isTernaryExpression(expr)) {
-    return resolveTernary<T>(ctor, expr, params);
+    return resolveTernary(wantType, expr, params);
   } else {
     throw new FirebaseError("CEL expression '" + expr + "' is of an unsupported form");
   }
 }
 
-function resolveIdentity<T extends Literal>(ctor: new(...a:any) => L, expr: IdentityExpression, params: Record<string, Literal>): T {
-  var match = expr.match(identityRegexp);
+function resolveIdentity(
+  wantType: L,
+  expr: IdentityExpression,
+  params: Record<string, Literal>
+): Literal {
+  const match = identityRegexp.exec(expr);
   if (!match) {
     throw new FirebaseError("malformed CEL identity expression '" + expr + "'");
   }
-  var value:any = params[match[1]];
-  if (typeof value === 'undefined') {
+  const value: any = params[match[1]];
+  if (typeof value === "undefined") {
     throw new FirebaseError("CEL identity expression '" + expr + "' was not resolvable to a param");
-  } else if (!(value instanceof ctor)) {
-    throw new FirebaseError("CEL identity expression '" + expr + "' resulted in illegal type coercion");
   }
-  return value as unknown as T;
+  if (typeof value !== wantType) {
+    throw new FirebaseError(
+      "CEL identity expression '" + expr + "' resulted in illegal type coercion"
+    );
+  }
+  return value;
 }
 
 function resolveEquality(expr: EqualityExpression, params: Record<string, Literal>): boolean {
-  var match = expr.match(equalityRegexp);
+  const match = equalityRegexp.exec(expr);
   if (!match) {
     throw new FirebaseError("malformed CEL equality expression '" + expr + "'");
   }
 
-  var lhs = params[match[1]];
-  let rhs:any;
-  if (typeof lhs === 'undefined') {
-    throw new FirebaseError("CEL equality expression LHS '" + match[1] + "' was not resolvable to a param");
-  } else if (typeof lhs === 'string') {
-    rhs = resolveLiteral<string>(String, match[2]);
-  } else if (typeof lhs === 'number') {
-    rhs = resolveLiteral<number>(Number, match[2]);
-  } else if (typeof lhs === 'boolean') {
-    rhs = resolveLiteral<boolean>(Boolean, match[2]);
+  const lhs = params[match[1]];
+  let rhs: Literal;
+  if (typeof lhs === "undefined") {
+    throw new FirebaseError(
+      "CEL equality expression LHS '" + match[1] + "' was not resolvable to a param"
+    );
+  } else if (typeof lhs === "string") {
+    rhs = resolveLiteral("string", match[2]);
+  } else if (typeof lhs === "number") {
+    rhs = resolveLiteral("number", match[2]);
+  } else if (typeof lhs === "boolean") {
+    rhs = resolveLiteral("boolean", match[2]);
+  } else {
+    assertExhaustive(lhs);
   }
 
-  return lhs == rhs;
+  return lhs === rhs;
 }
 
-function resolveTernary<T extends Literal>(ctor: new(...a:any) => L, expr: TernaryExpression, params: Record<string, Literal>) : T {
-  var match = expr.match(ternaryRegexp);
+function resolveTernary(
+  wantType: L,
+  expr: TernaryExpression,
+  params: Record<string, Literal>
+): Literal {
+  const match = ternaryRegexp.exec(expr);
   if (!match) {
     throw new FirebaseError("malformed CEL ternary expression '" + expr + "'");
   }
 
   // left-hand side of the ternary must be a params.FIELD, supporting any type
   // right-hand side must be a literal, not of type T but of the same type as the LHS
-  var lhs = params[match[1]];
-  let rhs:any;
-  if (typeof lhs === 'undefined') {
-    throw new FirebaseError("CEL equality expression LHS '" + match[1] + "' was not resolvable to a param");
-  } else if (typeof lhs === 'string') {
-    rhs = resolveLiteral<string>(String, match[2]);
-  } else if (typeof lhs === 'number') {
-    rhs = resolveLiteral<number>(Number, match[2]);
-  } else if (typeof lhs === 'boolean') {
-    rhs = resolveLiteral<boolean>(Boolean, match[2]);
+  const lhs = params[match[1]];
+  let rhs: Literal;
+  if (typeof lhs === "undefined") {
+    throw new FirebaseError(
+      "CEL equality expression LHS '" + match[1] + "' was not resolvable to a param"
+    );
+  } else if (typeof lhs === "string") {
+    rhs = resolveLiteral("string", match[2]);
+  } else if (typeof lhs === "number") {
+    rhs = resolveLiteral("number", match[2]);
+  } else if (typeof lhs === "boolean") {
+    rhs = resolveLiteral("boolean", match[2]);
+  } else {
+    assertExhaustive(lhs);
   }
 
-  if (lhs == rhs) {
-    return resolveParamOrLiteral<T>(ctor, match[3], params);
+  if (lhs === rhs) {
+    return resolveParamOrLiteral(wantType, match[3], params);
   } else {
-    return resolveParamOrLiteral<T>(ctor, match[4], params)
+    return resolveParamOrLiteral(wantType, match[4], params);
   }
 }
 
-function resolveParamOrLiteral<T extends Literal>(ctor: new(...a:any) => L, field: string, params: Record<string, Literal>) : T {
-  var match = field.match(paramRegexp);
+function resolveParamOrLiteral(
+  wantType: L,
+  field: string,
+  params: Record<string, Literal>
+): Literal {
+  const match = paramRegexp.exec(field);
   if (!match) {
-    return resolveLiteral<T>(ctor, field);
-  } 
-  var paramValue:any = params[match[1]];
-  if (typeof paramValue === 'undefined') {
+    return resolveLiteral(wantType, field);
+  }
+  const paramValue = params[match[1]];
+  if (typeof paramValue === "undefined") {
     throw new FirebaseError("CEL param field '" + field + "' was not provided");
-  } else if (!(paramValue instanceof ctor)) {
+  }
+  if (typeof paramValue !== wantType) {
     throw new FirebaseError("CEL param field '" + field + "' resulted in illegal type coercion");
   }
-  return paramValue as unknown as T;
+  return paramValue;
 }
 
 // TODO: error-checcking; there's no guarantee that value is actually sensibly convertable to T at this point in the call chain
-function resolveLiteral<T extends Literal>(ctor: new(...a:any) => L, value: string) : T {
-  if (new Number(0) instanceof ctor) {
-    return parseInt(value) as T;
-  } else if (new String("") instanceof ctor) {
-    return value.slice(1, -1) as T;
-  } else if (new Boolean(true) instanceof ctor) {
-    if (value == "false") {
-      return false as T;
+function resolveLiteral(wantType: L, value: string): Literal {
+  if (wantType === "number") {
+    return parseInt(value);
+  } else if (wantType === "string") {
+    return value.slice(1, -1);
+  } else if (wantType === "boolean") {
+    if (value === "false") {
+      return false;
     }
-    return true as T;
+    return true;
   } else {
-    throw new FirebaseError("CEL literal '" + value + "' somehow was called with a non-String/Number/Boolean construct signature");
+    throw new FirebaseError(
+      "CEL literal '" + value + "' somehow was resolved with a non-string/number/boolean type"
+    );
   }
 }
