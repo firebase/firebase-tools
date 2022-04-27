@@ -48,15 +48,14 @@ export default new Command("ext:install [extensionName]")
       "or run with `-i` to see all available extensions."
   )
   .withForce()
-  // TODO(b/221037520): Deprecate the params flag then remove it in the next breaking version.
-  .option("--params <paramsFile>", "name of params variables file with .env format.")
   .before(requirePermissions, ["firebaseextensions.instances.create"])
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
   .before(diagnoseAndFixProject)
   .action(async (extensionName: string, options: Options) => {
     const projectId = getProjectId(options);
-    const paramsEnvPath = (options.params ?? "") as string;
+    // TODO(b/230598656): Clean up paramsEnvPath after v11 launch.
+    const paramsEnvPath = "";
     let learnMore = false;
     if (!extensionName) {
       if (options.interactive) {
