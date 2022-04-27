@@ -38,9 +38,6 @@ async function retry<Return>(func: () => Promise<Return>): Promise<Return> {
   }
 }
 
-/**
- *
- */
 export async function cleanupBuildImages(
   haveFunctions: backend.TargetIds[],
   deletedFunctions: backend.TargetIds[],
