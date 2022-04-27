@@ -40,6 +40,9 @@ describe("CEL evaluation", () => {
 
     it("raises when the type of the LHS and RHS do not match", () => {
       // WIP: still need type-checking on resolveLiteral()
+      expect(() => {
+        cel.resolveExpression("boolean", "{{ params.FOO == 'asdf' }}", { FOO: 22, BAR: 11 });
+      }).to.throw(FirebaseError);
     });
 
     it("it determines whether the LHS resolves to the same thing as the RHS", () => {
@@ -73,7 +76,11 @@ describe("CEL evaluation", () => {
     });
 
     it("raises when the type of the LHS and RHS do not match", () => {
-      // WIP: still need type-checking on resolveLiteral()
+      expect(() => {
+        cel.resolveExpression("number", "{{ params.FOO == 'asdf' ? 10 : 0 }}", {
+          FOO: 22,
+        });
+      }).to.throw(FirebaseError);
     });
 
     it("raises when the ternary expression evaluates to something of the wrong type", () => {
