@@ -96,7 +96,6 @@ export class EventarcEmulator implements EmulatorInstance {
     }
     const key = `${event.type}-${channel}`;
     const triggers = this.customEvents[key] || [];
-    logger.info(`For key ${key} found triggers: ${JSON.stringify(triggers)}`);
     return await Promise.all(
       triggers
         .filter(
@@ -111,7 +110,7 @@ export class EventarcEmulator implements EmulatorInstance {
               `/functions/projects/${trigger.projectId}/triggers/${trigger.triggerName}`,
               {
                 origin: `http://${EmulatorRegistry.getInfoHostString(functionsEmulator.getInfo())}`,
-                data: JSON.stringify({}),
+                data: JSON.stringify(event),
                 json: false,
               }
             )
