@@ -6,13 +6,13 @@ export type IdentityExpression = CelExpression;
 export type EqualityExpression = CelExpression;
 export type TernaryExpression = CelExpression;
 
-type Literal = string | number | boolean;
+export type Literal = string | number | boolean;
 type L = "string" | "number" | "boolean";
 
-const identityRegexp = /{{ params\.(\w+) }}/;
-const equalityRegexp = /{{ params\.(\w+) == (\w+) }}/;
-const ternaryRegexp = /{{ (.*) == (.*) ? (\w+) : (\w+) }/;
-const paramRegexp = /params\.(\w+)/;
+const identityRegexp = /{{ params\.(\S+) }}/;
+const equalityRegexp = /{{ params\.(\S+) == (.+) }}/;
+const ternaryRegexp = /{{ params\.(\S+) == (.+) ? (.+) : (.+) }/;
+const paramRegexp = /params\.(\S+)/;
 
 export function isCelExpression(value: any): value is CelExpression {
   return typeof value === "string" && value.startsWith("{{") && value.endsWith("}}");
@@ -34,10 +34,10 @@ export function resolveExpression(
 ): Literal {
   if (isIdentityExpression(expr)) {
     return resolveIdentity(wantType, expr, params);
-  } else if (isEqualityExpression(expr)) {
-    return resolveEquality(expr, params);
   } else if (isTernaryExpression(expr)) {
     return resolveTernary(wantType, expr, params);
+  } else if (isEqualityExpression(expr)) {
+    return resolveEquality(expr, params);
   } else {
     throw new FirebaseError("CEL expression '" + expr + "' is of an unsupported form");
   }
@@ -105,7 +105,7 @@ function resolveTernary(
   let rhs: Literal;
   if (typeof lhs === "undefined") {
     throw new FirebaseError(
-      "CEL equality expression LHS '" + match[1] + "' was not resolvable to a param"
+      "CEL ternary expression LHS params.'" + match[1] + "' was not resolvable to a param"
     );
   } else if (typeof lhs === "string") {
     rhs = resolveLiteral("string", match[2]);
@@ -145,6 +145,12 @@ function resolveParamOrLiteral(
 
 // TODO: error-checcking; there's no guarantee that value is actually sensibly convertable to T at this point in the call chain
 function resolveLiteral(wantType: L, value: string): Literal {
+  if (paramRegexp.exec(value)) {
+    throw new FirebaseError(
+      "CEL tried to evaluate param." + value + " in a context which only permits literal values"
+    );
+  }
+
   if (wantType === "number") {
     return parseInt(value);
   } else if (wantType === "string") {
